@@ -424,6 +424,10 @@ export async function ensureRefundPaymentRecord(input: {
       method: "stripe",
       status: "completed",
       stripeRefundId: input.stripeRefundId,
+      // Lets the cash ledger add the refund back to the charge the webhook
+      // brought down to its net amount. Readers that subtract refunds must skip
+      // Stripe refund rows: that charge is already net.
+      refundOfPaymentId: input.originalPaymentId,
       currency: input.currency,
       notes: input.notes ?? null,
       paidAt: input.paidAt,

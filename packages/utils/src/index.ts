@@ -53,3 +53,6 @@ export {
 export { hasReservationInsuranceCoverage } from "./util.reservation-insurance";
 
 export * from "./pricing/product-promotion";
+
+// Payment rows: a Stripe refund told apart from the charge it refunds
+export * from "./util.payment-movement";

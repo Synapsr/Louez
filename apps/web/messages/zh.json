@@ -180,7 +180,7 @@
     "loginDescription": "输入您的电子邮件以继续。如果您没有帐户，我们将为您创建一个帐户。",
     "reeentLoginTitle": "欢迎来到 louez × <reeent>reeen</reeent>",
     "reeentLoginDescription": "reeent 是店面，louez 是您的工具：预订、付款和日历都在这里处理。如果您没有帐户，我们将为您创建一个帐户。",
-    "linkWillBeSent": "安全链接将发送到您的电子邮件。无需记住密码。",
+    "linkWillBeSent": "我们将向您的邮箱发送一次性验证码。密码仍为可选项。",
     "checkEmail": "检查您的电子邮件",
     "emailSentTo": "登录链接已发送至",
     "clickLinkToSignIn": "单击电子邮件中的链接进行登录。该链接将在 24 小时后过期。",
@@ -200,7 +200,19 @@
       "verification": "验证链接无效或已过期。",
       "default": "发生错误。请再试一次。",
       "passwordTooShort": "密码必须至少为 8 个字符。",
-      "registrationClosed": "此实例的注册已关闭。向店主索要邀请函。"
+      "registrationClosed": "此实例的注册已关闭。向店主索要邀请函。",
+      "invalidCode": "验证码不正确。",
+      "codeExpired": "验证码已过期，请获取新的验证码。",
+      "tooManyAttempts": "此验证码的尝试次数过多，请获取新的验证码。",
+      "tooManyRequests": "尝试次数过多，请等待一分钟后重试。",
+      "passwordTooLong": "密码不能超过 128 个字符。",
+      "invalidPassword": "当前密码不正确。",
+      "currentPasswordRequired": "请输入当前密码。",
+      "passwordAlreadySet": "此账户已设置密码。",
+      "passwordNotSet": "此账户尚未设置密码。",
+      "passwordRemovalUnavailable": "密码是此实例唯一的登录方式，无法移除。",
+      "sessionExpired": "您的会话已过期，请重新登录后再试。",
+      "passwordSignUpDisabled": "无法使用密码创建账户，请使用电子邮件验证码。"
     },
     "referralBanner": "{storeName} 邀请您来到 Louez — 创建您的商店并从 {count} 免费预订开始。",
     "referralBannerGeneric": "🎁 您已被邀请加入 Louez — 创建您的商店并从 {count} 免费预订开始。",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "已经有帐户？",
     "usePasswordInstead": "使用密码登录",
     "useEmailCodeInstead": "请使用电子邮件代码登录",
-    "passwordLoginDescription": "使用您的电子邮件和密码登录。"
+    "passwordLoginDescription": "使用您的电子邮件和密码登录。",
+    "forgotPasswordTitle": "忘记密码",
+    "forgotPasswordDescription": "请输入账户的电子邮箱，我们将发送验证码以便您设置新密码。",
+    "forgotPasswordLogsDescription": "请输入账户的电子邮箱。此实例不发送电子邮件，验证码将显示在服务器日志中。",
+    "resetCodeSentDescription": "如果 <strong>{email}</strong> 对应的账户存在，我们已向该邮箱发送六位验证码。请在下方输入验证码以设置新密码。",
+    "newPasswordTitle": "设置新密码",
+    "newPasswordDescription": "保存后将自动登录，您的其他设备将退出登录。",
+    "newPassword": "新密码",
+    "saveNewPassword": "保存并登录",
+    "requestNewCode": "获取新验证码",
+    "backToLogin": "返回登录",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
+    "passwordRules": {
+      "minLength": "至少 {count} 个字符"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name}诚邀您加入团队",
@@ -5443,7 +5470,7 @@
         "active": "活跃",
         "activeSessions": "活跃会话",
         "activeSessionsDescription": "管理您的登录会话",
-        "sessionCount": "{count} 会话",
+        "sessionCount": "{count, plural, other {# 台设备已登录}}",
         "changePassword": "更改密码",
         "dangerZone": "危险区域",
         "dangerZoneDescription": "对您的帐户进行不可逆转的操作",
@@ -5506,6 +5533,51 @@
           "saved": "已保存快捷方式",
           "conflict": "该快捷方式已用于“{action}”。",
           "resetAction": "重置“{action}”"
+        },
+        "signIn": {
+          "title": "登录",
+          "description": "登录账户的方式",
+          "emailCode": "电子邮件验证码",
+          "alwaysActive": "始终启用",
+          "unavailable": "不可用",
+          "google": "Google",
+          "linked": "已关联",
+          "notLinked": "未关联",
+          "linkGoogle": "关联",
+          "googleLinkError": "无法关联此 Google 账户。请确保它与您的 Louez 账户使用相同的电子邮箱。",
+          "password": "密码",
+          "passwordNotSet": "未设置",
+          "passwordSetOn": "设置于 {date}",
+          "setPassword": "设置",
+          "changePassword": "更改",
+          "removePassword": "移除",
+          "setPasswordTitle": "设置密码",
+          "setPasswordDescription": "密码为可选项，您始终可以使用电子邮件验证码登录。您的其他设备将退出登录。",
+          "newPasswordLabel": "新密码",
+          "currentPasswordLabel": "当前密码",
+          "setPasswordSubmit": "设置密码",
+          "changePasswordDescription": "您的其他设备将退出登录。",
+          "changePasswordSubmit": "更改密码",
+          "removePasswordTitle": "移除密码？",
+          "removePasswordDescription": "您仍可使用电子邮件验证码登录，也可以随时设置新密码。",
+          "removePasswordConfirm": "移除密码",
+          "cancel": "取消",
+          "passwordSetToast": "密码已设置",
+          "passwordChangedToast": "密码已更改",
+          "passwordRemovedToast": "密码已移除"
+        },
+        "passwordAlert": {
+          "title": "不是您本人操作？",
+          "description": "账户 {email} 的密码刚刚被添加、更改或移除。如果这不是您本人的操作，请立即保护您的账户。",
+          "effectPassword": "此账户的密码将被移除。",
+          "effectSessions": "所有设备都将退出登录，包括当前设备。",
+          "effectSignIn": "您将使用电子邮件验证码重新登录。",
+          "unavailable": "密码是此实例唯一的登录方式，无法移除。请在账户设置中更改密码。",
+          "confirm": "保护我的账户",
+          "itWasMe": "是我本人操作",
+          "doneTitle": "您的账户已受到保护",
+          "doneDescription": "密码已移除，所有设备均已退出登录。请使用电子邮件验证码重新登录。",
+          "signInAgain": "重新登录"
         }
       },
       "admin": {
@@ -6096,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "一次预订，一页",
           "description": "无需执行更多步骤：客户、期间、产品和交付全部显示在一页上，摘要始终在您身边。过去意味着事后重新开放预订的一切——折扣、协商价格、押金、上门顾客——现在都可以当场解决。"
+        },
+        "optional-password": {
+          "title": "按需设置密码",
+          "description": "为账户添加密码，即可登录而无需等待电子邮件验证码。验证码登录方式始终可用。"
         }
       }
     },

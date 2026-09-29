@@ -180,7 +180,7 @@
     "loginDescription": "Masukkan email Anda untuk melanjutkan. Jika Anda tidak memiliki akun, akun akan dibuatkan untuk Anda.",
     "reeentLoginTitle": "Selamat datang di louez × <reeent>reent</reeent>",
     "reeentLoginDescription": "reent adalah etalase, louez adalah alat Anda: pemesanan, pembayaran, dan kalender ditangani di sini. Jika Anda tidak memiliki akun, akun akan dibuatkan untuk Anda.",
-    "linkWillBeSent": "Tautan aman akan dikirim ke email Anda. Tidak ada kata sandi yang perlu diingat.",
+    "linkWillBeSent": "Kode sekali pakai akan dikirim ke email Anda. Kata sandi tetap opsional.",
     "checkEmail": "Periksa email Anda",
     "emailSentTo": "Tautan login telah dikirim ke",
     "clickLinkToSignIn": "Klik tautan di email untuk masuk. Tautan akan kedaluwarsa dalam 24 jam.",
@@ -200,7 +200,19 @@
       "verification": "Tautan verifikasi tidak valid atau telah kedaluwarsa.",
       "default": "Terjadi kesalahan. Silakan coba lagi.",
       "passwordTooShort": "Kata sandi minimal harus 8 karakter.",
-      "registrationClosed": "Pendaftaran ditutup pada kesempatan ini. Mintalah undangan kepada pemiliknya."
+      "registrationClosed": "Pendaftaran ditutup pada kesempatan ini. Mintalah undangan kepada pemiliknya.",
+      "invalidCode": "Kode ini salah.",
+      "codeExpired": "Kode ini sudah kedaluwarsa. Minta kode baru.",
+      "tooManyAttempts": "Terlalu banyak percobaan dengan kode ini. Minta kode baru.",
+      "tooManyRequests": "Terlalu banyak percobaan. Tunggu satu menit sebelum mencoba lagi.",
+      "passwordTooLong": "Kata sandi tidak boleh lebih dari 128 karakter.",
+      "invalidPassword": "Kata sandi saat ini salah.",
+      "currentPasswordRequired": "Masukkan kata sandi Anda saat ini.",
+      "passwordAlreadySet": "Akun ini sudah memiliki kata sandi.",
+      "passwordNotSet": "Akun ini belum memiliki kata sandi.",
+      "passwordRemovalUnavailable": "Kata sandi adalah satu-satunya cara untuk masuk pada instalasi ini, sehingga tidak dapat dihapus.",
+      "sessionExpired": "Sesi Anda telah berakhir. Masuk kembali, lalu coba lagi.",
+      "passwordSignUpDisabled": "Pembuatan akun dengan kata sandi tidak tersedia. Gunakan kode yang dikirim melalui email."
     },
     "referralBanner": "{storeName} mengundang Anda ke Louez — buat toko Anda dan mulai dengan reservasi gratis {count}.",
     "referralBannerGeneric": "🎁 Anda telah diundang ke Louez — buat toko Anda dan mulai dengan reservasi gratis {count}.",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "Sudah punya akun?",
     "usePasswordInstead": "Masuklah dengan kata sandi",
     "useEmailCodeInstead": "Masuk dengan kode email saja",
-    "passwordLoginDescription": "Masuk dengan email dan kata sandi Anda."
+    "passwordLoginDescription": "Masuk dengan email dan kata sandi Anda.",
+    "forgotPasswordTitle": "Lupa kata sandi",
+    "forgotPasswordDescription": "Masukkan email akun Anda. Kami akan mengirim kode untuk membuat kata sandi baru.",
+    "forgotPasswordLogsDescription": "Masukkan email akun Anda. Instalasi ini tidak mengirim email. Kode akan muncul di log server.",
+    "resetCodeSentDescription": "Jika akun dengan email <strong>{email}</strong> terdaftar, kode 6 digit telah dikirim ke alamat tersebut. Masukkan kode di bawah untuk membuat kata sandi baru.",
+    "newPasswordTitle": "Buat kata sandi baru",
+    "newPasswordDescription": "Anda akan masuk setelah kata sandi disimpan. Perangkat Anda yang lain akan dikeluarkan.",
+    "newPassword": "Kata sandi baru",
+    "saveNewPassword": "Simpan dan masuk",
+    "requestNewCode": "Dapatkan kode baru",
+    "backToLogin": "Kembali ke halaman masuk",
+    "showPassword": "Tampilkan kata sandi",
+    "hidePassword": "Sembunyikan kata sandi",
+    "passwordRules": {
+      "minLength": "Minimal {count} karakter"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} mengundang Anda untuk bergabung dengan tim",
@@ -5443,7 +5470,7 @@
         "active": "Aktif",
         "activeSessions": "Sesi aktif",
         "activeSessionsDescription": "Kelola sesi login Anda",
-        "sessionCount": "Sesi {count}",
+        "sessionCount": "{count, plural, other {# perangkat sedang masuk}}",
         "changePassword": "Ubah kata sandi",
         "dangerZone": "Zona bahaya",
         "dangerZoneDescription": "Tindakan yang tidak dapat diubah pada akun Anda",
@@ -5506,6 +5533,51 @@
           "saved": "Pintasan disimpan",
           "conflict": "Pintasan ini sudah digunakan untuk “{action}”.",
           "resetAction": "Setel ulang “{action}”"
+        },
+        "signIn": {
+          "title": "Masuk",
+          "description": "Cara masuk ke akun Anda",
+          "emailCode": "Kode email",
+          "alwaysActive": "Selalu aktif",
+          "unavailable": "Tidak tersedia",
+          "google": "Google",
+          "linked": "Terhubung",
+          "notLinked": "Belum terhubung",
+          "linkGoogle": "Hubungkan",
+          "googleLinkError": "Akun Google ini tidak dapat dihubungkan. Pastikan alamat emailnya sama dengan yang digunakan pada akun Louez Anda.",
+          "password": "Kata sandi",
+          "passwordNotSet": "Belum diatur",
+          "passwordSetOn": "Diatur pada {date}",
+          "setPassword": "Atur",
+          "changePassword": "Ubah",
+          "removePassword": "Hapus",
+          "setPasswordTitle": "Atur kata sandi",
+          "setPasswordDescription": "Kata sandi bersifat opsional. Kode yang dikirim melalui email selalu tersedia. Perangkat Anda yang lain akan dikeluarkan.",
+          "newPasswordLabel": "Kata sandi baru",
+          "currentPasswordLabel": "Kata sandi saat ini",
+          "setPasswordSubmit": "Atur kata sandi",
+          "changePasswordDescription": "Perangkat Anda yang lain akan dikeluarkan.",
+          "changePasswordSubmit": "Ubah kata sandi",
+          "removePasswordTitle": "Hapus kata sandi?",
+          "removePasswordDescription": "Anda tetap dapat masuk dengan kode yang dikirim melalui email. Anda dapat membuat kata sandi baru kapan saja.",
+          "removePasswordConfirm": "Hapus kata sandi",
+          "cancel": "Batal",
+          "passwordSetToast": "Kata sandi telah diatur",
+          "passwordChangedToast": "Kata sandi telah diubah",
+          "passwordRemovedToast": "Kata sandi telah dihapus"
+        },
+        "passwordAlert": {
+          "title": "Bukan Anda yang melakukannya?",
+          "description": "Kata sandi akun {email} baru saja ditambahkan, diubah, atau dihapus. Jika Anda tidak melakukannya, segera amankan akun Anda.",
+          "effectPassword": "Kata sandi akan dihapus dari akun.",
+          "effectSessions": "Semua perangkat akan dikeluarkan, termasuk perangkat ini.",
+          "effectSignIn": "Anda akan masuk kembali dengan kode yang dikirim melalui email.",
+          "unavailable": "Kata sandi adalah satu-satunya cara untuk masuk pada instalasi ini, sehingga tidak dapat dihapus. Ubah kata sandi dari pengaturan akun Anda.",
+          "confirm": "Amankan akun saya",
+          "itWasMe": "Saya yang melakukannya",
+          "doneTitle": "Akun Anda telah diamankan",
+          "doneDescription": "Kata sandi telah dihapus dan semua perangkat telah dikeluarkan. Masuk kembali dengan kode yang dikirim melalui email.",
+          "signInAgain": "Masuk kembali"
         }
       },
       "admin": {
@@ -6096,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "Satu reservasi, satu halaman",
           "description": "Tidak ada lagi langkah yang harus dilalui: pelanggan, periode, produk, dan pengiriman semuanya muat dalam satu halaman, dengan ringkasan selalu ada di samping Anda. Dan segala hal yang sebelumnya berarti membuka kembali reservasi setelahnya — diskon, harga yang dinegosiasikan, deposit, pelanggan langsung — kini diselesaikan saat itu juga."
+        },
+        "optional-password": {
+          "title": "Kata sandi, jika Anda menginginkannya",
+          "description": "Tambahkan kata sandi ke akun Anda untuk masuk tanpa menunggu kode email. Kode email tetap selalu tersedia."
         }
       }
     },

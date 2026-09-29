@@ -30,6 +30,8 @@ export interface GeneratedPayment {
   stripeChargeId: string | null
   stripeCheckoutSessionId: string | null
   stripeRefundId: string | null
+  /** Set on a row that gives money back for another row. */
+  refundOfPaymentId?: string | null
   stripePaymentMethodId: string | null
   authorizationExpiresAt: Date | null
   capturedAmount: string | null
@@ -131,26 +133,51 @@ function generatePaymentsForReservation(
     // Some cancelled reservations had payments that were refunded
     if (chance(0.3) && isStripeEnabled) {
       const paidAt = addMinutes(reservation.createdAt, randomInt(5, 30))
+      const refundedAt = addHours(paidAt, randomInt(2, 48))
+      const chargeId = generateId()
 
+      // Same shape as production: the webhook brings the charge down to what is
+      // left of it, and the refund is a positive row of its own pointing at it.
       payments.push({
-        id: generateId(),
+        id: chargeId,
         reservationId: reservation.id,
-        amount: subtotal.toFixed(2),
+        amount: '0.00',
         type: 'rental',
         method: 'stripe',
         status: 'refunded',
         stripePaymentIntentId: generateStripeId('pi'),
         stripeChargeId: generateStripeId('ch'),
         stripeCheckoutSessionId: generateStripeId('cs'),
-        stripeRefundId: generateStripeId('re'),
+        stripeRefundId: null,
         stripePaymentMethodId: generateStripeId('pm'),
         authorizationExpiresAt: null,
         capturedAmount: null,
         currency: 'EUR',
-        notes: 'Remboursement suite à annulation',
+        notes: null,
         paidAt,
         createdAt: reservation.createdAt,
-        updatedAt: now,
+        updatedAt: refundedAt,
+      })
+      payments.push({
+        id: generateId(),
+        reservationId: reservation.id,
+        amount: subtotal.toFixed(2),
+        type: 'rental',
+        method: 'stripe',
+        status: 'completed',
+        stripePaymentIntentId: null,
+        stripeChargeId: null,
+        stripeCheckoutSessionId: null,
+        stripeRefundId: generateStripeId('re'),
+        refundOfPaymentId: chargeId,
+        stripePaymentMethodId: null,
+        authorizationExpiresAt: null,
+        capturedAmount: null,
+        currency: 'EUR',
+        notes: 'Remboursement suite à annulation',
+        paidAt: refundedAt,
+        createdAt: refundedAt,
+        updatedAt: refundedAt,
       })
     }
     return payments

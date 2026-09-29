@@ -180,7 +180,7 @@
     "loginDescription": "계속하려면 이메일을 입력하세요. 계정이 없으면 계정이 생성됩니다.",
     "reeentLoginTitle": "루에즈 × <reeent>reeent</reeent>에 오신 것을 환영합니다",
     "reeentLoginDescription": "reeent는 매장이고 louez는 도구입니다. 예약, 결제 및 일정이 여기에서 처리됩니다. 계정이 없으면 계정이 생성됩니다.",
-    "linkWillBeSent": "귀하의 이메일로 보안 링크가 전송됩니다. 기억할 비밀번호가 없습니다.",
+    "linkWillBeSent": "이메일로 일회용 코드를 보내드립니다. 비밀번호 설정은 선택 사항입니다.",
     "checkEmail": "이메일을 확인하세요",
     "emailSentTo": "로그인 링크가 다음 주소로 전송되었습니다.",
     "clickLinkToSignIn": "이메일에 있는 링크를 클릭하여 로그인하세요. 링크는 24시간 후에 만료됩니다.",
@@ -200,7 +200,19 @@
       "verification": "확인 링크가 유효하지 않거나 만료되었습니다.",
       "default": "오류가 발생했습니다. 다시 시도해 주세요.",
       "passwordTooShort": "비밀번호는 8자 이상이어야 합니다.",
-      "registrationClosed": "이 인스턴스의 등록이 종료되었습니다. 소유자에게 초대장을 요청하세요."
+      "registrationClosed": "이 인스턴스의 등록이 종료되었습니다. 소유자에게 초대장을 요청하세요.",
+      "invalidCode": "코드가 올바르지 않습니다.",
+      "codeExpired": "코드가 만료되었습니다. 새 코드를 요청하세요.",
+      "tooManyAttempts": "이 코드의 입력 시도 횟수가 너무 많습니다. 새 코드를 요청하세요.",
+      "tooManyRequests": "시도 횟수가 너무 많습니다. 1분 후에 다시 시도하세요.",
+      "passwordTooLong": "비밀번호는 128자를 초과할 수 없습니다.",
+      "invalidPassword": "현재 비밀번호가 올바르지 않습니다.",
+      "currentPasswordRequired": "현재 비밀번호를 입력하세요.",
+      "passwordAlreadySet": "이 계정에는 이미 비밀번호가 설정되어 있습니다.",
+      "passwordNotSet": "이 계정에는 비밀번호가 설정되어 있지 않습니다.",
+      "passwordRemovalUnavailable": "이 인스턴스에서는 비밀번호가 유일한 로그인 방법이므로 삭제할 수 없습니다.",
+      "sessionExpired": "세션이 만료되었습니다. 다시 로그인한 후 재시도하세요.",
+      "passwordSignUpDisabled": "비밀번호로 계정을 만들 수 없습니다. 이메일로 받은 코드를 사용하세요."
     },
     "referralBanner": "{storeName}가 귀하를 Louez에 초대했습니다. 매장을 만들고 {count} 무료 예약으로 시작하세요.",
     "referralBannerGeneric": "🎁 Louez에 초대되셨습니다. 매장을 만들고 {count} 무료 예약으로 시작해 보세요.",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "이미 계정이 있나요?",
     "usePasswordInstead": "대신 비밀번호로 로그인하세요.",
     "useEmailCodeInstead": "대신 이메일 코드로 로그인하세요.",
-    "passwordLoginDescription": "이메일과 비밀번호로 로그인하세요."
+    "passwordLoginDescription": "이메일과 비밀번호로 로그인하세요.",
+    "forgotPasswordTitle": "비밀번호를 잊으셨나요",
+    "forgotPasswordDescription": "계정의 이메일 주소를 입력하세요. 새 비밀번호를 설정할 수 있는 코드를 보내드립니다.",
+    "forgotPasswordLogsDescription": "계정의 이메일 주소를 입력하세요. 이 인스턴스는 이메일을 보내지 않습니다. 코드는 서버 로그에 표시됩니다.",
+    "resetCodeSentDescription": "<strong>{email}</strong>에 연결된 계정이 있으면 6자리 코드가 전송됩니다. 아래에 코드를 입력하여 새 비밀번호를 설정하세요.",
+    "newPasswordTitle": "새 비밀번호 설정",
+    "newPasswordDescription": "저장하면 바로 로그인됩니다. 다른 기기에서는 로그아웃됩니다.",
+    "newPassword": "새 비밀번호",
+    "saveNewPassword": "저장하고 로그인",
+    "requestNewCode": "새 코드 받기",
+    "backToLogin": "로그인으로 돌아가기",
+    "showPassword": "비밀번호 표시",
+    "hidePassword": "비밀번호 숨기기",
+    "passwordRules": {
+      "minLength": "{count}자 이상"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name}가 귀하를 팀에 초대합니다",
@@ -5443,7 +5470,7 @@
         "active": "활성",
         "activeSessions": "활성 세션",
         "activeSessionsDescription": "로그인 세션 관리",
-        "sessionCount": "{count} 세션",
+        "sessionCount": "{count, plural, other {기기 #대에서 로그인됨}}",
         "changePassword": "비밀번호 변경",
         "dangerZone": "위험지대",
         "dangerZoneDescription": "귀하의 계정에 대한 취소할 수 없는 작업",
@@ -5506,6 +5533,51 @@
           "saved": "바로가기가 저장되었습니다.",
           "conflict": "이 단축키는 이미 \"{action}\"에 사용되었습니다.",
           "resetAction": "\"{action}\" 재설정"
+        },
+        "signIn": {
+          "title": "로그인",
+          "description": "계정에 로그인하는 방법",
+          "emailCode": "이메일 코드",
+          "alwaysActive": "항상 사용 가능",
+          "unavailable": "사용 불가",
+          "google": "Google",
+          "linked": "연결됨",
+          "notLinked": "연결되지 않음",
+          "linkGoogle": "연결",
+          "googleLinkError": "이 Google 계정을 연결할 수 없습니다. Louez 계정과 동일한 이메일 주소를 사용하는지 확인하세요.",
+          "password": "비밀번호",
+          "passwordNotSet": "설정되지 않음",
+          "passwordSetOn": "{date}에 설정됨",
+          "setPassword": "설정",
+          "changePassword": "변경",
+          "removePassword": "삭제",
+          "setPasswordTitle": "비밀번호 설정",
+          "setPasswordDescription": "비밀번호는 선택 사항입니다. 이메일로 받은 코드는 계속 사용할 수 있습니다. 다른 기기에서는 로그아웃됩니다.",
+          "newPasswordLabel": "새 비밀번호",
+          "currentPasswordLabel": "현재 비밀번호",
+          "setPasswordSubmit": "비밀번호 설정",
+          "changePasswordDescription": "다른 기기에서는 로그아웃됩니다.",
+          "changePasswordSubmit": "비밀번호 변경",
+          "removePasswordTitle": "비밀번호를 삭제하시겠어요?",
+          "removePasswordDescription": "이메일로 받은 코드로 계속 로그인할 수 있습니다. 새 비밀번호는 언제든지 설정할 수 있습니다.",
+          "removePasswordConfirm": "비밀번호 삭제",
+          "cancel": "취소",
+          "passwordSetToast": "비밀번호가 설정되었습니다",
+          "passwordChangedToast": "비밀번호가 변경되었습니다",
+          "passwordRemovedToast": "비밀번호가 삭제되었습니다"
+        },
+        "passwordAlert": {
+          "title": "본인이 한 작업이 아닌가요?",
+          "description": "{email} 계정의 비밀번호가 방금 추가, 변경 또는 삭제되었습니다. 본인이 한 작업이 아니라면 지금 계정을 보호하세요.",
+          "effectPassword": "계정에서 비밀번호가 삭제됩니다.",
+          "effectSessions": "현재 기기를 포함한 모든 기기에서 로그아웃됩니다.",
+          "effectSignIn": "이메일로 받은 코드로 다시 로그인하게 됩니다.",
+          "unavailable": "이 인스턴스에서는 비밀번호가 유일한 로그인 방법이므로 삭제할 수 없습니다. 계정 설정에서 비밀번호를 변경하세요.",
+          "confirm": "내 계정 보호",
+          "itWasMe": "제가 한 작업입니다",
+          "doneTitle": "계정이 보호되었습니다",
+          "doneDescription": "비밀번호가 삭제되고 모든 기기에서 로그아웃되었습니다. 이메일로 받은 코드로 다시 로그인하세요.",
+          "signInAgain": "다시 로그인"
         }
       },
       "admin": {
@@ -6096,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "한 번의 예약, 한 페이지",
           "description": "더 이상 단계를 밟을 필요가 없습니다. 고객, 기간, 제품 및 배송이 모두 한 페이지에 들어가며 항상 요약이 옆에 표시됩니다. 할인, 협상된 가격, 보증금, 방문 고객 등 나중에 예약을 다시 시작해야 했던 모든 사항이 이제 그 자리에서 해결됩니다."
+        },
+        "optional-password": {
+          "title": "원할 때 비밀번호 설정",
+          "description": "계정에 비밀번호를 추가하면 이메일 코드를 기다리지 않고 로그인할 수 있습니다. 코드 로그인은 계속 사용할 수 있습니다."
         }
       }
     },

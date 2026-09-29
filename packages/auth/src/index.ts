@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { toNextJsHandler } from "better-auth/next-js";
 import { emailOTP, magicLink } from "better-auth/plugins";
 import { and, eq, gt } from "drizzle-orm";
@@ -14,9 +14,9 @@ import { db } from "@louez/db";
 import * as schema from "@louez/db";
 import { env as dbEnv } from "@louez/db/env";
 import {
-  getEmailLocaleFromHeaders,
   DeleteAccountEmail,
   getDeleteAccountEmailSubject,
+  getOtpEmailSubject,
   isEmailConfigured,
   MagicLinkEmail,
   OTPEmail,
@@ -29,10 +29,15 @@ import {
   type AccountDeletionReason,
 } from "./account-deletion";
 import { env } from "./env";
+import { sendPasswordChangedNotice } from "./password-notice";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./password-policy";
+import { authIpAddressOptions, authRateLimitOptions } from "./rate-limit";
+import { getLocaleFromHeaders } from "./request-locale";
 
-// Standalone (self-host) deployments enable email + password sign-in so the
-// first owner can create an account with zero external services. The cloud
-// sets LOUEZ_MODE=platform and keeps its passwordless model unchanged.
+// Standalone (self-host) deployments make email + password the primary
+// sign-in so the first owner can create an account with zero external
+// services. The cloud sets LOUEZ_MODE=platform: accounts are created by e-mail
+// code or Google, and a password is an optional extra added afterwards.
 // Read from process.env directly — this package has no dependency on the
 // app's env schema, and the value must be a pure runtime concern.
 const isStandaloneMode = process.env.LOUEZ_MODE !== "platform";
@@ -53,10 +58,6 @@ export interface AuthSession {
   expires: string;
 }
 
-// ============================================================================
-// Locale detection
-// ============================================================================
-
 const subjectTranslations: Record<string, string> = {
   fr: "Connexion à votre compte Louez",
   en: "Sign in to your Louez account",
@@ -66,7 +67,6 @@ const subjectTranslations: Record<string, string> = {
   nl: "Inloggen op uw Louez-account",
   pl: "Zaloguj sie do konta Louez",
   pt: "Entrar na sua conta Louez",
-
   zh: supplementalMessages.zh.index_subjectTranslations,
   ja: supplementalMessages.ja.index_subjectTranslations,
   ru: supplementalMessages.ru.index_subjectTranslations,
@@ -74,22 +74,21 @@ const subjectTranslations: Record<string, string> = {
   ko: supplementalMessages.ko.index_subjectTranslations,
 };
 
-const otpSubjectTranslations: Record<string, string> = {
-  fr: "Votre code de connexion Louez",
-  en: "Your Louez sign-in code",
-
-  zh: supplementalMessages.zh.index_otpSubjectTranslations,
-  ja: supplementalMessages.ja.index_otpSubjectTranslations,
-  ru: supplementalMessages.ru.index_otpSubjectTranslations,
-  id: supplementalMessages.id.index_otpSubjectTranslations,
-  ko: supplementalMessages.ko.index_otpSubjectTranslations,
-};
-
 // ============================================================================
 // Session hook (optional, set by app for notifications etc.)
 // ============================================================================
 
-let _sessionHook: ((session: { userId: string }) => Promise<void>) | null = null;
+export interface SessionCreatedEvent {
+  userId: string;
+  /**
+   * better-auth endpoint that created the session (`/sign-in/email`,
+   * `/callback/:id`, …) — how the app tells a password sign-in from an e-mail
+   * code. Null when the session was created outside a request.
+   */
+  path: string | null;
+}
+
+let _sessionHook: ((session: SessionCreatedEvent) => Promise<void>) | null = null;
 let _userCreatedHook: ((user: { userId: string }) => Promise<void>) | null = null;
 let _userDeleteRequestHook: ((user: { userId: string }) => Promise<void>) | null = null;
 let _userDeleteHook:
@@ -99,7 +98,7 @@ let _userDeleteHook:
     }) => Promise<{ status: "deleted" } | { status: "blocked"; reason: "shared-store" }>)
   | null = null;
 
-export function setSessionHook(hook: (session: { userId: string }) => Promise<void>) {
+export function setSessionHook(hook: (session: SessionCreatedEvent) => Promise<void>) {
   _sessionHook = hook;
 }
 
@@ -148,6 +147,7 @@ export const authInstance = betterAuth({
       account: schema.accounts,
       session: schema.sessions,
       verification: schema.verification,
+      rateLimit: schema.authRateLimits,
     },
   }),
 
@@ -156,7 +156,10 @@ export const authInstance = betterAuth({
     database: {
       generateId: () => nanoid(),
     },
+    ipAddress: authIpAddressOptions,
   },
+
+  rateLimit: authRateLimitOptions,
 
   session: {
     expiresIn: SESSION_DURATION_SECONDS,
@@ -222,7 +225,7 @@ export const authInstance = betterAuth({
                   code: "ACCOUNT_DELETION_EMAIL_UNAVAILABLE",
                 });
               }
-              const locale = getEmailLocaleFromHeaders(
+              const locale = getLocaleFromHeaders(
                 request ? new Headers(request.headers) : new Headers(),
               );
               const reason = getAccountDeletionReasonFromRequest(request);
@@ -252,32 +255,77 @@ export const authInstance = betterAuth({
     : {},
 
   emailAndPassword: {
-    enabled: isStandaloneMode,
+    enabled: true,
+    minPasswordLength: MIN_PASSWORD_LENGTH,
+    maxPasswordLength: MAX_PASSWORD_LENGTH,
+    // Forgot password runs on an e-mail code (emailOTP plugin below), never on
+    // a link. A reset signs every device out, the requester's included.
+    revokeSessionsOnPasswordReset: true,
+    onPasswordReset: async ({ user }, request) => {
+      await sendPasswordChangedNotice({
+        email: user.email,
+        event: "reset",
+        locale: getLocaleFromHeaders(request ? new Headers(request.headers) : new Headers()),
+      });
+    },
+    // On the cloud a password is only ever added to an account that already
+    // proved its e-mail (code or Google). Leaving /sign-up/email open there
+    // would be a public registration that verifies nothing.
+    ...(isStandaloneMode ? {} : { disableSignUp: true }),
+  },
+
+  hooks: {
+    // Changing a password always signs the other devices out, whatever the
+    // caller sent: the flag is not left to the client's good will.
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/change-password") return;
+      return {
+        context: {
+          ...ctx,
+          body: { ...ctx.body, revokeOtherSessions: true },
+        },
+      };
+    }),
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/change-password") return;
+      if (ctx.context.returned instanceof APIError) return;
+
+      const user = ctx.context.session?.user ?? ctx.context.newSession?.user;
+      if (!user) return;
+      await sendPasswordChangedNotice({
+        email: user.email,
+        event: "changed",
+        locale: getLocaleFromHeaders(ctx.headers ?? new Headers()),
+      });
+    }),
   },
 
   plugins: [
     magicLink({
       sendMagicLink: async ({ email, url }, ctx) => {
         const reqHeaders = ctx?.request ? new Headers(ctx.request.headers) : new Headers();
-        const locale = getEmailLocaleFromHeaders(reqHeaders);
+        const locale = getLocaleFromHeaders(reqHeaders);
         const subject = subjectTranslations[locale] || subjectTranslations.fr;
         const html = await render(MagicLinkEmail({ url, locale }));
         await sendEmail({ to: email, subject, html });
       },
     }),
     emailOTP({
-      async sendVerificationOTP({ email, otp, type }) {
-        if (type !== "sign-in") return;
+      async sendVerificationOTP({ email, otp, type }, ctx) {
+        // E-mail verification and e-mail change by code are not offered.
+        if (type !== "sign-in" && type !== "forget-password") return;
         // Without a transport the code would silently go nowhere; surface it
-        // in the server logs so a misconfigured instance is still usable.
+        // in the server logs so a misconfigured instance is still usable — on
+        // a self-host without SMTP this is how the owner resets a password.
         if (!isEmailConfigured()) {
-          console.log(`[auth] Email not configured — sign-in code for ${email}: ${otp}`);
+          console.log(`[auth] Email not configured — ${type} code for ${email}: ${otp}`);
           return;
         }
-        const html = await render(OTPEmail({ otp, locale: "fr" }));
+        const locale = getLocaleFromHeaders(ctx?.headers ?? new Headers());
+        const html = await render(OTPEmail({ otp, locale, purpose: type }));
         await sendEmail({
           to: email,
-          subject: `${otpSubjectTranslations.fr}: ${otp}`,
+          subject: `${getOtpEmailSubject(locale, type)}: ${otp}`,
           html,
         });
       },
@@ -325,9 +373,12 @@ export const authInstance = betterAuth({
     },
     session: {
       create: {
-        after: async (session) => {
+        after: async (session, context) => {
           if (_sessionHook) {
-            await _sessionHook(session);
+            await _sessionHook({
+              userId: session.userId,
+              path: context?.path ?? null,
+            });
           }
         },
       },

@@ -180,7 +180,7 @@
     "loginDescription": "続行するにはメールアドレスを入力してください。アカウントをお持ちでない場合は、アカウントが作成されます。",
     "reeentLoginTitle": "louez × <reeent>reeent</reeent> へようこそ",
     "reeentLoginDescription": "reeent は店頭、louez はあなたのツールです。予約、支払い、カレンダーはここで処理されます。アカウントをお持ちでない場合は、アカウントが作成されます。",
-    "linkWillBeSent": "安全なリンクがメールに送信されます。パスワードを覚える必要はありません。",
+    "linkWillBeSent": "メールでワンタイムコードをお送りします。パスワードの設定は任意です。",
     "checkEmail": "メールを確認してください",
     "emailSentTo": "ログインリンクが送信されました",
     "clickLinkToSignIn": "電子メール内のリンクをクリックしてサインインします。リンクの有効期限は 24 時間です。",
@@ -200,7 +200,19 @@
       "verification": "検証リンクが無効であるか、有効期限が切れています。",
       "default": "エラーが発生しました。もう一度試してください。",
       "passwordTooShort": "パスワードは 8 文字以上である必要があります。",
-      "registrationClosed": "このインスタンスでの登録は終了しました。オーナーに招待状を求めてください。"
+      "registrationClosed": "このインスタンスでの登録は終了しました。オーナーに招待状を求めてください。",
+      "invalidCode": "コードが正しくありません。",
+      "codeExpired": "コードの有効期限が切れています。新しいコードを取得してください。",
+      "tooManyAttempts": "このコードでの試行回数が多すぎます。新しいコードを取得してください。",
+      "tooManyRequests": "試行回数が多すぎます。1 分待ってから再試行してください。",
+      "passwordTooLong": "パスワードは 128 文字以内で入力してください。",
+      "invalidPassword": "現在のパスワードが正しくありません。",
+      "currentPasswordRequired": "現在のパスワードを入力してください。",
+      "passwordAlreadySet": "このアカウントには既にパスワードが設定されています。",
+      "passwordNotSet": "このアカウントにはパスワードが設定されていません。",
+      "passwordRemovalUnavailable": "このインスタンスではパスワードが唯一のログイン方法のため、削除できません。",
+      "sessionExpired": "セッションの有効期限が切れました。再度ログインしてからやり直してください。",
+      "passwordSignUpDisabled": "パスワードを使ったアカウント作成は利用できません。メールで届くコードをご利用ください。"
     },
     "referralBanner": "{storeName} が Louez に招待しました — ストアを作成して、{count} の無料予約を開始してください。",
     "referralBannerGeneric": "🎁 Louez に招待されました — ストアを作成し、{count} の無料予約を開始してください。",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "すでにアカウントをお持ちですか?",
     "usePasswordInstead": "代わりにパスワードを使用してサインインしてください",
     "useEmailCodeInstead": "代わりに電子メール コードを使用してサインインしてください",
-    "passwordLoginDescription": "メールアドレスとパスワードを使用してサインインします。"
+    "passwordLoginDescription": "メールアドレスとパスワードを使用してサインインします。",
+    "forgotPasswordTitle": "パスワードをお忘れの場合",
+    "forgotPasswordDescription": "アカウントのメールアドレスを入力してください。新しいパスワードを設定するためのコードをお送りします。",
+    "forgotPasswordLogsDescription": "アカウントのメールアドレスを入力してください。このインスタンスではメールを送信しません。コードはサーバーログに表示されます。",
+    "resetCodeSentDescription": "<strong>{email}</strong> のアカウントが存在する場合、6 桁のコードを送信しました。以下にコードを入力して、新しいパスワードを設定してください。",
+    "newPasswordTitle": "新しいパスワードを設定",
+    "newPasswordDescription": "保存するとログインします。他のデバイスからはログアウトされます。",
+    "newPassword": "新しいパスワード",
+    "saveNewPassword": "保存してログイン",
+    "requestNewCode": "新しいコードを取得",
+    "backToLogin": "ログインに戻る",
+    "showPassword": "パスワードを表示",
+    "hidePassword": "パスワードを非表示",
+    "passwordRules": {
+      "minLength": "{count} 文字以上"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} があなたをチームに招待します",
@@ -5443,7 +5470,7 @@
         "active": "アクティブ",
         "activeSessions": "アクティブなセッション",
         "activeSessionsDescription": "ログインセッションを管理する",
-        "sessionCount": "{count} セッション",
+        "sessionCount": "{count, plural, other {# 台のデバイスでログイン中}}",
         "changePassword": "パスワードを変更する",
         "dangerZone": "危険地帯",
         "dangerZoneDescription": "アカウントに対する取り消しできないアクション",
@@ -5506,6 +5533,51 @@
           "saved": "ショートカットが保存されました",
           "conflict": "このショートカットはすでに「{action}」で使用されています。",
           "resetAction": "「{action}」をリセット"
+        },
+        "signIn": {
+          "title": "ログイン",
+          "description": "アカウントへのログイン方法",
+          "emailCode": "メールのコード",
+          "alwaysActive": "常に有効",
+          "unavailable": "利用不可",
+          "google": "Google",
+          "linked": "連携済み",
+          "notLinked": "未連携",
+          "linkGoogle": "連携する",
+          "googleLinkError": "この Google アカウントを連携できませんでした。Louez アカウントと同じメールアドレスを使用しているか確認してください。",
+          "password": "パスワード",
+          "passwordNotSet": "未設定",
+          "passwordSetOn": "{date} に設定",
+          "setPassword": "設定",
+          "changePassword": "変更",
+          "removePassword": "削除",
+          "setPasswordTitle": "パスワードを設定",
+          "setPasswordDescription": "パスワードの設定は任意です。メールで届くコードは引き続き利用できます。他のデバイスからはログアウトされます。",
+          "newPasswordLabel": "新しいパスワード",
+          "currentPasswordLabel": "現在のパスワード",
+          "setPasswordSubmit": "パスワードを設定",
+          "changePasswordDescription": "他のデバイスからはログアウトされます。",
+          "changePasswordSubmit": "パスワードを変更",
+          "removePasswordTitle": "パスワードを削除しますか？",
+          "removePasswordDescription": "引き続きメールで届くコードでログインできます。新しいパスワードはいつでも設定できます。",
+          "removePasswordConfirm": "パスワードを削除",
+          "cancel": "キャンセル",
+          "passwordSetToast": "パスワードを設定しました",
+          "passwordChangedToast": "パスワードを変更しました",
+          "passwordRemovedToast": "パスワードを削除しました"
+        },
+        "passwordAlert": {
+          "title": "心当たりがありませんか？",
+          "description": "アカウント {email} のパスワードが追加、変更、または削除されました。心当たりがない場合は、今すぐアカウントを保護してください。",
+          "effectPassword": "アカウントのパスワードが削除されます。",
+          "effectSessions": "このデバイスを含むすべてのデバイスからログアウトされます。",
+          "effectSignIn": "メールで届くコードで再度ログインします。",
+          "unavailable": "このインスタンスではパスワードが唯一のログイン方法のため、削除できません。アカウント設定から変更してください。",
+          "confirm": "アカウントを保護",
+          "itWasMe": "自分の操作です",
+          "doneTitle": "アカウントを保護しました",
+          "doneDescription": "パスワードを削除し、すべてのデバイスからログアウトしました。メールで届くコードで再度ログインしてください。",
+          "signInAgain": "再度ログイン"
         }
       },
       "admin": {
@@ -6096,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "1 つの予約、1 ページ",
           "description": "手順を踏む必要はもうありません。顧客、期間、製品、納品がすべて 1 ページに収まり、概要が常に表示されます。そして、割引、交渉価格、デポジット、飛び込み客など、後で予約を再開することを意味していたすべてがその場で決済されるようになりました。"
+        },
+        "optional-password": {
+          "title": "必要に応じてパスワードを設定",
+          "description": "アカウントにパスワードを追加すると、メールのコードを待たずにログインできます。コードによるログインも引き続き利用できます。"
         }
       }
     },
