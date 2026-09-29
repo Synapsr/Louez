@@ -8,6 +8,7 @@ import {
   db,
   findBusyUnitIds,
   getBlockingReservationStatuses,
+  isPaymentReceiptSql,
   payments,
   productUnitDowntimes,
   productUnitEvents,
@@ -102,7 +103,7 @@ async function getProductRentalPaymentStats(params: {
       and(
         eq(payments.status, "completed"),
         eq(payments.type, "rental"),
-        isNull(payments.refundOfPaymentId),
+        isPaymentReceiptSql(),
         ...dateConditions,
       ),
     );

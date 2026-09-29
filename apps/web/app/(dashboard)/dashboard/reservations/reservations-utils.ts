@@ -1,3 +1,5 @@
+import { getRentalPaid } from '@/lib/reservations/util.payment-status';
+
 import type {
   PaymentStatusType,
   Reservation,
@@ -80,9 +82,7 @@ export function getPaymentStatus(reservation: Reservation): {
         : total
       : subtotal;
 
-  const rentalPaid = reservation.payments
-    .filter((p) => p.type === 'rental' && p.status === 'completed')
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const rentalPaid = getRentalPaid(reservation.payments);
 
   const depositCollected = reservation.payments
     .filter((p) => p.type === 'deposit' && p.status === 'completed')
