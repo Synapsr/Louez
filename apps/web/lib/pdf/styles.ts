@@ -1,4 +1,5 @@
 import { StyleSheet } from "@react-pdf/renderer";
+import { PDF_FONT_FAMILY } from "./fonts";
 import { emailTheme } from "@louez/email/templates";
 
 // Helper to convert hex to rgba for lighter tints
@@ -62,7 +63,7 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
       paddingBottom: 64,
       paddingHorizontal: 44,
       fontSize: 9,
-      fontFamily: "Helvetica",
+      fontFamily: PDF_FONT_FAMILY,
       color: c.body,
       lineHeight: 1.45,
     },
@@ -90,7 +91,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     storeName: {
       fontSize: 16,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
     },
     headerRight: {
@@ -102,7 +104,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     documentType: {
       fontSize: 14,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
       textAlign: "right",
     },
@@ -111,7 +114,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     documentNumber: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
       marginBottom: 1,
       textAlign: "right",
@@ -136,7 +140,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     partyLabel: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -144,7 +149,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     partyName: {
       fontSize: 10.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
       marginBottom: 3,
     },
@@ -165,7 +171,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     sectionTitle: {
       fontSize: 7.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -188,7 +195,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     periodLabel: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -196,7 +204,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     periodDate: {
       fontSize: 10,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
     },
     periodTime: {
@@ -223,7 +232,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     tableHeaderCell: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -308,12 +318,14 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     totalLabelMain: {
       flex: 1,
       fontSize: 10,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
     },
     totalValueMain: {
       fontSize: 11,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
       textAlign: "right",
     },
@@ -347,7 +359,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     paymentStatus: {
       fontSize: 8,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       marginRight: 12,
       width: 60,
       textAlign: "right",
@@ -363,7 +376,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     paymentType: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
     },
     paymentMethod: {
@@ -377,7 +391,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     paymentAmount: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
       width: 70,
       textAlign: "right",
@@ -408,7 +423,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     paymentSummaryValue: {
       fontSize: 10,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
     },
     paymentSummaryValueSuccess: {
@@ -471,19 +487,22 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     signatureTitle: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
     },
     signatureStatusText: {
       fontSize: 8,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.success,
     },
     signatureStatusPendingText: {
       fontSize: 8,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.warning,
     },
     signatureContent: {
@@ -506,7 +525,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     signatureDate: {
       fontSize: 7.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
       flex: 1,
     },
@@ -531,7 +551,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     legalTitle: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -546,27 +567,31 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     cgvAnnexTitle: {
       fontSize: 12,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
       marginBottom: 12,
     },
     cgvAnnexHeading1: {
       fontSize: 9.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
       marginTop: 10,
       marginBottom: 4,
     },
     cgvAnnexHeading2: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.ink,
       marginTop: 8,
       marginBottom: 3,
     },
     cgvAnnexHeading3: {
       fontSize: 8.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: PDF_FONT_FAMILY,
+      fontWeight: 700,
       color: c.body,
       marginTop: 6,
       marginBottom: 3,
