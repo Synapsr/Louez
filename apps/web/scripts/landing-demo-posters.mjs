@@ -11,6 +11,42 @@ const browserPath = process.argv.includes("--browser")
   : process.env.CHROME_PATH;
 if (!browserPath) throw new Error("Pass --browser /path/to/chromium or set CHROME_PATH.");
 const output = resolve("public/demo-posters");
+
+// Production React reports a hydration mismatch without saying which text differs. The texts of
+// the hydrated page that the server HTML lacks, and the reverse, point to it.
+const describeTextMismatch = async (page) => {
+  const html = await (await page.request.get(page.url())).text();
+  const serverText = html
+    .replace(/<(script|style)\b[\s\S]*?<\/\1>/g, "")
+    // React separates adjacent text values with comments: `{name}:{level}` is one text on screen.
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .split(/<[^>]+>/)
+    .map((text) =>
+      text
+        .replace(/&#x27;|&#39;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .trim(),
+    )
+    .filter(Boolean);
+  const clientText = (await page.locator("body").innerText())
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  // Case aside: CSS may upper-case what the HTML writes in lower case.
+  const server = serverText.join("\n").toLowerCase();
+  const client = clientText.join("\n").toLowerCase();
+  const list = (lines) => [...new Set(lines)].slice(0, 20).map((line) => `  ${JSON.stringify(line)}`);
+  return [
+    "Browser text missing from the server HTML:",
+    ...list(clientText.filter((line) => !server.includes(line.toLowerCase()))),
+    "Server text missing from the browser:",
+    ...list(serverText.filter((text) => !client.includes(text.toLowerCase()))),
+  ].join("\n");
+};
 let server;
 let browser;
 
@@ -134,6 +170,8 @@ try {
     Object.assign(sizes, JSON.parse(manifest).bytes);
   }
   const captures = locales.flatMap((locale) => selected.map((scene) => ({ scene, locale })));
+  // Every capture runs, then all failures are reported together: one build shows them all.
+  const failures = [];
   for (const { scene, locale } of captures) {
     const phone = phoneScenes.includes(scene);
     const page = await context.newPage();
@@ -173,7 +211,13 @@ try {
         clearTimeout(timeout);
       }
     });
-    if (errors.length) throw new Error(`${scene} (${locale}): ${errors.join("\n")}`);
+    if (errors.length) {
+      const hydration = errors.some((error) => /react\.dev\/errors\/(418|425)\b/.test(error));
+      const details = hydration ? `\n${await describeTextMismatch(page)}` : "";
+      failures.push(`${scene} (${locale}): ${errors.join("\n")}${details}`);
+      await page.close();
+      continue;
+    }
     const png = await page.screenshot({
       animations: "disabled",
       clip: phone
@@ -186,6 +230,8 @@ try {
     sizes[`${scene}.${locale}`] = webp.length;
     await page.close();
   }
+  if (failures.length)
+    throw new Error(`${failures.length} demo poster(s) failed:\n\n${failures.join("\n\n")}`);
   await writeFile(
     resolve(output, "manifest.json"),
     JSON.stringify({ generatedAt: new Date().toISOString(), bytes: sizes }, null, 2) + "\n",
