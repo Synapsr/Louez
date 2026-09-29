@@ -510,7 +510,9 @@
       "limitReachedTitle": "한도 도달",
       "limitReachedDescription": "{limit} 팀원 중 {current}를 사용하고 계십니다. 더 많은 것을 추가하려면 업그레이드하세요.",
       "upgradeForMore": "더 추가",
-      "invitationLinkCopied": "초대 링크가 복사되었습니다. 이메일이 구성되지 않았습니다. 직접 공유하세요."
+      "invitationLinkCopied": "초대 링크가 복사되었습니다. 이메일이 구성되지 않았습니다. 직접 공유하세요.",
+      "googleAccessReminder": "회원이 탈퇴하면 Google Search Console 액세스 권한도 검토하세요. Louez에서 삭제해도 Google 액세스 권한은 취소되지 않습니다.",
+      "reviewGoogleAccess": "Google 액세스 검토"
     },
     "referrals": {
       "title": "추천",
@@ -2108,7 +2110,7 @@
           "none": "필요하지 않음",
           "pending": "카드가 저장되지 않았습니다.",
           "cardSaved": "준비",
-          "authorized": "사전 승인 유지 중",
+          "authorized": "금액 보류 중",
           "captured": "캡처됨",
           "released": "출시됨",
           "failed": "실패"
@@ -2313,7 +2315,7 @@
         "deposit": "보증금",
         "save": "저장",
         "saved": "예약이 업데이트되었습니다.",
-        "cannotRemoveLastItem": "마지막 항목을 제거할 수 없습니다.",
+        "cannotRemoveLastItem": "예약에는 하나 이상의 항목이 유지됩니다. 이 항목을 제거하기 전에 새 항목을 추가하세요.",
         "noItems": "항목을 하나 이상 추가하세요.",
         "datesRequired": "시작일과 종료일은 필수 항목입니다.",
         "notifyCustomerByEmail": "이메일로 고객에게 알림",
@@ -2678,7 +2680,8 @@
         "bufferConflictTitle": "회전율 버퍼 충돌",
         "bufferConflictDescription": "이러한 장치는 회전율 버퍼 {identifiers}에 의해서만 차단됩니다. 그래도 할당하시겠습니까?",
         "bufferConflictCancel": "선택 유지",
-        "bufferConflictConfirm": "무시하고 할당"
+        "bufferConflictConfirm": "무시하고 할당",
+        "suggestUnits": "단위 제안"
       },
       "smartActions": {
         "paymentIncomplete": "임대료 미납 ({remaining} 남음)",
@@ -2696,7 +2699,7 @@
         "fullyPaid": "전액 결제 완료",
         "partiallyPaid": "{total}의 {paid}가 지급되었습니다.",
         "collected": "수집된",
-        "authorized": "사전 승인 유지 중",
+        "authorized": "금액 보류 중",
         "notCollected": "미수령",
         "toReturnToCustomer": "고객에게 반환하려면",
         "returnQuestion": "장비가 양호한 상태로 반환되었는지 확인합니까?",
@@ -2803,7 +2806,7 @@
           "completed": "완료됨",
           "failed": "실패",
           "refunded": "환불됨",
-          "authorized": "승인됨",
+          "authorized": "승인 완료",
           "cancelled": "취소됨"
         },
         "statusAuthorized": "승인됨",
@@ -4495,7 +4498,22 @@
         "create": "만들기",
         "revokeTitle": "API 키를 취소하시겠습니까?",
         "revokeDescription": "이 작업은 되돌릴 수 없습니다. 이 키를 사용하는 모든 애플리케이션은 즉시 액세스 권한을 잃게 됩니다.",
-        "revokeConfirm": "취소"
+        "revokeConfirm": "취소",
+        "presetCustom": "관습",
+        "domains": {
+          "reservations": "전세",
+          "products": "제품",
+          "customers": "고객",
+          "categories": "카테고리",
+          "payments": "결제",
+          "analytics": "해석학",
+          "settings": "설정"
+        },
+        "levels": {
+          "none": "접근 불가",
+          "read": "읽다",
+          "write": "읽고 쓰기"
+        }
       },
       "businessHours": {
         "title": "영업시간",
@@ -4686,7 +4704,12 @@
           "step3": "Search Console에서 '확인'을 클릭하기 전에 'HTML 태그' 방법을 선택하고 아래에 태그 또는 해당 코드를 붙여넣은 후 저장하세요.",
           "label": "인증코드",
           "help": "전체 태그 또는 해당 내용만; 코드는 여기에 저장되어 있는 한 활성 상태로 유지됩니다.",
-          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />",
+          "accessDescription": "이 코드는 연결된 Google 계정 Search Console에 스토어에 대한 소유자 권한(통계 보기, 사용자 관리, Google 검색 결과에서 삭제 요청)을 부여합니다.",
+          "ownerOnly": "상점 소유자와 Louez 플랫폼 관리자만 이 코드를 변경할 수 있습니다.",
+          "removeCode": "코드 제거",
+          "revokeHelp": "액세스 권한을 취소하려면 Search Console에서 사용자와 모든 소유권 확인 토큰을 제거하세요. 해당 코드가 이 필드에 있으면 해당 코드를 지우고 저장하세요. Louez에서 회원을 삭제해도 해당 회원의 Google 액세스 권한은 취소되지 않습니다.",
+          "manageAccess": "Google 액세스 권한을 취소하는 방법"
         }
       },
       "legalSettings": {
@@ -5883,7 +5906,8 @@
         "title": "자동 임대 연장",
         "description": "고객은 장비를 사용할 수 있을 때 연장할 수 있으며 추가 비용을 계산할 수 있습니다. 특별한 경우에는 귀하의 승인이 필요합니다.",
         "maxDays": "최대 추가 일수(제한이 없으면 비워두세요)"
-      }
+      },
+      "readOnlyNotice": "읽기 전용: 소유자와 관리자만 이 스토어의 설정을 변경할 수 있습니다."
     },
     "commandPalette": {
       "title": "명령 팔레트",
@@ -7326,7 +7350,7 @@
       "paymentHistory": {
         "holdStatus": {
           "pending": "보류 중",
-          "authorized": "개최",
+          "authorized": "금액 보류 중",
           "completed": "청구됨",
           "failed": "거절됨",
           "cancelled": "출시됨",
@@ -7341,8 +7365,8 @@
           "deposit_return": "보증금 환불",
           "damage": "손해",
           "adjustment": "조정",
-          "deposit_hold": "승인 보류",
-          "deposit_capture": "보증금 압수"
+          "deposit_hold": "사전 승인 금액 보류",
+          "deposit_capture": "보증금 결제 완료"
         },
         "methods": {
           "stripe": "온라인 카드",
@@ -7358,7 +7382,7 @@
           "failed": "실패",
           "refunded": "환불됨",
           "cancelled": "취소됨",
-          "authorized": "승인됨"
+          "authorized": "승인 완료"
         }
       },
       "reviewPrompt": {
@@ -8052,7 +8076,10 @@
       "rental": "렌탈",
       "deposit": "보증금",
       "deposit_return": "보증금 환불",
-      "damage": "손해"
+      "damage": "손해",
+      "deposit_hold": "사전 승인 금액 보류",
+      "deposit_capture": "보증금 결제 완료",
+      "adjustment": "조정"
     },
     "paymentMethods": {
       "stripe": "온라인 카드",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "결제 완료",
-      "pending": "보류 중"
+      "pending": "보류 중",
+      "authorized": "승인 완료"
     },
     "signature": {
       "validated": "검증됨",

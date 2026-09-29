@@ -1,31 +1,45 @@
-import { resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import type { Locale } from "@/i18n/config";
 import { Font } from "@react-pdf/renderer";
 
-import type { Locale } from "@/i18n/config";
+/**
+ * Inter 4.1 (SIL Open Font License, see public/fonts/pdf/OFL.txt), embedded in every PDF.
+ * Helvetica, react-pdf's built-in font, has no glyph for letters such as ą, ę, ł or ś: Polish
+ * documents, and names such as « Łukasz » anywhere, printed broken.
+ *
+ * `process.cwd()` is `apps/web` under `next dev` and the scripts, the monorepo root in the
+ * standalone build, whose image copies `public` as is: both roots are tried.
+ */
+export const PDF_FONT_FAMILY = "Inter";
 
-// Bundled fonts keep PDF generation offline, including user-entered names and
-// product descriptions. Keep complete character sets, not just translated UI text.
-const fontPath = (file: string) => resolve(process.cwd(), "public/fonts/pdf", file);
+const FONT_DIRECTORIES = [
+  join(process.cwd(), "public", "fonts", "pdf"),
+  join(process.cwd(), "apps", "web", "public", "fonts", "pdf"),
+];
+const fontDirectory =
+  FONT_DIRECTORIES.find((directory) => existsSync(join(directory, "Inter-Regular.ttf"))) ??
+  FONT_DIRECTORIES[0];
 
-for (const locale of ["zh", "ja", "ko"] as const) {
-  Font.register({
-    family: `LouezCJK-${locale}`,
-    src: fontPath(`NotoSansCJK-${locale}.woff`),
-  });
-}
 Font.register({
-  family: "LouezInter",
+  family: PDF_FONT_FAMILY,
   fonts: [
-    { src: fontPath("Inter-Regular.woff"), fontWeight: 400 },
-    { src: fontPath("Inter-Bold.woff"), fontWeight: 700 },
+    { src: join(fontDirectory, "Inter-Regular.ttf"), fontWeight: 400 },
+    { src: join(fontDirectory, "Inter-Bold.ttf"), fontWeight: 700 },
   ],
 });
 
+// Full CJK coverage includes merchant data and customer names, not just UI labels.
+for (const locale of ["zh", "ja", "ko"] as const) {
+  Font.register({
+    family: `LouezCJK-${locale}`,
+    src: join(fontDirectory, `NotoSansCJK-${locale}.woff`),
+  });
+}
+
 export const getPdfFonts = (locale: Locale) => {
-  if (locale === "zh" || locale === "ja" || locale === "ko") {
-    const family = `LouezCJK-${locale}`;
-    return { regular: family, bold: family };
-  }
-  if (locale === "ru") return { regular: "LouezInter", bold: "LouezInter" };
-  return { regular: "Helvetica", bold: "Helvetica-Bold" };
+  const family = locale === "zh" || locale === "ja" || locale === "ko"
+    ? `LouezCJK-${locale}`
+    : PDF_FONT_FAMILY;
+  return { regular: family, bold: family };
 };

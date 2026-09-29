@@ -486,6 +486,8 @@
       "removeMember": "Quitar del equipo",
       "memberAdded": "Miembro del equipo agregado con exito",
       "memberRemoved": "Miembro del equipo eliminado",
+      "googleAccessReminder": "Cuando un miembro se vaya, revisa también su acceso a Google Search Console. Eliminarlo de Louez no revoca su acceso a Google.",
+      "reviewGoogleAccess": "Revisar el acceso a Google",
       "pendingInvitations": "Invitaciones pendientes",
       "pendingInvitationsDescription": "Estas personas aun no han aceptado su invitacion",
       "invitationSent": "Invitacion enviada por correo",
@@ -2313,7 +2315,7 @@
         "deposit": "Deposito",
         "save": "Guardar",
         "saved": "Reserva actualizada",
-        "cannotRemoveLastItem": "No se puede eliminar el ultimo articulo",
+        "cannotRemoveLastItem": "Una reserva conserva al menos un artículo: añade el nuevo artículo antes de eliminar este",
         "noItems": "Agregue al menos un articulo",
         "datesRequired": "Las fechas de inicio y fin son obligatorias",
         "notifyCustomerByEmail": "Notificar al cliente por email",
@@ -2678,7 +2680,8 @@
         "bufferConflictConfirm": "Asignar igualmente",
         "optionsLabel": "Opciones",
         "clearSelection": "Borrar seleccion",
-        "autofillHint": "Unidades sugeridas seleccionadas. Haga clic en Guardar para confirmar."
+        "autofillHint": "Unidades sugeridas seleccionadas. Haga clic en Guardar para confirmar.",
+        "suggestUnits": "Sugerir unidades"
       },
       "smartActions": {
         "paymentIncomplete": "Alquiler no pagado ({remaining} restante)",
@@ -3367,6 +3370,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Solo lectura: solo el propietario y los administradores pueden cambiar la configuración de esta tienda.",
       "title": "Configuracion",
       "store": "Tienda",
       "company": "Empresa",
@@ -4358,7 +4362,22 @@
         "create": "Crear",
         "revokeTitle": "¿Revocar clave API?",
         "revokeDescription": "Esta acción es irreversible. Cualquier aplicación que use esta clave perderá el acceso inmediatamente.",
-        "revokeConfirm": "Revocar"
+        "revokeConfirm": "Revocar",
+        "presetCustom": "Personalizado",
+        "domains": {
+          "reservations": "Reservas",
+          "products": "Productos",
+          "customers": "Clientes",
+          "categories": "Categorías",
+          "payments": "Pagos",
+          "analytics": "Análisis",
+          "settings": "Configuración"
+        },
+        "levels": {
+          "none": "Sin acceso",
+          "read": "Lectura",
+          "write": "Lectura y escritura"
+        }
       },
       "businessHours": {
         "title": "Horario comercial",
@@ -4549,6 +4568,11 @@
           "step3": "Elige el método «Etiqueta HTML», pega la etiqueta o su código abajo y guarda antes de pulsar «Verificar» en Search Console.",
           "label": "Código de verificación",
           "help": "La etiqueta completa o solo su contenido; el código sigue activo mientras esté guardado aquí.",
+          "accessDescription": "Este código otorga a la cuenta de Google asociada permisos de propietario en Search Console para tu tienda: consultar estadísticas, gestionar usuarios y solicitar la retirada de resultados de Google.",
+          "ownerOnly": "Solo el propietario de la tienda y los administradores de Louez pueden modificar este código.",
+          "removeCode": "Retirar el código",
+          "revokeHelp": "Para revocar el acceso, elimina al usuario en Search Console y todas sus pruebas de propiedad. Si su código está en este campo, bórralo y guarda. Eliminar a un miembro de Louez no revoca su acceso a Google.",
+          "manageAccess": "Cómo revocar el acceso a Google",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
@@ -8052,7 +8076,10 @@
       "rental": "Alquiler",
       "deposit": "Deposito",
       "deposit_return": "Devolucion de deposito",
-      "damage": "Danos"
+      "damage": "Danos",
+      "deposit_hold": "Autorización",
+      "deposit_capture": "Depósito capturado",
+      "adjustment": "Ajuste"
     },
     "paymentMethods": {
       "stripe": "Tarjeta en linea",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Pagado",
-      "pending": "Pendiente"
+      "pending": "Pendiente",
+      "authorized": "Autorizado"
     },
     "signature": {
       "validated": "Validado",

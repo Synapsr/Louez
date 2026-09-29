@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 import { db } from '@louez/db'
 import { stores } from '@louez/db'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import type { TaxSettings } from '@louez/types'
 
 const taxSettingsSchema = z.object({
@@ -23,6 +23,10 @@ export async function updateTaxSettings(data: TaxSettingsInput) {
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'errors.unauthorized' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
   }
 
   const validated = taxSettingsSchema.safeParse(data)

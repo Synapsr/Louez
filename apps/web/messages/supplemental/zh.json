@@ -89,5 +89,22 @@
   "notification_template_sheet_dateRangeLabels_from": "来自",
   "notification_template_sheet_dateRangeLabels_to": "到",
   "credit_actions_STRIPE_TRANSLATIONS_productName": "AI 积分 — {credits} 积分",
-  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "为AI顾问充值{credits}积分"
+  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "为AI顾问充值{credits}积分",
+  "demo_customers_notes": "回头客。更喜欢带篮子的城市自行车。提货前准备好锁。",
+  "demo_customers_businessNotes": "为团队在 Nantes 周围旅行提供自行车租赁服务。将自行车放在一起准备好以供取货。",
+  "demo_inspections_wearNote": "右握把有轻微磨损，在拾取时就已出现。",
+  "demo_inspections_departureNote": "与客户一起检查车架、制动器和轮胎。",
+  "demo_inspections_returnNote": "与取货时拍摄的照片进行比较。",
+  "demo_inspections_damageNote": "退货时在框架上发现划痕。",
+  "demo_messages_sender": "发件人",
+  "demo_messages_now": "现在",
+  "demo_messages_message": "信息",
+  "demo_messages_characters": "人物",
+  "demo_messages_segments": "将发送 {count} 短信",
+  "demo_pricing_summer": "夏季",
+  "demo_product_page_description": "一款舒适的自行车，适合探索 Nantes 和 Loire 河岸。可调节车座、车灯和行李架，适合城市骑行。我们的团队会在您出发前调整自行车。",
+  "demo_product_page_helmet": "自行车头盔",
+  "demo_products_description": "一款舒适的自行车，适合探索 Nantes 和 Loire 河岸。每次出发前进行鞍座调整和安全检查。",
+  "demo_storefront_home_announcement": "您的下一次冒险从 Nantes 开始 — 在线预订您的自行车",
+  "demo_storefront_home_tagline": "用于按照您自己的步调探索 Nantes 和 Loire 河岸的自行车。"
 }

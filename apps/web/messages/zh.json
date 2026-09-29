@@ -510,7 +510,9 @@
       "limitReachedTitle": "达到限制",
       "limitReachedDescription": "您正在使用 {limit} 团队成员中的 {current}。升级以添加更多。",
       "upgradeForMore": "添加更多",
-      "invitationLinkCopied": "邀请链接已复制——电子邮件未配置，直接分享"
+      "invitationLinkCopied": "邀请链接已复制——电子邮件未配置，直接分享",
+      "googleAccessReminder": "当成员离开时，还要检查他们的 Google Search Console 访问权限。将他们从 Louez 中删除并不会撤销他们的 Google 访问权限。",
+      "reviewGoogleAccess": "查看 Google 访问权限"
     },
     "referrals": {
       "title": "推荐人",
@@ -2108,7 +2110,7 @@
           "none": "不需要",
           "pending": "卡未保存",
           "cardSaved": "准备好",
-          "authorized": "预授权有效",
+          "authorized": "已冻结",
           "captured": "被捕获",
           "released": "已发布",
           "failed": "失败"
@@ -2313,7 +2315,7 @@
         "deposit": "押金",
         "save": "保存",
         "saved": "预订已更新",
-        "cannotRemoveLastItem": "无法删除最后一项",
+        "cannotRemoveLastItem": "预订至少保留一项：在删除此项之前添加新项目",
         "noItems": "添加至少一项",
         "datesRequired": "开始日期和结束日期是必需的",
         "notifyCustomerByEmail": "通过电子邮件通知客户",
@@ -2678,7 +2680,8 @@
         "bufferConflictTitle": "周转缓冲区冲突",
         "bufferConflictDescription": "这些单位仅被周转缓冲区阻止：{identifiers}。无论如何分配它们？",
         "bufferConflictCancel": "保留选择",
-        "bufferConflictConfirm": "无论如何分配"
+        "bufferConflictConfirm": "无论如何分配",
+        "suggestUnits": "建议单位"
       },
       "smartActions": {
         "paymentIncomplete": "租金未付（剩余{remaining}）",
@@ -2696,7 +2699,7 @@
         "fullyPaid": "已付清",
         "partiallyPaid": "{total} 的 {paid} 已付款",
         "collected": "收集的",
-        "authorized": "预授权有效",
+        "authorized": "已冻结",
         "notCollected": "尚未收取",
         "toReturnToCustomer": "返回给客户",
         "returnQuestion": "确认退回的设备状况良好？",
@@ -2803,7 +2806,7 @@
           "completed": "已完成",
           "failed": "失败",
           "refunded": "已退款",
-          "authorized": "授权",
+          "authorized": "已授权",
           "cancelled": "取消"
         },
         "statusAuthorized": "授权",
@@ -4495,7 +4498,22 @@
         "create": "创建",
         "revokeTitle": "撤销 API 密钥？",
         "revokeDescription": "此操作是不可逆转的。任何使用此密钥的应用程序将立即失去访问权限。",
-        "revokeConfirm": "撤销"
+        "revokeConfirm": "撤销",
+        "presetCustom": "风俗",
+        "domains": {
+          "reservations": "预订",
+          "products": "产品",
+          "customers": "顾客",
+          "categories": "类别",
+          "payments": "付款方式",
+          "analytics": "分析",
+          "settings": "设置"
+        },
+        "levels": {
+          "none": "无法访问",
+          "read": "读",
+          "write": "读写"
+        }
       },
       "businessHours": {
         "title": "营业时间",
@@ -4686,7 +4704,12 @@
           "step3": "选择“HTML 标记”方法，粘贴下面的标记或其代码并保存，然后在 Search Console 中点击“验证”。",
           "label": "验证码",
           "help": "整个标签或仅其内容；只要代码保存在此处，该代码就会保持活动状态。",
-          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />",
+          "accessDescription": "此代码向关联的 Google 帐户 Search Console 授予您商店的所有者权限：查看统计信息、管理用户以及请求从 Google 搜索结果中删除。",
+          "ownerOnly": "只有店主和Louez平台管理员可以更改此代码。",
+          "removeCode": "删除代码",
+          "revokeHelp": "要撤销访问权限，请删除 Search Console 中的用户及其所有所有权验证令牌。如果他们的代码在此字段中，请将其清除并保存。从 Louez 中删除成员并不会撤销其 Google 访问权限。",
+          "manageAccess": "如何撤销 Google 访问权限"
         }
       },
       "legalSettings": {
@@ -5883,7 +5906,8 @@
         "title": "自动续租",
         "description": "当设备可用时，客户可以延长，并且可以计算额外的费用。特殊情况需要您的批准。",
         "maxDays": "最多额外天数（留空则无限制）"
-      }
+      },
+      "readOnlyNotice": "只读：只有所有者和管理员才能更改该商店的设置。"
     },
     "commandPalette": {
       "title": "命令面板",
@@ -7326,7 +7350,7 @@
       "paymentHistory": {
         "holdStatus": {
           "pending": "待定",
-          "authorized": "举行",
+          "authorized": "已冻结",
           "completed": "带电",
           "failed": "拒绝",
           "cancelled": "已发布",
@@ -7341,8 +7365,8 @@
           "deposit_return": "押金退还",
           "damage": "损害赔偿",
           "adjustment": "调整",
-          "deposit_hold": "授权保留",
-          "deposit_capture": "捕获存款"
+          "deposit_hold": "预授权冻结",
+          "deposit_capture": "押金已扣款"
         },
         "methods": {
           "stripe": "网上办卡",
@@ -7358,7 +7382,7 @@
           "failed": "失败",
           "refunded": "已退款",
           "cancelled": "取消",
-          "authorized": "授权"
+          "authorized": "已授权"
         }
       },
       "reviewPrompt": {
@@ -8052,7 +8076,10 @@
       "rental": "出租",
       "deposit": "押金",
       "deposit_return": "押金退还",
-      "damage": "损害赔偿"
+      "damage": "损害赔偿",
+      "deposit_hold": "预授权冻结",
+      "deposit_capture": "押金已扣款",
+      "adjustment": "调整"
     },
     "paymentMethods": {
       "stripe": "网上办卡",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "已付款",
-      "pending": "待定"
+      "pending": "待定",
+      "authorized": "已授权"
     },
     "signature": {
       "validated": "已验证",

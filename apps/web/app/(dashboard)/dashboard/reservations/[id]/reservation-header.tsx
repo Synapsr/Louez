@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useContext, useState, type MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
@@ -28,6 +28,7 @@ import {
 } from "@louez/ui";
 
 import { ReservationIdentity } from "./reservation-identity";
+import { ContractDownloadContext } from "@/lib/document-previews/contract-download-context";
 import { SendEmailModal } from "./send-email-modal";
 import { generateAccessUrl } from "@/app/(dashboard)/dashboard/reservations/actions";
 import {
@@ -79,6 +80,9 @@ interface ReservationHeaderProps {
   currency?: string;
   readOnly?: boolean;
   onBack?: () => void;
+  onDownloadContract?: () => void;
+  /** Opens the caller's own email window, which a read-only file cannot send from. */
+  onPreviewEmail?: () => void;
 }
 
 export function ReservationHeader({
@@ -100,9 +104,13 @@ export function ReservationHeader({
   currency: _currency = "EUR",
   readOnly = false,
   onBack,
+  onDownloadContract,
+  onPreviewEmail,
 }: ReservationHeaderProps) {
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
+  const inheritedDownloadContract = useContext(ContractDownloadContext);
+  const downloadContract = onDownloadContract ?? inheritedDownloadContract;
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -221,6 +229,11 @@ export function ReservationHeader({
   };
 
   const handleDownloadContract = () => {
+    if (downloadContract) {
+      downloadContract();
+      return;
+    }
+    if (readOnly) return;
     captureReservationActionStarted({
       reservationId,
       reservationStatus: status,
@@ -277,8 +290,9 @@ export function ReservationHeader({
             {/* Email button */}
             <Button
               variant="outline"
-              disabled={readOnly}
-              onClick={() => setEmailModalOpen(true)}
+              data-demo-target="reservation-preview-email"
+              disabled={readOnly && !onPreviewEmail}
+              onClick={() => (onPreviewEmail ? onPreviewEmail() : setEmailModalOpen(true))}
               className="hidden sm:flex"
             >
               <Mail className="h-4 w-4 mr-2" />
@@ -287,7 +301,8 @@ export function ReservationHeader({
 
             {/* Contract download button - always visible */}
             <Button
-              disabled={readOnly}
+              data-demo-target="download-contract"
+              disabled={readOnly && !downloadContract}
               variant="outline"
               onClick={handleDownloadContract}
               className="hidden sm:flex"

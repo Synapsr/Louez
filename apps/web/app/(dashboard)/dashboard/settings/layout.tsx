@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 import { SettingsNav } from "@/components/dashboard/settings-nav";
+import { StoreSettingsAccess } from "@/components/dashboard/store-settings-access";
 import { isElectronicInvoicingEnabled } from "@/lib/invoicing/feature";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
 import { getCurrentStore } from "@/lib/store-context";
@@ -26,7 +27,9 @@ export default async function SettingsLayout({ children }: { children: React.Rea
           isPlatformAdmin={isPlatformAdmin}
           electronicInvoicingEnabled={electronicInvoicingEnabled}
         />
-        <main className="min-w-0">{children}</main>
+        <main className="min-w-0">
+          <StoreSettingsAccess>{children}</StoreSettingsAccess>
+        </main>
       </div>
     </div>
   );

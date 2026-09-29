@@ -34,6 +34,11 @@ interface PeriodEditorProps {
   onApply: (period: RentalPeriodValue) => void;
   className?: string;
   productId?: string;
+  /** A local availability source bypasses both live availability queries. */
+  suppliedAvailability?: {
+    isDayUnavailable: (day: Date) => boolean;
+    isPeriodAvailable: (period: RentalPeriodValue) => boolean;
+  };
 }
 
 /**
@@ -52,6 +57,7 @@ export const PeriodEditor = ({
   onApply,
   className,
   productId,
+  suppliedAvailability,
 }: PeriodEditorProps) => {
   const t = useTranslations("storefront.dateSelection");
   const core = useRentalDateCore({
@@ -72,7 +78,7 @@ export const PeriodEditor = ({
   );
   const candidates = useMemo(
     () =>
-      productId
+      productId && !suppliedAvailability
         ? buildCalendarAvailabilityCandidates({
             core,
             rules,
@@ -80,14 +86,14 @@ export const PeriodEditor = ({
             months: months ?? (variant === "popover" ? 2 : 1),
           })
         : [],
-    [productId, core, rules, month, months, variant],
+    [productId, suppliedAvailability, core, rules, month, months, variant],
   );
   const calendar = useQuery({
     ...storefrontQueries.calendar({
       productId: productId ?? "",
       periods: candidates.map(({ startDate, endDate }) => ({ startDate, endDate })),
     }),
-    enabled: Boolean(productId) && candidates.length > 0,
+    enabled: !suppliedAvailability && Boolean(productId) && candidates.length > 0,
   });
   const availability = useQuery({
     ...storefrontQueries.availability({
@@ -95,39 +101,44 @@ export const PeriodEditor = ({
       startDate: core.period?.start.toISOString() ?? "",
       endDate: core.period?.end.toISOString() ?? "",
     }),
-    enabled: Boolean(productId) && core.canSubmit,
+    enabled: !suppliedAvailability && Boolean(productId) && core.canSubmit,
   });
   const availableProduct = availability.data?.products.find(
     (entry) => entry.productId === productId,
   );
   const canSubmit =
     core.canSubmit &&
-    (!productId ||
-      (!availability.isFetching &&
-        !availability.isError &&
-        Boolean(availableProduct) &&
-        availableProduct?.availableQuantity !== 0 &&
-        availability.data?.businessHoursValidation?.valid !== false &&
-        availability.data?.advanceNoticeValidation?.valid !== false));
+    (suppliedAvailability
+      ? Boolean(core.period && suppliedAvailability.isPeriodAvailable(core.period))
+      : !productId ||
+        (!availability.isFetching &&
+          !availability.isError &&
+          Boolean(availableProduct) &&
+          availableProduct?.availableQuantity !== 0 &&
+          availability.data?.businessHoursValidation?.valid !== false &&
+          availability.data?.advanceNoticeValidation?.valid !== false));
   const unavailableDays = new Set(
     candidates
       .filter((_, index) => calendar.data?.[index]?.available === false)
       .map(({ day }) => day),
   );
-  const isProductUnavailable = productId
-    ? (day: Date) => unavailableDays.has(format(day, "yyyy-MM-dd"))
-    : undefined;
+  const isProductUnavailable = suppliedAvailability?.isDayUnavailable ?? (
+    productId ? (day: Date) => unavailableDays.has(format(day, "yyyy-MM-dd")) : undefined
+  );
   const checking =
-    Boolean(productId) && (calendar.isFetching || (core.canSubmit && availability.isFetching));
+    !suppliedAvailability && Boolean(productId) &&
+    (calendar.isFetching || (core.canSubmit && availability.isFetching));
   const failed =
-    Boolean(productId) && (calendar.isError || (core.canSubmit && availability.isError));
-  const unavailable =
-    Boolean(productId) &&
-    core.canSubmit &&
-    !availability.isPending &&
-    !availability.isFetching &&
-    !availability.isError &&
-    !canSubmit;
+    !suppliedAvailability && Boolean(productId) &&
+    (calendar.isError || (core.canSubmit && availability.isError));
+  const unavailable = suppliedAvailability
+    ? core.canSubmit && !canSubmit
+    : Boolean(productId) &&
+      core.canSubmit &&
+      !availability.isPending &&
+      !availability.isFetching &&
+      !availability.isError &&
+      !canSubmit;
   const availabilityStatus =
     productId && (failed || unavailable) ? (
       <div role="status" aria-live="polite" className="text-sm text-muted-foreground">
@@ -174,7 +185,7 @@ export const PeriodEditor = ({
           {availabilityStatus}
         </DialogPanel>
         <DialogFooter variant="bare" className="sm:flex-col-reverse sm:items-stretch">
-          <Button size="xl" className="w-full" onClick={handleApply} disabled={!canSubmit}>
+          <Button data-demo-target="period-apply" size="xl" className="w-full" onClick={handleApply} disabled={!canSubmit}>
             {t("validate")}
           </Button>
           <PeriodSummary period={core.period} timezone={rules.timezone} />
@@ -193,7 +204,7 @@ export const PeriodEditor = ({
           timezone={rules.timezone}
           className="min-w-0 truncate"
         />
-        <Button onClick={handleApply} disabled={!canSubmit}>
+        <Button data-demo-target="period-apply" onClick={handleApply} disabled={!canSubmit}>
           {t("validate")}
         </Button>
       </div>

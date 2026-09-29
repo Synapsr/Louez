@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db, users } from "@louez/db";
+import { hasPermission } from "@louez/utils";
 
 import { OnlineStoreEditor } from "@/components/online-store/editor/online-store-editor";
 import type { OnlineStoreEditorStore } from "@/components/online-store/util.online-store-form";
@@ -42,6 +43,7 @@ export default async function OnlineStoreLayout({ children }: { children: React.
   const settings = store.settings;
   const editorStore: OnlineStoreEditorStore = {
     id: store.id,
+    canManageSettings: hasPermission(store.role, "manage_settings"),
     name: store.name,
     slug: store.slug,
     tagline: store.tagline,
@@ -67,6 +69,7 @@ export default async function OnlineStoreLayout({ children }: { children: React.
     >
       <DashboardSaveShortcut />
       <StoreProvider
+        role={store.role}
         storeId={store.id}
         currency={settings?.currency || "EUR"}
         storeSlug={store.slug}

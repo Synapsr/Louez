@@ -197,6 +197,8 @@ export function TimelineReservationBar({
     <>
       <Tooltip>
         <TooltipTrigger
+          data-reservation-id={reservation.id}
+          data-reservation-delivery={hasOutboundDelivery || undefined}
           delay={100}
           render={
             <Link

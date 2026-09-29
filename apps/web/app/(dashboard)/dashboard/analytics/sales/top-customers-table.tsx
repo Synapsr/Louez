@@ -23,6 +23,7 @@ interface TopCustomer {
 
 interface TopCustomersTableProps {
   customers: TopCustomer[];
+  readOnly?: boolean;
 }
 
 /** Gold / silver / bronze for the podium, muted numbers below. */
@@ -34,7 +35,7 @@ const getDisplayName = (customer: TopCustomer) =>
     ? customer.companyName
     : `${customer.firstName} ${customer.lastName}`;
 
-export const TopCustomersTable = ({ customers }: TopCustomersTableProps) => {
+export const TopCustomersTable = ({ customers, readOnly = false }: TopCustomersTableProps) => {
   const t = useTranslations("dashboard.statistics");
 
   if (customers.length === 0) {
@@ -69,7 +70,10 @@ export const TopCustomersTable = ({ customers }: TopCustomersTableProps) => {
               </TableCell>
               <TableCell className="max-w-55">
                 <Link
-                  href={`/dashboard/customers/${customer.customerId}`}
+                  href={readOnly ? "#" : `/dashboard/customers/${customer.customerId}`}
+                  prefetch={readOnly ? false : undefined}
+                  onClick={readOnly ? (event) => event.preventDefault() : undefined}
+                  aria-disabled={readOnly || undefined}
                   className="block truncate font-medium hover:underline"
                 >
                   {getDisplayName(customer)}

@@ -59,6 +59,7 @@ export function PricingModeControl({
           const label = t(option.key as never);
           return (
             <button
+              data-pricing-mode={option.glyph}
               key={label}
               type="button"
               onClick={() => !readOnly && draft.setProrated(option.prorated)}

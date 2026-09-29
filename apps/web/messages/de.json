@@ -486,6 +486,8 @@
       "removeMember": "Aus Team entfernen",
       "memberAdded": "Teammitglied erfolgreich hinzugefügt",
       "memberRemoved": "Teammitglied entfernt",
+      "googleAccessReminder": "Prüfe beim Ausscheiden eines Mitglieds auch dessen Google-Search-Console-Zugriff. Das Entfernen aus Louez widerruft den Google-Zugriff nicht.",
+      "reviewGoogleAccess": "Google-Zugriff prüfen",
       "pendingInvitations": "Ausstehende Einladungen",
       "pendingInvitationsDescription": "Diese Personen haben ihre Einladung noch nicht angenommen",
       "invitationSent": "Einladung per E-Mail gesendet",
@@ -2313,7 +2315,7 @@
         "deposit": "Kaution",
         "save": "Speichern",
         "saved": "Reservierung aktualisiert",
-        "cannotRemoveLastItem": "Der letzte Artikel kann nicht entfernt werden",
+        "cannotRemoveLastItem": "Eine Reservierung behält mindestens einen Artikel: Fügen Sie zuerst den neuen Artikel hinzu, bevor Sie diesen entfernen",
         "noItems": "Fügen Sie mindestens einen Artikel hinzu",
         "datesRequired": "Start- und Enddatum sind erforderlich",
         "notifyCustomerByEmail": "Kunden per E-Mail benachrichtigen",
@@ -2678,7 +2680,8 @@
         "bufferConflictConfirm": "Trotzdem zuweisen",
         "optionsLabel": "Optionen",
         "clearSelection": "Auswahl aufheben",
-        "autofillHint": "Vorgeschlagene Einheiten ausgewählt. Klicken Sie auf Speichern, um zu bestätigen."
+        "autofillHint": "Vorgeschlagene Einheiten ausgewählt. Klicken Sie auf Speichern, um zu bestätigen.",
+        "suggestUnits": "Einheiten vorschlagen"
       },
       "smartActions": {
         "paymentIncomplete": "Miete nicht bezahlt ({remaining} verbleibend)",
@@ -3367,6 +3370,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Nur Lesezugriff: Nur der Inhaber und Administratoren können die Einstellungen dieses Shops ändern.",
       "title": "Einstellungen",
       "store": "Shop",
       "company": "Unternehmen",
@@ -4358,7 +4362,22 @@
         "create": "Erstellen",
         "revokeTitle": "API-Schlüssel widerrufen?",
         "revokeDescription": "Diese Aktion ist unwiderruflich. Jede Anwendung, die diesen Schlüssel verwendet, verliert sofort den Zugang.",
-        "revokeConfirm": "Widerrufen"
+        "revokeConfirm": "Widerrufen",
+        "presetCustom": "Benutzerdefiniert",
+        "domains": {
+          "reservations": "Reservierungen",
+          "products": "Produkte",
+          "customers": "Kunden",
+          "categories": "Kategorien",
+          "payments": "Zahlungen",
+          "analytics": "Analysen",
+          "settings": "Einstellungen"
+        },
+        "levels": {
+          "none": "Kein Zugriff",
+          "read": "Lesen",
+          "write": "Lesen und schreiben"
+        }
       },
       "businessHours": {
         "title": "Öffnungszeiten",
@@ -4549,6 +4568,11 @@
           "step3": "Wählen Sie die Methode „HTML-Tag“, fügen Sie das Tag oder seinen Code unten ein und speichern Sie, bevor Sie in der Search Console auf „Bestätigen“ klicken.",
           "label": "Bestätigungscode",
           "help": "Das ganze Tag oder nur sein Inhalt; der Code bleibt aktiv, solange er hier gespeichert ist.",
+          "accessDescription": "Dieser Code gibt dem zugehörigen Google-Konto Inhaberrechte für deinen Shop in Search Console: Statistiken einsehen, Nutzer verwalten und die Entfernung aus Google-Suchergebnissen beantragen.",
+          "ownerOnly": "Nur der Shop-Inhaber und Louez-Administratoren können diesen Code ändern.",
+          "removeCode": "Code entfernen",
+          "revokeHelp": "Um den Zugriff zu widerrufen, entferne den Nutzer in Search Console und alle seine Eigentumsnachweise. Steht sein Code in diesem Feld, leere es und speichere. Das Entfernen eines Mitglieds aus Louez widerruft dessen Google-Zugriff nicht.",
+          "manageAccess": "Google-Zugriff widerrufen",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
@@ -8052,7 +8076,10 @@
       "rental": "Miete",
       "deposit": "Kaution",
       "deposit_return": "Kautionsrückerstattung",
-      "damage": "Schäden"
+      "damage": "Schäden",
+      "deposit_hold": "Autorisierung",
+      "deposit_capture": "Kaution eingezogen",
+      "adjustment": "Anpassung"
     },
     "paymentMethods": {
       "stripe": "Online-Karte",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Bezahlt",
-      "pending": "Ausstehend"
+      "pending": "Ausstehend",
+      "authorized": "Autorisiert"
     },
     "signature": {
       "validated": "Validiert",

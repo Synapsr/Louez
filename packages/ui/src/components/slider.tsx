@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "./disabled-controls-provider";
+
 import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 import * as React from "react";
 
@@ -14,6 +16,7 @@ function Slider({
   max = 100,
   ...props
 }: SliderPrimitive.Root.Props) {
+  const controlsDisabled = useControlsDisabled();
   const _values = React.useMemo(() => {
     if (value !== undefined) {
       return Array.isArray(value) ? value : [value];
@@ -33,6 +36,7 @@ function Slider({
       thumbAlignment="edge"
       value={value}
       {...props}
+      disabled={controlsDisabled || props.disabled}
     >
       {children}
       <SliderPrimitive.Control

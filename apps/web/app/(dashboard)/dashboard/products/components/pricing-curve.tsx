@@ -90,12 +90,14 @@ export function MiniCurve({
  * already set — which is where the two calculation modes diverge most.
  */
 export function PricingSimulator({
+  autoFocus,
   draft,
   currency,
   disabled,
   align = "start",
   className,
 }: {
+  autoFocus?: boolean;
   draft: PricingDraft;
   currency: string;
   disabled: boolean;
@@ -117,6 +119,7 @@ export function PricingSimulator({
   return (
     <Popover>
       <PopoverTrigger
+        data-demo-target="pricing-simulator"
         type="button"
         className={`text-muted-foreground hover:text-foreground hover:border-foreground/20 inline-flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors ${className ?? ""}`}
       >
@@ -128,6 +131,8 @@ export function PricingSimulator({
         <ChartSpline className="h-3.5 w-3.5 opacity-60" />
       </PopoverTrigger>
       <PopoverPopup
+        initialFocus={autoFocus}
+        finalFocus={autoFocus}
         align={align}
         className="w-[min(38rem,calc(100vw-2rem))] [--viewport-inline-padding:calc(var(--spacing)*1)]"
       >

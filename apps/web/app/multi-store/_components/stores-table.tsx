@@ -32,6 +32,7 @@ interface StoresTableProps {
     goToStore: string
   }
   limitsMap?: Record<string, boolean>
+  readOnly?: boolean
 }
 
 function PlanBadge({ planSlug, planName }: { planSlug: string; planName: string }) {
@@ -87,10 +88,11 @@ function ChangeIndicator({ change }: { change: number }) {
   )
 }
 
-export function StoresTable({ stores, translations, limitsMap = {} }: StoresTableProps) {
+export function StoresTable({ stores, translations, limitsMap = {}, readOnly = false }: StoresTableProps) {
   const router = useRouter()
 
   const handleStoreClick = async (storeId: string) => {
+    if (readOnly) return
     await setCurrentStoreAction(storeId)
     router.push('/dashboard')
     router.refresh()
@@ -118,6 +120,7 @@ export function StoresTable({ stores, translations, limitsMap = {} }: StoresTabl
               {stores.map((store) => (
                 <tr
                   key={store.storeId}
+                  data-demo-store={store.storeId}
                   className="group transition-colors hover:bg-accent/50"
                 >
                   <td className="py-4">
@@ -163,6 +166,7 @@ export function StoresTable({ stores, translations, limitsMap = {} }: StoresTabl
                   <td className="py-4 text-right">
                     <Button
                       variant="outline"
+                      disabled={readOnly}
                       onClick={() => handleStoreClick(store.storeId)}
                       className="group/btn border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground"
                     >

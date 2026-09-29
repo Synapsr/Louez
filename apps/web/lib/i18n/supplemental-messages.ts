@@ -13,5 +13,5 @@ type SupplementalKey = keyof typeof zh;
 export const formatSupplementalMessage = (
   locale: SupplementalLocale,
   key: SupplementalKey,
-  values: Record<string, string>,
+  values: Record<string, string | number>,
 ): string => createTranslator({ locale, messages: supplementalMessages[locale] })(key, values);

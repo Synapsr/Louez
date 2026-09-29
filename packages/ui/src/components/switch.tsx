@@ -1,10 +1,13 @@
 'use client';
 
+import { useControlsDisabled } from "./disabled-controls-provider";
+
 import { Switch as SwitchPrimitive } from '@base-ui/react/switch';
 
 import { cn } from '@louez/utils';
 
 function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
+  const controlsDisabled = useControlsDisabled();
   return (
     <SwitchPrimitive.Root
       className={cn(
@@ -13,6 +16,7 @@ function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
       )}
       data-slot="switch"
       {...props}
+      disabled={controlsDisabled || props.disabled}
     >
       <SwitchPrimitive.Thumb
         className={cn(

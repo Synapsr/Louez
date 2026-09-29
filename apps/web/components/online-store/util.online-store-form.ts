@@ -113,6 +113,7 @@ export interface OnlineStoreFormValues {
 /** The store row as the editor reads it; picked on the server so it can cross to the client. */
 export interface OnlineStoreEditorStore {
   id: string;
+  canManageSettings: boolean;
   name: string;
   slug: string;
   tagline: string | null;
@@ -443,7 +444,9 @@ export const buildOnlineStorePayload = ({
     const share = decideImage(value.seo.shareImageUrl, baseline.seo.shareImageUrl);
     if (isInvalid(share)) return null;
     payload.seo = {
-      googleSiteVerification: value.seo.googleSiteVerification,
+      ...(value.seo.googleSiteVerification !== baseline.seo.googleSiteVerification
+        ? { googleSiteVerification: value.seo.googleSiteVerification }
+        : {}),
       ...(share.send ? { shareImageUrl: share.value } : {}),
     };
   }
@@ -528,6 +531,7 @@ export const parseHexInput = (input: string): string | null => {
 /** Type-only shape for `withForm` sections; the real values come from the store. */
 export const ONLINE_STORE_EMPTY_VALUES: OnlineStoreFormValues = buildOnlineStoreDefaults({
   id: "",
+  canManageSettings: false,
   name: "",
   slug: "",
   tagline: null,

@@ -149,6 +149,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
         <DashboardSaveShortcut />
         <DashboardThemeShortcut />
         <StoreProvider
+          role={store.role}
           storeId={store.id}
           currency={settings.currency || "EUR"}
           storeSlug={store.slug}

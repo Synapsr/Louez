@@ -11,6 +11,7 @@ import { Button, StepContent } from "@louez/ui";
 import { withForm } from "@/hooks/form/form";
 import { useFormatMoney } from "@/hooks/use-format-money";
 import { useMyLocation } from "@/hooks/use-my-location";
+import type { AddressInputSource } from "@/components/ui/address-input";
 import { isFreeDelivery } from "@/lib/utils/geo";
 
 import type { useCheckoutDelivery } from "../hooks/use-checkout-delivery";
@@ -21,6 +22,7 @@ import { CheckoutFulfillmentLeg } from "./checkout-fulfillment-leg";
 import { CheckoutFulfillmentMapPanel } from "./checkout-fulfillment-map-panel";
 import { CheckoutReturnScope, type ReturnScope } from "./checkout-return-scope";
 import { CheckoutStepActions } from "./checkout-step-actions";
+import { CheckoutDeliveryLegSummary } from "./checkout-delivery-leg-summary";
 
 type CheckoutDeliveryState = ReturnType<typeof useCheckoutDelivery>;
 type Leg = "outbound" | "return";
@@ -39,6 +41,10 @@ interface CheckoutDeliveryStepProps {
   onContinue: () => void;
   /** Direction the step flow moved in, for the entrance animation. */
   stepDirection: "forward" | "backward";
+  showMap?: boolean;
+  geolocationEnabled?: boolean;
+  addressSource?: AddressInputSource;
+  autoFocus?: boolean;
 }
 
 export const CheckoutDeliveryStep = withForm({
@@ -56,6 +62,10 @@ export const CheckoutDeliveryStep = withForm({
     onBack,
     onContinue,
     stepDirection,
+    showMap = true,
+    geolocationEnabled = true,
+    addressSource,
+    autoFocus = true,
   }) => {
     const t = useTranslations("storefront.checkout");
     const formatMoney = useFormatMoney();
@@ -70,10 +80,10 @@ export const CheckoutDeliveryStep = withForm({
     // Asking on arrival costs one tap and lets the list open nearest-first.
     const hasAskedForLocationRef = useRef(false);
     useEffect(() => {
-      if (hasAskedForLocationRef.current) return;
+      if (!geolocationEnabled || hasAskedForLocationRef.current) return;
       hasAskedForLocationRef.current = true;
       locate();
-    }, [locate]);
+    }, [geolocationEnabled, locate]);
 
     const storeLabel = storeName ?? t("storeLocationFallback");
 
@@ -172,6 +182,13 @@ export const CheckoutDeliveryStep = withForm({
     };
 
     const renderMapPanel = (leg: Leg) => {
+      if (!showMap) {
+        return (
+          <div className="flex">
+            <CheckoutDeliveryLegSummary summary={legSummary(leg)} />
+          </div>
+        );
+      }
       const isOutbound = leg === "outbound";
       const onLocationChange = isOutbound
         ? delivery.handlePickupLocationChange
@@ -206,6 +223,10 @@ export const CheckoutDeliveryStep = withForm({
     };
 
     const sharedLegProps = {
+      addressSource,
+      showMapPicker: showMap,
+      geolocationEnabled,
+      autoFocus,
       locations,
       permission,
       isLocating,
@@ -227,6 +248,7 @@ export const CheckoutDeliveryStep = withForm({
           </h2>
 
           <section
+            data-checkout-leg="outbound"
             className="flex flex-col gap-3"
             onFocusCapture={() => setActiveLeg("outbound")}
             onPointerDownCapture={() => setActiveLeg("outbound")}
@@ -252,6 +274,7 @@ export const CheckoutDeliveryStep = withForm({
           </section>
 
           <section
+            data-checkout-leg="return"
             className="flex flex-col gap-3 border-t pt-4"
             onFocusCapture={() => setActiveLeg("return")}
             onPointerDownCapture={() => setActiveLeg("return")}

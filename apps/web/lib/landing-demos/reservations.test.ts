@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { dashboardReservationCalendarPeriodEntrySchema } from "@louez/validations";
 import { getDemoCart } from "./cart";
-import { createDemoReservationPages } from "./reservations";
+import { createDemoPlanningEntries, createDemoReservationPages } from "./reservations";
 
 const period = { start: new Date("2026-09-22T07:00:00Z"), end: new Date("2026-09-22T16:00:00Z") };
 test("catalogue bookings retain their products, totals and dates in list, calendar and details", () => {
@@ -36,4 +36,27 @@ test("catalogue bookings retain their products, totals and dates in list, calend
   assert.equal(data.rows[0].subtotalAmount, "75");
   assert.equal(data.rows[0].depositAmount, "600");
   assert.equal(data.bookings[0], cart.booking);
+});
+test("the planning shows one bar per reservation and product, on a product of the catalogue", () => {
+  const cart = getDemoCart({ "demo-city-bike": 2, "demo-electric-bike": 1 }, period);
+  assert.ok(cart.booking);
+  const data = createDemoReservationPages(period, cart.booking);
+  const entries = createDemoPlanningEntries(data.calendar);
+  assert.deepEqual(
+    entries
+      .filter((entry) => entry.id === data.rows[0].id)
+      .map((entry) => [entry.productId, entry.quantity]),
+    [
+      ["demo-city-bike", 2],
+      ["demo-electric-bike", 1],
+    ],
+  );
+  assert.equal(
+    new Set(entries.map((entry) => `${entry.id}_${entry.productId}`)).size,
+    entries.length,
+  );
+  for (const entry of entries) {
+    assert.ok(data.products.some((product) => product.id === entry.productId));
+    assert.equal(entry.items?.[0]?.quantity, entry.quantity);
+  }
 });

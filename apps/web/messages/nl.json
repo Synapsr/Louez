@@ -486,6 +486,8 @@
       "removeMember": "Uit team verwijderen",
       "memberAdded": "Teamlid succesvol toegevoegd",
       "memberRemoved": "Teamlid verwijderd",
+      "googleAccessReminder": "Controleer ook de Google Search Console-toegang wanneer een lid vertrekt. Verwijderen uit Louez trekt diens Google-toegang niet in.",
+      "reviewGoogleAccess": "Google-toegang controleren",
       "pendingInvitations": "Openstaande uitnodigingen",
       "pendingInvitationsDescription": "Deze personen hebben hun uitnodiging nog niet geaccepteerd",
       "invitationSent": "Uitnodiging per e-mail verzonden",
@@ -2274,7 +2276,7 @@
         "deposit": "Borg",
         "save": "Opslaan",
         "saved": "Reservering bijgewerkt",
-        "cannotRemoveLastItem": "Het laatste artikel kan niet worden verwijderd",
+        "cannotRemoveLastItem": "Een reservering houdt minstens één artikel: voeg eerst het nieuwe artikel toe voordat u dit verwijdert",
         "noItems": "Voeg minstens een artikel toe",
         "datesRequired": "Begin- en einddatum zijn verplicht",
         "notifyCustomerByEmail": "Klant per e-mail informeren",
@@ -2639,7 +2641,8 @@
         "bufferConflictConfirm": "Toch toewijzen",
         "optionsLabel": "Opties",
         "clearSelection": "Selectie wissen",
-        "autofillHint": "Voorgestelde eenheden geselecteerd. Klik op Opslaan om te bevestigen."
+        "autofillHint": "Voorgestelde eenheden geselecteerd. Klik op Opslaan om te bevestigen.",
+        "suggestUnits": "Eenheden voorstellen"
       },
       "smartActions": {
         "paymentIncomplete": "Huur niet betaald ({remaining} resterend)",
@@ -3367,6 +3370,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Alleen-lezen: alleen de eigenaar en beheerders kunnen de instellingen van deze winkel wijzigen.",
       "title": "Instellingen",
       "store": "Winkel",
       "company": "Bedrijf",
@@ -4358,7 +4362,22 @@
         "create": "Aanmaken",
         "revokeTitle": "API-sleutel intrekken?",
         "revokeDescription": "Deze actie is onomkeerbaar. Elke applicatie die deze sleutel gebruikt, verliest onmiddellijk de toegang.",
-        "revokeConfirm": "Intrekken"
+        "revokeConfirm": "Intrekken",
+        "presetCustom": "Aangepast",
+        "domains": {
+          "reservations": "Reserveringen",
+          "products": "Producten",
+          "customers": "Klanten",
+          "categories": "Categorieën",
+          "payments": "Betalingen",
+          "analytics": "Analyses",
+          "settings": "Instellingen"
+        },
+        "levels": {
+          "none": "Geen toegang",
+          "read": "Lezen",
+          "write": "Lezen en schrijven"
+        }
       },
       "businessHours": {
         "title": "Openingstijden",
@@ -4549,6 +4568,11 @@
           "step3": "Kies de methode “HTML-tag”, plak de tag of de code hieronder en sla op voordat je in Search Console op “Verifiëren” klikt.",
           "label": "Verificatiecode",
           "help": "De hele tag of alleen de inhoud; de code blijft actief zolang hij hier is opgeslagen.",
+          "accessDescription": "Deze code geeft het gekoppelde Google-account eigenaarsrechten voor je winkel in Search Console: statistieken bekijken, gebruikers beheren en verwijdering uit Google-zoekresultaten aanvragen.",
+          "ownerOnly": "Alleen de winkeleigenaar en Louez-beheerders kunnen deze code wijzigen.",
+          "removeCode": "Code verwijderen",
+          "revokeHelp": "Trek de toegang in door de gebruiker en al diens eigendomsbewijzen in Search Console te verwijderen. Staat de code in dit veld, maak het dan leeg en sla op. Een lid uit Louez verwijderen trekt diens Google-toegang niet in.",
+          "manageAccess": "Google-toegang intrekken",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
@@ -8052,7 +8076,10 @@
       "rental": "Verhuur",
       "deposit": "Borg",
       "deposit_return": "Borgterugbetaling",
-      "damage": "Schade"
+      "damage": "Schade",
+      "deposit_hold": "Autorisatie",
+      "deposit_capture": "Borg geïnd",
+      "adjustment": "Aanpassing"
     },
     "paymentMethods": {
       "stripe": "Online kaart",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Betaald",
-      "pending": "In behandeling"
+      "pending": "In behandeling",
+      "authorized": "Geautoriseerd"
     },
     "signature": {
       "validated": "Gevalideerd",

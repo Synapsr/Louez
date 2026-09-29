@@ -38,13 +38,14 @@ import {
 
 interface ProductUnitsTableProps {
   units: ProductInventoryUnit[];
+  readOnly?: boolean;
 }
 
 function isUnitAttributes(value: unknown): value is UnitAttributes {
   return typeof value === 'object' && value !== null;
 }
 
-export function ProductUnitsTable({ units }: ProductUnitsTableProps) {
+export const ProductUnitsTable = ({ units, readOnly = false }: ProductUnitsTableProps) => {
   const { intl: formatLocale } = useFormatLocale();
   const t = useTranslations('dashboard.products.detail.inventory');
   const tInventory = useTranslations('dashboard.inventory');
@@ -62,7 +63,7 @@ export function ProductUnitsTable({ units }: ProductUnitsTableProps) {
     useState<ProductInventoryUnit | null>(null);
 
   const handleCloseDowntime = async (unit: ProductInventoryUnit) => {
-    if (!unit.currentDowntime) {
+    if (readOnly || !unit.currentDowntime) {
       return;
     }
 
@@ -93,6 +94,7 @@ export function ProductUnitsTable({ units }: ProductUnitsTableProps) {
   };
 
   const handleReinstate = async (unit: ProductInventoryUnit) => {
+    if (readOnly) return;
     setPendingUnitId(unit.id);
     try {
       const result = await reinstateUnit({ unitId: unit.id });
@@ -185,7 +187,7 @@ export function ProductUnitsTable({ units }: ProductUnitsTableProps) {
                   <TableCell>
                     <UnitRowActions
                       row={unit}
-                      disabled={pendingUnitId === unit.id}
+                      disabled={readOnly || pendingUnitId === unit.id}
                       onCloseDowntime={handleCloseDowntime}
                       onDeclareDowntime={setSelectedDowntimeUnit}
                       onEditDetails={setSelectedEditUnit}
@@ -201,6 +203,7 @@ export function ProductUnitsTable({ units }: ProductUnitsTableProps) {
         </Table>
       </div>
 
+      {!readOnly && <>
       <DowntimeDialog
         open={selectedDowntimeUnit !== null}
         unit={selectedDowntimeUnit}
@@ -237,6 +240,7 @@ export function ProductUnitsTable({ units }: ProductUnitsTableProps) {
           }
         }}
       />
+      </>}
     </>
   );
 }

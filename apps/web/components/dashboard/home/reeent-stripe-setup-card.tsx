@@ -1,5 +1,7 @@
 "use client";
 
+import { useStoreHasPermission } from "@/contexts/store-context";
+
 import { useState } from "react";
 import Link from "next/link";
 
@@ -36,6 +38,7 @@ export const ReeentStripeSetupCard = ({
   hasStripeAccount,
   className,
 }: ReeentStripeSetupCardProps) => {
+  const canManage = useStoreHasPermission("manage_settings");
   const t = useTranslations("dashboard.home");
   const tErrors = useTranslations("errors");
 
@@ -79,9 +82,11 @@ export const ReeentStripeSetupCard = ({
         >
           {t("reeentStripe.paymentSettings")}
         </Button>
-        <Button onClick={handleConnect} isPending={isConnecting}>
-          {t(hasStripeAccount ? "reeentStripe.continueSetup" : "reeentStripe.activate")}
-        </Button>
+        {canManage && (
+          <Button onClick={handleConnect} isPending={isConnecting}>
+            {t(hasStripeAccount ? "reeentStripe.continueSetup" : "reeentStripe.activate")}
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import {
   eq,
   exists,
   gt,
+  gte,
   inArray,
   isNull,
   lt,
@@ -51,6 +52,16 @@ export function reservationAvailabilityEndSql() {
       AND JSON_UNQUOTE(JSON_EXTRACT(extension_hold.metadata, '$.status')) = 'checkout'
       AND CAST(JSON_UNQUOTE(JSON_EXTRACT(extension_hold.metadata, '$.expiresMs')) AS UNSIGNED) > UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3)) * 1000
   ), ${reservations.endDate}))`.mapWith(reservations.endDate);
+}
+
+/**
+ * An assigned unit still belongs to its reservation while the rental has not
+ * ended, or while it is `ongoing` (an overdue return is still out). A pending or
+ * confirmed reservation whose end has passed was simply never closed; it must
+ * not lock the unit in the catalogue forever.
+ */
+export function reservationStillHoldsUnitsSql(now: Date = new Date()): SQL | undefined {
+  return or(eq(reservations.status, "ongoing"), gte(reservationAvailabilityEndSql(), now));
 }
 
 export function getReservationAvailabilityEnd(

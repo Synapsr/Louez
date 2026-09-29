@@ -83,12 +83,13 @@ export function ProductsOrderDialog({
   const [products, setProducts] = useState(initialProducts)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Reset products when dialog opens
-  const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen) {
-      setProducts(initialProducts)
-    }
-    onOpenChange(newOpen)
+  // The dialog stays mounted and the parent opens it through `open`, so pick
+  // up the current list each time it opens. Otherwise it keeps the list from
+  // the first render and saves a stale order.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setProducts(initialProducts)
   }
 
   const handleSave = async () => {
@@ -98,7 +99,7 @@ export function ProductsOrderDialog({
       const result = await updateProductsOrder(productIds)
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error), type: 'error' })
+        toastManager.add({ title: tErrors(result.error.replace(/^errors\./, '')), type: 'error' })
       } else {
         toastManager.add({ title: t('orderUpdated'), type: 'success' })
         await invalidateProductsList(queryClient)
@@ -112,7 +113,7 @@ export function ProductsOrderDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('orderDialog.title')}</DialogTitle>

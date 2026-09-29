@@ -299,6 +299,41 @@ jobs:
           docker logs louez-app-platform 2>&1 || true
           docker logs louez-background-removal 2>&1 || true
 
+  # Runs the README's `docker compose up -d` exactly as a self-hoster would,
+  # against the published images. Catches third-party images disappearing or
+  # changing under the bundled stack (see issue #55).
+  compose-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Boot the one-command stack
+        run: docker compose up -d --wait --wait-timeout 600
+
+      - name: Verify the app is healthy
+        run: curl -fsS http://localhost:3000/api/health
+
+      - name: Verify the bucket accepts the app's credentials
+        run: |
+          docker compose exec -T minio sh -c '
+            export MC_HOST_local="http://$MINIO_ROOT_USER:$MINIO_ROOT_PASSWORD@127.0.0.1:9000"
+            echo ok | mc pipe local/louez/smoke.txt &&
+            test "$(mc cat local/louez/smoke.txt)" = ok &&
+            mc rm local/louez/smoke.txt'
+
+      - name: Dump stack logs
+        if: always()
+        run: |
+          docker compose logs --no-color || true
+          for c in $(docker compose ps -aq); do
+            docker inspect --format '{{.Name}} {{json .State.Health}}' "$c" || true
+          done
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
   build:
     runs-on: ubuntu-latest
     needs: smoke-test

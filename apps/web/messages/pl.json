@@ -486,6 +486,8 @@
       "removeMember": "Usuń z zespołu",
       "memberAdded": "Członek zespołu dodany pomyślnie",
       "memberRemoved": "Członek zespołu usunięty",
+      "googleAccessReminder": "Gdy członek opuści zespół, sprawdź też jego dostęp do Google Search Console. Usunięcie z Louez nie odbiera mu dostępu do Google.",
+      "reviewGoogleAccess": "Sprawdź dostęp do Google",
       "pendingInvitations": "Oczekujące zaproszenia",
       "pendingInvitationsDescription": "Te osoby jeszcze nie zaakceptowały zaproszenia",
       "invitationSent": "Zaproszenie wysłane emailem",
@@ -2274,7 +2276,7 @@
         "deposit": "Kaucja",
         "save": "Zapisz",
         "saved": "Rezerwacja zaktualizowana",
-        "cannotRemoveLastItem": "Nie można usunąć ostatniego przedmiotu",
+        "cannotRemoveLastItem": "Rezerwacja musi zawierać co najmniej jeden przedmiot: dodaj nowy przedmiot przed usunięciem tego",
         "noItems": "Dodaj przynajmniej jeden przedmiot",
         "datesRequired": "Daty rozpoczęcia i zakończenia są wymagane",
         "notifyCustomerByEmail": "Powiadom klienta e-mailem",
@@ -2639,7 +2641,8 @@
         "bufferConflictConfirm": "Przypisz mimo to",
         "optionsLabel": "Opcje",
         "clearSelection": "Wyczyść wybór",
-        "autofillHint": "Sugerowane jednostki wybrane. Kliknij Zapisz, aby potwierdzić."
+        "autofillHint": "Sugerowane jednostki wybrane. Kliknij Zapisz, aby potwierdzić.",
+        "suggestUnits": "Zaproponuj jednostki"
       },
       "smartActions": {
         "paymentIncomplete": "Wynajem nieopłacony ({remaining} pozostało)",
@@ -3367,6 +3370,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Tylko do odczytu: tylko właściciel i administratorzy mogą zmieniać ustawienia tego sklepu.",
       "title": "Ustawienia",
       "store": "Sklep",
       "company": "Firma",
@@ -4358,7 +4362,22 @@
         "create": "Utwórz",
         "revokeTitle": "Unieważnić klucz API?",
         "revokeDescription": "Ta akcja jest nieodwracalna. Każda aplikacja używająca tego klucza natychmiast straci dostęp.",
-        "revokeConfirm": "Unieważnij"
+        "revokeConfirm": "Unieważnij",
+        "presetCustom": "Niestandardowe",
+        "domains": {
+          "reservations": "Rezerwacje",
+          "products": "Produkty",
+          "customers": "Klienci",
+          "categories": "Kategorie",
+          "payments": "Płatności",
+          "analytics": "Analizy",
+          "settings": "Ustawienia"
+        },
+        "levels": {
+          "none": "Brak dostępu",
+          "read": "Odczyt",
+          "write": "Odczyt i zapis"
+        }
       },
       "businessHours": {
         "title": "Godziny otwarcia",
@@ -4549,6 +4568,11 @@
           "step3": "Wybierz metodę „Tag HTML”, wklej tag lub jego kod poniżej i zapisz, zanim klikniesz „Zweryfikuj” w Search Console.",
           "label": "Kod weryfikacyjny",
           "help": "Cały tag lub sama jego zawartość; kod pozostaje aktywny, dopóki jest tu zapisany.",
+          "accessDescription": "Ten kod nadaje powiązanemu kontu Google uprawnienia właściciela sklepu w Search Console: dostęp do statystyk, zarządzanie użytkownikami i zgłaszanie usunięcia z wyników Google.",
+          "ownerOnly": "Tylko właściciel sklepu i administratorzy Louez mogą zmienić ten kod.",
+          "removeCode": "Usuń kod",
+          "revokeHelp": "Aby odebrać dostęp, usuń użytkownika w Search Console i wszystkie jego dowody własności. Jeśli jego kod jest w tym polu, wyczyść je i zapisz. Usunięcie członka z Louez nie odbiera mu dostępu do Google.",
+          "manageAccess": "Jak odebrać dostęp do Google",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
@@ -8052,7 +8076,10 @@
       "rental": "Wynajem",
       "deposit": "Kaucja",
       "deposit_return": "Zwrot kaucji",
-      "damage": "Uszkodzenia"
+      "damage": "Uszkodzenia",
+      "deposit_hold": "Autoryzacja",
+      "deposit_capture": "Kaucja pobrana",
+      "adjustment": "Korekta"
     },
     "paymentMethods": {
       "stripe": "Karta online",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Opłacone",
-      "pending": "Oczekująca"
+      "pending": "Oczekująca",
+      "authorized": "Autoryzowane"
     },
     "signature": {
       "validated": "Zatwierdzone",

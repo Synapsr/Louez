@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { test } from "node:test";
 import { parse, type MessageFormatElement } from "@formatjs/icu-messageformat-parser";
 import { createTranslator } from "next-intl";
 import type { ReactNode } from "react";
 import { bookingQuoteInputSchema, reservationLocaleSchema } from "@louez/validations";
 import { locales } from "@/i18n/config";
+import { DEMO_SCENES } from "@/lib/landing-demos/policy";
 import { getEmailTranslator, resolveReservationEmailLocale } from "@/lib/email/i18n";
 
 const addedLocales = ["zh", "ja", "ru", "id", "ko"] as const;
@@ -124,4 +125,24 @@ test("the marketing poster generator covers the same languages", () => {
   const list = script.match(/const locales = (\[[\s\S]*?\]);/);
   assert.ok(list);
   assert.deepEqual(JSON.parse(list[1]), locales);
+});
+
+
+test("every demo scene and contract page ships an asset for every supported locale", () => {
+  const root = new URL("../../public/", import.meta.url);
+  const posters = JSON.parse(readFileSync(new URL("demo-posters/manifest.json", root), "utf8"));
+  const documents = JSON.parse(readFileSync(new URL("demo-documents/manifest.json", root), "utf8"));
+  for (const locale of locales) {
+    for (const scene of DEMO_SCENES.filter((value) => value !== "rental")) {
+      const key = `${scene}.${locale}`;
+      const size = statSync(new URL(`demo-posters/${key}.webp`, root)).size;
+      assert.ok(size > 0, key);
+      assert.equal(posters.bytes[key], size, `${key}: stale poster manifest`);
+    }
+    const pages = documents.contract[locale];
+    assert.ok(Number.isInteger(pages) && pages > 0, `${locale}: contract pages`);
+    for (let page = 1; page <= pages; page++) {
+      assert.ok(statSync(new URL(`demo-documents/contract.${locale}.p${page}.webp`, root)).size > 0);
+    }
+  }
 });

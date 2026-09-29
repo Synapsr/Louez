@@ -510,7 +510,9 @@
       "limitReachedTitle": "限界に達しました",
       "limitReachedDescription": "あなたは、{limit} チーム メンバーのうち {current} を使用しています。さらに追加するにはアップグレードしてください。",
       "upgradeForMore": "さらに追加",
-      "invitationLinkCopied": "招待リンクがコピーされました - 電子メールが設定されていません。直接共有してください"
+      "invitationLinkCopied": "招待リンクがコピーされました - 電子メールが設定されていません。直接共有してください",
+      "googleAccessReminder": "メンバーが退会した場合は、Google Search Console アクセスも確認してください。 Louez からユーザーを削除しても、Google アクセスは取り消されません。",
+      "reviewGoogleAccess": "Google アクセスを確認する"
     },
     "referrals": {
       "title": "紹介",
@@ -2108,7 +2110,7 @@
           "none": "不要",
           "pending": "カードが保存されていません",
           "cardSaved": "準備完了",
-          "authorized": "仮押さえ有効",
+          "authorized": "与信枠を確保済み",
           "captured": "捕らえられた",
           "released": "リリースされました",
           "failed": "失敗しました"
@@ -2313,7 +2315,7 @@
         "deposit": "保証金",
         "save": "保存",
         "saved": "予約を更新しました",
-        "cannotRemoveLastItem": "最後の項目は削除できません",
+        "cannotRemoveLastItem": "予約には少なくとも 1 つのアイテムが保持されます。このアイテムを削除する前に新しいアイテムを追加してください。",
         "noItems": "少なくとも 1 つの項目を追加してください",
         "datesRequired": "開始日と終了日は必須です",
         "notifyCustomerByEmail": "顧客にメールで通知する",
@@ -2678,7 +2680,8 @@
         "bufferConflictTitle": "売上高バッファーの競合",
         "bufferConflictDescription": "これらのユニットはターンオーバー バッファー {identifiers} によってのみブロックされます。とにかく割り当てますか?",
         "bufferConflictCancel": "選択を維持する",
-        "bufferConflictConfirm": "とにかく割り当てる"
+        "bufferConflictConfirm": "とにかく割り当てる",
+        "suggestUnits": "ユニットの提案"
       },
       "smartActions": {
         "paymentIncomplete": "レンタル未払い ({remaining} 残り)",
@@ -2696,7 +2699,7 @@
         "fullyPaid": "全額支払い済み",
         "partiallyPaid": "{paid} / {total} 支払い済み",
         "collected": "集めた",
-        "authorized": "仮押さえ有効",
+        "authorized": "与信枠を確保済み",
         "notCollected": "未受領",
         "toReturnToCustomer": "お客様に返すには",
         "returnQuestion": "機器が良好な状態で返却されたことを確認しますか?",
@@ -2803,7 +2806,7 @@
           "completed": "完了",
           "failed": "失敗しました",
           "refunded": "返金されました",
-          "authorized": "認可された",
+          "authorized": "承認済み",
           "cancelled": "キャンセルされました"
         },
         "statusAuthorized": "認可された",
@@ -4495,7 +4498,22 @@
         "create": "作成",
         "revokeTitle": "API キーを取り消しますか?",
         "revokeDescription": "この操作は元に戻せません。このキーを使用するアプリケーションはすぐにアクセスできなくなります。",
-        "revokeConfirm": "取り消し"
+        "revokeConfirm": "取り消し",
+        "presetCustom": "カスタム",
+        "domains": {
+          "reservations": "予約",
+          "products": "製品",
+          "customers": "お客様",
+          "categories": "カテゴリー",
+          "payments": "支払い",
+          "analytics": "分析",
+          "settings": "設定"
+        },
+        "levels": {
+          "none": "アクセス不可",
+          "read": "読む",
+          "write": "読み書き"
+        }
       },
       "businessHours": {
         "title": "営業時間",
@@ -4686,7 +4704,12 @@
           "step3": "「HTML タグ」方法を選択し、以下のタグまたはそのコードを貼り付けて保存してから、Search Console で「確認」をクリックします。",
           "label": "認証コード",
           "help": "タグ全体またはその内容のみ。コードは、ここに保存されている限りアクティブのままです。",
-          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />",
+          "accessDescription": "このコードにより、関連付けられた Google アカウント Search Console にストアの所有者権限 (統計情報の表示、ユーザーの管理、Google 検索結果からの削除リクエスト) が付与されます。",
+          "ownerOnly": "このコードを変更できるのは、ストアの所有者と Louez プラットフォーム管理者だけです。",
+          "removeCode": "コードを削除する",
+          "revokeHelp": "アクセスを取り消すには、Search Console のユーザーとそのすべての所有権検証トークンを削除します。コードがこのフィールドにある場合は、それをクリアして保存します。 Louez からメンバーを削除しても、そのメンバーの Google アクセスは取り消されません。",
+          "manageAccess": "Google アクセスを取り消す方法"
         }
       },
       "legalSettings": {
@@ -5883,7 +5906,8 @@
         "title": "レンタル自動延長",
         "description": "お客様は機器が利用可能な場合に延長することができ、追加料金を計算できます。特別な場合にはあなたの承認が必要です。",
         "maxDays": "最大追加日数 (無制限の場合は空白のままにします)"
-      }
+      },
+      "readOnlyNotice": "読み取り専用: 所有者と管理者のみがこのストアの設定を変更できます。"
     },
     "commandPalette": {
       "title": "コマンドパレット",
@@ -7326,7 +7350,7 @@
       "paymentHistory": {
         "holdStatus": {
           "pending": "保留中",
-          "authorized": "開催",
+          "authorized": "与信枠を確保済み",
           "completed": "充電済み",
           "failed": "拒否されました",
           "cancelled": "リリースされました",
@@ -7341,8 +7365,8 @@
           "deposit_return": "保証金の返金",
           "damage": "損害賠償",
           "adjustment": "調整",
-          "deposit_hold": "認証保留",
-          "deposit_capture": "捕獲された預金"
+          "deposit_hold": "与信枠の確保",
+          "deposit_capture": "保証金を決済済み"
         },
         "methods": {
           "stripe": "オンラインカード",
@@ -7358,7 +7382,7 @@
           "failed": "失敗しました",
           "refunded": "返金されました",
           "cancelled": "キャンセルされました",
-          "authorized": "認可された"
+          "authorized": "承認済み"
         }
       },
       "reviewPrompt": {
@@ -8052,7 +8076,10 @@
       "rental": "レンタル",
       "deposit": "保証金",
       "deposit_return": "保証金の返金",
-      "damage": "損害賠償"
+      "damage": "損害賠償",
+      "deposit_hold": "与信枠の確保",
+      "deposit_capture": "保証金を決済済み",
+      "adjustment": "調整"
     },
     "paymentMethods": {
       "stripe": "オンラインカード",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "支払い済み",
-      "pending": "保留中"
+      "pending": "保留中",
+      "authorized": "承認済み"
     },
     "signature": {
       "validated": "検証済み",

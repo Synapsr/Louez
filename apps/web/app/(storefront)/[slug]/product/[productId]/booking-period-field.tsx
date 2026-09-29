@@ -41,7 +41,7 @@ export const BookingPeriodField = ({
   const t = useTranslations("storefront.product");
 
   return (
-    <div ref={ref} className="flex scroll-mt-24 flex-col gap-1.5">
+    <div data-demo-target="product-period" ref={ref} className="flex scroll-mt-24 flex-col gap-1.5">
       <Label className="text-sm font-medium">{t("booking.dates")}</Label>
       <RentalPeriodPicker
         seasonalPricing={seasonalPricing}

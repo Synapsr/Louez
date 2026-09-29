@@ -6,11 +6,15 @@ import { and, eq, sql } from 'drizzle-orm'
 import { db } from '@louez/db'
 import { promoCodes } from '@louez/db'
 import { promoCodeServerSchema } from '@louez/validations'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 
 export async function createPromoCode(data: unknown) {
   const store = await getCurrentStore()
   if (!store) return { error: 'errors.unauthorized' }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
 
   const validated = promoCodeServerSchema.safeParse(data)
   if (!validated.success) return { error: 'errors.invalidData' }
@@ -47,6 +51,10 @@ export async function createPromoCode(data: unknown) {
 export async function updatePromoCode(id: string, data: unknown) {
   const store = await getCurrentStore()
   if (!store) return { error: 'errors.unauthorized' }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
 
   const validated = promoCodeServerSchema.safeParse(data)
   if (!validated.success) return { error: 'errors.invalidData' }
@@ -88,6 +96,10 @@ export async function togglePromoCode(id: string) {
   const store = await getCurrentStore()
   if (!store) return { error: 'errors.unauthorized' }
 
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
+
   const promoCode = await db.query.promoCodes.findFirst({
     where: and(eq(promoCodes.id, id), eq(promoCodes.storeId, store.id)),
   })
@@ -109,6 +121,10 @@ export async function togglePromoCode(id: string) {
 export async function deletePromoCode(id: string) {
   const store = await getCurrentStore()
   if (!store) return { error: 'errors.unauthorized' }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
 
   await db
     .delete(promoCodes)

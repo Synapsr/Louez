@@ -510,7 +510,9 @@
       "limitReachedTitle": "Batas tercapai",
       "limitReachedDescription": "Anda menggunakan {current} dari anggota tim {limit}. Tingkatkan untuk menambahkan lebih banyak.",
       "upgradeForMore": "Tambahkan lebih banyak",
-      "invitationLinkCopied": "Tautan undangan disalin — email tidak dikonfigurasi, bagikan secara langsung"
+      "invitationLinkCopied": "Tautan undangan disalin — email tidak dikonfigurasi, bagikan secara langsung",
+      "googleAccessReminder": "Saat anggota keluar, tinjau juga akses Google Search Console mereka. Menghapusnya dari Louez tidak mencabut akses Google-nya.",
+      "reviewGoogleAccess": "Tinjau akses Google"
     },
     "referrals": {
       "title": "Referensi",
@@ -2313,7 +2315,7 @@
         "deposit": "Uang jaminan",
         "save": "Simpan",
         "saved": "Reservasi diperbarui",
-        "cannotRemoveLastItem": "Tidak dapat menghapus item terakhir",
+        "cannotRemoveLastItem": "Reservasi menyimpan setidaknya satu item: tambahkan item baru sebelum menghapus item ini",
         "noItems": "Tambahkan setidaknya satu item",
         "datesRequired": "Tanggal mulai dan berakhir wajib diisi",
         "notifyCustomerByEmail": "Beritahu pelanggan melalui email",
@@ -2678,7 +2680,8 @@
         "bufferConflictTitle": "Konflik penyangga omzet",
         "bufferConflictDescription": "Unit-unit ini hanya diblokir oleh buffer turnover: {identifiers}. Tetap tetap tetapkan mereka?",
         "bufferConflictCancel": "Pertahankan pilihan",
-        "bufferConflictConfirm": "Tetap tetap tetapkan"
+        "bufferConflictConfirm": "Tetap tetap tetapkan",
+        "suggestUnits": "Sarankan unit"
       },
       "smartActions": {
         "paymentIncomplete": "Sewa belum dibayar (sisa {remaining})",
@@ -2803,7 +2806,7 @@
           "completed": "Selesai",
           "failed": "Gagal",
           "refunded": "Dikembalikan",
-          "authorized": "Resmi",
+          "authorized": "Diotorisasi",
           "cancelled": "Dibatalkan"
         },
         "statusAuthorized": "Resmi",
@@ -4495,7 +4498,22 @@
         "create": "Buat",
         "revokeTitle": "Cabut kunci API?",
         "revokeDescription": "Tindakan ini tidak dapat diubah. Aplikasi apa pun yang menggunakan kunci ini akan segera kehilangan akses.",
-        "revokeConfirm": "Cabut"
+        "revokeConfirm": "Cabut",
+        "presetCustom": "Kebiasaan",
+        "domains": {
+          "reservations": "Reservasi",
+          "products": "Produk",
+          "customers": "Pelanggan",
+          "categories": "Kategori",
+          "payments": "Pembayaran",
+          "analytics": "Analisis",
+          "settings": "Pengaturan"
+        },
+        "levels": {
+          "none": "Tidak ada akses",
+          "read": "Membaca",
+          "write": "Membaca dan menulis"
+        }
       },
       "businessHours": {
         "title": "Jam kerja",
@@ -4686,7 +4704,12 @@
           "step3": "Pilih metode “Tag HTML”, tempelkan tag atau kodenya di bawah dan simpan sebelum mengklik “Verifikasi” di Search Console.",
           "label": "Kode verifikasi",
           "help": "Seluruh tag atau hanya isinya; kodenya tetap aktif selama disimpan di sini.",
-          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />",
+          "accessDescription": "Kode ini memberikan hak pemilik akun Google Search Console terkait untuk toko Anda: melihat statistik, mengelola pengguna, dan meminta penghapusan dari hasil penelusuran Google.",
+          "ownerOnly": "Hanya pemilik toko dan administrator platform Louez yang dapat mengubah kode ini.",
+          "removeCode": "Hapus kode",
+          "revokeHelp": "Untuk mencabut akses, hapus pengguna di Search Console dan semua token verifikasi kepemilikannya. Jika kode mereka ada di kolom ini, hapus dan simpan. Menghapus anggota dari Louez tidak mencabut akses Google mereka.",
+          "manageAccess": "Cara mencabut akses Google"
         }
       },
       "legalSettings": {
@@ -5883,7 +5906,8 @@
         "title": "Ekstensi persewaan otomatis",
         "description": "Pelanggan dapat memperpanjang ketika peralatan tersedia dan biaya tambahan dapat dihitung. Kasus khusus memerlukan persetujuan Anda.",
         "maxDays": "Maksimum tambahan hari (biarkan kosong tanpa batas)"
-      }
+      },
+      "readOnlyNotice": "Hanya baca: hanya pemilik dan administrator yang dapat mengubah pengaturan toko ini."
     },
     "commandPalette": {
       "title": "Palet perintah",
@@ -7326,7 +7350,7 @@
       "paymentHistory": {
         "holdStatus": {
           "pending": "Tertunda",
-          "authorized": "Diadakan",
+          "authorized": "Dana ditahan",
           "completed": "Dikenakan biaya",
           "failed": "Ditolak",
           "cancelled": "Dirilis",
@@ -7341,8 +7365,8 @@
           "deposit_return": "Pengembalian dana deposit",
           "damage": "Kerusakan",
           "adjustment": "Penyesuaian",
-          "deposit_hold": "Penangguhan otorisasi",
-          "deposit_capture": "Setoran ditangkap"
+          "deposit_hold": "Penahanan dana",
+          "deposit_capture": "Deposit ditagih"
         },
         "methods": {
           "stripe": "Kartu daring",
@@ -7358,7 +7382,7 @@
           "failed": "Gagal",
           "refunded": "Dikembalikan",
           "cancelled": "Dibatalkan",
-          "authorized": "Resmi"
+          "authorized": "Diotorisasi"
         }
       },
       "reviewPrompt": {
@@ -8052,7 +8076,10 @@
       "rental": "Sewa",
       "deposit": "Uang jaminan",
       "deposit_return": "Pengembalian dana deposit",
-      "damage": "Kerusakan"
+      "damage": "Kerusakan",
+      "deposit_hold": "Penahanan dana",
+      "deposit_capture": "Deposit ditagih",
+      "adjustment": "Penyesuaian"
     },
     "paymentMethods": {
       "stripe": "Kartu daring",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Sudah dibayar",
-      "pending": "Tertunda"
+      "pending": "Tertunda",
+      "authorized": "Diotorisasi"
     },
     "signature": {
       "validated": "Divalidasi",

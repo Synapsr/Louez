@@ -1,15 +1,15 @@
 import { updateOnlineStoreInputSchema } from "@louez/validations";
 import { z } from "zod";
 
-import { dashboardProcedure } from "../../procedures";
-import { updateOnlineStore } from "../../services";
+import { requirePermission } from "../../procedures";
+import { updateOnlineStore } from "../../services/store-settings";
 import { toORPCError } from "../../utils/orpc-error";
 
 /**
  * One save for the whole online store editor: the client sends the sections
  * it changed, the service writes them in one update.
  */
-const update = dashboardProcedure
+const update = requirePermission("manage_settings")
   .input(updateOnlineStoreInputSchema)
   .output(z.object({ success: z.literal(true) }))
   .handler(async ({ context, input }) => {

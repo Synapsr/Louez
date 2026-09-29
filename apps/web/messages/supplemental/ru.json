@@ -89,5 +89,22 @@
   "notification_template_sheet_dateRangeLabels_from": "От",
   "notification_template_sheet_dateRangeLabels_to": "чтобы",
   "credit_actions_STRIPE_TRANSLATIONS_productName": "Кредиты ИИ — кредиты {credits}",
-  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "Пополнение кредитов {credits} для AI-советника"
+  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "Пополнение кредитов {credits} для AI-советника",
+  "demo_customers_notes": "Возвращающийся клиент. Предпочитает городские велосипеды с корзинами. Перед получением подготовьте замки.",
+  "demo_customers_businessNotes": "Прокат велосипедов для поездок команды по Nantes. Подготовьте велосипеды к отправке.",
+  "demo_inspections_wearNote": "Небольшой износ правой рукоятки, уже присутствовал при получении.",
+  "demo_inspections_departureNote": "Рамы, тормоза и шины проверены заказчиком.",
+  "demo_inspections_returnNote": "По сравнению с фотографиями, сделанными при получении.",
+  "demo_inspections_damageNote": "При возврате на раме обнаружена царапина.",
+  "demo_messages_sender": "Отправитель",
+  "demo_messages_now": "Сейчас",
+  "demo_messages_message": "Сообщение",
+  "demo_messages_characters": "персонажи",
+  "demo_messages_segments": "Будет отправлено SMS: {count}",
+  "demo_pricing_summer": "Летний сезон",
+  "demo_product_page_description": "Комфортный велосипед для исследования Nantes и берегов Loire. Регулируемое седло, фонари и багажник для поездок по городу. Наша команда настраивает велосипед перед тем, как вы отправитесь в путь.",
+  "demo_product_page_helmet": "Велосипедный шлем",
+  "demo_products_description": "Комфортный велосипед для исследования Nantes и берегов Loire. Регулировка седла и проверка безопасности перед каждым выездом.",
+  "demo_storefront_home_announcement": "Ваше следующее приключение начнется в Nantes — забронируйте велосипед онлайн.",
+  "demo_storefront_home_tagline": "Велосипеды для исследования Nantes и берегов Loire в удобном для вас темпе."
 }

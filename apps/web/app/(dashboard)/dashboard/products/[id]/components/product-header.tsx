@@ -76,9 +76,11 @@ interface ProductHeaderProps {
     categories: Array<{ id: string; name: string }>;
   };
   storeSlug: string;
+  readOnly?: boolean;
+  onBack?: () => void;
 }
 
-export function ProductHeader({ product, storeSlug }: ProductHeaderProps) {
+export const ProductHeader = ({ product, storeSlug, readOnly = false, onBack }: ProductHeaderProps) => {
   const headerRef = useRef<HTMLDivElement>(null);
   const t = useTranslations('dashboard.products');
   const tDetail = useTranslations('dashboard.products.detail');
@@ -93,7 +95,7 @@ export function ProductHeader({ product, storeSlug }: ProductHeaderProps) {
     handleDuplicate,
     requestDelete,
     handleDelete,
-  } = useProductActions();
+  } = useProductActions({ readOnly });
 
   const status = product.status || 'draft';
   const image = product.images?.[0];
@@ -103,13 +105,13 @@ export function ProductHeader({ product, storeSlug }: ProductHeaderProps) {
   const actionsMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<Button variant="outline" size="icon" disabled={isLoading} />}
+        render={<Button variant="outline" size="icon" disabled={readOnly || isLoading} />}
       >
         <MoreHorizontal className="h-4 w-4" />
         <span className="sr-only">{tCommon('actions')}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem render={<Link href={editHref} />}>
+        <DropdownMenuItem disabled={readOnly} render={readOnly ? undefined : <Link href={editHref} />}>
           <Pencil className="mr-2 h-4 w-4" />
           {tCommon('edit')}
         </DropdownMenuItem>
@@ -171,7 +173,9 @@ export function ProductHeader({ product, storeSlug }: ProductHeaderProps) {
           className="bg-background flex items-center gap-2 border-b px-4 py-2 shadow-xs sm:px-6 lg:px-8"
         >
           <Button
-            render={<Link href="/dashboard/products" />}
+            disabled={readOnly && !onBack}
+            onClick={onBack}
+            render={readOnly || onBack ? undefined : <Link href="/dashboard/products" />}
             variant="ghost"
             size="icon"
             className="-ml-2 shrink-0"
@@ -183,7 +187,7 @@ export function ProductHeader({ product, storeSlug }: ProductHeaderProps) {
             {product.name}
           </h2>
           <div className="flex shrink-0 items-center gap-2">
-            <Button render={<Link href={editHref} />}>
+            <Button disabled={readOnly} render={readOnly ? undefined : <Link href={editHref} />}>
               <Pencil className="mr-2 h-4 w-4" />
               {tCommon('edit')}
             </Button>
@@ -198,7 +202,9 @@ export function ProductHeader({ product, storeSlug }: ProductHeaderProps) {
       >
         <div className="flex min-w-0 items-start gap-2 sm:gap-3">
           <Button
-            render={<Link href="/dashboard/products" />}
+            disabled={readOnly && !onBack}
+            onClick={onBack}
+            render={readOnly || onBack ? undefined : <Link href="/dashboard/products" />}
             variant="ghost"
             size="icon"
             className="shrink-0 -ml-2 mt-0.5"
@@ -230,7 +236,7 @@ export function ProductHeader({ product, storeSlug }: ProductHeaderProps) {
         </div>
 
         <div className="flex items-center gap-2 sm:shrink-0">
-          <Button className="flex-1 sm:flex-none" render={<Link href={editHref} />}>
+          <Button className="flex-1 sm:flex-none" disabled={readOnly} render={readOnly ? undefined : <Link href={editHref} />}>
             <Pencil className="h-4 w-4 mr-2" />
             {tCommon('edit')}
           </Button>
@@ -238,7 +244,7 @@ export function ProductHeader({ product, storeSlug }: ProductHeaderProps) {
         </div>
       </div>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {!readOnly && <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
@@ -260,7 +266,7 @@ export function ProductHeader({ product, storeSlug }: ProductHeaderProps) {
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog>}
     </>
   );
 }

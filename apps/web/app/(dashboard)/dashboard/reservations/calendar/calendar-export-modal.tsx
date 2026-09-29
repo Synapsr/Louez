@@ -40,6 +40,7 @@ import {
 } from "@louez/ui/icons";
 
 import { getCalendarSyncState, regenerateIcsToken } from "./actions";
+import { useStoreHasPermission } from "@/contexts/store-context";
 
 interface CalendarExportModalProps {
   open: boolean;
@@ -86,6 +87,7 @@ function SubscribeButton({ href, label }: { href: string | null; label: string }
 }
 
 export function CalendarExportModal({ open, onOpenChange, storeId }: CalendarExportModalProps) {
+  const canManage = useStoreHasPermission("manage_settings");
   const t = useTranslations("dashboard.calendar.export");
   const [token, setToken] = useState<string | null>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
@@ -143,6 +145,7 @@ export function CalendarExportModal({ open, onOpenChange, storeId }: CalendarExp
   };
 
   const handleRegenerate = async () => {
+    if (!canManage) return;
     setRegenerating(true);
     const result = await regenerateIcsToken();
     if (result.success && result.token) {
@@ -215,7 +218,7 @@ export function CalendarExportModal({ open, onOpenChange, storeId }: CalendarExp
         </DialogPanel>
 
         <DialogFooter className="sm:justify-between">
-          <AlertDialog>
+          {canManage && <AlertDialog>
             <AlertDialogTrigger
               render={<Button variant="ghost" size="sm" isPending={regenerating} />}
             >
@@ -238,7 +241,7 @@ export function CalendarExportModal({ open, onOpenChange, storeId }: CalendarExp
                 </AlertDialogClose>
               </AlertDialogFooter>
             </AlertDialogPopup>
-          </AlertDialog>
+          </AlertDialog>}
 
           <DialogClose render={<Button variant="outline" />}>{t("done")}</DialogClose>
         </DialogFooter>

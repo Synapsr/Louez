@@ -138,6 +138,7 @@ export const RentalPeriodPicker = ({
       return (
         <button
           key={field}
+          data-period-field={field}
           type="button"
           className={fieldTriggerClassName}
           onClick={() => {
@@ -152,6 +153,7 @@ export const RentalPeriodPicker = ({
     return (
       <PopoverTrigger
         key={field}
+        data-period-field={field}
         className={fieldTriggerClassName}
         onClick={() => setInitialField(field)}
       >

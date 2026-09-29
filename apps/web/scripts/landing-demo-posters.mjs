@@ -1,6 +1,6 @@
 import { chromium } from "playwright-core";
 import sharp from "sharp";
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { basename, resolve } from "node:path";
@@ -12,6 +12,42 @@ const browserPath = process.argv.includes("--browser")
   : process.env.CHROME_PATH;
 if (!browserPath) throw new Error("Pass --browser /path/to/chromium or set CHROME_PATH.");
 const output = resolve("public/demo-posters");
+
+// Production React reports a hydration mismatch without saying which text differs. The texts of
+// the hydrated page that the server HTML lacks, and the reverse, point to it.
+const describeTextMismatch = async (page) => {
+  const html = await (await page.request.get(page.url())).text();
+  const serverText = html
+    .replace(/<(script|style)\b[\s\S]*?<\/\1>/g, "")
+    // React separates adjacent text values with comments: `{name}:{level}` is one text on screen.
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .split(/<[^>]+>/)
+    .map((text) =>
+      text
+        .replace(/&#x27;|&#39;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .trim(),
+    )
+    .filter(Boolean);
+  const clientText = (await page.locator("body").innerText())
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  // Case aside: CSS may upper-case what the HTML writes in lower case.
+  const server = serverText.join("\n").toLowerCase();
+  const client = clientText.join("\n").toLowerCase();
+  const list = (lines) => [...new Set(lines)].slice(0, 20).map((line) => `  ${JSON.stringify(line)}`);
+  return [
+    "Browser text missing from the server HTML:",
+    ...list(clientText.filter((line) => !server.includes(line.toLowerCase()))),
+    "Server text missing from the browser:",
+    ...list(serverText.filter((text) => !client.includes(text.toLowerCase()))),
+  ].join("\n");
+};
 let server;
 let browser;
 let captureDirectory;
@@ -86,11 +122,75 @@ try {
   // One poster per scene and language: `<scene>.<locale>.webp`, plus `<scene>.webp` in
   // French for landings that predate the language parameter.
   const locales = ["fr", "en", "it", "nl", "pt", "de", "es", "pl", "zh", "ja", "ru", "id", "ko"];
-  const captures = locales.flatMap((locale) =>
-    ["storefront", "planning", "reservation", "advisor"].map((scene) => ({ scene, locale })),
-  );
+  // Every scene of `DEMO_SCENES` except the three-step journey, which opens on the storefront.
+  const scenes = [
+    "storefront",
+    "planning",
+    "reservation",
+    "advisor",
+    "planning-timeline",
+    "reservations-paid",
+    "reservation-deposit",
+    "api-key-permissions",
+    "analytics-sales",
+    "analytics-fleet",
+    "products-list",
+    "products-filter",
+    "product-availability",
+    "pricing-ladder",
+    "pricing-seasons-promos",
+    "inspection-wizard",
+    "inspection-items",
+    "inspection-compare",
+    "inspection-settings",
+    "multi-store",
+    "multi-store-chart",
+    "team-invite",
+    "delivery-settings",
+    "delivery-simulator",
+    "delivery-calendar",
+    "customer-detail",
+    "customers-search",
+    "notification-settings",
+    "customer-reminders",
+    "booking-confirmation",
+    "storefront-product",
+    "storefront-pricing",
+    "storefront-quick-add",
+    "storefront-extras",
+    "storefront-home",
+    "portal-access",
+    "portal-login",
+    "portal-quote",
+    "portal-account",
+    "checkout-payment",
+    "checkout-delivery",
+    "contract-document",
+    "contract-content",
+    "contract-trace",
+  ];
+  // Scenes whose demo config says `format: "phone"`: a phone page, 390 × 844.
+  const phoneScenes = ["inspection-wizard", "inspection-items", "portal-access"];
+  // `--scenes a,b` redraws only these, and keeps the recorded sizes of the others.
+  const selected = process.argv.includes("--scenes") ? option("--scenes").split(",") : scenes;
+  const unknown = selected.filter((scene) => !scenes.includes(scene));
+  if (unknown.length) throw new Error(`Unknown demo scenes: ${unknown.join(", ")}`);
+  const selectedLocales = process.argv.includes("--locales")
+    ? option("--locales").split(",")
+    : locales;
+  const unknownLocales = selectedLocales.filter((locale) => !locales.includes(locale));
+  if (unknownLocales.length) throw new Error(`Unknown demo locales: ${unknownLocales.join(", ")}`);
+  if (selected.length < scenes.length || selectedLocales.length < locales.length) {
+    const manifest = await readFile(resolve(output, "manifest.json"), "utf8").catch(() => "{}");
+    Object.assign(sizes, JSON.parse(manifest).bytes);
+  }
+  const captures = selectedLocales.flatMap((locale) => selected.map((scene) => ({ scene, locale })));
+  // Every capture runs, then all failures are reported together: one build shows them all.
+  const failures = [];
   for (const { scene, locale } of captures) {
+    const phone = phoneScenes.includes(scene);
     const page = await context.newPage();
+    if (phone) await page.setViewportSize({ width: 390, height: 844 });
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
@@ -101,15 +201,14 @@ try {
     });
     await page.locator('[data-demo-ready="true"]').waitFor();
     await page.evaluate(async () => {
+      // An image counts as visible when its centre is on screen: a lazy one that only grazes the
+      // bottom edge, clipped by a scrolling parent, never loads and must not be waited for.
       const images = Array.from(document.images).filter((image) => {
         const rect = image.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
         return (
-          rect.width > 0 &&
-          rect.height > 0 &&
-          rect.bottom > 0 &&
-          rect.top < innerHeight &&
-          rect.right > 0 &&
-          rect.left < innerWidth
+          rect.width > 0 && rect.height > 0 && x > 0 && x < innerWidth && y > 0 && y < innerHeight
         );
       });
       let timeout;
@@ -127,10 +226,18 @@ try {
         clearTimeout(timeout);
       }
     });
-    if (errors.length) throw new Error(`${scene} (${locale}): ${errors.join("\n")}`);
+    if (errors.length) {
+      const hydration = errors.some((error) => /react\.dev\/errors\/(418|425)\b/.test(error));
+      const details = hydration ? `\n${await describeTextMismatch(page)}` : "";
+      failures.push(`${scene} (${locale}): ${errors.join("\n")}${details}`);
+      await page.close();
+      continue;
+    }
     const png = await page.screenshot({
       animations: "disabled",
-      clip: { x: 0, y: 0, width: 1440, height: scene === "advisor" ? 570 : 1000 },
+      clip: phone
+        ? { x: 0, y: 0, width: 390, height: 844 }
+        : { x: 0, y: 0, width: 1440, height: scene === "advisor" ? 570 : 1000 },
     });
     const webp = await sharp(png).webp({ quality: 80 }).toBuffer();
     await writeFile(resolve(output, `${scene}.${locale}.webp`), webp);
@@ -138,6 +245,8 @@ try {
     sizes[`${scene}.${locale}`] = webp.length;
     await page.close();
   }
+  if (failures.length)
+    throw new Error(`${failures.length} demo poster(s) failed:\n\n${failures.join("\n\n")}`);
   await writeFile(
     resolve(output, "manifest.json"),
     JSON.stringify({ generatedAt: new Date().toISOString(), bytes: sizes }, null, 2) + "\n",

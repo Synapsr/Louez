@@ -486,6 +486,8 @@
       "removeMember": "Remover da equipe",
       "memberAdded": "Membro da equipe adicionado com sucesso",
       "memberRemoved": "Membro da equipe removido",
+      "googleAccessReminder": "Quando um membro sair, verifique também o seu acesso ao Google Search Console. Removê-lo da Louez não revoga o seu acesso ao Google.",
+      "reviewGoogleAccess": "Verificar acessos ao Google",
       "pendingInvitations": "Convites pendentes",
       "pendingInvitationsDescription": "Estas pessoas ainda nao aceitaram seus convites",
       "invitationSent": "Convite enviado por email",
@@ -2274,7 +2276,7 @@
         "deposit": "Caucao",
         "save": "Salvar",
         "saved": "Reserva atualizada",
-        "cannotRemoveLastItem": "Nao e possivel remover o ultimo item",
+        "cannotRemoveLastItem": "Uma reserva mantém pelo menos um item: adicione o novo item antes de remover este",
         "noItems": "Adicione pelo menos um item",
         "datesRequired": "As datas de inicio e fim são obrigatórias",
         "notifyCustomerByEmail": "Notificar cliente por email",
@@ -2639,7 +2641,8 @@
         "bufferConflictConfirm": "Atribuir mesmo assim",
         "optionsLabel": "Opções",
         "clearSelection": "Limpar seleção",
-        "autofillHint": "Unidades sugeridas selecionadas. Clique em Guardar para confirmar."
+        "autofillHint": "Unidades sugeridas selecionadas. Clique em Guardar para confirmar.",
+        "suggestUnits": "Sugerir unidades"
       },
       "smartActions": {
         "paymentIncomplete": "Aluguel não pago ({remaining} restante)",
@@ -3367,6 +3370,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Apenas leitura: só o proprietário e os administradores podem alterar as definições desta loja.",
       "title": "Configuracoes",
       "store": "Loja",
       "company": "Empresa",
@@ -4358,7 +4362,22 @@
         "create": "Criar",
         "revokeTitle": "Revogar chave API?",
         "revokeDescription": "Esta ação é irreversível. Qualquer aplicação que use esta chave perderá o acesso imediatamente.",
-        "revokeConfirm": "Revogar"
+        "revokeConfirm": "Revogar",
+        "presetCustom": "Personalizado",
+        "domains": {
+          "reservations": "Reservas",
+          "products": "Produtos",
+          "customers": "Clientes",
+          "categories": "Categorias",
+          "payments": "Pagamentos",
+          "analytics": "Análises",
+          "settings": "Configurações"
+        },
+        "levels": {
+          "none": "Sem acesso",
+          "read": "Leitura",
+          "write": "Leitura e escrita"
+        }
       },
       "businessHours": {
         "title": "Horario comercial",
@@ -4549,6 +4568,11 @@
           "step3": "Escolha o método «Etiqueta HTML», cole a etiqueta ou o seu código abaixo e guarde antes de clicar em «Validar» no Search Console.",
           "label": "Código de verificação",
           "help": "A etiqueta completa ou apenas o seu conteúdo; o código fica ativo enquanto estiver guardado aqui.",
+          "accessDescription": "Este código dá à conta Google associada direitos de proprietário no Search Console para a sua loja: consultar estatísticas, gerir utilizadores e pedir a remoção dos resultados do Google.",
+          "ownerOnly": "Apenas o proprietário da loja e os administradores da Louez podem alterar este código.",
+          "removeCode": "Remover código",
+          "revokeHelp": "Para revogar o acesso, remova o utilizador no Search Console e todas as suas provas de propriedade. Se o código estiver neste campo, limpe-o e guarde. Remover um membro da Louez não revoga o seu acesso ao Google.",
+          "manageAccess": "Como revogar o acesso ao Google",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
@@ -8052,7 +8076,10 @@
       "rental": "Aluguel",
       "deposit": "Caucao",
       "deposit_return": "Reembolso de caucao",
-      "damage": "Danos"
+      "damage": "Danos",
+      "deposit_hold": "Autorização",
+      "deposit_capture": "Caução capturada",
+      "adjustment": "Ajuste"
     },
     "paymentMethods": {
       "stripe": "Cartao online",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Pago",
-      "pending": "Pendente"
+      "pending": "Pendente",
+      "authorized": "Autorizado"
     },
     "signature": {
       "validated": "Validado",

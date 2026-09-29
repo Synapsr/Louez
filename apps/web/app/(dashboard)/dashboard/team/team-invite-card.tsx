@@ -17,9 +17,11 @@ import type { TeamLimits } from "./team-types";
 
 interface TeamInviteCardProps {
   limits: TeamLimits | null;
+  readOnly?: boolean;
+  onInvite?: (email: string) => void | Promise<void>;
 }
 
-export const TeamInviteCard = ({ limits }: TeamInviteCardProps) => {
+export const TeamInviteCard = ({ limits, readOnly = false, onInvite }: TeamInviteCardProps) => {
   const t = useTranslations("dashboard.team");
   const tErrors = useTranslations("errors");
   const tValidation = useTranslations("validation");
@@ -42,6 +44,12 @@ export const TeamInviteCard = ({ limits }: TeamInviteCardProps) => {
 
   const inviteMutation = useMutation({
     mutationFn: async (email: string) => {
+      if (onInvite) {
+        await onInvite(email.toLowerCase().trim());
+        return null;
+      }
+      if (readOnly) return null;
+
       const formData = new FormData();
       formData.append("email", email.toLowerCase().trim());
 
@@ -62,6 +70,11 @@ export const TeamInviteCard = ({ limits }: TeamInviteCardProps) => {
       try {
         const result = await inviteMutation.mutateAsync(value.email);
 
+        if (!result) {
+          form.reset();
+          return;
+        }
+
         if (result.invitationUrl) {
           const copied = await navigator.clipboard
             ?.writeText(result.invitationUrl)
@@ -81,6 +94,7 @@ export const TeamInviteCard = ({ limits }: TeamInviteCardProps) => {
         });
         form.reset();
       } catch (error) {
+        if (readOnly) return;
         toastManager.add({ title: resolveErrorMessage(error), type: "error" });
       }
     },
@@ -123,20 +137,38 @@ export const TeamInviteCard = ({ limits }: TeamInviteCardProps) => {
         />
       ) : (
         <form.AppForm>
-          <form.Form className="space-y-3" formName="team-invite">
+          <form.Form
+            className="space-y-3"
+            formName="team-invite"
+            {...(readOnly ? {
+              // Local demos must also bypass the form wrapper's remote validation logging.
+              onSubmit: (event: React.FormEvent<HTMLFormElement>) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void form.handleSubmit();
+              },
+            } : {})}
+          >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
               <div className="min-w-0 flex-1">
                 <form.AppField name="email">
                   {(field) => (
                     <field.Input
+                      data-demo-target="team-invite-email"
                       type="email"
+                      autoFocus={false}
+                      disabled={readOnly && !onInvite}
                       placeholder={t("emailPlaceholder")}
                       aria-label={t("addMember")}
                     />
                   )}
                 </form.AppField>
               </div>
-              <form.SubscribeButton className="w-full sm:w-auto">
+              <form.SubscribeButton
+                data-demo-target="team-invite-submit"
+                disabled={readOnly && !onInvite}
+                className="w-full sm:w-auto"
+              >
                 <MailIcon />
                 {t("invite")}
               </form.SubscribeButton>

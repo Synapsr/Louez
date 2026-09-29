@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "@louez/ui";
+
 import { useState } from "react";
 
 import { useTranslations } from "next-intl";
@@ -24,6 +26,7 @@ interface HeroImagesFieldProps {
 
 /** Up to five photos as a grid of tiles; the first one is the one the page loads first. */
 export const HeroImagesField = ({ value, savedValue, uploads, onChange }: HeroImagesFieldProps) => {
+  const controlsDisabled = useControlsDisabled();
   const t = useTranslations("dashboard.settings.appearanceSettings");
   const tHome = useTranslations("dashboard.onlineStore.home");
   const tErrors = useTranslations("errors");
@@ -69,7 +72,7 @@ export const HeroImagesField = ({ value, savedValue, uploads, onChange }: HeroIm
       accept={IMAGE_UPLOAD_MIME_TYPES.join(",")}
       multiple
       className="sr-only"
-      disabled={!canAdd}
+      disabled={controlsDisabled || !canAdd}
       onChange={(event) => {
         void handleFiles(event.target.files);
         event.target.value = "";

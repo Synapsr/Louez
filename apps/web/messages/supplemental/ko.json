@@ -89,5 +89,22 @@
   "notification_template_sheet_dateRangeLabels_from": "에서",
   "notification_template_sheet_dateRangeLabels_to": "에",
   "credit_actions_STRIPE_TRANSLATIONS_productName": "AI 크레딧 — {credits} 크레딧",
-  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "AI Advisor를 위한 {credits} 크레딧 충전"
+  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "AI Advisor를 위한 {credits} 크레딧 충전",
+  "demo_customers_notes": "복귀고객. 바구니가 달린 도시 자전거를 선호합니다. 픽업 전에 자물쇠를 준비하세요.",
+  "demo_customers_businessNotes": "Nantes 주변의 팀 여행을 위한 자전거 대여. 픽업을 위해 자전거를 함께 준비하세요.",
+  "demo_inspections_wearNote": "오른쪽 그립이 약간 마모되었으며, 픽업 시 이미 마모되었습니다.",
+  "demo_inspections_departureNote": "프레임, 브레이크, 타이어는 고객에게 점검됩니다.",
+  "demo_inspections_returnNote": "픽업때 찍은 사진과 비교.",
+  "demo_inspections_damageNote": "반품 시 프레임에 긁힌 자국이 발견되었습니다.",
+  "demo_messages_sender": "보내는 사람",
+  "demo_messages_now": "지금",
+  "demo_messages_message": "메시지",
+  "demo_messages_characters": "문자",
+  "demo_messages_segments": "{count} SMS 메시지가 전송됩니다",
+  "demo_pricing_summer": "여름 시즌",
+  "demo_product_page_description": "Nantes와 Loire의 둑을 탐험하기 위한 편안한 자전거입니다. 도시 라이딩을 위한 조절 가능한 안장, 조명 및 수하물 선반. 우리 팀은 출발하기 전에 자전거를 조정합니다.",
+  "demo_product_page_helmet": "자전거 헬멧",
+  "demo_products_description": "Nantes와 Loire의 둑을 탐험하기 위한 편안한 자전거입니다. 매 출발 전 안장 조정 및 안전 점검을 실시합니다.",
+  "demo_storefront_home_announcement": "다음 모험은 Nantes에서 시작됩니다. 온라인으로 자전거를 예약하세요",
+  "demo_storefront_home_tagline": "자신만의 속도로 Nantes와 Loire 둑을 탐험할 수 있는 자전거입니다."
 }

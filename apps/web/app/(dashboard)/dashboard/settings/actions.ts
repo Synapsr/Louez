@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { notifyStoreSettingsUpdated } from "@/lib/discord/platform-notifications";
 import { log } from "@/lib/evlog";
-import { getCurrentStore } from "@/lib/store-context";
+import { getCurrentStore, hasPermission } from "@/lib/store-context";
 
 import {
   buildCompanySettingsUpdate,
@@ -37,6 +37,10 @@ export async function updateCompanySettings(data: CompanySettingsInput) {
 
     if (!store) {
       return { error: "errors.storeNotFound" };
+    }
+
+    if (!hasPermission(store.role, "manage_settings")) {
+      return { error: "errors.permissionDenied" };
     }
 
     await db
@@ -71,6 +75,10 @@ export async function updateReservationRules(data: ReservationRulesInput) {
 
     if (!store) {
       return { error: "errors.storeNotFound" };
+    }
+
+    if (!hasPermission(store.role, "manage_settings")) {
+      return { error: "errors.permissionDenied" };
     }
 
     await db
@@ -139,6 +147,10 @@ export async function updateStoreSlug(newSlug: string): Promise<{
     const store = await getCurrentStore();
     if (!store) {
       return { error: "errors.storeNotFound" };
+    }
+
+    if (!hasPermission(store.role, "manage_settings")) {
+      return { error: "errors.permissionDenied" };
     }
 
     // Validate slug format

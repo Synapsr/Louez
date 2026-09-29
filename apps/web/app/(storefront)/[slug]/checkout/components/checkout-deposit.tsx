@@ -25,6 +25,7 @@ export const CheckoutDeposit = ({
         {t("depositLabel")}
         <Tooltip>
           <TooltipTrigger
+            data-demo-target="checkout-deposit-help"
             type="button"
             aria-label={t("depositLabel")}
             className="inline-flex size-6 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

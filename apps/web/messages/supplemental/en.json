@@ -89,5 +89,22 @@
   "notification_template_sheet_dateRangeLabels_from": "From",
   "notification_template_sheet_dateRangeLabels_to": "to",
   "credit_actions_STRIPE_TRANSLATIONS_productName": "AI credits — {credits} credits",
-  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "Top-up of {credits} credits for the AI advisor"
+  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "Top-up of {credits} credits for the AI advisor",
+  "demo_customers_notes": "Returning customer. Prefers city bikes with baskets. Prepare the locks before pickup.",
+  "demo_customers_businessNotes": "Bike rentals for the team’s trips around Nantes. Have the bikes ready together for pickup.",
+  "demo_inspections_wearNote": "Slight wear on the right grip, already present at pickup.",
+  "demo_inspections_departureNote": "Frames, brakes and tyres checked with the customer.",
+  "demo_inspections_returnNote": "Compared with the photos taken at pickup.",
+  "demo_inspections_damageNote": "Scratch found on the frame upon return.",
+  "demo_messages_sender": "Sender",
+  "demo_messages_now": "Now",
+  "demo_messages_message": "Message",
+  "demo_messages_characters": "characters",
+  "demo_messages_segments": "{count} SMS messages will be sent",
+  "demo_pricing_summer": "Summer season",
+  "demo_product_page_description": "A comfortable bike for exploring Nantes and the banks of the Loire. Adjustable saddle, lights and a luggage rack for city rides. Our team adjusts the bike before you set off.",
+  "demo_product_page_helmet": "Bike helmet",
+  "demo_products_description": "A comfortable bike for exploring Nantes and the banks of the Loire. Saddle adjustment and a safety check before every departure.",
+  "demo_storefront_home_announcement": "Your next adventure starts in Nantes — book your bike online",
+  "demo_storefront_home_tagline": "Bikes for exploring Nantes and the banks of the Loire at your own pace."
 }

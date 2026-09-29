@@ -89,5 +89,22 @@
   "notification_template_sheet_dateRangeLabels_from": "から",
   "notification_template_sheet_dateRangeLabels_to": "に",
   "credit_actions_STRIPE_TRANSLATIONS_productName": "AI クレジット — {credits} クレジット",
-  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "AI アドバイザーの {credits} クレジットのチャージ"
+  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "AI アドバイザーの {credits} クレジットのチャージ",
+  "demo_customers_notes": "戻ってくる顧客。カゴ付きのシティサイクルを好む。引き取り前にロックを準備してください。",
+  "demo_customers_businessNotes": "Nantes 周辺のチームの旅行に自転車をレンタルします。自転車をまとめて受け取りの準備をしてください。",
+  "demo_inspections_wearNote": "右グリップにわずかな摩耗があり、ピックアップ時にすでに存在しています。",
+  "demo_inspections_departureNote": "フレーム、ブレーキ、タイヤはお客様と一緒にチェックされます。",
+  "demo_inspections_returnNote": "納車時に撮った写真と比較してみました。",
+  "demo_inspections_damageNote": "返品時にフレームに傷が見つかりました。",
+  "demo_messages_sender": "送信者",
+  "demo_messages_now": "今",
+  "demo_messages_message": "メッセージ",
+  "demo_messages_characters": "キャラクター",
+  "demo_messages_segments": "{count} SMS メッセージが送信されます",
+  "demo_pricing_summer": "サマーシーズン",
+  "demo_product_page_description": "Nantes と Loire の岸辺を探索するための快適なバイク。街乗り用に調整可能なサドル、ライト、荷物ラック。私たちのチームは出発前に自転車を調整します。",
+  "demo_product_page_helmet": "バイクヘルメット",
+  "demo_products_description": "Nantes と Loire の岸辺を探索するための快適なバイク。毎回の出発前にサドルの調整と安全確認を行います。",
+  "demo_storefront_home_announcement": "次の冒険は Nantes から始まります — 自転車をオンラインで予約してください",
+  "demo_storefront_home_tagline": "Nantes と Loire の岸辺を自分のペースで探索するためのバイク。"
 }

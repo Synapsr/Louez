@@ -1,16 +1,20 @@
 "use client";
 
+import { useControlsDisabled } from "./disabled-controls-provider";
+
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
 
 import { cn } from "@louez/utils";
 
 function RadioGroup({ className, ...props }: RadioGroupPrimitive.Props) {
+  const controlsDisabled = useControlsDisabled();
   return (
     <RadioGroupPrimitive
       className={cn("flex flex-col gap-3", className)}
       data-slot="radio-group"
       {...props}
+      disabled={controlsDisabled || props.disabled}
     />
   );
 }

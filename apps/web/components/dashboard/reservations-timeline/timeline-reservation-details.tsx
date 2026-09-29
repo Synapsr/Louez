@@ -92,6 +92,7 @@ export const TimelineReservationDetails = ({
                 {t("deliveryAddressLabel")}
               </span>
               <a
+                data-reservation-delivery-link="outbound"
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(reservation.outboundDeliveryAddress)}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -113,6 +114,7 @@ export const TimelineReservationDetails = ({
                 {t("returnAddressLabel")}
               </span>
               <a
+                data-reservation-delivery-link="return"
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(reservation.returnDeliveryAddress)}`}
                 target="_blank"
                 rel="noopener noreferrer"

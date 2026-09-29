@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import {
   Button,
+  DisabledControlsProvider,
   Dialog,
   DialogDescription,
   DialogFooter,
@@ -32,7 +33,7 @@ export const PurchaseInvoicesDialog = ({ children }: PurchaseInvoicesDialogProps
   const [open, setOpen] = useState(false);
 
   return (
-    <>
+    <DisabledControlsProvider disabled={false}>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
         {tSettings("purchaseInvoicesAction")}
       </Button>
@@ -56,6 +57,6 @@ export const PurchaseInvoicesDialog = ({ children }: PurchaseInvoicesDialogProps
           </DialogFooter>
         </DialogPopup>
       </Dialog>
-    </>
+    </DisabledControlsProvider>
   );
 };

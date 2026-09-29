@@ -1,22 +1,14 @@
-import { cache, Suspense, type ReactNode } from "react";
+import { cache, Suspense } from "react";
 
 import { redirect } from "next/navigation";
 
-import { getTranslations } from "next-intl/server";
+import { Skeleton } from "@louez/ui";
 
-import { Card, CardPanel, Skeleton } from "@louez/ui";
-import {
-  CalendarSolidIcon,
-  ChartColumnIcon,
-  CreditCardSolidIcon,
-  ParticipantsSolidIcon,
-  ProductSolidIcon,
-} from "@louez/ui/icons";
-import { cn, formatCurrency } from "@louez/utils";
-
-import { DASHBOARD_ACCENT_FILL } from "@/components/dashboard/shared/dashboard-accent";
-import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
-import { DashboardTrendBadge } from "@/components/dashboard/shared/dashboard-trend-badge";
+import { RevenueHero } from "@/app/(dashboard)/dashboard/analytics/sales/revenue-hero";
+import { RentalActivitySection } from "@/app/(dashboard)/dashboard/analytics/sales/rental-activity-section";
+import { SalesAnalyticsContent } from "@/app/(dashboard)/dashboard/analytics/sales/sales-analytics-content";
+import { SalesStatStripContent } from "@/app/(dashboard)/dashboard/analytics/sales/sales-stat-strip-content";
+import { StatStrip } from "@/app/(dashboard)/dashboard/analytics/sales/stat-strip";
 
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { getCurrentStore } from "@/lib/store-context";
@@ -57,43 +49,10 @@ const getPeriodPaymentStats = cache((storeId: string, window: SalesWindow) =>
   getSalesPaymentStats(storeId, window),
 );
 
-/** Below two days a rental reads better in hours than in fractions of a day. */
-const DURATION_DAYS_THRESHOLD_HOURS = 48;
-
-/** Headline receipts of the period, sitting on top of the revenue chart. */
-async function RevenueHero({ storeId, window }: { storeId: string; window: SalesWindow }) {
-  const t = await getTranslations("dashboard.statistics");
+async function RevenueHeroSection({ storeId, window }: { storeId: string; window: SalesWindow }) {
   const { intl: formatLocale } = await getRequestFormatLocale();
   const stats = await getPeriodPaymentStats(storeId, window);
-  const periodDateFormat = new Intl.DateTimeFormat(formatLocale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: window.timezone,
-  });
-
-  return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="text-2xl leading-tight font-bold tracking-tight tabular-nums sm:text-3xl">
-          {formatCurrency(stats.periodRevenue, "EUR", formatLocale)}
-        </span>
-        <DashboardTrendBadge trend={stats.revenueGrowth} />
-        {stats.revenueGrowth !== null && (
-          <span className="text-muted-foreground text-xs">{t("vsLastPeriod")}</span>
-        )}
-      </div>
-      <p className="text-muted-foreground text-xs">
-        {periodDateFormat.format(window.start)} – {periodDateFormat.format(window.end)} (
-        {window.timezone})
-      </p>
-      <p className="text-muted-foreground text-sm">
-        {t("paymentsCount", { count: stats.periodPaymentCount })} ·{" "}
-        {t("avgPaymentInline", {
-          amount: formatCurrency(stats.avgPaymentValue, "EUR", formatLocale),
-        })}
-      </p>
-    </div>
-  );
+  return <RevenueHero stats={stats} window={window} formatLocale={formatLocale} />;
 }
 
 function RevenueHeroSkeleton() {
@@ -102,43 +61,6 @@ function RevenueHeroSkeleton() {
       <Skeleton className="h-8 w-40" />
       <Skeleton className="h-4 w-56" />
     </div>
-  );
-}
-
-/** One segment of the stat strip — no icon, no card chrome, just the number. */
-function StatStripItem({
-  label,
-  value,
-  subtitle,
-  trend,
-}: {
-  label: string;
-  value: ReactNode;
-  subtitle: string;
-  trend?: number | null;
-}) {
-  return (
-    <div className="flex flex-col gap-1 p-4 sm:p-5">
-      <p className="text-muted-foreground text-xs font-medium">{label}</p>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="text-lg leading-tight font-semibold tracking-tight tabular-nums sm:text-xl">
-          {value}
-        </span>
-        <DashboardTrendBadge trend={trend} />
-      </div>
-      <p className="text-muted-foreground truncate text-xs">{subtitle}</p>
-    </div>
-  );
-}
-
-/** Three-up strip: stacked on phones, split by vertical rules from `sm`. */
-function StatStrip({ children }: { children: ReactNode }) {
-  return (
-    <Card>
-      <CardPanel className="grid divide-y p-0 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        {children}
-      </CardPanel>
-    </Card>
   );
 }
 
@@ -158,40 +80,19 @@ function StatStripSkeleton() {
 
 async function SalesStatStrip({ storeId, window }: { storeId: string; window: SalesWindow }) {
   const { intl: formatLocale } = await getRequestFormatLocale();
-  const t = await getTranslations("dashboard.statistics");
   const [reservationStats, duration, payments] = await Promise.all([
     getPeriodReservationStats(storeId, window),
     getAverageRentalDuration(storeId, window),
     getPeriodPaymentStats(storeId, window),
   ]);
 
-  const avgHours = duration.avgMinutes === null ? null : duration.avgMinutes / 60;
-
   return (
-    <StatStrip>
-      <StatStripItem
-        label={t("reservations")}
-        value={reservationStats.reservationCount}
-        trend={reservationStats.growth}
-        subtitle={reservationStats.growth === null ? t("noData") : t("vsLastPeriod")}
-      />
-      <StatStripItem
-        label={t("avgRentalDuration")}
-        value={
-          avgHours === null
-            ? "—"
-            : avgHours >= DURATION_DAYS_THRESHOLD_HOURS
-              ? t("durationDays", { days: avgHours / 24 })
-              : t("durationHours", { hours: Math.round(avgHours) })
-        }
-        subtitle={t("onReservations", { count: duration.reservationCount })}
-      />
-      <StatStripItem
-        label={t("totalRevenue")}
-        value={formatCurrency(payments.totalRevenue, "EUR", formatLocale)}
-        subtitle={t("sinceBeginning")}
-      />
-    </StatStrip>
+    <SalesStatStripContent
+      reservationStats={reservationStats}
+      duration={duration}
+      totalRevenue={payments.totalRevenue}
+      formatLocale={formatLocale}
+    />
   );
 }
 
@@ -210,7 +111,7 @@ function RentalActivitySkeleton() {
   );
 }
 
-async function RentalActivitySection({
+async function RentalActivityData({
   storeId,
   window,
 }: {
@@ -218,42 +119,13 @@ async function RentalActivitySection({
   window: SalesWindow;
 }) {
   const { intl: formatLocale } = await getRequestFormatLocale();
-  const t = await getTranslations("dashboard.statistics");
   const [occupancy, upcoming] = await Promise.all([
     getOccupancyStats(storeId, window),
     getUpcomingRevenue(storeId, window.end),
   ]);
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-medium">{t("occupancyRate")}</span>
-          <span className="text-sm font-semibold tabular-nums">{occupancy.rate.toFixed(1)}%</span>
-        </div>
-        <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
-          <div
-            className={cn("h-full transition-all duration-500", DASHBOARD_ACCENT_FILL.progress)}
-            style={{ width: `${Math.min(occupancy.rate, 100)}%` }}
-          />
-        </div>
-        <p className="text-muted-foreground text-xs">
-          {t("occupancySubtitle", { count: occupancy.availableUnits })}
-        </p>
-      </div>
-
-      <div className="flex items-center justify-between gap-3 border-t pt-5">
-        <div className="min-w-0">
-          <p className="text-sm font-medium">{t("upcomingRevenue")}</p>
-          <p className="text-muted-foreground text-xs">
-            {t("upcomingRevenueCount", { count: upcoming.reservationCount })}
-          </p>
-        </div>
-        <span className="shrink-0 text-sm font-semibold tabular-nums">
-          {formatCurrency(upcoming.revenue, "EUR", formatLocale)}
-        </span>
-      </div>
-    </div>
+    <RentalActivitySection occupancy={occupancy} upcoming={upcoming} formatLocale={formatLocale} />
   );
 }
 
@@ -314,7 +186,6 @@ async function TopCustomersByRevenueSection({
 }
 
 export default async function SalesAnalyticsPage({ searchParams }: SalesAnalyticsPageProps) {
-  const t = await getTranslations("dashboard.statistics");
   const store = await getCurrentStore();
   const { period: periodParam } = await searchParams;
   const period = parsePeriod(periodParam);
@@ -326,70 +197,42 @@ export default async function SalesAnalyticsPage({ searchParams }: SalesAnalytic
   const window = getSalesWindow(period, new Date(), store.settings?.timezone || "UTC");
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Three columns only from `xl`: at `lg` the sidebar leaves the methods
-          card a ~240px column where its amounts cannot fit. */}
-      <div className="grid gap-4 xl:grid-cols-3">
-        <DashboardSectionCard
-          title={t("revenueChart")}
-          description={t("revenueChartDescription")}
-          icon={ChartColumnIcon}
-          accent="success"
-          className="xl:col-span-2"
-          contentClassName="space-y-4"
-        >
-          <Suspense fallback={<RevenueHeroSkeleton />}>
-            <RevenueHero storeId={store.id} window={window} />
-          </Suspense>
-
-          <Suspense fallback={<Skeleton className="h-64 w-full sm:h-72" />}>
-            <RevenueChartSection storeId={store.id} window={window} />
-          </Suspense>
-        </DashboardSectionCard>
-
-        <DashboardSectionCard
-          title={t("paymentMethods.title")}
-          description={t("paymentMethods.description")}
-          icon={CreditCardSolidIcon}
-          accent="primary"
-        >
-          <Suspense fallback={<Skeleton className="h-50 w-full" />}>
-            <PaymentMethodsSection storeId={store.id} window={window} />
-          </Suspense>
-        </DashboardSectionCard>
-      </div>
-
-      <Suspense fallback={<StatStripSkeleton />}>
-        <SalesStatStrip storeId={store.id} window={window} />
-      </Suspense>
-
-      <DashboardSectionCard title={t("rentalActivity")} icon={CalendarSolidIcon} accent="progress">
-        <Suspense fallback={<RentalActivitySkeleton />}>
-          <RentalActivitySection storeId={store.id} window={window} />
+    <SalesAnalyticsContent
+      revenueHero={
+        <Suspense fallback={<RevenueHeroSkeleton />}>
+          <RevenueHeroSection storeId={store.id} window={window} />
         </Suspense>
-      </DashboardSectionCard>
-
-      <DashboardSectionCard
-        title={t("topProducts.title")}
-        description={t("topProducts.description")}
-        icon={ProductSolidIcon}
-        accent="submitted"
-      >
+      }
+      revenueChart={
+        <Suspense fallback={<Skeleton className="h-64 w-full sm:h-72" />}>
+          <RevenueChartSection storeId={store.id} window={window} />
+        </Suspense>
+      }
+      paymentMethods={
+        <Suspense fallback={<Skeleton className="h-50 w-full" />}>
+          <PaymentMethodsSection storeId={store.id} window={window} />
+        </Suspense>
+      }
+      stats={
+        <Suspense fallback={<StatStripSkeleton />}>
+          <SalesStatStrip storeId={store.id} window={window} />
+        </Suspense>
+      }
+      rentalActivity={
+        <Suspense fallback={<RentalActivitySkeleton />}>
+          <RentalActivityData storeId={store.id} window={window} />
+        </Suspense>
+      }
+      topProducts={
         <Suspense fallback={<Skeleton className="h-75 w-full" />}>
           <TopProductsByRevenueSection storeId={store.id} window={window} />
         </Suspense>
-      </DashboardSectionCard>
-
-      <DashboardSectionCard
-        title={t("topCustomers.title")}
-        description={t("topCustomers.description")}
-        icon={ParticipantsSolidIcon}
-        accent="progress"
-      >
+      }
+      topCustomers={
         <Suspense fallback={<Skeleton className="h-75 w-full" />}>
           <TopCustomersByRevenueSection storeId={store.id} window={window} />
         </Suspense>
-      </DashboardSectionCard>
-    </div>
+      }
+    />
   );
 }

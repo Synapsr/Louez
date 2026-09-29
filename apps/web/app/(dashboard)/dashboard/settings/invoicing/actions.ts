@@ -22,7 +22,7 @@ import {
 import { syncSuperPdpVatRegime } from "@/lib/integrations/providers/superpdp/company";
 import { SUPERPDP_PROVIDER_KEY } from "@/lib/integrations/providers/superpdp/superpdp-client";
 import { searchFrenchCompanies, type CompanySearchResult } from "@/lib/recherche-entreprises";
-import { getCurrentStore } from "@/lib/store-context";
+import { getCurrentStore, hasPermission } from "@/lib/store-context";
 
 export type StoreLegalProfileRecord = typeof storeLegalProfiles.$inferSelect;
 
@@ -55,6 +55,10 @@ export async function upsertStoreLegalProfile(
   const store = await getCurrentStore();
   if (!store) {
     return { status: "error", error: "errors.unauthorized" };
+  }
+
+  if (!hasPermission(store.role, "manage_settings")) {
+    return { status: "error", error: "errors.permissionDenied" };
   }
 
   const validated = storeLegalProfileSchema.safeParse(data);
@@ -111,6 +115,10 @@ export async function resetInvoicingSetupForDev(): Promise<StoreLegalProfileActi
   const store = await getCurrentStore();
   if (!store) {
     return { status: "error", error: "errors.unauthorized" };
+  }
+
+  if (!hasPermission(store.role, "manage_settings")) {
+    return { status: "error", error: "errors.permissionDenied" };
   }
 
   const integration = await db.query.storeIntegrations.findFirst({

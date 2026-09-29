@@ -4,10 +4,9 @@ import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { cn } from "@louez/utils";
+import { HomePeriodSearchView } from "@/components/storefront/home/home-period-search-view";
 
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
-import { RentalPeriodPicker } from "@/components/storefront/date-picker/rental-period-picker";
 import { useCartActions, useCartState } from "@/contexts/cart-context";
 import { useStorefrontBasePath } from "@/contexts/store-context";
 import { resolveStorefrontHref } from "@/lib/util.storefront-href";
@@ -20,11 +19,6 @@ interface HomePeriodSearchProps {
   /** `floating` casts the overlay shadow (on a photo or a band); `flat` is a bordered block on the page surface. */
   tone?: HomePeriodSearchTone;
 }
-
-const TONE_CLASS_NAMES: Record<HomePeriodSearchTone, string> = {
-  floating: "shadow-overlay",
-  flat: "border",
-};
 
 /**
  * The hero's period search: two fields and one always-enabled CTA. The
@@ -50,24 +44,15 @@ export const HomePeriodSearch = ({ rules, tone = "floating" }: HomePeriodSearchP
   };
 
   return (
-    <div
-      className={cn(
-        "w-full max-w-2xl rounded-2xl bg-card p-4 text-card-foreground sm:p-5",
-        TONE_CLASS_NAMES[tone],
-      )}
-      data-slot="home-period-search"
-    >
-      <RentalPeriodPicker
-        layout="inline"
-        value={shownValue}
-        onChange={(period) => {
-          setValue(period);
-          search(period);
-        }}
-        onSubmit={search}
-        rules={rules}
-        showTimezoneNotice
-      />
-    </div>
+    <HomePeriodSearchView
+      rules={rules}
+      tone={tone}
+      value={shownValue}
+      onChange={(period) => {
+        setValue(period);
+        search(period);
+      }}
+      onSubmit={search}
+    />
   );
 };

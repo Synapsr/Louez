@@ -89,5 +89,22 @@
   "notification_template_sheet_dateRangeLabels_from": "Dari",
   "notification_template_sheet_dateRangeLabels_to": "untuk",
   "credit_actions_STRIPE_TRANSLATIONS_productName": "Kredit AI — kredit {credits}",
-  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "Isi ulang kredit {credits} untuk penasihat AI"
+  "credit_actions_STRIPE_TRANSLATIONS_productDescription": "Isi ulang kredit {credits} untuk penasihat AI",
+  "demo_customers_notes": "Pelanggan yang kembali. Lebih menyukai sepeda kota dengan keranjang. Siapkan kunci sebelum pengambilan.",
+  "demo_customers_businessNotes": "Penyewaan sepeda untuk perjalanan tim mengelilingi Nantes. Siapkan sepeda bersama-sama untuk diambil.",
+  "demo_inspections_wearNote": "Sedikit keausan pada grip kanan, sudah ada pada pickup.",
+  "demo_inspections_departureNote": "Rangka, rem dan ban diperiksa ke pelanggan.",
+  "demo_inspections_returnNote": "Dibandingkan dengan foto yang diambil saat penjemputan.",
+  "demo_inspections_damageNote": "Goresan ditemukan pada bingkai saat dikembalikan.",
+  "demo_messages_sender": "Pengirim",
+  "demo_messages_now": "Sekarang",
+  "demo_messages_message": "Pesan",
+  "demo_messages_characters": "karakter",
+  "demo_messages_segments": "Pesan SMS {count} akan dikirim",
+  "demo_pricing_summer": "Musim panas",
+  "demo_product_page_description": "Sepeda yang nyaman untuk menjelajahi Nantes dan tepian Loire. Sadel, lampu, dan rak bagasi yang dapat disesuaikan untuk perjalanan kota. Tim kami menyesuaikan sepeda sebelum Anda berangkat.",
+  "demo_product_page_helmet": "Helm sepeda",
+  "demo_products_description": "Sepeda yang nyaman untuk menjelajahi Nantes dan tepian Loire. Penyesuaian sadel dan pemeriksaan keselamatan sebelum setiap keberangkatan.",
+  "demo_storefront_home_announcement": "Petualangan Anda berikutnya dimulai di Nantes — pesan sepeda Anda secara online",
+  "demo_storefront_home_tagline": "Sepeda untuk menjelajahi Nantes dan tepian Loire sesuai keinginan Anda."
 }

@@ -25,6 +25,7 @@ interface ProductActivityFeedProps {
   locale: string;
   productId: string;
   referenceDate: string;
+  readOnly?: boolean;
 }
 
 export const ProductActivityFeed = ({
@@ -32,6 +33,7 @@ export const ProductActivityFeed = ({
   locale,
   productId,
   referenceDate,
+  readOnly = false,
 }: ProductActivityFeedProps) => {
   const t = useTranslations();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -52,12 +54,13 @@ export const ProductActivityFeed = ({
       initialPageParam: undefined,
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       staleTime: 30_000,
+      enabled: !readOnly,
     }),
   );
 
   const activity = useMemo(
-    () => query.data.pages.flatMap((page) => page.items),
-    [query.data.pages],
+    () => readOnly ? initialPage.items : query.data.pages.flatMap((page) => page.items),
+    [readOnly, initialPage.items, query.data.pages],
   );
   const groupedActivity = useMemo(() => groupReservationActivity(activity), [activity]);
   const shouldConstrainHeight = query.hasNextPage || groupedActivity.length > 7;
@@ -69,6 +72,7 @@ export const ProductActivityFeed = ({
       null;
 
     if (
+      readOnly ||
       !target ||
       !viewport ||
       !query.hasNextPage ||
@@ -93,6 +97,7 @@ export const ProductActivityFeed = ({
     observer.observe(target);
     return () => observer.disconnect();
   }, [
+    readOnly,
     query.fetchNextPage,
     query.hasNextPage,
     query.isFetchNextPageError,
@@ -158,7 +163,7 @@ export const ProductActivityFeed = ({
                   );
                 })}
 
-                {query.hasNextPage && (
+                {!readOnly && query.hasNextPage && (
                   <li aria-live="polite" className="flex min-h-9 items-center justify-center">
                     <div ref={loadMoreRef}>
                       {query.isFetchNextPageError ? (

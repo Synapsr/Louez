@@ -6,9 +6,8 @@ import { PackageIcon } from "@louez/ui/icons";
 import { CategoryBrowseGrid } from "@/components/storefront/category-browse-grid";
 import { HomeProductGrid } from "@/components/storefront/home/home-product-grid";
 import { EmptyState } from "@/components/storefront/ui/empty-state";
-import { SectionHeader } from "@/components/storefront/ui/section-header";
+import { HomeInventoryView } from "@/components/storefront/home/home-inventory-view";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
-import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
 import type { HomeInventory as HomeInventoryData } from "@/lib/storefront/home.queries";
 
 interface HomeInventoryProps {
@@ -21,23 +20,9 @@ interface HomeInventoryProps {
  */
 export const HomeInventory = async ({ inventory }: HomeInventoryProps) => {
   const t = await getTranslations("storefront");
-  const isCategories = inventory.kind === "categories";
 
   return (
-    <StorefrontSection aria-labelledby="home-inventory-title">
-      <SectionHeader
-        id="home-inventory-title"
-        title={isCategories ? t("availability.categoryBrowse.title") : t("home.ourProducts")}
-        action={
-          <StorefrontLink
-            href="/catalog"
-            className="inline-flex min-h-11 items-center text-sm font-medium underline-offset-4 hover:underline"
-          >
-            {t("home.viewAll")}
-          </StorefrontLink>
-        }
-      />
-
+    <HomeInventoryView kind={inventory.kind}>
       {inventory.kind === "categories" ? (
         <CategoryBrowseGrid
           entries={inventory.entries}
@@ -59,6 +44,6 @@ export const HomeInventory = async ({ inventory }: HomeInventoryProps) => {
           tone="card"
         />
       )}
-    </StorefrontSection>
+    </HomeInventoryView>
   );
 };

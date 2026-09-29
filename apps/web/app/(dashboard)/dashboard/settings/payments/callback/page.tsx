@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { getAccountStatus } from '@/lib/stripe'
 import { db } from '@louez/db'
 import { stores } from '@louez/db'
@@ -28,6 +28,10 @@ export default async function StripeCallbackPage({
 
   if (!store) {
     redirect('/onboarding')
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    redirect('/dashboard/settings/payments')
   }
 
   // Where the flow that launched the KYC wants the user back (e.g. the

@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@louez/ui";
+import { Button, Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@louez/ui";
 import { ExternalLinkIcon } from "@louez/ui/icons";
 import { ChevronDown } from "lucide-react";
 
@@ -52,17 +52,45 @@ export const SeoSection = withForm({
         </PanelGroup>
 
         <PanelGroup title={t("verification.title")}>
+          <p className="text-muted-foreground text-sm">{t("verification.accessDescription")}</p>
           <form.AppField name="seo.googleSiteVerification">
             {(field) => (
-              <field.Input
-                label={t("verification.label")}
-                // The placeholder is an HTML tag, which ICU would read as rich text.
-                placeholder={t.raw("verification.placeholder")}
-                autoComplete="off"
-                spellCheck={false}
-              />
+              <>
+                <field.Input
+                  label={t("verification.label")}
+                  description={
+                    store.canManageSettings ? t("verification.help") : t("verification.ownerOnly")
+                  }
+                  disabled={!store.canManageSettings}
+                  // The placeholder is an HTML tag, which ICU would read as rich text.
+                  placeholder={t.raw("verification.placeholder")}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                {store.canManageSettings && field.state.value && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => field.handleChange("")}
+                  >
+                    {t("verification.removeCode")}
+                  </Button>
+                )}
+              </>
             )}
           </form.AppField>
+
+          <p className="text-muted-foreground text-sm">{t("verification.revokeHelp")}</p>
+          <a
+            href="https://support.google.com/webmasters/answer/7687615"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm underline underline-offset-4"
+          >
+            {t("verification.manageAccess")}
+            <ExternalLinkIcon className="size-3.5" />
+          </a>
 
           <Collapsible>
             <CollapsibleTrigger className="group flex items-center gap-1 rounded-md text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">

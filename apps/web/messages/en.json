@@ -486,6 +486,8 @@
       "removeMember": "Remove from team",
       "memberAdded": "Team member added successfully",
       "memberRemoved": "Team member removed",
+      "googleAccessReminder": "When a member leaves, also review their Google Search Console access. Removing them from Louez does not revoke their Google access.",
+      "reviewGoogleAccess": "Review Google access",
       "pendingInvitations": "Pending invitations",
       "pendingInvitationsDescription": "These people have not yet accepted their invitation",
       "invitationSent": "Invitation sent by email",
@@ -2313,7 +2315,7 @@
         "deposit": "Deposit",
         "save": "Save",
         "saved": "Reservation updated",
-        "cannotRemoveLastItem": "Cannot remove the last item",
+        "cannotRemoveLastItem": "A reservation keeps at least one item: add the new item before removing this one",
         "noItems": "Add at least one item",
         "datesRequired": "Start and end dates are required",
         "notifyCustomerByEmail": "Notify customer by email",
@@ -2662,6 +2664,7 @@
         "optionsLabel": "Options",
         "clearSelection": "Clear selection",
         "autofillHint": "Suggested units selected. Click Save to confirm.",
+        "suggestUnits": "Suggest units",
         "assignUnits": "Assign units",
         "assignedCount": "{assigned} of {total} assigned",
         "allAssigned": "All units assigned",
@@ -3367,6 +3370,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Read-only: only the owner and administrators can change this store’s settings.",
       "title": "Settings",
       "store": "Store",
       "company": "Company",
@@ -4495,7 +4499,22 @@
         "create": "Create",
         "revokeTitle": "Revoke API key?",
         "revokeDescription": "This action is irreversible. Any application using this key will immediately lose access.",
-        "revokeConfirm": "Revoke"
+        "revokeConfirm": "Revoke",
+        "presetCustom": "Custom",
+        "domains": {
+          "reservations": "Reservations",
+          "products": "Products",
+          "customers": "Customers",
+          "categories": "Categories",
+          "payments": "Payments",
+          "analytics": "Analytics",
+          "settings": "Settings"
+        },
+        "levels": {
+          "none": "No access",
+          "read": "Read",
+          "write": "Read and write"
+        }
       },
       "businessHours": {
         "title": "Business hours",
@@ -4686,6 +4705,11 @@
           "step3": "Choose the “HTML tag” method, paste the tag or its code below and save before clicking “Verify” in Search Console.",
           "label": "Verification code",
           "help": "The whole tag or just its content; the code stays active as long as it is saved here.",
+          "accessDescription": "This code gives the associated Google account Search Console owner rights for your store: viewing statistics, managing users and requesting removal from Google search results.",
+          "ownerOnly": "Only the store owner and Louez platform administrators can change this code.",
+          "removeCode": "Remove code",
+          "revokeHelp": "To revoke access, remove the user in Search Console and all their ownership verification tokens. If their code is in this field, clear it and save. Removing a member from Louez does not revoke their Google access.",
+          "manageAccess": "How to revoke Google access",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
@@ -8052,7 +8076,10 @@
       "rental": "Rental",
       "deposit": "Deposit",
       "deposit_return": "Deposit refund",
-      "damage": "Damages"
+      "damage": "Damages",
+      "deposit_hold": "Authorization hold",
+      "deposit_capture": "Deposit captured",
+      "adjustment": "Adjustment"
     },
     "paymentMethods": {
       "stripe": "Online card",
@@ -8064,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Paid",
-      "pending": "Pending"
+      "pending": "Pending",
+      "authorized": "Authorized"
     },
     "signature": {
       "validated": "Validated",

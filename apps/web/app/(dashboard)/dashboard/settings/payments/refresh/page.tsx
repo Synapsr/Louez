@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { createAccountLink } from '@/lib/stripe'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Button } from '@louez/ui'
@@ -25,6 +25,10 @@ export default async function StripeRefreshPage({
 
   if (!store) {
     redirect('/onboarding')
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    redirect('/dashboard/settings/payments')
   }
 
   // Preserve the launching flow's return path across link regeneration

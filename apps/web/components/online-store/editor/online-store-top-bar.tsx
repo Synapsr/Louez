@@ -11,6 +11,7 @@ import { ArrowLeftIcon, ExternalLinkIcon } from "@louez/ui/icons";
 
 import { useKeyboardHotkey } from "@/components/shared/keyboard-shortcuts-provider";
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
+import { useStoreHasPermission } from "@/contexts/store-context";
 
 import { useOnlineStoreEditor } from "../online-store-editor-context";
 import type { OnlineStoreSection } from "../online-store.constants";
@@ -36,6 +37,7 @@ export const OnlineStoreTopBar = ({
   onReset,
   onOpenPreview,
 }: OnlineStoreTopBarProps) => {
+  const canManage = useStoreHasPermission("manage_settings");
   const t = useTranslations("dashboard.onlineStore");
   const tCommon = useTranslations("common");
   const { store, device, setDevice } = useOnlineStoreEditor();
@@ -113,18 +115,20 @@ export const OnlineStoreTopBar = ({
           </Button>
         ) : null}
 
-        <Button
-          type="submit"
-          size="sm"
-          disabled={!isDirty}
-          isPending={isSaving}
-          data-keyboard-shortcut-save={isDirty ? "" : undefined}
-        >
-          {tCommon("save")}
-          <kbd className="hidden font-mono text-[10px] text-current/70 sm:inline">
-            {saveShortcut.label}
-          </kbd>
-        </Button>
+        {canManage && (
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!isDirty}
+            isPending={isSaving}
+            data-keyboard-shortcut-save={isDirty ? "" : undefined}
+          >
+            {tCommon("save")}
+            <kbd className="hidden font-mono text-[10px] text-current/70 sm:inline">
+              {saveShortcut.label}
+            </kbd>
+          </Button>
+        )}
       </div>
     </header>
   );

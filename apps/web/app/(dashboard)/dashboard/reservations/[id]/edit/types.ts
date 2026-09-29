@@ -165,6 +165,8 @@ export interface EditReservationFormProps {
 export interface CalculatedEditableItem extends EditableItem {
   totalPrice: number;
   duration: number;
+  /** Duration expressed in `displayPricingMode` units, for labels only. */
+  displayDuration: number;
   effectiveUnitPrice: number;
   displayPricingMode: PricingMode;
   tierLabel: string | null;

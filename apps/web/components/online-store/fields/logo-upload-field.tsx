@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "@louez/ui";
+
 import { useTranslations } from "next-intl";
 
 import { Button, Label, Spinner } from "@louez/ui";
@@ -49,6 +51,7 @@ export const LogoUploadField = ({
   shape = "logo",
   surface = "muted",
 }: LogoUploadFieldProps) => {
+  const controlsDisabled = useControlsDisabled();
   const t = useTranslations("dashboard.settings.appearanceSettings");
   const { isUploading, select, remove } = useImageFieldUpload({
     kind,
@@ -119,7 +122,7 @@ export const LogoUploadField = ({
         type="file"
         accept={IMAGE_UPLOAD_MIME_TYPES.join(",")}
         className="sr-only"
-        disabled={isUploading}
+        disabled={controlsDisabled || isUploading}
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";

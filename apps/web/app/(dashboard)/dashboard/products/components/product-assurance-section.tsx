@@ -29,6 +29,7 @@ import {
 } from '@louez/ui';
 import { ShieldCheckIcon } from '@louez/ui/icons';
 
+import { StoreSettingsAccess } from '@/components/dashboard/store-settings-access';
 import { orpc } from '@/lib/orpc/react';
 
 import {
@@ -261,170 +262,172 @@ export const ProductAssuranceSection = ({
   };
 
   return (
-    <div id="section-assurance" className="scroll-mt-8">
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheckIcon className="h-5 w-5 shrink-0" />
-            {t('title')}
-          </CardTitle>
-          <Badge variant={state.connected ? 'success' : 'expired'}>
-            {state.connected ? t('statusConnected') : t('statusNotConnected')}
-          </Badge>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {state.connectionIssue && (
-            <p className="text-destructive text-sm">
-              {tErrors(state.connectionIssue.replace('errors.', ''))}
-            </p>
-          )}
+    <StoreSettingsAccess>
+      <div id="section-assurance" className="scroll-mt-8">
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheckIcon className="h-5 w-5 shrink-0" />
+              {t('title')}
+            </CardTitle>
+            <Badge variant={state.connected ? 'success' : 'expired'}>
+              {state.connected ? t('statusConnected') : t('statusNotConnected')}
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {state.connectionIssue && (
+              <p className="text-destructive text-sm">
+                {tErrors(state.connectionIssue.replace('errors.', ''))}
+              </p>
+            )}
 
-          <div className="space-y-3">
-            <p className="text-muted-foreground text-sm">
-              {t('linkOrCreateHelper')}
-            </p>
+            <div className="space-y-3">
+              <p className="text-muted-foreground text-sm">
+                {t('linkOrCreateHelper')}
+              </p>
 
-            <div className="flex flex-col gap-3 md:flex-row md:items-end">
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor={`product-tulip-mapping-${productId}`}>{t('mappingLabel')}</Label>
-                  <Badge variant={hasValidMapping ? 'success' : 'expired'} size="sm">
-                    {hasValidMapping ? t('statusMapped') : t('statusNotMapped')}
-                  </Badge>
+              <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`product-tulip-mapping-${productId}`}>{t('mappingLabel')}</Label>
+                    <Badge variant={hasValidMapping ? 'success' : 'expired'} size="sm">
+                      {hasValidMapping ? t('statusMapped') : t('statusNotMapped')}
+                    </Badge>
+                  </div>
+                  <Combobox
+                    items={tulipItems}
+                    value={selectedTulipItem}
+                    onValueChange={(item) => {
+                      mappingMutation.mutate({
+                        productId: state.product.id,
+                        tulipProductId: item?.value ?? null,
+                      });
+                    }}
+                  >
+                    <ComboboxInput
+                      id={`product-tulip-mapping-${productId}`}
+                      showTrigger
+                      showClear={!!state.product.tulipProductId}
+                      placeholder={t('mappingPlaceholder')}
+                      disabled={isMappingBusy}
+                    />
+                    <ComboboxPopup>
+                      <ComboboxEmpty>
+                        {hasTulipProductCatalogIssue
+                          ? tErrors('tulipProductCatalogUnavailable')
+                          : hasEmptyTulipProductsForRenter
+                            ? t('noRenterProducts')
+                            : t('noResults')}
+                      </ComboboxEmpty>
+                      <ComboboxList>
+                        {(item) => (
+                          <ComboboxItem key={item.value} value={item}>
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">
+                                {item.label}
+                              </div>
+                              <div className="text-muted-foreground truncate text-xs">
+                                {formatTulipProductMeta(item)}
+                              </div>
+                            </div>
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxPopup>
+                  </Combobox>
                 </div>
-                <Combobox
-                  items={tulipItems}
-                  value={selectedTulipItem}
-                  onValueChange={(item) => {
-                    mappingMutation.mutate({
-                      productId: state.product.id,
-                      tulipProductId: item?.value ?? null,
-                    });
-                  }}
-                >
-                  <ComboboxInput
-                    id={`product-tulip-mapping-${productId}`}
-                    showTrigger
-                    showClear={!!state.product.tulipProductId}
-                    placeholder={t('mappingPlaceholder')}
-                    disabled={isMappingBusy}
-                  />
-                  <ComboboxPopup>
-                    <ComboboxEmpty>
-                      {hasTulipProductCatalogIssue
-                        ? tErrors('tulipProductCatalogUnavailable')
-                        : hasEmptyTulipProductsForRenter
-                          ? t('noRenterProducts')
-                          : t('noResults')}
-                    </ComboboxEmpty>
-                    <ComboboxList>
-                      {(item) => (
-                        <ComboboxItem key={item.value} value={item}>
-                          <div className="min-w-0">
-                            <div className="truncate font-medium">
-                              {item.label}
-                            </div>
-                            <div className="text-muted-foreground truncate text-xs">
-                              {formatTulipProductMeta(item)}
-                            </div>
-                          </div>
-                        </ComboboxItem>
-                      )}
-                    </ComboboxList>
-                  </ComboboxPopup>
-                </Combobox>
-              </div>
 
-              {hasValidMapping ? (
-                <div className="inline-flex">
+                {hasValidMapping ? (
+                  <div className="inline-flex">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-r-none"
+                      onClick={() => openProductDialog('update')}
+                      disabled={isDialogBusy}
+                    >
+                      <Pencil />
+                      {t('editMappedProductButton')}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-l-none border-l-0 px-2.5"
+                            aria-label={t('editMappedProductButton')}
+                            disabled={isDialogBusy}
+                          />
+                        }
+                      >
+                        <ChevronDown />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem
+                          onClick={() => openProductDialog('update')}
+                        >
+                          <Pencil />
+                          {t('editMappedProductButton')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => openProductDialog('create')}
+                        >
+                          <Plus />
+                          {t('addNewProductButton')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ) : (
                   <Button
                     type="button"
                     variant="outline"
-                    className="rounded-r-none"
-                    onClick={() => openProductDialog('update')}
+                    onClick={() => openProductDialog('create')}
                     disabled={isDialogBusy}
                   >
-                    <Pencil />
-                    {t('editMappedProductButton')}
+                    <Plus />
+                    {t('addNewProductButton')}
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="rounded-l-none border-l-0 px-2.5"
-                          aria-label={t('editMappedProductButton')}
-                          disabled={isDialogBusy}
-                        />
-                      }
-                    >
-                      <ChevronDown />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem
-                        onClick={() => openProductDialog('update')}
-                      >
-                        <Pencil />
-                        {t('editMappedProductButton')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => openProductDialog('create')}
-                      >
-                        <Plus />
-                        {t('addNewProductButton')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => openProductDialog('create')}
-                  disabled={isDialogBusy}
-                >
-                  <Plus />
-                  {t('addNewProductButton')}
-                </Button>
+                )}
+              </div>
+
+              {mappingMutation.isPending && (
+                <p className="text-muted-foreground text-xs">
+                  {t('mappingSaving')}
+                </p>
               )}
             </div>
+          </CardContent>
+        </Card>
 
-            {mappingMutation.isPending && (
-              <p className="text-muted-foreground text-xs">
-                {t('mappingSaving')}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <ProductAssuranceDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        mode={dialogMode}
-        disabled={isDialogBusy}
-        supportsMargin={state.supportsMargin}
-        product={state.product}
-        tulipCatalog={state.tulipCatalog}
-        tulipProducts={state.tulipProducts}
-        isCreatePending={createProductMutation.isPending}
-        isPushPending={pushProductMutation.isPending}
-        onPushProduct={async (input: ProductAssuranceActionInput) => {
-          try {
-            await pushProductMutation.mutateAsync(input);
-          } catch {
-            // Error handling is centralized in the mutation onError callback.
-          }
-        }}
-        onCreateProduct={async (input: ProductAssuranceActionInput) => {
-          try {
-            await createProductMutation.mutateAsync(input);
-          } catch {
-            // Error handling is centralized in the mutation onError callback.
-          }
-        }}
-      />
-    </div>
+        <ProductAssuranceDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          mode={dialogMode}
+          disabled={isDialogBusy}
+          supportsMargin={state.supportsMargin}
+          product={state.product}
+          tulipCatalog={state.tulipCatalog}
+          tulipProducts={state.tulipProducts}
+          isCreatePending={createProductMutation.isPending}
+          isPushPending={pushProductMutation.isPending}
+          onPushProduct={async (input: ProductAssuranceActionInput) => {
+            try {
+              await pushProductMutation.mutateAsync(input);
+            } catch {
+              // Error handling is centralized in the mutation onError callback.
+            }
+          }}
+          onCreateProduct={async (input: ProductAssuranceActionInput) => {
+            try {
+              await createProductMutation.mutateAsync(input);
+            } catch {
+              // Error handling is centralized in the mutation onError callback.
+            }
+          }}
+        />
+      </div>
+    </StoreSettingsAccess>
   );
 };

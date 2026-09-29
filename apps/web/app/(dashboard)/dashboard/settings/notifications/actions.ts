@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@louez/db";
 import { stores } from "@louez/db";
-import { getCurrentStore } from "@/lib/store-context";
+import { getCurrentStore, hasPermission } from "@/lib/store-context";
 import { validateDiscordWebhook, sendTestDiscordNotification } from "@/lib/discord/client";
 import { discordWebhookSchema } from "@louez/validations";
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
@@ -54,6 +54,10 @@ export async function getNotificationSettings() {
 export async function updateDiscordWebhook(webhookUrl: string | null) {
   const store = await getCurrentStore();
   if (!store) return { error: "errors.unauthorized" };
+
+  if (!hasPermission(store.role, "manage_settings")) {
+    return { error: "errors.permissionDenied" };
+  }
 
   // Allow null/empty to disconnect
   if (!webhookUrl || webhookUrl.trim() === "") {
@@ -104,6 +108,10 @@ export async function updateDiscordWebhook(webhookUrl: string | null) {
 export async function testDiscordWebhook() {
   const store = await getCurrentStore();
   if (!store) return { error: "errors.unauthorized" };
+
+  if (!hasPermission(store.role, "manage_settings")) {
+    return { error: "errors.permissionDenied" };
+  }
   if (!store.discordWebhookUrl) return { error: "errors.noDiscordWebhook" };
 
   const result = await sendTestDiscordNotification(store.discordWebhookUrl, store.name);
@@ -118,6 +126,10 @@ export async function testDiscordWebhook() {
 export async function updateOwnerPhone(phone: string | null) {
   const store = await getCurrentStore();
   if (!store) return { error: "errors.unauthorized" };
+
+  if (!hasPermission(store.role, "manage_settings")) {
+    return { error: "errors.permissionDenied" };
+  }
 
   // Allow null/empty to remove
   if (!phone || phone.trim() === "") {

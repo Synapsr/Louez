@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 
 import { db } from '@louez/db'
 import { stores } from '@louez/db'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { getStorePlan } from '@/lib/plan-limits'
 import {
   aiAdvisorSettingsSchema,
@@ -17,6 +17,10 @@ export async function updateAiAdvisorSettings(data: AiAdvisorSettingsInput) {
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'errors.unauthorized' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
   }
 
   // Check plan access

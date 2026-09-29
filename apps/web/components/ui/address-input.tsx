@@ -21,6 +21,11 @@ import { AddressMapModal } from '@/components/ui/address-map-modal';
 
 import { orpc } from '@/lib/orpc/react';
 
+export interface AddressInputSource {
+  search: (query: string) => AddressSuggestion[] | Promise<AddressSuggestion[]>;
+  resolve: (queryOrPlaceId: string) => AddressDetails | null | Promise<AddressDetails | null>;
+}
+
 interface AddressInputProps {
   id?: string;
   name?: string;
@@ -43,6 +48,10 @@ interface AddressInputProps {
   showMapPicker?: boolean;
   onBlur?: () => void;
   onAddressResolved?: (details: AddressDetails) => void;
+  /** Supplied address service; when present, no remote lookup is performed. */
+  source?: AddressInputSource;
+  /** Whether clearing the field may return focus to the input. */
+  autoFocus?: boolean;
 }
 
 export const AddressInput = ({
@@ -61,6 +70,8 @@ export const AddressInput = ({
   showMapPicker = true,
   onBlur,
   onAddressResolved,
+  source,
+  autoFocus = true,
 }: AddressInputProps) => {
   const t = useTranslations('common.addressInput');
   const queryClient = useQueryClient();
@@ -132,11 +143,13 @@ export const AddressInput = ({
 
       setIsLoading(true);
       try {
-        const data = await queryClient.fetchQuery(
-          orpc.public.address.autocomplete.queryOptions({
-            input: { query },
-          }),
-        );
+        const data = source
+          ? { suggestions: await source.search(query) }
+          : await queryClient.fetchQuery(
+              orpc.public.address.autocomplete.queryOptions({
+                input: { query },
+              }),
+            );
         setSuggestions(data.suggestions || []);
         setIsOpen((data.suggestions || []).length > 0);
         setSelectedIndex(-1);
@@ -147,7 +160,7 @@ export const AddressInput = ({
         setIsLoading(false);
       }
     },
-    [queryClient],
+    [queryClient, source],
   );
 
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
@@ -170,11 +183,13 @@ export const AddressInput = ({
 
     setIsLoading(true);
     try {
-      const data = await queryClient.fetchQuery(
-        orpc.public.address.resolve.queryOptions({
-          input: { query },
-        }),
-      );
+      const data = source
+        ? { details: await source.resolve(query) }
+        : await queryClient.fetchQuery(
+            orpc.public.address.resolve.queryOptions({
+              input: { query },
+            }),
+          );
 
       if (!data.details) {
         return;
@@ -200,6 +215,7 @@ export const AddressInput = ({
     onChange,
     onAddressResolved,
     queryClient,
+    source,
   ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,11 +233,13 @@ export const AddressInput = ({
     async (suggestion: AddressSuggestion) => {
       setIsLoading(true);
       try {
-        const data = await queryClient.fetchQuery(
-          orpc.public.address.details.queryOptions({
-            input: { placeId: suggestion.placeId },
-          }),
-        );
+        const data = source
+          ? { details: await source.resolve(suggestion.placeId) }
+          : await queryClient.fetchQuery(
+              orpc.public.address.details.queryOptions({
+                input: { placeId: suggestion.placeId },
+              }),
+            );
 
         if (data.details) {
           const {
@@ -259,7 +277,7 @@ export const AddressInput = ({
         inputRef.current?.blur();
       }
     },
-    [onAddressResolved, onChange, queryClient],
+    [onAddressResolved, onChange, queryClient, source],
   );
 
   const handleClear = () => {
@@ -267,7 +285,7 @@ export const AddressInput = ({
     onChange('', null, null, '', '');
     setSuggestions([]);
     setIsOpen(false);
-    inputRef.current?.focus();
+    if (autoFocus) inputRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -348,6 +366,7 @@ export const AddressInput = ({
             ref={inputRef}
             id={id}
             name={name}
+            data-address-input={name}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
@@ -415,6 +434,7 @@ export const AddressInput = ({
             {suggestions.map((suggestion, index) => (
               <button
                 key={suggestion.placeId}
+                data-address-suggestion={suggestion.placeId}
                 type="button"
                 onMouseDown={() => {
                   shouldSkipBlurResolveRef.current = true;

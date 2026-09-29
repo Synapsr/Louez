@@ -4,7 +4,7 @@ import { db } from '@louez/db'
 import { stores } from '@louez/db'
 import { users } from '@louez/db'
 import { isStripeConfigured } from '@/lib/plans'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import {
@@ -38,6 +38,10 @@ export async function startStripeOnboarding(options?: {
 
   if (!store) {
     return { error: 'errors.unauthorized' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
   }
 
   try {
@@ -143,6 +147,10 @@ export async function completeStripeOnboarding(): Promise<{
     return { error: 'errors.unauthorized' }
   }
 
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
+
   try {
     const status = await getAccountStatus(store.stripeAccountId)
 
@@ -187,6 +195,10 @@ export async function syncStripeStatus(): Promise<{
     return { error: 'errors.noStripeAccount' }
   }
 
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
+
   try {
     const status = await getAccountStatus(store.stripeAccountId)
 
@@ -224,6 +236,10 @@ export async function getStripeDashboardUrl(): Promise<{
     return { error: 'errors.noStripeAccount' }
   }
 
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
+
   try {
     const url = await createAccountLoginLink(store.stripeAccountId)
     return { url }
@@ -244,6 +260,10 @@ export async function disconnectStripe(): Promise<{
 
   if (!store) {
     return { error: 'errors.unauthorized' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
   }
 
   // Note: We don't delete the Stripe account, just unlink it

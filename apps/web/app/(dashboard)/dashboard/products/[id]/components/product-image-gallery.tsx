@@ -12,9 +12,10 @@ import { ProductImage } from "@/components/product/product-image";
 
 interface ProductImageGalleryProps {
   images: string[];
+  readOnly?: boolean;
 }
 
-export const ProductImageGallery = ({ images }: ProductImageGalleryProps) => {
+export const ProductImageGallery = ({ images, readOnly = false }: ProductImageGalleryProps) => {
   const t = useTranslations("dashboard.products.detail.info");
   const tForm = useTranslations("dashboard.products.form");
   const tCommon = useTranslations("common");
@@ -54,6 +55,7 @@ export const ProductImageGallery = ({ images }: ProductImageGalleryProps) => {
           <button
             key={image}
             type="button"
+            disabled={readOnly}
             ref={(node) => {
               if (node) thumbnailsRef.current.set(image, node);
               else thumbnailsRef.current.delete(image);
