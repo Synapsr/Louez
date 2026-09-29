@@ -8103,7 +8103,11 @@
       "dateLabel": "Data:",
       "ipLabel": "IP:",
       "automatic": "Zatwierdzono automatycznie",
-      "automaticText": "Ta umowa została automatycznie zatwierdzona zgodnie z warunkami wynajmu."
+      "automaticText": "Ta umowa została automatycznie zatwierdzona zgodnie z warunkami wynajmu.",
+      "atBooking": "Podpisano przy rezerwacji",
+      "atBookingText": "Ogólne warunki wynajmu zaakceptowane podczas rezerwacji online, co jest równoznaczne z podpisaniem niniejszej umowy.",
+      "signedOnLabel": "Podpisano:",
+      "validatedOnLabel": "Zatwierdzono:"
     },
     "conditions": {
       "condition1": "Sprzęt jest wynajmowany w dobrym stanie technicznym",

@@ -202,6 +202,7 @@ export async function generateContract({
         taxRate: reservation.taxRate,
         signedAt: reservation.signedAt,
         automaticContractValidation,
+        signedAtBooking: reservation.source === "online",
         signatureIp: reservation.signatureIp,
         createdAt: reservation.createdAt,
         customer: {

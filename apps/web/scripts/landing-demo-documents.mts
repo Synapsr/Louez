@@ -13,6 +13,9 @@ import type { ContractTranslations } from "@/lib/pdf/contract";
 // Fixture generation must never require production credentials. The app env
 // module recognizes "true" (rather than the CLI's conventional "1").
 process.env.SKIP_ENV_VALIDATION = "true";
+// The contract links the shop's terms at `<slug>.<domain>/terms`. Public config is only read at
+// runtime, so the build has no domain: the demo shop is a shop on louez.io.
+process.env.NEXT_PUBLIC_APP_DOMAIN = "louez.io";
 // Next supplies this marker when bundling. Standalone Node is already a server.
 const registerHooks = Reflect.get(nodeModule, "registerHooks");
 if (typeof registerHooks !== "function")

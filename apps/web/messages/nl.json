@@ -8103,7 +8103,11 @@
       "dateLabel": "Datum:",
       "ipLabel": "IP:",
       "automatic": "Automatisch bevestigd",
-      "automaticText": "Deze overeenkomst is automatisch bevestigd volgens de huurvoorwaarden."
+      "automaticText": "Deze overeenkomst is automatisch bevestigd volgens de huurvoorwaarden.",
+      "atBooking": "Ondertekend bij reservering",
+      "atBookingText": "Algemene huurvoorwaarden geaccepteerd bij de online reservering, wat geldt als ondertekening van deze overeenkomst.",
+      "signedOnLabel": "Ondertekend op:",
+      "validatedOnLabel": "Bevestigd op:"
     },
     "conditions": {
       "condition1": "Het materiaal wordt in goede staat verhuurd",

@@ -8103,7 +8103,11 @@
       "dateLabel": "Data:",
       "ipLabel": "IP:",
       "automatic": "Convalidato automaticamente",
-      "automaticText": "Questo contratto è stato convalidato automaticamente in base alle condizioni di noleggio."
+      "automaticText": "Questo contratto è stato convalidato automaticamente in base alle condizioni di noleggio.",
+      "atBooking": "Firmato alla prenotazione",
+      "atBookingText": "Condizioni generali di noleggio accettate al momento della prenotazione online, il che vale come firma del presente contratto.",
+      "signedOnLabel": "Firmato il:",
+      "validatedOnLabel": "Convalidato il:"
     },
     "conditions": {
       "condition1": "L'attrezzatura e noleggiata in buono stato di funzionamento",
