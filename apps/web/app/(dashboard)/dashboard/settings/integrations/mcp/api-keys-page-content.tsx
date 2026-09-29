@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { EyeOff, Plus, Trash2 } from "lucide-react";
 import {
   Alert,
@@ -35,6 +35,7 @@ import {
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { EyeIcon, KeyIcon, TerminalIcon, WarningIcon } from "@louez/ui/icons";
 
+import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { orpc } from "@/lib/orpc/react";
@@ -138,6 +139,10 @@ export function ApiKeysPageContent({
   readOnly?: boolean;
 } = {}) {
   const t = useTranslations("dashboard.settings.api");
+  const format = useFormatter();
+  const { NEXT_PUBLIC_APP_URL: appUrl } = usePublicEnv();
+  // From the configured app URL, identical on the server and in the browser, unlike window.location.
+  const mcpUrl = `${new URL(appUrl).origin}/api/mcp`;
   const queryClient = useQueryClient();
 
   const [showCreate, setShowCreate] = useState(false);
@@ -187,7 +192,7 @@ export function ApiKeysPageContent({
     {
       mcpServers: {
         louez: {
-          url: `${typeof window !== "undefined" ? window.location.origin : ""}/api/mcp`,
+          url: mcpUrl,
           headers: { Authorization: "Bearer <YOUR_API_KEY>" },
         },
       },
@@ -245,7 +250,8 @@ export function ApiKeysPageContent({
                     </div>
                     {apiKey.lastUsedAt && (
                       <span className="text-muted-foreground hidden text-xs lg:block">
-                        {t("lastUsed")} {new Date(apiKey.lastUsedAt).toLocaleDateString()}
+                        {t("lastUsed")}{" "}
+                        {format.dateTime(new Date(apiKey.lastUsedAt), { dateStyle: "medium" })}
                       </span>
                     )}
                     <Button
@@ -285,7 +291,7 @@ export function ApiKeysPageContent({
             </CardHeader>
             <CardContent>
               <code className="bg-muted rounded px-2 py-1 text-xs">
-                {typeof window !== "undefined" ? window.location.origin : ""}/api/mcp
+                {mcpUrl}
               </code>
             </CardContent>
           </Card>
