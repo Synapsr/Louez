@@ -4362,7 +4362,22 @@
         "create": "Crea",
         "revokeTitle": "Revocare la chiave API?",
         "revokeDescription": "Questa azione è irreversibile. Qualsiasi applicazione che usa questa chiave perderà immediatamente l'accesso.",
-        "revokeConfirm": "Revoca"
+        "revokeConfirm": "Revoca",
+        "presetCustom": "Personalizzato",
+        "domains": {
+          "reservations": "Prenotazioni",
+          "products": "Prodotti",
+          "customers": "Clienti",
+          "categories": "Categorie",
+          "payments": "Pagamenti",
+          "analytics": "Analisi",
+          "settings": "Impostazioni"
+        },
+        "levels": {
+          "none": "Nessun accesso",
+          "read": "Lettura",
+          "write": "Lettura e scrittura"
+        }
       },
       "businessHours": {
         "title": "Orari di apertura",
@@ -8061,7 +8076,10 @@
       "rental": "Noleggio",
       "deposit": "Deposito",
       "deposit_return": "Rimborso deposito",
-      "damage": "Danni"
+      "damage": "Danni",
+      "deposit_hold": "Autorizzazione",
+      "deposit_capture": "Deposito addebitato",
+      "adjustment": "Aggiustamento"
     },
     "paymentMethods": {
       "stripe": "Carta online",
@@ -8073,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Pagato",
-      "pending": "In attesa"
+      "pending": "In attesa",
+      "authorized": "Autorizzato"
     },
     "signature": {
       "validated": "Convalidato",

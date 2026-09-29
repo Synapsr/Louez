@@ -47,6 +47,8 @@ import {
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
 
+import type { ManualEmailRenderContext } from "@/lib/email/manual-reservation-email-core";
+
 type ReservationStatus =
   | "pending"
   | "confirmed"
@@ -171,6 +173,10 @@ interface SendEmailModalProps {
   status: ReservationStatus;
   isFullyPaid: boolean;
   sentEmails?: string[];
+  previewContext?: ManualEmailRenderContext;
+  readOnly?: boolean;
+  autoFocus?: boolean;
+  modal?: boolean;
 }
 
 export function SendEmailModal({
@@ -182,6 +188,10 @@ export function SendEmailModal({
   status,
   isFullyPaid,
   sentEmails = [],
+  previewContext,
+  readOnly = false,
+  autoFocus = true,
+  modal = true,
 }: SendEmailModalProps) {
   const t = useTranslations("dashboard.reservations.emailModal");
   const tCommon = useTranslations("common");
@@ -221,7 +231,7 @@ export function SendEmailModal({
     const extraFields = extraFieldsRef.current;
     if (!extraFields) return;
 
-    if (!keyboardDriven) {
+    if (autoFocus && !keyboardDriven) {
       extraFields.querySelector<HTMLElement>("input, textarea")?.focus({ preventScroll: true });
       scrollFieldsIntoViewAfterKeyboard(extraFields);
     }
@@ -249,6 +259,7 @@ export function SendEmailModal({
   );
 
   const handleSend = async () => {
+    if (readOnly) return;
     if (!selectedTemplate) {
       toastManager.add({ title: t("selectTemplateError"), type: "error" });
       return;
@@ -318,8 +329,8 @@ export function SendEmailModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogPopup className={cn("max-w-lg", showSidePreview && "lg:max-w-5xl")}>
+    <Dialog open={open} onOpenChange={handleOpenChange} modal={modal}>
+      <DialogPopup initialFocus={autoFocus} finalFocus={autoFocus} className={cn("max-w-lg", showSidePreview && "lg:max-w-5xl")}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">{t("title")}</DialogTitle>
           <DialogDescription>
@@ -344,7 +355,9 @@ export function SendEmailModal({
                   onPointerDownCapture={() => {
                     keyboardSelectionRef.current = false;
                   }}
-                  onValueChange={(value) => handleTemplateChange(value as string)}
+                  onValueChange={(value) => {
+                    if (typeof value === "string") handleTemplateChange(value);
+                  }}
                 >
                   {availableTemplates.map((template) => {
                     const wasSent = sentEmails.includes(template.id);
@@ -374,7 +387,7 @@ export function SendEmailModal({
                             {t(`templates.${template.id}.description`)}
                           </span>
                         </span>
-                        <Radio className="shrink-0" value={template.id} />
+                        <Radio data-demo-target={`email-template-${template.id}`} className="shrink-0" value={template.id} />
                       </Label>
                     );
                   })}
@@ -441,6 +454,7 @@ export function SendEmailModal({
                   {t("previewTitle")}
                 </Label>
                 <EmailPreview
+                  context={previewContext}
                   customMessage={customMessage}
                   customSubject={customSubject}
                   frameClassName="h-[52vh] min-h-72"
@@ -472,7 +486,7 @@ export function SendEmailModal({
               {t("preview")}
             </Button>
           )}
-          <Button disabled={!selectedTemplate} isPending={isLoading} onClick={handleSend}>
+          <Button disabled={readOnly || !selectedTemplate} isPending={isLoading} onClick={handleSend}>
             <SendIcon />
             {t("send")}
           </Button>
@@ -480,6 +494,9 @@ export function SendEmailModal({
 
         {selectedTemplate && !showSidePreview && (
           <EmailPreviewDialog
+            context={previewContext}
+            autoFocus={autoFocus}
+            modal={modal}
             customMessage={customMessage}
             customSubject={customSubject}
             customerFirstName={customer.firstName}

@@ -1,4 +1,4 @@
-import { getLocale, getTranslations } from "next-intl/server";
+import { useLocale, useTranslations } from "next-intl";
 
 import { StarIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
@@ -12,13 +12,14 @@ interface GoogleRatingPillProps {
 }
 
 /** Google rating of the store as a pill; tapping it goes to the reviews. */
-export const GoogleRatingPill = async ({
+export const GoogleRatingPill = ({
   rating,
   reviewCount,
   href,
   className,
 }: GoogleRatingPillProps) => {
-  const [t, locale] = await Promise.all([getTranslations("storefront.hero"), getLocale()]);
+  const t = useTranslations("storefront.hero");
+  const locale = useLocale();
   const formattedRating = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,

@@ -4362,7 +4362,22 @@
         "create": "Utwórz",
         "revokeTitle": "Unieważnić klucz API?",
         "revokeDescription": "Ta akcja jest nieodwracalna. Każda aplikacja używająca tego klucza natychmiast straci dostęp.",
-        "revokeConfirm": "Unieważnij"
+        "revokeConfirm": "Unieważnij",
+        "presetCustom": "Niestandardowe",
+        "domains": {
+          "reservations": "Rezerwacje",
+          "products": "Produkty",
+          "customers": "Klienci",
+          "categories": "Kategorie",
+          "payments": "Płatności",
+          "analytics": "Analizy",
+          "settings": "Ustawienia"
+        },
+        "levels": {
+          "none": "Brak dostępu",
+          "read": "Odczyt",
+          "write": "Odczyt i zapis"
+        }
       },
       "businessHours": {
         "title": "Godziny otwarcia",
@@ -8061,7 +8076,10 @@
       "rental": "Wynajem",
       "deposit": "Kaucja",
       "deposit_return": "Zwrot kaucji",
-      "damage": "Uszkodzenia"
+      "damage": "Uszkodzenia",
+      "deposit_hold": "Autoryzacja",
+      "deposit_capture": "Kaucja pobrana",
+      "adjustment": "Korekta"
     },
     "paymentMethods": {
       "stripe": "Karta online",
@@ -8073,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Opłacone",
-      "pending": "Oczekująca"
+      "pending": "Oczekująca",
+      "authorized": "Autoryzowane"
     },
     "signature": {
       "validated": "Zatwierdzone",

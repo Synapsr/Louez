@@ -182,6 +182,7 @@ export function QuickConditionSelector({
         return (
           <button
             key={condition.value}
+            data-inspection-condition={condition.value}
             type="button"
             role="radio"
             aria-checked={isSelected}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, addDays, type Locale } from 'date-fns'
 import { fr, enUS, de, es, it, nl, pl, pt } from 'date-fns/locale'
@@ -24,7 +24,7 @@ import type { EmailLocale } from '@/lib/email/i18n'
 import {
   DEFAULT_SUBJECTS,
   DEFAULT_SMS_TEMPLATES,
-} from '@/app/(dashboard)/dashboard/settings/notifications/customer-template-modal'
+} from '@/app/(dashboard)/dashboard/settings/notifications/customer-template-defaults'
 
 const DATE_LOCALES: Record<EmailLocale, Locale> = {
   fr,
@@ -38,6 +38,9 @@ const DATE_LOCALES: Record<EmailLocale, Locale> = {
 }
 
 interface NotificationTemplateSheetProps {
+  autoFocus?: boolean
+  modal?: boolean
+  renderSmsPreview?: (message: string) => ReactNode
   open: boolean
   onOpenChange: (open: boolean) => void
   eventType: CustomerNotificationEventType | 'thank_you_review'
@@ -308,6 +311,9 @@ export function NotificationTemplateSheet({
   onSave,
   locale,
   store,
+  autoFocus = true,
+  modal = true,
+  renderSmsPreview,
 }: NotificationTemplateSheetProps) {
   const t = useTranslations('dashboard.settings.notifications.templateSheet')
   const tc = useTranslations('common')
@@ -430,8 +436,8 @@ export function NotificationTemplateSheet({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="sm:max-w-4xl p-0 gap-0 max-h-[90vh] overflow-hidden">
+    <Dialog open={open} onOpenChange={onOpenChange} modal={modal}>
+      <DialogPopup initialFocus={autoFocus} finalFocus={autoFocus} className="sm:max-w-4xl p-0 gap-0 max-h-[90vh] overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="text-base">{eventLabel}</DialogTitle>
         </DialogHeader>
@@ -452,6 +458,7 @@ export function NotificationTemplateSheet({
               Email
             </button>
             <button
+              data-demo-target="notification-template-sms"
               onClick={() => setActiveTab('sms')}
               className={cn(
                 'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
@@ -546,7 +553,8 @@ export function NotificationTemplateSheet({
                     className="font-mono text-sm resize-none"
                   />
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{t('smsVariables')}</span>
+                    {/* The hint lists `{placeholders}` literally: formatting it would read them as arguments. */}
+                    <span>{t.raw('smsVariables')}</span>
                     <span className={smsMessage.length > 160 ? 'text-amber-500 font-medium' : ''}>
                       {smsMessage.length}/160
                     </span>
@@ -647,7 +655,7 @@ export function NotificationTemplateSheet({
                 </div>
               )}
 
-              {activeTab === 'sms' && (
+              {activeTab === 'sms' && (renderSmsPreview ? renderSmsPreview(previewSms) : (
                 <div className="rounded-lg border overflow-hidden">
                   <div className="bg-muted/50 px-4 py-3 border-b flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -677,7 +685,7 @@ export function NotificationTemplateSheet({
                     </span>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </div>

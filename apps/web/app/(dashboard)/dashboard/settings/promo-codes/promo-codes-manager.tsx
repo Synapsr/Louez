@@ -53,6 +53,7 @@ interface PromoCode {
 interface PromoCodesManagerProps {
   codes: PromoCode[];
   currency: string;
+  readOnly?: boolean;
 }
 
 type PromoCodeStatus = "active" | "inactive" | "expired" | "exhausted";
@@ -81,7 +82,7 @@ function StatusBadge({ status }: { status: PromoCodeStatus }) {
   return <Badge variant={variant}>{label}</Badge>;
 }
 
-export function PromoCodesManager({ codes, currency }: PromoCodesManagerProps) {
+export function PromoCodesManager({ codes, currency, readOnly = false }: PromoCodesManagerProps) {
   const router = useRouter();
   const t = useTranslations("dashboard.settings.promoCodes");
   const tCommon = useTranslations("common");
@@ -97,6 +98,7 @@ export function PromoCodesManager({ codes, currency }: PromoCodesManagerProps) {
   const [codeToDelete, setCodeToDelete] = useState<PromoCode | null>(null);
 
   const handleToggle = async (code: PromoCode) => {
+    if (readOnly) return;
     setIsLoading(true);
     try {
       const result = await togglePromoCode(code.id);
@@ -117,7 +119,7 @@ export function PromoCodesManager({ codes, currency }: PromoCodesManagerProps) {
   };
 
   const handleDelete = async () => {
-    if (!codeToDelete) return;
+    if (readOnly || !codeToDelete) return;
 
     setIsLoading(true);
     try {
@@ -185,7 +187,7 @@ export function PromoCodesManager({ codes, currency }: PromoCodesManagerProps) {
                 : t("count", { count: codes.length })}
             </CardDescription>
           </div>
-          <Button onClick={openCreateDialog}>
+          <Button onClick={openCreateDialog} data-demo-target="promo-create">
             <Plus className="mr-2 h-4 w-4" />
             {t("createCode")}
           </Button>
@@ -240,16 +242,22 @@ export function PromoCodesManager({ codes, currency }: PromoCodesManagerProps) {
                         )}
                       </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                    <DropdownMenu modal={!readOnly}>
+                      <DropdownMenuTrigger
+                        disabled={readOnly}
+                        render={<Button variant="ghost" size="icon" />}
+                      >
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" finalFocus={readOnly ? false : undefined}>
                         <DropdownMenuItem onClick={() => openEditDialog(code)}>
                           <Pencil className="mr-2 h-4 w-4" />
                           {tCommon("edit")}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggle(code)} disabled={isLoading}>
+                        <DropdownMenuItem
+                          onClick={() => handleToggle(code)}
+                          disabled={isLoading || readOnly}
+                        >
                           {code.isActive ? (
                             <>
                               <PowerOff className="mr-2 h-4 w-4" />
@@ -265,7 +273,9 @@ export function PromoCodesManager({ codes, currency }: PromoCodesManagerProps) {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
+                          disabled={readOnly}
                           onClick={() => {
+                            if (readOnly) return;
                             setCodeToDelete(code);
                             setDeleteDialogOpen(true);
                           }}
@@ -288,6 +298,7 @@ export function PromoCodesManager({ codes, currency }: PromoCodesManagerProps) {
         onOpenChange={setFormDialogOpen}
         editingCode={editingCode}
         currency={currency}
+        readOnly={readOnly}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

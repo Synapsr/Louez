@@ -4499,7 +4499,22 @@
         "create": "Create",
         "revokeTitle": "Revoke API key?",
         "revokeDescription": "This action is irreversible. Any application using this key will immediately lose access.",
-        "revokeConfirm": "Revoke"
+        "revokeConfirm": "Revoke",
+        "presetCustom": "Custom",
+        "domains": {
+          "reservations": "Reservations",
+          "products": "Products",
+          "customers": "Customers",
+          "categories": "Categories",
+          "payments": "Payments",
+          "analytics": "Analytics",
+          "settings": "Settings"
+        },
+        "levels": {
+          "none": "No access",
+          "read": "Read",
+          "write": "Read and write"
+        }
       },
       "businessHours": {
         "title": "Business hours",
@@ -8061,7 +8076,10 @@
       "rental": "Rental",
       "deposit": "Deposit",
       "deposit_return": "Deposit refund",
-      "damage": "Damages"
+      "damage": "Damages",
+      "deposit_hold": "Authorization hold",
+      "deposit_capture": "Deposit captured",
+      "adjustment": "Adjustment"
     },
     "paymentMethods": {
       "stripe": "Online card",
@@ -8073,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Paid",
-      "pending": "Pending"
+      "pending": "Pending",
+      "authorized": "Authorized"
     },
     "signature": {
       "validated": "Validated",

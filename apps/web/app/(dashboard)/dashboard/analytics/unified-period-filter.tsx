@@ -12,18 +12,29 @@ import { parsePeriod, type Period, PERIODS } from "./period";
 
 interface UnifiedPeriodFilterProps {
   className?: string;
+  period?: Period;
+  /** Supplied by local previews; period changes and refresh stay off the router. */
+  onPeriodChange?: (period: Period) => void;
 }
 
-export const UnifiedPeriodFilter = ({ className }: UnifiedPeriodFilterProps) => {
+export const UnifiedPeriodFilter = ({
+  className,
+  period,
+  onPeriodChange,
+}: UnifiedPeriodFilterProps) => {
   const t = useTranslations("dashboard.analytics");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentPeriod = parsePeriod(searchParams.get("period") ?? undefined);
+  const currentPeriod = period ?? parsePeriod(searchParams.get("period") ?? undefined);
 
   const periods = PERIODS.map((value) => ({ value, label: t(`period.${value}`) }));
 
   const handlePeriodChange = (value: Period) => {
+    if (onPeriodChange) {
+      onPeriodChange(value);
+      return;
+    }
     const params = new URLSearchParams(searchParams.toString());
     params.set("period", value);
     // The filter lives in the shared layout, so it has to stay on whichever
@@ -38,6 +49,7 @@ export const UnifiedPeriodFilter = ({ className }: UnifiedPeriodFilterProps) => 
         {periods.map((period) => (
           <Button
             key={period.value}
+            data-analytics-period={period.value}
             size="sm"
             variant={currentPeriod === period.value ? "default" : "ghost"}
             onClick={() => handlePeriodChange(period.value)}
@@ -50,8 +62,10 @@ export const UnifiedPeriodFilter = ({ className }: UnifiedPeriodFilterProps) => 
       {/* Select (mobile) */}
       <Select
         value={currentPeriod}
+        modal={onPeriodChange ? false : undefined}
         onValueChange={(value) => {
-          if (value !== null) handlePeriodChange(value as Period);
+          const nextPeriod = PERIODS.find((period) => period === value);
+          if (nextPeriod) handlePeriodChange(nextPeriod);
         }}
       >
         <SelectTrigger className="flex-1 md:hidden">
@@ -59,7 +73,7 @@ export const UnifiedPeriodFilter = ({ className }: UnifiedPeriodFilterProps) => 
             {periods.find((period) => period.value === currentPeriod)?.label}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent finalFocus={onPeriodChange ? false : undefined}>
           {periods.map((period) => (
             <SelectItem key={period.value} value={period.value} label={period.label}>
               {period.label}
@@ -71,7 +85,7 @@ export const UnifiedPeriodFilter = ({ className }: UnifiedPeriodFilterProps) => 
       <Button
         variant="outline"
         size="icon"
-        onClick={() => router.refresh()}
+        onClick={() => (onPeriodChange ? onPeriodChange(currentPeriod) : router.refresh())}
         aria-label={t("refresh")}
       >
         <RefreshCw />

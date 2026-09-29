@@ -5,14 +5,15 @@ import { useTranslations } from "next-intl";
 import { Button, Menu, MenuItem, MenuPopup, MenuTrigger } from "@louez/ui";
 
 interface AddToCalendarButtonProps {
+  readOnly?: boolean;
   links: { google: string; outlook: string; office: string };
 }
 
-export const AddToCalendarButton = ({ links }: AddToCalendarButtonProps) => {
+export const AddToCalendarButton = ({ links, readOnly = false }: AddToCalendarButtonProps) => {
   const t = useTranslations("storefront.account.calendar");
   return (
-    <Menu>
-      <MenuTrigger render={<Button variant="outline" className="max-w-full" />}>
+    <Menu modal={!readOnly}>
+      <MenuTrigger disabled={readOnly} render={<Button variant="outline" className="max-w-full" />}>
         <CalendarPlusIcon aria-hidden className="size-4" />
         <span className="whitespace-normal text-start">{t("add")}</span>
         <ChevronDownIcon aria-hidden className="size-3.5" />

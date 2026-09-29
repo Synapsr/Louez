@@ -1,11 +1,9 @@
-import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 
 import { db, storeLocations } from "@louez/db";
-import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { getCurrentStore } from "@/lib/store-context";
-import { DeliverySettingsForm } from "./delivery-settings-form";
+import { DeliverySettingsContent } from "./delivery-settings-content";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -18,8 +16,6 @@ export default async function DeliverySettingsPage() {
     redirect("/onboarding");
   }
 
-  const t = await getTranslations("dashboard.settings");
-
   // Check if store has coordinates configured
   const hasCoordinates = Boolean(store.latitude && store.longitude);
   const locations = await db.query.storeLocations.findMany({
@@ -28,8 +24,6 @@ export default async function DeliverySettingsPage() {
   });
 
   return (
-    <SettingsPageShell title={t("delivery.title")} description={t("delivery.description")}>
-      <DeliverySettingsForm store={store} hasCoordinates={hasCoordinates} locations={locations} />
-    </SettingsPageShell>
+    <DeliverySettingsContent store={store} hasCoordinates={hasCoordinates} locations={locations} />
   );
 }

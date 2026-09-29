@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,6 +18,11 @@ import { LoginEmailStep } from "./login-email-step";
 
 interface LoginFormProps {
   storeSlug: string;
+  requestCode?: ComponentProps<typeof LoginEmailStep>["requestCode"];
+  verifyCode?: ComponentProps<typeof LoginCodeStep>["verifyCode"];
+  onVerified?: () => void;
+  autoFocus?: boolean;
+  prefetch?: boolean;
   storeName: string;
   /** Whitelisted by the page; where the customer lands once signed in. */
   redirectPath: string;
@@ -26,7 +31,17 @@ interface LoginFormProps {
 }
 
 /** Two steps, one card: the email step hands the address to the code step. */
-export const LoginForm = ({ storeSlug, storeName, redirectPath, errorCode }: LoginFormProps) => {
+export const LoginForm = ({
+  storeSlug,
+  storeName,
+  redirectPath,
+  errorCode,
+  requestCode,
+  verifyCode,
+  onVerified,
+  autoFocus = true,
+  prefetch,
+}: LoginFormProps) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const t = useTranslations("storefront");
@@ -34,6 +49,10 @@ export const LoginForm = ({ storeSlug, storeName, redirectPath, errorCode }: Log
   const [email, setEmail] = useState<string | null>(null);
 
   const handleVerified = () => {
+    if (onVerified) {
+      onVerified();
+      return;
+    }
     queryClient.clear();
     router.push(resolveStorefrontHref(basePath, redirectPath));
     router.refresh();
@@ -43,6 +62,7 @@ export const LoginForm = ({ storeSlug, storeName, redirectPath, errorCode }: Log
     <div className="flex flex-col gap-6">
       <StorefrontLink
         href="/catalog"
+        prefetch={prefetch}
         className="inline-flex min-h-11 w-fit items-center gap-2 rounded-lg text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ArrowLeftIcon aria-hidden className="size-4" />
@@ -73,13 +93,21 @@ export const LoginForm = ({ storeSlug, storeName, redirectPath, errorCode }: Log
 
         {email ? (
           <LoginCodeStep
+            requestCode={requestCode}
+            verifyCode={verifyCode}
+            autoFocus={autoFocus}
             storeSlug={storeSlug}
             email={email}
             onVerified={handleVerified}
             onChangeEmail={() => setEmail(null)}
           />
         ) : (
-          <LoginEmailStep storeSlug={storeSlug} errorCode={errorCode} onCodeSent={setEmail} />
+          <LoginEmailStep
+            requestCode={requestCode}
+            storeSlug={storeSlug}
+            errorCode={errorCode}
+            onCodeSent={setEmail}
+          />
         )}
 
         <p className="border-t pt-5 text-center text-xs leading-relaxed text-muted-foreground">

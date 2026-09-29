@@ -12,7 +12,10 @@ import {
   type ManualEmailRenderContext,
 } from "@/lib/email/manual-reservation-email-core";
 
+import { createInertEmailDocument } from "@/lib/document-previews/util.inert-email-document";
+
 interface EmailPreviewRendererProps {
+  inert?: boolean;
   context: ManualEmailRenderContext;
   templateId: string;
   customSubject?: string;
@@ -28,6 +31,7 @@ interface EmailPreviewRendererProps {
  */
 export default function EmailPreviewRenderer({
   context,
+  inert = false,
   templateId,
   customSubject,
   customMessage,
@@ -107,7 +111,7 @@ export default function EmailPreviewRenderer({
       <iframe
         className={cn("w-full rounded-lg border bg-white", frameClassName)}
         sandbox=""
-        srcDoc={rendered.html}
+        srcDoc={inert ? createInertEmailDocument(rendered.html) : rendered.html}
         title={t("previewTitle")}
       />
 

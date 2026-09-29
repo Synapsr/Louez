@@ -28,9 +28,10 @@ interface RevenueData {
 interface RevenueChartProps {
   data: RevenueData[];
   currency?: string;
+  initialDimension?: { width: number; height: number };
 }
 
-export const RevenueChart = ({ data, currency = "EUR" }: RevenueChartProps) => {
+export const RevenueChart = ({ data, currency = "EUR", initialDimension }: RevenueChartProps) => {
   const t = useTranslations("dashboard.statistics");
   const locale = useLocale();
   const axisFormat = new Intl.NumberFormat(locale, {
@@ -46,8 +47,12 @@ export const RevenueChart = ({ data, currency = "EUR" }: RevenueChartProps) => {
 
   return (
     <div className="h-64 w-full sm:h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height="100%" initialDimension={initialDimension}>
+        <AreaChart
+          data-demo-target="analytics-revenue-chart"
+          data={data}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+        >
           <defs>
             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />

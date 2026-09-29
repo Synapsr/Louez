@@ -5,6 +5,7 @@ import { getUserStores } from '@/lib/store-context'
 import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server'
 import { Skeleton } from '@louez/ui'
 import { Card, CardContent, CardHeader } from '@louez/ui'
+import { MultiStorePageShell } from './_components/multi-store-page-shell'
 
 import {
   getMultiStoreMetrics,
@@ -211,17 +212,11 @@ export default async function MultiStorePage({ searchParams }: MultiStorePagePro
   const t = await getTranslations('dashboard.multiStore')
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="mt-1 text-muted-foreground">
-            {t('description', { count: stores.length })}
-          </p>
-        </div>
-        <MultiStorePeriodFilter />
-      </div>
+    <MultiStorePageShell
+      title={t('title')}
+      description={t('description', { count: stores.length })}
+      periodFilter={<MultiStorePeriodFilter />}
+    >
 
       {/* Aggregate Stats */}
       <Suspense
@@ -250,6 +245,6 @@ export default async function MultiStorePage({ searchParams }: MultiStorePagePro
       <Suspense fallback={<ChartSkeleton />}>
         <RevenueChartSection storeIds={storeIds} period={period} />
       </Suspense>
-    </div>
+    </MultiStorePageShell>
   )
 }

@@ -8,7 +8,11 @@ import { cn } from "@louez/utils";
 import { StoreProvider } from "@/contexts/store-context";
 import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { DEMO_RULES, type DemoBooking } from "@/lib/landing-demos/fixtures";
-import { getDemoParentOrigins, type DemoScene } from "@/lib/landing-demos/policy";
+import {
+  getDemoParentOrigins,
+  isFeatureDemoScene,
+  type DemoScene,
+} from "@/lib/landing-demos/policy";
 import { getDemoText } from "@/lib/landing-demos/text";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { ReservationStatus } from "@/app/(dashboard)/dashboard/reservations/reservations-types";
@@ -22,6 +26,8 @@ import {
   loadStorefront,
 } from "./demo-scene-loaders";
 import { DemoSceneReady } from "./demo-scene-ready";
+import { FEATURE_DEMOS } from "./feature-demos";
+import { FeatureScene } from "./feature-scene";
 import { useDemoLocale } from "./use-demo-locale";
 import { useParentScroll } from "./use-parent-scroll";
 import { getDemoDuration, useDemoPlayback, type AnimatedScene } from "./use-demo-playback";
@@ -69,7 +75,10 @@ export const LandingDemo = ({
         defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
       }),
   );
-  const [step, setStep] = useState(scene === "planning" ? 1 : scene === "reservation" ? 2 : 0);
+  // A feature scene sits at step 0; opening a reservation from it moves to step 2 like the rest.
+  const featureScene = isFeatureDemoScene(scene) ? scene : null;
+  const homeStep = scene === "planning" ? 1 : scene === "reservation" ? 2 : 0;
+  const [step, setStep] = useState(homeStep);
   const [cycle, setCycle] = useState(0);
   const [paused, setPaused] = useState(false);
   const [readyScene, setReadyScene] = useState<AnimatedScene | null>(null);
@@ -83,7 +92,16 @@ export const LandingDemo = ({
   useParentScroll(scrollPage, parentOrigin);
   const reduced = useSyncExternalStore(subscribeMotion, reducedMotionSnapshot, () => true);
   const currentScene: AnimatedScene =
-    scene === "advisor" ? "advisor" : (scenes[step] ?? "storefront");
+    scene === "advisor"
+      ? "advisor"
+      : featureScene && step === 0
+        ? featureScene
+        : (scenes[step] ?? "storefront");
+  const actor = isFeatureDemoScene(currentScene)
+    ? FEATURE_DEMOS[currentScene].actor
+    : currentScene === "storefront" || currentScene === "advisor"
+      ? "customer"
+      : "owner";
   const sceneReady = readyScene === currentScene;
   const running =
     !poster &&
@@ -96,12 +114,12 @@ export const LandingDemo = ({
     !reduced;
   const reset = useCallback(() => {
     setCycle((value) => value + 1);
-    setStep(scene === "planning" ? 1 : scene === "reservation" ? 2 : 0);
-  }, [scene]);
+    setStep(homeStep);
+  }, [homeStep]);
   const finish = () => {
     setPlanningView("dashboard");
     if (scene === "rental") setStep((value) => (value + 1) % 3);
-    else setStep(scene === "planning" ? 1 : scene === "reservation" ? 2 : 0);
+    else setStep(homeStep);
     setCycle((value) => value + 1);
   };
   const { cursorRef, phase, readElapsed } = useDemoPlayback({
@@ -271,6 +289,8 @@ export const LandingDemo = ({
         timezone="Europe/Paris"
         basePath=""
         periodRules={DEMO_RULES}
+        // The visitor watches the shop's owner: every management control is available.
+        role="owner"
       >
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
@@ -326,7 +346,20 @@ export const LandingDemo = ({
                         status={detail?.status ?? "confirmed"}
                         onNavigate={(page) => {
                           setPlanningView(page === "dashboard" ? "dashboard" : "list");
-                          setStep(1);
+                          setStep(featureScene ? 0 : 1);
+                          setCycle((value) => value + 1);
+                        }}
+                      />
+                    )}
+                    {isFeatureDemoScene(currentScene) && (
+                      <FeatureScene
+                        scene={currentScene}
+                        period={period}
+                        booking={booking}
+                        onOpenReservation={(index, selectedBooking, selectedPeriod, status) => {
+                          setReservationIndex(index);
+                          setDetail({ booking: selectedBooking, period: selectedPeriod, status });
+                          setStep(2);
                           setCycle((value) => value + 1);
                         }}
                       />
@@ -383,11 +416,7 @@ export const LandingDemo = ({
                   strokeLinejoin="round"
                 />
               </svg>
-              <span>
-                {currentScene === "storefront" || currentScene === "advisor"
-                  ? text.customer
-                  : text.owner}
-              </span>
+              <span>{actor === "customer" ? text.customer : text.owner}</span>
             </div>
           </TooltipProvider>
         </QueryClientProvider>

@@ -4362,7 +4362,22 @@
         "create": "Criar",
         "revokeTitle": "Revogar chave API?",
         "revokeDescription": "Esta ação é irreversível. Qualquer aplicação que use esta chave perderá o acesso imediatamente.",
-        "revokeConfirm": "Revogar"
+        "revokeConfirm": "Revogar",
+        "presetCustom": "Personalizado",
+        "domains": {
+          "reservations": "Reservas",
+          "products": "Produtos",
+          "customers": "Clientes",
+          "categories": "Categorias",
+          "payments": "Pagamentos",
+          "analytics": "Análises",
+          "settings": "Configurações"
+        },
+        "levels": {
+          "none": "Sem acesso",
+          "read": "Leitura",
+          "write": "Leitura e escrita"
+        }
       },
       "businessHours": {
         "title": "Horario comercial",
@@ -8061,7 +8076,10 @@
       "rental": "Aluguel",
       "deposit": "Caucao",
       "deposit_return": "Reembolso de caucao",
-      "damage": "Danos"
+      "damage": "Danos",
+      "deposit_hold": "Autorização",
+      "deposit_capture": "Caução capturada",
+      "adjustment": "Ajuste"
     },
     "paymentMethods": {
       "stripe": "Cartao online",
@@ -8073,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Pago",
-      "pending": "Pendente"
+      "pending": "Pendente",
+      "authorized": "Autorizado"
     },
     "signature": {
       "validated": "Validado",

@@ -1,3 +1,4 @@
+import { composeConfirmationPreview } from "@/lib/document-previews/compose-confirmation-preview";
 import { DeleteAccountEmail, getDeleteAccountEmailSubject } from "@louez/email/templates";
 
 import {
@@ -28,7 +29,6 @@ import {
   RequestRejectedEmail,
   ReservationCancelledEmail,
   ReservationCompletedEmail,
-  ReservationConfirmationEmail,
   ReservationModifiedEmail,
   RewardUnlockedEmail,
   SupplierInvoiceReceivedEmail,
@@ -150,21 +150,15 @@ export const EMAIL_DOCUMENT_PREVIEWS: readonly EmailDocumentPreview[] = [
     id: "reservation-confirmation",
     title: "Confirmation de réservation",
     description: "Réservation payée ou confirmée par le loueur.",
-    compose: (context) => ({
-      subject: fromStore(
-        withNumber(getEmailTranslations(context.locale).confirmReservation.subject),
-        context.store,
-      ),
-      element: ReservationConfirmationEmail({
-        ...baseProps(context),
-        startDate,
-        endDate,
-        items,
-        subtotal,
-        deposit,
-        total,
-        reservationUrl: url,
-      }),
+    compose: (context) => composeConfirmationPreview({
+      ...baseProps(context),
+      startDate,
+      endDate,
+      items,
+      subtotal,
+      deposit,
+      total,
+      reservationUrl: url,
     }),
   }),
   customerEmail({

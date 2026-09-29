@@ -18,6 +18,8 @@ import {
 import { EyeIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
+import type { ManualEmailRenderContext } from "@/lib/email/manual-reservation-email-core";
+
 import { orpc } from "@/lib/orpc/react";
 
 // The renderer chunk carries the email templates, their messages and the
@@ -28,6 +30,7 @@ const EmailPreviewRenderer = dynamic(() => import("./email-preview-client"), {
 });
 
 interface EmailPreviewProps {
+  context?: ManualEmailRenderContext;
   reservationId: string;
   templateId: string | null;
   customSubject?: string;
@@ -45,6 +48,7 @@ interface EmailPreviewProps {
  */
 export function EmailPreview({
   reservationId,
+  context: suppliedContext,
   templateId,
   customSubject,
   customMessage,
@@ -62,10 +66,12 @@ export function EmailPreview({
     ...orpc.dashboard.reservations.getEmailRenderContext.queryOptions({
       input: { reservationId },
     }),
-    enabled,
+    enabled: enabled && !suppliedContext,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
+
+  const context = suppliedContext ?? contextQuery.data;
 
   return (
     <div className={cn("flex min-h-0 flex-col gap-3", className)}>
@@ -81,14 +87,14 @@ export function EmailPreview({
         </div>
       )}
 
-      {isReady && contextQuery.isPending && (
+      {isReady && !context && contextQuery.isPending && (
         <>
           <Skeleton className="h-12 w-full rounded-lg" />
           <Skeleton className={cn("w-full rounded-lg", frameClassName)} />
         </>
       )}
 
-      {isReady && contextQuery.isError && (
+      {isReady && !context && contextQuery.isError && (
         <div
           className={cn(
             "flex items-center justify-center rounded-lg border border-dashed p-6 text-center",
@@ -99,9 +105,10 @@ export function EmailPreview({
         </div>
       )}
 
-      {isReady && contextQuery.data && templateId && (
+      {isReady && context && templateId && (
         <EmailPreviewRenderer
-          context={contextQuery.data}
+          inert={Boolean(suppliedContext)}
+          context={context}
           customMessage={customMessage}
           customSubject={customSubject}
           frameClassName={frameClassName}
@@ -113,6 +120,8 @@ export function EmailPreview({
 }
 
 interface EmailPreviewDialogProps extends EmailPreviewProps {
+  autoFocus?: boolean;
+  modal?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customerFirstName: string;
@@ -123,14 +132,16 @@ export function EmailPreviewDialog({
   open,
   onOpenChange,
   customerFirstName,
+  autoFocus = true,
+  modal = true,
   ...previewProps
 }: EmailPreviewDialogProps) {
   const t = useTranslations("dashboard.reservations.emailModal");
   const tCommon = useTranslations("common");
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="max-w-2xl">
+    <Dialog open={open} onOpenChange={onOpenChange} modal={modal}>
+      <DialogPopup initialFocus={autoFocus} finalFocus={autoFocus} className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t("previewTitle")}</DialogTitle>
           <DialogDescription>

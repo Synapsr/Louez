@@ -55,6 +55,7 @@ export function useSeasonalPricingDraft({
   fallbackDuration,
   isProrated,
   onPriceSaved,
+  readOnly = false,
 }: {
   period: SeasonalPricingData | null;
   fallbackUnit: PriceDurationValue["unit"];
@@ -62,6 +63,8 @@ export function useSeasonalPricingDraft({
   /** Product-level, so a season only reads it — the curve still has to be right. */
   isProrated: boolean;
   onPriceSaved: (periodId: string, price: string) => void;
+  /** Keep edits local without autosave or a flush to the server. */
+  readOnly?: boolean;
 }) {
   const [baseRate, setBaseRateState] = useState<PriceDurationValue>({
     price: "",
@@ -92,6 +95,7 @@ export function useSeasonalPricingDraft({
   }, [period?.id]);
 
   const save = useCallback(async () => {
+    if (readOnly) return false;
     const { period: current, baseRate: rate, tiers: rows } = latest.current;
     if (!current) return false;
 
@@ -113,10 +117,10 @@ export function useSeasonalPricingDraft({
     }
     onPriceSaved(current.id, rate.price.replace(",", "."));
     return true;
-  }, [onPriceSaved]);
+  }, [onPriceSaved, readOnly]);
 
   useEffect(() => {
-    if (!isDirty || !period) return;
+    if (readOnly || !isDirty || !period) return;
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(async () => {
@@ -134,7 +138,7 @@ export function useSeasonalPricingDraft({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isDirty, baseRate, tiers, period, save]);
+  }, [isDirty, baseRate, tiers, period, save, readOnly]);
 
   /** Commit anything pending — before leaving the season or duplicating it. */
   const flush = useCallback(async () => {
@@ -142,11 +146,11 @@ export function useSeasonalPricingDraft({
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    if (!isDirty) return;
+    if (readOnly || !isDirty) return;
     await save();
     setIsDirty(false);
     setStatus("idle");
-  }, [isDirty, save]);
+  }, [isDirty, save, readOnly]);
 
   const setBaseRate = useCallback((next: PriceDurationValue) => {
     setBaseRateState(next);

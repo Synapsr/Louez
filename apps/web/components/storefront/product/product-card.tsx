@@ -156,6 +156,7 @@ export const ProductCard = ({
             <StorefrontLink
               className="outline-none after:absolute after:inset-0 after:rounded-2xl"
               href={href}
+              data-demo-target="product-link"
             >
               {product.name}
             </StorefrontLink>
@@ -187,11 +188,12 @@ export const ProductCard = ({
   );
 
   return (
-    <article className={cn("group relative", className)} data-slot="product-card">
+    <article className={cn("group relative", className)} data-slot="product-card" data-product-id={product.id}>
       {href !== undefined ? (
         <div className={shellClassName}>{content}</div>
       ) : (
         <button
+          data-demo-target="extra-select"
           aria-pressed={selection?.selected}
           className={cn(shellClassName, "w-full")}
           onClick={selection?.onToggle}

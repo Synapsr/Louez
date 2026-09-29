@@ -15,6 +15,8 @@ interface ReservationActionsProps {
   storeSlug: string;
   reservationId: string;
   hasPayment?: boolean;
+  readOnly?: boolean;
+  onAcceptQuote?: () => void;
   actions: ReservationActionSet;
   /** Absolute contract URL; a plain link so the browser handles the PDF. */
   contractHref: string;
@@ -34,6 +36,8 @@ export const ReservationActions = ({
   actions,
   contractHref,
   hasPayment = false,
+  readOnly = false,
+  onAcceptQuote,
 }: ReservationActionsProps) => {
   const t = useTranslations("storefront.account");
   const [dialog, setDialog] = useState<PendingDialog>(null);
@@ -41,6 +45,8 @@ export const ReservationActions = ({
     storeSlug,
     reservationId,
     hasPayment,
+    readOnly,
+    onAcceptQuote,
   });
 
   const hasAnything =
@@ -73,6 +79,7 @@ export const ReservationActions = ({
               size="xl"
               className="w-full sm:h-10 sm:w-auto"
               disabled={isBusy}
+              data-demo-target="portal-accept-quote"
               onClick={() => setDialog("accept")}
             >
               {t("quote.accept")}
@@ -95,6 +102,7 @@ export const ReservationActions = ({
             className="w-full sm:h-10 sm:w-auto"
             isPending={pay.isPending}
             disabled={isBusy}
+            data-demo-target="portal-pay"
             onClick={() => pay.mutate()}
           >
             <CreditCardIcon data-slot="icon" />
@@ -107,7 +115,8 @@ export const ReservationActions = ({
             size="xl"
             variant={actions.canPay ? "ghost" : "outline"}
             className="w-full sm:h-10 sm:w-auto"
-            render={<a href={contractHref} />}
+            data-demo-target="portal-contract"
+            render={<a href={contractHref} onClick={readOnly ? (event) => event.preventDefault() : undefined} />}
           >
             <DownloadIcon data-slot="icon" />
             {t("downloadContract")}
@@ -122,6 +131,7 @@ export const ReservationActions = ({
       ) : null}
 
       <ReservationConfirmDialog
+        modal={!readOnly}
         open={dialog === "cancel"}
         onOpenChange={(open) => {
           if (!cancel.isPending) setDialog(open ? "cancel" : null);
@@ -135,6 +145,7 @@ export const ReservationActions = ({
         onConfirm={() => cancel.mutate(undefined, { onSettled: closeDialog })}
       />
       <ReservationConfirmDialog
+        modal={!readOnly}
         open={dialog === "accept"}
         onOpenChange={(open) => (open ? setDialog("accept") : closeDialog())}
         title={t("quote.acceptTitle")}
@@ -145,6 +156,7 @@ export const ReservationActions = ({
         onConfirm={() => accept.mutate(undefined, { onSettled: closeDialog })}
       />
       <ReservationConfirmDialog
+        modal={!readOnly}
         open={dialog === "decline"}
         onOpenChange={(open) => (open ? setDialog("decline") : closeDialog())}
         title={t("quote.declineTitle")}

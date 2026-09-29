@@ -78,7 +78,7 @@ export const PricingTiersDisplay = ({
 
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen} position={isSidePanel ? "right" : "bottom"}>
-      <Card className={className}>
+      <Card data-demo-target="product-rates" className={className}>
         <CardHeader>
           <CardTitle className="text-lg font-semibold leading-snug">{t("ratesTitle")}</CardTitle>
         </CardHeader>

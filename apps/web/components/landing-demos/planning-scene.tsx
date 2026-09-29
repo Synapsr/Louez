@@ -10,6 +10,7 @@ import { ReservationsTableView } from "@/app/(dashboard)/dashboard/reservations/
 import { ReservationsViewSwitcher } from "@/app/(dashboard)/dashboard/reservations/reservations-view-switcher";
 import { ReservationsPageHeading } from "@/app/(dashboard)/dashboard/reservations/reservations-page-heading";
 import { ReservationsCalendarView } from "@/app/(dashboard)/dashboard/reservations/calendar/calendar-view";
+import { PlanningTimeline } from "@/app/(dashboard)/dashboard/reservations/calendar/planning-timeline";
 import type {
   SortField,
   SortDirection,
@@ -17,21 +18,27 @@ import type {
 } from "@/app/(dashboard)/dashboard/reservations/reservations-types";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import type { DemoBooking } from "@/lib/landing-demos/fixtures";
-import { createDemoReservationPages } from "@/lib/landing-demos/reservations";
+import {
+  createDemoPlanningEntries,
+  createDemoReservationPages,
+  getDemoToday,
+} from "@/lib/landing-demos/reservations";
 import { DashboardSceneFrame } from "./dashboard-scene-frame";
 import { useDemoLocale } from "./use-demo-locale";
 
-type DemoView = "dashboard" | "list" | "calendar";
-const availableViews = ["list", "calendar"] as const;
+export type DemoView = "dashboard" | "list" | "calendar" | "planning";
 export const PlanningScene = ({
   period,
   onOpenReservation,
   booking,
   initialView = "dashboard",
+  busy = false,
 }: {
   period: RentalPeriodValue;
   booking: DemoBooking;
   initialView?: DemoView;
+  /** A working shop read from today, instead of the few bookings around the demo period. */
+  busy?: boolean;
   onOpenReservation: (
     index: number,
     booking: DemoBooking,
@@ -46,9 +53,11 @@ export const PlanningScene = ({
   const [direction, setDirection] = useState<SortDirection>("asc");
   const locale = useDemoLocale();
   const data = useMemo(
-    () => createDemoReservationPages(period, booking, locale),
-    [period, booking, locale],
+    () => createDemoReservationPages(period, booking, locale, busy),
+    [period, booking, locale, busy],
   );
+  const anchor = busy ? getDemoToday(period) : period.start;
+  const planning = useMemo(() => createDemoPlanningEntries(data.calendar), [data.calendar]);
   const rows = data.rows;
   const sorted = [...rows].sort((a, b) => {
     const comparison =
@@ -85,13 +94,16 @@ export const PlanningScene = ({
   return (
     <DashboardSceneFrame
       page={view === "dashboard" ? "dashboard" : "reservations"}
+      pages={["dashboard", "reservations"]}
       onNavigate={(page) => setView(page === "dashboard" ? "dashboard" : "list")}
     >
       <div
         data-demo-scene="planning"
         data-demo-page={view}
         className={
-          view === "calendar" ? "flex h-[calc(100svh-7.5rem)] min-h-96 flex-col gap-4" : "space-y-6"
+          view === "calendar" || view === "planning"
+            ? "flex h-[calc(100svh-7.5rem)] min-h-96 flex-col gap-4"
+            : "space-y-6"
         }
       >
         {view === "dashboard" ? (
@@ -182,13 +194,7 @@ export const PlanningScene = ({
             <ReservationsPageHeading
               actions={
                 <>
-                  <ReservationsViewSwitcher
-                    view={view}
-                    views={availableViews}
-                    onViewChange={(next) => {
-                      if (next === "list" || next === "calendar") setView(next);
-                    }}
-                  />
+                  <ReservationsViewSwitcher view={view} onViewChange={setView} />
                   <Button
                     disabled
                     aria-label={tReservations("createReservation")}
@@ -218,11 +224,23 @@ export const PlanningScene = ({
                 onOpenReservation={(reservation) => select(reservation.id)}
                 getReservationHref={() => "/demos/landing/reservation"}
               />
+            ) : view === "planning" ? (
+              <PlanningTimeline
+                products={data.products}
+                reservations={planning}
+                initialDate={anchor}
+                currency="EUR"
+                storeId="demo-store"
+                readOnly
+                persistFilters={false}
+                onOpenReservation={select}
+                getReservationHref={() => "/demos/landing/reservation"}
+              />
             ) : (
               <ReservationsCalendarView
                 products={data.products}
                 reservations={data.calendar}
-                initialDate={period.start}
+                initialDate={anchor}
                 currency="EUR"
                 storeId="demo-store"
                 storeHasReservations
