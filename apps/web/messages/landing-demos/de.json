@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "Citybike",
+    "demo-electric-bike": "E-Bike",
+    "demo-child-bike": "Kinderfahrrad",
+    "demo-gravel": "Gravelbike",
+    "demo-mountain": "E-Mountainbike",
+    "demo-cargo": "Lastenrad",
+    "demo-longtail": "Longtail-Rad",
+    "demo-road": "Rennrad",
+    "demo-trailer": "Kinderanhänger",
+    "demo-panniers": "Tourentaschen",
+    "demo-child-seat": "Kindersitz",
+    "demo-touring": "Tourenrad"
+  },
+  "categories": {
+    "bikes": "Fahrräder",
+    "electric": "E-Bikes",
+    "family": "Familie",
+    "accessories": "Zubehör"
+  },
+  "depositAuthorized": "Kartenreservierung erfasst",
+  "paymentReceived": "Zahlung online erhalten",
+  "advisorReply": "Für eine Fahrt durch die Stadt empfehle ich das Citybike: bequem und leicht zu fahren. Für welches Datum möchten Sie es mieten?",
+  "customerNotes": "Wir kommen zur Öffnung, um den ganzen Tag zu nutzen.",
+  "internalNotes": "Räder vorbereiten und vor der Abholung den Reifendruck prüfen.",
+  "steps": ["Der Kunde bucht", "Sie bereiten vor", "Alles wird verfolgt"],
+  "customer": "Kunde",
+  "owner": "Vermieter",
+  "play": "Demo starten",
+  "pause": "Pause",
+  "restart": "Von vorn",
+  "toggleMenu": "Menü ein- oder ausblenden"
+}

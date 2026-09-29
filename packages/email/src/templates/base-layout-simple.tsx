@@ -1,3 +1,4 @@
+import { supplementalMessages } from "../messages";
 import { Body, Container, Head, Html, Link, Preview, Section, Text } from "@react-email/components";
 import type { EmailLocale } from "../types";
 import { shell } from "./theme";
@@ -35,6 +36,27 @@ const translations: Record<string, { sentBy: string; ignoreIfNotYou: string }> =
     sentBy: "Este email foi enviado por Louez.",
     ignoreIfNotYou: "Se você não iniciou esta ação, pode ignorá-la.",
   },
+
+  zh: {
+    sentBy: supplementalMessages.zh.base_layout_simple_translations_sentBy,
+    ignoreIfNotYou: supplementalMessages.zh.base_layout_simple_translations_ignoreIfNotYou,
+  },
+  ja: {
+    sentBy: supplementalMessages.ja.base_layout_simple_translations_sentBy,
+    ignoreIfNotYou: supplementalMessages.ja.base_layout_simple_translations_ignoreIfNotYou,
+  },
+  ru: {
+    sentBy: supplementalMessages.ru.base_layout_simple_translations_sentBy,
+    ignoreIfNotYou: supplementalMessages.ru.base_layout_simple_translations_ignoreIfNotYou,
+  },
+  id: {
+    sentBy: supplementalMessages.id.base_layout_simple_translations_sentBy,
+    ignoreIfNotYou: supplementalMessages.id.base_layout_simple_translations_ignoreIfNotYou,
+  },
+  ko: {
+    sentBy: supplementalMessages.ko.base_layout_simple_translations_sentBy,
+    ignoreIfNotYou: supplementalMessages.ko.base_layout_simple_translations_ignoreIfNotYou,
+  },
 };
 
 interface BaseLayoutSimpleProps {
@@ -52,7 +74,7 @@ export function BaseLayoutSimple({ preview, locale = "fr", children }: BaseLayou
   const t = translations[locale] || translations.fr;
 
   return (
-    <Html>
+    <Html lang={locale}>
       <Head />
       <Preview>{preview}</Preview>
       <Body style={shell.body}>

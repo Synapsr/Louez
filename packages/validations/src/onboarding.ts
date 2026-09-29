@@ -1,122 +1,114 @@
-import { z } from 'zod';
+import { supportedLocales } from "@louez/types";
+import { z } from "zod";
 
-import { isValidImageUrl, isValidImageUrlClient } from './image';
-import { isPossiblePhoneNumberInput } from './phone';
+import { isValidImageUrl, isValidImageUrlClient } from "./image";
+import { isPossiblePhoneNumberInput } from "./phone";
 
 // ===== RESERVED SLUGS =====
 // These slugs are reserved to prevent namespace conflicts and potential phishing
 
 export const RESERVED_SLUGS = [
   // System routes
-  'api',
-  'app',
-  'admin',
-  'dashboard',
-  'login',
-  'logout',
-  'register',
-  'signup',
-  'signin',
-  'auth',
-  'oauth',
-  'callback',
-  'verify',
-  'reset',
-  'password',
-  'settings',
-  'account',
-  'profile',
-  'user',
-  'users',
-  'onboarding',
-  'invitation',
-  'invite',
-  'webhook',
-  'webhooks',
+  "api",
+  "app",
+  "admin",
+  "dashboard",
+  "login",
+  "logout",
+  "register",
+  "signup",
+  "signin",
+  "auth",
+  "oauth",
+  "callback",
+  "verify",
+  "reset",
+  "password",
+  "settings",
+  "account",
+  "profile",
+  "user",
+  "users",
+  "onboarding",
+  "invitation",
+  "invite",
+  "webhook",
+  "webhooks",
 
   // Brand protection
-  'louez',
-  'louez-io',
-  'louezio',
-  'www',
-  'mail',
-  'email',
-  'ftp',
-  'cdn',
-  'static',
-  'assets',
-  'images',
-  'img',
-  'files',
-  'uploads',
-  'media',
+  "louez",
+  "louez-io",
+  "louezio",
+  "www",
+  "mail",
+  "email",
+  "ftp",
+  "cdn",
+  "static",
+  "assets",
+  "images",
+  "img",
+  "files",
+  "uploads",
+  "media",
 
   // Reserved for future use
-  'blog',
-  'docs',
-  'documentation',
-  'help',
-  'support',
-  'status',
-  'health',
-  'terms',
-  'privacy',
-  'legal',
-  'about',
-  'contact',
-  'pricing',
-  'plans',
-  'billing',
-  'checkout',
-  'cart',
-  'store',
-  'stores',
-  'shop',
-  'marketplace',
+  "blog",
+  "docs",
+  "documentation",
+  "help",
+  "support",
+  "status",
+  "health",
+  "terms",
+  "privacy",
+  "legal",
+  "about",
+  "contact",
+  "pricing",
+  "plans",
+  "billing",
+  "checkout",
+  "cart",
+  "store",
+  "stores",
+  "shop",
+  "marketplace",
 
   // Common abuse patterns
-  'test',
-  'demo',
-  'example',
-  'sample',
-  'null',
-  'undefined',
-  'true',
-  'false',
-  'admin1',
-  'administrator',
-  'root',
-  'system',
-  'localhost',
+  "test",
+  "demo",
+  "example",
+  "sample",
+  "null",
+  "undefined",
+  "true",
+  "false",
+  "admin1",
+  "administrator",
+  "root",
+  "system",
+  "localhost",
 
   // Internationalization
-  'fr',
-  'en',
-  'de',
-  'es',
-  'it',
-  'nl',
-  'pl',
-  'pt',
+  ...supportedLocales,
 ] as const;
 
 /**
  * Check if a slug is reserved
  */
 export function isReservedSlug(slug: string): boolean {
-  return RESERVED_SLUGS.includes(
-    slug.toLowerCase() as (typeof RESERVED_SLUGS)[number],
-  );
+  return RESERVED_SLUGS.includes(slug.toLowerCase() as (typeof RESERVED_SLUGS)[number]);
 }
 
 // ===== USER PROFILE & ACQUISITION =====
 
 export const BUSINESS_TYPES = [
-  'independent',
-  'established_store',
-  'association',
+  "independent",
+  "established_store",
+  "association",
   // "Particulier": measures demand for P2P rental before building for it.
-  'individual',
+  "individual",
 ] as const;
 export type BusinessType = (typeof BUSINESS_TYPES)[number];
 
@@ -124,37 +116,37 @@ export type BusinessType = (typeof BUSINESS_TYPES)[number];
 // displayed on the marketplace and it drives the renter's legal regime. It is
 // asked on the reeent education step first, where it also adapts the copy, then
 // refined by the profile step's three professional options.
-export const REEENT_INTRO_STATUSES = ['professional', 'individual'] as const;
+export const REEENT_INTRO_STATUSES = ["professional", "individual"] as const;
 export type ReeentIntroStatus = (typeof REEENT_INTRO_STATUSES)[number];
 
 // Self-reported intent, captured once on the profile onboarding step. Both are
 // optional and exist to segment analytics (ICP discovery), not to gate features.
 export const PRODUCT_CATEGORIES = [
-  'bikes',
-  'sports_outdoor',
-  'party_events',
-  'tools_diy',
-  'vehicles',
-  'electronics',
-  'other',
+  "bikes",
+  "sports_outdoor",
+  "party_events",
+  "tools_diy",
+  "vehicles",
+  "electronics",
+  "other",
 ] as const;
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 
 // Ranges on purpose: faster to answer than an exact count, precise enough to segment.
-export const FLEET_SIZES = ['1_5', '6_20', '21_50', '50_plus'] as const;
+export const FLEET_SIZES = ["1_5", "6_20", "21_50", "50_plus"] as const;
 export type FleetSize = (typeof FLEET_SIZES)[number];
 
 // User-selectable channels. 'skipped' and 'invitation' are also stored in
 // users.acquisitionChannel but are set programmatically, never shown as options.
 export const ACQUISITION_CHANNELS = [
-  'word_of_mouth',
-  'search_engine',
-  'instagram_tiktok',
-  'facebook',
-  'youtube',
-  'ai_assistant',
-  'ads',
-  'other',
+  "word_of_mouth",
+  "search_engine",
+  "instagram_tiktok",
+  "facebook",
+  "youtube",
+  "ai_assistant",
+  "ads",
+  "other",
 ] as const;
 export type AcquisitionChannel = (typeof ACQUISITION_CHANNELS)[number];
 
@@ -165,28 +157,24 @@ export const createProfileSchema = (
     name: z
       .string()
       .trim()
-      .min(2, t('minLength', { min: 2 }))
-      .max(255, t('maxLength', { max: 255 })),
+      .min(2, t("minLength", { min: 2 }))
+      .max(255, t("maxLength", { max: 255 })),
     // Required (ADR 010), unlike the two segmentation questions below.
-    businessType: z.enum(BUSINESS_TYPES, t('required')),
+    businessType: z.enum(BUSINESS_TYPES, t("required")),
     productCategory: z.enum(PRODUCT_CATEGORIES).nullable(),
     fleetSize: z.enum(FLEET_SIZES).nullable(),
   });
 
 export const profileSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, 'validation.minLength')
-    .max(255, 'validation.maxLength'),
-  businessType: z.enum(BUSINESS_TYPES, 'validation.required'),
+  name: z.string().trim().min(2, "validation.minLength").max(255, "validation.maxLength"),
+  businessType: z.enum(BUSINESS_TYPES, "validation.required"),
   productCategory: z.enum(PRODUCT_CATEGORIES).nullable(),
   fleetSize: z.enum(FLEET_SIZES).nullable(),
 });
 
 export const acquisitionSchema = z.object({
-  channel: z.enum([...ACQUISITION_CHANNELS, 'skipped']),
-  other: z.string().trim().max(255).optional().or(z.literal('')),
+  channel: z.enum([...ACQUISITION_CHANNELS, "skipped"]),
+  other: z.string().trim().max(255).optional().or(z.literal("")),
 });
 
 export const reeentIntroSchema = z.object({
@@ -206,25 +194,23 @@ export const createStoreInfoSchema = (
   z.object({
     name: z
       .string()
-      .min(2, t('minLength', { min: 2 }))
-      .max(100, t('maxLength', { max: 100 })),
+      .min(2, t("minLength", { min: 2 }))
+      .max(100, t("maxLength", { max: 100 })),
     slug: z
       .string()
-      .min(3, t('minLength', { min: 3 }))
-      .max(50, t('maxLength', { max: 50 }))
-      .regex(/^[a-z0-9-]+$/, t('slug'))
-      .refine((val) => !isReservedSlug(val), t('slugReserved')),
+      .min(3, t("minLength", { min: 3 }))
+      .max(50, t("maxLength", { max: 50 }))
+      .regex(/^[a-z0-9-]+$/, t("slug"))
+      .refine((val) => !isReservedSlug(val), t("slugReserved")),
     country: z.string().length(2),
     currency: z.string().min(3).max(3),
-    address: z.string().or(z.literal('')),
+    address: z.string().or(z.literal("")),
     latitude: z.number().nullable(),
     longitude: z.number().nullable(),
-    email: z.email(t('email')).or(z.literal('')),
-    phone: z
-      .string()
-      .refine((value) => !value || isPossiblePhoneNumberInput(value), {
-        message: t('phone'),
-      }),
+    email: z.email(t("email")).or(z.literal("")),
+    phone: z.string().refine((value) => !value || isPossiblePhoneNumberInput(value), {
+      message: t("phone"),
+    }),
   });
 
 export const createBrandingSchema = (
@@ -234,13 +220,13 @@ export const createBrandingSchema = (
     // Client-safe validation: strict S3 check happens server-side in the action
     logoUrl: z
       .string()
-      .refine((val) => !val || val === '' || isValidImageUrlClient(val), {
-        message: t('invalidImageUrl'),
+      .refine((val) => !val || val === "" || isValidImageUrlClient(val), {
+        message: t("invalidImageUrl"),
       })
       .optional()
-      .or(z.literal('')),
-    primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t('color')),
-    theme: z.enum(['light', 'dark']),
+      .or(z.literal("")),
+    primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t("color")),
+    theme: z.enum(["light", "dark"]),
   });
 
 export const createFirstProductSchema = (
@@ -249,21 +235,21 @@ export const createFirstProductSchema = (
   z.object({
     name: z
       .string()
-      .min(2, t('minLength', { min: 2 }))
-      .max(255, t('maxLength', { max: 255 })),
+      .min(2, t("minLength", { min: 2 }))
+      .max(255, t("maxLength", { max: 255 })),
     description: z.string().optional(),
-    price: z.string().regex(/^\d+([.,]\d{1,2})?$/, t('positive')),
+    price: z.string().regex(/^\d+([.,]\d{1,2})?$/, t("positive")),
     deposit: z
       .string()
-      .regex(/^\d+([.,]\d{1,2})?$/, t('positive'))
+      .regex(/^\d+([.,]\d{1,2})?$/, t("positive"))
       .optional()
-      .or(z.literal('')),
-    quantity: z.string().regex(/^\d+$/, t('integer')),
+      .or(z.literal("")),
+    quantity: z.string().regex(/^\d+$/, t("integer")),
     // Client-safe validation: strict S3 check happens server-side in the action
     images: z
       .array(
         z.string().refine((val) => !val || isValidImageUrlClient(val), {
-          message: t('invalidImageUrl'),
+          message: t("invalidImageUrl"),
         }),
       )
       .max(10)
@@ -274,28 +260,25 @@ export const createFirstProductSchema = (
 // Default schemas for server-side validation without i18n
 
 export const storeInfoSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'validation.minLength')
-    .max(100, 'validation.maxLength'),
+  name: z.string().min(2, "validation.minLength").max(100, "validation.maxLength"),
   slug: z
     .string()
-    .min(3, 'validation.minLength')
-    .max(50, 'validation.maxLength')
-    .regex(/^[a-z0-9-]+$/, 'validation.slug')
-    .refine((val) => !isReservedSlug(val), 'validation.slugReserved'),
+    .min(3, "validation.minLength")
+    .max(50, "validation.maxLength")
+    .regex(/^[a-z0-9-]+$/, "validation.slug")
+    .refine((val) => !isReservedSlug(val), "validation.slugReserved"),
   country: z.string().length(2),
   currency: z.string().min(3).max(3),
-  address: z.string().optional().or(z.literal('')),
+  address: z.string().optional().or(z.literal("")),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
-  email: z.email('validation.email').optional().or(z.literal('')),
+  email: z.email("validation.email").optional().or(z.literal("")),
   phone: z
     .string()
     .optional()
-    .or(z.literal(''))
+    .or(z.literal(""))
     .refine((value) => !value || isPossiblePhoneNumberInput(value), {
-      message: 'validation.phone',
+      message: "validation.phone",
     }),
 });
 
@@ -303,33 +286,30 @@ export const brandingSchema = z.object({
   // SECURITY: Validate image URL to prevent malicious uploads
   logoUrl: z
     .string()
-    .refine((val) => !val || val === '' || isValidImageUrl(val), {
-      message: 'validation.invalidImageUrl',
+    .refine((val) => !val || val === "" || isValidImageUrl(val), {
+      message: "validation.invalidImageUrl",
     })
     .optional()
-    .or(z.literal('')),
-  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'validation.color'),
-  theme: z.enum(['light', 'dark']),
+    .or(z.literal("")),
+  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "validation.color"),
+  theme: z.enum(["light", "dark"]),
 });
 
 export const firstProductSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'validation.minLength')
-    .max(255, 'validation.maxLength'),
+  name: z.string().min(2, "validation.minLength").max(255, "validation.maxLength"),
   description: z.string().optional(),
-  price: z.string().regex(/^\d+([.,]\d{1,2})?$/, 'validation.positive'),
+  price: z.string().regex(/^\d+([.,]\d{1,2})?$/, "validation.positive"),
   deposit: z
     .string()
-    .regex(/^\d+([.,]\d{1,2})?$/, 'validation.positive')
+    .regex(/^\d+([.,]\d{1,2})?$/, "validation.positive")
     .optional()
-    .or(z.literal('')),
-  quantity: z.string().regex(/^\d+$/, 'validation.integer'),
+    .or(z.literal("")),
+  quantity: z.string().regex(/^\d+$/, "validation.integer"),
   // SECURITY: Validate image URLs to prevent malicious uploads
   images: z
     .array(
       z.string().refine((val) => !val || isValidImageUrl(val), {
-        message: 'validation.invalidImageUrl',
+        message: "validation.invalidImageUrl",
       }),
     )
     .max(10)
@@ -337,7 +317,7 @@ export const firstProductSchema = z.object({
 });
 
 export const stripeSetupSchema = z.object({
-  reservationMode: z.enum(['payment', 'request']),
+  reservationMode: z.enum(["payment", "request"]),
 });
 
 export type StoreInfoInput = z.infer<typeof storeInfoSchema>;

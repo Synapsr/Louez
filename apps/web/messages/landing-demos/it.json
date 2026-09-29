@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "Bici da città",
+    "demo-electric-bike": "Bici elettrica",
+    "demo-child-bike": "Bici per bambini",
+    "demo-gravel": "Gravel",
+    "demo-mountain": "Mountain bike elettrica",
+    "demo-cargo": "Cargo bike",
+    "demo-longtail": "Bici longtail",
+    "demo-road": "Bici da corsa",
+    "demo-trailer": "Rimorchio per bambini",
+    "demo-panniers": "Borse da viaggio",
+    "demo-child-seat": "Seggiolino",
+    "demo-touring": "Bici da cicloturismo"
+  },
+  "categories": {
+    "bikes": "Bici",
+    "electric": "Bici elettriche",
+    "family": "In famiglia",
+    "accessories": "Accessori"
+  },
+  "depositAuthorized": "Blocco sulla carta registrato",
+  "paymentReceived": "Pagamento ricevuto online",
+  "advisorReply": "Per un giro in città ti consiglio la bici da città: comoda e facile da guidare. Per quale data vuoi noleggiarla?",
+  "customerNotes": "Passeremo all’apertura per goderci tutta la giornata.",
+  "internalNotes": "Preparare le bici e controllare la pressione delle gomme prima della consegna.",
+  "steps": ["Il cliente prenota", "Tu prepari", "Tutto è tracciato"],
+  "customer": "Cliente",
+  "owner": "Noleggiatore",
+  "play": "Avvia la demo",
+  "pause": "Pausa",
+  "restart": "Ricomincia",
+  "toggleMenu": "Mostra o nascondi il menu"
+}

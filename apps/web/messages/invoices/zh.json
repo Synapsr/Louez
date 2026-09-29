@@ -1,0 +1,48 @@
+{
+  "documentType": {
+    "invoice": "发票",
+    "creditNote": "贷方票据"
+  },
+  "labels": {
+    "number": "不。",
+    "date": "日期",
+    "seller": "卖家",
+    "buyer": "客户",
+    "contact": "联系方式",
+    "companyNumber": "公司号码",
+    "siret": "西雷特",
+    "vatNumber": "增值税号",
+    "rcs": "商业登记",
+    "shareCapital": "股本",
+    "precedingInvoice": "发票贷方通知单",
+    "payment": "付款方式",
+    "paymentDate": "付款日期",
+    "paymentMethod": "付款方式"
+  },
+  "table": {
+    "description": "描述",
+    "quantity": "数量",
+    "unitPriceExclTax": "单价不含税税",
+    "vatRate": "增值税",
+    "totalExclTax": "总计，不含。税"
+  },
+  "vat": {
+    "title": "增值税明细",
+    "rate": "率",
+    "taxableAmount": "应税金额",
+    "taxAmount": "增值税"
+  },
+  "totals": {
+    "exclTax": "总计，不含。税",
+    "tax": "增值税总额",
+    "inclTax": "总计包括税"
+  },
+  "methods": {
+    "stripe": "网上办卡",
+    "cash": "现金",
+    "card": "卡",
+    "transfer": "银行转账",
+    "check": "检查",
+    "other": "其他"
+  }
+}

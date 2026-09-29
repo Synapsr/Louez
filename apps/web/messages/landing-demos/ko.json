@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "시티바이크",
+    "demo-electric-bike": "전기자전거",
+    "demo-child-bike": "어린이용 자전거",
+    "demo-gravel": "자갈 자전거",
+    "demo-mountain": "전기 산악자전거",
+    "demo-cargo": "화물용 자전거",
+    "demo-longtail": "롱테일 자전거",
+    "demo-road": "로드바이크",
+    "demo-trailer": "어린이 예고편",
+    "demo-panniers": "투어링 패니어",
+    "demo-child-seat": "어린이용 시트",
+    "demo-touring": "여행용 자전거"
+  },
+  "categories": {
+    "bikes": "자전거",
+    "electric": "전기자전거",
+    "family": "가족",
+    "accessories": "액세서리"
+  },
+  "depositAuthorized": "카드 보류가 기록되었습니다.",
+  "paymentReceived": "온라인으로 결제 완료",
+  "advisorReply": "시내를 돌아다닐 때는 편안하고 다루기 쉬운 도시형 자전거를 추천합니다. 언제 임대하고 싶으신가요?",
+  "customerNotes": "우리는 하루를 최대한 활용하기 위해 개장 시간에 방문할 것입니다.",
+  "internalNotes": "자전거를 준비하고 픽업 전 타이어 공기압을 확인하세요.",
+  "steps": ["고객 도서", "당신은 준비", "모든 것이 추적됩니다"],
+  "customer": "고객",
+  "owner": "소유자",
+  "play": "데모 플레이",
+  "pause": "일시중지",
+  "restart": "다시 시작하세요",
+  "toggleMenu": "메뉴 표시 또는 숨기기"
+}

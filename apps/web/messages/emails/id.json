@@ -1,0 +1,321 @@
+{
+  "common": {
+    "greeting": "Halo {name},",
+    "regards": "Hormat kami,",
+    "team": "Tim {storeName}",
+    "viewReservation": "Lihat reservasi saya",
+    "contactUs": "Hubungi kami",
+    "reservationNumber": "Reservasi #{number}",
+    "period": "Titik",
+    "periodFrom": "Dari {startDate}",
+    "periodTo": "Ke {endDate}",
+    "timezone": "Zona Waktu: {timezone}",
+    "address": "Alamat",
+    "pickupAddress": "Alamat penjemputan",
+    "returnAddress": "Alamat pengirim",
+    "pickupAndReturnAddress": "Alamat penjemputan dan pengembalian",
+    "subtotal": "Subtotal",
+    "subtotalExclTax": "Subtotal tidak termasuk. pajak",
+    "taxAmount": "PPN ({rate}%)",
+    "subtotalInclTax": "Subtotal termasuk. pajak",
+    "deposit": "Uang jaminan",
+    "total": "Jumlah",
+    "totalToPay": "Jumlah yang harus dibayar",
+    "question": "Pertanyaan? Hubungi kami:",
+    "summary": "Ringkasan",
+    "seeYouSoon": "Sampai jumpa lagi,\n{storeName}"
+  },
+  "payAsYouGoInvoice": {
+    "usageLine": "Sewa {billingMonth} — {count,plural,one{# sewa} other{# persewaan}}",
+    "marketplaceLine": "pemesanan kembali {billingMonth} — {count,plural,one{# reservasi} other{# reservasi}}"
+  },
+  "verificationCode": {
+    "subject": "Kode masuk Anda: {code}",
+    "title": "Kode masuk",
+    "body": "Berikut adalah kode login Anda untuk mengakses akun Anda di {storeName}:",
+    "expiry": "Kode ini kedaluwarsa dalam 10 menit. Jika Anda tidak meminta kode ini, Anda dapat mengabaikan email ini dengan aman."
+  },
+  "confirmReservation": {
+    "subject": "Reservasi Anda #{number} telah dikonfirmasi",
+    "title": "Reservasi dikonfirmasi!",
+    "body": "Reservasi Anda #{number} telah dikonfirmasi. Berikut ringkasannya:",
+    "summary": "Ringkasan",
+    "contractSignature": "Kontrak Anda terlampir dan siap ditandatangani secara online.",
+    "signContract": "Tandatangani kontrak"
+  },
+  "requestReceived": {
+    "subject": "Permintaan reservasi #{number} diterima",
+    "title": "Permintaan diterima",
+    "body": "Kami telah menerima permintaan reservasi Anda.",
+    "review": "Tim kami sedang meninjau permintaan Anda dan akan segera menghubungi Anda kembali.",
+    "confirmation": "Anda akan menerima email konfirmasi setelah reservasi Anda divalidasi.",
+    "seeYouSoon": "Sampai jumpa lagi,"
+  },
+  "requestAccepted": {
+    "subject": "Permintaan Anda #{number} telah diterima!",
+    "title": "Permintaan diterima!",
+    "body": "Kabar baik! Permintaan reservasi Anda #{number} telah diterima.",
+    "rentalPeriod": "Masa sewa",
+    "yourReservation": "Reservasi Anda",
+    "proceedPayment": "Lanjutkan ke pembayaran",
+    "legalAcceptance": "Validasi reservasi Anda merupakan penerimaan kontrak sewa serta syarat dan ketentuan.",
+    "contractAvailable": "Lihat kontrak sewa yang terkait dengan reservasi Anda.",
+    "viewContract": "Lihat kontraknya",
+    "viewTerms": "Lihat syarat dan ketentuan"
+  },
+  "requestRejected": {
+    "subject": "Permintaan reservasi #{number}",
+    "title": "Permintaan tidak diterima",
+    "body": "Mohon maaf, permintaan reservasi Anda #{number} tidak dapat diterima.",
+    "contactForAlternative": "Silakan hubungi kami untuk informasi lebih lanjut atau untuk mencari alternatif yang mungkin cocok untuk Anda."
+  },
+  "quoteSent": {
+    "subject": "Kutipan #{number}",
+    "title": "Anda telah menerima penawaran",
+    "body": "{store} telah mengirimi Anda penawaran untuk reservasi #{number}.",
+    "rentalPeriod": "Masa sewa",
+    "yourQuote": "kutipan Anda",
+    "viewQuote": "Lihat kutipan",
+    "expiry": "Anda dapat menerima atau menolak penawaran ini dari akun Anda."
+  },
+  "reminderPickup": {
+    "subject": "Pengingat: persewaan Anda dimulai besok!",
+    "title": "Penyewaan Anda dimulai besok!",
+    "body": "Ini adalah pengingat untuk reservasi Anda #{number}.",
+    "scheduledPickup": "Penjemputan terjadwal",
+    "dontForget": "Jangan lupa:",
+    "bringId": "Identitas yang sah",
+    "bringConfirmation": "Konfirmasi reservasi Anda",
+    "seeTomorrow": "Sampai jumpa besok!"
+  },
+  "reminderReturn": {
+    "subject": "Pengingat: pengembalian peralatan pada {date}",
+    "title": "Ingatlah untuk mengembalikan peralatan Anda",
+    "body": "Ini adalah pengingat untuk reservasi Anda #{number}. Pengembalian peralatan dijadwalkan pada {date}.",
+    "scheduledReturn": "Pengembalian terjadwal",
+    "returnInfo": "Harap kembalikan peralatan dalam kondisi baik. Deposit akan dikembalikan setelah verifikasi.",
+    "thanks": "Terima kasih atas kepercayaan Anda!"
+  },
+  "reminderPickupAdmin": {
+    "subject": "Penjemputan mendatang: reservasi #{number}",
+    "title": "Pengambilan peralatan yang akan datang",
+    "body": "Penjemputan akan datang untuk reservasi #{number}. Berikut detailnya agar Anda bisa menyiapkan perlengkapannya.",
+    "scheduledPickup": "Penjemputan terjadwal",
+    "customer": "Pelanggan:",
+    "email": "Surel:",
+    "phone": "Telepon:",
+    "amount": "Jumlah:",
+    "viewReservation": "Lihat reservasi",
+    "connectToManage": "Masuk ke dasbor Anda untuk mengelola reservasi ini."
+  },
+  "reminderReturnAdmin": {
+    "subject": "Pengembalian mendatang: reservasi #{number}",
+    "title": "Pengembalian peralatan yang akan datang",
+    "body": "Pengembalian akan segera dilakukan untuk reservasi #{number}. Berikut detailnya agar Anda bisa bersiap menerima perlengkapannya.",
+    "scheduledReturn": "Pengembalian terjadwal",
+    "customer": "Pelanggan:",
+    "email": "Surel:",
+    "phone": "Telepon:",
+    "amount": "Jumlah:",
+    "viewReservation": "Lihat reservasi",
+    "connectToManage": "Masuk ke dasbor Anda untuk mengelola reservasi ini."
+  },
+  "reminderDigestAdmin": {
+    "subject": "Jadwal Anda untuk {date}",
+    "title": "Jadwal hari ini",
+    "body": "Inilah yang terjadi di {storeName} hari ini.",
+    "pickupsTitle": "Pickup ({count})",
+    "returnsTitle": "Pengembalian ({count})",
+    "viewCalendar": "Lihat kalender",
+    "connectToManage": "Masuk ke dasbor Anda untuk mengatur hari Anda."
+  },
+  "thankYouReview": {
+    "subject": "Terima kasih atas sewa Anda!",
+    "title": "Terima kasih atas kepercayaan Anda!",
+    "body": "Kami berharap persewaan Anda berjalan dengan baik. Ulasan Anda membantu kami meningkatkan dan membantu pelanggan lain menentukan pilihan mereka.",
+    "cta": "Tinggalkan Ulasan",
+    "disclaimer": "Hanya membutuhkan satu menit dan akan sangat membantu!",
+    "smsThankYou": "Terima kasih atas sewa Anda!",
+    "smsReview": "Ulasan Anda penting:"
+  },
+  "newRequestLandlord": {
+    "subject": "Permintaan reservasi baru #{number}",
+    "title": "Permintaan reservasi baru",
+    "body": "Anda telah menerima permintaan baru di {storeName}.",
+    "customer": "Pelanggan:",
+    "email": "Surel:",
+    "period": "Periode:",
+    "amount": "Jumlah:",
+    "notes": "Pesan pelanggan",
+    "viewRequest": "Lihat permintaan",
+    "connectToManage": "Masuk ke dasbor Anda untuk menerima atau menolak permintaan ini."
+  },
+  "supplierInvoiceReceived": {
+    "subject": "Faktur pemasok baru",
+    "title": "Faktur pemasok baru",
+    "body": "Faktur pemasok baru telah diterima untuk {storeName}.",
+    "seller": "Pemasok:",
+    "number": "Nomor:",
+    "total": "Jumlah termasuk. pajak:",
+    "cta": "Lihat faktur pemasok",
+    "footer": "Anda dapat meninjau dan memproses faktur ini dari dasbor Anda."
+  },
+  "contactMessage": {
+    "subject": "Pesan baru dari {name} — {store}",
+    "title": "Pesan baru dari toko Anda",
+    "body": "Seorang pengunjung menulis kepada Anda dari halaman kontak {storeName}.",
+    "name": "Nama:",
+    "email": "Surel:",
+    "phone": "Telepon:",
+    "message": "Pesan:",
+    "reply": "Membalas",
+    "footer": "Balas email ini secara langsung: jawaban Anda dikirim ke alamat pengunjung."
+  },
+  "phoneCallbackLandlord": {
+    "subject": "Penelepon yang akan dihubungi kembali — {store}",
+    "title": "Seorang penelepon untuk menelepon kembali",
+    "body": "Asisten suara Anda tidak dapat menyelesaikan permintaan di {storeName} dan meneruskan pesan ini kepada Anda.",
+    "phone": "Nomor panggilan balik:",
+    "message": "Pesan:",
+    "listen": "Buka panggilan",
+    "footer": "Buka percakapan untuk membaca pertukaran dan memutar ulang rekaman panggilan."
+  },
+  "voiceNumberBilling": {
+    "numberLabel": "Nomor:",
+    "rentalLabel": "Sewa bulanan:",
+    "rentalValue": "Kredit AI {credits} / bulan",
+    "deadlineLabel": "Batas waktu:",
+    "ctaRecharge": "Isi ulang kredit saya",
+    "ctaOpen": "Buka Asisten AI saya",
+    "footer": "Sewa nomor dibayarkan secara otomatis dalam kredit AI setiap bulan.",
+    "warning": {
+      "subject": "Saatnya mengisi ulang — pembaruan {number}",
+      "title": "Saldo Anda tidak akan menutupi perpanjangan berikutnya",
+      "body": "Nomor {number} untuk {storeName} diperbarui pada {date} untuk kredit AI {credits}, namun saldo Anda saat ini tidak cukup. Isi ulang sebelum tanggal tersebut untuk menyimpan nomor Anda."
+    },
+    "failed": {
+      "subject": "Diperlukan tindakan — {number} berisiko terlepas",
+      "title": "Perpanjangan gagal",
+      "body": "Perpanjangan {number} (kredit AI {credits}) tidak dapat diselesaikan: saldo tidak mencukupi. Isi ulang sebelum {date}, jika tidak, nomor akan terputus secara otomatis. Kami mencoba menagih ulang setiap hari segera setelah Anda mengisi ulang."
+    },
+    "released": {
+      "subject": "Nomor {number} telah dilepas",
+      "title": "Nomor terlepas",
+      "body": "Nomor {number} untuk {storeName} telah dilepas dan tidak aktif lagi. Anda dapat memilih nomor baru kapan saja dari Asisten AI Anda."
+    }
+  },
+  "teamInvitation": {
+    "subject": "{inviterName} mengundang Anda untuk bergabung dengan {storeName}",
+    "title": "Undangan tim",
+    "greeting": "Halo,",
+    "body": "{inviterName} mengundang Anda untuk bergabung dengan tim {storeName} di Louez.io.",
+    "accessDescription": "Dengan menerima undangan ini, Anda akan memiliki akses ke dashboard toko untuk mengelola reservasi, produk, dan pelanggan.",
+    "acceptButton": "Terima undangan",
+    "expiry": "Undangan ini akan habis masa berlakunya dalam 7 hari. Jika Anda tidak meminta untuk bergabung dengan tim ini, Anda dapat mengabaikan email ini dengan aman."
+  },
+  "baseLayout": {
+    "sentBy": "Email ini dikirim oleh {storeName}",
+    "ignoreIfNotYou": "Jika Anda tidak memulai tindakan ini, harap abaikan email ini.",
+    "poweredBy": "Didukung oleh"
+  },
+  "instantAccess": {
+    "subject": "Akses reservasi Anda #{number}",
+    "title": "Akses reservasi Anda",
+    "body": "Klik untuk mengakses reservasi Anda #{number}.",
+    "paymentPending": "Pembayaran tertunda untuk reservasi ini.",
+    "viewAndPay": "Lihat dan bayar",
+    "linkValid": "Tautan ini berlaku selama 30 hari."
+  },
+  "reservationCancelled": {
+    "subject": "Reservasi #{number} dibatalkan",
+    "title": "Reservasi dibatalkan",
+    "body": "Reservasi Anda #{number} telah dibatalkan.",
+    "cancelledPeriod": "Periode dibatalkan",
+    "reasonLabel": "Alasan",
+    "contactForQuestions": "Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.",
+    "browseEquipment": "Telusuri katalog kami",
+    "thankYou": "Terima kasih atas pengertian Anda."
+  },
+  "reservationCompleted": {
+    "subject": "Reservasi #{number} selesai",
+    "title": "Penyewaan selesai!",
+    "body": "Reservasi Anda #{number} telah selesai.",
+    "rentalPeriod": "Masa sewa",
+    "depositReturned": "Deposit Anda sebesar {amount} akan dikembalikan.",
+    "depositPending": "Deposit Anda sebesar {amount} akan segera diverifikasi dan dikembalikan.",
+    "thankYouMessage": "Terima kasih telah memilih layanan kami!",
+    "rentAgain": "Sewa lagi",
+    "seeYouSoon": "Sampai jumpa lagi!"
+  },
+  "paymentConfirmation": {
+    "subject": "Pembayaran dikonfirmasi - Reservasi #{number}",
+    "title": "Pembayaran diterima!",
+    "body": "Kami telah menerima pembayaran Anda untuk reservasi #{number}.",
+    "paymentDetails": "Detail pembayaran",
+    "amount": "Jumlah",
+    "date": "Tanggal",
+    "method": "Metode",
+    "reservation": "Reservasi",
+    "confirmation": "Pembayaran Anda telah berhasil diproses.",
+    "keepEmail": "Simpan email ini sebagai bukti pembayaran.",
+    "contractSignature": "Kontrak Anda terlampir dan siap ditandatangani secara online.",
+    "signContract": "Tandatangani kontrak"
+  },
+  "paymentFailed": {
+    "subject": "Pembayaran gagal - Reservasi #{number}",
+    "title": "Pembayaran gagal",
+    "body": "Pembayaran {amount} untuk reservasi Anda #{number} tidak dapat diproses.",
+    "whatToDo": "Apa yang harus dilakukan?",
+    "tip1": "Periksa apakah kartu Anda valid dan memiliki dana yang cukup",
+    "tip2": "Coba dengan kartu lain",
+    "tip3": "Hubungi bank Anda jika masalah terus berlanjut",
+    "retryPayment": "Coba lagi pembayaran",
+    "contactSupport": "Butuh bantuan? Hubungi kami."
+  },
+  "paymentRequest": {
+    "subject": "Pembayaran diminta untuk reservasi #{number}",
+    "title": "Permintaan pembayaran",
+    "body": "{storeName} meminta pembayaran {amount} untuk reservasi Anda #{number}.",
+    "paymentDetails": "Detail pembayaran",
+    "reservation": "Reservasi",
+    "description": "Deskripsi",
+    "amountDue": "Jumlah yang harus dibayar",
+    "payNow": "Bayar {amount}",
+    "linkFallback": "Atau salin tautan ini ke browser Anda:",
+    "securePayment": "Pembayaran ini dijamin dengan Stripe. Informasi pembayaran Anda tidak pernah dibagikan kepada penyedia persewaan.",
+    "manualBody": "Kami menghubungi Anda mengenai pembayaran reservasi Anda #{number}.",
+    "payPromptly": "Silakan lanjutkan pembayaran sesegera mungkin."
+  },
+  "depositAuthorizationRequest": {
+    "subject": "Otorisasi deposit untuk reservasi #{number}",
+    "title": "Diperlukan otorisasi setoran",
+    "body": "{storeName} meminta otorisasi deposit sebesar {amount} untuk reservasi Anda #{number}.",
+    "howItWorks": "Bagaimana cara kerjanya",
+    "step1": "Anda mengotorisasi jumlah setoran pada kartu Anda",
+    "step2": "Jumlah tersebut ditahan sementara (tidak dikenakan biaya)",
+    "step3": "Di akhir masa sewa, otorisasi dilepaskan secara otomatis",
+    "step4": "Jika terjadi kerusakan, sebagian atau seluruhnya dapat dikenakan biaya",
+    "authorizeNow": "Otorisasi setoran",
+    "linkFallback": "Atau salin tautan ini ke browser Anda:",
+    "securePayment": "Otorisasi ini diamankan oleh Stripe. Jumlah tersebut tidak akan langsung dibebankan."
+  },
+  "rewardUnlocked": {
+    "subject": "Anda mendapatkan reservasi gratis 🎉",
+    "title": "Referensi Anda terbayar!",
+    "greeting": "Halo,",
+    "body": "{referredStoreName} baru saja melakukan penjualan online pertamanya. Anda mendapatkan reservasi gratis {freeReservations}, senilai ≈ {rewardValue}.",
+    "cta": "Lihat imbalan saya",
+    "footer": "Terima kasih telah mengembangkan komunitas Louez.",
+    "subjectCredit": "Anda telah mendapatkan kredit Louez 🎉",
+    "bodyCredit": "{referredStoreName} baru saja melakukan penjualan online pertamanya. Anda mendapatkan kredit {rewardValue} pada faktur Louez berikutnya."
+  },
+  "contract": {
+    "subject": "Kontrak sewa Anda #{number}",
+    "title": "Kontrak sewa Anda",
+    "body": "Berikut adalah kontrak sewa untuk reservasi Anda #{number}.",
+    "downloadContract": "Unduh kontraknya"
+  },
+  "customMessage": {
+    "subject": "Tentang reservasi Anda #{number}"
+  }
+}

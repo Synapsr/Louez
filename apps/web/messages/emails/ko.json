@@ -1,0 +1,321 @@
+{
+  "common": {
+    "greeting": "안녕하세요 {name}님,",
+    "regards": "감사합니다.",
+    "team": "{storeName} 팀",
+    "viewReservation": "내 예약 보기",
+    "contactUs": "문의하기",
+    "reservationNumber": "예약 #{number}",
+    "period": "기간",
+    "periodFrom": "{startDate}에서",
+    "periodTo": "{endDate}로",
+    "timezone": "시간대: {timezone}",
+    "address": "주소",
+    "pickupAddress": "픽업 주소",
+    "returnAddress": "반품 주소",
+    "pickupAndReturnAddress": "픽업 및 반납 주소",
+    "subtotal": "소계",
+    "subtotalExclTax": "제외 소계 세금",
+    "taxAmount": "부가가치세({rate}%)",
+    "subtotalInclTax": "소계 포함 세금",
+    "deposit": "보증금",
+    "total": "합계",
+    "totalToPay": "지불할 총액",
+    "question": "질문이 있으신가요? 저희에게 연락하세요:",
+    "summary": "요약",
+    "seeYouSoon": "곧 만나요, \n{storeName}"
+  },
+  "payAsYouGoInvoice": {
+    "usageLine": "렌탈 {billingMonth} — {count,plural,one{# 임대} other{# 임대}}",
+    "marketplaceLine": "재예약 {billingMonth} — {count,plural,one{# 예약} other{# 예약}}"
+  },
+  "verificationCode": {
+    "subject": "로그인 코드: {code}",
+    "title": "로그인 코드",
+    "body": "{storeName}에서 귀하의 계정에 액세스하기 위한 로그인 코드는 다음과 같습니다.",
+    "expiry": "이 코드는 10분 후에 만료됩니다. 이 코드를 요청하지 않으셨다면 이 이메일을 무시하셔도 됩니다."
+  },
+  "confirmReservation": {
+    "subject": "귀하의 예약 #{number}가 확인되었습니다",
+    "title": "예약이 확인되었습니다!",
+    "body": "귀하의 예약번호 #{number}가 확인되었습니다. 요약은 다음과 같습니다.",
+    "summary": "요약",
+    "contractSignature": "계약서가 첨부되었으며 온라인으로 서명할 준비가 되었습니다.",
+    "signContract": "계약서에 서명하세요"
+  },
+  "requestReceived": {
+    "subject": "예약 요청 #{number} 접수됨",
+    "title": "요청 접수됨",
+    "body": "귀하의 예약 요청이 접수되었습니다.",
+    "review": "우리 팀에서 귀하의 요청을 검토하고 있으며 곧 연락을 드릴 것입니다.",
+    "confirmation": "예약이 확인되면 확인 이메일을 받게 됩니다.",
+    "seeYouSoon": "곧 뵙겠습니다."
+  },
+  "requestAccepted": {
+    "subject": "귀하의 요청 #{number}이 승인되었습니다!",
+    "title": "요청이 승인되었습니다!",
+    "body": "좋은 소식! 귀하의 예약 요청 #{number}이 승인되었습니다.",
+    "rentalPeriod": "대여기간",
+    "yourReservation": "귀하의 예약",
+    "proceedPayment": "결제를 진행하세요",
+    "legalAcceptance": "귀하의 예약이 확인되면 임대 계약 및 이용 약관에 동의하는 것으로 간주됩니다.",
+    "contractAvailable": "예약과 관련된 임대 계약을 확인하세요.",
+    "viewContract": "계약 보기",
+    "viewTerms": "이용약관 보기"
+  },
+  "requestRejected": {
+    "subject": "예약 요청 #{number}",
+    "title": "요청이 수락되지 않았습니다.",
+    "body": "죄송합니다. 귀하의 예약 요청 #{number}을 수락할 수 없습니다.",
+    "contactForAlternative": "자세한 정보를 원하거나 귀하에게 적합한 대안을 찾으려면 당사에 문의하십시오."
+  },
+  "quoteSent": {
+    "subject": "견적 #{number}",
+    "title": "견적을 받으셨습니다.",
+    "body": "{store}가 예약 #{number}에 대한 견적을 보냈습니다.",
+    "rentalPeriod": "대여기간",
+    "yourQuote": "귀하의 견적",
+    "viewQuote": "견적 보기",
+    "expiry": "귀하의 계정에서 이 견적을 수락하거나 거부할 수 있습니다."
+  },
+  "reminderPickup": {
+    "subject": "알림: 내일부터 대여가 시작됩니다!",
+    "title": "내일부터 렌탈이 시작됩니다!",
+    "body": "귀하의 예약 #{number}에 대한 알림입니다.",
+    "scheduledPickup": "예정된 픽업",
+    "dontForget": "잊지 마세요:",
+    "bringId": "유효한 신분증",
+    "bringConfirmation": "예약 확인",
+    "seeTomorrow": "내일 봐요!"
+  },
+  "reminderReturn": {
+    "subject": "알림: {date}에서 장비 반납",
+    "title": "장비를 반납하는 것을 잊지 마세요",
+    "body": "귀하의 예약 #{number}에 대한 알림입니다. 장비 반납은 {date}로 예정되어 있습니다.",
+    "scheduledReturn": "귀국 예정",
+    "returnInfo": "장비를 좋은 상태로 반납해주세요. 보증금은 확인 후 돌려드립니다.",
+    "thanks": "당신의 신뢰에 감사드립니다!"
+  },
+  "reminderPickupAdmin": {
+    "subject": "픽업 예정: 예약 #{number}",
+    "title": "다가오는 장비 픽업",
+    "body": "예약 #{number}에 대한 픽업이 예정되어 있습니다. 장비를 준비할 수 있도록 자세한 내용은 다음과 같습니다.",
+    "scheduledPickup": "예정된 픽업",
+    "customer": "고객:",
+    "email": "이메일:",
+    "phone": "전화:",
+    "amount": "금액:",
+    "viewReservation": "예약 보기",
+    "connectToManage": "이 예약을 관리하려면 대시보드에 로그인하세요."
+  },
+  "reminderReturnAdmin": {
+    "subject": "반품 예정: 예약 #{number}",
+    "title": "장비 반납 예정",
+    "body": "예약 #{number}에 대한 반품이 예정되어 있습니다. 장비 수령을 준비할 수 있도록 자세한 내용은 다음과 같습니다.",
+    "scheduledReturn": "귀국 예정",
+    "customer": "고객:",
+    "email": "이메일:",
+    "phone": "전화:",
+    "amount": "금액:",
+    "viewReservation": "예약 보기",
+    "connectToManage": "이 예약을 관리하려면 대시보드에 로그인하세요."
+  },
+  "reminderDigestAdmin": {
+    "subject": "{date} 일정",
+    "title": "오늘의 일정",
+    "body": "오늘 {storeName}에서 무슨 일이 일어나고 있는지 살펴보겠습니다.",
+    "pickupsTitle": "픽업({count})",
+    "returnsTitle": "반품 ({count})",
+    "viewCalendar": "달력 보기",
+    "connectToManage": "하루를 관리하려면 대시보드에 로그인하세요."
+  },
+  "thankYouReview": {
+    "subject": "대여해 주셔서 감사합니다!",
+    "title": "당신의 신뢰에 감사드립니다!",
+    "body": "귀하의 임대가 잘 이루어졌기를 바랍니다. 귀하의 리뷰는 우리가 개선하는 데 도움이 되며 다른 고객이 선택하는 데 도움이 됩니다.",
+    "cta": "리뷰를 남겨주세요",
+    "disclaimer": "단 1분밖에 걸리지 않으며 큰 도움이 될 것입니다!",
+    "smsThankYou": "대여해 주셔서 감사합니다!",
+    "smsReview": "귀하의 리뷰가 중요합니다:"
+  },
+  "newRequestLandlord": {
+    "subject": "신규 예약 요청 #{number}",
+    "title": "신규 예약 요청",
+    "body": "{storeName}에 대한 새로운 요청을 받았습니다.",
+    "customer": "고객:",
+    "email": "이메일:",
+    "period": "기간:",
+    "amount": "금액:",
+    "notes": "고객 메시지",
+    "viewRequest": "요청 보기",
+    "connectToManage": "이 요청을 수락하거나 거부하려면 대시보드에 로그인하세요."
+  },
+  "supplierInvoiceReceived": {
+    "subject": "새로운 공급업체 송장",
+    "title": "새로운 공급업체 송장",
+    "body": "{storeName}에 대한 새로운 공급업체 송장이 수신되었습니다.",
+    "seller": "공급자:",
+    "number": "번호:",
+    "total": "총 포함 세금:",
+    "cta": "공급업체 송장 보기",
+    "footer": "대시보드에서 이 송장을 검토하고 처리할 수 있습니다."
+  },
+  "contactMessage": {
+    "subject": "{name}의 새 메시지 — {store}",
+    "title": "매장에서 보낸 새 메시지",
+    "body": "{storeName}의 연락처 페이지에서 방문자가 귀하에게 편지를 보냈습니다.",
+    "name": "이름:",
+    "email": "이메일:",
+    "phone": "전화:",
+    "message": "메시지:",
+    "reply": "답장하다",
+    "footer": "이 이메일에 직접 회신하세요. 귀하의 답변은 방문자의 주소로 전달됩니다."
+  },
+  "phoneCallbackLandlord": {
+    "subject": "다시 전화할 발신자 — {store}",
+    "title": "다시 전화할 발신자",
+    "body": "귀하의 음성 도우미가 {storeName}에 대한 요청을 완료할 수 없어 이 메시지를 귀하에게 전달하고 있습니다.",
+    "phone": "콜백 번호:",
+    "message": "메시지:",
+    "listen": "통화 개시",
+    "footer": "대화를 열어 교환 내용을 읽고 통화 녹음을 재생하세요."
+  },
+  "voiceNumberBilling": {
+    "numberLabel": "번호:",
+    "rentalLabel": "월 렌탈:",
+    "rentalValue": "{credits} AI 크레딧/월",
+    "deadlineLabel": "마감일:",
+    "ctaRecharge": "내 크레딧을 재충전하세요",
+    "ctaOpen": "내 AI 도우미 열기",
+    "footer": "번호대여료는 매달 AI 크레딧으로 자동 결제됩니다.",
+    "warning": {
+      "subject": "재충전의 시간 — {number} 갱신",
+      "title": "귀하의 잔액은 다음 갱신에는 적용되지 않습니다",
+      "body": "{storeName}의 {number} 번호는 {credits} AI 크레딧의 {date}에서 갱신되지만 현재 잔액이 충분하지 않습니다. 번호를 유지하려면 해당 날짜 이전에 재충전하세요."
+    },
+    "failed": {
+      "subject": "필요한 조치 — {number}가 분리될 위험이 있습니다.",
+      "title": "갱신 실패",
+      "body": "{number}({credits} AI 크레딧) 갱신을 완료할 수 없습니다. 잔액이 부족합니다. {date} 이전에 재충전하십시오. 그렇지 않으면 번호가 자동으로 분리됩니다. 재충전하는 즉시 매일 다시 충전을 시도합니다."
+    },
+    "released": {
+      "subject": "{number} 번호가 분리되었습니다",
+      "title": "번호가 분리됨",
+      "body": "{storeName}의 번호 {number}가 분리되어 더 이상 활성 상태가 아닙니다. AI Assistant에서 언제든지 새 번호를 선택할 수 있습니다."
+    }
+  },
+  "teamInvitation": {
+    "subject": "{inviterName}가 {storeName}에 가입하도록 귀하를 초대합니다",
+    "title": "팀 초대",
+    "greeting": "안녕하세요.",
+    "body": "{inviterName}가 Louez.io의 {storeName} 팀에 합류하도록 귀하를 초대합니다.",
+    "accessDescription": "이 초대를 수락하면 매장 대시보드에 접속하여 예약, 상품, 고객을 관리할 수 있습니다.",
+    "acceptButton": "초대 수락",
+    "expiry": "이 초대는 7일 후에 만료됩니다. 이 팀 가입을 요청하지 않으셨다면 이 이메일을 무시하셔도 됩니다."
+  },
+  "baseLayout": {
+    "sentBy": "이 이메일은 {storeName}에서 보냈습니다.",
+    "ignoreIfNotYou": "이 작업을 시작하지 않으셨다면 이 이메일을 무시하시기 바랍니다.",
+    "poweredBy": "제공:"
+  },
+  "instantAccess": {
+    "subject": "예약 번호에 액세스하세요 #{number}",
+    "title": "예약에 액세스",
+    "body": "예약 번호 {number}에 액세스하려면 클릭하세요.",
+    "paymentPending": "이 예약에 대한 결제가 보류 중입니다.",
+    "viewAndPay": "확인 및 결제",
+    "linkValid": "이 링크는 30일 동안 유효합니다."
+  },
+  "reservationCancelled": {
+    "subject": "예약 #{number}가 취소되었습니다.",
+    "title": "예약이 취소되었습니다",
+    "body": "귀하의 예약 #{number}이 취소되었습니다.",
+    "cancelledPeriod": "취소기간",
+    "reasonLabel": "이유",
+    "contactForQuestions": "궁금한 점이 있으시면 언제든지 문의해 주세요.",
+    "browseEquipment": "카탈로그 찾아보기",
+    "thankYou": "이해해 주셔서 감사합니다."
+  },
+  "reservationCompleted": {
+    "subject": "예약 #{number} 완료",
+    "title": "렌탈완료!",
+    "body": "귀하의 예약 #{number}가 이제 완료되었습니다.",
+    "rentalPeriod": "대여기간",
+    "depositReturned": "{amount} 보증금이 환불됩니다.",
+    "depositPending": "귀하의 {amount} 보증금이 확인되어 곧 환불될 예정입니다.",
+    "thankYouMessage": "저희 서비스를 선택해주셔서 감사합니다!",
+    "rentAgain": "다시 임대",
+    "seeYouSoon": "곧 만나요!"
+  },
+  "paymentConfirmation": {
+    "subject": "결제 확인됨 - 예약 #{number}",
+    "title": "결제 완료!",
+    "body": "#{number} 예약에 대한 결제가 접수되었습니다.",
+    "paymentDetails": "결제 세부정보",
+    "amount": "금액",
+    "date": "날짜",
+    "method": "방법",
+    "reservation": "예약",
+    "confirmation": "귀하의 결제가 성공적으로 처리되었습니다.",
+    "keepEmail": "이 이메일을 결제 증빙 자료로 보관하세요.",
+    "contractSignature": "계약서가 첨부되었으며 온라인으로 서명할 준비가 되었습니다.",
+    "signContract": "계약서에 서명하세요"
+  },
+  "paymentFailed": {
+    "subject": "결제 실패 - 예약 #{number}",
+    "title": "결제 실패",
+    "body": "귀하의 예약 번호 {number}에 대한 {amount} 결제를 처리할 수 없습니다.",
+    "whatToDo": "무엇을 해야 할까요?",
+    "tip1": "카드가 유효하고 잔액이 충분한지 확인하세요.",
+    "tip2": "다른 카드로 시도해 보세요",
+    "tip3": "문제가 지속되면 은행에 문의하세요",
+    "retryPayment": "결제 재시도",
+    "contactSupport": "도움이 필요하신가요? 저희에게 연락하세요."
+  },
+  "paymentRequest": {
+    "subject": "예약 #{number}에 대한 결제가 요청되었습니다.",
+    "title": "결제요청",
+    "body": "{storeName}가 귀하의 예약 #{number}에 대해 {amount}의 지불을 요청하고 있습니다.",
+    "paymentDetails": "결제 세부정보",
+    "reservation": "예약",
+    "description": "설명",
+    "amountDue": "미결제 금액",
+    "payNow": "{amount} 지불",
+    "linkFallback": "또는 다음 링크를 브라우저에 복사하세요.",
+    "securePayment": "이 결제는 Stripe로 보장됩니다. 귀하의 결제 정보는 렌트 업체와 절대 공유되지 않습니다.",
+    "manualBody": "예약 #{number}에 대한 결제와 관련하여 연락드립니다.",
+    "payPromptly": "빠른 시일 내에 결제를 진행하시기 바랍니다."
+  },
+  "depositAuthorizationRequest": {
+    "subject": "예약번호 {number} 입금 승인",
+    "title": "입금 승인이 필요합니다",
+    "body": "{storeName}가 귀하의 예약 #{number}에 대해 {amount}의 보증금 승인을 요청하고 있습니다.",
+    "howItWorks": "작동 원리",
+    "step1": "카드 입금액을 승인합니다.",
+    "step2": "금액이 일시적으로 보류됩니다(청구되지 않음).",
+    "step3": "렌탈이 끝나면 승인이 자동으로 해제됩니다.",
+    "step4": "파손시 일부 또는 전부가 청구될 수 있습니다.",
+    "authorizeNow": "입금 승인",
+    "linkFallback": "또는 다음 링크를 브라우저에 복사하세요.",
+    "securePayment": "이 승인은 Stripe에 의해 보호됩니다. 해당 금액은 즉시 청구되지 않습니다."
+  },
+  "rewardUnlocked": {
+    "subject": "무료 예약을 받으셨습니다 🎉",
+    "title": "귀하의 추천이 성공했습니다!",
+    "greeting": "안녕하세요.",
+    "body": "{referredStoreName}는 방금 첫 번째 온라인 판매를 시작했습니다. 귀하는 {rewardValue} 상당의 {freeReservations} 무료 예약을 획득했습니다.",
+    "cta": "내 보상 보기",
+    "footer": "Louez 커뮤니티를 성장시켜 주셔서 감사합니다.",
+    "subjectCredit": "Louez 크레딧을 획득하셨습니다 🎉",
+    "bodyCredit": "{referredStoreName}는 방금 첫 번째 온라인 판매를 시작했습니다. 다음 Louez 송장에서 {rewardValue} 크레딧을 받으실 수 있습니다."
+  },
+  "contract": {
+    "subject": "임대 계약 #{number}",
+    "title": "임대 계약",
+    "body": "예약 #{number}에 대한 임대 계약은 다음과 같습니다.",
+    "downloadContract": "계약서 다운로드"
+  },
+  "customMessage": {
+    "subject": "예약 정보 #{number}"
+  }
+}

@@ -1,3 +1,4 @@
+import { supplementalMessages } from "@/lib/i18n/supplemental-messages";
 import { BaseLayout } from "./base-layout";
 import { CtaButton, EmailHeading, EmailText, InfoCard } from "./components";
 import { getDateFormatPatterns, getEmailTranslations, type EmailLocale } from "../i18n";
@@ -105,6 +106,57 @@ const messagesByLocale: Record<
     previousSchedule: "Horario anterior",
     newSchedule: "Novo horario",
     fromTo: "De {startDate} ate {endDate}",
+  },
+
+  zh: {
+    subject: supplementalMessages.zh.reservation_modified_messagesByLocale_subject,
+    title: supplementalMessages.zh.reservation_modified_messagesByLocale_title,
+    body: supplementalMessages.zh.reservation_modified_messagesByLocale_body,
+    scheduleChanged: supplementalMessages.zh.reservation_modified_messagesByLocale_scheduleChanged,
+    previousSchedule:
+      supplementalMessages.zh.reservation_modified_messagesByLocale_previousSchedule,
+    newSchedule: supplementalMessages.zh.reservation_modified_messagesByLocale_newSchedule,
+    fromTo: supplementalMessages.zh.reservation_modified_messagesByLocale_fromTo,
+  },
+  ja: {
+    subject: supplementalMessages.ja.reservation_modified_messagesByLocale_subject,
+    title: supplementalMessages.ja.reservation_modified_messagesByLocale_title,
+    body: supplementalMessages.ja.reservation_modified_messagesByLocale_body,
+    scheduleChanged: supplementalMessages.ja.reservation_modified_messagesByLocale_scheduleChanged,
+    previousSchedule:
+      supplementalMessages.ja.reservation_modified_messagesByLocale_previousSchedule,
+    newSchedule: supplementalMessages.ja.reservation_modified_messagesByLocale_newSchedule,
+    fromTo: supplementalMessages.ja.reservation_modified_messagesByLocale_fromTo,
+  },
+  ru: {
+    subject: supplementalMessages.ru.reservation_modified_messagesByLocale_subject,
+    title: supplementalMessages.ru.reservation_modified_messagesByLocale_title,
+    body: supplementalMessages.ru.reservation_modified_messagesByLocale_body,
+    scheduleChanged: supplementalMessages.ru.reservation_modified_messagesByLocale_scheduleChanged,
+    previousSchedule:
+      supplementalMessages.ru.reservation_modified_messagesByLocale_previousSchedule,
+    newSchedule: supplementalMessages.ru.reservation_modified_messagesByLocale_newSchedule,
+    fromTo: supplementalMessages.ru.reservation_modified_messagesByLocale_fromTo,
+  },
+  id: {
+    subject: supplementalMessages.id.reservation_modified_messagesByLocale_subject,
+    title: supplementalMessages.id.reservation_modified_messagesByLocale_title,
+    body: supplementalMessages.id.reservation_modified_messagesByLocale_body,
+    scheduleChanged: supplementalMessages.id.reservation_modified_messagesByLocale_scheduleChanged,
+    previousSchedule:
+      supplementalMessages.id.reservation_modified_messagesByLocale_previousSchedule,
+    newSchedule: supplementalMessages.id.reservation_modified_messagesByLocale_newSchedule,
+    fromTo: supplementalMessages.id.reservation_modified_messagesByLocale_fromTo,
+  },
+  ko: {
+    subject: supplementalMessages.ko.reservation_modified_messagesByLocale_subject,
+    title: supplementalMessages.ko.reservation_modified_messagesByLocale_title,
+    body: supplementalMessages.ko.reservation_modified_messagesByLocale_body,
+    scheduleChanged: supplementalMessages.ko.reservation_modified_messagesByLocale_scheduleChanged,
+    previousSchedule:
+      supplementalMessages.ko.reservation_modified_messagesByLocale_previousSchedule,
+    newSchedule: supplementalMessages.ko.reservation_modified_messagesByLocale_newSchedule,
+    fromTo: supplementalMessages.ko.reservation_modified_messagesByLocale_fromTo,
   },
 };
 

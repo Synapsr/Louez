@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
   // Tracing only follows imports, so the files must be listed explicitly or the
   // standalone build ships without them.
   outputFileTracingIncludes: {
+    "/*": ["./public/fonts/pdf/*.woff"],
     "/dashboard/whats-new/[slug]": ["./content/whats-new/**/*.md"],
   },
   // TypeScript 7 ships the native compiler without the legacy JS API surface
@@ -202,7 +203,7 @@ const nextConfig: NextConfig = {
     "*.feat-storefront-redesign.louez.localify",
     "louez-storefront-redesign.localify",
     "*.louez-storefront-redesign.localify",
-    'landing-demos.louez.localify',
+    "landing-demos.louez.localify",
   ],
 };
 

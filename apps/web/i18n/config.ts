@@ -1,10 +1,11 @@
-export const locales = ["fr", "en", "it", "nl", "pt", "de", "es", "pl"] as const;
+import { supportedLocales, isSupportedLocale } from "@louez/types";
+
+export const locales = supportedLocales;
 export const defaultLocale = "fr" as const;
 
 export type Locale = (typeof locales)[number];
 
-export const isLocale = (value: string | null | undefined): value is Locale =>
-  typeof value === "string" && (locales as readonly string[]).includes(value);
+export const isLocale = isSupportedLocale;
 
 export const localeNames: Record<Locale, string> = {
   fr: "Français",
@@ -15,6 +16,11 @@ export const localeNames: Record<Locale, string> = {
   de: "Deutsch",
   es: "Español",
   pl: "Polski",
+  zh: "简体中文",
+  ja: "日本語",
+  ru: "Русский",
+  id: "Bahasa Indonesia",
+  ko: "한국어",
 };
 
 export const localeFlags: Record<Locale, string> = {
@@ -26,6 +32,11 @@ export const localeFlags: Record<Locale, string> = {
   de: "🇩🇪",
   es: "🇪🇸",
   pl: "🇵🇱",
+  zh: "🇨🇳",
+  ja: "🇯🇵",
+  ru: "🇷🇺",
+  id: "🇮🇩",
+  ko: "🇰🇷",
 };
 
 export const localeCountries: Record<Locale, string> = {
@@ -37,4 +48,9 @@ export const localeCountries: Record<Locale, string> = {
   de: "DE",
   es: "ES",
   pl: "PL",
+  zh: "CN",
+  ja: "JP",
+  ru: "RU",
+  id: "ID",
+  ko: "KR",
 };

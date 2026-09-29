@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "City bike",
+    "demo-electric-bike": "Electric bike",
+    "demo-child-bike": "Kids' bike",
+    "demo-gravel": "Gravel bike",
+    "demo-mountain": "Electric mountain bike",
+    "demo-cargo": "Cargo bike",
+    "demo-longtail": "Longtail bike",
+    "demo-road": "Road bike",
+    "demo-trailer": "Child trailer",
+    "demo-panniers": "Touring panniers",
+    "demo-child-seat": "Child seat",
+    "demo-touring": "Touring bike"
+  },
+  "categories": {
+    "bikes": "Bikes",
+    "electric": "Electric bikes",
+    "family": "Family",
+    "accessories": "Accessories"
+  },
+  "depositAuthorized": "Card hold recorded",
+  "paymentReceived": "Payment received online",
+  "advisorReply": "For a ride around town, I’d suggest the city bike: comfortable and easy to handle. What date would you like to rent it for?",
+  "customerNotes": "We’ll come by at opening time to make the most of the day.",
+  "internalNotes": "Prepare the bikes and check the tyre pressure before pickup.",
+  "steps": ["The customer books", "You prepare", "Everything is tracked"],
+  "customer": "Customer",
+  "owner": "Owner",
+  "play": "Play the demo",
+  "pause": "Pause",
+  "restart": "Start over",
+  "toggleMenu": "Show or hide the menu"
+}

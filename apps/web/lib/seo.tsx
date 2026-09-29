@@ -122,6 +122,11 @@ const OPEN_GRAPH_LOCALES: Record<Locale, string> = {
   nl: "nl_NL",
   pl: "pl_PL",
   pt: "pt_PT",
+  zh: "zh_CN",
+  ja: "ja_JP",
+  ru: "ru_RU",
+  id: "id_ID",
+  ko: "ko_KR",
 };
 
 const isLocale = (value: string): value is Locale => (locales as readonly string[]).includes(value);

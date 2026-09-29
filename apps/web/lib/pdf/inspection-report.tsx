@@ -1,3 +1,6 @@
+import type { Locale } from "@/i18n/config";
+import frMessages from "@/messages/inspections/fr.json";
+import enMessages from "@/messages/inspections/en.json";
 import type { ComponentType, PropsWithChildren } from "react";
 import {
   Document as BaseDocument,
@@ -17,7 +20,7 @@ const Text = BaseText as unknown as PdfComponent;
 const View = BaseView as unknown as PdfComponent;
 const Image = BaseImage as unknown as PdfComponent;
 
-export type SupportedLocale = "fr" | "en";
+export type SupportedLocale = Locale;
 
 export interface InspectionTranslations {
   documentType: {
@@ -137,7 +140,7 @@ export function InspectionReportDocument({
   timezone,
 }: InspectionReportProps) {
   const primaryColor = store.primaryColor || "#0066FF";
-  const styles = createInspectionStyles(primaryColor);
+  const styles = createInspectionStyles(primaryColor, locale);
 
   // Date formatting helpers using store timezone
   const formatFullDate = (date: Date) => formatStoreDate(date, timezone, "FULL_DATE", locale);
@@ -339,115 +342,6 @@ export function InspectionReportDocument({
   );
 }
 
-// Default translations
-export const defaultTranslationsFr: InspectionTranslations = {
-  documentType: {
-    departure: "État des lieux - Départ",
-    return: "État des lieux - Retour",
-  },
-  documentNumber: "N° {number}",
-  reservationNumber: "Réservation #{number}",
-  sections: {
-    inspectionDetails: "Détails de l'inspection",
-    equipment: "Équipements inspectés",
-    signature: "Signature",
-    notes: "Notes générales",
-  },
-  parties: {
-    store: "Loueur",
-    customer: "Client",
-  },
-  period: {
-    date: "Date",
-    time: "Heure",
-    performedBy: "Effectué par",
-  },
-  condition: {
-    excellent: "Excellent",
-    good: "Bon état",
-    fair: "Usure",
-    damaged: "Endommagé",
-    label: "État",
-  },
-  table: {
-    equipment: "Équipement",
-    condition: "État",
-    photos: "Photos",
-    notes: "Remarques",
-  },
-  signature: {
-    customerSignature: "Signature du client",
-    signedAt: "Signé le",
-    ipAddress: "Adresse IP",
-    notSigned: "Non signé",
-  },
-  footer: {
-    poweredBy: "Généré par Louez.io",
-    generatedOn: "Généré le",
-    page: "Page",
-    of: "sur",
-  },
-  summary: {
-    totalItems: "équipements",
-    withIssues: "avec remarques",
-    photos: "photos",
-    damageDetected: "Dommage détecté",
-    noDamage: "Aucun dommage",
-  },
-};
-
-export const defaultTranslationsEn: InspectionTranslations = {
-  documentType: {
-    departure: "Inspection Report - Departure",
-    return: "Inspection Report - Return",
-  },
-  documentNumber: "No. {number}",
-  reservationNumber: "Reservation #{number}",
-  sections: {
-    inspectionDetails: "Inspection Details",
-    equipment: "Inspected Equipment",
-    signature: "Signature",
-    notes: "General Notes",
-  },
-  parties: {
-    store: "Rental Company",
-    customer: "Customer",
-  },
-  period: {
-    date: "Date",
-    time: "Time",
-    performedBy: "Performed by",
-  },
-  condition: {
-    excellent: "Excellent",
-    good: "Good",
-    fair: "Fair",
-    damaged: "Damaged",
-    label: "Condition",
-  },
-  table: {
-    equipment: "Equipment",
-    condition: "Condition",
-    photos: "Photos",
-    notes: "Notes",
-  },
-  signature: {
-    customerSignature: "Customer Signature",
-    signedAt: "Signed at",
-    ipAddress: "IP Address",
-    notSigned: "Not signed",
-  },
-  footer: {
-    poweredBy: "Powered by Louez.io",
-    generatedOn: "Generated on",
-    page: "Page",
-    of: "of",
-  },
-  summary: {
-    totalItems: "items",
-    withIssues: "with issues",
-    photos: "photos",
-    damageDetected: "Damage detected",
-    noDamage: "No damage",
-  },
-};
+// Compatibility exports for existing callers.
+export const defaultTranslationsFr: InspectionTranslations = frMessages;
+export const defaultTranslationsEn: InspectionTranslations = enMessages;

@@ -126,3 +126,14 @@
   border-radius: 999px;
   box-shadow: 0 6px 12px rgb(0 0 0 / 22%);
 }
+
+/* Keep native CJK glyph shapes and line breaking without loading web fonts. */
+:lang(zh) {
+  --font-sans: "Inter Variable", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+:lang(ja) {
+  --font-sans: "Inter Variable", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+}
+:lang(ko) {
+  --font-sans: "Inter Variable", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}

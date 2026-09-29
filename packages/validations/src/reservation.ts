@@ -1,3 +1,4 @@
+import { supportedLocales } from "@louez/types";
 import { z } from "zod";
 
 const emailSchema = (message: string) => z.string().trim().toLowerCase().pipe(z.email(message));
@@ -98,7 +99,7 @@ const reservationDateTimeSchema = z
 
 const reservationAttributesSchema = z.record(z.string().min(1).max(100), z.string().max(255));
 
-export const reservationLocaleSchema = z.enum(["fr", "en", "it", "nl", "pt", "de", "es", "pl"]);
+export const reservationLocaleSchema = z.enum(supportedLocales);
 
 export const createReservationCustomerSchema = z.object({
   email: emailSchema("validation.email").pipe(z.string().max(320)),

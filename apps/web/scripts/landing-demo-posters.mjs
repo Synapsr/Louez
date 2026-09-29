@@ -1,9 +1,10 @@
 import { chromium } from "playwright-core";
 import sharp from "sharp";
-import { cp, mkdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
+import { tmpdir } from "node:os";
 
 const option = (name) => process.argv[process.argv.indexOf(name) + 1];
 const browserPath = process.argv.includes("--browser")
@@ -13,6 +14,7 @@ if (!browserPath) throw new Error("Pass --browser /path/to/chromium or set CHROM
 const output = resolve("public/demo-posters");
 let server;
 let browser;
+let captureDirectory;
 
 try {
   let baseUrl = process.argv.includes("--base-url") ? option("--base-url") : undefined;
@@ -22,7 +24,14 @@ try {
     const port = socket.address().port;
     await new Promise((accept) => socket.close(accept));
     baseUrl = `http://127.0.0.1:${port}`;
-    const standalone = resolve(".next/standalone/apps/web");
+    // Next may trace the developer's .env into standalone. Never run captures
+    // from that directory: production instrumentation would auto-migrate its DB.
+    captureDirectory = await mkdtemp(resolve(tmpdir(), "louez-demo-capture-"));
+    await cp(resolve(".next/standalone"), captureDirectory, {
+      recursive: true,
+      filter: (source) => !basename(source).startsWith(".env"),
+    });
+    const standalone = resolve(captureDirectory, "apps/web");
     await cp("public", resolve(standalone, "public"), { recursive: true });
     await cp(".next/static", resolve(standalone, ".next/static"), { recursive: true });
     // The capture server has no credentials or database URL. Demo data are fixtures.
@@ -34,6 +43,7 @@ try {
         NODE_ENV: "production",
         NEXT_TELEMETRY_DISABLED: "1",
         SKIP_ENV_VALIDATION: "true",
+        DATABASE_URL: "",
         AUTH_SECRET: "demo-capture-build-only-not-a-deployment-secret",
         AUTH_URL: baseUrl,
         HOSTNAME: "127.0.0.1",
@@ -75,7 +85,7 @@ try {
   const sizes = {};
   // One poster per scene and language: `<scene>.<locale>.webp`, plus `<scene>.webp` in
   // French for landings that predate the language parameter.
-  const locales = ["fr", "en", "it", "nl", "pt", "de", "es", "pl"];
+  const locales = ["fr", "en", "it", "nl", "pt", "de", "es", "pl", "zh", "ja", "ru", "id", "ko"];
   const captures = locales.flatMap((locale) =>
     ["storefront", "planning", "reservation", "advisor"].map((scene) => ({ scene, locale })),
   );
@@ -142,4 +152,5 @@ try {
     await stopped;
     clearTimeout(force);
   }
+  if (captureDirectory) await rm(captureDirectory, { recursive: true, force: true });
 }

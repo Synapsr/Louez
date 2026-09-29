@@ -1,4 +1,12 @@
-export type InvoicePdfLocale = "fr" | "en";
+import type { Locale } from "@/i18n/config";
+import fr from "@/messages/invoices/fr.json";
+import en from "@/messages/invoices/en.json";
+import zh from "@/messages/invoices/zh.json";
+import ja from "@/messages/invoices/ja.json";
+import ru from "@/messages/invoices/ru.json";
+import id from "@/messages/invoices/id.json";
+import ko from "@/messages/invoices/ko.json";
+export type InvoicePdfLocale = Locale;
 
 export interface InvoicePdfTranslations {
   documentType: { invoice: string; creditNote: string };
@@ -35,91 +43,21 @@ export interface InvoicePdfTranslations {
   methods: Record<string, string>;
 }
 
-const translations: Record<InvoicePdfLocale, InvoicePdfTranslations> = {
-  fr: {
-    documentType: { invoice: "Facture", creditNote: "Avoir" },
-    labels: {
-      number: "N°",
-      date: "Date",
-      seller: "Vendeur",
-      buyer: "Client",
-      contact: "Contact",
-      companyNumber: "SIREN / BCE",
-      siret: "SIRET",
-      vatNumber: "N° TVA",
-      rcs: "RCS",
-      shareCapital: "Capital social",
-      precedingInvoice: "Avoir relatif à la facture",
-      payment: "Paiement",
-      paymentDate: "Date d'encaissement",
-      paymentMethod: "Mode de paiement",
-    },
-    table: {
-      description: "Désignation",
-      quantity: "Qté",
-      unitPriceExclTax: "PU HT",
-      vatRate: "TVA",
-      totalExclTax: "Total HT",
-    },
-    vat: {
-      title: "Détail de TVA",
-      rate: "Taux",
-      taxableAmount: "Base HT",
-      taxAmount: "TVA",
-    },
-    totals: { exclTax: "Total HT", tax: "Total TVA", inclTax: "Total TTC" },
-    methods: {
-      stripe: "Carte en ligne",
-      cash: "Espèces",
-      card: "Carte",
-      transfer: "Virement",
-      check: "Chèque",
-      other: "Autre",
-    },
-  },
-  en: {
-    documentType: { invoice: "Invoice", creditNote: "Credit note" },
-    labels: {
-      number: "No.",
-      date: "Date",
-      seller: "Seller",
-      buyer: "Customer",
-      contact: "Contact",
-      companyNumber: "Company number",
-      siret: "SIRET",
-      vatNumber: "VAT number",
-      rcs: "Trade register",
-      shareCapital: "Share capital",
-      precedingInvoice: "Credit note for invoice",
-      payment: "Payment",
-      paymentDate: "Payment date",
-      paymentMethod: "Payment method",
-    },
-    table: {
-      description: "Description",
-      quantity: "Qty",
-      unitPriceExclTax: "Unit price excl. tax",
-      vatRate: "VAT",
-      totalExclTax: "Total excl. tax",
-    },
-    vat: {
-      title: "VAT breakdown",
-      rate: "Rate",
-      taxableAmount: "Taxable amount",
-      taxAmount: "VAT",
-    },
-    totals: { exclTax: "Total excl. tax", tax: "Total VAT", inclTax: "Total incl. tax" },
-    methods: {
-      stripe: "Online card",
-      cash: "Cash",
-      card: "Card",
-      transfer: "Bank transfer",
-      check: "Cheque",
-      other: "Other",
-    },
-  },
-};
+const messages = {
+  fr,
+  en,
+  it: en,
+  nl: en,
+  pt: en,
+  de: en,
+  es: en,
+  pl: en,
+  zh,
+  ja,
+  ru,
+  id,
+  ko,
+} satisfies Record<Locale, InvoicePdfTranslations>;
 
-export function getInvoicePdfTranslations(locale: InvoicePdfLocale): InvoicePdfTranslations {
-  return translations[locale];
-}
+export const getInvoicePdfTranslations = (locale: Locale): InvoicePdfTranslations =>
+  messages[locale];

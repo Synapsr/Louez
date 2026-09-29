@@ -1,0 +1,55 @@
+{
+  "documentType": {
+    "departure": "Inspection Report - Departure",
+    "return": "Inspection Report - Return"
+  },
+  "documentNumber": "No. {number}",
+  "reservationNumber": "Reservation #{number}",
+  "sections": {
+    "inspectionDetails": "Inspection Details",
+    "equipment": "Inspected Equipment",
+    "signature": "Signature",
+    "notes": "General Notes"
+  },
+  "parties": {
+    "store": "Rental Company",
+    "customer": "Customer"
+  },
+  "period": {
+    "date": "Date",
+    "time": "Time",
+    "performedBy": "Performed by"
+  },
+  "condition": {
+    "excellent": "Excellent",
+    "good": "Good",
+    "fair": "Fair",
+    "damaged": "Damaged",
+    "label": "Condition"
+  },
+  "table": {
+    "equipment": "Equipment",
+    "condition": "Condition",
+    "photos": "Photos",
+    "notes": "Notes"
+  },
+  "signature": {
+    "customerSignature": "Customer Signature",
+    "signedAt": "Signed at",
+    "ipAddress": "IP Address",
+    "notSigned": "Not signed"
+  },
+  "footer": {
+    "poweredBy": "Powered by Louez.io",
+    "generatedOn": "Generated on",
+    "page": "Page",
+    "of": "of"
+  },
+  "summary": {
+    "totalItems": "items",
+    "withIssues": "with issues",
+    "photos": "photos",
+    "damageDetected": "Damage detected",
+    "noDamage": "No damage"
+  }
+}

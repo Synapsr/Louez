@@ -1,4 +1,4 @@
-import type { EmailLocale } from "@/lib/email/i18n";
+import { locales, localeNames } from "@/i18n/config";
 
 import type { DocumentPreviewStore } from "./document-previews.types";
 
@@ -37,30 +37,12 @@ export const DOCUMENT_PREVIEW_STORES: readonly DocumentPreviewStore[] = [
 
 export const DEFAULT_DOCUMENT_PREVIEW_STORE_ID = DOCUMENT_PREVIEW_STORES[0].id;
 
-export const EMAIL_PREVIEW_LOCALES: readonly EmailLocale[] = [
-  "fr",
-  "en",
-  "de",
-  "es",
-  "it",
-  "nl",
-  "pl",
-  "pt",
-];
+export const EMAIL_PREVIEW_LOCALES = locales;
 
-export const PDF_PREVIEW_LOCALES = ["fr", "en"] as const satisfies readonly EmailLocale[];
+export const PDF_PREVIEW_LOCALES = locales;
 export type PdfPreviewLocale = (typeof PDF_PREVIEW_LOCALES)[number];
 
-export const DOCUMENT_PREVIEW_LOCALE_LABELS: Record<EmailLocale, string> = {
-  fr: "Français",
-  en: "English",
-  de: "Deutsch",
-  es: "Español",
-  it: "Italiano",
-  nl: "Nederlands",
-  pl: "Polski",
-  pt: "Português",
-};
+export const DOCUMENT_PREVIEW_LOCALE_LABELS = localeNames;
 
 export const PREVIEW_LINK_URL = "https://example.com/preview-link";
 

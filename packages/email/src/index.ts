@@ -11,3 +11,5 @@ export {
   shell,
   styles,
 } from "./templates/theme";
+
+export { getEmailLocaleFromHeaders } from "./locale";

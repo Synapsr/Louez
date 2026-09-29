@@ -3,6 +3,8 @@ import { test } from "node:test";
 
 import { format } from "date-fns";
 
+import { locales } from "@/i18n/config";
+
 import { resolveFormatLocale } from "@/lib/i18n/format-locale";
 
 const SAMPLE_DATE = new Date("2026-08-27T12:00:00.000Z");
@@ -37,7 +39,7 @@ test("accepts a supported full locale from callers", () => {
 
 test("uses the configured region for every supported request locale", () => {
   assert.deepEqual(
-    ["fr", "en", "it", "nl", "pt", "de", "es", "pl"].map((activeLocale) => {
+    locales.map((activeLocale) => {
       const resolved = resolveFormatLocale(activeLocale);
       return [activeLocale, resolved.intl, resolved.dateFns.code];
     }),
@@ -50,6 +52,11 @@ test("uses the configured region for every supported request locale", () => {
       ["de", "de-DE", "de"],
       ["es", "es-ES", "es"],
       ["pl", "pl-PL", "pl"],
+      ["zh", "zh-CN", "zh-CN"],
+      ["ja", "ja-JP", "ja"],
+      ["ru", "ru-RU", "ru"],
+      ["id", "id-ID", "id"],
+      ["ko", "ko-KR", "ko"],
     ],
   );
 });

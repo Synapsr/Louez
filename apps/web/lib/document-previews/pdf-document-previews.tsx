@@ -1,12 +1,8 @@
-import { ContractDocument, type ContractTranslations } from "@/lib/pdf/contract";
-import {
-  InspectionReportDocument,
-  defaultTranslationsEn,
-  defaultTranslationsFr,
-} from "@/lib/pdf/inspection-report";
+import { ContractDocument } from "@/lib/pdf/contract";
+import { InspectionReportDocument } from "@/lib/pdf/inspection-report";
 import { InvoiceDocument, type InvoiceDocumentProps } from "@/lib/pdf/invoice";
-import enMessages from "@/messages/en.json";
-import frMessages from "@/messages/fr.json";
+import { getContractTranslations } from "@/lib/pdf/contract-i18n";
+import { getInspectionTranslations } from "@/lib/pdf/inspection-i18n";
 
 import {
   PDF_PREVIEW_LOCALES,
@@ -24,15 +20,9 @@ import type {
 const { number, createdAt, startDate, endDate, items } = previewReservation;
 const generatedAt = new Date("2026-07-28T14:25:00.000Z");
 
-const toPdfLocale = (locale: DocumentPreviewContext["locale"]): PdfPreviewLocale =>
-  locale === "en" ? "en" : "fr";
-
-// Same source as the production generator: the `contract` subtree of the app messages.
-const contractTranslations = (locale: PdfPreviewLocale): ContractTranslations =>
-  (locale === "fr" ? frMessages : enMessages).contract as ContractTranslations;
-
-const inspectionTranslations = (locale: PdfPreviewLocale) =>
-  locale === "fr" ? defaultTranslationsFr : defaultTranslationsEn;
+const toPdfLocale = (locale: DocumentPreviewContext["locale"]): PdfPreviewLocale => locale;
+const contractTranslations = getContractTranslations;
+const inspectionTranslations = getInspectionTranslations;
 
 const pdf = (
   definition: Omit<PdfDocumentPreview, "kind" | "group" | "locales">,

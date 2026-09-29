@@ -1,0 +1,48 @@
+{
+  "documentType": {
+    "invoice": "Счет",
+    "creditNote": "Кредит-нота"
+  },
+  "labels": {
+    "number": "Нет.",
+    "date": "Дата",
+    "seller": "Продавец",
+    "buyer": "Клиент",
+    "contact": "Контакт",
+    "companyNumber": "Номер компании",
+    "siret": "СИРЕТ",
+    "vatNumber": "номер НДС",
+    "rcs": "Торговый реестр",
+    "shareCapital": "Акционерный капитал",
+    "precedingInvoice": "Кредит-нота для счета-фактуры",
+    "payment": "Оплата",
+    "paymentDate": "Дата платежа",
+    "paymentMethod": "Способ оплаты"
+  },
+  "table": {
+    "description": "Описание",
+    "quantity": "Кол-во",
+    "unitPriceExclTax": "Цена за единицу без учета налог",
+    "vatRate": "НДС",
+    "totalExclTax": "Всего искл. налог"
+  },
+  "vat": {
+    "title": "Разбивка НДС",
+    "rate": "Оценить",
+    "taxableAmount": "Налогооблагаемая сумма",
+    "taxAmount": "НДС"
+  },
+  "totals": {
+    "exclTax": "Всего искл. налог",
+    "tax": "Итого НДС",
+    "inclTax": "Всего вкл. налог"
+  },
+  "methods": {
+    "stripe": "Онлайн карта",
+    "cash": "Наличные",
+    "card": "Карта",
+    "transfer": "Банковский перевод",
+    "check": "Проверить",
+    "other": "Другое"
+  }
+}

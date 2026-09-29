@@ -1,3 +1,4 @@
+import { supportedLocales } from "@louez/types";
 import { z } from "zod";
 
 const bookingAttributesSchema = z.record(z.string(), z.string());
@@ -92,7 +93,7 @@ export const bookingQuoteInputSchema = z
     storeId: z.string().length(21),
     startAt: z.iso.datetime({ offset: true }),
     endAt: z.iso.datetime({ offset: true }),
-    locale: z.enum(["fr", "en", "de", "es", "it", "nl", "pl", "pt"]),
+    locale: z.enum(supportedLocales),
     items: z.array(bookingItemSchema).min(1).max(100),
   })
   .strict()

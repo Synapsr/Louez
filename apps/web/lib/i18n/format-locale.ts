@@ -10,6 +10,11 @@ import {
   pl,
   pt,
   ptBR,
+  zhCN,
+  ja,
+  ru,
+  id,
+  ko,
   type Locale as DateFnsLocale,
 } from "date-fns/locale";
 
@@ -44,6 +49,11 @@ const DATE_FNS_BY_LOCALE: Record<Locale, DateFnsLocale> = {
   de,
   es,
   pl,
+  zh: zhCN,
+  ja,
+  ru,
+  id,
+  ko,
 };
 
 const DATE_FNS_BY_REGIONAL_LOCALE: Record<string, DateFnsLocale> = {

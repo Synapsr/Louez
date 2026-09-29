@@ -1,3 +1,4 @@
+import { supplementalMessages } from "../messages";
 import { Heading, Section, Text } from "@react-email/components";
 import { BaseLayoutSimple } from "./base-layout-simple";
 import { styles } from "./theme";
@@ -20,6 +21,42 @@ const translations: Record<
     greeting: "Hello,",
     body: "Here is your code to sign in to Louez. It is valid for 5 minutes.",
     expiry: "If you didn't request this code, you can ignore this email.",
+  },
+
+  zh: {
+    subject: supplementalMessages.zh.otp_translations_subject,
+    title: supplementalMessages.zh.otp_translations_title,
+    greeting: supplementalMessages.zh.otp_translations_greeting,
+    body: supplementalMessages.zh.otp_translations_body,
+    expiry: supplementalMessages.zh.otp_translations_expiry,
+  },
+  ja: {
+    subject: supplementalMessages.ja.otp_translations_subject,
+    title: supplementalMessages.ja.otp_translations_title,
+    greeting: supplementalMessages.ja.otp_translations_greeting,
+    body: supplementalMessages.ja.otp_translations_body,
+    expiry: supplementalMessages.ja.otp_translations_expiry,
+  },
+  ru: {
+    subject: supplementalMessages.ru.otp_translations_subject,
+    title: supplementalMessages.ru.otp_translations_title,
+    greeting: supplementalMessages.ru.otp_translations_greeting,
+    body: supplementalMessages.ru.otp_translations_body,
+    expiry: supplementalMessages.ru.otp_translations_expiry,
+  },
+  id: {
+    subject: supplementalMessages.id.otp_translations_subject,
+    title: supplementalMessages.id.otp_translations_title,
+    greeting: supplementalMessages.id.otp_translations_greeting,
+    body: supplementalMessages.id.otp_translations_body,
+    expiry: supplementalMessages.id.otp_translations_expiry,
+  },
+  ko: {
+    subject: supplementalMessages.ko.otp_translations_subject,
+    title: supplementalMessages.ko.otp_translations_title,
+    greeting: supplementalMessages.ko.otp_translations_greeting,
+    body: supplementalMessages.ko.otp_translations_body,
+    expiry: supplementalMessages.ko.otp_translations_expiry,
   },
 };
 

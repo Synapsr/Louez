@@ -8,7 +8,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./env": "./src/env.ts",
-    "./templates": "./src/templates/index.ts"
+    "./templates": "./src/templates/index.ts",
+    "./messages": "./src/messages/index.ts",
+    "./locale": "./src/locale.ts"
   },
   "dependencies": {
     "@louez/types": "workspace:*",

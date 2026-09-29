@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "Rower miejski",
+    "demo-electric-bike": "Rower elektryczny",
+    "demo-child-bike": "Rower dziecięcy",
+    "demo-gravel": "Rower gravelowy",
+    "demo-mountain": "Elektryczny rower górski",
+    "demo-cargo": "Rower cargo",
+    "demo-longtail": "Rower longtail",
+    "demo-road": "Rower szosowy",
+    "demo-trailer": "Przyczepka dziecięca",
+    "demo-panniers": "Sakwy turystyczne",
+    "demo-child-seat": "Fotelik dziecięcy",
+    "demo-touring": "Rower turystyczny"
+  },
+  "categories": {
+    "bikes": "Rowery",
+    "electric": "Rowery elektryczne",
+    "family": "Dla rodziny",
+    "accessories": "Akcesoria"
+  },
+  "depositAuthorized": "Blokada na karcie zarejestrowana",
+  "paymentReceived": "Płatność otrzymana online",
+  "advisorReply": "Na przejażdżkę po mieście polecam rower miejski: wygodny i łatwy w prowadzeniu. Na jaki termin chcesz go wypożyczyć?",
+  "customerNotes": "Przyjdziemy zaraz po otwarciu, żeby wykorzystać cały dzień.",
+  "internalNotes": "Przygotować rowery i sprawdzić ciśnienie w oponach przed wydaniem.",
+  "steps": ["Klient rezerwuje", "Ty przygotowujesz", "Wszystko jest śledzone"],
+  "customer": "Klient",
+  "owner": "Wypożyczalnia",
+  "play": "Uruchom demo",
+  "pause": "Pauza",
+  "restart": "Od nowa",
+  "toggleMenu": "Pokaż lub ukryj menu"
+}

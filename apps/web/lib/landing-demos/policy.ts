@@ -1,3 +1,4 @@
+export const DEMO_LOCALE_HEADER = "x-louez-demo-locale";
 export const DEMO_ROUTE_HEADER = "x-louez-public-demo";
 export const DEMO_PATH_PREFIX = "/demos/landing";
 export const DEMO_SCENES = ["rental", "storefront", "planning", "reservation", "advisor"] as const;

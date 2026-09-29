@@ -1,29 +1,33 @@
-import type { Locale as DateFnsLocale } from 'date-fns'
-import { createTranslator } from 'next-intl'
+import type { Locale as DateFnsLocale } from "date-fns";
+import { createTranslator } from "next-intl";
 
 // Email message files — the `emails` subtree lives in its own small per-locale
 // files so the templates (also rendered in the browser for the dashboard
 // preview) don't drag the full app messages into the client bundle.
-import frEmails from '@/messages/emails/fr.json'
-import enEmails from '@/messages/emails/en.json'
-import deEmails from '@/messages/emails/de.json'
-import esEmails from '@/messages/emails/es.json'
-import itEmails from '@/messages/emails/it.json'
-import nlEmails from '@/messages/emails/nl.json'
-import plEmails from '@/messages/emails/pl.json'
-import ptEmails from '@/messages/emails/pt.json'
+import frEmails from "@/messages/emails/fr.json";
+import enEmails from "@/messages/emails/en.json";
+import deEmails from "@/messages/emails/de.json";
+import esEmails from "@/messages/emails/es.json";
+import itEmails from "@/messages/emails/it.json";
+import nlEmails from "@/messages/emails/nl.json";
+import plEmails from "@/messages/emails/pl.json";
+import ptEmails from "@/messages/emails/pt.json";
+import zhEmails from "@/messages/emails/zh.json";
+import jaEmails from "@/messages/emails/ja.json";
+import ruEmails from "@/messages/emails/ru.json";
+import idEmails from "@/messages/emails/id.json";
+import koEmails from "@/messages/emails/ko.json";
 
-import type { EmailLocale } from '@louez/email'
-import { isLocale } from '@/lib/i18n/format-locale'
-import { resolveFormatLocale } from '@/lib/i18n/format-locale'
-export type { EmailLocale }
+import type { EmailLocale } from "@louez/email";
+import { isLocale } from "@/lib/i18n/format-locale";
+import { resolveFormatLocale } from "@/lib/i18n/format-locale";
+export type { EmailLocale };
 
 // Type for email messages structure (use the French subtree as reference)
-type EmailMessages = { emails: typeof frEmails }
+type EmailMessages = { emails: typeof frEmails };
 
 // Map of locale to messages
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const messagesMap: Record<EmailLocale, any> = {
+const messagesMap = {
   fr: { emails: frEmails },
   en: { emails: enEmails },
   de: { emails: deEmails },
@@ -32,10 +36,24 @@ const messagesMap: Record<EmailLocale, any> = {
   nl: { emails: nlEmails },
   pl: { emails: plEmails },
   pt: { emails: ptEmails },
-}
+  zh: { emails: zhEmails },
+  ja: { emails: jaEmails },
+  ru: { emails: ruEmails },
+  id: { emails: idEmails },
+  ko: { emails: koEmails },
+};
 
 // Date format patterns by locale
 const dateFormatPatterns: Record<EmailLocale, { full: string; short: string; dateTime: string }> = {
+  zh: { full: "yyyy年M月d日 EEEE HH:mm", short: "M月d日 HH:mm", dateTime: "yyyy年M月d日 HH:mm" },
+  ja: { full: "yyyy年M月d日 EEEE HH:mm", short: "M月d日 HH:mm", dateTime: "yyyy年M月d日 HH:mm" },
+  ru: { full: "EEEE, d MMMM yyyy HH:mm", short: "d MMM HH:mm", dateTime: "d MMMM yyyy HH:mm" },
+  id: { full: "EEEE, d MMMM yyyy HH.mm", short: "d MMM HH.mm", dateTime: "d MMMM yyyy HH.mm" },
+  ko: {
+    full: "yyyy년 M월 d일 EEEE HH:mm",
+    short: "M월 d일 HH:mm",
+    dateTime: "yyyy년 M월 d일 HH:mm",
+  },
   fr: {
     full: "EEEE d MMMM yyyy 'à' HH:mm",
     short: "d MMM 'à' HH:mm",
@@ -76,7 +94,7 @@ const dateFormatPatterns: Record<EmailLocale, { full: string; short: string; dat
     short: "d MMM 'às' HH:mm",
     dateTime: "d 'de' MMMM 'de' yyyy 'às' HH:mm",
   },
-}
+};
 
 /**
  * Map country code to email locale
@@ -84,102 +102,118 @@ const dateFormatPatterns: Record<EmailLocale, { full: string; short: string; dat
  */
 const countryToLocaleMap: Record<string, EmailLocale> = {
   // French
-  FR: 'fr', // France
-  BE: 'fr', // Belgium (French is more common for business)
-  CH: 'fr', // Switzerland (French for Romandie)
-  LU: 'fr', // Luxembourg
-  MC: 'fr', // Monaco
+  FR: "fr", // France
+  BE: "fr", // Belgium (French is more common for business)
+  CH: "fr", // Switzerland (French for Romandie)
+  LU: "fr", // Luxembourg
+  MC: "fr", // Monaco
   // German
-  DE: 'de', // Germany
-  AT: 'de', // Austria
-  LI: 'de', // Liechtenstein
+  DE: "de", // Germany
+  AT: "de", // Austria
+  LI: "de", // Liechtenstein
   // Spanish
-  ES: 'es', // Spain
-  MX: 'es', // Mexico
-  AR: 'es', // Argentina
-  CO: 'es', // Colombia
-  CL: 'es', // Chile
+  ES: "es", // Spain
+  MX: "es", // Mexico
+  AR: "es", // Argentina
+  CO: "es", // Colombia
+  CL: "es", // Chile
   // Italian
-  IT: 'it', // Italy
-  SM: 'it', // San Marino
+  IT: "it", // Italy
+  SM: "it", // San Marino
   // Dutch
-  NL: 'nl', // Netherlands
+  NL: "nl", // Netherlands
   // Polish
-  PL: 'pl', // Poland
+  PL: "pl", // Poland
   // Portuguese
-  PT: 'pt', // Portugal
-  BR: 'pt', // Brazil
+  PT: "pt", // Portugal
+  BR: "pt", // Brazil
+  CN: "zh",
+  JP: "ja",
+  RU: "ru",
+  ID: "id",
+  KR: "ko",
   // English (explicit)
-  GB: 'en', // United Kingdom
-  US: 'en', // United States
-  CA: 'en', // Canada
-  AU: 'en', // Australia
-  NZ: 'en', // New Zealand
-  IE: 'en', // Ireland
-}
+  GB: "en", // United Kingdom
+  US: "en", // United States
+  CA: "en", // Canada
+  AU: "en", // Australia
+  NZ: "en", // New Zealand
+  IE: "en", // Ireland
+};
 
 /**
  * Get email locale from country code
  * Defaults to English if country is not mapped
  */
 export function getLocaleFromCountry(countryCode: string | null | undefined): EmailLocale {
-  if (!countryCode) return 'en'
-  return countryToLocaleMap[countryCode.toUpperCase()] || 'en'
+  if (!countryCode) return "en";
+  return countryToLocaleMap[countryCode.toUpperCase()] || "en";
 }
 
 /**
  * Get email translations for a given locale
  */
-export function getEmailMessages(locale: EmailLocale = 'fr'): EmailMessages {
-  return messagesMap[locale] || messagesMap.fr
+export function getEmailMessages(locale: EmailLocale = "fr"): EmailMessages {
+  const messages = messagesMap[locale] || messagesMap.fr;
+  return {
+    emails: {
+      ...enEmails,
+      ...messages.emails,
+      confirmReservation: { ...enEmails.confirmReservation, ...messages.emails.confirmReservation },
+      paymentConfirmation: {
+        ...enEmails.paymentConfirmation,
+        ...messages.emails.paymentConfirmation,
+      },
+    },
+  };
 }
 
 /**
  * Get email-specific translations
  */
-export function getEmailTranslations(locale: EmailLocale = 'fr') {
-  const messages = getEmailMessages(locale)
-  return messages.emails
+export function getEmailTranslations(locale: EmailLocale = "fr") {
+  const messages = getEmailMessages(locale);
+  return messages.emails;
 }
 
 /**
  * Get a next-intl translator for email messages, including ICU interpolation.
  */
-export function getEmailTranslator(locale: EmailLocale = 'fr') {
+export function getEmailTranslator(locale: EmailLocale = "fr") {
   return createTranslator({
     locale,
     messages: getEmailMessages(locale),
-    namespace: 'emails',
-  })
+    namespace: "emails",
+  });
 }
 
 /**
  * Get date-fns locale for formatting dates
  */
-export function getDateLocale(locale: EmailLocale = 'fr'): DateFnsLocale {
-  return resolveFormatLocale(locale).dateFns
+export function getDateLocale(locale: EmailLocale = "fr"): DateFnsLocale {
+  return resolveFormatLocale(locale).dateFns;
 }
 
 /**
  * Get date format patterns for a locale
  */
-export function getDateFormatPatterns(locale: EmailLocale = 'fr') {
-  return dateFormatPatterns[locale] || dateFormatPatterns.fr
+export function getDateFormatPatterns(locale: EmailLocale = "fr") {
+  return dateFormatPatterns[locale] || dateFormatPatterns.fr;
 }
 
 /** Get a currency formatter using the email language. */
-export function getCurrencyFormatter(locale: EmailLocale = 'fr', currency: string = 'EUR') {
+export function getCurrencyFormatter(locale: EmailLocale = "fr", currency: string = "EUR") {
   return (amount: number) =>
     new Intl.NumberFormat(resolveFormatLocale(locale).intl, {
-      style: 'currency',
+      style: "currency",
       currency: currency,
-    }).format(amount)
+    }).format(amount);
 }
 
 /**
  * Default locale for emails
  */
-export const defaultEmailLocale: EmailLocale = 'fr'
+export const defaultEmailLocale: EmailLocale = "fr";
 
 export function resolveReservationEmailLocale(
   reservationLocale: string | null | undefined,
@@ -187,5 +221,5 @@ export function resolveReservationEmailLocale(
 ): EmailLocale {
   return reservationLocale && isLocale(reservationLocale)
     ? reservationLocale
-    : getLocaleFromCountry(storeCountry)
+    : getLocaleFromCountry(storeCountry);
 }

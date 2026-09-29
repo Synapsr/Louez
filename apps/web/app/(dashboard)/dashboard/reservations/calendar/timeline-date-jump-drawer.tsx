@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { addDays, isSameDay, startOfDay, startOfWeek } from "date-fns";
-import { de, enUS, es, fr, it, nl, pl, ptBR, type Locale } from "date-fns/locale";
+import { resolveFormatLocale } from "@/lib/i18n/format-locale";
 import { ArrowRight, CalendarDays, Search, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -25,17 +25,6 @@ import {
 
 import { parseTimelineDateQuery } from "./util.timeline-date-query";
 
-const DATE_LOCALES: Record<string, Locale> = {
-  de,
-  en: enUS,
-  es,
-  fr,
-  it,
-  nl,
-  pl,
-  pt: ptBR,
-};
-
 interface TimelineDateJumpDrawerProps {
   currentDate: Date;
   onDateChange: (date: Date) => void;
@@ -53,7 +42,7 @@ export const TimelineDateJumpDrawer = ({
   const [previewedTime, setPreviewedTime] = useState<number | null>(null);
 
   const language = locale.toLowerCase().split("-")[0] ?? "en";
-  const dateLocale = DATE_LOCALES[language] ?? enUS;
+  const dateLocale = resolveFormatLocale(language).dateFns;
   const parsedDate = useMemo(() => parseTimelineDateQuery(query, locale), [locale, query]);
   const today = startOfDay(new Date());
 

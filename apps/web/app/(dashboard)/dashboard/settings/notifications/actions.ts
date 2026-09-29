@@ -1,5 +1,7 @@
 "use server";
 
+import { localeNames } from "@/i18n/config";
+
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@louez/db";
@@ -14,19 +16,10 @@ import {
   DEFAULT_NOTIFICATION_SETTINGS,
   DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
 } from "@louez/types";
-import { getLocaleFromCountry, type EmailLocale } from "@/lib/email/i18n";
+import { getLocaleFromCountry } from "@/lib/email/i18n";
 
 // Language name mapping for display
-const LANGUAGE_NAMES: Record<EmailLocale, string> = {
-  fr: "Francais",
-  en: "English",
-  de: "Deutsch",
-  es: "Espanol",
-  it: "Italiano",
-  nl: "Nederlands",
-  pl: "Polski",
-  pt: "Portugues",
-};
+const LANGUAGE_NAMES = localeNames;
 
 export async function getNotificationSettings() {
   const store = await getCurrentStore();

@@ -1,20 +1,10 @@
 "use client";
 
+import { supplementalMessages, formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
 import { useMemo } from "react";
-import { format, type Locale } from "date-fns";
-import { fr, enUS, de, es, it, nl, pl, pt } from "date-fns/locale";
+import { format } from "date-fns";
+import { resolveFormatLocale } from "@/lib/i18n/format-locale";
 import type { EmailLocale } from "@/lib/email/i18n";
-
-const DATE_LOCALES: Record<EmailLocale, Locale> = {
-  fr,
-  en: enUS,
-  de,
-  es,
-  it,
-  nl,
-  pl,
-  pt,
-};
 
 interface EmailPreviewProps {
   storeName: string;
@@ -174,7 +164,7 @@ export function EmailPreviewCompact({
   startDate,
   endDate,
 }: EmailPreviewCompactProps) {
-  const dateLocale = DATE_LOCALES[locale] || fr;
+  const dateLocale = resolveFormatLocale(locale).dateFns;
 
   const content = useMemo(() => {
     const formattedStartDate = format(startDate, "PPP", { locale: dateLocale });
@@ -190,6 +180,12 @@ export function EmailPreviewCompact({
         nl: "Reserveringsaanvraag ontvangen",
         pl: "Otrzymano prośbę o rezerwację",
         pt: "Pedido de reserva recebido",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_request_received,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_request_received,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_request_received,
+        id: supplementalMessages.id.email_preview_content_titles_customer_request_received,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_request_received,
       },
       customer_request_accepted: {
         fr: "Demande acceptée !",
@@ -200,6 +196,12 @@ export function EmailPreviewCompact({
         nl: "Aanvraag geaccepteerd!",
         pl: "Prośba zaakceptowana!",
         pt: "Pedido aceito!",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_request_accepted,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_request_accepted,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_request_accepted,
+        id: supplementalMessages.id.email_preview_content_titles_customer_request_accepted,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_request_accepted,
       },
       customer_request_rejected: {
         fr: "Demande non disponible",
@@ -210,6 +212,12 @@ export function EmailPreviewCompact({
         nl: "Aanvraag niet beschikbaar",
         pl: "Prośba niedostępna",
         pt: "Pedido não disponível",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_request_rejected,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_request_rejected,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_request_rejected,
+        id: supplementalMessages.id.email_preview_content_titles_customer_request_rejected,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_request_rejected,
       },
       customer_reservation_confirmed: {
         fr: "Réservation confirmée",
@@ -220,6 +228,12 @@ export function EmailPreviewCompact({
         nl: "Reservering bevestigd",
         pl: "Rezerwacja potwierdzona",
         pt: "Reserva confirmada",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_reservation_confirmed,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_reservation_confirmed,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_reservation_confirmed,
+        id: supplementalMessages.id.email_preview_content_titles_customer_reservation_confirmed,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_reservation_confirmed,
       },
       customer_reminder_pickup: {
         fr: "Rappel: retrait demain",
@@ -230,6 +244,12 @@ export function EmailPreviewCompact({
         nl: "Herinnering: ophalen morgen",
         pl: "Przypomnienie: odbiór jutro",
         pt: "Lembrete: retirada amanhã",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_reminder_pickup,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_reminder_pickup,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_reminder_pickup,
+        id: supplementalMessages.id.email_preview_content_titles_customer_reminder_pickup,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_reminder_pickup,
       },
       customer_reminder_return: {
         fr: "Rappel: retour demain",
@@ -240,6 +260,12 @@ export function EmailPreviewCompact({
         nl: "Herinnering: terugbrengen morgen",
         pl: "Przypomnienie: zwrot jutro",
         pt: "Lembrete: devolução amanhã",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_reminder_return,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_reminder_return,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_reminder_return,
+        id: supplementalMessages.id.email_preview_content_titles_customer_reminder_return,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_reminder_return,
       },
       thank_you_review: {
         fr: "Merci pour votre location !",
@@ -250,6 +276,12 @@ export function EmailPreviewCompact({
         nl: "Bedankt voor uw verhuur!",
         pl: "Dziękujemy za wynajem!",
         pt: "Obrigado pelo seu aluguel!",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_thank_you_review,
+        ja: supplementalMessages.ja.email_preview_content_titles_thank_you_review,
+        ru: supplementalMessages.ru.email_preview_content_titles_thank_you_review,
+        id: supplementalMessages.id.email_preview_content_titles_thank_you_review,
+        ko: supplementalMessages.ko.email_preview_content_titles_thank_you_review,
       },
     };
 
@@ -262,6 +294,22 @@ export function EmailPreviewCompact({
       nl: `Hallo ${customerName},`,
       pl: `Cześć ${customerName},`,
       pt: `Olá ${customerName},`,
+
+      zh: formatSupplementalMessage("zh", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
+      ja: formatSupplementalMessage("ja", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
+      ru: formatSupplementalMessage("ru", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
+      id: formatSupplementalMessage("id", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
+      ko: formatSupplementalMessage("ko", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
     };
 
     const reservationInfo: Record<EmailLocale, string> = {
@@ -273,6 +321,32 @@ export function EmailPreviewCompact({
       nl: `Reservering #${reservationNumber} • Van ${formattedStartDate} tot ${formattedEndDate}`,
       pl: `Rezerwacja #${reservationNumber} • Od ${formattedStartDate} do ${formattedEndDate}`,
       pt: `Reserva #${reservationNumber} • De ${formattedStartDate} a ${formattedEndDate}`,
+
+      zh: formatSupplementalMessage("zh", "email_preview_content_reservationInfo", {
+        value0: String(reservationNumber),
+        value1: String(formattedStartDate),
+        value2: String(formattedEndDate),
+      }),
+      ja: formatSupplementalMessage("ja", "email_preview_content_reservationInfo", {
+        value0: String(reservationNumber),
+        value1: String(formattedStartDate),
+        value2: String(formattedEndDate),
+      }),
+      ru: formatSupplementalMessage("ru", "email_preview_content_reservationInfo", {
+        value0: String(reservationNumber),
+        value1: String(formattedStartDate),
+        value2: String(formattedEndDate),
+      }),
+      id: formatSupplementalMessage("id", "email_preview_content_reservationInfo", {
+        value0: String(reservationNumber),
+        value1: String(formattedStartDate),
+        value2: String(formattedEndDate),
+      }),
+      ko: formatSupplementalMessage("ko", "email_preview_content_reservationInfo", {
+        value0: String(reservationNumber),
+        value1: String(formattedStartDate),
+        value2: String(formattedEndDate),
+      }),
     };
 
     return {
@@ -378,7 +452,7 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
     eventType,
   } = props;
 
-  const dateLocale = DATE_LOCALES[locale] || fr;
+  const dateLocale = resolveFormatLocale(locale).dateFns;
 
   const content = useMemo(() => {
     const formattedStartDate = format(startDate, "PPP", { locale: dateLocale });
@@ -394,6 +468,12 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
         nl: "Reserveringsaanvraag ontvangen",
         pl: "Otrzymano prośbę o rezerwację",
         pt: "Pedido de reserva recebido",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_request_received,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_request_received,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_request_received,
+        id: supplementalMessages.id.email_preview_content_titles_customer_request_received,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_request_received,
       },
       customer_request_accepted: {
         fr: "Demande acceptée !",
@@ -404,6 +484,12 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
         nl: "Aanvraag geaccepteerd!",
         pl: "Prośba zaakceptowana!",
         pt: "Pedido aceito!",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_request_accepted,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_request_accepted,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_request_accepted,
+        id: supplementalMessages.id.email_preview_content_titles_customer_request_accepted,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_request_accepted,
       },
       customer_request_rejected: {
         fr: "Demande non disponible",
@@ -414,6 +500,12 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
         nl: "Aanvraag niet beschikbaar",
         pl: "Prośba niedostępna",
         pt: "Pedido não disponível",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_request_rejected,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_request_rejected,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_request_rejected,
+        id: supplementalMessages.id.email_preview_content_titles_customer_request_rejected,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_request_rejected,
       },
       customer_reservation_confirmed: {
         fr: "Réservation confirmée",
@@ -424,6 +516,12 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
         nl: "Reservering bevestigd",
         pl: "Rezerwacja potwierdzona",
         pt: "Reserva confirmada",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_reservation_confirmed,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_reservation_confirmed,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_reservation_confirmed,
+        id: supplementalMessages.id.email_preview_content_titles_customer_reservation_confirmed,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_reservation_confirmed,
       },
       customer_reminder_pickup: {
         fr: "Rappel: retrait demain",
@@ -434,6 +532,12 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
         nl: "Herinnering: ophalen morgen",
         pl: "Przypomnienie: odbiór jutro",
         pt: "Lembrete: retirada amanhã",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_reminder_pickup,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_reminder_pickup,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_reminder_pickup,
+        id: supplementalMessages.id.email_preview_content_titles_customer_reminder_pickup,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_reminder_pickup,
       },
       customer_reminder_return: {
         fr: "Rappel: retour demain",
@@ -444,6 +548,12 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
         nl: "Herinnering: terugbrengen morgen",
         pl: "Przypomnienie: zwrot jutro",
         pt: "Lembrete: devolução amanhã",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_customer_reminder_return,
+        ja: supplementalMessages.ja.email_preview_content_titles_customer_reminder_return,
+        ru: supplementalMessages.ru.email_preview_content_titles_customer_reminder_return,
+        id: supplementalMessages.id.email_preview_content_titles_customer_reminder_return,
+        ko: supplementalMessages.ko.email_preview_content_titles_customer_reminder_return,
       },
       thank_you_review: {
         fr: "Merci pour votre location !",
@@ -454,6 +564,12 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
         nl: "Bedankt voor uw verhuur!",
         pl: "Dziękujemy za wynajem!",
         pt: "Obrigado pelo seu aluguel!",
+
+        zh: supplementalMessages.zh.email_preview_content_titles_thank_you_review,
+        ja: supplementalMessages.ja.email_preview_content_titles_thank_you_review,
+        ru: supplementalMessages.ru.email_preview_content_titles_thank_you_review,
+        id: supplementalMessages.id.email_preview_content_titles_thank_you_review,
+        ko: supplementalMessages.ko.email_preview_content_titles_thank_you_review,
       },
     };
 
@@ -466,6 +582,22 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
       nl: `Hallo ${customerName},`,
       pl: `Cześć ${customerName},`,
       pt: `Olá ${customerName},`,
+
+      zh: formatSupplementalMessage("zh", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
+      ja: formatSupplementalMessage("ja", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
+      ru: formatSupplementalMessage("ru", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
+      id: formatSupplementalMessage("id", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
+      ko: formatSupplementalMessage("ko", "email_preview_content_greetings", {
+        value0: String(customerName),
+      }),
     };
 
     const defaultBody: Record<EmailLocale, React.ReactNode> = {
@@ -530,6 +662,72 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
           <p className="font-medium text-gray-900">Reserva #{reservationNumber}</p>
           <p className="text-gray-600">
             De {formattedStartDate} a {formattedEndDate}
+          </p>
+        </div>
+      ),
+
+      zh: (
+        <div className="bg-gray-100 rounded-lg p-4 my-3">
+          <p className="font-medium text-gray-900">
+            {supplementalMessages.zh.email_preview_content_defaultBody}
+            {reservationNumber}
+          </p>
+          <p className="text-gray-600">
+            {supplementalMessages.zh.email_preview_content_defaultBody_1}
+            {formattedStartDate} {supplementalMessages.zh.email_preview_content_defaultBody_2}
+            {formattedEndDate}
+          </p>
+        </div>
+      ),
+      ja: (
+        <div className="bg-gray-100 rounded-lg p-4 my-3">
+          <p className="font-medium text-gray-900">
+            {supplementalMessages.ja.email_preview_content_defaultBody}
+            {reservationNumber}
+          </p>
+          <p className="text-gray-600">
+            {supplementalMessages.ja.email_preview_content_defaultBody_1}
+            {formattedStartDate} {supplementalMessages.ja.email_preview_content_defaultBody_2}
+            {formattedEndDate}
+          </p>
+        </div>
+      ),
+      ru: (
+        <div className="bg-gray-100 rounded-lg p-4 my-3">
+          <p className="font-medium text-gray-900">
+            {supplementalMessages.ru.email_preview_content_defaultBody}
+            {reservationNumber}
+          </p>
+          <p className="text-gray-600">
+            {supplementalMessages.ru.email_preview_content_defaultBody_1}
+            {formattedStartDate} {supplementalMessages.ru.email_preview_content_defaultBody_2}
+            {formattedEndDate}
+          </p>
+        </div>
+      ),
+      id: (
+        <div className="bg-gray-100 rounded-lg p-4 my-3">
+          <p className="font-medium text-gray-900">
+            {supplementalMessages.id.email_preview_content_defaultBody}
+            {reservationNumber}
+          </p>
+          <p className="text-gray-600">
+            {supplementalMessages.id.email_preview_content_defaultBody_1}
+            {formattedStartDate} {supplementalMessages.id.email_preview_content_defaultBody_2}
+            {formattedEndDate}
+          </p>
+        </div>
+      ),
+      ko: (
+        <div className="bg-gray-100 rounded-lg p-4 my-3">
+          <p className="font-medium text-gray-900">
+            {supplementalMessages.ko.email_preview_content_defaultBody}
+            {reservationNumber}
+          </p>
+          <p className="text-gray-600">
+            {supplementalMessages.ko.email_preview_content_defaultBody_1}
+            {formattedStartDate} {supplementalMessages.ko.email_preview_content_defaultBody_2}
+            {formattedEndDate}
           </p>
         </div>
       ),
