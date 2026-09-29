@@ -9,7 +9,9 @@
     ".": "./src/index.ts",
     "./account-deletion": "./src/account-deletion.ts",
     "./client": "./src/client.ts",
-    "./env": "./src/env.ts"
+    "./env": "./src/env.ts",
+    "./password": "./src/password.ts",
+    "./password-policy": "./src/password-policy.ts"
   },
   "dependencies": {
     "@louez/db": "workspace:*",
