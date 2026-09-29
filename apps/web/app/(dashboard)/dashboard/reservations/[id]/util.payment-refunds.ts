@@ -1,3 +1,8 @@
+import {
+  getSettledPaymentAmount,
+  isStripeRefundRow,
+} from "@/lib/reservations/util.payment-status";
+
 export type ManualPaymentMethod = "cash" | "card" | "transfer" | "check" | "other";
 
 export const isManualPaymentMethod = (method: string): method is ManualPaymentMethod =>
@@ -14,6 +19,9 @@ export interface PaymentRefundState {
   method: string;
   status: string;
   refundOfPaymentId: string | null;
+  stripeRefundId?: string | null;
+  stripePaymentIntentId?: string | null;
+  stripeCheckoutSessionId?: string | null;
 }
 
 const REFUNDABLE_PAYMENT_TYPES = new Set([
@@ -23,6 +31,10 @@ const REFUNDABLE_PAYMENT_TYPES = new Set([
   "deposit_capture",
 ]);
 
+/**
+ * What is left to give back on a payment. A Stripe refund linked to its charge
+ * is left out: the webhook already took it off the charge's amount.
+ */
 export const getRemainingRefundableAmount = (
   payment: PaymentRefundState,
   payments: PaymentRefundState[],
@@ -30,7 +42,9 @@ export const getRemainingRefundableAmount = (
   const alreadyRefunded = payments
     .filter(
       (candidate) =>
-        candidate.status === "completed" && candidate.refundOfPaymentId === payment.id,
+        candidate.status === "completed" &&
+        candidate.refundOfPaymentId === payment.id &&
+        !isStripeRefundRow(candidate),
     )
     .reduce((total, candidate) => total + Number(candidate.amount), 0);
 
@@ -40,18 +54,7 @@ export const getRemainingRefundableAmount = (
 export const getNetCompletedPaymentAmount = (
   payments: PaymentRefundState[],
   paymentType: string,
-) => {
-  const paymentsById = new Map(payments.map((payment) => [payment.id, payment]));
-
-  return payments.reduce((total, payment) => {
-    if (payment.status !== "completed") return total;
-    if (payment.refundOfPaymentId) {
-      const originalPayment = paymentsById.get(payment.refundOfPaymentId);
-      return originalPayment?.type === paymentType ? total - Number(payment.amount) : total;
-    }
-    return payment.type === paymentType ? total + Number(payment.amount) : total;
-  }, 0);
-};
+) => getSettledPaymentAmount(payments, paymentType);
 
 export const isManualPaymentRefundEligible = (
   payment: PaymentRefundState,

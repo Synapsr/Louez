@@ -14,6 +14,7 @@ import {
   toAnalyticsAmountCents,
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { isRentalPaid } from "@/lib/reservations/util.payment-status";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
@@ -89,10 +90,7 @@ export async function createReservationPaymentSessionForCustomer(
       return { error: "errors.invalidStatus" };
     }
 
-    const isPaid = reservation.payments.some(
-      (payment) => payment.type === "rental" && payment.status === "completed",
-    );
-    if (isPaid) {
+    if (isRentalPaid(reservation.payments)) {
       return { error: "errors.alreadyPaid" };
     }
 
