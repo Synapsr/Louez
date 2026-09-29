@@ -6,13 +6,20 @@ import { AccountCard } from "@/components/storefront/account/account-card";
 
 interface StoreContactCardProps {
   storeName: string;
+  autoFocus?: boolean;
   email: string | null;
   phone: string | null;
   address: string | null;
 }
 
 /** "Need help?": one line and the store's real contact channels. */
-export const StoreContactCard = ({ storeName, email, phone, address }: StoreContactCardProps) => {
+export const StoreContactCard = ({
+  storeName,
+  email,
+  phone,
+  address,
+  autoFocus = true,
+}: StoreContactCardProps) => {
   const t = useTranslations("storefront.account");
 
   if (!email && !phone && !address) return null;
@@ -21,6 +28,7 @@ export const StoreContactCard = ({ storeName, email, phone, address }: StoreCont
     <AccountCard title={t("needHelp")} className="bg-muted shadow-none">
       <p className="text-sm text-muted-foreground">{t("contactStore", { name: storeName })}</p>
       <StoreContactDetails
+        autoFocus={autoFocus}
         address={address}
         phone={phone}
         email={email}

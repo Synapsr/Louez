@@ -22,6 +22,9 @@ interface StoreFooterProps {
   /** Free text before the copyright line (SIRET, accreditation, affiliation). */
   footerNote?: string | null;
   showAccount?: boolean;
+  /** Preview controls; production keeps its navigation and language selector. */
+  linkPrefetch?: boolean;
+  showLanguageSwitcher?: boolean;
 }
 
 const LINK_CLASS_NAME =
@@ -45,6 +48,8 @@ export const StoreFooter = ({
   social,
   footerNote,
   showAccount = true,
+  linkPrefetch,
+  showLanguageSwitcher = true,
 }: StoreFooterProps) => {
   const t = useTranslations("storefront.footer");
   const variant = useChromeVariant();
@@ -54,10 +59,10 @@ export const StoreFooter = ({
 
   const legalLinks = (
     <nav aria-label={t("legalInfo")} className="flex flex-col">
-      <StorefrontLink href="/terms" className={LINK_CLASS_NAME}>
+      <StorefrontLink prefetch={linkPrefetch} href="/terms" className={LINK_CLASS_NAME}>
         {t("cgv")}
       </StorefrontLink>
-      <StorefrontLink href="/legal" className={LINK_CLASS_NAME}>
+      <StorefrontLink prefetch={linkPrefetch} href="/legal" className={LINK_CLASS_NAME}>
         {t("legalNotice")}
       </StorefrontLink>
     </nav>
@@ -77,11 +82,15 @@ export const StoreFooter = ({
         </p>
       </div>
       <div className="flex items-center gap-3">
-        <LanguageSwitcher
-          variant="compact"
-          className="text-muted-foreground hover:text-foreground"
-        />
-        <span aria-hidden>·</span>
+        {showLanguageSwitcher ? (
+          <>
+            <LanguageSwitcher
+              variant="compact"
+              className="text-muted-foreground hover:text-foreground"
+            />
+            <span aria-hidden>·</span>
+          </>
+        ) : null}
         <p>
           {t("poweredBy")}{" "}
           <a
@@ -161,16 +170,16 @@ export const StoreFooter = ({
           <div className="flex flex-col gap-2">
             <p className={HEADING_CLASS_NAME}>{t("navigation")}</p>
             <nav aria-label={t("navigation")} className="flex flex-col">
-              <StorefrontLink href="/catalog" className={LINK_CLASS_NAME}>
+              <StorefrontLink prefetch={linkPrefetch} href="/catalog" className={LINK_CLASS_NAME}>
                 {t("catalog")}
               </StorefrontLink>
-              <StorefrontLink href="/about" className={LINK_CLASS_NAME}>
+              <StorefrontLink prefetch={linkPrefetch} href="/about" className={LINK_CLASS_NAME}>
                 {t("about")}
               </StorefrontLink>
-              <StorefrontLink href="/#reviews" className={LINK_CLASS_NAME}>
+              <StorefrontLink prefetch={linkPrefetch} href="/#reviews" className={LINK_CLASS_NAME}>
                 {t("reviews")}
               </StorefrontLink>
-              <StorefrontLink href="/contact" className={LINK_CLASS_NAME}>
+              <StorefrontLink prefetch={linkPrefetch} href="/contact" className={LINK_CLASS_NAME}>
                 {t("contact")}
               </StorefrontLink>
             </nav>
@@ -185,10 +194,10 @@ export const StoreFooter = ({
             <div className="flex flex-col gap-2">
               <p className={HEADING_CLASS_NAME}>{t("account")}</p>
               <nav aria-label={t("account")} className="flex flex-col">
-                <StorefrontLink href="/account/login" className={LINK_CLASS_NAME}>
+                <StorefrontLink prefetch={linkPrefetch} href="/account/login" className={LINK_CLASS_NAME}>
                   {t("signIn")}
                 </StorefrontLink>
-                <StorefrontLink href="/account" className={LINK_CLASS_NAME}>
+                <StorefrontLink prefetch={linkPrefetch} href="/account" className={LINK_CLASS_NAME}>
                   {t("myReservations")}
                 </StorefrontLink>
               </nav>

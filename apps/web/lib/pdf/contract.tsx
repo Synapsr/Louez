@@ -73,6 +73,9 @@ export interface ContractTranslations {
     deposit: string;
     deposit_return: string;
     damage: string;
+    deposit_hold: string;
+    deposit_capture: string;
+    adjustment: string;
   };
   paymentMethods: {
     stripe: string;
@@ -85,6 +88,7 @@ export interface ContractTranslations {
   paymentStatus: {
     completed: string;
     pending: string;
+    authorized: string;
   };
   signature: {
     validated: string;
@@ -167,9 +171,16 @@ interface ReservationItem {
 interface Payment {
   id: string;
   amount: string;
-  type: "rental" | "deposit" | "deposit_return" | "damage";
+  type:
+    | "rental"
+    | "deposit"
+    | "deposit_return"
+    | "damage"
+    | "deposit_hold"
+    | "deposit_capture"
+    | "adjustment";
   method: "stripe" | "cash" | "card" | "transfer" | "check" | "other";
-  status: "pending" | "completed" | "failed" | "refunded";
+  status: "pending" | "completed" | "failed" | "refunded" | "authorized" | "cancelled";
   paidAt?: Date | null;
   createdAt: Date;
 }
@@ -564,7 +575,9 @@ export function ContractDocument({
                   >
                     {payment.status === "completed"
                       ? t.paymentStatus.completed
-                      : t.paymentStatus.pending}
+                      : payment.status === "authorized"
+                        ? t.paymentStatus.authorized
+                        : t.paymentStatus.pending}
                   </Text>
                   <Text
                     style={[

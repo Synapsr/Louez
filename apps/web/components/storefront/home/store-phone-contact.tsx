@@ -12,12 +12,14 @@ export const StorePhoneContact = ({
   phone,
   sms = true,
   iconClassName,
+  autoFocus = true,
 }: {
   phone: string;
   /** Whether the popover also offers an SMS to each number. */
   sms?: boolean;
   /** Overrides the icon disc background when the surrounding surface is already muted. */
   iconClassName?: string;
+  autoFocus?: boolean;
 }) => {
   const t = useTranslations("storefront.home");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
@@ -67,6 +69,8 @@ export const StorePhoneContact = ({
         />
       </PopoverTrigger>
       <PopoverPopup
+        initialFocus={autoFocus ? undefined : false}
+        finalFocus={autoFocus ? undefined : false}
         aria-label={t("phone")}
         align="start"
         sideOffset={8}

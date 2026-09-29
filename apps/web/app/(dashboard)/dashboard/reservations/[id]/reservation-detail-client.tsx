@@ -93,6 +93,7 @@ interface ReservationDetailClientProps {
   canGenerateInvoice: boolean;
   readOnly?: boolean;
   onBack?: () => void;
+  onPreviewEmail?: () => void;
 }
 
 function toDate(value: Date | string | null | undefined) {
@@ -134,6 +135,7 @@ export function ReservationDetailClient({
   canGenerateInvoice,
   readOnly = false,
   onBack,
+  onPreviewEmail,
 }: ReservationDetailClientProps) {
   const t = useTranslations("dashboard.reservations");
   const { intl: formatLocale } = useFormatLocale();
@@ -256,6 +258,7 @@ export function ReservationDetailClient({
       <ReservationHeader
         readOnly={readOnly}
         onBack={onBack}
+        onPreviewEmail={onPreviewEmail}
         reservationId={reservation.id}
         reservationNumber={reservation.number}
         status={status}

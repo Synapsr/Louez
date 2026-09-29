@@ -24,9 +24,10 @@ import type { TeamMember } from "./team-types";
 interface TeamMemberRowProps {
   member: TeamMember;
   canManageMembers: boolean;
+  readOnly?: boolean;
 }
 
-export const TeamMemberRow = ({ member, canManageMembers }: TeamMemberRowProps) => {
+export const TeamMemberRow = ({ member, canManageMembers, readOnly = false }: TeamMemberRowProps) => {
   const t = useTranslations("dashboard.team");
   const tErrors = useTranslations("errors");
   const format = useFormatter();
@@ -35,6 +36,7 @@ export const TeamMemberRow = ({ member, canManageMembers }: TeamMemberRowProps) 
   const isOwner = member.role === "owner";
 
   const handleRemove = () => {
+    if (readOnly) return;
     startTransition(async () => {
       const result = await removeMember(member.id);
 
@@ -78,13 +80,13 @@ export const TeamMemberRow = ({ member, canManageMembers }: TeamMemberRowProps) 
       </div>
 
       {canManageMembers && !isOwner && (
-        <DropdownMenu>
+        <DropdownMenu modal={readOnly ? false : undefined}>
           <DropdownMenuTrigger
             render={
               <Button
                 variant="ghost"
                 size="icon-sm"
-                disabled={isPending}
+                disabled={readOnly || isPending}
                 aria-label={t("removeMember")}
               />
             }

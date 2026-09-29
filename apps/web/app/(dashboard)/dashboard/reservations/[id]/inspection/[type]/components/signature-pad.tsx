@@ -222,6 +222,7 @@ export function SignaturePad({
       >
         <canvas
           ref={canvasRef}
+          data-demo-target="inspection-signature-canvas"
           className="touch-none"
           onMouseDown={startDrawing}
           onMouseMove={draw}
@@ -258,6 +259,7 @@ export function SignaturePad({
         <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
           <Checkbox
             id="signature-confirmation"
+            data-demo-target="inspection-signature-confirmation"
             checked={isConfirmed}
             onCheckedChange={handleConfirmChange}
             disabled={disabled || !hasSignature}

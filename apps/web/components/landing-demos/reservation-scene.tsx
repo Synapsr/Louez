@@ -12,12 +12,15 @@ export const ReservationScene = ({
   booking,
   reservationIndex,
   onNavigate,
+  onPreviewEmail,
   status = "confirmed",
 }: {
   period: RentalPeriodValue;
   booking: DemoBooking;
   reservationIndex: number;
   status?: ReservationStatus;
+  /** Lets the header's email button open the caller's own preview window. */
+  onPreviewEmail?: () => void;
   onNavigate: (page: "dashboard" | "reservations") => void;
 }) => {
   const locale = useDemoLocale();
@@ -29,7 +32,11 @@ export const ReservationScene = ({
     locale,
   );
   return (
-    <DashboardSceneFrame page="reservations" onNavigate={onNavigate}>
+    <DashboardSceneFrame
+      page="reservations"
+      pages={["dashboard", "reservations"]}
+      onNavigate={(page) => onNavigate(page === "dashboard" ? "dashboard" : "reservations")}
+    >
       <div data-demo-scene="reservation">
         <ReservationDetailClient
           reservationId={reservation.id}
@@ -46,6 +53,7 @@ export const ReservationScene = ({
           invoices={invoices}
           canGenerateInvoice={true}
           readOnly
+          onPreviewEmail={onPreviewEmail}
           onBack={() => onNavigate("reservations")}
         />
       </div>

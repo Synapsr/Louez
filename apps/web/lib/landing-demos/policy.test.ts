@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import { getDemoParentOrigins, isDemoPath, isDemoScene } from "./policy";
+import {
+  DEMO_SCENES,
+  FEATURE_DEMO_SCENES,
+  getDemoParentOrigins,
+  isDemoPath,
+  isDemoScene,
+  isFeatureDemoScene,
+} from "./policy";
+import { FEATURE_DEMOS } from "../../components/landing-demos/feature-demos";
 import { buildDemoSecurityHeaders, buildSecurityHeaders } from "../util.security-headers";
 import { readPublicEnvRuntime } from "../validators/validator.public-env";
 
@@ -77,6 +86,9 @@ test("only the dedicated route and registered scenes are demos", () => {
   assert.equal(isDemoPath("/dashboard/reservations/demo"), false);
   assert.equal(isDemoScene("rental"), true);
   assert.equal(isDemoScene("dashboard"), false);
+  for (const scene of FEATURE_DEMO_SCENES) assert.equal(isDemoScene(scene), true);
+  assert.equal(isFeatureDemoScene("planning-timeline"), true);
+  assert.equal(isFeatureDemoScene("planning"), false);
 });
 test("production frames are limited to the marketing origins and cannot call business APIs", () => {
   const headers = buildDemoSecurityHeaders({
@@ -108,5 +120,31 @@ test("local embedding is enabled only in development", () => {
   assert.equal(
     getDemoParentOrigins("louez.io", true).includes("https://landing.louez-website.localify"),
     true,
+  );
+});
+
+test("every scene a landing can embed gets its waiting poster", () => {
+  const script = readFileSync(
+    new URL("../../scripts/landing-demo-posters.mjs", import.meta.url),
+    "utf8",
+  );
+  const listed = /const scenes = (\[[^\]]*\]);/.exec(script)?.[1];
+  assert.ok(listed);
+  assert.deepEqual(
+    Array.from(listed.matchAll(/"([^"]+)"/g), (match) => match[1]).sort(),
+    DEMO_SCENES.filter((scene) => scene !== "rental").sort(),
+  );
+});
+
+test("phone scenes are captured as phone pages", () => {
+  const script = readFileSync(
+    new URL("../../scripts/landing-demo-posters.mjs", import.meta.url),
+    "utf8",
+  );
+  const listed = /const phoneScenes = (\[[^\]]*\]);/.exec(script)?.[1];
+  assert.ok(listed);
+  assert.deepEqual(
+    Array.from(listed.matchAll(/"([^"]+)"/g), (match) => match[1]).sort(),
+    FEATURE_DEMO_SCENES.filter((scene) => FEATURE_DEMOS[scene].format === "phone").sort(),
   );
 });

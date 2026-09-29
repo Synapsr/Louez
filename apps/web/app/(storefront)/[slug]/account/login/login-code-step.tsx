@@ -21,6 +21,9 @@ import {
 
 interface LoginCodeStepProps {
   storeSlug: string;
+  requestCode?: typeof requestLoginCode;
+  verifyCode?: typeof verifyLoginCode;
+  autoFocus?: boolean;
   email: string;
   onVerified: () => void;
   onChangeEmail: () => void;
@@ -36,6 +39,9 @@ const codeFormSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
  */
 export const LoginCodeStep = ({
   storeSlug,
+  requestCode = requestLoginCode,
+  verifyCode = verifyLoginCode,
+  autoFocus = true,
   email,
   onVerified,
   onChangeEmail,
@@ -56,7 +62,7 @@ export const LoginCodeStep = ({
 
   const verify = useMutation({
     mutationFn: async (code: string) => {
-      const result = await verifyLoginCode({ storeSlug, email, code });
+      const result = await verifyCode({ storeSlug, email, code });
       if (!result.ok) throw new VerifyCodeFailure(result.error);
     },
     onMutate: () => setError(null),
@@ -69,7 +75,7 @@ export const LoginCodeStep = ({
 
   const resend = useMutation({
     mutationFn: async () => {
-      const result = await requestLoginCode({ storeSlug, email });
+      const result = await requestCode({ storeSlug, email });
       if (!result.ok) throw new ResendFailure(result.error);
     },
     onMutate: () => {
@@ -89,7 +95,7 @@ export const LoginCodeStep = ({
 
   return (
     <form.AppForm>
-      <form.Form className="flex flex-col gap-4">
+      <form.Form data-demo-target="portal-code" className="flex flex-col gap-4">
         {error ? (
           <Alert variant="error">
             <AlertCircleIcon />
@@ -102,7 +108,7 @@ export const LoginCodeStep = ({
         <form.AppField name="code">
           {(field) => (
             <field.Otp
-              autoFocus
+              autoFocus={autoFocus}
               disabled={isBusy}
               separatorAt={3}
               containerClassName="justify-center"

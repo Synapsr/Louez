@@ -33,7 +33,7 @@ type ProductActionResult = {
  * Used by both `products-table.tsx` (row actions) and the product detail
  * page's header dropdown, so the two surfaces stay behaviorally identical.
  */
-export function useProductActions() {
+export function useProductActions({ readOnly = false }: { readOnly?: boolean } = {}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const t = useTranslations('dashboard.products');
@@ -68,6 +68,7 @@ export function useProductActions() {
   };
 
   const handleStatusToggle = async (product: ActionableProduct) => {
+    if (readOnly) return;
     const newStatus = product.status === 'active' ? 'draft' : 'active';
     setIsLoading(true);
     try {
@@ -95,6 +96,7 @@ export function useProductActions() {
   };
 
   const handleArchive = async (product: ActionableProduct) => {
+    if (readOnly) return;
     setIsLoading(true);
     try {
       const result = await updateProductStatus(product.id, 'archived');
@@ -115,6 +117,7 @@ export function useProductActions() {
   };
 
   const handleDuplicate = async (product: ActionableProduct) => {
+    if (readOnly) return;
     setIsLoading(true);
     try {
       const result = await duplicateProduct(product.id);
@@ -135,6 +138,7 @@ export function useProductActions() {
   };
 
   const requestDelete = (product: ActionableProduct) => {
+    if (readOnly) return;
     setProductToDelete(product);
     setDeleteDialogOpen(true);
   };
@@ -145,6 +149,7 @@ export function useProductActions() {
    * row actions don't need it (refreshing the list is correct there).
    */
   const handleDelete = async (options?: { redirectTo?: string }) => {
+    if (readOnly) return;
     if (!productToDelete) return;
 
     setIsLoading(true);

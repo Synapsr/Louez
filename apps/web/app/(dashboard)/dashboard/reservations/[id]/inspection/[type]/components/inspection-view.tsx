@@ -64,6 +64,7 @@ interface InspectionViewProps {
   reservationId: string
   reservationNumber: string
   customerName: string
+  readOnly?: boolean
 }
 
 const CONDITION_VARIANTS: Record<ConditionRating, 'success' | 'progress' | 'review' | 'failed'> = {
@@ -84,6 +85,7 @@ export function InspectionView({
   reservationId,
   reservationNumber,
   customerName,
+  readOnly = false,
 }: InspectionViewProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.settings.inspection')
@@ -105,6 +107,7 @@ export function InspectionView({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0"
+                disabled={readOnly}
                 onClick={() => router.push(`/dashboard/reservations/${reservationId}`)}
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -119,7 +122,7 @@ export function InspectionView({
                 </p>
               </div>
             </div>
-            <Button variant="outline" render={<a href={`/api/inspections/${inspection.id}/report`} download />}>
+            <Button variant="outline" disabled={readOnly} render={readOnly ? undefined : <a href={`/api/inspections/${inspection.id}/report`} download />}>
                 <Download className="mr-2 h-4 w-4" />
                 {t('card.downloadPdf')}
             </Button>
@@ -131,7 +134,7 @@ export function InspectionView({
       <div className="flex-1 overflow-auto">
         <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
           {/* Status Card */}
-          <Card>
+          <Card data-demo-target="inspection-result">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -323,8 +326,8 @@ export function InspectionView({
       </div>
 
       {/* Photo Preview Dialog */}
-      <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
-        <DialogPopup className="max-w-2xl p-0">
+      <Dialog modal={!readOnly} open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
+        <DialogPopup initialFocus={readOnly ? false : undefined} finalFocus={readOnly ? false : undefined} className="max-w-2xl p-0">
           <DialogHeader className="sr-only">
             <DialogTitle>{t('wizard.photoPreview')}</DialogTitle>
           </DialogHeader>

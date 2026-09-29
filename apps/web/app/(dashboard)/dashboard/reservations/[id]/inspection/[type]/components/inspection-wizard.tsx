@@ -35,6 +35,7 @@ import { QuickConditionSelector, quickToFullCondition } from "./condition-select
 import { type CapturedPhoto, PhotoCapture } from "./photo-capture";
 import { RepairDowntimeSuggestionDialog } from "./repair-downtime-suggestion-dialog";
 import { SignaturePad } from "./signature-pad";
+import { InspectionView } from "./inspection-view";
 
 // ============================================================================
 // Types
@@ -62,6 +63,10 @@ interface InspectionWizardProps {
   requireSignature: boolean;
   maxPhotosPerItem: number;
   onComplete?: () => void;
+  /** Local preview: no uploads, persistence, cleanup requests or navigation. */
+  readOnly?: boolean;
+  initialStep?: WizardStep;
+  initialInspections?: Record<string, Pick<ItemInspection, "condition" | "notes" | "photos">>;
 }
 
 interface ItemInspection {
@@ -172,6 +177,7 @@ interface StepItemsProps {
   inspections: Map<string, ItemInspection>;
   currentItemIndex: number;
   maxPhotos: number;
+  readOnly: boolean;
   onInspectionChange: (itemId: string, data: Partial<ItemInspection>) => void;
   onItemIndexChange: (index: number) => void;
 }
@@ -181,6 +187,7 @@ function StepItems({
   inspections,
   currentItemIndex,
   maxPhotos,
+  readOnly,
   onInspectionChange,
   onItemIndexChange,
 }: StepItemsProps) {
@@ -231,7 +238,7 @@ function StepItems({
                         ? "w-2 bg-emerald-500"
                         : "bg-muted-foreground/30 w-2",
                 )}
-                aria-label={`${t("table.equipment")} ${index + 1}`}
+                aria-label={`${item.product.name} ${index + 1}`}
               />
             );
           })}
@@ -282,6 +289,7 @@ function StepItems({
               photos={currentInspection.photos}
               onPhotosChange={handlePhotosChange}
               maxPhotos={maxPhotos}
+              readOnly={readOnly}
             />
           </div>
 
@@ -290,6 +298,7 @@ function StepItems({
             <div className="space-y-3">
               <Label htmlFor="item-notes">{t("wizard.notes")}</Label>
               <Textarea
+                data-demo-target="inspection-item-notes"
                 id="item-notes"
                 value={currentInspection.notes}
                 onChange={(e) => handleNotesChange(e.target.value)}
@@ -484,6 +493,9 @@ export function InspectionWizard({
   requireSignature,
   maxPhotosPerItem,
   onComplete,
+  readOnly = false,
+  initialStep = "overview",
+  initialInspections,
 }: InspectionWizardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -491,7 +503,7 @@ export function InspectionWizard({
   const { deleteImage } = useImageUpload("inspection");
 
   // Wizard state
-  const [currentStep, setCurrentStep] = useState<WizardStep>("overview");
+  const [currentStep, setCurrentStep] = useState<WizardStep>(initialStep);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [inspections, setInspections] = useState<Map<string, ItemInspection>>(() => {
     const map = new Map<string, ItemInspection>();
@@ -502,12 +514,14 @@ export function InspectionWizard({
         condition: "ok",
         notes: "",
         photos: [],
+        ...initialInspections?.[item.id],
       });
     });
     return map;
   });
   const [globalNotes, setGlobalNotes] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
+  const [completedAt, setCompletedAt] = useState<Date | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [repairDowntimeSuggestion, setRepairDowntimeSuggestion] =
     useState<RepairDowntimeSuggestionState | null>(null);
@@ -527,12 +541,12 @@ export function InspectionWizard({
 
   useEffect(
     () => () => {
-      if (inspectionPersistedRef.current) return;
+      if (readOnly || inspectionPersistedRef.current) return;
       void Promise.allSettled(
         pendingPhotoKeysRef.current.map((key) => deleteImageRef.current(key)),
       );
     },
-    [],
+    [readOnly],
   );
 
   // Determine active steps
@@ -586,7 +600,9 @@ export function InspectionWizard({
     const photoKeys = Array.from(inspections.values()).flatMap((inspection) =>
       inspection.photos.map((photo) => photo.key),
     );
-    void Promise.allSettled(photoKeys.map((key) => deleteImage(key)));
+    if (!readOnly) {
+      void Promise.allSettled(photoKeys.map((key) => deleteImage(key)));
+    }
 
     // Mark all items as OK and skip to summary
     const updated = new Map<string, ItemInspection>();
@@ -601,13 +617,13 @@ export function InspectionWizard({
     });
     setInspections(updated);
     setCurrentStep("summary");
-  }, [deleteImage, inspections, items]);
+  }, [deleteImage, inspections, items, readOnly]);
 
   const finishInspectionFlow = useCallback(() => {
     setRepairDowntimeSuggestion(null);
     onComplete?.();
-    router.push(`/dashboard/reservations/${reservationId}`);
-  }, [onComplete, reservationId, router]);
+    if (!readOnly) router.push(`/dashboard/reservations/${reservationId}`);
+  }, [onComplete, reservationId, router, readOnly]);
 
   const handleNext = useCallback(() => {
     // When on items step, navigate through items first
@@ -642,6 +658,11 @@ export function InspectionWizard({
   }, [currentStep, currentStepIndex, currentItemIndex, activeSteps, items.length]);
 
   const handleSubmit = useCallback(async () => {
+    if (readOnly) {
+      setCompletedAt(new Date());
+      onComplete?.();
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -735,6 +756,8 @@ export function InspectionWizard({
     t,
     queryClient,
     finishInspectionFlow,
+    readOnly,
+    onComplete,
   ]);
 
   const isLastStep = currentStepIndex === activeSteps.length - 1;
@@ -748,6 +771,43 @@ export function InspectionWizard({
   // Determine if back button should be disabled
   // Only disabled on overview step (first step, first item is N/A)
   const isBackDisabled = currentStepIndex === 0 || isSubmitting;
+
+  if (completedAt) {
+    return (
+      <InspectionView
+        readOnly
+        reservationId={reservationId}
+        reservationNumber={reservationNumber}
+        customerName={customerName}
+        inspection={{
+          id: `preview-${reservationId}-${type}`,
+          type,
+          status: signature ? "signed" : "completed",
+          hasDamage: Array.from(inspections.values()).some((item) => item.condition === "damage"),
+          notes: globalNotes || null,
+          performedByName: null,
+          createdAt: completedAt,
+          signedAt: signature ? completedAt : null,
+          customerSignature: signature,
+          items: items.map((item) => {
+            const inspection = inspections.get(item.id);
+            return {
+              id: item.id,
+              productName: item.product.name,
+              condition: quickToFullCondition(inspection?.condition ?? "ok"),
+              notes: inspection?.notes || null,
+              photos: (inspection?.photos ?? []).map((photo) => ({
+                id: photo.id,
+                url: photo.url,
+                thumbnailUrl: photo.thumbnailUrl ?? null,
+                caption: photo.caption ?? null,
+              })),
+            };
+          }),
+        }}
+      />
+    );
+  }
 
   return (
     // Break out of dashboard padding for full-screen experience
@@ -764,6 +824,7 @@ export function InspectionWizard({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0"
+                disabled={readOnly}
                 onClick={() => router.push(`/dashboard/reservations/${reservationId}`)}
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -805,6 +866,7 @@ export function InspectionWizard({
               inspections={inspections}
               currentItemIndex={currentItemIndex}
               maxPhotos={maxPhotosPerItem}
+              readOnly={readOnly}
               onInspectionChange={handleInspectionChange}
               onItemIndexChange={setCurrentItemIndex}
             />
@@ -845,12 +907,17 @@ export function InspectionWizard({
           )}
 
           {isLastStep ? (
-            <Button onClick={handleSubmit} isPending={isSubmitting} disabled={!canProceed}>
+            <Button
+              data-demo-target="inspection-complete"
+              onClick={handleSubmit}
+              isPending={isSubmitting}
+              disabled={!canProceed}
+            >
               <FileCheck data-slot="icon" />
               {t("wizard.complete")}
             </Button>
           ) : (
-            <Button onClick={handleNext} disabled={!canProceed}>
+            <Button data-demo-target="inspection-next" onClick={handleNext} disabled={!canProceed}>
               {isOnItemsStep && !isLastItem ? t("wizard.next") : t("wizard.continue")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -858,13 +925,15 @@ export function InspectionWizard({
         </div>
       </div>
 
-      <RepairDowntimeSuggestionDialog
-        open={repairDowntimeSuggestion !== null}
-        units={repairDowntimeSuggestion?.units ?? []}
-        reservationNumber={reservationNumber}
-        reservationItemIds={reservationItemIds}
-        onDone={finishInspectionFlow}
-      />
+      {!readOnly && (
+        <RepairDowntimeSuggestionDialog
+          open={repairDowntimeSuggestion !== null}
+          units={repairDowntimeSuggestion?.units ?? []}
+          reservationNumber={reservationNumber}
+          reservationItemIds={reservationItemIds}
+          onDone={finishInspectionFlow}
+        />
+      )}
     </div>
   );
 }

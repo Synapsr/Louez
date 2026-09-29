@@ -74,6 +74,9 @@ interface PricingStepProps {
   onSelectSeasonalPeriod?: (id: string | null) => void;
   onSeasonalPricingsChange?: (pricings: SeasonalPricingData[]) => void;
   isLoadingSeasonalPricings?: boolean;
+  /** Preview rates locally, without seasonal mutations or metadata dialogs. */
+  readOnly?: boolean;
+  autoFocus?: boolean;
 }
 
 /** The create stepper shows pricing beside stock (and accessories below); the
@@ -138,6 +141,8 @@ function PricingCard(props: PricingStepProps) {
     duplicateRateTierIndexes,
     onRateTiersEdit,
     stockKindLocked = false,
+    readOnly = false,
+    autoFocus,
   } = props;
 
   const t = useTranslations("dashboard.products.form");
@@ -167,6 +172,7 @@ function PricingCard(props: PricingStepProps) {
     fallbackDuration: baseDraft.baseRate.duration,
     isProrated: baseDraft.isProrated,
     onPriceSaved: handlePriceSaved,
+    readOnly,
   });
 
   const isSeason = Boolean(selectedPeriod);
@@ -206,7 +212,7 @@ function PricingCard(props: PricingStepProps) {
           <ProductFormChoiceHeaderAction
             step={step}
             choice={labels.pricing[watchedValues.pricingKind ?? "duration"]}
-            disabled={isSaving || isSeason}
+            disabled={isSaving || isSeason || readOnly}
           />
 
           {productId && !step.isChoosing && (
@@ -224,6 +230,8 @@ function PricingCard(props: PricingStepProps) {
                     setDialogOpen(true);
                   }}
                   isLoading={isLoadingSeasonalPricings}
+                  readOnly={readOnly}
+                  autoFocus={autoFocus}
                   trailing={
                     seasonalPricings.length > 0 ? (
                       <Badge variant="secondary" size="sm" className="tabular-nums">
@@ -233,7 +241,7 @@ function PricingCard(props: PricingStepProps) {
                   }
                 />
               </div>
-              {selectedPeriod && (
+              {selectedPeriod && !readOnly && (
                 <SeasonalActionsMenu
                   period={selectedPeriod}
                   disabled={isSaving}
@@ -281,6 +289,7 @@ function PricingCard(props: PricingStepProps) {
               currencySymbol={currencySymbol}
               storeTaxSettings={storeTaxSettings}
               disabled={isSaving}
+              autoFocus={autoFocus}
               scope={isSeason ? "season" : watchedValues.pricingKind === "fixed" ? "fixed" : "base"}
               showValidationErrors={showValidationErrors}
               duplicateRateTierIndexes={duplicateRateTierIndexes}
@@ -297,7 +306,7 @@ function PricingCard(props: PricingStepProps) {
                     values={watchedValues}
                     timezone={storeTimezone}
                     currency={currency}
-                    disabled={isSaving}
+                    disabled={isSaving || readOnly}
                     showValidationErrors={showValidationErrors}
                   />
                 )}
@@ -307,7 +316,7 @@ function PricingCard(props: PricingStepProps) {
         )}
       </CardPanel>
 
-      {productId && (
+      {productId && !readOnly && (
         <SeasonalPeriodFormDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}

@@ -22,17 +22,28 @@ import { SearchInput } from '@/components/ui/search-input';
 
 interface CustomersFiltersProps {
   totalCount: number;
+  localFilters?: {
+    value: CustomersFilterValue;
+    onChange: (value: CustomersFilterValue) => void;
+  };
+  readOnly?: boolean;
 }
 
-export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
+export type CustomersFilterValue = {
+  search: string;
+  type: string;
+  sort: string;
+};
+
+export const CustomersFilters = ({ totalCount, localFilters, readOnly = false }: CustomersFiltersProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('dashboard.customers');
   const tCommon = useTranslations('common');
 
-  const currentType = searchParams.get('type') || 'all';
-  const currentSort = searchParams.get('sort') || 'recent';
-  const currentSearch = searchParams.get('search') || '';
+  const currentType = localFilters?.value.type ?? (searchParams.get('type') || 'all');
+  const currentSort = localFilters?.value.sort ?? (searchParams.get('sort') || 'recent');
+  const currentSearch = localFilters?.value.search ?? (searchParams.get('search') || '');
   const [searchQuery, setSearchQuery] = useState(currentSearch);
 
   useEffect(() => {
@@ -63,11 +74,19 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
   }, 300);
 
   const updateSearchQuery = (term: string) => {
+    if (localFilters) {
+      localFilters.onChange({ ...localFilters.value, search: term });
+      return;
+    }
     setSearchQuery(term);
     handleSearch(term);
   };
 
   const clearSearchQuery = () => {
+    if (localFilters) {
+      localFilters.onChange({ ...localFilters.value, search: '' });
+      return;
+    }
     setSearchQuery('');
     handleSearch.cancel();
 
@@ -78,6 +97,10 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
 
   const handleSortChange = (value: string | null) => {
     if (value === null) return;
+    if (localFilters) {
+      localFilters.onChange({ ...localFilters.value, sort: value });
+      return;
+    }
     const params = new URLSearchParams(searchParams);
     if (value && value !== 'recent') {
       params.set('sort', value);
@@ -89,6 +112,10 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
 
   const handleTypeChange = (value: string | null) => {
     if (value === null) return;
+    if (localFilters) {
+      localFilters.onChange({ ...localFilters.value, type: value });
+      return;
+    }
     const params = new URLSearchParams(searchParams);
     if (value && value !== 'all') {
       params.set('type', value);
@@ -108,11 +135,24 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative">
+        <div
+          className="relative"
+          onClickCapture={(event) => {
+            // The shared search addons focus the input on click. Keep local previews focus-free.
+            if (!readOnly || !(event.target instanceof Element)) return;
+            if (!event.target.closest('[data-slot="input-group-addon"]')) return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.target.closest('button')) clearSearchQuery();
+          }}
+        >
           <SearchInput
+            data-demo-target="customers-search"
+            autoFocus={false}
+            enableShortcut={!readOnly}
             placeholder={t('searchCustomers')}
             groupClassName="w-full sm:w-[250px]"
-            value={searchQuery}
+            value={localFilters ? currentSearch : searchQuery}
             onChange={(event) => updateSearchQuery(event.target.value)}
             onClear={clearSearchQuery}
             clearLabel={t('clearSearch')}
@@ -120,6 +160,7 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
         </div>
 
         <Select
+          modal={!readOnly}
           value={currentType}
           onValueChange={handleTypeChange}
         >
@@ -128,7 +169,7 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
               {typeOptions.find((o) => o.value === currentType)?.label}
             </SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent finalFocus={readOnly ? false : undefined}>
             {typeOptions.map((option) => (
               <SelectItem key={option.value} value={option.value} label={option.label}>
                 {option.label}
@@ -138,6 +179,7 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
         </Select>
 
         <Select
+          modal={!readOnly}
           value={currentSort}
           onValueChange={handleSortChange}
         >
@@ -146,7 +188,7 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
               {sortOptions.find((o) => o.value === currentSort)?.label}
             </SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent finalFocus={readOnly ? false : undefined}>
             {sortOptions.map((option) => (
               <SelectItem key={option.value} value={option.value} label={option.label}>
                 {option.label}
@@ -156,7 +198,8 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
         </Select>
 
         <Button
-          render={<Link href="/dashboard/customers/new?source=customers_page" />}
+          disabled={readOnly}
+          render={readOnly ? undefined : <Link href="/dashboard/customers/new?source=customers_page" />}
         >
           <Plus className="mr-2 h-4 w-4" />
           {tCommon('add')}

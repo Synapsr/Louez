@@ -12,10 +12,7 @@ import { usePostHog } from "posthog-js/react";
 
 import { Alert, AlertDescription, AlertTitle, Button } from "@louez/ui";
 
-import { cn } from "@louez/utils";
-
 import { DatePickerModal } from "@/components/storefront/date-picker-modal";
-import { BackLink } from "@/components/storefront/ui/back-link";
 import { useAnalytics } from "@/contexts/analytics-context";
 import { useCart } from "@/contexts/cart-context";
 import { useAppForm } from "@/hooks/form/form";
@@ -25,6 +22,8 @@ import {
   checkoutAnalyticsBaseProperties,
   productAnalyticsEvents,
 } from "@/lib/product-analytics/analytics-events";
+
+import { CheckoutFormView } from "./checkout-form-view";
 
 import type {
   CheckoutBlockedReason,
@@ -38,9 +37,7 @@ import { CheckoutConfirmStep } from "./components/checkout-confirm-step";
 import { CheckoutContactStep } from "./components/checkout-contact-step";
 import { CheckoutDeliveryStep } from "./components/checkout-delivery-step";
 import { CheckoutEmptyCartState } from "./components/checkout-empty-cart-state";
-import { CheckoutOrderSummary } from "./components/checkout-order-summary";
 import { CheckoutSkeleton } from "./components/checkout-skeleton";
-import { CheckoutSummaryBar } from "./components/checkout-summary-bar";
 import { useCheckoutAdvanceNotice } from "./hooks/use-checkout-advance-notice";
 import { useCheckoutAdvisorGate } from "./hooks/use-checkout-advisor-gate";
 import { useCheckoutDelivery } from "./hooks/use-checkout-delivery";
@@ -379,142 +376,109 @@ export const CheckoutForm = ({
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <BackLink href={returnHref} />
-        <h1 className="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
-          {t("title")}
-        </h1>
-      </div>
-
-      <CheckoutSummaryBar {...summaryProps} />
-
-      <div
-        role="progressbar"
-        aria-valuemin={1}
-        aria-valuemax={stepFlow.steps.length}
-        aria-valuenow={stepFlow.currentStepIndex + 1}
-        aria-label={t("title")}
-        aria-valuetext={
-          stepFlow.currentStep === "delivery"
-            ? t("fulfillmentTitle")
-            : t(`steps.${stepFlow.currentStep}`)
-        }
-        className="flex gap-1.5"
-      >
-        {stepFlow.steps.map((id, index) => (
-          <div
-            key={id}
-            className={cn(
-              "h-1 flex-1 rounded-full transition-colors duration-500 motion-reduce:transition-none",
-              index <= stepFlow.currentStepIndex ? "bg-foreground" : "bg-border",
-            )}
-          />
-        ))}
-      </div>
-
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
-        <div ref={stepRef} className="min-w-0 scroll-mt-4">
-          {serverError && serverErrorMessage && (
-            <Alert variant="error" className="mb-4">
-              <AlertCircle />
-              <AlertTitle>{t("submitError.title")}</AlertTitle>
-              <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
-                <span>{serverErrorMessage}</span>
-                {serverError.step !== stepFlow.currentStep && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      stepFlow.goToStep(serverError.step);
-                      clearServerError();
-                    }}
-                  >
-                    {t("submitError.goToStep")}
-                  </Button>
-                )}
-              </AlertDescription>
-            </Alert>
+    <CheckoutFormView
+      returnHref={returnHref}
+      steps={stepFlow.steps}
+      currentStep={stepFlow.currentStep}
+      summaryProps={summaryProps}
+      stepRef={stepRef}
+      error={
+        serverError && serverErrorMessage && (
+          <Alert variant="error" className="mb-4">
+            <AlertCircle />
+            <AlertTitle>{t("submitError.title")}</AlertTitle>
+            <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+              <span>{serverErrorMessage}</span>
+              {serverError.step !== stepFlow.currentStep && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    stepFlow.goToStep(serverError.step);
+                    clearServerError();
+                  }}
+                >
+                  {t("submitError.goToStep")}
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        )
+      }
+      footer={
+        <DatePickerModal
+          storeSlug={storeSlug}
+          pricingMode={pricingMode}
+          businessHours={businessHours}
+          advanceNotice={advanceNotice.issue?.advanceNoticeMinutes ?? advanceNoticeMinutes}
+          minRentalMinutes={minRentalMinutes}
+          timezone={timezone}
+          isOpen={isDatePickerOpen}
+          onClose={() => setIsDatePickerOpen(false)}
+          initialStartDate={globalStartDate ?? undefined}
+          initialEndDate={globalEndDate ?? undefined}
+          redirectOnSubmit={false}
+        />
+      }
+    >
+      <form.AppForm>
+        <form.Form formName="checkout" onKeyDown={handleFormKeyDown}>
+          {stepFlow.currentStep === "contact" && (
+            <CheckoutContactStep
+              form={form}
+              storeId={storeId}
+              storeCountry={storeCountry}
+              showAddressFields={showAddressInContact}
+              sessionCustomer={sessionCustomer}
+              onSessionCustomer={handleSessionCustomer}
+              coordinates={coordinates}
+              onCoordinatesChange={setCoordinates}
+              onContinue={stepFlow.goToNextStep}
+              stepDirection={stepFlow.stepDirection}
+            />
           )}
 
-          <form.AppForm>
-            <form.Form formName="checkout" onKeyDown={handleFormKeyDown}>
-              {stepFlow.currentStep === "contact" && (
-                <CheckoutContactStep
-                  form={form}
-                  storeId={storeId}
-                  storeCountry={storeCountry}
-                  showAddressFields={showAddressInContact}
-                  sessionCustomer={sessionCustomer}
-                  onSessionCustomer={handleSessionCustomer}
-                  coordinates={coordinates}
-                  onCoordinatesChange={setCoordinates}
-                  onContinue={stepFlow.goToNextStep}
-                  stepDirection={stepFlow.stepDirection}
-                />
-              )}
+          {stepFlow.currentStep === "delivery" && deliverySettings && (
+            <CheckoutDeliveryStep
+              form={form}
+              deliverySettings={deliverySettings}
+              delivery={delivery}
+              subtotal={subtotal}
+              storeAddress={storeAddress}
+              storeName={storeName}
+              storeLatitude={storeLatitude}
+              storeLongitude={storeLongitude}
+              onUseCustomerAddress={handleUseCustomerAddress}
+              onBack={stepFlow.goToPreviousStep}
+              onContinue={stepFlow.goToNextStep}
+              stepDirection={stepFlow.stepDirection}
+            />
+          )}
 
-              {stepFlow.currentStep === "delivery" && deliverySettings && (
-                <CheckoutDeliveryStep
-                  form={form}
-                  deliverySettings={deliverySettings}
-                  delivery={delivery}
-                  subtotal={subtotal}
-                  storeAddress={storeAddress}
-                  storeName={storeName}
-                  storeLatitude={storeLatitude}
-                  storeLongitude={storeLongitude}
-                  onUseCustomerAddress={handleUseCustomerAddress}
-                  onBack={stepFlow.goToPreviousStep}
-                  onContinue={stepFlow.goToNextStep}
-                  stepDirection={stepFlow.stepDirection}
-                />
-              )}
-
-              {stepFlow.currentStep === "confirm" && (
-                <CheckoutConfirmStep
-                  form={form}
-                  reservationMode={reservationMode}
-                  logisticsLabel={logisticsLabel}
-                  tulipInsurance={tulipInsurance}
-                  tulipQuote={tulipQuote}
-                  advisorGate={advisorGate}
-                  promo={promo}
-                  hasActivePromoCodes={hasActivePromoCodes}
-                  totalDeposit={totalDeposit}
-                  submitLabel={submitLabel}
-                  blockedReason={blockedReason}
-                  advanceNoticeIssue={advanceNotice.issue}
-                  isSubmitting={isSubmitting}
-                  onBack={stepFlow.goToPreviousStep}
-                  onEditContact={() => stepFlow.goToStep("contact")}
-                  onEditDates={() => setIsDatePickerOpen(true)}
-                  stepDirection={stepFlow.stepDirection}
-                />
-              )}
-            </form.Form>
-          </form.AppForm>
-        </div>
-
-        <aside className="hidden lg:sticky lg:top-4 lg:block">
-          <CheckoutOrderSummary {...summaryProps} />
-        </aside>
-      </div>
-
-      <DatePickerModal
-        storeSlug={storeSlug}
-        pricingMode={pricingMode}
-        businessHours={businessHours}
-        advanceNotice={advanceNotice.issue?.advanceNoticeMinutes ?? advanceNoticeMinutes}
-        minRentalMinutes={minRentalMinutes}
-        timezone={timezone}
-        isOpen={isDatePickerOpen}
-        onClose={() => setIsDatePickerOpen(false)}
-        initialStartDate={globalStartDate ?? undefined}
-        initialEndDate={globalEndDate ?? undefined}
-        redirectOnSubmit={false}
-      />
-    </div>
+          {stepFlow.currentStep === "confirm" && (
+            <CheckoutConfirmStep
+              form={form}
+              reservationMode={reservationMode}
+              logisticsLabel={logisticsLabel}
+              tulipInsurance={tulipInsurance}
+              tulipQuote={tulipQuote}
+              advisorGate={advisorGate}
+              promo={promo}
+              hasActivePromoCodes={hasActivePromoCodes}
+              totalDeposit={totalDeposit}
+              submitLabel={submitLabel}
+              blockedReason={blockedReason}
+              advanceNoticeIssue={advanceNotice.issue}
+              isSubmitting={isSubmitting}
+              onBack={stepFlow.goToPreviousStep}
+              onEditContact={() => stepFlow.goToStep("contact")}
+              onEditDates={() => setIsDatePickerOpen(true)}
+              stepDirection={stepFlow.stepDirection}
+            />
+          )}
+        </form.Form>
+      </form.AppForm>
+    </CheckoutFormView>
   );
 };

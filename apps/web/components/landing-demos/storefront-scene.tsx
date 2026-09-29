@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { CatalogLayout } from "@/app/(storefront)/[slug]/catalog/catalog-layout";
 import { CatalogSidebar } from "@/app/(storefront)/[slug]/catalog/catalog-sidebar";
@@ -37,14 +37,24 @@ export const StorefrontScene = ({
   compact,
   period: initialPeriod,
   onBookingChange,
+  onOpenProduct,
+  onQuickAdd,
+  onPeriodChange,
+  cartControl,
+  products: suppliedProducts,
 }: {
   compact: boolean;
   period: RentalPeriodValue;
   onBookingChange: (booking: DemoBooking) => void;
+  onOpenProduct?: (productId: string) => void;
+  onQuickAdd?: (productId: string) => void;
+  onPeriodChange?: (period: RentalPeriodValue) => void;
+  cartControl?: ReactNode;
+  products?: ReturnType<typeof getDemoProducts>;
 }) => {
   const t = useTranslations("storefront");
   const locale = useDemoLocale();
-  const DEMO_PRODUCTS = getDemoProducts(locale);
+  const DEMO_PRODUCTS = suppliedProducts ?? getDemoProducts(locale);
   const DEMO_CATEGORIES = getDemoCategories(locale);
   const [period, setPeriod] = useState(initialPeriod);
   const [params, setParams] = useState(() => new URLSearchParams());
@@ -64,6 +74,7 @@ export const StorefrontScene = ({
   };
   const changePeriod = (next: RentalPeriodValue) => {
     setPeriod(next);
+    onPeriodChange?.(next);
     changeCart(quantities, next);
   };
   const products = DEMO_PRODUCTS.map((product) => ({
@@ -124,7 +135,7 @@ export const StorefrontScene = ({
             onPeriodChange={changePeriod}
           />
         }
-        cartControl={<CartTriggerView count={cart.summary.count} open={() => setOpen(true)} />}
+        cartControl={cartControl ?? <CartTriggerView count={cart.summary.count} open={() => setOpen(true)} />}
       />
       <CatalogLayout
         title={getCatalogTitle(filters.category, DEMO_CATEGORIES, {
@@ -150,8 +161,11 @@ export const StorefrontScene = ({
       >
         <div
           onClickCapture={(event) => {
-            if (event.target instanceof Element && event.target.closest("a"))
+            if (event.target instanceof Element && event.target.closest("a")) {
               event.preventDefault();
+              const productId = event.target.closest("[data-product-id]")?.getAttribute("data-product-id");
+              if (productId) onOpenProduct?.(productId);
+            }
           }}
         >
           {visible.length ? (
@@ -160,6 +174,10 @@ export const StorefrontScene = ({
               period={cart.period}
               getProductHref={() => "/demos/landing/storefront"}
               onQuickAdd={(product) => {
+                if (onQuickAdd) {
+                  onQuickAdd(product.id);
+                  return;
+                }
                 changeCart({ ...quantities, [product.id]: (quantities[product.id] ?? 0) + 1 });
                 setOpen(true);
               }}

@@ -840,7 +840,7 @@ export function UnifiedPaymentSection({
 
           {/* Deposit Section */}
           {deposit > 0 && (
-            <div className="space-y-3 pt-3 border-t">
+            <div data-reservation-deposit className="space-y-3 pt-3 border-t">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-muted-foreground" />

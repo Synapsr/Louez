@@ -1,7 +1,8 @@
+import { ReservationPageView } from "@/components/storefront/account/reservation-page-view";
 import { getExtensionAttempt } from "@/lib/reservations/extension.types";
-import { AddToCalendarButton } from "@/components/storefront/account/add-to-calendar-button";
+
 import { buildCalendarLinks } from "@/lib/reservations/util.calendar-links";
-import { ReturnDateRequestCard } from "@/components/storefront/account/return-date-request-card";
+
 import {
   canRequestDateChange,
   getDateChangeRequests,
@@ -22,38 +23,21 @@ import {
   reservations,
 } from "@louez/db";
 
-import { AccountCard } from "@/components/storefront/account/account-card";
-import { ReservationActions } from "@/components/storefront/account/reservation-actions";
-import { ReservationFulfillmentSummary } from "@/components/storefront/account/reservation-fulfillment-summary";
-import { ReservationInvoicesCard } from "@/components/storefront/account/reservation-invoices-card";
-import { ReservationItemsCard } from "@/components/storefront/account/reservation-items-card";
 import { ReservationCartReset } from "@/components/storefront/account/reservation-cart-reset";
-import {
-  ReservationDepositCard,
-  type ReservationDepositView,
-} from "@/components/storefront/account/reservation-deposit-card";
-import {
-  ReservationInspectionsCard,
-  type ReservationInspectionView,
-} from "@/components/storefront/account/reservation-inspections-card";
-import { ReservationOutcomeBanner } from "@/components/storefront/account/reservation-outcome-banner";
-import { ReservationPaymentsCard } from "@/components/storefront/account/reservation-payments-card";
-import { ReservationStatusBadge } from "@/components/storefront/account/reservation-status-badge";
-import { ReservationStatusCard } from "@/components/storefront/account/reservation-status-card";
+import type { ReservationDepositView } from "@/components/storefront/account/reservation-deposit-card";
+import type { ReservationInspectionView } from "@/components/storefront/account/reservation-inspections-card";
+
 import {
   isClosedReservationStatus,
   toReservationStatus,
 } from "@/components/storefront/account/reservation-status.constants";
-import { ReservationTimeline } from "@/components/storefront/account/reservation-timeline";
-import {
-  ReservationUpdatesCard,
-  type ReservationUpdateView,
-} from "@/components/storefront/account/reservation-updates-card";
-import { StoreContactCard } from "@/components/storefront/account/store-contact-card";
+
+import type { ReservationUpdateView } from "@/components/storefront/account/reservation-updates-card";
+
 import { ReviewPromptCard } from "@/components/storefront/review-prompt-card";
-import { BackLink } from "@/components/storefront/ui/back-link";
+
 import { StorefrontPageRefresh } from "@/components/storefront/ui/storefront-page-refresh";
-import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
+
 import { requireCustomerSession } from "@/lib/customer-auth/require-customer-session";
 import { parseReservationOutcomeEvent } from "@/lib/customer-auth/util.account-redirect";
 import { buildReviewUrl } from "@/lib/google-places";
@@ -370,206 +354,181 @@ export default async function ReservationDetailPage({
       : null;
 
   return (
-    <StorefrontSection contentClassName="flex max-w-6xl flex-col gap-4 sm:gap-6">
+    <>
       <StorefrontPageRefresh renderedAt={Date.now()} />
-      <div>
-        <BackLink href="/account">{t("backToAccount")}</BackLink>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="text-balance text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
-            {t(status === "pending" || cancelledRequest ? "requestNumber" : "reservationNumber", {
-              number: reservation.number,
-            })}
-          </h1>
-          <ReservationStatusBadge status={status} />
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {formatStoreDateRange(reservation.startDate, reservation.endDate, timezone, formatLocale)}
-        </p>
-      </div>
-
       <ReservationCartReset event={event} />
-      <ReservationOutcomeBanner
-        event={status === "pending" || status === "confirmed" ? event : null}
-        paymentStatus={paymentStatus}
-      />
-
-      <div className="flex flex-col gap-3 rounded-2xl bg-card p-4 shadow-card sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6">
-        <ReservationStatusCard
-          status={status}
-          cancelledRequest={cancelledRequest}
-          isRentalPaid={rentalPaid}
-          paymentRequired={status === "confirmed" && actions.canPay}
-          customerEmail={session.customer.email}
-        />
-
-        <ReservationActions
-          storeSlug={slug}
-          reservationId={reservationId}
-          actions={actions}
-          hasPayment={reservation.payments.some((payment) =>
+      <ReservationPageView
+        number={reservation.number}
+        status={status}
+        cancelledRequest={cancelledRequest}
+        periodLabel={formatStoreDateRange(
+          reservation.startDate,
+          reservation.endDate,
+          timezone,
+          formatLocale,
+        )}
+        calendarLinks={buildCalendarLinks({
+          title: `${store.name} — ${t("reservationNumber", { number: reservation.number })}`,
+          description: [
+            ...reservation.items.map((item) => `${item.quantity} × ${item.productSnapshot.name}`),
+            "",
+            t("fulfillment.calendarPickup", {
+              when: pickupDateLabel,
+              place: pickupPlaceLine,
+            }),
+            t("fulfillment.calendarReturn", {
+              when: returnDateLabel,
+              place: dropoffPlaceLine,
+            }),
+          ].join("\n"),
+          startDate: reservation.startDate.toISOString(),
+          endDate: reservation.endDate.toISOString(),
+          timezone: timezone ?? "UTC",
+          location: pickupPlaceLine,
+        })}
+        reviewPrompt={
+          reviewUrl ? <ReviewPromptCard storeName={store.name} reviewUrl={reviewUrl} /> : null
+        }
+        outcome={{
+          event: status === "pending" || status === "confirmed" ? event : null,
+          paymentStatus: paymentStatus,
+        }}
+        statusCard={{
+          status: status,
+          cancelledRequest: cancelledRequest,
+          isRentalPaid: rentalPaid,
+          paymentRequired: status === "confirmed" && actions.canPay,
+          customerEmail: session.customer.email,
+        }}
+        actions={{
+          storeSlug: slug,
+          reservationId: reservationId,
+          actions: actions,
+          hasPayment: reservation.payments.some((payment) =>
             ["completed", "authorized"].includes(payment.status),
-          )}
-          contractHref={getStorefrontUrl(slug, `${reservationPath}/contract`)}
-        />
-      </div>
-
-      {reviewUrl ? <ReviewPromptCard storeName={store.name} reviewUrl={reviewUrl} /> : null}
-
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <AccountCard
-            title={t("timeline.title")}
-            aside={
-              ["confirmed", "ongoing", "completed"].includes(status) ? (
-                <AddToCalendarButton
-                  links={buildCalendarLinks({
-                    title: `${store.name} — ${t("reservationNumber", { number: reservation.number })}`,
-                    description: [
-                      ...reservation.items.map(
-                        (item) => `${item.quantity} × ${item.productSnapshot.name}`,
-                      ),
-                      "",
-                      t("fulfillment.calendarPickup", {
-                        when: pickupDateLabel,
-                        place: pickupPlaceLine,
-                      }),
-                      t("fulfillment.calendarReturn", {
-                        when: returnDateLabel,
-                        place: dropoffPlaceLine,
-                      }),
-                    ].join("\n"),
-                    startDate: reservation.startDate.toISOString(),
-                    endDate: reservation.endDate.toISOString(),
-                    timezone: timezone ?? "UTC",
-                    location: pickupPlaceLine,
-                  })}
-                />
-              ) : null
-            }
-          >
-            <ReservationFulfillmentSummary
-              fulfillment={fulfillment}
-              pickupDateLabel={pickupDateLabel}
-              returnDateLabel={returnDateLabel}
-            />
-            <ReservationTimeline
-              status={status}
-              cancelledRequest={cancelledRequest}
-              closedLabel={cancellation ? formatDate(cancellation.createdAt, "DATE_AT_TIME") : null}
-              createdLabel={formatDate(reservation.createdAt, "DATE_AT_TIME")}
-              pickedUpLabel={
-                reservation.pickedUpAt ? formatDate(reservation.pickedUpAt, "DATE_AT_TIME") : null
+          ),
+          contractHref: getStorefrontUrl(slug, `${reservationPath}/contract`),
+        }}
+        fulfillment={{
+          fulfillment: fulfillment,
+          pickupDateLabel: pickupDateLabel,
+          returnDateLabel: returnDateLabel,
+        }}
+        timeline={{
+          status: status,
+          cancelledRequest: cancelledRequest,
+          closedLabel: cancellation ? formatDate(cancellation.createdAt, "DATE_AT_TIME") : null,
+          createdLabel: formatDate(reservation.createdAt, "DATE_AT_TIME"),
+          pickedUpLabel: reservation.pickedUpAt
+            ? formatDate(reservation.pickedUpAt, "DATE_AT_TIME")
+            : null,
+          returnedLabel: reservation.returnedAt
+            ? formatDate(reservation.returnedAt, "DATE_AT_TIME")
+            : null,
+        }}
+        items={{
+          items: reservation.items.map((item) => ({
+            id: item.id,
+            name: item.productSnapshot.name,
+            imageUrl: item.productSnapshot.images?.[0] ?? null,
+            quantity: item.quantity,
+            unitPrice: Number.parseFloat(item.unitPrice),
+            totalPrice: Number.parseFloat(item.totalPrice),
+            insured: item.productId !== null && insuredProductIds.has(item.productId),
+          })),
+          subtotal: Number.parseFloat(reservation.subtotalAmount),
+          deposit: Number.parseFloat(reservation.depositAmount),
+          depositLabel:
+            depositStateKey === "not_required"
+              ? null
+              : t(`depositCard.states.${depositStateKey}.badge`),
+          damageFees: damageFees,
+          total: Number.parseFloat(reservation.totalAmount),
+          amountPaid: rentalPaidAmount,
+          isUnsettled: rentalPaidAmount === 0 && !isClosedReservationStatus(status),
+          notes: reservation.customerNotes,
+        }}
+        updates={{
+          updates: updates,
+        }}
+        deposit={
+          deposit
+            ? {
+                deposit: deposit,
+                authorize: depositAuthorization,
               }
-              returnedLabel={
-                reservation.returnedAt ? formatDate(reservation.returnedAt, "DATE_AT_TIME") : null
-              }
-            />
-          </AccountCard>
-
-          <ReservationItemsCard
-            items={reservation.items.map((item) => ({
-              id: item.id,
-              name: item.productSnapshot.name,
-              imageUrl: item.productSnapshot.images?.[0] ?? null,
-              quantity: item.quantity,
-              unitPrice: Number.parseFloat(item.unitPrice),
-              totalPrice: Number.parseFloat(item.totalPrice),
-              insured: item.productId !== null && insuredProductIds.has(item.productId),
-            }))}
-            subtotal={Number.parseFloat(reservation.subtotalAmount)}
-            deposit={Number.parseFloat(reservation.depositAmount)}
-            depositLabel={
-              depositStateKey === "not_required"
-                ? null
-                : t(`depositCard.states.${depositStateKey}.badge`)
-            }
-            damageFees={damageFees}
-            total={Number.parseFloat(reservation.totalAmount)}
-            amountPaid={rentalPaidAmount}
-            isUnsettled={rentalPaidAmount === 0 && !isClosedReservationStatus(status)}
-            notes={reservation.customerNotes}
-          />
-
-          <ReservationUpdatesCard updates={updates} />
-        </div>
-        <aside className="flex min-w-0 flex-col gap-6">
-          {deposit ? (
-            <ReservationDepositCard deposit={deposit} authorize={depositAuthorization} />
-          ) : null}
-          <ReturnDateRequestCard
-            extension={
-              reservation.activity.flatMap((row) => {
-                const value = getExtensionAttempt(row.metadata);
-                return value
-                  ? [
-                      {
-                        id: row.id,
-                        status: value.status,
-                        expiresMs: value.expiresMs,
-                        supplement: value.supplement,
-                        currency: value.currency,
-                        requestedEndMs: value.requestedEndMs,
-                      },
-                    ]
-                  : [];
-              })[0]
-            }
-            storeSlug={slug}
-            reservationId={reservationId}
-            startDate={reservation.startDate.toISOString()}
-            initialEndDate={formatStoreDate(
-              reservation.endDate,
-              timezone,
-              "yyyy-MM-dd'T'HH:mm",
+            : null
+        }
+        returnDateRequest={{
+          extension: reservation.activity.flatMap((row) => {
+            const value = getExtensionAttempt(row.metadata);
+            return value
+              ? [
+                  {
+                    id: row.id,
+                    status: value.status,
+                    expiresMs: value.expiresMs,
+                    supplement: value.supplement,
+                    currency: value.currency,
+                    requestedEndMs: value.requestedEndMs,
+                  },
+                ]
+              : [];
+          })[0],
+          storeSlug: slug,
+          reservationId: reservationId,
+          startDate: reservation.startDate.toISOString(),
+          initialEndDate: formatStoreDate(
+            reservation.endDate,
+            timezone,
+            "yyyy-MM-dd'T'HH:mm",
+            formatLocale,
+          ),
+          timezone: timezone ?? "UTC",
+          eligible: canRequestDateChange(status),
+          request: dateRequest,
+          requestedDateLabel: dateRequest
+            ? formatDate(dateRequest.requestedEndDate, "DATE_AT_TIME")
+            : null,
+        }}
+        payments={{
+          payments: getCustomerPaymentRows(reservation.payments).map((payment) => ({
+            id: payment.id,
+            type: payment.type,
+            method: payment.method,
+            status: payment.status,
+            amount: Number.parseFloat(payment.amount),
+            dateLabel: formatDate(payment.paidAt ?? payment.createdAt, "SHORT_DATE"),
+            note: ["deposit_capture", "damage"].includes(payment.type) ? payment.notes : null,
+            isRefund: isRefundRow(payment),
+          })),
+        }}
+        inspections={{
+          inspections: inspectionViews,
+        }}
+        invoices={{
+          invoices: invoiceRows.map((invoice) => ({
+            id: invoice.id,
+            number: invoice.number,
+            type: invoice.type,
+            amount: Number(invoice.totalInclTax),
+            currency: invoice.currency,
+            dateLabel: formatStoreDate(
+              `${invoice.issueDate}T12:00:00Z`,
+              "UTC",
+              "SHORT_DATE",
               formatLocale,
-            )}
-            timezone={timezone ?? "UTC"}
-            eligible={canRequestDateChange(status)}
-            request={dateRequest}
-            requestedDateLabel={
-              dateRequest ? formatDate(dateRequest.requestedEndDate, "DATE_AT_TIME") : null
-            }
-          />
-          <ReservationPaymentsCard
-            payments={getCustomerPaymentRows(reservation.payments).map((payment) => ({
-              id: payment.id,
-              type: payment.type,
-              method: payment.method,
-              status: payment.status,
-              amount: Number.parseFloat(payment.amount),
-              dateLabel: formatDate(payment.paidAt ?? payment.createdAt, "SHORT_DATE"),
-              note: ["deposit_capture", "damage"].includes(payment.type) ? payment.notes : null,
-              isRefund: isRefundRow(payment),
-            }))}
-          />
-
-          <ReservationInspectionsCard inspections={inspectionViews} />
-
-          <ReservationInvoicesCard
-            invoices={invoiceRows.map((invoice) => ({
-              id: invoice.id,
-              number: invoice.number,
-              type: invoice.type,
-              amount: Number(invoice.totalInclTax),
-              currency: invoice.currency,
-              dateLabel: formatStoreDate(
-                `${invoice.issueDate}T12:00:00Z`,
-                "UTC",
-                "SHORT_DATE",
-                formatLocale,
-              ),
-              href: getStorefrontUrl(slug, `${reservationPath}/invoices/${invoice.id}`),
-            }))}
-          />
-
-          <StoreContactCard
-            storeName={store.name}
-            email={store.email}
-            phone={store.phone}
-            address={store.address}
-          />
-        </aside>
-      </div>
-    </StorefrontSection>
+            ),
+            href: getStorefrontUrl(slug, `${reservationPath}/invoices/${invoice.id}`),
+          })),
+        }}
+        contact={{
+          storeName: store.name,
+          email: store.email,
+          phone: store.phone,
+          address: store.address,
+        }}
+      />
+    </>
   );
 }

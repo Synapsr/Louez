@@ -48,6 +48,7 @@ import type { StockKind } from "@louez/types";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import {
+  type ProductTimelineData,
   type ProductTimelineDowntime,
   type ProductTimelineReservation,
   fetchProductReservationTimeline,
@@ -192,6 +193,7 @@ function StatusFilterList({
           className="hover:bg-muted/60 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-normal"
         >
           <Checkbox
+            data-product-timeline-status={status}
             checked={!hiddenStatuses.has(status)}
             onCheckedChange={() => onToggleStatus(status)}
           />
@@ -218,7 +220,9 @@ function ZoomSelect({
   onZoomChange,
   className,
   size,
+  readOnly = false,
 }: {
+  readOnly?: boolean;
   zoom: TimelineZoom;
   onZoomChange: (value: string | null) => void;
   className?: string;
@@ -227,7 +231,7 @@ function ZoomSelect({
   const tCalendar = useTranslations("dashboard.calendar");
 
   return (
-    <Select value={zoom} onValueChange={onZoomChange}>
+    <Select disabled={readOnly} value={zoom} onValueChange={onZoomChange}>
       <SelectTrigger size={size} className={className} aria-label={tCalendar("viewMode.label")}>
         <CalendarIcon className="mr-1.5 h-3.5 w-3.5 shrink-0" />
         <SelectValue>{tCalendar(`periods.${zoom}`)}</SelectValue>
@@ -348,6 +352,13 @@ interface ProductReservationsTimelineProps {
   units: { id: string; identifier: string }[];
   /** Stock quantity for simple-quantity products */
   quantity: number;
+  /** Supplied reservations and downtimes replace the fetch: the timeline shows these only. */
+  data?: ProductTimelineData;
+  onOpenReservation?: (id: string) => void;
+  getReservationHref?: (id: string) => string;
+  readOnly?: boolean;
+  persistFilters?: boolean;
+  initialDate?: Date;
 }
 
 export function ProductReservationsTimeline({
@@ -357,6 +368,12 @@ export function ProductReservationsTimeline({
   stockKind,
   units,
   quantity,
+  data,
+  onOpenReservation,
+  getReservationHref,
+  readOnly = false,
+  persistFilters = true,
+  initialDate,
 }: ProductReservationsTimelineProps) {
   const t = useTranslations("dashboard.products.detail.reservations.timeline");
   const tCalendar = useTranslations("dashboard.calendar");
@@ -379,25 +396,34 @@ export function ProductReservationsTimeline({
     { history: "replace" },
   );
 
-  const zoom = urlState.resaZoom;
+  const [localState, setLocalState] = useState<{
+    resaZoom: TimelineZoom;
+    resaStatus: (typeof ALL_STATUSES)[number][];
+  }>({ resaZoom: "week", resaStatus: DEFAULT_VISIBLE_STATUSES });
+  const filterState = persistFilters ? urlState : localState;
+  const updateFilters = (next: Partial<typeof localState>) => {
+    if (persistFilters) void setUrlState(next);
+    else setLocalState((current) => ({ ...current, ...next }));
+  };
+  const zoom = filterState.resaZoom;
   const isMobile = useIsMobile();
   const dayWidth = (isMobile ? MOBILE_DAY_WIDTHS : DAY_WIDTHS)[zoom];
 
   const hiddenStatuses = useMemo(
-    () => new Set<string>(ALL_STATUSES.filter((status) => !urlState.resaStatus.includes(status))),
-    [urlState.resaStatus],
+    () => new Set<string>(ALL_STATUSES.filter((status) => !filterState.resaStatus.includes(status))),
+    [filterState.resaStatus],
   );
 
   // Keep canonical status order so nuqs' clearOnDefault recognizes the
   // default set and drops the param from the URL.
   const setVisibleStatuses = (visible: Set<string>) => {
-    void setUrlState({
+    updateFilters({
       resaStatus: ALL_STATUSES.filter((status) => visible.has(status)),
     });
   };
 
   const toggleStatus = (status: string) => {
-    const visible = new Set<string>(urlState.resaStatus);
+    const visible = new Set<string>(filterState.resaStatus);
     if (visible.has(status)) {
       visible.delete(status);
     } else {
@@ -411,7 +437,7 @@ export function ProductReservationsTimeline({
   // ---------------------------------------------------------------------------
 
   const [windowStart, setWindowStart] = useState(() =>
-    getMondayOf(addDays(new Date(), -INITIAL_PAST_DAYS)),
+    getMondayOf(addDays(initialDate ?? new Date(), -INITIAL_PAST_DAYS)),
   );
   const [daysCount, setDaysCount] = useState(INITIAL_DAYS_COUNT);
 
@@ -423,20 +449,20 @@ export function ProductReservationsTimeline({
   const didInitialScrollRef = useRef(false);
   const centeredForMobileRef = useRef(false);
   /** Date the viewport centers on when the window is (re)built */
-  const anchorDateRef = useRef(startOfDay(new Date()));
+  const anchorDateRef = useRef(startOfDay(initialDate ?? new Date()));
 
   // ---------------------------------------------------------------------------
   // Data
   // ---------------------------------------------------------------------------
 
   const [reservationsById, setReservationsById] = useState<Map<string, ProductTimelineReservation>>(
-    () => new Map(),
+    () => new Map(data?.reservations.map((reservation) => [reservation.id, reservation])),
   );
   const [downtimesById, setDowntimesById] = useState<Map<string, ProductTimelineDowntime>>(
-    () => new Map(),
+    () => new Map(data?.downtimes.map((downtime) => [downtime.id, downtime])),
   );
-  const [isFetching, setIsFetching] = useState(true);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [isFetching, setIsFetching] = useState(!data);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(Boolean(data));
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
   const coverageRef = useRef<{ start: number; end: number } | null>(null);
@@ -448,6 +474,7 @@ export function ProductReservationsTimeline({
   // double-mount), the range would stay claimed but empty forever. Merging is
   // idempotent (Maps keyed by id), so late results are always safe to apply.
   useEffect(() => {
+    if (data) return;
     const winStart = windowStart;
     const winEnd = addDays(windowStart, daysCount - 1);
     winEnd.setHours(23, 59, 59, 999);
@@ -526,7 +553,7 @@ export function ProductReservationsTimeline({
         pendingFetchesRef.current -= 1;
         if (pendingFetchesRef.current === 0) setIsFetching(false);
       });
-  }, [productId, windowStart, daysCount, retryToken]);
+  }, [data, productId, windowStart, daysCount, retryToken]);
 
   // ---------------------------------------------------------------------------
   // Derived layout data
@@ -534,8 +561,7 @@ export function ProductReservationsTimeline({
 
   /** Unlimited and high-quantity simple stock render stacked, not one lane per unit. */
   const isUntrackedStock = stockKind === "untracked";
-  const isAggregated =
-    isUntrackedStock || (!trackUnits && quantity > AGGREGATE_THRESHOLD);
+  const isAggregated = isUntrackedStock || (!trackUnits && quantity > AGGREGATE_THRESHOLD);
 
   const lanes = useMemo((): TimelineLane[] => {
     if (trackUnits) {
@@ -557,9 +583,7 @@ export function ProductReservationsTimeline({
 
   const totalUnits = trackUnits ? lanes.length : Math.max(1, quantity);
   const headerHeight =
-    MONTH_ROW_HEIGHT +
-    DAY_ROW_HEIGHT +
-    (isUntrackedStock ? 0 : AVAILABILITY_ROW_HEIGHT);
+    MONTH_ROW_HEIGHT + DAY_ROW_HEIGHT + (isUntrackedStock ? 0 : AVAILABILITY_ROW_HEIGHT);
   const unitColumnWidth = (isMobile ? MOBILE_UNIT_COLUMN_WIDTHS : UNIT_COLUMN_WIDTHS)[
     trackUnits ? "tracked" : "untracked"
   ];
@@ -639,7 +663,7 @@ export function ProductReservationsTimeline({
     [windowStart, daysCount],
   );
 
-  const todayIndex = diffInDays(windowStart, new Date());
+  const todayIndex = diffInDays(windowStart, initialDate ?? new Date());
 
   const monthFormatter = useMemo(
     () => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }),
@@ -655,8 +679,8 @@ export function ProductReservationsTimeline({
     return label.charAt(0).toUpperCase() + label.slice(1);
   };
 
-  const [visibleMonthLabel, setVisibleMonthLabel] = useState(() => formatMonthLabel(new Date()));
-  const [visibleDate, setVisibleDate] = useState(() => startOfDay(new Date()));
+  const [visibleMonthLabel, setVisibleMonthLabel] = useState(() => formatMonthLabel(initialDate ?? new Date()));
+  const [visibleDate, setVisibleDate] = useState(() => startOfDay(initialDate ?? new Date()));
   const [leftmostVisibleDayIndex, setLeftmostVisibleDayIndex] = useState(0);
 
   // ---------------------------------------------------------------------------
@@ -699,7 +723,8 @@ export function ProductReservationsTimeline({
     didInitialScrollRef.current = true;
 
     const anchorIndex = diffInDays(windowStart, anchorDateRef.current);
-    const target = anchorIndex * dayWidth - Math.max(0, (element.clientWidth - unitColumnWidth) / 3);
+    const target =
+      anchorIndex * dayWidth - Math.max(0, (element.clientWidth - unitColumnWidth) / 3);
     element.scrollLeft = Math.max(0, target);
     updateVisibleViewport(element);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -796,7 +821,7 @@ export function ProductReservationsTimeline({
     setDaysCount(INITIAL_DAYS_COUNT);
   };
 
-  const goToToday = () => goToDate(new Date());
+  const goToToday = () => goToDate(initialDate ?? new Date());
 
   const handleZoomChange = (value: string | null) => {
     if (value === null) return;
@@ -804,7 +829,8 @@ export function ProductReservationsTimeline({
     if (element) {
       zoomAnchorRef.current = element.scrollLeft / dayWidth;
     }
-    void setUrlState({ resaZoom: value as TimelineZoom });
+    const nextZoom = TIMELINE_ZOOMS.find((zoom) => zoom === value);
+    if (nextZoom) updateFilters({ resaZoom: nextZoom });
   };
 
   // ---------------------------------------------------------------------------
@@ -953,7 +979,7 @@ export function ProductReservationsTimeline({
           <Spinner className="text-muted-foreground size-3.5 shrink-0" />
         )}
 
-        <div className="ms-auto flex shrink-0 items-center gap-1 sm:hidden">
+        <div inert={readOnly} className="ms-auto flex shrink-0 items-center gap-1 sm:hidden">
           <TimelineFiltersDrawer
             hiddenStatuses={hiddenStatuses}
             zoom={zoom}
@@ -965,14 +991,15 @@ export function ProductReservationsTimeline({
         </div>
 
         <div className="ms-auto hidden shrink-0 items-center gap-1 sm:flex">
-          <Popover>
+          <Popover modal={readOnly ? false : undefined}>
             <PopoverTrigger
+              data-demo-target="product-timeline-status-filter"
               render={<Button variant="outline" size="sm" aria-label={t("statusFilter")} />}
             >
               <ListFilter />
               <TimelineFilterBadge count={visibleStatusBadgeCount(hiddenStatuses)} />
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-52">
+            <PopoverContent initialFocus={readOnly ? false : undefined} finalFocus={readOnly ? false : undefined} align="end" className="w-52">
               <div className="p-1">
                 <StatusFilterList
                   hiddenStatuses={hiddenStatuses}
@@ -984,6 +1011,7 @@ export function ProductReservationsTimeline({
           </Popover>
 
           <ZoomSelect
+            readOnly={readOnly}
             zoom={zoom}
             onZoomChange={handleZoomChange}
             size="sm"
@@ -1012,6 +1040,7 @@ export function ProductReservationsTimeline({
 
       {/* Timeline grid */}
       <div
+        data-product-timeline-scroll
         ref={scrollerRef}
         onScroll={handleScroll}
         className="bg-card relative overflow-auto overscroll-x-contain rounded-lg border select-none"
@@ -1087,6 +1116,7 @@ export function ProductReservationsTimeline({
               {/* Availability has no quantity dimension for untracked stock. */}
               {isUntrackedStock ? null : (
                 <div
+                  data-product-timeline-availability
                   className="bg-muted/30 flex border-t"
                   style={{ height: AVAILABILITY_ROW_HEIGHT }}
                 >
@@ -1095,9 +1125,7 @@ export function ProductReservationsTimeline({
                       key={index}
                       className={cn(
                         "flex shrink-0 items-center justify-center text-[10px] leading-none tabular-nums",
-                        free === 0
-                          ? "text-destructive font-semibold"
-                          : "text-muted-foreground",
+                        free === 0 ? "text-destructive font-semibold" : "text-muted-foreground",
                       )}
                       style={{ width: dayWidth }}
                       title={t("availableOn", {
@@ -1191,7 +1219,9 @@ export function ProductReservationsTimeline({
                 <div
                   className="relative cursor-crosshair"
                   style={{ width: timelineWidth }}
-                  onPointerDown={(event) => handleLanePointerDown(rowIndex, event)}
+                  onPointerDown={
+                    readOnly ? undefined : (event) => handleLanePointerDown(rowIndex, event)
+                  }
                   onPointerMove={handleLanePointerMove}
                   onPointerUp={handleLanePointerUp}
                   onPointerCancel={handleLanePointerCancel}
@@ -1253,6 +1283,12 @@ export function ProductReservationsTimeline({
                           key={`${placed.reservation.id}-${rowIndex}`}
                           reservation={placed.reservation}
                           currency={currency}
+                          onOpen={
+                            onOpenReservation
+                              ? () => onOpenReservation(placed.reservation.id)
+                              : undefined
+                          }
+                          href={getReservationHref?.(placed.reservation.id)}
                           isConflict={placed.isConflict}
                           isLabelSticky
                           stickyLabelOffset={unitColumnWidth}
@@ -1274,7 +1310,7 @@ export function ProductReservationsTimeline({
       </div>
 
       {/* Drag-to-create is mouse-only, so the hint has no audience on a phone */}
-      <p className="text-muted-foreground text-xs max-sm:hidden">{t("dragHint")}</p>
+      {!readOnly && <p className="text-muted-foreground text-xs max-sm:hidden">{t("dragHint")}</p>}
     </div>
   );
 }

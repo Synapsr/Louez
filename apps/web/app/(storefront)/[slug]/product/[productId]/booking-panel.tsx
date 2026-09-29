@@ -2,18 +2,12 @@
 
 import { type ReactNode, useMemo, useRef, useState } from "react";
 
-import { useStoreTimezone as usePromotionTimezone } from "@/contexts/store-context";
-import { usePricingNow } from "@/hooks/use-pricing-now";
 import { useTranslations } from "next-intl";
 
-import { Button, toastManager } from "@louez/ui";
-import { calculateDurationMinutes, isFixedPriceProduct, pricingModeToMinutes } from "@louez/utils";
+import { toastManager } from "@louez/ui";
 
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
-import { BookingAttributeSelects } from "@/components/storefront/product/booking-attribute-selects";
-import { ExtrasList } from "@/components/storefront/product/extras-list";
 import { useQuickAdd } from "@/components/storefront/product/quick-add-provider";
-import { QuantityStepper } from "@/components/storefront/product/quantity-stepper";
 import { useProductAvailability } from "@/components/storefront/product/use-product-availability";
 import {
   clampBookingQuantity,
@@ -32,21 +26,11 @@ import {
   validateMinRentalDurationMinutes,
 } from "@/lib/utils/rental-duration";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
-import { parseStorefrontDecimal } from "@/lib/utils/util.storefront-product-pricing";
 import { deriveAttributeValues } from "@/lib/utils/util.variant-combinations";
-
-import { usePeriodLabel } from "@/hooks/use-period-label";
 
 import { type CartPeriod, useCartState } from "@/contexts/cart-context";
 
-import {
-  getSeasonalCalendarPricing,
-  getSeasonalDurationParts,
-} from "@/lib/utils/util.storefront-seasonal-pricing";
-import { BookingPeriodField } from "./booking-period-field";
-import { ProductSummary } from "./product-summary";
-import { PriceSummary } from "./price-summary";
-import { StickyBookingBar } from "./sticky-booking-bar";
+import { BookingPanelView } from "./booking-panel-view";
 import { useAddToCart } from "./use-add-to-cart";
 import { useBookingPrice } from "./use-booking-price";
 
@@ -68,10 +52,7 @@ const toPeriodValue = (period: CartPeriod | null): RentalPeriodValue | null =>
  * sticky bar as a sibling so it can pin to the bottom of the whole page.
  */
 export const BookingPanel = ({ product, booking, accessories, information }: BookingPanelProps) => {
-  const promotionTimezone = usePromotionTimezone();
-  const promotionNow = usePricingNow();
   const t = useTranslations();
-  const formatPeriodLabel = usePeriodLabel();
   const { period: cartPeriod, items: cartItems } = useCartState();
   const periodFieldRef = useRef<HTMLDivElement>(null);
 
@@ -139,22 +120,6 @@ export const BookingPanel = ({ product, booking, accessories, information }: Boo
     axes: booking.attributeAxes,
     openDrawer: false,
   });
-
-  const isFixed = isFixedPriceProduct(product);
-  const basePer = isFixed
-    ? null
-    : formatPeriodLabel(
-        product.basePeriodMinutes && product.basePeriodMinutes > 0
-          ? product.basePeriodMinutes
-          : pricingModeToMinutes(product.pricingMode),
-      );
-  const durationLabel = isFixed
-    ? t("storefront.product.fixedPricingLabel")
-    : period
-      ? getSeasonalDurationParts(calculateDurationMinutes(period.start, period.end))
-          .map((part) => formatPeriodLabel(part, { alwaysShowCount: true }))
-          .join(" ")
-      : null;
 
   const isFirstCheck =
     period !== null && availability.isChecking && availability.maxQuantity === undefined;
@@ -225,94 +190,33 @@ export const BookingPanel = ({ product, booking, accessories, information }: Boo
     : undefined;
 
   return (
-    <>
-      <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        <ProductSummary
-          product={product}
-          booking={booking}
-          seasonalSegments={price.seasonalSegments}
-          rentalPrice={
-            price.isPriced
-              ? (price.promotion?.originalSubtotal ?? price.subtotal) / quantity
-              : undefined
-          }
-          rentalMinutes={period ? calculateDurationMinutes(period.start, period.end) : undefined}
-        />
-        <div className="flex flex-col gap-5 rounded-2xl bg-card p-4 shadow-card sm:p-6">
-          <BookingPeriodField
-            seasonalPricing={getSeasonalCalendarPricing(product, {
-              timezone: promotionTimezone,
-              now: promotionNow,
-            })}
-            ref={periodFieldRef}
-            value={period}
-            onChange={setPeriodOverride}
-            open={isPeriodOpen}
-            onOpenChange={setIsPeriodOpen}
-            rules={periodRules}
-          />
-
-          {hasAxes ? (
-            <BookingAttributeSelects
-              axes={booking.attributeAxes}
-              values={attributeValues}
-              selected={selectedAttributes}
-              onChange={setSelectedAttributes}
-              hint={selectionHint}
-            />
-          ) : null}
-
-          <QuantityStepper
-            value={quantity}
-            max={capacity.maxQuantity}
-            onChange={setRequestedQuantity}
-            disabled={capacity.isSelectionUnavailable}
-            hint={
-              isFirstCheck
-                ? t("storefront.product.booking.checking")
-                : period && capacity.maxQuantity !== null
-                  ? t("storefront.product.booking.availableForDates", {
-                      count: capacity.maxQuantity,
-                    })
-                  : undefined
-            }
-          />
-
-          <ExtrasList
-            accessories={requiredAccessories}
-            quantity={quantity}
-            selectedIds={extraIds}
-            onToggle={() => {}}
-            cartProductIds={cartProductIds}
-          />
-
-          <PriceSummary
-            price={price}
-            seasons={product.seasonalPricings}
-            durationLabel={durationLabel}
-          />
-
-          <div className="hidden flex-col gap-1.5 lg:flex">
-            <Button size="lg" className="w-full" onClick={handleReserve} disabled={isCtaDisabled}>
-              {ctaLabel}
-            </Button>
-            {blockedReason ? (
-              <p className="text-xs text-muted-foreground">{blockedReason}</p>
-            ) : null}
-          </div>
-        </div>
-        {information}
-      </div>
-
-      <StickyBookingBar
-        amount={price.isPriced ? price.total : (parseStorefrontDecimal(product.price) ?? 0)}
-        per={price.isPriced ? null : basePer}
-        label={price.isPriced ? null : isFixed ? t("storefront.product.fixedPricingLabel") : null}
-        ctaLabel={ctaLabel}
-        onClick={handleReserve}
-        disabled={isCtaDisabled}
-        blockedReason={blockedReason}
-      />
-    </>
+    <BookingPanelView
+      product={product}
+      booking={booking}
+      information={information}
+      period={period}
+      periodRules={periodRules}
+      periodFieldRef={periodFieldRef}
+      isPeriodOpen={isPeriodOpen}
+      setIsPeriodOpen={setIsPeriodOpen}
+      setPeriodOverride={setPeriodOverride}
+      quantity={quantity}
+      maxQuantity={capacity.maxQuantity}
+      isSelectionUnavailable={capacity.isSelectionUnavailable}
+      setRequestedQuantity={setRequestedQuantity}
+      attributeValues={attributeValues}
+      selectedAttributes={selectedAttributes}
+      setSelectedAttributes={setSelectedAttributes}
+      selectionHint={selectionHint}
+      requiredAccessories={requiredAccessories}
+      extraIds={extraIds}
+      cartProductIds={cartProductIds}
+      price={price}
+      isFirstCheck={isFirstCheck}
+      ctaLabel={ctaLabel}
+      isCtaDisabled={isCtaDisabled}
+      blockedReason={blockedReason}
+      handleReserve={handleReserve}
+    />
   );
 };

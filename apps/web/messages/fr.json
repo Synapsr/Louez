@@ -4499,7 +4499,22 @@
         "create": "Créer",
         "revokeTitle": "Révoquer la clé API ?",
         "revokeDescription": "Cette action est irréversible. Toute application utilisant cette clé perdra immédiatement l'accès.",
-        "revokeConfirm": "Révoquer"
+        "revokeConfirm": "Révoquer",
+        "presetCustom": "Personnalisé",
+        "domains": {
+          "reservations": "Réservations",
+          "products": "Produits",
+          "customers": "Clients",
+          "categories": "Catégories",
+          "payments": "Paiements",
+          "analytics": "Analyses",
+          "settings": "Paramètres"
+        },
+        "levels": {
+          "none": "Aucun accès",
+          "read": "Lecture",
+          "write": "Lecture et écriture"
+        }
       },
       "businessHours": {
         "title": "Horaires d'ouverture",
@@ -8061,7 +8076,10 @@
       "rental": "Location",
       "deposit": "Caution",
       "deposit_return": "Remb. caution",
-      "damage": "Dommages"
+      "damage": "Dommages",
+      "deposit_hold": "Empreinte bancaire",
+      "deposit_capture": "Caution prélevée",
+      "adjustment": "Ajustement"
     },
     "paymentMethods": {
       "stripe": "Carte en ligne",
@@ -8073,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Payé",
-      "pending": "En attente"
+      "pending": "En attente",
+      "authorized": "Autorisé"
     },
     "signature": {
       "validated": "Validé",

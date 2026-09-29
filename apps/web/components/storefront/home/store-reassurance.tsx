@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@louez/utils";
 
@@ -24,8 +24,8 @@ const TONE_CLASS_NAMES: Record<StoreReassuranceTone, string> = {
  * One quiet line of what the store actually offers, derived from its
  * settings; sits under the period search in the hero.
  */
-export const StoreReassurance = async ({ items, tone, className }: StoreReassuranceProps) => {
-  const t = await getTranslations("storefront.hero");
+export const StoreReassurance = ({ items, tone, className }: StoreReassuranceProps) => {
+  const t = useTranslations("storefront.hero");
 
   if (items.length === 0) return null;
 

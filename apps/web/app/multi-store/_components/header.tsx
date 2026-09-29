@@ -33,9 +33,10 @@ interface MultiStoreHeaderProps {
   userEmail: string
   userImage?: string | null
   isPlatformAdmin?: boolean
+  readOnly?: boolean
 }
 
-export function MultiStoreHeader({ stores, userEmail, userImage, isPlatformAdmin }: MultiStoreHeaderProps) {
+export function MultiStoreHeader({ stores, userEmail, userImage, isPlatformAdmin, readOnly = false }: MultiStoreHeaderProps) {
   const t = useTranslations('dashboard.multiStore')
   const tAuth = useTranslations('auth')
   const tSettings = useTranslations('dashboard.settings.accountSettings')
@@ -43,6 +44,7 @@ export function MultiStoreHeader({ stores, userEmail, userImage, isPlatformAdmin
   const initials = userEmail.slice(0, 2).toUpperCase()
 
   const handleStoreSelect = async (storeId: string) => {
+    if (readOnly) return
     await setCurrentStoreAction(storeId)
     router.push('/dashboard')
     router.refresh()
@@ -53,7 +55,7 @@ export function MultiStoreHeader({ stores, userEmail, userImage, isPlatformAdmin
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <div className="flex items-center gap-6">
-          <Link href="/multi-store" className="flex items-center gap-2">
+          <Link href="/multi-store" prefetch={readOnly ? false : undefined} onClick={readOnly ? (event) => event.preventDefault() : undefined} className="flex items-center gap-2">
             <Logo className="h-6 w-auto" />
           </Link>
           <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
@@ -62,7 +64,7 @@ export function MultiStoreHeader({ stores, userEmail, userImage, isPlatformAdmin
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" inert={readOnly || undefined}>
           {/* Quick store access */}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" className="gap-2" />}>

@@ -11,15 +11,17 @@ import { updateCustomerNotes } from '../actions'
 interface CustomerNotesProps {
   customerId: string
   initialNotes: string
+  readOnly?: boolean
 }
 
-export function CustomerNotes({ customerId, initialNotes }: CustomerNotesProps) {
+export const CustomerNotes = ({ customerId, initialNotes, readOnly = false }: CustomerNotesProps) => {
   const t = useTranslations('dashboard.customers')
   const [isEditing, setIsEditing] = useState(false)
   const [notes, setNotes] = useState(initialNotes)
   const [isPending, startTransition] = useTransition()
 
   const handleSave = () => {
+    if (readOnly) return
     startTransition(async () => {
       const result = await updateCustomerNotes(customerId, notes)
       if (result.error) {
@@ -69,6 +71,7 @@ export function CustomerNotes({ customerId, initialNotes }: CustomerNotesProps) 
         variant="outline"
         className="mt-4"
         onClick={() => setIsEditing(true)}
+        disabled={readOnly}
       >
         <Pencil className="mr-2 h-4 w-4" />
         {notes ? t('notes.edit') : t('notes.add')}

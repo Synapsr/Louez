@@ -4362,7 +4362,22 @@
         "create": "Erstellen",
         "revokeTitle": "API-Schlüssel widerrufen?",
         "revokeDescription": "Diese Aktion ist unwiderruflich. Jede Anwendung, die diesen Schlüssel verwendet, verliert sofort den Zugang.",
-        "revokeConfirm": "Widerrufen"
+        "revokeConfirm": "Widerrufen",
+        "presetCustom": "Benutzerdefiniert",
+        "domains": {
+          "reservations": "Reservierungen",
+          "products": "Produkte",
+          "customers": "Kunden",
+          "categories": "Kategorien",
+          "payments": "Zahlungen",
+          "analytics": "Analysen",
+          "settings": "Einstellungen"
+        },
+        "levels": {
+          "none": "Kein Zugriff",
+          "read": "Lesen",
+          "write": "Lesen und schreiben"
+        }
       },
       "businessHours": {
         "title": "Öffnungszeiten",
@@ -8061,7 +8076,10 @@
       "rental": "Miete",
       "deposit": "Kaution",
       "deposit_return": "Kautionsrückerstattung",
-      "damage": "Schäden"
+      "damage": "Schäden",
+      "deposit_hold": "Autorisierung",
+      "deposit_capture": "Kaution eingezogen",
+      "adjustment": "Anpassung"
     },
     "paymentMethods": {
       "stripe": "Online-Karte",
@@ -8073,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Bezahlt",
-      "pending": "Ausstehend"
+      "pending": "Ausstehend",
+      "authorized": "Autorisiert"
     },
     "signature": {
       "validated": "Validiert",

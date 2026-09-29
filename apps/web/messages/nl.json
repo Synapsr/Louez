@@ -4362,7 +4362,22 @@
         "create": "Aanmaken",
         "revokeTitle": "API-sleutel intrekken?",
         "revokeDescription": "Deze actie is onomkeerbaar. Elke applicatie die deze sleutel gebruikt, verliest onmiddellijk de toegang.",
-        "revokeConfirm": "Intrekken"
+        "revokeConfirm": "Intrekken",
+        "presetCustom": "Aangepast",
+        "domains": {
+          "reservations": "Reserveringen",
+          "products": "Producten",
+          "customers": "Klanten",
+          "categories": "Categorieën",
+          "payments": "Betalingen",
+          "analytics": "Analyses",
+          "settings": "Instellingen"
+        },
+        "levels": {
+          "none": "Geen toegang",
+          "read": "Lezen",
+          "write": "Lezen en schrijven"
+        }
       },
       "businessHours": {
         "title": "Openingstijden",
@@ -8061,7 +8076,10 @@
       "rental": "Verhuur",
       "deposit": "Borg",
       "deposit_return": "Borgterugbetaling",
-      "damage": "Schade"
+      "damage": "Schade",
+      "deposit_hold": "Autorisatie",
+      "deposit_capture": "Borg geïnd",
+      "adjustment": "Aanpassing"
     },
     "paymentMethods": {
       "stripe": "Online kaart",
@@ -8073,7 +8091,8 @@
     },
     "paymentStatus": {
       "completed": "Betaald",
-      "pending": "In behandeling"
+      "pending": "In behandeling",
+      "authorized": "Geautoriseerd"
     },
     "signature": {
       "validated": "Gevalideerd",

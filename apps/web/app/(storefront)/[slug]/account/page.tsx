@@ -1,24 +1,16 @@
+import { AccountPageView } from "@/components/storefront/account/account-page-view";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { and, desc, eq } from "drizzle-orm";
-import { PackageIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { db, reservations } from "@louez/db";
-import { Button } from "@louez/ui";
 
 import { PageTracker } from "@/components/storefront/page-tracker";
 import type { ReservationListItem } from "@/components/storefront/account/reservation-list-card";
-import { ReservationListSection } from "@/components/storefront/account/reservation-list-section";
-import {
-  isCurrentReservationStatus,
-  toReservationStatus,
-} from "@/components/storefront/account/reservation-status.constants";
-import { EmptyState } from "@/components/storefront/ui/empty-state";
-import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
+import { toReservationStatus } from "@/components/storefront/account/reservation-status.constants";
 import { StorefrontPageRefresh } from "@/components/storefront/ui/storefront-page-refresh";
-import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
 import { requireCustomerSession } from "@/lib/customer-auth/require-customer-session";
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { isRentalPaid } from "@/lib/reservations/util.payment-status";
@@ -57,9 +49,8 @@ export default async function AccountPage({ params }: AccountPageProps) {
   const store = await getStoreBySlug(slug);
   if (!store) notFound();
 
-  const [session, t, { intl: formatLocale }] = await Promise.all([
+  const [session, { intl: formatLocale }] = await Promise.all([
     requireCustomerSession(store, "/account"),
-    getTranslations("storefront.account"),
     getRequestFormatLocale(),
   ]);
 
@@ -102,45 +93,11 @@ export default async function AccountPage({ params }: AccountPageProps) {
     }).required,
   }));
 
-  const ongoing = items.filter((item) => item.status === "ongoing");
-  const current = items.filter(
-    (item) => isCurrentReservationStatus(item.status) && item.status !== "ongoing",
-  );
-  const past = items.filter((item) => !isCurrentReservationStatus(item.status));
-
   return (
     <>
       <StorefrontPageRefresh renderedAt={Date.now()} />
       <PageTracker page="account" />
-      <StorefrontSection contentClassName="flex max-w-5xl flex-col gap-6 sm:gap-8">
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-balance text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
-              {t("myReservations")}
-            </h1>
-          </div>
-        </header>
-
-        {items.length === 0 ? (
-          <EmptyState
-            icon={<PackageIcon />}
-            title={t("noReservations")}
-            description={t("noReservationsDescription")}
-            tone="card"
-            action={
-              <Button size="lg" render={<StorefrontLink href="/catalog" />}>
-                {t("viewCatalog")}
-              </Button>
-            }
-          />
-        ) : (
-          <>
-            <ReservationListSection title={t("status.ongoing")} reservations={ongoing} />
-            <ReservationListSection title={t("currentReservations")} reservations={current} />
-            <ReservationListSection title={t("pastReservations")} reservations={past} />
-          </>
-        )}
-      </StorefrontSection>
+      <AccountPageView items={items} />
     </>
   );
 }

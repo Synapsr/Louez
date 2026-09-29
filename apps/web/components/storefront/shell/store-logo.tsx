@@ -10,12 +10,14 @@ interface StoreLogoProps {
   /** Store-relative home href; the marketplace keeps its channel param. */
   href?: string;
   className?: string;
+  prefetch?: boolean;
 }
 
 /** Logo (or the store name) linking home; 44 px tall so it is a real target. */
-export const StoreLogo = ({ storeName, logoUrl, href = "/", className }: StoreLogoProps) => (
+export const StoreLogo = ({ storeName, logoUrl, href = "/", className, prefetch }: StoreLogoProps) => (
   <StorefrontLink
     href={href}
+    prefetch={prefetch}
     aria-label={storeName}
     className={cn(
       "flex min-h-11 min-w-0 items-center gap-2 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",

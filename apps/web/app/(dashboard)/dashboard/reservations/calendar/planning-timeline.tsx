@@ -124,9 +124,25 @@ interface PlanningTimelineProps {
   products: Product[];
   currency: string;
   storeId: string;
+  reservations?: StoreTimelineReservation[];
+  initialDate?: Date;
+  onOpenReservation?: (id: string) => void;
+  getReservationHref?: (id: string) => string;
+  readOnly?: boolean;
+  persistFilters?: boolean;
 }
 
-export function PlanningTimeline({ products, currency, storeId }: PlanningTimelineProps) {
+export function PlanningTimeline({
+  products,
+  currency,
+  storeId,
+  reservations: suppliedReservations,
+  initialDate,
+  onOpenReservation,
+  getReservationHref,
+  readOnly = false,
+  persistFilters = true,
+}: PlanningTimelineProps) {
   const t = useTranslations("dashboard.calendar.timeline");
   const tCalendar = useTranslations("dashboard.calendar");
   const locale = useLocale();
@@ -137,7 +153,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   // URL-persisted view state (zoom + status/product filters) — shareable links
   // ---------------------------------------------------------------------------
 
-  const filters = useTimelineFilters(products, storeId);
+  const filters = useTimelineFilters(products, storeId, persistFilters);
   const { hiddenStatuses, selectedProductIds, todayOperation } = filters;
 
   const zoom = filters.range;
@@ -148,7 +164,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   // ---------------------------------------------------------------------------
 
   // Anchor on the `date` param when present (deep links, `returnTo` round-trips)
-  const anchorDateRef = useRef(dateParam ?? new Date());
+  const anchorDateRef = useRef(dateParam ?? initialDate ?? new Date());
 
   const initialWindowRef = useRef(reservationPlanningQueries.initialWindow(anchorDateRef.current));
 
@@ -173,8 +189,13 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
     [storeId, windowStart, daysCount],
   );
 
-  const { entries, isFetching, hasError, retry } = useQueries({
-    queries: chunkQueries,
+  const {
+    entries: queriedEntries,
+    isFetching,
+    hasError,
+    retry,
+  } = useQueries({
+    queries: suppliedReservations ? [] : chunkQueries,
     combine: (results) => {
       // A reservation overlapping two chunks comes back from both — key on the
       // (reservation, product) pair so it is placed exactly once.
@@ -190,12 +211,12 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
         isFetching: results.some((result) => result.isFetching),
         hasError: results.some((result) => result.isError),
         retry: () =>
-          Promise.all(
-            results.filter((result) => result.isError).map((result) => result.refetch()),
-          ),
+          Promise.all(results.filter((result) => result.isError).map((result) => result.refetch())),
       };
     },
   });
+
+  const entries = suppliedReservations ?? queriedEntries;
 
   const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
 
@@ -222,13 +243,14 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   );
 
   useEffect(() => {
+    if (!persistFilters) return;
     try {
       const stored = window.localStorage.getItem(COLLAPSED_PRODUCTS_KEY);
       if (stored) setCollapsedProductIds(new Set<string>(JSON.parse(stored) as string[]));
     } catch {
       // Unreadable or disabled storage just means "everything expanded"
     }
-  }, []);
+  }, [persistFilters]);
 
   const toggleProductCollapsed = (productId: string) => {
     setCollapsedProductIds((previous) => {
@@ -238,10 +260,12 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
       } else {
         next.add(productId);
       }
-      try {
-        window.localStorage.setItem(COLLAPSED_PRODUCTS_KEY, JSON.stringify([...next]));
-      } catch {
-        // Persisting is best-effort
+      if (persistFilters) {
+        try {
+          window.localStorage.setItem(COLLAPSED_PRODUCTS_KEY, JSON.stringify([...next]));
+        } catch {
+          // Persisting is best-effort
+        }
       }
       return next;
     });
@@ -268,10 +292,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
       const quantity = Math.max(1, product.quantity);
 
       // Untracked and high-volume simple stock have no useful per-unit lanes.
-      if (
-        product.stockKind === "untracked" ||
-        (!trackUnits && quantity > AGGREGATE_THRESHOLD)
-      ) {
+      if (product.stockKind === "untracked" || (!trackUnits && quantity > AGGREGATE_THRESHOLD)) {
         const { placed, laneCount } = stackReservations({ reservations, windowStart });
         const rows = Array.from(
           { length: Math.max(laneCount, MIN_AGGREGATE_ROWS) },
@@ -627,6 +648,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
       {/* Timeline grid */}
       <div
         ref={scrollerRef}
+        data-reservations-planning-scroll
         onScroll={handleScroll}
         className="bg-card relative min-h-0 flex-1 overflow-auto overscroll-x-contain overscroll-y-none rounded-lg border select-none"
       >
@@ -821,7 +843,9 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
                     <div
                       className="relative cursor-crosshair"
                       style={{ width: timelineWidth }}
-                      onPointerDown={(event) => handleLanePointerDown(productIndex, event)}
+                      onPointerDown={
+                        readOnly ? undefined : (event) => handleLanePointerDown(productIndex, event)
+                      }
                       onPointerMove={handleLanePointerMove}
                       onPointerUp={handleLanePointerUp}
                       onPointerCancel={handleLanePointerCancel}
@@ -860,7 +884,13 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
                             key={`${placed.reservation.id}-${placed.laneIndex}`}
                             reservation={placed.reservation}
                             currency={currency}
-                            onBeforeNavigate={persistVisibleDate}
+                            onBeforeNavigate={onOpenReservation ? undefined : persistVisibleDate}
+                            onOpen={
+                              onOpenReservation
+                                ? () => onOpenReservation(placed.reservation.id)
+                                : undefined
+                            }
+                            href={getReservationHref?.(placed.reservation.id)}
                             returnTo={returnTo}
                             isLabelSticky
                             stickyLabelOffset={PRODUCT_COLUMN_WIDTH}
@@ -883,7 +913,9 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
         </div>
       </div>
 
-      <p className="text-muted-foreground hidden text-xs sm:block">{t("dragHint")}</p>
+      {!readOnly && (
+        <p className="text-muted-foreground hidden text-xs sm:block">{t("dragHint")}</p>
+      )}
     </div>
   );
 }

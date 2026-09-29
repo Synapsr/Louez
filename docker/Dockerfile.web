@@ -104,6 +104,13 @@ ENV DATABASE_URL=${DATABASE_URL}
 # or registry failure, having nothing to do with the code being built.
 COPY --from=deps /root/.cache/node/corepack /root/.cache/node/corepack
 
+# The contract demo shows the pages of the real contract PDF as images. Its scenes import the
+# date snapshot written alongside them, so both are generated before the app is bundled: images
+# and scenes then carry the same dates, those of the build.
+RUN apk add --no-cache poppler-utils && \
+    corepack enable pnpm && \
+    pnpm --filter=@louez/web demo:documents
+
 # Build the application using Turborepo. CI supplies the commit SHA; direct
 # EasyPanel builds fall back to a unique build identifier without manual input.
 RUN corepack enable pnpm && \

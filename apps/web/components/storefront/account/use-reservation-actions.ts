@@ -20,6 +20,8 @@ interface UseReservationActionsInput {
   storeSlug: string;
   reservationId: string;
   hasPayment?: boolean;
+  readOnly?: boolean;
+  onAcceptQuote?: () => void;
 }
 
 class ActionFailure extends Error {}
@@ -40,10 +42,13 @@ export const useReservationActions = ({
   storeSlug,
   reservationId,
   hasPayment = false,
+  readOnly = false,
+  onAcceptQuote,
 }: UseReservationActionsInput) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const refreshReservation = () => {
+    if (readOnly) return;
     void invalidateStorefrontReservationData(queryClient);
     router.refresh();
   };
@@ -56,6 +61,7 @@ export const useReservationActions = ({
 
   const pay = useMutation({
     mutationFn: async () => {
+      if (readOnly) return null;
       const result = await createReservationPaymentSession(storeSlug, reservationId);
       if ("paymentUrl" in result && result.paymentUrl) return result.paymentUrl;
       if ("success" in result) return null;
@@ -63,6 +69,7 @@ export const useReservationActions = ({
     },
     onMutate: () => setError(null),
     onSuccess: (paymentUrl) => {
+      if (readOnly) return;
       if (paymentUrl) window.location.assign(paymentUrl);
       else refreshReservation();
     },
@@ -71,6 +78,10 @@ export const useReservationActions = ({
 
   const accept = useMutation({
     mutationFn: async () => {
+      if (readOnly) {
+        onAcceptQuote?.();
+        return null;
+      }
       const result = await acceptQuote(storeSlug, reservationId);
       if ("success" in result) return result.paymentUrl ?? null;
       return toActionError(result);
@@ -85,6 +96,7 @@ export const useReservationActions = ({
 
   const decline = useMutation({
     mutationFn: async () => {
+      if (readOnly) return null;
       const result = await declineQuote(storeSlug, reservationId);
       if (!("success" in result)) toActionError(result);
     },
@@ -95,6 +107,7 @@ export const useReservationActions = ({
 
   const cancel = useMutation({
     mutationFn: async () => {
+      if (readOnly) return null;
       const result = await cancelReservationRequest(storeSlug, reservationId, hasPayment);
       if (!("success" in result)) toActionError(result);
     },

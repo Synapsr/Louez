@@ -1,12 +1,10 @@
-import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 
 import { db } from "@louez/db";
 import { promoCodes } from "@louez/db";
-import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { getCurrentStore } from "@/lib/store-context";
-import { PromoCodesManager } from "./promo-codes-manager";
+import { PromoCodesSettingsContent } from "./promo-codes-settings-content";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -19,7 +17,6 @@ export default async function PromoCodesSettingsPage() {
     redirect("/onboarding");
   }
 
-  const t = await getTranslations("dashboard.settings");
   const currency = store.settings?.currency || "EUR";
 
   const codes = await db.query.promoCodes.findMany({
@@ -28,8 +25,6 @@ export default async function PromoCodesSettingsPage() {
   });
 
   return (
-    <SettingsPageShell title={t("promoCodes.title")} description={t("promoCodes.description")}>
-      <PromoCodesManager codes={codes} currency={currency} />
-    </SettingsPageShell>
+    <PromoCodesSettingsContent codes={codes} currency={currency} />
   );
 }

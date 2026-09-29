@@ -36,6 +36,7 @@ interface TopProductsTableProps {
   unallocatedRevenue: number;
   /** Distinct products that brought receipts over the period. */
   productCount: number;
+  readOnly?: boolean;
 }
 
 /** Gold / silver / bronze for the podium, muted numbers below. */
@@ -48,6 +49,7 @@ export const TopProductsTable = ({
   nonCatalogRevenue,
   unallocatedRevenue,
   productCount,
+  readOnly = false,
 }: TopProductsTableProps) => {
   const t = useTranslations("dashboard.statistics");
 
@@ -65,7 +67,7 @@ export const TopProductsTable = ({
     );
 
   return (
-    <div className="-mx-1 overflow-x-auto px-1">
+    <div data-demo-target="analytics-top-products" className="-mx-1 overflow-x-auto px-1">
       <Table>
         <TableHeader>
           <TableRow>
@@ -92,7 +94,10 @@ export const TopProductsTable = ({
               </TableCell>
               <TableCell className="max-w-55">
                 <Link
-                  href={`/dashboard/products/${product.productId}`}
+                  href={readOnly ? "#" : `/dashboard/products/${product.productId}`}
+                  prefetch={readOnly ? false : undefined}
+                  onClick={readOnly ? (event) => event.preventDefault() : undefined}
+                  aria-disabled={readOnly || undefined}
                   className="block truncate font-medium hover:underline"
                 >
                   {product.productName}
