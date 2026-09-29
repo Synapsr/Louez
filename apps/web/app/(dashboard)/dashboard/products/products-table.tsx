@@ -50,6 +50,9 @@ interface Product {
 interface ProductsTableProps {
   products: Product[]
   currency?: string
+  readOnly?: boolean
+  onOpenProduct?: (id: string) => void
+  getProductHref?: (id: string) => string
 }
 
 const STATUS_VARIANTS = {
@@ -58,7 +61,7 @@ const STATUS_VARIANTS = {
   archived: 'expired',
 } as const
 
-export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps) {
+export const ProductsTable = ({ products, currency = 'EUR', readOnly = false, onOpenProduct, getProductHref }: ProductsTableProps) => {
   const t = useTranslations('dashboard.products')
   const tForm = useTranslations('dashboard.products.form')
   const tCommon = useTranslations('common')
@@ -76,7 +79,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
     handleDuplicate,
     requestDelete,
     handleDelete,
-  } = useProductActions()
+  } = useProductActions({ readOnly })
 
   useEffect(() => {
     const table = tableRef.current
@@ -117,7 +120,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
         <Package className="h-12 w-12 text-muted-foreground" />
         <h3 className="mt-4 text-lg font-semibold">{t('noProducts')}</h3>
         <p className="mt-2 text-sm text-muted-foreground">{t('noProductsDescription')}</p>
-        <Button render={<Link href="/dashboard/products/new" />} className="mt-4">
+        <Button disabled={readOnly} render={readOnly ? undefined : <Link href="/dashboard/products/new" />} className="mt-4">
           {t('addProduct')}
         </Button>
       </div>
@@ -163,7 +166,13 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/dashboard/products/${product.id}`}
+                      href={getProductHref?.(product.id) ?? `/dashboard/products/${product.id}`}
+                      prefetch={readOnly || onOpenProduct ? false : undefined}
+                      data-product-open={product.id}
+                      onClick={(event) => {
+                        if (onOpenProduct || readOnly) event.preventDefault()
+                        onOpenProduct?.(product.id)
+                      }}
                       className="font-medium hover:underline"
                     >
                       {product.name}
@@ -194,7 +203,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
                   >
                     <DropdownMenu>
                       <DropdownMenuTrigger
-                        render={<Button variant="ghost" size="icon" disabled={isLoading} />}
+                        render={<Button variant="ghost" size="icon" disabled={readOnly || isLoading} />}
                       >
                         <MoreHorizontal className="h-4 w-4" />
                         <span className="sr-only">{tCommon('actions')}</span>
@@ -248,7 +257,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
         </Table>
       </div>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {!readOnly && <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteConfirm.title')}</AlertDialogTitle>
@@ -266,7 +275,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog>}
     </>
   )
 }

@@ -22,6 +22,8 @@ interface ProductGalleryProps {
   videoUrl: string | null;
   productName: string;
   className?: string;
+  /** Embedded previews can keep the gallery without opening a focus-trapping lightbox. */
+  allowLightbox?: boolean;
 }
 
 const prefersReducedMotion = () =>
@@ -37,6 +39,7 @@ export const ProductGallery = ({
   videoUrl,
   productName,
   className,
+  allowLightbox = true,
 }: ProductGalleryProps) => {
   const t = useTranslations("storefront.product");
   const tCommon = useTranslations("common");
@@ -83,6 +86,7 @@ export const ProductGallery = ({
   };
 
   const openLightbox = (index: number) => {
+    if (!allowLightbox) return;
     const previews: Record<number, string> = {};
     for (const [slideIndex, slide] of slideRefs.current) {
       const image = slide.querySelector("img");

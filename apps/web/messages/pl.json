@@ -180,7 +180,7 @@
     "loginDescription": "Wpisz swój email, aby kontynuować. Jeśli nie masz konta, zostanie utworzone automatycznie.",
     "reeentLoginTitle": "Witamy w louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent to witryna, louez to Twoje narzędzie: rezerwacje, płatności i kalendarz obsługujesz tutaj. Jeśli nie masz konta, zostanie utworzone automatycznie.",
-    "linkWillBeSent": "Bezpieczny link zostanie wysłany na Twój email. Bez hasła do zapamiętania.",
+    "linkWillBeSent": "Wyślemy Ci e-mailem jednorazowy kod. Hasło pozostaje opcjonalne.",
     "checkEmail": "Sprawdź swoją skrzynkę",
     "emailSentTo": "Link logowania został wysłany na",
     "clickLinkToSignIn": "Kliknij link w emailu, aby się zalogować. Link wygasa za 24 godziny.",
@@ -200,7 +200,19 @@
       "verification": "Link weryfikacyjny jest nieprawidłowy lub wygasł.",
       "default": "Wystąpił błąd. Spróbuj ponownie.",
       "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
-      "registrationClosed": "Rejestracja na tej instancji jest zamknięta. Poproś właściciela o zaproszenie."
+      "registrationClosed": "Rejestracja na tej instancji jest zamknięta. Poproś właściciela o zaproszenie.",
+      "invalidCode": "Ten kod jest nieprawidłowy.",
+      "codeExpired": "Ten kod wygasł. Poproś o nowy.",
+      "tooManyAttempts": "Zbyt wiele prób z tym kodem. Poproś o nowy.",
+      "tooManyRequests": "Zbyt wiele prób. Odczekaj minutę i spróbuj ponownie.",
+      "passwordTooLong": "Hasło nie może mieć więcej niż 128 znaków.",
+      "invalidPassword": "Obecne hasło jest nieprawidłowe.",
+      "currentPasswordRequired": "Wpisz obecne hasło.",
+      "passwordAlreadySet": "To konto ma już ustawione hasło.",
+      "passwordNotSet": "To konto nie ma ustawionego hasła.",
+      "passwordRemovalUnavailable": "W tej instancji hasło jest jedynym sposobem logowania: nie można go usunąć.",
+      "sessionExpired": "Sesja wygasła. Zaloguj się ponownie i spróbuj jeszcze raz.",
+      "passwordSignUpDisabled": "Zakładanie konta za pomocą hasła jest niedostępne. Użyj kodu wysłanego e-mailem."
     },
     "referralBanner": "{storeName} zaprosił Cię do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
     "referralBannerGeneric": "🎁 Zostałeś zaproszony do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "Masz już konto?",
     "usePasswordInstead": "Zaloguj się hasłem",
     "useEmailCodeInstead": "Zaloguj się kodem e-mail",
-    "passwordLoginDescription": "Zaloguj się za pomocą adresu e-mail i hasła."
+    "passwordLoginDescription": "Zaloguj się za pomocą adresu e-mail i hasła.",
+    "forgotPasswordTitle": "Nie pamiętasz hasła",
+    "forgotPasswordDescription": "Podaj adres e-mail swojego konta: wyślemy Ci kod, który pozwoli ustawić nowe hasło.",
+    "forgotPasswordLogsDescription": "Podaj adres e-mail swojego konta. Ta instancja nie wysyła e-maili: kod pojawi się w logach serwera.",
+    "resetCodeSentDescription": "Jeśli istnieje konto dla adresu <strong>{email}</strong>, właśnie wysłaliśmy na niego 6-cyfrowy kod. Wpisz go poniżej, aby ustawić nowe hasło.",
+    "newPasswordTitle": "Ustaw nowe hasło",
+    "newPasswordDescription": "Zalogujemy Cię od razu po jego zapisaniu. Pozostałe urządzenia zostaną wylogowane.",
+    "newPassword": "Nowe hasło",
+    "saveNewPassword": "Zapisz i zaloguj",
+    "requestNewCode": "Wyślij nowy kod",
+    "backToLogin": "Wróć do logowania",
+    "showPassword": "Pokaż hasło",
+    "hidePassword": "Ukryj hasło",
+    "passwordRules": {
+      "minLength": "Co najmniej {count} znaków"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} zaprasza Cię do zespołu",
@@ -4362,7 +4389,22 @@
         "create": "Utwórz",
         "revokeTitle": "Unieważnić klucz API?",
         "revokeDescription": "Ta akcja jest nieodwracalna. Każda aplikacja używająca tego klucza natychmiast straci dostęp.",
-        "revokeConfirm": "Unieważnij"
+        "revokeConfirm": "Unieważnij",
+        "presetCustom": "Niestandardowe",
+        "domains": {
+          "reservations": "Rezerwacje",
+          "products": "Produkty",
+          "customers": "Klienci",
+          "categories": "Kategorie",
+          "payments": "Płatności",
+          "analytics": "Analizy",
+          "settings": "Ustawienia"
+        },
+        "levels": {
+          "none": "Brak dostępu",
+          "read": "Odczyt",
+          "write": "Odczyt i zapis"
+        }
       },
       "businessHours": {
         "title": "Godziny otwarcia",
@@ -5292,7 +5334,7 @@
         "active": "Aktywne",
         "activeSessions": "Aktywne sesje",
         "activeSessionsDescription": "Zarządzaj sesjami logowania",
-        "sessionCount": "{count} sesja",
+        "sessionCount": "{count, plural, one {# zalogowane urządzenie} few {# zalogowane urządzenia} many {# zalogowanych urządzeń} other {# zalogowanego urządzenia}}",
         "changePassword": "Zmień hasło",
         "dangerZone": "Strefa zagrożenia",
         "dangerZoneDescription": "Nieodwracalne akcje na Twoim koncie",
@@ -5355,6 +5397,51 @@
           "saved": "Skróty zapisane",
           "conflict": "Ten skrót jest już używany dla „{action}”.",
           "resetAction": "Zresetuj „{action}”"
+        },
+        "signIn": {
+          "title": "Logowanie",
+          "description": "Sposoby logowania do Twojego konta",
+          "emailCode": "Kod e-mailem",
+          "alwaysActive": "Zawsze aktywny",
+          "unavailable": "Niedostępne",
+          "google": "Google",
+          "linked": "Połączone",
+          "notLinked": "Niepołączone",
+          "linkGoogle": "Połącz",
+          "googleLinkError": "Nie udało się połączyć tego konta Google. Sprawdź, czy używa tego samego adresu e-mail co Twoje konto Louez.",
+          "password": "Hasło",
+          "passwordNotSet": "Nieustawione",
+          "passwordSetOn": "Ustawione {date}",
+          "setPassword": "Ustaw",
+          "changePassword": "Zmień",
+          "removePassword": "Usuń",
+          "setPasswordTitle": "Ustaw hasło",
+          "setPasswordDescription": "Hasło jest opcjonalne: kod wysyłany e-mailem jest zawsze dostępny. Pozostałe urządzenia zostaną wylogowane.",
+          "newPasswordLabel": "Nowe hasło",
+          "currentPasswordLabel": "Obecne hasło",
+          "setPasswordSubmit": "Ustaw hasło",
+          "changePasswordDescription": "Pozostałe urządzenia zostaną wylogowane.",
+          "changePasswordSubmit": "Zmień hasło",
+          "removePasswordTitle": "Usunąć hasło?",
+          "removePasswordDescription": "Nadal będziesz logować się kodem wysyłanym e-mailem. Nowe hasło możesz ustawić w każdej chwili.",
+          "removePasswordConfirm": "Usuń hasło",
+          "cancel": "Anuluj",
+          "passwordSetToast": "Hasło ustawione",
+          "passwordChangedToast": "Hasło zmienione",
+          "passwordRemovedToast": "Hasło usunięte"
+        },
+        "passwordAlert": {
+          "title": "To nie Ty?",
+          "description": "Hasło do konta {email} zostało właśnie dodane, zmienione lub usunięte. Jeśli nie masz z tym nic wspólnego, zabezpiecz konto teraz.",
+          "effectPassword": "Hasło zostanie usunięte z konta.",
+          "effectSessions": "Wszystkie urządzenia zostaną wylogowane, także to.",
+          "effectSignIn": "Zalogujesz się ponownie kodem wysłanym e-mailem.",
+          "unavailable": "W tej instancji hasło jest jedynym sposobem logowania: nie można go usunąć. Zmień je na swoim koncie.",
+          "confirm": "Zabezpiecz moje konto",
+          "itWasMe": "To byłem ja",
+          "doneTitle": "Twoje konto jest zabezpieczone",
+          "doneDescription": "Hasło zostało usunięte, a wszystkie urządzenia wylogowane. Zaloguj się ponownie kodem wysłanym e-mailem.",
+          "signInAgain": "Zaloguj się ponownie"
         }
       },
       "admin": {
@@ -6081,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "Jedna rezerwacja, jedna strona",
           "description": "Koniec z przechodzeniem przez kroki: klient, okres, produkty i dostawa mieszczą się na jednej stronie, a podsumowanie jest zawsze obok. I wszystko, co wcześniej wymagało ponownego otwarcia rezerwacji — rabat, wynegocjowana cena, kaucja, klient z ulicy — załatwiasz od razu."
+        },
+        "optional-password": {
+          "title": "Hasło, jeśli chcesz",
+          "description": "Dodaj hasło do konta, aby logować się bez czekania na kod wysyłany e-mailem. Kod jest zawsze dostępny."
         }
       }
     },
@@ -8061,7 +8152,10 @@
       "rental": "Wynajem",
       "deposit": "Kaucja",
       "deposit_return": "Zwrot kaucji",
-      "damage": "Uszkodzenia"
+      "damage": "Uszkodzenia",
+      "deposit_hold": "Autoryzacja",
+      "deposit_capture": "Kaucja pobrana",
+      "adjustment": "Korekta"
     },
     "paymentMethods": {
       "stripe": "Karta online",
@@ -8073,7 +8167,8 @@
     },
     "paymentStatus": {
       "completed": "Opłacone",
-      "pending": "Oczekująca"
+      "pending": "Oczekująca",
+      "authorized": "Autoryzowane"
     },
     "signature": {
       "validated": "Zatwierdzone",
@@ -8084,7 +8179,11 @@
       "dateLabel": "Data:",
       "ipLabel": "IP:",
       "automatic": "Zatwierdzono automatycznie",
-      "automaticText": "Ta umowa została automatycznie zatwierdzona zgodnie z warunkami wynajmu."
+      "automaticText": "Ta umowa została automatycznie zatwierdzona zgodnie z warunkami wynajmu.",
+      "atBooking": "Podpisano przy rezerwacji",
+      "atBookingText": "Ogólne warunki wynajmu zaakceptowane podczas rezerwacji online, co jest równoznaczne z podpisaniem niniejszej umowy.",
+      "signedOnLabel": "Podpisano:",
+      "validatedOnLabel": "Zatwierdzono:"
     },
     "conditions": {
       "condition1": "Sprzęt jest wynajmowany w dobrym stanie technicznym",

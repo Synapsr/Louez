@@ -3,7 +3,7 @@
 import { Crosshair, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { AddressInput } from "@/components/ui/address-input";
+import { AddressInput, type AddressInputSource } from "@/components/ui/address-input";
 import type { MyLocation } from "@/hooks/use-my-location";
 
 import type { DeliveryAddress } from "../checkout.types";
@@ -18,6 +18,10 @@ interface CheckoutDeliveryAddressFieldProps {
   /** Delivery area radius in km; null when the store sets no limit. */
   maximumDistance: number | null;
   pricePerKm: string;
+  addressSource?: AddressInputSource;
+  showMapPicker?: boolean;
+  geolocationEnabled?: boolean;
+  autoFocus?: boolean;
 }
 
 /** Where the equipment is delivered to, or collected from. */
@@ -30,6 +34,10 @@ export const CheckoutDeliveryAddressField = ({
   onLocate,
   maximumDistance,
   pricePerKm,
+  addressSource,
+  showMapPicker,
+  geolocationEnabled = true,
+  autoFocus,
 }: CheckoutDeliveryAddressFieldProps) => {
   const t = useTranslations("storefront.checkout");
   const fieldId = `fulfillment-${leg}-address`;
@@ -38,6 +46,9 @@ export const CheckoutDeliveryAddressField = ({
   return (
     <div className="flex flex-col gap-2">
       <AddressInput
+        source={addressSource}
+        showMapPicker={showMapPicker}
+        autoFocus={autoFocus}
         id={fieldId}
         name={fieldId}
         ariaInvalid={Boolean(error)}
@@ -49,26 +60,28 @@ export const CheckoutDeliveryAddressField = ({
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        <button
-          type="button"
-          onClick={() =>
-            onLocate((found) =>
-              onAddressChange(
-                found.address ?? `${found.latitude}, ${found.longitude}`,
-                found.latitude,
-                found.longitude,
-              ),
-            )
-          }
-          className="inline-flex items-center gap-1 font-medium underline underline-offset-4"
-        >
-          {isLocating ? (
-            <Loader2 aria-hidden className="size-3 motion-safe:animate-spin" />
-          ) : (
-            <Crosshair aria-hidden className="size-3" />
-          )}
-          {t("useMyLocation")}
-        </button>
+        {geolocationEnabled && (
+          <button
+            type="button"
+            onClick={() =>
+              onLocate((found) =>
+                onAddressChange(
+                  found.address ?? `${found.latitude}, ${found.longitude}`,
+                  found.latitude,
+                  found.longitude,
+                ),
+              )
+            }
+            className="inline-flex items-center gap-1 font-medium underline underline-offset-4"
+          >
+            {isLocating ? (
+              <Loader2 aria-hidden className="size-3 motion-safe:animate-spin" />
+            ) : (
+              <Crosshair aria-hidden className="size-3" />
+            )}
+            {t("useMyLocation")}
+          </button>
+        )}
 
         {maximumDistance !== null ? (
           <span className="text-muted-foreground">

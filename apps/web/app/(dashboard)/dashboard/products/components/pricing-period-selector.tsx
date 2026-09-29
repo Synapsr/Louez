@@ -32,6 +32,8 @@ interface PricingPeriodSelectorProps {
   /** Optional slot inside the trigger, before the chevron — e.g. a season count
    *  badge. Left empty by default so existing callers are unchanged. */
   trailing?: ReactNode;
+  readOnly?: boolean;
+  autoFocus?: boolean;
 }
 
 function computePriceDiffPercent(
@@ -59,6 +61,8 @@ export function PricingPeriodSelector({
   onAddPeriod,
   isLoading,
   trailing,
+  readOnly = false,
+  autoFocus,
 }: PricingPeriodSelectorProps) {
   const t = useTranslations("dashboard.products.form");
   const { dateFns: calendarLocale } = useFormatLocale();
@@ -73,6 +77,7 @@ export function PricingPeriodSelector({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
+        data-demo-target="pricing-period-selector"
         render={<Button variant="outline" size="sm" className="gap-1.5" disabled={isLoading} />}
       >
         {isLoading ? (
@@ -86,7 +91,7 @@ export function PricingPeriodSelector({
         {trailing}
         <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72">
+      <PopoverContent align="end" className="w-72" initialFocus={autoFocus} finalFocus={autoFocus}>
         <div>
           {/* Base pricing option */}
           <PopoverClose
@@ -120,6 +125,7 @@ export function PricingPeriodSelector({
                     key={sp.id}
                     render={
                       <button
+                        data-pricing-period={sp.id}
                         className={cn(
                           "flex w-full items-start gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent",
                           isSelected && "bg-accent",
@@ -161,6 +167,7 @@ export function PricingPeriodSelector({
           <PopoverClose
             render={
               <button
+                disabled={readOnly}
                 className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-primary transition-colors hover:bg-accent"
                 onClick={() => {
                   onAddPeriod();

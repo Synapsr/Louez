@@ -23,6 +23,7 @@ import {
   type ExtensionPreview,
   type ExtensionReason,
 } from "./extension.types";
+import { getRentalPaid } from "./util.payment-status";
 
 export class ExtensionError extends Error {}
 export const money = (value: number | null): string | null =>
@@ -143,20 +144,10 @@ export const extensionManualReason = (
     )
   )
     return "manualPrice";
-  const rentalPaid = reservation.payments
-    .filter((p) => p.type === "rental" && p.status === "completed")
-    .reduce((sum, p) => sum + cents(p.amount), 0);
-  const rentalRefunded = reservation.payments
-    .filter(
-      (p) =>
-        p.status === "completed" &&
-        p.refundOfPaymentId &&
-        reservation.payments.some(
-          (original) => original.id === p.refundOfPaymentId && original.type === "rental",
-        ),
-    )
-    .reduce((sum, p) => sum + Math.abs(cents(p.amount)), 0);
-  if (rentalPaid - rentalRefunded < cents(reservation.totalAmount)) return "unpaid";
+  // The shared reading of "paid": a manual refund is subtracted once, and a
+  // Stripe refund row never is, even linked to its charge — that charge is
+  // already net.
+  if (cents(getRentalPaid(reservation.payments)) < cents(reservation.totalAmount)) return "unpaid";
   if (
     Number(reservation.depositAmount) > 0 &&
     (["released", "captured", "failed"].includes(reservation.depositStatus ?? "") ||

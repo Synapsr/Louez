@@ -239,6 +239,43 @@ export const PDF_DOCUMENT_PREVIEWS: readonly PdfDocumentPreview[] = [
     },
   }),
   pdf({
+    id: "contract-at-booking",
+    title: "Contrat signé à la réservation",
+    description:
+      "Réservation faite sur la boutique : conditions acceptées en réservant, contrat validé au paiement.",
+    fileName: "contrat-signe-reservation",
+    compose: ({ store, locale: rawLocale }) => {
+      const locale = toPdfLocale(rawLocale);
+      return ContractDocument({
+        reservation: {
+          ...contractReservation,
+          customer: individualCustomer,
+          signedAtBooking: true,
+          automaticContractValidation: true,
+          signedAt: new Date("2026-07-29T09:13:00.000Z"),
+          payments: [
+            {
+              id: "pay-1",
+              amount: previewReservation.total.toFixed(2),
+              type: "rental",
+              method: "stripe",
+              status: "completed",
+              paidAt: new Date("2026-07-29T09:13:00.000Z"),
+              createdAt,
+            },
+          ],
+        },
+        store: contractStore(store),
+        document: { number: "2026-0043", generatedAt },
+        locale,
+        translations: contractTranslations(locale),
+        currency: store.currency,
+        timezone: store.timezone,
+        fullCgvHtml: null,
+      });
+    },
+  }),
+  pdf({
     id: "contract-signed",
     title: "Contrat signé, client pro, CGV intégrées",
     description: "Contrat signé en ligne par une entreprise, paiements encaissés et CGV en annexe.",

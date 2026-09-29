@@ -6,7 +6,7 @@ import {
   type SeasonalCalendarPricing,
 } from "@/lib/utils/util.storefront-seasonal-pricing";
 
-import { useId } from "react";
+import { useContext, useId } from "react";
 import { addYears, startOfMonth, format } from "date-fns";
 import { useTranslations } from "next-intl";
 
@@ -25,6 +25,8 @@ import { SeasonalCalendarLegend } from "./seasonal-calendar-legend";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import type { RentalDateCoreState } from "./core/types";
+import { PeriodInteractionContext } from "./period-interaction-context";
+import { PeriodCalendarDayButton } from "./period-calendar-day-button";
 import { TimeSelectField } from "./time-select-field";
 import { usePeriodIssueMessage } from "./use-period-issue-message";
 
@@ -69,6 +71,7 @@ export const PeriodPanel = ({
   const { dateFns: dateLocale } = useFormatLocale();
   const issueMessage = usePeriodIssueMessage();
   const fieldId = useId();
+  const { autoFocus } = useContext(PeriodInteractionContext);
 
   const isPopover = variant === "popover";
   const message = core.hasDates ? issueMessage(core.validation) : null;
@@ -137,7 +140,8 @@ export const PeriodPanel = ({
         locale={dateLocale}
         density={variant === "sheet" ? "comfortable" : "default"}
         touchTarget={isPopover}
-        autoFocus={isPopover}
+        autoFocus={autoFocus && isPopover}
+        components={{ DayButton: PeriodCalendarDayButton }}
         className={cn(!isPopover && "p-0")}
       />
       {isCheckingAvailability ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useTranslations } from "next-intl";
@@ -109,13 +109,19 @@ interface DeliverySettingsFormProps {
   store: Store;
   hasCoordinates: boolean;
   locations: StoreLocation[];
+  /** Allows local edits while disabling persistence and location management. */
+  readOnly?: boolean;
+  /** Disable when address search and map services are unavailable. */
+  addressTestingEnabled?: boolean;
 }
 
-export function DeliverySettingsForm({
+export const DeliverySettingsForm = ({
   store,
   hasCoordinates,
   locations,
-}: DeliverySettingsFormProps) {
+  readOnly = false,
+  addressTestingEnabled = true,
+}: DeliverySettingsFormProps) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const t = useTranslations("dashboard.settings.delivery");
@@ -149,6 +155,7 @@ export function DeliverySettingsForm({
     },
     validators: { onSubmit: deliverySettingsSchema },
     onSubmit: async ({ value }) => {
+      if (readOnly) return;
       setRootError(null);
       startTransition(async () => {
         const result = await updateDeliverySettings(value);
@@ -270,6 +277,7 @@ export function DeliverySettingsForm({
   };
 
   const openLocationForm = (location?: StoreLocation) => {
+    if (readOnly) return;
     setEditingLocation(location ?? null);
     setLocationName(location?.name ?? "");
     setLocationAddress(location?.address ?? "");
@@ -289,6 +297,7 @@ export function DeliverySettingsForm({
   };
 
   const handleSaveLocation = () => {
+    if (readOnly) return;
     startTransition(async () => {
       const result = await upsertStoreLocation({
         id: editingLocation?.id,
@@ -309,6 +318,7 @@ export function DeliverySettingsForm({
   };
 
   const handleToggleLocationActive = (location: StoreLocation) => {
+    if (readOnly) return;
     startTransition(async () => {
       const result = await setStoreLocationActive(location.id, !location.isActive);
       if (result.error) {
@@ -321,7 +331,15 @@ export function DeliverySettingsForm({
 
   return (
     <form.AppForm>
-      <form.Form className="space-y-6">
+      <form.Form
+        className="space-y-6"
+        {...(readOnly ? {
+          onSubmit: (event: FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+          },
+        } : {})}
+      >
         <RootError error={rootError} />
 
         <Card>
@@ -332,7 +350,7 @@ export function DeliverySettingsForm({
             </CardTitle>
             <CardDescription>{t("enableSectionDescription")}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent data-demo-target="delivery-mode" className="space-y-6">
             {/* Warning if no coordinates */}
             {!hasCoordinates && (
               <Alert variant="error">
@@ -374,7 +392,12 @@ export function DeliverySettingsForm({
                     <h3 className="text-sm font-medium">{t("locationsTitle")}</h3>
                     <p className="text-muted-foreground text-sm">{t("locationsDescription")}</p>
                   </div>
-                  <Button type="button" variant="outline" onClick={() => openLocationForm()}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={readOnly}
+                    onClick={() => openLocationForm()}
+                  >
                     <MapPinIcon className="mr-2 h-4 w-4" />
                     {t("locationsAdd")}
                   </Button>
@@ -410,6 +433,7 @@ export function DeliverySettingsForm({
                             type="button"
                             variant="outline"
                             size="sm"
+                            disabled={readOnly}
                             onClick={() => openLocationForm(location)}
                           >
                             {t("locationsEdit")}
@@ -418,6 +442,7 @@ export function DeliverySettingsForm({
                             type="button"
                             variant="outline"
                             size="sm"
+                            disabled={readOnly}
                             onClick={() => handleToggleLocationActive(location)}
                           >
                             {location.isActive
@@ -430,7 +455,7 @@ export function DeliverySettingsForm({
                   ))}
                 </div>
 
-                <Dialog open={locationFormOpen} onOpenChange={setLocationFormOpen}>
+                {!readOnly && <Dialog open={locationFormOpen} onOpenChange={setLocationFormOpen}>
                   <DialogPopup>
                     <DialogPanel>
                       <DialogHeader>
@@ -476,7 +501,7 @@ export function DeliverySettingsForm({
                       </DialogFooter>
                     </DialogPanel>
                   </DialogPopup>
-                </Dialog>
+                </Dialog>}
               </div>
             )}
 
@@ -540,6 +565,7 @@ export function DeliverySettingsForm({
                           <InputGroup>
                             <InputGroupInput
                               id={field.name}
+                              data-demo-target="delivery-price-per-km"
                               type="number"
                               min={0}
                               max={100}
@@ -751,7 +777,7 @@ export function DeliverySettingsForm({
 
         {/* Price Simulator - Only show when pricing is relevant */}
         {isEnabled && showPricing && (
-          <Card>
+          <Card data-demo-target="delivery-simulator">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
@@ -761,7 +787,7 @@ export function DeliverySettingsForm({
                   </CardTitle>
                   <CardDescription>{t("simulator.description")}</CardDescription>
                 </div>
-                {hasCoordinates && (
+                {hasCoordinates && addressTestingEnabled && (
                   <Dialog
                     open={isAddressDialogOpen}
                     onOpenChange={(open) => {
@@ -834,6 +860,7 @@ export function DeliverySettingsForm({
                   <span className="text-sm font-medium tabular-nums">{simDistance} km</span>
                 </div>
                 <Slider
+                  data-demo-target="delivery-distance"
                   value={[simDistance]}
                   onValueChange={(value) => setSimDistance(Array.isArray(value) ? value[0] : value)}
                   min={1}
@@ -857,6 +884,7 @@ export function DeliverySettingsForm({
                     </span>
                   </div>
                   <Slider
+                    data-demo-target="delivery-order-total"
                     value={[simOrderTotal]}
                     onValueChange={(value) =>
                       setSimOrderTotal(Array.isArray(value) ? value[0] : value)
@@ -893,7 +921,10 @@ export function DeliverySettingsForm({
               )}
 
               {/* Result */}
-              <div className="rounded-lg border-2 border-dashed p-4">
+              <div
+                data-demo-target="delivery-simulator-result"
+                className="rounded-lg border-2 border-dashed p-4"
+              >
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">{t("simulator.result")}</p>
@@ -961,8 +992,10 @@ export function DeliverySettingsForm({
           </Card>
         )}
 
-        <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
+        {!readOnly && (
+          <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
+        )}
       </form.Form>
     </form.AppForm>
   );
-}
+};

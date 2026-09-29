@@ -62,6 +62,7 @@ interface ComparisonViewProps {
   customerName: string
   departure: InspectionData | null
   return_: InspectionData | null
+  readOnly?: boolean
 }
 
 const CONDITION_VARIANTS: Record<ConditionRating, 'success' | 'progress' | 'review' | 'failed'> = {
@@ -97,6 +98,7 @@ export function ComparisonView({
   customerName,
   departure,
   return_,
+  readOnly = false,
 }: ComparisonViewProps) {
   const t = useTranslations('dashboard.settings.inspection')
   const { intl: formatLocale } = useFormatLocale()
@@ -223,6 +225,7 @@ export function ComparisonView({
                     {item.photos.map((photo) => (
                       <button
                         key={photo.id}
+                        data-demo-photo={`${type}-${photo.id}`}
                         type="button"
                         onClick={() => setPreviewPhoto(photo)}
                         className="aspect-square rounded-md overflow-hidden border hover:ring-2 hover:ring-primary transition-all"
@@ -271,7 +274,7 @@ export function ComparisonView({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" render={<Link href={`/dashboard/reservations/${reservationId}`} />}>
+          <Button variant="ghost" size="icon" disabled={readOnly} render={readOnly ? undefined : <Link href={`/dashboard/reservations/${reservationId}`} />}>
               <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -312,7 +315,7 @@ export function ComparisonView({
       )}
 
       {/* Desktop: Side by Side */}
-      <div className="hidden md:grid md:grid-cols-2 gap-6">
+      <div data-demo-target="inspection-comparison-desktop" className="hidden md:grid md:grid-cols-2 gap-6">
         {renderInspectionCard(departure, 'departure')}
         {renderInspectionCard(return_, 'return')}
       </div>
@@ -356,8 +359,8 @@ export function ComparisonView({
       </div>
 
       {/* Photo Preview Dialog */}
-      <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
-        <DialogPopup className="max-w-2xl p-0">
+      <Dialog modal={!readOnly} open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
+        <DialogPopup initialFocus={readOnly ? false : undefined} finalFocus={readOnly ? false : undefined} className="max-w-2xl p-0">
           <DialogHeader className="sr-only">
             <DialogTitle>{t('wizard.photoPreview')}</DialogTitle>
           </DialogHeader>
@@ -378,6 +381,7 @@ export function ComparisonView({
               )}
               <button
                 type="button"
+                data-demo-target="inspection-photo-close"
                 onClick={() => setPreviewPhoto(null)}
                 className="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
               >

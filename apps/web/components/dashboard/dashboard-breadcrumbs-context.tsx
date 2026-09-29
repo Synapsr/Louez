@@ -12,6 +12,8 @@ import {
 import { usePathname } from 'next/navigation';
 
 interface DashboardBreadcrumbsContextValue {
+  /** Set where the page is not the one in the address bar: a demo scene. */
+  pathname?: string;
   labels: Record<string, string>;
   setLabel: (pathname: string, label: string) => void;
   clearLabel: (pathname: string) => void;
@@ -22,8 +24,10 @@ const DashboardBreadcrumbsContext =
 
 export const DashboardBreadcrumbsProvider = ({
   children,
+  pathname,
 }: {
   children: React.ReactNode;
+  pathname?: string;
 }) => {
   const [labels, setLabels] = useState<Record<string, string>>({});
 
@@ -44,8 +48,8 @@ export const DashboardBreadcrumbsProvider = ({
   }, []);
 
   const value = useMemo(
-    () => ({ labels, setLabel, clearLabel }),
-    [clearLabel, labels, setLabel],
+    () => ({ pathname, labels, setLabel, clearLabel }),
+    [clearLabel, labels, pathname, setLabel],
   );
 
   return (
@@ -77,8 +81,12 @@ export const DashboardBreadcrumbLabel = ({
   pathname,
 }: DashboardBreadcrumbLabelProps) => {
   const currentPathname = usePathname();
-  const { clearLabel, setLabel } = useDashboardBreadcrumbs();
-  const labelPathname = pathname ?? currentPathname;
+  const {
+    clearLabel,
+    setLabel,
+    pathname: providedPathname,
+  } = useDashboardBreadcrumbs();
+  const labelPathname = pathname ?? providedPathname ?? currentPathname;
 
   useEffect(() => {
     setLabel(labelPathname, label);

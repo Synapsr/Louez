@@ -12,10 +12,11 @@ interface ProductBreadcrumbProps {
   productName: string;
   category: { id: string; name: string; slug?: string | null } | null;
   className?: string;
+  getHref?: (href: string) => string;
 }
 
 /** Home / Catalogue / Catégorie / Produit — the crawlable path above the page. */
-export const ProductBreadcrumb = ({ productName, category, className }: ProductBreadcrumbProps) => {
+export const ProductBreadcrumb = ({ productName, category, className, getHref }: ProductBreadcrumbProps) => {
   const t = useTranslations("storefront.product.breadcrumb");
   const links = [
     { href: "/", label: t("home") },
@@ -31,7 +32,7 @@ export const ProductBreadcrumb = ({ productName, category, className }: ProductB
         {links.map((link) => (
           <li key={link.href} className="contents">
             <StorefrontLink
-              href={link.href}
+              href={getHref?.(link.href) ?? link.href}
               className="block min-h-8 max-w-[25%] shrink-0 truncate leading-8 transition-colors hover:text-foreground"
             >
               {link.label}

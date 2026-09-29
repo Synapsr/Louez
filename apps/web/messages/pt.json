@@ -161,7 +161,7 @@
     "email": "Email",
     "emailPlaceholder": "voce@exemplo.com",
     "password": "Senha",
-    "forgotPassword": "Esqueceu a senha?",
+    "forgotPassword": "Esqueceu-se da palavra-passe?",
     "continueWithGoogle": "Continuar com Google",
     "continueWithEmail": "Continuar com Email",
     "signInWithEmail": "Entrar com email",
@@ -180,7 +180,7 @@
     "loginDescription": "Insira seu email para continuar. Se você não tem uma conta, ela será criada automaticamente.",
     "reeentLoginTitle": "Bem-vindo ao louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent é a vitrine, louez é a sua ferramenta: reservas, pagamentos e calendário são gerenciados aqui. Se você não tem uma conta, ela será criada automaticamente.",
-    "linkWillBeSent": "Um link seguro será enviado para seu email. Sem senha para lembrar.",
+    "linkWillBeSent": "Vai receber um código de utilização única por email. A palavra-passe continua a ser opcional.",
     "checkEmail": "Verifique seu email",
     "emailSentTo": "Um link de login foi enviado para",
     "clickLinkToSignIn": "Clique no link do email para entrar. O link expira em 24 horas.",
@@ -200,7 +200,19 @@
       "verification": "O link de verificacao e invalido ou expirou.",
       "default": "Ocorreu um erro. Por favor, tente novamente.",
       "passwordTooShort": "A palavra-passe deve ter pelo menos 8 caracteres.",
-      "registrationClosed": "As inscrições estão fechadas nesta instância. Peça um convite ao proprietário."
+      "registrationClosed": "As inscrições estão fechadas nesta instância. Peça um convite ao proprietário.",
+      "invalidCode": "Este código está incorreto.",
+      "codeExpired": "Este código expirou. Peça um novo.",
+      "tooManyAttempts": "Demasiadas tentativas com este código. Peça um novo.",
+      "tooManyRequests": "Demasiadas tentativas. Aguarde um minuto antes de tentar novamente.",
+      "passwordTooLong": "A palavra-passe não pode ter mais de 128 caracteres.",
+      "invalidPassword": "A palavra-passe atual está incorreta.",
+      "currentPasswordRequired": "Introduza a sua palavra-passe atual.",
+      "passwordAlreadySet": "Esta conta já tem uma palavra-passe.",
+      "passwordNotSet": "Esta conta não tem nenhuma palavra-passe.",
+      "passwordRemovalUnavailable": "Nesta instância a palavra-passe é a única forma de iniciar sessão: não pode ser removida.",
+      "sessionExpired": "A sua sessão expirou. Inicie sessão novamente e volte a tentar.",
+      "passwordSignUpDisabled": "Não é possível criar uma conta com palavra-passe. Utilize um código recebido por email."
     },
     "referralBanner": "{storeName} convidou-o para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
     "referralBannerGeneric": "🎁 Foi convidado para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "Já tem uma conta?",
     "usePasswordInstead": "Entrar com uma palavra-passe",
     "useEmailCodeInstead": "Entrar com um código por e-mail",
-    "passwordLoginDescription": "Inicie sessão com o seu e-mail e a sua palavra-passe."
+    "passwordLoginDescription": "Inicie sessão com o seu e-mail e a sua palavra-passe.",
+    "forgotPasswordTitle": "Palavra-passe esquecida",
+    "forgotPasswordDescription": "Introduza o email da sua conta: enviamos-lhe um código para escolher uma nova palavra-passe.",
+    "forgotPasswordLogsDescription": "Introduza o email da sua conta. Esta instância não envia emails: o código aparecerá nos registos do servidor.",
+    "resetCodeSentDescription": "Se existir uma conta para <strong>{email}</strong>, acabámos de lhe enviar um código de 6 dígitos. Introduza-o abaixo para escolher uma nova palavra-passe.",
+    "newPasswordTitle": "Escolha uma nova palavra-passe",
+    "newPasswordDescription": "A sessão será iniciada assim que for guardada. Os seus outros dispositivos serão desligados.",
+    "newPassword": "Nova palavra-passe",
+    "saveNewPassword": "Guardar e iniciar sessão",
+    "requestNewCode": "Receber um novo código",
+    "backToLogin": "Voltar ao início de sessão",
+    "showPassword": "Mostrar a palavra-passe",
+    "hidePassword": "Ocultar a palavra-passe",
+    "passwordRules": {
+      "minLength": "Pelo menos {count} caracteres"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} convida voce para se juntar a equipe",
@@ -4362,7 +4389,22 @@
         "create": "Criar",
         "revokeTitle": "Revogar chave API?",
         "revokeDescription": "Esta ação é irreversível. Qualquer aplicação que use esta chave perderá o acesso imediatamente.",
-        "revokeConfirm": "Revogar"
+        "revokeConfirm": "Revogar",
+        "presetCustom": "Personalizado",
+        "domains": {
+          "reservations": "Reservas",
+          "products": "Produtos",
+          "customers": "Clientes",
+          "categories": "Categorias",
+          "payments": "Pagamentos",
+          "analytics": "Análises",
+          "settings": "Configurações"
+        },
+        "levels": {
+          "none": "Sem acesso",
+          "read": "Leitura",
+          "write": "Leitura e escrita"
+        }
       },
       "businessHours": {
         "title": "Horario comercial",
@@ -5290,10 +5332,10 @@
         "authentication": "Autenticacao",
         "connectedVia": "Voce esta conectado via {method}",
         "active": "Ativo",
-        "activeSessions": "Sessoes ativas",
+        "activeSessions": "Sessões ativas",
         "activeSessionsDescription": "Gerencie suas sessoes de login",
-        "sessionCount": "{count} sessao",
-        "changePassword": "Alterar senha",
+        "sessionCount": "{count, plural, one {# dispositivo ligado} other {# dispositivos ligados}}",
+        "changePassword": "Alterar a palavra-passe",
         "dangerZone": "Zona de perigo",
         "dangerZoneDescription": "Acoes irreversiveis na sua conta",
         "deleteAccount": "Excluir conta",
@@ -5355,6 +5397,51 @@
           "saved": "Atalhos guardados",
           "conflict": "Este atalho já é utilizado para «{action}».",
           "resetAction": "Repor «{action}»"
+        },
+        "signIn": {
+          "title": "Início de sessão",
+          "description": "As formas de iniciar sessão na sua conta",
+          "emailCode": "Código por email",
+          "alwaysActive": "Sempre ativo",
+          "unavailable": "Indisponível",
+          "google": "Google",
+          "linked": "Associado",
+          "notLinked": "Não associado",
+          "linkGoogle": "Associar",
+          "googleLinkError": "Não foi possível associar esta conta Google. Verifique se usa o mesmo endereço de email da sua conta Louez.",
+          "password": "Palavra-passe",
+          "passwordNotSet": "Não definida",
+          "passwordSetOn": "Definida a {date}",
+          "setPassword": "Definir",
+          "changePassword": "Alterar",
+          "removePassword": "Remover",
+          "setPasswordTitle": "Definir uma palavra-passe",
+          "setPasswordDescription": "A palavra-passe é opcional: o código recebido por email continua sempre disponível. Os seus outros dispositivos serão desligados.",
+          "newPasswordLabel": "Nova palavra-passe",
+          "currentPasswordLabel": "Palavra-passe atual",
+          "setPasswordSubmit": "Definir a palavra-passe",
+          "changePasswordDescription": "Os seus outros dispositivos serão desligados.",
+          "changePasswordSubmit": "Alterar a palavra-passe",
+          "removePasswordTitle": "Remover a palavra-passe?",
+          "removePasswordDescription": "Continuará a iniciar sessão com um código recebido por email. Pode definir uma nova palavra-passe quando quiser.",
+          "removePasswordConfirm": "Remover a palavra-passe",
+          "cancel": "Cancelar",
+          "passwordSetToast": "Palavra-passe definida",
+          "passwordChangedToast": "Palavra-passe alterada",
+          "passwordRemovedToast": "Palavra-passe removida"
+        },
+        "passwordAlert": {
+          "title": "Não foi você?",
+          "description": "A palavra-passe da conta {email} acaba de ser adicionada, alterada ou removida. Se não teve nada a ver com isso, proteja a sua conta agora.",
+          "effectPassword": "A palavra-passe será removida da conta.",
+          "effectSessions": "Todos os dispositivos serão desligados, incluindo este.",
+          "effectSignIn": "Voltará a iniciar sessão com um código recebido por email.",
+          "unavailable": "Nesta instância a palavra-passe é a única forma de iniciar sessão: não pode ser removida. Altere-a a partir da sua conta.",
+          "confirm": "Proteger a minha conta",
+          "itWasMe": "Fui eu",
+          "doneTitle": "A sua conta está protegida",
+          "doneDescription": "A palavra-passe foi removida e todos os dispositivos foram desligados. Inicie sessão novamente com um código recebido por email.",
+          "signInAgain": "Iniciar sessão novamente"
         }
       },
       "admin": {
@@ -6081,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "Uma reserva, uma só página",
           "description": "Acabaram-se as etapas encadeadas: cliente, período, produtos e entrega cabem numa página, com o resumo sempre ao lado. E tudo o que obrigava a reabrir a reserva depois — um desconto, um preço negociado, a caução, um cliente de passagem — resolve-se agora ali mesmo."
+        },
+        "optional-password": {
+          "title": "Uma palavra-passe, se quiser",
+          "description": "Adicione uma palavra-passe à sua conta para iniciar sessão sem esperar pelo código recebido por email. O código continua sempre disponível."
         }
       }
     },
@@ -8061,7 +8152,10 @@
       "rental": "Aluguel",
       "deposit": "Caucao",
       "deposit_return": "Reembolso de caucao",
-      "damage": "Danos"
+      "damage": "Danos",
+      "deposit_hold": "Autorização",
+      "deposit_capture": "Caução capturada",
+      "adjustment": "Ajuste"
     },
     "paymentMethods": {
       "stripe": "Cartao online",
@@ -8073,7 +8167,8 @@
     },
     "paymentStatus": {
       "completed": "Pago",
-      "pending": "Pendente"
+      "pending": "Pendente",
+      "authorized": "Autorizado"
     },
     "signature": {
       "validated": "Validado",
@@ -8084,7 +8179,11 @@
       "dateLabel": "Data:",
       "ipLabel": "IP:",
       "automatic": "Validado automaticamente",
-      "automaticText": "Este contrato foi validado automaticamente de acordo com as condições de aluguer."
+      "automaticText": "Este contrato foi validado automaticamente de acordo com as condições de aluguer.",
+      "atBooking": "Assinado na reserva",
+      "atBookingText": "Condições gerais de aluguer aceites na reserva online, o que vale como assinatura do presente contrato.",
+      "signedOnLabel": "Assinado em:",
+      "validatedOnLabel": "Validado em:"
     },
     "conditions": {
       "condition1": "O equipamento e alugado em bom estado de funcionamento",

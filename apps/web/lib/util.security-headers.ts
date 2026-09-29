@@ -172,7 +172,18 @@ export const buildDemoSecurityHeaders = (options: SecurityHeadersOptions): Secur
   const connections = [
     `${appOrigin}/demos/landing/`,
     ...(options.isDevelopment
-      ? [`${appOrigin}/_next/`, "ws://localhost:*", "ws://127.0.0.1:*", "wss://*.localify:*"]
+      ? [
+          `${appOrigin}/_next/`,
+          // The dev server's own HMR socket, whatever host previews it (Localify, Tailscale…).
+          `${appOrigin.replace(/^http/, "ws")}/_next/`,
+          // Dev overlay and browser devtools resolving server stack frames. Exact paths: a CSP
+          // path without a trailing slash matches only itself.
+          `${appOrigin}/__nextjs_source-map`,
+          `${appOrigin}/__nextjs_original-stack-frames`,
+          "ws://localhost:*",
+          "ws://127.0.0.1:*",
+          "wss://*.localify:*",
+        ]
       : []),
   ];
   return buildSecurityHeaders(options)

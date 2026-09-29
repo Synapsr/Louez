@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
@@ -48,9 +48,10 @@ interface Store {
 
 interface InspectionSettingsFormProps {
   store: Store;
+  readOnly?: boolean;
 }
 
-export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
+export function InspectionSettingsForm({ store, readOnly = false }: InspectionSettingsFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const t = useTranslations("dashboard.settings.inspection");
@@ -77,6 +78,7 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
     },
     validators: { onSubmit: inspectionSettingsSchema },
     onSubmit: async ({ value }) => {
+      if (readOnly) return;
       setRootError(null);
       startTransition(async () => {
         const result = await updateInspectionSettings(value);
@@ -96,7 +98,17 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
   const isEnabled = useStore(form.store, (s) => s.values.enabled);
   return (
     <form.AppForm>
-      <form.Form className="space-y-6">
+      <form.Form
+        className="space-y-6"
+        {...(readOnly
+          ? {
+              onSubmit: (event: FormEvent<HTMLFormElement>) => {
+                event.preventDefault();
+                event.stopPropagation();
+              },
+            }
+          : {})}
+      >
         <RootError error={rootError} />
 
         {/* Enable Section */}
@@ -126,7 +138,7 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
                 {t("modeSection")}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent data-demo-target="inspection-mode">
               <form.Field name="mode">
                 {(field) => (
                   <FormRadioCardGroup
@@ -167,7 +179,7 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
                 {t("signatureSection")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent data-demo-target="inspection-signature-setting" className="space-y-4">
               <form.AppField name="requireCustomerSignature">
                 {(field) => (
                   <field.Switch

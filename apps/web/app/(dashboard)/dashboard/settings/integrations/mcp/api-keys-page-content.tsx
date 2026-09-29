@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { EyeOff, Plus, Trash2 } from "lucide-react";
 import {
   Alert,
@@ -19,6 +19,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogPanel,
   DialogTitle,
   Input,
   Label,
@@ -34,13 +35,14 @@ import {
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { EyeIcon, KeyIcon, TerminalIcon, WarningIcon } from "@louez/ui/icons";
 
+import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { orpc } from "@/lib/orpc/react";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
-type ApiKeyItem = {
+export type ApiKeyItem = {
   id: string;
   name: string;
   keyPrefix: string;
@@ -84,6 +86,9 @@ const PERMISSION_PRESETS = {
 } as const satisfies Record<string, ApiKeyPermissions>;
 
 type PresetKey = keyof typeof PERMISSION_PRESETS;
+const PRESET_KEYS = ["full", "readOnly", "operations"] as const satisfies readonly PresetKey[];
+const isPresetKey = (value: unknown): value is PresetKey =>
+  PRESET_KEYS.some((key) => key === value);
 
 const DOMAINS = [
   "reservations",
@@ -94,29 +99,69 @@ const DOMAINS = [
   "analytics",
   "settings",
 ] as const;
+type PermissionDomain = (typeof DOMAINS)[number];
+
+const PERMISSION_LEVELS = ["none", "read", "write"] as const;
+type PermissionLevel = (typeof PERMISSION_LEVELS)[number];
+const isPermissionLevel = (value: unknown): value is PermissionLevel =>
+  PERMISSION_LEVELS.some((level) => level === value);
+
+// Analytics can be read, never written.
+const levelsFor = (domain: PermissionDomain): readonly PermissionLevel[] =>
+  domain === "analytics" ? ["none", "read"] : PERMISSION_LEVELS;
+
+const withLevel = (
+  permissions: ApiKeyPermissions,
+  domain: PermissionDomain,
+  level: PermissionLevel,
+): ApiKeyPermissions => {
+  if (domain === "analytics") {
+    return level === "write" ? permissions : { ...permissions, analytics: level };
+  }
+  return { ...permissions, [domain]: level };
+};
+
+/** The preset these rights match, or "custom" once a domain was changed by hand. */
+const findPreset = (permissions: ApiKeyPermissions): PresetKey | "custom" =>
+  PRESET_KEYS.find((key) =>
+    DOMAINS.every((domain) => PERMISSION_PRESETS[key][domain] === permissions[domain]),
+  ) ?? "custom";
 
 // ── Component ────────────────────────────────────────────────────────────
 
-export function ApiKeysPageContent() {
+export function ApiKeysPageContent({
+  keys: suppliedKeys,
+  readOnly = false,
+}: {
+  /** Supplied keys replace the query: the page lists these only. */
+  keys?: ApiKeyItem[];
+  /** Nothing is created or revoked, and the dialogs leave the focus where it is. */
+  readOnly?: boolean;
+} = {}) {
   const t = useTranslations("dashboard.settings.api");
+  const format = useFormatter();
+  const { NEXT_PUBLIC_APP_URL: appUrl } = usePublicEnv();
+  // From the configured app URL, identical on the server and in the browser, unlike window.location.
+  const mcpUrl = `${new URL(appUrl).origin}/api/mcp`;
   const queryClient = useQueryClient();
 
   const [showCreate, setShowCreate] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
-  const [selectedPreset, setSelectedPreset] = useState<PresetKey>("full");
   const [permissions, setPermissions] = useState<ApiKeyPermissions>(PERMISSION_PRESETS.full);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [showMcpConfig, setShowMcpConfig] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
 
-  const keysQuery = useQuery(orpc.dashboard.apiKeys.list.queryOptions({ input: {} }));
+  const keysQuery = useQuery({
+    ...orpc.dashboard.apiKeys.list.queryOptions({ input: {} }),
+    enabled: !suppliedKeys,
+  });
 
   const createMutation = useMutation({
     ...orpc.dashboard.apiKeys.create.mutationOptions(),
     onSuccess: (data: { id: string; key: string; prefix: string }) => {
       setCreatedKey(data.key);
       setNewKeyName("");
-      setSelectedPreset("full");
       setPermissions(PERMISSION_PRESETS.full);
       queryClient.invalidateQueries({
         queryKey: orpc.dashboard.apiKeys.list.queryOptions({ input: {} }).queryKey,
@@ -141,16 +186,13 @@ export function ApiKeysPageContent() {
     },
   });
 
-  const handlePresetChange = (preset: PresetKey) => {
-    setSelectedPreset(preset);
-    setPermissions(PERMISSION_PRESETS[preset]);
-  };
+  const selectedPreset = findPreset(permissions);
 
   const mcpConfig = JSON.stringify(
     {
       mcpServers: {
         louez: {
-          url: `${typeof window !== "undefined" ? window.location.origin : ""}/api/mcp`,
+          url: mcpUrl,
           headers: { Authorization: "Bearer <YOUR_API_KEY>" },
         },
       },
@@ -159,7 +201,7 @@ export function ApiKeysPageContent() {
     2,
   );
 
-  const keys = (keysQuery.data ?? []) as ApiKeyItem[];
+  const keys = suppliedKeys ?? ((keysQuery.data ?? []) as ApiKeyItem[]);
 
   return (
     <div className="space-y-8">
@@ -170,13 +212,13 @@ export function ApiKeysPageContent() {
             <h3 className="text-sm font-medium">{t("keysTitle")}</h3>
             <p className="text-muted-foreground text-sm">{t("keysDescription")}</p>
           </div>
-          <Button size="sm" onClick={() => setShowCreate(true)}>
+          <Button size="sm" data-api-key-create onClick={() => setShowCreate(true)}>
             <Plus className="mr-1.5 h-3.5 w-3.5" />
             {t("createKey")}
           </Button>
         </div>
 
-        {keysQuery.isLoading ? (
+        {!suppliedKeys && keysQuery.isLoading ? (
           <div className="space-y-2">
             {[1, 2].map((i) => (
               <Skeleton key={i} className="h-16 w-full rounded-lg" />
@@ -208,13 +250,15 @@ export function ApiKeysPageContent() {
                     </div>
                     {apiKey.lastUsedAt && (
                       <span className="text-muted-foreground hidden text-xs lg:block">
-                        {t("lastUsed")} {new Date(apiKey.lastUsedAt).toLocaleDateString()}
+                        {t("lastUsed")}{" "}
+                        {format.dateTime(new Date(apiKey.lastUsedAt), { dateStyle: "medium" })}
                       </span>
                     )}
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive h-8 w-8"
+                      disabled={readOnly}
                       onClick={() => setConfirmRevoke(apiKey.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -247,7 +291,7 @@ export function ApiKeysPageContent() {
             </CardHeader>
             <CardContent>
               <code className="bg-muted rounded px-2 py-1 text-xs">
-                {typeof window !== "undefined" ? window.location.origin : ""}/api/mcp
+                {mcpUrl}
               </code>
             </CardContent>
           </Card>
@@ -295,6 +339,7 @@ export function ApiKeysPageContent() {
 
       {/* ── Create Key Dialog ─────────────────────────────────────────── */}
       <Dialog
+        modal={!readOnly}
         open={showCreate}
         onOpenChange={(open) => {
           setShowCreate(open);
@@ -303,14 +348,18 @@ export function ApiKeysPageContent() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          initialFocus={readOnly ? false : undefined}
+          finalFocus={readOnly ? false : undefined}
+        >
           {createdKey ? (
             <>
               <DialogHeader>
                 <DialogTitle>{t("keyCreatedTitle")}</DialogTitle>
                 <DialogDescription>{t("keyCreatedDescription")}</DialogDescription>
               </DialogHeader>
-              <div className="space-y-3">
+              <DialogPanel className="space-y-3">
                 <div className="bg-muted flex items-center gap-2 rounded-lg p-3">
                   <code className="flex-1 break-all text-sm">{createdKey}</code>
                   <CopyButton
@@ -324,7 +373,7 @@ export function ApiKeysPageContent() {
                   <WarningIcon className="mt-0.5 h-4 w-4 shrink-0" />
                   <AlertDescription>{t("keyCreatedWarning")}</AlertDescription>
                 </Alert>
-              </div>
+              </DialogPanel>
               <DialogFooter>
                 <Button
                   onClick={() => {
@@ -342,7 +391,7 @@ export function ApiKeysPageContent() {
                 <DialogTitle>{t("createKeyTitle")}</DialogTitle>
                 <DialogDescription>{t("createKeyDescription")}</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <DialogPanel className="space-y-4">
                 <div className="space-y-2">
                   <Label>{t("keyName")}</Label>
                   <Input
@@ -351,7 +400,7 @@ export function ApiKeysPageContent() {
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       setNewKeyName(e.target.value)
                     }
-                    autoFocus
+                    autoFocus={!readOnly}
                   />
                 </div>
 
@@ -359,15 +408,45 @@ export function ApiKeysPageContent() {
                   <Label>{t("permissionsPreset")}</Label>
                   <Select
                     value={selectedPreset}
-                    onValueChange={(v) => handlePresetChange(v as PresetKey)}
+                    onValueChange={(value) => {
+                      if (isPresetKey(value)) setPermissions(PERMISSION_PRESETS[value]);
+                    }}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger data-api-key-preset>
+                      <SelectValue>
+                        {t(
+                          selectedPreset === "full"
+                            ? "presetFull"
+                            : selectedPreset === "readOnly"
+                              ? "presetReadOnly"
+                              : selectedPreset === "operations"
+                                ? "presetOperations"
+                                : "presetCustom",
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="full">{t("presetFull")}</SelectItem>
-                      <SelectItem value="readOnly">{t("presetReadOnly")}</SelectItem>
-                      <SelectItem value="operations">{t("presetOperations")}</SelectItem>
+                      <SelectItem
+                        value="full"
+                        label={t("presetFull")}
+                        data-api-key-preset-option="full"
+                      >
+                        {t("presetFull")}
+                      </SelectItem>
+                      <SelectItem
+                        value="readOnly"
+                        label={t("presetReadOnly")}
+                        data-api-key-preset-option="readOnly"
+                      >
+                        {t("presetReadOnly")}
+                      </SelectItem>
+                      <SelectItem
+                        value="operations"
+                        label={t("presetOperations")}
+                        data-api-key-preset-option="operations"
+                      >
+                        {t("presetOperations")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -378,26 +457,43 @@ export function ApiKeysPageContent() {
                     {DOMAINS.map((domain) => (
                       <div
                         key={domain}
-                        className="flex items-center justify-between rounded-md border px-3 py-1.5"
+                        className="flex items-center justify-between gap-3 rounded-md border px-3 py-1.5"
                       >
-                        <span className="text-sm capitalize">{domain}</span>
-                        <Badge
-                          variant={
-                            permissions[domain] === "write"
-                              ? "progress"
-                              : permissions[domain] === "read"
-                                ? "expired"
-                                : "expired"
-                          }
-                          className="text-xs"
+                        <span className="text-sm">{t(`domains.${domain}`)}</span>
+                        <Select
+                          value={permissions[domain]}
+                          onValueChange={(value) => {
+                            if (isPermissionLevel(value)) {
+                              setPermissions((current) => withLevel(current, domain, value));
+                            }
+                          }}
                         >
-                          {permissions[domain]}
-                        </Badge>
+                          <SelectTrigger
+                            size="sm"
+                            className="w-44 shrink-0"
+                            aria-label={t(`domains.${domain}`)}
+                            data-api-key-domain={domain}
+                          >
+                            <SelectValue>{t(`levels.${permissions[domain]}`)}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {levelsFor(domain).map((level) => (
+                              <SelectItem
+                                key={level}
+                                value={level}
+                                label={t(`levels.${level}`)}
+                                data-api-key-level={`${domain}:${level}`}
+                              >
+                                {t(`levels.${level}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
+              </DialogPanel>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowCreate(false)}>
                   {t("cancel")}
@@ -409,7 +505,7 @@ export function ApiKeysPageContent() {
                       permissions,
                     })
                   }
-                  disabled={!newKeyName.trim() || createMutation.isPending}
+                  disabled={readOnly || !newKeyName.trim() || createMutation.isPending}
                 >
                   {t("create")}
                 </Button>

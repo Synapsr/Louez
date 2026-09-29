@@ -11,10 +11,12 @@ import { useTranslations } from 'next-intl';
 import { useDashboardBreadcrumbs } from './dashboard-breadcrumbs-context';
 import { getDashboardBreadcrumbItems } from './util.dashboard-breadcrumbs';
 
-export const DashboardBreadcrumbs = () => {
-  const pathname = usePathname();
+/** `inert` shows the trail without its links, where there is nowhere to go: a demo scene. */
+export const DashboardBreadcrumbs = ({ inert = false }: { inert?: boolean }) => {
+  const currentPathname = usePathname();
   const t = useTranslations('dashboard.breadcrumbs');
-  const { labels } = useDashboardBreadcrumbs();
+  const { labels, pathname: providedPathname } = useDashboardBreadcrumbs();
+  const pathname = providedPathname ?? currentPathname;
   const breadcrumbItems = getDashboardBreadcrumbItems(pathname, labels);
 
   return (
@@ -24,7 +26,7 @@ export const DashboardBreadcrumbs = () => {
     >
       <ol className="text-muted-foreground flex min-w-0 items-center gap-1.5 overflow-hidden text-sm">
         <li className="shrink-0">
-          {pathname !== '/dashboard' ? (
+          {pathname !== '/dashboard' && !inert ? (
             <Link
               href="/dashboard"
               className="hover:text-foreground transition-colors"
@@ -32,7 +34,15 @@ export const DashboardBreadcrumbs = () => {
               {t('home')}
             </Link>
           ) : (
-            <span className="text-foreground font-medium">{t('home')}</span>
+            <span
+              className={
+                pathname === '/dashboard'
+                  ? 'text-foreground font-medium'
+                  : undefined
+              }
+            >
+              {t('home')}
+            </span>
           )}
         </li>
         {breadcrumbItems.map((item) => {
@@ -55,6 +65,8 @@ export const DashboardBreadcrumbs = () => {
                   >
                     {label}
                   </span>
+                ) : inert ? (
+                  <span className="block truncate">{label}</span>
                 ) : (
                   <Link
                     href={item.href}

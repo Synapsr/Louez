@@ -15,9 +15,10 @@ import type { TeamInvitation } from "./team-types";
 interface TeamInvitationRowProps {
   invitation: TeamInvitation;
   canManageMembers: boolean;
+  readOnly?: boolean;
 }
 
-export const TeamInvitationRow = ({ invitation, canManageMembers }: TeamInvitationRowProps) => {
+export const TeamInvitationRow = ({ invitation, canManageMembers, readOnly = false }: TeamInvitationRowProps) => {
   const t = useTranslations("dashboard.team");
   const tErrors = useTranslations("errors");
   const format = useFormatter();
@@ -27,6 +28,7 @@ export const TeamInvitationRow = ({ invitation, canManageMembers }: TeamInvitati
     action: () => Promise<{ error?: string; invitationUrl?: string }>,
     successMessage: string,
   ) => {
+    if (readOnly) return;
     startTransition(async () => {
       const result = await action();
 
@@ -50,7 +52,7 @@ export const TeamInvitationRow = ({ invitation, canManageMembers }: TeamInvitati
   };
 
   return (
-    <div className="bg-muted/40 flex flex-col gap-3 rounded-xl p-3 sm:flex-row sm:items-center sm:gap-4">
+    <div data-demo-target="team-pending-invitation" className="bg-muted/40 flex flex-col gap-3 rounded-xl p-3 sm:flex-row sm:items-center sm:gap-4">
       <DashboardIconTile
         icon={MailIcon}
         accent="pending"
@@ -74,7 +76,7 @@ export const TeamInvitationRow = ({ invitation, canManageMembers }: TeamInvitati
             variant="outline"
             size="sm"
             className="max-sm:flex-1"
-            disabled={isPending}
+            disabled={readOnly || isPending}
             onClick={() => runAction(() => resendInvitation(invitation.id), t("invitationResent"))}
           >
             <SubmittedSolidIcon />
@@ -84,7 +86,7 @@ export const TeamInvitationRow = ({ invitation, canManageMembers }: TeamInvitati
             variant="ghost"
             size="sm"
             className="max-sm:flex-1"
-            disabled={isPending}
+            disabled={readOnly || isPending}
             onClick={() =>
               runAction(() => cancelInvitation(invitation.id), t("invitationCancelled"))
             }

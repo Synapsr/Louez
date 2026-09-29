@@ -6,12 +6,18 @@ interface SmsPreviewProps {
   message: string
   storeName: string
   className?: string
+  labels?: {
+    now: string
+    message: string
+    characters: string
+    segments: (count: number) => string
+  }
 }
 
 /**
  * Full phone simulator for SMS preview
  */
-export function SmsPreview({ message, storeName, className }: SmsPreviewProps) {
+export function SmsPreview({ message, storeName, className, labels }: SmsPreviewProps) {
   const charCount = message.length
   const segments = Math.ceil(charCount / 160) || 1
 
@@ -52,7 +58,7 @@ export function SmsPreview({ message, storeName, className }: SmsPreviewProps) {
             <div className="flex justify-start">
               <div className="max-w-[85%] bg-white rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border">
                 <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message}</p>
-                <p className="text-[10px] text-muted-foreground mt-1.5 text-right">Maintenant</p>
+                <p className="text-[10px] text-muted-foreground mt-1.5 text-right">{labels?.now ?? 'Maintenant'}</p>
               </div>
             </div>
           </div>
@@ -60,7 +66,7 @@ export function SmsPreview({ message, storeName, className }: SmsPreviewProps) {
           {/* Input area */}
           <div className="bg-white border-t px-4 py-3 flex items-center gap-2">
             <div className="flex-1 bg-gray-100 rounded-full px-4 py-2">
-              <span className="text-sm text-muted-foreground">Message</span>
+              <span className="text-sm text-muted-foreground">{labels?.message ?? 'Message'}</span>
             </div>
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -77,10 +83,10 @@ export function SmsPreview({ message, storeName, className }: SmsPreviewProps) {
       {/* Character count */}
       <div className="mt-4 text-center">
         <p className={cn('text-sm font-medium', charCount > 160 ? 'text-amber-600' : 'text-muted-foreground')}>
-          {charCount} / 160 caractères
+          {charCount} / 160 {labels?.characters ?? 'caractères'}
         </p>
         {segments > 1 && (
-          <p className="text-xs text-muted-foreground mt-1">{segments} SMS seront envoyés</p>
+          <p className="text-xs text-muted-foreground mt-1">{labels?.segments(segments) ?? `${segments} SMS seront envoyés`}</p>
         )}
       </div>
     </div>

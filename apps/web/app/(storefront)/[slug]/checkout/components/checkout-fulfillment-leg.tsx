@@ -8,6 +8,7 @@ import type { LegMethod } from "@louez/types";
 import { RadioGroup } from "@louez/ui";
 
 import type { MyLocation, MyLocationPermission } from "@/hooks/use-my-location";
+import type { AddressInputSource } from "@/components/ui/address-input";
 
 import type { DeliveryAddress } from "../checkout.types";
 import type { CheckoutLocation } from "../util.checkout-locations";
@@ -41,6 +42,10 @@ interface CheckoutFulfillmentLegProps {
   pricePerKm: string;
   /** The map for this leg, rendered under its choices. */
   children?: ReactNode;
+  addressSource?: AddressInputSource;
+  showMapPicker?: boolean;
+  geolocationEnabled?: boolean;
+  autoFocus?: boolean;
 }
 
 const isLegMethod = (value: unknown): value is LegMethod =>
@@ -69,6 +74,10 @@ export const CheckoutFulfillmentLeg = ({
   maximumDistance,
   pricePerKm,
   children,
+  addressSource,
+  showMapPicker,
+  geolocationEnabled = true,
+  autoFocus,
 }: CheckoutFulfillmentLegProps) => {
   const t = useTranslations("storefront.checkout");
   const isOutbound = leg === "outbound";
@@ -107,12 +116,14 @@ export const CheckoutFulfillmentLeg = ({
 
       {method === "store" ? (
         <>
-          <CheckoutLocationSortPrompt
-            permission={permission}
-            isLocating={isLocating}
-            isLocated={isLocated}
-            onLocate={onLocate}
-          />
+          {geolocationEnabled && (
+            <CheckoutLocationSortPrompt
+              permission={permission}
+              isLocating={isLocating}
+              isLocated={isLocated}
+              onLocate={onLocate}
+            />
+          )}
           <CheckoutLocationList
             leg={leg}
             locations={locations}
@@ -122,6 +133,10 @@ export const CheckoutFulfillmentLeg = ({
         </>
       ) : (
         <CheckoutDeliveryAddressField
+          addressSource={addressSource}
+          showMapPicker={showMapPicker}
+          geolocationEnabled={geolocationEnabled}
+          autoFocus={autoFocus}
           leg={leg}
           address={address}
           onAddressChange={onAddressChange}

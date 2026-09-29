@@ -1,14 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
-import { Plus, FolderOpen, Lock, ArrowUpDown, SearchX } from 'lucide-react'
+import { ArrowUpDown, SearchX } from 'lucide-react'
 
 import { Button } from '@louez/ui'
 import { CategoryManagerDrawer } from '@/components/categories/category-manager-drawer'
-import { NewFeatureBadge } from '@/components/dashboard/new-feature-badge'
+import { ProductsPageHeading } from './products-page-heading'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useWhatsNew } from '@/hooks/use-whats-new'
 import { invalidateProductsList } from '@/lib/orpc/invalidation'
@@ -116,81 +115,12 @@ export function ProductsPageContent({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">{t('description')}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            className="sm:hidden"
-            title={t('manageCategories')}
-            onClick={() => setCategoryManagerOpen(true)}
-          >
-            <FolderOpen className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="hidden sm:inline-flex"
-            onClick={() => setCategoryManagerOpen(true)}
-          >
-            <FolderOpen className="mr-2 h-4 w-4" />
-            {t('manageCategories')}
-          </Button>
-          {isAtLimit ? (
-            <>
-              <Button
-                size="icon"
-                className="sm:hidden"
-                onClick={() => setShowUpgradeModal(true)}
-                title={t('addProduct')}
-              >
-                <Lock className="h-4 w-4" />
-              </Button>
-              <Button
-                className="hidden sm:inline-flex"
-                onClick={() => setShowUpgradeModal(true)}
-              >
-                <Lock className="mr-2 h-4 w-4" />
-                {t('addProduct')}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                size="icon"
-                className="sm:hidden"
-                // The badge adds screen reader text, so the name has to be explicit.
-                aria-label={t('addProduct')}
-                title={t('addProduct')}
-                render={<Link href="/dashboard/products/new" onClick={handleAddProductClick} />}
-              >
-                <Plus className="h-4 w-4" />
-                {/* Inset inside the primary fill: the default dot colour is the
-                    button's own background, so it needs the inverse token. */}
-                <NewFeatureBadge
-                  className="absolute top-1 right-1 bg-primary-foreground"
-                  featureId="product-creation-flow-redesign"
-                  mode="dot"
-                />
-              </Button>
-              <Button
-                className="hidden sm:inline-flex"
-                render={<Link href="/dashboard/products/new" onClick={handleAddProductClick} />}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                {t('addProduct')}
-                <NewFeatureBadge
-                  className="bg-primary-foreground text-primary"
-                  featureId="product-creation-flow-redesign"
-                />
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <ProductsPageHeading
+        isAtLimit={isAtLimit}
+        onManageCategories={() => setCategoryManagerOpen(true)}
+        onUpgrade={() => setShowUpgradeModal(true)}
+        onAddProduct={handleAddProductClick}
+      />
 
       {/* Limit Banner */}
       {hasLimit && (

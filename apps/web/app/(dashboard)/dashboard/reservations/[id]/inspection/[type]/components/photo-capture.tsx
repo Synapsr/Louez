@@ -24,6 +24,7 @@ interface PhotoCaptureProps {
   onPhotosChange: (photos: CapturedPhoto[]) => void;
   maxPhotos?: number;
   disabled?: boolean;
+  readOnly?: boolean;
 }
 
 /**
@@ -90,6 +91,7 @@ export function PhotoCapture({
   onPhotosChange,
   maxPhotos = 10,
   disabled = false,
+  readOnly = false,
 }: PhotoCaptureProps) {
   const t = useTranslations("dashboard.settings.inspection");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,6 +103,7 @@ export function PhotoCapture({
 
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (readOnly) return;
       const files = event.target.files;
       if (!files || files.length === 0) return;
 
@@ -150,11 +153,12 @@ export function PhotoCapture({
         fileInputRef.current.value = "";
       }
     },
-    [maxPhotos, onPhotosChange, photos, t, uploadImage],
+    [maxPhotos, onPhotosChange, photos, t, uploadImage, readOnly],
   );
 
   const handleRemovePhoto = useCallback(
     (photoId: string) => {
+      if (readOnly) return;
       const photo = photos.find((candidate) => candidate.id === photoId);
       if (photo) {
         void deleteImage(photo.key).catch(() => undefined);
@@ -162,12 +166,12 @@ export function PhotoCapture({
       onPhotosChange(photos.filter((p) => p.id !== photoId));
       setPreviewPhoto(null);
     },
-    [deleteImage, onPhotosChange, photos],
+    [deleteImage, onPhotosChange, photos, readOnly],
   );
 
   const handleTriggerCapture = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+    if (!readOnly) fileInputRef.current?.click();
+  }, [readOnly]);
 
   return (
     <div className="space-y-3">
@@ -213,12 +217,12 @@ export function PhotoCapture({
           <button
             type="button"
             onClick={handleTriggerCapture}
-            disabled={disabled || isCapturing}
+            disabled={readOnly || disabled || isCapturing}
             className={cn(
               "flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed",
               "transition-colors hover:border-primary hover:bg-primary/5",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-              (disabled || isCapturing) && "cursor-not-allowed opacity-50",
+              (readOnly || disabled || isCapturing) && "cursor-not-allowed opacity-50",
             )}
           >
             {isCapturing ? (
@@ -241,6 +245,7 @@ export function PhotoCapture({
       <input
         ref={fileInputRef}
         type="file"
+        disabled={readOnly}
         accept={IMAGE_UPLOAD_MIME_TYPES.join(",")}
         capture="environment"
         multiple
@@ -255,7 +260,7 @@ export function PhotoCapture({
           type="button"
           variant="outline"
           onClick={handleTriggerCapture}
-          disabled={disabled || isCapturing}
+          disabled={readOnly || disabled || isCapturing}
           className="w-full sm:hidden"
         >
           <Camera className="mr-2 h-4 w-4" />
@@ -264,8 +269,8 @@ export function PhotoCapture({
       )}
 
       {/* Photo preview dialog */}
-      <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
-        <DialogPopup className="max-w-2xl p-0">
+      <Dialog modal={!readOnly} open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
+        <DialogPopup initialFocus={readOnly ? false : undefined} finalFocus={readOnly ? false : undefined} className="max-w-2xl p-0">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("wizard.photoPreview")}</DialogTitle>
           </DialogHeader>
@@ -282,6 +287,7 @@ export function PhotoCapture({
               <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2">
                 <Button
                   variant="destructive"
+                  disabled={readOnly}
                   onClick={() => handleRemovePhoto(previewPhoto.id)}
                   className="gap-2"
                 >

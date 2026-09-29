@@ -15,6 +15,8 @@ interface StoreContactDetailsProps {
   email: string | null;
   /** Overrides the icon disc background when the surrounding surface is already muted. */
   iconClassName?: string;
+  /** Disable automatic focus for embedded previews. */
+  autoFocus?: boolean;
 }
 
 /** The store's ways of being reached, one tappable row each: address, phone, WhatsApp, email. */
@@ -25,6 +27,7 @@ export const StoreContactDetails = ({
   whatsapp = null,
   email,
   iconClassName,
+  autoFocus = true,
 }: StoreContactDetailsProps) => {
   const t = useTranslations("storefront.home");
   return (
@@ -61,7 +64,7 @@ export const StoreContactDetails = ({
       ) : null}
       {phone ? (
         <li>
-          <StorePhoneContact phone={phone} sms={sms} iconClassName={iconClassName} />
+          <StorePhoneContact phone={phone} sms={sms} iconClassName={iconClassName} autoFocus={autoFocus} />
         </li>
       ) : null}
       {whatsapp ? (
@@ -71,7 +74,7 @@ export const StoreContactDetails = ({
       ) : null}
       {email ? (
         <li>
-          <StoreEmailContact email={email} iconClassName={iconClassName} />
+          <StoreEmailContact email={email} iconClassName={iconClassName} autoFocus={autoFocus} />
         </li>
       ) : null}
     </ul>

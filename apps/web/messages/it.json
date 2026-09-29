@@ -180,7 +180,7 @@
     "loginDescription": "Inserisci la tua email per continuare. Se non hai un account, verrà creato automaticamente.",
     "reeentLoginTitle": "Benvenuto su louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent è la vetrina, louez è il tuo strumento: prenotazioni, pagamenti e calendario si gestiscono qui. Se non hai un account, verrà creato automaticamente.",
-    "linkWillBeSent": "Un link sicuro ti verrà inviato via email. Nessuna password da ricordare.",
+    "linkWillBeSent": "Riceverai un codice monouso via email. La password resta facoltativa.",
     "checkEmail": "Controlla la tua email",
     "emailSentTo": "Un link di accesso e stato inviato a",
     "clickLinkToSignIn": "Clicca sul link nell'email per accedere. Il link scade tra 24 ore.",
@@ -200,7 +200,19 @@
       "verification": "Il link di verifica non e valido o e scaduto.",
       "default": "Si e verificato un errore. Riprova.",
       "passwordTooShort": "La password deve contenere almeno 8 caratteri.",
-      "registrationClosed": "Le registrazioni sono chiuse su questa istanza. Chiedi un invito al proprietario."
+      "registrationClosed": "Le registrazioni sono chiuse su questa istanza. Chiedi un invito al proprietario.",
+      "invalidCode": "Questo codice non è corretto.",
+      "codeExpired": "Questo codice è scaduto. Richiedine uno nuovo.",
+      "tooManyAttempts": "Troppi tentativi con questo codice. Richiedine uno nuovo.",
+      "tooManyRequests": "Troppi tentativi. Attendi un minuto prima di riprovare.",
+      "passwordTooLong": "La password non può superare i 128 caratteri.",
+      "invalidPassword": "La password attuale non è corretta.",
+      "currentPasswordRequired": "Inserisci la tua password attuale.",
+      "passwordAlreadySet": "Questo account ha già una password.",
+      "passwordNotSet": "Questo account non ha nessuna password.",
+      "passwordRemovalUnavailable": "Su questa istanza la password è l'unico modo per accedere: non può essere rimossa.",
+      "sessionExpired": "La sessione è scaduta. Accedi di nuovo e riprova.",
+      "passwordSignUpDisabled": "La creazione di un account con password non è disponibile. Usa un codice ricevuto via email."
     },
     "referralBanner": "{storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
     "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "Hai già un account?",
     "usePasswordInstead": "Accedi con una password",
     "useEmailCodeInstead": "Accedi con un codice via email",
-    "passwordLoginDescription": "Accedi con la tua email e la tua password."
+    "passwordLoginDescription": "Accedi con la tua email e la tua password.",
+    "forgotPasswordTitle": "Password dimenticata",
+    "forgotPasswordDescription": "Inserisci l'email del tuo account: ti inviamo un codice per scegliere una nuova password.",
+    "forgotPasswordLogsDescription": "Inserisci l'email del tuo account. Questa istanza non invia email: il codice comparirà nei log del server.",
+    "resetCodeSentDescription": "Se esiste un account per <strong>{email}</strong>, gli abbiamo appena inviato un codice di 6 cifre. Inseriscilo qui sotto per scegliere una nuova password.",
+    "newPasswordTitle": "Scegli una nuova password",
+    "newPasswordDescription": "Accederai non appena sarà salvata. Gli altri tuoi dispositivi verranno disconnessi.",
+    "newPassword": "Nuova password",
+    "saveNewPassword": "Salva e accedi",
+    "requestNewCode": "Ricevi un nuovo codice",
+    "backToLogin": "Torna all'accesso",
+    "showPassword": "Mostra la password",
+    "hidePassword": "Nascondi la password",
+    "passwordRules": {
+      "minLength": "Almeno {count} caratteri"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} ti invita a unirti al team",
@@ -4362,7 +4389,22 @@
         "create": "Crea",
         "revokeTitle": "Revocare la chiave API?",
         "revokeDescription": "Questa azione è irreversibile. Qualsiasi applicazione che usa questa chiave perderà immediatamente l'accesso.",
-        "revokeConfirm": "Revoca"
+        "revokeConfirm": "Revoca",
+        "presetCustom": "Personalizzato",
+        "domains": {
+          "reservations": "Prenotazioni",
+          "products": "Prodotti",
+          "customers": "Clienti",
+          "categories": "Categorie",
+          "payments": "Pagamenti",
+          "analytics": "Analisi",
+          "settings": "Impostazioni"
+        },
+        "levels": {
+          "none": "Nessun accesso",
+          "read": "Lettura",
+          "write": "Lettura e scrittura"
+        }
       },
       "businessHours": {
         "title": "Orari di apertura",
@@ -5292,7 +5334,7 @@
         "active": "Attivo",
         "activeSessions": "Sessioni attive",
         "activeSessionsDescription": "Gestisci le tue sessioni di accesso",
-        "sessionCount": "{count} sessione",
+        "sessionCount": "{count, plural, one {# dispositivo connesso} other {# dispositivi connessi}}",
         "changePassword": "Cambia password",
         "dangerZone": "Zona pericolosa",
         "dangerZoneDescription": "Azioni irreversibili sul tuo account",
@@ -5355,6 +5397,51 @@
           "saved": "Scorciatoie salvate",
           "conflict": "Questa scorciatoia è già usata per «{action}».",
           "resetAction": "Ripristina «{action}»"
+        },
+        "signIn": {
+          "title": "Accesso",
+          "description": "I modi per accedere al tuo account",
+          "emailCode": "Codice via email",
+          "alwaysActive": "Sempre attivo",
+          "unavailable": "Non disponibile",
+          "google": "Google",
+          "linked": "Collegato",
+          "notLinked": "Non collegato",
+          "linkGoogle": "Collega",
+          "googleLinkError": "Impossibile collegare questo account Google. Verifica che usi lo stesso indirizzo email del tuo account Louez.",
+          "password": "Password",
+          "passwordNotSet": "Non impostata",
+          "passwordSetOn": "Impostata il {date}",
+          "setPassword": "Imposta",
+          "changePassword": "Modifica",
+          "removePassword": "Rimuovi",
+          "setPasswordTitle": "Imposta una password",
+          "setPasswordDescription": "La password è facoltativa: il codice ricevuto via email resta sempre disponibile. Gli altri tuoi dispositivi verranno disconnessi.",
+          "newPasswordLabel": "Nuova password",
+          "currentPasswordLabel": "Password attuale",
+          "setPasswordSubmit": "Imposta la password",
+          "changePasswordDescription": "Gli altri tuoi dispositivi verranno disconnessi.",
+          "changePasswordSubmit": "Modifica la password",
+          "removePasswordTitle": "Rimuovere la password?",
+          "removePasswordDescription": "Continuerai ad accedere con un codice ricevuto via email. Potrai impostare una nuova password in qualsiasi momento.",
+          "removePasswordConfirm": "Rimuovi la password",
+          "cancel": "Annulla",
+          "passwordSetToast": "Password impostata",
+          "passwordChangedToast": "Password modificata",
+          "passwordRemovedToast": "Password rimossa"
+        },
+        "passwordAlert": {
+          "title": "Non sei stato tu?",
+          "description": "La password dell'account {email} è appena stata aggiunta, modificata o rimossa. Se non c'entri nulla, metti al sicuro il tuo account adesso.",
+          "effectPassword": "La password verrà rimossa dall'account.",
+          "effectSessions": "Tutti i dispositivi verranno disconnessi, compreso questo.",
+          "effectSignIn": "Accederai di nuovo con un codice ricevuto via email.",
+          "unavailable": "Su questa istanza la password è l'unico modo per accedere: non può essere rimossa. Modificala dal tuo account.",
+          "confirm": "Metti al sicuro il mio account",
+          "itWasMe": "Sono stato io",
+          "doneTitle": "Il tuo account è al sicuro",
+          "doneDescription": "La password è stata rimossa e tutti i dispositivi sono stati disconnessi. Accedi di nuovo con un codice ricevuto via email.",
+          "signInAgain": "Accedi di nuovo"
         }
       },
       "admin": {
@@ -6081,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "Una prenotazione, una sola pagina",
           "description": "Niente più tappe da incatenare: cliente, periodo, prodotti e consegna stanno su una pagina, con il riepilogo sempre accanto. E tutto ciò che costringeva a riaprire la prenotazione — uno sconto, un prezzo trattato, la cauzione, un cliente di passaggio — si sistema sul posto."
+        },
+        "optional-password": {
+          "title": "Una password, se la vuoi",
+          "description": "Aggiungi una password al tuo account per accedere senza aspettare il codice ricevuto via email. Il codice resta sempre disponibile."
         }
       }
     },
@@ -8061,7 +8152,10 @@
       "rental": "Noleggio",
       "deposit": "Deposito",
       "deposit_return": "Rimborso deposito",
-      "damage": "Danni"
+      "damage": "Danni",
+      "deposit_hold": "Autorizzazione",
+      "deposit_capture": "Deposito addebitato",
+      "adjustment": "Aggiustamento"
     },
     "paymentMethods": {
       "stripe": "Carta online",
@@ -8073,7 +8167,8 @@
     },
     "paymentStatus": {
       "completed": "Pagato",
-      "pending": "In attesa"
+      "pending": "In attesa",
+      "authorized": "Autorizzato"
     },
     "signature": {
       "validated": "Convalidato",
@@ -8084,7 +8179,11 @@
       "dateLabel": "Data:",
       "ipLabel": "IP:",
       "automatic": "Convalidato automaticamente",
-      "automaticText": "Questo contratto è stato convalidato automaticamente in base alle condizioni di noleggio."
+      "automaticText": "Questo contratto è stato convalidato automaticamente in base alle condizioni di noleggio.",
+      "atBooking": "Firmato alla prenotazione",
+      "atBookingText": "Condizioni generali di noleggio accettate al momento della prenotazione online, il che vale come firma del presente contratto.",
+      "signedOnLabel": "Firmato il:",
+      "validatedOnLabel": "Convalidato il:"
     },
     "conditions": {
       "condition1": "L'attrezzatura e noleggiata in buono stato di funzionamento",

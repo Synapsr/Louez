@@ -41,7 +41,7 @@ import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popove
 import { deleteCustomer } from './actions'
 import { useFormatLocale } from '@/hooks/use-format-locale'
 
-interface Customer {
+export interface Customer {
   id: string
   customerType: 'individual' | 'business'
   email: string
@@ -58,9 +58,12 @@ interface Customer {
 
 interface CustomersTableProps {
   customers: Customer[]
+  readOnly?: boolean
+  onOpenCustomer?: (customer: Customer) => void
+  getCustomerHref?: (customer: Customer) => string
 }
 
-export function CustomersTable({ customers }: CustomersTableProps) {
+export const CustomersTable = ({ customers, readOnly = false, onOpenCustomer, getCustomerHref }: CustomersTableProps) => {
   const t = useTranslations('dashboard.customers')
   const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale()
   const tCommon = useTranslations('common')
@@ -69,7 +72,7 @@ export function CustomersTable({ customers }: CustomersTableProps) {
   const [isPending, startTransition] = useTransition()
 
   const handleDelete = () => {
-    if (!deleteId) return
+    if (readOnly || !deleteId) return
 
     startTransition(async () => {
       const result = await deleteCustomer(deleteId)
@@ -93,7 +96,8 @@ export function CustomersTable({ customers }: CustomersTableProps) {
           {t('noCustomersDescription')}
         </p>
         <Button
-          render={<Link href="/dashboard/customers/new?source=customers_page" />}
+          disabled={readOnly}
+          render={readOnly ? undefined : <Link href="/dashboard/customers/new?source=customers_page" />}
           className="mt-4"
         >
           {t('addCustomer')}
@@ -124,7 +128,15 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                     {customer.customerType === 'business' && customer.companyName ? (
                       <>
                         <Link
-                          href={`/dashboard/customers/${customer.id}`}
+                          href={getCustomerHref?.(customer) ?? (readOnly ? '#' : `/dashboard/customers/${customer.id}`)}
+                          prefetch={readOnly || onOpenCustomer ? false : undefined}
+                          data-customer-link={customer.id}
+                          onClick={(event) => {
+                            if (readOnly || onOpenCustomer) {
+                              event.preventDefault()
+                              onOpenCustomer?.(customer)
+                            }
+                          }}
                           className="font-medium hover:underline flex items-center gap-1.5"
                         >
                           <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -136,7 +148,15 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                       </>
                     ) : (
                       <Link
-                        href={`/dashboard/customers/${customer.id}`}
+                        href={getCustomerHref?.(customer) ?? (readOnly ? '#' : `/dashboard/customers/${customer.id}`)}
+                        prefetch={readOnly || onOpenCustomer ? false : undefined}
+                        data-customer-link={customer.id}
+                        onClick={(event) => {
+                          if (readOnly || onOpenCustomer) {
+                            event.preventDefault()
+                            onOpenCustomer?.(customer)
+                          }
+                        }}
                         className="font-medium hover:underline"
                       >
                         {customer.firstName} {customer.lastName}
@@ -154,12 +174,12 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                   <div className="space-y-1">
                     <div className="flex items-center gap-1 text-sm">
                       <Mail className="h-3 w-3 text-muted-foreground" />
-                      <EmailContactPopover email={customer.email} className="text-foreground" />
+                      <EmailContactPopover disabled={readOnly} email={customer.email} className="text-foreground" />
                     </div>
                     {customer.phone && (
                       <div className="flex items-center gap-1 text-sm">
                         <Phone className="h-3 w-3 text-muted-foreground" />
-                        <PhoneContactPopover phone={customer.phone} className="text-foreground" />
+                        <PhoneContactPopover disabled={readOnly} phone={customer.phone} className="text-foreground" />
                       </div>
                     )}
                   </div>
@@ -180,17 +200,28 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                   )}
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                  <DropdownMenu modal={!readOnly}>
+                    <DropdownMenuTrigger disabled={readOnly} render={<Button variant="ghost" size="icon" />}>
                       <MoreHorizontal className="h-4 w-4" />
                       <span className="sr-only">{tCommon('actions')}</span>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem render={<Link href={`/dashboard/customers/${customer.id}`} />}>
+                    <DropdownMenuContent align="end" finalFocus={readOnly ? false : undefined}>
+                      <DropdownMenuItem render={
+                        <Link
+                          href={getCustomerHref?.(customer) ?? (readOnly ? '#' : `/dashboard/customers/${customer.id}`)}
+                          prefetch={readOnly || onOpenCustomer ? false : undefined}
+                          onClick={(event) => {
+                            if (readOnly || onOpenCustomer) {
+                              event.preventDefault()
+                              onOpenCustomer?.(customer)
+                            }
+                          }}
+                        />
+                      }>
                         <Eye className="mr-2 h-4 w-4" />
                         {t('viewDetails')}
                       </DropdownMenuItem>
-                      <DropdownMenuItem render={<Link href={`/dashboard/customers/${customer.id}/edit`} />}>
+                      <DropdownMenuItem disabled={readOnly} render={readOnly ? undefined : <Link href={`/dashboard/customers/${customer.id}/edit`} />}>
                         <Pencil className="mr-2 h-4 w-4" />
                         {tCommon('edit')}
                       </DropdownMenuItem>
@@ -198,7 +229,7 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => setDeleteId(customer.id)}
-                        disabled={customer.reservationCount > 0}
+                        disabled={readOnly || customer.reservationCount > 0}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         {tCommon('delete')}

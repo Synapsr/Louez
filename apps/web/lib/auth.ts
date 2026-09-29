@@ -20,6 +20,7 @@ import {
   authenticationAnalyticsBaseProperties,
   productAnalyticsEvents,
 } from '@/lib/product-analytics/analytics-events';
+import { inferSignInMethod } from '@/lib/utils/util.sign-in-method';
 
 // Re-export auth() and authInstance from the package
 // All 17+ consumer files import { auth } from '@/lib/auth' — zero changes needed
@@ -84,7 +85,12 @@ setSessionHook(async (session) => {
           eq(accounts.providerId, 'google'),
         ),
     });
-    const method = account ? 'google' : 'magic link';
-    notifyUserSignedIn(session.userId, user.email, method).catch(() => {});
+    const method = inferSignInMethod({
+      path: session.path,
+      hasGoogleAccount: Boolean(account),
+    });
+    if (method) {
+      notifyUserSignedIn(session.userId, user.email, method).catch(() => {});
+    }
   }
 });

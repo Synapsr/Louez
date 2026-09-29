@@ -50,15 +50,23 @@ type SettingsSearchGroup = {
 type SettingsNavProps = {
   isPlatformAdmin?: boolean;
   electronicInvoicingEnabled?: boolean;
+  /** The settings page on screen, where it is not the one in the address bar: a demo scene. */
+  pathname?: string;
+  /** Replaces every navigation of the menu and its search. */
+  onNavigate?: (href: string) => void;
 };
 
 export const SettingsNav = ({
   isPlatformAdmin = false,
   electronicInvoicingEnabled = true,
+  pathname: suppliedPathname,
+  onNavigate,
 }: SettingsNavProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const pathname = usePathname();
+  const currentPathname = usePathname();
+  const pathname = suppliedPathname ?? currentPathname;
   const router = useRouter();
+  const go = onNavigate ?? ((href: string) => router.push(href));
   const messages = useMessages();
   const t = useTranslations("dashboard.settings.settingsNavigation");
 
@@ -125,11 +133,11 @@ export const SettingsNav = ({
 
   const navigateTo = (href: string) => {
     setSearchQuery("");
-    router.push(href);
+    go(href);
   };
 
   const navigateToSearchMatch = (item: IndexedSettingsNavigationItem) => {
-    router.push(buildSettingsSearchHref({ href: item.href, itemId: item.id, query: searchQuery }));
+    go(buildSettingsSearchHref({ href: item.href, itemId: item.id, query: searchQuery }));
     setSearchQuery("");
   };
 
@@ -240,6 +248,15 @@ export const SettingsNav = ({
                           <Link
                             key={item.id}
                             href={item.href}
+                            prefetch={onNavigate ? false : undefined}
+                            onClick={
+                              onNavigate
+                                ? (event) => {
+                                    event.preventDefault();
+                                    onNavigate(item.href);
+                                  }
+                                : undefined
+                            }
                             aria-current={active ? "page" : undefined}
                             className={cn(
                               "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",

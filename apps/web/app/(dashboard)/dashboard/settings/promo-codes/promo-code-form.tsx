@@ -50,6 +50,7 @@ interface PromoCodeFormDialogProps {
   onOpenChange: (open: boolean) => void;
   editingCode: PromoCode | null;
   currency: string;
+  readOnly?: boolean;
 }
 
 function generateCode(): string {
@@ -63,6 +64,7 @@ export function PromoCodeFormDialog({
   onOpenChange,
   editingCode,
   currency,
+  readOnly = false,
 }: PromoCodeFormDialogProps) {
   const router = useRouter();
   const t = useTranslations("dashboard.settings.promoCodes");
@@ -141,6 +143,7 @@ export function PromoCodeFormDialog({
   };
 
   const handleSubmit = async () => {
+    if (readOnly) return;
     if (!validate()) return;
 
     setIsLoading(true);
@@ -194,8 +197,12 @@ export function PromoCodeFormDialog({
   ] as const;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={onOpenChange} modal={!readOnly}>
+      <DialogPopup
+        className="sm:max-w-lg"
+        initialFocus={readOnly ? false : undefined}
+        finalFocus={readOnly ? false : undefined}
+      >
         <DialogHeader>
           <DialogTitle>{isEditing ? t("editCode") : t("createCode")}</DialogTitle>
           <DialogDescription>
@@ -209,6 +216,7 @@ export function PromoCodeFormDialog({
             <InputGroup>
               <InputGroupInput
                 id="promo-code"
+                data-demo-target="promo-code-input"
                 placeholder={t("codePlaceholder")}
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -297,6 +305,7 @@ export function PromoCodeFormDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <ReservationDatePickerControl
               id="promo-starts-at"
+              disabled={readOnly}
               label={t("startsAt")}
               value={startsAt}
               onChange={setStartsAt}
@@ -304,6 +313,7 @@ export function PromoCodeFormDialog({
             />
             <ReservationDatePickerControl
               id="promo-expires-at"
+              disabled={readOnly}
               label={t("expiresAt")}
               value={expiresAt}
               onChange={setExpiresAt}
@@ -337,7 +347,7 @@ export function PromoCodeFormDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {tCommon("cancel")}
           </Button>
-          <Button onClick={handleSubmit} isPending={isLoading}>
+          <Button onClick={handleSubmit} isPending={isLoading} disabled={readOnly}>
             {isEditing ? tCommon("save") : tCommon("create")}
           </Button>
         </DialogFooter>

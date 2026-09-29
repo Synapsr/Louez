@@ -20,6 +20,7 @@ Le site marketing conserve uniquement le cadre, les contrôles et le lecteur `po
 - `/demos/landing/rental` : parcours en trois étapes.
 - `/demos/landing/storefront?compact=1`, `/planning?compact=1`, `/reservation?compact=1` sous le même préfixe : petites démonstrations.
 - `/demos/landing/advisor` : conversation avec des réponses de démonstration.
+- `/demos/landing/planning-timeline` et les autres scènes des pages fonctionnalité : voir plus bas.
 
 Le marketing utilise `NEXT_PUBLIC_LOUEZ_DEMO_URL`, avec `https://app.louez.io` par défaut en production. Cette variable est résolue au build du marketing et doit aussi être autorisée par son `frame-src`. Le build de l’app qui contient les routes doit être déployé avant la landing qui les intègre.
 
@@ -152,6 +153,83 @@ Le 17 septembre 2026, la commande `demo:posters --start --browser …` a reprodu
 cette erreur avant le correctif, puis généré les quatre captures sans erreur
 après reconstruction. La CSP n'a pas été élargie. Le parcours Docker complet
 reste à vérifier : le moteur Docker local n'était pas disponible.
+
+## Scènes des pages fonctionnalité — 18 et 19 septembre 2026
+
+Le site marketing intègre aussi des scènes sur ses onze pages fonctionnalité, par le même lecteur et la même route `/demos/landing/<scène>`. Leurs noms sont dans `FEATURE_DEMO_SCENES` (`lib/landing-demos/policy.ts`).
+
+### Une scène
+
+- `components/landing-demos/features/<scène>.tsx` : le composant, qui compose les composants du produit avec des fixtures. Il reçoit `FeatureSceneProps` (`feature-demo.types.ts`).
+- `components/landing-demos/features/<scène>.demo.ts` : `actor` (qui tient le curseur), `duration`, `format` (`"phone"` pour une page de 390 × 844) et `cues`. Ce fichier n’importe que des types : un test node le charge.
+- Enregistrement : `policy.ts` (nom), `feature-demos.ts` (script), `demo-scene-loaders.ts` (import différé), `feature-scene.tsx` (choix de l’écran), `messages.ts` (chemins de traduction embarqués), `scripts/landing-demo-posters.mjs` (listes `scenes` et `phoneScenes`). Deux tests vérifient que les listes du script suivent le registre.
+- Une scène de page fonctionnalité occupe l’étape 0 ; ouvrir un dossier depuis elle mène à la scène réservation, comme dans le parcours de la landing.
+
+### Gestes du curseur (`use-demo-playback.ts`, `demo-gestures.ts`)
+
+Un cue déplace d’abord le curseur vers sa cible, puis un cue suivant agit : `click`, `press` (appui complet, pour les sélecteurs et menus qui s’ouvrent à l’appui), `hover` (jusqu’au cue suivant), `scroll`, `type` (saisie lettre à lettre, sans prendre le focus), `draw` (trait de signature sur un canvas), `emit` + `useDemoCue` quand aucun contrôle du produit ne fait avancer la scène (de l’email reçu à la page qu’il ouvre, par exemple). Les événements ne sont pas « trusted » : l’hôte ne les confond pas avec un visiteur qui prend la main. Les cibles sont des attributs `data-*`, jamais un texte ni un `aria-label`.
+
+### Cadres
+
+`DashboardSceneFrame` reçoit la page active parmi les entrées du menu et la liste `pages` des entrées cliquables. Avec `pathname` (`/dashboard/products/demo-city-bike`), la barre du haut affiche le vrai fil d’Ariane, alimenté par le `DashboardBreadcrumbLabel` de la page. `SettingsSceneFrame` reproduit la mise en page des réglages avec le vrai `SettingsNav`. Pour cela, `DashboardBreadcrumbs`, son provider et `SettingsNav` acceptent un chemin fourni et une navigation inerte.
+
+Le `StoreProvider` des démos déclare le rôle `owner` : le visiteur regarde le propriétaire de la boutique, et les contrôles réservés à `manage_settings` restent actifs. `SettingsSceneFrame` enveloppe la page dans `StoreSettingsAccess`, comme la mise en page des réglages.
+
+### Ce qui a changé dans le produit
+
+Les scènes ne redessinent rien. Là où un composant chargeait ou écrivait des données, il accepte des données fournies et un mode lecture seule (`readOnly`, callbacks injectés), avec un comportement par défaut inchangé. Là où le JSX d’une page vivait dans un composant serveur, il a été extrait dans une vue que la page et la scène rendent toutes deux : fiche produit (stats, inventaire, infos, repères), fiche client, page Ventes des analyses, page Équipe, vue multi-boutiques, réglages de livraison, de notifications et de codes promo, page produit de la boutique (panneau de réservation, accessoires), checkout, espace client. Aucune scène ne monte de carte ni d’autocomplétion d’adresse : la CSP des démos n’a pas été élargie.
+
+`createDemoReservationPages(…, busy)` ajoute aux 24 réservations une semaine chargée autour d’aujourd’hui sur les premiers produits, sans dépasser le stock. La landing ne l’utilise pas. `getDemoCustomer` donne douze noms distincts et des emails nominatifs. La boutique fictive a une seule adresse partout : 12 rue des Cyclistes, 44000 Nantes.
+
+### Le contrat PDF
+
+L’app n’a pas de lecteur PDF : « Télécharger le contrat » ouvre un onglet. Les scènes `contract-*` affichent donc les pages du vrai contrat en images.
+
+`pnpm --filter @louez/web demo:documents` (`scripts/landing-demo-documents.mts`) rend le vrai `ContractDocument` en PDF dans chaque langue (`.demo-documents/`, ignoré), avec les fixtures du dossier de démonstration, puis convertit chaque page en `public/demo-documents/contract.<langue>.p<n>.webp`. Il écrit aussi `manifest.json` (nombre de pages) et `reservation.json`, l’instantané de dates que les scènes importent pour que le dossier affiché corresponde à son PDF. La conversion utilise `pdftoppm` (poppler) quand il est installé, sinon PDFKit sur macOS (`scripts/pdf-pages.swift`).
+
+Le Dockerfile lance ce script dans l’étape `builder`, avant `next build`, après avoir installé `poppler-utils` : les images et le bundle portent la date du build, et les dates restent actuelles à chaque déploiement. Les images commitées ne servent qu’au développement local.
+
+Le build ne connaît pas `NEXT_PUBLIC_APP_DOMAIN`, lue à l’exécution : le script la fixe à `louez.io`, sinon le lien des conditions s’imprimait `maison-du-velo.undefined/terms`.
+
+### Signature du client sur le contrat
+
+Le bloc « Client » du contrat distingue trois cas :
+
+- une réservation faite sur la boutique (`source: "online"`), dont le paiement exige d’accepter les conditions (`acceptCgv`), est « Signé à la réservation » : l’acceptation vaut signature. Le bloc imprime « Signé le » (création de la réservation) et, une fois le contrat validé, « Validé le » ;
+- un client qui a réellement signé (hors validation automatique) garde « Signé », avec la date et l’IP ;
+- les autres validations automatiques (réservation créée par le loueur, marketplace) restent « Validé automatiquement ».
+
+Le dossier de démonstration est une réservation en ligne. L’aperçu `contract-at-booking` montre ce cas.
+
+### Police des PDF
+
+Contrats, factures et rapports d’état des lieux embarquent Inter 4.1 (`public/fonts/pdf/`, licence SIL OFL dans `OFL.txt`), enregistrée par `lib/pdf/fonts.ts`. Helvetica, la police intégrée de react-pdf, n’a pas les lettres ą, ę, ł ou ś : les documents polonais et les noms comme « Łukasz » s’imprimaient cassés (« wrze[nia » pour « września »). Le fichier est cherché sous `public/` depuis `apps/web` (développement, scripts) et depuis la racine du monorepo (image standalone). `lib/pdf/fonts.test.ts` rend chaque PDF d’aperçu et vérifie qu’il embarque Inter et plus Helvetica.
+
+Un script qui charge les modules de l’app en CommonJS doit aussi prendre `renderToBuffer` par `require` : un `import` ESM charge une seconde copie de react-pdf, où la police n’est pas enregistrée.
+
+Au passage, le contrat imprimait la clé brute des paiements sans libellé (`deposit_hold`…) et « En attente » pour une empreinte autorisée. `contract.paymentTypes` et `contract.paymentStatus.authorized` existent maintenant dans les 8 langues.
+
+### Clés API : droits domaine par domaine
+
+La création d’une clé proposait trois préréglages et affichait le détail des sept domaines sans pouvoir le modifier, alors que l’API acceptait déjà toute combinaison. Chaque domaine a maintenant son sélecteur (aucun accès, lecture, lecture et écriture ; les analyses n’ont pas d’écriture). Le préréglage affiché devient « Personnalisé » dès qu’un domaine s’en écarte. Libellés dans `dashboard.settings.api.domains`, `levels` et `presetCustom`, 8 langues. Le corps de la fenêtre a aussi retrouvé sa marge (`DialogPanel`).
+
+### Captures
+
+`--scenes a,b` ne redessine que ces scènes et conserve les tailles des autres dans le manifeste. Les scènes téléphone sont capturées en 390 × 844. Une image en chargement différé qui ne fait qu’effleurer le bas du cadre n’est plus attendue.
+
+```sh
+pnpm --filter @louez/web demo:posters --base-url https://<origine-de-l-app> --browser /chemin/vers/chrome --scenes planning-timeline
+```
+
+### Aperçu hors Localify
+
+L’intégration en iframe a été vérifiée par un aperçu `tailscale serve` : l’origine du site dans `NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS`, celle de l’app dans `NEXT_PUBLIC_APP_URL`. La CSP de développement des démos autorise pour cela le websocket de la propre origine du serveur de dev (`wss://<origine>/_next/`) ; auparavant l’app ne s’hydratait dans l’iframe que derrière `localhost` ou `*.localify`. Elle autorise aussi `/__nextjs_source-map` et `/__nextjs_original-stack-frames` : quand les DevTools sont ouverts, React y résout les avertissements du rendu serveur rejoués dans le navigateur, et chaque requête bloquée remplissait la console d’erreurs CSP. La CSP de production est inchangée.
+
+### Validation
+
+TypeScript, oxlint sur tous les fichiers modifiés ou créés, audit de duplication, 108 tests du périmètre démo et 273 tests voisins du code produit modifié. Chaque scène a été ouverte seule dans Chrome sur le serveur de développement (aucune erreur console, script joué jusqu’au bout), puis dans les pages du site. Les captures des 8 langues sont générées sans erreur. Non vérifié : build de production, génération Docker, appareil tactile. Aucun déploiement, aucun commit.
+
+Trois petits défauts du produit corrigés au passage : le sélecteur de préréglage des clés API affichait sa valeur brute ; les points de progression de l’état des lieux lisaient une clé de traduction inexistante ; l’aide « Variables : {storeName}… » de l’éditeur de gabarit SMS déclenchait une erreur de formatage.
 
 ## Related
 

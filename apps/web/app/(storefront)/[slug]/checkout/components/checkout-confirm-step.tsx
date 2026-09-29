@@ -58,6 +58,7 @@ interface CheckoutConfirmStepProps {
   onEditDates: () => void;
   /** Direction the step flow moved in, for the entrance animation. */
   stepDirection: "forward" | "backward";
+  termsPrefetch?: boolean;
 }
 
 export const CheckoutConfirmStep = withForm({
@@ -81,6 +82,7 @@ export const CheckoutConfirmStep = withForm({
     onEditContact,
     onEditDates,
     stepDirection,
+    termsPrefetch,
   }) => {
     const t = useTranslations("storefront.checkout");
     const formatMoney = useFormatMoney();
@@ -219,6 +221,7 @@ export const CheckoutConfirmStep = withForm({
                 <div className="flex flex-col gap-1">
                   <div className="flex min-h-11 items-center gap-3">
                     <Checkbox
+                      data-demo-target="checkout-accept-terms"
                       id={field.name}
                       checked={field.state.value}
                       onCheckedChange={(checked) => field.handleChange(Boolean(checked))}
@@ -229,6 +232,7 @@ export const CheckoutConfirmStep = withForm({
                         terms: (chunks) => (
                           <StorefrontLink
                             href="/terms"
+                            prefetch={termsPrefetch}
                             target="_blank"
                             className="underline underline-offset-2"
                           >
@@ -264,6 +268,7 @@ export const CheckoutConfirmStep = withForm({
             <Button
               type="submit"
               id={CHECKOUT_SUBMIT_ID}
+              data-demo-target="checkout-pay"
               size="lg"
               isPending={isSubmitting}
               pendingContent={t("processing")}

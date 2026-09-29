@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { FEATURE_DEMO_SCENES } from "@/lib/landing-demos/policy";
 import {
   advanceDemoClock,
   DEMO_CUES,
   DEMO_DURATION,
+  getDemoCues,
   getDemoDuration,
   type AnimatedScene,
 } from "./use-demo-playback";
@@ -33,4 +35,20 @@ test("single-view flows stay short and the three planning views each get reading
     );
   }
   assert.ok(getDemoDuration("planning") >= 9000 && getDemoDuration("planning") <= 15000);
+});
+test("feature page scenes act at least once, in order, within a loop short enough to watch", () => {
+  for (const scene of FEATURE_DEMO_SCENES) {
+    const cues = getDemoCues(scene);
+    const duration = getDemoDuration(scene);
+    assert.ok(duration >= 3000 && duration <= 15000);
+    assert.ok(
+      cues.some(
+        (cue) =>
+          cue.click || cue.press || cue.hover || cue.scroll || cue.type || cue.draw || cue.emit,
+      ),
+    );
+    assert.ok(
+      cues.every((cue, index) => cue.at < duration && (index === 0 || cue.at > cues[index - 1].at)),
+    );
+  }
 });
