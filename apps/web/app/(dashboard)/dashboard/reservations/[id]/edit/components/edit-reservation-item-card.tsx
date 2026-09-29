@@ -68,6 +68,9 @@ export function EditReservationItemCard({
   const unitLabel = getDurationUnit(item.displayPricingMode);
   const isFixedPrice = item.product?.pricingKind === "fixed";
   const displayedUnitPrice = item.isManualPrice ? item.unitPrice : item.effectiveUnitPrice;
+  // A reservation keeps at least one item. The button stays focusable so the
+  // tooltip and the click toast can explain why it does nothing.
+  const isLastItem = itemsCount <= 1;
 
   return (
     <Collapsible
@@ -149,15 +152,20 @@ export function EditReservationItemCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-muted-foreground hover:text-destructive h-8 w-8 shrink-0"
                   onClick={() => onRemoveItem(item.id)}
-                  disabled={itemsCount <= 1}
+                  aria-disabled={isLastItem}
+                  className={cn(
+                    "text-muted-foreground h-8 w-8 shrink-0",
+                    isLastItem ? "cursor-not-allowed opacity-50" : "hover:text-destructive",
+                  )}
                 />
               }
             >
               <Trash2 className="size-4" />
             </TooltipTrigger>
-            <TooltipContent>{tCommon("delete")}</TooltipContent>
+            <TooltipContent>
+              {isLastItem ? t("edit.cannotRemoveLastItem") : tCommon("delete")}
+            </TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -184,7 +192,7 @@ export function EditReservationItemCard({
                 </>
               ) : (
                 <>
-                  {item.quantity} × {item.duration} {unitLabel} · {displayedUnitPrice.toFixed(2)}
+                  {item.quantity} × {item.displayDuration} {unitLabel} · {displayedUnitPrice.toFixed(2)}
                   {currencySymbol}/{unitLabel}
                 </>
               )}

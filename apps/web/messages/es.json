@@ -2315,7 +2315,7 @@
         "deposit": "Deposito",
         "save": "Guardar",
         "saved": "Reserva actualizada",
-        "cannotRemoveLastItem": "No se puede eliminar el ultimo articulo",
+        "cannotRemoveLastItem": "Una reserva conserva al menos un artículo: añade el nuevo artículo antes de eliminar este",
         "noItems": "Agregue al menos un articulo",
         "datesRequired": "Las fechas de inicio y fin son obligatorias",
         "notifyCustomerByEmail": "Notificar al cliente por email",
@@ -2680,7 +2680,8 @@
         "bufferConflictConfirm": "Asignar igualmente",
         "optionsLabel": "Opciones",
         "clearSelection": "Borrar seleccion",
-        "autofillHint": "Unidades sugeridas seleccionadas. Haga clic en Guardar para confirmar."
+        "autofillHint": "Unidades sugeridas seleccionadas. Haga clic en Guardar para confirmar.",
+        "suggestUnits": "Sugerir unidades"
       },
       "smartActions": {
         "paymentIncomplete": "Alquiler no pagado ({remaining} restante)",

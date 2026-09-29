@@ -342,7 +342,7 @@ function PricingCard(props: PricingStepProps) {
               ",",
               ".",
             );
-            const rateTiers = (isCurrent ? seasonal.draft.tiers : toStoredTiers(period)).map(
+            const rateTiers = (isCurrent ? seasonal.draft.tiers : toStoredTiers(period, baseDraft.baseRate.unit)).map(
               (tier) => ({
                 price: tier.price.replace(",", "."),
                 duration: tier.duration,

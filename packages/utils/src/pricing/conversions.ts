@@ -14,20 +14,33 @@ export function priceDurationToMinutes(
   return Math.max(1, Math.round(duration * MINUTES_PER_UNIT[unit]))
 }
 
+const UNITS_LARGEST_FIRST: DurationUnit[] = ['week', 'day', 'hour', 'minute']
+
+/**
+ * Expresses a period in the largest unit that divides it evenly. `maxUnit`
+ * caps that unit, so a ladder priced in days can keep 21 days as "21 days"
+ * instead of switching that one row to "3 weeks".
+ */
 export function minutesToPriceDuration(
   minutes: number,
+  maxUnit: DurationUnit = 'week',
 ): { duration: number; unit: DurationUnit } {
-  if (minutes % MINUTES_PER_UNIT.week === 0) {
-    return { duration: minutes / MINUTES_PER_UNIT.week, unit: 'week' }
-  }
-  if (minutes % MINUTES_PER_UNIT.day === 0) {
-    return { duration: minutes / MINUTES_PER_UNIT.day, unit: 'day' }
-  }
-  if (minutes % MINUTES_PER_UNIT.hour === 0) {
-    return { duration: minutes / MINUTES_PER_UNIT.hour, unit: 'hour' }
-  }
+  const candidates = UNITS_LARGEST_FIRST.slice(
+    UNITS_LARGEST_FIRST.indexOf(maxUnit),
+  )
+  const unit =
+    candidates.find((candidate) => minutes % MINUTES_PER_UNIT[candidate] === 0) ??
+    'minute'
 
-  return { duration: minutes, unit: 'minute' }
+  return { duration: minutes / MINUTES_PER_UNIT[unit], unit }
+}
+
+/**
+ * Largest unit a rate tier is shown in, given the base rate's unit. A ladder
+ * priced by the day or hour stays in days: 21 days is not shown as 3 weeks.
+ */
+export function tierDisplayMaxUnit(baseUnit: DurationUnit): DurationUnit {
+  return baseUnit === 'week' ? 'week' : 'day'
 }
 
 export function pricingModeToMinutes(mode: 'hour' | 'day' | 'week'): number {

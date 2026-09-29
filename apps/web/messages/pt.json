@@ -2276,7 +2276,7 @@
         "deposit": "Caucao",
         "save": "Salvar",
         "saved": "Reserva atualizada",
-        "cannotRemoveLastItem": "Nao e possivel remover o ultimo item",
+        "cannotRemoveLastItem": "Uma reserva mantém pelo menos um item: adicione o novo item antes de remover este",
         "noItems": "Adicione pelo menos um item",
         "datesRequired": "As datas de inicio e fim são obrigatórias",
         "notifyCustomerByEmail": "Notificar cliente por email",
@@ -2641,7 +2641,8 @@
         "bufferConflictConfirm": "Atribuir mesmo assim",
         "optionsLabel": "Opções",
         "clearSelection": "Limpar seleção",
-        "autofillHint": "Unidades sugeridas selecionadas. Clique em Guardar para confirmar."
+        "autofillHint": "Unidades sugeridas selecionadas. Clique em Guardar para confirmar.",
+        "suggestUnits": "Sugerir unidades"
       },
       "smartActions": {
         "paymentIncomplete": "Aluguel não pago ({remaining} restante)",

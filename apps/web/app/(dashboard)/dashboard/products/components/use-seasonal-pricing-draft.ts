@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toastManager } from "@louez/ui";
-import { minutesToPriceDuration } from "@louez/utils";
+import { type DurationUnit, minutesToPriceDuration, tierDisplayMaxUnit } from "@louez/utils";
 
 import type { PriceDurationValue } from "@/components/ui/price-duration-input";
 
@@ -27,16 +27,24 @@ const AUTOSAVE_DELAY_MS = 1500;
 
 /** Stored seasonal tiers as editable rows. Exported because saving a period's
  *  metadata has to resend its rates, even for a period you are not editing. */
-export function toStoredTiers(period: SeasonalPricingData): RateTierInput[] {
-  return toFormTiers(period.tiers);
+export function toStoredTiers(
+  period: SeasonalPricingData,
+  baseUnit: DurationUnit,
+): RateTierInput[] {
+  return toFormTiers(period.tiers, baseUnit);
 }
 
-function toFormTiers(tiers: SeasonalPricingData["tiers"]): RateTierInput[] {
+/** Tiers keep the base rate's scale, like the main ladder (see `tierDisplayMaxUnit`). */
+function toFormTiers(
+  tiers: SeasonalPricingData["tiers"],
+  baseUnit: DurationUnit,
+): RateTierInput[] {
+  const maxUnit = tierDisplayMaxUnit(baseUnit);
   return tiers
     .filter((tier) => tier.period !== null && tier.price !== null)
     .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
     .map((tier) => {
-      const { duration, unit } = minutesToPriceDuration(tier.period!);
+      const { duration, unit } = minutesToPriceDuration(tier.period!, maxUnit);
       return { id: tier.id, price: tier.price!, duration, unit };
     });
 }
@@ -76,7 +84,7 @@ export function useSeasonalPricingDraft({
       duration: fallbackDuration,
       unit: fallbackUnit,
     });
-    setTiersState(toFormTiers(period.tiers));
+    setTiersState(toFormTiers(period.tiers, fallbackUnit));
     setIsDirty(false);
     setStatus("idle");
     // Reloading on anything but the period id would fight the user's typing.

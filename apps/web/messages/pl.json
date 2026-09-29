@@ -2276,7 +2276,7 @@
         "deposit": "Kaucja",
         "save": "Zapisz",
         "saved": "Rezerwacja zaktualizowana",
-        "cannotRemoveLastItem": "Nie można usunąć ostatniego przedmiotu",
+        "cannotRemoveLastItem": "Rezerwacja musi zawierać co najmniej jeden przedmiot: dodaj nowy przedmiot przed usunięciem tego",
         "noItems": "Dodaj przynajmniej jeden przedmiot",
         "datesRequired": "Daty rozpoczęcia i zakończenia są wymagane",
         "notifyCustomerByEmail": "Powiadom klienta e-mailem",
@@ -2641,7 +2641,8 @@
         "bufferConflictConfirm": "Przypisz mimo to",
         "optionsLabel": "Opcje",
         "clearSelection": "Wyczyść wybór",
-        "autofillHint": "Sugerowane jednostki wybrane. Kliknij Zapisz, aby potwierdzić."
+        "autofillHint": "Sugerowane jednostki wybrane. Kliknij Zapisz, aby potwierdzić.",
+        "suggestUnits": "Zaproponuj jednostki"
       },
       "smartActions": {
         "paymentIncomplete": "Wynajem nieopłacony ({remaining} pozostało)",

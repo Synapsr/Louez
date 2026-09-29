@@ -44,6 +44,7 @@ export {
   buildReservationAvailabilityPredicate,
   buildReservationOverlapPredicate,
   reservationAvailabilityEndSql,
+  reservationStillHoldsUnitsSql,
   getReservationAvailabilityEnd,
   buildUnitInDowntimeAtPredicate,
   buildUnitRentableDuringPredicate,

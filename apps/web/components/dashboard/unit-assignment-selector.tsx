@@ -2,7 +2,7 @@
 
 import { CheckSolidIcon } from '@louez/ui/icons'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 
 import {
   AlertCircle,
@@ -115,8 +115,6 @@ export function UnitAssignmentSelector({
   const [wasAutofilled, setWasAutofilled] = useState(false);
   const [bufferOverrideFailure, setBufferOverrideFailure] =
     useState<AssignmentFailure | null>(null);
-  const didAutofillRef = useRef(false);
-  const hasUserInteractedRef = useRef(false);
 
   const displayAttributes = useMemo(() => {
     const attrs = selectedAttributes || {};
@@ -160,32 +158,21 @@ export function UnitAssignmentSelector({
     }
 
     setAvailableUnits(units);
-    if (!bufferOverrideFailure) {
+    // Show what is saved, unless the user has unsaved edits in progress. Units
+    // are never pre-selected here: an owner who cleared an assignment must find
+    // it cleared after a reload.
+    if (!bufferOverrideFailure && !hasChanges) {
       setSelectedUnitIds(assigned);
     }
     setIsLoading(false);
-
-    if (
-      !didAutofillRef.current &&
-      !hasUserInteractedRef.current &&
-      assigned.length === 0
-    ) {
-      const prefill = units.slice(0, Math.max(0, quantity)).map((u) => u.id);
-      if (prefill.length > 0) {
-        didAutofillRef.current = true;
-        setSelectedUnitIds(prefill);
-        setWasAutofilled(true);
-        setHasChanges(true);
-      }
-    }
   }, [
-    quantity,
     tErrors,
     trackUnits,
     unitsQuery.data,
     unitsQuery.isError,
     unitsQuery.isLoading,
     bufferOverrideFailure,
+    hasChanges,
   ]);
 
   // Don't render anything if product doesn't track units
@@ -194,7 +181,6 @@ export function UnitAssignmentSelector({
   }
 
   const handleUnitSelect = (slotIndex: number, unitId: string | null) => {
-    hasUserInteractedRef.current = true;
     const newSelected = [...selectedUnitIds];
 
     // Remove unit from any previous slot if it was selected elsewhere
@@ -218,7 +204,22 @@ export function UnitAssignmentSelector({
 
     setSelectedUnitIds(newSelected);
     setHasChanges(true);
+    setWasAutofilled(false);
     setOpenPopovers((prev) => ({ ...prev, [slotIndex]: false }));
+  };
+
+  // Fills the empty slots with free units, on request only. Nothing is saved
+  // until the user clicks Save.
+  const handleSuggestUnits = () => {
+    const taken = new Set(selectedUnitIds.filter(Boolean));
+    const free = availableUnits.filter((unit) => !taken.has(unit.id));
+    const next = Array.from(
+      { length: quantity },
+      (_, index) => selectedUnitIds[index] || free.shift()?.id || '',
+    );
+    setSelectedUnitIds(next);
+    setHasChanges(true);
+    setWasAutofilled(true);
   };
 
   const getUnitIdentifiers = (unitIds: string[] | undefined) => {
@@ -588,6 +589,15 @@ export function UnitAssignmentSelector({
             <p className="text-muted-foreground text-xs">{t('autofillHint')}</p>
           )}
         </div>
+        {!hasChanges && !allAssigned && availableUnits.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={handleSuggestUnits}
+            disabled={isPending}
+          >
+            {t('suggestUnits')}
+          </Button>
+        )}
         {hasChanges && (
           <Button onClick={() => handleSave()} isPending={isPending}>
             {t('save')}

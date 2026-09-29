@@ -2276,7 +2276,7 @@
         "deposit": "Deposito",
         "save": "Salva",
         "saved": "Prenotazione aggiornata",
-        "cannotRemoveLastItem": "Impossibile rimuovere l'ultimo articolo",
+        "cannotRemoveLastItem": "Una prenotazione conserva almeno un articolo: aggiungi il nuovo articolo prima di rimuovere questo",
         "noItems": "Aggiungi almeno un articolo",
         "datesRequired": "Le date di inizio e fine sono obbligatorie",
         "notifyCustomerByEmail": "Notifica il cliente via email",
@@ -2641,7 +2641,8 @@
         "bufferConflictConfirm": "Assegna comunque",
         "optionsLabel": "Opzioni",
         "clearSelection": "Cancella selezione",
-        "autofillHint": "Unita suggerite selezionate. Clicchi su Salva per confermare."
+        "autofillHint": "Unita suggerite selezionate. Clicchi su Salva per confermare.",
+        "suggestUnits": "Suggerisci unità"
       },
       "smartActions": {
         "paymentIncomplete": "Noleggio non pagato ({remaining} rimanente)",

@@ -2315,7 +2315,7 @@
         "deposit": "Kaution",
         "save": "Speichern",
         "saved": "Reservierung aktualisiert",
-        "cannotRemoveLastItem": "Der letzte Artikel kann nicht entfernt werden",
+        "cannotRemoveLastItem": "Eine Reservierung behält mindestens einen Artikel: Fügen Sie zuerst den neuen Artikel hinzu, bevor Sie diesen entfernen",
         "noItems": "Fügen Sie mindestens einen Artikel hinzu",
         "datesRequired": "Start- und Enddatum sind erforderlich",
         "notifyCustomerByEmail": "Kunden per E-Mail benachrichtigen",
@@ -2680,7 +2680,8 @@
         "bufferConflictConfirm": "Trotzdem zuweisen",
         "optionsLabel": "Optionen",
         "clearSelection": "Auswahl aufheben",
-        "autofillHint": "Vorgeschlagene Einheiten ausgewählt. Klicken Sie auf Speichern, um zu bestätigen."
+        "autofillHint": "Vorgeschlagene Einheiten ausgewählt. Klicken Sie auf Speichern, um zu bestätigen.",
+        "suggestUnits": "Einheiten vorschlagen"
       },
       "smartActions": {
         "paymentIncomplete": "Miete nicht bezahlt ({remaining} verbleibend)",

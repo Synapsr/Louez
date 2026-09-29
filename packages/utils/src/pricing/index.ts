@@ -28,6 +28,7 @@ export {
   type DurationUnit,
   priceDurationToMinutes,
   minutesToPriceDuration,
+  tierDisplayMaxUnit,
   pricingModeToMinutes,
   perMinuteCost,
   computeReductionPercent,

@@ -13,6 +13,7 @@ import {
   products,
   reservationItemUnits,
   reservationItems,
+  reservationStillHoldsUnitsSql,
   reservations,
 } from "@louez/db";
 
@@ -112,6 +113,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
               inArray(reservationItemUnits.productUnitId, unitIds),
               eq(reservations.storeId, store.id),
               inArray(reservations.status, blockingStatuses),
+              reservationStillHoldsUnitsSql(),
             ),
           )
       : [];

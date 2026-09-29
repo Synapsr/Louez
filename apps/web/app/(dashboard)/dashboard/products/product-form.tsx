@@ -19,7 +19,12 @@ import {
   StepActions,
   toastManager,
 } from "@louez/ui";
-import { getCurrencySymbol, minutesToPriceDuration, priceDurationToMinutes } from "@louez/utils";
+import {
+  getCurrencySymbol,
+  minutesToPriceDuration,
+  priceDurationToMinutes,
+  tierDisplayMaxUnit,
+} from "@louez/utils";
 import {
   type PricingTierInput as LegacyPricingTierInput,
   type ProductUnitInput,
@@ -234,11 +239,16 @@ export function ProductForm({
     if (!product?.pricingTiers?.length) return [];
     const basePrice = parseFloat(product.price || "0") || 0;
     const fallbackMode = (product.pricingMode ?? "day") as PricingMode;
+    const tierMaxUnit = tierDisplayMaxUnit(
+      product.basePeriodMinutes
+        ? minutesToPriceDuration(product.basePeriodMinutes).unit
+        : fallbackMode,
+    );
 
     return product.pricingTiers
       .map((tier) => {
         if (tier.price && tier.period) {
-          const durationInfo = minutesToPriceDuration(tier.period);
+          const durationInfo = minutesToPriceDuration(tier.period, tierMaxUnit);
           return {
             id: tier.id,
             price: tier.price,
@@ -252,7 +262,7 @@ export function ProductForm({
         const minDuration = tier.minDuration ?? 1;
         const discount = parseFloat(tier.discountPercent || "0");
         const minutes = minDuration * pricingModeToMinutes(fallbackMode);
-        const durationInfo = minutesToPriceDuration(minutes);
+        const durationInfo = minutesToPriceDuration(minutes, tierMaxUnit);
         const effectivePerLegacyUnit = basePrice * (1 - discount / 100);
         const totalPrice = effectivePerLegacyUnit * minDuration;
 

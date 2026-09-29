@@ -2276,7 +2276,7 @@
         "deposit": "Borg",
         "save": "Opslaan",
         "saved": "Reservering bijgewerkt",
-        "cannotRemoveLastItem": "Het laatste artikel kan niet worden verwijderd",
+        "cannotRemoveLastItem": "Een reservering houdt minstens één artikel: voeg eerst het nieuwe artikel toe voordat u dit verwijdert",
         "noItems": "Voeg minstens een artikel toe",
         "datesRequired": "Begin- en einddatum zijn verplicht",
         "notifyCustomerByEmail": "Klant per e-mail informeren",
@@ -2641,7 +2641,8 @@
         "bufferConflictConfirm": "Toch toewijzen",
         "optionsLabel": "Opties",
         "clearSelection": "Selectie wissen",
-        "autofillHint": "Voorgestelde eenheden geselecteerd. Klik op Opslaan om te bevestigen."
+        "autofillHint": "Voorgestelde eenheden geselecteerd. Klik op Opslaan om te bevestigen.",
+        "suggestUnits": "Eenheden voorstellen"
       },
       "smartActions": {
         "paymentIncomplete": "Huur niet betaald ({remaining} resterend)",
