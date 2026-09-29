@@ -60,8 +60,8 @@ export function reservationAvailabilityEndSql() {
  * confirmed reservation whose end has passed was simply never closed; it must
  * not lock the unit in the catalogue forever.
  */
-export function reservationStillHoldsUnitsSql(now: Date = new Date()): SQL {
-  return or(eq(reservations.status, "ongoing"), gte(reservationAvailabilityEndSql(), now))!;
+export function reservationStillHoldsUnitsSql(now: Date = new Date()): SQL | undefined {
+  return or(eq(reservations.status, "ongoing"), gte(reservationAvailabilityEndSql(), now));
 }
 
 export function getReservationAvailabilityEnd(
