@@ -27,6 +27,7 @@ import {
   consumeReservationStock,
   db,
   getEffectiveProductQuantities,
+  isStripeRefundPaymentSql,
   loadConsumableReservedQuantities,
   reconcileReservationStock,
   reservationStatusConsumesStock,
@@ -148,6 +149,7 @@ import {
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
+import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
   isSmsConfigured,
   sendAccessLinkSms,
@@ -3787,15 +3789,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   }
 
   if (data.amount > 0 && data.type === "rental") {
-    const paymentsById = new Map(reservation.payments.map((payment) => [payment.id, payment]));
-    const rentalPaid = reservation.payments.reduce((total, payment) => {
-      if (payment.status !== "completed") return total;
-      if (payment.refundOfPaymentId) {
-        const originalPayment = paymentsById.get(payment.refundOfPaymentId);
-        return originalPayment?.type === "rental" ? total - Number(payment.amount) : total;
-      }
-      return payment.type === "rental" ? total + Number(payment.amount) : total;
-    }, 0);
+    const rentalPaid = getRentalPaid(reservation.payments);
     const rentalRemaining = roundMoney(getReservationRentalAmount(reservation) - rentalPaid);
 
     if (data.amount > rentalRemaining) {
@@ -3931,7 +3925,13 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
         })
         .from(payments)
         .where(
-          and(eq(payments.refundOfPaymentId, originalPayment.id), eq(payments.status, "completed")),
+          and(
+            eq(payments.refundOfPaymentId, originalPayment.id),
+            eq(payments.status, "completed"),
+            // A Stripe refund linked to its charge already came off that
+            // charge's amount: counting it here would subtract it twice.
+            not(isStripeRefundPaymentSql()),
+          ),
         );
 
       const remainingAmount = roundMoney(
