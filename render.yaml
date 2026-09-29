@@ -81,8 +81,8 @@ services:
 
   # MinIO with the product bucket pre-created. Render's docker command is
   # passed to the image's entrypoint rather than replacing it, and MinIO's
-  # entrypoint prepends `minio` to whatever it receives — so the bucket step
-  # lives in a four-line image built from this repository instead.
+  # entrypoint is the `minio` binary itself — so the bucket step lives in a
+  # small image built from this repository instead.
   - type: pserv
     name: louez-minio
     runtime: docker
