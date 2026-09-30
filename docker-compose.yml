@@ -14,7 +14,7 @@
 
 services:
   louez:
-    image: ghcr.io/eNStudios-Rental/louez:${LOUEZ_IMAGE_TAG:-latest}
+    image: ghcr.io/enstudios-rental/louez:${LOUEZ_IMAGE_TAG:-latest}
     # To run from source instead of the published image, replace `image:` with:
     # build:
     #   context: .
@@ -95,7 +95,7 @@ services:
     restart: unless-stopped
 
   background-removal:
-    image: ghcr.io/eNStudios-Rental/louez-background-removal:${LOUEZ_IMAGE_TAG:-latest}
+    image: ghcr.io/enstudios-rental/louez-background-removal:${LOUEZ_IMAGE_TAG:-latest}
     # The published image is pulled in normal installs. Keeping the build
     # definition makes source checkouts self-contained before a release exists.
     build:
