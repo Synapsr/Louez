@@ -3145,8 +3145,6 @@
         "description": "Deze actie is onomkeerbaar. De klant wordt permanent verwijderd."
       },
       "form": {
-        "personalInfo": "Persoonlijke gegevens",
-        "personalInfoDescription": "Basisinformatie van de klant",
         "businessCustomer": "Zakelijke klant",
         "businessCustomerDescription": "Vink aan als deze klant een bedrijf vertegenwoordigt",
         "companyName": "Bedrijfsnaam",
@@ -3166,8 +3164,6 @@
         "emailPlaceholder": "jan.jansen@voorbeeld.nl",
         "phone": "Telefoon",
         "phonePlaceholder": "06 12 34 56 78",
-        "addressSection": "Adres",
-        "addressDescription": "Adres van de klant (optioneel)",
         "address": "Adres",
         "addressPlaceholder": "Keizersgracht 123",
         "postalCode": "Postcode",
@@ -3182,9 +3178,6 @@
         "save": "Opslaan",
         "createCustomer": "Klant aanmaken",
         "customerKind": "Klanttype",
-        "moreInfo": "Aanvullende gegevens",
-        "moreInfoDescription": "Optioneel. U kunt ze ook later bij de klant aanvullen.",
-        "profileSection": "Profiel",
         "birthDate": "Geboortedatum",
         "ageYears": "{age, plural, one {# jaar} other {# jaar}}",
         "acquisitionSource": "Hoe heeft de klant u leren kennen?",
@@ -3193,8 +3186,7 @@
         "acquisitionSourceDetailPlaceholder": "Toeristenbureau, beurs, partnerhotel…",
         "socialSection": "Sociale media en links",
         "customizeFields": "Velden aanpassen",
-        "fieldCount": "{count, plural, one {# veld} other {# velden}}",
-        "filledCount": "{count, plural, one {# ingevuld} other {# ingevuld}}"
+        "fieldsTitle": "Gegevens van de klant"
       },
       "countries": {
         "FR": "Frankrijk",
@@ -3265,20 +3257,17 @@
         "edit": "Bewerken",
         "moreActions": "Meer acties",
         "createdVia": "Aangemaakt via: {channel}",
-        "contactCard": "Contactgegevens",
-        "profileCard": "Profiel",
         "bornOn": "Geboren op {date}",
         "source": "Herkomst",
         "lastRental": "Laatste verhuur",
         "never": "Nooit",
-        "noAddress": "Geen adres ingevuld",
-        "noPhone": "Geen telefoonnummer ingevuld",
-        "emptyProfile": "Geen profielgegevens.",
         "editSection": "Bewerken: {section}",
         "editSectionDescription": "Alleen deze gegevens worden gewijzigd.",
         "sectionSaved": "Wijzigingen opgeslagen",
         "save": "Opslaan",
-        "cancel": "Annuleren"
+        "cancel": "Annuleren",
+        "infoCard": "Gegevens",
+        "emptyInfo": "Nog niets ingevuld."
       },
       "pagination": {
         "showing": "{from}–{to} van {total}",
@@ -6310,34 +6299,19 @@
       },
       "customerFields": {
         "title": "Klantgegevens",
-        "description": "Kies welke gegevens u over uw klanten bewaart, naast naam en contactgegevens.",
-        "limits": "{count} / {max} actieve velden",
         "native": {
           "birthDate": "Geboortedatum",
-          "birthDateHelp": "Toont ook de leeftijd van de klant.",
           "acquisitionSource": "Herkomst van de klant",
-          "acquisitionSourceHelp": "Hoe de klant u heeft leren kennen.",
-          "socialLinks": "Sociale media en links",
-          "socialLinksHelp": "Instagram, website, WhatsApp…"
-        },
-        "sections": {
-          "defaultName": "Aanvullende gegevens",
-          "rename": "Sectie hernoemen",
-          "moveUp": "Omhoog",
-          "moveDown": "Omlaag",
-          "online": "Online reserveren…"
+          "socialLinks": "Sociale media en links"
         },
         "field": {
           "add": "Veld toevoegen",
           "delete": "Definitief verwijderen",
-          "moveTo": "Verplaatsen naar",
           "drag": "Volgorde wijzigen"
         },
         "badges": {
           "required": "Verplicht",
           "sensitive": "Gevoelig",
-          "business": "Zakelijk",
-          "individual": "Particulier",
           "online": {
             "optional": "Online · Optioneel",
             "required": "Online · Verplicht"
@@ -6385,9 +6359,7 @@
             "contractItemHelp": "Wordt toegevoegd onder de regel van het gehuurde artikel."
           },
           "labelPlaceholderItem": "Schoenmaat",
-          "scope": "Bereik",
           "scopes": {
-            "customer": "In de klantgegevens",
             "customerDescription": "Eén waarde per klant: rijbewijs, identiteitsbewijs…",
             "item": "Per gehuurd artikel",
             "itemDescription": "Eén waarde per persoon of per stuk materiaal: lengte, schoenmaat…"
@@ -6413,7 +6385,6 @@
           "identityDocument": {
             "name": "Identiteitsbewijs",
             "description": "Het bewijs dat bij de overdracht van het materiaal wordt gevraagd.",
-            "section": "Identiteit",
             "fields": {
               "id_document_type": {
                 "label": "Type document",
@@ -6436,7 +6407,6 @@
           "emergencyContact": {
             "name": "Noodcontact",
             "description": "De persoon die gewaarschuwd moet worden bij problemen tijdens de verhuur.",
-            "section": "Noodcontact",
             "fields": {
               "emergency_contact_name": {
                 "label": "Naam"
@@ -6459,7 +6429,6 @@
           "businessContacts": {
             "name": "Zakelijke klanten",
             "description": "De contactpersoon van de boekhouding en de referentie die op uw documenten moet staan.",
-            "section": "Facturatie",
             "fields": {
               "accounting_contact_name": {
                 "label": "Contactpersoon boekhouding"
@@ -6475,7 +6444,6 @@
           "brazil": {
             "name": "Brazilië",
             "description": "CPF of CNPJ, met controle van het nummer, en RG.",
-            "section": "Identiteit",
             "fields": {
               "br_cpf_cnpj": {
                 "label": "CPF / CNPJ"
@@ -6491,7 +6459,6 @@
           "spain": {
             "name": "Spanje",
             "description": "DNI of NIE, met controle van de controleletter.",
-            "section": "Identiteit",
             "fields": {
               "es_dni_nie": {
                 "label": "DNI / NIE"
@@ -6501,7 +6468,6 @@
           "italy": {
             "name": "Italië",
             "description": "Codice fiscale, met controle van het controleteken.",
-            "section": "Identiteit",
             "fields": {
               "it_codice_fiscale": {
                 "label": "Codice fiscale"
@@ -6511,7 +6477,6 @@
           "portugal": {
             "name": "Portugal",
             "description": "NIF, met controle van het controlecijfer.",
-            "section": "Identiteit",
             "fields": {
               "pt_nif": {
                 "label": "NIF"
@@ -6521,7 +6486,6 @@
           "vehicles": {
             "name": "Voertuigen en tweewielers",
             "description": "Het rijbewijs, overgenomen op het contract.",
-            "section": "Rijbewijs",
             "fields": {
               "driving_license_number": {
                 "label": "Rijbewijsnummer"
@@ -6537,7 +6501,6 @@
           "ski": {
             "name": "Ski en bergsport",
             "description": "De lichaamsmaten om het materiaal klaar te zetten voordat de klant aankomt.",
-            "section": "Lichaamsmaten",
             "fields": {
               "height_cm": {
                 "label": "Lengte"
@@ -6562,7 +6525,6 @@
           "bikes": {
             "name": "Fietsen",
             "description": "Wat u nodig hebt om de fiets af te stellen voordat de klant aankomt.",
-            "section": "Fietsafstelling",
             "fields": {
               "height_cm": {
                 "label": "Lengte"
@@ -6578,7 +6540,6 @@
           "boating": {
             "name": "Watersport",
             "description": "Het vaarbewijs, overgenomen op het contract.",
-            "section": "Vaarbewijs",
             "fields": {
               "boat_license_number": {
                 "label": "Nummer vaarbewijs"
@@ -6620,8 +6581,6 @@
         "toasts": {
           "created": "Veld toegevoegd",
           "deleted": "Veld verwijderd",
-          "sectionRenamed": "Sectie hernoemd",
-          "sectionOnlineSaved": "Instellingen toegepast op de sectie",
           "hidden": "Veld verborgen"
         },
         "online": {
@@ -6671,66 +6630,33 @@
           },
           "customerEditable": "De klant kan het wijzigen via het klantaccount",
           "customerEditableHint": "Het veld staat in het klantaccount en kan daar worden bijgewerkt.",
-          "customerEditableNeverHint": "Beschikbaar zodra het veld aan de klant wordt gevraagd.",
-          "targetsSummaryLabel": "Voor:",
-          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+          "customerEditableNeverHint": "Beschikbaar zodra het veld aan de klant wordt gevraagd."
         },
         "sectionOnline": {
-          "title": "Online reserveren",
-          "description": "{count, plural, one {Geldt voor het veld van de sectie “{section}”.} other {Geldt voor de # velden van de sectie “{section}”.}}",
           "adoptedTitle": "Voor welke producten?",
           "adoptedDescription": "De velden “{section}” worden per gehuurd artikel vastgelegd. Kies de betreffende producten en vraag ze zo nodig aan de klant.",
-          "mixed": "De velden van deze sectie hebben verschillende instellingen: ze nemen allemaal deze instellingen over.",
           "apply": "Toepassen",
-          "cancel": "Annuleren",
-          "later": "Later",
-          "close": "Sluiten"
+          "later": "Later"
         },
         "builder": {
           "templates": {
-            "button": "Sjablonen",
             "all": "Alle sjablonen bekijken"
           },
-          "views": {
-            "label": "Weergegeven formulier",
-            "team": "Klantgegevens · team",
-            "client": "Online reserveren · klant",
-            "teamShort": "Klantgegevens",
-            "clientShort": "Online reserveren"
-          },
           "locked": {
-            "title": "Contactgegevens",
-            "note": "Louez-velden, altijd aanwezig",
             "addressPlaceholder": "Straat, postcode, stad, land",
-            "company": "Voor een bedrijf: bedrijfsnaam, ondernemingsnummer en btw-nummer."
-          },
-          "profile": {
-            "title": "Profiel"
-          },
-          "sections": {
-            "newName": "Nieuwe sectie",
-            "defaultItemName": "Details",
-            "add": "Nieuwe sectie",
-            "delete": "Sectie verwijderen",
-            "empty": "Lege sectie: voeg er een eerste veld aan toe.",
-            "renameHint": "Klik om te hernoemen",
-            "actions": "Acties voor de sectie “{name}”"
+            "label": "Onmisbaar veld",
+            "sheetNote": "Onmisbaar veld: altijd aanwezig in de klantgegevens. Alleen de plaats en de breedte zijn aan te passen."
           },
           "field": {
             "select": "“{label}” bewerken",
             "actions": "Acties voor het veld “{label}”",
-            "deleteLabel": "“{label}” verwijderen",
             "draftBadge": "Nieuw",
             "draftPlaceholder": "Nieuw veld"
           },
           "item": {
-            "title": "Per gehuurd artikel — op de reservering",
-            "description": "Ingevuld voor elk gehuurd artikel: twee fietsen, twee keer.",
-            "participantLocked": "Altijd voorgesteld",
             "empty": "Lengte, schoenmaat, niveau… Voeg toe wat u moet weten om elk artikel klaar te zetten."
           },
           "inspector": {
-            "label": "Veldinstellingen",
             "newTitle": "Nieuw veld",
             "add": "Toevoegen",
             "cancel": "Annuleren",
@@ -6748,12 +6674,10 @@
               "es_dni_nie": "DNI / NIE (Spanje)",
               "it_codice_fiscale": "Codice fiscale (Italië)",
               "pt_nif": "NIF (Portugal)"
-            },
-            "type": "Type"
+            }
           },
           "picker": {
             "title": "Veld toevoegen",
-            "description": "Kies waar het wordt ingevuld en daarna het type. Direct daarna geeft u het een naam.",
             "suggested": "Voorgestelde sjablonen",
             "templates": "Sjablonen",
             "examples": {
@@ -6781,23 +6705,8 @@
               }
             }
           },
-          "client": {
-            "ask": "Een veld aan de klant vragen",
-            "askTitle": "Vragen aan de klant",
-            "askDescription": "Eén klik: het veld wordt bij het reserveren als optioneel voorgesteld.",
-            "askButton": "Vragen",
-            "askField": "“{label}” aan de klant vragen",
-            "asked": "Gevraagd",
-            "askEmpty": "Al uw velden worden al aan de klant gevraagd.",
-            "lockedNote": "Gevraagd door Louez, altijd aanwezig"
-          },
-          "empty": {
-            "title": "Voeg uw eigen velden toe",
-            "description": "Identiteitsbewijs, rijbewijs, lengte… Begin met een sjabloon dat bij uw winkel past of maak een veld aan."
-          },
           "native": {
-            "fixed": "Louez-veld: de naam en het type liggen vast.",
-            "socialLinksType": "Links"
+            "fixed": "Louez-veld: de naam en het type liggen vast."
           },
           "visibility": {
             "shown": {
@@ -6815,6 +6724,30 @@
           },
           "online": {
             "hiddenNote": "Verborgen: het wordt niet aan de klant gevraagd. Toon het om het bij het reserveren voor te stellen."
+          },
+          "pageDescription": "De velden van uw klantgegevens, ingedeeld zoals uw formulieren ze tonen.",
+          "preview": {
+            "open": "Voorbeeld voor de klant",
+            "description": "Wat uw klanten invullen wanneer ze online reserveren."
+          },
+          "layout": {
+            "title": "Indeling"
+          },
+          "width": {
+            "label": "Breedte",
+            "full": "Volledig",
+            "half": "Half",
+            "fullLabel": "Volle breedte",
+            "halfLabel": "Halve breedte",
+            "hint": "Twee velden met halve breedte delen een rij.",
+            "fixed": "Dit veld beslaat altijd de hele rij."
+          },
+          "record": {
+            "customer": "In de klantgegevens",
+            "item": "Op de reservering"
+          },
+          "toasts": {
+            "applied": "Instellingen toegepast"
           }
         }
       }

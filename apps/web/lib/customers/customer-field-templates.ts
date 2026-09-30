@@ -57,9 +57,11 @@ export interface CustomerFieldTemplate {
 }
 
 /**
- * Field packs offered in the editor. Labels, sections and option names resolve
- * through `dashboard.settings.customerFields.templates.*` in the merchant's
- * language at adoption time, then belong to the store like any other field.
+ * Field packs offered in the editor. Labels and option names resolve through
+ * `dashboard.settings.customerFields.templates.*` in the merchant's language
+ * at adoption time, then belong to the store like any other field. Adopted
+ * fields land at the end of their scope's layout, in the template's order,
+ * with their type's default width.
  *
  * National identifiers whose collection is restricted by law for this purpose
  * (French social security number, Belgian national register number, Dutch
@@ -235,7 +237,7 @@ export const CUSTOMER_FIELD_TEMPLATES: readonly CustomerFieldTemplate[] = [
 export interface ResolvedCustomerFieldTemplate {
   id: CustomerFieldTemplateId;
   group: CustomerFieldTemplateGroup;
-  /** `item`: after adoption, ask "Pour quels produits ?" (`updateSectionOnline`). */
+  /** `item`: after adoption, ask "Pour quels produits ?" for the fields it created. */
   scope: CustomerFieldScope;
   country: string | null;
   name: string;
@@ -275,7 +277,6 @@ export const resolveCustomerFieldTemplates = (
           ) ?? null,
         unit: field.unit ?? null,
         helpText: null,
-        section: translate(`${template.id}.section`),
         appliesTo: field.appliesTo ?? "all",
         isRequired: false,
         isSensitive: field.isSensitive ?? false,

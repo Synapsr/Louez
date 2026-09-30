@@ -1311,8 +1311,12 @@ export const customerFieldDefinitions = mysqlTable(
     options: json("options").$type<string[]>(),
     unit: varchar("unit", { length: 32 }),
     helpText: varchar("help_text", { length: 255 }),
+    // No longer read or written: fields form one ordered list. Kept so no data is lost.
     section: varchar("section", { length: 100 }).notNull(),
+    // One numeric space with the Louez fields' positions in stores.settings.customerFormLayout.
     position: int("position").notNull().default(0),
+    // A whole form row, or half of one next to another field.
+    width: mysqlEnum("width", ["full", "half"]).notNull().default("full"),
     appliesTo: mysqlEnum("applies_to", ["all", "individual", "business"]).notNull().default("all"),
     isRequired: boolean("is_required").notNull().default(false),
     isSensitive: boolean("is_sensitive").notNull().default(false),

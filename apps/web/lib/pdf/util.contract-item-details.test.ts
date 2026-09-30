@@ -19,6 +19,7 @@ const field = (
   helpText: null,
   section: "Ski",
   position: 0,
+  width: "half",
   appliesTo: "all",
   isRequired: false,
   isSensitive: false,

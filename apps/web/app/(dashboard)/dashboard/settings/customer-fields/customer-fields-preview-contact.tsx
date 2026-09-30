@@ -1,28 +1,20 @@
 "use client";
 
-import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Checkbox, Input, Label } from "@louez/ui";
 
 /**
  * The contact questions every checkout asks, as the storefront draws them:
- * there for context, locked (Louez always asks them).
+ * there for context (Louez always asks them).
  */
 export const CustomerFieldsPreviewContact = () => {
   const t = useTranslations("storefront.checkout");
-  const tBuilder = useTranslations("dashboard.settings.customerFields.builder.client");
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <h2 className="text-xl font-semibold leading-tight tracking-tight">{t("steps.contact")}</h2>
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Lock aria-hidden className="size-3.5" />
-          {tBuilder("lockedNote")}
-        </span>
-      </div>
-      <div inert className="flex flex-col gap-4">
+      <h2 className="text-xl font-semibold leading-tight tracking-tight">{t("steps.contact")}</h2>
+      <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Label>{t("email")}</Label>
           <Input placeholder={t("emailPlaceholder")} />

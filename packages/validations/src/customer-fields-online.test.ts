@@ -30,6 +30,7 @@ const definition = (overrides: Partial<CustomerFieldDefinition> = {}): CustomerF
     helpText: null,
     section: "Section",
     position: sequence,
+    width: "half",
     appliesTo: "all",
     isRequired: false,
     isSensitive: false,
@@ -380,6 +381,9 @@ describe("storefront helpers", () => {
     assert.equal("targets" in field, false);
     assert.equal("isSearchable" in field, false);
     assert.equal("customerEditable" in field, false);
+    // Forms lay it out by width; sections are gone.
+    assert.equal(field.width, "half");
+    assert.equal("section" in field, false);
   });
 
   test("participant names are trimmed and capped, blank means none", () => {

@@ -1,6 +1,7 @@
 import type { AiAdvisorMode, BusinessHours, DeliverySettings, TaxSettings } from "@louez/types";
 import type {
   CheckoutProfileField,
+  CustomerExtraLayoutItem,
   CustomerFieldPublic,
   StorefrontPromoValidateOutput,
 } from "@louez/validations";
@@ -122,15 +123,17 @@ export interface CheckoutFieldsLine {
   productName: string;
   productImage: string | null;
   quantity: number;
-  /** Empty when the line asks nothing. */
+  /** Empty when the line asks nothing; in the owner's layout, each with its width. */
   itemFields: CustomerFieldPublic[];
 }
 
 /** What this cart asks the customer, lines in cart order (index = the payload's `lineIndex`). */
 export interface CheckoutFieldsPlan {
-  /** Native profile fields, in the record's order: the "Profil" group of the contact step. */
+  /** Native profile fields asked (birth date, source, links). */
   profileFields: CheckoutProfileField[];
   customerFields: CustomerFieldPublic[];
+  /** The contact step's extra block: those native and custom fields, as the owner laid them out. */
+  customerLayout: CustomerExtraLayoutItem[];
   lines: CheckoutFieldsLine[];
 }
 

@@ -6,11 +6,14 @@ import {
   CUSTOMER_FIELD_TARGET_MODES,
   CUSTOMER_FIELD_TARGET_TYPES,
   CUSTOMER_FIELD_TYPES,
+  CUSTOMER_FIELD_WIDTHS,
   CUSTOMER_PROFILE_FIELD_KEYS,
   type CustomerFieldCollectMode,
   type CustomerFieldDefinition,
   type CustomerFieldFormat,
+  type CustomerFieldType,
   type CustomerFieldValues,
+  type CustomerFieldWidth,
 } from "@louez/types";
 import { z } from "zod";
 
@@ -35,6 +38,11 @@ export const customerFieldAppliesToSchema = z.enum(CUSTOMER_FIELD_APPLIES_TO);
 export const customerFieldScopeSchema = z.enum(CUSTOMER_FIELD_SCOPES);
 export const customerFieldCollectModeSchema = z.enum(CUSTOMER_FIELD_COLLECT_MODES);
 export const customerFieldTargetModeSchema = z.enum(CUSTOMER_FIELD_TARGET_MODES);
+export const customerFieldWidthSchema = z.enum(CUSTOMER_FIELD_WIDTHS);
+
+/** A new field takes half a row, next to another; a long text takes the whole row. */
+export const defaultCustomerFieldWidth = (type: CustomerFieldType): CustomerFieldWidth =>
+  type === "textarea" ? "full" : "half";
 
 export const customerFieldTargetSchema = z.object({
   type: z.enum(CUSTOMER_FIELD_TARGET_TYPES),
@@ -54,8 +62,10 @@ export const customerFieldDefinitionSchema = z.object({
   options: z.array(z.string()).nullable(),
   unit: z.string().nullable(),
   helpText: z.string().nullable(),
+  /** @deprecated Read by the settings page being rebuilt only; nothing groups by it. */
   section: z.string(),
   position: z.number(),
+  width: customerFieldWidthSchema,
   appliesTo: customerFieldAppliesToSchema,
   isRequired: z.boolean(),
   isSensitive: z.boolean(),
@@ -82,7 +92,6 @@ const customerFieldEditableShape = {
   options: z.array(z.string().trim().min(1).max(100)).max(CUSTOMER_FIELD_LIMITS.options).nullish(),
   unit: z.string().trim().max(32).nullish(),
   helpText: z.string().trim().max(255).nullish(),
-  section: z.string().trim().min(1).max(100),
   appliesTo: customerFieldAppliesToSchema,
   isRequired: z.boolean(),
   isSensitive: z.boolean(),
@@ -161,6 +170,12 @@ export const customerFieldCreateInputSchema = z
     targetMode: customerFieldTargetModeSchema.default("all"),
     targets: customerFieldTargetsInputSchema.default([]),
     customerEditable: z.boolean().default(false),
+    /**
+     * Its width in the layout; `defaultCustomerFieldWidth(type)` when absent.
+     * A new field always lands at the end of its scope's layout; moving it
+     * and resizing it later go through `updateLayout`.
+     */
+    width: customerFieldWidthSchema.optional(),
     /** Stable key of a template field; derived from the label when absent. */
     key: z.string().trim().min(1).max(64).optional(),
     templateKey: z.string().trim().max(64).nullish(),
@@ -201,26 +216,6 @@ export function mergeCustomerFieldOnlineSettings(
   }
   return { collectMode, customerEditable: patch.customerEditable ?? current.customerEditable };
 }
-
-/** "Réservation en ligne…" of a section: the same three controls for every active field in it. */
-export const customerFieldSectionOnlineInputSchema = z
-  .object({
-    section: z.string().trim().min(1).max(100),
-    collectMode: customerFieldCollectModeSchema,
-    targetMode: customerFieldTargetModeSchema,
-    targets: customerFieldTargetsInputSchema,
-    customerEditable: z.boolean(),
-  })
-  .superRefine(refineOnlineSettings);
-
-export type CustomerFieldSectionOnlineInput = z.infer<typeof customerFieldSectionOnlineInputSchema>;
-
-export const customerFieldReorderInputSchema = z.object({
-  /** Every field in its new order, grouped by section; hidden ones keep their place too. */
-  fields: z
-    .array(z.object({ id: z.string().length(21), section: z.string().trim().min(1).max(100) }))
-    .max(200),
-});
 
 export const customerFieldTemplateAdoptInputSchema = z.object({
   templateKey: z.string().trim().min(1).max(64),

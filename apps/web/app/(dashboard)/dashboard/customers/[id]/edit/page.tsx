@@ -4,7 +4,7 @@ import {
 } from '@louez/api/services/customer-fields'
 import { db } from '@louez/db'
 import { hasPermission } from '@louez/utils'
-import { resolveCustomerProfileSettings } from '@louez/validations'
+import { resolveStoreCustomerFormLayout } from '@louez/validations'
 import { getCurrentStore } from '@/lib/store-context'
 import { customers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
@@ -79,9 +79,12 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
 
       <CustomerForm
         customer={customer}
-        definitions={definitions}
+        items={resolveStoreCustomerFormLayout({
+          settings: store.settings,
+          scope: 'customer',
+          definitions,
+        })}
         initialCustomFields={customFields}
-        profileSettings={resolveCustomerProfileSettings(store.settings?.customerProfile)}
         canCustomize={hasPermission(store.role, 'manage_settings')}
       />
     </div>

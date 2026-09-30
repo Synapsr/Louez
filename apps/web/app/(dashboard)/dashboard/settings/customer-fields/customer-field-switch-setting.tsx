@@ -14,7 +14,7 @@ interface CustomerFieldSwitchSettingProps {
   onCheckedChange: (checked: boolean) => void;
 }
 
-/** An on/off setting of the inspector, saved as soon as it flips. */
+/** An on/off setting of the Sheet, saved as soon as it flips. */
 export const CustomerFieldSwitchSetting = ({
   id,
   label,

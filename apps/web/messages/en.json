@@ -3184,8 +3184,6 @@
         "description": "This action is irreversible. The customer will be permanently deleted."
       },
       "form": {
-        "personalInfo": "Personal information",
-        "personalInfoDescription": "Customer's basic information",
         "businessCustomer": "Business customer",
         "businessCustomerDescription": "Check if this customer represents a company",
         "companyName": "Company name",
@@ -3205,8 +3203,6 @@
         "emailPlaceholder": "john.doe@example.com",
         "phone": "Phone",
         "phonePlaceholder": "+1 234 567 8900",
-        "addressSection": "Address",
-        "addressDescription": "Customer's address (optional)",
         "address": "Address",
         "addressPlaceholder": "123 Main Street",
         "postalCode": "Postal code",
@@ -3221,9 +3217,6 @@
         "save": "Save",
         "createCustomer": "Create customer",
         "customerKind": "Customer type",
-        "moreInfo": "Additional information",
-        "moreInfoDescription": "Optional. You can also fill these in later from the customer record.",
-        "profileSection": "Profile",
         "birthDate": "Date of birth",
         "ageYears": "{age, plural, one {# year old} other {# years old}}",
         "acquisitionSource": "How did they hear about you?",
@@ -3232,8 +3225,7 @@
         "acquisitionSourceDetailPlaceholder": "Tourist office, trade show, partner hotel…",
         "socialSection": "Social and links",
         "customizeFields": "Customize fields",
-        "fieldCount": "{count, plural, one {# field} other {# fields}}",
-        "filledCount": "{count, plural, one {# filled in} other {# filled in}}"
+        "fieldsTitle": "Customer details"
       },
       "countries": {
         "FR": "France",
@@ -3304,20 +3296,17 @@
         "edit": "Edit",
         "moreActions": "More actions",
         "createdVia": "Created via: {channel}",
-        "contactCard": "Contact details",
-        "profileCard": "Profile",
         "bornOn": "Born on {date}",
         "source": "Source",
         "lastRental": "Last rental",
         "never": "Never",
-        "noAddress": "No address on file",
-        "noPhone": "No phone on file",
-        "emptyProfile": "No profile information.",
         "editSection": "Edit: {section}",
         "editSectionDescription": "Only this information will be changed.",
         "sectionSaved": "Changes saved",
         "save": "Save",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "infoCard": "Details",
+        "emptyInfo": "Nothing filled in yet."
       },
       "pagination": {
         "showing": "{from}–{to} of {total}",
@@ -6310,34 +6299,19 @@
       },
       "customerFields": {
         "title": "Customer record",
-        "description": "Choose what you keep about your customers, beyond their name and contact details.",
-        "limits": "{count} / {max} active fields",
         "native": {
           "birthDate": "Date of birth",
-          "birthDateHelp": "Also shows the customer's age.",
           "acquisitionSource": "Customer source",
-          "acquisitionSourceHelp": "How the customer heard about you.",
-          "socialLinks": "Social and links",
-          "socialLinksHelp": "Instagram, website, WhatsApp…"
-        },
-        "sections": {
-          "defaultName": "Additional information",
-          "rename": "Rename section",
-          "moveUp": "Move up",
-          "moveDown": "Move down",
-          "online": "Online booking…"
+          "socialLinks": "Social and links"
         },
         "field": {
           "add": "Add a field",
           "delete": "Delete permanently",
-          "moveTo": "Move to",
           "drag": "Reorder"
         },
         "badges": {
           "required": "Required",
           "sensitive": "Sensitive",
-          "business": "Businesses",
-          "individual": "Individuals",
           "online": {
             "optional": "Online · Optional",
             "required": "Online · Required"
@@ -6385,9 +6359,7 @@
             "contractItemHelp": "Printed under the rented item's line."
           },
           "labelPlaceholderItem": "Shoe size",
-          "scope": "Scope",
           "scopes": {
-            "customer": "On the customer record",
             "customerDescription": "One value per customer: licence, ID document…",
             "item": "Per rented item",
             "itemDescription": "One value per person or piece of equipment: height, shoe size…"
@@ -6413,7 +6385,6 @@
           "identityDocument": {
             "name": "Identity document",
             "description": "The proof of identity asked for at handover.",
-            "section": "Identity",
             "fields": {
               "id_document_type": {
                 "label": "Document type",
@@ -6436,7 +6407,6 @@
           "emergencyContact": {
             "name": "Emergency contact",
             "description": "Who to call if something goes wrong during the rental.",
-            "section": "Emergency contact",
             "fields": {
               "emergency_contact_name": {
                 "label": "Name"
@@ -6459,7 +6429,6 @@
           "businessContacts": {
             "name": "Business customers",
             "description": "The accounts contact and the reference to quote on your documents.",
-            "section": "Billing",
             "fields": {
               "accounting_contact_name": {
                 "label": "Accounts contact"
@@ -6475,7 +6444,6 @@
           "brazil": {
             "name": "Brazil",
             "description": "CPF or CNPJ, with number verification, and RG.",
-            "section": "Identity",
             "fields": {
               "br_cpf_cnpj": {
                 "label": "CPF / CNPJ"
@@ -6491,7 +6459,6 @@
           "spain": {
             "name": "Spain",
             "description": "DNI or NIE, with control letter verification.",
-            "section": "Identity",
             "fields": {
               "es_dni_nie": {
                 "label": "DNI / NIE"
@@ -6501,7 +6468,6 @@
           "italy": {
             "name": "Italy",
             "description": "Codice fiscale, with control character verification.",
-            "section": "Identity",
             "fields": {
               "it_codice_fiscale": {
                 "label": "Codice fiscale"
@@ -6511,7 +6477,6 @@
           "portugal": {
             "name": "Portugal",
             "description": "NIF, with control digit verification.",
-            "section": "Identity",
             "fields": {
               "pt_nif": {
                 "label": "NIF"
@@ -6521,7 +6486,6 @@
           "vehicles": {
             "name": "Vehicles and scooters",
             "description": "The driving licence, carried over to the contract.",
-            "section": "Driving licence",
             "fields": {
               "driving_license_number": {
                 "label": "Licence number"
@@ -6537,7 +6501,6 @@
           "ski": {
             "name": "Ski and mountain",
             "description": "Measurements to prepare the gear before the customer arrives.",
-            "section": "Measurements",
             "fields": {
               "height_cm": {
                 "label": "Height"
@@ -6562,7 +6525,6 @@
           "bikes": {
             "name": "Bikes",
             "description": "What you need to set the bike up before the customer arrives.",
-            "section": "Bike setup",
             "fields": {
               "height_cm": {
                 "label": "Height"
@@ -6578,7 +6540,6 @@
           "boating": {
             "name": "Boating",
             "description": "The boat licence, carried over to the contract.",
-            "section": "Boat licence",
             "fields": {
               "boat_license_number": {
                 "label": "Boat licence number"
@@ -6620,8 +6581,6 @@
         "toasts": {
           "created": "Field added",
           "deleted": "Field deleted",
-          "sectionRenamed": "Section renamed",
-          "sectionOnlineSaved": "Settings applied to the section",
           "hidden": "Field hidden"
         },
         "online": {
@@ -6671,66 +6630,33 @@
           },
           "customerEditable": "Customers can edit it from their account",
           "customerEditableHint": "They find it in their customer account and can update it.",
-          "customerEditableNeverHint": "Available once the field is asked to the customer.",
-          "targetsSummaryLabel": "For:",
-          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+          "customerEditableNeverHint": "Available once the field is asked to the customer."
         },
         "sectionOnline": {
-          "title": "Online booking",
-          "description": "{count, plural, one {Applies to the field of the “{section}” section.} other {Applies to the # fields of the “{section}” section.}}",
           "adoptedTitle": "Which products?",
           "adoptedDescription": "The “{section}” fields are recorded for each rented item. Pick the products they concern and, if needed, ask customers to fill them in.",
-          "mixed": "The fields of this section have different settings: they will all take these.",
           "apply": "Apply",
-          "cancel": "Cancel",
-          "later": "Later",
-          "close": "Close"
+          "later": "Later"
         },
         "builder": {
           "templates": {
-            "button": "Templates",
             "all": "See all templates"
           },
-          "views": {
-            "label": "Form shown",
-            "team": "Customer record · team",
-            "client": "Online booking · customer",
-            "teamShort": "Customer record",
-            "clientShort": "Online booking"
-          },
           "locked": {
-            "title": "Contact details",
-            "note": "Louez fields, always there",
             "addressPlaceholder": "Street, postcode, city, country",
-            "company": "For a business: company name, company number and VAT number."
-          },
-          "profile": {
-            "title": "Profile"
-          },
-          "sections": {
-            "newName": "New section",
-            "defaultItemName": "Details",
-            "add": "New section",
-            "delete": "Delete section",
-            "empty": "Empty section: add its first field.",
-            "renameHint": "Click to rename",
-            "actions": "Actions for section “{name}”"
+            "label": "Essential field",
+            "sheetNote": "Essential field: always on the record. Only its place and width can change."
           },
           "field": {
             "select": "Edit “{label}”",
             "actions": "Actions for field “{label}”",
-            "deleteLabel": "Delete “{label}”",
             "draftBadge": "New",
             "draftPlaceholder": "New field"
           },
           "item": {
-            "title": "Per rented item — on the booking",
-            "description": "Filled in for each rented item: two bikes, twice.",
-            "participantLocked": "Always offered",
             "empty": "Height, shoe size, level… Add what you need to know to prepare each item."
           },
           "inspector": {
-            "label": "Field settings",
             "newTitle": "New field",
             "add": "Add",
             "cancel": "Cancel",
@@ -6748,12 +6674,10 @@
               "es_dni_nie": "DNI / NIE (Spain)",
               "it_codice_fiscale": "Codice fiscale (Italy)",
               "pt_nif": "NIF (Portugal)"
-            },
-            "type": "Type"
+            }
           },
           "picker": {
             "title": "Add a field",
-            "description": "Choose where it is filled in, then its type. You will name it right after.",
             "suggested": "Suggested templates",
             "templates": "Templates",
             "examples": {
@@ -6781,23 +6705,8 @@
               }
             }
           },
-          "client": {
-            "ask": "Ask the customer for a field",
-            "askTitle": "Ask the customer",
-            "askDescription": "One click: the field is offered at booking, as optional.",
-            "askButton": "Ask",
-            "askField": "Ask the customer for “{label}”",
-            "asked": "Asked",
-            "askEmpty": "Every field is already asked of the customer.",
-            "lockedNote": "Asked by Louez, always there"
-          },
-          "empty": {
-            "title": "Add your own fields",
-            "description": "ID document, licence, height… Start from a template that fits your store or create a field."
-          },
           "native": {
-            "fixed": "Louez field: its name and type are fixed.",
-            "socialLinksType": "Links"
+            "fixed": "Louez field: its name and type are fixed."
           },
           "visibility": {
             "shown": {
@@ -6815,6 +6724,30 @@
           },
           "online": {
             "hiddenNote": "Hidden: customers are not asked for it. Show it to ask for it when they book."
+          },
+          "pageDescription": "The fields of your customer records, laid out as your forms show them.",
+          "preview": {
+            "open": "Customer preview",
+            "description": "What your customers fill in when they book online."
+          },
+          "layout": {
+            "title": "Layout"
+          },
+          "width": {
+            "label": "Width",
+            "full": "Full",
+            "half": "Half",
+            "fullLabel": "Full width",
+            "halfLabel": "Half width",
+            "hint": "Two half-width fields share a row.",
+            "fixed": "This field always takes the whole row."
+          },
+          "record": {
+            "customer": "On the record",
+            "item": "On the reservation"
+          },
+          "toasts": {
+            "applied": "Settings applied"
           }
         }
       }

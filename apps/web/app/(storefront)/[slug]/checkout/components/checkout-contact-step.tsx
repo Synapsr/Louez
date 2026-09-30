@@ -5,7 +5,11 @@ import { ArrowRight, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button, Collapsible, CollapsiblePanel, CollapsibleTrigger, StepContent } from "@louez/ui";
-import type { CheckoutProfileField, CustomerFieldPublic } from "@louez/validations";
+import type {
+  CheckoutProfileField,
+  CustomerExtraLayoutItem,
+  CustomerFieldPublic,
+} from "@louez/validations";
 
 import type { CustomerProfileFormValues } from "@/components/storefront/customer-fields/customer-fields.types";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
@@ -35,6 +39,8 @@ interface CheckoutContactStepProps {
   profileFields: CheckoutProfileField[];
   /** Customer-scope custom fields this cart asks the buyer's type. */
   customerFields: CustomerFieldPublic[];
+  /** How the owner laid those native and custom fields out. */
+  customerLayout: CustomerExtraLayoutItem[];
   /** Values the signed-in customer has on file; empty for a guest. */
   savedCustomerFieldValues: Record<string, string>;
   /** Native values the signed-in customer has on file; blank for a guest. */
@@ -60,6 +66,7 @@ export const CheckoutContactStep = withForm({
     onCoordinatesChange,
     profileFields,
     customerFields,
+    customerLayout,
     savedCustomerFieldValues,
     savedCustomerProfileValues,
     isCustomFieldsLoading,
@@ -204,6 +211,7 @@ export const CheckoutContactStep = withForm({
             form={form}
             profileFields={profileFields}
             fields={customerFields}
+            layout={customerLayout}
             savedValues={savedCustomerFieldValues}
             savedProfile={savedCustomerProfileValues}
           />

@@ -31,7 +31,7 @@ interface ReservationItemDetailUnitFieldsProps {
   onFieldCorrected: (reservationItemId: string, unitIndex: number, definitionId: string) => void;
 }
 
-/** One rented unit in the edit sheet: who uses it, then its fields, as on the customer record. */
+/** One rented unit in the edit sheet: who uses it, then its fields in the owner's layout and widths. */
 export const ReservationItemDetailUnitFields = ({
   form,
   itemPosition,
@@ -99,10 +99,7 @@ export const ReservationItemDetailUnitFields = ({
           return (
             <div
               key={definition.id}
-              className={cn(
-                (definition.type === "textarea" || definition.type === "checkbox") &&
-                  "sm:col-span-2",
-              )}
+              className={cn("min-w-0", definition.width === "full" && "sm:col-span-2")}
             >
               <CustomerFieldControl
                 definition={definition}

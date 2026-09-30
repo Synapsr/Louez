@@ -6,6 +6,7 @@ import {
   type CheckoutFieldIssue,
   type CheckoutItemDetailsInput,
   type CheckoutProfileField,
+  type CustomerExtraLayoutItem,
   type CustomerFieldIssueCode,
   type CustomerFieldPublic,
   type CustomerProfileValuesInput,
@@ -25,6 +26,7 @@ import type { CheckoutFieldsPlan, CheckoutFormValues } from "./checkout.types";
 export const EMPTY_CHECKOUT_FIELDS_PLAN: CheckoutFieldsPlan = {
   profileFields: [],
   customerFields: [],
+  customerLayout: [],
   lines: [],
 };
 
@@ -51,6 +53,7 @@ export const toParticipantFieldName = (unitKey: string): CheckoutParticipantFiel
 interface ForCartAnswer {
   profileFields: CheckoutProfileField[];
   customerFields: CustomerFieldPublic[];
+  customerLayout: CustomerExtraLayoutItem[];
   lines: { productId: string; quantity: number; itemFields: CustomerFieldPublic[] }[];
 }
 
@@ -75,6 +78,7 @@ export const buildCheckoutFieldsPlan = (
   return {
     profileFields: answer.profileFields,
     customerFields: answer.customerFields,
+    customerLayout: answer.customerLayout,
     lines: lines.map((line, index) => {
       const lineAnswer = answer.lines[index];
       return {

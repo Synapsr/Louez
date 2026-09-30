@@ -1,13 +1,4 @@
-import {
-  getCustomerFieldValues,
-  listCustomerFieldDefinitions,
-} from "@louez/api/services/customer-fields";
-import {
-  listAskedProfileFields,
-  pickCustomerProfileValues,
-  resolveCustomerProfileSettings,
-  toAccountCustomerField,
-} from "@louez/validations";
+import { getCustomerAccountFields } from "@louez/api/services/customer-profile-fields";
 
 import { CustomerCommunicationsForm } from "@/components/storefront/account/customer-communications-form";
 import { getCustomerReminderPreferences } from "@/lib/notifications/customer-reminder-preferences";
@@ -21,40 +12,6 @@ import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { toCheckoutInitialCustomer } from "@/app/(storefront)/[slug]/checkout/util.checkout-customer";
 
 import { CustomerExtraFieldsSection } from "./customer-extra-fields-section";
-import type { CustomerExtraFieldsData } from "./customer-extra-fields.types";
-
-/**
- * What `storefront.customerFields.myValues` answers, read on the server for
- * the first paint: the native and customer-scope fields a checkout may ask,
- * and the customer's values for them.
- */
-const getCustomerExtraFields = async (
-  store: { id: string; settings: { customerProfile?: unknown } | null },
-  customer: Parameters<typeof pickCustomerProfileValues>[0] & {
-    id: string;
-    customerType: CustomerExtraFieldsData["customerType"];
-  },
-): Promise<CustomerExtraFieldsData> => {
-  const definitions = (
-    await listCustomerFieldDefinitions(store.id, { activeOnly: true, scope: "customer" })
-  ).filter((definition) => definition.collectMode !== "never");
-  const stored = definitions.length > 0 ? await getCustomerFieldValues(store.id, customer.id) : {};
-  const profileFields = listAskedProfileFields(
-    resolveCustomerProfileSettings(store.settings?.customerProfile),
-  );
-  return {
-    customerType: customer.customerType,
-    fields: definitions.map(toAccountCustomerField),
-    values: Object.fromEntries(
-      definitions.flatMap((definition) => {
-        const value = stored[definition.id];
-        return value ? [[definition.id, value]] : [];
-      }),
-    ),
-    profileFields,
-    profile: pickCustomerProfileValues(customer, profileFields),
-  };
-};
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const t = await getTranslations("storefront.account.profile");
@@ -66,9 +23,14 @@ const CustomerProfilePage = async ({ params }: { params: Promise<{ slug: string 
   const store = await getStoreBySlug(slug);
   if (!store) notFound();
   const session = await requireCustomerSession(store, "/account/profile");
+  // What `storefront.customerFields.myValues` answers, read here for the first paint.
   const [preferences, extraFields] = await Promise.all([
     getCustomerReminderPreferences(store.id, session.customerId),
-    getCustomerExtraFields(store, session.customer),
+    getCustomerAccountFields({
+      storeId: store.id,
+      customerId: session.customerId,
+      settings: store.settings,
+    }),
   ]);
   const t = await getTranslations("storefront.account.profile");
   return (
@@ -82,7 +44,7 @@ const CustomerProfilePage = async ({ params }: { params: Promise<{ slug: string 
         storeSlug={slug}
         country={store.settings?.country ?? "FR"}
       />
-      <CustomerExtraFieldsSection initialData={extraFields} />
+      {extraFields && <CustomerExtraFieldsSection initialData={extraFields} />}
       <CustomerCommunicationsForm storeSlug={slug} preferences={preferences} />
     </StorefrontSection>
   );

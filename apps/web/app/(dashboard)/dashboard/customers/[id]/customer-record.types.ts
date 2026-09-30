@@ -1,28 +1,8 @@
-import type {
-  CustomerAcquisitionSource,
-  CustomerCreatedVia,
-  CustomerSocialLinks,
-} from "@louez/types";
+import type { CustomerCreatedVia } from "@louez/types";
+
+import type { CustomerFormCustomer } from "../customer-form.types";
 
 /** What the side column of the customer record shows and edits. */
-export interface CustomerRecord {
-  id: string;
-  customerType: "individual" | "business";
-  email: string;
-  phone: string | null;
-  address: string | null;
-  city: string | null;
-  postalCode: string | null;
-  country: string | null;
-  birthDate: string | null;
-  acquisitionSource: CustomerAcquisitionSource | null;
-  acquisitionSourceDetail: string | null;
+export interface CustomerRecord extends CustomerFormCustomer {
   createdVia: CustomerCreatedVia | null;
-  socialLinks: CustomerSocialLinks | null;
 }
-
-/** Which card is being edited: a native block, or a custom section by its name. */
-export type CustomerRecordSection =
-  | { kind: "contact" }
-  | { kind: "profile" }
-  | { kind: "custom"; name: string };

@@ -53,7 +53,9 @@ async function getStoreId() {
  * the invoice then degrades to B2C instead of being transmitted with a bogus
  * identifier.
  */
-function resolveCustomerCompanyFields(validated: CustomerInput) {
+function resolveCustomerCompanyFields(
+  validated: Pick<CustomerInput, 'customerType' | 'country' | 'companyNumber' | 'vatNumber'>,
+) {
   if (validated.customerType !== 'business') {
     return { companyNumber: null, companyNumberScheme: null, vatNumber: null }
   }
@@ -264,19 +266,41 @@ export async function updateCustomer(customerId: string, data: CustomerInput) {
   }
 }
 
-/** Saves one card of the customer record edited in place, leaving the rest untouched. */
+/**
+ * Saves the fields of the customer record edited in place (its "Informations"
+ * Sheet), leaving the rest untouched.
+ */
 export async function updateCustomerSection(customerId: string, data: CustomerSectionInput) {
   try {
     const storeId = await getStoreId()
-    const { customFields, email, ...section } = customerSectionSchema.parse(data)
+    const { customFields, email, companyNumber, vatNumber, ...section } =
+      customerSectionSchema.parse(data)
 
     const existingCustomer = await db.query.customers.findFirst({
-      columns: { id: true, email: true, customerType: true },
+      columns: {
+        id: true,
+        email: true,
+        customerType: true,
+        country: true,
+        companyNumber: true,
+        vatNumber: true,
+      },
       where: and(eq(customers.id, customerId), eq(customers.storeId, storeId)),
     })
     if (!existingCustomer) {
       return { error: 'errors.customerNotFound' }
     }
+
+    // The scheme follows the number and the country: both are settled together, as on the full form.
+    const company =
+      companyNumber !== undefined || vatNumber !== undefined
+        ? resolveCustomerCompanyFields({
+            customerType: existingCustomer.customerType,
+            country: section.country ?? existingCustomer.country ?? undefined,
+            companyNumber: companyNumber ?? existingCustomer.companyNumber ?? undefined,
+            vatNumber: vatNumber ?? existingCustomer.vatNumber ?? undefined,
+          })
+        : {}
 
     if (email !== undefined && email !== existingCustomer.email) {
       const emailExists = await db.query.customers.findFirst({
@@ -306,6 +330,7 @@ export async function updateCustomerSection(customerId: string, data: CustomerSe
         .update(customers)
         .set({
           ...contact,
+          ...company,
           ...(email !== undefined ? { email } : {}),
           ...resolveCustomerProfileFields({
             birthDate,
@@ -333,7 +358,7 @@ export async function updateCustomerSection(customerId: string, data: CustomerSe
   } catch (error) {
     log.error(
       'customers',
-      `section update failed: ${error instanceof Error ? error.message : String(error)}`,
+      `record update failed: ${error instanceof Error ? error.message : String(error)}`,
     )
     return { error: 'errors.updateCustomerError' }
   }

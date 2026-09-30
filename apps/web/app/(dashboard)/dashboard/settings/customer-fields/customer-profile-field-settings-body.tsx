@@ -1,6 +1,6 @@
 "use client";
 
-import type { Ref } from "react";
+import type { ReactNode } from "react";
 
 import type { CustomerProfileFieldKey, CustomerProfileFieldSettings } from "@louez/types";
 
@@ -8,9 +8,9 @@ import { CustomerFieldOnlineGroup } from "./customer-field-online-group";
 import { CustomerFieldRecordGroup } from "./customer-field-record-group";
 import { CustomerProfileFieldGeneralGroup } from "./customer-profile-field-general-group";
 import type { CustomerProfileFieldSettingKey } from "./use-customer-profile-field-autosave";
-import { profileFieldAllowsRequired } from "./util.customer-field-canvas";
-import { diffOnlineSettings } from "./util.customer-fields-builder";
 import { pickOnlineSettings } from "./util.customer-field-online";
+import { diffOnlineSettings } from "./util.customer-fields-builder";
+import { profileFieldAllowsRequired } from "./util.customer-form-builder";
 import {
   type CustomerProfileFieldPatch,
   toProfileVisibility,
@@ -19,36 +19,36 @@ import {
 interface CustomerProfileFieldSettingsBodyProps {
   field: CustomerProfileFieldKey;
   label: string;
-  typeLabel: string;
   settings: CustomerProfileFieldSettings;
+  /** "Mise en page", right after what the field is. */
+  layout: ReactNode;
   onChange: (key: CustomerProfileFieldSettingKey, patch: CustomerProfileFieldPatch) => void;
   errorFor: (key: CustomerProfileFieldSettingKey) => string | undefined;
-  /** Put on the top of "Réservation en ligne", for the client view to scroll to. */
-  onlineRef?: Ref<HTMLParagraphElement>;
 }
 
 /**
  * The settings of a Louez profile field, in the same order and with the same
- * controls as a store field's; only its name and type are fixed, and there is
- * nothing more to fold away.
+ * controls as a store field's; only its name is fixed, and there is nothing
+ * more to fold away.
  */
 export const CustomerProfileFieldSettingsBody = ({
   field,
   label,
-  typeLabel,
   settings,
+  layout,
   onChange,
   errorFor,
-  onlineRef,
 }: CustomerProfileFieldSettingsBodyProps) => {
-  const idPrefix = `inspector-profile-${field}`;
+  const idPrefix = `sheet-profile-${field}`;
   const allowsRequired = profileFieldAllowsRequired(field);
   const shown = settings.visibility !== "hidden";
   const online = pickOnlineSettings(settings);
 
   return (
     <div className="flex flex-col divide-y">
-      <CustomerProfileFieldGeneralGroup idPrefix={idPrefix} label={label} typeLabel={typeLabel} />
+      <CustomerProfileFieldGeneralGroup idPrefix={idPrefix} label={label} />
+
+      {layout}
 
       <CustomerFieldRecordGroup
         idPrefix={idPrefix}
@@ -73,7 +73,6 @@ export const CustomerProfileFieldSettingsBody = ({
         hidden={!shown}
         error={errorFor("online")}
         onChange={(next) => onChange("online", diffOnlineSettings(online, next))}
-        anchorRef={onlineRef}
       />
     </div>
   );

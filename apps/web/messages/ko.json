@@ -3184,8 +3184,6 @@
         "description": "이 작업은 되돌릴 수 없습니다. 고객이 영구적으로 삭제됩니다."
       },
       "form": {
-        "personalInfo": "개인정보",
-        "personalInfoDescription": "고객의 기본정보",
         "businessCustomer": "비즈니스 고객",
         "businessCustomerDescription": "이 고객이 회사를 대표하는지 확인하세요.",
         "companyName": "회사명",
@@ -3205,8 +3203,6 @@
         "emailPlaceholder": "john.doe@example.com",
         "phone": "전화",
         "phonePlaceholder": "+1 234 567 8900",
-        "addressSection": "주소",
-        "addressDescription": "고객 주소(선택사항)",
         "address": "주소",
         "addressPlaceholder": "123 메인 스트리트",
         "postalCode": "우편번호",
@@ -3221,9 +3217,6 @@
         "save": "저장",
         "createCustomer": "고객 생성",
         "customerKind": "고객 유형",
-        "moreInfo": "추가 정보",
-        "moreInfoDescription": "선택사항입니다. 나중에 고객 정보에서 입력할 수도 있습니다.",
-        "profileSection": "프로필",
         "birthDate": "생년월일",
         "ageYears": "{age, plural, other {#세}}",
         "acquisitionSource": "매장을 어떻게 알게 되었나요?",
@@ -3232,8 +3225,7 @@
         "acquisitionSourceDetailPlaceholder": "관광 안내소, 박람회, 제휴 호텔…",
         "socialSection": "소셜 및 링크",
         "customizeFields": "필드 맞춤설정",
-        "fieldCount": "{count, plural, other {필드 #개}}",
-        "filledCount": "{count, plural, other {#개 입력됨}}"
+        "fieldsTitle": "고객 정보"
       },
       "countries": {
         "FR": "프랑스",
@@ -3304,20 +3296,17 @@
         "edit": "편집",
         "moreActions": "추가 작업",
         "createdVia": "생성 경로: {channel}",
-        "contactCard": "연락처 정보",
-        "profileCard": "프로필",
         "bornOn": "{date} 출생",
         "source": "유입 경로",
         "lastRental": "마지막 대여",
         "never": "없음",
-        "noAddress": "등록된 주소 없음",
-        "noPhone": "등록된 전화번호 없음",
-        "emptyProfile": "프로필 정보가 없습니다.",
         "editSection": "편집: {section}",
         "editSectionDescription": "이 정보만 변경됩니다.",
         "sectionSaved": "변경사항이 저장되었습니다",
         "save": "저장",
-        "cancel": "취소"
+        "cancel": "취소",
+        "infoCard": "정보",
+        "emptyInfo": "아직 입력된 내용이 없습니다."
       },
       "pagination": {
         "showing": "{total}명 중 {from}–{to}",
@@ -6310,34 +6299,19 @@
       "readOnlyNotice": "읽기 전용: 소유자와 관리자만 이 스토어의 설정을 변경할 수 있습니다.",
       "customerFields": {
         "title": "고객 정보",
-        "description": "이름과 연락처 외에 고객에 대해 보관할 정보를 선택하세요.",
-        "limits": "활성 필드 {count} / {max}개",
         "native": {
           "birthDate": "생년월일",
-          "birthDateHelp": "고객의 나이도 함께 표시됩니다.",
           "acquisitionSource": "고객 유입 경로",
-          "acquisitionSourceHelp": "고객이 매장을 알게 된 경로입니다.",
-          "socialLinks": "소셜 및 링크",
-          "socialLinksHelp": "Instagram, 웹사이트, WhatsApp…"
-        },
-        "sections": {
-          "defaultName": "추가 정보",
-          "rename": "섹션 이름 변경",
-          "moveUp": "위로 이동",
-          "moveDown": "아래로 이동",
-          "online": "온라인 예약…"
+          "socialLinks": "소셜 및 링크"
         },
         "field": {
           "add": "필드 추가",
           "delete": "영구 삭제",
-          "moveTo": "이동할 위치",
           "drag": "순서 변경"
         },
         "badges": {
           "required": "필수",
           "sensitive": "민감 정보",
-          "business": "비즈니스",
-          "individual": "개인",
           "online": {
             "optional": "온라인 · 선택사항",
             "required": "온라인 · 필수"
@@ -6385,9 +6359,7 @@
             "contractItemHelp": "대여 물품 행 아래에 표시됩니다."
           },
           "labelPlaceholderItem": "신발 사이즈",
-          "scope": "기록 단위",
           "scopes": {
-            "customer": "고객 정보에 기록",
             "customerDescription": "고객당 하나의 값: 면허, 신분증…",
             "item": "대여 물품별",
             "itemDescription": "사람 또는 장비당 하나의 값: 키, 신발 사이즈…"
@@ -6413,7 +6385,6 @@
           "identityDocument": {
             "name": "신분증",
             "description": "장비 인도 시 요청하는 신원 증빙 서류입니다.",
-            "section": "신원",
             "fields": {
               "id_document_type": {
                 "label": "서류 유형",
@@ -6436,7 +6407,6 @@
           "emergencyContact": {
             "name": "비상 연락처",
             "description": "대여 중 문제가 생겼을 때 연락할 사람입니다.",
-            "section": "비상 연락처",
             "fields": {
               "emergency_contact_name": {
                 "label": "이름"
@@ -6459,7 +6429,6 @@
           "businessContacts": {
             "name": "비즈니스 고객",
             "description": "회계 담당자와 문서에 기재할 참조 번호입니다.",
-            "section": "청구",
             "fields": {
               "accounting_contact_name": {
                 "label": "회계 담당자"
@@ -6475,7 +6444,6 @@
           "brazil": {
             "name": "브라질",
             "description": "번호 검증이 포함된 CPF 또는 CNPJ, 그리고 RG.",
-            "section": "신원",
             "fields": {
               "br_cpf_cnpj": {
                 "label": "CPF / CNPJ"
@@ -6491,7 +6459,6 @@
           "spain": {
             "name": "스페인",
             "description": "확인 문자 검증이 포함된 DNI 또는 NIE.",
-            "section": "신원",
             "fields": {
               "es_dni_nie": {
                 "label": "DNI / NIE"
@@ -6501,7 +6468,6 @@
           "italy": {
             "name": "이탈리아",
             "description": "확인 문자 검증이 포함된 Codice fiscale.",
-            "section": "신원",
             "fields": {
               "it_codice_fiscale": {
                 "label": "Codice fiscale"
@@ -6511,7 +6477,6 @@
           "portugal": {
             "name": "포르투갈",
             "description": "확인 숫자 검증이 포함된 NIF.",
-            "section": "신원",
             "fields": {
               "pt_nif": {
                 "label": "NIF"
@@ -6521,7 +6486,6 @@
           "vehicles": {
             "name": "차량 및 스쿠터",
             "description": "계약서에 기재되는 운전면허 정보입니다.",
-            "section": "운전면허",
             "fields": {
               "driving_license_number": {
                 "label": "면허 번호"
@@ -6537,7 +6501,6 @@
           "ski": {
             "name": "스키 및 산악",
             "description": "고객이 도착하기 전에 장비를 준비하기 위한 신체 치수입니다.",
-            "section": "신체 치수",
             "fields": {
               "height_cm": {
                 "label": "키"
@@ -6562,7 +6525,6 @@
           "bikes": {
             "name": "자전거",
             "description": "고객이 도착하기 전에 자전거를 세팅하는 데 필요한 정보입니다.",
-            "section": "자전거 세팅",
             "fields": {
               "height_cm": {
                 "label": "키"
@@ -6578,7 +6540,6 @@
           "boating": {
             "name": "보트",
             "description": "계약서에 기재되는 보트 면허 정보입니다.",
-            "section": "보트 면허",
             "fields": {
               "boat_license_number": {
                 "label": "보트 면허 번호"
@@ -6620,8 +6581,6 @@
         "toasts": {
           "created": "필드가 추가되었습니다",
           "deleted": "필드가 삭제되었습니다",
-          "sectionRenamed": "섹션 이름이 변경되었습니다",
-          "sectionOnlineSaved": "설정이 섹션에 적용되었습니다",
           "hidden": "필드가 숨겨졌습니다"
         },
         "online": {
@@ -6671,66 +6630,33 @@
           },
           "customerEditable": "고객이 계정에서 수정 가능",
           "customerEditableHint": "고객이 고객 계정에서 확인하고 수정할 수 있습니다.",
-          "customerEditableNeverHint": "필드를 고객에게 요청하도록 설정하면 사용할 수 있습니다.",
-          "targetsSummaryLabel": "적용 범위:",
-          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+          "customerEditableNeverHint": "필드를 고객에게 요청하도록 설정하면 사용할 수 있습니다."
         },
         "sectionOnline": {
-          "title": "온라인 예약",
-          "description": "{count, plural, other {‘{section}’ 섹션의 필드 #개에 적용됩니다.}}",
           "adoptedTitle": "어떤 제품에 적용할까요?",
           "adoptedDescription": "‘{section}’ 필드는 대여 물품마다 기록됩니다. 해당 제품을 선택하고, 필요하면 고객에게 입력을 요청하세요.",
-          "mixed": "이 섹션의 필드는 설정이 서로 다릅니다. 모두 이 설정으로 변경됩니다.",
           "apply": "적용",
-          "cancel": "취소",
-          "later": "나중에",
-          "close": "닫기"
+          "later": "나중에"
         },
         "builder": {
           "templates": {
-            "button": "템플릿",
             "all": "모든 템플릿 보기"
           },
-          "views": {
-            "label": "표시할 양식",
-            "team": "고객 정보 · 팀",
-            "client": "온라인 예약 · 고객",
-            "teamShort": "고객 정보",
-            "clientShort": "온라인 예약"
-          },
           "locked": {
-            "title": "연락처 정보",
-            "note": "항상 표시되는 Louez 필드",
             "addressPlaceholder": "도로명, 우편번호, 도시, 국가",
-            "company": "비즈니스 고객의 경우: 회사명, 회사번호, VAT 번호."
-          },
-          "profile": {
-            "title": "프로필"
-          },
-          "sections": {
-            "newName": "새 섹션",
-            "defaultItemName": "세부정보",
-            "add": "새 섹션",
-            "delete": "섹션 삭제",
-            "empty": "빈 섹션입니다. 첫 번째 필드를 추가하세요.",
-            "renameHint": "클릭하여 이름 변경",
-            "actions": "‘{name}’ 섹션 작업"
+            "label": "기본 필드",
+            "sheetNote": "기본 필드: 항상 고객 정보에 표시됩니다. 위치와 너비만 변경할 수 있습니다."
           },
           "field": {
             "select": "‘{label}’ 편집",
             "actions": "‘{label}’ 필드 작업",
-            "deleteLabel": "‘{label}’ 삭제",
             "draftBadge": "신규",
             "draftPlaceholder": "새 필드"
           },
           "item": {
-            "title": "대여 물품별 — 예약에 기록",
-            "description": "대여 물품마다 입력합니다. 자전거 두 대면 두 번 입력합니다.",
-            "participantLocked": "항상 제공됨",
             "empty": "키, 신발 사이즈, 실력… 각 물품을 준비하는 데 필요한 정보를 추가하세요."
           },
           "inspector": {
-            "label": "필드 설정",
             "newTitle": "새 필드",
             "add": "추가",
             "cancel": "취소",
@@ -6748,12 +6674,10 @@
               "es_dni_nie": "DNI / NIE(스페인)",
               "it_codice_fiscale": "Codice fiscale(이탈리아)",
               "pt_nif": "NIF(포르투갈)"
-            },
-            "type": "유형"
+            }
           },
           "picker": {
             "title": "필드 추가",
-            "description": "입력할 위치를 선택한 다음 유형을 선택하세요. 이름은 바로 다음에 지정합니다.",
             "suggested": "추천 템플릿",
             "templates": "템플릿",
             "examples": {
@@ -6781,23 +6705,8 @@
               }
             }
           },
-          "client": {
-            "ask": "고객에게 필드 입력 요청",
-            "askTitle": "고객에게 요청",
-            "askDescription": "클릭 한 번으로 예약 시 필드가 선택사항으로 제공됩니다.",
-            "askButton": "요청",
-            "askField": "고객에게 ‘{label}’ 요청",
-            "asked": "요청됨",
-            "askEmpty": "모든 필드를 이미 고객에게 요청하고 있습니다.",
-            "lockedNote": "Louez가 항상 요청합니다"
-          },
-          "empty": {
-            "title": "나만의 필드를 추가하세요",
-            "description": "신분증, 면허, 키… 매장에 맞는 템플릿으로 시작하거나 필드를 만드세요."
-          },
           "native": {
-            "fixed": "Louez 필드: 이름과 유형은 고정되어 있습니다.",
-            "socialLinksType": "링크"
+            "fixed": "Louez 필드: 이름과 유형은 고정되어 있습니다."
           },
           "visibility": {
             "shown": {
@@ -6815,6 +6724,30 @@
           },
           "online": {
             "hiddenNote": "숨김: 고객에게 요청하지 않습니다. 표시하면 예약 시 고객에게 요청할 수 있습니다."
+          },
+          "pageDescription": "고객 정보의 필드가 양식에 표시되는 그대로 배치되어 있습니다.",
+          "preview": {
+            "open": "고객 화면 미리보기",
+            "description": "고객이 온라인으로 예약할 때 입력하는 내용입니다."
+          },
+          "layout": {
+            "title": "레이아웃"
+          },
+          "width": {
+            "label": "너비",
+            "full": "전체",
+            "half": "절반",
+            "fullLabel": "전체 너비",
+            "halfLabel": "절반 너비",
+            "hint": "절반 너비 필드 두 개가 한 줄을 나눠 씁니다.",
+            "fixed": "이 필드는 항상 한 줄 전체를 차지합니다."
+          },
+          "record": {
+            "customer": "고객 정보",
+            "item": "예약"
+          },
+          "toasts": {
+            "applied": "설정이 적용되었습니다"
           }
         }
       }

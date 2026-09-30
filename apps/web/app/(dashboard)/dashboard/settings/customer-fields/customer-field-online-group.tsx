@@ -1,7 +1,5 @@
 "use client";
 
-import type { Ref } from "react";
-
 import { EyeOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -13,7 +11,7 @@ import { CustomerFieldOnlineControls } from "./customer-field-online-controls";
 import type { CustomerFieldOnlineSettings } from "./util.customer-field-online";
 
 interface CustomerFieldOnlineGroupProps {
-  /** Prefix of the control ids, unique per inspector. */
+  /** Prefix of the control ids, unique per Sheet. */
   idPrefix: string;
   value: CustomerFieldOnlineSettings;
   /** Recorded per rented unit: "Pour" always matters. */
@@ -24,8 +22,6 @@ interface CustomerFieldOnlineGroupProps {
   hidden?: boolean;
   error?: string;
   onChange: (next: CustomerFieldOnlineSettings) => void;
-  /** Put on the top of the group, for the client view to scroll to. */
-  anchorRef?: Ref<HTMLParagraphElement>;
 }
 
 /**
@@ -40,7 +36,6 @@ export const CustomerFieldOnlineGroup = ({
   hidden = false,
   error,
   onChange,
-  anchorRef,
 }: CustomerFieldOnlineGroupProps) => {
   const t = useTranslations("dashboard.settings.customerFields");
   const readOnly = useControlsDisabled();
@@ -48,14 +43,12 @@ export const CustomerFieldOnlineGroup = ({
   return (
     <PanelGroup title={t("dialog.online.title")}>
       {hidden ? (
-        <p ref={anchorRef} className="text-muted-foreground -mt-2 flex items-start gap-1.5 text-xs">
+        <p className="text-muted-foreground -mt-2 flex items-start gap-1.5 text-xs">
           <EyeOff aria-hidden className="mt-px size-3.5 shrink-0" />
           {t("builder.online.hiddenNote")}
         </p>
       ) : (
-        <p ref={anchorRef} className="text-muted-foreground -mt-2 text-xs">
-          {t("dialog.online.description")}
-        </p>
+        <p className="text-muted-foreground -mt-2 text-xs">{t("dialog.online.description")}</p>
       )}
       <DisabledControlsProvider disabled={readOnly || hidden}>
         <CustomerFieldOnlineControls

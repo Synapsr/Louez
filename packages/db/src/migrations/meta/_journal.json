@@ -659,6 +659,13 @@
       "when": 1793804712396,
       "tag": "0088_customer_fields_online",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "5",
+      "when": 1793804859850,
+      "tag": "0089_customer_field_width",
+      "breakpoints": true
     }
   ]
 }

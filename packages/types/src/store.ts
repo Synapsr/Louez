@@ -1,4 +1,4 @@
-import type { CustomerProfileSettings } from "./customer";
+import type { CustomerFormLayout, CustomerProfileSettings } from "./customer";
 import type { AppliedProductPromotion } from "./product-promotion";
 export interface TimeRange {
   openTime: string; // "HH:mm" e.g. "09:00"
@@ -330,6 +330,8 @@ export interface StoreSettings {
   footerNote?: string | null;
   /** Visibility of the optional native blocks of the customer record. */
   customerProfile?: CustomerProfileSettings;
+  /** Order and width of the Louez fields in the customer form layout. */
+  customerFormLayout?: CustomerFormLayout;
 }
 
 // ============================================================================

@@ -15,14 +15,10 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type {
-  CustomerFieldDefinition,
-  CustomerFieldValues,
-  ResolvedCustomerProfileSettings,
-} from "@louez/types";
+import type { CustomerFieldValues } from "@louez/types";
 import { Badge, Button } from "@louez/ui";
 import { formatCurrency } from "@louez/utils";
-import { resolveCustomerProfileSettings } from "@louez/validations";
+import { type CustomerFormLayoutItem, resolveStoreCustomerFormLayout } from "@louez/validations";
 
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
@@ -49,17 +45,21 @@ interface CustomerDetailViewProps {
   currency?: string;
   timezone?: string | null;
   storeCountry?: string;
-  definitions?: CustomerFieldDefinition[];
+  /** The customer form's layout, hidden items left out, both customer types. */
+  items?: CustomerFormLayoutItem[];
   customFields?: CustomerFieldValues;
-  profileSettings?: ResolvedCustomerProfileSettings;
   readOnly?: boolean;
   onBack?: () => void;
   onOpenReservation?: (reservation: CustomerHistoryReservation) => void;
   getReservationHref?: (reservation: CustomerHistoryReservation) => string;
 }
 
-/** A record shown without store settings (landing demos): every native field shown, optional. */
-const DEFAULT_PROFILE_SETTINGS = resolveCustomerProfileSettings(undefined);
+/** A record shown without store settings (landing demos): the default layout, no custom field. */
+const DEFAULT_ITEMS = resolveStoreCustomerFormLayout({
+  settings: null,
+  scope: "customer",
+  definitions: [],
+});
 
 export const CustomerDetailView = ({
   customer,
@@ -68,9 +68,8 @@ export const CustomerDetailView = ({
   currency = "EUR",
   timezone = null,
   storeCountry = "FR",
-  definitions = [],
+  items = DEFAULT_ITEMS,
   customFields = {},
-  profileSettings = DEFAULT_PROFILE_SETTINGS,
   readOnly = false,
   onBack,
   onOpenReservation,
@@ -201,6 +200,11 @@ export const CustomerDetailView = ({
             id: customer.id,
             customerType: customer.customerType,
             email: customer.email,
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            companyName: customer.companyName,
+            companyNumber: customer.companyNumber,
+            vatNumber: customer.vatNumber,
             phone: customer.phone,
             address: customer.address,
             city: customer.city,
@@ -209,12 +213,12 @@ export const CustomerDetailView = ({
             birthDate: customer.birthDate ?? null,
             acquisitionSource: customer.acquisitionSource ?? null,
             acquisitionSourceDetail: customer.acquisitionSourceDetail ?? null,
-            createdVia: customer.createdVia ?? null,
             socialLinks: customer.socialLinks ?? null,
+            notes: customer.notes,
+            createdVia: customer.createdVia ?? null,
           }}
-          definitions={definitions}
+          items={items}
           customFields={customFields}
-          profileSettings={profileSettings}
           storeCountry={storeCountry}
           locale={formatLocale}
           readOnly={readOnly}

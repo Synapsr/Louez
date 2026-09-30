@@ -157,6 +157,51 @@ export const CUSTOMER_ACQUISITION_SOURCES_WITH_DETAIL = [
   "partner",
 ] as const satisfies readonly CustomerAcquisitionSource[];
 
+// ============================================================================
+// Customer form layout (one ordered list, no sections)
+// ============================================================================
+
+/** How much of a form row a field takes: the whole row, or half of it next to another. */
+export const CUSTOMER_FIELD_WIDTHS = ["full", "half"] as const;
+
+export type CustomerFieldWidth = (typeof CUSTOMER_FIELD_WIDTHS)[number];
+
+/**
+ * The Louez fields of the customer record, in their default order. The first
+ * eight are locked (always on the record, only moved and resized); the
+ * company ones only concern a business customer; the last three are the
+ * editable profile fields (`CUSTOMER_PROFILE_FIELD_KEYS`). `address` is one
+ * item for the address line, postal code, city and country.
+ */
+export const CUSTOMER_FORM_BUILT_IN_KEYS = [
+  "firstName",
+  "lastName",
+  "email",
+  "phone",
+  "address",
+  "companyName",
+  "companyNumber",
+  "vatNumber",
+  "birthDate",
+  "acquisitionSource",
+  "socialLinks",
+] as const;
+
+export type CustomerFormBuiltInKey = (typeof CUSTOMER_FORM_BUILT_IN_KEYS)[number];
+
+/** Where one Louez field sits: its position shares one numeric space with the custom fields'. */
+export interface CustomerFormLayoutEntry {
+  position: number;
+  width: CustomerFieldWidth;
+}
+
+/**
+ * `stores.settings.customerFormLayout` as stored: the Louez fields' order and
+ * width. A missing entry takes its default place; read it through
+ * `resolveCustomerFormLayout` (`@louez/validations`), never directly.
+ */
+export type CustomerFormLayout = Partial<Record<CustomerFormBuiltInKey, CustomerFormLayoutEntry>>;
+
 export interface CustomerFieldDefinition {
   id: string;
   key: string;
@@ -166,8 +211,14 @@ export interface CustomerFieldDefinition {
   options: string[] | null;
   unit: string | null;
   helpText: string | null;
+  /**
+   * @deprecated Sections are gone: nothing groups by it any more. Only the
+   * settings page being rebuilt still reads it; new fields get a constant.
+   */
   section: string;
+  /** Order in the customer form layout, shared with the Louez fields of the scope. */
   position: number;
+  width: CustomerFieldWidth;
   appliesTo: CustomerFieldAppliesTo;
   isRequired: boolean;
   isSensitive: boolean;

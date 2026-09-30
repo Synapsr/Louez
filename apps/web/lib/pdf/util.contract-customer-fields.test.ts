@@ -16,6 +16,7 @@ const definition = (
   helpText: null,
   section: "Identité",
   position: 0,
+  width: "half",
   appliesTo: "all",
   isRequired: false,
   isSensitive: false,

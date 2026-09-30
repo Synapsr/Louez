@@ -3184,8 +3184,6 @@
         "description": "この操作は元に戻せません。顧客は完全に削除されます。"
       },
       "form": {
-        "personalInfo": "個人情報",
-        "personalInfoDescription": "お客様の基本情報",
         "businessCustomer": "法人のお客様",
         "businessCustomerDescription": "この顧客が会社を代表しているかどうかを確認する",
         "companyName": "会社名",
@@ -3205,8 +3203,6 @@
         "emailPlaceholder": "john.doe@example.com",
         "phone": "電話",
         "phonePlaceholder": "+1 234 567 8900",
-        "addressSection": "住所",
-        "addressDescription": "顧客の住所 (オプション)",
         "address": "住所",
         "addressPlaceholder": "123 メインストリート",
         "postalCode": "郵便番号",
@@ -3221,9 +3217,6 @@
         "save": "保存",
         "createCustomer": "顧客の作成",
         "customerKind": "顧客タイプ",
-        "moreInfo": "追加情報",
-        "moreInfoDescription": "任意です。後から顧客情報のページで入力することもできます。",
-        "profileSection": "プロフィール",
         "birthDate": "生年月日",
         "ageYears": "{age, plural, other {#歳}}",
         "acquisitionSource": "当店を知ったきっかけ",
@@ -3232,8 +3225,7 @@
         "acquisitionSourceDetailPlaceholder": "観光案内所、展示会、提携ホテル…",
         "socialSection": "SNS・リンク",
         "customizeFields": "フィールドをカスタマイズ",
-        "fieldCount": "{count, plural, other {#件のフィールド}}",
-        "filledCount": "{count, plural, other {#件入力済み}}"
+        "fieldsTitle": "顧客情報"
       },
       "countries": {
         "FR": "フランス",
@@ -3304,20 +3296,17 @@
         "edit": "編集",
         "moreActions": "その他の操作",
         "createdVia": "作成経路: {channel}",
-        "contactCard": "連絡先",
-        "profileCard": "プロフィール",
         "bornOn": "{date}生まれ",
         "source": "流入経路",
         "lastRental": "最終レンタル",
         "never": "なし",
-        "noAddress": "住所未登録",
-        "noPhone": "電話番号未登録",
-        "emptyProfile": "プロフィール情報はありません。",
         "editSection": "編集: {section}",
         "editSectionDescription": "この情報のみが変更されます。",
         "sectionSaved": "変更を保存しました",
         "save": "保存",
-        "cancel": "キャンセル"
+        "cancel": "キャンセル",
+        "infoCard": "情報",
+        "emptyInfo": "まだ何も入力されていません。"
       },
       "pagination": {
         "showing": "{from}–{to}件 / 全{total}件",
@@ -6310,34 +6299,19 @@
       "readOnlyNotice": "読み取り専用: 所有者と管理者のみがこのストアの設定を変更できます。",
       "customerFields": {
         "title": "顧客情報",
-        "description": "氏名と連絡先以外に、顧客について記録する情報を選べます。",
-        "limits": "有効なフィールド {count} / {max}",
         "native": {
           "birthDate": "生年月日",
-          "birthDateHelp": "顧客の年齢も表示されます。",
           "acquisitionSource": "顧客の流入経路",
-          "acquisitionSourceHelp": "顧客が当店を知ったきっかけ。",
-          "socialLinks": "SNS・リンク",
-          "socialLinksHelp": "Instagram、ウェブサイト、WhatsApp…"
-        },
-        "sections": {
-          "defaultName": "追加情報",
-          "rename": "セクション名を変更",
-          "moveUp": "上へ移動",
-          "moveDown": "下へ移動",
-          "online": "オンライン予約…"
+          "socialLinks": "SNS・リンク"
         },
         "field": {
           "add": "フィールドを追加",
           "delete": "完全に削除",
-          "moveTo": "移動先",
           "drag": "並べ替え"
         },
         "badges": {
           "required": "必須",
           "sensitive": "機密",
-          "business": "法人",
-          "individual": "個人",
           "online": {
             "optional": "オンライン · 任意",
             "required": "オンライン · 必須"
@@ -6385,9 +6359,7 @@
             "contractItemHelp": "レンタル品の行の下に記載されます。"
           },
           "labelPlaceholderItem": "靴のサイズ",
-          "scope": "記録単位",
           "scopes": {
-            "customer": "顧客情報に記録",
             "customerDescription": "顧客ごとに1つの値：免許証、身分証明書…",
             "item": "レンタル品ごと",
             "itemDescription": "人または機材ごとに1つの値：身長、靴のサイズ…"
@@ -6413,7 +6385,6 @@
           "identityDocument": {
             "name": "身分証明書",
             "description": "機材の引き渡し時に提示を求める本人確認書類。",
-            "section": "本人確認",
             "fields": {
               "id_document_type": {
                 "label": "書類の種類",
@@ -6436,7 +6407,6 @@
           "emergencyContact": {
             "name": "緊急連絡先",
             "description": "レンタル中に問題が起きた際の連絡先。",
-            "section": "緊急連絡先",
             "fields": {
               "emergency_contact_name": {
                 "label": "氏名"
@@ -6459,7 +6429,6 @@
           "businessContacts": {
             "name": "法人顧客",
             "description": "経理担当者と、書類に記載する参照番号。",
-            "section": "請求",
             "fields": {
               "accounting_contact_name": {
                 "label": "経理担当者"
@@ -6475,7 +6444,6 @@
           "brazil": {
             "name": "ブラジル",
             "description": "CPF または CNPJ（番号の検証付き）と RG。",
-            "section": "本人確認",
             "fields": {
               "br_cpf_cnpj": {
                 "label": "CPF / CNPJ"
@@ -6491,7 +6459,6 @@
           "spain": {
             "name": "スペイン",
             "description": "DNI または NIE（チェック文字の検証付き）。",
-            "section": "本人確認",
             "fields": {
               "es_dni_nie": {
                 "label": "DNI / NIE"
@@ -6501,7 +6468,6 @@
           "italy": {
             "name": "イタリア",
             "description": "Codice fiscale（チェック文字の検証付き）。",
-            "section": "本人確認",
             "fields": {
               "it_codice_fiscale": {
                 "label": "Codice fiscale"
@@ -6511,7 +6477,6 @@
           "portugal": {
             "name": "ポルトガル",
             "description": "NIF（チェックディジットの検証付き）。",
-            "section": "本人確認",
             "fields": {
               "pt_nif": {
                 "label": "NIF"
@@ -6521,7 +6486,6 @@
           "vehicles": {
             "name": "車両・スクーター",
             "description": "運転免許証の情報を契約書に記載します。",
-            "section": "運転免許証",
             "fields": {
               "driving_license_number": {
                 "label": "免許証番号"
@@ -6537,7 +6501,6 @@
           "ski": {
             "name": "スキー・山岳",
             "description": "顧客の来店前に用具を準備するための体格情報。",
-            "section": "体格",
             "fields": {
               "height_cm": {
                 "label": "身長"
@@ -6562,7 +6525,6 @@
           "bikes": {
             "name": "自転車",
             "description": "顧客の来店前に自転車を調整するための情報。",
-            "section": "自転車の調整",
             "fields": {
               "height_cm": {
                 "label": "身長"
@@ -6578,7 +6540,6 @@
           "boating": {
             "name": "ボート・マリン",
             "description": "船舶免許の情報を契約書に記載します。",
-            "section": "船舶免許",
             "fields": {
               "boat_license_number": {
                 "label": "船舶免許番号"
@@ -6620,8 +6581,6 @@
         "toasts": {
           "created": "フィールドを追加しました",
           "deleted": "フィールドを削除しました",
-          "sectionRenamed": "セクション名を変更しました",
-          "sectionOnlineSaved": "設定をセクションに適用しました",
           "hidden": "フィールドを非表示にしました"
         },
         "online": {
@@ -6671,66 +6630,33 @@
           },
           "customerEditable": "顧客がアカウントから編集できる",
           "customerEditableHint": "顧客は自分の顧客アカウントで確認し、更新できます。",
-          "customerEditableNeverHint": "フィールドで顧客に入力を求めると利用できます。",
-          "targetsSummaryLabel": "適用範囲：",
-          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+          "customerEditableNeverHint": "フィールドで顧客に入力を求めると利用できます。"
         },
         "sectionOnline": {
-          "title": "オンライン予約",
-          "description": "{count, plural, other {「{section}」セクションの#件のフィールドに適用されます。}}",
           "adoptedTitle": "どの商品が対象ですか？",
           "adoptedDescription": "「{section}」のフィールドはレンタル品ごとに記録されます。対象の商品を選び、必要に応じて顧客に入力を求めてください。",
-          "mixed": "このセクションのフィールドは設定がそれぞれ異なります。すべてこの設定に統一されます。",
           "apply": "適用",
-          "cancel": "キャンセル",
-          "later": "後で",
-          "close": "閉じる"
+          "later": "後で"
         },
         "builder": {
           "templates": {
-            "button": "テンプレート",
             "all": "すべてのテンプレートを見る"
           },
-          "views": {
-            "label": "表示するフォーム",
-            "team": "顧客情報 · チーム",
-            "client": "オンライン予約 · 顧客",
-            "teamShort": "顧客情報",
-            "clientShort": "オンライン予約"
-          },
           "locked": {
-            "title": "連絡先",
-            "note": "Louez 標準フィールドで、常に表示されます",
             "addressPlaceholder": "番地、郵便番号、市区町村、国",
-            "company": "法人の場合：会社名、会社番号、VAT番号。"
-          },
-          "profile": {
-            "title": "プロフィール"
-          },
-          "sections": {
-            "newName": "新しいセクション",
-            "defaultItemName": "詳細",
-            "add": "新しいセクション",
-            "delete": "セクションを削除",
-            "empty": "空のセクションです。最初のフィールドを追加してください。",
-            "renameHint": "クリックして名前を変更",
-            "actions": "「{name}」セクションの操作"
+            "label": "基本フィールド",
+            "sheetNote": "基本フィールド：常に顧客情報に表示されます。変更できるのは位置と幅のみです。"
           },
           "field": {
             "select": "「{label}」を編集",
             "actions": "「{label}」フィールドの操作",
-            "deleteLabel": "「{label}」を削除",
             "draftBadge": "新規",
             "draftPlaceholder": "新しいフィールド"
           },
           "item": {
-            "title": "レンタル品ごと — 予約に記録",
-            "description": "レンタル品ごとに入力します。自転車が2台なら2回です。",
-            "participantLocked": "常に表示されます",
             "empty": "身長、靴のサイズ、レベル… 各レンタル品の準備に必要な情報を追加してください。"
           },
           "inspector": {
-            "label": "フィールドの設定",
             "newTitle": "新しいフィールド",
             "add": "追加",
             "cancel": "キャンセル",
@@ -6748,12 +6674,10 @@
               "es_dni_nie": "DNI / NIE（スペイン）",
               "it_codice_fiscale": "Codice fiscale（イタリア）",
               "pt_nif": "NIF（ポルトガル）"
-            },
-            "type": "タイプ"
+            }
           },
           "picker": {
             "title": "フィールドを追加",
-            "description": "入力する場所を選び、次にタイプを選んでください。名前はそのすぐ後に付けます。",
             "suggested": "おすすめのテンプレート",
             "templates": "テンプレート",
             "examples": {
@@ -6781,23 +6705,8 @@
               }
             }
           },
-          "client": {
-            "ask": "顧客にフィールドの入力を求める",
-            "askTitle": "顧客に入力を求める",
-            "askDescription": "ワンクリックで、予約時にこのフィールドが任意項目として表示されます。",
-            "askButton": "依頼",
-            "askField": "顧客に「{label}」の入力を求める",
-            "asked": "依頼済み",
-            "askEmpty": "すべてのフィールドで、すでに顧客に入力を求めています。",
-            "lockedNote": "Louez が常に入力を求めます"
-          },
-          "empty": {
-            "title": "独自のフィールドを追加しましょう",
-            "description": "身分証明書、免許証、身長… ストアに合ったテンプレートから始めるか、フィールドを作成してください。"
-          },
           "native": {
-            "fixed": "Louez 標準フィールド：名前とタイプは変更できません。",
-            "socialLinksType": "リンク"
+            "fixed": "Louez 標準フィールド：名前とタイプは変更できません。"
           },
           "visibility": {
             "shown": {
@@ -6815,6 +6724,30 @@
           },
           "online": {
             "hiddenNote": "非表示：顧客には入力を求めません。表示すると、予約時に顧客へ入力を求めることができます。"
+          },
+          "pageDescription": "顧客情報のフィールドを、フォームでの表示どおりに配置しています。",
+          "preview": {
+            "open": "顧客向けプレビュー",
+            "description": "顧客がオンライン予約の際に入力する内容です。"
+          },
+          "layout": {
+            "title": "レイアウト"
+          },
+          "width": {
+            "label": "幅",
+            "full": "全幅",
+            "half": "半幅",
+            "fullLabel": "全幅",
+            "halfLabel": "半幅",
+            "hint": "半幅のフィールドは2つで1行を分け合います。",
+            "fixed": "このフィールドは常に1行全体を使います。"
+          },
+          "record": {
+            "customer": "顧客情報",
+            "item": "予約"
+          },
+          "toasts": {
+            "applied": "設定を適用しました"
           }
         }
       }

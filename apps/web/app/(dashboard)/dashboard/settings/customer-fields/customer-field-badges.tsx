@@ -5,62 +5,50 @@ import { useTranslations } from "next-intl";
 
 import { Badge } from "@louez/ui";
 
-import { CustomerFieldTargetSummary } from "./customer-field-target-summary";
-import type { CanvasFieldFlags } from "./util.customer-field-canvas";
+import type { CustomerFormItemFlags } from "./util.customer-form-builder";
 
 interface CustomerFieldBadgesProps {
-  flags: CanvasFieldFlags;
+  flags: CustomerFormItemFlags | null;
 }
 
 /**
- * Under a field of the canvas, only what changes how it behaves: a Louez
- * field, hidden, required, sensitive, asked online, limited to a customer
- * type or to some products. Nothing at all for a plain store field.
+ * Under an item, only what changes how it behaves: hidden, required by the
+ * team, sensitive, asked online, or limited to no product at all. Nothing
+ * for a plain field.
  */
 export const CustomerFieldBadges = ({ flags }: CustomerFieldBadgesProps) => {
   const t = useTranslations("dashboard.settings.customerFields.badges");
-  const { targeting } = flags;
-  const badges = [
-    flags.louez,
-    flags.hidden,
-    flags.required,
-    flags.sensitive,
-    flags.collectMode !== "never",
-    flags.appliesTo !== "all",
-    targeting.kind === "empty" || targeting.kind === "targets",
-  ];
-  if (!badges.some(Boolean)) return null;
+  if (!flags) return null;
+  const { hidden, required, sensitive, collectMode, noTarget } = flags;
+  if (!hidden && !required && !sensitive && collectMode === "never" && !noTarget) return null;
 
   return (
-    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
-      {flags.louez && <Badge variant="outline">{t("louez")}</Badge>}
-      {flags.hidden && (
+    <div className="flex min-w-0 flex-wrap items-center gap-1">
+      {hidden && (
         <Badge variant="secondary">
           <EyeOff aria-hidden />
           {t("hidden")}
         </Badge>
       )}
-      {flags.required && <Badge variant="secondary">{t("required")}</Badge>}
-      {flags.sensitive && (
+      {required && <Badge variant="secondary">{t("required")}</Badge>}
+      {collectMode !== "never" && (
+        <Badge variant="info">
+          <Globe aria-hidden />
+          {t(`online.${collectMode}`)}
+        </Badge>
+      )}
+      {sensitive && (
         <Badge variant="secondary">
           <Lock aria-hidden />
           {t("sensitive")}
         </Badge>
       )}
-      {flags.collectMode !== "never" && (
-        <Badge variant="info">
-          <Globe aria-hidden />
-          {t(`online.${flags.collectMode}`)}
-        </Badge>
-      )}
-      {flags.appliesTo !== "all" && <Badge variant="outline">{t(flags.appliesTo)}</Badge>}
-      {targeting.kind === "empty" && (
+      {noTarget && (
         <Badge variant="warning">
           <TriangleAlert aria-hidden />
           {t("noTarget")}
         </Badge>
       )}
-      {targeting.kind === "targets" && <CustomerFieldTargetSummary targets={targeting.targets} />}
     </div>
   );
 };

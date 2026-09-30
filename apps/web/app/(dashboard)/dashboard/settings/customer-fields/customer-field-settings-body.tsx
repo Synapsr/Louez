@@ -1,6 +1,6 @@
 "use client";
 
-import type { Ref } from "react";
+import type { ReactNode } from "react";
 
 import { useTranslations } from "next-intl";
 
@@ -22,7 +22,7 @@ import type {
 } from "./util.customer-fields-builder";
 
 interface CustomerFieldSettingsBodyProps {
-  /** Prefix of the control ids, unique per inspector. */
+  /** Prefix of the control ids, unique per Sheet. */
   idPrefix: string;
   scope: CustomerFieldScope;
   type: CustomerFieldType;
@@ -32,18 +32,18 @@ interface CustomerFieldSettingsBodyProps {
   /** `live` for a field being created, `commit` (blur or Enter) for a saved one. */
   textMode: "live" | "commit";
   autoFocusLabel?: boolean;
+  /** "Mise en page", right after what the field is. */
+  layout: ReactNode;
   /** Returns false when a text is refused, so the saved one comes back. */
   onChange: (key: CustomerFieldSettingKey, changes: CustomerFieldSettingsChanges) => boolean | void;
   errorFor: (key: CustomerFieldSettingKey) => string | undefined;
-  /** Put on the top of "Réservation en ligne", for the client view to scroll to. */
-  onlineRef?: Ref<HTMLParagraphElement>;
 }
 
 /**
  * Every setting of a store field, in the order every editable field shares:
- * what it is, whether the team meets it and must fill it, what the checkout
- * asks, then the rare switches, folded. The same body for a field being
- * created and a saved one; only how changes travel differs.
+ * what it is, where it sits, whether the team meets it and must fill it,
+ * what the checkout asks, then the rare switches, folded. The same body for
+ * a field being created and a saved one; only how changes travel differs.
  */
 export const CustomerFieldSettingsBody = ({
   idPrefix,
@@ -53,13 +53,13 @@ export const CustomerFieldSettingsBody = ({
   shown,
   textMode,
   autoFocusLabel = false,
+  layout,
   onChange,
   errorFor,
-  onlineRef,
 }: CustomerFieldSettingsBodyProps) => {
   const t = useTranslations("dashboard.settings.customerFields");
   const isCustomer = scope === "customer";
-  // A few help lines read differently once the value lives on a rented unit.
+  // A few help lines read differently once the value lives on a rented item.
   const flagHint = (flag: "sensitive" | "contract") =>
     t(`dialog.flags.${flag}${isCustomer ? "" : "Item"}Help`);
 
@@ -75,6 +75,8 @@ export const CustomerFieldSettingsBody = ({
         onChange={onChange}
         errorFor={errorFor}
       />
+
+      {layout}
 
       <CustomerFieldRecordGroup
         idPrefix={idPrefix}
@@ -94,7 +96,6 @@ export const CustomerFieldSettingsBody = ({
         hidden={shown === false}
         error={errorFor("online")}
         onChange={(next) => onChange("online", next)}
-        anchorRef={onlineRef}
       />
 
       <CustomerFieldAdvancedGroup title={t("builder.inspector.advanced")}>

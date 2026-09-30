@@ -7,6 +7,7 @@ export * from "./catalog";
 export * from "./customer";
 export * from "./customer-fields";
 export * from "./customer-fields-online";
+export * from "./customer-form-layout";
 export * from "./customer-profile-fields";
 export * from "./identity-formats";
 export * from "./image";

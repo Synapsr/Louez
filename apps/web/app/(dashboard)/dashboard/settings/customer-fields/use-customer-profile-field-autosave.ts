@@ -18,7 +18,7 @@ export type CustomerProfileFieldSettingKey = "shown" | "required" | "online";
 
 /**
  * Saves a Louez profile field as the owner edits it, like a store field: each
- * change goes out on its own, the canvas shows it at once, and a refused one
+ * change goes out on its own, the row shows it at once, and a refused one
  * is put back with its reason under the control that made it. Mounted per
  * selected field, so the status starts over when another one is picked.
  */

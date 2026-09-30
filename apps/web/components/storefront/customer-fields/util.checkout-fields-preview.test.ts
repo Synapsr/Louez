@@ -18,6 +18,7 @@ const definition = (
   helpText: null,
   section: "Infos",
   position: 0,
+  width: "half",
   appliesTo: "all",
   isRequired: false,
   isSensitive: false,
@@ -114,6 +115,35 @@ describe("resolvePreviewCheckoutFields: native profile fields", () => {
         { key: "birthDate", collectMode: "required" },
         { key: "acquisitionSource", collectMode: "optional" },
       ],
+    );
+  });
+});
+
+describe("resolvePreviewCheckoutFields: layout", () => {
+  it("lays the contact step out as the owner did: native and custom interleaved", () => {
+    const profileSettings = resolveCustomerProfileSettings({
+      birthDate: { visibility: "optional", collectMode: "optional" },
+    });
+    const resolved = resolvePreviewCheckoutFields(
+      [idNumber, definition({ id: "late", position: 9, width: "full" })],
+      products,
+      null,
+      profileSettings,
+      { birthDate: { position: 5, width: "full" } },
+    );
+    assert.deepEqual(resolved.customerLayout, [
+      { kind: "custom", key: "id-number", width: "half" },
+      { kind: "builtin", key: "birthDate", width: "full" },
+      { kind: "custom", key: "late", width: "full" },
+    ]);
+  });
+
+  it("gives a unit card's fields in position order", () => {
+    const later = definition({ id: "later", scope: "item", position: 5 });
+    const sooner = definition({ id: "sooner", scope: "item", position: 1 });
+    assert.deepEqual(
+      ids(resolvePreviewCheckoutFields([later, sooner], [], null, noProfile).itemFields),
+      ["sooner", "later"],
     );
   });
 });

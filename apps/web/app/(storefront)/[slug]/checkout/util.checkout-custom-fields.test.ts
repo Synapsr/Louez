@@ -25,8 +25,8 @@ const field = (overrides: Partial<CustomerFieldPublic> & { id: string }): Custom
   options: null,
   unit: null,
   helpText: null,
-  section: "Infos",
   position: 0,
+  width: "half",
   scope: "customer",
   collectMode: "optional",
   isSensitive: false,
@@ -61,6 +61,7 @@ const helmetLine = {
 const plan: CheckoutFieldsPlan = {
   profileFields: [],
   customerFields: [idNumber],
+  customerLayout: [{ kind: "custom", key: "id-number", width: "half" }],
   lines: [
     { ...bikeLine, itemFields: [height, notes] },
     { ...helmetLine, itemFields: [] },
@@ -73,6 +74,10 @@ describe("buildCheckoutFieldsPlan", () => {
       {
         profileFields: [{ key: "birthDate", collectMode: "required" }],
         customerFields: [idNumber],
+        customerLayout: [
+          { kind: "custom", key: "id-number", width: "half" },
+          { kind: "builtin", key: "birthDate", width: "full" },
+        ],
         lines: [
           { productId: "bike", quantity: 2, itemFields: [height] },
           { productId: "helmet", quantity: 1, itemFields: [] },
@@ -89,6 +94,11 @@ describe("buildCheckoutFieldsPlan", () => {
     );
     assert.equal(hasCheckoutDetailsStep(built), true);
     assert.deepEqual(built.profileFields, [{ key: "birthDate", collectMode: "required" }]);
+    // The contact step's order comes from the owner's layout, as answered.
+    assert.deepEqual(
+      built.customerLayout.map((item) => item.key),
+      ["id-number", "birthDate"],
+    );
   });
 
   it("asks nothing of a line whose answer is for another product (cart changed meanwhile)", () => {
@@ -96,6 +106,7 @@ describe("buildCheckoutFieldsPlan", () => {
       {
         profileFields: [],
         customerFields: [],
+        customerLayout: [],
         lines: [{ productId: "helmet", quantity: 1, itemFields: [height] }],
       },
       [bikeLine],
@@ -108,6 +119,7 @@ describe("buildCheckoutFieldsPlan", () => {
     assert.deepEqual(buildCheckoutFieldsPlan(undefined, [bikeLine]), {
       profileFields: [],
       customerFields: [],
+      customerLayout: [],
       lines: [],
     });
   });
@@ -170,7 +182,7 @@ describe("getCheckoutFieldIssues", () => {
     assert.deepEqual(
       getCheckoutFieldIssues(
         { profileFields: EMPTY_CUSTOMER_PROFILE_FORM_VALUES, customerFields: {}, itemDetails: {} },
-        { profileFields: [], customerFields: [], lines: [] },
+        { profileFields: [], customerFields: [], customerLayout: [], lines: [] },
       ),
       [],
     );

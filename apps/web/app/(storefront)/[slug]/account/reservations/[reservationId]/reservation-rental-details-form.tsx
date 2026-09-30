@@ -34,9 +34,6 @@ interface ReservationRentalDetailsFormProps {
   onDone: () => void;
 }
 
-const isWideField = (type: RentalDetailsItem["fields"][number]["type"]) =>
-  type === "textarea" || type === "checkbox";
-
 /**
  * Edits "Détails de la location" before the rental starts, with the checkout's
  * own unit cards. What the store recorded and the customer may not change
@@ -123,7 +120,7 @@ export const ReservationRentalDetailsForm = ({
                       {editable.map((field) => (
                         <div
                           key={field.id}
-                          className={cn(isWideField(field.type) && "sm:col-span-2")}
+                          className={cn("min-w-0", field.width === "full" && "sm:col-span-2")}
                         >
                           <form.AppField name={toRentalUnitValueName(unitKey, field.id)}>
                             {() => <CustomerFieldFormInput field={field} />}

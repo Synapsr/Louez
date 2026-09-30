@@ -3,20 +3,14 @@ import { describe, test } from "node:test";
 
 import type { CustomerFieldDefinition } from "@louez/types";
 
+import { DEFAULT_ONLINE_SETTINGS } from "./util.customer-field-online";
 import {
-  applyReorder,
-  applySectionRename,
-  defaultSectionFor,
+  buildDraftValues,
   diffOnlineSettings,
-  findCreatedField,
-  listAskableFields,
-  listScopeSections,
-  moveFieldPayload,
-  moveSectionPayload,
-  nextSectionName,
+  findAdoptedFields,
   patchDefinition,
-  reorderSectionPayload,
   revertPatch,
+  toDraftPreview,
   toFieldChange,
   toSettingsValues,
 } from "./util.customer-fields-builder";
@@ -33,8 +27,9 @@ const field = (
   options: null,
   unit: null,
   helpText: null,
-  section: "Identité",
+  section: "",
   position: 1,
+  width: "half",
   appliesTo: "all",
   isRequired: false,
   isSensitive: false,
@@ -49,113 +44,6 @@ const field = (
   customerEditable: false,
   targets: [],
   ...overrides,
-});
-
-// The demo store: two customer sections, one per-unit section, one hidden field.
-const fields = [
-  field("cpf", { section: "Identité", position: 1 }),
-  field("size", { section: "Vélo", position: 2, scope: "item", type: "number" }),
-  field("saddle", { section: "Vélo", position: 3, scope: "item", type: "number" }),
-  field("idNumber", { section: "Identité", position: 4 }),
-  field("contact", { section: "Secours", position: 5 }),
-  field("old", { section: "Identité", position: 6, isActive: false }),
-];
-
-describe("listScopeSections", () => {
-  test("splits the scopes and keeps hidden fields in their place", () => {
-    assert.deepEqual(
-      listScopeSections(fields, "customer").map((section) => [
-        section.name,
-        section.fields.map((entry) => entry.id),
-      ]),
-      [
-        ["Identité", ["cpf", "idNumber", "old"]],
-        ["Secours", ["contact"]],
-      ],
-    );
-    assert.deepEqual(
-      listScopeSections(fields, "item").map((section) => section.name),
-      ["Vélo"],
-    );
-  });
-
-  test("appends the sections created on the page, until one holds a saved field", () => {
-    const local = [
-      { key: "a", scope: "customer" as const, name: "Permis" },
-      { key: "b", scope: "customer" as const, name: "Secours" },
-      { key: "c", scope: "item" as const, name: "Ski" },
-    ];
-    const sections = listScopeSections(fields, "customer", local);
-    assert.deepEqual(
-      sections.map((section) => [section.name, section.localKey]),
-      [
-        ["Identité", null],
-        ["Secours", null],
-        ["Permis", "a"],
-      ],
-    );
-  });
-});
-
-describe("reorder payloads", () => {
-  test("a drop inside a section keeps the other scope after the customer record", () => {
-    const [cpf, , , idNumber, , old] = fields;
-    assert.deepEqual(reorderSectionPayload(fields, "customer", "Identité", [idNumber, old, cpf]), [
-      { id: "idNumber", section: "Identité" },
-      { id: "old", section: "Identité" },
-      { id: "cpf", section: "Identité" },
-      { id: "contact", section: "Secours" },
-      { id: "size", section: "Vélo" },
-      { id: "saddle", section: "Vélo" },
-    ]);
-  });
-
-  test("moving a field only looks at its own scope's sections", () => {
-    assert.deepEqual(moveFieldPayload(fields, { id: "cpf", scope: "customer" }, "Secours"), [
-      { id: "idNumber", section: "Identité" },
-      { id: "old", section: "Identité" },
-      { id: "contact", section: "Secours" },
-      { id: "cpf", section: "Secours" },
-      { id: "size", section: "Vélo" },
-      { id: "saddle", section: "Vélo" },
-    ]);
-  });
-
-  test("a section moves one step, and stays put past the ends", () => {
-    assert.deepEqual(
-      moveSectionPayload(fields, "customer", "Secours", -1).map((entry) => entry.id),
-      ["contact", "cpf", "idNumber", "old", "size", "saddle"],
-    );
-    assert.deepEqual(
-      moveSectionPayload(fields, "customer", "Identité", -1).map((entry) => entry.id),
-      ["cpf", "idNumber", "old", "contact", "size", "saddle"],
-    );
-  });
-
-  test("applyReorder places every listed field and leaves the others", () => {
-    const next = applyReorder(fields, [
-      { id: "contact", section: "Identité" },
-      { id: "cpf", section: "Identité" },
-    ]);
-    assert.deepEqual(
-      next
-        .filter((entry) => ["contact", "cpf", "old"].includes(entry.id))
-        .map((entry) => [entry.id, entry.section, entry.position]),
-      [
-        ["cpf", "Identité", 2],
-        ["contact", "Identité", 1],
-        ["old", "Identité", 6],
-      ],
-    );
-  });
-
-  test("a renamed section carries its hidden fields along", () => {
-    const renamed = applySectionRename(fields, "Identité", "Pièces");
-    assert.deepEqual(
-      renamed.filter((entry) => entry.section === "Pièces").map((entry) => entry.id),
-      ["cpf", "idNumber", "old"],
-    );
-  });
 });
 
 describe("patchDefinition / revertPatch", () => {
@@ -269,48 +157,54 @@ describe("toSettingsValues", () => {
   });
 });
 
-describe("section names", () => {
-  test("a new section never takes an existing name", () => {
-    assert.equal(nextSectionName("Nouvelle section", ["Identité"]), "Nouvelle section");
-    assert.equal(
-      nextSectionName("Nouvelle section", ["Nouvelle section", "Nouvelle section 2"]),
-      "Nouvelle section 3",
-    );
+describe("drafts", () => {
+  test("a new field takes its type's width: half, a long text the whole row", () => {
+    const online = DEFAULT_ONLINE_SETTINGS;
+    assert.equal(buildDraftValues({ type: "text", scope: "customer", online }).width, "half");
+    assert.equal(buildDraftValues({ type: "textarea", scope: "item", online }).width, "full");
   });
 
-  test("a field added from the header goes to the last section of its scope", () => {
-    assert.equal(
-      defaultSectionFor([{ name: "Identité" }, { name: "Secours" }], "Infos"),
-      "Secours",
-    );
-    assert.equal(defaultSectionFor([], "Infos"), "Infos");
+  test("starts blank, off, with the online settings given", () => {
+    const values = buildDraftValues({
+      type: "number",
+      scope: "item",
+      online: { ...DEFAULT_ONLINE_SETTINGS, collectMode: "optional" },
+    });
+    assert.equal(values.label, "");
+    assert.equal(values.isRequired, false);
+    assert.equal(values.collectMode, "optional");
+    assert.equal(values.scope, "item");
+  });
+
+  test("its row shows a placeholder until it is named", () => {
+    const values = buildDraftValues({
+      type: "number",
+      scope: "item",
+      online: DEFAULT_ONLINE_SETTINGS,
+    });
+    assert.equal(toDraftPreview(values, "Nouveau champ").label, "Nouveau champ");
+    assert.deepEqual(toDraftPreview({ ...values, label: " Taille ", unit: " cm " }, "x"), {
+      label: "Taille",
+      type: "number",
+      unit: "cm",
+      helpText: null,
+    });
   });
 });
 
-describe("findCreatedField", () => {
-  test("finds the one new id", () => {
-    assert.equal(findCreatedField(fields, [...fields, field("new")])?.id, "new");
-    assert.equal(findCreatedField(fields, fields), null);
-  });
-});
-
-describe("listAskableFields", () => {
-  test("lists what the checkout does not ask, per scope, keeping those just asked", () => {
-    const withAsked = fields.map((entry) =>
-      entry.id === "idNumber" ? { ...entry, collectMode: "optional" as const } : entry,
-    );
-    const askable = listAskableFields(withAsked);
+describe("findAdoptedFields", () => {
+  test("only the template's new fields, not the ones the store already had", () => {
+    const before = [field("height", { templateKey: "bikes" }), field("cpf")];
+    const after = [
+      ...before,
+      field("weight", { templateKey: "ski" }),
+      field("level", { templateKey: "ski" }),
+      field("other"),
+    ];
     assert.deepEqual(
-      askable.customer.map((entry) => entry.id),
-      ["cpf", "contact"],
+      findAdoptedFields(before, after, "ski").map((entry) => entry.id),
+      ["weight", "level"],
     );
-    assert.deepEqual(
-      askable.item.map((entry) => entry.id),
-      ["size", "saddle"],
-    );
-    assert.deepEqual(
-      listAskableFields(withAsked, new Set(["idNumber"])).customer.map((entry) => entry.id),
-      ["cpf", "idNumber", "contact"],
-    );
+    assert.deepEqual(findAdoptedFields(after, after, "ski"), []);
   });
 });

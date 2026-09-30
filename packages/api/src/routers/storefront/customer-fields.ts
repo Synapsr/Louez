@@ -1,22 +1,23 @@
-import { customers, db, reservations } from "@louez/db";
+import { db, reservations } from "@louez/db";
 import type { CustomerFieldValues } from "@louez/types";
 import {
   accountProfileFieldSchema,
   canCustomerEditReservationDetails,
   checkoutProfileFieldSchema,
+  customerExtraLayoutItemSchema,
   customerFieldAccountSchema,
   customerFieldPublicSchema,
   customerFieldSubmittedValuesSchema,
   customerFieldValuesSchema,
   customerProfileValuesInputSchema,
   customerProfileValuesSchema,
-  listAskedProfileFields,
   normalizeCustomerFieldValue,
-  pickCustomerProfileValues,
   reservationItemDetailSchema,
   reservationItemDetailsUpdateInputSchema,
   resolveCustomerProfileSettings,
+  resolveStoreCustomerFormLayout,
   toAccountCustomerField,
+  toCustomerExtraLayout,
   toPublicCustomerField,
   validateCustomerProfileValues,
   validateItemDetailUnits,
@@ -29,11 +30,7 @@ import { z } from "zod";
 
 import type { CustomerData, StorefrontContext } from "../../context";
 import { storefrontAuthProcedure, storefrontProcedure } from "../../procedures";
-import {
-  getCustomerFieldValues,
-  listCustomerFieldDefinitions,
-  saveCustomerFieldValues,
-} from "../../services/customer-fields";
+import { saveCustomerFieldValues } from "../../services/customer-fields";
 import {
   listReservationItemDetails,
   resolveCartCustomerFields,
@@ -41,8 +38,7 @@ import {
   type ReservationItemDetailsWrite,
 } from "../../services/customer-fields-online";
 import {
-  NO_CUSTOMER_PROFILE_VALUES,
-  getCustomerProfileValues,
+  getCustomerAccountFields,
   saveCustomerProfileValues,
 } from "../../services/customer-profile-fields";
 
@@ -78,10 +74,12 @@ const forCart = storefrontProcedure
   )
   .output(
     z.object({
-      /** Birth date, source, links: asked for this cart, in the record's order. */
+      /** Birth date, source, links: asked for this cart. */
       profileFields: z.array(checkoutProfileFieldSchema),
       customerFields: z.array(customerFieldPublicSchema),
-      /** Same order as the input lines. */
+      /** The contact step's extra block: those native and custom fields, as the owner laid them out. */
+      customerLayout: z.array(customerExtraLayoutItemSchema),
+      /** Same order as the input lines; item fields in layout order. */
       lines: z.array(
         z.object({
           productId: z.string(),
@@ -101,6 +99,14 @@ const forCart = storefrontProcedure
     return {
       profileFields: resolved.profileFields,
       customerFields: resolved.customerFields.map(toPublicCustomerField),
+      customerLayout: toCustomerExtraLayout(
+        resolveStoreCustomerFormLayout({
+          settings: context.store.settings,
+          scope: "customer",
+          definitions: resolved.customerFields,
+        }),
+        resolved,
+      ),
       lines: input.lines.map((line, index) => ({
         productId: line.productId,
         quantity: line.quantity,
@@ -115,55 +121,25 @@ const myValuesOutputSchema = z.object({
   /** Customer-scope fields the checkout may ask, whatever the cart; `customerEditable` marks the profile ones. */
   fields: z.array(customerFieldAccountSchema),
   values: customerFieldValuesSchema,
-  /** Native fields the checkout may ask, whatever the cart, in the record's order. */
+  /** Native fields the checkout may ask, whatever the cart. */
   profileFields: z.array(accountProfileFieldSchema),
   /** The customer's native values; null for a field the store does not ask. */
   profile: customerProfileValuesSchema,
+  /** The extra block of the account and checkout forms: those fields, as the owner laid them out. */
+  customerLayout: z.array(customerExtraLayoutItemSchema),
 });
-
-/** Asked native fields and the signed-in customer's values for them, the others left out. */
-const loadMyProfile = async (storeId: string, customerId: string, settings: unknown) => {
-  const profileFields = listAskedProfileFields(resolveCustomerProfileSettings(settings));
-  const profile =
-    profileFields.length > 0
-      ? pickCustomerProfileValues(
-          await getCustomerProfileValues(storeId, customerId),
-          profileFields,
-        )
-      : NO_CUSTOMER_PROFILE_VALUES;
-  return { profileFields, profile };
-};
-
-/** Asked customer-scope fields and the signed-in customer's values for them (checkout prefill, account profile). */
-const loadMyValues = async (storeId: string, customerId: string) => {
-  const customer = await db.query.customers.findFirst({
-    columns: { customerType: true },
-    where: and(eq(customers.id, customerId), eq(customers.storeId, storeId)),
-  });
-  if (!customer) {
-    throw new ORPCError("UNAUTHORIZED", { message: "errors.customerNotAuthenticated" });
-  }
-  const fields = (
-    await listCustomerFieldDefinitions(storeId, { activeOnly: true, scope: "customer" })
-  ).filter((definition) => definition.collectMode !== "never");
-  const stored = await getCustomerFieldValues(storeId, customerId);
-  const values: CustomerFieldValues = Object.fromEntries(
-    fields.flatMap((field) => {
-      const value = stored[field.id];
-      return value ? [[field.id, value]] : [];
-    }),
-  );
-  return { customerType: customer.customerType, fields, values };
-};
 
 /** Everything `myValues` answers, for the signed-in customer. */
 const loadMyAccountValues = async (context: StorefrontContext, customerId: string) => {
-  const storeId = context.store.id;
-  const [result, native] = await Promise.all([
-    loadMyValues(storeId, customerId),
-    loadMyProfile(storeId, customerId, context.store.settings?.customerProfile),
-  ]);
-  return { ...result, fields: result.fields.map(toAccountCustomerField), ...native };
+  const fields = await getCustomerAccountFields({
+    storeId: context.store.id,
+    customerId,
+    settings: context.store.settings,
+  });
+  if (!fields) {
+    throw new ORPCError("UNAUTHORIZED", { message: "errors.customerNotAuthenticated" });
+  }
+  return fields;
 };
 
 const myValues = storefrontAuthProcedure
@@ -190,11 +166,9 @@ const updateMyValues = storefrontAuthProcedure
   .handler(async ({ context, input }) => {
     const customer = requireCustomer(context);
     const storeId = context.store.id;
-    const { fields } = await loadMyValues(storeId, customer.id);
-    const editable = fields.filter((field) => field.customerEditable);
-    const editableProfile = listAskedProfileFields(
-      resolveCustomerProfileSettings(context.store.settings?.customerProfile),
-    ).filter((field) => field.customerEditable);
+    const current = await loadMyAccountValues(context, customer.id);
+    const editable = current.fields.filter((field) => field.customerEditable);
+    const editableProfile = current.profileFields.filter((field) => field.customerEditable);
 
     const values: CustomerFieldValues = {};
     const issues: CustomerFieldIssue[] = [];

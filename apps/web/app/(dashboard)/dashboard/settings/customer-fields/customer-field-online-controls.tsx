@@ -20,7 +20,7 @@ interface CustomerFieldOnlineControlsProps {
   /** Prefix of the control ids, unique per dialog. */
   idPrefix: string;
   value: CustomerFieldOnlineSettings;
-  /** The field, or one field of the section, is recorded per rented unit. */
+  /** The field, or the fields a template just added, are recorded per rented item. */
   carriesItems: boolean;
   /** "Pour" before "Demander au client", when the dialog asks which products first. */
   targetsFirst?: boolean;
@@ -31,7 +31,7 @@ interface CustomerFieldOnlineControlsProps {
 
 /**
  * "Demander au client", "Pour" and "Modifiable par le client": the same three
- * controls for a store field, a Louez field and a whole section.
+ * controls for a store field, a Louez field and a template's new fields.
  */
 export const CustomerFieldOnlineControls = ({
   idPrefix,

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 interface CustomerRecordRowProps {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
 }
 

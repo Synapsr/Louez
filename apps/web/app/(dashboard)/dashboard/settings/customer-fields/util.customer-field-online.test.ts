@@ -4,14 +4,10 @@ import { describe, test } from "node:test";
 import {
   DEFAULT_ONLINE_SETTINGS,
   buildTargetItems,
-  commonOnlineSettings,
-  defaultScopeForSection,
   describeTargeting,
-  newFieldDefaults,
   patchOnlineSettings,
   selectTargetItems,
   showsTargetChoice,
-  summarizeTargets,
   toCustomerFieldPayload,
 } from "./util.customer-field-online";
 
@@ -118,91 +114,6 @@ describe("showsTargetChoice / describeTargeting", () => {
   });
 });
 
-describe("commonOnlineSettings", () => {
-  const bikes = {
-    collectMode: "optional" as const,
-    targetMode: "products" as const,
-    targets: [
-      { type: "category" as const, id: "cat-bikes" },
-      { type: "product" as const, id: "p-vespa" },
-    ],
-    customerEditable: true,
-  };
-
-  test("fields agreeing on everything, targets in any order, are not mixed", () => {
-    const reordered = { ...bikes, targets: [...bikes.targets].reverse() };
-    assert.deepEqual(commonOnlineSettings([bikes, reordered]), { settings: bikes, mixed: false });
-  });
-
-  test("one differing field makes the section mixed, starting from the first field", () => {
-    const result = commonOnlineSettings([bikes, { ...bikes, collectMode: "required" }]);
-    assert.equal(result.mixed, true);
-    assert.deepEqual(result.settings, bikes);
-  });
-
-  test("an empty section starts from the defaults", () => {
-    assert.deepEqual(commonOnlineSettings([]), { settings: DEFAULT_ONLINE_SETTINGS, mixed: false });
-  });
-});
-
-test("defaultScopeForSection: per unit only when every field of the section is", () => {
-  assert.equal(defaultScopeForSection([]), "customer");
-  assert.equal(defaultScopeForSection([{ scope: "item" }, { scope: "item" }]), "item");
-  assert.equal(defaultScopeForSection([{ scope: "item" }, { scope: "customer" }]), "customer");
-});
-
-describe("newFieldDefaults", () => {
-  const skiTargets = [{ type: "category" as const, id: "cat-ski" }];
-  const skiField = {
-    scope: "item" as const,
-    collectMode: "optional" as const,
-    targetMode: "products" as const,
-    targets: skiTargets,
-    customerEditable: false,
-  };
-
-  test("a field joins a unanimous section with its scope and online settings", () => {
-    assert.deepEqual(newFieldDefaults([skiField, skiField]), {
-      scope: "item",
-      collectMode: "optional",
-      targetMode: "products",
-      targets: skiTargets,
-      customerEditable: false,
-    });
-  });
-
-  test("a section that disagrees gives the defaults, never one field's settings", () => {
-    assert.deepEqual(newFieldDefaults([skiField, { ...skiField, collectMode: "required" }]), {
-      scope: "item",
-      ...DEFAULT_ONLINE_SETTINGS,
-    });
-    assert.deepEqual(newFieldDefaults([]), { scope: "customer", ...DEFAULT_ONLINE_SETTINGS });
-  });
-});
-
-describe("summarizeTargets", () => {
-  test("categories first, then products, the rest counted", () => {
-    assert.deepEqual(
-      summarizeTargets(
-        [
-          { type: "product", id: "p-vespa" },
-          { type: "category", id: "cat-bikes" },
-          { type: "product", id: "p-vtt" },
-        ],
-        options,
-      ),
-      { names: ["Vélos & VAE", "Vespa 125"], more: 1 },
-    );
-  });
-
-  test("targets that no longer exist are left out", () => {
-    assert.deepEqual(summarizeTargets([{ type: "product", id: "gone" }], options), {
-      names: [],
-      more: 0,
-    });
-  });
-});
-
 describe("buildTargetItems", () => {
   test("categories count their live products; archived products only while picked", () => {
     const items = buildTargetItems(options, []);
@@ -249,7 +160,7 @@ describe("toCustomerFieldPayload", () => {
     options: ["ignored"],
     unit: "cm",
     helpText: "",
-    section: "Mensurations",
+    width: "half" as const,
     appliesTo: "business" as const,
     isRequired: true,
     isSensitive: false,

@@ -4,11 +4,13 @@ import {
   CUSTOMER_FIELD_LIMITS,
   customerFieldCreateInputSchema,
   customerFieldDefinitionSchema,
-  customerFieldReorderInputSchema,
-  customerFieldSectionOnlineInputSchema,
+  customerFieldScopeSchema,
   customerFieldTemplateAdoptInputSchema,
   customerFieldUpdateInputSchema,
+  customerFormLayoutItemSchema,
+  customerFormLayoutUpdateInputSchema,
   customerProfileFieldUpdateInputSchema,
+  defaultCustomerFieldWidth,
   fieldAppliesToProduct,
   mergeCustomerFieldOnlineSettings,
   resolvedCustomerProfileSettingsSchema,
@@ -16,7 +18,8 @@ import {
   type CustomerFieldUpdateInput,
 } from "@louez/validations";
 import { ORPCError } from "@orpc/server";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import type { CustomerFieldScope } from "@louez/types";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { dashboardProcedure, requirePermission } from "../../procedures";
@@ -33,6 +36,11 @@ import {
   removeItemFieldValues,
   replaceCustomerFieldTargets,
 } from "../../services/customer-fields-online";
+import {
+  getCustomerFormLayout,
+  nextCustomerFieldPosition,
+  updateCustomerFormLayout,
+} from "../../services/customer-form-layout";
 import {
   getCustomerProfileSettings,
   updateCustomerProfileField,
@@ -107,6 +115,9 @@ const assertWithinLimits = (
   }
 };
 
+/** Sections are gone; the column stays (no data lost) and new fields leave it blank. */
+const NO_SECTION = "";
+
 const toInsertValues = (storeId: string, input: CustomerFieldCreateInput, position: number) => ({
   storeId,
   key: toFieldKey(input),
@@ -116,8 +127,9 @@ const toInsertValues = (storeId: string, input: CustomerFieldCreateInput, positi
   options: input.type === "select" ? (input.options ?? null) : null,
   unit: input.type === "number" ? input.unit || null : null,
   helpText: input.helpText || null,
-  section: input.section,
+  section: NO_SECTION,
   position,
+  width: input.width ?? defaultCustomerFieldWidth(input.type),
   appliesTo: input.appliesTo,
   isRequired: input.isRequired,
   isSensitive: input.isSensitive,
@@ -132,17 +144,16 @@ const toInsertValues = (storeId: string, input: CustomerFieldCreateInput, positi
 });
 
 /**
- * Adds fields by stable key. Idempotent by (storeId, key): adopting a template
- * twice, or two people clicking at once, lands on the unique constraint and
- * leaves the existing field (scope and targets included) as the merchant
- * configured it. Targets are only written for fields this call created.
+ * Adds fields by stable key, at the end of their scope's layout with their
+ * type's default width (or the one sent). Idempotent by (storeId, key):
+ * adopting a template twice, or two people clicking at once, lands on the
+ * unique constraint and leaves the existing field (scope, place and targets
+ * included) as the merchant configured it. Targets are only written for
+ * fields this call created.
  */
 const insertFields = async (storeId: string, inputs: CustomerFieldCreateInput[]) => {
   await db.transaction(async (tx) => {
-    const [{ maxPosition }] = await tx
-      .select({ maxPosition: sql<number>`COALESCE(MAX(${customerFieldDefinitions.position}), 0)` })
-      .from(customerFieldDefinitions)
-      .where(eq(customerFieldDefinitions.storeId, storeId));
+    const firstPosition = await nextCustomerFieldPosition(tx, storeId);
 
     const keys = inputs.map(toFieldKey);
     if (keys.some((key) => !key)) {
@@ -165,7 +176,7 @@ const insertFields = async (storeId: string, inputs: CustomerFieldCreateInput[])
     for (const [index, input] of inputs.entries()) {
       await tx
         .insert(customerFieldDefinitions)
-        .values(toInsertValues(storeId, input, Number(maxPosition) + index + 1))
+        .values(toInsertValues(storeId, input, firstPosition + index))
         .onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
     }
 
@@ -270,53 +281,6 @@ const update = requirePermission("manage_settings")
     return listWithUsage(storeId);
   });
 
-/**
- * "Réservation en ligne…" of a section: the same online settings on every
- * active field in it, both scopes, in one transaction. Used right after
- * adopting a template ("Pour quels produits ?").
- */
-const updateSectionOnline = requirePermission("manage_settings")
-  .input(customerFieldSectionOnlineInputSchema)
-  .output(z.array(definitionWithUsageSchema))
-  .handler(async ({ context, input }) => {
-    const storeId = context.store.id;
-    await db.transaction(async (tx) => {
-      const inSection = await tx
-        .select({ id: customerFieldDefinitions.id })
-        .from(customerFieldDefinitions)
-        .where(
-          and(
-            eq(customerFieldDefinitions.storeId, storeId),
-            eq(customerFieldDefinitions.section, input.section),
-            eq(customerFieldDefinitions.isActive, true),
-          ),
-        );
-      const ids = inSection.map((row) => row.id);
-      if (ids.length === 0) return;
-
-      await tx
-        .update(customerFieldDefinitions)
-        .set({
-          collectMode: input.collectMode,
-          targetMode: input.targetMode,
-          customerEditable: input.customerEditable,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(customerFieldDefinitions.storeId, storeId),
-            inArray(customerFieldDefinitions.id, ids),
-          ),
-        );
-      await replaceCustomerFieldTargets(tx, {
-        storeId,
-        definitionIds: ids,
-        targets: input.targets,
-      });
-    });
-    return listWithUsage(storeId);
-  });
-
 /** Categories and products for the "Pour" picker and the preview's product picker. */
 const targetOptions = dashboardProcedure
   .output(
@@ -358,25 +322,46 @@ const forProduct = dashboardProcedure
     );
   });
 
-const reorder = requirePermission("manage_settings")
-  .input(customerFieldReorderInputSchema)
-  .output(z.array(definitionWithUsageSchema))
+const layoutItemSchema = customerFormLayoutItemSchema(definitionWithUsageSchema);
+
+/** One scope's layout, every item (hidden and business ones included) with its builder flags. */
+const loadLayout = async (storeId: string, scope: CustomerFieldScope) => {
+  const definitions = (await listWithUsage(storeId)).filter(
+    (definition) => definition.scope === scope,
+  );
+  const items = await getCustomerFormLayout(storeId, scope, definitions);
+  if (!items) throw new ORPCError("NOT_FOUND", { message: "errors.storeNotFound" });
+  return items;
+};
+
+/**
+ * The customer form as laid out: one ordered list of Louez and custom fields
+ * with their widths, for one scope (`item` has custom fields only). Hidden
+ * items stay in place, flagged; business-only ones are flagged, not filtered.
+ */
+const layout = dashboardProcedure
+  .input(z.object({ scope: customerFieldScopeSchema }))
+  .output(z.array(layoutItemSchema))
+  .handler(async ({ context, input }) => loadLayout(context.store.id, input.scope));
+
+/**
+ * Saves the whole ordered list of a scope (drag and drop, width toggle):
+ * positions 0..n in the order sent, the Louez fields into the store
+ * settings, the custom ones onto their definitions, in one transaction. A
+ * key outside the scope, a key sent twice or a missing Louez field is
+ * refused; the address block and social links stay full width.
+ */
+const updateLayout = requirePermission("manage_settings")
+  .input(customerFormLayoutUpdateInputSchema)
+  .output(z.array(layoutItemSchema))
   .handler(async ({ context, input }) => {
-    const storeId = context.store.id;
-    await db.transaction(async (tx) => {
-      for (const [index, field] of input.fields.entries()) {
-        await tx
-          .update(customerFieldDefinitions)
-          .set({ position: index + 1, section: field.section, updatedAt: new Date() })
-          .where(
-            and(
-              eq(customerFieldDefinitions.id, field.id),
-              eq(customerFieldDefinitions.storeId, storeId),
-            ),
-          );
-      }
-    });
-    return listWithUsage(storeId);
+    const result = await updateCustomerFormLayout(context.store.id, input);
+    if (!result.ok) {
+      throw result.error === "storeNotFound"
+        ? new ORPCError("NOT_FOUND", { message: "errors.storeNotFound" })
+        : new ORPCError("BAD_REQUEST", { message: "errors.invalidData" });
+    }
+    return loadLayout(context.store.id, input.scope);
   });
 
 /**
@@ -419,42 +404,6 @@ const remove = requirePermission("manage_settings")
           ),
         );
     });
-    return listWithUsage(storeId);
-  });
-
-const renameSection = requirePermission("manage_settings")
-  .input(
-    z.object({
-      from: z.string().trim().min(1).max(100),
-      to: z.string().trim().min(1).max(100),
-    }),
-  )
-  .output(z.array(definitionWithUsageSchema))
-  .handler(async ({ context, input }) => {
-    const storeId = context.store.id;
-    const inSection = await db
-      .select({ id: customerFieldDefinitions.id })
-      .from(customerFieldDefinitions)
-      .where(
-        and(
-          eq(customerFieldDefinitions.storeId, storeId),
-          eq(customerFieldDefinitions.section, input.from),
-        ),
-      );
-    if (inSection.length > 0) {
-      await db
-        .update(customerFieldDefinitions)
-        .set({ section: input.to, updatedAt: new Date() })
-        .where(
-          and(
-            eq(customerFieldDefinitions.storeId, storeId),
-            inArray(
-              customerFieldDefinitions.id,
-              inSection.map((row) => row.id),
-            ),
-          ),
-        );
-    }
     return listWithUsage(storeId);
   });
 
@@ -516,13 +465,12 @@ export const dashboardCustomerFieldsRouter = {
   create,
   adoptTemplate,
   update,
-  updateSectionOnline,
   targetOptions,
   forProduct,
-  reorder,
   remove,
-  renameSection,
   duplicates,
   profileSettings,
   updateProfileField,
+  layout,
+  updateLayout,
 };

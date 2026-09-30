@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
-import { LayoutTemplate, Package, UserRound } from "lucide-react";
+import { LayoutTemplate } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { CUSTOMER_FIELD_TYPES, type CustomerFieldScope } from "@louez/types";
+import { CUSTOMER_FIELD_TYPES } from "@louez/types";
 import {
   Button,
   Dialog,
@@ -16,68 +16,47 @@ import {
   DialogTitle,
 } from "@louez/ui";
 
-import { PanelSegmentedControl } from "@/components/online-store/panel/panel-segmented-control";
-
 import { CustomerFieldTemplateCard } from "./customer-field-template-card";
 import { CustomerFieldTypeCard } from "./customer-field-type-card";
-import { type PickerRequest, useCustomerFieldsBuilder } from "./customer-fields-builder-context";
+import { useCustomerFieldsBuilder } from "./customer-fields-builder-context";
 import { useCustomerFieldTemplates } from "./use-customer-field-templates";
 
-interface CustomerFieldAddDialogProps {
-  request: PickerRequest;
-}
-
 /**
- * "Ajouter un champ": where it lives (on the customer record or per rented
- * unit), then its type in one click, which drops a draft in the canvas. The
- * templates that fit the store come below. Mounted per opening.
+ * "Ajouter un champ" to the tab shown: its type in one click, which puts a
+ * new field at the end of the list and opens its settings. The templates
+ * that fit the store come below.
  */
-export const CustomerFieldAddDialog = ({ request }: CustomerFieldAddDialogProps) => {
+export const CustomerFieldAddDialog = () => {
   const t = useTranslations("dashboard.settings.customerFields");
-  const { closePicker, startDraft, setGalleryOpen, actions } = useCustomerFieldsBuilder();
-  const { suggestions, adoptedKeys } = useCustomerFieldTemplates();
-  const [scope, setScope] = useState<CustomerFieldScope>(request.scope);
-  // Once a type is picked, focus belongs to the draft's label, not back to "Ajouter un champ".
+  const { tab, pickerOpen, setPickerOpen, startDraft, setGalleryOpen, actions } =
+    useCustomerFieldsBuilder();
+  const { suggestions, isAdopted } = useCustomerFieldTemplates(tab);
+  // Once a type is picked, focus belongs to the draft's name, not back to "Ajouter un champ".
   const picked = useRef(false);
-  const scopeSuggestions = suggestions.filter((template) => template.scope === scope);
 
   return (
-    <Dialog open onOpenChange={(open) => !open && closePicker()}>
+    <Dialog
+      open={pickerOpen}
+      onOpenChange={(open) => {
+        if (open) picked.current = false;
+        setPickerOpen(open);
+      }}
+    >
       <DialogPopup className="sm:max-w-2xl" finalFocus={() => !picked.current}>
         <DialogHeader>
           <DialogTitle>{t("builder.picker.title")}</DialogTitle>
-          <DialogDescription>{t("builder.picker.description")}</DialogDescription>
+          <DialogDescription>{t(`dialog.scopes.${tab}Description`)}</DialogDescription>
         </DialogHeader>
         <DialogPanel className="flex flex-col gap-5">
-          <div className="flex flex-col gap-2">
-            <PanelSegmentedControl<CustomerFieldScope>
-              aria-label={t("dialog.scope")}
-              value={scope}
-              onChange={setScope}
-              options={[
-                { value: "customer", label: t("dialog.scopes.customer"), icon: UserRound },
-                { value: "item", label: t("dialog.scopes.item"), icon: Package },
-              ]}
-            />
-            <p className="text-muted-foreground text-xs">
-              {t(`dialog.scopes.${scope}Description`)}
-            </p>
-          </div>
-
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {CUSTOMER_FIELD_TYPES.map((type) => (
               <CustomerFieldTypeCard
                 key={type}
                 type={type}
-                scope={scope}
+                scope={tab}
                 onPick={() => {
                   picked.current = true;
-                  startDraft({
-                    scope,
-                    // The section it was opened from, as long as the scope did not change.
-                    section: scope === request.scope ? request.section : null,
-                    type,
-                  });
+                  startDraft(type);
                 }}
               />
             ))}
@@ -86,7 +65,7 @@ export const CustomerFieldAddDialog = ({ request }: CustomerFieldAddDialogProps)
           <div className="flex flex-col gap-3 border-t pt-5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold">
-                {scopeSuggestions.length > 0
+                {suggestions.length > 0
                   ? t("builder.picker.suggested")
                   : t("builder.picker.templates")}
               </h3>
@@ -95,20 +74,18 @@ export const CustomerFieldAddDialog = ({ request }: CustomerFieldAddDialogProps)
                 {t("builder.templates.all")}
               </Button>
             </div>
-            {scopeSuggestions.length > 0 && (
+            {suggestions.length > 0 && (
               <div className="grid gap-2 sm:grid-cols-3">
-                {scopeSuggestions.map((template) => (
+                {suggestions.map((template) => (
                   <CustomerFieldTemplateCard
                     key={template.id}
                     template={template}
                     compact
-                    isAdopted={template.fields.every(
-                      (field) => field.key !== undefined && adoptedKeys.has(field.key),
-                    )}
+                    isAdopted={isAdopted(template)}
                     isPending={actions.isAdopting}
                     onAdopt={(adopted) => {
                       actions.adoptTemplate(adopted);
-                      closePicker();
+                      setPickerOpen(false);
                     }}
                   />
                 ))}

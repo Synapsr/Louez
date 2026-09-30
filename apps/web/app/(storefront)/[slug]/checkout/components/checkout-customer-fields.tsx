@@ -4,13 +4,17 @@ import { useState } from "react";
 
 import { useTranslations } from "next-intl";
 
-import type { CheckoutProfileField, CustomerFieldPublic } from "@louez/validations";
+import type {
+  CheckoutProfileField,
+  CustomerExtraLayoutItem,
+  CustomerFieldPublic,
+} from "@louez/validations";
 
 import type { CustomerProfileFormValues } from "@/components/storefront/customer-fields/customer-fields.types";
+import { CustomerExtraFieldsGrid } from "@/components/storefront/customer-fields/customer-extra-fields-grid";
 import { CustomerFieldFormInput } from "@/components/storefront/customer-fields/customer-field-form-input";
-import { CustomerFieldSections } from "@/components/storefront/customer-fields/customer-field-sections";
 import { ProfileFieldFormInput } from "@/components/storefront/customer-fields/profile-field-form-input";
-import { ProfileFieldsSection } from "@/components/storefront/customer-fields/profile-fields-section";
+import { joinCustomerExtraLayout } from "@/components/storefront/customer-fields/util.customer-extra-layout";
 import { toProfileFieldName } from "@/components/storefront/customer-fields/util.customer-profile-fields";
 import { withForm } from "@/hooks/form/form";
 
@@ -19,10 +23,12 @@ import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
 import { CheckoutSavedFieldsSummary } from "./checkout-saved-fields-summary";
 
 interface CheckoutCustomerFieldsProps {
-  /** Native profile fields this cart asks (birth date, source, links), in the record's order. */
+  /** Native profile fields this cart asks (birth date, source, links). */
   profileFields: CheckoutProfileField[];
   /** Customer-scope fields this cart asks the buyer's type. */
   fields: CustomerFieldPublic[];
+  /** How the owner laid them out: one list, native and custom interleaved. */
+  layout: CustomerExtraLayoutItem[];
   /** Values the signed-in customer has on file; empty for a guest. */
   savedValues: Record<string, string>;
   /** Native values the signed-in customer has on file; blank for a guest. */
@@ -30,19 +36,20 @@ interface CheckoutCustomerFieldsProps {
 }
 
 /**
- * The store's own questions on the contact step: the native profile fields
- * first ("Profil"), then one group per section. A returning customer who
- * already answered all of them sees a single line instead: nothing to
- * retype, and still one tap away from changing it.
+ * The store's own questions on the contact step, native and custom, in the
+ * owner's layout. A returning customer who already answered all of them sees
+ * a single line instead: nothing to retype, and still one tap away from
+ * changing it.
  */
 export const CheckoutCustomerFields = withForm({
   ...checkoutFormOptions,
   props: checkoutStepProps<CheckoutCustomerFieldsProps>(),
-  render: ({ form, profileFields, fields, savedValues, savedProfile }) => {
+  render: ({ form, profileFields, fields, layout, savedValues, savedProfile }) => {
     const t = useTranslations("storefront.customerFields");
     const [isEditingSaved, setIsEditingSaved] = useState(false);
+    const items = joinCustomerExtraLayout(layout, profileFields, fields);
 
-    if (profileFields.length === 0 && fields.length === 0) return null;
+    if (items.length === 0) return null;
 
     if (
       !isEditingSaved &&
@@ -55,38 +62,32 @@ export const CheckoutCustomerFields = withForm({
     ) {
       return (
         <CheckoutSavedFieldsSummary
-          fields={[
-            ...profileFields.map((field) => ({
-              id: field.key,
-              label: t(`profile.${field.key}`),
-            })),
-            ...fields,
-          ]}
+          fields={items.map((item) =>
+            item.kind === "builtin"
+              ? { id: item.key, label: t(`profile.${item.key}`) }
+              : item.field,
+          )}
           onEdit={() => setIsEditingSaved(true)}
         />
       );
     }
 
     return (
-      <div className="flex flex-col gap-6 pt-2">
-        {profileFields.length > 0 && (
-          <ProfileFieldsSection>
-            {profileFields.map((field) => (
-              <form.AppField key={field.key} name={toProfileFieldName(field.key)}>
-                {() => <ProfileFieldFormInput field={field} />}
-              </form.AppField>
-            ))}
-          </ProfileFieldsSection>
-        )}
-        <CustomerFieldSections
-          fields={fields}
-          renderField={(field) => (
-            <form.AppField name={toCustomerFieldName(field.id)}>
-              {() => <CustomerFieldFormInput field={field} />}
+      <CustomerExtraFieldsGrid
+        className="pt-2"
+        items={items}
+        renderItem={(item) =>
+          item.kind === "builtin" ? (
+            <form.AppField name={toProfileFieldName(item.key)}>
+              {() => <ProfileFieldFormInput field={item.field} />}
             </form.AppField>
-          )}
-        />
-      </div>
+          ) : (
+            <form.AppField name={toCustomerFieldName(item.field.id)}>
+              {() => <CustomerFieldFormInput field={item.field} />}
+            </form.AppField>
+          )
+        }
+      />
     );
   },
 });

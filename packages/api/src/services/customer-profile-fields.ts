@@ -2,19 +2,29 @@ import { customers, db, stores } from "@louez/db";
 import type { Transaction } from "@louez/db";
 import {
   CUSTOMER_PROFILE_FIELD_KEYS,
+  type CustomerFieldValues,
   type CustomerProfileFieldKey,
   type ResolvedCustomerProfileSettings,
 } from "@louez/types";
 import {
+  listAskedProfileFields,
   mergeCustomerProfileFieldSettings,
+  pickCustomerProfileValues,
   planCustomerProfileValuesSave,
   resolveCustomerProfileSettings,
+  resolveStoreCustomerFormLayout,
+  toAccountCustomerField,
+  toCustomerExtraLayout,
+  type AccountProfileField,
+  type CustomerExtraLayoutItem,
+  type CustomerFieldAccount,
   type CustomerProfileFieldUpdateInput,
   type CustomerProfileValues,
   type CustomerProfileValuesPatch,
 } from "@louez/validations";
 import { and, eq } from "drizzle-orm";
 
+import { getCustomerFieldValues, listCustomerFieldDefinitions } from "./customer-fields";
 import { filterOwnedTargets } from "./customer-fields-online";
 
 type Executor = typeof db | Transaction;
@@ -163,4 +173,75 @@ export async function saveCustomerProfileValues(
     .update(customers)
     .set({ ...changes, updatedAt: new Date() })
     .where(and(eq(customers.id, params.customerId), eq(customers.storeId, params.storeId)));
+}
+
+// ----------------------------------------------------------------------------
+// The customer's own account
+// ----------------------------------------------------------------------------
+
+/** `storefront.customerFields.myValues`: what a signed-in customer's account reads. */
+export interface CustomerAccountFields {
+  /** The profile's type; a checkout may still be done as the other type. */
+  customerType: "individual" | "business";
+  /** Customer-scope fields a checkout may ask, whatever the cart and the type. */
+  fields: CustomerFieldAccount[];
+  values: CustomerFieldValues;
+  /** Native fields a checkout may ask, whatever the cart. */
+  profileFields: AccountProfileField[];
+  /** The customer's native values; null for a field the store does not ask. */
+  profile: CustomerProfileValues;
+  /** The extra block of the account and checkout forms: those fields, as laid out. */
+  customerLayout: CustomerExtraLayoutItem[];
+}
+
+/**
+ * The native and customer-scope fields a checkout may ask (whatever the cart),
+ * the signed-in customer's values for them, and how the forms lay them out.
+ * A customer's own values never tell more than the store asks. Null when the
+ * customer is not one of the store's.
+ */
+export async function getCustomerAccountFields(params: {
+  storeId: string;
+  customerId: string;
+  settings: { customerProfile?: unknown; customerFormLayout?: unknown } | null | undefined;
+}): Promise<CustomerAccountFields | null> {
+  const [customer] = await db
+    .select({ customerType: customers.customerType, ...profileColumns })
+    .from(customers)
+    .where(and(eq(customers.id, params.customerId), eq(customers.storeId, params.storeId)))
+    .limit(1);
+  if (!customer) return null;
+
+  const definitions = (
+    await listCustomerFieldDefinitions(params.storeId, { activeOnly: true, scope: "customer" })
+  ).filter((definition) => definition.collectMode !== "never");
+  const stored =
+    definitions.length > 0 ? await getCustomerFieldValues(params.storeId, params.customerId) : {};
+  const profileFields = listAskedProfileFields(
+    resolveCustomerProfileSettings(params.settings?.customerProfile),
+  );
+
+  return {
+    customerType: customer.customerType,
+    fields: definitions.map(toAccountCustomerField),
+    values: Object.fromEntries(
+      definitions.flatMap((definition) => {
+        const value = stored[definition.id];
+        return value ? [[definition.id, value]] : [];
+      }),
+    ),
+    profileFields,
+    profile:
+      profileFields.length > 0
+        ? pickCustomerProfileValues(customer, profileFields)
+        : NO_CUSTOMER_PROFILE_VALUES,
+    customerLayout: toCustomerExtraLayout(
+      resolveStoreCustomerFormLayout({
+        settings: params.settings,
+        scope: "customer",
+        definitions,
+      }),
+      { profileFields, customerFields: definitions },
+    ),
+  };
 }

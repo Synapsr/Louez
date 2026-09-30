@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
-import { revalidateLogic } from "@tanstack/react-form";
-import { useMutation } from "@tanstack/react-query";
+import { useStore } from "@tanstack/react-form";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 import {
@@ -16,16 +16,19 @@ import {
   DialogPopup,
   DialogTitle,
 } from "@louez/ui";
-import { type CustomerType, createCustomerSchema } from "@louez/validations";
+import { resolveStoreCustomerFormLayout, selectCustomerFormItems } from "@louez/validations";
 
-import { createCustomer } from "@/app/(dashboard)/dashboard/customers/actions";
+import { CustomerFormFields } from "@/app/(dashboard)/dashboard/customers/customer-form-fields";
+import { CustomerFormTypeSwitch } from "@/app/(dashboard)/dashboard/customers/customer-form-type-switch";
+import { useCustomerForm } from "@/app/(dashboard)/dashboard/customers/use-customer-form";
 
 import { RootError } from "@/components/form/root-error";
 
-import { useAppForm } from "@/hooks/form/form";
+import { orpc } from "@/lib/orpc/react";
 
 import type { DashboardCustomer } from "./customer.types";
 import type { CustomerQueryPrefill } from "./util.customer-query";
+import { selectQuickCreateItems } from "./util.customer-quick-create";
 
 interface CustomerCreateDialogProps {
   open: boolean;
@@ -35,19 +38,18 @@ interface CustomerCreateDialogProps {
   onCreated: (customer: DashboardCustomer) => void;
 }
 
-interface QuickCustomerValues {
-  customerType: CustomerType;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-}
-
-const toFormValues = (prefill: CustomerQueryPrefill): QuickCustomerValues => ({
-  ...prefill,
-  customerType: "individual",
+/** Until the store's layout loads: the Louez fields in their default order. */
+const DEFAULT_ITEMS = resolveStoreCustomerFormLayout({
+  settings: null,
+  scope: "customer",
+  definitions: [],
 });
 
+/**
+ * A new customer without leaving the reservation, in seconds: identity, contact
+ * and whatever the store made required, in the customer form's order and widths.
+ * Everything else is completed later on the record.
+ */
 export const CustomerCreateDialog = ({
   open,
   onOpenChange,
@@ -56,72 +58,39 @@ export const CustomerCreateDialog = ({
 }: CustomerCreateDialogProps) => {
   const t = useTranslations("dashboard.customers");
   const tCommon = useTranslations("common");
-  const tErrors = useTranslations("errors");
-  const tValidation = useTranslations("validation");
+  const { data: layout } = useQuery(
+    orpc.dashboard.customerFields.layout.queryOptions({ input: { scope: "customer" } }),
+  );
+  const items = layout ? selectCustomerFormItems(layout) : DEFAULT_ITEMS;
 
-  const customerSchema = useMemo(() => createCustomerSchema(tValidation), [tValidation]);
-
-  const createCustomerMutation = useMutation({
-    mutationFn: async (values: QuickCustomerValues) => {
-      const customer = {
-        email: values.email.trim().toLowerCase(),
+  const { form, rootError, fieldIssues, reset } = useCustomerForm({
+    initialCustomFields: {},
+    items,
+    save: { kind: "create" },
+    onSaved: (customerId, values) => {
+      onCreated({
+        id: customerId,
+        email: values.email,
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
-        phone: values.phone?.trim() || null,
-      };
-
-      const result = await createCustomer({
-        ...customer,
-        customerType: values.customerType,
-        phone: customer.phone ?? undefined,
+        phone: values.phone.trim() || null,
       });
-
-      if (result.error || !result.customerId) {
-        throw new Error(result.error ?? "errors.createCustomerError");
-      }
-
-      return { id: result.customerId, ...customer } satisfies DashboardCustomer;
-    },
-  });
-
-  const form = useAppForm({
-    defaultValues: toFormValues(prefill),
-    validationLogic: revalidateLogic({
-      mode: "submit",
-      modeAfterSubmission: "change",
-    }),
-    validators: {
-      onSubmit: customerSchema,
-    },
-    onSubmit: async ({ value }) => {
-      const customer = await createCustomerMutation.mutateAsync(value).catch(() => null);
-
-      if (!customer) return;
-
-      onCreated(customer);
       onOpenChange(false);
     },
   });
+  const customerType = useStore(form.store, (state) => state.values.customerType);
 
   // The dialog stays mounted between openings: restart from the current prefill each time.
   useEffect(() => {
     if (!open) return;
 
-    createCustomerMutation.reset();
-    form.reset(toFormValues(prefill));
+    reset(prefill);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-seed when the dialog opens
   }, [open]);
 
-  const submitError = createCustomerMutation.error;
-  const submitErrorMessage = !submitError
-    ? null
-    : submitError.message.startsWith("errors.")
-      ? tErrors(submitError.message.replace("errors.", ""))
-      : submitError.message;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="sm:max-w-lg">
+      <DialogPopup className="sm:max-w-2xl">
         <form.AppForm>
           <form.Form className="flex min-h-0 flex-col" formName="customer-quick-create">
             <DialogHeader>
@@ -129,48 +98,14 @@ export const CustomerCreateDialog = ({
               <DialogDescription>{t("quickCreate.description")}</DialogDescription>
             </DialogHeader>
 
-            <DialogPanel className="space-y-4">
-              <RootError error={submitErrorMessage} />
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <form.AppField name="firstName">
-                  {(field) => (
-                    <field.Input
-                      autoFocus
-                      label={t("form.firstName")}
-                      placeholder={t("form.firstNamePlaceholder")}
-                    />
-                  )}
-                </form.AppField>
-
-                <form.AppField name="lastName">
-                  {(field) => (
-                    <field.Input
-                      label={t("form.lastName")}
-                      placeholder={t("form.lastNamePlaceholder")}
-                    />
-                  )}
-                </form.AppField>
-              </div>
-
-              <form.AppField name="email">
-                {(field) => (
-                  <field.Input
-                    label={t("form.email")}
-                    placeholder={t("form.emailPlaceholder")}
-                    type="email"
-                  />
-                )}
-              </form.AppField>
-
-              <form.AppField name="phone">
-                {(field) => (
-                  <field.PhoneInput
-                    label={t("form.phone")}
-                    placeholder={t("form.phonePlaceholder")}
-                  />
-                )}
-              </form.AppField>
+            <DialogPanel className="space-y-6">
+              <RootError error={rootError} />
+              <CustomerFormTypeSwitch form={form} />
+              <CustomerFormFields
+                form={form}
+                items={selectQuickCreateItems(selectCustomerFormItems(items, { customerType }))}
+                fieldIssues={fieldIssues}
+              />
             </DialogPanel>
 
             <DialogFooter>

@@ -513,6 +513,7 @@ export const CheckoutForm = ({
               onCoordinatesChange={setCoordinates}
               profileFields={checkoutFields.profileFields}
               customerFields={checkoutFields.customerFields}
+              customerLayout={checkoutFields.customerLayout}
               savedCustomerFieldValues={savedCustomerFieldValues}
               savedCustomerProfileValues={savedCustomerProfileValues}
               isCustomFieldsLoading={customFields.isLoading}

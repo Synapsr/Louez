@@ -5,7 +5,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { listCustomerFieldDefinitions } from '@louez/api/services/customer-fields'
 import { hasPermission } from '@louez/utils'
-import { resolveCustomerProfileSettings } from '@louez/validations'
+import { resolveStoreCustomerFormLayout } from '@louez/validations'
 
 import { getCurrentStore } from '@/lib/store-context'
 import { resolveDashboardCreationSource } from '@/lib/openreplay/events'
@@ -49,8 +49,11 @@ export default async function NewCustomerPage({
       </div>
 
       <CustomerForm
-        definitions={definitions}
-        profileSettings={resolveCustomerProfileSettings(store.settings?.customerProfile)}
+        items={resolveStoreCustomerFormLayout({
+          settings: store.settings,
+          scope: 'customer',
+          definitions,
+        })}
         canCustomize={hasPermission(store.role, 'manage_settings')}
         openReplaySource={openReplaySource}
       />

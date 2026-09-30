@@ -20,7 +20,7 @@ export type CustomerFieldSaveStatus = "idle" | "saving" | "saved" | "error";
 
 /**
  * Saves one field as the owner edits it: each change goes out on its own, the
- * canvas shows it at once, and a refused change is put back with its reason
+ * row shows it at once, and a refused change is put back with its reason
  * under the control that made it. Mounted per selected field, so the status
  * starts over when another one is picked.
  */

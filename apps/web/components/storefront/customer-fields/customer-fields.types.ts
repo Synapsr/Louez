@@ -19,10 +19,6 @@ export type StorefrontCustomerField = Pick<
   | "isSensitive"
 >;
 
-/** A field that can be grouped under its section title. */
-export type StorefrontSectionedField = StorefrontCustomerField &
-  Pick<CustomerFieldPublic, "section" | "position">;
-
 /** "Pour qui ?" and the values of one rented unit, as the forms hold them. */
 export interface RentalUnitFormValues {
   participantName?: string;

@@ -3184,8 +3184,6 @@
         "description": "此操作是不可逆转的。该客户将被永久删除。"
       },
       "form": {
-        "personalInfo": "个人信息",
-        "personalInfoDescription": "客户基本信息",
         "businessCustomer": "商业客户",
         "businessCustomerDescription": "检查该客户是否代表公司",
         "companyName": "公司名称",
@@ -3205,8 +3203,6 @@
         "emailPlaceholder": "john.doe@example.com",
         "phone": "电话",
         "phonePlaceholder": "+1 234 567 8900",
-        "addressSection": "地址",
-        "addressDescription": "客户地址（可选）",
         "address": "地址",
         "addressPlaceholder": "大街123号",
         "postalCode": "邮政编码",
@@ -3221,9 +3217,6 @@
         "save": "保存",
         "createCustomer": "创建客户",
         "customerKind": "客户类型",
-        "moreInfo": "附加信息",
-        "moreInfoDescription": "选填。您也可以稍后在客户档案中补充这些信息。",
-        "profileSection": "个人资料",
         "birthDate": "出生日期",
         "ageYears": "{age, plural, other {# 岁}}",
         "acquisitionSource": "客户是如何了解到您的？",
@@ -3232,8 +3225,7 @@
         "acquisitionSourceDetailPlaceholder": "旅游局、展会、合作酒店…",
         "socialSection": "社交媒体与链接",
         "customizeFields": "自定义字段",
-        "fieldCount": "{count, plural, other {# 个字段}}",
-        "filledCount": "{count, plural, other {已填写 # 项}}"
+        "fieldsTitle": "客户信息"
       },
       "countries": {
         "FR": "法国",
@@ -3304,20 +3296,17 @@
         "edit": "编辑",
         "moreActions": "更多操作",
         "createdVia": "创建渠道：{channel}",
-        "contactCard": "联系方式",
-        "profileCard": "个人资料",
         "bornOn": "出生于 {date}",
         "source": "来源",
         "lastRental": "最近一次租赁",
         "never": "从未",
-        "noAddress": "未填写地址",
-        "noPhone": "未填写电话",
-        "emptyProfile": "暂无个人资料信息。",
         "editSection": "编辑：{section}",
         "editSectionDescription": "只会修改这些信息。",
         "sectionSaved": "更改已保存",
         "save": "保存",
-        "cancel": "取消"
+        "cancel": "取消",
+        "infoCard": "信息",
+        "emptyInfo": "尚未填写任何内容。"
       },
       "pagination": {
         "showing": "{from}–{to}，共 {total} 条",
@@ -6310,34 +6299,19 @@
       "readOnlyNotice": "只读：只有所有者和管理员才能更改该商店的设置。",
       "customerFields": {
         "title": "客户档案",
-        "description": "除姓名和联系方式外，选择您要保存的客户信息。",
-        "limits": "{count} / {max} 个启用字段",
         "native": {
           "birthDate": "出生日期",
-          "birthDateHelp": "同时显示客户的年龄。",
           "acquisitionSource": "客户来源",
-          "acquisitionSourceHelp": "客户是如何了解到您的。",
-          "socialLinks": "社交媒体与链接",
-          "socialLinksHelp": "Instagram、网站、WhatsApp…"
-        },
-        "sections": {
-          "defaultName": "附加信息",
-          "rename": "重命名分组",
-          "moveUp": "上移",
-          "moveDown": "下移",
-          "online": "在线预订…"
+          "socialLinks": "社交媒体与链接"
         },
         "field": {
           "add": "添加字段",
           "delete": "永久删除",
-          "moveTo": "移至",
           "drag": "调整顺序"
         },
         "badges": {
           "required": "必填",
           "sensitive": "敏感",
-          "business": "企业",
-          "individual": "个人",
           "online": {
             "optional": "在线 · 可选",
             "required": "在线 · 必填"
@@ -6385,9 +6359,7 @@
             "contractItemHelp": "添加在租赁物品所在行的下方。"
           },
           "labelPlaceholderItem": "鞋码",
-          "scope": "范围",
           "scopes": {
-            "customer": "记录在客户档案中",
             "customerDescription": "每位客户一个值：驾照、身份证件…",
             "item": "按租赁物品",
             "itemDescription": "每人或每件设备一个值：身高、鞋码…"
@@ -6413,7 +6385,6 @@
           "identityDocument": {
             "name": "身份证件",
             "description": "交付设备时要求客户出示的身份证明。",
-            "section": "身份信息",
             "fields": {
               "id_document_type": {
                 "label": "证件类型",
@@ -6436,7 +6407,6 @@
           "emergencyContact": {
             "name": "紧急联系人",
             "description": "租赁期间出现问题时需要联系的人。",
-            "section": "紧急联系人",
             "fields": {
               "emergency_contact_name": {
                 "label": "姓名"
@@ -6459,7 +6429,6 @@
           "businessContacts": {
             "name": "企业客户",
             "description": "财务联系人，以及需要在您的单据上注明的参考编号。",
-            "section": "开票信息",
             "fields": {
               "accounting_contact_name": {
                 "label": "财务联系人"
@@ -6475,7 +6444,6 @@
           "brazil": {
             "name": "巴西",
             "description": "CPF 或 CNPJ（含号码校验）以及 RG。",
-            "section": "身份信息",
             "fields": {
               "br_cpf_cnpj": {
                 "label": "CPF / CNPJ"
@@ -6491,7 +6459,6 @@
           "spain": {
             "name": "西班牙",
             "description": "DNI 或 NIE，含校验字母验证。",
-            "section": "身份信息",
             "fields": {
               "es_dni_nie": {
                 "label": "DNI / NIE"
@@ -6501,7 +6468,6 @@
           "italy": {
             "name": "意大利",
             "description": "Codice fiscale，含校验字符验证。",
-            "section": "身份信息",
             "fields": {
               "it_codice_fiscale": {
                 "label": "Codice fiscale"
@@ -6511,7 +6477,6 @@
           "portugal": {
             "name": "葡萄牙",
             "description": "NIF，含校验位验证。",
-            "section": "身份信息",
             "fields": {
               "pt_nif": {
                 "label": "NIF"
@@ -6521,7 +6486,6 @@
           "vehicles": {
             "name": "车辆与两轮车",
             "description": "驾驶执照信息，会同步显示在合同上。",
-            "section": "驾驶执照",
             "fields": {
               "driving_license_number": {
                 "label": "驾照号码"
@@ -6537,7 +6501,6 @@
           "ski": {
             "name": "滑雪与山地",
             "description": "身体尺寸，便于在客户到店前准备好装备。",
-            "section": "身体尺寸",
             "fields": {
               "height_cm": {
                 "label": "身高"
@@ -6562,7 +6525,6 @@
           "bikes": {
             "name": "自行车",
             "description": "在客户到店前调好自行车所需的信息。",
-            "section": "自行车设置",
             "fields": {
               "height_cm": {
                 "label": "身高"
@@ -6578,7 +6540,6 @@
           "boating": {
             "name": "船艇",
             "description": "船舶驾照信息，会同步显示在合同上。",
-            "section": "船舶驾照",
             "fields": {
               "boat_license_number": {
                 "label": "船舶驾照号码"
@@ -6620,8 +6581,6 @@
         "toasts": {
           "created": "字段已添加",
           "deleted": "字段已删除",
-          "sectionRenamed": "分组已重命名",
-          "sectionOnlineSaved": "设置已应用到该分组",
           "hidden": "字段已隐藏"
         },
         "online": {
@@ -6671,66 +6630,33 @@
           },
           "customerEditable": "客户可在其账户中修改",
           "customerEditableHint": "客户可在其客户账户中查看并更新此信息。",
-          "customerEditableNeverHint": "将字段设为请客户填写后即可使用。",
-          "targetsSummaryLabel": "针对：",
-          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+          "customerEditableNeverHint": "将字段设为请客户填写后即可使用。"
         },
         "sectionOnline": {
-          "title": "在线预订",
-          "description": "{count, plural, other {适用于“{section}”分组中的 # 个字段。}}",
           "adoptedTitle": "针对哪些产品？",
           "adoptedDescription": "“{section}”中的字段按每件租赁物品记录。请选择相关产品，如有需要，还可请客户填写。",
-          "mixed": "此分组中的字段设置各不相同：它们都将采用以下设置。",
           "apply": "应用",
-          "cancel": "取消",
-          "later": "稍后",
-          "close": "关闭"
+          "later": "稍后"
         },
         "builder": {
           "templates": {
-            "button": "模板",
             "all": "查看所有模板"
           },
-          "views": {
-            "label": "显示的表单",
-            "team": "客户档案 · 团队",
-            "client": "在线预订 · 客户",
-            "teamShort": "客户档案",
-            "clientShort": "在线预订"
-          },
           "locked": {
-            "title": "联系方式",
-            "note": "Louez 字段，始终显示",
             "addressPlaceholder": "街道、邮政编码、城市、国家",
-            "company": "企业客户：公司名称、公司号码和增值税号。"
-          },
-          "profile": {
-            "title": "个人资料"
-          },
-          "sections": {
-            "newName": "新分组",
-            "defaultItemName": "详情",
-            "add": "新分组",
-            "delete": "删除分组",
-            "empty": "空分组：请添加第一个字段。",
-            "renameHint": "点击即可重命名",
-            "actions": "“{name}”分组的操作"
+            "label": "必备字段",
+            "sheetNote": "必备字段：始终显示在客户档案中。只能调整其位置和宽度。"
           },
           "field": {
             "select": "编辑“{label}”",
             "actions": "“{label}”字段的操作",
-            "deleteLabel": "删除“{label}”",
             "draftBadge": "新",
             "draftPlaceholder": "新字段"
           },
           "item": {
-            "title": "按租赁物品 — 记录在预订中",
-            "description": "为每件租赁物品填写：两辆自行车，就填写两次。",
-            "participantLocked": "始终提供",
             "empty": "身高、鞋码、水平…添加准备每件物品所需了解的信息。"
           },
           "inspector": {
-            "label": "字段设置",
             "newTitle": "新字段",
             "add": "添加",
             "cancel": "取消",
@@ -6748,12 +6674,10 @@
               "es_dni_nie": "DNI / NIE（西班牙）",
               "it_codice_fiscale": "Codice fiscale（意大利）",
               "pt_nif": "NIF（葡萄牙）"
-            },
-            "type": "类型"
+            }
           },
           "picker": {
             "title": "添加字段",
-            "description": "先选择填写位置，再选择类型。随后即可为其命名。",
             "suggested": "推荐模板",
             "templates": "模板",
             "examples": {
@@ -6781,23 +6705,8 @@
               }
             }
           },
-          "client": {
-            "ask": "请客户填写字段",
-            "askTitle": "请客户填写",
-            "askDescription": "只需一键：该字段即会在预订时作为可选项显示。",
-            "askButton": "询问",
-            "askField": "请客户填写“{label}”",
-            "asked": "已询问",
-            "askEmpty": "所有字段均已请客户填写。",
-            "lockedNote": "由 Louez 询问，始终显示"
-          },
-          "empty": {
-            "title": "添加您自己的字段",
-            "description": "身份证件、驾照、身高…从适合您商店的模板开始，或创建一个字段。"
-          },
           "native": {
-            "fixed": "Louez 字段：名称和类型固定不变。",
-            "socialLinksType": "链接"
+            "fixed": "Louez 字段：名称和类型固定不变。"
           },
           "visibility": {
             "shown": {
@@ -6815,6 +6724,30 @@
           },
           "online": {
             "hiddenNote": "已隐藏：不会请客户填写。显示后即可在预订时请客户填写。"
+          },
+          "pageDescription": "您客户档案中的字段，按表单中的显示方式排列。",
+          "preview": {
+            "open": "客户视角预览",
+            "description": "您的客户在线预订时需填写的内容。"
+          },
+          "layout": {
+            "title": "布局"
+          },
+          "width": {
+            "label": "宽度",
+            "full": "全宽",
+            "half": "半宽",
+            "fullLabel": "全宽",
+            "halfLabel": "半宽",
+            "hint": "两个半宽字段共用一行。",
+            "fixed": "该字段始终占满整行。"
+          },
+          "record": {
+            "customer": "在客户档案中",
+            "item": "在预订中"
+          },
+          "toasts": {
+            "applied": "设置已应用"
           }
         }
       }

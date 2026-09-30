@@ -13,6 +13,7 @@ import {
   customerFieldFormatSchema,
   customerFieldTargetModeSchema,
   customerFieldTargetsInputSchema,
+  customerFieldWidthSchema,
 } from "@louez/validations";
 
 import { useAppForm } from "@/hooks/form/form";
@@ -28,7 +29,6 @@ import {
 const BLANK_VALUES = buildDraftValues({
   type: "text",
   scope: "customer",
-  section: "",
   online: DEFAULT_ONLINE_SETTINGS,
 });
 
@@ -38,8 +38,8 @@ interface UseCustomerFieldFormParams {
 }
 
 /**
- * The field being created in the inspector. One form for the page: each new
- * draft resets it with its type, section and starting settings, keeping these
+ * The field being created in the Sheet. One form for the page: each new
+ * draft resets it with its type, scope and starting settings, keeping these
  * blank defaults so a re-render never resets it behind the owner's back.
  */
 export const useCustomerFieldForm = ({ messages, onSubmit }: UseCustomerFieldFormParams) => {
@@ -48,11 +48,11 @@ export const useCustomerFieldForm = ({ messages, onSubmit }: UseCustomerFieldFor
       label: z.string().trim().min(1, messages.required).max(100),
       type: z.enum(CUSTOMER_FIELD_TYPES),
       scope: z.enum(CUSTOMER_FIELD_SCOPES),
+      width: customerFieldWidthSchema,
       options: z.array(z.string()),
       unit: z.string().max(32),
       helpText: z.string().max(255),
       format: customerFieldFormatSchema.nullable(),
-      section: z.string().trim().min(1, messages.required).max(100),
       appliesTo: z.enum(CUSTOMER_FIELD_APPLIES_TO),
       isRequired: z.boolean(),
       isSensitive: z.boolean(),
@@ -80,7 +80,7 @@ export const useCustomerFieldForm = ({ messages, onSubmit }: UseCustomerFieldFor
 
 export type CustomerFieldForm = ReturnType<typeof useCustomerFieldForm>;
 
-/** Writes inspector changes into the draft form, key by key so each keeps its type. */
+/** Writes the Sheet's changes into the draft form, key by key so each keeps its type. */
 export const setDraftValues = (
   form: CustomerFieldForm,
   changes: Partial<CustomerFieldSettingsValues>,

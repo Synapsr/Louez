@@ -1,84 +1,75 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
+import { useEffect } from "react";
 
-import { useStore } from '@tanstack/react-form'
-import { Building2, User } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-import type {
-  CustomerFieldDefinition,
-  CustomerFieldValues,
-  ResolvedCustomerProfileSettings,
-} from '@louez/types'
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Label,
-} from '@louez/ui'
+import { useStore } from "@tanstack/react-form";
+import { useTranslations } from "next-intl";
 
-import { RootError } from '@/components/form/root-error'
-import { PanelSegmentedControl } from '@/components/online-store/panel/panel-segmented-control'
-import { trackOpenReplayEvent } from '@/lib/openreplay/client'
-import { openReplayEvents } from '@/lib/openreplay/events'
+import type { CustomerFieldValues } from "@louez/types";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
+import { type CustomerFormLayoutItem, selectCustomerFormItems } from "@louez/validations";
 
-import { CustomerFormAdditionalInfo } from './customer-form-additional-info'
-import type { CustomerFormCustomer, CustomerFormOpenReplaySource } from './customer-form.types'
-import { useCustomerForm } from './use-customer-form'
+import { RootError } from "@/components/form/root-error";
+import { trackOpenReplayEvent } from "@/lib/openreplay/client";
+import { openReplayEvents } from "@/lib/openreplay/events";
+
+import { CustomerFormFields } from "./customer-form-fields";
+import { CustomerFormTypeSwitch } from "./customer-form-type-switch";
+import type { CustomerFormCustomer, CustomerFormOpenReplaySource } from "./customer-form.types";
+import { useCustomerForm } from "./use-customer-form";
 
 interface CustomerFormProps {
-  customer?: CustomerFormCustomer
-  definitions: CustomerFieldDefinition[]
-  initialCustomFields?: CustomerFieldValues
-  profileSettings: ResolvedCustomerProfileSettings
+  customer?: CustomerFormCustomer;
+  /** The customer form's layout, hidden items left out, both customer types. */
+  items: CustomerFormLayoutItem[];
+  initialCustomFields?: CustomerFieldValues;
   /** Owners get a shortcut to the field editor. */
-  canCustomize: boolean
-  openReplaySource?: CustomerFormOpenReplaySource
+  canCustomize: boolean;
+  openReplaySource?: CustomerFormOpenReplaySource;
 }
 
-export function CustomerForm({
+export const CustomerForm = ({
   customer,
-  definitions,
+  items,
   initialCustomFields = {},
-  profileSettings,
   canCustomize,
-  openReplaySource = 'direct',
-}: CustomerFormProps) {
-  const router = useRouter()
-  const t = useTranslations('dashboard.customers.form')
-  const tCustomers = useTranslations('dashboard.customers')
-  const tCommon = useTranslations('common')
-  const { form, rootError, fieldIssues, isEditing } = useCustomerForm({
+  openReplaySource = "direct",
+}: CustomerFormProps) => {
+  const router = useRouter();
+  const t = useTranslations("dashboard.customers.form");
+  const tCommon = useTranslations("common");
+  const isEditing = customer !== undefined;
+  const { form, rootError, fieldIssues } = useCustomerForm({
     customer,
     initialCustomFields,
-    profileSettings,
-    openReplaySource,
-  })
+    items,
+    save: customer ? { kind: "update", customerId: customer.id } : { kind: "create" },
+    onSaved: (customerId) => {
+      if (!isEditing) {
+        trackOpenReplayEvent(openReplayEvents.dashboardCustomerCreationCompleted, {
+          journey: "customer_creation",
+          step: "completed",
+          source: openReplaySource,
+        });
+      }
+      router.push(`/dashboard/customers/${customerId}`);
+    },
+  });
 
   useEffect(() => {
-    if (isEditing) return
+    if (isEditing) return;
 
     trackOpenReplayEvent(openReplayEvents.dashboardCustomerCreationStarted, {
-      journey: 'customer_creation',
-      step: 'started',
+      journey: "customer_creation",
+      step: "started",
       source: openReplaySource,
-    })
-  }, [isEditing, openReplaySource])
+    });
+  }, [isEditing, openReplaySource]);
 
-  const customerType = useStore(form.store, (state) => state.values.customerType)
-  const country = useStore(form.store, (state) => state.values.country)
-
-  const companyNumberLabel =
-    country === 'FR'
-      ? t('companyNumberSiren')
-      : country === 'BE'
-        ? t('companyNumberBce')
-        : t('companyNumber')
+  const customerType = useStore(form.store, (state) => state.values.customerType);
 
   return (
     <form.AppForm>
@@ -87,158 +78,46 @@ export function CustomerForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>{t('personalInfo')}</CardTitle>
-            <CardDescription>{t('personalInfoDescription')}</CardDescription>
+            <CardTitle>{t("fieldsTitle")}</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <form.Field name="customerType">
-              {(field) => (
-                <div className="space-y-2 sm:max-w-sm">
-                  <Label>{t('customerKind')}</Label>
-                  <PanelSegmentedControl
-                    aria-label={t('customerKind')}
-                    value={field.state.value}
-                    onChange={field.handleChange}
-                    options={[
-                      {
-                        value: 'individual',
-                        label: tCustomers('customerType.individual'),
-                        icon: User,
-                      },
-                      {
-                        value: 'business',
-                        label: tCustomers('customerType.business'),
-                        icon: Building2,
-                      },
-                    ]}
-                  />
-                </div>
-              )}
-            </form.Field>
-
-            {customerType === 'business' && (
-              <>
-                <form.AppField name="companyName">
-                  {(field) => (
-                    <field.Input
-                      label={`${t('companyName')} *`}
-                      placeholder={t('companyNamePlaceholder')}
-                    />
-                  )}
-                </form.AppField>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <form.AppField name="companyNumber">
-                    {(field) => (
-                      <field.Input
-                        label={companyNumberLabel}
-                        placeholder={t('companyNumberPlaceholder')}
-                        description={t('companyNumberHelp')}
-                      />
-                    )}
-                  </form.AppField>
-                  <form.AppField name="vatNumber">
-                    {(field) => (
-                      <field.Input label={t('vatNumber')} placeholder={t('vatNumberPlaceholder')} />
-                    )}
-                  </form.AppField>
-                </div>
-              </>
+          <CardContent className="grid gap-6">
+            <CustomerFormTypeSwitch form={form} />
+            <CustomerFormFields
+              form={form}
+              items={selectCustomerFormItems(items, { customerType })}
+              fieldIssues={fieldIssues}
+              customerId={customer?.id}
+            />
+            {canCustomize && (
+              <Link
+                href="/dashboard/settings/customer-fields"
+                className="text-muted-foreground hover:text-foreground justify-self-start text-sm underline underline-offset-2"
+              >
+                {t("customizeFields")}
+              </Link>
             )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <form.AppField name="firstName">
-                {(field) => (
-                  <field.Input
-                    label={t('firstName')}
-                    placeholder={t('firstNamePlaceholder')}
-                    autoComplete="off"
-                  />
-                )}
-              </form.AppField>
-              <form.AppField name="lastName">
-                {(field) => (
-                  <field.Input
-                    label={t('lastName')}
-                    placeholder={t('lastNamePlaceholder')}
-                    autoComplete="off"
-                  />
-                )}
-              </form.AppField>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <form.AppField name="email">
-                {(field) => (
-                  <field.Input
-                    type="email"
-                    label={t('email')}
-                    placeholder={t('emailPlaceholder')}
-                    autoComplete="off"
-                  />
-                )}
-              </form.AppField>
-              <form.AppField name="phone">
-                {(field) => <field.PhoneInput label={t('phone')} />}
-              </form.AppField>
-            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>{t('addressSection')}</CardTitle>
-            <CardDescription>{t('addressDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <form.AppField name="address">
-              {(field) => <field.Input label={t('address')} placeholder={t('addressPlaceholder')} />}
-            </form.AppField>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <form.AppField name="postalCode">
-                {(field) => (
-                  <field.Input label={t('postalCode')} placeholder={t('postalCodePlaceholder')} />
-                )}
-              </form.AppField>
-              <form.AppField name="city">
-                {(field) => <field.Input label={t('city')} placeholder={t('cityPlaceholder')} />}
-              </form.AppField>
-              <form.AppField name="country">
-                {(field) => (
-                  <field.CountrySelect label={t('country')} placeholder={t('selectCountry')} />
-                )}
-              </form.AppField>
-            </div>
-          </CardContent>
-        </Card>
-
-        <CustomerFormAdditionalInfo
-          form={form}
-          definitions={definitions}
-          profileSettings={profileSettings}
-          fieldIssues={fieldIssues}
-          customerId={customer?.id}
-          canCustomize={canCustomize}
-        />
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('internalNotes')}</CardTitle>
-            <CardDescription>{t('internalNotesDescription')}</CardDescription>
+            <CardTitle>{t("internalNotes")}</CardTitle>
+            <CardDescription>{t("internalNotesDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form.AppField name="notes">
-              {(field) => <field.Textarea rows={4} placeholder={t('notesPlaceholder')} />}
+              {(field) => <field.Textarea rows={4} placeholder={t("notesPlaceholder")} />}
             </form.AppField>
           </CardContent>
         </Card>
 
         <div className="flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={() => router.back()}>
-            {tCommon('cancel')}
+            {tCommon("cancel")}
           </Button>
-          <form.SubscribeButton>{isEditing ? t('save') : t('createCustomer')}</form.SubscribeButton>
+          <form.SubscribeButton>{isEditing ? t("save") : t("createCustomer")}</form.SubscribeButton>
         </div>
       </form.Form>
     </form.AppForm>
-  )
-}
+  );
+};

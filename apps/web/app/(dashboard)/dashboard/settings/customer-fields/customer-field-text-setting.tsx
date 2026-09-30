@@ -11,7 +11,7 @@ interface CustomerFieldTextSettingProps {
   placeholder?: string;
   maxLength: number;
   /**
-   * `live` sends every keystroke (a field being created: the canvas follows);
+   * `live` sends every keystroke (a field being created: its row follows);
    * `commit` sends on blur or Enter (a saved field: one save per edit).
    */
   mode: "live" | "commit";
@@ -22,9 +22,9 @@ interface CustomerFieldTextSettingProps {
 }
 
 /**
- * A text setting of the inspector. Escape puts a saved field's edited text
- * back as it was, without closing the inspector; with nothing to undo (or on
- * a field being created) it leaves the key to the inspector, which closes.
+ * A text setting of the Sheet. Escape puts a saved field's edited text back
+ * as it was, without closing the Sheet; with nothing to undo (or on a field
+ * being created) it leaves the key to the Sheet, which closes.
  */
 export const CustomerFieldTextSetting = ({
   id,

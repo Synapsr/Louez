@@ -44,8 +44,8 @@ const field = (id: string, scope: "customer" | "item"): CustomerFieldPublic => (
   options: null,
   unit: null,
   helpText: null,
-  section: "Infos",
   position: 0,
+  width: "half",
   scope,
   collectMode: "optional",
   isSensitive: false,
@@ -91,6 +91,7 @@ describe("buildReservationPayload custom fields", () => {
         { key: "acquisitionSource", collectMode: "optional" },
       ],
       customerFields: [field("id-number", "customer")],
+      customerLayout: [],
       lines: [
         {
           lineId: "line-bike",
@@ -118,7 +119,7 @@ describe("buildReservationPayload custom fields", () => {
   });
 
   it("leaves the keys out when nothing is asked", () => {
-    const payload = build({ profileFields: [], customerFields: [], lines: [] });
+    const payload = build({ profileFields: [], customerFields: [], customerLayout: [], lines: [] });
     assert.equal("profileFields" in payload, false);
     assert.equal("customerFields" in payload, false);
     assert.equal("itemDetails" in payload, false);

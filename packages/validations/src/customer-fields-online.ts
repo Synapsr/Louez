@@ -13,6 +13,7 @@ import {
   customerFieldScopeSchema,
   customerProfileFieldKeySchema,
   customerFieldTypeSchema,
+  customerFieldWidthSchema,
   normalizeCustomerFieldValue,
   type CustomerFieldIssueCode,
 } from "./customer-fields";
@@ -70,10 +71,10 @@ export interface ResolvedCheckoutFields<TField> {
 }
 
 /**
- * What the checkout asks for this cart, definitions order kept (sections then
- * fields). A customer field is asked when one line concerns it and it applies
- * to the buyer's type; an item field is asked on the units of the lines it
- * concerns.
+ * What the checkout asks for this cart, definitions order kept (the layout's
+ * order when they come from `listCustomerFieldDefinitions`). A customer field
+ * is asked when one line concerns it and it applies to the buyer's type; an
+ * item field is asked on the units of the lines it concerns.
  */
 export const resolveCheckoutFields = <TField extends ResolvableField>(
   definitions: readonly TField[],
@@ -114,8 +115,9 @@ export const customerFieldPublicSchema = z.object({
   options: z.array(z.string()).nullable(),
   unit: z.string().nullable(),
   helpText: z.string().nullable(),
-  section: z.string(),
   position: z.number(),
+  /** Half a row next to another field, or the whole row: forms honour it. */
+  width: customerFieldWidthSchema,
   scope: customerFieldScopeSchema,
   collectMode: customerFieldCollectModeSchema,
   isSensitive: z.boolean(),
@@ -141,8 +143,8 @@ export const toPublicCustomerField = (
   options: definition.options,
   unit: definition.unit,
   helpText: definition.helpText,
-  section: definition.section,
   position: definition.position,
+  width: definition.width,
   scope: definition.scope,
   collectMode: definition.collectMode,
   isSensitive: definition.isSensitive,

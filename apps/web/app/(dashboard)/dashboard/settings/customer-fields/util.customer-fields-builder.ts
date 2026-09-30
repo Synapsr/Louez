@@ -4,16 +4,9 @@ import type {
   CustomerFieldFormat,
   CustomerFieldScope,
   CustomerFieldType,
+  CustomerFieldWidth,
 } from "@louez/types";
-import type { CustomerFieldUpdateInput } from "@louez/validations";
-
-import {
-  type CustomerFieldSection,
-  groupFieldsBySection,
-  moveFieldToSection,
-  moveItem,
-  toReorderPayload,
-} from "@/lib/customers/util.customer-fields";
+import { type CustomerFieldUpdateInput, defaultCustomerFieldWidth } from "@louez/validations";
 
 import {
   type CustomerFieldOnlineSettings,
@@ -26,130 +19,6 @@ export type CustomerFieldWithUsage = CustomerFieldDefinition & { valueCount: num
 
 /** What `update` may change on a field: everything but its id. */
 export type CustomerFieldPatch = Omit<CustomerFieldUpdateInput, "id">;
-
-/** A section created on the page. Sections live through their fields, so until its first field is saved only the page knows it. */
-export interface LocalSection {
-  key: string;
-  scope: CustomerFieldScope;
-  name: string;
-}
-
-export interface CanvasSection<TField> extends CustomerFieldSection<TField> {
-  /** Set while the section is one created on the page and still empty. */
-  localKey: string | null;
-}
-
-/** A scope's fields, hidden ones included: they keep their place in the form. */
-const fieldsOfScope = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-  scope: CustomerFieldScope,
-) => fields.filter((field) => field.scope === scope);
-
-/**
- * The sections of one scope, as the canvas shows them: those holding fields
- * in the owner's order (hidden ones stay where they were, greyed), then the
- * ones just created. A new section that got its first field (or was renamed
- * like an existing one) is the saved one.
- */
-export const listScopeSections = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-  scope: CustomerFieldScope,
-  localSections: readonly LocalSection[] = [],
-): CanvasSection<TField>[] => {
-  const saved = groupFieldsBySection(fieldsOfScope(fields, scope));
-  const savedNames = new Set(saved.map((section) => section.name));
-  return [
-    ...saved.map((section) => ({ ...section, localKey: null })),
-    ...localSections
-      .filter((section) => section.scope === scope && !savedNames.has(section.name))
-      .map((section) => ({ name: section.name, fields: [], localKey: section.key })),
-  ];
-};
-
-/** Active fields in the order the forms show them: section after section. */
-export const listActiveInFormOrder = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-): TField[] =>
-  groupFieldsBySection(fields.filter((field) => field.isActive)).flatMap(
-    (section) => section.fields,
-  );
-
-/**
- * The reorder payload once one scope's sections changed. Every field goes,
- * hidden ones included, so they keep their place among the others; the other
- * scope keeps its order, placed after the customer record's fields (the two
- * are never shown mixed).
- */
-const payloadWith = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-  scope: CustomerFieldScope,
-  next: readonly CustomerFieldSection<TField>[],
-) => {
-  const customer =
-    scope === "customer" ? next : groupFieldsBySection(fieldsOfScope(fields, "customer"));
-  const item = scope === "item" ? next : groupFieldsBySection(fieldsOfScope(fields, "item"));
-  return toReorderPayload([...customer, ...item]);
-};
-
-/** A section's fields in the order they were dropped in. */
-export const reorderSectionPayload = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-  scope: CustomerFieldScope,
-  section: string,
-  ordered: readonly TField[],
-) =>
-  payloadWith(
-    fields,
-    scope,
-    groupFieldsBySection(fieldsOfScope(fields, scope)).map((entry) =>
-      entry.name === section ? { ...entry, fields: [...ordered] } : entry,
-    ),
-  );
-
-/** A field sent to the end of another section of its scope (created when new). */
-export const moveFieldPayload = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-  field: Pick<TField, "id" | "scope">,
-  target: string,
-) =>
-  payloadWith(
-    fields,
-    field.scope,
-    moveFieldToSection(groupFieldsBySection(fieldsOfScope(fields, field.scope)), field.id, target),
-  );
-
-/** A section one step up (-1) or down (+1) among the sections of its scope. */
-export const moveSectionPayload = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-  scope: CustomerFieldScope,
-  section: string,
-  direction: -1 | 1,
-) => {
-  const sections = groupFieldsBySection(fieldsOfScope(fields, scope));
-  const from = sections.findIndex((entry) => entry.name === section);
-  return payloadWith(fields, scope, moveItem(sections, from, from + direction));
-};
-
-/** The list once a reorder applies, so the canvas does not jump back while it saves. */
-export const applyReorder = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-  payload: readonly { id: string; section: string }[],
-): TField[] => {
-  const placement = new Map(
-    payload.map((entry, index) => [entry.id, { section: entry.section, position: index + 1 }]),
-  );
-  return fields.map((field) => {
-    const next = placement.get(field.id);
-    return next ? { ...field, ...next } : field;
-  });
-};
-
-/** The list once a section is renamed (archived fields follow, as on the server). */
-export const applySectionRename = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-  from: string,
-  to: string,
-): TField[] => fields.map((field) => (field.section === from ? { ...field, section: to } : field));
 
 /**
  * A field once an `update` applies, the way the server stores it: empty texts
@@ -173,7 +42,6 @@ export const patchDefinition = <TField extends CustomerFieldDefinition>(
     unit: patch.unit === undefined ? field.unit : patch.unit || null,
     format: patch.format === undefined ? field.format : (patch.format ?? null),
     options: patch.options === undefined ? field.options : (patch.options ?? null),
-    section: patch.section ?? field.section,
     appliesTo: patch.appliesTo ?? field.appliesTo,
     isRequired: patch.isRequired ?? field.isRequired,
     isSensitive: patch.isSensitive ?? field.isSensitive,
@@ -200,7 +68,6 @@ export const revertPatch = (
     ...(patch.unit !== undefined && { unit: previous.unit }),
     ...(patch.format !== undefined && { format: previous.format }),
     ...(patch.options !== undefined && { options: previous.options }),
-    ...(patch.section !== undefined && { section: previous.section }),
     ...(patch.appliesTo !== undefined && { appliesTo: previous.appliesTo }),
     ...(patch.isRequired !== undefined && { isRequired: previous.isRequired }),
     ...(patch.isSensitive !== undefined && { isSensitive: previous.isSensitive }),
@@ -241,7 +108,7 @@ export const diffOnlineSettings = (
 /** Which control a change came from, to put its error right under it. */
 export type CustomerFieldSettingKey = keyof CustomerFieldSettingsValues | "isActive" | "online";
 
-/** What one inspector control changes on a saved field; "Afficher sur la fiche" is `isActive`. */
+/** What one control of the Sheet changes on a saved field; "Afficher sur la fiche" is `isActive`. */
 export type CustomerFieldSettingsChanges = Partial<
   CustomerFieldSettingsValues & Pick<CustomerFieldDefinition, "isActive">
 >;
@@ -253,7 +120,7 @@ export type CustomerFieldChangeOutcome =
   | { kind: "reject"; reason: "labelRequired" | "optionsRequired" };
 
 /**
- * What an inspector change means for a saved field: the patch to send, or
+ * What a change in the Sheet means for a saved field: the patch to send, or
  * why it is refused before reaching the server (a field keeps a label, a
  * list keeps a choice). Online settings go out as the difference only.
  */
@@ -288,7 +155,7 @@ export const toFieldChange = (
   return { kind: "save", patch: changes };
 };
 
-/** Every setting the inspector edits, texts as strings (empty when unset). */
+/** Every setting the Sheet edits, texts as strings (empty when unset). */
 export interface CustomerFieldSettingsValues extends CustomerFieldOnlineSettings {
   label: string;
   helpText: string;
@@ -318,27 +185,28 @@ export const toSettingsValues = (field: CustomerFieldDefinition): CustomerFieldS
   showInList: field.showInList,
 });
 
-/** A field being created: its settings, plus what is fixed once it exists. */
+/** A field being created: its settings, plus what is fixed once it exists, and its width. */
 export interface CustomerFieldFormValues extends CustomerFieldSettingsValues {
   type: CustomerFieldType;
   scope: CustomerFieldScope;
-  section: string;
+  /** Where it lands in the form: its row alone, or half of it. Saved with the field. */
+  width: CustomerFieldWidth;
 }
 
 /**
- * A new field of this type, in this section: every switch off, and the online
- * settings its section's fields share (`newFieldDefaults`).
+ * A new field of this type: every switch off, the online settings given
+ * (never asked, for every reservation), and the width its type takes by
+ * default (a long text alone on its row).
  */
 export const buildDraftValues = (params: {
   type: CustomerFieldType;
   scope: CustomerFieldScope;
-  section: string;
   online: CustomerFieldOnlineSettings;
 }): CustomerFieldFormValues => ({
   ...params.online,
   type: params.type,
   scope: params.scope,
-  section: params.section,
+  width: defaultCustomerFieldWidth(params.type),
   label: "",
   helpText: "",
   options: [],
@@ -352,76 +220,29 @@ export const buildDraftValues = (params: {
   showInList: false,
 });
 
-/** The field being created as the canvas draws it, with a placeholder until it is named. */
+/** The field being created as its row draws it, with a placeholder until it is named. */
 export const toDraftPreview = (
   values: CustomerFieldFormValues,
   placeholder: string,
-): Pick<
-  CustomerFieldDefinition,
-  | "id"
-  | "label"
-  | "type"
-  | "format"
-  | "options"
-  | "unit"
-  | "helpText"
-  | "isRequired"
-  | "isSensitive"
-  | "isSearchable"
-> => ({
-  id: "draft",
+): Pick<CustomerFieldDefinition, "label" | "type" | "unit" | "helpText"> => ({
   label: values.label.trim() || placeholder,
   type: values.type,
-  format: values.type === "text" ? values.format : null,
-  options: values.options,
   unit: values.unit.trim() || null,
   helpText: values.helpText.trim() || null,
-  isRequired: values.scope === "customer" && values.isRequired,
-  isSensitive: values.isSensitive,
-  isSearchable: false,
 });
 
-/** "Nouvelle section", then "Nouvelle section 2"… so two new sections never merge. */
-export const nextSectionName = (base: string, taken: readonly string[]): string => {
-  const names = new Set(taken);
-  if (!names.has(base)) return base;
-  let index = 2;
-  while (names.has(`${base} ${index}`)) index += 1;
-  return `${base} ${index}`;
-};
-
 /**
- * Where a field added from the header lands: the last section of its scope,
- * so it shows at the end of the form; the default name when the scope has none.
+ * The fields an adoption added: those of the template the new list holds and
+ * the previous did not. A template field the store already had (a rider's
+ * height shared by skis and bikes) stays as the owner set it, so it is not one.
  */
-export const defaultSectionFor = (
-  sections: readonly Pick<CanvasSection<unknown>, "name">[],
-  fallback: string,
-): string => sections.at(-1)?.name ?? fallback;
-
-/** The field a create added: the one the new list holds and the previous did not. */
-export const findCreatedField = <TField extends Pick<CustomerFieldDefinition, "id">>(
+export const findAdoptedFields = <
+  TField extends Pick<CustomerFieldDefinition, "id" | "templateKey">,
+>(
   before: readonly TField[],
   after: readonly TField[],
-): TField | null => {
+  templateId: string,
+): TField[] => {
   const known = new Set(before.map((field) => field.id));
-  return after.find((field) => !known.has(field.id)) ?? null;
-};
-
-/**
- * The "Demander au client" list: active fields the checkout does not ask yet,
- * per scope. Those asked while the list is open stay in place (`justAsked`),
- * so a row does not vanish under the pointer.
- */
-export const listAskableFields = <TField extends CustomerFieldDefinition>(
-  fields: readonly TField[],
-  justAsked: ReadonlySet<string> = new Set(),
-): { customer: TField[]; item: TField[] } => {
-  const askable = fields.filter(
-    (field) => field.isActive && (field.collectMode === "never" || justAsked.has(field.id)),
-  );
-  return {
-    customer: askable.filter((field) => field.scope === "customer"),
-    item: askable.filter((field) => field.scope === "item"),
-  };
+  return after.filter((field) => field.templateKey === templateId && !known.has(field.id));
 };

@@ -17,7 +17,8 @@ interface CustomerExtraFieldsSectionProps {
 /**
  * "Informations complémentaires": what the store asks at checkout and lets the
  * customer keep up to date themselves, native fields (birth date, source,
- * links) first. Hidden when there is nothing to edit.
+ * links) and the store's own in the owner's layout. Hidden when there is
+ * nothing to edit.
  */
 export const CustomerExtraFieldsSection = ({ initialData }: CustomerExtraFieldsSectionProps) => {
   const t = useTranslations("storefront.account.customerFields");
@@ -43,6 +44,7 @@ export const CustomerExtraFieldsSection = ({ initialData }: CustomerExtraFieldsS
         profile={data.profile}
         fields={fields}
         values={data.values}
+        layout={data.customerLayout}
       />
     </section>
   );

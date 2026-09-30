@@ -7,15 +7,16 @@ import { useTranslations } from "next-intl";
 import { toastManager } from "@louez/ui";
 import type {
   CheckoutProfileField,
+  CustomerExtraLayoutItem,
   CustomerFieldAccount,
   CustomerProfileValues,
 } from "@louez/validations";
 
+import { CustomerExtraFieldsGrid } from "@/components/storefront/customer-fields/customer-extra-fields-grid";
 import { CustomerFieldFormInput } from "@/components/storefront/customer-fields/customer-field-form-input";
-import { CustomerFieldSections } from "@/components/storefront/customer-fields/customer-field-sections";
 import { ProfileFieldFormInput } from "@/components/storefront/customer-fields/profile-field-form-input";
-import { ProfileFieldsSection } from "@/components/storefront/customer-fields/profile-fields-section";
 import { useCustomerFieldIssueMessage } from "@/components/storefront/customer-fields/use-customer-field-issue-message";
+import { joinCustomerExtraLayout } from "@/components/storefront/customer-fields/util.customer-extra-layout";
 import { readCustomerFieldIssues } from "@/components/storefront/customer-fields/util.customer-field-issues";
 import {
   readCustomerProfileFieldIssues,
@@ -36,6 +37,8 @@ interface CustomerExtraFieldsFormProps {
   /** The custom fields the customer may edit, already narrowed to their type. */
   fields: CustomerFieldAccount[];
   values: Record<string, string>;
+  /** How the owner laid the fields out: one list, native and custom interleaved. */
+  layout: CustomerExtraLayoutItem[];
 }
 
 /**
@@ -47,6 +50,7 @@ export const CustomerExtraFieldsForm = ({
   profile,
   fields,
   values,
+  layout,
 }: CustomerExtraFieldsFormProps) => {
   const t = useTranslations("storefront.account.profile");
   const tErrors = useTranslations("errors");
@@ -113,22 +117,19 @@ export const CustomerExtraFieldsForm = ({
   return (
     <form.AppForm>
       <form.Form className="mt-4 flex flex-col gap-6">
-        {profileFields.length > 0 && (
-          <ProfileFieldsSection>
-            {profileFields.map((field) => (
-              <form.AppField key={field.key} name={toProfileFieldName(field.key)}>
-                {() => <ProfileFieldFormInput field={field} />}
+        <CustomerExtraFieldsGrid
+          items={joinCustomerExtraLayout(layout, profileFields, fields)}
+          renderItem={(item) =>
+            item.kind === "builtin" ? (
+              <form.AppField name={toProfileFieldName(item.key)}>
+                {() => <ProfileFieldFormInput field={item.field} />}
               </form.AppField>
-            ))}
-          </ProfileFieldsSection>
-        )}
-        <CustomerFieldSections
-          fields={fields}
-          renderField={(field) => (
-            <form.AppField name={`values.${field.id}`}>
-              {() => <CustomerFieldFormInput field={field} />}
-            </form.AppField>
-          )}
+            ) : (
+              <form.AppField name={`values.${item.field.id}`}>
+                {() => <CustomerFieldFormInput field={item.field} />}
+              </form.AppField>
+            )
+          }
         />
         <form.SubscribeButton type="submit" className="self-start">
           {tCommon("save")}

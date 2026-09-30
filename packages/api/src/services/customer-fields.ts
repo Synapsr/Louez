@@ -34,6 +34,7 @@ const definitionColumns = {
   helpText: customerFieldDefinitions.helpText,
   section: customerFieldDefinitions.section,
   position: customerFieldDefinitions.position,
+  width: customerFieldDefinitions.width,
   appliesTo: customerFieldDefinitions.appliesTo,
   isRequired: customerFieldDefinitions.isRequired,
   isSensitive: customerFieldDefinitions.isSensitive,
@@ -84,10 +85,11 @@ async function listTargetsByDefinition(
 }
 
 /**
- * The store's field definitions with their targets, in editor order (sections
- * then fields). `scope` is explicit on purpose: the customer record, its
- * search, exports, AI and MCP read `customer` only; item-scope fields belong
- * to the units of a reservation.
+ * The store's field definitions with their targets, by position: the
+ * layout's order among custom fields (`resolveCustomerFormLayout` places the
+ * Louez fields among them). `scope` is explicit on purpose: the customer
+ * record, its search, exports, AI and MCP read `customer` only; item-scope
+ * fields belong to the units of a reservation.
  */
 export async function listCustomerFieldDefinitions(
   storeId: string,

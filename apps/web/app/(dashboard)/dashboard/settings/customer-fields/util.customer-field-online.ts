@@ -10,7 +10,7 @@ import type {
   CustomerFieldType,
 } from "@louez/types";
 
-/** The "Réservation en ligne" settings of a field, as the dialogs edit them. */
+/** The "Réservation en ligne" settings of a field, as the Sheet edits them. */
 export interface CustomerFieldOnlineSettings {
   collectMode: CustomerFieldCollectMode;
   targetMode: CustomerFieldTargetMode;
@@ -55,60 +55,6 @@ export const showsTargetChoice = (params: {
 
 const toTargetKey = (target: CustomerFieldTarget) => `${target.type}:${target.id}`;
 
-const sameTargets = (
-  left: readonly CustomerFieldTarget[],
-  right: readonly CustomerFieldTarget[],
-) => {
-  if (left.length !== right.length) return false;
-  const keys = new Set(left.map(toTargetKey));
-  return right.every((target) => keys.has(toTargetKey(target)));
-};
-
-const sameOnlineSettings = (
-  left: CustomerFieldOnlineSettings,
-  right: CustomerFieldOnlineSettings,
-): boolean =>
-  left.collectMode === right.collectMode &&
-  left.targetMode === right.targetMode &&
-  left.customerEditable === right.customerEditable &&
-  sameTargets(left.targets, right.targets);
-
-/**
- * What a section's online dialog starts from: the settings its fields share.
- * When they differ, the first field's settings and `mixed`, so the dialog can
- * say that applying overwrites them all.
- */
-export const commonOnlineSettings = (
-  fields: readonly CustomerFieldOnlineSettings[],
-): { settings: CustomerFieldOnlineSettings; mixed: boolean } => {
-  const [first, ...rest] = fields;
-  if (!first) return { settings: DEFAULT_ONLINE_SETTINGS, mixed: false };
-  return {
-    settings: pickOnlineSettings(first),
-    mixed: rest.some((field) => !sameOnlineSettings(field, first)),
-  };
-};
-
-/** A field added to a section full of per-unit fields is most likely one more of them. */
-export const defaultScopeForSection = (
-  fields: readonly Pick<CustomerFieldDefinition, "scope">[],
-): CustomerFieldScope =>
-  fields.length > 0 && fields.every((field) => field.scope === "item") ? "item" : "customer";
-
-/**
- * Where a field added to a section starts: the section's scope when every
- * field shares it, and its online settings when they all agree.
- */
-export const newFieldDefaults = (
-  fields: readonly (CustomerFieldOnlineSettings & Pick<CustomerFieldDefinition, "scope">)[],
-): CustomerFieldOnlineSettings & { scope: CustomerFieldScope } => {
-  const { settings, mixed } = commonOnlineSettings(fields);
-  return {
-    scope: defaultScopeForSection(fields),
-    ...(mixed ? DEFAULT_ONLINE_SETTINGS : settings),
-  };
-};
-
 /** What the "Pour" setting of a field means today, for its row in the editor. */
 export type CustomerFieldTargeting =
   /** A customer field the checkout never asks: on every record, its targets are unused. */
@@ -130,32 +76,6 @@ export const describeTargeting = (
   return field.targets.length === 0
     ? { kind: "empty" }
     : { kind: "targets", targets: field.targets };
-};
-
-/**
- * The first target names, categories before products, and how many are left
- * out: "Vélos & VAE, Vespa 125" and 1. Targets without a name are skipped.
- */
-export const summarizeTargets = (
-  targets: readonly CustomerFieldTarget[],
-  options: CustomerFieldTargetOptions,
-  visible = 2,
-): { names: string[]; more: number } => {
-  const namesByKey = new Map<string, string>([
-    ...options.categories.map((category): [string, string] => [
-      `category:${category.id}`,
-      category.name,
-    ]),
-    ...options.products.map((product): [string, string] => [`product:${product.id}`, product.name]),
-  ]);
-  const names = [
-    ...targets.filter((target) => target.type === "category"),
-    ...targets.filter((target) => target.type === "product"),
-  ].flatMap((target) => {
-    const name = namesByKey.get(toTargetKey(target));
-    return name ? [name] : [];
-  });
-  return { names: names.slice(0, visible), more: Math.max(0, names.length - visible) };
 };
 
 /** One entry of the "Pour" picker. */

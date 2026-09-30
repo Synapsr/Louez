@@ -26,13 +26,10 @@ interface CheckoutDetailsStepProps {
   stepDirection: "forward" | "backward";
 }
 
-/** Long answers and ticks read better on their own row; short ones pair up on wide screens. */
-const isWideField = (type: CheckoutFieldsLine["itemFields"][number]["type"]) =>
-  type === "textarea" || type === "checkbox";
-
 /**
  * "Détails de la location": one card per rented unit (two bikes, two cards),
- * "Pour qui ?" first so the team knows whose settings these are.
+ * "Pour qui ?" first so the team knows whose settings these are, then the
+ * fields in the owner's layout, each as wide as it was set.
  */
 export const CheckoutDetailsStep = withForm({
   ...checkoutFormOptions,
@@ -73,7 +70,7 @@ export const CheckoutDetailsStep = withForm({
                     {line.itemFields.map((field) => (
                       <div
                         key={field.id}
-                        className={cn(isWideField(field.type) && "sm:col-span-2")}
+                        className={cn("min-w-0", field.width === "full" && "sm:col-span-2")}
                       >
                         <form.AppField name={toItemFieldName(unitKey, field.id)}>
                           {() => <CustomerFieldFormInput field={field} />}

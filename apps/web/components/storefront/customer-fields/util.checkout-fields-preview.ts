@@ -2,7 +2,10 @@ import type { CustomerFieldDefinition, ResolvedCustomerProfileSettings } from "@
 import {
   resolveCheckoutFields,
   resolveCheckoutProfileFields,
+  resolveCustomerFormLayout,
+  toCustomerExtraLayout,
   type CheckoutProfileField,
+  type CustomerExtraLayoutItem,
   type CustomerFieldProduct,
 } from "@louez/validations";
 
@@ -10,24 +13,28 @@ import {
 const ANY_PRODUCT: CustomerFieldProduct = { id: "", categoryIds: [] };
 
 export interface PreviewCheckoutFields<TField> {
-  /** Birth date, source, links: the "Profil" group above the store's own questions. */
+  /** Birth date, source, links the checkout asks. */
   profileFields: CheckoutProfileField[];
   /** The contact step's questions, for either buyer type. */
   customerFields: TField[];
-  /** One unit card's questions. */
+  /** How the contact step lays those native and custom questions out (`joinCustomerExtraLayout`). */
+  customerLayout: CustomerExtraLayoutItem[];
+  /** One unit card's questions, in the layout's order. */
   itemFields: TField[];
 }
 
 /**
  * What the checkout asks for one product, or for any product of the store
- * when none is picked, in the owner's order. Customer fields of both buyer
+ * when none is picked, in the owner's layout. Customer fields of both buyer
  * types show: the preview answers "what can my customers be asked?".
+ * `layout` is the stored `customerFormLayout`, or a layout being edited.
  */
 export const resolvePreviewCheckoutFields = <TField extends CustomerFieldDefinition>(
   definitions: readonly TField[],
   products: readonly CustomerFieldProduct[],
   productId: string | null,
   profileSettings: ResolvedCustomerProfileSettings,
+  layout?: unknown,
 ): PreviewCheckoutFields<TField> => {
   const picked = productId
     ? products.filter((product) => product.id === productId)
@@ -45,10 +52,24 @@ export const resolvePreviewCheckoutFields = <TField extends CustomerFieldDefinit
   const itemIds = new Set(
     individual.lines.flatMap((line) => line.itemFields).map((field) => field.id),
   );
+  const profileFields = resolveCheckoutProfileFields(profileSettings, picked);
+  const customerFields = definitions.filter((definition) => customerIds.has(definition.id));
 
   return {
-    profileFields: resolveCheckoutProfileFields(profileSettings, picked),
-    customerFields: definitions.filter((definition) => customerIds.has(definition.id)),
-    itemFields: definitions.filter((definition) => itemIds.has(definition.id)),
+    profileFields,
+    customerFields,
+    customerLayout: toCustomerExtraLayout(
+      resolveCustomerFormLayout({
+        scope: "customer",
+        definitions: customerFields,
+        layout,
+        profileSettings,
+      }),
+      { profileFields, customerFields },
+    ),
+    itemFields: resolveCustomerFormLayout({
+      scope: "item",
+      definitions: definitions.filter((definition) => itemIds.has(definition.id)),
+    }).flatMap((item) => (item.kind === "custom" ? [item.definition] : [])),
   };
 };

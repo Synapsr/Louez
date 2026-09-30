@@ -4,9 +4,9 @@ import { describe, test } from "node:test";
 import {
   checkoutItemDetailsSchema,
   customerFieldCreateInputSchema,
-  customerFieldSectionOnlineInputSchema,
   customerFieldSubmittedValuesSchema,
   customerFieldUpdateInputSchema,
+  defaultCustomerFieldWidth,
   hasSuspiciousIdentityValue,
   mergeCustomerFieldOnlineSettings,
   normalizeCustomerFieldValue,
@@ -127,7 +127,7 @@ describe("hasSuspiciousIdentityValue", () => {
 });
 
 describe("customer field inputs", () => {
-  const base = { label: "Taille", type: "number" as const, section: "Matériel" };
+  const base = { label: "Taille", type: "number" as const };
   const id = "i".repeat(21);
 
   test("a new field defaults to the customer record, team only, for every reservation", () => {
@@ -137,6 +137,24 @@ describe("customer field inputs", () => {
     assert.equal(parsed.targetMode, "all");
     assert.deepEqual(parsed.targets, []);
     assert.equal(parsed.customerEditable, false);
+    // The server gives it the default width of its type.
+    assert.equal(parsed.width, undefined);
+  });
+
+  test("sections are gone: a section sent by an old client is dropped", () => {
+    const parsed = customerFieldCreateInputSchema.parse({ ...base, section: "Matériel" });
+    assert.equal("section" in parsed, false);
+    assert.equal(
+      "section" in customerFieldUpdateInputSchema.parse({ id, section: "Matériel" }),
+      false,
+    );
+  });
+
+  test("a new field takes half a row, a long text the whole row", () => {
+    assert.equal(defaultCustomerFieldWidth("text"), "half");
+    assert.equal(defaultCustomerFieldWidth("checkbox"), "half");
+    assert.equal(defaultCustomerFieldWidth("textarea"), "full");
+    assert.equal(customerFieldCreateInputSchema.parse({ ...base, width: "full" }).width, "full");
   });
 
   test("an item-scope field refuses the switches of the customer record", () => {
@@ -176,16 +194,6 @@ describe("customer field inputs", () => {
     assert.equal(
       customerFieldUpdateInputSchema.safeParse({ id, collectMode: "never", customerEditable: true })
         .success,
-      false,
-    );
-    assert.equal(
-      customerFieldSectionOnlineInputSchema.safeParse({
-        section: "Matériel",
-        collectMode: "never",
-        targetMode: "all",
-        targets: [],
-        customerEditable: true,
-      }).success,
       false,
     );
   });

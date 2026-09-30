@@ -3184,8 +3184,6 @@
         "description": "Diese Aktion ist unwiderruflich. Der Kunde wird dauerhaft gelöscht."
       },
       "form": {
-        "personalInfo": "Persönliche Informationen",
-        "personalInfoDescription": "Grundlegende Kundeninformationen",
         "businessCustomer": "Geschäftskunde",
         "businessCustomerDescription": "Aktivieren, wenn dieser Kunde ein Unternehmen vertritt",
         "companyName": "Firmenname",
@@ -3205,8 +3203,6 @@
         "emailPlaceholder": "max.mustermann@beispiel.de",
         "phone": "Telefon",
         "phonePlaceholder": "+49 123 456 7890",
-        "addressSection": "Adresse",
-        "addressDescription": "Kundenadresse (optional)",
         "address": "Adresse",
         "addressPlaceholder": "Hauptstraße 123",
         "postalCode": "Postleitzahl",
@@ -3221,9 +3217,6 @@
         "save": "Speichern",
         "createCustomer": "Kunde erstellen",
         "customerKind": "Kundentyp",
-        "moreInfo": "Weitere Angaben",
-        "moreInfoDescription": "Optional. Sie können diese Angaben auch später in den Kundendaten ergänzen.",
-        "profileSection": "Profil",
         "birthDate": "Geburtsdatum",
         "ageYears": "{age, plural, one {# Jahr} other {# Jahre}}",
         "acquisitionSource": "Wie wurde er auf Sie aufmerksam?",
@@ -3232,8 +3225,7 @@
         "acquisitionSourceDetailPlaceholder": "Tourismusbüro, Messe, Partnerhotel…",
         "socialSection": "Netzwerke und Links",
         "customizeFields": "Felder anpassen",
-        "fieldCount": "{count, plural, one {# Feld} other {# Felder}}",
-        "filledCount": "{count, plural, one {# ausgefüllt} other {# ausgefüllt}}"
+        "fieldsTitle": "Kundenangaben"
       },
       "countries": {
         "FR": "Frankreich",
@@ -3304,20 +3296,17 @@
         "edit": "Bearbeiten",
         "moreActions": "Weitere Aktionen",
         "createdVia": "Erstellt über: {channel}",
-        "contactCard": "Kontaktdaten",
-        "profileCard": "Profil",
         "bornOn": "Geboren am {date}",
         "source": "Herkunft",
         "lastRental": "Letzte Vermietung",
         "never": "Nie",
-        "noAddress": "Keine Adresse hinterlegt",
-        "noPhone": "Keine Telefonnummer hinterlegt",
-        "emptyProfile": "Keine Profilinformationen.",
         "editSection": "Bearbeiten: {section}",
         "editSectionDescription": "Nur diese Angaben werden geändert.",
         "sectionSaved": "Änderungen gespeichert",
         "save": "Speichern",
-        "cancel": "Abbrechen"
+        "cancel": "Abbrechen",
+        "infoCard": "Angaben",
+        "emptyInfo": "Noch keine Angaben."
       },
       "pagination": {
         "showing": "{from}–{to} von {total}",
@@ -6310,34 +6299,19 @@
       },
       "customerFields": {
         "title": "Kundendaten",
-        "description": "Legen Sie fest, welche Informationen Sie über Ihre Kunden speichern – über Name und Kontaktdaten hinaus.",
-        "limits": "{count} / {max} aktive Felder",
         "native": {
           "birthDate": "Geburtsdatum",
-          "birthDateHelp": "Zeigt auch das Alter des Kunden an.",
           "acquisitionSource": "Herkunft des Kunden",
-          "acquisitionSourceHelp": "Wie der Kunde auf Sie aufmerksam wurde.",
-          "socialLinks": "Netzwerke und Links",
-          "socialLinksHelp": "Instagram, Website, WhatsApp…"
-        },
-        "sections": {
-          "defaultName": "Weitere Angaben",
-          "rename": "Abschnitt umbenennen",
-          "moveUp": "Nach oben",
-          "moveDown": "Nach unten",
-          "online": "Online-Reservierung…"
+          "socialLinks": "Netzwerke und Links"
         },
         "field": {
           "add": "Feld hinzufügen",
           "delete": "Endgültig löschen",
-          "moveTo": "Verschieben nach",
           "drag": "Neu anordnen"
         },
         "badges": {
           "required": "Pflichtfeld",
           "sensitive": "Sensibel",
-          "business": "Geschäftskunden",
-          "individual": "Privatkunden",
           "online": {
             "optional": "Online · Optional",
             "required": "Online · Pflichtfeld"
@@ -6385,9 +6359,7 @@
             "contractItemHelp": "Wird unter der Zeile des gemieteten Artikels eingefügt."
           },
           "labelPlaceholderItem": "Schuhgröße",
-          "scope": "Geltungsbereich",
           "scopes": {
-            "customer": "In den Kundendaten",
             "customerDescription": "Ein Wert pro Kunde: Führerschein, Ausweisdokument…",
             "item": "Pro gemieteten Artikel",
             "itemDescription": "Ein Wert pro Person oder Ausrüstungsteil: Körpergröße, Schuhgröße…"
@@ -6413,7 +6385,6 @@
           "identityDocument": {
             "name": "Ausweisdokument",
             "description": "Der Nachweis, der bei der Übergabe verlangt wird.",
-            "section": "Identität",
             "fields": {
               "id_document_type": {
                 "label": "Dokumentart",
@@ -6436,7 +6407,6 @@
           "emergencyContact": {
             "name": "Notfallkontakt",
             "description": "Die Person, die bei Problemen während der Miete zu benachrichtigen ist.",
-            "section": "Notfallkontakt",
             "fields": {
               "emergency_contact_name": {
                 "label": "Name"
@@ -6459,7 +6429,6 @@
           "businessContacts": {
             "name": "Geschäftskunden",
             "description": "Der Buchhaltungskontakt und die Referenz, die auf Ihren Dokumenten anzugeben ist.",
-            "section": "Rechnungsstellung",
             "fields": {
               "accounting_contact_name": {
                 "label": "Kontakt Buchhaltung"
@@ -6475,7 +6444,6 @@
           "brazil": {
             "name": "Brasilien",
             "description": "CPF oder CNPJ mit Prüfung der Nummer sowie RG.",
-            "section": "Identität",
             "fields": {
               "br_cpf_cnpj": {
                 "label": "CPF / CNPJ"
@@ -6491,7 +6459,6 @@
           "spain": {
             "name": "Spanien",
             "description": "DNI oder NIE mit Prüfung des Kontrollbuchstabens.",
-            "section": "Identität",
             "fields": {
               "es_dni_nie": {
                 "label": "DNI / NIE"
@@ -6501,7 +6468,6 @@
           "italy": {
             "name": "Italien",
             "description": "Codice fiscale mit Prüfung des Kontrollzeichens.",
-            "section": "Identität",
             "fields": {
               "it_codice_fiscale": {
                 "label": "Codice fiscale"
@@ -6511,7 +6477,6 @@
           "portugal": {
             "name": "Portugal",
             "description": "NIF mit Prüfung der Prüfziffer.",
-            "section": "Identität",
             "fields": {
               "pt_nif": {
                 "label": "NIF"
@@ -6521,7 +6486,6 @@
           "vehicles": {
             "name": "Fahrzeuge und Zweiräder",
             "description": "Der Führerschein, der in den Vertrag übernommen wird.",
-            "section": "Führerschein",
             "fields": {
               "driving_license_number": {
                 "label": "Führerscheinnummer"
@@ -6537,7 +6501,6 @@
           "ski": {
             "name": "Ski und Bergsport",
             "description": "Die Körpermaße, um die Ausrüstung vor Ankunft des Kunden vorzubereiten.",
-            "section": "Körpermaße",
             "fields": {
               "height_cm": {
                 "label": "Körpergröße"
@@ -6562,7 +6525,6 @@
           "bikes": {
             "name": "Fahrräder",
             "description": "Alles, um das Fahrrad vor Ankunft des Kunden einzustellen.",
-            "section": "Fahrradeinstellung",
             "fields": {
               "height_cm": {
                 "label": "Körpergröße"
@@ -6578,7 +6540,6 @@
           "boating": {
             "name": "Wassersport",
             "description": "Der Bootsführerschein, der in den Vertrag übernommen wird.",
-            "section": "Bootsführerschein",
             "fields": {
               "boat_license_number": {
                 "label": "Nummer des Bootsführerscheins"
@@ -6620,8 +6581,6 @@
         "toasts": {
           "created": "Feld hinzugefügt",
           "deleted": "Feld gelöscht",
-          "sectionRenamed": "Abschnitt umbenannt",
-          "sectionOnlineSaved": "Einstellungen auf den Abschnitt angewendet",
           "hidden": "Feld ausgeblendet"
         },
         "online": {
@@ -6671,66 +6630,33 @@
           },
           "customerEditable": "Der Kunde kann es in seinem Konto ändern",
           "customerEditableHint": "Das Feld erscheint im Kundenkonto und kann dort aktualisiert werden.",
-          "customerEditableNeverHint": "Verfügbar, sobald das Feld beim Kunden abgefragt wird.",
-          "targetsSummaryLabel": "Für:",
-          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+          "customerEditableNeverHint": "Verfügbar, sobald das Feld beim Kunden abgefragt wird."
         },
         "sectionOnline": {
-          "title": "Online-Reservierung",
-          "description": "{count, plural, one {Gilt für das Feld des Abschnitts „{section}“.} other {Gilt für die # Felder des Abschnitts „{section}“.}}",
           "adoptedTitle": "Für welche Produkte?",
           "adoptedDescription": "Die Felder „{section}“ werden für jeden gemieteten Artikel erfasst. Wählen Sie die betreffenden Produkte aus und fragen Sie die Felder bei Bedarf beim Kunden ab.",
-          "mixed": "Die Felder dieses Abschnitts sind unterschiedlich eingestellt: Alle übernehmen diese Einstellungen.",
           "apply": "Anwenden",
-          "cancel": "Abbrechen",
-          "later": "Später",
-          "close": "Schließen"
+          "later": "Später"
         },
         "builder": {
           "templates": {
-            "button": "Vorlagen",
             "all": "Alle Vorlagen ansehen"
           },
-          "views": {
-            "label": "Angezeigtes Formular",
-            "team": "Kundendaten · Team",
-            "client": "Online-Reservierung · Kunde",
-            "teamShort": "Kundendaten",
-            "clientShort": "Online-Reservierung"
-          },
           "locked": {
-            "title": "Kontaktdaten",
-            "note": "Louez-Felder, immer vorhanden",
             "addressPlaceholder": "Straße, Postleitzahl, Stadt, Land",
-            "company": "Für Geschäftskunden: Firmenname, Unternehmensnummer und USt-IdNr."
-          },
-          "profile": {
-            "title": "Profil"
-          },
-          "sections": {
-            "newName": "Neuer Abschnitt",
-            "defaultItemName": "Details",
-            "add": "Neuer Abschnitt",
-            "delete": "Abschnitt löschen",
-            "empty": "Leerer Abschnitt: Fügen Sie das erste Feld hinzu.",
-            "renameHint": "Zum Umbenennen klicken",
-            "actions": "Aktionen für den Abschnitt „{name}“"
+            "label": "Unverzichtbares Feld",
+            "sheetNote": "Unverzichtbares Feld: immer in den Kundendaten. Nur Position und Breite lassen sich ändern."
           },
           "field": {
             "select": "„{label}“ bearbeiten",
             "actions": "Aktionen für das Feld „{label}“",
-            "deleteLabel": "„{label}“ löschen",
             "draftBadge": "Neu",
             "draftPlaceholder": "Neues Feld"
           },
           "item": {
-            "title": "Pro gemieteten Artikel – in der Reservierung",
-            "description": "Wird für jeden gemieteten Artikel ausgefüllt: zwei Fahrräder, zweimal.",
-            "participantLocked": "Immer angeboten",
             "empty": "Körpergröße, Schuhgröße, Niveau… Fügen Sie hinzu, was Sie wissen müssen, um jeden Artikel vorzubereiten."
           },
           "inspector": {
-            "label": "Feldeinstellungen",
             "newTitle": "Neues Feld",
             "add": "Hinzufügen",
             "cancel": "Abbrechen",
@@ -6748,12 +6674,10 @@
               "es_dni_nie": "DNI / NIE (Spanien)",
               "it_codice_fiscale": "Codice fiscale (Italien)",
               "pt_nif": "NIF (Portugal)"
-            },
-            "type": "Typ"
+            }
           },
           "picker": {
             "title": "Feld hinzufügen",
-            "description": "Wählen Sie, wo es ausgefüllt wird, und dann den Typ. Den Namen vergeben Sie direkt danach.",
             "suggested": "Vorgeschlagene Vorlagen",
             "templates": "Vorlagen",
             "examples": {
@@ -6781,23 +6705,8 @@
               }
             }
           },
-          "client": {
-            "ask": "Ein Feld beim Kunden abfragen",
-            "askTitle": "Beim Kunden abfragen",
-            "askDescription": "Ein Klick: Das Feld wird bei der Reservierung als optional angeboten.",
-            "askButton": "Abfragen",
-            "askField": "„{label}“ beim Kunden abfragen",
-            "asked": "Abgefragt",
-            "askEmpty": "Alle Ihre Felder werden bereits beim Kunden abgefragt.",
-            "lockedNote": "Von Louez abgefragt, immer vorhanden"
-          },
-          "empty": {
-            "title": "Fügen Sie eigene Felder hinzu",
-            "description": "Ausweisdokument, Führerschein, Körpergröße… Starten Sie mit einer Vorlage, die zu Ihrem Shop passt, oder erstellen Sie ein Feld."
-          },
           "native": {
-            "fixed": "Louez-Feld: Name und Typ sind festgelegt.",
-            "socialLinksType": "Links"
+            "fixed": "Louez-Feld: Name und Typ sind festgelegt."
           },
           "visibility": {
             "shown": {
@@ -6815,6 +6724,30 @@
           },
           "online": {
             "hiddenNote": "Ausgeblendet: Das Feld wird beim Kunden nicht abgefragt. Blenden Sie es ein, um es bei der Reservierung anzubieten."
+          },
+          "pageDescription": "Die Felder Ihrer Kundendaten, so angeordnet, wie Ihre Formulare sie anzeigen.",
+          "preview": {
+            "open": "Kundenvorschau",
+            "description": "Was Ihre Kunden bei einer Online-Reservierung ausfüllen."
+          },
+          "layout": {
+            "title": "Layout"
+          },
+          "width": {
+            "label": "Breite",
+            "full": "Voll",
+            "half": "Halb",
+            "fullLabel": "Volle Breite",
+            "halfLabel": "Halbe Breite",
+            "hint": "Zwei Felder mit halber Breite teilen sich eine Zeile.",
+            "fixed": "Dieses Feld nimmt immer die ganze Zeile ein."
+          },
+          "record": {
+            "customer": "In den Kundendaten",
+            "item": "In der Reservierung"
+          },
+          "toasts": {
+            "applied": "Einstellungen angewendet"
           }
         }
       }

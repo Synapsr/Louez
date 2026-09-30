@@ -3145,8 +3145,6 @@
         "description": "Esta acao e irreversivel. O cliente sera excluido permanentemente."
       },
       "form": {
-        "personalInfo": "Informacoes pessoais",
-        "personalInfoDescription": "Informacoes basicas do cliente",
         "businessCustomer": "Cliente empresarial",
         "businessCustomerDescription": "Marque se este cliente representa uma empresa",
         "companyName": "Nome da empresa",
@@ -3166,8 +3164,6 @@
         "emailPlaceholder": "joao.silva@exemplo.com",
         "phone": "Telefone",
         "phonePlaceholder": "+351 912 345 678",
-        "addressSection": "Endereco",
-        "addressDescription": "Endereco do cliente (opcional)",
         "address": "Endereco",
         "addressPlaceholder": "Rua Principal, 123",
         "postalCode": "Codigo postal",
@@ -3182,9 +3178,6 @@
         "save": "Salvar",
         "createCustomer": "Criar cliente",
         "customerKind": "Tipo de cliente",
-        "moreInfo": "Informações adicionais",
-        "moreInfoDescription": "Opcional. Também poderá completá-las mais tarde a partir da ficha.",
-        "profileSection": "Perfil",
         "birthDate": "Data de nascimento",
         "ageYears": "{age, plural, one {# ano} other {# anos}}",
         "acquisitionSource": "Como o conheceu?",
@@ -3193,8 +3186,7 @@
         "acquisitionSourceDetailPlaceholder": "Posto de turismo, feira, hotel parceiro…",
         "socialSection": "Redes e links",
         "customizeFields": "Personalizar os campos",
-        "fieldCount": "{count, plural, one {# campo} other {# campos}}",
-        "filledCount": "{count, plural, one {# preenchido} other {# preenchidos}}"
+        "fieldsTitle": "Informações do cliente"
       },
       "countries": {
         "FR": "Franca",
@@ -3265,20 +3257,17 @@
         "edit": "Editar",
         "moreActions": "Mais ações",
         "createdVia": "Criado via: {channel}",
-        "contactCard": "Dados de contacto",
-        "profileCard": "Perfil",
         "bornOn": "Nasceu a {date}",
         "source": "Origem",
         "lastRental": "Último aluguer",
         "never": "Nunca",
-        "noAddress": "Endereço não indicado",
-        "noPhone": "Telefone não indicado",
-        "emptyProfile": "Sem informações de perfil.",
         "editSection": "Editar: {section}",
         "editSectionDescription": "Só estas informações serão alteradas.",
         "sectionSaved": "Alterações guardadas",
         "save": "Guardar",
-        "cancel": "Cancelar"
+        "cancel": "Cancelar",
+        "infoCard": "Informações",
+        "emptyInfo": "Ainda nada preenchido."
       },
       "pagination": {
         "showing": "{from}–{to} de {total}",
@@ -6310,34 +6299,19 @@
       },
       "customerFields": {
         "title": "Ficha de cliente",
-        "description": "Escolha as informações que guarda sobre os seus clientes, para além do nome e dos dados de contacto.",
-        "limits": "{count} / {max} campos ativos",
         "native": {
           "birthDate": "Data de nascimento",
-          "birthDateHelp": "Mostra também a idade do cliente.",
           "acquisitionSource": "Origem do cliente",
-          "acquisitionSourceHelp": "Como o cliente o conheceu.",
-          "socialLinks": "Redes e links",
-          "socialLinksHelp": "Instagram, site, WhatsApp…"
-        },
-        "sections": {
-          "defaultName": "Informações adicionais",
-          "rename": "Renomear a secção",
-          "moveUp": "Subir",
-          "moveDown": "Descer",
-          "online": "Reserva online…"
+          "socialLinks": "Redes e links"
         },
         "field": {
           "add": "Adicionar um campo",
           "delete": "Eliminar definitivamente",
-          "moveTo": "Mover para",
           "drag": "Reordenar"
         },
         "badges": {
           "required": "Obrigatório",
           "sensitive": "Sensível",
-          "business": "Empresas",
-          "individual": "Particulares",
           "online": {
             "optional": "Online · Opcional",
             "required": "Online · Obrigatório"
@@ -6385,9 +6359,7 @@
             "contractItemHelp": "Adicionado por baixo da linha do artigo alugado."
           },
           "labelPlaceholderItem": "Número de calçado",
-          "scope": "Âmbito",
           "scopes": {
-            "customer": "Na ficha de cliente",
             "customerDescription": "Um valor por cliente: carta de condução, documento de identificação…",
             "item": "Por artigo alugado",
             "itemDescription": "Um valor por pessoa ou por material: altura, número de calçado…"
@@ -6413,7 +6385,6 @@
           "identityDocument": {
             "name": "Documento de identificação",
             "description": "O comprovativo pedido na entrega do material.",
-            "section": "Identidade",
             "fields": {
               "id_document_type": {
                 "label": "Tipo de documento",
@@ -6436,7 +6407,6 @@
           "emergencyContact": {
             "name": "Contacto de emergência",
             "description": "A pessoa a avisar em caso de problema durante o aluguer.",
-            "section": "Contacto de emergência",
             "fields": {
               "emergency_contact_name": {
                 "label": "Nome"
@@ -6459,7 +6429,6 @@
           "businessContacts": {
             "name": "Clientes empresariais",
             "description": "O contacto da contabilidade e a referência a indicar nos seus documentos.",
-            "section": "Faturação",
             "fields": {
               "accounting_contact_name": {
                 "label": "Contacto da contabilidade"
@@ -6475,7 +6444,6 @@
           "brazil": {
             "name": "Brasil",
             "description": "CPF ou CNPJ, com verificação do número, e RG.",
-            "section": "Identidade",
             "fields": {
               "br_cpf_cnpj": {
                 "label": "CPF / CNPJ"
@@ -6491,7 +6459,6 @@
           "spain": {
             "name": "Espanha",
             "description": "DNI ou NIE, com verificação da letra de controlo.",
-            "section": "Identidade",
             "fields": {
               "es_dni_nie": {
                 "label": "DNI / NIE"
@@ -6501,7 +6468,6 @@
           "italy": {
             "name": "Itália",
             "description": "Codice fiscale, com verificação do carácter de controlo.",
-            "section": "Identidade",
             "fields": {
               "it_codice_fiscale": {
                 "label": "Codice fiscale"
@@ -6511,7 +6477,6 @@
           "portugal": {
             "name": "Portugal",
             "description": "NIF, com verificação do dígito de controlo.",
-            "section": "Identidade",
             "fields": {
               "pt_nif": {
                 "label": "NIF"
@@ -6521,7 +6486,6 @@
           "vehicles": {
             "name": "Veículos e duas rodas",
             "description": "A carta de condução, que passa para o contrato.",
-            "section": "Carta de condução",
             "fields": {
               "driving_license_number": {
                 "label": "Número da carta"
@@ -6537,7 +6501,6 @@
           "ski": {
             "name": "Esqui e montanha",
             "description": "As medidas para preparar o material antes da chegada do cliente.",
-            "section": "Medidas",
             "fields": {
               "height_cm": {
                 "label": "Altura"
@@ -6562,7 +6525,6 @@
           "bikes": {
             "name": "Bicicletas",
             "description": "O necessário para afinar a bicicleta antes de o cliente chegar.",
-            "section": "Afinação da bicicleta",
             "fields": {
               "height_cm": {
                 "label": "Altura"
@@ -6578,7 +6540,6 @@
           "boating": {
             "name": "Náutica",
             "description": "A carta de navegador, que passa para o contrato.",
-            "section": "Carta de navegador",
             "fields": {
               "boat_license_number": {
                 "label": "Número da carta de navegador"
@@ -6620,8 +6581,6 @@
         "toasts": {
           "created": "Campo adicionado",
           "deleted": "Campo eliminado",
-          "sectionRenamed": "Secção renomeada",
-          "sectionOnlineSaved": "Definições aplicadas à secção",
           "hidden": "Campo ocultado"
         },
         "online": {
@@ -6671,66 +6630,33 @@
           },
           "customerEditable": "O cliente pode alterá-lo na sua conta",
           "customerEditableHint": "Encontra-o na sua conta de cliente e pode atualizá-lo.",
-          "customerEditableNeverHint": "Disponível quando o campo é pedido ao cliente.",
-          "targetsSummaryLabel": "Para:",
-          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+          "customerEditableNeverHint": "Disponível quando o campo é pedido ao cliente."
         },
         "sectionOnline": {
-          "title": "Reserva online",
-          "description": "{count, plural, one {Aplica-se ao campo da secção «{section}».} other {Aplica-se aos # campos da secção «{section}».}}",
           "adoptedTitle": "Para que produtos?",
           "adoptedDescription": "Os campos «{section}» são registados para cada artigo alugado. Escolha os produtos abrangidos e, se necessário, peça ao cliente que os preencha.",
-          "mixed": "Os campos desta secção têm definições diferentes: todos passarão a ter estas.",
           "apply": "Aplicar",
-          "cancel": "Cancelar",
-          "later": "Mais tarde",
-          "close": "Fechar"
+          "later": "Mais tarde"
         },
         "builder": {
           "templates": {
-            "button": "Modelos",
             "all": "Ver todos os modelos"
           },
-          "views": {
-            "label": "Formulário apresentado",
-            "team": "Ficha de cliente · equipa",
-            "client": "Reserva online · cliente",
-            "teamShort": "Ficha de cliente",
-            "clientShort": "Reserva online"
-          },
           "locked": {
-            "title": "Dados de contacto",
-            "note": "Campos Louez, sempre presentes",
             "addressPlaceholder": "Rua, código postal, cidade, país",
-            "company": "Para uma empresa: nome da empresa, número da empresa e número de IVA."
-          },
-          "profile": {
-            "title": "Perfil"
-          },
-          "sections": {
-            "newName": "Nova secção",
-            "defaultItemName": "Detalhes",
-            "add": "Nova secção",
-            "delete": "Eliminar a secção",
-            "empty": "Secção vazia: adicione-lhe um primeiro campo.",
-            "renameHint": "Clique para renomear",
-            "actions": "Ações da secção «{name}»"
+            "label": "Campo indispensável",
+            "sheetNote": "Campo indispensável: sempre presente na ficha. Só é possível ajustar a sua posição e a sua largura."
           },
           "field": {
             "select": "Editar «{label}»",
             "actions": "Ações do campo «{label}»",
-            "deleteLabel": "Eliminar «{label}»",
             "draftBadge": "Novo",
             "draftPlaceholder": "Novo campo"
           },
           "item": {
-            "title": "Por artigo alugado — na reserva",
-            "description": "Preenchido para cada artigo alugado: duas bicicletas, duas vezes.",
-            "participantLocked": "Sempre proposto",
             "empty": "Altura, número de calçado, nível… Adicione o que precisa de saber para preparar cada artigo."
           },
           "inspector": {
-            "label": "Definições do campo",
             "newTitle": "Novo campo",
             "add": "Adicionar",
             "cancel": "Cancelar",
@@ -6748,12 +6674,10 @@
               "es_dni_nie": "DNI / NIE (Espanha)",
               "it_codice_fiscale": "Codice fiscale (Itália)",
               "pt_nif": "NIF (Portugal)"
-            },
-            "type": "Tipo"
+            }
           },
           "picker": {
             "title": "Adicionar um campo",
-            "description": "Escolha onde é preenchido e depois o tipo. Dá-lhe um nome logo a seguir.",
             "suggested": "Modelos sugeridos",
             "templates": "Modelos",
             "examples": {
@@ -6781,23 +6705,8 @@
               }
             }
           },
-          "client": {
-            "ask": "Pedir um campo ao cliente",
-            "askTitle": "Pedir ao cliente",
-            "askDescription": "Um clique: o campo é proposto na reserva, como opcional.",
-            "askButton": "Pedir",
-            "askField": "Pedir «{label}» ao cliente",
-            "asked": "Pedido",
-            "askEmpty": "Todos os seus campos já são pedidos ao cliente.",
-            "lockedNote": "Pedidos pelo Louez, sempre presentes"
-          },
-          "empty": {
-            "title": "Adicione os seus próprios campos",
-            "description": "Documento de identificação, carta de condução, altura… Parta de um modelo adequado à sua loja ou crie um campo."
-          },
           "native": {
-            "fixed": "Campo Louez: o nome e o tipo são fixos.",
-            "socialLinksType": "Links"
+            "fixed": "Campo Louez: o nome e o tipo são fixos."
           },
           "visibility": {
             "shown": {
@@ -6815,6 +6724,30 @@
           },
           "online": {
             "hiddenNote": "Oculto: não é pedido ao cliente. Mostre-o para o propor na reserva."
+          },
+          "pageDescription": "Os campos das suas fichas de cliente, dispostos tal como os seus formulários os apresentam.",
+          "preview": {
+            "open": "Pré-visualização do cliente",
+            "description": "O que os seus clientes preenchem ao reservar online."
+          },
+          "layout": {
+            "title": "Disposição"
+          },
+          "width": {
+            "label": "Largura",
+            "full": "Total",
+            "half": "Meia",
+            "fullLabel": "Largura total",
+            "halfLabel": "Meia largura",
+            "hint": "Dois campos de meia largura partilham uma linha.",
+            "fixed": "Este campo ocupa sempre a linha inteira."
+          },
+          "record": {
+            "customer": "Na ficha",
+            "item": "Na reserva"
+          },
+          "toasts": {
+            "applied": "Definições aplicadas"
           }
         }
       }

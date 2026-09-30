@@ -4,15 +4,17 @@ import { useTranslations } from "next-intl";
 
 import type { CustomerFieldScope } from "@louez/types";
 
+import { PanelGroup } from "@/components/online-store/panel/panel-group";
+
 import { CustomerFieldSwitchSetting } from "./customer-field-switch-setting";
 
 interface CustomerFieldRecordGroupProps {
-  /** Prefix of the control ids, unique per inspector. */
+  /** Prefix of the control ids, unique per Sheet. */
   idPrefix: string;
   scope: CustomerFieldScope;
   /** "Afficher sur la fiche"; null for a field being created (it is shown). */
   shown: boolean | null;
-  /** "Obligatoire pour l'équipe"; null where it is not offered (per rented unit, links). */
+  /** "Obligatoire pour l'équipe"; null where it is not offered (per rented item, links). */
   required: boolean | null;
   shownError?: string;
   requiredError?: string;
@@ -38,7 +40,7 @@ export const CustomerFieldRecordGroup = ({
   if (shown === null && required === null) return null;
 
   return (
-    <section className="flex flex-col gap-4 py-6 first:pt-0 last:pb-0">
+    <PanelGroup title={t(`builder.record.${scope}`)}>
       {shown !== null && (
         <CustomerFieldSwitchSetting
           id={`${idPrefix}-shown`}
@@ -64,6 +66,6 @@ export const CustomerFieldRecordGroup = ({
           onCheckedChange={onRequiredChange}
         />
       )}
-    </section>
+    </PanelGroup>
   );
 };

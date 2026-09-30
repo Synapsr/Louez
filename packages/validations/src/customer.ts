@@ -106,11 +106,14 @@ export const customerSchema = buildCustomerSchema({
 export type CustomerInput = z.infer<typeof customerSchema>;
 
 /**
- * One card of the customer record edited in place: only the fields it carries
- * are written, the rest of the record is left alone.
+ * The customer record edited in place (its "Informations" Sheet): only the
+ * fields it carries are written, the rest of the record is left alone.
  */
 export const customerSectionSchema = z.object({
   email: z.email('validation.email').optional(),
+  /** A business customer's identifiers; ignored for an individual. */
+  companyNumber: z.string().max(64).optional(),
+  vatNumber: z.string().max(64).optional(),
   phone: z
     .string()
     .refine((val) => !val || isPossiblePhoneNumberInput(val), {

@@ -4,93 +4,71 @@ import { useState } from "react";
 
 import { revalidateLogic } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import {
   CUSTOMER_ACQUISITION_SOURCES,
   CUSTOMER_SOCIAL_NETWORKS,
-  type CustomerAcquisitionSource,
   type CustomerFieldValues,
-  type ResolvedCustomerProfileSettings,
-  type CustomerSocialNetwork,
 } from "@louez/types";
 import {
   type CustomerFieldIssueCode,
-  type CustomerInput,
+  type CustomerFormLayoutItem,
   isPlausibleBirthDate,
   isPossiblePhoneNumberInput,
 } from "@louez/validations";
-import { resolveCustomerSocialLinks } from "@louez/utils";
 import { z } from "zod";
 
 import { useAppForm } from "@/hooks/form/form";
-import { trackOpenReplayEvent } from "@/lib/openreplay/client";
-import { openReplayEvents } from "@/lib/openreplay/events";
 import { getErrorMessageKey } from "@/lib/utils/util.error-message";
 
-import { createCustomer, updateCustomer } from "./actions";
-import type { CustomerFormCustomer, CustomerFormOpenReplaySource } from "./customer-form.types";
-
-export interface CustomerFormValues {
-  customerType: "individual" | "business";
-  email: string;
-  firstName: string;
-  lastName: string;
-  companyName: string;
-  companyNumber: string;
-  vatNumber: string;
-  phone: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  country: string;
-  birthDate: string;
-  acquisitionSource: CustomerAcquisitionSource | "";
-  acquisitionSourceDetail: string;
-  socialLinks: Partial<Record<CustomerSocialNetwork, string>>;
-  notes: string;
-  customFields: CustomerFieldValues;
-}
+import { createCustomer, updateCustomer, updateCustomerSection } from "./actions";
+import type {
+  CustomerFormCustomer,
+  CustomerFormPrefill,
+  CustomerFormSave,
+  CustomerFormValues,
+} from "./customer-form.types";
+import {
+  getCustomerFormDefaults,
+  toCustomerInput,
+  toCustomerRecordInput,
+} from "./util.customer-form";
 
 interface UseCustomerFormParams {
   customer?: CustomerFormCustomer;
   initialCustomFields: CustomerFieldValues;
-  profileSettings: ResolvedCustomerProfileSettings;
-  openReplaySource: CustomerFormOpenReplaySource;
+  prefill?: CustomerFormPrefill;
+  /**
+   * The items the form shows, hidden ones already left out: they say which
+   * Louez fields the store requires, and what the record's Sheet sends.
+   */
+  items: readonly CustomerFormLayoutItem[];
+  save: CustomerFormSave;
+  /** Called once saved, with the customer's id (the new one for a creation). */
+  onSaved: (customerId: string, values: CustomerFormValues) => void;
 }
 
-const blankToUndefined = (value: string) => (value.trim() === "" ? undefined : value);
-
-/** What the server action expects: blanks dropped rather than sent as empty strings. */
-const toCustomerInput = (values: CustomerFormValues): CustomerInput => ({
-  ...values,
-  companyName: blankToUndefined(values.companyName),
-  companyNumber: blankToUndefined(values.companyNumber),
-  vatNumber: blankToUndefined(values.vatNumber),
-  phone: blankToUndefined(values.phone),
-  address: blankToUndefined(values.address),
-  city: blankToUndefined(values.city),
-  postalCode: blankToUndefined(values.postalCode),
-  country: blankToUndefined(values.country),
-  birthDate: blankToUndefined(values.birthDate),
-  acquisitionSource: values.acquisitionSource || undefined,
-  acquisitionSourceDetail: blankToUndefined(values.acquisitionSourceDetail),
-  notes: blankToUndefined(values.notes),
-});
-
+/**
+ * One form for every place a customer is typed in: the new and edit pages,
+ * the quick-create dialog and the record's Sheet. Only where it saves and
+ * what happens next differ.
+ */
 export const useCustomerForm = ({
   customer,
   initialCustomFields,
-  profileSettings,
-  openReplaySource,
+  prefill,
+  items,
+  save,
+  onSaved,
 }: UseCustomerFormParams) => {
-  const router = useRouter();
   const tValidation = useTranslations("validation");
   const tErrors = useTranslations("errors");
   const [rootError, setRootError] = useState<string | null>(null);
   const [fieldIssues, setFieldIssues] = useState<Record<string, CustomerFieldIssueCode>>({});
-  const isEditing = customer !== undefined;
+
+  const isRequired = (key: "birthDate" | "acquisitionSource") =>
+    items.some((item) => item.kind === "builtin" && item.key === key && item.required);
 
   // The form holds strings, blank when empty; the server schema takes it from there.
   const schema = z
@@ -126,13 +104,10 @@ export const useCustomerForm = ({
           path: ["companyName"],
         });
       }
-      if (profileSettings.birthDate.visibility === "required" && values.birthDate === "") {
+      if (isRequired("birthDate") && values.birthDate === "") {
         ctx.addIssue({ code: "custom", message: tValidation("required"), path: ["birthDate"] });
       }
-      if (
-        profileSettings.acquisitionSource.visibility === "required" &&
-        values.acquisitionSource === ""
-      ) {
+      if (isRequired("acquisitionSource") && values.acquisitionSource === "") {
         ctx.addIssue({
           code: "custom",
           message: tValidation("required"),
@@ -141,46 +116,28 @@ export const useCustomerForm = ({
       }
     });
 
-  const save = useMutation({
+  const mutation = useMutation({
     mutationFn: async (values: CustomerFormValues) => {
-      const input = toCustomerInput(values);
-      return isEditing ? updateCustomer(customer.id, input) : createCustomer(input);
+      switch (save.kind) {
+        case "create":
+          return createCustomer(toCustomerInput(values));
+        case "update":
+          return updateCustomer(save.customerId, toCustomerInput(values));
+        case "record":
+          return updateCustomerSection(save.customerId, toCustomerRecordInput(values, items));
+      }
     },
   });
 
   const form = useAppForm({
-    defaultValues: {
-      customerType: customer?.customerType ?? "individual",
-      email: customer?.email ?? "",
-      firstName: customer?.firstName ?? "",
-      lastName: customer?.lastName ?? "",
-      companyName: customer?.companyName ?? "",
-      companyNumber: customer?.companyNumber ?? "",
-      vatNumber: customer?.vatNumber ?? "",
-      phone: customer?.phone ?? "",
-      address: customer?.address ?? "",
-      city: customer?.city ?? "",
-      postalCode: customer?.postalCode ?? "",
-      country: customer?.country ?? "",
-      birthDate: customer?.birthDate ?? "",
-      acquisitionSource: customer?.acquisitionSource ?? "",
-      acquisitionSourceDetail: customer?.acquisitionSourceDetail ?? "",
-      socialLinks: Object.fromEntries(
-        resolveCustomerSocialLinks(customer?.socialLinks).map(({ network, value }) => [
-          network,
-          value,
-        ]),
-      ),
-      notes: customer?.notes ?? "",
-      customFields: initialCustomFields,
-    } satisfies CustomerFormValues,
+    defaultValues: getCustomerFormDefaults(customer, initialCustomFields, prefill),
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
     validators: { onSubmit: schema },
     onSubmit: async ({ value }) => {
       setRootError(null);
       setFieldIssues({});
 
-      const result = await save.mutateAsync(value);
+      const result = await mutation.mutateAsync(value);
 
       if ("error" in result && result.error) {
         if ("fieldIssues" in result && result.fieldIssues) {
@@ -193,20 +150,24 @@ export const useCustomerForm = ({
         return;
       }
 
-      if (!isEditing) {
-        trackOpenReplayEvent(openReplayEvents.dashboardCustomerCreationCompleted, {
-          journey: "customer_creation",
-          step: "completed",
-          source: openReplaySource,
-        });
-      }
-
-      const createdId = "customerId" in result ? result.customerId : undefined;
-      router.push(`/dashboard/customers/${isEditing ? customer.id : (createdId ?? "")}`);
+      const createdId =
+        "customerId" in result && typeof result.customerId === "string"
+          ? result.customerId
+          : undefined;
+      const customerId = save.kind === "create" ? createdId : save.customerId;
+      if (customerId) onSaved(customerId, value);
     },
   });
 
-  return { form, rootError, fieldIssues, isEditing };
+  /** Starts over, e.g. when the dialog opens again with another search. */
+  const reset = (nextPrefill?: CustomerFormPrefill) => {
+    mutation.reset();
+    setRootError(null);
+    setFieldIssues({});
+    form.reset(getCustomerFormDefaults(customer, initialCustomFields, nextPrefill));
+  };
+
+  return { form, rootError, fieldIssues, reset };
 };
 
 export type CustomerFormApi = ReturnType<typeof useCustomerForm>["form"];

@@ -3,17 +3,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
-import type {
-  CustomerFieldDefinition,
-  CustomerFieldScope,
-  CustomerProfileFieldKey,
-} from "@louez/types";
+import type { CustomerFieldScope, CustomerFieldWidth } from "@louez/types";
 import { toastManager } from "@louez/ui";
+import {
+  type CustomerFormLayoutItem,
+  setCustomerFormLayoutItemWidth,
+  toCustomerFormLayoutUpdateItems,
+} from "@louez/validations";
 
 import type { ResolvedCustomerFieldTemplate } from "@/lib/customers/customer-field-templates";
 import { getErrorMessageKey } from "@/lib/utils/util.error-message";
 
-import { customerFieldsMutations } from "./customer-fields.queries";
+import { customerFieldsMutations, layoutKey } from "./customer-fields.queries";
 import {
   type CustomerFieldOnlineSettings,
   toCustomerFieldPayload,
@@ -21,31 +22,33 @@ import {
 import {
   type CustomerFieldFormValues,
   type CustomerFieldWithUsage,
-  findCreatedField,
-  moveFieldPayload,
-  moveSectionPayload,
-  reorderSectionPayload,
+  findAdoptedFields,
 } from "./util.customer-fields-builder";
+import { moveShownItem } from "./util.customer-form-builder";
+
+type BuilderItem = CustomerFormLayoutItem<CustomerFieldWithUsage>;
 
 interface UseCustomerFieldsActionsParams {
   fields: CustomerFieldWithUsage[];
+  /** Each tab's full list, in order: what a move or a resize rearranges. */
+  items: Record<CustomerFieldScope, BuilderItem[]>;
   /** The page's reactions to what the server answered. */
-  onCreated: (field: CustomerFieldWithUsage, values: CustomerFieldFormValues) => void;
-  onItemTemplateAdopted: (section: string) => void;
+  onCreated: () => void;
+  onItemTemplateAdopted: (params: { name: string; fieldIds: string[] }) => void;
   onDeleted: (fieldId: string) => void;
-  onSectionRenamed: (from: string, to: string) => void;
 }
 
 /**
- * Every write of the editor, with its toast. Each answers with the whole
- * list; the canvas already shows reorders, renames and settings before that.
+ * Every write of the page, with its toast. Moves and resizes show at once
+ * and are put back if refused; settings changes go through the Sheet's
+ * autosave instead.
  */
 export const useCustomerFieldsActions = ({
   fields,
+  items,
   onCreated,
   onItemTemplateAdopted,
   onDeleted,
-  onSectionRenamed,
 }: UseCustomerFieldsActionsParams) => {
   const t = useTranslations("dashboard.settings.customerFields");
   const tErrors = useTranslations("errors");
@@ -58,24 +61,55 @@ export const useCustomerFieldsActions = ({
       type: "error",
     });
   };
-  const withErrorToast = { onError: showError };
 
   const create = useMutation(customerFieldsMutations.create(queryClient));
   const adopt = useMutation(customerFieldsMutations.adoptTemplate(queryClient));
   const update = useMutation(customerFieldsMutations.update(queryClient));
-  const reorder = useMutation(customerFieldsMutations.reorder(queryClient));
-  const rename = useMutation(customerFieldsMutations.renameSection(queryClient));
-  const sectionOnline = useMutation(customerFieldsMutations.updateSectionOnline(queryClient));
   const remove = useMutation(customerFieldsMutations.remove(queryClient));
-  const updateProfileField = useMutation(customerFieldsMutations.updateProfileField(queryClient));
+  const updateLayout = useMutation(customerFieldsMutations.updateLayout(queryClient));
+
+  /**
+   * Puts the tab's new order on screen right away (a drop must not jump
+   * back), then saves it; a refusal puts the previous order back.
+   */
+  const saveLayout = (scope: CustomerFieldScope, next: BuilderItem[]) => {
+    const key = layoutKey(scope);
+    const previous = queryClient.getQueryData(key);
+    queryClient.setQueryData(key, next);
+    updateLayout.mutate(
+      { scope, items: toCustomerFormLayoutUpdateItems(next) },
+      {
+        onError: (error) => {
+          queryClient.setQueryData(key, previous);
+          showError(error);
+        },
+      },
+    );
+  };
+
+  /** A drop: `from` and `to` are indexes in `shown`, the items the tab shows right now. */
+  const moveItem = (
+    scope: CustomerFieldScope,
+    shown: readonly BuilderItem[],
+    from: number,
+    to: number,
+  ) => {
+    const next = moveShownItem(items[scope], shown, from, to);
+    if (next) saveLayout(scope, next);
+  };
+
+  const setWidth = (scope: CustomerFieldScope, key: string, width: CustomerFieldWidth) => {
+    const current = items[scope].find((item) => item.key === key);
+    if (!current || current.fixedWidth || current.width === width) return;
+    saveLayout(scope, setCustomerFormLayoutItemWidth(items[scope], key, width));
+  };
 
   /** The draft's "Ajouter". A refusal leaves the draft as typed, with the reason in a toast. */
   const createField = async (values: CustomerFieldFormValues) => {
     try {
-      const next = await create.mutateAsync(toCustomerFieldPayload(values));
-      const created = findCreatedField(fields, next);
+      await create.mutateAsync(toCustomerFieldPayload(values));
       toastManager.add({ title: t("toasts.created"), type: "success" });
-      if (created) onCreated(created, values);
+      onCreated();
     } catch (error) {
       showError(error);
     }
@@ -86,76 +120,42 @@ export const useCustomerFieldsActions = ({
       { templateKey: template.id, fields: template.fields },
       {
         onSuccess: (next) => {
-          const added = next.length - fields.length;
-          if (added <= 0) return;
+          const adopted = findAdoptedFields(fields, next, template.id);
+          if (adopted.length === 0) return;
           toastManager.add({
-            title: t("templates.adoptedToast", { count: added }),
+            title: t("templates.adoptedToast", { count: adopted.length }),
             type: "success",
           });
-          // Per-unit fields concern no product until the owner picks them: ask right away.
-          const section = template.fields[0]?.section;
-          if (template.scope === "item" && section) onItemTemplateAdopted(section);
+          // Per-item fields concern no product until the owner picks them: ask right away.
+          if (template.scope === "item") {
+            onItemTemplateAdopted({
+              name: template.name,
+              fieldIds: adopted.map((field) => field.id),
+            });
+          }
         },
-        ...withErrorToast,
+        onError: showError,
       },
     );
 
   /** "Masquer plutôt" of the delete dialog: the field stays in place, greyed, its values kept. */
-  const hideField = (field: Pick<CustomerFieldDefinition, "id">) =>
+  const hideField = (fieldId: string) =>
     update.mutate(
-      { id: field.id, isActive: false },
+      { id: fieldId, isActive: false },
       {
         onSuccess: () => toastManager.add({ title: t("toasts.hidden"), type: "success" }),
-        ...withErrorToast,
+        onError: showError,
       },
     );
 
-  /** "Demander un champ au client": one click asks it, as optional. */
-  const askCustomer = (field: Pick<CustomerFieldDefinition, "id">) =>
-    update.mutate({ id: field.id, collectMode: "optional" }, withErrorToast);
-
-  /** The same for a Louez profile field. */
-  const askProfileField = (field: CustomerProfileFieldKey) =>
-    updateProfileField.mutate({ field, collectMode: "optional" }, withErrorToast);
-
-  const reorderSection = (
-    scope: CustomerFieldScope,
-    section: string,
-    ordered: CustomerFieldWithUsage[],
-  ) =>
-    reorder.mutate(
-      { fields: reorderSectionPayload(fields, scope, section, ordered) },
-      withErrorToast,
-    );
-
-  const moveField = (field: Pick<CustomerFieldDefinition, "id" | "scope">, target: string) =>
-    reorder.mutate({ fields: moveFieldPayload(fields, field, target) }, withErrorToast);
-
-  const moveSection = (scope: CustomerFieldScope, section: string, direction: -1 | 1) =>
-    reorder.mutate(
-      { fields: moveSectionPayload(fields, scope, section, direction) },
-      withErrorToast,
-    );
-
-  const renameSection = (from: string, to: string) => {
-    onSectionRenamed(from, to);
-    rename.mutate(
-      { from, to },
-      {
-        onSuccess: () => toastManager.add({ title: t("toasts.sectionRenamed"), type: "success" }),
-        ...withErrorToast,
-      },
-    );
-  };
-
-  /** Resolves to false when refused: the dialog stays open, the toast says why. */
-  const applySectionOnline = async (
-    section: string,
+  /** "Pour quels produits ?": the same online settings on every field a template just added. */
+  const applyOnlineSettings = async (
+    fieldIds: readonly string[],
     settings: CustomerFieldOnlineSettings,
   ): Promise<boolean> => {
     try {
-      await sectionOnline.mutateAsync({ section, ...settings });
-      toastManager.add({ title: t("toasts.sectionOnlineSaved"), type: "success" });
+      await Promise.all(fieldIds.map((id) => update.mutateAsync({ id, ...settings })));
+      toastManager.add({ title: t("builder.toasts.applied"), type: "success" });
       return true;
     } catch (error) {
       showError(error);
@@ -177,16 +177,12 @@ export const useCustomerFieldsActions = ({
     );
 
   return {
+    moveItem,
+    setWidth,
     createField,
     adoptTemplate,
     hideField,
-    askCustomer,
-    askProfileField,
-    reorderSection,
-    moveField,
-    moveSection,
-    renameSection,
-    applySectionOnline,
+    applyOnlineSettings,
     removeField,
     isAdopting: adopt.isPending,
     isRemoving: remove.isPending,
