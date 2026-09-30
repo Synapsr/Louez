@@ -3,6 +3,7 @@ import type {
   CustomerFieldAppliesTo,
   CustomerFieldCollectMode,
   CustomerFieldDefinition,
+  CustomerFieldFormat,
   CustomerFieldScope,
   CustomerFieldTarget,
   CustomerFieldTargetMode,
@@ -230,6 +231,7 @@ interface CustomerFieldDialogValues extends CustomerFieldOnlineSettings {
   options: string[];
   unit: string;
   helpText: string;
+  format?: CustomerFieldFormat | null;
   appliesTo: CustomerFieldAppliesTo;
   isRequired: boolean;
   isSearchable: boolean;
@@ -237,15 +239,17 @@ interface CustomerFieldDialogValues extends CustomerFieldOnlineSettings {
 }
 
 /**
- * What the field dialog sends. The switches an item field hides are turned
- * off (the server refuses them on that scope), empty strings become null, and
- * a field never asked cannot stay editable by the customer.
+ * What a new field sends. The switches an item field hides are turned off
+ * (the server refuses them on that scope), empty strings become null, a
+ * format only goes with a text, and a field never asked cannot stay editable
+ * by the customer.
  */
 export const toCustomerFieldPayload = <TValues extends CustomerFieldDialogValues>(
   values: TValues,
 ) => ({
   ...values,
   options: values.type === "select" ? values.options : null,
+  format: values.type === "text" ? (values.format ?? null) : null,
   unit: values.unit || null,
   helpText: values.helpText || null,
   appliesTo: values.scope === "item" ? "all" : values.appliesTo,

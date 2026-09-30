@@ -23,8 +23,8 @@ interface CustomerFieldsPreviewFrameProps {
 
 /**
  * A slice of the storefront checkout: the store's colour and mode, its name
- * in the header, and content the owner can look at but not use (`inert`).
- * The frame itself stays scrollable so a long form fits the sticky column.
+ * in the header. The content decides what can be clicked (the asked fields)
+ * and what is only there to be read.
  */
 export const CustomerFieldsPreviewFrame = ({
   storeName,
@@ -40,7 +40,7 @@ export const CustomerFieldsPreviewFrame = ({
     <div
       style={themeStyle}
       className={cn(
-        "overflow-hidden rounded-2xl border bg-background text-foreground",
+        "@container/frame overflow-hidden rounded-2xl border bg-background text-foreground shadow-card",
         getStoreThemeClassName(theme.mode),
       )}
     >
@@ -51,11 +51,7 @@ export const CustomerFieldsPreviewFrame = ({
           {t("header.secure")}
         </span>
       </div>
-      <div className="max-h-[calc(100dvh-18rem)] overflow-y-auto">
-        <div inert className="flex flex-col gap-6 p-4">
-          {children}
-        </div>
-      </div>
+      <div className="flex flex-col gap-8 p-4 sm:p-5">{children}</div>
     </div>
   );
 };

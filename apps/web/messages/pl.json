@@ -6312,15 +6312,7 @@
         "title": "Karta klienta",
         "description": "Wybierz, jakie informacje przechowujesz o klientach, oprócz imienia, nazwiska i danych kontaktowych.",
         "limits": "Aktywne pola: {count} / {max}",
-        "suggestions": {
-          "title": "Sugestie dla Ciebie",
-          "description": "Na podstawie kraju i branży Twojego sklepu.",
-          "browse": "Przeglądaj szablony",
-          "dismiss": "Ukryj sugestie"
-        },
         "native": {
-          "title": "Pola Louez",
-          "description": "Informacje, które Louez potrafi wykorzystać. Ukryj te, których nie potrzebujesz.",
           "birthDate": "Data urodzenia",
           "birthDateHelp": "Pokazuje też wiek klienta.",
           "acquisitionSource": "Źródło pozyskania klienta",
@@ -6335,36 +6327,25 @@
           "saved": "Ustawienie zapisane"
         },
         "sections": {
-          "add": "Dodaj sekcję",
-          "namePlaceholder": "Nazwa sekcji",
           "defaultName": "Informacje dodatkowe",
           "rename": "Zmień nazwę sekcji",
           "moveUp": "W górę",
           "moveDown": "W dół",
-          "actions": "Akcje sekcji",
           "online": "Rezerwacja online…"
         },
         "field": {
           "add": "Dodaj pole",
-          "edit": "Edytuj",
           "archive": "Archiwizuj",
           "restore": "Aktywuj ponownie",
           "delete": "Usuń trwale",
           "moveTo": "Przenieś do",
-          "actions": "Akcje pola",
-          "active": "Aktywne",
-          "drag": "Zmień kolejność",
-          "valueCount": "{count, plural, =0 {Brak wartości} one {Wypełnione u # klienta} few {Wypełnione u # klientów} many {Wypełnione u # klientów} other {Wypełnione u # klienta}}"
+          "drag": "Zmień kolejność"
         },
         "badges": {
           "required": "Wymagane",
           "sensitive": "Wrażliwe",
-          "contract": "Umowa",
-          "search": "Wyszukiwanie",
-          "list": "Lista",
           "business": "Firmy",
           "individual": "Osoby prywatne",
-          "item": "Na przedmiot",
           "online": {
             "optional": "Online · Opcjonalne",
             "required": "Online · Wymagane"
@@ -6372,29 +6353,18 @@
           "noTarget": "Nie wybrano produktu"
         },
         "dialog": {
-          "createTitle": "Nowe pole",
-          "createDescription": "Pojawi się na karcie każdego klienta.",
-          "editTitle": "Edytuj pole",
-          "editDescription": "Wpisane już wartości zostaną zachowane.",
           "label": "Etykieta",
           "labelPlaceholder": "Numer prawa jazdy",
-          "type": "Typ",
-          "typeLocked": "Po utworzeniu pola nie można już zmienić jego typu.",
           "options": "Dostępne opcje",
           "optionsPlaceholder": "Wpisz opcję i naciśnij Enter",
           "unit": "Jednostka",
           "unitPlaceholder": "cm, kg, km…",
           "helpText": "Podpowiedź",
           "helpTextPlaceholder": "Wskazówka wyświetlana pod polem",
-          "section": "Sekcja",
-          "newSection": "Nowa sekcja…",
           "appliesTo": "Dotyczy",
           "appliesToAll": "Wszyscy",
           "appliesToIndividual": "Osoby prywatne",
           "appliesToBusiness": "Firmy",
-          "save": "Zapisz",
-          "create": "Dodaj pole",
-          "cancel": "Anuluj",
           "types": {
             "text": "Tekst",
             "textarea": "Długi tekst",
@@ -6407,7 +6377,6 @@
             "url": "Link"
           },
           "flags": {
-            "required": "Wymagane",
             "requiredHelp": "Bez tego pola nie można zapisać karty.",
             "sensitive": "Dane wrażliwe",
             "sensitiveHelp": "Domyślnie ukryte na karcie i pomijane w eksportach.",
@@ -6421,7 +6390,6 @@
             "sensitiveItemHelp": "Domyślnie ukryte w rezerwacji.",
             "contractItemHelp": "Dodawane pod wierszem wynajętego przedmiotu."
           },
-          "createDescriptionItem": "Uzupełnia się je w rezerwacji dla każdego wynajętego przedmiotu.",
           "labelPlaceholderItem": "Rozmiar buta",
           "scope": "Zakres",
           "scopes": {
@@ -6430,8 +6398,6 @@
             "item": "Na każdy wynajęty przedmiot",
             "itemDescription": "Jedna wartość na osobę lub sztukę sprzętu: wzrost, rozmiar buta…"
           },
-          "scopeLocked": "Po utworzeniu pola nie można już zmienić jego zakresu.",
-          "close": "Zamknij",
           "online": {
             "title": "Rezerwacja online",
             "description": "Co klient uzupełnia podczas rezerwacji w Twoim sklepie."
@@ -6647,19 +6613,10 @@
           "withItemValues": "{count, plural, one {# wynajęty przedmiot ma wartość w tym polu: zostanie ona usunięta.} few {# wynajęte przedmioty mają wartość w tym polu: zostaną one usunięte.} many {# wynajętych przedmiotów ma wartość w tym polu: zostaną one usunięte.} other {# wynajętego przedmiotu ma wartość w tym polu: zostaną one usunięte.}}"
         },
         "archived": {
-          "title": "Zarchiwizowane pola",
           "description": "Ukryte na kartach, ich wartości są zachowane."
         },
         "preview": {
-          "title": "Podgląd",
-          "description": "To zobaczy Twój zespół podczas tworzenia klienta.",
-          "empty": "Dodaj pole, aby zobaczyć podgląd.",
-          "audience": {
-            "team": "Zespół",
-            "client": "Klient"
-          },
           "client": {
-            "description": "To zobaczy Twój klient podczas rezerwacji.",
             "previewFor": "Podgląd dla",
             "noProduct": "Nie znaleziono produktu",
             "sampleProduct": "Wynajęty przedmiot",
@@ -6669,17 +6626,11 @@
             "emptyHint": "Ustaw w polu opcję „Pytaj klienta” na Opcjonalne lub Wymagane, aby pojawiło się tutaj."
           }
         },
-        "empty": {
-          "title": "Brak własnych pól",
-          "description": "Zacznij od szablonu lub utwórz pierwsze pole."
-        },
         "toasts": {
           "created": "Dodano pole",
-          "updated": "Zaktualizowano pole",
           "archived": "Zarchiwizowano pole",
           "restored": "Ponownie aktywowano pole",
           "deleted": "Usunięto pole",
-          "reordered": "Zapisano kolejność",
           "sectionRenamed": "Zmieniono nazwę sekcji",
           "sectionOnlineSaved": "Zastosowano ustawienia do sekcji"
         },
@@ -6744,6 +6695,125 @@
           "cancel": "Anuluj",
           "later": "Później",
           "close": "Zamknij"
+        },
+        "builder": {
+          "templates": {
+            "button": "Szablony",
+            "all": "Zobacz wszystkie szablony"
+          },
+          "views": {
+            "label": "Wyświetlany formularz",
+            "team": "Karta klienta · zespół",
+            "client": "Rezerwacja online · klient",
+            "teamShort": "Karta klienta",
+            "clientShort": "Rezerwacja online"
+          },
+          "locked": {
+            "title": "Dane kontaktowe",
+            "note": "Pola Louez, zawsze obecne",
+            "addressPlaceholder": "Ulica, kod pocztowy, miasto, kraj",
+            "company": "Dla firmy: nazwa firmy, numer firmy i numer VAT."
+          },
+          "profile": {
+            "title": "Profil",
+            "description": "Pola, które Louez potrafi wykorzystać. Wybierz, czy mają się wyświetlać.",
+            "visibility": "Wyświetlanie pola „{field}”",
+            "hiddenNote": "Ukryte: nie pojawia się na karcie klienta."
+          },
+          "sections": {
+            "newName": "Nowa sekcja",
+            "defaultItemName": "Szczegóły",
+            "add": "Nowa sekcja",
+            "delete": "Usuń sekcję",
+            "empty": "Pusta sekcja: dodaj do niej pierwsze pole.",
+            "renameHint": "Kliknij, aby zmienić nazwę",
+            "actions": "Akcje sekcji „{name}”"
+          },
+          "field": {
+            "select": "Edytuj pole „{label}”",
+            "actions": "Akcje pola „{label}”",
+            "deleteLabel": "Usuń pole „{label}”",
+            "draftBadge": "Nowe",
+            "draftPlaceholder": "Nowe pole"
+          },
+          "item": {
+            "title": "Na każdy wynajęty przedmiot — w rezerwacji",
+            "description": "Uzupełniane dla każdego wynajętego przedmiotu: dwa rowery, dwa razy.",
+            "participantLocked": "Zawsze proponowane",
+            "empty": "Wzrost, rozmiar buta, poziom… Dodaj to, co musisz wiedzieć, aby przygotować każdy przedmiot."
+          },
+          "archived": {
+            "show": "Zobacz zarchiwizowane pola ({count})"
+          },
+          "inspector": {
+            "label": "Ustawienia pola",
+            "emptyTitle": "Kliknij pole, aby je edytować",
+            "emptyDescription": "Jego ustawienia pojawiają się tutaj i są zapisywane przy każdej zmianie.",
+            "tipDrag": "Przeciągnij, aby zmienić kolejność",
+            "tipMenu": "Przenieś, zarchiwizuj lub usuń",
+            "newTitle": "Nowe pole",
+            "add": "Dodaj",
+            "cancel": "Anuluj",
+            "close": "Zamknij",
+            "general": "Ogólne",
+            "advanced": "Opcje zaawansowane",
+            "saving": "Zapisywanie…",
+            "saved": "Zapisano",
+            "format": "Format",
+            "formatHelp": "Louez sprawdza wpisany numer i go formatuje.",
+            "formatFreeHelp": "Akceptowany jest dowolny tekst.",
+            "formats": {
+              "free": "Dowolny tekst",
+              "br_cpf_cnpj": "CPF / CNPJ (Brazylia)",
+              "es_dni_nie": "DNI / NIE (Hiszpania)",
+              "it_codice_fiscale": "Codice fiscale (Włochy)",
+              "pt_nif": "NIF (Portugalia)"
+            }
+          },
+          "picker": {
+            "title": "Dodaj pole",
+            "description": "Wybierz, gdzie będzie uzupełniane, a potem jego typ. Nazwę nadasz zaraz potem.",
+            "suggested": "Sugerowane szablony",
+            "templates": "Szablony",
+            "examples": {
+              "customer": {
+                "text": "Numer prawa jazdy",
+                "textarea": "Uwagi o kliencie",
+                "number": "Lata doświadczenia",
+                "date": "Data ważności prawa jazdy",
+                "select": "Rodzaj dokumentu tożsamości",
+                "checkbox": "Podpisane zwolnienie z odpowiedzialności",
+                "phone": "Kontakt alarmowy",
+                "email": "E-mail do faktur",
+                "url": "Link do dokumentu"
+              },
+              "item": {
+                "text": "Numer szafki",
+                "textarea": "Preferencje ustawień",
+                "number": "Wzrost (cm)",
+                "date": "Data urodzenia rowerzysty",
+                "select": "Poziom: początkujący, zaawansowany…",
+                "checkbox": "Fotelik dziecięcy",
+                "phone": "Telefon uczestnika",
+                "email": "E-mail uczestnika",
+                "url": "Link do trasy"
+              }
+            }
+          },
+          "client": {
+            "ask": "Zapytaj klienta o pole",
+            "askTitle": "Pytaj klienta",
+            "askDescription": "Jedno kliknięcie: pole jest proponowane podczas rezerwacji jako opcjonalne.",
+            "askButton": "Zapytaj",
+            "askField": "Zapytaj klienta o „{label}”",
+            "asked": "Zapytano",
+            "askEmpty": "Klient jest już pytany o wszystkie Twoje pola.",
+            "lockedNote": "Zbierane przez Louez, zawsze obecne"
+          },
+          "empty": {
+            "title": "Dodaj własne pola",
+            "description": "Dokument tożsamości, prawo jazdy, wzrost… Zacznij od szablonu dopasowanego do Twojego sklepu lub utwórz pole."
+          }
         }
       }
     },

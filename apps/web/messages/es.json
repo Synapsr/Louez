@@ -6312,15 +6312,7 @@
         "title": "Ficha de cliente",
         "description": "Elija qué información conserva sobre sus clientes, más allá del nombre y los datos de contacto.",
         "limits": "{count} / {max} campos activos",
-        "suggestions": {
-          "title": "Sugerencias para usted",
-          "description": "Según el país y la actividad de su tienda.",
-          "browse": "Explorar plantillas",
-          "dismiss": "Ocultar sugerencias"
-        },
         "native": {
-          "title": "Campos de Louez",
-          "description": "Información que Louez sabe aprovechar. Oculte la que no necesite.",
           "birthDate": "Fecha de nacimiento",
           "birthDateHelp": "Muestra también la edad del cliente.",
           "acquisitionSource": "Origen del cliente",
@@ -6335,36 +6327,25 @@
           "saved": "Ajuste guardado"
         },
         "sections": {
-          "add": "Agregar una sección",
-          "namePlaceholder": "Nombre de la sección",
           "defaultName": "Información adicional",
           "rename": "Renombrar la sección",
           "moveUp": "Subir",
           "moveDown": "Bajar",
-          "actions": "Acciones de la sección",
           "online": "Reserva online…"
         },
         "field": {
           "add": "Agregar un campo",
-          "edit": "Editar",
           "archive": "Archivar",
           "restore": "Reactivar",
           "delete": "Eliminar definitivamente",
           "moveTo": "Mover a",
-          "actions": "Acciones del campo",
-          "active": "Activo",
-          "drag": "Reordenar",
-          "valueCount": "{count, plural, =0 {Sin valores} one {# cliente con valor} other {# clientes con valor}}"
+          "drag": "Reordenar"
         },
         "badges": {
           "required": "Obligatorio",
           "sensitive": "Sensible",
-          "contract": "Contrato",
-          "search": "Búsqueda",
-          "list": "Lista",
           "business": "Empresas",
           "individual": "Particulares",
-          "item": "Por artículo",
           "online": {
             "optional": "Online · Opcional",
             "required": "Online · Obligatorio"
@@ -6372,29 +6353,18 @@
           "noTarget": "Ningún producto seleccionado"
         },
         "dialog": {
-          "createTitle": "Nuevo campo",
-          "createDescription": "Aparecerá en la ficha de todos sus clientes.",
-          "editTitle": "Editar el campo",
-          "editDescription": "Los valores ya introducidos se conservan.",
           "label": "Etiqueta",
           "labelPlaceholder": "Número de permiso",
-          "type": "Tipo",
-          "typeLocked": "El tipo ya no se puede cambiar una vez creado el campo.",
           "options": "Opciones",
           "optionsPlaceholder": "Escriba una opción y pulse Intro",
           "unit": "Unidad",
           "unitPlaceholder": "cm, kg, km…",
           "helpText": "Texto de ayuda",
           "helpTextPlaceholder": "Indicación que se muestra bajo el campo",
-          "section": "Sección",
-          "newSection": "Nueva sección…",
           "appliesTo": "Se aplica a",
           "appliesToAll": "Todos",
           "appliesToIndividual": "Particulares",
           "appliesToBusiness": "Empresas",
-          "save": "Guardar",
-          "create": "Agregar el campo",
-          "cancel": "Cancelar",
           "types": {
             "text": "Texto",
             "textarea": "Texto largo",
@@ -6407,7 +6377,6 @@
             "url": "Enlace"
           },
           "flags": {
-            "required": "Obligatorio",
             "requiredHelp": "No se puede guardar la ficha sin este campo.",
             "sensitive": "Dato sensible",
             "sensitiveHelp": "Oculto por defecto en la ficha y excluido de las exportaciones.",
@@ -6421,7 +6390,6 @@
             "sensitiveItemHelp": "Oculto por defecto en la reserva.",
             "contractItemHelp": "Se agrega bajo la línea del artículo alquilado."
           },
-          "createDescriptionItem": "Se rellenará para cada artículo alquilado, en la reserva.",
           "labelPlaceholderItem": "Número de calzado",
           "scope": "Ámbito",
           "scopes": {
@@ -6430,8 +6398,6 @@
             "item": "Por artículo alquilado",
             "itemDescription": "Un valor por persona o por material: altura, número de calzado…"
           },
-          "scopeLocked": "El ámbito ya no se puede cambiar una vez creado el campo.",
-          "close": "Cerrar",
           "online": {
             "title": "Reserva online",
             "description": "Lo que sus clientes rellenan al reservar en su tienda."
@@ -6647,19 +6613,10 @@
           "withItemValues": "{count, plural, one {# artículo alquilado tiene un valor en este campo: se borrará.} other {# artículos alquilados tienen un valor en este campo: se borrarán.}}"
         },
         "archived": {
-          "title": "Campos archivados",
           "description": "Ocultos en las fichas; sus valores se conservan."
         },
         "preview": {
-          "title": "Vista previa",
-          "description": "Lo que verá su equipo al crear un cliente.",
-          "empty": "Agregue un campo para ver la vista previa.",
-          "audience": {
-            "team": "Equipo",
-            "client": "Cliente"
-          },
           "client": {
-            "description": "Lo que verá su cliente al reservar.",
             "previewFor": "Vista previa para",
             "noProduct": "No se ha encontrado ningún producto",
             "sampleProduct": "Artículo alquilado",
@@ -6669,17 +6626,11 @@
             "emptyHint": "Ajuste «Pedir al cliente» en Opcional u Obligatorio para que un campo aparezca aquí."
           }
         },
-        "empty": {
-          "title": "Ningún campo personalizado",
-          "description": "Parta de una plantilla o cree su primer campo."
-        },
         "toasts": {
           "created": "Campo agregado",
-          "updated": "Campo actualizado",
           "archived": "Campo archivado",
           "restored": "Campo reactivado",
           "deleted": "Campo eliminado",
-          "reordered": "Orden guardado",
           "sectionRenamed": "Sección renombrada",
           "sectionOnlineSaved": "Ajustes aplicados a la sección"
         },
@@ -6744,6 +6695,125 @@
           "cancel": "Cancelar",
           "later": "Más tarde",
           "close": "Cerrar"
+        },
+        "builder": {
+          "templates": {
+            "button": "Plantillas",
+            "all": "Ver todas las plantillas"
+          },
+          "views": {
+            "label": "Formulario mostrado",
+            "team": "Ficha de cliente · equipo",
+            "client": "Reserva online · cliente",
+            "teamShort": "Ficha de cliente",
+            "clientShort": "Reserva online"
+          },
+          "locked": {
+            "title": "Datos de contacto",
+            "note": "Campos de Louez, siempre presentes",
+            "addressPlaceholder": "Calle, código postal, ciudad, país",
+            "company": "Para una empresa: nombre de la empresa, número de empresa y número de IVA."
+          },
+          "profile": {
+            "title": "Perfil",
+            "description": "Campos que Louez sabe aprovechar. Elija si se muestran.",
+            "visibility": "Visualización de «{field}»",
+            "hiddenNote": "Oculto: no aparece en la ficha de cliente."
+          },
+          "sections": {
+            "newName": "Nueva sección",
+            "defaultItemName": "Detalles",
+            "add": "Nueva sección",
+            "delete": "Eliminar la sección",
+            "empty": "Sección vacía: agregue su primer campo.",
+            "renameHint": "Haga clic para renombrar",
+            "actions": "Acciones de la sección «{name}»"
+          },
+          "field": {
+            "select": "Editar «{label}»",
+            "actions": "Acciones del campo «{label}»",
+            "deleteLabel": "Eliminar «{label}»",
+            "draftBadge": "Nuevo",
+            "draftPlaceholder": "Nuevo campo"
+          },
+          "item": {
+            "title": "Por artículo alquilado — en la reserva",
+            "description": "Se rellena para cada artículo alquilado: dos bicicletas, dos veces.",
+            "participantLocked": "Siempre ofrecido",
+            "empty": "Altura, número de calzado, nivel… Agregue lo que necesita saber para preparar cada artículo."
+          },
+          "archived": {
+            "show": "Ver los campos archivados ({count})"
+          },
+          "inspector": {
+            "label": "Ajustes del campo",
+            "emptyTitle": "Haga clic en un campo para editarlo",
+            "emptyDescription": "Sus ajustes aparecen aquí y se guardan con cada cambio.",
+            "tipDrag": "Arrastre para reordenar",
+            "tipMenu": "Mover, archivar o eliminar",
+            "newTitle": "Nuevo campo",
+            "add": "Agregar",
+            "cancel": "Cancelar",
+            "close": "Cerrar",
+            "general": "General",
+            "advanced": "Opciones avanzadas",
+            "saving": "Guardando…",
+            "saved": "Guardado",
+            "format": "Formato",
+            "formatHelp": "Louez comprueba el número introducido y le da formato.",
+            "formatFreeHelp": "Se acepta cualquier texto.",
+            "formats": {
+              "free": "Texto libre",
+              "br_cpf_cnpj": "CPF / CNPJ (Brasil)",
+              "es_dni_nie": "DNI / NIE (España)",
+              "it_codice_fiscale": "Codice fiscale (Italia)",
+              "pt_nif": "NIF (Portugal)"
+            }
+          },
+          "picker": {
+            "title": "Agregar un campo",
+            "description": "Elija dónde se rellena y después su tipo. Le pondrá un nombre justo después.",
+            "suggested": "Plantillas sugeridas",
+            "templates": "Plantillas",
+            "examples": {
+              "customer": {
+                "text": "Número de permiso",
+                "textarea": "Observaciones sobre el cliente",
+                "number": "Años de práctica",
+                "date": "Fecha de caducidad del permiso",
+                "select": "Tipo de documento de identidad",
+                "checkbox": "Descargo de responsabilidad firmado",
+                "phone": "Contacto de emergencia",
+                "email": "Correo de facturación",
+                "url": "Enlace a un documento"
+              },
+              "item": {
+                "text": "Número de taquilla",
+                "textarea": "Preferencias de ajuste",
+                "number": "Altura (cm)",
+                "date": "Fecha de nacimiento del ciclista",
+                "select": "Nivel: principiante, avanzado…",
+                "checkbox": "Silla infantil",
+                "phone": "Teléfono del participante",
+                "email": "Correo del participante",
+                "url": "Enlace a la ruta"
+              }
+            }
+          },
+          "client": {
+            "ask": "Pedir un campo al cliente",
+            "askTitle": "Pedir al cliente",
+            "askDescription": "Un clic: el campo se ofrece al reservar, como opcional.",
+            "askButton": "Pedir",
+            "askField": "Pedir «{label}» al cliente",
+            "asked": "Pedido",
+            "askEmpty": "Todos sus campos ya se piden al cliente.",
+            "lockedNote": "Pedidos por Louez, siempre presentes"
+          },
+          "empty": {
+            "title": "Agregue sus propios campos",
+            "description": "Documento de identidad, permiso, altura… Parta de una plantilla adaptada a su tienda o cree un campo."
+          }
         }
       }
     },

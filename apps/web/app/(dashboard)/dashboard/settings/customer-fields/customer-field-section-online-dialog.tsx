@@ -57,7 +57,7 @@ export const CustomerFieldSectionOnlineDialog = ({
     <Dialog open onOpenChange={onOpenChange}>
       {/* Read-only members keep the close button; the controls stay disabled below. */}
       <DisabledControlsProvider disabled={false}>
-        <DialogPopup className="sm:max-w-lg">
+        <DialogPopup className="sm:max-w-xl">
           <form.AppForm>
             {/* A flex column, so a long form scrolls in its panel and the footer stays put. */}
             <form.Form className="flex min-h-0 flex-col">

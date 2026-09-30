@@ -48,7 +48,7 @@ export const CustomerFieldTemplatesDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="sm:max-w-4xl">
+      <DialogPopup className="sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle>{t("dialogTitle")}</DialogTitle>
           <DialogDescription>{t("dialogDescription")}</DialogDescription>

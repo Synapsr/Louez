@@ -6312,15 +6312,7 @@
         "title": "客户档案",
         "description": "除姓名和联系方式外，选择您要保存的客户信息。",
         "limits": "{count} / {max} 个启用字段",
-        "suggestions": {
-          "title": "为您推荐",
-          "description": "根据您商店所在的国家和业务类型。",
-          "browse": "浏览模板",
-          "dismiss": "隐藏推荐"
-        },
         "native": {
-          "title": "Louez 字段",
-          "description": "Louez 能够直接使用的信息。隐藏您不需要的内容。",
           "birthDate": "出生日期",
           "birthDateHelp": "同时显示客户的年龄。",
           "acquisitionSource": "客户来源",
@@ -6335,36 +6327,25 @@
           "saved": "设置已保存"
         },
         "sections": {
-          "add": "添加分组",
-          "namePlaceholder": "分组名称",
           "defaultName": "附加信息",
           "rename": "重命名分组",
           "moveUp": "上移",
           "moveDown": "下移",
-          "actions": "分组操作",
           "online": "在线预订…"
         },
         "field": {
           "add": "添加字段",
-          "edit": "编辑",
           "archive": "存档",
           "restore": "重新启用",
           "delete": "永久删除",
           "moveTo": "移至",
-          "actions": "字段操作",
-          "active": "已启用",
-          "drag": "调整顺序",
-          "valueCount": "{count, plural, =0 {暂无值} other {# 位客户已填写}}"
+          "drag": "调整顺序"
         },
         "badges": {
           "required": "必填",
           "sensitive": "敏感",
-          "contract": "合同",
-          "search": "搜索",
-          "list": "列表",
           "business": "企业",
           "individual": "个人",
-          "item": "按物品",
           "online": {
             "optional": "在线 · 可选",
             "required": "在线 · 必填"
@@ -6372,29 +6353,18 @@
           "noTarget": "未选择产品"
         },
         "dialog": {
-          "createTitle": "新字段",
-          "createDescription": "它将显示在每个客户档案中。",
-          "editTitle": "编辑字段",
-          "editDescription": "已录入的值将被保留。",
           "label": "名称",
           "labelPlaceholder": "驾照号码",
-          "type": "类型",
-          "typeLocked": "字段创建后，类型将无法更改。",
           "options": "选项",
           "optionsPlaceholder": "输入一个选项后按回车",
           "unit": "单位",
           "unitPlaceholder": "cm、kg、km…",
           "helpText": "填写提示",
           "helpTextPlaceholder": "显示在字段下方",
-          "section": "分组",
-          "newSection": "新分组…",
           "appliesTo": "适用于",
           "appliesToAll": "全部",
           "appliesToIndividual": "个人",
           "appliesToBusiness": "企业",
-          "save": "保存",
-          "create": "添加字段",
-          "cancel": "取消",
           "types": {
             "text": "文本",
             "textarea": "长文本",
@@ -6407,7 +6377,6 @@
             "url": "链接"
           },
           "flags": {
-            "required": "必填",
             "requiredHelp": "未填写此字段时无法保存档案。",
             "sensitive": "敏感数据",
             "sensitiveHelp": "默认在档案中隐藏，且不会包含在导出文件中。",
@@ -6421,7 +6390,6 @@
             "sensitiveItemHelp": "默认在预订中隐藏。",
             "contractItemHelp": "添加在租赁物品所在行的下方。"
           },
-          "createDescriptionItem": "将在预订中为每件租赁物品填写。",
           "labelPlaceholderItem": "鞋码",
           "scope": "范围",
           "scopes": {
@@ -6430,8 +6398,6 @@
             "item": "按租赁物品",
             "itemDescription": "每人或每件设备一个值：身高、鞋码…"
           },
-          "scopeLocked": "字段创建后，范围将无法更改。",
-          "close": "关闭",
           "online": {
             "title": "在线预订",
             "description": "客户在您的商店预订时需填写的内容。"
@@ -6647,19 +6613,10 @@
           "withItemValues": "{count, plural, other {# 件租赁物品在此字段中填有值：这些值将被清除。}}"
         },
         "archived": {
-          "title": "已存档字段",
           "description": "已从档案中隐藏，其值仍会保留。"
         },
         "preview": {
-          "title": "预览",
-          "description": "您的团队创建客户时看到的内容。",
-          "empty": "添加一个字段即可查看预览。",
-          "audience": {
-            "team": "团队",
-            "client": "客户"
-          },
           "client": {
-            "description": "您的客户在预订时看到的内容。",
             "previewFor": "预览对象",
             "noProduct": "未找到产品",
             "sampleProduct": "租赁物品",
@@ -6669,17 +6626,11 @@
             "emptyHint": "将字段的“请客户填写”设为“可选”或“必填”，即可在此处看到它。"
           }
         },
-        "empty": {
-          "title": "暂无自定义字段",
-          "description": "从模板开始，或创建您的第一个字段。"
-        },
         "toasts": {
           "created": "字段已添加",
-          "updated": "字段已更新",
           "archived": "字段已存档",
           "restored": "字段已重新启用",
           "deleted": "字段已删除",
-          "reordered": "顺序已保存",
           "sectionRenamed": "分组已重命名",
           "sectionOnlineSaved": "设置已应用到该分组"
         },
@@ -6744,6 +6695,125 @@
           "cancel": "取消",
           "later": "稍后",
           "close": "关闭"
+        },
+        "builder": {
+          "templates": {
+            "button": "模板",
+            "all": "查看所有模板"
+          },
+          "views": {
+            "label": "显示的表单",
+            "team": "客户档案 · 团队",
+            "client": "在线预订 · 客户",
+            "teamShort": "客户档案",
+            "clientShort": "在线预订"
+          },
+          "locked": {
+            "title": "联系方式",
+            "note": "Louez 字段，始终显示",
+            "addressPlaceholder": "街道、邮政编码、城市、国家",
+            "company": "企业客户：公司名称、公司号码和增值税号。"
+          },
+          "profile": {
+            "title": "个人资料",
+            "description": "Louez 能够直接使用的字段。请选择是否显示。",
+            "visibility": "“{field}”的显示方式",
+            "hiddenNote": "已隐藏：不会显示在客户档案中。"
+          },
+          "sections": {
+            "newName": "新分组",
+            "defaultItemName": "详情",
+            "add": "新分组",
+            "delete": "删除分组",
+            "empty": "空分组：请添加第一个字段。",
+            "renameHint": "点击即可重命名",
+            "actions": "“{name}”分组的操作"
+          },
+          "field": {
+            "select": "编辑“{label}”",
+            "actions": "“{label}”字段的操作",
+            "deleteLabel": "删除“{label}”",
+            "draftBadge": "新",
+            "draftPlaceholder": "新字段"
+          },
+          "item": {
+            "title": "按租赁物品 — 记录在预订中",
+            "description": "为每件租赁物品填写：两辆自行车，就填写两次。",
+            "participantLocked": "始终提供",
+            "empty": "身高、鞋码、水平…添加准备每件物品所需了解的信息。"
+          },
+          "archived": {
+            "show": "查看已存档字段（{count}）"
+          },
+          "inspector": {
+            "label": "字段设置",
+            "emptyTitle": "点击字段即可编辑",
+            "emptyDescription": "其设置会显示在此处，每次修改都会自动保存。",
+            "tipDrag": "拖动以调整顺序",
+            "tipMenu": "移动、存档或删除",
+            "newTitle": "新字段",
+            "add": "添加",
+            "cancel": "取消",
+            "close": "关闭",
+            "general": "常规",
+            "advanced": "高级选项",
+            "saving": "正在保存…",
+            "saved": "已保存",
+            "format": "格式",
+            "formatHelp": "Louez 会校验输入的号码并自动调整格式。",
+            "formatFreeHelp": "可输入任意文本。",
+            "formats": {
+              "free": "自由文本",
+              "br_cpf_cnpj": "CPF / CNPJ（巴西）",
+              "es_dni_nie": "DNI / NIE（西班牙）",
+              "it_codice_fiscale": "Codice fiscale（意大利）",
+              "pt_nif": "NIF（葡萄牙）"
+            }
+          },
+          "picker": {
+            "title": "添加字段",
+            "description": "先选择填写位置，再选择类型。随后即可为其命名。",
+            "suggested": "推荐模板",
+            "templates": "模板",
+            "examples": {
+              "customer": {
+                "text": "驾照号码",
+                "textarea": "客户备注",
+                "number": "运动年限",
+                "date": "驾照到期日期",
+                "select": "身份证件类型",
+                "checkbox": "已签署免责声明",
+                "phone": "紧急联系人",
+                "email": "账单电子邮件",
+                "url": "证明文件链接"
+              },
+              "item": {
+                "text": "储物柜编号",
+                "textarea": "调校偏好",
+                "number": "身高（cm）",
+                "date": "骑行者出生日期",
+                "select": "水平：初学者、高级…",
+                "checkbox": "儿童座椅",
+                "phone": "使用者电话",
+                "email": "使用者电子邮件",
+                "url": "路线链接"
+              }
+            }
+          },
+          "client": {
+            "ask": "请客户填写字段",
+            "askTitle": "请客户填写",
+            "askDescription": "只需一键：该字段即会在预订时作为可选项显示。",
+            "askButton": "询问",
+            "askField": "请客户填写“{label}”",
+            "asked": "已询问",
+            "askEmpty": "所有字段均已请客户填写。",
+            "lockedNote": "由 Louez 询问，始终显示"
+          },
+          "empty": {
+            "title": "添加您自己的字段",
+            "description": "身份证件、驾照、身高…从适合您商店的模板开始，或创建一个字段。"
+          }
         }
       }
     },

@@ -6312,15 +6312,7 @@
         "title": "Customer record",
         "description": "Choose what you keep about your customers, beyond their name and contact details.",
         "limits": "{count} / {max} active fields",
-        "suggestions": {
-          "title": "Suggested for you",
-          "description": "Based on your store's country and activity.",
-          "browse": "Browse templates",
-          "dismiss": "Hide suggestions"
-        },
         "native": {
-          "title": "Louez fields",
-          "description": "Information Louez knows how to use. Hide what you do not need.",
           "birthDate": "Date of birth",
           "birthDateHelp": "Also shows the customer's age.",
           "acquisitionSource": "Customer source",
@@ -6335,36 +6327,25 @@
           "saved": "Setting saved"
         },
         "sections": {
-          "add": "Add a section",
-          "namePlaceholder": "Section name",
           "defaultName": "Additional information",
           "rename": "Rename section",
           "moveUp": "Move up",
           "moveDown": "Move down",
-          "actions": "Section actions",
           "online": "Online booking…"
         },
         "field": {
           "add": "Add a field",
-          "edit": "Edit",
           "archive": "Archive",
           "restore": "Reactivate",
           "delete": "Delete permanently",
           "moveTo": "Move to",
-          "actions": "Field actions",
-          "active": "Active",
-          "drag": "Reorder",
-          "valueCount": "{count, plural, =0 {No values} one {# customer filled in} other {# customers filled in}}"
+          "drag": "Reorder"
         },
         "badges": {
           "required": "Required",
           "sensitive": "Sensitive",
-          "contract": "Contract",
-          "search": "Search",
-          "list": "List",
           "business": "Businesses",
           "individual": "Individuals",
-          "item": "Per item",
           "online": {
             "optional": "Online · Optional",
             "required": "Online · Required"
@@ -6372,29 +6353,18 @@
           "noTarget": "No product selected"
         },
         "dialog": {
-          "createTitle": "New field",
-          "createDescription": "It will appear on every customer record.",
-          "editTitle": "Edit field",
-          "editDescription": "Values already entered are kept.",
           "label": "Label",
           "labelPlaceholder": "Licence number",
-          "type": "Type",
-          "typeLocked": "The type can no longer change once the field exists.",
           "options": "Choices",
           "optionsPlaceholder": "Type a choice then Enter",
           "unit": "Unit",
           "unitPlaceholder": "cm, kg, km…",
           "helpText": "Input hint",
           "helpTextPlaceholder": "Shown under the field",
-          "section": "Section",
-          "newSection": "New section…",
           "appliesTo": "Applies to",
           "appliesToAll": "Everyone",
           "appliesToIndividual": "Individuals",
           "appliesToBusiness": "Businesses",
-          "save": "Save",
-          "create": "Add field",
-          "cancel": "Cancel",
           "types": {
             "text": "Text",
             "textarea": "Long text",
@@ -6407,7 +6377,6 @@
             "url": "Link"
           },
           "flags": {
-            "required": "Required",
             "requiredHelp": "The record cannot be saved without it.",
             "sensitive": "Sensitive data",
             "sensitiveHelp": "Hidden by default on the record and left out of exports.",
@@ -6421,7 +6390,6 @@
             "sensitiveItemHelp": "Hidden by default on the booking.",
             "contractItemHelp": "Printed under the rented item's line."
           },
-          "createDescriptionItem": "It is filled in for each rented item, on the booking.",
           "labelPlaceholderItem": "Shoe size",
           "scope": "Scope",
           "scopes": {
@@ -6430,8 +6398,6 @@
             "item": "Per rented item",
             "itemDescription": "One value per person or piece of equipment: height, shoe size…"
           },
-          "scopeLocked": "The scope can't be changed once the field exists.",
-          "close": "Close",
           "online": {
             "title": "Online booking",
             "description": "What customers fill in when they book on your store."
@@ -6647,19 +6613,10 @@
           "withItemValues": "{count, plural, one {# rented item has a value for this field: it will be erased.} other {# rented items have a value for this field: they will be erased.}}"
         },
         "archived": {
-          "title": "Archived fields",
           "description": "Hidden from records, their values are kept."
         },
         "preview": {
-          "title": "Preview",
-          "description": "What your team sees when creating a customer.",
-          "empty": "Add a field to see the preview.",
-          "audience": {
-            "team": "Team",
-            "client": "Customer"
-          },
           "client": {
-            "description": "What your customer sees when booking.",
             "previewFor": "Preview for",
             "noProduct": "No product found",
             "sampleProduct": "Rented item",
@@ -6669,17 +6626,11 @@
             "emptyHint": "Set “Ask the customer” to Optional or Required on a field to see it here."
           }
         },
-        "empty": {
-          "title": "No custom fields",
-          "description": "Start from a template or create your first field."
-        },
         "toasts": {
           "created": "Field added",
-          "updated": "Field updated",
           "archived": "Field archived",
           "restored": "Field reactivated",
           "deleted": "Field deleted",
-          "reordered": "Order saved",
           "sectionRenamed": "Section renamed",
           "sectionOnlineSaved": "Settings applied to the section"
         },
@@ -6744,6 +6695,125 @@
           "cancel": "Cancel",
           "later": "Later",
           "close": "Close"
+        },
+        "builder": {
+          "templates": {
+            "button": "Templates",
+            "all": "See all templates"
+          },
+          "views": {
+            "label": "Form shown",
+            "team": "Customer record · team",
+            "client": "Online booking · customer",
+            "teamShort": "Customer record",
+            "clientShort": "Online booking"
+          },
+          "locked": {
+            "title": "Contact details",
+            "note": "Louez fields, always there",
+            "addressPlaceholder": "Street, postcode, city, country",
+            "company": "For a business: company name, company number and VAT number."
+          },
+          "profile": {
+            "title": "Profile",
+            "description": "Fields Louez knows how to use. Choose whether they show.",
+            "visibility": "Display of “{field}”",
+            "hiddenNote": "Hidden: not shown on the customer record."
+          },
+          "sections": {
+            "newName": "New section",
+            "defaultItemName": "Details",
+            "add": "New section",
+            "delete": "Delete section",
+            "empty": "Empty section: add its first field.",
+            "renameHint": "Click to rename",
+            "actions": "Actions for section “{name}”"
+          },
+          "field": {
+            "select": "Edit “{label}”",
+            "actions": "Actions for field “{label}”",
+            "deleteLabel": "Delete “{label}”",
+            "draftBadge": "New",
+            "draftPlaceholder": "New field"
+          },
+          "item": {
+            "title": "Per rented item — on the booking",
+            "description": "Filled in for each rented item: two bikes, twice.",
+            "participantLocked": "Always offered",
+            "empty": "Height, shoe size, level… Add what you need to know to prepare each item."
+          },
+          "archived": {
+            "show": "See archived fields ({count})"
+          },
+          "inspector": {
+            "label": "Field settings",
+            "emptyTitle": "Click a field to edit it",
+            "emptyDescription": "Its settings show here and are saved with every change.",
+            "tipDrag": "Drag to reorder",
+            "tipMenu": "Move, archive or delete",
+            "newTitle": "New field",
+            "add": "Add",
+            "cancel": "Cancel",
+            "close": "Close",
+            "general": "General",
+            "advanced": "Advanced options",
+            "saving": "Saving…",
+            "saved": "Saved",
+            "format": "Format",
+            "formatHelp": "Louez checks the number typed in and formats it.",
+            "formatFreeHelp": "Any text is accepted.",
+            "formats": {
+              "free": "Free text",
+              "br_cpf_cnpj": "CPF / CNPJ (Brazil)",
+              "es_dni_nie": "DNI / NIE (Spain)",
+              "it_codice_fiscale": "Codice fiscale (Italy)",
+              "pt_nif": "NIF (Portugal)"
+            }
+          },
+          "picker": {
+            "title": "Add a field",
+            "description": "Choose where it is filled in, then its type. You will name it right after.",
+            "suggested": "Suggested templates",
+            "templates": "Templates",
+            "examples": {
+              "customer": {
+                "text": "Licence number",
+                "textarea": "Notes about the customer",
+                "number": "Years of practice",
+                "date": "Licence expiry date",
+                "select": "ID document type",
+                "checkbox": "Waiver signed",
+                "phone": "Emergency contact",
+                "email": "Billing email",
+                "url": "Link to a document"
+              },
+              "item": {
+                "text": "Locker number",
+                "textarea": "Setup preferences",
+                "number": "Height (cm)",
+                "date": "Rider's date of birth",
+                "select": "Level: beginner, advanced…",
+                "checkbox": "Child seat",
+                "phone": "Participant's phone",
+                "email": "Participant's email",
+                "url": "Link to the route"
+              }
+            }
+          },
+          "client": {
+            "ask": "Ask the customer for a field",
+            "askTitle": "Ask the customer",
+            "askDescription": "One click: the field is offered at booking, as optional.",
+            "askButton": "Ask",
+            "askField": "Ask the customer for “{label}”",
+            "asked": "Asked",
+            "askEmpty": "Every field is already asked of the customer.",
+            "lockedNote": "Asked by Louez, always there"
+          },
+          "empty": {
+            "title": "Add your own fields",
+            "description": "ID document, licence, height… Start from a template that fits your store or create a field."
+          }
         }
       }
     },

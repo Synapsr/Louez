@@ -277,6 +277,15 @@ describe("toCustomerFieldPayload", () => {
     assert.equal(payload.unit, "cm");
   });
 
+  test("a format only goes with a text field", () => {
+    assert.equal(toCustomerFieldPayload({ ...base, format: "pt_nif" }).format, null);
+    assert.equal(
+      toCustomerFieldPayload({ ...base, type: "text", format: "pt_nif" }).format,
+      "pt_nif",
+    );
+    assert.equal(toCustomerFieldPayload({ ...base, type: "text" }).format, null);
+  });
+
   test("a field never asked is never editable by the customer", () => {
     assert.equal(
       toCustomerFieldPayload({ ...base, customerEditable: true }).customerEditable,

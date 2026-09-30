@@ -6312,15 +6312,7 @@
         "title": "Data pelanggan",
         "description": "Pilih informasi yang Anda simpan tentang pelanggan, selain nama dan detail kontak mereka.",
         "limits": "{count} / {max} bidang aktif",
-        "suggestions": {
-          "title": "Disarankan untuk Anda",
-          "description": "Berdasarkan negara dan aktivitas toko Anda.",
-          "browse": "Jelajahi templat",
-          "dismiss": "Sembunyikan saran"
-        },
         "native": {
-          "title": "Bidang Louez",
-          "description": "Informasi yang dapat dimanfaatkan Louez. Sembunyikan yang tidak Anda perlukan.",
           "birthDate": "Tanggal lahir",
           "birthDateHelp": "Juga menampilkan usia pelanggan.",
           "acquisitionSource": "Sumber pelanggan",
@@ -6335,36 +6327,25 @@
           "saved": "Pengaturan disimpan"
         },
         "sections": {
-          "add": "Tambahkan bagian",
-          "namePlaceholder": "Nama bagian",
           "defaultName": "Informasi tambahan",
           "rename": "Ganti nama bagian",
           "moveUp": "Pindahkan ke atas",
           "moveDown": "Pindahkan ke bawah",
-          "actions": "Tindakan bagian",
           "online": "Reservasi online…"
         },
         "field": {
           "add": "Tambahkan bidang",
-          "edit": "Sunting",
           "archive": "Arsipkan",
           "restore": "Aktifkan kembali",
           "delete": "Hapus permanen",
           "moveTo": "Pindahkan ke",
-          "actions": "Tindakan bidang",
-          "active": "Aktif",
-          "drag": "Ubah urutan",
-          "valueCount": "{count, plural, =0 {Tidak ada nilai} other {Diisi oleh # pelanggan}}"
+          "drag": "Ubah urutan"
         },
         "badges": {
           "required": "Wajib",
           "sensitive": "Sensitif",
-          "contract": "Kontrak",
-          "search": "Pencarian",
-          "list": "Daftar",
           "business": "Bisnis",
           "individual": "Individu",
-          "item": "Per barang",
           "online": {
             "optional": "Online · Opsional",
             "required": "Online · Wajib"
@@ -6372,29 +6353,18 @@
           "noTarget": "Belum ada produk yang dipilih"
         },
         "dialog": {
-          "createTitle": "Bidang baru",
-          "createDescription": "Bidang ini akan muncul di data setiap pelanggan.",
-          "editTitle": "Sunting bidang",
-          "editDescription": "Nilai yang sudah diisi tetap disimpan.",
           "label": "Label",
           "labelPlaceholder": "Nomor SIM",
-          "type": "Tipe",
-          "typeLocked": "Tipe tidak dapat diubah lagi setelah bidang dibuat.",
           "options": "Pilihan",
           "optionsPlaceholder": "Ketik pilihan lalu tekan Enter",
           "unit": "Satuan",
           "unitPlaceholder": "cm, kg, km…",
           "helpText": "Petunjuk pengisian",
           "helpTextPlaceholder": "Ditampilkan di bawah bidang",
-          "section": "Bagian",
-          "newSection": "Bagian baru…",
           "appliesTo": "Berlaku untuk",
           "appliesToAll": "Semua",
           "appliesToIndividual": "Individu",
           "appliesToBusiness": "Bisnis",
-          "save": "Simpan",
-          "create": "Tambahkan bidang",
-          "cancel": "Batalkan",
           "types": {
             "text": "Teks",
             "textarea": "Teks panjang",
@@ -6407,7 +6377,6 @@
             "url": "Tautan"
           },
           "flags": {
-            "required": "Wajib",
             "requiredHelp": "Data pelanggan tidak dapat disimpan tanpa bidang ini.",
             "sensitive": "Data sensitif",
             "sensitiveHelp": "Disembunyikan secara default pada data pelanggan dan tidak disertakan dalam ekspor.",
@@ -6421,7 +6390,6 @@
             "sensitiveItemHelp": "Disembunyikan secara default pada reservasi.",
             "contractItemHelp": "Ditambahkan di bawah baris barang sewaan."
           },
-          "createDescriptionItem": "Bidang ini diisi untuk setiap barang sewaan, pada reservasi.",
           "labelPlaceholderItem": "Ukuran sepatu",
           "scope": "Cakupan",
           "scopes": {
@@ -6430,8 +6398,6 @@
             "item": "Per barang sewaan",
             "itemDescription": "Satu nilai per orang atau per peralatan: tinggi badan, ukuran sepatu…"
           },
-          "scopeLocked": "Cakupan tidak dapat diubah lagi setelah bidang dibuat.",
-          "close": "Tutup",
           "online": {
             "title": "Reservasi online",
             "description": "Yang diisi pelanggan saat melakukan reservasi di toko Anda."
@@ -6647,19 +6613,10 @@
           "withItemValues": "{count, plural, other {# barang sewaan memiliki nilai untuk bidang ini: nilai tersebut akan dihapus.}}"
         },
         "archived": {
-          "title": "Bidang yang diarsipkan",
           "description": "Disembunyikan dari data pelanggan, nilainya tetap disimpan."
         },
         "preview": {
-          "title": "Pratinjau",
-          "description": "Tampilan yang dilihat tim Anda saat membuat pelanggan.",
-          "empty": "Tambahkan bidang untuk melihat pratinjau.",
-          "audience": {
-            "team": "Tim",
-            "client": "Pelanggan"
-          },
           "client": {
-            "description": "Tampilan yang dilihat pelanggan Anda saat melakukan reservasi.",
             "previewFor": "Pratinjau untuk",
             "noProduct": "Tidak ada produk yang ditemukan",
             "sampleProduct": "Barang sewaan",
@@ -6669,17 +6626,11 @@
             "emptyHint": "Setel “Tanyakan ke pelanggan” ke Opsional atau Wajib pada suatu bidang agar bidang tersebut muncul di sini."
           }
         },
-        "empty": {
-          "title": "Tidak ada bidang khusus",
-          "description": "Mulai dari templat atau buat bidang pertama Anda."
-        },
         "toasts": {
           "created": "Bidang ditambahkan",
-          "updated": "Bidang diperbarui",
           "archived": "Bidang diarsipkan",
           "restored": "Bidang diaktifkan kembali",
           "deleted": "Bidang dihapus",
-          "reordered": "Urutan disimpan",
           "sectionRenamed": "Nama bagian diubah",
           "sectionOnlineSaved": "Pengaturan diterapkan ke bagian"
         },
@@ -6744,6 +6695,125 @@
           "cancel": "Batalkan",
           "later": "Nanti",
           "close": "Tutup"
+        },
+        "builder": {
+          "templates": {
+            "button": "Templat",
+            "all": "Lihat semua templat"
+          },
+          "views": {
+            "label": "Formulir yang ditampilkan",
+            "team": "Data pelanggan · tim",
+            "client": "Reservasi online · pelanggan",
+            "teamShort": "Data pelanggan",
+            "clientShort": "Reservasi online"
+          },
+          "locked": {
+            "title": "Detail kontak",
+            "note": "Bidang Louez, selalu ditampilkan",
+            "addressPlaceholder": "Jalan, kode pos, kota, negara",
+            "company": "Untuk bisnis: nama perusahaan, nomor perusahaan, dan nomor PPN."
+          },
+          "profile": {
+            "title": "Profil",
+            "description": "Bidang yang dapat dimanfaatkan Louez. Pilih apakah bidang tersebut ditampilkan.",
+            "visibility": "Tampilan “{field}”",
+            "hiddenNote": "Disembunyikan: tidak ditampilkan di data pelanggan."
+          },
+          "sections": {
+            "newName": "Bagian baru",
+            "defaultItemName": "Detail",
+            "add": "Bagian baru",
+            "delete": "Hapus bagian",
+            "empty": "Bagian kosong: tambahkan bidang pertamanya.",
+            "renameHint": "Klik untuk mengganti nama",
+            "actions": "Tindakan untuk bagian “{name}”"
+          },
+          "field": {
+            "select": "Sunting “{label}”",
+            "actions": "Tindakan untuk bidang “{label}”",
+            "deleteLabel": "Hapus “{label}”",
+            "draftBadge": "Baru",
+            "draftPlaceholder": "Bidang baru"
+          },
+          "item": {
+            "title": "Per barang sewaan — pada reservasi",
+            "description": "Diisi untuk setiap barang sewaan: dua sepeda, dua kali.",
+            "participantLocked": "Selalu ditawarkan",
+            "empty": "Tinggi badan, ukuran sepatu, tingkat kemampuan… Tambahkan informasi yang perlu Anda ketahui untuk menyiapkan setiap barang."
+          },
+          "archived": {
+            "show": "Lihat bidang yang diarsipkan ({count})"
+          },
+          "inspector": {
+            "label": "Pengaturan bidang",
+            "emptyTitle": "Klik bidang untuk menyuntingnya",
+            "emptyDescription": "Pengaturannya ditampilkan di sini dan disimpan setiap kali ada perubahan.",
+            "tipDrag": "Seret untuk mengubah urutan",
+            "tipMenu": "Pindahkan, arsipkan, atau hapus",
+            "newTitle": "Bidang baru",
+            "add": "Tambahkan",
+            "cancel": "Batalkan",
+            "close": "Tutup",
+            "general": "Umum",
+            "advanced": "Opsi lanjutan",
+            "saving": "Menyimpan…",
+            "saved": "Disimpan",
+            "format": "Format",
+            "formatHelp": "Louez memeriksa nomor yang dimasukkan dan memformatnya.",
+            "formatFreeHelp": "Teks apa pun diterima.",
+            "formats": {
+              "free": "Teks bebas",
+              "br_cpf_cnpj": "CPF / CNPJ (Brasil)",
+              "es_dni_nie": "DNI / NIE (Spanyol)",
+              "it_codice_fiscale": "Codice fiscale (Italia)",
+              "pt_nif": "NIF (Portugal)"
+            }
+          },
+          "picker": {
+            "title": "Tambahkan bidang",
+            "description": "Pilih tempat bidang ini diisi, lalu tipenya. Anda akan memberinya nama tepat setelah itu.",
+            "suggested": "Templat yang disarankan",
+            "templates": "Templat",
+            "examples": {
+              "customer": {
+                "text": "Nomor SIM",
+                "textarea": "Catatan tentang pelanggan",
+                "number": "Lama pengalaman (tahun)",
+                "date": "Tanggal kedaluwarsa SIM",
+                "select": "Jenis dokumen identitas",
+                "checkbox": "Surat pelepasan tanggung jawab ditandatangani",
+                "phone": "Kontak darurat",
+                "email": "Email penagihan",
+                "url": "Tautan ke dokumen pendukung"
+              },
+              "item": {
+                "text": "Nomor loker",
+                "textarea": "Preferensi setelan",
+                "number": "Tinggi badan (cm)",
+                "date": "Tanggal lahir pengendara",
+                "select": "Tingkat kemampuan: pemula, mahir…",
+                "checkbox": "Kursi anak",
+                "phone": "Telepon peserta",
+                "email": "Email peserta",
+                "url": "Tautan ke rute"
+              }
+            }
+          },
+          "client": {
+            "ask": "Tanyakan bidang ke pelanggan",
+            "askTitle": "Tanyakan ke pelanggan",
+            "askDescription": "Cukup satu klik: bidang ini ditawarkan saat reservasi, sebagai opsional.",
+            "askButton": "Tanyakan",
+            "askField": "Tanyakan “{label}” ke pelanggan",
+            "asked": "Ditanyakan",
+            "askEmpty": "Semua bidang sudah ditanyakan ke pelanggan.",
+            "lockedNote": "Selalu ditanyakan oleh Louez"
+          },
+          "empty": {
+            "title": "Tambahkan bidang Anda sendiri",
+            "description": "Dokumen identitas, SIM, tinggi badan… Mulai dari templat yang sesuai dengan toko Anda atau buat bidang."
+          }
         }
       }
     },

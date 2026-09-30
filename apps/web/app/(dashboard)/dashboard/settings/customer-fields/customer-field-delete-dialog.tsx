@@ -42,7 +42,7 @@ export const CustomerFieldDeleteDialog = ({
 
   return (
     <AlertDialog open={field !== null} onOpenChange={onOpenChange}>
-      <AlertDialogPopup>
+      <AlertDialogPopup className="sm:max-w-xl">
         <AlertDialogHeader>
           <AlertDialogTitle>{t("title", { label: field?.label ?? "" })}</AlertDialogTitle>
           <AlertDialogDescription>

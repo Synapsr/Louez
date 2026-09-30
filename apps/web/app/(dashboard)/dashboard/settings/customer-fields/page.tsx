@@ -9,7 +9,9 @@ import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 
-import { CustomerFieldsManager } from "./customer-fields-manager";
+import { CustomerFieldsBuilder } from "./customer-fields-builder";
+import { CustomerFieldsBuilderProvider } from "./customer-fields-builder-context";
+import { CustomerFieldsHeaderActions } from "./customer-fields-header-actions";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -30,15 +32,25 @@ export default async function CustomerFieldsSettingsPage() {
     : null;
 
   return (
-    <SettingsPageShell title={t("title")} description={t("description")} width="wide">
-      <CustomerFieldsManager
-        country={store.settings?.country ?? null}
-        productCategory={profile?.productCategory ?? null}
-        profileSettings={store.settings?.customerProfile ?? {}}
-        storeTheme={
-          store.theme ? { mode: store.theme.mode, primaryColor: store.theme.primaryColor } : null
-        }
-      />
-    </SettingsPageShell>
+    // The header buttons and the builder share one state: which field is selected, which dialog is open.
+    <CustomerFieldsBuilderProvider
+      settings={{
+        country: store.settings?.country ?? null,
+        productCategory: profile?.productCategory ?? null,
+        profileSettings: store.settings?.customerProfile ?? {},
+        storeTheme: store.theme
+          ? { mode: store.theme.mode, primaryColor: store.theme.primaryColor }
+          : null,
+      }}
+    >
+      <SettingsPageShell
+        title={t("title")}
+        description={t("description")}
+        width="wide"
+        actions={<CustomerFieldsHeaderActions />}
+      >
+        <CustomerFieldsBuilder />
+      </SettingsPageShell>
+    </CustomerFieldsBuilderProvider>
   );
 }

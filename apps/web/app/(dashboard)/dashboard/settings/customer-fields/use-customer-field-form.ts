@@ -7,50 +7,42 @@ import {
   CUSTOMER_FIELD_APPLIES_TO,
   CUSTOMER_FIELD_SCOPES,
   CUSTOMER_FIELD_TYPES,
-  type CustomerFieldDefinition,
 } from "@louez/types";
 import {
   customerFieldCollectModeSchema,
+  customerFieldFormatSchema,
   customerFieldTargetModeSchema,
   customerFieldTargetsInputSchema,
 } from "@louez/validations";
 
 import { useAppForm } from "@/hooks/form/form";
 
-import { type CustomerFieldOnlineSettings, pickOnlineSettings } from "./util.customer-field-online";
+import { DEFAULT_ONLINE_SETTINGS } from "./util.customer-field-online";
+import {
+  type CustomerFieldFormValues,
+  type CustomerFieldSettingsValues,
+  buildDraftValues,
+} from "./util.customer-fields-builder";
 
-export interface CustomerFieldFormValues extends CustomerFieldOnlineSettings {
-  label: string;
-  type: (typeof CUSTOMER_FIELD_TYPES)[number];
-  scope: (typeof CUSTOMER_FIELD_SCOPES)[number];
-  options: string[];
-  unit: string;
-  helpText: string;
-  section: string;
-  appliesTo: (typeof CUSTOMER_FIELD_APPLIES_TO)[number];
-  isRequired: boolean;
-  isSensitive: boolean;
-  showOnContract: boolean;
-  isSearchable: boolean;
-  showInList: boolean;
-}
+/** Stable across renders: `useAppForm` resets an untouched form whenever its defaults change. */
+const BLANK_VALUES = buildDraftValues({
+  type: "text",
+  scope: "customer",
+  section: "",
+  online: DEFAULT_ONLINE_SETTINGS,
+});
 
 interface UseCustomerFieldFormParams {
-  field: CustomerFieldDefinition | null;
-  defaultSection: string;
-  /** A new field starts like the section it is added to. */
-  defaults: Pick<CustomerFieldFormValues, "scope"> & CustomerFieldOnlineSettings;
   messages: { required: string; optionsRequired: string };
   onSubmit: (values: CustomerFieldFormValues) => Promise<void>;
 }
 
-export const useCustomerFieldForm = ({
-  field,
-  defaultSection,
-  defaults,
-  messages,
-  onSubmit,
-}: UseCustomerFieldFormParams) => {
+/**
+ * The field being created in the inspector. One form for the page: each new
+ * draft resets it with its type, section and starting settings, keeping these
+ * blank defaults so a re-render never resets it behind the owner's back.
+ */
+export const useCustomerFieldForm = ({ messages, onSubmit }: UseCustomerFieldFormParams) => {
   const schema = z
     .object({
       label: z.string().trim().min(1, messages.required).max(100),
@@ -59,6 +51,7 @@ export const useCustomerFieldForm = ({
       options: z.array(z.string()),
       unit: z.string().max(32),
       helpText: z.string().max(255),
+      format: customerFieldFormatSchema.nullable(),
       section: z.string().trim().min(1, messages.required).max(100),
       appliesTo: z.enum(CUSTOMER_FIELD_APPLIES_TO),
       isRequired: z.boolean(),
@@ -77,27 +70,38 @@ export const useCustomerFieldForm = ({
       }
     });
 
-  const defaultValues: CustomerFieldFormValues = {
-    label: field?.label ?? "",
-    type: field?.type ?? "text",
-    scope: field?.scope ?? defaults.scope,
-    options: field?.options ?? [],
-    unit: field?.unit ?? "",
-    helpText: field?.helpText ?? "",
-    section: field?.section ?? defaultSection,
-    appliesTo: field?.appliesTo ?? "all",
-    isRequired: field?.isRequired ?? false,
-    isSensitive: field?.isSensitive ?? false,
-    showOnContract: field?.showOnContract ?? false,
-    isSearchable: field?.isSearchable ?? false,
-    showInList: field?.showInList ?? false,
-    ...pickOnlineSettings(field ?? defaults),
-  };
-
   return useAppForm({
-    defaultValues,
+    defaultValues: BLANK_VALUES,
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
     validators: { onSubmit: schema },
     onSubmit: async ({ value }) => onSubmit(value),
   });
+};
+
+export type CustomerFieldForm = ReturnType<typeof useCustomerFieldForm>;
+
+/** Writes inspector changes into the draft form, key by key so each keeps its type. */
+export const setDraftValues = (
+  form: CustomerFieldForm,
+  changes: Partial<CustomerFieldSettingsValues>,
+) => {
+  if (changes.label !== undefined) form.setFieldValue("label", changes.label);
+  if (changes.helpText !== undefined) form.setFieldValue("helpText", changes.helpText);
+  if (changes.options !== undefined) form.setFieldValue("options", changes.options);
+  if (changes.unit !== undefined) form.setFieldValue("unit", changes.unit);
+  if (changes.format !== undefined) form.setFieldValue("format", changes.format);
+  if (changes.appliesTo !== undefined) form.setFieldValue("appliesTo", changes.appliesTo);
+  if (changes.isRequired !== undefined) form.setFieldValue("isRequired", changes.isRequired);
+  if (changes.isSensitive !== undefined) form.setFieldValue("isSensitive", changes.isSensitive);
+  if (changes.showOnContract !== undefined) {
+    form.setFieldValue("showOnContract", changes.showOnContract);
+  }
+  if (changes.isSearchable !== undefined) form.setFieldValue("isSearchable", changes.isSearchable);
+  if (changes.showInList !== undefined) form.setFieldValue("showInList", changes.showInList);
+  if (changes.collectMode !== undefined) form.setFieldValue("collectMode", changes.collectMode);
+  if (changes.targetMode !== undefined) form.setFieldValue("targetMode", changes.targetMode);
+  if (changes.targets !== undefined) form.setFieldValue("targets", changes.targets);
+  if (changes.customerEditable !== undefined) {
+    form.setFieldValue("customerEditable", changes.customerEditable);
+  }
 };

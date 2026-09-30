@@ -6312,15 +6312,7 @@
         "title": "Klantgegevens",
         "description": "Kies welke gegevens u over uw klanten bewaart, naast naam en contactgegevens.",
         "limits": "{count} / {max} actieve velden",
-        "suggestions": {
-          "title": "Suggesties voor u",
-          "description": "Op basis van het land en de activiteit van uw winkel.",
-          "browse": "Sjablonen bekijken",
-          "dismiss": "Suggesties verbergen"
-        },
         "native": {
-          "title": "Louez-velden",
-          "description": "Gegevens waar Louez iets mee kan. Verberg wat u niet nodig hebt.",
           "birthDate": "Geboortedatum",
           "birthDateHelp": "Toont ook de leeftijd van de klant.",
           "acquisitionSource": "Herkomst van de klant",
@@ -6335,36 +6327,25 @@
           "saved": "Instelling opgeslagen"
         },
         "sections": {
-          "add": "Sectie toevoegen",
-          "namePlaceholder": "Naam van de sectie",
           "defaultName": "Aanvullende gegevens",
           "rename": "Sectie hernoemen",
           "moveUp": "Omhoog",
           "moveDown": "Omlaag",
-          "actions": "Acties voor de sectie",
           "online": "Online reserveren…"
         },
         "field": {
           "add": "Veld toevoegen",
-          "edit": "Bewerken",
           "archive": "Archiveren",
           "restore": "Opnieuw activeren",
           "delete": "Definitief verwijderen",
           "moveTo": "Verplaatsen naar",
-          "actions": "Acties voor het veld",
-          "active": "Actief",
-          "drag": "Volgorde wijzigen",
-          "valueCount": "{count, plural, =0 {Geen waarden} one {Ingevuld bij # klant} other {Ingevuld bij # klanten}}"
+          "drag": "Volgorde wijzigen"
         },
         "badges": {
           "required": "Verplicht",
           "sensitive": "Gevoelig",
-          "contract": "Contract",
-          "search": "Zoeken",
-          "list": "Lijst",
           "business": "Zakelijk",
           "individual": "Particulier",
-          "item": "Per artikel",
           "online": {
             "optional": "Online · Optioneel",
             "required": "Online · Verplicht"
@@ -6372,29 +6353,18 @@
           "noTarget": "Geen product gekozen"
         },
         "dialog": {
-          "createTitle": "Nieuw veld",
-          "createDescription": "Het verschijnt bij al uw klanten.",
-          "editTitle": "Veld bewerken",
-          "editDescription": "Reeds ingevulde waarden blijven behouden.",
           "label": "Label",
           "labelPlaceholder": "Rijbewijsnummer",
-          "type": "Type",
-          "typeLocked": "Het type kan niet meer worden gewijzigd zodra het veld is aangemaakt.",
           "options": "Keuzemogelijkheden",
           "optionsPlaceholder": "Typ een keuze en druk op Enter",
           "unit": "Eenheid",
           "unitPlaceholder": "cm, kg, km…",
           "helpText": "Hulptekst",
           "helpTextPlaceholder": "Aanwijzing die onder het veld staat",
-          "section": "Sectie",
-          "newSection": "Nieuwe sectie…",
           "appliesTo": "Geldt voor",
           "appliesToAll": "Iedereen",
           "appliesToIndividual": "Particulier",
           "appliesToBusiness": "Zakelijk",
-          "save": "Opslaan",
-          "create": "Veld toevoegen",
-          "cancel": "Annuleren",
           "types": {
             "text": "Tekst",
             "textarea": "Lange tekst",
@@ -6407,7 +6377,6 @@
             "url": "Link"
           },
           "flags": {
-            "required": "Verplicht",
             "requiredHelp": "Zonder dit veld kan de klant niet worden opgeslagen.",
             "sensitive": "Gevoelig gegeven",
             "sensitiveHelp": "Standaard verborgen bij de klant en niet opgenomen in exports.",
@@ -6421,7 +6390,6 @@
             "sensitiveItemHelp": "Standaard verborgen op de reservering.",
             "contractItemHelp": "Wordt toegevoegd onder de regel van het gehuurde artikel."
           },
-          "createDescriptionItem": "Het wordt op de reservering voor elk gehuurd artikel ingevuld.",
           "labelPlaceholderItem": "Schoenmaat",
           "scope": "Bereik",
           "scopes": {
@@ -6430,8 +6398,6 @@
             "item": "Per gehuurd artikel",
             "itemDescription": "Eén waarde per persoon of per stuk materiaal: lengte, schoenmaat…"
           },
-          "scopeLocked": "Het bereik kan niet meer worden gewijzigd zodra het veld is aangemaakt.",
-          "close": "Sluiten",
           "online": {
             "title": "Online reserveren",
             "description": "Wat de klant invult bij het reserveren in uw winkel."
@@ -6647,19 +6613,10 @@
           "withItemValues": "{count, plural, one {# gehuurd artikel heeft een waarde in dit veld: die wordt gewist.} other {# gehuurde artikelen hebben een waarde in dit veld: die worden gewist.}}"
         },
         "archived": {
-          "title": "Gearchiveerde velden",
           "description": "Verborgen bij de klanten, de waarden blijven bewaard."
         },
         "preview": {
-          "title": "Voorbeeld",
-          "description": "Wat uw team ziet bij het aanmaken van een klant.",
-          "empty": "Voeg een veld toe om het voorbeeld te zien.",
-          "audience": {
-            "team": "Team",
-            "client": "Klant"
-          },
           "client": {
-            "description": "Wat uw klant ziet bij het reserveren.",
             "previewFor": "Voorbeeld voor",
             "noProduct": "Geen product gevonden",
             "sampleProduct": "Gehuurd artikel",
@@ -6669,17 +6626,11 @@
             "emptyHint": "Zet “Vragen aan de klant” bij een veld op Optioneel of Verplicht om het hier te zien."
           }
         },
-        "empty": {
-          "title": "Geen aangepaste velden",
-          "description": "Begin met een sjabloon of maak uw eerste veld aan."
-        },
         "toasts": {
           "created": "Veld toegevoegd",
-          "updated": "Veld gewijzigd",
           "archived": "Veld gearchiveerd",
           "restored": "Veld opnieuw geactiveerd",
           "deleted": "Veld verwijderd",
-          "reordered": "Volgorde opgeslagen",
           "sectionRenamed": "Sectie hernoemd",
           "sectionOnlineSaved": "Instellingen toegepast op de sectie"
         },
@@ -6744,6 +6695,125 @@
           "cancel": "Annuleren",
           "later": "Later",
           "close": "Sluiten"
+        },
+        "builder": {
+          "templates": {
+            "button": "Sjablonen",
+            "all": "Alle sjablonen bekijken"
+          },
+          "views": {
+            "label": "Weergegeven formulier",
+            "team": "Klantgegevens · team",
+            "client": "Online reserveren · klant",
+            "teamShort": "Klantgegevens",
+            "clientShort": "Online reserveren"
+          },
+          "locked": {
+            "title": "Contactgegevens",
+            "note": "Louez-velden, altijd aanwezig",
+            "addressPlaceholder": "Straat, postcode, stad, land",
+            "company": "Voor een bedrijf: bedrijfsnaam, ondernemingsnummer en btw-nummer."
+          },
+          "profile": {
+            "title": "Profiel",
+            "description": "Velden waar Louez iets mee kan. Kies of ze worden getoond.",
+            "visibility": "Weergave van “{field}”",
+            "hiddenNote": "Verborgen: niet zichtbaar in de klantgegevens."
+          },
+          "sections": {
+            "newName": "Nieuwe sectie",
+            "defaultItemName": "Details",
+            "add": "Nieuwe sectie",
+            "delete": "Sectie verwijderen",
+            "empty": "Lege sectie: voeg er een eerste veld aan toe.",
+            "renameHint": "Klik om te hernoemen",
+            "actions": "Acties voor de sectie “{name}”"
+          },
+          "field": {
+            "select": "“{label}” bewerken",
+            "actions": "Acties voor het veld “{label}”",
+            "deleteLabel": "“{label}” verwijderen",
+            "draftBadge": "Nieuw",
+            "draftPlaceholder": "Nieuw veld"
+          },
+          "item": {
+            "title": "Per gehuurd artikel — op de reservering",
+            "description": "Ingevuld voor elk gehuurd artikel: twee fietsen, twee keer.",
+            "participantLocked": "Altijd voorgesteld",
+            "empty": "Lengte, schoenmaat, niveau… Voeg toe wat u moet weten om elk artikel klaar te zetten."
+          },
+          "archived": {
+            "show": "Gearchiveerde velden bekijken ({count})"
+          },
+          "inspector": {
+            "label": "Veldinstellingen",
+            "emptyTitle": "Klik op een veld om het te bewerken",
+            "emptyDescription": "De instellingen verschijnen hier en worden bij elke wijziging opgeslagen.",
+            "tipDrag": "Sleep om de volgorde te wijzigen",
+            "tipMenu": "Verplaatsen, archiveren of verwijderen",
+            "newTitle": "Nieuw veld",
+            "add": "Toevoegen",
+            "cancel": "Annuleren",
+            "close": "Sluiten",
+            "general": "Algemeen",
+            "advanced": "Geavanceerde opties",
+            "saving": "Opslaan…",
+            "saved": "Opgeslagen",
+            "format": "Formaat",
+            "formatHelp": "Louez controleert het ingevoerde nummer en zet het in het juiste formaat.",
+            "formatFreeHelp": "Elke tekst wordt geaccepteerd.",
+            "formats": {
+              "free": "Vrije tekst",
+              "br_cpf_cnpj": "CPF / CNPJ (Brazilië)",
+              "es_dni_nie": "DNI / NIE (Spanje)",
+              "it_codice_fiscale": "Codice fiscale (Italië)",
+              "pt_nif": "NIF (Portugal)"
+            }
+          },
+          "picker": {
+            "title": "Veld toevoegen",
+            "description": "Kies waar het wordt ingevuld en daarna het type. Direct daarna geeft u het een naam.",
+            "suggested": "Voorgestelde sjablonen",
+            "templates": "Sjablonen",
+            "examples": {
+              "customer": {
+                "text": "Rijbewijsnummer",
+                "textarea": "Opmerkingen over de klant",
+                "number": "Jaren ervaring",
+                "date": "Vervaldatum van het rijbewijs",
+                "select": "Type identiteitsbewijs",
+                "checkbox": "Afstandsverklaring ondertekend",
+                "phone": "Noodcontact",
+                "email": "E-mail voor facturatie",
+                "url": "Link naar een document"
+              },
+              "item": {
+                "text": "Kluisjesnummer",
+                "textarea": "Afstelvoorkeuren",
+                "number": "Lengte (cm)",
+                "date": "Geboortedatum van de fietser",
+                "select": "Niveau: beginner, gevorderd…",
+                "checkbox": "Kinderzitje",
+                "phone": "Telefoon van de deelnemer",
+                "email": "E-mail van de deelnemer",
+                "url": "Link naar de route"
+              }
+            }
+          },
+          "client": {
+            "ask": "Een veld aan de klant vragen",
+            "askTitle": "Vragen aan de klant",
+            "askDescription": "Eén klik: het veld wordt bij het reserveren als optioneel voorgesteld.",
+            "askButton": "Vragen",
+            "askField": "“{label}” aan de klant vragen",
+            "asked": "Gevraagd",
+            "askEmpty": "Al uw velden worden al aan de klant gevraagd.",
+            "lockedNote": "Gevraagd door Louez, altijd aanwezig"
+          },
+          "empty": {
+            "title": "Voeg uw eigen velden toe",
+            "description": "Identiteitsbewijs, rijbewijs, lengte… Begin met een sjabloon dat bij uw winkel past of maak een veld aan."
+          }
         }
       }
     },

@@ -6312,15 +6312,7 @@
         "title": "Fiche client",
         "description": "Choisissez les informations que vous conservez sur vos clients, au-delà du nom et des coordonnées.",
         "limits": "{count} / {max} champs actifs",
-        "suggestions": {
-          "title": "Suggestions pour vous",
-          "description": "D'après le pays et l'activité de votre boutique.",
-          "browse": "Parcourir les modèles",
-          "dismiss": "Masquer les suggestions"
-        },
         "native": {
-          "title": "Champs Louez",
-          "description": "Des informations que Louez sait exploiter. Masquez celles dont vous n'avez pas besoin.",
           "birthDate": "Date de naissance",
           "birthDateHelp": "Affiche aussi l'âge du client.",
           "acquisitionSource": "Origine du client",
@@ -6335,36 +6327,25 @@
           "saved": "Réglage enregistré"
         },
         "sections": {
-          "add": "Ajouter une section",
-          "namePlaceholder": "Nom de la section",
           "defaultName": "Informations complémentaires",
           "rename": "Renommer la section",
           "moveUp": "Monter",
           "moveDown": "Descendre",
-          "actions": "Actions de la section",
           "online": "Réservation en ligne…"
         },
         "field": {
           "add": "Ajouter un champ",
-          "edit": "Modifier",
           "archive": "Archiver",
           "restore": "Réactiver",
           "delete": "Supprimer définitivement",
           "moveTo": "Déplacer vers",
-          "actions": "Actions du champ",
-          "active": "Actif",
-          "drag": "Réorganiser",
-          "valueCount": "{count, plural, =0 {Aucune valeur} one {# client renseigné} other {# clients renseignés}}"
+          "drag": "Réorganiser"
         },
         "badges": {
           "required": "Obligatoire",
           "sensitive": "Sensible",
-          "contract": "Contrat",
-          "search": "Recherche",
-          "list": "Liste",
           "business": "Entreprises",
           "individual": "Particuliers",
-          "item": "Par article",
           "online": {
             "optional": "En ligne · Facultatif",
             "required": "En ligne · Obligatoire"
@@ -6372,29 +6353,18 @@
           "noTarget": "Aucun produit choisi"
         },
         "dialog": {
-          "createTitle": "Nouveau champ",
-          "createDescription": "Il apparaîtra sur la fiche de tous vos clients.",
-          "editTitle": "Modifier le champ",
-          "editDescription": "Les valeurs déjà saisies sont conservées.",
           "label": "Libellé",
           "labelPlaceholder": "Numéro de permis",
-          "type": "Type",
-          "typeLocked": "Le type ne peut plus changer une fois le champ créé.",
           "options": "Choix proposés",
           "optionsPlaceholder": "Tapez un choix puis Entrée",
           "unit": "Unité",
           "unitPlaceholder": "cm, kg, km…",
           "helpText": "Aide à la saisie",
           "helpTextPlaceholder": "Indication affichée sous le champ",
-          "section": "Section",
-          "newSection": "Nouvelle section…",
           "appliesTo": "S'applique à",
           "appliesToAll": "Tous",
           "appliesToIndividual": "Particuliers",
           "appliesToBusiness": "Entreprises",
-          "save": "Enregistrer",
-          "create": "Ajouter le champ",
-          "cancel": "Annuler",
           "types": {
             "text": "Texte",
             "textarea": "Texte long",
@@ -6407,7 +6377,6 @@
             "url": "Lien"
           },
           "flags": {
-            "required": "Obligatoire",
             "requiredHelp": "Impossible d'enregistrer la fiche sans ce champ.",
             "sensitive": "Donnée sensible",
             "sensitiveHelp": "Masquée par défaut sur la fiche et exclue des exports.",
@@ -6421,7 +6390,6 @@
             "sensitiveItemHelp": "Masquée par défaut sur la réservation.",
             "contractItemHelp": "Ajoutée sous la ligne de l'article loué."
           },
-          "createDescriptionItem": "Il sera renseigné pour chaque article loué, sur la réservation.",
           "labelPlaceholderItem": "Pointure",
           "scope": "Portée",
           "scopes": {
@@ -6430,8 +6398,6 @@
             "item": "Par article loué",
             "itemDescription": "Une valeur par personne ou par matériel : taille, pointure…"
           },
-          "scopeLocked": "La portée ne peut plus changer une fois le champ créé.",
-          "close": "Fermer",
           "online": {
             "title": "Réservation en ligne",
             "description": "Ce que le client renseigne en réservant sur votre boutique."
@@ -6647,19 +6613,10 @@
           "withItemValues": "{count, plural, one {# article loué a une valeur pour ce champ : elle sera effacée.} other {# articles loués ont une valeur pour ce champ : elles seront effacées.}}"
         },
         "archived": {
-          "title": "Champs archivés",
           "description": "Masqués des fiches, leurs valeurs sont conservées."
         },
         "preview": {
-          "title": "Aperçu",
-          "description": "Ce que verra votre équipe en créant un client.",
-          "empty": "Ajoutez un champ pour voir l'aperçu.",
-          "audience": {
-            "team": "Équipe",
-            "client": "Client"
-          },
           "client": {
-            "description": "Ce que verra votre client en réservant.",
             "previewFor": "Aperçu pour",
             "noProduct": "Aucun produit trouvé",
             "sampleProduct": "Article loué",
@@ -6669,17 +6626,11 @@
             "emptyHint": "Réglez « Demander au client » sur Facultatif ou Obligatoire pour qu’un champ apparaisse ici."
           }
         },
-        "empty": {
-          "title": "Aucun champ personnalisé",
-          "description": "Partez d'un modèle ou créez votre premier champ."
-        },
         "toasts": {
           "created": "Champ ajouté",
-          "updated": "Champ modifié",
           "archived": "Champ archivé",
           "restored": "Champ réactivé",
           "deleted": "Champ supprimé",
-          "reordered": "Ordre enregistré",
           "sectionRenamed": "Section renommée",
           "sectionOnlineSaved": "Réglages appliqués à la section"
         },
@@ -6744,6 +6695,125 @@
           "cancel": "Annuler",
           "later": "Plus tard",
           "close": "Fermer"
+        },
+        "builder": {
+          "templates": {
+            "button": "Modèles",
+            "all": "Voir tous les modèles"
+          },
+          "views": {
+            "label": "Formulaire affiché",
+            "team": "Fiche client · équipe",
+            "client": "Réservation en ligne · client",
+            "teamShort": "Fiche client",
+            "clientShort": "Réservation en ligne"
+          },
+          "locked": {
+            "title": "Coordonnées",
+            "note": "Champs Louez, toujours présents",
+            "addressPlaceholder": "Rue, code postal, ville, pays",
+            "company": "Pour un professionnel : nom de l'entreprise, numéro d'entreprise et numéro de TVA."
+          },
+          "profile": {
+            "title": "Profil",
+            "description": "Des champs que Louez sait exploiter. Choisissez s'ils apparaissent.",
+            "visibility": "Affichage de « {field} »",
+            "hiddenNote": "Masqué : n'apparaît pas sur la fiche client."
+          },
+          "sections": {
+            "newName": "Nouvelle section",
+            "defaultItemName": "Détails",
+            "add": "Nouvelle section",
+            "delete": "Supprimer la section",
+            "empty": "Section vide : ajoutez-y un premier champ.",
+            "renameHint": "Cliquer pour renommer",
+            "actions": "Actions de la section « {name} »"
+          },
+          "field": {
+            "select": "Modifier « {label} »",
+            "actions": "Actions du champ « {label} »",
+            "deleteLabel": "Supprimer « {label} »",
+            "draftBadge": "Nouveau",
+            "draftPlaceholder": "Nouveau champ"
+          },
+          "item": {
+            "title": "Par article loué — sur la réservation",
+            "description": "Renseigné pour chaque article loué : deux vélos, deux fois.",
+            "participantLocked": "Toujours proposé",
+            "empty": "Taille, pointure, niveau… Ajoutez ce qu'il faut savoir pour préparer chaque article."
+          },
+          "archived": {
+            "show": "Voir les champs archivés ({count})"
+          },
+          "inspector": {
+            "label": "Réglages du champ",
+            "emptyTitle": "Cliquez sur un champ pour le modifier",
+            "emptyDescription": "Ses réglages s'affichent ici et s'enregistrent à chaque modification.",
+            "tipDrag": "Glissez pour réordonner",
+            "tipMenu": "Déplacer, archiver ou supprimer",
+            "newTitle": "Nouveau champ",
+            "add": "Ajouter",
+            "cancel": "Annuler",
+            "close": "Fermer",
+            "general": "Général",
+            "advanced": "Options avancées",
+            "saving": "Enregistrement…",
+            "saved": "Enregistré",
+            "format": "Format",
+            "formatHelp": "Louez vérifie le numéro saisi et le met en forme.",
+            "formatFreeHelp": "Tout texte est accepté.",
+            "formats": {
+              "free": "Libre",
+              "br_cpf_cnpj": "CPF / CNPJ (Brésil)",
+              "es_dni_nie": "DNI / NIE (Espagne)",
+              "it_codice_fiscale": "Codice fiscale (Italie)",
+              "pt_nif": "NIF (Portugal)"
+            }
+          },
+          "picker": {
+            "title": "Ajouter un champ",
+            "description": "Choisissez où il se remplit, puis son type. Vous le nommerez juste après.",
+            "suggested": "Modèles suggérés",
+            "templates": "Modèles",
+            "examples": {
+              "customer": {
+                "text": "Numéro de permis",
+                "textarea": "Remarques sur le client",
+                "number": "Années de pratique",
+                "date": "Date d'expiration du permis",
+                "select": "Type de pièce d'identité",
+                "checkbox": "Décharge signée",
+                "phone": "Contact d'urgence",
+                "email": "E-mail de facturation",
+                "url": "Lien vers un justificatif"
+              },
+              "item": {
+                "text": "Numéro de casier",
+                "textarea": "Préférences de réglage",
+                "number": "Taille (cm)",
+                "date": "Date de naissance du cycliste",
+                "select": "Niveau : débutant, confirmé…",
+                "checkbox": "Siège enfant",
+                "phone": "Téléphone du participant",
+                "email": "E-mail du participant",
+                "url": "Lien vers le parcours"
+              }
+            }
+          },
+          "client": {
+            "ask": "Demander un champ au client",
+            "askTitle": "Demander au client",
+            "askDescription": "Un clic : le champ est proposé à la réservation, en facultatif.",
+            "askButton": "Demander",
+            "askField": "Demander « {label} » au client",
+            "asked": "Demandé",
+            "askEmpty": "Tous vos champs sont déjà demandés au client.",
+            "lockedNote": "Demandés par Louez, toujours présents"
+          },
+          "empty": {
+            "title": "Ajoutez vos propres champs",
+            "description": "Pièce d'identité, permis, taille… Partez d'un modèle adapté à votre boutique ou créez un champ."
+          }
         }
       }
     },

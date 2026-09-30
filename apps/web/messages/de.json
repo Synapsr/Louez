@@ -6312,15 +6312,7 @@
         "title": "Kundendaten",
         "description": "Legen Sie fest, welche Informationen Sie über Ihre Kunden speichern – über Name und Kontaktdaten hinaus.",
         "limits": "{count} / {max} aktive Felder",
-        "suggestions": {
-          "title": "Vorschläge für Sie",
-          "description": "Passend zu Land und Branche Ihres Shops.",
-          "browse": "Vorlagen ansehen",
-          "dismiss": "Vorschläge ausblenden"
-        },
         "native": {
-          "title": "Louez-Felder",
-          "description": "Informationen, die Louez auswerten kann. Blenden Sie aus, was Sie nicht brauchen.",
           "birthDate": "Geburtsdatum",
           "birthDateHelp": "Zeigt auch das Alter des Kunden an.",
           "acquisitionSource": "Herkunft des Kunden",
@@ -6335,36 +6327,25 @@
           "saved": "Einstellung gespeichert"
         },
         "sections": {
-          "add": "Abschnitt hinzufügen",
-          "namePlaceholder": "Name des Abschnitts",
           "defaultName": "Weitere Angaben",
           "rename": "Abschnitt umbenennen",
           "moveUp": "Nach oben",
           "moveDown": "Nach unten",
-          "actions": "Abschnittsaktionen",
           "online": "Online-Reservierung…"
         },
         "field": {
           "add": "Feld hinzufügen",
-          "edit": "Bearbeiten",
           "archive": "Archivieren",
           "restore": "Reaktivieren",
           "delete": "Endgültig löschen",
           "moveTo": "Verschieben nach",
-          "actions": "Feldaktionen",
-          "active": "Aktiv",
-          "drag": "Neu anordnen",
-          "valueCount": "{count, plural, =0 {Keine Werte} one {Bei # Kunde ausgefüllt} other {Bei # Kunden ausgefüllt}}"
+          "drag": "Neu anordnen"
         },
         "badges": {
           "required": "Pflichtfeld",
           "sensitive": "Sensibel",
-          "contract": "Vertrag",
-          "search": "Suche",
-          "list": "Liste",
           "business": "Geschäftskunden",
           "individual": "Privatkunden",
-          "item": "Pro Artikel",
           "online": {
             "optional": "Online · Optional",
             "required": "Online · Pflichtfeld"
@@ -6372,29 +6353,18 @@
           "noTarget": "Kein Produkt ausgewählt"
         },
         "dialog": {
-          "createTitle": "Neues Feld",
-          "createDescription": "Es erscheint bei allen Ihren Kunden.",
-          "editTitle": "Feld bearbeiten",
-          "editDescription": "Bereits eingegebene Werte bleiben erhalten.",
           "label": "Bezeichnung",
           "labelPlaceholder": "Führerscheinnummer",
-          "type": "Typ",
-          "typeLocked": "Der Typ lässt sich nach dem Erstellen des Feldes nicht mehr ändern.",
           "options": "Auswahlmöglichkeiten",
           "optionsPlaceholder": "Option eingeben, dann Enter",
           "unit": "Einheit",
           "unitPlaceholder": "cm, kg, km…",
           "helpText": "Eingabehilfe",
           "helpTextPlaceholder": "Hinweis, der unter dem Feld angezeigt wird",
-          "section": "Abschnitt",
-          "newSection": "Neuer Abschnitt…",
           "appliesTo": "Gilt für",
           "appliesToAll": "Alle",
           "appliesToIndividual": "Privatkunden",
           "appliesToBusiness": "Geschäftskunden",
-          "save": "Speichern",
-          "create": "Feld hinzufügen",
-          "cancel": "Abbrechen",
           "types": {
             "text": "Text",
             "textarea": "Langer Text",
@@ -6407,7 +6377,6 @@
             "url": "Link"
           },
           "flags": {
-            "required": "Pflichtfeld",
             "requiredHelp": "Ohne dieses Feld lassen sich die Kundendaten nicht speichern.",
             "sensitive": "Sensible Daten",
             "sensitiveHelp": "Standardmäßig in den Kundendaten verborgen und von Exporten ausgeschlossen.",
@@ -6421,7 +6390,6 @@
             "sensitiveItemHelp": "Standardmäßig in der Reservierung verborgen.",
             "contractItemHelp": "Wird unter der Zeile des gemieteten Artikels eingefügt."
           },
-          "createDescriptionItem": "Es wird in der Reservierung für jeden gemieteten Artikel ausgefüllt.",
           "labelPlaceholderItem": "Schuhgröße",
           "scope": "Geltungsbereich",
           "scopes": {
@@ -6430,8 +6398,6 @@
             "item": "Pro gemieteten Artikel",
             "itemDescription": "Ein Wert pro Person oder Ausrüstungsteil: Körpergröße, Schuhgröße…"
           },
-          "scopeLocked": "Der Geltungsbereich lässt sich nach dem Erstellen des Feldes nicht mehr ändern.",
-          "close": "Schließen",
           "online": {
             "title": "Online-Reservierung",
             "description": "Was der Kunde bei einer Reservierung in Ihrem Shop ausfüllt."
@@ -6647,19 +6613,10 @@
           "withItemValues": "{count, plural, one {# gemieteter Artikel hat einen Wert in diesem Feld: Er wird gelöscht.} other {# gemietete Artikel haben einen Wert in diesem Feld: Diese Werte werden gelöscht.}}"
         },
         "archived": {
-          "title": "Archivierte Felder",
           "description": "In den Kundendaten ausgeblendet, ihre Werte bleiben erhalten."
         },
         "preview": {
-          "title": "Vorschau",
-          "description": "Das sieht Ihr Team beim Anlegen eines Kunden.",
-          "empty": "Fügen Sie ein Feld hinzu, um die Vorschau zu sehen.",
-          "audience": {
-            "team": "Team",
-            "client": "Kunde"
-          },
           "client": {
-            "description": "Das sieht Ihr Kunde bei der Reservierung.",
             "previewFor": "Vorschau für",
             "noProduct": "Kein Produkt gefunden",
             "sampleProduct": "Gemieteter Artikel",
@@ -6669,17 +6626,11 @@
             "emptyHint": "Stellen Sie „Beim Kunden abfragen“ bei einem Feld auf Optional oder Pflichtfeld, damit es hier erscheint."
           }
         },
-        "empty": {
-          "title": "Keine benutzerdefinierten Felder",
-          "description": "Starten Sie mit einer Vorlage oder erstellen Sie Ihr erstes Feld."
-        },
         "toasts": {
           "created": "Feld hinzugefügt",
-          "updated": "Feld geändert",
           "archived": "Feld archiviert",
           "restored": "Feld reaktiviert",
           "deleted": "Feld gelöscht",
-          "reordered": "Reihenfolge gespeichert",
           "sectionRenamed": "Abschnitt umbenannt",
           "sectionOnlineSaved": "Einstellungen auf den Abschnitt angewendet"
         },
@@ -6744,6 +6695,125 @@
           "cancel": "Abbrechen",
           "later": "Später",
           "close": "Schließen"
+        },
+        "builder": {
+          "templates": {
+            "button": "Vorlagen",
+            "all": "Alle Vorlagen ansehen"
+          },
+          "views": {
+            "label": "Angezeigtes Formular",
+            "team": "Kundendaten · Team",
+            "client": "Online-Reservierung · Kunde",
+            "teamShort": "Kundendaten",
+            "clientShort": "Online-Reservierung"
+          },
+          "locked": {
+            "title": "Kontaktdaten",
+            "note": "Louez-Felder, immer vorhanden",
+            "addressPlaceholder": "Straße, Postleitzahl, Stadt, Land",
+            "company": "Für Geschäftskunden: Firmenname, Unternehmensnummer und USt-IdNr."
+          },
+          "profile": {
+            "title": "Profil",
+            "description": "Felder, die Louez auswerten kann. Legen Sie fest, ob sie angezeigt werden.",
+            "visibility": "Anzeige von „{field}“",
+            "hiddenNote": "Ausgeblendet: Das Feld erscheint nicht in den Kundendaten."
+          },
+          "sections": {
+            "newName": "Neuer Abschnitt",
+            "defaultItemName": "Details",
+            "add": "Neuer Abschnitt",
+            "delete": "Abschnitt löschen",
+            "empty": "Leerer Abschnitt: Fügen Sie das erste Feld hinzu.",
+            "renameHint": "Zum Umbenennen klicken",
+            "actions": "Aktionen für den Abschnitt „{name}“"
+          },
+          "field": {
+            "select": "„{label}“ bearbeiten",
+            "actions": "Aktionen für das Feld „{label}“",
+            "deleteLabel": "„{label}“ löschen",
+            "draftBadge": "Neu",
+            "draftPlaceholder": "Neues Feld"
+          },
+          "item": {
+            "title": "Pro gemieteten Artikel – in der Reservierung",
+            "description": "Wird für jeden gemieteten Artikel ausgefüllt: zwei Fahrräder, zweimal.",
+            "participantLocked": "Immer angeboten",
+            "empty": "Körpergröße, Schuhgröße, Niveau… Fügen Sie hinzu, was Sie wissen müssen, um jeden Artikel vorzubereiten."
+          },
+          "archived": {
+            "show": "Archivierte Felder anzeigen ({count})"
+          },
+          "inspector": {
+            "label": "Feldeinstellungen",
+            "emptyTitle": "Klicken Sie auf ein Feld, um es zu bearbeiten",
+            "emptyDescription": "Seine Einstellungen erscheinen hier und werden bei jeder Änderung gespeichert.",
+            "tipDrag": "Ziehen, um neu anzuordnen",
+            "tipMenu": "Verschieben, archivieren oder löschen",
+            "newTitle": "Neues Feld",
+            "add": "Hinzufügen",
+            "cancel": "Abbrechen",
+            "close": "Schließen",
+            "general": "Allgemein",
+            "advanced": "Erweiterte Optionen",
+            "saving": "Wird gespeichert…",
+            "saved": "Gespeichert",
+            "format": "Format",
+            "formatHelp": "Louez prüft die eingegebene Nummer und formatiert sie.",
+            "formatFreeHelp": "Jeder Text wird akzeptiert.",
+            "formats": {
+              "free": "Freitext",
+              "br_cpf_cnpj": "CPF / CNPJ (Brasilien)",
+              "es_dni_nie": "DNI / NIE (Spanien)",
+              "it_codice_fiscale": "Codice fiscale (Italien)",
+              "pt_nif": "NIF (Portugal)"
+            }
+          },
+          "picker": {
+            "title": "Feld hinzufügen",
+            "description": "Wählen Sie, wo es ausgefüllt wird, und dann den Typ. Den Namen vergeben Sie direkt danach.",
+            "suggested": "Vorgeschlagene Vorlagen",
+            "templates": "Vorlagen",
+            "examples": {
+              "customer": {
+                "text": "Führerscheinnummer",
+                "textarea": "Anmerkungen zum Kunden",
+                "number": "Jahre Erfahrung",
+                "date": "Ablaufdatum des Führerscheins",
+                "select": "Art des Ausweisdokuments",
+                "checkbox": "Haftungsverzicht unterschrieben",
+                "phone": "Notfallkontakt",
+                "email": "E-Mail für Rechnungen",
+                "url": "Link zu einem Dokument"
+              },
+              "item": {
+                "text": "Schließfachnummer",
+                "textarea": "Einstellungswünsche",
+                "number": "Körpergröße (cm)",
+                "date": "Geburtsdatum des Radfahrers",
+                "select": "Niveau: Anfänger, Könner…",
+                "checkbox": "Kindersitz",
+                "phone": "Telefon des Teilnehmers",
+                "email": "E-Mail des Teilnehmers",
+                "url": "Link zur Strecke"
+              }
+            }
+          },
+          "client": {
+            "ask": "Ein Feld beim Kunden abfragen",
+            "askTitle": "Beim Kunden abfragen",
+            "askDescription": "Ein Klick: Das Feld wird bei der Reservierung als optional angeboten.",
+            "askButton": "Abfragen",
+            "askField": "„{label}“ beim Kunden abfragen",
+            "asked": "Abgefragt",
+            "askEmpty": "Alle Ihre Felder werden bereits beim Kunden abgefragt.",
+            "lockedNote": "Von Louez abgefragt, immer vorhanden"
+          },
+          "empty": {
+            "title": "Fügen Sie eigene Felder hinzu",
+            "description": "Ausweisdokument, Führerschein, Körpergröße… Starten Sie mit einer Vorlage, die zu Ihrem Shop passt, oder erstellen Sie ein Feld."
+          }
         }
       }
     },

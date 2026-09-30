@@ -6312,15 +6312,7 @@
         "title": "Scheda cliente",
         "description": "Scegli quali informazioni conservare sui tuoi clienti, oltre al nome e ai recapiti.",
         "limits": "{count} / {max} campi attivi",
-        "suggestions": {
-          "title": "Suggerimenti per te",
-          "description": "In base al paese e all'attività del tuo negozio.",
-          "browse": "Sfoglia i modelli",
-          "dismiss": "Nascondi i suggerimenti"
-        },
         "native": {
-          "title": "Campi Louez",
-          "description": "Informazioni che Louez sa sfruttare. Nascondi quelle che non ti servono.",
           "birthDate": "Data di nascita",
           "birthDateHelp": "Mostra anche l'età del cliente.",
           "acquisitionSource": "Provenienza del cliente",
@@ -6335,36 +6327,25 @@
           "saved": "Impostazione salvata"
         },
         "sections": {
-          "add": "Aggiungi una sezione",
-          "namePlaceholder": "Nome della sezione",
           "defaultName": "Informazioni aggiuntive",
           "rename": "Rinomina la sezione",
           "moveUp": "Sposta su",
           "moveDown": "Sposta giù",
-          "actions": "Azioni della sezione",
           "online": "Prenotazione online…"
         },
         "field": {
           "add": "Aggiungi un campo",
-          "edit": "Modifica",
           "archive": "Archivia",
           "restore": "Riattiva",
           "delete": "Elimina definitivamente",
           "moveTo": "Sposta in",
-          "actions": "Azioni del campo",
-          "active": "Attivo",
-          "drag": "Riordina",
-          "valueCount": "{count, plural, =0 {Nessun valore} one {Compilato per # cliente} other {Compilato per # clienti}}"
+          "drag": "Riordina"
         },
         "badges": {
           "required": "Obbligatorio",
           "sensitive": "Sensibile",
-          "contract": "Contratto",
-          "search": "Ricerca",
-          "list": "Elenco",
           "business": "Aziende",
           "individual": "Privati",
-          "item": "Per articolo",
           "online": {
             "optional": "Online · Facoltativo",
             "required": "Online · Obbligatorio"
@@ -6372,29 +6353,18 @@
           "noTarget": "Nessun prodotto selezionato"
         },
         "dialog": {
-          "createTitle": "Nuovo campo",
-          "createDescription": "Comparirà nella scheda di tutti i tuoi clienti.",
-          "editTitle": "Modifica il campo",
-          "editDescription": "I valori già inseriti vengono mantenuti.",
           "label": "Etichetta",
           "labelPlaceholder": "Numero di patente",
-          "type": "Tipo",
-          "typeLocked": "Il tipo non può più cambiare una volta creato il campo.",
           "options": "Opzioni",
           "optionsPlaceholder": "Scrivi un'opzione e premi Invio",
           "unit": "Unità",
           "unitPlaceholder": "cm, kg, km…",
           "helpText": "Testo di aiuto",
           "helpTextPlaceholder": "Indicazione mostrata sotto il campo",
-          "section": "Sezione",
-          "newSection": "Nuova sezione…",
           "appliesTo": "Si applica a",
           "appliesToAll": "Tutti",
           "appliesToIndividual": "Privati",
           "appliesToBusiness": "Aziende",
-          "save": "Salva",
-          "create": "Aggiungi il campo",
-          "cancel": "Annulla",
           "types": {
             "text": "Testo",
             "textarea": "Testo lungo",
@@ -6407,7 +6377,6 @@
             "url": "Link"
           },
           "flags": {
-            "required": "Obbligatorio",
             "requiredHelp": "Impossibile salvare la scheda senza questo campo.",
             "sensitive": "Dato sensibile",
             "sensitiveHelp": "Nascosto per impostazione predefinita nella scheda ed escluso dalle esportazioni.",
@@ -6421,7 +6390,6 @@
             "sensitiveItemHelp": "Nascosto per impostazione predefinita nella prenotazione.",
             "contractItemHelp": "Aggiunto sotto la riga dell'articolo noleggiato."
           },
-          "createDescriptionItem": "Verrà compilato per ogni articolo noleggiato, nella prenotazione.",
           "labelPlaceholderItem": "Numero di scarpe",
           "scope": "Ambito",
           "scopes": {
@@ -6430,8 +6398,6 @@
             "item": "Per articolo noleggiato",
             "itemDescription": "Un valore per persona o per attrezzatura: altezza, numero di scarpe…"
           },
-          "scopeLocked": "L'ambito non può più cambiare una volta creato il campo.",
-          "close": "Chiudi",
           "online": {
             "title": "Prenotazione online",
             "description": "Ciò che i clienti compilano quando prenotano nel tuo negozio."
@@ -6647,19 +6613,10 @@
           "withItemValues": "{count, plural, one {# articolo noleggiato ha un valore in questo campo: verrà cancellato.} other {# articoli noleggiati hanno un valore in questo campo: verranno cancellati.}}"
         },
         "archived": {
-          "title": "Campi archiviati",
           "description": "Nascosti dalle schede, i loro valori vengono mantenuti."
         },
         "preview": {
-          "title": "Anteprima",
-          "description": "Quello che vedrà il tuo team quando crea un cliente.",
-          "empty": "Aggiungi un campo per vedere l'anteprima.",
-          "audience": {
-            "team": "Team",
-            "client": "Cliente"
-          },
           "client": {
-            "description": "Quello che vedrà il tuo cliente quando prenota.",
             "previewFor": "Anteprima per",
             "noProduct": "Nessun prodotto trovato",
             "sampleProduct": "Articolo noleggiato",
@@ -6669,17 +6626,11 @@
             "emptyHint": "Imposta «Chiedi al cliente» su Facoltativo o Obbligatorio per far comparire qui un campo."
           }
         },
-        "empty": {
-          "title": "Nessun campo personalizzato",
-          "description": "Parti da un modello o crea il tuo primo campo."
-        },
         "toasts": {
           "created": "Campo aggiunto",
-          "updated": "Campo modificato",
           "archived": "Campo archiviato",
           "restored": "Campo riattivato",
           "deleted": "Campo eliminato",
-          "reordered": "Ordine salvato",
           "sectionRenamed": "Sezione rinominata",
           "sectionOnlineSaved": "Impostazioni applicate alla sezione"
         },
@@ -6744,6 +6695,125 @@
           "cancel": "Annulla",
           "later": "Più tardi",
           "close": "Chiudi"
+        },
+        "builder": {
+          "templates": {
+            "button": "Modelli",
+            "all": "Vedi tutti i modelli"
+          },
+          "views": {
+            "label": "Modulo visualizzato",
+            "team": "Scheda cliente · team",
+            "client": "Prenotazione online · cliente",
+            "teamShort": "Scheda cliente",
+            "clientShort": "Prenotazione online"
+          },
+          "locked": {
+            "title": "Recapiti",
+            "note": "Campi Louez, sempre presenti",
+            "addressPlaceholder": "Via, CAP, città, paese",
+            "company": "Per un'azienda: nome dell'azienda, numero d'impresa e partita IVA."
+          },
+          "profile": {
+            "title": "Profilo",
+            "description": "Campi che Louez sa sfruttare. Scegli se mostrarli.",
+            "visibility": "Visualizzazione di «{field}»",
+            "hiddenNote": "Nascosto: non compare nella scheda cliente."
+          },
+          "sections": {
+            "newName": "Nuova sezione",
+            "defaultItemName": "Dettagli",
+            "add": "Nuova sezione",
+            "delete": "Elimina la sezione",
+            "empty": "Sezione vuota: aggiungi il primo campo.",
+            "renameHint": "Clicca per rinominare",
+            "actions": "Azioni della sezione «{name}»"
+          },
+          "field": {
+            "select": "Modifica «{label}»",
+            "actions": "Azioni del campo «{label}»",
+            "deleteLabel": "Elimina «{label}»",
+            "draftBadge": "Nuovo",
+            "draftPlaceholder": "Nuovo campo"
+          },
+          "item": {
+            "title": "Per articolo noleggiato — nella prenotazione",
+            "description": "Compilato per ogni articolo noleggiato: due bici, due volte.",
+            "participantLocked": "Sempre proposto",
+            "empty": "Altezza, numero di scarpe, livello… Aggiungi ciò che ti serve sapere per preparare ogni articolo."
+          },
+          "archived": {
+            "show": "Vedi i campi archiviati ({count})"
+          },
+          "inspector": {
+            "label": "Impostazioni del campo",
+            "emptyTitle": "Clicca su un campo per modificarlo",
+            "emptyDescription": "Le sue impostazioni compaiono qui e vengono salvate a ogni modifica.",
+            "tipDrag": "Trascina per riordinare",
+            "tipMenu": "Sposta, archivia o elimina",
+            "newTitle": "Nuovo campo",
+            "add": "Aggiungi",
+            "cancel": "Annulla",
+            "close": "Chiudi",
+            "general": "Generale",
+            "advanced": "Opzioni avanzate",
+            "saving": "Salvataggio…",
+            "saved": "Salvato",
+            "format": "Formato",
+            "formatHelp": "Louez verifica il numero inserito e lo formatta.",
+            "formatFreeHelp": "È accettato qualsiasi testo.",
+            "formats": {
+              "free": "Testo libero",
+              "br_cpf_cnpj": "CPF / CNPJ (Brasile)",
+              "es_dni_nie": "DNI / NIE (Spagna)",
+              "it_codice_fiscale": "Codice fiscale (Italia)",
+              "pt_nif": "NIF (Portogallo)"
+            }
+          },
+          "picker": {
+            "title": "Aggiungi un campo",
+            "description": "Scegli dove si compila, poi il tipo. Gli darai un nome subito dopo.",
+            "suggested": "Modelli suggeriti",
+            "templates": "Modelli",
+            "examples": {
+              "customer": {
+                "text": "Numero di patente",
+                "textarea": "Note sul cliente",
+                "number": "Anni di pratica",
+                "date": "Data di scadenza della patente",
+                "select": "Tipo di documento d'identità",
+                "checkbox": "Liberatoria firmata",
+                "phone": "Contatto di emergenza",
+                "email": "Email di fatturazione",
+                "url": "Link a un documento"
+              },
+              "item": {
+                "text": "Numero dell'armadietto",
+                "textarea": "Preferenze di regolazione",
+                "number": "Altezza (cm)",
+                "date": "Data di nascita del ciclista",
+                "select": "Livello: principiante, avanzato…",
+                "checkbox": "Seggiolino per bambini",
+                "phone": "Telefono del partecipante",
+                "email": "Email del partecipante",
+                "url": "Link al percorso"
+              }
+            }
+          },
+          "client": {
+            "ask": "Chiedi un campo al cliente",
+            "askTitle": "Chiedi al cliente",
+            "askDescription": "Un clic: il campo viene proposto alla prenotazione, come facoltativo.",
+            "askButton": "Chiedi",
+            "askField": "Chiedi «{label}» al cliente",
+            "asked": "Richiesto",
+            "askEmpty": "Tutti i tuoi campi vengono già chiesti al cliente.",
+            "lockedNote": "Richiesti da Louez, sempre presenti"
+          },
+          "empty": {
+            "title": "Aggiungi i tuoi campi",
+            "description": "Documento d'identità, patente, altezza… Parti da un modello adatto al tuo negozio o crea un campo."
+          }
         }
       }
     },
