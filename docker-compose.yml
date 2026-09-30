@@ -127,7 +127,7 @@ services:
   # quay.io); Chainguard rebuilds it from source and keeps it patched. Same
   # binary and on-disk format, so existing minio_data volumes keep working.
   minio:
-    image: minio/minio:latest
+    image: bitnami/minio:latest
     # The former upstream image ran as root, so volumes it created are
     # root-owned; the Chainguard default (uid 65532) could not write to them.
     user: "0:0"
