@@ -111,6 +111,7 @@ export function UnitAssignmentSelector({
     initialAssignedUnitIds,
   );
   const [openPopovers, setOpenPopovers] = useState<Record<number, boolean>>({});
+  const [scanValues, setScanValues] = useState<Record<number, string>>({});
   const [bufferOverrideFailure, setBufferOverrideFailure] =
     useState<AssignmentFailure | null>(null);
 
@@ -475,9 +476,12 @@ export function UnitAssignmentSelector({
               </span>
               <Popover
                 open={openPopovers[index]}
-                onOpenChange={(open) =>
-                  setOpenPopovers((prev) => ({ ...prev, [index]: open }))
-                }
+                onOpenChange={(open) => {
+                  setOpenPopovers((prev) => ({ ...prev, [index]: open }));
+                  if (!open) {
+                    setScanValues((prev) => ({ ...prev, [index]: '' }));
+                  }
+                }}
               >
                 <PopoverTrigger
                   render={
@@ -522,7 +526,21 @@ export function UnitAssignmentSelector({
                 </PopoverTrigger>
                 <PopoverContent className="w-[280px] p-0" align="start">
                   <Command open items={availableForSlot}>
-                    <CommandInput placeholder={t('selectUnit')} />
+                    <CommandInput 
+                      placeholder={t('selectUnit')} 
+                      value={scanValues[index] || ''}
+                      onValueChange={(val) => {
+                        setScanValues((prev) => ({ ...prev, [index]: val }));
+                        if (!val) return;
+                        const match = availableForSlot.find(
+                          (u) => u.identifier.toLowerCase() === val.toLowerCase()
+                        );
+                        if (match) {
+                          handleUnitSelect(index, match.id);
+                          setScanValues((prev) => ({ ...prev, [index]: '' }));
+                        }
+                      }}
+                    />
                     <CommandEmpty>{t('noUnitsAvailable')}</CommandEmpty>
                     <CommandList>
                       <CommandGroup>
