@@ -162,7 +162,7 @@ services:
   # One-shot bucket bootstrap. The bucket stays private: the app streams
   # assets through /files with its own credentials.
   minio-init:
-    image: cgr.dev/chainguard/minio-client:latest
+    image: cgr.dev/chainguard/minio-client:latest-dev
     depends_on:
       minio:
         condition: service_healthy
