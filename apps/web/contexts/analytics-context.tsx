@@ -83,6 +83,15 @@ const getDeviceType = (): DeviceType => {
   return "desktop";
 };
 
+/**
+ * `crypto.randomUUID` only exists in secure contexts: a storefront served over
+ * plain HTTP (self-hosted on a LAN, a local preview) must not crash on it.
+ */
+const createSessionId = (): string =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `session_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+
 /** Per-tab session id, created once and kept in sessionStorage. */
 const getOrCreateSessionId = (): string => {
   try {
@@ -90,11 +99,11 @@ const getOrCreateSessionId = (): string => {
     if (stored) {
       return stored;
     }
-    const sessionId = crypto.randomUUID();
+    const sessionId = createSessionId();
     sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
     return sessionId;
   } catch {
-    return crypto.randomUUID();
+    return createSessionId();
   }
 };
 
