@@ -1,12 +1,35 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { FeatureDemoScene } from "@/lib/landing-demos/policy";
+import {
+  emitDemoCue,
+  hoverElement,
+  pressElement,
+  strokeOn,
+  strokePoint,
+  typeInto,
+} from "./demo-gestures";
+import { FEATURE_DEMOS } from "./feature-demos";
 
 export interface DemoCue {
   at: number;
   selector: string;
   click?: boolean;
+  /** A click with its pointer down and up, for controls that open on press: selects, menus. */
+  press?: boolean;
+  /** Stays over the target until the next cue, like a visitor reading a tooltip. */
+  hover?: boolean;
   scroll?: { x: number; y: number; duration: number };
+  /** Types into a field, a letter at a time. */
+  type?: { text: string; duration: number };
+  /** Draws a signature-like stroke on a canvas. */
+  draw?: { duration: number };
+  /** Tells the scene to move on (`useDemoCue`), where no control of the product does. */
+  emit?: string;
 }
+type Gesture =
+  | { kind: "type"; element: HTMLElement; text: string; startAt: number; endAt: number }
+  | { kind: "draw"; element: HTMLElement; startAt: number; endAt: number; started: boolean };
 export const DEMO_DURATION = 4600;
 export const DEMO_CUES = {
   storefront: [
@@ -41,9 +64,16 @@ export const DEMO_CUES = {
     { at: 1700, selector: '[data-slot="advisor-suggestions"] button', click: true },
   ],
 } satisfies Record<string, DemoCue[]>;
-export type AnimatedScene = keyof typeof DEMO_CUES;
+export type AnimatedScene = keyof typeof DEMO_CUES | FeatureDemoScene;
+const isFeatureScene = (scene: AnimatedScene): scene is FeatureDemoScene => scene in FEATURE_DEMOS;
+export const getDemoCues = (scene: AnimatedScene): DemoCue[] =>
+  isFeatureScene(scene) ? FEATURE_DEMOS[scene].cues : DEMO_CUES[scene];
 export const getDemoDuration = (scene: AnimatedScene) =>
-  scene === "planning" ? 10200 : DEMO_DURATION;
+  isFeatureScene(scene)
+    ? FEATURE_DEMOS[scene].duration
+    : scene === "planning"
+      ? 10200
+      : DEMO_DURATION;
 
 /** Advance only by active time, so a hover can pause in the middle of a gesture. */
 export const advanceDemoClock = (
@@ -67,6 +97,8 @@ export const useDemoPlayback = ({
   const scrollRef = useRef<{ element: HTMLElement; x: number; y: number; endAt: number } | null>(
     null,
   );
+  const gestureRef = useRef<Gesture | null>(null);
+  const hoveredRef = useRef<HTMLElement | null>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState(0);
   const finishRef = useRef(onFinish);
@@ -75,6 +107,8 @@ export const useDemoPlayback = ({
     clock.current = { elapsed: 0, cue: 0 };
     setPhase(0);
     scrollRef.current = null;
+    gestureRef.current = null;
+    hoveredRef.current = null;
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [scene, cycle]);
   useEffect(() => {
@@ -88,7 +122,7 @@ export const useDemoPlayback = ({
     if (!running) return;
     let frame = 0;
     let previous = performance.now();
-    const cues: DemoCue[] = DEMO_CUES[scene];
+    const cues = getDemoCues(scene);
     const tick = (now: number) => {
       const previousElapsed = clock.current.elapsed;
       clock.current.elapsed = advanceDemoClock(
@@ -109,9 +143,37 @@ export const useDemoPlayback = ({
         scroll.y -= y;
         if (fraction >= 1) scrollRef.current = null;
       }
+      const gesture = gestureRef.current;
+      if (gesture) {
+        const fraction = Math.min(
+          1,
+          (clock.current.elapsed - gesture.startAt) / Math.max(1, gesture.endAt - gesture.startAt),
+        );
+        if (gesture.kind === "type") {
+          typeInto(
+            gesture.element,
+            gesture.text.slice(0, Math.ceil(gesture.text.length * fraction)),
+          );
+        } else {
+          const point = strokePoint(gesture.element, fraction);
+          strokeOn(gesture.element, gesture.started ? "move" : "start", point);
+          gesture.started = true;
+          if (fraction >= 1) strokeOn(gesture.element, "end", point);
+          if (cursor) {
+            for (const animation of cursor.getAnimations()) {
+              if (animation.id === "demo-cursor-move") animation.cancel();
+            }
+            cursor.style.transform = `translate(${point.x}px, ${point.y}px)`;
+          }
+        }
+        if (fraction >= 1) gestureRef.current = null;
+      }
       previous = now;
       const cue = cues[clock.current.cue];
       if (cue && clock.current.elapsed >= cue.at) {
+        if (hoveredRef.current) hoverElement(hoveredRef.current, false);
+        hoveredRef.current = null;
+        if (cue.emit) emitDemoCue(cue.emit);
         const target = document.querySelector<HTMLElement>(cue.selector);
         if (target && cursor) {
           let rect = target.getBoundingClientRect();
@@ -135,12 +197,33 @@ export const useDemoPlayback = ({
             if (animation.id === "demo-cursor-move") animation.cancel();
           }
           const movement = cursor.animate([{ transform: current }, { transform: destination }], {
-            duration: cue.click ? 0 : 560,
+            duration: cue.click || cue.press || cue.type || cue.draw ? 0 : 560,
             easing: "cubic-bezier(.22,1,.36,1)",
             fill: "forwards",
           });
           movement.id = "demo-cursor-move";
           if (cue.click) target.click();
+          if (cue.press) pressElement(target);
+          if (cue.hover) {
+            hoverElement(target, true);
+            hoveredRef.current = target;
+          }
+          if (cue.type)
+            gestureRef.current = {
+              kind: "type",
+              element: target,
+              text: cue.type.text,
+              startAt: clock.current.elapsed,
+              endAt: clock.current.elapsed + cue.type.duration,
+            };
+          if (cue.draw)
+            gestureRef.current = {
+              kind: "draw",
+              element: target,
+              startAt: clock.current.elapsed,
+              endAt: clock.current.elapsed + cue.draw.duration,
+              started: false,
+            };
           if (cue.scroll)
             scrollRef.current = {
               element: target,

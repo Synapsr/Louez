@@ -2,7 +2,7 @@ import { updateOnlineStoreInputSchema } from "@louez/validations";
 import { z } from "zod";
 
 import { requirePermission } from "../../procedures";
-import { updateOnlineStore } from "../../services";
+import { updateOnlineStore } from "../../services/store-settings";
 import { toORPCError } from "../../utils/orpc-error";
 
 /**

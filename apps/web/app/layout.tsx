@@ -1,5 +1,6 @@
+import { isLocale, defaultLocale } from "@/i18n/config";
 import { headers } from "next/headers";
-import { DEMO_ROUTE_HEADER } from "@/lib/landing-demos/policy";
+import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER } from "@/lib/landing-demos/policy";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import Script from "next/script";
@@ -55,11 +56,17 @@ export default async function RootLayout({
   // build host's default LOUEZ_MODE into the static shell and hydrate the
   // client with the wrong deployment mode.
   await connection();
-  const isPublicDemo = (await headers()).get(DEMO_ROUTE_HEADER) === "1";
+  const requestHeaders = await headers();
+  const isPublicDemo = requestHeaders.get(DEMO_ROUTE_HEADER) === "1";
   const instanceConfig = getInstanceConfig();
   const publicEnv = getPublicEnv();
   // Drives the document language for screen readers and translation tools.
-  const locale = isPublicDemo ? "fr" : await getLocale();
+  const demoLocale = requestHeaders.get(DEMO_LOCALE_HEADER);
+  const locale = isPublicDemo
+    ? isLocale(demoLocale)
+      ? demoLocale
+      : defaultLocale
+    : await getLocale();
 
   return (
     <>

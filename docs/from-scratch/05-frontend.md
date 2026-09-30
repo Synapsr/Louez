@@ -271,6 +271,11 @@ export const LoginForm = () => {
 
 Translations live in `messages/{locale}.json` at the app root.
 
+The supported locale registry lives in `@louez/types` (`supportedLocales`) and is
+shared by the web app, booking schemas and email locale type. There are 13 UI
+languages; `zh` means Simplified Chinese. See [Internationalization](../i18n.md)
+for catalogs, fallback boundaries and validation commands.
+
 ### Usage rules
 
 - Prefer one `useTranslations()` call per file/component and reuse that single translator across the file

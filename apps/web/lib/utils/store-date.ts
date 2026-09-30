@@ -80,6 +80,25 @@ const LOCALIZED_DATE_TIME_PARTS: Partial<Record<DateFormatPreset, { date: string
     PRECISE_DATETIME: { date: "d MMMM yyyy", time: "HH:mm:ss" },
   };
 
+// date-fns' localized patterns retain year/month/day order in CJK languages.
+const CJK_DATE_FORMATS: Record<DateFormatPreset, string> = {
+  FULL_DATETIME: "PPPP HH:mm",
+  SHORT_DATETIME: "PP HH:mm",
+  COMPACT_DATETIME: "P HH:mm",
+  TIMESTAMP: "P HH:mm",
+  DATE_AT_TIME: "PPP HH:mm",
+  SHORT_DATE_AT_TIME: "PP HH:mm",
+  RANGE_ELEMENT: "PP HH:mm",
+  TIME_ONLY: "HH:mm",
+  FULL_DATE: "PPPP",
+  MEDIUM_DATE: "PPP",
+  SHORT_DATE: "PP",
+  SHORTEST_DATE: "MM/dd",
+  DAY_AND_DATE: "MM/dd EEEE",
+  COMPACT_DATE: "MM/dd",
+  PRECISE_DATETIME: "PPP HH:mm:ss",
+};
+
 const isDateFormatPreset = (value: string): value is DateFormatPreset => value in DATE_FORMATS;
 
 /**
@@ -105,14 +124,17 @@ export function formatStoreDate(
   const localizedDateTimePattern = localizedParts
     ? dateFnsLocale.formatLong?.dateTime({ width: "long" })
     : undefined;
+  const isCjk = ["zh-CN", "ja", "ko"].includes(dateFnsLocale.code);
   const pattern =
-    localizedParts && localizedDateTimePattern
-      ? localizedDateTimePattern
-          .replace("{{date}}", localizedParts.date)
-          .replace("{{time}}", localizedParts.time)
-      : isDateFormatPreset(preset)
-        ? DATE_FORMATS[preset]
-        : preset;
+    isCjk && isDateFormatPreset(preset)
+      ? CJK_DATE_FORMATS[preset]
+      : localizedParts && localizedDateTimePattern
+        ? localizedDateTimePattern
+            .replace("{{date}}", localizedParts.date)
+            .replace("{{time}}", localizedParts.time)
+        : isDateFormatPreset(preset)
+          ? DATE_FORMATS[preset]
+          : preset;
 
   const tz = timezone?.trim() || null;
 

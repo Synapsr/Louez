@@ -1,3 +1,4 @@
+import { supplementalMessages } from "../messages";
 import { Button, Heading, Section, Text } from "@react-email/components";
 
 import type { EmailLocale } from "../types";
@@ -97,6 +98,52 @@ const translations: Record<EmailLocale, DeleteAccountTranslation> = {
     button: "Continuar a eliminação",
     warning: "Nada será eliminado até confirmar nessa página. O link expira dentro de 24 horas.",
     ignore: "Se não fez este pedido, ignore este email e a sua conta permanecerá inalterada.",
+  },
+
+  zh: {
+    subject: supplementalMessages.zh.delete_account_translations_subject,
+    title: supplementalMessages.zh.delete_account_translations_title,
+    greeting: supplementalMessages.zh.delete_account_translations_greeting,
+    body: supplementalMessages.zh.delete_account_translations_body,
+    button: supplementalMessages.zh.delete_account_translations_button,
+    warning: supplementalMessages.zh.delete_account_translations_warning,
+    ignore: supplementalMessages.zh.delete_account_translations_ignore,
+  },
+  ja: {
+    subject: supplementalMessages.ja.delete_account_translations_subject,
+    title: supplementalMessages.ja.delete_account_translations_title,
+    greeting: supplementalMessages.ja.delete_account_translations_greeting,
+    body: supplementalMessages.ja.delete_account_translations_body,
+    button: supplementalMessages.ja.delete_account_translations_button,
+    warning: supplementalMessages.ja.delete_account_translations_warning,
+    ignore: supplementalMessages.ja.delete_account_translations_ignore,
+  },
+  ru: {
+    subject: supplementalMessages.ru.delete_account_translations_subject,
+    title: supplementalMessages.ru.delete_account_translations_title,
+    greeting: supplementalMessages.ru.delete_account_translations_greeting,
+    body: supplementalMessages.ru.delete_account_translations_body,
+    button: supplementalMessages.ru.delete_account_translations_button,
+    warning: supplementalMessages.ru.delete_account_translations_warning,
+    ignore: supplementalMessages.ru.delete_account_translations_ignore,
+  },
+  id: {
+    subject: supplementalMessages.id.delete_account_translations_subject,
+    title: supplementalMessages.id.delete_account_translations_title,
+    greeting: supplementalMessages.id.delete_account_translations_greeting,
+    body: supplementalMessages.id.delete_account_translations_body,
+    button: supplementalMessages.id.delete_account_translations_button,
+    warning: supplementalMessages.id.delete_account_translations_warning,
+    ignore: supplementalMessages.id.delete_account_translations_ignore,
+  },
+  ko: {
+    subject: supplementalMessages.ko.delete_account_translations_subject,
+    title: supplementalMessages.ko.delete_account_translations_title,
+    greeting: supplementalMessages.ko.delete_account_translations_greeting,
+    body: supplementalMessages.ko.delete_account_translations_body,
+    button: supplementalMessages.ko.delete_account_translations_button,
+    warning: supplementalMessages.ko.delete_account_translations_warning,
+    ignore: supplementalMessages.ko.delete_account_translations_ignore,
   },
 };
 

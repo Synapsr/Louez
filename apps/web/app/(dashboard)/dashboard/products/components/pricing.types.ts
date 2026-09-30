@@ -20,6 +20,7 @@ export interface PricingSectionProps {
   currencySymbol: string;
   storeTaxSettings?: TaxSettings;
   disabled: boolean;
+  autoFocus?: boolean;
   /** Leave the season being edited and go back to the product's base rates. */
   onSwitchToBase?: () => void;
   /** Surface field errors even on fields the merchant has not touched yet. */

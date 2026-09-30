@@ -6,7 +6,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 // eslint-disable-next-line no-restricted-imports
 import { formatDistance } from "date-fns";
-import { enUS, fr, type Locale } from "date-fns/locale";
+import { resolveFormatLocale } from "@/lib/i18n/format-locale";
 import { Activity } from "lucide-react";
 
 import type { ProductUnitActivityCursor, ProductUnitActivityPage } from "@louez/api/services";
@@ -20,15 +20,12 @@ import { orpc } from "@/lib/orpc/react";
 import { UNIT_EVENT_CONFIG, type UnitEventType } from "./product-unit-activity.constants";
 import { groupReservationActivity } from "./util.product-activity";
 
-// Mirrors `apps/web/lib/utils/store-date.ts`'s LOCALE_MAP convention, scoped
-// to the two locales this app actually ships (see apps/web/messages/).
-const LOCALE_MAP: Record<string, Locale> = { fr, en: enUS };
-
 interface ProductActivityFeedProps {
   initialPage: ProductUnitActivityPage;
   locale: string;
   productId: string;
   referenceDate: string;
+  readOnly?: boolean;
 }
 
 export const ProductActivityFeed = ({
@@ -36,11 +33,12 @@ export const ProductActivityFeed = ({
   locale,
   productId,
   referenceDate,
+  readOnly = false,
 }: ProductActivityFeedProps) => {
   const t = useTranslations();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const dateFnsLocale = LOCALE_MAP[locale] ?? fr;
+  const dateFnsLocale = resolveFormatLocale(locale).dateFns;
   const referenceNow = new Date(referenceDate);
 
   const query = useInfiniteQuery(
@@ -56,12 +54,13 @@ export const ProductActivityFeed = ({
       initialPageParam: undefined,
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       staleTime: 30_000,
+      enabled: !readOnly,
     }),
   );
 
   const activity = useMemo(
-    () => query.data.pages.flatMap((page) => page.items),
-    [query.data.pages],
+    () => readOnly ? initialPage.items : query.data.pages.flatMap((page) => page.items),
+    [readOnly, initialPage.items, query.data.pages],
   );
   const groupedActivity = useMemo(() => groupReservationActivity(activity), [activity]);
   const shouldConstrainHeight = query.hasNextPage || groupedActivity.length > 7;
@@ -73,6 +72,7 @@ export const ProductActivityFeed = ({
       null;
 
     if (
+      readOnly ||
       !target ||
       !viewport ||
       !query.hasNextPage ||
@@ -97,6 +97,7 @@ export const ProductActivityFeed = ({
     observer.observe(target);
     return () => observer.disconnect();
   }, [
+    readOnly,
     query.fetchNextPage,
     query.hasNextPage,
     query.isFetchNextPageError,
@@ -162,7 +163,7 @@ export const ProductActivityFeed = ({
                   );
                 })}
 
-                {query.hasNextPage && (
+                {!readOnly && query.hasNextPage && (
                   <li aria-live="polite" className="flex min-h-9 items-center justify-center">
                     <div ref={loadMoreRef}>
                       {query.isFetchNextPageError ? (

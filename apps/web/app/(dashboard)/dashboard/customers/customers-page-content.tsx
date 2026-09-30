@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { useTranslations } from 'next-intl'
 
 import { orpc } from '@/lib/orpc/react'
 import { CustomersFilters } from './customers-filters'
+import { CustomersPageHeading } from './customers-page-heading'
 import { CustomersTable } from './customers-table'
 import {
   UpgradeModal,
@@ -26,7 +26,6 @@ export function CustomersPageContent({
   planSlug,
   initialTotalCount,
 }: CustomersPageContentProps) {
-  const t = useTranslations('dashboard.customers')
   const searchParams = useSearchParams()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
@@ -73,10 +72,7 @@ export function CustomersPageContent({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-        <p className="text-muted-foreground">{t('description')}</p>
-      </div>
+      <CustomersPageHeading />
 
       {/* Limit Banner */}
       {hasLimit && (

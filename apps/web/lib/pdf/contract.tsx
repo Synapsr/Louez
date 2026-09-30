@@ -73,6 +73,9 @@ export interface ContractTranslations {
     deposit: string;
     deposit_return: string;
     damage: string;
+    deposit_hold: string;
+    deposit_capture: string;
+    adjustment: string;
   };
   paymentMethods: {
     stripe: string;
@@ -85,6 +88,7 @@ export interface ContractTranslations {
   paymentStatus: {
     completed: string;
     pending: string;
+    authorized: string;
   };
   signature: {
     validated: string;
@@ -94,6 +98,10 @@ export interface ContractTranslations {
     customerText: string;
     automatic: string;
     automaticText: string;
+    atBooking: string;
+    atBookingText: string;
+    signedOnLabel: string;
+    validatedOnLabel: string;
     dateLabel: string;
     ipLabel: string;
   };
@@ -167,9 +175,16 @@ interface ReservationItem {
 interface Payment {
   id: string;
   amount: string;
-  type: "rental" | "deposit" | "deposit_return" | "damage";
+  type:
+    | "rental"
+    | "deposit"
+    | "deposit_return"
+    | "damage"
+    | "deposit_hold"
+    | "deposit_capture"
+    | "adjustment";
   method: "stripe" | "cash" | "card" | "transfer" | "check" | "other";
-  status: "pending" | "completed" | "failed" | "refunded";
+  status: "pending" | "completed" | "failed" | "refunded" | "authorized" | "cancelled";
   paidAt?: Date | null;
   createdAt: Date;
 }
@@ -188,6 +203,8 @@ interface Reservation {
   taxRate?: string | null;
   signedAt?: Date | null;
   automaticContractValidation?: boolean;
+  /** Booked on the storefront, whose checkout requires accepting the rental terms: that is the signature. */
+  signedAtBooking?: boolean;
   signatureIp?: string | null;
   createdAt: Date;
   customer: Customer;
@@ -252,7 +269,7 @@ export function ContractDocument({
   fullCgvHtml,
 }: ContractDocumentProps) {
   const primaryColor = store.primaryColor || "#0066FF";
-  const styles = createContractStyles(primaryColor);
+  const styles = createContractStyles(primaryColor, locale);
   const cgvBlocks = parseCgvHtml(fullCgvHtml);
 
   // Create a currency formatter for this document
@@ -265,6 +282,15 @@ export function ContractDocument({
     formatStoreDate(date, timezone, "PRECISE_DATETIME", locale);
   const formatShortDate = (date: Date) => formatStoreDate(date, timezone, "SHORT_DATE", locale);
   const formatDateOnly = (date: Date) => formatStoreDate(date, timezone, "MEDIUM_DATE", locale);
+
+  const customerSignature =
+    reservation.signedAt && !reservation.automaticContractValidation
+      ? "signed"
+      : reservation.signedAtBooking
+        ? "atBooking"
+        : reservation.automaticContractValidation
+          ? "automatic"
+          : "pending";
 
   return (
     <Document>
@@ -564,7 +590,9 @@ export function ContractDocument({
                   >
                     {payment.status === "completed"
                       ? t.paymentStatus.completed
-                      : t.paymentStatus.pending}
+                      : payment.status === "authorized"
+                        ? t.paymentStatus.authorized
+                        : t.paymentStatus.pending}
                   </Text>
                   <Text
                     style={[
@@ -627,39 +655,66 @@ export function ContractDocument({
               </View>
             </View>
 
-            {/* Automatic validation is distinct from a customer signature. */}
+            {/*
+              A customer who drew a signature keeps it. A storefront booking was signed by accepting
+              the rental terms at checkout, then validated. Other automatic validations are not a
+              customer signature.
+            */}
             <View style={styles.signatureBox}>
               <View style={styles.signatureHeader}>
                 <Text style={styles.signatureTitle}>{t.parties.customer}</Text>
                 <Text
                   style={
-                    reservation.signedAt
-                      ? styles.signatureStatusText
-                      : styles.signatureStatusPendingText
+                    customerSignature === "pending"
+                      ? styles.signatureStatusPendingText
+                      : styles.signatureStatusText
                   }
                 >
-                  {reservation.automaticContractValidation
-                    ? t.signature.automatic
-                    : reservation.signedAt
-                      ? t.signature.signed
-                      : t.signature.pending}
+                  {customerSignature === "atBooking"
+                    ? t.signature.atBooking
+                    : customerSignature === "automatic"
+                      ? t.signature.automatic
+                      : customerSignature === "signed"
+                        ? t.signature.signed
+                        : t.signature.pending}
                 </Text>
               </View>
               <View style={styles.signatureContent}>
                 <Text style={styles.signatureText}>
-                  {reservation.automaticContractValidation
-                    ? t.signature.automaticText
-                    : t.signature.customerText}
+                  {customerSignature === "atBooking"
+                    ? t.signature.atBookingText
+                    : customerSignature === "automatic"
+                      ? t.signature.automaticText
+                      : t.signature.customerText}
                 </Text>
-                {reservation.signedAt && (
-                  <View style={styles.signatureDateRow}>
-                    <Text style={styles.signatureDateLabel}>{t.signature.dateLabel}</Text>
-                    <Text style={styles.signatureDate}>
-                      {formatDateTimePrecise(reservation.signedAt)}
-                    </Text>
-                  </View>
+                {customerSignature === "atBooking" ? (
+                  <>
+                    <View style={styles.signatureDateRow}>
+                      <Text style={styles.signatureDateLabel}>{t.signature.signedOnLabel}</Text>
+                      <Text style={styles.signatureDate}>
+                        {formatDateTimePrecise(reservation.createdAt)}
+                      </Text>
+                    </View>
+                    {reservation.signedAt && (
+                      <View style={styles.signatureDateRow}>
+                        <Text style={styles.signatureDateLabel}>{t.signature.validatedOnLabel}</Text>
+                        <Text style={styles.signatureDate}>
+                          {formatDateTimePrecise(reservation.signedAt)}
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  reservation.signedAt && (
+                    <View style={styles.signatureDateRow}>
+                      <Text style={styles.signatureDateLabel}>{t.signature.dateLabel}</Text>
+                      <Text style={styles.signatureDate}>
+                        {formatDateTimePrecise(reservation.signedAt)}
+                      </Text>
+                    </View>
+                  )
                 )}
-                {reservation.signedAt && reservation.signatureIp && (
+                {customerSignature === "signed" && reservation.signatureIp && (
                   <Text style={styles.signatureIp}>
                     {t.signature.ipLabel} {reservation.signatureIp}
                   </Text>

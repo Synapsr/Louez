@@ -54,7 +54,7 @@ Que vous louiez des appareils photo, des outils, du matériel événementiel ou 
 
 |                ⚡ **Déployez en minutes**                 |                  🌍 **Multilingue**                   |            📱 **Mobile Ready**             |
 | :-------------------------------------------------------: | :---------------------------------------------------: | :----------------------------------------: |
-| Une commande et c'est en ligne — base de données incluse. | 8 langues intégrées : FR, EN, DE, ES, IT, NL, PL, PT. | Design responsive pour tous les appareils. |
+| Une commande et c'est en ligne — base de données incluse. | 13 langues intégrées : FR, EN, DE, ES, IT, NL, PL, PT, ZH, JA, RU, ID, KO. | Design responsive pour tous les appareils. |
 
 ---
 
@@ -256,7 +256,7 @@ louez/
 │   │   ├── app/           # Routes App Router
 │   │   ├── components/    # Composants dashboard & vitrine
 │   │   ├── lib/           # Logique métier, email, PDF, IA
-│   │   └── messages/      # Traductions i18n (8 langues)
+│   │   └── messages/      # Traductions i18n (13 langues)
 │   └── voice-relay/       # Pont vocal streaming optionnel (réceptionniste IA)
 ├── packages/
 │   ├── api/               # Routeurs & services oRPC

@@ -39,6 +39,7 @@ export function PricingLadder({
   onSwitchToBase,
   showValidationErrors = false,
   duplicateRateTierIndexes,
+  autoFocus,
 }: PricingSectionProps) {
   const t = useTranslations("dashboard.products.form");
   const tValidation = useTranslations("validation");
@@ -123,6 +124,7 @@ export function PricingLadder({
               </div>
               <div className="ml-auto flex shrink-0 items-center gap-1">
                 <DiscountChip
+                  autoFocus={autoFocus}
                   value={Math.round(economics.discountPercent)}
                   reference={economics.reference}
                   currency={currency}
@@ -146,6 +148,7 @@ export function PricingLadder({
         })}
 
         <button
+          data-demo-target="pricing-add-tier"
           type="button"
           onClick={() => draft.addTier()}
           disabled={disabled || !draft.hasBaseRate}
@@ -163,6 +166,7 @@ export function PricingLadder({
         readOnly={isSeason}
         trailing={
           <PricingSimulator
+            autoFocus={autoFocus}
             draft={draft}
             currency={currency}
             disabled={disabled}
@@ -203,12 +207,14 @@ function LadderRow({ children, invalid }: { children: React.ReactNode; invalid?:
 
 /** The discount is a consequence of the price, so it stays a chip you can pull on. */
 function DiscountChip({
+  autoFocus,
   value,
   reference,
   currency,
   disabled,
   onChange,
 }: {
+  autoFocus?: boolean;
   value: number;
   reference: number;
   currency: string;
@@ -230,7 +236,7 @@ function DiscountChip({
       >
         {value > 0 ? `−${value} %` : t("pricingTiers.discount")}
       </PopoverTrigger>
-      <PopoverPopup className="w-72" align="end">
+      <PopoverPopup className="w-72" align="end" initialFocus={autoFocus} finalFocus={autoFocus}>
         <div className="space-y-3 p-2">
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground text-xs">{t("rateReduction")}</span>

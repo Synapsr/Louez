@@ -1,3 +1,4 @@
+import { locales } from "@/i18n/config";
 import { tool } from "ai";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -59,7 +60,7 @@ function fallbackEmail(phone: string): string {
   return `caller-${digits || "unknown"}@phone.invalid`;
 }
 
-const EMAIL_LOCALES = ["fr", "en", "de", "es", "it", "nl", "pl", "pt"] as const;
+const EMAIL_LOCALES = locales;
 
 function emailLocale(language: string): EmailLocale {
   return (EMAIL_LOCALES as readonly string[]).includes(language) ? (language as EmailLocale) : "en";

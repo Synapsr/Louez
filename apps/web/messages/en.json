@@ -180,7 +180,7 @@
     "loginDescription": "Enter your email to continue. If you don't have an account, one will be created for you.",
     "reeentLoginTitle": "Welcome to louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent is the storefront, louez is your tool: bookings, payments and calendar are handled here. If you don't have an account, one will be created for you.",
-    "linkWillBeSent": "A secure link will be sent to your email. No password to remember.",
+    "linkWillBeSent": "A one-time code will be sent to your email. A password stays optional.",
     "checkEmail": "Check your email",
     "emailSentTo": "A login link has been sent to",
     "clickLinkToSignIn": "Click the link in the email to sign in. The link expires in 24 hours.",
@@ -200,7 +200,19 @@
       "verification": "The verification link is invalid or has expired.",
       "default": "An error occurred. Please try again.",
       "passwordTooShort": "Password must be at least 8 characters.",
-      "registrationClosed": "Registration is closed on this instance. Ask the owner for an invitation."
+      "registrationClosed": "Registration is closed on this instance. Ask the owner for an invitation.",
+      "invalidCode": "This code is incorrect.",
+      "codeExpired": "This code has expired. Request a new one.",
+      "tooManyAttempts": "Too many tries with this code. Request a new one.",
+      "tooManyRequests": "Too many attempts. Wait a minute before trying again.",
+      "passwordTooLong": "The password cannot be longer than 128 characters.",
+      "invalidPassword": "The current password is incorrect.",
+      "currentPasswordRequired": "Enter your current password.",
+      "passwordAlreadySet": "A password is already set on this account.",
+      "passwordNotSet": "No password is set on this account.",
+      "passwordRemovalUnavailable": "The password is the only way to sign in on this instance: it cannot be removed.",
+      "sessionExpired": "Your session has expired. Sign in again, then retry.",
+      "passwordSignUpDisabled": "Creating an account with a password is not available. Use a code sent by email."
     },
     "referralBanner": "{storeName} invited you to Louez — create your store and start with {count} free reservations.",
     "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations.",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "Already have an account?",
     "usePasswordInstead": "Sign in with a password instead",
     "useEmailCodeInstead": "Sign in with an email code instead",
-    "passwordLoginDescription": "Sign in with your email and password."
+    "passwordLoginDescription": "Sign in with your email and password.",
+    "forgotPasswordTitle": "Forgot your password",
+    "forgotPasswordDescription": "Enter the email of your account: we'll send you a code to choose a new password.",
+    "forgotPasswordLogsDescription": "Enter the email of your account. This instance does not send emails: the code will show up in the server logs.",
+    "resetCodeSentDescription": "If an account exists for <strong>{email}</strong>, a 6-digit code was just sent to it. Enter it below to choose a new password.",
+    "newPasswordTitle": "Choose a new password",
+    "newPasswordDescription": "You'll be signed in as soon as it is saved. Your other devices will be signed out.",
+    "newPassword": "New password",
+    "saveNewPassword": "Save and sign in",
+    "requestNewCode": "Get a new code",
+    "backToLogin": "Back to sign-in",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "passwordRules": {
+      "minLength": "At least {count} characters"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} invites you to join the team",
@@ -486,6 +513,8 @@
       "removeMember": "Remove from team",
       "memberAdded": "Team member added successfully",
       "memberRemoved": "Team member removed",
+      "googleAccessReminder": "When a member leaves, also review their Google Search Console access. Removing them from Louez does not revoke their Google access.",
+      "reviewGoogleAccess": "Review Google access",
       "pendingInvitations": "Pending invitations",
       "pendingInvitationsDescription": "These people have not yet accepted their invitation",
       "invitationSent": "Invitation sent by email",
@@ -2313,7 +2342,7 @@
         "deposit": "Deposit",
         "save": "Save",
         "saved": "Reservation updated",
-        "cannotRemoveLastItem": "Cannot remove the last item",
+        "cannotRemoveLastItem": "A reservation keeps at least one item: add the new item before removing this one",
         "noItems": "Add at least one item",
         "datesRequired": "Start and end dates are required",
         "notifyCustomerByEmail": "Notify customer by email",
@@ -2662,6 +2691,7 @@
         "optionsLabel": "Options",
         "clearSelection": "Clear selection",
         "autofillHint": "Suggested units selected. Click Save to confirm.",
+        "suggestUnits": "Suggest units",
         "assignUnits": "Assign units",
         "assignedCount": "{assigned} of {total} assigned",
         "allAssigned": "All units assigned",
@@ -4496,7 +4526,22 @@
         "create": "Create",
         "revokeTitle": "Revoke API key?",
         "revokeDescription": "This action is irreversible. Any application using this key will immediately lose access.",
-        "revokeConfirm": "Revoke"
+        "revokeConfirm": "Revoke",
+        "presetCustom": "Custom",
+        "domains": {
+          "reservations": "Reservations",
+          "products": "Products",
+          "customers": "Customers",
+          "categories": "Categories",
+          "payments": "Payments",
+          "analytics": "Analytics",
+          "settings": "Settings"
+        },
+        "levels": {
+          "none": "No access",
+          "read": "Read",
+          "write": "Read and write"
+        }
       },
       "businessHours": {
         "title": "Business hours",
@@ -4687,6 +4732,11 @@
           "step3": "Choose the “HTML tag” method, paste the tag or its code below and save before clicking “Verify” in Search Console.",
           "label": "Verification code",
           "help": "The whole tag or just its content; the code stays active as long as it is saved here.",
+          "accessDescription": "This code gives the associated Google account Search Console owner rights for your store: viewing statistics, managing users and requesting removal from Google search results.",
+          "ownerOnly": "Only the store owner and Louez platform administrators can change this code.",
+          "removeCode": "Remove code",
+          "revokeHelp": "To revoke access, remove the user in Search Console and all their ownership verification tokens. If their code is in this field, clear it and save. Removing a member from Louez does not revoke their Google access.",
+          "manageAccess": "How to revoke Google access",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
@@ -5421,7 +5471,7 @@
         "active": "Active",
         "activeSessions": "Active sessions",
         "activeSessionsDescription": "Manage your login sessions",
-        "sessionCount": "{count} session",
+        "sessionCount": "{count, plural, one {# device signed in} other {# devices signed in}}",
         "changePassword": "Change password",
         "dangerZone": "Danger zone",
         "dangerZoneDescription": "Irreversible actions on your account",
@@ -5484,6 +5534,51 @@
           "saved": "Shortcuts saved",
           "conflict": "This shortcut is already used for “{action}”.",
           "resetAction": "Reset “{action}”"
+        },
+        "signIn": {
+          "title": "Sign-in",
+          "description": "The ways to sign in to your account",
+          "emailCode": "Email code",
+          "alwaysActive": "Always on",
+          "unavailable": "Unavailable",
+          "google": "Google",
+          "linked": "Linked",
+          "notLinked": "Not linked",
+          "linkGoogle": "Link",
+          "googleLinkError": "This Google account could not be linked. Make sure it uses the same email address as your Louez account.",
+          "password": "Password",
+          "passwordNotSet": "Not set",
+          "passwordSetOn": "Set on {date}",
+          "setPassword": "Set",
+          "changePassword": "Change",
+          "removePassword": "Remove",
+          "setPasswordTitle": "Set a password",
+          "setPasswordDescription": "A password is optional: the code sent by email always stays available. Your other devices will be signed out.",
+          "newPasswordLabel": "New password",
+          "currentPasswordLabel": "Current password",
+          "setPasswordSubmit": "Set password",
+          "changePasswordDescription": "Your other devices will be signed out.",
+          "changePasswordSubmit": "Change password",
+          "removePasswordTitle": "Remove the password?",
+          "removePasswordDescription": "You'll keep signing in with a code sent by email. You can set a new password at any time.",
+          "removePasswordConfirm": "Remove password",
+          "cancel": "Cancel",
+          "passwordSetToast": "Password set",
+          "passwordChangedToast": "Password changed",
+          "passwordRemovedToast": "Password removed"
+        },
+        "passwordAlert": {
+          "title": "Wasn't you?",
+          "description": "The password of the account {email} was just added, changed or removed. If you had nothing to do with it, secure your account now.",
+          "effectPassword": "The password will be removed from the account.",
+          "effectSessions": "Every device will be signed out, this one included.",
+          "effectSignIn": "You'll sign back in with a code sent by email.",
+          "unavailable": "On this instance the password is the only way to sign in: it cannot be removed. Change it from your account instead.",
+          "confirm": "Secure my account",
+          "itWasMe": "It was me",
+          "doneTitle": "Your account is secured",
+          "doneDescription": "The password was removed and every device was signed out. Sign back in with a code sent by email.",
+          "signInAgain": "Sign in again"
         }
       },
       "admin": {
@@ -6073,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "One reservation, one page",
           "description": "No more steps to walk through: customer, period, products and delivery all fit on one page, with the summary always beside you. And everything that used to mean reopening the reservation afterwards — a discount, a negotiated price, the deposit, a walk-in customer — is now settled on the spot."
+        },
+        "optional-password": {
+          "title": "A password, if you want one",
+          "description": "Add a password to your account to sign in without waiting for the code sent by email. The code always stays available."
         }
       }
     },
@@ -8053,7 +8152,10 @@
       "rental": "Rental",
       "deposit": "Deposit",
       "deposit_return": "Deposit refund",
-      "damage": "Damages"
+      "damage": "Damages",
+      "deposit_hold": "Authorization hold",
+      "deposit_capture": "Deposit captured",
+      "adjustment": "Adjustment"
     },
     "paymentMethods": {
       "stripe": "Online card",
@@ -8065,7 +8167,8 @@
     },
     "paymentStatus": {
       "completed": "Paid",
-      "pending": "Pending"
+      "pending": "Pending",
+      "authorized": "Authorized"
     },
     "signature": {
       "validated": "Validated",
@@ -8076,7 +8179,11 @@
       "dateLabel": "Date:",
       "ipLabel": "IP:",
       "automatic": "Automatically validated",
-      "automaticText": "Contract automatically validated when the reservation is confirmed or paid."
+      "automaticText": "Contract automatically validated when the reservation is confirmed or paid.",
+      "atBooking": "Signed at booking",
+      "atBookingText": "Rental terms accepted when booking online, which counts as signing this contract.",
+      "signedOnLabel": "Signed on:",
+      "validatedOnLabel": "Validated on:"
     },
     "conditions": {
       "condition1": "The equipment is rented in good working order",

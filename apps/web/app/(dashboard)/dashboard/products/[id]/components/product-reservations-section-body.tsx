@@ -29,9 +29,9 @@ import type {
 } from '@/app/(dashboard)/dashboard/reservations/reservations-types';
 import { EmptyState } from '@/components/ui/empty-state';
 
-import { ProductReservationsTimeline } from './reservations-timeline/product-reservations-timeline';
+import type { ProductTimelineData } from '../reservation-timeline-actions';
 
-type ViewMode = 'list' | 'calendar';
+import { ProductReservationsTimeline } from './reservations-timeline/product-reservations-timeline';
 
 interface ProductReservationsSectionBodyProps {
   reservationsPage: { items: Reservation[]; total: number };
@@ -42,9 +42,14 @@ interface ProductReservationsSectionBodyProps {
   stockKind: StockKind;
   units: { id: string; identifier: string }[];
   quantity: number;
+  readOnly?: boolean;
+  data?: ProductTimelineData;
+  initialDate?: Date;
+  onOpenReservation?: (id: string) => void;
+  getReservationHref?: (id: string) => string;
 }
 
-export function ProductReservationsSectionBody({
+export const ProductReservationsSectionBody = ({
   reservationsPage,
   currency,
   timezone,
@@ -53,22 +58,29 @@ export function ProductReservationsSectionBody({
   stockKind,
   units,
   quantity,
-}: ProductReservationsSectionBodyProps) {
+  readOnly = false,
+  data,
+  initialDate,
+  onOpenReservation,
+  getReservationHref,
+}: ProductReservationsSectionBodyProps) => {
   const t = useTranslations('dashboard.products.detail.reservations');
   const router = useRouter();
 
   // View mode is URL-persisted (`resaView`) so timeline links are shareable.
-  const [viewMode, setViewMode] = useQueryState(
+  const [storedViewMode, setViewMode] = useQueryState(
     'resaView',
     parseAsStringLiteral(['list', 'calendar'] as const)
       .withDefault('calendar')
       .withOptions({ history: 'replace' }),
   );
 
+  const viewMode = readOnly ? 'calendar' : storedViewMode;
+
   const handleViewModeChange = (value: string[]) => {
     const selected = value[0];
-    if (!selected) return;
-    void setViewMode(selected as ViewMode);
+    if (readOnly || (selected !== 'list' && selected !== 'calendar')) return;
+    void setViewMode(selected);
   };
 
   // Shared quick actions (accept / reject / picked up / returned) from the
@@ -104,7 +116,7 @@ export function ProductReservationsSectionBody({
         </CardTitle>
         <CardAction>
           <ToggleGroup value={[viewMode]} onValueChange={handleViewModeChange}>
-            <ToggleGroupItem value="list" aria-label={t('viewList')}>
+            <ToggleGroupItem disabled={readOnly} value="list" aria-label={t('viewList')}>
               <List className="h-4 w-4" />
             </ToggleGroupItem>
             <ToggleGroupItem value="calendar" aria-label={t('viewCalendar')}>
@@ -122,6 +134,12 @@ export function ProductReservationsSectionBody({
             stockKind={stockKind}
             units={units}
             quantity={quantity}
+            readOnly={readOnly}
+            data={data}
+            initialDate={initialDate}
+            persistFilters={!readOnly}
+            onOpenReservation={onOpenReservation}
+            getReservationHref={getReservationHref}
           />
         ) : reservationsPage.items.length === 0 ? (
           <EmptyState icon={CalendarRange} title={t('empty')} />

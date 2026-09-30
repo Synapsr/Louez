@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "シティバイク",
+    "demo-electric-bike": "電動自転車",
+    "demo-child-bike": "キッズバイク",
+    "demo-gravel": "グラベルバイク",
+    "demo-mountain": "電動マウンテンバイク",
+    "demo-cargo": "カーゴバイク",
+    "demo-longtail": "ロングテールバイク",
+    "demo-road": "ロードバイク",
+    "demo-trailer": "チャイルドトレーラー",
+    "demo-panniers": "ツーリングパニア",
+    "demo-child-seat": "チャイルドシート",
+    "demo-touring": "ツーリングバイク"
+  },
+  "categories": {
+    "bikes": "バイク",
+    "electric": "電動自転車",
+    "family": "家族",
+    "accessories": "付属品"
+  },
+  "depositAuthorized": "カードホールドが記録されました",
+  "paymentReceived": "オンラインで支払いを受け取った",
+  "advisorReply": "街中を走るなら、快適で扱いやすいシティバイクをお勧めします。どの日にレンタルしたいですか？",
+  "customerNotes": "一日を最大限に楽しむために、開店時間に到着します。",
+  "internalNotes": "自転車を準備し、引き取り前にタイヤの空気圧を確認してください。",
+  "steps": ["お客様の本", "あなたが準備します", "すべてが追跡されています"],
+  "customer": "お客様",
+  "owner": "オーナー",
+  "play": "デモをプレイする",
+  "pause": "一時停止",
+  "restart": "やり直す",
+  "toggleMenu": "メニューを表示または非表示にする"
+}

@@ -332,7 +332,9 @@ export async function updateOnlineStore(params: UpdateOnlineStoreParams) {
   }
 
   if (seo) {
-    settings.seo = { ...settings.seo, googleSiteVerification: seo.googleSiteVerification };
+    if (seo.googleSiteVerification !== undefined) {
+      settings.seo = { ...settings.seo, googleSiteVerification: seo.googleSiteVerification };
+    }
     if (seo.shareImageUrl !== undefined) theme.shareImageUrl = seo.shareImageUrl || null;
   }
 

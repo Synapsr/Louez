@@ -14,6 +14,7 @@ import { requestLoginCode, type SendCodeError } from "../actions";
 
 interface LoginEmailStepProps {
   storeSlug: string;
+  requestCode?: typeof requestLoginCode;
   errorCode: LoginErrorCode | null;
   onCodeSent: (email: string) => void;
 }
@@ -21,13 +22,18 @@ interface LoginEmailStepProps {
 const emailFormSchema = z.object({ email: z.email() });
 
 /** One field, one button. Errors from the action show inline, not in a toast. */
-export const LoginEmailStep = ({ storeSlug, errorCode, onCodeSent }: LoginEmailStepProps) => {
+export const LoginEmailStep = ({
+  storeSlug,
+  errorCode,
+  onCodeSent,
+  requestCode = requestLoginCode,
+}: LoginEmailStepProps) => {
   const t = useTranslations("storefront.account");
   const tErrors = useTranslations("errors");
 
   const sendCode = useMutation({
     mutationFn: async (email: string) => {
-      const result = await requestLoginCode({ storeSlug, email });
+      const result = await requestCode({ storeSlug, email });
       if (!result.ok) throw new SendCodeFailure(result.error);
       return email;
     },
@@ -52,7 +58,7 @@ export const LoginEmailStep = ({ storeSlug, errorCode, onCodeSent }: LoginEmailS
 
   return (
     <form.AppForm>
-      <form.Form className="flex flex-col gap-4">
+      <form.Form data-demo-target="portal-email" className="flex flex-col gap-4">
         {inlineError ? (
           <Alert variant="error">
             <AlertCircleIcon />
@@ -74,6 +80,7 @@ export const LoginEmailStep = ({ storeSlug, errorCode, onCodeSent }: LoginEmailS
         </form.AppField>
 
         <Button
+          data-demo-target="portal-send-code"
           type="submit"
           size="xl"
           className="h-12 w-full"

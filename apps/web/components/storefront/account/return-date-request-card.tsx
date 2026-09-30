@@ -21,6 +21,7 @@ import type { ExtensionPreview, ExtensionAttempt } from "@/lib/reservations/exte
 
 interface ReturnDateRequestCardProps {
   storeSlug: string;
+  readOnly?: boolean;
   reservationId: string;
   startDate: string;
   initialEndDate: string;
@@ -36,6 +37,7 @@ interface ReturnDateRequestCardProps {
 
 export const ReturnDateRequestCard = ({
   storeSlug,
+  readOnly = false,
   reservationId,
   startDate,
   initialEndDate,
@@ -56,6 +58,7 @@ export const ReturnDateRequestCard = ({
     new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
   const mutation = useMutation({
     mutationFn: async ({ endDate, confirm = false }: { endDate: string; confirm?: boolean }) => {
+      if (readOnly) return;
       setError(null);
       if (!confirm) {
         const result = await previewRentalExtension({ storeSlug, reservationId, endDate });
@@ -99,7 +102,7 @@ export const ReturnDateRequestCard = ({
   });
   const cancel = useMutation({
     mutationFn: async () => {
-      if (!extension) return;
+      if (readOnly || !extension) return;
       const result = await cancelRentalExtension({
         storeSlug,
         reservationId,
@@ -107,7 +110,9 @@ export const ReturnDateRequestCard = ({
       });
       if ("error" in result) throw new Error(result.error);
     },
-    onSuccess: () => router.refresh(),
+    onSuccess: () => {
+      if (!readOnly) router.refresh();
+    },
     onError: () => setError("unexpected"),
   });
   const defaultValues: { endDate: Date | undefined } = {
@@ -130,7 +135,7 @@ export const ReturnDateRequestCard = ({
   if (!eligible && !request && !extension) return null;
   const pending = request?.status === "pending";
   const checkout = extension?.status === "checkout" && extension.expiresMs > Date.now();
-  const busy = mutation.isPending || cancel.isPending;
+  const busy = readOnly || mutation.isPending || cancel.isPending;
   const errorAlert = error ? (
     <p role="alert" className="text-sm text-destructive">
       {t.has(`errors.${error}`) ? t(`errors.${error}`) : t("errors.unexpected")}
@@ -191,6 +196,7 @@ export const ReturnDateRequestCard = ({
           {!expanded ? (
             <Button
               variant="outline"
+              disabled={readOnly}
               onClick={() => {
                 setExpanded(true);
                 setPreview(null);

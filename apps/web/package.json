@@ -15,6 +15,7 @@
     "marketplace:default-publication": "node --import tsx scripts/run-marketplace-default-publication.ts",
     "pwa:icons": "tsx scripts/generate-pwa-icons.ts",
     "dev-localify": "echo Localify URL: https://louez.localify && AUTH_URL=https://louez.localify NEXT_PUBLIC_APP_URL=https://louez.localify NEXT_PUBLIC_APP_DOMAIN=louez.localify next dev --hostname 127.0.0.1 --port 60441 --turbopack",
+    "demo:documents": "node --import tsx scripts/landing-demo-documents.mts",
     "demo:posters": "node scripts/landing-demo-posters.mjs"
   },
   "dependencies": {
@@ -101,6 +102,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^10.2.0",
+    "@formatjs/icu-messageformat-parser": "2.11.4",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^20",

@@ -2,6 +2,8 @@
 
 import type { SeasonalCalendarPricing } from "@/lib/utils/util.storefront-seasonal-pricing";
 
+import { useContext } from "react";
+import { PeriodInteractionContext } from "./period-interaction-context";
 import { useTranslations } from "next-intl";
 
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from "@louez/ui";
@@ -39,11 +41,12 @@ export const PeriodSheet = ({
   title,
   onApply,
 }: PeriodSheetProps) => {
+  const { autoFocus, modal } = useContext(PeriodInteractionContext);
   const t = useTranslations("storefront.dateSelection");
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="sm:max-w-md">
+    <Dialog modal={modal} open={open} onOpenChange={onOpenChange}>
+      <DialogPopup initialFocus={autoFocus} finalFocus={autoFocus} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title ?? t("modifyDates")}</DialogTitle>
         </DialogHeader>

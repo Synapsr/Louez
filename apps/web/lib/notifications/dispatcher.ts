@@ -1,23 +1,24 @@
+import { formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
 /**
  * Admin Notification Dispatcher
  *
  * Handles sending notifications to store owners (admins) via multiple channels:
  * - Email (handled separately via existing email functions)
- * - SMS (to owner phone with full i18n support - 8 languages)
+ * - SMS (to owner phone with full i18n support - 13 languages)
  * - Discord (via webhooks)
  *
- * Supports: fr, en, de, es, it, nl, pl, pt
+ * Supports: fr, en, de, es, it, nl, pl, pt, zh, ja, ru, id, ko
  */
 
-import { db } from '@louez/db'
-import { stores, smsLogs, pushSubscriptions, storeMembers } from '@louez/db'
-import { eq } from 'drizzle-orm'
-import { env } from '@/env'
-import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from '@/lib/plan-limits'
-import { sendSms, isSmsConfigured } from '@/lib/sms/client'
-import { validateAndNormalizePhone } from '@/lib/sms/phone'
-import { formatCurrencyForSms } from '@louez/utils'
-import { getLocaleFromCountry, getEmailTranslations, type EmailLocale } from '@/lib/email/i18n'
+import { db } from "@louez/db";
+import { stores, smsLogs, pushSubscriptions, storeMembers } from "@louez/db";
+import { eq } from "drizzle-orm";
+import { env } from "@/env";
+import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from "@/lib/plan-limits";
+import { sendSms, isSmsConfigured } from "@/lib/sms/client";
+import { validateAndNormalizePhone } from "@/lib/sms/phone";
+import { formatCurrencyForSms } from "@louez/utils";
+import { getLocaleFromCountry, getEmailTranslations, type EmailLocale } from "@/lib/email/i18n";
 import {
   sendNewReservationDiscord,
   sendReservationConfirmedDiscord,
@@ -30,17 +31,17 @@ import {
   sendReminderDigestAdminDiscord,
   sendPaymentReceivedDiscord,
   sendPaymentFailedDiscord,
-} from '@/lib/discord/notifications'
+} from "@/lib/discord/notifications";
 import {
   sendReminderPickupAdminEmail,
   sendReminderReturnAdminEmail,
   sendReminderDigestAdminEmail,
   sendSupplierInvoiceReceivedEmail,
-} from '@/lib/email/send'
-import type { DigestEntry } from '@/lib/email/templates'
-import { isPushConfigured, sendPush } from '@/lib/push/client'
-import { buildAdminPushPayload } from '@/lib/push/notifications'
-import type { NotificationEventType, NotificationSettings } from '@louez/types'
+} from "@/lib/email/send";
+import type { DigestEntry } from "@/lib/email/templates";
+import { isPushConfigured, sendPush } from "@/lib/push/client";
+import { buildAdminPushPayload } from "@/lib/push/notifications";
+import type { NotificationEventType, NotificationSettings } from "@louez/types";
 
 // ============================================================================
 // Types
@@ -48,40 +49,40 @@ import type { NotificationEventType, NotificationSettings } from '@louez/types'
 
 export interface NotificationContext {
   store: {
-    id: string
-    name: string
-    email?: string | null
-    discordWebhookUrl?: string | null
-    ownerPhone?: string | null
-    notificationSettings?: NotificationSettings | null
+    id: string;
+    name: string;
+    email?: string | null;
+    discordWebhookUrl?: string | null;
+    ownerPhone?: string | null;
+    notificationSettings?: NotificationSettings | null;
     settings?: {
-      currency?: string
-      country?: string
-    } | null
-  }
+      currency?: string;
+      country?: string;
+    } | null;
+  };
   reservation?: {
-    id: string
-    number: string
-    startDate: Date
-    endDate: Date
-    totalAmount: number
-  }
+    id: string;
+    number: string;
+    startDate: Date;
+    endDate: Date;
+    totalAmount: number;
+  };
   customer?: {
-    firstName: string
-    lastName: string
-    email: string
-    phone?: string | null
-  }
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string | null;
+  };
   payment?: {
-    amount: number
-  }
+    amount: number;
+  };
 }
 
 export interface NotificationResult {
-  email: { sent: boolean; error?: string }
-  sms: { sent: boolean; error?: string; limitReached?: boolean }
-  discord: { sent: boolean; error?: string }
-  push: { sent: boolean; error?: string }
+  email: { sent: boolean; error?: string };
+  sms: { sent: boolean; error?: string; limitReached?: boolean };
+  discord: { sent: boolean; error?: string };
+  push: { sent: boolean; error?: string };
 }
 
 // ============================================================================
@@ -99,31 +100,31 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   reservation_reminder_return: { email: false, sms: false, discord: false, push: false },
   payment_received: { email: true, sms: false, discord: false, push: false },
   payment_failed: { email: true, sms: false, discord: false, push: false },
-}
+};
 
 // ============================================================================
-// Admin SMS Templates (i18n - 8 languages)
+// Admin SMS Templates (i18n - 13 languages)
 // ============================================================================
 
 interface AdminSmsTemplateVars {
-  storeName: string
-  number: string
-  customerName: string
-  amount: string
+  storeName: string;
+  number: string;
+  customerName: string;
+  amount: string;
 }
 
 type AdminSmsTemplates = {
-  reservation_new: (vars: AdminSmsTemplateVars) => string
-  reservation_confirmed: (vars: AdminSmsTemplateVars) => string
-  reservation_rejected: (vars: AdminSmsTemplateVars) => string
-  reservation_cancelled: (vars: AdminSmsTemplateVars) => string
-  reservation_picked_up: (vars: AdminSmsTemplateVars) => string
-  reservation_completed: (vars: AdminSmsTemplateVars) => string
-  reservation_reminder_pickup: (vars: AdminSmsTemplateVars) => string
-  reservation_reminder_return: (vars: AdminSmsTemplateVars) => string
-  payment_received: (vars: AdminSmsTemplateVars) => string
-  payment_failed: (vars: AdminSmsTemplateVars) => string
-}
+  reservation_new: (vars: AdminSmsTemplateVars) => string;
+  reservation_confirmed: (vars: AdminSmsTemplateVars) => string;
+  reservation_rejected: (vars: AdminSmsTemplateVars) => string;
+  reservation_cancelled: (vars: AdminSmsTemplateVars) => string;
+  reservation_picked_up: (vars: AdminSmsTemplateVars) => string;
+  reservation_completed: (vars: AdminSmsTemplateVars) => string;
+  reservation_reminder_pickup: (vars: AdminSmsTemplateVars) => string;
+  reservation_reminder_return: (vars: AdminSmsTemplateVars) => string;
+  payment_received: (vars: AdminSmsTemplateVars) => string;
+  payment_failed: (vars: AdminSmsTemplateVars) => string;
+};
 
 const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
   fr: {
@@ -145,8 +146,7 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Rappel retour #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Paiement reçu #${number}: ${amount}`,
-    payment_failed: ({ storeName, number }) =>
-      `[${storeName}] Échec paiement #${number}`,
+    payment_failed: ({ storeName, number }) => `[${storeName}] Échec paiement #${number}`,
   },
   en: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -167,8 +167,7 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Return reminder #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Payment received #${number}: ${amount}`,
-    payment_failed: ({ storeName, number }) =>
-      `[${storeName}] Payment failed #${number}`,
+    payment_failed: ({ storeName, number }) => `[${storeName}] Payment failed #${number}`,
   },
   de: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -189,18 +188,15 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Erinnerung Rueckgabe #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Zahlung erhalten #${number}: ${amount}`,
-    payment_failed: ({ storeName, number }) =>
-      `[${storeName}] Zahlung fehlgeschlagen #${number}`,
+    payment_failed: ({ storeName, number }) => `[${storeName}] Zahlung fehlgeschlagen #${number}`,
   },
   es: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
       `[${storeName}] Nueva solicitud #${number} de ${customerName}. Monto: ${amount}`,
     reservation_confirmed: ({ storeName, number, customerName }) =>
       `[${storeName}] Reserva #${number} confirmada para ${customerName}`,
-    reservation_rejected: ({ storeName, number }) =>
-      `[${storeName}] Reserva #${number} rechazada`,
-    reservation_cancelled: ({ storeName, number }) =>
-      `[${storeName}] Reserva #${number} cancelada`,
+    reservation_rejected: ({ storeName, number }) => `[${storeName}] Reserva #${number} rechazada`,
+    reservation_cancelled: ({ storeName, number }) => `[${storeName}] Reserva #${number} cancelada`,
     reservation_picked_up: ({ storeName, number }) =>
       `[${storeName}] Equipo recogido para #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
@@ -211,8 +207,7 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Recordatorio devolucion #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pago recibido #${number}: ${amount}`,
-    payment_failed: ({ storeName, number }) =>
-      `[${storeName}] Pago fallido #${number}`,
+    payment_failed: ({ storeName, number }) => `[${storeName}] Pago fallido #${number}`,
   },
   it: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -233,8 +228,7 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Promemoria reso #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pagamento ricevuto #${number}: ${amount}`,
-    payment_failed: ({ storeName, number }) =>
-      `[${storeName}] Pagamento fallito #${number}`,
+    payment_failed: ({ storeName, number }) => `[${storeName}] Pagamento fallito #${number}`,
   },
   nl: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -255,8 +249,7 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Herinnering retour #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Betaling ontvangen #${number}: ${amount}`,
-    payment_failed: ({ storeName, number }) =>
-      `[${storeName}] Betaling mislukt #${number}`,
+    payment_failed: ({ storeName, number }) => `[${storeName}] Betaling mislukt #${number}`,
   },
   pl: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -277,18 +270,15 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Przypomnienie zwrotu #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Platnosc otrzymana #${number}: ${amount}`,
-    payment_failed: ({ storeName, number }) =>
-      `[${storeName}] Platnosc nieudana #${number}`,
+    payment_failed: ({ storeName, number }) => `[${storeName}] Platnosc nieudana #${number}`,
   },
   pt: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
       `[${storeName}] Nova solicitacao #${number} de ${customerName}. Valor: ${amount}`,
     reservation_confirmed: ({ storeName, number, customerName }) =>
       `[${storeName}] Reserva #${number} confirmada para ${customerName}`,
-    reservation_rejected: ({ storeName, number }) =>
-      `[${storeName}] Reserva #${number} rejeitada`,
-    reservation_cancelled: ({ storeName, number }) =>
-      `[${storeName}] Reserva #${number} cancelada`,
+    reservation_rejected: ({ storeName, number }) => `[${storeName}] Reserva #${number} rejeitada`,
+    reservation_cancelled: ({ storeName, number }) => `[${storeName}] Reserva #${number} cancelada`,
     reservation_picked_up: ({ storeName, number }) =>
       `[${storeName}] Equipamento retirado para #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
@@ -299,10 +289,305 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Lembrete devolucao #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pagamento recebido #${number}: ${amount}`,
-    payment_failed: ({ storeName, number }) =>
-      `[${storeName}] Pagamento falhou #${number}`,
+    payment_failed: ({ storeName, number }) => `[${storeName}] Pagamento falhou #${number}`,
   },
-}
+
+  zh: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_new", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+        value3: String(amount),
+      }),
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_confirmed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+      }),
+    reservation_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_picked_up: ({ storeName, number }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_picked_up", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_completed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_completed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "zh",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_pickup",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "zh",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_return",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    payment_received: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_payment_received", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    payment_failed: ({ storeName, number }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_payment_failed", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+  },
+  ja: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_new", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+        value3: String(amount),
+      }),
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_confirmed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+      }),
+    reservation_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_picked_up: ({ storeName, number }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_picked_up", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_completed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_completed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "ja",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_pickup",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "ja",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_return",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    payment_received: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_payment_received", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    payment_failed: ({ storeName, number }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_payment_failed", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+  },
+  ru: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_new", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+        value3: String(amount),
+      }),
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_confirmed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+      }),
+    reservation_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_picked_up: ({ storeName, number }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_picked_up", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_completed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_completed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "ru",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_pickup",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "ru",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_return",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    payment_received: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_payment_received", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    payment_failed: ({ storeName, number }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_payment_failed", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+  },
+  id: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_new", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+        value3: String(amount),
+      }),
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_confirmed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+      }),
+    reservation_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_picked_up: ({ storeName, number }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_picked_up", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_completed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_completed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "id",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_pickup",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "id",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_return",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    payment_received: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_payment_received", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    payment_failed: ({ storeName, number }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_payment_failed", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+  },
+  ko: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_new", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+        value3: String(amount),
+      }),
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_confirmed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(customerName),
+      }),
+    reservation_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_picked_up: ({ storeName, number }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_picked_up", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_completed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_reservation_completed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "ko",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_pickup",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      formatSupplementalMessage(
+        "ko",
+        "dispatcher_ADMIN_SMS_TEMPLATES_reservation_reminder_return",
+        { value0: String(storeName), value1: String(number), value2: String(customerName) },
+      ),
+    payment_received: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_payment_received", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
+    payment_failed: ({ storeName, number }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_payment_failed", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+  },
+};
 
 // ============================================================================
 // Helper Functions
@@ -314,25 +599,23 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
 function buildAdminSmsMessage(
   eventType: NotificationEventType,
   ctx: NotificationContext,
-  locale: EmailLocale
+  locale: EmailLocale,
 ): string {
-  const templates = ADMIN_SMS_TEMPLATES[locale] || ADMIN_SMS_TEMPLATES.en
-  const templateFn = templates[eventType]
+  const templates = ADMIN_SMS_TEMPLATES[locale] || ADMIN_SMS_TEMPLATES.en;
+  const templateFn = templates[eventType];
 
   const vars: AdminSmsTemplateVars = {
     storeName: ctx.store.name,
-    number: ctx.reservation?.number || '',
-    customerName: ctx.customer
-      ? `${ctx.customer.firstName} ${ctx.customer.lastName}`
-      : '',
+    number: ctx.reservation?.number || "",
+    customerName: ctx.customer ? `${ctx.customer.firstName} ${ctx.customer.lastName}` : "",
     amount: ctx.payment
       ? formatCurrencyForSms(ctx.payment.amount, ctx.store.settings?.currency)
       : ctx.reservation
         ? formatCurrencyForSms(ctx.reservation.totalAmount, ctx.store.settings?.currency)
-        : '',
-  }
+        : "",
+  };
 
-  return templateFn(vars)
+  return templateFn(vars);
 }
 
 /**
@@ -343,38 +626,38 @@ async function sendAdminSms(
   ownerPhone: string,
   eventType: string,
   message: string,
-  reservationId?: string
+  reservationId?: string,
 ): Promise<{ success: boolean; error?: string; limitReached?: boolean }> {
   // Check if SMS is configured
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check quota
-  const quota = await getSmsQuotaStatus(storeId)
+  const quota = await getSmsQuotaStatus(storeId);
   if (!quota.allowed) {
     return {
       success: false,
-      error: 'SMS limit reached',
+      error: "SMS limit reached",
       limitReached: true,
-    }
+    };
   }
 
   // Validate and normalize phone number
-  const phoneResult = validateAndNormalizePhone(ownerPhone)
+  const phoneResult = validateAndNormalizePhone(ownerPhone);
   if (!phoneResult.valid || !phoneResult.normalized) {
-    return { success: false, error: phoneResult.error || 'Invalid phone number' }
+    return { success: false, error: phoneResult.error || "Invalid phone number" };
   }
-  const formattedPhone = phoneResult.normalized
+  const formattedPhone = phoneResult.normalized;
 
   // Determine credit source
-  const creditSource = await determineSmsSource(storeId)
+  const creditSource = await determineSmsSource(storeId);
 
   // Send SMS
   const result = await sendSms({
     to: formattedPhone,
     message,
-  })
+  });
 
   // Log the SMS
   await db.insert(smsLogs).values({
@@ -383,17 +666,17 @@ async function sendAdminSms(
     to: formattedPhone,
     message,
     templateType: `admin_${eventType}`,
-    status: result.success ? 'sent' : 'failed',
+    status: result.success ? "sent" : "failed",
     error: result.error,
     creditSource,
-  })
+  });
 
   // Deduct prepaid credit if needed
-  if (result.success && creditSource === 'topup') {
-    await deductPrepaidSmsCredit(storeId)
+  if (result.success && creditSource === "topup") {
+    await deductPrepaidSmsCredit(storeId);
   }
 
-  return result
+  return result;
 }
 
 /**
@@ -401,28 +684,28 @@ async function sendAdminSms(
  */
 function getDiscordSender(eventType: NotificationEventType) {
   switch (eventType) {
-    case 'reservation_new':
-      return sendNewReservationDiscord
-    case 'reservation_confirmed':
-      return sendReservationConfirmedDiscord
-    case 'reservation_rejected':
-      return sendReservationRejectedDiscord
-    case 'reservation_cancelled':
-      return sendReservationCancelledDiscord
-    case 'reservation_picked_up':
-      return sendReservationPickedUpDiscord
-    case 'reservation_completed':
-      return sendReservationCompletedDiscord
-    case 'reservation_reminder_pickup':
-      return sendReminderPickupAdminDiscord
-    case 'reservation_reminder_return':
-      return sendReminderReturnAdminDiscord
-    case 'payment_received':
-      return sendPaymentReceivedDiscord
-    case 'payment_failed':
-      return sendPaymentFailedDiscord
+    case "reservation_new":
+      return sendNewReservationDiscord;
+    case "reservation_confirmed":
+      return sendReservationConfirmedDiscord;
+    case "reservation_rejected":
+      return sendReservationRejectedDiscord;
+    case "reservation_cancelled":
+      return sendReservationCancelledDiscord;
+    case "reservation_picked_up":
+      return sendReservationPickedUpDiscord;
+    case "reservation_completed":
+      return sendReservationCompletedDiscord;
+    case "reservation_reminder_pickup":
+      return sendReminderPickupAdminDiscord;
+    case "reservation_reminder_return":
+      return sendReminderReturnAdminDiscord;
+    case "payment_received":
+      return sendPaymentReceivedDiscord;
+    case "payment_failed":
+      return sendPaymentFailedDiscord;
     default:
-      return async () => ({ success: false, error: 'Unknown event type' })
+      return async () => ({ success: false, error: "Unknown event type" });
   }
 }
 
@@ -439,52 +722,52 @@ function getDiscordSender(eventType: NotificationEventType) {
  */
 export async function dispatchNotification(
   eventType: NotificationEventType,
-  ctx: NotificationContext
+  ctx: NotificationContext,
 ): Promise<NotificationResult> {
   const result: NotificationResult = {
     email: { sent: false },
     sms: { sent: false },
     discord: { sent: false },
     push: { sent: false },
-  }
+  };
 
   // Get notification preferences (use defaults if not set). Merge per-channel
   // over the defaults so stores saved before a channel existed (e.g. `push`)
   // still inherit that channel's default instead of resolving to undefined.
-  const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS
-  const prefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] }
+  const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
+  const prefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
 
   // Determine locale from store country
-  const locale = getLocaleFromCountry(ctx.store.settings?.country)
+  const locale = getLocaleFromCountry(ctx.store.settings?.country);
 
   // Email notification (for admin, this means sending to store email)
   // Note: Admin emails are handled by existing functions like sendNewRequestLandlordEmail
   // which are called separately from the action handlers
   if (prefs.email && ctx.store.email) {
-    result.email.sent = true // Handled by existing email functions
+    result.email.sent = true; // Handled by existing email functions
   }
 
   // SMS notification to store owner
   if (prefs.sms && ctx.store.ownerPhone) {
-    const message = buildAdminSmsMessage(eventType, ctx, locale)
+    const message = buildAdminSmsMessage(eventType, ctx, locale);
     const smsResult = await sendAdminSms(
       ctx.store.id,
       ctx.store.ownerPhone,
       eventType,
       message,
-      ctx.reservation?.id
-    )
+      ctx.reservation?.id,
+    );
     result.sms = {
       sent: smsResult.success,
       error: smsResult.error,
       limitReached: smsResult.limitReached,
-    }
+    };
   }
 
   // Web push to every store member's registered devices
   if (prefs.push && isPushConfigured()) {
     try {
-      const payload = buildAdminPushPayload(eventType, ctx, locale)
+      const payload = buildAdminPushPayload(eventType, ctx, locale);
       if (payload) {
         const subs = await db
           .select({
@@ -494,11 +777,8 @@ export async function dispatchNotification(
             auth: pushSubscriptions.auth,
           })
           .from(pushSubscriptions)
-          .innerJoin(
-            storeMembers,
-            eq(storeMembers.userId, pushSubscriptions.userId)
-          )
-          .where(eq(storeMembers.storeId, ctx.store.id))
+          .innerJoin(storeMembers, eq(storeMembers.userId, pushSubscriptions.userId))
+          .where(eq(storeMembers.storeId, ctx.store.id));
 
         for (const sub of subs) {
           const sendResult = await sendPush(
@@ -506,24 +786,18 @@ export async function dispatchNotification(
               endpoint: sub.endpoint,
               keys: { p256dh: sub.p256dh, auth: sub.auth },
             },
-            payload
-          )
+            payload,
+          );
           if (sendResult.success) {
-            result.push.sent = true
-          } else if (
-            sendResult.statusCode === 404 ||
-            sendResult.statusCode === 410
-          ) {
+            result.push.sent = true;
+          } else if (sendResult.statusCode === 404 || sendResult.statusCode === 410) {
             // Endpoint is gone — prune the dead subscription.
-            await db
-              .delete(pushSubscriptions)
-              .where(eq(pushSubscriptions.id, sub.id))
+            await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
           }
         }
       }
     } catch (error) {
-      result.push.error =
-        error instanceof Error ? error.message : 'Unknown error'
+      result.push.error = error instanceof Error ? error.message : "Unknown error";
     }
   }
 
@@ -548,30 +822,30 @@ export async function dispatchNotification(
             currency: ctx.store.settings?.currency,
           }
         : undefined,
-    }
+    };
 
     try {
-      const discordResult = await getDiscordSender(eventType)(discordCtx)
-      result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error }
+      const discordResult = await getDiscordSender(eventType)(discordCtx);
+      result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error };
     } catch (error) {
       result.discord = {
         sent: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 
-  return result
+  return result;
 }
 
 export interface SupplierInvoiceNotificationContext {
-  storeId: string
+  storeId: string;
   invoice: {
-    sellerName: string
-    number: string
-    totalInclTax: string
-    currency: string
-  }
+    sellerName: string;
+    number: string;
+    totalInclTax: string;
+    currency: string;
+  };
 }
 
 /**
@@ -580,7 +854,7 @@ export interface SupplierInvoiceNotificationContext {
  * without borrowing an unrelated reservation or payment preference.
  */
 export async function dispatchSupplierInvoiceReceived(
-  ctx: SupplierInvoiceNotificationContext
+  ctx: SupplierInvoiceNotificationContext,
 ): Promise<void> {
   const [store] = await db
     .select({
@@ -592,62 +866,60 @@ export async function dispatchSupplierInvoiceReceived(
     })
     .from(stores)
     .where(eq(stores.id, ctx.storeId))
-    .limit(1)
+    .limit(1);
 
-  if (!store?.email) return
+  if (!store?.email) return;
 
-  const storeLocale = getLocaleFromCountry(store.settings?.country)
-  const locale: EmailLocale = storeLocale === 'fr' ? 'fr' : 'en'
+  const storeLocale = getLocaleFromCountry(store.settings?.country);
+  const locale: EmailLocale = storeLocale === "fr" ? "fr" : "en";
   await sendSupplierInvoiceReceivedEmail({
     to: store.email,
     store,
     invoice: ctx.invoice,
     dashboardUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/purchase-invoices`,
     locale,
-  })
+  });
 }
 
 // ============================================================================
 // Admin Reminder Dispatch
 // ============================================================================
 
-export type AdminReminderEventType =
-  | 'reservation_reminder_pickup'
-  | 'reservation_reminder_return'
+export type AdminReminderEventType = "reservation_reminder_pickup" | "reservation_reminder_return";
 
 export interface AdminReminderContext {
   store: {
-    id: string
-    name: string
-    email?: string | null
-    logoUrl?: string | null
-    darkLogoUrl?: string | null
-    address?: string | null
-    phone?: string | null
-    ownerPhone?: string | null
-    discordWebhookUrl?: string | null
-    theme?: { mode?: 'light' | 'dark'; primaryColor?: string } | null
-    notificationSettings?: NotificationSettings | null
+    id: string;
+    name: string;
+    email?: string | null;
+    logoUrl?: string | null;
+    darkLogoUrl?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    ownerPhone?: string | null;
+    discordWebhookUrl?: string | null;
+    theme?: { mode?: "light" | "dark"; primaryColor?: string } | null;
+    notificationSettings?: NotificationSettings | null;
     settings?: {
-      currency?: string
-      country?: string
-      timezone?: string
-    } | null
-  }
+      currency?: string;
+      country?: string;
+      timezone?: string;
+    } | null;
+  };
   reservation: {
-    id: string
-    number: string
-    startDate: Date
-    endDate: Date
-    totalAmount: number
-  }
+    id: string;
+    number: string;
+    startDate: Date;
+    endDate: Date;
+    totalAmount: number;
+  };
   customer: {
-    firstName: string
-    lastName: string
-    email: string
-    phone?: string | null
-  }
-  dashboardUrl: string
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string | null;
+  };
+  dashboardUrl: string;
 }
 
 /**
@@ -660,18 +932,18 @@ export interface AdminReminderContext {
  */
 export async function dispatchAdminReminder(
   eventType: AdminReminderEventType,
-  ctx: AdminReminderContext
+  ctx: AdminReminderContext,
 ): Promise<NotificationResult> {
   const result: NotificationResult = {
     email: { sent: false },
     sms: { sent: false },
     discord: { sent: false },
     push: { sent: false },
-  }
+  };
 
-  const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS
-  const prefs = settings[eventType] || DEFAULT_SETTINGS[eventType]
-  const locale = getLocaleFromCountry(ctx.store.settings?.country)
+  const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
+  const prefs = settings[eventType] || DEFAULT_SETTINGS[eventType];
+  const locale = getLocaleFromCountry(ctx.store.settings?.country);
 
   // Email to store owner
   if (prefs.email && ctx.store.email) {
@@ -682,8 +954,8 @@ export async function dispatchAdminReminder(
         customer: ctx.customer,
         dashboardUrl: ctx.dashboardUrl,
         locale,
-      }
-      if (eventType === 'reservation_reminder_pickup') {
+      };
+      if (eventType === "reservation_reminder_pickup") {
         await sendReminderPickupAdminEmail({
           ...emailArgs,
           reservation: {
@@ -692,7 +964,7 @@ export async function dispatchAdminReminder(
             startDate: ctx.reservation.startDate,
             totalAmount: ctx.reservation.totalAmount,
           },
-        })
+        });
       } else {
         await sendReminderReturnAdminEmail({
           ...emailArgs,
@@ -702,12 +974,12 @@ export async function dispatchAdminReminder(
             endDate: ctx.reservation.endDate,
             totalAmount: ctx.reservation.totalAmount,
           },
-        })
+        });
       }
-      result.email.sent = true
+      result.email.sent = true;
     } catch (error) {
-      result.email.error = error instanceof Error ? error.message : 'Unknown error'
-      console.error(`Failed to send admin reminder email for ${eventType}:`, error)
+      result.email.error = error instanceof Error ? error.message : "Unknown error";
+      console.error(`Failed to send admin reminder email for ${eventType}:`, error);
     }
   }
 
@@ -720,20 +992,20 @@ export async function dispatchAdminReminder(
         reservation: ctx.reservation,
         customer: ctx.customer,
       },
-      locale
-    )
+      locale,
+    );
     const smsResult = await sendAdminSms(
       ctx.store.id,
       ctx.store.ownerPhone,
       eventType,
       message,
-      ctx.reservation.id
-    )
+      ctx.reservation.id,
+    );
     result.sms = {
       sent: smsResult.success,
       error: smsResult.error,
       limitReached: smsResult.limitReached,
-    }
+    };
   }
 
   // Discord
@@ -749,30 +1021,33 @@ export async function dispatchAdminReminder(
         currency: ctx.store.settings?.currency,
       },
       customer: ctx.customer,
-    }
+    };
 
     try {
-      const discordResult = await getDiscordSender(eventType)(discordCtx)
-      result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error }
+      const discordResult = await getDiscordSender(eventType)(discordCtx);
+      result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error };
     } catch (error) {
       result.discord = {
         sent: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 
-  return result
+  return result;
 }
 
 // ============================================================================
 // Admin Daily Digest
 // ============================================================================
 
-// Short SMS summary of the day's pickups/returns (i18n, 8 languages). Kept
+// Short SMS summary of the day's pickups/returns (i18n, 13 languages). Kept
 // deliberately terse — the digest's job here is to nudge the owner to the
 // dashboard, where the full schedule lives.
-const ADMIN_DIGEST_SMS: Record<EmailLocale, (v: { storeName: string; pickups: number; returns: number; url: string }) => string> = {
+const ADMIN_DIGEST_SMS: Record<
+  EmailLocale,
+  (v: { storeName: string; pickups: number; returns: number; url: string }) => string
+> = {
   fr: ({ storeName, pickups, returns, url }) =>
     `[${storeName}] Aujourd'hui : ${pickups} retrait(s), ${returns} retour(s). ${url}`,
   en: ({ storeName, pickups, returns, url }) =>
@@ -789,33 +1064,69 @@ const ADMIN_DIGEST_SMS: Record<EmailLocale, (v: { storeName: string; pickups: nu
     `[${storeName}] Dzisiaj: ${pickups} odbior(ow), ${returns} zwrot(ow). ${url}`,
   pt: ({ storeName, pickups, returns, url }) =>
     `[${storeName}] Hoje: ${pickups} retirada(s), ${returns} devolucao(oes). ${url}`,
-}
+
+  zh: ({ storeName, pickups, returns, url }) =>
+    formatSupplementalMessage("zh", "dispatcher_ADMIN_DIGEST_SMS", {
+      value0: String(storeName),
+      value1: String(pickups),
+      value2: String(returns),
+      value3: String(url),
+    }),
+  ja: ({ storeName, pickups, returns, url }) =>
+    formatSupplementalMessage("ja", "dispatcher_ADMIN_DIGEST_SMS", {
+      value0: String(storeName),
+      value1: String(pickups),
+      value2: String(returns),
+      value3: String(url),
+    }),
+  ru: ({ storeName, pickups, returns, url }) =>
+    formatSupplementalMessage("ru", "dispatcher_ADMIN_DIGEST_SMS", {
+      value0: String(storeName),
+      value1: String(pickups),
+      value2: String(returns),
+      value3: String(url),
+    }),
+  id: ({ storeName, pickups, returns, url }) =>
+    formatSupplementalMessage("id", "dispatcher_ADMIN_DIGEST_SMS", {
+      value0: String(storeName),
+      value1: String(pickups),
+      value2: String(returns),
+      value3: String(url),
+    }),
+  ko: ({ storeName, pickups, returns, url }) =>
+    formatSupplementalMessage("ko", "dispatcher_ADMIN_DIGEST_SMS", {
+      value0: String(storeName),
+      value1: String(pickups),
+      value2: String(returns),
+      value3: String(url),
+    }),
+};
 
 export interface AdminDigestContext {
   store: {
-    id: string
-    name: string
-    email?: string | null
-    logoUrl?: string | null
-    darkLogoUrl?: string | null
-    address?: string | null
-    phone?: string | null
-    ownerPhone?: string | null
-    discordWebhookUrl?: string | null
-    theme?: { mode?: 'light' | 'dark'; primaryColor?: string } | null
+    id: string;
+    name: string;
+    email?: string | null;
+    logoUrl?: string | null;
+    darkLogoUrl?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    ownerPhone?: string | null;
+    discordWebhookUrl?: string | null;
+    theme?: { mode?: "light" | "dark"; primaryColor?: string } | null;
     settings?: {
-      currency?: string
-      country?: string
-      timezone?: string
-    } | null
-  }
+      currency?: string;
+      country?: string;
+      timezone?: string;
+    } | null;
+  };
   /** Localized full date, e.g. "Monday, 9 June 2026". */
-  dateLabel: string
-  pickups: DigestEntry[]
-  returns: DigestEntry[]
-  dashboardUrl: string
+  dateLabel: string;
+  pickups: DigestEntry[];
+  returns: DigestEntry[];
+  dashboardUrl: string;
   /** Channels to attempt — already filtered for enabled + not-yet-sent today. */
-  channels: { email: boolean; sms: boolean; discord: boolean }
+  channels: { email: boolean; sms: boolean; discord: boolean };
 }
 
 /**
@@ -829,9 +1140,9 @@ export async function dispatchAdminDigest(ctx: AdminDigestContext): Promise<Noti
     sms: { sent: false },
     discord: { sent: false },
     push: { sent: false },
-  }
+  };
 
-  const locale = getLocaleFromCountry(ctx.store.settings?.country)
+  const locale = getLocaleFromCountry(ctx.store.settings?.country);
 
   // Email
   if (ctx.channels.email && ctx.store.email) {
@@ -844,35 +1155,35 @@ export async function dispatchAdminDigest(ctx: AdminDigestContext): Promise<Noti
         returns: ctx.returns,
         dashboardUrl: ctx.dashboardUrl,
         locale,
-      })
-      result.email.sent = true
+      });
+      result.email.sent = true;
     } catch (error) {
-      result.email.error = error instanceof Error ? error.message : 'Unknown error'
-      console.error('Failed to send admin digest email:', error)
+      result.email.error = error instanceof Error ? error.message : "Unknown error";
+      console.error("Failed to send admin digest email:", error);
     }
   }
 
   // SMS
   if (ctx.channels.sms && ctx.store.ownerPhone) {
-    const build = ADMIN_DIGEST_SMS[locale] || ADMIN_DIGEST_SMS.en
+    const build = ADMIN_DIGEST_SMS[locale] || ADMIN_DIGEST_SMS.en;
     const message = build({
       storeName: ctx.store.name,
       pickups: ctx.pickups.length,
       returns: ctx.returns.length,
       url: ctx.dashboardUrl,
-    })
-    const smsResult = await sendAdminSms(ctx.store.id, ctx.store.ownerPhone, 'digest', message)
+    });
+    const smsResult = await sendAdminSms(ctx.store.id, ctx.store.ownerPhone, "digest", message);
     result.sms = {
       sent: smsResult.success,
       error: smsResult.error,
       limitReached: smsResult.limitReached,
-    }
+    };
   }
 
   // Discord
   if (ctx.channels.discord && ctx.store.discordWebhookUrl) {
     try {
-      const t = getEmailTranslations(locale)
+      const t = getEmailTranslations(locale);
       const discordResult = await sendReminderDigestAdminDiscord({
         store: {
           id: ctx.store.id,
@@ -880,21 +1191,27 @@ export async function dispatchAdminDigest(ctx: AdminDigestContext): Promise<Noti
           discordWebhookUrl: ctx.store.discordWebhookUrl,
         },
         dateLabel: ctx.dateLabel,
-        pickupsLabel: t.reminderDigestAdmin.pickupsTitle.replace('{count}', String(ctx.pickups.length)),
-        returnsLabel: t.reminderDigestAdmin.returnsTitle.replace('{count}', String(ctx.returns.length)),
+        pickupsLabel: t.reminderDigestAdmin.pickupsTitle.replace(
+          "{count}",
+          String(ctx.pickups.length),
+        ),
+        returnsLabel: t.reminderDigestAdmin.returnsTitle.replace(
+          "{count}",
+          String(ctx.returns.length),
+        ),
         pickups: ctx.pickups,
         returns: ctx.returns,
-      })
-      result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error }
+      });
+      result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error };
     } catch (error) {
       result.discord = {
         sent: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 
-  return result
+  return result;
 }
 
 // ============================================================================
@@ -907,9 +1224,9 @@ export async function dispatchAdminDigest(ctx: AdminDigestContext): Promise<Noti
 export async function getStoreForNotifications(storeId: string) {
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, storeId),
-  })
+  });
 
-  if (!store) return null
+  if (!store) return null;
 
   return {
     id: store.id,
@@ -919,5 +1236,5 @@ export async function getStoreForNotifications(storeId: string) {
     ownerPhone: store.ownerPhone,
     notificationSettings: store.notificationSettings,
     settings: store.settings,
-  }
+  };
 }

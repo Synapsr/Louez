@@ -1,20 +1,18 @@
-import { getDateChangeRequests } from "@/lib/reservations/util.date-change-request";
 import { notFound, redirect } from "next/navigation";
 
-import { subDays } from "date-fns";
-import { and, eq, exists, gte, inArray, ne, or } from "drizzle-orm";
+import { ORPCError } from "@orpc/server";
+import { and, eq } from "drizzle-orm";
 
-import { db, getBlockingReservationStatuses, getEffectiveProductQuantities } from "@louez/db";
-import { products, reservationItems, reservations, storeLocations } from "@louez/db";
-import type { DeliverySettings, LegMethod, PricingKind, StockKind } from "@louez/types";
-import type { SeasonalPricingConfig } from "@louez/utils";
+import { getDashboardReservationEditContext } from "@louez/api/services";
+import { db, storeLocations } from "@louez/db";
+import type { DeliverySettings } from "@louez/types";
 
 import { getDashboardTulipInsuranceModeFromSettings } from "@/lib/integrations/tulip/settings";
 import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state";
 import { getCurrentStore } from "@/lib/store-context";
 
-import { EditReservationForm } from "./edit-reservation-form";
-import type { PricingTier, Product, ReservationLocationOption, StoreDeliveryInfo } from "./types";
+import { EditReservationPageClient } from "./edit-reservation-page-client";
+import type { ReservationLocationOption, StoreDeliveryInfo } from "./types";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -24,200 +22,15 @@ interface EditReservationPageProps {
   params: Promise<{ id: string }>;
 }
 
-// Fetch existing reservations for availability conflict checking (excluding current reservation)
-async function getActiveReservations(
-  storeId: string,
-  excludeReservationId: string,
-  pendingBlocksAvailability: boolean,
-) {
-  const thirtyDaysAgo = subDays(new Date(), 30);
-  const blockingStatuses = getBlockingReservationStatuses(pendingBlocksAvailability);
-
-  const activeReservations = await db.query.reservations.findMany({
-    where: and(
-      eq(reservations.storeId, storeId),
-      ne(reservations.id, excludeReservationId),
-      inArray(reservations.status, blockingStatuses),
-      or(
-        gte(reservations.endDate, thirtyDaysAgo),
-        exists(
-          db
-            .select({ id: reservationItems.id })
-            .from(reservationItems)
-            .innerJoin(products, eq(reservationItems.productId, products.id))
-            .where(
-              and(
-                eq(reservationItems.reservationId, reservations.id),
-                eq(products.storeId, storeId),
-                eq(products.stockKind, "consumable"),
-              ),
-            ),
-        ),
-      ),
-    ),
-    with: {
-      items: {
-        columns: {
-          productId: true,
-          quantity: true,
-          consumedQuantity: true,
-        },
-        with: {
-          product: {
-            columns: { stockKind: true },
-          },
-        },
-      },
-    },
-    columns: {
-      id: true,
-      startDate: true,
-      endDate: true,
-      status: true,
-    },
-  });
-
-  return activeReservations.map((reservation) => ({
-    ...reservation,
-    items: reservation.items.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      consumedQuantity: item.consumedQuantity,
-      stockKind: item.product?.stockKind ?? "returnable",
-    })),
-  }));
-}
-
-/**
- * Map raw DB pricing tiers to the shape needed by the edit form.
- * Includes both tier-based fields (minDuration, discountPercent) and
- * rate-based fields (period, price) so pricing calculations work for all modes.
- */
-function mapPricingTiers(
-  tiers: Array<{
-    id: string;
-    minDuration: number | null;
-    discountPercent: string | null;
-    period: number | null;
-    price: string | null;
-    displayOrder: number | null;
-  }>,
-): PricingTier[] {
-  return tiers.map((tier, index) => ({
-    id: tier.id,
-    minDuration: tier.minDuration ?? 1,
-    discountPercent: parseFloat(tier.discountPercent ?? "0"),
-    period: tier.period ?? null,
-    price: tier.price !== null ? parseFloat(tier.price) : null,
-    displayOrder: tier.displayOrder ?? index,
-  }));
-}
-
-/**
- * Map raw DB seasonal pricing + tiers to the SeasonalPricingConfig shape
- * expected by the shared pricing utilities.
- */
-function mapSeasonalPricings(
-  seasonalPricings: Array<{
-    id: string;
-    name: string;
-    startDate: string;
-    endDate: string;
-    price: string;
-    tiers: Array<{
-      id: string;
-      minDuration: number | null;
-      discountPercent: string | null;
-      period: number | null;
-      price: string | null;
-      displayOrder: number | null;
-    }>;
-  }>,
-): SeasonalPricingConfig[] {
-  return seasonalPricings.map((sp) => ({
-    id: sp.id,
-    name: sp.name,
-    startDate: sp.startDate,
-    endDate: sp.endDate,
-    basePrice: parseFloat(sp.price),
-    tiers: sp.tiers
-      .filter((t) => t.minDuration !== null)
-      .map((t, i) => ({
-        id: t.id,
-        minDuration: t.minDuration ?? 1,
-        discountPercent: parseFloat(t.discountPercent ?? "0"),
-        displayOrder: t.displayOrder ?? i,
-      })),
-    rates: sp.tiers
-      .filter(
-        (t): t is typeof t & { period: number; price: string } =>
-          typeof t.period === "number" && t.period > 0 && typeof t.price === "string",
-      )
-      .map((t, i) => ({
-        id: t.id,
-        period: t.period,
-        price: parseFloat(t.price),
-        displayOrder: t.displayOrder ?? i,
-      })),
-  }));
-}
-
-/**
- * Map a raw DB product (with relations) to the Product shape for the edit form.
- */
-function mapProduct(p: {
-  id: string;
-  name: string;
-  price: string;
-  deposit: string | null;
-  images: string[] | null;
-  quantity: number;
-  stockKind: StockKind;
-  pricingKind: PricingKind;
-  pricingMode: string | null;
-  basePeriodMinutes: number | null;
-  enforceStrictTiers: boolean;
-  pricingTiers: Array<{
-    id: string;
-    minDuration: number | null;
-    discountPercent: string | null;
-    period: number | null;
-    price: string | null;
-    displayOrder: number | null;
-  }>;
-  seasonalPricings: Array<{
-    id: string;
-    name: string;
-    startDate: string;
-    endDate: string;
-    price: string;
-    tiers: Array<{
-      id: string;
-      minDuration: number | null;
-      discountPercent: string | null;
-      period: number | null;
-      price: string | null;
-      displayOrder: number | null;
-    }>;
-  }>;
-  tulipMapping?: { productId: string } | null;
-}): Product {
-  return {
-    id: p.id,
-    name: p.name,
-    price: p.price,
-    deposit: p.deposit ?? "0",
-    images: p.images ?? [],
-    quantity: p.quantity,
-    stockKind: p.stockKind,
-    pricingKind: p.pricingKind,
-    pricingMode: p.pricingMode,
-    basePeriodMinutes: p.basePeriodMinutes,
-    enforceStrictTiers: p.enforceStrictTiers,
-    tulipInsurable: Boolean(p.tulipMapping?.productId),
-    pricingTiers: mapPricingTiers(p.pricingTiers),
-    seasonalPricings: mapSeasonalPricings(p.seasonalPricings),
-  };
+async function loadEditContext(params: Parameters<typeof getDashboardReservationEditContext>[0]) {
+  try {
+    return await getDashboardReservationEditContext(params);
+  } catch (error) {
+    if (error instanceof ORPCError && error.code === "NOT_FOUND") {
+      notFound();
+    }
+    throw error;
+  }
 }
 
 export default async function EditReservationPage({ params }: EditReservationPageProps) {
@@ -229,90 +42,30 @@ export default async function EditReservationPage({ params }: EditReservationPag
 
   const { id } = await params;
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, id), eq(reservations.storeId, store.id)),
-    with: {
-      activity: {
-        columns: { id: true, metadata: true },
-        orderBy: (activity, { desc }) => [desc(activity.createdAt)],
-      },
-      customer: true,
-      items: {
-        with: {
-          product: {
-            with: {
-              pricingTiers: true,
-              seasonalPricings: {
-                with: { tiers: true },
-              },
-              tulipMapping: {
-                columns: {
-                  productId: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+  // Reservation, catalogue and availability come through TanStack Query on the
+  // client; this server load only seeds the first render.
+  const initialContext = await loadEditContext({
+    reservationId: id,
+    storeId: store.id,
   });
 
-  if (!reservation) {
-    notFound();
-  }
-
   // Cannot edit completed, cancelled or rejected reservations
-  if (["completed", "cancelled", "rejected"].includes(reservation.status)) {
+  if (!initialContext.editable) {
     redirect(`/dashboard/reservations/${id}`);
   }
 
-  // Fetch products and existing reservations in parallel
   const deliverySettings = (store.settings as Record<string, unknown> | null)?.delivery as
     | DeliverySettings
     | undefined;
-  const [availableProducts, existingReservations, activeStoreLocations] = await Promise.all([
-    db.query.products.findMany({
-      where: and(eq(products.storeId, store.id), eq(products.status, "active")),
-      with: {
-        pricingTiers: true,
-        seasonalPricings: {
-          with: { tiers: true },
-        },
-        tulipMapping: {
-          columns: {
-            productId: true,
-          },
-        },
-      },
-      // Storefront catalog order, with a predictable alphabetical fallback
-      // for stores that never configured displayOrder
-      orderBy: (products, { asc }) => [asc(products.displayOrder), asc(products.name)],
-    }),
-    getActiveReservations(store.id, id, store.settings?.pendingBlocksAvailability ?? true),
+  const [activeStoreLocations, tulipIntegration] = await Promise.all([
     deliverySettings?.multiLocationEnabled
       ? db.query.storeLocations.findMany({
           where: and(eq(storeLocations.storeId, store.id), eq(storeLocations.isActive, true)),
           orderBy: (storeLocations, { asc }) => [asc(storeLocations.createdAt)],
         })
       : Promise.resolve([]),
+    resolveTulipIntegrationForStore(store.id),
   ]);
-
-  const currency = store.settings?.currency || "EUR";
-  const tulipSettings = (await resolveTulipIntegrationForStore(store.id)).settings;
-  const tulipInsuranceMode = getDashboardTulipInsuranceModeFromSettings(tulipSettings);
-  const effectiveQuantities = await getEffectiveProductQuantities(
-    db,
-    Array.from(
-      new Set([
-        ...availableProducts.map((product) => product.id),
-        ...reservation.items.flatMap((item) => (item.product ? [item.product.id] : [])),
-      ]),
-    ),
-  );
-  const availableProductsWithEffectiveQuantity = availableProducts.map((product) => ({
-    ...product,
-    quantity: product.trackUnits ? (effectiveQuantities.get(product.id) ?? 0) : product.quantity,
-  }));
 
   const locationOptions: ReservationLocationOption[] = [
     {
@@ -346,77 +99,11 @@ export default async function EditReservationPage({ params }: EditReservationPag
       : null;
 
   return (
-    <EditReservationForm
-      dateChangeRequest={
-        getDateChangeRequests(reservation.activity).find(
-          (request) => request.status === "pending",
-        ) ?? null
-      }
-      reservation={{
-        id: reservation.id,
-        number: reservation.number,
-        status: reservation.status,
-        startDate: reservation.startDate,
-        endDate: reservation.endDate,
-        subtotalAmount: reservation.subtotalAmount,
-        depositAmount: reservation.depositAmount,
-        totalAmount: reservation.totalAmount,
-        deliveryFee: reservation.deliveryFee,
-        discountAmount: reservation.discountAmount,
-        tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
-        tulipInsuranceAmount: reservation.tulipInsuranceAmount,
-        delivery: {
-          outboundMethod: (reservation.outboundMethod as LegMethod) ?? "store",
-          returnMethod: (reservation.returnMethod as LegMethod) ?? "store",
-          pickupLocationId: reservation.pickupLocationId,
-          returnLocationId: reservation.returnLocationId,
-          pickupLocationSnapshot: reservation.pickupLocationSnapshot,
-          returnLocationSnapshot: reservation.returnLocationSnapshot,
-          deliveryAddress: reservation.deliveryAddress,
-          deliveryCity: reservation.deliveryCity,
-          deliveryPostalCode: reservation.deliveryPostalCode,
-          deliveryCountry: reservation.deliveryCountry,
-          deliveryLatitude: reservation.deliveryLatitude,
-          deliveryLongitude: reservation.deliveryLongitude,
-          deliveryDistanceKm: reservation.deliveryDistanceKm,
-          deliveryFee: reservation.deliveryFee,
-          returnAddress: reservation.returnAddress,
-          returnCity: reservation.returnCity,
-          returnPostalCode: reservation.returnPostalCode,
-          returnCountry: reservation.returnCountry,
-          returnLatitude: reservation.returnLatitude,
-          returnLongitude: reservation.returnLongitude,
-          returnDistanceKm: reservation.returnDistanceKm,
-        },
-        items: reservation.items.map((item) => ({
-          id: item.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          consumedQuantity: item.consumedQuantity,
-          unitPrice: item.unitPrice,
-          depositPerUnit: item.depositPerUnit,
-          totalPrice: item.totalPrice,
-          isCustomItem: item.isCustomItem,
-          pricingBreakdown: item.pricingBreakdown,
-          productSnapshot: item.productSnapshot,
-          product: item.product
-            ? mapProduct({
-                ...item.product,
-                quantity: item.product.trackUnits
-                  ? (effectiveQuantities.get(item.product.id) ?? 0)
-                  : item.product.quantity,
-              })
-            : null,
-        })),
-        customer: {
-          firstName: reservation.customer.firstName,
-          lastName: reservation.customer.lastName,
-        },
-      }}
-      availableProducts={availableProductsWithEffectiveQuantity.map(mapProduct)}
-      existingReservations={existingReservations}
-      currency={currency}
-      tulipInsuranceMode={tulipInsuranceMode}
+    <EditReservationPageClient
+      reservationId={id}
+      initialContext={initialContext}
+      currency={store.settings?.currency || "EUR"}
+      tulipInsuranceMode={getDashboardTulipInsuranceModeFromSettings(tulipIntegration.settings)}
       storeSettings={store.settings || null}
       storeDelivery={storeDelivery}
     />

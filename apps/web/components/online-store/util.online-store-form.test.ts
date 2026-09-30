@@ -15,6 +15,7 @@ import {
 
 const store: OnlineStoreEditorStore = {
   id: "s1",
+  canManageSettings: true,
   name: "Ar Mor Location",
   slug: "ar-mor-location",
   tagline: "Vélos et paddles à Carnac",
@@ -129,6 +130,20 @@ test("only the sections that changed are sent", () => {
 test("an unchanged form produces an empty payload", () => {
   const payload = buildOnlineStorePayload({ value: clone(baseline), baseline });
   assert.deepEqual(payload, {});
+});
+
+test("changing the share image does not resend or overwrite Google ownership", () => {
+  const value = clone(baseline);
+  value.seo.shareImageUrl = null;
+  const payload = buildOnlineStorePayload({ value, baseline });
+  assert.deepEqual(payload?.seo, { shareImageUrl: null });
+});
+
+test("removing a Google token sends an explicit empty value", () => {
+  const value = clone(baseline);
+  value.seo.googleSiteVerification = "";
+  const payload = buildOnlineStorePayload({ value, baseline });
+  assert.equal(payload?.seo?.googleSiteVerification, "");
 });
 
 test("identity maps the form to the theme and drops the dark logo of a light store", () => {

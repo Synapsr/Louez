@@ -898,8 +898,9 @@ export function EditReservationForm({
           title: emailNotification?.status === "sent" ? t("edit.savedEmailSent") : t("edit.saved"),
           type: "success",
         });
+        // The mutation already invalidated the reservation queries; the detail
+        // and edit pages read from them, so no router refresh is needed.
         router.push(`/dashboard/reservations/${reservation.id}`);
-        router.refresh();
       }
     } catch (error) {
       captureReservationActionFailed({

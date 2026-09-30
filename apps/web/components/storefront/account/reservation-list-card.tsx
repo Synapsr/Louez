@@ -1,3 +1,5 @@
+"use client";
+
 import { AlertCircleIcon, ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -27,6 +29,8 @@ export interface ReservationListItem {
 
 interface ReservationListCardProps {
   reservation: ReservationListItem;
+  prefetch?: boolean;
+  onOpenReservation?: (id: string) => void;
 }
 
 /**
@@ -35,7 +39,11 @@ interface ReservationListCardProps {
  * pointer — the hairline darkens and the photo zooms, nothing lifts. Title,
  * then one muted line of number, period and count; the whole card is the link.
  */
-export const ReservationListCard = ({ reservation }: ReservationListCardProps) => {
+export const ReservationListCard = ({
+  reservation,
+  prefetch,
+  onOpenReservation,
+}: ReservationListCardProps) => {
   const t = useTranslations("storefront.account");
   const closed = isClosedReservationStatus(reservation.status);
   const title = reservation.products.map((product) => product.name).join(", ");
@@ -43,6 +51,12 @@ export const ReservationListCard = ({ reservation }: ReservationListCardProps) =
   return (
     <StorefrontLink
       href={`/account/reservations/${reservation.id}`}
+      prefetch={prefetch}
+      data-demo-reservation={reservation.id}
+      onClick={onOpenReservation ? (event) => {
+        event.preventDefault();
+        onOpenReservation(reservation.id);
+      } : undefined}
       className={cn(
         "group relative flex flex-col rounded-2xl bg-card p-1 shadow-card outline-none",
         "transition-shadow duration-150 hover:ring-1 hover:ring-foreground/12",

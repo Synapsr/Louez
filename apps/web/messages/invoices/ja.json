@@ -1,0 +1,48 @@
+{
+  "documentType": {
+    "invoice": "請求書",
+    "creditNote": "クレジットノート"
+  },
+  "labels": {
+    "number": "いいえ。",
+    "date": "日付",
+    "seller": "販売者",
+    "buyer": "お客様",
+    "contact": "お問い合わせ",
+    "companyNumber": "会社番号",
+    "siret": "シレ",
+    "vatNumber": "VAT番号",
+    "rcs": "貿易登記簿",
+    "shareCapital": "株式資本",
+    "precedingInvoice": "請求書のクレジットノート",
+    "payment": "お支払い",
+    "paymentDate": "支払日",
+    "paymentMethod": "お支払い方法"
+  },
+  "table": {
+    "description": "説明",
+    "quantity": "数量",
+    "unitPriceExclTax": "税抜単価税金",
+    "vatRate": "VAT",
+    "totalExclTax": "合計を除く税金"
+  },
+  "vat": {
+    "title": "VATの内訳",
+    "rate": "料金",
+    "taxableAmount": "課税対象額",
+    "taxAmount": "VAT"
+  },
+  "totals": {
+    "exclTax": "合計を除く税金",
+    "tax": "付加価値税総額",
+    "inclTax": "合計税金"
+  },
+  "methods": {
+    "stripe": "オンラインカード",
+    "cash": "現金",
+    "card": "カード",
+    "transfer": "銀行振込",
+    "check": "チェックする",
+    "other": "その他"
+  }
+}

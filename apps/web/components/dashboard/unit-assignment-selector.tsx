@@ -2,7 +2,7 @@
 
 import { CheckSolidIcon } from '@louez/ui/icons'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 
 import {
   AlertCircle,
@@ -111,12 +111,8 @@ export function UnitAssignmentSelector({
     initialAssignedUnitIds,
   );
   const [openPopovers, setOpenPopovers] = useState<Record<number, boolean>>({});
-  const [hasChanges, setHasChanges] = useState(false);
-  const [wasAutofilled, setWasAutofilled] = useState(false);
   const [bufferOverrideFailure, setBufferOverrideFailure] =
     useState<AssignmentFailure | null>(null);
-  const didAutofillRef = useRef(false);
-  const hasUserInteractedRef = useRef(false);
 
   const displayAttributes = useMemo(() => {
     const attrs = selectedAttributes || {};
@@ -160,26 +156,14 @@ export function UnitAssignmentSelector({
     }
 
     setAvailableUnits(units);
+    // Every choice is saved as soon as it is made, so the slots always mirror
+    // the server (optimistically during a save). Units are never pre-selected:
+    // an owner who cleared an assignment must find it cleared after a reload.
     if (!bufferOverrideFailure) {
       setSelectedUnitIds(assigned);
     }
     setIsLoading(false);
-
-    if (
-      !didAutofillRef.current &&
-      !hasUserInteractedRef.current &&
-      assigned.length === 0
-    ) {
-      const prefill = units.slice(0, Math.max(0, quantity)).map((u) => u.id);
-      if (prefill.length > 0) {
-        didAutofillRef.current = true;
-        setSelectedUnitIds(prefill);
-        setWasAutofilled(true);
-        setHasChanges(true);
-      }
-    }
   }, [
-    quantity,
     tErrors,
     trackUnits,
     unitsQuery.data,
@@ -194,7 +178,6 @@ export function UnitAssignmentSelector({
   }
 
   const handleUnitSelect = (slotIndex: number, unitId: string | null) => {
-    hasUserInteractedRef.current = true;
     const newSelected = [...selectedUnitIds];
 
     // Remove unit from any previous slot if it was selected elsewhere
@@ -217,8 +200,22 @@ export function UnitAssignmentSelector({
     }
 
     setSelectedUnitIds(newSelected);
-    setHasChanges(true);
     setOpenPopovers((prev) => ({ ...prev, [slotIndex]: false }));
+    // Saved right away: a choice left unsaved used to be lost when the owner
+    // left the page, e.g. to edit the reservation.
+    handleSave(false, newSelected);
+  };
+
+  // Fills the empty slots with free units, on request only, and saves them.
+  const handleSuggestUnits = () => {
+    const taken = new Set(selectedUnitIds.filter(Boolean));
+    const free = availableUnits.filter((unit) => !taken.has(unit.id));
+    const next = Array.from(
+      { length: quantity },
+      (_, index) => selectedUnitIds[index] || free.shift()?.id || '',
+    );
+    setSelectedUnitIds(next);
+    handleSave(false, next);
   };
 
   const getUnitIdentifiers = (unitIds: string[] | undefined) => {
@@ -281,9 +278,6 @@ export function UnitAssignmentSelector({
           }),
         );
 
-        setHasChanges(false);
-        setWasAutofilled(false);
-
         return { previous };
       },
       onError: (error, input, ctx) => {
@@ -295,7 +289,7 @@ export function UnitAssignmentSelector({
             ctx.previous,
           );
         }
-        setHasChanges(true);
+        setSelectedUnitIds(ctx?.previous?.assigned ?? initialAssignedUnitIds);
         toastManager.add({ title: tErrors('generic'), type: 'error' });
         void error;
       },
@@ -331,11 +325,11 @@ export function UnitAssignmentSelector({
               ctx.previous,
             );
           }
-          setHasChanges(true);
-
           if (failure.bufferConflict) {
+            // Keep the attempted choice on screen while the owner decides.
             setBufferOverrideFailure(failure);
           } else {
+            setSelectedUnitIds(ctx?.previous?.assigned ?? initialAssignedUnitIds);
             showAssignmentFailure(failure);
           }
           return;
@@ -580,17 +574,18 @@ export function UnitAssignmentSelector({
         })}
       </div>
 
-      {/* Footer with save button and optional hint */}
+      {/* Footer with the suggestion action */}
       <div className="flex items-center justify-between pt-1">
         <div className="space-y-0.5">
           <p className="text-muted-foreground text-xs">{t('optional')}</p>
-          {wasAutofilled && hasChanges && (
-            <p className="text-muted-foreground text-xs">{t('autofillHint')}</p>
-          )}
         </div>
-        {hasChanges && (
-          <Button onClick={() => handleSave()} isPending={isPending}>
-            {t('save')}
+        {!allAssigned && availableUnits.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={handleSuggestUnits}
+            isPending={isPending}
+          >
+            {t('suggestUnits')}
           </Button>
         )}
       </div>

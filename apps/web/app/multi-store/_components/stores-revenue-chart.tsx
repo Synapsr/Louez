@@ -73,6 +73,7 @@ const CHART_COLORS = [
 ]
 
 interface StoreLegendItemProps {
+  index: number
   name: string
   color: string
   isVisible: boolean
@@ -81,6 +82,7 @@ interface StoreLegendItemProps {
 }
 
 function StoreLegendItem({
+  index,
   name,
   color,
   isVisible,
@@ -90,6 +92,8 @@ function StoreLegendItem({
   return (
     <button
       type="button"
+      data-demo-store-toggle={index}
+      aria-pressed={isVisible}
       onClick={onToggle}
       className={cn(
         'inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all',
@@ -211,6 +215,7 @@ export function StoresRevenueChart({
             return (
               <StoreLegendItem
                 key={name}
+                index={originalIndex}
                 name={name}
                 color={getColor(originalIndex).stroke}
                 isVisible={visibleStores.has(name)}

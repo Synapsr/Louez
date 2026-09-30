@@ -31,6 +31,7 @@ interface StoreHeaderProps {
   customerIdentity?: { firstName: string; lastName: string; email: string } | null;
   /** Store-relative home href; the marketplace keeps its channel param. */
   homeHref?: string;
+  homePrefetch?: boolean;
   /** Sales-channel badge next to the logo (marketplace). */
   channelBadge?: ReactNode;
   /** Store rules the period picker validates against. */
@@ -53,6 +54,7 @@ export const StoreHeader = ({
   customerInitials,
   customerIdentity,
   homeHref = "/",
+  homePrefetch,
   channelBadge,
   periodRules,
   showAccount = true,
@@ -101,6 +103,7 @@ export const StoreHeader = ({
               storeName={storeName}
               logoUrl={logoUrl}
               href={homeHref}
+              prefetch={homePrefetch}
               className="shrink-0"
             />
             {channelBadge ? <div className="hidden shrink-0 sm:block">{channelBadge}</div> : null}

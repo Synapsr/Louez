@@ -1,0 +1,321 @@
+{
+  "common": {
+    "greeting": "{name} さん、こんにちは。",
+    "regards": "よろしくお願いします。",
+    "team": "{storeName} チーム",
+    "viewReservation": "予約を見る",
+    "contactUs": "お問い合わせ",
+    "reservationNumber": "予約番号 #{number}",
+    "period": "期間",
+    "periodFrom": "{startDate}から",
+    "periodTo": "{endDate}へ",
+    "timezone": "タイムゾーン: {timezone}",
+    "address": "住所",
+    "pickupAddress": "受取住所",
+    "returnAddress": "返送先住所",
+    "pickupAndReturnAddress": "受取所と返送先の住所",
+    "subtotal": "小計",
+    "subtotalExclTax": "小計（除く）税金",
+    "taxAmount": "VAT ({rate}%)",
+    "subtotalInclTax": "小計（含む）税金",
+    "deposit": "保証金",
+    "total": "合計",
+    "totalToPay": "支払う合計額",
+    "question": "質問がありますか?お問い合わせ：",
+    "summary": "概要",
+    "seeYouSoon": "また近いうちにお会いしましょう、\n{storeName}"
+  },
+  "payAsYouGoInvoice": {
+    "usageLine": "レンタル {billingMonth} — {count,plural,one{# レンタル} other{# レンタル}}",
+    "marketplaceLine": "予約を再実行します {billingMonth} — {count,plural,one{# 予約} other{# 予約}}"
+  },
+  "verificationCode": {
+    "subject": "あなたのログインコード: {code}",
+    "title": "ログインコード",
+    "body": "{storeName} のアカウントにアクセスするためのログイン コードは次のとおりです。",
+    "expiry": "このコードの有効期限は 10 分です。このコードをリクエストしていない場合は、このメールを無視しても問題ありません。"
+  },
+  "confirmReservation": {
+    "subject": "ご予約 #{number} が確認されました",
+    "title": "予約確定しました！",
+    "body": "ご予約#{number}が確認されました。概要は次のとおりです。",
+    "summary": "概要",
+    "contractSignature": "契約書は添付されており、オンラインで署名する準備ができています。",
+    "signContract": "契約書に署名します"
+  },
+  "requestReceived": {
+    "subject": "予約リクエスト #{number} を受け取りました",
+    "title": "リクエストを受信しました",
+    "body": "ご予約リクエストを受け付けております。",
+    "review": "私たちのチームがあなたのリクエストを検討しており、すぐにご連絡いたします。",
+    "confirmation": "予約が有効になると確認メールが届きます。",
+    "seeYouSoon": "また会いましょう、"
+  },
+  "requestAccepted": {
+    "subject": "あなたのリクエスト #{number} が受け入れられました。",
+    "title": "リクエスト受け付けました！",
+    "body": "朗報です！ご予約リクエスト #{number} が受理されました。",
+    "rentalPeriod": "レンタル期間",
+    "yourReservation": "ご予約",
+    "proceedPayment": "支払いに進む",
+    "legalAcceptance": "予約が有効になると、レンタル契約および利用規約に同意したものとみなされます。",
+    "contractAvailable": "予約に関連付けられたレンタル契約を表示します。",
+    "viewContract": "契約書を見る",
+    "viewTerms": "利用規約を見る"
+  },
+  "requestRejected": {
+    "subject": "予約リクエスト #{number}",
+    "title": "リクエストは受け付けられませんでした",
+    "body": "申し訳ございませんが、ご予約リクエスト #{number} は受け付けられませんでした。",
+    "contactForAlternative": "詳細について、またはお客様に合った代替品をお探しの場合は、お問い合わせください。"
+  },
+  "quoteSent": {
+    "subject": "引用 #{number}",
+    "title": "見積書を受け取りました",
+    "body": "{store} から予約 #{number} の見積もりが送信されました。",
+    "rentalPeriod": "レンタル期間",
+    "yourQuote": "あなたの引用",
+    "viewQuote": "見積書を見る",
+    "expiry": "アカウントからこの見積もりを受け入れるか拒否することができます。"
+  },
+  "reminderPickup": {
+    "subject": "リマインダー: レンタルは明日から始まります。",
+    "title": "明日からレンタル開始です！",
+    "body": "これはご予約 #{number} のリマインダーです。",
+    "scheduledPickup": "予定された集荷",
+    "dontForget": "忘れないでください:",
+    "bringId": "有効なID",
+    "bringConfirmation": "ご予約確認書",
+    "seeTomorrow": "また明日！"
+  },
+  "reminderReturn": {
+    "subject": "リマインダー: {date} での機器の返却",
+    "title": "機器を忘れずに返却してください",
+    "body": "これはご予約 #{number} のリマインダーです。機器返却は{date}を予定しております。",
+    "scheduledReturn": "予定された帰国",
+    "returnInfo": "機器は良好な状態でご返却ください。デポジットは確認後返金されます。",
+    "thanks": "信頼していただきありがとうございます!"
+  },
+  "reminderPickupAdmin": {
+    "subject": "今後の受け取り: 予約 #{number}",
+    "title": "今後の装備ピックアップ",
+    "body": "予約 #{number} のピックアップが近づいています。ここで詳細を説明しますので、装備を準備してください。",
+    "scheduledPickup": "予定された集荷",
+    "customer": "顧客:",
+    "email": "電子メール:",
+    "phone": "電話番号:",
+    "amount": "金額:",
+    "viewReservation": "予約を見る",
+    "connectToManage": "この予約を管理するには、ダッシュボードにログインしてください。"
+  },
+  "reminderReturnAdmin": {
+    "subject": "今後の返品: 予約 #{number}",
+    "title": "今後の装備返却予定",
+    "body": "予約 #{number} の返品が近づいています。機器を受け取る準備ができるよう、詳細を以下に示します。",
+    "scheduledReturn": "予定された帰国",
+    "customer": "顧客:",
+    "email": "電子メール:",
+    "phone": "電話番号:",
+    "amount": "金額:",
+    "viewReservation": "予約を見る",
+    "connectToManage": "この予約を管理するには、ダッシュボードにログインしてください。"
+  },
+  "reminderDigestAdmin": {
+    "subject": "{date} のスケジュール",
+    "title": "今日のスケジュール",
+    "body": "今日{storeName}で何が起こっているかをご紹介します。",
+    "pickupsTitle": "ピックアップ ({count})",
+    "returnsTitle": "返品 ({count})",
+    "viewCalendar": "カレンダーを見る",
+    "connectToManage": "ダッシュボードにログインして 1 日を管理します。"
+  },
+  "thankYouReview": {
+    "subject": "レンタルしていただきありがとうございました！",
+    "title": "信頼していただきありがとうございます!",
+    "body": "レンタルがうまくいったことを願っています。あなたのレビューは当社の改善に役立ち、他のお客様の選択にも役立ちます。",
+    "cta": "レビューを残す",
+    "disclaimer": "所要時間はわずか 1 分で、とても役立ちます。",
+    "smsThankYou": "レンタルしていただきありがとうございます！",
+    "smsReview": "あなたのレビューは重要です:"
+  },
+  "newRequestLandlord": {
+    "subject": "新しい予約リクエスト #{number}",
+    "title": "新規予約リクエスト",
+    "body": "{storeName} で新しいリクエストを受け取りました。",
+    "customer": "顧客:",
+    "email": "電子メール:",
+    "period": "期間：",
+    "amount": "金額:",
+    "notes": "お客様からのメッセージ",
+    "viewRequest": "リクエストの表示",
+    "connectToManage": "このリクエストを承認または拒否するには、ダッシュボードにログインしてください。"
+  },
+  "supplierInvoiceReceived": {
+    "subject": "新しいサプライヤー請求書",
+    "title": "新しいサプライヤー請求書",
+    "body": "{storeName} の新しいサプライヤー請求書を受け取りました。",
+    "seller": "サプライヤー:",
+    "number": "番号:",
+    "total": "合計税金:",
+    "cta": "サプライヤーの請求書を表示する",
+    "footer": "この請求書はダッシュボードから確認して処理できます。"
+  },
+  "contactMessage": {
+    "subject": "{name} からの新しいメッセージ — {store}",
+    "title": "ストアからの新しいメッセージ",
+    "body": "訪問者が {storeName} の問い合わせページからあなたに手紙を書きました。",
+    "name": "名前:",
+    "email": "電子メール:",
+    "phone": "電話番号:",
+    "message": "メッセージ:",
+    "reply": "返信",
+    "footer": "このメールに直接返信してください。あなたの回答は訪問者のアドレスに送信されます。"
+  },
+  "phoneCallbackLandlord": {
+    "subject": "コールバックする発信者 — {store}",
+    "title": "折り返し電話をかける相手",
+    "body": "音声アシスタントは {storeName} でのリクエストを完了できなかったため、このメッセージをあなたに伝えています。",
+    "phone": "コールバック番号:",
+    "message": "メッセージ:",
+    "listen": "通話を開始します",
+    "footer": "会話を開いてやり取りを読み、通話録音を再生します。"
+  },
+  "voiceNumberBilling": {
+    "numberLabel": "番号:",
+    "rentalLabel": "月額レンタル：",
+    "rentalValue": "{credits} AI クレジット / 月",
+    "deadlineLabel": "締切:",
+    "ctaRecharge": "クレジットをリチャージする",
+    "ctaOpen": "AI アシスタントを開く",
+    "footer": "番号レンタルは毎月 AI クレジットで自動的に支払われます。",
+    "warning": {
+      "subject": "再充電の時間 — {number} のリニューアル",
+      "title": "残高では次回の更新には適用されません",
+      "body": "{storeName} の番号 {number} は、{credits} AI クレジットの {date} に更新されますが、現在の残高では十分ではありません。番号を維持するには、その日までにリチャージしてください。"
+    },
+    "failed": {
+      "subject": "アクションが必要です - {number} は切り離される危険性があります",
+      "title": "更新に失敗しました",
+      "body": "{number} ({credits} AI クレジット) の更新を完了できませんでした。残高が不足しています。 {date} の前にリチャージしてください。そうでない場合、番号は自動的に切り離されます。充電するとすぐに毎日充電が再試行されます。"
+    },
+    "released": {
+      "subject": "番号 {number} が切り離されました",
+      "title": "取り外した番号",
+      "body": "{storeName} の番号 {number} は切り離され、アクティブではなくなりました。 AI アシスタントでいつでも新しい番号を選択できます。"
+    }
+  },
+  "teamInvitation": {
+    "subject": "{inviterName} が {storeName} への参加を招待します",
+    "title": "チームへの招待",
+    "greeting": "こんにちは。",
+    "body": "{inviterName} は、Louez.io の {storeName} チームに参加するよう招待します。",
+    "accessDescription": "この招待を受け入れると、ストアのダッシュボードにアクセスして予約、商品、顧客を管理できるようになります。",
+    "acceptButton": "招待を承諾する",
+    "expiry": "この招待状の有効期限は 7 日です。このチームへの参加をリクエストしていない場合は、このメールを無視しても問題ありません。"
+  },
+  "baseLayout": {
+    "sentBy": "このメールは {storeName} によって送信されました",
+    "ignoreIfNotYou": "あなたがこのアクションを開始していない場合は、このメールを無視してください。",
+    "poweredBy": "提供元"
+  },
+  "instantAccess": {
+    "subject": "予約#{number}にアクセスします",
+    "title": "予約にアクセスする",
+    "body": "クリックして予約 #{number} にアクセスします。",
+    "paymentPending": "この予約の支払いは保留中です。",
+    "viewAndPay": "閲覧して支払う",
+    "linkValid": "このリンクは 30 日間有効です。"
+  },
+  "reservationCancelled": {
+    "subject": "予約 #{number} がキャンセルされました",
+    "title": "予約がキャンセルされました",
+    "body": "ご予約 #{number} はキャンセルされました。",
+    "cancelledPeriod": "中止期間",
+    "reasonLabel": "理由",
+    "contactForQuestions": "ご不明な点がございましたら、お気軽にお問い合わせください。",
+    "browseEquipment": "カタログを閲覧する",
+    "thankYou": "ご理解いただきありがとうございます。"
+  },
+  "reservationCompleted": {
+    "subject": "予約#{number}が完了しました",
+    "title": "レンタル完了しました！",
+    "body": "ご予約 #{number} が完了しました。",
+    "rentalPeriod": "レンタル期間",
+    "depositReturned": "デポジット {amount} は返金されます。",
+    "depositPending": "{amount} のデポジットは確認され、間もなく返金されます。",
+    "thankYouMessage": "当社のサービスをお選びいただきありがとうございます。",
+    "rentAgain": "もう一度レンタルしてください",
+    "seeYouSoon": "また会いましょう!"
+  },
+  "paymentConfirmation": {
+    "subject": "支払いが確認されました - 予約 #{number}",
+    "title": "支払いを受け取りました！",
+    "body": "ご予約#{number}のお支払いを受領いたしました。",
+    "paymentDetails": "お支払い詳細",
+    "amount": "金額",
+    "date": "日付",
+    "method": "方法",
+    "reservation": "予約",
+    "confirmation": "お支払いは正常に処理されました。",
+    "keepEmail": "このメールは支払いの証拠として保管してください。",
+    "contractSignature": "契約書は添付されており、オンラインで署名する準備ができています。",
+    "signContract": "契約書に署名します"
+  },
+  "paymentFailed": {
+    "subject": "支払いに失敗しました - 予約 #{number}",
+    "title": "支払いに失敗しました",
+    "body": "ご予約 #{number} に対する {amount} の支払いを処理できませんでした。",
+    "whatToDo": "どうすればいいでしょうか？",
+    "tip1": "カードが有効であり、十分な残高があることを確認してください",
+    "tip2": "別のカードで試してください",
+    "tip3": "問題が解決しない場合は銀行にお問い合わせください",
+    "retryPayment": "支払いを再試行する",
+    "contactSupport": "助けが必要ですか?お問い合わせ。"
+  },
+  "paymentRequest": {
+    "subject": "予約 #{number} に対して支払いが要求されました",
+    "title": "支払いリクエスト",
+    "body": "{storeName} は、予約 #{number} に対して {amount} の支払いを要求しています。",
+    "paymentDetails": "お支払い詳細",
+    "reservation": "予約",
+    "description": "説明",
+    "amountDue": "未払い額",
+    "payNow": "{amount}を支払う",
+    "linkFallback": "または、このリンクをブラウザにコピーします。",
+    "securePayment": "この支払いは Stripe によって保護されています。お客様の支払い情報がレンタルプロバイダーと共有されることはありません。",
+    "manualBody": "ご予約 #{number} のお支払いについてご連絡しております。",
+    "payPromptly": "お早めにお支払い手続きをお願いいたします。"
+  },
+  "depositAuthorizationRequest": {
+    "subject": "予約 #{number} の入金承認",
+    "title": "入金承認が必要です",
+    "body": "{storeName} は、ご予約 #{number} に対して {amount} のデポジット承認をリクエストしています。",
+    "howItWorks": "仕組み",
+    "step1": "カードへの入金金額を承認します",
+    "step2": "金額は一時的に保留されます（チャージされません）",
+    "step3": "レンタル終了時に認証は自動的に解除されます",
+    "step4": "破損の場合は一部または全額をご請求させていただく場合がございます",
+    "authorizeNow": "デポジットを承認する",
+    "linkFallback": "または、このリンクをブラウザにコピーします。",
+    "securePayment": "この承認は Stripe によって保護されます。金額はすぐには請求されません。"
+  },
+  "rewardUnlocked": {
+    "subject": "無料予約を獲得しました 🎉",
+    "title": "あなたの紹介が功を奏しました！",
+    "greeting": "こんにちは。",
+    "body": "{referredStoreName} は初めてのオンライン販売を行いました。 ≈ {rewardValue} 相当の {freeReservations} の無料予約を獲得します。",
+    "cta": "私の報酬を見る",
+    "footer": "Louez コミュニティを成長させていただきありがとうございます。",
+    "subjectCredit": "Louez クレジットを獲得しました 🎉",
+    "bodyCredit": "{referredStoreName} は初めてのオンライン販売を行いました。次回の Louez 請求書で {rewardValue} クレジットを獲得します。"
+  },
+  "contract": {
+    "subject": "レンタル契約書 #{number}",
+    "title": "レンタル契約書",
+    "body": "こちらがご予約#{number}のレンタル契約書です。",
+    "downloadContract": "契約書をダウンロードする"
+  },
+  "customMessage": {
+    "subject": "ご予約について #{number}"
+  }
+}

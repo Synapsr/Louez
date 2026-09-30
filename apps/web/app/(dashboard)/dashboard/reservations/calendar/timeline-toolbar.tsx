@@ -663,6 +663,7 @@ export function TimelineToolbar({
           size="icon-sm"
           className="max-sm:size-9"
           aria-label={tTimeline("next")}
+          data-timeline-nav="next"
           onClick={onNext}
         >
           <ChevronRight />

@@ -161,7 +161,7 @@
     "email": "Correo electronico",
     "emailPlaceholder": "tu@ejemplo.com",
     "password": "Contrasena",
-    "forgotPassword": "Olvido su contrasena?",
+    "forgotPassword": "¿Has olvidado tu contraseña?",
     "continueWithGoogle": "Continuar con Google",
     "continueWithEmail": "Continuar con correo",
     "signInWithEmail": "Iniciar sesion con correo",
@@ -180,7 +180,7 @@
     "loginDescription": "Ingrese su correo para continuar. Si no tiene una cuenta, se creará automáticamente.",
     "reeentLoginTitle": "Bienvenido a louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent es el escaparate, louez es su herramienta: las reservas, los pagos y el calendario se gestionan aquí. Si no tiene una cuenta, se creará automáticamente.",
-    "linkWillBeSent": "Un enlace seguro será enviado a su correo. Sin contraseña que recordar.",
+    "linkWillBeSent": "Recibirás un código de un solo uso por correo. La contraseña sigue siendo opcional.",
     "checkEmail": "Revise su correo",
     "emailSentTo": "Se ha enviado un enlace de inicio de sesion a",
     "clickLinkToSignIn": "Haga clic en el enlace del correo para iniciar sesion. El enlace expira en 24 horas.",
@@ -200,7 +200,19 @@
       "verification": "El enlace de verificacion es invalido o ha expirado.",
       "default": "Ocurrio un error. Por favor, intente de nuevo.",
       "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
-      "registrationClosed": "El registro está cerrado en esta instancia. Pide una invitación al propietario."
+      "registrationClosed": "El registro está cerrado en esta instancia. Pide una invitación al propietario.",
+      "invalidCode": "Este código es incorrecto.",
+      "codeExpired": "Este código ha caducado. Solicita uno nuevo.",
+      "tooManyAttempts": "Demasiados intentos con este código. Solicita uno nuevo.",
+      "tooManyRequests": "Demasiados intentos. Espera un minuto antes de volver a intentarlo.",
+      "passwordTooLong": "La contraseña no puede superar los 128 caracteres.",
+      "invalidPassword": "La contraseña actual es incorrecta.",
+      "currentPasswordRequired": "Introduce tu contraseña actual.",
+      "passwordAlreadySet": "Esta cuenta ya tiene una contraseña.",
+      "passwordNotSet": "Esta cuenta no tiene ninguna contraseña.",
+      "passwordRemovalUnavailable": "En esta instancia la contraseña es la única forma de iniciar sesión: no se puede eliminar.",
+      "sessionExpired": "Tu sesión ha caducado. Vuelve a iniciar sesión e inténtalo de nuevo.",
+      "passwordSignUpDisabled": "No se puede crear una cuenta con contraseña. Usa un código recibido por correo."
     },
     "referralBanner": "{storeName} te ha invitado a Louez — crea tu tienda y empieza con {count} reservas gratis.",
     "referralBannerGeneric": "🎁 Has sido invitado a Louez — crea tu tienda y empieza con {count} reservas gratis.",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "¿Ya tienes una cuenta?",
     "usePasswordInstead": "Iniciar sesión con contraseña",
     "useEmailCodeInstead": "Iniciar sesión con un código por correo",
-    "passwordLoginDescription": "Inicia sesión con tu correo y tu contraseña."
+    "passwordLoginDescription": "Inicia sesión con tu correo y tu contraseña.",
+    "forgotPasswordTitle": "Contraseña olvidada",
+    "forgotPasswordDescription": "Introduce el correo de tu cuenta: te enviaremos un código para elegir una nueva contraseña.",
+    "forgotPasswordLogsDescription": "Introduce el correo de tu cuenta. Esta instancia no envía correos: el código aparecerá en los registros del servidor.",
+    "resetCodeSentDescription": "Si existe una cuenta para <strong>{email}</strong>, acabamos de enviarle un código de 6 dígitos. Introdúcelo abajo para elegir una nueva contraseña.",
+    "newPasswordTitle": "Elige una nueva contraseña",
+    "newPasswordDescription": "Iniciarás sesión en cuanto se guarde. Se cerrará la sesión en tus otros dispositivos.",
+    "newPassword": "Nueva contraseña",
+    "saveNewPassword": "Guardar e iniciar sesión",
+    "requestNewCode": "Recibir un nuevo código",
+    "backToLogin": "Volver al inicio de sesión",
+    "showPassword": "Mostrar la contraseña",
+    "hidePassword": "Ocultar la contraseña",
+    "passwordRules": {
+      "minLength": "Al menos {count} caracteres"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} le invita a unirse al equipo",
@@ -486,6 +513,8 @@
       "removeMember": "Quitar del equipo",
       "memberAdded": "Miembro del equipo agregado con exito",
       "memberRemoved": "Miembro del equipo eliminado",
+      "googleAccessReminder": "Cuando un miembro se vaya, revisa también su acceso a Google Search Console. Eliminarlo de Louez no revoca su acceso a Google.",
+      "reviewGoogleAccess": "Revisar el acceso a Google",
       "pendingInvitations": "Invitaciones pendientes",
       "pendingInvitationsDescription": "Estas personas aun no han aceptado su invitacion",
       "invitationSent": "Invitacion enviada por correo",
@@ -2313,7 +2342,7 @@
         "deposit": "Deposito",
         "save": "Guardar",
         "saved": "Reserva actualizada",
-        "cannotRemoveLastItem": "No se puede eliminar el ultimo articulo",
+        "cannotRemoveLastItem": "Una reserva conserva al menos un artículo: añade el nuevo artículo antes de eliminar este",
         "noItems": "Agregue al menos un articulo",
         "datesRequired": "Las fechas de inicio y fin son obligatorias",
         "notifyCustomerByEmail": "Notificar al cliente por email",
@@ -2678,7 +2707,8 @@
         "bufferConflictConfirm": "Asignar igualmente",
         "optionsLabel": "Opciones",
         "clearSelection": "Borrar seleccion",
-        "autofillHint": "Unidades sugeridas seleccionadas. Haga clic en Guardar para confirmar."
+        "autofillHint": "Unidades sugeridas seleccionadas. Haga clic en Guardar para confirmar.",
+        "suggestUnits": "Sugerir unidades"
       },
       "smartActions": {
         "paymentIncomplete": "Alquiler no pagado ({remaining} restante)",
@@ -4359,7 +4389,22 @@
         "create": "Crear",
         "revokeTitle": "¿Revocar clave API?",
         "revokeDescription": "Esta acción es irreversible. Cualquier aplicación que use esta clave perderá el acceso inmediatamente.",
-        "revokeConfirm": "Revocar"
+        "revokeConfirm": "Revocar",
+        "presetCustom": "Personalizado",
+        "domains": {
+          "reservations": "Reservas",
+          "products": "Productos",
+          "customers": "Clientes",
+          "categories": "Categorías",
+          "payments": "Pagos",
+          "analytics": "Análisis",
+          "settings": "Configuración"
+        },
+        "levels": {
+          "none": "Sin acceso",
+          "read": "Lectura",
+          "write": "Lectura y escritura"
+        }
       },
       "businessHours": {
         "title": "Horario comercial",
@@ -4550,6 +4595,11 @@
           "step3": "Elige el método «Etiqueta HTML», pega la etiqueta o su código abajo y guarda antes de pulsar «Verificar» en Search Console.",
           "label": "Código de verificación",
           "help": "La etiqueta completa o solo su contenido; el código sigue activo mientras esté guardado aquí.",
+          "accessDescription": "Este código otorga a la cuenta de Google asociada permisos de propietario en Search Console para tu tienda: consultar estadísticas, gestionar usuarios y solicitar la retirada de resultados de Google.",
+          "ownerOnly": "Solo el propietario de la tienda y los administradores de Louez pueden modificar este código.",
+          "removeCode": "Retirar el código",
+          "revokeHelp": "Para revocar el acceso, elimina al usuario en Search Console y todas sus pruebas de propiedad. Si su código está en este campo, bórralo y guarda. Eliminar a un miembro de Louez no revoca su acceso a Google.",
+          "manageAccess": "Cómo revocar el acceso a Google",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
@@ -5284,8 +5334,8 @@
         "active": "Activo",
         "activeSessions": "Sesiones activas",
         "activeSessionsDescription": "Gestione sus sesiones de inicio",
-        "sessionCount": "{count} sesion",
-        "changePassword": "Cambiar contrasena",
+        "sessionCount": "{count, plural, one {# dispositivo conectado} other {# dispositivos conectados}}",
+        "changePassword": "Cambiar la contraseña",
         "dangerZone": "Zona de peligro",
         "dangerZoneDescription": "Acciones irreversibles en su cuenta",
         "deleteAccount": "Eliminar cuenta",
@@ -5347,6 +5397,51 @@
           "saved": "Atajos guardados",
           "conflict": "Este atajo ya se usa para «{action}».",
           "resetAction": "Restablecer «{action}»"
+        },
+        "signIn": {
+          "title": "Inicio de sesión",
+          "description": "Las formas de iniciar sesión en tu cuenta",
+          "emailCode": "Código por correo",
+          "alwaysActive": "Siempre activo",
+          "unavailable": "No disponible",
+          "google": "Google",
+          "linked": "Vinculado",
+          "notLinked": "No vinculado",
+          "linkGoogle": "Vincular",
+          "googleLinkError": "No se ha podido vincular esta cuenta de Google. Comprueba que usa el mismo correo que tu cuenta Louez.",
+          "password": "Contraseña",
+          "passwordNotSet": "Sin definir",
+          "passwordSetOn": "Definida el {date}",
+          "setPassword": "Definir",
+          "changePassword": "Cambiar",
+          "removePassword": "Eliminar",
+          "setPasswordTitle": "Definir una contraseña",
+          "setPasswordDescription": "La contraseña es opcional: el código recibido por correo sigue siempre disponible. Se cerrará la sesión en tus otros dispositivos.",
+          "newPasswordLabel": "Nueva contraseña",
+          "currentPasswordLabel": "Contraseña actual",
+          "setPasswordSubmit": "Definir la contraseña",
+          "changePasswordDescription": "Se cerrará la sesión en tus otros dispositivos.",
+          "changePasswordSubmit": "Cambiar la contraseña",
+          "removePasswordTitle": "¿Eliminar la contraseña?",
+          "removePasswordDescription": "Seguirás iniciando sesión con un código recibido por correo. Podrás definir una nueva contraseña cuando quieras.",
+          "removePasswordConfirm": "Eliminar la contraseña",
+          "cancel": "Cancelar",
+          "passwordSetToast": "Contraseña definida",
+          "passwordChangedToast": "Contraseña cambiada",
+          "passwordRemovedToast": "Contraseña eliminada"
+        },
+        "passwordAlert": {
+          "title": "¿No has sido tú?",
+          "description": "La contraseña de la cuenta {email} acaba de añadirse, cambiarse o eliminarse. Si no has tenido nada que ver, protege tu cuenta ahora.",
+          "effectPassword": "Se eliminará la contraseña de la cuenta.",
+          "effectSessions": "Se cerrará la sesión en todos los dispositivos, incluido este.",
+          "effectSignIn": "Volverás a iniciar sesión con un código recibido por correo.",
+          "unavailable": "En esta instancia la contraseña es la única forma de iniciar sesión: no se puede eliminar. Cámbiala desde tu cuenta.",
+          "confirm": "Proteger mi cuenta",
+          "itWasMe": "He sido yo",
+          "doneTitle": "Tu cuenta está protegida",
+          "doneDescription": "Se ha eliminado la contraseña y se ha cerrado la sesión en todos los dispositivos. Vuelve a iniciar sesión con un código recibido por correo.",
+          "signInAgain": "Volver a iniciar sesión"
         }
       },
       "admin": {
@@ -6073,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "Una reserva, una sola página",
           "description": "Se acabaron los pasos encadenados: cliente, periodo, productos y entrega caben en una página, con el resumen siempre al lado. Y todo lo que obligaba a reabrir la reserva después — un descuento, un precio negociado, la fianza, un cliente de paso — se resuelve ahora sobre la marcha."
+        },
+        "optional-password": {
+          "title": "Una contraseña, si la quieres",
+          "description": "Añade una contraseña a tu cuenta para iniciar sesión sin esperar el código recibido por correo. El código sigue siempre disponible."
         }
       }
     },
@@ -8053,7 +8152,10 @@
       "rental": "Alquiler",
       "deposit": "Deposito",
       "deposit_return": "Devolucion de deposito",
-      "damage": "Danos"
+      "damage": "Danos",
+      "deposit_hold": "Autorización",
+      "deposit_capture": "Depósito capturado",
+      "adjustment": "Ajuste"
     },
     "paymentMethods": {
       "stripe": "Tarjeta en linea",
@@ -8065,7 +8167,8 @@
     },
     "paymentStatus": {
       "completed": "Pagado",
-      "pending": "Pendiente"
+      "pending": "Pendiente",
+      "authorized": "Autorizado"
     },
     "signature": {
       "validated": "Validado",
@@ -8076,7 +8179,11 @@
       "dateLabel": "Fecha:",
       "ipLabel": "IP:",
       "automatic": "Validado automáticamente",
-      "automaticText": "Este contrato se ha validado automáticamente conforme a las condiciones de alquiler."
+      "automaticText": "Este contrato se ha validado automáticamente conforme a las condiciones de alquiler.",
+      "atBooking": "Firmado al reservar",
+      "atBookingText": "Condiciones generales de alquiler aceptadas al reservar en línea, lo que equivale a la firma del presente contrato.",
+      "signedOnLabel": "Firmado el:",
+      "validatedOnLabel": "Validado el:"
     },
     "conditions": {
       "condition1": "El equipo se alquila en buen estado de funcionamiento",

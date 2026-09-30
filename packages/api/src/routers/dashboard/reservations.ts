@@ -47,6 +47,7 @@ import {
 import { dashboardProcedure, requirePermission } from "../../procedures";
 import {
   getDashboardReservationById,
+  getDashboardReservationEditContext,
   getDashboardReservationsList,
   getReservationsForCalendarPeriod,
   getReservationPollData,
@@ -147,6 +148,19 @@ const getById = dashboardProcedure
   .handler(async ({ context, input }) => {
     try {
       return await getDashboardReservationById({
+        reservationId: input.reservationId,
+        storeId: context.store.id,
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const getEditContext = dashboardProcedure
+  .input(dashboardReservationGetByIdInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      return await getDashboardReservationEditContext({
         reservationId: input.reservationId,
         storeId: context.store.id,
       });
@@ -847,6 +861,7 @@ export const dashboardReservationsRouter = {
   calendarPeriod,
   planningTimeline,
   getById,
+  getEditContext,
   getPaymentMethod,
   getAvailableUnitsForItem,
   createManualReservation,

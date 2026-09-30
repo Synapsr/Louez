@@ -14,11 +14,18 @@ export async function invalidateReservationDetail(
   queryClient: QueryClient,
   reservationId: string,
 ) {
-  await queryClient.invalidateQueries({
-    queryKey: orpc.dashboard.reservations.getById.key({
-      input: { reservationId },
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: orpc.dashboard.reservations.getById.key({
+        input: { reservationId },
+      }),
     }),
-  })
+    queryClient.invalidateQueries({
+      queryKey: orpc.dashboard.reservations.getEditContext.key({
+        input: { reservationId },
+      }),
+    }),
+  ])
 }
 
 export async function invalidateReservationList(queryClient: QueryClient) {

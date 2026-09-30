@@ -29,6 +29,10 @@ interface UseCheckoutDeliveryParams {
   subtotal: number;
   deliveryEligibilitySubtotal?: number;
   locations?: CheckoutLocationOption[];
+  /** Optional local distance service for supplied-data views. */
+  resolveDistance?: (
+    params: Parameters<typeof fetchDeliveryDistanceKm>[1],
+  ) => number | Promise<number>;
 }
 
 export const useCheckoutDelivery = ({
@@ -38,6 +42,7 @@ export const useCheckoutDelivery = ({
   subtotal,
   deliveryEligibilitySubtotal = subtotal,
   locations = [],
+  resolveDistance,
 }: UseCheckoutDeliveryParams) => {
   const t = useTranslations("storefront.checkout");
   const queryClient = useQueryClient();
@@ -179,12 +184,15 @@ export const useCheckoutDelivery = ({
 
       let distance: number;
       try {
-        distance = await fetchDeliveryDistanceKm(queryClient, {
+        const params = {
           originLatitude: storeLatitude,
           originLongitude: storeLongitude,
           destinationLatitude: latitude,
           destinationLongitude: longitude,
-        });
+        };
+        distance = resolveDistance
+          ? await resolveDistance(params)
+          : await fetchDeliveryDistanceKm(queryClient, params);
       } catch {
         distance = calculateHaversineDistance(storeLatitude, storeLongitude, latitude, longitude);
       }
@@ -207,7 +215,7 @@ export const useCheckoutDelivery = ({
         return;
       }
     },
-    [deliverySettings, queryClient, storeLatitude, storeLongitude, t],
+    [deliverySettings, queryClient, resolveDistance, storeLatitude, storeLongitude, t],
   );
 
   // ---------------------------------------------------------------------------

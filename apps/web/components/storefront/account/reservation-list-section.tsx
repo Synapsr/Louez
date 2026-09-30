@@ -8,10 +8,17 @@ import {
 interface ReservationListSectionProps {
   title: ReactNode;
   reservations: ReservationListItem[];
+  prefetch?: boolean;
+  onOpenReservation?: (id: string) => void;
 }
 
 /** A titled stack of reservation cards; renders nothing when empty. */
-export const ReservationListSection = ({ title, reservations }: ReservationListSectionProps) => {
+export const ReservationListSection = ({
+  title,
+  reservations,
+  prefetch,
+  onOpenReservation,
+}: ReservationListSectionProps) => {
   if (reservations.length === 0) return null;
 
   return (
@@ -25,7 +32,11 @@ export const ReservationListSection = ({ title, reservations }: ReservationListS
       <ul className="flex flex-col gap-2 sm:gap-3">
         {reservations.map((reservation) => (
           <li key={reservation.id}>
-            <ReservationListCard reservation={reservation} />
+            <ReservationListCard
+              reservation={reservation}
+              prefetch={prefetch}
+              onOpenReservation={onOpenReservation}
+            />
           </li>
         ))}
       </ul>

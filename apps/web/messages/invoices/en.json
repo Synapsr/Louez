@@ -1,0 +1,48 @@
+{
+  "documentType": {
+    "invoice": "Invoice",
+    "creditNote": "Credit note"
+  },
+  "labels": {
+    "number": "No.",
+    "date": "Date",
+    "seller": "Seller",
+    "buyer": "Customer",
+    "contact": "Contact",
+    "companyNumber": "Company number",
+    "siret": "SIRET",
+    "vatNumber": "VAT number",
+    "rcs": "Trade register",
+    "shareCapital": "Share capital",
+    "precedingInvoice": "Credit note for invoice",
+    "payment": "Payment",
+    "paymentDate": "Payment date",
+    "paymentMethod": "Payment method"
+  },
+  "table": {
+    "description": "Description",
+    "quantity": "Qty",
+    "unitPriceExclTax": "Unit price excl. tax",
+    "vatRate": "VAT",
+    "totalExclTax": "Total excl. tax"
+  },
+  "vat": {
+    "title": "VAT breakdown",
+    "rate": "Rate",
+    "taxableAmount": "Taxable amount",
+    "taxAmount": "VAT"
+  },
+  "totals": {
+    "exclTax": "Total excl. tax",
+    "tax": "Total VAT",
+    "inclTax": "Total incl. tax"
+  },
+  "methods": {
+    "stripe": "Online card",
+    "cash": "Cash",
+    "card": "Card",
+    "transfer": "Bank transfer",
+    "check": "Cheque",
+    "other": "Other"
+  }
+}

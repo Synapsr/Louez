@@ -1,3 +1,4 @@
+import { locales } from "@/i18n/config";
 import { NextResponse } from "next/server";
 
 import { and, eq, inArray } from "drizzle-orm";
@@ -19,7 +20,7 @@ const routeParamsSchema = z.object({
   inspectionId: z.string().length(21),
 });
 
-const SUPPORTED_LOCALES = ["fr", "en"] as const satisfies readonly SupportedLocale[];
+const SUPPORTED_LOCALES = locales;
 
 const isSupportedLocale = (value: string): value is SupportedLocale =>
   SUPPORTED_LOCALES.some((locale) => locale === value);

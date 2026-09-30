@@ -152,6 +152,20 @@ export const verification = mysqlTable("verification", {
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
 });
 
+// Request counters of the auth endpoints (better-auth database rate limiting).
+export const authRateLimits = mysqlTable(
+  "auth_rate_limits",
+  {
+    id: id(),
+    key: varchar("key", { length: 255 }).notNull(),
+    count: int("count").notNull(),
+    lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+  },
+  (table) => ({
+    uniqueKey: unique("auth_rate_limits_key_unique").on(table.key),
+  }),
+);
+
 // ============================================================================
 // Subscriptions (simplified - plans defined in code)
 // ============================================================================

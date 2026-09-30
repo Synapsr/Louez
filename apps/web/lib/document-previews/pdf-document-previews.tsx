@@ -1,12 +1,8 @@
-import { ContractDocument, type ContractTranslations } from "@/lib/pdf/contract";
-import {
-  InspectionReportDocument,
-  defaultTranslationsEn,
-  defaultTranslationsFr,
-} from "@/lib/pdf/inspection-report";
+import { ContractDocument } from "@/lib/pdf/contract";
+import { InspectionReportDocument } from "@/lib/pdf/inspection-report";
 import { InvoiceDocument, type InvoiceDocumentProps } from "@/lib/pdf/invoice";
-import enMessages from "@/messages/en.json";
-import frMessages from "@/messages/fr.json";
+import { getContractTranslations } from "@/lib/pdf/contract-i18n";
+import { getInspectionTranslations } from "@/lib/pdf/inspection-i18n";
 
 import {
   PDF_PREVIEW_LOCALES,
@@ -24,15 +20,9 @@ import type {
 const { number, createdAt, startDate, endDate, items } = previewReservation;
 const generatedAt = new Date("2026-07-28T14:25:00.000Z");
 
-const toPdfLocale = (locale: DocumentPreviewContext["locale"]): PdfPreviewLocale =>
-  locale === "en" ? "en" : "fr";
-
-// Same source as the production generator: the `contract` subtree of the app messages.
-const contractTranslations = (locale: PdfPreviewLocale): ContractTranslations =>
-  (locale === "fr" ? frMessages : enMessages).contract as ContractTranslations;
-
-const inspectionTranslations = (locale: PdfPreviewLocale) =>
-  locale === "fr" ? defaultTranslationsFr : defaultTranslationsEn;
+const toPdfLocale = (locale: DocumentPreviewContext["locale"]): PdfPreviewLocale => locale;
+const contractTranslations = getContractTranslations;
+const inspectionTranslations = getInspectionTranslations;
 
 const pdf = (
   definition: Omit<PdfDocumentPreview, "kind" | "group" | "locales">,
@@ -230,6 +220,43 @@ export const PDF_DOCUMENT_PREVIEWS: readonly PdfDocumentPreview[] = [
         },
         store: contractStore(store),
         document: { number: "2026-0042", generatedAt },
+        locale,
+        translations: contractTranslations(locale),
+        currency: store.currency,
+        timezone: store.timezone,
+        fullCgvHtml: null,
+      });
+    },
+  }),
+  pdf({
+    id: "contract-at-booking",
+    title: "Contrat signé à la réservation",
+    description:
+      "Réservation faite sur la boutique : conditions acceptées en réservant, contrat validé au paiement.",
+    fileName: "contrat-signe-reservation",
+    compose: ({ store, locale: rawLocale }) => {
+      const locale = toPdfLocale(rawLocale);
+      return ContractDocument({
+        reservation: {
+          ...contractReservation,
+          customer: individualCustomer,
+          signedAtBooking: true,
+          automaticContractValidation: true,
+          signedAt: new Date("2026-07-29T09:13:00.000Z"),
+          payments: [
+            {
+              id: "pay-1",
+              amount: previewReservation.total.toFixed(2),
+              type: "rental",
+              method: "stripe",
+              status: "completed",
+              paidAt: new Date("2026-07-29T09:13:00.000Z"),
+              createdAt,
+            },
+          ],
+        },
+        store: contractStore(store),
+        document: { number: "2026-0043", generatedAt },
         locale,
         translations: contractTranslations(locale),
         currency: store.currency,

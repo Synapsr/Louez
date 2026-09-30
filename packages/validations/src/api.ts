@@ -829,7 +829,7 @@ const onlineStoreLegalInputSchema = z.object({
 });
 
 const onlineStoreSeoInputSchema = z.object({
-  googleSiteVerification: updateStoreSeoInputSchema.shape.googleSiteVerification,
+  googleSiteVerification: updateStoreSeoInputSchema.shape.googleSiteVerification.optional(),
   shareImageUrl: optionalOwnedImageSchema,
 });
 

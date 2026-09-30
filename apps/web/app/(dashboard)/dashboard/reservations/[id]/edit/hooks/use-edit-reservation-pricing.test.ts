@@ -64,3 +64,45 @@ test('a fixed total-price override divides by quantity but not duration', () => 
     20,
   )
 })
+
+const hourlyRateItem: EditableItem = {
+  ...fixedProductItem,
+  quantity: 1,
+  unitPrice: 2.5,
+  isManualPrice: false,
+  pricingMode: 'hour',
+  basePeriodMinutes: 60,
+  product: {
+    ...fixedProductItem.product!,
+    price: '2.50',
+    pricingKind: 'duration',
+    pricingMode: 'hour',
+    basePeriodMinutes: 60,
+    pricingTiers: [{ id: 'day-rate', minDuration: 0, discountPercent: 0, period: 1440, price: 18 }],
+  },
+}
+
+test('a day rate on an hourly product is labelled in days, not hours', () => {
+  const result = calculateEditableItemPrice(
+    hourlyRateItem,
+    new Date('2026-09-30T15:30:00.000Z'),
+    new Date('2026-10-01T15:30:00.000Z'),
+    'UTC',
+  )
+
+  assert.equal(result.totalPrice, 18)
+  assert.equal(result.displayPricingMode, 'day')
+  assert.equal(result.displayDuration, 1)
+  assert.equal(result.effectiveUnitPrice, 18)
+})
+
+test('an ordinary rate is not reported as savings', () => {
+  const result = calculateEditableItemPrice(
+    hourlyRateItem,
+    new Date('2026-09-30T15:30:00.000Z'),
+    new Date('2026-10-01T15:30:00.000Z'),
+    'UTC',
+  )
+
+  assert.equal(result.savings, 0)
+})

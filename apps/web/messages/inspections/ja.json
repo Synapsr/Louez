@@ -1,0 +1,55 @@
+{
+  "documentType": {
+    "departure": "検査報告書 - 出発",
+    "return": "検査報告書 - 返却"
+  },
+  "documentNumber": "No.{number}",
+  "reservationNumber": "予約番号 #{number}",
+  "sections": {
+    "inspectionDetails": "検査内容",
+    "equipment": "検査対象機器",
+    "signature": "署名",
+    "notes": "一般的な注意事項"
+  },
+  "parties": {
+    "store": "レンタル会社",
+    "customer": "お客様"
+  },
+  "period": {
+    "date": "日付",
+    "time": "時間",
+    "performedBy": "出演者"
+  },
+  "condition": {
+    "excellent": "素晴らしい",
+    "good": "良い",
+    "fair": "フェア",
+    "damaged": "破損した",
+    "label": "状態"
+  },
+  "table": {
+    "equipment": "機材",
+    "condition": "状態",
+    "photos": "写真",
+    "notes": "注意事項"
+  },
+  "signature": {
+    "customerSignature": "顧客の署名",
+    "signedAt": "署名場所",
+    "ipAddress": "IPアドレス",
+    "notSigned": "署名されていません"
+  },
+  "footer": {
+    "poweredBy": "Powered by Louez.io",
+    "generatedOn": "生成日",
+    "page": "ページ",
+    "of": "の"
+  },
+  "summary": {
+    "totalItems": "アイテム",
+    "withIssues": "問題あり",
+    "photos": "写真",
+    "damageDetected": "損傷が検出されました",
+    "noDamage": "損傷なし"
+  }
+}

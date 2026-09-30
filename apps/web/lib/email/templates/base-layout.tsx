@@ -59,7 +59,7 @@ export function BaseLayout({
   ].filter(Boolean);
 
   return (
-    <Html>
+    <Html lang={locale}>
       <Head />
       <Preview>{preview}</Preview>
       <Body style={shell.body}>

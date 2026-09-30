@@ -29,6 +29,7 @@ export interface CategoryFilterOption {
 interface CategoryFilterComboboxProps {
   categories: CategoryFilterOption[];
   isLoading: boolean;
+  autoFocus?: boolean;
   selectedCategoryIds: string[];
   onChange: (categoryIds: string[]) => void;
 }
@@ -36,6 +37,7 @@ interface CategoryFilterComboboxProps {
 export const CategoryFilterCombobox = ({
   categories,
   isLoading,
+  autoFocus = true,
   selectedCategoryIds,
   onChange,
 }: CategoryFilterComboboxProps) => {
@@ -68,8 +70,9 @@ export const CategoryFilterCombobox = ({
         : t("categoriesSelected", { count: selectedIds.size });
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover modal={autoFocus ? undefined : false} open={open} onOpenChange={setOpen}>
       <PopoverTrigger
+        data-demo-target="products-category-filter"
         render={
           <Button
             variant="outline"
@@ -87,9 +90,10 @@ export const CategoryFilterCombobox = ({
           className="size-4 shrink-0 opacity-70 transition-opacity group-hover:opacity-100"
         />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-0 pt-1 *:p-0">
+      <PopoverContent initialFocus={autoFocus ? undefined : false} finalFocus={autoFocus ? undefined : false} align="start" className="w-72 p-0 pt-1 *:p-0">
         <Command open items={filteredCategories} filter={null}>
           <CommandInput
+            autoFocus={autoFocus}
             placeholder={t("searchCategories")}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
@@ -103,6 +107,7 @@ export const CategoryFilterCombobox = ({
                 return (
                   <CommandItem
                     key={category.id}
+                    data-product-category={category.id}
                     value={category.id}
                     onClick={() => toggleCategory(category.id)}
                     className="flex items-center gap-2"
@@ -122,7 +127,7 @@ export const CategoryFilterCombobox = ({
         </Command>
         {selectedIds.size > 0 && (
           <div className="border-t p-1">
-            <Button variant="ghost" size="sm" className="w-full" onClick={() => onChange([])}>
+            <Button data-demo-target="products-clear-categories" variant="ghost" size="sm" className="w-full" onClick={() => onChange([])}>
               {t("allCategories")}
             </Button>
           </div>

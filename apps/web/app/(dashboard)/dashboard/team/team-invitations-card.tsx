@@ -13,11 +13,13 @@ import type { TeamInvitation } from "./team-types";
 interface TeamInvitationsCardProps {
   invitations: TeamInvitation[];
   canManageMembers: boolean;
+  readOnly?: boolean;
 }
 
 export const TeamInvitationsCard = ({
   invitations,
   canManageMembers,
+  readOnly = false,
 }: TeamInvitationsCardProps) => {
   const t = useTranslations("dashboard.team");
 
@@ -43,6 +45,7 @@ export const TeamInvitationsCard = ({
           key={invitation.id}
           invitation={invitation}
           canManageMembers={canManageMembers}
+          readOnly={readOnly}
         />
       ))}
     </DashboardSectionCard>

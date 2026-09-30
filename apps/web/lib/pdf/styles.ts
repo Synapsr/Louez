@@ -1,3 +1,5 @@
+import type { Locale } from "@/i18n/config";
+import { getPdfFonts } from "./fonts";
 import { StyleSheet } from "@react-pdf/renderer";
 import { emailTheme } from "@louez/email/templates";
 
@@ -52,8 +54,9 @@ export const pdfPalette = {
 } as const;
 
 // Create dynamic styles based on primary color
-export function createContractStyles(_primaryColor: string = "#0066FF") {
+export function createContractStyles(_primaryColor: string = "#0066FF", locale: Locale = "fr") {
   const c = pdfPalette;
+  const fonts = getPdfFonts(locale);
 
   return StyleSheet.create({
     // Page
@@ -62,7 +65,7 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
       paddingBottom: 64,
       paddingHorizontal: 44,
       fontSize: 9,
-      fontFamily: "Helvetica",
+      fontFamily: fonts.regular,
       color: c.body,
       lineHeight: 1.45,
     },
@@ -90,7 +93,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     storeName: {
       fontSize: 16,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
     },
     headerRight: {
@@ -102,7 +106,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     documentType: {
       fontSize: 14,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
       textAlign: "right",
     },
@@ -111,7 +116,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     documentNumber: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
       marginBottom: 1,
       textAlign: "right",
@@ -136,7 +142,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     partyLabel: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -144,7 +151,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     partyName: {
       fontSize: 10.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
       marginBottom: 3,
     },
@@ -165,7 +173,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     sectionTitle: {
       fontSize: 7.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -188,7 +197,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     periodLabel: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -196,7 +206,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     periodDate: {
       fontSize: 10,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
     },
     periodTime: {
@@ -223,7 +234,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     tableHeaderCell: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -308,12 +320,14 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     totalLabelMain: {
       flex: 1,
       fontSize: 10,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
     },
     totalValueMain: {
       fontSize: 11,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
       textAlign: "right",
     },
@@ -347,7 +361,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     paymentStatus: {
       fontSize: 8,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       marginRight: 12,
       width: 60,
       textAlign: "right",
@@ -363,7 +378,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     paymentType: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
     },
     paymentMethod: {
@@ -377,7 +393,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     paymentAmount: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
       width: 70,
       textAlign: "right",
@@ -408,7 +425,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     paymentSummaryValue: {
       fontSize: 10,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
     },
     paymentSummaryValueSuccess: {
@@ -471,19 +489,22 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     signatureTitle: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
     },
     signatureStatusText: {
       fontSize: 8,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.success,
     },
     signatureStatusPendingText: {
       fontSize: 8,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.warning,
     },
     signatureContent: {
@@ -502,11 +523,13 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     signatureDateLabel: {
       fontSize: 7.5,
       color: c.muted,
-      width: 45,
+      // Wide enough for "Unterschrieben:", "Convalidato il:" and the like on one line.
+      width: 70,
     },
     signatureDate: {
       fontSize: 7.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
       flex: 1,
     },
@@ -531,7 +554,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     legalTitle: {
       fontSize: 7,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.muted,
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -546,27 +570,31 @@ export function createContractStyles(_primaryColor: string = "#0066FF") {
     },
     cgvAnnexTitle: {
       fontSize: 12,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
       marginBottom: 12,
     },
     cgvAnnexHeading1: {
       fontSize: 9.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
       marginTop: 10,
       marginBottom: 4,
     },
     cgvAnnexHeading2: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.ink,
       marginTop: 8,
       marginBottom: 3,
     },
     cgvAnnexHeading3: {
       fontSize: 8.5,
-      fontFamily: "Helvetica-Bold",
+      fontFamily: fonts.bold,
+      fontWeight: 700,
       color: c.body,
       marginTop: 6,
       marginBottom: 3,

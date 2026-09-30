@@ -1,0 +1,55 @@
+{
+  "documentType": {
+    "departure": "检查报告-出发",
+    "return": "检验报告-退货"
+  },
+  "documentNumber": "编号{number}",
+  "reservationNumber": "预订#{number}",
+  "sections": {
+    "inspectionDetails": "检查详情",
+    "equipment": "检验设备",
+    "signature": "签名",
+    "notes": "一般说明"
+  },
+  "parties": {
+    "store": "租赁公司",
+    "customer": "客户"
+  },
+  "period": {
+    "date": "日期",
+    "time": "时间",
+    "performedBy": "表演者："
+  },
+  "condition": {
+    "excellent": "优秀",
+    "good": "好",
+    "fair": "公平",
+    "damaged": "损坏",
+    "label": "条件"
+  },
+  "table": {
+    "equipment": "设备",
+    "condition": "条件",
+    "photos": "照片",
+    "notes": "注释"
+  },
+  "signature": {
+    "customerSignature": "客户签名",
+    "signedAt": "签署于",
+    "ipAddress": "IP地址",
+    "notSigned": "未签名"
+  },
+  "footer": {
+    "poweredBy": "技术支持 Louez.io",
+    "generatedOn": "生成于",
+    "page": "页面",
+    "of": "的"
+  },
+  "summary": {
+    "totalItems": "项目",
+    "withIssues": "有问题",
+    "photos": "照片",
+    "damageDetected": "检测到损坏",
+    "noDamage": "无损坏"
+  }
+}

@@ -26,3 +26,19 @@ test("demo routes reject writes and externally supplied layout markers", async (
   );
   assert.equal(spoof.status, 400);
 });
+
+test("demo document language follows the validated query", async () => {
+  for (const locale of ["zh", "ja", "ru", "id", "ko", "unknown"]) {
+    const response = await proxy(
+      new NextRequest(`https://app.louez.io/demos/landing/storefront?locale=${locale}`),
+    );
+    assert.equal(
+      response.headers.get("x-middleware-request-x-louez-demo-locale"),
+      locale === "unknown" ? "fr" : locale,
+    );
+  }
+  const spoof = await proxy(
+    new NextRequest("https://app.louez.io/dashboard", { headers: { "x-louez-demo-locale": "ja" } }),
+  );
+  assert.equal(spoof.status, 400);
+});

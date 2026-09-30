@@ -20,6 +20,7 @@
     "pricing:preflight": "tsx src/scripts/pricing-preflight.ts",
     "pricing:backfill": "tsx src/scripts/pricing-backfill.ts",
     "slugs:backfill": "tsx src/scripts/slugs-backfill.ts",
+    "payments:link-stripe-refunds": "tsx src/scripts/payments-link-stripe-refunds.ts",
     "pricing:parity-report": "tsx src/scripts/pricing-parity-report.ts",
     "pricing:parity-top-products": "tsx src/scripts/pricing-parity-top-products.ts",
     "store:clone": "tsx src/scripts/store-clone.ts"

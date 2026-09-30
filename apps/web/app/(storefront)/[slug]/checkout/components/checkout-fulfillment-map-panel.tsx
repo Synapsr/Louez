@@ -4,6 +4,7 @@ import { Maximize2, Navigation, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { cn } from "@louez/utils";
+import { CheckoutDeliveryLegSummary } from "./checkout-delivery-leg-summary";
 
 import {
   CheckoutFulfillmentMap,
@@ -79,9 +80,7 @@ export const CheckoutFulfillmentMapPanel = ({
 
             <div className="flex items-end justify-between gap-2">
               {summary ? (
-                <span className="rounded-full bg-background/95 px-2.5 py-1 text-xs font-medium tabular-nums shadow-raised backdrop-blur">
-                  {summary}
-                </span>
+                <CheckoutDeliveryLegSummary summary={summary} />
               ) : directionsHref ? (
                 <a
                   href={directionsHref}

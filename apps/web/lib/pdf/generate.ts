@@ -1,6 +1,6 @@
 import { validateReservationContract } from "@louez/api/services";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { ContractDocument, ContractTranslations, SupportedLocale } from "./contract";
+import { ContractDocument, SupportedLocale } from "./contract";
 import { db } from "@louez/db";
 import { documents, reservations, stores } from "@louez/db";
 import { eq, and, sql, desc } from "drizzle-orm";
@@ -9,36 +9,13 @@ import { convertImageForPdf } from "./image-utils";
 import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
 import { getLogoForLightBackground, resolveReservationBilling } from "@louez/utils";
 
-// Import translations
-import frMessages from "@/messages/fr.json";
-import enMessages from "@/messages/en.json";
-import nlMessages from "@/messages/nl.json";
-import deMessages from "@/messages/de.json";
-import esMessages from "@/messages/es.json";
-import itMessages from "@/messages/it.json";
-import ptMessages from "@/messages/pt.json";
-import plMessages from "@/messages/pl.json";
+import { getContractTranslations } from "./contract-i18n";
 import { isLocale } from "@/lib/i18n/format-locale";
 
 interface GenerateContractOptions {
   reservationId: string;
   regenerate?: boolean;
   locale?: SupportedLocale;
-}
-
-// Get translations for the specified locale
-function getTranslations(locale: SupportedLocale): ContractTranslations {
-  const messages = {
-    fr: frMessages,
-    en: enMessages,
-    nl: nlMessages,
-    de: deMessages,
-    es: esMessages,
-    it: itMessages,
-    pt: ptMessages,
-    pl: plMessages,
-  }[locale];
-  return messages.contract;
 }
 
 function toNonEmptyString(value: string | null | undefined): string | null {
@@ -152,7 +129,7 @@ export async function generateContract({
   };
 
   // Get translations for the locale
-  const translations = getTranslations(locale);
+  const translations = getContractTranslations(locale);
 
   // Convert store logo to PDF-compatible format (handles SVG conversion)
   // Use dark logo for PDFs (light background) when store has dark theme
@@ -202,6 +179,7 @@ export async function generateContract({
         taxRate: reservation.taxRate,
         signedAt: reservation.signedAt,
         automaticContractValidation,
+        signedAtBooking: reservation.source === "online",
         signatureIp: reservation.signatureIp,
         createdAt: reservation.createdAt,
         customer: {

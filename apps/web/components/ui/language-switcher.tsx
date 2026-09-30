@@ -55,10 +55,12 @@ export function LanguageSwitcher({ variant = "default", className }: LanguageSwi
 
   if (variant === "minimal") {
     return (
-      <div className={cn("flex items-center gap-1", className)}>
+      <div className={cn("flex flex-wrap items-center gap-1", className)}>
         {locales.map((loc) => (
           <button
             key={loc}
+            aria-label={localeNames[loc]}
+            aria-pressed={locale === loc}
             onClick={() => handleLocaleChange(loc)}
             className={cn(
               "px-2 py-1 text-sm rounded transition-colors",
@@ -130,6 +132,8 @@ export function LanguageSwitcher({ variant = "default", className }: LanguageSwi
         {locales.map((loc) => (
           <DropdownMenuItem
             key={loc}
+            aria-label={localeNames[loc]}
+            aria-pressed={locale === loc}
             onClick={() => handleLocaleChange(loc)}
             className={cn("gap-2 cursor-pointer", locale === loc && "bg-accent")}
           >
@@ -168,6 +172,8 @@ export function LanguageMenuSub() {
         {locales.map((loc) => (
           <DropdownMenuItem
             key={loc}
+            aria-label={localeNames[loc]}
+            aria-pressed={locale === loc}
             onClick={() => handleLocaleChange(loc)}
             className="cursor-pointer"
           >

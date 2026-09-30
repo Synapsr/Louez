@@ -6,6 +6,7 @@ import { calculateDurationMinutes, isRateBasedProduct, minutesToPriceDuration } 
 
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import { calculateDuration } from "@/lib/utils/duration";
+import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibility";
 
 import type { CalculatedEditableItem, EditableItem, ReservationCalculations } from "../types";
 
@@ -83,6 +84,7 @@ export function calculateEditableItemPrice(
   savings: number;
   discountPercent: number | null;
   duration: number;
+  displayDuration: number;
 } {
   const resolvePricingModeFromMinutes = (
     periodMinutes: number | null | undefined,
@@ -136,6 +138,7 @@ export function calculateEditableItemPrice(
       savings: 0,
       discountPercent: null,
       duration,
+      displayDuration: duration,
     };
   }
 
@@ -194,9 +197,12 @@ export function calculateEditableItemPrice(
     tierLabel,
     discount: result.discountPercent ?? 0,
     originalSubtotal: result.originalSubtotal,
-    savings: result.savings,
+    // Ordinary duration rates are cheaper than repeated base periods; that gap
+    // is not a promotion, so only explicit discounts count as savings.
+    savings: getEffectiveDiscountPercent(result) > 0 ? result.savings : 0,
     discountPercent: result.discountPercent,
     duration,
+    displayDuration,
   };
 }
 
@@ -233,6 +239,7 @@ export function useEditReservationPricing({
           ...item,
           totalPrice: 0,
           duration: 0,
+          displayDuration: 0,
           effectiveUnitPrice: item.unitPrice,
           displayPricingMode: item.pricingMode,
           tierLabel: null,
@@ -260,6 +267,7 @@ export function useEditReservationPricing({
         ...item,
         totalPrice: priceResult.totalPrice,
         duration: priceResult.duration,
+        displayDuration: priceResult.displayDuration,
         effectiveUnitPrice: priceResult.effectiveUnitPrice,
         displayPricingMode: priceResult.displayPricingMode,
         tierLabel: priceResult.tierLabel,

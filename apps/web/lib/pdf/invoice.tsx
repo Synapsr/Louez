@@ -111,7 +111,7 @@ function renderAddressBlock(
 
 export const InvoiceDocument = (props: InvoiceDocumentProps) => {
   const t = getInvoicePdfTranslations(props.locale);
-  const styles = createContractStyles(props.primaryColor ?? "#0066FF");
+  const styles = createContractStyles(props.primaryColor ?? "#0066FF", props.locale);
   const sellerRegistration = props.seller.companyNumberScheme === "be_bce" ? "BCE" : "SIREN";
   const buyerName =
     props.buyer.customerType === "business" && props.buyer.companyName

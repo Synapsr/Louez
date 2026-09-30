@@ -1,0 +1,55 @@
+{
+  "documentType": {
+    "departure": "Отчет об инспекции – выезд",
+    "return": "Отчет об инспекции - Возврат"
+  },
+  "documentNumber": "№ {number}",
+  "reservationNumber": "Бронирование №{number}",
+  "sections": {
+    "inspectionDetails": "Детали проверки",
+    "equipment": "Проверенное оборудование",
+    "signature": "Подпись",
+    "notes": "Общие примечания"
+  },
+  "parties": {
+    "store": "Компания по аренде",
+    "customer": "Клиент"
+  },
+  "period": {
+    "date": "Дата",
+    "time": "Время",
+    "performedBy": "Исполнитель:"
+  },
+  "condition": {
+    "excellent": "Отлично",
+    "good": "Хорошо",
+    "fair": "Ярмарка",
+    "damaged": "Поврежденный",
+    "label": "Состояние"
+  },
+  "table": {
+    "equipment": "Оборудование",
+    "condition": "Состояние",
+    "photos": "Фотографии",
+    "notes": "Примечания"
+  },
+  "signature": {
+    "customerSignature": "Подпись клиента",
+    "signedAt": "Подписано в",
+    "ipAddress": "IP-адрес",
+    "notSigned": "Не подписано"
+  },
+  "footer": {
+    "poweredBy": "При поддержке Louez.io",
+    "generatedOn": "Сгенерировано",
+    "page": "Страница",
+    "of": "из"
+  },
+  "summary": {
+    "totalItems": "предметы",
+    "withIssues": "с проблемами",
+    "photos": "фотографии",
+    "damageDetected": "Обнаружено повреждение",
+    "noDamage": "Без повреждений"
+  }
+}

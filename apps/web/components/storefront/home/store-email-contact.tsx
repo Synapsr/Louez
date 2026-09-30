@@ -11,10 +11,12 @@ import { ArrowUpRightIcon, CheckIcon, CopyIcon, MailIcon } from "@louez/ui/icons
 export const StoreEmailContact = ({
   email,
   iconClassName,
+  autoFocus = true,
 }: {
   email: string;
   /** Overrides the icon disc background when the surrounding surface is already muted. */
   iconClassName?: string;
+  autoFocus?: boolean;
 }) => {
   const t = useTranslations("storefront.home");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
@@ -54,6 +56,8 @@ export const StoreEmailContact = ({
         />
       </PopoverTrigger>
       <PopoverPopup
+        initialFocus={autoFocus ? undefined : false}
+        finalFocus={autoFocus ? undefined : false}
         aria-label={t("email")}
         align="start"
         sideOffset={8}

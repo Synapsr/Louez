@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toastManager } from "@louez/ui";
-import { minutesToPriceDuration } from "@louez/utils";
+import { type DurationUnit, minutesToPriceDuration, tierDisplayMaxUnit } from "@louez/utils";
 
 import type { PriceDurationValue } from "@/components/ui/price-duration-input";
 
@@ -27,16 +27,24 @@ const AUTOSAVE_DELAY_MS = 1500;
 
 /** Stored seasonal tiers as editable rows. Exported because saving a period's
  *  metadata has to resend its rates, even for a period you are not editing. */
-export function toStoredTiers(period: SeasonalPricingData): RateTierInput[] {
-  return toFormTiers(period.tiers);
+export function toStoredTiers(
+  period: SeasonalPricingData,
+  baseUnit: DurationUnit,
+): RateTierInput[] {
+  return toFormTiers(period.tiers, baseUnit);
 }
 
-function toFormTiers(tiers: SeasonalPricingData["tiers"]): RateTierInput[] {
+/** Tiers keep the base rate's scale, like the main ladder (see `tierDisplayMaxUnit`). */
+function toFormTiers(
+  tiers: SeasonalPricingData["tiers"],
+  baseUnit: DurationUnit,
+): RateTierInput[] {
+  const maxUnit = tierDisplayMaxUnit(baseUnit);
   return tiers
     .filter((tier) => tier.period !== null && tier.price !== null)
     .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
     .map((tier) => {
-      const { duration, unit } = minutesToPriceDuration(tier.period!);
+      const { duration, unit } = minutesToPriceDuration(tier.period!, maxUnit);
       return { id: tier.id, price: tier.price!, duration, unit };
     });
 }
@@ -47,6 +55,7 @@ export function useSeasonalPricingDraft({
   fallbackDuration,
   isProrated,
   onPriceSaved,
+  readOnly = false,
 }: {
   period: SeasonalPricingData | null;
   fallbackUnit: PriceDurationValue["unit"];
@@ -54,6 +63,8 @@ export function useSeasonalPricingDraft({
   /** Product-level, so a season only reads it — the curve still has to be right. */
   isProrated: boolean;
   onPriceSaved: (periodId: string, price: string) => void;
+  /** Keep edits local without autosave or a flush to the server. */
+  readOnly?: boolean;
 }) {
   const [baseRate, setBaseRateState] = useState<PriceDurationValue>({
     price: "",
@@ -76,7 +87,7 @@ export function useSeasonalPricingDraft({
       duration: fallbackDuration,
       unit: fallbackUnit,
     });
-    setTiersState(toFormTiers(period.tiers));
+    setTiersState(toFormTiers(period.tiers, fallbackUnit));
     setIsDirty(false);
     setStatus("idle");
     // Reloading on anything but the period id would fight the user's typing.
@@ -84,6 +95,7 @@ export function useSeasonalPricingDraft({
   }, [period?.id]);
 
   const save = useCallback(async () => {
+    if (readOnly) return false;
     const { period: current, baseRate: rate, tiers: rows } = latest.current;
     if (!current) return false;
 
@@ -105,10 +117,10 @@ export function useSeasonalPricingDraft({
     }
     onPriceSaved(current.id, rate.price.replace(",", "."));
     return true;
-  }, [onPriceSaved]);
+  }, [onPriceSaved, readOnly]);
 
   useEffect(() => {
-    if (!isDirty || !period) return;
+    if (readOnly || !isDirty || !period) return;
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(async () => {
@@ -126,7 +138,7 @@ export function useSeasonalPricingDraft({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isDirty, baseRate, tiers, period, save]);
+  }, [isDirty, baseRate, tiers, period, save, readOnly]);
 
   /** Commit anything pending — before leaving the season or duplicating it. */
   const flush = useCallback(async () => {
@@ -134,11 +146,11 @@ export function useSeasonalPricingDraft({
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    if (!isDirty) return;
+    if (readOnly || !isDirty) return;
     await save();
     setIsDirty(false);
     setStatus("idle");
-  }, [isDirty, save]);
+  }, [isDirty, save, readOnly]);
 
   const setBaseRate = useCallback((next: PriceDurationValue) => {
     setBaseRateState(next);

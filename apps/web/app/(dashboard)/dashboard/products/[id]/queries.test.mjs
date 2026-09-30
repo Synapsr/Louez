@@ -7,6 +7,7 @@ import * as dateFns from "date-fns";
 import * as orm from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql-proxy";
 import { stripTypeScriptTypes } from "node:module";
+import * as paymentReceipts from "@louez/db/payment-receipts";
 import * as schema from "@louez/db/schema";
 // Execute the revenue queries against fixtures without server auth or a live DB.
 const source = readFileSync(new URL("./queries.ts", import.meta.url), "utf8");
@@ -22,7 +23,7 @@ test("product receipts use line totals, payment periods and store isolation", as
     sqlite.exec(`
       CREATE TABLE reservations (id TEXT, store_id TEXT);
       CREATE TABLE reservation_items (reservation_id TEXT, product_id TEXT, total_price REAL);
-      CREATE TABLE payments (reservation_id TEXT, amount REAL, payment_status TEXT, payment_type TEXT, paid_at TEXT, created_at TEXT, refund_of_payment_id TEXT);
+      CREATE TABLE payments (reservation_id TEXT, amount REAL, payment_status TEXT, payment_type TEXT, paid_at TEXT, created_at TEXT, refund_of_payment_id TEXT, stripe_refund_id TEXT, stripe_payment_intent_id TEXT, stripe_checkout_session_id TEXT);
       INSERT INTO reservations VALUES ('booking', 'store'), ('foreign', 'other-store'), ('free', 'store');
       INSERT INTO reservation_items VALUES
         ('booking', 'free-product', 0), ('booking', 'bags', 28), ('booking', 'insurance', 28),
@@ -50,6 +51,7 @@ test("product receipts use line totals, payment periods and store isolation", as
       ...orm,
       ...dateFns,
       ...schema,
+      ...paymentReceipts,
       db,
     });
     const stats = (productId) => getStats({ storeId: "store", productId });
@@ -70,9 +72,11 @@ test("product receipts use line totals, payment periods and store isolation", as
     };
     addPayment(70.05);
     addPayment(220.95);
-    sqlite.exec(
-      "INSERT INTO payments VALUES ('booking', 50, 'completed', 'rental', '2026-09-01', '2026-09-01', 'original-payment')",
-    );
+    // Rows that give money back are never receipts: a manual refund points at the row it
+    // refunds, a Stripe refund carries only its refund id.
+    sqlite.exec(`INSERT INTO payments VALUES
+      ('booking', 50, 'completed', 'rental', '2026-09-01', '2026-09-01', 'original-payment', NULL, NULL, NULL),
+      ('booking', 30, 'completed', 'rental', '2026-09-01', '2026-09-01', NULL, 're_1', NULL, NULL)`);
     for (const [productId, expected] of [
       ["free-product", 0],
       ["bags", 28],

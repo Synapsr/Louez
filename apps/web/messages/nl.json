@@ -180,7 +180,7 @@
     "loginDescription": "Voer uw e-mail in om door te gaan. Als u geen account heeft, wordt er automatisch een aangemaakt.",
     "reeentLoginTitle": "Welkom bij louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent is de etalage, louez is uw tool: reserveringen, betalingen en agenda beheert u hier. Als u geen account heeft, wordt er automatisch een aangemaakt.",
-    "linkWillBeSent": "Een beveiligde link wordt naar uw e-mail gestuurd. Geen wachtwoord te onthouden.",
+    "linkWillBeSent": "U ontvangt een eenmalige code per e-mail. Een wachtwoord blijft optioneel.",
     "checkEmail": "Controleer uw e-mail",
     "emailSentTo": "Een inloglink is verzonden naar",
     "clickLinkToSignIn": "Klik op de link in de e-mail om in te loggen. De link verloopt over 24 uur.",
@@ -200,7 +200,19 @@
       "verification": "De verificatielink is ongeldig of verlopen.",
       "default": "Er is een fout opgetreden. Probeer het opnieuw.",
       "passwordTooShort": "Het wachtwoord moet minimaal 8 tekens bevatten.",
-      "registrationClosed": "Registratie is gesloten op deze instantie. Vraag de eigenaar om een uitnodiging."
+      "registrationClosed": "Registratie is gesloten op deze instantie. Vraag de eigenaar om een uitnodiging.",
+      "invalidCode": "Deze code is onjuist.",
+      "codeExpired": "Deze code is verlopen. Vraag een nieuwe aan.",
+      "tooManyAttempts": "Te veel pogingen met deze code. Vraag een nieuwe aan.",
+      "tooManyRequests": "Te veel pogingen. Wacht een minuut voordat u het opnieuw probeert.",
+      "passwordTooLong": "Het wachtwoord mag niet langer zijn dan 128 tekens.",
+      "invalidPassword": "Het huidige wachtwoord is onjuist.",
+      "currentPasswordRequired": "Vul uw huidige wachtwoord in.",
+      "passwordAlreadySet": "Dit account heeft al een wachtwoord.",
+      "passwordNotSet": "Dit account heeft geen wachtwoord.",
+      "passwordRemovalUnavailable": "Op deze instantie is het wachtwoord de enige manier om in te loggen: het kan niet worden verwijderd.",
+      "sessionExpired": "Uw sessie is verlopen. Log opnieuw in en probeer het nog eens.",
+      "passwordSignUpDisabled": "Een account aanmaken met een wachtwoord is niet mogelijk. Gebruik een code per e-mail."
     },
     "referralBanner": "{storeName} heeft je uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
     "referralBannerGeneric": "🎁 Je bent uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "Heb je al een account?",
     "usePasswordInstead": "Inloggen met een wachtwoord",
     "useEmailCodeInstead": "Inloggen met een e-mailcode",
-    "passwordLoginDescription": "Log in met je e-mailadres en wachtwoord."
+    "passwordLoginDescription": "Log in met je e-mailadres en wachtwoord.",
+    "forgotPasswordTitle": "Wachtwoord vergeten",
+    "forgotPasswordDescription": "Vul het e-mailadres van uw account in: we sturen u een code waarmee u een nieuw wachtwoord kiest.",
+    "forgotPasswordLogsDescription": "Vul het e-mailadres van uw account in. Deze instantie verstuurt geen e-mails: de code verschijnt in de serverlogs.",
+    "resetCodeSentDescription": "Als er een account bestaat voor <strong>{email}</strong>, is daar zojuist een 6-cijferige code naartoe gestuurd. Vul die hieronder in om een nieuw wachtwoord te kiezen.",
+    "newPasswordTitle": "Kies een nieuw wachtwoord",
+    "newPasswordDescription": "U wordt ingelogd zodra het is opgeslagen. Uw andere apparaten worden uitgelogd.",
+    "newPassword": "Nieuw wachtwoord",
+    "saveNewPassword": "Opslaan en inloggen",
+    "requestNewCode": "Nieuwe code ontvangen",
+    "backToLogin": "Terug naar inloggen",
+    "showPassword": "Wachtwoord tonen",
+    "hidePassword": "Wachtwoord verbergen",
+    "passwordRules": {
+      "minLength": "Minstens {count} tekens"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} nodigt u uit om lid te worden van het team",
@@ -486,6 +513,8 @@
       "removeMember": "Uit team verwijderen",
       "memberAdded": "Teamlid succesvol toegevoegd",
       "memberRemoved": "Teamlid verwijderd",
+      "googleAccessReminder": "Controleer ook de Google Search Console-toegang wanneer een lid vertrekt. Verwijderen uit Louez trekt diens Google-toegang niet in.",
+      "reviewGoogleAccess": "Google-toegang controleren",
       "pendingInvitations": "Openstaande uitnodigingen",
       "pendingInvitationsDescription": "Deze personen hebben hun uitnodiging nog niet geaccepteerd",
       "invitationSent": "Uitnodiging per e-mail verzonden",
@@ -2274,7 +2303,7 @@
         "deposit": "Borg",
         "save": "Opslaan",
         "saved": "Reservering bijgewerkt",
-        "cannotRemoveLastItem": "Het laatste artikel kan niet worden verwijderd",
+        "cannotRemoveLastItem": "Een reservering houdt minstens één artikel: voeg eerst het nieuwe artikel toe voordat u dit verwijdert",
         "noItems": "Voeg minstens een artikel toe",
         "datesRequired": "Begin- en einddatum zijn verplicht",
         "notifyCustomerByEmail": "Klant per e-mail informeren",
@@ -2639,7 +2668,8 @@
         "bufferConflictConfirm": "Toch toewijzen",
         "optionsLabel": "Opties",
         "clearSelection": "Selectie wissen",
-        "autofillHint": "Voorgestelde eenheden geselecteerd. Klik op Opslaan om te bevestigen."
+        "autofillHint": "Voorgestelde eenheden geselecteerd. Klik op Opslaan om te bevestigen.",
+        "suggestUnits": "Eenheden voorstellen"
       },
       "smartActions": {
         "paymentIncomplete": "Huur niet betaald ({remaining} resterend)",
@@ -4359,7 +4389,22 @@
         "create": "Aanmaken",
         "revokeTitle": "API-sleutel intrekken?",
         "revokeDescription": "Deze actie is onomkeerbaar. Elke applicatie die deze sleutel gebruikt, verliest onmiddellijk de toegang.",
-        "revokeConfirm": "Intrekken"
+        "revokeConfirm": "Intrekken",
+        "presetCustom": "Aangepast",
+        "domains": {
+          "reservations": "Reserveringen",
+          "products": "Producten",
+          "customers": "Klanten",
+          "categories": "Categorieën",
+          "payments": "Betalingen",
+          "analytics": "Analyses",
+          "settings": "Instellingen"
+        },
+        "levels": {
+          "none": "Geen toegang",
+          "read": "Lezen",
+          "write": "Lezen en schrijven"
+        }
       },
       "businessHours": {
         "title": "Openingstijden",
@@ -4550,6 +4595,11 @@
           "step3": "Kies de methode “HTML-tag”, plak de tag of de code hieronder en sla op voordat je in Search Console op “Verifiëren” klikt.",
           "label": "Verificatiecode",
           "help": "De hele tag of alleen de inhoud; de code blijft actief zolang hij hier is opgeslagen.",
+          "accessDescription": "Deze code geeft het gekoppelde Google-account eigenaarsrechten voor je winkel in Search Console: statistieken bekijken, gebruikers beheren en verwijdering uit Google-zoekresultaten aanvragen.",
+          "ownerOnly": "Alleen de winkeleigenaar en Louez-beheerders kunnen deze code wijzigen.",
+          "removeCode": "Code verwijderen",
+          "revokeHelp": "Trek de toegang in door de gebruiker en al diens eigendomsbewijzen in Search Console te verwijderen. Staat de code in dit veld, maak het dan leeg en sla op. Een lid uit Louez verwijderen trekt diens Google-toegang niet in.",
+          "manageAccess": "Google-toegang intrekken",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
@@ -5284,7 +5334,7 @@
         "active": "Actief",
         "activeSessions": "Actieve sessies",
         "activeSessionsDescription": "Beheer uw inlogsessies",
-        "sessionCount": "{count} sessie",
+        "sessionCount": "{count, plural, one {# ingelogd apparaat} other {# ingelogde apparaten}}",
         "changePassword": "Wachtwoord wijzigen",
         "dangerZone": "Gevarenzone",
         "dangerZoneDescription": "Onomkeerbare acties op uw account",
@@ -5347,6 +5397,51 @@
           "saved": "Sneltoetsen opgeslagen",
           "conflict": "Deze sneltoets wordt al gebruikt voor ‘{action}’.",
           "resetAction": "‘{action}’ herstellen"
+        },
+        "signIn": {
+          "title": "Inloggen",
+          "description": "De manieren om in te loggen op uw account",
+          "emailCode": "Code per e-mail",
+          "alwaysActive": "Altijd actief",
+          "unavailable": "Niet beschikbaar",
+          "google": "Google",
+          "linked": "Gekoppeld",
+          "notLinked": "Niet gekoppeld",
+          "linkGoogle": "Koppelen",
+          "googleLinkError": "Dit Google-account kon niet worden gekoppeld. Controleer of het hetzelfde e-mailadres gebruikt als uw Louez-account.",
+          "password": "Wachtwoord",
+          "passwordNotSet": "Niet ingesteld",
+          "passwordSetOn": "Ingesteld op {date}",
+          "setPassword": "Instellen",
+          "changePassword": "Wijzigen",
+          "removePassword": "Verwijderen",
+          "setPasswordTitle": "Een wachtwoord instellen",
+          "setPasswordDescription": "Een wachtwoord is optioneel: de code per e-mail blijft altijd beschikbaar. Uw andere apparaten worden uitgelogd.",
+          "newPasswordLabel": "Nieuw wachtwoord",
+          "currentPasswordLabel": "Huidig wachtwoord",
+          "setPasswordSubmit": "Wachtwoord instellen",
+          "changePasswordDescription": "Uw andere apparaten worden uitgelogd.",
+          "changePasswordSubmit": "Wachtwoord wijzigen",
+          "removePasswordTitle": "Wachtwoord verwijderen?",
+          "removePasswordDescription": "U blijft inloggen met een code per e-mail. U kunt op elk moment een nieuw wachtwoord instellen.",
+          "removePasswordConfirm": "Wachtwoord verwijderen",
+          "cancel": "Annuleren",
+          "passwordSetToast": "Wachtwoord ingesteld",
+          "passwordChangedToast": "Wachtwoord gewijzigd",
+          "passwordRemovedToast": "Wachtwoord verwijderd"
+        },
+        "passwordAlert": {
+          "title": "Was u dit niet?",
+          "description": "Het wachtwoord van het account {email} is zojuist toegevoegd, gewijzigd of verwijderd. Hebt u hier niets mee te maken, beveilig dan nu uw account.",
+          "effectPassword": "Het wachtwoord wordt van het account verwijderd.",
+          "effectSessions": "Alle apparaten worden uitgelogd, ook dit apparaat.",
+          "effectSignIn": "U logt daarna opnieuw in met een code per e-mail.",
+          "unavailable": "Op deze instantie is het wachtwoord de enige manier om in te loggen: het kan niet worden verwijderd. Wijzig het vanuit uw account.",
+          "confirm": "Mijn account beveiligen",
+          "itWasMe": "Dit was ik zelf",
+          "doneTitle": "Uw account is beveiligd",
+          "doneDescription": "Het wachtwoord is verwijderd en alle apparaten zijn uitgelogd. Log opnieuw in met een code per e-mail.",
+          "signInAgain": "Opnieuw inloggen"
         }
       },
       "admin": {
@@ -6073,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "Eén reservering, één pagina",
           "description": "Geen stappen meer om door te lopen: klant, periode, producten en levering passen op één pagina, met het overzicht altijd ernaast. En alles waarvoor u de reservering daarna opnieuw moest openen — een korting, een afgesproken prijs, de waarborg, een passant — regelt u nu meteen."
+        },
+        "optional-password": {
+          "title": "Een wachtwoord, als u dat wilt",
+          "description": "Voeg een wachtwoord toe aan uw account om in te loggen zonder op de code per e-mail te wachten. De code blijft altijd beschikbaar."
         }
       }
     },
@@ -8053,7 +8152,10 @@
       "rental": "Verhuur",
       "deposit": "Borg",
       "deposit_return": "Borgterugbetaling",
-      "damage": "Schade"
+      "damage": "Schade",
+      "deposit_hold": "Autorisatie",
+      "deposit_capture": "Borg geïnd",
+      "adjustment": "Aanpassing"
     },
     "paymentMethods": {
       "stripe": "Online kaart",
@@ -8065,7 +8167,8 @@
     },
     "paymentStatus": {
       "completed": "Betaald",
-      "pending": "In behandeling"
+      "pending": "In behandeling",
+      "authorized": "Geautoriseerd"
     },
     "signature": {
       "validated": "Gevalideerd",
@@ -8076,7 +8179,11 @@
       "dateLabel": "Datum:",
       "ipLabel": "IP:",
       "automatic": "Automatisch bevestigd",
-      "automaticText": "Deze overeenkomst is automatisch bevestigd volgens de huurvoorwaarden."
+      "automaticText": "Deze overeenkomst is automatisch bevestigd volgens de huurvoorwaarden.",
+      "atBooking": "Ondertekend bij reservering",
+      "atBookingText": "Algemene huurvoorwaarden geaccepteerd bij de online reservering, wat geldt als ondertekening van deze overeenkomst.",
+      "signedOnLabel": "Ondertekend op:",
+      "validatedOnLabel": "Bevestigd op:"
     },
     "conditions": {
       "condition1": "Het materiaal wordt in goede staat verhuurd",

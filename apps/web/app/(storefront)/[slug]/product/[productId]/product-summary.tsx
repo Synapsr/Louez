@@ -26,6 +26,7 @@ import {
 
 interface ProductSummaryProps {
   product: ProductPageProduct;
+  getCategoryHref?: (href: string) => string;
   seasonalSegments?: PricingSegment[];
   rentalPrice?: number;
   /** Length of the selected period, to average a rate across seasons. */
@@ -36,6 +37,7 @@ interface ProductSummaryProps {
 /** Category, title, base rate, stock: what a visitor reads first. */
 export const ProductSummary = ({
   product,
+  getCategoryHref,
   booking,
   seasonalSegments,
   rentalPrice,
@@ -68,7 +70,10 @@ export const ProductSummary = ({
         <div>
           <CategoryPill
             size="sm"
-            href={buildCategoryBrowseHref(getCategoryToken(product.category))}
+            href={
+              getCategoryHref?.(buildCategoryBrowseHref(getCategoryToken(product.category))) ??
+              buildCategoryBrowseHref(getCategoryToken(product.category))
+            }
           >
             {product.category.name}
           </CategoryPill>

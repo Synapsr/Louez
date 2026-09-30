@@ -16,6 +16,7 @@ import { db } from '@louez/db'
 import { subscriptions, storeMembers, stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { getStorefrontUrl } from '@/lib/storefront-url'
+import type { SignInMethod } from '@/lib/utils/util.sign-in-method'
 import { env } from '@/env'
 
 // ---------------------------------------------------------------------------
@@ -197,7 +198,7 @@ export async function notifyStoreCreated(store: StoreInfo): Promise<void> {
 export async function notifyUserSignedIn(
   userId: string,
   email: string,
-  method: 'magic link' | 'google'
+  method: SignInMethod
 ): Promise<void> {
   trackFromHello('user_signed_in', { email, method }, { externalId: userId }).catch(() => {})
   if (!isEnabled()) return

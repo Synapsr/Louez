@@ -2,7 +2,7 @@
 
 import { DisabledControlsProvider } from "@louez/ui";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -47,6 +47,9 @@ const DIGEST_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const formatHour = (hour: number) => `${String(hour).padStart(2, "0")}:00`;
 
 interface NotificationsFormProps {
+  /** Keep edits local and skip device integrations. */
+  readOnly?: boolean;
+  renderSmsPreview?: (message: string) => ReactNode;
   settings: NotificationSettings;
   discordWebhookUrl: string | null;
   ownerPhone: string | null;
@@ -113,6 +116,8 @@ export const NotificationsForm = ({
   storeLocale,
   storeLanguageName,
   storeInfo,
+  readOnly = false,
+  renderSmsPreview,
 }: NotificationsFormProps) => {
   const t = useTranslations("dashboard.settings.notifications");
   const tc = useTranslations("common");
@@ -198,6 +203,8 @@ export const NotificationsForm = ({
       },
     }));
 
+    if (readOnly) return;
+
     try {
       await updateSinglePreferenceMutation.mutateAsync({ eventType, channel, enabled });
     } catch {
@@ -226,6 +233,8 @@ export const NotificationsForm = ({
       },
     }));
 
+    if (readOnly) return;
+
     try {
       await updateCustomerPreferenceMutation.mutateAsync({ eventType, channel, enabled });
     } catch {
@@ -241,6 +250,10 @@ export const NotificationsForm = ({
   };
 
   const handleSaveWebhook = async () => {
+    if (readOnly) {
+      setIsDiscordConnected(!!discordWebhookUrl);
+      return;
+    }
     try {
       const result = await updateDiscordWebhookMutation.mutateAsync(discordWebhookUrl || null);
       if (result.error) {
@@ -255,6 +268,7 @@ export const NotificationsForm = ({
   };
 
   const handleTestDiscord = async () => {
+    if (readOnly) return;
     try {
       const result = await testDiscordWebhookMutation.mutateAsync();
       if (result.error) {
@@ -268,6 +282,10 @@ export const NotificationsForm = ({
   };
 
   const handleSavePhone = async () => {
+    if (readOnly) {
+      setIsSmsConfigured(!!ownerPhone);
+      return;
+    }
     try {
       const result = await updateOwnerPhoneMutation.mutateAsync(ownerPhone || null);
       if (result.error) {
@@ -287,6 +305,11 @@ export const NotificationsForm = ({
 
   const handleOpenTemplateModal = async (eventType: CustomerNotificationEventType) => {
     setEditingEventType(eventType);
+    if (readOnly) {
+      setEditingTemplate(customerSettings.templates[eventType] ?? null);
+      setTemplateModalOpen(true);
+      return;
+    }
     try {
       const result = await queryClient.fetchQuery(
         orpc.dashboard.notifications.getCustomerTemplate.queryOptions({
@@ -303,6 +326,16 @@ export const NotificationsForm = ({
 
   const handleSaveTemplate = async (template: CustomerNotificationTemplate) => {
     if (!editingEventType) return;
+    if (readOnly) {
+      setCustomerSettings((prev) => ({
+        ...prev,
+        templates: { ...prev.templates, [editingEventType]: template },
+      }));
+      setTemplateModalOpen(false);
+      setEditingEventType(null);
+      setEditingTemplate(null);
+      return;
+    }
 
     try {
       await updateCustomerTemplateMutation.mutateAsync({
@@ -334,6 +367,8 @@ export const NotificationsForm = ({
       setReturnReminderHours(hours);
     }
 
+    if (readOnly) return;
+
     try {
       await updateReminderSettingsMutation.mutateAsync({
         pickupReminderHours: type === "pickup" ? hours : pickupReminderHours,
@@ -353,6 +388,8 @@ export const NotificationsForm = ({
     mode?: AdminReminderMode;
     digestHour?: number;
   }) => {
+    if (readOnly) return;
+
     try {
       await updateAdminReminderSettingsMutation.mutateAsync({
         pickupReminderHours: overrides.pickupReminderHours ?? adminPickupReminderHours,
@@ -409,9 +446,11 @@ export const NotificationsForm = ({
           </div>
 
           {/* Push notifications for this device */}
-          <DisabledControlsProvider disabled={false}>
-            <PushManageCard />
-          </DisabledControlsProvider>
+          {!readOnly && (
+            <DisabledControlsProvider disabled={false}>
+              <PushManageCard />
+            </DisabledControlsProvider>
+          )}
 
           {/* Phone & Discord Cards - Side by side on large screens */}
           <div className="grid gap-6 lg:grid-cols-2">
@@ -456,7 +495,7 @@ export const NotificationsForm = ({
                     <Button
                       variant="ghost"
                       className="h-7 text-xs"
-                      render={<Link href="/dashboard/sms" />}
+                      render={<Link href="/dashboard/sms" prefetch={readOnly ? false : undefined} onClick={readOnly ? (event) => event.preventDefault() : undefined} />}
                     >
                       {t("sms.manage")}
                       <ExternalLinkIcon className="ml-1 h-3 w-3" />
@@ -471,7 +510,7 @@ export const NotificationsForm = ({
                         <Button
                           variant="destructive"
                           className="w-full"
-                          render={<Link href="/dashboard/sms" />}
+                          render={<Link href="/dashboard/sms" prefetch={readOnly ? false : undefined} onClick={readOnly ? (event) => event.preventDefault() : undefined} />}
                         >
                           {t("sms.buyCredits")}
                         </Button>
@@ -549,6 +588,7 @@ export const NotificationsForm = ({
                     </Button>
                   )}
                   <a
+                    onClick={readOnly ? (event) => event.preventDefault() : undefined}
                     href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -863,7 +903,7 @@ export const NotificationsForm = ({
         {/* ================================================================ */}
         {/* CUSTOMER NOTIFICATIONS SECTION */}
         {/* ================================================================ */}
-        <div className="space-y-6">
+        <div className="space-y-6" data-demo-target="customer-notifications">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1 space-y-1">
               <h2 className="text-base font-semibold">{t("customerSection.title")}</h2>
@@ -1059,7 +1099,7 @@ export const NotificationsForm = ({
                       limit: smsQuota.limit ?? 0,
                     })}
               </span>
-              <Button variant="outline" render={<Link href="/dashboard/sms" />}>
+              <Button variant="outline" render={<Link href="/dashboard/sms" prefetch={readOnly ? false : undefined} onClick={readOnly ? (event) => event.preventDefault() : undefined} />}>
                 {t("sms.buyMore")}
               </Button>
             </AlertDescription>
@@ -1076,6 +1116,9 @@ export const NotificationsForm = ({
             onSave={handleSaveTemplate}
             locale={storeLocale}
             store={storeInfo}
+            autoFocus={!readOnly}
+            modal={!readOnly}
+            renderSmsPreview={renderSmsPreview}
           />
         )}
       </div>
@@ -1211,6 +1254,7 @@ const CustomerNotificationRow = ({
       <div className="flex items-center gap-4 flex-shrink-0">
         <div className="w-10 flex justify-center">
           <Switch
+            data-demo-target={`${eventType}-email`}
             checked={config.email}
             onCheckedChange={(checked) => onToggle(eventType, "email", checked)}
             disabled={isPending}
@@ -1228,6 +1272,7 @@ const CustomerNotificationRow = ({
             </Tooltip>
           ) : (
             <Switch
+              data-demo-target={`${eventType}-sms`}
               checked={config.sms}
               onCheckedChange={(checked) => onToggle(eventType, "sms", checked)}
               disabled={isPending || smsDisabled}
@@ -1236,6 +1281,7 @@ const CustomerNotificationRow = ({
         </div>
         <div className="w-8 flex justify-center">
           <Button
+            data-demo-target={`${eventType}-template`}
             variant="ghost"
             size="icon"
             className="h-7 w-7"

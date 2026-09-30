@@ -56,10 +56,13 @@ function InputDuration<TUnit extends string = string>({
   className,
 }: InputDurationProps<TUnit>) {
   const [localValue, setLocalValue] = useState(formatAmount(value));
-  const inputRef = useRef<HTMLInputElement>(null);
+  // True once the user has typed since the last commit. Only a real edit may be
+  // committed: a list that re-sorts on commit can hand this field another row's
+  // value, and blurring must not write the old text back over it.
+  const isEditingRef = useRef(false);
 
   useEffect(() => {
-    if (document.activeElement !== inputRef.current) {
+    if (!isEditingRef.current) {
       setLocalValue(formatAmount(value));
     }
   }, [value]);
@@ -67,6 +70,11 @@ function InputDuration<TUnit extends string = string>({
   const selectedUnit = units.find((option) => option.value === unit);
 
   function commit() {
+    if (!isEditingRef.current) {
+      setLocalValue(formatAmount(value));
+      return;
+    }
+    isEditingRef.current = false;
     const parsed = parseInt(localValue, 10);
     const final = Number.isNaN(parsed) ? 0 : parsed;
     setLocalValue(formatAmount(final));
@@ -74,21 +82,24 @@ function InputDuration<TUnit extends string = string>({
   }
 
   return (
-    <InputGroup className={cn('w-32', className)}>
+    <InputGroup className={cn('w-40', className)}>
       <InputGroupInput
-        ref={inputRef}
         inputMode="numeric"
         value={localValue}
         onChange={(event) => {
           const raw = event.target.value;
           if (raw === '' || /^\d+$/.test(raw)) {
+            isEditingRef.current = true;
             setLocalValue(raw);
           }
         }}
+        // Typing replaces the amount instead of appending to it
+        onFocus={(event) => event.target.select()}
         onBlur={commit}
         onKeyDown={(event) => {
           if (event.key === 'Escape') {
             event.preventDefault();
+            isEditingRef.current = false;
             setLocalValue(formatAmount(value));
             onCancel?.();
             return;
@@ -102,7 +113,8 @@ function InputDuration<TUnit extends string = string>({
         disabled={disabled}
         aria-label={ariaLabel}
         aria-invalid={ariaInvalid}
-        className="tabular-nums"
+        // Long unit labels ("semaines") must never squeeze the amount out of view
+        className="min-w-12 tabular-nums"
       />
       <Select
         value={unit}
@@ -116,7 +128,7 @@ function InputDuration<TUnit extends string = string>({
         <SelectTrigger
           data-slot="input-group-control"
           aria-label={unitAriaLabel}
-          className="bg-muted/50 text-muted-foreground min-h-0 w-auto min-w-0 gap-1.5 self-stretch rounded-none rounded-r-[calc(var(--radius-lg)-1px)] border-0 border-l px-2.5 text-sm before:hidden focus-visible:ring-0 sm:text-sm [&_svg]:me-0 [&_svg]:size-3.5"
+          className="bg-muted/50 text-muted-foreground min-h-0 w-auto min-w-0 shrink gap-1.5 self-stretch rounded-none rounded-r-[calc(var(--radius-lg)-1px)] border-0 border-l px-2.5 text-sm before:hidden focus-visible:ring-0 sm:text-sm [&_svg]:me-0 [&_svg]:size-3.5"
         >
           <SelectValue>{selectedUnit?.label}</SelectValue>
         </SelectTrigger>

@@ -39,11 +39,13 @@ export {
   effectiveProductQuantitySql,
   getEffectiveProductQuantities,
 } from "./product-quantity";
+export { isPaymentReceiptSql, isStripeRefundPaymentSql } from "./payment-receipts";
 export {
   BLOCKING_RESERVATION_STATUSES,
   buildReservationAvailabilityPredicate,
   buildReservationOverlapPredicate,
   reservationAvailabilityEndSql,
+  reservationStillHoldsUnitsSql,
   getReservationAvailabilityEnd,
   buildUnitInDowntimeAtPredicate,
   buildUnitRentableDuringPredicate,

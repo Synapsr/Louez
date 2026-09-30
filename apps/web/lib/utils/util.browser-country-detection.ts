@@ -1,37 +1,39 @@
-import { SUPPORTED_COUNTRIES, getCountryByCode } from '@/lib/utils/countries';
+import { SUPPORTED_COUNTRIES, getCountryByCode } from "@/lib/utils/countries";
 
-export const ONBOARDING_FALLBACK_COUNTRY = 'FR';
+export const ONBOARDING_FALLBACK_COUNTRY = "FR";
 
 const LANGUAGE_TO_COUNTRY: Record<string, string> = {
-  fr: 'FR',
-  en: 'US',
-  de: 'DE',
-  es: 'ES',
-  it: 'IT',
-  nl: 'NL',
-  pl: 'PL',
-  pt: 'PT',
-  ja: 'JP',
-  zh: 'CN',
-  ko: 'KR',
+  fr: "FR",
+  en: "US",
+  de: "DE",
+  es: "ES",
+  it: "IT",
+  nl: "NL",
+  pl: "PL",
+  zh: "CN",
+  ja: "JP",
+  ru: "RU",
+  id: "ID",
+  ko: "KR",
+  pt: "PT",
 };
 
 export interface BrowserCountryDetection {
   country: string;
-  source: 'timezone' | 'locale-region' | 'language-map' | 'fallback';
+  source: "timezone" | "locale-region" | "language-map" | "fallback";
   localeCandidates: string[];
   timezone: string | null;
   matchedLocaleRegion: string | null;
 }
 
 function extractRegionCode(locale: string): string | null {
-  const normalizedLocale = locale.replace('_', '-');
+  const normalizedLocale = locale.replace("_", "-");
 
   try {
     const region = new Intl.Locale(normalizedLocale).region;
     return region?.toUpperCase() ?? null;
   } catch {
-    const parts = normalizedLocale.split('-');
+    const parts = normalizedLocale.split("-");
     const possibleRegion = parts.at(-1)?.toUpperCase();
 
     if (!possibleRegion || possibleRegion.length !== 2) {
@@ -43,15 +45,15 @@ function extractRegionCode(locale: string): string | null {
 }
 
 function getBrowserLocaleCandidates(): string[] {
-  if (typeof navigator === 'undefined') return [];
+  if (typeof navigator === "undefined") return [];
 
-  return [navigator.language, ...(navigator.languages ?? [])].filter(
-    (locale): locale is string => Boolean(locale),
+  return [navigator.language, ...(navigator.languages ?? [])].filter((locale): locale is string =>
+    Boolean(locale),
   );
 }
 
 function getBrowserTimezone(): string | null {
-  if (typeof Intl === 'undefined') return null;
+  if (typeof Intl === "undefined") return null;
 
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone ?? null;
@@ -63,10 +65,7 @@ function getBrowserTimezone(): string | null {
 function getCountryFromTimezone(timezone: string | null): string | null {
   if (!timezone) return null;
 
-  return (
-    SUPPORTED_COUNTRIES.find((country) => country.timezone === timezone)?.code ??
-    null
-  );
+  return SUPPORTED_COUNTRIES.find((country) => country.timezone === timezone)?.code ?? null;
 }
 
 export function detectCountryFromBrowser(): BrowserCountryDetection {
@@ -77,7 +76,7 @@ export function detectCountryFromBrowser(): BrowserCountryDetection {
   if (timezoneCountry) {
     return {
       country: timezoneCountry,
-      source: 'timezone',
+      source: "timezone",
       localeCandidates,
       timezone,
       matchedLocaleRegion: null,
@@ -89,7 +88,7 @@ export function detectCountryFromBrowser(): BrowserCountryDetection {
     if (regionCode && getCountryByCode(regionCode)) {
       return {
         country: regionCode,
-        source: 'locale-region',
+        source: "locale-region",
         localeCandidates,
         timezone,
         matchedLocaleRegion: regionCode,
@@ -98,14 +97,12 @@ export function detectCountryFromBrowser(): BrowserCountryDetection {
   }
 
   const primaryLanguage = localeCandidates[0]?.split(/[-_]/)[0]?.toLowerCase();
-  const languageCountry = primaryLanguage
-    ? LANGUAGE_TO_COUNTRY[primaryLanguage]
-    : null;
+  const languageCountry = primaryLanguage ? LANGUAGE_TO_COUNTRY[primaryLanguage] : null;
 
   if (languageCountry) {
     return {
       country: languageCountry,
-      source: 'language-map',
+      source: "language-map",
       localeCandidates,
       timezone,
       matchedLocaleRegion: null,
@@ -114,7 +111,7 @@ export function detectCountryFromBrowser(): BrowserCountryDetection {
 
   return {
     country: ONBOARDING_FALLBACK_COUNTRY,
-    source: 'fallback',
+    source: "fallback",
     localeCandidates,
     timezone,
     matchedLocaleRegion: null,
@@ -122,6 +119,6 @@ export function detectCountryFromBrowser(): BrowserCountryDetection {
 }
 
 export function getBrowserLanguage(): string {
-  const localeCandidate = getBrowserLocaleCandidates()[0] ?? 'fr';
-  return localeCandidate.split(/[-_]/)[0]?.toLowerCase() || 'fr';
+  const localeCandidate = getBrowserLocaleCandidates()[0] ?? "fr";
+  return localeCandidate.split(/[-_]/)[0]?.toLowerCase() || "fr";
 }

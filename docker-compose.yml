@@ -90,8 +90,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
       background-removal:
         condition: service_healthy
     restart: unless-stopped
@@ -125,20 +123,41 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # MinIO no longer publishes images (minio/minio is gone from Docker Hub and
+  # quay.io); Chainguard rebuilds it from source and keeps it patched. Same
+  # binary and on-disk format, so existing minio_data volumes keep working.
   minio:
-    image: minio/minio:latest
-    command: server /data
+    image: cgr.dev/chainguard/minio:latest
+    # The former upstream image ran as root, so volumes it created are
+    # root-owned; the Chainguard default (uid 65532) could not write to them.
+    user: "0:0"
+    # A bucket is a top-level directory of the data drive: creating it here
+    # replaces a one-shot `mc mb` job. The bucket stays private — the app
+    # streams assets through /files with its own credentials.
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["mkdir -p /data/louez && exec minio server /data"]
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-louez}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-louez-minio-secret}
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/live || exit 1"]
+      # The image ships no curl, wget or grep: plain bash probes the
+      # liveness endpoint over /dev/tcp, without credentials.
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /minio/health/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          read -r status <&3 && [[ $$status == *' 200 '* ]]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     restart: unless-stopped
+
 
   # One-shot bucket bootstrap. The bucket stays private: the app streams
   # assets through /files with its own credentials.
@@ -168,6 +187,7 @@ services:
       - WATCHTOWER_INCLUDE_STOPPED=true
       - WATCHTOWER_REVIVE_STOPPED=false
     restart: unless-stopped
+
 
 volumes:
   louez_data:

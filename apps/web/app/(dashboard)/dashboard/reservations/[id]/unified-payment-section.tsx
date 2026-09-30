@@ -62,6 +62,7 @@ import { useStoreTimezone } from "@/contexts/store-context";
 import { ReferralNudge } from "@/components/dashboard/referral-nudge";
 import { orpc } from "@/lib/orpc/react";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
+import { isRefundRow, isStripeRefundRow } from "@/lib/reservations/util.payment-status";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
@@ -96,6 +97,7 @@ interface Payment {
   stripeChargeId?: string | null;
   stripePaymentIntentId?: string | null;
   stripeCheckoutSessionId?: string | null;
+  stripeRefundId?: string | null;
   refundOfPaymentId: string | null;
 }
 
@@ -840,7 +842,7 @@ export function UnifiedPaymentSection({
 
           {/* Deposit Section */}
           {deposit > 0 && (
-            <div className="space-y-3 pt-3 border-t">
+            <div data-reservation-deposit className="space-y-3 pt-3 border-t">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-muted-foreground" />
@@ -1157,7 +1159,7 @@ export function UnifiedPaymentSection({
                                 {t("payment.statusRefunded")}
                               </Badge>
                             )}
-                            {payment.refundOfPaymentId && (
+                            {(payment.refundOfPaymentId || isStripeRefundRow(payment)) && (
                               <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
                                 {t("payment.refundBadge")}
                               </Badge>
@@ -1184,8 +1186,7 @@ export function UnifiedPaymentSection({
                         <span
                           className={cn(
                             "font-mono font-medium",
-                            (payment.type === "deposit_return" || payment.refundOfPaymentId) &&
-                              "text-emerald-600 dark:text-emerald-400",
+                            isRefundRow(payment) && "text-emerald-600 dark:text-emerald-400",
                             payment.type === "damage" && "text-red-600 dark:text-red-400",
                             payment.type === "deposit_capture" && "text-red-600 dark:text-red-400",
                             payment.type === "adjustment" &&
@@ -1197,7 +1198,7 @@ export function UnifiedPaymentSection({
                             payment.status === "cancelled" && "text-muted-foreground line-through",
                           )}
                         >
-                          {payment.type === "deposit_return" || payment.refundOfPaymentId
+                          {isRefundRow(payment)
                             ? "-"
                             : payment.type === "adjustment"
                               ? parseFloat(payment.amount) < 0

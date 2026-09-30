@@ -10,6 +10,7 @@ import {
   getEffectiveProductQuantities,
   lockProductReservationsForStockKindChange,
   nextProductSlug,
+  reservationStillHoldsUnitsSql,
 } from "@louez/db";
 import {
   categories,
@@ -281,6 +282,7 @@ async function getAssignedBlockingUnitIds({
         inArray(reservationItemUnits.productUnitId, unitIds),
         eq(reservations.storeId, storeId),
         inArray(reservations.status, blockingStatuses),
+        reservationStillHoldsUnitsSql(),
       ),
     );
 
@@ -1286,28 +1288,36 @@ export async function updateProductsOrder(productIds: string[]) {
     return { error: "errors.unauthorized" };
   }
 
-  // Verify all products belong to this store
+  // Current catalogue order, read the same way the dashboard and storefront sort.
   const storeProducts = await db.query.products.findMany({
     where: eq(products.storeId, store.id),
-    columns: { id: true },
+    columns: { id: true, displayOrder: true },
+    orderBy: (p, { asc, desc }) => [asc(p.displayOrder), desc(p.createdAt)],
   });
   const storeProductIds = new Set(storeProducts.map((p) => p.id));
+  const reorderedIds = [...new Set(productIds)].filter((id) => storeProductIds.has(id));
+  const reorderedSet = new Set(reorderedIds);
 
-  // Filter to only include valid product IDs
-  const validProductIds = productIds.filter((id) => storeProductIds.has(id));
-
-  // Update display order for each product
-  await Promise.all(
-    validProductIds.map((productId, index) =>
-      db
-        .update(products)
-        .set({
-          displayOrder: index,
-          updatedAt: new Date(),
-        })
-        .where(eq(products.id, productId)),
-    ),
+  // The dialog may list only part of the catalogue (filters, list cap). Put the
+  // reordered products back into the slots they already held, then renumber
+  // everything so products outside the list keep their place and no two
+  // products share a position.
+  let nextReordered = 0;
+  const finalOrder = storeProducts.map((product) =>
+    reorderedSet.has(product.id) ? reorderedIds[nextReordered++] : product.id,
   );
+  const currentOrder = new Map(storeProducts.map((p) => [p.id, p.displayOrder]));
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    for (const [index, productId] of finalOrder.entries()) {
+      if (currentOrder.get(productId) === index) continue;
+      await tx
+        .update(products)
+        .set({ displayOrder: index, updatedAt: now })
+        .where(and(eq(products.storeId, store.id), eq(products.id, productId)));
+    }
+  });
 
   revalidatePath("/dashboard/products");
   return { success: true };
