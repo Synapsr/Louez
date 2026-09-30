@@ -110,7 +110,7 @@ async function checkCustomFields(params: {
   values: CustomerFieldValues | undefined
   partial: boolean
 }) {
-  const definitions = await listCustomerFieldDefinitions(params.storeId, { activeOnly: true })
+  const definitions = await listCustomerFieldDefinitions(params.storeId, { activeOnly: true, scope: 'customer' })
   const { values, issues } = validateCustomerFieldValues({
     definitions,
     values: params.values,

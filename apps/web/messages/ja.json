@@ -1982,6 +1982,20 @@
             "unassigned": "予約からの割り当てが解除されました",
             "updated": "ユニットが更新されました"
           }
+        },
+        "customerFields": {
+          "title": "顧客に求める情報",
+          "description": "オンラインで入力を求めるか、レンタル品ごとに記録します。",
+          "scope": {
+            "customer": "顧客情報",
+            "item": "レンタル品ごと"
+          },
+          "collect": {
+            "never": "チームのみ",
+            "optional": "オンライン · 任意",
+            "required": "オンライン · 必須"
+          },
+          "manage": "「顧客情報」で管理"
         }
       }
     },
@@ -6327,7 +6341,8 @@
           "rename": "セクション名を変更",
           "moveUp": "上へ移動",
           "moveDown": "下へ移動",
-          "actions": "セクションの操作"
+          "actions": "セクションの操作",
+          "online": "オンライン予約…"
         },
         "field": {
           "add": "フィールドを追加",
@@ -6348,7 +6363,13 @@
           "search": "検索",
           "list": "一覧",
           "business": "法人",
-          "individual": "個人"
+          "individual": "個人",
+          "item": "レンタル品ごと",
+          "online": {
+            "optional": "オンライン · 任意",
+            "required": "オンライン · 必須"
+          },
+          "noTarget": "商品が未選択"
         },
         "dialog": {
           "createTitle": "新しいフィールド",
@@ -6395,7 +6416,25 @@
             "search": "検索対象に含める",
             "searchHelp": "値を入力して顧客を検索できます。重複の検出にも使われます。",
             "list": "一覧に表示",
-            "listHelp": "顧客一覧に列を追加します。"
+            "listHelp": "顧客一覧に列を追加します。",
+            "requiredTeam": "チームの入力時は必須",
+            "sensitiveItemHelp": "予約では初期状態で非表示になります。",
+            "contractItemHelp": "レンタル品の行の下に記載されます。"
+          },
+          "createDescriptionItem": "予約時に、レンタル品ごとに入力します。",
+          "labelPlaceholderItem": "靴のサイズ",
+          "scope": "記録単位",
+          "scopes": {
+            "customer": "顧客情報に記録",
+            "customerDescription": "顧客ごとに1つの値：免許証、身分証明書…",
+            "item": "レンタル品ごと",
+            "itemDescription": "人または機材ごとに1つの値：身長、靴のサイズ…"
+          },
+          "scopeLocked": "フィールドの作成後は記録単位を変更できません。",
+          "close": "閉じる",
+          "online": {
+            "title": "オンライン予約",
+            "description": "顧客がストアで予約する際に入力する内容です。"
           }
         },
         "templates": {
@@ -6594,7 +6633,8 @@
                 }
               }
             }
-          }
+          },
+          "perItem": "レンタル品ごと"
         },
         "deleteDialog": {
           "title": "「{label}」を削除しますか？",
@@ -6602,7 +6642,9 @@
           "withValues": "{count, plural, other {#人の顧客がこのフィールドに値を入力しています。これらの値は消去されます。}}",
           "archiveInstead": "代わりにアーカイブ",
           "confirm": "完全に削除",
-          "cancel": "キャンセル"
+          "cancel": "キャンセル",
+          "descriptionItem": "このフィールドはすべての予約から削除されます。この操作は元に戻せません。",
+          "withItemValues": "{count, plural, other {#点のレンタル品がこのフィールドに値を持っています。これらの値は消去されます。}}"
         },
         "archived": {
           "title": "アーカイブ済みのフィールド",
@@ -6611,7 +6653,21 @@
         "preview": {
           "title": "プレビュー",
           "description": "チームが顧客を作成するときに表示される内容です。",
-          "empty": "フィールドを追加するとプレビューが表示されます。"
+          "empty": "フィールドを追加するとプレビューが表示されます。",
+          "audience": {
+            "team": "チーム",
+            "client": "顧客"
+          },
+          "client": {
+            "description": "顧客が予約するときに表示される内容です。",
+            "previewFor": "プレビュー対象",
+            "noProduct": "商品が見つかりません",
+            "sampleProduct": "レンタル品",
+            "oneCardPerUnit": "レンタル品ごとにカードが1枚。自転車が2台ならカードも2枚です。",
+            "emptyProduct": "この商品では、顧客に入力を求める項目はありません。",
+            "emptyAll": "現在、顧客に入力を求める項目はありません。",
+            "emptyHint": "フィールドの「顧客に入力を求める」を「任意」または「必須」に設定すると、ここに表示されます。"
+          }
         },
         "empty": {
           "title": "カスタムフィールドはありません",
@@ -6624,7 +6680,70 @@
           "restored": "フィールドを再有効化しました",
           "deleted": "フィールドを削除しました",
           "reordered": "並び順を保存しました",
-          "sectionRenamed": "セクション名を変更しました"
+          "sectionRenamed": "セクション名を変更しました",
+          "sectionOnlineSaved": "設定をセクションに適用しました"
+        },
+        "online": {
+          "collect": "顧客に入力を求める",
+          "collectModes": {
+            "never": "いいえ",
+            "optional": "任意",
+            "required": "必須"
+          },
+          "collectHelp": {
+            "never": "いいえ：チームのみが閲覧できます。",
+            "customer": {
+              "optional": "オンライン予約の際に、顧客が任意で入力できます。",
+              "required": "オンラインで予約するには、顧客による入力が必須です。"
+            },
+            "item": {
+              "optional": "オンライン予約の際に、レンタル品ごとに任意で入力できます。",
+              "required": "オンラインで予約するには、レンタル品ごとの入力が必須です。"
+            }
+          },
+          "target": "適用範囲",
+          "targetModes": {
+            "all": "すべての予約",
+            "products": "特定の商品"
+          },
+          "targetHelp": {
+            "customer": {
+              "all": "すべてのオンライン予約で入力を求めます。",
+              "products": "カートにこれらの商品のいずれかが含まれる場合のみ入力を求めます。"
+            },
+            "item": {
+              "all": "商品を問わず、すべてのレンタル品にこのフィールドが付きます。",
+              "products": "これらのカテゴリーと商品のレンタル品にのみ、このフィールドが付きます。"
+            }
+          },
+          "targetsNone": "商品が選択されていません。このフィールドはどの予約にも適用されません。",
+          "targetsPlaceholder": "カテゴリーまたは商品…",
+          "targetsEmpty": "結果はありません",
+          "groups": {
+            "categories": "カテゴリー",
+            "products": "商品"
+          },
+          "productCount": "{count, plural, =0 {商品なし} other {#件の商品}}",
+          "productStatus": {
+            "draft": "下書き",
+            "archived": "アーカイブ済み"
+          },
+          "customerEditable": "顧客がアカウントから編集できる",
+          "customerEditableHint": "顧客は自分の顧客アカウントで確認し、更新できます。",
+          "customerEditableNeverHint": "フィールドで顧客に入力を求めると利用できます。",
+          "targetsSummaryLabel": "適用範囲：",
+          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+        },
+        "sectionOnline": {
+          "title": "オンライン予約",
+          "description": "{count, plural, other {「{section}」セクションの#件のフィールドに適用されます。}}",
+          "adoptedTitle": "どの商品が対象ですか？",
+          "adoptedDescription": "「{section}」のフィールドはレンタル品ごとに記録されます。対象の商品を選び、必要に応じて顧客に入力を求めてください。",
+          "mixed": "このセクションのフィールドは設定がそれぞれ異なります。すべてこの設定に統一されます。",
+          "apply": "適用",
+          "cancel": "キャンセル",
+          "later": "後で",
+          "close": "閉じる"
         }
       }
     },
@@ -6948,6 +7067,17 @@
       "sourceHint": "ソースコードを参照する",
       "star": "スターを残す",
       "later": "たぶん後で"
+    },
+    "reservationDetails": {
+      "itemDetails": {
+        "title": "レンタルの詳細",
+        "incomplete": "要入力",
+        "empty": "まだ何も入力されていません",
+        "sheetDescription": "各レンタル品の利用者と、準備すべきものです。",
+        "participantName": "利用者",
+        "participantNamePlaceholder": "名",
+        "saved": "レンタルの詳細を保存しました"
+      }
     }
   },
   "storefront": {
@@ -7477,7 +7607,8 @@
         "contact": "お問い合わせ",
         "delivery": "配送",
         "address": "住所",
-        "confirm": "確認"
+        "confirm": "確認",
+        "details": "レンタルの詳細"
       },
       "deliveryDescription": "機器の受け取りと返却方法を選択してください",
       "deliveryRequiredDescription": "この注文には配送が必要です",
@@ -7747,6 +7878,10 @@
           "unavailable": "このストアではオンライン決済はご利用いただけません。",
           "sessionFailed": "支払いを再開できませんでした。しばらくしてからもう一度試してください。"
         }
+      },
+      "customFields": {
+        "savedSummary": "入力済みの情報",
+        "detailsIntro": "この情報は、{store}が機材を準備する際に役立ちます。"
       }
     },
     "confirmation": {
@@ -8295,6 +8430,17 @@
         "paymentDescription": "店舗に通知されます。すでに支払いまたはデポジットを提供した場合は、返金またはリリースについてストアにお問い合わせください。このアクションでは、自動返金は行われません。",
         "adminSubject": "リクエスト #{number} が顧客によってキャンセルされました",
         "adminBody": "{name} は確認前に予約リクエスト #{number} をキャンセルしました。ダッシュボードでその履歴を確認できます。"
+      },
+      "customerFields": {
+        "title": "追加情報",
+        "description": "ご予約の際に{store}から求められる情報です。最新の状態にしておけば、再入力の手間が省けます。"
+      },
+      "rentalDetails": {
+        "title": "レンタルの詳細",
+        "editableHint": "レンタル開始まで変更できます。",
+        "toComplete": "要入力",
+        "saved": "詳細を保存しました",
+        "saveError": "詳細を保存できませんでした。入力内容を確認して、もう一度お試しください。"
       }
     },
     "marketplaceShell": {
@@ -8492,6 +8638,15 @@
       "breakdownTitle": "季節ごとの料金",
       "from": "から",
       "averageRate": "日付全体の平均"
+    },
+    "customerFields": {
+      "optionalLabel": "{label}（任意）",
+      "sensitiveNote": "{store}のみが閲覧できます",
+      "participantLabel": "ご利用者",
+      "participantPlaceholder": "名（任意）",
+      "unitCounter": "{index} / {count}",
+      "unitEmpty": "未入力",
+      "recapValue": "{label}：{value}"
     }
   },
   "onboarding": {
@@ -9164,7 +9319,13 @@
       "tooManyFields": "有効なフィールドの上限に達しました。新しく追加するには、いずれかをアーカイブしてください。",
       "tooManySearchable": "検索対象にできるフィールドは最大5つです。",
       "tooManyListFields": "一覧に表示できるフィールドは最大2つです。"
-    }
+    },
+    "customFieldRequired": "「{field}」を入力してください。",
+    "customFieldInvalid": "「{field}」が正しくありません。",
+    "itemDetailRequired": "{product}（{unit}点目）の「{field}」を入力してください。",
+    "itemDetailInvalid": "{product}（{unit}点目）の「{field}」が正しくありません。",
+    "reservationDetailsLocked": "レンタルが開始または終了したため、この情報は変更できません。",
+    "customerNotAuthenticated": "続行するにはお客様アカウントにログインしてください。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",

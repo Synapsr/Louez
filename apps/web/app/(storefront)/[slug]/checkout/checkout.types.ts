@@ -1,5 +1,7 @@
 import type { AiAdvisorMode, BusinessHours, DeliverySettings, TaxSettings } from "@louez/types";
-import type { StorefrontPromoValidateOutput } from "@louez/validations";
+import type { CustomerFieldPublic, StorefrontPromoValidateOutput } from "@louez/validations";
+
+import type { RentalUnitFormValues } from "@/components/storefront/customer-fields/customer-fields.types";
 
 import type { getTulipQuotePreview } from "./actions";
 
@@ -7,7 +9,8 @@ export type { LegMethod } from "@louez/types";
 
 export type ReservationMode = "payment" | "request";
 export type TulipInsuranceMode = "required" | "optional" | "no_public";
-export type StepId = "contact" | "delivery" | "confirm";
+/** `details` ("Détails de la location") only exists when a cart line asks item-scope fields. */
+export type StepId = "contact" | "details" | "delivery" | "confirm";
 
 /** Customer fields the page prefills from a verified session. */
 export interface CheckoutInitialCustomer {
@@ -69,6 +72,12 @@ export interface CheckoutFormProps {
   timezone?: string;
   /** Verified customer session read by the page; null for a guest. */
   initialCustomer: CheckoutInitialCustomer | null;
+  /**
+   * Custom field values the signed-in customer already has on file, for the
+   * fields a checkout may ask. Empty for a guest: an e-mail alone never
+   * reveals anyone's values.
+   */
+  initialCustomerFieldValues: Record<string, string>;
 }
 
 export interface CheckoutFormValues {
@@ -87,6 +96,32 @@ export interface CheckoutFormValues {
   notes: string;
   tulipInsuranceOptIn: boolean;
   acceptCgv: boolean;
+  /** Customer-scope custom fields the store asks, by definition id. */
+  customerFields: Record<string, string>;
+  /** "Détails de la location": one entry per rented unit, keyed by `toUnitKey(lineId, unitIndex)`. */
+  itemDetails: Record<string, RentalUnitFormValues>;
+}
+
+/** A cart line as the custom fields see it: what to ask about each of its units. */
+export interface CheckoutFieldsLine {
+  lineId: string;
+  productName: string;
+  productImage: string | null;
+  quantity: number;
+  /** Empty when the line asks nothing. */
+  itemFields: CustomerFieldPublic[];
+}
+
+/** What this cart asks the customer, lines in cart order (index = the payload's `lineIndex`). */
+export interface CheckoutFieldsPlan {
+  customerFields: CustomerFieldPublic[];
+  lines: CheckoutFieldsLine[];
+}
+
+/** The custom fields differ by buyer type (`appliesTo`); both are known up front so a switch is instant. */
+export interface CheckoutFieldsPlans {
+  individual: CheckoutFieldsPlan;
+  business: CheckoutFieldsPlan;
 }
 
 export interface DeliveryAddress {

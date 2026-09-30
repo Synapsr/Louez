@@ -27,6 +27,8 @@ export interface ReservationPageViewProps {
   periodLabel: string;
   calendarLinks: ComponentProps<typeof AddToCalendarButton>["links"];
   reviewPrompt?: ReactNode;
+  /** Per-unit details the store asks for (sizes, levels…), next to the rented items. */
+  rentalDetails?: ReactNode;
   readOnly?: boolean;
   onAcceptQuote?: () => void;
   outcome: ComponentProps<typeof ReservationOutcomeBanner>;
@@ -52,6 +54,7 @@ export const ReservationPageView = ({
   periodLabel,
   calendarLinks,
   reviewPrompt,
+  rentalDetails,
   readOnly = false,
   onAcceptQuote,
   outcome,
@@ -109,6 +112,8 @@ export const ReservationPageView = ({
           </AccountCard>
 
           <ReservationItemsCard {...items} />
+
+          {rentalDetails}
 
           <ReservationUpdatesCard {...updates} />
         </div>

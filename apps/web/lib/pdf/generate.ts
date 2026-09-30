@@ -3,6 +3,7 @@ import {
   getCustomerFieldValues,
   listCustomerFieldDefinitions,
 } from "@louez/api/services/customer-fields";
+import { listReservationItemDetails } from "@louez/api/services/customer-fields-online";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { ContractDocument, SupportedLocale } from "./contract";
 import { db } from "@louez/db";
@@ -11,6 +12,7 @@ import { eq, and, sql, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { convertImageForPdf } from "./image-utils";
 import { getContractCustomerFieldLines } from "./util.contract-customer-fields";
+import { getContractItemDetailLines } from "./util.contract-item-details";
 import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
 import { getLogoForLightBackground, resolveReservationBilling } from "@louez/utils";
 
@@ -170,21 +172,36 @@ export async function generateContract({
   const insuredProductIds = await getReservationInsuredProductIds(reservation);
 
   // Read at generation time: the stored PDF keeps these values even if the
-  // customer record or the field definitions change afterwards.
-  const [customerFieldDefinitions, customerFieldValues] = await Promise.all([
-    listCustomerFieldDefinitions(reservation.storeId, { activeOnly: true }),
+  // customer record, the rented units' details or the field definitions
+  // change afterwards.
+  const [customerFieldDefinitions, customerFieldValues, itemDetails] = await Promise.all([
+    listCustomerFieldDefinitions(reservation.storeId, { activeOnly: true, scope: "customer" }),
     getCustomerFieldValues(reservation.storeId, reservation.customer.id),
+    listReservationItemDetails({
+      storeId: reservation.storeId,
+      reservationId: reservation.id,
+      audience: "team",
+    }),
   ]);
+  // A calendar day has no timezone: noon UTC never slips to the day before.
+  const formatFieldDate = (isoDate: string) =>
+    formatStoreDate(new Date(`${isoDate}T12:00:00Z`), "UTC", "MEDIUM_DATE", locale);
+  // Stored as "80.5": the contract reads "80,5" in French.
+  const numberFormat = new Intl.NumberFormat(locale);
+  const formatFieldNumber = (value: number) => numberFormat.format(value);
   const customFieldLines = getContractCustomerFieldLines(
     customerFieldDefinitions,
     customerFieldValues,
     {
       customerType: reservation.customer.customerType,
-      // A calendar day has no timezone: noon UTC never slips to the day before.
-      formatDate: (isoDate) =>
-        formatStoreDate(new Date(`${isoDate}T12:00:00Z`), "UTC", "MEDIUM_DATE", locale),
+      formatDate: formatFieldDate,
+      formatNumber: formatFieldNumber,
     },
   );
+  const itemDetailLines = getContractItemDetailLines(itemDetails, {
+    formatDate: formatFieldDate,
+    formatNumber: formatFieldNumber,
+  });
 
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(
@@ -228,6 +245,7 @@ export async function generateContract({
           assignedUnitIdentifiers:
             item.assignedUnits?.map((au) => au.identifierSnapshot).filter(Boolean) || [],
           insured: item.productId !== null && insuredProductIds.has(item.productId),
+          detailLines: itemDetailLines.get(item.id) ?? [],
         })),
         payments: reservation.payments.map((payment) => ({
           id: payment.id,

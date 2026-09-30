@@ -1,4 +1,4 @@
-import type { CustomerSocialLinks, ProductPromotion } from "@louez/types";
+import type { CustomerFieldValues, CustomerSocialLinks, ProductPromotion } from "@louez/types";
 import { relations } from "drizzle-orm";
 import {
   bigint,
@@ -1322,6 +1322,17 @@ export const customerFieldDefinitions = mysqlTable(
     // Template the field was adopted from, when any.
     templateKey: varchar("template_key", { length: 64 }),
     isActive: boolean("is_active").notNull().default(true),
+    // Where a value lives: on the customer record, or per rented unit on the
+    // reservation (reservation_item_details). Fixed at creation, like the type.
+    scope: mysqlEnum("scope", ["customer", "item"]).notNull().default("customer"),
+    // Whether the storefront checkout asks it: never means team only.
+    collectMode: mysqlEnum("collect_mode", ["never", "optional", "required"])
+      .notNull()
+      .default("never"),
+    // `products` limits the field to the targets in customer_field_targets.
+    targetMode: mysqlEnum("target_mode", ["all", "products"]).notNull().default("all"),
+    // The customer sees and updates it from their storefront account.
+    customerEditable: boolean("customer_editable").notNull().default(false),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   },
@@ -1358,6 +1369,31 @@ export const customerFieldValues = mysqlTable(
       table.searchValue,
     ),
     definitionIdx: index("customer_field_values_definition_idx").on(table.definitionId),
+  }),
+);
+
+/**
+ * Products and categories a definition is limited to when its target mode is
+ * `products`. Rows are replaced as a whole, never updated.
+ */
+export const customerFieldTargets = mysqlTable(
+  "customer_field_targets",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    definitionId: varchar("definition_id", { length: 21 }).notNull(),
+    targetType: mysqlEnum("target_type", ["category", "product"]).notNull(),
+    targetId: varchar("target_id", { length: 21 }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueDefinitionTarget: unique("customer_field_targets_definition_target_unique").on(
+      table.definitionId,
+      table.targetType,
+      table.targetId,
+    ),
+    storeIdx: index("customer_field_targets_store_idx").on(table.storeId),
+    targetIdx: index("customer_field_targets_target_idx").on(table.targetId),
   }),
 );
 
@@ -2983,6 +3019,56 @@ export const reservationItemUnitsRelations = relations(reservationItemUnits, ({ 
 }));
 
 // ============================================================================
+// Reservation Item Details (item-scope custom field values, per rented unit)
+// ============================================================================
+
+/**
+ * What was recorded for one rented unit (`unit_index` 0..quantity-1): who
+ * uses it and the values of item-scope custom fields. JSON because the block
+ * is always read and written whole, never filtered in SQL; keys without a
+ * live definition are ignored by readers.
+ */
+export const reservationItemDetails = mysqlTable(
+  "reservation_item_details",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    reservationId: varchar("reservation_id", { length: 21 }).notNull(),
+    reservationItemId: varchar("reservation_item_id", { length: 21 }).notNull(),
+    unitIndex: int("unit_index").notNull(),
+    participantName: varchar("participant_name", { length: 100 }),
+    values: json("values").$type<CustomerFieldValues>().notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueItemUnit: unique("reservation_item_details_item_unit_unique").on(
+      table.reservationItemId,
+      table.unitIndex,
+    ),
+    reservationIdx: index("reservation_item_details_reservation_idx").on(table.reservationId),
+    storeIdx: index("reservation_item_details_store_idx").on(table.storeId),
+    // A line removed from a reservation takes what was recorded for it along.
+    reservationItemFk: foreignKey({
+      name: "rid_reservation_item_fk",
+      columns: [table.reservationItemId],
+      foreignColumns: [reservationItems.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+export const reservationItemDetailsRelations = relations(reservationItemDetails, ({ one }) => ({
+  reservation: one(reservations, {
+    fields: [reservationItemDetails.reservationId],
+    references: [reservations.id],
+  }),
+  reservationItem: one(reservationItems, {
+    fields: [reservationItemDetails.reservationItemId],
+    references: [reservationItems.id],
+  }),
+}));
+
+// ============================================================================
 // Product Accessories (Upsell/Cross-sell)
 // ============================================================================
 
@@ -3043,8 +3129,16 @@ export const customerFieldDefinitionsRelations = relations(
       references: [stores.id],
     }),
     values: many(customerFieldValues),
+    targets: many(customerFieldTargets),
   }),
 );
+
+export const customerFieldTargetsRelations = relations(customerFieldTargets, ({ one }) => ({
+  definition: one(customerFieldDefinitions, {
+    fields: [customerFieldTargets.definitionId],
+    references: [customerFieldDefinitions.id],
+  }),
+}));
 
 export const customerFieldValuesRelations = relations(customerFieldValues, ({ one }) => ({
   customer: one(customers, {
@@ -3087,6 +3181,7 @@ export const reservationsRelations = relations(reservations, ({ one, many }) => 
   activity: many(reservationActivity),
   calendarEvents: many(reservationCalendarEvents),
   invoices: many(invoices),
+  itemDetails: many(reservationItemDetails),
 }));
 
 export const marketplaceBookingAttemptsRelations = relations(
@@ -3127,6 +3222,7 @@ export const reservationItemsRelations = relations(reservationItems, ({ one, man
     references: [products.id],
   }),
   assignedUnits: many(reservationItemUnits),
+  details: many(reservationItemDetails),
 }));
 
 export const paymentsRelations = relations(payments, ({ one, many }) => ({

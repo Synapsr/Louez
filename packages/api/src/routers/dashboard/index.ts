@@ -13,6 +13,7 @@ import { dashboardOnlineStoreRouter } from "./online-store";
 import { dashboardPaymentsRouter } from "./payments";
 import { dashboardProductsRouter } from "./products";
 import { dashboardReferralRouter } from "./referral";
+import { dashboardReservationDetailsRouter } from "./reservation-details";
 import { dashboardReservationsRouter } from "./reservations";
 import { dashboardSearchRouter } from "./search";
 import { dashboardVariantsRouter } from "./variants";
@@ -46,6 +47,7 @@ export const dashboardRouter = {
   customerFields: dashboardCustomerFieldsRouter,
   integrations: dashboardIntegrationsRouter,
   reservations: dashboardReservationsRouter,
+  reservationDetails: dashboardReservationDetailsRouter,
   search: dashboardSearchRouter,
   onboarding: dashboardOnboardingRouter,
   onlineStore: dashboardOnlineStoreRouter,

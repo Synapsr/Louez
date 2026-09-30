@@ -155,7 +155,7 @@ export function registerCustomerTools(
         `- **Registered**: ${formatDate(customer.createdAt)}\n`;
 
       const [definitions, values] = await Promise.all([
-        listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true }),
+        listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true, scope: 'customer' }),
         getCustomerFieldValues(ctx.storeId, customer.id),
       ]);
       const { fields, withheld } = toReadableCustomerFields(definitions, values);
@@ -257,7 +257,7 @@ export function registerCustomerTools(
       }
 
       const [definitions, store] = await Promise.all([
-        listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true }),
+        listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true, scope: 'customer' }),
         db.query.stores.findFirst({
           where: eq(stores.id, ctx.storeId),
           columns: { settings: true },
@@ -429,6 +429,7 @@ export function registerCustomerTools(
 
       const definitions = await listCustomerFieldDefinitions(ctx.storeId, {
         activeOnly: true,
+        scope: 'customer',
       });
       const checked = checkCustomerFieldEntries({
         definitions,

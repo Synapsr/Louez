@@ -1,14 +1,24 @@
-import { customerFieldDefinitions, customerFieldValues, db, stores } from "@louez/db";
+import {
+  customerFieldDefinitions,
+  customerFieldTargets,
+  customerFieldValues,
+  db,
+  stores,
+} from "@louez/db";
 import { normalizeAxisKey } from "@louez/utils";
 import {
   CUSTOMER_FIELD_LIMITS,
   customerFieldCreateInputSchema,
   customerFieldDefinitionSchema,
   customerFieldReorderInputSchema,
+  customerFieldSectionOnlineInputSchema,
   customerFieldTemplateAdoptInputSchema,
   customerFieldUpdateInputSchema,
   customerProfileSettingsSchema,
+  fieldAppliesToProduct,
+  mergeCustomerFieldOnlineSettings,
   type CustomerFieldCreateInput,
+  type CustomerFieldUpdateInput,
 } from "@louez/validations";
 import { ORPCError } from "@orpc/server";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -20,20 +30,46 @@ import {
   findCustomerFieldDuplicates,
   listCustomerFieldDefinitions,
 } from "../../services/customer-fields";
+import {
+  countItemFieldValues,
+  filterOwnedTargets,
+  getProductCategoryIds,
+  listCustomerFieldTargetOptions,
+  removeItemFieldValues,
+  replaceCustomerFieldTargets,
+} from "../../services/customer-fields-online";
 
 const definitionWithUsageSchema = customerFieldDefinitionSchema.extend({
-  /** Customers holding a value: a field with values is archived, not deleted by accident. */
+  /**
+   * Customers (customer scope) or rented units (item scope) holding a value:
+   * a field with values is archived, not deleted by accident.
+   */
   valueCount: z.number(),
 });
 
+/**
+ * Every definition, archived ones included, with its usage. Targets whose
+ * product or category no longer exists are left out, so the editor never
+ * shows a nameless chip and the next save drops them.
+ */
 const listWithUsage = async (storeId: string) => {
-  const [definitions, usage] = await Promise.all([
-    listCustomerFieldDefinitions(storeId),
+  const [definitions, customerUsage, itemUsage] = await Promise.all([
+    listCustomerFieldDefinitions(storeId, { scope: "all" }),
     countCustomerFieldValues(storeId),
+    countItemFieldValues(storeId),
   ]);
+  const owned = new Set(
+    (
+      await filterOwnedTargets(
+        storeId,
+        definitions.flatMap((definition) => definition.targets),
+      )
+    ).map((target) => `${target.type}:${target.id}`),
+  );
   return definitions.map((definition) => ({
     ...definition,
-    valueCount: usage.get(definition.id) ?? 0,
+    targets: definition.targets.filter((target) => owned.has(`${target.type}:${target.id}`)),
+    valueCount: (definition.scope === "item" ? itemUsage : customerUsage).get(definition.id) ?? 0,
   }));
 };
 
@@ -43,8 +79,13 @@ const list = dashboardProcedure
 
 const KEY_MAX_LENGTH = 64;
 
+// Accents are dropped first so "Numéro de pièce" reads `numero_de_piece`, not `num_ro_de_pi_ce`.
+// The variant axis normaliser itself stays as is: its keys are already stored.
 const toFieldKey = (input: Pick<CustomerFieldCreateInput, "key" | "label">) =>
-  normalizeAxisKey(input.key ?? input.label).slice(0, KEY_MAX_LENGTH);
+  normalizeAxisKey((input.key ?? input.label).normalize("NFKD").replace(/\p{M}+/gu, "")).slice(
+    0,
+    KEY_MAX_LENGTH,
+  );
 
 /** Refuses a change that would push the store past the editor's guard rails. */
 const assertWithinLimits = (
@@ -85,12 +126,17 @@ const toInsertValues = (storeId: string, input: CustomerFieldCreateInput, positi
   isSearchable: input.isSearchable,
   showInList: input.showInList,
   templateKey: input.templateKey || null,
+  scope: input.scope,
+  collectMode: input.collectMode,
+  targetMode: input.targetMode,
+  customerEditable: input.customerEditable,
 });
 
 /**
  * Adds fields by stable key. Idempotent by (storeId, key): adopting a template
  * twice, or two people clicking at once, lands on the unique constraint and
- * leaves the existing field as the merchant configured it.
+ * leaves the existing field (scope and targets included) as the merchant
+ * configured it. Targets are only written for fields this call created.
  */
 const insertFields = async (storeId: string, inputs: CustomerFieldCreateInput[]) => {
   await db.transaction(async (tx) => {
@@ -99,17 +145,57 @@ const insertFields = async (storeId: string, inputs: CustomerFieldCreateInput[])
       .from(customerFieldDefinitions)
       .where(eq(customerFieldDefinitions.storeId, storeId));
 
+    const keys = inputs.map(toFieldKey);
+    if (keys.some((key) => !key)) {
+      throw new ORPCError("BAD_REQUEST", { message: "errors.invalidData" });
+    }
+    const existingKeys = new Set(
+      (
+        await tx
+          .select({ key: customerFieldDefinitions.key })
+          .from(customerFieldDefinitions)
+          .where(
+            and(
+              eq(customerFieldDefinitions.storeId, storeId),
+              inArray(customerFieldDefinitions.key, keys),
+            ),
+          )
+      ).map((row) => row.key),
+    );
+
     for (const [index, input] of inputs.entries()) {
-      if (!toFieldKey(input)) {
-        throw new ORPCError("BAD_REQUEST", { message: "errors.invalidData" });
-      }
       await tx
         .insert(customerFieldDefinitions)
         .values(toInsertValues(storeId, input, Number(maxPosition) + index + 1))
         .onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
     }
 
-    assertWithinLimits(await listCustomerFieldDefinitions(storeId, {}, tx));
+    const targeted = inputs.filter(
+      (input) => input.targets.length > 0 && !existingKeys.has(toFieldKey(input)),
+    );
+    if (targeted.length > 0) {
+      const created = await tx
+        .select({ id: customerFieldDefinitions.id, key: customerFieldDefinitions.key })
+        .from(customerFieldDefinitions)
+        .where(
+          and(
+            eq(customerFieldDefinitions.storeId, storeId),
+            inArray(customerFieldDefinitions.key, targeted.map(toFieldKey)),
+          ),
+        );
+      const idByKey = new Map(created.map((row) => [row.key, row.id]));
+      for (const input of targeted) {
+        const definitionId = idByKey.get(toFieldKey(input));
+        if (!definitionId) continue;
+        await replaceCustomerFieldTargets(tx, {
+          storeId,
+          definitionIds: [definitionId],
+          targets: input.targets,
+        });
+      }
+    }
+
+    assertWithinLimits(await listCustomerFieldDefinitions(storeId, { scope: "all" }, tx));
   });
   return listWithUsage(storeId);
 };
@@ -131,30 +217,43 @@ const adoptTemplate = requirePermission("manage_settings")
 
 const findOwnedDefinition = async (storeId: string, id: string) => {
   const definition = await db.query.customerFieldDefinitions.findFirst({
-    columns: { id: true, type: true },
+    columns: { id: true, type: true, scope: true, collectMode: true, customerEditable: true },
     where: and(eq(customerFieldDefinitions.id, id), eq(customerFieldDefinitions.storeId, storeId)),
   });
   if (!definition) throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
   return definition;
 };
 
+/** An item-scope field keeps the customer-record switches off (the schema cannot know the stored scope). */
+const turnsOnCustomerOnlyFlag = (input: CustomerFieldUpdateInput) =>
+  Boolean(input.isRequired || input.isSearchable || input.showInList) ||
+  (input.appliesTo !== undefined && input.appliesTo !== "all");
+
+/** Only the keys the input carries change; `targets` is a replace-all when present. */
 const update = requirePermission("manage_settings")
-  .input(customerFieldUpdateInputSchema.extend({ isActive: z.boolean().optional() }))
+  .input(customerFieldUpdateInputSchema)
   .output(z.array(definitionWithUsageSchema))
   .handler(async ({ context, input }) => {
     const storeId = context.store.id;
     const definition = await findOwnedDefinition(storeId, input.id);
-    const { id, options, unit, format, helpText, ...rest } = input;
+    const { id, options, unit, format, helpText, targets, collectMode, customerEditable, ...rest } =
+      input;
 
     if (definition.type === "select" && options !== undefined && (options?.length ?? 0) === 0) {
       throw new ORPCError("BAD_REQUEST", { message: "errors.optionsRequired" });
     }
+    if (definition.scope === "item" && turnsOnCustomerOnlyFlag(input)) {
+      throw new ORPCError("BAD_REQUEST", { message: "errors.invalidData" });
+    }
+    const online = mergeCustomerFieldOnlineSettings(definition, { collectMode, customerEditable });
+    if (!online) throw new ORPCError("BAD_REQUEST", { message: "errors.invalidData" });
 
     await db.transaction(async (tx) => {
       await tx
         .update(customerFieldDefinitions)
         .set({
           ...rest,
+          ...online,
           ...(options !== undefined && definition.type === "select" ? { options } : {}),
           ...(unit !== undefined && definition.type === "number" ? { unit: unit || null } : {}),
           ...(format !== undefined && definition.type === "text" ? { format: format ?? null } : {}),
@@ -164,9 +263,100 @@ const update = requirePermission("manage_settings")
         .where(
           and(eq(customerFieldDefinitions.id, id), eq(customerFieldDefinitions.storeId, storeId)),
         );
-      assertWithinLimits(await listCustomerFieldDefinitions(storeId, {}, tx));
+      if (targets !== undefined) {
+        await replaceCustomerFieldTargets(tx, { storeId, definitionIds: [id], targets });
+      }
+      assertWithinLimits(await listCustomerFieldDefinitions(storeId, { scope: "all" }, tx));
     });
     return listWithUsage(storeId);
+  });
+
+/**
+ * "Réservation en ligne…" of a section: the same online settings on every
+ * active field in it, both scopes, in one transaction. Used right after
+ * adopting a template ("Pour quels produits ?").
+ */
+const updateSectionOnline = requirePermission("manage_settings")
+  .input(customerFieldSectionOnlineInputSchema)
+  .output(z.array(definitionWithUsageSchema))
+  .handler(async ({ context, input }) => {
+    const storeId = context.store.id;
+    await db.transaction(async (tx) => {
+      const inSection = await tx
+        .select({ id: customerFieldDefinitions.id })
+        .from(customerFieldDefinitions)
+        .where(
+          and(
+            eq(customerFieldDefinitions.storeId, storeId),
+            eq(customerFieldDefinitions.section, input.section),
+            eq(customerFieldDefinitions.isActive, true),
+          ),
+        );
+      const ids = inSection.map((row) => row.id);
+      if (ids.length === 0) return;
+
+      await tx
+        .update(customerFieldDefinitions)
+        .set({
+          collectMode: input.collectMode,
+          targetMode: input.targetMode,
+          customerEditable: input.customerEditable,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(customerFieldDefinitions.storeId, storeId),
+            inArray(customerFieldDefinitions.id, ids),
+          ),
+        );
+      await replaceCustomerFieldTargets(tx, {
+        storeId,
+        definitionIds: ids,
+        targets: input.targets,
+      });
+    });
+    return listWithUsage(storeId);
+  });
+
+/** Categories and products for the "Pour" picker and the preview's product picker. */
+const targetOptions = dashboardProcedure
+  .output(
+    z.object({
+      categories: z.array(z.object({ id: z.string(), name: z.string() })),
+      products: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          status: z.enum(["draft", "active", "archived"]),
+          image: z.string().nullable(),
+          categoryIds: z.array(z.string()),
+        }),
+      ),
+    }),
+  )
+  .handler(async ({ context }) => listCustomerFieldTargetOptions(context.store.id));
+
+/**
+ * Active fields that concern this product, both scopes and every collect
+ * mode, in editor order. The product page decides what to show.
+ */
+const forProduct = dashboardProcedure
+  .input(z.object({ productId: z.string().min(1).max(21) }))
+  .output(z.array(customerFieldDefinitionSchema))
+  .handler(async ({ context, input }) => {
+    const storeId = context.store.id;
+    const categoryIds = await getProductCategoryIds(storeId, [input.productId]);
+    const productCategoryIds = categoryIds.get(input.productId);
+    if (!productCategoryIds) {
+      throw new ORPCError("NOT_FOUND", { message: "errors.productNotFound" });
+    }
+    const definitions = await listCustomerFieldDefinitions(storeId, {
+      activeOnly: true,
+      scope: "all",
+    });
+    return definitions.filter((definition) =>
+      fieldAppliesToProduct(definition, { id: input.productId, categoryIds: productCategoryIds }),
+    );
   });
 
 const reorder = requirePermission("manage_settings")
@@ -190,20 +380,35 @@ const reorder = requirePermission("manage_settings")
     return listWithUsage(storeId);
   });
 
-/** Permanent: the field and every value customers hold for it. Archiving is `update({ isActive: false })`. */
+/**
+ * Permanent: the field, its targets and every value held for it, on customer
+ * records and on reservation units alike. Archiving is
+ * `update({ id, isActive: false })`.
+ */
 const remove = requirePermission("manage_settings")
   .input(z.object({ id: z.string().length(21) }))
   .output(z.array(definitionWithUsageSchema))
   .handler(async ({ context, input }) => {
     const storeId = context.store.id;
-    await findOwnedDefinition(storeId, input.id);
+    const definition = await findOwnedDefinition(storeId, input.id);
     await db.transaction(async (tx) => {
+      if (definition.scope === "item") {
+        await removeItemFieldValues(tx, storeId, input.id);
+      }
       await tx
         .delete(customerFieldValues)
         .where(
           and(
             eq(customerFieldValues.storeId, storeId),
             eq(customerFieldValues.definitionId, input.id),
+          ),
+        );
+      await tx
+        .delete(customerFieldTargets)
+        .where(
+          and(
+            eq(customerFieldTargets.storeId, storeId),
+            eq(customerFieldTargets.definitionId, input.id),
           ),
         );
       await tx
@@ -307,6 +512,9 @@ export const dashboardCustomerFieldsRouter = {
   create,
   adoptTemplate,
   update,
+  updateSectionOnline,
+  targetOptions,
+  forProduct,
   reorder,
   remove,
   renameSection,

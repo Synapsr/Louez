@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Building2, ExternalLink, MapPin, Pencil, Store, Truck, Shield, User } from "lucide-react";
 
+import type { ReservationItemDetailsView } from "@louez/api/services/customer-fields-online";
 import { Button } from "@louez/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
 import {
@@ -25,6 +26,7 @@ import { AdvisorConversationCard } from "./advisor-conversation-card";
 import { EmailContactPopover } from "@/components/dashboard/email-contact-popover";
 import { PhoneContactPopover } from "@/components/dashboard/phone-contact-popover";
 import { ReservationItemsCard } from "./reservation-items-card";
+import { ReservationItemDetailsCard } from "./reservation-item-details-card";
 import { ReservationHeader } from "./reservation-header";
 import { ReservationBillingDialog } from "./reservation-billing-dialog";
 import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes";
@@ -91,6 +93,8 @@ interface ReservationDetailClientProps {
   defaultPaymentMethod?: PaymentMethod;
   invoices: ReservationInvoiceDocument[];
   canGenerateInvoice: boolean;
+  /** "Détails de la location", read with the page. */
+  initialItemDetails?: ReservationItemDetailsView[];
   readOnly?: boolean;
   onBack?: () => void;
   onPreviewEmail?: () => void;
@@ -133,6 +137,7 @@ export function ReservationDetailClient({
   defaultPaymentMethod,
   invoices,
   canGenerateInvoice,
+  initialItemDetails,
   readOnly = false,
   onBack,
   onPreviewEmail,
@@ -421,6 +426,14 @@ export function ReservationDetailClient({
               ) : null
             }
           />
+
+          {/* Landing demos render this page without a session to read the details with. */}
+          {!readOnly && (
+            <ReservationItemDetailsCard
+              reservationId={reservation.id}
+              initialItems={initialItemDetails}
+            />
+          )}
 
           <div data-reservation-history>
             <ActivityTimelineV2

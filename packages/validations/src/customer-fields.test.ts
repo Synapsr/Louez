@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import {
+  checkoutItemDetailsSchema,
+  customerFieldCreateInputSchema,
+  customerFieldSectionOnlineInputSchema,
+  customerFieldSubmittedValuesSchema,
+  customerFieldUpdateInputSchema,
   hasSuspiciousIdentityValue,
+  mergeCustomerFieldOnlineSettings,
   normalizeCustomerFieldValue,
   toCustomerFieldSearchValue,
   validateCustomerFieldValues,
@@ -117,5 +123,123 @@ describe("hasSuspiciousIdentityValue", () => {
     assert.equal(hasSuspiciousIdentityValue("br_cpf_cnpj", "529.982.247-25"), false);
     assert.equal(hasSuspiciousIdentityValue(null, "anything"), false);
     assert.equal(hasSuspiciousIdentityValue("pt_nif", " "), false);
+  });
+});
+
+describe("customer field inputs", () => {
+  const base = { label: "Taille", type: "number" as const, section: "Matériel" };
+  const id = "i".repeat(21);
+
+  test("a new field defaults to the customer record, team only, for every reservation", () => {
+    const parsed = customerFieldCreateInputSchema.parse(base);
+    assert.equal(parsed.scope, "customer");
+    assert.equal(parsed.collectMode, "never");
+    assert.equal(parsed.targetMode, "all");
+    assert.deepEqual(parsed.targets, []);
+    assert.equal(parsed.customerEditable, false);
+  });
+
+  test("an item-scope field refuses the switches of the customer record", () => {
+    const item = { ...base, scope: "item" as const };
+    assert.equal(customerFieldCreateInputSchema.safeParse(item).success, true);
+    for (const flag of ["isRequired", "isSearchable", "showInList"]) {
+      assert.equal(
+        customerFieldCreateInputSchema.safeParse({ ...item, [flag]: true }).success,
+        false,
+      );
+    }
+    assert.equal(
+      customerFieldCreateInputSchema.safeParse({ ...item, appliesTo: "business" }).success,
+      false,
+    );
+    // Sensitive and contract apply to both scopes.
+    assert.equal(
+      customerFieldCreateInputSchema.safeParse({ ...item, isSensitive: true, showOnContract: true })
+        .success,
+      true,
+    );
+  });
+
+  test("editable by the customer requires the checkout to ask the field", () => {
+    assert.equal(
+      customerFieldCreateInputSchema.safeParse({ ...base, customerEditable: true }).success,
+      false,
+    );
+    assert.equal(
+      customerFieldCreateInputSchema.safeParse({
+        ...base,
+        collectMode: "optional",
+        customerEditable: true,
+      }).success,
+      true,
+    );
+    assert.equal(
+      customerFieldUpdateInputSchema.safeParse({ id, collectMode: "never", customerEditable: true })
+        .success,
+      false,
+    );
+    assert.equal(
+      customerFieldSectionOnlineInputSchema.safeParse({
+        section: "Matériel",
+        collectMode: "never",
+        targetMode: "all",
+        targets: [],
+        customerEditable: true,
+      }).success,
+      false,
+    );
+  });
+
+  test("an update only carries what it was given: no default resets a switch", () => {
+    assert.deepEqual(customerFieldUpdateInputSchema.parse({ id, isActive: false }), {
+      id,
+      isActive: false,
+    });
+  });
+
+  test("targets are bounded", () => {
+    const targets = Array.from({ length: 101 }, (_, index) => ({
+      type: "product" as const,
+      id: String(index).padStart(21, "p"),
+    }));
+    assert.equal(customerFieldUpdateInputSchema.safeParse({ id, targets }).success, false);
+    assert.equal(
+      customerFieldUpdateInputSchema.safeParse({ id, targets: targets.slice(0, 100) }).success,
+      true,
+    );
+  });
+
+  test("merging online settings keeps them coherent", () => {
+    const asked = { collectMode: "optional" as const, customerEditable: true };
+    assert.deepEqual(mergeCustomerFieldOnlineSettings(asked, { collectMode: "never" }), {
+      collectMode: "never",
+      customerEditable: false,
+    });
+    assert.deepEqual(mergeCustomerFieldOnlineSettings(asked, { collectMode: "required" }), {
+      collectMode: "required",
+      customerEditable: true,
+    });
+    assert.equal(
+      mergeCustomerFieldOnlineSettings(
+        { collectMode: "never", customerEditable: false },
+        { customerEditable: true },
+      ),
+      null,
+    );
+  });
+
+  test("checkout payloads are bounded", () => {
+    const tooMany = Object.fromEntries(
+      Array.from({ length: 31 }, (_, index) => [String(index).padStart(21, "k"), "x"]),
+    );
+    assert.equal(customerFieldSubmittedValuesSchema.safeParse(tooMany).success, false);
+    assert.equal(
+      checkoutItemDetailsSchema.safeParse([{ lineIndex: 0, units: [{ values: {} }] }]).success,
+      true,
+    );
+    assert.equal(
+      checkoutItemDetailsSchema.safeParse([{ lineIndex: 50, units: [] }]).success,
+      false,
+    );
   });
 });

@@ -12,6 +12,7 @@ import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-bread
 import { getCurrentStore } from "@/lib/store-context";
 
 import { ProductActivityFeed } from "./components/product-activity-feed";
+import { ProductCustomerFieldsCard } from "./components/product-customer-fields-card";
 import { ProductHeader } from "./components/product-header";
 import { ProductInfoSection } from "./components/product-info-section";
 import { ProductInventorySection } from "./components/product-inventory-section";
@@ -207,6 +208,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
         <div className="min-w-0 space-y-4 sm:space-y-6">
           <ProductQuickFacts product={product} currency={currency} />
+
+          <ProductCustomerFieldsCard productId={product.id} />
 
           {product.trackUnits && (
             <ProductActivityFeed

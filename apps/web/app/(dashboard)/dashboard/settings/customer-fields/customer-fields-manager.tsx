@@ -24,43 +24,58 @@ import {
   resolveCustomerFieldTemplates,
   suggestCustomerFieldTemplates,
 } from "@/lib/customers/customer-field-templates";
-import { orpc } from "@/lib/orpc/react";
-import { getErrorMessageKey } from "@/lib/utils/util.error-message";
-
-import { CustomerFieldDeleteDialog } from "./customer-field-delete-dialog";
-import { CustomerFieldDialog } from "./customer-field-dialog";
-import { CustomerFieldRow } from "./customer-field-row";
-import { CustomerFieldSectionCard } from "./customer-field-section-card";
-import { CustomerFieldTemplatesDialog } from "./customer-field-templates-dialog";
-import { CustomerFieldsPreview } from "./customer-fields-preview";
-import { CustomerFieldsSuggestions } from "./customer-fields-suggestions";
-import { CustomerNativeFieldsCard } from "./customer-native-fields-card";
-import type { CustomerFieldFormValues } from "./use-customer-field-form";
 import {
   groupFieldsBySection,
   moveFieldToSection,
   moveItem,
   toReorderPayload,
 } from "@/lib/customers/util.customer-fields";
+import { orpc } from "@/lib/orpc/react";
+import { getErrorMessageKey } from "@/lib/utils/util.error-message";
+import type { StoreThemeInput } from "@/lib/theme/util.store-theme";
+
+import { CustomerFieldDeleteDialog } from "./customer-field-delete-dialog";
+import { CustomerFieldDialog } from "./customer-field-dialog";
+import { CustomerFieldRow } from "./customer-field-row";
+import { CustomerFieldSectionCard } from "./customer-field-section-card";
+import { CustomerFieldSectionOnlineDialog } from "./customer-field-section-online-dialog";
+import { CustomerFieldTemplatesDialog } from "./customer-field-templates-dialog";
+import { CustomerFieldsPreview } from "./customer-fields-preview";
+import { CustomerFieldsSuggestions } from "./customer-fields-suggestions";
+import { CustomerNativeFieldsCard } from "./customer-native-fields-card";
+import type { CustomerFieldFormValues } from "./use-customer-field-form";
+import {
+  type CustomerFieldOnlineSettings,
+  newFieldDefaults,
+  toCustomerFieldPayload,
+} from "./util.customer-field-online";
 
 interface CustomerFieldsManagerProps {
   country: string | null;
   productCategory: string | null;
   profileSettings: CustomerProfileSettings;
+  /** The storefront look, so the "Client" preview reads like the real checkout. */
+  storeTheme: StoreThemeInput | null;
 }
 
 type DialogState = { field: CustomerFieldDefinition | null; section: string } | null;
+
+type SectionOnlineState = { section: string; reason: "menu" | "adopted" } | null;
 
 export const CustomerFieldsManager = ({
   country,
   productCategory,
   profileSettings,
+  storeTheme,
 }: CustomerFieldsManagerProps) => {
   const t = useTranslations("dashboard.settings.customerFields");
   const tErrors = useTranslations("errors");
   const queryClient = useQueryClient();
+  // Read-only for members without manage_settings: dragging would only earn a refusal.
+  const readOnly = useControlsDisabled();
 
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [sectionOnline, setSectionOnline] = useState<SectionOnlineState>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -87,6 +102,11 @@ export const CustomerFieldsManager = ({
   const updateField = useMutation(
     orpc.dashboard.customerFields.update.mutationOptions(mutationHandlers(null)),
   );
+  const updateSectionOnline = useMutation(
+    orpc.dashboard.customerFields.updateSectionOnline.mutationOptions(
+      mutationHandlers("toasts.sectionOnlineSaved"),
+    ),
+  );
   const reorderFields = useMutation(
     orpc.dashboard.customerFields.reorder.mutationOptions(mutationHandlers(null)),
   );
@@ -108,6 +128,8 @@ export const CustomerFieldsManager = ({
   const archived = fields.filter((field) => !field.isActive);
   const sections = groupFieldsBySection(active);
   const sectionNames = sections.map((section) => section.name);
+  const fieldsOfSection = (name: string) =>
+    sections.find((section) => section.name === name)?.fields ?? [];
   const adoptedKeys = new Set(fields.map((field) => field.key));
   const templates = resolveCustomerFieldTemplates((key) => t(`templates.${key}`));
   const suggestions = suggestCustomerFieldTemplates({
@@ -116,8 +138,6 @@ export const CustomerFieldsManager = ({
     productCategory,
     adoptedKeys,
   });
-  // Read-only for members without manage_settings: dragging would only earn a refusal.
-  const readOnly = useControlsDisabled();
   const isBusy = reorderFields.isPending || updateField.isPending || readOnly;
 
   const handleAdopt = (template: ResolvedCustomerFieldTemplate) =>
@@ -126,11 +146,16 @@ export const CustomerFieldsManager = ({
       {
         onSuccess: (next) => {
           const added = next.length - fields.length;
-          if (added > 0) {
-            toastManager.add({
-              title: t("templates.adoptedToast", { count: added }),
-              type: "success",
-            });
+          if (added <= 0) return;
+          toastManager.add({
+            title: t("templates.adoptedToast", { count: added }),
+            type: "success",
+          });
+          // Per-unit fields concern no product until the owner picks them: ask right away.
+          const section = template.fields[0]?.section;
+          if (template.scope === "item" && section) {
+            setGalleryOpen(false);
+            setSectionOnline({ section, reason: "adopted" });
           }
         },
       },
@@ -138,20 +163,21 @@ export const CustomerFieldsManager = ({
 
   const handleSubmit = async (values: CustomerFieldFormValues) => {
     const editing = dialog?.field;
-    const payload = {
-      ...values,
-      options: values.type === "select" ? values.options : null,
-      unit: values.unit || null,
-      helpText: values.helpText || null,
-    };
+    const payload = toCustomerFieldPayload(values);
     if (editing) {
-      const { type: _type, ...changes } = payload;
+      const { type: _type, scope: _scope, ...changes } = payload;
       await updateField.mutateAsync({ id: editing.id, ...changes });
       toastManager.add({ title: t("toasts.updated"), type: "success" });
     } else {
       await createField.mutateAsync(payload);
     }
     setDialog(null);
+  };
+
+  const handleSectionOnline = async (settings: CustomerFieldOnlineSettings) => {
+    if (!sectionOnline) return;
+    await updateSectionOnline.mutateAsync({ section: sectionOnline.section, ...settings });
+    setSectionOnline(null);
   };
 
   const setActive = (field: CustomerFieldDefinition, isActive: boolean) =>
@@ -248,6 +274,7 @@ export const CustomerFieldsManager = ({
                   fields: toReorderPayload(moveItem(sections, from, from + direction)),
                 });
               }}
+              onOnlineSettings={(name) => setSectionOnline({ section: name, reason: "menu" })}
               {...rowActions}
             />
           ))}
@@ -281,7 +308,7 @@ export const CustomerFieldsManager = ({
 
         <aside className="hidden min-w-0 xl:block">
           <div className="sticky top-16">
-            <CustomerFieldsPreview sections={sections} />
+            <CustomerFieldsPreview sections={sections} theme={storeTheme} />
           </div>
         </aside>
       </div>
@@ -291,11 +318,23 @@ export const CustomerFieldsManager = ({
           key={dialog.field?.id ?? `new-${dialog.section}`}
           field={dialog.field}
           defaultSection={dialog.section}
+          defaults={newFieldDefaults(fieldsOfSection(dialog.section))}
           sections={
             sectionNames.includes(dialog.section) ? sectionNames : [...sectionNames, dialog.section]
           }
           onOpenChange={(open) => !open && setDialog(null)}
           onSubmit={handleSubmit}
+        />
+      )}
+
+      {sectionOnline && (
+        <CustomerFieldSectionOnlineDialog
+          key={`${sectionOnline.reason}-${sectionOnline.section}`}
+          section={sectionOnline.section}
+          fields={fieldsOfSection(sectionOnline.section)}
+          reason={sectionOnline.reason}
+          onOpenChange={(open) => !open && setSectionOnline(null)}
+          onSubmit={handleSectionOnline}
         />
       )}
 

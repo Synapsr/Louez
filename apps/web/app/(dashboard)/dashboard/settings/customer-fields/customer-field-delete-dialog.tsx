@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 
+import type { CustomerFieldDefinition } from "@louez/types";
+
 import {
   AlertDialog,
   AlertDialogClose,
@@ -14,14 +16,20 @@ import {
 } from "@louez/ui";
 
 interface CustomerFieldDeleteDialogProps {
-  field: { id: string; label: string; valueCount: number; isActive: boolean } | null;
+  field: Pick<
+    CustomerFieldDefinition & { valueCount: number },
+    "id" | "label" | "valueCount" | "isActive" | "scope"
+  > | null;
   isPending: boolean;
   onOpenChange: (open: boolean) => void;
   onArchive: (id: string) => void;
   onConfirm: (id: string) => void;
 }
 
-/** Deleting erases customers' values, so archiving is offered first whenever there are any. */
+/**
+ * Deleting erases the values (on customer records, or on rented units for an
+ * item field), so archiving is offered first whenever there are any.
+ */
 export const CustomerFieldDeleteDialog = ({
   field,
   isPending,
@@ -30,6 +38,7 @@ export const CustomerFieldDeleteDialog = ({
   onConfirm,
 }: CustomerFieldDeleteDialogProps) => {
   const t = useTranslations("dashboard.settings.customerFields.deleteDialog");
+  const isItem = field?.scope === "item";
 
   return (
     <AlertDialog open={field !== null} onOpenChange={onOpenChange}>
@@ -37,9 +46,9 @@ export const CustomerFieldDeleteDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>{t("title", { label: field?.label ?? "" })}</AlertDialogTitle>
           <AlertDialogDescription>
-            {t("description")}
+            {t(isItem ? "descriptionItem" : "description")}
             {field && field.valueCount > 0
-              ? ` ${t("withValues", { count: field.valueCount })}`
+              ? ` ${t(isItem ? "withItemValues" : "withValues", { count: field.valueCount })}`
               : ""}
           </AlertDialogDescription>
         </AlertDialogHeader>

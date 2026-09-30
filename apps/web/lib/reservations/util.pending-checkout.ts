@@ -131,3 +131,27 @@ export const isSamePendingCheckout = (
     existingItems.every((item, index) => item === candidateItems[index])
   );
 };
+
+/**
+ * The stored item each candidate line lands on when a pending checkout is
+ * reused (`isSamePendingCheckout`), so what the new attempt recorded per
+ * line reaches the right row. Identical lines are interchangeable: each takes
+ * the first stored item left. Null when a line has no counterpart.
+ */
+export const matchPendingCheckoutItems = (
+  existing: readonly (PendingCheckoutItem & { id: string })[],
+  candidates: readonly PendingCheckoutItem[],
+): (string | null)[] => {
+  const pool = existing.map((item) => ({
+    id: item.id,
+    key: serialize(item, PENDING_CHECKOUT_ITEM_KEYS),
+  }));
+  const taken = new Set<string>();
+  return candidates.map((candidate) => {
+    const key = serialize(candidate, PENDING_CHECKOUT_ITEM_KEYS);
+    const match = pool.find((item) => !taken.has(item.id) && item.key === key);
+    if (!match) return null;
+    taken.add(match.id);
+    return match.id;
+  });
+};

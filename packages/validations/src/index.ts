@@ -6,6 +6,7 @@ export * from "./business-hours";
 export * from "./catalog";
 export * from "./customer";
 export * from "./customer-fields";
+export * from "./customer-fields-online";
 export * from "./identity-formats";
 export * from "./image";
 export * from "./inspection";

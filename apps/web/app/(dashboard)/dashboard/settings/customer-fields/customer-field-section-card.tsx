@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
-import { ArrowDown, ArrowUp, MoreHorizontal, Pencil, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, Globe, MoreHorizontal, Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { CustomerFieldDefinition } from "@louez/types";
@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
 } from "@louez/ui";
@@ -33,6 +34,8 @@ interface CustomerFieldSectionCardProps extends CustomerFieldRowActions {
   onReorder: (section: string, fields: CustomerFieldDefinition[]) => void;
   onRename: (from: string, to: string) => void;
   onMoveSection: (section: string, direction: -1 | 1) => void;
+  /** Opens "Réservation en ligne…" for every field of the section. */
+  onOnlineSettings: (section: string) => void;
 }
 
 export const CustomerFieldSectionCard = ({
@@ -46,6 +49,7 @@ export const CustomerFieldSectionCard = ({
   onReorder,
   onRename,
   onMoveSection,
+  onOnlineSettings,
   ...rowActions
 }: CustomerFieldSectionCardProps) => {
   const t = useTranslations("dashboard.settings.customerFields");
@@ -75,6 +79,11 @@ export const CustomerFieldSectionCard = ({
             <MoreHorizontal className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onOnlineSettings(name)}>
+              <Globe className="size-4" />
+              {t("sections.online")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setDraftName(name)}>
               <Pencil className="size-4" />
               {t("sections.rename")}

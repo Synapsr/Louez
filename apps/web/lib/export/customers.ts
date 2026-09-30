@@ -47,7 +47,7 @@ export async function queryCustomersExport(storeId: string, params: ExportParams
         ),
       )
       .orderBy(desc(customers.createdAt)),
-    listCustomerFieldDefinitions(storeId, { activeOnly: true }),
+    listCustomerFieldDefinitions(storeId, { activeOnly: true, scope: "customer" }),
   ]);
 
   const includeSensitive = params.includeSensitive === true;

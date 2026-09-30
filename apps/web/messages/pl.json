@@ -1943,6 +1943,20 @@
             "unassigned": "Odpięta od rezerwacji",
             "updated": "Jednostka zaktualizowana"
           }
+        },
+        "customerFields": {
+          "title": "Informacje zbierane od klienta",
+          "description": "Zbierane online lub zapisywane dla każdego wynajętego przedmiotu.",
+          "scope": {
+            "customer": "Karta klienta",
+            "item": "Na przedmiot"
+          },
+          "collect": {
+            "never": "Tylko zespół",
+            "optional": "Online · Opcjonalne",
+            "required": "Online · Wymagane"
+          },
+          "manage": "Zarządzaj w Karcie klienta"
         }
       }
     },
@@ -6327,7 +6341,8 @@
           "rename": "Zmień nazwę sekcji",
           "moveUp": "W górę",
           "moveDown": "W dół",
-          "actions": "Akcje sekcji"
+          "actions": "Akcje sekcji",
+          "online": "Rezerwacja online…"
         },
         "field": {
           "add": "Dodaj pole",
@@ -6348,7 +6363,13 @@
           "search": "Wyszukiwanie",
           "list": "Lista",
           "business": "Firmy",
-          "individual": "Osoby prywatne"
+          "individual": "Osoby prywatne",
+          "item": "Na przedmiot",
+          "online": {
+            "optional": "Online · Opcjonalne",
+            "required": "Online · Wymagane"
+          },
+          "noTarget": "Nie wybrano produktu"
         },
         "dialog": {
           "createTitle": "Nowe pole",
@@ -6395,7 +6416,25 @@
             "search": "Uwzględnij w wyszukiwaniu",
             "searchHelp": "Wpisz wartość, aby znaleźć klienta. Sygnalizuje też duplikaty.",
             "list": "Pokaż na liście",
-            "listHelp": "Dodaje kolumnę do listy klientów."
+            "listHelp": "Dodaje kolumnę do listy klientów.",
+            "requiredTeam": "Wymagane dla Twojego zespołu",
+            "sensitiveItemHelp": "Domyślnie ukryte w rezerwacji.",
+            "contractItemHelp": "Dodawane pod wierszem wynajętego przedmiotu."
+          },
+          "createDescriptionItem": "Uzupełnia się je w rezerwacji dla każdego wynajętego przedmiotu.",
+          "labelPlaceholderItem": "Rozmiar buta",
+          "scope": "Zakres",
+          "scopes": {
+            "customer": "Na karcie klienta",
+            "customerDescription": "Jedna wartość na klienta: prawo jazdy, dokument tożsamości…",
+            "item": "Na każdy wynajęty przedmiot",
+            "itemDescription": "Jedna wartość na osobę lub sztukę sprzętu: wzrost, rozmiar buta…"
+          },
+          "scopeLocked": "Po utworzeniu pola nie można już zmienić jego zakresu.",
+          "close": "Zamknij",
+          "online": {
+            "title": "Rezerwacja online",
+            "description": "Co klient uzupełnia podczas rezerwacji w Twoim sklepie."
           }
         },
         "templates": {
@@ -6594,7 +6633,8 @@
                 }
               }
             }
-          }
+          },
+          "perItem": "Na każdy wynajęty przedmiot"
         },
         "deleteDialog": {
           "title": "Usunąć „{label}”?",
@@ -6602,7 +6642,9 @@
           "withValues": "{count, plural, one {# klient ma wartość w tym polu: zostanie ona usunięta.} few {# klienci mają wartość w tym polu: zostaną one usunięte.} many {# klientów ma wartość w tym polu: zostaną one usunięte.} other {# klienta ma wartość w tym polu: zostaną one usunięte.}}",
           "archiveInstead": "Lepiej zarchiwizuj",
           "confirm": "Usuń trwale",
-          "cancel": "Anuluj"
+          "cancel": "Anuluj",
+          "descriptionItem": "Pole zniknie ze wszystkich rezerwacji. Ta akcja jest nieodwracalna.",
+          "withItemValues": "{count, plural, one {# wynajęty przedmiot ma wartość w tym polu: zostanie ona usunięta.} few {# wynajęte przedmioty mają wartość w tym polu: zostaną one usunięte.} many {# wynajętych przedmiotów ma wartość w tym polu: zostaną one usunięte.} other {# wynajętego przedmiotu ma wartość w tym polu: zostaną one usunięte.}}"
         },
         "archived": {
           "title": "Zarchiwizowane pola",
@@ -6611,7 +6653,21 @@
         "preview": {
           "title": "Podgląd",
           "description": "To zobaczy Twój zespół podczas tworzenia klienta.",
-          "empty": "Dodaj pole, aby zobaczyć podgląd."
+          "empty": "Dodaj pole, aby zobaczyć podgląd.",
+          "audience": {
+            "team": "Zespół",
+            "client": "Klient"
+          },
+          "client": {
+            "description": "To zobaczy Twój klient podczas rezerwacji.",
+            "previewFor": "Podgląd dla",
+            "noProduct": "Nie znaleziono produktu",
+            "sampleProduct": "Wynajęty przedmiot",
+            "oneCardPerUnit": "Jedna karta na każdy wynajęty przedmiot: dwa rowery, dwie karty.",
+            "emptyProduct": "Przy tym produkcie klient nie jest o nic pytany.",
+            "emptyAll": "Klient nie jest jeszcze o nic pytany.",
+            "emptyHint": "Ustaw w polu opcję „Pytaj klienta” na Opcjonalne lub Wymagane, aby pojawiło się tutaj."
+          }
         },
         "empty": {
           "title": "Brak własnych pól",
@@ -6624,7 +6680,70 @@
           "restored": "Ponownie aktywowano pole",
           "deleted": "Usunięto pole",
           "reordered": "Zapisano kolejność",
-          "sectionRenamed": "Zmieniono nazwę sekcji"
+          "sectionRenamed": "Zmieniono nazwę sekcji",
+          "sectionOnlineSaved": "Zastosowano ustawienia do sekcji"
+        },
+        "online": {
+          "collect": "Pytaj klienta",
+          "collectModes": {
+            "never": "Nie",
+            "optional": "Opcjonalne",
+            "required": "Wymagane"
+          },
+          "collectHelp": {
+            "never": "Nie: widzi je tylko Twój zespół.",
+            "customer": {
+              "optional": "Proponowane klientowi podczas rezerwacji online.",
+              "required": "Klient musi je uzupełnić, aby zarezerwować online."
+            },
+            "item": {
+              "optional": "Proponowane dla każdego wynajętego przedmiotu podczas rezerwacji online.",
+              "required": "Do uzupełnienia dla każdego wynajętego przedmiotu przed rezerwacją online."
+            }
+          },
+          "target": "Dla",
+          "targetModes": {
+            "all": "Wszystkie rezerwacje",
+            "products": "Wybrane produkty"
+          },
+          "targetHelp": {
+            "customer": {
+              "all": "Pojawia się przy każdej rezerwacji online.",
+              "products": "Pojawia się tylko wtedy, gdy koszyk zawiera jeden z tych produktów."
+            },
+            "item": {
+              "all": "Każdy wynajęty przedmiot ma to pole, niezależnie od produktu.",
+              "products": "To pole mają tylko przedmioty z tych kategorii i produktów."
+            }
+          },
+          "targetsNone": "Nie wybrano produktu: to pole nie dotyczy żadnej rezerwacji.",
+          "targetsPlaceholder": "Kategoria lub produkt…",
+          "targetsEmpty": "Brak wyników",
+          "groups": {
+            "categories": "Kategorie",
+            "products": "Produkty"
+          },
+          "productCount": "{count, plural, =0 {Brak produktów} one {# produkt} few {# produkty} many {# produktów} other {# produktu}}",
+          "productStatus": {
+            "draft": "Szkic",
+            "archived": "Zarchiwizowany"
+          },
+          "customerEditable": "Klient może je edytować na swoim koncie",
+          "customerEditableHint": "Klient znajdzie je na swoim koncie i może je zaktualizować.",
+          "customerEditableNeverHint": "Dostępne, gdy klient jest pytany o to pole.",
+          "targetsSummaryLabel": "Dla:",
+          "targetsSummary": "{names}{more, plural, =0 {} one { +#} few { +#} many { +#} other { +#}}"
+        },
+        "sectionOnline": {
+          "title": "Rezerwacja online",
+          "description": "{count, plural, one {Dotyczy pola z sekcji „{section}”.} few {Dotyczy # pól z sekcji „{section}”.} many {Dotyczy # pól z sekcji „{section}”.} other {Dotyczy # pola z sekcji „{section}”.}}",
+          "adoptedTitle": "Dla których produktów?",
+          "adoptedDescription": "Pola „{section}” są zapisywane dla każdego wynajętego przedmiotu. Wybierz produkty, których dotyczą, i w razie potrzeby poproś klienta o ich uzupełnienie.",
+          "mixed": "Pola tej sekcji mają różne ustawienia: wszystkie przejmą te ustawienia.",
+          "apply": "Zastosuj",
+          "cancel": "Anuluj",
+          "later": "Później",
+          "close": "Zamknij"
         }
       }
     },
@@ -6948,6 +7067,17 @@
       "sourceHint": "Przejrzyj kod źródłowy",
       "star": "Zostaw gwiazdkę",
       "later": "Później"
+    },
+    "reservationDetails": {
+      "itemDetails": {
+        "title": "Szczegóły wynajmu",
+        "incomplete": "Do uzupełnienia",
+        "empty": "Nic jeszcze nie uzupełniono",
+        "sheetDescription": "Kto korzysta z każdego przedmiotu i co trzeba przygotować.",
+        "participantName": "Dla kogo?",
+        "participantNamePlaceholder": "Imię",
+        "saved": "Zapisano szczegóły wynajmu"
+      }
     }
   },
   "storefront": {
@@ -7477,7 +7607,8 @@
         "contact": "Kontakt",
         "delivery": "Dostawa",
         "address": "Adres",
-        "confirm": "Potwierdzenie"
+        "confirm": "Potwierdzenie",
+        "details": "Szczegóły wynajmu"
       },
       "deliveryDescription": "Wybierz, jak chcesz odebrać i zwrócić sprzęt",
       "deliveryRequiredDescription": "Dostawa jest wymagana dla tego zamówienia",
@@ -7747,6 +7878,10 @@
           "unavailable": "Płatność online jest niedostępna w tym sklepie.",
           "sessionFailed": "Nie udało się wznowić płatności. Spróbuj ponownie za chwilę."
         }
+      },
+      "customFields": {
+        "savedSummary": "Dane już zapisane",
+        "detailsIntro": "Dzięki temu {store} przygotuje Twój sprzęt."
       }
     },
     "confirmation": {
@@ -8295,6 +8430,17 @@
         "paymentDescription": "Sklep zostanie powiadomiony. Jeśli dokonano płatności lub wpłacono kaucję, skontaktuj się ze sklepem w sprawie zwrotu lub zwolnienia środków. Ta czynność nie powoduje automatycznego zwrotu.",
         "adminSubject": "Prośba #{number} anulowana przez klienta",
         "adminBody": "{name} anulował(a) prośbę o rezerwację #{number} przed Twoim potwierdzeniem. Historię możesz sprawdzić w panelu."
+      },
+      "customerFields": {
+        "title": "Informacje dodatkowe",
+        "description": "{store} prosi o nie podczas rezerwacji. Dbaj o ich aktualność, a nie trzeba będzie wpisywać ich ponownie."
+      },
+      "rentalDetails": {
+        "title": "Szczegóły wynajmu",
+        "editableHint": "Możesz je zmienić do rozpoczęcia wynajmu.",
+        "toComplete": "Do uzupełnienia",
+        "saved": "Szczegóły zapisane",
+        "saveError": "Nie udało się zapisać szczegółów. Sprawdź pola i spróbuj ponownie."
       }
     },
     "marketplaceShell": {
@@ -8492,6 +8638,15 @@
       "breakdownTitle": "Cena według sezonu",
       "from": "Od",
       "averageRate": "Średnio w wybranym okresie"
+    },
+    "customerFields": {
+      "optionalLabel": "{label} (opcjonalnie)",
+      "sensitiveNote": "Widoczne tylko dla {store}",
+      "participantLabel": "Dla kogo?",
+      "participantPlaceholder": "Imię (opcjonalnie)",
+      "unitCounter": "{index} / {count}",
+      "unitEmpty": "Nic nie uzupełniono",
+      "recapValue": "{label}: {value}"
     }
   },
   "onboarding": {
@@ -9164,7 +9319,13 @@
       "tooManyFields": "Osiągnięto maksymalną liczbę aktywnych pól. Zarchiwizuj jedno, aby dodać kolejne.",
       "tooManySearchable": "W wyszukiwaniu można uwzględnić najwyżej pięć pól.",
       "tooManyListFields": "Na liście można pokazać najwyżej dwa pola."
-    }
+    },
+    "customFieldRequired": "Uzupełnij pole „{field}”.",
+    "customFieldInvalid": "Pole „{field}” jest nieprawidłowe.",
+    "itemDetailRequired": "Uzupełnij pole „{field}” dla: {product} (nr {unit}).",
+    "itemDetailInvalid": "Pole „{field}” jest nieprawidłowe dla: {product} (nr {unit}).",
+    "reservationDetailsLocked": "Tych danych nie można już zmienić: wynajem się rozpoczął lub zakończył.",
+    "customerNotAuthenticated": "Zaloguj się do konta klienta, aby kontynuować."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

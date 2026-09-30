@@ -1,6 +1,7 @@
 import { storefrontAiAdvisorRouter } from "./ai-advisor";
 import { storefrontAvailabilityRouter } from "./availability";
 import { storefrontCartRouter } from "./cart";
+import { storefrontCustomerFieldsRouter } from "./customer-fields";
 import { storefrontPromoRouter } from "./promo";
 import { storefrontReservationsRouter } from "./reservations";
 
@@ -12,6 +13,7 @@ export const storefrontRouter = {
   aiAdvisor: storefrontAiAdvisorRouter,
   availability: storefrontAvailabilityRouter,
   cart: storefrontCartRouter,
+  customerFields: storefrontCustomerFieldsRouter,
   promo: storefrontPromoRouter,
   reservations: storefrontReservationsRouter,
 };

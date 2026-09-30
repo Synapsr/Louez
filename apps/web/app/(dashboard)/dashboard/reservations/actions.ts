@@ -7,7 +7,7 @@ import { validateReservationContract } from "@louez/api/services";
 import { resolveDateChangeRequests } from "@/lib/reservations/date-change-request.server";
 import { revalidatePath } from "next/cache";
 
-import { and, eq, inArray, not, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, not, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -46,6 +46,7 @@ import {
   products,
   type Transaction,
   reservationActivity,
+  reservationItemDetails,
   reservationItemUnits,
   reservationItems,
   reservations,
@@ -3109,6 +3110,16 @@ export async function updateReservation(
               .update(reservationItems)
               .set(itemWrite.values)
               .where(eq(reservationItems.id, itemWrite.id));
+            // Fewer units leave fewer people to equip: their details go too, or
+            // raising the quantity again would bring them back.
+            await tx
+              .delete(reservationItemDetails)
+              .where(
+                and(
+                  eq(reservationItemDetails.reservationItemId, itemWrite.id),
+                  gte(reservationItemDetails.unitIndex, itemWrite.values.quantity),
+                ),
+              );
           }
         }
 

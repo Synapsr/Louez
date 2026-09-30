@@ -902,6 +902,10 @@ const purgeOwnedData = async (
       await transaction
         .delete(schema.inspections)
         .where(inArray(schema.inspections.storeId, storeIds));
+      // Who used each rented unit and their measurements: personal data too.
+      await transaction
+        .delete(schema.reservationItemDetails)
+        .where(inArray(schema.reservationItemDetails.storeId, storeIds));
       await transaction
         .delete(schema.reservationItems)
         .where(
@@ -949,6 +953,9 @@ const purgeOwnedData = async (
       await transaction
         .delete(schema.variantDefinitions)
         .where(inArray(schema.variantDefinitions.storeId, storeIds));
+      await transaction
+        .delete(schema.customerFieldTargets)
+        .where(inArray(schema.customerFieldTargets.storeId, storeIds));
       await transaction
         .delete(schema.customerFieldDefinitions)
         .where(inArray(schema.customerFieldDefinitions.storeId, storeIds));

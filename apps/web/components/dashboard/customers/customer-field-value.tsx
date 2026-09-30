@@ -42,7 +42,12 @@ export const CustomerFieldValue = ({ definition, value }: CustomerFieldValueProp
     );
   }
 
-  const display = definition.format ? formatIdentityValue(definition.format, value) : value;
+  const display =
+    definition.type === "number" && Number.isFinite(Number(value))
+      ? format.number(Number(value))
+      : definition.format
+        ? formatIdentityValue(definition.format, value)
+        : value;
   const withUnit = definition.unit ? `${display} ${definition.unit}` : display;
 
   if (definition.isSensitive) {

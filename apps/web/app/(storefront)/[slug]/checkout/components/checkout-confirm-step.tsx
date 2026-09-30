@@ -21,6 +21,7 @@ import { useFormatMoney } from "@/hooks/use-format-money";
 
 import type {
   CheckoutBlockedReason,
+  CheckoutFieldsLine,
   CheckoutTulipInsurance,
   ReservationMode,
 } from "../checkout.types";
@@ -36,6 +37,7 @@ import {
   CheckoutAdvisorVerificationPanel,
 } from "./checkout-advisor-verification-panel";
 import { CheckoutDeposit } from "./checkout-deposit";
+import { CheckoutDetailsRecap } from "./checkout-details-recap";
 import { CheckoutPromoCode } from "./checkout-promo-code";
 import { CheckoutStepActions } from "./checkout-step-actions";
 import { InsuranceOptionCard } from "./insurance-option-card";
@@ -56,6 +58,9 @@ interface CheckoutConfirmStepProps {
   onBack: () => void;
   onEditContact: () => void;
   onEditDates: () => void;
+  /** Lines of the cart with what "Détails de la location" asks; absent when nothing is. */
+  detailsLines?: CheckoutFieldsLine[];
+  onEditDetails?: () => void;
   /** Direction the step flow moved in, for the entrance animation. */
   stepDirection: "forward" | "backward";
   termsPrefetch?: boolean;
@@ -81,6 +86,8 @@ export const CheckoutConfirmStep = withForm({
     onBack,
     onEditContact,
     onEditDates,
+    detailsLines,
+    onEditDetails,
     stepDirection,
     termsPrefetch,
   }) => {
@@ -150,6 +157,14 @@ export const CheckoutConfirmStep = withForm({
             )}
             {logisticsLabel && <p className="text-muted-foreground">{logisticsLabel}</p>}
           </div>
+
+          {detailsLines && onEditDetails && (
+            <CheckoutDetailsRecap
+              lines={detailsLines}
+              itemDetails={values.itemDetails}
+              onEdit={onEditDetails}
+            />
+          )}
 
           {advanceNoticeIssue && (
             <Alert variant="warning">

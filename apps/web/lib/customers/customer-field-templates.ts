@@ -1,4 +1,10 @@
-import type { CustomerFieldAppliesTo, CustomerFieldFormat, CustomerFieldType } from "@louez/types";
+import type {
+  CustomerFieldAppliesTo,
+  CustomerFieldFormat,
+  CustomerFieldScope,
+  CustomerFieldTargetMode,
+  CustomerFieldType,
+} from "@louez/types";
 import type { CustomerFieldCreateInput } from "@louez/validations";
 
 export type CustomerFieldTemplateGroup = "country" | "activity" | "general";
@@ -37,6 +43,12 @@ interface CustomerFieldTemplateField {
 export interface CustomerFieldTemplate {
   id: CustomerFieldTemplateId;
   group: CustomerFieldTemplateGroup;
+  /**
+   * Where the values live, for every field of the template. `item` fields are
+   * recorded per rented unit and only concern the products picked right after
+   * adoption (`targetMode: "products"`, no target yet). Defaults to `customer`.
+   */
+  scope?: CustomerFieldScope;
   /** ISO 3166-1 alpha-2 of the store this template is suggested to. */
   country?: string;
   /** Onboarding product categories this template is suggested to. */
@@ -176,6 +188,7 @@ export const CUSTOMER_FIELD_TEMPLATES: readonly CustomerFieldTemplate[] = [
   {
     id: "ski",
     group: "activity",
+    scope: "item",
     productCategories: ["sports_outdoor"],
     fields: [
       { key: "height_cm", type: "number", unit: "cm" },
@@ -191,6 +204,7 @@ export const CUSTOMER_FIELD_TEMPLATES: readonly CustomerFieldTemplate[] = [
   {
     id: "bikes",
     group: "activity",
+    scope: "item",
     productCategories: ["bikes"],
     fields: [
       { key: "height_cm", type: "number", unit: "cm" },
@@ -221,6 +235,8 @@ export const CUSTOMER_FIELD_TEMPLATES: readonly CustomerFieldTemplate[] = [
 export interface ResolvedCustomerFieldTemplate {
   id: CustomerFieldTemplateId;
   group: CustomerFieldTemplateGroup;
+  /** `item`: after adoption, ask "Pour quels produits ?" (`updateSectionOnline`). */
+  scope: CustomerFieldScope;
   country: string | null;
   name: string;
   description: string;
@@ -229,37 +245,53 @@ export interface ResolvedCustomerFieldTemplate {
 
 type TemplateTranslator = (key: string) => string;
 
+/** A per-unit field only concerns the products the owner picks; a customer field concerns every reservation. */
+const TARGET_MODE_BY_SCOPE = {
+  customer: "all",
+  item: "products",
+} as const satisfies Record<CustomerFieldScope, CustomerFieldTargetMode>;
+
 /** Templates with their labels in the merchant's language, ready to send to `adoptTemplate`. */
 export const resolveCustomerFieldTemplates = (
   translate: TemplateTranslator,
 ): ResolvedCustomerFieldTemplate[] =>
-  CUSTOMER_FIELD_TEMPLATES.map((template) => ({
-    id: template.id,
-    group: template.group,
-    country: template.country ?? null,
-    name: translate(`${template.id}.name`),
-    description: translate(`${template.id}.description`),
-    fields: template.fields.map((field) => ({
-      key: field.key,
-      label: translate(`${template.id}.fields.${field.key}.label`),
-      type: field.type,
-      format: field.format ?? null,
-      options:
-        field.optionKeys?.map((option) =>
-          translate(`${template.id}.fields.${field.key}.options.${option}`),
-        ) ?? null,
-      unit: field.unit ?? null,
-      helpText: null,
-      section: translate(`${template.id}.section`),
-      appliesTo: field.appliesTo ?? "all",
-      isRequired: false,
-      isSensitive: field.isSensitive ?? false,
-      showOnContract: field.showOnContract ?? false,
-      isSearchable: field.isSearchable ?? false,
-      showInList: false,
-      templateKey: template.id,
-    })),
-  }));
+  CUSTOMER_FIELD_TEMPLATES.map((template) => {
+    const scope = template.scope ?? "customer";
+    return {
+      id: template.id,
+      group: template.group,
+      scope,
+      country: template.country ?? null,
+      name: translate(`${template.id}.name`),
+      description: translate(`${template.id}.description`),
+      fields: template.fields.map((field) => ({
+        key: field.key,
+        label: translate(`${template.id}.fields.${field.key}.label`),
+        type: field.type,
+        format: field.format ?? null,
+        options:
+          field.optionKeys?.map((option) =>
+            translate(`${template.id}.fields.${field.key}.options.${option}`),
+          ) ?? null,
+        unit: field.unit ?? null,
+        helpText: null,
+        section: translate(`${template.id}.section`),
+        appliesTo: field.appliesTo ?? "all",
+        isRequired: false,
+        isSensitive: field.isSensitive ?? false,
+        showOnContract: field.showOnContract ?? false,
+        isSearchable: field.isSearchable ?? false,
+        showInList: false,
+        templateKey: template.id,
+        scope,
+        // Templates never ask the customer on their own: the owner opts in.
+        collectMode: "never",
+        targetMode: TARGET_MODE_BY_SCOPE[scope],
+        targets: [],
+        customerEditable: false,
+      })),
+    };
+  });
 
 /**
  * Templates worth putting forward for this store: its country's identifiers,

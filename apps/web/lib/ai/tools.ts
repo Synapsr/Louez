@@ -610,7 +610,7 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         if (!customer) return { error: "Customer not found" };
 
         const [definitions, values] = await Promise.all([
-          listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true }),
+          listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true, scope: "customer" }),
           getCustomerFieldValues(ctx.storeId, customer.id),
         ]);
         const { fields, withheld } = toReadableCustomerFields(definitions, values);
@@ -647,7 +647,10 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         });
         if (existing) return { error: "A customer with this email already exists" };
 
-        const definitions = await listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true });
+        const definitions = await listCustomerFieldDefinitions(ctx.storeId, {
+          activeOnly: true,
+          scope: "customer",
+        });
         const checked = checkCustomerFieldEntries({
           definitions,
           entries: customFields,
@@ -725,7 +728,10 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           return { error: "No fields to update" };
         }
 
-        const definitions = await listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true });
+        const definitions = await listCustomerFieldDefinitions(ctx.storeId, {
+          activeOnly: true,
+          scope: "customer",
+        });
         const checked = checkCustomerFieldEntries({
           definitions,
           entries: customFields,

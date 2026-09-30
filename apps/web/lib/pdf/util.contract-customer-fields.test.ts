@@ -24,6 +24,11 @@ const definition = (
   showInList: false,
   templateKey: null,
   isActive: true,
+  scope: "customer",
+  collectMode: "never",
+  targetMode: "all",
+  customerEditable: false,
+  targets: [],
   ...overrides,
 });
 
@@ -120,4 +125,14 @@ test("keeps the definitions' order", () => {
     lines.map((line) => line.id),
     ["b", "a"],
   );
+});
+
+test("prints a number in the contract's locale, with its unit", () => {
+  const french = new Intl.NumberFormat("fr");
+  const lines = getContractCustomerFieldLines(
+    [definition({ id: "height", label: "Hauteur de selle", type: "number", unit: "cm" })],
+    { height: "80.5" },
+    { ...options, formatNumber: (value) => french.format(value) },
+  );
+  assert.deepEqual(lines, [{ id: "height", label: "Hauteur de selle", value: "80,5 cm" }]);
 });

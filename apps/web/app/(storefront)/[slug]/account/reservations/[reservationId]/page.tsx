@@ -1,3 +1,6 @@
+import { listReservationItemDetails } from "@louez/api/services/customer-fields-online";
+import { canCustomerEditReservationDetails, toAccountCustomerField } from "@louez/validations";
+
 import { ReservationPageView } from "@/components/storefront/account/reservation-page-view";
 import { getExtensionAttempt } from "@/lib/reservations/extension.types";
 
@@ -70,8 +73,31 @@ import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { formatStoreDate, formatStoreDateRange } from "@/lib/utils/store-date";
 
+import { ReservationRentalDetails } from "./reservation-rental-details";
+import type { RentalDetailsData } from "./reservation-rental-details.types";
+
 // Private page data is cached only in this browser for thirty seconds.
 export const unstable_dynamicStaleTime = 30;
+
+/**
+ * What `storefront.customerFields.reservationDetails` answers, read on the
+ * server for the first paint: the units' recorded details, fields the
+ * checkout asks only.
+ */
+const getRentalDetails = async (
+  storeId: string,
+  reservation: { id: string; status: string; startDate: Date },
+): Promise<RentalDetailsData> => {
+  const views = await listReservationItemDetails({
+    storeId,
+    reservationId: reservation.id,
+    audience: "customer",
+  });
+  return {
+    editable: canCustomerEditReservationDetails(reservation, new Date()),
+    items: views.map((view) => ({ ...view, fields: view.fields.map(toAccountCustomerField) })),
+  };
+};
 
 interface ReservationDetailPageProps {
   params: Promise<{ slug: string; reservationId: string }>;
@@ -165,8 +191,9 @@ export default async function ReservationDetailPage({
 
   if (!reservation) notFound();
 
-  const [insuredProductIds, inspectionRows] = await Promise.all([
+  const [insuredProductIds, rentalDetails, inspectionRows] = await Promise.all([
     getReservationInsuredProductIds(reservation),
+    getRentalDetails(store.id, reservation),
     db
       .select({
         id: inspections.id,
@@ -389,6 +416,9 @@ export default async function ReservationDetailPage({
         })}
         reviewPrompt={
           reviewUrl ? <ReviewPromptCard storeName={store.name} reviewUrl={reviewUrl} /> : null
+        }
+        rentalDetails={
+          <ReservationRentalDetails reservationId={reservationId} initialData={rentalDetails} />
         }
         outcome={{
           event: status === "pending" || status === "confirmed" ? event : null,

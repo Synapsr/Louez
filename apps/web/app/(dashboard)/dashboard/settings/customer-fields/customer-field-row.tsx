@@ -1,7 +1,7 @@
 "use client";
 
 import { useSortable } from "@dnd-kit/react/sortable";
-import { GripVertical, MoreHorizontal } from "lucide-react";
+import { Globe, GripVertical, MoreHorizontal, Package, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { CustomerFieldDefinition } from "@louez/types";
@@ -20,7 +20,9 @@ import {
 } from "@louez/ui";
 import { cn } from "@louez/utils";
 
+import { CustomerFieldTargetSummary } from "./customer-field-target-summary";
 import { CUSTOMER_FIELD_TYPE_ICONS } from "./customer-field-type-icon";
+import { describeTargeting } from "./util.customer-field-online";
 
 export interface CustomerFieldRowActions {
   onEdit: (field: CustomerFieldDefinition) => void;
@@ -58,8 +60,9 @@ export const CustomerFieldRow = ({
     transition: { duration: 160, easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)", idle: false },
   });
   const Icon = CUSTOMER_FIELD_TYPE_ICONS[field.type];
+  const targeting = describeTargeting(field);
 
-  const badges = [
+  const flags = [
     field.isRequired && t("badges.required"),
     field.isSensitive && t("badges.sensitive"),
     field.showOnContract && t("badges.contract"),
@@ -90,18 +93,41 @@ export const CustomerFieldRow = ({
       </span>
       <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onEdit(field)}>
         <span className="block truncate text-sm font-medium">{field.label}</span>
-        <span className="text-muted-foreground block truncate text-xs">
-          {t(`dialog.types.${field.type}`)}
-          {field.unit ? ` · ${field.unit}` : ""}
+        {/* What it is and which switches are on, in quiet text; then, only when
+            there is one, where it applies online, as badges. */}
+        <span className="text-muted-foreground mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+          <span className="min-w-0">
+            {[t(`dialog.types.${field.type}`), field.unit, ...flags].filter(Boolean).join(" · ")}
+          </span>
+          {targeting.kind === "targets" && (
+            <CustomerFieldTargetSummary targets={targeting.targets} />
+          )}
         </span>
+        {(field.scope === "item" ||
+          field.collectMode !== "never" ||
+          targeting.kind === "empty") && (
+          <span className="mt-1.5 flex flex-wrap items-center gap-1">
+            {field.scope === "item" && (
+              <Badge variant="secondary" size="sm">
+                <Package aria-hidden />
+                {t("badges.item")}
+              </Badge>
+            )}
+            {field.collectMode !== "never" && (
+              <Badge variant="info" size="sm">
+                <Globe aria-hidden />
+                {t(`badges.online.${field.collectMode}`)}
+              </Badge>
+            )}
+            {targeting.kind === "empty" && (
+              <Badge variant="warning" size="sm">
+                <TriangleAlert aria-hidden />
+                {t("badges.noTarget")}
+              </Badge>
+            )}
+          </span>
+        )}
       </button>
-      <div className="hidden flex-wrap justify-end gap-1 md:flex">
-        {badges.map((badge) => (
-          <Badge key={badge} variant="secondary" size="sm">
-            {badge}
-          </Badge>
-        ))}
-      </div>
       <Switch
         aria-label={t("field.active")}
         checked={field.isActive}

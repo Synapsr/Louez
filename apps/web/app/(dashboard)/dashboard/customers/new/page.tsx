@@ -31,7 +31,7 @@ export default async function NewCustomerPage({
     redirect('/onboarding')
   }
 
-  const definitions = await listCustomerFieldDefinitions(store.id, { activeOnly: true })
+  const definitions = await listCustomerFieldDefinitions(store.id, { activeOnly: true, scope: 'customer' })
 
   return (
     <div className="space-y-6">

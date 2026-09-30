@@ -18,6 +18,7 @@ import { toAbsoluteUrl } from "@louez/utils";
 import { env } from "@/env";
 import type { ReservationLocationSnapshot } from "@louez/types";
 import type { ContractCustomerFieldLine } from "./util.contract-customer-fields";
+import type { ContractItemDetailLine } from "./util.contract-item-details";
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
 type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>;
@@ -174,6 +175,8 @@ interface ReservationItem {
   assignedUnitIdentifiers?: string[];
   /** The breakage/theft coverage of the reservation applies to this line. */
   insured?: boolean;
+  /** Per-unit details flagged "show on contract", one printed line per unit. */
+  detailLines?: ContractItemDetailLine[];
 }
 
 interface Payment {
@@ -510,6 +513,11 @@ export function ContractDocument({
                       </Text>
                     </View>
                   )}
+                  {item.detailLines?.map((line) => (
+                    <Text key={line.id} style={styles.unitIdentifiers}>
+                      {line.text}
+                    </Text>
+                  ))}
                 </View>
                 <Text style={[styles.tableCell, styles.tableCellQty]}>{item.quantity}</Text>
                 <Text style={[styles.tableCell, styles.tableCellPrice]}>

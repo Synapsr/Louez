@@ -1982,6 +1982,20 @@
             "unassigned": "未从预订中分配",
             "updated": "单位已更新"
           }
+        },
+        "customerFields": {
+          "title": "需客户提供的信息",
+          "description": "在线询问，或按物品记录。",
+          "scope": {
+            "customer": "客户档案",
+            "item": "按物品"
+          },
+          "collect": {
+            "never": "仅限团队",
+            "optional": "在线 · 可选",
+            "required": "在线 · 必填"
+          },
+          "manage": "在“客户档案”中管理"
         }
       }
     },
@@ -6327,7 +6341,8 @@
           "rename": "重命名分组",
           "moveUp": "上移",
           "moveDown": "下移",
-          "actions": "分组操作"
+          "actions": "分组操作",
+          "online": "在线预订…"
         },
         "field": {
           "add": "添加字段",
@@ -6348,7 +6363,13 @@
           "search": "搜索",
           "list": "列表",
           "business": "企业",
-          "individual": "个人"
+          "individual": "个人",
+          "item": "按物品",
+          "online": {
+            "optional": "在线 · 可选",
+            "required": "在线 · 必填"
+          },
+          "noTarget": "未选择产品"
         },
         "dialog": {
           "createTitle": "新字段",
@@ -6395,7 +6416,25 @@
             "search": "纳入搜索",
             "searchHelp": "输入该值即可找到客户，同时会提示重复项。",
             "list": "显示在列表中",
-            "listHelp": "在客户列表中增加一列。"
+            "listHelp": "在客户列表中增加一列。",
+            "requiredTeam": "团队必填",
+            "sensitiveItemHelp": "默认在预订中隐藏。",
+            "contractItemHelp": "添加在租赁物品所在行的下方。"
+          },
+          "createDescriptionItem": "将在预订中为每件租赁物品填写。",
+          "labelPlaceholderItem": "鞋码",
+          "scope": "范围",
+          "scopes": {
+            "customer": "记录在客户档案中",
+            "customerDescription": "每位客户一个值：驾照、身份证件…",
+            "item": "按租赁物品",
+            "itemDescription": "每人或每件设备一个值：身高、鞋码…"
+          },
+          "scopeLocked": "字段创建后，范围将无法更改。",
+          "close": "关闭",
+          "online": {
+            "title": "在线预订",
+            "description": "客户在您的商店预订时需填写的内容。"
           }
         },
         "templates": {
@@ -6594,7 +6633,8 @@
                 }
               }
             }
-          }
+          },
+          "perItem": "按租赁物品"
         },
         "deleteDialog": {
           "title": "删除“{label}”？",
@@ -6602,7 +6642,9 @@
           "withValues": "{count, plural, other {# 位客户在此字段中填有值：这些值将被清除。}}",
           "archiveInstead": "改为存档",
           "confirm": "永久删除",
-          "cancel": "取消"
+          "cancel": "取消",
+          "descriptionItem": "该字段将从所有预订中消失。此操作无法撤销。",
+          "withItemValues": "{count, plural, other {# 件租赁物品在此字段中填有值：这些值将被清除。}}"
         },
         "archived": {
           "title": "已存档字段",
@@ -6611,7 +6653,21 @@
         "preview": {
           "title": "预览",
           "description": "您的团队创建客户时看到的内容。",
-          "empty": "添加一个字段即可查看预览。"
+          "empty": "添加一个字段即可查看预览。",
+          "audience": {
+            "team": "团队",
+            "client": "客户"
+          },
+          "client": {
+            "description": "您的客户在预订时看到的内容。",
+            "previewFor": "预览对象",
+            "noProduct": "未找到产品",
+            "sampleProduct": "租赁物品",
+            "oneCardPerUnit": "每件租赁物品一张卡片：两辆自行车，就有两张卡片。",
+            "emptyProduct": "此产品无需客户填写任何信息。",
+            "emptyAll": "目前无需客户填写任何信息。",
+            "emptyHint": "将字段的“请客户填写”设为“可选”或“必填”，即可在此处看到它。"
+          }
         },
         "empty": {
           "title": "暂无自定义字段",
@@ -6624,7 +6680,70 @@
           "restored": "字段已重新启用",
           "deleted": "字段已删除",
           "reordered": "顺序已保存",
-          "sectionRenamed": "分组已重命名"
+          "sectionRenamed": "分组已重命名",
+          "sectionOnlineSaved": "设置已应用到该分组"
+        },
+        "online": {
+          "collect": "请客户填写",
+          "collectModes": {
+            "never": "否",
+            "optional": "可选",
+            "required": "必填"
+          },
+          "collectHelp": {
+            "never": "否：仅您的团队可见。",
+            "customer": {
+              "optional": "客户在线预订时可选择填写。",
+              "required": "客户必须填写后才能在线预订。"
+            },
+            "item": {
+              "optional": "在线预订时，可为每件租赁物品选填。",
+              "required": "在线预订时，必须为每件租赁物品填写。"
+            }
+          },
+          "target": "针对",
+          "targetModes": {
+            "all": "所有预订",
+            "products": "指定产品"
+          },
+          "targetHelp": {
+            "customer": {
+              "all": "每次在线预订时都会询问。",
+              "products": "仅当购物车中包含这些产品之一时才会询问。"
+            },
+            "item": {
+              "all": "无论是哪种产品，每件租赁物品都带有此字段。",
+              "products": "仅这些类别和产品中的物品带有此字段。"
+            }
+          },
+          "targetsNone": "未选择产品：此字段不适用于任何预订。",
+          "targetsPlaceholder": "类别或产品…",
+          "targetsEmpty": "没有结果",
+          "groups": {
+            "categories": "类别",
+            "products": "产品"
+          },
+          "productCount": "{count, plural, =0 {没有产品} other {# 个产品}}",
+          "productStatus": {
+            "draft": "草稿",
+            "archived": "已存档"
+          },
+          "customerEditable": "客户可在其账户中修改",
+          "customerEditableHint": "客户可在其客户账户中查看并更新此信息。",
+          "customerEditableNeverHint": "将字段设为请客户填写后即可使用。",
+          "targetsSummaryLabel": "针对：",
+          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+        },
+        "sectionOnline": {
+          "title": "在线预订",
+          "description": "{count, plural, other {适用于“{section}”分组中的 # 个字段。}}",
+          "adoptedTitle": "针对哪些产品？",
+          "adoptedDescription": "“{section}”中的字段按每件租赁物品记录。请选择相关产品，如有需要，还可请客户填写。",
+          "mixed": "此分组中的字段设置各不相同：它们都将采用以下设置。",
+          "apply": "应用",
+          "cancel": "取消",
+          "later": "稍后",
+          "close": "关闭"
         }
       }
     },
@@ -6948,6 +7067,17 @@
       "sourceHint": "浏览源代码",
       "star": "留下一颗星",
       "later": "也许稍后"
+    },
+    "reservationDetails": {
+      "itemDetails": {
+        "title": "租赁详情",
+        "incomplete": "待填写",
+        "empty": "尚未填写任何内容",
+        "sheetDescription": "每件物品由谁使用，以及需要准备什么。",
+        "participantName": "使用者是谁？",
+        "participantNamePlaceholder": "名字",
+        "saved": "租赁详情已保存"
+      }
     }
   },
   "storefront": {
@@ -7477,7 +7607,8 @@
         "contact": "联系方式",
         "delivery": "发货",
         "address": "地址",
-        "confirm": "确认"
+        "confirm": "确认",
+        "details": "租赁详情"
       },
       "deliveryDescription": "选择如何接收和退回您的设备",
       "deliveryRequiredDescription": "此订单需要送货",
@@ -7747,6 +7878,10 @@
           "unavailable": "本店不支持网上支付。",
           "sessionFailed": "无法重新开始付款。稍后再试一次。"
         }
+      },
+      "customFields": {
+        "savedSummary": "已填写的信息",
+        "detailsIntro": "这些信息有助于 {store} 为您准备设备。"
       }
     },
     "confirmation": {
@@ -8295,6 +8430,17 @@
         "paymentDescription": "商店将收到通知。如果您已经支付或提供了押金，请联系商店要求退款或免责。此操作不会自动退款。",
         "adminSubject": "请求 #{number} 已被客户取消",
         "adminBody": "{name} 在您确认之前取消了预订请求#{number}。您可以在仪表板中查看其历史记录。"
+      },
+      "customerFields": {
+        "title": "附加信息",
+        "description": "{store} 会在您预订时请您提供这些信息。保持信息最新，下次就无需重新填写。"
+      },
+      "rentalDetails": {
+        "title": "租赁详情",
+        "editableHint": "租赁开始前均可修改。",
+        "toComplete": "待填写",
+        "saved": "详情已保存",
+        "saveError": "无法保存详情。请检查各字段后重试。"
       }
     },
     "marketplaceShell": {
@@ -8492,6 +8638,15 @@
       "breakdownTitle": "不同季节的价格",
       "from": "来自",
       "averageRate": "整个日期的平均值"
+    },
+    "customerFields": {
+      "optionalLabel": "{label}（可选）",
+      "sensitiveNote": "仅 {store} 可见",
+      "participantLabel": "使用者是谁？",
+      "participantPlaceholder": "名字（可选）",
+      "unitCounter": "{index} / {count}",
+      "unitEmpty": "未填写任何内容",
+      "recapValue": "{label}：{value}"
     }
   },
   "onboarding": {
@@ -9164,7 +9319,13 @@
       "tooManyFields": "已达到启用字段的数量上限。请先存档一个字段，再添加新字段。",
       "tooManySearchable": "最多可将五个字段纳入搜索。",
       "tooManyListFields": "最多可在列表中显示两个字段。"
-    }
+    },
+    "customFieldRequired": "请填写“{field}”。",
+    "customFieldInvalid": "“{field}”无效。",
+    "itemDetailRequired": "请为 {product}（第 {unit} 件）填写“{field}”。",
+    "itemDetailInvalid": "{product}（第 {unit} 件）的“{field}”无效。",
+    "reservationDetailsLocked": "租赁已开始或已结束，这些信息无法再修改。",
+    "customerNotAuthenticated": "请登录您的客户账户以继续。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",

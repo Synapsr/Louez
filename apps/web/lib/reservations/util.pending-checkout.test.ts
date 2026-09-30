@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { isSamePendingCheckout, type PendingCheckoutSnapshot } from "./util.pending-checkout";
+import {
+  isSamePendingCheckout,
+  matchPendingCheckoutItems,
+  type PendingCheckoutSnapshot,
+} from "./util.pending-checkout";
 
 const start = new Date("2026-09-11T07:00:00.000Z");
 const end = new Date("2026-09-11T16:00:00.000Z");
@@ -144,4 +148,23 @@ test("absent optionals equal null columns", () => {
   delete candidate.reservation.customerNotes;
   delete candidate.reservation.promoCodeSnapshot;
   assert.equal(isSamePendingCheckout(stored(), candidate), true);
+});
+
+test("each reused line lands on its stored item, whatever the stored order", () => {
+  const storedItems = stored().items.map((item, index) => ({ ...item, id: `item_${index}` }));
+  // Stored lines are reversed: the helmet is item_0, the bike item_1.
+  assert.deepEqual(matchPendingCheckoutItems(storedItems, written().items), ["item_1", "item_0"]);
+});
+
+test("identical lines take distinct stored items, an unknown line none", () => {
+  const [bike] = written().items;
+  const storedItems = [
+    { ...bike, id: "first" },
+    { ...bike, id: "second" },
+  ];
+  assert.deepEqual(matchPendingCheckoutItems(storedItems, [bike, bike, bike]), [
+    "first",
+    "second",
+    null,
+  ]);
 });

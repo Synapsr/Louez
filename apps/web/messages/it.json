@@ -1943,6 +1943,20 @@
             "unassigned": "Disassegnata da una prenotazione",
             "updated": "Unità aggiornata"
           }
+        },
+        "customerFields": {
+          "title": "Informazioni richieste al cliente",
+          "description": "Richieste online o annotate per articolo.",
+          "scope": {
+            "customer": "Scheda cliente",
+            "item": "Per articolo"
+          },
+          "collect": {
+            "never": "Solo il team",
+            "optional": "Online · Facoltativo",
+            "required": "Online · Obbligatorio"
+          },
+          "manage": "Gestisci in Scheda cliente"
         }
       }
     },
@@ -6327,7 +6341,8 @@
           "rename": "Rinomina la sezione",
           "moveUp": "Sposta su",
           "moveDown": "Sposta giù",
-          "actions": "Azioni della sezione"
+          "actions": "Azioni della sezione",
+          "online": "Prenotazione online…"
         },
         "field": {
           "add": "Aggiungi un campo",
@@ -6348,7 +6363,13 @@
           "search": "Ricerca",
           "list": "Elenco",
           "business": "Aziende",
-          "individual": "Privati"
+          "individual": "Privati",
+          "item": "Per articolo",
+          "online": {
+            "optional": "Online · Facoltativo",
+            "required": "Online · Obbligatorio"
+          },
+          "noTarget": "Nessun prodotto selezionato"
         },
         "dialog": {
           "createTitle": "Nuovo campo",
@@ -6395,7 +6416,25 @@
             "search": "Includi nella ricerca",
             "searchHelp": "Digita il valore per ritrovare il cliente. Segnala anche i duplicati.",
             "list": "Mostra nell'elenco",
-            "listHelp": "Aggiunge una colonna all'elenco dei clienti."
+            "listHelp": "Aggiunge una colonna all'elenco dei clienti.",
+            "requiredTeam": "Obbligatorio per il tuo team",
+            "sensitiveItemHelp": "Nascosto per impostazione predefinita nella prenotazione.",
+            "contractItemHelp": "Aggiunto sotto la riga dell'articolo noleggiato."
+          },
+          "createDescriptionItem": "Verrà compilato per ogni articolo noleggiato, nella prenotazione.",
+          "labelPlaceholderItem": "Numero di scarpe",
+          "scope": "Ambito",
+          "scopes": {
+            "customer": "Nella scheda cliente",
+            "customerDescription": "Un valore per cliente: patente, documento d'identità…",
+            "item": "Per articolo noleggiato",
+            "itemDescription": "Un valore per persona o per attrezzatura: altezza, numero di scarpe…"
+          },
+          "scopeLocked": "L'ambito non può più cambiare una volta creato il campo.",
+          "close": "Chiudi",
+          "online": {
+            "title": "Prenotazione online",
+            "description": "Ciò che i clienti compilano quando prenotano nel tuo negozio."
           }
         },
         "templates": {
@@ -6594,7 +6633,8 @@
                 }
               }
             }
-          }
+          },
+          "perItem": "Per articolo noleggiato"
         },
         "deleteDialog": {
           "title": "Eliminare «{label}»?",
@@ -6602,7 +6642,9 @@
           "withValues": "{count, plural, one {# cliente ha un valore in questo campo: verrà cancellato.} other {# clienti hanno un valore in questo campo: verranno cancellati.}}",
           "archiveInstead": "Archivia invece",
           "confirm": "Elimina definitivamente",
-          "cancel": "Annulla"
+          "cancel": "Annulla",
+          "descriptionItem": "Il campo scomparirà da tutte le prenotazioni. Questa azione è irreversibile.",
+          "withItemValues": "{count, plural, one {# articolo noleggiato ha un valore in questo campo: verrà cancellato.} other {# articoli noleggiati hanno un valore in questo campo: verranno cancellati.}}"
         },
         "archived": {
           "title": "Campi archiviati",
@@ -6611,7 +6653,21 @@
         "preview": {
           "title": "Anteprima",
           "description": "Quello che vedrà il tuo team quando crea un cliente.",
-          "empty": "Aggiungi un campo per vedere l'anteprima."
+          "empty": "Aggiungi un campo per vedere l'anteprima.",
+          "audience": {
+            "team": "Team",
+            "client": "Cliente"
+          },
+          "client": {
+            "description": "Quello che vedrà il tuo cliente quando prenota.",
+            "previewFor": "Anteprima per",
+            "noProduct": "Nessun prodotto trovato",
+            "sampleProduct": "Articolo noleggiato",
+            "oneCardPerUnit": "Un riquadro per articolo noleggiato: due bici, due riquadri.",
+            "emptyProduct": "Non viene chiesto nulla al cliente per questo prodotto.",
+            "emptyAll": "Per ora non viene chiesto nulla al cliente.",
+            "emptyHint": "Imposta «Chiedi al cliente» su Facoltativo o Obbligatorio per far comparire qui un campo."
+          }
         },
         "empty": {
           "title": "Nessun campo personalizzato",
@@ -6624,7 +6680,70 @@
           "restored": "Campo riattivato",
           "deleted": "Campo eliminato",
           "reordered": "Ordine salvato",
-          "sectionRenamed": "Sezione rinominata"
+          "sectionRenamed": "Sezione rinominata",
+          "sectionOnlineSaved": "Impostazioni applicate alla sezione"
+        },
+        "online": {
+          "collect": "Chiedi al cliente",
+          "collectModes": {
+            "never": "No",
+            "optional": "Facoltativo",
+            "required": "Obbligatorio"
+          },
+          "collectHelp": {
+            "never": "No: lo vede solo il tuo team.",
+            "customer": {
+              "optional": "Proposto al cliente quando prenota online.",
+              "required": "Il cliente deve compilarlo per prenotare online."
+            },
+            "item": {
+              "optional": "Proposto per ogni articolo noleggiato durante la prenotazione online.",
+              "required": "Da compilare per ogni articolo noleggiato prima di prenotare online."
+            }
+          },
+          "target": "Per",
+          "targetModes": {
+            "all": "Tutte le prenotazioni",
+            "products": "Prodotti specifici"
+          },
+          "targetHelp": {
+            "customer": {
+              "all": "Richiesto a ogni prenotazione online.",
+              "products": "Richiesto solo se il carrello contiene uno di questi prodotti."
+            },
+            "item": {
+              "all": "Ogni articolo noleggiato ha questo campo, qualunque sia il prodotto.",
+              "products": "Solo gli articoli di queste categorie e prodotti hanno questo campo."
+            }
+          },
+          "targetsNone": "Nessun prodotto selezionato: questo campo non si applica a nessuna prenotazione.",
+          "targetsPlaceholder": "Categoria o prodotto…",
+          "targetsEmpty": "Nessun risultato",
+          "groups": {
+            "categories": "Categorie",
+            "products": "Prodotti"
+          },
+          "productCount": "{count, plural, =0 {Nessun prodotto} one {# prodotto} other {# prodotti}}",
+          "productStatus": {
+            "draft": "Bozza",
+            "archived": "Archiviato"
+          },
+          "customerEditable": "Il cliente può modificarlo dal suo account",
+          "customerEditableHint": "Lo ritrova nel suo account cliente e può aggiornarlo.",
+          "customerEditableNeverHint": "Disponibile quando il campo viene chiesto al cliente.",
+          "targetsSummaryLabel": "Per:",
+          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+        },
+        "sectionOnline": {
+          "title": "Prenotazione online",
+          "description": "{count, plural, one {Si applica al campo della sezione «{section}».} other {Si applica ai # campi della sezione «{section}».}}",
+          "adoptedTitle": "Per quali prodotti?",
+          "adoptedDescription": "I campi «{section}» vengono registrati per ogni articolo noleggiato. Scegli i prodotti interessati e, se serve, chiedi al cliente di compilarli.",
+          "mixed": "I campi di questa sezione hanno impostazioni diverse: a tutti verranno applicate queste.",
+          "apply": "Applica",
+          "cancel": "Annulla",
+          "later": "Più tardi",
+          "close": "Chiudi"
         }
       }
     },
@@ -6948,6 +7067,17 @@
       "sourceHint": "Sfoglia il codice sorgente",
       "star": "Lascia una stella",
       "later": "Più tardi"
+    },
+    "reservationDetails": {
+      "itemDetails": {
+        "title": "Dettagli del noleggio",
+        "incomplete": "Da completare",
+        "empty": "Ancora nessuna informazione",
+        "sheetDescription": "Chi usa ogni articolo e cosa preparare.",
+        "participantName": "Per chi è?",
+        "participantNamePlaceholder": "Nome",
+        "saved": "Dettagli del noleggio salvati"
+      }
     }
   },
   "storefront": {
@@ -7477,7 +7607,8 @@
         "contact": "Contatto",
         "delivery": "Consegna",
         "address": "Indirizzo",
-        "confirm": "Conferma"
+        "confirm": "Conferma",
+        "details": "Dettagli del noleggio"
       },
       "deliveryDescription": "Scegli come ricevere e restituire la tua attrezzatura",
       "deliveryRequiredDescription": "La consegna è obbligatoria per questo ordine",
@@ -7747,6 +7878,10 @@
           "unavailable": "Il pagamento online non è disponibile per questo negozio.",
           "sessionFailed": "Non è stato possibile riavviare il pagamento. Riprova tra poco."
         }
+      },
+      "customFields": {
+        "savedSummary": "Informazioni già registrate",
+        "detailsIntro": "Queste informazioni aiutano {store} a preparare la tua attrezzatura."
       }
     },
     "confirmation": {
@@ -8295,6 +8430,17 @@
         "paymentDescription": "Il negozio verrà informato. Se hai già pagato o versato una cauzione, contatta il negozio per il rimborso o lo svincolo. Questa azione non avvia un rimborso automatico.",
         "adminSubject": "Richiesta #{number} annullata dal cliente",
         "adminBody": "{name} ha annullato la richiesta di prenotazione #{number} prima della tua conferma. Puoi consultarne la cronologia nella dashboard."
+      },
+      "customerFields": {
+        "title": "Informazioni aggiuntive",
+        "description": "Richieste da {store} quando prenoti. Tienile aggiornate e non dovrai inserirle di nuovo."
+      },
+      "rentalDetails": {
+        "title": "Dettagli del noleggio",
+        "editableHint": "Puoi modificarli fino all'inizio del noleggio.",
+        "toComplete": "Da completare",
+        "saved": "Dettagli salvati",
+        "saveError": "Impossibile salvare i dettagli. Controlla i campi e riprova."
       }
     },
     "marketplaceShell": {
@@ -8492,6 +8638,15 @@
       "breakdownTitle": "Prezzo per stagione",
       "from": "A partire da",
       "averageRate": "In media sulle tue date"
+    },
+    "customerFields": {
+      "optionalLabel": "{label} (facoltativo)",
+      "sensitiveNote": "Visibile solo a {store}",
+      "participantLabel": "Per chi è?",
+      "participantPlaceholder": "Nome (facoltativo)",
+      "unitCounter": "{index} / {count}",
+      "unitEmpty": "Nessuna informazione inserita",
+      "recapValue": "{label}: {value}"
     }
   },
   "onboarding": {
@@ -9164,7 +9319,13 @@
       "tooManyFields": "Hai raggiunto il numero massimo di campi attivi. Archiviane uno per aggiungerne un altro.",
       "tooManySearchable": "Si possono includere nella ricerca al massimo cinque campi.",
       "tooManyListFields": "Si possono mostrare nell'elenco al massimo due campi."
-    }
+    },
+    "customFieldRequired": "Compila «{field}».",
+    "customFieldInvalid": "«{field}» non è valido.",
+    "itemDetailRequired": "Compila «{field}» per {product} (n. {unit}).",
+    "itemDetailInvalid": "«{field}» non è valido per {product} (n. {unit}).",
+    "reservationDetailsLocked": "Questi dati non sono più modificabili: il noleggio è iniziato o è terminato.",
+    "customerNotAuthenticated": "Accedi al tuo spazio cliente per continuare."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

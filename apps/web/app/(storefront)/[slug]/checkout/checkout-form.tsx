@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSearchParams } from "next/navigation";
 
-import { useStore } from "@tanstack/react-form";
+import { useStore, type DeepKeys } from "@tanstack/react-form";
 import { getCheckoutReturnHref } from "@/lib/utils/util.checkout-return";
 import { AlertCircle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -12,8 +12,10 @@ import { usePostHog } from "posthog-js/react";
 
 import { Alert, AlertDescription, AlertTitle, Button } from "@louez/ui";
 import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR } from "@louez/types";
+import type { CheckoutFieldIssue } from "@louez/validations";
 
 import { DatePickerModal } from "@/components/storefront/date-picker-modal";
+import { useCustomerFieldIssueMessage } from "@/components/storefront/customer-fields/use-customer-field-issue-message";
 import { useAnalytics } from "@/contexts/analytics-context";
 import { useCart } from "@/contexts/cart-context";
 import { useAppForm } from "@/hooks/form/form";
@@ -38,16 +40,23 @@ import type {
 import { CheckoutConfirmStep } from "./components/checkout-confirm-step";
 import { CheckoutContactStep } from "./components/checkout-contact-step";
 import { CheckoutDeliveryStep } from "./components/checkout-delivery-step";
+import { CheckoutDetailsStep } from "./components/checkout-details-step";
 import { CheckoutEmptyCartState } from "./components/checkout-empty-cart-state";
 import { CheckoutSkeleton } from "./components/checkout-skeleton";
 import { useCheckoutAdvanceNotice } from "./hooks/use-checkout-advance-notice";
 import { useCheckoutAdvisorGate } from "./hooks/use-checkout-advisor-gate";
+import { useCheckoutCustomFields } from "./hooks/use-checkout-custom-fields";
 import { useCheckoutDelivery } from "./hooks/use-checkout-delivery";
 import { useCheckoutLineResolutions } from "./hooks/use-checkout-line-resolutions";
 import { useCheckoutPromo } from "./hooks/use-checkout-promo";
 import { useCheckoutStepFlow } from "./hooks/use-checkout-step-flow";
 import { useCheckoutSubmit } from "./hooks/use-checkout-submit";
 import { useCheckoutTulipQuote } from "./hooks/use-checkout-tulip-quote";
+import {
+  getCheckoutFieldIssueName,
+  getCheckoutFieldNamesForStep,
+  hasCheckoutDetailsStep,
+} from "./util.checkout-custom-fields";
 import { calculateCheckoutTotals, getCheckoutSubmitLabel } from "./util.checkout-totals";
 import {
   checkoutFormOptions,
@@ -58,14 +67,13 @@ import {
 type Coordinates = Pick<DeliveryAddress, "latitude" | "longitude">;
 
 const NO_COORDINATES: Coordinates = { latitude: null, longitude: null };
+const NO_SAVED_VALUES: Record<string, string> = {};
 
-const CONTACT_FIELDS: Array<keyof CheckoutFormValues> = ["email", "firstName", "lastName", "phone"];
-const ADDRESS_FIELDS: Array<keyof CheckoutFormValues> = ["address", "city", "postalCode"];
-const COMPANY_FIELDS: Array<keyof CheckoutFormValues> = [
-  "companyName",
-  "companyNumber",
-  "vatNumber",
-];
+type CheckoutFieldName = DeepKeys<CheckoutFormValues>;
+
+const CONTACT_FIELDS: CheckoutFieldName[] = ["email", "firstName", "lastName", "phone"];
+const ADDRESS_FIELDS: CheckoutFieldName[] = ["address", "city", "postalCode"];
+const COMPANY_FIELDS: CheckoutFieldName[] = ["companyName", "companyNumber", "vatNumber"];
 
 export const CheckoutForm = ({
   storeSlug,
@@ -92,6 +100,7 @@ export const CheckoutForm = ({
   minRentalMinutes,
   timezone,
   initialCustomer,
+  initialCustomerFieldValues,
 }: CheckoutFormProps) => {
   const t = useTranslations("storefront.checkout");
   const tErrors = useTranslations("errors");
@@ -120,6 +129,8 @@ export const CheckoutForm = ({
   const [sessionCustomer, setSessionCustomer] = useState<CheckoutInitialCustomer | null>(
     initialCustomer,
   );
+  // Values on file only prefill while the verified customer is the one checking out.
+  const savedCustomerFieldValues = sessionCustomer ? initialCustomerFieldValues : NO_SAVED_VALUES;
   const [coordinates, setCoordinates] = useState<Coordinates>(NO_COORDINATES);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const stepRef = useRef<HTMLDivElement>(null);
@@ -139,34 +150,44 @@ export const CheckoutForm = ({
     useCheckoutLineResolutions({
       items,
     });
+  const customFields = useCheckoutCustomFields({ items: itemsWithResolved });
+  const customFieldIssueMessage = useCustomerFieldIssueMessage();
 
   const validator = useMemo(
     () =>
       createCheckoutValidator((key, params) => t(key, params), {
         requireAddress: requireCustomerAddress,
         country: storeCountry,
+        checkoutFields: customFields.plans,
+        customFieldIssueMessage,
       }),
-    [requireCustomerAddress, storeCountry, t],
+    [customFieldIssueMessage, customFields.plans, requireCustomerAddress, storeCountry, t],
   );
 
   const form = useAppForm({
     ...checkoutFormOptions,
-    defaultValues: getCheckoutDefaultValues(initialCustomer),
+    defaultValues: getCheckoutDefaultValues(sessionCustomer, savedCustomerFieldValues),
     validators: { onSubmit: validator },
     onSubmit: async ({ value }) => submitRef.current(value),
   });
 
   const values = useStore(form.store, (state) => state.values);
   const showAddressInContact = requireCustomerAddress;
+  const checkoutFields = values.isBusinessCustomer
+    ? customFields.plans.business
+    : customFields.plans.individual;
+  const hasDetailsStep = hasCheckoutDetailsStep(checkoutFields);
 
   const validateCurrentStep = useCallback(
     async (step: StepId): Promise<boolean> => {
       if (step === "confirm") return true;
 
-      const fields = [
+      const fields: CheckoutFieldName[] = [
         ...(step === "contact" ? CONTACT_FIELDS : []),
         ...(step === "contact" && showAddressInContact ? ADDRESS_FIELDS : []),
         ...(step === "contact" && form.getFieldValue("isBusinessCustomer") ? COMPANY_FIELDS : []),
+        ...(step === "contact" ? getCheckoutFieldNamesForStep(checkoutFields, "contact") : []),
+        ...(step === "details" ? getCheckoutFieldNamesForStep(checkoutFields, "details") : []),
       ];
 
       await Promise.all(fields.map((field) => form.validateField(field, "submit")));
@@ -181,15 +202,22 @@ export const CheckoutForm = ({
           step,
           failed_fields: failedFields,
         });
+        // The first refused input can sit below the fold (the second bike's
+        // card on a phone): bring it into view. Inputs carry their field name as id.
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        document
+          .getElementById(failedFields[0] ?? "")
+          ?.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
         return false;
       }
       return true;
     },
-    [form, posthog, showAddressInContact, storeId],
+    [checkoutFields, form, posthog, showAddressInContact, storeId],
   );
 
   const stepFlow = useCheckoutStepFlow({
     isDeliveryEnabled: delivery.isDeliveryEnabled,
+    hasDetailsStep,
     validateCurrentStep,
     scrollTargetRef: stepRef,
   });
@@ -261,7 +289,23 @@ export const CheckoutForm = ({
     promoCode: promo.promo?.code,
     advisorConversationId: advisorGate.conversationId ?? undefined,
     blockedReason,
+    checkoutFields,
+    hasDetailsStep,
     onAdvanceNoticeRejected: advanceNotice.reportServerIssue,
+    onCheckoutFieldIssues: (issues: CheckoutFieldIssue[]) => {
+      // The store may have changed what it asks since the page loaded.
+      customFields.refresh();
+      for (const issue of issues) {
+        const name = getCheckoutFieldIssueName(issue, checkoutFields);
+        if (!name) continue;
+        const message = customFieldIssueMessage(issue.code);
+        form.setFieldMeta(name, (prev) => {
+          // No meta yet for a field that never rendered (the folded summary).
+          const errorMap = prev === undefined ? {} : prev.errorMap;
+          return { ...prev, isTouched: true, errorMap: { ...errorMap, onServer: message } };
+        });
+      }
+    },
   });
 
   useEffect(() => {
@@ -292,7 +336,7 @@ export const CheckoutForm = ({
   const handleSessionCustomer = (customer: CheckoutInitialCustomer | null) => {
     setSessionCustomer(customer);
     setCoordinates(NO_COORDINATES);
-    form.reset(getCheckoutDefaultValues(customer));
+    form.reset(getCheckoutDefaultValues(customer, customer ? initialCustomerFieldValues : {}));
   };
 
   const handleUseCustomerAddress = (leg: "outbound" | "return") => {
@@ -450,6 +494,20 @@ export const CheckoutForm = ({
               onSessionCustomer={handleSessionCustomer}
               coordinates={coordinates}
               onCoordinatesChange={setCoordinates}
+              customerFields={checkoutFields.customerFields}
+              savedCustomerFieldValues={savedCustomerFieldValues}
+              isCustomFieldsLoading={customFields.isLoading}
+              onContinue={stepFlow.goToNextStep}
+              stepDirection={stepFlow.stepDirection}
+            />
+          )}
+
+          {stepFlow.currentStep === "details" && (
+            <CheckoutDetailsStep
+              form={form}
+              lines={checkoutFields.lines}
+              storeName={storeName ?? ""}
+              onBack={stepFlow.goToPreviousStep}
               onContinue={stepFlow.goToNextStep}
               stepDirection={stepFlow.stepDirection}
             />
@@ -490,6 +548,8 @@ export const CheckoutForm = ({
               onBack={stepFlow.goToPreviousStep}
               onEditContact={() => stepFlow.goToStep("contact")}
               onEditDates={() => setIsDatePickerOpen(true)}
+              detailsLines={hasDetailsStep ? checkoutFields.lines : undefined}
+              onEditDetails={() => stepFlow.goToStep("details")}
               stepDirection={stepFlow.stepDirection}
             />
           )}

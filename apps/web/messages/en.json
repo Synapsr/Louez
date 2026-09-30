@@ -1982,6 +1982,20 @@
             "unassigned": "Unassigned from reservation",
             "updated": "Unit updated"
           }
+        },
+        "customerFields": {
+          "title": "Information asked to customers",
+          "description": "Asked online or noted per rented item.",
+          "scope": {
+            "customer": "Customer record",
+            "item": "Per item"
+          },
+          "collect": {
+            "never": "Team only",
+            "optional": "Online · Optional",
+            "required": "Online · Required"
+          },
+          "manage": "Manage in Customer record"
         }
       }
     },
@@ -6327,7 +6341,8 @@
           "rename": "Rename section",
           "moveUp": "Move up",
           "moveDown": "Move down",
-          "actions": "Section actions"
+          "actions": "Section actions",
+          "online": "Online booking…"
         },
         "field": {
           "add": "Add a field",
@@ -6348,7 +6363,13 @@
           "search": "Search",
           "list": "List",
           "business": "Businesses",
-          "individual": "Individuals"
+          "individual": "Individuals",
+          "item": "Per item",
+          "online": {
+            "optional": "Online · Optional",
+            "required": "Online · Required"
+          },
+          "noTarget": "No product selected"
         },
         "dialog": {
           "createTitle": "New field",
@@ -6395,7 +6416,25 @@
             "search": "Include in search",
             "searchHelp": "Type the value to find the customer. Also flags duplicates.",
             "list": "Show in the list",
-            "listHelp": "Adds a column to the customer list."
+            "listHelp": "Adds a column to the customer list.",
+            "requiredTeam": "Required for your team",
+            "sensitiveItemHelp": "Hidden by default on the booking.",
+            "contractItemHelp": "Printed under the rented item's line."
+          },
+          "createDescriptionItem": "It is filled in for each rented item, on the booking.",
+          "labelPlaceholderItem": "Shoe size",
+          "scope": "Scope",
+          "scopes": {
+            "customer": "On the customer record",
+            "customerDescription": "One value per customer: licence, ID document…",
+            "item": "Per rented item",
+            "itemDescription": "One value per person or piece of equipment: height, shoe size…"
+          },
+          "scopeLocked": "The scope can't be changed once the field exists.",
+          "close": "Close",
+          "online": {
+            "title": "Online booking",
+            "description": "What customers fill in when they book on your store."
           }
         },
         "templates": {
@@ -6594,7 +6633,8 @@
                 }
               }
             }
-          }
+          },
+          "perItem": "Per rented item"
         },
         "deleteDialog": {
           "title": "Delete “{label}”?",
@@ -6602,7 +6642,9 @@
           "withValues": "{count, plural, one {# customer has a value for this field: it will be erased.} other {# customers have a value for this field: they will be erased.}}",
           "archiveInstead": "Archive instead",
           "confirm": "Delete permanently",
-          "cancel": "Cancel"
+          "cancel": "Cancel",
+          "descriptionItem": "The field will disappear from every booking. This can't be undone.",
+          "withItemValues": "{count, plural, one {# rented item has a value for this field: it will be erased.} other {# rented items have a value for this field: they will be erased.}}"
         },
         "archived": {
           "title": "Archived fields",
@@ -6611,7 +6653,21 @@
         "preview": {
           "title": "Preview",
           "description": "What your team sees when creating a customer.",
-          "empty": "Add a field to see the preview."
+          "empty": "Add a field to see the preview.",
+          "audience": {
+            "team": "Team",
+            "client": "Customer"
+          },
+          "client": {
+            "description": "What your customer sees when booking.",
+            "previewFor": "Preview for",
+            "noProduct": "No product found",
+            "sampleProduct": "Rented item",
+            "oneCardPerUnit": "One card per rented item: two bikes, two cards.",
+            "emptyProduct": "Nothing is asked of the customer for this product.",
+            "emptyAll": "Nothing is asked of the customer yet.",
+            "emptyHint": "Set “Ask the customer” to Optional or Required on a field to see it here."
+          }
         },
         "empty": {
           "title": "No custom fields",
@@ -6624,7 +6680,70 @@
           "restored": "Field reactivated",
           "deleted": "Field deleted",
           "reordered": "Order saved",
-          "sectionRenamed": "Section renamed"
+          "sectionRenamed": "Section renamed",
+          "sectionOnlineSaved": "Settings applied to the section"
+        },
+        "online": {
+          "collect": "Ask the customer",
+          "collectModes": {
+            "never": "No",
+            "optional": "Optional",
+            "required": "Required"
+          },
+          "collectHelp": {
+            "never": "No: only your team sees it.",
+            "customer": {
+              "optional": "Offered to customers when they book online.",
+              "required": "Customers must fill it in to book online."
+            },
+            "item": {
+              "optional": "Offered for each rented item when booking online.",
+              "required": "Must be filled in for each rented item to book online."
+            }
+          },
+          "target": "For",
+          "targetModes": {
+            "all": "All bookings",
+            "products": "Specific products"
+          },
+          "targetHelp": {
+            "customer": {
+              "all": "Asked on every online booking.",
+              "products": "Only asked when the cart holds one of these products."
+            },
+            "item": {
+              "all": "Every rented item carries this field, whatever the product.",
+              "products": "Only items from these categories and products carry this field."
+            }
+          },
+          "targetsNone": "No product selected: this field applies to no booking.",
+          "targetsPlaceholder": "Category or product…",
+          "targetsEmpty": "No results",
+          "groups": {
+            "categories": "Categories",
+            "products": "Products"
+          },
+          "productCount": "{count, plural, =0 {No products} one {# product} other {# products}}",
+          "productStatus": {
+            "draft": "Draft",
+            "archived": "Archived"
+          },
+          "customerEditable": "Customers can edit it from their account",
+          "customerEditableHint": "They find it in their customer account and can update it.",
+          "customerEditableNeverHint": "Available once the field is asked to the customer.",
+          "targetsSummaryLabel": "For:",
+          "targetsSummary": "{names}{more, plural, =0 {} other { +#}}"
+        },
+        "sectionOnline": {
+          "title": "Online booking",
+          "description": "{count, plural, one {Applies to the field of the “{section}” section.} other {Applies to the # fields of the “{section}” section.}}",
+          "adoptedTitle": "Which products?",
+          "adoptedDescription": "The “{section}” fields are recorded for each rented item. Pick the products they concern and, if needed, ask customers to fill them in.",
+          "mixed": "The fields of this section have different settings: they will all take these.",
+          "apply": "Apply",
+          "cancel": "Cancel",
+          "later": "Later",
+          "close": "Close"
         }
       }
     },
@@ -6948,6 +7067,17 @@
       "sourceHint": "Browse the source code",
       "star": "Leave a star",
       "later": "Maybe later"
+    },
+    "reservationDetails": {
+      "itemDetails": {
+        "title": "Rental details",
+        "incomplete": "To complete",
+        "empty": "Nothing recorded yet",
+        "sheetDescription": "Who uses each item and what to get ready.",
+        "participantName": "Who is it for?",
+        "participantNamePlaceholder": "First name",
+        "saved": "Rental details saved"
+      }
     }
   },
   "storefront": {
@@ -7477,7 +7607,8 @@
         "contact": "Contact",
         "delivery": "Delivery",
         "address": "Address",
-        "confirm": "Confirmation"
+        "confirm": "Confirmation",
+        "details": "Rental details"
       },
       "deliveryDescription": "Choose how to receive and return your equipment",
       "deliveryRequiredDescription": "Delivery is required for this order",
@@ -7747,6 +7878,10 @@
           "unavailable": "Online payment is unavailable for this store.",
           "sessionFailed": "Payment could not be restarted. Try again in a moment."
         }
+      },
+      "customFields": {
+        "savedSummary": "Details already on file",
+        "detailsIntro": "This helps {store} get your equipment ready."
       }
     },
     "confirmation": {
@@ -8295,6 +8430,17 @@
         "paymentDescription": "The store will be notified. If you have already paid or provided a deposit, contact the store for a refund or release. This action does not issue an automatic refund.",
         "adminSubject": "Request #{number} cancelled by the customer",
         "adminBody": "{name} cancelled booking request #{number} before your confirmation. You can view its history in your dashboard."
+      },
+      "customerFields": {
+        "title": "Additional information",
+        "description": "Requested by {store} when you book. Keep it up to date and you won’t have to type it again."
+      },
+      "rentalDetails": {
+        "title": "Rental details",
+        "editableHint": "You can change them until the rental starts.",
+        "toComplete": "To complete",
+        "saved": "Details saved",
+        "saveError": "Couldn’t save the details. Check the fields and try again."
       }
     },
     "marketplaceShell": {
@@ -8492,6 +8638,15 @@
       "breakdownTitle": "Price by season",
       "from": "From",
       "averageRate": "On average across your dates"
+    },
+    "customerFields": {
+      "optionalLabel": "{label} (optional)",
+      "sensitiveNote": "Only visible to {store}",
+      "participantLabel": "Who is it for?",
+      "participantPlaceholder": "First name (optional)",
+      "unitCounter": "{index} / {count}",
+      "unitEmpty": "Nothing filled in",
+      "recapValue": "{label}: {value}"
     }
   },
   "onboarding": {
@@ -9164,7 +9319,13 @@
       "tooManyFields": "You reached the maximum number of active fields. Archive one to add another.",
       "tooManySearchable": "Up to five fields can be included in search.",
       "tooManyListFields": "Up to two fields can be shown in the list."
-    }
+    },
+    "customFieldRequired": "Please fill in “{field}”.",
+    "customFieldInvalid": "“{field}” is not valid.",
+    "itemDetailRequired": "Please fill in “{field}” for {product} (no. {unit}).",
+    "itemDetailInvalid": "“{field}” is not valid for {product} (no. {unit}).",
+    "reservationDetailsLocked": "These details can no longer be changed: the rental has started or ended.",
+    "customerNotAuthenticated": "Sign in to your customer account to continue."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

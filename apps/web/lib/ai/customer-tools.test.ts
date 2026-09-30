@@ -30,6 +30,11 @@ const definition = (
   showInList: false,
   templateKey: null,
   isActive: true,
+  scope: "customer",
+  collectMode: "never",
+  targetMode: "all",
+  customerEditable: false,
+  targets: [],
   ...overrides,
 });
 

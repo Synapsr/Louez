@@ -46,7 +46,7 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
   }
 
   const [definitions, customFields] = await Promise.all([
-    listCustomerFieldDefinitions(store.id, { activeOnly: true }),
+    listCustomerFieldDefinitions(store.id, { activeOnly: true, scope: 'customer' }),
     getCustomerFieldValues(store.id, customer.id),
   ])
 

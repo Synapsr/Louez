@@ -4,6 +4,10 @@ import { notFound } from "next/navigation";
 import { and, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
+import {
+  getCustomerFieldValues,
+  listCustomerFieldDefinitions,
+} from "@louez/api/services/customer-fields";
 import { db, promoCodes, storeLocations } from "@louez/db";
 
 import { PageTracker } from "@/components/storefront/page-tracker";
@@ -85,6 +89,34 @@ const hasActivePromoCodes = async (storeId: string): Promise<boolean> => {
   return (row?.count ?? 0) > 0;
 };
 
+const NO_CUSTOMER_FIELD_VALUES: Record<string, string> = {};
+
+/**
+ * The signed-in customer's values for the custom fields a checkout may ask,
+ * to prefill them. Only ever read from the session: typing someone's e-mail
+ * must never reveal their ID number.
+ */
+const getSavedCustomerFieldValues = async (
+  storeId: string,
+  customerId: string,
+): Promise<Record<string, string>> => {
+  const definitions = await listCustomerFieldDefinitions(storeId, {
+    activeOnly: true,
+    scope: "customer",
+  });
+  const askedIds = new Set(
+    definitions
+      .filter((definition) => definition.collectMode !== "never")
+      .map((definition) => definition.id),
+  );
+  if (askedIds.size === 0) return NO_CUSTOMER_FIELD_VALUES;
+
+  const values = await getCustomerFieldValues(storeId, customerId);
+  return Object.fromEntries(
+    Object.entries(values).filter(([id, value]) => askedIds.has(id) && value),
+  );
+};
+
 export async function generateMetadata({ params }: CheckoutPageProps): Promise<Metadata> {
   const { slug } = await params;
   const [store, t] = await Promise.all([
@@ -119,6 +151,9 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
   ]);
 
   const tulipMode = tulip.settings.enabled ? tulip.settings.publicMode : "no_public";
+  const savedCustomerFieldValues = session
+    ? await getSavedCustomerFieldValues(store.id, session.customerId)
+    : NO_CUSTOMER_FIELD_VALUES;
 
   return (
     <>
@@ -154,6 +189,7 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
           minRentalMinutes={getMinRentalMinutes(store.settings)}
           timezone={store.settings?.timezone}
           initialCustomer={session ? toCheckoutInitialCustomer(session.customer) : null}
+          initialCustomerFieldValues={savedCustomerFieldValues}
         />
       </StorefrontSection>
     </>

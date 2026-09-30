@@ -45,6 +45,8 @@ interface CustomerFieldControlProps {
   customerId?: string;
   /** Disables the duplicate lookup, e.g. in the editor preview. */
   preview?: boolean;
+  /** Needed when the same field is rendered several times on one page (one block per rented unit). */
+  inputId?: string;
 }
 
 const getInputType = (type: ControlDefinition["type"]) =>
@@ -65,9 +67,10 @@ export const CustomerFieldControl = ({
   error,
   customerId,
   preview = false,
+  inputId,
 }: CustomerFieldControlProps) => {
   const t = useTranslations("dashboard.customers.fields");
-  const id = `custom-field-${definition.id}`;
+  const id = inputId ?? `custom-field-${definition.id}`;
   const label = definition.isRequired ? `${definition.label} *` : definition.label;
   const sensitive = definition.isSensitive ? { "data-openreplay-obscured": true } : {};
 

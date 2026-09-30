@@ -4,44 +4,70 @@ import { useState } from "react";
 
 import { useTranslations } from "next-intl";
 
-import type { CustomerFieldDefinition, CustomerFieldValues } from "@louez/types";
+import type { CustomerFieldDefinition } from "@louez/types";
+import { DisabledControlsProvider } from "@louez/ui";
 
-import { CustomerFieldControl } from "@/components/dashboard/customers/customer-field-control";
 import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
-
+import { PanelSegmentedControl } from "@/components/online-store/panel/panel-segmented-control";
 import type { CustomerFieldSection } from "@/lib/customers/util.customer-fields";
+import { DEFAULT_STORE_THEME, type StoreThemeInput } from "@/lib/theme/util.store-theme";
+
+import { CustomerFieldsPreviewClient } from "./customer-fields-preview-client";
+import { CustomerFieldsPreviewTeam } from "./customer-fields-preview-team";
+
+type PreviewAudience = "team" | "client";
 
 interface CustomerFieldsPreviewProps {
   sections: CustomerFieldSection<CustomerFieldDefinition>[];
+  /**
+   * The storefront's mode and colour, for the "Client" frame. Optional until
+   * the settings page passes it; the platform theme stands in meanwhile.
+   */
+  theme?: StoreThemeInput | null;
 }
 
-/** The real field renderer fed with throwaway values: what the team will meet on the form. */
-export const CustomerFieldsPreview = ({ sections }: CustomerFieldsPreviewProps) => {
+/**
+ * What the fields look like to each audience. "Équipe" is the customer form
+ * of the dashboard; "Client" is the storefront checkout for a chosen product.
+ */
+export const CustomerFieldsPreview = ({ sections, theme }: CustomerFieldsPreviewProps) => {
   const t = useTranslations("dashboard.settings.customerFields.preview");
-  const [values, setValues] = useState<CustomerFieldValues>({});
+  const [audience, setAudience] = useState<PreviewAudience>("team");
+
+  const customerSections = sections
+    .map((section) => ({
+      ...section,
+      fields: section.fields.filter((field) => field.scope === "customer"),
+    }))
+    .filter((section) => section.fields.length > 0);
 
   return (
-    <DashboardSectionCard title={t("title")} description={t("description")}>
-      {sections.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t("empty")}</p>
-      ) : (
-        <div className="space-y-5">
-          {sections.map((section) => (
-            <div key={section.name} className="space-y-3">
-              <p className="text-muted-foreground text-xs font-medium uppercase">{section.name}</p>
-              {section.fields.map((field) => (
-                <CustomerFieldControl
-                  key={field.id}
-                  preview
-                  definition={field}
-                  value={values[field.id] ?? ""}
-                  onChange={(value) => setValues((current) => ({ ...current, [field.id]: value }))}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-    </DashboardSectionCard>
+    <div className="flex flex-col gap-3">
+      {/* Switching views changes nothing: members without `manage_settings` may too. */}
+      <DisabledControlsProvider disabled={false}>
+        <PanelSegmentedControl<PreviewAudience>
+          value={audience}
+          onChange={setAudience}
+          aria-label={t("title")}
+          options={[
+            { value: "team", label: t("audience.team") },
+            { value: "client", label: t("audience.client") },
+          ]}
+        />
+      </DisabledControlsProvider>
+      <DashboardSectionCard
+        title={t("title")}
+        description={audience === "team" ? t("description") : t("client.description")}
+      >
+        {audience === "team" ? (
+          <CustomerFieldsPreviewTeam sections={customerSections} />
+        ) : (
+          <CustomerFieldsPreviewClient
+            definitions={sections.flatMap((section) => section.fields)}
+            theme={theme ?? DEFAULT_STORE_THEME}
+          />
+        )}
+      </DashboardSectionCard>
+    </div>
   );
 };

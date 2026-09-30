@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Check, Package, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@louez/ui";
+import { Badge, Button } from "@louez/ui";
 import { CountryFlag } from "@louez/ui/icons/flags";
 
 import type { ResolvedCustomerFieldTemplate } from "@/lib/customers/customer-field-templates";
@@ -39,7 +39,16 @@ export const CustomerFieldTemplateCard = ({
           />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{template.name}</p>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-sm font-semibold">{template.name}</p>
+            {/* Its values go on each rented unit: worth knowing before adding it. */}
+            {template.scope === "item" && (
+              <Badge variant="secondary" size="sm">
+                <Package aria-hidden />
+                {t("perItem")}
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground text-xs">
             {compact ? t("fieldsCount", { count: template.fields.length }) : template.description}
           </p>

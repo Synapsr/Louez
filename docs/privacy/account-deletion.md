@@ -48,7 +48,7 @@ A Store flags a Custom field as **sensitive** when its value should not circulat
 
 Custom field values are searchable only through a normalised copy (`search_value`) scoped to the Store, and only for fields the Store made searchable.
 
-All of it is erased with its owner. Deleting a Customer removes their custom field values, sessions and communication preferences in the same transaction as the record itself. Deleting an account purges `customer_field_values` and `customer_field_definitions` with every Store it solely owns. Archiving a Custom field hides it and keeps the values already collected; deleting it permanently removes every value Customers hold for it.
+All of it is erased with its owner. Deleting a Customer removes their custom field values, sessions and communication preferences in the same transaction as the record itself (a Customer with reservations cannot be deleted). Deleting an account purges `customer_field_values`, `customer_field_targets`, `customer_field_definitions` and `reservation_item_details` (item-scope values and participant names recorded per rented unit) with every Store it solely owns; a reservation line removed from a reservation takes its unit details with it. Archiving a Custom field hides it and keeps the values already collected; deleting it permanently removes every value held for it, on Customer records and on reservation units alike.
 
 ## External processors
 

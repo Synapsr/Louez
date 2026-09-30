@@ -75,6 +75,34 @@ export const CUSTOMER_FIELD_APPLIES_TO = ["all", "individual", "business"] as co
 
 export type CustomerFieldAppliesTo = (typeof CUSTOMER_FIELD_APPLIES_TO)[number];
 
+/**
+ * Where a value lives: `customer` on the customer record (one value per
+ * customer), `item` on the reservation (one value per rented unit).
+ */
+export const CUSTOMER_FIELD_SCOPES = ["customer", "item"] as const;
+
+export type CustomerFieldScope = (typeof CUSTOMER_FIELD_SCOPES)[number];
+
+/** Whether the storefront checkout asks the field: `never` keeps it for the team. */
+export const CUSTOMER_FIELD_COLLECT_MODES = ["never", "optional", "required"] as const;
+
+export type CustomerFieldCollectMode = (typeof CUSTOMER_FIELD_COLLECT_MODES)[number];
+
+/** `products` limits the field to the reservations holding one of its targets. */
+export const CUSTOMER_FIELD_TARGET_MODES = ["all", "products"] as const;
+
+export type CustomerFieldTargetMode = (typeof CUSTOMER_FIELD_TARGET_MODES)[number];
+
+export const CUSTOMER_FIELD_TARGET_TYPES = ["category", "product"] as const;
+
+export type CustomerFieldTargetType = (typeof CUSTOMER_FIELD_TARGET_TYPES)[number];
+
+/** A category or a product a field is limited to. */
+export interface CustomerFieldTarget {
+  type: CustomerFieldTargetType;
+  id: string;
+}
+
 /** Visibility of an optional native block on the customer form. */
 export const CUSTOMER_PROFILE_FIELD_VISIBILITIES = ["hidden", "optional", "required"] as const;
 
@@ -106,7 +134,23 @@ export interface CustomerFieldDefinition {
   showInList: boolean;
   templateKey: string | null;
   isActive: boolean;
+  scope: CustomerFieldScope;
+  collectMode: CustomerFieldCollectMode;
+  targetMode: CustomerFieldTargetMode;
+  /** The customer sees and updates it from their storefront account. */
+  customerEditable: boolean;
+  /** Only read when `targetMode` is `products`; empty then means "applies to nothing". */
+  targets: CustomerFieldTarget[];
 }
 
 /** A customer's values keyed by definition id. Checkboxes are "true" / "false", dates ISO `yyyy-MM-dd`. */
 export type CustomerFieldValues = Record<string, string>;
+
+/** What was recorded for one rented unit of a reservation item (item-scope fields). */
+export interface ReservationItemDetail {
+  /** 0-based, below the item quantity. */
+  unitIndex: number;
+  /** "Pour qui ?" */
+  participantName: string | null;
+  values: CustomerFieldValues;
+}

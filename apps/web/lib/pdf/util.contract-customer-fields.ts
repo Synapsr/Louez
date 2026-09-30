@@ -27,6 +27,8 @@ export function getContractCustomerFieldLines(
     customerType: "individual" | "business";
     /** Formats a stored `yyyy-MM-dd` for the contract's locale. */
     formatDate: (isoDate: string) => string;
+    /** Formats a stored number ("80.5") for the contract's locale; kept as stored without it. */
+    formatNumber?: (value: number) => string;
   },
 ): ContractCustomerFieldLine[] {
   const lines: ContractCustomerFieldLine[] = [];
@@ -47,7 +49,7 @@ export function getContractCustomerFieldLines(
     lines.push({
       id: definition.id,
       label: definition.label,
-      value: formatContractValue(definition, stored, options.formatDate),
+      value: formatContractValue(definition, stored, options),
     });
   }
 
@@ -57,9 +59,16 @@ export function getContractCustomerFieldLines(
 function formatContractValue(
   definition: Pick<ContractFieldDefinition, "type" | "format" | "unit">,
   stored: string,
-  formatDate: (isoDate: string) => string,
+  {
+    formatDate,
+    formatNumber,
+  }: { formatDate: (isoDate: string) => string; formatNumber?: (value: number) => string },
 ): string {
   if (definition.type === "date") return formatDate(stored);
+  if (definition.type === "number" && formatNumber && Number.isFinite(Number(stored))) {
+    const display = formatNumber(Number(stored));
+    return definition.unit ? `${display} ${definition.unit}` : display;
+  }
   if (definition.type === "phone" || definition.type === "email" || definition.type === "url") {
     return stored;
   }

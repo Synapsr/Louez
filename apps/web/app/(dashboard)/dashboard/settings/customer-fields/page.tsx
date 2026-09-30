@@ -35,6 +35,9 @@ export default async function CustomerFieldsSettingsPage() {
         country={store.settings?.country ?? null}
         productCategory={profile?.productCategory ?? null}
         profileSettings={store.settings?.customerProfile ?? {}}
+        storeTheme={
+          store.theme ? { mode: store.theme.mode, primaryColor: store.theme.primaryColor } : null
+        }
       />
     </SettingsPageShell>
   );

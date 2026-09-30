@@ -84,7 +84,7 @@ const CustomerPage = async ({ params }: CustomerPageProps) => {
       },
       orderBy: [desc(reservations.createdAt)],
     }),
-    listCustomerFieldDefinitions(store.id, { activeOnly: true }),
+    listCustomerFieldDefinitions(store.id, { activeOnly: true, scope: "customer" }),
     getCustomerFieldValues(store.id, customer.id),
   ]);
 

@@ -148,7 +148,7 @@ const list = dashboardProcedure
       query.limit(pageSize).offset((page - 1) * pageSize),
       db.select({ count: count() }).from(customers).where(whereClause),
       db.select({ count: count() }).from(customers).where(eq(customers.storeId, storeId)),
-      listCustomerFieldDefinitions(storeId, { activeOnly: true }),
+      listCustomerFieldDefinitions(storeId, { activeOnly: true, scope: "customer" }),
     ]);
 
     const listFields = definitions.filter((definition) => definition.showInList);

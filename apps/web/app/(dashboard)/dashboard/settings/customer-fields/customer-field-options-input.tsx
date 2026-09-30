@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { X } from "lucide-react";
 
-import { Badge, Input } from "@louez/ui";
+import { Badge, Input, useControlsDisabled } from "@louez/ui";
 
 interface CustomerFieldOptionsInputProps {
   id: string;
@@ -23,6 +23,8 @@ export const CustomerFieldOptionsInput = ({
   onChange,
 }: CustomerFieldOptionsInputProps) => {
   const [draft, setDraft] = useState("");
+  // The chips' remove buttons are plain buttons: read-only settings must hide them too.
+  const readOnly = useControlsDisabled();
 
   const commit = () => {
     const option = draft.trim();
@@ -38,14 +40,16 @@ export const CustomerFieldOptionsInput = ({
             <li key={option}>
               <Badge variant="secondary" className="gap-1 pr-1">
                 {option}
-                <button
-                  type="button"
-                  aria-label={option}
-                  className="hover:bg-background/60 rounded-lg p-0.5"
-                  onClick={() => onChange(value.filter((entry) => entry !== option))}
-                >
-                  <X className="size-3" />
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    aria-label={option}
+                    className="hover:bg-background/60 rounded-lg p-0.5"
+                    onClick={() => onChange(value.filter((entry) => entry !== option))}
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
               </Badge>
             </li>
           ))}
