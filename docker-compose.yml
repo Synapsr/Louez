@@ -92,6 +92,8 @@ services:
         condition: service_healthy
       background-removal:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   background-removal:
