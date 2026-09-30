@@ -3109,7 +3109,22 @@
       },
       "filter": {
         "type": "Tipo di cliente",
-        "all": "Tutti i clienti"
+        "all": "Tutti i clienti",
+        "created": "Data di creazione",
+        "anyDate": "Tutte le date",
+        "source": "Provenienza",
+        "allSources": "Tutte le provenienze",
+        "channel": "Canale",
+        "allChannels": "Tutti i canali",
+        "reset": "Reimposta filtri",
+        "importRun": "Da un'importazione",
+        "noResults": "Nessun cliente corrisponde a questi filtri.",
+        "from": "Da: {date}",
+        "to": "A: {date}",
+        "more": "Filtri",
+        "createdFrom": "Creati dal",
+        "createdTo": "Creati fino al",
+        "remove": "Rimuovi il filtro"
       },
       "deleteConfirm": {
         "title": "Eliminare questo cliente?",
@@ -3151,7 +3166,21 @@
         "internalNotesDescription": "Note private su questo cliente (non visibili al cliente)",
         "notesPlaceholder": "Aggiungi note su questo cliente...",
         "save": "Salva",
-        "createCustomer": "Crea cliente"
+        "createCustomer": "Crea cliente",
+        "customerKind": "Tipo di cliente",
+        "moreInfo": "Informazioni aggiuntive",
+        "moreInfoDescription": "Facoltativo. Potrai completarle anche più tardi dalla scheda.",
+        "profileSection": "Profilo",
+        "birthDate": "Data di nascita",
+        "ageYears": "{age, plural, one {# anno} other {# anni}}",
+        "acquisitionSource": "Come ti ha conosciuto?",
+        "acquisitionSourcePlaceholder": "Seleziona",
+        "acquisitionSourceDetail": "Specifica",
+        "acquisitionSourceDetailPlaceholder": "Ufficio turistico, fiera, hotel partner…",
+        "socialSection": "Social e link",
+        "customizeFields": "Personalizza i campi",
+        "fieldCount": "{count, plural, one {# campo} other {# campi}}",
+        "filledCount": "{count, plural, one {# compilato} other {# compilati}}"
       },
       "countries": {
         "FR": "Francia",
@@ -3166,6 +3195,83 @@
       "quickCreate": {
         "title": "Nuovo cliente",
         "description": "Il cliente verrà creato e selezionato automaticamente."
+      },
+      "sources": {
+        "word_of_mouth": "Passaparola",
+        "search_engine": "Ricerca su Google",
+        "social_media": "Social network",
+        "walk_in": "Passando davanti al negozio",
+        "partner": "Partner o ufficio turistico",
+        "ads": "Pubblicità",
+        "returning": "Già cliente",
+        "other": "Altro"
+      },
+      "channels": {
+        "dashboard": "Creato dal team",
+        "storefront": "Negozio online",
+        "marketplace": "reeent",
+        "import": "Importazione",
+        "api": "API",
+        "ai": "Assistente IA"
+      },
+      "social": {
+        "add": "Aggiungi un link",
+        "remove": "Rimuovi {network}",
+        "open": "Apri {network}",
+        "placeholderHandle": "@nomeutente o link del profilo",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+39 312 345 6789",
+        "whatsapp": "WhatsApp",
+        "empty": "Nessun link"
+      },
+      "fields": {
+        "yes": "Sì",
+        "no": "No",
+        "reveal": "Mostra",
+        "hide": "Nascondi",
+        "copy": "Copia",
+        "copied": "Copiato",
+        "selectPlaceholder": "Seleziona",
+        "suspicious": "Questo numero sembra non valido. Controllalo: verrà salvato comunque.",
+        "duplicate": "Già usato da {name}.",
+        "viewCustomer": "Vedi la scheda",
+        "complete": "{count, plural, one {Completa # campo} other {Completa # campi}}",
+        "issues": {
+          "required": "Questo campo è obbligatorio.",
+          "invalidNumber": "Inserisci un numero.",
+          "invalidDate": "Data non valida.",
+          "invalidOption": "Scegli un valore dall'elenco.",
+          "invalidEmail": "Indirizzo email non valido.",
+          "invalidPhone": "Numero di telefono non valido.",
+          "invalidUrl": "Link non valido."
+        }
+      },
+      "detail": {
+        "newReservation": "Nuova prenotazione",
+        "edit": "Modifica",
+        "moreActions": "Altre azioni",
+        "createdVia": "Creato tramite: {channel}",
+        "contactCard": "Recapiti",
+        "profileCard": "Profilo",
+        "bornOn": "Nascita: {date}",
+        "source": "Provenienza",
+        "lastRental": "Ultimo noleggio",
+        "never": "Mai",
+        "noAddress": "Indirizzo non indicato",
+        "noPhone": "Telefono non indicato",
+        "emptyProfile": "Nessuna informazione sul profilo.",
+        "editSection": "Modifica: {section}",
+        "editSectionDescription": "Verranno modificate solo queste informazioni.",
+        "sectionSaved": "Modifiche salvate",
+        "save": "Salva",
+        "cancel": "Annulla"
+      },
+      "pagination": {
+        "showing": "{from}–{to} di {total}",
+        "perPage": "Per pagina",
+        "previous": "Pagina precedente",
+        "next": "Pagina successiva",
+        "pageOf": "Pagina {page} di {pages}"
       }
     },
     "calendar": {
@@ -4533,6 +4639,14 @@
           "statusRequired": "Seleziona almeno uno stato.",
           "noContracts": "Nessuna prenotazione corrisponde al periodo e agli stati selezionati.",
           "exportFailed": "Esportazione fallita. Riprova."
+        },
+        "customers": {
+          "title": "Clienti",
+          "description": "Esporta le schede dei tuoi clienti: recapiti, data di nascita, provenienza, canale di creazione e i tuoi campi personalizzati.",
+          "button": "Esporta i clienti",
+          "dateRangeHint": "Il periodo si riferisce alla data di creazione delle schede. Lascialo vuoto per esportare tutti i tuoi clienti.",
+          "includeSensitive": "Includi i dati sensibili",
+          "includeSensitiveWarning": "I campi contrassegnati come sensibili compariranno in chiaro nel file: conservalo in un luogo sicuro."
         }
       },
       "embed": {
@@ -6179,6 +6293,339 @@
         "title": "Prolungamenti automatici",
         "description": "I clienti possono prolungare se il materiale è disponibile e il supplemento è calcolabile. I casi particolari richiedono la tua approvazione.",
         "maxDays": "Giorni aggiuntivi massimi (vuoto: nessun limite)"
+      },
+      "customerFields": {
+        "title": "Scheda cliente",
+        "description": "Scegli quali informazioni conservare sui tuoi clienti, oltre al nome e ai recapiti.",
+        "limits": "{count} / {max} campi attivi",
+        "suggestions": {
+          "title": "Suggerimenti per te",
+          "description": "In base al paese e all'attività del tuo negozio.",
+          "browse": "Sfoglia i modelli",
+          "dismiss": "Nascondi i suggerimenti"
+        },
+        "native": {
+          "title": "Campi Louez",
+          "description": "Informazioni che Louez sa sfruttare. Nascondi quelle che non ti servono.",
+          "birthDate": "Data di nascita",
+          "birthDateHelp": "Mostra anche l'età del cliente.",
+          "acquisitionSource": "Provenienza del cliente",
+          "acquisitionSourceHelp": "Come il cliente ti ha conosciuto.",
+          "socialLinks": "Social e link",
+          "socialLinksHelp": "Instagram, sito web, WhatsApp…",
+          "visibility": {
+            "hidden": "Nascosto",
+            "optional": "Facoltativo",
+            "required": "Obbligatorio"
+          },
+          "saved": "Impostazione salvata"
+        },
+        "sections": {
+          "add": "Aggiungi una sezione",
+          "namePlaceholder": "Nome della sezione",
+          "defaultName": "Informazioni aggiuntive",
+          "rename": "Rinomina la sezione",
+          "moveUp": "Sposta su",
+          "moveDown": "Sposta giù",
+          "actions": "Azioni della sezione"
+        },
+        "field": {
+          "add": "Aggiungi un campo",
+          "edit": "Modifica",
+          "archive": "Archivia",
+          "restore": "Riattiva",
+          "delete": "Elimina definitivamente",
+          "moveTo": "Sposta in",
+          "actions": "Azioni del campo",
+          "active": "Attivo",
+          "drag": "Riordina",
+          "valueCount": "{count, plural, =0 {Nessun valore} one {Compilato per # cliente} other {Compilato per # clienti}}"
+        },
+        "badges": {
+          "required": "Obbligatorio",
+          "sensitive": "Sensibile",
+          "contract": "Contratto",
+          "search": "Ricerca",
+          "list": "Elenco",
+          "business": "Aziende",
+          "individual": "Privati"
+        },
+        "dialog": {
+          "createTitle": "Nuovo campo",
+          "createDescription": "Comparirà nella scheda di tutti i tuoi clienti.",
+          "editTitle": "Modifica il campo",
+          "editDescription": "I valori già inseriti vengono mantenuti.",
+          "label": "Etichetta",
+          "labelPlaceholder": "Numero di patente",
+          "type": "Tipo",
+          "typeLocked": "Il tipo non può più cambiare una volta creato il campo.",
+          "options": "Opzioni",
+          "optionsPlaceholder": "Scrivi un'opzione e premi Invio",
+          "unit": "Unità",
+          "unitPlaceholder": "cm, kg, km…",
+          "helpText": "Testo di aiuto",
+          "helpTextPlaceholder": "Indicazione mostrata sotto il campo",
+          "section": "Sezione",
+          "newSection": "Nuova sezione…",
+          "appliesTo": "Si applica a",
+          "appliesToAll": "Tutti",
+          "appliesToIndividual": "Privati",
+          "appliesToBusiness": "Aziende",
+          "save": "Salva",
+          "create": "Aggiungi il campo",
+          "cancel": "Annulla",
+          "types": {
+            "text": "Testo",
+            "textarea": "Testo lungo",
+            "number": "Numero",
+            "date": "Data",
+            "select": "Elenco di opzioni",
+            "checkbox": "Sì / No",
+            "phone": "Telefono",
+            "email": "Email",
+            "url": "Link"
+          },
+          "flags": {
+            "required": "Obbligatorio",
+            "requiredHelp": "Impossibile salvare la scheda senza questo campo.",
+            "sensitive": "Dato sensibile",
+            "sensitiveHelp": "Nascosto per impostazione predefinita nella scheda ed escluso dalle esportazioni.",
+            "contract": "Mostra nel contratto",
+            "contractHelp": "Aggiunto sotto i recapiti del cliente.",
+            "search": "Includi nella ricerca",
+            "searchHelp": "Digita il valore per ritrovare il cliente. Segnala anche i duplicati.",
+            "list": "Mostra nell'elenco",
+            "listHelp": "Aggiunge una colonna all'elenco dei clienti."
+          }
+        },
+        "templates": {
+          "dialogTitle": "Modelli di campi",
+          "dialogDescription": "Aggiungi un gruppo di campi con un clic. Potrai poi rinominarli, riordinarli o archiviarli.",
+          "privacyNote": "Raccogli solo ciò che ti serve davvero: sei responsabile dei dati dei tuoi clienti.",
+          "groups": {
+            "country": "Per paese",
+            "activity": "Per attività",
+            "general": "Generale"
+          },
+          "adopt": "Aggiungi",
+          "adopted": "Aggiunto",
+          "fieldsCount": "{count, plural, one {# campo} other {# campi}}",
+          "adoptedToast": "{count, plural, one {# campo aggiunto} other {# campi aggiunti}}",
+          "identityDocument": {
+            "name": "Documento d'identità",
+            "description": "Il documento richiesto alla consegna dell'attrezzatura.",
+            "section": "Identità",
+            "fields": {
+              "id_document_type": {
+                "label": "Tipo di documento",
+                "options": {
+                  "idCard": "Carta d'identità",
+                  "passport": "Passaporto",
+                  "residencePermit": "Permesso di soggiorno",
+                  "drivingLicense": "Patente di guida",
+                  "other": "Altro"
+                }
+              },
+              "id_document_number": {
+                "label": "Numero del documento"
+              },
+              "id_document_expiry": {
+                "label": "Data di scadenza"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "Contatto di emergenza",
+            "description": "La persona da avvisare in caso di problemi durante il noleggio.",
+            "section": "Contatto di emergenza",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "Nome"
+              },
+              "emergency_contact_phone": {
+                "label": "Telefono"
+              },
+              "emergency_contact_relation": {
+                "label": "Rapporto con il cliente",
+                "options": {
+                  "partner": "Coniuge o partner",
+                  "parent": "Genitore",
+                  "friend": "Amico/a",
+                  "colleague": "Collega",
+                  "other": "Altro"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "Clienti aziendali",
+            "description": "Il contatto della contabilità e il riferimento da riportare sui tuoi documenti.",
+            "section": "Fatturazione",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "Contatto contabilità"
+              },
+              "accounting_email": {
+                "label": "Email contabilità"
+              },
+              "purchase_order_reference": {
+                "label": "Riferimento ordine d'acquisto"
+              }
+            }
+          },
+          "brazil": {
+            "name": "Brasile",
+            "description": "CPF o CNPJ, con verifica del numero, e RG.",
+            "section": "Identità",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "Ente di rilascio"
+              }
+            }
+          },
+          "spain": {
+            "name": "Spagna",
+            "description": "DNI o NIE, con verifica della lettera di controllo.",
+            "section": "Identità",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "Italia",
+            "description": "Codice fiscale, con verifica del carattere di controllo.",
+            "section": "Identità",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "Portogallo",
+            "description": "NIF, con verifica della cifra di controllo.",
+            "section": "Identità",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "Veicoli e due ruote",
+            "description": "La patente di guida, riportata nel contratto.",
+            "section": "Patente di guida",
+            "fields": {
+              "driving_license_number": {
+                "label": "Numero di patente"
+              },
+              "driving_license_date": {
+                "label": "Data di conseguimento"
+              },
+              "driving_license_categories": {
+                "label": "Categorie"
+              }
+            }
+          },
+          "ski": {
+            "name": "Sci e montagna",
+            "description": "Le misure per preparare l'attrezzatura prima dell'arrivo del cliente.",
+            "section": "Misure",
+            "fields": {
+              "height_cm": {
+                "label": "Altezza"
+              },
+              "weight_kg": {
+                "label": "Peso"
+              },
+              "shoe_size": {
+                "label": "Numero di scarpe"
+              },
+              "ski_level": {
+                "label": "Livello",
+                "options": {
+                  "beginner": "Principiante",
+                  "intermediate": "Intermedio",
+                  "advanced": "Avanzato",
+                  "expert": "Esperto"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "Biciclette",
+            "description": "Quello che serve per regolare la bici prima che arrivi il cliente.",
+            "section": "Regolazioni bici",
+            "fields": {
+              "height_cm": {
+                "label": "Altezza"
+              },
+              "bike_saddle_height": {
+                "label": "Altezza della sella"
+              },
+              "bike_preferences": {
+                "label": "Preferenze"
+              }
+            }
+          },
+          "boating": {
+            "name": "Nautica",
+            "description": "La patente nautica, riportata nel contratto.",
+            "section": "Patente nautica",
+            "fields": {
+              "boat_license_number": {
+                "label": "Numero della patente nautica"
+              },
+              "boat_license_type": {
+                "label": "Tipo di patente",
+                "options": {
+                  "coastal": "Costiera",
+                  "offshore": "D'altura",
+                  "inland": "Acque interne",
+                  "none": "Senza patente"
+                }
+              }
+            }
+          }
+        },
+        "deleteDialog": {
+          "title": "Eliminare «{label}»?",
+          "description": "Il campo scomparirà da tutte le schede. Questa azione è irreversibile.",
+          "withValues": "{count, plural, one {# cliente ha un valore in questo campo: verrà cancellato.} other {# clienti hanno un valore in questo campo: verranno cancellati.}}",
+          "archiveInstead": "Archivia invece",
+          "confirm": "Elimina definitivamente",
+          "cancel": "Annulla"
+        },
+        "archived": {
+          "title": "Campi archiviati",
+          "description": "Nascosti dalle schede, i loro valori vengono mantenuti."
+        },
+        "preview": {
+          "title": "Anteprima",
+          "description": "Quello che vedrà il tuo team quando crea un cliente.",
+          "empty": "Aggiungi un campo per vedere l'anteprima."
+        },
+        "empty": {
+          "title": "Nessun campo personalizzato",
+          "description": "Parti da un modello o crea il tuo primo campo."
+        },
+        "toasts": {
+          "created": "Campo aggiunto",
+          "updated": "Campo modificato",
+          "archived": "Campo archiviato",
+          "restored": "Campo riattivato",
+          "deleted": "Campo eliminato",
+          "reordered": "Ordine salvato",
+          "sectionRenamed": "Sezione rinominata"
+        }
       }
     },
     "commandPalette": {
@@ -6281,7 +6728,8 @@
       "settingsReviewBooster": "Booster recensioni",
       "settingsTaxes": "Tasse",
       "productsEdit": "Modifica",
-      "reservationsEdit": "Modifica"
+      "reservationsEdit": "Modifica",
+      "settingsCustomerFields": "Scheda cliente"
     },
     "notificationsCenter": {
       "title": "Notifiche",
@@ -6373,6 +6821,10 @@
         "optional-password": {
           "title": "Una password, se la vuoi",
           "description": "Aggiungi una password al tuo account per accedere senza aspettare il codice ricevuto via email. Il codice resta sempre disponibile."
+        },
+        "customer-custom-fields": {
+          "title": "Schede cliente su misura per te",
+          "description": "Aggiungi i tuoi campi o parti da un modello per paese e per attività: patente, documento d'identità, misure, CPF…"
         }
       }
     },
@@ -8705,7 +9157,14 @@
     "requestCancellationPaymentChanged": "Le informazioni sul pagamento sono cambiate. Controllale prima di confermare nuovamente l’annullamento.",
     "promoCodeProductsAlreadyDiscounted": "Questo codice non si applica ai prodotti già in promozione.",
     "paymentAmountTooSmall": "Il pagamento con carta richiede un minimo di {minimumAmount, number} {currency}. Modifica il carrello o contatta il negozio.",
-    "checkoutPaymentFailed": "Impossibile avviare il pagamento. La prenotazione non è stata confermata. Riprova o contatta il negozio."
+    "checkoutPaymentFailed": "Impossibile avviare il pagamento. La prenotazione non è stata confermata. Riprova o contatta il negozio.",
+    "customFieldsInvalid": "Alcuni campi aggiuntivi non sono validi.",
+    "optionsRequired": "Aggiungi almeno un'opzione.",
+    "customerFields": {
+      "tooManyFields": "Hai raggiunto il numero massimo di campi attivi. Archiviane uno per aggiungerne un altro.",
+      "tooManySearchable": "Si possono includere nella ricerca al massimo cinque campi.",
+      "tooManyListFields": "Si possono mostrare nell'elenco al massimo due campi."
+    }
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

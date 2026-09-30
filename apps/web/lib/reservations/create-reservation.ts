@@ -911,6 +911,7 @@ const writeReservation = async (
       tx,
       storeId: store.id,
       storeCountry: prepared.storeCountry,
+      source: request.source,
       customer: request.customer,
       phone: prepared.customerPhone,
       companyIdentity: prepared.companyIdentity,

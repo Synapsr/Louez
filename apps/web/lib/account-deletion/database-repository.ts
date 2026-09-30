@@ -915,6 +915,10 @@ const purgeOwnedData = async (
       await transaction
         .delete(schema.reservations)
         .where(inArray(schema.reservations.storeId, storeIds));
+      // Custom field values are customers' personal data too.
+      await transaction
+        .delete(schema.customerFieldValues)
+        .where(inArray(schema.customerFieldValues.storeId, storeIds));
       await transaction.delete(schema.customers).where(inArray(schema.customers.storeId, storeIds));
       await transaction
         .delete(schema.productUnitEvents)
@@ -945,6 +949,9 @@ const purgeOwnedData = async (
       await transaction
         .delete(schema.variantDefinitions)
         .where(inArray(schema.variantDefinitions.storeId, storeIds));
+      await transaction
+        .delete(schema.customerFieldDefinitions)
+        .where(inArray(schema.customerFieldDefinitions.storeId, storeIds));
       await transaction
         .delete(schema.categories)
         .where(inArray(schema.categories.storeId, storeIds));

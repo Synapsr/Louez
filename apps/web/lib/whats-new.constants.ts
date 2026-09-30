@@ -4,6 +4,7 @@ import type { Badge } from "@louez/ui";
 import {
   AccentSparklesIcon,
   CalendarPlusIcon,
+  KeyIcon,
   KeyboardIcon,
   LayersIcon,
   LayoutIcon,
@@ -14,6 +15,7 @@ import {
   ReservationsIcon,
   SearchIcon,
   TagIcon,
+  UsersIcon,
 } from "@louez/ui/icons";
 
 type BadgeVariant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
@@ -109,6 +111,24 @@ export const parseWhatsNewDate = (date: string) => {
  * `content/whats-new/<id>/<locale>.md`.
  */
 export const WHATS_NEW_ANNOUNCEMENTS: WhatsNewAnnouncement[] = [
+  {
+    id: "customer-custom-fields",
+    category: "feature",
+    date: "2026-09-30",
+    titleKey: "announcements.customer-custom-fields.title",
+    descriptionKey: "announcements.customer-custom-fields.description",
+    href: "/dashboard/settings/customer-fields",
+    icon: UsersIcon,
+  },
+  {
+    id: "optional-password",
+    category: "feature",
+    date: "2026-09-29",
+    titleKey: "announcements.optional-password.title",
+    descriptionKey: "announcements.optional-password.description",
+    href: "/dashboard/account",
+    icon: KeyIcon,
+  },
   {
     id: "storefront-redesign",
     category: "feature",

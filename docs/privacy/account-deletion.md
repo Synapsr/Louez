@@ -31,6 +31,25 @@ Access to the archive must be restricted to authorised legal or accounting opera
 
 This policy follows the French ten-year accounting retention period measured from the financial-year closing date. Recheck it with Louez's accountant or counsel if Louez's role, billing model, or fiscal year changes.
 
+## Customer profile data and custom fields
+
+Beyond contact and billing details, a Customer record can hold:
+
+- a birth date, the origin declared by the merchant (how the Customer heard about the Store, with an optional free-text precision) and social links;
+- the creation channel (`dashboard`, `storefront`, `marketplace`, `import`, `api`, `ai`), written by the code path that created the record and never typed by anyone;
+- Custom fields defined by each Store: identity or tax numbers, driving licence, emergency contact, sizes and the like. Louez does not know in advance what a Store collects; the Store remains the controller of that choice. Field templates deliberately leave out national identifiers whose collection is restricted for this purpose (French social security number, Belgian national register number, Dutch BSN).
+
+A Store flags a Custom field as **sensitive** when its value should not circulate. The flag changes four things:
+
+- the value is masked on the Customer record (last four characters, revealed on demand) and its input is obscured in OpenReplay session recordings;
+- the customers export leaves the column out unless the Store owner ticks an explicit opt-in for that download;
+- the AI assistant and the MCP server never read the value back: they report that it is on file and withheld. They may still write it when the merchant dictates it;
+- it does not hide the value from the contract: a field flagged "show on contract" is printed in full on the PDF, which is the merchant's explicit choice. A generated contract keeps the values it was printed with.
+
+Custom field values are searchable only through a normalised copy (`search_value`) scoped to the Store, and only for fields the Store made searchable.
+
+All of it is erased with its owner. Deleting a Customer removes their custom field values, sessions and communication preferences in the same transaction as the record itself. Deleting an account purges `customer_field_values` and `customer_field_definitions` with every Store it solely owns. Archiving a Custom field hides it and keeps the values already collected; deleting it permanently removes every value Customers hold for it.
+
 ## External processors
 
 Deletion is fail-closed. If Louez knows about a provider-side resource and cannot remove or revoke it, the local database remains intact so the owner can retry safely.

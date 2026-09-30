@@ -639,6 +639,7 @@ export async function createManualReservation(data: CreateReservationData) {
         firstName: data.newCustomer.firstName,
         lastName: data.newCustomer.lastName,
         phone: data.newCustomer.phone || null,
+        createdVia: "dashboard",
       });
       customerId = newCustomerId;
     }

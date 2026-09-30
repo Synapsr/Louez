@@ -9,6 +9,8 @@
     ".": "./src/index.ts",
     "./router": "./src/router.ts",
     "./services": "./src/services/index.ts",
+    "./services/customer-fields": "./src/services/customer-fields.ts",
+    "./services/customer-tools": "./src/services/customer-tools.ts",
     "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts",
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
     "./services/promo": "./src/services/promo.ts"

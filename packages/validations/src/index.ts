@@ -5,6 +5,8 @@ export * from "./booking";
 export * from "./business-hours";
 export * from "./catalog";
 export * from "./customer";
+export * from "./customer-fields";
+export * from "./identity-formats";
 export * from "./image";
 export * from "./inspection";
 export * from "./inventory";

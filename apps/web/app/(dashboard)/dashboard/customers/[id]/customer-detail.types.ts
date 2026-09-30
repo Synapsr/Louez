@@ -18,12 +18,21 @@ export type CustomerDetail = Pick<
   | "country"
   | "notes"
   | "createdAt"
->;
+> &
+  // The profile blocks: the landing demos leave them out.
+  Partial<
+    Pick<
+      typeof customers.$inferSelect,
+      "birthDate" | "acquisitionSource" | "acquisitionSourceDetail" | "createdVia" | "socialLinks"
+    >
+  >;
 
 export type CustomerHistoryReservation = Pick<
   typeof reservations.$inferSelect,
   "id" | "number" | "status" | "startDate" | "endDate" | "totalAmount" | "billingSnapshot"
 > & {
+  /** When the booking was made; the landing demos go by the rental start instead. */
+  createdAt?: Date;
   items: {
     id: string;
     quantity: number;

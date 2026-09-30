@@ -3109,7 +3109,22 @@
       },
       "filter": {
         "type": "Klanttype",
-        "all": "Alle klanten"
+        "all": "Alle klanten",
+        "created": "Aanmaakdatum",
+        "anyDate": "Alle datums",
+        "source": "Herkomst",
+        "allSources": "Elke herkomst",
+        "channel": "Kanaal",
+        "allChannels": "Alle kanalen",
+        "reset": "Filters resetten",
+        "importRun": "Uit een import",
+        "noResults": "Geen klant komt overeen met deze filters.",
+        "from": "Vanaf {date}",
+        "to": "t/m {date}",
+        "more": "Filters",
+        "createdFrom": "Aangemaakt vanaf",
+        "createdTo": "Aangemaakt t/m",
+        "remove": "Filter verwijderen"
       },
       "deleteConfirm": {
         "title": "Deze klant verwijderen?",
@@ -3151,7 +3166,21 @@
         "internalNotesDescription": "Privénotities over deze klant (niet zichtbaar voor klant)",
         "notesPlaceholder": "Voeg notities toe over deze klant...",
         "save": "Opslaan",
-        "createCustomer": "Klant aanmaken"
+        "createCustomer": "Klant aanmaken",
+        "customerKind": "Klanttype",
+        "moreInfo": "Aanvullende gegevens",
+        "moreInfoDescription": "Optioneel. U kunt ze ook later bij de klant aanvullen.",
+        "profileSection": "Profiel",
+        "birthDate": "Geboortedatum",
+        "ageYears": "{age, plural, one {# jaar} other {# jaar}}",
+        "acquisitionSource": "Hoe heeft de klant u leren kennen?",
+        "acquisitionSourcePlaceholder": "Selecteren",
+        "acquisitionSourceDetail": "Toelichting",
+        "acquisitionSourceDetailPlaceholder": "Toeristenbureau, beurs, partnerhotel…",
+        "socialSection": "Sociale media en links",
+        "customizeFields": "Velden aanpassen",
+        "fieldCount": "{count, plural, one {# veld} other {# velden}}",
+        "filledCount": "{count, plural, one {# ingevuld} other {# ingevuld}}"
       },
       "countries": {
         "FR": "Frankrijk",
@@ -3166,6 +3195,83 @@
       "quickCreate": {
         "title": "Nieuwe klant",
         "description": "De klant wordt aangemaakt en automatisch geselecteerd."
+      },
+      "sources": {
+        "word_of_mouth": "Mond-tot-mondreclame",
+        "search_engine": "Zoeken op Google",
+        "social_media": "Sociale media",
+        "walk_in": "Langs de winkel gelopen",
+        "partner": "Partner of toeristenbureau",
+        "ads": "Reclame",
+        "returning": "Was al klant",
+        "other": "Overig"
+      },
+      "channels": {
+        "dashboard": "Aangemaakt door het team",
+        "storefront": "Online winkel",
+        "marketplace": "reeent",
+        "import": "Import",
+        "api": "API",
+        "ai": "AI-assistent"
+      },
+      "social": {
+        "add": "Link toevoegen",
+        "remove": "{network} verwijderen",
+        "open": "{network} openen",
+        "placeholderHandle": "@gebruikersnaam of profiellink",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+31 6 12345678",
+        "whatsapp": "WhatsApp",
+        "empty": "Geen links"
+      },
+      "fields": {
+        "yes": "Ja",
+        "no": "Nee",
+        "reveal": "Tonen",
+        "hide": "Verbergen",
+        "copy": "Kopiëren",
+        "copied": "Gekopieerd",
+        "selectPlaceholder": "Selecteren",
+        "suspicious": "Dit nummer lijkt ongeldig. Controleer het: het wordt toch opgeslagen.",
+        "duplicate": "Al in gebruik bij {name}.",
+        "viewCustomer": "Klant bekijken",
+        "complete": "{count, plural, one {# veld invullen} other {# velden invullen}}",
+        "issues": {
+          "required": "Dit veld is verplicht.",
+          "invalidNumber": "Voer een getal in.",
+          "invalidDate": "Ongeldige datum.",
+          "invalidOption": "Kies een waarde uit de lijst.",
+          "invalidEmail": "Ongeldig e-mailadres.",
+          "invalidPhone": "Ongeldig telefoonnummer.",
+          "invalidUrl": "Ongeldige link."
+        }
+      },
+      "detail": {
+        "newReservation": "Nieuwe reservering",
+        "edit": "Bewerken",
+        "moreActions": "Meer acties",
+        "createdVia": "Aangemaakt via: {channel}",
+        "contactCard": "Contactgegevens",
+        "profileCard": "Profiel",
+        "bornOn": "Geboren op {date}",
+        "source": "Herkomst",
+        "lastRental": "Laatste verhuur",
+        "never": "Nooit",
+        "noAddress": "Geen adres ingevuld",
+        "noPhone": "Geen telefoonnummer ingevuld",
+        "emptyProfile": "Geen profielgegevens.",
+        "editSection": "Bewerken: {section}",
+        "editSectionDescription": "Alleen deze gegevens worden gewijzigd.",
+        "sectionSaved": "Wijzigingen opgeslagen",
+        "save": "Opslaan",
+        "cancel": "Annuleren"
+      },
+      "pagination": {
+        "showing": "{from}–{to} van {total}",
+        "perPage": "Per pagina",
+        "previous": "Vorige pagina",
+        "next": "Volgende pagina",
+        "pageOf": "Pagina {page} van {pages}"
       }
     },
     "calendar": {
@@ -4533,6 +4639,14 @@
           "statusRequired": "Selecteer ten minste één status.",
           "noContracts": "Geen reserveringen komen overeen met deze periode en statussen.",
           "exportFailed": "Export mislukt. Probeer het opnieuw."
+        },
+        "customers": {
+          "title": "Klanten",
+          "description": "Exporteer je klantfiches: contactgegevens, geboortedatum, herkomst, aanmaakkanaal en je aangepaste velden.",
+          "button": "Klanten exporteren",
+          "dateRangeHint": "De periode heeft betrekking op de aanmaakdatum van de fiches. Laat ze leeg om al je klanten te exporteren.",
+          "includeSensitive": "Gevoelige gegevens opnemen",
+          "includeSensitiveWarning": "Velden die als gevoelig zijn gemarkeerd, staan leesbaar in het bestand: bewaar het op een veilige plek."
         }
       },
       "embed": {
@@ -6179,6 +6293,339 @@
         "title": "Automatische huurverlengingen",
         "description": "Klanten kunnen verlengen bij beschikbaarheid en een berekenbare meerprijs. Bijzondere gevallen vereisen uw goedkeuring.",
         "maxDays": "Maximum extra dagen (leeg: geen limiet)"
+      },
+      "customerFields": {
+        "title": "Klantgegevens",
+        "description": "Kies welke gegevens u over uw klanten bewaart, naast naam en contactgegevens.",
+        "limits": "{count} / {max} actieve velden",
+        "suggestions": {
+          "title": "Suggesties voor u",
+          "description": "Op basis van het land en de activiteit van uw winkel.",
+          "browse": "Sjablonen bekijken",
+          "dismiss": "Suggesties verbergen"
+        },
+        "native": {
+          "title": "Louez-velden",
+          "description": "Gegevens waar Louez iets mee kan. Verberg wat u niet nodig hebt.",
+          "birthDate": "Geboortedatum",
+          "birthDateHelp": "Toont ook de leeftijd van de klant.",
+          "acquisitionSource": "Herkomst van de klant",
+          "acquisitionSourceHelp": "Hoe de klant u heeft leren kennen.",
+          "socialLinks": "Sociale media en links",
+          "socialLinksHelp": "Instagram, website, WhatsApp…",
+          "visibility": {
+            "hidden": "Verborgen",
+            "optional": "Optioneel",
+            "required": "Verplicht"
+          },
+          "saved": "Instelling opgeslagen"
+        },
+        "sections": {
+          "add": "Sectie toevoegen",
+          "namePlaceholder": "Naam van de sectie",
+          "defaultName": "Aanvullende gegevens",
+          "rename": "Sectie hernoemen",
+          "moveUp": "Omhoog",
+          "moveDown": "Omlaag",
+          "actions": "Acties voor de sectie"
+        },
+        "field": {
+          "add": "Veld toevoegen",
+          "edit": "Bewerken",
+          "archive": "Archiveren",
+          "restore": "Opnieuw activeren",
+          "delete": "Definitief verwijderen",
+          "moveTo": "Verplaatsen naar",
+          "actions": "Acties voor het veld",
+          "active": "Actief",
+          "drag": "Volgorde wijzigen",
+          "valueCount": "{count, plural, =0 {Geen waarden} one {Ingevuld bij # klant} other {Ingevuld bij # klanten}}"
+        },
+        "badges": {
+          "required": "Verplicht",
+          "sensitive": "Gevoelig",
+          "contract": "Contract",
+          "search": "Zoeken",
+          "list": "Lijst",
+          "business": "Zakelijk",
+          "individual": "Particulier"
+        },
+        "dialog": {
+          "createTitle": "Nieuw veld",
+          "createDescription": "Het verschijnt bij al uw klanten.",
+          "editTitle": "Veld bewerken",
+          "editDescription": "Reeds ingevulde waarden blijven behouden.",
+          "label": "Label",
+          "labelPlaceholder": "Rijbewijsnummer",
+          "type": "Type",
+          "typeLocked": "Het type kan niet meer worden gewijzigd zodra het veld is aangemaakt.",
+          "options": "Keuzemogelijkheden",
+          "optionsPlaceholder": "Typ een keuze en druk op Enter",
+          "unit": "Eenheid",
+          "unitPlaceholder": "cm, kg, km…",
+          "helpText": "Hulptekst",
+          "helpTextPlaceholder": "Aanwijzing die onder het veld staat",
+          "section": "Sectie",
+          "newSection": "Nieuwe sectie…",
+          "appliesTo": "Geldt voor",
+          "appliesToAll": "Iedereen",
+          "appliesToIndividual": "Particulier",
+          "appliesToBusiness": "Zakelijk",
+          "save": "Opslaan",
+          "create": "Veld toevoegen",
+          "cancel": "Annuleren",
+          "types": {
+            "text": "Tekst",
+            "textarea": "Lange tekst",
+            "number": "Getal",
+            "date": "Datum",
+            "select": "Keuzelijst",
+            "checkbox": "Ja / Nee",
+            "phone": "Telefoon",
+            "email": "E-mail",
+            "url": "Link"
+          },
+          "flags": {
+            "required": "Verplicht",
+            "requiredHelp": "Zonder dit veld kan de klant niet worden opgeslagen.",
+            "sensitive": "Gevoelig gegeven",
+            "sensitiveHelp": "Standaard verborgen bij de klant en niet opgenomen in exports.",
+            "contract": "Tonen op het contract",
+            "contractHelp": "Wordt toegevoegd onder de contactgegevens van de klant.",
+            "search": "Opnemen in de zoekfunctie",
+            "searchHelp": "Typ de waarde om de klant terug te vinden. Signaleert ook dubbelen.",
+            "list": "Tonen in de lijst",
+            "listHelp": "Voegt een kolom toe aan de klantenlijst."
+          }
+        },
+        "templates": {
+          "dialogTitle": "Veldsjablonen",
+          "dialogDescription": "Voeg met één klik een set velden toe. Daarna kunt u ze hernoemen, anders ordenen of archiveren.",
+          "privacyNote": "Verzamel alleen wat u echt nodig hebt: u bent verantwoordelijk voor de gegevens van uw klanten.",
+          "groups": {
+            "country": "Per land",
+            "activity": "Per activiteit",
+            "general": "Algemeen"
+          },
+          "adopt": "Toevoegen",
+          "adopted": "Toegevoegd",
+          "fieldsCount": "{count, plural, one {# veld} other {# velden}}",
+          "adoptedToast": "{count, plural, one {# veld toegevoegd} other {# velden toegevoegd}}",
+          "identityDocument": {
+            "name": "Identiteitsbewijs",
+            "description": "Het bewijs dat bij de overdracht van het materiaal wordt gevraagd.",
+            "section": "Identiteit",
+            "fields": {
+              "id_document_type": {
+                "label": "Type document",
+                "options": {
+                  "idCard": "Identiteitskaart",
+                  "passport": "Paspoort",
+                  "residencePermit": "Verblijfsvergunning",
+                  "drivingLicense": "Rijbewijs",
+                  "other": "Overig"
+                }
+              },
+              "id_document_number": {
+                "label": "Documentnummer"
+              },
+              "id_document_expiry": {
+                "label": "Vervaldatum"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "Noodcontact",
+            "description": "De persoon die gewaarschuwd moet worden bij problemen tijdens de verhuur.",
+            "section": "Noodcontact",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "Naam"
+              },
+              "emergency_contact_phone": {
+                "label": "Telefoon"
+              },
+              "emergency_contact_relation": {
+                "label": "Relatie tot de klant",
+                "options": {
+                  "partner": "Partner",
+                  "parent": "Ouder",
+                  "friend": "Vriend(in)",
+                  "colleague": "Collega",
+                  "other": "Overig"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "Zakelijke klanten",
+            "description": "De contactpersoon van de boekhouding en de referentie die op uw documenten moet staan.",
+            "section": "Facturatie",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "Contactpersoon boekhouding"
+              },
+              "accounting_email": {
+                "label": "E-mail boekhouding"
+              },
+              "purchase_order_reference": {
+                "label": "Referentie inkooporder"
+              }
+            }
+          },
+          "brazil": {
+            "name": "Brazilië",
+            "description": "CPF of CNPJ, met controle van het nummer, en RG.",
+            "section": "Identiteit",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "Uitgevende instantie"
+              }
+            }
+          },
+          "spain": {
+            "name": "Spanje",
+            "description": "DNI of NIE, met controle van de controleletter.",
+            "section": "Identiteit",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "Italië",
+            "description": "Codice fiscale, met controle van het controleteken.",
+            "section": "Identiteit",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "Portugal",
+            "description": "NIF, met controle van het controlecijfer.",
+            "section": "Identiteit",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "Voertuigen en tweewielers",
+            "description": "Het rijbewijs, overgenomen op het contract.",
+            "section": "Rijbewijs",
+            "fields": {
+              "driving_license_number": {
+                "label": "Rijbewijsnummer"
+              },
+              "driving_license_date": {
+                "label": "Behaald op"
+              },
+              "driving_license_categories": {
+                "label": "Categorieën"
+              }
+            }
+          },
+          "ski": {
+            "name": "Ski en bergsport",
+            "description": "De lichaamsmaten om het materiaal klaar te zetten voordat de klant aankomt.",
+            "section": "Lichaamsmaten",
+            "fields": {
+              "height_cm": {
+                "label": "Lengte"
+              },
+              "weight_kg": {
+                "label": "Gewicht"
+              },
+              "shoe_size": {
+                "label": "Schoenmaat"
+              },
+              "ski_level": {
+                "label": "Niveau",
+                "options": {
+                  "beginner": "Beginner",
+                  "intermediate": "Gemiddeld",
+                  "advanced": "Gevorderd",
+                  "expert": "Expert"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "Fietsen",
+            "description": "Wat u nodig hebt om de fiets af te stellen voordat de klant aankomt.",
+            "section": "Fietsafstelling",
+            "fields": {
+              "height_cm": {
+                "label": "Lengte"
+              },
+              "bike_saddle_height": {
+                "label": "Zadelhoogte"
+              },
+              "bike_preferences": {
+                "label": "Voorkeuren"
+              }
+            }
+          },
+          "boating": {
+            "name": "Watersport",
+            "description": "Het vaarbewijs, overgenomen op het contract.",
+            "section": "Vaarbewijs",
+            "fields": {
+              "boat_license_number": {
+                "label": "Nummer vaarbewijs"
+              },
+              "boat_license_type": {
+                "label": "Type vaarbewijs",
+                "options": {
+                  "coastal": "Kustwateren",
+                  "offshore": "Open zee",
+                  "inland": "Binnenwateren",
+                  "none": "Zonder vaarbewijs"
+                }
+              }
+            }
+          }
+        },
+        "deleteDialog": {
+          "title": "“{label}” verwijderen?",
+          "description": "Het veld verdwijnt bij alle klanten. Deze actie is onomkeerbaar.",
+          "withValues": "{count, plural, one {# klant heeft een waarde in dit veld: die wordt gewist.} other {# klanten hebben een waarde in dit veld: die worden gewist.}}",
+          "archiveInstead": "Liever archiveren",
+          "confirm": "Definitief verwijderen",
+          "cancel": "Annuleren"
+        },
+        "archived": {
+          "title": "Gearchiveerde velden",
+          "description": "Verborgen bij de klanten, de waarden blijven bewaard."
+        },
+        "preview": {
+          "title": "Voorbeeld",
+          "description": "Wat uw team ziet bij het aanmaken van een klant.",
+          "empty": "Voeg een veld toe om het voorbeeld te zien."
+        },
+        "empty": {
+          "title": "Geen aangepaste velden",
+          "description": "Begin met een sjabloon of maak uw eerste veld aan."
+        },
+        "toasts": {
+          "created": "Veld toegevoegd",
+          "updated": "Veld gewijzigd",
+          "archived": "Veld gearchiveerd",
+          "restored": "Veld opnieuw geactiveerd",
+          "deleted": "Veld verwijderd",
+          "reordered": "Volgorde opgeslagen",
+          "sectionRenamed": "Sectie hernoemd"
+        }
       }
     },
     "commandPalette": {
@@ -6281,7 +6728,8 @@
       "settingsReviewBooster": "Reviewbooster",
       "settingsTaxes": "Belastingen",
       "productsEdit": "Bewerken",
-      "reservationsEdit": "Bewerken"
+      "reservationsEdit": "Bewerken",
+      "settingsCustomerFields": "Klantgegevens"
     },
     "notificationsCenter": {
       "title": "Meldingen",
@@ -6373,6 +6821,10 @@
         "optional-password": {
           "title": "Een wachtwoord, als u dat wilt",
           "description": "Voeg een wachtwoord toe aan uw account om in te loggen zonder op de code per e-mail te wachten. De code blijft altijd beschikbaar."
+        },
+        "customer-custom-fields": {
+          "title": "Klantgegevens op uw maat",
+          "description": "Voeg uw eigen velden toe of begin met een sjabloon per land en per activiteit: rijbewijs, identiteitsbewijs, lichaamsmaten, CPF…"
         }
       }
     },
@@ -8705,7 +9157,14 @@
     "requestCancellationPaymentChanged": "De betalingsinformatie is gewijzigd. Controleer deze voordat je de annulering opnieuw bevestigt.",
     "promoCodeProductsAlreadyDiscounted": "Deze code geldt niet voor producten die al in de aanbieding zijn.",
     "paymentAmountTooSmall": "Kaartbetalingen vereisen minimaal {minimumAmount, number} {currency}. Pas uw winkelwagen aan of neem contact op met de winkel.",
-    "checkoutPaymentFailed": "De betaling kon niet worden gestart. Uw reservering is niet bevestigd. Probeer het opnieuw of neem contact op met de winkel."
+    "checkoutPaymentFailed": "De betaling kon niet worden gestart. Uw reservering is niet bevestigd. Probeer het opnieuw of neem contact op met de winkel.",
+    "customFieldsInvalid": "Sommige aanvullende velden zijn ongeldig.",
+    "optionsRequired": "Voeg minstens één keuze toe.",
+    "customerFields": {
+      "tooManyFields": "U hebt het maximale aantal actieve velden bereikt. Archiveer er een om een nieuw veld toe te voegen.",
+      "tooManySearchable": "Er kunnen maximaal vijf velden in de zoekfunctie worden opgenomen.",
+      "tooManyListFields": "Er kunnen maximaal twee velden in de lijst worden getoond."
+    }
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

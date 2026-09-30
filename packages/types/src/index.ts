@@ -5,5 +5,6 @@ export * from "./address";
 export * from "./api";
 export * from "./invoice";
 export * from "./reservation";
+export * from "./customer";
 
 export * from "./product-promotion";

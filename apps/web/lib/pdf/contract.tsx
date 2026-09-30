@@ -17,6 +17,7 @@ import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
 import { toAbsoluteUrl } from "@louez/utils";
 import { env } from "@/env";
 import type { ReservationLocationSnapshot } from "@louez/types";
+import type { ContractCustomerFieldLine } from "./util.contract-customer-fields";
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
 type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>;
@@ -158,6 +159,8 @@ interface Customer {
   address?: string | null;
   city?: string | null;
   postalCode?: string | null;
+  /** Custom fields flagged "show on contract", already formatted. */
+  customFieldLines?: ContractCustomerFieldLine[];
 }
 
 interface ReservationItem {
@@ -382,6 +385,11 @@ export function ContractDocument({
                 {reservation.customer.postalCode} {reservation.customer.city}
               </Text>
             )}
+            {reservation.customer.customFieldLines?.map((line) => (
+              <Text key={line.id} style={styles.partyLegal}>
+                {line.value === null ? line.label : `${line.label} : ${line.value}`}
+              </Text>
+            ))}
           </View>
         </View>
 

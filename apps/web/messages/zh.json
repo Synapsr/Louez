@@ -3148,7 +3148,22 @@
       },
       "filter": {
         "type": "客户类型",
-        "all": "所有客户"
+        "all": "所有客户",
+        "created": "创建日期",
+        "anyDate": "所有日期",
+        "source": "来源",
+        "allSources": "所有来源",
+        "channel": "渠道",
+        "allChannels": "所有渠道",
+        "reset": "重置过滤器",
+        "importRun": "来自导入",
+        "noResults": "没有符合这些过滤条件的客户。",
+        "from": "从 {date}",
+        "to": "至 {date}",
+        "more": "过滤器",
+        "createdFrom": "创建日期起",
+        "createdTo": "创建日期止",
+        "remove": "移除过滤器"
       },
       "deleteConfirm": {
         "title": "删除该客户？",
@@ -3190,7 +3205,21 @@
         "internalNotesDescription": "有关该客户的私人注释（客户不可见）",
         "notesPlaceholder": "添加有关该客户的注释...",
         "save": "保存",
-        "createCustomer": "创建客户"
+        "createCustomer": "创建客户",
+        "customerKind": "客户类型",
+        "moreInfo": "附加信息",
+        "moreInfoDescription": "选填。您也可以稍后在客户档案中补充这些信息。",
+        "profileSection": "个人资料",
+        "birthDate": "出生日期",
+        "ageYears": "{age, plural, other {# 岁}}",
+        "acquisitionSource": "客户是如何了解到您的？",
+        "acquisitionSourcePlaceholder": "选择",
+        "acquisitionSourceDetail": "具体说明",
+        "acquisitionSourceDetailPlaceholder": "旅游局、展会、合作酒店…",
+        "socialSection": "社交媒体与链接",
+        "customizeFields": "自定义字段",
+        "fieldCount": "{count, plural, other {# 个字段}}",
+        "filledCount": "{count, plural, other {已填写 # 项}}"
       },
       "countries": {
         "FR": "法国",
@@ -3205,6 +3234,83 @@
       "quickCreate": {
         "title": "新客户",
         "description": "将自动创建并选择客户。"
+      },
+      "sources": {
+        "word_of_mouth": "口碑推荐",
+        "search_engine": "Google 搜索",
+        "social_media": "社交媒体",
+        "walk_in": "路过门店",
+        "partner": "合作伙伴或旅游局",
+        "ads": "广告",
+        "returning": "老客户",
+        "other": "其他"
+      },
+      "channels": {
+        "dashboard": "由团队创建",
+        "storefront": "网上商店",
+        "marketplace": "reeent",
+        "import": "导入",
+        "api": "API",
+        "ai": "人工智能助手"
+      },
+      "social": {
+        "add": "添加链接",
+        "remove": "移除 {network}",
+        "open": "打开 {network}",
+        "placeholderHandle": "@handle 或个人主页链接",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+44 7700 900123",
+        "whatsapp": "WhatsApp",
+        "empty": "暂无链接"
+      },
+      "fields": {
+        "yes": "是",
+        "no": "否",
+        "reveal": "显示",
+        "hide": "隐藏",
+        "copy": "复制",
+        "copied": "已复制",
+        "selectPlaceholder": "选择",
+        "suspicious": "此号码似乎无效，请仔细核对：它仍会被保存。",
+        "duplicate": "已被 {name} 使用。",
+        "viewCustomer": "查看档案",
+        "complete": "{count, plural, other {填写 # 个字段}}",
+        "issues": {
+          "required": "该字段为必填项。",
+          "invalidNumber": "请输入数字。",
+          "invalidDate": "日期无效。",
+          "invalidOption": "请从列表中选择一个值。",
+          "invalidEmail": "电子邮件地址无效。",
+          "invalidPhone": "电话号码无效。",
+          "invalidUrl": "链接无效。"
+        }
+      },
+      "detail": {
+        "newReservation": "新预订",
+        "edit": "编辑",
+        "moreActions": "更多操作",
+        "createdVia": "创建渠道：{channel}",
+        "contactCard": "联系方式",
+        "profileCard": "个人资料",
+        "bornOn": "出生于 {date}",
+        "source": "来源",
+        "lastRental": "最近一次租赁",
+        "never": "从未",
+        "noAddress": "未填写地址",
+        "noPhone": "未填写电话",
+        "emptyProfile": "暂无个人资料信息。",
+        "editSection": "编辑：{section}",
+        "editSectionDescription": "只会修改这些信息。",
+        "sectionSaved": "更改已保存",
+        "save": "保存",
+        "cancel": "取消"
+      },
+      "pagination": {
+        "showing": "{from}–{to}，共 {total} 条",
+        "perPage": "每页",
+        "previous": "上一页",
+        "next": "下一页",
+        "pageOf": "第 {page} 页，共 {pages} 页"
       }
     },
     "calendar": {
@@ -4669,6 +4775,14 @@
           "statusRequired": "至少选择一种状态。",
           "noContracts": "没有符合此日期范围和这些状态的预订。",
           "exportFailed": "导出失败。请再试一次。"
+        },
+        "customers": {
+          "title": "客户",
+          "description": "导出您的客户档案：联系方式、出生日期、来源、创建渠道以及您的自定义字段。",
+          "button": "导出客户",
+          "dateRangeHint": "该期间以档案的创建日期为准。留空即可导出所有客户。",
+          "includeSensitive": "包含敏感数据",
+          "includeSensitiveWarning": "标记为敏感的字段将以明文形式出现在文件中：请妥善保管该文件。"
         }
       },
       "embed": {
@@ -6179,7 +6293,340 @@
         "description": "当设备可用时，客户可以延长，并且可以计算额外的费用。特殊情况需要您的批准。",
         "maxDays": "最多额外天数（留空则无限制）"
       },
-      "readOnlyNotice": "只读：只有所有者和管理员才能更改该商店的设置。"
+      "readOnlyNotice": "只读：只有所有者和管理员才能更改该商店的设置。",
+      "customerFields": {
+        "title": "客户档案",
+        "description": "除姓名和联系方式外，选择您要保存的客户信息。",
+        "limits": "{count} / {max} 个启用字段",
+        "suggestions": {
+          "title": "为您推荐",
+          "description": "根据您商店所在的国家和业务类型。",
+          "browse": "浏览模板",
+          "dismiss": "隐藏推荐"
+        },
+        "native": {
+          "title": "Louez 字段",
+          "description": "Louez 能够直接使用的信息。隐藏您不需要的内容。",
+          "birthDate": "出生日期",
+          "birthDateHelp": "同时显示客户的年龄。",
+          "acquisitionSource": "客户来源",
+          "acquisitionSourceHelp": "客户是如何了解到您的。",
+          "socialLinks": "社交媒体与链接",
+          "socialLinksHelp": "Instagram、网站、WhatsApp…",
+          "visibility": {
+            "hidden": "隐藏",
+            "optional": "可选",
+            "required": "必填"
+          },
+          "saved": "设置已保存"
+        },
+        "sections": {
+          "add": "添加分组",
+          "namePlaceholder": "分组名称",
+          "defaultName": "附加信息",
+          "rename": "重命名分组",
+          "moveUp": "上移",
+          "moveDown": "下移",
+          "actions": "分组操作"
+        },
+        "field": {
+          "add": "添加字段",
+          "edit": "编辑",
+          "archive": "存档",
+          "restore": "重新启用",
+          "delete": "永久删除",
+          "moveTo": "移至",
+          "actions": "字段操作",
+          "active": "已启用",
+          "drag": "调整顺序",
+          "valueCount": "{count, plural, =0 {暂无值} other {# 位客户已填写}}"
+        },
+        "badges": {
+          "required": "必填",
+          "sensitive": "敏感",
+          "contract": "合同",
+          "search": "搜索",
+          "list": "列表",
+          "business": "企业",
+          "individual": "个人"
+        },
+        "dialog": {
+          "createTitle": "新字段",
+          "createDescription": "它将显示在每个客户档案中。",
+          "editTitle": "编辑字段",
+          "editDescription": "已录入的值将被保留。",
+          "label": "名称",
+          "labelPlaceholder": "驾照号码",
+          "type": "类型",
+          "typeLocked": "字段创建后，类型将无法更改。",
+          "options": "选项",
+          "optionsPlaceholder": "输入一个选项后按回车",
+          "unit": "单位",
+          "unitPlaceholder": "cm、kg、km…",
+          "helpText": "填写提示",
+          "helpTextPlaceholder": "显示在字段下方",
+          "section": "分组",
+          "newSection": "新分组…",
+          "appliesTo": "适用于",
+          "appliesToAll": "全部",
+          "appliesToIndividual": "个人",
+          "appliesToBusiness": "企业",
+          "save": "保存",
+          "create": "添加字段",
+          "cancel": "取消",
+          "types": {
+            "text": "文本",
+            "textarea": "长文本",
+            "number": "数字",
+            "date": "日期",
+            "select": "选项列表",
+            "checkbox": "是 / 否",
+            "phone": "电话",
+            "email": "电子邮件",
+            "url": "链接"
+          },
+          "flags": {
+            "required": "必填",
+            "requiredHelp": "未填写此字段时无法保存档案。",
+            "sensitive": "敏感数据",
+            "sensitiveHelp": "默认在档案中隐藏，且不会包含在导出文件中。",
+            "contract": "显示在合同上",
+            "contractHelp": "添加在客户联系方式下方。",
+            "search": "纳入搜索",
+            "searchHelp": "输入该值即可找到客户，同时会提示重复项。",
+            "list": "显示在列表中",
+            "listHelp": "在客户列表中增加一列。"
+          }
+        },
+        "templates": {
+          "dialogTitle": "字段模板",
+          "dialogDescription": "一键添加一组字段。之后您可以重命名、调整顺序或存档它们。",
+          "privacyNote": "只收集您真正需要的信息：您需对客户的数据负责。",
+          "groups": {
+            "country": "按国家",
+            "activity": "按业务类型",
+            "general": "通用"
+          },
+          "adopt": "添加",
+          "adopted": "已添加",
+          "fieldsCount": "{count, plural, other {# 个字段}}",
+          "adoptedToast": "{count, plural, other {已添加 # 个字段}}",
+          "identityDocument": {
+            "name": "身份证件",
+            "description": "交付设备时要求客户出示的身份证明。",
+            "section": "身份信息",
+            "fields": {
+              "id_document_type": {
+                "label": "证件类型",
+                "options": {
+                  "idCard": "身份证",
+                  "passport": "护照",
+                  "residencePermit": "居留许可",
+                  "drivingLicense": "驾驶执照",
+                  "other": "其他"
+                }
+              },
+              "id_document_number": {
+                "label": "证件号码"
+              },
+              "id_document_expiry": {
+                "label": "到期日期"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "紧急联系人",
+            "description": "租赁期间出现问题时需要联系的人。",
+            "section": "紧急联系人",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "姓名"
+              },
+              "emergency_contact_phone": {
+                "label": "电话"
+              },
+              "emergency_contact_relation": {
+                "label": "关系",
+                "options": {
+                  "partner": "伴侣",
+                  "parent": "父母",
+                  "friend": "朋友",
+                  "colleague": "同事",
+                  "other": "其他"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "企业客户",
+            "description": "财务联系人，以及需要在您的单据上注明的参考编号。",
+            "section": "开票信息",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "财务联系人"
+              },
+              "accounting_email": {
+                "label": "财务电子邮件"
+              },
+              "purchase_order_reference": {
+                "label": "采购订单编号"
+              }
+            }
+          },
+          "brazil": {
+            "name": "巴西",
+            "description": "CPF 或 CNPJ（含号码校验）以及 RG。",
+            "section": "身份信息",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "签发机关"
+              }
+            }
+          },
+          "spain": {
+            "name": "西班牙",
+            "description": "DNI 或 NIE，含校验字母验证。",
+            "section": "身份信息",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "意大利",
+            "description": "Codice fiscale，含校验字符验证。",
+            "section": "身份信息",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "葡萄牙",
+            "description": "NIF，含校验位验证。",
+            "section": "身份信息",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "车辆与两轮车",
+            "description": "驾驶执照信息，会同步显示在合同上。",
+            "section": "驾驶执照",
+            "fields": {
+              "driving_license_number": {
+                "label": "驾照号码"
+              },
+              "driving_license_date": {
+                "label": "取得日期"
+              },
+              "driving_license_categories": {
+                "label": "准驾类别"
+              }
+            }
+          },
+          "ski": {
+            "name": "滑雪与山地",
+            "description": "身体尺寸，便于在客户到店前准备好装备。",
+            "section": "身体尺寸",
+            "fields": {
+              "height_cm": {
+                "label": "身高"
+              },
+              "weight_kg": {
+                "label": "体重"
+              },
+              "shoe_size": {
+                "label": "鞋码"
+              },
+              "ski_level": {
+                "label": "水平",
+                "options": {
+                  "beginner": "初学者",
+                  "intermediate": "中级",
+                  "advanced": "高级",
+                  "expert": "专家"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "自行车",
+            "description": "在客户到店前调好自行车所需的信息。",
+            "section": "自行车设置",
+            "fields": {
+              "height_cm": {
+                "label": "身高"
+              },
+              "bike_saddle_height": {
+                "label": "座垫高度"
+              },
+              "bike_preferences": {
+                "label": "偏好"
+              }
+            }
+          },
+          "boating": {
+            "name": "船艇",
+            "description": "船舶驾照信息，会同步显示在合同上。",
+            "section": "船舶驾照",
+            "fields": {
+              "boat_license_number": {
+                "label": "船舶驾照号码"
+              },
+              "boat_license_type": {
+                "label": "驾照类型",
+                "options": {
+                  "coastal": "沿海",
+                  "offshore": "远海",
+                  "inland": "内陆水域",
+                  "none": "无驾照"
+                }
+              }
+            }
+          }
+        },
+        "deleteDialog": {
+          "title": "删除“{label}”？",
+          "description": "该字段将从所有档案中消失。此操作无法撤销。",
+          "withValues": "{count, plural, other {# 位客户在此字段中填有值：这些值将被清除。}}",
+          "archiveInstead": "改为存档",
+          "confirm": "永久删除",
+          "cancel": "取消"
+        },
+        "archived": {
+          "title": "已存档字段",
+          "description": "已从档案中隐藏，其值仍会保留。"
+        },
+        "preview": {
+          "title": "预览",
+          "description": "您的团队创建客户时看到的内容。",
+          "empty": "添加一个字段即可查看预览。"
+        },
+        "empty": {
+          "title": "暂无自定义字段",
+          "description": "从模板开始，或创建您的第一个字段。"
+        },
+        "toasts": {
+          "created": "字段已添加",
+          "updated": "字段已更新",
+          "archived": "字段已存档",
+          "restored": "字段已重新启用",
+          "deleted": "字段已删除",
+          "reordered": "顺序已保存",
+          "sectionRenamed": "分组已重命名"
+        }
+      }
     },
     "commandPalette": {
       "title": "命令面板",
@@ -6281,7 +6728,8 @@
       "settingsReviewBooster": "评论助推器",
       "settingsTaxes": "税收",
       "productsEdit": "编辑",
-      "reservationsEdit": "编辑"
+      "reservationsEdit": "编辑",
+      "settingsCustomerFields": "客户档案"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -6373,6 +6821,10 @@
         "optional-password": {
           "title": "按需设置密码",
           "description": "为账户添加密码，即可登录而无需等待电子邮件验证码。验证码登录方式始终可用。"
+        },
+        "customer-custom-fields": {
+          "title": "打造专属于您的客户档案",
+          "description": "添加您自己的字段，或从按国家和业务类型划分的模板开始：驾照、身份证件、身体尺寸、CPF…"
         }
       }
     },
@@ -8705,7 +9157,14 @@
     "requestCancellationPaymentChanged": "付款信息已更改。在再次确认取消之前请先查看。",
     "promoCodeProductsAlreadyDiscounted": "此代码不适用于已促销的产品。",
     "paymentAmountTooSmall": "银行卡付款的最低金额为{minimumAmount, number} {currency}。请修改购物车或联系店铺。",
-    "checkoutPaymentFailed": "无法开始付款。您的预订尚未确认。请重试或联系店铺。"
+    "checkoutPaymentFailed": "无法开始付款。您的预订尚未确认。请重试或联系店铺。",
+    "customFieldsInvalid": "部分附加字段无效。",
+    "optionsRequired": "请至少添加一个选项。",
+    "customerFields": {
+      "tooManyFields": "已达到启用字段的数量上限。请先存档一个字段，再添加新字段。",
+      "tooManySearchable": "最多可将五个字段纳入搜索。",
+      "tooManyListFields": "最多可在列表中显示两个字段。"
+    }
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",

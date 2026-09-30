@@ -25,6 +25,7 @@ export default async function CustomersPage() {
       limits={limits.customers}
       planSlug={plan.slug}
       initialTotalCount={limits.customers.current}
+      timezone={store.settings?.timezone || 'Europe/Paris'}
     />
   )
 }

@@ -3148,7 +3148,22 @@
       },
       "filter": {
         "type": "Tipe pelanggan",
-        "all": "Semua pelanggan"
+        "all": "Semua pelanggan",
+        "created": "Tanggal dibuat",
+        "anyDate": "Semua tanggal",
+        "source": "Sumber",
+        "allSources": "Semua sumber",
+        "channel": "Saluran",
+        "allChannels": "Semua saluran",
+        "reset": "Setel ulang filter",
+        "importRun": "Dari impor",
+        "noResults": "Tidak ada pelanggan yang cocok dengan filter ini.",
+        "from": "Dari {date}",
+        "to": "sampai {date}",
+        "more": "Filter",
+        "createdFrom": "Dibuat sejak",
+        "createdTo": "Dibuat hingga",
+        "remove": "Hapus filter"
       },
       "deleteConfirm": {
         "title": "Hapus pelanggan ini?",
@@ -3190,7 +3205,21 @@
         "internalNotesDescription": "Catatan pribadi tentang pelanggan ini (tidak terlihat oleh pelanggan)",
         "notesPlaceholder": "Tambahkan catatan tentang pelanggan ini...",
         "save": "Simpan",
-        "createCustomer": "Buat pelanggan"
+        "createCustomer": "Buat pelanggan",
+        "customerKind": "Tipe pelanggan",
+        "moreInfo": "Informasi tambahan",
+        "moreInfoDescription": "Opsional. Anda juga dapat mengisinya nanti dari data pelanggan.",
+        "profileSection": "Profil",
+        "birthDate": "Tanggal lahir",
+        "ageYears": "{age, plural, other {# tahun}}",
+        "acquisitionSource": "Dari mana pelanggan mengenal Anda?",
+        "acquisitionSourcePlaceholder": "Pilih",
+        "acquisitionSourceDetail": "Detail",
+        "acquisitionSourceDetailPlaceholder": "Kantor pariwisata, pameran dagang, hotel mitra…",
+        "socialSection": "Media sosial dan tautan",
+        "customizeFields": "Sesuaikan bidang",
+        "fieldCount": "{count, plural, other {# bidang}}",
+        "filledCount": "{count, plural, other {# terisi}}"
       },
       "countries": {
         "FR": "Perancis",
@@ -3205,6 +3234,83 @@
       "quickCreate": {
         "title": "Pelanggan baru",
         "description": "Pelanggan akan dibuat dan dipilih secara otomatis."
+      },
+      "sources": {
+        "word_of_mouth": "Dari mulut ke mulut",
+        "search_engine": "Pencarian Google",
+        "social_media": "Media sosial",
+        "walk_in": "Lewat di depan toko",
+        "partner": "Mitra atau kantor pariwisata",
+        "ads": "Iklan",
+        "returning": "Pelanggan lama",
+        "other": "Lainnya"
+      },
+      "channels": {
+        "dashboard": "Dibuat oleh tim",
+        "storefront": "Toko online",
+        "marketplace": "reeent",
+        "import": "Impor",
+        "api": "API",
+        "ai": "Asisten AI"
+      },
+      "social": {
+        "add": "Tambahkan tautan",
+        "remove": "Hapus {network}",
+        "open": "Buka {network}",
+        "placeholderHandle": "@handle atau tautan profil",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+44 7700 900123",
+        "whatsapp": "WhatsApp",
+        "empty": "Tidak ada tautan"
+      },
+      "fields": {
+        "yes": "Ya",
+        "no": "Tidak",
+        "reveal": "Tampilkan",
+        "hide": "Sembunyikan",
+        "copy": "Salin",
+        "copied": "Disalin",
+        "selectPlaceholder": "Pilih",
+        "suspicious": "Nomor ini tampaknya tidak valid. Periksa kembali: nomor ini tetap akan disimpan.",
+        "duplicate": "Sudah digunakan oleh {name}.",
+        "viewCustomer": "Lihat data pelanggan",
+        "complete": "{count, plural, other {Isi # bidang}}",
+        "issues": {
+          "required": "Bidang ini wajib diisi.",
+          "invalidNumber": "Masukkan angka.",
+          "invalidDate": "Tanggal tidak valid.",
+          "invalidOption": "Pilih nilai dari daftar.",
+          "invalidEmail": "Alamat email tidak valid.",
+          "invalidPhone": "Nomor telepon tidak valid.",
+          "invalidUrl": "Tautan tidak valid."
+        }
+      },
+      "detail": {
+        "newReservation": "Reservasi baru",
+        "edit": "Sunting",
+        "moreActions": "Tindakan lainnya",
+        "createdVia": "Dibuat melalui: {channel}",
+        "contactCard": "Detail kontak",
+        "profileCard": "Profil",
+        "bornOn": "Lahir pada {date}",
+        "source": "Sumber",
+        "lastRental": "Sewa terakhir",
+        "never": "Belum pernah",
+        "noAddress": "Belum ada alamat",
+        "noPhone": "Belum ada nomor telepon",
+        "emptyProfile": "Tidak ada informasi profil.",
+        "editSection": "Sunting: {section}",
+        "editSectionDescription": "Hanya informasi ini yang akan diubah.",
+        "sectionSaved": "Perubahan disimpan",
+        "save": "Simpan",
+        "cancel": "Batalkan"
+      },
+      "pagination": {
+        "showing": "{from}–{to} dari {total}",
+        "perPage": "Per halaman",
+        "previous": "Halaman sebelumnya",
+        "next": "Halaman berikutnya",
+        "pageOf": "Halaman {page} dari {pages}"
       }
     },
     "calendar": {
@@ -4669,6 +4775,14 @@
           "statusRequired": "Pilih setidaknya satu status.",
           "noContracts": "Tidak ada reservasi yang cocok dengan rentang tanggal dan status ini.",
           "exportFailed": "Ekspor gagal. Silakan coba lagi."
+        },
+        "customers": {
+          "title": "Pelanggan",
+          "description": "Ekspor data pelanggan Anda: detail kontak, tanggal lahir, sumber, saluran pembuatan, dan bidang khusus Anda.",
+          "button": "Ekspor pelanggan",
+          "dateRangeHint": "Periode ini berlaku untuk tanggal pembuatan setiap data pelanggan. Biarkan kosong untuk mengekspor semua pelanggan Anda.",
+          "includeSensitive": "Sertakan data sensitif",
+          "includeSensitiveWarning": "Bidang yang ditandai sensitif akan muncul tanpa disamarkan di dalam file: simpan file tersebut di tempat yang aman."
         }
       },
       "embed": {
@@ -6179,7 +6293,340 @@
         "description": "Pelanggan dapat memperpanjang ketika peralatan tersedia dan biaya tambahan dapat dihitung. Kasus khusus memerlukan persetujuan Anda.",
         "maxDays": "Maksimum tambahan hari (biarkan kosong tanpa batas)"
       },
-      "readOnlyNotice": "Hanya baca: hanya pemilik dan administrator yang dapat mengubah pengaturan toko ini."
+      "readOnlyNotice": "Hanya baca: hanya pemilik dan administrator yang dapat mengubah pengaturan toko ini.",
+      "customerFields": {
+        "title": "Data pelanggan",
+        "description": "Pilih informasi yang Anda simpan tentang pelanggan, selain nama dan detail kontak mereka.",
+        "limits": "{count} / {max} bidang aktif",
+        "suggestions": {
+          "title": "Disarankan untuk Anda",
+          "description": "Berdasarkan negara dan aktivitas toko Anda.",
+          "browse": "Jelajahi templat",
+          "dismiss": "Sembunyikan saran"
+        },
+        "native": {
+          "title": "Bidang Louez",
+          "description": "Informasi yang dapat dimanfaatkan Louez. Sembunyikan yang tidak Anda perlukan.",
+          "birthDate": "Tanggal lahir",
+          "birthDateHelp": "Juga menampilkan usia pelanggan.",
+          "acquisitionSource": "Sumber pelanggan",
+          "acquisitionSourceHelp": "Dari mana pelanggan mengenal Anda.",
+          "socialLinks": "Media sosial dan tautan",
+          "socialLinksHelp": "Instagram, situs web, WhatsApp…",
+          "visibility": {
+            "hidden": "Disembunyikan",
+            "optional": "Opsional",
+            "required": "Wajib"
+          },
+          "saved": "Pengaturan disimpan"
+        },
+        "sections": {
+          "add": "Tambahkan bagian",
+          "namePlaceholder": "Nama bagian",
+          "defaultName": "Informasi tambahan",
+          "rename": "Ganti nama bagian",
+          "moveUp": "Pindahkan ke atas",
+          "moveDown": "Pindahkan ke bawah",
+          "actions": "Tindakan bagian"
+        },
+        "field": {
+          "add": "Tambahkan bidang",
+          "edit": "Sunting",
+          "archive": "Arsipkan",
+          "restore": "Aktifkan kembali",
+          "delete": "Hapus permanen",
+          "moveTo": "Pindahkan ke",
+          "actions": "Tindakan bidang",
+          "active": "Aktif",
+          "drag": "Ubah urutan",
+          "valueCount": "{count, plural, =0 {Tidak ada nilai} other {Diisi oleh # pelanggan}}"
+        },
+        "badges": {
+          "required": "Wajib",
+          "sensitive": "Sensitif",
+          "contract": "Kontrak",
+          "search": "Pencarian",
+          "list": "Daftar",
+          "business": "Bisnis",
+          "individual": "Individu"
+        },
+        "dialog": {
+          "createTitle": "Bidang baru",
+          "createDescription": "Bidang ini akan muncul di data setiap pelanggan.",
+          "editTitle": "Sunting bidang",
+          "editDescription": "Nilai yang sudah diisi tetap disimpan.",
+          "label": "Label",
+          "labelPlaceholder": "Nomor SIM",
+          "type": "Tipe",
+          "typeLocked": "Tipe tidak dapat diubah lagi setelah bidang dibuat.",
+          "options": "Pilihan",
+          "optionsPlaceholder": "Ketik pilihan lalu tekan Enter",
+          "unit": "Satuan",
+          "unitPlaceholder": "cm, kg, km…",
+          "helpText": "Petunjuk pengisian",
+          "helpTextPlaceholder": "Ditampilkan di bawah bidang",
+          "section": "Bagian",
+          "newSection": "Bagian baru…",
+          "appliesTo": "Berlaku untuk",
+          "appliesToAll": "Semua",
+          "appliesToIndividual": "Individu",
+          "appliesToBusiness": "Bisnis",
+          "save": "Simpan",
+          "create": "Tambahkan bidang",
+          "cancel": "Batalkan",
+          "types": {
+            "text": "Teks",
+            "textarea": "Teks panjang",
+            "number": "Angka",
+            "date": "Tanggal",
+            "select": "Daftar pilihan",
+            "checkbox": "Ya / Tidak",
+            "phone": "Telepon",
+            "email": "Email",
+            "url": "Tautan"
+          },
+          "flags": {
+            "required": "Wajib",
+            "requiredHelp": "Data pelanggan tidak dapat disimpan tanpa bidang ini.",
+            "sensitive": "Data sensitif",
+            "sensitiveHelp": "Disembunyikan secara default pada data pelanggan dan tidak disertakan dalam ekspor.",
+            "contract": "Tampilkan di kontrak",
+            "contractHelp": "Ditambahkan di bawah detail kontak pelanggan.",
+            "search": "Sertakan dalam pencarian",
+            "searchHelp": "Ketik nilainya untuk menemukan pelanggan. Juga menandai duplikat.",
+            "list": "Tampilkan di daftar",
+            "listHelp": "Menambahkan kolom ke daftar pelanggan."
+          }
+        },
+        "templates": {
+          "dialogTitle": "Templat bidang",
+          "dialogDescription": "Tambahkan sekumpulan bidang dengan satu klik. Setelah itu, Anda dapat mengganti nama, mengubah urutan, atau mengarsipkannya.",
+          "privacyNote": "Kumpulkan hanya data yang benar-benar Anda perlukan: Anda bertanggung jawab atas data pelanggan Anda.",
+          "groups": {
+            "country": "Berdasarkan negara",
+            "activity": "Berdasarkan aktivitas",
+            "general": "Umum"
+          },
+          "adopt": "Tambahkan",
+          "adopted": "Ditambahkan",
+          "fieldsCount": "{count, plural, other {# bidang}}",
+          "adoptedToast": "{count, plural, other {# bidang ditambahkan}}",
+          "identityDocument": {
+            "name": "Dokumen identitas",
+            "description": "Bukti identitas yang diminta saat serah terima peralatan.",
+            "section": "Identitas",
+            "fields": {
+              "id_document_type": {
+                "label": "Jenis dokumen",
+                "options": {
+                  "idCard": "Kartu identitas",
+                  "passport": "Paspor",
+                  "residencePermit": "Izin tinggal",
+                  "drivingLicense": "Surat izin mengemudi",
+                  "other": "Lainnya"
+                }
+              },
+              "id_document_number": {
+                "label": "Nomor dokumen"
+              },
+              "id_document_expiry": {
+                "label": "Tanggal kedaluwarsa"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "Kontak darurat",
+            "description": "Orang yang dihubungi jika terjadi masalah selama masa sewa.",
+            "section": "Kontak darurat",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "Nama"
+              },
+              "emergency_contact_phone": {
+                "label": "Telepon"
+              },
+              "emergency_contact_relation": {
+                "label": "Hubungan",
+                "options": {
+                  "partner": "Pasangan",
+                  "parent": "Orang tua",
+                  "friend": "Teman",
+                  "colleague": "Rekan kerja",
+                  "other": "Lainnya"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "Pelanggan bisnis",
+            "description": "Kontak bagian akuntansi dan referensi yang dicantumkan pada dokumen Anda.",
+            "section": "Penagihan",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "Kontak bagian akuntansi"
+              },
+              "accounting_email": {
+                "label": "Email bagian akuntansi"
+              },
+              "purchase_order_reference": {
+                "label": "Referensi pesanan pembelian"
+              }
+            }
+          },
+          "brazil": {
+            "name": "Brasil",
+            "description": "CPF atau CNPJ, dengan verifikasi nomor, serta RG.",
+            "section": "Identitas",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "Instansi penerbit"
+              }
+            }
+          },
+          "spain": {
+            "name": "Spanyol",
+            "description": "DNI atau NIE, dengan verifikasi huruf kontrol.",
+            "section": "Identitas",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "Italia",
+            "description": "Codice fiscale, dengan verifikasi karakter kontrol.",
+            "section": "Identitas",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "Portugal",
+            "description": "NIF, dengan verifikasi digit kontrol.",
+            "section": "Identitas",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "Kendaraan dan skuter",
+            "description": "Surat izin mengemudi, dicantumkan di kontrak.",
+            "section": "Surat izin mengemudi",
+            "fields": {
+              "driving_license_number": {
+                "label": "Nomor SIM"
+              },
+              "driving_license_date": {
+                "label": "Tanggal diperoleh"
+              },
+              "driving_license_categories": {
+                "label": "Kategori"
+              }
+            }
+          },
+          "ski": {
+            "name": "Ski dan pegunungan",
+            "description": "Ukuran tubuh untuk menyiapkan peralatan sebelum pelanggan datang.",
+            "section": "Ukuran tubuh",
+            "fields": {
+              "height_cm": {
+                "label": "Tinggi badan"
+              },
+              "weight_kg": {
+                "label": "Berat badan"
+              },
+              "shoe_size": {
+                "label": "Ukuran sepatu"
+              },
+              "ski_level": {
+                "label": "Tingkat kemampuan",
+                "options": {
+                  "beginner": "Pemula",
+                  "intermediate": "Menengah",
+                  "advanced": "Mahir",
+                  "expert": "Ahli"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "Sepeda",
+            "description": "Informasi untuk menyetel sepeda sebelum pelanggan datang.",
+            "section": "Setelan sepeda",
+            "fields": {
+              "height_cm": {
+                "label": "Tinggi badan"
+              },
+              "bike_saddle_height": {
+                "label": "Tinggi sadel"
+              },
+              "bike_preferences": {
+                "label": "Preferensi"
+              }
+            }
+          },
+          "boating": {
+            "name": "Perahu",
+            "description": "Lisensi perahu, dicantumkan di kontrak.",
+            "section": "Lisensi perahu",
+            "fields": {
+              "boat_license_number": {
+                "label": "Nomor lisensi perahu"
+              },
+              "boat_license_type": {
+                "label": "Jenis lisensi",
+                "options": {
+                  "coastal": "Pesisir",
+                  "offshore": "Lepas pantai",
+                  "inland": "Perairan darat",
+                  "none": "Tanpa lisensi"
+                }
+              }
+            }
+          }
+        },
+        "deleteDialog": {
+          "title": "Hapus “{label}”?",
+          "description": "Bidang ini akan hilang dari semua data pelanggan. Tindakan ini tidak dapat dibatalkan.",
+          "withValues": "{count, plural, other {# pelanggan memiliki nilai untuk bidang ini: nilai tersebut akan dihapus.}}",
+          "archiveInstead": "Arsipkan saja",
+          "confirm": "Hapus permanen",
+          "cancel": "Batalkan"
+        },
+        "archived": {
+          "title": "Bidang yang diarsipkan",
+          "description": "Disembunyikan dari data pelanggan, nilainya tetap disimpan."
+        },
+        "preview": {
+          "title": "Pratinjau",
+          "description": "Tampilan yang dilihat tim Anda saat membuat pelanggan.",
+          "empty": "Tambahkan bidang untuk melihat pratinjau."
+        },
+        "empty": {
+          "title": "Tidak ada bidang khusus",
+          "description": "Mulai dari templat atau buat bidang pertama Anda."
+        },
+        "toasts": {
+          "created": "Bidang ditambahkan",
+          "updated": "Bidang diperbarui",
+          "archived": "Bidang diarsipkan",
+          "restored": "Bidang diaktifkan kembali",
+          "deleted": "Bidang dihapus",
+          "reordered": "Urutan disimpan",
+          "sectionRenamed": "Nama bagian diubah"
+        }
+      }
     },
     "commandPalette": {
       "title": "Palet perintah",
@@ -6281,7 +6728,8 @@
       "settingsReviewBooster": "Tinjau penguat",
       "settingsTaxes": "Pajak",
       "productsEdit": "Sunting",
-      "reservationsEdit": "Sunting"
+      "reservationsEdit": "Sunting",
+      "settingsCustomerFields": "Data pelanggan"
     },
     "notificationsCenter": {
       "title": "Pemberitahuan",
@@ -6373,6 +6821,10 @@
         "optional-password": {
           "title": "Kata sandi, jika Anda menginginkannya",
           "description": "Tambahkan kata sandi ke akun Anda untuk masuk tanpa menunggu kode email. Kode email tetap selalu tersedia."
+        },
+        "customer-custom-fields": {
+          "title": "Data pelanggan sesuai kebutuhan Anda",
+          "description": "Tambahkan bidang Anda sendiri atau mulai dari templat berdasarkan negara dan aktivitas: SIM, dokumen identitas, ukuran tubuh, CPF…"
         }
       }
     },
@@ -8705,7 +9157,14 @@
     "requestCancellationPaymentChanged": "Informasi pembayaran telah berubah. Tinjau sebelum mengonfirmasi pembatalan lagi.",
     "promoCodeProductsAlreadyDiscounted": "Kode ini tidak berlaku untuk produk yang sedang dalam masa promosi.",
     "paymentAmountTooSmall": "Pembayaran kartu memerlukan minimum {minimumAmount, number} {currency}. Ubah keranjang atau hubungi toko.",
-    "checkoutPaymentFailed": "Pembayaran tidak dapat dimulai. Reservasi belum dikonfirmasi. Coba lagi atau hubungi toko."
+    "checkoutPaymentFailed": "Pembayaran tidak dapat dimulai. Reservasi belum dikonfirmasi. Coba lagi atau hubungi toko.",
+    "customFieldsInvalid": "Beberapa bidang tambahan tidak valid.",
+    "optionsRequired": "Tambahkan setidaknya satu pilihan.",
+    "customerFields": {
+      "tooManyFields": "Anda telah mencapai jumlah maksimum bidang aktif. Arsipkan salah satunya untuk menambahkan bidang lain.",
+      "tooManySearchable": "Maksimal lima bidang dapat disertakan dalam pencarian.",
+      "tooManyListFields": "Maksimal dua bidang dapat ditampilkan dalam daftar."
+    }
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",

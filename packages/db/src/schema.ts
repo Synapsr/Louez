@@ -1,4 +1,4 @@
-import type { ProductPromotion } from "@louez/types";
+import type { CustomerSocialLinks, ProductPromotion } from "@louez/types";
 import { relations } from "drizzle-orm";
 import {
   bigint,
@@ -1241,6 +1241,31 @@ export const customers = mysqlTable(
     postalCode: varchar("postal_code", { length: 20 }),
     country: varchar("country", { length: 2 }).default("FR"),
 
+    // Profile
+    birthDate: date("birth_date", { mode: "string" }),
+    // How the customer heard about the store, as declared by the merchant.
+    acquisitionSource: mysqlEnum("acquisition_source", [
+      "word_of_mouth",
+      "search_engine",
+      "social_media",
+      "walk_in",
+      "partner",
+      "ads",
+      "returning",
+      "other",
+    ]),
+    acquisitionSourceDetail: varchar("acquisition_source_detail", { length: 255 }),
+    // Where the record was created. Set by the code path, never by input.
+    createdVia: mysqlEnum("created_via", [
+      "dashboard",
+      "storefront",
+      "marketplace",
+      "import",
+      "api",
+      "ai",
+    ]),
+    socialLinks: json("social_links").$type<CustomerSocialLinks>(),
+
     // Internal notes
     notes: text("notes"),
 
@@ -1251,8 +1276,88 @@ export const customers = mysqlTable(
   (table) => ({
     uniqueEmailPerStore: unique("customers_unique_email_per_store").on(table.storeId, table.email),
     storeIdx: index("customers_store_idx").on(table.storeId),
+    storeCreatedIdx: index("customers_store_created_idx").on(table.storeId, table.createdAt),
     emailIdx: index("customers_email_idx").on(table.email),
     marketplaceUserIdx: index("customers_marketplace_user_idx").on(table.marketplaceUserId),
+  }),
+);
+
+// ============================================================================
+// Customer custom fields (store-level definitions, per-customer values)
+// ============================================================================
+
+export const customerFieldDefinitions = mysqlTable(
+  "customer_field_definitions",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    // Stable identity: a template adopted twice resolves to the same row, and
+    // values survive a relabel.
+    key: varchar("key", { length: 64 }).notNull(),
+    label: varchar("label", { length: 100 }).notNull(),
+    type: mysqlEnum("field_type", [
+      "text",
+      "textarea",
+      "number",
+      "date",
+      "select",
+      "checkbox",
+      "phone",
+      "email",
+      "url",
+    ]).notNull(),
+    // Known identifier format of a text field (validation + normalisation).
+    format: varchar("format", { length: 32 }),
+    options: json("options").$type<string[]>(),
+    unit: varchar("unit", { length: 32 }),
+    helpText: varchar("help_text", { length: 255 }),
+    section: varchar("section", { length: 100 }).notNull(),
+    position: int("position").notNull().default(0),
+    appliesTo: mysqlEnum("applies_to", ["all", "individual", "business"]).notNull().default("all"),
+    isRequired: boolean("is_required").notNull().default(false),
+    isSensitive: boolean("is_sensitive").notNull().default(false),
+    showOnContract: boolean("show_on_contract").notNull().default(false),
+    isSearchable: boolean("is_searchable").notNull().default(false),
+    showInList: boolean("show_in_list").notNull().default(false),
+    // Template the field was adopted from, when any.
+    templateKey: varchar("template_key", { length: 64 }),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index("customer_field_definitions_store_idx").on(table.storeId, table.position),
+    uniqueStoreKey: unique("customer_field_definitions_store_key_unique").on(
+      table.storeId,
+      table.key,
+    ),
+  }),
+);
+
+export const customerFieldValues = mysqlTable(
+  "customer_field_values",
+  {
+    id: id(),
+    // Denormalised so a lookup by value is a store-scoped index seek.
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    customerId: varchar("customer_id", { length: 21 }).notNull(),
+    definitionId: varchar("definition_id", { length: 21 }).notNull(),
+    value: varchar("value", { length: 2000 }).notNull(),
+    // Lowercased, punctuation stripped. Only set for searchable definitions.
+    searchValue: varchar("search_value", { length: 191 }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueCustomerDefinition: unique("customer_field_values_customer_definition_unique").on(
+      table.customerId,
+      table.definitionId,
+    ),
+    storeSearchIdx: index("customer_field_values_store_search_idx").on(
+      table.storeId,
+      table.searchValue,
+    ),
+    definitionIdx: index("customer_field_values_definition_idx").on(table.definitionId),
   }),
 );
 
@@ -2927,6 +3032,29 @@ export const customersRelations = relations(customers, ({ one, many }) => ({
   reservations: many(reservations),
   invoices: many(invoices),
   sessions: many(customerSessions),
+  fieldValues: many(customerFieldValues),
+}));
+
+export const customerFieldDefinitionsRelations = relations(
+  customerFieldDefinitions,
+  ({ one, many }) => ({
+    store: one(stores, {
+      fields: [customerFieldDefinitions.storeId],
+      references: [stores.id],
+    }),
+    values: many(customerFieldValues),
+  }),
+);
+
+export const customerFieldValuesRelations = relations(customerFieldValues, ({ one }) => ({
+  customer: one(customers, {
+    fields: [customerFieldValues.customerId],
+    references: [customers.id],
+  }),
+  definition: one(customerFieldDefinitions, {
+    fields: [customerFieldValues.definitionId],
+    references: [customerFieldDefinitions.id],
+  }),
 }));
 
 export const customerSessionsRelations = relations(customerSessions, ({ one }) => ({

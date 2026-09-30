@@ -34,6 +34,7 @@ export { hasPermission, type Permission, type MemberRole } from "./permissions";
 // Business hours
 export { normalizeDaySchedule } from "./business-hours";
 export { toAbsoluteUrl } from "./url";
+export * from "./customer-social-links";
 
 // Rich-text HTML (dashboard editor) allow-list sanitiser
 export { sanitizeRichTextHtml } from "./html/sanitize-rich-text";

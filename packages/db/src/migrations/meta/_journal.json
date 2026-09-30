@@ -645,6 +645,13 @@
       "when": 1793691045325,
       "tag": "0086_dismissed_notices",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "5",
+      "when": 1793804550994,
+      "tag": "0087_customer_profiles_custom_fields",
+      "breakpoints": true
     }
   ]
 }

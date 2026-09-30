@@ -15,3 +15,12 @@ export const getCustomerStats = (
         reservations.length
       : 0,
 });
+
+/** The most recent booking, or its rental start when the booking date is not known. */
+export const getLastReservationDate = (
+  reservations: Pick<CustomerHistoryReservation, "createdAt" | "startDate">[],
+): Date | null =>
+  reservations.reduce<Date | null>((latest, reservation) => {
+    const bookedAt = reservation.createdAt ?? reservation.startDate;
+    return latest === null || bookedAt > latest ? bookedAt : latest;
+  }, null);
