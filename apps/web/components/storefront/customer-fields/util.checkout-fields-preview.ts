@@ -1,10 +1,17 @@
-import type { CustomerFieldDefinition } from "@louez/types";
-import { resolveCheckoutFields, type CustomerFieldProduct } from "@louez/validations";
+import type { CustomerFieldDefinition, ResolvedCustomerProfileSettings } from "@louez/types";
+import {
+  resolveCheckoutFields,
+  resolveCheckoutProfileFields,
+  type CheckoutProfileField,
+  type CustomerFieldProduct,
+} from "@louez/validations";
 
 /** Matches no target: only fields asked for every product concern it. */
 const ANY_PRODUCT: CustomerFieldProduct = { id: "", categoryIds: [] };
 
 export interface PreviewCheckoutFields<TField> {
+  /** Birth date, source, links: the "Profil" group above the store's own questions. */
+  profileFields: CheckoutProfileField[];
   /** The contact step's questions, for either buyer type. */
   customerFields: TField[];
   /** One unit card's questions. */
@@ -20,6 +27,7 @@ export const resolvePreviewCheckoutFields = <TField extends CustomerFieldDefinit
   definitions: readonly TField[],
   products: readonly CustomerFieldProduct[],
   productId: string | null,
+  profileSettings: ResolvedCustomerProfileSettings,
 ): PreviewCheckoutFields<TField> => {
   const picked = productId
     ? products.filter((product) => product.id === productId)
@@ -39,6 +47,7 @@ export const resolvePreviewCheckoutFields = <TField extends CustomerFieldDefinit
   );
 
   return {
+    profileFields: resolveCheckoutProfileFields(profileSettings, picked),
     customerFields: definitions.filter((definition) => customerIds.has(definition.id)),
     itemFields: definitions.filter((definition) => itemIds.has(definition.id)),
   };

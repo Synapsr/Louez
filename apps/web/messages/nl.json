@@ -6318,13 +6318,7 @@
           "acquisitionSource": "Herkomst van de klant",
           "acquisitionSourceHelp": "Hoe de klant u heeft leren kennen.",
           "socialLinks": "Sociale media en links",
-          "socialLinksHelp": "Instagram, website, WhatsApp…",
-          "visibility": {
-            "hidden": "Verborgen",
-            "optional": "Optioneel",
-            "required": "Verplicht"
-          },
-          "saved": "Instelling opgeslagen"
+          "socialLinksHelp": "Instagram, website, WhatsApp…"
         },
         "sections": {
           "defaultName": "Aanvullende gegevens",
@@ -6335,8 +6329,6 @@
         },
         "field": {
           "add": "Veld toevoegen",
-          "archive": "Archiveren",
-          "restore": "Opnieuw activeren",
           "delete": "Definitief verwijderen",
           "moveTo": "Verplaatsen naar",
           "drag": "Volgorde wijzigen"
@@ -6350,7 +6342,9 @@
             "optional": "Online · Optioneel",
             "required": "Online · Verplicht"
           },
-          "noTarget": "Geen product gekozen"
+          "noTarget": "Geen product gekozen",
+          "hidden": "Verborgen",
+          "louez": "Louez-veld"
         },
         "dialog": {
           "label": "Label",
@@ -6606,14 +6600,11 @@
           "title": "“{label}” verwijderen?",
           "description": "Het veld verdwijnt bij alle klanten. Deze actie is onomkeerbaar.",
           "withValues": "{count, plural, one {# klant heeft een waarde in dit veld: die wordt gewist.} other {# klanten hebben een waarde in dit veld: die worden gewist.}}",
-          "archiveInstead": "Liever archiveren",
           "confirm": "Definitief verwijderen",
           "cancel": "Annuleren",
           "descriptionItem": "Het veld verdwijnt uit alle reserveringen. Deze actie is onomkeerbaar.",
-          "withItemValues": "{count, plural, one {# gehuurd artikel heeft een waarde in dit veld: die wordt gewist.} other {# gehuurde artikelen hebben een waarde in dit veld: die worden gewist.}}"
-        },
-        "archived": {
-          "description": "Verborgen bij de klanten, de waarden blijven bewaard."
+          "withItemValues": "{count, plural, one {# gehuurd artikel heeft een waarde in dit veld: die wordt gewist.} other {# gehuurde artikelen hebben een waarde in dit veld: die worden gewist.}}",
+          "hideInstead": "Liever verbergen"
         },
         "preview": {
           "client": {
@@ -6628,11 +6619,10 @@
         },
         "toasts": {
           "created": "Veld toegevoegd",
-          "archived": "Veld gearchiveerd",
-          "restored": "Veld opnieuw geactiveerd",
           "deleted": "Veld verwijderd",
           "sectionRenamed": "Sectie hernoemd",
-          "sectionOnlineSaved": "Instellingen toegepast op de sectie"
+          "sectionOnlineSaved": "Instellingen toegepast op de sectie",
+          "hidden": "Veld verborgen"
         },
         "online": {
           "collect": "Vragen aan de klant",
@@ -6715,10 +6705,7 @@
             "company": "Voor een bedrijf: bedrijfsnaam, ondernemingsnummer en btw-nummer."
           },
           "profile": {
-            "title": "Profiel",
-            "description": "Velden waar Louez iets mee kan. Kies of ze worden getoond.",
-            "visibility": "Weergave van “{field}”",
-            "hiddenNote": "Verborgen: niet zichtbaar in de klantgegevens."
+            "title": "Profiel"
           },
           "sections": {
             "newName": "Nieuwe sectie",
@@ -6742,15 +6729,8 @@
             "participantLocked": "Altijd voorgesteld",
             "empty": "Lengte, schoenmaat, niveau… Voeg toe wat u moet weten om elk artikel klaar te zetten."
           },
-          "archived": {
-            "show": "Gearchiveerde velden bekijken ({count})"
-          },
           "inspector": {
             "label": "Veldinstellingen",
-            "emptyTitle": "Klik op een veld om het te bewerken",
-            "emptyDescription": "De instellingen verschijnen hier en worden bij elke wijziging opgeslagen.",
-            "tipDrag": "Sleep om de volgorde te wijzigen",
-            "tipMenu": "Verplaatsen, archiveren of verwijderen",
             "newTitle": "Nieuw veld",
             "add": "Toevoegen",
             "cancel": "Annuleren",
@@ -6768,7 +6748,8 @@
               "es_dni_nie": "DNI / NIE (Spanje)",
               "it_codice_fiscale": "Codice fiscale (Italië)",
               "pt_nif": "NIF (Portugal)"
-            }
+            },
+            "type": "Type"
           },
           "picker": {
             "title": "Veld toevoegen",
@@ -6813,6 +6794,27 @@
           "empty": {
             "title": "Voeg uw eigen velden toe",
             "description": "Identiteitsbewijs, rijbewijs, lengte… Begin met een sjabloon dat bij uw winkel past of maak een veld aan."
+          },
+          "native": {
+            "fixed": "Louez-veld: de naam en het type liggen vast.",
+            "socialLinksType": "Links"
+          },
+          "visibility": {
+            "shown": {
+              "customer": "Tonen in de klantgegevens",
+              "item": "Tonen op de reservering"
+            },
+            "shownHint": {
+              "customer": "Uw team ziet het en vult het in bij elke klant.",
+              "item": "Uw team vult het in voor elk gehuurd artikel."
+            },
+            "hiddenHint": {
+              "customer": "Verborgen: niet meer zichtbaar in de klantgegevens. De waarden blijven bewaard.",
+              "item": "Verborgen: niet meer zichtbaar op de reserveringen. De waarden blijven bewaard."
+            }
+          },
+          "online": {
+            "hiddenNote": "Verborgen: het wordt niet aan de klant gevraagd. Toon het om het bij het reserveren voor te stellen."
           }
         }
       }
@@ -8716,7 +8718,14 @@
       "participantPlaceholder": "Voornaam (optioneel)",
       "unitCounter": "{index} / {count}",
       "unitEmpty": "Niets ingevuld",
-      "recapValue": "{label}: {value}"
+      "recapValue": "{label}: {value}",
+      "profile": {
+        "title": "Profiel",
+        "birthDate": "Geboortedatum",
+        "acquisitionSource": "Hoe heeft u ons leren kennen?",
+        "acquisitionSourceDetail": "Toelichting",
+        "socialLinks": "Sociale media en links"
+      }
     }
   },
   "onboarding": {
@@ -9395,7 +9404,9 @@
     "itemDetailRequired": "Vul „{field}” in voor {product} (nr. {unit}).",
     "itemDetailInvalid": "„{field}” is ongeldig voor {product} (nr. {unit}).",
     "reservationDetailsLocked": "Deze gegevens kunnen niet meer worden gewijzigd: de huur is begonnen of afgelopen.",
-    "customerNotAuthenticated": "Log in op uw klantaccount om verder te gaan."
+    "customerNotAuthenticated": "Log in op uw klantaccount om verder te gaan.",
+    "profileFieldRequired": "Vul „{field}” in.",
+    "profileFieldInvalid": "„{field}” is ongeldig."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

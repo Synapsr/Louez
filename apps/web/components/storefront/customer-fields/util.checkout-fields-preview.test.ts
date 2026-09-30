@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { CustomerFieldDefinition } from "@louez/types";
+import { resolveCustomerProfileSettings } from "@louez/validations";
 
 import { resolvePreviewCheckoutFields } from "./util.checkout-fields-preview";
 
@@ -57,27 +58,62 @@ const products = [
 ];
 
 const ids = (fields: readonly { id: string }[]) => fields.map((field) => field.id);
+const noProfile = resolveCustomerProfileSettings(undefined);
 
 describe("resolvePreviewCheckoutFields", () => {
   it("shows everything a customer may be asked when no product is picked", () => {
-    const resolved = resolvePreviewCheckoutFields(definitions, products, null);
+    const resolved = resolvePreviewCheckoutFields(definitions, products, null, noProfile);
     assert.deepEqual(ids(resolved.customerFields), ["id-number", "siret"]);
     assert.deepEqual(ids(resolved.itemFields), ["height", "locker"]);
   });
 
   it("narrows to one product and its categories", () => {
     assert.deepEqual(
-      ids(resolvePreviewCheckoutFields(definitions, products, "fat-bike").itemFields),
+      ids(resolvePreviewCheckoutFields(definitions, products, "fat-bike", noProfile).itemFields),
       ["height"],
     );
-    assert.deepEqual(ids(resolvePreviewCheckoutFields(definitions, products, "kayak").itemFields), [
-      "locker",
-    ]);
+    assert.deepEqual(
+      ids(resolvePreviewCheckoutFields(definitions, products, "kayak", noProfile).itemFields),
+      ["locker"],
+    );
   });
 
   it("still shows fields asked for every product in a store without products", () => {
-    const resolved = resolvePreviewCheckoutFields(definitions, [], null);
+    const resolved = resolvePreviewCheckoutFields(definitions, [], null, noProfile);
     assert.deepEqual(ids(resolved.customerFields), ["id-number", "siret"]);
     assert.deepEqual(ids(resolved.itemFields), []);
+  });
+});
+
+describe("resolvePreviewCheckoutFields: native profile fields", () => {
+  const profileSettings = resolveCustomerProfileSettings({
+    birthDate: {
+      visibility: "optional",
+      collectMode: "required",
+      targetMode: "products",
+      targets: [{ type: "category", id: "bikes" }],
+    },
+    acquisitionSource: { visibility: "optional", collectMode: "optional" },
+    socialLinks: { visibility: "hidden", collectMode: "optional" },
+  });
+  const keys = (fields: readonly { key: string }[]) => fields.map((field) => field.key);
+
+  it("shows every native field some product is asked when no product is picked", () => {
+    const resolved = resolvePreviewCheckoutFields([], products, null, profileSettings);
+    assert.deepEqual(keys(resolved.profileFields), ["birthDate", "acquisitionSource"]);
+  });
+
+  it("narrows to what one product is asked; a hidden field never shows", () => {
+    assert.deepEqual(
+      keys(resolvePreviewCheckoutFields([], products, "kayak", profileSettings).profileFields),
+      ["acquisitionSource"],
+    );
+    assert.deepEqual(
+      resolvePreviewCheckoutFields([], products, "fat-bike", profileSettings).profileFields,
+      [
+        { key: "birthDate", collectMode: "required" },
+        { key: "acquisitionSource", collectMode: "optional" },
+      ],
+    );
   });
 });

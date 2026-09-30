@@ -18,10 +18,11 @@ import { useTranslations } from "next-intl";
 import type {
   CustomerFieldDefinition,
   CustomerFieldValues,
-  CustomerProfileSettings,
+  ResolvedCustomerProfileSettings,
 } from "@louez/types";
 import { Badge, Button } from "@louez/ui";
 import { formatCurrency } from "@louez/utils";
+import { resolveCustomerProfileSettings } from "@louez/validations";
 
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
@@ -50,12 +51,15 @@ interface CustomerDetailViewProps {
   storeCountry?: string;
   definitions?: CustomerFieldDefinition[];
   customFields?: CustomerFieldValues;
-  profileSettings?: CustomerProfileSettings;
+  profileSettings?: ResolvedCustomerProfileSettings;
   readOnly?: boolean;
   onBack?: () => void;
   onOpenReservation?: (reservation: CustomerHistoryReservation) => void;
   getReservationHref?: (reservation: CustomerHistoryReservation) => string;
 }
+
+/** A record shown without store settings (landing demos): every native field shown, optional. */
+const DEFAULT_PROFILE_SETTINGS = resolveCustomerProfileSettings(undefined);
 
 export const CustomerDetailView = ({
   customer,
@@ -66,7 +70,7 @@ export const CustomerDetailView = ({
   storeCountry = "FR",
   definitions = [],
   customFields = {},
-  profileSettings = {},
+  profileSettings = DEFAULT_PROFILE_SETTINGS,
   readOnly = false,
   onBack,
   onOpenReservation,

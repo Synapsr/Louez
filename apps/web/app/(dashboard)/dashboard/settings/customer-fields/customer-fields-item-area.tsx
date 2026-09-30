@@ -1,10 +1,11 @@
 "use client";
 
-import { Lock, Package, Plus } from "lucide-react";
+import { Package, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Button, Card, DisabledControlsProvider, Input, Label } from "@louez/ui";
+import { Button, Card, DisabledControlsProvider, Input } from "@louez/ui";
 
+import { CustomerFieldLockedCell } from "./customer-field-locked-cell";
 import { CustomerFieldSection } from "./customer-field-section";
 import { CustomerFieldsAddSectionButton } from "./customer-fields-add-section-button";
 import { useCustomerFieldsBuilder } from "./customer-fields-builder-context";
@@ -42,21 +43,17 @@ export const CustomerFieldsItemArea = () => {
           <p className="min-w-0 text-sm font-medium">{t("preview.client.sampleProduct")}</p>
         </div>
 
-        <div className="flex items-start gap-1 py-1 ps-1 pe-1.5">
-          <span aria-hidden className="w-6 shrink-0" />
-          <DisabledControlsProvider disabled>
-            <div inert className="flex min-w-0 flex-1 flex-col gap-2">
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                <Label>{tDetails("participantName")}</Label>
-                <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-                  <Lock aria-hidden className="size-3.5" />
-                  {t("builder.item.participantLocked")}
-                </span>
-              </div>
-              <Input placeholder={tDetails("participantNamePlaceholder")} />
-            </div>
-          </DisabledControlsProvider>
-        </div>
+        <DisabledControlsProvider disabled>
+          {/* Indented like the rows (past the drag handle's room), so the labels line up. */}
+          <div inert className="py-1 ps-8 pe-2">
+            <CustomerFieldLockedCell
+              label={tDetails("participantName")}
+              note={t("builder.item.participantLocked")}
+            >
+              <Input placeholder={tDetails("participantNamePlaceholder")} className="bg-muted/60" />
+            </CustomerFieldLockedCell>
+          </div>
+        </DisabledControlsProvider>
 
         {sections.map((section, index) => (
           <CustomerFieldSection

@@ -69,8 +69,8 @@ export type CreateReservationRequest = CreateReservationInput & {
   marketplaceSecret?: string;
   /**
    * Server-only: the buyer holds a storefront session for the checkout's
-   * e-mail. Their custom field values then overwrite what is on file;
-   * otherwise they only fill what is missing.
+   * e-mail. Their custom field and native profile values then overwrite what
+   * is on file; otherwise they only fill what is missing.
    */
   customerSignedIn?: boolean;
 };
@@ -89,6 +89,7 @@ export type QuoteReservationRequest = Omit<
   | "customerSignedIn"
   | "customerFields"
   | "itemDetails"
+  | "profileFields"
 > & {
   customer?: CreateReservationInput["customer"];
 };

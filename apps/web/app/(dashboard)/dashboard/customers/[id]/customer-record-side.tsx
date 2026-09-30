@@ -8,7 +8,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import type {
   CustomerFieldDefinition,
   CustomerFieldValues,
-  CustomerProfileSettings,
+  ResolvedCustomerProfileSettings,
 } from "@louez/types";
 import { Button } from "@louez/ui";
 
@@ -29,7 +29,7 @@ interface CustomerRecordSideProps {
   customer: CustomerRecord;
   definitions: CustomerFieldDefinition[];
   customFields: CustomerFieldValues;
-  profileSettings: CustomerProfileSettings;
+  profileSettings: ResolvedCustomerProfileSettings;
   storeCountry: string;
   locale: string;
   /** Landing demos: the record is shown, never edited. */
@@ -59,7 +59,8 @@ export const CustomerRecordSide = ({
     ),
   );
   const showProfile =
-    profileSettings.birthDate !== "hidden" || profileSettings.acquisitionSource !== "hidden";
+    profileSettings.birthDate.visibility !== "hidden" ||
+    profileSettings.acquisitionSource.visibility !== "hidden";
   const age = customer.birthDate ? getAgeFromBirthDate(customer.birthDate) : null;
   const hasProfile = Boolean(customer.birthDate || customer.acquisitionSource);
 
@@ -122,7 +123,7 @@ export const CustomerRecordSide = ({
               <span className="text-muted-foreground">{t("detail.noAddress")}</span>
             )}
           </div>
-          {profileSettings.socialLinks !== "hidden" && (
+          {profileSettings.socialLinks.visibility !== "hidden" && (
             <CustomerSocialLinks
               links={customer.socialLinks}
               getOpenLabel={(network) => t("social.open", { network })}

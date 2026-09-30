@@ -6318,13 +6318,7 @@
           "acquisitionSource": "客户来源",
           "acquisitionSourceHelp": "客户是如何了解到您的。",
           "socialLinks": "社交媒体与链接",
-          "socialLinksHelp": "Instagram、网站、WhatsApp…",
-          "visibility": {
-            "hidden": "隐藏",
-            "optional": "可选",
-            "required": "必填"
-          },
-          "saved": "设置已保存"
+          "socialLinksHelp": "Instagram、网站、WhatsApp…"
         },
         "sections": {
           "defaultName": "附加信息",
@@ -6335,8 +6329,6 @@
         },
         "field": {
           "add": "添加字段",
-          "archive": "存档",
-          "restore": "重新启用",
           "delete": "永久删除",
           "moveTo": "移至",
           "drag": "调整顺序"
@@ -6350,7 +6342,9 @@
             "optional": "在线 · 可选",
             "required": "在线 · 必填"
           },
-          "noTarget": "未选择产品"
+          "noTarget": "未选择产品",
+          "hidden": "已隐藏",
+          "louez": "Louez 字段"
         },
         "dialog": {
           "label": "名称",
@@ -6606,14 +6600,11 @@
           "title": "删除“{label}”？",
           "description": "该字段将从所有档案中消失。此操作无法撤销。",
           "withValues": "{count, plural, other {# 位客户在此字段中填有值：这些值将被清除。}}",
-          "archiveInstead": "改为存档",
           "confirm": "永久删除",
           "cancel": "取消",
           "descriptionItem": "该字段将从所有预订中消失。此操作无法撤销。",
-          "withItemValues": "{count, plural, other {# 件租赁物品在此字段中填有值：这些值将被清除。}}"
-        },
-        "archived": {
-          "description": "已从档案中隐藏，其值仍会保留。"
+          "withItemValues": "{count, plural, other {# 件租赁物品在此字段中填有值：这些值将被清除。}}",
+          "hideInstead": "改为隐藏"
         },
         "preview": {
           "client": {
@@ -6628,11 +6619,10 @@
         },
         "toasts": {
           "created": "字段已添加",
-          "archived": "字段已存档",
-          "restored": "字段已重新启用",
           "deleted": "字段已删除",
           "sectionRenamed": "分组已重命名",
-          "sectionOnlineSaved": "设置已应用到该分组"
+          "sectionOnlineSaved": "设置已应用到该分组",
+          "hidden": "字段已隐藏"
         },
         "online": {
           "collect": "请客户填写",
@@ -6715,10 +6705,7 @@
             "company": "企业客户：公司名称、公司号码和增值税号。"
           },
           "profile": {
-            "title": "个人资料",
-            "description": "Louez 能够直接使用的字段。请选择是否显示。",
-            "visibility": "“{field}”的显示方式",
-            "hiddenNote": "已隐藏：不会显示在客户档案中。"
+            "title": "个人资料"
           },
           "sections": {
             "newName": "新分组",
@@ -6742,15 +6729,8 @@
             "participantLocked": "始终提供",
             "empty": "身高、鞋码、水平…添加准备每件物品所需了解的信息。"
           },
-          "archived": {
-            "show": "查看已存档字段（{count}）"
-          },
           "inspector": {
             "label": "字段设置",
-            "emptyTitle": "点击字段即可编辑",
-            "emptyDescription": "其设置会显示在此处，每次修改都会自动保存。",
-            "tipDrag": "拖动以调整顺序",
-            "tipMenu": "移动、存档或删除",
             "newTitle": "新字段",
             "add": "添加",
             "cancel": "取消",
@@ -6768,7 +6748,8 @@
               "es_dni_nie": "DNI / NIE（西班牙）",
               "it_codice_fiscale": "Codice fiscale（意大利）",
               "pt_nif": "NIF（葡萄牙）"
-            }
+            },
+            "type": "类型"
           },
           "picker": {
             "title": "添加字段",
@@ -6813,6 +6794,27 @@
           "empty": {
             "title": "添加您自己的字段",
             "description": "身份证件、驾照、身高…从适合您商店的模板开始，或创建一个字段。"
+          },
+          "native": {
+            "fixed": "Louez 字段：名称和类型固定不变。",
+            "socialLinksType": "链接"
+          },
+          "visibility": {
+            "shown": {
+              "customer": "显示在客户档案中",
+              "item": "显示在预订中"
+            },
+            "shownHint": {
+              "customer": "您的团队可以在每份客户档案中查看并填写该字段。",
+              "item": "您的团队为每件租赁物品填写该字段。"
+            },
+            "hiddenHint": {
+              "customer": "已隐藏：不再显示在客户档案中。其值仍会保留。",
+              "item": "已隐藏：不再显示在预订中。其值仍会保留。"
+            }
+          },
+          "online": {
+            "hiddenNote": "已隐藏：不会请客户填写。显示后即可在预订时请客户填写。"
           }
         }
       }
@@ -8716,7 +8718,14 @@
       "participantPlaceholder": "名字（可选）",
       "unitCounter": "{index} / {count}",
       "unitEmpty": "未填写任何内容",
-      "recapValue": "{label}：{value}"
+      "recapValue": "{label}：{value}",
+      "profile": {
+        "title": "个人资料",
+        "birthDate": "出生日期",
+        "acquisitionSource": "您是如何了解到我们的？",
+        "acquisitionSourceDetail": "请具体说明",
+        "socialLinks": "社交媒体与链接"
+      }
     }
   },
   "onboarding": {
@@ -9395,7 +9404,9 @@
     "itemDetailRequired": "请为 {product}（第 {unit} 件）填写“{field}”。",
     "itemDetailInvalid": "{product}（第 {unit} 件）的“{field}”无效。",
     "reservationDetailsLocked": "租赁已开始或已结束，这些信息无法再修改。",
-    "customerNotAuthenticated": "请登录您的客户账户以继续。"
+    "customerNotAuthenticated": "请登录您的客户账户以继续。",
+    "profileFieldRequired": "请填写“{field}”。",
+    "profileFieldInvalid": "“{field}”无效。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",

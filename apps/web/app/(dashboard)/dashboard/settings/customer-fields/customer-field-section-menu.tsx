@@ -14,8 +14,10 @@ import {
 
 interface CustomerFieldSectionMenuProps {
   name: string;
-  /** Saved fields in it: online settings and moves apply. */
+  /** Saved fields in it, hidden or not: the section can move. */
   hasFields: boolean;
+  /** Shown fields in it: their online settings can be set in one go. */
+  hasShownFields: boolean;
   /** A section created on the page and still empty (no field, no draft) can go. */
   canDelete: boolean;
   canMoveUp: boolean;
@@ -30,6 +32,7 @@ interface CustomerFieldSectionMenuProps {
 export const CustomerFieldSectionMenu = ({
   name,
   hasFields,
+  hasShownFields,
   canDelete,
   canMoveUp,
   canMoveDown,
@@ -56,7 +59,7 @@ export const CustomerFieldSectionMenu = ({
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {hasFields && (
+        {hasShownFields && (
           <>
             <DropdownMenuItem onClick={onOnlineSettings}>
               <Globe />

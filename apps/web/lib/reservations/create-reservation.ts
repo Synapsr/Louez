@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { validateRequiredAccessoryLines } from "@louez/api/services";
 import { saveCustomerFieldValues } from "@louez/api/services/customer-fields";
 import { saveReservationItemDetails } from "@louez/api/services/customer-fields-online";
+import { saveCustomerProfileValues } from "@louez/api/services/customer-profile-fields";
 import { loadPricingCatalog, type PricingCatalog } from "@louez/api/services/pricing-catalog";
 import {
   aiAdvisorConversations,
@@ -29,7 +30,10 @@ import {
   type ProductSnapshot,
   type StoreSettings,
 } from "@louez/types";
-import type { CreateReservationCustomerInput } from "@louez/validations";
+import {
+  resolveCustomerProfileSettings,
+  type CreateReservationCustomerInput,
+} from "@louez/validations";
 import { advisorValidationCovers, validateStripePaymentAmount } from "@louez/utils";
 
 import { env } from "@/env";
@@ -142,6 +146,7 @@ type PrepareInput = QuoteReservationRequest & {
   clientAmounts: { subtotal: number; deposit: number; total: number } | null;
   customerFields?: CreateReservationRequest["customerFields"];
   itemDetails?: CreateReservationRequest["itemDetails"];
+  profileFields?: CreateReservationRequest["profileFields"];
 };
 
 const getErrorKey = (error: unknown, fallback: string): string =>
@@ -387,6 +392,8 @@ const prepareReservation = async (
           items: input.items,
           customerFields: input.customerFields,
           itemDetails: input.itemDetails,
+          profileFields: input.profileFields,
+          profileSettings: resolveCustomerProfileSettings(settings?.customerProfile),
           productNameOf: (productId) => catalog.get(productId)?.name ?? "",
         })
       : { ok: true as const, fields: NO_CHECKOUT_CUSTOMER_FIELDS };
@@ -989,6 +996,13 @@ const writeReservation = async (
         mode: request.customerSignedIn ? "overwrite" : "fillEmpty",
       });
     }
+    // Same rule for the native profile fields (birth date, source, links).
+    await saveCustomerProfileValues(tx, {
+      storeId: store.id,
+      customerId: customer.id,
+      values: checkoutFields.profileValues,
+      mode: request.customerSignedIn ? "overwrite" : "fillEmpty",
+    });
 
     const reservationValues = buildReservationValues(request, prepared, customer.id);
     const itemValues = buildReservationItemValues(request, prepared, resolvedCombinationByLineKey);

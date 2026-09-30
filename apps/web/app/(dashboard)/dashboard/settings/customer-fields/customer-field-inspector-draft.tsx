@@ -19,6 +19,7 @@ import { setDraftValues } from "./use-customer-field-form";
  */
 export const CustomerFieldInspectorDraft = () => {
   const t = useTranslations("dashboard.settings.customerFields.builder.inspector");
+  const tTypes = useTranslations("dashboard.settings.customerFields.dialog.types");
   const { draftForm: form, cancelDraft } = useCustomerFieldsBuilder();
 
   return (
@@ -35,12 +36,13 @@ export const CustomerFieldInspectorDraft = () => {
             <CustomerFieldInspectorHeader
               title={label.trim() || t("newTitle")}
               type={type}
+              typeLabel={tTypes(type)}
               scope={scope}
               onClose={cancelDraft}
             />
           )}
         </form.Subscribe>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
           <form.Subscribe
             selector={(state) => ({ values: state.values, fieldMeta: state.fieldMeta })}
           >
@@ -50,11 +52,12 @@ export const CustomerFieldInspectorDraft = () => {
                 scope={values.scope}
                 type={values.type}
                 values={values}
+                shown={null}
                 textMode="live"
                 autoFocusLabel
                 onChange={(_key, changes) => setDraftValues(form, changes)}
                 errorFor={(key) => {
-                  if (key === "online") return undefined;
+                  if (key === "online" || key === "isActive") return undefined;
                   const error = fieldMeta[key]?.errors[0];
                   return error ? getFieldError(error) : undefined;
                 }}

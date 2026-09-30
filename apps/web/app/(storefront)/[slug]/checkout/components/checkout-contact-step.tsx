@@ -5,8 +5,9 @@ import { ArrowRight, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button, Collapsible, CollapsiblePanel, CollapsibleTrigger, StepContent } from "@louez/ui";
-import type { CustomerFieldPublic } from "@louez/validations";
+import type { CheckoutProfileField, CustomerFieldPublic } from "@louez/validations";
 
+import type { CustomerProfileFormValues } from "@/components/storefront/customer-fields/customer-fields.types";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { buildLoginPath } from "@/lib/customer-auth/util.account-redirect";
 
@@ -30,10 +31,14 @@ interface CheckoutContactStepProps {
   onSessionCustomer: (customer: CheckoutInitialCustomer | null) => void;
   coordinates: Pick<DeliveryAddress, "latitude" | "longitude">;
   onCoordinatesChange: (coordinates: Pick<DeliveryAddress, "latitude" | "longitude">) => void;
+  /** Native profile fields this cart asks (birth date, source, links). */
+  profileFields: CheckoutProfileField[];
   /** Customer-scope custom fields this cart asks the buyer's type. */
   customerFields: CustomerFieldPublic[];
   /** Values the signed-in customer has on file; empty for a guest. */
   savedCustomerFieldValues: Record<string, string>;
+  /** Native values the signed-in customer has on file; blank for a guest. */
+  savedCustomerProfileValues: CustomerProfileFormValues;
   /** What the store asks is still loading: going on now could skip a question. */
   isCustomFieldsLoading: boolean;
   onContinue: () => void;
@@ -53,8 +58,10 @@ export const CheckoutContactStep = withForm({
     onSessionCustomer,
     coordinates,
     onCoordinatesChange,
+    profileFields,
     customerFields,
     savedCustomerFieldValues,
+    savedCustomerProfileValues,
     isCustomFieldsLoading,
     onContinue,
     stepDirection,
@@ -195,8 +202,10 @@ export const CheckoutContactStep = withForm({
 
           <CheckoutCustomerFields
             form={form}
+            profileFields={profileFields}
             fields={customerFields}
             savedValues={savedCustomerFieldValues}
+            savedProfile={savedCustomerProfileValues}
           />
 
           <Collapsible defaultOpen={hasNotes}>

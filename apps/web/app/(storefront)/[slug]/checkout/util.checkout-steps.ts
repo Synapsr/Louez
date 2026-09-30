@@ -50,8 +50,9 @@ export const getStepForErrorKey = (
   hasDetailsStep = false,
 ): StepId => {
   const key = errorKey.toLowerCase();
-  // `errors.customField*` and `errors.itemDetail*`: custom fields asked by the store.
-  if (key.includes("customfield")) return "contact";
+  // `errors.profileField*`, `errors.customField*` and `errors.itemDetail*`:
+  // native and custom fields asked by the store.
+  if (key.includes("profilefield") || key.includes("customfield")) return "contact";
   if (key.includes("itemdetail")) return hasDetailsStep ? "details" : "confirm";
   if (isDeliveryEnabled && DELIVERY_ERROR_HINTS.some((hint) => key.includes(hint))) {
     return "delivery";

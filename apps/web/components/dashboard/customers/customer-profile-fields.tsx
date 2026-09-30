@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   CUSTOMER_ACQUISITION_SOURCES,
   type CustomerAcquisitionSource,
-  type CustomerProfileSettings,
+  type ResolvedCustomerProfileSettings,
 } from "@louez/types";
 import {
   Input,
@@ -27,7 +27,7 @@ export interface CustomerProfileValue {
 
 interface CustomerProfileFieldsProps {
   value: CustomerProfileValue;
-  settings: CustomerProfileSettings;
+  settings: ResolvedCustomerProfileSettings;
   /** Already-translated messages of the fields the form refused. */
   errors?: { birthDate?: string; acquisitionSource?: string };
   onChange: (changes: Partial<CustomerProfileValue>) => void;
@@ -44,8 +44,8 @@ export const CustomerProfileFields = ({
   onChange,
 }: CustomerProfileFieldsProps) => {
   const t = useTranslations("dashboard.customers");
-  const showBirthDate = settings.birthDate !== "hidden";
-  const showSource = settings.acquisitionSource !== "hidden";
+  const showBirthDate = settings.birthDate.visibility !== "hidden";
+  const showSource = settings.acquisitionSource.visibility !== "hidden";
   const age = getAgeFromBirthDate(value.birthDate);
   const mark = (visibility: string | undefined) => (visibility === "required" ? " *" : "");
 
@@ -57,7 +57,7 @@ export const CustomerProfileFields = ({
         <div className="flex flex-col gap-2">
           <Label htmlFor="customer-birth-date">
             {t("form.birthDate")}
-            {mark(settings.birthDate)}
+            {mark(settings.birthDate.visibility)}
           </Label>
           <div className="flex items-center gap-3">
             <Input
@@ -82,7 +82,7 @@ export const CustomerProfileFields = ({
         <div className="flex flex-col gap-2">
           <Label htmlFor="customer-source">
             {t("form.acquisitionSource")}
-            {mark(settings.acquisitionSource)}
+            {mark(settings.acquisitionSource.visibility)}
           </Label>
           <Select
             items={CUSTOMER_ACQUISITION_SOURCES.map((source) => ({

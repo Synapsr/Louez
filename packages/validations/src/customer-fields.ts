@@ -6,7 +6,7 @@ import {
   CUSTOMER_FIELD_TARGET_MODES,
   CUSTOMER_FIELD_TARGET_TYPES,
   CUSTOMER_FIELD_TYPES,
-  CUSTOMER_PROFILE_FIELD_VISIBILITIES,
+  CUSTOMER_PROFILE_FIELD_KEYS,
   type CustomerFieldCollectMode,
   type CustomerFieldDefinition,
   type CustomerFieldFormat,
@@ -216,7 +216,7 @@ export const customerFieldSectionOnlineInputSchema = z
 export type CustomerFieldSectionOnlineInput = z.infer<typeof customerFieldSectionOnlineInputSchema>;
 
 export const customerFieldReorderInputSchema = z.object({
-  /** Every active field in its new order, grouped by section. */
+  /** Every field in its new order, grouped by section; hidden ones keep their place too. */
   fields: z
     .array(z.object({ id: z.string().length(21), section: z.string().trim().min(1).max(100) }))
     .max(200),
@@ -227,11 +227,8 @@ export const customerFieldTemplateAdoptInputSchema = z.object({
   fields: z.array(customerFieldCreateInputSchema).min(1).max(20),
 });
 
-export const customerProfileSettingsSchema = z.object({
-  birthDate: z.enum(CUSTOMER_PROFILE_FIELD_VISIBILITIES).optional(),
-  acquisitionSource: z.enum(CUSTOMER_PROFILE_FIELD_VISIBILITIES).optional(),
-  socialLinks: z.enum(["hidden", "optional"]).optional(),
-});
+/** Birth date, customer source, social links: the native fields of every customer record. */
+export const customerProfileFieldKeySchema = z.enum(CUSTOMER_PROFILE_FIELD_KEYS);
 
 export const customerFieldValuesSchema = z.record(
   z.string().max(21),

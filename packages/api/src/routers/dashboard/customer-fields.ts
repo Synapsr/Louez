@@ -1,10 +1,4 @@
-import {
-  customerFieldDefinitions,
-  customerFieldTargets,
-  customerFieldValues,
-  db,
-  stores,
-} from "@louez/db";
+import { customerFieldDefinitions, customerFieldTargets, customerFieldValues, db } from "@louez/db";
 import { normalizeAxisKey } from "@louez/utils";
 import {
   CUSTOMER_FIELD_LIMITS,
@@ -14,9 +8,10 @@ import {
   customerFieldSectionOnlineInputSchema,
   customerFieldTemplateAdoptInputSchema,
   customerFieldUpdateInputSchema,
-  customerProfileSettingsSchema,
+  customerProfileFieldUpdateInputSchema,
   fieldAppliesToProduct,
   mergeCustomerFieldOnlineSettings,
+  resolvedCustomerProfileSettingsSchema,
   type CustomerFieldCreateInput,
   type CustomerFieldUpdateInput,
 } from "@louez/validations";
@@ -38,6 +33,10 @@ import {
   removeItemFieldValues,
   replaceCustomerFieldTargets,
 } from "../../services/customer-fields-online";
+import {
+  getCustomerProfileSettings,
+  updateCustomerProfileField,
+} from "../../services/customer-profile-fields";
 
 const definitionWithUsageSchema = customerFieldDefinitionSchema.extend({
   /**
@@ -482,29 +481,34 @@ const duplicates = dashboardProcedure
   );
 
 /**
- * Visibility of the native optional blocks. The rest of the settings JSON is
- * re-read and kept as is: a stale client copy must not overwrite other groups.
+ * Birth date, customer source and social links: shown on the record or not,
+ * required by the team or not, and asked online like a custom field. Targets
+ * pointing at deleted products or categories are left out.
  */
-const updateProfileSettings = requirePermission("manage_settings")
-  .input(customerProfileSettingsSchema)
-  .output(customerProfileSettingsSchema)
-  .handler(async ({ context, input }) => {
-    const current = await db.query.stores.findFirst({
-      where: eq(stores.id, context.store.id),
-      columns: { settings: true },
-    });
-    if (!current) throw new ORPCError("NOT_FOUND", { message: "errors.storeNotFound" });
+const profileSettings = dashboardProcedure
+  .output(resolvedCustomerProfileSettingsSchema)
+  .handler(async ({ context }) => {
+    const settings = await getCustomerProfileSettings(context.store.id);
+    if (!settings) throw new ORPCError("NOT_FOUND", { message: "errors.storeNotFound" });
+    return settings;
+  });
 
-    const settings = current.settings ?? {
-      reservationMode: "payment" as const,
-      advanceNoticeMinutes: 1440,
-    };
-    const customerProfile = { ...settings.customerProfile, ...input };
-    await db
-      .update(stores)
-      .set({ settings: { ...settings, customerProfile }, updatedAt: new Date() })
-      .where(eq(stores.id, context.store.id));
-    return customerProfile;
+/**
+ * One native field's settings. Only the keys sent change (`targets` replaces
+ * the list); hiding a field stops asking it online, `never` takes the
+ * customer's edit right with it. Answers every native field, resolved.
+ */
+const updateProfileField = requirePermission("manage_settings")
+  .input(customerProfileFieldUpdateInputSchema)
+  .output(resolvedCustomerProfileSettingsSchema)
+  .handler(async ({ context, input }) => {
+    const result = await updateCustomerProfileField(context.store.id, input);
+    if (!result.ok) {
+      throw result.error === "storeNotFound"
+        ? new ORPCError("NOT_FOUND", { message: "errors.storeNotFound" })
+        : new ORPCError("BAD_REQUEST", { message: "errors.invalidData" });
+    }
+    return result.settings;
   });
 
 export const dashboardCustomerFieldsRouter = {
@@ -519,5 +523,6 @@ export const dashboardCustomerFieldsRouter = {
   remove,
   renameSection,
   duplicates,
-  updateProfileSettings,
+  profileSettings,
+  updateProfileField,
 };

@@ -6318,13 +6318,7 @@
           "acquisitionSource": "Provenienza del cliente",
           "acquisitionSourceHelp": "Come il cliente ti ha conosciuto.",
           "socialLinks": "Social e link",
-          "socialLinksHelp": "Instagram, sito web, WhatsApp…",
-          "visibility": {
-            "hidden": "Nascosto",
-            "optional": "Facoltativo",
-            "required": "Obbligatorio"
-          },
-          "saved": "Impostazione salvata"
+          "socialLinksHelp": "Instagram, sito web, WhatsApp…"
         },
         "sections": {
           "defaultName": "Informazioni aggiuntive",
@@ -6335,8 +6329,6 @@
         },
         "field": {
           "add": "Aggiungi un campo",
-          "archive": "Archivia",
-          "restore": "Riattiva",
           "delete": "Elimina definitivamente",
           "moveTo": "Sposta in",
           "drag": "Riordina"
@@ -6350,7 +6342,9 @@
             "optional": "Online · Facoltativo",
             "required": "Online · Obbligatorio"
           },
-          "noTarget": "Nessun prodotto selezionato"
+          "noTarget": "Nessun prodotto selezionato",
+          "hidden": "Nascosto",
+          "louez": "Campo Louez"
         },
         "dialog": {
           "label": "Etichetta",
@@ -6606,14 +6600,11 @@
           "title": "Eliminare «{label}»?",
           "description": "Il campo scomparirà da tutte le schede. Questa azione è irreversibile.",
           "withValues": "{count, plural, one {# cliente ha un valore in questo campo: verrà cancellato.} other {# clienti hanno un valore in questo campo: verranno cancellati.}}",
-          "archiveInstead": "Archivia invece",
           "confirm": "Elimina definitivamente",
           "cancel": "Annulla",
           "descriptionItem": "Il campo scomparirà da tutte le prenotazioni. Questa azione è irreversibile.",
-          "withItemValues": "{count, plural, one {# articolo noleggiato ha un valore in questo campo: verrà cancellato.} other {# articoli noleggiati hanno un valore in questo campo: verranno cancellati.}}"
-        },
-        "archived": {
-          "description": "Nascosti dalle schede, i loro valori vengono mantenuti."
+          "withItemValues": "{count, plural, one {# articolo noleggiato ha un valore in questo campo: verrà cancellato.} other {# articoli noleggiati hanno un valore in questo campo: verranno cancellati.}}",
+          "hideInstead": "Nascondi invece"
         },
         "preview": {
           "client": {
@@ -6628,11 +6619,10 @@
         },
         "toasts": {
           "created": "Campo aggiunto",
-          "archived": "Campo archiviato",
-          "restored": "Campo riattivato",
           "deleted": "Campo eliminato",
           "sectionRenamed": "Sezione rinominata",
-          "sectionOnlineSaved": "Impostazioni applicate alla sezione"
+          "sectionOnlineSaved": "Impostazioni applicate alla sezione",
+          "hidden": "Campo nascosto"
         },
         "online": {
           "collect": "Chiedi al cliente",
@@ -6715,10 +6705,7 @@
             "company": "Per un'azienda: nome dell'azienda, numero d'impresa e partita IVA."
           },
           "profile": {
-            "title": "Profilo",
-            "description": "Campi che Louez sa sfruttare. Scegli se mostrarli.",
-            "visibility": "Visualizzazione di «{field}»",
-            "hiddenNote": "Nascosto: non compare nella scheda cliente."
+            "title": "Profilo"
           },
           "sections": {
             "newName": "Nuova sezione",
@@ -6742,15 +6729,8 @@
             "participantLocked": "Sempre proposto",
             "empty": "Altezza, numero di scarpe, livello… Aggiungi ciò che ti serve sapere per preparare ogni articolo."
           },
-          "archived": {
-            "show": "Vedi i campi archiviati ({count})"
-          },
           "inspector": {
             "label": "Impostazioni del campo",
-            "emptyTitle": "Clicca su un campo per modificarlo",
-            "emptyDescription": "Le sue impostazioni compaiono qui e vengono salvate a ogni modifica.",
-            "tipDrag": "Trascina per riordinare",
-            "tipMenu": "Sposta, archivia o elimina",
             "newTitle": "Nuovo campo",
             "add": "Aggiungi",
             "cancel": "Annulla",
@@ -6768,7 +6748,8 @@
               "es_dni_nie": "DNI / NIE (Spagna)",
               "it_codice_fiscale": "Codice fiscale (Italia)",
               "pt_nif": "NIF (Portogallo)"
-            }
+            },
+            "type": "Tipo"
           },
           "picker": {
             "title": "Aggiungi un campo",
@@ -6813,6 +6794,27 @@
           "empty": {
             "title": "Aggiungi i tuoi campi",
             "description": "Documento d'identità, patente, altezza… Parti da un modello adatto al tuo negozio o crea un campo."
+          },
+          "native": {
+            "fixed": "Campo Louez: il nome e il tipo sono fissi.",
+            "socialLinksType": "Link"
+          },
+          "visibility": {
+            "shown": {
+              "customer": "Mostra nella scheda",
+              "item": "Mostra nella prenotazione"
+            },
+            "shownHint": {
+              "customer": "Il tuo team lo vede e lo compila in ogni scheda cliente.",
+              "item": "Il tuo team lo compila per ogni articolo noleggiato."
+            },
+            "hiddenHint": {
+              "customer": "Nascosto: non compare più nelle schede cliente. I suoi valori vengono mantenuti.",
+              "item": "Nascosto: non compare più nelle prenotazioni. I suoi valori vengono mantenuti."
+            }
+          },
+          "online": {
+            "hiddenNote": "Nascosto: non viene chiesto al cliente. Mostralo per proporlo alla prenotazione."
           }
         }
       }
@@ -8716,7 +8718,14 @@
       "participantPlaceholder": "Nome (facoltativo)",
       "unitCounter": "{index} / {count}",
       "unitEmpty": "Nessuna informazione inserita",
-      "recapValue": "{label}: {value}"
+      "recapValue": "{label}: {value}",
+      "profile": {
+        "title": "Profilo",
+        "birthDate": "Data di nascita",
+        "acquisitionSource": "Come ci hai conosciuto?",
+        "acquisitionSourceDetail": "Specifica",
+        "socialLinks": "Social e link"
+      }
     }
   },
   "onboarding": {
@@ -9395,7 +9404,9 @@
     "itemDetailRequired": "Compila «{field}» per {product} (n. {unit}).",
     "itemDetailInvalid": "«{field}» non è valido per {product} (n. {unit}).",
     "reservationDetailsLocked": "Questi dati non sono più modificabili: il noleggio è iniziato o è terminato.",
-    "customerNotAuthenticated": "Accedi al tuo spazio cliente per continuare."
+    "customerNotAuthenticated": "Accedi al tuo spazio cliente per continuare.",
+    "profileFieldRequired": "Compila «{field}».",
+    "profileFieldInvalid": "«{field}» non è valido."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

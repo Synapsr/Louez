@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import type {
   CustomerFieldDefinition,
   CustomerFieldValues,
-  CustomerProfileSettings,
+  ResolvedCustomerProfileSettings,
 } from "@louez/types";
 import {
   Button,
@@ -34,7 +34,7 @@ interface CustomerSectionSheetProps {
   title: string;
   fields: CustomerFieldDefinition[];
   customFields: CustomerFieldValues;
-  profileSettings: CustomerProfileSettings;
+  profileSettings: ResolvedCustomerProfileSettings;
   onClose: () => void;
 }
 
@@ -103,7 +103,7 @@ export const CustomerSectionSheet = ({
                       />
                     )}
                   </form.AppField>
-                  {profileSettings.socialLinks !== "hidden" && (
+                  {profileSettings.socialLinks.visibility !== "hidden" && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">{t("form.socialSection")}</p>
                       <SocialLinksInput

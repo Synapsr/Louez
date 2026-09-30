@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { DisabledControlsProvider } from "@louez/ui";
+import { resolveCustomerProfileSettings } from "@louez/validations";
 
 import { resolvePreviewCheckoutFields } from "@/components/storefront/customer-fields/util.checkout-fields-preview";
 import { useStore } from "@/contexts/store-context";
@@ -16,13 +17,18 @@ import { useCustomerFieldsBuilder } from "./customer-fields-builder-context";
 import { CustomerFieldsPreviewCheckout } from "./customer-fields-preview-checkout";
 import { CustomerFieldsPreviewFrame } from "./customer-fields-preview-frame";
 import { CustomerFieldsPreviewProductPicker } from "./customer-fields-preview-product-picker";
+import { customerProfileSettingsOptions } from "./customer-fields.queries";
+import { isSameCanvasField } from "./util.customer-field-canvas";
 import { listActiveInFormOrder } from "./util.customer-fields-builder";
+
+/** Until the native settings load, the preview asks none of them. */
+const NO_PROFILE_SETTINGS = resolveCustomerProfileSettings(undefined);
 
 /**
  * The checkout as a customer meets it, for one product or any, in the
  * store's colours. Resolved in the browser from the fields being edited, so
- * every change shows at once. A click on an asked field opens its online
- * settings; "Demander un champ au client" asks one more.
+ * every change shows at once. A click on an asked field (Louez's or the
+ * store's) opens its online settings; "Demander un champ au client" asks one more.
  */
 export const CustomerFieldsClientCanvas = () => {
   const { storeName } = useStore();
@@ -31,14 +37,16 @@ export const CustomerFieldsClientCanvas = () => {
   const { data: targetOptions } = useQuery(
     orpc.dashboard.customerFields.targetOptions.queryOptions(),
   );
+  const { data: profileSettings } = useQuery(customerProfileSettingsOptions());
 
   // Only bookable products reach a checkout.
   const products = (targetOptions?.products ?? []).filter((product) => product.status === "active");
   const product = products.find((candidate) => candidate.id === productId) ?? null;
-  const { customerFields, itemFields } = resolvePreviewCheckoutFields(
+  const { profileFields, customerFields, itemFields } = resolvePreviewCheckoutFields(
     listActiveInFormOrder(fields),
     products,
     product?.id ?? null,
+    profileSettings ?? NO_PROFILE_SETTINGS,
   );
 
   return (
@@ -64,11 +72,14 @@ export const CustomerFieldsClientCanvas = () => {
         >
           <CustomerFieldsPreviewCheckout
             storeName={storeName}
+            profileFields={profileFields}
             customerFields={customerFields}
             itemFields={itemFields}
             product={product ? { name: product.name, image: product.image } : null}
-            selectedId={selection?.kind === "field" ? selection.id : null}
-            onSelect={(fieldId) => selectField(fieldId, "online")}
+            isSelected={(field) => isSameCanvasField(selection, field)}
+            onSelect={(field, event) =>
+              selectField(field, { focus: "online", fromKeyboard: event.detail === 0 })
+            }
             emptyAction={readOnly ? null : <CustomerFieldsAskPopover />}
           />
         </CustomerFieldsPreviewFrame>

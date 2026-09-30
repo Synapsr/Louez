@@ -12,7 +12,7 @@ import {
   CUSTOMER_SOCIAL_NETWORKS,
   type CustomerAcquisitionSource,
   type CustomerFieldValues,
-  type CustomerProfileSettings,
+  type ResolvedCustomerProfileSettings,
 } from "@louez/types";
 import { toastManager } from "@louez/ui";
 import { resolveCustomerSocialLinks } from "@louez/utils";
@@ -51,7 +51,7 @@ interface UseCustomerSectionFormParams {
   /** Ids of the custom fields the section holds. */
   fieldIds: string[];
   customFields: CustomerFieldValues;
-  profileSettings: CustomerProfileSettings;
+  profileSettings: ResolvedCustomerProfileSettings;
   onSaved: () => void;
 }
 
@@ -119,10 +119,13 @@ export const useCustomerSectionForm = ({
     })
     .superRefine((values, ctx) => {
       if (section.kind !== "profile") return;
-      if (profileSettings.birthDate === "required" && values.birthDate === "") {
+      if (profileSettings.birthDate.visibility === "required" && values.birthDate === "") {
         ctx.addIssue({ code: "custom", message: tValidation("required"), path: ["birthDate"] });
       }
-      if (profileSettings.acquisitionSource === "required" && values.acquisitionSource === "") {
+      if (
+        profileSettings.acquisitionSource.visibility === "required" &&
+        values.acquisitionSource === ""
+      ) {
         ctx.addIssue({
           code: "custom",
           message: tValidation("required"),

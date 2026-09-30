@@ -5,17 +5,22 @@ import { createContext, type ReactNode, useContext, useRef, useState } from "rea
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
-import type { CustomerFieldScope, CustomerFieldType, CustomerProfileSettings } from "@louez/types";
+import type { CustomerFieldScope, CustomerFieldType } from "@louez/types";
 import { useControlsDisabled } from "@louez/ui";
 
 import type { StoreThemeInput } from "@/lib/theme/util.store-theme";
 
-import { customerFieldsListOptions } from "./customer-fields.queries";
+import { CANVAS_FIELD_ATTRIBUTE, FIELD_INSPECTOR_ATTRIBUTE } from "./customer-fields.constants";
+import {
+  customerFieldsListOptions,
+  customerProfileSettingsOptions,
+} from "./customer-fields.queries";
 import { type CustomerFieldForm, useCustomerFieldForm } from "./use-customer-field-form";
 import {
   type CustomerFieldsActions,
   useCustomerFieldsActions,
 } from "./use-customer-fields-actions";
+import { type CanvasFieldRef, toCanvasFieldKey } from "./util.customer-field-canvas";
 import { newFieldDefaults } from "./util.customer-field-online";
 import {
   type CustomerFieldWithUsage,
@@ -32,8 +37,20 @@ export type BuilderView = "team" | "client";
 export type InspectorFocus = "general" | "online";
 
 export type BuilderSelection =
-  /** `request` changes on every click, so a second click scrolls the inspector again. */
-  { kind: "field"; id: string; focus: InspectorFocus; request: number } | { kind: "draft" } | null;
+  | (CanvasFieldRef & {
+      focus: InspectorFocus;
+      /** Changes on every click, so a second click scrolls the inspector again. */
+      request: number;
+      /** Picked with the keyboard: focus follows into the inspector. */
+      fromKeyboard: boolean;
+    })
+  | { kind: "draft" }
+  | null;
+
+export interface SelectFieldOptions {
+  focus?: InspectorFocus;
+  fromKeyboard?: boolean;
+}
 
 export interface BuilderDraft {
   key: string;
@@ -57,7 +74,6 @@ export interface SectionOnlineRequest {
 export interface CustomerFieldsPageSettings {
   country: string | null;
   productCategory: string | null;
-  profileSettings: CustomerProfileSettings;
   /** The storefront look, so the client view reads like the real checkout. */
   storeTheme: StoreThemeInput | null;
 }
@@ -71,7 +87,8 @@ interface CustomerFieldsBuilderContextValue {
   view: BuilderView;
   setView: (view: BuilderView) => void;
   selection: BuilderSelection;
-  selectField: (id: string, focus?: InspectorFocus) => void;
+  /** A store field or a Louez profile field: both open the same inspector. */
+  selectField: (field: CanvasFieldRef, options?: SelectFieldOptions) => void;
   clearSelection: () => void;
   draft: BuilderDraft | null;
   draftForm: CustomerFieldForm;
@@ -124,6 +141,7 @@ export const CustomerFieldsBuilderProvider = ({
   const tErrors = useTranslations("errors");
   const readOnly = useControlsDisabled();
   const { data, isPending } = useQuery(customerFieldsListOptions());
+  const { isPending: profilePending } = useQuery(customerProfileSettingsOptions());
   const fields = data ?? [];
 
   const [view, setView] = useState<BuilderView>("team");
@@ -151,20 +169,32 @@ export const CustomerFieldsBuilderProvider = ({
     setDraft(null);
   };
 
-  const selectField = (id: string, focus: InspectorFocus = "general") => {
+  const selectField = (
+    field: CanvasFieldRef,
+    { focus = "general", fromKeyboard = false }: SelectFieldOptions = {},
+  ) => {
     // Picking another field leaves the one being created: it was never saved.
     dropDraft();
     setSelection((current) => ({
-      kind: "field",
-      id,
+      ...field,
       focus,
-      request: (current?.kind === "field" ? current.request : 0) + 1,
+      fromKeyboard,
+      request: (current && current.kind !== "draft" ? current.request : 0) + 1,
     }));
   };
 
   const clearSelection = () => {
+    // Closed from inside the inspector, focus goes back to the field it showed, not to the page.
+    const fromInspector = document.activeElement?.closest(`[${FIELD_INSPECTOR_ATTRIBUTE}]`);
+    const field =
+      fromInspector && selection
+        ? document.querySelector<HTMLElement>(
+            `[${CANVAS_FIELD_ATTRIBUTE}="${toCanvasFieldKey(selection)}"]`,
+          )
+        : null;
     dropDraft();
     setSelection(null);
+    field?.focus();
   };
 
   const actions = useCustomerFieldsActions({
@@ -176,14 +206,20 @@ export const CustomerFieldsBuilderProvider = ({
           (section) => !(section.scope === values.scope && section.name === values.section),
         ),
       );
-      setSelection({ kind: "field", id: created.id, focus: "general", request: 1 });
+      setSelection({
+        kind: "field",
+        id: created.id,
+        focus: "general",
+        request: 1,
+        fromKeyboard: false,
+      });
     },
     onItemTemplateAdopted: (section) => {
       setGalleryOpen(false);
       setPicker(null);
       setSectionOnline({ section, reason: "adopted" });
     },
-    onRemovedFromCanvas: (fieldId) =>
+    onDeleted: (fieldId) =>
       setSelection((current) =>
         current?.kind === "field" && current.id === fieldId ? null : current,
       ),
@@ -241,7 +277,7 @@ export const CustomerFieldsBuilderProvider = ({
 
   const value: CustomerFieldsBuilderContextValue = {
     fields,
-    isLoading: isPending,
+    isLoading: isPending || profilePending,
     settings,
     readOnly,
     view,

@@ -61,6 +61,11 @@ const build = (checkoutFields?: CheckoutFieldsPlan) =>
       firstName: "Léa",
       lastName: "Essai",
       phone: "+33612345678",
+      profileFields: {
+        birthDate: "1990-05-17",
+        acquisitionSource: { source: "walk_in", detail: "left behind" },
+        socialLinks: { instagram: "@lea", website: " " },
+      },
       customerFields: { "id-number": "AB123" },
       itemDetails: {
         [toUnitKey("line-bike", 1)]: { participantName: "Tom", values: { height: "180" } },
@@ -81,6 +86,10 @@ const build = (checkoutFields?: CheckoutFieldsPlan) =>
 describe("buildReservationPayload custom fields", () => {
   it("carries what the cart asks, in the shape the server accepts", () => {
     const payload = build({
+      profileFields: [
+        { key: "birthDate", collectMode: "required" },
+        { key: "acquisitionSource", collectMode: "optional" },
+      ],
       customerFields: [field("id-number", "customer")],
       lines: [
         {
@@ -93,6 +102,11 @@ describe("buildReservationPayload custom fields", () => {
       ],
     });
 
+    // Only the asked native fields travel; the detail stays behind a source without one.
+    assert.deepEqual(payload.profileFields, {
+      birthDate: "1990-05-17",
+      acquisitionSource: "walk_in",
+    });
     assert.deepEqual(payload.customerFields, { "id-number": "AB123" });
     assert.deepEqual(payload.itemDetails, [
       {
@@ -103,8 +117,9 @@ describe("buildReservationPayload custom fields", () => {
     assert.equal(createReservationInputSchema.safeParse(payload).success, true);
   });
 
-  it("leaves both keys out when nothing is asked", () => {
-    const payload = build({ customerFields: [], lines: [] });
+  it("leaves the keys out when nothing is asked", () => {
+    const payload = build({ profileFields: [], customerFields: [], lines: [] });
+    assert.equal("profileFields" in payload, false);
     assert.equal("customerFields" in payload, false);
     assert.equal("itemDetails" in payload, false);
     assert.equal("customerFields" in build(), false);

@@ -1,5 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 
+import type { ResolvedCustomerProfileSettings } from "@louez/types";
+
 import { orpc } from "@/lib/orpc/react";
 
 import {
@@ -9,6 +11,10 @@ import {
   patchDefinition,
   revertPatch,
 } from "./util.customer-fields-builder";
+import {
+  applyProfileFieldPatch,
+  revertProfileFieldPatch,
+} from "./util.customer-profile-field-settings";
 
 /**
  * Every write of the editor answers with the whole list. They run one after
@@ -18,17 +24,25 @@ import {
  */
 const WRITE_SCOPE = { id: "settings-customer-fields" };
 
+/** The same, for the Louez profile fields: each write answers with their three settings. */
+const PROFILE_WRITE_SCOPE = { id: "settings-customer-profile-fields" };
+
 export const customerFieldsListOptions = () => orpc.dashboard.customerFields.list.queryOptions();
+
+export const customerProfileSettingsOptions = () =>
+  orpc.dashboard.customerFields.profileSettings.queryOptions();
 
 const listKey = () => customerFieldsListOptions().queryKey;
 
-const isLastQueuedWrite = (queryClient: QueryClient) =>
+const profileKey = () => customerProfileSettingsOptions().queryKey;
+
+const isLastQueuedWrite = (queryClient: QueryClient, scope: { id: string }) =>
   queryClient.isMutating({
-    predicate: (mutation) => mutation.options.scope?.id === WRITE_SCOPE.id,
+    predicate: (mutation) => mutation.options.scope?.id === scope.id,
   }) <= 1;
 
 const receiveList = (queryClient: QueryClient, list: CustomerFieldWithUsage[]) => {
-  if (isLastQueuedWrite(queryClient)) {
+  if (isLastQueuedWrite(queryClient, WRITE_SCOPE)) {
     queryClient.setQueryData<CustomerFieldWithUsage[]>(listKey(), list);
   }
 };
@@ -123,5 +137,34 @@ export const customerFieldsMutations = {
     orpc.dashboard.customerFields.remove.mutationOptions({
       scope: WRITE_SCOPE,
       onSuccess: (list) => receiveList(queryClient, list),
+    }),
+
+  /** One setting of a Louez profile field; the canvas and the checkout preview show it at once. */
+  updateProfileField: (queryClient: QueryClient) =>
+    orpc.dashboard.customerFields.updateProfileField.mutationOptions({
+      scope: PROFILE_WRITE_SCOPE,
+      onMutate: async ({ field, ...patch }) => {
+        await queryClient.cancelQueries({ queryKey: profileKey() });
+        const previous =
+          queryClient.getQueryData<ResolvedCustomerProfileSettings>(profileKey())?.[field] ?? null;
+        queryClient.setQueryData<ResolvedCustomerProfileSettings>(
+          profileKey(),
+          (settings) => settings && applyProfileFieldPatch(settings, field, patch),
+        );
+        return { previous };
+      },
+      onSuccess: (settings) => {
+        if (isLastQueuedWrite(queryClient, PROFILE_WRITE_SCOPE)) {
+          queryClient.setQueryData<ResolvedCustomerProfileSettings>(profileKey(), settings);
+        }
+      },
+      onError: (_error, { field, ...patch }, context) => {
+        const previous = context?.previous;
+        if (!previous) return;
+        queryClient.setQueryData<ResolvedCustomerProfileSettings>(
+          profileKey(),
+          (settings) => settings && revertProfileFieldPatch(settings, field, previous, patch),
+        );
+      },
     }),
 };

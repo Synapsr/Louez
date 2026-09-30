@@ -7,6 +7,7 @@ import {
   listCustomerFieldDefinitions,
 } from "@louez/api/services/customer-fields";
 import { customers, db, reservations } from "@louez/db";
+import { resolveCustomerProfileSettings } from "@louez/validations";
 
 import { getCurrentStore } from "@/lib/store-context";
 
@@ -98,7 +99,7 @@ const CustomerPage = async ({ params }: CustomerPageProps) => {
       storeCountry={store.settings?.country ?? "FR"}
       definitions={definitions}
       customFields={customFields}
-      profileSettings={store.settings?.customerProfile ?? {}}
+      profileSettings={resolveCustomerProfileSettings(store.settings?.customerProfile)}
     />
   );
 };

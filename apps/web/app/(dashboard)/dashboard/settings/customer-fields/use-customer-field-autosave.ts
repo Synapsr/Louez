@@ -12,7 +12,7 @@ import { getErrorMessageKey } from "@/lib/utils/util.error-message";
 import { customerFieldsMutations } from "./customer-fields.queries";
 import {
   type CustomerFieldSettingKey,
-  type CustomerFieldSettingsValues,
+  type CustomerFieldSettingsChanges,
   toFieldChange,
 } from "./util.customer-fields-builder";
 
@@ -35,10 +35,7 @@ export const useCustomerFieldAutosave = (field: CustomerFieldDefinition) => {
   const mutation = useMutation(customerFieldsMutations.update(queryClient));
 
   /** Returns false when the change is refused, so a text can go back to the saved value. */
-  const change = (
-    key: CustomerFieldSettingKey,
-    changes: Partial<CustomerFieldSettingsValues>,
-  ): boolean => {
+  const change = (key: CustomerFieldSettingKey, changes: CustomerFieldSettingsChanges): boolean => {
     const outcome = toFieldChange(field, key, changes);
     if (outcome.kind === "reject") {
       setFailure({

@@ -1,3 +1,4 @@
+import type { CustomerSocialNetwork } from "@louez/types";
 import type { CustomerFieldPublic } from "@louez/validations";
 
 /**
@@ -26,4 +27,19 @@ export type StorefrontSectionedField = StorefrontCustomerField &
 export interface RentalUnitFormValues {
   participantName?: string;
   values?: Record<string, string>;
+}
+
+/** Links being typed: a network is present as soon as its row is shown, even while blank. */
+export type CustomerSocialLinksFormValue = Partial<Record<CustomerSocialNetwork, string>>;
+
+/**
+ * The native profile fields as the storefront forms hold them (checkout,
+ * account profile), one form field per native field: the source and its
+ * "Précisez" travel together.
+ */
+export interface CustomerProfileFormValues {
+  /** ISO `yyyy-MM-dd`, as the date input gives it; "" when blank. */
+  birthDate: string;
+  acquisitionSource: { source: string; detail: string };
+  socialLinks: CustomerSocialLinksFormValue;
 }

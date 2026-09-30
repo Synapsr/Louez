@@ -22,19 +22,20 @@ interface CustomerFieldDeleteDialogProps {
   > | null;
   isPending: boolean;
   onOpenChange: (open: boolean) => void;
-  onArchive: (id: string) => void;
+  /** "Masquer plutôt": off every form, values kept, back with one switch. */
+  onHide: (id: string) => void;
   onConfirm: (id: string) => void;
 }
 
 /**
  * Deleting erases the values (on customer records, or on rented units for an
- * item field), so archiving is offered first whenever there are any.
+ * item field), so hiding the field is offered first whenever there are any.
  */
 export const CustomerFieldDeleteDialog = ({
   field,
   isPending,
   onOpenChange,
-  onArchive,
+  onHide,
   onConfirm,
 }: CustomerFieldDeleteDialogProps) => {
   const t = useTranslations("dashboard.settings.customerFields.deleteDialog");
@@ -55,8 +56,8 @@ export const CustomerFieldDeleteDialog = ({
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="outline" />}>{t("cancel")}</AlertDialogClose>
           {field && field.valueCount > 0 && field.isActive && (
-            <Button variant="secondary" disabled={isPending} onClick={() => onArchive(field.id)}>
-              {t("archiveInstead")}
+            <Button variant="secondary" disabled={isPending} onClick={() => onHide(field.id)}>
+              {t("hideInstead")}
             </Button>
           )}
           <Button

@@ -12,7 +12,7 @@ import {
   CUSTOMER_SOCIAL_NETWORKS,
   type CustomerAcquisitionSource,
   type CustomerFieldValues,
-  type CustomerProfileSettings,
+  type ResolvedCustomerProfileSettings,
   type CustomerSocialNetwork,
 } from "@louez/types";
 import {
@@ -56,7 +56,7 @@ export interface CustomerFormValues {
 interface UseCustomerFormParams {
   customer?: CustomerFormCustomer;
   initialCustomFields: CustomerFieldValues;
-  profileSettings: CustomerProfileSettings;
+  profileSettings: ResolvedCustomerProfileSettings;
   openReplaySource: CustomerFormOpenReplaySource;
 }
 
@@ -126,10 +126,13 @@ export const useCustomerForm = ({
           path: ["companyName"],
         });
       }
-      if (profileSettings.birthDate === "required" && values.birthDate === "") {
+      if (profileSettings.birthDate.visibility === "required" && values.birthDate === "") {
         ctx.addIssue({ code: "custom", message: tValidation("required"), path: ["birthDate"] });
       }
-      if (profileSettings.acquisitionSource === "required" && values.acquisitionSource === "") {
+      if (
+        profileSettings.acquisitionSource.visibility === "required" &&
+        values.acquisitionSource === ""
+      ) {
         ctx.addIssue({
           code: "custom",
           message: tValidation("required"),

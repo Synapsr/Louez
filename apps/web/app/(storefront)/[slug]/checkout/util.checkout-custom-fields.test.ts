@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 
 import type { CheckoutFieldIssue, CustomerFieldPublic } from "@louez/validations";
 
+import { EMPTY_CUSTOMER_PROFILE_FORM_VALUES } from "@/components/storefront/customer-fields/util.customer-profile-fields";
+
 import type { CheckoutFieldsPlan } from "./checkout.types";
 import {
   buildCheckoutFieldsPlan,
@@ -11,6 +13,7 @@ import {
   getCheckoutFieldNamesForStep,
   getCheckoutFieldsSubmission,
   hasCheckoutDetailsStep,
+  hasEveryAskedValueOnFile,
   hasEveryCustomerFieldOnFile,
   toUnitKey,
 } from "./util.checkout-custom-fields";
@@ -56,6 +59,7 @@ const helmetLine = {
 };
 
 const plan: CheckoutFieldsPlan = {
+  profileFields: [],
   customerFields: [idNumber],
   lines: [
     { ...bikeLine, itemFields: [height, notes] },
@@ -67,6 +71,7 @@ describe("buildCheckoutFieldsPlan", () => {
   it("pairs the answer with the cart lines by position", () => {
     const built = buildCheckoutFieldsPlan(
       {
+        profileFields: [{ key: "birthDate", collectMode: "required" }],
         customerFields: [idNumber],
         lines: [
           { productId: "bike", quantity: 2, itemFields: [height] },
@@ -83,11 +88,16 @@ describe("buildCheckoutFieldsPlan", () => {
       ],
     );
     assert.equal(hasCheckoutDetailsStep(built), true);
+    assert.deepEqual(built.profileFields, [{ key: "birthDate", collectMode: "required" }]);
   });
 
   it("asks nothing of a line whose answer is for another product (cart changed meanwhile)", () => {
     const built = buildCheckoutFieldsPlan(
-      { customerFields: [], lines: [{ productId: "helmet", quantity: 1, itemFields: [height] }] },
+      {
+        profileFields: [],
+        customerFields: [],
+        lines: [{ productId: "helmet", quantity: 1, itemFields: [height] }],
+      },
       [bikeLine],
     );
     assert.deepEqual(built.lines[0]?.itemFields, []);
@@ -96,6 +106,7 @@ describe("buildCheckoutFieldsPlan", () => {
 
   it("is empty without an answer", () => {
     assert.deepEqual(buildCheckoutFieldsPlan(undefined, [bikeLine]), {
+      profileFields: [],
       customerFields: [],
       lines: [],
     });
@@ -106,6 +117,7 @@ describe("getCheckoutFieldsSubmission", () => {
   it("sends every asked customer field and every unit of the asking lines", () => {
     const submission = getCheckoutFieldsSubmission(
       {
+        profileFields: EMPTY_CUSTOMER_PROFILE_FORM_VALUES,
         customerFields: { "id-number": "AB123", "not-asked": "drop me" },
         itemDetails: {
           [toUnitKey("line-bike", 0)]: {
@@ -127,7 +139,10 @@ describe("getCheckoutFieldsSubmission", () => {
   });
 
   it("keeps a blank customer value so a signed-in customer can clear it", () => {
-    const submission = getCheckoutFieldsSubmission({ customerFields: {}, itemDetails: {} }, plan);
+    const submission = getCheckoutFieldsSubmission(
+      { profileFields: EMPTY_CUSTOMER_PROFILE_FORM_VALUES, customerFields: {}, itemDetails: {} },
+      plan,
+    );
     assert.deepEqual(submission.customerFields, { "id-number": "" });
   });
 });
@@ -136,6 +151,7 @@ describe("getCheckoutFieldIssues", () => {
   it("runs the shared rules and points each issue at its input", () => {
     const issues = getCheckoutFieldIssues(
       {
+        profileFields: EMPTY_CUSTOMER_PROFILE_FORM_VALUES,
         customerFields: { "id-number": "" },
         itemDetails: {
           [toUnitKey("line-bike", 0)]: { values: { height: "tall" } },
@@ -153,8 +169,8 @@ describe("getCheckoutFieldIssues", () => {
   it("finds nothing when the cart asks nothing", () => {
     assert.deepEqual(
       getCheckoutFieldIssues(
-        { customerFields: {}, itemDetails: {} },
-        { customerFields: [], lines: [] },
+        { profileFields: EMPTY_CUSTOMER_PROFILE_FORM_VALUES, customerFields: {}, itemDetails: {} },
+        { profileFields: [], customerFields: [], lines: [] },
       ),
       [],
     );
@@ -217,5 +233,103 @@ describe("hasEveryCustomerFieldOnFile", () => {
     assert.equal(hasEveryCustomerFieldOnFile([idNumber, size], { "id-number": "X1" }), false);
     assert.equal(hasEveryCustomerFieldOnFile([size], { size: "XXL" }), false);
     assert.equal(hasEveryCustomerFieldOnFile([], {}), false);
+  });
+});
+
+describe("native profile fields on the contact step", () => {
+  const withProfile: CheckoutFieldsPlan = {
+    ...plan,
+    profileFields: [
+      { key: "birthDate", collectMode: "required" },
+      { key: "acquisitionSource", collectMode: "required" },
+      { key: "socialLinks", collectMode: "optional" },
+    ],
+  };
+  const profile = (overrides: Partial<typeof EMPTY_CUSTOMER_PROFILE_FORM_VALUES>) => ({
+    ...EMPTY_CUSTOMER_PROFILE_FORM_VALUES,
+    ...overrides,
+  });
+
+  it("checks them before the store's own questions, pointing at their inputs", () => {
+    const issues = getCheckoutFieldIssues(
+      {
+        profileFields: profile({
+          birthDate: "2999-01-01",
+          socialLinks: { whatsapp: "call me" },
+        }),
+        customerFields: { "id-number": "X1" },
+        itemDetails: {
+          [toUnitKey("line-bike", 0)]: { values: { height: "170" } },
+          [toUnitKey("line-bike", 1)]: { values: { height: "150" } },
+        },
+      },
+      withProfile,
+    );
+    assert.deepEqual(issues, [
+      { path: ["profileFields", "birthDate"], code: "invalidDate" },
+      { path: ["profileFields", "acquisitionSource"], code: "required" },
+      { path: ["profileFields", "socialLinks"], code: "invalidPhone" },
+    ]);
+  });
+
+  it("sends the asked ones; 'Autre' keeps its detail", () => {
+    const submission = getCheckoutFieldsSubmission(
+      {
+        profileFields: profile({
+          birthDate: "1990-05-17",
+          acquisitionSource: { source: "other", detail: " Salon " },
+          socialLinks: { instagram: "@lea", x: "" },
+        }),
+        customerFields: {},
+        itemDetails: {},
+      },
+      withProfile,
+    );
+    assert.deepEqual(submission.profileFields, {
+      birthDate: "1990-05-17",
+      acquisitionSource: "other",
+      acquisitionSourceDetail: "Salon",
+      socialLinks: { instagram: "@lea" },
+    });
+  });
+
+  it("validates them with the contact step and maps a server refusal to the input", () => {
+    assert.deepEqual(getCheckoutFieldNamesForStep(withProfile, "contact"), [
+      "profileFields.birthDate",
+      "profileFields.acquisitionSource",
+      "profileFields.socialLinks",
+      "customerFields.id-number",
+    ]);
+    const issue: CheckoutFieldIssue = { target: "profile", field: "birthDate", code: "required" };
+    assert.equal(getCheckoutFieldIssueName(issue, withProfile), "profileFields.birthDate");
+    assert.equal(getCheckoutFieldIssueName(issue, plan), null);
+  });
+
+  it("folds only when every asked value, native and custom, is on file", () => {
+    const saved = profile({
+      birthDate: "1990-05-17",
+      acquisitionSource: { source: "ads", detail: "" },
+      socialLinks: { instagram: "lea" },
+    });
+    const params = {
+      profileFields: withProfile.profileFields,
+      customerFields: [idNumber],
+      savedProfile: saved,
+      savedValues: { "id-number": "X1" },
+    };
+    assert.equal(hasEveryAskedValueOnFile(params), true);
+    assert.equal(hasEveryAskedValueOnFile({ ...params, savedValues: {} }), false);
+    assert.equal(
+      hasEveryAskedValueOnFile({ ...params, savedProfile: profile({ ...saved, socialLinks: {} }) }),
+      false,
+    );
+    assert.equal(
+      hasEveryAskedValueOnFile({ ...params, customerFields: [], savedValues: {} }),
+      true,
+    );
+    assert.equal(
+      hasEveryAskedValueOnFile({ ...params, profileFields: [], customerFields: [] }),
+      false,
+    );
   });
 });

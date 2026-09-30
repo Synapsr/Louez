@@ -108,12 +108,54 @@ export const CUSTOMER_PROFILE_FIELD_VISIBILITIES = ["hidden", "optional", "requi
 
 export type CustomerProfileFieldVisibility = (typeof CUSTOMER_PROFILE_FIELD_VISIBILITIES)[number];
 
-/** Per-store visibility of the native optional blocks (stores.settings.customerProfile). */
-export interface CustomerProfileSettings {
-  birthDate?: CustomerProfileFieldVisibility;
-  acquisitionSource?: CustomerProfileFieldVisibility;
-  socialLinks?: Exclude<CustomerProfileFieldVisibility, "required">;
+/**
+ * The profile fields Louez ships with on every customer record. Their label
+ * and type are fixed; they live in `customers` columns, not in custom values.
+ */
+export const CUSTOMER_PROFILE_FIELD_KEYS = [
+  "birthDate",
+  "acquisitionSource",
+  "socialLinks",
+] as const;
+
+export type CustomerProfileFieldKey = (typeof CUSTOMER_PROFILE_FIELD_KEYS)[number];
+
+/**
+ * What the owner decides for one native profile field: the same settings as
+ * a custom field, its label and type aside.
+ */
+export interface CustomerProfileFieldSettings {
+  /** `hidden` keeps it off the record and out of the checkout. Social links are never `required`. */
+  visibility: CustomerProfileFieldVisibility;
+  /** "Demander au client". Always `never` while hidden; social links are never `required`. */
+  collectMode: CustomerFieldCollectMode;
+  targetMode: CustomerFieldTargetMode;
+  /** Only read when `targetMode` is `products`; empty then means "applies to nothing". */
+  targets: CustomerFieldTarget[];
+  /** The customer sees and updates it from their storefront account; needs `collectMode` <> `never`. */
+  customerEditable: boolean;
 }
+
+/**
+ * `stores.settings.customerProfile` as stored. Early stores hold a bare
+ * visibility string per field: read it through `resolveCustomerProfileSettings`
+ * (`@louez/validations`), never directly.
+ */
+export type CustomerProfileSettings = Partial<
+  Record<CustomerProfileFieldKey, CustomerProfileFieldSettings | CustomerProfileFieldVisibility>
+>;
+
+/** Every native profile field with its settings, defaults filled in. */
+export type ResolvedCustomerProfileSettings = Record<
+  CustomerProfileFieldKey,
+  CustomerProfileFieldSettings
+>;
+
+/** The acquisition sources whose free-text detail ("Précisez") is kept; others drop it. */
+export const CUSTOMER_ACQUISITION_SOURCES_WITH_DETAIL = [
+  "other",
+  "partner",
+] as const satisfies readonly CustomerAcquisitionSource[];
 
 export interface CustomerFieldDefinition {
   id: string;

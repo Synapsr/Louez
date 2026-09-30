@@ -18,7 +18,6 @@ import {
   reorderSectionPayload,
   revertPatch,
   toFieldChange,
-  toProfileSettingsPatch,
   toSettingsValues,
 } from "./util.customer-fields-builder";
 
@@ -52,7 +51,7 @@ const field = (
   ...overrides,
 });
 
-// The demo store: two customer sections, one per-unit section, one archived field.
+// The demo store: two customer sections, one per-unit section, one hidden field.
 const fields = [
   field("cpf", { section: "Identité", position: 1 }),
   field("size", { section: "Vélo", position: 2, scope: "item", type: "number" }),
@@ -63,14 +62,14 @@ const fields = [
 ];
 
 describe("listScopeSections", () => {
-  test("splits the scopes and leaves archived fields out", () => {
+  test("splits the scopes and keeps hidden fields in their place", () => {
     assert.deepEqual(
       listScopeSections(fields, "customer").map((section) => [
         section.name,
         section.fields.map((entry) => entry.id),
       ]),
       [
-        ["Identité", ["cpf", "idNumber"]],
+        ["Identité", ["cpf", "idNumber", "old"]],
         ["Secours", ["contact"]],
       ],
     );
@@ -100,9 +99,10 @@ describe("listScopeSections", () => {
 
 describe("reorder payloads", () => {
   test("a drop inside a section keeps the other scope after the customer record", () => {
-    const [cpf, , , idNumber] = fields;
-    assert.deepEqual(reorderSectionPayload(fields, "customer", "Identité", [idNumber, cpf]), [
+    const [cpf, , , idNumber, , old] = fields;
+    assert.deepEqual(reorderSectionPayload(fields, "customer", "Identité", [idNumber, old, cpf]), [
       { id: "idNumber", section: "Identité" },
+      { id: "old", section: "Identité" },
       { id: "cpf", section: "Identité" },
       { id: "contact", section: "Secours" },
       { id: "size", section: "Vélo" },
@@ -113,6 +113,7 @@ describe("reorder payloads", () => {
   test("moving a field only looks at its own scope's sections", () => {
     assert.deepEqual(moveFieldPayload(fields, { id: "cpf", scope: "customer" }, "Secours"), [
       { id: "idNumber", section: "Identité" },
+      { id: "old", section: "Identité" },
       { id: "contact", section: "Secours" },
       { id: "cpf", section: "Secours" },
       { id: "size", section: "Vélo" },
@@ -123,11 +124,11 @@ describe("reorder payloads", () => {
   test("a section moves one step, and stays put past the ends", () => {
     assert.deepEqual(
       moveSectionPayload(fields, "customer", "Secours", -1).map((entry) => entry.id),
-      ["contact", "cpf", "idNumber", "size", "saddle"],
+      ["contact", "cpf", "idNumber", "old", "size", "saddle"],
     );
     assert.deepEqual(
       moveSectionPayload(fields, "customer", "Identité", -1).map((entry) => entry.id),
-      ["cpf", "idNumber", "contact", "size", "saddle"],
+      ["cpf", "idNumber", "old", "contact", "size", "saddle"],
     );
   });
 
@@ -148,7 +149,7 @@ describe("reorder payloads", () => {
     );
   });
 
-  test("a renamed section carries its archived fields along", () => {
+  test("a renamed section carries its hidden fields along", () => {
     const renamed = applySectionRename(fields, "Identité", "Pièces");
     assert.deepEqual(
       renamed.filter((entry) => entry.section === "Pièces").map((entry) => entry.id),
@@ -244,6 +245,13 @@ describe("toFieldChange", () => {
     assert.deepEqual(toFieldChange(saved, "online", { collectMode: "never" }), { kind: "none" });
   });
 
+  test("« Afficher sur la fiche » goes out as `isActive`", () => {
+    assert.deepEqual(toFieldChange(field("cpf"), "isActive", { isActive: false }), {
+      kind: "save",
+      patch: { isActive: false },
+    });
+  });
+
   test("switches go out as they are", () => {
     assert.deepEqual(toFieldChange(saved, "isSensitive", { isSensitive: true }), {
       kind: "save",
@@ -304,13 +312,5 @@ describe("listAskableFields", () => {
       listAskableFields(withAsked, new Set(["idNumber"])).customer.map((entry) => entry.id),
       ["cpf", "idNumber", "contact"],
     );
-  });
-});
-
-describe("toProfileSettingsPatch", () => {
-  test("sets one native field; social links are never required", () => {
-    assert.deepEqual(toProfileSettingsPatch("birthDate", "required"), { birthDate: "required" });
-    assert.deepEqual(toProfileSettingsPatch("socialLinks", "hidden"), { socialLinks: "hidden" });
-    assert.equal(toProfileSettingsPatch("socialLinks", "required"), null);
   });
 });

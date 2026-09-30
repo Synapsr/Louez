@@ -6318,13 +6318,7 @@
           "acquisitionSource": "Sumber pelanggan",
           "acquisitionSourceHelp": "Dari mana pelanggan mengenal Anda.",
           "socialLinks": "Media sosial dan tautan",
-          "socialLinksHelp": "Instagram, situs web, WhatsApp…",
-          "visibility": {
-            "hidden": "Disembunyikan",
-            "optional": "Opsional",
-            "required": "Wajib"
-          },
-          "saved": "Pengaturan disimpan"
+          "socialLinksHelp": "Instagram, situs web, WhatsApp…"
         },
         "sections": {
           "defaultName": "Informasi tambahan",
@@ -6335,8 +6329,6 @@
         },
         "field": {
           "add": "Tambahkan bidang",
-          "archive": "Arsipkan",
-          "restore": "Aktifkan kembali",
           "delete": "Hapus permanen",
           "moveTo": "Pindahkan ke",
           "drag": "Ubah urutan"
@@ -6350,7 +6342,9 @@
             "optional": "Online · Opsional",
             "required": "Online · Wajib"
           },
-          "noTarget": "Belum ada produk yang dipilih"
+          "noTarget": "Belum ada produk yang dipilih",
+          "hidden": "Disembunyikan",
+          "louez": "Bidang Louez"
         },
         "dialog": {
           "label": "Label",
@@ -6606,14 +6600,11 @@
           "title": "Hapus “{label}”?",
           "description": "Bidang ini akan hilang dari semua data pelanggan. Tindakan ini tidak dapat dibatalkan.",
           "withValues": "{count, plural, other {# pelanggan memiliki nilai untuk bidang ini: nilai tersebut akan dihapus.}}",
-          "archiveInstead": "Arsipkan saja",
           "confirm": "Hapus permanen",
           "cancel": "Batalkan",
           "descriptionItem": "Bidang ini akan hilang dari semua reservasi. Tindakan ini tidak dapat dibatalkan.",
-          "withItemValues": "{count, plural, other {# barang sewaan memiliki nilai untuk bidang ini: nilai tersebut akan dihapus.}}"
-        },
-        "archived": {
-          "description": "Disembunyikan dari data pelanggan, nilainya tetap disimpan."
+          "withItemValues": "{count, plural, other {# barang sewaan memiliki nilai untuk bidang ini: nilai tersebut akan dihapus.}}",
+          "hideInstead": "Sembunyikan saja"
         },
         "preview": {
           "client": {
@@ -6628,11 +6619,10 @@
         },
         "toasts": {
           "created": "Bidang ditambahkan",
-          "archived": "Bidang diarsipkan",
-          "restored": "Bidang diaktifkan kembali",
           "deleted": "Bidang dihapus",
           "sectionRenamed": "Nama bagian diubah",
-          "sectionOnlineSaved": "Pengaturan diterapkan ke bagian"
+          "sectionOnlineSaved": "Pengaturan diterapkan ke bagian",
+          "hidden": "Bidang disembunyikan"
         },
         "online": {
           "collect": "Tanyakan ke pelanggan",
@@ -6715,10 +6705,7 @@
             "company": "Untuk bisnis: nama perusahaan, nomor perusahaan, dan nomor PPN."
           },
           "profile": {
-            "title": "Profil",
-            "description": "Bidang yang dapat dimanfaatkan Louez. Pilih apakah bidang tersebut ditampilkan.",
-            "visibility": "Tampilan “{field}”",
-            "hiddenNote": "Disembunyikan: tidak ditampilkan di data pelanggan."
+            "title": "Profil"
           },
           "sections": {
             "newName": "Bagian baru",
@@ -6742,15 +6729,8 @@
             "participantLocked": "Selalu ditawarkan",
             "empty": "Tinggi badan, ukuran sepatu, tingkat kemampuan… Tambahkan informasi yang perlu Anda ketahui untuk menyiapkan setiap barang."
           },
-          "archived": {
-            "show": "Lihat bidang yang diarsipkan ({count})"
-          },
           "inspector": {
             "label": "Pengaturan bidang",
-            "emptyTitle": "Klik bidang untuk menyuntingnya",
-            "emptyDescription": "Pengaturannya ditampilkan di sini dan disimpan setiap kali ada perubahan.",
-            "tipDrag": "Seret untuk mengubah urutan",
-            "tipMenu": "Pindahkan, arsipkan, atau hapus",
             "newTitle": "Bidang baru",
             "add": "Tambahkan",
             "cancel": "Batalkan",
@@ -6768,7 +6748,8 @@
               "es_dni_nie": "DNI / NIE (Spanyol)",
               "it_codice_fiscale": "Codice fiscale (Italia)",
               "pt_nif": "NIF (Portugal)"
-            }
+            },
+            "type": "Tipe"
           },
           "picker": {
             "title": "Tambahkan bidang",
@@ -6813,6 +6794,27 @@
           "empty": {
             "title": "Tambahkan bidang Anda sendiri",
             "description": "Dokumen identitas, SIM, tinggi badan… Mulai dari templat yang sesuai dengan toko Anda atau buat bidang."
+          },
+          "native": {
+            "fixed": "Bidang Louez: nama dan tipenya tidak dapat diubah.",
+            "socialLinksType": "Tautan"
+          },
+          "visibility": {
+            "shown": {
+              "customer": "Tampilkan di data pelanggan",
+              "item": "Tampilkan di reservasi"
+            },
+            "shownHint": {
+              "customer": "Tim Anda melihat dan mengisinya di setiap data pelanggan.",
+              "item": "Tim Anda mengisinya untuk setiap barang sewaan."
+            },
+            "hiddenHint": {
+              "customer": "Disembunyikan: tidak lagi ditampilkan di data pelanggan. Nilainya tetap disimpan.",
+              "item": "Disembunyikan: tidak lagi ditampilkan di reservasi. Nilainya tetap disimpan."
+            }
+          },
+          "online": {
+            "hiddenNote": "Disembunyikan: tidak ditanyakan ke pelanggan. Tampilkan untuk menawarkannya saat reservasi."
           }
         }
       }
@@ -8716,7 +8718,14 @@
       "participantPlaceholder": "Nama depan (opsional)",
       "unitCounter": "{index} / {count}",
       "unitEmpty": "Belum ada yang diisi",
-      "recapValue": "{label}: {value}"
+      "recapValue": "{label}: {value}",
+      "profile": {
+        "title": "Profil",
+        "birthDate": "Tanggal lahir",
+        "acquisitionSource": "Dari mana Anda mengenal kami?",
+        "acquisitionSourceDetail": "Harap sebutkan",
+        "socialLinks": "Media sosial dan tautan"
+      }
     }
   },
   "onboarding": {
@@ -9395,7 +9404,9 @@
     "itemDetailRequired": "Harap isi “{field}” untuk {product} (no. {unit}).",
     "itemDetailInvalid": "“{field}” tidak valid untuk {product} (no. {unit}).",
     "reservationDetailsLocked": "Data ini tidak dapat diubah lagi: penyewaan sudah dimulai atau selesai.",
-    "customerNotAuthenticated": "Masuk ke akun pelanggan Anda untuk melanjutkan."
+    "customerNotAuthenticated": "Masuk ke akun pelanggan Anda untuk melanjutkan.",
+    "profileFieldRequired": "Harap isi “{field}”.",
+    "profileFieldInvalid": "“{field}” tidak valid."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",

@@ -23,6 +23,11 @@ test("a custom field error points at the contact step", () => {
   assert.equal(getStepForErrorKey("errors.customFieldInvalid", false, true), "contact");
 });
 
+test("a native profile field error (birth date, source, links) points at the contact step", () => {
+  assert.equal(getStepForErrorKey("errors.profileFieldRequired", true, true), "contact");
+  assert.equal(getStepForErrorKey("errors.profileFieldInvalid", false), "contact");
+});
+
 test("an item detail error points at the details step when the checkout has one", () => {
   assert.equal(getStepForErrorKey("errors.itemDetailRequired", true, true), "details");
   assert.equal(getStepForErrorKey("errors.itemDetailInvalid", false, true), "details");

@@ -13,8 +13,8 @@ interface CustomerFieldInspectorSheetProps {
 }
 
 /**
- * The inspector where the canvas leaves no room beside it: a sheet from the
- * right, the whole screen on a phone. Closing it closes the selection.
+ * The inspector where the screen leaves no room beside the form (a phone): it
+ * covers the page, so it is modal. Closing it closes the selection.
  */
 export const CustomerFieldInspectorSheet = ({ open }: CustomerFieldInspectorSheetProps) => {
   const t = useTranslations("dashboard.settings.customerFields.builder.inspector");
@@ -26,6 +26,7 @@ export const CustomerFieldInspectorSheet = ({ open }: CustomerFieldInspectorShee
         side="right"
         showCloseButton={false}
         className="max-sm:w-full max-sm:max-w-none sm:max-w-md"
+        data-field-inspector=""
         // A field being created opens on its label; a saved one on the sheet itself.
         initialFocus={() =>
           selection?.kind === "draft" ? document.getElementById(DRAFT_LABEL_INPUT_ID) : true
@@ -33,7 +34,7 @@ export const CustomerFieldInspectorSheet = ({ open }: CustomerFieldInspectorShee
       >
         {/* The header names the field; the dialog still needs a name of its own. */}
         <SheetTitle className="sr-only">{t("label")}</SheetTitle>
-        <CustomerFieldInspector />
+        <CustomerFieldInspector selection={selection} />
       </SheetPopup>
     </Sheet>
   );

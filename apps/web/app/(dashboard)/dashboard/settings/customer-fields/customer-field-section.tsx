@@ -31,8 +31,8 @@ interface CustomerFieldSectionProps {
 
 /**
  * A section of the form: its title (click to rename), its fields in order
- * (drag to reorder), the field being created when it lands here, and
- * "Ajouter un champ" to add one right here.
+ * (drag to reorder, hidden ones greyed in their place), the field being
+ * created when it lands here, and "Ajouter un champ" to add one right here.
  */
 export const CustomerFieldSection = ({
   scope,
@@ -44,8 +44,6 @@ export const CustomerFieldSection = ({
   const t = useTranslations("dashboard.settings.customerFields");
   const {
     readOnly,
-    selection,
-    selectField,
     draft,
     draftForm,
     lastAddedSectionKey,
@@ -61,6 +59,8 @@ export const CustomerFieldSection = ({
   const draftSection = useStore(draftForm.store, (state) => state.values.section);
   const hasDraft = draft !== null && draft.scope === scope && draftSection === section.name;
   const hasFields = section.fields.length > 0;
+  // "Réservation en ligne…" applies to the shown fields only: hidden ones are asked to nobody.
+  const hasShownFields = section.fields.some((field) => field.isActive);
 
   const finishReorder = (event: DragEndEvent) => {
     if (event.canceled) return;
@@ -94,6 +94,7 @@ export const CustomerFieldSection = ({
           <CustomerFieldSectionMenu
             name={section.name}
             hasFields={hasFields}
+            hasShownFields={hasShownFields}
             canDelete={section.localKey !== null && !hasDraft}
             canMoveUp={canMoveUp}
             canMoveDown={canMoveDown}
@@ -114,8 +115,6 @@ export const CustomerFieldSection = ({
                 field={field}
                 index={index}
                 group={`${scope}:${section.name}`}
-                selected={selection?.kind === "field" && selection.id === field.id}
-                onSelect={() => selectField(field.id)}
               />
             ))}
             {hasDraft && <CustomerFieldDraftRow />}

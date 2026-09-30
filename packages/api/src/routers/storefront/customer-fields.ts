@@ -1,16 +1,24 @@
 import { customers, db, reservations } from "@louez/db";
 import type { CustomerFieldValues } from "@louez/types";
 import {
+  accountProfileFieldSchema,
   canCustomerEditReservationDetails,
+  checkoutProfileFieldSchema,
   customerFieldAccountSchema,
   customerFieldPublicSchema,
   customerFieldSubmittedValuesSchema,
   customerFieldValuesSchema,
+  customerProfileValuesInputSchema,
+  customerProfileValuesSchema,
+  listAskedProfileFields,
   normalizeCustomerFieldValue,
+  pickCustomerProfileValues,
   reservationItemDetailSchema,
   reservationItemDetailsUpdateInputSchema,
+  resolveCustomerProfileSettings,
   toAccountCustomerField,
   toPublicCustomerField,
+  validateCustomerProfileValues,
   validateItemDetailUnits,
   type CustomerFieldIssue,
   type ReservationItemDetailIssue,
@@ -32,6 +40,11 @@ import {
   saveReservationItemDetails,
   type ReservationItemDetailsWrite,
 } from "../../services/customer-fields-online";
+import {
+  NO_CUSTOMER_PROFILE_VALUES,
+  getCustomerProfileValues,
+  saveCustomerProfileValues,
+} from "../../services/customer-profile-fields";
 
 const customerTypeSchema = z.enum(["individual", "business"]);
 
@@ -43,9 +56,10 @@ const requireCustomer = (context: StorefrontContext): CustomerData => {
 };
 
 /**
- * What the checkout asks for this cart: customer fields for the contact step,
- * item fields per line for "Détails de la location". Public subset only:
- * team-only fields and targets never leave the server.
+ * What the checkout asks for this cart: native profile fields and customer
+ * fields for the contact step, item fields per line for "Détails de la
+ * location". Public subset only: team-only fields and targets never leave the
+ * server.
  */
 const forCart = storefrontProcedure
   .input(
@@ -64,6 +78,8 @@ const forCart = storefrontProcedure
   )
   .output(
     z.object({
+      /** Birth date, source, links: asked for this cart, in the record's order. */
+      profileFields: z.array(checkoutProfileFieldSchema),
       customerFields: z.array(customerFieldPublicSchema),
       /** Same order as the input lines. */
       lines: z.array(
@@ -80,8 +96,10 @@ const forCart = storefrontProcedure
       context.store.id,
       input.lines,
       input.customerType,
+      resolveCustomerProfileSettings(context.store.settings?.customerProfile),
     );
     return {
+      profileFields: resolved.profileFields,
       customerFields: resolved.customerFields.map(toPublicCustomerField),
       lines: input.lines.map((line, index) => ({
         productId: line.productId,
@@ -97,7 +115,24 @@ const myValuesOutputSchema = z.object({
   /** Customer-scope fields the checkout may ask, whatever the cart; `customerEditable` marks the profile ones. */
   fields: z.array(customerFieldAccountSchema),
   values: customerFieldValuesSchema,
+  /** Native fields the checkout may ask, whatever the cart, in the record's order. */
+  profileFields: z.array(accountProfileFieldSchema),
+  /** The customer's native values; null for a field the store does not ask. */
+  profile: customerProfileValuesSchema,
 });
+
+/** Asked native fields and the signed-in customer's values for them, the others left out. */
+const loadMyProfile = async (storeId: string, customerId: string, settings: unknown) => {
+  const profileFields = listAskedProfileFields(resolveCustomerProfileSettings(settings));
+  const profile =
+    profileFields.length > 0
+      ? pickCustomerProfileValues(
+          await getCustomerProfileValues(storeId, customerId),
+          profileFields,
+        )
+      : NO_CUSTOMER_PROFILE_VALUES;
+  return { profileFields, profile };
+};
 
 /** Asked customer-scope fields and the signed-in customer's values for them (checkout prefill, account profile). */
 const loadMyValues = async (storeId: string, customerId: string) => {
@@ -121,27 +156,45 @@ const loadMyValues = async (storeId: string, customerId: string) => {
   return { customerType: customer.customerType, fields, values };
 };
 
+/** Everything `myValues` answers, for the signed-in customer. */
+const loadMyAccountValues = async (context: StorefrontContext, customerId: string) => {
+  const storeId = context.store.id;
+  const [result, native] = await Promise.all([
+    loadMyValues(storeId, customerId),
+    loadMyProfile(storeId, customerId, context.store.settings?.customerProfile),
+  ]);
+  return { ...result, fields: result.fields.map(toAccountCustomerField), ...native };
+};
+
 const myValues = storefrontAuthProcedure
   .output(myValuesOutputSchema)
   .handler(async ({ context }) => {
     const customer = requireCustomer(context);
-    const result = await loadMyValues(context.store.id, customer.id);
-    return { ...result, fields: result.fields.map(toAccountCustomerField) };
+    return loadMyAccountValues(context, customer.id);
   });
 
 /**
  * The customer updates their own values from their account. Only fields
- * marked editable by the customer are written; keys left out are untouched,
- * an empty string clears (except on a field the checkout requires).
+ * marked editable by the customer are written, native ones (`profile`)
+ * included; keys left out are untouched, an empty value clears (except on a
+ * field the checkout requires).
  */
 const updateMyValues = storefrontAuthProcedure
-  .input(z.object({ values: customerFieldSubmittedValuesSchema }))
+  .input(
+    z.object({
+      values: customerFieldSubmittedValuesSchema.default({}),
+      profile: customerProfileValuesInputSchema.optional(),
+    }),
+  )
   .output(myValuesOutputSchema)
   .handler(async ({ context, input }) => {
     const customer = requireCustomer(context);
     const storeId = context.store.id;
     const { fields } = await loadMyValues(storeId, customer.id);
     const editable = fields.filter((field) => field.customerEditable);
+    const editableProfile = listAskedProfileFields(
+      resolveCustomerProfileSettings(context.store.settings?.customerProfile),
+    ).filter((field) => field.customerEditable);
 
     const values: CustomerFieldValues = {};
     const issues: CustomerFieldIssue[] = [];
@@ -157,24 +210,34 @@ const updateMyValues = storefrontAuthProcedure
         values[field.id] = result.value;
       }
     }
-    if (issues.length > 0) {
+    const profile = validateCustomerProfileValues({
+      fields: editableProfile,
+      values: input.profile,
+      partial: true,
+    });
+    if (issues.length > 0 || profile.issues.length > 0) {
       throw new ORPCError("BAD_REQUEST", {
         message: "errors.customFieldsInvalid",
-        data: { issues },
+        data: { issues, profileIssues: profile.issues },
       });
     }
 
-    await db.transaction((tx) =>
-      saveCustomerFieldValues(tx, {
+    await db.transaction(async (tx) => {
+      await saveCustomerFieldValues(tx, {
         storeId,
         customerId: customer.id,
         values,
         definitions: editable,
         mode: "overwrite",
-      }),
-    );
-    const result = await loadMyValues(storeId, customer.id);
-    return { ...result, fields: result.fields.map(toAccountCustomerField) };
+      });
+      await saveCustomerProfileValues(tx, {
+        storeId,
+        customerId: customer.id,
+        values: profile.values,
+        mode: "overwrite",
+      });
+    });
+    return loadMyAccountValues(context, customer.id);
   });
 
 const reservationDetailsOutputSchema = z.object({

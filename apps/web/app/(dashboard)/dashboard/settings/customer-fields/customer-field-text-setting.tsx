@@ -22,9 +22,9 @@ interface CustomerFieldTextSettingProps {
 }
 
 /**
- * A text setting of the inspector. Escape puts a saved field's text back as
- * it was, without closing the inspector; on a field being created it leaves
- * the key to the inspector (drop the draft).
+ * A text setting of the inspector. Escape puts a saved field's edited text
+ * back as it was, without closing the inspector; with nothing to undo (or on
+ * a field being created) it leaves the key to the inspector, which closes.
  */
 export const CustomerFieldTextSetting = ({
   id,
@@ -75,7 +75,7 @@ export const CustomerFieldTextSetting = ({
             event.preventDefault();
             commit();
           }
-          if (event.key === "Escape") {
+          if (event.key === "Escape" && text !== value) {
             event.stopPropagation();
             setText(value);
           }

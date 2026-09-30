@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, FolderInput, MoreHorizontal, Trash2 } from "lucide-react";
+import { FolderInput, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { CustomerFieldDefinition } from "@louez/types";
@@ -25,7 +25,11 @@ interface CustomerFieldMenuProps {
   className?: string;
 }
 
-/** The rarer moves of a field: to another section of its scope, to the archive, away for good. */
+/**
+ * The rarer moves of a store field: to another section of its scope, or away
+ * for good. Hiding it is the inspector's "Afficher sur la fiche"; Louez fields
+ * have no menu (they cannot move or go).
+ */
 export const CustomerFieldMenu = ({ field, className }: CustomerFieldMenuProps) => {
   const t = useTranslations("dashboard.settings.customerFields");
   const { fields, localSections, actions, requestDelete } = useCustomerFieldsBuilder();
@@ -64,11 +68,7 @@ export const CustomerFieldMenu = ({ field, className }: CustomerFieldMenuProps) 
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         )}
-        <DropdownMenuItem onClick={() => actions.setActive(field, false)}>
-          <Archive />
-          {t("field.archive")}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        {otherSections.length > 0 && <DropdownMenuSeparator />}
         <DropdownMenuItem
           className="text-destructive hover:text-destructive data-highlighted:text-destructive"
           onClick={() => requestDelete(field.id)}

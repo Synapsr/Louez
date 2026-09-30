@@ -6318,13 +6318,7 @@
           "acquisitionSource": "顧客の流入経路",
           "acquisitionSourceHelp": "顧客が当店を知ったきっかけ。",
           "socialLinks": "SNS・リンク",
-          "socialLinksHelp": "Instagram、ウェブサイト、WhatsApp…",
-          "visibility": {
-            "hidden": "非表示",
-            "optional": "任意",
-            "required": "必須"
-          },
-          "saved": "設定を保存しました"
+          "socialLinksHelp": "Instagram、ウェブサイト、WhatsApp…"
         },
         "sections": {
           "defaultName": "追加情報",
@@ -6335,8 +6329,6 @@
         },
         "field": {
           "add": "フィールドを追加",
-          "archive": "アーカイブ",
-          "restore": "再有効化",
           "delete": "完全に削除",
           "moveTo": "移動先",
           "drag": "並べ替え"
@@ -6350,7 +6342,9 @@
             "optional": "オンライン · 任意",
             "required": "オンライン · 必須"
           },
-          "noTarget": "商品が未選択"
+          "noTarget": "商品が未選択",
+          "hidden": "非表示",
+          "louez": "Louez 標準フィールド"
         },
         "dialog": {
           "label": "ラベル",
@@ -6606,14 +6600,11 @@
           "title": "「{label}」を削除しますか？",
           "description": "このフィールドはすべての顧客情報から削除されます。この操作は元に戻せません。",
           "withValues": "{count, plural, other {#人の顧客がこのフィールドに値を入力しています。これらの値は消去されます。}}",
-          "archiveInstead": "代わりにアーカイブ",
           "confirm": "完全に削除",
           "cancel": "キャンセル",
           "descriptionItem": "このフィールドはすべての予約から削除されます。この操作は元に戻せません。",
-          "withItemValues": "{count, plural, other {#点のレンタル品がこのフィールドに値を持っています。これらの値は消去されます。}}"
-        },
-        "archived": {
-          "description": "顧客情報には表示されませんが、値は保持されます。"
+          "withItemValues": "{count, plural, other {#点のレンタル品がこのフィールドに値を持っています。これらの値は消去されます。}}",
+          "hideInstead": "代わりに非表示にする"
         },
         "preview": {
           "client": {
@@ -6628,11 +6619,10 @@
         },
         "toasts": {
           "created": "フィールドを追加しました",
-          "archived": "フィールドをアーカイブしました",
-          "restored": "フィールドを再有効化しました",
           "deleted": "フィールドを削除しました",
           "sectionRenamed": "セクション名を変更しました",
-          "sectionOnlineSaved": "設定をセクションに適用しました"
+          "sectionOnlineSaved": "設定をセクションに適用しました",
+          "hidden": "フィールドを非表示にしました"
         },
         "online": {
           "collect": "顧客に入力を求める",
@@ -6715,10 +6705,7 @@
             "company": "法人の場合：会社名、会社番号、VAT番号。"
           },
           "profile": {
-            "title": "プロフィール",
-            "description": "Louez が活用できるフィールドです。表示するかどうかを選べます。",
-            "visibility": "「{field}」の表示",
-            "hiddenNote": "非表示：顧客情報には表示されません。"
+            "title": "プロフィール"
           },
           "sections": {
             "newName": "新しいセクション",
@@ -6742,15 +6729,8 @@
             "participantLocked": "常に表示されます",
             "empty": "身長、靴のサイズ、レベル… 各レンタル品の準備に必要な情報を追加してください。"
           },
-          "archived": {
-            "show": "アーカイブ済みのフィールドを見る（{count}）"
-          },
           "inspector": {
             "label": "フィールドの設定",
-            "emptyTitle": "フィールドをクリックすると編集できます",
-            "emptyDescription": "設定がここに表示され、変更するたびに保存されます。",
-            "tipDrag": "ドラッグして並べ替え",
-            "tipMenu": "移動・アーカイブ・削除",
             "newTitle": "新しいフィールド",
             "add": "追加",
             "cancel": "キャンセル",
@@ -6768,7 +6748,8 @@
               "es_dni_nie": "DNI / NIE（スペイン）",
               "it_codice_fiscale": "Codice fiscale（イタリア）",
               "pt_nif": "NIF（ポルトガル）"
-            }
+            },
+            "type": "タイプ"
           },
           "picker": {
             "title": "フィールドを追加",
@@ -6813,6 +6794,27 @@
           "empty": {
             "title": "独自のフィールドを追加しましょう",
             "description": "身分証明書、免許証、身長… ストアに合ったテンプレートから始めるか、フィールドを作成してください。"
+          },
+          "native": {
+            "fixed": "Louez 標準フィールド：名前とタイプは変更できません。",
+            "socialLinksType": "リンク"
+          },
+          "visibility": {
+            "shown": {
+              "customer": "顧客情報に表示",
+              "item": "予約に表示"
+            },
+            "shownHint": {
+              "customer": "チームがすべての顧客情報でこのフィールドを確認し、入力します。",
+              "item": "チームがレンタル品ごとにこのフィールドを入力します。"
+            },
+            "hiddenHint": {
+              "customer": "非表示：顧客情報に表示されなくなります。値は保持されます。",
+              "item": "非表示：予約に表示されなくなります。値は保持されます。"
+            }
+          },
+          "online": {
+            "hiddenNote": "非表示：顧客には入力を求めません。表示すると、予約時に顧客へ入力を求めることができます。"
           }
         }
       }
@@ -8716,7 +8718,14 @@
       "participantPlaceholder": "名（任意）",
       "unitCounter": "{index} / {count}",
       "unitEmpty": "未入力",
-      "recapValue": "{label}：{value}"
+      "recapValue": "{label}：{value}",
+      "profile": {
+        "title": "プロフィール",
+        "birthDate": "生年月日",
+        "acquisitionSource": "当店を知ったきっかけは何ですか？",
+        "acquisitionSourceDetail": "具体的にご記入ください",
+        "socialLinks": "SNS・リンク"
+      }
     }
   },
   "onboarding": {
@@ -9395,7 +9404,9 @@
     "itemDetailRequired": "{product}（{unit}点目）の「{field}」を入力してください。",
     "itemDetailInvalid": "{product}（{unit}点目）の「{field}」が正しくありません。",
     "reservationDetailsLocked": "レンタルが開始または終了したため、この情報は変更できません。",
-    "customerNotAuthenticated": "続行するにはお客様アカウントにログインしてください。"
+    "customerNotAuthenticated": "続行するにはお客様アカウントにログインしてください。",
+    "profileFieldRequired": "「{field}」を入力してください。",
+    "profileFieldInvalid": "「{field}」が正しくありません。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",

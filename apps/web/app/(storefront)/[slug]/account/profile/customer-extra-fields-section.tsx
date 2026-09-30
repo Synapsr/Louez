@@ -16,7 +16,8 @@ interface CustomerExtraFieldsSectionProps {
 
 /**
  * "Informations complémentaires": what the store asks at checkout and lets the
- * customer keep up to date themselves. Hidden when there is nothing to edit.
+ * customer keep up to date themselves, native fields (birth date, source,
+ * links) first. Hidden when there is nothing to edit.
  */
 export const CustomerExtraFieldsSection = ({ initialData }: CustomerExtraFieldsSectionProps) => {
   const t = useTranslations("storefront.account.customerFields");
@@ -29,14 +30,20 @@ export const CustomerExtraFieldsSection = ({ initialData }: CustomerExtraFieldsS
       field.customerEditable &&
       (field.appliesTo === "all" || field.appliesTo === data.customerType),
   );
+  const profileFields = data.profileFields.filter((field) => field.customerEditable);
 
-  if (fields.length === 0) return null;
+  if (fields.length === 0 && profileFields.length === 0) return null;
 
   return (
     <section className="border-t pt-6">
       <h2 className="text-xl font-semibold">{t("title")}</h2>
       <p className="mt-2 text-sm text-muted-foreground">{t("description", { store: storeName })}</p>
-      <CustomerExtraFieldsForm fields={fields} values={data.values} />
+      <CustomerExtraFieldsForm
+        profileFields={profileFields}
+        profile={data.profile}
+        fields={fields}
+        values={data.values}
+      />
     </section>
   );
 };

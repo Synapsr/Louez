@@ -6318,13 +6318,7 @@
           "acquisitionSource": "Customer source",
           "acquisitionSourceHelp": "How the customer heard about you.",
           "socialLinks": "Social and links",
-          "socialLinksHelp": "Instagram, website, WhatsApp…",
-          "visibility": {
-            "hidden": "Hidden",
-            "optional": "Optional",
-            "required": "Required"
-          },
-          "saved": "Setting saved"
+          "socialLinksHelp": "Instagram, website, WhatsApp…"
         },
         "sections": {
           "defaultName": "Additional information",
@@ -6335,8 +6329,6 @@
         },
         "field": {
           "add": "Add a field",
-          "archive": "Archive",
-          "restore": "Reactivate",
           "delete": "Delete permanently",
           "moveTo": "Move to",
           "drag": "Reorder"
@@ -6350,7 +6342,9 @@
             "optional": "Online · Optional",
             "required": "Online · Required"
           },
-          "noTarget": "No product selected"
+          "noTarget": "No product selected",
+          "hidden": "Hidden",
+          "louez": "Louez field"
         },
         "dialog": {
           "label": "Label",
@@ -6606,14 +6600,11 @@
           "title": "Delete “{label}”?",
           "description": "The field will disappear from every record. This cannot be undone.",
           "withValues": "{count, plural, one {# customer has a value for this field: it will be erased.} other {# customers have a value for this field: they will be erased.}}",
-          "archiveInstead": "Archive instead",
           "confirm": "Delete permanently",
           "cancel": "Cancel",
           "descriptionItem": "The field will disappear from every booking. This can't be undone.",
-          "withItemValues": "{count, plural, one {# rented item has a value for this field: it will be erased.} other {# rented items have a value for this field: they will be erased.}}"
-        },
-        "archived": {
-          "description": "Hidden from records, their values are kept."
+          "withItemValues": "{count, plural, one {# rented item has a value for this field: it will be erased.} other {# rented items have a value for this field: they will be erased.}}",
+          "hideInstead": "Hide instead"
         },
         "preview": {
           "client": {
@@ -6628,11 +6619,10 @@
         },
         "toasts": {
           "created": "Field added",
-          "archived": "Field archived",
-          "restored": "Field reactivated",
           "deleted": "Field deleted",
           "sectionRenamed": "Section renamed",
-          "sectionOnlineSaved": "Settings applied to the section"
+          "sectionOnlineSaved": "Settings applied to the section",
+          "hidden": "Field hidden"
         },
         "online": {
           "collect": "Ask the customer",
@@ -6715,10 +6705,7 @@
             "company": "For a business: company name, company number and VAT number."
           },
           "profile": {
-            "title": "Profile",
-            "description": "Fields Louez knows how to use. Choose whether they show.",
-            "visibility": "Display of “{field}”",
-            "hiddenNote": "Hidden: not shown on the customer record."
+            "title": "Profile"
           },
           "sections": {
             "newName": "New section",
@@ -6742,15 +6729,8 @@
             "participantLocked": "Always offered",
             "empty": "Height, shoe size, level… Add what you need to know to prepare each item."
           },
-          "archived": {
-            "show": "See archived fields ({count})"
-          },
           "inspector": {
             "label": "Field settings",
-            "emptyTitle": "Click a field to edit it",
-            "emptyDescription": "Its settings show here and are saved with every change.",
-            "tipDrag": "Drag to reorder",
-            "tipMenu": "Move, archive or delete",
             "newTitle": "New field",
             "add": "Add",
             "cancel": "Cancel",
@@ -6768,7 +6748,8 @@
               "es_dni_nie": "DNI / NIE (Spain)",
               "it_codice_fiscale": "Codice fiscale (Italy)",
               "pt_nif": "NIF (Portugal)"
-            }
+            },
+            "type": "Type"
           },
           "picker": {
             "title": "Add a field",
@@ -6813,6 +6794,27 @@
           "empty": {
             "title": "Add your own fields",
             "description": "ID document, licence, height… Start from a template that fits your store or create a field."
+          },
+          "native": {
+            "fixed": "Louez field: its name and type are fixed.",
+            "socialLinksType": "Links"
+          },
+          "visibility": {
+            "shown": {
+              "customer": "Show on the record",
+              "item": "Show on the booking"
+            },
+            "shownHint": {
+              "customer": "Your team sees it and fills it in on every customer record.",
+              "item": "Your team fills it in for every rented item."
+            },
+            "hiddenHint": {
+              "customer": "Hidden: no longer on customer records. Its values are kept.",
+              "item": "Hidden: no longer on bookings. Its values are kept."
+            }
+          },
+          "online": {
+            "hiddenNote": "Hidden: customers are not asked for it. Show it to ask for it when they book."
           }
         }
       }
@@ -8716,7 +8718,14 @@
       "participantPlaceholder": "First name (optional)",
       "unitCounter": "{index} / {count}",
       "unitEmpty": "Nothing filled in",
-      "recapValue": "{label}: {value}"
+      "recapValue": "{label}: {value}",
+      "profile": {
+        "title": "Profile",
+        "birthDate": "Date of birth",
+        "acquisitionSource": "How did you hear about us?",
+        "acquisitionSourceDetail": "Please specify",
+        "socialLinks": "Social and links"
+      }
     }
   },
   "onboarding": {
@@ -9395,7 +9404,9 @@
     "itemDetailRequired": "Please fill in “{field}” for {product} (no. {unit}).",
     "itemDetailInvalid": "“{field}” is not valid for {product} (no. {unit}).",
     "reservationDetailsLocked": "These details can no longer be changed: the rental has started or ended.",
-    "customerNotAuthenticated": "Sign in to your customer account to continue."
+    "customerNotAuthenticated": "Sign in to your customer account to continue.",
+    "profileFieldRequired": "Please fill in “{field}”.",
+    "profileFieldInvalid": "“{field}” is not valid."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

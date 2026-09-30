@@ -6318,13 +6318,7 @@
           "acquisitionSource": "Herkunft des Kunden",
           "acquisitionSourceHelp": "Wie der Kunde auf Sie aufmerksam wurde.",
           "socialLinks": "Netzwerke und Links",
-          "socialLinksHelp": "Instagram, Website, WhatsApp…",
-          "visibility": {
-            "hidden": "Ausgeblendet",
-            "optional": "Optional",
-            "required": "Pflichtfeld"
-          },
-          "saved": "Einstellung gespeichert"
+          "socialLinksHelp": "Instagram, Website, WhatsApp…"
         },
         "sections": {
           "defaultName": "Weitere Angaben",
@@ -6335,8 +6329,6 @@
         },
         "field": {
           "add": "Feld hinzufügen",
-          "archive": "Archivieren",
-          "restore": "Reaktivieren",
           "delete": "Endgültig löschen",
           "moveTo": "Verschieben nach",
           "drag": "Neu anordnen"
@@ -6350,7 +6342,9 @@
             "optional": "Online · Optional",
             "required": "Online · Pflichtfeld"
           },
-          "noTarget": "Kein Produkt ausgewählt"
+          "noTarget": "Kein Produkt ausgewählt",
+          "hidden": "Ausgeblendet",
+          "louez": "Louez-Feld"
         },
         "dialog": {
           "label": "Bezeichnung",
@@ -6606,14 +6600,11 @@
           "title": "„{label}“ löschen?",
           "description": "Das Feld verschwindet bei allen Kunden. Diese Aktion ist unwiderruflich.",
           "withValues": "{count, plural, one {# Kunde hat einen Wert in diesem Feld: Er wird gelöscht.} other {# Kunden haben einen Wert in diesem Feld: Diese Werte werden gelöscht.}}",
-          "archiveInstead": "Stattdessen archivieren",
           "confirm": "Endgültig löschen",
           "cancel": "Abbrechen",
           "descriptionItem": "Das Feld verschwindet aus allen Reservierungen. Diese Aktion ist unwiderruflich.",
-          "withItemValues": "{count, plural, one {# gemieteter Artikel hat einen Wert in diesem Feld: Er wird gelöscht.} other {# gemietete Artikel haben einen Wert in diesem Feld: Diese Werte werden gelöscht.}}"
-        },
-        "archived": {
-          "description": "In den Kundendaten ausgeblendet, ihre Werte bleiben erhalten."
+          "withItemValues": "{count, plural, one {# gemieteter Artikel hat einen Wert in diesem Feld: Er wird gelöscht.} other {# gemietete Artikel haben einen Wert in diesem Feld: Diese Werte werden gelöscht.}}",
+          "hideInstead": "Stattdessen ausblenden"
         },
         "preview": {
           "client": {
@@ -6628,11 +6619,10 @@
         },
         "toasts": {
           "created": "Feld hinzugefügt",
-          "archived": "Feld archiviert",
-          "restored": "Feld reaktiviert",
           "deleted": "Feld gelöscht",
           "sectionRenamed": "Abschnitt umbenannt",
-          "sectionOnlineSaved": "Einstellungen auf den Abschnitt angewendet"
+          "sectionOnlineSaved": "Einstellungen auf den Abschnitt angewendet",
+          "hidden": "Feld ausgeblendet"
         },
         "online": {
           "collect": "Beim Kunden abfragen",
@@ -6715,10 +6705,7 @@
             "company": "Für Geschäftskunden: Firmenname, Unternehmensnummer und USt-IdNr."
           },
           "profile": {
-            "title": "Profil",
-            "description": "Felder, die Louez auswerten kann. Legen Sie fest, ob sie angezeigt werden.",
-            "visibility": "Anzeige von „{field}“",
-            "hiddenNote": "Ausgeblendet: Das Feld erscheint nicht in den Kundendaten."
+            "title": "Profil"
           },
           "sections": {
             "newName": "Neuer Abschnitt",
@@ -6742,15 +6729,8 @@
             "participantLocked": "Immer angeboten",
             "empty": "Körpergröße, Schuhgröße, Niveau… Fügen Sie hinzu, was Sie wissen müssen, um jeden Artikel vorzubereiten."
           },
-          "archived": {
-            "show": "Archivierte Felder anzeigen ({count})"
-          },
           "inspector": {
             "label": "Feldeinstellungen",
-            "emptyTitle": "Klicken Sie auf ein Feld, um es zu bearbeiten",
-            "emptyDescription": "Seine Einstellungen erscheinen hier und werden bei jeder Änderung gespeichert.",
-            "tipDrag": "Ziehen, um neu anzuordnen",
-            "tipMenu": "Verschieben, archivieren oder löschen",
             "newTitle": "Neues Feld",
             "add": "Hinzufügen",
             "cancel": "Abbrechen",
@@ -6768,7 +6748,8 @@
               "es_dni_nie": "DNI / NIE (Spanien)",
               "it_codice_fiscale": "Codice fiscale (Italien)",
               "pt_nif": "NIF (Portugal)"
-            }
+            },
+            "type": "Typ"
           },
           "picker": {
             "title": "Feld hinzufügen",
@@ -6813,6 +6794,27 @@
           "empty": {
             "title": "Fügen Sie eigene Felder hinzu",
             "description": "Ausweisdokument, Führerschein, Körpergröße… Starten Sie mit einer Vorlage, die zu Ihrem Shop passt, oder erstellen Sie ein Feld."
+          },
+          "native": {
+            "fixed": "Louez-Feld: Name und Typ sind festgelegt.",
+            "socialLinksType": "Links"
+          },
+          "visibility": {
+            "shown": {
+              "customer": "In den Kundendaten anzeigen",
+              "item": "In der Reservierung anzeigen"
+            },
+            "shownHint": {
+              "customer": "Ihr Team sieht es in den Kundendaten und füllt es für jeden Kunden aus.",
+              "item": "Ihr Team füllt es für jeden gemieteten Artikel aus."
+            },
+            "hiddenHint": {
+              "customer": "Ausgeblendet: Das Feld erscheint nicht mehr in den Kundendaten. Seine Werte bleiben erhalten.",
+              "item": "Ausgeblendet: Das Feld erscheint nicht mehr in den Reservierungen. Seine Werte bleiben erhalten."
+            }
+          },
+          "online": {
+            "hiddenNote": "Ausgeblendet: Das Feld wird beim Kunden nicht abgefragt. Blenden Sie es ein, um es bei der Reservierung anzubieten."
           }
         }
       }
@@ -8716,7 +8718,14 @@
       "participantPlaceholder": "Vorname (optional)",
       "unitCounter": "{index} / {count}",
       "unitEmpty": "Keine Angaben",
-      "recapValue": "{label}: {value}"
+      "recapValue": "{label}: {value}",
+      "profile": {
+        "title": "Profil",
+        "birthDate": "Geburtsdatum",
+        "acquisitionSource": "Wie sind Sie auf uns aufmerksam geworden?",
+        "acquisitionSourceDetail": "Bitte genauer angeben",
+        "socialLinks": "Netzwerke und Links"
+      }
     }
   },
   "onboarding": {
@@ -9395,7 +9404,9 @@
     "itemDetailRequired": "Bitte füllen Sie „{field}“ für {product} (Nr. {unit}) aus.",
     "itemDetailInvalid": "„{field}“ ist für {product} (Nr. {unit}) ungültig.",
     "reservationDetailsLocked": "Diese Angaben können nicht mehr geändert werden: Die Miete hat begonnen oder ist beendet.",
-    "customerNotAuthenticated": "Melden Sie sich in Ihrem Kundenkonto an, um fortzufahren."
+    "customerNotAuthenticated": "Melden Sie sich in Ihrem Kundenkonto an, um fortzufahren.",
+    "profileFieldRequired": "Bitte füllen Sie „{field}“ aus.",
+    "profileFieldInvalid": "„{field}“ ist ungültig."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

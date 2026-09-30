@@ -1,15 +1,17 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 import { useTranslations } from "next-intl";
 
 import { cn } from "@louez/utils";
 
 interface CustomerFieldsClientFieldProps {
+  /** `toCanvasFieldKey` of the field: the inspector finds its way back to it. */
+  canvasKey: string;
   label: string;
   selected: boolean;
-  onSelect: () => void;
+  onSelect: (event: MouseEvent<HTMLButtonElement>) => void;
   children: ReactNode;
 }
 
@@ -18,6 +20,7 @@ interface CustomerFieldsClientFieldProps {
  * inert, under one button that opens its settings.
  */
 export const CustomerFieldsClientField = ({
+  canvasKey,
   label,
   selected,
   onSelect,
@@ -34,6 +37,7 @@ export const CustomerFieldsClientField = ({
     >
       <button
         type="button"
+        data-canvas-field={canvasKey}
         aria-pressed={selected}
         aria-label={t("select", { label })}
         className="absolute inset-0 z-10 cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"

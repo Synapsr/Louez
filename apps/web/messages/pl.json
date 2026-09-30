@@ -6318,13 +6318,7 @@
           "acquisitionSource": "Źródło pozyskania klienta",
           "acquisitionSourceHelp": "Skąd klient się o Tobie dowiedział.",
           "socialLinks": "Social media i linki",
-          "socialLinksHelp": "Instagram, strona internetowa, WhatsApp…",
-          "visibility": {
-            "hidden": "Ukryte",
-            "optional": "Opcjonalne",
-            "required": "Wymagane"
-          },
-          "saved": "Ustawienie zapisane"
+          "socialLinksHelp": "Instagram, strona internetowa, WhatsApp…"
         },
         "sections": {
           "defaultName": "Informacje dodatkowe",
@@ -6335,8 +6329,6 @@
         },
         "field": {
           "add": "Dodaj pole",
-          "archive": "Archiwizuj",
-          "restore": "Aktywuj ponownie",
           "delete": "Usuń trwale",
           "moveTo": "Przenieś do",
           "drag": "Zmień kolejność"
@@ -6350,7 +6342,9 @@
             "optional": "Online · Opcjonalne",
             "required": "Online · Wymagane"
           },
-          "noTarget": "Nie wybrano produktu"
+          "noTarget": "Nie wybrano produktu",
+          "hidden": "Ukryte",
+          "louez": "Pole Louez"
         },
         "dialog": {
           "label": "Etykieta",
@@ -6606,14 +6600,11 @@
           "title": "Usunąć „{label}”?",
           "description": "Pole zniknie ze wszystkich kart. Ta akcja jest nieodwracalna.",
           "withValues": "{count, plural, one {# klient ma wartość w tym polu: zostanie ona usunięta.} few {# klienci mają wartość w tym polu: zostaną one usunięte.} many {# klientów ma wartość w tym polu: zostaną one usunięte.} other {# klienta ma wartość w tym polu: zostaną one usunięte.}}",
-          "archiveInstead": "Lepiej zarchiwizuj",
           "confirm": "Usuń trwale",
           "cancel": "Anuluj",
           "descriptionItem": "Pole zniknie ze wszystkich rezerwacji. Ta akcja jest nieodwracalna.",
-          "withItemValues": "{count, plural, one {# wynajęty przedmiot ma wartość w tym polu: zostanie ona usunięta.} few {# wynajęte przedmioty mają wartość w tym polu: zostaną one usunięte.} many {# wynajętych przedmiotów ma wartość w tym polu: zostaną one usunięte.} other {# wynajętego przedmiotu ma wartość w tym polu: zostaną one usunięte.}}"
-        },
-        "archived": {
-          "description": "Ukryte na kartach, ich wartości są zachowane."
+          "withItemValues": "{count, plural, one {# wynajęty przedmiot ma wartość w tym polu: zostanie ona usunięta.} few {# wynajęte przedmioty mają wartość w tym polu: zostaną one usunięte.} many {# wynajętych przedmiotów ma wartość w tym polu: zostaną one usunięte.} other {# wynajętego przedmiotu ma wartość w tym polu: zostaną one usunięte.}}",
+          "hideInstead": "Lepiej ukryj"
         },
         "preview": {
           "client": {
@@ -6628,11 +6619,10 @@
         },
         "toasts": {
           "created": "Dodano pole",
-          "archived": "Zarchiwizowano pole",
-          "restored": "Ponownie aktywowano pole",
           "deleted": "Usunięto pole",
           "sectionRenamed": "Zmieniono nazwę sekcji",
-          "sectionOnlineSaved": "Zastosowano ustawienia do sekcji"
+          "sectionOnlineSaved": "Zastosowano ustawienia do sekcji",
+          "hidden": "Ukryto pole"
         },
         "online": {
           "collect": "Pytaj klienta",
@@ -6715,10 +6705,7 @@
             "company": "Dla firmy: nazwa firmy, numer firmy i numer VAT."
           },
           "profile": {
-            "title": "Profil",
-            "description": "Pola, które Louez potrafi wykorzystać. Wybierz, czy mają się wyświetlać.",
-            "visibility": "Wyświetlanie pola „{field}”",
-            "hiddenNote": "Ukryte: nie pojawia się na karcie klienta."
+            "title": "Profil"
           },
           "sections": {
             "newName": "Nowa sekcja",
@@ -6742,15 +6729,8 @@
             "participantLocked": "Zawsze proponowane",
             "empty": "Wzrost, rozmiar buta, poziom… Dodaj to, co musisz wiedzieć, aby przygotować każdy przedmiot."
           },
-          "archived": {
-            "show": "Zobacz zarchiwizowane pola ({count})"
-          },
           "inspector": {
             "label": "Ustawienia pola",
-            "emptyTitle": "Kliknij pole, aby je edytować",
-            "emptyDescription": "Jego ustawienia pojawiają się tutaj i są zapisywane przy każdej zmianie.",
-            "tipDrag": "Przeciągnij, aby zmienić kolejność",
-            "tipMenu": "Przenieś, zarchiwizuj lub usuń",
             "newTitle": "Nowe pole",
             "add": "Dodaj",
             "cancel": "Anuluj",
@@ -6768,7 +6748,8 @@
               "es_dni_nie": "DNI / NIE (Hiszpania)",
               "it_codice_fiscale": "Codice fiscale (Włochy)",
               "pt_nif": "NIF (Portugalia)"
-            }
+            },
+            "type": "Typ"
           },
           "picker": {
             "title": "Dodaj pole",
@@ -6813,6 +6794,27 @@
           "empty": {
             "title": "Dodaj własne pola",
             "description": "Dokument tożsamości, prawo jazdy, wzrost… Zacznij od szablonu dopasowanego do Twojego sklepu lub utwórz pole."
+          },
+          "native": {
+            "fixed": "Pole Louez: jego nazwa i typ są stałe.",
+            "socialLinksType": "Linki"
+          },
+          "visibility": {
+            "shown": {
+              "customer": "Pokaż na karcie klienta",
+              "item": "Pokaż w rezerwacji"
+            },
+            "shownHint": {
+              "customer": "Twój zespół widzi je i uzupełnia na każdej karcie klienta.",
+              "item": "Twój zespół uzupełnia je dla każdego wynajętego przedmiotu."
+            },
+            "hiddenHint": {
+              "customer": "Ukryte: nie pojawia się już na kartach klientów. Jego wartości są zachowane.",
+              "item": "Ukryte: nie pojawia się już w rezerwacjach. Jego wartości są zachowane."
+            }
+          },
+          "online": {
+            "hiddenNote": "Ukryte: klient nie jest o nie pytany. Pokaż je, aby proponować je podczas rezerwacji."
           }
         }
       }
@@ -8716,7 +8718,14 @@
       "participantPlaceholder": "Imię (opcjonalnie)",
       "unitCounter": "{index} / {count}",
       "unitEmpty": "Nic nie uzupełniono",
-      "recapValue": "{label}: {value}"
+      "recapValue": "{label}: {value}",
+      "profile": {
+        "title": "Profil",
+        "birthDate": "Data urodzenia",
+        "acquisitionSource": "Skąd o nas wiesz?",
+        "acquisitionSourceDetail": "Doprecyzuj",
+        "socialLinks": "Social media i linki"
+      }
     }
   },
   "onboarding": {
@@ -9395,7 +9404,9 @@
     "itemDetailRequired": "Uzupełnij pole „{field}” dla: {product} (nr {unit}).",
     "itemDetailInvalid": "Pole „{field}” jest nieprawidłowe dla: {product} (nr {unit}).",
     "reservationDetailsLocked": "Tych danych nie można już zmienić: wynajem się rozpoczął lub zakończył.",
-    "customerNotAuthenticated": "Zaloguj się do konta klienta, aby kontynuować."
+    "customerNotAuthenticated": "Zaloguj się do konta klienta, aby kontynuować.",
+    "profileFieldRequired": "Uzupełnij pole „{field}”.",
+    "profileFieldInvalid": "Pole „{field}” jest nieprawidłowe."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

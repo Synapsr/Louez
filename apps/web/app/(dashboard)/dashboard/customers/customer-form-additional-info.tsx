@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useStore } from "@tanstack/react-form";
 import { useTranslations } from "next-intl";
 
-import type { CustomerFieldDefinition, CustomerProfileSettings } from "@louez/types";
+import type { CustomerFieldDefinition, ResolvedCustomerProfileSettings } from "@louez/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
 import type { CustomerFieldIssueCode } from "@louez/validations";
 
@@ -21,7 +21,7 @@ import type { CustomerFormApi } from "./use-customer-form";
 interface CustomerFormAdditionalInfoProps {
   form: CustomerFormApi;
   definitions: CustomerFieldDefinition[];
-  profileSettings: CustomerProfileSettings;
+  profileSettings: ResolvedCustomerProfileSettings;
   fieldIssues: Record<string, CustomerFieldIssueCode>;
   customerId?: string;
   canCustomize: boolean;
@@ -50,13 +50,15 @@ export const CustomerFormAdditionalInfo = ({
   );
   const sections = groupFieldsBySection(applicable);
   const showProfile =
-    profileSettings.birthDate !== "hidden" || profileSettings.acquisitionSource !== "hidden";
-  const showSocial = profileSettings.socialLinks !== "hidden";
+    profileSettings.birthDate.visibility !== "hidden" ||
+    profileSettings.acquisitionSource.visibility !== "hidden";
+  const showSocial = profileSettings.socialLinks.visibility !== "hidden";
 
   if (!showProfile && !showSocial && sections.length === 0 && !canCustomize) return null;
 
   const profileRequired =
-    profileSettings.birthDate === "required" || profileSettings.acquisitionSource === "required";
+    profileSettings.birthDate.visibility === "required" ||
+    profileSettings.acquisitionSource.visibility === "required";
   const socialCount = Object.values(socialLinks).filter(Boolean).length;
 
   return (

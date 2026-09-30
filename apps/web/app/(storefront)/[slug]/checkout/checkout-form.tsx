@@ -16,6 +16,7 @@ import type { CheckoutFieldIssue } from "@louez/validations";
 
 import { DatePickerModal } from "@/components/storefront/date-picker-modal";
 import { useCustomerFieldIssueMessage } from "@/components/storefront/customer-fields/use-customer-field-issue-message";
+import { EMPTY_CUSTOMER_PROFILE_FORM_VALUES } from "@/components/storefront/customer-fields/util.customer-profile-fields";
 import { useAnalytics } from "@/contexts/analytics-context";
 import { useCart } from "@/contexts/cart-context";
 import { useAppForm } from "@/hooks/form/form";
@@ -101,6 +102,7 @@ export const CheckoutForm = ({
   timezone,
   initialCustomer,
   initialCustomerFieldValues,
+  initialCustomerProfileValues,
 }: CheckoutFormProps) => {
   const t = useTranslations("storefront.checkout");
   const tErrors = useTranslations("errors");
@@ -131,6 +133,9 @@ export const CheckoutForm = ({
   );
   // Values on file only prefill while the verified customer is the one checking out.
   const savedCustomerFieldValues = sessionCustomer ? initialCustomerFieldValues : NO_SAVED_VALUES;
+  const savedCustomerProfileValues = sessionCustomer
+    ? initialCustomerProfileValues
+    : EMPTY_CUSTOMER_PROFILE_FORM_VALUES;
   const [coordinates, setCoordinates] = useState<Coordinates>(NO_COORDINATES);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const stepRef = useRef<HTMLDivElement>(null);
@@ -166,7 +171,11 @@ export const CheckoutForm = ({
 
   const form = useAppForm({
     ...checkoutFormOptions,
-    defaultValues: getCheckoutDefaultValues(sessionCustomer, savedCustomerFieldValues),
+    defaultValues: getCheckoutDefaultValues(
+      sessionCustomer,
+      savedCustomerFieldValues,
+      savedCustomerProfileValues,
+    ),
     validators: { onSubmit: validator },
     onSubmit: async ({ value }) => submitRef.current(value),
   });
@@ -336,7 +345,15 @@ export const CheckoutForm = ({
   const handleSessionCustomer = (customer: CheckoutInitialCustomer | null) => {
     setSessionCustomer(customer);
     setCoordinates(NO_COORDINATES);
-    form.reset(getCheckoutDefaultValues(customer, customer ? initialCustomerFieldValues : {}));
+    form.reset(
+      customer
+        ? getCheckoutDefaultValues(
+            customer,
+            initialCustomerFieldValues,
+            initialCustomerProfileValues,
+          )
+        : getCheckoutDefaultValues(null),
+    );
   };
 
   const handleUseCustomerAddress = (leg: "outbound" | "return") => {
@@ -494,8 +511,10 @@ export const CheckoutForm = ({
               onSessionCustomer={handleSessionCustomer}
               coordinates={coordinates}
               onCoordinatesChange={setCoordinates}
+              profileFields={checkoutFields.profileFields}
               customerFields={checkoutFields.customerFields}
               savedCustomerFieldValues={savedCustomerFieldValues}
+              savedCustomerProfileValues={savedCustomerProfileValues}
               isCustomFieldsLoading={customFields.isLoading}
               onContinue={stepFlow.goToNextStep}
               stepDirection={stepFlow.stepDirection}

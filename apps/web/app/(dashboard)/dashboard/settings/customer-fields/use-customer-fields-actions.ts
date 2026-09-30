@@ -3,7 +3,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
-import type { CustomerFieldDefinition, CustomerFieldScope } from "@louez/types";
+import type {
+  CustomerFieldDefinition,
+  CustomerFieldScope,
+  CustomerProfileFieldKey,
+} from "@louez/types";
 import { toastManager } from "@louez/ui";
 
 import type { ResolvedCustomerFieldTemplate } from "@/lib/customers/customer-field-templates";
@@ -28,7 +32,7 @@ interface UseCustomerFieldsActionsParams {
   /** The page's reactions to what the server answered. */
   onCreated: (field: CustomerFieldWithUsage, values: CustomerFieldFormValues) => void;
   onItemTemplateAdopted: (section: string) => void;
-  onRemovedFromCanvas: (fieldId: string) => void;
+  onDeleted: (fieldId: string) => void;
   onSectionRenamed: (from: string, to: string) => void;
 }
 
@@ -40,7 +44,7 @@ export const useCustomerFieldsActions = ({
   fields,
   onCreated,
   onItemTemplateAdopted,
-  onRemovedFromCanvas,
+  onDeleted,
   onSectionRenamed,
 }: UseCustomerFieldsActionsParams) => {
   const t = useTranslations("dashboard.settings.customerFields");
@@ -63,6 +67,7 @@ export const useCustomerFieldsActions = ({
   const rename = useMutation(customerFieldsMutations.renameSection(queryClient));
   const sectionOnline = useMutation(customerFieldsMutations.updateSectionOnline(queryClient));
   const remove = useMutation(customerFieldsMutations.remove(queryClient));
+  const updateProfileField = useMutation(customerFieldsMutations.updateProfileField(queryClient));
 
   /** The draft's "Ajouter". A refusal leaves the draft as typed, with the reason in a toast. */
   const createField = async (values: CustomerFieldFormValues) => {
@@ -95,24 +100,23 @@ export const useCustomerFieldsActions = ({
       },
     );
 
-  const setActive = (field: Pick<CustomerFieldDefinition, "id">, isActive: boolean) => {
-    if (!isActive) onRemovedFromCanvas(field.id);
+  /** "Masquer plutôt" of the delete dialog: the field stays in place, greyed, its values kept. */
+  const hideField = (field: Pick<CustomerFieldDefinition, "id">) =>
     update.mutate(
-      { id: field.id, isActive },
+      { id: field.id, isActive: false },
       {
-        onSuccess: () =>
-          toastManager.add({
-            title: t(isActive ? "toasts.restored" : "toasts.archived"),
-            type: "success",
-          }),
+        onSuccess: () => toastManager.add({ title: t("toasts.hidden"), type: "success" }),
         ...withErrorToast,
       },
     );
-  };
 
   /** "Demander un champ au client": one click asks it, as optional. */
   const askCustomer = (field: Pick<CustomerFieldDefinition, "id">) =>
     update.mutate({ id: field.id, collectMode: "optional" }, withErrorToast);
+
+  /** The same for a Louez profile field. */
+  const askProfileField = (field: CustomerProfileFieldKey) =>
+    updateProfileField.mutate({ field, collectMode: "optional" }, withErrorToast);
 
   const reorderSection = (
     scope: CustomerFieldScope,
@@ -164,7 +168,7 @@ export const useCustomerFieldsActions = ({
       { id: fieldId },
       {
         onSuccess: () => {
-          onRemovedFromCanvas(fieldId);
+          onDeleted(fieldId);
           toastManager.add({ title: t("toasts.deleted"), type: "success" });
         },
         onError: showError,
@@ -175,8 +179,9 @@ export const useCustomerFieldsActions = ({
   return {
     createField,
     adoptTemplate,
-    setActive,
+    hideField,
     askCustomer,
+    askProfileField,
     reorderSection,
     moveField,
     moveSection,

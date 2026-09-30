@@ -67,14 +67,15 @@ const buildDeliveryLeg = (
 
 const optionalTrimmed = (value: string): string | undefined => value.trim() || undefined;
 
-/** The custom field keys of the payload, left out entirely when the cart asks nothing. */
+/** The custom and native field keys of the payload, left out entirely when the cart asks nothing. */
 const buildCheckoutFieldsPayload = (
   values: CheckoutFormValues,
   plan: CheckoutFieldsPlan | undefined,
-): Pick<CreateReservationInput, "customerFields" | "itemDetails"> => {
+): Pick<CreateReservationInput, "profileFields" | "customerFields" | "itemDetails"> => {
   if (!plan) return {};
   const submission = getCheckoutFieldsSubmission(values, plan);
   return {
+    ...(plan.profileFields.length > 0 ? { profileFields: submission.profileFields } : {}),
     ...(plan.customerFields.length > 0 ? { customerFields: submission.customerFields } : {}),
     ...(submission.itemDetails.length > 0 ? { itemDetails: submission.itemDetails } : {}),
   };

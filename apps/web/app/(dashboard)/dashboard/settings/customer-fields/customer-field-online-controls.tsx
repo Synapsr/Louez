@@ -24,18 +24,21 @@ interface CustomerFieldOnlineControlsProps {
   carriesItems: boolean;
   /** "Pour" before "Demander au client", when the dialog asks which products first. */
   targetsFirst?: boolean;
+  /** Social links can be asked, never required. */
+  allowsRequired?: boolean;
   onChange: (next: CustomerFieldOnlineSettings) => void;
 }
 
 /**
  * "Demander au client", "Pour" and "Modifiable par le client": the same three
- * controls for one field and for a whole section.
+ * controls for a store field, a Louez field and a whole section.
  */
 export const CustomerFieldOnlineControls = ({
   idPrefix,
   value,
   carriesItems,
   targetsFirst = false,
+  allowsRequired = true,
   onChange,
 }: CustomerFieldOnlineControlsProps) => {
   const t = useTranslations("dashboard.settings.customerFields.online");
@@ -49,7 +52,9 @@ export const CustomerFieldOnlineControls = ({
       <PanelSegmentedControl
         aria-label={t("collect")}
         value={value.collectMode}
-        options={CUSTOMER_FIELD_COLLECT_MODES.map((mode) => ({
+        options={CUSTOMER_FIELD_COLLECT_MODES.filter(
+          (mode) => allowsRequired || mode !== "required",
+        ).map((mode) => ({
           value: mode,
           label: t(`collectModes.${mode}`),
         }))}

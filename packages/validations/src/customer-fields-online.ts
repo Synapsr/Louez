@@ -11,6 +11,7 @@ import {
   customerFieldCollectModeSchema,
   customerFieldFormatSchema,
   customerFieldScopeSchema,
+  customerProfileFieldKeySchema,
   customerFieldTypeSchema,
   normalizeCustomerFieldValue,
   type CustomerFieldIssueCode,
@@ -172,8 +173,16 @@ export interface CheckoutFieldsToValidate<TField extends ValidationField> {
 
 const customerFieldIssueCodeSchema = z.enum(CUSTOMER_FIELD_ISSUE_CODES);
 
-/** Where a checkout value went wrong: a customer field, or a field of one unit of one line. */
+/**
+ * Where a checkout value went wrong: a native profile field, a customer
+ * field, or a field of one unit of one line.
+ */
 export const checkoutFieldIssueSchema = z.discriminatedUnion("target", [
+  z.object({
+    target: z.literal("profile"),
+    field: customerProfileFieldKeySchema,
+    code: customerFieldIssueCodeSchema,
+  }),
   z.object({
     target: z.literal("customer"),
     definitionId: z.string(),

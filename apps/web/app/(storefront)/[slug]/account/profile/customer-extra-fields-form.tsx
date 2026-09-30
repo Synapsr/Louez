@@ -5,12 +5,24 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 import { toastManager } from "@louez/ui";
-import type { CustomerFieldAccount } from "@louez/validations";
+import type {
+  CheckoutProfileField,
+  CustomerFieldAccount,
+  CustomerProfileValues,
+} from "@louez/validations";
 
 import { CustomerFieldFormInput } from "@/components/storefront/customer-fields/customer-field-form-input";
 import { CustomerFieldSections } from "@/components/storefront/customer-fields/customer-field-sections";
+import { ProfileFieldFormInput } from "@/components/storefront/customer-fields/profile-field-form-input";
+import { ProfileFieldsSection } from "@/components/storefront/customer-fields/profile-fields-section";
 import { useCustomerFieldIssueMessage } from "@/components/storefront/customer-fields/use-customer-field-issue-message";
 import { readCustomerFieldIssues } from "@/components/storefront/customer-fields/util.customer-field-issues";
+import {
+  readCustomerProfileFieldIssues,
+  toCustomerProfileFormValues,
+  toCustomerProfileValuesInput,
+  toProfileFieldName,
+} from "@/components/storefront/customer-fields/util.customer-profile-fields";
 import { useAppForm } from "@/hooks/form/form";
 import { orpc } from "@/lib/orpc/react";
 import { getErrorMessageKey } from "@/lib/utils/util.error-message";
@@ -18,13 +30,24 @@ import { getErrorMessageKey } from "@/lib/utils/util.error-message";
 import { createCustomerExtraFieldsSchema } from "./validator.customer-extra-fields";
 
 interface CustomerExtraFieldsFormProps {
-  /** The fields the customer may edit, already narrowed to their type. */
+  /** The native fields the customer may edit (birth date, source, links). */
+  profileFields: CheckoutProfileField[];
+  profile: CustomerProfileValues;
+  /** The custom fields the customer may edit, already narrowed to their type. */
   fields: CustomerFieldAccount[];
   values: Record<string, string>;
 }
 
-/** Edits the custom fields a customer owns; only their keys are sent, "" clears an optional one. */
-export const CustomerExtraFieldsForm = ({ fields, values }: CustomerExtraFieldsFormProps) => {
+/**
+ * Edits the native and custom fields a customer owns; only their keys are
+ * sent, a blank clears an optional one.
+ */
+export const CustomerExtraFieldsForm = ({
+  profileFields,
+  profile,
+  fields,
+  values,
+}: CustomerExtraFieldsFormProps) => {
   const t = useTranslations("storefront.account.profile");
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -43,9 +66,12 @@ export const CustomerExtraFieldsForm = ({ fields, values }: CustomerExtraFieldsF
 
   const form = useAppForm({
     defaultValues: {
+      profileFields: toCustomerProfileFormValues(profile),
       values: Object.fromEntries(fields.map((field) => [field.id, values[field.id] ?? ""])),
     },
-    validators: { onSubmit: createCustomerExtraFieldsSchema(fields, issueMessage) },
+    validators: {
+      onSubmit: createCustomerExtraFieldsSchema(profileFields, fields, issueMessage),
+    },
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
     onSubmit: async ({ value, formApi }) => {
       try {
@@ -53,9 +79,20 @@ export const CustomerExtraFieldsForm = ({ fields, values }: CustomerExtraFieldsF
           values: Object.fromEntries(
             fields.map((field) => [field.id, value.values[field.id] ?? ""]),
           ),
+          ...(profileFields.length > 0
+            ? { profile: toCustomerProfileValuesInput(value.profileFields, profileFields) }
+            : {}),
         });
       } catch (error) {
         const issues = readCustomerFieldIssues(error);
+        const profileIssues = readCustomerProfileFieldIssues(error);
+        for (const issue of profileIssues) {
+          formApi.setFieldMeta(toProfileFieldName(issue.field), (prev) => ({
+            ...prev,
+            isTouched: true,
+            errorMap: { ...prev.errorMap, onServer: issueMessage(issue.code) },
+          }));
+        }
         for (const issue of issues) {
           formApi.setFieldMeta(`values.${issue.definitionId}`, (prev) => ({
             ...prev,
@@ -64,8 +101,9 @@ export const CustomerExtraFieldsForm = ({ fields, values }: CustomerExtraFieldsF
           }));
         }
         const key = getErrorMessageKey(error);
+        const hasFieldIssues = issues.length > 0 || profileIssues.length > 0;
         toastManager.add({
-          title: issues.length > 0 || !tErrors.has(key) ? t("saveError") : tErrors(key),
+          title: hasFieldIssues || !tErrors.has(key) ? t("saveError") : tErrors(key),
           type: "error",
         });
       }
@@ -75,6 +113,15 @@ export const CustomerExtraFieldsForm = ({ fields, values }: CustomerExtraFieldsF
   return (
     <form.AppForm>
       <form.Form className="mt-4 flex flex-col gap-6">
+        {profileFields.length > 0 && (
+          <ProfileFieldsSection>
+            {profileFields.map((field) => (
+              <form.AppField key={field.key} name={toProfileFieldName(field.key)}>
+                {() => <ProfileFieldFormInput field={field} />}
+              </form.AppField>
+            ))}
+          </ProfileFieldsSection>
+        )}
         <CustomerFieldSections
           fields={fields}
           renderField={(field) => (

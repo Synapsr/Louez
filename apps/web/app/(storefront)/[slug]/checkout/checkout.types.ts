@@ -1,7 +1,14 @@
 import type { AiAdvisorMode, BusinessHours, DeliverySettings, TaxSettings } from "@louez/types";
-import type { CustomerFieldPublic, StorefrontPromoValidateOutput } from "@louez/validations";
+import type {
+  CheckoutProfileField,
+  CustomerFieldPublic,
+  StorefrontPromoValidateOutput,
+} from "@louez/validations";
 
-import type { RentalUnitFormValues } from "@/components/storefront/customer-fields/customer-fields.types";
+import type {
+  CustomerProfileFormValues,
+  RentalUnitFormValues,
+} from "@/components/storefront/customer-fields/customer-fields.types";
 
 import type { getTulipQuotePreview } from "./actions";
 
@@ -78,6 +85,11 @@ export interface CheckoutFormProps {
    * reveals anyone's values.
    */
   initialCustomerFieldValues: Record<string, string>;
+  /**
+   * The signed-in customer's native values (birth date, source, links) for
+   * the ones a checkout may ask. Blank for a guest, same rule as above.
+   */
+  initialCustomerProfileValues: CustomerProfileFormValues;
 }
 
 export interface CheckoutFormValues {
@@ -96,6 +108,8 @@ export interface CheckoutFormValues {
   notes: string;
   tulipInsuranceOptIn: boolean;
   acceptCgv: boolean;
+  /** Native profile fields the store asks (birth date, source, links). */
+  profileFields: CustomerProfileFormValues;
   /** Customer-scope custom fields the store asks, by definition id. */
   customerFields: Record<string, string>;
   /** "Détails de la location": one entry per rented unit, keyed by `toUnitKey(lineId, unitIndex)`. */
@@ -114,6 +128,8 @@ export interface CheckoutFieldsLine {
 
 /** What this cart asks the customer, lines in cart order (index = the payload's `lineIndex`). */
 export interface CheckoutFieldsPlan {
+  /** Native profile fields, in the record's order: the "Profil" group of the contact step. */
+  profileFields: CheckoutProfileField[];
   customerFields: CustomerFieldPublic[];
   lines: CheckoutFieldsLine[];
 }

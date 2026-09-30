@@ -9,7 +9,17 @@ import {
   listCustomerFieldDefinitions,
 } from "@louez/api/services/customer-fields";
 import { db, promoCodes, storeLocations } from "@louez/db";
+import {
+  listAskedProfileFields,
+  pickCustomerProfileValues,
+  resolveCustomerProfileSettings,
+} from "@louez/validations";
 
+import type { CustomerProfileFormValues } from "@/components/storefront/customer-fields/customer-fields.types";
+import {
+  EMPTY_CUSTOMER_PROFILE_FORM_VALUES,
+  toCustomerProfileFormValues,
+} from "@/components/storefront/customer-fields/util.customer-profile-fields";
 import { PageTracker } from "@/components/storefront/page-tracker";
 import { StorefrontPageRefresh } from "@/components/storefront/ui/storefront-page-refresh";
 import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
@@ -117,6 +127,22 @@ const getSavedCustomerFieldValues = async (
   );
 };
 
+/**
+ * The signed-in customer's native values (birth date, source, links) for the
+ * ones a checkout may ask, to prefill them. Same rule as above: session only.
+ */
+const getSavedCustomerProfileValues = (
+  store: StorefrontStore,
+  customer: Parameters<typeof pickCustomerProfileValues>[0],
+): CustomerProfileFormValues => {
+  const asked = listAskedProfileFields(
+    resolveCustomerProfileSettings(store.settings?.customerProfile),
+  );
+  return asked.length > 0
+    ? toCustomerProfileFormValues(pickCustomerProfileValues(customer, asked))
+    : EMPTY_CUSTOMER_PROFILE_FORM_VALUES;
+};
+
 export async function generateMetadata({ params }: CheckoutPageProps): Promise<Metadata> {
   const { slug } = await params;
   const [store, t] = await Promise.all([
@@ -154,6 +180,9 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
   const savedCustomerFieldValues = session
     ? await getSavedCustomerFieldValues(store.id, session.customerId)
     : NO_CUSTOMER_FIELD_VALUES;
+  const savedCustomerProfileValues = session
+    ? getSavedCustomerProfileValues(store, session.customer)
+    : EMPTY_CUSTOMER_PROFILE_FORM_VALUES;
 
   return (
     <>
@@ -190,6 +219,7 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
           timezone={store.settings?.timezone}
           initialCustomer={session ? toCheckoutInitialCustomer(session.customer) : null}
           initialCustomerFieldValues={savedCustomerFieldValues}
+          initialCustomerProfileValues={savedCustomerProfileValues}
         />
       </StorefrontSection>
     </>

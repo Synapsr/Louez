@@ -4,8 +4,6 @@ import type {
   CustomerFieldFormat,
   CustomerFieldScope,
   CustomerFieldType,
-  CustomerProfileFieldVisibility,
-  CustomerProfileSettings,
 } from "@louez/types";
 import type { CustomerFieldUpdateInput } from "@louez/validations";
 
@@ -17,7 +15,6 @@ import {
   toReorderPayload,
 } from "@/lib/customers/util.customer-fields";
 
-import type { CustomerProfileFieldKey } from "./customer-fields.types";
 import {
   type CustomerFieldOnlineSettings,
   patchOnlineSettings,
@@ -42,22 +39,24 @@ export interface CanvasSection<TField> extends CustomerFieldSection<TField> {
   localKey: string | null;
 }
 
-const activeOfScope = <TField extends CustomerFieldDefinition>(
+/** A scope's fields, hidden ones included: they keep their place in the form. */
+const fieldsOfScope = <TField extends CustomerFieldDefinition>(
   fields: readonly TField[],
   scope: CustomerFieldScope,
-) => fields.filter((field) => field.isActive && field.scope === scope);
+) => fields.filter((field) => field.scope === scope);
 
 /**
- * The sections of one scope, as the canvas shows them: those holding active
- * fields in the owner's order, then the ones just created. A new section that
- * got its first field (or was renamed like an existing one) is the saved one.
+ * The sections of one scope, as the canvas shows them: those holding fields
+ * in the owner's order (hidden ones stay where they were, greyed), then the
+ * ones just created. A new section that got its first field (or was renamed
+ * like an existing one) is the saved one.
  */
 export const listScopeSections = <TField extends CustomerFieldDefinition>(
   fields: readonly TField[],
   scope: CustomerFieldScope,
   localSections: readonly LocalSection[] = [],
 ): CanvasSection<TField>[] => {
-  const saved = groupFieldsBySection(activeOfScope(fields, scope));
+  const saved = groupFieldsBySection(fieldsOfScope(fields, scope));
   const savedNames = new Set(saved.map((section) => section.name));
   return [
     ...saved.map((section) => ({ ...section, localKey: null })),
@@ -76,9 +75,10 @@ export const listActiveInFormOrder = <TField extends CustomerFieldDefinition>(
   );
 
 /**
- * The reorder payload once one scope's sections changed. `reorder` wants every
- * active field; the other scope keeps its order, placed after the customer
- * record's fields (the two are never shown mixed).
+ * The reorder payload once one scope's sections changed. Every field goes,
+ * hidden ones included, so they keep their place among the others; the other
+ * scope keeps its order, placed after the customer record's fields (the two
+ * are never shown mixed).
  */
 const payloadWith = <TField extends CustomerFieldDefinition>(
   fields: readonly TField[],
@@ -86,8 +86,8 @@ const payloadWith = <TField extends CustomerFieldDefinition>(
   next: readonly CustomerFieldSection<TField>[],
 ) => {
   const customer =
-    scope === "customer" ? next : groupFieldsBySection(activeOfScope(fields, "customer"));
-  const item = scope === "item" ? next : groupFieldsBySection(activeOfScope(fields, "item"));
+    scope === "customer" ? next : groupFieldsBySection(fieldsOfScope(fields, "customer"));
+  const item = scope === "item" ? next : groupFieldsBySection(fieldsOfScope(fields, "item"));
   return toReorderPayload([...customer, ...item]);
 };
 
@@ -101,7 +101,7 @@ export const reorderSectionPayload = <TField extends CustomerFieldDefinition>(
   payloadWith(
     fields,
     scope,
-    groupFieldsBySection(activeOfScope(fields, scope)).map((entry) =>
+    groupFieldsBySection(fieldsOfScope(fields, scope)).map((entry) =>
       entry.name === section ? { ...entry, fields: [...ordered] } : entry,
     ),
   );
@@ -115,7 +115,7 @@ export const moveFieldPayload = <TField extends CustomerFieldDefinition>(
   payloadWith(
     fields,
     field.scope,
-    moveFieldToSection(groupFieldsBySection(activeOfScope(fields, field.scope)), field.id, target),
+    moveFieldToSection(groupFieldsBySection(fieldsOfScope(fields, field.scope)), field.id, target),
   );
 
 /** A section one step up (-1) or down (+1) among the sections of its scope. */
@@ -125,7 +125,7 @@ export const moveSectionPayload = <TField extends CustomerFieldDefinition>(
   section: string,
   direction: -1 | 1,
 ) => {
-  const sections = groupFieldsBySection(activeOfScope(fields, scope));
+  const sections = groupFieldsBySection(fieldsOfScope(fields, scope));
   const from = sections.findIndex((entry) => entry.name === section);
   return payloadWith(fields, scope, moveItem(sections, from, from + direction));
 };
@@ -239,7 +239,12 @@ export const diffOnlineSettings = (
 };
 
 /** Which control a change came from, to put its error right under it. */
-export type CustomerFieldSettingKey = keyof CustomerFieldSettingsValues | "online";
+export type CustomerFieldSettingKey = keyof CustomerFieldSettingsValues | "isActive" | "online";
+
+/** What one inspector control changes on a saved field; "Afficher sur la fiche" is `isActive`. */
+export type CustomerFieldSettingsChanges = Partial<
+  CustomerFieldSettingsValues & Pick<CustomerFieldDefinition, "isActive">
+>;
 
 export type CustomerFieldChangeOutcome =
   | { kind: "save"; patch: CustomerFieldPatch }
@@ -255,7 +260,7 @@ export type CustomerFieldChangeOutcome =
 export const toFieldChange = (
   field: CustomerFieldDefinition,
   key: CustomerFieldSettingKey,
-  changes: Partial<CustomerFieldSettingsValues>,
+  changes: CustomerFieldSettingsChanges,
 ): CustomerFieldChangeOutcome => {
   if (key === "online") {
     const current = pickOnlineSettings(field);
@@ -375,16 +380,6 @@ export const toDraftPreview = (
   isSensitive: values.isSensitive,
   isSearchable: false,
 });
-
-/** The settings change for one native profile field; social links are never required. */
-export const toProfileSettingsPatch = (
-  field: CustomerProfileFieldKey,
-  visibility: CustomerProfileFieldVisibility,
-): CustomerProfileSettings | null => {
-  if (field === "birthDate") return { birthDate: visibility };
-  if (field === "acquisitionSource") return { acquisitionSource: visibility };
-  return visibility === "required" ? null : { socialLinks: visibility };
-};
 
 /** "Nouvelle section", then "Nouvelle section 2"… so two new sections never merge. */
 export const nextSectionName = (base: string, taken: readonly string[]): string => {

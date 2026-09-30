@@ -1,16 +1,32 @@
 import type { CustomerFieldValues } from "@louez/types";
 import {
   normalizeCustomerFieldValue,
+  toCheckoutProfileIssue,
   validateCheckoutFieldValues,
   type CheckoutFieldIssue,
   type CheckoutItemDetailsInput,
+  type CheckoutProfileField,
   type CustomerFieldIssueCode,
   type CustomerFieldPublic,
+  type CustomerProfileValuesInput,
 } from "@louez/validations";
+
+import type { CustomerProfileFormValues } from "@/components/storefront/customer-fields/customer-fields.types";
+import {
+  getCustomerProfileFormIssues,
+  hasEveryProfileValueOnFile,
+  toCustomerProfileValuesInput,
+  toProfileFieldName,
+  type CustomerProfileFieldName,
+} from "@/components/storefront/customer-fields/util.customer-profile-fields";
 
 import type { CheckoutFieldsPlan, CheckoutFormValues } from "./checkout.types";
 
-export const EMPTY_CHECKOUT_FIELDS_PLAN: CheckoutFieldsPlan = { customerFields: [], lines: [] };
+export const EMPTY_CHECKOUT_FIELDS_PLAN: CheckoutFieldsPlan = {
+  profileFields: [],
+  customerFields: [],
+  lines: [],
+};
 
 /**
  * Key of one rented unit in `itemDetails`. The cart line id survives an edit
@@ -33,6 +49,7 @@ export const toParticipantFieldName = (unitKey: string): CheckoutParticipantFiel
   `itemDetails.${unitKey}.participantName`;
 
 interface ForCartAnswer {
+  profileFields: CheckoutProfileField[];
   customerFields: CustomerFieldPublic[];
   lines: { productId: string; quantity: number; itemFields: CustomerFieldPublic[] }[];
 }
@@ -56,6 +73,7 @@ export const buildCheckoutFieldsPlan = (
 ): CheckoutFieldsPlan => {
   if (!answer) return EMPTY_CHECKOUT_FIELDS_PLAN;
   return {
+    profileFields: answer.profileFields,
     customerFields: answer.customerFields,
     lines: lines.map((line, index) => {
       const lineAnswer = answer.lines[index];
@@ -74,9 +92,14 @@ export const buildCheckoutFieldsPlan = (
 export const hasCheckoutDetailsStep = (plan: CheckoutFieldsPlan): boolean =>
   plan.lines.some((line) => line.itemFields.length > 0);
 
-type CustomFieldFormValues = Pick<CheckoutFormValues, "customerFields" | "itemDetails">;
+type CustomFieldFormValues = Pick<
+  CheckoutFormValues,
+  "profileFields" | "customerFields" | "itemDetails"
+>;
 
 export interface CheckoutFieldsSubmission {
+  /** Every asked native field; a blank lets a signed-in customer clear a value. */
+  profileFields: CustomerProfileValuesInput;
   /** Every asked customer field; "" lets a signed-in customer clear a value. */
   customerFields: CustomerFieldValues;
   /** Each line asking item fields with all its units, empty ones included. */
@@ -92,6 +115,7 @@ export const getCheckoutFieldsSubmission = (
   values: CustomFieldFormValues,
   plan: CheckoutFieldsPlan,
 ): CheckoutFieldsSubmission => ({
+  profileFields: toCustomerProfileValuesInput(values.profileFields, plan.profileFields),
   customerFields: Object.fromEntries(
     plan.customerFields.map((field) => [field.id, values.customerFields[field.id] ?? ""]),
   ),
@@ -124,6 +148,7 @@ export const getCheckoutFieldIssuePath = (
   issue: CheckoutFieldIssue,
   plan: CheckoutFieldsPlan,
 ): string[] | null => {
+  if (issue.target === "profile") return ["profileFields", issue.field];
   if (issue.target === "customer") return ["customerFields", issue.definitionId];
   const line = plan.lines[issue.lineIndex];
   return line
@@ -139,7 +164,12 @@ export const getCheckoutFieldIssuePath = (
 export const getCheckoutFieldIssueName = (
   issue: CheckoutFieldIssue,
   plan: CheckoutFieldsPlan,
-): CheckoutCustomerFieldName | CheckoutItemFieldName | null => {
+): CustomerProfileFieldName | CheckoutCustomerFieldName | CheckoutItemFieldName | null => {
+  if (issue.target === "profile") {
+    return plan.profileFields.some((field) => field.key === issue.field)
+      ? toProfileFieldName(issue.field)
+      : null;
+  }
   const isShown = (fields: readonly CustomerFieldPublic[]) =>
     fields.some((field) => field.id === issue.definitionId);
   if (issue.target === "customer") {
@@ -159,11 +189,18 @@ export const getCheckoutFieldIssues = (
   values: CustomFieldFormValues,
   plan: CheckoutFieldsPlan,
 ): { path: string[]; code: CustomerFieldIssueCode }[] => {
-  if (plan.customerFields.length === 0 && !hasCheckoutDetailsStep(plan)) return [];
-  const { issues } = validateCheckoutFieldValues({
+  const asksCustomer = plan.profileFields.length > 0 || plan.customerFields.length > 0;
+  if (!asksCustomer && !hasCheckoutDetailsStep(plan)) return [];
+  const { issues: customIssues } = validateCheckoutFieldValues({
     fields: { customerFields: plan.customerFields, lines: plan.lines },
     ...getCheckoutFieldsSubmission(values, plan),
   });
+  const issues = [
+    ...getCustomerProfileFormIssues(values.profileFields, plan.profileFields).map(
+      toCheckoutProfileIssue,
+    ),
+    ...customIssues,
+  ];
   return issues.flatMap((issue) => {
     const path = getCheckoutFieldIssuePath(issue, plan);
     return path ? [{ path, code: issue.code }] : [];
@@ -174,9 +211,12 @@ export const getCheckoutFieldIssues = (
 export const getCheckoutFieldNamesForStep = (
   plan: CheckoutFieldsPlan,
   step: "contact" | "details",
-): (CheckoutCustomerFieldName | CheckoutItemFieldName)[] =>
+): (CustomerProfileFieldName | CheckoutCustomerFieldName | CheckoutItemFieldName)[] =>
   step === "contact"
-    ? plan.customerFields.map((field) => toCustomerFieldName(field.id))
+    ? [
+        ...plan.profileFields.map((field) => toProfileFieldName(field.key)),
+        ...plan.customerFields.map((field) => toCustomerFieldName(field.id)),
+      ]
     : plan.lines.flatMap((line) =>
         Array.from({ length: line.quantity }, (_, unitIndex) =>
           line.itemFields.map((field) =>
@@ -198,3 +238,18 @@ export const hasEveryCustomerFieldOnFile = (
     const result = normalizeCustomerFieldValue(field, saved[field.id]);
     return !("code" in result) && result.value !== "";
   });
+
+/**
+ * The contact step's folded line: something is asked, and the signed-in
+ * customer already gave every value (native and custom), all still valid.
+ */
+export const hasEveryAskedValueOnFile = (params: {
+  profileFields: readonly CheckoutProfileField[];
+  customerFields: readonly CustomerFieldPublic[];
+  savedProfile: CustomerProfileFormValues;
+  savedValues: CustomerFieldValues;
+}): boolean =>
+  params.profileFields.length + params.customerFields.length > 0 &&
+  hasEveryProfileValueOnFile(params.profileFields, params.savedProfile) &&
+  (params.customerFields.length === 0 ||
+    hasEveryCustomerFieldOnFile(params.customerFields, params.savedValues));

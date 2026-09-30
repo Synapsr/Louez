@@ -10,7 +10,7 @@ import { useTranslations } from 'next-intl'
 import type {
   CustomerFieldDefinition,
   CustomerFieldValues,
-  CustomerProfileSettings,
+  ResolvedCustomerProfileSettings,
 } from '@louez/types'
 import {
   Button,
@@ -35,7 +35,7 @@ interface CustomerFormProps {
   customer?: CustomerFormCustomer
   definitions: CustomerFieldDefinition[]
   initialCustomFields?: CustomerFieldValues
-  profileSettings: CustomerProfileSettings
+  profileSettings: ResolvedCustomerProfileSettings
   /** Owners get a shortcut to the field editor. */
   canCustomize: boolean
   openReplaySource?: CustomerFormOpenReplaySource

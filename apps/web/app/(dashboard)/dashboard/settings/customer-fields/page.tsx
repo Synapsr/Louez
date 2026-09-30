@@ -12,6 +12,7 @@ import { getCurrentStore } from "@/lib/store-context";
 import { CustomerFieldsBuilder } from "./customer-fields-builder";
 import { CustomerFieldsBuilderProvider } from "./customer-fields-builder-context";
 import { CustomerFieldsHeaderActions } from "./customer-fields-header-actions";
+import { CustomerFieldsWorkspace } from "./customer-fields-workspace";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -32,25 +33,27 @@ export default async function CustomerFieldsSettingsPage() {
     : null;
 
   return (
-    // The header buttons and the builder share one state: which field is selected, which dialog is open.
+    // The header buttons, the builder and the field drawer share one state: which field is
+    // selected, which dialog is open. The workspace moves the whole page over for the drawer.
     <CustomerFieldsBuilderProvider
       settings={{
         country: store.settings?.country ?? null,
         productCategory: profile?.productCategory ?? null,
-        profileSettings: store.settings?.customerProfile ?? {},
         storeTheme: store.theme
           ? { mode: store.theme.mode, primaryColor: store.theme.primaryColor }
           : null,
       }}
     >
-      <SettingsPageShell
-        title={t("title")}
-        description={t("description")}
-        width="wide"
-        actions={<CustomerFieldsHeaderActions />}
-      >
-        <CustomerFieldsBuilder />
-      </SettingsPageShell>
+      <CustomerFieldsWorkspace>
+        <SettingsPageShell
+          title={t("title")}
+          description={t("description")}
+          width="wide"
+          actions={<CustomerFieldsHeaderActions />}
+        >
+          <CustomerFieldsBuilder />
+        </SettingsPageShell>
+      </CustomerFieldsWorkspace>
     </CustomerFieldsBuilderProvider>
   );
 }

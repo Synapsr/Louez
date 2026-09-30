@@ -14,10 +14,13 @@ import type {
   CustomerFieldTarget,
   CustomerFieldValues,
   ReservationItemDetail,
+  ResolvedCustomerProfileSettings,
 } from "@louez/types";
 import {
   itemFieldsForProduct,
   resolveCheckoutFields,
+  resolveCheckoutProfileFields,
+  type CheckoutProfileField,
   type ResolvedCheckoutFields,
 } from "@louez/validations";
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
@@ -193,24 +196,39 @@ export async function listCustomerFieldTargetOptions(
 // Checkout resolution against the database
 // ----------------------------------------------------------------------------
 
+export interface ResolvedCartCustomerFields extends ResolvedCheckoutFields<CustomerFieldDefinition> {
+  /** Native profile fields asked, in the record's order; both buyer types. */
+  profileFields: CheckoutProfileField[];
+}
+
 /**
  * What the checkout asks for this cart, resolved from the store's live
- * definitions and the products' categories. Lines whose product is not in the
- * store ask nothing and concern no customer field.
+ * definitions, its native field settings and the products' categories. Lines
+ * whose product is not in the store ask nothing and concern no field.
  */
 export async function resolveCartCustomerFields(
   storeId: string,
   lines: readonly { productId: string; quantity: number }[],
   customerType: "individual" | "business",
+  profileSettings: ResolvedCustomerProfileSettings,
   executor: Executor = db,
-): Promise<ResolvedCheckoutFields<CustomerFieldDefinition>> {
+): Promise<ResolvedCartCustomerFields> {
   const definitions = await listCustomerFieldDefinitions(
     storeId,
     { activeOnly: true, scope: "all" },
     executor,
   );
-  const empty = { customerFields: [], lines: lines.map(() => ({ itemFields: [] })) };
-  if (!definitions.some((definition) => definition.collectMode !== "never")) return empty;
+  const empty = {
+    customerFields: [],
+    lines: lines.map(() => ({ itemFields: [] })),
+    profileFields: [],
+  };
+  const asksProfile = Object.values(profileSettings).some(
+    (field) => field.visibility !== "hidden" && field.collectMode !== "never",
+  );
+  if (!asksProfile && !definitions.some((definition) => definition.collectMode !== "never")) {
+    return empty;
+  }
 
   const categoryIds = await getProductCategoryIds(
     storeId,
@@ -235,6 +253,10 @@ export async function resolveCartCustomerFields(
   return {
     customerFields: resolved.customerFields,
     lines: lines.map((_, index) => ({ itemFields: itemFieldsByIndex.get(index) ?? [] })),
+    profileFields: resolveCheckoutProfileFields(
+      profileSettings,
+      known.map((entry) => ({ id: entry.line.productId, categoryIds: entry.line.categoryIds })),
+    ),
   };
 }
 

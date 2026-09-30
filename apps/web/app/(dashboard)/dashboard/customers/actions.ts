@@ -13,7 +13,7 @@ import {
   db,
   reservations,
 } from '@louez/db'
-import type { CustomerFieldValues } from '@louez/types'
+import type { CustomerFieldValues, ResolvedCustomerProfileSettings } from '@louez/types'
 import { normalizeCustomerSocialLinks } from '@louez/utils'
 import {
   customerSchema,
@@ -21,6 +21,7 @@ import {
   digitsOnly,
   isValidCompanyNumber,
   resolveCompanyNumberScheme,
+  resolveCustomerProfileSettings,
   validateCustomerFieldValues,
   type CustomerInput,
   type CustomerSectionInput,
@@ -94,12 +95,12 @@ function resolveCustomerProfileFields(
 
 /** The store may require a birth date or an origin: the form says so, the server makes sure. */
 function hasMissingRequiredProfileField(
-  settings: { birthDate?: string; acquisitionSource?: string } | undefined,
+  settings: ResolvedCustomerProfileSettings,
   validated: Pick<CustomerInput, 'birthDate' | 'acquisitionSource'>,
 ) {
   return (
-    (settings?.birthDate === 'required' && !validated.birthDate) ||
-    (settings?.acquisitionSource === 'required' && !validated.acquisitionSource)
+    (settings.birthDate.visibility === 'required' && !validated.birthDate) ||
+    (settings.acquisitionSource.visibility === 'required' && !validated.acquisitionSource)
   )
 }
 
@@ -127,7 +128,8 @@ export async function createCustomer(data: CustomerInput) {
 
     const { customFields, ...validated } = customerSchema.parse(data)
 
-    if (hasMissingRequiredProfileField(store.settings?.customerProfile, validated)) {
+    const profileSettings = resolveCustomerProfileSettings(store.settings?.customerProfile)
+    if (hasMissingRequiredProfileField(profileSettings, validated)) {
       return { error: 'errors.customFieldsInvalid' }
     }
 
@@ -192,7 +194,8 @@ export async function updateCustomer(customerId: string, data: CustomerInput) {
     const storeId = store.id
     const { customFields, ...validated } = customerSchema.parse(data)
 
-    if (hasMissingRequiredProfileField(store.settings?.customerProfile, validated)) {
+    const profileSettings = resolveCustomerProfileSettings(store.settings?.customerProfile)
+    if (hasMissingRequiredProfileField(profileSettings, validated)) {
       return { error: 'errors.customFieldsInvalid' }
     }
 

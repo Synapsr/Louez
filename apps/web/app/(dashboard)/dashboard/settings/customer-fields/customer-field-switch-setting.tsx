@@ -7,6 +7,8 @@ interface CustomerFieldSwitchSettingProps {
   label: string;
   hint: string;
   checked: boolean;
+  /** Set while the setting has no effect (a hidden field is required of nobody). */
+  disabled?: boolean;
   /** Why the server refused the last change (a limit reached): the switch is already back. */
   error?: string;
   onCheckedChange: (checked: boolean) => void;
@@ -18,6 +20,7 @@ export const CustomerFieldSwitchSetting = ({
   label,
   hint,
   checked,
+  disabled,
   error,
   onCheckedChange,
 }: CustomerFieldSwitchSettingProps) => (
@@ -27,6 +30,7 @@ export const CustomerFieldSwitchSetting = ({
       label={label}
       hint={hint}
       checked={checked}
+      disabled={disabled}
       onCheckedChange={onCheckedChange}
     />
     {error && <p className="text-destructive text-sm">{error}</p>}
