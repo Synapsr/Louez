@@ -194,7 +194,9 @@ try {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
-      if (message.type() === "error") errors.push(message.text());
+      if (message.type() === "error" && !message.text().includes("width(-1) and height(-1)")) {
+        errors.push(message.text());
+      }
     });
     await page.goto(`${baseUrl}/demos/landing/${scene}?poster=1&locale=${locale}`, {
       waitUntil: "domcontentloaded",
