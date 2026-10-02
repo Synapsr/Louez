@@ -6,7 +6,7 @@ import {
 import metadata from 'libphonenumber-js/metadata.min.json';
 
 const phoneMetadata: MetadataJson = metadata;
-const DEFAULT_COUNTRY: CountryCode = 'FR';
+const DEFAULT_COUNTRY: CountryCode = 'PL';
 
 export function isPossiblePhoneNumberInput(
   value: string,

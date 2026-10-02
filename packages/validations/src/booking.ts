@@ -17,12 +17,21 @@ const bookingCustomerSchema = z
   })
   .strict()
   .superRefine((customer, context) => {
-    if (customer.customerType === "business" && !customer.companyName) {
-      context.addIssue({
-        code: "custom",
-        message: "companyName is required for business customers",
-        path: ["companyName"],
-      });
+    if (customer.customerType === "business") {
+      if (!customer.companyName) {
+        context.addIssue({
+          code: "custom",
+          message: "companyName is required for business customers",
+          path: ["companyName"],
+        });
+      }
+      if (!customer.companyNumber) {
+        context.addIssue({
+          code: "custom",
+          message: "companyNumber is required for business customers",
+          path: ["companyNumber"],
+        });
+      }
     }
   });
 

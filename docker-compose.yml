@@ -13,6 +13,20 @@
 # see .env.example for the full configuration surface.
 
 services:
+  caddy:
+    image: caddy:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - louez
+
   louez:
     image: ghcr.io/enstudios-rental/louez:${LOUEZ_IMAGE_TAG:-latest}
     # To run from source instead of the published image, replace `image:` with:
@@ -186,3 +200,5 @@ volumes:
   louez_data:
   mysql_data:
   minio_data:
+  caddy_data:
+  caddy_config:

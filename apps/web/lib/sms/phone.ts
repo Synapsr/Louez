@@ -10,7 +10,7 @@ import {
 import metadata from 'libphonenumber-js/metadata.min.json';
 
 const phoneMetadata: MetadataJson = metadata;
-const DEFAULT_PHONE_COUNTRY: CountryCode = 'FR';
+const DEFAULT_PHONE_COUNTRY: CountryCode = 'PL';
 const PRIORITY_COUNTRIES: CountryCode[] = [
   'FR',
   'BE',

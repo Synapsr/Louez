@@ -1,0 +1,3 @@
+{$NEXT_PUBLIC_APP_DOMAIN} {
+	reverse_proxy louez:3000
+}

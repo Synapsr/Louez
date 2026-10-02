@@ -50,7 +50,7 @@ export interface PhoneInputProps extends Omit<
  * - Handles various input formats (0612..., +33612..., 0033612...)
  */
 const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
-  ({ className, value = "", onChange, defaultCountry = "FR", disabled, ...props }, ref) => {
+  ({ className, value = "", onChange, defaultCountry = "PL", disabled, ...props }, ref) => {
     const t = useTranslations("common.phoneInput");
     const countries = React.useMemo(() => getCountriesSortedForDisplay(), []);
     const initialParsed = React.useMemo(

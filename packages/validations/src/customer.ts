@@ -65,15 +65,21 @@ export const createCustomerSchema = (
     })
     .superRefine((data, ctx) => {
       // If business customer, company name is required
-      if (
-        data.customerType === 'business' &&
-        (!data.companyName || data.companyName.trim().length === 0)
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: t('companyNameRequired'),
-          path: ['companyName'],
-        });
+      if (data.customerType === 'business') {
+        if (!data.companyName || data.companyName.trim().length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('companyNameRequired'),
+            path: ['companyName'],
+          });
+        }
+        if (!data.companyNumber || data.companyNumber.trim().length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('companyNumberRequired'),
+            path: ['companyNumber'],
+          });
+        }
       }
     });
 
@@ -82,15 +88,21 @@ export const customerSchema = z
   .object(baseCustomerFields)
   .superRefine((data, ctx) => {
     // If business customer, company name is required
-    if (
-      data.customerType === 'business' &&
-      (!data.companyName || data.companyName.trim().length === 0)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'validation.companyNameRequired',
-        path: ['companyName'],
-      });
+    if (data.customerType === 'business') {
+      if (!data.companyName || data.companyName.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'validation.companyNameRequired',
+          path: ['companyName'],
+        });
+      }
+      if (!data.companyNumber || data.companyNumber.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'validation.companyNumberRequired',
+          path: ['companyNumber'],
+        });
+      }
     }
   });
 
