@@ -1,10 +1,8 @@
 "use client";
 
-import { useContext, useState, type MouseEvent as ReactMouseEvent } from "react";
-import Link from "next/link";
+import { useContext, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  ArrowLeft,
   Mail,
   FileText,
   MoreHorizontal,
@@ -16,7 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toastManager } from "@louez/ui";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@louez/ui";
 import {
@@ -31,10 +29,7 @@ import { ReservationIdentity } from "./reservation-identity";
 import { ContractDownloadContext } from "@/lib/document-previews/contract-download-context";
 import { SendEmailModal } from "./send-email-modal";
 import { generateAccessUrl } from "@/app/(dashboard)/dashboard/reservations/actions";
-import {
-  getDashboardReservationBackHref,
-  tryRestoreReservationTimelineHistory,
-} from "@/lib/dashboard/util.reservation-navigation";
+import { ReservationBackButton } from "./reservation-back-button";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
@@ -113,38 +108,6 @@ export function ReservationHeader({
   const downloadContract = onDownloadContract ?? inheritedDownloadContract;
 
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const returnTo = searchParams.get("returnTo");
-  const backHref = readOnly ? "/demos/landing/planning" : getDashboardReservationBackHref(returnTo);
-
-  const handleBackClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
-    if (
-      event.defaultPrevented ||
-      event.button !== 0 ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey
-    ) {
-      return;
-    }
-
-    if (onBack) {
-      event.preventDefault();
-      onBack();
-      return;
-    }
-
-    tryRestoreReservationTimelineHistory({
-      historyLength: window.history.length,
-      restoreHistory: () => {
-        event.preventDefault();
-        router.back();
-      },
-      returnTo,
-      source: searchParams.get("source"),
-    });
-  };
 
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -264,15 +227,7 @@ export function ReservationHeader({
         {/* Top row: Back button + Title + Badges */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <Button
-              render={<Link href={backHref} onClick={handleBackClick} />}
-              variant="ghost"
-              size="icon"
-              className="shrink-0 -ml-2 mt-0.5"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">{tCommon("back")}</span>
-            </Button>
+            <ReservationBackButton onBack={onBack} readOnly={readOnly} />
 
             <ReservationIdentity
               reservationNumber={reservationNumber}
