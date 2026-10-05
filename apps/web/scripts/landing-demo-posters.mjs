@@ -4,7 +4,7 @@ import { cp, mkdir, mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { basename, resolve } from "node:path";
-import { tmpdir } from "node:os";
+import { availableParallelism, tmpdir } from "node:os";
 
 const option = (name) => process.argv[process.argv.indexOf(name) + 1];
 const browserPath = process.argv.includes("--browser")
@@ -184,10 +184,17 @@ try {
     const manifest = await readFile(resolve(output, "manifest.json"), "utf8").catch(() => "{}");
     Object.assign(sizes, JSON.parse(manifest).bytes);
   }
+  // One capture after another took longer than the rest of the image build. `--concurrency n`
+  // sets how many pages are drawn at a time, against the same server and browser.
+  const concurrency = process.argv.includes("--concurrency")
+    ? Number(option("--concurrency"))
+    : Math.min(availableParallelism(), 8);
+  if (!Number.isInteger(concurrency) || concurrency < 1)
+    throw new Error("Pass --concurrency as a positive integer.");
   const captures = selectedLocales.flatMap((locale) => selected.map((scene) => ({ scene, locale })));
   // Every capture runs, then all failures are reported together: one build shows them all.
   const failures = [];
-  for (const { scene, locale } of captures) {
+  const capture = async ({ scene, locale }) => {
     const phone = phoneScenes.includes(scene);
     const page = await context.newPage();
     if (phone) await page.setViewportSize({ width: 390, height: 844 });
@@ -229,9 +236,8 @@ try {
     if (errors.length) {
       const hydration = errors.some((error) => /react\.dev\/errors\/(418|425)\b/.test(error));
       const details = hydration ? `\n${await describeTextMismatch(page)}` : "";
-      failures.push(`${scene} (${locale}): ${errors.join("\n")}${details}`);
       await page.close();
-      continue;
+      return `${scene} (${locale}): ${errors.join("\n")}${details}`;
     }
     const png = await page.screenshot({
       animations: "disabled",
@@ -244,7 +250,23 @@ try {
     if (locale === "fr") await writeFile(resolve(output, `${scene}.webp`), webp);
     sizes[`${scene}.${locale}`] = webp.length;
     await page.close();
-  }
+  };
+  // Captures finish in any order: the manifest keeps the order of the list.
+  for (const { scene, locale } of captures) sizes[`${scene}.${locale}`] ??= undefined;
+  // The workers draw from one iterator: each takes the next capture as soon as it is free.
+  const pending = captures.values();
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, captures.length) }, async () => {
+      for (const next of pending) {
+        // Remote fixture images come through the image optimizer, and a slow fetch answers 500:
+        // a failed capture is drawn once more before it counts.
+        const attempt = () =>
+          capture(next).catch((error) => `${next.scene} (${next.locale}): ${error.message}`);
+        const failure = (await attempt()) && (await attempt());
+        if (failure) failures.push(failure);
+      }
+    }),
+  );
   if (failures.length)
     throw new Error(`${failures.length} demo poster(s) failed:\n\n${failures.join("\n\n")}`);
   await writeFile(

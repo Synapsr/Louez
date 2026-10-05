@@ -109,10 +109,15 @@ aperçu, `useParentScroll` transmet le mouvement vertical à la landing avec
 le zoom et le défilement horizontal restent disponibles. En grand ou sur une
 route ouverte seule, le défilement reste interne à l’app.
 
-Les captures sont dans `apps/web/public/demo-posters`. Le stage `demo-posters`
-de `docker/Dockerfile.web` les régénère depuis le build de production. Son
-serveur utilise les fixtures, sans URL de base de données ; Chromium reste
-dans le stage de build. Pour les régénérer après un build local :
+Les captures sont dans `apps/web/public/demo-posters` et sont commitées :
+l’image Docker embarque celles du dépôt. Le build ne les régénère plus depuis
+le 5 octobre 2026 : 572 captures (44 scènes, 13 langues) y prenaient jusqu’à
+quinze minutes. Les régénérer et les commiter quand une scène ou un composant
+qu’elle affiche change ; une capture ancienne garde les dates du jour où elle
+a été prise, jusqu’au chargement de l’iframe. Le serveur de capture utilise les
+fixtures, sans URL de base de données. Le script dessine plusieurs pages à la
+fois (`--concurrency n`, huit au plus par défaut) et redessine une fois une
+capture en échec. Après un build local :
 
 ```sh
 pnpm --filter @louez/web demo:posters --start --browser /chemin/vers/chromium

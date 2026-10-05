@@ -117,13 +117,6 @@ RUN corepack enable pnpm && \
     APP_VERSION="${NEXT_PUBLIC_APP_VERSION:-build-$(date -u +%Y%m%d%H%M%S)}" && \
     NEXT_PUBLIC_APP_VERSION="${APP_VERSION}" pnpm turbo run build --filter=@louez/web --env-mode=loose
 
-# Posters are captured from the built app. Chromium stays in this build stage.
-FROM builder AS demo-posters
-# Chromium only brings Latin fonts; the capture stage also renders zh, ja and ko.
-# These system fonts stay in this build stage, outside the final application image.
-RUN apk add --no-cache chromium font-noto-cjk
-RUN pnpm --filter=@louez/web demo:posters --start --browser /usr/bin/chromium
-
 # -----------------------------------------------------------------------------
 # Stage 3: Migrator
 # One-off image used to run database migrations
@@ -170,8 +163,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/
 
 # Copy public assets (static files) - must match monorepo structure
 # --chown so the non-root nextjs user can read them regardless of the
-# permissions the files had on the build host
-COPY --from=demo-posters --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+# permissions the files had on the build host. The demo posters under
+# public/demo-posters are the committed ones: capturing all of them took longer
+# than the rest of the build, so `demo:posters` is run by hand when a scene changes.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
 # Changelog write-ups, read from disk at request time. next.config.ts also lists
 # them in outputFileTracingIncludes for non-Docker deployments; copying them here
