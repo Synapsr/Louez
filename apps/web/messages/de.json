@@ -7280,7 +7280,10 @@
         "quote": "Angebot",
         "quoteDescription": "Ein Angebot wurde Ihnen gesendet. Nehmen Sie es an oder lehnen Sie es ab.",
         "declined": "Abgelehnt",
-        "declinedDescription": "Sie haben dieses Angebot abgelehnt"
+        "declinedDescription": "Sie haben dieses Angebot abgelehnt",
+        "checkoutFailed": "Zahlung fehlgeschlagen · Reservierung storniert",
+        "checkoutFailedDescription": "Die Zahlung konnte nicht gestartet werden. Kontaktieren Sie das Geschäft für eine neue Reservierung.",
+        "checkoutAmountTooSmall": "Reservierung storniert: Kartenzahlungen erfordern mindestens {minimumAmount, number} {currency}. Kontaktieren Sie das Geschäft für eine neue Reservierung."
       },
       "signContract": "Vertrag unterschreiben",
       "contractSigned": "Vertrag unterschrieben",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "Der Status dieser Anfrage hat sich geändert. Sie kann hier nicht mehr storniert werden. Kontaktieren Sie das Geschäft.",
     "requestCancellationPaymentPending": "Für diese Anfrage läuft noch eine Zahlung. Versuchen Sie es nach der Aktualisierung erneut oder kontaktieren Sie das Geschäft.",
     "requestCancellationPaymentChanged": "Die Zahlungsinformationen haben sich geändert. Prüfen Sie diese, bevor Sie die Stornierung erneut bestätigen.",
-    "promoCodeProductsAlreadyDiscounted": "Dieser Code gilt nicht für bereits reduzierte Produkte."
+    "promoCodeProductsAlreadyDiscounted": "Dieser Code gilt nicht für bereits reduzierte Produkte.",
+    "paymentAmountTooSmall": "Kartenzahlungen erfordern mindestens {minimumAmount, number} {currency}. Ändern Sie Ihren Warenkorb oder kontaktieren Sie das Geschäft.",
+    "checkoutPaymentFailed": "Die Zahlung konnte nicht gestartet werden. Ihre Reservierung wurde nicht bestätigt. Versuchen Sie es erneut oder kontaktieren Sie das Geschäft."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

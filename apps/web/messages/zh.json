@@ -7280,7 +7280,10 @@
         "quote": "报价",
         "quoteDescription": "报价已发送给您。接受或拒绝它。",
         "declined": "拒绝",
-        "declinedDescription": "您拒绝了此报价"
+        "declinedDescription": "您拒绝了此报价",
+        "checkoutFailed": "付款失败 · 预订已取消",
+        "checkoutFailedDescription": "无法开始付款。请联系店铺重新预订。",
+        "checkoutAmountTooSmall": "预订已取消：银行卡付款的最低金额为{minimumAmount, number} {currency}。请联系店铺重新预订。"
       },
       "signContract": "签订合同",
       "contractSigned": "合同签订",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "此请求的状态已更改。这里已经不能取消了。联系商店。",
     "requestCancellationPaymentPending": "此请求的付款仍在进行中。更新后重试或联系商店。",
     "requestCancellationPaymentChanged": "付款信息已更改。在再次确认取消之前请先查看。",
-    "promoCodeProductsAlreadyDiscounted": "此代码不适用于已促销的产品。"
+    "promoCodeProductsAlreadyDiscounted": "此代码不适用于已促销的产品。",
+    "paymentAmountTooSmall": "银行卡付款的最低金额为{minimumAmount, number} {currency}。请修改购物车或联系店铺。",
+    "checkoutPaymentFailed": "无法开始付款。您的预订尚未确认。请重试或联系店铺。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",

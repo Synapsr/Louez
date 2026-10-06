@@ -7280,7 +7280,10 @@
         "quote": "Presupuesto",
         "quoteDescription": "Se le ha enviado un presupuesto. Acéptelo o rechácelo.",
         "declined": "Rechazado",
-        "declinedDescription": "Ha rechazado este presupuesto"
+        "declinedDescription": "Ha rechazado este presupuesto",
+        "checkoutFailed": "Pago fallido · reserva cancelada",
+        "checkoutFailedDescription": "No se pudo iniciar el pago. Contacta con la tienda para hacer una nueva reserva.",
+        "checkoutAmountTooSmall": "Reserva cancelada: el pago con tarjeta requiere al menos {minimumAmount, number} {currency}. Contacta con la tienda para hacer una nueva reserva."
       },
       "quote": {
         "accept": "Aceptar presupuesto",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "El estado de esta solicitud ha cambiado. Ya no se puede cancelar aquí. Contacta con la tienda.",
     "requestCancellationPaymentPending": "Hay un pago en curso para esta solicitud. Vuelve a intentarlo cuando se actualice o contacta con la tienda.",
     "requestCancellationPaymentChanged": "La información del pago ha cambiado. Revísala antes de volver a confirmar la cancelación.",
-    "promoCodeProductsAlreadyDiscounted": "Este código no se aplica a productos que ya están en promoción."
+    "promoCodeProductsAlreadyDiscounted": "Este código no se aplica a productos que ya están en promoción.",
+    "paymentAmountTooSmall": "El pago con tarjeta requiere un mínimo de {minimumAmount, number} {currency}. Modifica el carrito o contacta con la tienda.",
+    "checkoutPaymentFailed": "No se pudo iniciar el pago. Tu reserva no se ha confirmado. Inténtalo de nuevo o contacta con la tienda."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

@@ -7280,7 +7280,10 @@
         "quote": "Devis",
         "quoteDescription": "Un devis vous a été envoyé. Acceptez-le ou refusez-le.",
         "declined": "Refusé",
-        "declinedDescription": "Vous avez refusé ce devis"
+        "declinedDescription": "Vous avez refusé ce devis",
+        "checkoutFailed": "Paiement impossible · réservation annulée",
+        "checkoutFailedDescription": "Le paiement n’a pas pu démarrer. Contactez la boutique pour refaire votre réservation.",
+        "checkoutAmountTooSmall": "Réservation annulée : le paiement par carte exige au moins {minimumAmount, number} {currency}. Contactez la boutique pour refaire votre réservation."
       },
       "signContract": "Signer le contrat",
       "contractSigned": "Contrat signé",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "Le statut de cette demande a changé. Elle ne peut plus être annulée ici. Contactez le magasin.",
     "requestCancellationPaymentPending": "Un paiement est encore en cours pour cette demande. Réessayez après sa mise à jour ou contactez le magasin.",
     "requestCancellationPaymentChanged": "Les informations de paiement ont changé. Vérifiez-les avant de confirmer à nouveau l’annulation.",
-    "promoCodeProductsAlreadyDiscounted": "Ce code ne s’applique pas aux produits déjà en promotion."
+    "promoCodeProductsAlreadyDiscounted": "Ce code ne s’applique pas aux produits déjà en promotion.",
+    "paymentAmountTooSmall": "Le paiement par carte exige un minimum de {minimumAmount, number} {currency}. Modifiez votre panier ou contactez la boutique.",
+    "checkoutPaymentFailed": "Le paiement n’a pas pu démarrer. Votre réservation n’a pas été confirmée. Réessayez ou contactez la boutique."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

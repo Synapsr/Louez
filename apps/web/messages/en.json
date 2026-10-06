@@ -7280,7 +7280,10 @@
         "quote": "Quote",
         "quoteDescription": "A quote has been sent to you. Accept or decline it.",
         "declined": "Declined",
-        "declinedDescription": "You declined this quote"
+        "declinedDescription": "You declined this quote",
+        "checkoutFailed": "Payment failed · reservation cancelled",
+        "checkoutFailedDescription": "Payment could not start. Contact the store to make a new reservation.",
+        "checkoutAmountTooSmall": "Reservation cancelled: card payments require at least {minimumAmount, number} {currency}. Contact the store to make a new reservation."
       },
       "signContract": "Sign contract",
       "contractSigned": "Contract signed",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "The status of this request has changed. It can no longer be cancelled here. Contact the store.",
     "requestCancellationPaymentPending": "A payment is still in progress for this request. Try again after it updates or contact the store.",
     "requestCancellationPaymentChanged": "The payment information has changed. Review it before confirming cancellation again.",
-    "promoCodeProductsAlreadyDiscounted": "This code does not apply to products already on promotion."
+    "promoCodeProductsAlreadyDiscounted": "This code does not apply to products already on promotion.",
+    "paymentAmountTooSmall": "Card payments require a minimum of {minimumAmount, number} {currency}. Update your cart or contact the store.",
+    "checkoutPaymentFailed": "Payment could not start. Your reservation was not confirmed. Try again or contact the store."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

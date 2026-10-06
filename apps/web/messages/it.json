@@ -7280,7 +7280,10 @@
         "quote": "Preventivo",
         "quoteDescription": "Le è stato inviato un preventivo. Lo accetti o lo rifiuti.",
         "declined": "Rifiutato",
-        "declinedDescription": "Ha rifiutato questo preventivo"
+        "declinedDescription": "Ha rifiutato questo preventivo",
+        "checkoutFailed": "Pagamento non riuscito · prenotazione annullata",
+        "checkoutFailedDescription": "Impossibile avviare il pagamento. Contatta il negozio per effettuare una nuova prenotazione.",
+        "checkoutAmountTooSmall": "Prenotazione annullata: il pagamento con carta richiede almeno {minimumAmount, number} {currency}. Contatta il negozio per effettuare una nuova prenotazione."
       },
       "signContract": "Firma contratto",
       "contractSigned": "Contratto firmato",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "Lo stato della richiesta è cambiato. Non può più essere annullata qui. Contatta il negozio.",
     "requestCancellationPaymentPending": "Un pagamento è ancora in corso per questa richiesta. Riprova dopo l’aggiornamento o contatta il negozio.",
     "requestCancellationPaymentChanged": "Le informazioni sul pagamento sono cambiate. Controllale prima di confermare nuovamente l’annullamento.",
-    "promoCodeProductsAlreadyDiscounted": "Questo codice non si applica ai prodotti già in promozione."
+    "promoCodeProductsAlreadyDiscounted": "Questo codice non si applica ai prodotti già in promozione.",
+    "paymentAmountTooSmall": "Il pagamento con carta richiede un minimo di {minimumAmount, number} {currency}. Modifica il carrello o contatta il negozio.",
+    "checkoutPaymentFailed": "Impossibile avviare il pagamento. La prenotazione non è stata confermata. Riprova o contatta il negozio."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

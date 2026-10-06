@@ -51,7 +51,7 @@ export const marketplaceHoldAdapter: MarketplaceHoldAdapter = {
     });
 
     if (!result.ok) {
-      return { success: false, error: result.error };
+      return { success: false, error: result.error, errorParams: result.params };
     }
 
     return {
@@ -86,6 +86,7 @@ export const marketplaceCheckoutAdapter: MarketplaceCheckoutAdapter = {
       return {
         success: false,
         error: result.error ?? "errors.paymentSessionError",
+        errorParams: result.errorParams,
       };
     }
 

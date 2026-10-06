@@ -57,6 +57,7 @@ import {
 } from "@/lib/reservations/util.payment-status";
 import { getReservationActions } from "@/lib/reservations/util.reservation-actions";
 import { getReservationUpdates } from "@/lib/reservations/util.reservation-updates";
+import { getCheckoutFailure } from "@/lib/reservations/util.checkout-failure";
 import {
   formatFulfillmentPlaceLine,
   getFulfillmentPlaceKey,
@@ -397,6 +398,7 @@ export default async function ReservationDetailPage({
           status: status,
           cancelledRequest: cancelledRequest,
           isRentalPaid: rentalPaid,
+          checkoutFailure: getCheckoutFailure(reservation.status, reservation.activity),
           paymentRequired: status === "confirmed" && actions.canPay,
           customerEmail: session.customer.email,
         }}

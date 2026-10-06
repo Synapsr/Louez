@@ -154,8 +154,7 @@ export const runPostCreationEffects = async ({
 /**
  * "Request received" notifications: customer (email/SMS), landlord email and
  * admin channels. Only meaningful when the reservation IS a request the owner
- * must review, that is in request mode or when a payment-mode checkout could
- * not start its Stripe session. In payment mode the webhook notifies on
+ * must review, that is in request mode. In payment mode the webhook notifies on
  * payment instead, so an abandoned Stripe session no longer emails anyone.
  */
 export const notifyRequestReceived = async ({

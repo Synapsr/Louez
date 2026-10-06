@@ -24,14 +24,24 @@ interface UseReservationActionsInput {
   onAcceptQuote?: () => void;
 }
 
-class ActionFailure extends Error {}
+class ActionFailure extends Error {
+  constructor(
+    message: string,
+    readonly params: Record<string, string | number> = {},
+  ) {
+    super(message);
+  }
+}
 
 /** Action error keys may still carry the legacy `errors.` prefix. */
 const toErrorKey = (value: string): string =>
   value.startsWith("errors.") ? value.slice(7) : value;
 
-const toActionError = (result: { error?: string }): never => {
-  throw new ActionFailure(toErrorKey(result.error ?? "generic"));
+const toActionError = (result: {
+  error?: string;
+  errorParams?: Record<string, string | number>;
+}): never => {
+  throw new ActionFailure(toErrorKey(result.error ?? "generic"), result.errorParams);
 };
 
 /**
@@ -56,7 +66,9 @@ export const useReservationActions = ({
   const [error, setError] = useState<string | null>(null);
 
   const fail = (failure: unknown, fallback: string) => {
-    setError(failure instanceof ActionFailure ? tErrors(failure.message) : fallback);
+    setError(
+      failure instanceof ActionFailure ? tErrors(failure.message, failure.params) : fallback,
+    );
   };
 
   const pay = useMutation({

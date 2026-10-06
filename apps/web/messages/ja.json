@@ -7280,7 +7280,10 @@
         "quote": "引用",
         "quoteDescription": "見積書が送られてきました。受け入れるか拒否するか。",
         "declined": "拒否されました",
-        "declinedDescription": "この見積もりを拒否しました"
+        "declinedDescription": "この見積もりを拒否しました",
+        "checkoutFailed": "支払いエラー・予約キャンセル",
+        "checkoutFailedDescription": "支払いを開始できませんでした。再予約について店舗にお問い合わせください。",
+        "checkoutAmountTooSmall": "予約はキャンセルされました。カード払いには最低{minimumAmount, number} {currency}が必要です。再予約について店舗にお問い合わせください。"
       },
       "signContract": "契約書に署名する",
       "contractSigned": "契約書に署名しました",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "このリクエストのステータスが変更されました。こちらからキャンセルすることはできなくなりました。販売店にお問い合わせください。",
     "requestCancellationPaymentPending": "このリクエストに対する支払いはまだ進行中です。アップデート後に再度お試しいただくか、ストアにお問い合わせください。",
     "requestCancellationPaymentChanged": "お支払い情報が変更になりました。再度キャンセルを確認する前に確認してください。",
-    "promoCodeProductsAlreadyDiscounted": "このコードは、すでにプロモーション中の製品には適用されません。"
+    "promoCodeProductsAlreadyDiscounted": "このコードは、すでにプロモーション中の製品には適用されません。",
+    "paymentAmountTooSmall": "カード払いの最低金額は{minimumAmount, number} {currency}です。カートを変更するか、店舗にお問い合わせください。",
+    "checkoutPaymentFailed": "支払いを開始できませんでした。予約は確定していません。再試行するか、店舗にお問い合わせください。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",

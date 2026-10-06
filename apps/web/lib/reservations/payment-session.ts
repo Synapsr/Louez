@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { db, payments, reservationActivity, reservations, stores } from "@louez/db";
+import { validateStripePaymentAmount } from "@louez/utils";
 
 import { env } from "@/env";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
@@ -100,8 +101,12 @@ export async function createReservationPaymentSessionForCustomer(
         ? options.chargeAmount
         : Number.parseFloat(reservation.totalAmount);
     const chargeCents = toStripeCents(chargeAmount, currency);
-    if (chargeCents <= 0) {
-      return { success: true, paymentUrl: null };
+    const paymentAmount = validateStripePaymentAmount(chargeAmount, currency);
+    if (!paymentAmount.ok) {
+      return {
+        error: paymentAmount.error,
+        errorParams: "params" in paymentAmount ? paymentAmount.params : undefined,
+      };
     }
 
     const pendingPayments = reservation.payments.filter(

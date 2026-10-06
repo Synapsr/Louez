@@ -56,3 +56,4 @@ export * from "./pricing/product-promotion";
 
 // Payment rows: a Stripe refund told apart from the charge it refunds
 export * from "./util.payment-movement";
+export * from "./util.stripe-payment-amount";

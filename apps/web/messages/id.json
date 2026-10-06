@@ -7280,7 +7280,10 @@
         "quote": "Kutipan",
         "quoteDescription": "Sebuah kutipan telah dikirimkan kepada Anda. Terima atau tolak.",
         "declined": "Ditolak",
-        "declinedDescription": "Anda menolak penawaran ini"
+        "declinedDescription": "Anda menolak penawaran ini",
+        "checkoutFailed": "Pembayaran gagal · reservasi dibatalkan",
+        "checkoutFailedDescription": "Pembayaran tidak dapat dimulai. Hubungi toko untuk membuat reservasi baru.",
+        "checkoutAmountTooSmall": "Reservasi dibatalkan: pembayaran kartu memerlukan minimum {minimumAmount, number} {currency}. Hubungi toko untuk membuat reservasi baru."
       },
       "signContract": "Tanda tangani kontrak",
       "contractSigned": "Kontrak ditandatangani",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "Status permintaan ini telah berubah. Di sini tidak dapat dibatalkan lagi. Hubungi toko.",
     "requestCancellationPaymentPending": "Pembayaran masih berlangsung untuk permintaan ini. Coba lagi setelah diperbarui atau hubungi toko.",
     "requestCancellationPaymentChanged": "Informasi pembayaran telah berubah. Tinjau sebelum mengonfirmasi pembatalan lagi.",
-    "promoCodeProductsAlreadyDiscounted": "Kode ini tidak berlaku untuk produk yang sedang dalam masa promosi."
+    "promoCodeProductsAlreadyDiscounted": "Kode ini tidak berlaku untuk produk yang sedang dalam masa promosi.",
+    "paymentAmountTooSmall": "Pembayaran kartu memerlukan minimum {minimumAmount, number} {currency}. Ubah keranjang atau hubungi toko.",
+    "checkoutPaymentFailed": "Pembayaran tidak dapat dimulai. Reservasi belum dikonfirmasi. Coba lagi atau hubungi toko."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",

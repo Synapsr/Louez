@@ -90,6 +90,7 @@ type MarketplaceReservationResult =
   | {
       success: false;
       error: string;
+      errorParams?: Record<string, string | number>;
     };
 
 export interface MarketplaceHoldAdapter {
@@ -117,7 +118,7 @@ export interface MarketplaceCheckoutAdapter {
         expiresAt: Date;
         sessionId: string;
       }
-    | { success: false; error: string }
+    | { success: false; error: string; errorParams?: Record<string, string | number> }
   >;
   getCheckout: (
     stripeAccountId: string,
@@ -693,6 +694,12 @@ export async function holdMarketplaceBooking(params: {
     });
 
     if (!result.success) {
+      if (
+        result.error === "errors.paymentAmountTooSmall" ||
+        result.error === "errors.invalidAmount"
+      ) {
+        throw new ApiServiceError("BAD_REQUEST", result.error, result.errorParams);
+      }
       await tx
         .update(marketplaceBookingAttempts)
         .set({ status: "failed", updatedAt: new Date() })
@@ -847,7 +854,7 @@ export async function checkoutMarketplaceBooking(params: {
       cancelUrl: params.input.cancelUrl,
     });
     if (!checkout.success) {
-      throw new ApiServiceError("BAD_REQUEST", checkout.error);
+      throw new ApiServiceError("BAD_REQUEST", checkout.error, checkout.errorParams);
     }
 
     await tx

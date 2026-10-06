@@ -7280,7 +7280,10 @@
         "quote": "Offerte",
         "quoteDescription": "Er is een offerte naar u verzonden. Accepteer of weiger deze.",
         "declined": "Geweigerd",
-        "declinedDescription": "U heeft deze offerte geweigerd"
+        "declinedDescription": "U heeft deze offerte geweigerd",
+        "checkoutFailed": "Betaling mislukt · reservering geannuleerd",
+        "checkoutFailedDescription": "De betaling kon niet worden gestart. Neem contact op met de winkel voor een nieuwe reservering.",
+        "checkoutAmountTooSmall": "Reservering geannuleerd: kaartbetalingen vereisen minimaal {minimumAmount, number} {currency}. Neem contact op met de winkel voor een nieuwe reservering."
       },
       "quote": {
         "accept": "Offerte accepteren",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "De status van deze aanvraag is gewijzigd. Je kunt deze hier niet meer annuleren. Neem contact op met de winkel.",
     "requestCancellationPaymentPending": "Er loopt nog een betaling voor deze aanvraag. Probeer het na de update opnieuw of neem contact op met de winkel.",
     "requestCancellationPaymentChanged": "De betalingsinformatie is gewijzigd. Controleer deze voordat je de annulering opnieuw bevestigt.",
-    "promoCodeProductsAlreadyDiscounted": "Deze code geldt niet voor producten die al in de aanbieding zijn."
+    "promoCodeProductsAlreadyDiscounted": "Deze code geldt niet voor producten die al in de aanbieding zijn.",
+    "paymentAmountTooSmall": "Kaartbetalingen vereisen minimaal {minimumAmount, number} {currency}. Pas uw winkelwagen aan of neem contact op met de winkel.",
+    "checkoutPaymentFailed": "De betaling kon niet worden gestart. Uw reservering is niet bevestigd. Probeer het opnieuw of neem contact op met de winkel."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

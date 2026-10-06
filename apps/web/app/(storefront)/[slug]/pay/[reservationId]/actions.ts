@@ -6,6 +6,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, paymentRequests, reservations } from "@louez/db";
+import { validateStripePaymentAmount } from "@louez/utils";
 
 import { log } from "@/lib/evlog";
 import { buildFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
@@ -35,7 +36,8 @@ export type PaymentRequestData =
 
 export type InitiatePaymentResult =
   | { ok: true; url: string }
-  | { ok: false; error: PaymentRequestError };
+  | { ok: false; error: PaymentRequestError }
+  | { ok: false; error: "amount_too_small"; minimumAmount: number; currency: string };
 
 // The Stripe session lives 30 minutes; the token that logs the customer in on
 // the way back is minted before it, outlives it by half an hour and is
@@ -159,6 +161,15 @@ export const initiatePayment = async (
 
   const currency = paymentRequest.currency;
   const chargeCents = toStripeCents(Number.parseFloat(paymentRequest.amount), currency);
+  const paymentAmount = validateStripePaymentAmount(
+    Number.parseFloat(paymentRequest.amount),
+    currency,
+  );
+  if (!paymentAmount.ok) {
+    return paymentAmount.error === "errors.paymentAmountTooSmall"
+      ? { ok: false, error: "amount_too_small", ...paymentAmount.params }
+      : { ok: false, error: "session_creation_failed" };
+  }
 
   try {
     const [successUrl, locale] = await Promise.all([

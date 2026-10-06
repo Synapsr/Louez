@@ -7280,7 +7280,10 @@
         "quote": "Orçamento",
         "quoteDescription": "Um orçamento foi enviado para você. Aceite ou recuse.",
         "declined": "Recusado",
-        "declinedDescription": "Você recusou este orçamento"
+        "declinedDescription": "Você recusou este orçamento",
+        "checkoutFailed": "Pagamento falhou · reserva cancelada",
+        "checkoutFailedDescription": "Não foi possível iniciar o pagamento. Contacte a loja para fazer uma nova reserva.",
+        "checkoutAmountTooSmall": "Reserva cancelada: o pagamento com cartão exige pelo menos {minimumAmount, number} {currency}. Contacte a loja para fazer uma nova reserva."
       },
       "signContract": "Assinar contrato",
       "contractSigned": "Contrato assinado",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "O estado deste pedido mudou. Já não pode ser cancelado aqui. Contacte a loja.",
     "requestCancellationPaymentPending": "Está em curso um pagamento para este pedido. Tente novamente após a atualização ou contacte a loja.",
     "requestCancellationPaymentChanged": "As informações de pagamento mudaram. Verifique-as antes de voltar a confirmar o cancelamento.",
-    "promoCodeProductsAlreadyDiscounted": "Este código não se aplica a produtos já em promoção."
+    "promoCodeProductsAlreadyDiscounted": "Este código não se aplica a produtos já em promoção.",
+    "paymentAmountTooSmall": "O pagamento com cartão exige um mínimo de {minimumAmount, number} {currency}. Altere o carrinho ou contacte a loja.",
+    "checkoutPaymentFailed": "Não foi possível iniciar o pagamento. A reserva não foi confirmada. Tente novamente ou contacte a loja."
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

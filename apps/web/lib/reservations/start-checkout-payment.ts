@@ -11,6 +11,7 @@ import {
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe/client";
 
 import { buildStripeLineItems, getCheckoutChargeAmount } from "./build-stripe-line-items";
 import { runAfterResponse } from "./post-creation-effects";
@@ -47,8 +48,8 @@ export interface StartCheckoutPaymentInput {
 /**
  * Create the Stripe Checkout session for a reservation in payment mode and
  * record the pending payment plus the `payment_initiated` activity in one
- * transaction. A Stripe failure never fails the reservation: the owner can
- * still send a payment link, so the result is simply `null`.
+ * transaction. A null result makes the caller cancel the unpaid checkout
+ * and return an error instead of silently turning it into a request.
  */
 export const startCheckoutPayment = async ({
   store,
@@ -62,6 +63,7 @@ export const startCheckoutPayment = async ({
   if (!store.stripeAccountId) {
     return null;
   }
+  let createdSessionId: string | null = null;
 
   try {
     const currency = store.settings?.currency || "EUR";
@@ -70,6 +72,7 @@ export const startCheckoutPayment = async ({
     const { isPartialPayment, finalChargeAmount } = getCheckoutChargeAmount({
       total: totals.total,
       depositPercentage,
+      currency,
     });
 
     const lineItems = buildStripeLineItems({
@@ -124,6 +127,7 @@ export const startCheckoutPayment = async ({
       feeMetadata: buildFeeMetadata(feePlan),
       checkoutFlow: "storefront_checkout",
     });
+    createdSessionId = sessionId;
 
     const now = new Date();
     await db.transaction(async (tx) => {
@@ -185,6 +189,21 @@ export const startCheckoutPayment = async ({
 
     return url;
   } catch (error) {
+    if (createdSessionId) {
+      try {
+        await getStripe().checkout.sessions.expire(createdSessionId, {
+          stripeAccount: store.stripeAccountId,
+        });
+      } catch (expirationError) {
+        log.error({
+          checkout: {
+            event: "failed_checkout_expiration_failed",
+            reservationId: reservation.id,
+            error: String(expirationError),
+          },
+        });
+      }
+    }
     log.error({
       checkout: {
         event: "stripe_session_failed",

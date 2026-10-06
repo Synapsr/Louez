@@ -7280,7 +7280,10 @@
         "quote": "Wycena",
         "quoteDescription": "Wysłano do Ciebie wycenę. Zaakceptuj ją lub odrzuć.",
         "declined": "Odrzucono",
-        "declinedDescription": "Odrzuciłeś tę wycenę"
+        "declinedDescription": "Odrzuciłeś tę wycenę",
+        "checkoutFailed": "Płatność nieudana · rezerwacja anulowana",
+        "checkoutFailedDescription": "Nie udało się rozpocząć płatności. Skontaktuj się ze sklepem, aby dokonać nowej rezerwacji.",
+        "checkoutAmountTooSmall": "Rezerwacja anulowana: płatność kartą wymaga co najmniej {minimumAmount, number} {currency}. Skontaktuj się ze sklepem, aby dokonać nowej rezerwacji."
       },
       "signContract": "Podpisz umowę",
       "contractSigned": "Umowa podpisana",
@@ -8486,7 +8489,9 @@
     "requestCancellationStatusChanged": "Status tej prośby się zmienił. Nie można jej już tutaj anulować. Skontaktuj się ze sklepem.",
     "requestCancellationPaymentPending": "Płatność za tę prośbę jest jeszcze w toku. Spróbuj ponownie po aktualizacji lub skontaktuj się ze sklepem.",
     "requestCancellationPaymentChanged": "Informacje o płatności uległy zmianie. Sprawdź je przed ponownym potwierdzeniem anulowania.",
-    "promoCodeProductsAlreadyDiscounted": "Ten kod nie dotyczy produktów już objętych promocją."
+    "promoCodeProductsAlreadyDiscounted": "Ten kod nie dotyczy produktów już objętych promocją.",
+    "paymentAmountTooSmall": "Płatność kartą wymaga co najmniej {minimumAmount, number} {currency}. Zmień koszyk lub skontaktuj się ze sklepem.",
+    "checkoutPaymentFailed": "Nie udało się rozpocząć płatności. Rezerwacja nie została potwierdzona. Spróbuj ponownie lub skontaktuj się ze sklepem."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",
