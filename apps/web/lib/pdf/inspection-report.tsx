@@ -10,6 +10,7 @@ import {
   Image as BaseImage,
 } from "@react-pdf/renderer";
 import { CONDITION_COLORS, createInspectionStyles } from "./inspection-styles";
+import { PageNumber } from "./page-number";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
@@ -330,9 +331,9 @@ export function InspectionReportDocument({
           <Text style={styles.footerLeft}>
             {t.footer.generatedOn} {formatDateTimePrecise(doc.generatedAt)}
           </Text>
-          <Text
-            style={styles.footerRight}
-            render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
+          <PageNumber
+            textStyle={styles.footerRight}
+            format={({ pageNumber, totalPages }) =>
               `${t.footer.page} ${pageNumber} ${t.footer.of} ${totalPages}`
             }
           />

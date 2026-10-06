@@ -657,6 +657,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF", locale: 
       position: "absolute",
       bottom: 8,
       right: 44,
+    },
+    pageNumberText: {
       fontSize: 7,
       color: c.faint,
     },
