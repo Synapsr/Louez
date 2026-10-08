@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PencilSolidIcon, SpinnerSolidIcon, TrashSolidIcon } from "@louez/ui/icons";
-import { ChevronDown, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Loader2, MoreHorizontal, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -113,6 +113,11 @@ const VariantManager = () => {
 
   const catalogQuery = useQuery(orpc.dashboard.variants.list.queryOptions());
   const definitions: VariantManagerDefinition[] = catalogQuery.data ?? [];
+  const usageQuery = useQuery(orpc.dashboard.variants.usage.queryOptions());
+  const usageByDefinitionId = useMemo(
+    () => new Map((usageQuery.data ?? []).map((entry) => [entry.definitionId, entry.products])),
+    [usageQuery.data],
+  );
   const catalogQueryKey = orpc.dashboard.variants.list.key({ type: "query" });
   const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
   const resolvedPresets = useMemo(() => resolveVariantPresets((key) => String(t.raw(key))), [t]);
@@ -181,18 +186,25 @@ const VariantManager = () => {
   const deleteDefinitionMutation = useMutation(
     orpc.dashboard.variants.deleteDefinition.mutationOptions(),
   );
+  const withdrawMutation = useMutation(
+    orpc.dashboard.variants.withdrawFromProducts.mutationOptions(),
+  );
 
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [editing, setEditing] = useState<ManagedVariant | null>(null);
   const [editLabel, setEditLabel] = useState("");
-  const [toDelete, setToDelete] = useState<VariantManagerDefinition | null>(null);
+  const [toDelete, setToDelete] = useState<
+    (ManagedVariant & { definition: VariantManagerDefinition }) | null
+  >(null);
+  const [toWithdraw, setToWithdraw] = useState<ManagedVariant | null>(null);
 
   const isMutating =
     ensureDefinitionMutation.isPending ||
     updateDefinitionMutation.isPending ||
     setDefinitionActiveMutation.isPending ||
-    deleteDefinitionMutation.isPending;
+    deleteDefinitionMutation.isPending ||
+    withdrawMutation.isPending;
 
   const ensurePreset = async (
     preset: ResolvedVariantPreset,
@@ -217,7 +229,15 @@ const VariantManager = () => {
     }
   };
 
-  const handleActiveChange = async (variant: ManagedVariant, isActive: boolean) => {
+  const notifyWithdrawn = (count: number) =>
+    toastManager.add({
+      title: t("variantWithdrawnFromProducts", { count }),
+      type: "success",
+    });
+
+  // The switch only decides whether the variant is offered to products from
+  // now on. Products that carry it keep it; withdrawing is a separate action.
+  const applyActiveChange = async (variant: ManagedVariant, isActive: boolean) => {
     const previousDefinitions = variant.definition
       ? queryClient.getQueryData<VariantManagerDefinition[]>(catalogQueryKey)
       : undefined;
@@ -234,11 +254,7 @@ const VariantManager = () => {
           definition.id === variant.definition?.id ? { ...definition, isActive } : definition,
         ),
       );
-
-      await setDefinitionActiveMutation.mutateAsync({
-        id: variant.definition.id,
-        isActive,
-      });
+      await setDefinitionActiveMutation.mutateAsync({ id: variant.definition.id, isActive });
       await invalidate();
     } catch {
       if (previousDefinitions) {
@@ -255,6 +271,31 @@ const VariantManager = () => {
       });
     }
   };
+
+  const productsUsing = (variant: ManagedVariant) =>
+    variant.definition ? (usageByDefinitionId.get(variant.definition.id) ?? []) : [];
+
+  const handleWithdraw = async () => {
+    if (!toWithdraw?.definition) return;
+    try {
+      const result = await withdrawMutation.mutateAsync({ id: toWithdraw.definition.id });
+      await invalidate();
+      setToWithdraw(null);
+      notifyWithdrawn(result.affectedProductCount);
+    } catch {
+      toastManager.add({ title: tCommon("error"), type: "error" });
+    }
+  };
+
+  const notifyInUse = (variant: ManagedVariant, products: { name: string }[]) =>
+    toastManager.add({
+      title: t("variantInUseCannotDelete", {
+        name: variant.label,
+        count: products.length,
+        products: products.map((product) => product.name).join(", "),
+      }),
+      type: "error",
+    });
 
   const handleCreate = async () => {
     const label = newLabel.trim();
@@ -295,9 +336,10 @@ const VariantManager = () => {
   const handleDelete = async () => {
     if (!toDelete) return;
     try {
-      await deleteDefinitionMutation.mutateAsync({ id: toDelete.id });
+      const result = await deleteDefinitionMutation.mutateAsync({ id: toDelete.definition.id });
       await invalidate();
       setToDelete(null);
+      if (!result.deleted) notifyInUse(toDelete, result.usedBy);
     } catch {
       toastManager.add({ title: tCommon("error"), type: "error" });
     }
@@ -306,12 +348,15 @@ const VariantManager = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-muted-foreground text-sm">
-          {t("activeVariantsCount", {
-            active: activeCount,
-            total: managedVariants.length,
-          })}
-        </p>
+        <div className="space-y-0.5">
+          <p className="text-muted-foreground text-sm">
+            {t("activeVariantsCount", {
+              active: activeCount,
+              total: managedVariants.length,
+            })}
+          </p>
+          <p className="text-muted-foreground text-xs">{t("variantsInactiveHint")}</p>
+        </div>
         <Button type="button" size="sm" onClick={() => setNewDialogOpen(true)}>
           <Plus className="size-4" />
           {t("newVariant")}
@@ -329,7 +374,7 @@ const VariantManager = () => {
               key={variant.key}
               variant={variant}
               disabled={isMutating}
-              onActiveChange={(isActive) => handleActiveChange(variant, isActive)}
+              onActiveChange={(isActive) => applyActiveChange(variant, isActive)}
               onEnsure={() =>
                 variant.preset
                   ? ensurePreset(variant.preset, variant.isActive)
@@ -339,8 +384,17 @@ const VariantManager = () => {
                 setEditing(variant);
                 setEditLabel(variant.label);
               }}
+              usageCount={productsUsing(variant).length}
+              onWithdraw={() => setToWithdraw(variant)}
               onDelete={() => {
-                if (variant.definition) setToDelete(variant.definition);
+                const definition = variant.definition;
+                if (!definition) return;
+                const used = productsUsing(variant);
+                if (used.length > 0) {
+                  notifyInUse(variant, used);
+                  return;
+                }
+                setToDelete({ ...variant, definition });
               }}
               onInvalidate={invalidate}
             />
@@ -426,6 +480,49 @@ const VariantManager = () => {
         </DialogPopup>
       </Dialog>
 
+      {/* Withdraw from products */}
+      <AlertDialog
+        open={toWithdraw !== null}
+        onOpenChange={(open) => {
+          if (!open) setToWithdraw(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("withdrawVariantTitle", {
+                name: toWithdraw?.label ?? "",
+                count: toWithdraw ? productsUsing(toWithdraw).length : 0,
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("withdrawVariantDescription", { name: toWithdraw?.label ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {toWithdraw && (
+            <ul className="text-muted-foreground max-h-48 list-disc space-y-1 overflow-y-auto pl-5 text-sm">
+              {productsUsing(toWithdraw).map((product) => (
+                <li key={product.id}>{product.name}</li>
+              ))}
+            </ul>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogClose render={<Button type="button" variant="outline" />}>
+              {tCommon("cancel")}
+            </AlertDialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleWithdraw()}
+              isPending={withdrawMutation.isPending}
+              disabled={isMutating}
+            >
+              {t("withdrawVariantConfirm")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete */}
       <AlertDialog
         open={toDelete !== null}
@@ -466,6 +563,8 @@ const VariantDefinitionRow = ({
   onActiveChange,
   onEnsure,
   onRename,
+  usageCount,
+  onWithdraw,
   onDelete,
   onInvalidate,
 }: {
@@ -474,6 +573,9 @@ const VariantDefinitionRow = ({
   onActiveChange: (isActive: boolean) => Promise<void>;
   onEnsure: () => Promise<VariantManagerDefinition | null>;
   onRename: () => Promise<void> | void;
+  /** Products that still carry this variant as a booking axis. */
+  usageCount: number;
+  onWithdraw: () => void;
   onDelete: () => void;
   onInvalidate: () => Promise<unknown> | void;
 }) => {
@@ -716,6 +818,12 @@ const VariantDefinitionRow = ({
                 <Pencil className="size-4" />
                 {tCommon("edit")}
               </DropdownMenuItem>
+              {variant.definition && usageCount > 0 && (
+                <DropdownMenuItem onClick={onWithdraw}>
+                  <Undo2 className="size-4" />
+                  {t("withdrawVariantAction", { count: usageCount })}
+                </DropdownMenuItem>
+              )}
               {variant.isCustom && (
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"

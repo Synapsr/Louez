@@ -21,6 +21,7 @@ import type { PricingCatalog } from "@louez/api/services/pricing-catalog";
 import type { UnitAttributes } from "@louez/types";
 import {
   DEFAULT_COMBINATION_KEY,
+  canonicalizeAttributes,
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
   matchesSelectedAttributes,
@@ -234,16 +235,19 @@ export const reserveInventory = async ({
     const productCombinations = combinationsByProduct.get(unit.productId) || new Map();
     const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
     const current = productCombinations.get(combinationKey);
+    // Same rule as availability: only the product's current axes are kept,
+    // so a value left over from a removed axis never lands on the booking.
+    const selectedAttributes = canonicalizeAttributes(
+      lockedProductsById.get(unit.productId)?.bookingAttributeAxes,
+      unit.attributes,
+    );
 
     if (!current) {
-      productCombinations.set(combinationKey, {
-        totalQuantity: 1,
-        selectedAttributes: unit.attributes || {},
-      });
+      productCombinations.set(combinationKey, { totalQuantity: 1, selectedAttributes });
     } else {
       current.totalQuantity += 1;
-      if (Object.keys(current.selectedAttributes).length === 0 && unit.attributes) {
-        current.selectedAttributes = unit.attributes;
+      if (Object.keys(current.selectedAttributes).length === 0) {
+        current.selectedAttributes = selectedAttributes;
       }
       productCombinations.set(combinationKey, current);
     }
@@ -276,7 +280,10 @@ export const reserveInventory = async ({
 
     const axes = product.bookingAttributeAxes || [];
     const productCombinations = combinationsByProduct.get(product.id) || new Map();
-    const selectedAttributes = line.selectedAttributes || {};
+    // A booked line keeps the attributes chosen at the time; only the
+    // product's current axes take part in matching, so a value from an axis
+    // withdrawn since then no longer blocks the confirmation of that line.
+    const selectedAttributes = canonicalizeAttributes(axes, line.selectedAttributes);
 
     const candidates = [...productCombinations.entries()]
       .map(([combinationKey, combinationData]) => ({ combinationKey, ...combinationData }))

@@ -19,7 +19,7 @@ import {
   reservationItems,
   reservations,
 } from '@louez/db';
-import { DEFAULT_COMBINATION_KEY } from '@louez/utils';
+import { DEFAULT_COMBINATION_KEY, buildCombinationKey } from '@louez/utils';
 import {
   type CloseDowntimeInput,
   type DeclareDowntimeInput,
@@ -106,7 +106,9 @@ async function getUnitForStore(unitId: string, storeId: string) {
       productId: productUnits.productId,
       identifier: productUnits.identifier,
       notes: productUnits.notes,
+      attributes: productUnits.attributes,
       combinationKey: productUnits.combinationKey,
+      bookingAttributeAxes: products.bookingAttributeAxes,
       lifecycleStatus: productUnits.lifecycleStatus,
       retiredAt: productUnits.retiredAt,
       retirementReason: productUnits.retirementReason,
@@ -552,6 +554,8 @@ export async function reinstateUnit(input: ReinstateUnitInput) {
             retiredAt: null,
             retirementReason: null,
             retirementNote: null,
+            // The product's axes may have changed while the unit was retired.
+            combinationKey: buildCombinationKey(unit.bookingAttributeAxes, unit.attributes),
           },
           event: {
             storeId: store.id,

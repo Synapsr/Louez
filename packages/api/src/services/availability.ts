@@ -29,6 +29,7 @@ import type {
 import {
   DEFAULT_COMBINATION_KEY,
   calculatePeakReservedQuantities,
+  canonicalizeAttributes,
   divideStockQuantityLimit,
   getAvailableStockQuantity,
   getDeterministicCombinationSortValue,
@@ -627,21 +628,32 @@ async function computeStorefrontAvailability(params: {
     string,
     Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
   >();
+  const axesByProductId = new Map(
+    productsForAvailability.map((product) => [
+      product.id,
+      Array.isArray(product.bookingAttributeAxes)
+        ? (product.bookingAttributeAxes as BookingAttributeAxis[])
+        : [],
+    ]),
+  );
 
   for (const unit of availableUnits) {
     const productMap = combinationsByProduct.get(unit.productId) || new Map();
     const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
     const current = productMap.get(combinationKey);
+    // Only the product's current axes describe a combination: a value left
+    // on a unit for an axis the product no longer has must not be exposed.
+    const selectedAttributes = canonicalizeAttributes(
+      axesByProductId.get(unit.productId),
+      unit.attributes as UnitAttributes | null,
+    );
 
     if (!current) {
-      productMap.set(combinationKey, {
-        totalQuantity: 1,
-        selectedAttributes: (unit.attributes || {}) as UnitAttributes,
-      });
+      productMap.set(combinationKey, { totalQuantity: 1, selectedAttributes });
     } else {
       current.totalQuantity += 1;
-      if (Object.keys(current.selectedAttributes).length === 0 && unit.attributes) {
-        current.selectedAttributes = unit.attributes as UnitAttributes;
+      if (Object.keys(current.selectedAttributes).length === 0) {
+        current.selectedAttributes = selectedAttributes;
       }
       productMap.set(combinationKey, current);
     }

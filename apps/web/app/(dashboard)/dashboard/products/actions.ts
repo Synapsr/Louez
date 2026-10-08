@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, gte, inArray, ne, not, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
+import { syncProductCombinationKeys } from "@louez/api/services";
 import {
   db,
   getEffectiveProductQuantities,
@@ -32,6 +33,7 @@ import {
   DEFAULT_COMBINATION_KEY,
   buildCombinationKey,
   canonicalizeAttributes,
+  getSortedAxes,
   normalizeAxisKey,
   priceDurationToMinutes,
   pricingModeToMinutes,
@@ -669,6 +671,12 @@ export async function updateProduct(productId: string, data: ProductInput) {
   const bookingAttributeAxes = trackUnits
     ? normalizeBookingAttributeAxes(validated.data.bookingAttributeAxes)
     : [];
+  // Combination keys are derived from the axes, so a change in axes re-keys
+  // the product's units and booked lines once the save goes through.
+  const bookingAxesChanged =
+    trackUnits &&
+    JSON.stringify(getSortedAxes(product.bookingAttributeAxes).map((axis) => axis.key)) !==
+      JSON.stringify(bookingAttributeAxes.map((axis) => axis.key));
   const blockingStatuses = getBlockingReservationStatuses(
     store.settings?.pendingBlocksAvailability ?? true,
   );
@@ -775,6 +783,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
           startDate: reservations.startDate,
           endDate: reservations.endDate,
           combinationKey: reservationItems.combinationKey,
+          selectedAttributes: reservationItems.selectedAttributes,
           quantity: reservationItems.quantity,
         })
         .from(reservationItems)
@@ -791,7 +800,15 @@ export async function updateProduct(productId: string, data: ProductInput) {
       if (
         hasTrackedUnitCapacityConflict({
           availableByCombination: proposedAvailableByCombination,
-          reservations: reservedRows,
+          // Booked lines are checked under the keys they will carry after the
+          // save, otherwise merging two sizes into one would read as a conflict.
+          reservations: reservedRows.map((row) => ({
+            ...row,
+            combinationKey:
+              bookingAxesChanged && row.combinationKey !== null
+                ? buildCombinationKey(bookingAttributeAxes, row.selectedAttributes)
+                : row.combinationKey,
+          })),
           from: capacityCheckStart,
         })
       ) {
@@ -856,6 +873,10 @@ export async function updateProduct(productId: string, data: ProductInput) {
           updatedAt: new Date(),
         })
         .where(and(eq(products.id, productId), eq(products.storeId, store.id)));
+
+      if (bookingAxesChanged) {
+        await syncProductCombinationKeys(tx, { productId, axes: bookingAttributeAxes });
+      }
 
       await replaceProductCategories(tx, productId, categoryIds);
 

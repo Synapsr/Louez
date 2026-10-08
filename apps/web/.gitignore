@@ -36,3 +36,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Backups written by scripts/run-variant-axes-backfill.ts --apply
+variant-axes-backup-*.json
