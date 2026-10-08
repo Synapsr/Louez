@@ -138,6 +138,12 @@ export function computeReservedNetOfExcludedUnits(params: {
   excludedProductUnitIds: ReadonlySet<string>;
   excludedUnitInfo: ReadonlyMap<string, ExcludedUnitInfo>;
   consumableProductIds?: ReadonlySet<string>;
+  /**
+   * Combination of each rentable unit. An assigned unit is charged to its own
+   * combination rather than to the line's: a line booked without a choice
+   * that holds the only M unit must make M unavailable, not float.
+   */
+  combinationKeyByUnitId?: ReadonlyMap<string, string | null>;
 }): {
   reservedByProduct: Map<string, number>;
   reservedByProductCombination: Map<string, number>;
@@ -146,37 +152,64 @@ export function computeReservedNetOfExcludedUnits(params: {
     startDate: reservation.startDate,
     endDate: getReservationAvailabilityEnd(reservation),
     items: reservation.items.flatMap((item) => {
-      const excludedAssignedUnitCount = item.assignedUnits.filter(
-        (unit) =>
-          unit.productUnitId &&
-          params.excludedProductUnitIds.has(unit.productUnitId) &&
-          excludedUnitAbsorbsReservation({
-            reservation: { ...reservation, endDate: getReservationAvailabilityEnd(reservation) },
-            unitInfo: params.excludedUnitInfo.get(unit.productUnitId),
-          }),
-      ).length;
-      const quantity = Math.max(
-        0,
-        item.quantity - Math.min(item.quantity, excludedAssignedUnitCount),
-      );
-
-      if (quantity === 0) {
-        return [];
-      }
-
       const stockKind: StockKind =
         item.productId && params.consumableProductIds?.has(item.productId)
           ? "consumable"
           : "returnable";
+      const assignedCombinationKeys: Array<string | null> = [];
+      let excludedAssignedUnitCount = 0;
+
+      for (const unit of item.assignedUnits) {
+        if (!unit.productUnitId) continue;
+        if (
+          params.excludedProductUnitIds.has(unit.productUnitId) &&
+          excludedUnitAbsorbsReservation({
+            reservation: { ...reservation, endDate: getReservationAvailabilityEnd(reservation) },
+            unitInfo: params.excludedUnitInfo.get(unit.productUnitId),
+          })
+        ) {
+          excludedAssignedUnitCount += 1;
+          continue;
+        }
+        if (params.combinationKeyByUnitId?.has(unit.productUnitId)) {
+          const unitKey =
+            params.combinationKeyByUnitId.get(unit.productUnitId) || DEFAULT_COMBINATION_KEY;
+          const exactKey =
+            item.combinationKey && item.combinationKey !== DEFAULT_COMBINATION_KEY
+              ? item.combinationKey
+              : null;
+          // An exact booking still owes its combination even when its unit
+          // was relabelled since; only a line without one follows the unit.
+          assignedCombinationKeys.push(exactKey && exactKey !== unitKey ? exactKey : unitKey);
+        }
+      }
+
+      const quantity = Math.max(
+        0,
+        item.quantity - Math.min(item.quantity, excludedAssignedUnitCount),
+      );
+      const assigned = assignedCombinationKeys.slice(0, quantity);
+      const unassignedQuantity = quantity - assigned.length;
 
       return [
-        {
+        ...assigned.map((combinationKey) => ({
           productId: item.productId,
-          combinationKey: item.combinationKey,
-          quantity,
+          combinationKey,
+          quantity: 1,
           stockKind,
           consumedQuantity: 0,
-        },
+        })),
+        ...(unassignedQuantity > 0
+          ? [
+              {
+                productId: item.productId,
+                combinationKey: item.combinationKey,
+                quantity: unassignedQuantity,
+                stockKind,
+                consumedQuantity: 0,
+              },
+            ]
+          : []),
       ];
     }),
   }));
@@ -612,6 +645,7 @@ async function computeStorefrontAvailability(params: {
         .filter((product) => product.stockKind === "consumable")
         .map((product) => product.id),
     ),
+    combinationKeyByUnitId: new Map(availableUnits.map((unit) => [unit.id, unit.combinationKey])),
   });
   const consumableReservedByProduct = await loadConsumableReservedQuantities(db, {
     storeId: store.id,
@@ -694,16 +728,26 @@ async function computeStorefrontAvailability(params: {
       ? (product.bookingAttributeAxes as BookingAttributeAxis[])
       : [];
     const combinations: CombinationAvailability[] = [];
+    const totalQuantity = [...productCombinations.values()].reduce(
+      (sum, combinationData) => sum + combinationData.totalQuantity,
+      0,
+    );
+    const productReservedQuantity = reservedByProduct.get(product.id) || 0;
+    const productAvailableQuantity = Math.max(0, totalQuantity - productReservedQuantity);
 
-    let totalQuantity = 0;
     for (const [combinationKey, combinationData] of productCombinations.entries()) {
       const reservedQuantity =
         reservedByProductCombination.get(
           getProductCombinationAvailabilityKey(product.id, combinationKey),
         ) || 0;
-      const availableQuantity = Math.max(0, combinationData.totalQuantity - reservedQuantity);
-
-      totalQuantity += combinationData.totalQuantity;
+      // Lines booked without a choice (before the product had axes, or with
+      // no combination at all) are served by any unit and only count on the
+      // product. The product's remaining stock caps every combination so
+      // those units are never offered twice.
+      const availableQuantity = Math.min(
+        Math.max(0, combinationData.totalQuantity - reservedQuantity),
+        productAvailableQuantity,
+      );
 
       let status: CombinationAvailability["status"] = "available";
       if (availableQuantity === 0) {
@@ -731,21 +775,18 @@ async function computeStorefrontAvailability(params: {
       combinations.map((combination) => [combination.combinationKey, combination]),
     );
 
-    const reservedQuantity = reservedByProduct.get(product.id) || 0;
-    const availableQuantity = Math.max(0, totalQuantity - reservedQuantity);
-
     let status: ProductAvailability["status"] = "available";
-    if (availableQuantity === 0) {
+    if (productAvailableQuantity === 0) {
       status = "unavailable";
-    } else if (availableQuantity < totalQuantity) {
+    } else if (productAvailableQuantity < totalQuantity) {
       status = "limited";
     }
 
     return {
       productId: product.id,
       totalQuantity,
-      reservedQuantity,
-      availableQuantity,
+      reservedQuantity: productReservedQuantity,
+      availableQuantity: productAvailableQuantity,
       status,
       combinations,
       combinationsByKey,

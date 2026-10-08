@@ -21,6 +21,7 @@ import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
 import { sendReservationModifiedEmail } from "@/lib/email/send";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
+import { retryOnceOnDeadlock } from "@/lib/db/retry-once-on-deadlock";
 import { log } from "@/lib/evlog";
 import { resolveDateChangeRequests } from "./date-change-request.server";
 import { getExtensionAttempt, type ExtensionAttempt } from "./extension.types";
@@ -34,8 +35,10 @@ import {
   type ExtensionReservation,
 } from "./extension-quote";
 
+// Retried once on deadlock, like the other reservation writers that take
+// several row locks.
 const extensionTransaction = <T>(work: (tx: Transaction) => Promise<T>) =>
-  db.transaction(work, { isolationLevel: "read committed" });
+  retryOnceOnDeadlock(() => db.transaction(work, { isolationLevel: "read committed" }));
 
 const writeAttempt = (
   tx: Transaction,

@@ -17,7 +17,7 @@ import {
   reservations,
   variantDefinitions,
 } from "@louez/db";
-import { findMatchingVariant } from "@louez/utils";
+import { findMatchingVariant, getVariantAxisIdentity } from "@louez/utils";
 
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 
@@ -104,19 +104,39 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
   const editableUnits = product.units.filter((unit) => unit.lifecycleStatus === "active");
   // A product that never declared axes but whose units carry values is sold by
   // those values on the storefront. The form shows the same axes, so saving
-  // keeps them instead of silently dropping the values.
+  // keeps them instead of silently dropping the values. Only a value every
+  // unit carries becomes an axis: a declared axis requires a value on each
+  // unit, and a partial legacy value must not block unrelated edits.
   const storedAxes = product.bookingAttributeAxes ?? [];
+  const unitAttributes = editableUnits.map(
+    (unit) => (unit.attributes as Record<string, string> | null) ?? {},
+  );
+  // The product schema accepts at most three axes, with lowercase keys and no
+  // two aliases of one variant (`size` and `taille`); values outside that stay
+  // orphan values, as before.
+  const seenIdentities = new Set<string>();
   const bookingAttributeAxes =
     storedAxes.length > 0
       ? storedAxes
-      : inferAttributeAxesFromUnits(
-          editableUnits.map((unit) => ({
-            attributes: unit.attributes as Record<string, string> | null,
-          })),
-        ).map((axis) => ({
-          ...axis,
-          label: findMatchingVariant(axis.key, storeVariants)?.label ?? axis.label,
-        }));
+      : inferAttributeAxesFromUnits(unitAttributes.map((attributes) => ({ attributes })))
+          .filter(
+            (axis) =>
+              /^[a-z0-9_-]+$/.test(axis.key) &&
+              axis.key.length <= 32 &&
+              unitAttributes.every((attributes) => attributes[axis.key]?.trim()),
+          )
+          .filter((axis) => {
+            const identity = getVariantAxisIdentity(axis.key);
+            if (seenIdentities.has(identity)) return false;
+            seenIdentities.add(identity);
+            return true;
+          })
+          .slice(0, 3)
+          .map((axis, position) => ({
+            ...axis,
+            position,
+            label: findMatchingVariant(axis.key, storeVariants)?.label ?? axis.label,
+          }));
   const unitIds = editableUnits.map((unit) => unit.id);
   const blockingStatuses = getBlockingReservationStatuses(
     store.settings?.pendingBlocksAvailability ?? true,
