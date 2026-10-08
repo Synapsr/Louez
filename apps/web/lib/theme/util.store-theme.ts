@@ -12,6 +12,7 @@ export type StoreThemeMode = "light" | "dark";
 export interface StoreThemeInput {
   mode: StoreThemeMode;
   primaryColor: string;
+  designPreset?: "standard" | "accesoo";
 }
 
 /** Theme of a store that never picked one: light, platform blue. */

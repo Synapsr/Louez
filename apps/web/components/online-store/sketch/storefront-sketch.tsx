@@ -55,7 +55,7 @@ export const StorefrontSketch = ({
   const reduceMotion = useReducedMotion() ?? false;
   const { ref, width, height } = useElementSize<HTMLDivElement>();
   const { identity, home, contact, legal } = values;
-  const p = SKETCH_PALETTE[identity.themeMode];
+  const p = SKETCH_PALETTE[identity.designPreset === "accesoo" ? "dark" : identity.themeMode];
   const name = identity.name.trim() || store.name;
   const host = `${store.slug}.${appDomain}`;
   const logoUrl =
@@ -130,6 +130,7 @@ export const StorefrontSketch = ({
       className={cn("flex h-full w-full items-center justify-center", className)}
       data-slot="storefront-sketch"
       data-section={section}
+      data-design-preset={identity.designPreset}
     >
       {fit === null ? null : fit.device === "phone" ? (
         <SketchPhoneFrame palette={p} zoom={fit.zoom}>

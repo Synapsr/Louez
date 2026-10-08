@@ -768,6 +768,12 @@
           "placeholder": "Bike and paddle rental in Carnac since 2012"
         },
         "descriptionHint": "The text of the About page. Without a tagline, it also shows at the top of the home page.",
+        "designPreset": {
+          "label": "Storefront style",
+          "description": "Choose the look of the public storefront. You can change it at any time.",
+          "standard": "Louez standard",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "The logo in the header, the icon in the browser tab."
         },

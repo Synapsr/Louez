@@ -44,6 +44,7 @@ export interface OnlineStoreIdentityValues {
   faviconUrl: string | null;
   primaryColor: string;
   themeMode: "light" | "dark";
+  designPreset: "standard" | "accesoo";
 }
 
 export interface OnlineStoreHomeValues {
@@ -160,6 +161,7 @@ export const onlineStoreFormSchema = z.object({
     faviconUrl: z.string().nullable(),
     primaryColor: z.string().regex(HEX_COLOR_PATTERN),
     themeMode: z.enum(["light", "dark"]),
+    designPreset: z.enum(["standard", "accesoo"]),
   }),
   home: z.object({
     heroImages: z.array(z.string()).max(MAX_HERO_IMAGES),
@@ -257,6 +259,7 @@ export const buildOnlineStoreDefaults = (store: OnlineStoreEditorStore): OnlineS
       faviconUrl: store.faviconUrl,
       primaryColor: theme?.primaryColor || DEFAULT_PRIMARY_COLOR,
       themeMode: theme?.mode === "dark" ? "dark" : "light",
+      designPreset: theme?.designPreset === "accesoo" ? "accesoo" : "standard",
     },
     home: {
       heroImages: theme?.heroImages ?? [],
@@ -389,7 +392,11 @@ export const buildOnlineStorePayload = ({
       tagline: identity.tagline,
       description: identity.description,
       locale: identity.locale === "" ? null : identity.locale,
-      theme: { mode: identity.themeMode, primaryColor: identity.primaryColor },
+      theme: {
+        mode: identity.themeMode,
+        primaryColor: identity.primaryColor,
+        designPreset: identity.designPreset,
+      },
       ...(logo.send ? { logoUrl: logo.value } : {}),
       ...(darkLogo.send ? { darkLogoUrl: darkLogo.value } : {}),
       ...(favicon.send ? { faviconUrl: favicon.value } : {}),

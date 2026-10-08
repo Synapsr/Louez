@@ -25,6 +25,7 @@ export function formatCurrency(
     INR: "en-IN",
     BRL: "pt-BR",
     MXN: "es-MX",
+    CRC: "es-CR",
     SEK: "sv-SE",
     NOK: "nb-NO",
     DKK: "da-DK",
@@ -51,7 +52,10 @@ export function formatCurrency(
     COP: "es-CO",
   };
 
-  const formatLocale = locale || localeMap[currency] || DEFAULT_FORMAT_LOCALE;
+  // The CRC symbol is only emitted for Costa Rica's regional format. Keep
+  // the colón sign visible even when the visitor uses another interface language.
+  const formatLocale =
+    currency === "CRC" ? "es-CR" : locale || localeMap[currency] || DEFAULT_FORMAT_LOCALE;
 
   return new Intl.NumberFormat(formatLocale, {
     style: "currency",
@@ -83,6 +87,7 @@ export function formatCurrencyForSms(
     USD: "dollars",
     GBP: "livres",
     CHF: "CHF",
+    CRC: "colones costarricenses",
   };
 
   const currencyName = currencyNames[currency] || currency;

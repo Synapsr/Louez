@@ -55,7 +55,10 @@ export const ReturnDateRequestCard = ({
   const [preview, setPreview] = useState<{ value: ExtensionPreview; endDate: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const formatMoney = (amount: number, currency: string) =>
-    new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
+    new Intl.NumberFormat(currency.toUpperCase() === "CRC" ? "es-CR" : locale, {
+      style: "currency",
+      currency,
+    }).format(amount);
   const mutation = useMutation({
     mutationFn: async ({ endDate, confirm = false }: { endDate: string; confirm?: boolean }) => {
       if (readOnly) return;

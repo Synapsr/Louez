@@ -768,6 +768,12 @@
           "placeholder": "Location de vélos et de paddles à Carnac depuis 2012"
         },
         "descriptionHint": "Le texte de la page À propos. Sans slogan, il s'affiche aussi en haut de l'accueil.",
+        "designPreset": {
+          "label": "Style de la boutique",
+          "description": "Choisissez l’apparence de la boutique publique. Vous pouvez la modifier à tout moment.",
+          "standard": "Louez standard",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "Le logo dans l'en-tête, l'icône dans l'onglet du navigateur."
         },

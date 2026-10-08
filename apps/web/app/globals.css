@@ -6,6 +6,7 @@
 
 @import "@louez/ui/styles";
 @import "./styles/dashboard-theme.css";
+@import "./styles/accesoo-storefront.css";
 
 @keyframes ai-glow {
   0%,

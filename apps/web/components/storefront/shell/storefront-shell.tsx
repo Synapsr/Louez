@@ -46,7 +46,8 @@ export const StorefrontShell = ({
   channelBadge,
   children,
 }: StorefrontShellProps) => {
-  const isDark = theme.mode === "dark";
+  const isDark =
+    theme.mode === "dark" || (variant === "store" && theme.designPreset === "accesoo");
   const themeStyle = buildStoreThemeStyle(theme);
   const themeHead = (
     <>
@@ -66,6 +67,7 @@ export const StorefrontShell = ({
   }
 
   const isMarketplace = variant === "marketplace";
+  const usesAccesooDesign = variant === "store" && theme.designPreset === "accesoo";
   const logoUrl = isDark && store.darkLogoUrl ? store.darkLogoUrl : store.logoUrl;
   const periodRules = getStorePeriodRules(store.settings);
   const announcement = resolveStoreAnnouncement(store.theme);
@@ -77,7 +79,8 @@ export const StorefrontShell = ({
     <div
       className={cn(
         "flex min-h-dvh flex-col bg-background text-foreground",
-        getStoreThemeClassName(theme.mode),
+        isDark && "dark",
+        usesAccesooDesign && "storefront-design-accesoo",
       )}
     >
       {themeHead}

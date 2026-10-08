@@ -768,6 +768,12 @@
           "placeholder": "Aluguer de bicicletas e pranchas de SUP em Carnac desde 2012"
         },
         "descriptionHint": "O texto da página Sobre nós. Sem slogan, aparece também no topo da página inicial.",
+        "designPreset": {
+          "label": "Estilo da loja",
+          "description": "Escolha a aparência da loja pública. Pode alterá-la a qualquer momento.",
+          "standard": "Louez padrão",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "O logo no cabeçalho, o ícone no separador do navegador."
         },

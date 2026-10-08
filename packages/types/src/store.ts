@@ -375,6 +375,8 @@ export const DEFAULT_STORE_HOME_SECTIONS: StoreHomeSections = {
 export interface StoreTheme {
   mode: "light" | "dark";
   primaryColor: string;
+  /** Opt-in storefront visual system. Missing values keep existing stores on the standard design. */
+  designPreset?: "standard" | "accesoo";
   heroImages?: string[];
   /** Home hero layout. 'cover' (default) = the text over full-width photos; 'split' = the text beside a framed photo. Without photos both render the same centred band. */
   heroLayout?: "cover" | "split";

@@ -13,7 +13,9 @@ export function formatCurrency(
   currency: string = 'EUR',
   locale?: string
 ): string {
-  return new Intl.NumberFormat(locale ?? DEFAULT_FORMAT_LOCALE, {
+  const formatLocale =
+    currency.toUpperCase() === 'CRC' ? 'es-CR' : locale ?? DEFAULT_FORMAT_LOCALE
+  return new Intl.NumberFormat(formatLocale, {
     style: 'currency',
     currency: currency,
   }).format(amount)
@@ -194,6 +196,7 @@ export function getCurrencySymbol(currency: string = 'EUR'): string {
     INR: '₹',
     BRL: 'R$',
     MXN: 'MX$',
+    CRC: '₡',
     SEK: 'kr',
     NOK: 'kr',
     DKK: 'kr',

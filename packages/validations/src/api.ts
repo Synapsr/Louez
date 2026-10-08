@@ -777,6 +777,7 @@ const onlineStoreIdentityInputSchema = z.object({
   theme: z.object({
     mode: z.enum(["light", "dark"]),
     primaryColor: hexColorSchema,
+    designPreset: z.enum(["standard", "accesoo"]).optional(),
   }),
 });
 

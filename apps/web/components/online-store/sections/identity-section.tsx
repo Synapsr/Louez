@@ -33,6 +33,7 @@ export const IdentitySection = withForm({
     const tStore = useTranslations("dashboard.settings.storeSettings");
     const tAppearance = useTranslations("dashboard.settings.appearanceSettings");
     const themeMode = useStore(form.store, (state) => state.values.identity.themeMode);
+    const designPreset = useStore(form.store, (state) => state.values.identity.designPreset);
 
     return (
       <>
@@ -141,31 +142,58 @@ export const IdentitySection = withForm({
             )}
           </form.Field>
 
-          <form.Field name="identity.themeMode">
+          <form.Field name="identity.designPreset">
             {(field) => (
-              <PanelRow label={tAppearance("theme")}>
+              <PanelRow
+                label={t("designPreset.label")}
+                helper={t("designPreset.description")}
+              >
                 <PanelSegmentedControl
-                  aria-label={tAppearance("theme")}
+                  aria-label={t("designPreset.label")}
                   value={field.state.value}
                   onChange={(next) => {
                     field.handleChange(next);
-                    if (next === "light") {
-                      // The dark-mode logo only exists for dark stores.
-                      const darkLogo = form.getFieldValue("identity.darkLogoUrl");
-                      if (darkLogo && darkLogo !== savedValues.identity.darkLogoUrl) {
-                        uploads.discard(darkLogo);
-                      }
-                      form.setFieldValue("identity.darkLogoUrl", null);
+                    if (next === "accesoo") {
+                      form.setFieldValue("identity.themeMode", "dark");
+                      form.setFieldValue("identity.primaryColor", "#ff5b57");
                     }
                   }}
                   options={[
-                    { value: "light", label: tAppearance("themeLight"), icon: Sun },
-                    { value: "dark", label: tAppearance("themeDark"), icon: Moon },
+                    { value: "standard", label: t("designPreset.standard") },
+                    { value: "accesoo", label: t("designPreset.accesoo") },
                   ]}
                 />
               </PanelRow>
             )}
           </form.Field>
+
+          {designPreset === "standard" ? (
+            <form.Field name="identity.themeMode">
+              {(field) => (
+                <PanelRow label={tAppearance("theme")}>
+                  <PanelSegmentedControl
+                    aria-label={tAppearance("theme")}
+                    value={field.state.value}
+                    onChange={(next) => {
+                      field.handleChange(next);
+                      if (next === "light") {
+                        // The dark-mode logo only exists for dark stores.
+                        const darkLogo = form.getFieldValue("identity.darkLogoUrl");
+                        if (darkLogo && darkLogo !== savedValues.identity.darkLogoUrl) {
+                          uploads.discard(darkLogo);
+                        }
+                        form.setFieldValue("identity.darkLogoUrl", null);
+                      }
+                    }}
+                    options={[
+                      { value: "light", label: tAppearance("themeLight"), icon: Sun },
+                      { value: "dark", label: tAppearance("themeDark"), icon: Moon },
+                    ]}
+                  />
+                </PanelRow>
+              )}
+            </form.Field>
+          ) : null}
         </PanelGroup>
 
         <PanelGroup title={t("language.title")}>

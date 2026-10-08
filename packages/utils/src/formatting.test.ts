@@ -27,6 +27,10 @@ test("formats currencies in the caller locale instead of the currency default", 
   assert.equal(formatCurrency(1234.5, "EUR", "de-DE"), "1.234,50 €");
 });
 
+test("formats Costa Rican colones with the colón symbol", () => {
+  assert.equal(formatCurrency(1234.5, "CRC", "en-GB"), "₡1 234,50");
+});
+
 test("uses the caller locale across the remaining public formatters", () => {
   const start = new Date(2026, 7, 26, 12, 0);
   const end = new Date(2026, 7, 27, 12, 0);
