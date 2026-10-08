@@ -1,12 +1,12 @@
-import { db, variantDefinitions, variantValues } from '@louez/db';
-import { normalizeAxisKey } from '@louez/utils';
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
-import { ORPCError } from '@orpc/server';
-import { z } from 'zod';
+import { db, variantDefinitions, variantValues } from "@louez/db";
+import { normalizeAxisKey } from "@louez/utils";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { ORPCError } from "@orpc/server";
+import { z } from "zod";
 
-import { dashboardProcedure } from '../../procedures';
+import { dashboardProcedure } from "../../procedures";
 
-const variantKindSchema = z.enum(['size', 'color', 'custom']);
+const variantKindSchema = z.enum(["size", "color", "custom"]);
 
 const variantValueOutputSchema = z.object({
   id: z.string(),
@@ -101,7 +101,7 @@ const ensureDefinition = dashboardProcedure
     z.object({
       key: z.string().trim().min(1).max(32).optional(),
       label: z.string().trim().min(2).max(50),
-      kind: variantKindSchema.default('custom'),
+      kind: variantKindSchema.default("custom"),
       isActive: z.boolean().default(true),
       values: z.array(variantValueInputSchema).max(100).default([]),
     }),
@@ -110,7 +110,7 @@ const ensureDefinition = dashboardProcedure
   .handler(async ({ context, input }) => {
     const key = normalizeAxisKey(input.key ?? input.label);
     if (!key) {
-      throw new ORPCError('BAD_REQUEST', { message: 'errors.invalidData' });
+      throw new ORPCError("BAD_REQUEST", { message: "errors.invalidData" });
     }
 
     await db.transaction(async (tx) => {
@@ -139,10 +139,7 @@ const ensureDefinition = dashboardProcedure
         .select({ id: variantDefinitions.id })
         .from(variantDefinitions)
         .where(
-          and(
-            eq(variantDefinitions.storeId, context.store.id),
-            eq(variantDefinitions.key, key),
-          ),
+          and(eq(variantDefinitions.storeId, context.store.id), eq(variantDefinitions.key, key)),
         )
         .limit(1);
 
@@ -173,8 +170,8 @@ const ensureDefinition = dashboardProcedure
     const definitions = await listDefinitionsWithValues(context.store.id);
     const definition = definitions.find((entry) => entry.key === key);
     if (!definition) {
-      throw new ORPCError('INTERNAL_SERVER_ERROR', {
-        message: 'errors.invalidData',
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
+        message: "errors.invalidData",
       });
     }
     return definition;
@@ -193,17 +190,14 @@ const setDefinitionActive = dashboardProcedure
       ),
     });
     if (!definition) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     await db
       .update(variantDefinitions)
       .set({ isActive: input.isActive, updatedAt: new Date() })
       .where(
-        and(
-          eq(variantDefinitions.id, input.id),
-          eq(variantDefinitions.storeId, context.store.id),
-        ),
+        and(eq(variantDefinitions.id, input.id), eq(variantDefinitions.storeId, context.store.id)),
       );
 
     return { id: input.id, isActive: input.isActive };
@@ -232,7 +226,7 @@ const createValue = dashboardProcedure
     });
 
     if (!definition) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     const [{ maxPosition }] = await db
@@ -268,8 +262,8 @@ const createValue = dashboardProcedure
       .limit(1);
 
     if (!value) {
-      throw new ORPCError('INTERNAL_SERVER_ERROR', {
-        message: 'errors.invalidData',
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
+        message: "errors.invalidData",
       });
     }
 
@@ -302,19 +296,11 @@ const updateValue = dashboardProcedure
         definitionId: variantValues.definitionId,
       })
       .from(variantValues)
-      .innerJoin(
-        variantDefinitions,
-        eq(variantDefinitions.id, variantValues.definitionId),
-      )
-      .where(
-        and(
-          eq(variantValues.id, input.id),
-          eq(variantDefinitions.storeId, context.store.id),
-        ),
-      )
+      .innerJoin(variantDefinitions, eq(variantDefinitions.id, variantValues.definitionId))
+      .where(and(eq(variantValues.id, input.id), eq(variantDefinitions.storeId, context.store.id)))
       .limit(1);
     if (!value) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     const [duplicate] = await db
@@ -329,7 +315,7 @@ const updateValue = dashboardProcedure
       )
       .limit(1);
     if (duplicate) {
-      throw new ORPCError('CONFLICT', { message: 'errors.invalidData' });
+      throw new ORPCError("CONFLICT", { message: "errors.invalidData" });
     }
 
     await db
@@ -346,8 +332,8 @@ const updateValue = dashboardProcedure
       .where(eq(variantValues.id, input.id))
       .limit(1);
     if (!updatedValue) {
-      throw new ORPCError('INTERNAL_SERVER_ERROR', {
-        message: 'errors.invalidData',
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
+        message: "errors.invalidData",
       });
     }
 
@@ -372,7 +358,7 @@ const updateDefinition = dashboardProcedure
       ),
     });
     if (!definition) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     await db
@@ -399,16 +385,12 @@ const deleteDefinition = dashboardProcedure
       ),
     });
     if (!definition) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     await db.transaction(async (tx) => {
-      await tx
-        .delete(variantValues)
-        .where(eq(variantValues.definitionId, input.id));
-      await tx
-        .delete(variantDefinitions)
-        .where(eq(variantDefinitions.id, input.id));
+      await tx.delete(variantValues).where(eq(variantValues.definitionId, input.id));
+      await tx.delete(variantDefinitions).where(eq(variantDefinitions.id, input.id));
     });
 
     return { id: input.id };
@@ -422,19 +404,11 @@ const deleteValue = dashboardProcedure
     const [value] = await db
       .select({ id: variantValues.id })
       .from(variantValues)
-      .innerJoin(
-        variantDefinitions,
-        eq(variantDefinitions.id, variantValues.definitionId),
-      )
-      .where(
-        and(
-          eq(variantValues.id, input.id),
-          eq(variantDefinitions.storeId, context.store.id),
-        ),
-      )
+      .innerJoin(variantDefinitions, eq(variantDefinitions.id, variantValues.definitionId))
+      .where(and(eq(variantValues.id, input.id), eq(variantDefinitions.storeId, context.store.id)))
       .limit(1);
     if (!value) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     await db.delete(variantValues).where(eq(variantValues.id, input.id));

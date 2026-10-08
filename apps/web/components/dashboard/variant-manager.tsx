@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from "react";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { PencilSolidIcon, SpinnerSolidIcon, TrashSolidIcon } from '@louez/ui/icons'
-import { ChevronDown, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PencilSolidIcon, SpinnerSolidIcon, TrashSolidIcon } from "@louez/ui/icons";
+import { ChevronDown, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   AlertDialog,
@@ -40,15 +40,12 @@ import {
   Input,
   Switch,
   toastManager,
-} from '@louez/ui';
-import { cn, findMatchingVariant } from '@louez/utils';
+} from "@louez/ui";
+import { cn, findMatchingVariant } from "@louez/utils";
 
-import { VariantColorPicker } from '@/components/dashboard/variant-color-picker';
-import { orpc } from '@/lib/orpc/react';
-import {
-  type ResolvedVariantPreset,
-  resolveVariantPresets,
-} from '@/lib/variant-presets';
+import { VariantColorPicker } from "@/components/dashboard/variant-color-picker";
+import { orpc } from "@/lib/orpc/react";
+import { type ResolvedVariantPreset, resolveVariantPresets } from "@/lib/variant-presets";
 
 interface VariantManagerValue {
   id: string;
@@ -61,7 +58,7 @@ interface VariantManagerDefinition {
   id: string;
   key: string;
   label: string;
-  kind: 'size' | 'color' | 'custom';
+  kind: "size" | "color" | "custom";
   isActive: boolean;
   position: number;
   values: VariantManagerValue[];
@@ -70,7 +67,7 @@ interface VariantManagerDefinition {
 interface ManagedVariant {
   key: string;
   label: string;
-  kind: 'size' | 'color' | 'custom';
+  kind: "size" | "color" | "custom";
   isActive: boolean;
   isCustom: boolean;
   definition?: VariantManagerDefinition;
@@ -82,8 +79,8 @@ interface ManagedVariant {
   }>;
 }
 
-const DEFAULT_NEW_COLOR = '#3B82F6';
-const OPTIMISTIC_VALUE_ID_PREFIX = 'optimistic:';
+const DEFAULT_NEW_COLOR = "#3B82F6";
+const OPTIMISTIC_VALUE_ID_PREFIX = "optimistic:";
 
 export const VariantManagerDrawer = ({
   open,
@@ -92,14 +89,14 @@ export const VariantManagerDrawer = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const t = useTranslations('dashboard.products.form.unitTracking');
+  const t = useTranslations("dashboard.products.form.unitTracking");
 
   return (
     <Drawer position="right" open={open} onOpenChange={onOpenChange}>
       <DrawerPopup variant="inset" className="max-w-xl" showCloseButton>
         <DrawerHeader>
-          <DrawerTitle>{t('managerTitle')}</DrawerTitle>
-          <DrawerDescription>{t('managerDescription')}</DrawerDescription>
+          <DrawerTitle>{t("managerTitle")}</DrawerTitle>
+          <DrawerDescription>{t("managerDescription")}</DrawerDescription>
         </DrawerHeader>
         <DrawerPanel>
           <VariantManager />
@@ -110,20 +107,15 @@ export const VariantManagerDrawer = ({
 };
 
 const VariantManager = () => {
-  const t = useTranslations('dashboard.products.form.unitTracking');
-  const tCommon = useTranslations('common');
+  const t = useTranslations("dashboard.products.form.unitTracking");
+  const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
 
   const catalogQuery = useQuery(orpc.dashboard.variants.list.queryOptions());
   const definitions: VariantManagerDefinition[] = catalogQuery.data ?? [];
-  const catalogQueryKey = orpc.dashboard.variants.list.key({ type: 'query' });
-  const [activeOverrides, setActiveOverrides] = useState<
-    Record<string, boolean>
-  >({});
-  const resolvedPresets = useMemo(
-    () => resolveVariantPresets((key) => String(t.raw(key))),
-    [t],
-  );
+  const catalogQueryKey = orpc.dashboard.variants.list.key({ type: "query" });
+  const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
+  const resolvedPresets = useMemo(() => resolveVariantPresets((key) => String(t.raw(key))), [t]);
   const managedVariants = useMemo<ManagedVariant[]>(() => {
     const matchedDefinitionIds = new Set<string>();
     const presetItems = resolvedPresets.map((preset) => {
@@ -134,10 +126,7 @@ const VariantManager = () => {
         key: preset.key,
         label: definition?.label ?? preset.label,
         kind: definition?.kind ?? preset.kind,
-        isActive:
-          activeOverrides[preset.key] ??
-          definition?.isActive ??
-          preset.defaultActive,
+        isActive: activeOverrides[preset.key] ?? definition?.isActive ?? preset.defaultActive,
         isCustom: false,
         definition,
         preset,
@@ -175,9 +164,7 @@ const VariantManager = () => {
 
     return [...presetItems, ...customItems];
   }, [activeOverrides, definitions, resolvedPresets]);
-  const activeCount = managedVariants.filter(
-    (variant) => variant.isActive,
-  ).length;
+  const activeCount = managedVariants.filter((variant) => variant.isActive).length;
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: orpc.dashboard.variants.key() });
@@ -196,12 +183,10 @@ const VariantManager = () => {
   );
 
   const [newDialogOpen, setNewDialogOpen] = useState(false);
-  const [newLabel, setNewLabel] = useState('');
+  const [newLabel, setNewLabel] = useState("");
   const [editing, setEditing] = useState<ManagedVariant | null>(null);
-  const [editLabel, setEditLabel] = useState('');
-  const [toDelete, setToDelete] = useState<VariantManagerDefinition | null>(
-    null,
-  );
+  const [editLabel, setEditLabel] = useState("");
+  const [toDelete, setToDelete] = useState<VariantManagerDefinition | null>(null);
 
   const isMutating =
     ensureDefinitionMutation.isPending ||
@@ -227,15 +212,12 @@ const VariantManager = () => {
       await invalidate();
       return definition;
     } catch {
-      toastManager.add({ title: tCommon('error'), type: 'error' });
+      toastManager.add({ title: tCommon("error"), type: "error" });
       return null;
     }
   };
 
-  const handleActiveChange = async (
-    variant: ManagedVariant,
-    isActive: boolean,
-  ) => {
+  const handleActiveChange = async (variant: ManagedVariant, isActive: boolean) => {
     const previousDefinitions = variant.definition
       ? queryClient.getQueryData<VariantManagerDefinition[]>(catalogQueryKey)
       : undefined;
@@ -247,14 +229,10 @@ const VariantManager = () => {
         return;
       }
 
-      queryClient.setQueryData(
-        catalogQueryKey,
-        (current: VariantManagerDefinition[] | undefined) =>
-          current?.map((definition) =>
-            definition.id === variant.definition?.id
-              ? { ...definition, isActive }
-              : definition,
-          ),
+      queryClient.setQueryData(catalogQueryKey, (current: VariantManagerDefinition[] | undefined) =>
+        current?.map((definition) =>
+          definition.id === variant.definition?.id ? { ...definition, isActive } : definition,
+        ),
       );
 
       await setDefinitionActiveMutation.mutateAsync({
@@ -268,7 +246,7 @@ const VariantManager = () => {
       } else {
         await invalidate();
       }
-      toastManager.add({ title: tCommon('error'), type: 'error' });
+      toastManager.add({ title: tCommon("error"), type: "error" });
     } finally {
       setActiveOverrides((current) => {
         const next = { ...current };
@@ -284,15 +262,15 @@ const VariantManager = () => {
     try {
       await ensureDefinitionMutation.mutateAsync({
         label,
-        kind: 'custom',
+        kind: "custom",
         isActive: true,
         values: [],
       });
       await invalidate();
-      setNewLabel('');
+      setNewLabel("");
       setNewDialogOpen(false);
     } catch {
-      toastManager.add({ title: tCommon('error'), type: 'error' });
+      toastManager.add({ title: tCommon("error"), type: "error" });
     }
   };
 
@@ -302,9 +280,7 @@ const VariantManager = () => {
 
     const definition =
       editing.definition ??
-      (editing.preset
-        ? await ensurePreset(editing.preset, editing.isActive)
-        : null);
+      (editing.preset ? await ensurePreset(editing.preset, editing.isActive) : null);
     if (!definition) return;
 
     try {
@@ -312,7 +288,7 @@ const VariantManager = () => {
       await invalidate();
       setEditing(null);
     } catch {
-      toastManager.add({ title: tCommon('error'), type: 'error' });
+      toastManager.add({ title: tCommon("error"), type: "error" });
     }
   };
 
@@ -323,7 +299,7 @@ const VariantManager = () => {
       await invalidate();
       setToDelete(null);
     } catch {
-      toastManager.add({ title: tCommon('error'), type: 'error' });
+      toastManager.add({ title: tCommon("error"), type: "error" });
     }
   };
 
@@ -331,14 +307,14 @@ const VariantManager = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
-          {t('activeVariantsCount', {
+          {t("activeVariantsCount", {
             active: activeCount,
             total: managedVariants.length,
           })}
         </p>
         <Button type="button" size="sm" onClick={() => setNewDialogOpen(true)}>
           <Plus className="size-4" />
-          {t('newVariant')}
+          {t("newVariant")}
         </Button>
       </div>
 
@@ -353,9 +329,7 @@ const VariantManager = () => {
               key={variant.key}
               variant={variant}
               disabled={isMutating}
-              onActiveChange={(isActive) =>
-                handleActiveChange(variant, isActive)
-              }
+              onActiveChange={(isActive) => handleActiveChange(variant, isActive)}
               onEnsure={() =>
                 variant.preset
                   ? ensurePreset(variant.preset, variant.isActive)
@@ -378,17 +352,17 @@ const VariantManager = () => {
       <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
         <DialogPopup>
           <DialogHeader>
-            <DialogTitle>{t('newVariant')}</DialogTitle>
-            <DialogDescription>{t('newVariantDescription')}</DialogDescription>
+            <DialogTitle>{t("newVariant")}</DialogTitle>
+            <DialogDescription>{t("newVariantDescription")}</DialogDescription>
           </DialogHeader>
           <DialogPanel>
             <Input
               autoFocus
-              placeholder={t('variantPlaceholder')}
+              placeholder={t("variantPlaceholder")}
               value={newLabel}
               onChange={(event) => setNewLabel(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter') {
+                if (event.key === "Enter") {
                   event.preventDefault();
                   void handleCreate();
                 }
@@ -396,12 +370,8 @@ const VariantManager = () => {
             />
           </DialogPanel>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setNewDialogOpen(false)}
-            >
-              {tCommon('cancel')}
+            <Button type="button" variant="outline" onClick={() => setNewDialogOpen(false)}>
+              {tCommon("cancel")}
             </Button>
             <Button
               type="button"
@@ -409,7 +379,7 @@ const VariantManager = () => {
               isPending={ensureDefinitionMutation.isPending}
               disabled={isMutating}
             >
-              {tCommon('create')}
+              {tCommon("create")}
             </Button>
           </DialogFooter>
         </DialogPopup>
@@ -424,8 +394,8 @@ const VariantManager = () => {
       >
         <DialogPopup>
           <DialogHeader>
-            <DialogTitle>{t('editVariant')}</DialogTitle>
-            <DialogDescription>{t('editVariantDescription')}</DialogDescription>
+            <DialogTitle>{t("editVariant")}</DialogTitle>
+            <DialogDescription>{t("editVariantDescription")}</DialogDescription>
           </DialogHeader>
           <DialogPanel>
             <Input
@@ -433,7 +403,7 @@ const VariantManager = () => {
               value={editLabel}
               onChange={(event) => setEditLabel(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter') {
+                if (event.key === "Enter") {
                   event.preventDefault();
                   void handleRename();
                 }
@@ -441,12 +411,8 @@ const VariantManager = () => {
             />
           </DialogPanel>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditing(null)}
-            >
-              {tCommon('cancel')}
+            <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+              {tCommon("cancel")}
             </Button>
             <Button
               type="button"
@@ -454,7 +420,7 @@ const VariantManager = () => {
               isPending={updateDefinitionMutation.isPending}
               disabled={isMutating}
             >
-              {tCommon('save')}
+              {tCommon("save")}
             </Button>
           </DialogFooter>
         </DialogPopup>
@@ -469,16 +435,14 @@ const VariantManager = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('deleteVariantTitle')}</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteVariantTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteVariantDescription', { name: toDelete?.label ?? '' })}
+              {t("deleteVariantDescription", { name: toDelete?.label ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose
-              render={<Button type="button" variant="outline" />}
-            >
-              {tCommon('cancel')}
+            <AlertDialogClose render={<Button type="button" variant="outline" />}>
+              {tCommon("cancel")}
             </AlertDialogClose>
             <Button
               type="button"
@@ -487,7 +451,7 @@ const VariantManager = () => {
               isPending={deleteDefinitionMutation.isPending}
               disabled={isMutating}
             >
-              {tCommon('delete')}
+              {tCommon("delete")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -513,21 +477,21 @@ const VariantDefinitionRow = ({
   onDelete: () => void;
   onInvalidate: () => Promise<unknown> | void;
 }) => {
-  const t = useTranslations('dashboard.products.form.unitTracking');
-  const tCommon = useTranslations('common');
+  const t = useTranslations("dashboard.products.form.unitTracking");
+  const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [newValue, setNewValue] = useState('');
+  const [newValue, setNewValue] = useState("");
   const [newColor, setNewColor] = useState(DEFAULT_NEW_COLOR);
   const [editingValue, setEditingValue] = useState<{
     id: string | null;
     label: string;
     colorHex: string | null;
   } | null>(null);
-  const [editValueLabel, setEditValueLabel] = useState('');
+  const [editValueLabel, setEditValueLabel] = useState("");
   const [editValueColor, setEditValueColor] = useState(DEFAULT_NEW_COLOR);
 
-  const catalogQueryKey = orpc.dashboard.variants.list.key({ type: 'query' });
+  const catalogQueryKey = orpc.dashboard.variants.list.key({ type: "query" });
   const createValueMutation = useMutation(
     orpc.dashboard.variants.createValue.mutationOptions({
       onMutate: async (input) => {
@@ -572,7 +536,7 @@ const VariantDefinitionRow = ({
               ),
           );
         }
-        toastManager.add({ title: tCommon('error'), type: 'error' });
+        toastManager.add({ title: tCommon("error"), type: "error" });
       },
       onSuccess: (created, input, context) => {
         queryClient.setQueryData(
@@ -589,8 +553,7 @@ const VariantDefinitionRow = ({
 
                 if (
                   value.id === created.id ||
-                  value.label.toLocaleLowerCase() ===
-                    created.label.toLocaleLowerCase()
+                  value.label.toLocaleLowerCase() === created.label.toLocaleLowerCase()
                 ) {
                   return [];
                 }
@@ -607,29 +570,25 @@ const VariantDefinitionRow = ({
       },
     }),
   );
-  const updateValueMutation = useMutation(
-    orpc.dashboard.variants.updateValue.mutationOptions(),
-  );
-  const deleteValueMutation = useMutation(
-    orpc.dashboard.variants.deleteValue.mutationOptions(),
-  );
+  const updateValueMutation = useMutation(orpc.dashboard.variants.updateValue.mutationOptions());
+  const deleteValueMutation = useMutation(orpc.dashboard.variants.deleteValue.mutationOptions());
 
   const handleAddValue = async () => {
     const label = newValue.trim();
     if (!label) return;
     const definitionId = variant.definition?.id ?? (await onEnsure())?.id;
     if (!definitionId) return;
-    setNewValue('');
+    setNewValue("");
     createValueMutation.mutate({
       definitionId,
       label,
-      colorHex: variant.kind === 'color' ? newColor : undefined,
+      colorHex: variant.kind === "color" ? newColor : undefined,
     });
   };
 
   const resolvePersistedValue = async (
-    value: ManagedVariant['values'][number],
-  ): Promise<Omit<VariantManagerValue, 'position'> | null> => {
+    value: ManagedVariant["values"][number],
+  ): Promise<Omit<VariantManagerValue, "position"> | null> => {
     if (value.id) {
       return {
         id: value.id,
@@ -642,13 +601,12 @@ const VariantDefinitionRow = ({
     return (
       definition?.values.find(
         (persistedValue) =>
-          persistedValue.label.toLocaleLowerCase() ===
-          value.label.toLocaleLowerCase(),
+          persistedValue.label.toLocaleLowerCase() === value.label.toLocaleLowerCase(),
       ) ?? null
     );
   };
 
-  const handleStartEditValue = (value: ManagedVariant['values'][number]) => {
+  const handleStartEditValue = (value: ManagedVariant["values"][number]) => {
     setEditingValue(value);
     setEditValueLabel(value.label);
     setEditValueColor(value.colorHex ?? DEFAULT_NEW_COLOR);
@@ -665,16 +623,16 @@ const VariantDefinitionRow = ({
       await updateValueMutation.mutateAsync({
         id: persistedValue.id,
         label,
-        colorHex: variant.kind === 'color' ? editValueColor : undefined,
+        colorHex: variant.kind === "color" ? editValueColor : undefined,
       });
       await onInvalidate();
       setEditingValue(null);
     } catch {
-      toastManager.add({ title: tCommon('error'), type: 'error' });
+      toastManager.add({ title: tCommon("error"), type: "error" });
     }
   };
 
-  const handleDeleteValue = async (value: ManagedVariant['values'][number]) => {
+  const handleDeleteValue = async (value: ManagedVariant["values"][number]) => {
     const persistedValue = await resolvePersistedValue(value);
     if (!persistedValue) return;
 
@@ -682,7 +640,7 @@ const VariantDefinitionRow = ({
       await deleteValueMutation.mutateAsync({ id: persistedValue.id });
       await onInvalidate();
     } catch {
-      toastManager.add({ title: tCommon('error'), type: 'error' });
+      toastManager.add({ title: tCommon("error"), type: "error" });
     }
   };
 
@@ -690,32 +648,29 @@ const VariantDefinitionRow = ({
     <Collapsible open={open} onOpenChange={setOpen}>
       <div
         className={cn(
-          'flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 transition-opacity',
-          !variant.isActive && 'opacity-60',
+          "flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 transition-opacity",
+          !variant.isActive && "opacity-60",
         )}
       >
         <CollapsibleTrigger
           render={
-            <button
-              type="button"
-              className="flex min-w-44 flex-1 items-center gap-2 text-left"
-            />
+            <button type="button" className="flex min-w-44 flex-1 items-center gap-2 text-left" />
           }
         >
           <ChevronDown
             className={cn(
-              'text-muted-foreground size-4 shrink-0 transition-transform duration-200 ease-out',
-              open && 'rotate-180',
+              "text-muted-foreground size-4 shrink-0 transition-transform duration-200 ease-out",
+              open && "rotate-180",
             )}
           />
           <span className="min-w-0 flex-1 truncate font-medium">{variant.label}</span>
           <Badge variant="expired" className="shrink-0">
-            {t('valuesCount', { count: variant.values.length })}
+            {t("valuesCount", { count: variant.values.length })}
           </Badge>
         </CollapsibleTrigger>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Badge variant={variant.isActive ? 'success' : 'expired'} className="shrink-0">
-            {variant.isActive ? t('variantActive') : t('variantInactive')}
+          <Badge variant={variant.isActive ? "success" : "expired"} className="shrink-0">
+            {variant.isActive ? t("variantActive") : t("variantInactive")}
           </Badge>
           <span
             className="inline-flex"
@@ -725,7 +680,7 @@ const VariantDefinitionRow = ({
               void onActiveChange(!variant.isActive);
             }}
             onKeyDownCapture={(event) => {
-              if (event.key !== ' ' && event.key !== 'Enter') return;
+              if (event.key !== " " && event.key !== "Enter") return;
               event.preventDefault();
               event.stopPropagation();
               void onActiveChange(!variant.isActive);
@@ -735,11 +690,9 @@ const VariantDefinitionRow = ({
               checked={variant.isActive}
               data-variant-toggle={variant.key}
               disabled={disabled}
-              aria-label={t('toggleVariant', {
+              aria-label={t("toggleVariant", {
                 name: variant.label,
-                status: variant.isActive
-                  ? t('variantActive')
-                  : t('variantInactive'),
+                status: variant.isActive ? t("variantActive") : t("variantInactive"),
               })}
             />
           </span>
@@ -752,7 +705,7 @@ const VariantDefinitionRow = ({
                   size="icon"
                   className="size-8"
                   disabled={disabled}
-                  aria-label={`${tCommon('edit')} ${variant.label}`}
+                  aria-label={`${tCommon("edit")} ${variant.label}`}
                 />
               }
             >
@@ -761,7 +714,7 @@ const VariantDefinitionRow = ({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => void onRename()}>
                 <Pencil className="size-4" />
-                {tCommon('edit')}
+                {tCommon("edit")}
               </DropdownMenuItem>
               {variant.isCustom && (
                 <DropdownMenuItem
@@ -769,7 +722,7 @@ const VariantDefinitionRow = ({
                   onClick={onDelete}
                 >
                   <Trash2 className="size-4" />
-                  {tCommon('delete')}
+                  {tCommon("delete")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -782,8 +735,7 @@ const VariantDefinitionRow = ({
             <div className="flex flex-wrap items-center gap-1.5">
               {variant.values.map((value) => {
                 const valueId = value.id;
-                const isOptimistic =
-                  valueId?.startsWith(OPTIMISTIC_VALUE_ID_PREFIX) ?? false;
+                const isOptimistic = valueId?.startsWith(OPTIMISTIC_VALUE_ID_PREFIX) ?? false;
                 return (
                   <Badge
                     key={valueId ?? `${variant.key}-${value.label}`}
@@ -806,7 +758,7 @@ const VariantDefinitionRow = ({
                           className="rounded-sm p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
                           onClick={() => void handleStartEditValue(value)}
                           disabled={disabled || updateValueMutation.isPending}
-                          aria-label={`${tCommon('edit')} ${value.label}`}
+                          aria-label={`${tCommon("edit")} ${value.label}`}
                         >
                           <PencilSolidIcon className="size-3" />
                         </button>
@@ -815,7 +767,7 @@ const VariantDefinitionRow = ({
                           className="rounded-sm p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
                           onClick={() => void handleDeleteValue(value)}
                           disabled={disabled || deleteValueMutation.isPending}
-                          aria-label={`${tCommon('delete')} ${value.label}`}
+                          aria-label={`${tCommon("delete")} ${value.label}`}
                         >
                           <TrashSolidIcon className="size-3" />
                         </button>
@@ -827,23 +779,19 @@ const VariantDefinitionRow = ({
             </div>
           )}
           <div className="flex items-center gap-1.5">
-            {variant.kind === 'color' && (
-              <VariantColorPicker
-                value={newColor}
-                onChange={setNewColor}
-                disabled={disabled}
-              />
+            {variant.kind === "color" && (
+              <VariantColorPicker value={newColor} onChange={setNewColor} disabled={disabled} />
             )}
             <Input
               value={newValue}
               onChange={(event) => setNewValue(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter') {
+                if (event.key === "Enter") {
                   event.preventDefault();
                   void handleAddValue();
                 }
               }}
-              placeholder={t('addValuePlaceholder')}
+              placeholder={t("addValuePlaceholder")}
               className="flex-1"
             />
             <Button
@@ -865,12 +813,12 @@ const VariantDefinitionRow = ({
       >
         <DialogPopup>
           <DialogHeader>
-            <DialogTitle>{t('editValue')}</DialogTitle>
-            <DialogDescription>{t('editValueDescription')}</DialogDescription>
+            <DialogTitle>{t("editValue")}</DialogTitle>
+            <DialogDescription>{t("editValueDescription")}</DialogDescription>
           </DialogHeader>
           <DialogPanel>
             <div className="flex items-center gap-2">
-              {variant.kind === 'color' && (
+              {variant.kind === "color" && (
                 <VariantColorPicker
                   value={editValueColor}
                   onChange={setEditValueColor}
@@ -883,7 +831,7 @@ const VariantDefinitionRow = ({
                 value={editValueLabel}
                 onChange={(event) => setEditValueLabel(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
+                  if (event.key === "Enter") {
                     event.preventDefault();
                     void handleUpdateValue();
                   }
@@ -892,12 +840,8 @@ const VariantDefinitionRow = ({
             </div>
           </DialogPanel>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditingValue(null)}
-            >
-              {tCommon('cancel')}
+            <Button type="button" variant="outline" onClick={() => setEditingValue(null)}>
+              {tCommon("cancel")}
             </Button>
             <Button
               type="button"
@@ -905,7 +849,7 @@ const VariantDefinitionRow = ({
               isPending={updateValueMutation.isPending}
               disabled={!editValueLabel.trim()}
             >
-              {tCommon('save')}
+              {tCommon("save")}
             </Button>
           </DialogFooter>
         </DialogPopup>
