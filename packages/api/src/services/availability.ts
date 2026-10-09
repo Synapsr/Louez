@@ -677,10 +677,13 @@ async function computeStorefrontAvailability(params: {
     const current = productMap.get(combinationKey);
     // Only the product's current axes describe a combination: a value left
     // on a unit for an axis the product no longer has must not be exposed.
-    const selectedAttributes = canonicalizeAttributes(
-      axesByProductId.get(unit.productId),
-      unit.attributes as UnitAttributes | null,
-    );
+    // A product that declares none sells by the values on its units (the
+    // storefront infers its axes from them), so those are kept as they are.
+    const axes = axesByProductId.get(unit.productId) ?? [];
+    const selectedAttributes =
+      axes.length > 0
+        ? canonicalizeAttributes(axes, unit.attributes as UnitAttributes | null)
+        : ((unit.attributes || {}) as UnitAttributes);
 
     if (!current) {
       productMap.set(combinationKey, { totalQuantity: 1, selectedAttributes });

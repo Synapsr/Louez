@@ -82,12 +82,20 @@ interface ManagedVariant {
 const DEFAULT_NEW_COLOR = "#3B82F6";
 const OPTIMISTIC_VALUE_ID_PREFIX = "optimistic:";
 
+/** A variant withdrawn from the store's products, so an open form can follow. */
+export interface WithdrawnVariant {
+  key: string;
+  label: string;
+}
+
 export const VariantManagerDrawer = ({
   open,
   onOpenChange,
+  onWithdrawn,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onWithdrawn?: (variant: WithdrawnVariant) => void;
 }) => {
   const t = useTranslations("dashboard.products.form.unitTracking");
 
@@ -99,14 +107,14 @@ export const VariantManagerDrawer = ({
           <DrawerDescription>{t("managerDescription")}</DrawerDescription>
         </DrawerHeader>
         <DrawerPanel>
-          <VariantManager />
+          <VariantManager onWithdrawn={onWithdrawn} />
         </DrawerPanel>
       </DrawerPopup>
     </Drawer>
   );
 };
 
-const VariantManager = () => {
+const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVariant) => void }) => {
   const t = useTranslations("dashboard.products.form.unitTracking");
   const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
@@ -278,10 +286,12 @@ const VariantManager = () => {
   const handleWithdraw = async () => {
     if (!toWithdraw?.definition) return;
     try {
+      const { key, label } = toWithdraw.definition;
       const result = await withdrawMutation.mutateAsync({ id: toWithdraw.definition.id });
       await invalidate();
       setToWithdraw(null);
       notifyWithdrawn(result.affectedProductCount);
+      onWithdrawn?.({ key, label });
     } catch {
       toastManager.add({ title: tCommon("error"), type: "error" });
     }

@@ -55,7 +55,10 @@ import {
   type VariantCatalogDefinition,
   type VariantRegistryEntry,
 } from "@/components/dashboard/util.variant-registry";
-import { VariantManagerDrawer } from "@/components/dashboard/variant-manager";
+import {
+  VariantManagerDrawer,
+  type WithdrawnVariant,
+} from "@/components/dashboard/variant-manager";
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { orpc } from "@/lib/orpc/react";
@@ -1019,6 +1022,26 @@ export function UnitTrackingEditor({
     }
   };
 
+  // The catalogue drawer opens inside this form: a variant withdrawn there
+  // must leave the draft too, or saving would put it straight back.
+  const withdrawVariantFromDraft = (variant: WithdrawnVariant) => {
+    const matches = (key: string) => findMatchingVariant(key, [variant]) !== undefined;
+    const nextAxes = bookingAttributeAxes.filter((axis) => !matches(axis.key));
+    if (nextAxes.length !== bookingAttributeAxes.length) {
+      onBookingAttributeAxesChange(nextAxes.map((axis, index) => ({ ...axis, position: index })));
+    }
+    if (units.some((unit) => Object.keys(unit.attributes ?? {}).some(matches))) {
+      onChange(
+        units.map((unit) => ({
+          ...unit,
+          attributes: Object.fromEntries(
+            Object.entries(unit.attributes ?? {}).filter(([key]) => !matches(key)),
+          ),
+        })),
+      );
+    }
+  };
+
   const handleGenerate = () => {
     const prefix = effectivePrefix.trim();
     const count = Math.min(parseInt(genCount, 10) || 0, MAX_GENERATED_UNITS);
@@ -1282,7 +1305,11 @@ export function UnitTrackingEditor({
       )}
 
       {/* Shared variant catalog manager */}
-      <VariantManagerDrawer open={variantManagerOpen} onOpenChange={setVariantManagerOpen} />
+      <VariantManagerDrawer
+        open={variantManagerOpen}
+        onOpenChange={setVariantManagerOpen}
+        onWithdrawn={withdrawVariantFromDraft}
+      />
     </div>
   );
 }

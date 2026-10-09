@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 
-import { removeMatchingAxis, removeVariantFromStoreProducts } from "@louez/api/services";
+import { findProductsUsingVariant, removeVariantFromStoreProducts } from "@louez/api/services";
 import { db, productUnits, products, reservationItems, variantDefinitions } from "@louez/db";
 
 type CliOptions = {
@@ -93,18 +93,22 @@ async function loadInactiveDefinitions(storeId?: string) {
   return storeId ? definitions.filter((definition) => definition.storeId === storeId) : definitions;
 }
 
-/** Products of the store still carrying one of the given inactive variants. */
+/**
+ * Products of the store still carrying one of the given inactive variants, by
+ * axis or by unit values: the same set the withdrawal touches, so the backup
+ * covers every row it changes.
+ */
 async function findAffectedProducts(
   storeId: string,
   variants: ReadonlyArray<{ key: string; label: string }>,
 ) {
-  const rows = await db
-    .select({ id: products.id, name: products.name, axes: products.bookingAttributeAxes })
-    .from(products)
-    .where(eq(products.storeId, storeId));
-  return rows.filter((row) =>
-    variants.some((variant) => removeMatchingAxis(row.axes, variant) !== null),
-  );
+  const byId = new Map<string, { id: string; name: string }>();
+  for (const variant of variants) {
+    for (const product of await findProductsUsingVariant(db, { storeId, variant })) {
+      byId.set(product.id, product);
+    }
+  }
+  return [...byId.values()];
 }
 
 async function snapshot(productIds: string[]): Promise<Backup> {

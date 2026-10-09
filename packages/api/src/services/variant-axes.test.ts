@@ -18,8 +18,12 @@ mock.module("@louez/db", {
   },
 });
 
-const { groupIdsByNextCombinationKey, removeMatchingAxis, stripMatchingAttributes } =
-  await import("./variant-axes");
+const {
+  groupIdsByNextCombinationKey,
+  removeMatchingAxis,
+  selectProductsUsingVariant,
+  stripMatchingAttributes,
+} = await import("./variant-axes");
 
 const sizeAndColor: BookingAttributeAxis[] = [
   { key: "size", label: "Taille", position: 0 },
@@ -77,5 +81,21 @@ test("groupIdsByNextCombinationKey re-keys booked lines from their stored attrib
       ["color:Rouge", ["i1"]],
       ["__default", ["i3"]],
     ],
+  );
+});
+
+test("selectProductsUsingVariant lists products using the variant by axis or by unit values", () => {
+  const rows = [
+    { id: "declared", axes: sizeAndColor },
+    { id: "attribute-only", axes: null },
+    { id: "untouched", axes: [{ key: "color", label: "Couleur", position: 0 }] },
+  ];
+  const units: Array<{ productId: string; attributes: Record<string, string> }> = [
+    { productId: "attribute-only", attributes: { taille: "M" } },
+    { productId: "untouched", attributes: { color: "Rouge" } },
+  ];
+  assert.deepEqual(
+    selectProductsUsingVariant(rows, units, { key: "size", label: "Taille" }).map((row) => row.id),
+    ["declared", "attribute-only"],
   );
 });

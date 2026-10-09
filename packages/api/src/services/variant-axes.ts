@@ -23,7 +23,7 @@ export interface CombinationKeySyncResult {
 }
 
 export interface RemoveVariantResult extends CombinationKeySyncResult {
-  /** Products whose booking axes lost the variant. */
+  /** Products whose booking axes or unit values lost the variant. */
   productIds: string[];
   unitsStripped: number;
 }
@@ -67,7 +67,28 @@ export const stripMatchingAttributes = (
   return Object.fromEntries(remaining);
 };
 
-/** The products of a store that still declare the variant as a booking axis. */
+/**
+ * The products that use the variant: those declaring it as a booking axis,
+ * and those whose units carry a value for it without declaring it (the
+ * storefront infers axes from unit values when a product declares none).
+ * Exactly what a withdrawal touches, so previews, backups and counts agree.
+ */
+export const selectProductsUsingVariant = <T extends { id: string }>(
+  productRows: ReadonlyArray<T & { axes: readonly BookingAttributeAxis[] | null }>,
+  unitRows: ReadonlyArray<{ productId: string; attributes: UnitAttributes | null | undefined }>,
+  variant: VariantAxisRef,
+): T[] => {
+  const withValues = new Set(
+    unitRows
+      .filter((unit) => stripMatchingAttributes(unit.attributes, variant) !== null)
+      .map((unit) => unit.productId),
+  );
+  return productRows.filter(
+    (row) => removeMatchingAxis(row.axes, variant) !== null || withValues.has(row.id),
+  );
+};
+
+/** The products of a store that still use the variant, by axis or by unit values. */
 export const findProductsUsingVariant = async (
   executor: Executor,
   input: { storeId: string; variant: VariantAxisRef },
@@ -76,9 +97,25 @@ export const findProductsUsingVariant = async (
     .select({ id: products.id, name: products.name, axes: products.bookingAttributeAxes })
     .from(products)
     .where(eq(products.storeId, input.storeId));
-  return rows
-    .filter((row) => removeMatchingAxis(row.axes, input.variant) !== null)
-    .map((row) => ({ id: row.id, name: row.name }));
+  const units =
+    rows.length > 0
+      ? await executor
+          .select({ productId: productUnits.productId, attributes: productUnits.attributes })
+          .from(productUnits)
+          .where(
+            and(
+              inArray(
+                productUnits.productId,
+                rows.map((row) => row.id),
+              ),
+              isNotNull(productUnits.attributes),
+            ),
+          )
+      : [];
+  return selectProductsUsingVariant(rows, units, input.variant).map((row) => ({
+    id: row.id,
+    name: row.name,
+  }));
 };
 
 /**
@@ -187,10 +224,15 @@ export const removeVariantFromStoreProducts = async (
     unitsRekeyed: 0,
     reservationItemsRekeyed: 0,
   };
+  const touchedProductIds = new Set<string>();
 
   if (rows.length > 0) {
     const units = await executor
-      .select({ id: productUnits.id, attributes: productUnits.attributes })
+      .select({
+        id: productUnits.id,
+        productId: productUnits.productId,
+        attributes: productUnits.attributes,
+      })
       .from(productUnits)
       .where(
         inArray(
@@ -207,6 +249,7 @@ export const removeVariantFromStoreProducts = async (
         .set({ attributes, updatedAt: new Date() })
         .where(eq(productUnits.id, unit.id));
       result.unitsStripped += 1;
+      touchedProductIds.add(unit.productId);
     }
   }
 
@@ -220,10 +263,11 @@ export const removeVariantFromStoreProducts = async (
       .where(eq(products.id, row.id));
 
     const synced = await syncProductCombinationKeys(executor, { productId: row.id, axes });
-    result.productIds.push(row.id);
+    touchedProductIds.add(row.id);
     result.unitsRekeyed += synced.unitsRekeyed;
     result.reservationItemsRekeyed += synced.reservationItemsRekeyed;
   }
 
+  result.productIds = rows.map((row) => row.id).filter((id) => touchedProductIds.has(id));
   return result;
 };
