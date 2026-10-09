@@ -58,7 +58,7 @@ interface StoreWithRole {
   slug: string;
   logoUrl: string | null;
   onboardingCompleted: boolean;
-  role: "owner" | "member" | "platform_admin";
+  role: "owner" | "admin" | "member" | "platform_admin";
 }
 
 interface DashboardSidebarProps {
@@ -332,36 +332,5 @@ export const DashboardSidebar = ({
 };
 
 function PlanBadge({ planSlug }: { planSlug?: string }) {
-  const plan = planSlug || "pay_as_you_go";
-
-  const planConfig: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-    pro: {
-      label: "Pro",
-      className: "bg-primary/10 text-primary hover:bg-primary/20",
-      icon: <AccentSparklesIcon className="h-3 w-3" />,
-    },
-    ultra: {
-      label: "Ultra",
-      className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20",
-      icon: <CrownIcon className="h-3 w-3" />,
-    },
-  };
-
-  // Pay-as-you-go (the default) shows no plan badge next to the logo — only the
-  // paid tiers get a badge.
-  const config = planConfig[plan];
-  if (!config) return null;
-
-  return (
-    <Link
-      href="/dashboard/settings/subscription"
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors group-data-[collapsible=icon]:hidden",
-        config.className,
-      )}
-    >
-      {config.icon}
-      {config.label}
-    </Link>
-  );
+  return null;
 }

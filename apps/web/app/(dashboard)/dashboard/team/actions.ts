@@ -15,9 +15,10 @@ import { notifyTeamMemberInvited } from "@/lib/discord/platform-notifications";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { sendTeamInvitationEmail } from "@/lib/email/send";
 import { canAddTeamMember } from "@/lib/plan-limits";
-import { currentUserHasPermission, getCurrentStore } from "@/lib/store-context";
+import { currentUserHasPermission, getCurrentStore, getCurrentStoreRole } from "@/lib/store-context";
 
 import { env } from "@/env";
+import { MemberRole } from "@louez/utils";
 
 const addMemberSchema = z.object({
   email: z.email(),
@@ -186,6 +187,55 @@ export async function removeMember(memberId: string) {
   }
 
   await db.delete(storeMembers).where(eq(storeMembers.id, memberId));
+
+  revalidatePath("/dashboard/team");
+  return { success: true };
+}
+
+export async function changeRole(memberId: string, newRole: MemberRole) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "errors.unauthorized" };
+  }
+
+  const store = await getCurrentStore();
+  if (!store) {
+    return { error: "errors.storeNotFound" };
+  }
+
+  const canManage = await currentUserHasPermission("manage_members");
+  if (!canManage) {
+    return { error: "errors.unauthorized" };
+  }
+  
+  const currentRole = await getCurrentStoreRole();
+
+  if (newRole === "owner") {
+     return { error: "errors.unauthorized" };
+  }
+
+  const member = await db.query.storeMembers.findFirst({
+    where: and(eq(storeMembers.id, memberId), eq(storeMembers.storeId, store.id)),
+  });
+
+  if (!member) {
+    return { error: "errors.memberNotFound" };
+  }
+
+  // Cannot change role of owner
+  if (member.role === "owner") {
+    return { error: "errors.unauthorized" };
+  }
+  
+  // Platform admins aren't stored in storeMembers table
+  if (newRole === "platform_admin") {
+    return { error: "errors.unauthorized" };
+  }
+
+  await db
+    .update(storeMembers)
+    .set({ role: newRole as "admin" | "member" | "owner" })
+    .where(eq(storeMembers.id, memberId));
 
   revalidatePath("/dashboard/team");
   return { success: true };

@@ -315,16 +315,7 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     group: "communication",
     navigation: false,
   },
-  {
-    id: "subscription",
-    href: "/dashboard/settings/subscription",
-    icon: PricingIcon,
-    labelPath: "dashboard.settings.subscription.label",
-    descriptionPath: "dashboard.settings.subscription.description",
-    searchPaths: ["dashboard.settings.subscription", "dashboard.settings.subscriptionSettings"],
-    group: "accountData",
-    navigation: true,
-  },
+
   {
     id: "export",
     href: "/dashboard/settings/export",

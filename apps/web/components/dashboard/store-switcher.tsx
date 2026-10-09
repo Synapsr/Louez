@@ -77,7 +77,7 @@ interface StoreWithRole {
   slug: string;
   logoUrl: string | null;
   onboardingCompleted: boolean;
-  role: "owner" | "member" | "platform_admin";
+  role: "owner" | "admin" | "member" | "platform_admin";
 }
 
 interface StoreSwitcherProps {

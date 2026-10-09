@@ -5,10 +5,11 @@ export type Permission =
   | 'manage_members'
   | 'manage_settings'
 
-export type MemberRole = 'owner' | 'member' | 'platform_admin'
+export type MemberRole = 'owner' | 'admin' | 'member' | 'platform_admin'
 
 const ROLE_PERMISSIONS: Record<MemberRole, Permission[]> = {
   owner: ['read', 'write', 'delete', 'manage_members', 'manage_settings'],
+  admin: ['read', 'write', 'manage_members'],
   member: ['read', 'write'],
   platform_admin: [
     'read',

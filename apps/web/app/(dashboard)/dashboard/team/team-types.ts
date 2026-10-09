@@ -1,6 +1,6 @@
 export interface TeamMember {
   id: string;
-  role: "owner" | "member";
+  role: "owner" | "admin" | "member";
   createdAt: Date;
   user: {
     id: string;

@@ -31,7 +31,7 @@ export interface Session {
  * Store data with role information
  * Matches StoreWithFullData from apps/web/lib/store-context.ts
  */
-export type MemberRole = "owner" | "member" | "platform_admin";
+export type MemberRole = "owner" | "admin" | "member" | "platform_admin";
 
 /**
  * Base store data (without member role)

@@ -25,7 +25,7 @@ interface StoreWithRole {
   name: string
   slug: string
   logoUrl: string | null
-  role: 'owner' | 'member' | 'platform_admin'
+  role: 'owner' | 'admin' | 'member' | 'platform_admin'
 }
 
 interface MultiStoreHeaderProps {

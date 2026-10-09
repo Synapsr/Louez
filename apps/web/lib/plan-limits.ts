@@ -44,24 +44,7 @@ export interface StoreLimits {
  * Get the current plan for a store
  */
 export async function getStorePlan(storeId: string): Promise<Plan> {
-  const subscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.storeId, storeId),
-    columns: { planSlug: true, status: true, billingMode: true },
-  })
-
-  // Pay-as-you-go stores get the unlimited PAYG plan regardless of plan slug.
-  if (subscription?.billingMode === 'pay_as_you_go') {
-    return getPayAsYouGoPlan()
-  }
-
-  // No subscription or a cancelled one → no paid tier active, fall back to the
-  // default plan (pay-as-you-go: unlimited, billed per rental, no monthly fee).
-  if (!subscription || subscription.status === 'cancelled') {
-    return getDefaultPlan()
-  }
-
-  const plan = getPlan(subscription.planSlug)
-  return plan || getDefaultPlan()
+  return getPayAsYouGoPlan()
 }
 
 /**

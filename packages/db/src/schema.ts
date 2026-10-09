@@ -436,7 +436,7 @@ export const referralRewards = mysqlTable(
 // Store Members (Multi-store support)
 // ============================================================================
 
-export const memberRole = mysqlEnum("member_role", ["owner", "member"]);
+export const memberRole = mysqlEnum("member_role", ["owner", "admin", "member"]);
 
 export const storeMembers = mysqlTable(
   "store_members",
