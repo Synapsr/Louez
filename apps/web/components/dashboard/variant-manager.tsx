@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PencilSolidIcon, SpinnerSolidIcon, TrashSolidIcon } from "@louez/ui/icons";
@@ -116,6 +116,10 @@ export const VariantManagerDrawer = ({
 
 const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVariant) => void }) => {
   const t = useTranslations("dashboard.products.form.unitTracking");
+  // Called once the request is over: the host form may have re-rendered
+  // since the click, and must be told through its latest callback.
+  const onWithdrawnRef = useRef(onWithdrawn);
+  onWithdrawnRef.current = onWithdrawn;
   const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
 
@@ -291,7 +295,7 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
       await invalidate();
       setToWithdraw(null);
       notifyWithdrawn(result.affectedProductCount);
-      onWithdrawn?.({ key, label });
+      onWithdrawnRef.current?.({ key, label });
     } catch {
       toastManager.add({ title: tCommon("error"), type: "error" });
     }
