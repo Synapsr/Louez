@@ -37,8 +37,6 @@ import type {
   StorefrontCatalogProduct,
   StorefrontPricingTier,
 } from "@/lib/storefront/storefront.types";
-import { filterActiveVariantAxes } from "@/lib/util.variant-visibility";
-import { getStoreVariantActivity } from "@/lib/util.variant-visibility.server";
 import {
   type BrowsableCategory,
   type CatalogAttributeFilters,
@@ -369,7 +367,7 @@ const compareAttributeValues = (a: string, b: string): number =>
 export const loadCatalogAttributeAxes = cache(
   async (storeId: string): Promise<CatalogAttributeAxis[]> => {
     const trackedProductsOf = and(activeProductsOf(storeId), eq(products.trackUnits, true));
-    const [productRows, unitRows, variantActivity] = await Promise.all([
+    const [productRows, unitRows] = await Promise.all([
       db
         .select({ id: products.id, bookingAttributeAxes: products.bookingAttributeAxes })
         .from(products)
@@ -379,7 +377,6 @@ export const loadCatalogAttributeAxes = cache(
         .from(productUnits)
         .innerJoin(products, eq(products.id, productUnits.productId))
         .where(and(trackedProductsOf, eq(productUnits.lifecycleStatus, "active"))),
-      getStoreVariantActivity(storeId),
     ]);
 
     const unitsByProductId = new Map<string, { attributes: Record<string, string> | null }[]>();
@@ -397,10 +394,7 @@ export const loadCatalogAttributeAxes = cache(
       const units = unitsByProductId.get(row.id) ?? [];
       if (units.length === 0) continue;
       const declared: BookingAttributeAxis[] = row.bookingAttributeAxes ?? [];
-      const axes = filterActiveVariantAxes(
-        declared.length > 0 ? declared : inferAttributeAxesFromUnits(units),
-        variantActivity,
-      );
+      const axes = declared.length > 0 ? declared : inferAttributeAxesFromUnits(units);
       for (const axis of axes) {
         const entry = axesByKey.get(axis.key) ?? {
           key: axis.key,
@@ -801,20 +795,18 @@ export const loadCatalogProducts = async ({
   });
   const offset = decodeCatalogCursor(cursor);
 
-  const [candidates, { priceById }, variantActivity, { categories: storeCategories }] =
-    await Promise.all([
-      db
-        .select({
-          id: products.id,
-          displayOrder: products.displayOrder,
-          createdAt: products.createdAt,
-        })
-        .from(products)
-        .where(where),
-      loadCatalogPriceIndex(storeId, startDate, endDate, timezone),
-      getStoreVariantActivity(storeId),
-      loadCatalogCategories(storeId),
-    ]);
+  const [candidates, { priceById }, { categories: storeCategories }] = await Promise.all([
+    db
+      .select({
+        id: products.id,
+        displayOrder: products.displayOrder,
+        createdAt: products.createdAt,
+      })
+      .from(products)
+      .where(where),
+    loadCatalogPriceIndex(storeId, startDate, endDate, timezone),
+    loadCatalogCategories(storeId),
+  ]);
 
   let availabilityById: Map<string, number | null> | null = null;
   if (startDate && endDate && candidates.length > 0 && (availableOnly || (quantity ?? 1) > 1)) {
@@ -928,10 +920,7 @@ export const loadCatalogProducts = async ({
       basePeriodMinutes: row.basePeriodMinutes,
       enforceStrictTiers: row.enforceStrictTiers,
       trackUnits: row.trackUnits,
-      bookingAttributeAxes: filterActiveVariantAxes(
-        row.bookingAttributeAxes ?? [],
-        variantActivity,
-      ),
+      bookingAttributeAxes: row.bookingAttributeAxes ?? [],
       videoUrl: row.videoUrl,
       pricingTiers: tiersByProductId.get(row.id) ?? [],
       seasonalPricings: seasonalByProductId.get(row.id) ?? [],

@@ -40,8 +40,6 @@ import type {
   StorefrontProductUnit,
 } from "@/lib/storefront/storefront.types";
 import { getStorefrontPathPrefix } from "@/lib/util.storefront-host";
-import { filterActiveVariantAxes } from "@/lib/util.variant-visibility";
-import { getStoreVariantActivity } from "@/lib/util.variant-visibility.server";
 import { findBlockingRequiredAccessories } from "@/lib/utils/cart-required-accessories";
 import { getMaxRentalMinutes, getMinRentalMinutes } from "@/lib/utils/rental-duration";
 import { getCurrentDowntimeUnitIds } from "@/lib/utils/unit-current-downtime";
@@ -302,7 +300,6 @@ export const loadProductPage = cache(
       downtimeUnitIds,
       seasonalPricings,
       relatedProducts,
-      variantActivity,
       basePath,
     ] = await Promise.all([
       getEffectiveProductQuantities(db, [
@@ -322,7 +319,6 @@ export const loadProductPage = cache(
       ),
       loadSeasonalPricings(product.id),
       loadRelatedProducts(store.id, product),
-      getStoreVariantActivity(store.id),
       getStorefrontPathPrefix(slug),
     ]);
 
@@ -368,10 +364,7 @@ export const loadProductPage = cache(
 
     const units = toStorefrontUnits(product, downtimeUnitIds);
     const storedAxes = readStoredAxes(product);
-    const attributeAxes = filterActiveVariantAxes(
-      storedAxes.length > 0 ? storedAxes : inferAttributeAxesFromUnits(units),
-      variantActivity,
-    );
+    const attributeAxes = storedAxes.length > 0 ? storedAxes : inferAttributeAxesFromUnits(units);
     const effectiveQuantity = stockOf(product);
     const maxQuantity: StockQuantityLimit = product.trackUnits
       ? units.filter(isBookableUnit).length

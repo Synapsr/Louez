@@ -54,6 +54,7 @@
     "db:seed": "turbo run db:seed --filter=web",
     "marketplace:cohort-backfill": "pnpm --filter=@louez/web marketplace:cohort-backfill",
     "marketplace:default-publication": "pnpm --filter=@louez/web marketplace:default-publication",
+    "variants:sync-inactive": "pnpm --filter=@louez/web variants:sync-inactive",
     "pricing:fix-pricing-mode": "pnpm --filter=@louez/db run pricing:fix-pricing-mode",
     "pricing:preflight": "pnpm --filter=@louez/db run pricing:preflight",
     "pricing:backfill": "pnpm --filter=@louez/db run pricing:backfill",

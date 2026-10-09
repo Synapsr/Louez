@@ -14,12 +14,13 @@ import {
   productUnitEvents,
   productUnits,
   products,
+  type Transaction,
   reservationActivity,
   reservationItemUnits,
   reservationItems,
   reservations,
 } from '@louez/db';
-import { DEFAULT_COMBINATION_KEY } from '@louez/utils';
+import { buildCombinationKey } from '@louez/utils';
 import {
   type CloseDowntimeInput,
   type DeclareDowntimeInput,
@@ -43,6 +44,15 @@ import { auth } from '@/lib/auth';
 import { getCurrentStore } from '@/lib/store-context';
 import { getUnitConflicts } from '@/lib/utils/unit-conflicts';
 import { buildUnitEvent, updateUnits } from '@/lib/utils/unit-mutations';
+import {
+  lockReservationProducts,
+  reserveInventory,
+} from '@/lib/reservations/reserve-inventory';
+import {
+  resolveUnitAssignmentScope,
+  unitMatchesAssignmentScope,
+} from '@/lib/utils/unit-availability';
+import { retryOnceOnDeadlock } from '@/lib/db/retry-once-on-deadlock';
 
 async function getStoreForUser() {
   return getCurrentStore();
@@ -106,7 +116,9 @@ async function getUnitForStore(unitId: string, storeId: string) {
       productId: productUnits.productId,
       identifier: productUnits.identifier,
       notes: productUnits.notes,
+      attributes: productUnits.attributes,
       combinationKey: productUnits.combinationKey,
+      bookingAttributeAxes: products.bookingAttributeAxes,
       lifecycleStatus: productUnits.lifecycleStatus,
       retiredAt: productUnits.retiredAt,
       retirementReason: productUnits.retirementReason,
@@ -552,6 +564,8 @@ export async function reinstateUnit(input: ReinstateUnitInput) {
             retiredAt: null,
             retirementReason: null,
             retirementNote: null,
+            // The product's axes may have changed while the unit was retired.
+            combinationKey: buildCombinationKey(unit.bookingAttributeAxes, unit.attributes),
           },
           event: {
             storeId: store.id,
@@ -688,6 +702,8 @@ export async function reassignReservationItemUnit(
       id: reservationItems.id,
       productId: reservationItems.productId,
       combinationKey: reservationItems.combinationKey,
+      selectedAttributes: reservationItems.selectedAttributes,
+      quantity: reservationItems.quantity,
       reservationId: reservationItems.reservationId,
       startDate: reservations.startDate,
       endDate: reservations.endDate,
@@ -720,7 +736,7 @@ export async function reassignReservationItemUnit(
   const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
 
   try {
-    const reassignmentResult = await db.transaction(async (tx) => {
+    const reassignUnit = async (tx: Transaction) => {
       const [lockedReservation] = await tx
         .select({ id: reservations.id })
         .from(reservations)
@@ -736,6 +752,21 @@ export async function reassignReservationItemUnit(
         return { error: 'errors.notFound' };
       }
 
+      // Locks come first, as locking reads only, in the order of the other
+      // reservation writers (reservation, then product, then units). The
+      // first consistent read happens after them, so every validation below
+      // sees what was committed before the locks were taken.
+      if (item.productId) {
+        await tx
+          .select({ id: products.id })
+          .from(products)
+          .where(
+            and(eq(products.id, item.productId), eq(products.storeId, store.id)),
+          )
+          .for('update');
+      }
+
+
       const sortedLockUnitIds = [
         ...new Set([validated.data.fromUnitId, validated.data.toUnitId]),
       ].sort((a, b) => a.localeCompare(b, 'en'));
@@ -747,11 +778,17 @@ export async function reassignReservationItemUnit(
         .orderBy(productUnits.id)
         .for('update');
 
+      const lockedProductsById = item.productId
+        ? await lockReservationProducts(tx, store.id, [item.productId])
+        : new Map();
+
       const [currentItem] = await tx
         .select({
           id: reservationItems.id,
           productId: reservationItems.productId,
           combinationKey: reservationItems.combinationKey,
+      selectedAttributes: reservationItems.selectedAttributes,
+      quantity: reservationItems.quantity,
           reservationId: reservationItems.reservationId,
           startDate: reservations.startDate,
           endDate: reservations.endDate,
@@ -779,6 +816,7 @@ export async function reassignReservationItemUnit(
           productId: productUnits.productId,
           identifier: productUnits.identifier,
           combinationKey: productUnits.combinationKey,
+          attributes: productUnits.attributes,
           lifecycleStatus: productUnits.lifecycleStatus,
         })
         .from(productUnits)
@@ -816,15 +854,22 @@ export async function reassignReservationItemUnit(
         return { error: 'errors.invalidUnits', failedUnitIds: [toUnit.id] };
       }
 
-      const fromCombinationKey =
-        fromUnit.combinationKey || DEFAULT_COMBINATION_KEY;
-      const toCombinationKey = toUnit.combinationKey || DEFAULT_COMBINATION_KEY;
-      const itemCombinationKey =
-        currentItem.combinationKey || DEFAULT_COMBINATION_KEY;
+      // The replacement must be able to serve the line: its exact combination,
+      // or any unit matching what a pooled line did choose.
+      const assignmentScope = currentItem.productId
+        ? await resolveUnitAssignmentScope(tx, {
+            productId: currentItem.productId,
+            combinationKey: currentItem.combinationKey,
+            selectedAttributes: currentItem.selectedAttributes,
+          })
+        : null;
 
       if (
-        fromCombinationKey !== toCombinationKey ||
-        toCombinationKey !== itemCombinationKey
+        assignmentScope &&
+        !unitMatchesAssignmentScope(assignmentScope, {
+          combinationKey: toUnit.combinationKey,
+          attributes: toUnit.attributes,
+        })
       ) {
         return {
           error: 'errors.unitCombinationMismatch',
@@ -845,6 +890,63 @@ export async function reassignReservationItemUnit(
 
       if (!existingAssignment) {
         return { error: 'errors.notFound' };
+      }
+
+      // A pooled line may move to a unit of another combination, as long as
+      // that combination keeps enough stock for the lines that booked it
+      // specifically. Checked under the product lock, like a checkout.
+      if (assignmentScope?.combinationKey === null && currentItem.productId) {
+        const heldAssignments = await tx
+          .select({ productUnitId: reservationItemUnits.productUnitId })
+          .from(reservationItemUnits)
+          .where(eq(reservationItemUnits.reservationItemId, currentItem.id));
+        const nextUnitIds = heldAssignments
+          .flatMap((assignment) =>
+            assignment.productUnitId && assignment.productUnitId !== fromUnit.id
+              ? [assignment.productUnitId]
+              : [],
+          )
+          .concat(toUnit.id);
+        const productId = currentItem.productId;
+        const checkStock = (bufferMinutes: number) =>
+          reserveInventory({
+            tx,
+            storeId: store.id,
+            lockedProductsById,
+            lines: [
+              {
+                lineId: currentItem.id,
+                productId,
+                // Only the units held after the move are checked: a line
+                // booked with an explicit overbooking keeps its remainder.
+                quantity: nextUnitIds.length,
+                selectedAttributes: currentItem.selectedAttributes ?? undefined,
+                combinationKey: currentItem.combinationKey,
+                assignedUnitIds: nextUnitIds,
+                pooled: true,
+              },
+            ],
+            window: { start: currentItem.startDate, end: currentItem.endDate },
+            turnoverBufferMinutes: bufferMinutes,
+            blockingStatuses,
+            excludeReservationItemIds: [currentItem.id],
+            skipConsumableCheck: true,
+            skipRequiredAccessoryCheck: true,
+          });
+        const strictStock = await checkStock(0);
+        if (!strictStock.ok) {
+          return { error: 'errors.invalidUnits', failedUnitIds: [toUnit.id] };
+        }
+        if (!validated.data.overrideTurnoverBuffer && turnoverBufferMinutes > 0) {
+          const bufferedStock = await checkStock(turnoverBufferMinutes);
+          if (!bufferedStock.ok) {
+            return {
+              error: 'errors.turnoverBufferConflict',
+              bufferConflict: true,
+              failedUnitIds: [toUnit.id],
+            };
+          }
+        }
       }
 
       const [duplicateAssignment] = await tx
@@ -959,7 +1061,10 @@ export async function reassignReservationItemUnit(
         fromIdentifier: fromUnit.identifier,
         toIdentifier: toUnit.identifier,
       };
-    });
+    };
+    const reassignmentResult = await retryOnceOnDeadlock(() =>
+      db.transaction(reassignUnit),
+    );
 
     if ('error' in reassignmentResult && reassignmentResult.error) {
       return reassignmentResult;

@@ -292,8 +292,31 @@ export async function resolveStorefrontCart(
       },
       null,
     );
-    const maxQuantity = combineStockQuantityLimits(ownMaxQuantity, requiredAccessoryMaxQuantity);
-    const ownStockIsAvailable = isWithinStockQuantityLimit(requestedOwnQuantity, ownMaxQuantity);
+    // Lines of one tracked product booked for the same period share its
+    // stock whatever they selected: bookings taken without a choice float
+    // across combinations, so each combination's figure is capped by the
+    // product and the lines must fit together in what the product has left.
+    const otherLinesQuantity = lines.reduce(
+      (sum, candidate) =>
+        candidate !== line &&
+        candidate.productId === line.productId &&
+        candidate.startDate === line.startDate &&
+        candidate.endDate === line.endDate
+          ? sum + candidate.quantity
+          : sum,
+      0,
+    );
+    const sharedMaxQuantity: StockQuantityLimit =
+      product.trackUnits && productAvailability && productAvailability.availableQuantity !== null
+        ? Math.max(0, productAvailability.availableQuantity - otherLinesQuantity)
+        : null;
+    const maxQuantity = combineStockQuantityLimits(
+      combineStockQuantityLimits(ownMaxQuantity, sharedMaxQuantity),
+      requiredAccessoryMaxQuantity,
+    );
+    const ownStockIsAvailable =
+      isWithinStockQuantityLimit(requestedOwnQuantity, ownMaxQuantity) &&
+      isWithinStockQuantityLimit(line.quantity, sharedMaxQuantity);
 
     if (!ownStockIsAvailable || !isWithinStockQuantityLimit(line.quantity, maxQuantity)) {
       resolvedLines.push({

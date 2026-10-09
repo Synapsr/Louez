@@ -15,13 +15,16 @@ import {
   reservationItems,
   reservationStillHoldsUnitsSql,
   reservations,
+  variantDefinitions,
 } from "@louez/db";
+import { findMatchingVariant, getVariantAxisIdentity } from "@louez/utils";
 
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 
 import { isImageBackgroundRemovalEnabled } from "@/lib/ai/image/background-removal";
 import { isAiImageEnhanceEnabled } from "@/lib/ai/image/credits";
 import { getCurrentStore } from "@/lib/store-context";
+import { inferAttributeAxesFromUnits } from "@/lib/utils/util.variant-combinations";
 
 import { ProductForm } from "../../product-form";
 
@@ -77,14 +80,19 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     notFound();
   }
 
-  const [categoriesList, availableAccessories, stockKindChangeBlockers] = await Promise.all([
-    db.query.categories.findMany({
-      where: eq(categories.storeId, store.id),
-      orderBy: [categories.order],
-    }),
-    getAccessoryCandidates({ storeId: store.id, excludeProductId: id }),
-    getProductStockKindChangeBlockers(db, { productId: id, storeId: store.id }),
-  ]);
+  const [categoriesList, availableAccessories, stockKindChangeBlockers, storeVariants] =
+    await Promise.all([
+      db.query.categories.findMany({
+        where: eq(categories.storeId, store.id),
+        orderBy: [categories.order],
+      }),
+      getAccessoryCandidates({ storeId: store.id, excludeProductId: id }),
+      getProductStockKindChangeBlockers(db, { productId: id, storeId: store.id }),
+      db
+        .select({ key: variantDefinitions.key, label: variantDefinitions.label })
+        .from(variantDefinitions)
+        .where(eq(variantDefinitions.storeId, store.id)),
+    ]);
 
   // Accessory links carry their booking rules (required + quantity per parent
   // unit), not just the association.
@@ -94,6 +102,41 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     quantity: link.quantity,
   }));
   const editableUnits = product.units.filter((unit) => unit.lifecycleStatus === "active");
+  // A product that never declared axes but whose units carry values is sold by
+  // those values on the storefront. The form shows the same axes, so saving
+  // keeps them instead of silently dropping the values. Only a value every
+  // unit carries becomes an axis: a declared axis requires a value on each
+  // unit, and a partial legacy value must not block unrelated edits.
+  const storedAxes = product.bookingAttributeAxes ?? [];
+  const unitAttributes = editableUnits.map(
+    (unit) => (unit.attributes as Record<string, string> | null) ?? {},
+  );
+  // The product schema accepts at most three axes, with lowercase keys and no
+  // two aliases of one variant (`size` and `taille`); values outside that stay
+  // orphan values, as before.
+  const seenIdentities = new Set<string>();
+  const bookingAttributeAxes =
+    storedAxes.length > 0
+      ? storedAxes
+      : inferAttributeAxesFromUnits(unitAttributes.map((attributes) => ({ attributes })))
+          .filter(
+            (axis) =>
+              /^[a-z0-9_-]+$/.test(axis.key) &&
+              axis.key.length <= 32 &&
+              unitAttributes.every((attributes) => attributes[axis.key]?.trim()),
+          )
+          .filter((axis) => {
+            const identity = getVariantAxisIdentity(axis.key);
+            if (seenIdentities.has(identity)) return false;
+            seenIdentities.add(identity);
+            return true;
+          })
+          .slice(0, 3)
+          .map((axis, position) => ({
+            ...axis,
+            position,
+            label: findMatchingVariant(axis.key, storeVariants)?.label ?? axis.label,
+          }));
   const unitIds = editableUnits.map((unit) => unit.id);
   const blockingStatuses = getBlockingReservationStatuses(
     store.settings?.pendingBlocksAvailability ?? true,
@@ -146,6 +189,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
           quantity: effectiveQuantity,
           accessories: accessoryLinks,
           categoryIds: product.categoryLinks.map((link) => link.categoryId),
+          bookingAttributeAxes,
           units: editableUnits.map((unit) => ({
             id: unit.id,
             identifier: unit.identifier,

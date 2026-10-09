@@ -183,6 +183,9 @@ export const checkExtensionInventory = async (
               quantity: item.quantity,
               selectedAttributes: item.selectedAttributes ?? undefined,
               combinationKey: item.combinationKey,
+              assignedUnitIds: item.assignedUnits.flatMap((unit) =>
+                unit.productUnitId ? [unit.productUnitId] : [],
+              ),
             },
           ]
         : [],

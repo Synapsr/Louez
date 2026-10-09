@@ -92,6 +92,19 @@ export function buildCombinationKey(
   return tokens.join('|')
 }
 
+/**
+ * A line booked without a choice on a product that sells by variants: taken
+ * before the product had axes, or its axes changed since. No combination can
+ * claim it, so any unit serves it and it only counts against the product's
+ * total.
+ */
+export function isPooledCombinationKey(
+  axes: BookingAttributeAxis[] | null | undefined,
+  combinationKey: string | null | undefined,
+): boolean {
+  return combinationKey === DEFAULT_COMBINATION_KEY && getSortedAxes(axes).length > 0
+}
+
 export function buildPartialCombinationKey(
   axes: BookingAttributeAxis[] | null | undefined,
   attributes: UnitAttributes | null | undefined,

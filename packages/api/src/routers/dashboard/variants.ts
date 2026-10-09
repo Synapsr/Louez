@@ -1,12 +1,16 @@
-import { db, variantDefinitions, variantValues } from '@louez/db';
-import { normalizeAxisKey } from '@louez/utils';
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
-import { ORPCError } from '@orpc/server';
-import { z } from 'zod';
+import { db, variantDefinitions, variantValues } from "@louez/db";
+import { normalizeAxisKey } from "@louez/utils";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { ORPCError } from "@orpc/server";
+import { z } from "zod";
 
-import { dashboardProcedure } from '../../procedures';
+import { dashboardProcedure } from "../../procedures";
+import {
+  findProductsUsingVariant,
+  removeVariantFromStoreProducts,
+} from "../../services/variant-axes";
 
-const variantKindSchema = z.enum(['size', 'color', 'custom']);
+const variantKindSchema = z.enum(["size", "color", "custom"]);
 
 const variantValueOutputSchema = z.object({
   id: z.string(),
@@ -95,13 +99,15 @@ const list = dashboardProcedure
  * definitions and for adopting a system preset (the client sends the
  * localized preset label + seed values). Idempotent: an existing definition
  * is returned as-is; seed values are only added when it has none yet.
+ * It never touches products: only setDefinitionActive and deleteDefinition
+ * do, since the editor calls this in the background.
  */
 const ensureDefinition = dashboardProcedure
   .input(
     z.object({
       key: z.string().trim().min(1).max(32).optional(),
       label: z.string().trim().min(2).max(50),
-      kind: variantKindSchema.default('custom'),
+      kind: variantKindSchema.default("custom"),
       isActive: z.boolean().default(true),
       values: z.array(variantValueInputSchema).max(100).default([]),
     }),
@@ -110,7 +116,7 @@ const ensureDefinition = dashboardProcedure
   .handler(async ({ context, input }) => {
     const key = normalizeAxisKey(input.key ?? input.label);
     if (!key) {
-      throw new ORPCError('BAD_REQUEST', { message: 'errors.invalidData' });
+      throw new ORPCError("BAD_REQUEST", { message: "errors.invalidData" });
     }
 
     await db.transaction(async (tx) => {
@@ -139,10 +145,7 @@ const ensureDefinition = dashboardProcedure
         .select({ id: variantDefinitions.id })
         .from(variantDefinitions)
         .where(
-          and(
-            eq(variantDefinitions.storeId, context.store.id),
-            eq(variantDefinitions.key, key),
-          ),
+          and(eq(variantDefinitions.storeId, context.store.id), eq(variantDefinitions.key, key)),
         )
         .limit(1);
 
@@ -173,40 +176,86 @@ const ensureDefinition = dashboardProcedure
     const definitions = await listDefinitionsWithValues(context.store.id);
     const definition = definitions.find((entry) => entry.key === key);
     if (!definition) {
-      throw new ORPCError('INTERNAL_SERVER_ERROR', {
-        message: 'errors.invalidData',
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
+        message: "errors.invalidData",
       });
     }
     return definition;
   });
 
-/** Enable or disable a definition without deleting its shared values. */
+/**
+ * Enable or disable a definition. Inactive only means "no longer offered
+ * when editing products": products that already carry the variant keep it,
+ * on the dashboard as in the storefront. Withdrawing it from them is a
+ * separate, explicit action (`withdrawFromProducts`).
+ */
 const setDefinitionActive = dashboardProcedure
   .input(z.object({ id: z.string(), isActive: z.boolean() }))
   .output(z.object({ id: z.string(), isActive: z.boolean() }))
   .handler(async ({ context, input }) => {
+    const [updated] = await db
+      .update(variantDefinitions)
+      .set({ isActive: input.isActive, updatedAt: new Date() })
+      .where(
+        and(eq(variantDefinitions.id, input.id), eq(variantDefinitions.storeId, context.store.id)),
+      );
+    if (updated.affectedRows === 0) {
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
+    }
+    return { id: input.id, isActive: input.isActive };
+  });
+
+const productUsageSchema = z.array(z.object({ id: z.string(), name: z.string() }));
+
+/** Which products still declare each definition as a booking axis. */
+const usage = dashboardProcedure
+  .output(z.array(z.object({ definitionId: z.string(), products: productUsageSchema })))
+  .handler(async ({ context }) => {
+    const definitions = await db
+      .select({
+        id: variantDefinitions.id,
+        key: variantDefinitions.key,
+        label: variantDefinitions.label,
+      })
+      .from(variantDefinitions)
+      .where(eq(variantDefinitions.storeId, context.store.id));
+    return Promise.all(
+      definitions.map(async (definition) => ({
+        definitionId: definition.id,
+        products: await findProductsUsingVariant(db, {
+          storeId: context.store.id,
+          variant: { key: definition.key, label: definition.label },
+        }),
+      })),
+    );
+  });
+
+/**
+ * Withdraw a definition from every product of the store in one go: axes
+ * dropped, unit values cleared, units and booked lines re-keyed. The owner
+ * confirms it in the dashboard with the list of products in front of them.
+ */
+const withdrawFromProducts = dashboardProcedure
+  .input(z.object({ id: z.string() }))
+  .output(z.object({ id: z.string(), affectedProductCount: z.number() }))
+  .handler(async ({ context, input }) => {
     const definition = await db.query.variantDefinitions.findFirst({
-      columns: { id: true },
+      columns: { id: true, key: true, label: true },
       where: and(
         eq(variantDefinitions.id, input.id),
         eq(variantDefinitions.storeId, context.store.id),
       ),
     });
     if (!definition) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
-
-    await db
-      .update(variantDefinitions)
-      .set({ isActive: input.isActive, updatedAt: new Date() })
-      .where(
-        and(
-          eq(variantDefinitions.id, input.id),
-          eq(variantDefinitions.storeId, context.store.id),
-        ),
-      );
-
-    return { id: input.id, isActive: input.isActive };
+    const removed = await db.transaction((tx) =>
+      removeVariantFromStoreProducts(tx, {
+        storeId: context.store.id,
+        variant: { key: definition.key, label: definition.label },
+      }),
+    );
+    return { id: input.id, affectedProductCount: removed.productIds.length };
   });
 
 /** Add a value to a definition's shared catalog (idempotent by label). */
@@ -232,7 +281,7 @@ const createValue = dashboardProcedure
     });
 
     if (!definition) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     const [{ maxPosition }] = await db
@@ -268,8 +317,8 @@ const createValue = dashboardProcedure
       .limit(1);
 
     if (!value) {
-      throw new ORPCError('INTERNAL_SERVER_ERROR', {
-        message: 'errors.invalidData',
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
+        message: "errors.invalidData",
       });
     }
 
@@ -302,19 +351,11 @@ const updateValue = dashboardProcedure
         definitionId: variantValues.definitionId,
       })
       .from(variantValues)
-      .innerJoin(
-        variantDefinitions,
-        eq(variantDefinitions.id, variantValues.definitionId),
-      )
-      .where(
-        and(
-          eq(variantValues.id, input.id),
-          eq(variantDefinitions.storeId, context.store.id),
-        ),
-      )
+      .innerJoin(variantDefinitions, eq(variantDefinitions.id, variantValues.definitionId))
+      .where(and(eq(variantValues.id, input.id), eq(variantDefinitions.storeId, context.store.id)))
       .limit(1);
     if (!value) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     const [duplicate] = await db
@@ -329,7 +370,7 @@ const updateValue = dashboardProcedure
       )
       .limit(1);
     if (duplicate) {
-      throw new ORPCError('CONFLICT', { message: 'errors.invalidData' });
+      throw new ORPCError("CONFLICT", { message: "errors.invalidData" });
     }
 
     await db
@@ -346,8 +387,8 @@ const updateValue = dashboardProcedure
       .where(eq(variantValues.id, input.id))
       .limit(1);
     if (!updatedValue) {
-      throw new ORPCError('INTERNAL_SERVER_ERROR', {
-        message: 'errors.invalidData',
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
+        message: "errors.invalidData",
       });
     }
 
@@ -372,7 +413,7 @@ const updateDefinition = dashboardProcedure
       ),
     });
     if (!definition) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     await db
@@ -384,34 +425,40 @@ const updateDefinition = dashboardProcedure
   });
 
 /**
- * Remove a definition and its values from the catalog. Products using it
- * keep their axes and unit values (they store label copies).
+ * Remove a definition and its values from the catalog. Refused while
+ * products still declare the variant: `usedBy` lists them so the owner can
+ * withdraw it first. Deleting underneath them would leave product axes
+ * pointing at nothing.
  */
 const deleteDefinition = dashboardProcedure
   .input(z.object({ id: z.string() }))
-  .output(z.object({ id: z.string() }))
+  .output(z.object({ id: z.string(), deleted: z.boolean(), usedBy: productUsageSchema }))
   .handler(async ({ context, input }) => {
     const definition = await db.query.variantDefinitions.findFirst({
-      columns: { id: true },
+      columns: { id: true, key: true, label: true },
       where: and(
         eq(variantDefinitions.id, input.id),
         eq(variantDefinitions.storeId, context.store.id),
       ),
     });
     if (!definition) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
+    }
+
+    const usedBy = await findProductsUsingVariant(db, {
+      storeId: context.store.id,
+      variant: { key: definition.key, label: definition.label },
+    });
+    if (usedBy.length > 0) {
+      return { id: input.id, deleted: false, usedBy };
     }
 
     await db.transaction(async (tx) => {
-      await tx
-        .delete(variantValues)
-        .where(eq(variantValues.definitionId, input.id));
-      await tx
-        .delete(variantDefinitions)
-        .where(eq(variantDefinitions.id, input.id));
+      await tx.delete(variantValues).where(eq(variantValues.definitionId, input.id));
+      await tx.delete(variantDefinitions).where(eq(variantDefinitions.id, input.id));
     });
 
-    return { id: input.id };
+    return { id: input.id, deleted: true, usedBy: [] };
   });
 
 /** Remove a value from a definition's catalog. */
@@ -422,19 +469,11 @@ const deleteValue = dashboardProcedure
     const [value] = await db
       .select({ id: variantValues.id })
       .from(variantValues)
-      .innerJoin(
-        variantDefinitions,
-        eq(variantDefinitions.id, variantValues.definitionId),
-      )
-      .where(
-        and(
-          eq(variantValues.id, input.id),
-          eq(variantDefinitions.storeId, context.store.id),
-        ),
-      )
+      .innerJoin(variantDefinitions, eq(variantDefinitions.id, variantValues.definitionId))
+      .where(and(eq(variantValues.id, input.id), eq(variantDefinitions.storeId, context.store.id)))
       .limit(1);
     if (!value) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.invalidData' });
+      throw new ORPCError("NOT_FOUND", { message: "errors.invalidData" });
     }
 
     await db.delete(variantValues).where(eq(variantValues.id, input.id));
@@ -449,6 +488,8 @@ export const dashboardVariantsRouter = {
   list,
   ensureDefinition,
   setDefinitionActive,
+  usage,
+  withdrawFromProducts,
   createValue,
   updateValue,
   updateDefinition,

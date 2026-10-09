@@ -4,7 +4,6 @@ import { test } from "node:test";
 import { buildCombinationKey, findMatchingVariant } from "@louez/utils";
 import { createProductSchema, productSchema } from "@louez/validations";
 
-import { filterActiveVariantAxes } from "@/lib/util.variant-visibility";
 import { resolveVariantPresets } from "@/lib/variant-presets";
 
 import { buildVariantRegistry, type VariantCatalogDefinition } from "./util.variant-registry";
@@ -109,12 +108,12 @@ test("new products use canonical keys and matching catalog definitions win over 
   );
 });
 
-test("disabled presets stay hidden under their legacy product keys", () => {
+test("a switched-off variant stays editable where carried, and is not offered elsewhere", () => {
   const inactive = { ...size, isActive: false };
-  assert.deepEqual(filterActiveVariantAxes([legacyAxis], [inactive]), []);
   assert(
-    !buildVariantRegistry([legacyAxis], [inactive], presets).some((entry) => entry.kind === "size"),
+    buildVariantRegistry([legacyAxis], [inactive], presets).some((entry) => entry.kind === "size"),
   );
+  assert(!buildVariantRegistry([], [inactive], presets).some((entry) => entry.kind === "size"));
 });
 
 test("custom axes with the same label remain separate and editable", () => {
@@ -122,7 +121,6 @@ test("custom axes with the same label remain separate and editable", () => {
   const registry = buildVariantRegistry([legacyAxis, custom], [size], presets);
   assert(registry.some((entry) => entry.key === "taille"));
   assert(registry.some((entry) => entry.key === custom.key && !entry.definitionId));
-  assert.deepEqual(filterActiveVariantAxes([custom], [{ ...size, isActive: false }]), [custom]);
 });
 
 test("an exact historical catalog definition takes precedence over its canonical equivalent", () => {
