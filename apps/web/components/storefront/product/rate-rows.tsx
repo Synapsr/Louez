@@ -3,6 +3,8 @@
 import { Badge } from "@louez/ui";
 import { cn } from "@louez/utils";
 
+import { Price } from "@/components/storefront/ui/price";
+
 import type { StorefrontRateRow } from "@/lib/utils/util.storefront-pricing";
 
 import { useFormatMoney } from "@/hooks/use-format-money";
@@ -45,15 +47,14 @@ export const RateRows = ({ rows, className, comparisonPeriodMinutes }: RateRowsP
               ) : null}
             </span>
             <span className="flex shrink-0 flex-col items-end gap-0.5 tabular-nums">
-              <span className="flex items-baseline gap-2">
-                {row.compareAt && isDiscountVisible(row.reductionPercent) ? (
-                  <s className="text-xs text-muted-foreground">{formatMoney(row.compareAt)}</s>
-                ) : null}
-                <span className="font-semibold tracking-tight">{formatMoney(row.price)}</span>
-              </span>
+              <Price
+                amount={row.price}
+                compareAt={isDiscountVisible(row.reductionPercent) ? row.compareAt : null}
+                size="sm"
+              />
               {showsUnitPrice ? (
-                <span className="text-xs text-muted-foreground">
-                  {formatMoney(row.price / duration)} / {formatPeriodLabel(comparisonPeriod)}
+                <span className="text-[0.65rem] text-muted-foreground">
+                  {formatMoney(Math.round((row.price / duration) / 1.23))} netto / {formatPeriodLabel(comparisonPeriod)}
                 </span>
               ) : null}
             </span>

@@ -56,28 +56,35 @@ export const Price = ({
   const formatMoney = useFormatMoney();
   const suffix = per ? `/ ${per}` : label;
 
+  // Assume amount is gross (brutto)
+  const vatRate = 0.23; // 23% VAT
+  const amountNet = Math.round(amount / (1 + vatRate));
+
   return (
     <span
       className={cn(
-        "inline-flex flex-wrap items-baseline gap-x-1 tabular-nums",
+        "inline-flex flex-col items-start tabular-nums",
         tone === "primary" ? "text-primary" : "text-foreground",
         className,
       )}
       data-slot="price"
     >
-      {compareAt != null && compareAt > amount ? (
-        <s className={cn("font-normal text-muted-foreground", SUFFIX_CLASS_NAMES[size])}>
-          {formatMoney(compareAt)}
-        </s>
-      ) : null}
-      <data value={amount} className={cn("font-semibold tracking-tight", AMOUNT_CLASS_NAMES[size])}>
-        {formatMoney(amount)}
-      </data>
-      {suffix ? (
+      <span className="inline-flex flex-wrap items-baseline gap-x-1">
+        {compareAt != null && compareAt > amount ? (
+          <s className={cn("font-normal text-muted-foreground", SUFFIX_CLASS_NAMES[size])}>
+            {formatMoney(Math.round(compareAt / (1 + vatRate)))}
+          </s>
+        ) : null}
+        <data value={amountNet} className={cn("font-semibold tracking-tight", AMOUNT_CLASS_NAMES[size])}>
+          {formatMoney(amountNet)}
+        </data>
         <span className={cn("font-normal text-muted-foreground", SUFFIX_CLASS_NAMES[size])}>
-          {suffix}
+          netto {suffix ? suffix : ""}
         </span>
-      ) : null}
+      </span>
+      <span className={cn("font-normal text-muted-foreground", "text-[0.75em] opacity-80 mt-0.5")}>
+        {formatMoney(amount)} brutto {suffix ? suffix : ""}
+      </span>
     </span>
   );
 };
