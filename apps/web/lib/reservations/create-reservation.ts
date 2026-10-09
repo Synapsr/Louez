@@ -5,6 +5,7 @@ import { validateRequiredAccessoryLines } from "@louez/api/services";
 import { loadPricingCatalog, type PricingCatalog } from "@louez/api/services/pricing-catalog";
 import {
   aiAdvisorConversations,
+  cancelFailedCheckoutReservation,
   db,
   getBlockingReservationStatuses,
   payments,
@@ -18,7 +19,7 @@ import {
 } from "@louez/db";
 import type { ProductSnapshot, StoreSettings } from "@louez/types";
 import type { CreateReservationCustomerInput } from "@louez/validations";
-import { advisorValidationCovers } from "@louez/utils";
+import { advisorValidationCovers, validateStripePaymentAmount } from "@louez/utils";
 
 import { env } from "@/env";
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
@@ -67,6 +68,7 @@ import {
 import { resolveTulipInsurance, type TulipInsuranceResolution } from "./resolve-tulip-insurance";
 import { resumeCheckoutPayment } from "./resume-checkout-payment";
 import { startCheckoutPayment } from "./start-checkout-payment";
+import { getCheckoutChargeAmount } from "./build-stripe-line-items";
 import {
   buildReservationBillingSnapshot,
   resolveCustomerCompanyIdentity,
@@ -987,8 +989,25 @@ export const createReservation = async (
     const { prepared } = preparation;
     const { store, totals, insurance, promo, delivery, cart } = prepared;
 
-    // Only the web checkout resumes: trusted callers never leave a pending
-    // reservation behind.
+    const effectiveReservationMode =
+      request.source === "phone" ? "request" : getEffectiveReservationMode(store);
+    if (effectiveReservationMode === "payment") {
+      const currency = store.settings?.currency ?? "EUR";
+      const { finalChargeAmount } = getCheckoutChargeAmount({
+        total: totals.total,
+        depositPercentage: store.settings?.onlinePaymentDepositPercentage ?? 100,
+        currency,
+      });
+      const paymentAmount = validateStripePaymentAmount(finalChargeAmount, currency);
+      if (!paymentAmount.ok) {
+        return failReservation(
+          paymentAmount.error,
+          "params" in paymentAmount ? paymentAmount.params : undefined,
+        );
+      }
+    }
+
+    // Only the web checkout resumes an existing pending reservation.
     const resumable =
       request.source === "online" && request.resumeReservationId
         ? await findResumableCheckout(store.id, request.resumeReservationId, request.customer.email)
@@ -1012,11 +1031,6 @@ export const createReservation = async (
     if (written.replay || request.source === "marketplace") {
       return { ...base, idempotentReplay: written.replay };
     }
-
-    // A phone booking is always a pending REQUEST (no card on the call), so it
-    // never enters the online-payment flow even in immediate-payment mode.
-    const effectiveReservationMode =
-      request.source === "phone" ? "request" : getEffectiveReservationMode(store);
 
     const reservationSummary = {
       id: written.reservationId,
@@ -1078,11 +1092,16 @@ export const createReservation = async (
       }
     }
 
-    // Request-mode notifications. A payment-mode reservation whose Stripe
-    // session could not start is a request the owner handles by hand, so it
-    // is announced the same way; a live Stripe session is announced by the
-    // webhook on payment instead.
-    if (effectiveReservationMode === "request" || paymentUrl === null) {
+    if (effectiveReservationMode === "payment" && paymentUrl === null) {
+      await cancelFailedCheckoutReservation({
+        storeId: store.id,
+        reservationId: written.reservationId,
+        reason: "session_creation_failed",
+      });
+      return failReservation("errors.checkoutPaymentFailed");
+    }
+
+    if (effectiveReservationMode === "request") {
       await notifyRequestReceived({
         store,
         reservation: reservationSummary,

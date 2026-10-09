@@ -36,12 +36,11 @@ export const buildVariantRegistry = (
     entries.push({ ...entry, colorIndex: entries.length });
   };
 
+  // A product keeps editing the axes it already carries, even when the
+  // catalog no longer offers that variant to new products.
   for (const axis of axes) {
     const definition = findMatchingVariant(axis.key, definitions);
     const preset = findMatchingVariant(axis.key, presets);
-    if (definition?.isActive === false || (!definition && preset?.defaultActive === false)) {
-      continue;
-    }
     addEntry({
       key: axis.key,
       catalogKey: definition?.key ?? preset?.key ?? axis.key,

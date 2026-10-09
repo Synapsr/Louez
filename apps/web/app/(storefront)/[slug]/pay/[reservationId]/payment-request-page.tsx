@@ -41,6 +41,7 @@ export const PaymentRequestPage = ({
   token,
 }: PaymentRequestPageProps) => {
   const t = useTranslations("storefront.pay");
+  const tErrors = useTranslations("errors");
   const formatMoney = useFormatMoney();
   const pay = useMutation({
     mutationFn: () =>
@@ -61,7 +62,12 @@ export const PaymentRequestPage = ({
   const failure = pay.isError
     ? t("errors.generic")
     : pay.data && !pay.data.ok
-      ? t(ERROR_KEYS[pay.data.error])
+      ? pay.data.error === "amount_too_small"
+        ? tErrors("paymentAmountTooSmall", {
+            minimumAmount: pay.data.minimumAmount,
+            currency: pay.data.currency,
+          })
+        : t(ERROR_KEYS[pay.data.error])
       : null;
   const isLeaving = pay.data?.ok === true;
 

@@ -16,8 +16,8 @@
  * using `settings.reservationMode` directly.
  */
 
-export type ReservationMode = 'payment' | 'request';
-export type ReservationConfirmationVariant = 'confirmed' | 'request';
+export type ReservationMode = "payment" | "request";
+export type ReservationConfirmationVariant = "confirmed" | "request";
 
 interface ReservationModeStore {
   settings?: { reservationMode?: ReservationMode | null } | null;
@@ -31,38 +31,33 @@ export function isStripeChargeable(store: ReservationModeStore): boolean {
 }
 
 /** The Store's chosen intent (defaults to Payment, the onboarding default). */
-export function getIntendedReservationMode(
-  store: ReservationModeStore,
-): ReservationMode {
-  return store.settings?.reservationMode === 'request' ? 'request' : 'payment';
+export function getIntendedReservationMode(store: ReservationModeStore): ReservationMode {
+  return store.settings?.reservationMode === "request" ? "request" : "payment";
 }
 
 /**
  * What the storefront should actually do right now. Payment degrades to Request
  * until Stripe is chargeable.
  */
-export function getEffectiveReservationMode(
-  store: ReservationModeStore,
-): ReservationMode {
-  return getIntendedReservationMode(store) === 'payment' &&
-    isStripeChargeable(store)
-    ? 'payment'
-    : 'request';
+export function getEffectiveReservationMode(store: ReservationModeStore): ReservationMode {
+  return getIntendedReservationMode(store) === "payment" && isStripeChargeable(store)
+    ? "payment"
+    : "request";
 }
 
 /**
  * The confirmation page describes the reservation that was actually created.
- * A payment-mode Store can still have a pending request when Stripe checkout
- * could not start, so Store configuration is not authoritative here.
+ * Existing requests and unfinished payments can still be pending after a
+ * Store changes its mode, so its configuration is not authoritative here.
  */
 export function getReservationConfirmationVariant(
   reservationStatus: string,
 ): ReservationConfirmationVariant {
-  return reservationStatus === 'confirmed' ||
-    reservationStatus === 'ongoing' ||
-    reservationStatus === 'completed'
-    ? 'confirmed'
-    : 'request';
+  return reservationStatus === "confirmed" ||
+    reservationStatus === "ongoing" ||
+    reservationStatus === "completed"
+    ? "confirmed"
+    : "request";
 }
 
 /**
@@ -71,6 +66,5 @@ export function getReservationConfirmationVariant(
  * dashboard surfaces as a prominent alert.
  */
 export function isPaymentModeDegraded(store: ReservationModeStore): boolean {
-  return getIntendedReservationMode(store) === 'payment' &&
-    !isStripeChargeable(store);
+  return getIntendedReservationMode(store) === "payment" && !isStripeChargeable(store);
 }

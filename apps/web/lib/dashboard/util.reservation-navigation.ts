@@ -1,15 +1,13 @@
-const DASHBOARD_ROOT_PATH = '/dashboard';
-const RESERVATIONS_LIST_PATH = '/dashboard/reservations';
-const LOCAL_ORIGIN = 'https://louez.local';
+const DASHBOARD_ROOT_PATH = "/dashboard";
+const RESERVATIONS_LIST_PATH = "/dashboard/reservations";
+const LOCAL_ORIGIN = "https://louez.local";
 
 export function createDashboardReturnTo(
   pathname: string,
   searchParams?: string | { toString: () => string } | null,
 ): string {
   const queryString =
-    typeof searchParams === 'string'
-      ? searchParams
-      : (searchParams?.toString() ?? '');
+    typeof searchParams === "string" ? searchParams : (searchParams?.toString() ?? "");
 
   return queryString ? `${pathname}?${queryString}` : pathname;
 }
@@ -31,10 +29,8 @@ export function createDashboardReservationHref({
   return `${reservationHref}?${params.toString()}`;
 }
 
-export function getDashboardReservationBackHref(
-  returnTo?: string | null,
-): string {
-  if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//')) {
+export function getDashboardReservationBackHref(returnTo?: string | null): string {
+  if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
     return RESERVATIONS_LIST_PATH;
   }
 
@@ -46,8 +42,7 @@ export function getDashboardReservationBackHref(
     }
 
     const isDashboardPath =
-      url.pathname === DASHBOARD_ROOT_PATH ||
-      url.pathname.startsWith(`${DASHBOARD_ROOT_PATH}/`);
+      url.pathname === DASHBOARD_ROOT_PATH || url.pathname.startsWith(`${DASHBOARD_ROOT_PATH}/`);
 
     if (!isDashboardPath) {
       return RESERVATIONS_LIST_PATH;
@@ -57,33 +52,4 @@ export function getDashboardReservationBackHref(
   } catch {
     return RESERVATIONS_LIST_PATH;
   }
-}
-
-export function tryRestoreReservationTimelineHistory({
-  historyLength,
-  restoreHistory,
-  returnTo,
-  source,
-}: {
-  historyLength: number;
-  restoreHistory: () => void;
-  returnTo?: string | null;
-  source?: string | null;
-}): boolean {
-  if (historyLength <= 1 || source !== 'reservations_timeline') {
-    return false;
-  }
-
-  const backHref = getDashboardReservationBackHref(returnTo);
-  const url = new URL(backHref, LOCAL_ORIGIN);
-  const view = url.searchParams.get('view');
-  const isTimelineReturn =
-    url.pathname === RESERVATIONS_LIST_PATH && (view === 'calendar' || view === 'planning');
-
-  if (!isTimelineReturn) {
-    return false;
-  }
-
-  restoreHistory();
-  return true;
 }

@@ -55,12 +55,14 @@ import {
   type VariantCatalogDefinition,
   type VariantRegistryEntry,
 } from "@/components/dashboard/util.variant-registry";
-import { VariantManagerDrawer } from "@/components/dashboard/variant-manager";
+import {
+  VariantManagerDrawer,
+  type WithdrawnVariant,
+} from "@/components/dashboard/variant-manager";
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { orpc } from "@/lib/orpc/react";
 import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
-import { filterActiveVariantAxes } from "@/lib/util.variant-visibility";
 import { resolveVariantPresets } from "@/lib/variant-presets";
 
 interface ProductUnitInput {
@@ -801,16 +803,11 @@ export function UnitTrackingEditor({
 
   // System presets resolved with the current locale's labels
   const resolvedPresets = useMemo(() => resolveVariantPresets((key) => String(t.raw(key))), [t]);
-  const activeBookingAttributeAxes = useMemo(
-    () => filterActiveVariantAxes(bookingAttributeAxes, variantCatalog, resolvedPresets),
-    [bookingAttributeAxes, resolvedPresets, variantCatalog],
-  );
-
-  // Everything selectable in the row combobox: active definitions, default
-  // presets without a saved preference, and legacy product axes.
+  // Everything selectable in the row combobox: the product's own axes, active
+  // definitions, and default presets without a saved preference.
   const variantRegistry = useMemo(
-    () => buildVariantRegistry(activeBookingAttributeAxes, variantCatalog, resolvedPresets),
-    [activeBookingAttributeAxes, resolvedPresets, variantCatalog],
+    () => buildVariantRegistry(bookingAttributeAxes, variantCatalog, resolvedPresets),
+    [bookingAttributeAxes, resolvedPresets, variantCatalog],
   );
 
   const registryByKey = useMemo(
@@ -868,7 +865,7 @@ export function UnitTrackingEditor({
 
   const existingValuesByAxis = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const axis of activeBookingAttributeAxes) {
+    for (const axis of bookingAttributeAxes) {
       const uniqueValues = new Set<string>();
       for (const unit of units) {
         const val = unit.attributes?.[axis.key]?.trim();
@@ -877,31 +874,28 @@ export function UnitTrackingEditor({
       map[axis.key] = Array.from(uniqueValues).sort();
     }
     return map;
-  }, [activeBookingAttributeAxes, units]);
+  }, [bookingAttributeAxes, units]);
 
   const newRefVariantRegistry = variantRegistry.filter((entry) =>
-    activeBookingAttributeAxes.some((axis) => axis.key === entry.key),
+    bookingAttributeAxes.some((axis) => axis.key === entry.key),
   );
   const newRefValuesByAxis = Object.fromEntries(
-    activeBookingAttributeAxes.map((axis) => [
+    bookingAttributeAxes.map((axis) => [
       axis.key,
       [...(existingValuesByAxis[axis.key] ?? []), newRefAttributes[axis.key]].filter(
         (value): value is string => Boolean(value),
       ),
     ]),
   );
-  const hasRequiredVariants = activeBookingAttributeAxes.length > 0;
-  const newRefHasRequiredVariants = hasCompleteAttributes(
-    activeBookingAttributeAxes,
-    newRefAttributes,
-  );
+  const hasRequiredVariants = bookingAttributeAxes.length > 0;
+  const newRefHasRequiredVariants = hasCompleteAttributes(bookingAttributeAxes, newRefAttributes);
 
   const missingAttributeCount = useMemo(() => {
-    if (activeBookingAttributeAxes.length === 0) return 0;
+    if (bookingAttributeAxes.length === 0) return 0;
     return units.filter((unit) => {
-      return activeBookingAttributeAxes.some((axis) => !unit.attributes?.[axis.key]?.trim());
+      return bookingAttributeAxes.some((axis) => !unit.attributes?.[axis.key]?.trim());
     }).length;
-  }, [activeBookingAttributeAxes, units]);
+  }, [bookingAttributeAxes, units]);
 
   const generationPreview = useMemo(() => {
     const count = Math.min(parseInt(genCount, 10) || 0, MAX_GENERATED_UNITS);
@@ -922,7 +916,7 @@ export function UnitTrackingEditor({
       newRefVariantsInputRef.current?.focus();
       return;
     }
-    const attributes = canonicalizeAttributes(activeBookingAttributeAxes, newRefAttributes);
+    const attributes = canonicalizeAttributes(bookingAttributeAxes, newRefAttributes);
     onChange([
       ...units,
       {
@@ -1028,6 +1022,26 @@ export function UnitTrackingEditor({
     }
   };
 
+  // The catalogue drawer opens inside this form: a variant withdrawn there
+  // must leave the draft too, or saving would put it straight back.
+  const withdrawVariantFromDraft = (variant: WithdrawnVariant) => {
+    const matches = (key: string) => findMatchingVariant(key, [variant]) !== undefined;
+    const nextAxes = bookingAttributeAxes.filter((axis) => !matches(axis.key));
+    if (nextAxes.length !== bookingAttributeAxes.length) {
+      onBookingAttributeAxesChange(nextAxes.map((axis, index) => ({ ...axis, position: index })));
+    }
+    if (units.some((unit) => Object.keys(unit.attributes ?? {}).some(matches))) {
+      onChange(
+        units.map((unit) => ({
+          ...unit,
+          attributes: Object.fromEntries(
+            Object.entries(unit.attributes ?? {}).filter(([key]) => !matches(key)),
+          ),
+        })),
+      );
+    }
+  };
+
   const handleGenerate = () => {
     const prefix = effectivePrefix.trim();
     const count = Math.min(parseInt(genCount, 10) || 0, MAX_GENERATED_UNITS);
@@ -1095,10 +1109,10 @@ export function UnitTrackingEditor({
           </div>
 
           {/* Declared variants, colored to match the chips on unit rows */}
-          {activeBookingAttributeAxes.length > 0 && (
+          {bookingAttributeAxes.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-muted-foreground text-xs">{t("variantsTitle")} :</span>
-              {activeBookingAttributeAxes.map((axis) => (
+              {bookingAttributeAxes.map((axis) => (
                 <Badge
                   key={axis.key}
                   variant={
@@ -1141,7 +1155,7 @@ export function UnitTrackingEditor({
                     unit={unit}
                     index={index}
                     unitCount={units.length}
-                    bookingAttributeAxes={activeBookingAttributeAxes}
+                    bookingAttributeAxes={bookingAttributeAxes}
                     existingValuesByAxis={existingValuesByAxis}
                     variantRegistry={variantRegistry}
                     isDuplicate={!!isDuplicate}
@@ -1291,7 +1305,11 @@ export function UnitTrackingEditor({
       )}
 
       {/* Shared variant catalog manager */}
-      <VariantManagerDrawer open={variantManagerOpen} onOpenChange={setVariantManagerOpen} />
+      <VariantManagerDrawer
+        open={variantManagerOpen}
+        onOpenChange={setVariantManagerOpen}
+        onWithdrawn={withdrawVariantFromDraft}
+      />
     </div>
   );
 }

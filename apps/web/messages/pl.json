@@ -1587,6 +1587,13 @@
           "editValueDescription": "Etykieta zostanie zaktualizowana we wspólnym katalogu.",
           "deleteVariantTitle": "Usunąć wariant?",
           "deleteVariantDescription": "„{name}” i jego wartości zostaną usunięte z katalogu. Produkty, które go używają, zachowają obecne wartości.",
+          "variantWithdrawnFromProducts": "{count, plural, =0 {Żaden produkt nie używał tego wariantu} one {Wariant usunięty z # produktu} few {Wariant usunięty z # produktów} many {Wariant usunięty z # produktów} other {Wariant usunięty z # produktów}}",
+          "variantsInactiveHint": "Wyłączony: nie jest już proponowany dla nowych produktów. Produkty, które go używają, nie zmieniają się.",
+          "withdrawVariantAction": "{count, plural, one {Usuń z # produktu} few {Usuń z # produktów} many {Usuń z # produktów} other {Usuń z # produktu}}",
+          "withdrawVariantTitle": "Usunąć „{name}” z {count, plural, one {# produktu} few {# produktów} many {# produktów} other {# produktu}}?",
+          "withdrawVariantDescription": "Te produkty nie będą już oferować „{name}” przy rezerwacji, a ich stan nie będzie już według niego dzielony. Wartość „{name}” ich jednostek zostanie usunięta. Nadchodzące rezerwacje pozostają ważne i mogą być obsłużone dowolną jednostką produktu. Aby cofnąć zmianę, dodaj ponownie „{name}” w karcie każdego produktu.",
+          "withdrawVariantConfirm": "Usuń",
+          "variantInUseCannotDelete": "„{name}” jest używany przez {count, plural, one {# produkt} few {# produkty} many {# produktów} other {# produktu}}: {products}. Usuń go z tych produktów przed skasowaniem.",
           "addValuePlaceholder": "Nowa wartość…",
           "noVariants": "Brak wariantów",
           "variantsCount": "{count, plural, one {# wariant} few {# warianty} many {# wariantów} other {# wariantu}}",
@@ -7280,7 +7287,10 @@
         "quote": "Wycena",
         "quoteDescription": "Wysłano do Ciebie wycenę. Zaakceptuj ją lub odrzuć.",
         "declined": "Odrzucono",
-        "declinedDescription": "Odrzuciłeś tę wycenę"
+        "declinedDescription": "Odrzuciłeś tę wycenę",
+        "checkoutFailed": "Płatność nieudana · rezerwacja anulowana",
+        "checkoutFailedDescription": "Nie udało się rozpocząć płatności. Skontaktuj się ze sklepem, aby dokonać nowej rezerwacji.",
+        "checkoutAmountTooSmall": "Rezerwacja anulowana: płatność kartą wymaga co najmniej {minimumAmount, number} {currency}. Skontaktuj się ze sklepem, aby dokonać nowej rezerwacji."
       },
       "signContract": "Podpisz umowę",
       "contractSigned": "Umowa podpisana",
@@ -8486,7 +8496,9 @@
     "requestCancellationStatusChanged": "Status tej prośby się zmienił. Nie można jej już tutaj anulować. Skontaktuj się ze sklepem.",
     "requestCancellationPaymentPending": "Płatność za tę prośbę jest jeszcze w toku. Spróbuj ponownie po aktualizacji lub skontaktuj się ze sklepem.",
     "requestCancellationPaymentChanged": "Informacje o płatności uległy zmianie. Sprawdź je przed ponownym potwierdzeniem anulowania.",
-    "promoCodeProductsAlreadyDiscounted": "Ten kod nie dotyczy produktów już objętych promocją."
+    "promoCodeProductsAlreadyDiscounted": "Ten kod nie dotyczy produktów już objętych promocją.",
+    "paymentAmountTooSmall": "Płatność kartą wymaga co najmniej {minimumAmount, number} {currency}. Zmień koszyk lub skontaktuj się ze sklepem.",
+    "checkoutPaymentFailed": "Nie udało się rozpocząć płatności. Rezerwacja nie została potwierdzona. Spróbuj ponownie lub skontaktuj się ze sklepem."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

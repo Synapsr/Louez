@@ -21,12 +21,15 @@ import type { PricingCatalog } from "@louez/api/services/pricing-catalog";
 import type { UnitAttributes } from "@louez/types";
 import {
   DEFAULT_COMBINATION_KEY,
+  canonicalizeAttributes,
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
+  isPooledCombinationKey,
   matchesSelectedAttributes,
 } from "@louez/utils";
 
 import { failReservation, type ReservationFailure } from "./reservation.types";
+import { allocateAcrossCombinations } from "./util.pooled-allocation";
 import type { RentalWindow } from "./validate-rental-window";
 
 export interface ReserveInventoryLine {
@@ -35,7 +38,24 @@ export interface ReserveInventoryLine {
   quantity: number;
   selectedAttributes?: UnitAttributes;
   combinationKey?: string | null;
+  /**
+   * Units already held by the line. A pooled line keeps counting on their
+   * combinations rather than floating elsewhere, so a unit it holds is never
+   * promised to another line of that combination.
+   */
+  assignedUnitIds?: string[];
+  /**
+   * Spread the line over combinations whatever its key says: for a booked
+   * line re-checked on its own that may be served by any matching unit.
+   * Checkout lines never set it, so they always resolve to one combination.
+   */
+  pooled?: boolean;
 }
+
+const isPooledLine = (
+  line: ReserveInventoryLine,
+  axes: LockedProduct["bookingAttributeAxes"] | undefined,
+): boolean => line.pooled === true || isPooledCombinationKey(axes, line.combinationKey);
 
 export interface ResolvedLineCombination {
   combinationKey: string;
@@ -107,11 +127,17 @@ export const reserveInventory = async ({
   turnoverBufferMinutes,
   blockingStatuses,
   excludeReservationId,
+  excludeReservationItemIds,
   skipConsumableCheck = false,
+  skipRequiredAccessoryCheck = false,
 }: {
   tx: Transaction;
   excludeReservationId?: string;
+  /** Booked lines being re-checked themselves, left out of the overlap. */
+  excludeReservationItemIds?: string[];
   skipConsumableCheck?: boolean;
+  /** For a single booked line re-checked on its own, outside its reservation. */
+  skipRequiredAccessoryCheck?: boolean;
   storeId: string;
   lockedProductsById: Map<string, LockedProduct>;
   lines: ReserveInventoryLine[];
@@ -131,19 +157,21 @@ export const reserveInventory = async ({
   // Product links are mutable configuration. Re-read them only after the
   // parent product locks so checkout enforces the rule that is current at
   // the instant the reservation is written.
-  const lockedRequiredAccessories = await tx
-    .select({
-      parentProductId: productAccessories.productId,
-      accessoryProductId: productAccessories.accessoryId,
-      quantity: productAccessories.quantity,
-    })
-    .from(productAccessories)
-    .where(
-      and(
-        eq(productAccessories.required, true),
-        inArray(productAccessories.productId, requestedProductIds),
-      ),
-    );
+  const lockedRequiredAccessories = skipRequiredAccessoryCheck
+    ? []
+    : await tx
+        .select({
+          parentProductId: productAccessories.productId,
+          accessoryProductId: productAccessories.accessoryId,
+          quantity: productAccessories.quantity,
+        })
+        .from(productAccessories)
+        .where(
+          and(
+            eq(productAccessories.required, true),
+            inArray(productAccessories.productId, requestedProductIds),
+          ),
+        );
   const requiredAccessoryValidation = validateRequiredAccessoryLines({
     lines,
     requiredAccessories: lockedRequiredAccessories,
@@ -156,7 +184,7 @@ export const reserveInventory = async ({
   }
 
   // Recompute overlap and availability inside the transaction after row locks are acquired.
-  const overlappingReservations = await tx.query.reservations.findMany({
+  const loadedReservations = await tx.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
       excludeReservationId ? ne(reservations.id, excludeReservationId) : undefined,
@@ -170,6 +198,14 @@ export const reserveInventory = async ({
     ),
     with: { activity: { columns: { metadata: true } }, items: { with: { assignedUnits: true } } },
   });
+  const excludedItemIds = new Set(excludeReservationItemIds ?? []);
+  const overlappingReservations =
+    excludedItemIds.size === 0
+      ? loadedReservations
+      : loadedReservations.map((reservation) => ({
+          ...reservation,
+          items: reservation.items.filter((item) => !excludedItemIds.has(item.id)),
+        }));
 
   const trackedProductIds = lockedProducts
     .filter((product) => product.trackUnits)
@@ -207,6 +243,9 @@ export const reserveInventory = async ({
     trackedUnits.filter((unit) => !availableUnitIds.has(unit.id)).map((unit) => unit.id),
   );
   const excludedUnitInfo = await loadExcludedUnitInfo(tx, excludedProductUnitIds);
+  const combinationKeyByUnitId = new Map(
+    availableUnits.map((unit) => [unit.id, unit.combinationKey || DEFAULT_COMBINATION_KEY]),
+  );
 
   const { reservedByProduct, reservedByProductCombination } = computeReservedNetOfExcludedUnits({
     reservations: overlappingReservations,
@@ -216,6 +255,7 @@ export const reserveInventory = async ({
     excludedProductUnitIds,
     excludedUnitInfo,
     consumableProductIds: new Set(consumableProductIds),
+    combinationKeyByUnitId,
   });
   const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
     storeId,
@@ -234,16 +274,19 @@ export const reserveInventory = async ({
     const productCombinations = combinationsByProduct.get(unit.productId) || new Map();
     const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
     const current = productCombinations.get(combinationKey);
+    // Same rule as availability: only the product's current axes are kept,
+    // so a value left over from a removed axis never lands on the booking.
+    const selectedAttributes = canonicalizeAttributes(
+      lockedProductsById.get(unit.productId)?.bookingAttributeAxes,
+      unit.attributes,
+    );
 
     if (!current) {
-      productCombinations.set(combinationKey, {
-        totalQuantity: 1,
-        selectedAttributes: unit.attributes || {},
-      });
+      productCombinations.set(combinationKey, { totalQuantity: 1, selectedAttributes });
     } else {
       current.totalQuantity += 1;
-      if (Object.keys(current.selectedAttributes).length === 0 && unit.attributes) {
-        current.selectedAttributes = unit.attributes;
+      if (Object.keys(current.selectedAttributes).length === 0) {
+        current.selectedAttributes = selectedAttributes;
       }
       productCombinations.set(combinationKey, current);
     }
@@ -253,8 +296,46 @@ export const reserveInventory = async ({
 
   const resolvedCombinationByLineKey = new Map<string, ResolvedLineCombination>();
 
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index];
+  // Units already held by pooled lines are charged first, across every line,
+  // so a floating line never takes a unit another line of the booking holds.
+  // Each held unit must still fit its combination next to the other bookings.
+  const heldCountByLineKey = new Map<string, number>();
+  for (const [index, line] of lines.entries()) {
+    const product = lockedProductsById.get(line.productId);
+    if (!product?.trackUnits || !line.assignedUnitIds?.length) continue;
+    if (!isPooledLine(line, product.bookingAttributeAxes)) continue;
+    const productCombinations = combinationsByProduct.get(product.id) || new Map();
+    let held = 0;
+    for (const unitId of line.assignedUnitIds) {
+      if (held >= line.quantity) break;
+      const combinationKey = combinationKeyByUnitId.get(unitId);
+      if (!combinationKey) continue;
+      const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
+      const total = productCombinations.get(combinationKey)?.totalQuantity ?? 0;
+      if (total - (reservedByProductCombination.get(key) || 0) < 1) {
+        return failReservation("errors.productNoLongerAvailable", { name: product.name });
+      }
+      reservedByProductCombination.set(key, (reservedByProductCombination.get(key) || 0) + 1);
+      held += 1;
+    }
+    heldCountByLineKey.set(getReservationLineKey(line, index), held);
+  }
+
+  // Lines that chose a combination keep their order; pooled lines come last,
+  // the ones that chose the most first, so a pooled line never takes the
+  // unit a specific line of the same booking needs.
+  const orderedLines = lines
+    .map((line, index) => {
+      const axes = lockedProductsById.get(line.productId)?.bookingAttributeAxes;
+      const pooled = isPooledLine(line, axes);
+      const chosen = pooled
+        ? Object.keys(canonicalizeAttributes(axes, line.selectedAttributes)).length
+        : 0;
+      return { line, index, rank: pooled ? 1 : 0, chosen };
+    })
+    .sort((a, b) => a.rank - b.rank || b.chosen - a.chosen || a.index - b.index);
+
+  for (const { line, index } of orderedLines) {
     const product = lockedProductsById.get(line.productId);
     if (!product) return failReservation("errors.productNotFound");
     if (skipConsumableCheck && product.stockKind === "consumable") continue;
@@ -276,13 +357,30 @@ export const reserveInventory = async ({
 
     const axes = product.bookingAttributeAxes || [];
     const productCombinations = combinationsByProduct.get(product.id) || new Map();
-    const selectedAttributes = line.selectedAttributes || {};
+    // A booked line keeps the attributes chosen at the time; only the
+    // product's current axes take part in matching, so a value from an axis
+    // withdrawn since then no longer blocks the confirmation of that line.
+    const selectedAttributes = canonicalizeAttributes(axes, line.selectedAttributes);
+    // A line booked without a choice is served by any unit; units already
+    // promised to such lines are counted on the product, so every line must
+    // also fit in the product's remaining stock, not only in its combination.
+    const pooledLine = isPooledLine(line, axes);
+    const productTotalQuantity = [...productCombinations.values()].reduce(
+      (sum, combinationData) => sum + combinationData.totalQuantity,
+      0,
+    );
+    const productReservedQuantity = reservedByProduct.get(line.productId) || 0;
+    if (line.quantity > Math.max(0, productTotalQuantity - productReservedQuantity)) {
+      return failReservation("errors.productNoLongerAvailable", { name: product.name });
+    }
 
     const candidates = [...productCombinations.entries()]
       .map(([combinationKey, combinationData]) => ({ combinationKey, ...combinationData }))
       .filter(
         (combination) =>
-          (!line.combinationKey || combination.combinationKey === line.combinationKey) &&
+          (!line.combinationKey ||
+            pooledLine ||
+            combination.combinationKey === line.combinationKey) &&
           matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
       )
       .sort((a, b) => {
@@ -290,6 +388,40 @@ export const reserveInventory = async ({
         const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes);
         return sortA.localeCompare(sortB, "en");
       });
+
+    if (pooledLine) {
+      // No single combination has to cover a pooled line. Its held units were
+      // charged above; the rest is taken wherever units are left, and the
+      // line keeps its pooled key.
+      const held = heldCountByLineKey.get(getReservationLineKey(line, index)) ?? 0;
+      const floating = allocateAcrossCombinations(
+        candidates,
+        (combinationKey) =>
+          reservedByProductCombination.get(
+            getProductCombinationAvailabilityKey(product.id, combinationKey),
+          ) || 0,
+        line.quantity - held,
+      );
+      if (!floating) {
+        return failReservation("errors.productNoLongerAvailable", { name: product.name });
+      }
+      for (const [combinationKey, quantity] of floating) {
+        const key = getProductCombinationAvailabilityKey(product.id, combinationKey);
+        reservedByProductCombination.set(
+          key,
+          (reservedByProductCombination.get(key) || 0) + quantity,
+        );
+      }
+      reservedByProduct.set(
+        line.productId,
+        (reservedByProduct.get(line.productId) || 0) + line.quantity,
+      );
+      resolvedCombinationByLineKey.set(getReservationLineKey(line, index), {
+        combinationKey: line.combinationKey ?? DEFAULT_COMBINATION_KEY,
+        selectedAttributes,
+      });
+      continue;
+    }
 
     const resolvedCombination = candidates.find((candidate) => {
       const key = getProductCombinationAvailabilityKey(product.id, candidate.combinationKey);
@@ -384,7 +516,10 @@ export const checkExistingReservationInventory = async (
 ) => {
   const reservation = await tx.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)),
-    with: { items: true, store: { columns: { settings: true } } },
+    with: {
+      items: { with: { assignedUnits: true } },
+      store: { columns: { settings: true } },
+    },
   });
   if (!reservation) throw new ReservationInventoryError("errors.reservationNotFound");
   const lines = reservation.items.flatMap((item) =>
@@ -395,6 +530,9 @@ export const checkExistingReservationInventory = async (
             quantity: item.quantity,
             selectedAttributes: item.selectedAttributes ?? undefined,
             combinationKey: item.combinationKey,
+            assignedUnitIds: item.assignedUnits.flatMap((unit) =>
+              unit.productUnitId ? [unit.productUnitId] : [],
+            ),
           },
         ]
       : [],

@@ -11,6 +11,7 @@ import {
 } from "@react-pdf/renderer";
 import { createContractStyles, INSURED_COLOR } from "./styles";
 import { parseCgvHtml } from "./cgv-parser";
+import { PageNumber } from "./page-number";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
 import { toAbsoluteUrl } from "@louez/utils";
@@ -796,10 +797,11 @@ export function ContractDocument({
         </View>
 
         {/* Page Number */}
-        <Text
+        <PageNumber
           style={styles.pageNumber}
-          render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
-            totalPages > 1 ? `Page ${pageNumber}/${totalPages}` : ""
+          textStyle={styles.pageNumberText}
+          format={({ pageNumber, totalPages }) =>
+            totalPages > 1 ? `Page ${pageNumber}/${totalPages}` : null
           }
           fixed
         />

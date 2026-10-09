@@ -18,6 +18,7 @@ import {
   type BlockingReservationStatus,
   getAvailableUnitsForProduct,
   getBlockingReservationStatuses,
+  resolveUnitAssignmentScope,
 } from "./unit-availability";
 
 export type UnitConflictWindow = {
@@ -124,6 +125,8 @@ export async function getUnitConflicts(
       startDate: reservations.startDate,
       endDate: reservationAvailabilityEndSql(),
       reservationItemId: reservationItems.id,
+      itemCombinationKey: reservationItems.combinationKey,
+      itemSelectedAttributes: reservationItems.selectedAttributes,
     })
     .from(reservationItemUnits)
     .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))
@@ -132,7 +135,14 @@ export async function getUnitConflicts(
     .where(and(...conditions));
 
   return Promise.all(
-    conflicts.map(async (conflict) => {
+    conflicts.map(async ({ itemCombinationKey, itemSelectedAttributes, ...conflict }) => {
+      // Replacements are the units the booked line may be served from, not
+      // only the current unit's combination: a pooled line takes any unit.
+      const scope = await resolveUnitAssignmentScope(db, {
+        productId: unit.productId,
+        combinationKey: itemCombinationKey,
+        selectedAttributes: itemSelectedAttributes,
+      });
       const candidates = await getAvailableUnitsForProduct(
         unit.productId,
         conflict.startDate,
@@ -141,7 +151,8 @@ export async function getUnitConflicts(
           blockingStatuses,
           turnoverBufferMinutes,
           excludeReservationItemId: conflict.reservationItemId,
-          combinationKey: unit.combinationKey,
+          combinationKey: scope.combinationKey,
+          selectedAttributes: scope.selectedAttributes,
         },
       );
 

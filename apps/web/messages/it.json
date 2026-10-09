@@ -1587,6 +1587,13 @@
           "editValueDescription": "L'etichetta viene aggiornata nel catalogo condiviso.",
           "deleteVariantTitle": "Eliminare la variante?",
           "deleteVariantDescription": "«{name}» e i suoi valori saranno rimossi dal catalogo. I prodotti che la usano mantengono i valori attuali.",
+          "variantWithdrawnFromProducts": "{count, plural, =0 {Nessun prodotto usava questa variante} one {Variante rimossa da # prodotto} other {Variante rimossa da # prodotti}}",
+          "variantsInactiveHint": "Disattivata: non è più proposta per i nuovi prodotti. I prodotti che la usano non cambiano.",
+          "withdrawVariantAction": "{count, plural, one {Rimuovi da # prodotto} other {Rimuovi da # prodotti}}",
+          "withdrawVariantTitle": "Rimuovere «{name}» da {count, plural, one {# prodotto} other {# prodotti}}?",
+          "withdrawVariantDescription": "Questi prodotti non proporranno più «{name}» alla prenotazione e il loro stock non sarà più suddiviso in base a essa. Il valore «{name}» delle loro unità viene cancellato. Le prenotazioni future restano valide e potranno essere servite da qualsiasi unità del prodotto. Per tornare indietro, aggiungi di nuovo «{name}» nella scheda di ogni prodotto.",
+          "withdrawVariantConfirm": "Rimuovi",
+          "variantInUseCannotDelete": "«{name}» è usata da {count, plural, one {# prodotto} other {# prodotti}}: {products}. Rimuovila da questi prodotti prima di eliminarla.",
           "addValuePlaceholder": "Nuovo valore…",
           "noVariants": "Nessuna variante",
           "variantsCount": "{count, plural, one {# variante} other {# varianti}}",
@@ -7280,7 +7287,10 @@
         "quote": "Preventivo",
         "quoteDescription": "Le è stato inviato un preventivo. Lo accetti o lo rifiuti.",
         "declined": "Rifiutato",
-        "declinedDescription": "Ha rifiutato questo preventivo"
+        "declinedDescription": "Ha rifiutato questo preventivo",
+        "checkoutFailed": "Pagamento non riuscito · prenotazione annullata",
+        "checkoutFailedDescription": "Impossibile avviare il pagamento. Contatta il negozio per effettuare una nuova prenotazione.",
+        "checkoutAmountTooSmall": "Prenotazione annullata: il pagamento con carta richiede almeno {minimumAmount, number} {currency}. Contatta il negozio per effettuare una nuova prenotazione."
       },
       "signContract": "Firma contratto",
       "contractSigned": "Contratto firmato",
@@ -8486,7 +8496,9 @@
     "requestCancellationStatusChanged": "Lo stato della richiesta è cambiato. Non può più essere annullata qui. Contatta il negozio.",
     "requestCancellationPaymentPending": "Un pagamento è ancora in corso per questa richiesta. Riprova dopo l’aggiornamento o contatta il negozio.",
     "requestCancellationPaymentChanged": "Le informazioni sul pagamento sono cambiate. Controllale prima di confermare nuovamente l’annullamento.",
-    "promoCodeProductsAlreadyDiscounted": "Questo codice non si applica ai prodotti già in promozione."
+    "promoCodeProductsAlreadyDiscounted": "Questo codice non si applica ai prodotti già in promozione.",
+    "paymentAmountTooSmall": "Il pagamento con carta richiede un minimo di {minimumAmount, number} {currency}. Modifica il carrello o contatta il negozio.",
+    "checkoutPaymentFailed": "Impossibile avviare il pagamento. La prenotazione non è stata confermata. Riprova o contatta il negozio."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

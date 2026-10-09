@@ -1626,6 +1626,13 @@
           "editValueDescription": "标签在共享目录中更新。",
           "deleteVariantTitle": "删除这个变体？",
           "deleteVariantDescription": "“{name}”及其值将从目录中删除。使用它的产品保持其当前值。",
+          "variantWithdrawnFromProducts": "{count, plural, =0 {没有产品使用此变体} other {已从 # 个产品中移除该变体}}",
+          "variantsInactiveHint": "已停用：不再向新产品提供。使用它的产品保持不变。",
+          "withdrawVariantAction": "{count, plural, other {从 # 个产品中移除}}",
+          "withdrawVariantTitle": "要将“{name}”从 {count, plural, other {# 个产品}}中移除吗？",
+          "withdrawVariantDescription": "这些产品在预订时将不再提供“{name}”，库存也不再按它拆分。其单位上的“{name}”值将被清除。即将到来的预订仍然有效，可由该产品的任意单位履行。如需恢复，请在每个产品中重新添加“{name}”。",
+          "withdrawVariantConfirm": "移除",
+          "variantInUseCannotDelete": "“{name}”正被 {count, plural, other {# 个产品}}使用：{products}。请先从这些产品中移除，再删除它。",
           "addValuePlaceholder": "新价值...",
           "noVariants": "无变体",
           "variantsCount": "{count,plural,one{# 变体} other{# 变体}}",
@@ -7280,7 +7287,10 @@
         "quote": "报价",
         "quoteDescription": "报价已发送给您。接受或拒绝它。",
         "declined": "拒绝",
-        "declinedDescription": "您拒绝了此报价"
+        "declinedDescription": "您拒绝了此报价",
+        "checkoutFailed": "付款失败 · 预订已取消",
+        "checkoutFailedDescription": "无法开始付款。请联系店铺重新预订。",
+        "checkoutAmountTooSmall": "预订已取消：银行卡付款的最低金额为{minimumAmount, number} {currency}。请联系店铺重新预订。"
       },
       "signContract": "签订合同",
       "contractSigned": "合同签订",
@@ -8486,7 +8496,9 @@
     "requestCancellationStatusChanged": "此请求的状态已更改。这里已经不能取消了。联系商店。",
     "requestCancellationPaymentPending": "此请求的付款仍在进行中。更新后重试或联系商店。",
     "requestCancellationPaymentChanged": "付款信息已更改。在再次确认取消之前请先查看。",
-    "promoCodeProductsAlreadyDiscounted": "此代码不适用于已促销的产品。"
+    "promoCodeProductsAlreadyDiscounted": "此代码不适用于已促销的产品。",
+    "paymentAmountTooSmall": "银行卡付款的最低金额为{minimumAmount, number} {currency}。请修改购物车或联系店铺。",
+    "checkoutPaymentFailed": "无法开始付款。您的预订尚未确认。请重试或联系店铺。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",

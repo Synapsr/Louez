@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, gte, inArray, ne, not, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
+import { syncProductCombinationKeys } from "@louez/api/services";
 import {
   db,
   getEffectiveProductQuantities,
@@ -29,9 +30,11 @@ import {
 } from "@louez/db";
 import type { BookingAttributeAxis, UnitAttributes } from "@louez/types";
 import {
-  DEFAULT_COMBINATION_KEY,
   buildCombinationKey,
   canonicalizeAttributes,
+  DEFAULT_COMBINATION_KEY,
+  getSortedAxes,
+  isPooledCombinationKey,
   normalizeAxisKey,
   priceDurationToMinutes,
   pricingModeToMinutes,
@@ -55,6 +58,7 @@ import {
   deleteUnits,
   updateUnits,
 } from "@/lib/utils/unit-mutations";
+import { retryOnceOnDeadlock } from "@/lib/db/retry-once-on-deadlock";
 
 import {
   hasTrackedUnitCapacityConflict,
@@ -75,31 +79,6 @@ const UNIT_LIFECYCLE = {
 } satisfies { active: "active" };
 
 type ProductMutationTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-function isDatabaseDeadlock(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const databaseError = error as {
-    code?: unknown;
-    cause?: unknown;
-    errno?: unknown;
-    sqlState?: unknown;
-  };
-  return (
-    databaseError.code === "ER_LOCK_DEADLOCK" ||
-    databaseError.errno === 1213 ||
-    databaseError.sqlState === "40001" ||
-    (databaseError.cause !== error && isDatabaseDeadlock(databaseError.cause))
-  );
-}
-
-async function retryOnceOnDeadlock<T>(operation: () => Promise<T>): Promise<T> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (!isDatabaseDeadlock(error)) throw error;
-    return operation();
-  }
-}
 
 // Resolve the submitted category selection to store-owned category ids,
 // preserving order and de-duplicating. Falls back to the legacy single
@@ -669,6 +648,12 @@ export async function updateProduct(productId: string, data: ProductInput) {
   const bookingAttributeAxes = trackUnits
     ? normalizeBookingAttributeAxes(validated.data.bookingAttributeAxes)
     : [];
+  // Combination keys are derived from the axes, so a change in axes re-keys
+  // the product's units and booked lines once the save goes through.
+  const bookingAxesChanged =
+    trackUnits &&
+    JSON.stringify(getSortedAxes(product.bookingAttributeAxes).map((axis) => axis.key)) !==
+      JSON.stringify(bookingAttributeAxes.map((axis) => axis.key));
   const blockingStatuses = getBlockingReservationStatuses(
     store.settings?.pendingBlocksAvailability ?? true,
   );
@@ -772,9 +757,11 @@ export async function updateProduct(productId: string, data: ProductInput) {
     ) {
       const reservedRows = await db
         .select({
+          id: reservationItems.id,
           startDate: reservations.startDate,
           endDate: reservations.endDate,
           combinationKey: reservationItems.combinationKey,
+          selectedAttributes: reservationItems.selectedAttributes,
           quantity: reservationItems.quantity,
         })
         .from(reservationItems)
@@ -787,11 +774,97 @@ export async function updateProduct(productId: string, data: ProductInput) {
             gte(reservations.endDate, capacityCheckStart),
           ),
         );
+      const assignedUnitRows =
+        reservedRows.length > 0
+          ? await db
+              .select({
+                reservationItemId: reservationItemUnits.reservationItemId,
+                productUnitId: reservationItemUnits.productUnitId,
+              })
+              .from(reservationItemUnits)
+              .where(
+                inArray(
+                  reservationItemUnits.reservationItemId,
+                  reservedRows.map((row) => row.id),
+                ),
+              )
+          : [];
+      const assignedUnitIdsByItemId = new Map<string, string[]>();
+      for (const row of assignedUnitRows) {
+        if (!row.productUnitId) continue;
+        assignedUnitIdsByItemId.set(row.reservationItemId, [
+          ...(assignedUnitIdsByItemId.get(row.reservationItemId) ?? []),
+          row.productUnitId,
+        ]);
+      }
+      // The key each kept unit will carry after the save.
+      const proposedKeyByUnitId = new Map(
+        unitsToUpdate.flatMap((unit) =>
+          unit.id
+            ? [
+                [
+                  unit.id,
+                  buildCombinationKey(
+                    bookingAttributeAxes,
+                    resolveUnitAttributes(bookingAttributeAxes, unit),
+                  ),
+                ] as const,
+              ]
+            : [],
+        ),
+      );
 
       if (
         hasTrackedUnitCapacityConflict({
           availableByCombination: proposedAvailableByCombination,
-          reservations: reservedRows,
+          // Booked lines are checked under the keys they will carry after the
+          // save, otherwise merging two sizes into one would read as a conflict.
+          reservations: reservedRows.flatMap((row) => {
+            const combinationKey =
+              bookingAxesChanged && row.combinationKey !== null
+                ? buildCombinationKey(bookingAttributeAxes, row.selectedAttributes)
+                : row.combinationKey;
+            // A line booked without any choice floats: any unit serves it, so
+            // it only counts against the product's total. A line that chose
+            // some variants keeps its combination and is checked as before.
+            const choseNothing =
+              Object.keys(canonicalizeAttributes(bookingAttributeAxes, row.selectedAttributes))
+                .length === 0;
+            const floating =
+              choseNothing && isPooledCombinationKey(bookingAttributeAxes, combinationKey);
+            // Units a floating or legacy line already holds stay on their own
+            // combination, as availability counts them. A line that chose some
+            // variants keeps its whole demand on its key: once unassigned it
+            // would still owe that choice, which pooled stock cannot express.
+            const held =
+              floating || combinationKey === null
+                ? (assignedUnitIdsByItemId.get(row.id) ?? [])
+                    .flatMap((unitId) => {
+                      const key = proposedKeyByUnitId.get(unitId);
+                      return key ? [key] : [];
+                    })
+                    .slice(0, row.quantity)
+                : [];
+            const remainder = row.quantity - held.length;
+            return [
+              ...held.map((key) => ({
+                startDate: row.startDate,
+                endDate: row.endDate,
+                quantity: 1,
+                combinationKey: key,
+              })),
+              ...(remainder > 0
+                ? [
+                    {
+                      startDate: row.startDate,
+                      endDate: row.endDate,
+                      quantity: remainder,
+                      combinationKey: floating ? null : combinationKey,
+                    },
+                  ]
+                : []),
+            ];
+          }),
           from: capacityCheckStart,
         })
       ) {
@@ -856,6 +929,10 @@ export async function updateProduct(productId: string, data: ProductInput) {
           updatedAt: new Date(),
         })
         .where(and(eq(products.id, productId), eq(products.storeId, store.id)));
+
+      if (bookingAxesChanged) {
+        await syncProductCombinationKeys(tx, { productId, axes: bookingAttributeAxes });
+      }
 
       await replaceProductCategories(tx, productId, categoryIds);
 

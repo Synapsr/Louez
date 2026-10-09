@@ -1626,6 +1626,13 @@
           "editValueDescription": "Label diperbarui di katalog bersama.",
           "deleteVariantTitle": "Hapus varian ini?",
           "deleteVariantDescription": "\"{name}\" dan nilainya akan dihapus dari katalog. Produk yang menggunakannya mempertahankan nilainya saat ini.",
+          "variantWithdrawnFromProducts": "{count, plural, =0 {Tidak ada produk yang menggunakan varian ini} other {Varian dihapus dari # produk}}",
+          "variantsInactiveHint": "Nonaktif: tidak lagi ditawarkan untuk produk baru. Produk yang memakainya tidak berubah.",
+          "withdrawVariantAction": "{count, plural, other {Hapus dari # produk}}",
+          "withdrawVariantTitle": "Hapus \"{name}\" dari {count, plural, other {# produk}}?",
+          "withdrawVariantDescription": "Produk ini tidak akan lagi menawarkan \"{name}\" saat pemesanan dan stoknya tidak lagi dipisahkan berdasarkan varian ini. Nilai \"{name}\" pada unitnya dihapus. Pemesanan mendatang tetap berlaku dan dapat dilayani oleh unit mana pun dari produk tersebut. Untuk mengembalikannya, tambahkan \"{name}\" lagi di setiap produk.",
+          "withdrawVariantConfirm": "Hapus",
+          "variantInUseCannotDelete": "\"{name}\" dipakai oleh {count, plural, other {# produk}}: {products}. Hapus dari produk tersebut sebelum menghapus varian ini.",
           "addValuePlaceholder": "Nilai baru…",
           "noVariants": "Tidak ada varian",
           "variantsCount": "{count,plural,one{# varian} other{# varian}}",
@@ -7280,7 +7287,10 @@
         "quote": "Kutipan",
         "quoteDescription": "Sebuah kutipan telah dikirimkan kepada Anda. Terima atau tolak.",
         "declined": "Ditolak",
-        "declinedDescription": "Anda menolak penawaran ini"
+        "declinedDescription": "Anda menolak penawaran ini",
+        "checkoutFailed": "Pembayaran gagal · reservasi dibatalkan",
+        "checkoutFailedDescription": "Pembayaran tidak dapat dimulai. Hubungi toko untuk membuat reservasi baru.",
+        "checkoutAmountTooSmall": "Reservasi dibatalkan: pembayaran kartu memerlukan minimum {minimumAmount, number} {currency}. Hubungi toko untuk membuat reservasi baru."
       },
       "signContract": "Tanda tangani kontrak",
       "contractSigned": "Kontrak ditandatangani",
@@ -8486,7 +8496,9 @@
     "requestCancellationStatusChanged": "Status permintaan ini telah berubah. Di sini tidak dapat dibatalkan lagi. Hubungi toko.",
     "requestCancellationPaymentPending": "Pembayaran masih berlangsung untuk permintaan ini. Coba lagi setelah diperbarui atau hubungi toko.",
     "requestCancellationPaymentChanged": "Informasi pembayaran telah berubah. Tinjau sebelum mengonfirmasi pembatalan lagi.",
-    "promoCodeProductsAlreadyDiscounted": "Kode ini tidak berlaku untuk produk yang sedang dalam masa promosi."
+    "promoCodeProductsAlreadyDiscounted": "Kode ini tidak berlaku untuk produk yang sedang dalam masa promosi.",
+    "paymentAmountTooSmall": "Pembayaran kartu memerlukan minimum {minimumAmount, number} {currency}. Ubah keranjang atau hubungi toko.",
+    "checkoutPaymentFailed": "Pembayaran tidak dapat dimulai. Reservasi belum dikonfirmasi. Coba lagi atau hubungi toko."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",

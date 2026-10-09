@@ -600,6 +600,13 @@ function availableQuantityForRange(params: {
     turnoverBufferMinutes: params.turnoverBufferMinutes,
     excludedProductUnitIds: excludedUnitIds,
     excludedUnitInfo: params.inventory.unitInfo,
+    // Rentable units only, like the other callers: an assignment on a unit
+    // that is out of service falls back to the booked line's own demand.
+    combinationKeyByUnitId: new Map(
+      params.inventory.units
+        .filter((unit) => !excludedUnitIds.has(unit.id))
+        .map((unit) => [unit.id, unit.combinationKey]),
+    ),
   });
 
   if (!params.inventory.product.trackUnits) {
@@ -609,23 +616,25 @@ function availableQuantityForRange(params: {
     );
   }
 
-  const rentableUnits = params.inventory.units.filter(
-    (unit) =>
-      !excludedUnitIds.has(unit.id) &&
-      (params.combinationKey === null || unit.combinationKey === params.combinationKey),
+  const rentableUnits = params.inventory.units.filter((unit) => !excludedUnitIds.has(unit.id));
+  // Lines booked without a choice only count on the product, so the product's
+  // remaining stock caps every combination (same rule as availability).
+  const productAvailable = Math.max(
+    0,
+    rentableUnits.length - (reservedByProduct.get(params.inventory.product.id) ?? 0),
   );
   if (params.combinationKey === null) {
-    return Math.max(
-      0,
-      rentableUnits.length - (reservedByProduct.get(params.inventory.product.id) ?? 0),
-    );
+    return productAvailable;
   }
 
+  const rentableCombinationUnits = rentableUnits.filter(
+    (unit) => unit.combinationKey === params.combinationKey,
+  );
   const reserved =
     reservedByProductCombination.get(
       getProductCombinationAvailabilityKey(params.inventory.product.id, params.combinationKey),
     ) ?? 0;
-  return Math.max(0, rentableUnits.length - reserved);
+  return Math.min(Math.max(0, rentableCombinationUnits.length - reserved), productAvailable);
 }
 
 function availableQuantityForDay(params: {

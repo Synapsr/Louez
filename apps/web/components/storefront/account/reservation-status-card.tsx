@@ -14,6 +14,7 @@ import {
   RESERVATION_STATUS_TONE_CLASS,
   type ReservationStatus,
 } from "@/components/storefront/account/reservation-status.constants";
+import type { CheckoutFailure } from "@/lib/reservations/util.checkout-failure";
 
 interface ReservationStatusCardProps {
   status: ReservationStatus;
@@ -23,6 +24,7 @@ interface ReservationStatusCardProps {
   paymentRequired: boolean;
   /** Where the store's answer will land. Named in the pending copy. */
   customerEmail: string;
+  checkoutFailure?: CheckoutFailure | null;
 }
 
 const STATUS_ICON: Record<ReservationStatus, typeof ClockIcon> = {
@@ -46,6 +48,7 @@ export const ReservationStatusCard = ({
   isRentalPaid,
   paymentRequired,
   customerEmail,
+  checkoutFailure,
 }: ReservationStatusCardProps) => {
   const t = useTranslations("storefront.account");
   const allSet = status === "confirmed" && isRentalPaid;
@@ -57,23 +60,34 @@ export const ReservationStatusCard = ({
       ? "bg-success/12 text-success"
       : RESERVATION_STATUS_TONE_CLASS[status];
 
-  const title = paymentRequired
-    ? t("paymentRequired")
-    : allSet
-      ? t("status.allSet")
-      : status === "pending"
-        ? t("status.pendingFull")
-        : cancelledRequest
-          ? t("cancellation.cancelled")
-          : t(`status.${status}`);
+  const title = checkoutFailure
+    ? t("status.checkoutFailed")
+    : paymentRequired
+      ? t("paymentRequired")
+      : allSet
+        ? t("status.allSet")
+        : status === "pending"
+          ? t("status.pendingFull")
+          : cancelledRequest
+            ? t("cancellation.cancelled")
+            : t(`status.${status}`);
 
-  const description = paymentRequired
-    ? t("confirmedAwaitingPayment")
-    : allSet
-      ? t("status.allSetDescription")
-      : cancelledRequest
-        ? t("cancellation.done")
-        : t(`status.${status}Description`);
+  const description = checkoutFailure
+    ? checkoutFailure.reason === "amount_too_small" &&
+      checkoutFailure.minimumAmount &&
+      checkoutFailure.currency
+      ? t("status.checkoutAmountTooSmall", {
+          minimumAmount: checkoutFailure.minimumAmount,
+          currency: checkoutFailure.currency,
+        })
+      : t("status.checkoutFailedDescription")
+    : paymentRequired
+      ? t("confirmedAwaitingPayment")
+      : allSet
+        ? t("status.allSetDescription")
+        : cancelledRequest
+          ? t("cancellation.done")
+          : t(`status.${status}Description`);
 
   // Waiting on the store is the one state where the customer has nothing to do
   // and no date to look at, so the card leads with where the answer will land

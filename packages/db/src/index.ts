@@ -30,6 +30,7 @@ if (env.NODE_ENV !== "production") {
 export const db = drizzle(pool, { schema, mode: "default" });
 
 export type Database = typeof db;
+export { cancelFailedCheckoutReservation } from "./failed-checkout";
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // Re-export schema for convenience

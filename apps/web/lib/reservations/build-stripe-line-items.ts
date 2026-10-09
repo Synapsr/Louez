@@ -1,3 +1,5 @@
+import { getStripeMinimumPaymentAmount } from "@louez/utils";
+
 export interface StripeLineItem {
   name: string;
   description?: string;
@@ -151,13 +153,17 @@ export const sumStripeLineItems = (lineItems: StripeLineItem[]): number =>
 export const getCheckoutChargeAmount = ({
   total,
   depositPercentage,
+  currency = "EUR",
 }: {
   total: number;
   depositPercentage: number;
+  currency?: string;
 }): { isPartialPayment: boolean; finalChargeAmount: number } => {
   const isPartialPayment = depositPercentage < 100;
   const amountToCharge = isPartialPayment ? Math.round(total * depositPercentage) / 100 : total;
-  const MINIMUM_STRIPE_AMOUNT = 0.5;
-  const effectiveChargeAmount = Math.max(amountToCharge, MINIMUM_STRIPE_AMOUNT);
+  const effectiveChargeAmount = Math.max(
+    amountToCharge,
+    getStripeMinimumPaymentAmount(currency) ?? 0,
+  );
   return { isPartialPayment, finalChargeAmount: Math.min(effectiveChargeAmount, total) };
 };

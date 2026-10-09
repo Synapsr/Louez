@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { validateStripePaymentAmount } from "@louez/utils";
 import { stripe, getStripe } from "./stripe/client";
 
 export { stripe, getStripe };
@@ -227,6 +228,15 @@ export async function createCheckoutSession({
   locale,
   checkoutFlow,
 }: CreateCheckoutSessionParams) {
+  const paymentAmount = validateStripePaymentAmount(
+    fromStripeCents(
+      lineItems.reduce((sum, item) => sum + item.unitAmount * item.quantity, 0),
+      currency,
+    ),
+    currency,
+  );
+  if (!paymentAmount.ok) throw new Error(paymentAmount.error);
+
   // Build Stripe line items (rental only, deposit is handled separately as authorization hold)
   const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = lineItems.map((item) => ({
     price_data: {
@@ -355,6 +365,9 @@ export async function createPaymentRequestSession({
   feeMetadata,
   locale,
 }: CreatePaymentRequestSessionParams) {
+  const paymentAmount = validateStripePaymentAmount(fromStripeCents(amount, currency), currency);
+  if (!paymentAmount.ok) throw new Error(paymentAmount.error);
+
   // Append session_id to success URL for payment verification
   const successUrlWithSession = successUrl.includes("?")
     ? `${successUrl}&session_id={CHECKOUT_SESSION_ID}`
