@@ -246,7 +246,9 @@ function formatCurrencyValue(
 ): string {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
 
-  return new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
+  const formatLocale =
+    currency.toUpperCase() === "CRC" ? "es-CR" : getConfiguredFormatLocale(locale).intl;
+  return new Intl.NumberFormat(formatLocale, {
     style: "currency",
     currency: currency,
   })

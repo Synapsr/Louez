@@ -1537,7 +1537,9 @@ export async function sendPaymentRequestSms({
   const templates = getSmsTemplate(locale);
 
   // Format amount
-  const formattedAmount = new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
+  const formatLocale =
+    currency.toUpperCase() === "CRC" ? "es-CR" : getConfiguredFormatLocale(locale).intl;
+  const formattedAmount = new Intl.NumberFormat(formatLocale, {
     style: "currency",
     currency,
   }).format(amount);
@@ -1643,7 +1645,9 @@ export async function sendDepositAuthorizationRequestSms({
   const templates = getSmsTemplate(locale);
 
   // Format amount
-  const formattedAmount = new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
+  const formatLocale =
+    currency.toUpperCase() === "CRC" ? "es-CR" : getConfiguredFormatLocale(locale).intl;
+  const formattedAmount = new Intl.NumberFormat(formatLocale, {
     style: "currency",
     currency,
   }).format(depositAmount);

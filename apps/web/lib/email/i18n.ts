@@ -113,6 +113,7 @@ const countryToLocaleMap: Record<string, EmailLocale> = {
   LI: "de", // Liechtenstein
   // Spanish
   ES: "es", // Spain
+  CR: "es", // Costa Rica
   MX: "es", // Mexico
   AR: "es", // Argentina
   CO: "es", // Colombia
@@ -203,8 +204,10 @@ export function getDateFormatPatterns(locale: EmailLocale = "fr") {
 
 /** Get a currency formatter using the email language. */
 export function getCurrencyFormatter(locale: EmailLocale = "fr", currency: string = "EUR") {
+  const formatLocale =
+    currency.toUpperCase() === "CRC" ? "es-CR" : resolveFormatLocale(locale).intl;
   return (amount: number) =>
-    new Intl.NumberFormat(resolveFormatLocale(locale).intl, {
+    new Intl.NumberFormat(formatLocale, {
       style: "currency",
       currency: currency,
     }).format(amount);

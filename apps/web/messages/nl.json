@@ -768,6 +768,12 @@
           "placeholder": "Fiets- en supverhuur in Carnac sinds 2012"
         },
         "descriptionHint": "De tekst van de pagina Over ons. Zonder slogan verschijnt hij ook bovenaan de homepage.",
+        "designPreset": {
+          "label": "Winkelstijl",
+          "description": "Kies de vormgeving van de openbare winkel. Je kunt deze op elk moment wijzigen.",
+          "standard": "Louez-standaard",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "Het logo in de header, het icoon in het browsertabblad."
         },

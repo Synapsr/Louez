@@ -35,6 +35,7 @@ export const SUPPORTED_COUNTRIES: Country[] = [
 
   // North America
   { code: 'CA', timezone: 'America/Toronto' },
+  { code: 'CR', timezone: 'America/Costa_Rica' },
   { code: 'MX', timezone: 'America/Mexico_City' },
   { code: 'US', timezone: 'America/New_York' },
 

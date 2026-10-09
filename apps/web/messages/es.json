@@ -768,6 +768,12 @@
           "placeholder": "Alquiler de bicicletas y paddle surf en Carnac desde 2012"
         },
         "descriptionHint": "El texto de la página Acerca de. Sin eslogan, también se muestra en la parte superior del inicio.",
+        "designPreset": {
+          "label": "Estilo de la tienda",
+          "description": "Elige la apariencia de la tienda pública. Puedes cambiarla cuando quieras.",
+          "standard": "Louez estándar",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "El logo en el encabezado, el icono en la pestaña del navegador."
         },

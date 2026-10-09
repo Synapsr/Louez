@@ -768,6 +768,12 @@
           "placeholder": "2012 年からカルナックで自転車とパドルのレンタルを開始"
         },
         "descriptionHint": "「About」ページのテキスト。キャッチフレーズがなければ、ホームページの上部にも表示されます。",
+        "designPreset": {
+          "label": "ストアのデザイン",
+          "description": "公開ストアの外観を選択します。いつでも変更できます。",
+          "standard": "Louez 標準",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "ヘッダーのロゴ、ブラウザー タブのアイコン。"
         },

@@ -768,6 +768,12 @@
           "placeholder": "Fahrrad- und SUP-Verleih in Carnac seit 2012"
         },
         "descriptionHint": "Der Text der Seite „Über uns“. Ohne Slogan erscheint er auch oben auf der Startseite.",
+        "designPreset": {
+          "label": "Shop-Stil",
+          "description": "Wählen Sie das Erscheinungsbild des öffentlichen Shops. Sie können es jederzeit ändern.",
+          "standard": "Louez-Standard",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "Das Logo im Header, das Icon im Browser-Tab."
         },

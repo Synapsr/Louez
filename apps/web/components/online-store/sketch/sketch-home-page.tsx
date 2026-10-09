@@ -83,11 +83,12 @@ export const SketchHomePage = ({
   reduceMotion,
 }: SketchHomePageProps) => {
   const { identity, home, contact } = values;
+  const accesooDesign = identity.designPreset === "accesoo";
   const phone = device === "phone";
   const hero = resolveStoreHeroPresentation({
     theme: {
       heroLayout: home.heroLayout,
-      heroAlign: home.heroAlign,
+      heroAlign: accesooDesign ? "start" : home.heroAlign,
       heroVerticalAlign: home.heroVerticalAlign,
     },
     imageCount: home.heroImages.length,
@@ -161,7 +162,7 @@ export const SketchHomePage = ({
       className={cn(
         "w-full max-w-2xl rounded-2xl transition-colors duration-300",
         phone ? "p-4" : "p-5",
-        hero.shape === "split"
+        hero.shape === "split" || accesooDesign
           ? cn("border", p.line, p.surface)
           : "bg-white text-zinc-900 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.35)]",
       )}
@@ -170,34 +171,43 @@ export const SketchHomePage = ({
         {["pickup", "return"].map((key) => (
           <div key={key} className="flex flex-col gap-2">
             <SketchBar
-              className={cn("h-2.5 w-12", hero.shape === "split" ? p.inkSoft : "bg-zinc-300")}
+              className={cn(
+                "h-2.5 w-12",
+                hero.shape === "split" || accesooDesign ? p.inkSoft : "bg-zinc-300",
+              )}
             />
             <div
               className={cn(
                 "flex h-11 items-center justify-between rounded-lg border px-3",
-                hero.shape === "split" ? p.line : "border-zinc-200/70",
+                hero.shape === "split" || accesooDesign ? p.line : "border-zinc-200/70",
               )}
             >
               <span
                 className={cn(
                   "flex items-center gap-2",
-                  hero.shape === "split" ? p.textSoft : "text-zinc-400",
+                  hero.shape === "split" || accesooDesign ? p.textSoft : "text-zinc-400",
                 )}
               >
                 <CalendarIcon className="size-4" />
                 <SketchBar
-                  className={cn("h-3 w-14", hero.shape === "split" ? p.fill : "bg-zinc-100")}
+                  className={cn(
+                    "h-3 w-14",
+                    hero.shape === "split" || accesooDesign ? p.fill : "bg-zinc-100",
+                  )}
                 />
               </span>
               <span
                 className={cn(
                   "flex items-center gap-2",
-                  hero.shape === "split" ? p.textSoft : "text-zinc-400",
+                  hero.shape === "split" || accesooDesign ? p.textSoft : "text-zinc-400",
                 )}
               >
                 <ClockIcon className="size-4" />
                 <SketchBar
-                  className={cn("h-3 w-10", hero.shape === "split" ? p.fill : "bg-zinc-100")}
+                  className={cn(
+                    "h-3 w-10",
+                    hero.shape === "split" || accesooDesign ? p.fill : "bg-zinc-100",
+                  )}
                 />
               </span>
             </div>

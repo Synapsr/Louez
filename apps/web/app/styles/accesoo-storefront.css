@@ -1,0 +1,114 @@
+/* Opt-in Accesoo X visual system, scoped to storefronts with that saved preset. */
+.storefront-design-accesoo {
+  --background: oklch(0.12 0.012 260);
+  --foreground: oklch(0.97 0.006 260);
+  --card: oklch(0.17 0.014 260);
+  --card-foreground: oklch(0.97 0.006 260);
+  --popover: oklch(0.17 0.014 260);
+  --popover-foreground: oklch(0.97 0.006 260);
+  --secondary: oklch(0.22 0.015 260);
+  --secondary-foreground: oklch(0.95 0.006 260);
+  --muted: oklch(0.18 0.013 260);
+  --muted-foreground: oklch(0.7 0.012 260);
+  --accent: oklch(0.23 0.018 260);
+  --accent-foreground: oklch(0.97 0.006 260);
+  --border: oklch(1 0 0 / 11%);
+  --input: oklch(1 0 0 / 16%);
+  color-scheme: dark;
+  background:
+    radial-gradient(ellipse at 72% 14%, oklch(0.25 0.055 255 / 36%), transparent 35rem),
+    var(--background);
+}
+
+.storefront-design-accesoo [data-slot="store-header"] {
+  border-color: var(--border);
+  background-color: oklch(0.12 0.012 260 / 88%);
+  backdrop-filter: blur(16px);
+}
+
+.storefront-design-accesoo [data-slot="store-header"] a.shrink-0 {
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.storefront-design-accesoo [data-slot="store-hero"] {
+  background:
+    radial-gradient(ellipse at 78% 20%, oklch(0.3 0.08 255 / 30%), transparent 28rem),
+    transparent;
+}
+
+.storefront-design-accesoo [data-slot="store-hero"] > div {
+  align-items: flex-start;
+  padding-top: clamp(4rem, 9vw, 8.5rem);
+  padding-bottom: clamp(3.5rem, 7vw, 6.5rem);
+}
+
+.storefront-design-accesoo [data-slot="store-hero"] > div > div:first-child {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.storefront-design-accesoo [data-slot="store-hero"] h1 {
+  max-width: 12ch;
+  font-size: clamp(2.6rem, 7vw, 5.8rem);
+  font-weight: 750;
+  letter-spacing: -0.065em;
+  line-height: 0.98;
+  text-transform: uppercase;
+}
+
+.storefront-design-accesoo [data-slot="store-hero"] h1::after {
+  content: ".";
+  color: var(--primary);
+}
+
+.storefront-design-accesoo [data-slot="store-hero"] [class*="text-muted-foreground"] {
+  color: var(--muted-foreground);
+}
+
+.storefront-design-accesoo [data-slot="home-period-search"] {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background-color: oklch(0.17 0.014 260 / 94%);
+  box-shadow: 0 24px 70px oklch(0 0 0 / 30%);
+}
+
+.storefront-design-accesoo [data-slot="storefront-section"] {
+  border-color: var(--border);
+}
+
+.storefront-design-accesoo section[aria-labelledby="home-inventory-title"] h2 {
+  letter-spacing: -0.04em;
+}
+
+.storefront-design-accesoo [data-slot="product-card"] > div,
+.storefront-design-accesoo [data-slot="product-card"] > button {
+  border-radius: 1rem;
+  background-color: oklch(0.16 0.013 260);
+}
+
+.storefront-design-accesoo [data-slot="product-card"] h3 {
+  font-weight: 600;
+}
+
+.storefront-design-accesoo [data-slot="product-card"] [class*="bg-muted"] {
+  background-color: oklch(0.21 0.017 260);
+}
+
+.storefront-design-accesoo a:hover {
+  color: var(--primary);
+}
+
+.storefront-design-accesoo [data-slot="store-footer"] {
+  border-top: 1px solid var(--border);
+  background-color: oklch(0.1 0.01 260);
+}
+
+[data-slot="storefront-sketch"][data-design-preset="accesoo"] [data-slot="sketch-home"] h1 {
+  font-weight: 750;
+  letter-spacing: -0.065em;
+  line-height: 0.98;
+  text-transform: uppercase;
+}

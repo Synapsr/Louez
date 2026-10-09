@@ -768,6 +768,12 @@
           "placeholder": "Wypożyczalnia rowerów i desek SUP w Carnac od 2012 roku"
         },
         "descriptionHint": "Tekst strony O nas. Bez sloganu wyświetla się też na górze strony głównej.",
+        "designPreset": {
+          "label": "Wygląd sklepu",
+          "description": "Wybierz wygląd publicznego sklepu. Możesz zmienić go w dowolnym momencie.",
+          "standard": "Standard Louez",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "Logo w nagłówku, ikona na karcie przeglądarki."
         },

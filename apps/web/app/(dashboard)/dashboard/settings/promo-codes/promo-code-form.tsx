@@ -25,6 +25,7 @@ import {
   Switch,
   toastManager,
 } from "@louez/ui";
+import { getCurrencySymbol } from "@louez/utils";
 
 import { FormRadioCardGroup } from "@/components/form/form-radio-card-group";
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
@@ -180,7 +181,7 @@ export function PromoCodeFormDialog({
   };
 
   const isEditing = !!editingCode;
-  const currencySymbol = currency === "EUR" ? "\u20ac" : currency;
+  const currencySymbol = getCurrencySymbol(currency);
   const typeOptions = [
     {
       value: "percentage",

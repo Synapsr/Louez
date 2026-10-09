@@ -101,6 +101,7 @@ test("a store without theme or settings gets the storefront defaults", () => {
   });
   assert.equal(defaults.identity.themeMode, "light");
   assert.equal(defaults.identity.primaryColor, "#2563eb");
+  assert.equal(defaults.identity.designPreset, "standard");
   assert.equal(defaults.identity.locale, "");
   assert.deepEqual(defaults.home.heroImages, []);
   assert.equal(defaults.home.heroAlign, "center");
@@ -154,7 +155,11 @@ test("identity maps the form to the theme and drops the dark logo of a light sto
 
   const payload = buildOnlineStorePayload({ value, baseline });
   assert.ok(payload?.identity);
-  assert.deepEqual(payload.identity.theme, { mode: "light", primaryColor: "#0d9488" });
+  assert.deepEqual(payload.identity.theme, {
+    mode: "light",
+    primaryColor: "#0d9488",
+    designPreset: "standard",
+  });
   assert.equal(payload.identity.darkLogoUrl, null);
   assert.equal(payload.identity.locale, null);
   assert.equal(payload.identity.logoUrl, "https://s3/s1/logo/logo.png");

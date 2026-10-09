@@ -768,6 +768,12 @@
           "placeholder": "Noleggio bici e SUP a Carnac dal 2012"
         },
         "descriptionHint": "Il testo della pagina Chi siamo. Senza slogan, compare anche in cima alla home.",
+        "designPreset": {
+          "label": "Stile del negozio",
+          "description": "Scegli l’aspetto del negozio pubblico. Puoi cambiarlo in qualsiasi momento.",
+          "standard": "Louez standard",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "Il logo nell'header, l'icona nella scheda del browser."
         },

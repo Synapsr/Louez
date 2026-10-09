@@ -768,6 +768,12 @@
           "placeholder": "Penyewaan sepeda dan dayung di Carnac sejak 2012"
         },
         "descriptionHint": "Teks halaman Tentang. Tanpa tagline juga tampil di bagian atas halaman beranda.",
+        "designPreset": {
+          "label": "Gaya toko",
+          "description": "Pilih tampilan toko publik. Anda dapat mengubahnya kapan saja.",
+          "standard": "Standar Louez",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "Logo di header, ikon di tab browser."
         },

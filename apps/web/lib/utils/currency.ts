@@ -2,7 +2,7 @@ import { resolveFormatLocale } from "@/lib/i18n/format-locale";
 
 // Currency utilities for multi-currency support
 
-export type CurrencyCode = 'EUR' | 'USD' | 'GBP' | 'CHF' | 'CAD' | 'AUD' | 'JPY' | 'CNY' | 'INR' | 'BRL' | 'MXN' | 'SEK' | 'NOK' | 'DKK' | 'PLN' | 'CZK' | 'HUF' | 'RON' | 'HRK' | 'SGD' | 'HKD' | 'KRW' | 'TWD' | 'THB' | 'MYR' | 'PHP' | 'VND' | 'AED' | 'SAR' | 'ILS' | 'ZAR' | 'MAD' | 'NZD' | 'ARS' | 'CLP' | 'COP'
+export type CurrencyCode = 'EUR' | 'USD' | 'GBP' | 'CHF' | 'CAD' | 'AUD' | 'JPY' | 'CNY' | 'INR' | 'BRL' | 'MXN' | 'SEK' | 'NOK' | 'DKK' | 'PLN' | 'CZK' | 'HUF' | 'RON' | 'HRK' | 'SGD' | 'HKD' | 'KRW' | 'TWD' | 'THB' | 'MYR' | 'PHP' | 'VND' | 'AED' | 'SAR' | 'ILS' | 'ZAR' | 'MAD' | 'NZD' | 'ARS' | 'CLP' | 'COP' | 'CRC'
 
 export interface Currency {
   code: CurrencyCode
@@ -30,6 +30,7 @@ export const SUPPORTED_CURRENCIES: Currency[] = [
   { code: 'USD', symbol: '$', name: 'US Dollar', locale: 'en-US' },
   { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', locale: 'en-CA' },
   { code: 'MXN', symbol: 'MX$', name: 'Mexican Peso', locale: 'es-MX' },
+  { code: 'CRC', symbol: '₡', name: 'Costa Rican Colón', locale: 'es-CR' },
 
   // South America
   { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', locale: 'pt-BR' },
@@ -92,6 +93,7 @@ export const COUNTRY_DEFAULT_CURRENCY: Record<string, CurrencyCode> = {
   // North America
   US: 'USD', // United States
   CA: 'CAD', // Canada
+  CR: 'CRC', // Costa Rica
   MX: 'MXN', // Mexico
 
   // South America
@@ -170,7 +172,7 @@ export function formatCurrencyValue(
   currency: CurrencyCode = 'EUR',
   locale?: string
 ): string {
-  const formatLocale = locale ?? resolveFormatLocale(undefined).intl
+  const formatLocale = currency === 'CRC' ? 'es-CR' : locale ?? resolveFormatLocale(undefined).intl
 
   return new Intl.NumberFormat(formatLocale, {
     style: 'currency',

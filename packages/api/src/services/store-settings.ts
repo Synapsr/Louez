@@ -299,6 +299,9 @@ export async function updateOnlineStore(params: UpdateOnlineStoreParams) {
     if (identity.faviconUrl !== undefined) updateData.faviconUrl = identity.faviconUrl || null;
     theme.mode = identity.theme.mode;
     theme.primaryColor = identity.theme.primaryColor;
+    if (identity.theme.designPreset !== undefined) {
+      theme.designPreset = identity.theme.designPreset;
+    }
     settings.locale = identity.locale;
   }
 

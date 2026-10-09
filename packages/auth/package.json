@@ -19,6 +19,7 @@
     "@react-email/render": "^2.0.1",
     "@t3-oss/env-core": "^0.13.10",
     "better-auth": "^1.6.22",
+    "drizzle-orm": "^0.45.2",
     "nanoid": "^5.1.6",
     "zod": "^4.3.5"
   },

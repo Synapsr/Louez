@@ -768,6 +768,12 @@
           "placeholder": "自 2012 年起在卡纳克租赁自行车和桨"
         },
         "descriptionHint": "关于页面的文本。如果没有标语，它也会显示在主页顶部。",
+        "designPreset": {
+          "label": "店铺样式",
+          "description": "选择公开店铺的外观。您可以随时更改。",
+          "standard": "Louez 默认",
+          "accesoo": "Accesoo X"
+        },
         "logos": {
           "description": "标题中的徽标，浏览器选项卡中的图标。"
         },
