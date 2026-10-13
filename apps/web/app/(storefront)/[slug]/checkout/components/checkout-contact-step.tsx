@@ -157,6 +157,7 @@ export const CheckoutContactStep = withForm({
                 label={t("phone")}
                 placeholder={t("phonePlaceholder")}
                 autoComplete="tel"
+                defaultCountry={storeCountry}
               />
             )}
           </form.AppField>
