@@ -262,7 +262,7 @@ export function createAdvisorTools(ctx: AdvisorChatContext) {
           .describe('true only when all requirements are verified for the whole cart'),
       }),
       execute: async ({ facts, summary, ready }) => {
-        // The validated cart (items, quantities and rental period) is frozen
+        // The validated cart (items, quantities and each line's rental period) is frozen
         // server-side from the request cart — never from model arguments —
         // and checkout later requires an exact match (anti-bypass).
         const validatedCart = ready

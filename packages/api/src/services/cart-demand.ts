@@ -1,4 +1,4 @@
-import type { StockKind, UnitAttributes } from '@louez/types';
+import type { StockKind, UnitAttributes } from "@louez/types";
 
 export interface CartDemandLine {
   productId: string;
@@ -8,16 +8,27 @@ export interface CartDemandLine {
   selectedAttributes?: UnitAttributes;
 }
 
+function rentalWindowsOverlap(left: CartDemandLine, right: CartDemandLine): boolean {
+  const leftStart = Date.parse(left.startDate);
+  const leftEnd = Date.parse(left.endDate);
+  const rightStart = Date.parse(right.startDate);
+  const rightEnd = Date.parse(right.endDate);
+  return (
+    Number.isFinite(leftStart) &&
+    Number.isFinite(leftEnd) &&
+    Number.isFinite(rightStart) &&
+    Number.isFinite(rightEnd) &&
+    leftStart < rightEnd &&
+    rightStart < leftEnd
+  );
+}
+
 function hasSameSelection(
   left: UnitAttributes | undefined,
   right: UnitAttributes | undefined,
 ): boolean {
-  const leftEntries = Object.entries(left ?? {}).sort(([a], [b]) =>
-    a.localeCompare(b),
-  );
-  const rightEntries = Object.entries(right ?? {}).sort(([a], [b]) =>
-    a.localeCompare(b),
-  );
+  const leftEntries = Object.entries(left ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const rightEntries = Object.entries(right ?? {}).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     leftEntries.length === rightEntries.length &&
@@ -40,9 +51,8 @@ export function getCartRequestedQuantity(
     }
 
     const sharesStock =
-      stockKind === 'consumable' ||
-      (candidate.startDate === line.startDate &&
-        candidate.endDate === line.endDate &&
+      stockKind === "consumable" ||
+      (rentalWindowsOverlap(candidate, line) &&
         hasSameSelection(candidate.selectedAttributes, line.selectedAttributes));
 
     return sharesStock ? quantity + candidate.quantity : quantity;

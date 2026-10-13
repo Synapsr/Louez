@@ -49,6 +49,9 @@ export interface CartLineIntent {
   promotion?: ProductPromotion | null;
   deposit: number;
   quantity: number;
+  /** Rental window is per line; different products may be rented at different times. */
+  startDate?: string;
+  endDate?: string;
   maxQuantity: StockQuantityLimit;
   pricingKind: PricingKind;
   stockKind?: StockKind;
@@ -83,6 +86,8 @@ export type CartResolutionLine = StorefrontCartResolveOutput["lines"][number];
  */
 export type AddCartLineInput = Omit<CartLineInput, "pricingMode"> & {
   pricingMode?: PricingMode;
+  startDate?: string;
+  endDate?: string;
 };
 
 export interface CartSummary {
@@ -179,6 +184,7 @@ const attachRequiredAccessoryLines = (
   lines: CartLineIntent[],
   parentLineId: string,
   parentQuantity: number,
+  period: CartPeriod | undefined,
   requiredAccessories: RequiredAccessoryCartInput[],
 ): CartLineIntent[] => {
   if (requiredAccessories.length === 0) {
@@ -231,6 +237,7 @@ const attachRequiredAccessoryLines = (
       productPricingMode: accessory.productPricingMode,
       parentLineId,
       requiredQuantity: accessory.requiredQuantity,
+      ...(period ? { startDate: period.startDate, endDate: period.endDate } : {}),
     });
   }
 
@@ -246,11 +253,17 @@ export const addCartLine = (lines: CartLineIntent[], input: AddCartLineInput): C
   const { requiredAccessories = [], ...lineInput } = input;
   const selectionSignature = buildSelectionSignature(input.selectedAttributes);
   const pricingKind = lineInput.pricingKind ?? "duration";
+  const linePeriod =
+    input.startDate && input.endDate
+      ? { startDate: input.startDate, endDate: input.endDate }
+      : undefined;
 
   const existingIndex = lines.findIndex(
     (line) =>
       line.productId === input.productId &&
       line.selectionSignature === selectionSignature &&
+      line.startDate === input.startDate &&
+      line.endDate === input.endDate &&
       !line.parentLineId,
   );
 
@@ -281,6 +294,7 @@ export const addCartLine = (lines: CartLineIntent[], input: AddCartLineInput): C
         updated,
         existing.lineId,
         updated[existingIndex].quantity,
+        linePeriod,
         requiredAccessories,
       ),
     );
@@ -300,7 +314,13 @@ export const addCartLine = (lines: CartLineIntent[], input: AddCartLineInput): C
   updated[updated.length - 1] = { ...newLine, quantity: clampedQuantity };
 
   return reconcileSharedCartLineQuantities(
-    attachRequiredAccessoryLines(updated, newLine.lineId, clampedQuantity, requiredAccessories),
+    attachRequiredAccessoryLines(
+      updated,
+      newLine.lineId,
+      clampedQuantity,
+      linePeriod,
+      requiredAccessories,
+    ),
   );
 };
 
@@ -410,7 +430,7 @@ export const setCartLineQuantity = (
   );
 };
 
-/** The resolve request for the current intent; one period for every line. */
+/** The resolve request uses each line's rental window. */
 export const buildCartResolveInput = (
   lines: CartLineIntent[],
   period: CartPeriod,
@@ -420,8 +440,8 @@ export const buildCartResolveInput = (
     parentLineId: line.parentLineId,
     productId: line.productId,
     quantity: line.quantity,
-    startDate: period.startDate,
-    endDate: period.endDate,
+    startDate: line.startDate ?? period.startDate,
+    endDate: line.endDate ?? period.endDate,
     selectedAttributes: line.selectedAttributes,
   })),
 });
@@ -514,8 +534,8 @@ export const deriveCartItems = ({
     (line): CartItem => ({
       ...(timezone ? { timezone } : {}),
       ...applyResolvedLine(line, resolvedByLineId.get(line.lineId), lines),
-      startDate: effectivePeriod.startDate,
-      endDate: effectivePeriod.endDate,
+      startDate: line.startDate ?? effectivePeriod.startDate,
+      endDate: line.endDate ?? effectivePeriod.endDate,
       pricingMode,
     }),
   );
@@ -529,9 +549,7 @@ export const summarizeCart = (
   maxDiscountPercent: number | null | undefined,
   now?: Date,
 ): CartSummary => {
-  const startDate = period?.startDate ?? null;
-  const endDate = period?.endDate ?? null;
-  const prices = items.map((item) => calculateCartItemPrice(item, startDate, endDate, now));
+  const prices = items.map((item) => calculateCartItemPrice(item, null, null, now));
   const subtotal = prices.reduce((sum, price) => sum + price.subtotal, 0);
   const originalSubtotal = prices.reduce((sum, price) => sum + price.originalSubtotal, 0);
   const deposit = items.reduce((sum, item) => sum + item.deposit * item.quantity, 0);

@@ -11,7 +11,6 @@ import { type CartLineInput, toCartLineInput } from "@/lib/utils/util.cart-line-
 
 import { useAnalytics } from "@/contexts/analytics-context";
 import { useCartActions, useCartDrawer, useCartState } from "@/contexts/cart-context";
-import { useStorePeriodRules } from "@/contexts/store-context";
 
 import { type ProductCardPeriod, selectOfferableExtras } from "./util.product-card";
 
@@ -73,8 +72,7 @@ const hasVariants = (product: StorefrontCatalogProduct): boolean =>
  * would go with them.
  */
 export const useQuickAddFlow = (): QuickAddFlow => {
-  const rules = useStorePeriodRules();
-  const { addItem, setPeriod, setPricingMode } = useCartActions();
+  const { addItem } = useCartActions();
   const { period: cartPeriod, items } = useCartState();
   const drawer = useCartDrawer();
   const { trackEvent } = useAnalytics();
@@ -104,8 +102,8 @@ export const useQuickAddFlow = (): QuickAddFlow => {
 
   /** The steps one product's add goes through, given what is known now. */
   const planSteps = useCallback(
-    (product: StorefrontCatalogProduct, period: ProductCardPeriod | null): QuickAddStep[] => [
-      ...(period ? [] : (["period"] as const)),
+    (product: StorefrontCatalogProduct, _period: ProductCardPeriod | null): QuickAddStep[] => [
+      "period",
       ...(hasVariants(product) ? (["variant"] as const) : []),
       ...(selectOfferableExtras(product.accessories, cartProductIds).length > 0
         ? (["extras"] as const)
@@ -141,17 +139,9 @@ export const useQuickAddFlow = (): QuickAddFlow => {
         gridPeriod ??
         (cartPeriod ? { startDate: cartPeriod.startDate, endDate: cartPeriod.endDate } : null);
       const steps = planSteps(product, period);
-      if (!period) {
-        setState({ product, step: "period", steps, period });
-        return;
-      }
-      if (hasVariants(product)) {
-        setState({ product, step: "variant", steps, period });
-        return;
-      }
-      addOneUnit({ product, step: "variant", steps, period }, period, maxQuantity);
+      setState({ product, step: "period", steps, period });
     },
-    [addOneUnit, cartPeriod, planSteps],
+    [cartPeriod, planSteps],
   );
 
   const offerExtras = useCallback<QuickAddFlow["offerExtras"]>(
@@ -171,11 +161,6 @@ export const useQuickAddFlow = (): QuickAddFlow => {
     (value) => {
       if (!state) return;
       const next = { startDate: value.start.toISOString(), endDate: value.end.toISOString() };
-      // The cart takes the dates right away, so the page behind follows;
-      // this flow keeps its own copy and does not depend on that.
-      setPricingMode(rules.pricingMode);
-      setPeriod(next.startDate, next.endDate);
-
       if (hasVariants(state.product)) {
         setState({ ...state, step: "variant", period: next });
         return;
@@ -183,7 +168,7 @@ export const useQuickAddFlow = (): QuickAddFlow => {
       // The editor checks availability before committing; the cart resolves the stock again.
       addOneUnit(state, next, state.product.quantity);
     },
-    [addOneUnit, rules.pricingMode, setPeriod, setPricingMode, state],
+    [addOneUnit, state],
   );
 
   const applyVariant = useCallback<QuickAddFlow["applyVariant"]>(

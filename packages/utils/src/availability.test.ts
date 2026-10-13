@@ -104,6 +104,38 @@ test('returnable products keep temporal peak availability', () => {
   assert.equal(result.reservedByProduct.get('returnable'), 2)
 })
 
+test('reservation lines keep separate rental periods when calculating peak stock', () => {
+  const result = calculatePeakReservedQuantities({
+    reservations: [
+      {
+        status: 'confirmed',
+        startDate: new Date('2026-09-10T10:00:00.000Z'),
+        endDate: new Date('2026-09-12T12:00:00.000Z'),
+        items: [
+          {
+            productId: 'camera',
+            stockKind: 'returnable',
+            quantity: 1,
+            startDate: new Date('2026-09-10T10:00:00.000Z'),
+            endDate: new Date('2026-09-10T12:00:00.000Z'),
+          },
+          {
+            productId: 'camera',
+            stockKind: 'returnable',
+            quantity: 1,
+            startDate: new Date('2026-09-12T10:00:00.000Z'),
+            endDate: new Date('2026-09-12T12:00:00.000Z'),
+          },
+        ],
+      },
+    ],
+    startDate: new Date('2026-09-10T10:00:00.000Z'),
+    endDate: new Date('2026-09-12T12:00:00.000Z'),
+  })
+
+  assert.equal(result.reservedByProduct.get('camera'), 1)
+})
+
 test('untracked products never reserve stock capacity', () => {
   const result = calculatePeakReservedQuantities({
     reservations: [

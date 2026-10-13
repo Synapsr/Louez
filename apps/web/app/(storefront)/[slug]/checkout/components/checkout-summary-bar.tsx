@@ -9,7 +9,9 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@louez/ui";
 import { cn } from "@louez/utils";
 
 import { Price } from "@/components/storefront/ui/price";
+import { useStoreTimezone } from "@/contexts/store-context";
 import { useFormatLocale } from "@/hooks/use-format-locale";
+import { formatRentalPeriod } from "@/lib/utils/store-date";
 
 import { CheckoutOrderSummary } from "./checkout-order-summary";
 
@@ -26,16 +28,30 @@ type CheckoutSummaryBarProps = Omit<
 export const CheckoutSummaryBar = (props: CheckoutSummaryBarProps) => {
   const t = useTranslations("storefront.checkout");
   const { intl: formatLocale } = useFormatLocale();
+  const timezone = useStoreTimezone();
   const [open, setOpen] = useState(false);
-  const { totals, globalStartDate, globalEndDate } = props;
+  const { totals, items } = props;
 
+  const periods = [
+    ...new Map(
+      items.map((item) => [`${item.startDate}|${item.endDate}`, item] as const),
+    ).values(),
+  ];
   const dates =
-    globalStartDate && globalEndDate
+    periods.length === 1
       ? new Intl.DateTimeFormat(formatLocale, { day: "numeric", month: "short" }).formatRange(
-          new Date(globalStartDate),
-          new Date(globalEndDate),
+          new Date(periods[0].startDate),
+          new Date(periods[0].endDate),
         )
-      : null;
+      : periods
+          .map((item) =>
+            formatRentalPeriod(new Date(item.startDate), new Date(item.endDate), {
+              timezone,
+              locale: formatLocale,
+              style: "long",
+            }),
+          )
+          .join(" · ");
 
   return (
     <Collapsible

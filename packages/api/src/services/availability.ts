@@ -47,6 +47,8 @@ type ReservationWithAssignedUnits = {
     productId: string | null;
     combinationKey?: string | null;
     quantity: number;
+    startDate?: Date | null;
+    endDate?: Date | null;
     assignedUnits: Array<{ productUnitId: string | null }>;
   }>;
 };
@@ -173,6 +175,11 @@ export function computeReservedNetOfExcludedUnits(params: {
           productId: item.productId,
           combinationKey: item.combinationKey,
           quantity,
+          startDate: item.startDate ?? reservation.startDate,
+          endDate:
+            getReservationAvailabilityEnd(reservation) > reservation.endDate
+              ? getReservationAvailabilityEnd(reservation)
+              : (item.endDate ?? reservation.endDate),
           stockKind,
           consumedQuantity: 0,
         },

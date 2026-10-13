@@ -92,6 +92,8 @@ export const extensionFingerprint = (reservation: ExtensionReservation) =>
             taxRate,
             combinationKey,
             selectedAttributes,
+            startDate,
+            endDate,
             assignedUnits,
           }) => ({
             id,
@@ -102,6 +104,8 @@ export const extensionFingerprint = (reservation: ExtensionReservation) =>
             taxRate,
             combinationKey,
             selectedAttributes,
+            startDate,
+            endDate,
             units: assignedUnits.map((unit) => unit.productUnitId).sort(),
           }),
         ),
@@ -126,6 +130,15 @@ export const extensionManualReason = (
   now = new Date(),
 ): ExtensionReason | null => {
   if (reservation.store.settings?.automaticExtensions === false) return "disabled";
+  const rentalPeriods = new Set(
+    reservation.items
+      .filter((item) => item.productId)
+      .map(
+        (item) =>
+          `${item.startDate?.toISOString() ?? reservation.startDate.toISOString()}|${item.endDate?.toISOString() ?? reservation.endDate.toISOString()}`,
+      ),
+  );
+  if (rentalPeriods.size > 1) return "manualPrice";
   if (reservation.endDate <= now) return "overdue";
   if (
     reservation.tulipInsuranceOptIn ||
@@ -181,6 +194,8 @@ export const checkExtensionInventory = async (
               lineId: item.id,
               productId: item.productId,
               quantity: item.quantity,
+              startDate: item.startDate?.toISOString() ?? reservation.startDate.toISOString(),
+              endDate: end.toISOString(),
               selectedAttributes: item.selectedAttributes ?? undefined,
               combinationKey: item.combinationKey,
             },
@@ -351,6 +366,7 @@ export const quoteExtension = async (
       if (!product) throw new ExtensionError("unavailable");
       return {
         id: reservation.items[index].id,
+        endDate: end.toISOString(),
         pricingBreakdown: {
           basePrice: product.price,
           effectivePrice: line.unitPrice,

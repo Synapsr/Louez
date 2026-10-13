@@ -21,6 +21,8 @@ const storedCartLineSchema = z.object({
   lineId: z.string().min(1).optional(),
   selectionSignature: z.string().min(1).optional(),
   productId: z.string().min(1),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
   productSlug: z.string().nullable().optional(),
   productName: z.string().optional(),
   productImage: z.string().nullable().optional(),
@@ -100,10 +102,15 @@ export const parseStoredCart = (raw: string | null): StoredCart | null => {
 };
 
 /** Restores a stored line as an intent line the resolution will complete. */
-export const toCartLineIntent = (line: StoredCartLine): CartLineIntent => ({
+export const toCartLineIntent = (
+  line: StoredCartLine,
+  legacyPeriod?: CartPeriod | null,
+): CartLineIntent => ({
   lineId: line.lineId ?? createCartLineId(),
   selectionSignature: line.selectionSignature ?? buildSelectionSignature(line.selectedAttributes),
   productId: line.productId,
+  startDate: line.startDate ?? legacyPeriod?.startDate,
+  endDate: line.endDate ?? legacyPeriod?.endDate,
   productSlug: line.productSlug ?? null,
   productName: line.productName ?? "",
   productImage: line.productImage ?? null,
@@ -123,6 +130,8 @@ export const toStoredCartLine = (line: CartLineIntent): StoredCartLine => ({
   lineId: line.lineId,
   selectionSignature: line.selectionSignature,
   productId: line.productId,
+  startDate: line.startDate,
+  endDate: line.endDate,
   productSlug: line.productSlug ?? null,
   productName: line.productName,
   productImage: line.productImage,
@@ -172,7 +181,9 @@ export const readCartFromStorage = (storage: CartStorageLike, storeSlug: string)
   }
 
   return {
-    lines: detachOrphanRequiredLines(stored.lines.map(toCartLineIntent)),
+    lines: detachOrphanRequiredLines(
+      stored.lines.map((line) => toCartLineIntent(line, stored.period)),
+    ),
     period: stored.period,
     pricingMode: stored.pricingMode,
   };

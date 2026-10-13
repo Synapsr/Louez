@@ -8,6 +8,8 @@ export interface AvailabilityReservationItem {
   quantity: number
   stockKind?: StockKind
   consumedQuantity?: number
+  startDate?: Date
+  endDate?: Date
 }
 
 export interface AvailabilityReservation {
@@ -89,13 +91,6 @@ export function calculatePeakReservedQuantities(params: {
       )
     }
 
-    const overlapStart = Math.max(reservation.startDate.getTime(), requestedStart)
-    const overlapEnd = Math.min(reservation.endDate.getTime() + bufferMs, requestedEnd)
-
-    if (overlapStart >= overlapEnd) {
-      continue
-    }
-
     for (const item of reservation.items) {
       if (
         !item.productId ||
@@ -104,6 +99,16 @@ export function calculatePeakReservedQuantities(params: {
       ) {
         continue
       }
+
+      const overlapStart = Math.max(
+        item.startDate?.getTime() ?? reservation.startDate.getTime(),
+        requestedStart,
+      )
+      const overlapEnd = Math.min(
+        (item.endDate?.getTime() ?? reservation.endDate.getTime()) + bufferMs,
+        requestedEnd,
+      )
+      if (overlapStart >= overlapEnd) continue
 
       addDelta(productDeltas, item.productId, overlapStart, item.quantity)
       addDelta(productDeltas, item.productId, overlapEnd, -item.quantity)

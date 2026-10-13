@@ -2,7 +2,7 @@
 
 import type { MouseEventHandler } from "react";
 import { Trash2Icon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Button, InputQuantity } from "@louez/ui";
 import { cn, isFixedPriceProduct, type StockQuantityLimit } from "@louez/utils";
@@ -17,6 +17,8 @@ import { type CartItem } from "@/contexts/cart-context";
 import { useFormatMoney } from "@/hooks/use-format-money";
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import { getRequiredAccessoryLineMinimumQuantity } from "@/lib/utils/cart-required-accessories";
+import { useStoreTimezone } from "@/contexts/store-context";
+import { formatRentalPeriod } from "@/lib/utils/store-date";
 
 interface CartLineItemProps {
   item: CartItem;
@@ -30,8 +32,6 @@ interface CartLineItemProps {
   onRemove: (lineId: string) => void;
   /** Unused: the store currency is read from context. Kept for old callers. */
   currency?: string;
-  globalStartDate?: string | null;
-  globalEndDate?: string | null;
 }
 
 const formatAttributes = (attributes: Record<string, string> | undefined): string | null => {
@@ -51,13 +51,13 @@ export const CartLineItem = ({
   parent,
   onQuantityChange,
   onRemove,
-  globalStartDate = null,
-  globalEndDate = null,
 }: CartLineItemProps) => {
   const t = useTranslations("storefront.cart");
+  const locale = useLocale();
+  const timezone = useStoreTimezone();
   const formatMoney = useFormatMoney();
 
-  const priceResult = calculateCartItemPrice(item, globalStartDate, globalEndDate);
+  const priceResult = calculateCartItemPrice(item, null, null);
   const { subtotal, seasonalSegments } = priceResult;
   const unitPrice = subtotal / Math.max(1, item.quantity);
   const isRequiredLine = Boolean(parent);
@@ -101,6 +101,13 @@ export const CartLineItem = ({
             {attributes ? (
               <p className="truncate text-xs text-muted-foreground">{attributes}</p>
             ) : null}
+            <p className="text-xs text-muted-foreground">
+              {formatRentalPeriod(new Date(item.startDate), new Date(item.endDate), {
+                timezone,
+                locale,
+                style: "long",
+              })}
+            </p>
             {parent ? (
               <p className="truncate text-xs text-muted-foreground">
                 {t("requiredWith", { name: parent.name })}
@@ -140,9 +147,7 @@ export const CartLineItem = ({
           ) : null}
         </div>
 
-        <BillingDetail
-          detail={getStorefrontBillingDetail(item, priceResult, globalStartDate, globalEndDate)}
-        />
+        <BillingDetail detail={getStorefrontBillingDetail(item, priceResult, null, null)} />
         <SeasonalPriceBreakdown segments={seasonalSegments} seasons={item.seasonalPricings} />
 
         {item.unavailableReason ? (

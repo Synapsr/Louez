@@ -165,7 +165,7 @@ const resolveRequestedPeriod = (
 };
 
 const buildGetters = (state: CartState): CartGetters => {
-  const { items, summary, period } = state;
+  const { items, summary } = state;
 
   return {
     getCartLinesByProductId: (productId) => items.filter((item) => item.productId === productId),
@@ -179,12 +179,12 @@ const buildGetters = (state: CartState): CartGetters => {
     getTotal: () => summary.total,
     getDuration: () => {
       const first = items[0];
-      if (!first || !period) {
+      if (!first) {
         return 1;
       }
       return calculateDuration(
-        period.startDate,
-        period.endDate,
+        first.startDate,
+        first.endDate,
         first.productPricingMode || first.pricingMode || "day",
       );
     },
@@ -306,9 +306,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const options = typeof storeSlugOrOptions === "string" ? {} : (storeSlugOrOptions ?? {});
     const requestedPeriod = resolveRequestedPeriod(item, options);
     const { startDate: _start, endDate: _end, ...lineInput } = item;
-
-    setPeriodState((current) => requestedPeriod ?? current ?? getDefaultCartPeriod());
-    setLines((current) => addCartLine(current, lineInput));
+    const linePeriod = requestedPeriod ?? getDefaultCartPeriod();
+    setLines((current) => addCartLine(current, { ...lineInput, ...linePeriod }));
   }, []);
 
   const removeItemByLineId = useCallback((lineId: string) => {

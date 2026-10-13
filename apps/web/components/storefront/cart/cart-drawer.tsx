@@ -1,5 +1,6 @@
 "use client";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { type CartResolutionStatus, useCartDrawer, useCartState } from "@/contexts/cart-context";
 import { useStorePath } from "@/hooks/use-store-path";
 import { buildCheckoutHref } from "@/lib/utils/util.checkout-return";
@@ -25,12 +26,21 @@ const getBlockedReasonKey = (
 
 export const CartDrawer = () => {
   const { isOpen, setOpen, close } = useCartDrawer();
+  const pathname = usePathname();
+  const previousPathname = useRef(pathname);
   const { items, summary, resolutionStatus, hasUnavailableLines } = useCartState();
   const storePath = useStorePath();
   const searchParams = useSearchParams();
   const checkoutHref = buildCheckoutHref(storePath, searchParams.toString());
   const isEmpty = items.length === 0;
   const blockedReasonKey = getBlockedReasonKey(resolutionStatus, hasUnavailableLines);
+
+  useEffect(() => {
+    if (previousPathname.current !== pathname) {
+      previousPathname.current = pathname;
+      close();
+    }
+  }, [close, pathname]);
 
   return (
     <CartDrawerView

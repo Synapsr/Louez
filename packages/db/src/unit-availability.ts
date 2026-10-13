@@ -208,8 +208,15 @@ export async function findBusyUnitIds(
   const assignments = await database
     .select({
       productUnitId: reservationItemUnits.productUnitId,
-      reservationStart: reservations.startDate,
-      reservationEnd: reservationAvailabilityEndSql(),
+      reservationStart:
+        sql<Date>`COALESCE(${reservationItems.startDate}, ${reservations.startDate})`.mapWith(
+          reservations.startDate,
+        ),
+      reservationEnd: sql<Date>`CASE
+        WHEN ${reservationAvailabilityEndSql()} > ${reservations.endDate}
+          THEN ${reservationAvailabilityEndSql()}
+        ELSE COALESCE(${reservationItems.endDate}, ${reservations.endDate})
+      END`.mapWith(reservations.endDate),
     })
     .from(reservationItemUnits)
     .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))

@@ -58,10 +58,10 @@ const applyExtension = async (
 ) => {
   const { items, ...totals } = attempt.plan;
   for (const item of items) {
-    const { id: itemId, ...values } = item;
+    const { id: itemId, endDate, ...values } = item;
     await tx
       .update(reservationItems)
-      .set(values)
+      .set({ ...values, ...(endDate ? { endDate: new Date(endDate) } : {}) })
       .where(
         and(eq(reservationItems.id, itemId), eq(reservationItems.reservationId, reservation.id)),
       );

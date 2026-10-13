@@ -94,6 +94,23 @@ interface CartLineQuantity extends RequiredAccessoryCartLineQuantity {
   selectionSignature?: string;
   quantity: number;
   parentLineId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+function periodsOverlap(left: CartLineQuantity, right: CartLineQuantity): boolean {
+  const leftStart = Date.parse(left.startDate ?? '');
+  const leftEnd = Date.parse(left.endDate ?? '');
+  const rightStart = Date.parse(right.startDate ?? '');
+  const rightEnd = Date.parse(right.endDate ?? '');
+  return (
+    Number.isFinite(leftStart) &&
+    Number.isFinite(leftEnd) &&
+    Number.isFinite(rightStart) &&
+    Number.isFinite(rightEnd) &&
+    leftStart < rightEnd &&
+    rightStart < leftEnd
+  );
 }
 
 /** Minimum units the child line must carry for its current parent quantity. */
@@ -147,7 +164,7 @@ function getCartStockGroupKey(
   lines: CartLineQuantity[],
   line: Pick<
     CartLineQuantity,
-    'productId' | 'selectionSignature' | 'stockKind'
+    'productId' | 'selectionSignature' | 'stockKind' | 'startDate' | 'endDate'
   >,
 ): string | null {
   const productStockKind = lines.some(
@@ -173,14 +190,36 @@ function getCartStockGroupKey(
     productStockKind === 'consumable'
       ? '*'
       : (line.selectionSignature ?? '__default'),
+    productStockKind === 'consumable'
+      ? '*'
+      : [line.startDate ?? '', line.endDate ?? ''],
   ]);
+}
+
+function getCartInventoryPoolKey(
+  lines: CartLineQuantity[],
+  line: Pick<
+    CartLineQuantity,
+    'productId' | 'selectionSignature' | 'stockKind' | 'startDate' | 'endDate'
+  >,
+): string | null {
+  const groupKey = getCartStockGroupKey(lines, line);
+  if (!groupKey) return null;
+  const stockKind = lines.some(
+    (candidate) => candidate.productId === line.productId && candidate.stockKind === 'consumable',
+  )
+    ? 'consumable'
+    : (line.stockKind ?? lines.find((candidate) => candidate.productId === line.productId)?.stockKind);
+  return stockKind === 'consumable'
+    ? JSON.stringify([line.productId, 'consumable'])
+    : JSON.stringify([line.productId, line.selectionSignature ?? '__default']);
 }
 
 function getOtherSharedStockLinesQuantity(
   lines: CartLineQuantity[],
   line: CartLineQuantity,
 ): number {
-  const stockGroupKey = getCartStockGroupKey(lines, line);
+  const stockGroupKey = getCartInventoryPoolKey(lines, line);
   if (!stockGroupKey) {
     return 0;
   }
@@ -188,7 +227,8 @@ function getOtherSharedStockLinesQuantity(
   return lines.reduce(
     (total, candidate) =>
       candidate.lineId !== line.lineId &&
-      getCartStockGroupKey(lines, candidate) === stockGroupKey
+      getCartInventoryPoolKey(lines, candidate) === stockGroupKey &&
+      (candidate.stockKind === 'consumable' || periodsOverlap(candidate, line))
         ? total + candidate.quantity
         : total,
     0,

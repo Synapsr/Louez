@@ -32,7 +32,11 @@ export const QuickAddDialog = ({ flow }: { flow: QuickAddFlow }) => {
             timezone: promotionTimezone,
             now: promotionNow,
           })}
-          value={null}
+          value={
+            state.period
+              ? { start: new Date(state.period.startDate), end: new Date(state.period.endDate) }
+              : null
+          }
           rules={rules}
           variant="sheet"
           months={isDesktop ? 2 : 1}

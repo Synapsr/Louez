@@ -20,11 +20,7 @@ import type { AdvisorCartSnapshot } from "@louez/validations";
 
 import { useCartActions, useCartState } from "@/contexts/cart-context";
 import { VERIFICATION_KICKOFF_PROMPT, isVerificationKickoff } from "@/lib/ai/advisor/kickoff";
-import {
-  findCartPeriodConflict,
-  parseAdvisorAddToCartInput,
-  toAdvisorCartLine,
-} from "@/lib/ai/advisor/util.add-to-cart";
+import { parseAdvisorAddToCartInput, toAdvisorCartLine } from "@/lib/ai/advisor/util.add-to-cart";
 import { resolveRequiredAccessories } from "@/lib/ai/advisor/util.resolve-required-accessories";
 import { orpcClient } from "@/lib/orpc";
 import { storefrontQueries } from "@/lib/queries/storefront.queries";
@@ -215,6 +211,8 @@ export const AdvisorProvider = ({
               items: currentCart.items.map((item) => ({
                 productId: item.productId,
                 quantity: item.quantity,
+                startDate: toStrictIso(item.startDate),
+                endDate: toStrictIso(item.endDate),
               })),
               // Cart dates come from localStorage — normalize to strict ISO
               // (the API schema requires an offset) and drop invalid values.
@@ -240,20 +238,6 @@ export const AdvisorProvider = ({
         return { success: false as const, reason: parsed.reason };
       }
       const { request } = parsed;
-      const currentCart = cartStateRef.current;
-
-      const conflict = findCartPeriodConflict(
-        {
-          hasItems: currentCart.items.length > 0,
-          startDate: currentCart.globalStartDate,
-          endDate: currentCart.globalEndDate,
-        },
-        request,
-      );
-      if (conflict) {
-        return { success: false as const, reason: "date_conflict", ...conflict };
-      }
-
       try {
         const resolved = await orpcClient.storefront.cart.resolve({
           lines: [{ lineId: "advisor-add", ...request }],
@@ -278,8 +262,7 @@ export const AdvisorProvider = ({
               })
             : [];
 
-        // The period travels with the line: an empty cart adopts it, a cart
-        // with the same period keeps it (the conflict check ran above).
+        // Each advisor-added line keeps the period explicitly requested.
         addItem(toAdvisorCartLine(line, request, requiredAccessories));
 
         return {

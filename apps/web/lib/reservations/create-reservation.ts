@@ -161,7 +161,12 @@ const resolveAdvisorConversation = async ({
 }: {
   store: StoreRow;
   conversationId: string | undefined;
-  lines: Array<{ productId: string; quantity: number }>;
+  lines: Array<{
+    productId: string;
+    quantity: number;
+    startDate: string;
+    endDate: string;
+  }>;
   window: RentalWindow;
 }): Promise<{ ok: true; conversation: AdvisorConversation | null } | ReservationFailure> => {
   if (conversationId !== undefined && !NANOID_21_REGEX.test(conversationId)) {
@@ -182,7 +187,12 @@ const resolveAdvisorConversation = async ({
     const isValidated =
       conversation?.validatedAt != null &&
       advisorValidationCovers(conversation.validatedCart, {
-        items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+        items: lines.map((line) => ({
+          productId: line.productId,
+          quantity: line.quantity,
+          startDate: line.startDate,
+          endDate: line.endDate,
+        })),
         startDate: window.start.toISOString(),
         endDate: window.end.toISOString(),
       });
@@ -298,8 +308,11 @@ const prepareReservation = async (
   });
   if (!advisor.ok) return advisor;
 
-  const windowCheck = validateRentalWindow({ window, settings });
-  if (!windowCheck.ok) return windowCheck;
+  for (const item of input.items) {
+    const lineWindow = getRentalWindow([item]);
+    const windowCheck = validateRentalWindow({ window: lineWindow, settings });
+    if (!windowCheck.ok) return windowCheck;
+  }
 
   const productIds = [...new Set(input.items.map((item) => item.productId))];
   const catalog = await loadPricingCatalog(db, {
@@ -337,11 +350,15 @@ const prepareReservation = async (
     });
   }
 
-  const hasDurationProduct = [...catalog.values()].some(
-    (product) => product.pricingKind === "duration",
-  );
-  const durationCheck = validateRentalDuration({ window, settings, hasDurationProduct });
-  if (!durationCheck.ok) return durationCheck;
+  for (const item of input.items) {
+    const product = catalog.get(item.productId);
+    const durationCheck = validateRentalDuration({
+      window: getRentalWindow([item]),
+      settings,
+      hasDurationProduct: product?.pricingKind === "duration",
+    });
+    if (!durationCheck.ok) return durationCheck;
+  }
 
   const stockCheck = await preflightStock(db, catalog, input.items);
   if (!stockCheck.ok) return stockCheck;
@@ -672,6 +689,8 @@ const buildReservationItemValues = (
 
     return {
       productId: item.productId,
+      startDate: new Date(item.startDate),
+      endDate: new Date(item.endDate),
       isCustomItem: false,
       quantity: item.quantity,
       unitPrice: line.unitPrice.toFixed(2),

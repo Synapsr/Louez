@@ -8,7 +8,6 @@ import {
   groupCartLinesByParent,
 } from "@/lib/utils/cart-required-accessories";
 import { CartLineItem } from "./cart-line-item";
-import { CartPeriodSummary } from "./cart-period-summary";
 import { CartUnavailableBanner } from "./cart-unavailable-banner";
 
 export interface CartPanelViewProps {
@@ -24,7 +23,6 @@ export interface CartPanelViewProps {
 export const CartPanelView = ({
   className,
   items,
-  period,
   resolutionStatus,
   onRemove,
   onQuantityChange,
@@ -37,8 +35,6 @@ export const CartPanelView = ({
 
   return (
     <div className={cn("flex flex-col gap-4", className)} data-slot="cart-panel">
-      <CartPeriodSummary period={period} />
-
       {resolutionStatus === "error" ? (
         <p role="status" className="rounded-2xl bg-warning/12 p-4 text-sm text-warning">
           {t("resolveError")}

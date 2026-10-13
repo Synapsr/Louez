@@ -589,6 +589,13 @@
       "when": 1790698388523,
       "tag": "0078_auth_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "5",
+      "when": 1791810000000,
+      "tag": "0079_reservation_item_periods",
+      "breakpoints": true
     }
   ]
 }

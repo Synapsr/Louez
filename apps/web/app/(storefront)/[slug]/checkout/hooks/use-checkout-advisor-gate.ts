@@ -72,6 +72,8 @@ export function useCheckoutAdvisorGate(advisorMode: AiAdvisorMode | null): Check
       items: items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
+        startDate: item.startDate,
+        endDate: item.endDate,
       })),
       startDate: globalStartDate,
       endDate: globalEndDate,

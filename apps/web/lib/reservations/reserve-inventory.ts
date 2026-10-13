@@ -33,6 +33,8 @@ export interface ReserveInventoryLine {
   lineId?: string;
   productId: string;
   quantity: number;
+  startDate?: string;
+  endDate?: string;
   selectedAttributes?: UnitAttributes;
   combinationKey?: string | null;
 }
@@ -171,22 +173,29 @@ export const reserveInventory = async ({
     with: { activity: { columns: { metadata: true } }, items: { with: { assignedUnits: true } } },
   });
 
-  const trackedProductIds = lockedProducts
-    .filter((product) => product.trackUnits)
-    .map((product) => product.id);
   const consumableProductIds = lockedProducts
     .filter((product) => product.stockKind === "consumable" && !skipConsumableCheck)
     .map((product) => product.id);
 
-  const trackedUnits =
-    trackedProductIds.length > 0
-      ? await tx
-          .select({ id: productUnits.id })
-          .from(productUnits)
-          .where(inArray(productUnits.productId, trackedProductIds))
-      : [];
-  const availableUnits =
-    trackedProductIds.length > 0
+  const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
+    storeId,
+    productIds: consumableProductIds,
+    blockingStatuses,
+  });
+  const resolvedCombinationByLineKey = new Map<string, ResolvedLineCombination>();
+  const stagedLines: ReserveInventoryLine[] = [];
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const product = lockedProductsById.get(line.productId);
+    if (!product) return failReservation("errors.productNotFound");
+    if (skipConsumableCheck && product.stockKind === "consumable") continue;
+
+    const lineWindow = {
+      start: line.startDate ? new Date(line.startDate) : window.start,
+      end: line.endDate ? new Date(line.endDate) : window.end,
+    };
+    const availableUnits = product.trackUnits
       ? await tx
           .select({
             id: productUnits.id,
@@ -197,70 +206,92 @@ export const reserveInventory = async ({
           .from(productUnits)
           .where(
             and(
-              inArray(productUnits.productId, trackedProductIds),
-              buildUnitRentableDuringPredicate(tx, window.start, window.end),
+              eq(productUnits.productId, product.id),
+              buildUnitRentableDuringPredicate(tx, lineWindow.start, lineWindow.end),
             ),
           )
       : [];
-  const availableUnitIds = new Set(availableUnits.map((unit) => unit.id));
-  const excludedProductUnitIds = new Set(
-    trackedUnits.filter((unit) => !availableUnitIds.has(unit.id)).map((unit) => unit.id),
-  );
-  const excludedUnitInfo = await loadExcludedUnitInfo(tx, excludedProductUnitIds);
-
-  const { reservedByProduct, reservedByProductCombination } = computeReservedNetOfExcludedUnits({
-    reservations: overlappingReservations,
-    startDate: window.start,
-    endDate: window.end,
-    turnoverBufferMinutes,
-    excludedProductUnitIds,
-    excludedUnitInfo,
-    consumableProductIds: new Set(consumableProductIds),
-  });
-  const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
-    storeId,
-    productIds: consumableProductIds,
-    blockingStatuses,
-  });
-  for (const [productId, reservedQuantity] of consumableReservedByProduct) {
-    reservedByProduct.set(productId, reservedQuantity);
-  }
-
-  const combinationsByProduct = new Map<
-    string,
-    Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
-  >();
-  for (const unit of availableUnits) {
-    const productCombinations = combinationsByProduct.get(unit.productId) || new Map();
-    const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
-    const current = productCombinations.get(combinationKey);
-
-    if (!current) {
-      productCombinations.set(combinationKey, {
-        totalQuantity: 1,
-        selectedAttributes: unit.attributes || {},
-      });
-    } else {
-      current.totalQuantity += 1;
-      if (Object.keys(current.selectedAttributes).length === 0 && unit.attributes) {
-        current.selectedAttributes = unit.attributes;
-      }
-      productCombinations.set(combinationKey, current);
+    const allTrackedUnits = product.trackUnits
+      ? await tx
+          .select({ id: productUnits.id })
+          .from(productUnits)
+          .where(eq(productUnits.productId, product.id))
+      : [];
+    const availableUnitIds = new Set(availableUnits.map((unit) => unit.id));
+    const excludedProductUnitIds = new Set(
+      allTrackedUnits.filter((unit) => !availableUnitIds.has(unit.id)).map((unit) => unit.id),
+    );
+    const excludedUnitInfo = await loadExcludedUnitInfo(tx, excludedProductUnitIds);
+    const stagedReservations = stagedLines.map((stagedLine) => {
+      const startDate = stagedLine.startDate ? new Date(stagedLine.startDate) : window.start;
+      const endDate = stagedLine.endDate ? new Date(stagedLine.endDate) : window.end;
+      return {
+        status: "ongoing",
+        startDate,
+        endDate,
+        items: [
+          {
+            productId: stagedLine.productId,
+            combinationKey: stagedLine.combinationKey,
+            quantity: stagedLine.quantity,
+            startDate,
+            endDate,
+            stockKind: lockedProductsById.get(stagedLine.productId)?.stockKind ?? "returnable",
+            consumedQuantity: 0,
+            assignedUnits: [],
+          },
+        ],
+      };
+    });
+    const { reservedByProduct, reservedByProductCombination } = computeReservedNetOfExcludedUnits({
+      reservations: [...overlappingReservations, ...stagedReservations],
+      startDate: lineWindow.start,
+      endDate: lineWindow.end,
+      turnoverBufferMinutes,
+      excludedProductUnitIds,
+      excludedUnitInfo,
+      consumableProductIds: new Set(consumableProductIds),
+    });
+    for (const [productId, quantity] of consumableReservedByProduct) {
+      reservedByProduct.set(productId, quantity);
+    }
+    for (const stagedLine of stagedLines) {
+      if (lockedProductsById.get(stagedLine.productId)?.stockKind !== "consumable") continue;
+      reservedByProduct.set(
+        stagedLine.productId,
+        (reservedByProduct.get(stagedLine.productId) ?? 0) + stagedLine.quantity,
+      );
     }
 
-    combinationsByProduct.set(unit.productId, productCombinations);
-  }
-
-  const resolvedCombinationByLineKey = new Map<string, ResolvedLineCombination>();
-
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index];
-    const product = lockedProductsById.get(line.productId);
-    if (!product) return failReservation("errors.productNotFound");
-    if (skipConsumableCheck && product.stockKind === "consumable") continue;
+    const combinationsByProduct = new Map<
+      string,
+      Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
+    >();
+    for (const unit of availableUnits) {
+      const productCombinations = combinationsByProduct.get(unit.productId) || new Map();
+      const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
+      const current = productCombinations.get(combinationKey);
+      if (!current) {
+        productCombinations.set(combinationKey, {
+          totalQuantity: 1,
+          selectedAttributes: unit.attributes || {},
+        });
+      } else {
+        current.totalQuantity += 1;
+        if (Object.keys(current.selectedAttributes).length === 0 && unit.attributes) {
+          current.selectedAttributes = unit.attributes;
+        }
+      }
+      combinationsByProduct.set(unit.productId, productCombinations);
+    }
 
     if (!product.trackUnits) {
       if (product.stockKind === "untracked") {
+        stagedLines.push({
+          ...line,
+          startDate: lineWindow.start.toISOString(),
+          endDate: lineWindow.end.toISOString(),
+        });
         continue;
       }
 
@@ -270,7 +301,11 @@ export const reserveInventory = async ({
         return failReservation("errors.productNoLongerAvailable", { name: product.name });
       }
 
-      reservedByProduct.set(line.productId, reserved + line.quantity);
+      stagedLines.push({
+        ...line,
+        startDate: lineWindow.start.toISOString(),
+        endDate: lineWindow.end.toISOString(),
+      });
       continue;
     }
 
@@ -309,17 +344,18 @@ export const reserveInventory = async ({
       key,
       (reservedByProductCombination.get(key) || 0) + line.quantity,
     );
-    reservedByProduct.set(
-      line.productId,
-      (reservedByProduct.get(line.productId) || 0) + line.quantity,
-    );
-
     resolvedCombinationByLineKey.set(getReservationLineKey(line, index), {
       combinationKey: resolvedCombination.combinationKey,
       selectedAttributes: toResolvedAttributes(
         selectedAttributes,
         resolvedCombination.selectedAttributes,
       ),
+    });
+    stagedLines.push({
+      ...line,
+      combinationKey: resolvedCombination.combinationKey,
+      startDate: lineWindow.start.toISOString(),
+      endDate: lineWindow.end.toISOString(),
     });
   }
 
@@ -393,6 +429,8 @@ export const checkExistingReservationInventory = async (
           {
             productId: item.productId,
             quantity: item.quantity,
+            startDate: item.startDate?.toISOString(),
+            endDate: item.endDate?.toISOString(),
             selectedAttributes: item.selectedAttributes ?? undefined,
             combinationKey: item.combinationKey,
           },

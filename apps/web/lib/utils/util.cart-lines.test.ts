@@ -96,6 +96,28 @@ test("addCartLine keeps different selections as separate lines", () => {
   assert.equal(lines.length, 2);
 });
 
+test("addCartLine keeps the same product on separate dates as separate rentals", () => {
+  const firstPeriod = {
+    startDate: "2026-09-10T08:00:00.000Z",
+    endDate: "2026-09-10T12:00:00.000Z",
+  };
+  const secondPeriod = {
+    startDate: "2026-09-12T08:00:00.000Z",
+    endDate: "2026-09-12T12:00:00.000Z",
+  };
+  const first = addCartLine([], { ...kayakInput({ requiredAccessories: [] }), ...firstPeriod });
+  const lines = addCartLine(first, {
+    ...kayakInput({ requiredAccessories: [] }),
+    ...secondPeriod,
+  });
+
+  assert.equal(lines.length, 2);
+  assert.deepEqual(
+    lines.map(({ startDate, endDate }) => ({ startDate, endDate })),
+    [firstPeriod, secondPeriod],
+  );
+});
+
 test("addCartLine drops a line nothing is left for", () => {
   const full = addCartLine([], kayakInput({ quantity: 3, requiredAccessories: [] }));
   const lines = addCartLine(full, kayakInput({ quantity: 1, requiredAccessories: [] }));
@@ -173,14 +195,21 @@ test("setCartLineQuantity at zero removes the parent and its accessories", () =>
   assert.deepEqual(setCartLineQuantity(lines, parent.lineId, 0), []);
 });
 
-test("buildCartResolveInput gives every line the cart period", () => {
-  const lines = addCartLine([], kayakInput());
+test("buildCartResolveInput sends each line's own period", () => {
+  const otherPeriod = {
+    startDate: "2026-09-12T08:00:00.000Z",
+    endDate: "2026-09-12T12:00:00.000Z",
+  };
+  const first = addCartLine([], { ...kayakInput(), ...period });
+  const lines = addCartLine(first, { ...kayakInput(), ...otherPeriod });
 
   const input = buildCartResolveInput(lines, period);
 
-  assert.equal(input.lines.length, 2);
-  assert.ok(input.lines.every((line) => line.startDate === period.startDate));
-  assert.equal(input.lines[1].parentLineId, input.lines[0].lineId);
+  assert.equal(input.lines.length, 4);
+  assert.deepEqual(
+    input.lines.map(({ startDate, endDate }) => ({ startDate, endDate })),
+    [period, period, otherPeriod, otherPeriod],
+  );
 });
 
 const resolvedLine = (

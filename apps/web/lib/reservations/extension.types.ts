@@ -39,6 +39,7 @@ export const extensionAttemptSchema = z.object({
     items: z.array(
       z.object({
         id: z.string(),
+        endDate: z.string().datetime({ offset: true }).optional(),
         pricingBreakdown: z
           .object({
             basePrice: z.number(),

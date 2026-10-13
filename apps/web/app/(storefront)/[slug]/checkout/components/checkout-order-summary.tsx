@@ -1,10 +1,9 @@
 "use client";
 
-import { CalendarDays } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { TaxSettings } from "@louez/types";
-import { Button, Separator } from "@louez/ui";
+import { Separator } from "@louez/ui";
 import { cn, isFixedPriceProduct } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
@@ -14,13 +13,14 @@ import { BillingDetail } from "@/components/storefront/product/billing-detail";
 import { getStorefrontBillingDetail } from "@/lib/utils/util.storefront-product-pricing";
 import { Price } from "@/components/storefront/ui/price";
 import type { CartItem } from "@/contexts/cart-context";
-import { useDiscountVisibility } from "@/contexts/store-context";
+import { useDiscountVisibility, useStoreTimezone } from "@/contexts/store-context";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 import { useFormatMoney } from "@/hooks/use-format-money";
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import { groupCartLinesByParent } from "@/lib/utils/cart-required-accessories";
 import { getDetailedDuration } from "@/lib/utils/duration";
 import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibility";
+import { formatRentalPeriod } from "@/lib/utils/store-date";
 
 import type {
   CheckoutTulipInsurance,
@@ -91,8 +91,6 @@ export const CheckoutOrderSummary = ({
   items,
   reservationMode,
   taxSettings,
-  globalStartDate,
-  globalEndDate,
   subtotal,
   originalSubtotal,
   totalSavings,
@@ -107,13 +105,13 @@ export const CheckoutOrderSummary = ({
   lineResolutions,
   promo,
   discountAmount,
-  onEditDates,
   variant = "card",
   className,
 }: CheckoutOrderSummaryProps) => {
   const t = useTranslations("storefront.checkout");
   const formatMoney = useFormatMoney();
   const { intl: formatLocale } = useFormatLocale();
+  const timezone = useStoreTimezone();
   const isDiscountVisible = useDiscountVisibility();
 
   const insuranceState = getCheckoutInsuranceState({
@@ -138,19 +136,6 @@ export const CheckoutOrderSummary = ({
     ...group.children.map((child) => ({ item: child, parentName: group.line.productName })),
   ]);
 
-  const periodLabel = (() => {
-    if (!globalStartDate || !globalEndDate) return null;
-    const dateFormat = new Intl.DateTimeFormat(formatLocale, { day: "numeric", month: "short" });
-    const { days, hours } = getDetailedDuration(globalStartDate, globalEndDate);
-    const duration =
-      days === 0
-        ? `${hours}h`
-        : hours === 0
-          ? `${days}${t("dayAbbreviation")}`
-          : `${days}${t("dayAbbreviation")} ${hours}h`;
-    return `${dateFormat.format(new Date(globalStartDate))} → ${dateFormat.format(new Date(globalEndDate))} · ${duration}`;
-  })();
-
   return (
     <div
       className={cn(
@@ -161,32 +146,11 @@ export const CheckoutOrderSummary = ({
     >
       {variant === "card" && <h2 className="text-lg font-semibold leading-snug">{t("summary")}</h2>}
 
-      {periodLabel && (
-        <div className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-sm">
-          <span className="truncate">{periodLabel}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={onEditDates}
-            aria-label={t("advanceNotice.editDates")}
-            className="shrink-0"
-          >
-            <CalendarDays />
-          </Button>
-        </div>
-      )}
-
       <ul className="flex flex-col gap-3">
         {orderedLines.map(({ item, parentName }) => {
-          const priceResult = calculateCartItemPrice(item, globalStartDate, globalEndDate);
+          const priceResult = calculateCartItemPrice(item, null, null);
           const showItemDiscount = isDiscountVisible(getEffectiveDiscountPercent(priceResult));
-          const billingDetail = getStorefrontBillingDetail(
-            item,
-            priceResult,
-            globalStartDate,
-            globalEndDate,
-          );
+          const billingDetail = getStorefrontBillingDetail(item, priceResult, null, null);
           const resolution = lineResolutions[item.lineId];
           const attributes = item.resolvedAttributes ?? item.selectedAttributes;
 
@@ -214,6 +178,17 @@ export const CheckoutOrderSummary = ({
                     {Object.values(attributes).join(" · ")}
                   </p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  {formatRentalPeriod(new Date(item.startDate), new Date(item.endDate), {
+                    timezone,
+                    locale: formatLocale,
+                    style: "long",
+                  })}
+                  {(() => {
+                    const { days, hours } = getDetailedDuration(item.startDate, item.endDate);
+                    return ` · ${days === 0 ? `${hours}h` : hours === 0 ? `${days}${t("dayAbbreviation")}` : `${days}${t("dayAbbreviation")} ${hours}h`}`;
+                  })()}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {parentName && priceResult.subtotal === 0
                     ? t("included")

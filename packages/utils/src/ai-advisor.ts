@@ -1,31 +1,38 @@
 import type { AdvisorValidatedCart } from '@louez/types';
 
 interface CartForValidation {
-  items: { productId: string; quantity: number }[];
+  items: {
+    productId: string;
+    quantity: number;
+    startDate?: string;
+    endDate?: string;
+  }[];
   startDate: string | null;
   endDate: string | null;
 }
 
-function isSameInstant(a: string | null, b: string | null): boolean {
-  if (!a || !b) return false;
-  const timeA = Date.parse(a);
-  const timeB = Date.parse(b);
-  return !Number.isNaN(timeA) && !Number.isNaN(timeB) && timeA === timeB;
-}
-
-function quantitiesByProduct(
-  items: { productId: string; quantity: number }[],
-): Map<string, number> {
+function quantitiesByProductAndPeriod(
+  items: CartForValidation['items'],
+  fallbackStartDate: string | null,
+  fallbackEndDate: string | null,
+): Map<string, number> | null {
   const map = new Map<string, number>();
   for (const item of items) {
-    map.set(item.productId, (map.get(item.productId) ?? 0) + item.quantity);
+    const startDate = item.startDate ?? fallbackStartDate;
+    const endDate = item.endDate ?? fallbackEndDate;
+    if (!startDate || !endDate) return null;
+    const start = Date.parse(startDate);
+    const end = Date.parse(endDate);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+    const key = `${item.productId}:${start}:${end}`;
+    map.set(key, (map.get(key) ?? 0) + item.quantity);
   }
   return map;
 }
 
 /**
- * Whether an advisor validation still covers a cart: exact same rental
- * period and exact same per-product quantities. Used by BOTH the checkout
+ * Whether an advisor validation still covers a cart: exact same period per
+ * product line and exact quantities. Used by BOTH the checkout
  * gate UI and the server enforcement in createReservation — keep them in
  * sync by construction.
  */
@@ -35,15 +42,13 @@ export function advisorValidationCovers(
 ): boolean {
   if (!validatedCart || cart.items.length === 0) return false;
 
-  if (
-    !isSameInstant(validatedCart.startDate, cart.startDate) ||
-    !isSameInstant(validatedCart.endDate, cart.endDate)
-  ) {
-    return false;
-  }
-
-  const validated = quantitiesByProduct(validatedCart.items);
-  const current = quantitiesByProduct(cart.items);
+  const validated = quantitiesByProductAndPeriod(
+    validatedCart.items,
+    validatedCart.startDate,
+    validatedCart.endDate,
+  );
+  const current = quantitiesByProductAndPeriod(cart.items, cart.startDate, cart.endDate);
+  if (!validated || !current) return false;
   if (validated.size !== current.size) return false;
   for (const [productId, quantity] of current) {
     if (validated.get(productId) !== quantity) return false;

@@ -50,6 +50,8 @@ export const advisorCartSnapshotSchema = z.object({
       z.object({
         productId: z.string().length(21),
         quantity: z.number().int().min(1).max(999),
+        startDate: z.string().datetime({ offset: true }).optional(),
+        endDate: z.string().datetime({ offset: true }).optional(),
       }),
     )
     .max(50),
@@ -149,7 +151,12 @@ export const advisorConversationTranscriptSchema = z.object({
 
 export const advisorValidatedCartSchema = z.object({
   items: z.array(
-    z.object({ productId: z.string(), quantity: z.number().int().min(1) }),
+    z.object({
+      productId: z.string(),
+      quantity: z.number().int().min(1),
+      startDate: z.string().datetime({ offset: true }).optional(),
+      endDate: z.string().datetime({ offset: true }).optional(),
+    }),
   ),
   startDate: z.string().nullable(),
   endDate: z.string().nullable(),

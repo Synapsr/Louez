@@ -683,7 +683,12 @@ export interface AiAdvisorSettings {
  * same products, quantities and rental period.
  */
 export interface AdvisorValidatedCart {
-  items: { productId: string; quantity: number }[];
+  items: {
+    productId: string;
+    quantity: number;
+    startDate?: string;
+    endDate?: string;
+  }[];
   startDate: string | null;
   endDate: string | null;
 }

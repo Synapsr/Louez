@@ -1456,6 +1456,9 @@ export const reservationItems = mysqlTable(
     id: id(),
     reservationId: varchar("reservation_id", { length: 21 }).notNull(),
     productId: varchar("product_id", { length: 21 }), // Nullable for custom items
+    // Per-line rental period; null on legacy/manual rows falls back to the reservation window.
+    startDate: timestamp("start_date", { mode: "date" }),
+    endDate: timestamp("end_date", { mode: "date" }),
 
     // Flag for custom items (not from catalog)
     isCustomItem: boolean("is_custom_item").default(false).notNull(),
