@@ -251,6 +251,49 @@
     "hidePassword": "隐藏密码",
     "passwordRules": {
       "minLength": "至少 {count} 个字符"
+    },
+    "passkey": {
+      "setup": {
+        "title": "让下次登录更轻松",
+        "description": "创建通行密钥，即可通过指纹、面容或设备 PIN 码登录。",
+        "privacy": "您的生物识别数据保留在设备上。其他登录方式仍然可用。",
+        "account": "用于您的账户",
+        "enable": "创建通行密钥",
+        "waiting": "请在设备上确认…",
+        "later": "稍后再说",
+        "successTitle": "通行密钥已准备就绪",
+        "successDescription": "下次在此浏览器登录时，将优先显示此方式。",
+        "done": "继续"
+      },
+      "login": {
+        "title": "欢迎回来",
+        "description": "使用通行密钥登录。您的设备会要求您确认身份。",
+        "continue": "使用通行密钥登录",
+        "waiting": "正在等待设备…",
+        "otherMethod": "使用其他方式"
+      },
+      "settings": {
+        "title": "通行密钥",
+        "description": "无需输入密码，即可快速、安全地登录。",
+        "empty": "尚未注册通行密钥。",
+        "add": "添加通行密钥",
+        "defaultName": "通行密钥",
+        "created": "添加于 {date, date, medium}",
+        "unsupported": "请使用支持的浏览器和安全连接（HTTPS）。",
+        "remove": "移除",
+        "removeTitle": "移除此通行密钥？",
+        "removeDescription": "移除后，将无法再使用它登录 Louez。其他登录方式仍然可用。您也可以从设备的通行密钥管理器中将其移除。",
+        "removed": "通行密钥已移除",
+        "cancel": "取消"
+      },
+      "reauthenticate": "重新登录",
+      "errors": {
+        "cancelled": "请求已取消或超时。请重试或使用其他方式。",
+        "alreadyRegistered": "此通行密钥已注册，您可以使用它登录。",
+        "reauthenticate": "为保护您的账户，请重新登录后再管理通行密钥。",
+        "rateLimited": "尝试次数过多，请等待一分钟后重试。",
+        "failed": "无法使用此通行密钥。请重试或选择其他方式。"
+      }
     }
   },
   "invitation": {

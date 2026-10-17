@@ -31,6 +31,7 @@ import { AccountInfoForm } from './account-info-form'
 import { KeyboardShortcutsSettings } from './keyboard-shortcuts-settings'
 import { getSignInOverview } from './queries'
 import { SignInMethodsCard } from './sign-in-methods-card'
+import { PasskeySettings } from '@/components/auth/passkey-settings'
 import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -144,6 +145,8 @@ export default async function AccountSettingsPage({
         canRemovePassword={canRemovePassword()}
         activeSessionCount={signInOverview.activeSessionCount}
       />
+
+      <PasskeySettings userId={user.id} email={user.email} />
 
       {/* Danger Zone */}
       <Card className="border-destructive/50">

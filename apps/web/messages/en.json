@@ -251,6 +251,49 @@
     "hidePassword": "Hide password",
     "passwordRules": {
       "minLength": "At least {count} characters"
+    },
+    "passkey": {
+      "setup": {
+        "title": "Your next sign-in, made simple",
+        "description": "Create a passkey to sign in with your fingerprint, face or device PIN.",
+        "privacy": "Your biometric data stays on your device. Your other sign-in methods remain available.",
+        "account": "For your account",
+        "enable": "Create my passkey",
+        "waiting": "Confirm on your device…",
+        "later": "Maybe later",
+        "successTitle": "Your passkey is ready",
+        "successDescription": "It will be offered first the next time you sign in on this browser.",
+        "done": "Continue"
+      },
+      "login": {
+        "title": "Welcome back",
+        "description": "Sign in with your passkey. Your device will ask you to confirm your identity.",
+        "continue": "Sign in with a passkey",
+        "waiting": "Waiting for your device…",
+        "otherMethod": "Use another method"
+      },
+      "settings": {
+        "title": "Passkeys",
+        "description": "Sign in quickly and securely, without typing a password.",
+        "empty": "No passkeys registered yet.",
+        "add": "Add a passkey",
+        "defaultName": "Passkey",
+        "created": "Added on {date, date, medium}",
+        "unsupported": "Use a supported browser and a secure connection (HTTPS).",
+        "remove": "Remove",
+        "removeTitle": "Remove this passkey?",
+        "removeDescription": "You will no longer be able to use it to sign in to Louez. Your other sign-in methods remain available. You can also remove it from your device’s passkey manager.",
+        "removed": "Passkey removed",
+        "cancel": "Cancel"
+      },
+      "reauthenticate": "Sign in again",
+      "errors": {
+        "cancelled": "The request was cancelled or timed out. Try again or use another method.",
+        "alreadyRegistered": "This passkey is already registered. You can use it to sign in.",
+        "reauthenticate": "To protect your account, sign in again before managing your passkeys.",
+        "rateLimited": "Too many attempts. Wait a minute before trying again.",
+        "failed": "Unable to use this passkey. Try again or choose another method."
+      }
     }
   },
   "invitation": {

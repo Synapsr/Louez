@@ -112,6 +112,7 @@ export {
 
 export {
   BarChart3 as AnalyticsIcon,
+  Fingerprint as FingerprintIcon,
   Bot as BotIcon,
   CalendarDays as CalendarDaysIcon,
   Calendar as CalendarIcon,

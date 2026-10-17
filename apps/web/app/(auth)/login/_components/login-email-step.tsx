@@ -13,9 +13,11 @@ import {
 } from '@/lib/utils/signup-origin';
 
 import { LoginErrorAlert } from './login-error-alert';
+import { LoginPasskeyButton } from './login-passkey-button';
 import { useEmailStep } from './use-email-step';
 
 interface LoginEmailStepProps {
+  passkeyAvailable?: boolean;
   onOtpSent: (email: string) => void;
   /** Hidden when Google OAuth is not configured on this instance. */
   showGoogle?: boolean;
@@ -26,6 +28,7 @@ interface LoginEmailStepProps {
 }
 
 export const LoginEmailStep = ({
+  passkeyAvailable = false,
   onOtpSent,
   showGoogle = true,
   onUsePassword,
@@ -58,6 +61,7 @@ export const LoginEmailStep = ({
         </p>
       </div>
       <div className="space-y-6">
+        {passkeyAvailable && <LoginPasskeyButton disabled={isPending} />}
         {showGoogle && (
           <>
             <Button

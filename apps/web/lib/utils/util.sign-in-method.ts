@@ -1,5 +1,5 @@
 /** Label sent to analytics and to the platform's sign-in notifications. */
-export type SignInMethod = "google" | "magic link" | "password";
+export type SignInMethod = "google" | "magic link" | "password" | "passkey";
 
 interface SignInMethodInput {
   /** better-auth endpoint that created the session; null outside a request. */
@@ -23,6 +23,10 @@ export function inferSignInMethod({
 
   if (path === "/sign-in/email" || path === "/sign-up/email") {
     return "password";
+  }
+
+  if (path === "/passkey/verify-authentication") {
+    return "passkey";
   }
 
   if (path === "/sign-in/email-otp" || path === "/magic-link/verify") {

@@ -251,6 +251,49 @@
     "hidePassword": "Wachtwoord verbergen",
     "passwordRules": {
       "minLength": "Minstens {count} tekens"
+    },
+    "passkey": {
+      "setup": {
+        "title": "Je volgende aanmelding, eenvoudig",
+        "description": "Maak een passkey om je aan te melden met je vingerafdruk, gezicht of de pincode van je apparaat.",
+        "privacy": "Je biometrische gegevens blijven op je apparaat. Je andere aanmeldmethoden blijven beschikbaar.",
+        "account": "Voor je account",
+        "enable": "Mijn passkey maken",
+        "waiting": "Bevestig op je apparaat…",
+        "later": "Misschien later",
+        "successTitle": "Je passkey is klaar",
+        "successDescription": "Deze wordt als eerste aangeboden wanneer je je weer aanmeldt in deze browser.",
+        "done": "Doorgaan"
+      },
+      "login": {
+        "title": "Welkom terug",
+        "description": "Meld je aan met je passkey. Je apparaat vraagt je om je identiteit te bevestigen.",
+        "continue": "Aanmelden met een passkey",
+        "waiting": "Wachten op je apparaat…",
+        "otherMethod": "Een andere methode gebruiken"
+      },
+      "settings": {
+        "title": "Passkeys",
+        "description": "Meld je snel en veilig aan zonder een wachtwoord te typen.",
+        "empty": "Er zijn nog geen passkeys geregistreerd.",
+        "add": "Passkey toevoegen",
+        "defaultName": "Passkey",
+        "created": "Toegevoegd op {date, date, medium}",
+        "unsupported": "Gebruik een ondersteunde browser en een beveiligde verbinding (HTTPS).",
+        "remove": "Verwijderen",
+        "removeTitle": "Deze passkey verwijderen?",
+        "removeDescription": "Je kunt deze niet meer gebruiken om je aan te melden bij Louez. Je andere aanmeldmethoden blijven beschikbaar. Je kunt deze ook uit de passkeybeheerder van je apparaat verwijderen.",
+        "removed": "Passkey verwijderd",
+        "cancel": "Annuleren"
+      },
+      "reauthenticate": "Opnieuw aanmelden",
+      "errors": {
+        "cancelled": "Het verzoek is geannuleerd of verlopen. Probeer het opnieuw of gebruik een andere methode.",
+        "alreadyRegistered": "Deze passkey is al geregistreerd. Je kunt deze gebruiken om je aan te melden.",
+        "reauthenticate": "Meld je opnieuw aan voordat je je passkeys beheert om je account te beschermen.",
+        "rateLimited": "Te veel pogingen. Wacht een minuut voordat je het opnieuw probeert.",
+        "failed": "Deze passkey kan niet worden gebruikt. Probeer het opnieuw of kies een andere methode."
+      }
     }
   },
   "invitation": {

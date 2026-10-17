@@ -251,6 +251,49 @@
     "hidePassword": "Ukryj hasło",
     "passwordRules": {
       "minLength": "Co najmniej {count} znaków"
+    },
+    "passkey": {
+      "setup": {
+        "title": "Kolejne logowanie, jeszcze prostsze",
+        "description": "Utwórz klucz dostępu, aby logować się odciskiem palca, twarzą lub kodem PIN urządzenia.",
+        "privacy": "Twoje dane biometryczne pozostają na urządzeniu. Inne metody logowania nadal są dostępne.",
+        "account": "Dla Twojego konta",
+        "enable": "Utwórz klucz dostępu",
+        "waiting": "Potwierdź na urządzeniu…",
+        "later": "Później",
+        "successTitle": "Twój klucz dostępu jest gotowy",
+        "successDescription": "Zostanie zaproponowany jako pierwszy przy następnym logowaniu w tej przeglądarce.",
+        "done": "Kontynuuj"
+      },
+      "login": {
+        "title": "Witaj ponownie",
+        "description": "Zaloguj się kluczem dostępu. Urządzenie poprosi o potwierdzenie tożsamości.",
+        "continue": "Zaloguj się kluczem dostępu",
+        "waiting": "Oczekiwanie na urządzenie…",
+        "otherMethod": "Użyj innej metody"
+      },
+      "settings": {
+        "title": "Klucze dostępu",
+        "description": "Loguj się szybko i bezpiecznie, bez wpisywania hasła.",
+        "empty": "Nie zarejestrowano jeszcze żadnych kluczy dostępu.",
+        "add": "Dodaj klucz dostępu",
+        "defaultName": "Klucz dostępu",
+        "created": "Dodano {date, date, medium}",
+        "unsupported": "Użyj obsługiwanej przeglądarki i bezpiecznego połączenia (HTTPS).",
+        "remove": "Usuń",
+        "removeTitle": "Usunąć ten klucz dostępu?",
+        "removeDescription": "Nie będzie już można używać go do logowania w Louez. Inne metody logowania pozostają dostępne. Możesz też usunąć go z menedżera kluczy na urządzeniu.",
+        "removed": "Klucz dostępu usunięty",
+        "cancel": "Anuluj"
+      },
+      "reauthenticate": "Zaloguj się ponownie",
+      "errors": {
+        "cancelled": "Żądanie anulowano lub upłynął jego czas. Spróbuj ponownie lub użyj innej metody.",
+        "alreadyRegistered": "Ten klucz dostępu jest już zarejestrowany. Możesz używać go do logowania.",
+        "reauthenticate": "Aby chronić konto, zaloguj się ponownie przed zarządzaniem kluczami dostępu.",
+        "rateLimited": "Zbyt wiele prób. Poczekaj minutę przed kolejną próbą.",
+        "failed": "Nie można użyć tego klucza dostępu. Spróbuj ponownie lub wybierz inną metodę."
+      }
     }
   },
   "invitation": {

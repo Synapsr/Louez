@@ -589,6 +589,13 @@
       "when": 1790698388523,
       "tag": "0078_auth_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "5",
+      "when": 1792247919224,
+      "tag": "0079_passkeys",
+      "breakpoints": true
     }
   ]
 }

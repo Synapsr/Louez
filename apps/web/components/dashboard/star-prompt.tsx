@@ -74,6 +74,7 @@ export function StarPrompt() {
     if (readStorage(sessionStorage, WELCOME_KEY)) return;
 
     const timer = setTimeout(() => {
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
       writeStorage(sessionStorage, SEEN_KEY, "1");
       setOpen(true);
     }, DELAY_MS);

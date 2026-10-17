@@ -251,6 +251,49 @@
     "hidePassword": "Nascondi la password",
     "passwordRules": {
       "minLength": "Almeno {count} caratteri"
+    },
+    "passkey": {
+      "setup": {
+        "title": "Il prossimo accesso, più semplice",
+        "description": "Crea una passkey per accedere con la tua impronta, il tuo volto o il PIN del dispositivo.",
+        "privacy": "I dati biometrici restano sul tuo dispositivo. Gli altri metodi di accesso rimangono disponibili.",
+        "account": "Per il tuo account",
+        "enable": "Crea la mia passkey",
+        "waiting": "Conferma sul dispositivo…",
+        "later": "Più tardi",
+        "successTitle": "La tua passkey è pronta",
+        "successDescription": "Verrà proposta per prima al prossimo accesso da questo browser.",
+        "done": "Continua"
+      },
+      "login": {
+        "title": "Bentornato",
+        "description": "Accedi con la tua passkey. Il dispositivo ti chiederà di confermare la tua identità.",
+        "continue": "Accedi con una passkey",
+        "waiting": "In attesa del dispositivo…",
+        "otherMethod": "Usa un altro metodo"
+      },
+      "settings": {
+        "title": "Passkey",
+        "description": "Accedi in modo rapido e sicuro, senza digitare una password.",
+        "empty": "Nessuna passkey ancora registrata.",
+        "add": "Aggiungi una passkey",
+        "defaultName": "Passkey",
+        "created": "Aggiunta il {date, date, medium}",
+        "unsupported": "Usa un browser compatibile e una connessione sicura (HTTPS).",
+        "remove": "Rimuovi",
+        "removeTitle": "Rimuovere questa passkey?",
+        "removeDescription": "Non potrai più usarla per accedere a Louez. Gli altri metodi di accesso rimangono disponibili. Puoi anche rimuoverla dal gestore di passkey del dispositivo.",
+        "removed": "Passkey rimossa",
+        "cancel": "Annulla"
+      },
+      "reauthenticate": "Accedi di nuovo",
+      "errors": {
+        "cancelled": "La richiesta è stata annullata o è scaduta. Riprova o usa un altro metodo.",
+        "alreadyRegistered": "Questa passkey è già registrata. Puoi usarla per accedere.",
+        "reauthenticate": "Per proteggere il tuo account, accedi di nuovo prima di gestire le passkey.",
+        "rateLimited": "Troppi tentativi. Attendi un minuto prima di riprovare.",
+        "failed": "Impossibile usare questa passkey. Riprova o scegli un altro metodo."
+      }
     }
   },
   "invitation": {

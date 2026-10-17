@@ -251,6 +251,49 @@
     "hidePassword": "Sembunyikan kata sandi",
     "passwordRules": {
       "minLength": "Minimal {count} karakter"
+    },
+    "passkey": {
+      "setup": {
+        "title": "Login berikutnya jadi lebih mudah",
+        "description": "Buat kunci sandi untuk login dengan sidik jari, wajah, atau PIN perangkat Anda.",
+        "privacy": "Data biometrik tetap berada di perangkat Anda. Metode login lainnya tetap tersedia.",
+        "account": "Untuk akun Anda",
+        "enable": "Buat kunci sandi",
+        "waiting": "Konfirmasikan di perangkat…",
+        "later": "Nanti saja",
+        "successTitle": "Kunci sandi Anda siap",
+        "successDescription": "Metode ini akan ditawarkan terlebih dahulu saat Anda login lagi di browser ini.",
+        "done": "Lanjutkan"
+      },
+      "login": {
+        "title": "Selamat datang kembali",
+        "description": "Login dengan kunci sandi Anda. Perangkat akan meminta Anda mengonfirmasi identitas.",
+        "continue": "Login dengan kunci sandi",
+        "waiting": "Menunggu perangkat Anda…",
+        "otherMethod": "Gunakan metode lain"
+      },
+      "settings": {
+        "title": "Kunci sandi",
+        "description": "Login dengan cepat dan aman, tanpa mengetik kata sandi.",
+        "empty": "Belum ada kunci sandi yang terdaftar.",
+        "add": "Tambahkan kunci sandi",
+        "defaultName": "Kunci sandi",
+        "created": "Ditambahkan pada {date, date, medium}",
+        "unsupported": "Gunakan browser yang didukung dan koneksi aman (HTTPS).",
+        "remove": "Hapus",
+        "removeTitle": "Hapus kunci sandi ini?",
+        "removeDescription": "Anda tidak dapat lagi menggunakannya untuk login ke Louez. Metode login lainnya tetap tersedia. Anda juga dapat menghapusnya dari pengelola kunci sandi di perangkat.",
+        "removed": "Kunci sandi dihapus",
+        "cancel": "Batal"
+      },
+      "reauthenticate": "Login kembali",
+      "errors": {
+        "cancelled": "Permintaan dibatalkan atau waktu habis. Coba lagi atau gunakan metode lain.",
+        "alreadyRegistered": "Kunci sandi ini sudah terdaftar. Anda dapat menggunakannya untuk login.",
+        "reauthenticate": "Untuk melindungi akun Anda, login kembali sebelum mengelola kunci sandi.",
+        "rateLimited": "Terlalu banyak percobaan. Tunggu satu menit sebelum mencoba lagi.",
+        "failed": "Kunci sandi ini tidak dapat digunakan. Coba lagi atau pilih metode lain."
+      }
     }
   },
   "invitation": {

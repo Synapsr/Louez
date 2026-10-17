@@ -9,10 +9,12 @@ import { useState } from 'react';
 import { GoogleIcon } from '@/components/shared/google-icon';
 
 import { LoginErrorAlert } from './login-error-alert';
+import { LoginPasskeyButton } from './login-passkey-button';
 import { useGoogleSignIn } from './use-google-sign-in';
 import { usePasswordStep } from './use-password-step';
 
 interface LoginPasswordStepProps {
+  passkeyAvailable?: boolean;
   showGoogle: boolean;
   /**
    * False on the platform: an account is created by e-mail code or Google
@@ -24,6 +26,7 @@ interface LoginPasswordStepProps {
 }
 
 export const LoginPasswordStep = ({
+  passkeyAvailable = false,
   showGoogle,
   allowSignUp,
   onForgotPassword,
@@ -45,6 +48,9 @@ export const LoginPasswordStep = ({
         </p>
       </div>
       <div className="space-y-6">
+        {passkeyAvailable && mode === 'signIn' && (
+          <LoginPasskeyButton disabled={isPending || google.isPending} />
+        )}
         {showGoogle && (
           <>
             <Button

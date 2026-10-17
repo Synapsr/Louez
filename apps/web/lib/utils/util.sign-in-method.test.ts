@@ -4,6 +4,12 @@ import { describe, test } from "node:test";
 import { inferSignInMethod } from "./util.sign-in-method";
 
 describe("inferSignInMethod", () => {
+  test("recognises passkey sign-in independently of linked Google accounts", () => {
+    assert.equal(
+      inferSignInMethod({ path: "/passkey/verify-authentication", hasGoogleAccount: true }),
+      "passkey",
+    );
+  });
   test("recognises a password sign-in, even on an account linked to Google", () => {
     assert.equal(inferSignInMethod({ path: "/sign-in/email", hasGoogleAccount: true }), "password");
     assert.equal(

@@ -2,20 +2,23 @@
 
 import { useState } from 'react';
 
+import { usePasskeyCapabilities } from '@/components/auth/use-passkey-capabilities';
+import { usePasskeyPreference } from '@/components/auth/use-passkey-preference';
+
 import type { SignupOrigin } from '@/lib/utils/signup-origin';
 
 import { LoginEmailStep } from './login-email-step';
 import { LoginNewPasswordStep } from './login-new-password-step';
 import { LoginOtpStep } from './login-otp-step';
 import { LoginPasswordStep } from './login-password-step';
+import { LoginPasskeyStep } from './login-passkey-step';
 import { LoginResetRequestStep } from './login-reset-request-step';
 import type { SignInMethods } from './sign-in-methods';
 import { useLastSignInMethod } from './use-last-sign-in-method';
 import { resolveInitialLoginStep } from './util.last-sign-in-method';
 
 type LoginStep =
-  | { name: 'password' }
-  | { name: 'email' }
+  | { name: 'password' | 'email' }
   | { name: 'otp'; email: string }
   // Forgot password: e-mail → 6-digit code → new password → signed in.
   | { name: 'resetRequest' }
@@ -30,12 +33,24 @@ interface LoginFormProps {
 
 export const LoginForm = ({ methods, signupOrigin }: LoginFormProps) => {
   const lastMethod = useLastSignInMethod();
+  const { supported: passkeyAvailable } = usePasskeyCapabilities();
+  const prefersPasskey = usePasskeyPreference();
   // Null until the visitor navigates: the entry step is derived, so the
   // remembered method can still take over once it is read after hydration.
   const [selectedStep, setSelectedStep] = useState<LoginStep | null>(null);
   const step = selectedStep ?? {
     name: resolveInitialLoginStep(methods, lastMethod),
   };
+
+  if (!selectedStep && passkeyAvailable && prefersPasskey) {
+    return (
+      <LoginPasskeyStep
+        onUseOtherMethod={() => setSelectedStep({
+          name: resolveInitialLoginStep(methods, lastMethod),
+        })}
+      />
+    );
+  }
 
   if (step.name === 'otp') {
     return (
@@ -85,6 +100,7 @@ export const LoginForm = ({ methods, signupOrigin }: LoginFormProps) => {
   if (step.name === 'password') {
     return (
       <LoginPasswordStep
+        passkeyAvailable={passkeyAvailable}
         showGoogle={methods.google}
         allowSignUp={methods.password === 'primary'}
         onForgotPassword={() => setSelectedStep({ name: 'resetRequest' })}
@@ -99,6 +115,7 @@ export const LoginForm = ({ methods, signupOrigin }: LoginFormProps) => {
 
   return (
     <LoginEmailStep
+      passkeyAvailable={passkeyAvailable}
       showGoogle={methods.google}
       signupOrigin={signupOrigin}
       onUsePassword={
