@@ -1,5 +1,7 @@
 const PREFERRED_KEY = "louez:passkey-preferred:v1";
-const PROMPT_PREFIX = "louez:passkey-prompt:v1:";
+// v1 recorded an appearance, not a dismissal. Do not let that passive marker
+// suppress the new non-modal invitation when the user never chose “Later”.
+const PROMPT_PREFIX = "louez:passkey-prompt:v2:";
 const DISMISSAL_MS = 30 * 24 * 60 * 60 * 1000;
 
 type PreferenceStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;

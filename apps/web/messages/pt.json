@@ -253,6 +253,9 @@
       "minLength": "Pelo menos {count} caracteres"
     },
     "passkey": {
+      "prompt": {
+        "title": "Entre mais rápido da próxima vez"
+      },
       "setup": {
         "title": "O seu próximo início de sessão, mais simples",
         "description": "Crie uma chave de acesso para entrar com a sua impressão digital, o rosto ou o PIN do dispositivo.",

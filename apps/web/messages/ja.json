@@ -253,6 +253,9 @@
       "minLength": "{count} 文字以上"
     },
     "passkey": {
+      "prompt": {
+        "title": "次回はもっとスムーズにログイン"
+      },
       "setup": {
         "title": "次回のログインをもっと簡単に",
         "description": "パスキーを作成すると、指紋、顔認証、または端末の PIN でログインできます。",

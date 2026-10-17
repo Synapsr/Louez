@@ -271,7 +271,10 @@ export function SetupChecklist({
   const storeUrl = getAbsoluteUrl();
 
   return (
-    <div className="fixed right-6 bottom-0 z-50 max-sm:right-4 max-sm:bottom-4">
+    <div
+      data-setup-checklist={open ? "open" : "closed"}
+      className="fixed right-6 bottom-0 z-50 max-sm:right-4 max-sm:bottom-4"
+    >
       <motion.div
         initial={false}
         animate={

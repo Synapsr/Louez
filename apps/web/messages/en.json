@@ -253,6 +253,9 @@
       "minLength": "At least {count} characters"
     },
     "passkey": {
+      "prompt": {
+        "title": "Sign in faster next time"
+      },
       "setup": {
         "title": "Your next sign-in, made simple",
         "description": "Create a passkey to sign in with your fingerprint, face or device PIN.",

@@ -39,6 +39,15 @@ test("dismissal is per account and lasts 30 days", () => {
   assert.equal(canPromptPasskey("one", local, now + 30 * 86400000), true);
 });
 
+test("a legacy appearance does not count as dismissing the new invitation", () => {
+  const local = storage();
+  const now = 1_000_000;
+  local.setItem("louez:passkey-prompt:v1:one", String(now));
+  assert.equal(canPromptPasskey("one", local, now), true);
+  dismissPasskeyPrompt("one", local, now);
+  assert.equal(canPromptPasskey("one", local, now), false);
+});
+
 test("blocked storage neither breaks login nor repeatedly opens an invitation", () => {
   const blocked = {
     getItem: () => {

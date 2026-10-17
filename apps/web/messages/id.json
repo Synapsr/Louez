@@ -253,6 +253,9 @@
       "minLength": "Minimal {count} karakter"
     },
     "passkey": {
+      "prompt": {
+        "title": "Masuk lebih cepat lain kali"
+      },
       "setup": {
         "title": "Login berikutnya jadi lebih mudah",
         "description": "Buat kunci sandi untuk login dengan sidik jari, wajah, atau PIN perangkat Anda.",

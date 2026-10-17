@@ -253,6 +253,9 @@
       "minLength": "Au moins {count} caractères"
     },
     "passkey": {
+      "prompt": {
+        "title": "Connectez-vous plus vite la prochaine fois"
+      },
       "setup": {
         "title": "Votre prochaine connexion, en un geste",
         "description": "Créez une clé d’accès pour vous connecter avec votre empreinte, votre visage ou le code de votre appareil.",

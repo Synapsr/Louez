@@ -253,6 +253,9 @@
       "minLength": "Minstens {count} tekens"
     },
     "passkey": {
+      "prompt": {
+        "title": "Log de volgende keer sneller in"
+      },
       "setup": {
         "title": "Je volgende aanmelding, eenvoudig",
         "description": "Maak een passkey om je aan te melden met je vingerafdruk, gezicht of de pincode van je apparaat.",

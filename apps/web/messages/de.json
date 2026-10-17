@@ -253,6 +253,9 @@
       "minLength": "Mindestens {count} Zeichen"
     },
     "passkey": {
+      "prompt": {
+        "title": "Beim nächsten Mal schneller anmelden"
+      },
       "setup": {
         "title": "Ihre nächste Anmeldung, ganz einfach",
         "description": "Erstellen Sie einen Passkey, um sich mit Fingerabdruck, Gesicht oder Geräte-PIN anzumelden.",

@@ -253,6 +253,9 @@
       "minLength": "Co najmniej {count} znaków"
     },
     "passkey": {
+      "prompt": {
+        "title": "Następnym razem zaloguj się szybciej"
+      },
       "setup": {
         "title": "Kolejne logowanie, jeszcze prostsze",
         "description": "Utwórz klucz dostępu, aby logować się odciskiem palca, twarzą lub kodem PIN urządzenia.",

@@ -253,6 +253,9 @@
       "minLength": "Al menos {count} caracteres"
     },
     "passkey": {
+      "prompt": {
+        "title": "Accede más rápido la próxima vez"
+      },
       "setup": {
         "title": "Tu próximo inicio de sesión, más sencillo",
         "description": "Crea una clave de acceso para iniciar sesión con tu huella, tu rostro o el PIN de tu dispositivo.",

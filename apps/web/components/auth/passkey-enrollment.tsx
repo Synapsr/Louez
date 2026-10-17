@@ -10,12 +10,16 @@ export const PasskeyEnrollment = async () => {
     headers: await headers(),
     query: { disableCookieCache: true },
   });
-  if (!session || Date.now() - session.session.createdAt.getTime() >= 10 * 60 * 1000) return null;
+  if (!session) return null;
+  const expiresAt = session.session.createdAt.getTime() + 10 * 60 * 1000;
+  if (Date.now() >= expiresAt) return null;
   const [existing] = await db
     .select({ id: passkeyTable.id })
     .from(passkeyTable)
     .where(eq(passkeyTable.userId, session.user.id))
     .limit(1);
   if (existing) return null;
-  return <PasskeySetupPrompt userId={session.user.id} email={session.user.email} />;
+  return (
+    <PasskeySetupPrompt userId={session.user.id} email={session.user.email} expiresAt={expiresAt} />
+  );
 };

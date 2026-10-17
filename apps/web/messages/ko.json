@@ -253,6 +253,9 @@
       "minLength": "{count}자 이상"
     },
     "passkey": {
+      "prompt": {
+        "title": "다음에는 더 빠르게 로그인하세요"
+      },
       "setup": {
         "title": "다음 로그인은 더 간편하게",
         "description": "패스키를 만들면 지문, 얼굴 또는 기기 PIN으로 로그인할 수 있습니다.",
