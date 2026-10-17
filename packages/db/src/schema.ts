@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  customType,
   date,
   decimal,
   foreignKey,
@@ -143,10 +144,41 @@ export const sessions = mysqlTable(
   }),
 );
 
+// WebAuthn credential IDs are base64url, case-sensitive, and can exceed 255 chars.
+// ASCII keeps the unique index below MySQL's 3072-byte index limit.
+const credentialId = customType<{ data: string }>({
+  dataType: () => "varchar(2048) CHARACTER SET ascii COLLATE ascii_bin",
+});
+
+export const passkeyTable = mysqlTable(
+  "passkey",
+  {
+    id: id(),
+    name: varchar("name", { length: 100 }),
+    publicKey: text("public_key").notNull(),
+    userId: varchar("user_id", { length: 21 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    credentialID: credentialId("credential_id").notNull(),
+    counter: bigint("counter", { mode: "number", unsigned: true }).notNull(),
+    deviceType: varchar("device_type", { length: 32 }).notNull(),
+    backedUp: boolean("backed_up").notNull(),
+    transports: varchar("transports", { length: 255 }),
+    aaguid: varchar("aaguid", { length: 36 }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    unique("passkey_credential_id_unique").on(table.credentialID),
+    index("passkey_user_id_idx").on(table.userId),
+  ],
+);
+
 export const verification = mysqlTable("verification", {
   id: id(),
   identifier: varchar("identifier", { length: 255 }).notNull(),
-  value: varchar("value", { length: 255 }).notNull(),
+  // Passkey challenges include the user data and can exceed 255 characters.
+  value: text("value").notNull(),
   expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
@@ -2135,6 +2167,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   memberships: many(storeMembers),
   accounts: many(accounts),
   sessions: many(sessions),
+  passkeys: many(passkeyTable),
+}));
+
+export const passkeyRelations = relations(passkeyTable, ({ one }) => ({
+  user: one(users, { fields: [passkeyTable.userId], references: [users.id] }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({

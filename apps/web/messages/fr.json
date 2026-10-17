@@ -251,6 +251,52 @@
     "hidePassword": "Masquer le mot de passe",
     "passwordRules": {
       "minLength": "Au moins {count} caractères"
+    },
+    "passkey": {
+      "prompt": {
+        "title": "Connectez-vous plus vite la prochaine fois"
+      },
+      "setup": {
+        "title": "Votre prochaine connexion, en un geste",
+        "description": "Créez une clé d’accès pour vous connecter avec votre empreinte, votre visage ou le code de votre appareil.",
+        "privacy": "Vos données biométriques restent sur votre appareil. Vos autres moyens de connexion restent disponibles.",
+        "account": "Pour votre compte",
+        "enable": "Créer ma clé d’accès",
+        "waiting": "Confirmez sur votre appareil…",
+        "later": "Plus tard",
+        "successTitle": "Votre clé d’accès est prête",
+        "successDescription": "Vous pourrez la choisir en priorité lors de votre prochaine connexion sur ce navigateur.",
+        "done": "Continuer"
+      },
+      "login": {
+        "title": "Heureux de vous retrouver",
+        "description": "Connectez-vous avec votre clé d’accès. Votre appareil vous demandera de confirmer votre identité.",
+        "continue": "Se connecter avec une clé d’accès",
+        "waiting": "En attente de votre appareil…",
+        "otherMethod": "Utiliser une autre méthode"
+      },
+      "settings": {
+        "title": "Clés d’accès",
+        "description": "Connectez-vous rapidement et en toute sécurité, sans saisir de mot de passe.",
+        "empty": "Aucune clé d’accès enregistrée pour le moment.",
+        "add": "Ajouter une clé d’accès",
+        "defaultName": "Clé d’accès",
+        "created": "Ajoutée le {date, date, medium}",
+        "unsupported": "Utilisez un navigateur compatible et une connexion sécurisée (HTTPS).",
+        "remove": "Supprimer",
+        "removeTitle": "Supprimer cette clé d’accès ?",
+        "removeDescription": "Elle ne permettra plus de vous connecter à Louez. Vous pourrez toujours utiliser vos autres moyens de connexion. Vous pouvez aussi la retirer du gestionnaire de clés de votre appareil.",
+        "removed": "Clé d’accès supprimée",
+        "cancel": "Annuler"
+      },
+      "reauthenticate": "Me reconnecter",
+      "errors": {
+        "cancelled": "La demande a été annulée ou a expiré. Réessayez ou utilisez une autre méthode.",
+        "alreadyRegistered": "Cette clé d’accès est déjà enregistrée. Vous pouvez l’utiliser pour vous connecter.",
+        "reauthenticate": "Pour protéger votre compte, reconnectez-vous avant de gérer vos clés d’accès.",
+        "rateLimited": "Trop de tentatives. Patientez une minute avant de réessayer.",
+        "failed": "Impossible d’utiliser cette clé d’accès. Réessayez ou choisissez une autre méthode."
+      }
     }
   },
   "invitation": {

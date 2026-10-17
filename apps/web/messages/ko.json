@@ -251,6 +251,52 @@
     "hidePassword": "비밀번호 숨기기",
     "passwordRules": {
       "minLength": "{count}자 이상"
+    },
+    "passkey": {
+      "prompt": {
+        "title": "다음에는 더 빠르게 로그인하세요"
+      },
+      "setup": {
+        "title": "다음 로그인은 더 간편하게",
+        "description": "패스키를 만들면 지문, 얼굴 또는 기기 PIN으로 로그인할 수 있습니다.",
+        "privacy": "생체 인식 데이터는 기기에 보관됩니다. 다른 로그인 방법도 계속 사용할 수 있습니다.",
+        "account": "대상 계정",
+        "enable": "패스키 만들기",
+        "waiting": "기기에서 확인해 주세요…",
+        "later": "나중에",
+        "successTitle": "패스키가 준비되었습니다",
+        "successDescription": "다음에 이 브라우저에서 로그인할 때 가장 먼저 제안됩니다.",
+        "done": "계속"
+      },
+      "login": {
+        "title": "다시 오신 것을 환영합니다",
+        "description": "패스키로 로그인하세요. 기기에서 본인 확인을 요청합니다.",
+        "continue": "패스키로 로그인",
+        "waiting": "기기 응답을 기다리는 중…",
+        "otherMethod": "다른 방법 사용"
+      },
+      "settings": {
+        "title": "패스키",
+        "description": "비밀번호를 입력하지 않고 빠르고 안전하게 로그인하세요.",
+        "empty": "아직 등록된 패스키가 없습니다.",
+        "add": "패스키 추가",
+        "defaultName": "패스키",
+        "created": "{date, date, medium}에 추가됨",
+        "unsupported": "지원되는 브라우저와 보안 연결(HTTPS)을 사용하세요.",
+        "remove": "삭제",
+        "removeTitle": "이 패스키를 삭제할까요?",
+        "removeDescription": "이 패스키로는 더 이상 Louez에 로그인할 수 없습니다. 다른 로그인 방법은 계속 사용할 수 있습니다. 기기의 패스키 관리자에서도 삭제할 수 있습니다.",
+        "removed": "패스키가 삭제되었습니다",
+        "cancel": "취소"
+      },
+      "reauthenticate": "다시 로그인",
+      "errors": {
+        "cancelled": "요청이 취소되었거나 시간이 초과되었습니다. 다시 시도하거나 다른 방법을 사용하세요.",
+        "alreadyRegistered": "이미 등록된 패스키입니다. 이 패스키로 로그인할 수 있습니다.",
+        "reauthenticate": "계정을 보호하기 위해 패스키를 관리하기 전에 다시 로그인해 주세요.",
+        "rateLimited": "시도 횟수가 너무 많습니다. 1분 후에 다시 시도하세요.",
+        "failed": "이 패스키를 사용할 수 없습니다. 다시 시도하거나 다른 방법을 선택하세요."
+      }
     }
   },
   "invitation": {

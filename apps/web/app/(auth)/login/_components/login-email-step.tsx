@@ -1,21 +1,20 @@
-'use client';
+"use client";
 
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 
-import { Button, Separator } from '@louez/ui';
-import { cn } from '@louez/utils';
+import { Button, Separator } from "@louez/ui";
+import { cn } from "@louez/utils";
 
-import { GoogleIcon } from '@/components/shared/google-icon';
-import { reeentRichTags } from '@/components/shared/reeent-wordmark';
-import {
-  REEENT_SIGNUP_ORIGIN,
-  type SignupOrigin,
-} from '@/lib/utils/signup-origin';
+import { GoogleIcon } from "@/components/shared/google-icon";
+import { reeentRichTags } from "@/components/shared/reeent-wordmark";
+import { REEENT_SIGNUP_ORIGIN, type SignupOrigin } from "@/lib/utils/signup-origin";
 
-import { LoginErrorAlert } from './login-error-alert';
-import { useEmailStep } from './use-email-step';
+import { LoginErrorAlert } from "./login-error-alert";
+import { LoginPasskeyButton } from "./login-passkey-button";
+import { useEmailStep } from "./use-email-step";
 
 interface LoginEmailStepProps {
+  passkeyAvailable?: boolean;
   onOtpSent: (email: string) => void;
   /** Hidden when Google OAuth is not configured on this instance. */
   showGoogle?: boolean;
@@ -26,12 +25,13 @@ interface LoginEmailStepProps {
 }
 
 export const LoginEmailStep = ({
+  passkeyAvailable = false,
   onOtpSent,
   showGoogle = true,
   onUsePassword,
   signupOrigin = null,
 }: LoginEmailStepProps) => {
-  const t = useTranslations('auth');
+  const t = useTranslations("auth");
   const { form, handleGoogleSignIn, isPending, rootError } = useEmailStep({
     onOtpSent,
   });
@@ -44,20 +44,19 @@ export const LoginEmailStep = ({
     <div className="space-y-6">
       <div className="space-y-2 text-center">
         <h2 className="text-2xl font-semibold">
-          {isFromReeent
-            ? t.rich('reeentLoginTitle', reeentRichTags)
-            : t('loginTitle')}
+          {isFromReeent ? t.rich("reeentLoginTitle", reeentRichTags) : t("loginTitle")}
         </h2>
         <p
           className={cn(
-            'text-muted-foreground mx-auto text-sm',
-            isFromReeent ? 'max-w-md text-balance' : 'max-w-sm',
+            "text-muted-foreground mx-auto text-sm",
+            isFromReeent ? "max-w-md text-balance" : "max-w-sm",
           )}
         >
-          {isFromReeent ? t('reeentLoginDescription') : t('loginDescription')}
+          {isFromReeent ? t("reeentLoginDescription") : t("loginDescription")}
         </p>
       </div>
       <div className="space-y-6">
+        {passkeyAvailable && <LoginPasskeyButton disabled={isPending} />}
         {showGoogle && (
           <>
             <Button
@@ -67,7 +66,7 @@ export const LoginEmailStep = ({
               disabled={isPending}
             >
               <GoogleIcon className="mr-3 h-5 w-5" />
-              {t('continueWithGoogle')}
+              {t("continueWithGoogle")}
             </Button>
 
             <div className="relative">
@@ -75,9 +74,7 @@ export const LoginEmailStep = ({
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card text-muted-foreground px-3">
-                  {t('or')}
-                </span>
+                <span className="bg-card text-muted-foreground px-3">{t("or")}</span>
               </div>
             </div>
           </>
@@ -88,20 +85,16 @@ export const LoginEmailStep = ({
             <form.AppField name="email">
               {(field) => (
                 <field.Input
-                  label={t('email')}
+                  label={t("email")}
                   type="email"
-                  placeholder={t('emailPlaceholder')}
+                  placeholder={t("emailPlaceholder")}
                   className="*:h-12"
                 />
               )}
             </form.AppField>
 
-            <form.SubscribeButton
-              size="xl"
-              className="w-full"
-              disabled={isPending}
-            >
-              {t('sendCode')}
+            <form.SubscribeButton size="xl" className="w-full" disabled={isPending}>
+              {t("sendCode")}
             </form.SubscribeButton>
           </form.Form>
         </form.AppForm>
@@ -115,7 +108,7 @@ export const LoginEmailStep = ({
               onClick={onUsePassword}
               className="text-muted-foreground hover:text-primary underline underline-offset-4"
             >
-              {t('usePasswordInstead')}
+              {t("usePasswordInstead")}
             </button>
           </p>
         )}

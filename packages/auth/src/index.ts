@@ -2,6 +2,7 @@ import { supplementalMessages } from "@louez/email/messages";
 import { headers } from "next/headers";
 
 import { betterAuth } from "better-auth";
+import { passkey } from "@better-auth/passkey";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { toNextJsHandler } from "better-auth/next-js";
@@ -33,6 +34,7 @@ import { sendPasswordChangedNotice } from "./password-notice";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./password-policy";
 import { authIpAddressOptions, authRateLimitOptions } from "./rate-limit";
 import { getLocaleFromHeaders } from "./request-locale";
+import { createPasskeyOptions, passkeyAfter, passkeyBefore } from "./passkey";
 
 // Standalone (self-host) deployments make email + password the primary
 // sign-in so the first owner can create an account with zero external
@@ -148,6 +150,7 @@ export const authInstance = betterAuth({
       session: schema.sessions,
       verification: schema.verification,
       rateLimit: schema.authRateLimits,
+      passkey: schema.passkeyTable,
     },
   }),
 
@@ -278,6 +281,7 @@ export const authInstance = betterAuth({
     // Changing a password always signs the other devices out, whatever the
     // caller sent: the flag is not left to the client's good will.
     before: createAuthMiddleware(async (ctx) => {
+      await passkeyBefore(ctx);
       if (ctx.path !== "/change-password") return;
       return {
         context: {
@@ -287,6 +291,7 @@ export const authInstance = betterAuth({
       };
     }),
     after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path.startsWith("/passkey/")) return passkeyAfter(ctx);
       if (ctx.path !== "/change-password") return;
       if (ctx.context.returned instanceof APIError) return;
 
@@ -301,6 +306,7 @@ export const authInstance = betterAuth({
   },
 
   plugins: [
+    passkey(createPasskeyOptions(env.AUTH_URL)),
     magicLink({
       sendMagicLink: async ({ email, url }, ctx) => {
         const reqHeaders = ctx?.request ? new Headers(ctx.request.headers) : new Headers();

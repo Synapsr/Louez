@@ -251,6 +251,52 @@
     "hidePassword": "Ocultar a palavra-passe",
     "passwordRules": {
       "minLength": "Pelo menos {count} caracteres"
+    },
+    "passkey": {
+      "prompt": {
+        "title": "Entre mais rápido da próxima vez"
+      },
+      "setup": {
+        "title": "O seu próximo início de sessão, mais simples",
+        "description": "Crie uma chave de acesso para entrar com a sua impressão digital, o rosto ou o PIN do dispositivo.",
+        "privacy": "Os seus dados biométricos permanecem no dispositivo. Os outros métodos de acesso continuam disponíveis.",
+        "account": "Para a sua conta",
+        "enable": "Criar a minha chave de acesso",
+        "waiting": "Confirme no dispositivo…",
+        "later": "Mais tarde",
+        "successTitle": "A sua chave de acesso está pronta",
+        "successDescription": "Será apresentada primeiro na próxima vez que iniciar sessão neste navegador.",
+        "done": "Continuar"
+      },
+      "login": {
+        "title": "Bem-vindo de volta",
+        "description": "Entre com a sua chave de acesso. O dispositivo pedirá que confirme a sua identidade.",
+        "continue": "Entrar com uma chave de acesso",
+        "waiting": "A aguardar o dispositivo…",
+        "otherMethod": "Usar outro método"
+      },
+      "settings": {
+        "title": "Chaves de acesso",
+        "description": "Entre de forma rápida e segura, sem escrever uma palavra-passe.",
+        "empty": "Ainda não há chaves de acesso registadas.",
+        "add": "Adicionar uma chave de acesso",
+        "defaultName": "Chave de acesso",
+        "created": "Adicionada em {date, date, medium}",
+        "unsupported": "Use um navegador compatível e uma ligação segura (HTTPS).",
+        "remove": "Remover",
+        "removeTitle": "Remover esta chave de acesso?",
+        "removeDescription": "Deixará de poder usá-la para entrar no Louez. Os outros métodos de acesso continuam disponíveis. Também pode removê-la do gestor de chaves do dispositivo.",
+        "removed": "Chave de acesso removida",
+        "cancel": "Cancelar"
+      },
+      "reauthenticate": "Iniciar sessão novamente",
+      "errors": {
+        "cancelled": "O pedido foi cancelado ou expirou. Tente novamente ou use outro método.",
+        "alreadyRegistered": "Esta chave de acesso já está registada. Pode usá-la para iniciar sessão.",
+        "reauthenticate": "Para proteger a sua conta, inicie sessão novamente antes de gerir as chaves de acesso.",
+        "rateLimited": "Demasiadas tentativas. Aguarde um minuto antes de tentar novamente.",
+        "failed": "Não foi possível usar esta chave de acesso. Tente novamente ou escolha outro método."
+      }
     }
   },
   "invitation": {
