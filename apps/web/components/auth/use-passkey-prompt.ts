@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { canPromptPasskey, dismissPasskeyPrompt } from "./util.passkey-preferences";
+import { isVisiblePromptElement } from "./util.passkey-prompt";
 
 export const usePasskeyPrompt = (userId: string, enabled: boolean, expiresAt: number) => {
   const [open, setOpen] = useState(false);
@@ -19,12 +20,18 @@ export const usePasskeyPrompt = (userId: string, enabled: boolean, expiresAt: nu
         return;
       }
       const focused = document.activeElement;
-      setAboveChecklist(Boolean(document.querySelector("[data-setup-checklist]")));
+      setAboveChecklist(
+        Array.from(document.querySelectorAll("[data-setup-checklist]")).some(
+          isVisiblePromptElement,
+        ),
+      );
       const busy =
         document.hidden ||
-        document.querySelector(
-          '[role="dialog"], [role="alertdialog"], [data-setup-checklist="open"], [data-slot="toast-title"]',
-        ) ||
+        Array.from(
+          document.querySelectorAll(
+            '[role="dialog"], [role="alertdialog"], [data-setup-checklist="open"], [data-slot="toast-title"]',
+          ),
+        ).some(isVisiblePromptElement) ||
         focused?.matches('input, textarea, [contenteditable="true"]');
       setOpen(!busy);
       // A temporary overlay must defer the invitation, not discard it. Yield
