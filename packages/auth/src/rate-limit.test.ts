@@ -51,6 +51,19 @@ test("leaves ordinary endpoints on the default limit", () => {
   assert.equal(resolveRule("/sign-out"), undefined);
 });
 
+test("throttles every public ceremony and passkey mutation using the shared database counters", () => {
+  for (const path of [
+    "/passkey/generate-register-options",
+    "/passkey/verify-registration",
+    "/passkey/delete-passkey",
+    "/passkey/update-passkey",
+  ]) {
+    assert.deepEqual(resolveRule(path), { window: 60, max: 5 }, path);
+  }
+  assert.deepEqual(resolveRule("/passkey/generate-authenticate-options"), { window: 60, max: 20 });
+  assert.deepEqual(resolveRule("/passkey/verify-authentication"), { window: 60, max: 10 });
+});
+
 test("resolves the client IP like the rest of the app, most specific header first", () => {
   assert.deepEqual(authIpAddressOptions.ipAddressHeaders, [
     "cf-connecting-ip",

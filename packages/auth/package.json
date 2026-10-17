@@ -14,6 +14,7 @@
     "./password-policy": "./src/password-policy.ts"
   },
   "dependencies": {
+    "@better-auth/passkey": "1.6.25",
     "@louez/db": "workspace:*",
     "@louez/email": "workspace:*",
     "@react-email/render": "^2.0.1",

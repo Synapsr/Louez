@@ -1,4 +1,5 @@
 import { DashboardContentFrame } from "@/components/dashboard/dashboard-content-frame";
+import { PasskeyEnrollment } from "@/components/auth/passkey-enrollment";
 import { Suspense } from "react";
 
 import { eq } from "drizzle-orm";
@@ -192,6 +193,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
               </SidebarProvider>
               <Suspense fallback={null}>
                 <WelcomeOverlay />
+                <PasskeyEnrollment />
                 <SettingsSearchFocus />
                 {/* Self-hosted instances only: the cloud never asks. */}
                 {isStandaloneMode() && <StarPrompt />}

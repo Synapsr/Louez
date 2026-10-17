@@ -251,6 +251,52 @@
     "hidePassword": "Ocultar la contraseña",
     "passwordRules": {
       "minLength": "Al menos {count} caracteres"
+    },
+    "passkey": {
+      "prompt": {
+        "title": "Accede más rápido la próxima vez"
+      },
+      "setup": {
+        "title": "Tu próximo inicio de sesión, más sencillo",
+        "description": "Crea una clave de acceso para iniciar sesión con tu huella, tu rostro o el PIN de tu dispositivo.",
+        "privacy": "Tus datos biométricos permanecen en tu dispositivo. Tus otros métodos de acceso siguen disponibles.",
+        "account": "Para tu cuenta",
+        "enable": "Crear mi clave de acceso",
+        "waiting": "Confirma en tu dispositivo…",
+        "later": "Más tarde",
+        "successTitle": "Tu clave de acceso está lista",
+        "successDescription": "Se ofrecerá primero la próxima vez que inicies sesión en este navegador.",
+        "done": "Continuar"
+      },
+      "login": {
+        "title": "Te damos la bienvenida de nuevo",
+        "description": "Inicia sesión con tu clave de acceso. Tu dispositivo te pedirá que confirmes tu identidad.",
+        "continue": "Iniciar sesión con una clave de acceso",
+        "waiting": "Esperando a tu dispositivo…",
+        "otherMethod": "Usar otro método"
+      },
+      "settings": {
+        "title": "Claves de acceso",
+        "description": "Inicia sesión de forma rápida y segura, sin escribir una contraseña.",
+        "empty": "Aún no hay claves de acceso registradas.",
+        "add": "Añadir una clave de acceso",
+        "defaultName": "Clave de acceso",
+        "created": "Añadida el {date, date, medium}",
+        "unsupported": "Usa un navegador compatible y una conexión segura (HTTPS).",
+        "remove": "Eliminar",
+        "removeTitle": "¿Eliminar esta clave de acceso?",
+        "removeDescription": "Ya no podrás usarla para iniciar sesión en Louez. Tus otros métodos de acceso siguen disponibles. También puedes eliminarla del gestor de claves de tu dispositivo.",
+        "removed": "Clave de acceso eliminada",
+        "cancel": "Cancelar"
+      },
+      "reauthenticate": "Volver a iniciar sesión",
+      "errors": {
+        "cancelled": "La solicitud se canceló o caducó. Inténtalo de nuevo o usa otro método.",
+        "alreadyRegistered": "Esta clave de acceso ya está registrada. Puedes usarla para iniciar sesión.",
+        "reauthenticate": "Para proteger tu cuenta, vuelve a iniciar sesión antes de gestionar tus claves de acceso.",
+        "rateLimited": "Demasiados intentos. Espera un minuto antes de volver a intentarlo.",
+        "failed": "No se pudo usar esta clave de acceso. Inténtalo de nuevo o elige otro método."
+      }
     }
   },
   "invitation": {

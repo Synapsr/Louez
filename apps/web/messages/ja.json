@@ -251,6 +251,52 @@
     "hidePassword": "パスワードを非表示",
     "passwordRules": {
       "minLength": "{count} 文字以上"
+    },
+    "passkey": {
+      "prompt": {
+        "title": "次回はもっとスムーズにログイン"
+      },
+      "setup": {
+        "title": "次回のログインをもっと簡単に",
+        "description": "パスキーを作成すると、指紋、顔認証、または端末の PIN でログインできます。",
+        "privacy": "生体認証データは端末内に保存されます。他のログイン方法も引き続き利用できます。",
+        "account": "対象のアカウント",
+        "enable": "パスキーを作成",
+        "waiting": "端末で確認してください…",
+        "later": "あとで",
+        "successTitle": "パスキーの準備ができました",
+        "successDescription": "次回このブラウザーでログインする際、最初に表示されます。",
+        "done": "続ける"
+      },
+      "login": {
+        "title": "おかえりなさい",
+        "description": "パスキーでログインします。端末で本人確認を行ってください。",
+        "continue": "パスキーでログイン",
+        "waiting": "端末の応答を待っています…",
+        "otherMethod": "別の方法を使う"
+      },
+      "settings": {
+        "title": "パスキー",
+        "description": "パスワードを入力せずに、すばやく安全にログインできます。",
+        "empty": "パスキーはまだ登録されていません。",
+        "add": "パスキーを追加",
+        "defaultName": "パスキー",
+        "created": "追加日：{date, date, medium}",
+        "unsupported": "対応するブラウザーと安全な接続（HTTPS）をご利用ください。",
+        "remove": "削除",
+        "removeTitle": "このパスキーを削除しますか？",
+        "removeDescription": "削除すると、このパスキーで Louez にログインできなくなります。他のログイン方法は引き続き利用できます。端末のパスキー管理画面からも削除できます。",
+        "removed": "パスキーを削除しました",
+        "cancel": "キャンセル"
+      },
+      "reauthenticate": "再ログイン",
+      "errors": {
+        "cancelled": "リクエストがキャンセルされたか、時間切れになりました。再試行するか、別の方法をご利用ください。",
+        "alreadyRegistered": "このパスキーはすでに登録されています。ログインに利用できます。",
+        "reauthenticate": "アカウントを保護するため、パスキーを管理する前に再ログインしてください。",
+        "rateLimited": "試行回数が多すぎます。1 分待ってから再試行してください。",
+        "failed": "このパスキーを使用できません。再試行するか、別の方法をご利用ください。"
+      }
     }
   },
   "invitation": {

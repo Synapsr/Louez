@@ -251,6 +251,52 @@
     "hidePassword": "Passwort verbergen",
     "passwordRules": {
       "minLength": "Mindestens {count} Zeichen"
+    },
+    "passkey": {
+      "prompt": {
+        "title": "Beim nächsten Mal schneller anmelden"
+      },
+      "setup": {
+        "title": "Ihre nächste Anmeldung, ganz einfach",
+        "description": "Erstellen Sie einen Passkey, um sich mit Fingerabdruck, Gesicht oder Geräte-PIN anzumelden.",
+        "privacy": "Ihre biometrischen Daten bleiben auf Ihrem Gerät. Ihre anderen Anmeldemethoden bleiben verfügbar.",
+        "account": "Für Ihr Konto",
+        "enable": "Passkey erstellen",
+        "waiting": "Auf Ihrem Gerät bestätigen…",
+        "later": "Später",
+        "successTitle": "Ihr Passkey ist bereit",
+        "successDescription": "Bei Ihrer nächsten Anmeldung in diesem Browser wird er zuerst angeboten.",
+        "done": "Weiter"
+      },
+      "login": {
+        "title": "Willkommen zurück",
+        "description": "Melden Sie sich mit Ihrem Passkey an. Ihr Gerät bittet Sie, Ihre Identität zu bestätigen.",
+        "continue": "Mit einem Passkey anmelden",
+        "waiting": "Warten auf Ihr Gerät…",
+        "otherMethod": "Andere Methode verwenden"
+      },
+      "settings": {
+        "title": "Passkeys",
+        "description": "Melden Sie sich schnell und sicher an, ohne ein Passwort einzugeben.",
+        "empty": "Noch keine Passkeys registriert.",
+        "add": "Passkey hinzufügen",
+        "defaultName": "Passkey",
+        "created": "Hinzugefügt am {date, date, medium}",
+        "unsupported": "Verwenden Sie einen unterstützten Browser und eine sichere Verbindung (HTTPS).",
+        "remove": "Entfernen",
+        "removeTitle": "Diesen Passkey entfernen?",
+        "removeDescription": "Sie können sich damit nicht mehr bei Louez anmelden. Ihre anderen Anmeldemethoden bleiben verfügbar. Sie können ihn auch aus der Passkey-Verwaltung Ihres Geräts entfernen.",
+        "removed": "Passkey entfernt",
+        "cancel": "Abbrechen"
+      },
+      "reauthenticate": "Erneut anmelden",
+      "errors": {
+        "cancelled": "Die Anfrage wurde abgebrochen oder ist abgelaufen. Versuchen Sie es erneut oder verwenden Sie eine andere Methode.",
+        "alreadyRegistered": "Dieser Passkey ist bereits registriert. Sie können sich damit anmelden.",
+        "reauthenticate": "Melden Sie sich zum Schutz Ihres Kontos erneut an, bevor Sie Ihre Passkeys verwalten.",
+        "rateLimited": "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.",
+        "failed": "Dieser Passkey konnte nicht verwendet werden. Versuchen Sie es erneut oder wählen Sie eine andere Methode."
+      }
     }
   },
   "invitation": {
