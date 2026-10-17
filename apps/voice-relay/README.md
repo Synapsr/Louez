@@ -45,6 +45,13 @@ docker build -f apps/voice-relay/Dockerfile -t louez-voice-relay .
 docker run --rm -p 8080:8080 --env-file /path/to/private/voice.env louez-voice-relay
 ```
 
+For EasyPanel, use the GitHub or Git source with the full monorepo, set
+**Source → Build Path** to `/`, then select **Build → Dockerfile** with the path
+`apps/voice-relay/Dockerfile`. Set the domain's target port to `8080`.
+The Build Path must include both `apps/voice-relay` and `packages/voice`; the
+previous app-directory context no longer contains all dependencies. An inline
+Dockerfile source has no repository files and cannot build this image.
+
 For Fly.io, set the app name and region in `fly.toml`, provision the environment
 above with `fly secrets set`, and run from the monorepo root:
 
