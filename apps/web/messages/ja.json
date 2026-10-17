@@ -853,7 +853,10 @@
           "reviews": "Googleのレビュー",
           "reviewsDescription": "レビュー ブースターが設定されると、ヘッダーとレビュー セクションの評価が表示されます。",
           "map": "住所と地図",
-          "mapDescription": "機器を受け取る場所と連絡先。"
+          "mapDescription": "機器を受け取る場所と連絡先。",
+          "status": "営業状況",
+          "statusDescription": "ヘッダーに、現在営業中かどうかと次の営業開始時刻を表示します。"
+
         }
       },
       "contact": {

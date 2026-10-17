@@ -853,7 +853,10 @@
           "reviews": "Reseñas de Google",
           "reviewsDescription": "La nota en el encabezado y la sección de reseñas, cuando el Impulsor de reseñas está configurado.",
           "map": "Dirección y mapa",
-          "mapDescription": "Dónde recoger el material, con sus medios de contacto."
+          "mapDescription": "Dónde recoger el material, con sus medios de contacto.",
+          "status": "Estado de apertura",
+          "statusDescription": "Muestra en la cabecera si está abierto ahora, con la próxima apertura."
+
         }
       },
       "contact": {

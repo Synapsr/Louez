@@ -796,6 +796,7 @@ const onlineStoreHomeInputSchema = z.object({
     map: z.boolean(),
     reviews: z.boolean(),
     reassurance: z.boolean(),
+    status: z.boolean(),
   }),
 });
 

@@ -853,7 +853,9 @@
           "reviews": "Avaliações Google",
           "reviewsDescription": "A nota no cabeçalho e a secção de avaliações, quando o Impulsionador de avaliações está configurado.",
           "map": "Endereço e mapa",
-          "mapDescription": "Onde levantar o material, com os seus meios de contacto."
+          "mapDescription": "Onde levantar o material, com os seus meios de contacto.",
+          "status": "Estado de abertura",
+          "statusDescription": "Mostra no cabeçalho se está aberto agora, com a próxima abertura."
         }
       },
       "contact": {

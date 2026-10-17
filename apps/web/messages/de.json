@@ -853,7 +853,9 @@
           "reviews": "Google-Bewertungen",
           "reviewsDescription": "Die Bewertung im Header und der Bewertungsbereich, sobald der Bewertungs-Booster eingerichtet ist.",
           "map": "Adresse und Karte",
-          "mapDescription": "Wo das Material abgeholt wird, mit Ihren Kontaktmöglichkeiten."
+          "mapDescription": "Wo das Material abgeholt wird, mit Ihren Kontaktmöglichkeiten.",
+          "status": "Öffnungsstatus",
+          "statusDescription": "Zeigt im Kopfbereich, ob gerade geöffnet ist, mit der nächsten Öffnungszeit."
         }
       },
       "contact": {

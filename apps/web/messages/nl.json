@@ -853,7 +853,10 @@
           "reviews": "Google-recensies",
           "reviewsDescription": "De score in de header en de recensiesectie, zodra de Recensie booster is ingesteld.",
           "map": "Adres en kaart",
-          "mapDescription": "Waar het materiaal opgehaald wordt, met uw contactmogelijkheden."
+          "mapDescription": "Waar het materiaal opgehaald wordt, met uw contactmogelijkheden.",
+          "status": "Openingsstatus",
+          "statusDescription": "Toont in de header of u nu open bent, met het volgende openingstijdstip."
+
         }
       },
       "contact": {
