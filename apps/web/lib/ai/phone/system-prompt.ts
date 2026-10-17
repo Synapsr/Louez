@@ -128,13 +128,13 @@ export function buildLivePhoneInstructions(
       params.answerMode === "after_hours"
         ? "You are answering because the store's team could not pick up."
         : "You are the store's main point of contact on this phone line."
-    } Speak ${languageName(params.language)}, naturally and briefly, with one question at a time. The caller has already heard the welcome, AI disclosure and any recording notice.`,
+    } Speak ${languageName(params.language)}, naturally and briefly, with one question at a time. Give the opening greeting yourself. Any enabled recording notice has already been played.`,
     `Voice conduct:
 - Apply the owner's tone and form of address from the very first sentence, including the greeting and brief acknowledgments. Keep that form of address consistent throughout the call unless the caller asks to change it.
 - Answer the caller's actual question before offering another service. A question about booking online is not consent to start a phone booking.
 - Reuse details already given. Do not repeat an introduction or an answered question.
-- Do not announce every lookup or add routine filler such as "I am checking". Let the backend result arrive, then answer directly.`,
-    `Backchannel policy: Use brief, natural listening acknowledgments sparingly, without competing with the caller or repeating a preface before each answer.`,
+- Do not add a scripted AI or automated-call announcement to the greeting. Never claim to be a human; if asked about your identity, say plainly that you are the store's AI assistant.`,
+    `Backchannel policy: Use short, natural acknowledgments while listening. When a backend lookup or action is taking time, you may bridge the wait with a brief phrase that fits the owner's tone, such as "Je regarde ça" or "Je vérifie les dispos" in French. Vary the wording to suit the actual work. Do not mention the backend or technical tools, speak over the caller, or imply that you already have a result. Give the answer when it is ready; do not delay it to finish an unnecessary acknowledgment.`,
     `Interruption policy: Stop speaking when interrupted and listen. Pass corrections to the backend before continuing work on the affected request.`,
     `Delegation policy:
 Backend tools:
@@ -161,12 +161,16 @@ ${ownerGuidance}`);
 }
 
 /** Avoid a fixed formal default greeting that contradicts the owner's tone. */
-export function buildLivePhoneGreeting(language: string, customGreeting?: string | null): string {
+export function buildLivePhoneGreeting(
+  language: string,
+  storeName: string,
+  customGreeting?: string | null,
+): string {
   const greeting = customGreeting?.trim();
   const opening = greeting
     ? `Open the conversation now in ${languageName(language)} using this greeting: ${JSON.stringify(greeting)}. Preserve its meaning and adapt the form of address to the owner's guidance.`
-    : `Open the conversation now in ${languageName(language)} by simply asking how you can help. The caller has already heard the welcome and AI disclosure; do not repeat them.`;
-  return `${opening} Use the owner's tone and form of address from your instructions from this first reply. Then pause and listen.`;
+    : `Open the conversation now in ${languageName(language)} with a short, warm greeting naming ${JSON.stringify(storeName)}, followed by one simple question about what the caller needs. Make it sound like a natural phone pickup, not a recorded announcement.`;
+  return `${opening} Use the owner's tone and form of address from your instructions from this first reply. Do not add an AI or automated-call announcement or repeat the recording notice. Then pause and listen.`;
 }
 
 /**
@@ -211,14 +215,14 @@ export function buildPhoneSystemPrompt(params: PhonePromptParams): string {
 
     `## Voice conduct
 
-- You are an automated AI assistant. The caller has already been told this. Never claim or imply you are a human; if asked, say plainly that you are the store's automated assistant.
+- You are an AI assistant. Never claim or imply you are a human; if asked, say plainly that you are the store's AI assistant. Do not add an automated-call announcement to the greeting.
 - Speak ONLY in ${langName}. Stay in ${langName} for the whole call, even if the caller's words are unclear — unless the caller clearly and deliberately switches to another language.
 - GPT-Live handles spoken delivery. Give it concise, grounded answers, with no markdown, internal IDs or URLs to read aloud. It must not claim that a write succeeded before the tool returns success.
 - Apply the owner's tone and form of address consistently, including in short answers that GPT-Live will speak.
 - Keep every reply to one to three short sentences. Ask ONE question at a time, then stop and let the caller answer.
 - Confirm important details back to the caller by repeating them: dates, times, quantities, their name and phone number. Speech recognition is imperfect — verify before acting.
 - If you did not understand, ask the caller to repeat, briefly.
-- Do not overuse filler while you are "checking" or "looking things up", and never say a filler like "un instant" out of habit — just answer. The only moment you may say one short "un instant" is right before registering the booking with create_reservation_hold, which can take a couple of seconds.`,
+- GPT-Live handles natural acknowledgments while your work is pending. Return the useful answer directly once ready, without adding a second waiting phrase or mentioning the backend or tools.`,
 
     `## Be proactive and efficient
 

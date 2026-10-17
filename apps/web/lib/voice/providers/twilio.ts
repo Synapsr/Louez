@@ -15,7 +15,7 @@ const TWILIO_REST_BASE = "https://api.twilio.com/2010-04-01";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Deterministic AI/recording disclosure and outage prompts only. Live preset
+/** Deterministic recording notices and outage prompts only. Live preset
  * IDs are never passed to Polly; conversational audio comes from GPT-Live. */
 const LANGUAGE_MAP: Record<string, { locale: string; voice: string }> = {
   fr: { locale: "fr-FR", voice: "Polly.Lea-Neural" },
@@ -139,7 +139,7 @@ export class TwilioVoiceProvider implements VoiceProvider {
           )
           .join("");
         inner =
-          sayTag(action.disclosure) +
+          (action.speakBefore ? sayTag(action.speakBefore) : "") +
           `<Connect action="${escapeXml(action.actionUrl)}" method="POST">` +
           `<Stream url="${escapeXml(action.wsUrl)}">${parameters}</Stream></Connect>`;
         break;

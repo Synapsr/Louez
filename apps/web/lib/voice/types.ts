@@ -46,8 +46,8 @@ export type VoiceAction =
       type: "connect_stream";
       wsUrl: string;
       parameters: Record<string, string>;
-      /** Guaranteed disclosure before connecting the generative audio. */
-      disclosure: VoiceSpeech;
+      /** Optional recording notice before connecting the generative audio. */
+      speakBefore?: VoiceSpeech;
       actionUrl: string;
     }
   | { type: "hangup" };

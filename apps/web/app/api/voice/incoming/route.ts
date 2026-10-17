@@ -174,9 +174,7 @@ export async function POST(req: Request) {
       expires,
       token: streamToken(getRelaySigningSecret(), conversationId, call.callId, expires),
     },
-    disclosure: speak(
-      `${strings.disclosure(store.name)}${settings.recordCalls ? ` ${strings.recordingNotice}` : ""}`,
-    ),
+    speakBefore: settings.recordCalls ? speak(strings.recordingNotice) : undefined,
     actionUrl: `${read.origin}/api/voice/stream-action?c=${conversationId}`,
   });
 }

@@ -57,18 +57,24 @@ only when the SMS provider reported success.
 6. Keep the authenticated `/api/cron` minute job running for abandoned-session
    reconciliation and existing number renewals.
 
-The standard AI disclosure and any recording notice are spoken deterministically
-by Twilio before the generative session. GPT-Live speaks the configured greeting
-and the conversation. Fixed outage messages also use Twilio so an OpenAI outage
-cannot suppress the fallback. These short messages use the language's Polly
-voice, not the selected Live preset.
+GPT-Live answers with the selected voice, greeting the caller with the store name
+and a short invitation to explain their needs, or using the merchant's custom
+greeting. No separate automated-call announcement is added. The agent answers
+honestly if asked whether it is an AI.
+When recording is enabled, Twilio still plays the recording notice before the
+session. Fixed outage messages also use Twilio so an OpenAI outage cannot
+suppress the fallback. These short messages use the language's Polly voice,
+not the selected Live preset.
 
 Store owner guidance from the AI advisor settings is supplied to both GPT-Live
 and its reasoning backend. Live applies the requested tone and form of address
 from the opening question; the backend also receives the catalog, store facts
 and per-product guidance. The default opening question adapts to that tone,
 while custom greetings keep their intended meaning. An online-booking question
-must be answered before offering a separate phone-booking flow.
+must be answered before offering a separate phone-booking flow. GPT-Live may
+use brief, natural acknowledgments while the backend checks information or
+performs an action. The backend returns the useful answer without adding a
+second waiting phrase; neither model claims a result before it is confirmed.
 
 ## Voice selection
 

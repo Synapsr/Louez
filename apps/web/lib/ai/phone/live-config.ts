@@ -99,6 +99,6 @@ export async function createLiveConfig(
     }),
     backendInstructions,
     tools,
-    greeting: buildLivePhoneGreeting(settings.language, settings.greeting),
+    greeting: buildLivePhoneGreeting(settings.language, store.name, settings.greeting),
   };
 }
