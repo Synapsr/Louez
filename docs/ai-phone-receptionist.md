@@ -63,6 +63,13 @@ and the conversation. Fixed outage messages also use Twilio so an OpenAI outage
 cannot suppress the fallback. These short messages use the language's Polly
 voice, not the selected Live preset.
 
+Store owner guidance from the AI advisor settings is supplied to both GPT-Live
+and its reasoning backend. Live applies the requested tone and form of address
+from the opening question; the backend also receives the catalog, store facts
+and per-product guidance. The default opening question adapts to that tone,
+while custom greetings keep their intended meaning. An online-booking question
+must be answered before offering a separate phone-booking flow.
+
 ## Voice selection
 
 The dashboard offers the 31 documented public multilingual Live presets, with **Brise** recommended
