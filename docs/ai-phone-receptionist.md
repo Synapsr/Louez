@@ -60,7 +60,11 @@ only when the SMS provider reported success.
 GPT-Live answers with the selected voice, greeting the caller with the store name
 and a short invitation to explain their needs, or using the merchant's custom
 greeting. No separate automated-call announcement is added. The agent answers
-honestly if asked whether it is an AI.
+honestly if asked whether it is an AI. Startup input explicitly asks Live to
+speak first. If neither party has spoken two seconds after `session.started`,
+the relay sends one additional greeting instruction. Caller speech, assistant
+speech or text, and call teardown cancel this retry; silence packets do not.
+This is a prompt-based recovery, not a guaranteed first-word deadline.
 When recording is enabled, Twilio still plays the recording notice before the
 session. Fixed outage messages also use Twilio so an OpenAI outage cannot
 suppress the fallback. These short messages use the language's Polly voice,
@@ -153,6 +157,10 @@ reservation system. Keep account-level provider limits as well as call limits.
 - A worker failure transfers to the configured human number when possible,
   otherwise plays an unavailable message and ends the call.
 - The hard duration timer runs independently of caller turns or silence.
+- `voice_session_ready` logs configuration, connection and session startup
+  durations. `voice_first_speech` records the first non-silent output delay;
+  `voice_greeting_retry` identifies a silent startup. Timings are measured from
+  the worker connection, not from PSTN pickup, and contain no conversation text.
 - Session storage at OpenAI is set to `false`. This does not change the API's
   applicable retention policy. Optional Twilio recording still follows the
   store setting. New application metadata is erased with store account deletion.

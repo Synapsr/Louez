@@ -128,7 +128,7 @@ export function buildLivePhoneInstructions(
       params.answerMode === "after_hours"
         ? "You are answering because the store's team could not pick up."
         : "You are the store's main point of contact on this phone line."
-    } Speak ${languageName(params.language)}, naturally and briefly, with one question at a time. Give the opening greeting yourself. Any enabled recording notice has already been played.`,
+    } Speak ${languageName(params.language)}, naturally and briefly, with one question at a time. Give the opening greeting immediately, without waiting for the caller to speak or for a backend response. Any enabled recording notice has already been played.`,
     `Voice conduct:
 - Apply the owner's tone and form of address from the very first sentence, including the greeting and brief acknowledgments. Keep that form of address consistent throughout the call unless the caller asks to change it.
 - Answer the caller's actual question before offering another service. A question about booking online is not consent to start a phone booking.
@@ -170,7 +170,7 @@ export function buildLivePhoneGreeting(
   const opening = greeting
     ? `Open the conversation now in ${languageName(language)} using this greeting: ${JSON.stringify(greeting)}. Preserve its meaning and adapt the form of address to the owner's guidance.`
     : `Open the conversation now in ${languageName(language)} with a short, warm greeting naming ${JSON.stringify(storeName)}, followed by one simple question about what the caller needs. Make it sound like a natural phone pickup, not a recorded announcement.`;
-  return `${opening} Use the owner's tone and form of address from your instructions from this first reply. Do not add an AI or automated-call announcement or repeat the recording notice. Then pause and listen.`;
+  return `${opening} Start speaking immediately; do not wait for the caller or delegate this greeting to the backend. Use the owner's tone and form of address from your instructions from this first reply. Do not add an AI or automated-call announcement or repeat the recording notice. Then pause and listen.`;
 }
 
 /**

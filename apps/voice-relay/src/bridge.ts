@@ -48,6 +48,14 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
   let maxTimer: ReturnType<typeof setTimeout> | undefined;
   let closeTimer: ReturnType<typeof setTimeout> | undefined;
   let farewellTimer: ReturnType<typeof setTimeout> | undefined;
+  let greetingTimer: ReturnType<typeof setTimeout> | undefined;
+  let callerSpoke = false;
+  let assistantSpoke = false;
+  let firstSpeechLogged = false;
+  const connectedAt = performance.now();
+  let configuredAt = connectedAt;
+  let socketOpenedAt = connectedAt;
+  let liveStartedAt = connectedAt;
   const startupTimer = setTimeout(() => fail("startup_timeout"), 20_000);
 
   const sendLive = (event: unknown) => {
@@ -151,6 +159,7 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
     clearTimeout(maxTimer);
     clearTimeout(closeTimer);
     clearTimeout(farewellTimer);
+    clearTimeout(greetingTimer);
     clearInterval(syncTimer);
     clearInterval(inputTimer);
     clearInterval(idleTimer);
@@ -186,6 +195,7 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
     clearTimeout(startupTimer);
     clearTimeout(maxTimer);
     clearTimeout(farewellTimer);
+    clearTimeout(greetingTimer);
     clearInterval(syncTimer);
     clearInterval(inputTimer);
     clearInterval(idleTimer);
@@ -237,6 +247,7 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
     };
     const settings = sessionConfigSchema.parse(await app({ type: "start", ...binding }));
     if (closing) return;
+    configuredAt = performance.now();
     if (settings.model !== config.AI_PHONE_LIVE_MODEL)
       throw new Error("App and preview model must match");
     live = openLive(config.OPENAI_API_KEY, conversationId);
@@ -245,6 +256,7 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
         live?.terminate();
         return;
       }
+      socketOpenedAt = performance.now();
       sendLive(sessionStart(settings));
     });
     live.on("message", (data) => {
@@ -259,6 +271,33 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
           }
           started = true;
           sessionId = event.session.id;
+          liveStartedAt = performance.now();
+          log.info({
+            event: "voice_session_ready",
+            conversationId: binding?.conversationId,
+            configMs: Math.round(configuredAt - connectedAt),
+            connectionMs: Math.round(socketOpenedAt - configuredAt),
+            sessionStartMs: Math.round(liveStartedAt - socketOpenedAt),
+          });
+          // Startup input is a request, not a guaranteed speech trigger. Nudge
+          // once if both sides stay silent, never during an active conversation.
+          if (!callerSpoke && !assistantSpoke) {
+            greetingTimer = setTimeout(() => {
+              if (closing || finishing || callerSpoke || assistantSpoke) return;
+              log.warn({
+                event: "voice_greeting_retry",
+                conversationId: binding?.conversationId,
+                elapsedMs: Math.round(performance.now() - liveStartedAt),
+              });
+              sendLive({
+                type: "session.instructions.append",
+                event_id: randomUUID(),
+                delegation_id: null,
+                content:
+                  "If neither side has spoken yet, say your configured opening greeting now, then listen. Do not consult the backend. Otherwise continue normally without repeating the greeting or interrupting.",
+              });
+            }, 2000);
+          }
           clearTimeout(startupTimer);
           maxTimer = setTimeout(() => {
             outcome = "end";
@@ -283,6 +322,17 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
           const bytes = Buffer.from(event.delta, "base64");
           if (!bytes.length) return;
           if (mulawRms(bytes) > 200) {
+            assistantSpoke = true;
+            clearTimeout(greetingTimer);
+            if (!firstSpeechLogged) {
+              firstSpeechLogged = true;
+              log.info({
+                event: "voice_first_speech",
+                conversationId: binding.conversationId,
+                readyToSpeechMs: Math.round(performance.now() - liveStartedAt),
+                totalMs: Math.round(performance.now() - connectedAt),
+              });
+            }
             lastSpeechAt = Date.now();
             if (finishing) farewellHeard = true;
           }
@@ -305,7 +355,15 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
           event.type === "session.input_transcript.delta" ||
           event.type === "session.output_transcript.delta"
         ) {
-          if (event.type === "session.input_transcript.delta") lastCallerAt = Date.now();
+          if (event.delta.trim()) {
+            clearTimeout(greetingTimer);
+            if (event.type === "session.input_transcript.delta") {
+              callerSpoke = true;
+              lastCallerAt = Date.now();
+            } else {
+              assistantSpoke = true;
+            }
+          }
           transcripts.append(
             event.event_id,
             event.type === "session.input_transcript.delta" ? "user" : "assistant",
@@ -374,6 +432,8 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
       if (event.event !== "media" || closing) return;
       const bytes = Buffer.from(event.media.payload, "base64");
       if (vad.push(bytes)) {
+        callerSpoke = true;
+        clearTimeout(greetingTimer);
         lastCallerAt = Date.now();
         clearPlayback();
       }

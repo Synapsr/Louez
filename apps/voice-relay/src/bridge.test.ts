@@ -297,3 +297,106 @@ test(
     assert.equal(requests.filter((request) => request.type === "close").length, 1);
   },
 );
+
+test(
+  "greeting retry only runs once when both sides remain silent",
+  { timeout: 25_000 },
+  async (t) => {
+    for (const scenario of ["silence", "caller", "assistant", "caption", "hangup"] as const) {
+      await t.test(scenario, async (t) => {
+        const twilio = await server();
+        const openai = await server();
+        t.after(() => {
+          for (const ws of twilio.instance.clients) ws.terminate();
+          for (const ws of openai.instance.clients) ws.terminate();
+          twilio.instance.close();
+          openai.instance.close();
+        });
+        let upstream: WebSocket | undefined;
+        let ready = false;
+        let retries = 0;
+        const requests: LiveRequest[] = [];
+        openai.instance.on("connection", (socket) => {
+          upstream = socket;
+          socket.on("message", (raw) => {
+            const event = parseJson(raw.toString());
+            if (!event || typeof event !== "object" || !("type" in event)) return;
+            if (event.type === "session.start") {
+              socket.send(
+                JSON.stringify({ type: "session.started", session: { id: "live_greeting" } }),
+              );
+            } else if (event.type === "session.input_audio.append") {
+              ready = true;
+            } else if (event.type === "session.instructions.append") {
+              retries++;
+            } else if (event.type === "session.close") {
+              socket.send(
+                JSON.stringify({
+                  type: "session.closed",
+                  reason: "close_requested",
+                  usage: { seconds: 5 },
+                }),
+              );
+            }
+          });
+        });
+        twilio.instance.on("connection", (socket) =>
+          bridge(socket, config, {
+            app: async (request) => {
+              requests.push(request);
+              return request.type === "start" ? settings : { allowed: true };
+            },
+            openLive: () => new WebSocket(openai.url),
+          }),
+        );
+        const caller = new WebSocket(twilio.url);
+        t.after(() => caller.terminate());
+        await once(caller, "open");
+        caller.send(JSON.stringify(startEvent()));
+        // A caller who speaks during startup must not be greeted again later.
+        if (scenario === "caller") {
+          for (let i = 0; i < 6; i++) {
+            caller.send(
+              JSON.stringify({
+                event: "media",
+                streamSid: "MZ_test",
+                media: {
+                  payload: Buffer.alloc(160, 0).toString("base64"),
+                  track: "inbound",
+                  timestamp: String(i * 20),
+                },
+              }),
+            );
+          }
+        }
+        await until(() => ready);
+        assert.ok(upstream);
+        // Live emits silence too: receiving an audio packet is not proof of speech.
+        upstream.send(
+          JSON.stringify({
+            type: "session.output_audio.delta",
+            delta: Buffer.alloc(160, scenario === "assistant" ? 0 : 255).toString("base64"),
+          }),
+        );
+        if (scenario === "caption") {
+          upstream.send(
+            JSON.stringify({
+              type: "session.output_transcript.delta",
+              event_id: "greeting_caption",
+              delta: "Salut",
+              start_ms: 0,
+              end_ms: 200,
+            }),
+          );
+        }
+        if (scenario === "hangup")
+          caller.send(JSON.stringify({ event: "stop", streamSid: "MZ_test" }));
+        await new Promise((resolve) => setTimeout(resolve, scenario === "silence" ? 4300 : 2200));
+        assert.equal(retries, scenario === "silence" ? 1 : 0);
+        if (scenario !== "hangup")
+          caller.send(JSON.stringify({ event: "stop", streamSid: "MZ_test" }));
+        await until(() => requests.some((request) => request.type === "close"));
+      });
+    }
+  },
+);
