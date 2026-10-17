@@ -85,6 +85,7 @@ interface VoiceAgentFormProps {
   store: { id: string; aiPhoneSettings: AiPhoneSettings | null };
   hasFeatureAccess: boolean;
   phoneConfigured: boolean;
+  voicePreviewConfigured: boolean;
   boundNumber: string | null;
   isProvisioned: boolean;
   webhookUrl: string;
@@ -102,6 +103,7 @@ export const VoiceAgentForm = ({
   store,
   hasFeatureAccess,
   phoneConfigured,
+  voicePreviewConfigured,
   boundNumber,
   isProvisioned,
   webhookUrl,
@@ -401,7 +403,7 @@ export const VoiceAgentForm = ({
                   {(field) => (
                     <VoicePicker
                       defaultVoice={defaultVoice}
-                      previewEnabled={phoneConfigured}
+                      previewEnabled={voicePreviewConfigured}
                       value={field.state.value}
                       onChange={(id) => field.handleChange(id)}
                       language={selectedLanguage}

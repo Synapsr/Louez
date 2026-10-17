@@ -5810,7 +5810,9 @@
           "defaultBadge": "Recomendada",
           "defaultVoice": "Voz recomendada",
           "title": "Escolha a voz do seu agente",
-          "description": "Ouça as vozes e escolha a que representará a sua loja ao telefone."
+          "description": "Ouça as vozes e escolha a que representará a sua loja ao telefone.",
+          "languageVoices": "Para este idioma",
+          "allVoices": "Todas as vozes"
         },
         "setup": {
           "step1": "Escolher o seu número",
@@ -5870,7 +5872,7 @@
         },
         "notConfigured": {
           "title": "Telefonia não configurada",
-          "description": "O operador da plataforma deve configurar um fornecedor de telefonia (AI_PHONE_ENABLED, VOICE_PROVIDER e as credenciais) para ativar o agente de voz."
+          "description": "A telefonia ou o serviço de voz não está totalmente configurado. Contacte o administrador da plataforma para ativar o agente."
         },
         "language": "Idioma de resposta",
         "languageDescription": "O idioma em que o assistente fala com quem liga",
@@ -5902,7 +5904,8 @@
         "voicePreview": "Ouvir",
         "voiceMigrated": "A voz anterior foi substituída pela voz GPT-Live recomendada. Pode escolher outra abaixo.",
         "voicePreviewError": "A prévia não está disponível neste momento. Tente novamente em breve.",
-        "voiceRecommended": "Recomendada"
+        "voiceRecommended": "Recomendada",
+        "voicePreviewUnavailable": "As prévias estarão disponíveis quando o serviço de voz estiver configurado."
       },
       "settingsNavigation": {
         "label": "Navegação das configurações",

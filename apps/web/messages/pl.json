@@ -5810,7 +5810,9 @@
           "defaultBadge": "Polecany",
           "defaultVoice": "Polecany głos",
           "title": "Wybierz głos swojego agenta",
-          "description": "Odsłuchaj głosy i wybierz ten, który będzie reprezentował Twój sklep przez telefon."
+          "description": "Odsłuchaj głosy i wybierz ten, który będzie reprezentował Twój sklep przez telefon.",
+          "languageVoices": "Dla tego języka",
+          "allVoices": "Wszystkie głosy"
         },
         "setup": {
           "step1": "Wybierz numer",
@@ -5870,7 +5872,7 @@
         },
         "notConfigured": {
           "title": "Telefonia nie jest skonfigurowana",
-          "description": "Operator platformy musi skonfigurować dostawcę telefonii (AI_PHONE_ENABLED, VOICE_PROVIDER i dane uwierzytelniające), aby włączyć agenta głosowego."
+          "description": "Telefonia lub usługa głosowa nie jest w pełni skonfigurowana. Skontaktuj się z administratorem platformy, aby aktywować agenta."
         },
         "language": "Język odpowiedzi",
         "languageDescription": "Język, w którym asystent rozmawia z dzwoniącymi",
@@ -5902,7 +5904,8 @@
         "voicePreview": "Odsłuchaj",
         "voiceMigrated": "Poprzedni głos zastąpiono zalecanym głosem GPT-Live. Poniżej możesz wybrać inny.",
         "voicePreviewError": "Podgląd jest teraz niedostępny. Spróbuj ponownie za chwilę.",
-        "voiceRecommended": "Zalecany"
+        "voiceRecommended": "Zalecany",
+        "voicePreviewUnavailable": "Podgląd głosów będzie dostępny po skonfigurowaniu usługi głosowej."
       },
       "settingsNavigation": {
         "label": "Nawigacja ustawień",

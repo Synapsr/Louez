@@ -69,11 +69,16 @@ The dashboard offers the 31 documented public multilingual Live presets, with **
 for French and **Sillage** as another French option. Recommendations also exist
 for German, Portuguese and English. A preset's regional influence is not a
 language restriction: preview it in the store's selected language.
+The picker initially shows presets for the selected language, with a multilingual
+fallback when no dedicated preset exists. **All voices** opens the full catalog.
+Changing the filter does not overwrite a previously selected voice.
 
 Previews use the same Live model and voice as calls, with a fixed localized
 greeting. They are permission-checked, rate-limited, bounded to ten seconds and
 cached by preset/language/model. Generation is billable to the operator's OpenAI
 project, separate from customer call credits. No API key reaches the browser.
+Previews require the configured Live worker and shared signing secret, independently
+of Twilio provisioning. Disabled preview buttons explain the configuration requirement.
 
 ## Migrating from ConversationRelay / Gather
 

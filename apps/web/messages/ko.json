@@ -5809,7 +5809,9 @@
           "defaultBadge": "추천",
           "defaultVoice": "추천 음성",
           "title": "상담원의 목소리를 선택하세요",
-          "description": "전화로 들리는 음성을 듣고 매장을 대표하는 음성을 선택하세요."
+          "description": "전화로 들리는 음성을 듣고 매장을 대표하는 음성을 선택하세요.",
+          "languageVoices": "이 언어에 맞는 음성",
+          "allVoices": "모든 음성"
         },
         "setup": {
           "step1": "전화번호를 선택하세요",
@@ -5869,7 +5871,7 @@
         },
         "notConfigured": {
           "title": "전화 통신이 구성되지 않았습니다.",
-          "description": "플랫폼 운영자는 음성 에이전트를 활성화하기 위해 전화 통신 공급자(AI_PHONE_ENABLED, VOICE_PROVIDER 및 자격 증명)를 구성해야 합니다."
+          "description": "전화 또는 음성 서비스 설정이 완료되지 않았습니다. 에이전트를 활성화하려면 플랫폼 관리자에게 문의하세요."
         },
         "language": "답변 언어",
         "languageDescription": "보조자가 발신자에게 말하는 언어",
@@ -5899,7 +5901,10 @@
           "male": "남성"
         },
         "voicePreview": "미리보기",
-        "voiceRecommended": "추천"
+        "voiceRecommended": "추천",
+        "voicePreviewUnavailable": "음성 서비스 설정이 완료되면 미리 듣기를 사용할 수 있습니다.",
+        "voiceMigrated": "이전 음성이 추천 GPT-Live 음성으로 변경되었습니다. 아래에서 다른 음성을 선택할 수 있습니다.",
+        "voicePreviewError": "지금은 미리 듣기를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
       },
       "settingsNavigation": {
         "label": "설정 탐색",

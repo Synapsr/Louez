@@ -9,12 +9,14 @@ export const VoicePreviewButton = ({
   label,
   playing,
   loading,
+  disabled = false,
   onToggle,
 }: {
   voiceId: string;
   label: string;
   playing: boolean;
   loading: boolean;
+  disabled?: boolean;
   onToggle: (voiceId: string) => void;
 }) => {
   const t = useTranslations("dashboard.settings.aiVoiceAgent");
@@ -25,6 +27,8 @@ export const VoicePreviewButton = ({
       size="icon"
       aria-label={`${t("voicePreview")} ${label}`}
       aria-pressed={playing}
+      disabled={disabled}
+      title={disabled ? t("voicePreviewUnavailable") : undefined}
       onClick={() => onToggle(voiceId)}
       isPending={loading}
     >

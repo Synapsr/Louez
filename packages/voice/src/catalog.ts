@@ -59,3 +59,15 @@ export function resolveLiveVoice(
       ? fallback
       : defaultLiveVoice(language);
 }
+
+/** Prefer the catalog's language-specific voices; keep a useful fallback for
+ * languages without dedicated presets. This filters recommendations, not the
+ * languages a voice is technically able to speak. */
+export function liveVoicesForLanguage(language: string): readonly LiveVoice[] {
+  const baseLanguage = language.toLowerCase().split("-")[0] ?? language;
+  const localized = LIVE_VOICES.filter((voice) => voice.locale.split("-")[0] === baseLanguage);
+  if (localized.length > 0) return localized;
+  return LIVE_VOICES.filter(
+    (voice) => voice.locale === "multilingual" || voice.id === defaultLiveVoice(baseLanguage),
+  );
+}

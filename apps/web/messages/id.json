@@ -5809,7 +5809,9 @@
           "defaultBadge": "Direkomendasikan",
           "defaultVoice": "Suara yang direkomendasikan",
           "title": "Pilih suara agen Anda",
-          "description": "Dengarkan suaranya dan pilih salah satu yang mewakili toko Anda di telepon."
+          "description": "Dengarkan suaranya dan pilih salah satu yang mewakili toko Anda di telepon.",
+          "languageVoices": "Untuk bahasa ini",
+          "allVoices": "Semua suara"
         },
         "setup": {
           "step1": "Pilih nomor Anda",
@@ -5869,7 +5871,7 @@
         },
         "notConfigured": {
           "title": "Telepon tidak dikonfigurasi",
-          "description": "Operator platform harus mengonfigurasi penyedia telepon (AI_PHONE_ENABLED, VOICE_PROVIDER dan kredensialnya) untuk mengaktifkan agen suara."
+          "description": "Telepon atau layanan suara belum sepenuhnya dikonfigurasi. Hubungi administrator platform untuk mengaktifkan agen."
         },
         "language": "Jawab bahasa",
         "languageDescription": "Bahasa yang digunakan asisten kepada penelepon",
@@ -5899,7 +5901,10 @@
           "male": "Laki-laki"
         },
         "voicePreview": "Pratinjau",
-        "voiceRecommended": "Direkomendasikan"
+        "voiceRecommended": "Direkomendasikan",
+        "voicePreviewUnavailable": "Pratinjau tersedia setelah layanan suara dikonfigurasi.",
+        "voiceMigrated": "Suara sebelumnya telah diganti dengan suara GPT-Live yang direkomendasikan. Anda dapat memilih suara lain di bawah.",
+        "voicePreviewError": "Pratinjau sedang tidak tersedia. Coba lagi sebentar lagi."
       },
       "settingsNavigation": {
         "label": "Navigasi pengaturan",

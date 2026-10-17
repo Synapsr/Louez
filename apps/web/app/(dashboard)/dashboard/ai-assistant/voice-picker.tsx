@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LIVE_VOICES, resolveLiveVoice } from "@louez/voice/catalog";
+import { LIVE_VOICES, liveVoicesForLanguage, resolveLiveVoice } from "@louez/voice/catalog";
 import { useVoicePreview } from "@/hooks/use-voice-preview";
 import { VoicePreviewButton } from "@/components/dashboard/voice/voice-preview-button";
 import { useTranslations } from "next-intl";
@@ -48,18 +48,21 @@ export const VoicePicker = ({
   const t = useTranslations("dashboard.settings.aiVoiceAgent");
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [showAllVoices, setShowAllVoices] = useState(false);
   const [gender, setGender] = useState<"female" | "male" | null>(null);
   const preview = useVoicePreview(language);
   const effectiveId = resolveLiveVoice(language, value, defaultVoice);
-  const voices = LIVE_VOICES.map((voice) => ({
-    ...voice,
-    recommended: voice.id === resolveLiveVoice(language, "", defaultVoice),
-  })).sort((a, b) => Number(b.recommended) - Number(a.recommended));
-  const effectiveVoice = voices.find((voice) => voice.id === effectiveId);
+  const availableVoices = showAllVoices ? LIVE_VOICES : liveVoicesForLanguage(language);
+  const voices = availableVoices
+    .map((voice) => ({
+      ...voice,
+      recommended: voice.id === resolveLiveVoice(language, "", defaultVoice),
+    }))
+    .sort((a, b) => Number(b.recommended) - Number(a.recommended));
+  const effectiveVoice = LIVE_VOICES.find((voice) => voice.id === effectiveId);
   const isUsingDefault = !value;
-  const genders = ["female", "male"] as const;
-  const showGenderFilter = true;
-  const filtered = gender ? voices.filter((voice) => voice.gender === gender) : voices;
+  const activeGender = voices.some((voice) => voice.gender === gender) ? gender : null;
+  const filtered = activeGender ? voices.filter((voice) => voice.gender === activeGender) : voices;
 
   const closeModal = (open: boolean) => {
     if (!open) preview.stop();
@@ -97,10 +100,11 @@ export const VoicePicker = ({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {previewEnabled && effectiveVoice && (
+          {effectiveVoice && (
             <VoicePreviewButton
               voiceId={effectiveVoice.id}
               label={effectiveVoice.label}
+              disabled={!previewEnabled}
               playing={preview.playingId === effectiveVoice.id}
               loading={preview.loadingId === effectiveVoice.id}
               onToggle={preview.toggle}
@@ -113,6 +117,9 @@ export const VoicePicker = ({
       </div>
 
       <p className="text-muted-foreground text-sm">{t("voiceDescription")}</p>
+      {!previewEnabled && (
+        <p className="text-muted-foreground text-sm">{t("voicePreviewUnavailable")}</p>
+      )}
       {preview.failed && (
         <p role="alert" className="text-destructive text-sm">
           {t("voicePreviewError")}
@@ -136,25 +143,59 @@ export const VoicePicker = ({
                 {t("voicePreviewError")}
               </p>
             )}
+            {!previewEnabled && (
+              <p className="text-muted-foreground text-sm">{t("voicePreviewUnavailable")}</p>
+            )}
             <div className="space-y-3 pt-1">
-              {showGenderFilter && (
-                <div className="flex gap-1">
-                  {([null, "female", "male"] as const).map((option) => {
-                    if (option !== null && !genders.includes(option)) return null;
-                    return (
-                      <Button
-                        key={option ?? "all"}
-                        type="button"
-                        size="sm"
-                        variant={gender === option ? "default" : "outline"}
-                        onClick={() => setGender(option)}
-                      >
-                        {option === null ? t("voiceGender.all") : t(`voiceGender.${option}`)}
-                      </Button>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={showAllVoices ? "outline" : "default"}
+                  aria-pressed={!showAllVoices}
+                  onClick={() => {
+                    preview.stop();
+                    setShowAllVoices(false);
+                    setGender(null);
+                  }}
+                >
+                  {t("voiceModal.languageVoices")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={showAllVoices ? "default" : "outline"}
+                  aria-pressed={showAllVoices}
+                  onClick={() => {
+                    preview.stop();
+                    setShowAllVoices(true);
+                    setGender(null);
+                  }}
+                >
+                  {t("voiceModal.allVoices")}
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {([null, "female", "male"] as const).map((option) => {
+                  if (option !== null && !voices.some((voice) => voice.gender === option))
+                    return null;
+                  return (
+                    <Button
+                      key={option ?? "all"}
+                      type="button"
+                      size="sm"
+                      variant={activeGender === option ? "default" : "outline"}
+                      aria-pressed={activeGender === option}
+                      onClick={() => {
+                        preview.stop();
+                        setGender(option);
+                      }}
+                    >
+                      {option === null ? t("voiceGender.all") : t(`voiceGender.${option}`)}
+                    </Button>
+                  );
+                })}
+              </div>
 
               <div className="max-h-72 divide-y overflow-y-auto rounded-lg border">
                 {filtered.map((voice) => {
@@ -194,15 +235,14 @@ export const VoicePicker = ({
                           </Badge>
                         )}
                       </Button>
-                      {previewEnabled && (
-                        <VoicePreviewButton
-                          voiceId={voice.id}
-                          label={voice.label}
-                          playing={preview.playingId === voice.id}
-                          loading={preview.loadingId === voice.id}
-                          onToggle={preview.toggle}
-                        />
-                      )}
+                      <VoicePreviewButton
+                        voiceId={voice.id}
+                        label={voice.label}
+                        disabled={!previewEnabled}
+                        playing={preview.playingId === voice.id}
+                        loading={preview.loadingId === voice.id}
+                        onToggle={preview.toggle}
+                      />
                     </div>
                   );
                 })}

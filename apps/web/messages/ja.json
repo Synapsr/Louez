@@ -5809,7 +5809,9 @@
           "defaultBadge": "おすすめ",
           "defaultVoice": "おすすめボイス",
           "title": "エージェントの声を選択してください",
-          "description": "声を聞いて、電話であなたの店舗を代表する声を選択してください。"
+          "description": "声を聞いて、電話であなたの店舗を代表する声を選択してください。",
+          "languageVoices": "この言語向け",
+          "allVoices": "すべての声"
         },
         "setup": {
           "step1": "番号を選択してください",
@@ -5869,7 +5871,7 @@
         },
         "notConfigured": {
           "title": "テレフォニーが設定されていません",
-          "description": "プラットフォーム オペレーターは、音声エージェントを有効にするためにテレフォニー プロバイダー (AI_PHONE_ENABLED、VOICE_PROVIDER、および資格情報) を構成する必要があります。"
+          "description": "電話または音声サービスの設定が完了していません。エージェントを有効にするには、プラットフォーム管理者にお問い合わせください。"
         },
         "language": "回答言語",
         "languageDescription": "アシスタントが発信者に話す言語",
@@ -5899,7 +5901,10 @@
           "male": "男性"
         },
         "voicePreview": "プレビュー",
-        "voiceRecommended": "おすすめ"
+        "voiceRecommended": "おすすめ",
+        "voicePreviewUnavailable": "音声サービスの設定が完了すると試聴できます。",
+        "voiceMigrated": "以前の声は推奨の GPT-Live 音声に置き換えられました。下で別の声を選べます。",
+        "voicePreviewError": "現在プレビューを利用できません。しばらくしてからもう一度お試しください。"
       },
       "settingsNavigation": {
         "label": "設定ナビゲーション",
