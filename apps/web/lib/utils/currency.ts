@@ -138,9 +138,12 @@ export function getCurrencyByCode(code: CurrencyCode): Currency | undefined {
 }
 
 /**
- * Gets the country code represented by a currency's primary locale.
+ * Gets the country code used for a currency's flag. This is the country of its
+ * primary locale, except for the euro, which belongs to no single country.
  */
 export function getCurrencyFlagCountry(currency: Currency): string {
+  if (currency.code === 'EUR') return 'EU'
+
   return currency.locale.split('-').at(-1) || 'FR'
 }
 
@@ -158,7 +161,6 @@ export function getCurrencySymbol(code: CurrencyCode): string {
 export function getCurrenciesSortedByName(): Currency[] {
   return [...SUPPORTED_CURRENCIES].sort((a, b) => a.name.localeCompare(b.name))
 }
-
 /**
  * Format currency with dynamic currency code
  * @param amount - The amount to format
