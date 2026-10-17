@@ -15,16 +15,14 @@
  */
 
 /** Supported telephony provider identifiers. */
-export type VoiceProviderType = 'twilio'
+export type VoiceProviderType = "twilio";
 
 /** A spoken prompt: text plus the language/voice it should be rendered in. */
 export interface VoiceSpeech {
   /** Plain text to speak (never markup — it is XML-escaped by the provider). */
-  text: string
+  text: string;
   /** App locale the receptionist speaks, e.g. 'fr', 'en'. */
-  language: string
-  /** Provider-specific voice id/name. Falls back to a per-language default. */
-  voice?: string
+  language: string;
 }
 
 /**
@@ -33,100 +31,64 @@ export interface VoiceSpeech {
  */
 export type VoiceAction =
   | {
-      /** Speak a prompt, then listen for the caller's speech. */
-      type: 'gather'
-      speak: VoiceSpeech
-      /** Absolute URL the provider POSTs the recognized speech to. */
-      actionUrl: string
-      /** Seconds of silence before giving up on input. */
-      timeoutSeconds?: number
-    }
-  | {
       /** Speak a final message, then hang up. */
-      type: 'say_hangup'
-      speak: VoiceSpeech
+      type: "say_hangup";
+      speak: VoiceSpeech;
     }
   | {
       /** Transfer the call to a human (E.164), optionally speaking first. */
-      type: 'dial'
-      number: string
-      callerId?: string
-      speakBefore?: VoiceSpeech
+      type: "dial";
+      number: string;
+      callerId?: string;
+      speakBefore?: VoiceSpeech;
     }
   | {
-      /**
-       * Hand the call to a streaming ConversationRelay session — the provider
-       * runs STT + TTS + endpointing + barge-in and the per-turn loop lives on
-       * the WebSocket worker, not this HTTP interface. Used instead of `gather`
-       * when the streaming transport is enabled.
-       */
-      type: 'connect_relay'
-      /** wss URL of the relay worker, already signed for this call. */
-      wsUrl: string
-      /** Greeting spoken at connect by the provider's TTS. */
-      welcomeGreeting: string
-      /** App locale (e.g. 'fr'); the provider maps it to a BCP-47 STT/TTS locale. */
-      language: string
-      /** Provider TTS + STT selection and the voice id to synthesize with. */
-      ttsProvider: string
-      sttProvider: string
-      voice?: string
-      /** URL the provider POSTs to when the relay session ends (transfer/hangup). */
-      actionUrl: string
+      type: "connect_stream";
+      wsUrl: string;
+      parameters: Record<string, string>;
+      /** Guaranteed disclosure before connecting the generative audio. */
+      disclosure: VoiceSpeech;
+      actionUrl: string;
     }
-  | { type: 'hangup' }
-
-/** One selectable TTS voice offered to a store (from the operator's catalog). */
-export interface PhoneVoiceOption {
-  /** Provider voice id (e.g. ElevenLabs voice id). */
-  id: string
-  /** Human label shown in the picker (e.g. a first name). */
-  label: string
-  gender: 'male' | 'female'
-  /** Operator-recommended voice — shown first with a badge. */
-  recommended?: boolean
-}
-
-/** Per-locale voice catalog the store picks from. Empty when unconfigured. */
-export type PhoneVoiceCatalog = Record<string, PhoneVoiceOption[]>
+  | { type: "hangup" };
 
 /** A phone number available to provision, normalized across providers. */
 export interface AvailableNumber {
   /** E.164 number, e.g. '+33756781234'. */
-  phoneNumber: string
+  phoneNumber: string;
   /** Human label (provider friendly name), falls back to the number. */
-  friendlyName: string
+  friendlyName: string;
   /** City/locality, when the provider returns one. */
-  locality: string | null
+  locality: string | null;
   /** Region/state, when the provider returns one. */
-  region: string | null
+  region: string | null;
 }
 
 /** Inbound call fields, normalized across providers. */
 export interface InboundCall {
   /** Provider call identifier (Twilio CallSid). */
-  callId: string
+  callId: string;
   /** Caller number (E.164). */
-  from: string
+  from: string;
   /** Called number (E.164) — used to resolve the store. */
-  to: string
+  to: string;
   /** Speech transcript from the previous turn, or null on the first turn. */
-  speech: string | null
+  speech: string | null;
   /** Provider call status on a status callback (e.g. 'completed'). */
-  status: string | null
+  status: string | null;
   /** Billed call duration in seconds on a status callback. */
-  durationSeconds: number | null
+  durationSeconds: number | null;
 }
 
 export interface VoiceProvider {
   /** Provider identifier. */
-  readonly name: VoiceProviderType
+  readonly name: VoiceProviderType;
 
   /** Whether all required env vars are set. */
-  isConfigured(): boolean
+  isConfigured(): boolean;
 
   /** Configuration status for diagnostics (no secrets). */
-  getConfigStatus(): { configured: boolean; missingVars?: string[] }
+  getConfigStatus(): { configured: boolean; missingVars?: string[] };
 
   /**
    * Verify the authenticity of an inbound webhook (signature check).
@@ -134,16 +96,16 @@ export interface VoiceProvider {
    * decoded form fields; `signature` is the provider's signature header.
    */
   verifyWebhook(input: {
-    url: string
-    params: Record<string, string>
-    signature: string | null
-  }): boolean
+    url: string;
+    params: Record<string, string>;
+    signature: string | null;
+  }): boolean;
 
   /** Normalize provider webhook form fields into an InboundCall. */
-  parseInboundCall(params: Record<string, string>): InboundCall
+  parseInboundCall(params: Record<string, string>): InboundCall;
 
   /** Render an action into a provider-specific response body + content type. */
-  renderResponse(action: VoiceAction): { body: string; contentType: string }
+  renderResponse(action: VoiceAction): { body: string; contentType: string };
 
   /**
    * Start recording the live call out-of-band (provider REST API). The
@@ -151,30 +113,24 @@ export interface VoiceProvider {
    * duration to `statusCallbackUrl`. Best-effort: recording must never break
    * the call, so implementations swallow and log their own errors.
    */
-  startCallRecording(input: {
-    callId: string
-    statusCallbackUrl: string
-  }): Promise<void>
+  startCallRecording(input: { callId: string; statusCallbackUrl: string }): Promise<void>;
 
   /**
    * Normalize a recording status callback into the fields we persist, or null
    * when it is not a terminal event with a usable recording.
    */
   parseRecordingCallback(params: Record<string, string>): {
-    callId: string
-    recordingSid: string
-    durationSeconds: number | null
-  } | null
+    callId: string;
+    recordingSid: string;
+    durationSeconds: number | null;
+  } | null;
 
   /**
    * Fetch a completed recording's audio, proxying the provider credentials so
    * the media is never publicly reachable. Forwards an optional Range header
    * for seeking and returns a ready-to-send audio Response.
    */
-  fetchRecordingMedia(input: {
-    recordingSid: string
-    range?: string | null
-  }): Promise<Response>
+  fetchRecordingMedia(input: { recordingSid: string; range?: string | null }): Promise<Response>;
 
   /**
    * Search phone numbers available to provision. `country` is an ISO-3166
@@ -182,11 +138,11 @@ export interface VoiceProvider {
    * or credential error.
    */
   searchAvailableNumbers(input: {
-    country: string
-    areaCode?: string
-    contains?: string
-    limit?: number
-  }): Promise<AvailableNumber[]>
+    country: string;
+    areaCode?: string;
+    contains?: string;
+    limit?: number;
+  }): Promise<AvailableNumber[]>;
 
   /**
    * Provision (buy) a number and point its voice webhooks at the app. Returns
@@ -194,11 +150,11 @@ export interface VoiceProvider {
    * on failure — provisioning spends money, so callers surface the error.
    */
   provisionNumber(input: {
-    phoneNumber: string
-    voiceUrl: string
-    statusCallbackUrl: string
-  }): Promise<{ e164: string; providerNumberId: string }>
+    phoneNumber: string;
+    voiceUrl: string;
+    statusCallbackUrl: string;
+  }): Promise<{ e164: string; providerNumberId: string }>;
 
   /** Release a previously provisioned number back to the provider. */
-  releaseNumber(providerNumberId: string): Promise<void>
+  releaseNumber(providerNumberId: string): Promise<void>;
 }

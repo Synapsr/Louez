@@ -66,6 +66,7 @@ export default async function AiVoiceAgentPage({
         isProvisioned={Boolean(phoneBinding?.providerNumberId)}
         webhookUrl={`${env.NEXT_PUBLIC_APP_URL}/api/voice/incoming`}
         defaultCountry="FR"
+        defaultVoice={env.AI_PHONE_DEFAULT_VOICE}
         numberRentalCredits={numberRentalCredits > 0 ? numberRentalCredits : null}
         voiceCreditsPerMinute={voiceCreditsPerMinute > 0 ? voiceCreditsPerMinute : null}
         hasRentalFunds={rentalFundsOk}

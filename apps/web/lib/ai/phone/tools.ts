@@ -193,8 +193,13 @@ export function createPhoneTools(ctx: PhoneToolContext) {
 
   const create_reservation_hold = tool({
     description:
-      "Register a PENDING reservation for the caller. Use ONLY after the product(s), exact rental dates, and the caller name are confirmed and check_availability passed. The store owner reviews and confirms it. On success the caller is texted a recap automatically.",
+      "Register a PENDING reservation for the caller. Use ONLY after the product(s), exact rental dates, and the caller name and quoted price are confirmed and quote_reservation succeeded for the exact items. The store owner reviews and confirms it. On success the caller is texted a recap automatically.",
     inputSchema: z.object({
+      customerConfirmed: z
+        .literal(true)
+        .describe(
+          "The caller explicitly agreed to the final items, dates, quoted price and customer identity.",
+        ),
       items: z
         .array(
           z.object({
@@ -275,8 +280,9 @@ export function createPhoneTools(ctx: PhoneToolContext) {
         );
 
       // Best-effort SMS recap (never blocks the call).
+      let smsSent = false;
       try {
-        await sendSms({
+        const sms = await sendSms({
           to: phone,
           message: buildRecapSms(ctx.language, {
             store: ctx.storeName,
@@ -284,6 +290,7 @@ export function createPhoneTools(ctx: PhoneToolContext) {
           }),
           isCommercial: false,
         });
+        smsSent = sms.success;
       } catch (error) {
         log.error(
           "phone",
@@ -295,7 +302,7 @@ export function createPhoneTools(ctx: PhoneToolContext) {
         ok: true,
         booked: true,
         reservationNumber: result.reservationNumber,
-        smsSent: Boolean(phone),
+        smsSent,
       };
     },
   });

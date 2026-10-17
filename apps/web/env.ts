@@ -1,3 +1,4 @@
+import { isLiveVoice } from "@louez/voice/catalog";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
@@ -215,7 +216,7 @@ export const env = createEnv({
     // The whole phone feature is INERT unless AI_PHONE_ENABLED === 'true' AND a
     // voice provider is configured. When off (default), no phone UI is shown and
     // the webhooks return 404. It reuses the AI agent + AI-credit layer, so it
-    // additionally requires AI_PROVIDER/AI_API_KEY (and, for billing,
+    // uses an OpenAI-enabled worker (and, for billing,
     // AI_CREDITS_ENABLED). No commercial value ships in code — the audio cost
     // basis lives here, like the advisor token prices.
     AI_PHONE_ENABLED: z.string().optional(),
@@ -231,9 +232,12 @@ export const env = createEnv({
     // with the purchase. Optional — only needed for auto-provisioning.
     TWILIO_ADDRESS_SID: z.string().optional(),
     TWILIO_BUNDLE_SID: z.string().optional(),
-    // Optional cheaper/faster model for the phone agent (falls back to
-    // AI_ADVISOR_MODEL, then AI_MODEL, then the provider default).
-    AI_PHONE_MODEL: z.string().optional(),
+    // OpenAI models for audio and delegated store reasoning (independent of AI_PROVIDER).
+    AI_PHONE_LIVE_MODEL: z.string().min(1).default("gpt-live-1"),
+    AI_PHONE_BACKEND_MODEL: z.string().min(1).default("gpt-5.6-luna"),
+    AI_PHONE_INPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
+    AI_PHONE_OUTPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
+    AI_PHONE_CACHED_INPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
     // Blended real audio cost of the chosen voice stack, USD per MINUTE
     // (telephony inbound + STT + TTS). Metered per call alongside LLM tokens and
     // converted to credits via AI_CREDIT_COST_BASIS_USD. 0/unset ⇒ audio metering
@@ -258,38 +262,23 @@ export const env = createEnv({
     AI_PHONE_NUMBER_COST_USD_PER_MONTH: z.coerce.number().min(0).optional(),
     // Hard cap on call duration (seconds) to bound cost / toll-fraud blast radius.
     AI_PHONE_MAX_CALL_SECONDS: z.coerce.number().int().min(30).max(3600).default(600),
-    // ----- Streaming transport (Twilio ConversationRelay) -----
-    // Phone transport. 'gather' (default) = turn-based Twilio <Gather>, robust and
-    // serverless-friendly. 'relay' = Twilio ConversationRelay (streaming STT/TTS +
-    // barge-in) through a self-hosted WebSocket worker — needs VOICE_RELAY_WS_URL
-    // and VOICE_RELAY_SIGNING_SECRET, else it stays on <Gather>.
-    AI_PHONE_TRANSPORT: z.enum(["gather", "relay"]).optional(),
-    // Public wss:// URL of the ConversationRelay worker (e.g. wss://voice-relay.example.com).
-    VOICE_RELAY_WS_URL: z.string().optional(),
-    // HMAC secret shared with the worker: authenticates the relay handshake and
-    // the worker↔app per-turn requests, both directions. Required for 'relay'.
-    VOICE_RELAY_SIGNING_SECRET: z.string().optional(),
-    // ConversationRelay TTS/STT providers (never hardcoded). Defaults tuned for
-    // realism + latency. https://www.twilio.com/docs/voice/twiml/connect/conversationrelay
-    AI_PHONE_TTS_PROVIDER: z.string().optional(),
-    AI_PHONE_STT_PROVIDER: z.string().optional(),
-    // Provider voice id per app locale (JSON), e.g. {"fr":"<id>","en":"<id>"}. A
-    // per-store voice (settings.voice) overrides it. All 8 locales supported.
-    AI_PHONE_VOICES: z.string().optional(),
-    // Fallback voice id when a locale is absent from AI_PHONE_VOICES and the store set none.
-    AI_PHONE_DEFAULT_VOICE: z.string().optional(),
-    // Catalog of voices a STORE can pick from, per app locale (JSON):
-    // {"fr":[{"id":"<id>","label":"Léa","gender":"female"}, ...], ...}. Powers the
-    // in-dashboard voice picker; the chosen id is saved as the store voice. Voice
-    // ids stay in env, never in the repo.
-    AI_PHONE_VOICE_CATALOG: z.string().optional(),
-    // ElevenLabs API key (optional). When set, the dashboard voice picker is
-    // populated automatically from the account's voices (name + gender) and the
-    // store can PREVIEW a voice speaking a sample in the chosen language.
-    ELEVENLABS_API_KEY: z.string().optional(),
-    // Voice ids to surface first with a "recommended" badge in the picker,
-    // comma-separated. Operator-curated, kept in env (never in the repo).
-    AI_PHONE_RECOMMENDED_VOICES: z.string().optional(),
+    // GPT-Live worker origin. No path/query; Twilio connects to /media.
+    VOICE_RELAY_WS_URL: z
+      .url()
+      .refine((value) => {
+        const url = new URL(value);
+        return (
+          url.protocol === "wss:" &&
+          url.pathname === "/" &&
+          !url.search &&
+          !url.hash &&
+          !url.username &&
+          !url.password
+        );
+      }, "Expected a wss:// origin")
+      .optional(),
+    VOICE_RELAY_SIGNING_SECRET: z.string().min(32).optional(),
+    AI_PHONE_DEFAULT_VOICE: z.string().refine(isLiveVoice, "Unsupported GPT-Live voice").optional(),
 
     // ===== Product image processing (Optional — dashboard tools) =====
     // Private rembg service used for direct background removal and after GPT
@@ -480,28 +469,25 @@ export const env = createEnv({
     AI_CREDIT_MONTHLY_INCLUDED: process.env.AI_CREDIT_MONTHLY_INCLUDED,
     AI_CREDIT_PACKAGES: process.env.AI_CREDIT_PACKAGES,
     AI_PHONE_ENABLED: process.env.AI_PHONE_ENABLED,
+    AI_PHONE_LIVE_MODEL: process.env.AI_PHONE_LIVE_MODEL,
+    AI_PHONE_BACKEND_MODEL: process.env.AI_PHONE_BACKEND_MODEL,
+    AI_PHONE_INPUT_USD_PER_MTOK: process.env.AI_PHONE_INPUT_USD_PER_MTOK,
+    AI_PHONE_OUTPUT_USD_PER_MTOK: process.env.AI_PHONE_OUTPUT_USD_PER_MTOK,
+    AI_PHONE_CACHED_INPUT_USD_PER_MTOK: process.env.AI_PHONE_CACHED_INPUT_USD_PER_MTOK,
     VOICE_PROVIDER: process.env.VOICE_PROVIDER,
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
     TWILIO_ADDRESS_SID: process.env.TWILIO_ADDRESS_SID,
     TWILIO_BUNDLE_SID: process.env.TWILIO_BUNDLE_SID,
-    AI_PHONE_MODEL: process.env.AI_PHONE_MODEL,
     AI_VOICE_AUDIO_USD_PER_MIN: process.env.AI_VOICE_AUDIO_USD_PER_MIN,
     AI_PHONE_MAX_CREDITS_PER_CALL: process.env.AI_PHONE_MAX_CREDITS_PER_CALL,
     AI_PHONE_CREDITS_PER_MINUTE: process.env.AI_PHONE_CREDITS_PER_MINUTE,
     AI_PHONE_NUMBER_RENTAL_CREDITS: process.env.AI_PHONE_NUMBER_RENTAL_CREDITS,
     AI_PHONE_NUMBER_COST_USD_PER_MONTH: process.env.AI_PHONE_NUMBER_COST_USD_PER_MONTH,
     AI_PHONE_MAX_CALL_SECONDS: process.env.AI_PHONE_MAX_CALL_SECONDS,
-    AI_PHONE_TRANSPORT: process.env.AI_PHONE_TRANSPORT,
     VOICE_RELAY_WS_URL: process.env.VOICE_RELAY_WS_URL,
     VOICE_RELAY_SIGNING_SECRET: process.env.VOICE_RELAY_SIGNING_SECRET,
-    AI_PHONE_TTS_PROVIDER: process.env.AI_PHONE_TTS_PROVIDER,
-    AI_PHONE_STT_PROVIDER: process.env.AI_PHONE_STT_PROVIDER,
-    AI_PHONE_VOICES: process.env.AI_PHONE_VOICES,
     AI_PHONE_DEFAULT_VOICE: process.env.AI_PHONE_DEFAULT_VOICE,
-    AI_PHONE_VOICE_CATALOG: process.env.AI_PHONE_VOICE_CATALOG,
-    ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
-    AI_PHONE_RECOMMENDED_VOICES: process.env.AI_PHONE_RECOMMENDED_VOICES,
     AI_IMAGE_BACKGROUND_REMOVAL_URL: process.env.AI_IMAGE_BACKGROUND_REMOVAL_URL,
     AI_IMAGE_BACKGROUND_REMOVAL_TOKEN: process.env.AI_IMAGE_BACKGROUND_REMOVAL_TOKEN,
     AI_IMAGE_OPENAI_API_KEY: process.env.AI_IMAGE_OPENAI_API_KEY,

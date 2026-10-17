@@ -1,31 +1,22 @@
 # syntax=docker/dockerfile:1
-
-# This service is fully standalone (no monorepo workspace deps beyond `ws`),
-# so it builds directly from this directory with npm — no pnpm workspace needed.
-
-# --- Build stage: install all deps and compile TypeScript -------------------
+# Build from the MONOREPO ROOT:
+# docker build -f apps/voice-relay/Dockerfile -t louez-voice-relay .
 FROM node:22-alpine AS builder
 WORKDIR /app
+RUN corepack enable pnpm
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY packages/voice/package.json ./packages/voice/
+COPY apps/voice-relay/package.json ./apps/voice-relay/
+RUN pnpm install --frozen-lockfile --filter @louez/voice-relay...
+COPY packages/voice ./packages/voice
+COPY apps/voice-relay ./apps/voice-relay
+RUN pnpm --filter @louez/voice build && pnpm --filter @louez/voice-relay build
+RUN pnpm --filter @louez/voice-relay bundle
 
-COPY package.json ./
-RUN npm install --no-audit --no-fund
-
-COPY tsconfig.json ./
-COPY src ./src
-RUN npm run build
-
-# --- Runtime stage: production deps only ------------------------------------
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-
-COPY package.json ./
-RUN npm install --omit=dev --no-audit --no-fund
-
-COPY --from=builder /app/dist ./dist
-
-# Informational; the actual port is driven by the PORT env var (default 8080).
-EXPOSE 8080
-
+COPY --from=builder --chown=node:node /app/apps/voice-relay/dist/server.mjs ./server.mjs
 USER node
-CMD ["node", "dist/index.js"]
+EXPOSE 8080
+CMD ["node", "server.mjs"]

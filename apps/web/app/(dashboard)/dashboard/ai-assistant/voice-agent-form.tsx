@@ -1,12 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { isLiveVoice } from "@louez/voice/catalog";
 import { useRouter } from "next/navigation";
 import { revalidateLogic, useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
-import { Clock3, CreditCard, PhoneCall, TriangleAlert, Voicemail, Wallet } from "lucide-react";
+import {
+  ClockIcon,
+  CreditCardIcon,
+  PhoneCallIcon,
+  TriangleAlertIcon,
+  VoicemailIcon,
+  WalletIcon,
+} from "@louez/ui/icons";
 
 import {
   Alert,
@@ -58,7 +66,7 @@ const createAiPhoneSettingsSchema = (
   z.object({
     enabled: z.boolean(),
     language: z.enum(AI_PHONE_LANGUAGES),
-    voice: z.string(),
+    voice: z.string().refine((value) => value === "" || isLiveVoice(value)),
     canTakeReservations: z.boolean(),
     recordCalls: z.boolean(),
     answerMode: z.enum(["always", "after_hours"]),
@@ -87,6 +95,7 @@ interface VoiceAgentFormProps {
   voiceCreditsPerMinute: number | null;
   /** Whether the balance covers one rental cycle (drives the recharge nudge). */
   hasRentalFunds: boolean;
+  defaultVoice?: string;
 }
 
 export const VoiceAgentForm = ({
@@ -100,6 +109,7 @@ export const VoiceAgentForm = ({
   numberRentalCredits,
   voiceCreditsPerMinute,
   hasRentalFunds,
+  defaultVoice,
 }: VoiceAgentFormProps) => {
   const router = useRouter();
   const t = useTranslations("dashboard.settings.aiVoiceAgent");
@@ -120,7 +130,7 @@ export const VoiceAgentForm = ({
       // Persisted locale string coerced to the known set; the Zod schema below
       // and the server action re-validate it, so an unknown value can't slip in.
       language: current.language as (typeof AI_PHONE_LANGUAGES)[number],
-      voice: current.voice || "",
+      voice: isLiveVoice(current.voice) ? current.voice : "",
       canTakeReservations: current.canTakeReservations,
       recordCalls: current.recordCalls ?? false,
       answerMode: current.answerMode,
@@ -168,7 +178,7 @@ export const VoiceAgentForm = ({
 
         {!phoneConfigured && (
           <Alert variant="warning">
-            <TriangleAlert />
+            <TriangleAlertIcon />
             <AlertTitle>{t("notConfigured.title")}</AlertTitle>
             <AlertDescription>{t("notConfigured.description")}</AlertDescription>
           </Alert>
@@ -266,7 +276,7 @@ export const VoiceAgentForm = ({
 
                 <div className="bg-muted/40 space-y-3 rounded-lg border p-4">
                   <div className="flex items-start gap-3">
-                    <DashboardIconTile icon={PhoneCall} accent="success" />
+                    <DashboardIconTile icon={PhoneCallIcon} accent="success" />
                     <div className="space-y-1">
                       <p className="text-sm font-medium">{t("setup.title")}</p>
                       <p className="text-muted-foreground text-sm">{t("setup.why")}</p>
@@ -277,7 +287,7 @@ export const VoiceAgentForm = ({
                     <div className="flex flex-wrap gap-2">
                       {numberRentalCredits !== null && (
                         <Badge variant="secondary" className="gap-1.5 tabular-nums">
-                          <Wallet className="h-3 w-3" />
+                          <WalletIcon className="h-3 w-3" />
                           {t("setup.rentalChip", {
                             credits: numberRentalCredits,
                           })}
@@ -285,7 +295,7 @@ export const VoiceAgentForm = ({
                       )}
                       {voiceCreditsPerMinute !== null && (
                         <Badge variant="secondary" className="gap-1.5 tabular-nums">
-                          <Clock3 className="h-3 w-3" />
+                          <ClockIcon className="h-3 w-3" />
                           {t("setup.perMinuteChip", {
                             credits: voiceCreditsPerMinute,
                           })}
@@ -296,7 +306,7 @@ export const VoiceAgentForm = ({
 
                   {numberRentalCredits !== null && !hasRentalFunds && (
                     <Alert variant="warning">
-                      <TriangleAlert />
+                      <TriangleAlertIcon />
                       <AlertTitle>{t("setup.insufficientTitle")}</AlertTitle>
                       <AlertDescription className="space-y-2">
                         <p>
@@ -310,7 +320,7 @@ export const VoiceAgentForm = ({
                           className="gap-1.5 transition-transform duration-150 ease-out active:scale-[0.96]"
                           onClick={openAiCreditsTopup}
                         >
-                          <CreditCard className="h-3.5 w-3.5" />
+                          <CreditCardIcon className="h-3.5 w-3.5" />
                           {t("setup.insufficientCta")}
                         </Button>
                       </AlertDescription>
@@ -343,7 +353,7 @@ export const VoiceAgentForm = ({
 
                 {(numberRentalCredits !== null || voiceCreditsPerMinute !== null) && (
                   <div className="text-muted-foreground -mt-3 flex flex-wrap items-center gap-1.5 text-xs tabular-nums">
-                    <Wallet className="h-3 w-3" />
+                    <WalletIcon className="h-3 w-3" />
                     {[
                       numberRentalCredits !== null
                         ? t("setup.boundRental", {
@@ -381,10 +391,17 @@ export const VoiceAgentForm = ({
                   )}
                 </form.AppField>
 
-                {/* Voice — choose (male/female) and preview it */}
+                {current.voice && !isLiveVoice(current.voice) && (
+                  <p role="status" className="text-muted-foreground text-sm">
+                    {t("voiceMigrated")}
+                  </p>
+                )}
+                {/* Voice — choose a GPT-Live preset and preview it */}
                 <form.Field name="voice">
                   {(field) => (
                     <VoicePicker
+                      defaultVoice={defaultVoice}
+                      previewEnabled={phoneConfigured}
                       value={field.state.value}
                       onChange={(id) => field.handleChange(id)}
                       language={selectedLanguage}
@@ -415,13 +432,13 @@ export const VoiceAgentForm = ({
                           value: "always",
                           label: t("answerModeAlways"),
                           description: t("answerModeAlwaysDescription"),
-                          icon: <PhoneCall className="h-4 w-4" />,
+                          icon: <PhoneCallIcon className="h-4 w-4" />,
                         },
                         {
                           value: "after_hours",
                           label: t("answerModeAfterHours"),
                           description: t("answerModeAfterHoursDescription"),
-                          icon: <Voicemail className="h-4 w-4" />,
+                          icon: <VoicemailIcon className="h-4 w-4" />,
                         },
                       ]}
                       errors={field.state.meta.errors}

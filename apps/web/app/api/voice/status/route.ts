@@ -1,17 +1,13 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from "drizzle-orm";
 
-import { aiAdvisorConversations, db } from '@louez/db'
+import { aiAdvisorConversations, db, voiceSessionsTable } from "@louez/db";
 
-import { maybeTriggerAutoTopup } from '@/lib/ai/advisor/auto-topup'
-import { recordCallAudioDebit } from '@/lib/ai/phone/credits'
-import { isVoiceAgentConfigured } from '@/lib/ai/phone/eligibility'
-import {
-  readVoiceWebhook,
-  voiceWebhookParamsSchema,
-} from '@/lib/ai/phone/webhook'
-import { getStorePlan } from '@/lib/plan-limits'
-import { areAiCreditsEnabled } from '@/lib/plans'
-import { getVoiceProvider } from '@/lib/voice/client'
+import { maybeTriggerAutoTopup } from "@/lib/ai/advisor/auto-topup";
+import { recordCallAudioDebit } from "@/lib/ai/phone/credits";
+import { readVoiceWebhook, voiceWebhookParamsSchema } from "@/lib/ai/phone/webhook";
+import { getStorePlan } from "@/lib/plan-limits";
+import { areAiCreditsEnabled } from "@/lib/plans";
+import { getVoiceProvider } from "@/lib/voice/client";
 
 // INTENTIONALLY PUBLIC route [SE-01]: the end-of-call status callback. Signature
 // authenticated. On call completion it records the billed duration and settles
@@ -19,14 +15,10 @@ import { getVoiceProvider } from '@/lib/voice/client'
 // Configure the number's "Call status changes" webhook to POST here.
 
 export async function POST(req: Request) {
-  if (!isVoiceAgentConfigured()) {
-    return new Response('Not found', { status: 404 })
-  }
+  const read = await readVoiceWebhook(req);
+  if (!read.ok) return new Response("Bad request", { status: read.status });
 
-  const read = await readVoiceWebhook(req)
-  if (!read.ok) return new Response('Bad request', { status: read.status })
-
-  const provider = getVoiceProvider()
+  const provider = getVoiceProvider();
   if (
     !provider.verifyWebhook({
       url: read.publicUrl,
@@ -34,44 +26,52 @@ export async function POST(req: Request) {
       signature: read.signature,
     })
   ) {
-    return new Response('Invalid signature', { status: 403 })
+    return new Response("Invalid signature", { status: 403 });
   }
 
-  const parsed = voiceWebhookParamsSchema.safeParse(read.rawParams)
-  if (!parsed.success) return new Response('Invalid request', { status: 400 })
-  const call = provider.parseInboundCall(read.rawParams)
+  const parsed = voiceWebhookParamsSchema.safeParse(read.rawParams);
+  if (!parsed.success) return new Response("Invalid request", { status: 400 });
+  const call = provider.parseInboundCall(read.rawParams);
 
   // Only the terminal event carries the billed duration; ignore the rest.
-  if (call.status !== 'completed') {
-    return new Response(null, { status: 204 })
+  if (call.status !== "completed") {
+    return new Response(null, { status: 204 });
   }
 
   const conversation = await db.query.aiAdvisorConversations.findFirst({
     where: and(
       eq(aiAdvisorConversations.providerCallId, call.callId),
-      eq(aiAdvisorConversations.channel, 'phone'),
+      eq(aiAdvisorConversations.channel, "phone"),
     ),
     columns: { id: true, storeId: true },
-  })
-  if (!conversation) return new Response(null, { status: 204 })
+  });
+  if (!conversation) return new Response(null, { status: 204 });
 
-  const seconds = call.durationSeconds ?? 0
+  const seconds = call.durationSeconds ?? 0;
   await db
     .update(aiAdvisorConversations)
     .set({ durationSeconds: seconds, updatedAt: new Date() })
-    .where(eq(aiAdvisorConversations.id, conversation.id))
+    .where(eq(aiAdvisorConversations.id, conversation.id));
 
-  if (areAiCreditsEnabled() && seconds > 0) {
-    const plan = await getStorePlan(conversation.storeId)
+  const liveSession = await db.query.voiceSessionsTable.findFirst({
+    where: eq(voiceSessionsTable.conversationId, conversation.id),
+  });
+  if (liveSession && !liveSession.settled) {
+    await db
+      .update(voiceSessionsTable)
+      .set({ pstnEndedAt: sql`COALESCE(${voiceSessionsTable.pstnEndedAt}, NOW())` })
+      .where(eq(voiceSessionsTable.conversationId, conversation.id));
+  } else if (!liveSession && areAiCreditsEnabled() && seconds > 0) {
+    // Calls started before this migration can still deliver delayed callbacks.
+    const plan = await getStorePlan(conversation.storeId);
     await recordCallAudioDebit({
       storeId: conversation.storeId,
       conversationId: conversation.id,
       callId: call.callId,
       audioSeconds: seconds,
       plan,
-    })
-    await maybeTriggerAutoTopup(conversation.storeId)
+    });
   }
-
-  return new Response(null, { status: 204 })
+  if (areAiCreditsEnabled()) await maybeTriggerAutoTopup(conversation.storeId);
+  return new Response(null, { status: 204 });
 }

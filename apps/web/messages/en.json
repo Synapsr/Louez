@@ -5900,6 +5900,8 @@
           "male": "Male"
         },
         "voicePreview": "Preview",
+        "voiceMigrated": "Your previous voice has been replaced by the recommended GPT-Live voice. You can choose another below.",
+        "voicePreviewError": "The preview is unavailable right now. Please try again shortly.",
         "voiceRecommended": "Recommended"
       },
       "settingsNavigation": {

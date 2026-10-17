@@ -5900,6 +5900,8 @@
           "male": "Man"
         },
         "voicePreview": "Beluisteren",
+        "voiceMigrated": "Uw vorige stem is vervangen door de aanbevolen GPT-Live-stem. U kunt hieronder een andere kiezen.",
+        "voicePreviewError": "Het voorbeeld is momenteel niet beschikbaar. Probeer het zo opnieuw.",
         "voiceRecommended": "Aanbevolen"
       },
       "settingsNavigation": {

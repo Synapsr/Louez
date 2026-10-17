@@ -5900,6 +5900,8 @@
           "male": "Uomo"
         },
         "voicePreview": "Ascolta",
+        "voiceMigrated": "La voce precedente è stata sostituita con la voce GPT-Live consigliata. Puoi sceglierne un’altra qui sotto.",
+        "voicePreviewError": "L’anteprima non è disponibile al momento. Riprova tra poco.",
         "voiceRecommended": "Consigliata"
       },
       "settingsNavigation": {
