@@ -34,8 +34,42 @@ export const twilioEventSchema = z.discriminatedUnion("event", [
   z.object({ event: z.literal("stop"), streamSid: sid }),
   z.object({ event: z.literal("dtmf"), streamSid: sid }),
 ]);
+const liveSessionSchema = z.object({
+  id: sid,
+  model: z.string().optional(),
+  instructions: z.string().nullable().optional(),
+  input: z
+    .array(
+      z.object({
+        role: z.string(),
+        content: z.array(z.object({ text: z.string(), type: z.string().optional() })),
+      }),
+    )
+    .optional(),
+  audio: z
+    .object({
+      output: z
+        .object({ voice: z.union([z.string(), z.object({ id: z.string() })]).optional() })
+        .optional(),
+    })
+    .optional(),
+  delegation: z
+    .object({
+      type: z.string(),
+      responses: z
+        .object({
+          model: z.string(),
+          instructions: z.string().nullable().optional(),
+        })
+        .optional(),
+    })
+    .nullable()
+    .optional(),
+});
+export type LiveSession = z.infer<typeof liveSessionSchema>;
+
 export const liveEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("session.started"), session: z.object({ id: sid }) }),
+  z.object({ type: z.literal("session.started"), session: liveSessionSchema }),
   z.object({ type: z.literal("session.output_audio.delta"), delta: audio }),
   z.object({
     type: z.enum(["session.input_transcript.delta", "session.output_transcript.delta"]),

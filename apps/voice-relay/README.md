@@ -80,6 +80,15 @@ does not establish regional processing or data residency.
 
 Both call transports use raw G.711 μ-law at 8 kHz. No transcoding, WAV headers or
 separate STT/TTS API is involved. Audio starts only after `session.started`.
+The startup developer message includes the store instructions and greeting, so
+identity, language and owner guidance are present before audio is forwarded.
+The worker compares the configuration echoed by `session.started` with the
+request. `voice_session_context` logs only match flags (`null` means the field
+was not returned), never prompt text. An explicit mismatch closes the session
+through the existing failure path; omitted optional fields remain unverified.
+A matching configuration proves transport acceptance, not model compliance.
+The one-shot greeting retry repeats the store's actual greeting instructions.
+
 The worker forwards continuous input, including silence. A local energy gate
 clears Twilio's pending playback after sustained caller speech; GPT-Live manages
 the conversational interruption itself. The threshold needs telephone testing.

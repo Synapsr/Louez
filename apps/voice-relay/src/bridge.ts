@@ -13,7 +13,7 @@ import { InterruptionDetector, mulawRms } from "./audio.js";
 import { Backend } from "./backend.js";
 import type { Config } from "./env.js";
 import { liveEventSchema, parseJson, twilioEventSchema } from "./events.js";
-import { openLiveSocket, sessionStart } from "./live-session.js";
+import { checkLiveSession, openLiveSocket, sessionStart } from "./live-session.js";
 import { Transcripts } from "./transcripts.js";
 
 type Dependencies = { app?: AppClient; openLive?: typeof openLiveSocket };
@@ -247,6 +247,7 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
     configuredAt = performance.now();
     if (settings.model !== config.AI_PHONE_LIVE_MODEL)
       throw new Error("App and preview model must match");
+    const startRequest = sessionStart(settings);
     live = openLive(config.OPENAI_API_KEY, conversationId);
     live.on("open", () => {
       if (closing) {
@@ -254,7 +255,7 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
         return;
       }
       socketOpenedAt = performance.now();
-      sendLive(sessionStart(settings));
+      sendLive(startRequest);
     });
     live.on("message", (data) => {
       try {
@@ -269,6 +270,18 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
           started = true;
           sessionId = event.session.id;
           liveStartedAt = performance.now();
+          const context = checkLiveSession(settings, event.session);
+          // Only comparisons are logged, never private instructions or caller data.
+          log.info({
+            event: "voice_session_context",
+            conversationId: binding?.conversationId,
+            sessionId,
+            checks: context,
+          });
+          if (Object.values(context).includes(false)) {
+            fail("openai_session_context_mismatch");
+            return;
+          }
           log.info({
             event: "voice_session_ready",
             conversationId: binding?.conversationId,
@@ -291,8 +304,7 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
                 type: "session.instructions.append",
                 event_id: randomUUID(),
                 delegation_id: null,
-                content:
-                  "If neither side has spoken yet, say your configured opening greeting now, then listen. Do not consult the backend. Otherwise continue normally without repeating the greeting or interrupting.",
+                content: `Only if neither side has spoken yet: ${settings.greeting} Otherwise continue normally without repeating the greeting or interrupting.`,
               });
             }, 2000);
           }

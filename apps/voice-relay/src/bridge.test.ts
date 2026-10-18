@@ -6,7 +6,8 @@ import { streamToken } from "@louez/voice/auth";
 import type { LiveRequest, SessionConfig } from "@louez/voice/protocol";
 import { bridge } from "./bridge.js";
 import { configSchema } from "./env.js";
-import { parseJson } from "./events.js";
+import { liveEventSchema, parseJson } from "./events.js";
+import { checkLiveSession, sessionStart as makeSessionStart } from "./live-session.js";
 
 const config = configSchema.parse({
   APP_URL: "https://app.example.com",
@@ -20,9 +21,9 @@ const settings: SessionConfig = {
   voice: "brise",
   model: "gpt-live-1",
   backendModel: "test-backend",
-  instructions: "speak French",
+  instructions: "You answer for Dealer de Matos. Speak French and use tu.",
   backendInstructions: "only authorized tools",
-  greeting: "Bonjour",
+  greeting: "Greet now in French, naming Dealer de Matos, then listen.",
   maxSeconds: 60,
   tools: [],
 };
@@ -82,7 +83,12 @@ test("real WebSocket bridge passes PCMU, clears interrupted playback and settles
       if (!event || typeof event !== "object" || !("type" in event)) return;
       if (event.type === "session.start") {
         sessionStart = event;
-        socket.send(JSON.stringify({ type: "session.started", session: { id: "live_test" } }));
+        socket.send(
+          JSON.stringify({
+            type: "session.started",
+            session: { ...makeSessionStart(settings).session, id: "live_test" },
+          }),
+        );
       } else if (
         event.type === "session.input_audio.append" &&
         "audio" in event &&
@@ -138,11 +144,15 @@ test("real WebSocket bridge passes PCMU, clears interrupted playback and settles
   assert.ok(sessionStart && typeof sessionStart === "object" && "session" in sessionStart);
   assert.deepEqual(sessionStart.session, {
     model: "gpt-live-1",
-    instructions: "speak French",
+    instructions: "You answer for Dealer de Matos. Speak French and use tu.",
     store: false,
     audio: { format: { type: "audio/pcmu", rate: 8000 }, output: { voice: "brise" } },
     input: [
-      { type: "message", role: "developer", content: [{ type: "input_text", text: "Bonjour" }] },
+      {
+        type: "message",
+        role: "developer",
+        content: [{ type: "input_text", text: `${settings.instructions}\n\n${settings.greeting}` }],
+      },
     ],
     delegation: {
       type: "responses",
@@ -326,7 +336,7 @@ test(
         });
         let upstream: WebSocket | undefined;
         let ready = false;
-        let retries = 0;
+        const retries: unknown[] = [];
         const requests: LiveRequest[] = [];
         openai.instance.on("connection", (socket) => {
           upstream = socket;
@@ -340,7 +350,7 @@ test(
             } else if (event.type === "session.input_audio.append") {
               ready = true;
             } else if (event.type === "session.instructions.append") {
-              retries++;
+              retries.push(event);
             } else if (event.type === "session.close") {
               socket.send(
                 JSON.stringify({
@@ -416,7 +426,13 @@ test(
         if (scenario === "hangup")
           caller.send(JSON.stringify({ event: "stop", streamSid: "MZ_test" }));
         await new Promise((resolve) => setTimeout(resolve, scenario === "silence" ? 4300 : 2200));
-        assert.equal(retries, scenario === "silence" ? 1 : 0);
+        assert.equal(retries.length, scenario === "silence" ? 1 : 0);
+        if (scenario === "silence") {
+          const retry = retries[0];
+          assert.ok(retry && typeof retry === "object" && "content" in retry);
+          assert.equal(typeof retry.content, "string");
+          assert.ok(String(retry.content).includes(settings.greeting));
+        }
         if (scenario !== "hangup")
           caller.send(JSON.stringify({ event: "stop", streamSid: "MZ_test" }));
         await until(() => requests.some((request) => request.type === "close"));
@@ -511,4 +527,109 @@ test("startup audio is preserved without adding a permanent playback queue to ca
   assert.deepEqual(Buffer.concat(audio), Buffer.concat([initial, current]));
   caller.send(JSON.stringify({ event: "stop", streamSid: "MZ_test" }));
   await until(() => requests.some((request) => request.type === "close"));
+});
+
+test("resolved session context distinguishes mismatch from fields the provider does not echo", () => {
+  const requested = makeSessionStart(settings).session;
+  const parsed = liveEventSchema.parse({
+    type: "session.started",
+    session: { ...requested, id: "live_context", status: "active" },
+  });
+  assert.equal(parsed.type, "session.started");
+  if (parsed.type !== "session.started") return;
+  assert.ok(
+    Object.values(checkLiveSession(settings, parsed.session)).every((value) => value === true),
+  );
+  assert.ok(
+    Object.values(checkLiveSession(settings, { id: "live_context" })).every(
+      (value) => value === null,
+    ),
+  );
+  const mismatch = checkLiveSession(settings, {
+    ...parsed.session,
+    instructions: null,
+    input: [],
+    audio: { output: { voice: "marin" } },
+  });
+  assert.equal(mismatch.instructions, false);
+  assert.equal(mismatch.startupContext, false);
+  assert.equal(mismatch.voice, false);
+  assert.equal(
+    checkLiveSession(settings, { id: "live_context", delegation: null }).delegation,
+    false,
+  );
+  for (const field of ["instructions", "backendInstructions", "greeting"] as const) {
+    assert.throws(() => makeSessionStart({ ...settings, [field]: "  " }), /context is empty/);
+  }
+});
+
+test("a provider context mismatch closes the session before caller audio is forwarded", async (t) => {
+  const twilio = await server();
+  const openai = await server();
+  const requests: LiveRequest[] = [];
+  let forwardedAudio = 0;
+  t.after(() => {
+    for (const ws of twilio.instance.clients) ws.terminate();
+    for (const ws of openai.instance.clients) ws.terminate();
+    twilio.instance.close();
+    openai.instance.close();
+  });
+  openai.instance.on("connection", (socket) => {
+    socket.on("message", (raw) => {
+      const event = parseJson(raw.toString());
+      if (!event || typeof event !== "object" || !("type" in event)) return;
+      if (event.type === "session.start") {
+        socket.send(
+          JSON.stringify({
+            type: "session.started",
+            session: {
+              ...makeSessionStart(settings).session,
+              id: "live_wrong_context",
+              instructions: "You are a generic assistant.",
+            },
+          }),
+        );
+      } else if (event.type === "session.input_audio.append") {
+        forwardedAudio++;
+      } else if (event.type === "session.close") {
+        socket.send(
+          JSON.stringify({
+            type: "session.closed",
+            reason: "close_requested",
+            usage: { seconds: 0 },
+          }),
+        );
+      }
+    });
+  });
+  twilio.instance.on("connection", (socket) =>
+    bridge(socket, config, {
+      app: async (request) => {
+        requests.push(request);
+        return request.type === "start" ? settings : { allowed: true };
+      },
+      openLive: () => new WebSocket(openai.url),
+    }),
+  );
+  const caller = new WebSocket(twilio.url);
+  t.after(() => caller.terminate());
+  await once(caller, "open");
+  caller.send(JSON.stringify(startEvent()));
+  caller.send(
+    JSON.stringify({
+      event: "media",
+      streamSid: "MZ_test",
+      media: {
+        payload: Buffer.alloc(160, 255).toString("base64"),
+        track: "inbound",
+        timestamp: "0",
+      },
+    }),
+  );
+  await until(() => requests.some((request) => request.type === "close"));
+  assert.equal(forwardedAudio, 0);
+  const closed = requests.find((request) => request.type === "close");
+  assert.ok(closed && closed.type === "close");
+  assert.equal(closed.outcome, "failed");
+  assert.equal(closed.finalized, true);
 });
