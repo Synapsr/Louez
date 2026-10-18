@@ -4,6 +4,10 @@ on:
     paths:
       - "apps/voice-relay/**"
       - "packages/voice/**"
+      - "apps/web/lib/ai/phone/**"
+      - "apps/web/lib/voice/**"
+      - "apps/web/app/api/voice/**"
+      - ".dockerignore"
       - "pnpm-lock.yaml"
       - ".github/workflows/voice.yml"
   push:
@@ -11,6 +15,10 @@ on:
     paths:
       - "apps/voice-relay/**"
       - "packages/voice/**"
+      - "apps/web/lib/ai/phone/**"
+      - "apps/web/lib/voice/**"
+      - "apps/web/app/api/voice/**"
+      - ".dockerignore"
       - "pnpm-lock.yaml"
       - ".github/workflows/voice.yml"
 permissions:

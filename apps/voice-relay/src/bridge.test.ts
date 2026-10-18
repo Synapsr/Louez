@@ -21,9 +21,9 @@ const settings: SessionConfig = {
   voice: "brise",
   model: "gpt-live-1",
   backendModel: "test-backend",
-  instructions: "You answer for Dealer de Matos. Speak French and use tu.",
+  instructions: "You answer for Example Rentals. Speak French and use tu.",
   backendInstructions: "only authorized tools",
-  greeting: "Greet now in French, naming Dealer de Matos, then listen.",
+  greeting: "Greet now in French, naming Example Rentals, then listen.",
   maxSeconds: 60,
   tools: [],
 };
@@ -144,7 +144,7 @@ test("real WebSocket bridge passes PCMU, clears interrupted playback and settles
   assert.ok(sessionStart && typeof sessionStart === "object" && "session" in sessionStart);
   assert.deepEqual(sessionStart.session, {
     model: "gpt-live-1",
-    instructions: "You answer for Dealer de Matos. Speak French and use tu.",
+    instructions: "You answer for Example Rentals. Speak French and use tu.",
     store: false,
     audio: { format: { type: "audio/pcmu", rate: 8000 }, output: { voice: "brise" } },
     input: [
