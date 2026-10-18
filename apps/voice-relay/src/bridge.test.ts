@@ -271,6 +271,18 @@ test(
     await once(caller, "open");
     const callerClosed = once(caller, "close");
     caller.send(JSON.stringify(startEvent()));
+    // Twilio supplies audio (including silence) without a second relay clock.
+    caller.send(
+      JSON.stringify({
+        event: "media",
+        streamSid: "MZ_test",
+        media: {
+          payload: Buffer.alloc(160, 255).toString("base64"),
+          track: "inbound",
+          timestamp: "120",
+        },
+      }),
+    );
     await until(() => ready);
     assert.ok(downstream && upstream);
     // Simulate a saturated downstream socket without allocating a large buffer.
@@ -369,6 +381,18 @@ test(
             );
           }
         }
+        // Twilio supplies audio (including silence) without a second relay clock.
+        caller.send(
+          JSON.stringify({
+            event: "media",
+            streamSid: "MZ_test",
+            media: {
+              payload: Buffer.alloc(160, 255).toString("base64"),
+              track: "inbound",
+              timestamp: "120",
+            },
+          }),
+        );
         await until(() => ready);
         assert.ok(upstream);
         // Live emits silence too: receiving an audio packet is not proof of speech.
@@ -400,3 +424,91 @@ test(
     }
   },
 );
+
+test("startup audio is preserved without adding a permanent playback queue to caller speech", async (t) => {
+  const twilio = await server();
+  const openai = await server();
+  const requests: LiveRequest[] = [];
+  const audio: Buffer[] = [];
+  let upstream: WebSocket | undefined;
+  let sessionRequested = false;
+  t.after(() => {
+    for (const ws of twilio.instance.clients) ws.terminate();
+    for (const ws of openai.instance.clients) ws.terminate();
+    twilio.instance.close();
+    openai.instance.close();
+  });
+  openai.instance.on("connection", (socket) => {
+    upstream = socket;
+    socket.on("message", (raw) => {
+      const event = parseJson(raw.toString());
+      if (!event || typeof event !== "object" || !("type" in event)) return;
+      if (event.type === "session.start") sessionRequested = true;
+      if (
+        event.type === "session.input_audio.append" &&
+        "audio" in event &&
+        typeof event.audio === "string"
+      ) {
+        audio.push(Buffer.from(event.audio, "base64"));
+      }
+      if (event.type === "session.close")
+        socket.send(
+          JSON.stringify({
+            type: "session.closed",
+            reason: "close_requested",
+            usage: { seconds: 3 },
+          }),
+        );
+    });
+  });
+  twilio.instance.on("connection", (socket) =>
+    bridge(socket, config, {
+      app: async (request) => {
+        requests.push(request);
+        return request.type === "start" ? settings : { allowed: true };
+      },
+      openLive: () => new WebSocket(openai.url),
+    }),
+  );
+  const caller = new WebSocket(twilio.url);
+  t.after(() => caller.terminate());
+  const sendAudio = (bytes: Buffer, timestamp: number) =>
+    caller.send(
+      JSON.stringify({
+        event: "media",
+        streamSid: "MZ_test",
+        media: {
+          payload: bytes.toString("base64"),
+          track: "inbound",
+          timestamp: String(timestamp),
+        },
+      }),
+    );
+  await once(caller, "open");
+  caller.send(JSON.stringify(startEvent()));
+  // Two seconds can arrive while the app and upstream session are starting.
+  const initial = Buffer.alloc(16_000, 250);
+  sendAudio(initial, 0);
+  await until(() => sessionRequested);
+  assert.ok(upstream);
+  assert.equal(audio.length, 0, "No audio reaches Live before session.started");
+  const readyAt = performance.now();
+  upstream.send(JSON.stringify({ type: "session.started", session: { id: "live_backlog" } }));
+  await until(() => Buffer.concat(audio).length >= initial.length);
+  assert.ok(
+    performance.now() - readyAt < 300,
+    "Startup audio must not add two seconds of local playback delay",
+  );
+  assert.deepEqual(Buffer.concat(audio), initial, "Keep early caller speech byte for byte");
+  const current = Buffer.alloc(320, 245);
+  const forwardedAt = performance.now();
+  sendAudio(current, 2000);
+  await until(() => Buffer.concat(audio).length >= initial.length + current.length);
+  assert.ok(
+    performance.now() - forwardedAt < 300,
+    "Forward new audio at the incoming transport cadence",
+  );
+  assert.deepEqual(Buffer.concat(audio), Buffer.concat([initial, current]));
+  caller.send(JSON.stringify({ event: "stop", streamSid: "MZ_test" }));
+  await until(() => requests.some((request) => request.type === "close"));
+});

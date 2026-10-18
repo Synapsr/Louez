@@ -23,12 +23,11 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
   const openLive = dependencies.openLive ?? openLiveSocket;
   const transcripts = new Transcripts();
   const vad = new InterruptionDetector(config.VOICE_VAD_THRESHOLD);
-  const pendingAudio: string[] = [];
+  const pendingAudio: Buffer[] = [];
   const marks = new Map<string, number>();
   const responses: { id: string; usage: Usage }[] = [];
   let bufferedBytes = 0;
   let markSequence = 0;
-  let inputTimer: ReturnType<typeof setInterval> | undefined;
   let binding: CallBinding | null = null;
   let live: WebSocket | null = null;
   let sessionId: string | null = null;
@@ -161,7 +160,6 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
     clearTimeout(farewellTimer);
     clearTimeout(greetingTimer);
     clearInterval(syncTimer);
-    clearInterval(inputTimer);
     clearInterval(idleTimer);
     backend.stop();
     // Release the paid upstream even when the app cannot persist final usage.
@@ -197,7 +195,6 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
     clearTimeout(farewellTimer);
     clearTimeout(greetingTimer);
     clearInterval(syncTimer);
-    clearInterval(inputTimer);
     clearInterval(idleTimer);
     if (started && live?.readyState === WebSocket.OPEN) {
       live.send(JSON.stringify({ type: "session.close" }));
@@ -278,6 +275,7 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
             configMs: Math.round(configuredAt - connectedAt),
             connectionMs: Math.round(socketOpenedAt - configuredAt),
             sessionStartMs: Math.round(liveStartedAt - socketOpenedAt),
+            startupAudioMs: bufferedBytes / 8,
           });
           // Startup input is a request, not a guaranteed speech trigger. Nudge
           // once if both sides stay silent, never during an active conversation.
@@ -304,20 +302,17 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
             clearPlayback();
             close();
           }, settings.maxSeconds * 1000);
-          inputTimer = setInterval(() => {
-            if (closing) return;
-            const audio = pendingAudio.shift();
-            if (audio) {
-              bufferedBytes -= Buffer.byteLength(audio, "base64");
-              sendLive({ type: "session.input_audio.append", audio });
-            } else {
-              // Keep the session timeline moving across occasional PSTN gaps.
-              sendLive({
-                type: "session.input_audio.append",
-                audio: Buffer.alloc(160, 255).toString("base64"),
-              });
-            }
-          }, 20);
+          // Preserve anything said during setup, then use Twilio's existing
+          // live cadence. Replaying this buffer on another 20ms timer kept
+          // every later caller frame permanently behind the actual call.
+          if (bufferedBytes > 0) {
+            sendLive({
+              type: "session.input_audio.append",
+              audio: Buffer.concat(pendingAudio).toString("base64"),
+            });
+            pendingAudio.length = 0;
+            bufferedBytes = 0;
+          }
         } else if (event.type === "session.output_audio.delta" && binding && !closing) {
           const bytes = Buffer.from(event.delta, "base64");
           if (!bytes.length) return;
@@ -437,15 +432,20 @@ export function bridge(twilio: WebSocket, config: Config, dependencies: Dependen
         lastCallerAt = Date.now();
         clearPlayback();
       }
+      if (!bytes.length) return;
+      if (started) {
+        // Twilio streams audio, including silence, as it arrives from the call.
+        // Forward it immediately; do not add another playback clock or wait for
+        // a transcript, completed utterance or backend response.
+        sendLive({ type: "session.input_audio.append", audio: event.media.payload });
+        return;
+      }
       bufferedBytes += bytes.length;
       if (bufferedBytes > 24_000) {
         fail("input_audio_overflow");
         return;
       }
-      // Media frames may contain more than 20ms. Split raw PCMU at 160 bytes.
-      for (let offset = 0; offset < bytes.length; offset += 160) {
-        pendingAudio.push(bytes.subarray(offset, offset + 160).toString("base64"));
-      }
+      pendingAudio.push(bytes);
     } catch {
       fail("invalid_twilio_message");
     }

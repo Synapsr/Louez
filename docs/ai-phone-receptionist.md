@@ -65,6 +65,10 @@ speak first. If neither party has spoken two seconds after `session.started`,
 the relay sends one additional greeting instruction. Caller speech, assistant
 speech or text, and call teardown cancel this retry; silence packets do not.
 This is a prompt-based recovery, not a guaranteed first-word deadline.
+The relay forwards Twilio's audio frames directly, including silence, without
+waiting for a transcription or replaying them on a separate timer. Up to three
+seconds of caller audio captured during session setup are preserved and sent
+as soon as Live is ready, then new frames are forwarded at Twilio's cadence.
 When recording is enabled, Twilio still plays the recording notice before the
 session. Fixed outage messages also use Twilio so an OpenAI outage cannot
 suppress the fallback. These short messages use the language's Polly voice,
@@ -158,7 +162,8 @@ reservation system. Keep account-level provider limits as well as call limits.
   otherwise plays an unavailable message and ends the call.
 - The hard duration timer runs independently of caller turns or silence.
 - `voice_session_ready` logs configuration, connection and session startup
-  durations. `voice_first_speech` records the first non-silent output delay;
+  durations, plus the audio buffered during startup. `voice_first_speech` records
+  the first non-silent output delay;
   `voice_greeting_retry` identifies a silent startup. Timings are measured from
   the worker connection, not from PSTN pickup, and contain no conversation text.
 - Session storage at OpenAI is set to `false`. This does not change the API's
