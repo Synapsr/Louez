@@ -16,8 +16,8 @@ build
 
 # Development
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # IDE
 .idea
@@ -61,5 +61,8 @@ SPECIFICATIONS*.md
 CLAUDE.md
 AGENTS.md
 
-# Claude AI context
+# Agent development files
 .claude
+.codex
+.agents
+.agent-docs

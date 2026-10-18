@@ -1,99 +1,129 @@
-# @louez/voice-relay
+# GPT-Live voice relay
 
-A thin, standalone Node WebSocket worker that bridges **Twilio ConversationRelay**
-and the app's **Server-Sent-Events turn endpoint**.
+Twilio Media Streams ↔ OpenAI GPT-Live, with application-owned rental tools.
+The Docker image runs a single bundle built from the frozen workspace lockfile.
+It performs no dependency resolution at deployment time.
+The worker has no database credentials and contains no pricing, availability or
+reservation logic. Shared protocol schemas and voice presets live in
+`packages/voice`; the Next.js app owns store authorization and durable state.
 
-Twilio ConversationRelay owns the call media — Deepgram speech-to-text,
-ElevenLabs text-to-speech, endpointing and barge-in — and opens a single
-WebSocket to this worker for each call, exchanging JSON text messages. For every
-finished caller utterance the worker POSTs the text to the app's
-`/api/voice/turn` endpoint (an SSE stream) and relays the assistant's tokens
-back to Twilio as they arrive, so Twilio can synthesize speech token-by-token.
-On barge-in it aborts the in-flight turn.
+## Runtime
 
-The worker holds **zero business logic and zero database access**. It is fully
-standalone: it does not import anything from the rest of the monorepo, and its
-only runtime dependency is [`ws`](https://github.com/websockets/ws) (everything
-else uses the Node standard library — global `fetch`, `node:crypto`,
-`node:http`).
-
-## How it fits together
-
-```
-Caller ── phone ──▶ Twilio ConversationRelay ── WebSocket ──▶ voice-relay
-                                                                   │
-                                                    POST /api/voice/turn (SSE)
-                                                                   ▼
-                                                              the app
-```
-
-1. The app renders TwiML that connects the call to this worker's `wss` URL,
-   already signed for the call: `wss://<host>/relay?c=<conversationId>&t=<token>`
-   where `t = base64url(HMAC-SHA256(VOICE_RELAY_SIGNING_SECRET, conversationId))`.
-2. The worker validates the token (constant-time) before accepting the socket.
-3. For each final `prompt`, the worker POSTs
-   `{ conversationId, callSid, text }` to `TURN_ENDPOINT_URL`, signing the raw
-   body with `x-relay-signature: base64url(HMAC-SHA256(secret, body))`.
-4. It streams the SSE `token` events back to Twilio, then closes the turn and
-   acts on the `end` control (`continue` / `end` / `transfer`).
-
-## Environment variables
-
-| Variable                     | Required | Default | Description                                                 |
-| ---------------------------- | -------- | ------- | ----------------------------------------------------------- |
-| `PORT`                       | no       | `8080`  | Port for the HTTP health check and WebSocket upgrades.      |
-| `TURN_ENDPOINT_URL`          | yes      | —       | Absolute https URL of the app's SSE turn endpoint.          |
-| `VOICE_RELAY_SIGNING_SECRET` | yes      | —       | HMAC secret shared with the app (handshake + turn signing). |
-
-The worker **fails fast at startup** if `TURN_ENDPOINT_URL` or
-`VOICE_RELAY_SIGNING_SECRET` is missing. See [`.env.example`](./.env.example).
-
-## Endpoints
-
-- `GET /health` → `200 ok`
-- WebSocket upgrade on paths starting with `/relay` (all others are rejected).
-
-## Develop
+Node 22+, pnpm 10.27.0. Build from the monorepo root:
 
 ```sh
-# from the monorepo root
-pnpm --filter @louez/voice-relay build       # compile to dist/
-pnpm --filter @louez/voice-relay type-check   # tsc --noEmit
-pnpm --filter @louez/voice-relay dev          # watch mode (requires Node >= 22)
-pnpm --filter @louez/voice-relay start        # run dist/index.js
+pnpm install --frozen-lockfile
+pnpm --filter @louez/voice build
+pnpm --filter @louez/voice-relay build
+# Export the variables documented in .env.example, then:
+pnpm --filter @louez/voice-relay start
 ```
 
-`dev` uses Node's native TypeScript stripping (`--experimental-strip-types`),
-which requires Node 22+. `build` / `start` work on Node 20+.
+| Variable                                   | Required | Purpose                                                                                |
+| ------------------------------------------ | -------- | -------------------------------------------------------------------------------------- |
+| `APP_URL`                                  | Yes      | HTTPS origin of the web app. Requests go to `/api/voice/live`.                         |
+| `VOICE_RELAY_WS_URL`                       | Yes      | Public WSS origin of this worker, without a path. Used to validate Twilio signatures.  |
+| `VOICE_RELAY_SIGNING_SECRET`               | Yes      | At least 32 random characters; identical on the web app.                               |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | Yes      | Same Twilio account as the web app; validates the media handshake and account binding. |
+| `OPENAI_API_KEY`                           | Yes      | Server-only OpenAI project key with Live and Responses access.                         |
+| `AI_PHONE_LIVE_MODEL`                      | No       | `gpt-live-1`; must match the web app. Previews use this exact model.                   |
+| `PORT`                                     | No       | `8080`.                                                                                |
+| `MAX_CONCURRENT_CALLS`                     | No       | `50`; additional connections are refused.                                              |
+| `VOICE_IDLE_SECONDS`                       | No       | `60`; end an idle call independently of backend activity.                              |
+| `VOICE_VAD_THRESHOLD`                      | No       | `900`, decoded PCM RMS; tune with real telephone noise.                                |
 
-## Deploy (Fly.io)
+For development, build `@louez/voice` first, then run
+`pnpm --filter @louez/voice-relay dev` to restart on TypeScript source changes.
 
-The service is stateful (persistent WebSockets), so it always keeps at least one
-machine running and never auto-stops. See [`fly.toml`](./fly.toml).
+Secrets are not read from a checked-in file. Use your deployment's secret store
+or export a private environment file before starting the worker.
+
+## Deploy
 
 ```sh
-# One-time
-fly launch --no-deploy --copy-config --name louez-voice-relay
-
-# Set the primary_region in fly.toml to match the app's region (see below),
-# then provide the secrets:
-fly secrets set TURN_ENDPOINT_URL="https://app.example.com/api/voice/turn"
-fly secrets set VOICE_RELAY_SIGNING_SECRET="<the same secret the app uses>"
-
-# Deploy
-fly deploy
+docker build -f apps/voice-relay/Dockerfile -t louez-voice-relay .
+docker run --rm -p 8080:8080 --env-file /path/to/private/voice.env louez-voice-relay
 ```
 
-> **Region colocation:** deploy this worker in the **same Fly region as the app**
-> that serves `TURN_ENDPOINT_URL`. Each spoken token makes a round trip to the
-> app, so cross-region latency is heard directly by the caller.
+For EasyPanel, use the GitHub or Git source with the full monorepo, set
+**Source → Build Path** to `/`, then select **Build → Dockerfile** with the path
+`apps/voice-relay/Dockerfile`. Set the domain's target port to `8080`.
+The Build Path must include both `apps/voice-relay` and `packages/voice`; the
+previous app-directory context no longer contains all dependencies. An inline
+Dockerfile source has no repository files and cannot build this image.
 
-## App-side wiring
+For Fly.io, set the app name and region in `fly.toml`, provision the environment
+above with `fly secrets set`, and run from the monorepo root:
 
-For the app to route calls here it must set (in the app's own environment):
+```sh
+fly deploy --config apps/voice-relay/fly.toml
+```
 
-- `VOICE_RELAY_WS_URL` — this service's public `wss://` base URL.
-- `VOICE_RELAY_SIGNING_SECRET` — **identical** to the value configured here.
+Use TLS termination supporting WebSocket upgrades and long-lived connections.
+Keep at least one worker running; rolling deploys should drain active calls.
+Place the worker near the web app and the chosen telephony region. GPT-Live uses
+the OpenAI project's configured service availability; moving this worker alone
+does not establish regional processing or data residency.
 
-The app appends `?c=<conversationId>&t=<token>` to `VOICE_RELAY_WS_URL` when it
-renders the ConversationRelay TwiML.
+## Endpoints and authentication
+
+- `GET /health`: process readiness only; it does not make a paid OpenAI call.
+- `WSS /media`: validates `X-Twilio-Signature` against the configured public
+  origin, then validates a five-minute HMAC bound to the conversation and CallSid
+  from `start.customParameters`. A durable stream/connection claim prevents replay.
+- `POST /preview`: signed internal request; fixed localized sample only, known
+  voice IDs only, ten-second generation, two concurrent generations, bounded cache.
+- Worker → app: timestamped HMAC over method, path and raw JSON. The app checks
+  the call, conversation, stream, connection and current store permissions.
+
+## Audio and lifecycle
+
+Both call transports use raw G.711 μ-law at 8 kHz. No transcoding, WAV headers or
+separate STT/TTS API is involved. Audio starts only after `session.started`.
+The startup developer message includes the store instructions and greeting, so
+identity, language and owner guidance are present before audio is forwarded.
+The worker compares the configuration echoed by `session.started` with the
+request. `voice_session_context` logs only match flags (`null` means the field
+was not returned), never prompt text. An explicit mismatch closes the session
+through the existing failure path; omitted optional fields remain unverified.
+A matching configuration proves transport acceptance, not model compliance.
+The one-shot greeting retry repeats the store's actual greeting instructions.
+
+The worker forwards continuous input, including silence. A local energy gate
+clears Twilio's pending playback after sustained caller speech; GPT-Live manages
+the conversational interruption itself. The threshold needs telephone testing.
+
+Backend function calls come from nested `response.output_item.done`, not a
+transcript fragment or the empty `response.completed.output` array. Results for
+all pending tools are submitted before `response.create` continues the backend.
+The app validates tools and arguments again and persists claims before writes.
+
+Audio buffers, tool count, response count, call duration and concurrency are
+bounded. Shutdown requests `session.close`, waits up to 15 seconds for final
+usage and records whether it was confirmed. The upstream socket closes before
+app persistence, and a ten-second deadline releases Twilio if the app is down. Usage snapshots are cumulative;
+they must never be summed. The app's minute cron reconciles abandoned sessions
+using only their last observed usage.
+
+Transcripts are generated captions with approximate timestamps, not proof that
+every word reached the caller. Twilio marks acknowledge playback; cleared marks
+are discarded. No transcript, audio or tool argument is written to worker logs.
+
+## Tests
+
+```sh
+pnpm --filter @louez/voice test
+pnpm --filter @louez/voice-relay test
+```
+
+The integration tests run local WebSocket peers for Twilio and OpenAI. They do
+not require keys, place calls or incur API costs. A real telephone acceptance
+test is still required to check voice quality, barge-in, carrier timing,
+disclosures, transfer and provider account access before production activation.
+
+## Related
+
+- [Deployment and migration guide](../../docs/ai-phone-receptionist.md)
+- [OpenAI Live WebSockets](https://developers.openai.com/api/docs/guides/voice-websockets?api=live)
+- [OpenAI delegation](https://developers.openai.com/api/docs/guides/live-delegation)
+- [Twilio Media Streams](https://www.twilio.com/docs/voice/media-streams/websocket-messages)

@@ -5813,7 +5813,9 @@
           "defaultBadge": "Empfohlen",
           "defaultVoice": "Empfohlene Stimme",
           "title": "Stimme Ihres Agenten wählen",
-          "description": "Hören Sie die Stimmen an und wählen Sie die, die Ihr Geschäft am Telefon vertritt."
+          "description": "Hören Sie die Stimmen an und wählen Sie die, die Ihr Geschäft am Telefon vertritt.",
+          "languageVoices": "Für diese Sprache",
+          "allVoices": "Alle Stimmen"
         },
         "setup": {
           "step1": "Nummer wählen",
@@ -5873,7 +5875,7 @@
         },
         "notConfigured": {
           "title": "Telefonie nicht konfiguriert",
-          "description": "Der Plattformbetreiber muss einen Telefonieanbieter konfigurieren (AI_PHONE_ENABLED, VOICE_PROVIDER und die Zugangsdaten), um den Sprachagenten zu aktivieren."
+          "description": "Die Telefonie oder der Sprachdienst ist noch nicht vollständig eingerichtet. Wenden Sie sich an die Plattformverwaltung, um den Agenten zu aktivieren."
         },
         "language": "Antwortsprache",
         "languageDescription": "Die Sprache, in der der Assistent mit Anrufern spricht",
@@ -5903,7 +5905,10 @@
           "male": "Männlich"
         },
         "voicePreview": "Anhören",
-        "voiceRecommended": "Empfohlen"
+        "voiceRecommended": "Empfohlen",
+        "voiceMigrated": "Ihre bisherige Stimme wurde durch die empfohlene GPT-Live-Stimme ersetzt. Sie können unten eine andere wählen.",
+        "voicePreviewError": "Die Vorschau ist gerade nicht verfügbar. Bitte versuchen Sie es gleich erneut.",
+        "voicePreviewUnavailable": "Hörproben sind verfügbar, sobald der Sprachdienst eingerichtet ist."
       },
       "settingsNavigation": {
         "label": "Einstellungsnavigation",

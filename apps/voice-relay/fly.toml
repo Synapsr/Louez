@@ -1,17 +1,9 @@
-# Fly.io configuration for the voice-relay worker.
-#
-# IMPORTANT: this service must be region-colocated with the app that serves the
-# turn endpoint (TURN_ENDPOINT_URL) to keep per-token latency low. Set
-# `primary_region` to the same region as the app before deploying.
-#
-# Secrets are NOT stored here — set them with `fly secrets set`:
-#   fly secrets set TURN_ENDPOINT_URL="https://app.example.com/api/voice/turn"
-#   fly secrets set VOICE_RELAY_SIGNING_SECRET="<shared-hmac-secret>"
-
+# Deploy from the monorepo root: fly deploy --config apps/voice-relay/fly.toml
 app = "louez-voice-relay"
 primary_region = "cdg" # change to match the app's region
 
 [build]
+  dockerfile = "apps/voice-relay/Dockerfile"
 
 [env]
   PORT = "8080"
@@ -27,8 +19,8 @@ primary_region = "cdg" # change to match the app's region
 
   [http_service.concurrency]
     type = "connections"
-    soft_limit = 150
-    hard_limit = 200
+    soft_limit = 40
+    hard_limit = 50
 
   [[http_service.checks]]
     method = "GET"

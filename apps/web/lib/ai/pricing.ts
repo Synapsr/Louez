@@ -79,6 +79,20 @@ export function runCostMicroUsd(usage: AdvisorUsage): number {
   return Math.round(usd * USD_MICRO);
 }
 
+/** The phone backend is always OpenAI and has its own configured prices. */
+export function phoneRunCostMicroUsd(usage: AdvisorUsage): number {
+  const input = num(env.AI_PHONE_INPUT_USD_PER_MTOK);
+  const cached =
+    env.AI_PHONE_CACHED_INPUT_USD_PER_MTOK == null
+      ? input
+      : num(env.AI_PHONE_CACHED_INPUT_USD_PER_MTOK);
+  return Math.round(
+    Math.max(0, usage.inputTokens - usage.cachedInputTokens) * input +
+      usage.cachedInputTokens * cached +
+      usage.outputTokens * num(env.AI_PHONE_OUTPUT_USD_PER_MTOK),
+  );
+}
+
 /**
  * Convert a micro-USD cost into micro-credits via the env cost basis.
  * creditsMicro = costUsd / basisUsd × 1e6 = costMicroUsd / basisUsd.

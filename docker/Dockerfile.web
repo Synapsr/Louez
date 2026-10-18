@@ -40,6 +40,7 @@ COPY packages/config/package.json ./packages/config/
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY packages/validations/package.json ./packages/validations/
+COPY packages/voice/package.json ./packages/voice/
 COPY packages/db/package.json ./packages/db/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/email/package.json ./packages/email/
@@ -82,6 +83,7 @@ COPY --from=deps /app/packages/auth/node_modules ./packages/auth/node_modules
 COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
 COPY --from=deps /app/packages/utils/node_modules ./packages/utils/node_modules
 COPY --from=deps /app/packages/validations/node_modules ./packages/validations/node_modules
+COPY --from=deps /app/packages/voice/node_modules ./packages/voice/node_modules
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 COPY --from=deps /app/packages/email/node_modules ./packages/email/node_modules
@@ -107,8 +109,11 @@ COPY --from=deps /root/.cache/node/corepack /root/.cache/node/corepack
 # The contract demo shows the pages of the real contract PDF as images. Its scenes import the
 # date snapshot written alongside them, so both are generated before the app is bundled: images
 # and scenes then carry the same dates, those of the build.
+# The script imports the compiled voice catalog through the app configuration.
+# Build it here because this script runs before Turbo builds app dependencies.
 RUN apk add --no-cache poppler-utils && \
     corepack enable pnpm && \
+    pnpm --filter=@louez/voice build && \
     pnpm --filter=@louez/web demo:documents
 
 # Build the application using Turborepo. CI supplies the commit SHA; direct

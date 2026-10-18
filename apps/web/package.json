@@ -39,6 +39,7 @@
     "@louez/ui": "workspace:*",
     "@louez/utils": "workspace:*",
     "@louez/validations": "workspace:*",
+    "@louez/voice": "workspace:*",
     "@openreplay/tracker": "18.0.6",
     "@orpc/client": "^1.13.6",
     "@orpc/react-query": "^1.13.6",

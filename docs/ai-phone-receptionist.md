@@ -1,388 +1,202 @@
-# Répondeur téléphonique IA — Plan produit & technique
+# AI phone receptionist — GPT-Live
 
-> **Statut** : 📋 Proposition (plan approfondi)
-> **Objectif** : un numéro de téléphone que le client peut appeler et où une IA répond, parle des produits, vérifie les disponibilités et prend une réservation — dans la langue configurée par la boutique, au coût le plus optimisé possible, en consommant les **crédits IA** existants.
+The phone receptionist uses **OpenAI GPT-Live** for live speech and an OpenAI
+Responses model for reasoning and tools. Twilio supplies phone numbers, PSTN,
+optional recordings and transfers. The storefront text advisor can still use
+its own `AI_PROVIDER`: changing that setting does not change the phone agent.
 
----
+## Architecture
 
-## 1. L'idée en une phrase
-
-Le répondeur téléphonique **n'est pas une nouvelle brique à construire de zéro**. C'est un **nouveau canal « voix »** branché devant l'**agent IA qui existe déjà** dans Louez — le _conseiller IA du storefront_ — avec ses outils (`list_products`, `check_availability`, `record_qualification`…), son **système de crédits prépayés** (micro-crédits, plafond par conversation, auto-recharge) et sa configuration par boutique.
-
-```
-Aujourd'hui (texte) :   Widget chat  ──► Agent IA (Vercel AI SDK + outils) ──► Crédits IA
-Demain (voix)      :   Appel tél.  ──► [STT ⇄ TTS] ──► le MÊME Agent IA ──────► Crédits IA
-```
-
-La quasi-totalité de la logique métier (catalogue, disponibilités, qualification, réservation, facturation en crédits) est **déjà écrite et testée**. Le projet consiste à **ajouter la couche téléphonie + parole** et à **étendre le compteur de crédits aux minutes audio**.
-
----
-
-## 2. Ce qui existe déjà et qu'on réutilise tel quel
-
-| Brique                            | Emplacement                                                                                             | Réutilisation pour la voix                                                                                                                                                                 |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Agent IA à outils**             | `apps/web/app/api/storefront/chat/route.ts` + `apps/web/lib/ai/advisor/`                                | ✅ Le cœur. Même `streamText` + `tools`.                                                                                                                                                   |
-| **Outils métier**                 | `apps/web/lib/ai/advisor/tools.ts`                                                                      | ✅ `list_products`, `get_product`, `check_availability`, `get_store_info`, `record_qualification` réutilisés. ♻️ `recommend_products`/`add_to_cart` (web) → remplacés par des outils voix. |
-| **Disponibilités**                | `getStorefrontAvailability` (`@louez/api/services`)                                                     | ✅ Valide déjà horaires + préavis.                                                                                                                                                         |
-| **Prompt système**                | `apps/web/lib/ai/advisor/system-prompt.ts`                                                              | ♻️ Variante « voix » (phrases courtes parlées, épellation, annonce IA). Déjà multilingue.                                                                                                  |
-| **Conversations & transcripts**   | tables `ai_advisor_conversations` / `ai_advisor_messages`                                               | ✅ On y ajoute le canal `phone` + métadonnées d'appel. Le journal/transcript du dashboard fonctionne déjà.                                                                                 |
-| **Crédits IA prépayés**           | `apps/web/lib/ai/advisor/credits.ts`, tables `ai_credits`, `ai_credit_debits`, `ai_credit_transactions` | ✅ Même portefeuille. ♻️ On étend le calcul de coût aux minutes audio.                                                                                                                     |
-| **Tarification / métrage**        | `apps/web/lib/ai/pricing.ts` (`runCostMicroUsd`, `getCreditCostBasisUsd`)                               | ♻️ On ajoute un coût `audio` (par seconde) au coût `tokens`.                                                                                                                               |
-| **Auto-recharge & gate crédits**  | `checkAdvisorCredits`, `maybeTriggerAutoTopup`                                                          | ✅ Réutilisés (gate avant de décrocher).                                                                                                                                                   |
-| **Abstraction fournisseur (SMS)** | `apps/web/lib/sms/` (interface `SmsProvider`, factory, smspartner/twilio/vonage)                        | ✅ Modèle exact à copier pour une abstraction `VoiceProvider`. Et l'envoi SMS sert au récap post-appel.                                                                                    |
-| **Réglages conseiller IA**        | `apps/web/app/(dashboard)/dashboard/settings/ai-advisor/`                                               | ♻️ On y ajoute une carte « Répondeur téléphonique ».                                                                                                                                       |
-| **Plans & droits**                | `apps/web/lib/plans.ts` (`plan.features.aiAdvisor`, `areAiCreditsEnabled`)                              | ♻️ Nouveau droit `features.aiPhone`.                                                                                                                                                       |
-| **i18n**                          | `apps/web/i18n/config.ts` — `fr` (défaut), `en`, `it`, `nl`, `pt`, `de`, `es`, `pl`                     | ✅ Sert de liste des langues configurables.                                                                                                                                                |
-
-**Conséquence stratégique** : l'effort d'ingénierie est concentré sur **1 point** — brancher un flux d'appel sur un agent texte existant — et non sur la reconstruction d'un assistant.
-
----
-
-## 3. Expérience cible (intuitive et simple)
-
-### 3.1 Côté client qui appelle
-
-1. Le client compose le numéro de la boutique.
-2. L'IA décroche **dans la langue configurée** avec une **annonce obligatoire** :
-   > « Bonjour, vous êtes en relation avec l'assistant vocal automatisé de _{Boutique}_. Comment puis-je vous aider ? »
-3. Conversation naturelle : « Vous avez une remorque dispo ce week-end ? » → l'IA vérifie (`check_availability`), propose, pose les questions de qualification du loueur (permis, caution…), **confirme les dates en les répétant**.
-4. **Prise de réservation** : l'IA crée une réservation en attente et **envoie un SMS de récapitulatif + lien de confirmation/paiement** (via le fournisseur SMS déjà intégré).
-5. Repli : « Je vous mets en relation avec la boutique » → transfert vers le numéro du loueur (optionnel), ou prise de message.
-
-### 3.2 Côté loueur (activation en < 2 minutes)
-
-Dans **Réglages → Assistant IA**, une nouvelle carte **« Répondeur téléphonique »** (même page que le conseiller, mêmes crédits) :
-
-| Réglage                          | UX                                                                                                                       | Défaut                 |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
-| **Activer le répondeur**         | Interrupteur                                                                                                             | Off                    |
-| **Numéro**                       | Bouton **« Obtenir un numéro »** (attribution en 1 clic) _ou_ **« Utiliser mon numéro »** (renvoi d'appel / portabilité) | —                      |
-| **Langue de réponse**            | Menu déroulant réutilisant `localeNames` + drapeaux                                                                      | Langue de la boutique  |
-| **Voix**                         | 2-3 voix par langue, avec bouton d'écoute                                                                                | Voix neutre par défaut |
-| **Message d'accueil**            | Texte libre optionnel (repli i18n)                                                                                       | Généré                 |
-| **Que peut faire l'assistant ?** | Cartes radio : _Informer seulement_ / _Informer + prendre des réservations_                                              | Informer + réserver    |
-| **Quand répond-il ?**            | _24/7_ / _Uniquement hors horaires ou quand vous ne décrochez pas_ (mode **débordement**)                                | Hors horaires          |
-| **Transfert vers un humain**     | Numéro optionnel                                                                                                         | Vide                   |
-| **Enregistrement des appels**    | Interrupteur d'_opt-in_ (voir §8)                                                                                        | Off                    |
-| **Crédits IA**                   | Section crédits **déjà existante** (le même solde finance la voix)                                                       | —                      |
-| **Journal des appels**           | Section conversations **déjà existante** (transcripts)                                                                   | —                      |
-
-> 💡 **La fonctionnalité « killer » simple** : le **mode débordement** (« répond quand vous ne décrochez pas / hors horaires »). Zéro friction, valeur immédiate : plus aucun appel manqué, sans changer les habitudes du loueur.
-
----
-
-## 4. Architecture technique
-
-### 4.1 Vue d'ensemble (recommandation MVP)
-
-```
-                         ┌─────────────────────────────────────────────┐
-   Appel entrant (PSTN)  │  Twilio (numéro FR + ConversationRelay)      │
-   ───────────────────►  │  • STT (Deepgram FR) • TTS (ElevenLabs FR)   │
-                         │  • VAD / barge-in / tour de parole           │
-                         └───────────────┬──────────────(WebSocket)─────┘
-                                         │ transcript (texte)  ▲ réponse (texte)
-                                         ▼                     │
-                 ┌───────────────────────────────────────────────────────┐
-                 │  apps/web — nouvelle route /api/voice/relay (WS)        │
-                 │  1. Résout la boutique via le numéro appelé            │
-                 │  2. Gate : plan.features.aiPhone + crédits (hold)      │
-                 │  3. Appelle l'AGENT IA EXISTANT (Vercel AI SDK)        │
-                 │       system = prompt « voix » + langue configurée     │
-                 │       tools = outils voix (réutilisés + adaptés)       │
-                 │  4. Persiste la conversation (canal = 'phone')         │
-                 │  5. À la fin : métrage crédits (audio_sec + tokens)    │
-                 └───────────────────────────────────────────────────────┘
-                                         │
-                                         ▼
-              Drizzle / MySQL  ◄──►  produits, dispo, réservations, crédits
-                                         │
-                                         ▼
-                          SMS de récap (fournisseur SMS existant)
+```text
+Caller → Twilio <Connect><Stream> → voice-relay → OpenAI Live
+                                       ↕            ↕
+                          signed /api/voice/live   Responses backend
+                                       ↕
+                          store-scoped Louez services
 ```
 
-**Pourquoi ConversationRelay pour le MVP** : c'est **l'intégration au plus petit diff** depuis l'agent texte actuel. Twilio gère STT + TTS + détection de fin de parole + interruption (barge-in) et **streame du texte** ; on répond en **texte**. L'agent `streamText` avec ses `tools` tourne **inchangé**. On n'écrit **aucun** code de buffer audio. La langue par boutique = un simple flag de session (locale STT/TTS + voix).
-
-### 4.2 Les deux boucles possibles (et pourquoi on commence en « cascade »)
-
-| Approche                                              | Comment                                                                                   | Coût /min (gros de gamme)                       | Latence | Réutilise l'agent texte ?                  |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------- | ------- | ------------------------------------------ |
-| **Cascade** (STT → LLM texte → TTS) — _recommandée_   | ConversationRelay ou LiveKit orchestrent la parole ; **notre agent texte** est le cerveau | ~€0.03 (self-host) à ~€0.08 (ConversationRelay) | ~1–3 s  | ✅ **Oui, verbatim**                       |
-| **Speech-to-speech natif** (Gemini Live / Nova Sonic) | Le modèle « entend » et « parle » directement                                             | ~€0.01–0.02 (à confirmer)                       | < 1 s   | ❌ Il faut réécrire l'agent en audio natif |
-
-On **démarre en cascade** : réutilisation immédiate de tout l'existant, contrôle/observabilité maximum, métrage token par token. On garde le **speech-to-speech en optimisation Phase 3** si la latence ou le coût l'exigent — la même « interface texte + outils » se reporte.
-
----
-
-## 5. Choix de la stack voix (state of the art, coût optimisé — 2026)
-
-> Prix de gros indicatifs (recherche 2026, avant marge). **À reconfirmer sur les pages tarifaires officielles avant contractualisation**, notamment le tarif entrant France exact.
-
-### 5.1 Recommandation par phase
-
-- **MVP (Phase 1) — le plus rapide, contrôle maximal** :
-  **Twilio (numéro FR + ConversationRelay)** + **notre agent Vercel AI SDK** + modèle **économique (classe Claude Haiku / GPT-4o-mini)**.
-  STT/TTS français **inclus** dans ConversationRelay (Deepgram + ElevenLabs).
-  → **≈ €0.07–0.10/min tout compris**, numéro FR **≈ €1/mois**.
-
-- **Optimisation coût (Phase 3) — le moins cher** :
-  Numéro **Telnyx** (~€1/mois, entrant dès ~€0.002/min) + **LiveKit Agents auto-hébergé** (open-source, SIP natif, pas de taxe par minute) + **Deepgram Nova-3** (STT FR) + notre agent + **Cartesia Sonic** ou **Azure Neural fr-FR** (TTS FR).
-  → **≈ €0.03–0.05/min tout compris**. Contrepartie : on gère l'ops et le SDK JS/TS est moins mûr que le Python.
-
-- **Alternative latence/coût (à évaluer)** :
-  **Google Gemini 2.5 Flash (audio natif)** ou **Amazon Nova Sonic** (voix FR natives) sur une jambe SIP Telnyx. Sub-seconde, coût comparable, **mais** implique de réécrire l'agent en audio natif (perte de la réutilisation directe).
-
-### 5.2 À éviter pour un coût optimisé
-
-- Plateformes **fermées tout-en-un** (Bland ~€0.10–0.13/min) : impossible d'optimiser le modèle/voix FR.
-- **Builders premium** (Synthflow ~€0.14–0.34/min).
-- `gpt-4o-realtime-preview` (~€0.22–0.28/min) : trop cher.
-
-### 5.3 Composants (repères de prix)
-
-| Couche                               | Option retenue               | Prix repère                                    | Source                                  |
-| ------------------------------------ | ---------------------------- | ---------------------------------------------- | --------------------------------------- |
-| Numéro FR (DID)                      | Telnyx / Twilio              | ~€1/mois (Telnyx) · €1–3 (Twilio, à confirmer) | telnyx.com/phone-numbers/france         |
-| Transport entrant                    | Telnyx / Twilio              | €0.002 (Telnyx) · ~€0.008/min (Twilio)         | telnyx.com/pricing/voice-api            |
-| Orchestration STT+TTS+tour de parole | ConversationRelay            | €0.07/min (LiveKit auto-hébergé ≈ €0.01)       | twilio.com/docs/voice/conversationrelay |
-| STT FR (si cascade maison)           | Deepgram Nova-3              | ~€0.005–0.006/min                              | deepgram.com/pricing                    |
-| TTS FR (si cascade maison)           | Cartesia Sonic / Azure fr-FR | ~€0.014/min                                    | —                                       |
-| LLM (agent, surtout en écoute)       | Haiku / GPT-4o-mini          | ~€0.005–0.01/min                               | —                                       |
-
----
-
-## 6. Modèle de coût & intégration aux crédits IA
-
-### 6.1 Le principe : le même portefeuille, deux compteurs
-
-Le système actuel facture une conversation texte au **coût réel des tokens**, converti en crédits via `AI_CREDIT_COST_BASIS_USD` (le montant USD qui vaut **1 crédit**), avec un **plafond de 1 crédit par conversation** (`recordAdvisorRunDebit`).
-
-Pour la voix, le coût est **dominé par les minutes audio**, pas par les tokens. On **étend le calcul** à deux quantités mesurées par appel :
-
-```
-coût_appel_usd = (audio_secondes × tarif_audio_par_seconde)      ← téléphonie + STT + TTS
-               + (tokens_in × prix_in + tokens_out × prix_out)   ← LLM (déjà mesuré, usage AI SDK)
-
-crédits_débités = ceil( coût_appel_usd × marge / AI_CREDIT_COST_BASIS_USD )
-```
-
-- **Nouveaux `env`** (mêmes conventions que la tarification actuelle) : `AI_VOICE_AUDIO_USD_PER_MIN` (tarif audio mélangé de la stack retenue), et réutilisation des `AI_ADVISOR_*_USD_PER_MTOK` pour les tokens.
-- **Marge** : appliquer un multiplicateur (ex. ×2–3) pour absorber la dérive des tarifs et dégager la marge (comme aujourd'hui, jamais en dur dans le repo — via env).
-
-### 6.2 Autoriser puis régulariser (authorize-then-settle)
-
-1. **Au décrochage** : `checkAdvisorCredits` (existe déjà) + **réservation d'un hold** estimé (ex. 8 min au tarif haut). Si le solde prépayé + inclus est insuffisant → l'IA ne décroche pas (message neutre ou renvoi direct vers le loueur). Le hold **borne le risque** d'un appel qui dérape.
-2. **En fin d'appel** : calcul du **coût réel** (audio + tokens) → **débit réel**, libération du solde du hold, arrondi au crédit. Réutilise `ai_credit_debits` (idempotent via `dedupKey = call:<callId>`).
-3. **Plafond par appel** : nouveau plafond **configurable** (le plafond « 1 crédit / conversation » actuel est adapté au texte ; un appel vocal coûte davantage). Défaut prudent (ex. quelques crédits) pour éviter les appels-fleuves coûteux.
-4. **Auto-recharge** : `maybeTriggerAutoTopup` réutilisé tel quel.
-
-### 6.3 Ordre de grandeur d'un appel de réservation (3–4 min)
-
-| Scénario stack                                       | Coût de gros | Ce qu'on facture (avec marge)             |
-| ---------------------------------------------------- | ------------ | ----------------------------------------- |
-| **LOW** (cascade auto-hébergée)                      | €0.08–0.11   | ~quelques crédits                         |
-| **TYPICAL** (ConversationRelay, MVP)                 | €0.25–0.33   | à calibrer via `AI_CREDIT_COST_BASIS_USD` |
-| **HIGH** (ElevenLabs premium + modèle haut de gamme) | €0.41–0.55   | —                                         |
-
-> Le nombre exact de crédits par appel se **pilote entièrement par env** (`AI_CREDIT_COST_BASIS_USD`, tarifs audio/tokens, marge) — aucune valeur commerciale n'est figée dans le code, exactement comme la tarification texte actuelle.
-
-### 6.4 Transparence
-
-Chaque appel stocke ses **lignes de coût** (secondes audio, tokens, coût calculé, crédits débités) → réconciliation + affichage d'un détail d'usage lisible au loueur dans le journal des appels.
-
----
-
-## 7. Modèle de données (changements)
-
-Additif et rétro-compatible :
-
-- **`ai_advisor_conversations`** (extension) :
-  - `channel` : `enum('web','phone')` (défaut `'web'`) — le transcript/dashboard existants marchent déjà.
-  - `caller_phone`, `provider_call_id`, `duration_seconds`, `audio_cost_micro_usd`.
-- **`ai_credit_debits`** (extension) : `audio_seconds`, `audio_cost_micro_usd` (les colonnes tokens existent déjà) ; `dedupKey` passe à `call:<callId>` pour la voix.
-- **`store_phone_numbers`** (nouvelle) : `store_id`, `e164`, `provider` (`twilio|telnyx`), `provider_number_id`, `status` (`active|pending|released`), `capabilities`. Permet 1 numéro par boutique (multi-tenant).
-- **`AiPhoneSettings`** (nouveau type, `packages/types/src/store.ts`, à côté d'`AiAdvisorSettings`) :
-  ```ts
-  interface AiPhoneSettings {
-    enabled: boolean;
-    language: Locale; // langue de réponse configurée
-    voiceId?: string;
-    greeting?: string;
-    canTakeReservations: boolean;
-    answerMode: "always" | "after_hours" | "on_no_answer"; // mode débordement
-    transferNumber?: string;
-    recordCalls: boolean; // opt-in (RGPD)
-  }
-  ```
-- **Plan** : `features.aiPhone: boolean` dans `PlanFeatures` (droit d'accès).
-- **`env`** : `VOICE_PROVIDER`, `TWILIO_*` / `TELNYX_*`, `AI_VOICE_AUDIO_USD_PER_MIN`, `AI_PHONE_ENABLED`. Le répondeur reste **invisible tant que non configuré** (comme le conseiller aujourd'hui).
-
----
-
-## 8. Adaptation des outils de l'agent pour la voix
-
-L'agent voix appelle `createPhoneAgentTools(ctx)` — dérivé de `createAdvisorTools` :
-
-| Outil                                                                  | Statut        | Note voix                                                                                                                       |
-| ---------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `list_products`, `get_product`, `check_availability`, `get_store_info` | ✅ Réutilisés | Résultats **résumés à l'oral** (pas de cartes).                                                                                 |
-| `record_qualification`                                                 | ✅ Réutilisé  | Toujours écrit faits + validation dans la conversation.                                                                         |
-| `recommend_products` (cartes web)                                      | ♻️ Remplacé   | Recommandation **parlée** ; option `send_sms_recap` avec liens.                                                                 |
-| `add_to_cart` (client web)                                             | ♻️ Remplacé   | **`create_reservation_hold`** : crée une réservation `pending` via le service réservations existant (pas de panier navigateur). |
-| —                                                                      | ➕ Nouveau    | **`send_sms_recap`** : SMS récap + lien confirmation/paiement (fournisseur SMS existant).                                       |
-| —                                                                      | ➕ Nouveau    | **`transfer_to_human`** : transfert SIP/DTMF vers `transferNumber` (désactivé par défaut, voir toll fraud).                     |
-| —                                                                      | ➕ Nouveau    | **`take_message`** : laisse un message/callback si l'IA ne peut pas conclure.                                                   |
-
-**Prompt système « voix »** (`buildPhoneAgentSystemPrompt`) — variante du prompt conseiller :
-
-- Répond **dans la langue configurée** (`settings.language`), pas la locale navigateur.
-- **Phrases courtes, parlées**, une question à la fois ; **répète et confirme** dates/nombres ; épelle si besoin (noms, e-mails).
-- **Annonce IA obligatoire** dès la première phrase (EU AI Act, §9).
-- Réutilise le durcissement anti-injection et l'injection de la guidance produit (`products.aiContext`) et du `storeContext`.
-
----
-
-## 9. Conformité, sécurité, fraude
-
-| Sujet                                      | Exigence                                                                              | Implémentation                                                                                                                                                                                                                                                                         |
-| ------------------------------------------ | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **EU AI Act — art. 50 (transparence)**     | Informer clairement l'appelant qu'il parle à une **IA**.                              | Phrase d'accueil dès le décrochage (dans la langue configurée). Non négociable, coût nul.                                                                                                                                                                                              |
-| **RGPD / CNIL — enregistrement & données** | Base légale + information + durée de conservation limitée si on enregistre/transcrit. | Enregistrement **opt-in** par boutique (défaut Off). Annonce si activé. Rétention minimale, **hébergement/traitement UE** (co-localiser STT/LLM/TTS en région UE). **DPA** avec chaque sous-traitant (Twilio/Deepgram/ElevenLabs/LLM). PII réservation minimisée. Voie de suppression. |
-| **ARCEP — numérotation FR**                | KYC / preuve d'établissement pour un DID géographique ; portabilité fixe encadrée.    | Prévoir le KYC fournisseur avant de promettre une activation instantanée par boutique. Portabilité d'un fixe pro : **≈ 7 jours ouvrés** (objectif 3).                                                                                                                                  |
-| **Fraude télécom (toll fraud)**            | Un répondeur qui peut composer vers l'extérieur est une surface d'attaque.            | **Sortant désactivé par défaut** ; `transfer_to_human` restreint au numéro du loueur ; **cap de concurrence par boutique** ; rate-limit (réutiliser `checkAdvisorRateLimit`) ; hold prépayé qui borne la casse ; alertes sur anomalie de dépense.                                      |
-| **Latence (< 800 ms/tour idéal)**          | La cascade ajoute ~1,5–3 s ; l'audio 8 kHz dégrade le STT.                            | Streamer la 1re phrase en TTS immédiatement (découpage en phrases), LLM rapide, **tester la latence FR sur le vrai chemin SIP** avant lancement ; bascule audio-natif possible si l'UX en pâtit.                                                                                       |
-
----
-
-## 10. Plan de déploiement par phases
-
-### Phase 0 — Preuve de concept (spike, ~quelques jours)
-
-- Twilio ConversationRelay + WebSocket → agent existant, **un numéro FR de test**, français, sans crédits.
-- But : valider la latence FR de bout en bout et la qualité STT/TTS sur le vrai chemin SIP.
-
-### Phase 1 — MVP activable
-
-- Abstraction `VoiceProvider` (calquée sur `SmsProvider`) + provider Twilio.
-- Route `/api/voice/relay` (WS) : résolution boutique par numéro, gate plan+crédits (hold), agent voix, persistance `channel='phone'`.
-- **Outils voix** (`create_reservation_hold`, `send_sms_recap`) + prompt voix + **annonce IA**.
-- **Métrage crédits audio+tokens** (authorize-then-settle) + plafond par appel.
-- **Carte de réglages** « Répondeur téléphonique » : activer, **obtenir un numéro**, **langue**, mode réponse (**débordement**), que peut faire l'IA.
-- Journal des appels (transcripts existants) + détail de coût.
-- Droit `features.aiPhone`.
-
-### Phase 2 — Confort & robustesse
-
-- Choix de **voix** + écoute, message d'accueil personnalisé.
-- **Transfert vers humain**, prise de message/callback.
-- **Enregistrement opt-in** conforme CNIL (stockage UE, rétention, suppression).
-- **Portabilité / renvoi** du numéro existant du loueur.
-- Alertes anti-fraude, tableaux d'usage.
-
-### Phase 3 — Optimisation coût & croissance
-
-- Migration de l'orchestration vers **LiveKit auto-hébergé** (ou Telnyx) pour supprimer la taxe €0.07/min → **~€0.03/min**.
-- Évaluer **audio natif** (Gemini Live / Nova Sonic) pour la latence.
-- Rappels sortants (avec garde-fous stricts), analytics de conversion appel → réservation.
-
----
-
-## 11. Risques & décisions à trancher
-
-| Décision            | Options                                                                         | Reco                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Numéro par boutique | 1 DID dédié / boutique **vs** numéro partagé + routage                          | **1 DID par boutique** (simple, marque, multi-tenant naturel).                                   |
-| Fournisseur MVP     | Twilio ConversationRelay **vs** managé (Vapi/Retell) **vs** self-host (LiveKit) | **Twilio ConversationRelay** (plus petit diff, contrôle, coût correct), puis LiveKit en Phase 3. |
-| Boucle voix         | Cascade **vs** audio natif                                                      | **Cascade** d'abord (réutilise l'agent), audio natif en option.                                  |
-| Modèle LLM voix     | Haiku / GPT-4o-mini vs plus gros                                                | **Économique** (surtout en écoute) — piloté par `AI_ADVISOR_MODEL`.                              |
-| Enregistrement      | Off / opt-in / on                                                               | **Opt-in** (défaut Off) pour la conformité.                                                      |
-
-**Points à confirmer avant contractualisation** : tarif entrant **France** exact (Twilio/Telnyx), coût mensuel réel du DID FR, exigences **KYC ARCEP** par fournisseur, et prix **audio natif** Gemini/Nova (écarts constatés entre agrégateurs).
-
----
-
-## 12. Estimation d'effort (indicative)
-
-| Lot             | Effort                     |
-| --------------- | -------------------------- |
-| Phase 0 (spike) | ~2–4 j                     |
-| Phase 1 (MVP)   | ~2–3 sem                   |
-| Phase 2         | ~2–3 sem                   |
-| Phase 3         | ~2–4 sem (selon self-host) |
-
-Le MVP est **court** précisément parce que l'agent, les outils, les crédits et le dashboard **existent déjà** — on ajoute la couche téléphonie et le métrage audio.
-
----
-
-## 13. Implémentation livrée (MVP)
-
-> Ce plan a été **implémenté** dans le repo (transport **Twilio TwiML `<Gather>`**, tour par tour — compatible avec le serveur Next.js standalone, sans WebSocket). La couche est **invisible tant que non configurée**.
-
-### 13.1 Variables d'environnement
-
-| Variable                                  | Rôle                                                                                     |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `AI_PHONE_ENABLED`                        | Interrupteur maître (`true` pour activer).                                               |
-| `VOICE_PROVIDER`                          | Fournisseur téléphonie (`twilio`).                                                       |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Identifiants Twilio — **validation de signature** des webhooks.                          |
-| `AI_PHONE_MODEL`                          | Modèle du répondeur (repli : `AI_ADVISOR_MODEL` → `AI_MODEL` → défaut).                  |
-| `AI_PHONE_MAX_CALL_SECONDS`               | Plafond dur de durée d'appel (défaut 600 s).                                             |
-| `AI_VOICE_AUDIO_USD_PER_MIN`              | Coût audio de la stack, USD/min — **métrage crédits** (commercial, hors `.env.example`). |
-| `AI_PHONE_MAX_CREDITS_PER_CALL`           | Plafond de crédits par appel (défaut 20).                                                |
-
-Réutilise l'existant : `AI_PROVIDER` / `AI_API_KEY` (cerveau), `AI_CREDITS_ENABLED` + `AI_CREDIT_COST_BASIS_USD` + `AI_ADVISOR_*_USD_PER_MTOK` (facturation).
-
-### 13.2 Endpoints (webhooks Twilio)
-
-| Webhook Twilio                     | URL à configurer                   |
-| ---------------------------------- | ---------------------------------- |
-| **Voice — A call comes in** (POST) | `https://<app>/api/voice/incoming` |
-| **Call status changes** (POST)     | `https://<app>/api/voice/status`   |
-
-`/api/voice/respond` est appelé automatiquement par Twilio à chaque tour (URL générée côté serveur). Les trois routes sont **publiques mais authentifiées par la signature `X-Twilio-Signature`**, entrées **validées par Zod**, requêtes **scopées par `storeId`**.
-
-### 13.3 Base de données
-
-Migration **`0052_ai_phone_receptionist.sql`** : table `store_phone_numbers` ; colonnes `channel`/`caller_phone`/`provider_call_id`/`duration_seconds` sur `ai_advisor_conversations` ; `audio_seconds` sur `ai_credit_debits` ; `ai_phone_settings` sur `stores`.
-
-### 13.4 Configuration côté loueur
-
-**Réglages → Assistant IA → carte « Répondeur téléphonique »** : activer, saisir le numéro, choisir la langue, autoriser la prise de réservation, mode de réponse (toujours / hors horaires), message d'accueil et numéro de transfert. Les crédits IA et le journal des conversations (transcripts) sont partagés avec le conseiller.
-
-### 13.5 Principaux fichiers ajoutés
-
-- `apps/web/lib/voice/` — abstraction fournisseur (interface + Twilio, TwiML + signature).
-- `apps/web/lib/ai/phone/` — prompt voix, outils, agent, crédits (métrage audio+tokens), messages parlés (8 langues), webhook.
-- `apps/web/app/api/voice/{incoming,respond,status}/` — webhooks.
-- `apps/web/app/(dashboard)/dashboard/settings/ai-advisor/ai-phone-form.tsx` + `phone-actions.ts` — réglages.
-
-### 13.6 Limites connues / évolutions
-
-- Attribution automatique de numéro (achat via API) non incluse : le numéro est **lié manuellement** (le loueur configure le webhook et saisit le numéro).
-- L'enregistrement d'appel n'est pas activé (choix RGPD) ; les transcripts texte sont conservés comme pour le conseiller.
-
-### 13.7 Transport streaming — ConversationRelay + ElevenLabs (livré)
-
-Un second transport, **streaming temps réel**, est disponible derrière la même interface `VoiceProvider`, activable par variables d'environnement (aucune valeur commerciale/voix en dur). Twilio **ConversationRelay** gère STT (Deepgram), TTS (**ElevenLabs**), l'endpointing et le **barge-in**, et n'échange que du **texte** sur un WebSocket. L'agent Vercel AI SDK, les outils et le métrage crédits sont **réutilisés tels quels** — seul le tour passe de `generateText` à `streamText`.
-
-```
-Appel → Twilio ConversationRelay (STT Deepgram + TTS ElevenLabs + barge-in)
-      ⇄ 1 WebSocket texte ⇄ worker apps/voice-relay (glue, zéro logique métier)
-                                 ⇄ SSE signé → /api/voice/turn (agent + tools + DB + crédits)
-```
-
-**Activer** : déployer le worker `apps/voice-relay` (voir son README — Fly.io, toujours‑actif, colocalisé avec l'app), puis côté app : `AI_PHONE_TRANSPORT=relay`, `VOICE_RELAY_WS_URL=wss://…`, `VOICE_RELAY_SIGNING_SECRET=<partagé>`, `AI_PHONE_TTS_PROVIDER=ElevenLabs`, `AI_PHONE_STT_PROVIDER=Deepgram`, `AI_PHONE_VOICES={"fr":"<voiceId>",…}` (ou `AI_PHONE_DEFAULT_VOICE`, ou la voix par boutique). Le webhook Twilio du numéro reste `…/api/voice/incoming` ; en mode relay, `incoming` renvoie `<Connect><ConversationRelay>` au lieu de `<Gather>`. Non configuré ⇒ repli automatique sur `<Gather>`.
-
-**Endpoints ajoutés** : `POST /api/voice/turn` (SSE, signé HMAC — la boucle par tour) et `POST /api/voice/relay-action` (handback de fin de session : transfert `<Dial>` / raccrochage). **Coût** : ConversationRelay ~0,07 $/min + PSTN + ElevenLabs ⇒ ajuster `AI_VOICE_AUDIO_USD_PER_MIN` (seul changement de facturation ; le métrage tokens est inchangé).
-
----
-
-## Annexe — Sources (recherche 2026, prix à revérifier)
-
-- Twilio ConversationRelay — twilio.com/docs/voice/conversationrelay/best-practices ; tarifs voix FR — twilio.com/en-us/voice/pricing/fr
-- Telnyx — telnyx.com/phone-numbers/france · telnyx.com/pricing/voice-api
-- LiveKit Agents — docs.livekit.io/telephony/agents-integration · livekit.com/pricing
-- Deepgram — deepgram.com/pricing · ElevenLabs Agents — elevenlabs.io/pricing/agents · Cartesia — texttolab.com/blog/cartesia-pricing · Azure TTS — texttolab.com/blog/azure-text-to-speech-pricing
-- Gemini — ai.google.dev/gemini-api/docs/pricing · Amazon Nova Sonic — aws.amazon.com/about-aws/whats-new/2025/12/amazon-nova-2-sonic-real-time-conversational-ai
-- Comparatif temps réel 2026 — apiscout.dev/guides/realtime-voice-ai-apis-comparison-2026
+`apps/voice-relay` handles persistent WebSockets, PCMU audio, interruptions,
+function-call transport and bounded voice previews. `packages/voice` contains
+the shared wire contracts, HMAC helpers and public voice catalog. The web app
+authorizes every session and tool against its store, calls the existing catalog,
+quote and reservation services, and persists transcripts, usage and outcomes.
+
+The model never calculates an authoritative price or availability. A reservation
+write requires a recent successful quote for the same items and an explicit
+caller-confirmation argument. Every write is claimed durably before execution;
+uncertain writes are not retried. At most one successful booking is created per
+call. It remains a pending request for the store to confirm. An SMS is promised
+only when the SMS provider reported success.
+
+## Configuration
+
+1. Apply the committed DB migrations, including `0080_gpt_live_voice.sql`.
+2. Deploy the [worker](../apps/voice-relay/README.md) with a private OpenAI project
+   key that can access GPT-Live and the selected Responses model.
+3. Configure the web app:
+
+| Variable                                  | Meaning                                                                 |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| `AI_PHONE_ENABLED=true`                   | Enables the optional phone feature.                                     |
+| `VOICE_PROVIDER=twilio`                   | Telephony provider.                                                     |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Signature validation and telephony management.                          |
+| `VOICE_RELAY_WS_URL`                      | Public worker origin, e.g. `wss://voice.example.com`. No path or query. |
+| `VOICE_RELAY_SIGNING_SECRET`              | Shared random secret, minimum 32 characters.                            |
+| `AI_PHONE_LIVE_MODEL`                     | Defaults to `gpt-live-1`; match the worker's preview model.             |
+| `AI_PHONE_BACKEND_MODEL`                  | Defaults to `gpt-5.6-luna`; must support Responses tools.               |
+| `AI_PHONE_DEFAULT_VOICE`                  | Optional valid preset overriding language recommendations.              |
+| `AI_PHONE_MAX_CALL_SECONDS`               | Hard audio-session limit, default 600, maximum 3600.                    |
+| `TWILIO_ADDRESS_SID`, `TWILIO_BUNDLE_SID` | Optional regulatory identifiers for number provisioning.                |
+
+4. Configure the Twilio number to POST incoming calls to
+   `https://<app>/api/voice/incoming` and status changes to
+   `https://<app>/api/voice/status`. Existing provisioned numbers already use
+   these URLs. WebSocket upgrades must reach the worker's `/media` endpoint.
+5. Enable the store's phone agent on an eligible plan. Choose language, voice,
+   greeting, booking permissions, answer mode and optional transfer/recording.
+6. Keep the authenticated `/api/cron` minute job running for abandoned-session
+   reconciliation and existing number renewals.
+
+GPT-Live answers with the selected voice, greeting the caller with the store name
+and a short invitation to explain their needs, or using the merchant's custom
+greeting. No separate automated-call announcement is added. The agent answers
+honestly if asked whether it is an AI. Startup input explicitly asks Live to
+speak first. If neither party has spoken two seconds after `session.started`,
+the relay sends one additional greeting instruction. Caller speech, assistant
+speech or text, and call teardown cancel this retry; silence packets do not.
+This is a prompt-based recovery, not a guaranteed first-word deadline.
+The relay forwards Twilio's audio frames directly, including silence, without
+waiting for a transcription or replaying them on a separate timer. Up to three
+seconds of caller audio captured during session setup are preserved and sent
+as soon as Live is ready, then new frames are forwarded at Twilio's cadence.
+When recording is enabled, Twilio still plays the recording notice before the
+session. Fixed outage messages also use Twilio so an OpenAI outage cannot
+suppress the fallback. These short messages use the language's Polly voice,
+not the selected Live preset.
+
+Store owner guidance from the AI advisor settings is supplied to both GPT-Live
+and its reasoning backend. Live applies the requested tone and form of address
+from the opening question; the backend also receives the catalog, store facts
+and per-product guidance. The default opening question adapts to that tone,
+while custom greetings keep their intended meaning. An online-booking question
+must be answered before offering a separate phone-booking flow. GPT-Live may
+use brief, natural acknowledgments while the backend checks information or
+performs an action. The backend returns the useful answer without adding a
+second waiting phrase; neither model claims a result before it is confirmed.
+
+## Voice selection
+
+The dashboard offers the 31 documented public multilingual Live presets, with **Brise** recommended
+for French and **Sillage** as another French option. Recommendations also exist
+for German, Portuguese and English. A preset's regional influence is not a
+language restriction: preview it in the store's selected language.
+The picker initially shows presets for the selected language, with a multilingual
+fallback when no dedicated preset exists. **All voices** opens the full catalog.
+Changing the filter does not overwrite a previously selected voice.
+
+Previews use the same Live model and voice as calls, with a fixed localized
+greeting. They are permission-checked, rate-limited, bounded to ten seconds and
+cached by preset/language/model. Generation is billable to the operator's OpenAI
+project, separate from customer call credits. No API key reaches the browser.
+Previews require the configured Live worker and shared signing secret, independently
+of Twilio provisioning. Disabled preview buttons explain the configuration requirement.
+
+## Migrating from ConversationRelay / Gather
+
+Deploy the migration, app and worker together after draining current calls.
+There is no automatic fallback to the old speech pipeline.
+
+- Removed: `/api/voice/turn`, `/api/voice/respond`, `/api/voice/relay-action`,
+  ElevenLabs discovery/previews and the old AI SDK phone turn loop.
+- New: signed `/api/voice/live`, signed Twilio `/api/voice/stream-action`,
+  `voice_session` and `voice_tool_execution` tables.
+- Remove `AI_PHONE_TRANSPORT`, `AI_PHONE_MODEL`, `TURN_ENDPOINT_URL`,
+  `AI_PHONE_TTS_PROVIDER`, `AI_PHONE_STT_PROVIDER`, `AI_PHONE_VOICES`,
+  `AI_PHONE_VOICE_CATALOG`, `AI_PHONE_RECOMMENDED_VOICES`, `ELEVENLABS_API_KEY`.
+- Old stored voice IDs are safely resolved to a valid recommendation. The form
+  explains the change; saving replaces the old value. Existing transcripts,
+  numbers, business settings and recordings are preserved.
+- Replace any old `AI_PHONE_DEFAULT_VOICE` with a supported preset or unset it.
+- Build/deploy the worker **from the monorepo root**, including `packages/voice`.
+
+Rollback: disable new calls, drain active sessions, redeploy the previous app
+and worker together, and restore the previous private environment. The added
+tables can remain; the migration does not delete or rewrite existing records.
+Voices saved as Live presets must be reselected for an old ElevenLabs deployment.
+
+## Usage and billing
+
+There are distinct costs: Live session seconds, delegated Responses tokens,
+Twilio transport, number rental, worker hosting and any transferred human leg.
+No provider rate or commercial margin is hardcoded.
+
+`session.closed.usage.seconds` confirms audio duration. Interim usage snapshots
+are cumulative and never added together. The full Twilio duration is retained
+on the conversation; per-response token usage and the model/voice snapshot are
+also retained when customer credits are disabled. PSTN duration is not used to bill GPT-Live time after a human transfer.
+If finalization is lost, only the observed lower bound is settled and
+`usage_finalized=false` remains available for operator reconciliation.
+
+Configure `AI_VOICE_AUDIO_USD_PER_MIN` for the combined Live and transport cost
+during the AI portion. This is a configured cost estimate, not a Twilio invoice
+import. Set separate `AI_PHONE_INPUT_USD_PER_MTOK`,
+`AI_PHONE_OUTPUT_USD_PER_MTOK`, `AI_PHONE_CACHED_INPUT_USD_PER_MTOK` for the chosen
+Responses model; the advisor's token rates are not reused.
+
+The existing `AI_PHONE_CREDITS_PER_MINUTE` flat customer tariff remains optional.
+Otherwise the configured USD cost basis and per-call credit cap apply. A flat
+tariff must cover at least one started minute to accept a new call; duration is
+bounded by the available balance and rechecked during the call. Concurrent calls
+and other credit-consuming features share the wallet; the gate is not a credit
+reservation system. Keep account-level provider limits as well as call limits.
+
+## Failure handling and operations
+
+- Twilio signatures and short-lived call-bound HMACs are both validated.
+- The app claims a stream and a worker-generated connection ID once. It scopes
+  all tool requests to that call and its store, with current feature checks.
+- A five-minute quote gate, serialized write claims and cached results protect
+  against duplicate bookings after retries. An unresolved tool operation is
+  handed off for human follow-up; do not blindly re-run it.
+- A worker failure transfers to the configured human number when possible,
+  otherwise plays an unavailable message and ends the call.
+- The hard duration timer runs independently of caller turns or silence.
+- `voice_session_ready` logs configuration, connection and session startup
+  durations, plus the audio buffered during startup. `voice_first_speech` records
+  the first non-silent output delay;
+  `voice_greeting_retry` identifies a silent startup. Timings are measured from
+  the worker connection, not from PSTN pickup, and contain no conversation text.
+- Session storage at OpenAI is set to `false`. This does not change the API's
+  applicable retention policy. Optional Twilio recording still follows the
+  store setting. New application metadata is erased with store account deletion.
+- Generated transcript fragments are approximate captions, not a guaranteed
+  record of heard speech. Interrupted audio may still appear in those captions.
+
+For uncertain operations, inspect `voice_tool_execution.status='started'` and
+the associated reservation before manual action. For incomplete usage, inspect
+`voice_session.usage_finalized=false` and reconcile with provider logs. Never
+infer a successful booking from spoken text alone.
+
+## Validation before enabling production calls
+
+Automated checks: shared authentication/catalog tests; worker protocol tests;
+local WebSocket integration for audio, interruption and cumulative usage;
+TypeScript checks; schema migration generation. No paid API is used by tests.
+
+Test a real staging number for French names/dates/prices, noise and barge-in,
+voice preview consistency, successful and refused bookings, changed dates,
+duplicate callbacks, disconnect during a tool, transfers, exhausted credits,
+maximum duration, recording disclosure and a worker restart. Check actual
+reservations, usage rows and heard audio together. Compare latency and task
+completion against recorded baseline calls before claiming a quality gain.
+
+## Related
+
+- [Worker deployment](../apps/voice-relay/README.md)
+- [Module ownership](architecture/module-ownership.md)
+- [Backend conventions](from-scratch/04-backend.md)
+- [Security review](code-review/06-security.md)
+- [OpenAI Live sessions](https://developers.openai.com/api/docs/guides/live-conversations)
+- [OpenAI delegation](https://developers.openai.com/api/docs/guides/live-delegation)
+- [OpenAI pricing](https://openai.com/api/pricing/)
+- [Twilio Media Streams](https://www.twilio.com/docs/voice/media-streams/websocket-messages)

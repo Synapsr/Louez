@@ -7,6 +7,7 @@ import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from "@/lib/analytic
 import { purgeExpiredLegalRetentionRecords } from "@/lib/account-deletion/retention-cleanup";
 import { createError, useLogger, withEvlog } from "@/lib/evlog";
 import { cleanExpiredCache, refreshAllStoresCache } from "@/lib/google-places/cache";
+import { reconcileVoiceSessions } from "@/lib/ai/phone/live-reconciliation";
 import { processVoiceNumberRenewals } from "@/lib/ai/phone/number-renewals";
 import { processCalendarSyncQueue } from "@/lib/integrations/calendar/sync";
 import { pollSuperPdpInvoiceEvents } from "@/lib/invoicing/superpdp-events";
@@ -70,6 +71,9 @@ async function handleCron(request: Request) {
   });
 
   try {
+    tasks.push("voice-sessions");
+    results.voiceSessions = await reconcileVoiceSessions(now);
+
     tasks.push("rental-extensions");
     results.rentalExtensions = await reconcileRentalExtensions();
 

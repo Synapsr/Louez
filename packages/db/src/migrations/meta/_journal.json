@@ -596,6 +596,13 @@
       "when": 1792247919224,
       "tag": "0079_passkeys",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "5",
+      "when": 1792254366352,
+      "tag": "0080_gpt_live_voice",
+      "breakpoints": true
     }
   ]
 }

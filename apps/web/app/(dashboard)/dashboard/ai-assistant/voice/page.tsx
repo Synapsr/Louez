@@ -7,6 +7,7 @@ import { db, storePhoneNumbers } from "@louez/db";
 
 import { env } from "@/env";
 import { isVoiceAgentConfigured } from "@/lib/ai/phone/eligibility";
+import { isLiveConfigured } from "@/lib/voice/config";
 import { hasNumberRentalFunds } from "@/lib/ai/phone/number-billing";
 import { getNumberRentalCredits, getPhoneCreditsPerMinute } from "@/lib/ai/pricing";
 import { getStorePlan } from "@/lib/plan-limits";
@@ -62,10 +63,12 @@ export default async function AiVoiceAgentPage({
         store={{ id: store.id, aiPhoneSettings: store.aiPhoneSettings }}
         hasFeatureAccess={plan.features.aiPhone}
         phoneConfigured={isVoiceAgentConfigured()}
+        voicePreviewConfigured={isLiveConfigured()}
         boundNumber={phoneBinding?.e164 ?? null}
         isProvisioned={Boolean(phoneBinding?.providerNumberId)}
         webhookUrl={`${env.NEXT_PUBLIC_APP_URL}/api/voice/incoming`}
         defaultCountry="FR"
+        defaultVoice={env.AI_PHONE_DEFAULT_VOICE}
         numberRentalCredits={numberRentalCredits > 0 ? numberRentalCredits : null}
         voiceCreditsPerMinute={voiceCreditsPerMinute > 0 ? voiceCreditsPerMinute : null}
         hasRentalFunds={rentalFundsOk}

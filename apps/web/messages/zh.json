@@ -5812,7 +5812,9 @@
           "defaultBadge": "推荐",
           "defaultVoice": "推荐声音",
           "title": "选择您的代理声音",
-          "description": "聆听声音并选择在电话中代表您的商店的声音。"
+          "description": "聆听声音并选择在电话中代表您的商店的声音。",
+          "languageVoices": "适用于此语言",
+          "allVoices": "所有声音"
         },
         "setup": {
           "step1": "选择您的号码",
@@ -5872,7 +5874,7 @@
         },
         "notConfigured": {
           "title": "电话未配置",
-          "description": "平台运营商必须配置电话提供商（AI_PHONE_ENABLED、VOICE_PROVIDER 和凭据）才能启用语音代理。"
+          "description": "电话或语音服务尚未配置完整。请联系平台管理员启用语音助手。"
         },
         "language": "回答语言",
         "languageDescription": "助理与呼叫者交谈所用的语言",
@@ -5902,7 +5904,10 @@
           "male": "男"
         },
         "voicePreview": "预览",
-        "voiceRecommended": "推荐"
+        "voiceRecommended": "推荐",
+        "voicePreviewUnavailable": "配置语音服务后即可试听。",
+        "voiceMigrated": "您之前的声音已替换为推荐的 GPT-Live 声音。您可以在下方选择其他声音。",
+        "voicePreviewError": "暂时无法试听，请稍后重试。"
       },
       "settingsNavigation": {
         "label": "设置导航",

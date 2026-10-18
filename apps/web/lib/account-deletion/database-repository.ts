@@ -890,6 +890,12 @@ const purgeOwnedData = async (
         .where(inArray(schema.aiCreditTransactions.storeId, storeIds));
       await transaction.delete(schema.aiCredits).where(inArray(schema.aiCredits.storeId, storeIds));
       await transaction
+        .delete(schema.voiceToolExecutionsTable)
+        .where(inArray(schema.voiceToolExecutionsTable.conversationId, advisorConversationIds));
+      await transaction
+        .delete(schema.voiceSessionsTable)
+        .where(inArray(schema.voiceSessionsTable.storeId, storeIds));
+      await transaction
         .delete(schema.aiAdvisorMessages)
         .where(inArray(schema.aiAdvisorMessages.storeId, storeIds));
       await transaction

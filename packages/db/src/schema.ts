@@ -3995,3 +3995,5 @@ export const storePhoneNumbersRelations = relations(storePhoneNumbers, ({ one })
     references: [stores.id],
   }),
 }));
+
+export { voiceSessionsTable, voiceToolExecutionsTable } from "./schema.voice";

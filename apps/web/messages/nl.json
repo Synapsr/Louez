@@ -5813,7 +5813,9 @@
           "defaultBadge": "Aanbevolen",
           "defaultVoice": "Aanbevolen stem",
           "title": "Kies de stem van je agent",
-          "description": "Beluister de stemmen en kies degene die je winkel aan de telefoon vertegenwoordigt."
+          "description": "Beluister de stemmen en kies degene die je winkel aan de telefoon vertegenwoordigt.",
+          "languageVoices": "Voor deze taal",
+          "allVoices": "Alle stemmen"
         },
         "setup": {
           "step1": "Kies je nummer",
@@ -5873,7 +5875,7 @@
         },
         "notConfigured": {
           "title": "Telefonie niet geconfigureerd",
-          "description": "De platformbeheerder moet een telefonieprovider configureren (AI_PHONE_ENABLED, VOICE_PROVIDER en de inloggegevens) om de spraakagent in te schakelen."
+          "description": "De telefonie of spraakdienst is nog niet volledig ingesteld. Neem contact op met de platformbeheerder om de agent te activeren."
         },
         "language": "Antwoordtaal",
         "languageDescription": "De taal waarin de assistent met bellers spreekt",
@@ -5903,7 +5905,10 @@
           "male": "Man"
         },
         "voicePreview": "Beluisteren",
-        "voiceRecommended": "Aanbevolen"
+        "voiceRecommended": "Aanbevolen",
+        "voiceMigrated": "Uw vorige stem is vervangen door de aanbevolen GPT-Live-stem. U kunt hieronder een andere kiezen.",
+        "voicePreviewError": "Het voorbeeld is momenteel niet beschikbaar. Probeer het zo opnieuw.",
+        "voicePreviewUnavailable": "Voorbeelden zijn beschikbaar zodra de spraakdienst is ingesteld."
       },
       "settingsNavigation": {
         "label": "Instellingennavigatie",

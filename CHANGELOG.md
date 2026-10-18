@@ -8,12 +8,19 @@ All notable changes to Louez are documented here.
 
 ## [Unreleased]
 
+### 📞 Voice Agent
+
+- **Direct live audio** — The phone agent now streams Twilio audio to OpenAI GPT-Live, with store context, selectable voices and language-aware voice previews. Business tools remain in the application backend.
+- **Call reliability** — Adds authenticated sessions, interruption handling, idempotent booking tools and usage reconciliation.
+
 ### 🔐 Management Account
 
 - **Passkey sign-in** — Management users can create a passkey after signing in with Google or email, or from their account settings. Compatible browsers show a discreet invitation and prefer passkeys on later sign-ins after successful setup or use. Existing sign-in methods remain available; storefront customer accounts are unchanged.
 - **Secure key management** — Registration and removal require a recent sign-in. WebAuthn verifies the origin, challenge, signature and device user verification; only public credentials are stored. Hidden support widgets no longer suppress the setup invitation.
 
 ### 🐳 Self-Hosting
+
+- **Voice deployment update** — Upgrade the web app and voice relay together, apply migration `0080_gpt_live_voice` after `0079_passkeys`, and configure the OpenAI key on the relay. The previous ConversationRelay/Gather, ElevenLabs and Deepgram voice configuration is replaced. Follow the [voice migration guide](docs/ai-phone-receptionist.md) before deploying.
 
 - **Passkey migration** — Migration `0079_passkeys` adds the passkey table and widens `verification.value` to `text`, preserving existing data. Docker installations apply it at startup. Keep `AUTH_URL` aligned with the public management origin and use HTTPS (localhost is supported for development); no new environment variable is required. See the [deployment and security notes](docs/architecture/passkeys.md).
 
@@ -690,12 +697,19 @@ Toutes les évolutions notables de Louez sont documentées ici.
 
 ## [À venir]
 
+### 📞 Agent vocal
+
+- **Audio en direct** — L’agent transmet désormais l’audio Twilio à OpenAI GPT-Live, avec le contexte de la boutique, le choix des voix et des aperçus adaptés à la langue. Les outils métier restent dans le backend de l’application.
+- **Fiabilité des appels** — Ajout de sessions authentifiées, de la gestion des interruptions, d’outils de réservation idempotents et du rapprochement de la consommation.
+
 ### 🔐 Compte de gestion
 
 - **Connexion par clé d’accès** — Les utilisateurs de l’espace de gestion peuvent créer une passkey après une connexion Google ou email, ou depuis les paramètres de leur compte. Les navigateurs compatibles affichent une invitation discrète et privilégient les passkeys aux connexions suivantes après leur création ou leur utilisation. Les méthodes de connexion existantes restent disponibles ; les comptes clients des boutiques sont inchangés.
 - **Gestion sécurisée des clés** — L’ajout et la suppression exigent une connexion récente. WebAuthn vérifie l’origine, le challenge, la signature et la vérification de l’utilisateur sur son appareil ; seules les données publiques des clés sont conservées. Les widgets d’assistance masqués ne bloquent plus l’invitation.
 
 ### 🐳 Auto-hébergement
+
+- **Mise à jour du déploiement vocal** — Mettre à jour ensemble l’application et le relais vocal, appliquer `0080_gpt_live_voice` après `0079_passkeys` et configurer la clé OpenAI sur le relais. L’ancienne configuration vocale ConversationRelay/Gather, ElevenLabs et Deepgram est remplacée. Suivre le [guide de migration vocale](docs/ai-phone-receptionist.md) avant le déploiement.
 
 - **Migration passkeys** — La migration `0079_passkeys` ajoute la table des passkeys et élargit `verification.value` en `text`, en conservant les données existantes. Les installations Docker l’appliquent au démarrage. `AUTH_URL` doit correspondre à l’origine publique de l’espace de gestion, avec HTTPS (localhost est accepté en développement) ; aucune nouvelle variable d’environnement n’est nécessaire. Voir les [notes de déploiement et de sécurité](docs/architecture/passkeys.md).
 

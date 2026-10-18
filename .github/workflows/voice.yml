@@ -1,0 +1,40 @@
+name: Voice transport
+on:
+  pull_request:
+    paths:
+      - "apps/voice-relay/**"
+      - "packages/voice/**"
+      - "apps/web/lib/ai/phone/**"
+      - "apps/web/lib/voice/**"
+      - "apps/web/app/api/voice/**"
+      - ".dockerignore"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/voice.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/voice-relay/**"
+      - "packages/voice/**"
+      - "apps/web/lib/ai/phone/**"
+      - "apps/web/lib/voice/**"
+      - "apps/web/app/api/voice/**"
+      - ".dockerignore"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/voice.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @louez/voice test
+      - run: pnpm --filter @louez/voice-relay test
+      - run: pnpm --filter @louez/voice-relay bundle
+      - run: docker build -f apps/voice-relay/Dockerfile -t louez-voice-relay:test .
