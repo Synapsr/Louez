@@ -253,6 +253,9 @@
       "minLength": "Co najmniej {count} znaków"
     },
     "passkey": {
+      "prompt": {
+        "title": "Następnym razem zaloguj się szybciej"
+      },
       "setup": {
         "title": "Kolejne logowanie, jeszcze prostsze",
         "description": "Utwórz klucz dostępu, aby logować się odciskiem palca, twarzą lub kodem PIN urządzenia.",
@@ -5902,9 +5905,9 @@
           "male": "Mężczyzna"
         },
         "voicePreview": "Odsłuchaj",
+        "voiceRecommended": "Zalecany",
         "voiceMigrated": "Poprzedni głos zastąpiono zalecanym głosem GPT-Live. Poniżej możesz wybrać inny.",
         "voicePreviewError": "Podgląd jest teraz niedostępny. Spróbuj ponownie za chwilę.",
-        "voiceRecommended": "Zalecany",
         "voicePreviewUnavailable": "Podgląd głosów będzie dostępny po skonfigurowaniu usługi głosowej."
       },
       "settingsNavigation": {

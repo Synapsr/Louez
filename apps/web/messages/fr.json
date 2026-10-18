@@ -253,6 +253,9 @@
       "minLength": "Au moins {count} caractères"
     },
     "passkey": {
+      "prompt": {
+        "title": "Connectez-vous plus vite la prochaine fois"
+      },
       "setup": {
         "title": "Votre prochaine connexion, en un geste",
         "description": "Créez une clé d’accès pour vous connecter avec votre empreinte, votre visage ou le code de votre appareil.",
@@ -5902,9 +5905,9 @@
           "male": "Homme"
         },
         "voicePreview": "Écouter",
+        "voiceRecommended": "Recommandée",
         "voiceMigrated": "Votre ancienne voix a été remplacée par la voix GPT-Live recommandée. Vous pouvez en choisir une autre ci-dessous.",
         "voicePreviewError": "L’aperçu est indisponible pour le moment. Réessayez dans quelques instants.",
-        "voiceRecommended": "Recommandée",
         "voicePreviewUnavailable": "Les aperçus seront disponibles une fois le service vocal configuré."
       },
       "settingsNavigation": {

@@ -253,6 +253,9 @@
       "minLength": "At least {count} characters"
     },
     "passkey": {
+      "prompt": {
+        "title": "Sign in faster next time"
+      },
       "setup": {
         "title": "Your next sign-in, made simple",
         "description": "Create a passkey to sign in with your fingerprint, face or device PIN.",
@@ -5902,9 +5905,9 @@
           "male": "Male"
         },
         "voicePreview": "Preview",
+        "voiceRecommended": "Recommended",
         "voiceMigrated": "Your previous voice has been replaced by the recommended GPT-Live voice. You can choose another below.",
         "voicePreviewError": "The preview is unavailable right now. Please try again shortly.",
-        "voiceRecommended": "Recommended",
         "voicePreviewUnavailable": "Previews will be available once the voice service is configured."
       },
       "settingsNavigation": {

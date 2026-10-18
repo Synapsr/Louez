@@ -4,13 +4,11 @@ import { useEffect, useState } from "react";
 
 interface PasskeyCapabilities {
   supported: boolean;
-  platform: boolean;
 }
 
 export const usePasskeyCapabilities = (): PasskeyCapabilities => {
   const [capabilities, setCapabilities] = useState<PasskeyCapabilities>({
     supported: false,
-    platform: false,
   });
 
   useEffect(() => {
@@ -21,21 +19,9 @@ export const usePasskeyCapabilities = (): PasskeyCapabilities => {
       !navigator.credentials.get
     )
       return;
-    let active = true;
-    setCapabilities({ supported: true, platform: false });
-    void (
-      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.() ??
-      Promise.resolve(false)
-    )
-      .then((platform) => {
-        if (active) setCapabilities({ supported: true, platform });
-      })
-      .catch(() => {
-        // A security key may still work; only the automatic invitation is hidden.
-      });
-    return () => {
-      active = false;
-    };
+    // The browser may offer a synced provider, a phone, or a security key even
+    // when no user-verifying authenticator is built into this device.
+    setCapabilities({ supported: true });
   }, []);
 
   return capabilities;

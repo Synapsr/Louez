@@ -253,6 +253,9 @@
       "minLength": "至少 {count} 个字符"
     },
     "passkey": {
+      "prompt": {
+        "title": "下次登录更快捷"
+      },
       "setup": {
         "title": "让下次登录更轻松",
         "description": "创建通行密钥，即可通过指纹、面容或设备 PIN 码登录。",

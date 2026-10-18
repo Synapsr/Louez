@@ -12,8 +12,8 @@ The relying-party ID is the hostname of `AUTH_URL`, without a port. It deliberat
 
 ## Experience
 
-- After a recent sign-in, users without a registered key receive an optional setup dialog if their browser reports a user-verifying platform authenticator. It waits for the page to settle and does not interrupt another dialog or an active input.
-- An invitation is offered at most once every 30 days per account/browser. Keys can always be added or removed from the account page, including hardware security keys on compatible browsers.
+- After a recent Google or email sign-in, users without a registered key receive an optional card at the bottom right on compatible, secure browsers. It does not take focus or block the dashboard; its action opens the browser's native creation flow directly. A built-in platform authenticator is not required: the browser can offer a synced provider, phone, or security key.
+- The invitation waits for visible onboarding panels, dialogs, notifications, and form editing to finish. Hidden or inert widgets (including Gleap's mounted but hidden AI dialog) must not block it. It retries when the screen is available and expires with the ten-minute enrollment window. Choosing “Later” suppresses it for 30 days per account/browser; simply displaying it does not consume the invitation. Keys can always be added or removed from the account page.
 - After successful registration or passkey sign-in, this browser remembers a boolean preference and offers passkeys first. Other sign-in methods remain accessible. On another browser, the passkey button is available without requiring an email lookup.
 - WebAuthn does not expose a silent inventory of the device's credentials. The local preference is only a presentation hint. The browser's native chooser and the server verification determine whether an actual credential is usable. No OS authentication dialog is triggered without a click.
 - Removing the last key clears this browser's preference. Removal revokes the credential at Louez; users can separately remove its copy from their credential manager. It does not sign out existing sessions.

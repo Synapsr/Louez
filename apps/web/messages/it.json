@@ -253,6 +253,9 @@
       "minLength": "Almeno {count} caratteri"
     },
     "passkey": {
+      "prompt": {
+        "title": "Accedi più velocemente la prossima volta"
+      },
       "setup": {
         "title": "Il prossimo accesso, più semplice",
         "description": "Crea una passkey per accedere con la tua impronta, il tuo volto o il PIN del dispositivo.",
@@ -5902,9 +5905,9 @@
           "male": "Uomo"
         },
         "voicePreview": "Ascolta",
+        "voiceRecommended": "Consigliata",
         "voiceMigrated": "La voce precedente è stata sostituita con la voce GPT-Live consigliata. Puoi sceglierne un’altra qui sotto.",
         "voicePreviewError": "L’anteprima non è disponibile al momento. Riprova tra poco.",
-        "voiceRecommended": "Consigliata",
         "voicePreviewUnavailable": "Le anteprime saranno disponibili dopo la configurazione del servizio vocale."
       },
       "settingsNavigation": {

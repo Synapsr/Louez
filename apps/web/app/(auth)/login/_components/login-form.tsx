@@ -1,29 +1,29 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
-import { usePasskeyCapabilities } from '@/components/auth/use-passkey-capabilities';
-import { usePasskeyPreference } from '@/components/auth/use-passkey-preference';
+import { usePasskeyCapabilities } from "@/components/auth/use-passkey-capabilities";
+import { usePasskeyPreference } from "@/components/auth/use-passkey-preference";
 
-import type { SignupOrigin } from '@/lib/utils/signup-origin';
+import type { SignupOrigin } from "@/lib/utils/signup-origin";
 
-import { LoginEmailStep } from './login-email-step';
-import { LoginNewPasswordStep } from './login-new-password-step';
-import { LoginOtpStep } from './login-otp-step';
-import { LoginPasswordStep } from './login-password-step';
-import { LoginPasskeyStep } from './login-passkey-step';
-import { LoginResetRequestStep } from './login-reset-request-step';
-import type { SignInMethods } from './sign-in-methods';
-import { useLastSignInMethod } from './use-last-sign-in-method';
-import { resolveInitialLoginStep } from './util.last-sign-in-method';
+import { LoginEmailStep } from "./login-email-step";
+import { LoginNewPasswordStep } from "./login-new-password-step";
+import { LoginOtpStep } from "./login-otp-step";
+import { LoginPasswordStep } from "./login-password-step";
+import { LoginPasskeyStep } from "./login-passkey-step";
+import { LoginResetRequestStep } from "./login-reset-request-step";
+import type { SignInMethods } from "./sign-in-methods";
+import { useLastSignInMethod } from "./use-last-sign-in-method";
+import { resolveInitialLoginStep } from "./util.last-sign-in-method";
 
 type LoginStep =
-  | { name: 'password' | 'email' }
-  | { name: 'otp'; email: string }
+  | { name: "password" | "email" }
+  | { name: "otp"; email: string }
   // Forgot password: e-mail → 6-digit code → new password → signed in.
-  | { name: 'resetRequest' }
-  | { name: 'resetCode'; email: string }
-  | { name: 'resetPassword'; email: string; otp: string };
+  | { name: "resetRequest" }
+  | { name: "resetCode"; email: string }
+  | { name: "resetPassword"; email: string; otp: string };
 
 interface LoginFormProps {
   methods: SignInMethods;
@@ -45,70 +45,67 @@ export const LoginForm = ({ methods, signupOrigin }: LoginFormProps) => {
   if (!selectedStep && passkeyAvailable && prefersPasskey) {
     return (
       <LoginPasskeyStep
-        onUseOtherMethod={() => setSelectedStep({
-          name: resolveInitialLoginStep(methods, lastMethod),
-        })}
+        onUseOtherMethod={() =>
+          setSelectedStep({
+            name: resolveInitialLoginStep(methods, lastMethod),
+          })
+        }
       />
     );
   }
 
-  if (step.name === 'otp') {
+  if (step.name === "otp") {
     return (
       <LoginOtpStep
         email={step.email}
-        onUseDifferentEmail={() => setSelectedStep({ name: 'email' })}
+        onUseDifferentEmail={() => setSelectedStep({ name: "email" })}
       />
     );
   }
 
-  if (step.name === 'resetRequest') {
+  if (step.name === "resetRequest") {
     return (
       <LoginResetRequestStep
         emailDelivery={methods.emailOtp}
-        onCodeSent={(email) => setSelectedStep({ name: 'resetCode', email })}
-        onBack={() => setSelectedStep({ name: 'password' })}
+        onCodeSent={(email) => setSelectedStep({ name: "resetCode", email })}
+        onBack={() => setSelectedStep({ name: "password" })}
       />
     );
   }
 
-  if (step.name === 'resetCode') {
+  if (step.name === "resetCode") {
     const { email } = step;
 
     return (
       <LoginOtpStep
         email={email}
         flow={{
-          purpose: 'forget-password',
-          onVerified: (otp) =>
-            setSelectedStep({ name: 'resetPassword', email, otp }),
+          purpose: "forget-password",
+          onVerified: (otp) => setSelectedStep({ name: "resetPassword", email, otp }),
         }}
-        onUseDifferentEmail={() => setSelectedStep({ name: 'resetRequest' })}
+        onUseDifferentEmail={() => setSelectedStep({ name: "resetRequest" })}
       />
     );
   }
 
-  if (step.name === 'resetPassword') {
+  if (step.name === "resetPassword") {
     return (
       <LoginNewPasswordStep
         email={step.email}
         otp={step.otp}
-        onRequestNewCode={() => setSelectedStep({ name: 'resetRequest' })}
+        onRequestNewCode={() => setSelectedStep({ name: "resetRequest" })}
       />
     );
   }
 
-  if (step.name === 'password') {
+  if (step.name === "password") {
     return (
       <LoginPasswordStep
         passkeyAvailable={passkeyAvailable}
         showGoogle={methods.google}
-        allowSignUp={methods.password === 'primary'}
-        onForgotPassword={() => setSelectedStep({ name: 'resetRequest' })}
-        onUseEmailCode={
-          methods.emailOtp
-            ? () => setSelectedStep({ name: 'email' })
-            : undefined
-        }
+        allowSignUp={methods.password === "primary"}
+        onForgotPassword={() => setSelectedStep({ name: "resetRequest" })}
+        onUseEmailCode={methods.emailOtp ? () => setSelectedStep({ name: "email" }) : undefined}
       />
     );
   }
@@ -118,12 +115,8 @@ export const LoginForm = ({ methods, signupOrigin }: LoginFormProps) => {
       passkeyAvailable={passkeyAvailable}
       showGoogle={methods.google}
       signupOrigin={signupOrigin}
-      onUsePassword={
-        methods.password
-          ? () => setSelectedStep({ name: 'password' })
-          : undefined
-      }
-      onOtpSent={(email) => setSelectedStep({ name: 'otp', email })}
+      onUsePassword={methods.password ? () => setSelectedStep({ name: "password" }) : undefined}
+      onOtpSent={(email) => setSelectedStep({ name: "otp", email })}
     />
   );
 };

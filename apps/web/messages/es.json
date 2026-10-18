@@ -253,6 +253,9 @@
       "minLength": "Al menos {count} caracteres"
     },
     "passkey": {
+      "prompt": {
+        "title": "Accede más rápido la próxima vez"
+      },
       "setup": {
         "title": "Tu próximo inicio de sesión, más sencillo",
         "description": "Crea una clave de acceso para iniciar sesión con tu huella, tu rostro o el PIN de tu dispositivo.",
@@ -5902,9 +5905,9 @@
           "male": "Hombre"
         },
         "voicePreview": "Escuchar",
+        "voiceRecommended": "Recomendada",
         "voiceMigrated": "La voz anterior se ha sustituido por la voz GPT-Live recomendada. Puedes elegir otra a continuación.",
         "voicePreviewError": "La vista previa no está disponible ahora. Vuelve a intentarlo en unos instantes.",
-        "voiceRecommended": "Recomendada",
         "voicePreviewUnavailable": "Las muestras estarán disponibles cuando se configure el servicio de voz."
       },
       "settingsNavigation": {

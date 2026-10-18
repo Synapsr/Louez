@@ -6,6 +6,19 @@ All notable changes to Louez are documented here.
 
 ---
 
+## [Unreleased]
+
+### 🔐 Management Account
+
+- **Passkey sign-in** — Management users can create a passkey after signing in with Google or email, or from their account settings. Compatible browsers show a discreet invitation and prefer passkeys on later sign-ins after successful setup or use. Existing sign-in methods remain available; storefront customer accounts are unchanged.
+- **Secure key management** — Registration and removal require a recent sign-in. WebAuthn verifies the origin, challenge, signature and device user verification; only public credentials are stored. Hidden support widgets no longer suppress the setup invitation.
+
+### 🐳 Self-Hosting
+
+- **Passkey migration** — Migration `0079_passkeys` adds the passkey table and widens `verification.value` to `text`, preserving existing data. Docker installations apply it at startup. Keep `AUTH_URL` aligned with the public management origin and use HTTPS (localhost is supported for development); no new environment variable is required. See the [deployment and security notes](docs/architecture/passkeys.md).
+
+---
+
 ## [2.3.1] - October 14, 2026
 
 ### 🐳 Self-Hosting
@@ -672,6 +685,19 @@ _For upgrade instructions, see the [documentation](https://louez.io/docs)._
 > [🇬🇧 English](#changelog) | 🇫🇷 **Français**
 
 Toutes les évolutions notables de Louez sont documentées ici.
+
+---
+
+## [À venir]
+
+### 🔐 Compte de gestion
+
+- **Connexion par clé d’accès** — Les utilisateurs de l’espace de gestion peuvent créer une passkey après une connexion Google ou email, ou depuis les paramètres de leur compte. Les navigateurs compatibles affichent une invitation discrète et privilégient les passkeys aux connexions suivantes après leur création ou leur utilisation. Les méthodes de connexion existantes restent disponibles ; les comptes clients des boutiques sont inchangés.
+- **Gestion sécurisée des clés** — L’ajout et la suppression exigent une connexion récente. WebAuthn vérifie l’origine, le challenge, la signature et la vérification de l’utilisateur sur son appareil ; seules les données publiques des clés sont conservées. Les widgets d’assistance masqués ne bloquent plus l’invitation.
+
+### 🐳 Auto-hébergement
+
+- **Migration passkeys** — La migration `0079_passkeys` ajoute la table des passkeys et élargit `verification.value` en `text`, en conservant les données existantes. Les installations Docker l’appliquent au démarrage. `AUTH_URL` doit correspondre à l’origine publique de l’espace de gestion, avec HTTPS (localhost est accepté en développement) ; aucune nouvelle variable d’environnement n’est nécessaire. Voir les [notes de déploiement et de sécurité](docs/architecture/passkeys.md).
 
 ---
 
