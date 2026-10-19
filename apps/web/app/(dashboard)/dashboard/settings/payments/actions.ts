@@ -8,13 +8,16 @@ import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import {
-  RENTAL_MCC,
   createConnectAccount,
   createAccountLink,
   createAccountLoginLink,
   getAccountStatus,
-  toStatementDescriptor,
 } from '@/lib/stripe'
+import {
+  RENTAL_MCC,
+  toProductDescription,
+  toStatementDescriptor,
+} from '@/lib/util.stripe-prefill'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 import { sanitizeStripeNextPath, stripeReturnUrls } from './stripe-return'
 
@@ -82,8 +85,6 @@ export async function startStripeOnboarding(options?: {
       const httpsStorefrontUrl = storefrontUrl.startsWith('https://')
         ? storefrontUrl
         : undefined
-      const description = store.description?.trim()
-
       const account = await createConnectAccount({
         email: accountEmail,
         country: storeCountry,
@@ -91,7 +92,7 @@ export async function startStripeOnboarding(options?: {
           name: store.name,
           mcc: RENTAL_MCC,
           url: httpsStorefrontUrl,
-          productDescription: description ? description.slice(0, 500) : undefined,
+          productDescription: toProductDescription(store.description),
           supportEmail: accountEmail,
           supportPhone: store.phone?.trim() || undefined,
           supportUrl: httpsStorefrontUrl,
