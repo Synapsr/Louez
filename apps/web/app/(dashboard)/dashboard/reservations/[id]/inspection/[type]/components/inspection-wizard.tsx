@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -525,29 +525,10 @@ export function InspectionWizard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [repairDowntimeSuggestion, setRepairDowntimeSuggestion] =
     useState<RepairDowntimeSuggestionState | null>(null);
-  const pendingPhotoKeysRef = useRef<string[]>([]);
-  const deleteImageRef = useRef(deleteImage);
-  const inspectionPersistedRef = useRef(false);
-
-  useEffect(() => {
-    pendingPhotoKeysRef.current = Array.from(inspections.values()).flatMap((inspection) =>
-      inspection.photos.map((photo) => photo.key),
-    );
-  }, [inspections]);
-
-  useEffect(() => {
-    deleteImageRef.current = deleteImage;
-  }, [deleteImage]);
-
-  useEffect(
-    () => () => {
-      if (readOnly || inspectionPersistedRef.current) return;
-      void Promise.allSettled(
-        pendingPhotoKeysRef.current.map((key) => deleteImageRef.current(key)),
-      );
-    },
-    [readOnly],
-  );
+  // Photos not saved yet are never deleted on unmount: with Cache Components,
+  // leaving the page hides it in an <Activity> boundary, which runs effect
+  // cleanups but keeps this state, so the wizard would later save keys of
+  // deleted files (Gleap #847). An abandoned inspection leaves orphans.
 
   // Determine active steps
   const activeSteps = useMemo(() => {
@@ -697,7 +678,6 @@ export function InspectionWizard({
       if (createResult.error || !createResult.inspectionId) {
         throw new Error(createResult.error || "Failed to create inspection");
       }
-      inspectionPersistedRef.current = true;
 
       // Complete inspection
       const completeResult = await completeInspection(createResult.inspectionId, {

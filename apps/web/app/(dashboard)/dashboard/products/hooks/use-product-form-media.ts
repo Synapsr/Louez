@@ -131,6 +131,11 @@ export function useProductFormMedia({
 }: UseProductFormMediaParams) {
   const t = useTranslations("dashboard.products.form");
   const { uploadImage, deleteImage } = useImageUpload("product");
+  // Uploads not saved yet. They are deleted only when the merchant drops them
+  // from the form, never on unmount: with Cache Components, leaving the page
+  // hides it in an <Activity> boundary, which runs effect cleanups but keeps
+  // the form state. Deleting there removed files the form still showed and
+  // later saved (Gleap #847). A form that is really abandoned leaves orphans.
   const pendingUploadsRef = useRef(new Set<string>());
   const imageHistoryRef = useRef(imageHistory);
 
@@ -139,11 +144,6 @@ export function useProductFormMedia({
   // progress, so between two files the reconciliation effect below would see an
   // object the form knows nothing about — and delete what was just stored.
   const inFlightUploadsRef = useRef(new Set<string>());
-  const deleteImageRef = useRef(deleteImage);
-
-  useEffect(() => {
-    deleteImageRef.current = deleteImage;
-  }, [deleteImage]);
 
   useEffect(() => {
     imageHistoryRef.current = imageHistory;
@@ -155,15 +155,6 @@ export function useProductFormMedia({
       form.setFieldValue("imageHistory", nextHistory);
     },
     [form],
-  );
-
-  useEffect(
-    () => () => {
-      void Promise.allSettled(
-        [...pendingUploadsRef.current].map((url) => deleteImageRef.current(url)),
-      );
-    },
-    [],
   );
 
   useEffect(() => {

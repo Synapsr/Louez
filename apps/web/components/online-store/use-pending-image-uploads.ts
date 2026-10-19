@@ -8,8 +8,13 @@ export type OnlineStoreImageKind = "logo" | "hero";
 
 /**
  * Uploads of the online store editor that are not saved yet. Every upload is
- * tracked until the form is saved (`settle`) so an abandoned page, a reset
- * or a replaced image deletes the orphan file from storage.
+ * tracked until the form is saved (`settle`) so a reset or a replaced image
+ * deletes the orphan file from storage.
+ *
+ * Nothing is deleted on unmount: with Cache Components, leaving the page hides
+ * it in an <Activity> boundary, which runs effect cleanups but keeps the form
+ * state, so a later save would point at deleted files (Gleap #847). An
+ * abandoned page leaves orphans.
  */
 export const usePendingImageUploads = () => {
   const logoFiles = useImageUpload("logo");
@@ -21,15 +26,6 @@ export const usePendingImageUploads = () => {
   useEffect(() => {
     deleteRef.current = { logo: logoFiles.deleteImage, hero: heroFiles.deleteImage };
   }, [heroFiles.deleteImage, logoFiles.deleteImage]);
-
-  useEffect(
-    () => () => {
-      void Promise.allSettled(
-        [...pendingRef.current].map(([url, kind]) => deleteRef.current[kind](url)),
-      );
-    },
-    [],
-  );
 
   const upload = useCallback(
     async (kind: OnlineStoreImageKind, file: File): Promise<string> => {

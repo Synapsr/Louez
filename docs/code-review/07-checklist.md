@@ -48,6 +48,7 @@
 - [ ] No business logic in components (extract to hooks/utils)
 - [ ] Server data uses React Query, not Zustand
 - [ ] No `useEffect` for derived state — compute inline
+- [ ] No effect cleanup deletes files or discards data the state still references (pages are hidden, not unmounted)
 - [ ] List keys use stable IDs, not array indices
 - [ ] Interactive elements use @base-ui/react (from `@louez/ui`)
 

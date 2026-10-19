@@ -279,12 +279,7 @@ export function useProductImageEnhance({
     setEnhancePromoReason(null);
   }, []);
 
-  // Enhanced objects that exist on the storage but are not (yet) referenced by
-  // the form: exactly like `pendingUploadsRef` in use-product-form-media, they
-  // must be deleted on reject and on unmount so no orphan is left behind.
-  const pendingEnhancedUrlsRef = useRef(new Set<string>());
   const isRunningRef = useRef(false);
-  const isMountedRef = useRef(true);
   // The in-flight request, so the merchant can drop a 200s generation.
   const abortControllerRef = useRef<AbortController | null>(null);
   // Sticky for the whole run: cancelling one image also stops the rest of the
@@ -305,22 +300,6 @@ export function useProductImageEnhance({
   useEffect(() => {
     keepGeneratedImageRef.current = keepGeneratedImage;
   }, [keepGeneratedImage]);
-
-  useEffect(() => {
-    // React Strict Mode runs an extra setup → cleanup → setup cycle in
-    // development. Restore the mounted flag on every setup so a response that
-    // arrives after that verification cycle is not mistaken for a late result.
-    isMountedRef.current = true;
-
-    return () => {
-      // The flag makes an in-flight request delete its own late result — the
-      // set below can only cover objects that already existed at unmount.
-      isMountedRef.current = false;
-      void Promise.allSettled(
-        [...pendingEnhancedUrlsRef.current].map((url) => deleteImageRef.current(url)),
-      );
-    };
-  }, []);
 
   const setImageStatus = useCallback(
     (imageUrl: string, status: ProductImageEnhanceStatus, operation?: ProductImageOperation) => {
@@ -428,10 +407,10 @@ export function useProductImageEnhance({
               operation,
               controller.signal,
             );
-            if (!isMountedRef.current) {
-              void deleteImageRef.current(enhanced.url).catch(() => undefined);
-              break;
-            }
+            // No "unmounted" check here: leaving the page only hides it (Cache
+            // Components keep the form state), so a result that lands meanwhile
+            // still belongs to the form. Deleting it broke saved products
+            // (Gleap #847).
             // The response beat the abort: the server had already committed, so
             // the object exists (and was billed). Honour the cancellation by
             // discarding it through the same path a rejected review uses.
@@ -445,14 +424,12 @@ export function useProductImageEnhance({
               toastManager.add({ title: t("aiEnhanceCancelled") });
               break;
             }
-            pendingEnhancedUrlsRef.current.add(enhanced.url);
             const didKeepGeneratedImage = keepGeneratedImageRef.current(
               imageUrl,
               enhanced.url,
               operation,
             );
             if (!didKeepGeneratedImage) {
-              pendingEnhancedUrlsRef.current.delete(enhanced.url);
               void deleteImageRef.current(enhanced.url).catch(() => undefined);
               setImageStatus(imageUrl, "idle");
               toastManager.add({ title: t("aiEnhanceOriginalMissing"), type: "error" });
@@ -461,7 +438,6 @@ export function useProductImageEnhance({
             // The media form owns this object from now on. Persist it in the
             // lineage before review so closing or keeping the original can
             // never discard an already generated (and potentially billed) file.
-            pendingEnhancedUrlsRef.current.delete(enhanced.url);
             // The debit already happened server-side: keep the displayed
             // balance honest while the rest of the batch runs.
             if (enhanced.creditsCharged > 0) refreshBalance();

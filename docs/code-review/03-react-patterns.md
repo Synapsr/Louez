@@ -77,6 +77,12 @@ Use database IDs or unique identifiers as keys. Never use array indices for list
 
 Use @base-ui/react for interactive elements (buttons, dialogs, menus, etc.). Native HTML semantics first, ARIA attributes only when native elements aren't enough.
 
+### [RC-10] Effect cleanups never destroy data the state still points to
+
+`apps/web` runs with Cache Components: leaving a page hides it in an `<Activity>` boundary instead of unmounting it. React runs every effect cleanup but keeps the state, and the page comes back as it was. A cleanup that deletes uploaded files, cancels a draft or discards a server result therefore breaks the state the user returns to and saves later (Gleap #847: product photos deleted from storage, then saved into the product).
+
+Delete or discard only on an explicit user action (remove, replace, reset). Accept orphaned files from abandoned forms rather than deleting them on unmount. Effect cleanups are for subscriptions, timers and transient UI such as an open dropdown (see `node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md`).
+
 ---
 
 ## Related
