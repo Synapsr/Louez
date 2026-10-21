@@ -46,7 +46,7 @@ import type {
   StoreTheme,
   UnitAttributes,
 } from "@louez/types";
-import type { PayAsYouGoConfig } from "@louez/types";
+import type { PayAsYouGoConfig, PricingVersion } from "@louez/types";
 
 // Helper for generating IDs
 const id = () =>
@@ -227,8 +227,14 @@ export const subscriptions = mysqlTable(
       .default("pay_as_you_go")
       .notNull(),
 
-    // Per-store pay-as-you-go pricing override. null => platform default ladder.
+    // The store's own pay-as-you-go pricing, frozen when the store is created. Changing
+    // the offer for new stores (PAYG_DEFAULT_PRICING) never touches it. Null only on
+    // legacy rows that the pricing freeze has not reached yet.
     payAsYouGoConfig: json("pay_as_you_go_config").$type<PayAsYouGoConfig>(),
+
+    // Pricing model of the store (see PricingVersion). Every new row sets it; null only on
+    // legacy rows the pricing freeze has not reached yet, so it stays nullable for now.
+    pricingVersion: varchar("pricing_version", { length: 32 }).$type<PricingVersion>(),
 
     // Welcome allowance: number of free reservations granted at account creation. While
     // unused credits remain, a rental's pay-as-you-go commission is waived. Editable per

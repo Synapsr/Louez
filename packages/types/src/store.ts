@@ -549,6 +549,15 @@ export interface PricingBreakdown {
 export type BillingMode = "subscription" | "pay_as_you_go";
 
 /**
+ * The pricing model a store is billed under (`subscriptions.pricing_version`). The model
+ * says how the commission is computed; the numbers are frozen on the store's own row
+ * (`PayAsYouGoConfig`), so changing the offer for new stores never reprices a store.
+ * - `payg-ladder-v1`: a fee per rental, from a graduated ladder or a flat rate.
+ * - `payg-custom`: the same per-rental model, with numbers a platform admin set for this store.
+ */
+export type PricingVersion = "payg-ladder-v1" | "payg-custom";
+
+/**
  * A single graduated pricing band. `upToCount` is the inclusive upper bound of the
  * monthly rental index this band covers; `null` means "and above" (the last band).
  * Bands are evaluated in order; the first band whose `upToCount` is >= the rental's
@@ -564,7 +573,8 @@ export interface PayAsYouGoTier {
 
 /**
  * Per-store pay-as-you-go pricing configuration. Stored as JSON on the store's
- * subscription row. When fields are omitted, the platform default ladder applies.
+ * subscription row, frozen when the store is created. Omitted tiers resolve to the
+ * built-in ladder (1€ / 0,80€ / 0,50€).
  */
 export interface PayAsYouGoConfig {
   /**
@@ -573,7 +583,7 @@ export interface PayAsYouGoConfig {
    * `null`/omitted = use the tier ladder.
    */
   flatRateCents?: number | null;
-  /** Graduated tier ladder. When omitted, the platform default ladder applies. */
+  /** Graduated tier ladder. When omitted, the built-in ladder applies. */
   tiers?: PayAsYouGoTier[];
   /** ISO 4217 currency for the commission (lowercase, e.g. 'eur'). Default: 'eur'. */
   currency?: string;
