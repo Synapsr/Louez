@@ -19,6 +19,10 @@ import {
   notifySmsCreditsTopup,
 } from '@/lib/discord/platform-notifications'
 import { reconcilePayAsYouGoInvoice } from '@/lib/pay-as-you-go'
+import {
+  activatePlanSubscription,
+  endSubscriptionToPayAsYouGo,
+} from '@/lib/stripe/subscriptions'
 import { env } from '@/env'
 
 export async function POST(request: Request) {
@@ -128,40 +132,14 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   const status: 'active' | 'trialing' =
     stripeSubscription.status === 'trialing' ? 'trialing' : 'active'
 
-  // Check if subscription already exists
-  const existingSubscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.storeId, storeId),
+  await activatePlanSubscription({
+    storeId,
+    planSlug,
+    stripeSubscriptionId: stripeSubscription.id,
+    stripeCustomerId: session.customer as string,
+    status,
+    currentPeriodEnd,
   })
-
-  if (existingSubscription) {
-    // Update existing subscription. Subscribing always lands the store on
-    // subscription billing (covers an owner switching from pay-as-you-go).
-    await db
-      .update(subscriptions)
-      .set({
-        planSlug,
-        billingMode: 'subscription',
-        stripeSubscriptionId: stripeSubscription.id,
-        stripeCustomerId: session.customer as string,
-        status,
-        currentPeriodEnd,
-        cancelAtPeriodEnd: false,
-        updatedAt: new Date(),
-      })
-      .where(eq(subscriptions.id, existingSubscription.id))
-  } else {
-    // Create new subscription
-    await db.insert(subscriptions).values({
-      id: nanoid(),
-      storeId,
-      planSlug,
-      billingMode: 'subscription',
-      stripeSubscriptionId: stripeSubscription.id,
-      stripeCustomerId: session.customer as string,
-      status,
-      currentPeriodEnd,
-    })
-  }
 
   // Platform admin notification
   const store = await db.query.stores.findFirst({ where: eq(stores.id, storeId) })
@@ -471,22 +449,11 @@ async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subscription
 
   // The free tier no longer exists, so any ended subscription (whether the owner
   // scheduled a switch to pay-as-you-go, or it simply lapsed/cancelled) falls back to
-  // pay-as-you-go: the store keeps working with no monthly fee and is billed per rental.
+  // pay-as-you-go at the pricing already stored on the store's row.
   const scheduledPaygSwitch =
     stripeSubscription.metadata?.pendingBillingMode === 'pay_as_you_go'
 
-  await db
-    .update(subscriptions)
-    .set({
-      planSlug: 'pay_as_you_go',
-      billingMode: 'pay_as_you_go',
-      status: 'active',
-      stripeSubscriptionId: null,
-      cancelAtPeriodEnd: false,
-      currentPeriodEnd: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.id, subscription.id))
+  await endSubscriptionToPayAsYouGo(subscription.id)
 
   // Platform admin notification
   const store = await db.query.stores.findFirst({ where: eq(stores.id, subscription.storeId) })

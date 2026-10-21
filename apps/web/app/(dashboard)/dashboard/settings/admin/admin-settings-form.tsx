@@ -93,8 +93,10 @@ export function AdminSettingsForm({
 
   const symbol = CURRENCY_SYMBOLS[currency] ?? currency.toUpperCase();
 
-  // Computed once: tier row ids are generated on mount, not on every render.
-  const [defaultValues] = useState<AdminSettingsFormValues>(() => ({
+  // The last saved values, initially the loaded ones (tier row ids are generated on mount,
+  // not on every render). Kept in state so the form shows them after a save, and each
+  // save is compared with them.
+  const [saved, setSaved] = useState<AdminSettingsFormValues>(() => ({
     trialDays,
     discountPercent,
     discountDurationMonths,
@@ -113,11 +115,13 @@ export function AdminSettingsForm({
   }));
 
   const form = useAppForm({
-    defaultValues,
+    defaultValues: saved,
     validators: { onSubmit: adminSettingsSchema },
     onSubmit: async ({ value }) => {
       setRootError(null);
       const payAsYouGoConfig = buildPayAsYouGoConfig(value, currency);
+      // The action only writes the billing fields that differ from the last saved values.
+      const loaded = saved;
 
       startTransition(async () => {
         const result = await updateAdminSettings({
@@ -127,14 +131,19 @@ export function AdminSettingsForm({
           billingMode: value.billingMode,
           payAsYouGoConfig,
           freeReservationsGranted: value.freeReservationsGranted,
+          loaded: {
+            billingMode: loaded.billingMode,
+            payAsYouGoConfig: buildPayAsYouGoConfig(loaded, currency),
+            freeReservationsGranted: loaded.freeReservationsGranted,
+          },
         });
         if (result.error) {
           setRootError(result.error);
           return;
         }
         toastManager.add({ title: t("saved"), type: "success" });
-        form.options.defaultValues = value;
-        form.reset();
+        setSaved(value);
+        form.reset(value);
         router.refresh();
       });
     },

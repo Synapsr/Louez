@@ -19,6 +19,13 @@ export async function register() {
     if (shouldSetup) {
       const { setupDatabase } = await import('@louez/db');
       await setupDatabase();
+
+      // Lock the pricing of legacy stores that followed PAYG_DEFAULT_PRICING live, before
+      // the first request reads it. Fails closed like a failed migration (the step logs why).
+      const { freezeLegacyPricingAtStartup } = await import(
+        './lib/pay-as-you-go/pricing-lock-startup'
+      );
+      await freezeLegacyPricingAtStartup().catch(() => process.exit(1));
     }
   }
 }

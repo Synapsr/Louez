@@ -45,6 +45,11 @@ import {
   type DemoProduct,
   type DemoRate,
 } from './catalog';
+import {
+  LEGACY_PAY_AS_YOU_GO_CONFIG,
+  PAYG_LADDER_V1,
+  buildFrozenPayAsYouGoConfig,
+} from '../../../lib/pay-as-you-go/pricing-lock-core';
 import { resolveProductImages } from './images';
 import {
   CUSTOMER_NOTES,
@@ -878,6 +883,8 @@ async function main(): Promise<void> {
       storeId,
       planSlug: 'ultra',
       billingMode: 'subscription',
+      pricingVersion: PAYG_LADDER_V1,
+      payAsYouGoConfig: buildFrozenPayAsYouGoConfig(LEGACY_PAY_AS_YOU_GO_CONFIG, 'eur'),
       status: 'active',
       stripeSubscriptionId: `sub_demo_${nanoid(16)}`,
       stripeCustomerId: `cus_demo_${nanoid(16)}`,

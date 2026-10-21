@@ -11,16 +11,14 @@ import {
 } from '@louez/db';
 import type { BillingMode } from '@louez/types';
 
+import { log } from '@/lib/evlog';
+
 import {
   type ResolvedPayAsYouGoConfig,
   priceForLocationIndex,
-  resolvePayAsYouGoConfig,
   summarizePayAsYouGoBands,
 } from './config';
-import {
-  getDefaultFreeReservations,
-  getDefaultPayAsYouGoConfigSnapshot,
-} from './defaults';
+import { resolveStorePricing } from './pricing-lock-core';
 import {
   MARKETPLACE_FEE_CENTS,
   decideMarketplaceFeeRecord,
@@ -89,10 +87,15 @@ export async function getStoreCurrency(storeId: string): Promise<string> {
   return currency;
 }
 
+/** Stores already reported as unfrozen, so the error is logged once per process. */
+const reportedUnfrozenStores = new Set<string>();
+
 /**
- * Resolve a store's billing mode + fee configs. Stores with no subscription row
- * default to subscription mode with the platform default fee configs. The PAYG
- * pricing currency always reflects the store's own currency (same tariff in EUR/USD/…).
+ * Resolve a store's billing mode and pay-as-you-go pricing from its own subscription row.
+ * The env offer for new stores is never read here: a store without a row or without a
+ * stored config (the pricing freeze has not reached it) gets the frozen legacy terms, and
+ * an error is logged. The PAYG pricing currency always follows the store's own currency
+ * (same tariff in EUR/USD/…).
  */
 export async function getStoreBilling(storeId: string): Promise<StoreBilling> {
   const [subscription, currency, freeUsed] = await Promise.all([
@@ -108,28 +111,20 @@ export async function getStoreBilling(storeId: string): Promise<StoreBilling> {
     countFreeReservationsUsed(storeId),
   ]);
 
-  // No per-store override → fall back to the platform default offer from
-  // PAYG_DEFAULT_PRICING (env), then to the hardcoded ladder. This makes the env var
-  // the live default for every store without its own stored config (e.g. legacy
-  // accounts), instead of silently using the hardcoded ladder.
-  const config = resolvePayAsYouGoConfig(
-    subscription?.payAsYouGoConfig ?? getDefaultPayAsYouGoConfigSnapshot(currency),
-  );
-  config.currency = currency;
-
-  // A store with no subscription row is a legacy / free-tier account. The free plan no
-  // longer exists, so the platform default is pay-as-you-go: default the billing mode AND
-  // the free-reservation allowance to the env-driven platform defaults. This mirrors how
-  // getPlanSlug / getDefaultPlan already treat a missing subscription as pay-as-you-go, and
-  // it makes the subscription page show the PAYG view (not the plan grid) for these stores.
-  const freeReservationsGranted =
-    subscription?.freeReservationsGranted ?? getDefaultFreeReservations();
+  const pricing = resolveStorePricing(subscription, currency);
+  if (!pricing.frozen && !reportedUnfrozenStores.has(storeId)) {
+    reportedUnfrozenStores.add(storeId);
+    log.error(
+      'billing',
+      `store ${storeId} has no frozen pay-as-you-go pricing (${subscription ? 'no config' : 'no subscription row'}); using the legacy terms. Run the pricing freeze.`,
+    );
+  }
 
   return {
-    billingMode: subscription?.billingMode ?? 'pay_as_you_go',
-    config,
-    freeReservationsGranted,
-    freeReservationsRemaining: Math.max(0, freeReservationsGranted - freeUsed),
+    billingMode: pricing.billingMode,
+    config: pricing.config,
+    freeReservationsGranted: pricing.freeReservationsGranted,
+    freeReservationsRemaining: Math.max(0, pricing.freeReservationsGranted - freeUsed),
   };
 }
 
