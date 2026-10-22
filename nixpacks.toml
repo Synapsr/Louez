@@ -1,0 +1,10 @@
+# Node 22.23.4 (security release of October 2026, CVE-2026-111497 and others).
+# Nixpacks pins Node 22 to an old nixpkgs (22.14.0) and defaults to Node 18,
+# which is end-of-life. This archive is the nixos-26.05 channel of 2026-10-21,
+# which ships nodejs_22 22.23.4 from the binary cache.
+# Move it to a newer nixos-26.05 commit for the next Node security release.
+[variables]
+NIXPACKS_NODE_VERSION = '22'
+
+[phases.setup]
+nixpkgsArchive = 'da6dc0e7b26060f2f71ce3ef7088fb56ee44fa36'
