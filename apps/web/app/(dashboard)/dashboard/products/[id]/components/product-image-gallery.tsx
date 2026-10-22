@@ -9,6 +9,7 @@ import { MediaLightbox } from "@louez/ui";
 
 import { PRODUCT_IMAGE_ASPECT_RATIO } from "@/app/(dashboard)/dashboard/products/utils/product-image-crop";
 import { ProductImage } from "@/components/product/product-image";
+import { canOptimizeImage } from "@/lib/storage/image-optimizer";
 
 interface ProductImageGalleryProps {
   images: string[];
@@ -98,6 +99,7 @@ export const ProductImageGallery = ({ images, readOnly = false }: ProductImageGa
           renderItem={({ item, index }) => (
             <Image
               src={item}
+              unoptimized={!canOptimizeImage(item)}
               alt={t("galleryImageAlt", { index: index + 1 })}
               fill
               sizes="92vw"

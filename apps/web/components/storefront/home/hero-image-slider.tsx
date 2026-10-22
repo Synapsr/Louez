@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@louez/utils";
 
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { canOptimizeImage } from "@/lib/storage/image-optimizer";
 
 /** Long enough to read the headline before the photo changes. */
 const AUTOPLAY_INTERVAL_MS = 6_000;
@@ -77,6 +78,7 @@ export const HeroImageSlider = ({ images, className }: HeroImageSliderProps) => 
         >
           <Image
             src={src}
+            unoptimized={!canOptimizeImage(src)}
             alt=""
             fill
             priority={slide === 0}

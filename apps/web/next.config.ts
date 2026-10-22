@@ -3,6 +3,7 @@ import { resolve } from "path";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
+import { storageImageRemotePattern } from "./lib/storage/image-optimizer";
 import { buildSecurityHeaders } from "./lib/util.security-headers";
 
 // Monorepo: .env files live at the repository root (../../ relative to apps/web/).
@@ -16,6 +17,8 @@ config({ path: resolve(rootDir, ".env") });
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const isDev = process.env.NODE_ENV === "development";
+
+const storageImagePattern = storageImageRemotePattern(process.env.S3_PUBLIC_URL);
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
@@ -44,6 +47,9 @@ const nextConfig: NextConfig = {
   // At runtime, t3-env's proxy falls back to real process.env for actual values like DATABASE_URL.
   env: {
     SKIP_ENV_VALIDATION: process.env.SKIP_ENV_VALIDATION ?? "",
+    // Bucket accepted by remotePatterns, so next/image skips the optimizer
+    // for other sources instead of failing (lib/storage/image-optimizer.ts).
+    LOUEZ_OPTIMIZED_STORAGE_URL: storageImagePattern ? (process.env.S3_PUBLIC_URL ?? "") : "",
   },
   // Security headers for all routes
   async headers() {
@@ -106,83 +112,8 @@ const nextConfig: NextConfig = {
   // Required for PostHog proxy to work with middleware
   skipTrailingSlashRedirect: true,
   images: {
-    remotePatterns: [
-      // Google (OAuth profile pictures)
-      {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com",
-      },
-      // Google Maps Places API (photos)
-      {
-        protocol: "https",
-        hostname: "maps.googleapis.com",
-      },
-      // YouTube thumbnails
-      {
-        protocol: "https",
-        hostname: "img.youtube.com",
-      },
-      // Seed script placeholders (dev only)
-      {
-        protocol: "https",
-        hostname: "ui-avatars.com",
-      },
-      {
-        protocol: "https",
-        hostname: "picsum.photos",
-      },
-      // AWS S3
-      {
-        protocol: "https",
-        hostname: "*.s3.amazonaws.com",
-      },
-      {
-        protocol: "https",
-        hostname: "**.amazonaws.com",
-      },
-      // Scaleway Object Storage
-      {
-        protocol: "https",
-        hostname: "*.scw.cloud",
-      },
-      // OVH Object Storage
-      {
-        protocol: "https",
-        hostname: "*.cloud.ovh.net",
-      },
-      {
-        protocol: "https",
-        hostname: "**.cloud.ovh.net",
-      },
-      // DigitalOcean Spaces
-      {
-        protocol: "https",
-        hostname: "*.digitaloceanspaces.com",
-      },
-      // Cloudflare R2
-      {
-        protocol: "https",
-        hostname: "*.r2.cloudflarestorage.com",
-      },
-      // Backblaze B2
-      {
-        protocol: "https",
-        hostname: "*.backblazeb2.com",
-      },
-      // Wasabi
-      {
-        protocol: "https",
-        hostname: "*.wasabisys.com",
-      },
-      // Linode Object Storage
-      {
-        protocol: "https",
-        hostname: "*.linodeobjects.com",
-      },
-      // MinIO (self-hosted) - Allow any hostname for flexibility
-      // Users can add their own custom domains if needed,
-      { protocol: "https", hostname: "louez-storefront-redesign.localify", pathname: "/**" },
-    ],
+    // Only this instance's bucket. See lib/storage/image-optimizer.ts.
+    remotePatterns: storageImagePattern ? [storageImagePattern] : [],
   },
   // Storefront tenant subdomains are <store-slug>.<env>.louez.localify (three
   // levels). Next's wildcard only matches one label, so *.louez.localify does

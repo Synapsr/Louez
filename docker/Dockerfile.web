@@ -72,8 +72,13 @@ ARG DATABASE_URL
 
 # Public deployment config is read by the server at runtime and passed to the
 # browser through PublicEnvProvider. The artifact version is intentionally
-# immutable and remains the only public build argument.
+# immutable and remains the only NEXT_PUBLIC_ build argument.
 ARG NEXT_PUBLIC_APP_VERSION
+
+# Optional: the public bucket URL, the only remote host the image optimizer
+# may fetch. Without it (the published image), stored images load directly
+# from the bucket instead.
+ARG S3_PUBLIC_URL
 
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
@@ -99,6 +104,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV SKIP_ENV_VALIDATION=${SKIP_ENV_VALIDATION}
 ENV DATABASE_URL=${DATABASE_URL}
+ENV S3_PUBLIC_URL=${S3_PUBLIC_URL}
 
 # Reuse the pnpm tarball corepack already fetched in `deps`. Each stage has its
 # own filesystem, so without this the builder downloads pnpm from the npm

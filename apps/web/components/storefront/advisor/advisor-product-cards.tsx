@@ -10,6 +10,7 @@ import { isFixedPriceProduct } from "@louez/utils";
 
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { useFormatMoney } from "@/hooks/use-format-money";
+import { canOptimizeImage } from "@/lib/storage/image-optimizer";
 
 export interface AdvisorRecommendedProduct {
   id: string;
@@ -41,7 +42,14 @@ export const AdvisorProductCards = ({ products }: AdvisorProductCardsProps) => {
         >
           <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-muted">
             {product.image ? (
-              <Image src={product.image} alt="" fill sizes="56px" className="object-cover" />
+              <Image
+                src={product.image}
+                unoptimized={!canOptimizeImage(product.image)}
+                alt=""
+                fill
+                sizes="56px"
+                className="object-cover"
+              />
             ) : (
               <div className="flex size-full items-center justify-center">
                 <ImageIcon aria-hidden className="size-5 text-muted-foreground" />

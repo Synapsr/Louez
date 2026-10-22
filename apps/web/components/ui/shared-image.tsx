@@ -5,6 +5,7 @@ import { type ComponentType, type ReactNode, useCallback, useState } from "react
 
 import { ImageIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
+import { canOptimizeImage } from "@/lib/storage/image-optimizer";
 
 export type SharedImageProps = Omit<ImageProps, "src"> & {
   /** A missing source renders the fallback instead of a broken image. */
@@ -83,6 +84,7 @@ export const SharedImage = ({
         <Image
           {...imageProps}
           src={src}
+          unoptimized={imageProps.unoptimized || !canOptimizeImage(src)}
           fill={fill}
           width={width}
           height={height}

@@ -11,6 +11,7 @@ import { MediaLightbox } from "@louez/ui";
 import { cn } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
+import { canOptimizeImage } from "@/lib/storage/image-optimizer";
 
 const IMAGE_ASPECT_RATIO = 4 / 3;
 const VIDEO_ASPECT_RATIO = 16 / 9;
@@ -255,6 +256,7 @@ export const ProductGallery = ({
                 ) : null}
                 <Image
                   src={item.src}
+                  unoptimized={!canOptimizeImage(item.src)}
                   alt={itemAlt(index)}
                   fill
                   sizes="92vw"

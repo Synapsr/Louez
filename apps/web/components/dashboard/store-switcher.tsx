@@ -31,6 +31,7 @@ import { cn } from "@louez/utils";
 
 import { switchStore } from "@/app/(dashboard)/dashboard/actions";
 import { useInstanceConfig } from "@/components/instance-provider";
+import { canOptimizeImage } from "@/lib/storage/image-optimizer";
 
 function StoreLogo({
   logoUrl,
@@ -49,6 +50,7 @@ function StoreLogo({
       <div className={cn("relative shrink-0 overflow-hidden rounded-md", dimensions)}>
         <Image
           src={logoUrl}
+          unoptimized={!canOptimizeImage(logoUrl)}
           alt={name}
           fill
           className="object-contain object-left"
