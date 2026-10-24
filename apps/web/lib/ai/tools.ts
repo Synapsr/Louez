@@ -3,10 +3,7 @@ import { and, desc, eq, exists, gte, inArray, like, lte, or, sql, sum } from "dr
 import { z } from "zod";
 
 import {
-  ConsumableStockError,
-  canTransitionReservationStatus,
   categories,
-  changeReservationStatus,
   customers,
   dailyStats,
   db,
@@ -15,7 +12,6 @@ import {
   buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
   marketplaceCatalogTombstones,
-  invalidReservationTransitionMessage,
   loadConsumableReservedQuantities,
   payments,
   productCategories,
@@ -28,11 +24,10 @@ import {
   nextProductSlug,
   nextCategorySlug,
 } from "@louez/db";
-import type { ChangeReservationStatusResult } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
 
-import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { changeReservationStatusAsAgent } from "@/lib/reservations/status-change";
 
 // ---------------------------------------------------------------------------
 // Context & permissions
@@ -60,11 +55,21 @@ function requirePermission(
   }
 }
 
+/** What the tools call into. Tests pass one with fake senders. */
+export interface AIToolServices {
+  /** A status change with everything the dashboard does around it. */
+  changeReservationStatus: typeof changeReservationStatusAsAgent;
+}
+
+const defaultServices: AIToolServices = {
+  changeReservationStatus: changeReservationStatusAsAgent,
+};
+
 // ---------------------------------------------------------------------------
 // Tool factory
 // ---------------------------------------------------------------------------
 
-export function createAITools(ctx: AIChatContext) {
+export function createAITools(ctx: AIChatContext, services: AIToolServices = defaultServices) {
   return {
     // ── Products ──────────────────────────────────────────────────────────
 
@@ -386,7 +391,8 @@ export function createAITools(ctx: AIChatContext) {
     }),
 
     update_reservation_status: tool({
-      description: "Change the status of a reservation (confirm, reject, cancel, etc.)",
+      description:
+        "Change the status of a reservation: confirm, reject, cancel, mark as picked up (ongoing) or returned (completed). Like the dashboard, it also emails the customer when a request is confirmed or rejected, notifies the store, and, when the store uses insurance, creates the contract on a confirmation and cancels it on a cancellation.",
       inputSchema: z.object({
         reservationId: z.string().describe("The reservation ID"),
         status: z
@@ -396,50 +402,26 @@ export function createAITools(ctx: AIChatContext) {
       execute: async ({ reservationId, status: newStatus }) => {
         requirePermission(ctx, "reservations", "write");
 
-        const existing = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-          columns: { id: true, number: true, status: true },
+        // As on the dashboard: the stock check, the fees, the insurance contract,
+        // the emails and the notifications.
+        const result = await services.changeReservationStatus({
+          storeId: ctx.storeId,
+          reservationId,
+          to: newStatus,
+          actor: "ai_chat",
+          actorUserId: ctx.userId,
         });
-        if (!existing) return { error: "Reservation not found" };
-
-        if (!canTransitionReservationStatus(existing.status, newStatus)) {
-          return { error: invalidReservationTransitionMessage(existing.status, newStatus) };
+        if (!result.ok) {
+          return { error: result.error === "not_found" ? "Reservation not found" : result.message };
         }
-
-        let change: ChangeReservationStatusResult;
-        try {
-          change = await db.transaction((tx) =>
-            changeReservationStatus(tx, {
-              reservationId,
-              storeId: ctx.storeId,
-              to: newStatus,
-              actor: "ai_chat",
-              actorUserId: ctx.userId,
-            }),
-          );
-        } catch (error) {
-          if (error instanceof ConsumableStockError) {
-            return { error: error.message };
-          }
-          throw error;
-        }
-        // The reservation changed between the read above and the lock.
-        if (!change.changed) {
-          return {
-            error:
-              change.reason === "not_found"
-                ? "Reservation not found"
-                : invalidReservationTransitionMessage(change.from, newStatus),
-          };
-        }
-        // Now that the change is committed: record or void the pay-as-you-go fee.
-        await runReservationEffects(change.effects);
 
         return {
           success: true,
-          number: existing.number,
-          from: change.from,
-          to: change.to,
+          number: result.number,
+          from: result.from,
+          to: result.to,
+          // What the dashboard shows after the change: rule warnings, a failed contract.
+          ...(result.warnings.length > 0 && { warnings: result.warnings }),
         };
       },
     }),

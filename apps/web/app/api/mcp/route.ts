@@ -1,9 +1,9 @@
 import { handleMcpRequest, handleMcpDelete, handleMcpDiscovery } from "@louez/mcp/http";
 
-import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { changeReservationStatusAsAgent } from "@/lib/reservations/status-change";
 
 // The app code the MCP tools need. packages/mcp cannot import it.
-const mcpDeps = { runReservationEffects };
+const mcpDeps = { changeReservationStatus: changeReservationStatusAsAgent };
 
 export async function POST(request: Request) {
   return handleMcpRequest(request, mcpDeps);

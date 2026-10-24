@@ -1,10 +1,6 @@
 "use server";
 
-import {
-  ReservationInventoryError,
-  lockReservationProducts,
-  reserveInventory,
-} from "@/lib/reservations/reserve-inventory";
+import { lockReservationProducts, reserveInventory } from "@/lib/reservations/reserve-inventory";
 
 import { validateReservationContract } from "@louez/api/services";
 
@@ -31,7 +27,6 @@ import {
   reconcileReservationStock,
   reservationStatusConsumesStock,
 } from "@louez/db";
-import type { ChangeReservationStatusResult } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
   buildReservationOverlapPredicate,
@@ -54,7 +49,6 @@ import {
   reservations,
   verificationCodes,
 } from "@louez/db";
-import type { NotificationEventType } from "@louez/types";
 import type { Rate } from "@louez/types";
 import type {
   BookingAttributeAxis,
@@ -95,15 +89,7 @@ import {
 
 import { auth } from "@/lib/auth";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
-import {
-  notifyEquipmentPickedUp,
-  notifyNewReservation,
-  notifyPaymentReceived,
-  notifyReservationCancelled,
-  notifyReservationCompleted,
-  notifyReservationConfirmed,
-  notifyReservationRejected,
-} from "@/lib/discord/platform-notifications";
+import { notifyNewReservation, notifyPaymentReceived } from "@/lib/discord/platform-notifications";
 import { sendEmail } from "@/lib/email/client";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import {
@@ -119,7 +105,6 @@ import {
   sendReservationModifiedEmail,
 } from "@/lib/email/send";
 import {
-  cancelTulipContractForReservation,
   createTulipContractForReservation,
   getTulipCoverageSummary,
   previewTulipQuoteForCheckout,
@@ -132,7 +117,6 @@ import {
 import { getDashboardTulipInsuranceModeFromSettings } from "@/lib/integrations/tulip/settings";
 import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state";
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
-import { dispatchNotification } from "@/lib/notifications/dispatcher";
 import {
   captureProductServerEvent,
   captureReservationActionSucceeded,
@@ -142,10 +126,11 @@ import {
   productAnalyticsEvents,
   reservationAnalyticsActions,
 } from "@/lib/product-analytics/analytics-events";
-import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
-import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
-import { changeStoreReservationStatus } from "@/lib/reservations/store-status-change";
+import {
+  cancelStoreReservation,
+  updateStoreReservationStatus,
+} from "@/lib/reservations/status-change";
 import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
   isSmsConfigured,
@@ -438,262 +423,28 @@ export async function updateReservationStatus(
     return { error: "errors.unauthorized" };
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      customer: true,
-      items: true,
-    },
+  const outcome = await updateStoreReservationStatus({
+    store,
+    reservationId,
+    status,
+    rejectionReason,
+    actor: "store_user",
+    actorUserId: await getActorUserId(),
   });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  const validationWarnings =
-    status === "confirmed"
-      ? evaluateReservationRules({
-          startDate: reservation.startDate,
-          endDate: reservation.endDate,
-          storeSettings: store.settings,
-        })
-      : [];
-
-  const actorUserId = await getActorUserId();
-  let change: ChangeReservationStatusResult;
-  try {
-    change = await db.transaction(
-      (tx) =>
-        changeStoreReservationStatus(tx, {
-          reservationId,
-          storeId: store.id,
-          to: status,
-          actor: "store_user",
-          actorUserId,
-          // Refuses when someone changed the status since the read above.
-          expectedFrom: reservation.status,
-          dates: { startDate: reservation.startDate, endDate: reservation.endDate },
-          activity: {
-            metadata: {
-              ...(status === "rejected" && rejectionReason && { rejectionReason }),
-              ...(validationWarnings.length > 0 && {
-                validationWarnings,
-                validationWarningsCount: validationWarnings.length,
-              }),
-            },
-          },
-        }),
-      { isolationLevel: "read committed" },
-    );
-  } catch (error) {
-    if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
-      return { error: error.message };
-    }
-    throw error;
-  }
-  if (!change.changed) {
+  if (!outcome.ok) {
+    if (outcome.error === "unavailable") return { error: outcome.message };
     // A stale read, a retry of the same change and a refused change get one answer.
     return {
       error:
-        change.reason === "not_found"
+        outcome.error === "not_found" || outcome.refusal.reason === "not_found"
           ? "errors.reservationNotFound"
           : "errors.reservationStatusChanged",
     };
   }
 
-  // Right after commit: the pay-as-you-go fee is recorded or voided.
-  await runReservationEffects(change.effects);
-  const previousStatus = change.from;
-
-  let tulipWarning: {
-    key: string;
-    params?: Record<string, string | number>;
-  } | null = null;
-  if (status === "confirmed") {
-    try {
-      await createTulipContractForReservation({
-        reservationId,
-        source: "dashboard_reservation_confirmation",
-      });
-    } catch (error) {
-      console.error("[tulip] Failed to create contract from dashboard confirmation:", {
-        reservationId,
-        error,
-      });
-
-      tulipWarning = {
-        key: getErrorKey(error, "errors.tulipContractCreationFailed"),
-      };
-    }
-  }
-
-  // Send emails based on status change
-  const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
-
-  // Build customer notification context
-  const customerNotificationCtx = {
-    store: {
-      id: store.id,
-      name: store.name,
-      email: store.email,
-      logoUrl: store.logoUrl,
-      darkLogoUrl: store.darkLogoUrl,
-      address: store.address,
-      phone: store.phone,
-      theme: store.theme,
-      settings: store.settings,
-      emailSettings: store.emailSettings,
-      customerNotificationSettings: store.customerNotificationSettings,
-    },
-    customer: {
-      id: reservation.customer.id,
-      firstName: reservation.customer.firstName,
-      lastName: reservation.customer.lastName,
-      email: reservation.customer.email,
-      phone: reservation.customer.phone,
-    },
-    reservation: {
-      id: reservationId,
-      number: reservation.number,
-      startDate: reservation.startDate,
-      endDate: reservation.endDate,
-      totalAmount: parseFloat(reservation.totalAmount),
-      subtotalAmount: parseFloat(reservation.subtotalAmount),
-      depositAmount: parseFloat(reservation.depositAmount),
-      taxEnabled: !!reservation.taxRate,
-      taxRate: reservation.taxRate ? parseFloat(reservation.taxRate) : null,
-      subtotalExclTax: reservation.subtotalExclTax ? parseFloat(reservation.subtotalExclTax) : null,
-      taxAmount: reservation.taxAmount ? parseFloat(reservation.taxAmount) : null,
-    },
-    reservationUrl,
-  };
-
-  // Dispatch customer notification based on status change
-  if ((previousStatus === "pending" || previousStatus === "quote") && status === "confirmed") {
-    // Request/quote accepted - build items for email
-    const emailItems = reservation.items.map((item) => ({
-      name: item.productSnapshot?.name || "Product",
-      quantity: item.quantity,
-      unitPrice: parseFloat(item.unitPrice),
-      totalPrice: parseFloat(item.totalPrice),
-    }));
-
-    try {
-      const contractUrl = await createReservationInstantAccessUrl({
-        storeId: store.id,
-        storeSlug: store.slug,
-        customerEmail: reservation.customer.email,
-        reservationId,
-        redirectPath: `/account/reservations/${reservationId}/contract`,
-      });
-      const termsUrl = store.cgv?.trim() ? getStorefrontUrl(store.slug, "/terms") : null;
-
-      dispatchCustomerNotification("customer_request_accepted", {
-        ...customerNotificationCtx,
-        items: emailItems,
-        contractUrl,
-        termsUrl,
-        paymentUrl: null,
-      }).catch((error: unknown) => {
-        console.error("Failed to dispatch customer request accepted notification:", error);
-      });
-    } catch (error) {
-      console.error("Failed to dispatch customer request accepted notification:", error);
-    }
-  } else if (status === "rejected") {
-    // Request rejected
-    dispatchCustomerNotification("customer_request_rejected", {
-      ...customerNotificationCtx,
-      reason: rejectionReason,
-    }).catch((error: unknown) => {
-      console.error("Failed to dispatch customer request rejected notification:", error);
-    });
-  }
-
-  // Dispatch admin notifications (SMS, Discord) based on preferences
-  const notificationEventMap: Record<string, NotificationEventType> = {
-    confirmed: "reservation_confirmed",
-    rejected: "reservation_rejected",
-    ongoing: "reservation_picked_up",
-    completed: "reservation_completed",
-  };
-
-  const eventType = notificationEventMap[status];
-  if (eventType) {
-    dispatchNotification(eventType, {
-      store: {
-        id: store.id,
-        name: store.name,
-        email: store.email,
-        discordWebhookUrl: store.discordWebhookUrl,
-        ownerPhone: store.ownerPhone,
-        notificationSettings: store.notificationSettings,
-        settings: store.settings,
-      },
-      reservation: {
-        id: reservationId,
-        number: reservation.number,
-        startDate: reservation.startDate,
-        endDate: reservation.endDate,
-        totalAmount: parseFloat(reservation.totalAmount),
-      },
-      customer: {
-        firstName: reservation.customer.firstName,
-        lastName: reservation.customer.lastName,
-        email: reservation.customer.email,
-        phone: reservation.customer.phone,
-      },
-    }).catch((error) => {
-      console.error("Failed to dispatch admin notification:", error);
-    });
-  }
-
-  // Platform admin notification
-  const storeInfo = { id: store.id, name: store.name, slug: store.slug };
-  const currency = store.settings?.currency;
-  if (status === "confirmed") {
-    notifyReservationConfirmed(storeInfo, reservation.number).catch(() => {});
-  } else if (status === "rejected") {
-    notifyReservationRejected(storeInfo, reservation.number).catch(() => {});
-  } else if (status === "ongoing") {
-    notifyEquipmentPickedUp(storeInfo, reservation.number).catch(() => {});
-  } else if (status === "completed") {
-    notifyReservationCompleted(
-      storeInfo,
-      reservation.number,
-      parseFloat(reservation.totalAmount),
-      currency,
-    ).catch(() => {});
-  }
-
-  revalidatePath("/dashboard/reservations");
-  revalidatePath(`/dashboard/reservations/${reservationId}`);
-  const responseWarnings = [
-    ...validationWarnings.map((warning) => ({
-      key: warning.key,
-      params: warning.params,
-    })),
-    ...(tulipWarning ? [tulipWarning] : []),
-  ];
-
-  const analyticsAction = getReservationStatusAnalyticsAction(status);
-  if (analyticsAction) {
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
-      storeId: store.id,
-      reservationId,
-      action: analyticsAction,
-      properties: {
-        status_before: previousStatus,
-        status_after: status,
-        warning_count: responseWarnings.length,
-      },
-    });
-  }
-
   return {
     success: true,
-    ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
+    ...(outcome.warnings.length > 0 && { warnings: outcome.warnings }),
   };
 }
 
@@ -703,102 +454,19 @@ export async function cancelReservation(reservationId: string) {
     return { error: "errors.unauthorized" };
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      customer: true,
-    },
+  const outcome = await cancelStoreReservation({
+    store,
+    reservationId,
+    actor: "store_user",
+    actorUserId: await getActorUserId(),
   });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  const actorUserId = await getActorUserId();
-  let cancellation: ChangeReservationStatusResult;
-  try {
-    cancellation = await db.transaction((tx) =>
-      changeStoreReservationStatus(tx, {
-        reservationId,
-        storeId: store.id,
-        to: "cancelled",
-        actor: "store_user",
-        actorUserId,
-        dates: { startDate: reservation.startDate, endDate: reservation.endDate },
-      }),
-    );
-  } catch (error) {
-    if (error instanceof ConsumableStockError) {
-      return { error: error.message };
-    }
-    throw error;
-  }
-  // Gone, or already cancelled, completed, rejected or declined.
-  if (!cancellation.changed) {
+  if (!outcome.ok) {
+    if (outcome.error === "not_found") return { error: "errors.reservationNotFound" };
+    if (outcome.error === "unavailable") return { error: outcome.message };
+    // Gone, or already cancelled, completed, rejected or declined.
     return { error: "errors.cannotCancelReservation" };
   }
 
-  // Right after commit: the pay-as-you-go fee is voided.
-  await runReservationEffects(cancellation.effects);
-
-  if (reservation.tulipContractId) {
-    try {
-      await cancelTulipContractForReservation({ reservationId });
-    } catch (error) {
-      console.error("[tulip] Failed to cancel contract from dashboard cancellation:", {
-        reservationId,
-        contractId: reservation.tulipContractId,
-        error,
-      });
-    }
-  }
-
-  // Dispatch admin notifications (SMS, Discord) based on preferences
-  dispatchNotification("reservation_cancelled", {
-    store: {
-      id: store.id,
-      name: store.name,
-      email: store.email,
-      discordWebhookUrl: store.discordWebhookUrl,
-      ownerPhone: store.ownerPhone,
-      notificationSettings: store.notificationSettings,
-      settings: store.settings,
-    },
-    reservation: {
-      id: reservationId,
-      number: reservation.number,
-      startDate: reservation.startDate,
-      endDate: reservation.endDate,
-      totalAmount: parseFloat(reservation.totalAmount),
-    },
-    customer: {
-      firstName: reservation.customer.firstName,
-      lastName: reservation.customer.lastName,
-      email: reservation.customer.email,
-      phone: reservation.customer.phone,
-    },
-  }).catch((error) => {
-    console.error("Failed to dispatch cancellation notification:", error);
-  });
-
-  // Platform admin notification
-  notifyReservationCancelled(
-    { id: store.id, name: store.name, slug: store.slug },
-    reservation.number,
-  ).catch(() => {});
-
-  revalidatePath("/dashboard/reservations");
-  revalidatePath(`/dashboard/reservations/${reservationId}`);
-  await captureReservationActionSucceeded({
-    distinctId: store.userId,
-    storeId: store.id,
-    reservationId,
-    action: reservationAnalyticsActions.cancelReservation,
-    properties: {
-      status_before: reservation.status,
-      status_after: "cancelled",
-    },
-  });
   return { success: true };
 }
 

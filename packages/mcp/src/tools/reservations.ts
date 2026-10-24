@@ -1,14 +1,5 @@
 import { z } from "zod";
-import {
-  ConsumableStockError,
-  canTransitionReservationStatus,
-  changeReservationStatus,
-  customers,
-  db,
-  invalidReservationTransitionMessage,
-  reservations,
-} from "@louez/db";
-import type { ChangeReservationStatusResult } from "@louez/db";
+import { customers, db, reservations } from "@louez/db";
 import { and, eq, desc, sql, gte } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -209,7 +200,7 @@ export function registerReservationTools(
   // ── update_reservation_status ──────────────────────────────────────────
   server.tool(
     "update_reservation_status",
-    "Change the status of a reservation (confirm, reject, cancel, etc.)",
+    "Change the status of a reservation: confirm, reject, cancel, mark as picked up (ongoing) or returned (completed). Like the dashboard, it also emails the customer when a request is confirmed or rejected, notifies the store, and, when the store uses insurance, creates the contract on a confirmation and cancels it on a cancellation.",
     {
       reservationId: z.string().describe("The reservation ID"),
       status: z
@@ -227,52 +218,25 @@ export function registerReservationTools(
     async ({ reservationId, status: newStatus, rejectionReason }) => {
       requirePermission(ctx, "reservations", "write");
 
-      const existing = await db.query.reservations.findFirst({
-        where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-        columns: { id: true, number: true, status: true },
+      const result = await deps.changeReservationStatus({
+        storeId: ctx.storeId,
+        reservationId,
+        to: newStatus,
+        actor: "mcp",
+        actorUserId: ctx.userId,
+        rejectionReason,
       });
-
-      if (!existing) return toolError("Reservation not found.");
-
-      if (!canTransitionReservationStatus(existing.status, newStatus)) {
-        return toolError(invalidReservationTransitionMessage(existing.status, newStatus));
+      if (!result.ok) {
+        return toolError(result.error === "not_found" ? "Reservation not found." : result.message);
       }
 
-      let change: ChangeReservationStatusResult;
-      try {
-        change = await db.transaction((tx) =>
-          changeReservationStatus(tx, {
-            reservationId,
-            storeId: ctx.storeId,
-            to: newStatus,
-            actor: "mcp",
-            actorUserId: ctx.userId,
-            // The timeline shows the reason of a rejection, as on the dashboard.
-            ...(newStatus === "rejected" && rejectionReason
-              ? { activity: { metadata: { rejectionReason } } }
-              : {}),
-          }),
-        );
-      } catch (error) {
-        if (error instanceof ConsumableStockError) {
-          return toolError(error.message);
-        }
-        throw error;
-      }
-      // The reservation changed between the read above and the lock.
-      if (!change.changed) {
-        return toolError(
-          change.reason === "not_found"
-            ? "Reservation not found."
-            : invalidReservationTransitionMessage(change.from, newStatus),
-        );
-      }
-      // Now that the change is committed: record or void the pay-as-you-go fee.
-      await deps.runReservationEffects(change.effects);
-
-      return toolResult(
-        `Reservation #${existing.number} updated: ${formatStatus(change.from)} → ${formatStatus(change.to)}`,
+      const updated = `Reservation #${result.number} updated: ${formatStatus(result.from)} → ${formatStatus(result.to)}`;
+      if (result.warnings.length === 0) return toolResult(updated);
+      // The dashboard shows these after the change: rule warnings, a failed contract.
+      const warnings = result.warnings.map(({ key, params }) =>
+        params ? `${key} ${JSON.stringify(params)}` : key,
       );
+      return toolResult(`${updated}\nWarnings: ${warnings.join(", ")}`);
     },
   );
 
