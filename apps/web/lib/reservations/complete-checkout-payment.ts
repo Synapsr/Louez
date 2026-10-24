@@ -3,9 +3,17 @@ import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { validateReservationContract, confirmMarketplaceBookingAttempt } from "@louez/api/services";
-import { ConsumableStockError, consumeReservationStock, db } from "@louez/db";
+import {
+  ConsumableStockError,
+  changeReservationStatus,
+  consumeReservationStock,
+  db,
+  toWholeSeconds,
+  type ReservationBillingEffect,
+} from "@louez/db";
 import { paymentRequests, reservationActivity, reservations, stores } from "@louez/db";
 
+import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import {
   notifyPaymentReceived,
   notifyReservationConfirmed,
@@ -79,12 +87,19 @@ const loadReservationForCompletion = async (reservationId: string) =>
     with: { store: true, customer: true, items: true },
   });
 
-const confirmPaidReservationOrThrow = async (params: {
+/**
+ * Confirms a paid pending reservation as the `payment` actor, with its
+ * `confirmed` activity row. Returns false when it was not pending. Exported for
+ * its database test.
+ */
+export const confirmPaidReservationOrThrow = async (params: {
   reservationId: string;
   storeId: string;
   stripeCustomerId: string | null;
   stripePaymentMethodId: string | null;
   depositStatus: DepositStatus;
+  /** The metadata of the `confirmed` activity row. */
+  activityMetadata: Record<string, unknown>;
 }): Promise<boolean> => {
   // Keep payment/deposit metadata even when stock consumption rolls back. A
   // merchant can then restock and confirm the paid reservation manually.
@@ -94,7 +109,8 @@ const confirmPaidReservationOrThrow = async (params: {
       stripeCustomerId: params.stripeCustomerId,
       stripePaymentMethodId: params.stripePaymentMethodId,
       depositStatus: params.depositStatus,
-      updatedAt: new Date(),
+      // Whole seconds, so the confirmation below never moves updated_at back.
+      updatedAt: toWholeSeconds(new Date()),
     })
     .where(
       and(
@@ -104,50 +120,48 @@ const confirmPaidReservationOrThrow = async (params: {
       ),
     );
 
-  return db.transaction(
-    async (tx) => {
-      const [locked] = await tx
-        .select({ status: reservations.status })
-        .from(reservations)
-        .where(
-          and(eq(reservations.id, params.reservationId), eq(reservations.storeId, params.storeId)),
-        )
-        .for("update");
+  const result = await db.transaction(
+    async (tx): Promise<{ confirmed: boolean; effects: ReservationBillingEffect[] }> => {
+      const change = await changeReservationStatus(tx, {
+        reservationId: params.reservationId,
+        storeId: params.storeId,
+        to: "confirmed",
+        actor: "payment",
+        actorUserId: null,
+        expectedFrom: "pending",
+        beforeWrite: (lockedTx) =>
+          checkExistingReservationInventory(lockedTx, params.reservationId, params.storeId),
+        activity: { metadata: params.activityMetadata },
+      });
 
-      if (!locked) {
-        return false;
-      }
-      if (locked.status === "confirmed") {
-        await consumeReservationStock(tx, params.reservationId, params.storeId);
-        return false;
-      }
-      if (locked.status !== "pending") {
-        return false;
+      if (!change.changed) {
+        // Already confirmed, by the other completion path or the merchant: make
+        // sure its consumables were taken. Consuming twice changes nothing.
+        if (change.from === "confirmed") {
+          await consumeReservationStock(tx, params.reservationId, params.storeId);
+        }
+        return { confirmed: false, effects: [] };
       }
 
-      await checkExistingReservationInventory(tx, params.reservationId, params.storeId);
-      await consumeReservationStock(tx, params.reservationId, params.storeId);
       await tx
         .update(reservations)
         .set({
-          status: "confirmed",
           stripeCustomerId: params.stripeCustomerId,
           stripePaymentMethodId: params.stripePaymentMethodId,
           depositStatus: params.depositStatus,
-          updatedAt: new Date(),
         })
         .where(
-          and(
-            eq(reservations.id, params.reservationId),
-            eq(reservations.storeId, params.storeId),
-            eq(reservations.status, "pending"),
-          ),
+          and(eq(reservations.id, params.reservationId), eq(reservations.storeId, params.storeId)),
         );
 
-      return true;
+      return { confirmed: true, effects: change.effects };
     },
     { isolationLevel: "read committed" },
   );
+
+  // The webhook records a paid checkout's fee itself, so this is empty today.
+  await runReservationEffects(result.effects);
+  return result.confirmed;
 };
 
 /**
@@ -249,7 +263,9 @@ const runCheckoutPaymentCompletion = async ({
         ? "card_saved"
         : "pending"
       : "none";
-  const paidAt = new Date();
+  // Whole seconds, as the status change stores the `confirmed` row: MySQL would
+  // round this one up, and the timeline would show the payment after it.
+  const paidAt = toWholeSeconds(new Date());
 
   const paymentClaim = await claimCompletedCheckoutPayment({
     reservationId,
@@ -320,6 +336,12 @@ const runCheckoutPaymentCompletion = async ({
     );
   }
 
+  // Pure, so the activity row can be written with the status change.
+  const validationWarnings = evaluateReservationRules({
+    startDate: reservation.startDate,
+    endDate: reservation.endDate,
+    storeSettings: store.settings,
+  });
   const reservationConfirmed = await confirmPaidReservation(
     {
       reservationId,
@@ -327,6 +349,16 @@ const runCheckoutPaymentCompletion = async ({
       stripeCustomerId: stripeDetails.stripeCustomerId,
       stripePaymentMethodId: stripeDetails.stripePaymentMethodId,
       depositStatus,
+      activityMetadata: {
+        source: "online_payment",
+        depositAmount,
+        depositStatus,
+        cardSaved: Boolean(stripeDetails.stripePaymentMethodId),
+        ...(validationWarnings.length > 0 && {
+          validationWarnings,
+          validationWarningsCount: validationWarnings.length,
+        }),
+      },
     },
     source,
   );
@@ -365,11 +397,6 @@ const runCheckoutPaymentCompletion = async ({
   }
 
   if (reservationConfirmed) {
-    const validationWarnings = evaluateReservationRules({
-      startDate: reservation.startDate,
-      endDate: reservation.endDate,
-      storeSettings: store.settings,
-    });
     if (validationWarnings.length > 0) {
       log.warn({
         checkout: {
@@ -381,23 +408,6 @@ const runCheckoutPaymentCompletion = async ({
         },
       });
     }
-
-    await db.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "confirmed",
-      metadata: {
-        source: "online_payment",
-        depositAmount,
-        depositStatus,
-        cardSaved: Boolean(stripeDetails.stripePaymentMethodId),
-        ...(validationWarnings.length > 0 && {
-          validationWarnings,
-          validationWarningsCount: validationWarnings.length,
-        }),
-      },
-      createdAt: new Date(),
-    });
 
     dispatchNotification("reservation_confirmed", {
       store: toAdminNotificationStore(store),

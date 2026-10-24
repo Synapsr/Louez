@@ -156,7 +156,9 @@ export function isFeeVoidingReservationStatus(status: ReservationStatus): boolea
 
 /**
  * MySQL rounds fractional seconds on a timestamp column. Dropping them first
- * keeps a stored date and its fee's month the same at 23:59:59.6.
+ * keeps a stored date and its fee's month the same at 23:59:59.6. A row
+ * written just before a status change uses it too, or MySQL could store it
+ * one second after the change.
  */
 export function toWholeSeconds(date: Date): Date {
   return new Date(Math.floor(date.getTime() / 1000) * 1000);

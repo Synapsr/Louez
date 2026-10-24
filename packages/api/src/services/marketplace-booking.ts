@@ -12,6 +12,7 @@ import {
   reservationItems,
   reservations,
   stores,
+  toWholeSeconds,
 } from "@louez/db";
 import type { Rate, StoreSettings } from "@louez/types";
 import { calculateSeasonalAwarePrice, toAbsoluteUrl, type PricingMode } from "@louez/utils";
@@ -1175,9 +1176,11 @@ export async function expireMarketplaceBookingAttempts(params: {
 }
 
 export async function confirmMarketplaceBookingAttempt(reservationId: string): Promise<void> {
+  // Whole seconds, as the reservation's confirmation that follows: the feed
+  // cursor reads the later of the two.
   await db
     .update(marketplaceBookingAttempts)
-    .set({ status: "confirmed", updatedAt: new Date() })
+    .set({ status: "confirmed", updatedAt: toWholeSeconds(new Date()) })
     .where(eq(marketplaceBookingAttempts.reservationId, reservationId));
 }
 

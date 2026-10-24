@@ -2,25 +2,36 @@ import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { db } from "./index";
+import {
+  changeReservationStatus,
+  toWholeSeconds,
+  type ReservationEffectRunner,
+} from "./reservation-status";
 import { payments, reservationActivity, reservationCalendarEvents, reservations } from "./schema";
 
-/** Cancel only an unpaid online checkout; never override a payment or decision. */
-export const cancelFailedCheckoutReservation = async ({
-  storeId,
-  reservationId,
-  reason,
-  minimumAmount,
-  currency,
-  expectedAmount,
-}: {
-  storeId: string;
-  reservationId: string;
-  reason: "amount_too_small" | "session_creation_failed";
-  minimumAmount?: number;
-  currency?: string;
-  expectedAmount?: string;
-}): Promise<boolean> =>
-  db.transaction(async (tx) => {
+/**
+ * Cancel only an unpaid online checkout; never override a payment or decision.
+ * The fee effects run through `runReservationEffects` after commit.
+ */
+export const cancelFailedCheckoutReservation = async (
+  {
+    storeId,
+    reservationId,
+    reason,
+    minimumAmount,
+    currency,
+    expectedAmount,
+  }: {
+    storeId: string;
+    reservationId: string;
+    reason: "amount_too_small" | "session_creation_failed";
+    minimumAmount?: number;
+    currency?: string;
+    expectedAmount?: string;
+  },
+  runReservationEffects: ReservationEffectRunner,
+): Promise<boolean> => {
+  const effects = await db.transaction(async (tx) => {
     const [reservation] = await tx
       .select({
         id: reservations.id,
@@ -32,32 +43,46 @@ export const cancelFailedCheckoutReservation = async ({
       .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)))
       .for("update");
     if (!reservation || reservation.status !== "pending" || reservation.source !== "online") {
-      return false;
+      return null;
     }
-    if (expectedAmount !== undefined && reservation.totalAmount !== expectedAmount) return false;
+    if (expectedAmount !== undefined && reservation.totalAmount !== expectedAmount) return null;
     const [payment] = await tx
       .select({ id: payments.id })
       .from(payments)
       .where(eq(payments.reservationId, reservation.id))
       .limit(1);
     // Any payment row may point to a Stripe session the customer can still pay.
-    if (payment) return false;
+    if (payment) return null;
 
-    const now = new Date();
+    // Whole seconds, as the status change stores its row: MySQL would round this
+    // one up, and the timeline would show the cancellation first.
+    const now = toWholeSeconds(new Date());
     const metadata = {
       source: "checkout_payment_failed",
       reason,
       ...(minimumAmount !== undefined ? { minimumAmount } : {}),
       ...(currency ? { currency } : {}),
     };
-    await tx
-      .update(reservations)
-      .set({ status: "cancelled", updatedAt: now })
-      .where(and(eq(reservations.id, reservation.id), eq(reservations.storeId, storeId)));
-    await tx.insert(reservationActivity).values([
-      { id: nanoid(), reservationId, activityType: "payment_failed", metadata, createdAt: now },
-      { id: nanoid(), reservationId, activityType: "cancelled", metadata, createdAt: now },
-    ]);
+    await tx.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: "payment_failed",
+      metadata,
+      createdAt: now,
+    });
+    const change = await changeReservationStatus(tx, {
+      reservationId,
+      storeId,
+      to: "cancelled",
+      actor: "system",
+      actorUserId: null,
+      expectedFrom: "pending",
+      activity: { metadata },
+    });
+    // The row is locked and pending, so only a bug lands here: roll back the payment_failed row.
+    if (!change.changed) {
+      throw new Error(`Could not cancel failed checkout ${reservationId}: ${change.reason}`);
+    }
     // Existing calendar events must release the cancelled checkout too.
     await tx
       .update(reservationCalendarEvents)
@@ -69,5 +94,10 @@ export const cancelFailedCheckoutReservation = async ({
         updatedAt: now,
       })
       .where(eq(reservationCalendarEvents.reservationId, reservationId));
-    return true;
+    return change.effects;
   });
+  if (!effects) return false;
+
+  await runReservationEffects(effects);
+  return true;
+};

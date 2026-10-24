@@ -79,6 +79,7 @@ export {
   invalidReservationTransitionMessage,
   isBillableReservationStatus,
   isFeeVoidingReservationStatus,
+  toWholeSeconds,
 } from "./reservation-status";
 export type {
   ChangeReservationStatusInput,
