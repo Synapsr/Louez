@@ -48,19 +48,6 @@ describe("store status change (database)", { skip: skipWithoutTestDatabase() }, 
     louezDb = await import("@louez/db");
     statusChange = await import("./store-status-change");
 
-    // No migration adds 'quote' and 'declined' to reservations.reservation_status
-    // (see reservation-status.db.test.ts). Align this database with the schema.
-    const statuses = louezDb.reservations.status.enumValues.map((status) => `'${status}'`);
-    const connection = await database.connect();
-    try {
-      await connection.query(
-        `ALTER TABLE reservations MODIFY COLUMN reservation_status
-           enum(${statuses.join(",")}) NOT NULL DEFAULT 'pending'`,
-      );
-    } finally {
-      await connection.end();
-    }
-
     // The inventory check reads the store's settings.
     await louezDb.db.insert(louezDb.stores).values({
       id: STORE,

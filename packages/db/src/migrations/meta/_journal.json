@@ -624,6 +624,13 @@
       "when": 1792855753946,
       "tag": "0083_backfill_reservation_billable_at",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "5",
+      "when": 1792870415571,
+      "tag": "0084_reservation_status_quote_declined",
+      "breakpoints": true
     }
   ]
 }

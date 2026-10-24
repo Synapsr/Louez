@@ -105,19 +105,6 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
     const { runReservationEffects } = await import("../billing/reservation-effects");
     const { connectReservationTools } = await import("@louez/mcp/testing");
 
-    // No migration adds 'quote' and 'declined' to reservations.reservation_status
-    // (see reservation-status.db.test.ts). Align this database with the schema.
-    const statuses = louezDb.reservations.status.enumValues.map((status) => `'${status}'`);
-    const connection = await database.connect();
-    try {
-      await connection.query(
-        `ALTER TABLE reservations MODIFY COLUMN reservation_status
-           enum(${statuses.join(",")}) NOT NULL DEFAULT 'pending'`,
-      );
-    } finally {
-      await connection.end();
-    }
-
     const note = (sender: keyof StatusChangeDeps, args: unknown[]) => {
       calls.push({ sender, args });
     };

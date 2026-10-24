@@ -33,21 +33,6 @@ describe(
       database = await createTestDatabase("reservation_status");
       // DATABASE_URL now points at the test database.
       louezDb = await import("./index");
-
-      // No migration adds 'quote' and 'declined' to reservations.reservation_status:
-      // 0000 created it without them, and the snapshots have them from 0037 on, so
-      // a database built from migrations alone cannot store a quote. Align this
-      // one with the schema until a migration does.
-      const statuses = louezDb.reservations.status.enumValues.map((status) => `'${status}'`);
-      const connection = await database.connect();
-      try {
-        await connection.query(
-          `ALTER TABLE reservations MODIFY COLUMN reservation_status
-             enum(${statuses.join(",")}) NOT NULL DEFAULT 'pending'`,
-        );
-      } finally {
-        await connection.end();
-      }
     });
 
     after(async () => {

@@ -56,19 +56,6 @@ describe(
       louezDb = await import("@louez/db");
       repair = await import("./legacy-fee-repair");
 
-      // No migration adds 'quote' and 'declined' to reservations.reservation_status
-      // (see reservation-status.db.test.ts). Align this database with the schema.
-      const statuses = louezDb.reservations.status.enumValues.map((status) => `'${status}'`);
-      const connection = await database.connect();
-      try {
-        await connection.query(
-          `ALTER TABLE reservations MODIFY COLUMN reservation_status
-             enum(${statuses.join(",")}) NOT NULL DEFAULT 'pending'`,
-        );
-      } finally {
-        await connection.end();
-      }
-
       const pricing = {
         payAsYouGoConfig: { flatRateCents: 123 },
         pricingVersion: "payg-ladder-v1",
