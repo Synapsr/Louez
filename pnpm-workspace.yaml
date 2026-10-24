@@ -8,8 +8,8 @@ catalog:
   typescript: 7.0.2
 
 ignoredBuiltDependencies:
-  - '@parcel/watcher'
-  - '@swc/core'
+  - "@parcel/watcher"
+  - "@swc/core"
   - core-js
   - esbuild
   - protobufjs
@@ -17,43 +17,43 @@ ignoredBuiltDependencies:
   - unrs-resolver
 
 minimumReleaseAgeExclude:
-  - '@typescript/typescript-aix-ppc64@7.0.2'
-  - '@typescript/typescript-darwin-arm64@7.0.2'
-  - '@typescript/typescript-darwin-x64@7.0.2'
-  - '@typescript/typescript-freebsd-arm64@7.0.2'
-  - '@typescript/typescript-freebsd-x64@7.0.2'
-  - '@typescript/typescript-linux-arm64@7.0.2'
-  - '@typescript/typescript-linux-arm@7.0.2'
-  - '@typescript/typescript-linux-loong64@7.0.2'
-  - '@typescript/typescript-linux-mips64el@7.0.2'
-  - '@typescript/typescript-linux-ppc64@7.0.2'
-  - '@typescript/typescript-linux-riscv64@7.0.2'
-  - '@typescript/typescript-linux-s390x@7.0.2'
-  - '@typescript/typescript-linux-x64@7.0.2'
-  - '@typescript/typescript-netbsd-arm64@7.0.2'
-  - '@typescript/typescript-netbsd-x64@7.0.2'
-  - '@typescript/typescript-openbsd-arm64@7.0.2'
-  - '@typescript/typescript-openbsd-x64@7.0.2'
-  - '@typescript/typescript-sunos-x64@7.0.2'
-  - '@typescript/typescript-win32-arm64@7.0.2'
-  - '@typescript/typescript-win32-x64@7.0.2'
+  - "@typescript/typescript-aix-ppc64@7.0.2"
+  - "@typescript/typescript-darwin-arm64@7.0.2"
+  - "@typescript/typescript-darwin-x64@7.0.2"
+  - "@typescript/typescript-freebsd-arm64@7.0.2"
+  - "@typescript/typescript-freebsd-x64@7.0.2"
+  - "@typescript/typescript-linux-arm64@7.0.2"
+  - "@typescript/typescript-linux-arm@7.0.2"
+  - "@typescript/typescript-linux-loong64@7.0.2"
+  - "@typescript/typescript-linux-mips64el@7.0.2"
+  - "@typescript/typescript-linux-ppc64@7.0.2"
+  - "@typescript/typescript-linux-riscv64@7.0.2"
+  - "@typescript/typescript-linux-s390x@7.0.2"
+  - "@typescript/typescript-linux-x64@7.0.2"
+  - "@typescript/typescript-netbsd-arm64@7.0.2"
+  - "@typescript/typescript-netbsd-x64@7.0.2"
+  - "@typescript/typescript-openbsd-arm64@7.0.2"
+  - "@typescript/typescript-openbsd-x64@7.0.2"
+  - "@typescript/typescript-sunos-x64@7.0.2"
+  - "@typescript/typescript-win32-arm64@7.0.2"
+  - "@typescript/typescript-win32-x64@7.0.2"
   - typescript@7.0.2
 
 # Security patches for vulnerable transitive production dependencies. Keep
 # these explicit until their direct dependants publish the same minimums.
 overrides:
-  '@isaacs/brace-expansion@<=5.0.0': 5.0.1
-  'defu@<=6.1.4': 6.1.5
-  'engine.io@>=4.1.0 <6.6.7': 6.6.7
-  'fast-uri@>=3.0.0 <3.1.5': 3.1.5
-  'fast-xml-parser@<5.7.0': 5.7.0
-  'hono@<4.12.34': 4.12.34
-  'ip-address@<10.3.1': 10.3.1
-  'linkify-it@<5.0.2': 5.0.2
-  'minimatch@>=10.0.0 <10.2.3': 10.2.3
-  'path-to-regexp@>=8.0.0 <8.4.0': 8.4.0
-  'picomatch@<2.3.2': 2.3.2
-  'postcss@<8.5.23': 8.5.23
-  'protobufjs@>=7.0.0 <7.6.5': 7.6.5
-  'socket.io-parser@>=4.0.0 <4.2.7': 4.2.7
-  'ws@>=8.0.0 <8.21.0': 8.21.0
+  "@isaacs/brace-expansion@<=5.0.0": 5.0.1
+  "defu@<=6.1.4": 6.1.5
+  "engine.io@>=4.1.0 <6.6.7": 6.6.7
+  "fast-uri@>=3.0.0 <3.1.5": 3.1.5
+  "fast-xml-parser@<5.7.0": 5.7.0
+  "hono@<4.12.34": 4.12.34
+  "ip-address@<10.3.1": 10.3.1
+  "linkify-it@<5.0.2": 5.0.2
+  "minimatch@>=10.0.0 <10.2.3": 10.2.3
+  "path-to-regexp@>=8.0.0 <8.4.0": 8.4.0
+  "picomatch@<2.3.2": 2.3.2
+  "postcss@<8.5.23": 8.5.23
+  "protobufjs@>=7.0.0 <7.6.5": 7.6.5
+  "socket.io-parser@>=4.0.0 <4.2.7": 4.2.7
+  "ws@>=8.0.0 <8.21.0": 8.21.0

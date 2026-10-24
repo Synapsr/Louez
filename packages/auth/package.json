@@ -13,6 +13,9 @@
     "./password": "./src/password.ts",
     "./password-policy": "./src/password-policy.ts"
   },
+  "scripts": {
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.ts\""
+  },
   "dependencies": {
     "@better-auth/passkey": "1.6.25",
     "@louez/db": "workspace:*",
@@ -26,6 +29,7 @@
   "devDependencies": {
     "@louez/config": "workspace:*",
     "next": "16.3.0",
+    "tsx": "^4.21.0",
     "typescript": "catalog:"
   },
   "peerDependencies": {

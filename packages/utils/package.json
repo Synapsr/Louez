@@ -7,6 +7,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
+  },
   "dependencies": {
     "@louez/types": "workspace:*",
     "clsx": "^2.1.1",
@@ -17,6 +20,7 @@
   "devDependencies": {
     "@louez/config": "workspace:*",
     "@types/node": "^20.19.27",
+    "tsx": "^4.21.0",
     "typescript": "catalog:"
   }
 }

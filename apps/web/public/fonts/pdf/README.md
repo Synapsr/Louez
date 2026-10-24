@@ -8,7 +8,6 @@
   Source: [Inter v4.1](https://github.com/rsms/inter/releases/tag/v4.1).
   License: `OFL.txt` (SIL OFL 1.1).
 
-
 CJK uses a single Medium face for regular and emphasized text. Complete fonts
 are deliberate: PDF data can contain names and equipment descriptions absent
 from the message catalogs. These files add approximately 40 MB to the server

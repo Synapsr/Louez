@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
-    "./env": "./src/env.ts"
+    "./env": "./src/env.ts",
+    "./payment-receipts": "./src/payment-receipts.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
@@ -23,7 +24,8 @@
     "payments:link-stripe-refunds": "tsx src/scripts/payments-link-stripe-refunds.ts",
     "pricing:parity-report": "tsx src/scripts/pricing-parity-report.ts",
     "pricing:parity-top-products": "tsx src/scripts/pricing-parity-top-products.ts",
-    "store:clone": "tsx src/scripts/store-clone.ts"
+    "store:clone": "tsx src/scripts/store-clone.ts",
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.{ts,mjs}\""
   },
   "dependencies": {
     "@louez/types": "workspace:*",

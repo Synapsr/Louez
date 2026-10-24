@@ -19,14 +19,14 @@ validation portent une propriété `step` qui désigne la **section** en échec.
 identifié (`user.id`), le même que l'événement serveur `dashboard_reservation_created`
 (`store.userId`) : le funnel client → serveur se raccorde.
 
-| Événement | Quand | Propriétés clés |
-| --- | --- | --- |
-| `dashboard_reservation_creation_started` | Montage de la page | `source` (header, quick_action, calendrier…) |
-| `dashboard_reservation_step_validation_failed` | Section invalide au submit | `step` (customer/period/products/delivery), `failed_fields[]`, `source` |
-| `dashboard_reservation_capacity_blocked` | Le serveur refuse pour capacité insuffisante (dialog overbooking) | `shortfall_count`, `shortfall_product_ids[]`, `source` |
-| `dashboard_reservation_overbooking_confirmed` | L'admin force la création malgré l'alerte | `shortfall_count`, `source` |
-| `dashboard_reservation_creation_failed` | Erreur serveur à la soumission | `error_code`, `source` |
-| `dashboard_reservation_created` (serveur, préexistant) | Réservation créée | voir `reservations/actions.ts` |
+| Événement                                              | Quand                                                             | Propriétés clés                                                         |
+| ------------------------------------------------------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `dashboard_reservation_creation_started`               | Montage de la page                                                | `source` (header, quick_action, calendrier…)                            |
+| `dashboard_reservation_step_validation_failed`         | Section invalide au submit                                        | `step` (customer/period/products/delivery), `failed_fields[]`, `source` |
+| `dashboard_reservation_capacity_blocked`               | Le serveur refuse pour capacité insuffisante (dialog overbooking) | `shortfall_count`, `shortfall_product_ids[]`, `source`                  |
+| `dashboard_reservation_overbooking_confirmed`          | L'admin force la création malgré l'alerte                         | `shortfall_count`, `source`                                             |
+| `dashboard_reservation_creation_failed`                | Erreur serveur à la soumission                                    | `error_code`, `source`                                                  |
+| `dashboard_reservation_created` (serveur, préexistant) | Réservation créée                                                 | voir `reservations/actions.ts`                                          |
 
 > `dashboard_reservation_step_viewed` a existé brièvement (wizard à étapes, jamais déployé)
 > et a été retiré avec le passage en page unique. L'insight PostHog « Funnel creation
@@ -40,14 +40,14 @@ identifié (`user.id`), le même que l'événement serveur `dashboard_reservatio
 anonyme du navigateur — d'où l'événement client `checkout_completed` qui sert de dernière
 étape aux funnels.
 
-| Événement | Quand | Propriétés clés |
-| --- | --- | --- |
-| `checkout_step_viewed` | Changement d'étape visible | `step` (contact/delivery/confirm), `step_index`, `steps_total`, `direction`, `store_id` |
-| `checkout_step_validation_failed` | Blocage par la validation client, y compris un délai de prévenance devenu invalide avant l'envoi | `step`, `failed_fields[]`, `error_code`, `validation_type`, `store_id` |
-| `checkout_submit_failed` | Échec pendant la soumission ; `failure_source` distingue une précondition client d'un refus serveur | `error_code`, `failure_source`, `store_id` |
-| `checkout_validation_recovered` | Correction réussie après une validation bloquante du checkout | `error_code`, `original_failure_source`, `recovery_action`, `store_id` |
-| `checkout_completed` | Réservation soumise avec succès (avant redirect Stripe éventuel) | `reservation_id`, `reservation_mode`, `item_count`, `subtotal_amount_cents`, `total_amount_cents`, `store_id` |
-| `checkout_reservation_created` / `checkout_payment_*` (serveur, préexistants) | Création + paiement | voir `checkout/actions.ts` |
+| Événement                                                                     | Quand                                                                                               | Propriétés clés                                                                                               |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `checkout_step_viewed`                                                        | Changement d'étape visible                                                                          | `step` (contact/delivery/confirm), `step_index`, `steps_total`, `direction`, `store_id`                       |
+| `checkout_step_validation_failed`                                             | Blocage par la validation client, y compris un délai de prévenance devenu invalide avant l'envoi    | `step`, `failed_fields[]`, `error_code`, `validation_type`, `store_id`                                        |
+| `checkout_submit_failed`                                                      | Échec pendant la soumission ; `failure_source` distingue une précondition client d'un refus serveur | `error_code`, `failure_source`, `store_id`                                                                    |
+| `checkout_validation_recovered`                                               | Correction réussie après une validation bloquante du checkout                                       | `error_code`, `original_failure_source`, `recovery_action`, `store_id`                                        |
+| `checkout_completed`                                                          | Réservation soumise avec succès (avant redirect Stripe éventuel)                                    | `reservation_id`, `reservation_mode`, `item_count`, `subtotal_amount_cents`, `total_amount_cents`, `store_id` |
+| `checkout_reservation_created` / `checkout_payment_*` (serveur, préexistants) | Création + paiement                                                                                 | voir `checkout/actions.ts`                                                                                    |
 
 ## Notes
 

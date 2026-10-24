@@ -25,16 +25,16 @@ Options: `--months` (history, default 12), `--reservations` (default 700),
 
 ## What it creates
 
-| Area | Content |
-| --- | --- |
-| Store | Plan Ultra, TVA 20 % TTC, acompte en ligne configuré à 30 % (Stripe non relié), livraison 40 km, horaires d'été, CGV et mentions légales, Review Booster, conseiller IA, 3 lieux de retrait, 5 codes promo |
-| Équipe | 4 membres (dont le propriétaire) + 2 invitations en attente |
-| Catalogue | 5 catégories, 41 produits (dont 1 brouillon et 1 archivé), 164 paliers tarifaires, tarifs de haute saison, 2 axes de variantes (taille, couleur) |
-| Inventaire | ~46 unités tracées avec numéros de série, prix d'achat, unités retirées et immobilisations en cours |
-| Clients | 180 fiches : locaux, vacanciers français, étrangers, 12 comptes pros |
-| Réservations | ~690 sur 14 mois avec saisonnalité réelle (pic juillet-août), tous les statuts, paniers cohérents (couple, famille, itinérance, nautisme, pro) |
-| Aujourd'hui | ~18 locations en cours, des départs et des retours du jour, des demandes et devis en attente — le tableau de bord n'est jamais vide |
-| Reste | Paiements et empreintes de caution, états des lieux, logs e-mail/SMS, relances, demandes d'avis, liens de paiement, analytics quotidiennes |
+| Area         | Content                                                                                                                                                                                                    |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Store        | Plan Ultra, TVA 20 % TTC, acompte en ligne configuré à 30 % (Stripe non relié), livraison 40 km, horaires d'été, CGV et mentions légales, Review Booster, conseiller IA, 3 lieux de retrait, 5 codes promo |
+| Équipe       | 4 membres (dont le propriétaire) + 2 invitations en attente                                                                                                                                                |
+| Catalogue    | 5 catégories, 41 produits (dont 1 brouillon et 1 archivé), 164 paliers tarifaires, tarifs de haute saison, 2 axes de variantes (taille, couleur)                                                           |
+| Inventaire   | ~46 unités tracées avec numéros de série, prix d'achat, unités retirées et immobilisations en cours                                                                                                        |
+| Clients      | 180 fiches : locaux, vacanciers français, étrangers, 12 comptes pros                                                                                                                                       |
+| Réservations | ~690 sur 14 mois avec saisonnalité réelle (pic juillet-août), tous les statuts, paniers cohérents (couple, famille, itinérance, nautisme, pro)                                                             |
+| Aujourd'hui  | ~18 locations en cours, des départs et des retours du jour, des demandes et devis en attente — le tableau de bord n'est jamais vide                                                                        |
+| Reste        | Paiements et empreintes de caution, états des lieux, logs e-mail/SMS, relances, demandes d'avis, liens de paiement, analytics quotidiennes                                                                 |
 
 ## Files
 

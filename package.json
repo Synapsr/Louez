@@ -41,6 +41,7 @@
     "lint:ox": "oxlint",
     "audit:duplicates": "node scripts/audit-duplicates.mjs",
     "type-check": "turbo run type-check",
+    "test": "turbo run test --continue && node --test \"scripts/**/*.test.mjs\"",
     "type-check:web": "turbo type-check --filter=@louez/web",
     "format": "oxfmt --write apps packages docs scripts docker spec .github .vscode package.json pnpm-workspace.yaml turbo.json tsconfig.json \"*.md\" \"*.json\"",
     "format:check": "oxfmt --check apps packages docs scripts docker spec .github .vscode package.json pnpm-workspace.yaml turbo.json tsconfig.json \"*.md\" \"*.json\"",

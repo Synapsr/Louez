@@ -2,16 +2,16 @@ Certains d'entre vous vivent dans Louez du matin au soir, et chaque aller-retour
 
 ## Les huit raccourcis livrés
 
-| Raccourci | Action |
-| --- | --- |
-| `⌘K` | Ouvrir la palette de commandes |
-| `⌘⇧K` | Ouvrir l'assistant IA |
-| `⌘B` | Afficher ou masquer le menu latéral |
-| `⌘F` | Placer le curseur dans la recherche |
-| `⌘S` | Enregistrer le formulaire en cours |
-| `G` puis `R` | Aller aux réservations |
-| `G` puis `A` | Aller au calendrier |
-| `N` puis `R` | Créer une réservation |
+| Raccourci    | Action                              |
+| ------------ | ----------------------------------- |
+| `⌘K`         | Ouvrir la palette de commandes      |
+| `⌘⇧K`        | Ouvrir l'assistant IA               |
+| `⌘B`         | Afficher ou masquer le menu latéral |
+| `⌘F`         | Placer le curseur dans la recherche |
+| `⌘S`         | Enregistrer le formulaire en cours  |
+| `G` puis `R` | Aller aux réservations              |
+| `G` puis `A` | Aller au calendrier                 |
+| `N` puis `R` | Créer une réservation               |
 
 Sous Windows et Linux, `⌘` se lit `Ctrl`.
 
