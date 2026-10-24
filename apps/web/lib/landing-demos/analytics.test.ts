@@ -12,6 +12,10 @@ import { getDemoCustomer, getDemoToday } from "@/lib/landing-demos/reservations"
 const rentalPeriod = createDemoPeriod();
 const sum = (values: number[]) =>
   Math.round(values.reduce((total, value) => total + value, 0) * 100) / 100;
+// Rentals of one to three days average two. A rental across the October clock change lasts
+// one hour longer, so the average can pass two days by a few minutes.
+const isAverageRentalDuration = (avgMinutes: number | null) =>
+  avgMinutes !== null && avgMinutes >= 1440 && avgMinutes <= 2880 + 60;
 
 test("every period reconciles chart, payment methods and customers to receipts", () => {
   for (const period of PERIODS) {
@@ -65,11 +69,7 @@ test("rankings and occupancy use the rental catalogue and French customers", () 
     sum(products.map((product) => product.quantity ?? 0)),
   );
   assert.ok(data.occupancy.rate > 0 && data.occupancy.rate <= 100);
-  assert.ok(
-    data.duration.avgMinutes !== null &&
-      data.duration.avgMinutes >= 1440 &&
-      data.duration.avgMinutes <= 2880,
-  );
+  assert.ok(isAverageRentalDuration(data.duration.avgMinutes));
   assert.equal(data.duration.reservationCount, data.reservationStats.reservationCount);
   assert.equal(data.reservationStats.reservationCount, data.stats.periodPaymentCount);
   assert.ok(data.topProducts.products.length <= 10);
@@ -121,6 +121,7 @@ test("daily series remain complete across both Paris daylight-saving changes", (
     assert.equal(new Set(data.revenue.map((point) => point.label)).size, 30);
     assert.equal(sum(data.revenue.map((point) => point.revenue)), data.stats.periodRevenue);
     assert.ok(data.occupancy.rate > 0 && data.occupancy.rate <= 100);
+    assert.ok(isAverageRentalDuration(data.duration.avgMinutes));
   }
 });
 
