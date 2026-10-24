@@ -32,8 +32,8 @@
 
 _Un client choisit ses dates sur votre vitrine — la demande arrive dans votre tableau de bord_
 
-| Catalogue de la vitrine | Calendrier des réservations | Inventaire |
-|:-:|:-:|:-:|
+|                                         Catalogue de la vitrine                                          |                                                     Calendrier des réservations                                                      |                                                      Inventaire                                                       |
+| :------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------: |
 | [<img src=".github/assets/storefront.png" alt="Catalogue de la vitrine">](.github/assets/storefront.png) | [<img src=".github/assets/dashboard-reservations.png" alt="Calendrier des réservations">](.github/assets/dashboard-reservations.png) | [<img src=".github/assets/dashboard-products.png" alt="Gestion des produits">](.github/assets/dashboard-products.png) |
 
 [▶️ Voir la démo complète](demo-fr.mp4) • [☁️ Essayer la version hébergée](https://louez.io)
@@ -52,8 +52,8 @@ Que vous louiez des appareils photo, des outils, du matériel événementiel ou 
 | :------------------------------------------------------------------------------: | :-------------------------------------------------------------------------: | :------------------------------------------------: |
 | Auto-hébergez gratuitement. Pas d'abonnement, pas de commission par réservation. | Chaque boutique dispose d'un catalogue en ligne personnalisable et élégant. | Votre serveur, votre base de données, vos clients. |
 
-|                ⚡ **Déployez en minutes**                 |                  🌍 **Multilingue**                   |            📱 **Mobile Ready**             |
-| :-------------------------------------------------------: | :---------------------------------------------------: | :----------------------------------------: |
+|                ⚡ **Déployez en minutes**                 |                             🌍 **Multilingue**                             |            📱 **Mobile Ready**             |
+| :-------------------------------------------------------: | :------------------------------------------------------------------------: | :----------------------------------------: |
 | Une commande et c'est en ligne — base de données incluse. | 13 langues intégrées : FR, EN, DE, ES, IT, NL, PL, PT, ZH, JA, RU, ID, KO. | Design responsive pour tous les appareils. |
 
 ---

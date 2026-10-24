@@ -2,16 +2,16 @@ Some of you live in Louez from morning to night, and every trip back to the mous
 
 ## The eight shortcuts that ship
 
-| Shortcut | Action |
-| --- | --- |
-| `⌘K` | Open the command palette |
-| `⌘⇧K` | Open the AI assistant |
-| `⌘B` | Show or hide the sidebar |
-| `⌘F` | Focus the search field |
-| `⌘S` | Save the form you are on |
-| `G` then `R` | Go to reservations |
-| `G` then `A` | Go to the calendar |
-| `N` then `R` | Create a reservation |
+| Shortcut     | Action                   |
+| ------------ | ------------------------ |
+| `⌘K`         | Open the command palette |
+| `⌘⇧K`        | Open the AI assistant    |
+| `⌘B`         | Show or hide the sidebar |
+| `⌘F`         | Focus the search field   |
+| `⌘S`         | Save the form you are on |
+| `G` then `R` | Go to reservations       |
+| `G` then `A` | Go to the calendar       |
+| `N` then `R` | Create a reservation     |
 
 On Windows and Linux, `⌘` means `Ctrl`.
 
