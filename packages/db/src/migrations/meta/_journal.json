@@ -610,6 +610,20 @@
       "when": 1792578147926,
       "tag": "0081_pricing_version",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "5",
+      "when": 1792855731789,
+      "tag": "0082_reservation_billable_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "5",
+      "when": 1792855753946,
+      "tag": "0083_backfill_reservation_billable_at",
+      "breakpoints": true
     }
   ]
 }

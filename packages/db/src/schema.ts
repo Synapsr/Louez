@@ -1364,6 +1364,10 @@ export const reservations = mysqlTable(
     // Tracking
     pickedUpAt: timestamp("picked_up_at", { mode: "date" }),
     returnedAt: timestamp("returned_at", { mode: "date" }),
+    // First time the reservation entered a billable status (confirmed, ongoing, completed).
+    billableAt: timestamp("billable_at", { mode: "date" }),
+    // When a billable reservation was cancelled. Null while it stays billable.
+    withdrawnAt: timestamp("withdrawn_at", { mode: "date" }),
 
     // Notes
     customerNotes: text("customer_notes"),
@@ -1437,6 +1441,7 @@ export const reservations = mysqlTable(
     customerIdx: index("reservations_customer_idx").on(table.customerId),
     statusIdx: index("reservations_status_idx").on(table.status),
     dateIdx: index("reservations_date_idx").on(table.startDate, table.endDate),
+    billableAtIdx: index("reservations_billable_at_idx").on(table.billableAt),
   }),
 );
 

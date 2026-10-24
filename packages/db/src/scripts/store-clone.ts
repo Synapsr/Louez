@@ -1,3 +1,9 @@
+// Copies a store's rows from one database to another. Rows are read with
+// `SELECT *` and inserted with every column read, so new columns (such as
+// reservations.billable_at and withdrawn_at) carry over once both databases are
+// migrated. A target that lacks a source column makes the run throw. A source
+// that predates a column leaves it NULL on the target: for these two, run
+// `reservations:backfill-billable-at --apply` there afterwards.
 import { isDeepStrictEqual } from 'node:util'
 import { pathToFileURL } from 'node:url'
 import { z } from 'zod'

@@ -73,6 +73,7 @@ export type {
   ConsumableStockMutationPlan,
   StockKindChangeBlocker,
 } from "./consumable-stock";
+export { countBillableReservationsWithoutBillableAt } from "./reservation-invariants";
 
 export { SLUG_MAX_LENGTH, isSlug, pickUniqueSlug, slugify } from "./slug";
 export { nextCategorySlug, nextProductSlug } from "./slugs";

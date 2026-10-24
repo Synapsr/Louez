@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
     "./env": "./src/env.ts",
-    "./payment-receipts": "./src/payment-receipts.ts"
+    "./payment-receipts": "./src/payment-receipts.ts",
+    "./testing": "./src/testing/test-database.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
@@ -25,6 +26,7 @@
     "pricing:parity-report": "tsx src/scripts/pricing-parity-report.ts",
     "pricing:parity-top-products": "tsx src/scripts/pricing-parity-top-products.ts",
     "store:clone": "tsx src/scripts/store-clone.ts",
+    "reservations:backfill-billable-at": "tsx src/scripts/reservations-backfill-billable-at.ts",
     "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.{ts,mjs}\""
   },
   "dependencies": {
