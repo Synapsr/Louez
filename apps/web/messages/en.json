@@ -853,7 +853,10 @@
           "reviews": "Google reviews",
           "reviewsDescription": "The rating in the header and the reviews section, once the Review booster is set up.",
           "map": "Address and map",
-          "mapDescription": "Where to pick up the equipment, with your contact channels."
+          "mapDescription": "Where to pick up the equipment, with your contact channels.",
+          "status": "Opening status",
+          "statusDescription": "Shows in the header whether you are open right now, with the next opening time."
+
         }
       },
       "contact": {

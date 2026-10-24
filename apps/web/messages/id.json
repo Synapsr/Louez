@@ -853,7 +853,10 @@
           "reviews": "ulasan Google",
           "reviewsDescription": "Peringkat di bagian header dan ulasan, setelah penguat Ulasan disiapkan.",
           "map": "Alamat dan peta",
-          "mapDescription": "Tempat mengambil peralatan, dengan saluran kontak Anda."
+          "mapDescription": "Tempat mengambil peralatan, dengan saluran kontak Anda.",
+          "status": "Status buka",
+          "statusDescription": "Menampilkan di header apakah toko sedang buka, beserta jam buka berikutnya."
+
         }
       },
       "contact": {

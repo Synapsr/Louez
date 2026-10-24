@@ -364,12 +364,15 @@ export interface StoreHomeSections {
   reviews: boolean;
   /** The reassurance line under the period search. */
   reassurance: boolean;
+  /**Show the Opening Hours and Status of the Shop */
+  status: boolean;
 }
 
 export const DEFAULT_STORE_HOME_SECTIONS: StoreHomeSections = {
   map: true,
   reviews: true,
   reassurance: true,
+  status: true,
 };
 
 export interface StoreTheme {

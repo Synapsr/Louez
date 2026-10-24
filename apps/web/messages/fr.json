@@ -853,7 +853,10 @@
           "reviews": "Avis Google",
           "reviewsDescription": "La note dans l'en-tête et la section d'avis, quand le Booster d'avis est configuré.",
           "map": "Adresse et carte",
-          "mapDescription": "Où venir chercher le matériel, avec vos moyens de contact."
+          "mapDescription": "Où venir chercher le matériel, avec vos moyens de contact.",
+          "status": "Statut d'ouverture",
+          "statusDescription": "Indique dans l'en-tête si vous êtes ouvert, avec la prochaine ouverture."
+
         }
       },
       "contact": {

@@ -853,7 +853,9 @@
           "reviews": "구글 리뷰",
           "reviewsDescription": "리뷰 부스터가 설정되면 헤더와 리뷰 섹션의 평점입니다.",
           "map": "주소 및 지도",
-          "mapDescription": "연락 채널을 통해 장비를 수령할 수 있는 장소."
+          "mapDescription": "연락 채널을 통해 장비를 수령할 수 있는 장소.",
+          "status": "영업 상태",
+          "statusDescription": "헤더에 현재 영업 중인지와 다음 영업 시작 시간을 표시합니다."
         }
       },
       "contact": {

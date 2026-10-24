@@ -106,12 +106,14 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
         verticalAlign={hero.verticalAlign}
         badges={
           <>
-            <StoreStatusBadge
-              businessHours={settings.businessHours}
-              timezone={settings.timezone}
-              initialStatus={status}
-              className={hero.textOnPhoto ? "bg-background/90 backdrop-blur" : undefined}
-            />
+            {sections.status ? (
+              <StoreStatusBadge
+                businessHours={settings.businessHours}
+                timezone={settings.timezone}
+                initialStatus={status}
+                className={hero.textOnPhoto ? "bg-background/90 backdrop-blur" : undefined}
+              />
+            ) : null}
             {sections.reviews && place.rating !== null ? (
               <GoogleRatingPill
                 rating={place.rating}

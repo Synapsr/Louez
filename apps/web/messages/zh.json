@@ -853,7 +853,9 @@
           "reviews": "谷歌评论",
           "reviewsDescription": "设置评论助推器后，标题和评论部分中的评级。",
           "map": "地址和地图",
-          "mapDescription": "在哪里领取设备以及您的联系渠道。"
+          "mapDescription": "在哪里领取设备以及您的联系渠道。",
+          "status": "营业状态",
+          "statusDescription": "在页眉显示当前是否营业，以及下次营业时间。"
         }
       },
       "contact": {

@@ -853,7 +853,10 @@
           "reviews": "Recensioni Google",
           "reviewsDescription": "La valutazione nell'header e la sezione recensioni, quando il Booster recensioni è configurato.",
           "map": "Indirizzo e mappa",
-          "mapDescription": "Dove ritirare l'attrezzatura, con i tuoi contatti."
+          "mapDescription": "Dove ritirare l'attrezzatura, con i tuoi contatti.",
+          "status": "Stato di apertura",
+          "statusDescription": "Mostra nell'intestazione se siete aperti ora, con la prossima apertura."
+
         }
       },
       "contact": {

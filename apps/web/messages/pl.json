@@ -853,7 +853,9 @@
           "reviews": "Opinie Google",
           "reviewsDescription": "Ocena w nagłówku i sekcja opinii, gdy Booster opinii jest skonfigurowany.",
           "map": "Adres i mapa",
-          "mapDescription": "Gdzie odebrać sprzęt, wraz z Twoimi danymi kontaktowymi."
+          "mapDescription": "Gdzie odebrać sprzęt, wraz z Twoimi danymi kontaktowymi.",
+          "status": "Status otwarcia",
+          "statusDescription": "Pokazuje w nagłówku, czy sklep jest teraz otwarty, wraz z kolejną godziną otwarcia."
         }
       },
       "contact": {
