@@ -11,6 +11,7 @@ import {
 } from '@louez/db';
 import type { BillingMode } from '@louez/types';
 
+import { isBillingEnabled } from '@/lib/billing/mode';
 import { log } from '@/lib/evlog';
 
 import {
@@ -112,7 +113,9 @@ export async function getStoreBilling(storeId: string): Promise<StoreBilling> {
   ]);
 
   const pricing = resolveStorePricing(subscription, currency);
-  if (!pricing.frozen && !reportedUnfrozenStores.has(storeId)) {
+  // Only an instance that bills its stores freezes their pricing: without billing, new
+  // stores get no row and nothing is charged, so there is nothing to report.
+  if (!pricing.frozen && isBillingEnabled() && !reportedUnfrozenStores.has(storeId)) {
     reportedUnfrozenStores.add(storeId);
     log.error(
       'billing',
@@ -171,10 +174,12 @@ interface RecordReservationFeeInput {
  *   `source='free'`, amount 0, outside the graduated ladder.
  * - A manual `pending` row is upgraded to `collected` if the fee is later collected at
  *   source (prevents double billing).
+ * - No-op, without touching the database, when platform billing is off.
  */
 export async function recordReservationFee(
   input: RecordReservationFeeInput,
 ): Promise<{ recorded: boolean; reason?: string }> {
+  if (!isBillingEnabled()) return { recorded: false, reason: 'billing_off' };
   const billing = input.billing ?? (await getStoreBilling(input.storeId));
   if (billing.billingMode !== 'pay_as_you_go') {
     return { recorded: false, reason: 'not_pay_as_you_go' };
@@ -311,10 +316,12 @@ export async function recordReservationFee(
  * (`pending`) fee, AND a waived (`free`) fee — voiding a free row restores the store's
  * free-reservation credit. Online fees already collected at source are reversed via the
  * refund webhook (the money is real), so they are surfaced rather than voided.
+ * No-op when platform billing is off.
  */
 export async function voidReservationFee(
   reservationId: string,
 ): Promise<{ voided: boolean }> {
+  if (!isBillingEnabled()) return { voided: false };
   const result = await db
     .update(platformFees)
     .set({ status: 'voided', updatedAt: new Date() })
@@ -417,6 +424,7 @@ export async function recordMarketplaceFee(input: {
   currency?: string | null;
   at?: Date;
 }): Promise<{ recorded: boolean; reason?: string }> {
+  if (!isBillingEnabled()) return { recorded: false, reason: 'billing_off' };
   const dedupKey = marketplaceFeeKey(input.reservationId);
   const existing = await db.query.platformFees.findFirst({
     where: eq(platformFees.dedupKey, dedupKey),
@@ -507,7 +515,8 @@ export async function recordMarketplaceFee(input: {
  * for this reservation (a balance payment must not re-charge it), and waived to 0 while
  * the store still has free-reservation credits. Capped below the charge amount.
  * (With Stripe Standard accounts the connected account bears Stripe's processing fees,
- * so there is no separate platform payment fee.)
+ * so there is no separate platform payment fee.) No fee at all, reeent's included, when
+ * platform billing is off.
  */
 export async function planStripeFees(opts: {
   storeId: string;
@@ -517,6 +526,9 @@ export async function planStripeFees(opts: {
   reference?: Date;
   includeMarketplaceFee?: boolean;
 }): Promise<StripeFeePlan> {
+  if (!isBillingEnabled()) {
+    return { applicationFeeCents: 0, reservationFeeCents: 0, marketplaceFeeCents: 0 };
+  }
   const billing = opts.billing ?? (await getStoreBilling(opts.storeId));
   const maxFee = Math.max(0, opts.chargeCents - 1);
 

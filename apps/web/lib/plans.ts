@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { isBillingEnabled } from '@/lib/billing/mode';
 import type { Plan } from '@/lib/plans.shared';
 
 export {
@@ -26,10 +27,13 @@ export const SMS_TOPUP_PRICING: Record<string, number | null> = {
 
 /**
  * Whether the paid AI-credit layer is active. When off (self-host default), the
- * advisor runs on rate-limits only: no metering, no gate, no billing UI.
+ * advisor runs on rate-limits only: no metering, no gate, no billing UI. Credits are
+ * sold by the platform, so the layer also needs platform billing (LOUEZ_BILLING=cloud).
  */
 export function areAiCreditsEnabled(): boolean {
-  return env.AI_CREDITS_ENABLED === 'true' || env.AI_CREDITS_ENABLED === '1';
+  return (
+    isBillingEnabled() && (env.AI_CREDITS_ENABLED === 'true' || env.AI_CREDITS_ENABLED === '1')
+  );
 }
 
 /** Monthly INCLUDED credits per plan slug, parsed from env JSON. `{}` when unset. */

@@ -32,8 +32,12 @@ _Avoid_: Louez commission, platform commission
 A per-reservation fee charged by Louez to a Store, metered through the pay-as-you-go ledger (`platform_fee`) and billed monthly. It is charged on reservations, never itemized on a Store's Invoices to its Customers.
 _Avoid_: Stripe commission
 
+**Platform billing**:
+Louez billing its Stores: the Louez commission, plans, top-ups, referral rewards and month-end invoices. On only when `LOUEZ_BILLING=cloud` (Louez Cloud); a self-hosted instance, single-store or multi-store, bills no Store and writes no billing rows.
+_Avoid_: payments (a Customer paying a Store), Stripe Connect
+
 **Offer for new Stores**:
-The pay-as-you-go pricing (`PAYG_DEFAULT_PRICING`) and free-reservation allowance (`PAYG_FREE_RESERVATIONS`) written onto a Store's subscription when the Store is created. A Store then pays what its own subscription says, so changing the offer never reprices it.
+The pay-as-you-go pricing (`PAYG_DEFAULT_PRICING`) and free-reservation allowance (`PAYG_FREE_RESERVATIONS`) written onto a Store's subscription when the Store is created, with Platform billing on. A Store then pays what its own subscription says, so changing the offer never reprices it.
 _Avoid_: default pricing, platform default
 
 **Pricing version**:

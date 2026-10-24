@@ -7,8 +7,11 @@
  * rows that already have a config are only spelled out (same prices, every tier
  * written), never repriced.
  *
- * Runs before migration 0081 (cloud runbook: backfill, then deploy) and after it. It
- * never adds the pricing_version column: the migration must do that itself.
+ * Runs before migration 0081 and after it. It never adds the pricing_version column:
+ * the migration must do that itself. Louez Cloud ran it on 2026-10-24; with
+ * LOUEZ_BILLING=cloud the app also freezes any store it finds unfrozen at start-up, so
+ * this is for a dry run or a one-off repair. It ignores LOUEZ_BILLING: it only ever
+ * writes to the database it is pointed at.
  *
  * Targets MIGRATE_DATABASE_URL only; no .env file is read.
  *

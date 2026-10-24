@@ -9,6 +9,7 @@ import {
   smsCredits,
 } from '@louez/db'
 import { eq, count, and, gte, sql } from 'drizzle-orm'
+import { isBillingEnabled } from '@/lib/billing/mode'
 import { getPlan, getDefaultPlan, getPayAsYouGoPlan, SMS_TOPUP_PRICING, type Plan } from '@/lib/plans'
 
 // ============================================================================
@@ -345,6 +346,21 @@ export async function getSmsQuotaStatus(storeId: string): Promise<SmsQuotaStatus
     getSmsPrepaidBalance(storeId),
   ])
 
+  // Without platform billing the operator pays its own SMS provider: Louez sets no quota
+  // and sells no top-up.
+  if (!isBillingEnabled()) {
+    return {
+      allowed: true,
+      current: smsCount,
+      planLimit: null,
+      prepaidBalance,
+      totalAvailable: Infinity,
+      planSlug: plan.slug,
+      canTopup: false,
+      topupPriceCents: null,
+    }
+  }
+
   const planLimit = plan.features.maxSmsPerMonth
   const topupPriceCents = SMS_TOPUP_PRICING[plan.slug] ?? null
   const canTopup = topupPriceCents !== null
@@ -385,6 +401,9 @@ export async function getSmsQuotaStatus(storeId: string): Promise<SmsQuotaStatus
  * Returns 'plan' if within monthly limit, 'topup' if using prepaid
  */
 export async function determineSmsSource(storeId: string): Promise<'plan' | 'topup'> {
+  // No quota without platform billing, so prepaid credits are never drawn.
+  if (!isBillingEnabled()) return 'plan'
+
   const [plan, smsCount] = await Promise.all([
     getStorePlan(storeId),
     getSmsUsageThisMonth(storeId),

@@ -5,6 +5,7 @@ import type Stripe from 'stripe';
 import { db } from '@louez/db';
 import { referralRewards, subscriptions } from '@louez/db';
 
+import { isBillingEnabled } from '@/lib/billing/mode';
 import { priceForLocationIndex } from '@/lib/pay-as-you-go/config';
 import { billingMonthOf, getStoreBilling } from '@/lib/pay-as-you-go/metering';
 import { addFreeReservations, ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock';
@@ -266,11 +267,13 @@ async function trackReferrerRewardClawedBack({
  * payment at/above the minimum, grant its Referrer the plan-aware Referrer Reward (free
  * reservations for a pay-as-you-go referrer; an equivalent euro invoice credit for a
  * subscribed one). Idempotent — a referral pays out at most once (unique referred store).
- * Safe to call on every completed online payment; it no-ops when not applicable.
+ * Safe to call on every completed online payment; it no-ops when not applicable, and
+ * when platform billing is off (rewards are billing credits).
  */
 export async function maybeGrantReferrerReward(
   input: MaybeGrantReferrerRewardInput,
 ): Promise<{ granted: boolean; reason?: string }> {
+  if (!isBillingEnabled()) return { granted: false, reason: 'billing_off' };
   const referrerStoreId = input.referredStore.referredByStoreId;
   if (!referrerStoreId) {
     await trackQualifyingPaymentEvaluated({
@@ -556,13 +559,15 @@ export async function maybeGrantReferrerReward(
  * Clawback handler: when the qualifying payment behind a granted Referrer Reward is
  * refunded or disputed within the clawback window, reverse the reward. Free-reservation
  * rewards lose only their not-yet-consumed credits; invoice-credit rewards have their
- * pending Stripe credit removed. Idempotent and a no-op outside the window.
+ * pending Stripe credit removed. Idempotent, and a no-op outside the window or when
+ * platform billing is off (no reward is granted then).
  */
 export async function clawbackReferrerRewardForQualifyingPayment(input: {
   stripeChargeId?: string | null;
   stripePaymentIntentId?: string | null;
   at?: Date;
 }): Promise<{ clawedBack: boolean; reason?: string }> {
+  if (!isBillingEnabled()) return { clawedBack: false, reason: 'billing_off' };
   const where = input.stripeChargeId
     ? eq(referralRewards.stripeChargeId, input.stripeChargeId)
     : input.stripePaymentIntentId

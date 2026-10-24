@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid'
 import { aiCreditTransactions, aiCredits, db } from '@louez/db'
 
 import { creditsToMicro } from '@/lib/ai/advisor/credits'
+import { isBillingEnabled } from '@/lib/billing/mode'
 import { log } from '@/lib/evlog'
 import { stripe } from '@/lib/stripe/client'
 import {
@@ -21,6 +22,8 @@ import {
  * run while the balance is low) never fire more than one charge per window.
  */
 export async function maybeTriggerAutoTopup(storeId: string): Promise<void> {
+  // An off-session card charge by the platform: none without platform billing.
+  if (!isBillingEnabled()) return
   try {
     const row = await db.query.aiCredits.findFirst({
       where: eq(aiCredits.storeId, storeId),

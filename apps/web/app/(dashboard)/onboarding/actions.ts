@@ -13,6 +13,7 @@ import { defaultBusinessHours } from "@louez/validations";
 import { auth } from "@/lib/auth";
 import { getSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { creditAiCredits, getDefaultAiCredits } from "@/lib/ai/advisor/credits";
+import { isBillingEnabled } from "@/lib/billing/mode";
 import { isStandaloneMode } from "@/lib/deployment";
 import { getNewStorePricing } from "@/lib/pay-as-you-go/defaults";
 import { raiseFreeReservations } from "@/lib/pay-as-you-go/pricing-lock";
@@ -337,7 +338,8 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       .where(eq(stores.id, storeToUpdate.id));
 
     if (isExistingIncompleteStore) {
-      if (pendingReferral.attribution) {
+      // The Referred Reward is a billing credit: none without platform billing.
+      if (pendingReferral.attribution && isBillingEnabled()) {
         await grantReferredStoreWelcomeReward(storeToUpdate.id);
         await trackReferredRewardGranted({
           userId: session.user.id,
@@ -462,19 +464,21 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       // New stores default to pay-as-you-go billing (the owner can switch to a
       // subscription plan at any time from the subscription page). The current offer for
       // new stores is written onto the row, and the store keeps it even if the offer
-      // later changes.
-      const newStorePricing = getNewStorePricing(validated.data.currency);
-      await tx.insert(subscriptions).values({
-        storeId: createdStore.id,
-        planSlug: "pay_as_you_go",
-        billingMode: "pay_as_you_go",
-        ...newStorePricing,
-        // Welcome gift: free reservations (commission waived) for the new store. A store
-        // that signed up through a referral gets the larger Referred Reward instead.
-        freeReservationsGranted: referredByStoreId
-          ? getReferralProgramConfig().referredRewardFreeReservations
-          : newStorePricing.freeReservationsGranted,
-      });
+      // later changes. Without platform billing the store gets no billing row at all.
+      if (isBillingEnabled()) {
+        const newStorePricing = getNewStorePricing(validated.data.currency);
+        await tx.insert(subscriptions).values({
+          storeId: createdStore.id,
+          planSlug: "pay_as_you_go",
+          billingMode: "pay_as_you_go",
+          ...newStorePricing,
+          // Welcome gift: free reservations (commission waived) for the new store. A
+          // store that signed up through a referral gets the larger Referred Reward.
+          freeReservationsGranted: referredByStoreId
+            ? getReferralProgramConfig().referredRewardFreeReservations
+            : newStorePricing.freeReservationsGranted,
+        });
+      }
 
       return createdStore;
     });
@@ -505,7 +509,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
     analyticsStoreId = newStore.id;
     analyticsReferralOutcome = pendingReferral.outcome;
 
-    if (pendingReferral.attribution) {
+    if (pendingReferral.attribution && isBillingEnabled()) {
       await trackReferredRewardGranted({
         userId: session.user.id,
         storeId: newStore.id,

@@ -9,6 +9,7 @@ import { stores, subscriptions } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { isCurrentUserPlatformAdmin } from '@/lib/platform-admin'
 import { createStoreCoupon } from '@/lib/stripe/coupons'
+import { isBillingEnabled } from '@/lib/billing/mode'
 import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
 import { buildAdminBillingPatch } from '@/lib/pay-as-you-go/pricing-lock-core'
 
@@ -81,6 +82,12 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
   const validated = adminSettingsSchema.safeParse(data)
   if (!validated.success) {
     return { error: 'errors.invalidData' }
+  }
+
+  // Every setting on this page (trial, discount coupon, billing mode, pricing, free
+  // reservations) belongs to platform billing: refuse rather than half-save it.
+  if (!isBillingEnabled()) {
+    return { error: 'errors.billingOff' }
   }
 
   const {

@@ -13,6 +13,7 @@ import { processCalendarSyncQueue } from "@/lib/integrations/calendar/sync";
 import { pollSuperPdpInvoiceEvents } from "@/lib/invoicing/superpdp-events";
 import { processInvoiceTransmissionQueue } from "@/lib/invoicing/superpdp-transmission";
 import { runMonthlyPayAsYouGoBilling } from "@/lib/pay-as-you-go";
+import { isBillingEnabled } from "@/lib/billing/mode";
 import { processReminders } from "@/lib/reminders/automation";
 import { processReviewRequests } from "@/lib/review-booster/automation";
 
@@ -165,8 +166,14 @@ async function handleCron(request: Request) {
     }
 
     // Pay-as-you-go billing: 1st of each month at 5:00 AM UTC (bills previous
-    // month). Gated in UTC to match the UTC-based billing-month math.
-    if (now.getUTCDate() === 1 && now.getUTCHours() === 5 && now.getUTCMinutes() === 0) {
+    // month). Gated in UTC to match the UTC-based billing-month math. Only an instance
+    // that bills its stores (LOUEZ_BILLING=cloud) runs it.
+    if (
+      isBillingEnabled() &&
+      now.getUTCDate() === 1 &&
+      now.getUTCHours() === 5 &&
+      now.getUTCMinutes() === 0
+    ) {
       tasks.push("pay-as-you-go-billing");
       results.payAsYouGoBilling = await runMonthlyPayAsYouGoBilling(now);
     }

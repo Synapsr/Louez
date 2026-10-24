@@ -6,6 +6,8 @@ import type { Database, Transaction } from '@louez/db';
 import { stores, subscriptions } from '@louez/db/schema';
 import type { PayAsYouGoConfig } from '@louez/types';
 
+import { isBillingEnabled } from '@/lib/billing/mode';
+
 import {
   PAYG_LADDER_V1,
   buildExistingStorePricing,
@@ -329,9 +331,11 @@ type Executor = Database | Transaction;
  * Make sure an EXISTING store has a subscription row before a write path updates it.
  * A missing row is created with exactly the pricing the store already resolves to
  * (`buildExistingStorePricing`), so callers only ever update their own columns and never
- * change what the store pays. Concurrent callers are safe (unique store_id).
+ * change what the store pays. Concurrent callers are safe (unique store_id). Creates
+ * nothing when platform billing is off: such an instance writes no billing rows.
  */
 export async function ensureSubscriptionRow(executor: Executor, storeId: string): Promise<void> {
+  if (!isBillingEnabled()) return;
   const [existing] = await executor
     .select({ id: subscriptions.id })
     .from(subscriptions)
@@ -359,13 +363,15 @@ export async function ensureSubscriptionRow(executor: Executor, storeId: string)
 
 /**
  * Add free reservations to an existing store (referral reward for the Referrer). Only the
- * allowance changes; a missing row is created first with the pricing the store already pays.
+ * allowance changes; a missing row is created first with the pricing the store already
+ * pays. No-op when platform billing is off.
  */
 export async function addFreeReservations(
   executor: Executor,
   storeId: string,
   count: number,
 ): Promise<void> {
+  if (!isBillingEnabled()) return;
   await ensureSubscriptionRow(executor, storeId);
   await executor
     .update(subscriptions)
@@ -379,13 +385,14 @@ export async function addFreeReservations(
 /**
  * Raise an existing store's allowance to at least `count` (welcome reward of a Referred
  * Store that finishes onboarding). Only the allowance changes; a missing row is created
- * first with the pricing the store already pays.
+ * first with the pricing the store already pays. No-op when platform billing is off.
  */
 export async function raiseFreeReservations(
   executor: Executor,
   storeId: string,
   count: number,
 ): Promise<void> {
+  if (!isBillingEnabled()) return;
   await ensureSubscriptionRow(executor, storeId);
   await executor
     .update(subscriptions)

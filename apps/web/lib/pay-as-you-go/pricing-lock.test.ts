@@ -12,6 +12,8 @@ const TEST_DATABASE_URL = process.env.PRICING_LOCK_TEST_DATABASE_URL;
 if (TEST_DATABASE_URL) {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   process.env.SKIP_ENV_VALIDATION = 'true';
+  // The billing write paths only run on an instance that bills its stores.
+  process.env.LOUEZ_BILLING = 'cloud';
   // This deployment's env offer: what never-frozen stores followed live before the lock.
   // It differs from the built-in ladder and 15, so a store that reads it is visible.
   process.env.PAYG_DEFAULT_PRICING = '{"flatRateCents":30}';

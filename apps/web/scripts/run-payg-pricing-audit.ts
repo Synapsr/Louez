@@ -1,5 +1,6 @@
 /**
- * READ-ONLY audit of what each store was really charged, before freezing its pricing.
+ * READ-ONLY audit of what each store was really charged, and of the pricing lock. After
+ * a deploy, its summary must show no row without config and no store without a row.
  *
  * Rebuilds each store's charged tariff from `platform_fee` and compares it with the
  * pricing its row holds, or, for a store without a stored config, with the --pricing the

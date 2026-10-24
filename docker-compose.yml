@@ -24,6 +24,9 @@ services:
       - "${LOUEZ_PORT:-3000}:3000"
     environment:
       LOUEZ_MODE: ${LOUEZ_MODE:-standalone}
+      # Self-hosted instances bill nobody: no Louez fee, subscription row or invoice,
+      # whatever LOUEZ_MODE is. See .env.example.
+      LOUEZ_BILLING: ${LOUEZ_BILLING:-off}
       DATABASE_URL: mysql://louez:${DB_PASSWORD:-louez}@db:3306/louez
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       NEXT_PUBLIC_APP_DOMAIN: ${NEXT_PUBLIC_APP_DOMAIN:-localhost:3000}

@@ -12,7 +12,8 @@ import {
 } from './pricing-lock';
 
 /**
- * Server-start step, run right after the database migrations. It writes this deployment's
+ * Server-start step, run right after the database migrations when platform billing is on
+ * (LOUEZ_BILLING=cloud; see instrumentation.ts). It writes this deployment's
  * env offer onto the stores that never had frozen pricing (legacy rows that followed
  * PAYG_DEFAULT_PRICING live, and stores without a subscription row), tags rows that only
  * lack a pricing version, and spells out stored configs in full. New code always writes

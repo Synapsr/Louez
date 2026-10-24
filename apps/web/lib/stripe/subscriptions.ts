@@ -3,6 +3,7 @@ import { db } from '@louez/db'
 import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/lib/plans'
+import { BillingDisabledError, isBillingEnabled } from '@/lib/billing/mode'
 import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
 import { env } from '@/env'
 
@@ -23,8 +24,15 @@ interface CreateCheckoutSessionOptions {
  * Looks up the existing Stripe customer ID from the subscriptions table.
  * If none exists, creates a new Stripe customer and immediately persists
  * the ID to prevent duplicate customers on abandoned checkouts.
+ *
+ * Every platform charge (plan checkout, SMS and AI top-ups, the pay-as-you-go card
+ * portal, month-end invoices, referral credits) starts here, so it refuses when platform
+ * billing is off: such an instance charges no store and writes no billing rows.
  */
 export async function getOrCreateStripeCustomer(storeId: string): Promise<string> {
+  if (!isBillingEnabled()) {
+    throw new BillingDisabledError('charge a store through the platform Stripe account')
+  }
   const existingSubscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
   })
@@ -308,7 +316,8 @@ export async function switchToPayAsYouGo(storeId: string): Promise<SwitchToPayAs
  * Record a paid plan bought through Stripe Checkout. Subscribing always lands the store on
  * subscription billing (covers an owner switching from pay-as-you-go). Only plan, mode and
  * Stripe columns change: the store keeps its pay-as-you-go pricing for when the
- * subscription ends, and a store without a row gets one with the pricing it already pays.
+ * subscription ends, and with platform billing on a store without a row gets one with the
+ * pricing it already pays.
  */
 export async function activatePlanSubscription(input: {
   storeId: string
