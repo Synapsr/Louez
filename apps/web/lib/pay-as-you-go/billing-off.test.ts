@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, afterEach, before, describe, test } from 'node:test';
 
-import type { Database } from '@louez/db';
+import type { Database, ReservationBillingEffect } from '@louez/db';
 
 // With LOUEZ_BILLING off, the billing paths must return before touching the database.
 // DATABASE_URL points at a closed port: any query would fail with ECONNREFUSED. The
@@ -26,6 +26,17 @@ function spyDatabase() {
   return { executor: new Proxy({}, handler) as Database, calls };
 }
 
+const feeEffects: ReservationBillingEffect[] = [
+  {
+    type: 'legacy_fee.record',
+    storeId: 'store',
+    reservationId: 'reservation',
+    marketplace: true,
+    at: new Date('2026-01-15T10:00:00Z'),
+  },
+  { type: 'legacy_fee.void', storeId: 'store', reservationId: 'reservation' },
+];
+
 describe('billing off', () => {
   let metering: typeof import('./metering');
   let lock: typeof import('./pricing-lock');
@@ -33,7 +44,17 @@ describe('billing off', () => {
   let planLimits: typeof import('@/lib/plan-limits');
   let plans: typeof import('@/lib/plans');
   let numberBilling: typeof import('@/lib/ai/phone/number-billing');
+  let reservationEffects: typeof import('@/lib/billing/reservation-effects');
   let database: typeof import('@louez/db');
+
+  /** The real runner, with its failures collected: it logs them instead of throwing. */
+  async function runFeeEffects(): Promise<string[]> {
+    const errors: string[] = [];
+    await reservationEffects.createLegacyFeeEffectRunner({
+      log: { error: (_tag, message) => errors.push(message), info: () => undefined },
+    })(feeEffects);
+    return errors;
+  }
 
   before(async () => {
     metering = await import('./metering');
@@ -42,6 +63,7 @@ describe('billing off', () => {
     planLimits = await import('@/lib/plan-limits');
     plans = await import('@/lib/plans');
     numberBilling = await import('@/lib/ai/phone/number-billing');
+    reservationEffects = await import('@/lib/billing/reservation-effects');
     database = await import('@louez/db');
   });
 
@@ -85,6 +107,10 @@ describe('billing off', () => {
     assert.deepEqual(await metering.voidReservationFee('reservation'), { voided: false });
   });
 
+  test('the reservation fee effects run without a database call', async () => {
+    assert.deepEqual(await runFeeEffects(), []);
+  });
+
   test('no subscription row is created and no allowance is written', async () => {
     const { executor, calls } = spyDatabase();
 
@@ -122,5 +148,10 @@ describe('billing off', () => {
       metering.planStripeFees({ storeId: 'store', reservationId: 'r', chargeCents: 10_000 }),
       /ECONNREFUSED|Failed query/,
     );
+    // The status read before the record, then the void. The log names the
+    // driver's reason, not only drizzle's failed query.
+    const effectErrors = await runFeeEffects();
+    assert.equal(effectErrors.length, 2);
+    for (const error of effectErrors) assert.match(error, /ECONNREFUSED/);
   });
 });

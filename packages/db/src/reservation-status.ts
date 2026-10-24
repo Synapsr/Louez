@@ -139,6 +139,11 @@ const DEFAULT_ACTIVITY_TYPE: Partial<Record<ReservationStatus, ReservationActivi
 
 const FEE_VOIDING_STATUSES: readonly ReservationStatus[] = ["cancelled", "rejected", "declined"];
 
+/** Whether a change into this status voids the reservation's fees: the rental was withdrawn. */
+export function isFeeVoidingReservationStatus(status: ReservationStatus): boolean {
+  return FEE_VOIDING_STATUSES.includes(status);
+}
+
 /**
  * MySQL rounds fractional seconds on a timestamp column. Dropping them first
  * keeps a stored date and its fee's month the same at 23:59:59.6.
@@ -191,7 +196,7 @@ export function planReservationStatusChange(
     });
   }
   // Whatever the previous status was: the cancel paths void unconditionally today.
-  if (FEE_VOIDING_STATUSES.includes(to)) {
+  if (isFeeVoidingReservationStatus(to)) {
     effects.push({
       type: "legacy_fee.void",
       storeId: input.storeId,

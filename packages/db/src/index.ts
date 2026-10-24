@@ -77,6 +77,7 @@ export {
   BILLABLE_RESERVATION_STATUSES,
   changeReservationStatus,
   isBillableReservationStatus,
+  isFeeVoidingReservationStatus,
 } from "./reservation-status";
 export type {
   ChangeReservationStatusInput,
