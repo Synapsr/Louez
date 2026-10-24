@@ -1,7 +1,6 @@
 "use server";
 
 import {
-  checkExistingReservationInventory,
   ReservationInventoryError,
   lockReservationProducts,
   reserveInventory,
@@ -23,16 +22,16 @@ import {
 } from "@louez/api/services";
 import {
   ConsumableStockError,
-  canTransitionReservationStatus,
   consumeReservationStock,
   db,
   getEffectiveProductQuantities,
+  insertReservation,
   isStripeRefundPaymentSql,
   loadConsumableReservedQuantities,
   reconcileReservationStock,
   reservationStatusConsumesStock,
-  restoreReservationStock,
 } from "@louez/db";
+import type { ChangeReservationStatusResult } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
   buildReservationOverlapPredicate,
@@ -95,6 +94,7 @@ import {
 } from "@louez/validations";
 
 import { auth } from "@/lib/auth";
+import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import {
   notifyEquipmentPickedUp,
   notifyNewReservation,
@@ -134,11 +134,6 @@ import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state"
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
 import {
-  recordMarketplaceFee,
-  recordReservationFee,
-  voidReservationFee,
-} from "@/lib/pay-as-you-go";
-import {
   captureProductServerEvent,
   captureReservationActionSucceeded,
   toAnalyticsAmountCents,
@@ -150,6 +145,7 @@ import {
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
+import { changeStoreReservationStatus } from "@/lib/reservations/store-status-change";
 import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
   isSmsConfigured,
@@ -397,18 +393,21 @@ async function getDashboardTulipInsuranceMode(storeId: string): Promise<TulipPub
   return getDashboardTulipInsuranceModeFromSettings(tulipSettings);
 }
 
+/** The signed-in user, for the activity rows they cause. */
+async function getActorUserId(): Promise<string | null> {
+  const session = await auth();
+  return session?.user?.id || null;
+}
+
 async function logReservationActivity(
   reservationId: string,
   activityType: ActivityType,
   metadata?: Record<string, unknown>,
 ) {
-  const session = await auth();
-  const userId = session?.user?.id || null;
-
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId,
-    userId,
+    userId: await getActorUserId(),
     activityType,
     metadata,
   });
@@ -460,137 +459,51 @@ export async function updateReservationStatus(
         })
       : [];
 
-  let previousStatus = reservation.status;
-  const updateData: Record<string, unknown> = {
-    status,
-    updatedAt: new Date(),
-  };
-
-  // Set timestamps based on status transition
-  if (status === "ongoing") {
-    updateData.pickedUpAt = new Date();
-  } else if (status === "completed") {
-    updateData.returnedAt = new Date();
-  }
-
+  const actorUserId = await getActorUserId();
+  let change: ChangeReservationStatusResult;
   try {
-    const transitionResult = await db.transaction(
-      async (tx) => {
-        const [lockedReservation] = await tx
-          .select({ status: reservations.status })
-          .from(reservations)
-          .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
-          .for("update");
-
-        if (!lockedReservation) {
-          throw new ConsumableStockError({
-            code: "RESERVATION_NOT_FOUND",
-            message: "errors.reservationNotFound",
-          });
-        }
-
-        if (lockedReservation.status !== reservation.status) {
-          return { ok: false as const, error: "errors.reservationStatusChanged" as const };
-        }
-
-        if (!canTransitionReservationStatus(lockedReservation.status, status)) {
-          return { ok: false as const, error: "errors.reservationStatusChanged" as const };
-        }
-
-        if (
-          status === "confirmed" &&
-          (lockedReservation.status === "pending" || lockedReservation.status === "quote")
-        ) {
-          await checkExistingReservationInventory(tx, reservationId, store.id);
-          await consumeReservationStock(tx, reservationId, store.id);
-        } else if (
-          (status === "cancelled" || status === "rejected") &&
-          (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
-        ) {
-          await restoreReservationStock(tx, reservationId, store.id);
-        }
-
-        await tx
-          .update(reservations)
-          .set(updateData)
-          .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
-
-        await validateReservationContract(tx, reservationId, store.id, "confirmation");
-        await resolveDateChangeRequests(
-          tx,
+    change = await db.transaction(
+      (tx) =>
+        changeStoreReservationStatus(tx, {
           reservationId,
-          reservation.startDate,
-          reservation.endDate,
-          status,
-        );
-        return { ok: true as const, previousStatus: lockedReservation.status };
-      },
+          storeId: store.id,
+          to: status,
+          actor: "store_user",
+          actorUserId,
+          // Refuses when someone changed the status since the read above.
+          expectedFrom: reservation.status,
+          dates: { startDate: reservation.startDate, endDate: reservation.endDate },
+          activity: {
+            metadata: {
+              ...(status === "rejected" && rejectionReason && { rejectionReason }),
+              ...(validationWarnings.length > 0 && {
+                validationWarnings,
+                validationWarningsCount: validationWarnings.length,
+              }),
+            },
+          },
+        }),
       { isolationLevel: "read committed" },
     );
-
-    if (!transitionResult.ok) {
-      return { error: transitionResult.error };
-    }
-    previousStatus = transitionResult.previousStatus;
   } catch (error) {
     if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
       return { error: error.message };
     }
     throw error;
   }
-
-  // Log activity based on status transition
-  const activityMap: Record<string, ActivityType> = {
-    confirmed: "confirmed",
-    rejected: "rejected",
-    ongoing: "picked_up",
-    completed: "returned",
-  };
-
-  if (activityMap[status]) {
-    await logReservationActivity(reservationId, activityMap[status], {
-      previousStatus,
-      newStatus: status,
-      ...(status === "rejected" && rejectionReason && { rejectionReason }),
-      ...(validationWarnings.length > 0 && {
-        validationWarnings,
-        validationWarningsCount: validationWarnings.length,
-      }),
-    });
+  if (!change.changed) {
+    // A stale read, a retry of the same change and a refused change get one answer.
+    return {
+      error:
+        change.reason === "not_found"
+          ? "errors.reservationNotFound"
+          : "errors.reservationStatusChanged",
+    };
   }
 
-  // Pay-as-you-go metering (no-op for subscription stores). Record the fee when a
-  // rental becomes billable; void it on ANY transition away from a billable state
-  // (rejected/cancelled/declined/back-to-quote) so a withdrawn rental is never invoiced.
-  const BILLABLE_STATUSES = ["confirmed", "ongoing", "completed"];
-  try {
-    if (BILLABLE_STATUSES.includes(status) && !BILLABLE_STATUSES.includes(previousStatus)) {
-      await Promise.all([
-        recordReservationFee({
-          storeId: store.id,
-          reservationId,
-          source: "manual",
-        }),
-        ...(reservation.source === "marketplace"
-          ? [
-              recordMarketplaceFee({
-                storeId: store.id,
-                reservationId,
-                source: "manual",
-              }),
-            ]
-          : []),
-      ]);
-    } else if (BILLABLE_STATUSES.includes(previousStatus) && !BILLABLE_STATUSES.includes(status)) {
-      await voidReservationFee(reservationId);
-    }
-  } catch (error) {
-    console.error("[payg] metering on status change failed:", {
-      reservationId,
-      status,
-      error,
-    });
-  }
+  // Right after commit: the pay-as-you-go fee is recorded or voided.
+  await runReservationEffects(change.effects);
+  const previousStatus = change.from;
 
   let tulipWarning: {
     key: string;
@@ -801,78 +714,32 @@ export async function cancelReservation(reservationId: string) {
     return { error: "errors.reservationNotFound" };
   }
 
-  let previousStatus = reservation.status;
+  const actorUserId = await getActorUserId();
+  let cancellation: ChangeReservationStatusResult;
   try {
-    type CancellationResult =
-      | { cancelled: false }
-      | {
-          cancelled: true;
-          previousStatus: typeof reservations.$inferSelect.status;
-        };
-    const cancellation = await db.transaction(async (tx): Promise<CancellationResult> => {
-      const [lockedReservation] = await tx
-        .select({ status: reservations.status })
-        .from(reservations)
-        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
-        .for("update");
-
-      if (
-        !lockedReservation ||
-        ["cancelled", "completed", "rejected", "declined"].includes(lockedReservation.status)
-      ) {
-        return { cancelled: false };
-      }
-
-      if (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing") {
-        await restoreReservationStock(tx, reservationId, store.id);
-      }
-
-      await tx
-        .update(reservations)
-        .set({
-          status: "cancelled",
-          updatedAt: new Date(),
-        })
-        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
-
-      await resolveDateChangeRequests(
-        tx,
+    cancellation = await db.transaction((tx) =>
+      changeStoreReservationStatus(tx, {
         reservationId,
-        reservation.startDate,
-        reservation.endDate,
-        "cancelled",
-      );
-      return {
-        cancelled: true,
-        previousStatus: lockedReservation.status,
-      };
-    });
-
-    if (!cancellation.cancelled) {
-      return { error: "errors.cannotCancelReservation" };
-    }
-    previousStatus = cancellation.previousStatus;
+        storeId: store.id,
+        to: "cancelled",
+        actor: "store_user",
+        actorUserId,
+        dates: { startDate: reservation.startDate, endDate: reservation.endDate },
+      }),
+    );
   } catch (error) {
     if (error instanceof ConsumableStockError) {
       return { error: error.message };
     }
     throw error;
   }
-
-  // Log activity
-  await logReservationActivity(reservationId, "cancelled", {
-    previousStatus,
-  });
-
-  // Pay-as-you-go: drop the (not-yet-billed) commission for this rental.
-  try {
-    await voidReservationFee(reservationId);
-  } catch (error) {
-    console.error("[payg] Failed to void usage on cancellation:", {
-      reservationId,
-      error,
-    });
+  // Gone, or already cancelled, completed, rejected or declined.
+  if (!cancellation.changed) {
+    return { error: "errors.cannotCancelReservation" };
   }
+
+  // Right after commit: the pay-as-you-go fee is voided.
+  await runReservationEffects(cancellation.effects);
 
   if (reservation.tulipContractId) {
     try {
@@ -1706,7 +1573,7 @@ export async function createManualReservation(data: CreateReservationData) {
       };
     }
 
-    await tx.insert(reservations).values({
+    const { effects } = await insertReservation(tx, {
       id: reservationId,
       storeId: store.id,
       customerId,
@@ -1821,6 +1688,7 @@ export async function createManualReservation(data: CreateReservationData) {
     return {
       ok: true as const,
       overbookingShortfalls: shortfalls,
+      effects,
     };
   });
 
@@ -1830,6 +1698,10 @@ export async function createManualReservation(data: CreateReservationData) {
       shortfalls: reservationWriteResult.shortfalls,
     };
   }
+
+  // Right after commit: a reservation created as confirmed records its
+  // pay-as-you-go fee. A quote records it when it is accepted.
+  await runReservationEffects(reservationWriteResult.effects);
 
   const overbookingShortfalls =
     reservationWriteResult.overbookingShortfalls.length > 0
@@ -1884,23 +1756,6 @@ export async function createManualReservation(data: CreateReservationData) {
       currency: store.settings?.currency ?? "EUR",
     },
   });
-
-  // Pay-as-you-go: a manually created reservation that is immediately confirmed
-  // counts as a billable location (quotes are billed when later accepted).
-  if (!data.sendAsQuote) {
-    try {
-      await recordReservationFee({
-        storeId: store.id,
-        reservationId,
-        source: "manual",
-      });
-    } catch (error) {
-      console.error("[payg] Failed to record manual reservation location:", {
-        reservationId,
-        error,
-      });
-    }
-  }
 
   try {
     await createTulipContractForReservation({
