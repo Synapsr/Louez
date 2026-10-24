@@ -811,7 +811,7 @@
         "tagline": {
           "label": "Slogan",
           "description": "Une phrase sous le nom, en haut de la page d'accueil. {max} caractères maximum.",
-          "placeholder": "Location de vélos et de paddles à Carnac depuis 2012"
+          "placeholder": "Décrivez votre activité en une phrase…"
         },
         "descriptionHint": "Le texte de la page À propos. Sans slogan, il s'affiche aussi en haut de l'accueil.",
         "logos": {

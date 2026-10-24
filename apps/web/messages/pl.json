@@ -811,7 +811,7 @@
         "tagline": {
           "label": "Slogan",
           "description": "Jedno zdanie pod nazwą, na górze strony głównej. Maksymalnie {max} znaków.",
-          "placeholder": "Wypożyczalnia rowerów i desek SUP w Carnac od 2012 roku"
+          "placeholder": "Opisz swoją działalność jednym zdaniem…"
         },
         "descriptionHint": "Tekst strony O nas. Bez sloganu wyświetla się też na górze strony głównej.",
         "logos": {

@@ -811,7 +811,7 @@
         "tagline": {
           "label": "Tagline",
           "description": "One line under the name, at the top of the home page. {max} characters at most.",
-          "placeholder": "Bike and paddle rental in Carnac since 2012"
+          "placeholder": "Describe your business in one sentence…"
         },
         "descriptionHint": "The text of the About page. Without a tagline, it also shows at the top of the home page.",
         "logos": {

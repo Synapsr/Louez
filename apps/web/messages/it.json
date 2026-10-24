@@ -811,7 +811,7 @@
         "tagline": {
           "label": "Slogan",
           "description": "Una frase sotto il nome, in cima alla home page. Massimo {max} caratteri.",
-          "placeholder": "Noleggio bici e SUP a Carnac dal 2012"
+          "placeholder": "Descrivi la tua attività in una frase…"
         },
         "descriptionHint": "Il testo della pagina Chi siamo. Senza slogan, compare anche in cima alla home.",
         "logos": {
