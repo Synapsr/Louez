@@ -281,6 +281,7 @@ pnpm start        # Serveur de production
 pnpm lint         # Linter
 pnpm format       # Formatage du code
 pnpm type-check   # Vérification des types du monorepo
+pnpm test         # Lancer toutes les suites de tests
 pnpm db:push      # Synchroniser le schéma vers la base
 pnpm db:studio    # Ouvrir Drizzle Studio
 pnpm db:generate  # Générer les migrations

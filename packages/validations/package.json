@@ -8,6 +8,9 @@
     ".": "./src/index.ts",
     "./env": "./src/env.ts"
   },
+  "scripts": {
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.ts\""
+  },
   "dependencies": {
     "@louez/types": "workspace:*",
     "@louez/utils": "workspace:*",
@@ -19,6 +22,7 @@
   "devDependencies": {
     "@louez/config": "workspace:*",
     "@types/node": "^20.19.27",
+    "tsx": "^4.21.0",
     "typescript": "catalog:"
   }
 }

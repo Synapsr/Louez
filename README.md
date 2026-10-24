@@ -290,6 +290,7 @@ pnpm start        # Start production server
 pnpm lint         # Run the linter
 pnpm format       # Format the codebase
 pnpm type-check   # Type-check the monorepo
+pnpm test         # Run every test suite
 pnpm db:push      # Sync schema to database
 pnpm db:studio    # Open Drizzle Studio GUI
 pnpm db:generate  # Generate migrations

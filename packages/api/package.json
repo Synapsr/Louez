@@ -13,6 +13,9 @@
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
     "./services/promo": "./src/services/promo.ts"
   },
+  "scripts": {
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --experimental-test-module-mocks --test \"src/**/*.test.{ts,mjs}\""
+  },
   "dependencies": {
     "@louez/auth": "workspace:*",
     "@louez/db": "workspace:*",
@@ -26,6 +29,7 @@
   },
   "devDependencies": {
     "@louez/config": "workspace:*",
+    "tsx": "^4.21.0",
     "typescript": "catalog:"
   }
 }
