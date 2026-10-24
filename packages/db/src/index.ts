@@ -73,6 +73,23 @@ export type {
   ConsumableStockMutationPlan,
   StockKindChangeBlocker,
 } from "./consumable-stock";
+export {
+  BILLABLE_RESERVATION_STATUSES,
+  changeReservationStatus,
+  isBillableReservationStatus,
+} from "./reservation-status";
+export type {
+  ChangeReservationStatusInput,
+  ChangeReservationStatusResult,
+  ReservationActivityType,
+  ReservationActor,
+  ReservationBillingEffect,
+  ReservationEffectRunner,
+  ReservationStatus,
+  ReservationStatusRefusal,
+} from "./reservation-status";
+export { initialBillableAt, insertReservation } from "./reservation-insert";
+export type { ReservationInsertValues } from "./reservation-insert";
 export { countBillableReservationsWithoutBillableAt } from "./reservation-invariants";
 
 export { SLUG_MAX_LENGTH, isSlug, pickUniqueSlug, slugify } from "./slug";

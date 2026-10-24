@@ -1,9 +1,8 @@
 import { and, count, inArray, isNull } from "drizzle-orm";
 
 import type { Database, Transaction } from "./index";
+import { BILLABLE_RESERVATION_STATUSES } from "./reservation-status";
 import { reservations } from "./schema";
-
-const BILLABLE_STATUSES = ["confirmed", "ongoing", "completed"] as const;
 
 /**
  * Billable reservations that have no `billable_at`. It should be 0: migration
@@ -18,7 +17,10 @@ export async function countBillableReservationsWithoutBillableAt(
     .select({ missing: count() })
     .from(reservations)
     .where(
-      and(inArray(reservations.status, [...BILLABLE_STATUSES]), isNull(reservations.billableAt)),
+      and(
+        inArray(reservations.status, [...BILLABLE_RESERVATION_STATUSES]),
+        isNull(reservations.billableAt),
+      ),
     );
   return row?.missing ?? 0;
 }
