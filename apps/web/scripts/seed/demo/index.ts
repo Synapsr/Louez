@@ -2163,6 +2163,8 @@ async function main(): Promise<void> {
         promoCodeSnapshot: promoSnapshot,
         source,
         createdAt: bookedAt,
+        // Backdated rows: billable from the booking.
+        billableAt: schema.initialBillableAt(status, bookedAt),
         updatedAt: returnedAt ?? pickedUpAt ?? bookedAt,
       });
 

@@ -25,6 +25,7 @@ const main = async (): Promise<void> => {
   const { db, cancelFailedCheckoutReservation, payments, reservations, stores } =
     await import("@louez/db");
   const { env } = await import("@louez/db/env");
+  const { runReservationEffects } = await import("@/lib/billing/reservation-effects");
   const target = new URL(env.DATABASE_URL);
   console.log(
     JSON.stringify({
@@ -62,13 +63,16 @@ const main = async (): Promise<void> => {
     });
     if (payment) continue;
     const cancelled = options.apply
-      ? await cancelFailedCheckoutReservation({
-          storeId: options.storeId,
-          reservationId: candidate.id,
-          expectedAmount: candidate.totalAmount,
-          reason: "amount_too_small",
-          ...amount.params,
-        })
+      ? await cancelFailedCheckoutReservation(
+          {
+            storeId: options.storeId,
+            reservationId: candidate.id,
+            expectedAmount: candidate.totalAmount,
+            reason: "amount_too_small",
+            ...amount.params,
+          },
+          runReservationEffects,
+        )
       : false;
     console.log(
       JSON.stringify({

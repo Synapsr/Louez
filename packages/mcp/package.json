@@ -10,7 +10,11 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./http": "./src/transports/http.ts"
+    "./http": "./src/transports/http.ts",
+    "./testing": "./src/testing/reservation-tools-client.ts"
+  },
+  "scripts": {
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@louez/api": "workspace:*",

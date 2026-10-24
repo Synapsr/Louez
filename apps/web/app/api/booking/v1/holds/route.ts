@@ -2,6 +2,7 @@ import { holdMarketplaceBooking, ApiServiceError } from "@louez/api/services";
 import { bookingHoldInputSchema } from "@louez/validations";
 import type { NextRequest } from "next/server";
 
+import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { bookingJson, bookingServiceError, readBookingPost } from "@/lib/booking-api-route";
 import { useLogger, withEvlog } from "@/lib/evlog";
 import { marketplaceHoldAdapter } from "@/lib/marketplace-booking";
@@ -17,6 +18,7 @@ const handlePost = async (request: NextRequest) => {
         input: parsed.data,
         secret: parsed.secret,
         adapter: marketplaceHoldAdapter,
+        runReservationEffects,
       }),
     );
   } catch (error) {

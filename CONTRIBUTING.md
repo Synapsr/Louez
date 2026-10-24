@@ -34,7 +34,9 @@ Linux kernel and many other projects.
    ```
 
    Tests that need a database skip themselves unless their URL variable is set.
-   CI runs them against a throwaway MySQL (see `.github/workflows/ci.yml`).
+   Most use `TEST_DATABASE_URL`, a MySQL server URL on which each suite creates
+   and drops its own database (`@louez/db/testing`). CI runs them against a
+   throwaway MySQL (see `.github/workflows/ci.yml`).
 
 3. **Follow the review checklist** in
    [docs/code-review/07-checklist.md](docs/code-review/07-checklist.md). It is the

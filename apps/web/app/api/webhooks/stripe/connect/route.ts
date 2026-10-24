@@ -7,10 +7,11 @@ import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
 import { failMarketplaceBookingAttempt } from "@louez/api/services";
-import { db } from "@louez/db";
+import { db, toWholeSeconds } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
+import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { notifyPaymentFailed, notifyStripeConnected } from "@/lib/discord/platform-notifications";
 import { log } from "@/lib/evlog";
 import {
@@ -35,6 +36,7 @@ import {
 } from "@/lib/referral/rewards";
 import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
+import { cancelAbandonedCheckout } from "@/lib/reservations/cancel-abandoned-checkout";
 import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-payment";
 
 import { env } from "@/env";
@@ -580,14 +582,18 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
       currency,
       method: "stripe",
     },
-    createdAt: new Date(),
+    // Whole seconds, as the status change below stores its `cancelled` row.
+    createdAt: toWholeSeconds(new Date()),
   });
 
-  await failMarketplaceBookingAttempt(reservationId);
+  await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
 
   const reservationCancelled =
     abandoned && session.metadata?.checkoutFlow === "storefront_checkout"
-      ? await cancelAbandonedCheckout(reservationId, session.id)
+      ? await cancelAbandonedCheckout(
+          { reservationId, checkoutSessionId: session.id },
+          runReservationEffects,
+        )
       : false;
 
   log.info({
@@ -597,61 +603,6 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
       sessionId: session.id,
       reservationCancelled,
     },
-  });
-}
-
-/**
- * A storefront checkout whose only payment window closed without a payment
- * is not a booking: the pending reservation is cancelled so it stops holding
- * stock and the owner does not keep a "payment in progress" that never ends.
- * Anything already confirmed, paid, or paid through another open session is
- * left alone.
- */
-async function cancelAbandonedCheckout(
-  reservationId: string,
-  checkoutSessionId: string,
-): Promise<boolean> {
-  const reservation = await db.query.reservations.findFirst({
-    columns: { id: true, status: true, source: true },
-    where: eq(reservations.id, reservationId),
-    with: { payments: { columns: { type: true, status: true } } },
-  });
-  if (!reservation || reservation.status !== "pending" || reservation.source !== "online") {
-    return false;
-  }
-  const hasRentalPayment = reservation.payments.some(
-    (payment) =>
-      payment.type === "rental" && (payment.status === "completed" || payment.status === "pending"),
-  );
-  if (hasRentalPayment) return false;
-
-  const now = new Date();
-  return db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select({ status: reservations.status })
-      .from(reservations)
-      .where(eq(reservations.id, reservationId))
-      .for("update");
-    if (locked?.status !== "pending") return false;
-
-    await tx
-      .update(reservations)
-      .set({ status: "cancelled", updatedAt: now })
-      .where(and(eq(reservations.id, reservationId), eq(reservations.status, "pending")));
-
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "cancelled",
-      description: null,
-      metadata: {
-        previousStatus: "pending",
-        reason: "payment_expired",
-        checkoutSessionId,
-      },
-      createdAt: now,
-    });
-    return true;
   });
 }
 
@@ -1070,7 +1021,7 @@ async function handleDepositFailed(
     });
 
     if (reservation.source === "marketplace") {
-      await failMarketplaceBookingAttempt(reservationId);
+      await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
     }
 
     log.info({

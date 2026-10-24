@@ -20,7 +20,7 @@
     "test": {
       "dependsOn": ["^build"],
       "cache": false,
-      "passThroughEnv": ["PRICING_LOCK_TEST_DATABASE_URL"]
+      "passThroughEnv": ["PRICING_LOCK_TEST_DATABASE_URL", "TEST_DATABASE_URL"]
     },
     "db:generate": {
       "cache": false

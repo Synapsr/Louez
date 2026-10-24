@@ -14,22 +14,18 @@ import { nanoid } from "nanoid";
 
 import {
   ConsumableStockError,
-  consumeReservationStock,
+  changeReservationStatus,
   db,
   payments,
-  reservationActivity,
   reservations,
   stores,
   verificationCodes,
 } from "@louez/db";
+import type { ReservationBillingEffect } from "@louez/db";
 
+import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
-import {
-  recordMarketplaceFee,
-  recordReservationFee,
-  voidReservationFee,
-} from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -123,38 +119,26 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
     return { error: "invalidStatus" };
   }
 
-  let accepted = false;
+  // The read above checked the customer. A reservation's customer never changes,
+  // so the store scope of the lock is enough.
+  let effects: ReservationBillingEffect[] | null = null;
   try {
-    accepted = await db.transaction(
+    effects = await db.transaction(
       async (tx) => {
-        const result = await tx
-          .update(reservations)
-          .set({ status: "confirmed", updatedAt: new Date() })
-          .where(
-            and(
-              eq(reservations.id, reservationId),
-              eq(reservations.storeId, store.id),
-              eq(reservations.customerId, session.customerId),
-              eq(reservations.status, "quote"),
-            ),
-          );
-
-        if ((result[0]?.affectedRows ?? 0) === 0) {
-          return false;
-        }
-
-        await checkExistingReservationInventory(tx, reservationId, store.id);
-        await consumeReservationStock(tx, reservationId, store.id);
-        await validateReservationContract(tx, reservationId, store.id, "quote_acceptance");
-        await tx.insert(reservationActivity).values({
-          id: nanoid(),
+        const change = await changeReservationStatus(tx, {
           reservationId,
-          activityType: "quote_accepted",
-          metadata: { source: "quote_acceptance", actor: "customer" },
-          createdAt: new Date(),
+          storeId: store.id,
+          to: "confirmed",
+          actor: "customer",
+          actorUserId: null,
+          expectedFrom: "quote",
+          beforeWrite: () => checkExistingReservationInventory(tx, reservationId, store.id),
+          activity: { type: "quote_accepted", metadata: { source: "quote_acceptance" } },
         });
+        if (!change.changed) return null;
 
-        return true;
+        await validateReservationContract(tx, reservationId, store.id, "quote_acceptance");
+        return change.effects;
       },
       { isolationLevel: "read committed" },
     );
@@ -165,68 +149,51 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
     throw error;
   }
 
-  if (!accepted) {
+  if (!effects) {
     return { error: "invalidStatus" };
   }
 
-  await captureProductServerEvent({
-    distinctId: session.customerId,
-    event: productAnalyticsEvents.quoteAccepted,
-    properties: {
-      feature: "customer_account",
-      surface: "storefront",
-      store_id: store.id,
-      reservation_id: reservationId,
-      customer_id: session.customerId,
-      source: "customer_account",
-      reservation_mode: getEffectiveReservationMode(store),
-      catalog_line_count: reservation.items.length,
-      total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
-      deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
-      currency: store.settings?.currency || "EUR",
-    },
-  });
-
   let paymentUrl: string | null = null;
-  if (getEffectiveReservationMode(store) === "payment") {
-    const paymentSession = await createReservationPaymentSessionForCustomer(
-      storeSlug,
-      reservationId,
-      session.customerId,
-      "quote_acceptance",
-    );
-    if (paymentSession.success) {
-      paymentUrl = paymentSession.paymentUrl;
-    } else if (paymentSession.error !== "errors.alreadyPaid") {
-      log.error(
-        "reservation",
-        `quote payment session failed (${reservationId}): ${paymentSession.error}`,
-      );
-    }
-  }
-
-  // Pay-as-you-go: an accepted quote is now a confirmed, billable location. If an
-  // online payment session was created, the webhook upgrades this manual pending fee
-  // to an online collected fee using the Stripe application-fee metadata.
+  // The fee comes after the payment session: the session takes the fee at source
+  // only while no fee row exists. `finally` still records it when the session
+  // throws. Once paid, the webhook turns this manual fee into a collected one.
   try {
-    await Promise.all([
-      recordReservationFee({
-        storeId: store.id,
+    await captureProductServerEvent({
+      distinctId: session.customerId,
+      event: productAnalyticsEvents.quoteAccepted,
+      properties: {
+        feature: "customer_account",
+        surface: "storefront",
+        store_id: store.id,
+        reservation_id: reservationId,
+        customer_id: session.customerId,
+        source: "customer_account",
+        reservation_mode: getEffectiveReservationMode(store),
+        catalog_line_count: reservation.items.length,
+        total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
+        deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
+        currency: store.settings?.currency || "EUR",
+      },
+    });
+
+    if (getEffectiveReservationMode(store) === "payment") {
+      const paymentSession = await createReservationPaymentSessionForCustomer(
+        storeSlug,
         reservationId,
-        source: "manual",
-      }),
-      ...(reservation.source === "marketplace"
-        ? [
-            recordMarketplaceFee({
-              storeId: store.id,
-              reservationId,
-              source: "manual",
-            }),
-          ]
-        : []),
-    ]);
-  } catch (error) {
-    log.error("payg", `accepted-quote fee failed (${reservationId}): ${describeError(error)}`);
+        session.customerId,
+        "quote_acceptance",
+      );
+      if (paymentSession.success) {
+        paymentUrl = paymentSession.paymentUrl;
+      } else if (paymentSession.error !== "errors.alreadyPaid") {
+        log.error(
+          "reservation",
+          `quote payment session failed (${reservationId}): ${paymentSession.error}`,
+        );
+      }
+    }
+  } finally {
+    await runReservationEffects(effects);
   }
 
   // Notify the store owner
@@ -354,28 +321,26 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
     return { error: "invalidStatus" };
   }
 
-  // Move to declined
-  await db
-    .update(reservations)
-    .set({ status: "declined", updatedAt: new Date() })
-    .where(eq(reservations.id, reservationId));
-
-  // Pay-as-you-go: void the pending reservation fee — the customer declined the quote,
-  // so it must not be invoiced at month-end. (No-op if no fee / already collected.)
-  try {
-    await voidReservationFee(reservationId);
-  } catch (error) {
-    log.error("payg", `declined-quote fee void failed (${reservationId}): ${describeError(error)}`);
+  // Under the lock, so a quote the store confirmed meanwhile is not declined.
+  const effects = await db.transaction(
+    async (tx) => {
+      const change = await changeReservationStatus(tx, {
+        reservationId,
+        storeId: store.id,
+        to: "declined",
+        actor: "customer",
+        actorUserId: null,
+        expectedFrom: "quote",
+        activity: { type: "quote_declined", metadata: { source: "quote_decline" } },
+      });
+      return change.changed ? change.effects : null;
+    },
+    { isolationLevel: "read committed" },
+  );
+  if (!effects) {
+    return { error: "invalidStatus" };
   }
-
-  // Log activity
-  await db.insert(reservationActivity).values({
-    id: nanoid(),
-    reservationId,
-    activityType: "quote_declined",
-    metadata: { source: "quote_decline", actor: "customer" },
-    createdAt: new Date(),
-  });
+  await runReservationEffects(effects);
 
   await captureProductServerEvent({
     distinctId: session.customerId,
@@ -464,7 +429,7 @@ export async function cancelReservationRequest(
         .where(scope)
         .for("update");
       if (!locked) return { error: "reservationNotFound" };
-      if (locked.status === "cancelled") return { changed: false };
+      if (locked.status === "cancelled") return { changed: false, effects: [] };
       if (locked.status !== "pending") return { error: "requestCancellationStatusChanged" };
 
       const paymentRows = await tx
@@ -484,24 +449,23 @@ export async function cancelReservationRequest(
       ) {
         return { error: "requestCancellationPaymentChanged" };
       }
-      const now = new Date();
-      await tx.update(reservations).set({ status: "cancelled", updatedAt: now }).where(scope);
-      await tx.insert(reservationActivity).values({
-        id: nanoid(),
+      const change = await changeReservationStatus(tx, {
         reservationId: reservation.id,
-        activityType: "cancelled",
-        metadata: {
-          previousStatus: "pending",
-          actor: "customer",
-          source: "customer_request_cancellation",
-        },
-        createdAt: now,
+        storeId: store.id,
+        to: "cancelled",
+        actor: "customer",
+        actorUserId: null,
+        expectedFrom: "pending",
+        activity: { metadata: { source: "customer_request_cancellation" } },
       });
-      return { changed: true };
+      // The row is locked above, so this cannot happen. It narrows the type.
+      if (!change.changed) return { error: "requestCancellationStatusChanged" };
+      return { changed: true, effects: change.effects };
     },
     { isolationLevel: "read committed" },
   );
   if ("error" in result) return { error: result.error };
+  await runReservationEffects(result.effects);
 
   if (result.changed) {
     if (reservation.tulipContractId) {
@@ -512,11 +476,6 @@ export async function cancelReservationRequest(
       } catch (error) {
         log.error("reservation", `request insurance cancellation failed: ${describeError(error)}`);
       }
-    }
-    try {
-      await voidReservationFee(reservation.id);
-    } catch (error) {
-      log.error("payg", `cancelled-request fee void failed: ${describeError(error)}`);
     }
     try {
       await dispatchNotification("reservation_cancelled", {

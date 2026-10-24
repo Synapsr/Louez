@@ -6,8 +6,10 @@ import { loadPricingCatalog, type PricingCatalog } from "@louez/api/services/pri
 import {
   aiAdvisorConversations,
   cancelFailedCheckoutReservation,
+  changeReservationStatus,
   db,
   getBlockingReservationStatuses,
+  insertReservation,
   payments,
   productAccessories,
   products,
@@ -15,6 +17,9 @@ import {
   reservationItems,
   reservations,
   stores,
+  toWholeSeconds,
+  type ReservationBillingEffect,
+  type ReservationInsertValues,
   type Transaction,
 } from "@louez/db";
 import type { ProductSnapshot, StoreSettings } from "@louez/types";
@@ -23,6 +28,7 @@ import { advisorValidationCovers, validateStripePaymentAmount } from "@louez/uti
 
 import { env } from "@/env";
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
+import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
@@ -501,7 +507,10 @@ type WriteResult =
     }
   | ReservationFailure;
 
-type ReservationValues = Omit<typeof reservations.$inferInsert, "id" | "number">;
+/** A checkout always starts pending: payment or the merchant confirms it. */
+type ReservationValues = Omit<ReservationInsertValues, "id" | "number" | "status"> & {
+  status: "pending";
+};
 type ReservationItemValues = Omit<typeof reservationItems.$inferInsert, "reservationId">;
 
 /**
@@ -737,17 +746,69 @@ const buildReservationItemValues = (
 };
 
 /**
+ * Locks the checkout being resumed and checks it again: still pending, nothing
+ * paid. It was read before the transaction, and the webhook may have paid it
+ * since. Then this is a fresh booking, and the stock check counts the paid one.
+ * A payment claimed later waits for this write. Exported for its database test.
+ */
+export const lockResumableCheckout = async <Checkout extends { id: string }>(
+  tx: Transaction,
+  storeId: string,
+  resumable: Checkout | null,
+): Promise<Checkout | null> => {
+  if (!resumable) return null;
+  const [locked] = await tx
+    .select({ status: reservations.status })
+    .from(reservations)
+    .where(and(eq(reservations.id, resumable.id), eq(reservations.storeId, storeId)))
+    .for("update");
+  if (locked?.status !== "pending") return null;
+  // A locking read sees the latest claim, not the transaction's snapshot.
+  const [paid] = await tx
+    .select({ id: payments.id })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.reservationId, resumable.id),
+        eq(payments.type, "rental"),
+        eq(payments.status, "completed"),
+      ),
+    )
+    .limit(1)
+    .for("share");
+  return paid ? null : resumable;
+};
+
+/**
  * The customer changed their cart after backing out of Stripe: the earlier
  * pending reservation is replaced by the new one, in the same transaction,
  * so it stops holding stock and the owner never sees two open bookings.
- * Returns the Stripe sessions left open, to expire once the write is safe.
+ * The caller holds its lock (`lockResumableCheckout`), so it is still pending:
+ * a refusal throws and rolls the write back rather than overbook.
+ * Returns the Stripe sessions left open, to expire once the write is safe, and
+ * the fee effects to run after commit. Exported for its database test.
  */
-const supersedePendingCheckout = async (
+export const supersedePendingCheckout = async (
   tx: Transaction,
-  superseded: ResumableCheckout,
+  storeId: string,
+  superseded: Pick<ResumableCheckout, "id">,
   replacementId: string,
-): Promise<string[]> => {
-  const now = new Date();
+): Promise<{ sessionIds: string[]; effects: ReservationBillingEffect[] }> => {
+  const change = await changeReservationStatus(tx, {
+    reservationId: superseded.id,
+    storeId,
+    to: "cancelled",
+    actor: "customer",
+    actorUserId: null,
+    expectedFrom: "pending",
+    activity: {
+      metadata: { reason: "superseded", supersededBy: replacementId, source: "online" },
+    },
+  });
+  if (!change.changed) {
+    throw new Error(`Could not supersede checkout ${superseded.id}: ${change.reason}`);
+  }
+
   const openPayments = await tx
     .select({ id: payments.id, stripeCheckoutSessionId: payments.stripeCheckoutSessionId })
     .from(payments)
@@ -759,15 +820,10 @@ const supersedePendingCheckout = async (
       ),
     );
 
-  await tx
-    .update(reservations)
-    .set({ status: "cancelled", updatedAt: now })
-    .where(and(eq(reservations.id, superseded.id), eq(reservations.status, "pending")));
-
   if (openPayments.length > 0) {
     await tx
       .update(payments)
-      .set({ status: "cancelled", updatedAt: now })
+      .set({ status: "cancelled", updatedAt: new Date() })
       .where(
         inArray(
           payments.id,
@@ -776,23 +832,12 @@ const supersedePendingCheckout = async (
       );
   }
 
-  await tx.insert(reservationActivity).values({
-    id: nanoid(),
-    reservationId: superseded.id,
-    activityType: "cancelled",
-    description: null,
-    metadata: {
-      previousStatus: "pending",
-      reason: "superseded",
-      supersededBy: replacementId,
-      source: "online",
-    },
-    createdAt: now,
-  });
-
-  return openPayments.flatMap((payment) =>
-    payment.stripeCheckoutSessionId ? [payment.stripeCheckoutSessionId] : [],
-  );
+  return {
+    sessionIds: openPayments.flatMap((payment) =>
+      payment.stripeCheckoutSessionId ? [payment.stripeCheckoutSessionId] : [],
+    ),
+    effects: change.effects,
+  };
 };
 
 /** Best effort: a superseded session the customer could still pay is closed. */
@@ -821,6 +866,7 @@ const writeReservation = async (
   );
   const turnoverBufferMinutes = settings?.turnoverBufferMinutes ?? 0;
   const supersededSessions: string[] = [];
+  const effects: ReservationBillingEffect[] = [];
 
   const written = await db.transaction(async (tx): Promise<WriteResult> => {
     // Product locks first: a marketplace retry then waits for the attempt it
@@ -836,8 +882,9 @@ const writeReservation = async (
       if (replay) return replay;
     }
 
-    // The resumable reservation is either reused or replaced below, so its
-    // own hold must not count against this checkout's stock.
+    // Locked before the stock check: the resumed reservation is either reused
+    // or replaced below, so its own hold must not count against this checkout.
+    const resumed = await lockResumableCheckout(tx, store.id, resumable);
     const inventoryResult = await reserveInventory({
       tx,
       storeId: store.id,
@@ -846,7 +893,7 @@ const writeReservation = async (
       window,
       turnoverBufferMinutes,
       blockingStatuses,
-      excludeReservationId: resumable?.id,
+      excludeReservationId: resumed?.id,
     });
     if (!inventoryResult.ok) return inventoryResult;
     const { resolvedCombinationByLineKey } = inventoryResult.inventory;
@@ -869,15 +916,15 @@ const writeReservation = async (
     // Same cart, same customer, same options: the earlier reservation is the
     // booking. Nothing is written; the caller sends the customer back to pay it.
     if (
-      resumable &&
-      isSamePendingCheckout(resumable, { reservation: reservationValues, items: itemValues })
+      resumed &&
+      isSamePendingCheckout(resumed, { reservation: reservationValues, items: itemValues })
     ) {
       return {
         ok: true,
         replay: false,
         reused: true,
-        reservationId: resumable.id,
-        reservationNumber: resumable.number,
+        reservationId: resumed.id,
+        reservationNumber: resumed.number,
         customerId: customer.id,
         customerEmail: customer.email,
       };
@@ -892,12 +939,13 @@ const writeReservation = async (
     const reservationId = request.reservationId ?? nanoid();
     const reservationNumber = await generateUniqueReservationNumber(store.id);
 
-    await tx.insert(reservations).values({
+    const inserted = await insertReservation(tx, {
       locale: request.locale ?? null,
       id: reservationId,
       number: reservationNumber,
       ...reservationValues,
     });
+    effects.push(...inserted.effects);
 
     for (const item of itemValues) {
       await tx.insert(reservationItems).values({ reservationId, ...item });
@@ -924,13 +972,17 @@ const writeReservation = async (
         ...(prepared.advisorConversation && {
           advisorConversationId: prepared.advisorConversation.id,
         }),
-        ...(resumable && { supersedes: resumable.id }),
+        ...(resumed && { supersedes: resumed.id }),
       },
-      createdAt: new Date(),
+      // Whole seconds, as a status change stores its row: a failed payment
+      // session can cancel this checkout in the same second.
+      createdAt: toWholeSeconds(new Date()),
     });
 
-    if (resumable) {
-      supersededSessions.push(...(await supersedePendingCheckout(tx, resumable, reservationId)));
+    if (resumed) {
+      const replaced = await supersedePendingCheckout(tx, store.id, resumed, reservationId);
+      supersededSessions.push(...replaced.sessionIds);
+      effects.push(...replaced.effects);
     }
 
     // Link the advisor conversation to its reservation (conversion). The
@@ -958,6 +1010,9 @@ const writeReservation = async (
     };
   });
 
+  // The transaction committed. A pending insert has no effect; a superseded
+  // checkout voids its fees.
+  await runReservationEffects(effects);
   if (written.ok) {
     expireCheckoutSessions(store.stripeAccountId, supersededSessions);
   }
@@ -1093,11 +1148,14 @@ export const createReservation = async (
     }
 
     if (effectiveReservationMode === "payment" && paymentUrl === null) {
-      await cancelFailedCheckoutReservation({
-        storeId: store.id,
-        reservationId: written.reservationId,
-        reason: "session_creation_failed",
-      });
+      await cancelFailedCheckoutReservation(
+        {
+          storeId: store.id,
+          reservationId: written.reservationId,
+          reason: "session_creation_failed",
+        },
+        runReservationEffects,
+      );
       return failReservation("errors.checkoutPaymentFailed");
     }
 

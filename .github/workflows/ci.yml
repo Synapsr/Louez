@@ -34,7 +34,7 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # A throwaway database for the tests that need one (they skip without it).
+    # A throwaway MySQL server for the database suites.
     services:
       mysql:
         image: mysql:8.4
@@ -49,7 +49,9 @@ jobs:
           --health-timeout 5s
           --health-retries 30
     env:
-      TEST_DATABASE_URL: mysql://root:ci@127.0.0.1:3306/louez_test
+      # A server URL: each suite that uses @louez/db/testing creates its own
+      # database there. Those suites fail in CI when the variable is missing.
+      TEST_DATABASE_URL: mysql://root:ci@127.0.0.1:3306
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -61,7 +63,8 @@ jobs:
       - name: Migrate the test database
         run: pnpm --filter @louez/db db:migrate:run
         env:
-          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}/louez_test
       - run: pnpm test
         env:
-          PRICING_LOCK_TEST_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          # The pricing-lock suite runs alone on louez_test, migrated above.
+          PRICING_LOCK_TEST_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}/louez_test

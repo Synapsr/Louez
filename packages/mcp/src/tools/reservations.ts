@@ -1,24 +1,20 @@
 import { z } from "zod";
-import {
-  ConsumableStockError,
-  canTransitionReservationStatus,
-  consumeReservationStock,
-  customers,
-  db,
-  getAllowedReservationStatusTransitions,
-  reservations,
-  restoreReservationStock,
-} from "@louez/db";
+import { customers, db, reservations } from "@louez/db";
 import { and, eq, desc, sql, gte } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { McpSessionContext } from "../auth/context";
 import { requirePermission } from "../auth/context";
+import type { McpServerDeps } from "../deps";
 import { formatCurrency, formatDate, formatDateTime, formatStatus } from "../utils/formatting";
 import { toolError, toolResult } from "../utils/errors";
 import { paginationParams } from "../utils/pagination";
 
-export function registerReservationTools(server: McpServer, ctx: McpSessionContext) {
+export function registerReservationTools(
+  server: McpServer,
+  ctx: McpSessionContext,
+  deps: McpServerDeps,
+) {
   // ── list_reservations ──────────────────────────────────────────────────
   server.tool(
     "list_reservations",
@@ -204,100 +200,43 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
   // ── update_reservation_status ──────────────────────────────────────────
   server.tool(
     "update_reservation_status",
-    "Change the status of a reservation (confirm, reject, cancel, etc.)",
+    "Change the status of a reservation: confirm, reject, cancel, mark as picked up (ongoing) or returned (completed). Like the dashboard, it also emails the customer when a request is confirmed or rejected, notifies the store, and, when the store uses insurance, creates the contract on a confirmation and cancels it on a cancellation.",
     {
       reservationId: z.string().describe("The reservation ID"),
       status: z
         .enum(["confirmed", "ongoing", "completed", "cancelled", "rejected"])
         .describe("The new status"),
-      rejectionReason: z.string().optional().describe("Reason for rejection"),
+      // Same limit as the dashboard: the customer's email and the timeline show the reason.
+      rejectionReason: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe(
+          "Reason for rejection. The customer receives it in the rejection email, and the reservation's history shows it.",
+        ),
     },
-    async ({ reservationId, status: newStatus, rejectionReason: _rejectionReason }) => {
+    async ({ reservationId, status: newStatus, rejectionReason }) => {
       requirePermission(ctx, "reservations", "write");
 
-      const existing = await db.query.reservations.findFirst({
-        where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-        columns: { id: true, number: true, status: true },
+      const result = await deps.changeReservationStatus({
+        storeId: ctx.storeId,
+        reservationId,
+        to: newStatus,
+        actor: "mcp",
+        actorUserId: ctx.userId,
+        rejectionReason,
       });
-
-      if (!existing) return toolError("Reservation not found.");
-
-      const allowed = getAllowedReservationStatusTransitions(existing.status);
-      if (!canTransitionReservationStatus(existing.status, newStatus)) {
-        return toolError(
-          `Invalid transition: ${existing.status} → ${newStatus}. ` +
-            `Allowed: ${allowed?.join(", ") ?? "none"}`,
-        );
+      if (!result.ok) {
+        return toolError(result.error === "not_found" ? "Reservation not found." : result.message);
       }
 
-      const updateData: Record<string, unknown> = { status: newStatus };
-      if (newStatus === "ongoing") updateData.pickedUpAt = new Date();
-      if (newStatus === "completed") updateData.returnedAt = new Date();
-
-      let transitionFrom = existing.status;
-      try {
-        const transitionResult = await db.transaction(async (tx) => {
-          const [lockedReservation] = await tx
-            .select({ status: reservations.status })
-            .from(reservations)
-            .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)))
-            .for("update");
-
-          if (!lockedReservation) {
-            return { ok: false as const, error: "Reservation not found." };
-          }
-
-          const lockedAllowed = getAllowedReservationStatusTransitions(
-            lockedReservation.status,
-          );
-          if (
-            !canTransitionReservationStatus(
-              lockedReservation.status,
-              newStatus,
-            )
-          ) {
-            return {
-              ok: false as const,
-              error:
-                `Invalid transition: ${lockedReservation.status} → ${newStatus}. ` +
-                `Allowed: ${lockedAllowed?.join(", ") ?? "none"}`,
-            };
-          }
-
-          if (
-            newStatus === "confirmed" &&
-            (lockedReservation.status === "pending" || lockedReservation.status === "quote")
-          ) {
-            await consumeReservationStock(tx, reservationId, ctx.storeId);
-          } else if (
-            (newStatus === "cancelled" || newStatus === "rejected") &&
-            (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
-          ) {
-            await restoreReservationStock(tx, reservationId, ctx.storeId);
-          }
-
-          await tx
-            .update(reservations)
-            .set(updateData)
-            .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)));
-
-          return { ok: true as const, previousStatus: lockedReservation.status };
-        });
-
-        if (!transitionResult.ok) {
-          return toolError(transitionResult.error);
-        }
-        transitionFrom = transitionResult.previousStatus;
-      } catch (error) {
-        if (error instanceof ConsumableStockError) {
-          return toolError(error.message);
-        }
-        throw error;
-      }
-
-      return toolResult(
-        `Reservation #${existing.number} updated: ${formatStatus(transitionFrom)} → ${formatStatus(newStatus)}`,
+      const updated = `Reservation #${result.number} updated: ${formatStatus(result.from)} → ${formatStatus(result.to)}`;
+      if (result.warnings.length === 0) return toolResult(updated);
+      // The dashboard shows these after the change: rule warnings, a failed contract.
+      const warnings = result.warnings.map(({ key, params }) =>
+        params ? `${key} ${JSON.stringify(params)}` : key,
       );
+      return toolResult(`${updated}\nWarnings: ${warnings.join(", ")}`);
     },
   );
 

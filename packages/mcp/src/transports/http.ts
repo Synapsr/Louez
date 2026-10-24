@@ -1,10 +1,11 @@
-import { randomUUID, timingSafeEqual } from 'crypto'
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
+import { randomUUID, timingSafeEqual } from "crypto";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 
-import { resolveApiKeyContext } from '../auth/api-keys'
-import type { McpSessionContext } from '../auth/context'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { createMcpServer } from '../server'
+import { resolveApiKeyContext } from "../auth/api-keys";
+import type { McpSessionContext } from "../auth/context";
+import type { McpServerDeps } from "../deps";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMcpServer } from "../server";
 
 // ── Session management ─────────────────────────────────────────────────
 // The MCP protocol requires a stateful session: the client sends `initialize`,
@@ -13,29 +14,29 @@ import { createMcpServer } from '../server'
 // and route subsequent requests to the correct instance.
 
 interface McpSession {
-  server: McpServer
-  transport: WebStandardStreamableHTTPServerTransport
-  ctx: McpSessionContext
-  rawKey: string
-  createdAt: number
+  server: McpServer;
+  transport: WebStandardStreamableHTTPServerTransport;
+  ctx: McpSessionContext;
+  rawKey: string;
+  createdAt: number;
 }
 
-const sessions = new Map<string, McpSession>()
-const SESSION_TTL_MS = 30 * 60 * 1000 // 30 minutes
+const sessions = new Map<string, McpSession>();
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 function removeSession(sessionId: string) {
-  const session = sessions.get(sessionId)
+  const session = sessions.get(sessionId);
   if (session) {
-    sessions.delete(sessionId)
-    void session.server.close()
+    sessions.delete(sessionId);
+    void session.server.close();
   }
 }
 
 function cleanExpiredSessions() {
-  const now = Date.now()
+  const now = Date.now();
   for (const [id, session] of sessions) {
     if (now - session.createdAt > SESSION_TTL_MS) {
-      removeSession(id)
+      removeSession(id);
     }
   }
 }
@@ -45,47 +46,47 @@ function cleanExpiredSessions() {
 // High limits since MCP tool calls don't consume our tokens.
 
 interface RateLimitEntry {
-  count: number
-  windowStart: number
+  count: number;
+  windowStart: number;
 }
 
-const rateLimits = new Map<string, RateLimitEntry>()
-const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 120 // 120 requests per minute
+const rateLimits = new Map<string, RateLimitEntry>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 120; // 120 requests per minute
 
 function checkRateLimit(apiKeyId: string): boolean {
-  const now = Date.now()
-  const entry = rateLimits.get(apiKeyId)
+  const now = Date.now();
+  const entry = rateLimits.get(apiKeyId);
 
   if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimits.set(apiKeyId, { count: 1, windowStart: now })
-    return true
+    rateLimits.set(apiKeyId, { count: 1, windowStart: now });
+    return true;
   }
 
-  entry.count++
-  return entry.count <= RATE_LIMIT_MAX_REQUESTS
+  entry.count++;
+  return entry.count <= RATE_LIMIT_MAX_REQUESTS;
 }
 
 // ── Auth helpers ───────────────────────────────────────────────────────
 
 function extractBearerToken(request: Request): string | null {
-  const authorization = request.headers.get('authorization')
-  if (!authorization?.startsWith('Bearer ')) return null
-  return authorization.slice(7)
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return null;
+  return authorization.slice(7);
 }
 
 function keysMatch(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, 'utf-8')
-  const bufB = Buffer.from(b, 'utf-8')
-  if (bufA.length !== bufB.length) return false
-  return timingSafeEqual(bufA, bufB)
+  const bufA = Buffer.from(a, "utf-8");
+  const bufB = Buffer.from(b, "utf-8");
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
 }
 
 function jsonResponse(body: Record<string, unknown>, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 // ── Request handlers ───────────────────────────────────────────────────
@@ -98,96 +99,101 @@ function jsonResponse(body: Record<string, unknown>, status: number): Response {
  *   the session.
  * - Subsequent requests (with Mcp-Session-Id header): verifies the API key
  *   matches the session, then routes to the existing transport.
+ *
+ * `deps` reach the server of a new session.
  */
-export async function handleMcpRequest(request: Request): Promise<Response> {
-  cleanExpiredSessions()
+export async function handleMcpRequest(request: Request, deps: McpServerDeps): Promise<Response> {
+  cleanExpiredSessions();
 
-  const rawKey = extractBearerToken(request)
+  const rawKey = extractBearerToken(request);
   if (!rawKey) {
-    return jsonResponse({ error: 'Missing or invalid Authorization header. Use: Bearer <api-key>' }, 401)
+    return jsonResponse(
+      { error: "Missing or invalid Authorization header. Use: Bearer <api-key>" },
+      401,
+    );
   }
 
   // ── Existing session ──────────────────────────────────────────────
-  const sessionId = request.headers.get('mcp-session-id')
+  const sessionId = request.headers.get("mcp-session-id");
   if (sessionId) {
-    const session = sessions.get(sessionId)
+    const session = sessions.get(sessionId);
     if (!session) {
-      return jsonResponse({ error: 'Session not found or expired. Re-initialize.' }, 404)
+      return jsonResponse({ error: "Session not found or expired. Re-initialize." }, 404);
     }
 
     // Verify the API key matches the one used to create the session
     if (!keysMatch(rawKey, session.rawKey)) {
-      return jsonResponse({ error: 'API key does not match session.' }, 401)
+      return jsonResponse({ error: "API key does not match session." }, 401);
     }
 
     // Rate limit check
     if (!checkRateLimit(session.ctx.apiKeyId)) {
-      return jsonResponse({ error: 'Rate limit exceeded. Max 120 requests per minute.' }, 429)
+      return jsonResponse({ error: "Rate limit exceeded. Max 120 requests per minute." }, 429);
     }
 
-    return session.transport.handleRequest(request)
+    return session.transport.handleRequest(request);
   }
 
   // ── New session ───────────────────────────────────────────────────
-  const ctx = await resolveApiKeyContext(rawKey)
+  const ctx = await resolveApiKeyContext(rawKey);
   if (!ctx) {
-    return jsonResponse({ error: 'Invalid API key. It may be expired or revoked.' }, 401)
+    return jsonResponse({ error: "Invalid API key. It may be expired or revoked." }, 401);
   }
 
   // Rate limit check for new sessions too
   if (!checkRateLimit(ctx.apiKeyId)) {
-    return jsonResponse({ error: 'Rate limit exceeded. Max 120 requests per minute.' }, 429)
+    return jsonResponse({ error: "Rate limit exceeded. Max 120 requests per minute." }, 429);
   }
 
-  const server = createMcpServer(ctx)
+  const server = createMcpServer(ctx, deps);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     onsessionclosed: (closedSessionId: string) => {
-      removeSession(closedSessionId)
+      removeSession(closedSessionId);
     },
-  })
+  });
 
-  await server.connect(transport)
+  await server.connect(transport);
 
-  const response = await transport.handleRequest(request)
+  const response = await transport.handleRequest(request);
 
   // The transport includes the session ID in the response header after initialize
-  const newSessionId = response.headers.get('mcp-session-id')
+  const newSessionId = response.headers.get("mcp-session-id");
   if (newSessionId) {
-    sessions.set(newSessionId, { server, transport, ctx, rawKey, createdAt: Date.now() })
+    sessions.set(newSessionId, { server, transport, ctx, rawKey, createdAt: Date.now() });
   }
 
-  return response
+  return response;
 }
 
 /**
  * Handle MCP session termination (DELETE with Mcp-Session-Id header).
  */
 export async function handleMcpDelete(request: Request): Promise<Response> {
-  const rawKey = extractBearerToken(request)
+  const rawKey = extractBearerToken(request);
   if (!rawKey) {
-    return jsonResponse({ error: 'Missing or invalid Authorization header.' }, 401)
+    return jsonResponse({ error: "Missing or invalid Authorization header." }, 401);
   }
 
-  const sessionId = request.headers.get('mcp-session-id')
+  const sessionId = request.headers.get("mcp-session-id");
   if (!sessionId) {
-    return jsonResponse({ error: 'Missing Mcp-Session-Id header' }, 400)
+    return jsonResponse({ error: "Missing Mcp-Session-Id header" }, 400);
   }
 
-  const session = sessions.get(sessionId)
+  const session = sessions.get(sessionId);
   if (!session) {
     // Already gone — idempotent success
-    return new Response(null, { status: 204 })
+    return new Response(null, { status: 204 });
   }
 
   // Verify the API key matches
   if (!keysMatch(rawKey, session.rawKey)) {
-    return jsonResponse({ error: 'API key does not match session.' }, 401)
+    return jsonResponse({ error: "API key does not match session." }, 401);
   }
 
-  const response = await session.transport.handleRequest(request)
-  removeSession(sessionId)
-  return response
+  const response = await session.transport.handleRequest(request);
+  removeSession(sessionId);
+  return response;
 }
 
 /**
@@ -197,12 +203,12 @@ export async function handleMcpDelete(request: Request): Promise<Response> {
 export function handleMcpDiscovery(): Response {
   return new Response(
     JSON.stringify({
-      name: 'louez',
-      version: '0.1.0',
-      description: 'Louez rental management MCP server',
-      transport: 'streamable-http',
-      authentication: 'bearer',
+      name: "louez",
+      version: "0.1.0",
+      description: "Louez rental management MCP server",
+      transport: "streamable-http",
+      authentication: "bearer",
     }),
-    { headers: { 'Content-Type': 'application/json' } }
-  )
+    { headers: { "Content-Type": "application/json" } },
+  );
 }

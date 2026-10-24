@@ -32,6 +32,10 @@ _Avoid_: Louez commission, platform commission
 A per-reservation fee charged by Louez to a Store, metered through the pay-as-you-go ledger (`platform_fee`) and billed monthly. It is charged on reservations, never itemized on a Store's Invoices to its Customers.
 _Avoid_: Stripe commission
 
+**Billable reservation**:
+A Reservation in status `confirmed`, `ongoing` or `completed`, the statuses the Louez commission is charged on. `billable_at` records the first time it entered them; `withdrawn_at` records when a cancellation took it out. A rejected or declined reservation was never billable.
+_Avoid_: paid reservation (a billable reservation may be unpaid), confirmed (alone)
+
 **Platform billing**:
 Louez billing its Stores: the Louez commission, plans, top-ups, referral rewards and month-end invoices. On only when `LOUEZ_BILLING=cloud` (Louez Cloud); a self-hosted instance, single-store or multi-store, bills no Store and writes no billing rows.
 _Avoid_: payments (a Customer paying a Store), Stripe Connect

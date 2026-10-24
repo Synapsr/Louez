@@ -1,11 +1,6 @@
 "use server";
 
-import {
-  checkExistingReservationInventory,
-  ReservationInventoryError,
-  lockReservationProducts,
-  reserveInventory,
-} from "@/lib/reservations/reserve-inventory";
+import { lockReservationProducts, reserveInventory } from "@/lib/reservations/reserve-inventory";
 
 import { validateReservationContract } from "@louez/api/services";
 
@@ -23,15 +18,14 @@ import {
 } from "@louez/api/services";
 import {
   ConsumableStockError,
-  canTransitionReservationStatus,
   consumeReservationStock,
   db,
   getEffectiveProductQuantities,
+  insertReservation,
   isStripeRefundPaymentSql,
   loadConsumableReservedQuantities,
   reconcileReservationStock,
   reservationStatusConsumesStock,
-  restoreReservationStock,
 } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
@@ -55,7 +49,6 @@ import {
   reservations,
   verificationCodes,
 } from "@louez/db";
-import type { NotificationEventType } from "@louez/types";
 import type { Rate } from "@louez/types";
 import type {
   BookingAttributeAxis,
@@ -95,15 +88,8 @@ import {
 } from "@louez/validations";
 
 import { auth } from "@/lib/auth";
-import {
-  notifyEquipmentPickedUp,
-  notifyNewReservation,
-  notifyPaymentReceived,
-  notifyReservationCancelled,
-  notifyReservationCompleted,
-  notifyReservationConfirmed,
-  notifyReservationRejected,
-} from "@/lib/discord/platform-notifications";
+import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { notifyNewReservation, notifyPaymentReceived } from "@/lib/discord/platform-notifications";
 import { sendEmail } from "@/lib/email/client";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import {
@@ -119,7 +105,6 @@ import {
   sendReservationModifiedEmail,
 } from "@/lib/email/send";
 import {
-  cancelTulipContractForReservation,
   createTulipContractForReservation,
   getTulipCoverageSummary,
   previewTulipQuoteForCheckout,
@@ -132,12 +117,6 @@ import {
 import { getDashboardTulipInsuranceModeFromSettings } from "@/lib/integrations/tulip/settings";
 import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state";
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
-import { dispatchNotification } from "@/lib/notifications/dispatcher";
-import {
-  recordMarketplaceFee,
-  recordReservationFee,
-  voidReservationFee,
-} from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   captureReservationActionSucceeded,
@@ -147,9 +126,11 @@ import {
   productAnalyticsEvents,
   reservationAnalyticsActions,
 } from "@/lib/product-analytics/analytics-events";
-import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
-import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
+import {
+  cancelStoreReservation,
+  updateStoreReservationStatus,
+} from "@/lib/reservations/status-change";
 import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
   isSmsConfigured,
@@ -397,18 +378,21 @@ async function getDashboardTulipInsuranceMode(storeId: string): Promise<TulipPub
   return getDashboardTulipInsuranceModeFromSettings(tulipSettings);
 }
 
+/** The signed-in user, for the activity rows they cause. */
+async function getActorUserId(): Promise<string | null> {
+  const session = await auth();
+  return session?.user?.id || null;
+}
+
 async function logReservationActivity(
   reservationId: string,
   activityType: ActivityType,
   metadata?: Record<string, unknown>,
 ) {
-  const session = await auth();
-  const userId = session?.user?.id || null;
-
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId,
-    userId,
+    userId: await getActorUserId(),
     activityType,
     metadata,
   });
@@ -439,348 +423,28 @@ export async function updateReservationStatus(
     return { error: "errors.unauthorized" };
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      customer: true,
-      items: true,
-    },
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  const validationWarnings =
-    status === "confirmed"
-      ? evaluateReservationRules({
-          startDate: reservation.startDate,
-          endDate: reservation.endDate,
-          storeSettings: store.settings,
-        })
-      : [];
-
-  let previousStatus = reservation.status;
-  const updateData: Record<string, unknown> = {
+  const outcome = await updateStoreReservationStatus({
+    store,
+    reservationId,
     status,
-    updatedAt: new Date(),
-  };
-
-  // Set timestamps based on status transition
-  if (status === "ongoing") {
-    updateData.pickedUpAt = new Date();
-  } else if (status === "completed") {
-    updateData.returnedAt = new Date();
-  }
-
-  try {
-    const transitionResult = await db.transaction(
-      async (tx) => {
-        const [lockedReservation] = await tx
-          .select({ status: reservations.status })
-          .from(reservations)
-          .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
-          .for("update");
-
-        if (!lockedReservation) {
-          throw new ConsumableStockError({
-            code: "RESERVATION_NOT_FOUND",
-            message: "errors.reservationNotFound",
-          });
-        }
-
-        if (lockedReservation.status !== reservation.status) {
-          return { ok: false as const, error: "errors.reservationStatusChanged" as const };
-        }
-
-        if (!canTransitionReservationStatus(lockedReservation.status, status)) {
-          return { ok: false as const, error: "errors.reservationStatusChanged" as const };
-        }
-
-        if (
-          status === "confirmed" &&
-          (lockedReservation.status === "pending" || lockedReservation.status === "quote")
-        ) {
-          await checkExistingReservationInventory(tx, reservationId, store.id);
-          await consumeReservationStock(tx, reservationId, store.id);
-        } else if (
-          (status === "cancelled" || status === "rejected") &&
-          (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
-        ) {
-          await restoreReservationStock(tx, reservationId, store.id);
-        }
-
-        await tx
-          .update(reservations)
-          .set(updateData)
-          .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
-
-        await validateReservationContract(tx, reservationId, store.id, "confirmation");
-        await resolveDateChangeRequests(
-          tx,
-          reservationId,
-          reservation.startDate,
-          reservation.endDate,
-          status,
-        );
-        return { ok: true as const, previousStatus: lockedReservation.status };
-      },
-      { isolationLevel: "read committed" },
-    );
-
-    if (!transitionResult.ok) {
-      return { error: transitionResult.error };
-    }
-    previousStatus = transitionResult.previousStatus;
-  } catch (error) {
-    if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
-      return { error: error.message };
-    }
-    throw error;
-  }
-
-  // Log activity based on status transition
-  const activityMap: Record<string, ActivityType> = {
-    confirmed: "confirmed",
-    rejected: "rejected",
-    ongoing: "picked_up",
-    completed: "returned",
-  };
-
-  if (activityMap[status]) {
-    await logReservationActivity(reservationId, activityMap[status], {
-      previousStatus,
-      newStatus: status,
-      ...(status === "rejected" && rejectionReason && { rejectionReason }),
-      ...(validationWarnings.length > 0 && {
-        validationWarnings,
-        validationWarningsCount: validationWarnings.length,
-      }),
-    });
-  }
-
-  // Pay-as-you-go metering (no-op for subscription stores). Record the fee when a
-  // rental becomes billable; void it on ANY transition away from a billable state
-  // (rejected/cancelled/declined/back-to-quote) so a withdrawn rental is never invoiced.
-  const BILLABLE_STATUSES = ["confirmed", "ongoing", "completed"];
-  try {
-    if (BILLABLE_STATUSES.includes(status) && !BILLABLE_STATUSES.includes(previousStatus)) {
-      await Promise.all([
-        recordReservationFee({
-          storeId: store.id,
-          reservationId,
-          source: "manual",
-        }),
-        ...(reservation.source === "marketplace"
-          ? [
-              recordMarketplaceFee({
-                storeId: store.id,
-                reservationId,
-                source: "manual",
-              }),
-            ]
-          : []),
-      ]);
-    } else if (BILLABLE_STATUSES.includes(previousStatus) && !BILLABLE_STATUSES.includes(status)) {
-      await voidReservationFee(reservationId);
-    }
-  } catch (error) {
-    console.error("[payg] metering on status change failed:", {
-      reservationId,
-      status,
-      error,
-    });
-  }
-
-  let tulipWarning: {
-    key: string;
-    params?: Record<string, string | number>;
-  } | null = null;
-  if (status === "confirmed") {
-    try {
-      await createTulipContractForReservation({
-        reservationId,
-        source: "dashboard_reservation_confirmation",
-      });
-    } catch (error) {
-      console.error("[tulip] Failed to create contract from dashboard confirmation:", {
-        reservationId,
-        error,
-      });
-
-      tulipWarning = {
-        key: getErrorKey(error, "errors.tulipContractCreationFailed"),
-      };
-    }
-  }
-
-  // Send emails based on status change
-  const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
-
-  // Build customer notification context
-  const customerNotificationCtx = {
-    store: {
-      id: store.id,
-      name: store.name,
-      email: store.email,
-      logoUrl: store.logoUrl,
-      darkLogoUrl: store.darkLogoUrl,
-      address: store.address,
-      phone: store.phone,
-      theme: store.theme,
-      settings: store.settings,
-      emailSettings: store.emailSettings,
-      customerNotificationSettings: store.customerNotificationSettings,
-    },
-    customer: {
-      id: reservation.customer.id,
-      firstName: reservation.customer.firstName,
-      lastName: reservation.customer.lastName,
-      email: reservation.customer.email,
-      phone: reservation.customer.phone,
-    },
-    reservation: {
-      id: reservationId,
-      number: reservation.number,
-      startDate: reservation.startDate,
-      endDate: reservation.endDate,
-      totalAmount: parseFloat(reservation.totalAmount),
-      subtotalAmount: parseFloat(reservation.subtotalAmount),
-      depositAmount: parseFloat(reservation.depositAmount),
-      taxEnabled: !!reservation.taxRate,
-      taxRate: reservation.taxRate ? parseFloat(reservation.taxRate) : null,
-      subtotalExclTax: reservation.subtotalExclTax ? parseFloat(reservation.subtotalExclTax) : null,
-      taxAmount: reservation.taxAmount ? parseFloat(reservation.taxAmount) : null,
-    },
-    reservationUrl,
-  };
-
-  // Dispatch customer notification based on status change
-  if ((previousStatus === "pending" || previousStatus === "quote") && status === "confirmed") {
-    // Request/quote accepted - build items for email
-    const emailItems = reservation.items.map((item) => ({
-      name: item.productSnapshot?.name || "Product",
-      quantity: item.quantity,
-      unitPrice: parseFloat(item.unitPrice),
-      totalPrice: parseFloat(item.totalPrice),
-    }));
-
-    try {
-      const contractUrl = await createReservationInstantAccessUrl({
-        storeId: store.id,
-        storeSlug: store.slug,
-        customerEmail: reservation.customer.email,
-        reservationId,
-        redirectPath: `/account/reservations/${reservationId}/contract`,
-      });
-      const termsUrl = store.cgv?.trim() ? getStorefrontUrl(store.slug, "/terms") : null;
-
-      dispatchCustomerNotification("customer_request_accepted", {
-        ...customerNotificationCtx,
-        items: emailItems,
-        contractUrl,
-        termsUrl,
-        paymentUrl: null,
-      }).catch((error: unknown) => {
-        console.error("Failed to dispatch customer request accepted notification:", error);
-      });
-    } catch (error) {
-      console.error("Failed to dispatch customer request accepted notification:", error);
-    }
-  } else if (status === "rejected") {
-    // Request rejected
-    dispatchCustomerNotification("customer_request_rejected", {
-      ...customerNotificationCtx,
-      reason: rejectionReason,
-    }).catch((error: unknown) => {
-      console.error("Failed to dispatch customer request rejected notification:", error);
-    });
-  }
-
-  // Dispatch admin notifications (SMS, Discord) based on preferences
-  const notificationEventMap: Record<string, NotificationEventType> = {
-    confirmed: "reservation_confirmed",
-    rejected: "reservation_rejected",
-    ongoing: "reservation_picked_up",
-    completed: "reservation_completed",
-  };
-
-  const eventType = notificationEventMap[status];
-  if (eventType) {
-    dispatchNotification(eventType, {
-      store: {
-        id: store.id,
-        name: store.name,
-        email: store.email,
-        discordWebhookUrl: store.discordWebhookUrl,
-        ownerPhone: store.ownerPhone,
-        notificationSettings: store.notificationSettings,
-        settings: store.settings,
-      },
-      reservation: {
-        id: reservationId,
-        number: reservation.number,
-        startDate: reservation.startDate,
-        endDate: reservation.endDate,
-        totalAmount: parseFloat(reservation.totalAmount),
-      },
-      customer: {
-        firstName: reservation.customer.firstName,
-        lastName: reservation.customer.lastName,
-        email: reservation.customer.email,
-        phone: reservation.customer.phone,
-      },
-    }).catch((error) => {
-      console.error("Failed to dispatch admin notification:", error);
-    });
-  }
-
-  // Platform admin notification
-  const storeInfo = { id: store.id, name: store.name, slug: store.slug };
-  const currency = store.settings?.currency;
-  if (status === "confirmed") {
-    notifyReservationConfirmed(storeInfo, reservation.number).catch(() => {});
-  } else if (status === "rejected") {
-    notifyReservationRejected(storeInfo, reservation.number).catch(() => {});
-  } else if (status === "ongoing") {
-    notifyEquipmentPickedUp(storeInfo, reservation.number).catch(() => {});
-  } else if (status === "completed") {
-    notifyReservationCompleted(
-      storeInfo,
-      reservation.number,
-      parseFloat(reservation.totalAmount),
-      currency,
-    ).catch(() => {});
-  }
-
-  revalidatePath("/dashboard/reservations");
-  revalidatePath(`/dashboard/reservations/${reservationId}`);
-  const responseWarnings = [
-    ...validationWarnings.map((warning) => ({
-      key: warning.key,
-      params: warning.params,
-    })),
-    ...(tulipWarning ? [tulipWarning] : []),
-  ];
-
-  const analyticsAction = getReservationStatusAnalyticsAction(status);
-  if (analyticsAction) {
-    await captureReservationActionSucceeded({
-      distinctId: store.userId,
-      storeId: store.id,
-      reservationId,
-      action: analyticsAction,
-      properties: {
-        status_before: previousStatus,
-        status_after: status,
-        warning_count: responseWarnings.length,
-      },
-    });
+    rejectionReason,
+    actor: "store_user",
+    actorUserId: await getActorUserId(),
+  });
+  if (!outcome.ok) {
+    if (outcome.error === "unavailable") return { error: outcome.message };
+    // A stale read, a retry of the same change and a refused change get one answer.
+    return {
+      error:
+        outcome.error === "not_found" || outcome.refusal.reason === "not_found"
+          ? "errors.reservationNotFound"
+          : "errors.reservationStatusChanged",
+    };
   }
 
   return {
     success: true,
-    ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
+    ...(outcome.warnings.length > 0 && { warnings: outcome.warnings }),
   };
 }
 
@@ -790,148 +454,19 @@ export async function cancelReservation(reservationId: string) {
     return { error: "errors.unauthorized" };
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      customer: true,
-    },
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  let previousStatus = reservation.status;
-  try {
-    type CancellationResult =
-      | { cancelled: false }
-      | {
-          cancelled: true;
-          previousStatus: typeof reservations.$inferSelect.status;
-        };
-    const cancellation = await db.transaction(async (tx): Promise<CancellationResult> => {
-      const [lockedReservation] = await tx
-        .select({ status: reservations.status })
-        .from(reservations)
-        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
-        .for("update");
-
-      if (
-        !lockedReservation ||
-        ["cancelled", "completed", "rejected", "declined"].includes(lockedReservation.status)
-      ) {
-        return { cancelled: false };
-      }
-
-      if (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing") {
-        await restoreReservationStock(tx, reservationId, store.id);
-      }
-
-      await tx
-        .update(reservations)
-        .set({
-          status: "cancelled",
-          updatedAt: new Date(),
-        })
-        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
-
-      await resolveDateChangeRequests(
-        tx,
-        reservationId,
-        reservation.startDate,
-        reservation.endDate,
-        "cancelled",
-      );
-      return {
-        cancelled: true,
-        previousStatus: lockedReservation.status,
-      };
-    });
-
-    if (!cancellation.cancelled) {
-      return { error: "errors.cannotCancelReservation" };
-    }
-    previousStatus = cancellation.previousStatus;
-  } catch (error) {
-    if (error instanceof ConsumableStockError) {
-      return { error: error.message };
-    }
-    throw error;
-  }
-
-  // Log activity
-  await logReservationActivity(reservationId, "cancelled", {
-    previousStatus,
-  });
-
-  // Pay-as-you-go: drop the (not-yet-billed) commission for this rental.
-  try {
-    await voidReservationFee(reservationId);
-  } catch (error) {
-    console.error("[payg] Failed to void usage on cancellation:", {
-      reservationId,
-      error,
-    });
-  }
-
-  if (reservation.tulipContractId) {
-    try {
-      await cancelTulipContractForReservation({ reservationId });
-    } catch (error) {
-      console.error("[tulip] Failed to cancel contract from dashboard cancellation:", {
-        reservationId,
-        contractId: reservation.tulipContractId,
-        error,
-      });
-    }
-  }
-
-  // Dispatch admin notifications (SMS, Discord) based on preferences
-  dispatchNotification("reservation_cancelled", {
-    store: {
-      id: store.id,
-      name: store.name,
-      email: store.email,
-      discordWebhookUrl: store.discordWebhookUrl,
-      ownerPhone: store.ownerPhone,
-      notificationSettings: store.notificationSettings,
-      settings: store.settings,
-    },
-    reservation: {
-      id: reservationId,
-      number: reservation.number,
-      startDate: reservation.startDate,
-      endDate: reservation.endDate,
-      totalAmount: parseFloat(reservation.totalAmount),
-    },
-    customer: {
-      firstName: reservation.customer.firstName,
-      lastName: reservation.customer.lastName,
-      email: reservation.customer.email,
-      phone: reservation.customer.phone,
-    },
-  }).catch((error) => {
-    console.error("Failed to dispatch cancellation notification:", error);
-  });
-
-  // Platform admin notification
-  notifyReservationCancelled(
-    { id: store.id, name: store.name, slug: store.slug },
-    reservation.number,
-  ).catch(() => {});
-
-  revalidatePath("/dashboard/reservations");
-  revalidatePath(`/dashboard/reservations/${reservationId}`);
-  await captureReservationActionSucceeded({
-    distinctId: store.userId,
-    storeId: store.id,
+  const outcome = await cancelStoreReservation({
+    store,
     reservationId,
-    action: reservationAnalyticsActions.cancelReservation,
-    properties: {
-      status_before: reservation.status,
-      status_after: "cancelled",
-    },
+    actor: "store_user",
+    actorUserId: await getActorUserId(),
   });
+  if (!outcome.ok) {
+    if (outcome.error === "not_found") return { error: "errors.reservationNotFound" };
+    if (outcome.error === "unavailable") return { error: outcome.message };
+    // Gone, or already cancelled, completed, rejected or declined.
+    return { error: "errors.cannotCancelReservation" };
+  }
+
   return { success: true };
 }
 
@@ -1706,7 +1241,7 @@ export async function createManualReservation(data: CreateReservationData) {
       };
     }
 
-    await tx.insert(reservations).values({
+    const { effects } = await insertReservation(tx, {
       id: reservationId,
       storeId: store.id,
       customerId,
@@ -1821,6 +1356,7 @@ export async function createManualReservation(data: CreateReservationData) {
     return {
       ok: true as const,
       overbookingShortfalls: shortfalls,
+      effects,
     };
   });
 
@@ -1830,6 +1366,10 @@ export async function createManualReservation(data: CreateReservationData) {
       shortfalls: reservationWriteResult.shortfalls,
     };
   }
+
+  // Right after commit: a reservation created as confirmed records its
+  // pay-as-you-go fee. A quote records it when it is accepted.
+  await runReservationEffects(reservationWriteResult.effects);
 
   const overbookingShortfalls =
     reservationWriteResult.overbookingShortfalls.length > 0
@@ -1884,23 +1424,6 @@ export async function createManualReservation(data: CreateReservationData) {
       currency: store.settings?.currency ?? "EUR",
     },
   });
-
-  // Pay-as-you-go: a manually created reservation that is immediately confirmed
-  // counts as a billable location (quotes are billed when later accepted).
-  if (!data.sendAsQuote) {
-    try {
-      await recordReservationFee({
-        storeId: store.id,
-        reservationId,
-        source: "manual",
-      });
-    } catch (error) {
-      console.error("[payg] Failed to record manual reservation location:", {
-        reservationId,
-        error,
-      });
-    }
-  }
 
   try {
     await createTulipContractForReservation({
@@ -2182,6 +1705,36 @@ type ReservationItemUpdateValues = Pick<
 type ReservationItemWrite =
   | { type: "insert"; values: ReservationItemInsertValues }
   | { type: "update"; id: string; values: ReservationItemUpdateValues };
+
+// Delivery columns only: the reservation update spreads these, and a status
+// written there would skip changeReservationStatus (DL-12).
+type ReservationDeliveryUpdateValues = Partial<
+  Pick<
+    typeof reservations.$inferInsert,
+    | "outboundMethod"
+    | "pickupLocationId"
+    | "pickupLocationSnapshot"
+    | "deliveryAddress"
+    | "deliveryCity"
+    | "deliveryPostalCode"
+    | "deliveryCountry"
+    | "deliveryLatitude"
+    | "deliveryLongitude"
+    | "deliveryDistanceKm"
+    | "returnMethod"
+    | "returnLocationId"
+    | "returnLocationSnapshot"
+    | "returnAddress"
+    | "returnCity"
+    | "returnPostalCode"
+    | "returnCountry"
+    | "returnLatitude"
+    | "returnLongitude"
+    | "returnDistanceKm"
+    | "deliveryFee"
+    | "deliveryOption"
+  >
+>;
 
 function normalizeMoney(value: string | number) {
   const parsed = typeof value === "number" ? value : parseFloat(value);
@@ -3126,7 +2679,7 @@ export async function updateReservation(
 
   // Process delivery changes
   let deliveryFee = parseFloat(reservation.deliveryFee || "0");
-  const deliveryUpdateFields: Record<string, unknown> = {};
+  const deliveryUpdateFields: ReservationDeliveryUpdateValues = {};
 
   if (data.delivery) {
     const deliverySettings = (store.settings as Record<string, unknown> | null)?.delivery as
@@ -3235,10 +2788,10 @@ export async function updateReservation(
     // Calculate delivery fee
     if (deliverySettings?.enabled) {
       const outDist = deliveryUpdateFields.deliveryDistanceKm
-        ? parseFloat(deliveryUpdateFields.deliveryDistanceKm as string)
+        ? parseFloat(deliveryUpdateFields.deliveryDistanceKm)
         : null;
       const retDist = deliveryUpdateFields.returnDistanceKm
-        ? parseFloat(deliveryUpdateFields.returnDistanceKm as string)
+        ? parseFloat(deliveryUpdateFields.returnDistanceKm)
         : null;
 
       if (deliverySettings.mode === "included") {
