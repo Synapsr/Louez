@@ -118,3 +118,51 @@ export async function createTestDatabase(
   }
   return testDatabase;
 }
+
+/**
+ * Starts `calls` while another connection holds the row's lock, and releases it
+ * once each call waits on a lock in this database. Each call has then done its
+ * reads, so a race test reaches the code that runs under the lock.
+ */
+export async function raceOnLockedRow<T>(
+  database: TestDatabase,
+  row: { table: string; id: string },
+  calls: ReadonlyArray<() => Promise<T>>,
+): Promise<T[]> {
+  const holder = await database.connect();
+  try {
+    await holder.beginTransaction();
+    await holder.query(`SELECT id FROM \`${row.table}\` WHERE id = ? FOR UPDATE`, [row.id]);
+    const running = Promise.all(calls.map((call) => call()));
+    try {
+      await waitForLockWaits(holder, database.name, calls.length);
+    } finally {
+      // Release the lock even when the wait fails, so the calls can end.
+      await holder.commit();
+    }
+    return await running;
+  } finally {
+    await holder.end();
+  }
+}
+
+async function waitForLockWaits(
+  connection: mysql.Connection,
+  databaseName: string,
+  count: number,
+): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  for (;;) {
+    const [rows] = await connection.query<mysql.RowDataPacket[]>(
+      `SELECT COUNT(DISTINCT ENGINE_TRANSACTION_ID) AS waiting
+       FROM performance_schema.data_locks
+       WHERE OBJECT_SCHEMA = ? AND LOCK_STATUS = 'WAITING'`,
+      [databaseName],
+    );
+    if (Number(rows[0]?.waiting) >= count) return;
+    if (Date.now() > deadline) {
+      throw new Error(`Expected ${count} transactions waiting on a lock in ${databaseName}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}

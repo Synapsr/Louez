@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import { canTransitionReservationStatus } from "./consumable-stock";
 import {
   RESERVATION_ACTORS,
+  invalidReservationTransitionMessage,
   planReservationStatusChange,
   type LockedReservation,
   type PlanReservationStatusChangeInput,
@@ -285,4 +286,15 @@ describe("planReservationStatusChange", () => {
       createdAt: NOW_SECONDS,
     });
   });
+});
+
+test("the refusal message lists the allowed statuses, or none", () => {
+  assert.equal(
+    invalidReservationTransitionMessage("pending", "ongoing"),
+    "Invalid transition: pending → ongoing. Allowed: confirmed, rejected, cancelled",
+  );
+  assert.equal(
+    invalidReservationTransitionMessage("completed", "confirmed"),
+    "Invalid transition: completed → confirmed. Allowed: none",
+  );
 });

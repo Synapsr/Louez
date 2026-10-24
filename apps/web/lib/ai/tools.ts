@@ -6,6 +6,7 @@ import {
   ConsumableStockError,
   canTransitionReservationStatus,
   categories,
+  changeReservationStatus,
   customers,
   dailyStats,
   db,
@@ -14,7 +15,7 @@ import {
   buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
   marketplaceCatalogTombstones,
-  getAllowedReservationStatusTransitions,
+  invalidReservationTransitionMessage,
   loadConsumableReservedQuantities,
   payments,
   productCategories,
@@ -23,14 +24,15 @@ import {
   products,
   reservationItems,
   reservations,
-  consumeReservationStock,
-  restoreReservationStock,
   stores,
   nextProductSlug,
   nextCategorySlug,
 } from "@louez/db";
+import type { ChangeReservationStatusResult } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
+
+import { runReservationEffects } from "@/lib/billing/reservation-effects";
 
 // ---------------------------------------------------------------------------
 // Context & permissions
@@ -38,6 +40,8 @@ import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/
 
 export type AIChatContext = {
   storeId: string;
+  /** The signed-in dashboard user the assistant acts for. */
+  userId: string;
   storeName: string;
   permissions: ApiKeyPermissions;
 };
@@ -398,75 +402,44 @@ export function createAITools(ctx: AIChatContext) {
         });
         if (!existing) return { error: "Reservation not found" };
 
-        const allowed = getAllowedReservationStatusTransitions(existing.status);
         if (!canTransitionReservationStatus(existing.status, newStatus)) {
-          return {
-            error: `Invalid transition: ${existing.status} → ${newStatus}. Allowed: ${allowed?.join(", ") ?? "none"}`,
-          };
+          return { error: invalidReservationTransitionMessage(existing.status, newStatus) };
         }
 
-        const updateData: Record<string, unknown> = { status: newStatus };
-        if (newStatus === "ongoing") updateData.pickedUpAt = new Date();
-        if (newStatus === "completed") updateData.returnedAt = new Date();
-
-        let transitionFrom = existing.status;
+        let change: ChangeReservationStatusResult;
         try {
-          const transitionResult = await db.transaction(async (tx) => {
-            const [lockedReservation] = await tx
-              .select({ status: reservations.status })
-              .from(reservations)
-              .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)))
-              .for("update");
-
-            if (!lockedReservation) {
-              return { ok: false as const, error: "Reservation not found" };
-            }
-
-            const lockedAllowed = getAllowedReservationStatusTransitions(lockedReservation.status);
-            if (!canTransitionReservationStatus(lockedReservation.status, newStatus)) {
-              return {
-                ok: false as const,
-                error: `Invalid transition: ${lockedReservation.status} → ${newStatus}. Allowed: ${lockedAllowed?.join(", ") ?? "none"}`,
-              };
-            }
-
-            if (
-              newStatus === "confirmed" &&
-              (lockedReservation.status === "pending" || lockedReservation.status === "quote")
-            ) {
-              await consumeReservationStock(tx, reservationId, ctx.storeId);
-            } else if (
-              (newStatus === "cancelled" || newStatus === "rejected") &&
-              (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
-            ) {
-              await restoreReservationStock(tx, reservationId, ctx.storeId);
-            }
-
-            await tx
-              .update(reservations)
-              .set(updateData)
-              .where(
-                and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)),
-              );
-
-            return { ok: true as const, previousStatus: lockedReservation.status };
-          });
-
-          if (!transitionResult.ok) {
-            return { error: transitionResult.error };
-          }
-          transitionFrom = transitionResult.previousStatus;
+          change = await db.transaction((tx) =>
+            changeReservationStatus(tx, {
+              reservationId,
+              storeId: ctx.storeId,
+              to: newStatus,
+              actor: "ai_chat",
+              actorUserId: ctx.userId,
+            }),
+          );
         } catch (error) {
           if (error instanceof ConsumableStockError) {
             return { error: error.message };
           }
           throw error;
         }
+        // The reservation changed between the read above and the lock.
+        if (!change.changed) {
+          return {
+            error:
+              change.reason === "not_found"
+                ? "Reservation not found"
+                : invalidReservationTransitionMessage(change.from, newStatus),
+          };
+        }
+        // Now that the change is committed: record or void the pay-as-you-go fee.
+        await runReservationEffects(change.effects);
+
         return {
           success: true,
           number: existing.number,
-          from: transitionFrom,
-          to: newStatus,
+          from: change.from,
+          to: change.to,
         };
       },
     }),

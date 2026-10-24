@@ -12,6 +12,9 @@
     ".": "./src/index.ts",
     "./http": "./src/transports/http.ts"
   },
+  "scripts": {
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.ts\""
+  },
   "dependencies": {
     "@louez/api": "workspace:*",
     "@louez/db": "workspace:*",

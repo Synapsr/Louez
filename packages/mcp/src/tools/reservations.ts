@@ -2,23 +2,28 @@ import { z } from "zod";
 import {
   ConsumableStockError,
   canTransitionReservationStatus,
-  consumeReservationStock,
+  changeReservationStatus,
   customers,
   db,
-  getAllowedReservationStatusTransitions,
+  invalidReservationTransitionMessage,
   reservations,
-  restoreReservationStock,
 } from "@louez/db";
+import type { ChangeReservationStatusResult } from "@louez/db";
 import { and, eq, desc, sql, gte } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { McpSessionContext } from "../auth/context";
 import { requirePermission } from "../auth/context";
+import type { McpServerDeps } from "../deps";
 import { formatCurrency, formatDate, formatDateTime, formatStatus } from "../utils/formatting";
 import { toolError, toolResult } from "../utils/errors";
 import { paginationParams } from "../utils/pagination";
 
-export function registerReservationTools(server: McpServer, ctx: McpSessionContext) {
+export function registerReservationTools(
+  server: McpServer,
+  ctx: McpSessionContext,
+  deps: McpServerDeps,
+) {
   // ── list_reservations ──────────────────────────────────────────────────
   server.tool(
     "list_reservations",
@@ -210,9 +215,16 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
       status: z
         .enum(["confirmed", "ongoing", "completed", "cancelled", "rejected"])
         .describe("The new status"),
-      rejectionReason: z.string().optional().describe("Reason for rejection"),
+      // Same limit as the dashboard: the customer's email and the timeline show the reason.
+      rejectionReason: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe(
+          "Reason for rejection. The customer receives it in the rejection email, and the reservation's history shows it.",
+        ),
     },
-    async ({ reservationId, status: newStatus, rejectionReason: _rejectionReason }) => {
+    async ({ reservationId, status: newStatus, rejectionReason }) => {
       requirePermission(ctx, "reservations", "write");
 
       const existing = await db.query.reservations.findFirst({
@@ -222,81 +234,44 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
 
       if (!existing) return toolError("Reservation not found.");
 
-      const allowed = getAllowedReservationStatusTransitions(existing.status);
       if (!canTransitionReservationStatus(existing.status, newStatus)) {
-        return toolError(
-          `Invalid transition: ${existing.status} → ${newStatus}. ` +
-            `Allowed: ${allowed?.join(", ") ?? "none"}`,
-        );
+        return toolError(invalidReservationTransitionMessage(existing.status, newStatus));
       }
 
-      const updateData: Record<string, unknown> = { status: newStatus };
-      if (newStatus === "ongoing") updateData.pickedUpAt = new Date();
-      if (newStatus === "completed") updateData.returnedAt = new Date();
-
-      let transitionFrom = existing.status;
+      let change: ChangeReservationStatusResult;
       try {
-        const transitionResult = await db.transaction(async (tx) => {
-          const [lockedReservation] = await tx
-            .select({ status: reservations.status })
-            .from(reservations)
-            .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)))
-            .for("update");
-
-          if (!lockedReservation) {
-            return { ok: false as const, error: "Reservation not found." };
-          }
-
-          const lockedAllowed = getAllowedReservationStatusTransitions(
-            lockedReservation.status,
-          );
-          if (
-            !canTransitionReservationStatus(
-              lockedReservation.status,
-              newStatus,
-            )
-          ) {
-            return {
-              ok: false as const,
-              error:
-                `Invalid transition: ${lockedReservation.status} → ${newStatus}. ` +
-                `Allowed: ${lockedAllowed?.join(", ") ?? "none"}`,
-            };
-          }
-
-          if (
-            newStatus === "confirmed" &&
-            (lockedReservation.status === "pending" || lockedReservation.status === "quote")
-          ) {
-            await consumeReservationStock(tx, reservationId, ctx.storeId);
-          } else if (
-            (newStatus === "cancelled" || newStatus === "rejected") &&
-            (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
-          ) {
-            await restoreReservationStock(tx, reservationId, ctx.storeId);
-          }
-
-          await tx
-            .update(reservations)
-            .set(updateData)
-            .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)));
-
-          return { ok: true as const, previousStatus: lockedReservation.status };
-        });
-
-        if (!transitionResult.ok) {
-          return toolError(transitionResult.error);
-        }
-        transitionFrom = transitionResult.previousStatus;
+        change = await db.transaction((tx) =>
+          changeReservationStatus(tx, {
+            reservationId,
+            storeId: ctx.storeId,
+            to: newStatus,
+            actor: "mcp",
+            actorUserId: ctx.userId,
+            // The timeline shows the reason of a rejection, as on the dashboard.
+            ...(newStatus === "rejected" && rejectionReason
+              ? { activity: { metadata: { rejectionReason } } }
+              : {}),
+          }),
+        );
       } catch (error) {
         if (error instanceof ConsumableStockError) {
           return toolError(error.message);
         }
         throw error;
       }
+      // The reservation changed between the read above and the lock.
+      if (!change.changed) {
+        return toolError(
+          change.reason === "not_found"
+            ? "Reservation not found."
+            : invalidReservationTransitionMessage(change.from, newStatus),
+        );
+      }
+      // Now that the change is committed: record or void the pay-as-you-go fee.
+      await deps.runReservationEffects(change.effects);
 
       return toolResult(
-        `Reservation #${existing.number} updated: ${formatStatus(transitionFrom)} → ${formatStatus(newStatus)}`,
+        `Reservation #${existing.number} updated: ${formatStatus(change.from)} → ${formatStatus(change.to)}`,
       );
     },
   );
