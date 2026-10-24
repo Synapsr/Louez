@@ -481,7 +481,16 @@ async function seedStore(
   );
 
   if (reservationsData.reservations.length > 0) {
-    await db.insert(schema.reservations).values(reservationsData.reservations);
+    // Backdated rows, so no insertReservation: billable from their creation.
+    await db.insert(schema.reservations).values(
+      reservationsData.reservations.map((reservation) => ({
+        ...reservation,
+        billableAt: schema.initialBillableAt(
+          reservation.status,
+          reservation.createdAt,
+        ),
+      })),
+    );
   }
   if (reservationsData.reservationItems.length > 0) {
     await db

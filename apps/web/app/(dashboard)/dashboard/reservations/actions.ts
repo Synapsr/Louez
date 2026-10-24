@@ -1706,6 +1706,36 @@ type ReservationItemWrite =
   | { type: "insert"; values: ReservationItemInsertValues }
   | { type: "update"; id: string; values: ReservationItemUpdateValues };
 
+// Delivery columns only: the reservation update spreads these, and a status
+// written there would skip changeReservationStatus (DL-12).
+type ReservationDeliveryUpdateValues = Partial<
+  Pick<
+    typeof reservations.$inferInsert,
+    | "outboundMethod"
+    | "pickupLocationId"
+    | "pickupLocationSnapshot"
+    | "deliveryAddress"
+    | "deliveryCity"
+    | "deliveryPostalCode"
+    | "deliveryCountry"
+    | "deliveryLatitude"
+    | "deliveryLongitude"
+    | "deliveryDistanceKm"
+    | "returnMethod"
+    | "returnLocationId"
+    | "returnLocationSnapshot"
+    | "returnAddress"
+    | "returnCity"
+    | "returnPostalCode"
+    | "returnCountry"
+    | "returnLatitude"
+    | "returnLongitude"
+    | "returnDistanceKm"
+    | "deliveryFee"
+    | "deliveryOption"
+  >
+>;
+
 function normalizeMoney(value: string | number) {
   const parsed = typeof value === "number" ? value : parseFloat(value);
   return Number.isFinite(parsed) ? parsed.toFixed(2) : "0.00";
@@ -2649,7 +2679,7 @@ export async function updateReservation(
 
   // Process delivery changes
   let deliveryFee = parseFloat(reservation.deliveryFee || "0");
-  const deliveryUpdateFields: Record<string, unknown> = {};
+  const deliveryUpdateFields: ReservationDeliveryUpdateValues = {};
 
   if (data.delivery) {
     const deliverySettings = (store.settings as Record<string, unknown> | null)?.delivery as
@@ -2758,10 +2788,10 @@ export async function updateReservation(
     // Calculate delivery fee
     if (deliverySettings?.enabled) {
       const outDist = deliveryUpdateFields.deliveryDistanceKm
-        ? parseFloat(deliveryUpdateFields.deliveryDistanceKm as string)
+        ? parseFloat(deliveryUpdateFields.deliveryDistanceKm)
         : null;
       const retDist = deliveryUpdateFields.returnDistanceKm
-        ? parseFloat(deliveryUpdateFields.returnDistanceKm as string)
+        ? parseFloat(deliveryUpdateFields.returnDistanceKm)
         : null;
 
       if (deliverySettings.mode === "included") {

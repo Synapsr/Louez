@@ -66,6 +66,27 @@ Every oRPC procedure must have an `.output()` Zod schema. This enables OpenAPI g
 
 oRPC routes handle errors and return typed error responses. Don't let raw database errors bubble up to the client.
 
+### [DL-12] Reservation status and inserts go through the helpers
+
+Change a reservation's status with `changeReservationStatus` and insert a reservation with `insertReservation`, both from `@louez/db`, in the caller's transaction. The status helper locks the row, checks the transition, moves consumable stock, sets `billableAt` and `withdrawnAt`, and writes the activity row. Both helpers return fee effects. Run them with `runReservationEffects` after the commit. packages/api receives the runner as an argument. packages/mcp receives a status change function from apps/web, which runs them.
+
+Don't write `status`, `billableAt` or `withdrawnAt` in your own `update(reservations).set(…)`, and don't call `insert(reservations)` yourself. A write that skips the helpers skips the pay-as-you-go fee.
+
+```typescript
+// Bad — no fee, no activity, no stock
+await tx.update(reservations).set({ status: "confirmed" }).where(eq(reservations.id, id));
+
+// Good
+const change = await db.transaction((tx) =>
+  changeReservationStatus(tx, { reservationId, storeId, to: "confirmed", actor, actorUserId }),
+);
+if (change.changed) await runReservationEffects(change.effects);
+```
+
+`scripts/reservation-writes.test.mjs` enforces this rule in `pnpm test`. It reads syntax only, so it also asks for forms it can check: `update(reservations).set(…)` takes an object literal with no spread and no computed key, every Drizzle insert and update names a schema table (an import, an alias of one, or `schema.<table>`), raw SQL never inserts or updates `reservations`, and a file that calls a helper also calls `runReservationEffects`. A write that cannot take these forms goes on the test's allowlist with its reason, and the test fails when an entry no longer matches.
+
+Seeds that insert backdated rows set `billableAt` with `initialBillableAt` and stay on the allowlist. `packages/db/src/scripts/reservations-backfill-billable-at.ts` reruns the backfill of migration 0083 with the SQL of the migration file: it writes `billable_at` and `withdrawn_at` outside the helpers, and the test cannot see it.
+
 ---
 
 ## Related

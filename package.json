@@ -65,6 +65,7 @@
     "pricing:parity-top-products": "pnpm --filter=@louez/db run pricing:parity-top-products"
   },
   "devDependencies": {
+    "@babel/parser": "7.28.5",
     "@louez/config": "workspace:*",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",

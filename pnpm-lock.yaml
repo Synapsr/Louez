@@ -37,6 +37,9 @@ importers:
 
   .:
     devDependencies:
+      '@babel/parser':
+        specifier: 7.28.5
+        version: 7.28.5
       '@louez/config':
         specifier: workspace:*
         version: link:packages/config

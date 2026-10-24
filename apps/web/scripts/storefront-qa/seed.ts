@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { count } from "drizzle-orm";
 import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
+import { initialBillableAt } from "@louez/db";
 import * as schema from "@louez/db/schema";
 import { env } from "@louez/db/env";
 import { buildCombinationKey } from "@louez/utils";
@@ -438,6 +439,7 @@ async function main() {
                   : null,
                 depositAuthorizationExpiresAt: depositStatus === "authorized" ? day(5) : null,
                 signedAt: ["confirmed", "ongoing", "completed"].includes(status) ? now : null,
+                billableAt: initialBillableAt(status, now),
                 pickedUpAt: ["ongoing", "completed"].includes(status) ? resStart : null,
                 returnedAt: status === "completed" ? resEnd : null,
               });
