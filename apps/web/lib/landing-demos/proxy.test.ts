@@ -3,6 +3,10 @@ import test from "node:test";
 import { NextRequest } from "next/server";
 import { proxy } from "../../proxy";
 
+// The proxy reads the public app URL and domain on its first request.
+process.env.NEXT_PUBLIC_APP_URL = "https://app.louez.io";
+process.env.NEXT_PUBLIC_APP_DOMAIN = "louez.io";
+
 test("demo requests bypass both dashboard and storefront resolution", async () => {
   for (const host of ["app.louez.io", "shop.louez.io", "localhost:3000"]) {
     const response = await proxy(
