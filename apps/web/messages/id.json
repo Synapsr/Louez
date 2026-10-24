@@ -811,7 +811,7 @@
         "tagline": {
           "label": "Slogan",
           "description": "Satu baris di bawah nama, di bagian atas halaman beranda. {max} karakter paling banyak.",
-          "placeholder": "Penyewaan sepeda dan dayung di Carnac sejak 2012"
+          "placeholder": "Jelaskan usaha Anda dalam satu kalimat…"
         },
         "descriptionHint": "Teks halaman Tentang. Tanpa tagline juga tampil di bagian atas halaman beranda.",
         "logos": {

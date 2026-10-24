@@ -811,7 +811,7 @@
         "tagline": {
           "label": "Eslogan",
           "description": "Una frase bajo el nombre, en la parte superior de la página de inicio. {max} caracteres como máximo.",
-          "placeholder": "Alquiler de bicicletas y paddle surf en Carnac desde 2012"
+          "placeholder": "Describe tu negocio en una frase…"
         },
         "descriptionHint": "El texto de la página Acerca de. Sin eslogan, también se muestra en la parte superior del inicio.",
         "logos": {

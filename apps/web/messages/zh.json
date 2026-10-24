@@ -811,7 +811,7 @@
         "tagline": {
           "label": "标语",
           "description": "主页顶部名称下方一行。最多 {max} 个字符。",
-          "placeholder": "自 2012 年起在卡纳克租赁自行车和桨"
+          "placeholder": "用一句话介绍您的业务…"
         },
         "descriptionHint": "关于页面的文本。如果没有标语，它也会显示在主页顶部。",
         "logos": {

@@ -1,4 +1,5 @@
 import type { BusinessHours, ClosurePeriod, DaySchedule, TimeRange } from "@louez/types";
+import { normalizeDaySchedule } from "@louez/utils";
 
 import { formatStoreClockTime } from "@/lib/utils/util.store-status";
 
@@ -38,6 +39,10 @@ export interface UpcomingClosure {
   endDate: string;
 }
 
+/** A day's hours as `ranges`, including days still stored in the legacy single-range format. */
+const readDaySchedule = (businessHours: BusinessHours, day: DayIndex): DaySchedule =>
+  normalizeDaySchedule(businessHours.schedule[day] as unknown as Record<string, unknown>);
+
 const scheduleKey = (schedule: DaySchedule): string =>
   schedule.isOpen
     ? schedule.ranges.map((range) => `${range.openTime}-${range.closeTime}`).join(",")
@@ -65,7 +70,7 @@ export const buildOpeningHoursRows = (
 
   const groups: { from: DayIndex; to: DayIndex; schedule: DaySchedule }[] = [];
   for (const day of WEEK_ORDER) {
-    const schedule = businessHours.schedule[day];
+    const schedule = readDaySchedule(businessHours, day);
     const last = groups[groups.length - 1];
     if (last && scheduleKey(last.schedule) === scheduleKey(schedule)) {
       last.to = day;
@@ -92,7 +97,7 @@ export const buildOpeningHoursSpecification = (
 
   const byRange = new Map<string, { days: string[]; range: TimeRange }>();
   for (const day of WEEK_ORDER) {
-    const schedule = businessHours.schedule[day];
+    const schedule = readDaySchedule(businessHours, day);
     if (!schedule.isOpen) continue;
     for (const range of schedule.ranges) {
       const key = `${range.openTime}-${range.closeTime}`;

@@ -811,7 +811,7 @@
         "tagline": {
           "label": "Slogan",
           "description": "Ein Satz unter dem Namen, oben auf der Startseite. Maximal {max} Zeichen.",
-          "placeholder": "Fahrrad- und SUP-Verleih in Carnac seit 2012"
+          "placeholder": "Beschreiben Sie Ihr Unternehmen in einem Satz…"
         },
         "descriptionHint": "Der Text der Seite „Über uns“. Ohne Slogan erscheint er auch oben auf der Startseite.",
         "logos": {

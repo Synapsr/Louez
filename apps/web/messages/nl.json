@@ -811,7 +811,7 @@
         "tagline": {
           "label": "Slogan",
           "description": "Eén zin onder de naam, bovenaan de homepage. Maximaal {max} tekens.",
-          "placeholder": "Fiets- en supverhuur in Carnac sinds 2012"
+          "placeholder": "Beschrijf uw bedrijf in één zin…"
         },
         "descriptionHint": "De tekst van de pagina Over ons. Zonder slogan verschijnt hij ook bovenaan de homepage.",
         "logos": {

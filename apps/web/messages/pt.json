@@ -811,7 +811,7 @@
         "tagline": {
           "label": "Slogan",
           "description": "Uma frase sob o nome, no topo da página inicial. Máximo de {max} caracteres.",
-          "placeholder": "Aluguer de bicicletas e pranchas de SUP em Carnac desde 2012"
+          "placeholder": "Descreva o seu negócio numa frase…"
         },
         "descriptionHint": "O texto da página Sobre nós. Sem slogan, aparece também no topo da página inicial.",
         "logos": {
