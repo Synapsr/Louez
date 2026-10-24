@@ -55,3 +55,29 @@ export function summarizeMonthlyPlatformFees(
     marketplaceFeeAmountCents,
   };
 }
+
+/** The monthly run bills the previous month on the 1st at 05:00 UTC. */
+const MONTHLY_BILLING_HOUR_UTC = 5;
+
+export function isMonthlyBillingTick(now: Date): boolean {
+  return (
+    now.getUTCDate() === 1 &&
+    now.getUTCHours() === MONTHLY_BILLING_HOUR_UTC &&
+    now.getUTCMinutes() === 0
+  );
+}
+
+/**
+ * The UTC start of the earliest month the monthly run will still bill. It never
+ * comes back to a month it has billed, so a fee dated before this is never billed.
+ */
+export function firstUnbilledMonthStart(now: Date): Date {
+  const thisMonthRun = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    1,
+    MONTHLY_BILLING_HOUR_UTC,
+  );
+  const monthsBack = now.getTime() >= thisMonthRun ? 0 : 1;
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsBack, 1));
+}
