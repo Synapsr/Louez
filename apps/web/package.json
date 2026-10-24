@@ -7,7 +7,7 @@
     "dev:web": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "type-check": "tsc --noEmit",
+    "type-check": "next typegen && tsc --noEmit",
     "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"**/*.test.{ts,tsx,mts,mjs}\"",
     "db:seed": "tsx scripts/seed/index.ts",
     "db:seed:demo": "tsx scripts/seed/demo/index.ts",
