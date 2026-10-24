@@ -7,6 +7,7 @@ import { env as dbEnv } from "@louez/db/env";
 import { env as emailEnv } from "@louez/email/env";
 import { env as validationsEnv } from "@louez/validations/env";
 
+import { louezBillingSchema } from "@/lib/billing/mode";
 import { payAsYouGoConfigSchema } from "@/lib/pay-as-you-go/config";
 import {
   publicEnvSchema,
@@ -323,19 +324,21 @@ export const env = createEnv({
     FROMHELLO_API_URL: z.url().optional(),
     FROMHELLO_API_KEY: z.string().optional(),
 
-    // ===== Pay-as-you-go default pricing (Optional) =====
-    // JSON describing the per-rental pricing snapshotted onto every NEW store at
-    // account creation (an "ephemeral offer"). Omitted/empty → the hardcoded platform
-    // default ladder. Changing this only affects accounts created AFTER the deploy;
-    // existing stores keep the pricing snapshotted at their creation. Validated at
-    // boot so a malformed offer fails the deploy instead of silently mispricing.
-    // Examples:
+    // ===== Pay-as-you-go offer for new stores (Optional) =====
+    // PAYG_DEFAULT_PRICING and PAYG_FREE_RESERVATIONS are written onto a NEW store's
+    // subscription row when the store is created, and only when platform billing is on
+    // (LOUEZ_BILLING=cloud). Existing stores pay what their own row says, so changing them
+    // only affects stores created afterwards. Upgrading from a release without the
+    // pricing lock: the first start writes both values onto the stores that followed them
+    // live, so upgrade BEFORE changing them.
+    // PAYG_DEFAULT_PRICING: JSON per-rental pricing. Omitted/empty → the built-in ladder.
+    // Validated at boot so a malformed offer fails the deploy instead of silently
+    // mispricing. Examples:
     //   {"flatRateCents":25}                                  → 0.25€ per rental, flat
     //   {"tiers":[{"upToCount":50,"priceCents":25},{"upToCount":null,"priceCents":100}]}
-    // Number of free reservations gifted to a NEW store at account creation (the
-    // welcome allowance). While credits remain, a rental's pay-as-you-go commission is
-    // waived. Snapshotted per store at creation and editable per store in admin, so
-    // changing this only affects accounts created afterwards. Default 15.
+    // PAYG_FREE_RESERVATIONS: free reservations gifted at creation (the welcome
+    // allowance). While credits remain, a rental's pay-as-you-go commission is waived.
+    // Editable per store in admin. Default 15.
     PAYG_FREE_RESERVATIONS: z.coerce.number().int().min(0).max(100_000).default(15),
 
     // First stores published on reeent receive a lifetime marketplace-fee waiver.
@@ -374,7 +377,7 @@ export const env = createEnv({
         return result.data;
       }),
 
-    // ===== Referral program =====
+    // ===== Referral program (LOUEZ_BILLING=cloud only: rewards are billing credits) =====
     // Free reservations granted to the Referrer when a referral qualifies (PAYG referrer;
     // a subscribed referrer gets the equivalent euro invoice credit). Default 30.
     REFERRAL_REFERRER_REWARD: z.coerce.number().int().min(0).max(100_000).default(30),
@@ -393,6 +396,9 @@ export const env = createEnv({
     // routing (the cloud). Consumed through lib/deployment.ts, which reads
     // process.env directly so the prebuilt Docker image honors it at runtime.
     LOUEZ_MODE: z.enum(["standalone", "platform"]).optional(),
+    // Platform billing: off (default) or cloud. Consumed through lib/billing/mode.ts, which
+    // reads process.env at call time like LOUEZ_MODE; validated here at runtime.
+    LOUEZ_BILLING: louezBillingSchema,
 
     // ===== Development =====
     AUTO_DB_SETUP: z
@@ -504,6 +510,7 @@ export const env = createEnv({
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     LOUEZ_MODE: process.env.LOUEZ_MODE,
+    LOUEZ_BILLING: process.env.LOUEZ_BILLING,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
     PAYG_DEFAULT_PRICING: process.env.PAYG_DEFAULT_PRICING,

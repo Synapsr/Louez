@@ -5,12 +5,10 @@ import type Stripe from 'stripe';
 import { db } from '@louez/db';
 import { referralRewards, subscriptions } from '@louez/db';
 
+import { isBillingEnabled } from '@/lib/billing/mode';
 import { priceForLocationIndex } from '@/lib/pay-as-you-go/config';
-import {
-  getDefaultFreeReservations,
-  getDefaultPayAsYouGoConfigSnapshot,
-} from '@/lib/pay-as-you-go/defaults';
 import { billingMonthOf, getStoreBilling } from '@/lib/pay-as-you-go/metering';
+import { addFreeReservations, ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock';
 import { captureReferralServerEvent } from '@/lib/referral/analytics';
 import { referralAnalyticsEvents } from '@/lib/referral/analytics-events';
 import { stripe } from '@/lib/stripe/client';
@@ -269,11 +267,13 @@ async function trackReferrerRewardClawedBack({
  * payment at/above the minimum, grant its Referrer the plan-aware Referrer Reward (free
  * reservations for a pay-as-you-go referrer; an equivalent euro invoice credit for a
  * subscribed one). Idempotent — a referral pays out at most once (unique referred store).
- * Safe to call on every completed online payment; it no-ops when not applicable.
+ * Safe to call on every completed online payment; it no-ops when not applicable, and
+ * when platform billing is off (rewards are billing credits).
  */
 export async function maybeGrantReferrerReward(
   input: MaybeGrantReferrerRewardInput,
 ): Promise<{ granted: boolean; reason?: string }> {
+  if (!isBillingEnabled()) return { granted: false, reason: 'billing_off' };
   const referrerStoreId = input.referredStore.referredByStoreId;
   if (!referrerStoreId) {
     await trackQualifyingPaymentEvaluated({
@@ -457,16 +457,13 @@ export async function maybeGrantReferrerReward(
       // (closing the read-then-insert race), then increment the Referrer's granted counter and
       // write the ledger atomically. The ledger insert is last so the whole grant rolls back
       // together on a duplicate race.
-      const sub = await db.query.subscriptions.findFirst({
-        where: eq(subscriptions.storeId, referrerStoreId),
-        columns: { id: true },
-      });
       await db.transaction(async (tx) => {
-        if (sub) {
-          await tx.execute(
-            sql`SELECT id FROM subscriptions WHERE store_id = ${referrerStoreId} FOR UPDATE`,
-          );
-        }
+        // A legacy Referrer without a row gets one with the pricing it already pays (so the
+        // lock below holds); the reward then only adds free reservations.
+        await ensureSubscriptionRow(tx, referrerStoreId);
+        await tx.execute(
+          sql`SELECT id FROM subscriptions WHERE store_id = ${referrerStoreId} FOR UPDATE`,
+        );
         if (config.monthlyCapPerReferrer > 0) {
           const [{ value }] = await tx
             .select({ value: sql<number>`count(*)` })
@@ -488,26 +485,7 @@ export async function maybeGrantReferrerReward(
             return;
           }
         }
-        if (sub) {
-          await tx
-            .update(subscriptions)
-            .set({
-              freeReservationsGranted: sql`${subscriptions.freeReservationsGranted} + ${reward.freeReservations}`,
-              updatedAt: new Date(),
-            })
-            .where(eq(subscriptions.storeId, referrerStoreId));
-        } else {
-          // Legacy store with no subscription row: persist the welcome allowance + reward.
-          await tx.insert(subscriptions).values({
-            id: nanoid(),
-            storeId: referrerStoreId,
-            planSlug: 'pay_as_you_go',
-            billingMode: 'pay_as_you_go',
-            payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(currency),
-            freeReservationsGranted:
-              getDefaultFreeReservations() + reward.freeReservations,
-          });
-        }
+        await addFreeReservations(tx, referrerStoreId, reward.freeReservations);
         await tx.insert(referralRewards).values({
           id: nanoid(),
           ...ledgerBase,
@@ -581,13 +559,15 @@ export async function maybeGrantReferrerReward(
  * Clawback handler: when the qualifying payment behind a granted Referrer Reward is
  * refunded or disputed within the clawback window, reverse the reward. Free-reservation
  * rewards lose only their not-yet-consumed credits; invoice-credit rewards have their
- * pending Stripe credit removed. Idempotent and a no-op outside the window.
+ * pending Stripe credit removed. Idempotent, and a no-op outside the window or when
+ * platform billing is off (no reward is granted then).
  */
 export async function clawbackReferrerRewardForQualifyingPayment(input: {
   stripeChargeId?: string | null;
   stripePaymentIntentId?: string | null;
   at?: Date;
 }): Promise<{ clawedBack: boolean; reason?: string }> {
+  if (!isBillingEnabled()) return { clawedBack: false, reason: 'billing_off' };
   const where = input.stripeChargeId
     ? eq(referralRewards.stripeChargeId, input.stripeChargeId)
     : input.stripePaymentIntentId

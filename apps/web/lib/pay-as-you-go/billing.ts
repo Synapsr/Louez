@@ -13,7 +13,6 @@ import {
 import { getOrCreateStripeCustomer } from '@/lib/stripe/subscriptions';
 import { stripe } from '@/lib/stripe/client';
 
-import { resolvePayAsYouGoConfig } from './config';
 import {
   selectMonthlyBillingStoreIds,
   summarizeMonthlyPlatformFees,
@@ -129,16 +128,15 @@ export async function billStoreForMonth(
   const [subscription, storeBillingPreferences] = await Promise.all([
     db.query.subscriptions.findFirst({
       where: eq(subscriptions.storeId, storeId),
-      columns: { billingMode: true, payAsYouGoConfig: true },
+      columns: { billingMode: true },
     }),
     getStoreBillingPreferences(storeId),
   ]);
-  const storeCurrency = storeBillingPreferences.currency;
-  const locale = getLocaleFromCountry(storeBillingPreferences.country);
-  const config = resolvePayAsYouGoConfig(subscription?.payAsYouGoConfig ?? null);
   // Invoice in the store's currency — it must match the currency the at-source
-  // commission was collected in (same tariff numbers across currencies).
-  config.currency = storeCurrency;
+  // commission was collected in (same tariff numbers across currencies). The amounts
+  // come from the ledger, so no pricing config is needed here.
+  const currency = storeBillingPreferences.currency;
+  const locale = getLocaleFromCountry(storeBillingPreferences.country);
 
   const rows = await db
     .select({
@@ -151,7 +149,7 @@ export async function billStoreForMonth(
       and(
         eq(platformFees.storeId, storeId),
         eq(platformFees.billingMonth, billingMonth),
-        eq(platformFees.currency, storeCurrency),
+        eq(platformFees.currency, currency),
         inArray(platformFees.status, [...ACTIVE_FEE_STATUSES]),
       ),
     );
@@ -165,7 +163,6 @@ export async function billStoreForMonth(
     rows,
     subscription?.billingMode !== 'subscription',
   );
-  const currency = config.currency;
 
   // ---- Claim the (store, month) slot BEFORE any Stripe call (idempotency). ----
   const claim = await claimInvoiceRow({

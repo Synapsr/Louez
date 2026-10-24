@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
-import { and, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, storeMembers, stores, subscriptions, users } from "@louez/db";
@@ -13,11 +13,10 @@ import { defaultBusinessHours } from "@louez/validations";
 import { auth } from "@/lib/auth";
 import { getSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { creditAiCredits, getDefaultAiCredits } from "@/lib/ai/advisor/credits";
+import { isBillingEnabled } from "@/lib/billing/mode";
 import { isStandaloneMode } from "@/lib/deployment";
-import {
-  getDefaultFreeReservations,
-  getDefaultPayAsYouGoConfigSnapshot,
-} from "@/lib/pay-as-you-go/defaults";
+import { getNewStorePricing } from "@/lib/pay-as-you-go/defaults";
+import { raiseFreeReservations } from "@/lib/pay-as-you-go/pricing-lock";
 import { areAiCreditsEnabled } from "@/lib/plans";
 import { isPlatformAdmin } from "@/lib/platform-admin";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
@@ -129,38 +128,12 @@ async function consumeReferralCookie(referralCookie: string | null) {
   });
 }
 
-async function grantReferredStoreWelcomeReward({
-  storeId,
-  currency,
-}: {
-  storeId: string;
-  currency: string;
-}) {
+async function grantReferredStoreWelcomeReward(storeId: string) {
   const referredReward = getReferralProgramConfig().referredRewardFreeReservations;
 
-  const subscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.storeId, storeId),
-    columns: { id: true },
-  });
-
-  if (subscription) {
-    await db
-      .update(subscriptions)
-      .set({
-        freeReservationsGranted: sql`GREATEST(${subscriptions.freeReservationsGranted}, ${referredReward})`,
-        updatedAt: new Date(),
-      })
-      .where(eq(subscriptions.storeId, storeId));
-    return;
-  }
-
-  await db.insert(subscriptions).values({
-    storeId,
-    planSlug: "pay_as_you_go",
-    billingMode: "pay_as_you_go",
-    payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(currency),
-    freeReservationsGranted: referredReward,
-  });
+  // The store already exists (onboarding was left incomplete), so it keeps the pricing it
+  // already pays: the reward only raises its free-reservation allowance.
+  await raiseFreeReservations(db, storeId, referredReward);
 }
 
 async function trackReferralAttributionResolved({
@@ -365,11 +338,9 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       .where(eq(stores.id, storeToUpdate.id));
 
     if (isExistingIncompleteStore) {
-      if (pendingReferral.attribution) {
-        await grantReferredStoreWelcomeReward({
-          storeId: storeToUpdate.id,
-          currency: validated.data.currency,
-        });
+      // The Referred Reward is a billing credit: none without platform billing.
+      if (pendingReferral.attribution && isBillingEnabled()) {
+        await grantReferredStoreWelcomeReward(storeToUpdate.id);
         await trackReferredRewardGranted({
           userId: session.user.id,
           storeId: storeToUpdate.id,
@@ -491,20 +462,23 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       });
 
       // New stores default to pay-as-you-go billing (the owner can switch to a
-      // subscription plan at any time from the subscription page). Snapshot the current
-      // default pricing offer (PAYG_DEFAULT_PRICING env, or the platform default ladder)
-      // so the store keeps these tariffs for life even if the offer later changes.
-      await tx.insert(subscriptions).values({
-        storeId: createdStore.id,
-        planSlug: "pay_as_you_go",
-        billingMode: "pay_as_you_go",
-        payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(validated.data.currency),
-        // Welcome gift: free reservations (commission waived) for the new store. A store
-        // that signed up through a referral gets the larger Referred Reward instead.
-        freeReservationsGranted: referredByStoreId
-          ? getReferralProgramConfig().referredRewardFreeReservations
-          : getDefaultFreeReservations(),
-      });
+      // subscription plan at any time from the subscription page). The current offer for
+      // new stores is written onto the row, and the store keeps it even if the offer
+      // later changes. Without platform billing the store gets no billing row at all.
+      if (isBillingEnabled()) {
+        const newStorePricing = getNewStorePricing(validated.data.currency);
+        await tx.insert(subscriptions).values({
+          storeId: createdStore.id,
+          planSlug: "pay_as_you_go",
+          billingMode: "pay_as_you_go",
+          ...newStorePricing,
+          // Welcome gift: free reservations (commission waived) for the new store. A
+          // store that signed up through a referral gets the larger Referred Reward.
+          freeReservationsGranted: referredByStoreId
+            ? getReferralProgramConfig().referredRewardFreeReservations
+            : newStorePricing.freeReservationsGranted,
+        });
+      }
 
       return createdStore;
     });
@@ -535,7 +509,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
     analyticsStoreId = newStore.id;
     analyticsReferralOutcome = pendingReferral.outcome;
 
-    if (pendingReferral.attribution) {
+    if (pendingReferral.attribution && isBillingEnabled()) {
       await trackReferredRewardGranted({
         userId: session.user.id,
         storeId: newStore.id,

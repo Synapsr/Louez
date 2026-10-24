@@ -9,6 +9,11 @@ import * as schema from "@louez/db/schema";
 import { env } from "@louez/db/env";
 import { buildCombinationKey } from "@louez/utils";
 import type { StoreSettings } from "@louez/types";
+import {
+  LEGACY_PAY_AS_YOU_GO_CONFIG,
+  PAYG_LADDER_V1,
+  buildFrozenPayAsYouGoConfig,
+} from "../../lib/pay-as-you-go/pricing-lock-core";
 import { qaCases, qaStores } from "./scenarios";
 import { renderReport } from "./report";
 
@@ -166,6 +171,8 @@ async function main() {
             storeId,
             planSlug: "ultra",
             billingMode: "subscription",
+            pricingVersion: PAYG_LADDER_V1,
+            payAsYouGoConfig: buildFrozenPayAsYouGoConfig(LEGACY_PAY_AS_YOU_GO_CONFIG, "eur"),
             status: "active",
           });
           if (store.insurance) {

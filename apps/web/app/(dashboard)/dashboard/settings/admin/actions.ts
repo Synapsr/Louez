@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
 import { z } from 'zod'
 
 import { db } from '@louez/db'
@@ -10,47 +9,61 @@ import { stores, subscriptions } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { isCurrentUserPlatformAdmin } from '@/lib/platform-admin'
 import { createStoreCoupon } from '@/lib/stripe/coupons'
+import { isBillingEnabled } from '@/lib/billing/mode'
+import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
+import { buildAdminBillingPatch } from '@/lib/pay-as-you-go/pricing-lock-core'
 
 const paygTierSchema = z.object({
   upToCount: z.number().int().positive().nullable(),
   priceCents: z.number().int().min(0).max(1_000_000),
 })
 
+const payAsYouGoConfigInputSchema = z.object({
+  flatRateCents: z.number().int().min(0).max(1_000_000).nullable(),
+  tiers: z
+    .array(paygTierSchema)
+    .max(20)
+    .superRefine((tiers, ctx) => {
+      // Reject contradictory ladders: at most one open-ended band and no two
+      // bands sharing the same upper bound (would make the total order-dependent).
+      const bounds = tiers
+        .map((t) => t.upToCount)
+        .filter((c): c is number => c !== null)
+      if (new Set(bounds).size !== bounds.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Duplicate tier limit',
+        })
+      }
+      if (tiers.filter((t) => t.upToCount === null).length > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Multiple open-ended tiers',
+        })
+      }
+    }),
+  currency: z.string().length(3),
+})
+
+const billingModeSchema = z.enum(['subscription', 'pay_as_you_go'])
+// Welcome allowance: number of free reservations gifted to the store.
+const freeReservationsSchema = z.number().int().min(0).max(100_000)
+
 const adminSettingsSchema = z.object({
   trialDays: z.number().int().min(0).max(365),
   discountPercent: z.number().int().min(0).max(100),
   discountDurationMonths: z.number().int().min(0).max(120),
-  billingMode: z.enum(['subscription', 'pay_as_you_go']),
-  payAsYouGoConfig: z
-    .object({
-      flatRateCents: z.number().int().min(0).max(1_000_000).nullable(),
-      tiers: z
-        .array(paygTierSchema)
-        .max(20)
-        .superRefine((tiers, ctx) => {
-          // Reject contradictory ladders: at most one open-ended band and no two
-          // bands sharing the same upper bound (would make the total order-dependent).
-          const bounds = tiers
-            .map((t) => t.upToCount)
-            .filter((c): c is number => c !== null)
-          if (new Set(bounds).size !== bounds.length) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: 'Duplicate tier limit',
-            })
-          }
-          if (tiers.filter((t) => t.upToCount === null).length > 1) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: 'Multiple open-ended tiers',
-            })
-          }
-        }),
-      currency: z.string().length(3),
-    })
-    .nullable(),
-  // Welcome allowance: number of free reservations gifted to the store.
-  freeReservationsGranted: z.number().int().min(0).max(100_000),
+  billingMode: billingModeSchema,
+  payAsYouGoConfig: payAsYouGoConfigInputSchema,
+  freeReservationsGranted: freeReservationsSchema,
+  // The billing values the form was loaded with. Only the billing fields the admin changed
+  // are written, so a save never overwrites a referral reward granted in the meantime, nor
+  // re-saves pricing nobody edited.
+  loaded: z.object({
+    billingMode: billingModeSchema,
+    payAsYouGoConfig: payAsYouGoConfigInputSchema,
+    freeReservationsGranted: freeReservationsSchema,
+  }),
 })
 
 export type AdminSettingsInput = z.infer<typeof adminSettingsSchema>
@@ -71,6 +84,12 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
     return { error: 'errors.invalidData' }
   }
 
+  // Every setting on this page (trial, discount coupon, billing mode, pricing, free
+  // reservations) belongs to platform billing: refuse rather than half-save it.
+  if (!isBillingEnabled()) {
+    return { error: 'errors.billingOff' }
+  }
+
   const {
     trialDays,
     discountPercent,
@@ -78,6 +97,7 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
     billingMode,
     payAsYouGoConfig,
     freeReservationsGranted,
+    loaded,
   } = validated.data
 
   // Handle Stripe coupon creation/update (network side-effect, kept out of the
@@ -122,31 +142,21 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
 
     const existing = await tx.query.subscriptions.findFirst({
       where: eq(subscriptions.storeId, store.id),
-      columns: { id: true },
+      columns: { payAsYouGoConfig: true },
     })
+    // A store without a row gets one with the pricing it already pays.
+    await ensureSubscriptionRow(tx, store.id)
 
-    if (existing) {
+    const patch = buildAdminBillingPatch({
+      submitted: { billingMode, payAsYouGoConfig, freeReservationsGranted },
+      loaded,
+      stored: existing ?? null,
+    })
+    if (Object.keys(patch).length > 0) {
       await tx
         .update(subscriptions)
-        .set({
-          billingMode,
-          payAsYouGoConfig,
-          freeReservationsGranted,
-          updatedAt: new Date(),
-        })
-        .where(eq(subscriptions.id, existing.id))
-    } else {
-      // No subscription row yet → the store can't be on real (Stripe) subscription
-      // billing, so it is created as pay-as-you-go regardless of the selected mode
-      // (keeps planSlug and billingMode consistent; a paid plan requires checkout).
-      await tx.insert(subscriptions).values({
-        id: nanoid(),
-        storeId: store.id,
-        planSlug: 'pay_as_you_go',
-        billingMode: 'pay_as_you_go',
-        payAsYouGoConfig,
-        freeReservationsGranted,
-      })
+        .set({ ...patch, updatedAt: new Date() })
+        .where(eq(subscriptions.storeId, store.id))
     }
   })
 

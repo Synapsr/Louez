@@ -7,6 +7,7 @@ import {
   getNumberRentalCredits,
   numberRentalCostMicroUsd,
 } from '@/lib/ai/pricing'
+import { isBillingEnabled } from '@/lib/billing/mode'
 import { log } from '@/lib/evlog'
 import type { Plan } from '@/lib/plans'
 
@@ -23,9 +24,13 @@ import type { Plan } from '@/lib/plans'
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
-/** Whether number rental billing is configured at all (env-driven). */
+/**
+ * Whether number rental billing is configured at all (env-driven). The rental is paid in
+ * platform credits, so it also needs platform billing (LOUEZ_BILLING=cloud); otherwise the
+ * operator pays its own telephony provider and numbers are never released for non-payment.
+ */
 export function isNumberRentalEnabled(): boolean {
-  return getNumberRentalCredits() > 0
+  return isBillingEnabled() && getNumberRentalCredits() > 0
 }
 
 /** Exactly-once key for one number's billing cycle (ISO day of the cycle anchor). */
@@ -103,8 +108,8 @@ export async function applyNumberRentalDebit(
     requireBindingRow?: boolean
   },
 ): Promise<NumberRentalDebitResult> {
+  if (!isNumberRentalEnabled()) return 'disabled'
   const rentalCredits = getNumberRentalCredits()
-  if (rentalCredits <= 0) return 'disabled'
   const rentalMicro = Math.round(rentalCredits * CREDIT_MICRO)
   const dedupKey = rentalDedupKey(params.numberId, params.cycleDate)
 
@@ -212,8 +217,8 @@ export async function hasNumberRentalFunds(
   storeId: string,
   plan: Plan,
 ): Promise<boolean> {
+  if (!isNumberRentalEnabled()) return true
   const rentalCredits = getNumberRentalCredits()
-  if (rentalCredits <= 0) return true
   const perMonth = plan.features.aiCreditsPerMonth
   let monthlyRemaining: number
   if (perMonth === null) {

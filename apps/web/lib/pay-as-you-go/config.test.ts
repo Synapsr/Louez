@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
-  DEFAULT_PAY_AS_YOU_GO_TIERS,
+  BUILT_IN_PAY_AS_YOU_GO_TIERS,
   buildPayAsYouGoConfig,
   graduatedTotalCents,
   priceForLocationIndex,
@@ -30,7 +30,7 @@ test('graduated pricing matches the product example (50.50€ for 51 rentals)', 
 
 test('default platform ladder (1€ / 0.80€ / 0.50€)', () => {
   const config = resolvePayAsYouGoConfig(null);
-  assert.deepEqual(config.tiers, DEFAULT_PAY_AS_YOU_GO_TIERS);
+  assert.deepEqual(config.tiers, BUILT_IN_PAY_AS_YOU_GO_TIERS);
 
   assert.equal(priceForLocationIndex(config, 50), 100);
   assert.equal(priceForLocationIndex(config, 51), 80);

@@ -5,8 +5,8 @@ import type { PayAsYouGoConfig, PayAsYouGoTier } from '@louez/types';
 /**
  * Canonical validation for a pay-as-you-go pricing config. Shared by the admin
  * settings action and the `PAYG_DEFAULT_PRICING` env var so the same rules apply
- * wherever a config enters the system. All fields are optional — an omitted field
- * falls back to the platform default in `resolvePayAsYouGoConfig`.
+ * wherever a config enters the system. All fields are optional — omitted tiers fall
+ * back to the frozen `BUILT_IN_PAY_AS_YOU_GO_TIERS` in `resolvePayAsYouGoConfig`.
  */
 export const payAsYouGoTierSchema = z.object({
   upToCount: z.number().int().positive().nullable(),
@@ -77,8 +77,13 @@ export function parsePayAsYouGoConfig(raw: unknown): PayAsYouGoConfig | null {
  * online (collected at source) and manual (invoiced) rentals stays consistent.
  */
 
-/** Platform default ladder, used when a store has no per-store override. */
-export const DEFAULT_PAY_AS_YOU_GO_TIERS: PayAsYouGoTier[] = [
+/**
+ * The built-in per-rental ladder (1€ / 0,80€ / 0,50€): the offer for new stores when
+ * PAYG_DEFAULT_PRICING is empty, and the tiers a config without tiers resolves to.
+ * Frozen: stores priced on it depend on these exact numbers. Never edit it; a new offer
+ * for new stores gets its own constant or goes in PAYG_DEFAULT_PRICING.
+ */
+export const BUILT_IN_PAY_AS_YOU_GO_TIERS: PayAsYouGoTier[] = [
   { upToCount: 50, priceCents: 100 }, // 1€ for the first 50 rentals/month
   { upToCount: 200, priceCents: 80 }, // 0,80€ from 51 to 200
   { upToCount: null, priceCents: 50 }, // 0,50€ beyond 200
@@ -123,7 +128,7 @@ export function resolvePayAsYouGoConfig(
   const rawTiers =
     config?.tiers && config.tiers.length > 0
       ? config.tiers
-      : DEFAULT_PAY_AS_YOU_GO_TIERS;
+      : BUILT_IN_PAY_AS_YOU_GO_TIERS;
 
   // Keep only well-formed bands, then sort. If everything was filtered out, fall
   // back to the platform default so pricing never silently becomes free.
@@ -136,7 +141,7 @@ export function resolvePayAsYouGoConfig(
   );
 
   const sorted = sortTiers(
-    cleaned.length > 0 ? cleaned : DEFAULT_PAY_AS_YOU_GO_TIERS,
+    cleaned.length > 0 ? cleaned : BUILT_IN_PAY_AS_YOU_GO_TIERS,
   );
 
   // Drop duplicate `upToCount` bands (keep first) and anything after the first

@@ -26,6 +26,11 @@ import type {
   StoreTheme,
 } from '@louez/types';
 
+import {
+  LEGACY_PAY_AS_YOU_GO_CONFIG,
+  PAYG_LADDER_V1,
+  buildFrozenPayAsYouGoConfig,
+} from '../../lib/pay-as-you-go/pricing-lock-core';
 import { createUnits } from '../../lib/utils/unit-mutations';
 import {
   STORE_CONFIGS,
@@ -332,6 +337,8 @@ async function seedStore(
     storeId,
     planSlug: config.planSlug,
     billingMode: isPayAsYouGo ? 'pay_as_you_go' : 'subscription',
+    pricingVersion: PAYG_LADDER_V1,
+    payAsYouGoConfig: buildFrozenPayAsYouGoConfig(LEGACY_PAY_AS_YOU_GO_CONFIG, 'eur'),
     status: 'active',
     stripeSubscriptionId:
       config.stripeEnabled && !isPayAsYouGo ? generateStripeId('sub') : null,
