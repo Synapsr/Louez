@@ -48,6 +48,22 @@ const hours: BusinessHours = {
   ],
 };
 
+// Hours saved before a day could hold several ranges: one openTime/closeTime per
+// day, kept as stored until the merchant saves the hours again.
+const legacyHours = {
+  enabled: true,
+  schedule: {
+    0: { isOpen: false, openTime: "09:00", closeTime: "18:00" },
+    1: { isOpen: true, openTime: "09:00", closeTime: "18:00" },
+    2: { isOpen: true, openTime: "09:00", closeTime: "18:00" },
+    3: { isOpen: true, openTime: "09:00", closeTime: "18:00" },
+    4: { isOpen: true, openTime: "09:00", closeTime: "18:00" },
+    5: { isOpen: true, openTime: "09:00", closeTime: "18:00" },
+    6: { isOpen: true, openTime: "09:00", closeTime: "12:00" },
+  },
+  closurePeriods: [],
+} as unknown as BusinessHours;
+
 test("folds consecutive days with the same hours into one row, Monday first", () => {
   const rows = buildOpeningHoursRows(hours, "fr-FR");
   assert.deepEqual(
@@ -87,6 +103,31 @@ test("groups schema.org specifications by identical range", () => {
       dayOfWeek: ["Saturday"],
       opens: "10:00",
       closes: "17:00",
+    },
+  ]);
+});
+
+test("reads hours stored in the legacy single-range format", () => {
+  assert.deepEqual(
+    buildOpeningHoursRows(legacyHours, "fr-FR").map((row) => [row.days, row.isOpen, row.ranges]),
+    [
+      ["lundi – vendredi", true, ["9:00 – 18:00"]],
+      ["samedi", true, ["9:00 – 12:00"]],
+      ["dimanche", false, []],
+    ],
+  );
+  assert.deepEqual(buildOpeningHoursSpecification(legacyHours), [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "09:00",
+      closes: "18:00",
+    },
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Saturday"],
+      opens: "09:00",
+      closes: "12:00",
     },
   ]);
 });
