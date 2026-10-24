@@ -586,7 +586,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
     createdAt: toWholeSeconds(new Date()),
   });
 
-  await failMarketplaceBookingAttempt(reservationId);
+  await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
 
   const reservationCancelled =
     abandoned && session.metadata?.checkoutFlow === "storefront_checkout"
@@ -1021,7 +1021,7 @@ async function handleDepositFailed(
     });
 
     if (reservation.source === "marketplace") {
-      await failMarketplaceBookingAttempt(reservationId);
+      await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
     }
 
     log.info({

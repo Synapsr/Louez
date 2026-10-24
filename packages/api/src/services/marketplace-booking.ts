@@ -4,16 +4,17 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import {
+  changeReservationStatus,
   customers,
   db,
   marketplaceBookingAttempts,
   payments,
-  reservationActivity,
   reservationItems,
   reservations,
   stores,
   toWholeSeconds,
 } from "@louez/db";
+import type { ReservationBillingEffect, ReservationEffectRunner } from "@louez/db";
 import type { Rate, StoreSettings } from "@louez/types";
 import { calculateSeasonalAwarePrice, toAbsoluteUrl, type PricingMode } from "@louez/utils";
 import type { BookingCheckoutInput, BookingHoldInput, BookingQuoteInput } from "@louez/validations";
@@ -133,6 +134,8 @@ export interface MarketplaceCheckoutAdapter {
 }
 
 export interface MarketplaceCancellationAdapter {
+  /** Runs the cancellation's fee effects, right after its commit. */
+  runReservationEffects: ReservationEffectRunner;
   releasePendingPayments: (params: {
     reservationId: string;
     stripeAccountId: string | null;
@@ -324,6 +327,7 @@ function getDurationReasons(params: {
 export async function quoteMarketplaceBooking(params: {
   input: BookingQuoteInput;
   mediaBaseUrl: string;
+  runReservationEffects: ReservationEffectRunner;
   secret: string;
 }): Promise<{
   quoteToken: string;
@@ -341,7 +345,10 @@ export async function quoteMarketplaceBooking(params: {
   deposit: string;
   total: string;
 }> {
-  await expireMarketplaceBookingAttempts({ storeId: params.input.storeId });
+  await expireMarketplaceBookingAttempts({
+    storeId: params.input.storeId,
+    runReservationEffects: params.runReservationEffects,
+  });
 
   const store = await loadMarketplaceBookingStore(params.input.storeId);
 
@@ -589,6 +596,7 @@ async function bridgeMarketplaceCustomer(params: {
 export async function holdMarketplaceBooking(params: {
   adapter: MarketplaceHoldAdapter;
   input: BookingHoldInput;
+  runReservationEffects: ReservationEffectRunner;
   secret: string;
 }): Promise<{ holdId: string; expiresAt: string }> {
   const quote = await readQuoteToken(params.input.quoteToken, params.secret, {
@@ -625,8 +633,9 @@ export async function holdMarketplaceBooking(params: {
     }
     if (replay.expiresAt <= new Date()) {
       if (replay.holdId) {
-        const expiredHoldId = replay.holdId;
-        await db.transaction((tx) => expireAttempt(tx, expiredHoldId));
+        const expired = { reservationId: replay.holdId, storeId: replay.storeId };
+        const effects = await db.transaction((tx) => expireAttempt(tx, expired));
+        await params.runReservationEffects(effects);
       }
       throw new ApiServiceError("BAD_REQUEST", "hold_expired");
     }
@@ -677,7 +686,8 @@ export async function holdMarketplaceBooking(params: {
       };
     }
     if (attempt.expiresAt <= new Date()) {
-      await expireAttempt(tx, attempt.reservationId);
+      // The next expiry pass cancels the booking. Doing it here would take the
+      // reservation lock after the attempt row, the reverse of the expiry pass.
       throw new ApiServiceError("BAD_REQUEST", "hold_expired");
     }
 
@@ -757,7 +767,8 @@ export async function checkoutMarketplaceBooking(params: {
       throw new ApiServiceError("NOT_FOUND", "hold_not_found");
     }
     if (attempt.expiresAt <= new Date()) {
-      await expireAttempt(tx, attempt.reservationId);
+      // The next expiry pass cancels the booking. Doing it here would take the
+      // reservation lock after the attempt row, the reverse of the expiry pass.
       throw new ApiServiceError("BAD_REQUEST", "hold_expired");
     }
 
@@ -1006,8 +1017,12 @@ export async function getMarketplaceBooking(params: {
   getCanonicalUrl: BookingUrlBuilder;
   mediaBaseUrl: string;
   reservationId: string;
+  runReservationEffects: ReservationEffectRunner;
 }): Promise<BookingSnapshot> {
-  await expireMarketplaceBookingAttempts({ reservationId: params.reservationId });
+  await expireMarketplaceBookingAttempts({
+    reservationId: params.reservationId,
+    runReservationEffects: params.runReservationEffects,
+  });
   const row = await db
     .select(bookingSelection())
     .from(reservations)
@@ -1036,8 +1051,9 @@ export async function listMarketplaceBookings(params: {
   getCanonicalUrl: BookingUrlBuilder;
   limit?: number;
   mediaBaseUrl: string;
+  runReservationEffects: ReservationEffectRunner;
 }): Promise<{ data: BookingSnapshot[]; nextCursor: string | null }> {
-  await expireMarketplaceBookingAttempts({});
+  await expireMarketplaceBookingAttempts({ runReservationEffects: params.runReservationEffects });
   const limit = normalizeLimit(params.limit);
   const cursor = decodeCursor(params.cursor);
   const cursorCondition = cursor
@@ -1079,6 +1095,7 @@ export async function cancelMarketplaceBooking(params: {
     columns: {
       id: true,
       status: true,
+      storeId: true,
     },
     with: {
       store: { columns: { stripeAccountId: true } },
@@ -1087,32 +1104,37 @@ export async function cancelMarketplaceBooking(params: {
   if (!reservation) {
     throw new ApiServiceError("NOT_FOUND", "errors.reservationNotFound");
   }
+  const notCancellable = () =>
+    new ApiServiceError("BAD_REQUEST", "not_cancellable", { reason: "reservation_status" });
   if (["cancelled", "completed", "rejected", "declined"].includes(reservation.status)) {
-    throw new ApiServiceError("BAD_REQUEST", "not_cancellable", {
-      reason: "reservation_status",
-    });
+    throw notCancellable();
   }
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(reservations)
-      .set({ status: "cancelled", updatedAt: new Date() })
-      .where(and(eq(reservations.id, reservation.id), eq(reservations.source, "marketplace")));
+  // The helper locks the row, restocks a confirmed or ongoing booking and logs the activity.
+  const effects = await db.transaction(async (tx) => {
+    const change = await changeReservationStatus(tx, {
+      reservationId: reservation.id,
+      storeId: reservation.storeId,
+      to: "cancelled",
+      actor: "marketplace",
+      actorUserId: null,
+      activity: { metadata: { source: "marketplace" } },
+    });
+    if (!change.changed) {
+      if (change.reason === "not_found") {
+        throw new ApiServiceError("NOT_FOUND", "errors.reservationNotFound");
+      }
+      // Cancelled or finished since the read above.
+      throw notCancellable();
+    }
     await tx
       .update(marketplaceBookingAttempts)
       .set({ status: "cancelled", updatedAt: new Date() })
       .where(eq(marketplaceBookingAttempts.reservationId, reservation.id));
-    await tx.insert(reservationActivity).values({
-      reservationId: reservation.id,
-      activityType: "cancelled",
-      metadata: {
-        previousStatus: reservation.status,
-        source: "marketplace",
-      },
-      createdAt: new Date(),
-    });
+    return change.effects;
   });
 
+  await params.adapter.runReservationEffects(effects);
   await params.adapter.releasePendingPayments({
     reservationId: reservation.id,
     stripeAccountId: reservation.store.stripeAccountId,
@@ -1123,34 +1145,43 @@ export async function cancelMarketplaceBooking(params: {
     reservationId: reservation.id,
     getCanonicalUrl: params.getCanonicalUrl,
     mediaBaseUrl: params.mediaBaseUrl,
+    runReservationEffects: params.adapter.runReservationEffects,
   });
 }
 
 type MarketplaceAttemptTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+/**
+ * Expires the attempt and cancels its booking while it is still pending. Returns
+ * the fee effects; the caller runs them after commit.
+ */
 async function expireAttempt(
   tx: MarketplaceAttemptTransaction,
-  reservationId: string,
-): Promise<void> {
+  attempt: { reservationId: string; storeId: string },
+): Promise<ReservationBillingEffect[]> {
+  // The reservation lock first, then the attempt row, as the cancel takes them.
+  // Hold and checkout never take the reservation lock while holding the attempt.
+  const change = await changeReservationStatus(tx, {
+    reservationId: attempt.reservationId,
+    storeId: attempt.storeId,
+    to: "cancelled",
+    actor: "system",
+    actorUserId: null,
+    // The graph also allows confirmed → cancelled: a paid booking outlives its attempt.
+    expectedFrom: "pending",
+    activity: { metadata: { reason: "expired", source: "marketplace" } },
+  });
   const now = new Date();
   await tx
     .update(marketplaceBookingAttempts)
     .set({ status: "expired", expiresAt: now, updatedAt: now })
-    .where(eq(marketplaceBookingAttempts.reservationId, reservationId));
-  await tx
-    .update(reservations)
-    .set({ status: "cancelled", updatedAt: now })
-    .where(
-      and(
-        eq(reservations.id, reservationId),
-        eq(reservations.source, "marketplace"),
-        eq(reservations.status, "pending"),
-      ),
-    );
+    .where(eq(marketplaceBookingAttempts.reservationId, attempt.reservationId));
+  return change.changed ? change.effects : [];
 }
 
 export async function expireMarketplaceBookingAttempts(params: {
   reservationId?: string;
+  runReservationEffects: ReservationEffectRunner;
   storeId?: string;
 }): Promise<void> {
   const conditions = [
@@ -1164,14 +1195,17 @@ export async function expireMarketplaceBookingAttempts(params: {
     conditions.push(eq(marketplaceBookingAttempts.storeId, params.storeId));
   }
   const expired = await db
-    .select({ reservationId: marketplaceBookingAttempts.reservationId })
+    .select({
+      reservationId: marketplaceBookingAttempts.reservationId,
+      storeId: marketplaceBookingAttempts.storeId,
+    })
     .from(marketplaceBookingAttempts)
     .where(and(...conditions));
 
-  for (const attempt of expired) {
-    if (!attempt.reservationId) continue;
-    const reservationId = attempt.reservationId;
-    await db.transaction((tx) => expireAttempt(tx, reservationId));
+  for (const { reservationId, storeId } of expired) {
+    if (!reservationId) continue;
+    const effects = await db.transaction((tx) => expireAttempt(tx, { reservationId, storeId }));
+    await params.runReservationEffects(effects);
   }
 }
 
@@ -1184,11 +1218,14 @@ export async function confirmMarketplaceBookingAttempt(reservationId: string): P
     .where(eq(marketplaceBookingAttempts.reservationId, reservationId));
 }
 
-export async function failMarketplaceBookingAttempt(reservationId: string): Promise<void> {
-  await db.transaction(async (tx) => {
+export async function failMarketplaceBookingAttempt(
+  reservationId: string,
+  runReservationEffects: ReservationEffectRunner,
+): Promise<void> {
+  const effects = await db.transaction(async (tx) => {
     const attempt = await tx.query.marketplaceBookingAttempts.findFirst({
       where: eq(marketplaceBookingAttempts.reservationId, reservationId),
-      columns: { reservationId: true, status: true },
+      columns: { reservationId: true, status: true, storeId: true },
     });
     const reservation = await tx.query.reservations.findFirst({
       where: and(
@@ -1199,9 +1236,11 @@ export async function failMarketplaceBookingAttempt(reservationId: string): Prom
       columns: { id: true },
     });
     if (attempt?.reservationId && attempt.status === "checkout_pending" && reservation) {
-      await expireAttempt(tx, attempt.reservationId);
+      return expireAttempt(tx, { reservationId: attempt.reservationId, storeId: attempt.storeId });
     }
+    return [];
   });
+  await runReservationEffects(effects);
 }
 
 /**
@@ -1244,6 +1283,7 @@ export async function getMarketplaceBookingDetail(params: {
   getCanonicalUrl: BookingUrlBuilder;
   mediaBaseUrl: string;
   reservationId: string;
+  runReservationEffects: ReservationEffectRunner;
 }): Promise<BookingDetailSnapshot> {
   const snapshot = await getMarketplaceBooking(params);
 

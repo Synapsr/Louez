@@ -3,6 +3,7 @@ import { bookingReservationParamsSchema } from "@louez/validations";
 import type { NextRequest } from "next/server";
 
 import { env } from "@/env";
+import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { bookingJson, bookingServiceError, verifyBookingGet } from "@/lib/booking-api-route";
 import { useLogger, withEvlog } from "@/lib/evlog";
 import { getCanonicalUrl } from "@/lib/seo";
@@ -26,6 +27,7 @@ const handleGet = async (
         reservationId: parsed.data.reservationId,
         getCanonicalUrl,
         mediaBaseUrl: env.NEXT_PUBLIC_APP_URL,
+        runReservationEffects,
       }),
     );
   } catch (error) {
