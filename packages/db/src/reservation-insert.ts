@@ -1,3 +1,4 @@
+import { markReservation } from "./billing-queue";
 import type { Transaction } from "./index";
 import {
   isBillableReservationStatus,
@@ -58,5 +59,6 @@ export async function insertReservation(
 ): Promise<{ effects: ReservationBillingEffect[] }> {
   const plan = planReservationInsert(values, options.now ?? new Date());
   await tx.insert(reservations).values(plan.row);
+  await markReservation(tx, { id: values.id, storeId: values.storeId });
   return { effects: plan.effects };
 }

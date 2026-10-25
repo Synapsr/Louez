@@ -13,6 +13,7 @@ import {
   longtext,
   mysqlEnum,
   mysqlTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -1368,6 +1369,9 @@ export const reservations = mysqlTable(
     billableAt: timestamp("billable_at", { mode: "date" }),
     // When a billable reservation was cancelled. Null while it stays billable.
     withdrawnAt: timestamp("withdrawn_at", { mode: "date" }),
+    // The reservation's currency, frozen at creation (billing contract Q4). Null for
+    // rows created before it existed; readers fall back to the store's currency.
+    currency: varchar("currency", { length: 3 }),
 
     // Notes
     customerNotes: text("customer_notes"),
@@ -1593,6 +1597,35 @@ export const payments = mysqlTable(
     refundOfPaymentId: varchar("refund_of_payment_id", { length: 21 }),
     stripePaymentMethodId: varchar("stripe_payment_method_id", { length: 255 }),
 
+    // Billing facts (billing contract Q3, Q5, Q7, Q36). Written when the payment is
+    // created and never changed: the amount column is netted by refunds, these are not.
+    grossMinor: bigint("gross_minor", { mode: "number" }),
+    insuranceShareMinor: bigint("insurance_share_minor", { mode: "number" }),
+    origin: mysqlEnum("origin", [
+      "checkout",
+      "customer_session",
+      "payment_request",
+      "extension",
+      "deposit",
+      "manual",
+    ]),
+    paymentRequestId: varchar("payment_request_id", { length: 21 }),
+    stripeAccountId: varchar("stripe_account_id", { length: 255 }),
+    // What Louez asked Stripe to take at source (fee metadata v4, or v3 for older
+    // sessions). The billing service reads the real fee from Stripe.
+    appFeeTotalMinor: bigint("app_fee_total_minor", { mode: "number" }),
+    appFeeReservationMinor: bigint("app_fee_reservation_minor", { mode: "number" }),
+    appFeeMarketplaceMinor: bigint("app_fee_marketplace_minor", { mode: "number" }),
+    appFeeBaseMinor: bigint("app_fee_base_minor", { mode: "number" }),
+    appFeePolicyScope: mysqlEnum("app_fee_policy_scope", [
+      "store",
+      "default",
+      "fail_closed",
+      "legacy",
+    ]),
+    appFeePolicyVersion: int("app_fee_policy_version"),
+    appFeeMetadataVersion: int("app_fee_metadata_version"),
+
     // Authorization hold (empreinte)
     authorizationExpiresAt: timestamp("authorization_expires_at", {
       mode: "date",
@@ -1617,6 +1650,133 @@ export const payments = mysqlTable(
       table.stripeCheckoutSessionId,
     ),
     refundOfPaymentIdx: index("payments_refund_of_payment_idx").on(table.refundOfPaymentId),
+  }),
+);
+
+// ============================================================================
+// Billing sync (M1). Louez's side of the contract with the private billing service
+// (louez-billing docs/api). Written only in cloud mode with BILLING_SERVICE_URL set.
+// ============================================================================
+
+/** Payment disputes Stripe reported on a store's connected account (contract Q15). */
+export const paymentDisputes = mysqlTable(
+  "payment_disputes",
+  {
+    // The Stripe dispute id.
+    id: varchar("id", { length: 255 }).primaryKey(),
+    paymentId: varchar("payment_id", { length: 21 }).notNull(),
+    reservationId: varchar("reservation_id", { length: 21 }).notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: varchar("currency", { length: 3 }).notNull(),
+    // Mapped from Stripe: needs_response and under_review are open.
+    status: mysqlEnum("status", ["open", "won", "lost"]).notNull(),
+    stripeStatus: varchar("stripe_status", { length: 32 }).notNull(),
+    // When Stripe withdrew the funds. Null for inquiries, which are never sent.
+    openedAt: timestamp("opened_at", { mode: "date" }),
+    closedAt: timestamp("closed_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    paymentIdx: index("payment_disputes_payment_idx").on(table.paymentId),
+    reservationIdx: index("payment_disputes_reservation_idx").on(table.reservationId),
+  }),
+);
+
+/**
+ * One row per aggregate the billing service holds a snapshot of. A mark bumps
+ * `version` and makes the row pending; the relay sends the snapshot (contract §5).
+ */
+export const billingSyncQueue = mysqlTable(
+  "billing_sync_queue",
+  {
+    aggregateType: mysqlEnum("aggregate_type", [
+      "store",
+      "reservation",
+      "legacy_store",
+      "legacy_month",
+    ]).notNull(),
+    // A store or reservation id, or `{storeId}:{YYYY-MM}` for legacy_month.
+    aggregateId: varchar("aggregate_id", { length: 40 }).notNull(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    version: int("version", { unsigned: true }).default(1).notNull(),
+    // The last version the service acknowledged, reported in manifests (Q23).
+    deliveredVersion: int("delivered_version", { unsigned: true }).default(0).notNull(),
+    // SHA-256 of the canonical data last sent. A forced mark clears it.
+    sentHash: varchar("sent_hash", { length: 64 }),
+    // The closing snapshot written during account deletion (PR c).
+    finalPayload: json("final_payload"),
+    status: mysqlEnum("status", ["pending", "synced", "dead"]).default("pending").notNull(),
+    attemptCount: int("attempt_count", { unsigned: true }).default(0).notNull(),
+    failingSince: timestamp("failing_since", { mode: "date", fsp: 3 }),
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    lastError: varchar("last_error", { length: 1000 }),
+    markedAt: timestamp("marked_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.aggregateType, table.aggregateId] }),
+    dueIdx: index("billing_sync_queue_due_idx").on(table.status, table.nextAttemptAt),
+    storeIdx: index("billing_sync_queue_store_idx").on(table.storeId, table.status),
+  }),
+);
+
+/** One row (id 1): the relay's and the heartbeat's own state. */
+export const billingSyncState = mysqlTable("billing_sync_state", {
+  id: int("id").primaryKey(),
+  lastRelayOkAt: timestamp("last_relay_ok_at", { mode: "date", fsp: 3 }),
+  consecutiveFailures: int("consecutive_failures").default(0).notNull(),
+  // Runs in a row that failed with a 5xx or a timeout while /health answered 200.
+  serverErrorRuns: int("server_error_runs").default(0).notNull(),
+  singleEventMode: boolean("single_event_mode").default(false).notNull(),
+  retryAfterUntil: timestamp("retry_after_until", { mode: "date", fsp: 3 }),
+  lastHeartbeatOkAt: timestamp("last_heartbeat_ok_at", { mode: "date", fsp: 3 }),
+  policiesEtag: varchar("policies_etag", { length: 64 }),
+  lastPolicyPullAt: timestamp("last_policy_pull_at", { mode: "date", fsp: 3 }),
+  lastSweepAt: timestamp("last_sweep_at", { mode: "date", fsp: 3 }),
+  // Resync request ids of the last heartbeat response, listed as handled next time.
+  pendingRequestIds: json("pending_request_ids").$type<string[]>(),
+  // Alert kind → last time a Discord message was sent for it.
+  alerts: json("alerts").$type<Record<string, string>>(),
+  lastError: varchar("last_error", { length: 1000 }),
+  updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+});
+
+/** Resync requests Louez handled, kept 7 days so a repeat is not marked again. */
+export const billingSyncHandledRequests = mysqlTable("billing_sync_handled_requests", {
+  requestId: varchar("request_id", { length: 64 }).primaryKey(),
+  handledAt: timestamp("handled_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+});
+
+/** Manifests Louez owes the service, per store and period (contract §7.3). */
+export const billingSyncManifests = mysqlTable(
+  "billing_sync_manifests",
+  {
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    period: varchar("period", { length: 7 }).notNull(),
+    requestedAt: timestamp("requested_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    sentAt: timestamp("sent_at", { mode: "date", fsp: 3 }),
+    answeredAt: timestamp("answered_at", { mode: "date", fsp: 3 }),
+    status: varchar("status", { length: 16 }),
+    lastError: varchar("last_error", { length: 1000 }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.storeId, table.period] }),
+  }),
+);
+
+/** Every policy version received from the service, append-only (contract §8.1). */
+export const billingPolicies = mysqlTable(
+  "billing_policies",
+  {
+    // A store id or `*` for the default policy of new stores.
+    storeId: varchar("store_id", { length: 32 }).notNull(),
+    version: int("version", { unsigned: true }).notNull(),
+    effectiveFrom: timestamp("effective_from", { mode: "date", fsp: 3 }).notNull(),
+    body: json("body").notNull(),
+    receivedAt: timestamp("received_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.storeId, table.version] }),
   }),
 );
 

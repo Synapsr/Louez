@@ -1,0 +1,491 @@
+{
+  "source": "louez-billing docs/api/fee-examples.json",
+  "docsVersion": "1.0.0",
+  "note": "Public vectors only (contract Q33). Refresh from the service docs; never add private ones.",
+  "vectors": [
+    {
+      "id": "rhu-01",
+      "function": "rhu",
+      "side": "both",
+      "public": true,
+      "summary": "exact half (307.5) rounds up",
+      "input": {
+        "x": 25000,
+        "bps": 123
+      },
+      "expected": 308
+    },
+    {
+      "id": "rhu-02",
+      "function": "rhu",
+      "side": "both",
+      "public": true,
+      "summary": "exact half (61.5) rounds up",
+      "input": {
+        "x": 5000,
+        "bps": 123
+      },
+      "expected": 62
+    },
+    {
+      "id": "rhu-03",
+      "function": "rhu",
+      "side": "both",
+      "public": true,
+      "summary": "61.4877 rounds down",
+      "input": {
+        "x": 4999,
+        "bps": 123
+      },
+      "expected": 61
+    },
+    {
+      "id": "rhu-04",
+      "function": "rhu",
+      "side": "both",
+      "public": true,
+      "summary": "exact half (0.5) rounds up",
+      "input": {
+        "x": 20,
+        "bps": 250
+      },
+      "expected": 1
+    },
+    {
+      "id": "rhu-05",
+      "function": "rhu",
+      "side": "both",
+      "public": true,
+      "summary": "0.475 rounds down",
+      "input": {
+        "x": 19,
+        "bps": 250
+      },
+      "expected": 0
+    },
+    {
+      "id": "rhu-06",
+      "function": "rhu",
+      "side": "both",
+      "public": true,
+      "summary": "zero base",
+      "input": {
+        "x": 0,
+        "bps": 123
+      },
+      "expected": 0
+    },
+    {
+      "id": "rhu-07",
+      "function": "rhu",
+      "side": "both",
+      "public": true,
+      "summary": "largest decimal(10,2) amount; product stays below 2^53",
+      "input": {
+        "x": 9999999999,
+        "bps": 123
+      },
+      "expected": 123000000
+    },
+    {
+      "id": "rhu-08",
+      "function": "rhu",
+      "side": "both",
+      "public": true,
+      "summary": "100 %",
+      "input": {
+        "x": 10000,
+        "bps": 10000
+      },
+      "expected": 10000
+    },
+    {
+      "id": "muldiv-01",
+      "function": "mulDivHalfUp",
+      "side": "both",
+      "public": true,
+      "summary": "insurance share of a 30 % payment",
+      "input": {
+        "a": 1000,
+        "n": 7500,
+        "d": 25000
+      },
+      "expected": 300
+    },
+    {
+      "id": "muldiv-02",
+      "function": "mulDivHalfUp",
+      "side": "both",
+      "public": true,
+      "summary": "392.77 rounds up",
+      "input": {
+        "a": 1234,
+        "n": 9999,
+        "d": 31415
+      },
+      "expected": 393
+    },
+    {
+      "id": "muldiv-03",
+      "function": "mulDivHalfUp",
+      "side": "both",
+      "public": true,
+      "summary": "exact half (1.5) rounds up",
+      "input": {
+        "a": 3,
+        "n": 5,
+        "d": 10
+      },
+      "expected": 2
+    },
+    {
+      "id": "muldiv-04",
+      "function": "mulDivHalfUp",
+      "side": "both",
+      "public": true,
+      "summary": "0.33 rounds down",
+      "input": {
+        "a": 1,
+        "n": 1,
+        "d": 3
+      },
+      "expected": 0
+    },
+    {
+      "id": "muldiv-05",
+      "function": "mulDivHalfUp",
+      "side": "both",
+      "public": true,
+      "summary": "0.67 rounds up",
+      "input": {
+        "a": 2,
+        "n": 1,
+        "d": 3
+      },
+      "expected": 1
+    },
+    {
+      "id": "muldiv-06",
+      "function": "mulDivHalfUp",
+      "side": "both",
+      "public": true,
+      "summary": "28.5 rounds up; float maths gives 28 (100 * (285 / 1000) = 28.499999999999996)",
+      "input": {
+        "a": 100,
+        "n": 285,
+        "d": 1000
+      },
+      "expected": 29
+    },
+    {
+      "id": "muldiv-07",
+      "function": "mulDivHalfUp",
+      "side": "both",
+      "public": true,
+      "summary": "product near 10^20: needs BigInt, overflows MySQL BIGINT",
+      "input": {
+        "a": 9999999999,
+        "n": 9999999998,
+        "d": 9999999999
+      },
+      "expected": 9999999998
+    },
+    {
+      "id": "muldiv-08",
+      "function": "mulDivHalfUp",
+      "side": "both",
+      "public": true,
+      "summary": "large odd operands",
+      "input": {
+        "a": 1234567891,
+        "n": 9876543210,
+        "d": 9999999999
+      },
+      "expected": 1219326312
+    },
+    {
+      "id": "muldiv-09",
+      "function": "mulDivHalfUp",
+      "side": "both",
+      "public": true,
+      "summary": "zero numerator",
+      "input": {
+        "a": 0,
+        "n": 5000,
+        "d": 7000
+      },
+      "expected": 0
+    },
+    {
+      "id": "minor-01",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "two-decimal currency",
+      "input": {
+        "decimal": "12.34",
+        "currency": "EUR"
+      },
+      "expected": {
+        "minor": 1234
+      }
+    },
+    {
+      "id": "minor-02",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "one cent",
+      "input": {
+        "decimal": "0.01",
+        "currency": "EUR"
+      },
+      "expected": {
+        "minor": 1
+      }
+    },
+    {
+      "id": "minor-03",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "negative adjustment",
+      "input": {
+        "decimal": "-10.50",
+        "currency": "EUR"
+      },
+      "expected": {
+        "minor": -1050
+      }
+    },
+    {
+      "id": "minor-04",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "largest decimal(10,2)",
+      "input": {
+        "decimal": "99999999.99",
+        "currency": "EUR"
+      },
+      "expected": {
+        "minor": 9999999999
+      }
+    },
+    {
+      "id": "minor-05",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "no fraction",
+      "input": {
+        "decimal": "12",
+        "currency": "EUR"
+      },
+      "expected": {
+        "minor": 1200
+      }
+    },
+    {
+      "id": "minor-06",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "parse the string: float maths gives 100 (1.005 * 100 = 100.49999999999999)",
+      "input": {
+        "decimal": "1.005",
+        "currency": "EUR"
+      },
+      "expected": {
+        "minor": 101
+      }
+    },
+    {
+      "id": "minor-07",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "zero-decimal currency",
+      "input": {
+        "decimal": "3000.00",
+        "currency": "JPY"
+      },
+      "expected": {
+        "minor": 3000
+      }
+    },
+    {
+      "id": "minor-08",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "zero-decimal, half rounds up",
+      "input": {
+        "decimal": "3000.50",
+        "currency": "JPY"
+      },
+      "expected": {
+        "minor": 3001
+      }
+    },
+    {
+      "id": "minor-09",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "half rounds away from zero on negatives (Math.round would give -3000)",
+      "input": {
+        "decimal": "-3000.50",
+        "currency": "JPY"
+      },
+      "expected": {
+        "minor": -3001
+      }
+    },
+    {
+      "id": "minor-10",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "zero-decimal, rounds down",
+      "input": {
+        "decimal": "999999.49",
+        "currency": "KRW"
+      },
+      "expected": {
+        "minor": 999999
+      }
+    },
+    {
+      "id": "minor-11",
+      "function": "toMinor",
+      "side": "louez",
+      "public": true,
+      "summary": "three-decimal currencies are not supported in contract 1",
+      "input": {
+        "decimal": "1.000",
+        "currency": "KWD"
+      },
+      "expected": {
+        "error": "unsupported_currency"
+      }
+    },
+    {
+      "id": "share-01",
+      "function": "insuranceShare",
+      "side": "louez",
+      "public": true,
+      "summary": "payment of the whole total",
+      "input": {
+        "insuranceMinor": 1000,
+        "grossMinor": 25000,
+        "totalInclTaxMinor": 25000
+      },
+      "expected": 1000
+    },
+    {
+      "id": "share-02",
+      "function": "insuranceShare",
+      "side": "louez",
+      "public": true,
+      "summary": "30 % online deposit",
+      "input": {
+        "insuranceMinor": 1000,
+        "grossMinor": 7500,
+        "totalInclTaxMinor": 25000
+      },
+      "expected": 300
+    },
+    {
+      "id": "share-03",
+      "function": "insuranceShare",
+      "side": "louez",
+      "public": true,
+      "summary": "the 70 % balance; 300 + 700 = 1000",
+      "input": {
+        "insuranceMinor": 1000,
+        "grossMinor": 17500,
+        "totalInclTaxMinor": 25000
+      },
+      "expected": 700
+    },
+    {
+      "id": "share-04",
+      "function": "insuranceShare",
+      "side": "louez",
+      "public": true,
+      "summary": "392.77 rounds up",
+      "input": {
+        "insuranceMinor": 1234,
+        "grossMinor": 9999,
+        "totalInclTaxMinor": 31415
+      },
+      "expected": 393
+    },
+    {
+      "id": "share-05",
+      "function": "insuranceShare",
+      "side": "louez",
+      "public": true,
+      "summary": "no insurance",
+      "input": {
+        "insuranceMinor": 0,
+        "grossMinor": 9999,
+        "totalInclTaxMinor": 31415
+      },
+      "expected": 0
+    },
+    {
+      "id": "share-06",
+      "function": "insuranceShare",
+      "side": "louez",
+      "public": true,
+      "summary": "total 0: share 0",
+      "input": {
+        "insuranceMinor": 1000,
+        "grossMinor": 5000,
+        "totalInclTaxMinor": 0
+      },
+      "expected": 0
+    },
+    {
+      "id": "share-07",
+      "function": "insuranceShare",
+      "side": "louez",
+      "public": true,
+      "summary": "overpayment: the share never exceeds the insurance",
+      "input": {
+        "insuranceMinor": 1000,
+        "grossMinor": 30000,
+        "totalInclTaxMinor": 25000
+      },
+      "expected": 1000
+    },
+    {
+      "id": "share-08",
+      "function": "insuranceShare",
+      "side": "louez",
+      "public": true,
+      "summary": "exact half rounds up",
+      "input": {
+        "insuranceMinor": 3,
+        "grossMinor": 5,
+        "totalInclTaxMinor": 10
+      },
+      "expected": 2
+    },
+    {
+      "id": "share-09",
+      "function": "insuranceShare",
+      "side": "louez",
+      "public": true,
+      "summary": "large values (BigInt)",
+      "input": {
+        "insuranceMinor": 5000000000,
+        "grossMinor": 9999999999,
+        "totalInclTaxMinor": 9999999999
+      },
+      "expected": 5000000000
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import {
   getAllowedReservationStatusTransitions,
   restoreReservationStock,
 } from "./consumable-stock";
+import { markReservation } from "./billing-queue";
 import type { Transaction } from "./index";
 import { reservationActivity, reservations } from "./schema";
 
@@ -294,6 +295,7 @@ export async function changeReservationStatus(
     reservationId: input.reservationId,
     ...plan.activity,
   });
+  await markReservation(tx, { id: input.reservationId, storeId: input.storeId });
 
   return { changed: true, ...change, effects: plan.effects };
 }
