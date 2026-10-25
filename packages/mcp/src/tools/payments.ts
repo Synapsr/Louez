@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { db, payments, reservations } from '@louez/db'
+import { db, markReservation, payments, reservations, stores, type Transaction } from '@louez/db'
+import type { StoreSettings } from '@louez/types'
 import { and, eq } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
@@ -8,7 +9,44 @@ import { requirePermission } from '../auth/context'
 import { formatCurrency, formatDateTime } from '../utils/formatting'
 import { toolError, toolResult } from '../utils/errors'
 
-export function registerPaymentTools(server: McpServer, ctx: McpSessionContext) {
+/** A payment the store records by hand, as the app's writer takes it. */
+export interface McpRecordedPayment {
+  reservationId: string
+  storeId: string
+  storeSettings: Pick<StoreSettings, 'currency' | 'tax'> | null
+  type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'adjustment'
+  method: 'cash' | 'card' | 'transfer' | 'check' | 'other'
+  /** As stored, `decimal(10,2)`. */
+  amount: string
+  /** `deposit` for a deposit given back, `manual` otherwise. */
+  origin: 'manual' | 'deposit'
+  paidAt: Date
+  notes: string | null
+}
+
+/** What the payment tools take from the app. packages/mcp cannot import apps/web. */
+export interface McpPaymentDeps {
+  /**
+   * The dashboard's writer, in the caller's transaction: the payment, under a new id,
+   * in the reservation's currency with its billing facts (gross, insurance share), and
+   * the reservation's mark for the billing service.
+   */
+  insertRecordedPayment: (tx: Transaction, payment: McpRecordedPayment) => Promise<void>
+}
+
+async function loadStoreSettings(storeId: string) {
+  const store = await db.query.stores.findFirst({
+    where: eq(stores.id, storeId),
+    columns: { settings: true },
+  })
+  return store?.settings ?? null
+}
+
+export function registerPaymentTools(
+  server: McpServer,
+  ctx: McpSessionContext,
+  deps: McpPaymentDeps
+) {
   server.tool(
     'list_payments',
     'List all payments for a specific reservation',
@@ -88,15 +126,20 @@ export function registerPaymentTools(server: McpServer, ctx: McpSessionContext) 
         return toolError(`Cannot record payment on a ${reservation.status} reservation.`)
       }
 
-      await db.insert(payments).values({
-        reservationId,
-        type,
-        amount,
-        method,
-        status: 'completed',
-        paidAt: new Date(),
-        notes: notes ?? null,
-      })
+      const storeSettings = await loadStoreSettings(ctx.storeId)
+      await db.transaction((tx) =>
+        deps.insertRecordedPayment(tx, {
+          reservationId,
+          storeId: ctx.storeId,
+          storeSettings,
+          type,
+          method,
+          amount,
+          origin: 'manual',
+          paidAt: new Date(),
+          notes: notes ?? null,
+        })
+      )
 
       return toolResult(
         `Payment recorded for reservation #${reservation.number}.\n\n` +
@@ -131,7 +174,12 @@ export function registerPaymentTools(server: McpServer, ctx: McpSessionContext) 
         return toolError('Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.')
       }
 
-      await db.delete(payments).where(eq(payments.id, paymentId))
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(payments)
+          .where(and(eq(payments.id, paymentId), eq(payments.reservationId, payment.reservationId)))
+        await markReservation(tx, { id: payment.reservationId, storeId: ctx.storeId })
+      })
 
       return toolResult(`Payment deleted (reservation #${payment.reservation?.number}).`)
     }
@@ -181,15 +229,20 @@ export function registerPaymentTools(server: McpServer, ctx: McpSessionContext) 
         )
       }
 
-      await db.insert(payments).values({
-        reservationId,
-        type: 'deposit_return',
-        amount,
-        method,
-        status: 'completed',
-        paidAt: new Date(),
-        notes: notes ?? null,
-      })
+      const storeSettings = await loadStoreSettings(ctx.storeId)
+      await db.transaction((tx) =>
+        deps.insertRecordedPayment(tx, {
+          reservationId,
+          storeId: ctx.storeId,
+          storeSettings,
+          type: 'deposit_return',
+          method,
+          amount,
+          origin: 'deposit',
+          paidAt: new Date(),
+          notes: notes ?? null,
+        })
+      )
 
       return toolResult(
         `Deposit returned for reservation #${reservation.number}.\n` +

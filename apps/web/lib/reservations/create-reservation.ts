@@ -29,6 +29,7 @@ import { advisorValidationCovers, validateStripePaymentAmount } from "@louez/uti
 import { env } from "@/env";
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { normalizeCurrency } from "@/lib/billing-sync/money";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
@@ -625,6 +626,8 @@ const buildReservationValues = (
     taxRate: totals.taxRate?.toFixed(2) ?? null,
     customerNotes: request.customerNotes || null,
     source: request.source,
+    // Frozen at creation: the store can change its currency later (billing contract Q4).
+    currency: normalizeCurrency(store.settings?.currency),
     billingSnapshot: buildReservationBillingSnapshot(request.customer, prepared.companyIdentity),
     outboundMethod: outboundLeg?.method || "store",
     returnMethod: returnLeg?.method || "store",

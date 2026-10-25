@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
   categories,
   db,
+  markStore,
   products,
   storeIntegrations,
   storeMarketplaceCategoryMappings,
@@ -227,6 +228,9 @@ export async function enableMarketplaceChannel(
             updatedAt: now,
           });
         }
+        // The channel status, publication and cohort are in the store's billing
+        // snapshot; this mark also covers the publication below.
+        await markStore(tx, params.storeId);
 
         await tx
           .insert(storeIntegrations)
@@ -329,6 +333,7 @@ export async function disableMarketplaceChannel(params: {
         version: sql`${storeMarketplaceChannels.version} + 1`,
       })
       .where(eq(storeMarketplaceChannels.storeId, params.storeId));
+    await markStore(tx, params.storeId);
     await tx
       .update(storeIntegrations)
       .set({

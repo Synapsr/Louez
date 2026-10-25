@@ -7,6 +7,7 @@ import { and, eq } from "drizzle-orm";
 import {
   db,
   integrationCredentials,
+  markStore,
   storeIntegrations,
   storeLegalProfiles,
   storeSuperPdpIntegrations,
@@ -90,10 +91,14 @@ export async function upsertStoreLegalProfile(
     updatedAt: new Date(),
   };
 
-  await db
-    .insert(storeLegalProfiles)
-    .values({ storeId: store.id, ...values })
-    .onDuplicateKeyUpdate({ set: values });
+  // The legal country and the invoicing switch are in the store's billing snapshot.
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(storeLegalProfiles)
+      .values({ storeId: store.id, ...values })
+      .onDuplicateKeyUpdate({ set: values });
+    await markStore(tx, store.id);
+  });
 
   // The PDP's e-reporting calendar follows the VAT regime; keep it in sync
   // for connected stores (best-effort, never blocks the save).
@@ -129,17 +134,20 @@ export async function resetInvoicingSetupForDev(): Promise<StoreLegalProfileActi
     columns: { id: true },
   });
 
-  if (integration) {
-    await db
-      .delete(integrationCredentials)
-      .where(eq(integrationCredentials.integrationId, integration.id));
-    await db
-      .delete(storeSuperPdpIntegrations)
-      .where(eq(storeSuperPdpIntegrations.integrationId, integration.id));
-    await db.delete(storeIntegrations).where(eq(storeIntegrations.id, integration.id));
-  }
+  await db.transaction(async (tx) => {
+    if (integration) {
+      await tx
+        .delete(integrationCredentials)
+        .where(eq(integrationCredentials.integrationId, integration.id));
+      await tx
+        .delete(storeSuperPdpIntegrations)
+        .where(eq(storeSuperPdpIntegrations.integrationId, integration.id));
+      await tx.delete(storeIntegrations).where(eq(storeIntegrations.id, integration.id));
+    }
 
-  await db.delete(storeLegalProfiles).where(eq(storeLegalProfiles.storeId, store.id));
+    await tx.delete(storeLegalProfiles).where(eq(storeLegalProfiles.storeId, store.id));
+    await markStore(tx, store.id);
+  });
 
   revalidatePath("/dashboard/settings/invoicing");
   return { status: "success" };

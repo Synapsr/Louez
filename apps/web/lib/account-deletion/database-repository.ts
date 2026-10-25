@@ -2,10 +2,10 @@ import "server-only";
 
 import { createHmac } from "node:crypto";
 
-import { db } from "@louez/db";
+import { db, isBillingSyncEnabled, markBillingDirty } from "@louez/db";
 import * as schema from "@louez/db";
-import type { Transaction } from "@louez/db";
-import { and, count, eq, gt, inArray, ne, notInArray, or, sql } from "drizzle-orm";
+import type { BillingMark, Transaction } from "@louez/db";
+import { type Column, and, count, eq, gt, inArray, ne, notInArray, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { env } from "@/env";
@@ -222,6 +222,76 @@ const getContext = async (userId: string): Promise<AccountDeletionContext | null
       phoneNumberBindings,
     },
   };
+};
+
+/**
+ * The other stores whose billing snapshots the purge changes: stores it unlinks from
+ * a deleted referrer or from the user, referrers that lose a reward row, and stores
+ * where the user was an owner member. Read before the purge writes. The deleted
+ * stores' own final snapshots are not written here.
+ */
+const otherStoreBillingMarks = async (
+  transaction: Transaction,
+  userId: string,
+  storeIds: string[],
+): Promise<BillingMark[]> => {
+  if (!isBillingSyncEnabled()) return [];
+  const notDeleted = (column: Column) =>
+    storeIds.length > 0 ? notInArray(column, storeIds) : undefined;
+
+  const unlinked = await transaction
+    .select({ id: schema.stores.id })
+    .from(schema.stores)
+    .where(
+      and(
+        storeIds.length > 0
+          ? or(
+              inArray(schema.stores.referredByStoreId, storeIds),
+              eq(schema.stores.referredByUserId, userId),
+            )
+          : eq(schema.stores.referredByUserId, userId),
+        notDeleted(schema.stores.id),
+      ),
+    );
+  const referrers =
+    storeIds.length > 0
+      ? await transaction
+          .selectDistinct({ id: schema.referralRewards.referrerStoreId })
+          .from(schema.referralRewards)
+          .where(
+            and(
+              inArray(schema.referralRewards.referredStoreId, storeIds),
+              notDeleted(schema.referralRewards.referrerStoreId),
+            ),
+          )
+      : [];
+  const ownedElsewhere = await transaction
+    .select({ id: schema.storeMembers.storeId })
+    .from(schema.storeMembers)
+    .where(
+      and(
+        eq(schema.storeMembers.userId, userId),
+        eq(schema.storeMembers.role, "owner"),
+        notDeleted(schema.storeMembers.storeId),
+      ),
+    );
+
+  return [
+    ...[...unlinked, ...ownedElsewhere].map(
+      ({ id }): BillingMark => ({
+        type: "store",
+        aggregateId: id,
+        storeId: id,
+      }),
+    ),
+    ...referrers.map(
+      ({ id }): BillingMark => ({
+        type: "legacy_store",
+        aggregateId: id,
+        storeId: id,
+      }),
+    ),
+  ];
 };
 
 interface LegalArchiveInput {
@@ -471,6 +541,11 @@ const purgeOwnedData = async (
     }
 
     await beforePurge();
+
+    await markBillingDirty(
+      transaction,
+      await otherStoreBillingMarks(transaction, context.user.id, storeIds),
+    );
 
     const legalRecordsRetained = await archiveLegalRecords(transaction, storeIds);
 

@@ -5,7 +5,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { McpSessionContext } from "../auth/context";
 import { requirePermission } from "../auth/context";
-import type { McpServerDeps } from "../deps";
+import type { McpReservationDeps } from "../deps";
 import { formatCurrency, formatDate, formatDateTime, formatStatus } from "../utils/formatting";
 import { toolError, toolResult } from "../utils/errors";
 import { paginationParams } from "../utils/pagination";
@@ -13,7 +13,7 @@ import { paginationParams } from "../utils/pagination";
 export function registerReservationTools(
   server: McpServer,
   ctx: McpSessionContext,
-  deps: McpServerDeps,
+  deps: McpReservationDeps,
 ) {
   // ── list_reservations ──────────────────────────────────────────────────
   server.tool(

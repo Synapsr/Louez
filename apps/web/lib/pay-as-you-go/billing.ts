@@ -2,7 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
-import { db } from '@louez/db';
+import { db, markLegacyMonth, type Transaction } from '@louez/db';
 import { payAsYouGoInvoices, platformFees, subscriptions } from '@louez/db';
 
 import {
@@ -194,17 +194,21 @@ export async function billStoreForMonth(
 
   // Nothing to invoice (no manual/pending fees — everything was collected at source).
   if (billInvoicedCents <= 0) {
-    await db
-      .update(payAsYouGoInvoices)
-      .set({ status: 'void', updatedAt: new Date() })
-      .where(eq(payAsYouGoInvoices.id, invoiceRowId));
-    // Close out any pending rows (nothing left to charge) so the month is settled.
-    await markUsageBilled(
-      storeId,
-      billingMonth,
-      invoiceRowId,
-      billUsageFeeCents > 0,
-    );
+    await db.transaction(async (tx) => {
+      await tx
+        .update(payAsYouGoInvoices)
+        .set({ status: 'void', updatedAt: new Date() })
+        .where(eq(payAsYouGoInvoices.id, invoiceRowId));
+      // Close out any pending rows (nothing left to charge) so the month is settled.
+      await markUsageBilled(
+        tx,
+        storeId,
+        billingMonth,
+        invoiceRowId,
+        billUsageFeeCents > 0,
+      );
+      await markLegacyMonth(tx, storeId, billingMonth);
+    });
     return { status: 'void', invoicedCents: 0, invoiceCreated };
   }
 
@@ -256,14 +260,18 @@ export async function billStoreForMonth(
       },
       { idempotencyKey: idemKey('invoice', storeId, billingMonth) },
     );
-    await db
-      .update(payAsYouGoInvoices)
-      .set({
-        stripeInvoiceId: invoice.id,
-        stripeCustomerId,
-        updatedAt: new Date(),
-      })
-      .where(eq(payAsYouGoInvoices.id, invoiceRowId));
+    const stripeInvoiceId = invoice.id;
+    await db.transaction(async (tx) => {
+      await tx
+        .update(payAsYouGoInvoices)
+        .set({
+          stripeInvoiceId,
+          stripeCustomerId,
+          updatedAt: new Date(),
+        })
+        .where(eq(payAsYouGoInvoices.id, invoiceRowId));
+      await markLegacyMonth(tx, storeId, billingMonth);
+    });
 
     invoice = await ensureInvoiceCollected(
       invoice,
@@ -281,38 +289,43 @@ export async function billStoreForMonth(
 
   const status = mapStripeInvoiceStatus(invoice, collectionMethod);
 
-  await db
-    .update(payAsYouGoInvoices)
-    .set({
-      locationCount: billLocationCount,
-      grossAmountCents: billGrossCents,
-      collectedAtSourceCents: billCollectedCents,
-      invoicedAmountCents: billInvoicedCents,
-      usageLocationCount: billUsageLocationCount,
-      usageFeeAmountCents: billUsageFeeCents,
-      marketplaceReservationCount: billMarketplaceReservationCount,
-      marketplaceFeeAmountCents: billMarketplaceFeeCents,
-      currency,
-      status,
-      stripeInvoiceId: invoice.id ?? existingStripeInvoiceId,
-      stripeCustomerId,
-      paidAt: status === 'paid' ? new Date() : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(payAsYouGoInvoices.id, invoiceRowId));
+  const finalStripeInvoiceId = invoice.id ?? existingStripeInvoiceId;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payAsYouGoInvoices)
+      .set({
+        locationCount: billLocationCount,
+        grossAmountCents: billGrossCents,
+        collectedAtSourceCents: billCollectedCents,
+        invoicedAmountCents: billInvoicedCents,
+        usageLocationCount: billUsageLocationCount,
+        usageFeeAmountCents: billUsageFeeCents,
+        marketplaceReservationCount: billMarketplaceReservationCount,
+        marketplaceFeeAmountCents: billMarketplaceFeeCents,
+        currency,
+        status,
+        stripeInvoiceId: finalStripeInvoiceId,
+        stripeCustomerId,
+        paidAt: status === 'paid' ? new Date() : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(payAsYouGoInvoices.id, invoiceRowId));
 
-  // Mark the manual (pending) rentals as billed only once payment is actually
-  // collected. A hosted (send_invoice) invoice stays 'open' until paid, and its
-  // rentals are settled by the invoice.paid platform webhook (reconcilePayAsYouGoInvoice),
-  // so an unpaid hosted invoice never silently loses the commission.
-  if (status === 'paid') {
-    await markUsageBilled(
-      storeId,
-      billingMonth,
-      invoiceRowId,
-      billUsageFeeCents > 0,
-    );
-  }
+    // Mark the manual (pending) rentals as billed only once payment is actually
+    // collected. A hosted (send_invoice) invoice stays 'open' until paid, and its
+    // rentals are settled by the invoice.paid platform webhook (reconcilePayAsYouGoInvoice),
+    // so an unpaid hosted invoice never silently loses the commission.
+    if (status === 'paid') {
+      await markUsageBilled(
+        tx,
+        storeId,
+        billingMonth,
+        invoiceRowId,
+        billUsageFeeCents > 0,
+      );
+    }
+    await markLegacyMonth(tx, storeId, billingMonth);
+  });
 
   return {
     status,
@@ -404,20 +417,23 @@ async function claimInvoiceRow(input: ClaimInput): Promise<ClaimResult> {
   // the unique(store, month) race; if so, reload and resume from its row.
   const id = nanoid();
   try {
-    await db.insert(payAsYouGoInvoices).values({
-      id,
-      storeId: input.storeId,
-      billingMonth: input.billingMonth,
-      locationCount: input.locationCount,
-      grossAmountCents: input.grossAmountCents,
-      collectedAtSourceCents: input.collectedAtSourceCents,
-      invoicedAmountCents: input.invoicedAmountCents,
-      usageLocationCount: input.usageLocationCount,
-      usageFeeAmountCents: input.usageFeeAmountCents,
-      marketplaceReservationCount: input.marketplaceReservationCount,
-      marketplaceFeeAmountCents: input.marketplaceFeeAmountCents,
-      currency: input.currency,
-      status: 'draft',
+    await db.transaction(async (tx) => {
+      await tx.insert(payAsYouGoInvoices).values({
+        id,
+        storeId: input.storeId,
+        billingMonth: input.billingMonth,
+        locationCount: input.locationCount,
+        grossAmountCents: input.grossAmountCents,
+        collectedAtSourceCents: input.collectedAtSourceCents,
+        invoicedAmountCents: input.invoicedAmountCents,
+        usageLocationCount: input.usageLocationCount,
+        usageFeeAmountCents: input.usageFeeAmountCents,
+        marketplaceReservationCount: input.marketplaceReservationCount,
+        marketplaceFeeAmountCents: input.marketplaceFeeAmountCents,
+        currency: input.currency,
+        status: 'draft',
+      });
+      await markLegacyMonth(tx, input.storeId, input.billingMonth);
     });
     return {
       terminal: false,
@@ -549,13 +565,15 @@ async function ensureInvoiceCollected(
   return invoice;
 }
 
+/** Runs in the caller's transaction, which also marks the month. */
 async function markUsageBilled(
+  tx: Transaction,
   storeId: string,
   billingMonth: string,
   invoiceRowId: string,
   includePayAsYouGoUsage: boolean,
 ): Promise<void> {
-  await db
+  await tx
     .update(platformFees)
     .set({ status: 'billed', invoiceId: invoiceRowId, billedAt: new Date() })
     .where(
@@ -603,24 +621,31 @@ export async function reconcilePayAsYouGoInvoice(
   if (!row) return false;
 
   if (outcome === 'paid') {
-    await db
-      .update(payAsYouGoInvoices)
-      .set({ status: 'paid', paidAt: new Date(), updatedAt: new Date() })
-      .where(eq(payAsYouGoInvoices.id, row.id));
-    // Settle any still-pending rentals for this month.
-    await markUsageBilled(
-      row.storeId,
-      row.billingMonth,
-      row.id,
-      row.usageFeeAmountCents > 0,
-    );
+    await db.transaction(async (tx) => {
+      await tx
+        .update(payAsYouGoInvoices)
+        .set({ status: 'paid', paidAt: new Date(), updatedAt: new Date() })
+        .where(eq(payAsYouGoInvoices.id, row.id));
+      // Settle any still-pending rentals for this month.
+      await markUsageBilled(
+        tx,
+        row.storeId,
+        row.billingMonth,
+        row.id,
+        row.usageFeeAmountCents > 0,
+      );
+      await markLegacyMonth(tx, row.storeId, row.billingMonth);
+    });
     return true;
   }
 
   // payment_failed / uncollectible
-  await db
-    .update(payAsYouGoInvoices)
-    .set({ status: 'failed', updatedAt: new Date() })
-    .where(eq(payAsYouGoInvoices.id, row.id));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payAsYouGoInvoices)
+      .set({ status: 'failed', updatedAt: new Date() })
+      .where(eq(payAsYouGoInvoices.id, row.id));
+    await markLegacyMonth(tx, row.storeId, row.billingMonth);
+  });
   return true;
 }

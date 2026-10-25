@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { db, stores } from "@louez/db";
+import { db, markStore, stores } from "@louez/db";
 import { type BrandingInput, type StripeSetupInput, isOwnedImageUrl } from "@louez/validations";
 
 import { ApiServiceError } from "./errors";
@@ -67,17 +67,21 @@ export async function completeOnboarding(params: CompleteOnboardingParams) {
     openingHours: null,
   };
 
-  await db
-    .update(stores)
-    .set({
-      settings: {
-        ...currentSettings,
-        reservationMode: input.reservationMode,
-      },
-      onboardingCompleted: true,
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, storeId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(stores)
+      .set({
+        settings: {
+          ...currentSettings,
+          reservationMode: input.reservationMode,
+        },
+        onboardingCompleted: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(stores.id, storeId));
+    // onboardingCompleted is in the store's billing snapshot.
+    await markStore(tx, storeId);
+  });
 
   if (notifyStoreCreated) {
     notifyStoreCreated({

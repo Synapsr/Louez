@@ -1,5 +1,11 @@
 import type { BillingAggregateType, Database } from "@louez/db";
 
+import { buildLegacyMonthSnapshot } from "./legacy-month-snapshot";
+import { buildLegacyStoreSnapshot } from "./legacy-store-snapshot";
+import { buildReservationSnapshot } from "./reservation-snapshot";
+import type { SnapshotData } from "./snapshot-data";
+import { buildStoreSnapshot } from "./store-snapshot";
+
 // Snapshot builders (louez-billing docs/api, openapi.yaml: StoreSnapshotV1,
 // ReservationSnapshotV1, LegacyStoreSnapshotV1, LegacyMonthSnapshotV1).
 //
@@ -8,6 +14,10 @@ import type { BillingAggregateType, Database } from "@louez/db";
 // after reading the queue row's version in the same transaction (README §5.2), so
 // the version label and the content come from the same state. `db` is a Drizzle
 // instance bound to that connection.
+//
+// A builder throws `SnapshotDataError` (snapshot-checks.ts) when the aggregate cannot
+// be expressed within the contract, such as a list over its limit: retrying will not
+// help, so the relay marks the row dead and alerts. Any other error is transient.
 
 export type SnapshotKey = {
   readonly type: BillingAggregateType;
@@ -18,19 +28,37 @@ export type SnapshotKey = {
 
 export type BuiltSnapshot =
   /** `data` exactly as the envelope carries it; the relay hashes and sends it. */
-  | { readonly kind: "snapshot"; readonly data: Record<string, unknown> }
+  | { readonly kind: "snapshot"; readonly data: SnapshotData }
   /** The aggregate no longer exists in Louez (deleted store or reservation). */
-  | { readonly kind: "missing" };
+  | { readonly kind: "missing" }
+  /**
+   * Nothing to send, by rule: `legacy_store` and `legacy_month` of a store created
+   * at or after `newStoresFrom` (plan decision 4). The relay marks the row synced
+   * for its version without calling the service.
+   */
+  | { readonly kind: "skip"; readonly reason: "new_store" };
 
 export type SnapshotContext = {
   /** Stores created at or after it are new: no legacy aggregates (README §8.3). */
   readonly newStoresFrom: Date;
 };
 
+/** What the builders need: the database, a transaction, or Drizzle on one connection. */
+export type SnapshotReader = Pick<Database, "select">;
+
 export async function buildSnapshot(
-  _db: Database,
-  _key: SnapshotKey,
-  _context: SnapshotContext,
+  db: SnapshotReader,
+  key: SnapshotKey,
+  context: SnapshotContext,
 ): Promise<BuiltSnapshot> {
-  throw new Error("buildSnapshot: written by work package A");
+  switch (key.type) {
+    case "store":
+      return buildStoreSnapshot(db, key);
+    case "reservation":
+      return buildReservationSnapshot(db, key);
+    case "legacy_store":
+      return buildLegacyStoreSnapshot(db, key, context);
+    case "legacy_month":
+      return buildLegacyMonthSnapshot(db, key, context);
+  }
 }

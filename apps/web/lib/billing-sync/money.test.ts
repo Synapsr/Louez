@@ -39,6 +39,7 @@ describe("fee vectors", () => {
 describe("reservationTotalsMinor", () => {
   const base = {
     reservation: {
+      createdAt: new Date("2026-10-01T10:00:00Z"),
       currency: null,
       totalAmount: "120.00",
       subtotalAmount: "120.00",
@@ -92,12 +93,30 @@ describe("reservationTotalsMinor", () => {
     assert.equal(totals.totalInclTaxMinor, 12000);
   });
 
-  test("drops the deposit from an old total that includes it", () => {
+  test("drops the deposit from a total of before April 2026 that includes it", () => {
     const totals = reservationTotalsMinor({
       ...base,
-      reservation: { ...base.reservation, totalAmount: "170.00", depositAmount: "50.00" },
+      reservation: {
+        ...base.reservation,
+        createdAt: new Date("2026-02-10T10:00:00Z"),
+        totalAmount: "170.00",
+        depositAmount: "50.00",
+      },
     });
     assert.equal(totals.totalInclTaxMinor, 12000);
+  });
+
+  test("keeps a recent total whose delivery fee exceeds the deposit", () => {
+    const totals = reservationTotalsMinor({
+      ...base,
+      reservation: {
+        ...base.reservation,
+        totalAmount: "130.00",
+        subtotalAmount: "100.00",
+        depositAmount: "25.00",
+      },
+    });
+    assert.equal(totals.totalInclTaxMinor, 13000);
   });
 
   test("prefers the reservation's frozen currency, and counts yen in whole units", () => {

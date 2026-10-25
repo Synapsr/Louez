@@ -1,5 +1,6 @@
 import { tool } from "ai";
 import { and, desc, eq, exists, gte, inArray, like, lte, or, sql, sum } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import {
@@ -27,6 +28,10 @@ import {
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
 
+import {
+  deleteRecordedPayment,
+  insertRecordedPayment,
+} from "@/lib/reservations/dashboard-payment-writes";
 import { changeReservationStatusAsAgent } from "@/lib/reservations/status-change";
 
 // ---------------------------------------------------------------------------
@@ -70,6 +75,15 @@ const defaultServices: AIToolServices = {
 // ---------------------------------------------------------------------------
 
 export function createAITools(ctx: AIChatContext, services: AIToolServices = defaultServices) {
+  /** The settings a recorded payment's currency and insurance share are read with. */
+  const loadStoreSettings = async () => {
+    const store = await db.query.stores.findFirst({
+      where: eq(stores.id, ctx.storeId),
+      columns: { settings: true },
+    });
+    return store?.settings ?? null;
+  };
+
   return {
     // ── Products ──────────────────────────────────────────────────────────
 
@@ -697,15 +711,22 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           };
         }
 
-        await db.insert(payments).values({
-          reservationId,
-          type,
-          amount,
-          method,
-          status: "completed",
-          paidAt: new Date(),
-          notes: notes ?? null,
-        });
+        // The dashboard's writer: billing facts, currency and the reservation's mark.
+        const storeSettings = await loadStoreSettings();
+        await db.transaction((tx) =>
+          insertRecordedPayment(tx, {
+            id: nanoid(),
+            reservationId,
+            storeId: ctx.storeId,
+            storeSettings,
+            amount,
+            type,
+            method,
+            origin: "manual",
+            paidAt: new Date(),
+            notes: notes ?? null,
+          }),
+        );
 
         return {
           success: true,
@@ -740,7 +761,11 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           };
         }
 
-        await db.delete(payments).where(eq(payments.id, paymentId));
+        await deleteRecordedPayment(db, {
+          paymentId,
+          reservationId: payment.reservationId,
+          storeId: ctx.storeId,
+        });
         return {
           success: true,
           reservationNumber: payment.reservation?.number,
@@ -785,15 +810,21 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           };
         }
 
-        await db.insert(payments).values({
-          reservationId,
-          type: "deposit_return",
-          amount,
-          method,
-          status: "completed",
-          paidAt: new Date(),
-          notes: notes ?? null,
-        });
+        const storeSettings = await loadStoreSettings();
+        await db.transaction((tx) =>
+          insertRecordedPayment(tx, {
+            id: nanoid(),
+            reservationId,
+            storeId: ctx.storeId,
+            storeSettings,
+            amount,
+            type: "deposit_return",
+            method,
+            origin: "deposit",
+            paidAt: new Date(),
+            notes: notes ?? null,
+          }),
+        );
 
         return {
           success: true,

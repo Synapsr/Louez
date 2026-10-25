@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
-import { db } from '@louez/db';
+import { db, markLegacyStore } from '@louez/db';
 import { referralRewards, subscriptions } from '@louez/db';
 
 import { isBillingEnabled } from '@/lib/billing/mode';
@@ -441,6 +441,8 @@ export async function maybeGrantReferrerReward(
             creditCents: reward.creditCents,
             status: 'granted',
           });
+          // The referrer's rewards are in its legacy_store snapshot.
+          await markLegacyStore(tx, referrerStoreId);
         });
       } catch (error) {
         // The credit was already created; if the ledger row cannot be written for a
@@ -485,6 +487,7 @@ export async function maybeGrantReferrerReward(
             return;
           }
         }
+        // Also marks the referrer's legacy_store, which holds this ledger row too.
         await addFreeReservations(tx, referrerStoreId, reward.freeReservations);
         await tx.insert(referralRewards).values({
           id: nanoid(),
@@ -628,6 +631,7 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
         clawbackClaimed = false;
         return;
       }
+      await markLegacyStore(tx, reward.referrerStoreId);
 
       const billing = await getStoreBilling(reward.referrerStoreId);
       const used = Math.max(
@@ -691,16 +695,21 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
       }
     }
 
-    const claim = await db
-      .update(referralRewards)
-      .set({ status: 'clawed_back', clawedBackAt: at, updatedAt: new Date() })
-      .where(
-        and(
-          eq(referralRewards.id, reward.id),
-          eq(referralRewards.status, 'granted'),
-        ),
-      );
-    if ((claim[0]?.affectedRows ?? 0) === 0) {
+    const claimed = await db.transaction(async (tx) => {
+      const claim = await tx
+        .update(referralRewards)
+        .set({ status: 'clawed_back', clawedBackAt: at, updatedAt: new Date() })
+        .where(
+          and(
+            eq(referralRewards.id, reward.id),
+            eq(referralRewards.status, 'granted'),
+          ),
+        );
+      if ((claim[0]?.affectedRows ?? 0) === 0) return false;
+      await markLegacyStore(tx, reward.referrerStoreId);
+      return true;
+    });
+    if (!claimed) {
       await trackClawbackEvaluated({
         reward,
         clawedBack: false,

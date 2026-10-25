@@ -1,11 +1,41 @@
 import { stripe } from './client'
-import { db } from '@louez/db'
+import { db, markLegacyStore } from '@louez/db'
 import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/lib/plans'
 import { BillingDisabledError, isBillingEnabled } from '@/lib/billing/mode'
 import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
 import { env } from '@/env'
+
+// Every write to a subscription row marks the store's legacy_store snapshot for the
+// billing service in the same transaction. Stripe calls stay before it.
+
+type SubscriptionColumns = Partial<Omit<typeof subscriptions.$inferInsert, 'id' | 'storeId'>>
+
+/** Updates a store's row, creating it first with the pricing the store already pays. */
+async function updateStoreSubscription(storeId: string, values: SubscriptionColumns) {
+  await db.transaction(async (tx) => {
+    await ensureSubscriptionRow(tx, storeId)
+    await tx
+      .update(subscriptions)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(subscriptions.storeId, storeId))
+    await markLegacyStore(tx, storeId)
+  })
+}
+
+async function updateSubscriptionRow(
+  row: { id: string; storeId: string },
+  values: SubscriptionColumns,
+) {
+  await db.transaction(async (tx) => {
+    await tx
+      .update(subscriptions)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(subscriptions.id, row.id))
+    await markLegacyStore(tx, row.storeId)
+  })
+}
 
 interface CreateCheckoutSessionOptions {
   storeId: string
@@ -70,11 +100,7 @@ export async function getOrCreateStripeCustomer(storeId: string): Promise<string
   // Persist immediately to prevent duplicate customers on retry. A store with no row yet
   // gets one with the pricing it already pays (pay-as-you-go, never the offer for new
   // stores), so saving the customer id never changes what it is charged.
-  await ensureSubscriptionRow(db, storeId)
-  await db
-    .update(subscriptions)
-    .set({ stripeCustomerId: customer.id, updatedAt: new Date() })
-    .where(eq(subscriptions.storeId, storeId))
+  await updateStoreSubscription(storeId, { stripeCustomerId: customer.id })
 
   return customer.id
 }
@@ -224,13 +250,7 @@ export async function cancelSubscription(storeId: string) {
   })
 
   // Update DB
-  await db
-    .update(subscriptions)
-    .set({
-      cancelAtPeriodEnd: true,
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.id, subscription.id))
+  await updateSubscriptionRow(subscription, { cancelAtPeriodEnd: true })
 
   return { success: true }
 }
@@ -254,13 +274,7 @@ export async function reactivateSubscription(storeId: string) {
   })
 
   // Update DB
-  await db
-    .update(subscriptions)
-    .set({
-      cancelAtPeriodEnd: false,
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.id, subscription.id))
+  await updateSubscriptionRow(subscription, { cancelAtPeriodEnd: false })
 
   return { success: true }
 }
@@ -287,10 +301,7 @@ export async function switchToPayAsYouGo(storeId: string): Promise<SwitchToPayAs
       cancel_at_period_end: true,
       metadata: { ...current.metadata, pendingBillingMode: 'pay_as_you_go' },
     })
-    await db
-      .update(subscriptions)
-      .set({ cancelAtPeriodEnd: true, updatedAt: new Date() })
-      .where(eq(subscriptions.id, subscription.id))
+    await updateSubscriptionRow(subscription, { cancelAtPeriodEnd: true })
     return {
       mode: 'deferred',
       effectiveAt: subscription.currentPeriodEnd ?? null,
@@ -300,15 +311,10 @@ export async function switchToPayAsYouGo(storeId: string): Promise<SwitchToPayAs
   // No active Stripe subscription (or no row yet) → switch immediately. Set planSlug
   // alongside billingMode so the row never carries a stale paid-plan slug with PAYG mode.
   // Only the mode changes: the store keeps the pricing stored on its row.
-  await ensureSubscriptionRow(db, storeId)
-  await db
-    .update(subscriptions)
-    .set({
-      planSlug: 'pay_as_you_go',
-      billingMode: 'pay_as_you_go',
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.storeId, storeId))
+  await updateStoreSubscription(storeId, {
+    planSlug: 'pay_as_you_go',
+    billingMode: 'pay_as_you_go',
+  })
   return { mode: 'immediate' }
 }
 
@@ -327,20 +333,15 @@ export async function activatePlanSubscription(input: {
   status: 'active' | 'trialing'
   currentPeriodEnd: Date
 }) {
-  await ensureSubscriptionRow(db, input.storeId)
-  await db
-    .update(subscriptions)
-    .set({
-      planSlug: input.planSlug,
-      billingMode: 'subscription',
-      stripeSubscriptionId: input.stripeSubscriptionId,
-      stripeCustomerId: input.stripeCustomerId,
-      status: input.status,
-      currentPeriodEnd: input.currentPeriodEnd,
-      cancelAtPeriodEnd: false,
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.storeId, input.storeId))
+  await updateStoreSubscription(input.storeId, {
+    planSlug: input.planSlug,
+    billingMode: 'subscription',
+    stripeSubscriptionId: input.stripeSubscriptionId,
+    stripeCustomerId: input.stripeCustomerId,
+    status: input.status,
+    currentPeriodEnd: input.currentPeriodEnd,
+    cancelAtPeriodEnd: false,
+  })
 }
 
 /**
@@ -350,18 +351,19 @@ export async function activatePlanSubscription(input: {
  * plan, mode, status and Stripe columns change.
  */
 export async function endSubscriptionToPayAsYouGo(subscriptionRowId: string) {
-  await db
-    .update(subscriptions)
-    .set({
-      planSlug: 'pay_as_you_go',
-      billingMode: 'pay_as_you_go',
-      status: 'active',
-      stripeSubscriptionId: null,
-      cancelAtPeriodEnd: false,
-      currentPeriodEnd: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.id, subscriptionRowId))
+  const row = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.id, subscriptionRowId),
+    columns: { id: true, storeId: true },
+  })
+  if (!row) return
+  await updateSubscriptionRow(row, {
+    planSlug: 'pay_as_you_go',
+    billingMode: 'pay_as_you_go',
+    status: 'active',
+    stripeSubscriptionId: null,
+    cancelAtPeriodEnd: false,
+    currentPeriodEnd: null,
+  })
 }
 
 export async function getSubscriptionWithPlan(storeId: string) {
@@ -442,15 +444,11 @@ export async function syncSubscriptionFromStripe(stripeSubscriptionId: string) {
   const firstItem = stripeSubscription.items.data[0]
   const currentPeriodEnd = new Date(firstItem.current_period_end * 1000)
 
-  await db
-    .update(subscriptions)
-    .set({
-      status,
-      currentPeriodEnd,
-      cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.id, subscription.id))
+  await updateSubscriptionRow(subscription, {
+    status,
+    currentPeriodEnd,
+    cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+  })
 
   return subscription
 }

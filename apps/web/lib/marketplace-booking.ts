@@ -5,7 +5,7 @@ import type {
   MarketplaceCheckoutAdapter,
   MarketplaceHoldAdapter,
 } from "@louez/api/services";
-import { db, payments } from "@louez/db";
+import { db, markReservationIds, payments } from "@louez/db";
 
 import { env } from "@/env";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
@@ -132,10 +132,13 @@ export const marketplaceCancellationAdapter: MarketplaceCancellationAdapter = {
           // still cancelled below.
         }
       }
-      await db
-        .update(payments)
-        .set({ status: "cancelled", updatedAt: new Date() })
-        .where(eq(payments.id, payment.id));
+      await db.transaction(async (tx) => {
+        await tx
+          .update(payments)
+          .set({ status: "cancelled", updatedAt: new Date() })
+          .where(and(eq(payments.id, payment.id), eq(payments.reservationId, reservationId)));
+        await markReservationIds(tx, [reservationId]);
+      });
     }
   },
   runCancellationSideEffects: async (reservationId) => {

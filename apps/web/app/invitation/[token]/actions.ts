@@ -2,7 +2,7 @@
 
 import { and, eq } from 'drizzle-orm';
 
-import { db } from '@louez/db';
+import { db, markStore } from '@louez/db';
 import { storeInvitations, storeMembers, users } from '@louez/db';
 
 import { auth } from '@/lib/auth';
@@ -59,27 +59,32 @@ export async function acceptInvitation(token: string, name?: string) {
     ...(trimmedName && !user.name ? { name: trimmedName } : {}),
     ...(user.acquisitionChannel ? {} : { acquisitionChannel: 'invitation' }),
   };
-  if (Object.keys(userUpdates).length > 0) {
-    await db
-      .update(users)
-      .set(userUpdates)
-      .where(eq(users.id, session.user.id));
-  }
+  await db.transaction(async (tx) => {
+    if (Object.keys(userUpdates).length > 0) {
+      await tx
+        .update(users)
+        .set(userUpdates)
+        .where(eq(users.id, session.user.id));
+    }
 
-  await db.insert(storeMembers).values({
-    storeId: invitation.storeId,
-    userId: session.user.id,
-    role: invitation.role,
-    addedBy: invitation.invitedBy,
+    await tx.insert(storeMembers).values({
+      storeId: invitation.storeId,
+      userId: session.user.id,
+      role: invitation.role,
+      addedBy: invitation.invitedBy,
+    });
+
+    await tx
+      .update(storeInvitations)
+      .set({
+        status: 'accepted',
+        acceptedAt: new Date(),
+      })
+      .where(eq(storeInvitations.id, invitation.id));
+
+    // The store's billing snapshot lists its owners.
+    if (invitation.role === 'owner') await markStore(tx, invitation.storeId);
   });
-
-  await db
-    .update(storeInvitations)
-    .set({
-      status: 'accepted',
-      acceptedAt: new Date(),
-    })
-    .where(eq(storeInvitations.id, invitation.id));
 
   const setStoreResult = await setActiveStoreId(invitation.storeId);
   if (!setStoreResult.success) {

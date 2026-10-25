@@ -1,8 +1,13 @@
-import { eq, sql } from 'drizzle-orm';
+import { type SQL, eq, sql } from 'drizzle-orm';
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { nanoid } from 'nanoid';
 
 import type { Database, Transaction } from '@louez/db';
+import {
+  billingMarkStatement,
+  isBillingSyncEnabled,
+  markLegacyStore,
+} from '@louez/db/billing-queue';
 import { stores, subscriptions } from '@louez/db/schema';
 import type { PayAsYouGoConfig } from '@louez/types';
 
@@ -21,7 +26,9 @@ import {
  * The freeze uses raw SQL on purpose: the cloud backfill runs it BEFORE migration 0081
  * adds `pricing_version`, and Drizzle inserts list every column of the schema. It takes
  * an explicit connection and never imports the app's `db`, so scripts can point it at
- * MIGRATE_DATABASE_URL.
+ * MIGRATE_DATABASE_URL. For the same reason it imports the billing marks from their own
+ * entry point, not from `@louez/db`. Every write to a subscription row marks the store's
+ * legacy_store snapshot for the billing service (louez-billing docs/api, README §5.2).
  */
 
 /** What a never-frozen store was paying before the lock, written onto its row once. */
@@ -59,6 +66,7 @@ export interface PlannedRowCreation {
 
 export interface PlannedRowNormalization {
   subscriptionId: string;
+  storeId: string;
   /** The stored JSON, matched again at write time so a concurrent edit is never overwritten. */
   storedConfig: PayAsYouGoConfig;
   /** Same prices, every tier written out, so the row no longer depends on a code default. */
@@ -162,7 +170,7 @@ export async function planLegacyPricingFreeze(
 
   const stored = await select(
     connection,
-    `SELECT id, pay_as_you_go_config AS config FROM subscriptions
+    `SELECT id, store_id, pay_as_you_go_config AS config FROM subscriptions
      WHERE pay_as_you_go_config IS NOT NULL ORDER BY id`,
   );
   const rowsToNormalize = stored.flatMap((row) => {
@@ -171,7 +179,14 @@ export async function planLegacyPricingFreeze(
     const literalConfig = buildFrozenPayAsYouGoConfig(storedConfig, storedConfig.currency ?? '');
     return isLiteralConfig(storedConfig, literalConfig)
       ? []
-      : [{ subscriptionId: String(row.id), storedConfig, literalConfig }];
+      : [
+          {
+            subscriptionId: String(row.id),
+            storeId: String(row.store_id),
+            storedConfig,
+            literalConfig,
+          },
+        ];
   });
 
   const versionColumn = hasPricingVersion ? 'sub.pricing_version' : 'NULL';
@@ -214,10 +229,22 @@ export async function planLegacyPricingFreeze(
   };
 }
 
+/** Whether migration 0085 (the billing queue) has run on this database. */
+async function hasBillingQueueTable(connection: Connection): Promise<boolean> {
+  const [row] = await select(
+    connection,
+    `SELECT COUNT(*) AS n FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'billing_sync_queue'`,
+  );
+  return Number(row?.n) > 0;
+}
+
 /**
  * Apply a plan in one transaction. Every statement re-checks that the row still has no
  * config (or that the store still has no row), so a plan applied twice, or concurrently,
- * changes nothing the second time.
+ * changes nothing the second time. Each store whose row changed gets its legacy_store
+ * mark in the same transaction; the scripts may run before migration 0085, so no mark is
+ * written without the queue table.
  */
 export async function applyLegacyPricingFreeze(
   connection: Connection,
@@ -227,20 +254,30 @@ export async function applyLegacyPricingFreeze(
   const result: PricingFreezeResult = { tagged: 0, normalized: 0, frozen: 0, created: 0 };
   if (isEmptyFreezePlan(plan)) return result;
   const version = plan.hasPricingVersion;
+  const changedStores = new Set<string>();
 
   await connection.beginTransaction();
   try {
+    const marking = isBillingSyncEnabled() && (await hasBillingQueueTable(connection));
+
     if (version && plan.rowsToTag > 0) {
+      const untagged = `pricing_version IS NULL AND pay_as_you_go_config IS NOT NULL`;
+      if (marking) {
+        const rows = await select(
+          connection,
+          `SELECT store_id FROM subscriptions WHERE ${untagged} FOR UPDATE`,
+        );
+        for (const row of rows) changedStores.add(String(row.store_id));
+      }
       result.tagged = await execute(
         connection,
-        `UPDATE subscriptions SET pricing_version = ?
-         WHERE pricing_version IS NULL AND pay_as_you_go_config IS NOT NULL`,
+        `UPDATE subscriptions SET pricing_version = ? WHERE ${untagged}`,
         [PAYG_LADDER_V1],
       );
     }
 
     for (const row of plan.rowsToNormalize) {
-      result.normalized += await execute(
+      const changed = await execute(
         connection,
         `UPDATE subscriptions SET pay_as_you_go_config = CAST(? AS JSON), updated_at = NOW()
          WHERE id = ? AND pay_as_you_go_config = CAST(? AS JSON)`,
@@ -250,13 +287,15 @@ export async function applyLegacyPricingFreeze(
           JSON.stringify(row.storedConfig),
         ],
       );
+      result.normalized += changed;
+      if (changed > 0) changedStores.add(row.storeId);
     }
 
     // An existing row keeps its stored allowance: only stores without a row followed
     // PAYG_FREE_RESERVATIONS live.
     for (const row of plan.rowsToFreeze) {
       const config = JSON.stringify(buildFrozenPayAsYouGoConfig(terms.offer, row.currency));
-      result.frozen += await execute(
+      const changed = await execute(
         connection,
         `UPDATE subscriptions
          SET pay_as_you_go_config = CAST(? AS JSON),
@@ -265,12 +304,14 @@ export async function applyLegacyPricingFreeze(
          WHERE id = ? AND pay_as_you_go_config IS NULL`,
         [config, ...(version ? [PAYG_LADDER_V1] : []), row.subscriptionId],
       );
+      result.frozen += changed;
+      if (changed > 0) changedStores.add(row.storeId);
     }
 
     for (const store of plan.storesToCreate) {
       const config = JSON.stringify(buildFrozenPayAsYouGoConfig(terms.offer, store.currency));
       // affectedRows is 1 for an insert and 0 when ON DUPLICATE KEY found a row.
-      result.created += await execute(
+      const created = await execute(
         connection,
         `INSERT INTO subscriptions
            (id, store_id, plan_slug, billing_mode, pay_as_you_go_config,
@@ -286,7 +327,20 @@ export async function applyLegacyPricingFreeze(
           terms.freeReservations,
         ],
       );
+      result.created += created;
+      if (created > 0) changedStores.add(store.storeId);
     }
+
+    const mark = marking
+      ? billingMarkStatement(
+          [...changedStores].map((storeId) => ({
+            type: 'legacy_store' as const,
+            aggregateId: storeId,
+            storeId,
+          })),
+        )
+      : null;
+    if (mark) await connection.query(mark.sql, mark.params);
 
     await connection.commit();
   } catch (error) {
@@ -328,28 +382,24 @@ export async function countUnfrozenPricing(connection: Connection): Promise<Unfr
 type Executor = Database | Transaction;
 
 /**
- * Make sure an EXISTING store has a subscription row before a write path updates it.
- * A missing row is created with exactly the pricing the store already resolves to
- * (`buildExistingStorePricing`), so callers only ever update their own columns and never
- * change what the store pays. Concurrent callers are safe (unique store_id). Creates
- * nothing when platform billing is off: such an instance writes no billing rows.
+ * Inserts the missing row of an existing store with exactly the pricing the store already
+ * resolves to. True when it inserted one.
  */
-export async function ensureSubscriptionRow(executor: Executor, storeId: string): Promise<void> {
-  if (!isBillingEnabled()) return;
-  const [existing] = await executor
+async function insertMissingRow(tx: Transaction, storeId: string): Promise<boolean> {
+  const [existing] = await tx
     .select({ id: subscriptions.id })
     .from(subscriptions)
     .where(eq(subscriptions.storeId, storeId))
     .limit(1);
-  if (existing) return;
+  if (existing) return false;
 
-  const [store] = await executor
+  const [store] = await tx
     .select({ settings: stores.settings })
     .from(stores)
     .where(eq(stores.id, storeId))
     .limit(1);
-  if (!store) return;
-  await executor
+  if (!store) return false;
+  const [inserted] = await tx
     .insert(subscriptions)
     .values({
       id: nanoid(),
@@ -359,6 +409,39 @@ export async function ensureSubscriptionRow(executor: Executor, storeId: string)
       ...buildExistingStorePricing(normalizeCurrency(store.settings?.currency)),
     })
     .onDuplicateKeyUpdate({ set: { storeId: sql`${subscriptions.storeId}` } });
+  return inserted.affectedRows === 1;
+}
+
+/**
+ * Make sure an EXISTING store has a subscription row before a write path updates it.
+ * A missing row is created with exactly the pricing the store already resolves to
+ * (`buildExistingStorePricing`), so callers only ever update their own columns and never
+ * change what the store pays. Concurrent callers are safe (unique store_id). Creates
+ * nothing when platform billing is off: such an instance writes no billing rows. Inside
+ * the caller's transaction it runs in a savepoint.
+ */
+export async function ensureSubscriptionRow(executor: Executor, storeId: string): Promise<void> {
+  if (!isBillingEnabled()) return;
+  await executor.transaction(async (tx) => {
+    if (await insertMissingRow(tx, storeId)) await markLegacyStore(tx, storeId);
+  });
+}
+
+/** Writes the allowance, creating a missing row first, and marks the store. */
+async function writeFreeReservations(
+  executor: Executor,
+  storeId: string,
+  granted: SQL,
+): Promise<void> {
+  if (!isBillingEnabled()) return;
+  await executor.transaction(async (tx) => {
+    await insertMissingRow(tx, storeId);
+    await tx
+      .update(subscriptions)
+      .set({ freeReservationsGranted: granted, updatedAt: new Date() })
+      .where(eq(subscriptions.storeId, storeId));
+    await markLegacyStore(tx, storeId);
+  });
 }
 
 /**
@@ -371,15 +454,11 @@ export async function addFreeReservations(
   storeId: string,
   count: number,
 ): Promise<void> {
-  if (!isBillingEnabled()) return;
-  await ensureSubscriptionRow(executor, storeId);
-  await executor
-    .update(subscriptions)
-    .set({
-      freeReservationsGranted: sql`${subscriptions.freeReservationsGranted} + ${count}`,
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.storeId, storeId));
+  await writeFreeReservations(
+    executor,
+    storeId,
+    sql`${subscriptions.freeReservationsGranted} + ${count}`,
+  );
 }
 
 /**
@@ -392,13 +471,9 @@ export async function raiseFreeReservations(
   storeId: string,
   count: number,
 ): Promise<void> {
-  if (!isBillingEnabled()) return;
-  await ensureSubscriptionRow(executor, storeId);
-  await executor
-    .update(subscriptions)
-    .set({
-      freeReservationsGranted: sql`GREATEST(${subscriptions.freeReservationsGranted}, ${count})`,
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.storeId, storeId));
+  await writeFreeReservations(
+    executor,
+    storeId,
+    sql`GREATEST(${subscriptions.freeReservationsGranted}, ${count})`,
+  );
 }

@@ -4,7 +4,14 @@ import { and, eq, gt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
-import { db, payments, reservationActivity, reservations, verificationCodes } from "@louez/db";
+import {
+  db,
+  markReservation,
+  payments,
+  reservationActivity,
+  reservations,
+  verificationCodes,
+} from "@louez/db";
 
 import { log } from "@/lib/evlog";
 import {
@@ -293,11 +300,17 @@ export const confirmDepositAuthorization = async (
         method: "stripe",
         stripePaymentIntentId: paymentIntentId,
         stripePaymentMethodId: paymentMethodId,
+        // Billing facts (contract Q36): a hold is never insured rental money.
+        origin: "deposit",
+        grossMinor: intent.amount,
+        insuranceShareMinor: 0,
+        stripeAccountId: store.stripeAccountId,
         authorizationExpiresAt,
         notes: "Deposit authorization hold",
         createdAt: now,
         updatedAt: now,
       });
+      await markReservation(tx, { id: reservation.id, storeId: store.id });
 
       await tx.insert(reservationActivity).values({
         id: nanoid(),

@@ -6,7 +6,15 @@ import { cookies } from "next/headers";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 
-import { db, storeMembers, stores, subscriptions, users } from "@louez/db";
+import {
+  db,
+  markLegacyStore,
+  markStore,
+  storeMembers,
+  stores,
+  subscriptions,
+  users,
+} from "@louez/db";
 import { type StoreInfoInput, storeInfoSchema } from "@louez/validations";
 import { defaultBusinessHours } from "@louez/validations";
 
@@ -307,35 +315,39 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       existingSettings?.businessHours?.enabled !== undefined
         ? existingSettings.businessHours
         : defaultBusinessHours;
-    await db
-      .update(stores)
-      .set({
-        name: validated.data.name,
-        slug: validated.data.slug,
-        address: validated.data.address || null,
-        latitude: validated.data.latitude?.toString() || null,
-        longitude: validated.data.longitude?.toString() || null,
-        email: validated.data.email || null,
-        phone: validated.data.phone || null,
-        referredByUserId:
-          pendingReferral.attribution?.referredByUserId ?? storeToUpdate.referredByUserId,
-        referredByStoreId:
-          pendingReferral.attribution?.referredByStoreId ?? storeToUpdate.referredByStoreId,
-        settings: {
-          ...existingSettings,
-          reservationMode: existingSettings?.reservationMode ?? "payment",
-          minRentalMinutes: existingSettings?.minRentalMinutes ?? 60,
-          maxRentalMinutes: existingSettings?.maxRentalMinutes ?? null,
-          advanceNoticeMinutes: existingSettings?.advanceNoticeMinutes ?? 1440,
-          turnoverBufferMinutes: existingSettings?.turnoverBufferMinutes ?? 0,
-          businessHours: existingBusinessHours,
-          country: validated.data.country,
-          timezone: getTimezoneForCountry(validated.data.country),
-          currency: validated.data.currency,
-        },
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, storeToUpdate.id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(stores)
+        .set({
+          name: validated.data.name,
+          slug: validated.data.slug,
+          address: validated.data.address || null,
+          latitude: validated.data.latitude?.toString() || null,
+          longitude: validated.data.longitude?.toString() || null,
+          email: validated.data.email || null,
+          phone: validated.data.phone || null,
+          referredByUserId:
+            pendingReferral.attribution?.referredByUserId ?? storeToUpdate.referredByUserId,
+          referredByStoreId:
+            pendingReferral.attribution?.referredByStoreId ?? storeToUpdate.referredByStoreId,
+          settings: {
+            ...existingSettings,
+            reservationMode: existingSettings?.reservationMode ?? "payment",
+            minRentalMinutes: existingSettings?.minRentalMinutes ?? 60,
+            maxRentalMinutes: existingSettings?.maxRentalMinutes ?? null,
+            advanceNoticeMinutes: existingSettings?.advanceNoticeMinutes ?? 1440,
+            turnoverBufferMinutes: existingSettings?.turnoverBufferMinutes ?? 0,
+            businessHours: existingBusinessHours,
+            country: validated.data.country,
+            timezone: getTimezoneForCountry(validated.data.country),
+            currency: validated.data.currency,
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(stores.id, storeToUpdate.id));
+      // The slug, settings and referral columns are in the store's billing snapshot.
+      await markStore(tx, storeToUpdate.id);
+    });
 
     if (isExistingIncompleteStore) {
       // The Referred Reward is a billing credit: none without platform billing.
@@ -460,6 +472,10 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
         userId: session.user.id,
         role: "owner",
       });
+      // Both aggregates are marked for every store; the relay never sends the legacy
+      // one of a new store (billing contract README §8.3).
+      await markStore(tx, createdStore.id);
+      await markLegacyStore(tx, createdStore.id);
 
       // New stores default to pay-as-you-go billing (the owner can switch to a
       // subscription plan at any time from the subscription page). The current offer for

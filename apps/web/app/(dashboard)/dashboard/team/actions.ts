@@ -71,7 +71,8 @@ export async function addTeamMember(formData: FormData) {
       return { error: "dashboard.team.alreadyMember" };
     }
 
-    // Add as member directly
+    // Add as member directly. Only owners are in the store's billing snapshot, so
+    // this needs no billing mark.
     await db.insert(storeMembers).values({
       storeId: store.id,
       userId: existingUser.id,
@@ -185,6 +186,7 @@ export async function removeMember(memberId: string) {
     return { error: "dashboard.team.cannotRemoveOwner" };
   }
 
+  // Never an owner, so the store's billing snapshot does not change.
   await db.delete(storeMembers).where(eq(storeMembers.id, memberId));
 
   revalidatePath("/dashboard/team");

@@ -4,6 +4,7 @@ import {
   documents,
   invoicePayments,
   invoices,
+  markReservationIds,
   payments,
   reservations,
   storeIntegrations,
@@ -17,6 +18,7 @@ import { log } from "@/lib/evlog";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { InvoiceDocument } from "@/lib/pdf/invoice";
 import { generateContract } from "@/lib/pdf/generate";
+import { grossMinorOf } from "@/lib/reservations/payment-billing-facts";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { buildCreditNoteSnapshots, buildInvoiceSnapshots } from "./core";
@@ -393,6 +395,8 @@ export async function ensureRefundPaymentRecord(input: {
   type: "rental" | "deposit_return";
   paidAt: Date;
   notes?: string | null;
+  /** Stripe's refund amount in minor units; derived from `amount` when absent. */
+  grossMinor?: number;
 }): Promise<string> {
   return db.transaction(async (tx) => {
     await tx
@@ -416,10 +420,11 @@ export async function ensureRefundPaymentRecord(input: {
     if (existingRefund) return existingRefund.id;
 
     const refundPaymentId = nanoid();
+    const amount = Number(input.amount).toFixed(2);
     await tx.insert(payments).values({
       id: refundPaymentId,
       reservationId: originalPayment.reservationId,
-      amount: Number(input.amount).toFixed(2),
+      amount,
       type: input.type,
       method: "stripe",
       status: "completed",
@@ -429,11 +434,16 @@ export async function ensureRefundPaymentRecord(input: {
       // Stripe refund rows: that charge is already net.
       refundOfPaymentId: input.originalPaymentId,
       currency: input.currency,
+      // The billing service gets this refund folded onto the payment it refunds,
+      // never as a payment, so the row has no origin and no insurance share.
+      grossMinor: input.grossMinor ?? grossMinorOf(amount, input.currency),
+      insuranceShareMinor: 0,
       notes: input.notes ?? null,
       paidAt: input.paidAt,
       createdAt: input.paidAt,
       updatedAt: input.paidAt,
     });
+    await markReservationIds(tx, [originalPayment.reservationId]);
     return refundPaymentId;
   });
 }

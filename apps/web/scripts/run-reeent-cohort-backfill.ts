@@ -11,7 +11,7 @@ config({ path: resolve(repositoryRoot, ".env.local"), quiet: true });
 config({ path: resolve(repositoryRoot, ".env"), quiet: true });
 
 async function main() {
-  const [{ db, storeMarketplaceChannels }, { env }] = await Promise.all([
+  const [{ db, markBillingDirty, storeMarketplaceChannels }, { env }] = await Promise.all([
     import("@louez/db"),
     import("../env"),
   ]);
@@ -35,6 +35,7 @@ async function main() {
     const candidates = await tx
       .select({
         id: storeMarketplaceChannels.id,
+        storeId: storeMarketplaceChannels.storeId,
         publishedAt: storeMarketplaceChannels.publishedAt,
         createdAt: storeMarketplaceChannels.createdAt,
       })
@@ -56,8 +57,9 @@ async function main() {
       .limit(remainingSlots)
       .for("update");
 
+    const waivedStoreIds: string[] = [];
     for (const [index, candidate] of candidates.entries()) {
-      await tx
+      const [updated] = await tx
         .update(storeMarketplaceChannels)
         .set({
           cohortRank: nextRank + index,
@@ -70,7 +72,13 @@ async function main() {
             isNull(storeMarketplaceChannels.cohortRank),
           ),
         );
+      if (updated.affectedRows > 0) waivedStoreIds.push(candidate.storeId);
     }
+    // The cohort rank and the waiver are in each store's billing snapshot.
+    await markBillingDirty(
+      tx,
+      waivedStoreIds.map((storeId) => ({ type: "store", aggregateId: storeId, storeId })),
+    );
 
     return {
       cohortSize,

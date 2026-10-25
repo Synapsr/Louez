@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
-import { db } from '@louez/db'
+import { db, markLegacyStore } from '@louez/db'
 import {
   aiCredits,
   aiCreditTransactions,
@@ -424,15 +424,18 @@ async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subscription
   const firstItem = stripeSubscription.items.data[0]
   const currentPeriodEnd = new Date(firstItem.current_period_end * 1000)
 
-  await db
-    .update(subscriptions)
-    .set({
-      status,
-      currentPeriodEnd,
-      cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.id, subscription.id))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(subscriptions)
+      .set({
+        status,
+        currentPeriodEnd,
+        cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+        updatedAt: new Date(),
+      })
+      .where(eq(subscriptions.id, subscription.id))
+    await markLegacyStore(tx, subscription.storeId)
+  })
 
   console.log(`Subscription updated: ${stripeSubscription.id} -> ${status}`)
 }

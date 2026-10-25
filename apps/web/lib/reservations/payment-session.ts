@@ -3,13 +3,21 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import { db, payments, reservationActivity, reservations, stores } from "@louez/db";
+import {
+  db,
+  markReservation,
+  payments,
+  reservationActivity,
+  reservations,
+  stores,
+} from "@louez/db";
 import { validateStripePaymentAmount } from "@louez/utils";
 
 import { env } from "@/env";
+import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
-import { buildFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
+import { buildLegacyFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -19,6 +27,7 @@ import { isRentalPaid } from "@/lib/reservations/util.payment-status";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
+import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
 export async function createReservationPaymentSessionForCustomer(
   storeSlug: string,
@@ -122,10 +131,13 @@ export async function createReservationPaymentSessionForCustomer(
           // Session may already be expired or completed.
         }
       }
-      await db
-        .update(payments)
-        .set({ status: "cancelled", updatedAt: new Date() })
-        .where(eq(payments.id, pending.id));
+      await db.transaction(async (tx) => {
+        await tx
+          .update(payments)
+          .set({ status: "cancelled", updatedAt: new Date() })
+          .where(and(eq(payments.id, pending.id), eq(payments.reservationId, reservation.id)));
+        await markReservation(tx, reservation);
+      });
     }
 
     const lineItems = [
@@ -144,6 +156,13 @@ export async function createReservationPaymentSessionForCustomer(
       billing,
       includeMarketplaceFee: reservation.source === "marketplace",
     });
+    const insuranceShareMinor = paymentInsuranceShareMinor("rental", chargeCents, () =>
+      reservationTotalsMinor({
+        reservation,
+        storeSettings: store.settings,
+        items: reservation.items,
+      }),
+    );
 
     const { url, sessionId, expiresAt } = await createCheckoutSession({
       stripeAccountId,
@@ -155,7 +174,12 @@ export async function createReservationPaymentSessionForCustomer(
       depositAmount: toStripeCents(Number.parseFloat(reservation.depositAmount), currency),
       currency,
       applicationFeeAmount: feePlan.applicationFeeCents,
-      feeMetadata: buildFeeMetadata(feePlan),
+      feeMetadata: buildLegacyFeeMetadata(feePlan, {
+        insuranceShareMinor: insuranceShareMinor ?? 0,
+        paymentKind: "rental",
+        reservationId,
+        storeId: store.id,
+      }),
       successUrl:
         successUrl ??
         getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=success`),
@@ -176,10 +200,12 @@ export async function createReservationPaymentSessionForCustomer(
         method: "stripe",
         status: "pending",
         stripeCheckoutSessionId: sessionId,
+        origin: "customer_session",
         currency,
         createdAt: now,
         updatedAt: now,
       });
+      await markReservation(tx, reservation);
 
       await tx.insert(reservationActivity).values({
         id: nanoid(),

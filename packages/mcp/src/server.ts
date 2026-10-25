@@ -30,7 +30,7 @@ export function createMcpServer(ctx: McpSessionContext, deps: McpServerDeps): Mc
   registerCategoryTools(server, ctx);
   registerReservationTools(server, ctx, deps);
   registerCustomerTools(server, ctx);
-  registerPaymentTools(server, ctx);
+  registerPaymentTools(server, ctx, deps);
   registerAnalyticsTools(server, ctx);
   registerSettingsTools(server, ctx);
   registerCalendarTools(server, ctx);

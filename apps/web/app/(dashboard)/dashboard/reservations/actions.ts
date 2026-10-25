@@ -24,6 +24,7 @@ import {
   insertReservation,
   isStripeRefundPaymentSql,
   loadConsumableReservedQuantities,
+  markReservation,
   reconcileReservationStock,
   reservationStatusConsumesStock,
 } from "@louez/db";
@@ -126,7 +127,16 @@ import {
   productAnalyticsEvents,
   reservationAnalyticsActions,
 } from "@/lib/product-analytics/analytics-events";
+import {
+  deleteRecordedPayment,
+  insertManualRefund,
+  insertRecordedPayment,
+  recordDepositCapture,
+  recordDepositHold,
+  recordDepositRelease,
+} from "@/lib/reservations/dashboard-payment-writes";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
+import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
 import {
   cancelStoreReservation,
   updateStoreReservationStatus,
@@ -1247,6 +1257,8 @@ export async function createManualReservation(data: CreateReservationData) {
       customerId,
       number: reservationNumber,
       status: data.sendAsQuote ? "quote" : "confirmed",
+      // Frozen at creation: the store can change its currency later (billing contract Q4).
+      currency: reservationCurrency(null, store.settings),
       startDate: data.startDate,
       endDate: data.endDate,
       subtotalAmount: subtotalAmount.toFixed(2),
@@ -3174,6 +3186,8 @@ export async function updateReservation(
             updatedAt: new Date(),
           })
           .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
+        // Dates, totals, items, insurance and delivery are in the billing snapshot.
+        await markReservation(tx, { id: reservationId, storeId: store.id });
 
         await validateReservationContract(tx, reservationId, store.id, "confirmation");
         await resolveDateChangeRequests(
@@ -3396,13 +3410,15 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
 
   const paymentId = nanoid();
   await db.transaction(async (tx) => {
-    await tx.insert(payments).values({
+    await insertRecordedPayment(tx, {
       id: paymentId,
       reservationId,
+      storeId: store.id,
+      storeSettings: store.settings,
       amount: data.amount.toFixed(2),
       type: data.type,
       method: data.method,
-      status: "completed",
+      origin: "manual",
       paidAt: data.paidAt || new Date(),
       notes: data.notes || null,
     });
@@ -3475,9 +3491,11 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
           id: payments.id,
           amount: payments.amount,
           type: payments.type,
+          method: payments.method,
           status: payments.status,
           currency: payments.currency,
           refundOfPaymentId: payments.refundOfPaymentId,
+          reservationCurrency: reservations.currency,
         })
         .from(payments)
         .innerJoin(reservations, eq(reservations.id, payments.reservationId))
@@ -3526,20 +3544,18 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
       }
 
       const paymentId = nanoid();
-      const paidAt = new Date();
-      await tx.insert(payments).values({
+      await insertManualRefund(tx, {
         id: paymentId,
         reservationId,
+        storeId: store.id,
+        storeSettings: store.settings,
+        reservationCurrency: originalPayment.reservationCurrency,
+        original: originalPayment,
         amount: data.amount.toFixed(2),
         type: originalPayment.type === "deposit_capture" ? "deposit_return" : "rental",
         method: data.method,
-        status: "completed",
-        refundOfPaymentId: originalPayment.id,
-        currency: originalPayment.currency,
         notes: data.notes?.trim() || null,
-        paidAt,
-        createdAt: paidAt,
-        updatedAt: paidAt,
+        paidAt: new Date(),
       });
 
       return paymentId;
@@ -3602,7 +3618,11 @@ export async function deletePayment(paymentId: string) {
     return { error: "errors.cannotDeleteStripePayment" };
   }
 
-  await db.delete(payments).where(eq(payments.id, paymentId));
+  await deleteRecordedPayment(db, {
+    paymentId,
+    reservationId: payment.reservationId,
+    storeId: store.id,
+  });
 
   // Log activity
   await logReservationActivity(payment.reservationId, "payment_updated", {
@@ -3671,16 +3691,20 @@ export async function returnDeposit(reservationId: string, data: ReturnDepositDa
   }
 
   const paymentId = nanoid();
-  await db.insert(payments).values({
-    id: paymentId,
-    reservationId,
-    amount: data.amount.toFixed(2),
-    type: "deposit_return",
-    method: data.method,
-    status: "completed",
-    paidAt: new Date(),
-    notes: data.notes || null,
-  });
+  await db.transaction((tx) =>
+    insertRecordedPayment(tx, {
+      id: paymentId,
+      reservationId,
+      storeId: store.id,
+      storeSettings: store.settings,
+      amount: data.amount.toFixed(2),
+      type: "deposit_return",
+      method: data.method,
+      origin: "deposit",
+      paidAt: new Date(),
+      notes: data.notes || null,
+    }),
+  );
 
   // Log activity
   await logReservationActivity(reservationId, "payment_added", {
@@ -3727,16 +3751,20 @@ export async function recordDamage(
   }
 
   const paymentId = nanoid();
-  await db.insert(payments).values({
-    id: paymentId,
-    reservationId,
-    amount: data.amount.toFixed(2),
-    type: "damage",
-    method: data.method,
-    status: "completed",
-    paidAt: new Date(),
-    notes: data.notes,
-  });
+  await db.transaction((tx) =>
+    insertRecordedPayment(tx, {
+      id: paymentId,
+      reservationId,
+      storeId: store.id,
+      storeSettings: store.settings,
+      amount: data.amount.toFixed(2),
+      type: "damage",
+      method: data.method,
+      origin: "manual",
+      paidAt: new Date(),
+      notes: data.notes,
+    }),
+  );
 
   await tryGenerateInvoiceForPayment(paymentId, "dashboard_record_damage");
 
@@ -3824,13 +3852,14 @@ export async function createDepositHold(reservationId: string) {
   }
 
   const currency = store.settings?.currency || "EUR";
+  const amountMinor = toStripeCents(depositAmount, currency);
 
   try {
     const result = await createDepositAuthorization({
       stripeAccountId: store.stripeAccountId,
       customerId: reservation.stripeCustomerId,
       paymentMethodId: reservation.stripePaymentMethodId,
-      amount: toStripeCents(depositAmount, currency),
+      amount: amountMinor,
       currency,
       reservationId,
       reservationNumber: reservation.number,
@@ -3857,31 +3886,18 @@ export async function createDepositHold(reservationId: string) {
       return { error: "errors.stripe.authorizationFailed" };
     }
 
-    // Update reservation
-    await db
-      .update(reservations)
-      .set({
-        depositStatus: "authorized",
-        depositPaymentIntentId: result.paymentIntentId,
-        depositAuthorizationExpiresAt: result.expiresAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    // Create payment record
-    await db.insert(payments).values({
-      id: nanoid(),
+    await recordDepositHold(db, {
+      paymentId: nanoid(),
       reservationId,
+      storeId: store.id,
+      stripeAccountId: store.stripeAccountId,
+      paymentIntentId: result.paymentIntentId,
+      paymentMethodId: reservation.stripePaymentMethodId,
+      expiresAt: result.expiresAt,
       amount: depositAmount.toFixed(2),
-      type: "deposit_hold",
-      method: "stripe",
-      status: "authorized",
-      stripePaymentIntentId: result.paymentIntentId,
-      stripePaymentMethodId: reservation.stripePaymentMethodId,
-      authorizationExpiresAt: result.expiresAt,
+      amountMinor,
       currency,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      now: new Date(),
     });
 
     // Log activity
@@ -3972,52 +3988,19 @@ export async function captureDepositHold(
       amountToCapture: toStripeCents(data.amount, currency),
     });
 
-    // Update reservation
-    await db
-      .update(reservations)
-      .set({
-        depositStatus: "captured",
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    // Update the deposit_hold payment
-    const depositPayment = await db.query.payments.findFirst({
-      where: and(
-        eq(payments.reservationId, reservationId),
-        eq(payments.type, "deposit_hold"),
-        eq(payments.status, "authorized"),
-      ),
-    });
-
-    if (depositPayment) {
-      await db
-        .update(payments)
-        .set({
-          status: "completed",
-          capturedAmount: data.amount.toFixed(2),
-          notes: data.reason,
-          paidAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(payments.id, depositPayment.id));
-    }
-
-    // Create deposit_capture payment record
     const capturePaymentId = nanoid();
-    await db.insert(payments).values({
-      id: capturePaymentId,
+    await recordDepositCapture(db, {
+      capturePaymentId,
       reservationId,
+      storeId: store.id,
+      stripeAccountId: store.stripeAccountId,
+      paymentIntentId: reservation.depositPaymentIntentId,
+      stripeChargeId: result.chargeId,
       amount: data.amount.toFixed(2),
-      type: "deposit_capture",
-      method: "stripe",
-      status: "completed",
-      stripePaymentIntentId: reservation.depositPaymentIntentId,
-      currency,
-      notes: data.reason,
-      paidAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      capturedMinor: result.amountCaptured,
+      currency: result.currency,
+      reason: data.reason,
+      now: new Date(),
     });
 
     await tryGenerateInvoiceForPayment(capturePaymentId, "dashboard_capture_deposit_hold");
@@ -4078,33 +4061,7 @@ export async function releaseDepositHold(reservationId: string) {
       paymentIntentId: reservation.depositPaymentIntentId,
     });
 
-    // Update reservation
-    await db
-      .update(reservations)
-      .set({
-        depositStatus: "released",
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
-
-    // Update the deposit_hold payment
-    const depositPayment = await db.query.payments.findFirst({
-      where: and(
-        eq(payments.reservationId, reservationId),
-        eq(payments.type, "deposit_hold"),
-        eq(payments.status, "authorized"),
-      ),
-    });
-
-    if (depositPayment) {
-      await db
-        .update(payments)
-        .set({
-          status: "cancelled",
-          updatedAt: new Date(),
-        })
-        .where(eq(payments.id, depositPayment.id));
-    }
+    await recordDepositRelease(db, { reservationId, storeId: store.id, now: new Date() });
 
     // Log activity
     const currency = store.settings?.currency || "EUR";
@@ -4229,6 +4186,7 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
         originalPaymentId: stripePayment.id,
         stripeRefundId: refund.refundId,
         amount: data.amount,
+        grossMinor: refund.amount,
         type: data.type === "deposit_return" ? "deposit_return" : "rental",
         currency: refund.currency,
         notes: data.notes,

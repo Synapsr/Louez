@@ -10,6 +10,7 @@
     "./schema": "./src/schema.ts",
     "./env": "./src/env.ts",
     "./payment-receipts": "./src/payment-receipts.ts",
+    "./billing-queue": "./src/billing-queue.ts",
     "./testing": "./src/testing/test-database.ts"
   },
   "scripts": {

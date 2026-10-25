@@ -504,3 +504,18 @@ export async function notifyAiRateLimitHit(
     console.error('[Discord] AI rate limit notification failed:', error)
   }
 }
+
+// ---------------------------------------------------------------------------
+// Billing service sync
+// ---------------------------------------------------------------------------
+
+/**
+ * A billing sync alert (lib/billing-sync/alerts.ts), which already limits each kind
+ * to one message an hour. The message holds ids and counts, never personal data.
+ */
+export async function notifyBillingAlert(kind: string, message: string): Promise<void> {
+  if (!isEnabled()) return
+  // Discord refuses messages over 2,000 characters.
+  const text = message.length > 1800 ? `${message.slice(0, 1800)}…` : message
+  await send(`🧾 Billing sync alert (${kind}): ${text}`)
+}

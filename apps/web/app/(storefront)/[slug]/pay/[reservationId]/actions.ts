@@ -8,12 +8,14 @@ import { z } from "zod";
 import { db, paymentRequests, reservations } from "@louez/db";
 import { validateStripePaymentAmount } from "@louez/utils";
 
+import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
-import { buildFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
+import { buildLegacyFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { createPaymentRequestSession, toStripeCents } from "@/lib/stripe";
+import { paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 
 export type PaymentRequestError =
   | "store_not_found"
@@ -92,7 +94,11 @@ const loadPaymentRequestContext = async ({
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: { customer: true },
+    with: {
+      customer: true,
+      // The insurance share of a rental payment reads the reservation's totals.
+      items: { columns: { productId: true, taxRate: true, totalPrice: true } },
+    },
   });
   if (!reservation) {
     return { ok: false as const, error: "reservation_not_found" as const };
@@ -195,6 +201,14 @@ export const initiatePayment = async (
             billing: await getStoreBilling(store.id),
           })
         : null;
+    const paymentKind = paymentRequest.type === "rental" ? "rental" : "custom_request";
+    const insuranceShareMinor = paymentInsuranceShareMinor(paymentKind, chargeCents, () =>
+      reservationTotalsMinor({
+        reservation,
+        storeSettings: store.settings,
+        items: reservation.items,
+      }),
+    );
 
     const session = await createPaymentRequestSession({
       stripeAccountId: store.stripeAccountId,
@@ -212,7 +226,12 @@ export const initiatePayment = async (
       ),
       paymentRequestId: paymentRequest.id,
       applicationFeeAmount: feePlan?.applicationFeeCents,
-      feeMetadata: feePlan ? buildFeeMetadata(feePlan) : undefined,
+      feeMetadata: buildLegacyFeeMetadata(feePlan, {
+        insuranceShareMinor: insuranceShareMinor ?? 0,
+        paymentKind,
+        reservationId: reservation.id,
+        storeId: store.id,
+      }),
       locale,
     });
 

@@ -135,7 +135,8 @@ interface CreateCheckoutSessionParams {
   successUrl: string;
   cancelUrl: string;
   applicationFeeAmount?: number; // In cents (platform fee)
-  feeMetadata?: Record<string, string>; // platform fee breakdown, merged into PI metadata
+  /** Fee metadata v4, on the session and on its PaymentIntent (billing fees.md §8). */
+  feeMetadata?: Record<string, string>;
   locale?: string;
   /**
    * Stamped in the session metadata so the expiry webhook can tell a storefront
@@ -246,6 +247,7 @@ export async function createCheckoutSession({
     customer_creation: "always",
     metadata: {
       ...paymentReference.metadata,
+      ...feeMetadata,
       depositAmount: depositAmount.toString(),
       ...(checkoutFlow ? { checkoutFlow } : {}),
     },
@@ -310,7 +312,8 @@ interface CreatePaymentRequestSessionParams {
   cancelUrl: string;
   paymentRequestId: string;
   applicationFeeAmount?: number; // In cents (platform fee)
-  feeMetadata?: Record<string, string>; // platform fee breakdown, merged into PI metadata
+  /** Fee metadata v4, on the session and on its PaymentIntent (billing fees.md §8). */
+  feeMetadata?: Record<string, string>;
   locale?: string;
 }
 
@@ -373,14 +376,15 @@ export async function createPaymentRequestSession({
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
     metadata: {
       ...paymentReference.metadata,
+      ...feeMetadata,
       paymentRequestId,
     },
     payment_intent_data: {
       description: `${description} - ${paymentReference.description}`,
       metadata: {
         ...paymentReference.metadata,
-        paymentRequestId,
         ...feeMetadata,
+        paymentRequestId,
       },
       ...(applicationFeeAmount && applicationFeeAmount > 0
         ? { application_fee_amount: applicationFeeAmount }
@@ -595,6 +599,11 @@ export async function captureDeposit({
     status: paymentIntent.status,
     amountCaptured: paymentIntent.amount_received,
     currency: paymentIntent.currency.toUpperCase(),
+    // The payment row needs it to be matched with Stripe's application fees.
+    chargeId:
+      typeof paymentIntent.latest_charge === "string"
+        ? paymentIntent.latest_charge
+        : (paymentIntent.latest_charge?.id ?? null),
   };
 }
 

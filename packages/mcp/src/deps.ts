@@ -1,5 +1,7 @@
 import type { ReservationStatus } from "@louez/db";
 
+import type { McpPaymentDeps } from "./tools/payments";
+
 export interface McpStatusChangeInput {
   storeId: string;
   reservationId: string;
@@ -23,14 +25,17 @@ export type McpStatusChangeResult =
   /** `message` is the answer to give. */
   | { ok: false; error: "refused"; message: string };
 
-/**
- * What the app gives the MCP server. packages/mcp cannot import apps/web, so
- * the HTTP route passes these in.
- */
-export interface McpServerDeps {
+/** What the reservation tools take from the app. */
+export interface McpReservationDeps {
   /**
    * Changes a reservation's status as the dashboard does: the stock check, the
    * fees, the insurance contract, the emails and the notifications.
    */
   changeReservationStatus: (input: McpStatusChangeInput) => Promise<McpStatusChangeResult>;
 }
+
+/**
+ * What the app gives the MCP server. packages/mcp cannot import apps/web, so
+ * the HTTP route passes these in.
+ */
+export type McpServerDeps = McpReservationDeps & McpPaymentDeps;

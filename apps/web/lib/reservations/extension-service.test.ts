@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, test } from "node:test";
+import { after, before, test } from "node:test";
 import * as nodeModule from "node:module";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,8 +8,13 @@ import { pathToFileURL } from "node:url";
 import { getTableName } from "drizzle-orm";
 import * as schema from "@louez/db/schema";
 import type Stripe from "stripe";
+import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
+import type { StripeFeePlan } from "@/lib/pay-as-you-go/metering";
 import type { ExtensionAttempt } from "./extension.types";
 
+// The real fee metadata and payment fact helpers load @louez/db: a closed port keeps
+// any query away from a real database.
+process.env.DATABASE_URL = "mysql://louez:louez@127.0.0.1:1/unreachable";
 const directory = mkdtempSync(join(tmpdir(), "louez-extension-tests-"));
 const fixturePath = join(directory, "dependencies.cjs");
 writeFileSync(fixturePath, "module.exports = globalThis.__louezExtensionTestDependencies;");
@@ -51,6 +56,13 @@ const fresh = () => ({
   },
   customer: { email: "customer@example.invalid" },
   activity: [] as Array<{ id: string; metadata: ExtensionAttempt }>,
+  // The totals the insurance share reads.
+  currency: "EUR",
+  totalAmount: "20.00",
+  subtotalAmount: "20.00",
+  depositAmount: "0.00",
+  tulipInsuranceAmount: null,
+  items: [] as Array<{ productId: string | null; taxRate: string | null; totalPrice: string }>,
 });
 let reservation = fresh();
 let paymentRows: Record<string, unknown>[] = [];
@@ -62,6 +74,14 @@ let unavailable = false;
 let supplement = 20;
 let failRefund = false;
 let paidSession: Stripe.Checkout.Session;
+let feePlan: StripeFeePlan = {
+  applicationFeeCents: 0,
+  reservationFeeCents: 0,
+  marketplaceFeeCents: 0,
+};
+let sessionParams: Stripe.Checkout.SessionCreateParams[] = [];
+let intentResponse: Record<string, unknown> = { id: "pi_test", latest_charge: "ch_test" };
+let marks: string[] = [];
 let serial = Promise.resolve();
 class ExtensionError extends Error {}
 const fingerprint = () => `${reservation.status}:${reservation.endDate.toISOString()}`;
@@ -138,8 +158,10 @@ const dependencies = {
   resolveDateChangeRequests: async () => {},
   toStripeCents: (amount: number) => Math.round(amount * 100),
   getStoreBilling: async () => ({}),
-  planStripeFees: async () => ({ applicationFeeCents: 0 }),
-  buildFeeMetadata: () => ({}),
+  planStripeFees: async () => feePlan,
+  markReservation: async (_tx: unknown, row: { id: string }) => {
+    marks.push(row.id);
+  },
   getStorefrontUrl: (_slug: string, path = "") => `https://example.invalid${path}`,
   generateContract: async () => {
     contractCalls++;
@@ -154,15 +176,16 @@ const dependencies = {
   stripe: {
     checkout: {
       sessions: {
-        create: async () => {
+        create: async (params: Stripe.Checkout.SessionCreateParams) => {
           sessionCreates++;
+          sessionParams.push(params);
           return { id: "cs_test", url: "https://checkout.stripe.com/test", status: "open" };
         },
         retrieve: async () => paidSession,
         expire: async () => ({ status: "expired" }),
       },
     },
-    paymentIntents: { retrieve: async () => ({ id: "pi_test", latest_charge: "ch_test" }) },
+    paymentIntents: { retrieve: async () => intentResponse },
     refunds: {
       create: async () => {
         refundCalls++;
@@ -173,6 +196,11 @@ const dependencies = {
   },
 };
 Reflect.set(globalThis, "__louezExtensionTestDependencies", dependencies);
+// The real writer, so the session metadata can be read back.
+before(async () => {
+  const metering = await import("@/lib/pay-as-you-go/metering");
+  Object.assign(dependencies, { buildLegacyFeeMetadata: metering.buildLegacyFeeMetadata });
+});
 const intercepted = new Set([
   "@louez/db",
   "@/env",
@@ -218,8 +246,17 @@ const reset = () => {
   refundCalls = sessionCreates = emailCalls = contractCalls = 0;
   unavailable = failRefund = false;
   supplement = 20;
+  feePlan = { applicationFeeCents: 0, reservationFeeCents: 0, marketplaceFeeCents: 0 };
+  sessionParams = [];
+  intentResponse = { id: "pi_test", latest_charge: "ch_test" };
+  marks = [];
 };
-const makePaid = () => {
+const makePaid = (
+  metadata: Record<string, string> = {
+    reservationId: "reservation",
+    extensionId: reservation.activity[0].id,
+  },
+) => {
   paidSession = {
     id: "cs_test",
     mode: "payment",
@@ -228,10 +265,13 @@ const makePaid = () => {
     currency: "eur",
     amount_total: 2000,
     payment_intent: "pi_test",
-    metadata: { reservationId: "reservation", extensionId: reservation.activity[0].id },
+    metadata,
   } as unknown as Stripe.Checkout.Session;
   return paidSession;
 };
+/** Stripe metadata as Stripe returns it: strings. */
+const strings = (metadata: Stripe.MetadataParam | undefined | null): Record<string, string> =>
+  Object.fromEntries(Object.entries(metadata ?? {}).map(([key, value]) => [key, String(value)]));
 
 test("payment is required before applying dates; return and webhook replay write only one payment", async () => {
   reset();
@@ -266,7 +306,104 @@ test("a changed reservation or lost stock is refunded, never extended", async ()
     assert.equal(reservation.endDate.getTime(), originalEnd.getTime());
     assert.equal(refundCalls, 1);
     assert.equal(emailCalls, 0);
+    // The payment write and the refund each mark the reservation for billing.
+    assert.deepEqual(marks, ["reservation", "reservation"]);
   }
+});
+
+test("the extension session carries fee metadata v4, which the payment copies", async () => {
+  reset();
+  const billing = process.env.LOUEZ_BILLING;
+  process.env.LOUEZ_BILLING = "cloud";
+  try {
+    feePlan = { applicationFeeCents: 150, reservationFeeCents: 150, marketplaceFeeCents: 0 };
+    const service = await load();
+    await service.startExtension(input);
+    const [params] = sessionParams;
+    const sessionMetadata = strings(params.metadata);
+    const intentMetadata = strings(params.payment_intent_data?.metadata);
+    // The fee taken is the planner's, as before.
+    assert.equal(params.payment_intent_data?.application_fee_amount, 150);
+    const facts = {
+      metadataVersion: 4,
+      totalMinor: 150,
+      reservationMinor: 150,
+      marketplaceMinor: 0,
+      baseMinor: 0,
+      insuranceShareMinor: 0,
+      policyScope: "legacy",
+      policyVersion: 0,
+      paymentKind: "extension",
+    };
+    assert.deepEqual(readFeeMetadata(sessionMetadata), facts);
+    assert.deepEqual(readFeeMetadata(intentMetadata), facts);
+    for (const metadata of [sessionMetadata, intentMetadata]) {
+      assert.equal(metadata.reservationId, "reservation");
+      assert.equal(metadata.extensionId, reservation.activity[0].id);
+      assert.equal(metadata.type, "rental_extension");
+      assert.equal(metadata.storeId, "store");
+    }
+
+    const session = makePaid(sessionMetadata);
+    intentResponse = {
+      id: "pi_test",
+      latest_charge: { id: "ch_test", created: 1_900_000_000 },
+      metadata: intentMetadata,
+      application_fee_amount: 150,
+    };
+    assert.equal(await service.completeExtensionPayment(session, "acct_test"), "confirmed");
+    const [payment] = paymentRows;
+    assert.deepEqual(
+      {
+        origin: payment.origin,
+        grossMinor: payment.grossMinor,
+        insuranceShareMinor: payment.insuranceShareMinor,
+        stripeAccountId: payment.stripeAccountId,
+        stripeChargeId: payment.stripeChargeId,
+        paidAt: payment.paidAt,
+        appFeeTotalMinor: payment.appFeeTotalMinor,
+        appFeeReservationMinor: payment.appFeeReservationMinor,
+        appFeeMarketplaceMinor: payment.appFeeMarketplaceMinor,
+        appFeeBaseMinor: payment.appFeeBaseMinor,
+        appFeePolicyScope: payment.appFeePolicyScope,
+        appFeePolicyVersion: payment.appFeePolicyVersion,
+        appFeeMetadataVersion: payment.appFeeMetadataVersion,
+      },
+      {
+        origin: "extension",
+        grossMinor: 2000,
+        insuranceShareMinor: 0,
+        stripeAccountId: "acct_test",
+        stripeChargeId: "ch_test",
+        paidAt: new Date(1_900_000_000_000),
+        appFeeTotalMinor: 150,
+        appFeeReservationMinor: 150,
+        appFeeMarketplaceMinor: 0,
+        appFeeBaseMinor: 0,
+        appFeePolicyScope: "legacy",
+        appFeePolicyVersion: 0,
+        appFeeMetadataVersion: 4,
+      },
+    );
+    // applyExtension marks the reservation with the payment, in one transaction.
+    assert.deepEqual(marks, ["reservation"]);
+  } finally {
+    if (billing === undefined) delete process.env.LOUEZ_BILLING;
+    else process.env.LOUEZ_BILLING = billing;
+  }
+});
+
+test("with platform billing off, the extension session has no fee metadata", async () => {
+  reset();
+  const service = await load();
+  await service.startExtension(input);
+  const [params] = sessionParams;
+  assert.deepEqual(strings(params.metadata), {
+    reservationId: "reservation",
+    extensionId: reservation.activity[0].id,
+    type: "rental_extension",
+  });
+  assert.equal(readFeeMetadata(strings(params.payment_intent_data?.metadata)), null);
 });
 
 test("a failed refund remains recoverable and is not duplicated after success", async () => {

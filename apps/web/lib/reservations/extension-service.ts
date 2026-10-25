@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 import {
   db,
+  markReservation,
   payments,
   reservationActivity,
   reservationItems,
@@ -12,10 +13,13 @@ import {
   stores,
   type Transaction,
 } from "@louez/db";
+import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
+import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { stripe } from "@/lib/stripe/client";
 import { toStripeCents } from "@/lib/stripe";
+import { appFeeColumns, paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { buildFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
+import { buildLegacyFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
 import { generateContract } from "@/lib/pdf/generate";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
@@ -82,7 +86,18 @@ const applyExtension = async (
     reservation.status,
   );
   await writeAttempt(tx, id, reservation.id, { ...attempt, status: "confirmed" });
+  await markReservation(tx, reservation);
 };
+
+/** The extension's insurance share, from the reservation before it is extended. */
+const extensionInsuranceShare = (reservation: ExtensionReservation, grossMinor: number) =>
+  paymentInsuranceShareMinor("extension", grossMinor, () =>
+    reservationTotalsMinor({
+      reservation,
+      storeSettings: reservation.store.settings,
+      items: reservation.items,
+    }),
+  );
 
 export const startExtension = async (input: {
   storeId: string;
@@ -180,15 +195,26 @@ export const startExtension = async (input: {
       return { status: "checkout" as const, url: session.url };
     throw new ExtensionError("expired");
   }
+  const chargeCents = toStripeCents(attempt.supplement, attempt.currency);
   const billing = await getStoreBilling(reservation.storeId);
   const fee = await planStripeFees({
     storeId: reservation.storeId,
     reservationId: reservation.id,
-    chargeCents: toStripeCents(attempt.supplement, attempt.currency),
+    chargeCents,
     billing,
   });
   const url = getStorefrontUrl(reservation.store.slug, `/account/reservations/${reservation.id}`);
-  const metadata = { reservationId: reservation.id, extensionId: id, type: "rental_extension" };
+  const metadata = {
+    ...buildLegacyFeeMetadata(fee, {
+      insuranceShareMinor: extensionInsuranceShare(reservation, chargeCents) ?? 0,
+      paymentKind: "extension",
+      reservationId: reservation.id,
+      storeId: reservation.storeId,
+    }),
+    reservationId: reservation.id,
+    extensionId: id,
+    type: "rental_extension",
+  };
   const session = await stripe.checkout.sessions.create(
     {
       mode: "payment",
@@ -199,7 +225,7 @@ export const startExtension = async (input: {
       cancel_url: url,
       metadata,
       payment_intent_data: {
-        metadata: { ...metadata, ...buildFeeMetadata(fee) },
+        metadata,
         ...(fee.applicationFeeCents > 0 ? { application_fee_amount: fee.applicationFeeCents } : {}),
       },
       line_items: [
@@ -207,7 +233,7 @@ export const startExtension = async (input: {
           quantity: 1,
           price_data: {
             currency: attempt.currency.toLowerCase(),
-            unit_amount: toStripeCents(attempt.supplement, attempt.currency),
+            unit_amount: chargeCents,
             product_data: {
               name: `${reservation.store.name} · #${reservation.number}`,
               description: `${attempt.originalEndDate} → ${new Date(attempt.requestedEndMs).toISOString()}`,
@@ -251,9 +277,14 @@ export const completeExtensionPayment = async (
       ? session.payment_intent
       : session.payment_intent?.id;
   if (!paymentIntentId) throw new ExtensionError("paymentUnavailable");
-  const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-    stripeAccount: connectedAccountId,
-  });
+  const intent = await stripe.paymentIntents.retrieve(
+    paymentIntentId,
+    { expand: ["latest_charge"] },
+    { stripeAccount: connectedAccountId },
+  );
+  const charge = intent.latest_charge;
+  // v3 fee keys were written on the PaymentIntent only; v4 is on both.
+  const feeFacts = readFeeMetadata(intent.metadata) ?? readFeeMetadata(session.metadata);
   const result = await extensionTransaction(async (tx) => {
     const reservation = await loadExtensionReservation(tx, store.id, reservationId);
     const attempt = getExtensionAttempt(
@@ -283,6 +314,7 @@ export const completeExtensionPayment = async (
         valid = false;
       }
     }
+    const grossMinor = session.amount_total ?? toStripeCents(attempt.supplement, attempt.currency);
     await tx.insert(payments).values({
       id: paymentId,
       reservationId,
@@ -293,9 +325,15 @@ export const completeExtensionPayment = async (
       status: "completed",
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId: paymentIntentId,
-      stripeChargeId:
-        typeof intent.latest_charge === "string" ? intent.latest_charge : intent.latest_charge?.id,
-      paidAt: new Date(),
+      stripeChargeId: typeof charge === "string" ? charge : charge?.id,
+      // Billing facts (contract Q36): the charge, its account and its time.
+      origin: "extension",
+      grossMinor,
+      insuranceShareMinor:
+        feeFacts?.insuranceShareMinor ?? extensionInsuranceShare(reservation, grossMinor),
+      stripeAccountId: connectedAccountId,
+      ...appFeeColumns(feeFacts),
+      paidAt: charge && typeof charge !== "string" ? new Date(charge.created * 1000) : new Date(),
     });
     const next: ExtensionAttempt = {
       ...attempt,
@@ -304,7 +342,10 @@ export const completeExtensionPayment = async (
       status: valid ? "confirmed" : "refund_pending",
     };
     if (valid) await applyExtension(tx, reservation, id, next);
-    else await writeAttempt(tx, id, reservationId, next);
+    else {
+      await writeAttempt(tx, id, reservationId, next);
+      await markReservation(tx, reservation);
+    }
     return next;
   });
   if (result.status === "refunded") return "refunded";
@@ -336,6 +377,7 @@ export const completeExtensionPayment = async (
           ),
         );
       await writeAttempt(tx, id, reservationId, { ...current, status: "refunded" });
+      await markReservation(tx, reservation);
     });
     return "refunded";
   }

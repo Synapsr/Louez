@@ -1,6 +1,6 @@
 'use server'
 
-import { db } from '@louez/db'
+import { db, markStore } from '@louez/db'
 import { stores } from '@louez/db'
 import { users } from '@louez/db'
 import { isStripeConfigured } from '@/lib/plans'
@@ -20,6 +20,22 @@ import {
 } from '@/lib/util.stripe-prefill'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 import { sanitizeStripeNextPath, stripeReturnUrls } from './stripe-return'
+
+type StripeConnectColumns = Pick<
+  typeof stores.$inferInsert,
+  'stripeAccountId' | 'stripeChargesEnabled' | 'stripeOnboardingComplete'
+>
+
+/** Writes the store's Connect columns, which are in its billing snapshot. */
+async function writeStripeConnect(storeId: string, values: StripeConnectColumns) {
+  await db.transaction(async (tx) => {
+    await tx
+      .update(stores)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(stores.id, storeId))
+    await markStore(tx, storeId)
+  })
+}
 
 /**
  * Start Stripe Connect onboarding
@@ -106,13 +122,7 @@ export async function startStripeOnboarding(options?: {
       accountId = account.id
 
       // Save account ID
-      await db
-        .update(stores)
-        .set({
-          stripeAccountId: accountId,
-          updatedAt: new Date(),
-        })
-        .where(eq(stores.id, store.id))
+      await writeStripeConnect(store.id, { stripeAccountId: accountId })
     }
 
     // Create onboarding link
@@ -156,14 +166,10 @@ export async function completeStripeOnboarding(): Promise<{
     const status = await getAccountStatus(store.stripeAccountId)
 
     // Update store with latest status
-    await db
-      .update(stores)
-      .set({
-        stripeChargesEnabled: status.chargesEnabled,
-        stripeOnboardingComplete: status.chargesEnabled && status.detailsSubmitted,
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, store.id))
+    await writeStripeConnect(store.id, {
+      stripeChargesEnabled: status.chargesEnabled,
+      stripeOnboardingComplete: status.chargesEnabled && status.detailsSubmitted,
+    })
 
     revalidatePath('/dashboard/settings/payments')
     revalidatePath('/dashboard/settings')
@@ -203,14 +209,10 @@ export async function syncStripeStatus(): Promise<{
   try {
     const status = await getAccountStatus(store.stripeAccountId)
 
-    await db
-      .update(stores)
-      .set({
-        stripeChargesEnabled: status.chargesEnabled,
-        stripeOnboardingComplete: status.chargesEnabled && status.detailsSubmitted,
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, store.id))
+    await writeStripeConnect(store.id, {
+      stripeChargesEnabled: status.chargesEnabled,
+      stripeOnboardingComplete: status.chargesEnabled && status.detailsSubmitted,
+    })
 
     revalidatePath('/dashboard/settings/payments')
 
@@ -268,15 +270,11 @@ export async function disconnectStripe(): Promise<{
   }
 
   // Note: We don't delete the Stripe account, just unlink it
-  await db
-    .update(stores)
-    .set({
-      stripeAccountId: null,
-      stripeChargesEnabled: false,
-      stripeOnboardingComplete: false,
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, store.id))
+  await writeStripeConnect(store.id, {
+    stripeAccountId: null,
+    stripeChargesEnabled: false,
+    stripeOnboardingComplete: false,
+  })
 
   revalidatePath('/dashboard/settings/payments')
   revalidatePath('/dashboard/settings')

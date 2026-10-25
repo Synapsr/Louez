@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { db } from '@louez/db'
+import { db, markLegacyStore } from '@louez/db'
 import { stores, subscriptions } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { isCurrentUserPlatformAdmin } from '@/lib/platform-admin'
@@ -158,6 +158,8 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
         .set({ ...patch, updatedAt: new Date() })
         .where(eq(subscriptions.storeId, store.id))
     }
+    // Trial, discount and the subscription row make the store's legacy_store snapshot.
+    await markLegacyStore(tx, store.id)
   })
 
   revalidatePath('/dashboard/settings/admin')

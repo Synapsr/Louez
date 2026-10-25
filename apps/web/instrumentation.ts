@@ -15,6 +15,14 @@ export async function register() {
       .then(({ reportBillingModeAtStartup }) => reportBillingModeAtStartup())
       .catch(() => undefined);
 
+    // With the billing service, refuse to start on a wrong BILLING_* variable, like a
+    // failed migration (the check logs why). Not during `next build`, which has no
+    // runtime secrets.
+    if (process.env.NEXT_PHASE !== 'phase-production-build') {
+      const { checkBillingSyncConfigAtStartup } = await import('./lib/billing/startup-check');
+      if (!checkBillingSyncConfigAtStartup()) process.exit(1);
+    }
+
     // Only run database setup in production or when explicitly enabled
     // This prevents running during builds or when not needed
     const shouldSetup =

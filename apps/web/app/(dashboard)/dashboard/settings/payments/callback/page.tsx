@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { getAccountStatus } from '@/lib/stripe'
-import { db } from '@louez/db'
+import { db, markStore } from '@louez/db'
 import { stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
@@ -54,15 +54,18 @@ export default async function StripeCallbackPage({
     redirect(next ? '/onboarding/stripe' : '/dashboard/settings/payments')
   }
 
-  // Update store with latest status
-  await db
-    .update(stores)
-    .set({
-      stripeChargesEnabled: status.chargesEnabled,
-      stripeOnboardingComplete: status.chargesEnabled && status.detailsSubmitted,
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, store.id))
+  // Update store with latest status; the Connect columns are in its billing snapshot.
+  const connect = {
+    stripeChargesEnabled: status.chargesEnabled,
+    stripeOnboardingComplete: status.chargesEnabled && status.detailsSubmitted,
+  }
+  await db.transaction(async (tx) => {
+    await tx
+      .update(stores)
+      .set({ ...connect, updatedAt: new Date() })
+      .where(eq(stores.id, store.id))
+    await markStore(tx, store.id)
+  })
 
   // Status synced — resume the interrupted flow without the settings screen.
   // Stripe also sends users here when they bail out of the KYC ("Return to

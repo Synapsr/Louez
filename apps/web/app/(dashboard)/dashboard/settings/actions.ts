@@ -1,6 +1,6 @@
 "use server";
 
-import { db, stores } from "@louez/db";
+import { db, markStore, stores } from "@louez/db";
 import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -43,13 +43,17 @@ export async function updateCompanySettings(data: CompanySettingsInput) {
       return { error: "errors.permissionDenied" };
     }
 
-    await db
-      .update(stores)
-      .set({
-        settings: buildCompanySettingsUpdate(store.settings, data),
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, store.id));
+    // Country, timezone and currency are in the store's billing snapshot.
+    await db.transaction(async (tx) => {
+      await tx
+        .update(stores)
+        .set({
+          settings: buildCompanySettingsUpdate(store.settings, data),
+          updatedAt: new Date(),
+        })
+        .where(eq(stores.id, store.id));
+      await markStore(tx, store.id);
+    });
 
     notifyStoreSettingsUpdated({ id: store.id, name: store.name, slug: store.slug }).catch(
       () => {},
@@ -175,13 +179,16 @@ export async function updateStoreSlug(newSlug: string): Promise<{
 
     // Update the slug
     const oldSlug = store.slug;
-    await db
-      .update(stores)
-      .set({
-        slug: newSlug,
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, store.id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(stores)
+        .set({
+          slug: newSlug,
+          updatedAt: new Date(),
+        })
+        .where(eq(stores.id, store.id));
+      await markStore(tx, store.id);
+    });
 
     // Revalidate all relevant paths
     revalidatePath("/dashboard");

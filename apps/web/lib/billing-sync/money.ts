@@ -97,8 +97,17 @@ export function insuranceShare(input: {
   return Number(share);
 }
 
+/**
+ * Before this date some reservations stored a total that included the deposit.
+ * Commit 954a509f (2026-03-19) made every writer exclude it; the margin covers the
+ * deploy. Later rows never get the deposit taken out, because their total minus
+ * subtotal can exceed the deposit for honest reasons (delivery, tax).
+ */
+export const DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE = new Date("2026-04-01T00:00:00Z");
+
 export type ReservationTotalsInput = {
   readonly reservation: {
+    readonly createdAt: Date;
     readonly currency: string | null;
     readonly totalAmount: string;
     readonly subtotalAmount: string;
@@ -128,8 +137,9 @@ export type ReservationTotalsMinor = {
  * tax, for a reservation created or edited from the dashboard. Those writes store
  * items without a tax rate and a total before tax. The total then gets the store's
  * default rate on everything but the insurance, which is VAT-exempt, so the
- * service never receives an excluding-tax total. Old rows whose total includes the
- * deposit are read the way `getReservationRentalAmount` reads them.
+ * service never receives an excluding-tax total. Rows from before
+ * DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE whose total includes the deposit are read the way
+ * `getReservationRentalAmount` reads them.
  */
 export function reservationTotalsMinor(input: ReservationTotalsInput): ReservationTotalsMinor {
   const currency = normalizeCurrency(input.reservation.currency ?? input.storeSettings?.currency);
@@ -138,8 +148,10 @@ export function reservationTotalsMinor(input: ReservationTotalsInput): Reservati
   const subtotal = minor(input.reservation.subtotalAmount);
   const deposit = minor(input.reservation.depositAmount);
   let total = minor(input.reservation.totalAmount);
-  if (total > 0 && deposit > 0 && total - subtotal >= deposit - 1)
+  const mayIncludeDeposit = input.reservation.createdAt < DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE;
+  if (mayIncludeDeposit && total > 0 && deposit > 0 && total - subtotal >= deposit - 1) {
     total = Math.max(0, total - deposit);
+  }
 
   const insurance = Math.max(0, minor(input.reservation.tulipInsuranceAmount));
   const tax = input.storeSettings?.tax;

@@ -399,6 +399,21 @@ export const env = createEnv({
     // Platform billing: off (default) or cloud. Consumed through lib/billing/mode.ts, which
     // reads process.env at call time like LOUEZ_MODE; validated here at runtime.
     LOUEZ_BILLING: louezBillingSchema,
+    // The private billing service (louez-billing docs/api, README §4.3 and §12). Ignored
+    // unless LOUEZ_BILLING=cloud and BILLING_SERVICE_URL are both set; then
+    // lib/billing-sync/config.ts checks them and the server refuses to start when one is
+    // wrong (instrumentation.ts). Plain strings here, so a self-hosted instance never
+    // fails on them.
+    BILLING_SERVICE_URL: z.string().optional(),
+    // JSON {"<kid>": "<secret>"}: request secrets (kids start with louez-req-).
+    BILLING_OUTBOUND_KEYS: z.string().optional(),
+    BILLING_OUTBOUND_ACTIVE_KID: z.string().optional(),
+    // JSON {"<kid>": "<secret>"}: response secrets Louez accepts (kids start with billing-res-).
+    BILLING_RESPONSE_KEYS: z.string().optional(),
+    // Stores created at or after this ISO instant are new (README §8.3, Q26).
+    BILLING_NEW_STORES_FROM: z.string().optional(),
+    // "true" ignores the card gate during an outage (README §8.5).
+    BILLING_GATE_DISABLED: z.string().optional(),
 
     // ===== Development =====
     AUTO_DB_SETUP: z
@@ -511,6 +526,12 @@ export const env = createEnv({
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     LOUEZ_MODE: process.env.LOUEZ_MODE,
     LOUEZ_BILLING: process.env.LOUEZ_BILLING,
+    BILLING_SERVICE_URL: process.env.BILLING_SERVICE_URL,
+    BILLING_OUTBOUND_KEYS: process.env.BILLING_OUTBOUND_KEYS,
+    BILLING_OUTBOUND_ACTIVE_KID: process.env.BILLING_OUTBOUND_ACTIVE_KID,
+    BILLING_RESPONSE_KEYS: process.env.BILLING_RESPONSE_KEYS,
+    BILLING_NEW_STORES_FROM: process.env.BILLING_NEW_STORES_FROM,
+    BILLING_GATE_DISABLED: process.env.BILLING_GATE_DISABLED,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
     PAYG_DEFAULT_PRICING: process.env.PAYG_DEFAULT_PRICING,

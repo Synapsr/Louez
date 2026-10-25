@@ -10,7 +10,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { McpSessionContext } from "../auth/context";
-import type { McpServerDeps } from "../deps";
+import type { McpReservationDeps } from "../deps";
 import { registerReservationTools } from "../tools/reservations";
 
 export interface ToolAnswer {
@@ -26,7 +26,7 @@ export interface ReservationToolsClient {
 
 export async function connectReservationTools(
   ctx: McpSessionContext,
-  deps: McpServerDeps,
+  deps: McpReservationDeps,
 ): Promise<ReservationToolsClient> {
   const server = new McpServer({ name: "louez", version: "0.0.0" });
   registerReservationTools(server, ctx, deps);
