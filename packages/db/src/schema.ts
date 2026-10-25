@@ -1733,6 +1733,9 @@ export const billingSyncState = mysqlTable("billing_sync_state", {
   policiesEtag: varchar("policies_etag", { length: 64 }),
   lastPolicyPullAt: timestamp("last_policy_pull_at", { mode: "date", fsp: 3 }),
   lastSweepAt: timestamp("last_sweep_at", { mode: "date", fsp: 3 }),
+  // Set by whoever runs the gross_minor backfill of older payments, when it is done.
+  // While it is null, the heartbeat sends completedPaymentsWithoutGross as null (Q7).
+  grossBackfilledAt: timestamp("gross_backfilled_at", { mode: "date", fsp: 3 }),
   // Resync request ids of the last heartbeat response, listed as handled next time.
   pendingRequestIds: json("pending_request_ids").$type<string[]>(),
   // Alert kind → last time a Discord message was sent for it.

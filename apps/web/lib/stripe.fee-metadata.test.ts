@@ -14,6 +14,13 @@ process.env.DATABASE_URL = "mysql://louez:louez@127.0.0.1:1/unreachable";
 const strings = (metadata: Stripe.MetadataParam | undefined | null): Record<string, string> =>
   Object.fromEntries(Object.entries(metadata ?? {}).map(([key, value]) => [key, String(value)]));
 
+/**
+ * The v3 keys, the only fee metadata the release before v4 reads. They keep its webhook
+ * from billing the marketplace fee again if it completes a session created by this one.
+ */
+const v3Keys = (metadata: Record<string, string>): Record<string, string> =>
+  Object.fromEntries(Object.entries(metadata).filter(([key]) => key.startsWith("platform")));
+
 describe("fee metadata v4 on Checkout Sessions", () => {
   let stripeModule: typeof import("./stripe");
   let metering: typeof import("./pay-as-you-go/metering");
@@ -91,6 +98,12 @@ describe("fee metadata v4 on Checkout Sessions", () => {
       marketplaceFeeCents: 100,
       hasBreakdown: true,
     });
+    // The release before v4 reads only the v3 keys of the PaymentIntent.
+    assert.deepEqual(v3Keys(intentMetadata), {
+      platformFeeVersion: "3",
+      platformReservationFeeCents: "150",
+      platformMarketplaceFeeCents: "100",
+    });
     // The keys other code reads are kept, and the fee taken is unchanged.
     assert.equal(sessionMetadata.reservationId, "res_1");
     assert.equal(sessionMetadata.type, "reservation_payment");
@@ -140,8 +153,36 @@ describe("fee metadata v4 on Checkout Sessions", () => {
       });
       assert.equal(metadata.paymentRequestId, "req_1");
       assert.equal(metadata.type, "payment_request");
+      assert.deepEqual(v3Keys(metadata), {});
     }
     assert.equal(params.payment_intent_data?.application_fee_amount, undefined);
+  });
+
+  test("the v3 keys are written as before v4: only for a fee, and each part above 0", () => {
+    process.env.LOUEZ_BILLING = "cloud";
+    const payment = {
+      insuranceShareMinor: 0,
+      paymentKind: "rental",
+      reservationId: "res_5",
+      storeId: "store_1",
+    } as const;
+    const marketplaceOnly = {
+      applicationFeeCents: 100,
+      reservationFeeCents: 0,
+      marketplaceFeeCents: 100,
+    };
+    assert.deepEqual(v3Keys(metering.buildLegacyFeeMetadata(marketplaceOnly, payment)), {
+      platformFeeVersion: "3",
+      platformMarketplaceFeeCents: "100",
+    });
+    const noFee = { applicationFeeCents: 0, reservationFeeCents: 0, marketplaceFeeCents: 0 };
+    assert.deepEqual(v3Keys(metering.buildLegacyFeeMetadata(noFee, payment)), {});
+    // Both versions on one PaymentIntent: v4 is read first.
+    assert.equal(
+      feeMetadata.readFeeMetadata(metering.buildLegacyFeeMetadata(marketplaceOnly, payment))
+        ?.metadataVersion,
+      4,
+    );
   });
 
   test("with platform billing off, sessions carry no fee metadata", async () => {

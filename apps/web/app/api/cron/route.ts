@@ -18,16 +18,12 @@ import { isLegacyFeeReportTick } from "@/lib/pay-as-you-go/legacy-fee-repair-cor
 import { checkBillableAt } from "@/lib/billing/billable-at-check";
 import { isBillingEnabled } from "@/lib/billing/mode";
 import { isBillingSyncEnabled } from "@/lib/billing-sync/config";
-import { runHeartbeat } from "@/lib/billing-sync/heartbeat";
-import { withBillingLock } from "@/lib/billing-sync/locks";
-import { runManifests } from "@/lib/billing-sync/manifests";
-import { runRelay } from "@/lib/billing-sync/relay";
-import { runSweep } from "@/lib/billing-sync/sweep";
 import { processReminders } from "@/lib/reminders/automation";
 import { processReviewRequests } from "@/lib/review-booster/automation";
 
 import { env } from "@/env";
 
+import { billingSyncTasks } from "./billing-sync-tasks";
 import { runIsolatedTasks } from "./isolated-tasks";
 
 /**
@@ -48,8 +44,9 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - Legacy fee report and billable_at check: daily at 4:45 AM UTC, billing only
  *   (lists fee effects that may have been lost; writes nothing)
  * - Billing service sync, only with LOUEZ_BILLING=cloud and BILLING_SERVICE_URL: the
- *   relay then the heartbeat every minute, the manifests every minute (they decide
- *   themselves when to send), the nightly sweep from 2:00 AM UTC
+ *   relay, the heartbeat, the manifests and the sweep, every minute. The manifests
+ *   decide themselves when to send; the sweep runs once a day, retried from 2:00 AM
+ *   UTC until one finishes
  *
  * vercel.json:
  *   "crons": [{ "path": "/api/cron", "schedule": "* * * * *" }]
@@ -88,38 +85,9 @@ async function handleCron(request: Request) {
   });
 
   // Billing service sync: started first and awaited last, so a long relay run never
-  // delays the other tasks and a failing task never stops the sync. Each task holds
-  // its MySQL lock, so a call that overlaps the previous minute's skips it.
+  // delays the other tasks and a failing task never stops the sync.
   const billingSync = isBillingSyncEnabled()
-    ? runIsolatedTasks(
-        [
-          {
-            task: "billing-relay",
-            key: "billingRelay",
-            run: () => withBillingLock("relay", () => runRelay()),
-          },
-          {
-            task: "billing-heartbeat",
-            key: "billingHeartbeat",
-            run: () => withBillingLock("heartbeat", () => runHeartbeat()),
-          },
-          {
-            task: "billing-manifests",
-            key: "billingManifests",
-            run: () => withBillingLock("manifests", () => runManifests(now)),
-          },
-          ...(now.getUTCHours() === 2
-            ? [
-                {
-                  task: "billing-sweep",
-                  key: "billingSweep",
-                  run: () => withBillingLock("sweep", () => runSweep(now)),
-                },
-              ]
-            : []),
-        ],
-        { request: logger, event: log },
-      )
+    ? runIsolatedTasks(billingSyncTasks(now), { request: logger, event: log })
     : null;
 
   try {

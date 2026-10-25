@@ -154,7 +154,9 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
   }
 
   describe("a manual refund", () => {
-    test("of a manual payment takes the reservation's currency, not the payment's EUR default", async () => {
+    // Its credit note takes the refund's currency and must match the invoice of
+    // the payment it refunds, which took that payment's currency.
+    test("of an older manual payment keeps that payment's EUR default, as its invoice did", async () => {
       const reservationId = await createReservation({ currency: "USD" });
       const originalId = await createPayment(reservationId, { type: "rental", method: "cash" });
       const refundId = nextId("pay");
@@ -164,9 +166,9 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
           id: refundId,
           reservationId,
           storeId: STORE,
-          storeSettings: { currency: "EUR" },
+          storeSettings: { currency: "USD" },
           reservationCurrency: "USD",
-          original: { id: originalId, method: "cash", currency: "EUR" },
+          original: { id: originalId, currency: "EUR" },
           type: "rental",
           method: "transfer",
           amount: "20.00",
@@ -180,7 +182,7 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
         type: "rental",
         method: "transfer",
         status: "completed",
-        currency: "USD",
+        currency: "EUR",
         grossMinor: 2000,
         insuranceShareMinor: 0,
         origin: "manual",
@@ -213,7 +215,7 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
           storeId: STORE,
           storeSettings: { currency: "EUR" },
           reservationCurrency: null,
-          original: { id: originalId, method: "stripe", currency: "GBP" },
+          original: { id: originalId, currency: "GBP" },
           type: "deposit_return",
           method: "cash",
           amount: "5.00",
@@ -226,6 +228,32 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
       assert.equal(refund?.currency, "GBP");
       assert.equal(refund?.grossMinor, 500);
       assert.equal(refund?.type, "deposit_return");
+    });
+
+    test("of a payment with no stored currency takes the reservation's", async () => {
+      const reservationId = await createReservation({ currency: "USD" });
+      const originalId = await createPayment(reservationId, { type: "rental", method: "cash" });
+      const refundId = nextId("pay");
+
+      await louezDb.db.transaction((tx) =>
+        writes.insertManualRefund(tx, {
+          id: refundId,
+          reservationId,
+          storeId: STORE,
+          storeSettings: { currency: "EUR" },
+          reservationCurrency: "USD",
+          original: { id: originalId, currency: null },
+          type: "rental",
+          method: "cash",
+          amount: "7.50",
+          paidAt: NOW,
+          notes: null,
+        }),
+      );
+
+      const refund = await readPayment(refundId);
+      assert.equal(refund?.currency, "USD");
+      assert.equal(refund?.grossMinor, 750);
     });
   });
 
@@ -358,6 +386,91 @@ describe("dashboard payment writes (database)", { skip: skipWithoutTestDatabase(
     assert.equal((await readDeposit(reservationId))?.depositStatus, "released");
     assert.equal((await readPayment(holdId))?.status, "cancelled");
     assert.equal((await readMark(reservationId))?.version, 1);
+  });
+
+  type RawConnection = Awaited<ReturnType<TestDatabase["connect"]>>;
+
+  /**
+   * Resolves once a transaction waits on a row lock of this suite's database.
+   * performance_schema is live, where information_schema.innodb_trx is a cache
+   * that a poll this fast never refreshes.
+   */
+  async function waitForLockWait(connection: RawConnection) {
+    for (let attempt = 0; attempt < 250; attempt++) {
+      const [rows] = await connection.query(
+        `SELECT COUNT(*) AS waiting FROM performance_schema.data_locks
+          WHERE object_schema = DATABASE() AND lock_status = 'WAITING'`,
+      );
+      if (Number((rows as Array<{ waiting: number }>)[0]?.waiting) > 0) return;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    throw new Error("No transaction waited on a row lock");
+  }
+
+  // The Connect webhook's deposit events lock the reservation first, then its
+  // payments. Stripe sends them for the dashboard's own capture or release, so a
+  // write here that locked the hold before the reservation would deadlock with them.
+  describe("a deposit write locks the reservation before its hold", () => {
+    const deposits = [
+      {
+        name: "capture",
+        status: "captured",
+        holdStatus: "completed",
+        write: (reservationId: string) =>
+          writes.recordDepositCapture(louezDb.db, {
+            capturePaymentId: nextId("pay"),
+            reservationId,
+            storeId: STORE,
+            stripeAccountId: "acct_store",
+            paymentIntentId: "pi_hold",
+            stripeChargeId: "ch_capture",
+            amount: "30.00",
+            capturedMinor: 3000,
+            currency: "EUR",
+            reason: "broken wheel",
+            now: NOW,
+          }),
+      },
+      {
+        name: "release",
+        status: "released",
+        holdStatus: "cancelled",
+        write: (reservationId: string) =>
+          writes.recordDepositRelease(louezDb.db, { reservationId, storeId: STORE, now: NOW }),
+      },
+    ] as const;
+
+    for (const deposit of deposits) {
+      test(`a ${deposit.name} waits on the reservation with the hold still free`, async () => {
+        const reservationId = await createReservation({ depositStatus: "authorized" });
+        const holdId = await createPayment(reservationId, {
+          type: "deposit_hold",
+          method: "stripe",
+          status: "authorized",
+        });
+        const webhook = await database.connect();
+        const probe = await database.connect();
+        let written: Promise<void> | undefined;
+        try {
+          await webhook.query("START TRANSACTION");
+          await webhook.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [
+            reservationId,
+          ]);
+          written = deposit.write(reservationId);
+          await waitForLockWait(probe);
+          // The webhook would lock the hold next: it must not be locked yet.
+          await probe.query("SELECT id FROM payments WHERE id = ? FOR UPDATE NOWAIT", [holdId]);
+        } finally {
+          await webhook.query("COMMIT");
+          await written;
+          await webhook.end();
+          await probe.end();
+        }
+
+        assert.equal((await readDeposit(reservationId))?.depositStatus, deposit.status);
+        assert.equal((await readPayment(holdId))?.status, deposit.holdStatus);
+      });
+    }
   });
 
   test("without the billing service, the rows are written and nothing is marked", async () => {

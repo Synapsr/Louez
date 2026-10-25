@@ -1574,6 +1574,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "gross_backfilled_at": {
+          "name": "gross_backfilled_at",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "pending_request_ids": {
           "name": "pending_request_ids",
           "type": "json",

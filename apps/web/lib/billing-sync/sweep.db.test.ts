@@ -111,4 +111,50 @@ describe("billing sweep (database)", { skip: skipWithoutTestDatabase() }, () => 
     // The same night, the sweep does not run again.
     assert.deepEqual(await sweep.runSweep(new Date("2026-10-25T02:10:00Z")), { due: false });
   });
+
+  test("does not deadlock with a free fee row's transaction on the same store", async () => {
+    // A free fee row's transaction marks the store's month, then its legacy_store
+    // (pay-as-you-go/metering.ts). The sweep waits on that month: it must not hold the
+    // legacy_store by then, or InnoDB rolls one of the two back.
+    await louezDb.db.update(louezDb.billingSyncState).set({ lastSweepAt: null });
+    const mark = (type: "legacy_month" | "legacy_store", aggregateId: string) => {
+      const statement = louezDb.billingMarkStatement([{ type, aggregateId, storeId: "sw_legacy" }]);
+      assert.ok(statement);
+      return statement;
+    };
+    const fee = await database.connect();
+    let sweeping: Promise<unknown> = Promise.resolve();
+    try {
+      await fee.beginTransaction();
+      const month = mark("legacy_month", "sw_legacy:2026-10");
+      await fee.query(month.sql, month.params);
+      const run = sweep.runSweep(now);
+      sweeping = run.catch(() => undefined);
+      await waitForLockWait(fee, database.name);
+      const legacyStore = mark("legacy_store", "sw_legacy");
+      await fee.query(legacyStore.sql, legacyStore.params);
+      await fee.commit();
+      assert.equal((await run).due, true);
+    } finally {
+      await fee.end();
+      await sweeping;
+    }
+  });
 });
+
+async function waitForLockWait(
+  connection: Awaited<ReturnType<TestDatabase["connect"]>>,
+  databaseName: string,
+): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  for (;;) {
+    const [rows] = await connection.query(
+      `SELECT COUNT(*) AS waiting FROM performance_schema.data_locks
+       WHERE OBJECT_SCHEMA = ? AND LOCK_STATUS = 'WAITING'`,
+      [databaseName],
+    );
+    if (z.array(z.object({ waiting: z.coerce.number() })).parse(rows)[0]?.waiting) return;
+    if (Date.now() > deadline) throw new Error("The sweep never waited on the fee's lock");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}

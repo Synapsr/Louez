@@ -5,19 +5,24 @@ import type { ReservationTotalsInput } from "@/lib/billing-sync/money";
 
 import { grossMinorOf, recordedPaymentFacts, reservationCurrency } from "./payment-billing-facts";
 
-// 110.00 tax included, 10.00 of it insurance.
+// A manual reservation of 110.00, 10.00 of it insurance, in a store without tax.
 const insured: ReservationTotalsInput = {
   reservation: {
     createdAt: new Date("2026-10-01T10:00:00Z"),
     currency: null,
+    source: "manual",
     totalAmount: "110.00",
-    subtotalAmount: "100.00",
+    subtotalAmount: "110.00",
     depositAmount: "0.00",
+    deliveryFee: "0.00",
+    discountAmount: "0.00",
+    subtotalExclTax: null,
+    taxAmount: null,
     tulipInsuranceAmount: "10.00",
   },
   storeSettings: { currency: "usd" },
   items: [
-    { productId: "product", taxRate: "20.00", totalPrice: "100.00" },
+    { productId: "product", taxRate: null, totalPrice: "100.00" },
     { productId: null, taxRate: null, totalPrice: "10.00" },
   ],
 };
@@ -83,10 +88,6 @@ describe("recordedPaymentFacts", () => {
         currency: "EUR",
         tax: { enabled: true, defaultRate: 20, displayMode: "exclusive" },
       },
-      items: [
-        { productId: "product", taxRate: null, totalPrice: "100.00" },
-        { productId: null, taxRate: null, totalPrice: "10.00" },
-      ],
     };
     assert.deepEqual(recordedPaymentFacts({ type: "rental", amount: "65.00", totals: exclusive }), {
       currency: "EUR",

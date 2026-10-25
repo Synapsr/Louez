@@ -75,7 +75,10 @@ export function readBillingSyncConfig(env: NodeJS.ProcessEnv = process.env): Con
   try {
     const url = new URL(env.BILLING_SERVICE_URL ?? "");
     const https = url.protocol === "https:";
-    if (!https && !(url.protocol === "http:" && LOOPBACK.has(url.hostname))) {
+    // README §2: plain HTTP only to a loopback host, and never in production.
+    const devLoopback =
+      env.NODE_ENV !== "production" && url.protocol === "http:" && LOOPBACK.has(url.hostname);
+    if (!https && !devLoopback) {
       errors.push("BILLING_SERVICE_URL must use https, except a loopback host in development");
     } else if (url.pathname !== "/" || url.search || url.hash) {
       errors.push("BILLING_SERVICE_URL must be an origin, with no path");
@@ -125,6 +128,7 @@ let cached: { key: string; result: ConfigResult } | null = null;
 /** The checked configuration; throws with every error when it is not valid. */
 export function billingSyncConfig(): BillingSyncConfig {
   const key = [
+    process.env.NODE_ENV,
     process.env.BILLING_SERVICE_URL,
     process.env.BILLING_OUTBOUND_KEYS,
     process.env.BILLING_OUTBOUND_ACTIVE_KID,

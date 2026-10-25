@@ -80,11 +80,11 @@ export type HeartbeatRequest = {
   };
   readonly invariants: {
     readonly billableWithoutBillableAt: number;
-    readonly completedPaymentsWithoutGross: number;
+    readonly completedPaymentsWithoutGross: number | null;
     readonly byStore: ReadonlyArray<{
       storeId: string;
       billableWithoutBillableAt: number;
-      completedPaymentsWithoutGross: number;
+      completedPaymentsWithoutGross: number | null;
     }>;
   };
   readonly policies: { readonly etag: string | null; readonly lastPullAt: string | null };
@@ -143,7 +143,7 @@ async function queueReport(): Promise<{ queue: HeartbeatRequest["queue"]; trunca
   };
 }
 
-async function invariantsReport(): Promise<{
+async function invariantsReport(state: SyncState): Promise<{
   invariants: HeartbeatRequest["invariants"];
   truncated: boolean;
 }> {
@@ -158,24 +158,37 @@ async function invariantsReport(): Promise<{
       ),
     )
     .groupBy(reservations.storeId);
-  // Completed payments that are not refunds and have no stored gross amount (Q7).
-  const grossByStore = await db
-    .select({ storeId: reservations.storeId, missing: count() })
-    .from(payments)
-    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
-    .where(
-      and(eq(payments.status, "completed"), isNull(payments.grossMinor), isPaymentReceiptSql()),
-    )
-    .groupBy(reservations.storeId);
+  // Completed payments that are not refunds and have no stored gross amount. Payments
+  // from before gross_minor have none until the gross backfill has run, so until then
+  // the count is null, in total and per store (README Q7).
+  const countsGross = state.grossBackfilledAt !== null;
+  const grossByStore = countsGross
+    ? await db
+        .select({ storeId: reservations.storeId, missing: count() })
+        .from(payments)
+        .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+        .where(
+          and(eq(payments.status, "completed"), isNull(payments.grossMinor), isPaymentReceiptSql()),
+        )
+        .groupBy(reservations.storeId)
+    : [];
 
   const byStore = new Map<
     string,
-    { storeId: string; billableWithoutBillableAt: number; completedPaymentsWithoutGross: number }
+    {
+      storeId: string;
+      billableWithoutBillableAt: number;
+      completedPaymentsWithoutGross: number | null;
+    }
   >();
   const entry = (storeId: string) => {
     const known = byStore.get(storeId);
     if (known) return known;
-    const created = { storeId, billableWithoutBillableAt: 0, completedPaymentsWithoutGross: 0 };
+    const created = {
+      storeId,
+      billableWithoutBillableAt: 0,
+      completedPaymentsWithoutGross: countsGross ? 0 : null,
+    };
     byStore.set(storeId, created);
     return created;
   };
@@ -185,7 +198,9 @@ async function invariantsReport(): Promise<{
   return {
     invariants: {
       billableWithoutBillableAt,
-      completedPaymentsWithoutGross: grossByStore.reduce((sum, row) => sum + row.missing, 0),
+      completedPaymentsWithoutGross: countsGross
+        ? grossByStore.reduce((sum, row) => sum + row.missing, 0)
+        : null,
       byStore: list.list,
     },
     truncated: list.truncated,
@@ -208,7 +223,7 @@ async function handledRequestIds(state: SyncState): Promise<string[]> {
 
 export async function buildHeartbeatRequest(state: SyncState): Promise<HeartbeatRequest> {
   const { queue, truncated: queueTruncated } = await queueReport();
-  const { invariants, truncated: invariantsTruncated } = await invariantsReport();
+  const { invariants, truncated: invariantsTruncated } = await invariantsReport(state);
   return {
     at: (await databaseNow()).toISOString(),
     louezVersion: (env.NEXT_PUBLIC_APP_VERSION ?? "unknown").slice(0, 64),

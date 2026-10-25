@@ -64,6 +64,8 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
     chargeId: string | null;
     paymentIntentId: string;
     amount?: string;
+    /** The refund id webhooks before 2026-08-20 stamped on the charge (README Q7, shape 1). */
+    stampedRefundId?: string;
   }) {
     const reservationId = `res_connect_${++counter}`;
     const paymentId = `pay_connect_${counter}`;
@@ -88,6 +90,7 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
       status: "completed",
       stripePaymentIntentId: payment.paymentIntentId,
       stripeChargeId: payment.chargeId,
+      stripeRefundId: payment.stampedRefundId ?? null,
       grossMinor: 12_345,
       currency: "EUR",
       paidAt: new Date("2026-10-01T09:30:00Z"),
@@ -260,6 +263,40 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
       paymentId: captureId,
       reservationId: hold.reservationId,
     });
+  });
+
+  test("a charge stamped with its refund id is found, and not the refund row beside it", async () => {
+    const { reservationId, paymentId } = await createPaidReservation({
+      chargeId: "ch_stamped",
+      paymentIntentId: "pi_stamped",
+      amount: "100.00",
+      stampedRefundId: "re_stamped",
+    });
+    // A dashboard refund before 2026-08-20 (shape 2): its own row, with the charge
+    // id copied and no PaymentIntent. Its id sorts before the charge's.
+    await louezDb.db.insert(louezDb.payments).values({
+      id: "pay_a_shape2_refund",
+      reservationId,
+      amount: "23.45",
+      type: "rental",
+      method: "stripe",
+      status: "completed",
+      stripeChargeId: "ch_stamped",
+      stripeRefundId: "re_stamped",
+      currency: "EUR",
+    });
+
+    const result = await writes.recordChargeDispute({
+      dispute: dispute({ id: "dp_stamped", charge: "ch_stamped" }),
+      eventType: "charge.dispute.funds_withdrawn",
+      eventCreatedAt: new Date(WITHDRAWN * 1000),
+      accountId: ACCOUNT,
+    });
+    assert.deepEqual(result, { recorded: true, paymentId, reservationId });
+    assert.equal((await readDispute("dp_stamped"))?.paymentId, paymentId);
+    assert.deepEqual(await queue(), [
+      { type: "reservation", id: reservationId, storeId: STORE, version: 1 },
+    ]);
   });
 
   test("a refunded charge nets its payment, keeps the gross and marks the reservation", async () => {

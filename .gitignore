@@ -84,10 +84,14 @@ SPECIFICATIONS*.md
 
 # Internal scripts (root level only)
 /scripts/*
-# ...except build-critical scripts referenced by package.json
+# ...except the scripts package.json runs and the files they import
+# (scripts/tracked-scripts.test.mjs fails when one of them is ignored)
 !/scripts/audit-duplicates.mjs
+!/scripts/billing-marks.test.mjs
 !/scripts/reservation-writes.test.mjs
+!/scripts/source-scan.mjs
 !/scripts/storefront-qa/
+!/scripts/tracked-scripts.test.mjs
 .playwright-cli
 .email-previews/
 .localify/project.json

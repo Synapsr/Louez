@@ -57,10 +57,22 @@ export function billingMarkStatement(
   };
 }
 
+/** Queue rows are always locked in this order, so two marking transactions cannot deadlock. */
+const TYPE_ORDER: Record<BillingAggregateType, number> = {
+  store: 0,
+  legacy_store: 1,
+  legacy_month: 2,
+  reservation: 3,
+};
+
 function dedupe(marks: readonly BillingMark[]): BillingMark[] {
   const seen = new Map<string, BillingMark>();
   for (const mark of marks) seen.set(`${mark.type}\u0000${mark.aggregateId}`, mark);
-  return [...seen.values()];
+  return [...seen.values()].sort(
+    (a, b) =>
+      TYPE_ORDER[a.type] - TYPE_ORDER[b.type] ||
+      (a.aggregateId < b.aggregateId ? -1 : a.aggregateId > b.aggregateId ? 1 : 0),
+  );
 }
 
 /**
@@ -99,8 +111,13 @@ export function markReservation(
 }
 
 /**
- * Marks reservations known by id only, such as after a payment write: the store
- * id is read in the same statement. Unknown ids are skipped.
+ * Marks reservations known by id only, such as after a payment write. Ids the
+ * transaction cannot see are skipped.
+ *
+ * The store id comes from a plain SELECT, which takes no lock. An INSERT … SELECT
+ * would take a shared lock on each reservation row under REPEATABLE READ. A
+ * transaction that wrote a payment first would then deadlock with one that locks
+ * the reservation, or waits on its queue row, before it marks.
  */
 export async function markReservationIds(
   executor: MarkExecutor,
@@ -110,15 +127,49 @@ export async function markReservationIds(
   if (!isBillingSyncEnabled()) return;
   const ids = [...new Set(reservationIds.filter(Boolean))];
   if (ids.length === 0) return;
-  await executor.execute(
-    sql`INSERT INTO billing_sync_queue (aggregate_type, aggregate_id, store_id)
-        SELECT 'reservation', r.id, r.store_id FROM reservations r
-        WHERE r.id IN (${sql.join(
+  // Sorted, so two transactions that mark the same reservations lock their queue
+  // rows in the same order.
+  const [rows] = (await executor.execute(
+    sql`SELECT id, store_id AS storeId FROM reservations
+        WHERE id IN (${sql.join(
           ids.map((id) => sql`${id}`),
           sql`, `,
         )})
-        ON DUPLICATE KEY UPDATE ${onDuplicate(Boolean(options.force))}`,
+        ORDER BY id`,
+  )) as [ReadonlyArray<{ id: string; storeId: string }>];
+  await markBillingDirty(
+    executor,
+    rows.map((row) => ({ type: "reservation", aggregateId: row.id, storeId: row.storeId })),
+    options,
   );
+}
+
+/** Marks per statement when a store's reservations are marked together. */
+const STORE_MARK_CHUNK = 1000;
+
+/**
+ * Marks every reservation of a store. For the rare settings changes that move all
+ * of them: the tax settings (the totals of dashboard reservations follow them) and
+ * the currency (reservations without a frozen currency take the store's).
+ */
+export async function markStoreReservations(
+  executor: MarkExecutor,
+  storeId: string,
+  options: MarkOptions = {},
+): Promise<void> {
+  if (!isBillingSyncEnabled()) return;
+  const [rows] = (await executor.execute(
+    sql`SELECT r.id FROM reservations r WHERE r.store_id = ${storeId} ORDER BY r.id`,
+  )) as [ReadonlyArray<{ id: string }>];
+  for (let index = 0; index < rows.length; index += STORE_MARK_CHUNK) {
+    await markBillingDirty(
+      executor,
+      rows
+        .slice(index, index + STORE_MARK_CHUNK)
+        .map((row) => ({ type: "reservation", aggregateId: row.id, storeId })),
+      options,
+    );
+  }
 }
 
 export function markStore(

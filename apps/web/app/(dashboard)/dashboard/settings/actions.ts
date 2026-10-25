@@ -1,10 +1,11 @@
 "use server";
 
-import { db, markStore, stores } from "@louez/db";
+import { db, markStore, markStoreReservations, stores } from "@louez/db";
 import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { normalizeCurrency } from "@/lib/billing-sync/money";
 import { notifyStoreSettingsUpdated } from "@/lib/discord/platform-notifications";
 import { log } from "@/lib/evlog";
 import { getCurrentStore, hasPermission } from "@/lib/store-context";
@@ -43,16 +44,19 @@ export async function updateCompanySettings(data: CompanySettingsInput) {
       return { error: "errors.permissionDenied" };
     }
 
-    // Country, timezone and currency are in the store's billing snapshot.
+    // Country, timezone and currency are in the store's billing snapshot. A new
+    // currency also reaches the reservations that have no frozen currency of their
+    // own, so it marks them all (contract Q4).
+    const settings = buildCompanySettingsUpdate(store.settings, data);
     await db.transaction(async (tx) => {
       await tx
         .update(stores)
-        .set({
-          settings: buildCompanySettingsUpdate(store.settings, data),
-          updatedAt: new Date(),
-        })
+        .set({ settings, updatedAt: new Date() })
         .where(eq(stores.id, store.id));
       await markStore(tx, store.id);
+      if (normalizeCurrency(settings.currency) !== normalizeCurrency(store.settings?.currency)) {
+        await markStoreReservations(tx, store.id);
+      }
     });
 
     notifyStoreSettingsUpdated({ id: store.id, name: store.name, slug: store.slug }).catch(

@@ -9,11 +9,13 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 import { canonicalHash } from "./canonical-json";
 import {
   type FakeBillingService,
+  type FakeHandler,
   type FakeRequest,
   captureAlerts,
   startFakeBillingService,
   useFakeServiceEnv,
 } from "./fake-billing-service.fixtures";
+import type { RelayOptions } from "./relay";
 import type { BuiltSnapshot } from "./snapshots/build-snapshot";
 import type { ReservationSnapshotData, StoreSnapshotData } from "./snapshots/snapshot-data";
 
@@ -93,6 +95,10 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
     heldVersion: event.version,
     error: null,
   });
+  const answerEvents: FakeHandler = (request) => {
+    const { events } = eventsBody.parse(request.json());
+    return { status: 200, body: { results: events.map((event) => answer(event)) } };
+  };
 
   before(async () => {
     database = await createTestDatabase("billing_relay");
@@ -101,10 +107,7 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
     louezDb = await import("@louez/db");
     relay = await import("./relay");
     locks = await import("./locks");
-    service.handle("/events", (request) => {
-      const { events } = eventsBody.parse(request.json());
-      return { status: 200, body: { results: events.map((event) => answer(event)) } };
-    });
+    service.handle("/events", answerEvents);
   });
 
   after(async () => {
@@ -130,9 +133,10 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
   const build = async (_db: unknown, key: { type: string; aggregateId: string }) =>
     snapshots.get(`${key.type}:${key.aggregateId}`) ?? { kind: "missing" as const };
 
-  async function run(alerts = captureAlerts()) {
+  async function run(alerts = captureAlerts(), options: Omit<RelayOptions, "alerts"> = {}) {
     const result = await relay.runRelay({
       build,
+      ...options,
       alerts: {
         log: alerts.log,
         alert: async (kind, message) => void alerts.errors.push(`${kind}: ${message}`),
@@ -140,6 +144,9 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
     });
     return { result, alerts };
   }
+
+  const singleEventMode = () =>
+    louezDb.db.insert(louezDb.billingSyncState).values({ id: 1, singleEventMode: true });
 
   const rowSchema = z.object({
     version: z.coerce.number(),
@@ -332,10 +339,7 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
     try {
       await run();
     } finally {
-      service.handle("/events", (request) => {
-        const { events } = eventsBody.parse(request.json());
-        return { status: 200, body: { results: events.map((event) => answer(event)) } };
-      });
+      service.handle("/events", answerEvents);
     }
     // Version 2 was delivered but the row stayed pending, so version 3 went out too.
     assert.deepEqual(sentEvents(service.requests), [
@@ -396,10 +400,7 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
       assert.equal((await row("reservation", "a3"))?.status, "synced");
       assert.ok(alerts.errors.some((line) => line.startsWith("event_dead:")));
     } finally {
-      service.handle("/events", (request) => {
-        const { events } = eventsBody.parse(request.json());
-        return { status: 200, body: { results: events.map((event) => answer(event)) } };
-      });
+      service.handle("/events", answerEvents);
     }
   });
 
@@ -429,10 +430,7 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
         waiting: 0,
       });
     } finally {
-      service.handle("/events", (request) => {
-        const { events } = eventsBody.parse(request.json());
-        return { status: 200, body: { results: events.map((event) => answer(event)) } };
-      });
+      service.handle("/events", answerEvents);
     }
   });
 
@@ -455,16 +453,181 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
       for (let index = 0; index < 3; index += 1) await run();
       assert.equal((await row("store", "s5"))?.status, "dead");
     } finally {
-      service.handle("/events", (request) => {
-        const { events } = eventsBody.parse(request.json());
-        return { status: 200, body: { results: events.map((event) => answer(event)) } };
-      });
+      service.handle("/events", answerEvents);
     }
     // One clean run brings back batches.
     await run();
     const [state] = await louezDb.db.select().from(louezDb.billingSyncState);
     assert.equal(state?.singleEventMode, false);
     assert.equal(state?.serverErrorRuns, 0);
+  });
+
+  test("a change undone while its send is in flight is sent again", async () => {
+    snapshots.set("store:s6", { kind: "snapshot", data: storeData("s-six") });
+    await louezDb.markStore(louezDb.db, "s6");
+    await run();
+    snapshots.set("store:s6", { kind: "snapshot", data: storeData("s-six-renamed") });
+    await louezDb.markStore(louezDb.db, "s6");
+    let undone = false;
+    service.handle("/events", async (request) => {
+      if (!undone) {
+        // The owner undoes the change while version 2 is in flight.
+        undone = true;
+        snapshots.set("store:s6", { kind: "snapshot", data: storeData("s-six") });
+        await louezDb.markStore(louezDb.db, "s6");
+      }
+      return answerEvents(request);
+    });
+    try {
+      await run();
+    } finally {
+      service.handle("/events", answerEvents);
+    }
+    // The service now holds version 2, so version 3 differs from it, though it
+    // equals version 1.
+    assert.deepEqual(sentEvents(service.requests), [
+      ["store.snapshot:s6:1"],
+      ["store.snapshot:s6:2"],
+      ["store.snapshot:s6:3"],
+    ]);
+    assert.deepEqual(await row("store", "s6"), {
+      version: 3,
+      delivered: 3,
+      sentHash: canonicalHash(storeData("s-six")),
+      status: "synced",
+      attempts: 0,
+      lastError: null,
+      waiting: 0,
+    });
+  });
+
+  test("a send that timed out forgets the sent hash, so a change undone after it is sent", async () => {
+    snapshots.set("store:s7", { kind: "snapshot", data: storeData("s-seven") });
+    await louezDb.markStore(louezDb.db, "s7");
+    await run();
+    snapshots.set("store:s7", { kind: "snapshot", data: storeData("s-seven-renamed") });
+    await louezDb.markStore(louezDb.db, "s7");
+    // The service applies version 2, but its answer comes after Louez's timeout.
+    const timingOut: typeof fetch = async (input, init) => {
+      const response = await fetch(input, init);
+      if (!String(input).endsWith("/events")) return response;
+      await response.arrayBuffer();
+      throw Object.assign(new Error("The operation timed out."), { name: "TimeoutError" });
+    };
+    const failed = await run(captureAlerts(), { client: { fetch: timingOut } });
+    assert.equal(failed.result.outcome, "transport_failure");
+    // The row is as it was, but for the hash: Louez no longer knows which content
+    // the service holds.
+    assert.deepEqual(await row("store", "s7"), {
+      version: 2,
+      delivered: 1,
+      sentHash: null,
+      status: "pending",
+      attempts: 0,
+      lastError: null,
+      waiting: 0,
+    });
+
+    snapshots.set("store:s7", { kind: "snapshot", data: storeData("s-seven") });
+    await louezDb.markStore(louezDb.db, "s7");
+    const { result } = await run();
+    assert.equal(result.counts.unchanged, 0);
+    assert.deepEqual(sentEvents(service.requests).at(-1), ["store.snapshot:s7:3"]);
+    assert.deepEqual(await row("store", "s7"), {
+      version: 3,
+      delivered: 3,
+      sentHash: canonicalHash(storeData("s-seven")),
+      status: "synced",
+      attempts: 0,
+      lastError: null,
+      waiting: 0,
+    });
+  });
+
+  test("alone in single-event mode, a 5xx forgets the sent hash too", async () => {
+    snapshots.set("store:s8", { kind: "snapshot", data: storeData("s-eight") });
+    await louezDb.markStore(louezDb.db, "s8");
+    await run();
+    await louezDb.db.update(louezDb.billingSyncState).set({ singleEventMode: true });
+    snapshots.set("store:s8", { kind: "snapshot", data: storeData("s-eight-renamed") });
+    await louezDb.markStore(louezDb.db, "s8");
+    service.handle("/events", () => ({ status: 500, body: { code: "internal_error" } }));
+    try {
+      await run();
+    } finally {
+      service.handle("/events", answerEvents);
+    }
+    const failed = await row("store", "s8");
+    assert.equal(failed?.sentHash, null);
+    assert.equal(failed?.status, "pending");
+    assert.equal(failed?.attempts, 0);
+    assert.match(failed?.lastError ?? "", /^server_error 1\/3/);
+
+    snapshots.set("store:s8", { kind: "snapshot", data: storeData("s-eight") });
+    await louezDb.markStore(louezDb.db, "s8");
+    await run();
+    assert.deepEqual(sentEvents(service.requests).at(-1), ["store.snapshot:s8:3"]);
+    assert.equal((await row("store", "s8"))?.status, "synced");
+  });
+
+  test("a run starts no request after its time limit, even one event per request", async () => {
+    await singleEventMode();
+    for (let index = 0; index < 20; index += 1) {
+      snapshots.set(`store:t${index}`, { kind: "snapshot", data: storeData(`t-${index}`) });
+      await louezDb.markStore(louezDb.db, `t${index}`);
+    }
+    service.handle("/events", async (request) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return answerEvents(request);
+    });
+    const startedAt = Date.now();
+    let outcome: string;
+    try {
+      outcome = (await run(captureAlerts(), { timeLimitMs: 1000 })).result.outcome;
+    } finally {
+      service.handle("/events", answerEvents);
+    }
+    const elapsed = Date.now() - startedAt;
+    const sent = sentEvents(service.requests);
+    assert.equal(outcome, "ok");
+    assert.ok(sent.length >= 1 && sent.length <= 4, `${sent.length} requests`);
+    assert.ok(
+      sent.every((events) => events.length === 1),
+      "one event per request",
+    );
+    assert.ok(elapsed < 3000, `the run took ${elapsed} ms`);
+    // The rest waits at its version for the next run, with no attempt counted.
+    const [rows] = await louezDb.db.execute(
+      sql`SELECT COUNT(*) AS waiting FROM billing_sync_queue
+          WHERE status = 'pending' AND version = 1 AND delivered_version = 0
+            AND attempt_count = 0 AND next_attempt_at <= NOW(3)`,
+    );
+    const [left] = z.array(z.object({ waiting: z.coerce.number() })).parse(rows);
+    assert.equal(left?.waiting, 20 - sent.length);
+  });
+
+  test("one event per request, the run keeps to its share of the request budget", async () => {
+    await singleEventMode();
+    for (const id of ["p1", "p2", "p3"]) {
+      snapshots.set(`store:${id}`, { kind: "snapshot", data: storeData(id) });
+      await louezDb.markStore(louezDb.db, id);
+    }
+    const arrivals: number[] = [];
+    service.handle("/events", (request) => {
+      arrivals.push(Date.now());
+      return answerEvents(request);
+    });
+    try {
+      await run();
+    } finally {
+      service.handle("/events", answerEvents);
+    }
+    assert.equal(arrivals.length, 3);
+    const spacing = 60_000 / relay.RELAY_REQUESTS_PER_MINUTE;
+    for (const [index, at] of arrivals.slice(1).entries()) {
+      const gap = at - (arrivals[index] ?? 0);
+      assert.ok(gap >= spacing - 30, `requests ${gap} ms apart, under ${spacing} ms`);
+    }
   });
 
   test("the real builders run inside the relay's consistent snapshot", async () => {

@@ -47,6 +47,10 @@ export async function buildReservationSnapshot(
       totalAmount: reservations.totalAmount,
       subtotalAmount: reservations.subtotalAmount,
       depositAmount: reservations.depositAmount,
+      deliveryFee: reservations.deliveryFee,
+      discountAmount: reservations.discountAmount,
+      subtotalExclTax: reservations.subtotalExclTax,
+      taxAmount: reservations.taxAmount,
       tulipInsuranceAmount: reservations.tulipInsuranceAmount,
       storeSettings: stores.settings,
       storeStripeAccountId: stores.stripeAccountId,
@@ -148,6 +152,8 @@ export async function buildReservationSnapshot(
       dedupKey: platformFees.dedupKey,
       amountCents: platformFees.amountCents,
       stripePaymentIntentId: platformFees.stripePaymentIntentId,
+      source: platformFees.source,
+      status: platformFees.status,
     })
     .from(platformFees)
     .where(

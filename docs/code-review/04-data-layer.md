@@ -89,7 +89,7 @@ Seeds that insert backdated rows set `billableAt` with `initialBillableAt` and s
 
 ### [DL-13] Writes that change a billing snapshot mark it
 
-With the billing service on, Louez sends it snapshots of stores, reservations and legacy billing (louez-billing `docs/api`). A write that can change a snapshot marks its aggregate in the same transaction, with `markReservation`, `markReservationIds`, `markStore`, `markLegacyStore`, `markLegacyMonth` or `markBillingDirty` from `@louez/db`, or `billingMarkStatement` on a raw mysql2 connection. A write with no transaction gets one, with its mark; Stripe calls, emails and fetches stay outside it. `changeReservationStatus` and `insertReservation` mark the reservation themselves. With the service off, the marks write nothing.
+With the billing service on, Louez sends it snapshots of stores, reservations and legacy billing (louez-billing `docs/api`). A write that can change a snapshot marks its aggregate in the same transaction, with `markReservation`, `markReservationIds`, `markStoreReservations`, `markStore`, `markLegacyStore`, `markLegacyMonth` or `markBillingDirty` from `@louez/db`, or `billingMarkStatement` on a raw mysql2 connection. A write with no transaction gets one, with its mark; Stripe calls, emails and fetches stay outside it. `changeReservationStatus` and `insertReservation` mark the reservation themselves. With the service off, the marks write nothing.
 
 Mark only when a field the builders read can change (`apps/web/lib/billing-sync/snapshots`): notes, signatures and Tulip ids need none. The nightly sweep catches a missed mark within a day.
 

@@ -219,11 +219,16 @@ describe("billing heartbeat (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(sent?.queue.dead, 1);
     assert.deepEqual(sent?.queue.deadByStore, [{ storeId: OTHER_STORE, dead: 1 }]);
     assert.equal(sent?.queue.truncated, false);
+    // hb_pay_1 has no gross, but the gross backfill has not run: null (README Q7).
     assert.deepEqual(sent?.invariants, {
       billableWithoutBillableAt: 1,
-      completedPaymentsWithoutGross: 1,
+      completedPaymentsWithoutGross: null,
       byStore: [
-        { storeId: OTHER_STORE, billableWithoutBillableAt: 1, completedPaymentsWithoutGross: 1 },
+        {
+          storeId: OTHER_STORE,
+          billableWithoutBillableAt: 1,
+          completedPaymentsWithoutGross: null,
+        },
       ],
     });
     assert.deepEqual(sent?.policies, { etag: null, lastPullAt: null });
@@ -301,5 +306,40 @@ describe("billing heartbeat (database)", { skip: skipWithoutTestDatabase() }, ()
       false,
     );
     assert.ok(captured.errors.some((line) => line.startsWith("response_invalid:")));
+  });
+
+  test("counts completed payments without gross once the gross backfill has run", async () => {
+    // A store listed for its gross count alone.
+    await louezDb.db.insert(louezDb.payments).values({
+      id: "hb_pay_3",
+      reservationId: "hb_res_2",
+      amount: "5.00",
+      type: "rental",
+      method: "cash",
+      status: "completed",
+    });
+    await louezDb.db.execute(
+      sql`UPDATE billing_sync_state SET gross_backfilled_at = NOW(3) WHERE id = 1`,
+    );
+    response = { ...response, resync: [], resyncStores: [] };
+    service.handle("/heartbeat", () => ({ status: 200, body: response }));
+
+    const captured = captureAlerts();
+    const result = await heartbeat.runHeartbeat({
+      alerts: {
+        log: captured.log,
+        alert: async (kind: string, message: string) =>
+          void captured.errors.push(`${kind}: ${message}`),
+      },
+    });
+    assert.equal(result.outcome, "ok");
+    assert.deepEqual(lastHeartbeat()?.invariants, {
+      billableWithoutBillableAt: 1,
+      completedPaymentsWithoutGross: 2,
+      byStore: [
+        { storeId: STORE, billableWithoutBillableAt: 0, completedPaymentsWithoutGross: 1 },
+        { storeId: OTHER_STORE, billableWithoutBillableAt: 1, completedPaymentsWithoutGross: 1 },
+      ],
+    });
   });
 });

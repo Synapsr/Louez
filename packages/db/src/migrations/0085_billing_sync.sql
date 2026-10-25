@@ -59,6 +59,7 @@ CREATE TABLE `billing_sync_state` (
 	`policies_etag` varchar(64),
 	`last_policy_pull_at` timestamp(3) NULL,
 	`last_sweep_at` timestamp(3) NULL,
+	`gross_backfilled_at` timestamp(3) NULL,
 	`pending_request_ids` json,
 	`alerts` json,
 	`last_error` varchar(1000),

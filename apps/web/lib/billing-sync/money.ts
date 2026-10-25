@@ -109,9 +109,16 @@ export type ReservationTotalsInput = {
   readonly reservation: {
     readonly createdAt: Date;
     readonly currency: string | null;
+    /** `manual` when the dashboard created the row; the storefront checkout writes the others. */
+    readonly source: string | null;
     readonly totalAmount: string;
     readonly subtotalAmount: string;
     readonly depositAmount: string;
+    readonly deliveryFee: string | null;
+    readonly discountAmount: string | null;
+    /** The tax engine's split of the total; the dashboard never writes it. */
+    readonly subtotalExclTax: string | null;
+    readonly taxAmount: string | null;
     readonly tulipInsuranceAmount: string | null;
   };
   readonly storeSettings: Pick<StoreSettings, "currency" | "tax"> | null;
@@ -130,43 +137,146 @@ export type ReservationTotalsMinor = {
   readonly insuranceMinor: number;
 };
 
+type ToMinor = (value: string | null) => number;
+
 /**
  * The reservation's tax-included total and insurance, in minor units (contract Q6).
  *
- * `total_amount` is tax included except in one case: a store that prices excluding
- * tax, for a reservation created or edited from the dashboard. Those writes store
- * items without a tax rate and a total before tax. The total then gets the store's
- * default rate on everything but the insurance, which is VAT-exempt, so the
- * service never receives an excluding-tax total. Rows from before
- * DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE whose total includes the deposit are read the way
- * `getReservationRentalAmount` reads them.
+ * `total_amount` is tax included except when the dashboard wrote it in a store that
+ * prices excluding tax: manual creation and edits store a total with no tax on top.
+ * That total gets the tax the checkout would add (`taxOnTopMinor`), so the service
+ * never receives an excluding-tax total. `writtenByDashboard` tells the writers apart
+ * from what each one leaves on the row.
+ *
+ * The row does not record the display mode the dashboard priced under, so such a
+ * total follows the store's tax settings as they are now, and a change of
+ * `beforeTaxRateBps` moves it. Rows from before DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE whose
+ * total includes the deposit are read the way `getReservationRentalAmount` reads them.
  */
 export function reservationTotalsMinor(input: ReservationTotalsInput): ReservationTotalsMinor {
-  const currency = normalizeCurrency(input.reservation.currency ?? input.storeSettings?.currency);
-  const minor = (value: string | null) => toMinorOrThrow(value, currency);
+  const { reservation } = input;
+  const currency = normalizeCurrency(reservation.currency ?? input.storeSettings?.currency);
+  const minor: ToMinor = (value) => toMinorOrThrow(value, currency);
 
-  const subtotal = minor(input.reservation.subtotalAmount);
-  const deposit = minor(input.reservation.depositAmount);
-  let total = minor(input.reservation.totalAmount);
-  const mayIncludeDeposit = input.reservation.createdAt < DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE;
+  const subtotal = minor(reservation.subtotalAmount);
+  const deposit = minor(reservation.depositAmount);
+  let total = minor(reservation.totalAmount);
+  const mayIncludeDeposit = reservation.createdAt < DEPOSIT_EXCLUDED_FROM_TOTAL_SINCE;
   if (mayIncludeDeposit && total > 0 && deposit > 0 && total - subtotal >= deposit - 1) {
     total = Math.max(0, total - deposit);
   }
 
-  const insurance = Math.max(0, minor(input.reservation.tulipInsuranceAmount));
-  const tax = input.storeSettings?.tax;
-  const pricedBeforeTax =
-    tax?.enabled === true &&
-    tax.displayMode === "exclusive" &&
-    input.items.some(
-      (item) =>
-        item.taxRate === null &&
-        !(item.productId === null && insurance > 0 && minor(item.totalPrice) === insurance),
-    );
-  if (pricedBeforeTax && total > 0) {
-    const rateBps = BigInt(Math.round(Number(tax.defaultRate ?? 0) * 100));
-    const taxable = BigInt(Math.max(0, total - insurance));
-    total += Number(rhu(taxable, rateBps));
+  const insurance = Math.max(0, minor(reservation.tulipInsuranceAmount));
+  const defaultBps = beforeTaxRateBps(input.storeSettings?.tax);
+  if (defaultBps !== null && total > 0 && writtenByDashboard(reservation, total, minor)) {
+    total += taxOnTopMinor(input, insurance, BigInt(defaultBps), minor);
   }
   return { currency, totalInclTaxMinor: Math.max(0, total), insuranceMinor: insurance };
+}
+
+/**
+ * The rate, in basis points, that `reservationTotalsMinor` charges on the untaxed
+ * lines of a total the dashboard wrote, or null when the store's tax settings add
+ * no tax to such a total. A tax settings change that moves it changes the totals
+ * of every reservation whose total the dashboard wrote.
+ */
+export function beforeTaxRateBps(tax: StoreSettings["tax"] | null | undefined): number | null {
+  if (tax?.enabled !== true || tax.displayMode !== "exclusive") return null;
+  const rate = Number(tax.defaultRate ?? 0);
+  return Number.isFinite(rate) && rate > 0 ? Math.round(rate * 100) : 0;
+}
+
+/** Within one minor unit: each writer sums floats before it rounds to cents. */
+const near = (a: number, b: number) => Math.abs(a - b) <= 1;
+
+/**
+ * Whether the dashboard wrote the total, from what each writer leaves on the row.
+ * The tax engine (storefront checkout, extensions) stores its split beside the
+ * total, and the split adds up to the total in either display mode. The dashboard
+ * stores subtotal + delivery − discount, the subtotal holding the insurance, and
+ * leaves the split as it was: absent on a row it created, stale on a checkout row it
+ * edited.
+ *
+ * A checkout row with no split was booked with taxes off, so its total is what the
+ * renter was charged, whatever the store's settings are now. The row keeps no trace
+ * of a later dashboard edit of such a booking, which this reads the same way.
+ */
+function writtenByDashboard(
+  reservation: ReservationTotalsInput["reservation"],
+  total: number,
+  minor: ToMinor,
+): boolean {
+  const hasSplit = reservation.subtotalExclTax !== null && reservation.taxAmount !== null;
+  if (hasSplit && near(total, minor(reservation.subtotalExclTax) + minor(reservation.taxAmount)))
+    return false;
+  const sum =
+    minor(reservation.subtotalAmount) +
+    minor(reservation.deliveryFee) -
+    minor(reservation.discountAmount);
+  if (!near(total, sum)) return false;
+  return reservation.source === "manual" || hasSplit;
+}
+
+/**
+ * The tax the checkout adds to a before-tax total, as `calculateTaxBreakdown` does
+ * in exclusive mode: each item at its own rate, or at the store's default when it
+ * has none, the delivery at the default rate, and the insurance line exempt
+ * (art. 261 C CGI). The discount comes off the taxed lines first, spread in
+ * proportion by largest remainder.
+ */
+function taxOnTopMinor(
+  input: ReservationTotalsInput,
+  insurance: number,
+  defaultBps: bigint,
+  minor: ToMinor,
+): number {
+  const lines: Array<{ readonly amount: bigint; readonly bps: bigint }> = [];
+  let insuranceLineFound = insurance <= 0;
+  for (const item of input.items) {
+    const amount = minor(item.totalPrice);
+    if (!insuranceLineFound && item.productId === null && amount === insurance) {
+      insuranceLineFound = true;
+      continue;
+    }
+    const bps = item.taxRate === null ? defaultBps : percentToBps(item.taxRate);
+    lines.push({ amount: BigInt(Math.max(0, amount)), bps });
+  }
+  const delivery = minor(input.reservation.deliveryFee);
+  if (delivery > 0) lines.push({ amount: BigInt(delivery), bps: defaultBps });
+
+  const discounts = spreadByLargestRemainder(
+    BigInt(Math.max(0, minor(input.reservation.discountAmount))),
+    lines.map((line) => line.amount),
+  );
+  let tax = B0;
+  lines.forEach((line, index) => {
+    tax += rhu(line.amount - discounts[index], line.bps);
+  });
+  return Number(tax);
+}
+
+/** A stored `decimal(5,2)` percentage in basis points; a negative rate reads as 0. */
+function percentToBps(percent: string): bigint {
+  // Read with two decimals, as EUR is, a percentage counts hundredths of a percent.
+  return BigInt(Math.max(0, toMinorOrThrow(percent, "EUR")));
+}
+
+/** `discount` spread over `amounts` in proportion, by largest remainder, capped at their sum. */
+function spreadByLargestRemainder(discount: bigint, amounts: readonly bigint[]): bigint[] {
+  const sum = amounts.reduce((acc, amount) => acc + amount, B0);
+  const spread = discount < sum ? discount : sum;
+  if (spread === B0) return amounts.map(() => B0);
+  const shares = amounts.map((amount) => (spread * amount) / sum);
+  let left = spread - shares.reduce((acc, share) => acc + share, B0);
+  const byRemainder = amounts
+    .map((amount, index) => ({ index, remainder: (spread * amount) % sum }))
+    .sort((a, b) =>
+      a.remainder === b.remainder ? a.index - b.index : a.remainder > b.remainder ? -1 : 1,
+    );
+  for (const { index } of byRemainder) {
+    if (left === B0) break;
+    shares[index] += B1;
+    left -= B1;
+  }
+  return shares;
 }

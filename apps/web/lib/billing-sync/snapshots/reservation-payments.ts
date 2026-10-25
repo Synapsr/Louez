@@ -1,4 +1,4 @@
-import type { payments, paymentDisputes } from "@louez/db";
+import type { payments, paymentDisputes, platformFees } from "@louez/db";
 import { isStripeRefundRow } from "@louez/utils";
 
 import type { PaymentKind } from "@/lib/billing-sync/fee-metadata";
@@ -55,11 +55,21 @@ export type DisputeRow = Pick<
 >;
 
 /** A legacy `platform_fee` row of the reservation (`res:` or `mkt:`). */
-export type LegacyFeeRow = {
-  readonly dedupKey: string;
-  readonly amountCents: number;
-  readonly stripePaymentIntentId: string | null;
-};
+export type LegacyFeeRow = Readonly<
+  Pick<
+    typeof platformFees.$inferSelect,
+    "dedupKey" | "amountCents" | "stripePaymentIntentId" | "source" | "status"
+  >
+>;
+
+/**
+ * Legacy sources whose fee Stripe took on the charge. The others are billed at month
+ * end or waived.
+ */
+const TAKEN_AT_SOURCE: ReadonlySet<LegacyFeeRow["source"]> = new Set([
+  "online",
+  "marketplace_online",
+]);
 
 export type PaymentsInput = {
   readonly checks: SnapshotChecks;
@@ -101,8 +111,9 @@ function paymentKind(row: PaymentRow, input: PaymentsInput): PaymentKind {
 
 /**
  * The fee Louez asked Stripe to take at source: the copied session metadata, else,
- * for older Stripe payments, the legacy `res:` and `mkt:` rows recorded with the same
- * PaymentIntent (metadata v3, no percent base).
+ * for older Stripe payments, the legacy `res:` and `mkt:` rows taken at source on the
+ * same PaymentIntent (metadata v3, no percent base). A manual row can carry the
+ * PaymentIntent too, when its fee did not fit the charge: Stripe took nothing for it.
  */
 function appFee(
   row: PaymentRow,
@@ -141,7 +152,9 @@ function appFee(
     input.legacyFees.find(
       (fee) =>
         fee.dedupKey === `${prefix}:${input.reservationId}` &&
-        fee.stripePaymentIntentId === paymentIntentId,
+        fee.stripePaymentIntentId === paymentIntentId &&
+        TAKEN_AT_SOURCE.has(fee.source) &&
+        fee.status !== "voided",
     );
   const reservationFee = legacy("res");
   const marketplaceFee = legacy("mkt");

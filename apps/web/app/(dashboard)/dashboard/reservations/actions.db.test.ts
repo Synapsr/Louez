@@ -343,6 +343,94 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       assert.equal(await readMarkVersion(reservationId), 1);
     });
 
+    test("an edited checkout booking in a store that prices before tax keeps its tax in the snapshot", async () => {
+      const storeId = "store_actions_ht";
+      const settings = {
+        reservationMode: "request" as const,
+        advanceNoticeMinutes: 0,
+        currency: "eur",
+        tax: { enabled: true, defaultRate: 20, displayMode: "exclusive" as const },
+      };
+      await louezDb.db
+        .insert(louezDb.stores)
+        .values({ id: storeId, userId: "user_ht", name: "HT", slug: "actions-ht", settings });
+      await louezDb.db.insert(louezDb.products).values({
+        id: "product_ht",
+        storeId,
+        name: "Bike",
+        price: "50.00",
+        pricingMode: "day",
+      });
+      // What the checkout writes for two days at 50.00 before tax: the item with
+      // its rate and split, a total of 120.00 tax included.
+      const reservationId = nextId("res");
+      await louezDb.db.insert(louezDb.reservations).values({
+        id: reservationId,
+        storeId,
+        customerId: "customer_actions",
+        number: reservationId,
+        status: "pending",
+        startDate: START,
+        endDate: END,
+        subtotalAmount: "100.00",
+        depositAmount: "0.00",
+        totalAmount: "120.00",
+        subtotalExclTax: "100.00",
+        taxAmount: "20.00",
+        taxRate: "20.00",
+        source: "online",
+      });
+      await louezDb.db.insert(louezDb.reservationItems).values({
+        id: nextId("itm"),
+        reservationId,
+        productId: "product_ht",
+        quantity: 1,
+        unitPrice: "50.00",
+        depositPerUnit: "0.00",
+        totalPrice: "100.00",
+        taxRate: "20.00",
+        taxAmount: "20.00",
+        priceExclTax: "50.00",
+        totalExclTax: "100.00",
+        productSnapshot: { name: "Bike", description: null, images: [] },
+      });
+
+      const previousStore = Reflect.get(globalThis, STORE_KEY);
+      Reflect.set(globalThis, STORE_KEY, {
+        id: storeId,
+        userId: "",
+        name: "HT",
+        slug: "actions-ht",
+        settings,
+        stripeAccountId: null,
+      });
+      try {
+        const result = await actions.updateReservation(reservationId, {
+          endDate: new Date("2026-04-13T09:00:00.000Z"),
+        });
+        assert.equal("error" in result ? result.error : undefined, undefined);
+      } finally {
+        Reflect.set(globalThis, STORE_KEY, previousStore);
+      }
+
+      // The edit reprices the item before tax and adds no tax to the total.
+      const [row] = await louezDb.db
+        .select({ totalAmount: louezDb.reservations.totalAmount })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.id, reservationId));
+      assert.equal(row?.totalAmount, "150.00");
+
+      const { buildSnapshot } = await import("@/lib/billing-sync/snapshots/build-snapshot");
+      const built = await buildSnapshot(
+        louezDb.db,
+        { type: "reservation", aggregateId: reservationId, storeId },
+        { newStoresFrom: new Date("2027-01-25T00:00:00Z") },
+      );
+      assert.ok(built.kind === "snapshot" && "totalInclTaxMinor" in built.data);
+      // 150.00 before tax at the item's 20 %, as the checkout would have charged it.
+      assert.equal(built.data.totalInclTaxMinor, 18000);
+    });
+
     test("a refused edit marks nothing", async () => {
       const reservationId = await createReservation();
 

@@ -37,9 +37,14 @@ async function loadTotalsInput(
     .select({
       createdAt: reservations.createdAt,
       currency: reservations.currency,
+      source: reservations.source,
       totalAmount: reservations.totalAmount,
       subtotalAmount: reservations.subtotalAmount,
       depositAmount: reservations.depositAmount,
+      deliveryFee: reservations.deliveryFee,
+      discountAmount: reservations.discountAmount,
+      subtotalExclTax: reservations.subtotalExclTax,
+      taxAmount: reservations.taxAmount,
       tulipInsuranceAmount: reservations.tulipInsuranceAmount,
     })
     .from(reservations)
@@ -105,7 +110,6 @@ export type ManualRefundInput = ReservationRef & {
   readonly reservationCurrency: string | null;
   readonly original: {
     readonly id: string;
-    readonly method: string;
     readonly currency: string | null;
   };
   readonly type: "rental" | "deposit_return";
@@ -117,15 +121,16 @@ export type ManualRefundInput = ReservationRef & {
 
 /**
  * Inserts a refund the store gives by hand. It is folded onto the payment it
- * refunds and never sent as a payment, so it has no insurance share. Its currency
- * is the payment's: the charge currency for a Stripe payment, else the
- * reservation's, since older manual rows hold the EUR default (contract Q4).
+ * refunds and never sent as a payment, so it has no insurance share. It keeps the
+ * currency of the payment it refunds, even the EUR default of an older manual
+ * row: its credit note takes this currency and must match that payment's invoice.
+ * The billing service is unaffected: the snapshot builder takes a non-Stripe
+ * payment's currency from the reservation (contract Q4) and reads only the
+ * refund's amount.
  */
 export async function insertManualRefund(tx: Transaction, input: ManualRefundInput): Promise<void> {
   const currency =
-    input.original.method === "stripe" && input.original.currency
-      ? input.original.currency
-      : reservationCurrency(input.reservationCurrency, input.storeSettings);
+    input.original.currency ?? reservationCurrency(input.reservationCurrency, input.storeSettings);
   await tx.insert(payments).values({
     id: input.id,
     reservationId: input.reservationId,
@@ -214,7 +219,12 @@ export async function recordDepositHold(
   });
 }
 
-/** The reservation's authorized hold, locked. */
+/**
+ * The reservation's authorized hold, locked. Call it after the reservation's
+ * update: the reservation is locked first, then its payments, as the Connect
+ * webhook's deposit events do. The two run at once for the same PaymentIntent,
+ * and the opposite order deadlocks.
+ */
 async function lockAuthorizedHold(tx: Transaction, reservationId: string) {
   const [hold] = await tx
     .select({ id: payments.id })

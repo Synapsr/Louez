@@ -113,6 +113,92 @@ describe("billing queue marks (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal((await rows()).length, 1);
   });
 
+  test("a store's reservations are all marked, and only for that store", async () => {
+    const reservation = (id: string, storeId: string) => ({
+      id,
+      storeId,
+      customerId: "c",
+      number: id,
+      status: "completed" as const,
+      startDate: new Date("2026-06-01T09:00:00Z"),
+      endDate: new Date("2026-06-02T09:00:00Z"),
+      subtotalAmount: "10.00",
+      depositAmount: "0.00",
+      totalAmount: "10.00",
+    });
+    const item = (reservationId: string, index: number, taxRate: string | null) => ({
+      id: `item_${reservationId}_${index}`,
+      reservationId,
+      quantity: 1,
+      unitPrice: "10.00",
+      depositPerUnit: "0.00",
+      totalPrice: "10.00",
+      taxRate,
+      productSnapshot: { name: "Kayak", description: null, images: [] },
+    });
+    await louezDb.db
+      .insert(louezDb.reservations)
+      .values([
+        reservation("res_mixed", "s_tax"),
+        reservation("res_taxed", "s_tax"),
+        reservation("res_no_items", "s_tax"),
+        reservation("res_other", "s_other"),
+      ]);
+    await louezDb.db
+      .insert(louezDb.reservationItems)
+      .values([
+        item("res_mixed", 1, "20.00"),
+        item("res_mixed", 2, null),
+        item("res_taxed", 1, "20.00"),
+        item("res_other", 1, null),
+      ]);
+    await louezDb.markStoreReservations(louezDb.db, "s_tax");
+    await louezDb.db.transaction(async (tx) => {
+      await louezDb.markStoreReservations(tx, "s_tax");
+      // The mark read the rows without a lock: another connection takes them at once.
+      await louezDb.db.execute(
+        sql`SELECT r.id FROM reservations r JOIN reservation_items i ON i.reservation_id = r.id
+            WHERE r.id = 'res_mixed' FOR UPDATE NOWAIT`,
+      );
+    });
+    assert.deepEqual(await rows(), [
+      { type: "reservation", id: "res_mixed", version: 2, status: "pending", sentHash: null },
+      { type: "reservation", id: "res_no_items", version: 2, status: "pending", sentHash: null },
+      { type: "reservation", id: "res_taxed", version: 2, status: "pending", sentHash: null },
+    ]);
+
+    process.env.LOUEZ_BILLING = "off";
+    await louezDb.markStoreReservations(louezDb.db, "s_other");
+    assert.equal((await rows()).length, 3);
+  });
+
+  test("marking reservations by id leaves the reservation rows unlocked", async () => {
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: "res_unlocked",
+      storeId: "s8",
+      customerId: "c",
+      number: "R-unlocked",
+      status: "confirmed",
+      startDate: new Date("2026-11-01T09:00:00Z"),
+      endDate: new Date("2026-11-02T09:00:00Z"),
+      subtotalAmount: "10.00",
+      depositAmount: "0.00",
+      totalAmount: "10.00",
+    });
+    await louezDb.db.transaction(async (tx) => {
+      await louezDb.markReservationIds(tx, ["res_unlocked"]);
+      // Another connection locks the reservation at once. A mark that read it with
+      // a lock would hold it until this transaction ends, and a payment-first
+      // transaction would then deadlock with one that updates the reservation.
+      await louezDb.db.execute(
+        sql`SELECT id FROM reservations WHERE id = 'res_unlocked' FOR UPDATE NOWAIT`,
+      );
+    });
+    assert.deepEqual(await rows(), [
+      { type: "reservation", id: "res_unlocked", version: 1, status: "pending", sentHash: null },
+    ]);
+  });
+
   test("marks write nothing when Louez does not bill through the service", async () => {
     delete process.env.BILLING_SERVICE_URL;
     await louezDb.markStore(louezDb.db, "s1");

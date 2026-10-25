@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import {
   buildPaymentSnapshots,
   type DisputeRow,
+  type LegacyFeeRow,
   type PaymentRow,
   type PaymentsInput,
 } from "./reservation-payments";
@@ -259,22 +260,62 @@ describe("app fee", () => {
     assert.equal(legacy?.appFee?.policy, null);
   });
 
+  /** A legacy fee taken at source on `pi_p1`, as the webhook records it. */
+  const legacyFee = (
+    prefix: "res" | "mkt",
+    amountCents: number,
+    overrides: Partial<LegacyFeeRow> = {},
+  ): LegacyFeeRow => ({
+    dedupKey: `${prefix}:r1`,
+    amountCents,
+    stripePaymentIntentId: "pi_p1",
+    source: prefix === "res" ? "online" : "marketplace_online",
+    status: "collected",
+    ...overrides,
+  });
+  const legacyAppFee = (reservationMinor: number, marketplaceMinor: number) => ({
+    totalMinor: reservationMinor + marketplaceMinor,
+    reservationMinor,
+    marketplaceMinor,
+    baseMinor: 0,
+    policy: null,
+    metadataVersion: 3,
+  });
+
   test("older Stripe payments fall back to the legacy rows of their PaymentIntent", () => {
     const [matched, other] = build([charge("p1"), charge("p2")], {
+      legacyFees: [legacyFee("res", 90), legacyFee("mkt", 150)],
+    });
+    assert.deepEqual(matched?.appFee, legacyAppFee(90, 150));
+    assert.equal(other?.appFee, null);
+  });
+
+  test("the fallback counts only the legacy rows Stripe took on the charge", () => {
+    // The reservation fee did not fit the charge: billed at month end, PaymentIntent kept.
+    const [unfit] = build([charge("p1")], {
       legacyFees: [
-        { dedupKey: "res:r1", amountCents: 90, stripePaymentIntentId: "pi_p1" },
-        { dedupKey: "mkt:r1", amountCents: 150, stripePaymentIntentId: "pi_p1" },
+        legacyFee("res", 300, { source: "manual", status: "pending" }),
+        legacyFee("mkt", 100),
       ],
     });
-    assert.deepEqual(matched?.appFee, {
-      totalMinor: 240,
-      reservationMinor: 90,
-      marketplaceMinor: 150,
-      baseMinor: 0,
-      policy: null,
-      metadataVersion: 3,
+    assert.deepEqual(unfit?.appFee, legacyAppFee(0, 100));
+
+    const [nothingTaken] = build([charge("p1")], {
+      legacyFees: [
+        legacyFee("res", 300, { source: "manual", status: "voided" }),
+        legacyFee("mkt", 100, { source: "marketplace_manual", status: "pending" }),
+      ],
     });
-    assert.equal(other?.appFee, null);
+    assert.equal(nothingTaken?.appFee, null);
+
+    // A fee reversed after a refund was still asked at source; a voided one never was.
+    const [reversed] = build([charge("p1")], {
+      legacyFees: [
+        legacyFee("res", 90, { status: "reversed" }),
+        legacyFee("mkt", 100, { status: "voided" }),
+      ],
+    });
+    assert.deepEqual(reversed?.appFee, legacyAppFee(90, 0));
   });
 
   test("a half-written fee is refused, not guessed", () => {

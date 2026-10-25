@@ -55,7 +55,10 @@ export async function runSweep(now: Date = new Date()): Promise<SweepResult> {
   const counts = { stores: 0, reservations: 0, legacy: 0 };
 
   // Every store, with its legacy_store and the legacy_month of this month and the
-  // previous one while it is not new.
+  // previous one while it is not new. One statement per aggregate type, each
+  // committed on its own: the sweep never holds one type's rows while it waits on
+  // another's, so it cannot deadlock with a transaction that marks several types,
+  // such as a free fee row's (legacy_month, then legacy_store).
   let storeCursor = "";
   for (;;) {
     const page = await db
@@ -66,22 +69,26 @@ export async function runSweep(now: Date = new Date()): Promise<SweepResult> {
       .limit(BATCH);
     if (page.length === 0) break;
     storeCursor = page[page.length - 1]?.id ?? storeCursor;
-    const marks: BillingMark[] = [];
+    const storeMarks: BillingMark[] = [];
+    const monthMarks: BillingMark[] = [];
+    const legacyStoreMarks: BillingMark[] = [];
     for (const store of page) {
-      marks.push({ type: "store", aggregateId: store.id, storeId: store.id });
+      storeMarks.push({ type: "store", aggregateId: store.id, storeId: store.id });
       counts.stores += 1;
       if (store.createdAt.getTime() >= newStoresFrom.getTime()) continue;
-      marks.push({ type: "legacy_store", aggregateId: store.id, storeId: store.id });
       for (const period of periods) {
-        marks.push({
+        monthMarks.push({
           type: "legacy_month",
           aggregateId: `${store.id}:${period}`,
           storeId: store.id,
         });
       }
+      legacyStoreMarks.push({ type: "legacy_store", aggregateId: store.id, storeId: store.id });
       counts.legacy += 1 + periods.length;
     }
-    await markBillingDirty(db, marks);
+    for (const marks of [storeMarks, monthMarks, legacyStoreMarks]) {
+      await markBillingDirty(db, marks);
+    }
   }
 
   // Open reservations, those that ended in the last 40 days, and those with a payment,

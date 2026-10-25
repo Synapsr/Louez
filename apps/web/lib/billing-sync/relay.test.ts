@@ -6,7 +6,9 @@ import {
   MAX_BATCH_EVENTS,
   MAX_BODY_BYTES,
   MAX_EVENT_BYTES,
+  RELAY_REQUESTS_PER_MINUTE,
   classifyEventsResponse,
+  createRunClock,
   packEventBatches,
   planRejection,
   planServerErrorAlone,
@@ -200,5 +202,86 @@ describe("classifyEventsResponse", () => {
       serverError: true,
       detail: "timeout",
     });
+  });
+});
+
+describe("createRunClock", () => {
+  /** A clock on fake time; each request takes `requestMs` once its slot came. */
+  async function sendUntilStopped(input: {
+    limitMs: number;
+    requestsPerMinute: number;
+    requestMs: number;
+  }) {
+    let time = 0;
+    const clock = createRunClock({
+      limitMs: input.limitMs,
+      requestsPerMinute: input.requestsPerMinute,
+      now: () => time,
+      sleep: async (ms) => {
+        time += ms;
+      },
+    });
+    const starts: number[] = [];
+    while (await clock.nextRequest()) {
+      starts.push(time);
+      time += input.requestMs;
+    }
+    return { starts, clock };
+  }
+
+  test("spaces fast requests to the pace and starts none after the limit", async () => {
+    const { starts, clock } = await sendUntilStopped({
+      limitMs: 1000,
+      requestsPerMinute: 600,
+      requestMs: 10,
+    });
+    assert.deepEqual(starts, [0, 100, 200, 300, 400, 500, 600, 700, 800, 900]);
+    assert.equal(clock.timeLeft(), false);
+  });
+
+  test("a slow request leaves no credit for a burst", async () => {
+    const { starts } = await sendUntilStopped({
+      limitMs: 1000,
+      requestsPerMinute: 600,
+      requestMs: 250,
+    });
+    assert.deepEqual(starts, [0, 250, 500, 750]);
+  });
+
+  test("a slot that falls after the limit stops the run before the limit itself", async () => {
+    let time = 0;
+    const clock = createRunClock({
+      limitMs: 150,
+      requestsPerMinute: 600,
+      now: () => time,
+      sleep: async (ms) => {
+        time += ms;
+      },
+    });
+    assert.equal(await clock.nextRequest(), true);
+    time = 20;
+    assert.equal(clock.timeLeft(), true);
+    // The second slot is at 100. The third, at 200, falls after the limit.
+    assert.equal(await clock.nextRequest(), true);
+    assert.equal(time, 100);
+    assert.equal(await clock.nextRequest(), false);
+    assert.equal(time, 100, "no wait for a slot the run cannot use");
+    assert.equal(clock.timeLeft(), false, "the run stops with its last request");
+  });
+
+  test("one run, even one event per request, stays inside the shared budget", async () => {
+    // README §4.4: 600 a minute for events, heartbeats and manifests together.
+    const { starts } = await sendUntilStopped({
+      limitMs: 50_000,
+      requestsPerMinute: RELAY_REQUESTS_PER_MINUTE,
+      requestMs: 1,
+    });
+    assert.ok(starts.length <= RELAY_REQUESTS_PER_MINUTE);
+    assert.ok(
+      RELAY_REQUESTS_PER_MINUTE <= 600 - 100,
+      "room is left for the heartbeat and manifests",
+    );
+    const spacing = starts.slice(1).map((start, index) => start - (starts[index] ?? 0));
+    assert.ok(spacing.every((gap) => gap >= 60_000 / RELAY_REQUESTS_PER_MINUTE - 1e-6));
   });
 });

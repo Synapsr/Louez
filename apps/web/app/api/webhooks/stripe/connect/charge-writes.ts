@@ -1,7 +1,7 @@
 import { type SQL, and, eq, isNull, ne, or } from "drizzle-orm";
 import type Stripe from "stripe";
 
-import { db, markReservation, markReservationIds } from "@louez/db";
+import { db, isPaymentReceiptSql, markReservation, markReservationIds } from "@louez/db";
 import { paymentDisputes, payments, reservations, stores } from "@louez/db";
 
 import { log } from "@/lib/evlog";
@@ -55,7 +55,9 @@ type DisputedPayment = {
 
 /**
  * The payment a dispute is about, on the connected account that sent the event.
- * A payment without a charge id is found through its PaymentIntent.
+ * A payment without a charge id is found through its PaymentIntent. Refund rows
+ * are skipped, but not a charge that older webhooks stamped with its refund id
+ * (README Q7, shape 1).
  */
 async function findDisputedPayment(input: {
   readonly chargeId: string;
@@ -78,7 +80,7 @@ async function findDisputedPayment(input: {
       .from(payments)
       .innerJoin(reservations, eq(reservations.id, payments.reservationId))
       .innerJoin(stores, eq(stores.id, reservations.storeId))
-      .where(and(match, isNull(payments.stripeRefundId), onAccount))
+      .where(and(match, isPaymentReceiptSql(), onAccount))
       .limit(1);
 
   const [byCharge] = await find(eq(payments.stripeChargeId, input.chargeId));

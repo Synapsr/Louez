@@ -46,6 +46,11 @@ export const MAX_BATCH_EVENTS = 100;
 export const MAX_BODY_BYTES = 1_048_576;
 const BODY_OVERHEAD_BYTES = Buffer.byteLength('{"events":[]}');
 const RUN_LIMIT_MS = 50_000;
+/**
+ * The relay's share of the 600 requests a minute that events, heartbeats and
+ * manifests share (README §4.4). The rest is left to the heartbeat and manifests.
+ */
+export const RELAY_REQUESTS_PER_MINUTE = 450;
 const DUE_PAGE = 100;
 const DEAD_AFTER_ATTEMPTS = 5;
 const PROCESSING_FAILED_MAX_MINUTES = 60;
@@ -178,6 +183,48 @@ export function classifyEventsResponse(call: BillingCallResult, eventCount: numb
   return classifyFailure(call);
 }
 
+/** The time limit and the request pace of one run (README §6 and §4.4). */
+export type RunClock = {
+  /** False once the limit has passed, or once a request no longer fit before it. */
+  timeLeft(): boolean;
+  /**
+   * Waits for the next request slot, so the run never sends more than its share of
+   * the budget in a minute. False, without waiting, when the slot falls after the
+   * limit: the run sends nothing more.
+   */
+  nextRequest(): Promise<boolean>;
+};
+
+export function createRunClock(input: {
+  readonly limitMs: number;
+  readonly requestsPerMinute: number;
+  readonly now?: () => number;
+  readonly sleep?: (ms: number) => Promise<void>;
+}): RunClock {
+  const now = input.now ?? Date.now;
+  const sleep =
+    input.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const deadline = now() + input.limitMs;
+  const spacingMs = 60_000 / input.requestsPerMinute;
+  let nextSlot = Number.NEGATIVE_INFINITY;
+  let stopped = false;
+  return {
+    timeLeft: () => !stopped && now() < deadline,
+    async nextRequest() {
+      // A slow request leaves no credit behind: the next slot counts from now.
+      const at = Math.max(now(), nextSlot);
+      if (stopped || at >= deadline) {
+        stopped = true;
+        return false;
+      }
+      nextSlot = at + spacingMs;
+      const wait = at - now();
+      if (wait > 0) await sleep(wait);
+      return true;
+    },
+  };
+}
+
 // ---------------------------------------------------------------- queue rows
 
 type QueueKey = { readonly type: BillingAggregateType; readonly aggregateId: string };
@@ -227,15 +274,22 @@ async function markSyncedUnsent(key: QueueKey, version: number): Promise<void> {
 
 /**
  * Delivered (`accepted`, `duplicate`, `stale`). The row is synced only if no mark
- * moved its version since the send; the service holds the sent version either way.
+ * moved its version since the build; the service holds the sent version either way.
+ *
+ * The sent hash becomes this content's even when plain marks moved the version, so
+ * a change undone during the send is compared with what the service now holds and
+ * sent again (README §5.2 and §6). Plain marks leave the hash read at build time in
+ * place; a forced mark clears it, and then it stays cleared. A hash that was already
+ * empty at build time stays empty once the version moved, since a forced mark would
+ * leave no trace: the next build sends whatever it finds.
  */
 async function markDelivered(event: PreparedEvent, heldVersion: number | null): Promise<void> {
-  const { key, version, hash } = event;
+  const { key, version, hash, baseHash } = event;
   await executeWrite(
     db,
     sql`UPDATE billing_sync_queue
         SET delivered_version = GREATEST(delivered_version, ${version}),
-            sent_hash = IF(version = ${version}, ${hash}, sent_hash),
+            sent_hash = IF(version = ${version} OR sent_hash = ${baseHash}, ${hash}, sent_hash),
             status = IF(version = ${version}, 'synced', status),
             attempt_count = 0, failing_since = NULL, last_error = NULL
         WHERE ${whereKey(key)}`,
@@ -250,6 +304,25 @@ async function markDelivered(event: PreparedEvent, heldVersion: number | null): 
           WHERE ${whereKey(key)} AND version < ${heldVersion}`,
     );
   }
+}
+
+/**
+ * The answer to a batch was lost or unusable (a timeout, a 5xx), but the service may
+ * have applied it: it holds this content or the one sent before, and Louez cannot
+ * tell which. Without a sent hash, the next build sends whatever it finds (README
+ * §5.2). Status, attempts and backoff stay as they were (§6).
+ */
+async function forgetSentHashes(batch: readonly PreparedEvent[]): Promise<void> {
+  const known = batch.filter((event) => event.baseHash !== null);
+  if (known.length === 0) return;
+  await executeWrite(
+    db,
+    sql`UPDATE billing_sync_queue SET sent_hash = NULL
+        WHERE ${sql.join(
+          known.map((event) => sql`(${whereKey(event.key)} AND sent_hash = ${event.baseHash})`),
+          sql` OR `,
+        )}`,
+  );
 }
 
 /** `id_reused`: not an attempt. Version at least heldVersion, then a forced mark. */
@@ -313,6 +386,8 @@ export type PreparedEvent = {
   readonly key: QueueKey;
   readonly version: number;
   readonly hash: string;
+  /** The row's sent hash when the snapshot was built. */
+  readonly baseHash: string | null;
   readonly json: string;
   readonly bytes: number;
   readonly lastError: string | null;
@@ -421,7 +496,15 @@ async function prepareRow(
   if (bytes > MAX_EVENT_BYTES) return { kind: "too_large", version, bytes };
   return {
     kind: "send",
-    event: { key, version, hash, json, bytes, lastError: current.lastError },
+    event: {
+      key,
+      version,
+      hash,
+      baseHash: current.sentHash,
+      json,
+      bytes,
+      lastError: current.lastError,
+    },
   };
 }
 
@@ -468,9 +551,10 @@ export async function runRelay(options: RelayOptions = {}): Promise<RelayRunResu
   const config = options.client?.config ?? billingSyncConfig();
   const client: BillingClientOptions = { ...options.client, config };
   const build = options.build ?? buildSnapshot;
-  const limitMs = options.timeLimitMs ?? RUN_LIMIT_MS;
-  const startedAt = Date.now();
-  const timeLeft = () => Date.now() - startedAt < limitMs;
+  const clock = createRunClock({
+    limitMs: options.timeLimitMs ?? RUN_LIMIT_MS,
+    requestsPerMinute: RELAY_REQUESTS_PER_MINUTE,
+  });
   const counts: RelayCounts = {
     sent: 0,
     delivered: 0,
@@ -499,14 +583,14 @@ export async function runRelay(options: RelayOptions = {}): Promise<RelayRunResu
 
   try {
     let cursor: DueRow | null = null;
-    while (failure === null && timeLeft()) {
+    while (failure === null && clock.timeLeft()) {
       const due = await selectDueRows(cursor, DUE_PAGE);
       if (due.length === 0) break;
       cursor = due[due.length - 1] ?? null;
 
       const events: PreparedEvent[] = [];
       for (const row of due) {
-        if (!timeLeft()) break;
+        if (!clock.timeLeft()) break;
         let prepared: Prepared;
         try {
           prepared = await prepareRow(snapshots.db, row, newStoresFrom, build);
@@ -534,7 +618,7 @@ export async function runRelay(options: RelayOptions = {}): Promise<RelayRunResu
         }
       }
 
-      failure = await deliver(events, mode, counts, alerts, client);
+      failure = await deliver(events, { mode, clock, counts, alerts, client });
     }
   } finally {
     await snapshots.close();
@@ -589,20 +673,38 @@ async function postEvents(
   return classifyEventsResponse(call, batch.length);
 }
 
-/** Sends the prepared events; returns the failure that stops the run, if any. */
+/**
+ * A failure that may come after the service applied the batch: a timeout, a 5xx,
+ * an answer that failed its checks, or a 503 from a proxy. A 400 or 413, a 401 and
+ * a 406 refuse the whole request before any event is handled.
+ */
+function mayHaveApplied(failure: CallFailure): boolean {
+  return failure.kind === "transport" || failure.kind === "retry_after";
+}
+
+/**
+ * Sends the prepared events; returns the failure that stops the run, if any. Each
+ * request waits for its slot in the run's pace. Once the run is out of time, the
+ * events not sent stay pending at their version and are built again next run.
+ */
 async function deliver(
   events: readonly PreparedEvent[],
-  mode: RunMode,
-  counts: RelayCounts,
-  alerts: BillingAlerts,
-  client: BillingClientOptions,
+  run: {
+    readonly mode: RunMode;
+    readonly clock: RunClock;
+    readonly counts: RelayCounts;
+    readonly alerts: BillingAlerts;
+    readonly client: BillingClientOptions;
+  },
 ): Promise<RunFailure | null> {
+  const { mode, clock, counts, alerts, client } = run;
   const queue =
     mode.persistentSingle || mode.forcedSingle
       ? events.map((event) => [event])
       : packEventBatches(events);
 
   while (queue.length > 0) {
+    if (!(await clock.nextRequest())) break;
     const batch = queue.shift();
     if (!batch) break;
     const outcome = await postEvents(batch, client);
@@ -642,6 +744,7 @@ async function deliver(
       };
     }
 
+    if (mayHaveApplied(outcome)) await forgetSentHashes(batch);
     const [alone] = batch;
     if (
       outcome.kind === "transport" &&

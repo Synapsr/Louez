@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
 import { failMarketplaceBookingAttempt } from "@louez/api/services";
-import { db, markReservationIds, markStore, toWholeSeconds } from "@louez/db";
+import { type Transaction, db, markReservationIds, markStore, toWholeSeconds } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
@@ -640,6 +640,20 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
 // ============================================================================
 
 /**
+ * Locks the reservation, first in a deposit event's transaction: rows are locked
+ * reservation first, then its payments, as the dashboard's deposit writes do.
+ * Stripe sends these events for the dashboard's own capture or release, so both
+ * run at once for the same PaymentIntent, and the opposite order deadlocks.
+ */
+async function lockDepositReservation(tx: Transaction, reservationId: string) {
+  await tx
+    .select({ id: reservations.id })
+    .from(reservations)
+    .where(eq(reservations.id, reservationId))
+    .for("update");
+}
+
+/**
  * Handles successful deposit authorization (empreinte created)
  * Triggered when PaymentIntent status becomes requires_capture
  */
@@ -698,6 +712,8 @@ async function handleDepositAuthorized(
   expiresAt.setDate(expiresAt.getDate() + 7);
 
   await db.transaction(async (tx) => {
+    await lockDepositReservation(tx, reservationId);
+
     // Create payment record for the authorization hold. A hold is not paid and
     // carries no charge id: its capture row does (deposit_capture).
     await tx.insert(payments).values({
@@ -789,6 +805,8 @@ async function handleDepositReleased(
   const amount = fromStripeCents(paymentIntent.amount, currency);
 
   await db.transaction(async (tx) => {
+    await lockDepositReservation(tx, reservationId);
+
     // Find and update the deposit hold payment
     const depositPayment = await tx.query.payments.findFirst({
       where: eq(payments.stripePaymentIntentId, paymentIntent.id),
@@ -869,6 +887,10 @@ async function handleDepositCaptured(
   const paidAt = new Date();
 
   const capturePaymentId = await db.transaction(async (tx) => {
+    // Locked before the first read below, so that read sees a capture the
+    // dashboard committed while this event waited.
+    await lockDepositReservation(tx, reservationId);
+
     // Find and update the deposit hold payment. The capture row shares its
     // PaymentIntent, so match the type.
     const depositPayment = await tx.query.payments.findFirst({

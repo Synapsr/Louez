@@ -66,4 +66,29 @@ describe("checkBillingSyncConfigAtStartup", () => {
     });
     assert.equal(checkBillingSyncConfigAtStartup({ error: () => assert.fail("logged") }), true);
   });
+
+  test("in production, plain http to a loopback host is refused", () => {
+    const processEnv: Record<string, string | undefined> = process.env;
+    const savedNodeEnv = processEnv.NODE_ENV;
+    try {
+      processEnv.NODE_ENV = "production";
+      const errors: string[] = [];
+      setEnv({
+        LOUEZ_BILLING: "cloud",
+        BILLING_SERVICE_URL: "http://localhost:3100",
+        BILLING_OUTBOUND_KEYS: JSON.stringify({ "louez-req-a": "a".repeat(40) }),
+        BILLING_OUTBOUND_ACTIVE_KID: "louez-req-a",
+        BILLING_RESPONSE_KEYS: JSON.stringify({ "billing-res-a": "b".repeat(40) }),
+        BILLING_NEW_STORES_FROM: "2027-01-25T00:00:00Z",
+      });
+      assert.equal(
+        checkBillingSyncConfigAtStartup({ error: (_tag, message) => errors.push(message) }),
+        false,
+      );
+      assert.ok(errors.some((line) => line.includes("BILLING_SERVICE_URL must use https")));
+    } finally {
+      if (savedNodeEnv === undefined) delete processEnv.NODE_ENV;
+      else processEnv.NODE_ENV = savedNodeEnv;
+    }
+  });
 });
