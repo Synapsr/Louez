@@ -24,6 +24,12 @@ const MIGRATIONS_TABLE = '__drizzle_migrations'
 // Migrations folder is relative to where this script is executed (WORKDIR /app)
 const MIGRATIONS_FOLDER = process.env.MIGRATIONS_FOLDER || './migrations'
 
+// Copy of packages/db/src/billing-service-tables.ts: the image runs this file
+// without TypeScript. Keep both in step.
+function isBillingServiceTable(name) {
+  return name.startsWith('billing_service_') || name === '__billing_service_migrations'
+}
+
 /**
  * Read migration files manually (simplified version of Drizzle's reader)
  */
@@ -92,14 +98,17 @@ async function runMigrations() {
     )
     const migrationsTableExists = tables.length > 0
 
-    // Get list of all user tables (excluding system tables)
-    const [userTables] = await connection.query(
+    // Get list of all user tables (excluding system tables). The billing
+    // service's tables are not Louez's: on an empty database where the service
+    // migrated first, they must not trigger a baseline.
+    const [allUserTables] = await connection.query(
       `SELECT TABLE_NAME FROM information_schema.TABLES
        WHERE TABLE_SCHEMA = DATABASE()
        AND TABLE_NAME NOT LIKE '\\_%'
        AND TABLE_NAME != ?`,
       [MIGRATIONS_TABLE]
     )
+    const userTables = allUserTables.filter((table) => !isBillingServiceTable(table.TABLE_NAME))
     const hasUserTables = userTables.length > 0
 
     console.log(`📊 Database state: ${userTables.length} user tables, migrations table: ${migrationsTableExists ? 'exists' : 'missing'}`)

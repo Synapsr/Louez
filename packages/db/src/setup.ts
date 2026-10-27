@@ -1,6 +1,7 @@
 import mysql from 'mysql2/promise'
 import fs from 'fs'
 import path from 'path'
+import { isBillingServiceTable } from './billing-service-tables'
 import { runMigrations } from './migrate'
 
 // ANSI color codes for console output
@@ -71,9 +72,12 @@ async function connectWithRetry(databaseUrl: string): Promise<mysql.Connection> 
   throw lastError
 }
 
+/** The database's tables, without the billing service's (see billing-service-tables.ts). */
 async function listTables(connection: mysql.Connection): Promise<string[]> {
   const [rows] = await connection.query('SHOW TABLES')
-  return (rows as Array<Record<string, string>>).map((row) => Object.values(row)[0])
+  return (rows as Array<Record<string, string>>)
+    .map((row) => Object.values(row)[0])
+    .filter((table) => !isBillingServiceTable(table))
 }
 
 /**

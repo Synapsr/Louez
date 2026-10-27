@@ -26,6 +26,8 @@ import { readMigrationFiles, type MigrationConfig } from 'drizzle-orm/migrator'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+import { isBillingServiceTable } from './billing-service-tables'
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -77,14 +79,17 @@ export async function runMigrations(options: RunMigrationsOptions = {}) {
     )
     const migrationsTableExists = tables.length > 0
 
-    // Get list of all user tables (excluding system tables)
-    const [userTables] = await connection.query<mysql.RowDataPacket[]>(
+    // Get list of all user tables (excluding system tables). The billing
+    // service's tables are not Louez's: on an empty database where the service
+    // migrated first, they must not trigger a baseline.
+    const [allUserTables] = await connection.query<mysql.RowDataPacket[]>(
       `SELECT TABLE_NAME FROM information_schema.TABLES
        WHERE TABLE_SCHEMA = DATABASE()
        AND TABLE_NAME NOT LIKE '\\_%'
        AND TABLE_NAME != ?`,
       [MIGRATIONS_TABLE]
     )
+    const userTables = allUserTables.filter((table) => !isBillingServiceTable(table.TABLE_NAME))
     const hasUserTables = userTables.length > 0
 
     console.log(
