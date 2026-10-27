@@ -1,8 +1,13 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, lt } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
-import { db, markLegacyMonth, type Transaction } from '@louez/db';
+import {
+  db,
+  isDuplicateKeyError,
+  markLegacyMonth,
+  type Transaction,
+} from '@louez/db';
 import { payAsYouGoInvoices, platformFees, subscriptions } from '@louez/db';
 
 import {
@@ -14,66 +19,46 @@ import { getOrCreateStripeCustomer } from '@/lib/stripe/subscriptions';
 import { stripe } from '@/lib/stripe/client';
 
 import {
+  monthlyBillingRunStart,
   selectMonthlyBillingStoreIds,
   summarizeMonthlyPlatformFees,
 } from './billing-core';
-import {
-  ACTIVE_FEE_STATUSES,
-  billingMonthOf,
-  getStoreBillingPreferences,
-} from './metering';
-
-/** First day (UTC) of the month preceding `reference`. */
-function previousMonthStart(reference: Date): Date {
-  const d = new Date(
-    Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), 1),
-  );
-  d.setUTCMonth(d.getUTCMonth() - 1);
-  return d;
-}
+import { ACTIVE_FEE_STATUSES, getStoreBillingPreferences } from './metering';
 
 /** Deterministic Stripe idempotency key so retries never duplicate a charge. */
 function idemKey(kind: string, storeId: string, billingMonth: string): string {
   return `payg_${kind}_${storeId}_${billingMonth}`;
 }
 
-export interface MonthlyBillingResult {
-  billingMonth: string;
-  storesProcessed: number;
-  invoicesCreated: number;
-  invoicesPaid: number;
-  invoicesFailed: number;
-  totalInvoicedCents: number;
-  errors: Array<{ storeId: string; error: string }>;
-}
-
 /**
- * Bill every pay-as-you-go store for the month preceding `reference` (run on the
- * 1st of each month). Idempotent per (store, month): re-running never double-charges
- * (DB slot claim + Stripe idempotency keys).
+ * The stores the monthly run bills for `billingMonth`, as they stood when the month's
+ * run started (monthlyBillingRunStart, 05:00 UTC on the 1st of the next month): a store
+ * on pay-as-you-go, or a store with a fee of the month that was pending then (covers
+ * stores switched off PAYG mid-month, so their accrued rentals are not silently
+ * dropped). A late run (the cron's catch-up, `billing:legacy-run`) bills the stores the
+ * 05:00 run would have, and no other: a store that qualifies only later is left out, as
+ * a run on time left it.
+ *
+ * "Then" is read from the timestamps. A fee counts if it was recorded before the run
+ * started. Every write that switches a store's billing mode sets updated_at, as most
+ * other writes do, so a row changed since the run started (a store opened, or switched
+ * to pay-as-you-go, since) is left out of the first list: such a store is billed only
+ * through its pending fees. With none, it had nothing to invoice at 05:00, where the run
+ * would only have voided its month.
  */
-export async function runMonthlyPayAsYouGoBilling(
-  reference: Date = new Date(),
-): Promise<MonthlyBillingResult> {
-  const billingMonth = billingMonthOf(previousMonthStart(reference));
-
-  const result: MonthlyBillingResult = {
-    billingMonth,
-    storesProcessed: 0,
-    invoicesCreated: 0,
-    invoicesPaid: 0,
-    invoicesFailed: 0,
-    totalInvoicedCents: 0,
-    errors: [],
-  };
-
-  // Bill any store that is currently pay-as-you-go OR still has unsettled usage
-  // for the target month (covers stores switched off PAYG mid-month, so their
-  // accrued rentals are not silently dropped).
+export async function monthlyBillingStoreIds(
+  billingMonth: string,
+): Promise<string[]> {
+  const runStart = monthlyBillingRunStart(billingMonth);
   const paygStores = await db
     .selectDistinct({ storeId: subscriptions.storeId })
     .from(subscriptions)
-    .where(eq(subscriptions.billingMode, 'pay_as_you_go'));
+    .where(
+      and(
+        eq(subscriptions.billingMode, 'pay_as_you_go'),
+        lt(subscriptions.updatedAt, runStart),
+      ),
+    );
 
   const storesWithUsage = await db
     .selectDistinct({ storeId: platformFees.storeId })
@@ -82,31 +67,14 @@ export async function runMonthlyPayAsYouGoBilling(
       and(
         eq(platformFees.billingMonth, billingMonth),
         eq(platformFees.status, 'pending'),
+        lt(platformFees.createdAt, runStart),
       ),
     );
 
-  const storeIds = selectMonthlyBillingStoreIds(
+  return selectMonthlyBillingStoreIds(
     paygStores.map((store) => store.storeId),
     storesWithUsage.map((store) => store.storeId),
   );
-
-  for (const storeId of storeIds) {
-    result.storesProcessed += 1;
-    try {
-      const outcome = await billStoreForMonth(storeId, billingMonth);
-      if (outcome.invoiceCreated) result.invoicesCreated += 1;
-      if (outcome.status === 'paid') result.invoicesPaid += 1;
-      if (outcome.status === 'failed') result.invoicesFailed += 1;
-      result.totalInvoicedCents += outcome.invoicedCents;
-    } catch (error) {
-      result.errors.push({
-        storeId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  return result;
 }
 
 interface BillStoreOutcome {
@@ -116,14 +84,10 @@ interface BillStoreOutcome {
 }
 
 /**
- * Bill a single store for a single month. Safe to call repeatedly and concurrently:
- * the (store, month) DB row is claimed before any Stripe call and every Stripe call
- * carries a deterministic idempotency key.
+ * A store's totals for a month, as a run would claim them when the store has no
+ * invoice row yet. Reads only.
  */
-export async function billStoreForMonth(
-  storeId: string,
-  billingMonth: string,
-): Promise<BillStoreOutcome> {
+export async function readStoreMonthTotals(storeId: string, billingMonth: string) {
   // ---- Aggregate this month's usage. ----
   const [subscription, storeBillingPreferences] = await Promise.all([
     db.query.subscriptions.findFirst({
@@ -136,7 +100,6 @@ export async function billStoreForMonth(
   // commission was collected in (same tariff numbers across currencies). The amounts
   // come from the ledger, so no pricing config is needed here.
   const currency = storeBillingPreferences.currency;
-  const locale = getLocaleFromCountry(storeBillingPreferences.country);
 
   const rows = await db
     .select({
@@ -163,6 +126,24 @@ export async function billStoreForMonth(
     rows,
     subscription?.billingMode !== 'subscription',
   );
+
+  return { currency, country: storeBillingPreferences.country, summary };
+}
+
+/**
+ * Bill a single store for a single month. Safe to call repeatedly and concurrently:
+ * the (store, month) DB row is claimed before any Stripe call and every Stripe call
+ * carries a deterministic idempotency key.
+ */
+export async function billStoreForMonth(
+  storeId: string,
+  billingMonth: string,
+): Promise<BillStoreOutcome> {
+  const { currency, country, summary } = await readStoreMonthTotals(
+    storeId,
+    billingMonth,
+  );
+  const locale = getLocaleFromCountry(country);
 
   // ---- Claim the (store, month) slot BEFORE any Stripe call (idempotency). ----
   const claim = await claimInvoiceRow({
@@ -450,10 +431,7 @@ async function claimInvoiceRow(input: ClaimInput): Promise<ClaimResult> {
       marketplaceFeeAmountCents: input.marketplaceFeeAmountCents,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('Duplicate') && !message.includes('unique')) {
-      throw error;
-    }
+    if (!isDuplicateKeyError(error)) throw error;
     const winner = await db.query.payAsYouGoInvoices.findFirst({
       where: and(
         eq(payAsYouGoInvoices.storeId, input.storeId),

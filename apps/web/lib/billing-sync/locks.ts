@@ -6,8 +6,9 @@ import { db } from "@louez/db";
 // One run of each billing task at a time, across every Louez instance: a MySQL
 // named lock held on its own pooled connection for the whole run. A cron call that
 // finds the lock taken skips the task instead of waiting (plan decision 12).
+// `legacy-run` is the monthly pay-as-you-go billing (lib/pay-as-you-go/legacy-run.ts).
 
-export type BillingTask = "relay" | "heartbeat" | "manifests" | "sweep";
+export type BillingTask = "relay" | "heartbeat" | "manifests" | "sweep" | "legacy-run";
 
 export type LockedRun<T> = { readonly ran: true; readonly value: T } | { readonly ran: false };
 

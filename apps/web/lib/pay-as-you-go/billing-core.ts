@@ -56,20 +56,51 @@ export function summarizeMonthlyPlatformFees(
   };
 }
 
-/** The monthly run bills the previous month on the 1st at 05:00 UTC. */
+/** The monthly run bills a month from 05:00 UTC on the 1st of the next month. */
 const MONTHLY_BILLING_HOUR_UTC = 5;
 
-export function isMonthlyBillingTick(now: Date): boolean {
-  return (
-    now.getUTCDate() === 1 &&
-    now.getUTCHours() === MONTHLY_BILLING_HOUR_UTC &&
-    now.getUTCMinutes() === 0
-  );
+const BILLING_MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
+
+/** The first instant (UTC) of a `YYYY-MM` billing month, or null when it is not one. */
+export function parseBillingMonth(text: string): Date | null {
+  const match = BILLING_MONTH.exec(text);
+  if (!match) return null;
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
 }
 
 /**
- * The UTC start of the earliest month the monthly run will still bill. It never
- * comes back to a month it has billed, so a fee dated before this is never billed.
+ * When the run may bill `billingMonth`: 05:00 UTC on the 1st of the next month, the
+ * month cut (louez-billing docs/api, README §7.5).
+ */
+export function monthlyBillingRunStart(billingMonth: string): Date {
+  const start = parseBillingMonth(billingMonth);
+  if (!start) throw new Error(`Not a billing month: "${billingMonth}"`);
+  return new Date(
+    Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1, MONTHLY_BILLING_HOUR_UTC),
+  );
+}
+
+/** False for the current month, a future one, and the previous one until its run starts. */
+export function canBillMonth(billingMonth: string, now: Date): boolean {
+  return now.getTime() >= monthlyBillingRunStart(billingMonth).getTime();
+}
+
+/**
+ * The month the cron bills at `now`: the previous month from 05:00 UTC on the 1st,
+ * the one before until then. A month stays due until the next month's run starts,
+ * so a run missed or cut short on the 1st is caught up by a later cron call.
+ */
+export function dueBillingMonth(now: Date): string {
+  const unbilled = firstUnbilledMonthStart(now);
+  const due = new Date(Date.UTC(unbilled.getUTCFullYear(), unbilled.getUTCMonth() - 1, 1));
+  return due.toISOString().slice(0, 7);
+}
+
+/**
+ * The UTC start of the earliest month whose run has not started. A run bills a store
+ * once per month, and only a store that was due when the month's run started, so a fee
+ * recorded after that in an earlier month is billed only if its store was due then and
+ * no run has reached it yet (the cron's catch-up, or `billing:legacy-run`).
  */
 export function firstUnbilledMonthStart(now: Date): Date {
   const thisMonthRun = Date.UTC(

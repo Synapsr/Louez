@@ -59,6 +59,7 @@
     "payg:audit-pricing": "pnpm --filter=@louez/web payg:audit-pricing",
     "payg:freeze-pricing": "pnpm --filter=@louez/web payg:freeze-pricing",
     "billing:mark": "pnpm --filter=@louez/web billing:mark",
+    "billing:legacy-run": "pnpm --filter=@louez/web billing:legacy-run",
     "pricing:fix-pricing-mode": "pnpm --filter=@louez/db run pricing:fix-pricing-mode",
     "pricing:preflight": "pnpm --filter=@louez/db run pricing:preflight",
     "pricing:backfill": "pnpm --filter=@louez/db run pricing:backfill",

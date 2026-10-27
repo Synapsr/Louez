@@ -448,8 +448,9 @@ describe(
       // The cron puts the result in its HTTP response: counts only.
       assert.doesNotMatch(JSON.stringify(report), /rep_/);
 
-      // The monthly run never comes back to February, even for a store it
-      // skipped (no subscription row, no invoice row). March stays open.
+      // February's run has started: a fee recorded now is not billed in February,
+      // even for a store with no invoice row, which was not due then (no
+      // subscription row, no fee pending). March stays open.
       const afterRun = collectingLog();
       await repair.reportLegacyFees(AFTER_RUN, { log: afterRun.log });
       const expectedAfterRun: Record<string, string[]> = {

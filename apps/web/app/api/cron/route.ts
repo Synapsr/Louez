@@ -12,7 +12,7 @@ import { processVoiceNumberRenewals } from "@/lib/ai/phone/number-renewals";
 import { processCalendarSyncQueue } from "@/lib/integrations/calendar/sync";
 import { pollSuperPdpInvoiceEvents } from "@/lib/invoicing/superpdp-events";
 import { processInvoiceTransmissionQueue } from "@/lib/invoicing/superpdp-transmission";
-import { isMonthlyBillingTick, runMonthlyPayAsYouGoBilling } from "@/lib/pay-as-you-go";
+import { runMonthlyBillingCatchUp } from "@/lib/pay-as-you-go/legacy-run";
 import { reportLegacyFees } from "@/lib/pay-as-you-go/legacy-fee-repair";
 import { isLegacyFeeReportTick } from "@/lib/pay-as-you-go/legacy-fee-repair-core";
 import { checkBillableAt } from "@/lib/billing/billable-at-check";
@@ -43,6 +43,10 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - Expired legal archive cleanup: daily at 4:30 AM UTC
  * - Legacy fee report and billable_at check: daily at 4:45 AM UTC, billing only
  *   (lists fee effects that may have been lost; writes nothing)
+ * - Pay-as-you-go billing, billing only: every minute. From 5:00 AM UTC on the 1st it
+ *   bills the previous month's stores that were due at 5:00 and that no run has reached
+ *   yet, so the first call after a missed or failed run catches it up
+ *   (lib/pay-as-you-go/legacy-run.ts)
  * - Billing service sync, only with LOUEZ_BILLING=cloud and BILLING_SERVICE_URL: the
  *   relay, the heartbeat, the manifests and the sweep, every minute. The manifests
  *   decide themselves when to send; the sweep runs once a day, retried from 2:00 AM
@@ -84,8 +88,21 @@ async function handleCron(request: Request) {
     },
   });
 
-  // Billing service sync: started first and awaited last, so a long relay run never
-  // delays the other tasks and a failing task never stops the sync.
+  // Pay-as-you-go billing, on an instance that bills its stores (LOUEZ_BILLING=cloud),
+  // and the billing service sync: started first and awaited last, so a long run never
+  // delays the other tasks and a failing task never stops them.
+  const payAsYouGoBilling = isBillingEnabled()
+    ? runIsolatedTasks(
+        [
+          {
+            task: "pay-as-you-go-billing",
+            key: "payAsYouGoBilling",
+            run: () => runMonthlyBillingCatchUp(now),
+          },
+        ],
+        { request: logger, event: log },
+      )
+    : null;
   const billingSync = isBillingSyncEnabled()
     ? runIsolatedTasks(billingSyncTasks(now), { request: logger, event: log })
     : null;
@@ -199,18 +216,11 @@ async function handleCron(request: Request) {
       results.voiceNumberRenewals = await processVoiceNumberRenewals(now);
     }
 
-    // Pay-as-you-go billing: 1st of each month at 5:00 AM UTC (bills previous
-    // month). Gated in UTC to match the UTC-based billing-month math. Only an instance
-    // that bills its stores (LOUEZ_BILLING=cloud) runs it.
-    if (isBillingEnabled() && isMonthlyBillingTick(now)) {
-      tasks.push("pay-as-you-go-billing");
-      results.payAsYouGoBilling = await runMonthlyPayAsYouGoBilling(now);
-    }
-
-    if (billingSync) {
-      const billing = await billingSync;
-      tasks.push(...billing.tasks);
-      Object.assign(results, billing.results);
+    for (const background of [payAsYouGoBilling, billingSync]) {
+      if (!background) continue;
+      const finished = await background;
+      tasks.push(...finished.tasks);
+      Object.assign(results, finished.results);
     }
 
     logger.set({
@@ -226,8 +236,9 @@ async function handleCron(request: Request) {
       ...results,
     });
   } catch (error) {
-    // runIsolatedTasks never throws; let the sync finish before the response.
-    if (billingSync) await billingSync;
+    // runIsolatedTasks never throws; let the billing and the sync finish before the
+    // response.
+    await Promise.all([payAsYouGoBilling, billingSync]);
     const cronError = error instanceof Error ? error : new Error("Unknown cron error");
 
     logger.error(cronError, { tasks });

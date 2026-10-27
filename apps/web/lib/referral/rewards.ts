@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
-import { db, markLegacyStore } from '@louez/db';
+import { db, isDuplicateKeyError, markLegacyStore } from '@louez/db';
 import { referralRewards, subscriptions } from '@louez/db';
 
 import { isBillingEnabled } from '@/lib/billing/mode';
@@ -23,12 +23,6 @@ import { getReferralProgramConfig } from './defaults';
 import { notifyReferrerRewardGranted } from './notify';
 import { qualifiesForReferralReward } from './qualification';
 import { computeReferrerReward } from './reward';
-
-/** mysql2 surfaces a unique-violation as a "Duplicate entry" error — swallowed for idempotency. */
-function isDuplicateError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.includes('Duplicate') || message.includes('unique');
-}
 
 function stripeResourceId(
   resource: string | { id?: string } | null | undefined,
@@ -449,7 +443,7 @@ export async function maybeGrantReferrerReward(
         // non-duplicate reason, delete the credit so it never applies with no ledger basis
         // (an orphaned credit could not be clawed back). Duplicates fall through to the
         // outer catch and report already_rewarded.
-        if (!isDuplicateError(error) && invoiceItemId) {
+        if (!isDuplicateKeyError(error) && invoiceItemId) {
           await stripe.invoiceItems.del(invoiceItemId).catch(() => {});
         }
         throw error;
@@ -517,7 +511,7 @@ export async function maybeGrantReferrerReward(
       return { granted: false, reason: 'monthly_cap' };
     }
   } catch (error) {
-    if (isDuplicateError(error)) {
+    if (isDuplicateKeyError(error)) {
       await trackQualifyingPaymentEvaluated({
         input,
         granted: false,

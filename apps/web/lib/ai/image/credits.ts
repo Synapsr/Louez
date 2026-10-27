@@ -1,6 +1,6 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 
-import { aiCreditDebits, aiCredits, db } from "@louez/db";
+import { aiCreditDebits, aiCredits, db, isDuplicateKeyError } from "@louez/db";
 
 import {
   checkAdvisorCredits,
@@ -56,20 +56,6 @@ export function checkImageEnhanceCredits(storeId: string, plan: Plan): Promise<A
 }
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-/**
- * MySQL duplicate-key violation (errno 1062), possibly wrapped by the driver
- * or drizzle — the expected outcome when a retried request replays a dedup key.
- */
-function isDuplicateKeyError(error: unknown): boolean {
-  let current: unknown = error;
-  for (let depth = 0; current && depth < 4; depth += 1) {
-    const candidate = current as { code?: unknown; errno?: unknown; cause?: unknown };
-    if (candidate.code === "ER_DUP_ENTRY" || candidate.errno === 1062) return true;
-    current = candidate.cause;
-  }
-  return false;
-}
 
 /** Start of the current calendar month (the monthly-allowance reset boundary). */
 function startOfCalendarMonth(): Date {

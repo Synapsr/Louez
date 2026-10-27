@@ -38,7 +38,10 @@ export interface LegacyFeeCandidateFlags {
   ownedByWebhook: boolean;
   /** An open rental payment request or extension checkout may still take the pay-as-you-go fee at source. */
   openSession: boolean;
-  /** The monthly run has billed the fee's month, or invoiced it for this store: it never comes back to it. */
+  /**
+   * The fee's month has passed its run, or is invoiced for this store: a fee recorded
+   * now is not billed in it. A run bills only the stores that were due when it started.
+   */
   monthClosed: boolean;
 }
 

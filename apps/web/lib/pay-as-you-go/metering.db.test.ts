@@ -3,7 +3,12 @@ import { after, afterEach, before, beforeEach, describe, test } from "node:test"
 
 import { asc, eq } from "drizzle-orm";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  raceOnLockedRow,
+  skipWithoutTestDatabase,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 // The billing marks of the legacy fee ledger on a migrated database: a platform_fee or
 // pay_as_you_go_invoices write marks its store's month, a platform_fee write its
@@ -12,6 +17,7 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 const FREE_STORE = "store_marks_free";
 const PAID_STORE = "store_marks_paid";
 const UPGRADE_STORE = "store_marks_upgrade";
+const RACE_STORE = "store_marks_race";
 const JANUARY = new Date("2026-01-15T10:00:00Z");
 
 describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () => {
@@ -40,6 +46,7 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
         ...payAsYouGo,
         freeReservationsGranted: 0,
       },
+      { id: "sub_marks_race", storeId: RACE_STORE, ...payAsYouGo, freeReservationsGranted: 0 },
     ]);
     // The reservation marks read the store from the reservation row.
     const reservation = (id: string, storeId: string) => ({
@@ -61,6 +68,7 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
         reservation("res_marks_paid", FREE_STORE),
         reservation("res_marks_online", PAID_STORE),
         reservation("res_marks_upgrade", UPGRADE_STORE),
+        reservation("res_marks_race", RACE_STORE),
       ]);
   });
   after(async () => {
@@ -184,6 +192,33 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
       "reservation res_marks_upgrade v2",
       `legacy_month ${UPGRADE_STORE}:2026-01 v2`,
     ]);
+  });
+
+  test("two records of one rental at once write one fee; the second is already recorded", async () => {
+    // Both find no fee, then wait on the store's row lock: the second insert hits the
+    // dedup key. drizzle reports it with the MySQL code on the error's cause.
+    const record = () =>
+      metering.recordReservationFee({
+        storeId: RACE_STORE,
+        reservationId: "res_marks_race",
+        source: "manual",
+        at: JANUARY,
+      });
+    const outcomes = await raceOnLockedRow(
+      database,
+      { table: "subscriptions", id: "sub_marks_race" },
+      [record, record],
+    );
+
+    assert.deepEqual(outcomes.map((outcome) => outcome.reason ?? "recorded").sort(), [
+      "already_recorded",
+      "recorded",
+    ]);
+    const fees = await louezDb.db
+      .select({ status: louezDb.platformFees.status, cents: louezDb.platformFees.amountCents })
+      .from(louezDb.platformFees)
+      .where(eq(louezDb.platformFees.reservationId, "res_marks_race"));
+    assert.deepEqual(fees, [{ status: "pending", cents: 123 }]);
   });
 
   test("without the billing service, the ledger is written and nothing is marked", async () => {

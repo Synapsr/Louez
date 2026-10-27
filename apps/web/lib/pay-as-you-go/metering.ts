@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import { db, markBillingDirty, type MarkExecutor } from "@louez/db";
+import { db, isDuplicateKeyError, markBillingDirty, type MarkExecutor } from "@louez/db";
 import {
   payAsYouGoInvoices,
   platformFees,
@@ -146,11 +146,6 @@ export function billingMonthOf(date: Date): string {
   const year = date.getUTCFullYear();
   const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
   return `${year}-${month}`;
-}
-
-function isDuplicateError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.includes("Duplicate") || message.includes("unique");
 }
 
 /**
@@ -357,7 +352,7 @@ export async function recordReservationFee(
     });
     if (recordedFree) return { recorded: true, reason: "free" };
   } catch (error) {
-    if (isDuplicateError(error)) {
+    if (isDuplicateKeyError(error)) {
       return { recorded: false, reason: "already_recorded" };
     }
     throw error;
@@ -575,7 +570,7 @@ export async function recordMarketplaceFee(input: {
     });
     return { recorded: true, reason };
   } catch (error) {
-    if (isDuplicateError(error)) {
+    if (isDuplicateKeyError(error)) {
       return { recorded: false, reason: "already_recorded" };
     }
     throw error;

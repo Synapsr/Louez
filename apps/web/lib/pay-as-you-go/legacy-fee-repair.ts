@@ -209,9 +209,12 @@ export async function reportLegacyFees(
   );
 
   // The month recordReservationFee would use, billingMonthOf(billable_at), is
-  // closed once the monthly run has passed it: the run never comes back to a
-  // month, and a store it skipped has no invoice row. An invoice row for the
-  // month closes it too. DATE_FORMAT reads the session time zone, as drizzle's
+  // closed once its run has started: a fee recorded since does not make its
+  // store due for that month (monthlyBillingStoreIds). A store that was due is
+  // billed by the run, or by the cron's catch-up on a later call, long before
+  // this report: only one the catch-up keeps failing on, with an error logged
+  // on every call, could still bill such a fee. An invoice row for the month
+  // closes it too. DATE_FORMAT reads the session time zone, as drizzle's
   // timestamp reads do.
   const billableMonthClosed = flag(
     either(
