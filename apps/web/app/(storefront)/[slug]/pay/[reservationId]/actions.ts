@@ -10,7 +10,7 @@ import { validateStripePaymentAmount } from "@louez/utils";
 
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
-import { buildLegacyFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
+import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
@@ -198,8 +198,9 @@ export const initiatePayment = async (
         items: reservation.items,
       }),
     );
-    // Platform fees apply to rental payments only, never to custom charges
-    // (damage fees); the exact breakdown is recorded by the webhook.
+    // The legacy planner takes no fee on a custom charge (damage fees); a store the
+    // billing service bills pays what its policy says of the kind. The payment
+    // copies the fee from the metadata when it completes.
     const feePlan = await planApplicationFee({
       storeId: store.id,
       reservationId: reservation.id,
@@ -225,7 +226,7 @@ export const initiatePayment = async (
       ),
       paymentRequestId: paymentRequest.id,
       applicationFeeAmount: feePlan.applicationFeeCents,
-      feeMetadata: buildLegacyFeeMetadata(feePlan, {
+      feeMetadata: buildFeeMetadata(feePlan, {
         insuranceShareMinor: insuranceShareMinor ?? 0,
         paymentKind,
         reservationId: reservation.id,

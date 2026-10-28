@@ -17,7 +17,7 @@ import { env } from "@/env";
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
-import { buildLegacyFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
+import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -175,7 +175,7 @@ export async function createReservationPaymentSessionForCustomer(
       depositAmount: toStripeCents(Number.parseFloat(reservation.depositAmount), currency),
       currency,
       applicationFeeAmount: feePlan.applicationFeeCents,
-      feeMetadata: buildLegacyFeeMetadata(feePlan, {
+      feeMetadata: buildFeeMetadata(feePlan, {
         insuranceShareMinor: insuranceShareMinor ?? 0,
         paymentKind: "rental",
         reservationId,

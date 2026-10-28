@@ -19,7 +19,7 @@ import { stripe } from "@/lib/stripe/client";
 import { toStripeCents } from "@/lib/stripe";
 import { appFeeColumns, paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { buildLegacyFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
+import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import { generateContract } from "@/lib/pdf/generate";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
@@ -207,7 +207,7 @@ export const startExtension = async (input: {
   });
   const url = getStorefrontUrl(reservation.store.slug, `/account/reservations/${reservation.id}`);
   const metadata = {
-    ...buildLegacyFeeMetadata(fee, {
+    ...buildFeeMetadata(fee, {
       insuranceShareMinor,
       paymentKind: "extension",
       reservationId: reservation.id,

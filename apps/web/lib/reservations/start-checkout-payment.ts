@@ -4,7 +4,7 @@ import { db, markReservation, payments, reservationActivity } from "@louez/db";
 
 import { toMinorOrThrow } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
-import { buildLegacyFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
+import { buildFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -103,10 +103,9 @@ export const startCheckoutPayment = async ({
       insuranceMinor: toMinorOrThrow(insuranceAmount.toFixed(2), currency),
       totalInclTaxMinor: toMinorOrThrow(totals.total.toFixed(2), currency),
     }));
-    // Skim the platform fee directly from the online payment via a Stripe
-    // application fee: the pay-as-you-go reservation commission. Capped below
-    // the charge amount; the exact amount is recorded on confirmation
-    // (webhook) from metadata.
+    // The platform fee is taken from the online payment as a Stripe application
+    // fee, from the store's billing policy or the legacy planner, capped below the
+    // charge amount. The payment copies it from the metadata when it completes.
     const feePlan = await planApplicationFee({
       storeId: store.id,
       reservationId: reservation.id,
@@ -133,7 +132,7 @@ export const startCheckoutPayment = async ({
       cancelUrl: `${baseUrl}${cancelPath}?reservation=${reservation.id}`,
       locale,
       applicationFeeAmount: feePlan.applicationFeeCents,
-      feeMetadata: buildLegacyFeeMetadata(feePlan, {
+      feeMetadata: buildFeeMetadata(feePlan, {
         insuranceShareMinor: insuranceShareMinor ?? 0,
         paymentKind: "rental",
         reservationId: reservation.id,

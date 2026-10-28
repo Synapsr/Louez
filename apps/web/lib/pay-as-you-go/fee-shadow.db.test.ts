@@ -8,8 +8,9 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 import { log } from "@/lib/evlog";
 
 // The fee at source in shadow (louez-billing docs/api, fees.md §5 and §8; m2-plan L2):
-// planApplicationFee charges what the legacy planner returns and logs fees.md §8 on the
-// cached policy, a louez_legacy one read as if the service invoiced the store. The
+// for a store the legacy planner charges, planApplicationFee charges what it returns
+// and logs fees.md §8 on the cached policy, a louez_legacy one read as if the service
+// invoiced the store. fee-at-source.db.test.ts covers the stores the service bills. The
 // policies use the public test values of fees.md (Q33): 123 and 250 bps, a 150
 // marketplace fee and a 90 per-reservation fee. The legacy flat rates are test values
 // too.
@@ -88,6 +89,8 @@ const NO_FACTS = {
   reservationFeeAlreadyTaken: false,
 };
 const NO_FEE = { totalMinor: 0, reservationMinor: 0, marketplaceMinor: 0, baseMinor: 0 };
+/** What fee metadata v4 says of a fee the legacy planner computed. */
+const LEGACY = { baseMinor: 0, policyScope: "legacy", policyVersion: 0 } as const;
 
 const lineSchema = z.object({ billing: z.record(z.string(), z.unknown()) });
 const spyLog = () => ({
@@ -315,7 +318,7 @@ describe("the fee at source in shadow (database)", { skip: skipWithoutTestDataba
       marketplaceFeeCents: 0,
     });
 
-    assert.deepEqual(await metering.planApplicationFee(input), expected);
+    assert.deepEqual(await metering.planApplicationFee(input), { ...expected, ...LEGACY });
     assert.deepEqual(shadowLines(), [
       {
         event: "fee_shadow",
@@ -479,6 +482,7 @@ describe("the fee at source in shadow (database)", { skip: skipWithoutTestDataba
       applicationFeeCents: 240,
       reservationFeeCents: 240,
       marketplaceFeeCents: 0,
+      ...LEGACY,
     });
     const [line] = shadowLines();
     assert.deepEqual(line.shadow, {
@@ -501,13 +505,36 @@ describe("the fee at source in shadow (database)", { skip: skipWithoutTestDataba
     assert.equal(line.differenceMinor, null);
   });
 
-  test("a new store with no version in force fails closed: no fee at source", async () => {
-    const plan = await metering.planApplicationFee(rental(NEW_STORE, "res_shadow_new"));
-    const [line] = shadowLines();
-    assert.deepEqual(line.policy, { source: "fail_closed", version: null, invoicing: "service" });
-    assert.deepEqual(line.shadow, NO_FEE);
-    // The service bills the store, so the legacy planner charges nothing (L3's guard).
-    assert.equal(plan.applicationFeeCents, 0);
+  test("a new store with no version in force fails closed: no fee at source, a warning and one alert", async () => {
+    const alerts: string[] = [];
+    const options = {
+      alerts: {
+        log: { error: () => {}, info: () => {} },
+        alert: async (kind: string, message: string) => void alerts.push(`${kind}: ${message}`),
+      },
+    };
+    const plan = await metering.planApplicationFee(rental(NEW_STORE, "res_shadow_new"), options);
+    // The service bills the store: the fee comes from fees.md §8, which takes nothing.
+    assert.deepEqual(plan, {
+      applicationFeeCents: 0,
+      reservationFeeCents: 0,
+      marketplaceFeeCents: 0,
+      baseMinor: 0,
+      policyScope: "fail_closed",
+      policyVersion: 0,
+    });
+    assert.equal(spies.info.mock.callCount(), 0);
+    const [line] = spies.warn.mock.calls.map((call) => lineSchema.parse(call.arguments[0]).billing);
+    assert.equal(line.event, "fee_at_source");
+    assert.deepEqual(line.policy, { source: "fail_closed", version: 0, invoicing: "service" });
+    assert.deepEqual(line.fee, NO_FEE);
+    assert.equal(alerts.length, 1);
+    assert.match(alerts[0] ?? "", /^fee_fail_closed: store shadow_new_store is new/);
+
+    // Each payment warns; the store alerts once per process.
+    await metering.planApplicationFee(rental(NEW_STORE, "res_shadow_new"), options);
+    assert.equal(spies.warn.mock.callCount(), 2);
+    assert.equal(alerts.length, 1);
   });
 
   test("a custom payment request is charged nothing, as before, and still shadowed", async () => {
@@ -519,6 +546,7 @@ describe("the fee at source in shadow (database)", { skip: skipWithoutTestDataba
       applicationFeeCents: 0,
       reservationFeeCents: 0,
       marketplaceFeeCents: 0,
+      ...LEGACY,
     });
     const [line] = shadowLines();
     assert.equal(line.kind, "custom_request");
@@ -531,6 +559,7 @@ describe("the fee at source in shadow (database)", { skip: skipWithoutTestDataba
       applicationFeeCents: 123,
       reservationFeeCents: 123,
       marketplaceFeeCents: 0,
+      ...LEGACY,
     });
     assert.equal(spies.info.mock.callCount(), 0);
     assert.equal(spies.warn.mock.callCount(), 1);

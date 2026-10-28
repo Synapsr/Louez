@@ -9,7 +9,7 @@ import { getTableName } from "drizzle-orm";
 import * as schema from "@louez/db/schema";
 import type Stripe from "stripe";
 import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
-import type { ApplicationFeeInput, StripeFeePlan } from "@/lib/pay-as-you-go/metering";
+import type { ApplicationFeeInput, ApplicationFeePlan } from "@/lib/pay-as-you-go/metering";
 import type { ExtensionAttempt } from "./extension.types";
 
 // The real fee metadata and payment fact helpers load @louez/db: a closed port keeps
@@ -74,11 +74,15 @@ let unavailable = false;
 let supplement = 20;
 let failRefund = false;
 let paidSession: Stripe.Checkout.Session;
-let feePlan: StripeFeePlan = {
+const NO_FEE_PLAN: ApplicationFeePlan = {
   applicationFeeCents: 0,
   reservationFeeCents: 0,
   marketplaceFeeCents: 0,
+  baseMinor: 0,
+  policyScope: "legacy",
+  policyVersion: 0,
 };
+let feePlan = NO_FEE_PLAN;
 let feeInputs: ApplicationFeeInput[] = [];
 let sessionParams: Stripe.Checkout.SessionCreateParams[] = [];
 let intentResponse: Record<string, unknown> = { id: "pi_test", latest_charge: "ch_test" };
@@ -202,7 +206,7 @@ Reflect.set(globalThis, "__louezExtensionTestDependencies", dependencies);
 // The real writer, so the session metadata can be read back.
 before(async () => {
   const metering = await import("@/lib/pay-as-you-go/metering");
-  Object.assign(dependencies, { buildLegacyFeeMetadata: metering.buildLegacyFeeMetadata });
+  Object.assign(dependencies, { buildFeeMetadata: metering.buildFeeMetadata });
 });
 const intercepted = new Set([
   "@louez/db",
@@ -249,7 +253,7 @@ const reset = () => {
   refundCalls = sessionCreates = emailCalls = contractCalls = 0;
   unavailable = failRefund = false;
   supplement = 20;
-  feePlan = { applicationFeeCents: 0, reservationFeeCents: 0, marketplaceFeeCents: 0 };
+  feePlan = NO_FEE_PLAN;
   feeInputs = [];
   sessionParams = [];
   intentResponse = { id: "pi_test", latest_charge: "ch_test" };
@@ -320,7 +324,7 @@ test("the extension session carries fee metadata v4, which the payment copies", 
   const billing = process.env.LOUEZ_BILLING;
   process.env.LOUEZ_BILLING = "cloud";
   try {
-    feePlan = { applicationFeeCents: 150, reservationFeeCents: 150, marketplaceFeeCents: 0 };
+    feePlan = { ...NO_FEE_PLAN, applicationFeeCents: 150, reservationFeeCents: 150 };
     const service = await load();
     await service.startExtension(input);
     const [params] = sessionParams;
@@ -401,6 +405,63 @@ test("the extension session carries fee metadata v4, which the payment copies", 
     );
     // applyExtension marks the reservation with the payment, in one transaction.
     assert.deepEqual(marks, ["reservation"]);
+  } finally {
+    if (billing === undefined) delete process.env.LOUEZ_BILLING;
+    else process.env.LOUEZ_BILLING = billing;
+  }
+});
+
+test("a fee from the store's policy names that policy in the metadata and on the payment", async () => {
+  reset();
+  const billing = process.env.LOUEZ_BILLING;
+  process.env.LOUEZ_BILLING = "cloud";
+  try {
+    // 250 bps of the 2000 supplement, a public test rate (fees.md §12).
+    feePlan = {
+      applicationFeeCents: 50,
+      reservationFeeCents: 50,
+      marketplaceFeeCents: 0,
+      baseMinor: 2000,
+      policyScope: "store",
+      policyVersion: 3,
+    };
+    const service = await load();
+    await service.startExtension(input);
+    const [params] = sessionParams;
+    assert.equal(params.payment_intent_data?.application_fee_amount, 50);
+    const intentMetadata = strings(params.payment_intent_data?.metadata);
+    const facts = {
+      metadataVersion: 4,
+      totalMinor: 50,
+      reservationMinor: 50,
+      marketplaceMinor: 0,
+      baseMinor: 2000,
+      insuranceShareMinor: 0,
+      policyScope: "store",
+      policyVersion: 3,
+      paymentKind: "extension",
+    };
+    assert.deepEqual(readFeeMetadata(strings(params.metadata)), facts);
+    assert.deepEqual(readFeeMetadata(intentMetadata), facts);
+
+    intentResponse = {
+      id: "pi_test",
+      latest_charge: { id: "ch_test", created: 1_900_000_000 },
+      metadata: intentMetadata,
+      application_fee_amount: 50,
+    };
+    const session = makePaid(strings(params.metadata));
+    assert.equal(await service.completeExtensionPayment(session, "acct_test"), "confirmed");
+    const [payment] = paymentRows;
+    assert.deepEqual(
+      [
+        payment.appFeeTotalMinor,
+        payment.appFeeBaseMinor,
+        payment.appFeePolicyScope,
+        payment.appFeePolicyVersion,
+      ],
+      [50, 2000, "store", 3],
+    );
   } finally {
     if (billing === undefined) delete process.env.LOUEZ_BILLING;
     else process.env.LOUEZ_BILLING = billing;

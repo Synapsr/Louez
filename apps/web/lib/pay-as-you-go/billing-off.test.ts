@@ -129,7 +129,7 @@ describe("billing off", () => {
     });
   });
 
-  test("the fee at source in shadow plans no fee and reads no policy", async () => {
+  test("the fee at source plans no fee and reads no policy", async () => {
     // Even with a service URL: billing off never reads the policy cache (README §12).
     const serviceUrl = process.env.BILLING_SERVICE_URL;
     process.env.BILLING_SERVICE_URL = "https://billing.example.test";
@@ -148,6 +148,9 @@ describe("billing off", () => {
           applicationFeeCents: 0,
           reservationFeeCents: 0,
           marketplaceFeeCents: 0,
+          baseMinor: 0,
+          policyScope: "legacy",
+          policyVersion: 0,
         });
       }
     } finally {

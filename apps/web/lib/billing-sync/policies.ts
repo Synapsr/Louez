@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   type Transaction,
+  billingNewStoresFrom,
   billingPolicies,
   contractTimestamp,
   db,
@@ -336,7 +337,8 @@ async function requestStorePolicies(
 /**
  * Inserts the versions Louez lacks, in one transaction with `inTransaction`. A version
  * that fails the schema is refused; a known one with other content keeps the stored
- * row. Both alert.
+ * row. Both alert. So does a new `*` version whose `newStoresCreatedFrom` is not
+ * BILLING_NEW_STORES_FROM, which is cached all the same (README §8.3).
  *
  * The heartbeat's pull and a store pull, in this process or another, can insert the
  * same new version at once. The loser's insert fails once the winner commits, and it
@@ -364,8 +366,10 @@ async function storePolicies(
     });
   }
 
+  const newStoresFrom = billingNewStoresFrom();
   const write = async () => {
     const conflicts: string[] = [];
+    const insertedDefaults: PolicyV1[] = [];
     let inserted = 0;
     await db.transaction(async (tx) => {
       const storeIds = [...new Set([...candidates.values()].map(({ policy }) => policy.storeId))];
@@ -391,6 +395,7 @@ async function storePolicies(
             body: raw,
           });
           inserted += 1;
+          if (policy.storeId === "*") insertedDefaults.push(policy);
           continue;
         }
         // Compared on the fields Louez understands; the stored row always wins.
@@ -401,7 +406,7 @@ async function storePolicies(
       }
       await inTransaction?.(tx);
     });
-    return { inserted, conflicts };
+    return { inserted, conflicts, insertedDefaults };
   };
 
   let written: Awaited<ReturnType<typeof write>>;
@@ -411,7 +416,7 @@ async function storePolicies(
     if (!isDuplicateKeyError(error) && !isDatabaseDeadlock(error)) throw error;
     written = await write();
   }
-  const { inserted, conflicts } = written;
+  const { inserted, conflicts, insertedDefaults } = written;
 
   if (invalid.length > 0) {
     await alerts.alert(
@@ -424,6 +429,24 @@ async function storePolicies(
       "policies_conflict",
       `${conflicts.length} known policy version(s) arrived with other content; the stored rows were kept: ${conflicts.slice(0, 10).join(", ")}`,
     );
+  }
+  // Both are meant to be T. Louez counts a store as new from the earlier of the two,
+  // and the service from the `*` versions alone.
+  if (newStoresFrom) {
+    const offCutoff = insertedDefaults.filter(
+      ({ newStoresCreatedFrom }) =>
+        newStoresCreatedFrom !== null &&
+        Date.parse(newStoresCreatedFrom) !== newStoresFrom.getTime(),
+    );
+    if (offCutoff.length > 0) {
+      const found = offCutoff
+        .slice(0, 10)
+        .map((policy) => `v${policy.version} at ${policy.newStoresCreatedFrom}`);
+      await alerts.alert(
+        "policies_cutoff_mismatch",
+        `${offCutoff.length} * version(s) cached with a newStoresCreatedFrom other than BILLING_NEW_STORES_FROM (${newStoresFrom.toISOString()}): ${found.join(", ")}. Louez counts every store created from the earlier instant as new (README §8.3).`,
+      );
+    }
   }
   return {
     inserted,

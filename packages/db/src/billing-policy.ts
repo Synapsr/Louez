@@ -322,14 +322,32 @@ export async function legacyBilledStoreIds(
   storeIds: readonly string[],
   at: Date,
 ): Promise<string[]> {
-  const fixed = legacyBillingWithoutService();
-  if (fixed !== null) return fixed ? [...storeIds] : [];
-  const billedByService = new Set(
-    (await readStoresPolicyRecords(executor, storeIds))
-      .filter((records) => !effectiveStorePolicy(records, at).legacyBillingApplies)
-      .map((records) => records.storeId),
+  const facts = await legacyBilledFacts(
+    executor,
+    storeIds.map((storeId) => ({ storeId, at })),
   );
-  return storeIds.filter((storeId) => !billedByService.has(storeId));
+  return facts.map((fact) => fact.storeId);
+}
+
+/**
+ * The facts of `facts` whose store Louez's legacy code bills at the fact's own time
+ * (legacyBilledStoreIds, one instant per fact), in their order and in two queries
+ * whatever their number.
+ */
+export async function legacyBilledFacts<
+  Fact extends { readonly storeId: string; readonly at: Date },
+>(executor: PolicyExecutor, facts: readonly Fact[]): Promise<Fact[]> {
+  const fixed = legacyBillingWithoutService();
+  if (fixed !== null) return fixed ? [...facts] : [];
+  const found = await readStoresPolicyRecords(
+    executor,
+    facts.map((fact) => fact.storeId),
+  );
+  const byStore = new Map(found.map((records) => [records.storeId, records]));
+  return facts.filter((fact) => {
+    const records = byStore.get(fact.storeId);
+    return !records || effectiveStorePolicy(records, fact.at).legacyBillingApplies;
+  });
 }
 
 /**

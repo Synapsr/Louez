@@ -49,7 +49,13 @@ describe("fee metadata v4 on Checkout Sessions", () => {
     else process.env.LOUEZ_BILLING = billing;
   });
 
-  const plan = { applicationFeeCents: 250, reservationFeeCents: 150, marketplaceFeeCents: 100 };
+  const legacy = { baseMinor: 0, policyScope: "legacy", policyVersion: 0 } as const;
+  const plan = {
+    applicationFeeCents: 250,
+    reservationFeeCents: 150,
+    marketplaceFeeCents: 100,
+    ...legacy,
+  };
 
   test("the storefront checkout writes v4 on the session and its PaymentIntent", async () => {
     process.env.LOUEZ_BILLING = "cloud";
@@ -64,7 +70,7 @@ describe("fee metadata v4 on Checkout Sessions", () => {
       successUrl: "https://shop.example.invalid/checkout/return",
       cancelUrl: "https://shop.example.invalid/checkout/cancelled",
       applicationFeeAmount: plan.applicationFeeCents,
-      feeMetadata: metering.buildLegacyFeeMetadata(plan, {
+      feeMetadata: metering.buildFeeMetadata(plan, {
         insuranceShareMinor: 700,
         paymentKind: "rental",
         reservationId: "res_1",
@@ -120,12 +126,15 @@ describe("fee metadata v4 on Checkout Sessions", () => {
       successUrl: "https://shop.example.invalid/account",
       cancelUrl: "https://shop.example.invalid/pay/res_2",
       paymentRequestId: "req_1",
-      feeMetadata: metering.buildLegacyFeeMetadata(null, {
-        insuranceShareMinor: 0,
-        paymentKind: "custom_request",
-        reservationId: "res_2",
-        storeId: "store_1",
-      }),
+      feeMetadata: metering.buildFeeMetadata(
+        { applicationFeeCents: 0, reservationFeeCents: 0, marketplaceFeeCents: 0, ...legacy },
+        {
+          insuranceShareMinor: 0,
+          paymentKind: "custom_request",
+          reservationId: "res_2",
+          storeId: "store_1",
+        },
+      ),
     });
 
     const [params] = created;
@@ -151,6 +160,54 @@ describe("fee metadata v4 on Checkout Sessions", () => {
     assert.equal(params.payment_intent_data?.application_fee_amount, undefined);
   });
 
+  test("a fee from the store's policy names it, and the webhook reads the same parts", async () => {
+    process.env.LOUEZ_BILLING = "cloud";
+    // 250 bps of 12_000 and a 150 marketplace fee: public test values (fees.md §12).
+    const fromPolicy = {
+      applicationFeeCents: 450,
+      reservationFeeCents: 300,
+      marketplaceFeeCents: 150,
+      baseMinor: 12_000,
+      policyScope: "default",
+      policyVersion: 4,
+    } as const;
+    await stripeModule.createCheckoutSession({
+      stripeAccountId: "acct_store",
+      reservationId: "res_6",
+      reservationNumber: "R-6",
+      customerEmail: "renter@example.invalid",
+      lineItems: [{ name: "Bike", quantity: 1, unitAmount: 12_000 }],
+      depositAmount: 0,
+      currency: "EUR",
+      successUrl: "https://shop.example.invalid/account",
+      cancelUrl: "https://shop.example.invalid/account",
+      applicationFeeAmount: fromPolicy.applicationFeeCents,
+      feeMetadata: metering.buildFeeMetadata(fromPolicy, {
+        insuranceShareMinor: 0,
+        paymentKind: "rental",
+        reservationId: "res_6",
+        storeId: "store_1",
+      }),
+    });
+
+    const [params] = created;
+    const intentMetadata = strings(params.payment_intent_data?.metadata);
+    const facts = {
+      metadataVersion: 4,
+      totalMinor: 450,
+      reservationMinor: 300,
+      marketplaceMinor: 150,
+      baseMinor: 12_000,
+      insuranceShareMinor: 0,
+      policyScope: "default",
+      policyVersion: 4,
+      paymentKind: "rental",
+    };
+    assert.deepEqual(feeMetadata.readFeeMetadata(strings(params.metadata)), facts);
+    assert.deepEqual(feeMetadata.readFeeMetadata(intentMetadata), facts);
+    assert.equal(params.payment_intent_data?.application_fee_amount, 450);
+  });
+
   test("no v3 keys are written, fee or no fee", () => {
     process.env.LOUEZ_BILLING = "cloud";
     const payment = {
@@ -163,10 +220,21 @@ describe("fee metadata v4 on Checkout Sessions", () => {
       applicationFeeCents: 100,
       reservationFeeCents: 0,
       marketplaceFeeCents: 100,
+      ...legacy,
     };
-    const noFee = { applicationFeeCents: 0, reservationFeeCents: 0, marketplaceFeeCents: 0 };
-    for (const feePlan of [marketplaceOnly, noFee, null]) {
-      const metadata = metering.buildLegacyFeeMetadata(feePlan, payment);
+    const noFee = {
+      applicationFeeCents: 0,
+      reservationFeeCents: 0,
+      marketplaceFeeCents: 0,
+      ...legacy,
+    };
+    const fromPolicy = {
+      ...noFee,
+      policyScope: "store",
+      policyVersion: 2,
+    } as const;
+    for (const feePlan of [marketplaceOnly, noFee, fromPolicy]) {
+      const metadata = metering.buildFeeMetadata(feePlan, payment);
       assert.deepEqual(v3Keys(metadata), {});
       assert.equal(feeMetadata.readFeeMetadata(metadata)?.metadataVersion, 4);
     }
@@ -175,7 +243,7 @@ describe("fee metadata v4 on Checkout Sessions", () => {
   test("with platform billing off, sessions carry no fee metadata", async () => {
     process.env.LOUEZ_BILLING = "off";
     assert.deepEqual(
-      metering.buildLegacyFeeMetadata(plan, {
+      metering.buildFeeMetadata(plan, {
         insuranceShareMinor: 0,
         paymentKind: "rental",
         reservationId: "res_3",

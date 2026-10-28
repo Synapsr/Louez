@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { after } from "next/server";
 
 import {
   type Database,
@@ -28,12 +29,14 @@ import type { BillingMode } from "@louez/types";
 
 import { type FeeCharge, feeAtSource } from "@/lib/billing/fees";
 import { isBillingEnabled } from "@/lib/billing/mode";
-import { getCachedPolicy, getEffectivePolicy } from "@/lib/billing/policy";
+import { type EffectivePolicy, getCachedPolicy, getEffectivePolicy } from "@/lib/billing/policy";
+import { type BillingAlerts, createBillingAlerts } from "@/lib/billing-sync/alerts";
 import {
   buildFeeMetadataV4,
   type FeeAtSource,
   readFeeMetadata,
   type FeeMetadataV4Input,
+  type PolicyScope,
 } from "@/lib/billing-sync/fee-metadata";
 import { log } from "@/lib/evlog";
 
@@ -139,13 +142,16 @@ export async function getStoreBilling(storeId: string): Promise<StoreBilling> {
 
   const pricing = resolveStorePricing(subscription, currency);
   // Only an instance that bills its stores freezes their pricing: without billing, new
-  // stores get no row and nothing is charged, so there is nothing to report.
+  // stores get no row and nothing is charged, so there is nothing to report. Nor for a
+  // store the billing service bills, which never has frozen pricing (README §8.3).
   if (!pricing.frozen && isBillingEnabled() && !reportedUnfrozenStores.has(storeId)) {
     reportedUnfrozenStores.add(storeId);
-    log.error(
-      "billing",
-      `store ${storeId} has no frozen pay-as-you-go pricing (${subscription ? "no config" : "no subscription row"}); using the legacy terms. Run the pricing freeze.`,
-    );
+    if (await legacyBillingAppliesAt(db, storeId, new Date())) {
+      log.error(
+        "billing",
+        `store ${storeId} has no frozen pay-as-you-go pricing (${subscription ? "no config" : "no subscription row"}); using the legacy terms. Run the pricing freeze.`,
+      );
+    }
   }
 
   return {
@@ -697,7 +703,7 @@ export async function planStripeFees(opts: {
 }
 
 // ============================================================================
-// The fee at source in shadow (louez-billing docs/api, fees.md §5 and §8)
+// The fee at source (louez-billing docs/api, fees.md §5 and §8)
 // ============================================================================
 
 export interface ApplicationFeeInput {
@@ -723,6 +729,21 @@ export type FeeAtSourceFacts = Pick<
   | "reservationFeeAlreadyTaken"
 >;
 
+export type ApplicationFeeOptions = {
+  /** The alerts of a payment that fails closed. By default Discord is posted after the answer (`after`). */
+  readonly alerts?: BillingAlerts;
+};
+
+/** The application fee of a Stripe charge, and what fee metadata v4 says of it. */
+export interface ApplicationFeePlan extends StripeFeePlan {
+  /** fees.md §8's percent base; 0 when no percent applies, and from the legacy planner. */
+  baseMinor: number;
+  /** The policy the fee came from: `legacy` when the legacy planner computed it. */
+  policyScope: PolicyScope;
+  /** Its version: 0 for `fail_closed` and `legacy`. */
+  policyVersion: number;
+}
+
 interface FeeShadow {
   policySource: PolicySource;
   policyVersion: number | null;
@@ -739,17 +760,49 @@ const NO_STRIPE_FEE: StripeFeePlan = {
   marketplaceFeeCents: 0,
 };
 
+const NO_FEE_AT_SOURCE: FeeAtSource = {
+  totalMinor: 0,
+  reservationMinor: 0,
+  marketplaceMinor: 0,
+  baseMinor: 0,
+};
+
+/** The stores whose payments this process alerted on for failing closed, once each. */
+const alertedFailClosedStores = new Set<string>();
+
+const legacyPlan = (plan: StripeFeePlan): ApplicationFeePlan => ({
+  ...plan,
+  baseMinor: 0,
+  policyScope: "legacy",
+  policyVersion: 0,
+});
+
 /**
- * The application fee of a Stripe charge Louez is about to create: what the legacy
- * planner returns, which is nothing for a store the billing service bills, and nothing
- * for a custom payment request, as before. In service mode it also runs fees.md §8 on the store's cached
- * policy, a `louez_legacy` one as if the service invoiced the store, and logs both,
- * one line per payment. Expect constant differences (fees.md §5): the lines help debug
- * the service's prices and count nothing. The shadow never changes the fee, and its
- * failure never fails the payment.
+ * The application fee of a Stripe charge Louez is about to create, from the store's
+ * policy when the session is created (fees.md §8, "Which policy"):
+ * - a `store` or `default` version that says `service` or `none`, or `fail_closed`:
+ *   fees.md §8 on that policy, which takes nothing unless the service invoices the
+ *   store, and nothing when it fails closed, which logs at warn and alerts once per
+ *   store and process. `reservations.allowed` plays no part: the card gate decides
+ *   which reservations exist, not what their payments pay;
+ * - `legacy`, or a version that says `louez_legacy`: what the legacy planner returns,
+ *   nothing for a custom payment request, as before. In service mode it also runs
+ *   fees.md §8 on the cached policy as if the service invoiced the store, and logs
+ *   both. Expect constant differences (fees.md §5): the lines help debug the service's
+ *   prices and count nothing, and the shadow's failure never fails the payment;
+ * - LOUEZ_BILLING off, a self-hosted instance: nothing.
  */
-export async function planApplicationFee(input: ApplicationFeeInput): Promise<StripeFeePlan> {
+export async function planApplicationFee(
+  input: ApplicationFeeInput,
+  options: ApplicationFeeOptions = {},
+): Promise<ApplicationFeePlan> {
   const at = new Date();
+  const effective = await getEffectivePolicy(input.storeId, at);
+  if (effective.source === "built_in") return legacyPlan(NO_STRIPE_FEE);
+  if (effective.source !== "legacy" && effective.terms.invoicing !== "louez_legacy") {
+    return planPolicyFee(input, effective, options);
+  }
+
   const charged =
     input.kind === "custom_request"
       ? Promise.resolve(NO_STRIPE_FEE)
@@ -757,13 +810,14 @@ export async function planApplicationFee(input: ApplicationFeeInput): Promise<St
           storeId: input.storeId,
           reservationId: input.reservationId,
           chargeCents: input.chargeMinor,
+          reference: at,
           includeMarketplaceFee: input.includeMarketplaceFee,
         });
-  if (!isBillingEnabled() || !isBillingSyncEnabled()) return charged;
+  if (!isBillingSyncEnabled()) return legacyPlan(await charged);
 
   const [plan, shadow] = await Promise.all([
     charged,
-    shadowApplicationFee(input, at).catch((error: unknown) => {
+    shadowApplicationFee(input, effective).catch((error: unknown) => {
       log.warn({
         billing: {
           event: "fee_shadow_failed",
@@ -801,7 +855,73 @@ export async function planApplicationFee(input: ApplicationFeeInput): Promise<St
       },
     });
   }
-  return plan;
+  return legacyPlan(plan);
+}
+
+/**
+ * fees.md §8 on the policy in force, for a store the legacy planner does not charge.
+ * Logs the fee and the facts it read, one line per payment. A new store with no
+ * version in force, its own or `*`, fails closed and takes no fee (README §8.3): its
+ * line is a warning, and the first such payment of the store in this process alerts,
+ * since with BILLING_GATE_DISABLED its bookings go on.
+ */
+async function planPolicyFee(
+  input: ApplicationFeeInput,
+  effective: EffectivePolicy,
+  options: ApplicationFeeOptions,
+): Promise<ApplicationFeePlan> {
+  const { source, terms } = effective;
+  const facts =
+    terms.invoicing === "service"
+      ? await readFeeAtSourceFacts(input.storeId, input.reservationId)
+      : null;
+  const fee = facts
+    ? feeAtSource(terms, {
+        chargeMinor: input.chargeMinor,
+        currency: input.currency,
+        kind: input.kind,
+        insuranceShareMinor: input.insuranceShareMinor,
+        ...facts,
+      })
+    : NO_FEE_AT_SOURCE;
+  const policyScope = source === "store" || source === "default" ? source : "fail_closed";
+  const failedClosed = policyScope === "fail_closed";
+  const policyVersion = failedClosed ? 0 : (effective.version ?? 0);
+  const line = {
+    billing: {
+      event: "fee_at_source",
+      storeId: input.storeId,
+      reservationId: input.reservationId,
+      kind: input.kind,
+      chargeMinor: input.chargeMinor,
+      currency: input.currency,
+      insuranceShareMinor: input.insuranceShareMinor,
+      policy: { source: policyScope, version: policyVersion, invoicing: terms.invoicing },
+      facts,
+      fee,
+    },
+  };
+  if (failedClosed) {
+    log.warn(line);
+    if (!alertedFailClosedStores.has(input.storeId)) {
+      alertedFailClosedStores.add(input.storeId);
+      const alerts = options.alerts ?? createBillingAlerts({ schedule: after });
+      await alerts.alert(
+        "fee_fail_closed",
+        `store ${input.storeId} is new and Louez holds no policy in force for it, its own or *: its online payments take no fee at source (README §8.3). Check that the service issued * and that Louez cached it.`,
+      );
+    }
+  } else {
+    log.info(line);
+  }
+  return {
+    applicationFeeCents: fee.totalMinor,
+    reservationFeeCents: fee.reservationMinor,
+    marketplaceFeeCents: fee.marketplaceMinor,
+    baseMinor: fee.baseMinor,
+    policyScope,
+    policyVersion,
+  };
 }
 
 /** Whether the shadow fee equals what is charged, part by part. */
@@ -821,20 +941,17 @@ function compareFeeShadow(
 }
 
 /**
- * fees.md §8 on the store's policy at `at`, the time the session is created, read as
- * if the service invoiced the store. In service mode only.
+ * fees.md §8 on the store's policy when the session is created, read as if the service
+ * invoiced the store. In service mode only, for a store the legacy planner charges.
  */
 async function shadowApplicationFee(
   input: ApplicationFeeInput,
-  at: Date,
-): Promise<FeeShadow | null> {
-  const effective = await getEffectivePolicy(input.storeId, at);
-  const source = effective.source;
-  if (source === "built_in") return null;
-  const { terms } = effective;
-  if (source === "legacy") {
+  effective: EffectivePolicy,
+): Promise<FeeShadow> {
+  const { source, terms } = effective;
+  if (source === "built_in" || source === "legacy") {
     return {
-      policySource: source,
+      policySource: "legacy",
       policyVersion: null,
       invoicing: terms.invoicing,
       facts: null,
@@ -943,29 +1060,30 @@ async function tookPerReservationFee(
   return policy === null || policy.applicationFee.kind === "per_reservation";
 }
 
-export type LegacyFeeMetadataInput = Pick<
+export type FeeMetadataPayment = Pick<
   FeeMetadataV4Input,
   "insuranceShareMinor" | "paymentKind" | "reservationId" | "storeId"
 >;
 
 /**
- * Fee metadata v4 (louez-billing fees.md §8) for a fee the legacy planner computed, for
- * the session and its PaymentIntent. Written in cloud mode on every session of a payment
- * that can carry a fee, fee or no fee (`plan` is null when no fee was planned); empty
- * when platform billing is off. The webhook records the legacy fee rows from it.
+ * Fee metadata v4 (louez-billing fees.md §8) of a planned fee, for the session and its
+ * PaymentIntent: written in cloud mode on every session of a payment that can carry a
+ * fee, fee or no fee, with the policy the fee came from; empty when platform billing
+ * is off. The payment's `app_fee_*` columns copy it, and the webhook records a legacy
+ * fee's rows from it.
  */
-export function buildLegacyFeeMetadata(
-  plan: StripeFeePlan | null,
-  payment: LegacyFeeMetadataInput,
+export function buildFeeMetadata(
+  plan: ApplicationFeePlan,
+  payment: FeeMetadataPayment,
 ): Record<string, string> {
   if (!isBillingEnabled()) return {};
   return buildFeeMetadataV4({
-    totalMinor: plan?.applicationFeeCents ?? 0,
-    reservationMinor: plan?.reservationFeeCents ?? 0,
-    marketplaceMinor: plan?.marketplaceFeeCents ?? 0,
-    baseMinor: 0,
-    policyScope: "legacy",
-    policyVersion: 0,
+    totalMinor: plan.applicationFeeCents,
+    reservationMinor: plan.reservationFeeCents,
+    marketplaceMinor: plan.marketplaceFeeCents,
+    baseMinor: plan.baseMinor,
+    policyScope: plan.policyScope,
+    policyVersion: plan.policyVersion,
     ...payment,
   });
 }

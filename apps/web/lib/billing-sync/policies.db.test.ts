@@ -431,6 +431,49 @@ describe("billing policy pull (database)", { skip: skipWithoutTestDatabase() }, 
     );
   });
 
+  test("a * version whose newStoresCreatedFrom is not BILLING_NEW_STORES_FROM is cached, with an alert", async () => {
+    // The fake service's BILLING_NEW_STORES_FROM, compared as an instant.
+    const T = "2027-01-25T00:00:00Z";
+    const atT = {
+      ...DEFAULT_POLICY,
+      version: 5,
+      effectiveFrom: T,
+      newStoresCreatedFrom: "2027-01-25T00:00:00.000Z",
+    };
+    const early = {
+      ...DEFAULT_POLICY,
+      version: 6,
+      effectiveFrom: "2026-11-01T00:00:00Z",
+      newStoresCreatedFrom: "2026-11-01T00:00:00Z",
+    };
+    const mismatches = (errors: readonly string[]) =>
+      errors.filter((line) => line.startsWith("policies_cutoff_mismatch:"));
+
+    reply = { status: 200, body: policySet("p-test-etag-cut1", [atT]) };
+    const first = capture();
+    assert.equal((await policies.pullPolicies({ alerts: first.alerts })).outcome, "updated");
+    assert.deepEqual(mismatches(first.captured.errors), []);
+
+    // Known versions are not checked again: only the new one alerts.
+    reply = { status: 200, body: policySet("p-test-etag-cut2", [DEFAULT_POLICY, atT, early]) };
+    const second = capture();
+    const result = await policies.pullPolicies({ alerts: second.alerts });
+    assert.deepEqual(result, {
+      outcome: "updated",
+      inserted: 1,
+      known: 2,
+      invalid: 0,
+      conflicts: 0,
+    });
+    assert.deepEqual(mismatches(second.captured.errors), [
+      `policies_cutoff_mismatch: 1 * version(s) cached with a newStoresCreatedFrom other than BILLING_NEW_STORES_FROM (2027-01-25T00:00:00.000Z): v6 at 2026-11-01T00:00:00Z. Louez counts every store created from the earlier instant as new (README §8.3).`,
+    ]);
+    // Cached all the same (README §8.1): the earlier instant is now the cutoff.
+    assert.ok((await stored()).some((row) => row.storeId === "*" && row.version === 6));
+    const cutoff = await louezDb.newStoresCutoff(louezDb.db, new Date(T));
+    assert.equal(cutoff.toISOString(), "2026-11-01T00:00:00.000Z");
+  });
+
   // Last: the wait it sets holds every store pull of this process.
   test("a Retry-After on a store pull holds store pulls only, not the relay", async () => {
     service.handle("/stores/pull_store_h/policies", () => ({

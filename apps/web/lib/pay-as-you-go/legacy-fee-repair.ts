@@ -19,6 +19,7 @@ import {
   BILLABLE_RESERVATION_STATUSES,
   db,
   isFeeVoidingReservationStatus,
+  legacyBilledFacts,
   payAsYouGoInvoices,
   paymentRequests,
   payments,
@@ -121,7 +122,8 @@ function toCandidates(kind: LegacyFeeKind, rows: readonly CandidateRow[]): Legac
  * Lists the fee effects of the last two months that may have been lost: fees
  * never recorded (A, B) and fees never voided (V), each with a class that says
  * why it may be fine. Counts go in the result, ids in the log, `missed` at warn.
- * It writes nothing. Without billing, it returns before any database call.
+ * It writes nothing, and lists no fee to record for a store the billing service
+ * bills. Without billing, it returns before any database call.
  */
 export async function reportLegacyFees(
   now: Date,
@@ -337,9 +339,15 @@ export async function reportLegacyFees(
       ),
     );
 
+  // A fee is recorded only for a store Louez's legacy code bills at its billable time
+  // (recordReservationFee, recordMarketplaceFee): a store the billing service bills has
+  // no fee rows to miss. A void needs a row the legacy code wrote, so it stays listed:
+  // voidReservationFee decides on each row (README §8.3).
   const candidates = [
-    ...toCandidates("record", records),
-    ...toCandidates("marketplace", marketplaceFees),
+    ...(await legacyBilledFacts(db, [
+      ...toCandidates("record", records),
+      ...toCandidates("marketplace", marketplaceFees),
+    ])),
     ...toCandidates("void", voids),
   ];
 
