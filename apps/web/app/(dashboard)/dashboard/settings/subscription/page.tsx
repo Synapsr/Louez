@@ -26,6 +26,7 @@ import {
   hasStripeCustomer,
   storeHasDefaultPaymentMethod,
 } from "@/lib/stripe/subscriptions";
+import { hasLiveSubscription } from "@/lib/stripe/subscription-status";
 import { getCurrentStore } from "@/lib/store-context";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -138,6 +139,7 @@ const SettingsSubscriptionPage = async ({ searchParams }: SettingsSubscriptionPa
         discountDurationMonths={store.discountDurationMonths}
         pendingBillingMode={subscription?.pendingBillingMode ?? null}
         showBackToPayAsYouGo={isPayAsYouGo}
+        hasLiveSubscription={hasLiveSubscription(subscription)}
       />
     </SettingsPageShell>
   );

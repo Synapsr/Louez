@@ -1,12 +1,17 @@
 'use server'
 
+import { z } from 'zod'
+
 import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { billingPageHref } from '@/lib/billing/billing-pages'
+import { log } from '@/lib/evlog'
 import { legacyBillingApplies } from '@/lib/billing/policy'
 import {
+  SubscriptionPlanError,
   createSubscriptionCheckoutSession,
   createCustomerPortalSession,
   cancelSubscription as cancelSub,
+  changeSubscriptionPlan as changePlanInPlace,
   getPlatformCustomerId,
   reactivateSubscription as reactivateSub,
   switchToPayAsYouGo as switchToPayg,
@@ -14,6 +19,12 @@ import {
 import { revalidatePath } from 'next/cache'
 import type { Currency } from '@/lib/plans.shared'
 import { env } from '@/env'
+
+const planChangeSchema = z.object({
+  planSlug: z.string().min(1).max(50),
+  interval: z.enum(['monthly', 'yearly']),
+  currency: z.enum(['eur', 'usd']),
+})
 
 export async function createCheckoutSession({
   planSlug,
@@ -47,10 +58,52 @@ export async function createCheckoutSession({
 
     return session
   } catch (error) {
+    // A live subscription changes plan in place (changeSubscriptionPlan).
+    if (error instanceof SubscriptionPlanError) {
+      return { error: 'errors.unsupportedOperation', url: null }
+    }
     console.error('Error creating checkout session:', error)
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to create checkout session'
     return { error: errorMessage, url: null }
+  }
+}
+
+/**
+ * Moves the store's live plan subscription to another plan or interval, on the same
+ * Stripe subscription, with the checkout's permission checks.
+ */
+export async function changeSubscriptionPlan(
+  input: z.infer<typeof planChangeSchema>,
+): Promise<{ success: true } | { error: string }> {
+  const store = await getCurrentStore()
+  if (!store) {
+    return { error: 'not_authenticated' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
+
+  const parsed = planChangeSchema.safeParse(input)
+  if (!parsed.success) {
+    return { error: 'errors.invalidData' }
+  }
+
+  try {
+    const { planSlug, interval, currency } = parsed.data
+    await changePlanInPlace(store.id, planSlug, interval, currency)
+    revalidatePath('/dashboard/settings/subscription')
+    return { success: true }
+  } catch (error) {
+    if (error instanceof SubscriptionPlanError) {
+      return { error: 'errors.unsupportedOperation' }
+    }
+    log.error(
+      'billing',
+      `plan change of store ${store.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    return { error: 'errors.generic' }
   }
 }
 

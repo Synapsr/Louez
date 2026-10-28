@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import type Stripe from "stripe";
 
-import { rowStatus } from "./subscription-status";
+import { hasLiveSubscription, rowStatus } from "./subscription-status";
 
 // The row status of every Stripe subscription status (louez-billing docs/api, README
 // §8.7): strict for a store the billing service bills, today's reading otherwise.
@@ -37,4 +37,15 @@ test("at a completed checkout, today's reading is still trialing, else active", 
   for (const stripeStatus of ["active", "trialing", "incomplete"] as const) {
     assert.equal(rowStatus(stripeStatus, false), stripeStatus === "trialing" ? "trialing" : "active");
   }
+});
+
+test("a subscription is live while the row holds one that is not cancelled", () => {
+  const live = { stripeSubscriptionId: "sub_test", status: "active" } as const;
+  assert.equal(hasLiveSubscription(live), true);
+  for (const status of ["trialing", "past_due"] as const) {
+    assert.equal(hasLiveSubscription({ ...live, status }), true, status);
+  }
+  assert.equal(hasLiveSubscription({ ...live, status: "cancelled" }), false);
+  assert.equal(hasLiveSubscription({ ...live, stripeSubscriptionId: null }), false);
+  assert.equal(hasLiveSubscription(null), false);
 });

@@ -9,6 +9,7 @@ import {
   notifySubscriptionCancelled,
 } from '@/lib/discord/platform-notifications'
 import { log } from '@/lib/evlog'
+import { findPlanPrice, getPlans } from '@/lib/plans'
 import { stripe } from '@/lib/stripe/client'
 import { rowStatus } from '@/lib/stripe/subscription-status'
 import { activatePlanSubscription, endSubscriptionToPayAsYouGo } from '@/lib/stripe/subscriptions'
@@ -94,7 +95,12 @@ export async function handleSubscriptionCheckoutCompleted(
   log.info('billing', `subscription created/updated for store ${storeId} with plan ${planSlug}`)
 }
 
-/** `customer.subscription.updated`: the status, period and cancellation of the store's row. */
+/**
+ * `customer.subscription.updated`: the status, period and cancellation of the store's
+ * row, and its plan, read from the price of the subscription's item, so a plan changed
+ * in place or in Stripe's portal gets its own limits. A price no plan has leaves the
+ * plan as it is.
+ */
 export async function handleSubscriptionUpdated(
   stripeSubscription: SubscriptionEventObject,
 ): Promise<void> {
@@ -113,11 +119,19 @@ export async function handleSubscriptionUpdated(
   // In new Stripe API versions, period dates are on subscription items
   const firstItem = stripeSubscription.items.data[0]
   const currentPeriodEnd = new Date(firstItem.current_period_end * 1000)
+  const billed = findPlanPrice(getPlans(), firstItem.price.id)
+  if (!billed) {
+    log.error(
+      'billing',
+      `subscription ${stripeSubscription.id} of store ${subscription.storeId} bills price ${firstItem.price.id}, which no plan has: its plan is left as it is`,
+    )
+  }
 
   await db.transaction(async (tx) => {
     await tx
       .update(subscriptions)
       .set({
+        ...(billed ? { planSlug: billed.plan.slug } : {}),
         status,
         currentPeriodEnd,
         cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
@@ -127,7 +141,10 @@ export async function handleSubscriptionUpdated(
     await markSubscriptionRow(tx, subscription.storeId)
   })
 
-  log.info('billing', `subscription updated: ${stripeSubscription.id} -> ${status}`)
+  log.info(
+    'billing',
+    `subscription updated: ${stripeSubscription.id} -> ${status}${billed ? `, ${billed.plan.slug} ${billed.interval}` : ''}`,
+  )
 }
 
 /**

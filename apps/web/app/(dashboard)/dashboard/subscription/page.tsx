@@ -6,6 +6,7 @@ import { after } from 'next/server'
 
 import { requireLegacyBilling, requirePlatformBilling } from '@/lib/billing/require-billing'
 import { getCurrentStore } from '@/lib/store-context'
+import { hasLiveSubscription } from '@/lib/stripe/subscription-status'
 import { syncStorePaymentMethodStatus } from '@/lib/discord/platform-notifications'
 import { getSubscriptionWithPlan, getPlans, hasStripeCustomer, storeHasDefaultPaymentMethod } from '@/lib/stripe/subscriptions'
 import { getStoreUsage, canAddTeamMember, canSendSms, getStorePlan } from '@/lib/plan-limits'
@@ -202,6 +203,7 @@ export default async function SubscriptionPage({
         discountDurationMonths={store.discountDurationMonths}
         pendingBillingMode={subscription?.pendingBillingMode ?? null}
         showBackToPayAsYouGo={isPayAsYouGo}
+        hasLiveSubscription={hasLiveSubscription(subscription)}
       />
 
       {credits && <AiCreditsSection {...credits} />}

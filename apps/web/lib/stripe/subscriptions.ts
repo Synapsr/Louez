@@ -9,7 +9,11 @@ import { getEffectivePolicy, legacyBillingApplies } from '@/lib/billing/policy'
 import { type BillingAlerts, createBillingAlerts } from '@/lib/billing-sync/alerts'
 import { log } from '@/lib/evlog'
 import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
-import { rowStatus, type SubscriptionRowStatus } from '@/lib/stripe/subscription-status'
+import {
+  hasLiveSubscription,
+  rowStatus,
+  type SubscriptionRowStatus,
+} from '@/lib/stripe/subscription-status'
 import { env } from '@/env'
 
 // Every write to a subscription row marks the store's store and legacy_store snapshots
@@ -48,6 +52,27 @@ async function updateSubscriptionRow(
       .where(eq(subscriptions.id, row.id))
     await markSubscriptionRow(tx, row.storeId)
   })
+}
+
+/** Why a plan checkout or a plan change cannot go on: the actions answer `errors.unsupportedOperation`. */
+export type SubscriptionPlanRefusal =
+  /** A checkout while the row holds a live subscription: change its plan instead. */
+  | 'live_subscription'
+  /** A plan change without a live subscription to change. */
+  | 'no_live_subscription'
+  /** A subscription with more or fewer than one item: Louez never makes one. */
+  | 'subscription_items'
+  /** Stripe cannot move a subscription to another currency. */
+  | 'currency'
+
+export class SubscriptionPlanError extends Error {
+  readonly reason: SubscriptionPlanRefusal
+
+  constructor(reason: SubscriptionPlanRefusal) {
+    super(`Plan change refused: ${reason}`)
+    this.name = 'SubscriptionPlanError'
+    this.reason = reason
+  }
 }
 
 interface CreateCheckoutSessionOptions {
@@ -287,6 +312,16 @@ export async function createSubscriptionCheckoutSession({
     throw new Error(`Price not configured for this plan in ${currency.toUpperCase()}`)
   }
 
+  // One live plan subscription per store: a second Checkout would leave the first one
+  // billing. The plan page changes the live one in place (changeSubscriptionPlan).
+  const row = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.storeId, storeId),
+    columns: { status: true, stripeSubscriptionId: true },
+  })
+  if (hasLiveSubscription(row)) {
+    throw new SubscriptionPlanError('live_subscription')
+  }
+
   // Persisted to the DB at creation, to avoid duplicates on abandoned checkouts.
   const stripeCustomerId = await getLegacyPlatformCustomerId(storeId)
   const hasTrial = Boolean(trialDays && trialDays > 0)
@@ -341,6 +376,59 @@ export async function createSubscriptionCheckoutSession({
     sessionId: session.id,
     url: session.url,
   }
+}
+
+/**
+ * Moves the store's live plan subscription to another plan or interval on the same
+ * Stripe subscription, for every store (plans-for-new-stores decision 5): its one item
+ * gets the plan's price, prorated, at once. A cancellation the owner scheduled is
+ * lifted, as buying the new plan would have done. Stripe's `customer.subscription.updated`
+ * writes the plan from the price too (handleSubscriptionUpdated); the row gets it now,
+ * so the page shows it.
+ */
+export async function changeSubscriptionPlan(
+  storeId: string,
+  planSlug: string,
+  interval: 'monthly' | 'yearly',
+  currency: Currency,
+): Promise<void> {
+  if (!isBillingEnabled()) {
+    throw new BillingDisabledError('change a plan on the platform Stripe account')
+  }
+  const plan = getPlan(planSlug)
+  if (!plan) {
+    throw new Error('Plan not found')
+  }
+  const priceId = getPlanPriceId(plan, interval, currency)
+  if (!priceId) {
+    throw new Error(`Price not configured for this plan in ${currency.toUpperCase()}`)
+  }
+
+  const row = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.storeId, storeId),
+    columns: { id: true, storeId: true, status: true, stripeSubscriptionId: true },
+  })
+  if (!hasLiveSubscription(row)) {
+    throw new SubscriptionPlanError('no_live_subscription')
+  }
+
+  const current = await stripe.subscriptions.retrieve(row.stripeSubscriptionId)
+  const [item, ...others] = current.items.data
+  if (!item || others.length > 0) {
+    throw new SubscriptionPlanError('subscription_items')
+  }
+  if (item.price.currency.toLowerCase() !== currency) {
+    throw new SubscriptionPlanError('currency')
+  }
+  if (item.price.id === priceId && !current.cancel_at_period_end) return
+
+  await stripe.subscriptions.update(current.id, {
+    items: [{ id: item.id, price: priceId }],
+    proration_behavior: 'create_prorations',
+    cancel_at_period_end: false,
+    metadata: { planSlug: plan.slug, pendingBillingMode: '' },
+  })
+  await updateSubscriptionRow(row, { planSlug: plan.slug, cancelAtPeriodEnd: false })
 }
 
 export async function createCustomerPortalSession(storeId: string) {

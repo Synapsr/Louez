@@ -5,6 +5,7 @@ import type { Plan } from '@/lib/plans.shared';
 export {
   CURRENCY_SYMBOLS,
   SUPPORTED_CURRENCIES,
+  findPlanPrice,
   formatPlanPrice,
   getPlanPriceId,
   getYearlyPrice,

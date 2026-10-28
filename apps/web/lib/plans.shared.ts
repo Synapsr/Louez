@@ -47,6 +47,24 @@ export function getPlanPriceId(
   return undefined;
 }
 
+/**
+ * The plan, interval and currency a Stripe price bills (getPlanPriceId read backwards),
+ * or null for a price no plan has.
+ */
+export function findPlanPrice<P extends PlanPriceConfig & Pick<Plan, "slug">>(
+  plans: readonly P[],
+  priceId: string,
+): { plan: P; interval: "monthly" | "yearly"; currency: Currency } | null {
+  for (const plan of plans) {
+    for (const currency of SUPPORTED_CURRENCIES) {
+      for (const interval of ["monthly", "yearly"] as const) {
+        if (getPlanPriceId(plan, interval, currency) === priceId) return { plan, interval, currency };
+      }
+    }
+  }
+  return null;
+}
+
 export function isPlanAvailable(
   plan: PlanPriceConfig,
   interval: "monthly" | "yearly",

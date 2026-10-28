@@ -216,6 +216,10 @@ describe("billing off", () => {
       stripeSubscriptions.getPlatformCustomerId("store"),
       (error: Error) => error.name === "BillingDisabledError",
     );
+    await assert.rejects(
+      stripeSubscriptions.changeSubscriptionPlan("store", "pro", "monthly", "eur"),
+      (error: Error) => error.name === "BillingDisabledError",
+    );
     // A query would fail on the closed port: these answer without one.
     assert.equal(await stripeSubscriptions.hasStripeCustomer("store"), false);
     assert.equal(await stripeSubscriptions.storeHasDefaultPaymentMethod("store"), false);

@@ -29,13 +29,38 @@ process.env.SKIP_ENV_VALIDATION = "true";
 process.env.AI_CREDIT_PACKAGES = '[{"credits":100,"priceCents":250}]';
 // Onboarding scopes the referral cookie to the app's domain.
 process.env.NEXT_PUBLIC_APP_DOMAIN = "localhost:3000";
+// The plans' test prices, read when the app's env loads.
+const PRICE = {
+  proMonthly: "price_test_pro_month",
+  proYearly: "price_test_pro_year",
+  ultraMonthly: "price_test_ultra_month",
+  ultraYearly: "price_test_ultra_year",
+  proMonthlyUsd: "price_test_pro_month_usd",
+} as const;
+process.env.STRIPE_PRICE_PRO_MONTHLY = PRICE.proMonthly;
+process.env.STRIPE_PRICE_PRO_YEARLY = PRICE.proYearly;
+process.env.STRIPE_PRICE_ULTRA_MONTHLY = PRICE.ultraMonthly;
+process.env.STRIPE_PRICE_ULTRA_YEARLY = PRICE.ultraYearly;
+process.env.STRIPE_PRICE_PRO_MONTHLY_USD = PRICE.proMonthlyUsd;
 
 type FakeInvoice = { id: string; customer: string; status: string; collection_method: string };
+
+/** A platform subscription with its one item, as Stripe returns it. */
+type FakeSubscription = {
+  id: string;
+  status: string;
+  cancel_at_period_end: boolean;
+  metadata: Record<string, string>;
+  items: { data: Array<{ id: string; price: { id: string; currency: string } }> };
+};
 
 /** Stripe's platform account, in memory: the calls the tested code makes. */
 function createFakeStripe() {
   const calls: string[] = [];
   const invoices = new Map<string, FakeInvoice>();
+  const subscriptions = new Map<string, FakeSubscription>();
+  /** The params of each subscription update, in order. */
+  const subscriptionUpdates: Array<{ id: string; params: unknown }> = [];
   const invoice = (id: string) => {
     const found = invoices.get(id);
     if (!found) throw new Error(`No such invoice: ${id}`);
@@ -46,9 +71,47 @@ function createFakeStripe() {
     calls,
     /** The invoices created, by id. */
     issued: invoices,
+    subscriptionUpdates,
+    /** Puts a subscription on the platform account, with one item at `priceId`. */
+    addSubscription(id: string, priceId: string, values: Partial<FakeSubscription> = {}) {
+      subscriptions.set(id, {
+        id,
+        status: "active",
+        cancel_at_period_end: false,
+        metadata: { planSlug: "pro" },
+        items: { data: [{ id: `si_${id}`, price: { id: priceId, currency: "eur" } }] },
+        ...values,
+      });
+    },
     reset() {
       calls.length = 0;
       invoices.clear();
+      subscriptions.clear();
+      subscriptionUpdates.length = 0;
+    },
+    subscriptions: {
+      async retrieve(id: string) {
+        calls.push(`subscriptions.retrieve ${id}`);
+        const found = subscriptions.get(id);
+        if (!found) throw new Error(`No such subscription: ${id}`);
+        return structuredClone(found);
+      },
+      async update(id: string, params: unknown) {
+        calls.push(`subscriptions.update ${id}`);
+        subscriptionUpdates.push({ id, params });
+        return { id };
+      },
+    },
+    checkout: {
+      sessions: {
+        async create(params: unknown) {
+          const items: unknown = Reflect.get(Object(params), "line_items");
+          const price = Array.isArray(items) ? field(items[0], "price") : "none";
+          const id = `cs_${calls.length + 1}`;
+          calls.push(`checkout.sessions.create ${field(params, "customer")} ${price}`);
+          return { id, url: `https://checkout.stripe.test/${id}` };
+        },
+      },
     },
     customers: {
       async retrieve(id: string) {
@@ -394,10 +457,15 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
         row("lg_run_new", { updatedAt: new Date("2026-07-15T00:00:00Z") }),
         row("lg_month_row", { stripeCustomerId: "cus_LouezOwn", updatedAt: JUNE }),
         // On Pro through Louez's Stripe subscription.
-        row("lg_plan_old", { ...PLAN_ROW, stripeSubscriptionId: "sub_lg_plan_old" }),
+        row("lg_plan_old", {
+          ...PLAN_ROW,
+          stripeSubscriptionId: "sub_lg_plan_old",
+          stripeCustomerId: "cus_lg_plan_old",
+        }),
         row("lg_plan_new", {
           ...PLAN_ROW,
           stripeSubscriptionId: "sub_lg_plan_new",
+          stripeCustomerId: "cus_lg_plan_new",
           payAsYouGoConfig: null,
           pricingVersion: null,
         }),
@@ -453,6 +521,16 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     });
   }
 
+  async function setPlanRow(
+    storeId: string,
+    values: Partial<typeof louezDb.subscriptions.$inferInsert>,
+  ) {
+    await louezDb.db
+      .update(louezDb.subscriptions)
+      .set(values)
+      .where(eq(louezDb.subscriptions.storeId, storeId));
+  }
+
   async function clearMarks(storeId: string) {
     await louezDb.db
       .delete(louezDb.billingSyncQueue)
@@ -472,7 +550,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
   const subscriptionEvent = (
     id: string,
     status: Stripe.Subscription.Status,
-    priceId = "price_test_pro_month",
+    priceId: string = PRICE.proMonthly,
   ) => ({
     id,
     status,
@@ -1147,5 +1225,103 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     await clearMarks("lg_plan_new");
     assert.equal(await statusAfter("lg_plan_new", "active"), "active");
     assert.deepEqual(await marksOf("lg_plan_new"), ["legacy_store", "store"]);
+  });
+
+  test("a store with a live plan subscription is refused a second Checkout", async () => {
+    currentStore.id = "lg_plan_old";
+    const checkout = () =>
+      subscriptionActions.createCheckoutSession({
+        planSlug: "ultra",
+        interval: "monthly",
+        currency: "eur",
+      });
+    for (const status of ["active", "trialing", "past_due"] as const) {
+      await setPlanRow("lg_plan_old", { status });
+      assert.deepEqual(await checkout(), { error: "errors.unsupportedOperation", url: null }, status);
+    }
+    assert.deepEqual(fakeStripe.calls, []);
+
+    // Once the row's subscription is over, a plan is bought again.
+    await setPlanRow("lg_plan_old", { status: "cancelled" });
+    assert.deepEqual(await checkout(), {
+      sessionId: "cs_1",
+      url: "https://checkout.stripe.test/cs_1",
+    });
+    assert.deepEqual(fakeStripe.calls, [
+      `checkout.sessions.create cus_lg_plan_old ${PRICE.ultraMonthly}`,
+    ]);
+  });
+
+  test("a plan change swaps the price of the store's one subscription, for an old and a new store", async () => {
+    for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
+      fakeStripe.reset();
+      currentStore.id = storeId;
+      await setPlanRow(storeId, { status: "active", planSlug: "pro", cancelAtPeriodEnd: true });
+      // The owner had scheduled the switch to pay-as-you-go: choosing a plan lifts it.
+      fakeStripe.addSubscription(`sub_${storeId}`, PRICE.proMonthly, {
+        cancel_at_period_end: true,
+        metadata: { planSlug: "pro", pendingBillingMode: "pay_as_you_go" },
+      });
+
+      assert.deepEqual(
+        await subscriptionActions.changeSubscriptionPlan({
+          planSlug: "ultra",
+          interval: "monthly",
+          currency: "eur",
+        }),
+        { success: true },
+        storeId,
+      );
+      assert.deepEqual(fakeStripe.calls, [
+        `subscriptions.retrieve sub_${storeId}`,
+        `subscriptions.update sub_${storeId}`,
+      ]);
+      assert.deepEqual(fakeStripe.subscriptionUpdates, [
+        {
+          id: `sub_${storeId}`,
+          params: {
+            items: [{ id: `si_sub_${storeId}`, price: PRICE.ultraMonthly }],
+            proration_behavior: "create_prorations",
+            cancel_at_period_end: false,
+            metadata: { planSlug: "ultra", pendingBillingMode: "" },
+          },
+        },
+      ]);
+      const row = await planColumns(storeId);
+      assert.deepEqual(
+        { planSlug: row?.planSlug, stripeSubscriptionId: row?.stripeSubscriptionId },
+        { planSlug: "ultra", stripeSubscriptionId: `sub_${storeId}` },
+      );
+    }
+
+    // Another currency than the subscription's, which Stripe cannot change, or no live
+    // subscription: refused, and Stripe is not changed.
+    fakeStripe.reset();
+    fakeStripe.addSubscription("sub_lg_plan_new", PRICE.ultraMonthly);
+    const change = (currency: "eur" | "usd") =>
+      subscriptionActions.changeSubscriptionPlan({ planSlug: "pro", interval: "monthly", currency });
+    assert.deepEqual(await change("usd"), { error: "errors.unsupportedOperation" });
+    await setPlanRow("lg_plan_new", { status: "cancelled" });
+    assert.deepEqual(await change("eur"), { error: "errors.unsupportedOperation" });
+    assert.deepEqual(fakeStripe.subscriptionUpdates, []);
+    await setPlanRow("lg_plan_new", { status: "active" });
+  });
+
+  test("an update writes the plan its price bills, for an old and a new store", async () => {
+    for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
+      const updated = async (priceId: string) => {
+        await webhooks.handleSubscriptionUpdated(
+          subscriptionEvent(`sub_${storeId}`, "active", priceId),
+        );
+        return (await planColumns(storeId))?.planSlug;
+      };
+      await setPlanRow(storeId, { planSlug: "pro" });
+      await clearMarks(storeId);
+      assert.equal(await updated(PRICE.ultraMonthly), "ultra", storeId);
+      assert.deepEqual(await marksOf(storeId), ["legacy_store", "store"]);
+      assert.equal(await updated(PRICE.proYearly), "pro", storeId);
+      // A price no plan has leaves the plan as it is.
+      assert.equal(await updated("price_test_unknown"), "pro", storeId);
+    }
   });
 });

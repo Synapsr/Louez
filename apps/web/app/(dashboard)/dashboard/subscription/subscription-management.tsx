@@ -66,10 +66,12 @@ import {
 
 import {
   cancelSubscription,
+  changeSubscriptionPlan,
   createCheckoutSession,
   openCustomerPortal,
   reactivateSubscription,
 } from './actions';
+import { planButtonAction } from './util.plan-button';
 import { useFormatLocale } from '@/hooks/use-format-locale';
 
 interface Subscription {
@@ -108,6 +110,20 @@ interface SubscriptionManagementProps {
   pendingBillingMode?: string | null;
   /** True when a pay-as-you-go store is viewing this grid to pick a plan. */
   showBackToPayAsYouGo?: boolean;
+  /**
+   * True while the store's row holds a live Stripe subscription: the plan buttons then
+   * change that subscription's plan, after a confirmation, instead of opening a Checkout.
+   */
+  hasLiveSubscription?: boolean;
+}
+
+/** A plan change waiting for the owner's confirmation, as its card showed it. */
+interface PendingPlanChange {
+  plan: Plan;
+  interval: 'monthly' | 'yearly';
+  currency: Currency;
+  /** The card's price, discount included. */
+  price: number;
 }
 
 // Helper function to format price with currency
@@ -135,16 +151,23 @@ export function SubscriptionManagement({
   discountDurationMonths = 0,
   pendingBillingMode = null,
   showBackToPayAsYouGo = false,
+  hasLiveSubscription = false,
 }: SubscriptionManagementProps) {
   const locale = useLocale();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isYearly, setIsYearly] = useState(false);
-  // Default currency based on locale: EUR for French, USD for all others
+  // A live subscription keeps its currency, which Stripe cannot change. Otherwise the
+  // default follows the locale: EUR for French, USD for all others.
   const [currency, setCurrency] = useState<Currency>(
-    locale === 'fr' ? 'eur' : 'usd',
+    hasLiveSubscription && subscription?.billingCurrency
+      ? subscription.billingCurrency
+      : locale === 'fr'
+        ? 'eur'
+        : 'usd',
   );
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [pendingChange, setPendingChange] = useState<PendingPlanChange | null>(null);
   const router = useRouter();
   const t = useTranslations('dashboard.settings.subscription');
   const { dateFns: dateLocale } = useFormatLocale();
@@ -180,6 +203,29 @@ export function SubscriptionManagement({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleChangePlan = async () => {
+    if (!pendingChange) return;
+    setLoading(pendingChange.plan.slug);
+    setError(null);
+    try {
+      const result = await changeSubscriptionPlan({
+        planSlug: pendingChange.plan.slug,
+        interval: pendingChange.interval,
+        currency: pendingChange.currency,
+      });
+      if ('error' in result) {
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+    } finally {
+      setPendingChange(null);
       setLoading(null);
     }
   };
@@ -740,6 +786,12 @@ export function SubscriptionManagement({
             const selectedInterval = isYearly ? 'yearly' : 'monthly';
             const isExactCurrentPlan =
               isCurrent && currentBillingInterval === selectedInterval;
+            const action = planButtonAction({
+              isFree,
+              isAvailable,
+              isExactCurrentPlan,
+              hasLiveSubscription,
+            });
 
             // Determine button label
             const getButtonLabel = () => {
@@ -900,13 +952,17 @@ export function SubscriptionManagement({
                           : 'outline'
                     }
                     size="lg"
-                    onClick={() => handleSubscribe(plan.slug)}
-                    disabled={
-                      loading !== null ||
-                      isFree ||
-                      !isAvailable ||
-                      isExactCurrentPlan
+                    onClick={() =>
+                      action === 'change'
+                        ? setPendingChange({
+                            plan,
+                            interval: selectedInterval,
+                            currency,
+                            price: discountedPrice,
+                          })
+                        : handleSubscribe(plan.slug)
                     }
+                    disabled={loading !== null || action === 'none'}
                   >
                     {getButtonLabel()}
                   </Button>
@@ -921,6 +977,56 @@ export function SubscriptionManagement({
           {t('pricesExcludingTax')}
         </p>
       </div>
+
+      {/* Plan change on the live subscription: confirmed first, with the plan's price. */}
+      <Dialog
+        open={pendingChange !== null}
+        onOpenChange={(open) => {
+          if (!open && loading === null) setPendingChange(null);
+        }}
+      >
+        <DialogPopup className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('changePlan')}</DialogTitle>
+          </DialogHeader>
+          <DialogPanel>
+            {pendingChange && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <div className="min-w-0">
+                  <p className="text-muted-foreground text-xs">{t('currentPlanBadge')}</p>
+                  <p className="truncate text-sm font-medium">{currentPlan?.name}</p>
+                </div>
+                <ChevronRight className="text-muted-foreground h-4 w-4 flex-shrink-0" />
+                <div className="min-w-0 text-right">
+                  <p className="truncate text-sm font-medium">{pendingChange.plan.name}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {formatPrice(pendingChange.price, pendingChange.currency)}{' '}
+                    {t('excludingTax')} /{' '}
+                    {pendingChange.interval === 'yearly' ? t('year') : t('month')}
+                  </p>
+                </div>
+              </div>
+            )}
+          </DialogPanel>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              onClick={handleChangePlan}
+              disabled={loading !== null}
+              className="w-full"
+            >
+              {loading !== null ? t('processing') : tCommon('confirm')}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setPendingChange(null)}
+              disabled={loading !== null}
+              className="w-full"
+            >
+              {tCommon('cancel')}
+            </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </Dialog>
 
       {/* Cancel Subscription Modal */}
       <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>

@@ -32,3 +32,19 @@ export function rowStatus(
       return serviceBills ? 'cancelled' : 'active'
   }
 }
+
+type LiveSubscriptionRow = {
+  readonly stripeSubscriptionId: string | null
+  readonly status: SubscriptionRowStatus
+}
+
+/**
+ * Whether the row holds a Stripe subscription that is not over. Then a plan checkout
+ * is refused, and a plan change swaps that subscription's price instead, so a store
+ * never pays two plans (plans-for-new-stores decision 5).
+ */
+export function hasLiveSubscription<Row extends LiveSubscriptionRow>(
+  row: Row | null | undefined,
+): row is Row & { readonly stripeSubscriptionId: string } {
+  return Boolean(row?.stripeSubscriptionId) && row?.status !== 'cancelled'
+}
