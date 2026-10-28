@@ -1,6 +1,6 @@
 import { after } from 'next/server'
 import { stripe } from './client'
-import { db, markSubscriptionRow } from '@louez/db'
+import { db, legacyBillingAppliesAt, markSubscriptionRow } from '@louez/db'
 import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/lib/plans'
@@ -9,6 +9,7 @@ import { getEffectivePolicy, legacyBillingApplies } from '@/lib/billing/policy'
 import { type BillingAlerts, createBillingAlerts } from '@/lib/billing-sync/alerts'
 import { log } from '@/lib/evlog'
 import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
+import { rowStatus, type SubscriptionRowStatus } from '@/lib/stripe/subscription-status'
 import { env } from '@/env'
 
 // Every write to a subscription row marks the store's store and legacy_store snapshots
@@ -481,7 +482,8 @@ export async function activatePlanSubscription(input: {
   planSlug: string
   stripeSubscriptionId: string
   stripeCustomerId: string
-  status: 'active' | 'trialing'
+  /** rowStatus of the subscription's Stripe status. */
+  status: SubscriptionRowStatus
   currentPeriodEnd: Date
 }) {
   await updateStoreSubscription(input.storeId, {
@@ -582,14 +584,8 @@ export async function syncSubscriptionFromStripe(stripeSubscriptionId: string) {
     return null
   }
 
-  let status: 'active' | 'cancelled' | 'past_due' | 'trialing' = 'active'
-  if (stripeSubscription.status === 'past_due') {
-    status = 'past_due'
-  } else if (stripeSubscription.status === 'canceled') {
-    status = 'cancelled'
-  } else if (stripeSubscription.status === 'trialing') {
-    status = 'trialing'
-  }
+  const serviceBills = !(await legacyBillingAppliesAt(db, subscription.storeId, new Date()))
+  const status = rowStatus(stripeSubscription.status, serviceBills)
 
   // In new Stripe API versions, period dates are on subscription items
   const firstItem = stripeSubscription.items.data[0]

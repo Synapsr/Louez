@@ -7,6 +7,7 @@ import { after, afterEach, before, beforeEach, describe, test } from "node:test"
 import { pathToFileURL } from "node:url";
 
 import { and, eq, inArray } from "drizzle-orm";
+import type Stripe from "stripe";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
@@ -161,6 +162,8 @@ const stubs: Record<string, Record<string, unknown>> = {
   },
   "@/lib/discord/platform-notifications": {
     notifyBillingAlert: (kind: string, message: string) => discord.notifyBillingAlert(kind, message),
+    notifySubscriptionActivated: async () => undefined,
+    notifySubscriptionCancelled: async () => undefined,
   },
 };
 Reflect.set(globalThis, "__louezLegacyGuardStubs", stubs);
@@ -210,6 +213,10 @@ const AUGUST = new Date("2026-08-15T10:00:00Z");
 const SEPTEMBER = new Date("2026-09-15T10:00:00Z");
 const JUNE = new Date("2026-06-01T00:00:00Z");
 const PAYMENT_METHOD_LINK = "/dashboard/billing?to=/payment-method";
+/** The end of a plan's current period, in Stripe's seconds. */
+const PERIOD_END = Date.parse("2026-11-28T10:00:00Z") / 1000;
+/** A Pro row, its Stripe ids aside. */
+const PLAN_ROW = { billingMode: "subscription", planSlug: "pro", status: "active" } as const;
 const REFERRAL_CODE = "LOUEZREFERAB";
 
 const base = {
@@ -295,6 +302,8 @@ const STORES: ReadonlyArray<readonly [string, string]> = [
   ["lg_month_row", OLD],
   ["lg_month_nocus", OLD],
   ["lg_referrer", OLD],
+  ["lg_plan_old", OLD],
+  ["lg_plan_new", NEW],
 ];
 
 describe("legacy guard and platform customer (database)", { skip: skipWithoutTestDatabase() }, () => {
@@ -314,6 +323,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
   let autoTopup: typeof import("@/lib/ai/advisor/auto-topup");
   let subscriptionActions: typeof import("@/app/(dashboard)/dashboard/subscription/actions");
   let onboarding: typeof import("@/app/(dashboard)/onboarding/actions");
+  let webhooks: typeof import("@/lib/stripe/subscription-webhooks");
   const names = [
     "LOUEZ_BILLING",
     "BILLING_SERVICE_URL",
@@ -340,6 +350,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     autoTopup = await import("@/lib/ai/advisor/auto-topup");
     subscriptionActions = await import("@/app/(dashboard)/dashboard/subscription/actions");
     onboarding = await import("@/app/(dashboard)/onboarding/actions");
+    webhooks = await import("@/lib/stripe/subscription-webhooks");
 
     await louezDb.db.insert(louezDb.stores).values(
       STORES.map(([id, createdAt]) => ({
@@ -359,7 +370,10 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
         body,
       })),
     );
-    const row = (storeId: string, values: { stripeCustomerId?: string; updatedAt?: Date }) => ({
+    const row = (
+      storeId: string,
+      values: Partial<typeof louezDb.subscriptions.$inferInsert>,
+    ) => ({
       id: `sub_${storeId}`.slice(0, 21),
       storeId,
       billingMode: "pay_as_you_go" as const,
@@ -379,6 +393,14 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
         row("lg_run_switch", { updatedAt: JUNE }),
         row("lg_run_new", { updatedAt: new Date("2026-07-15T00:00:00Z") }),
         row("lg_month_row", { stripeCustomerId: "cus_LouezOwn", updatedAt: JUNE }),
+        // On Pro through Louez's Stripe subscription.
+        row("lg_plan_old", { ...PLAN_ROW, stripeSubscriptionId: "sub_lg_plan_old" }),
+        row("lg_plan_new", {
+          ...PLAN_ROW,
+          stripeSubscriptionId: "sub_lg_plan_new",
+          payAsYouGoConfig: null,
+          pricingVersion: null,
+        }),
       ]);
   });
   after(async () => {
@@ -413,6 +435,51 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
       .where(and(eq(queue.aggregateType, "legacy_store"), inArray(queue.aggregateId, [...storeIds])));
     return rows.map((mark) => mark.storeId).sort();
   }
+
+  /** The plan columns of a store's row. */
+  async function planColumns(storeId: string) {
+    return louezDb.db.query.subscriptions.findFirst({
+      where: eq(louezDb.subscriptions.storeId, storeId),
+      columns: {
+        billingMode: true,
+        planSlug: true,
+        status: true,
+        stripeSubscriptionId: true,
+        stripeCustomerId: true,
+        payAsYouGoConfig: true,
+        pricingVersion: true,
+        freeReservationsGranted: true,
+      },
+    });
+  }
+
+  async function clearMarks(storeId: string) {
+    await louezDb.db
+      .delete(louezDb.billingSyncQueue)
+      .where(eq(louezDb.billingSyncQueue.storeId, storeId));
+  }
+
+  /** The aggregate types marked for a store since `clearMarks`. */
+  async function marksOf(storeId: string) {
+    const rows = await louezDb.db
+      .select({ type: louezDb.billingSyncQueue.aggregateType })
+      .from(louezDb.billingSyncQueue)
+      .where(eq(louezDb.billingSyncQueue.storeId, storeId));
+    return rows.map((mark) => mark.type).sort();
+  }
+
+  /** A Stripe subscription, as the platform webhook receives it. */
+  const subscriptionEvent = (
+    id: string,
+    status: Stripe.Subscription.Status,
+    priceId = "price_test_pro_month",
+  ) => ({
+    id,
+    status,
+    cancel_at_period_end: false,
+    metadata: {},
+    items: { data: [{ current_period_end: PERIOD_END, price: { id: priceId } }] },
+  });
 
   async function addFee(
     storeId: string,
@@ -1062,5 +1129,23 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
       }),
       { granted: false, reason: "referrer_not_legacy_billed" },
     );
+  });
+
+  test("a subscription Stripe no longer collects ends a new store's plan, not an old store's", async () => {
+    const statusAfter = async (storeId: string, status: Stripe.Subscription.Status) => {
+      await webhooks.handleSubscriptionUpdated(subscriptionEvent(`sub_${storeId}`, status));
+      return (await planColumns(storeId))?.status;
+    };
+    for (const status of ["unpaid", "incomplete", "paused"] as const) {
+      assert.equal(await statusAfter("lg_plan_new", status), "cancelled", status);
+      assert.equal(await statusAfter("lg_plan_old", status), "active", status);
+    }
+    // Stripe's retry window keeps the plan in force, for both.
+    assert.equal(await statusAfter("lg_plan_new", "past_due"), "past_due");
+    assert.equal(await statusAfter("lg_plan_old", "past_due"), "past_due");
+
+    await clearMarks("lg_plan_new");
+    assert.equal(await statusAfter("lg_plan_new", "active"), "active");
+    assert.deepEqual(await marksOf("lg_plan_new"), ["legacy_store", "store"]);
   });
 });
