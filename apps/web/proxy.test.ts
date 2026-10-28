@@ -41,6 +41,7 @@ describe("proxy billing gate", () => {
       "/dashboard/settings/admin",
       "/admin",
       "/admin/finance",
+      "/onboarding/billing",
     ]) {
       const response = await visit(path);
       assert.equal(response.status, 404, path);
@@ -48,7 +49,14 @@ describe("proxy billing gate", () => {
   });
 
   test("other pages, and billing pages with billing on, pass through", async () => {
-    for (const path of ["/dashboard", "/dashboard/settings/payments", "/dashboard/sms", "/administration"]) {
+    for (const path of [
+      "/dashboard",
+      "/dashboard/settings/payments",
+      "/dashboard/sms",
+      "/administration",
+      "/onboarding",
+      "/onboarding/stripe",
+    ]) {
       assert.notEqual((await visit(path)).status, 404, path);
     }
     process.env.LOUEZ_BILLING = "cloud";
@@ -93,7 +101,9 @@ describe("proxy billing gate", () => {
   test("with the billing service, its pages join form-action; elsewhere nothing changes", async () => {
     // README §10 step 2 and §12: in service mode only.
     const formAction = async () =>
-      /form-action ([^;]*)/.exec((await visit("/dashboard")).headers.get("Content-Security-Policy") ?? "")?.[1];
+      /form-action ([^;]*)/.exec(
+        (await visit("/dashboard")).headers.get("Content-Security-Policy") ?? "",
+      )?.[1];
     assert.equal(await formAction(), "'self'");
     process.env.BILLING_SERVICE_URL = "https://billing.example.test";
     assert.equal(await formAction(), "'self'", "LOUEZ_BILLING off");
@@ -119,7 +129,10 @@ describe("proxy billing gate", () => {
     }
     // On a storefront host the same path is a store page, not the hand-off.
     const storefront = await visit("/dashboard/billing", "shop.localhost:3000");
-    assert.match(storefront.headers.get("x-middleware-rewrite") ?? "", /\/shop\/dashboard\/billing$/);
+    assert.match(
+      storefront.headers.get("x-middleware-rewrite") ?? "",
+      /\/shop\/dashboard\/billing$/,
+    );
     assert.match(storefront.headers.get("Content-Security-Policy") ?? "", /form-action/);
     assert.equal(storefront.headers.get("X-Frame-Options"), "SAMEORIGIN");
     // Outside service mode the proxy's headers are as before, on its 404 too.

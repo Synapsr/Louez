@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 
+import { BillingReturnToastSlot } from "@/components/dashboard/billing-return-toast-slot";
 import { SwRegister } from "@/components/dashboard/sw-register";
 import { FromHelloProvider } from "@/components/fromhello-provider";
 import { GleapProvider } from "@/components/dashboard/gleap-provider";
@@ -112,6 +113,8 @@ export const DashboardLayoutContent = async ({ children }: { children: React.Rea
             >
               <div className="bg-background min-h-screen">{children}</div>
               <SwRegister />
+              {/* The return from the billing pages lands in the settings or the onboarding. */}
+              <BillingReturnToastSlot />
             </GleapProvider>
           </OpenReplayProvider>
         </ThemeProvider>

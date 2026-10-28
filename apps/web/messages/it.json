@@ -8108,6 +8108,14 @@
         }
       }
     },
+    "billingCard": {
+      "title": "Aggiungi una carta di fatturazione",
+      "description": "Louez addebita le sue commissioni su questa carta. Appena è registrata, il tuo negozio può accettare prenotazioni.",
+      "secureNote": "Aggiungi la carta sulla pagina di fatturazione sicura di Louez, poi torni direttamente qui.",
+      "addCard": "Aggiungi una carta",
+      "later": "Più tardi",
+      "laterNote": "Finché non è registrata una carta, il tuo negozio non può accettare nuove prenotazioni. Puoi aggiungerla quando vuoi dalle impostazioni di fatturazione."
+    },
     "complete": {
       "title": "Il tuo negozio e pronto!",
       "description": "Congratulazioni, il tuo negozio e ora online",
@@ -8144,6 +8152,7 @@
       "branding": "Personalizzazione",
       "product": "Primo prodotto",
       "payment": "Pagamenti",
+      "billing": "Carta di fatturazione",
       "profile": "Profilo",
       "source": "Fonte",
       "reeent": "reeent"

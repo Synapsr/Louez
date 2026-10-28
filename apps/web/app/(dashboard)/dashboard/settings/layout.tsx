@@ -1,6 +1,5 @@
 import { getTranslations } from "next-intl/server";
 
-import { BillingReturnToastSlot } from "@/components/dashboard/billing-return-toast-slot";
 import { SettingsNav } from "@/components/dashboard/settings-nav";
 import { StoreSettingsAccess } from "@/components/dashboard/store-settings-access";
 import { getBillingHandoffAccess } from "@/lib/billing/handoff-access";
@@ -35,7 +34,6 @@ export default async function SettingsLayout({ children }: { children: React.Rea
           <StoreSettingsAccess>{children}</StoreSettingsAccess>
         </main>
       </div>
-      <BillingReturnToastSlot />
     </div>
   );
 }

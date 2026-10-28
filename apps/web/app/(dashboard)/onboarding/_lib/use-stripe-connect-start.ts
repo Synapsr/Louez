@@ -16,6 +16,7 @@ import {
 
 import { startStripeOnboarding } from "../../dashboard/settings/payments/actions";
 import { useOnboardingErrorToast } from "./onboarding-error-toast";
+import { getStripeKycReturnPath } from "./steps";
 import { useOnboardingSteps } from "./steps-context";
 import { useOnboardingDraft } from "./use-onboarding-draft";
 
@@ -40,11 +41,9 @@ export const useStripeConnectStart = ({ fromReeent }: { fromReeent: boolean }) =
     orpc.dashboard.onboarding.complete.mutationOptions(),
   );
 
-  // When the source step is still due, the Stripe KYC detour must come back
-  // to it instead of the settings callback screen.
-  const stripeReturnPath = steps.some((step) => step.path === "/onboarding/source")
-    ? "/onboarding/source"
-    : undefined;
+  // When the billing card or the source step is still due, the Stripe KYC detour
+  // must come back to it instead of the settings callback screen.
+  const stripeReturnPath = getStripeKycReturnPath(steps);
 
   const startStripeConnect = async () => {
     setIsConnecting(true);

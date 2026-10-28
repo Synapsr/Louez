@@ -5,6 +5,7 @@ import { after, afterEach, before, beforeEach, describe, test } from "node:test"
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 import type { MemberRole } from "@louez/utils";
 
+import { fakeCookieJar } from "./billing-return-cookie.fixtures";
 import type { BillingHandoffRequest } from "./handoff-handler";
 import type { BillingHandoffAnswer } from "./handoff-page";
 import { decodeTokenClaims, serviceRefusal } from "./handoff-verifier.fixtures";
@@ -106,19 +107,28 @@ describe("billing hand-off route (database)", { skip: skipWithoutTestDatabase() 
   beforeEach(() => setEnv(ENV));
   afterEach(() => setEnv(Object.fromEntries(saved)));
 
-  /** A visit of `/dashboard/billing?to=…` by `userId`, on `storeId` with `role`. */
+  /**
+   * A visit of `/dashboard/billing?to=…` by `userId`, on `storeId` with `role`, with the
+   * browser's `requestCookies`.
+   */
   const visiting = (
     storeId: string,
     role: MemberRole,
-    overrides: Partial<BillingHandoffRequest> & { admin?: boolean } = {},
+    overrides: Partial<BillingHandoffRequest> & {
+      admin?: boolean;
+      requestCookies?: Record<string, string>;
+    } = {},
   ) => {
     const calls: string[] = [];
-    const { admin = false, ...rest } = overrides;
+    const { admin = false, requestCookies, ...rest } = overrides;
+    const cookies = fakeCookieJar(requestCookies);
     const request: BillingHandoffRequest = {
       connection: async () => {
         calls.push("connection");
       },
       to: "/payment-method",
+      from: null,
+      cookies: async () => cookies.jar,
       getSession: async () => {
         calls.push("session");
         return { userId: "user_owner", email: "someone@example.test" };
@@ -130,15 +140,15 @@ describe("billing hand-off route (database)", { skip: skipWithoutTestDatabase() 
       now: () => NOW,
       ...rest,
     };
-    return { calls, answer: () => handler.answerBillingHandoff(request) };
+    return { calls, cookies, answer: () => handler.answerBillingHandoff(request) };
   };
 
   /** The token of a page answer, as the service reads it. */
-  function tokenOf(answer: BillingHandoffAnswer) {
+  function tokenOf(answer: BillingHandoffAnswer, backHref = "/dashboard/settings/billing") {
     assert.equal(answer.kind, "page");
     if (answer.kind !== "page") throw new Error("not a page");
     assert.equal(answer.billingOrigin, BILLING);
-    assert.equal(answer.backHref, "/dashboard/settings/billing");
+    assert.equal(answer.backHref, backHref);
     const refusal = serviceRefusal(answer.token, {
       keys: new Map([[KID, pair.publicKey]]),
       dashboardOrigin: DASHBOARD,
@@ -236,6 +246,88 @@ describe("billing hand-off route (database)", { skip: skipWithoutTestDatabase() 
       const claims = tokenOf(await visiting("hof_service", "owner", { to }).answer());
       assert.equal(claims.to, "/", String(to));
     }
+  });
+
+  test("from the onboarding, the return and the back link go to its card step", async () => {
+    const visit = visiting("hof_fresh", "owner", { from: "onboarding" });
+    const claims = tokenOf(await visit.answer(), "/onboarding/billing");
+    // The token is the same as from the settings: `return_url` takes no query, so a
+    // cookie under the hand-off's path keeps the origin until the return.
+    assert.equal(claims.return_url, `${DASHBOARD}/dashboard/billing/return`);
+    assert.equal(claims.to, "/payment-method");
+    assert.deepEqual(visit.cookies.writes, [
+      {
+        op: "set",
+        name: "louez_billing_return",
+        value: "onboarding",
+        options: {
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          maxAge: 7200,
+          path: "/dashboard/billing",
+        },
+      },
+    ]);
+  });
+
+  test("without `from`, or with one Louez does not know, the return goes to the settings", async () => {
+    for (const from of [null, "", "dashboard", "https://evil.test", "/onboarding/billing"]) {
+      // An earlier hand-off from the onboarding left its cookie: this one forgets it.
+      const visit = visiting("hof_service", "owner", {
+        from,
+        requestCookies: { louez_billing_return: "onboarding" },
+      });
+      tokenOf(await visit.answer());
+      assert.deepEqual(
+        visit.cookies.writes,
+        [{ op: "delete", name: "louez_billing_return", path: "/dashboard/billing" }],
+        String(from),
+      );
+    }
+  });
+
+  test("a visitor from the onboarding signs in and still comes back to it", async () => {
+    const visit = visiting("hof_fresh", "owner", {
+      from: "onboarding",
+      getSession: async () => null,
+      requestCookies: { louez_billing_return: "onboarding" },
+    });
+    const answer = await visit.answer();
+    assert.equal(answer.kind, "redirect");
+    if (answer.kind !== "redirect") return;
+    const callback = new URL(answer.to, DASHBOARD).searchParams.get("callbackUrl");
+    assert.equal(callback, "/dashboard/billing?to=%2Fpayment-method&from=onboarding");
+    // The origin rides in the callback, and the cookie is left for the hand-off after it.
+    assert.deepEqual(visit.cookies.reads, []);
+    assert.deepEqual(visit.cookies.writes, []);
+  });
+
+  test("without its signing key the hand-off from the onboarding links back to its step", async () => {
+    setEnv({ BILLING_SSO_PRIVATE_KEY: undefined });
+    const visit = visiting("hof_fresh", "owner", { from: "onboarding" });
+    assert.deepEqual(await visit.answer(), {
+      kind: "unavailable",
+      backHref: "/onboarding/billing",
+    });
+    // No billing session starts, so there is no return to remember.
+    assert.deepEqual(visit.cookies.writes, []);
+  });
+
+  test("only a page answer touches the cookie: not the 404, the onboarding or the settings redirects", async () => {
+    const visits = [
+      visiting("hof_service", "owner", { from: "onboarding", getStore: async () => null }),
+      visiting("hof_legacy", "owner", { from: "onboarding" }),
+      visiting("hof_service", "member", { from: "onboarding" }),
+    ];
+    for (const visit of visits) {
+      assert.equal((await visit.answer()).kind, "redirect");
+      assert.deepEqual(visit.cookies.writes, []);
+    }
+    setEnv({ LOUEZ_BILLING: undefined });
+    const off = visiting("hof_service", "owner", { from: "onboarding" });
+    assert.deepEqual(await off.answer(), { kind: "not_found" });
+    assert.deepEqual(off.cookies.writes, []);
   });
 
   test("without its signing key the hand-off is unavailable, and no token is minted", async () => {

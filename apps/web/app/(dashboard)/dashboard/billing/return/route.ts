@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { after, connection } from "next/server";
 
@@ -20,6 +21,7 @@ export async function GET() {
     getSession: getBillingSession,
     getStore: getCurrentStore,
     isPlatformAdmin,
+    cookies,
   });
   if (answer.kind === "not_found") notFound();
   redirect(answer.to);

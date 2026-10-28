@@ -24,16 +24,10 @@ export default async function OnboardingStripePage() {
     where: eq(users.id, session.user.id),
   });
 
-  // Ask "how did you hear about us?" once, at the very end of the flow.
-  const nextPath = user?.acquisitionChannel ? "/dashboard" : "/onboarding/source";
-
   // reeent never publishes a store that cannot charge online, so the loueurs it
-  // sends over get the Stripe-only variant instead of the mode choice.
+  // sends over get the Stripe-only variant instead of the mode choice. Both go on
+  // to the next step of the layout's flow.
   const fromReeent = await isReeentLoueur(user);
 
-  return fromReeent ? (
-    <ReeentStripeClientPage nextPath={nextPath} />
-  ) : (
-    <OnboardingStripeClientPage nextPath={nextPath} />
-  );
+  return fromReeent ? <ReeentStripeClientPage /> : <OnboardingStripeClientPage />;
 }

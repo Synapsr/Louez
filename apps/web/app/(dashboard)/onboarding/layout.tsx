@@ -1,13 +1,15 @@
 import { eq } from "drizzle-orm";
 
 import { getMarketplaceCohortStatus } from "@louez/api/services";
-import { db, users } from "@louez/db";
+import { db, isBillingSyncEnabled, users } from "@louez/db";
 import { type ReeentIntroStatus, profileSchema } from "@louez/validations";
 
 import { env } from "@/env";
 import { isReeentLoueur } from "@/lib/acquisition/signup-origin";
 import { auth } from "@/lib/auth";
+import { onboardingBillingCardStores, showsBillingCardStep } from "@/lib/billing/billing-card-step";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
+import { getCurrentStore } from "@/lib/store-context";
 
 import { OnboardingShell } from "./_components/onboarding-shell";
 import { getOnboardingSteps } from "./_lib/steps";
@@ -32,13 +34,15 @@ function toReeentIntroStatus(businessType: string | null | undefined): ReeentInt
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   // The (dashboard) layout above already redirects unauthenticated users.
   const session = await auth();
-  const [user, isPlatformAdmin] = await Promise.all([
+  const [user, isPlatformAdmin, store] = await Promise.all([
     session?.user?.id
       ? db.query.users.findFirst({
           where: eq(users.id, session.user.id),
         })
       : null,
     isCurrentUserPlatformAdmin(),
+    // Only the billing card step reads it, and only in service mode.
+    isBillingSyncEnabled() ? getCurrentStore() : null,
   ]);
 
   // Needs the loaded user: the persisted origin outlives the cookie.
@@ -54,6 +58,17 @@ export default async function OnboardingLayout({ children }: { children: React.R
     ? await getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE)
     : null;
 
+  // The billing card step is for the store this flow onboards, which the active store
+  // does not always tell (onboardingBillingCardStores). The step page checks the active
+  // store again and skips itself when it does not apply.
+  const needsBillingCard = session?.user?.id
+    ? await showsBillingCardStep({
+        userId: session.user.id,
+        isPlatformAdmin,
+        stores: onboardingBillingCardStores(store),
+      })
+    : false;
+
   // User-level steps only show up the first time. The step list is computed
   // once per full page load: completing a step mid-flow does not re-render
   // this layout, so the progress bar stays stable until the flow ends.
@@ -64,6 +79,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
     // mid-flow, right after the user acknowledged the step.
     needsReeentIntro: fromReeent && needsProfile,
     needsProfile,
+    needsBillingCard,
     needsSource: !user?.acquisitionChannel,
   });
 

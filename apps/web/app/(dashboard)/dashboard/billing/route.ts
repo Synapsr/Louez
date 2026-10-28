@@ -1,9 +1,11 @@
+import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { connection } from "next/server";
 
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { env } from "@/env";
+import { BILLING_RETURN_ORIGIN_PARAM } from "@/lib/billing/billing-routes";
 import { answerBillingHandoff } from "@/lib/billing/handoff-handler";
 import { handoffResponse } from "@/lib/billing/handoff-page";
 import { getBillingSession } from "@/lib/billing/handoff-session";
@@ -13,7 +15,8 @@ import { getCurrentStore } from "@/lib/store-context";
 /**
  * The "Facturation" hand-off (louez-billing docs/api, README §10 steps 1 and 2):
  * lib/billing/handoff-handler.ts decides the answer, lib/billing/handoff-page.ts
- * renders it. With LOUEZ_BILLING off the proxy answers 404 first.
+ * renders it. Next.js adds the cookie the handler sets, where the return goes back to,
+ * to the response below. With LOUEZ_BILLING off the proxy answers 404 first.
  *
  * Not wrapped in withEvlog, which would log every redirect to the login.
  */
@@ -21,6 +24,8 @@ export async function GET(request: NextRequest) {
   const answer = await answerBillingHandoff({
     connection,
     to: request.nextUrl.searchParams.get("to"),
+    from: request.nextUrl.searchParams.get(BILLING_RETURN_ORIGIN_PARAM),
+    cookies,
     getSession: getBillingSession,
     getStore: getCurrentStore,
     isPlatformAdmin,

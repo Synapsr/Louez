@@ -9,7 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 import { toastManager } from "@louez/ui";
-import { isValidImageUrlClient, stripeSetupSchema } from "@louez/validations";
+import { stripeSetupSchema } from "@louez/validations";
 
 import { orpc } from "@/lib/orpc/react";
 
@@ -17,23 +17,23 @@ import { useAppForm } from "@/hooks/form/form";
 
 import { useOnboardingErrorToast } from "../_lib/onboarding-error-toast";
 import { useOnboardingPreview } from "../_lib/preview-context";
-import { useOnboardingDraft } from "../_lib/use-onboarding-draft";
+import { getNextOnboardingPath } from "../_lib/steps";
+import { useOnboardingSteps } from "../_lib/steps-context";
+import { useDraftPreview } from "../_lib/use-draft-preview";
 
-interface UseStripeStepParams {
-  nextPath: string;
-}
-
-export const useStripeStep = ({ nextPath }: UseStripeStepParams) => {
+export const useStripeStep = () => {
   const router = useRouter();
   const t = useTranslations("onboarding.stripe");
   const showError = useOnboardingErrorToast();
   const { updatePreview } = useOnboardingPreview();
+  // The billing card step or the source step when this flow has them.
+  const nextPath = getNextOnboardingPath(useOnboardingSteps(), "/onboarding/stripe");
 
   const completeOnboardingMutation = useMutation(
     orpc.dashboard.onboarding.complete.mutationOptions(),
   );
 
-  const draftQuery = useOnboardingDraft();
+  useDraftPreview();
 
   const form = useAppForm({
     defaultValues: {
@@ -56,26 +56,6 @@ export const useStripeStep = ({ nextPath }: UseStripeStepParams) => {
   });
 
   const reservationMode = useStore(form.store, (s) => s.values.reservationMode);
-
-  // Keep the live preview in sync with the draft (after a reload) and the mode
-  useEffect(() => {
-    const data = draftQuery.data;
-    if (!data?.store) return;
-
-    const branding = data.branding;
-    updatePreview({
-      storeName: data.store.name || "",
-      slug: data.store.slug || "",
-      ...(branding
-        ? {
-            logoUrl:
-              branding.logoUrl && isValidImageUrlClient(branding.logoUrl) ? branding.logoUrl : null,
-            primaryColor: branding.primaryColor || "#0066FF",
-            theme: branding.theme === "dark" ? "dark" : "light",
-          }
-        : {}),
-    });
-  }, [draftQuery.data, updatePreview]);
 
   useEffect(() => {
     updatePreview({ reservationMode });

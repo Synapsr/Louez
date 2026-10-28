@@ -6,6 +6,10 @@ import {
   type BillingReturnOutcome,
   billingReturnTarget,
 } from "@/lib/billing/billing-return";
+import {
+  type BillingReturnCookieJar,
+  takeBillingReturnOrigin,
+} from "@/lib/billing/billing-return-cookie";
 import { type BillingSession, getBillingHandoffAccess } from "@/lib/billing/handoff-access";
 import { createBillingAlerts } from "@/lib/billing-sync/alerts";
 import { pullStorePolicies } from "@/lib/billing-sync/policies";
@@ -28,6 +32,12 @@ export type BillingReturnRequest = {
   /** The server-side active store, never a value from the query (README §10 step 1). */
   readonly getStore: () => Promise<{ readonly id: string; readonly role: MemberRole } | null>;
   readonly isPlatformAdmin: (email: string | null) => boolean;
+  /**
+   * `cookies` from next/headers. Its cookie names where the hand-off left from
+   * (billing-return-cookie.ts), read once and only for a return that pulls, so a sign-in
+   * on the way keeps it.
+   */
+  readonly cookies: () => Promise<BillingReturnCookieJar>;
   readonly now?: () => Date;
 };
 
@@ -38,8 +48,9 @@ export type BillingReturnAnswer =
 /**
  * "Back to Louez" from the billing pages (louez-billing docs/api, README §10 step 4):
  * for the viewers of `billingHandoffRole`, pulls the active store's policies, so a card
- * added there reopens bookings within seconds, then goes to the billing settings with
- * a toast. On any failure Louez keeps its cache. Only in service mode (README §12).
+ * added there reopens bookings within seconds, then goes with a toast to the page the
+ * hand-off left from: the onboarding's card step, or the billing settings. On any
+ * failure Louez keeps its cache. Only in service mode (README §12).
  */
 export async function answerBillingReturn(
   request: BillingReturnRequest,
@@ -75,5 +86,6 @@ export async function answerBillingReturn(
       `the policy pull of store ${store.id} failed: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
-  return { kind: "redirect", to: billingReturnTarget(outcome) };
+  const origin = takeBillingReturnOrigin(await request.cookies());
+  return { kind: "redirect", to: billingReturnTarget(outcome, origin) };
 }

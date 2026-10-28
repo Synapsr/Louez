@@ -14,11 +14,11 @@ import { DashboardIconTile } from "@/components/dashboard/shared/dashboard-icon-
 import { OnboardingStepHeader } from "../_components/step-header";
 import { useStripeStep } from "./use-stripe-step";
 
-export function OnboardingStripeClientPage({ nextPath }: { nextPath: string }) {
+export function OnboardingStripeClientPage() {
   const router = useRouter();
   const t = useTranslations("onboarding.stripe");
   const tCommon = useTranslations("common");
-  const { form, reservationMode, isPending } = useStripeStep({ nextPath });
+  const { form, reservationMode, isPending } = useStripeStep();
 
   return (
     <>

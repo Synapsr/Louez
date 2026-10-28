@@ -1,4 +1,5 @@
 import { env } from "@/env";
+import { BILLING_CARD_STEP_PATH } from "@/lib/billing/billing-routes";
 
 /**
  * Paths the Stripe Connect flow may bounce back to after the hosted KYC,
@@ -6,7 +7,7 @@ import { env } from "@/env";
  * `next` round-trips through Stripe as a query param, so anything looser
  * would be an open redirect.
  */
-const ALLOWED_NEXT_PATHS = ["/onboarding/source"];
+const ALLOWED_NEXT_PATHS = [BILLING_CARD_STEP_PATH, "/onboarding/source"];
 
 export function sanitizeStripeNextPath(value: unknown): string | null {
   return typeof value === "string" && ALLOWED_NEXT_PATHS.includes(value) ? value : null;

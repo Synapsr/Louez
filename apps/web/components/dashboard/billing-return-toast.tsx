@@ -11,8 +11,8 @@ import { BILLING_RETURN_PARAM, readBillingReturnOutcome } from "@/lib/billing/bi
 
 /**
  * The toast of the return from the billing pages (`/dashboard/billing/return`), which
- * redirects here with `?billing=`. Shown once, then the parameter leaves the URL.
- * `BillingReturnToastSlot` mounts it, in service mode only.
+ * redirects to the settings or the onboarding with `?billing=`. Shown once, then the
+ * parameter leaves the URL. `BillingReturnToastSlot` mounts it, in service mode only.
  */
 export const BillingReturnToast = () => {
   const t = useTranslations("dashboard.settings.billingReturn");

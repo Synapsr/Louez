@@ -5,6 +5,7 @@ import {
   billingHandoffHref,
   isBillingHandoffPath,
   isBillingOnlyPath,
+  readBillingReturnOrigin,
   readHandoffPage,
 } from "./billing-routes";
 
@@ -37,15 +38,34 @@ test("its links keep the page in `to`, and the overview needs none", () => {
   assert.equal(to.get("to"), "/statements/stmt_1");
 });
 
-test("the hand-off and the billing settings exist only with platform billing", () => {
+test("a link from the onboarding names it in `from`, after the page", () => {
+  assert.equal(
+    billingHandoffHref("/payment-method", "onboarding"),
+    "/dashboard/billing?to=%2Fpayment-method&from=onboarding",
+  );
+  assert.equal(billingHandoffHref("/", "onboarding"), "/dashboard/billing?from=onboarding");
+  assert.equal(billingHandoffHref("/payment-method", null), billingHandoffHref("/payment-method"));
+});
+
+test("the return goes back only to an origin Louez knows", () => {
+  assert.equal(readBillingReturnOrigin("onboarding"), "onboarding");
+  for (const value of [null, undefined, "", "Onboarding", "/onboarding", "settings"]) {
+    assert.equal(readBillingReturnOrigin(value), null, String(value));
+  }
+});
+
+test("the hand-off, the billing settings and the card step exist only with platform billing", () => {
   for (const path of [
     "/dashboard/billing",
     "/dashboard/billing/return",
     "/dashboard/settings/billing",
+    "/onboarding/billing",
   ]) {
     assert.ok(isBillingOnlyPath(path), path);
   }
   assert.ok(!isBillingOnlyPath("/dashboard/billingx"));
+  assert.ok(!isBillingOnlyPath("/onboarding"));
+  assert.ok(!isBillingOnlyPath("/onboarding/branding"));
 });
 
 test("only the hand-off itself sends its own security headers, not the return under it", () => {

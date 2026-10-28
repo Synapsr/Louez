@@ -5,10 +5,12 @@ import {
   type PolicyInvoicing,
   type PolicyReservations,
   type PolicySource,
+  type StorePolicy,
   db,
   effectiveStorePolicy,
   isBillingSyncEnabled,
   readStorePolicyRecords,
+  readUncreatedStorePolicyRecords,
 } from "@louez/db";
 
 import { type PolicyV1, policyV1Schema } from "@/lib/billing-sync/policies";
@@ -114,8 +116,21 @@ function readPolicy(applied: CachedPolicy | null): PolicyV1 | null {
 export async function getEffectivePolicy(storeId: string, at: Date): Promise<EffectivePolicy> {
   if (!isBillingEnabled()) return BILLING_OFF;
   if (!isBillingSyncEnabled()) return LEGACY_ONLY;
+  return toEffectivePolicy(effectiveStorePolicy(await loadStorePolicyRecords(storeId), at));
+}
 
-  const resolved = effectiveStorePolicy(await loadStorePolicyRecords(storeId), at);
+/**
+ * The policy at `at` of a store created at `at` that does not exist yet: what the
+ * onboarding shows before its store step creates the store. In service mode it is the
+ * `*` version in force, or fail closed, for a new store, and legacy otherwise.
+ */
+export async function getUncreatedStorePolicy(at: Date): Promise<EffectivePolicy> {
+  if (!isBillingEnabled()) return BILLING_OFF;
+  if (!isBillingSyncEnabled()) return LEGACY_ONLY;
+  return toEffectivePolicy(effectiveStorePolicy(await readUncreatedStorePolicyRecords(db, at), at));
+}
+
+function toEffectivePolicy(resolved: StorePolicy): EffectivePolicy {
   const policy = readPolicy(resolved.applied);
   const terms: PolicyTerms = policy
     ? {

@@ -208,6 +208,26 @@ export async function readStoresPolicyRecords(
   }));
 }
 
+/**
+ * What resolving the policy of a store created at `createdAt`, before it exists, reads:
+ * the cached `*` versions, under a store id no version can carry. The onboarding asks
+ * it before the flow creates its store.
+ */
+export async function readUncreatedStorePolicyRecords(
+  executor: PolicyExecutor,
+  createdAt: Date,
+): Promise<StorePolicyRecords> {
+  const rows = await executor
+    .select({ body: billingPolicies.body })
+    .from(billingPolicies)
+    .where(eq(billingPolicies.storeId, "*"));
+  const versions = rows.flatMap(({ body }) => {
+    const parsed = billingPolicyCoreSchema.safeParse(body);
+    return parsed.success ? [{ ...parsed.data, body }] : [];
+  });
+  return { storeId: "", storeCreatedAt: createdAt, versions };
+}
+
 /** What resolving one store's policy reads (readStoresPolicyRecords). Throws for a missing store. */
 export async function readStorePolicyRecords(
   executor: PolicyExecutor,

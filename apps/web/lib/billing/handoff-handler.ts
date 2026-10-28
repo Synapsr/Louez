@@ -4,9 +4,14 @@ import type { MemberRole } from "@louez/utils";
 import { buildHandoffClaims, handoffSigningKey, mintHandoffToken } from "@/lib/billing/handoff";
 import { type BillingSession, getBillingHandoffAccess } from "@/lib/billing/handoff-access";
 import type { BillingHandoffAnswer } from "@/lib/billing/handoff-page";
+import { billingReturnOriginPath } from "@/lib/billing/billing-return";
 import {
-  BILLING_SETTINGS_PATH,
+  type BillingReturnCookieJar,
+  rememberBillingReturnOrigin,
+} from "@/lib/billing/billing-return-cookie";
+import {
   billingHandoffHref,
+  readBillingReturnOrigin,
   readHandoffPage,
 } from "@/lib/billing/billing-routes";
 import { billingSyncConfig } from "@/lib/billing-sync/config";
@@ -26,6 +31,10 @@ export type BillingHandoffRequest = {
   readonly connection: () => Promise<void>;
   /** `to` of the query string: the billing page to open. */
   readonly to: string | null;
+  /** `from` of the query string: where "Back to Louez" returns (`BillingReturnOrigin`). */
+  readonly from: string | null;
+  /** `cookies` from next/headers: the jar that keeps `from` until the return. */
+  readonly cookies: () => Promise<BillingReturnCookieJar>;
   readonly getSession: () => Promise<BillingSession | null>;
   /** The server-side active store, never a value from the query (README §10 step 1). */
   readonly getStore: () => Promise<{ readonly id: string; readonly role: MemberRole } | null>;
@@ -40,7 +49,8 @@ export type BillingHandoffRequest = {
 /**
  * Mints the hand-off token for the active store's owner or a platform admin (see
  * `billingHandoffRole`) and answers the page that posts it. Only in service mode
- * (README §12). The token is never logged.
+ * (README §12). The token is never logged. With the page, a cookie keeps where the
+ * return goes back to, or forgets an earlier hand-off's (billing-return-cookie.ts).
  */
 export async function answerBillingHandoff(
   request: BillingHandoffRequest,
@@ -49,8 +59,12 @@ export async function answerBillingHandoff(
   if (!isBillingSyncEnabled()) return { kind: "not_found" };
 
   const to = readHandoffPage(request.to);
+  const returnOrigin = readBillingReturnOrigin(request.from);
+  const backHref = billingReturnOriginPath(returnOrigin);
   const session = await request.getSession();
-  if (!session) return { kind: "redirect", to: createLoginUrl(billingHandoffHref(to)) };
+  if (!session) {
+    return { kind: "redirect", to: createLoginUrl(billingHandoffHref(to, returnOrigin)) };
+  }
   const store = await request.getStore();
   if (!store) return { kind: "redirect", to: "/onboarding" };
 
@@ -76,12 +90,13 @@ export async function answerBillingHandoff(
       "billing",
       `hand-off to the billing pages: store ${store.id}, user ${session.userId} as ${access.role}, page ${to}`,
     );
-    return { kind: "page", billingOrigin: origin, token, backHref: BILLING_SETTINGS_PATH };
+    rememberBillingReturnOrigin(await request.cookies(), returnOrigin, request.dashboardOrigin);
+    return { kind: "page", billingOrigin: origin, token, backHref };
   } catch (error) {
     log.error(
       "billing",
       `no hand-off for store ${store.id}: ${error instanceof Error ? error.message : String(error)}`,
     );
-    return { kind: "unavailable", backHref: BILLING_SETTINGS_PATH };
+    return { kind: "unavailable", backHref };
   }
 }

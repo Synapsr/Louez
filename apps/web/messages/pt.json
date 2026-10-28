@@ -8108,6 +8108,14 @@
         }
       }
     },
+    "billingCard": {
+      "title": "Adicione um cartão de faturamento",
+      "description": "A Louez cobra as suas taxas neste cartão. Assim que ele estiver registrado, sua loja pode aceitar reservas.",
+      "secureNote": "Você adiciona o cartão na página de faturamento segura da Louez e volta direto para cá.",
+      "addCard": "Adicionar um cartão",
+      "later": "Mais tarde",
+      "laterNote": "Enquanto nenhum cartão estiver registrado, sua loja não pode aceitar novas reservas. Você pode adicioná-lo a qualquer momento nas configurações de faturamento."
+    },
     "complete": {
       "title": "Sua loja esta pronta!",
       "description": "Parabens, sua loja agora esta online",
@@ -8144,6 +8152,7 @@
       "branding": "Personalizacao",
       "product": "Primeiro produto",
       "payment": "Pagamentos",
+      "billing": "Cartão de faturamento",
       "profile": "Perfil",
       "source": "Origem",
       "reeent": "reeent"

@@ -18,11 +18,11 @@ import { useStripeStep } from "./use-stripe-step";
  * the very marketplace they signed up for. The step keeps `payment` mode and
  * only asks when: now, or later from the dashboard.
  */
-export const ReeentStripeClientPage = ({ nextPath }: { nextPath: string }) => {
+export const ReeentStripeClientPage = () => {
   const router = useRouter();
   const t = useTranslations("onboarding.stripe");
   const tCommon = useTranslations("common");
-  const { form, isPending } = useStripeStep({ nextPath });
+  const { form, isPending } = useStripeStep();
   const { startStripeConnect, isConnecting, hasPendingAccount } = useStripeConnectStart({
     fromReeent: true,
   });

@@ -8108,6 +8108,14 @@
         }
       }
     },
+    "billingCard": {
+      "title": "Voeg een factuurkaart toe",
+      "description": "Louez belast zijn kosten op deze kaart. Zodra die is vastgelegd, kan je winkel reserveringen aannemen.",
+      "secureNote": "Je voegt de kaart toe op de beveiligde factuurpagina van Louez en komt daarna meteen hier terug.",
+      "addCard": "Kaart toevoegen",
+      "later": "Later",
+      "laterNote": "Zolang er geen kaart is vastgelegd, kan je winkel geen nieuwe reserveringen aannemen. Je kunt hem altijd toevoegen in je factuurinstellingen."
+    },
     "complete": {
       "title": "Uw winkel is klaar!",
       "description": "Gefeliciteerd, uw winkel is nu online",
@@ -8144,6 +8152,7 @@
       "branding": "Aanpassing",
       "product": "Eerste product",
       "payment": "Betalingen",
+      "billing": "Factuurkaart",
       "profile": "Profiel",
       "source": "Bron",
       "reeent": "reeent"

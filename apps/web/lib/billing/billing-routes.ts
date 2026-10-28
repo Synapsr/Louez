@@ -10,19 +10,24 @@ export const BILLING_HANDOFF_PATH = "/dashboard/billing";
 /** The settings page of the billing service: the offer, the card gate and the links. */
 export const BILLING_SETTINGS_PATH = "/dashboard/settings/billing";
 
+/** The onboarding step that sends a new store's owner to add a billing card. */
+export const BILLING_CARD_STEP_PATH = "/onboarding/billing";
+
 /**
  * Pages that exist only for platform billing (louez-billing docs/plans/design.md §7.2):
  * plans and invoices, referrals, the per-store admin pricing, the billing service's
- * hand-off and settings, and the platform finance area. With LOUEZ_BILLING off the
- * proxy answers 404 for them before any layout runs, so an unsigned visitor gets the
- * same answer as an owner, and each page also checks the mode itself. AI credits have
- * their own switch (`areAiCreditsEnabled`), which needs platform billing too.
+ * hand-off, settings and onboarding step, and the platform finance area. With
+ * LOUEZ_BILLING off the proxy answers 404 for them before any layout runs, so an
+ * unsigned visitor gets the same answer as an owner, and each page also checks the mode
+ * itself. AI credits have their own switch (`areAiCreditsEnabled`), which needs
+ * platform billing too.
  */
 export const BILLING_ONLY_PATHS = [
   "/dashboard/subscription",
   "/dashboard/settings/subscription",
   BILLING_HANDOFF_PATH,
   BILLING_SETTINGS_PATH,
+  BILLING_CARD_STEP_PATH,
   "/dashboard/referrals",
   "/dashboard/settings/referrals",
   "/dashboard/ai-credits",
@@ -51,12 +56,32 @@ export function readHandoffPage(value: string | null | undefined): string {
   return parsed.success ? parsed.data : "/";
 }
 
-/** The dashboard link that opens `page` on the billing pages, through the hand-off. */
-export function billingHandoffHref(page = "/"): string {
+/**
+ * Where a hand-off left from, when "Back to Louez" goes back there rather than to the
+ * billing settings: the onboarding's card step.
+ */
+export type BillingReturnOrigin = "onboarding";
+
+/** The hand-off's query parameter that names its BillingReturnOrigin. */
+export const BILLING_RETURN_ORIGIN_PARAM = "from";
+
+export function readBillingReturnOrigin(
+  value: string | null | undefined,
+): BillingReturnOrigin | null {
+  return value === "onboarding" ? "onboarding" : null;
+}
+
+/**
+ * The dashboard link that opens `page` on the billing pages, through the hand-off, and
+ * comes back to `origin` (the billing settings when null).
+ */
+export function billingHandoffHref(page = "/", origin: BillingReturnOrigin | null = null): string {
   const to = readHandoffPage(page);
-  return to === "/"
-    ? BILLING_HANDOFF_PATH
-    : `${BILLING_HANDOFF_PATH}?${new URLSearchParams({ to })}`;
+  const query = new URLSearchParams();
+  if (to !== "/") query.set("to", to);
+  if (origin) query.set(BILLING_RETURN_ORIGIN_PARAM, origin);
+  const search = query.toString();
+  return search ? `${BILLING_HANDOFF_PATH}?${search}` : BILLING_HANDOFF_PATH;
 }
 
 /**

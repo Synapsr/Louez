@@ -8108,6 +8108,14 @@
         }
       }
     },
+    "billingCard": {
+      "title": "Add a billing card",
+      "description": "Louez charges its fees to this card. Once it's on file, your store can take reservations.",
+      "secureNote": "You add the card on Louez's secure billing page, then come straight back here.",
+      "addCard": "Add a card",
+      "later": "Later",
+      "laterNote": "Until a card is on file, your store can't take new reservations. You can add it anytime in your billing settings."
+    },
     "complete": {
       "title": "Your store is ready!",
       "description": "Congratulations, your store is now online",
@@ -8144,6 +8152,7 @@
       "branding": "Customization",
       "product": "First product",
       "payment": "Payments",
+      "billing": "Billing card",
       "profile": "Profile",
       "source": "Source",
       "reeent": "reeent"

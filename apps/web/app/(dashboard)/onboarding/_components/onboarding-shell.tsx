@@ -68,6 +68,7 @@ export function OnboardingShell({
       // event so funnels can compare short and long variants.
       includes_profile_step: steps.some((s) => s.key === "profile"),
       includes_source_step: steps.some((s) => s.key === "source"),
+      includes_billing_step: steps.some((s) => s.key === "billing"),
       includes_reeent_step: steps.some((s) => s.key === "reeent"),
     });
   }, [posthog, stepIndex, steps]);

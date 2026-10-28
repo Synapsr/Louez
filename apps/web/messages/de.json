@@ -8108,6 +8108,14 @@
         }
       }
     },
+    "billingCard": {
+      "title": "Abrechnungskarte hinzufügen",
+      "description": "Louez belastet diese Karte mit seinen Gebühren. Sobald sie hinterlegt ist, kann Ihr Shop Reservierungen annehmen.",
+      "secureNote": "Sie fügen die Karte auf der sicheren Abrechnungsseite von Louez hinzu und kommen danach direkt hierher zurück.",
+      "addCard": "Karte hinzufügen",
+      "later": "Später",
+      "laterNote": "Solange keine Karte hinterlegt ist, kann Ihr Shop keine neuen Reservierungen annehmen. Sie können sie jederzeit in Ihren Abrechnungseinstellungen hinzufügen."
+    },
     "complete": {
       "title": "Ihr Shop ist bereit!",
       "description": "Herzlichen Glückwunsch, Ihr Shop ist jetzt online",
@@ -8144,6 +8152,7 @@
       "branding": "Anpassung",
       "product": "Erstes Produkt",
       "payment": "Zahlungen",
+      "billing": "Abrechnungskarte",
       "profile": "Profil",
       "source": "Quelle",
       "reeent": "reeent"

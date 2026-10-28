@@ -8108,6 +8108,14 @@
         }
       }
     },
+    "billingCard": {
+      "title": "Ajoutez une carte de facturation",
+      "description": "Louez débite ses frais sur cette carte. Dès qu'elle est enregistrée, votre boutique peut accepter des réservations.",
+      "secureNote": "Vous ajoutez la carte sur la page de facturation sécurisée de Louez, puis vous revenez directement ici.",
+      "addCard": "Ajouter une carte",
+      "later": "Plus tard",
+      "laterNote": "Tant qu'aucune carte n'est enregistrée, votre boutique ne peut pas accepter de nouvelles réservations. Vous pouvez l'ajouter à tout moment dans vos paramètres de facturation."
+    },
     "complete": {
       "title": "Votre boutique est prête !",
       "description": "Félicitations, votre boutique est maintenant en ligne",
@@ -8144,6 +8152,7 @@
       "branding": "Personnalisation",
       "product": "Premier produit",
       "payment": "Paiements",
+      "billing": "Carte de facturation",
       "profile": "Profil",
       "source": "Source",
       "reeent": "reeent"

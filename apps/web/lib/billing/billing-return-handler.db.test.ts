@@ -4,6 +4,7 @@ import { after, before, describe, test } from "node:test";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 import type { MemberRole } from "@louez/utils";
 
+import { fakeCookieJar } from "@/lib/billing/billing-return-cookie.fixtures";
 import type { BillingReturnRequest } from "@/lib/billing/billing-return-handler";
 import {
   type FakeBillingService,
@@ -87,6 +88,7 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
           "ret_store_conflict",
           "ret_store_down",
           "ret_store_alert",
+          "ret_store_onboard",
         ].map((id) => store(id, NEW_STORE)),
         store("ret_store_legacy", LEGACY_STORE),
       ]);
@@ -100,16 +102,20 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
   });
 
   /**
-   * An owner of `storeId` coming back, or a platform admin with `admin`; `after` keeps
-   * its tasks, as Next.js runs them later.
+   * An owner of `storeId` coming back, or a platform admin with `admin`, with the
+   * browser's `requestCookies`; `after` keeps its tasks, as Next.js runs them later.
    */
   const returning = (
     storeId: string,
-    overrides: Partial<BillingReturnRequest> & { admin?: boolean } = {},
+    overrides: Partial<BillingReturnRequest> & {
+      admin?: boolean;
+      requestCookies?: Record<string, string>;
+    } = {},
   ) => {
     const calls: string[] = [];
     const afterTasks: Array<() => Promise<void>> = [];
-    const { admin = false, ...rest } = overrides;
+    const { admin = false, requestCookies, ...rest } = overrides;
+    const cookies = fakeCookieJar(requestCookies);
     const request: BillingReturnRequest = {
       connection: async () => {
         calls.push("connection");
@@ -123,10 +129,11 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
       },
       getStore: async () => ({ id: storeId, role: "owner" }),
       isPlatformAdmin: () => admin,
+      cookies: async () => cookies.jar,
       now: () => NOW,
       ...rest,
     };
-    return { calls, afterTasks, answer: () => handler.answerBillingReturn(request) };
+    return { calls, afterTasks, cookies, answer: () => handler.answerBillingReturn(request) };
   };
 
   const requestsFor = (storeId: string) =>
@@ -175,11 +182,17 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
   });
 
   test("a signed-out visitor goes to the login page, then back to the route", async () => {
-    const visit = returning("ret_store_anon", { getSession: async () => null });
+    const visit = returning("ret_store_anon", {
+      getSession: async () => null,
+      requestCookies: { louez_billing_return: "onboarding" },
+    });
     assert.deepEqual(await visit.answer(), {
       kind: "redirect",
       to: "/login?callbackUrl=%2Fdashboard%2Fbilling%2Freturn",
     });
+    // Where the hand-off left from is kept for the return after the sign-in.
+    assert.deepEqual(visit.cookies.reads, []);
+    assert.deepEqual(visit.cookies.writes, []);
   });
 
   test("a user without a store goes to the onboarding", async () => {
@@ -198,14 +211,37 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
         status: 200,
         body: storeSet(storeId, [policy(storeId)]),
       }));
-      const visit = returning(storeId, { getStore: async () => ({ id: storeId, role }) });
+      const visit = returning(storeId, {
+        getStore: async () => ({ id: storeId, role }),
+        requestCookies: { louez_billing_return: "onboarding" },
+      });
       assert.deepEqual(
         await visit.answer(),
         { kind: "redirect", to: "/dashboard/settings" },
         storeId,
       );
       assert.deepEqual(requestsFor(storeId), [], storeId);
+      assert.deepEqual(visit.cookies.writes, [], storeId);
     }
+  });
+
+  test("a hand-off from the onboarding comes back to its card step, with the toast", async () => {
+    service.handle("/stores/ret_store_onboard/policies", () => ({
+      status: 200,
+      body: storeSet("ret_store_onboard", [policy("ret_store_onboard")]),
+    }));
+    const visit = returning("ret_store_onboard", {
+      requestCookies: { louez_billing_return: "onboarding" },
+    });
+    assert.deepEqual(await visit.answer(), {
+      kind: "redirect",
+      to: "/onboarding/billing?billing=refreshed",
+    });
+    assert.equal(requestsFor("ret_store_onboard").length, 1);
+    // Read once: the next return, from the settings, goes back there.
+    assert.deepEqual(visit.cookies.writes, [
+      { op: "delete", name: "louez_billing_return", path: "/dashboard/billing" },
+    ]);
   });
 
   test("an owner's or a platform admin's return pulls the store and says billing is up to date", async () => {
