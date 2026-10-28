@@ -4,7 +4,7 @@ import { db, markReservation, payments, reservationActivity } from "@louez/db";
 
 import { toMinorOrThrow } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
-import { buildLegacyFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
+import { buildLegacyFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -97,23 +97,24 @@ export const startCheckoutPayment = async ({
       toCents: (amount) => toStripeCents(amount, currency),
     });
 
-    // Skim the platform fee directly from the online payment via a Stripe
-    // application fee: the pay-as-you-go reservation commission. Capped below
-    // the charge amount; the exact amount is recorded on confirmation
-    // (webhook) from metadata.
     const chargeCents = toStripeCents(finalChargeAmount, currency);
-    const billing = await getStoreBilling(store.id);
-    const feePlan = await planStripeFees({
-      storeId: store.id,
-      reservationId: reservation.id,
-      chargeCents,
-      billing,
-    });
     // The reservation was just written from these totals, tax included.
     const insuranceShareMinor = paymentInsuranceShareMinor("rental", chargeCents, () => ({
       insuranceMinor: toMinorOrThrow(insuranceAmount.toFixed(2), currency),
       totalInclTaxMinor: toMinorOrThrow(totals.total.toFixed(2), currency),
     }));
+    // Skim the platform fee directly from the online payment via a Stripe
+    // application fee: the pay-as-you-go reservation commission. Capped below
+    // the charge amount; the exact amount is recorded on confirmation
+    // (webhook) from metadata.
+    const feePlan = await planApplicationFee({
+      storeId: store.id,
+      reservationId: reservation.id,
+      kind: "rental",
+      chargeMinor: chargeCents,
+      currency,
+      insuranceShareMinor: insuranceShareMinor ?? 0,
+    });
 
     // Both landings carry the reservation id: the return route completes the
     // payment and mints a short access token, the cancelled page resumes it.

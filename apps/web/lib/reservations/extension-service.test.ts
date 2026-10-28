@@ -9,7 +9,7 @@ import { getTableName } from "drizzle-orm";
 import * as schema from "@louez/db/schema";
 import type Stripe from "stripe";
 import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
-import type { StripeFeePlan } from "@/lib/pay-as-you-go/metering";
+import type { ApplicationFeeInput, StripeFeePlan } from "@/lib/pay-as-you-go/metering";
 import type { ExtensionAttempt } from "./extension.types";
 
 // The real fee metadata and payment fact helpers load @louez/db: a closed port keeps
@@ -79,6 +79,7 @@ let feePlan: StripeFeePlan = {
   reservationFeeCents: 0,
   marketplaceFeeCents: 0,
 };
+let feeInputs: ApplicationFeeInput[] = [];
 let sessionParams: Stripe.Checkout.SessionCreateParams[] = [];
 let intentResponse: Record<string, unknown> = { id: "pi_test", latest_charge: "ch_test" };
 let marks: string[] = [];
@@ -157,8 +158,10 @@ const dependencies = {
   },
   resolveDateChangeRequests: async () => {},
   toStripeCents: (amount: number) => Math.round(amount * 100),
-  getStoreBilling: async () => ({}),
-  planStripeFees: async () => feePlan,
+  planApplicationFee: async (input: ApplicationFeeInput) => {
+    feeInputs.push(input);
+    return feePlan;
+  },
   markReservation: async (_tx: unknown, row: { id: string }) => {
     marks.push(row.id);
   },
@@ -247,6 +250,7 @@ const reset = () => {
   unavailable = failRefund = false;
   supplement = 20;
   feePlan = { applicationFeeCents: 0, reservationFeeCents: 0, marketplaceFeeCents: 0 };
+  feeInputs = [];
   sessionParams = [];
   intentResponse = { id: "pi_test", latest_charge: "ch_test" };
   marks = [];
@@ -324,6 +328,16 @@ test("the extension session carries fee metadata v4, which the payment copies", 
     const intentMetadata = strings(params.payment_intent_data?.metadata);
     // The fee taken is the planner's, as before.
     assert.equal(params.payment_intent_data?.application_fee_amount, 150);
+    assert.deepEqual(feeInputs, [
+      {
+        storeId: "store",
+        reservationId: "reservation",
+        kind: "extension",
+        chargeMinor: 2000,
+        currency: "EUR",
+        insuranceShareMinor: 0,
+      },
+    ]);
     const facts = {
       metadataVersion: 4,
       totalMinor: 150,

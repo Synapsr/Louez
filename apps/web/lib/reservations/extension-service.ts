@@ -19,7 +19,7 @@ import { stripe } from "@/lib/stripe/client";
 import { toStripeCents } from "@/lib/stripe";
 import { appFeeColumns, paymentInsuranceShareMinor } from "@/lib/stripe/payment-completion";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { buildLegacyFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
+import { buildLegacyFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import { generateContract } from "@/lib/pdf/generate";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
@@ -196,17 +196,19 @@ export const startExtension = async (input: {
     throw new ExtensionError("expired");
   }
   const chargeCents = toStripeCents(attempt.supplement, attempt.currency);
-  const billing = await getStoreBilling(reservation.storeId);
-  const fee = await planStripeFees({
+  const insuranceShareMinor = extensionInsuranceShare(reservation, chargeCents) ?? 0;
+  const fee = await planApplicationFee({
     storeId: reservation.storeId,
     reservationId: reservation.id,
-    chargeCents,
-    billing,
+    kind: "extension",
+    chargeMinor: chargeCents,
+    currency: attempt.currency,
+    insuranceShareMinor,
   });
   const url = getStorefrontUrl(reservation.store.slug, `/account/reservations/${reservation.id}`);
   const metadata = {
     ...buildLegacyFeeMetadata(fee, {
-      insuranceShareMinor: extensionInsuranceShare(reservation, chargeCents) ?? 0,
+      insuranceShareMinor,
       paymentKind: "extension",
       reservationId: reservation.id,
       storeId: reservation.storeId,

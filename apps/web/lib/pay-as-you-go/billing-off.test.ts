@@ -127,6 +127,33 @@ describe("billing off", () => {
     });
   });
 
+  test("the fee at source in shadow plans no fee and reads no policy", async () => {
+    // Even with a service URL: billing off never reads the policy cache (README §12).
+    const serviceUrl = process.env.BILLING_SERVICE_URL;
+    process.env.BILLING_SERVICE_URL = "https://billing.example.test";
+    try {
+      for (const kind of ["rental", "extension", "custom_request"] as const) {
+        const plan = await metering.planApplicationFee({
+          storeId: "store",
+          reservationId: "reservation",
+          kind,
+          chargeMinor: 10_000,
+          currency: "EUR",
+          insuranceShareMinor: 0,
+          includeMarketplaceFee: true,
+        });
+        assert.deepEqual(plan, {
+          applicationFeeCents: 0,
+          reservationFeeCents: 0,
+          marketplaceFeeCents: 0,
+        });
+      }
+    } finally {
+      if (serviceUrl === undefined) delete process.env.BILLING_SERVICE_URL;
+      else process.env.BILLING_SERVICE_URL = serviceUrl;
+    }
+  });
+
   test("fee recording and voiding write nothing", async () => {
     assert.deepEqual(
       await metering.recordReservationFee({
@@ -218,9 +245,18 @@ describe("billing off", () => {
     const secret = { STRIPE_CONNECT_WEBHOOK_SECRET: "whsec_connect_billing_off" };
     assert.equal(stripeClient.isConnectConfigured({ ...key, ...secret }), true);
     // Without the Connect webhook secret, no payment would ever be confirmed.
-    assert.equal(stripeClient.isConnectConfigured({ ...key, STRIPE_CONNECT_WEBHOOK_SECRET: undefined }), false);
-    assert.equal(stripeClient.isConnectConfigured({ ...key, STRIPE_CONNECT_WEBHOOK_SECRET: "" }), false);
-    assert.equal(stripeClient.isConnectConfigured({ STRIPE_SECRET_KEY: undefined, ...secret }), false);
+    assert.equal(
+      stripeClient.isConnectConfigured({ ...key, STRIPE_CONNECT_WEBHOOK_SECRET: undefined }),
+      false,
+    );
+    assert.equal(
+      stripeClient.isConnectConfigured({ ...key, STRIPE_CONNECT_WEBHOOK_SECRET: "" }),
+      false,
+    );
+    assert.equal(
+      stripeClient.isConnectConfigured({ STRIPE_SECRET_KEY: undefined, ...secret }),
+      false,
+    );
   });
 
   test("with billing on, the same paths do reach the database", async () => {

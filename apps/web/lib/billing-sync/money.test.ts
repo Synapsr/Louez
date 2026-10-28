@@ -14,17 +14,38 @@ import {
 
 // The public vectors of the billing contract (fees.md §2-§4, §9), copied from the
 // service's docs. A vector passes when the output equals `expected` exactly. The
-// resolvePolicy vectors run in lib/billing/policy.test.ts.
-const vectors: Array<{
+// resolvePolicy vectors run in lib/billing/policy.test.ts, the commission and
+// feeAtSource ones in lib/billing/fees.test.ts.
+const MONEY_FUNCTIONS = new Set([
+  "rhu",
+  "mulDivHalfUp",
+  "toMinor",
+  "insuranceShare",
+  "reversalAtSource",
+]);
+/** Every function some runner checks; a vector of any other would pass untested. */
+const RUN_FUNCTIONS = new Set([...MONEY_FUNCTIONS, "commission", "feeAtSource", "resolvePolicy"]);
+const allVectors: Array<{
   id: string;
   function: string;
+  public?: unknown;
   input: Record<string, unknown>;
   expected: unknown;
 }> = JSON.parse(
   readFileSync(new URL("./fee-vectors.public.json", import.meta.url), "utf8"),
-).vectors.filter((vector: { function: string }) => vector.function !== "resolvePolicy");
+).vectors;
+const vectors = allVectors.filter((vector) => MONEY_FUNCTIONS.has(vector.function));
 
 describe("fee vectors", () => {
+  test("each one is public (Q33) and of a function a runner checks", () => {
+    assert.deepEqual(
+      allVectors
+        .filter((vector) => vector.public !== true || !RUN_FUNCTIONS.has(vector.function))
+        .map((vector) => `${vector.id} (${vector.function})`),
+      [],
+    );
+  });
+
   for (const vector of vectors) {
     test(vector.id, () => {
       const i = vector.input as Record<string, number & string>;

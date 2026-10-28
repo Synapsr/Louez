@@ -48,7 +48,8 @@ const localizedText = z
   .refine((text) => Object.keys(text).every((language) => /^[a-z]{2}$/.test(language)), {
     message: "a label language is not two lower-case letters",
   });
-const paymentKind = z.enum([
+/** The payment kinds of fees.md §6. */
+export const policyPaymentKind = z.enum([
   "rental",
   "extension",
   "adjustment",
@@ -60,7 +61,8 @@ const paymentKind = z.enum([
   "damage",
 ]);
 
-const applicationFee = z.discriminatedUnion("kind", [
+/** `applicationFee` of a policy (fees.md §5). */
+export const policyApplicationFee = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("none") }),
   z
     .object({
@@ -70,7 +72,7 @@ const applicationFee = z.discriminatedUnion("kind", [
       maxMinor: amountMinor.nullable(),
       excludeInsurance: z.boolean(),
       appliesTo: z
-        .array(paymentKind)
+        .array(policyPaymentKind)
         .min(1)
         .refine((kinds) => new Set(kinds).size === kinds.length, {
           message: "appliesTo repeats a kind",
@@ -95,7 +97,7 @@ export const policyV1Schema = z
     offerKey: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}$/),
     invoicing: policyInvoicing,
     currency: z.string().regex(/^[A-Z]{3}$/),
-    applicationFee,
+    applicationFee: policyApplicationFee,
     marketplaceFeeMinor: amountMinor,
     reservations: policyReservations,
     notice: z

@@ -17,7 +17,7 @@ import { env } from "@/env";
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
-import { buildLegacyFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
+import { buildLegacyFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -148,14 +148,6 @@ export async function createReservationPaymentSessionForCustomer(
       },
     ];
 
-    const billing = await getStoreBilling(store.id);
-    const feePlan = await planStripeFees({
-      storeId: store.id,
-      reservationId,
-      chargeCents,
-      billing,
-      includeMarketplaceFee: reservation.source === "marketplace",
-    });
     const insuranceShareMinor = paymentInsuranceShareMinor("rental", chargeCents, () =>
       reservationTotalsMinor({
         reservation,
@@ -163,6 +155,15 @@ export async function createReservationPaymentSessionForCustomer(
         items: reservation.items,
       }),
     );
+    const feePlan = await planApplicationFee({
+      storeId: store.id,
+      reservationId,
+      kind: "rental",
+      chargeMinor: chargeCents,
+      currency,
+      insuranceShareMinor: insuranceShareMinor ?? 0,
+      includeMarketplaceFee: reservation.source === "marketplace",
+    });
 
     const { url, sessionId, expiresAt } = await createCheckoutSession({
       stripeAccountId,

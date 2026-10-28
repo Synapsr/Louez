@@ -88,6 +88,7 @@ SPECIFICATIONS*.md
 # (scripts/tracked-scripts.test.mjs fails when one of them is ignored)
 !/scripts/audit-duplicates.mjs
 !/scripts/billing-marks.test.mjs
+!/scripts/billing-prices.test.mjs
 !/scripts/reservation-writes.test.mjs
 !/scripts/source-scan.mjs
 !/scripts/storefront-qa/

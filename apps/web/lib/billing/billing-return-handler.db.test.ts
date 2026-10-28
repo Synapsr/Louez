@@ -28,8 +28,8 @@ const policy = (storeId: string, version = 1) => ({
   applicationFee: {
     kind: "percent",
     rateBps: 250,
-    minMinor: 10,
-    maxMinor: 5000,
+    minMinor: 50,
+    maxMinor: 300,
     excludeInsurance: false,
     appliesTo: ["rental", "custom_request"],
   },

@@ -1,6 +1,6 @@
 {
   "source": "louez-billing docs/api/fee-examples.json",
-  "docsVersion": "1.0.0",
+  "docsVersion": "1.0.4",
   "note": "Public vectors only (contract Q33). Refresh from the service docs; never add private ones.",
   "vectors": [
     {
@@ -371,6 +371,134 @@
       }
     },
     {
+      "id": "commission-01",
+      "function": "commission",
+      "side": "both",
+      "public": true,
+      "summary": "test rate",
+      "input": {
+        "base": 24000,
+        "terms": {
+          "rateBps": 123,
+          "minMinor": 0,
+          "maxMinor": null
+        }
+      },
+      "expected": 295
+    },
+    {
+      "id": "commission-02",
+      "function": "commission",
+      "side": "both",
+      "public": true,
+      "summary": "zero base gives zero",
+      "input": {
+        "base": 0,
+        "terms": {
+          "rateBps": 123,
+          "minMinor": 0,
+          "maxMinor": null
+        }
+      },
+      "expected": 0
+    },
+    {
+      "id": "commission-03",
+      "function": "commission",
+      "side": "both",
+      "public": true,
+      "summary": "positive adjustment",
+      "input": {
+        "base": 2000,
+        "terms": {
+          "rateBps": 123,
+          "minMinor": 0,
+          "maxMinor": null
+        }
+      },
+      "expected": 25
+    },
+    {
+      "id": "commission-04",
+      "function": "commission",
+      "side": "both",
+      "public": true,
+      "summary": "negative adjustment: the exact opposite of +2000",
+      "input": {
+        "base": -2000,
+        "terms": {
+          "rateBps": 123,
+          "minMinor": 0,
+          "maxMinor": null
+        }
+      },
+      "expected": -25
+    },
+    {
+      "id": "commission-05",
+      "function": "commission",
+      "side": "both",
+      "public": true,
+      "summary": "minimum applies",
+      "input": {
+        "base": 1000,
+        "terms": {
+          "rateBps": 123,
+          "minMinor": 50,
+          "maxMinor": 300
+        }
+      },
+      "expected": 50
+    },
+    {
+      "id": "commission-06",
+      "function": "commission",
+      "side": "both",
+      "public": true,
+      "summary": "maximum applies",
+      "input": {
+        "base": 100000,
+        "terms": {
+          "rateBps": 123,
+          "minMinor": 50,
+          "maxMinor": 300
+        }
+      },
+      "expected": 300
+    },
+    {
+      "id": "commission-07",
+      "function": "commission",
+      "side": "both",
+      "public": true,
+      "summary": "zero base stays zero even with a minimum",
+      "input": {
+        "base": 0,
+        "terms": {
+          "rateBps": 123,
+          "minMinor": 50,
+          "maxMinor": 300
+        }
+      },
+      "expected": 0
+    },
+    {
+      "id": "commission-08",
+      "function": "commission",
+      "side": "both",
+      "public": true,
+      "summary": "negative base: minimum applies to the magnitude",
+      "input": {
+        "base": -1000,
+        "terms": {
+          "rateBps": 123,
+          "minMinor": 50,
+          "maxMinor": 300
+        }
+      },
+      "expected": -50
+    },
+    {
       "id": "share-01",
       "function": "insuranceShare",
       "side": "louez",
@@ -486,6 +614,1182 @@
         "totalInclTaxMinor": 9999999999
       },
       "expected": 5000000000
+    },
+    {
+      "id": "source-01",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "percent on a rental payment",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 25000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 308,
+        "reservationMinor": 308,
+        "marketplaceMinor": 0,
+        "baseMinor": 25000
+      }
+    },
+    {
+      "id": "source-02",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "insurance share removed from the base",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 25000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 1000,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 295,
+        "reservationMinor": 295,
+        "marketplaceMinor": 0,
+        "baseMinor": 24000
+      }
+    },
+    {
+      "id": "source-03",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "30 % online deposit of source-02",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 7500,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 300,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 89,
+        "reservationMinor": 89,
+        "marketplaceMinor": 0,
+        "baseMinor": 7200
+      }
+    },
+    {
+      "id": "source-04",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "the 70 % balance: 89 + 207 = 296, one more than source-02 because each payment rounds on its own",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 17500,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 700,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 207,
+        "reservationMinor": 207,
+        "marketplaceMinor": 0,
+        "baseMinor": 16800
+      }
+    },
+    {
+      "id": "source-05",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "extension: percent applies, marketplace fee does not (rental only)",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 5000,
+          "currency": "EUR",
+          "kind": "extension",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 62,
+        "reservationMinor": 62,
+        "marketplaceMinor": 0,
+        "baseMinor": 5000
+      }
+    },
+    {
+      "id": "source-06",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "custom payment request: no fee",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 4000,
+          "currency": "EUR",
+          "kind": "custom_request",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-07",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "deposit: no fee",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 30000,
+          "currency": "EUR",
+          "kind": "deposit",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-08",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "charge of 1 minor unit: the cap is 0",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 1,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 1
+      }
+    },
+    {
+      "id": "source-09",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "charge of 0",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 0,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-10",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "marketplace fee stacked on the percent",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 20000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 396,
+        "reservationMinor": 246,
+        "marketplaceMinor": 150,
+        "baseMinor": 20000
+      }
+    },
+    {
+      "id": "source-11",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "marketplace fee larger than the cap (149) is skipped; the percent still fits",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 150,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 2,
+        "reservationMinor": 2,
+        "marketplaceMinor": 0,
+        "baseMinor": 150
+      }
+    },
+    {
+      "id": "source-12",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "marketplace 150 fits the cap (150) but 150 + 2 does not: the percent part is dropped whole",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 151,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 150,
+        "reservationMinor": 0,
+        "marketplaceMinor": 150,
+        "baseMinor": 151
+      }
+    },
+    {
+      "id": "source-13",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "lifetime waiver known to Louez overrides the cached marketplace fee",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 20000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": true,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 246,
+        "reservationMinor": 246,
+        "marketplaceMinor": 0,
+        "baseMinor": 20000
+      }
+    },
+    {
+      "id": "source-14",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "marketplace fee already taken on an earlier payment",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 20000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": true,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 246,
+        "reservationMinor": 246,
+        "marketplaceMinor": 0,
+        "baseMinor": 20000
+      }
+    },
+    {
+      "id": "source-15",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "charge currency differs from the policy currency: flat amounts skipped, percent applies",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 20000,
+          "currency": "USD",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 246,
+        "reservationMinor": 246,
+        "marketplaceMinor": 0,
+        "baseMinor": 20000
+      }
+    },
+    {
+      "id": "source-16",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "minimum 50",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 50,
+            "maxMinor": 300,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 1000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 50,
+        "reservationMinor": 50,
+        "marketplaceMinor": 0,
+        "baseMinor": 1000
+      }
+    },
+    {
+      "id": "source-17",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "maximum 300",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 50,
+            "maxMinor": 300,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 100000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 300,
+        "reservationMinor": 300,
+        "marketplaceMinor": 0,
+        "baseMinor": 100000
+      }
+    },
+    {
+      "id": "source-18",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "the minimum (50) exceeds the cap (39): dropped, the month end bills it",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 50,
+            "maxMinor": 300,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 40,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 40
+      }
+    },
+    {
+      "id": "source-19",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "zero-decimal currency",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "JPY",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 12345,
+          "currency": "JPY",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 302,
+        "reservationMinor": 152,
+        "marketplaceMinor": 150,
+        "baseMinor": 12345
+      }
+    },
+    {
+      "id": "source-20",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "per_reservation on the first rental payment",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "per_reservation",
+            "amountMinor": 90
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 5000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 90,
+        "reservationMinor": 90,
+        "marketplaceMinor": 0,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-21",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "per_reservation: reservation already billable before this payment",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "per_reservation",
+            "amountMinor": 90
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 5000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": true,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-22",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "per_reservation: already taken on an earlier payment",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "per_reservation",
+            "amountMinor": 90
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 5000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": true
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-23",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "per_reservation never applies to an extension",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "per_reservation",
+            "amountMinor": 90
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 5000,
+          "currency": "EUR",
+          "kind": "extension",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-24",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "per_reservation is a flat amount: skipped in another currency",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "per_reservation",
+            "amountMinor": 90
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 5000,
+          "currency": "USD",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-25",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "150 + 90 > cap 199: per_reservation dropped whole",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "per_reservation",
+            "amountMinor": 90
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 200,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 150,
+        "reservationMinor": 0,
+        "marketplaceMinor": 150,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-26",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "150 + 90 = cap 240: both fit",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "per_reservation",
+            "amountMinor": 90
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 241,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 240,
+        "reservationMinor": 90,
+        "marketplaceMinor": 150,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-27",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "applicationFee none: marketplace fee only",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "none"
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 20000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 150,
+        "reservationMinor": 0,
+        "marketplaceMinor": 150,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-28",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "invoicing none: nothing at source",
+      "input": {
+        "policy": {
+          "invoicing": "none",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 20000,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 0,
+        "reservationMinor": 0,
+        "marketplaceMinor": 0,
+        "baseMinor": 0
+      }
+    },
+    {
+      "id": "source-29",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "largest decimal(10,2) charge",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 9999999999,
+          "currency": "EUR",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 123000000,
+        "reservationMinor": 123000000,
+        "marketplaceMinor": 0,
+        "baseMinor": 9999999999
+      }
+    },
+    {
+      "id": "source-38",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "a lower-case charge currency is compared upper-cased: the flat marketplace fee applies (same as source-10)",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 0,
+            "maxMinor": null,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 20000,
+          "currency": "eur",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": true,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 396,
+        "reservationMinor": 246,
+        "marketplaceMinor": 150,
+        "baseMinor": 20000
+      }
+    },
+    {
+      "id": "source-39",
+      "function": "feeAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "the minimum applies in any currency, at the same minor-unit amount",
+      "input": {
+        "policy": {
+          "invoicing": "service",
+          "currency": "EUR",
+          "applicationFee": {
+            "kind": "percent",
+            "rateBps": 123,
+            "minMinor": 50,
+            "maxMinor": 300,
+            "excludeInsurance": true,
+            "appliesTo": ["rental", "extension", "adjustment"]
+          },
+          "marketplaceFeeMinor": 150
+        },
+        "payment": {
+          "chargeMinor": 1000,
+          "currency": "USD",
+          "kind": "rental",
+          "insuranceShareMinor": 0,
+          "isMarketplace": false,
+          "marketplaceWaived": false,
+          "marketplaceAlreadyTaken": false,
+          "reservationAlreadyBillable": false,
+          "reservationFeeAlreadyTaken": false
+        }
+      },
+      "expected": {
+        "totalMinor": 50,
+        "reservationMinor": 50,
+        "marketplaceMinor": 0,
+        "baseMinor": 1000
+      }
     },
     {
       "id": "reversal-01",

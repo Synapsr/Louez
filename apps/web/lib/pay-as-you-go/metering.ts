@@ -1,26 +1,34 @@
-import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
   type Database,
   type DatabaseOnConnection,
   db,
+  isBillingSyncEnabled,
   isDuplicateKeyError,
   markBillingDirty,
   type MarkExecutor,
+  type PolicyInvoicing,
+  type PolicySource,
 } from "@louez/db";
 import {
   payAsYouGoInvoices,
+  payments,
   platformFees,
+  reservations,
   storeMarketplaceChannels,
   stores,
   subscriptions,
 } from "@louez/db";
 import type { BillingMode } from "@louez/types";
 
+import { type FeeCharge, feeAtSource } from "@/lib/billing/fees";
 import { isBillingEnabled } from "@/lib/billing/mode";
+import { getCachedPolicy, getEffectivePolicy } from "@/lib/billing/policy";
 import {
   buildFeeMetadataV4,
+  type FeeAtSource,
   readFeeMetadata,
   type FeeMetadataV4Input,
 } from "@/lib/billing-sync/fee-metadata";
@@ -641,6 +649,253 @@ export async function planStripeFees(opts: {
     reservationFeeCents,
     marketplaceFeeCents,
   };
+}
+
+// ============================================================================
+// The fee at source in shadow (louez-billing docs/api, fees.md §5 and §8)
+// ============================================================================
+
+export interface ApplicationFeeInput {
+  storeId: string;
+  reservationId: string;
+  kind: FeeMetadataV4Input["paymentKind"];
+  /** The Stripe charge, in minor units. */
+  chargeMinor: number;
+  currency: string;
+  /** fees.md §4, read when the session is created; 0 when it could not be computed. */
+  insuranceShareMinor: number;
+  /** Today's planner takes the marketplace fee in customer sessions only (fees.md §5). */
+  includeMarketplaceFee?: boolean;
+}
+
+/** The facts of fees.md §8, "Inputs", that Louez reads from its own tables. */
+export type FeeAtSourceFacts = Pick<
+  FeeCharge,
+  | "isMarketplace"
+  | "marketplaceWaived"
+  | "marketplaceAlreadyTaken"
+  | "reservationAlreadyBillable"
+  | "reservationFeeAlreadyTaken"
+>;
+
+interface FeeShadow {
+  policySource: PolicySource;
+  policyVersion: number | null;
+  /** The policy's own `invoicing`; the shadow reads `louez_legacy` as `service`. */
+  invoicing: PolicyInvoicing;
+  /** Null for a store with no policy (`legacy`): there is nothing to evaluate. */
+  facts: FeeAtSourceFacts | null;
+  fee: FeeAtSource | null;
+}
+
+const NO_STRIPE_FEE: StripeFeePlan = {
+  applicationFeeCents: 0,
+  reservationFeeCents: 0,
+  marketplaceFeeCents: 0,
+};
+
+/**
+ * The application fee of a Stripe charge Louez is about to create: what the legacy
+ * planner returns, whatever the store's policy says, and nothing for a custom payment
+ * request, as before. In service mode it also runs fees.md §8 on the store's cached
+ * policy, a `louez_legacy` one as if the service invoiced the store, and logs both,
+ * one line per payment. Expect constant differences (fees.md §5): the lines help debug
+ * the service's prices and count nothing. The shadow never changes the fee, and its
+ * failure never fails the payment.
+ */
+export async function planApplicationFee(input: ApplicationFeeInput): Promise<StripeFeePlan> {
+  const at = new Date();
+  const charged =
+    input.kind === "custom_request"
+      ? Promise.resolve(NO_STRIPE_FEE)
+      : planStripeFees({
+          storeId: input.storeId,
+          reservationId: input.reservationId,
+          chargeCents: input.chargeMinor,
+          includeMarketplaceFee: input.includeMarketplaceFee,
+        });
+  if (!isBillingEnabled() || !isBillingSyncEnabled()) return charged;
+
+  const [plan, shadow] = await Promise.all([
+    charged,
+    shadowApplicationFee(input, at).catch((error: unknown) => {
+      log.warn({
+        billing: {
+          event: "fee_shadow_failed",
+          storeId: input.storeId,
+          reservationId: input.reservationId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+      return null;
+    }),
+  ]);
+  if (shadow) {
+    log.info({
+      billing: {
+        event: "fee_shadow",
+        storeId: input.storeId,
+        reservationId: input.reservationId,
+        kind: input.kind,
+        chargeMinor: input.chargeMinor,
+        currency: input.currency,
+        insuranceShareMinor: input.insuranceShareMinor,
+        policy: {
+          source: shadow.policySource,
+          version: shadow.policyVersion,
+          invoicing: shadow.invoicing,
+        },
+        facts: shadow.facts,
+        charged: {
+          totalMinor: plan.applicationFeeCents,
+          reservationMinor: plan.reservationFeeCents,
+          marketplaceMinor: plan.marketplaceFeeCents,
+        },
+        shadow: shadow.fee,
+        ...compareFeeShadow(plan, shadow.fee),
+      },
+    });
+  }
+  return plan;
+}
+
+/** Whether the shadow fee equals what is charged, part by part. */
+function compareFeeShadow(
+  charged: StripeFeePlan,
+  shadow: FeeAtSource | null,
+): { outcome: "same" | "differs" | "no_policy"; differenceMinor: number | null } {
+  if (!shadow) return { outcome: "no_policy", differenceMinor: null };
+  const same =
+    shadow.totalMinor === charged.applicationFeeCents &&
+    shadow.reservationMinor === charged.reservationFeeCents &&
+    shadow.marketplaceMinor === charged.marketplaceFeeCents;
+  return {
+    outcome: same ? "same" : "differs",
+    differenceMinor: shadow.totalMinor - charged.applicationFeeCents,
+  };
+}
+
+/**
+ * fees.md §8 on the store's policy at `at`, the time the session is created, read as
+ * if the service invoiced the store. In service mode only.
+ */
+async function shadowApplicationFee(
+  input: ApplicationFeeInput,
+  at: Date,
+): Promise<FeeShadow | null> {
+  const effective = await getEffectivePolicy(input.storeId, at);
+  const source = effective.source;
+  if (source === "built_in") return null;
+  const { terms } = effective;
+  if (source === "legacy") {
+    return {
+      policySource: source,
+      policyVersion: null,
+      invoicing: terms.invoicing,
+      facts: null,
+      fee: null,
+    };
+  }
+  const facts = await readFeeAtSourceFacts(input.storeId, input.reservationId);
+  const fee = feeAtSource(
+    { ...terms, invoicing: terms.invoicing === "louez_legacy" ? "service" : terms.invoicing },
+    {
+      chargeMinor: input.chargeMinor,
+      currency: input.currency,
+      kind: input.kind,
+      insuranceShareMinor: input.insuranceShareMinor,
+      ...facts,
+    },
+  );
+  return {
+    policySource: source,
+    policyVersion: effective.version,
+    invoicing: terms.invoicing,
+    facts,
+    fee,
+  };
+}
+
+/**
+ * fees.md §8 "Inputs", read before the session is created. Taken fees count from the
+ * reservation's completed and refunded payments, so an unpaid session never counts and a
+ * later refund never resets one, and, until M6, from its legacy rows that are not voided.
+ */
+export async function readFeeAtSourceFacts(
+  storeId: string,
+  reservationId: string,
+): Promise<FeeAtSourceFacts> {
+  const reservation = await db.query.reservations.findFirst({
+    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)),
+    columns: { source: true, billableAt: true },
+  });
+  if (!reservation) throw new Error(`reservation ${reservationId} is not in store ${storeId}`);
+
+  const reservationKey = reservationFeeKey(reservationId);
+  const marketplaceKey = marketplaceFeeKey(reservationId);
+  const legacyRows = await db
+    .select({ dedupKey: platformFees.dedupKey })
+    .from(platformFees)
+    .where(
+      and(
+        inArray(platformFees.dedupKey, [reservationKey, marketplaceKey]),
+        ne(platformFees.status, "voided"),
+      ),
+    );
+  const takenAtSource = await db
+    .select({
+      origin: payments.origin,
+      reservationMinor: payments.appFeeReservationMinor,
+      marketplaceMinor: payments.appFeeMarketplaceMinor,
+      policyScope: payments.appFeePolicyScope,
+      policyVersion: payments.appFeePolicyVersion,
+    })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.reservationId, reservationId),
+        inArray(payments.status, ["completed", "refunded"]),
+        or(gt(payments.appFeeReservationMinor, 0), gt(payments.appFeeMarketplaceMinor, 0)),
+      ),
+    );
+
+  let reservationFeeAlreadyTaken = legacyRows.some((row) => row.dedupKey === reservationKey);
+  for (const payment of takenAtSource) {
+    if (reservationFeeAlreadyTaken) break;
+    // Extension payments never count (contract Q22).
+    if (payment.origin === "extension" || (payment.reservationMinor ?? 0) <= 0) continue;
+    reservationFeeAlreadyTaken = await tookPerReservationFee(storeId, payment);
+  }
+
+  return {
+    isMarketplace: reservation.source === "marketplace",
+    marketplaceWaived: await hasMarketplaceLifetimeFeeWaiver(storeId),
+    marketplaceAlreadyTaken:
+      legacyRows.some((row) => row.dedupKey === marketplaceKey) ||
+      takenAtSource.some((payment) => (payment.marketplaceMinor ?? 0) > 0),
+    // Read before the session exists, so a time set at all was set before it.
+    reservationAlreadyBillable: reservation.billableAt !== null,
+    reservationFeeAlreadyTaken,
+  };
+}
+
+/**
+ * Whether a payment's reservation part was a `per_reservation` fee, from the policy its
+ * fee metadata names. A legacy fee counts through its `res:` row instead. A policy Louez
+ * no longer holds counts as one, so a reservation never pays that fee twice at source.
+ */
+async function tookPerReservationFee(
+  storeId: string,
+  payment: {
+    readonly policyScope: PolicySource | null;
+    readonly policyVersion: number | null;
+  },
+): Promise<boolean> {
+  const scope = payment.policyScope;
+  if (scope !== "store" && scope !== "default") return false;
+  if (payment.policyVersion === null) return true;
+  const policy = await getCachedPolicy(storeId, scope, payment.policyVersion);
+  return policy === null || policy.applicationFee.kind === "per_reservation";
 }
 
 export type LegacyFeeMetadataInput = Pick<

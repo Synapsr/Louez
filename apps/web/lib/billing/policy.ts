@@ -142,6 +142,25 @@ export async function getEffectivePolicy(storeId: string, at: Date): Promise<Eff
 }
 
 /**
+ * A version Louez holds, the store's own (`store`) or the `*` one (`default`), as fee
+ * metadata v4 names the policy a payment used. Null without the service, when the
+ * version is not cached, or when its body no longer passes the schema.
+ */
+export async function getCachedPolicy(
+  storeId: string,
+  scope: "store" | "default",
+  version: number,
+): Promise<PolicyV1 | null> {
+  if (!isBillingEnabled() || !isBillingSyncEnabled()) return null;
+  const policyStoreId = scope === "store" ? storeId : "*";
+  const { versions } = await loadStorePolicyRecords(storeId);
+  const cached = versions.find(
+    (candidate) => candidate.storeId === policyStoreId && candidate.version === version,
+  );
+  return readPolicy(cached ?? null);
+}
+
+/**
  * Whether Louez's legacy pay-as-you-go code bills the store at `at`, the time of the
  * fact (README §8.3): false with LOUEZ_BILLING off, true for every store without
  * BILLING_SERVICE_URL, the resolver's answer in service mode.

@@ -10,7 +10,7 @@ import { validateStripePaymentAmount } from "@louez/utils";
 
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
-import { buildLegacyFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
+import { buildLegacyFeeMetadata, planApplicationFee } from "@/lib/pay-as-you-go";
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
@@ -190,17 +190,6 @@ export const initiatePayment = async (
       getLocale(),
     ]);
 
-    // Platform fees apply to rental payments only, never to custom charges
-    // (damage fees); the exact breakdown is recorded by the webhook.
-    const feePlan =
-      paymentRequest.type === "rental"
-        ? await planStripeFees({
-            storeId: store.id,
-            reservationId: reservation.id,
-            chargeCents,
-            billing: await getStoreBilling(store.id),
-          })
-        : null;
     const paymentKind = paymentRequest.type === "rental" ? "rental" : "custom_request";
     const insuranceShareMinor = paymentInsuranceShareMinor(paymentKind, chargeCents, () =>
       reservationTotalsMinor({
@@ -209,6 +198,16 @@ export const initiatePayment = async (
         items: reservation.items,
       }),
     );
+    // Platform fees apply to rental payments only, never to custom charges
+    // (damage fees); the exact breakdown is recorded by the webhook.
+    const feePlan = await planApplicationFee({
+      storeId: store.id,
+      reservationId: reservation.id,
+      kind: paymentKind,
+      chargeMinor: chargeCents,
+      currency,
+      insuranceShareMinor: insuranceShareMinor ?? 0,
+    });
 
     const session = await createPaymentRequestSession({
       stripeAccountId: store.stripeAccountId,
@@ -225,7 +224,7 @@ export const initiatePayment = async (
         `/pay/${reservation.id}?token=${encodeURIComponent(parsed.data.token)}`,
       ),
       paymentRequestId: paymentRequest.id,
-      applicationFeeAmount: feePlan?.applicationFeeCents,
+      applicationFeeAmount: feePlan.applicationFeeCents,
       feeMetadata: buildLegacyFeeMetadata(feePlan, {
         insuranceShareMinor: insuranceShareMinor ?? 0,
         paymentKind,
