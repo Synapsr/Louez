@@ -29,7 +29,7 @@ import { WhatsNewProvider } from "@/components/shared/whats-new-provider";
 import { getAiCreditsInfo, hasEverUsedAiCredits, microToCredits } from "@/lib/ai/advisor/credits";
 import { isAIChatConfigured } from "@/lib/ai/provider";
 import { auth } from "@/lib/auth";
-import { isStandaloneMode } from "@/lib/deployment";
+import { isSelfHosted } from "@/lib/hosting";
 import { parseKeyboardShortcutOverrides } from "@/lib/keyboard-shortcuts";
 import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
 import { areAiCreditsEnabled } from "@/lib/plans";
@@ -196,7 +196,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                 <PasskeyEnrollment />
                 <SettingsSearchFocus />
                 {/* Self-hosted instances only: the cloud never asks. */}
-                {isStandaloneMode() && <StarPrompt />}
+                {isSelfHosted() && <StarPrompt />}
               </Suspense>
             </div>
           </ReservationPollingProvider>

@@ -457,6 +457,9 @@ export async function syncSubscriptionFromStripe(stripeSubscriptionId: string) {
  * Get the current plan slug for a store (lightweight version for sidebar)
  */
 export async function getCurrentPlanSlug(storeId: string): Promise<string> {
+  // Without platform billing every store is on the unlimited plan (see getStorePlan).
+  if (!isBillingEnabled()) return 'pay_as_you_go'
+
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
     columns: { planSlug: true, status: true, billingMode: true },

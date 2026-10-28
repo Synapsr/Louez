@@ -9,6 +9,11 @@ export interface InstanceConfig {
   emailConfigured: boolean
   /** Whether Google OAuth sign-in is configured. */
   googleAuthConfigured: boolean
+  /**
+   * Whether the instance bills its stores (LOUEZ_BILLING=cloud). Off, every plan,
+   * upgrade, referral and billing prompt is hidden.
+   */
+  billingEnabled: boolean
 }
 
 // Defaults mirror the platform/cloud deployment so a component rendered
@@ -17,6 +22,7 @@ const InstanceConfigContext = createContext<InstanceConfig>({
   standalone: false,
   emailConfigured: true,
   googleAuthConfigured: true,
+  billingEnabled: true,
 })
 
 /**

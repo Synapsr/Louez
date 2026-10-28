@@ -246,6 +246,7 @@ The bundled docker-compose deployment configures all of the required variables f
 | `S3_*`                                  |          | S3-compatible storage for images (bundled MinIO in compose)                 |
 | `LOUEZ_MODE`                            |          | `standalone` (default) or `platform` (multi-tenant routing)                 |
 | `LOUEZ_BILLING`                         |          | `off` (default): the instance bills no store. `cloud` is for Louez Cloud    |
+| `LOUEZ_HOSTED_BY`                       |          | Unset (default): you host the instance. `lumycloud` is for Louez Cloud      |
 | `BACKGROUND_REMOVAL_API_TOKEN`          |          | Shared Bearer token when the image worker is publicly reachable             |
 | `AI_IMAGE_OPENAI_API_KEY`               |          | Enables optional GPT Image enhancement; local background removal is bundled |
 | `SMTP_*`                                |          | Outgoing email — optional; email features disable gracefully                |

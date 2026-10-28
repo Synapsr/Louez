@@ -11,6 +11,7 @@ import { PayAsYouGoPreview } from "@/app/(dashboard)/dashboard/subscription/pay-
 import { PayAsYouGoSummary } from "@/app/(dashboard)/dashboard/subscription/pay-as-you-go-summary";
 import { SubscriptionManagement } from "@/app/(dashboard)/dashboard/subscription/subscription-management";
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
+import { requirePlatformBilling } from "@/lib/billing/require-billing";
 import { syncStorePaymentMethodStatus } from "@/lib/discord/platform-notifications";
 import {
   getCurrentMonthUsage,
@@ -41,6 +42,7 @@ type SettingsSubscriptionPageProps = {
 };
 
 const SettingsSubscriptionPage = async ({ searchParams }: SettingsSubscriptionPageProps) => {
+  requirePlatformBilling();
   const store = await getCurrentStore();
 
   if (!store) {

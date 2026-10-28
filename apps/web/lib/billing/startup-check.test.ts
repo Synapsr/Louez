@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "node:test";
 
-import { checkBillingSyncConfigAtStartup } from "./startup-check";
+import {
+  checkBillingSyncConfigAtStartup,
+  checkHostingAtStartup,
+  checkPayAsYouGoOfferAtStartup,
+} from "./startup-check";
 
 // In service mode a wrong BILLING_* variable stops the server; outside it, nothing
 // changes (louez-billing docs/api, README §12).
@@ -90,5 +94,63 @@ describe("checkBillingSyncConfigAtStartup", () => {
       if (savedNodeEnv === undefined) delete processEnv.NODE_ENV;
       else processEnv.NODE_ENV = savedNodeEnv;
     }
+  });
+});
+
+describe("checkPayAsYouGoOfferAtStartup", () => {
+  afterEach(() => setEnv(saved));
+
+  const check = (rawPricing: string | undefined) => {
+    const errors: string[] = [];
+    const ok = checkPayAsYouGoOfferAtStartup(
+      { error: (_tag, message) => errors.push(message) },
+      rawPricing,
+    );
+    return { ok, errors };
+  };
+
+  test("with billing on, a malformed offer for new stores refuses the start", () => {
+    setEnv({ LOUEZ_BILLING: "cloud" });
+    assert.equal(check('{"flatRateCents":"a lot"}').ok, false);
+    assert.equal(check("not json").ok, false);
+    assert.match(check("not json").errors[0] ?? "", /PAYG_DEFAULT_PRICING/);
+    assert.deepEqual(check('{"flatRateCents":10}'), { ok: true, errors: [] });
+    assert.deepEqual(check(undefined), { ok: true, errors: [] }, "unset: the built-in ladder");
+    assert.deepEqual(check("  "), { ok: true, errors: [] });
+  });
+
+  test("a self-hosted instance never reads it", () => {
+    setEnv({});
+    assert.deepEqual(check("not json"), { ok: true, errors: [] });
+    setEnv({ LOUEZ_BILLING: "off" });
+    assert.deepEqual(check("not json"), { ok: true, errors: [] });
+  });
+});
+
+describe("checkHostingAtStartup", () => {
+  const check = (louezBilling: string | undefined, louezHostedBy: string | undefined) => {
+    const errors: string[] = [];
+    const ok = checkHostingAtStartup(
+      { error: (_tag, message) => errors.push(message) },
+      { louezBilling, louezHostedBy },
+    );
+    return { ok, errors };
+  };
+
+  test("Louez Cloud without its hosting identity refuses the start", () => {
+    // Its legal notices would lose the hosting line (design §7.1).
+    const unset = check("cloud", undefined);
+    assert.equal(unset.ok, false);
+    assert.match(unset.errors[0] ?? "", /LOUEZ_HOSTED_BY=lumycloud/);
+    assert.equal(check("cloud", "LumyCloud").ok, false, "a typo is not a host");
+    assert.deepEqual(check("cloud", "lumycloud"), { ok: true, errors: [] });
+  });
+
+  test("a self-hosted instance starts, with an unknown host only logged", () => {
+    assert.deepEqual(check(undefined, undefined), { ok: true, errors: [] });
+    assert.deepEqual(check("off", undefined), { ok: true, errors: [] });
+    const unknown = check(undefined, "acme");
+    assert.equal(unknown.ok, true);
+    assert.match(unknown.errors[0] ?? "", /not a known host/);
   });
 });

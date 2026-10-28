@@ -257,13 +257,3 @@ export function getDefaultPlan(): Plan {
   return getPayAsYouGoPlan();
 }
 
-/**
- * Check if Stripe is configured for subscriptions
- */
-export function isStripeConfigured(): boolean {
-  return !!(
-    env.STRIPE_SECRET_KEY &&
-    env.STRIPE_PRICE_PRO_MONTHLY &&
-    env.STRIPE_PRICE_ULTRA_MONTHLY
-  );
-}

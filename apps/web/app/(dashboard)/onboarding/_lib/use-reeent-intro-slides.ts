@@ -7,6 +7,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { GlobeIcon, PricingIcon, RewardIcon } from "@louez/ui/icons";
 
 import type { DashboardAccent } from "@/components/dashboard/shared/dashboard-accent";
+import { useInstanceConfig } from "@/components/instance-provider";
 
 import { useReeentIntro } from "./reeent-intro-context";
 
@@ -28,23 +29,29 @@ export interface ReeentIntroSlide {
 /**
  * The explanations the step walks through, in order. Both columns read them:
  * the step renders one at a time, the panel lists their titles as progress.
+ * The launch offer and the pricing are Louez Cloud's: an instance that does not
+ * bill its stores only explains the two products.
  */
 export const useReeentIntroSlides = (): ReeentIntroSlide[] => {
   const t = useTranslations("onboarding.reeent.panel");
   const format = useFormatter();
   const { cohort, status } = useReeentIntro();
+  const { billingEnabled } = useInstanceConfig();
 
   const isIndividual = status === "individual";
   const cohortIsOpen = cohort.remaining > 0;
 
+  const products: ReeentIntroSlide = {
+    key: "products",
+    icon: GlobeIcon,
+    accent: "primary",
+    title: t("products.title"),
+    body: isIndividual ? t("products.individualBody") : t("products.body"),
+  };
+  if (!billingEnabled) return [products];
+
   return [
-    {
-      key: "products",
-      icon: GlobeIcon,
-      accent: "primary",
-      title: t("products.title"),
-      body: isIndividual ? t("products.individualBody") : t("products.body"),
-    },
+    products,
     {
       key: "offer",
       icon: RewardIcon,

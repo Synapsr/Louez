@@ -7,6 +7,7 @@ import { RewardIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
 import { DashboardIconTile } from "@/components/dashboard/shared/dashboard-icon-tile";
+import { useInstanceConfig } from "@/components/instance-provider";
 
 export interface MarketplaceCohortNoticeProps {
   /** ISO date once the store joined the launch cohort, null otherwise. */
@@ -33,6 +34,12 @@ export const MarketplaceCohortNotice = ({
 }: MarketplaceCohortNoticeProps) => {
   const t = useTranslations("dashboard.settings.salesChannels.cohort");
   const format = useFormatter();
+  // The waiver is a billing promise: nothing to show when the instance does not bill.
+  const { billingEnabled } = useInstanceConfig();
+
+  if (!billingEnabled) {
+    return null;
+  }
 
   if (lifetimeFeeWaiverAt) {
     return (

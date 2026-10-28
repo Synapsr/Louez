@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { MessageSquare } from 'lucide-react'
 import { after } from 'next/server'
 
+import { requirePlatformBilling } from '@/lib/billing/require-billing'
 import { getCurrentStore } from '@/lib/store-context'
 import { syncStorePaymentMethodStatus } from '@/lib/discord/platform-notifications'
 import { getSubscriptionWithPlan, getPlans, hasStripeCustomer, storeHasDefaultPaymentMethod } from '@/lib/stripe/subscriptions'
@@ -35,6 +36,7 @@ export default async function SubscriptionPage({
     topup?: string
   }>
 }) {
+  requirePlatformBilling()
   const store = await getCurrentStore()
 
   if (!store) {

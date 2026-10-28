@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import * as nodeModule from "node:module";
 import { after, afterEach, before, describe, test } from "node:test";
 
 import type { Database, ReservationBillingEffect } from "@louez/db";
 
-// With LOUEZ_BILLING off, the billing paths must return before touching the database.
+// With LOUEZ_BILLING off, the billing paths must return before touching the database
+// (louez-billing docs/plans/design.md §7.2).
 // DATABASE_URL points at a closed port: any query would fail with ECONNREFUSED. The
 // variables are set rather than deleted, because dotenv (loaded by @louez/db) never
 // overrides a variable that is already set.
@@ -13,6 +15,28 @@ process.env.LOUEZ_BILLING = "off";
 // Credit layers an operator opted into: billing off must still switch them off.
 process.env.AI_CREDITS_ENABLED = "true";
 process.env.AI_PHONE_NUMBER_RENTAL_CREDITS = "30";
+// Stripe Connect without the plan prices (design §7.2): online payments still work.
+process.env.STRIPE_SECRET_KEY = "sk_test_billing_off";
+process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_connect_billing_off";
+process.env.STRIPE_WEBHOOK_SECRET = "whsec_platform_billing_off";
+delete process.env.STRIPE_PRICE_PRO_MONTHLY;
+delete process.env.STRIPE_PRICE_ULTRA_MONTHLY;
+
+// Some modules import "server-only", which throws outside Next.
+Reflect.get(
+  nodeModule,
+  "registerHooks",
+)({
+  resolve(
+    specifier: string,
+    context: unknown,
+    next: (specifier: string, context: unknown) => unknown,
+  ) {
+    return specifier === "server-only"
+      ? { url: "node:module", shortCircuit: true }
+      : next(specifier, context);
+  },
+});
 
 /** A database stand-in that records every call and never answers. */
 function spyDatabase() {
@@ -47,6 +71,11 @@ describe("billing off", () => {
   let reservationEffects: typeof import("@/lib/billing/reservation-effects");
   let legacyFeeRepair: typeof import("./legacy-fee-repair");
   let database: typeof import("@louez/db");
+  let rateLimit: typeof import("@/lib/ai/rate-limit");
+  let multiStore: typeof import("@/lib/dashboard/multi-store-metrics");
+  let referralInvite: typeof import("@/lib/referral/invite");
+  let requireBilling: typeof import("@/lib/billing/require-billing");
+  let stripeClient: typeof import("@/lib/stripe/client");
 
   /** The real runner, with its failures collected: it logs them instead of throwing. */
   async function runFeeEffects(): Promise<string[]> {
@@ -67,6 +96,11 @@ describe("billing off", () => {
     reservationEffects = await import("@/lib/billing/reservation-effects");
     legacyFeeRepair = await import("./legacy-fee-repair");
     database = await import("@louez/db");
+    rateLimit = await import("@/lib/ai/rate-limit");
+    multiStore = await import("@/lib/dashboard/multi-store-metrics");
+    referralInvite = await import("@/lib/referral/invite");
+    requireBilling = await import("@/lib/billing/require-billing");
+    stripeClient = await import("@/lib/stripe/client");
   });
 
   afterEach(() => {
@@ -151,6 +185,44 @@ describe("billing off", () => {
     assert.equal(numberBilling.isNumberRentalEnabled(), true);
   });
 
+  test("every store gets the unlimited plan, with no plan limit and the chat open", async () => {
+    const plan = await planLimits.getStorePlan("store");
+    assert.equal(plan.slug, "pay_as_you_go");
+    assert.equal(plan.features.maxProducts, null);
+    assert.equal(plan.features.maxReservationsPerMonth, null);
+    assert.equal(plan.features.maxCollaborators, null);
+    assert.equal(plan.features.aiAdvisor, true);
+    assert.equal(await stripeSubscriptions.getCurrentPlanSlug("store"), "pay_as_you_go");
+    assert.deepEqual(await multiStore.getStoresApproachingLimits(["store"]), []);
+    // The operator pays its own AI provider: abuse limits only, never an upgrade prompt.
+    assert.deepEqual(await rateLimit.resolveChatLimits("store"), rateLimit.SELF_HOSTED_LIMITS);
+  });
+
+  // The platform webhook's 404 is checked by the Docker smoke test (docker.yml): its
+  // route loads the storage SDK, which does not load under node:test.
+  test("referral invitations and billing pages are absent", async () => {
+    assert.equal(await referralInvite.getReferralInviteContext(), null);
+
+    assert.throws(
+      () => requireBilling.requirePlatformBilling(),
+      (error: unknown) =>
+        error instanceof Error && String(Reflect.get(error, "digest")).endsWith(";404"),
+    );
+    process.env.LOUEZ_BILLING = "cloud";
+    assert.doesNotThrow(() => requireBilling.requirePlatformBilling());
+  });
+
+  test("Stripe Connect needs its key and webhook secret, not the plan prices", () => {
+    assert.equal(stripeClient.isConnectConfigured(), true);
+    const key = { STRIPE_SECRET_KEY: "sk_test_billing_off" };
+    const secret = { STRIPE_CONNECT_WEBHOOK_SECRET: "whsec_connect_billing_off" };
+    assert.equal(stripeClient.isConnectConfigured({ ...key, ...secret }), true);
+    // Without the Connect webhook secret, no payment would ever be confirmed.
+    assert.equal(stripeClient.isConnectConfigured({ ...key, STRIPE_CONNECT_WEBHOOK_SECRET: undefined }), false);
+    assert.equal(stripeClient.isConnectConfigured({ ...key, STRIPE_CONNECT_WEBHOOK_SECRET: "" }), false);
+    assert.equal(stripeClient.isConnectConfigured({ STRIPE_SECRET_KEY: undefined, ...secret }), false);
+  });
+
   test("with billing on, the same paths do reach the database", async () => {
     process.env.LOUEZ_BILLING = "cloud";
     const { executor, calls } = spyDatabase();
@@ -170,5 +242,8 @@ describe("billing off", () => {
       legacyFeeRepair.reportLegacyFees(new Date("2026-03-02T04:45:00Z")),
       /ECONNREFUSED|Failed query/,
     );
+    // Plans and chat limits come from the store's subscription row again.
+    await assert.rejects(planLimits.getStorePlan("store"), /ECONNREFUSED|Failed query/);
+    await assert.rejects(rateLimit.resolveChatLimits("store"), /ECONNREFUSED|Failed query/);
   });
 });

@@ -2,6 +2,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { isBillingEnabled } from "@/lib/billing/mode";
+import { selectAuthMessages } from "@/lib/i18n/auth-messages";
 import { PostHogProvider } from "@/components/posthog-provider";
 
 export const AuthLayoutContent = async ({ children }: { children: React.ReactNode }) => {
@@ -12,7 +14,7 @@ export const AuthLayoutContent = async ({ children }: { children: React.ReactNod
     redirect("/dashboard");
   }
 
-  const messages = await getMessages();
+  const messages = selectAuthMessages(await getMessages(), isBillingEnabled());
 
   return (
     <PostHogProvider>

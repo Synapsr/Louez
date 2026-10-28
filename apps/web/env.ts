@@ -8,7 +8,7 @@ import { env as emailEnv } from "@louez/email/env";
 import { env as validationsEnv } from "@louez/validations/env";
 
 import { louezBillingSchema } from "@/lib/billing/mode";
-import { payAsYouGoConfigSchema } from "@/lib/pay-as-you-go/config";
+import { louezHostedBySchema } from "@/lib/hosting";
 import {
   publicEnvSchema,
   readPublicEnvRuntimeValues,
@@ -71,10 +71,11 @@ export const env = createEnv({
       message: "S3_PUBLIC_URL must be an absolute URL or an absolute path",
     }),
 
-    // ===== Stripe (Optional — payments & subscriptions) =====
-    // Without Stripe the storefront degrades to request-mode reservations
-    // (isStripeConfigured / effective reservation mode) and subscription
-    // pages hide their checkout paths.
+    // ===== Stripe (Optional — online payments & platform billing) =====
+    // Online payments go through Stripe Connect, which needs STRIPE_SECRET_KEY and
+    // STRIPE_CONNECT_WEBHOOK_SECRET (isConnectConfigured); without them stores take
+    // request-mode reservations. STRIPE_WEBHOOK_SECRET and the price ids below serve
+    // platform billing only (LOUEZ_BILLING=cloud).
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
     STRIPE_CONNECT_WEBHOOK_SECRET: z.string().optional(),
@@ -324,21 +325,21 @@ export const env = createEnv({
     FROMHELLO_API_URL: z.url().optional(),
     FROMHELLO_API_KEY: z.string().optional(),
 
-    // ===== Pay-as-you-go offer for new stores (Optional) =====
+    // ===== Pay-as-you-go offer for new stores (LOUEZ_BILLING=cloud only) =====
     // PAYG_DEFAULT_PRICING and PAYG_FREE_RESERVATIONS are written onto a NEW store's
     // subscription row when the store is created, and only when platform billing is on
     // (LOUEZ_BILLING=cloud). Existing stores pay what their own row says, so changing them
-    // only affects stores created afterwards. Upgrading from a release without the
-    // pricing lock: the first start writes both values onto the stores that followed them
-    // live, so upgrade BEFORE changing them.
+    // only affects stores created afterwards.
     // PAYG_DEFAULT_PRICING: JSON per-rental pricing. Omitted/empty → the built-in ladder.
-    // Validated at boot so a malformed offer fails the deploy instead of silently
-    // mispricing. Examples:
+    // Read as a plain string here; with LOUEZ_BILLING=cloud the server refuses to start
+    // when it is malformed (lib/billing/startup-check.ts), so a bad offer fails the deploy
+    // instead of silently mispricing. A self-hosted instance never reads it. Examples:
     //   {"flatRateCents":25}                                  → 0.25€ per rental, flat
     //   {"tiers":[{"upToCount":50,"priceCents":25},{"upToCount":null,"priceCents":100}]}
     // PAYG_FREE_RESERVATIONS: free reservations gifted at creation (the welcome
     // allowance). While credits remain, a rental's pay-as-you-go commission is waived.
     // Editable per store in admin. Default 15.
+    PAYG_DEFAULT_PRICING: z.string().optional(),
     PAYG_FREE_RESERVATIONS: z.coerce.number().int().min(0).max(100_000).default(15),
 
     // First stores published on reeent receive a lifetime marketplace-fee waiver.
@@ -348,34 +349,6 @@ export const env = createEnv({
       .string()
       .default("false")
       .transform((value) => value === "true"),
-
-    PAYG_DEFAULT_PRICING: z
-      .string()
-      .optional()
-      .transform((val, ctx) => {
-        if (!val || val.trim() === "") return undefined;
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(val);
-        } catch {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "PAYG_DEFAULT_PRICING must be valid JSON",
-          });
-          return z.NEVER;
-        }
-        const result = payAsYouGoConfigSchema.safeParse(parsed);
-        if (!result.success) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `PAYG_DEFAULT_PRICING is invalid: ${result.error.issues
-              .map((i) => i.message)
-              .join("; ")}`,
-          });
-          return z.NEVER;
-        }
-        return result.data;
-      }),
 
     // ===== Referral program (LOUEZ_BILLING=cloud only: rewards are billing credits) =====
     // Free reservations granted to the Referrer when a referral qualifies (PAYG referrer;
@@ -399,6 +372,13 @@ export const env = createEnv({
     // Platform billing: off (default) or cloud. Consumed through lib/billing/mode.ts, which
     // reads process.env at call time like LOUEZ_MODE; validated here at runtime.
     LOUEZ_BILLING: louezBillingSchema,
+    // Who hosts this instance, for the storefront legal notice and the dashboard's
+    // GitHub star prompt. Unset (the default): the operator hosts it, so the notice names
+    // no host and the dashboard may ask for a star. `lumycloud`: Louez Cloud, hosted by
+    // LumyCloud; with LOUEZ_BILLING=cloud the server refuses to start without it
+    // (lib/billing/startup-check.ts). Consumed through lib/hosting.ts at call time, like
+    // LOUEZ_MODE.
+    LOUEZ_HOSTED_BY: louezHostedBySchema,
     // The private billing service (louez-billing docs/api, README §4.3 and §12). Ignored
     // unless LOUEZ_BILLING=cloud and BILLING_SERVICE_URL are both set; then
     // lib/billing-sync/config.ts checks them and the server refuses to start when one is
@@ -526,6 +506,7 @@ export const env = createEnv({
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     LOUEZ_MODE: process.env.LOUEZ_MODE,
     LOUEZ_BILLING: process.env.LOUEZ_BILLING,
+    LOUEZ_HOSTED_BY: process.env.LOUEZ_HOSTED_BY,
     BILLING_SERVICE_URL: process.env.BILLING_SERVICE_URL,
     BILLING_OUTBOUND_KEYS: process.env.BILLING_OUTBOUND_KEYS,
     BILLING_OUTBOUND_ACTIVE_KID: process.env.BILLING_OUTBOUND_ACTIVE_KID,

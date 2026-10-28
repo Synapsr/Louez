@@ -39,6 +39,7 @@ import { HelpGlassIcon } from "@louez/ui/icons/glass";
 
 // import { ReferralSidebarWidget } from '@/components/dashboard/referral-sidebar-widget';
 import { UserAvatar } from "@/components/dashboard/shared/user-avatar";
+import { useInstanceConfig } from "@/components/instance-provider";
 import { InstallPrompt } from "@/components/dashboard/install-prompt";
 import { PushPrimer } from "@/components/dashboard/push-primer";
 import { SidebarLink } from "@/components/dashboard/sidebar-link";
@@ -201,6 +202,8 @@ const UserMenu = ({
 }) => {
   const t = useTranslations("dashboard.settings.accountSettings");
   const tAuth = useTranslations("auth");
+  // The platform admin area is billing only (app/admin): absent when billing is off.
+  const { billingEnabled } = useInstanceConfig();
 
   return (
     <DropdownMenu>
@@ -223,7 +226,7 @@ const UserMenu = ({
         <DropdownMenuItem render={<SidebarLink href="/dashboard/account" />}>
           {t("title")}
         </DropdownMenuItem>
-        {isPlatformAdmin && (
+        {isPlatformAdmin && billingEnabled && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem render={<SidebarLink href="/admin" />}>

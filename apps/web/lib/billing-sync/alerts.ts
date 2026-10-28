@@ -25,7 +25,9 @@ export type BillingAlertKind =
   | "policies_invalid"
   | "policies_conflict"
   | "policies_stale"
-  | "manifest_rejected";
+  | "manifest_rejected"
+  | "final_snapshot_skipped"
+  | "final_snapshot_large";
 
 export type BillingLog = {
   error(tag: string, message: string): void;

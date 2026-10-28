@@ -24,8 +24,15 @@ import {
   endSubscriptionToPayAsYouGo,
 } from '@/lib/stripe/subscriptions'
 import { env } from '@/env'
+import { isBillingEnabled } from '@/lib/billing/mode'
 
 export async function POST(request: Request) {
+  // Every event below is platform billing (plans, top-ups, invoices): an instance that
+  // does not bill its stores has no platform webhook.
+  if (!isBillingEnabled()) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   const body = await request.text()
   const headersList = await headers()
   const signature = headersList.get('stripe-signature')

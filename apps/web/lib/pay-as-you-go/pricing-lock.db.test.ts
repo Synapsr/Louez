@@ -144,7 +144,7 @@ describe("legacy_store marks (database)", { skip: skipWithoutTestDatabase() }, (
 
     const connection = await database.connect();
     try {
-      const plan = await lock.planLegacyPricingFreeze(connection, "startup");
+      const plan = await lock.planLegacyPricingFreeze(connection);
       const result = await lock.applyLegacyPricingFreeze(connection, plan, {
         offer: { flatRateCents: 40 },
         freeReservations: 12,

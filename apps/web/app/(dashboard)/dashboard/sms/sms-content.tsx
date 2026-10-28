@@ -241,7 +241,7 @@ export function SmsContent({
                   {t("quota.limitReached")}
                 </Badge>
               )}
-              {isCurrentMonth && (
+              {isCurrentMonth && quotaStatus.canTopup && (
                 <Button onClick={() => setShowTopupModal(true)}>
                   <Plus className="mr-1.5 h-4 w-4" />
                   {t("quota.topup")}
@@ -351,7 +351,9 @@ export function SmsContent({
       </Card>
 
       {/* Top-up History */}
-      {topupHistory.length > 0 && <TopupHistory transactions={topupHistory} />}
+      {quotaStatus.canTopup && topupHistory.length > 0 && (
+        <TopupHistory transactions={topupHistory} />
+      )}
 
       {/* SMS History */}
       <Card>

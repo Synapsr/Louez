@@ -12,6 +12,8 @@ import { Button, Logo } from "@louez/ui";
 import { ArrowLeftIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
+import { useInstanceConfig } from "@/components/instance-provider";
+
 import {
   onboardingAnalyticsBaseProperties,
   productAnalyticsEvents,
@@ -46,6 +48,8 @@ export function OnboardingShell({
 }) {
   const pathname = usePathname();
   const t = useTranslations("onboarding");
+  // The platform admin area is billing only (app/admin): absent when billing is off.
+  const { billingEnabled } = useInstanceConfig();
   const tAccount = useTranslations("dashboard.settings.accountSettings");
   const posthog = usePostHog();
   const stepIndex = getOnboardingStepIndex(steps, pathname);
@@ -90,7 +94,7 @@ export function OnboardingShell({
           <div className="flex w-full flex-col lg:flex-1">
             <header className="flex items-center justify-between gap-4 px-6 pt-8 lg:px-12">
               <Logo className="h-5 w-auto" />
-              {isPlatformAdmin && (
+              {isPlatformAdmin && billingEnabled && (
                 <Button variant="ghost" size="sm" render={<Link href="/admin" />}>
                   <ArrowLeftIcon className="size-4" />
                   {tAccount("administration")}

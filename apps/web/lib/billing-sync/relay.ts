@@ -404,8 +404,32 @@ const currentRowSchema = z.object({
   status: z.enum(["pending", "synced", "dead"]),
   lastError: z.string().nullable(),
   observedAt: unixSeconds,
+  finalPayload: z.unknown(),
 });
 type CurrentRow = z.infer<typeof currentRowSchema>;
+
+/**
+ * What an account deletion stored on the row (final-snapshots.ts): the closing snapshot
+ * and when it was built. The relay sends it as stored, never rebuilt, since the rows
+ * are gone (README §5.5). mysql2 hands a JSON column back parsed; a string is parsed.
+ */
+const finalPayloadSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  },
+  z.object({ observedAt: z.string(), data: z.record(z.string(), z.unknown()) }),
+);
+type FinalPayload = z.infer<typeof finalPayloadSchema>;
+
+/** What the relay sends for a row: a fresh build, or the stored final snapshot. */
+type RowSnapshot =
+  | { readonly kind: "built"; readonly built: BuiltSnapshot }
+  | { readonly kind: "final"; readonly payload: FinalPayload };
 
 /**
  * A Drizzle instance on a one-connection pool, so the version read and the snapshot
@@ -422,32 +446,50 @@ function openSnapshotDatabase(): { readonly db: Database; close(): Promise<void>
   return { db: drizzle(pool, { schema, mode: "default" }), close: () => pool.end() };
 }
 
-/** Reads the row's version and builds its snapshot from one consistent state. */
+/**
+ * Reads the row's version and builds its snapshot from one consistent state, or takes
+ * the final snapshot an account deletion stored on it.
+ */
 async function readAndBuild(
   snapshotDb: Database,
   key: SnapshotKey,
   newStoresFrom: Date,
   build: SnapshotBuilder,
-): Promise<{ current: CurrentRow; built: BuiltSnapshot } | null> {
+): Promise<{ current: CurrentRow; snapshot: RowSnapshot } | null> {
   await snapshotDb.execute(sql`START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY`);
   try {
     const [current] = await selectRows(
       snapshotDb,
       sql`SELECT version, sent_hash AS sentHash, status, last_error AS lastError,
-                 UNIX_TIMESTAMP(NOW(3)) AS observedAt
+                 UNIX_TIMESTAMP(NOW(3)) AS observedAt, final_payload AS finalPayload
           FROM billing_sync_queue WHERE ${whereKey(key)}`,
       currentRowSchema,
     );
-    const built =
-      current && current.status === "pending"
-        ? await build(snapshotDb, key, { newStoresFrom })
-        : null;
+    let snapshot: RowSnapshot | null = null;
+    if (current && current.status === "pending") {
+      snapshot =
+        current.finalPayload === null || current.finalPayload === undefined
+          ? { kind: "built", built: await build(snapshotDb, key, { newStoresFrom }) }
+          : { kind: "final", payload: parseFinalPayload(key, current.finalPayload) };
+    }
     await snapshotDb.execute(sql`COMMIT`);
-    return current && built ? { current, built } : null;
+    return current && snapshot ? { current, snapshot } : null;
   } catch (error) {
     await snapshotDb.execute(sql`ROLLBACK`).catch(() => undefined);
     throw error;
   }
+}
+
+/** A stored final snapshot that does not parse will not heal: the row dies and alerts. */
+function parseFinalPayload(key: SnapshotKey, value: unknown): FinalPayload {
+  const parsed = finalPayloadSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new SnapshotDataError(
+      `${key.type} ${key.aggregateId}`,
+      `the stored final snapshot is malformed (${parsed.error.issues[0]?.message ?? "unknown"})`,
+    );
+  }
+  return parsed.data;
 }
 
 async function prepareRow(
@@ -460,20 +502,28 @@ async function prepareRow(
   const read = await readAndBuild(snapshotDb, key, newStoresFrom, build);
   // Synced or dead since the due query: nothing to send.
   if (!read) return { kind: "done", counted: "gone" };
-  const { current, built } = read;
+  const { current, snapshot } = read;
 
   const { version } = current;
-  if (built.kind === "missing") {
+  let content: { readonly data: unknown; readonly observedAt: string; readonly final: boolean };
+  if (snapshot.kind === "final") {
+    content = { data: snapshot.payload.data, observedAt: snapshot.payload.observedAt, final: true };
+  } else if (snapshot.built.kind === "missing") {
     await markSyncedUnsent(key, version);
     return { kind: "done", counted: "missing" };
-  }
-  if (built.kind !== "snapshot") {
+  } else if (snapshot.built.kind !== "snapshot") {
     // `skip`: a legacy aggregate of a new store, never sent (README §8.3).
     await markSyncedUnsent(key, version);
     return { kind: "done", counted: "skipped" };
+  } else {
+    content = {
+      data: snapshot.built.data,
+      observedAt: (current.observedAt ?? new Date()).toISOString(),
+      final: false,
+    };
   }
 
-  const hash = canonicalHash(built.data);
+  const hash = canonicalHash(content.data);
   if (current.sentHash === hash) {
     await markSyncedUnsent(key, version);
     return { kind: "done", counted: "unchanged" };
@@ -488,9 +538,9 @@ async function prepareRow(
     aggregateId: row.aggregateId,
     storeId: row.storeId,
     version,
-    observedAt: (current.observedAt ?? new Date()).toISOString(),
-    final: false,
-    data: built.data,
+    observedAt: content.observedAt,
+    final: content.final,
+    data: content.data,
   });
   const bytes = Buffer.byteLength(json, "utf8");
   if (bytes > MAX_EVENT_BYTES) return { kind: "too_large", version, bytes };

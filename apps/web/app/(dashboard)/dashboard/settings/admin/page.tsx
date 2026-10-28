@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
+import { requirePlatformBilling } from "@/lib/billing/require-billing";
 import { getCurrentStore } from "@/lib/store-context";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
 import { getStoreBilling } from "@/lib/pay-as-you-go";
@@ -12,6 +13,7 @@ import { AdminSettingsForm } from "./admin-settings-form";
 export const instant = false;
 
 export default async function AdminSettingsPage() {
+  requirePlatformBilling();
   const store = await getCurrentStore();
 
   if (!store) {

@@ -80,6 +80,13 @@ const envelopeSchema = z.object({
   data: z.record(z.string(), z.unknown()),
 });
 const eventsBody = z.object({ events: z.array(envelopeSchema) });
+/**
+ * What the relay sends for a row an account deletion closed (final-snapshots.ts). Every
+ * other event is `final: false`, which `eventsBody` holds the relay to.
+ */
+const finalEventsBody = z.object({
+  events: z.array(envelopeSchema.extend({ final: z.literal(true) })),
+});
 
 describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
@@ -89,7 +96,9 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
   let relay: typeof import("./relay");
   let locks: typeof import("./locks");
   const snapshots = new Map<string, BuiltSnapshot>();
-  let answer: (event: z.infer<typeof envelopeSchema>) => EventResult = (event) => ({
+  let answer: (event: Pick<z.infer<typeof envelopeSchema>, "id" | "version">) => EventResult = (
+    event,
+  ) => ({
     id: event.id,
     status: "accepted",
     heldVersion: event.version,
@@ -653,6 +662,60 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal(event?.data.slug, "relay-real-store");
     assert.equal(event?.data.deleted, false);
     assert.equal((await row("store", "relay_real_store"))?.status, "synced");
+  });
+
+  test("a final snapshot goes out as stored, final, even unchanged, and again on a requeue", async () => {
+    // What an account deletion leaves behind (final-snapshots.ts): the store is gone,
+    // so the builder finds nothing, and the row carries the closing body.
+    const body = {
+      observedAt: "2026-10-28T10:00:00.000Z",
+      data: { ...storeData("gone"), deleted: true, slug: null, ownerUserIds: [], finalReservations: [] },
+    };
+    await louezDb.markStore(louezDb.db, "s_gone", { force: true });
+    await louezDb.db.execute(
+      sql`UPDATE billing_sync_queue SET final_payload = ${JSON.stringify(body)}
+          WHERE aggregate_type = 'store' AND aggregate_id = 's_gone'`,
+    );
+    const sent = () =>
+      service.requests
+        .filter((request) => request.target === "/api/v1/louez/events")
+        .flatMap((request) => finalEventsBody.parse(request.json()).events);
+    // Every other test's service refuses a final event: only this one accepts them.
+    service.handle("/events", (request) => {
+      const { events } = finalEventsBody.parse(request.json());
+      return { status: 200, body: { results: events.map((event) => answer(event)) } };
+    });
+    try {
+      const first = await run();
+      assert.equal(first.result.counts.missing, 0, "the stored body stands in for the store");
+      const [event] = sent();
+      assert.equal(event?.id, "store.snapshot:s_gone:1");
+      assert.equal(event?.observedAt, body.observedAt, "the purge's clock, not the send's");
+      assert.deepEqual(event?.data, body.data);
+      assert.equal((await row("store", "s_gone"))?.status, "synced");
+
+      // A requeue (a resync or `billing:mark`) bumps the version and keeps the body.
+      service.requests.length = 0;
+      await louezDb.markStore(louezDb.db, "s_gone", { force: true });
+      await run();
+      const [again] = sent();
+      assert.equal(again?.id, "store.snapshot:s_gone:2");
+      assert.deepEqual(again?.data, body.data);
+    } finally {
+      service.handle("/events", answerEvents);
+    }
+  });
+
+  test("a malformed final snapshot makes its row dead", async () => {
+    await louezDb.markStore(louezDb.db, "s_bad_final", { force: true });
+    await louezDb.db.execute(
+      sql`UPDATE billing_sync_queue SET final_payload = ${JSON.stringify({ data: 1 })}
+          WHERE aggregate_type = 'store' AND aggregate_id = 's_bad_final'`,
+    );
+    const { result } = await run();
+    assert.equal(result.counts.dead, 1);
+    assert.equal((await row("store", "s_bad_final"))?.status, "dead");
+    assert.match((await row("store", "s_bad_final"))?.lastError ?? "", /final snapshot is malformed/);
   });
 
   test("an alert of a kind reaches Discord at most once an hour", async () => {

@@ -1,10 +1,13 @@
 /**
  * Database-backed rate limiting for the AI chat endpoint.
  *
- * Limits vary by plan:
+ * With platform billing (LOUEZ_BILLING=cloud), limits vary by plan:
  * - Ultra: 20/min, 100/hour, 500/day
- * - Pro:   5/min,  10/hour,  25/day
+ * - Pro:   5/min,  5/hour,  5/day
  * - Any plan without an entry below (e.g. pay-as-you-go): AI chat disabled — prompts upgrade
+ *
+ * Without it, the operator pays its own AI provider: every store may chat, under the
+ * abuse limits of {@link SELF_HOSTED_LIMITS}.
  *
  * Counts user messages from the ai_chat_messages table using sliding windows.
  * Notifies platform admins via Discord when a limit is hit.
@@ -13,6 +16,7 @@
 import { db, aiChats, aiChatMessages } from '@louez/db'
 import { and, eq, gte, sql } from 'drizzle-orm'
 
+import { isBillingEnabled } from '@/lib/billing/mode'
 import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions'
 import { notifyAiRateLimitHit } from '@/lib/discord/platform-notifications'
 
@@ -22,9 +26,20 @@ type PlanLimits = {
   perDay: number
 }
 
+const ULTRA_LIMITS: PlanLimits = { perMinute: 20, perHour: 100, perDay: 500 }
+
 const LIMITS_BY_PLAN: Record<string, PlanLimits> = {
-  ultra: { perMinute: 20, perHour: 100, perDay: 500 },
+  ultra: ULTRA_LIMITS,
   pro: { perMinute: 5, perHour: 5, perDay: 5 },
+}
+
+/** Abuse limits on an instance that does not bill its stores: the most generous plan's. */
+export const SELF_HOSTED_LIMITS: PlanLimits = ULTRA_LIMITS
+
+/** The limits of a store, or null when its plan has no AI chat. */
+export async function resolveChatLimits(storeId: string): Promise<PlanLimits | null> {
+  if (!isBillingEnabled()) return SELF_HOSTED_LIMITS
+  return LIMITS_BY_PLAN[await getCurrentPlanSlug(storeId)] ?? null
 }
 
 const MAX_MESSAGE_LENGTH = 10_000
@@ -50,18 +65,15 @@ export async function checkRateLimit(
   storeId: string,
 ): Promise<RateLimitResult> {
   try {
-    // Get the store's plan
-    const planSlug = await getCurrentPlanSlug(storeId)
-
     // Plans without a limit entry (e.g. pay-as-you-go) — AI chat not available
-    if (!LIMITS_BY_PLAN[planSlug]) {
+    const limits = await resolveChatLimits(storeId)
+    if (!limits) {
       return {
         allowed: false,
         code: 'upgrade_required',
       }
     }
 
-    const limits = LIMITS_BY_PLAN[planSlug]
     const now = new Date()
     const oneMinuteAgo = new Date(now.getTime() - 60 * 1000)
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)

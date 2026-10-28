@@ -14,8 +14,8 @@ if (TEST_DATABASE_URL) {
   process.env.SKIP_ENV_VALIDATION = 'true';
   // The billing write paths only run on an instance that bills its stores.
   process.env.LOUEZ_BILLING = 'cloud';
-  // This deployment's env offer: what never-frozen stores followed live before the lock.
-  // It differs from the built-in ladder and 15, so a store that reads it is visible.
+  // The env offer for new stores. It differs from the built-in ladder and 15, so an
+  // existing store that reads it by mistake is visible.
   process.env.PAYG_DEFAULT_PRICING = '{"flatRateCents":30}';
   process.env.PAYG_FREE_RESERVATIONS = '20';
 }
@@ -36,7 +36,6 @@ interface Row {
 describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
   let connection: Connection;
   let lock: typeof import('./pricing-lock');
-  let startup: typeof import('./pricing-lock-startup');
   let core: typeof import('./pricing-lock-core');
   let subscriptionsLib: typeof import('@/lib/stripe/subscriptions');
   let metering: typeof import('./metering');
@@ -94,8 +93,8 @@ describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
     return (rows as Row[])[0];
   }
 
-  async function freeze(scope: 'startup' | 'all', terms: typeof LATER_OFFER) {
-    const plan = await lock.planLegacyPricingFreeze(connection, scope);
+  async function freeze(terms: typeof LATER_OFFER) {
+    const plan = await lock.planLegacyPricingFreeze(connection);
     return lock.applyLegacyPricingFreeze(connection, plan, terms);
   }
 
@@ -103,7 +102,6 @@ describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
     const mysql = await import('mysql2/promise');
     connection = await mysql.createConnection(TEST_DATABASE_URL ?? '');
     lock = await import('./pricing-lock');
-    startup = await import('./pricing-lock-startup');
     core = await import('./pricing-lock-core');
     subscriptionsLib = await import('@/lib/stripe/subscriptions');
     metering = await import('./metering');
@@ -119,42 +117,22 @@ describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
     await database.db.$client.end();
   });
 
-  test('the start-up freeze writes the env offer onto never-frozen stores, once', async () => {
-    const legacy = await addStore('legacy');
-    const noRow = await addStore('legacynorow');
-    const anomaly = await addStore('anomaly');
-    const subscribed = await addStore('legacysub');
-    await addRow(legacy, { config: null, version: null, free: 7 });
-    await addRow(anomaly, { config: null, version: 'payg-ladder-v1', free: 3 });
-    await addRow(subscribed, { billingMode: 'subscription', config: null, version: null });
-
-    await startup.freezeLegacyPricingAtStartup();
-
-    const frozen = await readRow(legacy);
-    assert.equal(frozen?.config?.flatRateCents, 30, 'the env offer it followed live');
-    assert.equal(frozen?.pricing_version, 'payg-ladder-v1');
-    assert.equal(frozen?.free_reservations_granted, 7, 'an existing allowance is kept');
-    const created = await readRow(noRow);
-    assert.equal(created?.config?.flatRateCents, 30);
-    assert.equal(created?.billing_mode, 'pay_as_you_go');
-    assert.equal(created?.free_reservations_granted, 20, 'the env allowance it followed live');
-    assert.equal((await readRow(subscribed))?.config?.flatRateCents, 30, 'kept for a later switch');
-    assert.equal((await readRow(anomaly))?.config, null, 'a row with a version is not legacy');
-
-    // Later starts find nothing to freeze, and other terms change nothing.
-    await startup.freezeLegacyPricingAtStartup();
-    await freeze('startup', LATER_OFFER);
-    assert.deepEqual(await readRow(legacy), frozen);
-    assert.deepEqual(await readRow(noRow), created);
-  });
-
   test('the backfill freezes every remaining store with the explicit terms, once', async () => {
+    const legacy = await addStore('bflegacy');
+    const subscribed = await addStore('bfsub');
     const orphanConfig = await addStore('bfnull');
     const noRow = await addStore('bfnorow', 'usd');
+    await addRow(legacy, { config: null, version: null, free: 7 });
+    await addRow(subscribed, { billingMode: 'subscription', config: null, version: null });
     await addRow(orphanConfig, { config: null, version: 'payg-ladder-v1', free: 5 });
 
-    await freeze('all', BACKFILL_OFFER);
+    await freeze(BACKFILL_OFFER);
 
+    const legacyRow = await readRow(legacy);
+    assert.equal(legacyRow?.config?.flatRateCents, 40, 'the terms passed, not the env offer');
+    assert.equal(legacyRow?.pricing_version, 'payg-ladder-v1');
+    assert.equal(legacyRow?.free_reservations_granted, 7, 'an existing allowance is kept');
+    assert.equal((await readRow(subscribed))?.config?.flatRateCents, 40, 'kept for a later switch');
     const frozen = await readRow(orphanConfig);
     assert.equal(frozen?.config?.flatRateCents, 40);
     assert.equal(frozen?.free_reservations_granted, 5);
@@ -164,7 +142,8 @@ describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
     assert.equal(created?.pricing_version, 'payg-ladder-v1');
     assert.equal(created?.free_reservations_granted, 12);
 
-    await freeze('all', LATER_OFFER);
+    await freeze(LATER_OFFER);
+    assert.deepEqual(await readRow(legacy), legacyRow);
     assert.deepEqual(await readRow(orphanConfig), frozen);
     assert.deepEqual(await readRow(noRow), created);
   });
@@ -173,7 +152,7 @@ describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
     const partial = await addStore('partial');
     await addRow(partial, { config: { flatRateCents: 25 }, version: 'payg-ladder-v1', free: 1 });
 
-    await freeze('startup', LATER_OFFER);
+    await freeze(LATER_OFFER);
 
     const row = await readRow(partial);
     assert.equal(row?.config?.flatRateCents, 25);

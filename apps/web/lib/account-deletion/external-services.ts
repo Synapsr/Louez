@@ -2,6 +2,8 @@ import "server-only";
 
 import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
+import { isBillingSyncEnabled } from "@louez/db/billing-queue";
+
 import { env } from "@/env";
 import { releaseNumberBinding } from "@/lib/ai/phone/number-release";
 import { decryptIntegrationSecret } from "@/lib/integrations/credentials";
@@ -139,8 +141,34 @@ export const cleanupStripeConnectedAccounts = async (
   }
 };
 
+/**
+ * The Stripe objects Louez removes itself. When Louez reports to the billing service
+ * (LOUEZ_BILLING=cloud with BILLING_SERVICE_URL), the service owns the platform
+ * customers: it bills the final statement from the store's final snapshot, then closes
+ * or anonymises the customer after its retention period (louez-billing design §8.6).
+ * So Louez does not delete them. It still cancels their Pro/Ultra subscription, which
+ * stays Louez's until Q10 (design §1, §8.6) and which nothing else would ever cancel,
+ * and removes the store's Connect accounts. Otherwise Louez removes all three, as before.
+ */
+export const selectStripeObjectsToRemove = (
+  resources: Pick<
+    AccountDeletionExternalResources,
+    "stripeAccountIds" | "stripeCustomerIds" | "stripeSubscriptionIds"
+  >,
+  billingServiceOwnsCustomers: boolean = isBillingSyncEnabled(),
+): {
+  stripeAccountIds: string[];
+  stripeCustomerIds: string[];
+  stripeSubscriptionIds: string[];
+} => ({
+  stripeAccountIds: resources.stripeAccountIds,
+  stripeCustomerIds: billingServiceOwnsCustomers ? [] : resources.stripeCustomerIds,
+  stripeSubscriptionIds: resources.stripeSubscriptionIds,
+});
+
 const cleanupStripeBilling = async (context: AccountDeletionContext): Promise<void> => {
-  const { stripeAccountIds, stripeCustomerIds, stripeSubscriptionIds } = context.externalResources;
+  const { stripeAccountIds, stripeCustomerIds, stripeSubscriptionIds } =
+    selectStripeObjectsToRemove(context.externalResources);
   if (
     stripeAccountIds.length === 0 &&
     stripeCustomerIds.length === 0 &&
@@ -330,10 +358,11 @@ export const assertAccountDeletionExternalConfiguration = (
   if (!context) return;
 
   const resources = context.externalResources;
+  const stripeObjects = selectStripeObjectsToRemove(resources);
   if (
-    (resources.stripeAccountIds.length > 0 ||
-      resources.stripeCustomerIds.length > 0 ||
-      resources.stripeSubscriptionIds.length > 0) &&
+    (stripeObjects.stripeAccountIds.length > 0 ||
+      stripeObjects.stripeCustomerIds.length > 0 ||
+      stripeObjects.stripeSubscriptionIds.length > 0) &&
     !env.STRIPE_SECRET_KEY
   ) {
     throw new Error("Stripe erasure credentials are not configured");

@@ -15,12 +15,22 @@ export async function register() {
       .then(({ reportBillingModeAtStartup }) => reportBillingModeAtStartup())
       .catch(() => undefined);
 
-    // With the billing service, refuse to start on a wrong BILLING_* variable, like a
-    // failed migration (the check logs why). Not during `next build`, which has no
+    // With platform billing, refuse to start without the hosting identity, on a malformed
+    // offer for new stores or, with the billing service, on a wrong BILLING_* variable,
+    // like a failed migration (the checks log why). Not during `next build`, which has no
     // runtime secrets.
     if (process.env.NEXT_PHASE !== 'phase-production-build') {
-      const { checkBillingSyncConfigAtStartup } = await import('./lib/billing/startup-check');
-      if (!checkBillingSyncConfigAtStartup()) process.exit(1);
+      const {
+        checkBillingSyncConfigAtStartup,
+        checkHostingAtStartup,
+        checkPayAsYouGoOfferAtStartup,
+      } = await import('./lib/billing/startup-check');
+      const checks = [
+        checkHostingAtStartup(),
+        checkPayAsYouGoOfferAtStartup(),
+        checkBillingSyncConfigAtStartup(),
+      ];
+      if (checks.includes(false)) process.exit(1);
     }
 
     // Only run database setup in production or when explicitly enabled
@@ -32,17 +42,6 @@ export async function register() {
     if (shouldSetup) {
       const { setupDatabase } = await import('@louez/db');
       await setupDatabase();
-
-      // Lock the pricing of legacy stores that followed PAYG_DEFAULT_PRICING live, before
-      // the first request reads it. Fails closed like a failed migration (the step logs why).
-      // Only an instance that bills its stores has pricing to lock.
-      const { isBillingEnabled } = await import('./lib/billing/mode');
-      if (isBillingEnabled()) {
-        const { freezeLegacyPricingAtStartup } = await import(
-          './lib/pay-as-you-go/pricing-lock-startup'
-        );
-        await freezeLegacyPricingAtStartup().catch(() => process.exit(1));
-      }
     }
   }
 }

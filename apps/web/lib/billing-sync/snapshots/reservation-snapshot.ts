@@ -25,7 +25,7 @@ import type { ReservationSnapshotData } from "./snapshot-data";
 export async function buildReservationSnapshot(
   db: SnapshotReader,
   key: SnapshotKey,
-): Promise<BuiltSnapshot> {
+): Promise<BuiltSnapshot<ReservationSnapshotData>> {
   const reservationId = key.aggregateId;
   const checks = snapshotChecks(`reservation ${reservationId}`);
   const ofReservation = and(

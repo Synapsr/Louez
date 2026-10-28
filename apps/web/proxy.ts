@@ -3,6 +3,8 @@ import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER, isDemoPath } from "@/lib/landing
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { LOUEZ_TERMS_PATH, isBillingOnlyPath } from "@/lib/billing/billing-routes";
+import { isBillingEnabled } from "@/lib/billing/mode";
 import { isStandaloneMode } from "@/lib/deployment";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import {
@@ -281,7 +283,8 @@ function referralCookieDomain(host: string, appDomain: string): string | undefin
 /**
  * Capture a `?ref=` referral code server-side (last-click) onto the shared louez_referral
  * cookie, so attribution survives any entry URL and the OAuth round-trip. No-op when there
- * is no valid code. Edge-safe (pure regex validation). The cookie is consumed and deleted
+ * is no valid code, or when the instance does not bill its stores: referral rewards are
+ * billing credits. Edge-safe (pure regex validation). The cookie is consumed and deleted
  * at onboarding, where the self-referral guard and DB lookup live.
  */
 function captureReferral(
@@ -290,6 +293,7 @@ function captureReferral(
   host: string,
   appDomain: string,
 ): NextResponse {
+  if (!isBillingEnabled()) return response;
   const ref = request.nextUrl.searchParams.get("ref");
   if (ref && isValidReferralCode(ref)) {
     response.cookies.set(REFERRAL_COOKIE, ref, {
@@ -345,6 +349,25 @@ function captureAcquisition(
   );
 }
 
+/** The answer for a page this instance does not have: before any layout, for anyone. */
+function notFoundResponse(pathname: string, publicEnv: PublicEnv): NextResponse {
+  return withRuntimeSecurityHeaders(
+    new NextResponse("Not Found", { status: 404, headers: { "content-type": "text/plain" } }),
+    pathname,
+    publicEnv,
+  );
+}
+
+/**
+ * Louez Cloud's own terms page on an instance that does not bill its stores. Asked only
+ * where `/terms` reaches that page, never where it is a store's terms and conditions.
+ * Answered here because the page's notFound() comes after the legal layout's loading
+ * state has streamed a 200.
+ */
+function isAbsentLouezTerms(pathname: string): boolean {
+  return pathname === LOUEZ_TERMS_PATH && !isBillingEnabled();
+}
+
 export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
@@ -374,6 +397,13 @@ export async function proxy(request: NextRequest) {
   }
 
   const publicEnv = getRuntimePublicEnv();
+
+  // Billing pages do not exist on an instance that does not bill its stores
+  // (LOUEZ_BILLING off). Answered here, before any layout redirects to the login.
+  if (!isBillingEnabled() && isBillingOnlyPath(pathname)) {
+    return notFoundResponse(pathname, publicEnv);
+  }
+
   const appDomain = publicEnv.NEXT_PUBLIC_APP_DOMAIN;
   const dashboardSubdomain = publicEnv.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN;
   const previewStoreSlug = readRuntimeEnv("PREVIEW_STORE_SLUG") || "";
@@ -395,6 +425,7 @@ export async function proxy(request: NextRequest) {
     if (!slug) {
       // Fresh install: no onboarded store yet. Fall through to the dashboard
       // root, which walks the visitor to /login and /onboarding.
+      if (isAbsentLouezTerms(pathname)) return notFoundResponse(pathname, publicEnv);
       return withRuntimeSecurityHeaders(NextResponse.next(), pathname, publicEnv);
     }
 
@@ -428,6 +459,7 @@ export async function proxy(request: NextRequest) {
   //   - {DASHBOARD_SUBDOMAIN}.{APP_DOMAIN} (e.g., app.example.com)
   //   - localhost (when PREVIEW_STORE_SLUG is not set)
   if (subdomain === dashboardSubdomain || (isLocalhost && !subdomain)) {
+    if (isAbsentLouezTerms(pathname)) return notFoundResponse(pathname, publicEnv);
     return withRuntimeSecurityHeaders(
       captureAcquisition(request, createDashboardResponse(request), host, appDomain),
       pathname,
@@ -451,6 +483,7 @@ export async function proxy(request: NextRequest) {
   // -----------------------------------------------------------------------------
   // 6. DEFAULT: Pass through (landing page, www, etc.)
   // -----------------------------------------------------------------------------
+  if (isAbsentLouezTerms(pathname)) return notFoundResponse(pathname, publicEnv);
   return withRuntimeSecurityHeaders(
     captureAcquisition(request, NextResponse.next(), host, appDomain),
     pathname,

@@ -1,5 +1,7 @@
 import { isEmailConfigured } from '@louez/email'
 
+import { isBillingEnabled } from '@/lib/billing/mode'
+
 /**
  * Deployment mode of this Louez instance.
  *
@@ -34,5 +36,6 @@ export function getInstanceConfig() {
     standalone: isStandaloneMode(),
     emailConfigured: isEmailConfigured(),
     googleAuthConfigured: isGoogleAuthConfigured(),
+    billingEnabled: isBillingEnabled(),
   }
 }

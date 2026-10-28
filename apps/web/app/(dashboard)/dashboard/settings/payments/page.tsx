@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { log } from "@/lib/evlog";
-import { isStripeConfigured } from "@/lib/plans";
+import { isConnectConfigured } from "@/lib/stripe/client";
 import {
   getConnectedAccountFinances,
   type ConnectedAccountFinances,
@@ -24,7 +24,7 @@ export default async function PaymentsSettingsPage() {
 
   const t = await getTranslations("dashboard.settings");
   const reservationMode = store.settings?.reservationMode ?? "request";
-  const stripeConfigured = isStripeConfigured();
+  const stripeConfigured = isConnectConfigured();
   let finances: ConnectedAccountFinances | null = null;
 
   if (stripeConfigured && store.stripeAccountId && store.stripeChargesEnabled) {

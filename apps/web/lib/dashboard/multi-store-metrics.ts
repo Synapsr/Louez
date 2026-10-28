@@ -10,6 +10,7 @@ import { eq, and, gte, lte, sql, count, inArray } from 'drizzle-orm'
 import { subDays, startOfDay, format, eachDayOfInterval } from 'date-fns'
 import type { Locale as DateFnsLocale } from 'date-fns'
 
+import { isBillingEnabled } from '@/lib/billing/mode'
 import { getPlan, getDefaultPlan } from '@/lib/plans'
 import { getStoreUsage } from '@/lib/plan-limits'
 
@@ -338,7 +339,8 @@ export async function getStoresApproachingLimits(
   storeIds: string[],
   threshold: number = 80
 ): Promise<StorePlanLimit[]> {
-  if (storeIds.length === 0) {
+  // Without platform billing no store has plan limits (see getStorePlan).
+  if (storeIds.length === 0 || !isBillingEnabled()) {
     return []
   }
 

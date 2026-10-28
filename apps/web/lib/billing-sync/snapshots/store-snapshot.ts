@@ -16,7 +16,7 @@ const MAX_OWNERS = 50;
 export async function buildStoreSnapshot(
   db: SnapshotReader,
   key: SnapshotKey,
-): Promise<BuiltSnapshot> {
+): Promise<BuiltSnapshot<StoreSnapshotData>> {
   const checks = snapshotChecks(`store ${key.storeId}`);
   if (key.aggregateId !== key.storeId)
     checks.fail(`aggregate id ${key.aggregateId} is not the store id`);

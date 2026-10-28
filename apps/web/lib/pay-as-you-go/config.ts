@@ -43,11 +43,10 @@ export const payAsYouGoConfigSchema = z
   });
 
 /**
- * Robustly resolve a pay-as-you-go config from an input that may be a parsed object OR a
- * raw JSON string. env.ts normally validates+parses PAYG_DEFAULT_PRICING, but when
- * SKIP_ENV_VALIDATION is set @t3-oss skips the transform and hands back the raw string —
- * and spreading that string elsewhere produced character-indexed garbage. Parsing and
- * re-validating here makes every consumer immune to that, and rejects malformed input.
+ * Resolve a pay-as-you-go config from a parsed object or a raw JSON string, or null when
+ * it is empty or malformed. env.ts hands PAYG_DEFAULT_PRICING over as the raw string and
+ * parsing happens here; with LOUEZ_BILLING=cloud a malformed value stops the server at
+ * start (lib/billing/startup-check.ts).
  */
 export function parsePayAsYouGoConfig(raw: unknown): PayAsYouGoConfig | null {
   if (raw === null || raw === undefined || raw === '') return null;

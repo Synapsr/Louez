@@ -42,9 +42,13 @@ export interface StoreLimits {
 // ============================================================================
 
 /**
- * Get the current plan for a store
+ * Get the current plan for a store. Without platform billing (LOUEZ_BILLING off) a store
+ * has no plan to buy, so every store gets the unlimited pay-as-you-go plan, whatever row
+ * an earlier version left: no limit, no blur and no upgrade prompt.
  */
 export async function getStorePlan(storeId: string): Promise<Plan> {
+  if (!isBillingEnabled()) return getPayAsYouGoPlan()
+
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
     columns: { planSlug: true, status: true, billingMode: true },

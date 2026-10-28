@@ -302,6 +302,86 @@ jobs:
           fi
           echo "✅ One image boots with two isolated runtime browser configurations"
 
+      # Both containers above run with LOUEZ_BILLING unset (off), the compose default.
+      # A self-hosted instance bills nobody (louez-billing design §7.3): a store with a
+      # paid reservation, across a restart, leaves no billing row, and the billing
+      # pages, the platform webhook and Louez Cloud's prices are absent in both modes,
+      # and its terms of service on the multi-store host.
+      - name: Verify self-hosted instances bill nobody
+        run: |
+          db() { docker exec -i louez-db mysql -uroot -psmoketest -N louez "$@"; }
+          db <<'SQL'
+          INSERT INTO users (id, email) VALUES ('smoke_user_0000000001', 'owner@smoke.test');
+          INSERT INTO stores (id, user_id, name, slug, onboarding_completed)
+            VALUES ('smoke_store_000000001', 'smoke_user_0000000001', 'Smoke store', 'smoke-store', 1);
+          INSERT INTO customers (id, store_id, email, first_name, last_name)
+            VALUES ('smoke_cust_0000000001', 'smoke_store_000000001', 'renter@smoke.test', 'Ren', 'Ter');
+          INSERT INTO reservations (id, store_id, customer_id, number, reservation_status,
+              start_date, end_date, subtotal_amount, deposit_amount, total_amount, billable_at)
+            VALUES ('smoke_resv_0000000001', 'smoke_store_000000001', 'smoke_cust_0000000001',
+              'SMOKE-1', 'confirmed', NOW(), NOW() + INTERVAL 1 DAY, 10, 0, 10, NOW());
+          INSERT INTO payments (id, reservation_id, amount, payment_type, payment_method,
+              payment_status, paid_at)
+            VALUES ('smoke_paym_0000000001', 'smoke_resv_0000000001', 10, 'rental', 'cash',
+              'completed', NOW());
+          SQL
+
+          # A start-up step that bills (such as the old pricing freeze) would run here.
+          docker restart louez-app louez-app-platform >/dev/null
+          for port in 3000 3001; do
+            status=""
+            for _ in $(seq 1 60); do
+              status=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$port/api/health" || true)
+              if [ "$status" = "200" ]; then break; fi
+              sleep 2
+            done
+            if [ "$status" != "200" ]; then
+              echo "❌ The app on port $port never became healthy after a restart (last status: $status)"
+              exit 1
+            fi
+          done
+
+          for table in billing_sync_queue billing_policies subscriptions platform_fee; do
+            rows=$(db -e "SELECT COUNT(*) FROM $table")
+            if [ "$rows" != "0" ]; then
+              echo "❌ $table has $rows row(s) on a self-hosted instance"
+              exit 1
+            fi
+          done
+
+          for port in 3000 3001; do
+            for path in /dashboard/subscription /dashboard/billing /admin/finance; do
+              status=$(curl -s -o /dev/null -w '%{http_code}' -L "http://localhost:$port$path")
+              if [ "$status" != "404" ]; then
+                echo "❌ Expected 404 from $path on port $port, got $status"
+                exit 1
+              fi
+            done
+            status=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+              -H 'stripe-signature: t=1,v1=smoke' -d '{}' "http://localhost:$port/api/webhooks/stripe")
+            if [ "$status" != "404" ]; then
+              echo "❌ Expected 404 from the platform Stripe webhook on port $port, got $status"
+              exit 1
+            fi
+            # Louez Cloud's terms of service, on the multi-store host only: at the root
+            # of the standalone instance, /terms is the seeded store's own terms.
+            if [ "$port" = "3001" ]; then
+              status=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$port/terms")
+              if [ "$status" != "404" ]; then
+                echo "❌ Expected 404 from /terms on port $port, got $status"
+                exit 1
+              fi
+            fi
+            # The page and the messages it carries: no currency sign at all.
+            html=$(curl -fsSL "http://localhost:$port/login")
+            if echo "$html" | grep -Eq '€|£'; then
+              echo "❌ The login page on port $port carries a price"
+              echo "$html" | grep -Eo '.{0,60}(€|£).{0,20}' | head -5
+              exit 1
+            fi
+          done
+          echo "✅ Self-hosted instances write no billing row and show no billing page or price"
+
       - name: Dump app logs
         if: always()
         run: |

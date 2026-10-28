@@ -3,7 +3,7 @@
 import { db, markStore } from '@louez/db'
 import { stores } from '@louez/db'
 import { users } from '@louez/db'
-import { isStripeConfigured } from '@/lib/plans'
+import { isConnectConfigured } from '@/lib/stripe/client'
 import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -49,7 +49,7 @@ export async function startStripeOnboarding(options?: {
   url?: string
   error?: string
 }> {
-  if (!isStripeConfigured()) {
+  if (!isConnectConfigured()) {
     return { error: 'errors.stripeNotConfigured' }
   }
 

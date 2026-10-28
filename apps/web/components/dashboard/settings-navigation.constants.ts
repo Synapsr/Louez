@@ -39,6 +39,8 @@ export type SettingsNavigationItem = {
   labelPath: string;
   navigation: boolean;
   platformAdminOnly?: boolean;
+  /** Hidden unless the instance bills its stores (LOUEZ_BILLING=cloud). */
+  requiresBilling?: boolean;
   /** Hidden unless the store's electronic-invoicing rollout flag is on. */
   requiresElectronicInvoicing?: boolean;
   searchPaths: string[];
@@ -245,6 +247,7 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     searchPaths: ["dashboard.referrals"],
     group: "communication",
     navigation: true,
+    requiresBilling: true,
   },
   {
     id: "widget",
@@ -324,6 +327,7 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     searchPaths: ["dashboard.settings.subscription", "dashboard.settings.subscriptionSettings"],
     group: "accountData",
     navigation: true,
+    requiresBilling: true,
   },
   {
     id: "export",
@@ -344,6 +348,24 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     searchPaths: ["dashboard.settings.admin"],
     group: "accountData",
     navigation: true,
+    requiresBilling: true,
     platformAdminOnly: true,
   },
 ];
+
+/** The items this viewer may see on this instance. */
+export const filterSettingsNavigationItems = ({
+  billingEnabled,
+  electronicInvoicingEnabled,
+  isPlatformAdmin,
+}: {
+  billingEnabled: boolean;
+  electronicInvoicingEnabled: boolean;
+  isPlatformAdmin: boolean;
+}): SettingsNavigationItem[] =>
+  SETTINGS_NAVIGATION_ITEMS.filter(
+    (item) =>
+      (!item.platformAdminOnly || isPlatformAdmin) &&
+      (!item.requiresBilling || billingEnabled) &&
+      (!item.requiresElectronicInvoicing || electronicInvoicingEnabled),
+  );

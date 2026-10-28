@@ -10,6 +10,7 @@ import { Button } from '@louez/ui'
 import { Logo } from '@louez/ui'
 import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
 import { ThemeToggle } from '@/components/dashboard/theme-toggle'
+import { useInstanceConfig } from '@/components/instance-provider'
 import { LanguageSwitcher } from '@/components/ui/language-switcher'
 import {
   DropdownMenu,
@@ -40,6 +41,8 @@ export function MultiStoreHeader({ stores, userEmail, userImage, isPlatformAdmin
   const t = useTranslations('dashboard.multiStore')
   const tAuth = useTranslations('auth')
   const tSettings = useTranslations('dashboard.settings.accountSettings')
+  // The platform admin area is billing only (app/admin): absent when billing is off.
+  const { billingEnabled } = useInstanceConfig()
   const router = useRouter()
   const initials = userEmail.slice(0, 2).toUpperCase()
 
@@ -115,7 +118,7 @@ export function MultiStoreHeader({ stores, userEmail, userImage, isPlatformAdmin
               <DropdownMenuItem render={<Link href="/dashboard/account" className="cursor-pointer" />}>
                   {tSettings('title')}
               </DropdownMenuItem>
-              {isPlatformAdmin && (
+              {isPlatformAdmin && billingEnabled && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem render={<Link href="/admin" className="cursor-pointer" />}>

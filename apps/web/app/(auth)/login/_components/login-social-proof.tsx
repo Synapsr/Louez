@@ -14,6 +14,8 @@ import {
 import { StarSolidIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
+import { useInstanceConfig } from "@/components/instance-provider";
+
 const reviews = [
   {
     id: "review1",
@@ -41,6 +43,8 @@ const ROTATION_MS = 8000;
 
 export const LoginSocialProof = () => {
   const t = useTranslations("auth");
+  // The perks are Louez Cloud's offer: an instance that does not bill shows none.
+  const { billingEnabled } = useInstanceConfig();
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -151,16 +155,18 @@ export const LoginSocialProof = () => {
         </div>
       </Carousel>
 
-      <div className="space-y-3 border-t border-white/15 pt-8">
-        {perks.map((perk) => (
-          <div key={perk} className="flex items-center gap-3">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/15">
-              <Check className="h-3 w-3" strokeWidth={3} />
-            </span>
-            <span className="text-primary-foreground/90 text-sm">{t(perk)}</span>
-          </div>
-        ))}
-      </div>
+      {billingEnabled && (
+        <div className="space-y-3 border-t border-white/15 pt-8">
+          {perks.map((perk) => (
+            <div key={perk} className="flex items-center gap-3">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/15">
+                <Check className="h-3 w-3" strokeWidth={3} />
+              </span>
+              <span className="text-primary-foreground/90 text-sm">{t(perk)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

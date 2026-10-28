@@ -23,6 +23,8 @@ Louez does not keep a dormant Store, user profile, product catalogue, customer l
 
 Invoices issued or received by a merchant through a Store are deleted with the Store. The owner must export any documents they are required to keep before deleting the account.
 
+On Louez Cloud, inside the purge transaction, Louez also queues a closing snapshot of each deleted Store and of each reservation it may still be billed for, for the billing service. They carry no name, contact, address or renter data, and the Store snapshot drops its slug and owners.
+
 Louez retains only billing records for transactions where Louez itself is the supplier or regulated party, such as platform invoices and completed SMS or AI-credit purchases. Each record is copied into `legal_retention_records`, encrypted with AES-256-GCM, detached from the deleted user and Store identifiers, and assigned an expiry ten years after the relevant financial year closes. The daily cron permanently deletes records after that date.
 
 Access to the archive must be restricted to authorised legal or accounting operations. `LEGAL_ARCHIVE_ENCRYPTION_KEY` must be held outside the database and included in the operator's key rotation and recovery procedures. `LEGAL_ARCHIVE_FISCAL_YEAR_END` records Louez's financial year end as `MM-DD`; it defaults to `12-31`.
@@ -46,6 +48,8 @@ Deletion is fail-closed. If Louez knows about a provider-side resource and canno
 | PostHog               | Delete the person and queue deletion of associated events                                                                   | `POSTHOG_PROJECT_ID`, `POSTHOG_PERSONAL_API_KEY`, optional `POSTHOG_API_HOST` |
 | Gleap                 | Delete the identified project user                                                                                          | `GLEAP_API_TOKEN`                                                             |
 | OpenReplay            | Schedule deletion of the identified user, sessions, events, metadata, and recordings                                        | `OPENREPLAY_API_URL`, `OPENREPLAY_ORGANIZATION_API_KEY`                       |
+
+When Louez reports to the billing service (`LOUEZ_BILLING=cloud` with `BILLING_SERVICE_URL`), it leaves Stripe Billing customers to that service, which bills the final statement and then closes or anonymises the customer after its retention period. Louez still cancels the customer's plan subscription and removes the Stripe Connect accounts.
 
 PostHog event deletion and OpenReplay recording deletion are asynchronous provider jobs. Operators should monitor provider failures and their normal job queues. Webhook-only Discord notifications cannot be recalled because Louez does not retain provider message IDs; they must not contain Store operational data beyond the notification's stated purpose.
 

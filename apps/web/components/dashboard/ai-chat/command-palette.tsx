@@ -44,6 +44,7 @@ import {
 
 import { cn, formatCurrency } from "@louez/utils";
 
+import { useInstanceConfig } from "@/components/instance-provider";
 import { useStore } from "@/contexts/store-context";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -57,7 +58,7 @@ import { searchQueries } from "@/lib/queries/search.queries";
 import { NewFeatureBadge } from "../new-feature-badge";
 import {
   SETTINGS_NAVIGATION_GROUPS,
-  SETTINGS_NAVIGATION_ITEMS,
+  filterSettingsNavigationItems,
 } from "../settings-navigation.constants";
 import { buildSettingsSearchHref } from "../util.settings-search-focus";
 import {
@@ -121,6 +122,7 @@ export const DashboardCommandPalette = ({
   const { storeSlug, currency } = useStore();
   const { getAbsoluteUrl } = useStorefrontUrl(storeSlug);
   const { dismissFeature } = useWhatsNew();
+  const { billingEnabled } = useInstanceConfig();
 
   const commandPaletteShortcut = useTrackedKeyboardHotkey(
     "commandPalette",
@@ -204,19 +206,17 @@ export const DashboardCommandPalette = ({
 
   const settingsSearchDocuments = useMemo(
     () =>
-      SETTINGS_NAVIGATION_ITEMS.filter(
-        (item) =>
-          (!item.platformAdminOnly || isPlatformAdmin) &&
-          (!item.requiresElectronicInvoicing || electronicInvoicingEnabled),
-      ).map(
-        (item) => ({
-          ...item,
-          content: getSearchableMessageText(messages, item.searchPaths),
-          description: getMessageText(messages, item.descriptionPath),
-          label: getMessageText(messages, item.labelPath),
-        }),
-      ),
-    [isPlatformAdmin, electronicInvoicingEnabled, messages],
+      filterSettingsNavigationItems({
+        billingEnabled,
+        electronicInvoicingEnabled,
+        isPlatformAdmin,
+      }).map((item) => ({
+        ...item,
+        content: getSearchableMessageText(messages, item.searchPaths),
+        description: getMessageText(messages, item.descriptionPath),
+        label: getMessageText(messages, item.labelPath),
+      })),
+    [billingEnabled, isPlatformAdmin, electronicInvoicingEnabled, messages],
   );
 
   const trimmedQuery = query.trim();

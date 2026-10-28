@@ -2,8 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 
-import Link from 'next/link';
-
 import { Gift } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { usePostHog } from 'posthog-js/react';
@@ -16,6 +14,7 @@ import type { ReferralInviteContext } from '@/lib/referral/invite';
 import type { SignupOrigin } from '@/lib/utils/signup-origin';
 
 import { LoginForm } from './login-form';
+import { LoginLegalNotice } from './login-legal-notice';
 import { LoginSocialProof } from './login-social-proof';
 import type { SignInMethods } from './sign-in-methods';
 
@@ -70,26 +69,7 @@ export const LoginPageClient = ({
           <LoginForm methods={signInMethods} signupOrigin={signupOrigin} />
         </div>
 
-        <p className="text-muted-foreground absolute right-6 bottom-2 left-6 text-center text-[13.5px] lg:right-12 lg:bottom-2.5 lg:left-12">
-          {t('termsAgreement')}{' '}
-          <Link
-            href="/terms"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-primary underline underline-offset-4"
-          >
-            {t('termsOfService')}
-          </Link>{' '}
-          {t('and')}{' '}
-          <Link
-            href="/privacy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-primary underline underline-offset-4"
-          >
-            {t('privacyPolicy')}
-          </Link>
-        </p>
+        <LoginLegalNotice />
       </div>
 
       <div className="bg-primary text-primary-foreground relative hidden flex-col items-center justify-center overflow-hidden rounded-2xl p-12 lg:flex lg:w-1/2">

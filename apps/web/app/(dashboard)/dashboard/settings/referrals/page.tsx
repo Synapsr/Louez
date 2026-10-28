@@ -9,6 +9,7 @@ import { ReferralLink } from "@/app/(dashboard)/dashboard/referrals/referral-lin
 import { ReferralStats } from "@/app/(dashboard)/dashboard/referrals/referral-stats";
 import { ReferralsList } from "@/app/(dashboard)/dashboard/referrals/referrals-list";
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
+import { requirePlatformBilling } from "@/lib/billing/require-billing";
 import { getCurrentStore } from "@/lib/store-context";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -16,6 +17,7 @@ import { getCurrentStore } from "@/lib/store-context";
 export const instant = false;
 
 const SettingsReferralsPage = async () => {
+  requirePlatformBilling();
   const store = await getCurrentStore();
   if (!store) {
     redirect("/onboarding");

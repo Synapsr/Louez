@@ -239,6 +239,7 @@ Le déploiement docker-compose fourni configure toutes les variables requises po
 | `S3_*`                                  |         | Stockage S3-compatible pour les images (MinIO inclus dans le compose)              |
 | `LOUEZ_MODE`                            |         | `standalone` (défaut) ou `platform` (routage multi-boutiques)                      |
 | `LOUEZ_BILLING`                         |         | `off` (défaut) : l'instance ne facture aucune boutique. `cloud` sert à Louez Cloud |
+| `LOUEZ_HOSTED_BY`                       |         | Vide (défaut) : vous hébergez l'instance. `lumycloud` sert à Louez Cloud           |
 | `SMTP_*`                                |         | Emails sortants — optionnel ; les fonctions email se désactivent proprement        |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` |         | Connexion Google — optionnel                                                       |
 | `STRIPE_*`                              |         | Paiements en ligne — optionnel ; la vitrine bascule en mode demande de réservation |

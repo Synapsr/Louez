@@ -9,6 +9,11 @@ import { type Column, and, count, eq, gt, inArray, ne, notInArray, or, sql } fro
 import { nanoid } from "nanoid";
 
 import { env } from "@/env";
+import {
+  type FinalSnapshotProblem,
+  alertFinalSnapshotProblems,
+  writeFinalSnapshots,
+} from "@/lib/billing-sync/final-snapshots";
 
 import type {
   AccountDeletionContext,
@@ -228,7 +233,7 @@ const getContext = async (userId: string): Promise<AccountDeletionContext | null
  * The other stores whose billing snapshots the purge changes: stores it unlinks from
  * a deleted referrer or from the user, referrers that lose a reward row, and stores
  * where the user was an owner member. Read before the purge writes. The deleted
- * stores' own final snapshots are not written here.
+ * stores' own final snapshots are written by `writeFinalSnapshots`.
  */
 const otherStoreBillingMarks = async (
   transaction: Transaction,
@@ -509,7 +514,8 @@ const purgeOwnedData = async (
   context: AccountDeletionContext,
   { beforePurge, reason }: AccountDeletionPurgeOptions,
 ): Promise<{ storesDeleted: number; legalRecordsRetained: number }> => {
-  return db.transaction(async (transaction) => {
+  let finalSnapshotProblems: readonly FinalSnapshotProblem[] = [];
+  const result = await db.transaction(async (transaction) => {
     const currentStores = await transaction
       .select({ id: schema.stores.id })
       .from(schema.stores)
@@ -546,6 +552,8 @@ const purgeOwnedData = async (
       transaction,
       await otherStoreBillingMarks(transaction, context.user.id, storeIds),
     );
+    // Before any row goes: the closing snapshots the billing service bills from.
+    ({ problems: finalSnapshotProblems } = await writeFinalSnapshots(transaction, storeIds));
 
     const legalRecordsRetained = await archiveLegalRecords(transaction, storeIds);
 
@@ -1041,6 +1049,9 @@ const purgeOwnedData = async (
       legalRecordsRetained,
     };
   });
+  // Only once the purge has committed: billing facts it dropped, or may not deliver.
+  await alertFinalSnapshotProblems(finalSnapshotProblems);
+  return result;
 };
 
 export const accountDeletionRepository: AccountDeletionRepository = {

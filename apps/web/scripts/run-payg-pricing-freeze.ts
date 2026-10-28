@@ -8,10 +8,10 @@
  * written), never repriced.
  *
  * Runs before migration 0081 and after it. It never adds the pricing_version column:
- * the migration must do that itself. Louez Cloud ran it on 2026-10-24; with
- * LOUEZ_BILLING=cloud the app also freezes any store it finds unfrozen at start-up, so
- * this is for a dry run or a one-off repair. It ignores LOUEZ_BILLING: it only ever
- * writes to the database it is pointed at.
+ * the migration must do that itself. Louez Cloud ran it on 2026-10-24, so this is now
+ * for a dry run or a one-off repair: the app never freezes pricing on its own, and a
+ * store created since then has its pricing written at creation. It ignores
+ * LOUEZ_BILLING: it only ever writes to the database it is pointed at.
  *
  * Targets MIGRATE_DATABASE_URL only; no .env file is read.
  *
@@ -125,7 +125,7 @@ async function main() {
 
     const consistent = checkAgainstSnapshots(await latestOnboardingSnapshots(connection), terms);
 
-    const plan = await planLegacyPricingFreeze(connection, "all");
+    const plan = await planLegacyPricingFreeze(connection);
     console.log(
       `\n── Plan (pricing_version column: ${plan.hasPricingVersion ? "present" : "absent, left to migration 0081"}) ──`,
     );

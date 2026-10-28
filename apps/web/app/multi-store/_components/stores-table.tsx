@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Zap,
 } from 'lucide-react'
+import { useInstanceConfig } from '@/components/instance-provider'
 import type { StorePerformance } from '@/lib/dashboard/multi-store-metrics'
 import { setCurrentStoreAction } from '../actions'
 
@@ -90,6 +91,8 @@ function ChangeIndicator({ change }: { change: number }) {
 
 export function StoresTable({ stores, translations, limitsMap = {}, readOnly = false }: StoresTableProps) {
   const router = useRouter()
+  // Plans only exist on an instance that bills its stores.
+  const { billingEnabled } = useInstanceConfig()
 
   const handleStoreClick = async (storeId: string) => {
     if (readOnly) return
@@ -109,7 +112,7 @@ export function StoresTable({ stores, translations, limitsMap = {}, readOnly = f
             <thead>
               <tr className="border-b text-left text-sm text-muted-foreground">
                 <th className="pb-3 font-medium">{translations.store}</th>
-                <th className="pb-3 font-medium">{translations.plan}</th>
+                {billingEnabled && <th className="pb-3 font-medium">{translations.plan}</th>}
                 <th className="pb-3 font-medium text-right">{translations.revenue}</th>
                 <th className="pb-3 font-medium text-right hidden sm:table-cell">{translations.reservations}</th>
                 <th className="pb-3 font-medium text-right hidden md:table-cell">{translations.customers}</th>
@@ -139,9 +142,11 @@ export function StoresTable({ stores, translations, limitsMap = {}, readOnly = f
                       </div>
                     </div>
                   </td>
-                  <td className="py-4">
-                    <PlanBadge planSlug={store.planSlug} planName={store.planName} />
-                  </td>
+                  {billingEnabled && (
+                    <td className="py-4">
+                      <PlanBadge planSlug={store.planSlug} planName={store.planName} />
+                    </td>
+                  )}
                   <td className="py-4 text-right">
                     <div className="space-y-1">
                       <span className="font-medium">{formatCurrency(store.revenue)}</span>

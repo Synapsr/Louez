@@ -6,7 +6,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { LegalPageShell } from "@/components/storefront/shell/legal-page-shell";
 import { LegalSection } from "@/components/storefront/shell/legal-section";
 import { RichText } from "@/components/storefront/ui/rich-text";
-import { getInstanceConfig } from "@/lib/deployment";
+import { getHostedBy } from "@/lib/hosting";
 import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { hasRichTextContent } from "@/lib/util.rich-text";
@@ -56,9 +56,9 @@ const LegalNoticePage = async ({ params }: LegalNoticePageProps) => {
     notFound();
   }
 
-  // The platform hosting line only holds on the hosted platform; a
-  // standalone instance is hosted by whoever runs it.
-  const showHosting = !getInstanceConfig().standalone;
+  // The hosting line names LumyCloud, so it only holds on Louez Cloud; any other
+  // instance is hosted by whoever runs it.
+  const showHosting = getHostedBy() === "lumycloud";
   const contactLink = store.email ? (
     <a
       href={`mailto:${store.email}`}

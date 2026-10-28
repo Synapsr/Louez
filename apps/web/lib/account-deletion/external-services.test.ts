@@ -212,3 +212,45 @@ test("deletes a known Google calendar before revoking retry-safe tokens", async 
     "revoke:google-auth-token",
   ]);
 });
+
+test("leaves platform customers to the billing service, never their subscription", async () => {
+  // Louez Cloud with the billing service owns no platform customer (design §8.6): the
+  // service bills the final statement, then closes the customer. Pro/Ultra
+  // subscriptions stay Louez's until Q10 (design §1), so Louez still cancels them, or
+  // Stripe would keep charging the deleted owner. Connect accounts stay Louez's to
+  // remove. A self-hosted instance removes all three, as before.
+  const { selectStripeObjectsToRemove } = await import("./external-services");
+  const resources = {
+    stripeAccountIds: ["acct_store"],
+    stripeCustomerIds: ["cus_platform"],
+    stripeSubscriptionIds: ["sub_pro"],
+  };
+
+  assert.deepEqual(selectStripeObjectsToRemove(resources, true), {
+    stripeAccountIds: ["acct_store"],
+    stripeCustomerIds: [],
+    stripeSubscriptionIds: ["sub_pro"],
+  });
+  assert.deepEqual(selectStripeObjectsToRemove(resources, false), resources);
+
+  const saved = { billing: process.env.LOUEZ_BILLING, url: process.env.BILLING_SERVICE_URL };
+  try {
+    process.env.LOUEZ_BILLING = "cloud";
+    process.env.BILLING_SERVICE_URL = "https://billing.example.test";
+    assert.deepEqual(selectStripeObjectsToRemove(resources), {
+      ...resources,
+      stripeCustomerIds: [],
+    });
+    // Billing on but no service yet: nobody else would ever close the customer.
+    delete process.env.BILLING_SERVICE_URL;
+    assert.deepEqual(selectStripeObjectsToRemove(resources), resources);
+    process.env.LOUEZ_BILLING = "off";
+    process.env.BILLING_SERVICE_URL = "https://billing.example.test";
+    assert.deepEqual(selectStripeObjectsToRemove(resources), resources);
+  } finally {
+    if (saved.billing === undefined) delete process.env.LOUEZ_BILLING;
+    else process.env.LOUEZ_BILLING = saved.billing;
+    if (saved.url === undefined) delete process.env.BILLING_SERVICE_URL;
+    else process.env.BILLING_SERVICE_URL = saved.url;
+  }
+});

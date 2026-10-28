@@ -1,12 +1,6 @@
 import { env } from '@/env';
 
-import {
-  type SubscriptionPricingValues,
-  buildNewStorePricing,
-  resolveEnvFreeReservations,
-  resolveEnvPayAsYouGoOffer,
-} from './pricing-lock-core';
-import type { LegacyPricingTerms } from './pricing-lock';
+import { type SubscriptionPricingValues, buildNewStorePricing } from './pricing-lock-core';
 
 /**
  * The pricing written on a NEW store's subscription row at creation, when platform
@@ -23,15 +17,3 @@ export function getNewStorePricing(currency: string): SubscriptionPricingValues 
   });
 }
 
-/**
- * What a store that never had frozen pricing was paying before the pricing lock: this
- * deployment's env offer and allowance, which such stores followed live. Only the
- * start-up pricing freeze reads it, and only for stores it finds unfrozen (after the
- * first start of the lock, none). Server-only.
- */
-export function getLegacyPricingTerms(): LegacyPricingTerms {
-  return {
-    offer: resolveEnvPayAsYouGoOffer(env.PAYG_DEFAULT_PRICING),
-    freeReservations: resolveEnvFreeReservations(env.PAYG_FREE_RESERVATIONS),
-  };
-}

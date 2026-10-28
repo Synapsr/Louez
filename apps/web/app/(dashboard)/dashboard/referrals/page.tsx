@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { getTranslations } from 'next-intl/server';
 
+import { requirePlatformBilling } from '@/lib/billing/require-billing';
 import { getCurrentStore } from '@/lib/store-context';
 
 import { getReferralData } from './actions';
@@ -16,6 +17,7 @@ import { ReferralsList } from './referrals-list';
 export const instant = false;
 
 export default async function ReferralsPage() {
+  requirePlatformBilling();
   const store = await getCurrentStore();
   if (!store) redirect('/onboarding');
 

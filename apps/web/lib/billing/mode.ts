@@ -5,9 +5,10 @@ import { z } from 'zod';
  * Not to be confused with a store's own `BillingMode` (subscription or pay-as-you-go).
  * - `off` (the default): a self-hosted instance. Louez takes no Stripe Connect fee,
  *   records no fee, creates no subscription rows, runs no month-end billing, grants no
- *   referral rewards, sets no SMS or AI-credit quota and starts no platform charge. Rows
- *   an earlier version wrote are left as they are. LOUEZ_MODE (one store or several) is
- *   unrelated.
+ *   referral rewards, sets no SMS or AI-credit quota and starts no platform charge. Every
+ *   store is on the unlimited plan, and the plan, billing, referral and platform-admin
+ *   pages answer 404 (billing-routes.ts). Rows an earlier version wrote are left as they
+ *   are. LOUEZ_MODE (one store or several) and LOUEZ_HOSTED_BY are unrelated.
  * - `cloud`: Louez Cloud bills its stores.
  */
 export type LouezBillingMode = 'off' | 'cloud';

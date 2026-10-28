@@ -11,6 +11,7 @@ import { usePostHog } from 'posthog-js/react';
 
 import { cn } from '@louez/utils';
 
+import { useInstanceConfig } from '@/components/instance-provider';
 import { orpc } from '@/lib/orpc/react';
 import {
   referralAnalyticsBaseProperties,
@@ -46,12 +47,16 @@ export const ReferralNudge = ({ className }: ReferralNudgeProps) => {
     }
   });
 
+  // Referral rewards are billing credits: no nudge, and no query, when billing is off.
+  const { billingEnabled } = useInstanceConfig();
+
   // Self-contained: the nudge fetches its own reward summary over oRPC so it can be dropped
   // anywhere without threading props through the payment UI. It stays hidden until the
   // (cheap, store-scoped) query resolves, so it never flashes a reward-less teaser.
-  const { data: summary } = useQuery(
-    orpc.dashboard.referral.getRewardSummary.queryOptions({ input: {} }),
-  );
+  const { data: summary } = useQuery({
+    ...orpc.dashboard.referral.getRewardSummary.queryOptions({ input: {} }),
+    enabled: billingEnabled,
+  });
 
   useEffect(() => {
     if (!summary || hasTrackedView.current) return;
@@ -69,7 +74,7 @@ export const ReferralNudge = ({ className }: ReferralNudgeProps) => {
     });
   }, [posthog, summary]);
 
-  if (dismissed || !summary) return null;
+  if (!billingEnabled || dismissed || !summary) return null;
 
   const rewardValue = formatCurrency(
     summary.rewardValueCents / 100,

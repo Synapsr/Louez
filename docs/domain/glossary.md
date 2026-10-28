@@ -37,8 +37,12 @@ A Reservation in status `confirmed`, `ongoing` or `completed`, the statuses the 
 _Avoid_: paid reservation (a billable reservation may be unpaid), confirmed (alone)
 
 **Platform billing**:
-Louez billing its Stores: the Louez commission, plans, top-ups, referral rewards and month-end invoices. On only when `LOUEZ_BILLING=cloud` (Louez Cloud); a self-hosted instance, single-store or multi-store, bills no Store and writes no billing rows.
+Louez billing its Stores: the Louez commission, plans, top-ups, referral rewards and month-end invoices. On only when `LOUEZ_BILLING=cloud` (Louez Cloud); a self-hosted instance, single-store or multi-store, bills no Store, writes no billing rows, gives every Store every feature without a plan limit, and has no plan, billing, referral or platform-admin page.
 _Avoid_: payments (a Customer paying a Store), Stripe Connect
+
+**Hosting identity**:
+Who hosts an instance (`LOUEZ_HOSTED_BY`): unset when the operator hosts it, `lumycloud` for Louez Cloud. It decides the storefront legal notice's hosting line and whether the dashboard asks for a GitHub star. Neither Platform billing nor the deployment mode (`LOUEZ_MODE`) decides it.
+_Avoid_: cloud mode, platform mode
 
 **Offer for new Stores**:
 The pay-as-you-go pricing (`PAYG_DEFAULT_PRICING`) and free-reservation allowance (`PAYG_FREE_RESERVATIONS`) written onto a Store's subscription when the Store is created, with Platform billing on. A Store then pays what its own subscription says, so changing the offer never reprices it.

@@ -26,9 +26,9 @@ export type SnapshotKey = {
   readonly storeId: string;
 };
 
-export type BuiltSnapshot =
+export type BuiltSnapshot<T extends SnapshotData = SnapshotData> =
   /** `data` exactly as the envelope carries it; the relay hashes and sends it. */
-  | { readonly kind: "snapshot"; readonly data: SnapshotData }
+  | { readonly kind: "snapshot"; readonly data: T }
   /** The aggregate no longer exists in Louez (deleted store or reservation). */
   | { readonly kind: "missing" }
   /**

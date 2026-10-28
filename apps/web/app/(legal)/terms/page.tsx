@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 
+import { requirePlatformBilling } from '@/lib/billing/require-billing';
+
 import { LegalPage } from '../_components/legal-page';
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -15,6 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+/** Louez Cloud's terms of service: an instance that does not bill its stores has none. */
 export default function TermsPage() {
+  requirePlatformBilling();
   return <LegalPage namespace="legalPages.terms" sectionCount={9} />;
 }

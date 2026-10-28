@@ -37,17 +37,6 @@ export interface LegacyPricingTerms {
   freeReservations: number;
 }
 
-/**
- * Which stores the freeze reaches. Both cover the stores that never had frozen pricing:
- * rows without a config and without a pricing version (written before the lock, or by
- * older code still running during the upgrade) and stores without a row. New code always
- * writes a config and a version, so nothing else ever matches.
- * - `startup`: only those. Runs at every server start with this deployment's env terms.
- * - `all`: also rows without a config that do carry a version (a write bug or manual SQL).
- *   Only the backfill script uses it, with terms the operator passes explicitly.
- */
-export type FreezeScope = 'startup' | 'all';
-
 export interface PlannedRowFreeze {
   subscriptionId: string;
   storeId: string;
@@ -153,10 +142,15 @@ function isLiteralConfig(stored: PayAsYouGoConfig, literal: PayAsYouGoConfig): b
   return prices(stored) === prices(literal);
 }
 
-/** List what the freeze would change. Read-only. */
+/**
+ * List what the freeze would change. Read-only. It reaches the stores that never had
+ * frozen pricing: rows without a config (written before the lock, by older code still
+ * running during an upgrade, or by a write bug or manual SQL) and stores without a row.
+ * New code always writes a config and a version, so nothing else ever matches. Only the
+ * backfill script (`payg:freeze-pricing`) runs it, with terms the operator passes.
+ */
 export async function planLegacyPricingFreeze(
   connection: Connection,
-  scope: FreezeScope,
 ): Promise<LegacyPricingFreezePlan> {
   const hasPricingVersion = await hasPricingVersionColumn(connection);
 
@@ -190,12 +184,11 @@ export async function planLegacyPricingFreeze(
   });
 
   const versionColumn = hasPricingVersion ? 'sub.pricing_version' : 'NULL';
-  const legacyOnly = scope === 'startup' && hasPricingVersion ? 'AND sub.pricing_version IS NULL' : '';
   const rows = await select(
     connection,
     `SELECT sub.id, sub.store_id, ${versionColumn} AS pricing_version, st.slug, st.settings
      FROM subscriptions sub LEFT JOIN stores st ON st.id = sub.store_id
-     WHERE sub.pay_as_you_go_config IS NULL ${legacyOnly}
+     WHERE sub.pay_as_you_go_config IS NULL
      ORDER BY sub.created_at, sub.id`,
   );
 

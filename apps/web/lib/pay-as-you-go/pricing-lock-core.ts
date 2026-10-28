@@ -74,8 +74,8 @@ export function normalizeCurrency(currency: string | null | undefined): string {
 
 /**
  * The per-rental offer configured by the env (PAYG_DEFAULT_PRICING), or the built-in
- * ladder when it is empty or malformed. Accepts the parsed object or the raw JSON string
- * (SKIP_ENV_VALIDATION skips the env transform).
+ * ladder when it is empty or malformed. env.ts hands over the raw JSON string, parsed
+ * here (the cloud start-up check refuses a malformed one: lib/billing/startup-check.ts).
  */
 export function resolveEnvPayAsYouGoOffer(rawPricing: unknown): PayAsYouGoConfig {
   return parsePayAsYouGoConfig(rawPricing) ?? LEGACY_PAY_AS_YOU_GO_CONFIG;

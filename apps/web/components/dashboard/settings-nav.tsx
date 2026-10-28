@@ -20,10 +20,12 @@ import {
 } from "@louez/ui";
 import { cn } from "@louez/utils";
 
+import { useInstanceConfig } from "@/components/instance-provider";
+
 import {
   SETTINGS_NAVIGATION_GROUPS,
-  SETTINGS_NAVIGATION_ITEMS,
   type SettingsNavigationItem,
+  filterSettingsNavigationItems,
 } from "./settings-navigation.constants";
 import { buildSettingsSearchHref } from "./util.settings-search-focus";
 import {
@@ -70,14 +72,15 @@ export const SettingsNav = ({
   const messages = useMessages();
   const t = useTranslations("dashboard.settings.settingsNavigation");
 
+  const { billingEnabled } = useInstanceConfig();
   const availableItems = useMemo(
     () =>
-      SETTINGS_NAVIGATION_ITEMS.filter(
-        (item) =>
-          (!item.platformAdminOnly || isPlatformAdmin) &&
-          (!item.requiresElectronicInvoicing || electronicInvoicingEnabled),
-      ),
-    [isPlatformAdmin, electronicInvoicingEnabled],
+      filterSettingsNavigationItems({
+        billingEnabled,
+        electronicInvoicingEnabled,
+        isPlatformAdmin,
+      }),
+    [billingEnabled, isPlatformAdmin, electronicInvoicingEnabled],
   );
 
   const navigationGroups = useMemo(

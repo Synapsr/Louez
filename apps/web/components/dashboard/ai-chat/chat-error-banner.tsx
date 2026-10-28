@@ -7,6 +7,8 @@ import { useTranslations } from "next-intl";
 import { Button } from "@louez/ui";
 import { cn } from "@louez/utils";
 
+import { useInstanceConfig } from "@/components/instance-provider";
+
 interface ChatErrorBannerProps {
   message: string;
   /** Rate-limit / plan-gate errors get the softer tone and the upgrade CTA. */
@@ -29,6 +31,8 @@ export const ChatErrorBanner = ({
   className,
 }: ChatErrorBannerProps) => {
   const t = useTranslations("dashboard.aiChat");
+  // No plan to upgrade to on an instance that does not bill its stores.
+  const { billingEnabled } = useInstanceConfig();
 
   return (
     <div
@@ -42,7 +46,7 @@ export const ChatErrorBanner = ({
     >
       <AlertCircle className={cn("size-3.5 shrink-0", isLimitError && "text-muted-foreground")} />
       <span className="flex-1">{message}</span>
-      {isLimitError && (
+      {isLimitError && billingEnabled && (
         <Button
           size="xs"
           className="shrink-0"
