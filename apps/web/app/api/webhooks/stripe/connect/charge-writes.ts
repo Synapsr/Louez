@@ -1,5 +1,4 @@
 import { type SQL, and, eq, isNull, ne, or, sql } from "drizzle-orm";
-import type Stripe from "stripe";
 
 import { db, isPaymentReceiptSql, markReservation, markReservationIds } from "@louez/db";
 import { paymentDisputes, payments, reservations, stores } from "@louez/db";
@@ -17,31 +16,29 @@ import {
 // The Connect webhook's writes to a charge's payment and its disputes, each in one
 // transaction with the reservation's billing mark (louez-billing docs/api, §5.2).
 
-export type RefundedCharge = Pick<
-  Stripe.Charge,
-  "id" | "amount" | "amount_refunded" | "refunded" | "currency"
->;
-
 /**
- * Brings the payment down to what the store keeps. Only `amount` is netted:
- * `gross_minor` keeps the charge amount (README Q7). A payment found through its
- * PaymentIntent gets the charge id it lacked (README Q36).
+ * Brings the payment down to what the store keeps, `netMinor`: the charge's captured
+ * amount less its refunds, read from Stripe, never from the event (Stripe does not
+ * order events). Only `amount` is netted: `gross_minor` keeps the charge amount
+ * (README Q7). A payment found through its PaymentIntent gets the charge id it lacked
+ * (README Q36).
  */
 export async function netRefundedChargePayment(input: {
   readonly paymentId: string;
   readonly reservationId: string;
-  readonly charge: RefundedCharge;
+  readonly chargeId: string;
+  /** Upper case. */
+  readonly currency: string;
+  readonly netMinor: number;
 }): Promise<void> {
-  const { charge } = input;
-  const currency = charge.currency.toUpperCase();
-  const netAmount = fromStripeCents(Math.max(0, charge.amount - charge.amount_refunded), currency);
+  const netAmount = fromStripeCents(input.netMinor, input.currency);
   await db.transaction(async (tx) => {
     await tx
       .update(payments)
       .set({
         amount: netAmount.toFixed(2),
-        status: charge.refunded ? "refunded" : "completed",
-        stripeChargeId: sql`COALESCE(${payments.stripeChargeId}, ${charge.id})`,
+        status: input.netMinor > 0 ? "completed" : "refunded",
+        stripeChargeId: sql`COALESCE(${payments.stripeChargeId}, ${input.chargeId})`,
         updatedAt: new Date(),
       })
       .where(eq(payments.id, input.paymentId));

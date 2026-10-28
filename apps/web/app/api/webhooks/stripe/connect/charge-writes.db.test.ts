@@ -319,13 +319,9 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
     await writes.netRefundedChargePayment({
       paymentId,
       reservationId,
-      charge: {
-        id: "ch_refund",
-        amount: 12_345,
-        amount_refunded: 2_345,
-        refunded: false,
-        currency: "eur",
-      },
+      chargeId: "ch_refund",
+      currency: "EUR",
+      netMinor: 10_000,
     });
     assert.deepEqual(await readPayment(), {
       amount: "100.00",
@@ -339,13 +335,9 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
     await writes.netRefundedChargePayment({
       paymentId,
       reservationId,
-      charge: {
-        id: "ch_refund",
-        amount: 12_345,
-        amount_refunded: 12_345,
-        refunded: true,
-        currency: "eur",
-      },
+      chargeId: "ch_refund",
+      currency: "EUR",
+      netMinor: 0,
     });
     assert.deepEqual(await readPayment(), {
       amount: "0.00",
@@ -366,13 +358,9 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
     await writes.netRefundedChargePayment({
       paymentId,
       reservationId,
-      charge: {
-        id: "ch_self_host",
-        amount: 12_345,
-        amount_refunded: 12_345,
-        refunded: true,
-        currency: "eur",
-      },
+      chargeId: "ch_self_host",
+      currency: "EUR",
+      netMinor: 0,
     });
     await writes.recordChargeDispute({
       dispute: dispute({ id: "dp_self_host", charge: "ch_self_host" }),

@@ -222,6 +222,15 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
     // Won: the fee at source is not restored, and nothing more is refunded.
     charge.disputes = [{ id: "dp_inquiry", amount: 10_000, status: "won" }];
     await reverse();
+    // The won dispute counts for nothing: a refund of 5,000 aims at 125, below the 250
+    // refunded. Counted, it would aim at 375 and refund 125 Stripe never takes back.
+    charge.amountRefunded = 5_000;
+    assert.deepEqual(await reverse(), {
+      status: "unchanged",
+      feeId,
+      targetMinor: 125,
+      incrementMinor: 0,
+    });
     // A later refund of the whole charge brings the target to the whole fee.
     charge.amountRefunded = 25_000;
     await reverse();
@@ -280,6 +289,81 @@ describe("fee refund at source (database)", { skip: skipWithoutTestDatabase() },
       await reversal.reverseFeeAtSource({ chargeId, accountId: ACCOUNT, stripe: stripe.port }),
       { status: "no_fee" },
     );
+  });
+
+  test("a reversal needs one connection: its ledger write runs on the lock's", async () => {
+    const stripe = fakeStripe();
+    const { chargeId, rowId } = await chargeWithFee(stripe, { amount: 10_000, fee: 250 });
+    const charge = stripe.charges.get(chargeId);
+    assert.ok(charge);
+    charge.amountRefunded = 10_000;
+
+    // Nine of the pool's ten connections are taken by the rest of the app.
+    const taken = await Promise.all(
+      Array.from({ length: 9 }, () => louezDb.db.$client.getConnection()),
+    );
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      const result = await Promise.race([
+        reversal.reverseFeeAtSource({ chargeId, accountId: ACCOUNT, stripe: stripe.port }),
+        new Promise<"stuck">((resolve) => {
+          timer = setTimeout(() => resolve("stuck"), 5_000);
+        }),
+      ]);
+      assert.notEqual(result, "stuck", "the reversal waited for a second connection");
+    } finally {
+      clearTimeout(timer);
+      for (const connection of taken) connection.release();
+    }
+    assert.deepEqual(await readRow(rowId), { status: "reversed", reversed: 250 });
+  });
+
+  test("a burst of reversals on distinct charges leaves connections to the app", async () => {
+    const stripe = fakeStripe();
+    let inStripe = 0;
+    let mostInStripe = 0;
+    const order: string[] = [];
+    const slow: FeeReversalStripe = {
+      ...stripe.port,
+      async retrieveCharge(chargeId, accountId) {
+        inStripe++;
+        mostInStripe = Math.max(mostInStripe, inStripe);
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        return stripe.port.retrieveCharge(chargeId, accountId);
+      },
+      async refundApplicationFee(feeId, amountMinor, idempotencyKey) {
+        await stripe.port.refundApplicationFee(feeId, amountMinor, idempotencyKey);
+        inStripe--;
+      },
+    };
+    const chargeIds: string[] = [];
+    for (let index = 0; index < 12; index++) {
+      const { chargeId } = await chargeWithFee(stripe, { amount: 10_000, fee: 250 });
+      const charge = stripe.charges.get(chargeId);
+      assert.ok(charge);
+      charge.amountRefunded = 10_000;
+      chargeIds.push(chargeId);
+    }
+
+    const burst = Promise.all(
+      chargeIds.map((chargeId) =>
+        reversal
+          .reverseFeeAtSource({ chargeId, accountId: ACCOUNT, stripe: slow })
+          .finally(() => order.push("reversal")),
+      ),
+    );
+    // A storefront query during the burst gets a connection before any reversal ends.
+    await louezDb.db.select({ id: louezDb.platformFees.id }).from(louezDb.platformFees).limit(1);
+    order.push("query");
+    const results = await burst;
+
+    assert.deepEqual(new Set(results.map((result) => result.status)), new Set(["refunded"]));
+    assert.equal(stripe.refunds.length, 12);
+    assert.ok(
+      mostInStripe <= reversal.REVERSALS_AT_ONCE,
+      `${mostInStripe} reversals at once, more than ${reversal.REVERSALS_AT_ONCE}`,
+    );
+    assert.equal(order[0], "query");
   });
 
   test("a Stripe error propagates, so the webhook answers 500", async () => {

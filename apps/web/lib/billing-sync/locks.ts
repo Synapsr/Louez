@@ -1,11 +1,12 @@
 import type { RowDataPacket } from "mysql2/promise";
 import { z } from "zod";
 
-import { db } from "@louez/db";
+import { type DatabaseOnConnection, databaseOnConnection, db } from "@louez/db";
 
 // MySQL named locks, each held on its own pooled connection for the whole run: a
 // pooled `db.execute` may take and release the lock on two connections and leak it
-// (louez-billing docs/api, fees.md §9).
+// (louez-billing docs/api, fees.md §9). The run gets that connection, so its writes
+// need no second one from the pool.
 //
 // One run of each billing task at a time, across every Louez instance: a cron call
 // that finds the lock taken skips the task instead of waiting (plan decision 12).
@@ -23,12 +24,13 @@ export function billingLockName(task: BillingTask): string {
 
 /**
  * Runs `run` under `GET_LOCK(name, timeoutSeconds)`, or not at all when the lock is
- * still taken after the timeout or MySQL fails to take it.
+ * still taken after the timeout or MySQL fails to take it. `run` gets Drizzle on the
+ * connection that holds the lock: a transaction opened on it stays on that connection.
  */
 export async function withNamedLock<T>(
   name: string,
   timeoutSeconds: number,
-  run: () => Promise<T>,
+  run: (lockedDb: DatabaseOnConnection) => Promise<T>,
 ): Promise<LockedRun<T>> {
   const connection = await db.$client.getConnection();
   let healthy = true;
@@ -40,7 +42,7 @@ export async function withNamedLock<T>(
     const [row] = z.array(lockRow).parse(rows);
     if (Number(row?.got) !== 1) return { ran: false };
     try {
-      return { ran: true, value: await run() };
+      return { ran: true, value: await run(databaseOnConnection(connection)) };
     } finally {
       try {
         await connection.query("SELECT RELEASE_LOCK(?)", [name]);
@@ -60,4 +62,42 @@ export function withBillingLock<T>(
   run: () => Promise<T>,
 ): Promise<LockedRun<T>> {
   return withNamedLock(billingLockName(task), 0, run);
+}
+
+/**
+ * At most `size` runs at once in this process. A run waits its turn for up to
+ * `waitMs`, then does not run. A run that waits on a named lock holds a pooled
+ * connection all along: the limit keeps a burst of them from taking the whole pool
+ * the rest of the app queries on.
+ */
+export function createRunLimit(size: number) {
+  let running = 0;
+  const waiting: Array<() => void> = [];
+
+  const turn = (waitMs: number) =>
+    new Promise<boolean>((resolve) => {
+      const wake = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      const timer = setTimeout(() => {
+        const index = waiting.indexOf(wake);
+        if (index !== -1) waiting.splice(index, 1);
+        resolve(false);
+      }, waitMs);
+      waiting.push(wake);
+    });
+
+  return async function limited<T>(waitMs: number, run: () => Promise<T>): Promise<LockedRun<T>> {
+    if (running < size) running++;
+    else if (!(await turn(waitMs))) return { ran: false };
+    try {
+      return { ran: true, value: await run() };
+    } finally {
+      // The next waiter takes this run's place, so `running` only drops when none waits.
+      const next = waiting.shift();
+      if (next) next();
+      else running--;
+    }
+  };
 }

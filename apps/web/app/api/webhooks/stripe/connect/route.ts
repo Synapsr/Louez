@@ -22,10 +22,7 @@ import {
   recordMarketplaceFee,
   recordReservationFee,
 } from "@/lib/pay-as-you-go";
-import {
-  clawbackReferrerRewardForQualifyingPayment,
-  maybeGrantReferrerReward,
-} from "@/lib/referral/rewards";
+import { maybeGrantReferrerReward } from "@/lib/referral/rewards";
 import { fromStripeCents } from "@/lib/stripe";
 import { stripe } from "@/lib/stripe/client";
 import { cancelAbandonedCheckout } from "@/lib/reservations/cancel-abandoned-checkout";
@@ -33,10 +30,8 @@ import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-pa
 
 import { env } from "@/env";
 
+import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded } from "./charge-refund";
-import { recordChargeDispute } from "./charge-writes";
-import type { DisputeEventType } from "./dispute-facts";
-import { reverseFeeAtSource } from "./fee-reversal";
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -1222,66 +1217,6 @@ async function handleAccountUpdated(account: Stripe.Account) {
       storeId: store.id,
       chargesEnabled,
       detailsSubmitted,
-    },
-  });
-}
-
-/** The dispute events that change the money the store keeps (fees.md §9). */
-const FEE_REVERSAL_DISPUTE_EVENTS: ReadonlySet<DisputeEventType> = new Set([
-  "charge.dispute.created",
-  "charge.dispute.updated",
-  "charge.dispute.funds_withdrawn",
-  "charge.dispute.closed",
-]);
-
-/**
- * Every `charge.dispute.*` event updates the dispute's billing facts. The fee refund at
- * source runs first, reading the charge's disputes from Stripe; a reinstatement
- * restores no fee. The referral clawback runs on creation.
- */
-async function handleChargeDispute(input: {
-  eventType: DisputeEventType;
-  dispute: Stripe.Dispute;
-  eventCreatedAt: Date;
-  connectedAccountId: string | undefined;
-}) {
-  const { eventType, dispute, connectedAccountId } = input;
-  const chargeId = stripeRefId(dispute.charge);
-  const paymentIntentId = stripeRefId(dispute.payment_intent);
-  if (chargeId && connectedAccountId && FEE_REVERSAL_DISPUTE_EVENTS.has(eventType)) {
-    await reverseFeeAtSource({ chargeId, accountId: connectedAccountId });
-  }
-  if (eventType === "charge.dispute.created" && paymentIntentId) {
-    // Referral Program: a disputed qualifying payment claws back the Referrer Reward
-    // (within the clawback window). Best-effort; never block dispute processing.
-    await clawbackReferrerRewardForQualifyingPayment({
-      stripePaymentIntentId: paymentIntentId,
-    }).catch((error) => {
-      log.error({
-        referral: {
-          event: "reward_clawback_failed",
-          trigger: "dispute",
-          disputeId: dispute.id,
-          error: describeError(error),
-        },
-      });
-    });
-  }
-
-  const result = await recordChargeDispute({
-    dispute,
-    eventType,
-    eventCreatedAt: input.eventCreatedAt,
-    accountId: connectedAccountId,
-  });
-  log.info({
-    stripeWebhook: {
-      event: eventType,
-      disputeId: dispute.id,
-      disputeStatus: dispute.status,
-      ...(result.recorded
-        ? { paymentId: result.paymentId, reservationId: result.reservationId }
-        : { issue: result.reason }),
     },
   });
 }

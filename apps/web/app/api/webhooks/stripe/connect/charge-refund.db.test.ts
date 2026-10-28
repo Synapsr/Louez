@@ -170,8 +170,10 @@ describe("charge.refunded (database)", { skip: skipWithoutTestDatabase() }, () =
   const charge = (
     overrides: Partial<RefundedChargeEvent> & Pick<RefundedChargeEvent, "id">,
   ): RefundedChargeEvent => ({
-    amount: 5_000,
+    amount: overrides.amount ?? 5_000,
+    amount_captured: overrides.amount ?? 5_000,
     amount_refunded: 5_000,
+    captured: true,
     refunded: true,
     currency: "eur",
     payment_intent: null,
@@ -264,6 +266,91 @@ describe("charge.refunded (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.equal(stripe.calls.retrieveCharge, 0);
   });
 
+  test("a refunded partial capture nets what was captured, not the hold", async () => {
+    const stripe = fakeStripe();
+    const reservationId = await createReservation();
+    const paymentIntentId = `pi_${RUN}_partial`;
+    await insertPayment({
+      reservationId,
+      type: "deposit_hold",
+      amount: "50.00",
+      paymentIntentId,
+      chargeId: null,
+    });
+    const captureId = await insertPayment({
+      reservationId,
+      type: "deposit_capture",
+      amount: "30.00",
+      paymentIntentId,
+      chargeId: `ch_${RUN}_partial`,
+    });
+    stripe.refunds.set(`ch_${RUN}_partial`, [
+      { id: `re_${RUN}_partial`, amount: 1_000, created: REFUNDED_AT, status: "succeeded" },
+    ]);
+
+    // 30.00 of the 50.00 hold captured: since 2025-03-31.basil the 20.00 released is no
+    // refund, and `amount` stays 5,000.
+    await refund.handleChargeRefunded(
+      charge({
+        id: `ch_${RUN}_partial`,
+        amount: 5_000,
+        amount_captured: 3_000,
+        amount_refunded: 1_000,
+        refunded: false,
+        payment_intent: paymentIntentId,
+      }),
+      ACCOUNT,
+      stripe.port,
+    );
+    const rows = await rowsOf(reservationId);
+    const capture = rows.find((row) => row.id === captureId);
+    assert.deepEqual(capture && [capture.amount, capture.status], ["20.00", "completed"]);
+    assert.deepEqual(
+      rows
+        .filter((row) => row.refundId !== null)
+        .map((row) => [row.type, row.amount, row.refundOf]),
+      [["deposit_return", "10.00", captureId]],
+    );
+  });
+
+  test("an older event retried after a newer one leaves what Stripe holds now", async () => {
+    const stripe = fakeStripe();
+    const reservationId = await createReservation();
+    const chargeId = `ch_${RUN}_order`;
+    const paymentId = await insertPayment({
+      reservationId,
+      type: "rental",
+      amount: "100.00",
+      paymentIntentId: `pi_${RUN}_order`,
+      chargeId,
+    });
+    // Both refunds are in Stripe by the time either event is handled.
+    stripe.refunds.set(chargeId, [
+      { id: `re_${RUN}_order_30`, amount: 3_000, created: REFUNDED_AT, status: "succeeded" },
+      { id: `re_${RUN}_order_70`, amount: 7_000, created: REFUNDED_AT + 60, status: "succeeded" },
+    ]);
+    const event = (amountRefunded: number) =>
+      charge({
+        id: chargeId,
+        amount: 10_000,
+        amount_refunded: amountRefunded,
+        refunded: amountRefunded === 10_000,
+        payment_intent: `pi_${RUN}_order`,
+      });
+
+    await refund.handleChargeRefunded(event(10_000), ACCOUNT, stripe.port);
+    // The first refund's event failed earlier, and Stripe retries it now.
+    await refund.handleChargeRefunded(event(3_000), ACCOUNT, stripe.port);
+
+    const rows = await rowsOf(reservationId);
+    const original = rows.find((row) => row.id === paymentId);
+    assert.deepEqual(original && [original.amount, original.status], ["0.00", "refunded"]);
+    assert.deepEqual(
+      rows.filter((row) => row.refundId !== null).map((row) => row.amount),
+      ["30.00", "70.00"],
+    );
+  });
+
   test("every Stripe refund gets one row, once; a failed refund none", async () => {
     const stripe = fakeStripe();
     const reservationId = await createReservation();
@@ -314,6 +401,9 @@ describe("charge.refunded (database)", { skip: skipWithoutTestDatabase() }, () =
       paymentIntentId: `pi_${RUN}_no_charge`,
       chargeId: null,
     });
+    stripe.refunds.set(`ch_${RUN}_no_charge`, [
+      { id: `re_${RUN}_no_charge`, amount: 10_000, created: REFUNDED_AT, status: "succeeded" },
+    ]);
     const result = await refund.handleChargeRefunded(
       charge({
         id: `ch_${RUN}_no_charge`,
@@ -325,9 +415,8 @@ describe("charge.refunded (database)", { skip: skipWithoutTestDatabase() }, () =
       stripe.port,
     );
     assert.equal(result.status, "recorded");
-    const [row] = await rowsOf(reservationId);
-    assert.deepEqual(row && [row.id, row.chargeId, row.status, row.amount], [
-      paymentId,
+    const row = (await rowsOf(reservationId)).find((payment) => payment.id === paymentId);
+    assert.deepEqual(row && [row.chargeId, row.status, row.amount], [
       `ch_${RUN}_no_charge`,
       "refunded",
       "0.00",
@@ -373,6 +462,39 @@ describe("charge.refunded (database)", { skip: skipWithoutTestDatabase() }, () =
         stripe.port,
       ),
       refund.PaymentNotFoundYetError,
+    );
+    assert.equal(stripe.calls.listRefunds, 0);
+  });
+
+  test("a hold released or expired before capture is acknowledged and left alone", async () => {
+    const stripe = fakeStripe();
+    const reservationId = await createReservation();
+    const holdId = await insertPayment({
+      reservationId,
+      type: "deposit_hold",
+      amount: "50.00",
+      paymentIntentId: `pi_${RUN}_released`,
+      chargeId: null,
+      status: "authorized",
+    });
+    // Before API version 2025-03-31.basil, cancelling the PaymentIntent refunded the
+    // uncaptured charge and sent charge.refunded.
+    assert.deepEqual(
+      await refund.handleChargeRefunded(
+        charge({
+          id: `ch_${RUN}_released`,
+          amount_captured: 0,
+          captured: false,
+          payment_intent: `pi_${RUN}_released`,
+        }),
+        ACCOUNT,
+        stripe.port,
+      ),
+      { status: "not_captured" },
+    );
+    assert.deepEqual(
+      (await rowsOf(reservationId)).map((row) => [row.id, row.amount, row.status]),
+      [[holdId, "50.00", "authorized"]],
     );
     assert.equal(stripe.calls.listRefunds, 0);
   });

@@ -22,11 +22,18 @@ import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from ".
 // fees.md §9 and README Q7): the fee refund at source, the payment netted, and one
 // refund row per Stripe refund of the charge, whatever the payment's kind.
 
+/**
+ * The event's charge. A retry can deliver an event after a newer one, so the handler
+ * reads the refunds from Stripe, not `amount_refunded` or `refunded`. After a partial
+ * capture, `amount` is the amount authorized, more than the money.
+ */
 export type RefundedChargeEvent = Pick<
   Stripe.Charge,
   | "id"
   | "amount"
+  | "amount_captured"
   | "amount_refunded"
+  | "captured"
   | "refunded"
   | "currency"
   | "payment_intent"
@@ -89,7 +96,7 @@ export class PaymentNotFoundYetError extends Error {
 
 export type ChargeRefundResult =
   | { readonly status: "recorded"; readonly paymentId: string; readonly refundRows: number }
-  | { readonly status: "missing_account" | "payment_not_found" };
+  | { readonly status: "missing_account" | "not_captured" | "payment_not_found" };
 
 /**
  * Handles `charge.refunded`. Every write is idempotent, so a thrown error answers 500
@@ -105,6 +112,16 @@ export async function handleChargeRefunded(
       stripeWebhook: { event: "charge.refunded", issue: "missing_account", chargeId: charge.id },
     });
     return { status: "missing_account" };
+  }
+
+  // An authorization released or expired before capture took no money. Before API
+  // version 2025-03-31.basil Stripe still refunded it with this event, and a deposit
+  // hold's row carries the PaymentIntent: it is not a payment Louez has yet to write.
+  if (!charge.captured) {
+    log.info({
+      stripeWebhook: { event: "charge.refunded", issue: "not_captured", chargeId: charge.id },
+    });
+    return { status: "not_captured" };
   }
 
   // The fee follows the money, whether or not Louez holds the payment. A charge
@@ -133,14 +150,22 @@ export async function handleChargeRefunded(
     return { status: "payment_not_found" };
   }
 
+  // What the store keeps, from the refunds Stripe lists now. Since API version
+  // 2025-03-31.basil a partial capture refunds nothing and `amount` stays the amount
+  // authorized: the money is `amount_captured`.
+  const currency = charge.currency.toUpperCase();
+  const refunds = (await port.listRefunds(charge.id, accountId)).filter(movedMoney);
+  const refundedMinor = refunds.reduce((sum, refund) => sum + refund.amount, 0);
+  const netMinor = Math.max(0, charge.amount_captured - refundedMinor);
+  const fullyRefunded = netMinor === 0;
   await netRefundedChargePayment({
     paymentId: payment.paymentId,
     reservationId: payment.reservationId,
-    charge,
+    chargeId: charge.id,
+    currency,
+    netMinor,
   });
 
-  const currency = charge.currency.toUpperCase();
-  const refunds = (await port.listRefunds(charge.id, accountId)).filter(movedMoney);
   for (const refund of refunds) {
     const amount = fromStripeCents(refund.amount, currency);
     const refundPaymentId = await ensureRefundPaymentRecord({
@@ -162,12 +187,8 @@ export async function handleChargeRefunded(
   // Referral Program: a fully refunded qualifying payment, or a partial refund that
   // drops the net online payment below the qualifying minimum, claws back the Referrer
   // Reward (within the clawback window). Best-effort; never block refund processing.
-  const netAmountCents = Math.max(0, charge.amount - charge.amount_refunded);
   const minQualifyingAmountCents = getReferralProgramConfig().minQualifyingAmountCents;
-  if (
-    charge.refunded ||
-    (minQualifyingAmountCents > 0 && netAmountCents < minQualifyingAmountCents)
-  ) {
+  if (fullyRefunded || (minQualifyingAmountCents > 0 && netMinor < minQualifyingAmountCents)) {
     await clawbackReferrerRewardForQualifyingPayment({
       stripeChargeId: charge.id,
       stripePaymentIntentId: payment.stripePaymentIntentId,
@@ -183,12 +204,12 @@ export async function handleChargeRefunded(
     });
   }
 
-  const refundAmount = fromStripeCents(charge.amount_refunded, currency);
+  const refundAmount = fromStripeCents(refundedMinor, currency);
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId: payment.reservationId,
     activityType: "payment_updated",
-    metadata: { chargeId: charge.id, refundAmount, isFullRefund: charge.refunded },
+    metadata: { chargeId: charge.id, refundAmount, isFullRefund: fullyRefunded },
     createdAt: new Date(),
   });
 
@@ -198,7 +219,7 @@ export async function handleChargeRefunded(
       paymentId: payment.paymentId,
       chargeId: charge.id,
       refundAmount,
-      isFullRefund: charge.refunded,
+      isFullRefund: fullyRefunded,
       refundRows: refunds.length,
     },
   });

@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 
-import { withNamedLock } from "@/lib/billing-sync/locks";
+import { createRunLimit, withNamedLock } from "@/lib/billing-sync/locks";
 import { reversalAtSource } from "@/lib/billing-sync/money";
 import { log } from "@/lib/evlog";
 import { recordApplicationFeeRefund } from "@/lib/pay-as-you-go/metering";
@@ -61,13 +61,32 @@ export const stripeFeeReversal: FeeReversalStripe = {
 /** Seconds a delivery waits for another one on the same charge (fees.md §9). */
 const LOCK_TIMEOUT_SECONDS = 10;
 
+/**
+ * Reversals at once in this process. Each holds one pooled connection while it waits
+ * for the charge's lock and until its ledger write, Stripe calls included. The pool
+ * has 10 (packages/db): the rest of the app keeps 6.
+ */
+export const REVERSALS_AT_ONCE = 4;
+
+/** Milliseconds a delivery waits for its turn before answering 500. */
+const TURN_WAIT_MS = 5_000;
+
+const reversalLimit = createRunLimit(REVERSALS_AT_ONCE);
+
 /** In MySQL `'appfee:' || id` is a logical OR: the name is built here. */
 export const feeReversalLockName = (chargeId: string) => `appfee:${chargeId}`;
 
-/** Another delivery holds the charge's lock, or MySQL failed to take it: answer 500. */
+/**
+ * Another delivery holds the charge's lock, MySQL failed to take it, or too many
+ * reversals run in this process: answer 500.
+ */
 export class FeeReversalBusyError extends Error {
-  constructor(chargeId: string) {
-    super(`the application fee of charge ${chargeId} is being reversed elsewhere; Stripe retries`);
+  constructor(chargeId: string, busy: "lock" | "turn") {
+    super(
+      busy === "lock"
+        ? `the application fee of charge ${chargeId} is being reversed elsewhere; Stripe retries`
+        : `too many fee reversals at once for charge ${chargeId}; Stripe retries`,
+    );
     this.name = "FeeReversalBusyError";
   }
 }
@@ -109,9 +128,10 @@ function disputedMinor(
 
 /**
  * Refunds the part of the charge's application fee the store no longer keeps, then
- * records Stripe's refunded amount on the legacy fee rows. Throws on a Stripe or
- * database error, and `FeeReversalBusyError` when the lock stays taken, so the
- * webhook answers 500 and Stripe retries: the next delivery reads Stripe again.
+ * records Stripe's refunded amount on the legacy fee rows, on the lock's connection.
+ * Throws on a Stripe or database error, and `FeeReversalBusyError` when the lock or a
+ * turn stays taken, so the webhook answers 500 and Stripe retries: the next delivery
+ * reads Stripe again.
  */
 export async function reverseFeeAtSource(input: {
   readonly chargeId: string;
@@ -120,48 +140,54 @@ export async function reverseFeeAtSource(input: {
   readonly stripe?: FeeReversalStripe;
 }): Promise<FeeReversalResult> {
   const port = input.stripe ?? stripeFeeReversal;
-  const run = await withNamedLock(
-    feeReversalLockName(input.chargeId),
-    LOCK_TIMEOUT_SECONDS,
-    async (): Promise<FeeReversalResult> => {
-      const charge = await port.retrieveCharge(input.chargeId, input.accountId);
-      const feeId = stripeId(charge.application_fee);
-      if (!feeId) return { status: "no_fee" };
-      const [fee, disputes] = await Promise.all([
-        port.retrieveApplicationFee(feeId),
-        port.listDisputes(charge.id, input.accountId),
-      ]);
+  const turn = await reversalLimit(TURN_WAIT_MS, () =>
+    withNamedLock(
+      feeReversalLockName(input.chargeId),
+      LOCK_TIMEOUT_SECONDS,
+      async (lockedDb): Promise<FeeReversalResult> => {
+        const charge = await port.retrieveCharge(input.chargeId, input.accountId);
+        const feeId = stripeId(charge.application_fee);
+        if (!feeId) return { status: "no_fee" };
+        const [fee, disputes] = await Promise.all([
+          port.retrieveApplicationFee(feeId),
+          port.listDisputes(charge.id, input.accountId),
+        ]);
 
-      const { targetMinor, incrementMinor } = reversalAtSource({
-        feeMinor: fee.amount,
-        feeRefundedMinor: fee.amount_refunded,
-        chargeMinor: charge.amount,
-        refundedMinor: charge.amount_refunded,
-        disputedMinor: disputedMinor(charge.id, disputes),
-      });
-      if (incrementMinor > 0) {
-        // The fee refunded before this call is in the key: a refund made elsewhere in
-        // between gives the next call a new key instead of an idempotency error.
-        await port.refundApplicationFee(
-          fee.id,
-          incrementMinor,
-          `appfee_reverse_${fee.id}_${fee.amount_refunded}_${targetMinor}`,
+        const { targetMinor, incrementMinor } = reversalAtSource({
+          feeMinor: fee.amount,
+          feeRefundedMinor: fee.amount_refunded,
+          chargeMinor: charge.amount,
+          refundedMinor: charge.amount_refunded,
+          disputedMinor: disputedMinor(charge.id, disputes),
+        });
+        if (incrementMinor > 0) {
+          // The fee refunded before this call is in the key: a refund made elsewhere in
+          // between gives the next call a new key instead of an idempotency error.
+          await port.refundApplicationFee(
+            fee.id,
+            incrementMinor,
+            `appfee_reverse_${fee.id}_${fee.amount_refunded}_${targetMinor}`,
+          );
+        }
+
+        await recordApplicationFeeRefund(
+          {
+            applicationFeeId: fee.id,
+            paymentIntentId: stripeId(charge.payment_intent),
+            feeRefundedMinor: fee.amount_refunded + incrementMinor,
+          },
+          lockedDb,
         );
-      }
-
-      await recordApplicationFeeRefund({
-        applicationFeeId: fee.id,
-        paymentIntentId: stripeId(charge.payment_intent),
-        feeRefundedMinor: fee.amount_refunded + incrementMinor,
-      });
-      return {
-        status: incrementMinor > 0 ? "refunded" : "unchanged",
-        feeId: fee.id,
-        targetMinor,
-        incrementMinor,
-      };
-    },
+        return {
+          status: incrementMinor > 0 ? "refunded" : "unchanged",
+          feeId: fee.id,
+          targetMinor,
+          incrementMinor,
+        };
+      },
+    ),
   );
-  if (!run.ran) throw new FeeReversalBusyError(input.chargeId);
-  return run.value;
+  if (!turn.ran) throw new FeeReversalBusyError(input.chargeId, "turn");
+  if (!turn.value.ran) throw new FeeReversalBusyError(input.chargeId, "lock");
+  return turn.value.value;
 }

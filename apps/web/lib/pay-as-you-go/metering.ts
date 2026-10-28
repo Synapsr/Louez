@@ -1,7 +1,14 @@
 import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import { db, isDuplicateKeyError, markBillingDirty, type MarkExecutor } from "@louez/db";
+import {
+  type Database,
+  type DatabaseOnConnection,
+  db,
+  isDuplicateKeyError,
+  markBillingDirty,
+  type MarkExecutor,
+} from "@louez/db";
 import {
   payAsYouGoInvoices,
   platformFees,
@@ -695,15 +702,18 @@ const TAKEN_AT_SOURCE = ["online", "marketplace_online"] as const;
  * PaymentIntent for rows that predate it. A manual row can carry the PaymentIntent
  * too, when its fee did not fit the charge: Stripe took nothing for it, so a refund
  * never reverses it, billed or not. Called by the reversal at source after its Stripe
- * calls; the amount is Stripe's, so a repeat writes nothing. No-op when platform
- * billing is off.
+ * calls, with Drizzle on the connection that holds its lock; the amount is Stripe's,
+ * so a repeat writes nothing. No-op when platform billing is off.
  */
-export async function recordApplicationFeeRefund(input: {
-  readonly applicationFeeId: string;
-  readonly paymentIntentId: string | null;
-  /** Stripe's `fee.amount_refunded`, cumulative. */
-  readonly feeRefundedMinor: number;
-}): Promise<void> {
+export async function recordApplicationFeeRefund(
+  input: {
+    readonly applicationFeeId: string;
+    readonly paymentIntentId: string | null;
+    /** Stripe's `fee.amount_refunded`, cumulative. */
+    readonly feeRefundedMinor: number;
+  },
+  executor: Database | DatabaseOnConnection,
+): Promise<void> {
   if (!isBillingEnabled()) return;
   const sameCharge = input.paymentIntentId
     ? or(
@@ -714,7 +724,7 @@ export async function recordApplicationFeeRefund(input: {
         ),
       )
     : eq(platformFees.stripeApplicationFeeId, input.applicationFeeId);
-  await db.transaction(async (tx) => {
+  await executor.transaction(async (tx) => {
     const rows = await tx
       .select({
         id: platformFees.id,

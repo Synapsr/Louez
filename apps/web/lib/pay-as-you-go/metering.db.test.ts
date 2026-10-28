@@ -161,13 +161,13 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
       paymentIntentId: "pi_marks_online",
       feeRefundedMinor: 50,
     };
-    await metering.recordApplicationFeeRefund(refund);
+    await metering.recordApplicationFeeRefund(refund, louezDb.db);
     assert.deepEqual(await readMarks(PAID_STORE), [
       "reservation res_marks_online v2",
       `legacy_month ${PAID_STORE}:2026-01 v2`,
     ]);
     // Stripe's amount again: nothing changes, nothing is marked.
-    await metering.recordApplicationFeeRefund(refund);
+    await metering.recordApplicationFeeRefund(refund, louezDb.db);
     assert.deepEqual(await readMarks(PAID_STORE), [
       "reservation res_marks_online v2",
       `legacy_month ${PAID_STORE}:2026-01 v2`,
@@ -240,8 +240,9 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
     async function feeRows(rows: {
       res: {
         source: "online" | "manual";
-        status: "collected" | "pending" | "billed";
+        status: "collected" | "pending" | "billed" | "reversed";
         cents: number;
+        reversed?: number;
       };
       mkt?: { cents: number };
       applicationFeeId: string | null;
@@ -261,6 +262,7 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
           id: `fee_res_${counter}`,
           dedupKey: `res:${reservationId}`,
           amountCents: rows.res.cents,
+          amountReversedCents: rows.res.reversed ?? 0,
           source: rows.res.source,
           status: rows.res.status,
           monthlyIndex: 1,
@@ -302,14 +304,37 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
         mkt: { cents: 150 },
         applicationFeeId: "fee_bug_1027",
       });
-      await metering.recordApplicationFeeRefund({
-        applicationFeeId: "fee_bug_1027",
-        paymentIntentId,
-        feeRefundedMinor: 150,
-      });
+      await metering.recordApplicationFeeRefund(
+        {
+          applicationFeeId: "fee_bug_1027",
+          paymentIntentId,
+          feeRefundedMinor: 150,
+        },
+        louezDb.db,
+      );
       assert.deepEqual(await readRows(reservationId), [
         { key: `mkt:${reservationId}`, status: "reversed", reversed: 150 },
         { key: `res:${reservationId}`, status: "billed", reversed: 0 },
+      ]);
+
+      // What the bug left behind: the manual row reversed in full. It is left as it is,
+      // and the marketplace row Stripe took the fee for gets all of Stripe's amount.
+      const leftover = await feeRows({
+        res: { source: "manual", status: "reversed", cents: 300, reversed: 300 },
+        mkt: { cents: 150 },
+        applicationFeeId: "fee_bug_1027_leftover",
+      });
+      await metering.recordApplicationFeeRefund(
+        {
+          applicationFeeId: "fee_bug_1027_leftover",
+          paymentIntentId: leftover.paymentIntentId,
+          feeRefundedMinor: 120,
+        },
+        louezDb.db,
+      );
+      assert.deepEqual(await readRows(leftover.reservationId), [
+        { key: `mkt:${leftover.reservationId}`, status: "collected", reversed: 120 },
+        { key: `res:${leftover.reservationId}`, status: "reversed", reversed: 300 },
       ]);
     });
 
@@ -320,21 +345,27 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
         applicationFeeId: "fee_split",
       });
       // 100 of 450: the reservation row, created first, gets round(100 × 300 / 450) = 67.
-      await metering.recordApplicationFeeRefund({
-        applicationFeeId: "fee_split",
-        paymentIntentId,
-        feeRefundedMinor: 100,
-      });
+      await metering.recordApplicationFeeRefund(
+        {
+          applicationFeeId: "fee_split",
+          paymentIntentId,
+          feeRefundedMinor: 100,
+        },
+        louezDb.db,
+      );
       assert.deepEqual(await readRows(reservationId), [
         { key: `mkt:${reservationId}`, status: "collected", reversed: 33 },
         { key: `res:${reservationId}`, status: "collected", reversed: 67 },
       ]);
       // The whole fee: both rows reversed.
-      await metering.recordApplicationFeeRefund({
-        applicationFeeId: "fee_split",
-        paymentIntentId,
-        feeRefundedMinor: 450,
-      });
+      await metering.recordApplicationFeeRefund(
+        {
+          applicationFeeId: "fee_split",
+          paymentIntentId,
+          feeRefundedMinor: 450,
+        },
+        louezDb.db,
+      );
       assert.deepEqual(await readRows(reservationId), [
         { key: `mkt:${reservationId}`, status: "reversed", reversed: 150 },
         { key: `res:${reservationId}`, status: "reversed", reversed: 300 },
@@ -347,11 +378,14 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
         applicationFeeId: "fee_off",
       });
       process.env.LOUEZ_BILLING = "off";
-      await metering.recordApplicationFeeRefund({
-        applicationFeeId: "fee_off",
-        paymentIntentId,
-        feeRefundedMinor: 300,
-      });
+      await metering.recordApplicationFeeRefund(
+        {
+          applicationFeeId: "fee_off",
+          paymentIntentId,
+          feeRefundedMinor: 300,
+        },
+        louezDb.db,
+      );
       assert.deepEqual(await readRows(reservationId), [
         { key: `res:${reservationId}`, status: "collected", reversed: 0 },
       ]);

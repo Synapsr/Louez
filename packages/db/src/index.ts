@@ -30,6 +30,17 @@ if (env.NODE_ENV !== "production") {
 export const db = drizzle(pool, { schema, mode: "default" });
 
 export type Database = typeof db;
+
+/**
+ * Drizzle on one connection taken from the pool: its queries and transactions all run
+ * on that connection. For work under a MySQL named lock, which belongs to the
+ * connection that took it, so the work needs no second connection from the pool.
+ */
+export function databaseOnConnection(connection: mysql.PoolConnection) {
+  return drizzle(connection, { schema, mode: "default" });
+}
+
+export type DatabaseOnConnection = ReturnType<typeof databaseOnConnection>;
 export { cancelFailedCheckoutReservation } from "./failed-checkout";
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
