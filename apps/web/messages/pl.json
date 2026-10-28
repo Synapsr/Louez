@@ -3642,6 +3642,10 @@
       "team": "Zespół",
       "saveChanges": "Zapisz zmiany",
       "settingsSaved": "Ustawienia zapisane",
+      "billingReturn": {
+        "refreshed": "Rozliczenia są aktualne.",
+        "pending": "Zmiany w rozliczeniach mogą pojawić się tutaj dopiero po kilku minutach."
+      },
       "nav": {
         "storeDescription": "Informacje i konfiguracja",
         "appearanceDescription": "Logo, kolory i motyw",

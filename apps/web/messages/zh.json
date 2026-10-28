@@ -3944,6 +3944,10 @@
       "team": "团队",
       "saveChanges": "保存更改",
       "settingsSaved": "设置已保存",
+      "billingReturn": {
+        "refreshed": "账单信息已是最新。",
+        "pending": "账单变更可能需要几分钟才会显示在这里。"
+      },
       "nav": {
         "storeDescription": "信息和配置",
         "appearanceDescription": "标志、颜色和主题",

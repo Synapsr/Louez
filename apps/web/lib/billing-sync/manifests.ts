@@ -8,6 +8,7 @@ import {
   billingSyncQueue,
   db,
   markBillingDirty,
+  newStoresCutoff,
   paymentDisputes,
   payments,
   reservations,
@@ -22,7 +23,6 @@ import {
   readSignedJson,
 } from "@/lib/billing-sync/client";
 import { billingSyncConfig } from "@/lib/billing-sync/config";
-import { newStoresCutoff } from "@/lib/billing-sync/policies";
 import {
   type SyncExecutor,
   databaseNow,
@@ -378,7 +378,7 @@ export async function sendPendingManifests(
     .limit(PENDING_PER_RUN);
   if (pending.length === 0) return { ...counts, outcome: "ok", detail: null };
 
-  const newStoresFrom = await newStoresCutoff(config.newStoresFrom);
+  const newStoresFrom = await newStoresCutoff(db, config.newStoresFrom);
   const manifests: Manifest[] = [];
   for (const { storeId, period } of pending) {
     const built = await buildManifest(storeId, period, newStoresFrom);

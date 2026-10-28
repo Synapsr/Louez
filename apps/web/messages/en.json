@@ -3945,6 +3945,10 @@
       "team": "Team",
       "saveChanges": "Save changes",
       "settingsSaved": "Settings saved",
+      "billingReturn": {
+        "refreshed": "Billing is up to date.",
+        "pending": "Billing changes can take a few minutes to appear here."
+      },
       "nav": {
         "storeDescription": "Information and configuration",
         "appearanceDescription": "Logo, colors and theme",

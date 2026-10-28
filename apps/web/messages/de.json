@@ -3642,6 +3642,10 @@
       "team": "Team",
       "saveChanges": "Änderungen speichern",
       "settingsSaved": "Einstellungen gespeichert",
+      "billingReturn": {
+        "refreshed": "Die Abrechnung ist auf dem neuesten Stand.",
+        "pending": "Änderungen an der Abrechnung können einige Minuten brauchen, bis sie hier erscheinen."
+      },
       "nav": {
         "storeDescription": "Informationen und Konfiguration",
         "appearanceDescription": "Logo, Farben und Design",

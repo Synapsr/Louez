@@ -124,15 +124,34 @@ export async function createTestDatabase(
  * once each call waits on a lock in this database. Each call has then done its
  * reads, so a race test reaches the code that runs under the lock.
  */
-export async function raceOnLockedRow<T>(
+export function raceOnLockedRow<T>(
   database: TestDatabase,
   row: { table: string; id: string },
+  calls: ReadonlyArray<() => Promise<T>>,
+): Promise<T[]> {
+  return raceOnOpenTransaction(
+    database,
+    async (holder) => {
+      await holder.query(`SELECT id FROM \`${row.table}\` WHERE id = ? FOR UPDATE`, [row.id]);
+    },
+    calls,
+  );
+}
+
+/**
+ * Runs `hold` in a transaction on another connection, starts `calls`, and commits
+ * once each call waits on a lock in this database. With an insert as `hold`, each
+ * call has read before the row existed and loses the race to insert it.
+ */
+export async function raceOnOpenTransaction<T>(
+  database: TestDatabase,
+  hold: (holder: mysql.Connection) => Promise<void>,
   calls: ReadonlyArray<() => Promise<T>>,
 ): Promise<T[]> {
   const holder = await database.connect();
   try {
     await holder.beginTransaction();
-    await holder.query(`SELECT id FROM \`${row.table}\` WHERE id = ? FOR UPDATE`, [row.id]);
+    await hold(holder);
     const running = Promise.all(calls.map((call) => call()));
     try {
       await waitForLockWaits(holder, database.name, calls.length);

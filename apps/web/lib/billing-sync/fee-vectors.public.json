@@ -666,6 +666,466 @@
         "targetMinor": 150,
         "incrementMinor": 0
       }
+    },
+    {
+      "id": "policy-01",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "the store's own effective version wins",
+      "input": {
+        "storeId": "s1",
+        "storeCreatedAt": "2026-05-01T00:00:00Z",
+        "t": "2027-03-10T12:00:00Z",
+        "newStoresFrom": null,
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s1",
+            "version": 1,
+            "effectiveFrom": "2027-03-01T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s1",
+            "version": 2,
+            "effectiveFrom": "2027-03-05T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "store",
+        "version": 2,
+        "isNew": false,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-02",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "an own version scheduled after t is not effective yet: an old store stays legacy",
+      "input": {
+        "storeId": "s1",
+        "storeCreatedAt": "2026-05-01T00:00:00Z",
+        "t": "2027-02-20T12:00:00Z",
+        "newStoresFrom": null,
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s1",
+            "version": 1,
+            "effectiveFrom": "2027-03-01T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "legacy",
+        "version": null,
+        "isNew": false,
+        "legacyBillingApplies": true
+      }
+    },
+    {
+      "id": "policy-03",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "the highest effective version wins: v6 (effective day 3) overrides v5 scheduled for day 14",
+      "input": {
+        "storeId": "s2",
+        "storeCreatedAt": "2027-02-01T00:00:00Z",
+        "t": "2027-03-15T00:00:00Z",
+        "newStoresFrom": null,
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s2",
+            "version": 4,
+            "effectiveFrom": "2027-03-01T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s2",
+            "version": 5,
+            "effectiveFrom": "2027-03-14T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s2",
+            "version": 6,
+            "effectiveFrom": "2027-03-03T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "store",
+        "version": 6,
+        "isNew": true,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-04",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "the same versions before day 3: v4",
+      "input": {
+        "storeId": "s2",
+        "storeCreatedAt": "2027-02-01T00:00:00Z",
+        "t": "2027-03-02T00:00:00Z",
+        "newStoresFrom": null,
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s2",
+            "version": 4,
+            "effectiveFrom": "2027-03-01T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s2",
+            "version": 5,
+            "effectiveFrom": "2027-03-14T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s2",
+            "version": 6,
+            "effectiveFrom": "2027-03-03T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "store",
+        "version": 4,
+        "isNew": true,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-05",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "a new store with no own version uses the effective * version",
+      "input": {
+        "storeId": "s3",
+        "storeCreatedAt": "2027-02-01T00:00:00Z",
+        "t": "2027-02-01T00:05:00Z",
+        "newStoresFrom": null,
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "default",
+        "version": 1,
+        "isNew": true,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-06",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "a new store whose * version is only scheduled fails closed",
+      "input": {
+        "storeId": "s3",
+        "storeCreatedAt": "2027-02-01T00:00:00Z",
+        "t": "2027-02-01T00:05:00Z",
+        "newStoresFrom": null,
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 2,
+            "effectiveFrom": "2027-03-01T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "fail_closed",
+        "version": null,
+        "isNew": true,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-07",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "no * version held: BILLING_NEW_STORES_FROM still makes the store new, and it fails closed",
+      "input": {
+        "storeId": "s3",
+        "storeCreatedAt": "2027-02-01T00:00:00Z",
+        "t": "2027-02-01T00:05:00Z",
+        "newStoresFrom": "2027-01-25T00:00:00Z",
+        "versions": []
+      },
+      "expected": {
+        "source": "fail_closed",
+        "version": null,
+        "isNew": true,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-08",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "an old store with no own version is legacy",
+      "input": {
+        "storeId": "s4",
+        "storeCreatedAt": "2026-05-01T00:00:00Z",
+        "t": "2027-02-01T00:00:00Z",
+        "newStoresFrom": "2027-01-25T00:00:00Z",
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "legacy",
+        "version": null,
+        "isNew": false,
+        "legacyBillingApplies": true
+      }
+    },
+    {
+      "id": "policy-09",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "an old store whose own version says louez_legacy: Louez's legacy code still bills it",
+      "input": {
+        "storeId": "s4",
+        "storeCreatedAt": "2026-05-01T00:00:00Z",
+        "t": "2027-02-01T00:00:00Z",
+        "newStoresFrom": "2027-01-25T00:00:00Z",
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s4",
+            "version": 1,
+            "effectiveFrom": "2026-12-01T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "louez_legacy"
+          }
+        ]
+      },
+      "expected": {
+        "source": "store",
+        "version": 1,
+        "isNew": false,
+        "legacyBillingApplies": true
+      }
+    },
+    {
+      "id": "policy-10",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "the same store after B: its own version says service",
+      "input": {
+        "storeId": "s4",
+        "storeCreatedAt": "2026-05-01T00:00:00Z",
+        "t": "2027-03-01T00:00:00Z",
+        "newStoresFrom": "2027-01-25T00:00:00Z",
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          },
+          {
+            "storeId": "s4",
+            "version": 1,
+            "effectiveFrom": "2026-12-01T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "louez_legacy"
+          },
+          {
+            "storeId": "s4",
+            "version": 2,
+            "effectiveFrom": "2027-03-01T00:00:00Z",
+            "newStoresCreatedFrom": null,
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "store",
+        "version": 2,
+        "isNew": false,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-11",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "a store created exactly at the cutoff is new",
+      "input": {
+        "storeId": "s5",
+        "storeCreatedAt": "2027-01-25T00:00:00Z",
+        "t": "2027-01-25T00:00:01Z",
+        "newStoresFrom": null,
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "default",
+        "version": 1,
+        "isNew": true,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-12",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "BILLING_NEW_STORES_FROM earlier than the * cutoff is the cutoff",
+      "input": {
+        "storeId": "s5",
+        "storeCreatedAt": "2027-01-20T00:00:00Z",
+        "t": "2027-01-26T00:00:00Z",
+        "newStoresFrom": "2027-01-18T00:00:00Z",
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "default",
+        "version": 1,
+        "isNew": true,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-13",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "a * cutoff earlier than BILLING_NEW_STORES_FROM is the cutoff",
+      "input": {
+        "storeId": "s5",
+        "storeCreatedAt": "2027-01-26T00:00:00Z",
+        "t": "2027-01-27T00:00:00Z",
+        "newStoresFrom": "2027-02-01T00:00:00Z",
+        "versions": [
+          {
+            "storeId": "*",
+            "version": 1,
+            "effectiveFrom": "2027-01-25T00:00:00Z",
+            "newStoresCreatedFrom": "2027-01-25T00:00:00Z",
+            "invoicing": "service"
+          }
+        ]
+      },
+      "expected": {
+        "source": "default",
+        "version": 1,
+        "isNew": true,
+        "legacyBillingApplies": false
+      }
+    },
+    {
+      "id": "policy-14",
+      "function": "resolvePolicy",
+      "side": "both",
+      "public": true,
+      "summary": "no * version and no BILLING_NEW_STORES_FROM: no store is new",
+      "input": {
+        "storeId": "s5",
+        "storeCreatedAt": "2027-02-01T00:00:00Z",
+        "t": "2027-02-02T00:00:00Z",
+        "newStoresFrom": null,
+        "versions": []
+      },
+      "expected": {
+        "source": "legacy",
+        "version": null,
+        "isNew": false,
+        "legacyBillingApplies": true
+      }
     }
   ]
 }

@@ -3642,6 +3642,10 @@
       "team": "Team",
       "saveChanges": "Wijzigingen opslaan",
       "settingsSaved": "Instellingen opgeslagen",
+      "billingReturn": {
+        "refreshed": "De facturatie is bijgewerkt.",
+        "pending": "Het kan enkele minuten duren voordat wijzigingen in de facturatie hier verschijnen."
+      },
       "nav": {
         "storeDescription": "Informatie en configuratie",
         "appearanceDescription": "Logo, kleuren en thema",

@@ -3,7 +3,13 @@ import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { z } from "zod";
 
-import { type BillingAggregateType, type Database, billingSyncState, db } from "@louez/db";
+import {
+  type BillingAggregateType,
+  type Database,
+  billingSyncState,
+  db,
+  newStoresCutoff,
+} from "@louez/db";
 import { env as dbEnv } from "@louez/db/env";
 import * as schema from "@louez/db/schema";
 
@@ -19,7 +25,6 @@ import {
   readSignedJson,
 } from "@/lib/billing-sync/client";
 import { billingSyncConfig } from "@/lib/billing-sync/config";
-import { newStoresCutoff } from "@/lib/billing-sync/policies";
 import {
   type BuiltSnapshot,
   type SnapshotKey,
@@ -622,7 +627,7 @@ export async function runRelay(options: RelayOptions = {}): Promise<RelayRunResu
     return { outcome: "waiting", singleEventMode: state.singleEventMode, counts, detail: null };
   }
 
-  const newStoresFrom = await newStoresCutoff(config.newStoresFrom);
+  const newStoresFrom = await newStoresCutoff(db, config.newStoresFrom);
   const mode: RunMode = {
     persistentSingle: state.singleEventMode,
     forcedSingle: false,

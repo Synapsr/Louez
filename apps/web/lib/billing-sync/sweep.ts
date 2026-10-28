@@ -4,6 +4,7 @@ import {
   type BillingMark,
   db,
   markBillingDirty,
+  newStoresCutoff,
   paymentDisputes,
   payments,
   reservations,
@@ -11,7 +12,6 @@ import {
 } from "@louez/db";
 
 import { billingSyncConfig } from "@/lib/billing-sync/config";
-import { newStoresCutoff } from "@/lib/billing-sync/policies";
 import {
   databaseNow,
   previousPeriod,
@@ -49,7 +49,7 @@ export async function runSweep(now: Date = new Date()): Promise<SweepResult> {
   const state = await readSyncState();
   if (!isSweepDue(now, state.lastSweepAt)) return { due: false };
 
-  const newStoresFrom = await newStoresCutoff(billingSyncConfig().newStoresFrom);
+  const newStoresFrom = await newStoresCutoff(db, billingSyncConfig().newStoresFrom);
   const current = utcPeriod(now);
   const periods = [current, previousPeriod(current)];
   const counts = { stores: 0, reservations: 0, legacy: 0 };

@@ -24,6 +24,7 @@ export type BillingAlertKind =
   | "clock_skew"
   | "policies_invalid"
   | "policies_conflict"
+  | "policies_store_mismatch"
   | "policies_stale"
   | "manifest_rejected"
   | "final_snapshot_skipped"
@@ -36,7 +37,10 @@ export type BillingLog = {
 
 export type BillingAlerts = {
   readonly log: BillingLog;
-  /** Logs the alert and, at most once an hour per kind, posts it to Discord. Never throws. */
+  /**
+   * Logs the alert and, at most once an hour per kind, posts it to Discord. Never
+   * throws. With `schedule`, it returns once the alert is logged.
+   */
   alert(kind: BillingAlertKind, message: string): Promise<void>;
 };
 
@@ -72,21 +76,38 @@ export function createBillingAlerts(
   options: {
     readonly log?: BillingLog;
     readonly notify?: (kind: BillingAlertKind, message: string) => Promise<void>;
+    /**
+     * Runs the Discord part: the hourly slot, a transaction, then the webhook, which
+     * has no timeout. Without it, `alert` waits for that part. A request path passes
+     * `after` from next/server, so its answer never waits on Discord.
+     */
+    readonly schedule?: (task: () => Promise<void>) => void;
   } = {},
 ): BillingAlerts {
   const log = options.log ?? evlog;
   const notify = options.notify ?? notifyDiscord;
+  const { schedule } = options;
+  const postToDiscord = async (kind: BillingAlertKind, message: string) => {
+    try {
+      if (await claimDiscordSlot(kind, new Date())) await notify(kind, message);
+    } catch (error) {
+      log.error(
+        "billing",
+        `billing sync alert ${kind} could not reach Discord: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  };
   return {
     log,
     async alert(kind, message) {
       log.error("billing", `billing sync alert ${kind}: ${message}`);
+      const task = () => postToDiscord(kind, message);
+      if (!schedule) return task();
       try {
-        if (await claimDiscordSlot(kind, new Date())) await notify(kind, message);
-      } catch (error) {
-        log.error(
-          "billing",
-          `billing sync alert ${kind} could not reach Discord: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        schedule(task);
+      } catch {
+        // `after` outside a request: post without waiting. The task never rejects.
+        void task();
       }
     },
   };

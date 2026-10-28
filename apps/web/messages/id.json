@@ -3944,6 +3944,10 @@
       "team": "Tim",
       "saveChanges": "Simpan perubahan",
       "settingsSaved": "Pengaturan disimpan",
+      "billingReturn": {
+        "refreshed": "Penagihan sudah diperbarui.",
+        "pending": "Perubahan penagihan mungkin perlu beberapa menit untuk muncul di sini."
+      },
       "nav": {
         "storeDescription": "Informasi dan konfigurasi",
         "appearanceDescription": "Logo, warna dan tema",

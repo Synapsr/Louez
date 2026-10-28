@@ -25,6 +25,7 @@ export const BILLING_TIMEOUTS_MS = {
   heartbeat: 10_000,
   manifests: 30_000,
   policies: 30_000,
+  storePolicies: 3_000,
   health: 5_000,
 } as const;
 

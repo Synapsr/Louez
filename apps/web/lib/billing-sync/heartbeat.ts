@@ -5,6 +5,7 @@ import {
   BILLABLE_RESERVATION_STATUSES,
   type BillingMark,
   billingSyncHandledRequests,
+  contractTimestamp,
   countBillableReservationsWithoutBillableAt,
   db,
   isPaymentReceiptSql,
@@ -36,7 +37,6 @@ import {
 } from "@/lib/billing-sync/manifests";
 import {
   type PolicyPullResult,
-  contractTimestamp,
   isPolicyCacheEmpty,
   pullPolicies,
 } from "@/lib/billing-sync/policies";

@@ -3945,6 +3945,10 @@
       "team": "Équipe",
       "saveChanges": "Enregistrer les modifications",
       "settingsSaved": "Paramètres enregistrés",
+      "billingReturn": {
+        "refreshed": "La facturation est à jour.",
+        "pending": "Les changements de facturation peuvent mettre quelques minutes à apparaître ici."
+      },
       "nav": {
         "storeDescription": "Informations et configuration",
         "appearanceDescription": "Logo, couleurs et thème",

@@ -3642,6 +3642,10 @@
       "team": "Team",
       "saveChanges": "Salva modifiche",
       "settingsSaved": "Impostazioni salvate",
+      "billingReturn": {
+        "refreshed": "La fatturazione è aggiornata.",
+        "pending": "Le modifiche alla fatturazione possono richiedere qualche minuto prima di comparire qui."
+      },
       "nav": {
         "storeDescription": "Informazioni e configurazione",
         "appearanceDescription": "Logo, colori e tema",

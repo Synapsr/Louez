@@ -13,7 +13,8 @@ import {
 } from "./money";
 
 // The public vectors of the billing contract (fees.md §2-§4, §9), copied from the
-// service's docs. A vector passes when the output equals `expected` exactly.
+// service's docs. A vector passes when the output equals `expected` exactly. The
+// resolvePolicy vectors run in lib/billing/policy.test.ts.
 const vectors: Array<{
   id: string;
   function: string;
@@ -21,7 +22,7 @@ const vectors: Array<{
   expected: unknown;
 }> = JSON.parse(
   readFileSync(new URL("./fee-vectors.public.json", import.meta.url), "utf8"),
-).vectors;
+).vectors.filter((vector: { function: string }) => vector.function !== "resolvePolicy");
 
 describe("fee vectors", () => {
   for (const vector of vectors) {

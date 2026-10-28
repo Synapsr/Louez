@@ -3944,6 +3944,10 @@
       "team": "チーム",
       "saveChanges": "変更を保存する",
       "settingsSaved": "設定が保存されました",
+      "billingReturn": {
+        "refreshed": "請求情報は最新です。",
+        "pending": "請求の変更がここに反映されるまで数分かかる場合があります。"
+      },
       "nav": {
         "storeDescription": "情報と設定",
         "appearanceDescription": "ロゴ、色、テーマ",
