@@ -615,6 +615,29 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal(left?.waiting, 20 - sent.length);
   });
 
+  test("a run whose builds use its whole time still sends what it built", async () => {
+    for (let index = 0; index < 30; index += 1) {
+      snapshots.set(`store:b${index}`, { kind: "snapshot", data: storeData(`b-${index}`) });
+      await louezDb.markStore(louezDb.db, `b${index}`);
+    }
+    const slowBuild: typeof build = async (db, key) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return build(db, key);
+    };
+
+    const { result } = await run(captureAlerts(), { build: slowBuild, timeLimitMs: 1000 });
+
+    const sent = sentEvents(service.requests).flat();
+    assert.equal(result.outcome, "ok");
+    assert.ok(sent.length >= 1, `${sent.length} events sent`);
+    const [rows] = await louezDb.db.execute(
+      sql`SELECT COUNT(*) AS waiting FROM billing_sync_queue
+          WHERE status = 'pending' AND version = 1 AND attempt_count = 0`,
+    );
+    const [left] = z.array(z.object({ waiting: z.coerce.number() })).parse(rows);
+    assert.equal(left?.waiting, 30 - sent.length);
+  });
+
   test("one event per request, the run keeps to its share of the request budget", async () => {
     await singleEventMode();
     for (const id of ["p1", "p2", "p3"]) {

@@ -190,8 +190,11 @@ export function classifyEventsResponse(call: BillingCallResult, eventCount: numb
 
 /** The time limit and the request pace of one run (README §6 and §4.4). */
 export type RunClock = {
-  /** False once the limit has passed, or once a request no longer fit before it. */
-  timeLeft(): boolean;
+  /**
+   * Whether the run may build more events. False a reserve before the limit, so
+   * what was built still gets a request slot, and once a request no longer fit.
+   */
+  canPrepare(): boolean;
   /**
    * Waits for the next request slot, so the run never sends more than its share of
    * the budget in a minute. False, without waiting, when the slot falls after the
@@ -210,11 +213,12 @@ export function createRunClock(input: {
   const sleep =
     input.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const deadline = now() + input.limitMs;
+  const reserveMs = Math.min(10_000, input.limitMs / 5);
   const spacingMs = 60_000 / input.requestsPerMinute;
   let nextSlot = Number.NEGATIVE_INFINITY;
   let stopped = false;
   return {
-    timeLeft: () => !stopped && now() < deadline,
+    canPrepare: () => !stopped && now() < deadline - reserveMs,
     async nextRequest() {
       // A slow request leaves no credit behind: the next slot counts from now.
       const at = Math.max(now(), nextSlot);
@@ -638,14 +642,14 @@ export async function runRelay(options: RelayOptions = {}): Promise<RelayRunResu
 
   try {
     let cursor: DueRow | null = null;
-    while (failure === null && clock.timeLeft()) {
+    while (failure === null && clock.canPrepare()) {
       const due = await selectDueRows(cursor, DUE_PAGE);
       if (due.length === 0) break;
       cursor = due[due.length - 1] ?? null;
 
       const events: PreparedEvent[] = [];
       for (const row of due) {
-        if (!clock.timeLeft()) break;
+        if (!clock.canPrepare()) break;
         let prepared: Prepared;
         try {
           prepared = await prepareRow(snapshots.db, row, newStoresFrom, build);

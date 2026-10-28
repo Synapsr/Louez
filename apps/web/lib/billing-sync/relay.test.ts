@@ -236,7 +236,7 @@ describe("createRunClock", () => {
       requestMs: 10,
     });
     assert.deepEqual(starts, [0, 100, 200, 300, 400, 500, 600, 700, 800, 900]);
-    assert.equal(clock.timeLeft(), false);
+    assert.equal(clock.canPrepare(), false);
   });
 
   test("a slow request leaves no credit for a burst", async () => {
@@ -260,13 +260,13 @@ describe("createRunClock", () => {
     });
     assert.equal(await clock.nextRequest(), true);
     time = 20;
-    assert.equal(clock.timeLeft(), true);
+    assert.equal(clock.canPrepare(), true);
     // The second slot is at 100. The third, at 200, falls after the limit.
     assert.equal(await clock.nextRequest(), true);
     assert.equal(time, 100);
     assert.equal(await clock.nextRequest(), false);
     assert.equal(time, 100, "no wait for a slot the run cannot use");
-    assert.equal(clock.timeLeft(), false, "the run stops with its last request");
+    assert.equal(clock.canPrepare(), false, "the run stops with its last request");
   });
 
   test("one run, even one event per request, stays inside the shared budget", async () => {
@@ -283,5 +283,32 @@ describe("createRunClock", () => {
     );
     const spacing = starts.slice(1).map((start, index) => start - (starts[index] ?? 0));
     assert.ok(spacing.every((gap) => gap >= 60_000 / RELAY_REQUESTS_PER_MINUTE - 1e-6));
+  });
+
+  test("preparing stops a fifth of the limit early, so what was built still gets a slot", async () => {
+    let time = 0;
+    const clock = createRunClock({
+      limitMs: 1000,
+      requestsPerMinute: 600,
+      now: () => time,
+      sleep: async (ms) => {
+        time += ms;
+      },
+    });
+    time = 799;
+    assert.equal(clock.canPrepare(), true);
+    time = 800;
+    assert.equal(clock.canPrepare(), false);
+    time = 999;
+    assert.equal(await clock.nextRequest(), true, "the reserve is for sending");
+  });
+
+  test("the send reserve is at most 10 seconds", () => {
+    let time = 0;
+    const clock = createRunClock({ limitMs: 50_000, requestsPerMinute: 600, now: () => time });
+    time = 39_999;
+    assert.equal(clock.canPrepare(), true);
+    time = 40_000;
+    assert.equal(clock.canPrepare(), false);
   });
 });
