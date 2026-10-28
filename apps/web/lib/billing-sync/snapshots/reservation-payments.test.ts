@@ -214,6 +214,52 @@ describe("kinds and shares", () => {
     );
   });
 
+  test("a manual payment's stored minor units are dropped once the store's currency changed exponent", () => {
+    const usd = row({
+      id: "m1",
+      method: "cash",
+      currency: "USD",
+      amount: "100.00",
+      grossMinor: 10000,
+      insuranceShareMinor: 500,
+    });
+    const jpy = { reservationCurrency: "JPY", totalInclTaxMinor: 200, insuranceMinor: 20 };
+    // insuranceShare(20, 100, 200) = 10.
+    assert.deepEqual(
+      build([usd], jpy).map(({ currency, grossMinor, insuranceShareMinor }) => ({
+        currency,
+        grossMinor,
+        insuranceShareMinor,
+      })),
+      [{ currency: "JPY", grossMinor: 100, insuranceShareMinor: 10 }],
+    );
+    const yen = row({ ...usd, currency: "JPY", grossMinor: 100, insuranceShareMinor: 10 });
+    // insuranceShare(2000, 10000, 20000) = 1000.
+    assert.deepEqual(
+      build([yen]).map(({ grossMinor, insuranceShareMinor }) => [grossMinor, insuranceShareMinor]),
+      [[10000, 1000]],
+    );
+    // Same exponent: the stored facts stand.
+    for (const reservationCurrency of ["USD", "EUR"]) {
+      assert.deepEqual(
+        build([usd], { reservationCurrency }).map(({ grossMinor, insuranceShareMinor }) => [
+          grossMinor,
+          insuranceShareMinor,
+        ]),
+        [[10000, 500]],
+      );
+    }
+    // An older row keeps the column's EUR default; the gross backfill froze its facts in yen.
+    const backfilled = row({ ...yen, currency: "EUR", insuranceShareMinor: 7 });
+    assert.deepEqual(
+      build([backfilled], jpy).map(({ grossMinor, insuranceShareMinor }) => [
+        grossMinor,
+        insuranceShareMinor,
+      ]),
+      [[100, 7]],
+    );
+  });
+
   test("a pending payment of 0 is sent as stored", () => {
     const [payment] = build([
       row({

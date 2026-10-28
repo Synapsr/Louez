@@ -262,9 +262,13 @@ export function buildPaymentSnapshots(input: PaymentsInput): PaymentSnapshot[] {
     const stripeRefundedMinor = stripeRows.reduce((sum, refund) => sum + minor(refund), 0);
 
     const netMinor = checks.decimal(`${field} amount`, row.amount, currency);
+    // A payment outside Stripe is never netted: its stored gross is its amount in the
+    // minor units of the day it was recorded. When the two differ, the store has since
+    // moved to a currency of another exponent, and the stored insurance share is stale.
+    const stored = isStripe || row.grossMinor === null || row.grossMinor === netMinor;
     const grossMinor = checks.signedAmount(
       `${field} grossMinor`,
-      row.grossMinor ?? (isStripe ? netMinor + stripeRefundedMinor : netMinor),
+      (stored ? row.grossMinor : null) ?? (isStripe ? netMinor + stripeRefundedMinor : netMinor),
     );
 
     const refunds = new Map<string, RefundSnapshot>();
@@ -336,7 +340,7 @@ export function buildPaymentSnapshots(input: PaymentsInput): PaymentSnapshot[] {
       kind === "rental" || kind === "extension"
         ? checks.amount(
             `${field} insuranceShareMinor`,
-            row.insuranceShareMinor ??
+            (stored ? row.insuranceShareMinor : null) ??
               insuranceShare({
                 insuranceMinor: input.insuranceMinor,
                 grossMinor,
