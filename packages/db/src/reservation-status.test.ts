@@ -123,7 +123,7 @@ function expectedPlan(
     stock: expected.stock,
     update: {
       status: to,
-      updatedAt: NOW_SECONDS,
+      updatedAt: NOW,
       ...(expected.billable === "enters" ? { billableAt: NOW_SECONDS } : {}),
       ...(expected.billable === "leaves" ? { withdrawnAt: NOW_SECONDS } : {}),
       ...(expected.date ? { [expected.date]: NOW_SECONDS } : {}),
@@ -267,7 +267,7 @@ describe("planReservationStatusChange", () => {
     assert.equal(plan.effects[0]?.type, "legacy_fee.record");
   });
 
-  test("now is cut to whole seconds, so the fee and the dates stay in January", () => {
+  test("now is cut to whole seconds, so the fee and the dates stay in January; updated_at is not", () => {
     const plan = planReservationStatusChange(locked("pending"), input("confirmed", "mcp"));
     assert.ok(plan.changed);
     const january = "2026-01-31T23:59:59.000Z";
@@ -276,7 +276,7 @@ describe("planReservationStatusChange", () => {
       [january],
     );
     assert.equal(plan.update.billableAt?.toISOString(), january);
-    assert.equal(plan.update.updatedAt.toISOString(), january);
+    assert.equal(plan.update.updatedAt.toISOString(), NOW.toISOString());
     assert.equal(plan.activity.createdAt.toISOString(), january);
   });
 

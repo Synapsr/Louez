@@ -1,12 +1,6 @@
 import { and, eq, gt } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import {
-  payments,
-  reservationActivity,
-  reservations,
-  toWholeSeconds,
-  type Transaction,
-} from "@louez/db";
+import { payments, reservationActivity, reservations, type Transaction } from "@louez/db";
 
 /** Called inside the transaction that confirms a reservation or records its payment. */
 export const validateReservationContract = async (
@@ -42,9 +36,7 @@ export const validateReservationContract = async (
       .limit(1);
     if (!payment) return null;
   }
-  // Whole seconds: on a paid checkout, the status change comes next and must not
-  // store an earlier updated_at.
-  const validatedAt = toWholeSeconds(new Date());
+  const validatedAt = new Date();
   await tx
     .update(reservations)
     .set({ signedAt: validatedAt, signatureIp: null, updatedAt: validatedAt })

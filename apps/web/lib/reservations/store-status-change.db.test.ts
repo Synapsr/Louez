@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import * as nodeModule from "node:module";
-import { after, before, describe, test } from "node:test";
+import { after, before, describe, mock, test } from "node:test";
 
 import { eq } from "drizzle-orm";
 
@@ -213,6 +213,24 @@ describe("store status change (database)", { skip: skipWithoutTestDatabase() }, 
     });
     const validation = activity.find(({ type }) => type === "modified");
     assert.equal(validation?.metadata?.kind, "automatic_contract_validation");
+  });
+
+  test("the contract validation after a confirmation never moves updated_at back", async () => {
+    const id = await createReservation("pending");
+    // MySQL rounds 10:00:00.600 up to 10:00:01; the feed cursor must not fall behind it.
+    mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-01-15T10:00:00.600Z") });
+    try {
+      const result = await change({ reservationId: id, to: "confirmed", expectedFrom: "pending" });
+      assert.ok(result.changed);
+    } finally {
+      mock.timers.reset();
+    }
+
+    const [row] = await louezDb.db
+      .select({ updatedAt: louezDb.reservations.updatedAt })
+      .from(louezDb.reservations)
+      .where(eq(louezDb.reservations.id, id));
+    assert.equal(row?.updatedAt.toISOString(), "2026-01-15T10:00:01.000Z");
   });
 
   test("a confirmation refuses items another booking holds, and writes nothing", async () => {

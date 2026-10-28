@@ -151,8 +151,7 @@ export const confirmPaidReservationOrThrow = async (params: {
       stripeCustomerId: params.stripeCustomerId,
       stripePaymentMethodId: params.stripePaymentMethodId,
       depositStatus: params.depositStatus,
-      // Whole seconds, so the confirmation below never moves updated_at back.
-      updatedAt: toWholeSeconds(new Date()),
+      updatedAt: new Date(),
     })
     .where(
       and(

@@ -15,10 +15,13 @@ import {
 
 const STORE = "store_status";
 const BEFORE = new Date("2026-01-10T08:00:00Z");
-/** A January instant with milliseconds, `minutes` after 10:00, and the same instant cut to seconds. */
+/**
+ * A January instant with milliseconds, `minutes` after 10:00, the same instant
+ * cut to seconds, and updated_at as MySQL rounds it.
+ */
 const moment = (minutes: number) => {
   const time = Date.parse("2026-01-15T10:00:00Z") + minutes * 60_000;
-  return { now: new Date(time + 750), stored: new Date(time) };
+  return { now: new Date(time + 750), stored: new Date(time), updated: new Date(time + 1000) };
 };
 
 describe(
@@ -171,7 +174,7 @@ describe(
       });
       assert.deepEqual(await readReservation(id), {
         status: "confirmed",
-        updatedAt: confirm.stored,
+        updatedAt: confirm.updated,
         billableAt: confirm.stored,
         withdrawnAt: null,
         pickedUpAt: null,
@@ -185,7 +188,7 @@ describe(
 
       assert.deepEqual(await readReservation(id), {
         status: "completed",
-        updatedAt: giveBack.stored,
+        updatedAt: giveBack.updated,
         billableAt: confirm.stored,
         withdrawnAt: null,
         pickedUpAt: pickup.stored,
@@ -262,9 +265,32 @@ describe(
         );
         const row = await readReservation(id);
         assert.equal(row?.status, to, `${from} → ${to}`);
-        assert.deepEqual(row?.updatedAt, cancel.stored, `${from} → ${to}`);
+        assert.deepEqual(row?.updatedAt, cancel.updated, `${from} → ${to}`);
         assert.deepEqual(row?.billableAt, initial ?? null, `${from} → ${to}`);
         assert.deepEqual(row?.withdrawnAt, withdrawn ? cancel.stored : null, `${from} → ${to}`);
+      }
+    });
+
+    test("a status change never stores updated_at at or before a rounded write just before it", async () => {
+      // updated_at is the marketplace feed's cursor. Other writers send
+      // milliseconds and MySQL rounds them: 10:00:00.600 is stored as 10:00:01.
+      const cases = [
+        { now: "2026-01-15T10:00:01.600Z", stored: "2026-01-15T10:00:02.000Z" },
+        { now: "2026-01-15T10:00:00.700Z", stored: "2026-01-15T10:00:01.000Z" },
+      ];
+      for (const { now, stored } of cases) {
+        const id = await createReservation("confirmed", { billableAt: BEFORE });
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ updatedAt: new Date("2026-01-15T10:00:00.600Z") })
+          .where(eq(louezDb.reservations.id, id));
+
+        await change({ reservationId: id, to: "cancelled", now: new Date(now) });
+
+        const row = await readReservation(id);
+        assert.equal(row?.updatedAt.toISOString(), stored, now);
+        // The billing dates stay cut to the second.
+        assert.equal(row?.withdrawnAt?.toISOString(), `${now.slice(0, 19)}.000Z`, now);
       }
     });
 
