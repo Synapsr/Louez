@@ -96,11 +96,63 @@ export const MAX_PAYMENTS = 200;
 export const MAX_REFUNDS = 100;
 export const MAX_DISPUTES = 20;
 
-const isRefundRow = (row: PaymentRow): boolean =>
+/** What links a refund row to the payment it refunds. */
+export type RefundLinkRow = Pick<
+  PaymentRow,
+  | "id"
+  | "status"
+  | "stripePaymentIntentId"
+  | "stripeChargeId"
+  | "stripeCheckoutSessionId"
+  | "stripeRefundId"
+  | "refundOfPaymentId"
+>;
+
+const isRefundRow = (row: RefundLinkRow): boolean =>
   row.refundOfPaymentId !== null || isStripeRefundRow(row);
 
-/** Plan decision 8 (README Q36): extensions and custom requests are stored as `rental`. */
-function paymentKind(row: PaymentRow, input: PaymentsInput): PaymentKind {
+/**
+ * A reservation's payments, and the refund rows folded onto each (README Q7): a row
+ * linked by `refund_of_payment_id`, else a Stripe refund row by the charge id of the
+ * only payment that carries it. A refund row that did not complete moved no money.
+ * The gross backfill folds them too, to compare them with Stripe's charge.
+ */
+export function foldRefundRows<Row extends RefundLinkRow>(
+  rows: readonly Row[],
+): { readonly originals: Row[]; readonly refundsOf: (original: Row) => Row[] } {
+  const originals = rows.filter((row) => !isRefundRow(row));
+  const refundRows = rows.filter((row) => isRefundRow(row) && row.status === "completed");
+  const originalsByCharge = new Map<string, number>();
+  for (const row of originals) {
+    if (row.stripeChargeId !== null)
+      originalsByCharge.set(
+        row.stripeChargeId,
+        (originalsByCharge.get(row.stripeChargeId) ?? 0) + 1,
+      );
+  }
+  const refundsOriginal = (refund: Row, original: Row): boolean => {
+    if (refund.refundOfPaymentId !== null) return refund.refundOfPaymentId === original.id;
+    return (
+      isStripeRefundRow(refund) &&
+      original.stripeChargeId !== null &&
+      refund.stripeChargeId === original.stripeChargeId &&
+      originalsByCharge.get(original.stripeChargeId) === 1
+    );
+  };
+  return {
+    originals,
+    refundsOf: (original) => refundRows.filter((refund) => refundsOriginal(refund, original)),
+  };
+}
+
+/**
+ * Plan decision 8 (README Q36): extensions and custom requests are stored as `rental`.
+ * The gross backfill reads it too, to freeze the insurance share this builder computes.
+ */
+export function paymentKind(
+  row: Pick<PaymentRow, "id" | "type" | "origin" | "paymentRequestId">,
+  input: Pick<PaymentsInput, "customRequestIds" | "extensionPaymentIds">,
+): PaymentKind {
   if (row.type !== "rental") return row.type;
   if (row.origin === "extension") return "extension";
   if (row.origin === null && input.extensionPaymentIds.has(row.id)) return "extension";
@@ -178,39 +230,21 @@ function appFee(
  * - a Stripe refund row (refund id, no PaymentIntent, no session) linked to its
  *   charge by `refund_of_payment_id`, or, when unlinked, by the charge id of the
  *   only original that carries it;
- * - before 2026-08-20, the original itself stamped with the refund id and netted.
- *   Its refund is `gross − net − linked rows`, so only when `gross_minor` is known;
+ * - before 2026-08-20, the original itself stamped with the refund id and, from
+ *   2026-06-18, netted. Its refund is `gross − net − linked rows`, so only when
+ *   `gross_minor` is known. Before 2026-06-18 the stamp netted nothing, so that refund
+ *   is lost here: `pnpm billing:gross-backfill` lists those against Stripe's charge;
  * - a manual refund row linked by `refund_of_payment_id`, sent with its own id.
  *
  * A Stripe original is netted in place by refunds, so without `gross_minor` its gross
  * is approximated as `amount + linked Stripe refund rows` (plan decision 6) until
- * the backfill from Stripe. Refund money Louez cannot attach to a refund id is not
- * sent: there is no id the service could keep stable.
+ * `pnpm billing:gross-backfill` reads it from Stripe. Refund money Louez cannot attach
+ * to a refund id is not sent: there is no id the service could keep stable.
  */
 export function buildPaymentSnapshots(input: PaymentsInput): PaymentSnapshot[] {
   const { checks } = input;
-  const originals = input.rows.filter((row) => !isRefundRow(row));
+  const { originals, refundsOf } = foldRefundRows(input.rows);
   checks.limit("payments", originals.length, MAX_PAYMENTS);
-  // A refund row that did not complete moved no money.
-  const refundRows = input.rows.filter((row) => isRefundRow(row) && row.status === "completed");
-
-  const originalsByCharge = new Map<string, number>();
-  for (const row of originals) {
-    if (row.stripeChargeId !== null)
-      originalsByCharge.set(
-        row.stripeChargeId,
-        (originalsByCharge.get(row.stripeChargeId) ?? 0) + 1,
-      );
-  }
-  const refundsOriginal = (refund: PaymentRow, original: PaymentRow): boolean => {
-    if (refund.refundOfPaymentId !== null) return refund.refundOfPaymentId === original.id;
-    return (
-      isStripeRefundRow(refund) &&
-      original.stripeChargeId !== null &&
-      refund.stripeChargeId === original.stripeChargeId &&
-      originalsByCharge.get(original.stripeChargeId) === 1
-    );
-  };
 
   return originals.map((row) => {
     const field = `payment ${row.id}`;
@@ -222,7 +256,7 @@ export function buildPaymentSnapshots(input: PaymentsInput): PaymentSnapshot[] {
     const minor = (refund: PaymentRow) =>
       checks.decimal(`refund row ${refund.id} amount`, refund.amount, currency);
 
-    const linked = refundRows.filter((refund) => refundsOriginal(refund, row));
+    const linked = refundsOf(row);
     const stripeRows = linked.filter((refund) => isStripeRefundRow(refund));
     const manualRows = linked.filter((refund) => !isStripeRefundRow(refund));
     const stripeRefundedMinor = stripeRows.reduce((sum, refund) => sum + minor(refund), 0);

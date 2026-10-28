@@ -7,18 +7,18 @@ import { type Database, type Transaction, billingSyncState, db } from "@louez/db
 // The single billing_sync_state row (id 1), shared by the relay, the heartbeat,
 // the policy pull, the manifests and the sweep. Created on demand.
 
-const STATE_ID = 1;
+export const SYNC_STATE_ID = 1;
 
 export type SyncExecutor = Database | Transaction;
 export type SyncState = typeof billingSyncState.$inferSelect;
 export type SyncStateUpdate = MySqlUpdateSetSource<typeof billingSyncState>;
 
 export async function readSyncState(executor: SyncExecutor = db): Promise<SyncState> {
-  await executor.insert(billingSyncState).ignore().values({ id: STATE_ID });
+  await executor.insert(billingSyncState).ignore().values({ id: SYNC_STATE_ID });
   const [row] = await executor
     .select()
     .from(billingSyncState)
-    .where(eq(billingSyncState.id, STATE_ID));
+    .where(eq(billingSyncState.id, SYNC_STATE_ID));
   if (!row) throw new Error("billing_sync_state row 1 is missing after its insert");
   return row;
 }
@@ -27,11 +27,11 @@ export async function updateSyncState(
   values: SyncStateUpdate,
   executor: SyncExecutor = db,
 ): Promise<void> {
-  await executor.insert(billingSyncState).ignore().values({ id: STATE_ID });
+  await executor.insert(billingSyncState).ignore().values({ id: SYNC_STATE_ID });
   await executor
     .update(billingSyncState)
     .set({ ...values, updatedAt: new Date() })
-    .where(eq(billingSyncState.id, STATE_ID));
+    .where(eq(billingSyncState.id, SYNC_STATE_ID));
 }
 
 /** True while a `Retry-After` from the service has not passed (README §6). */

@@ -10,6 +10,13 @@ export const isConnectConfigured = (
   config: Pick<typeof env, 'STRIPE_SECRET_KEY' | 'STRIPE_CONNECT_WEBHOOK_SECRET'> = env,
 ): boolean => Boolean(config.STRIPE_SECRET_KEY && config.STRIPE_CONNECT_WEBHOOK_SECRET)
 
+/**
+ * The mode of a Stripe secret or restricted key, read from its prefix. Any other prefix
+ * counts as live, so a guard on live data fails closed.
+ */
+export const stripeKeyMode = (key: string): 'live' | 'test' =>
+  /^(?:sk|rk)_test_/.test(key) ? 'test' : 'live'
+
 // Lazy-loaded Stripe client to avoid build-time errors
 // Environment variables are only required at runtime
 let stripeInstance: Stripe | null = null

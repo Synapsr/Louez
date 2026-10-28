@@ -159,8 +159,8 @@ async function invariantsReport(state: SyncState): Promise<{
     )
     .groupBy(reservations.storeId);
   // Completed payments that are not refunds and have no stored gross amount. Payments
-  // from before gross_minor have none until the gross backfill has run, so until then
-  // the count is null, in total and per store (README Q7).
+  // from before gross_minor have none until `pnpm billing:gross-backfill --apply` has
+  // run, so until then the count is null, in total and per store (README Q7).
   const countsGross = state.grossBackfilledAt !== null;
   const grossByStore = countsGross
     ? await db

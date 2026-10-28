@@ -19,7 +19,7 @@ import {
 } from "@/lib/integrations/providers/superpdp/superpdp-client";
 import { tulipDeleteProduct } from "@/lib/integrations/tulip/client";
 import { getStorageClient } from "@/lib/storage/files";
-import { getStripe } from "@/lib/stripe/client";
+import { getStripe, stripeKeyMode } from "@/lib/stripe/client";
 
 import { deleteGleapUser, deleteOpenReplayUser, deletePostHogPerson } from "./analytics-erasure";
 import type {
@@ -101,7 +101,7 @@ const createStripeConnectCleanupAdapter = (stripe = getStripe()): StripeConnectC
   deleteAccount: (accountId) => stripe.accounts.del(accountId),
   // Stripe's Account object does not expose the request mode. Unknown or
   // restricted-key prefixes are treated as live so Standard accounts fail closed.
-  isLiveMode: !/^(?:sk|rk)_test_/.test(env.STRIPE_SECRET_KEY ?? ""),
+  isLiveMode: stripeKeyMode(env.STRIPE_SECRET_KEY ?? "") === "live",
   retrieveAccount: async (accountId) => {
     const account = await stripe.accounts.retrieve(accountId);
     return {
