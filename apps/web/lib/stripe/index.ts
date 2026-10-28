@@ -6,7 +6,6 @@ export {
   cancelSubscription,
   reactivateSubscription,
   getSubscriptionWithPlan,
-  syncSubscriptionFromStripe,
   getPlans,
   getPlan,
 } from './subscriptions'

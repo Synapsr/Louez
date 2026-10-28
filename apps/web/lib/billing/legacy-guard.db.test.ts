@@ -380,6 +380,7 @@ const STORES: ReadonlyArray<readonly [string, string]> = [
   ["lg_plan_old", OLD],
   ["lg_plan_new", NEW],
   ["lg_plan_buy", NEW],
+  ["lg_plan_redo", NEW],
 ];
 
 describe("legacy guard and platform customer (database)", { skip: skipWithoutTestDatabase() }, () => {
@@ -559,7 +560,10 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     return rows.map((mark) => mark.type).sort();
   }
 
-  /** A Stripe subscription, as the platform webhook receives it. */
+  /**
+   * A Stripe subscription, as the platform webhook receives it. The handlers read the
+   * subscription from Stripe instead, so a test puts Stripe's state in `fakeStripe`.
+   */
   const subscriptionEvent = (
     id: string,
     status: Stripe.Subscription.Status,
@@ -1310,6 +1314,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
 
   test("a subscription Stripe no longer collects ends a new store's plan, not an old store's", async () => {
     const statusAfter = async (storeId: string, status: Stripe.Subscription.Status) => {
+      fakeStripe.addSubscription(`sub_${storeId}`, PRICE.proMonthly, { status });
       await webhooks.handleSubscriptionUpdated(subscriptionEvent(`sub_${storeId}`, status));
       return (await planColumns(storeId))?.status;
     };
@@ -1417,6 +1422,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
   test("an update writes the plan its price bills, for an old and a new store", async () => {
     for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
       const updated = async (priceId: string) => {
+        fakeStripe.addSubscription(`sub_${storeId}`, priceId);
         await webhooks.handleSubscriptionUpdated(
           subscriptionEvent(`sub_${storeId}`, "active", priceId),
         );
@@ -1430,5 +1436,82 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
       // A price no plan has leaves the plan as it is.
       assert.equal(await updated("price_test_unknown"), "pro", storeId);
     }
+  });
+
+  test("a late or redelivered update writes what Stripe bills now, not what the event carried", async () => {
+    const rowOf = (storeId: string) =>
+      louezDb.db.query.subscriptions.findFirst({
+        where: eq(louezDb.subscriptions.storeId, storeId),
+        columns: { planSlug: true, status: true, cancelAtPeriodEnd: true, currentPeriodEnd: true },
+      });
+    const NEXT_PERIOD_END = PERIOD_END + 30 * 24 * 3600;
+    for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
+      fakeStripe.reset();
+      await setPlanRow(storeId, { planSlug: "ultra", status: "active", cancelAtPeriodEnd: false });
+      // Stripe bills Ultra now, in a later period, with the end the owner scheduled. The
+      // event comes from the Pro days, when a payment had failed.
+      fakeStripe.addSubscription(`sub_${storeId}`, PRICE.ultraMonthly, {
+        cancel_at_period_end: true,
+        items: {
+          data: [
+            {
+              id: `si_sub_${storeId}`,
+              current_period_end: NEXT_PERIOD_END,
+              price: { id: PRICE.ultraMonthly, currency: "eur" },
+            },
+          ],
+        },
+      });
+      await webhooks.handleSubscriptionUpdated(
+        subscriptionEvent(`sub_${storeId}`, "unpaid", PRICE.proMonthly),
+      );
+      assert.deepEqual(
+        await rowOf(storeId),
+        {
+          planSlug: "ultra",
+          status: "active",
+          cancelAtPeriodEnd: true,
+          currentPeriodEnd: new Date(NEXT_PERIOD_END * 1000),
+        },
+        storeId,
+      );
+      assert.deepEqual(fakeStripe.calls, [`subscriptions.retrieve sub_${storeId}`]);
+      await setPlanRow(storeId, { planSlug: "pro", status: "active", cancelAtPeriodEnd: false });
+    }
+  });
+
+  test("a redelivered plan checkout writes the plan Stripe bills, and nothing once its subscription ended", async () => {
+    const checkout = (subscription: string) =>
+      webhooks.handleSubscriptionCheckoutCompleted({
+        metadata: { storeId: "lg_plan_redo", planSlug: "pro" },
+        subscription,
+        customer: "cus_lg_plan_redo",
+      });
+    const planOf = async () => {
+      const row = await planColumns("lg_plan_redo");
+      return [row?.billingMode, row?.planSlug, row?.status, row?.stripeSubscriptionId];
+    };
+
+    // A price no plan has: the plan the session sold.
+    fakeStripe.addSubscription("sub_lg_plan_redo", "price_test_unknown");
+    await checkout("sub_lg_plan_redo");
+    assert.deepEqual(await planOf(), ["subscription", "pro", "active", "sub_lg_plan_redo"]);
+
+    // Moved to Ultra in place, then the session that sold Pro comes again.
+    fakeStripe.addSubscription("sub_lg_plan_redo", PRICE.ultraMonthly);
+    await checkout("sub_lg_plan_redo");
+    assert.deepEqual(await planOf(), ["subscription", "ultra", "active", "sub_lg_plan_redo"]);
+
+    // The subscription ends and the store buys Pro again. The first session, delivered
+    // once more, leaves the new subscription on the row.
+    await webhooks.handleSubscriptionDeleted({ id: "sub_lg_plan_redo", metadata: {} });
+    fakeStripe.addSubscription("sub_lg_plan_redo", PRICE.ultraMonthly, { status: "canceled" });
+    fakeStripe.addSubscription("sub_lg_plan_redo_next", PRICE.proMonthly);
+    await checkout("sub_lg_plan_redo_next");
+    assert.deepEqual(await planOf(), ["subscription", "pro", "active", "sub_lg_plan_redo_next"]);
+    await clearMarks("lg_plan_redo");
+    await checkout("sub_lg_plan_redo");
+    assert.deepEqual(await planOf(), ["subscription", "pro", "active", "sub_lg_plan_redo_next"]);
+    assert.deepEqual(await marksOf("lg_plan_redo"), []);
   });
 });

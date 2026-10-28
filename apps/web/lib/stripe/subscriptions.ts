@@ -1,6 +1,6 @@
 import { after } from 'next/server'
 import { stripe } from './client'
-import { db, legacyBillingAppliesAt, markSubscriptionRow } from '@louez/db'
+import { db, markSubscriptionRow } from '@louez/db'
 import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/lib/plans'
@@ -9,11 +9,7 @@ import { getEffectivePolicy } from '@/lib/billing/policy'
 import { type BillingAlerts, createBillingAlerts } from '@/lib/billing-sync/alerts'
 import { log } from '@/lib/evlog'
 import { ensurePlanRow } from '@/lib/pay-as-you-go/pricing-lock'
-import {
-  hasLiveSubscription,
-  rowStatus,
-  type SubscriptionRowStatus,
-} from '@/lib/stripe/subscription-status'
+import { hasLiveSubscription, type SubscriptionRowStatus } from '@/lib/stripe/subscription-status'
 import { env } from '@/env'
 
 // Every write to a subscription row marks the store's store and legacy_store snapshots
@@ -682,36 +678,6 @@ export async function getSubscriptionWithPlan(storeId: string) {
     billingCurrency,
     pendingBillingMode,
   }
-}
-
-export async function syncSubscriptionFromStripe(stripeSubscriptionId: string) {
-  const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
-    expand: ['items.data'],
-  })
-
-  const subscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId),
-  })
-
-  if (!subscription) {
-    console.error(`Subscription not found: ${stripeSubscriptionId}`)
-    return null
-  }
-
-  const serviceBills = !(await legacyBillingAppliesAt(db, subscription.storeId, new Date()))
-  const status = rowStatus(stripeSubscription.status, serviceBills)
-
-  // In new Stripe API versions, period dates are on subscription items
-  const firstItem = stripeSubscription.items.data[0]
-  const currentPeriodEnd = new Date(firstItem.current_period_end * 1000)
-
-  await updateSubscriptionRow(subscription, {
-    status,
-    currentPeriodEnd,
-    cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-  })
-
-  return subscription
 }
 
 /**
