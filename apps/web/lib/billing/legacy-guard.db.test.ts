@@ -594,6 +594,73 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     assert.deepEqual(reversed, [50, 0, 50]);
   });
 
+  test("a fee collected after the switch settles a pending row of a month the run still bills", async () => {
+    // Confirmed by hand in August, paid online in September, once the service bills lg_switch.
+    const august = await addFee("lg_switch", { status: "pending", source: "manual" });
+    const collect = (reservationId: string) =>
+      metering.recordReservationFee({
+        storeId: "lg_switch",
+        reservationId,
+        source: "online",
+        collectedAmountCents: 150,
+        stripePaymentIntentId: `pi_${reservationId}`,
+        at: SEPTEMBER,
+      });
+    assert.deepEqual(await collect(august.reservationId), {
+      recorded: true,
+      reason: "upgraded_to_collected",
+    });
+    assert.equal((await feeRow(august.id))?.status, "collected");
+
+    const addMarketplaceFee = async (fee: { id: string; reservationId: string }, month: string) => {
+      await louezDb.db.insert(louezDb.platformFees).values({
+        id: `${fee.id}_mkt`,
+        storeId: "lg_switch",
+        reservationId: fee.reservationId,
+        dedupKey: `mkt:${fee.reservationId}`,
+        amountCents: marketplace.MARKETPLACE_FEE_CENTS,
+        currency: "eur",
+        source: "marketplace_manual",
+        status: "pending",
+        billingMonth: month,
+        monthlyIndex: null,
+      });
+      return `${fee.id}_mkt`;
+    };
+    const collectMarketplace = (reservationId: string) =>
+      metering.recordMarketplaceFee({
+        storeId: "lg_switch",
+        reservationId,
+        source: "online",
+        collectedAmountCents: marketplace.MARKETPLACE_FEE_CENTS,
+        at: SEPTEMBER,
+      });
+    const augustMarketplace = await addMarketplaceFee(august, "2026-08");
+    assert.deepEqual(await collectMarketplace(august.reservationId), {
+      recorded: true,
+      reason: "upgraded_to_collected",
+    });
+    assert.equal((await feeRow(augustMarketplace))?.status, "collected");
+
+    // A September row is the service's: the run never bills it, so it stays as it is.
+    const september = await addFee("lg_switch", {
+      status: "pending",
+      source: "manual",
+      billingMonth: "2026-09",
+    });
+    assert.deepEqual(await collect(september.reservationId), {
+      recorded: false,
+      reason: "not_legacy_billed",
+    });
+    assert.equal((await feeRow(september.id))?.status, "pending");
+    const septemberMarketplace = await addMarketplaceFee(september, "2026-09");
+    assert.deepEqual(await collectMarketplace(september.reservationId), {
+      recorded: false,
+      reason: "not_legacy_billed",
+    });
+    assert.equal((await feeRow(septemberMarketplace))?.status, "pending");
+  });
+
   test("the monthly run leaves out a store the service bills at the end of the month", async () => {
     const august = await billing.monthlyBillingStoreIds("2026-08");
     const september = await billing.monthlyBillingStoreIds("2026-09");

@@ -255,9 +255,9 @@ interface RecordReservationFeeInput {
  * - While the store has free-reservation credits, the rental is WAIVED: recorded with
  *   `source='free'`, amount 0, outside the graduated ladder.
  * - A manual `pending` row is upgraded to `collected` if the fee is later collected at
- *   source (prevents double billing).
+ *   source (prevents double billing), while the monthly run bills the row's month.
  * - No-op, without touching the database, when platform billing is off.
- * - No-op for a store the billing service bills at `at`, the time of the fact
+ * - No new row for a store the billing service bills at `at`, the time of the fact
  *   (louez-billing docs/api, README §8.3).
  */
 export async function recordReservationFee(
@@ -265,14 +265,6 @@ export async function recordReservationFee(
 ): Promise<{ recorded: boolean; reason?: string }> {
   if (!isBillingEnabled()) return { recorded: false, reason: "billing_off" };
   const at = input.at ?? new Date();
-  if (!(await legacyBillingAppliesAt(db, input.storeId, at))) {
-    return { recorded: false, reason: "not_legacy_billed" };
-  }
-  const billing = input.billing ?? (await getStoreBilling(input.storeId));
-  if (billing.billingMode !== "pay_as_you_go") {
-    return { recorded: false, reason: "not_pay_as_you_go" };
-  }
-
   const dedupKey = reservationFeeKey(input.reservationId);
   const existing = await db.query.platformFees.findFirst({
     where: eq(platformFees.dedupKey, dedupKey),
@@ -285,6 +277,14 @@ export async function recordReservationFee(
       billingMonth: true,
     },
   });
+  if (!existing && !(await legacyBillingAppliesAt(db, input.storeId, at))) {
+    return { recorded: false, reason: "not_legacy_billed" };
+  }
+  const billing = input.billing ?? (await getStoreBilling(input.storeId));
+  if (billing.billingMode !== "pay_as_you_go") {
+    return { recorded: false, reason: "not_pay_as_you_go" };
+  }
+
   if (existing) {
     if (
       input.source === "online" &&
@@ -292,7 +292,8 @@ export async function recordReservationFee(
       existing.status === "pending" &&
       existing.source === "manual"
     ) {
-      await db.transaction(async (tx) => {
+      const upgraded = await db.transaction(async (tx) => {
+        if ((await rowsBilledByTheMonthlyRun(tx, [existing])).length === 0) return false;
         await tx
           .update(platformFees)
           .set({
@@ -306,8 +307,11 @@ export async function recordReservationFee(
           })
           .where(eq(platformFees.id, existing.id));
         await markFeeRows(tx, [existing]);
+        return true;
       });
-      return { recorded: true, reason: "upgraded_to_collected" };
+      return upgraded
+        ? { recorded: true, reason: "upgraded_to_collected" }
+        : { recorded: false, reason: "not_legacy_billed" };
     }
     return { recorded: false, reason: "already_recorded" };
   }
@@ -545,12 +549,7 @@ export async function recordMarketplaceFee(input: {
   at?: Date;
 }): Promise<{ recorded: boolean; reason?: string }> {
   if (!isBillingEnabled()) return { recorded: false, reason: "billing_off" };
-  // Louez's legacy billing: none for a store the billing service bills at the time of
-  // the fact (louez-billing docs/api, README §8.3).
   const at = input.at ?? new Date();
-  if (!(await legacyBillingAppliesAt(db, input.storeId, at))) {
-    return { recorded: false, reason: "not_legacy_billed" };
-  }
   const dedupKey = marketplaceFeeKey(input.reservationId);
   const existing = await db.query.platformFees.findFirst({
     where: eq(platformFees.dedupKey, dedupKey),
@@ -563,6 +562,12 @@ export async function recordMarketplaceFee(input: {
       billingMonth: true,
     },
   });
+  // No new row for a store the billing service bills at the time of the fact
+  // (louez-billing docs/api, README §8.3); an existing one is settled while the
+  // monthly run bills its month.
+  if (!existing && !(await legacyBillingAppliesAt(db, input.storeId, at))) {
+    return { recorded: false, reason: "not_legacy_billed" };
+  }
   const collectedAmountCents = Math.max(0, Math.round(input.collectedAmountCents ?? 0));
   const initialDecision = decideMarketplaceFeeRecord({
     existing: existing ?? null,
@@ -575,7 +580,8 @@ export async function recordMarketplaceFee(input: {
     return { recorded: false, reason: initialDecision.reason };
   }
   if (initialDecision.action === "upgrade" && existing) {
-    await db.transaction(async (tx) => {
+    const upgraded = await db.transaction(async (tx) => {
+      if ((await rowsBilledByTheMonthlyRun(tx, [existing])).length === 0) return false;
       await tx
         .update(platformFees)
         .set({
@@ -589,8 +595,11 @@ export async function recordMarketplaceFee(input: {
         })
         .where(eq(platformFees.id, existing.id));
       await markFeeRows(tx, [existing]);
+      return true;
     });
-    return { recorded: true, reason: "upgraded_to_collected" };
+    return upgraded
+      ? { recorded: true, reason: "upgraded_to_collected" }
+      : { recorded: false, reason: "not_legacy_billed" };
   }
 
   const currency = (input.currency || (await getStoreCurrency(input.storeId)) || "eur")
