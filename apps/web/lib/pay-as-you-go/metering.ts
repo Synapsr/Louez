@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { db, isDuplicateKeyError, markBillingDirty, type MarkExecutor } from "@louez/db";
@@ -24,6 +24,7 @@ import {
   priceForLocationIndex,
   summarizePayAsYouGoBands,
 } from "./config";
+import { splitFeeRefund } from "./fee-refund-core";
 import { resolveStorePricing } from "./pricing-lock-core";
 import {
   MARKETPLACE_FEE_CENTS,
@@ -641,49 +642,25 @@ export type LegacyFeeMetadataInput = Pick<
 >;
 
 /**
- * The v3 keys, as releases before v4 wrote them: only when a fee is taken, and each part
- * only when above 0. Those releases read no other fee metadata. One of them can complete
- * a session created by this release (a rollback, or an old instance still serving):
- * without these keys it would find no fee breakdown and bill the marketplace fee taken
- * at source again at month end. Remove them once no release older than v4 can run.
- */
-function feeMetadataV3(plan: StripeFeePlan): Record<string, string> {
-  if (plan.applicationFeeCents <= 0) return {};
-  return {
-    platformFeeVersion: "3",
-    ...(plan.reservationFeeCents > 0
-      ? { platformReservationFeeCents: String(plan.reservationFeeCents) }
-      : {}),
-    ...(plan.marketplaceFeeCents > 0
-      ? { platformMarketplaceFeeCents: String(plan.marketplaceFeeCents) }
-      : {}),
-  };
-}
-
-/**
  * Fee metadata v4 (louez-billing fees.md §8) for a fee the legacy planner computed, for
- * the session and its PaymentIntent, with the v3 keys of the same fee next to it. Written
- * in cloud mode on every session of a payment that can carry a fee, fee or no fee
- * (`plan` is null when no fee was planned); empty when platform billing is off. The
- * webhook records the legacy fee rows from it, reading v4 first.
+ * the session and its PaymentIntent. Written in cloud mode on every session of a payment
+ * that can carry a fee, fee or no fee (`plan` is null when no fee was planned); empty
+ * when platform billing is off. The webhook records the legacy fee rows from it.
  */
 export function buildLegacyFeeMetadata(
   plan: StripeFeePlan | null,
   payment: LegacyFeeMetadataInput,
 ): Record<string, string> {
   if (!isBillingEnabled()) return {};
-  return {
-    ...(plan ? feeMetadataV3(plan) : {}),
-    ...buildFeeMetadataV4({
-      totalMinor: plan?.applicationFeeCents ?? 0,
-      reservationMinor: plan?.reservationFeeCents ?? 0,
-      marketplaceMinor: plan?.marketplaceFeeCents ?? 0,
-      baseMinor: 0,
-      policyScope: "legacy",
-      policyVersion: 0,
-      ...payment,
-    }),
-  };
+  return buildFeeMetadataV4({
+    totalMinor: plan?.applicationFeeCents ?? 0,
+    reservationMinor: plan?.reservationFeeCents ?? 0,
+    marketplaceMinor: plan?.marketplaceFeeCents ?? 0,
+    baseMinor: 0,
+    policyScope: "legacy",
+    policyVersion: 0,
+    ...payment,
+  });
 }
 
 /**
@@ -705,119 +682,74 @@ export function parseFeeMetadata(metadata: Record<string, string> | null | undef
 }
 
 // ============================================================================
-// Refund reversal (covers the reservation fee collected on a payment)
+// Application fee refunds (the fee taken at source on a payment)
 // ============================================================================
 
-export interface ReversibleFee {
-  id: string;
-  amountCents: number;
-  amountReversedCents: number;
-}
+/** Legacy sources whose fee Stripe took on the charge. The others are billed at month end. */
+const TAKEN_AT_SOURCE = ["online", "marketplace_online"] as const;
 
 /**
- * Fees collected on a payment intent that can still be (partially) reversed — i.e.
- * `collected`/`billed` rows not yet fully reversed. Both fee components share the one
- * Stripe application fee object, refunded (in part or full) once. Read-only.
+ * Records Stripe's refunded amount of an application fee on the legacy rows Stripe
+ * took that fee for (louez-billing docs/api, fees.md §9): the `online` and
+ * `marketplace_online` rows of its charge, matched by the fee id, or by the
+ * PaymentIntent for rows that predate it. A manual row can carry the PaymentIntent
+ * too, when its fee did not fit the charge: Stripe took nothing for it, so a refund
+ * never reverses it, billed or not. Called by the reversal at source after its Stripe
+ * calls; the amount is Stripe's, so a repeat writes nothing. No-op when platform
+ * billing is off.
  */
-export async function getReversibleFees(paymentIntentId: string): Promise<{
-  stripeApplicationFeeId: string | null;
-  rows: ReversibleFee[];
-}> {
-  const rows = await db
-    .select({
-      id: platformFees.id,
-      amountCents: platformFees.amountCents,
-      amountReversedCents: platformFees.amountReversedCents,
-      stripeApplicationFeeId: platformFees.stripeApplicationFeeId,
-    })
-    .from(platformFees)
-    .where(
-      and(
-        eq(platformFees.stripePaymentIntentId, paymentIntentId),
-        inArray(platformFees.status, ["collected", "billed"]),
-      ),
-    );
-
-  const reversible = rows.filter((r) => r.amountReversedCents < r.amountCents);
-  const stripeApplicationFeeId =
-    rows.find((r) => r.stripeApplicationFeeId)?.stripeApplicationFeeId ?? null;
-  return {
-    stripeApplicationFeeId,
-    rows: reversible.map((r) => ({
-      id: r.id,
-      amountCents: r.amountCents,
-      amountReversedCents: r.amountReversedCents,
-    })),
-  };
-}
-
-/**
- * Distribute a total reversal amount across fee rows proportionally (capped at each
- * row's remaining reversible amount). Pure — lets the caller decide the total (full
- * refund, partial ratio, or dispute clawback) then persist via `recordFeeReversals`.
- */
-export function distributeReversal(
-  rows: ReversibleFee[],
-  totalReverseCents: number,
-): Array<{ id: string; amountReversedCents: number; fullyReversed: boolean }> {
-  const updates: Array<{
-    id: string;
-    amountReversedCents: number;
-    fullyReversed: boolean;
-  }> = [];
-  let remaining = Math.max(0, Math.round(totalReverseCents));
-  for (const row of rows) {
-    if (remaining <= 0) break;
-    const capacity = row.amountCents - row.amountReversedCents;
-    if (capacity <= 0) continue;
-    const add = Math.min(capacity, remaining);
-    const newReversed = row.amountReversedCents + add;
-    updates.push({
-      id: row.id,
-      amountReversedCents: newReversed,
-      fullyReversed: newReversed >= row.amountCents,
-    });
-    remaining -= add;
-  }
-  return updates;
-}
-
-/**
- * Persist fee reversals — call only after the Stripe application-fee refund succeeded.
- * Idempotent + defensive: only touches rows still `collected`/`billed`, and marks a row
- * `reversed` once `amountReversedCents` reaches `amountCents`.
- */
-export async function recordFeeReversals(
-  updates: Array<{ id: string; amountReversedCents: number; fullyReversed: boolean }>,
-): Promise<void> {
-  if (updates.length === 0) return;
+export async function recordApplicationFeeRefund(input: {
+  readonly applicationFeeId: string;
+  readonly paymentIntentId: string | null;
+  /** Stripe's `fee.amount_refunded`, cumulative. */
+  readonly feeRefundedMinor: number;
+}): Promise<void> {
+  if (!isBillingEnabled()) return;
+  const sameCharge = input.paymentIntentId
+    ? or(
+        eq(platformFees.stripeApplicationFeeId, input.applicationFeeId),
+        and(
+          isNull(platformFees.stripeApplicationFeeId),
+          eq(platformFees.stripePaymentIntentId, input.paymentIntentId),
+        ),
+      )
+    : eq(platformFees.stripeApplicationFeeId, input.applicationFeeId);
   await db.transaction(async (tx) => {
     const rows = await tx
       .select({
+        id: platformFees.id,
         storeId: platformFees.storeId,
         reservationId: platformFees.reservationId,
         billingMonth: platformFees.billingMonth,
+        amountCents: platformFees.amountCents,
+        amountReversedCents: platformFees.amountReversedCents,
+        status: platformFees.status,
       })
       .from(platformFees)
       .where(
-        inArray(
-          platformFees.id,
-          updates.map((u) => u.id),
+        and(
+          sameCharge,
+          inArray(platformFees.source, [...TAKEN_AT_SOURCE]),
+          inArray(platformFees.status, ["collected", "reversed"]),
         ),
-      );
-    for (const u of updates) {
+      )
+      .orderBy(asc(platformFees.createdAt), asc(platformFees.id))
+      .for("update");
+
+    const changed: typeof rows = [];
+    for (const { row, amountReversedCents, fullyReversed } of splitFeeRefund(
+      rows,
+      input.feeRefundedMinor,
+    )) {
+      const status = fullyReversed ? "reversed" : "collected";
+      if (row.amountReversedCents === amountReversedCents && row.status === status) continue;
       await tx
         .update(platformFees)
-        .set({
-          amountReversedCents: u.amountReversedCents,
-          ...(u.fullyReversed ? { status: "reversed" as const } : {}),
-          updatedAt: new Date(),
-        })
-        .where(
-          and(eq(platformFees.id, u.id), inArray(platformFees.status, ["collected", "billed"])),
-        );
+        .set({ amountReversedCents, status, updatedAt: new Date() })
+        .where(eq(platformFees.id, row.id));
+      changed.push(row);
     }
-    await markFeeRows(tx, rows);
+    if (changed.length > 0) await markFeeRows(tx, changed);
   });
 }
 

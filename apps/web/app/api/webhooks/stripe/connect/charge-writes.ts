@@ -1,4 +1,4 @@
-import { type SQL, and, eq, isNull, ne, or } from "drizzle-orm";
+import { type SQL, and, eq, isNull, ne, or, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { db, isPaymentReceiptSql, markReservation, markReservationIds } from "@louez/db";
@@ -19,12 +19,13 @@ import {
 
 export type RefundedCharge = Pick<
   Stripe.Charge,
-  "amount" | "amount_refunded" | "refunded" | "currency"
+  "id" | "amount" | "amount_refunded" | "refunded" | "currency"
 >;
 
 /**
  * Brings the payment down to what the store keeps. Only `amount` is netted:
- * `gross_minor` keeps the charge amount (README Q7).
+ * `gross_minor` keeps the charge amount (README Q7). A payment found through its
+ * PaymentIntent gets the charge id it lacked (README Q36).
  */
 export async function netRefundedChargePayment(input: {
   readonly paymentId: string;
@@ -40,6 +41,7 @@ export async function netRefundedChargePayment(input: {
       .set({
         amount: netAmount.toFixed(2),
         status: charge.refunded ? "refunded" : "completed",
+        stripeChargeId: sql`COALESCE(${payments.stripeChargeId}, ${charge.id})`,
         updatedAt: new Date(),
       })
       .where(eq(payments.id, input.paymentId));
@@ -47,35 +49,45 @@ export async function netRefundedChargePayment(input: {
   });
 }
 
-type DisputedPayment = {
+/**
+ * The payment was taken on this connected account, or, for rows written before
+ * payments had one, its store is on it. Joins `reservations` and `stores`.
+ */
+const paymentOnAccount = (accountId: string) =>
+  or(
+    eq(payments.stripeAccountId, accountId),
+    and(isNull(payments.stripeAccountId), eq(stores.stripeAccountId, accountId)),
+  );
+
+export type ChargePayment = {
   readonly paymentId: string;
   readonly reservationId: string;
   readonly storeId: string;
+  readonly type: (typeof payments.$inferSelect)["type"];
+  readonly stripePaymentIntentId: string | null;
 };
 
 /**
- * The payment a dispute is about, on the connected account that sent the event.
- * A payment without a charge id is found through its PaymentIntent. Refund rows
- * are skipped, but not a charge that older webhooks stamped with its refund id
- * (README Q7, shape 1).
+ * The payment that holds a charge's money, on the connected account that sent the
+ * event: the row with the charge id, else, for a row without one, the row with the
+ * PaymentIntent. Refund rows are skipped, but not a charge that older webhooks
+ * stamped with its refund id (README Q7, shape 1). A deposit's hold shares its
+ * PaymentIntent with its capture; the money is the capture.
  */
-async function findDisputedPayment(input: {
+export async function findChargePayment(input: {
   readonly chargeId: string;
   readonly paymentIntentId: string | null;
   readonly accountId: string;
-}): Promise<DisputedPayment | null> {
-  // The account that took the charge, or the store's for rows written before
-  // payments had one.
-  const onAccount = or(
-    eq(payments.stripeAccountId, input.accountId),
-    and(isNull(payments.stripeAccountId), eq(stores.stripeAccountId, input.accountId)),
-  );
+}): Promise<ChargePayment | null> {
+  const onAccount = paymentOnAccount(input.accountId);
   const find = (match: SQL | undefined) =>
     db
       .select({
         paymentId: payments.id,
         reservationId: payments.reservationId,
         storeId: reservations.storeId,
+        type: payments.type,
+        stripePaymentIntentId: payments.stripePaymentIntentId,
       })
       .from(payments)
       .innerJoin(reservations, eq(reservations.id, payments.reservationId))
@@ -86,7 +98,6 @@ async function findDisputedPayment(input: {
   const [byCharge] = await find(eq(payments.stripeChargeId, input.chargeId));
   if (byCharge) return byCharge;
   if (!input.paymentIntentId) return null;
-  // A deposit's hold and capture share the PaymentIntent; the money is the capture.
   const [byIntent] = await find(
     and(
       eq(payments.stripePaymentIntentId, input.paymentIntentId),
@@ -95,6 +106,45 @@ async function findDisputedPayment(input: {
     ),
   );
   return byIntent ?? null;
+}
+
+/**
+ * Whether a charge Louez found no payment for belongs to a Louez reservation on that
+ * account: a payment row carries its PaymentIntent, or the reservation id in its Stripe
+ * metadata is a reservation of a store on it. Its payment may not be written yet (the
+ * checkout completes after the refund event), so the webhook answers 500 and Stripe
+ * retries for three days instead of dropping the event.
+ */
+export async function isKnownPaymentIntent(input: {
+  readonly paymentIntentId: string | null;
+  readonly accountId: string;
+  /** The reservation id of the Stripe metadata, read only when no payment matched. */
+  readonly readReservationId: () => Promise<string | null>;
+}): Promise<boolean> {
+  if (input.paymentIntentId) {
+    const [payment] = await db
+      .select({ id: payments.id })
+      .from(payments)
+      .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+      .innerJoin(stores, eq(stores.id, reservations.storeId))
+      .where(
+        and(
+          eq(payments.stripePaymentIntentId, input.paymentIntentId),
+          paymentOnAccount(input.accountId),
+        ),
+      )
+      .limit(1);
+    if (payment) return true;
+  }
+  const reservationId = await input.readReservationId();
+  if (!reservationId) return false;
+  const [reservation] = await db
+    .select({ id: reservations.id })
+    .from(reservations)
+    .innerJoin(stores, eq(stores.id, reservations.storeId))
+    .where(and(eq(reservations.id, reservationId), eq(stores.stripeAccountId, input.accountId)))
+    .limit(1);
+  return reservation !== undefined;
 }
 
 export type RecordDisputeResult =
@@ -117,7 +167,7 @@ export async function recordChargeDispute(input: {
   }
   if (!input.accountId) return { recorded: false, reason: "missing_account" };
 
-  const payment = await findDisputedPayment({
+  const payment = await findChargePayment({
     chargeId: facts.chargeId,
     paymentIntentId: facts.paymentIntentId,
     accountId: input.accountId,

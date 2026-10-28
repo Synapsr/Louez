@@ -7,11 +7,12 @@ import {
   insuranceShare,
   mulDivHalfUp,
   reservationTotalsMinor,
+  reversalAtSource,
   rhu,
   toMinor,
 } from "./money";
 
-// The public vectors of the billing contract (fees.md §2-§4), copied from the
+// The public vectors of the billing contract (fees.md §2-§4, §9), copied from the
 // service's docs. A vector passes when the output equals `expected` exactly.
 const vectors: Array<{
   id: string;
@@ -35,9 +36,17 @@ describe("fee vectors", () => {
                 grossMinor: i.grossMinor,
                 totalInclTaxMinor: i.totalInclTaxMinor,
               })
-            : vector.function === "rhu"
-              ? Number(rhu(BigInt(i.x), BigInt(i.bps)))
-              : Number(mulDivHalfUp(BigInt(i.a), BigInt(i.n), BigInt(i.d)));
+            : vector.function === "reversalAtSource"
+              ? reversalAtSource({
+                  feeMinor: i.feeMinor,
+                  feeRefundedMinor: i.feeRefundedMinor,
+                  chargeMinor: i.chargeMinor,
+                  refundedMinor: i.refundedMinor,
+                  disputedMinor: i.disputedMinor,
+                })
+              : vector.function === "rhu"
+                ? Number(rhu(BigInt(i.x), BigInt(i.bps)))
+                : Number(mulDivHalfUp(BigInt(i.a), BigInt(i.n), BigInt(i.d)));
       assert.deepEqual(actual, vector.expected);
     });
   }

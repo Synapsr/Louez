@@ -3,9 +3,12 @@ import { z } from "zod";
 
 import { db } from "@louez/db";
 
-// One run of each billing task at a time, across every Louez instance: a MySQL
-// named lock held on its own pooled connection for the whole run. A cron call that
-// finds the lock taken skips the task instead of waiting (plan decision 12).
+// MySQL named locks, each held on its own pooled connection for the whole run: a
+// pooled `db.execute` may take and release the lock on two connections and leak it
+// (louez-billing docs/api, fees.md §9).
+//
+// One run of each billing task at a time, across every Louez instance: a cron call
+// that finds the lock taken skips the task instead of waiting (plan decision 12).
 // `legacy-run` is the monthly pay-as-you-go billing (lib/pay-as-you-go/legacy-run.ts).
 
 export type BillingTask = "relay" | "heartbeat" | "manifests" | "sweep" | "legacy-run";
@@ -18,15 +21,22 @@ export function billingLockName(task: BillingTask): string {
   return `louez:billing:${task}`;
 }
 
-export async function withBillingLock<T>(
-  task: BillingTask,
+/**
+ * Runs `run` under `GET_LOCK(name, timeoutSeconds)`, or not at all when the lock is
+ * still taken after the timeout or MySQL fails to take it.
+ */
+export async function withNamedLock<T>(
+  name: string,
+  timeoutSeconds: number,
   run: () => Promise<T>,
 ): Promise<LockedRun<T>> {
-  const name = billingLockName(task);
   const connection = await db.$client.getConnection();
   let healthy = true;
   try {
-    const [rows] = await connection.query<RowDataPacket[]>("SELECT GET_LOCK(?, 0) AS got", [name]);
+    const [rows] = await connection.query<RowDataPacket[]>("SELECT GET_LOCK(?, ?) AS got", [
+      name,
+      timeoutSeconds,
+    ]);
     const [row] = z.array(lockRow).parse(rows);
     if (Number(row?.got) !== 1) return { ran: false };
     try {
@@ -43,4 +53,11 @@ export async function withBillingLock<T>(
     if (healthy) connection.release();
     else connection.destroy();
   }
+}
+
+export function withBillingLock<T>(
+  task: BillingTask,
+  run: () => Promise<T>,
+): Promise<LockedRun<T>> {
+  return withNamedLock(billingLockName(task), 0, run);
 }

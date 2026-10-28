@@ -486,6 +486,186 @@
         "totalInclTaxMinor": 9999999999
       },
       "expected": 5000000000
+    },
+    {
+      "id": "reversal-01",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "a third refunded (fee 375 = 250 bps of 15000)",
+      "input": {
+        "feeMinor": 375,
+        "feeRefundedMinor": 0,
+        "chargeMinor": 15000,
+        "refundedMinor": 5000,
+        "disputedMinor": 0
+      },
+      "expected": {
+        "targetMinor": 125,
+        "incrementMinor": 125
+      }
+    },
+    {
+      "id": "reversal-02",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "first partial refund",
+      "input": {
+        "feeMinor": 250,
+        "feeRefundedMinor": 0,
+        "chargeMinor": 10000,
+        "refundedMinor": 3333,
+        "disputedMinor": 0
+      },
+      "expected": {
+        "targetMinor": 83,
+        "incrementMinor": 83
+      }
+    },
+    {
+      "id": "reversal-03",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "second partial refund: cumulative target, so the increments add up exactly (83 + 84 = 167)",
+      "input": {
+        "feeMinor": 250,
+        "feeRefundedMinor": 83,
+        "chargeMinor": 10000,
+        "refundedMinor": 6666,
+        "disputedMinor": 0
+      },
+      "expected": {
+        "targetMinor": 167,
+        "incrementMinor": 84
+      }
+    },
+    {
+      "id": "reversal-04",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "exact half: 29, where float maths gives 28",
+      "input": {
+        "feeMinor": 100,
+        "feeRefundedMinor": 0,
+        "chargeMinor": 1000,
+        "refundedMinor": 285,
+        "disputedMinor": 0
+      },
+      "expected": {
+        "targetMinor": 29,
+        "incrementMinor": 29
+      }
+    },
+    {
+      "id": "reversal-05",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "dispute with funds withdrawn on the whole charge",
+      "input": {
+        "feeMinor": 625,
+        "feeRefundedMinor": 0,
+        "chargeMinor": 25000,
+        "refundedMinor": 0,
+        "disputedMinor": 25000
+      },
+      "expected": {
+        "targetMinor": 625,
+        "incrementMinor": 625
+      }
+    },
+    {
+      "id": "reversal-06",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "refunds plus disputes are capped at the charge",
+      "input": {
+        "feeMinor": 625,
+        "feeRefundedMinor": 500,
+        "chargeMinor": 25000,
+        "refundedMinor": 20000,
+        "disputedMinor": 25000
+      },
+      "expected": {
+        "targetMinor": 625,
+        "incrementMinor": 125
+      }
+    },
+    {
+      "id": "reversal-07",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "nothing left to reverse",
+      "input": {
+        "feeMinor": 25,
+        "feeRefundedMinor": 1,
+        "chargeMinor": 1007,
+        "refundedMinor": 40,
+        "disputedMinor": 0
+      },
+      "expected": {
+        "targetMinor": 1,
+        "incrementMinor": 0
+      }
+    },
+    {
+      "id": "reversal-08",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "refund on a payment that carried insurance (fee on 24000 of 25000)",
+      "input": {
+        "feeMinor": 600,
+        "feeRefundedMinor": 0,
+        "chargeMinor": 25000,
+        "refundedMinor": 12345,
+        "disputedMinor": 0
+      },
+      "expected": {
+        "targetMinor": 296,
+        "incrementMinor": 296
+      }
+    },
+    {
+      "id": "reversal-09",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "no fee was taken",
+      "input": {
+        "feeMinor": 0,
+        "feeRefundedMinor": 0,
+        "chargeMinor": 25000,
+        "refundedMinor": 25000,
+        "disputedMinor": 0
+      },
+      "expected": {
+        "targetMinor": 0,
+        "incrementMinor": 0
+      }
+    },
+    {
+      "id": "reversal-10",
+      "function": "reversalAtSource",
+      "side": "louez",
+      "public": true,
+      "summary": "Stripe already returned more than the target (refund_application_fee): never negative",
+      "input": {
+        "feeMinor": 300,
+        "feeRefundedMinor": 300,
+        "chargeMinor": 10000,
+        "refundedMinor": 5000,
+        "disputedMinor": 0
+      },
+      "expected": {
+        "targetMinor": 150,
+        "incrementMinor": 0
+      }
     }
   ]
 }

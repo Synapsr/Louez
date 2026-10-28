@@ -141,7 +141,7 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal((await readMarks(FREE_STORE)).length, 4);
   });
 
-  test("a fee reversal marks the month and the reservation; the month-end run the month", async () => {
+  test("a fee refund marks the month and the reservation; the month-end run the month", async () => {
     await metering.recordReservationFee({
       storeId: PAID_STORE,
       reservationId: "res_marks_online",
@@ -155,8 +155,19 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
       `legacy_month ${PAID_STORE}:2026-01 v1`,
     ]);
 
-    const { rows } = await metering.getReversibleFees("pi_marks_online");
-    await metering.recordFeeReversals(metering.distributeReversal(rows, 50));
+    // The row predates the fee id: it is found through its PaymentIntent.
+    const refund = {
+      applicationFeeId: "fee_marks_online",
+      paymentIntentId: "pi_marks_online",
+      feeRefundedMinor: 50,
+    };
+    await metering.recordApplicationFeeRefund(refund);
+    assert.deepEqual(await readMarks(PAID_STORE), [
+      "reservation res_marks_online v2",
+      `legacy_month ${PAID_STORE}:2026-01 v2`,
+    ]);
+    // Stripe's amount again: nothing changes, nothing is marked.
+    await metering.recordApplicationFeeRefund(refund);
     assert.deepEqual(await readMarks(PAID_STORE), [
       "reservation res_marks_online v2",
       `legacy_month ${PAID_STORE}:2026-01 v2`,
@@ -219,6 +230,132 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
       .from(louezDb.platformFees)
       .where(eq(louezDb.platformFees.reservationId, "res_marks_race"));
     assert.deepEqual(fees, [{ status: "pending", cents: 123 }]);
+  });
+
+  describe("application fee refunds on the legacy rows", () => {
+    const STORE = "store_fee_refund";
+    let counter = 0;
+
+    /** A reservation's `res:` and `mkt:` rows on one PaymentIntent, oldest first. */
+    async function feeRows(rows: {
+      res: {
+        source: "online" | "manual";
+        status: "collected" | "pending" | "billed";
+        cents: number;
+      };
+      mkt?: { cents: number };
+      applicationFeeId: string | null;
+    }) {
+      const reservationId = `res_fee_refund_${++counter}`;
+      const paymentIntentId = `pi_fee_refund_${counter}`;
+      const common = {
+        storeId: STORE,
+        reservationId,
+        currency: "eur",
+        billingMonth: "2026-01",
+        stripePaymentIntentId: paymentIntentId,
+      };
+      await louezDb.db.insert(louezDb.platformFees).values([
+        {
+          ...common,
+          id: `fee_res_${counter}`,
+          dedupKey: `res:${reservationId}`,
+          amountCents: rows.res.cents,
+          source: rows.res.source,
+          status: rows.res.status,
+          monthlyIndex: 1,
+          stripeApplicationFeeId: rows.res.source === "online" ? rows.applicationFeeId : null,
+          createdAt: new Date("2026-01-15T10:00:00Z"),
+        },
+        ...(rows.mkt
+          ? [
+              {
+                ...common,
+                id: `fee_mkt_${counter}`,
+                dedupKey: `mkt:${reservationId}`,
+                amountCents: rows.mkt.cents,
+                source: "marketplace_online" as const,
+                status: "collected" as const,
+                stripeApplicationFeeId: rows.applicationFeeId,
+                createdAt: new Date("2026-01-15T10:00:01Z"),
+              },
+            ]
+          : []),
+      ]);
+      return { reservationId, paymentIntentId };
+    }
+
+    async function readRows(reservationId: string) {
+      const fees = louezDb.platformFees;
+      return louezDb.db
+        .select({ key: fees.dedupKey, status: fees.status, reversed: fees.amountReversedCents })
+        .from(fees)
+        .where(eq(fees.reservationId, reservationId))
+        .orderBy(asc(fees.dedupKey));
+    }
+
+    test("a manual row on the PaymentIntent is never reversed, billed or not", async () => {
+      // The 2026-10-27 bug: the marketplace fee was taken at source, the reservation fee
+      // did not fit and was billed at month end. The refund reversed both by PaymentIntent.
+      const { reservationId, paymentIntentId } = await feeRows({
+        res: { source: "manual", status: "billed", cents: 300 },
+        mkt: { cents: 150 },
+        applicationFeeId: "fee_bug_1027",
+      });
+      await metering.recordApplicationFeeRefund({
+        applicationFeeId: "fee_bug_1027",
+        paymentIntentId,
+        feeRefundedMinor: 150,
+      });
+      assert.deepEqual(await readRows(reservationId), [
+        { key: `mkt:${reservationId}`, status: "reversed", reversed: 150 },
+        { key: `res:${reservationId}`, status: "billed", reversed: 0 },
+      ]);
+    });
+
+    test("Stripe's refunded amount is split in proportion, the last row taking the rest", async () => {
+      const { reservationId, paymentIntentId } = await feeRows({
+        res: { source: "online", status: "collected", cents: 300 },
+        mkt: { cents: 150 },
+        applicationFeeId: "fee_split",
+      });
+      // 100 of 450: the reservation row, created first, gets round(100 × 300 / 450) = 67.
+      await metering.recordApplicationFeeRefund({
+        applicationFeeId: "fee_split",
+        paymentIntentId,
+        feeRefundedMinor: 100,
+      });
+      assert.deepEqual(await readRows(reservationId), [
+        { key: `mkt:${reservationId}`, status: "collected", reversed: 33 },
+        { key: `res:${reservationId}`, status: "collected", reversed: 67 },
+      ]);
+      // The whole fee: both rows reversed.
+      await metering.recordApplicationFeeRefund({
+        applicationFeeId: "fee_split",
+        paymentIntentId,
+        feeRefundedMinor: 450,
+      });
+      assert.deepEqual(await readRows(reservationId), [
+        { key: `mkt:${reservationId}`, status: "reversed", reversed: 150 },
+        { key: `res:${reservationId}`, status: "reversed", reversed: 300 },
+      ]);
+    });
+
+    test("with platform billing off, the ledger is left as it is", async () => {
+      const { reservationId, paymentIntentId } = await feeRows({
+        res: { source: "online", status: "collected", cents: 300 },
+        applicationFeeId: "fee_off",
+      });
+      process.env.LOUEZ_BILLING = "off";
+      await metering.recordApplicationFeeRefund({
+        applicationFeeId: "fee_off",
+        paymentIntentId,
+        feeRefundedMinor: 300,
+      });
+      assert.deepEqual(await readRows(reservationId), [
+        { key: `res:${reservationId}`, status: "collected", reversed: 0 },
+      ]);
+    });
   });
 
   test("without the billing service, the ledger is written and nothing is marked", async () => {

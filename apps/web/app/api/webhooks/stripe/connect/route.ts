@@ -2,7 +2,7 @@ import { completeExtensionPayment } from "@/lib/reservations/extension-service";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
@@ -14,22 +14,14 @@ import type { NotificationSettings, StoreSettings } from "@louez/types";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { notifyPaymentFailed, notifyStripeConnected } from "@/lib/discord/platform-notifications";
 import { log } from "@/lib/evlog";
-import {
-  tryEnsureRefundPaymentRecord,
-  tryGenerateCreditNoteForRefund,
-  tryGenerateInvoiceForPayment,
-} from "@/lib/invoicing/service";
+import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
 import {
-  distributeReversal,
-  getReversibleFees,
   getStoreBilling,
   parseFeeMetadata,
   recordMarketplaceFee,
-  recordFeeReversals,
   recordReservationFee,
 } from "@/lib/pay-as-you-go";
-import { getReferralProgramConfig } from "@/lib/referral/defaults";
 import {
   clawbackReferrerRewardForQualifyingPayment,
   maybeGrantReferrerReward,
@@ -41,8 +33,10 @@ import { completeCheckoutPayment } from "@/lib/reservations/complete-checkout-pa
 
 import { env } from "@/env";
 
-import { netRefundedChargePayment, recordChargeDispute } from "./charge-writes";
+import { handleChargeRefunded } from "./charge-refund";
+import { recordChargeDispute } from "./charge-writes";
 import type { DisputeEventType } from "./dispute-facts";
+import { reverseFeeAtSource } from "./fee-reversal";
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -219,7 +213,7 @@ export async function POST(request: Request) {
 
       // Refund events
       case "charge.refunded":
-        await handleChargeRefunded(event.data.object as Stripe.Charge, connectedAccountId);
+        await handleChargeRefunded(event.data.object, connectedAccountId);
         break;
 
       // Dispute / chargeback. Stripe only sends the events enabled on the Connect
@@ -1184,174 +1178,6 @@ async function handleDepositFailed(
   }
 }
 
-async function handleChargeRefunded(charge: Stripe.Charge, connectedAccountId?: string) {
-  // Find payment by charge ID
-  const payment = await db.query.payments.findFirst({
-    where: and(eq(payments.stripeChargeId, charge.id), isNull(payments.stripeRefundId)),
-  });
-
-  if (!payment) {
-    log.info({
-      stripeWebhook: { event: "charge.refunded", issue: "payment_not_found", chargeId: charge.id },
-    });
-    return;
-  }
-
-  const { valid } = await validateConnectedAccountForReservation(
-    payment.reservationId,
-    connectedAccountId,
-    "charge_refunded",
-  );
-  if (!valid) return;
-
-  const currency = charge.currency.toUpperCase();
-  const refundAmount = fromStripeCents(charge.amount_refunded, currency);
-  const isFullRefund = charge.refunded;
-
-  // Keep analytics net of cumulative partial refunds; full refunds are excluded by status.
-  await netRefundedChargePayment({
-    paymentId: payment.id,
-    reservationId: payment.reservationId,
-    charge,
-  });
-
-  const rentalRefunds = payment.type === "rental" ? (charge.refunds?.data ?? []) : [];
-  for (const refund of rentalRefunds) {
-    const individualRefundAmount = fromStripeCents(refund.amount, currency);
-    const refundPaymentId = await tryEnsureRefundPaymentRecord(
-      {
-        originalPaymentId: payment.id,
-        stripeRefundId: refund.id,
-        amount: individualRefundAmount,
-        grossMinor: refund.amount,
-        currency,
-        type: "rental",
-        paidAt: new Date(refund.created * 1000),
-      },
-      "stripe_charge_refunded_webhook",
-    );
-    if (!refundPaymentId) continue;
-    await tryGenerateCreditNoteForRefund(
-      { originalPaymentId: payment.id, refundPaymentId },
-      individualRefundAmount,
-      "stripe_charge_refunded_webhook",
-    );
-  }
-
-  // Reverse the platform fees collected on this payment, in proportion to how much of
-  // the charge was refunded (full refund → reverse everything; partial → pro-rata).
-  // Both fee components share one Stripe application fee, so we refund the incremental
-  // amount once, then record the reversal. The Stripe refund must succeed BEFORE the
-  // rows are updated; a thrown error propagates so Stripe retries (idempotency-keyed,
-  // and re-delivery is a no-op because the already-reversed amount catches up).
-  if (payment.stripePaymentIntentId) {
-    await reversePlatformFees({
-      paymentIntentId: payment.stripePaymentIntentId,
-      refundRatio:
-        isFullRefund || charge.amount <= 0
-          ? 1
-          : Math.min(1, charge.amount_refunded / charge.amount),
-      idempotencyScope: charge.id,
-    });
-  }
-
-  const netAmountCents = Math.max(0, charge.amount - charge.amount_refunded);
-  const minQualifyingAmountCents = getReferralProgramConfig().minQualifyingAmountCents;
-  const shouldClawbackReferralReward =
-    isFullRefund || (minQualifyingAmountCents > 0 && netAmountCents < minQualifyingAmountCents);
-
-  // Referral Program: a fully refunded qualifying payment, or a partial refund that
-  // drops the net online payment below the qualifying minimum, claws back the Referrer
-  // Reward (within the clawback window). Best-effort; never block refund processing.
-  if (shouldClawbackReferralReward) {
-    await clawbackReferrerRewardForQualifyingPayment({
-      stripeChargeId: charge.id,
-      stripePaymentIntentId: payment.stripePaymentIntentId,
-    }).catch((error) => {
-      log.error({
-        referral: {
-          event: "reward_clawback_failed",
-          trigger: "refund",
-          chargeId: charge.id,
-          error: describeError(error),
-        },
-      });
-    });
-  }
-
-  // Log activity
-  await db.insert(reservationActivity).values({
-    id: nanoid(),
-    reservationId: payment.reservationId,
-    activityType: "payment_updated",
-    metadata: {
-      chargeId: charge.id,
-      refundAmount,
-      isFullRefund,
-    },
-    createdAt: new Date(),
-  });
-
-  log.info({
-    stripeWebhook: {
-      event: "charge.refunded",
-      paymentId: payment.id,
-      chargeId: charge.id,
-      refundAmount,
-      isFullRefund,
-    },
-  });
-}
-
-/**
- * Reverse platform fees for a payment by a given ratio (1 = full). Refunds the
- * incremental application-fee amount at Stripe, then records the reversal on the ledger
- * rows. Idempotent: re-delivery recomputes the increment as 0 once the ledger has caught
- * up, and the Stripe call is idempotency-keyed by `idempotencyScope` + target amount.
- */
-async function reversePlatformFees({
-  paymentIntentId,
-  refundRatio,
-  idempotencyScope,
-}: {
-  paymentIntentId: string;
-  refundRatio: number;
-  idempotencyScope: string;
-}): Promise<void> {
-  const { stripeApplicationFeeId, rows } = await getReversibleFees(paymentIntentId);
-  if (rows.length === 0) return;
-
-  const totalFeeCents = rows.reduce((sum, r) => sum + r.amountCents, 0);
-  const alreadyReversedCents = rows.reduce((sum, r) => sum + r.amountReversedCents, 0);
-  const targetReversedCents = Math.round(totalFeeCents * refundRatio);
-  const incrementCents = Math.max(0, targetReversedCents - alreadyReversedCents);
-  if (incrementCents <= 0) return;
-
-  if (stripeApplicationFeeId) {
-    try {
-      await stripe.applicationFees.createRefund(
-        stripeApplicationFeeId,
-        { amount: incrementCents },
-        {
-          idempotencyKey: `platform_fee_reverse_${idempotencyScope}_${targetReversedCents}`,
-        },
-      );
-    } catch (error) {
-      // The application fee was already (fully) refunded out-of-band — treat as success
-      // and reconcile the ledger. Any other error propagates so Stripe retries.
-      const message = error instanceof Error ? error.message.toLowerCase() : "";
-      const alreadyRefunded =
-        message.includes("already") ||
-        message.includes("no refundable") ||
-        message.includes("greater than") ||
-        message.includes("exceeds");
-      if (!alreadyRefunded) throw error;
-    }
-  }
-
-  await recordFeeReversals(distributeReversal(rows, incrementCents));
-}
-
 async function handleAccountUpdated(account: Stripe.Account) {
   // Find store by connected account ID
   const store = await db.query.stores.findFirst({
@@ -1400,10 +1226,18 @@ async function handleAccountUpdated(account: Stripe.Account) {
   });
 }
 
+/** The dispute events that change the money the store keeps (fees.md §9). */
+const FEE_REVERSAL_DISPUTE_EVENTS: ReadonlySet<DisputeEventType> = new Set([
+  "charge.dispute.created",
+  "charge.dispute.updated",
+  "charge.dispute.funds_withdrawn",
+  "charge.dispute.closed",
+]);
+
 /**
- * Every `charge.dispute.*` event updates the dispute's billing facts. Fee reversal
- * and the referral clawback still run on creation only, and first, so a failure
- * of the new facts never holds them back.
+ * Every `charge.dispute.*` event updates the dispute's billing facts. The fee refund at
+ * source runs first, reading the charge's disputes from Stripe; a reinstatement
+ * restores no fee. The referral clawback runs on creation.
  */
 async function handleChargeDispute(input: {
   eventType: DisputeEventType;
@@ -1411,14 +1245,34 @@ async function handleChargeDispute(input: {
   eventCreatedAt: Date;
   connectedAccountId: string | undefined;
 }) {
-  const { eventType, dispute } = input;
-  if (eventType === "charge.dispute.created") await handleChargeDisputeCreated(dispute);
+  const { eventType, dispute, connectedAccountId } = input;
+  const chargeId = stripeRefId(dispute.charge);
+  const paymentIntentId = stripeRefId(dispute.payment_intent);
+  if (chargeId && connectedAccountId && FEE_REVERSAL_DISPUTE_EVENTS.has(eventType)) {
+    await reverseFeeAtSource({ chargeId, accountId: connectedAccountId });
+  }
+  if (eventType === "charge.dispute.created" && paymentIntentId) {
+    // Referral Program: a disputed qualifying payment claws back the Referrer Reward
+    // (within the clawback window). Best-effort; never block dispute processing.
+    await clawbackReferrerRewardForQualifyingPayment({
+      stripePaymentIntentId: paymentIntentId,
+    }).catch((error) => {
+      log.error({
+        referral: {
+          event: "reward_clawback_failed",
+          trigger: "dispute",
+          disputeId: dispute.id,
+          error: describeError(error),
+        },
+      });
+    });
+  }
 
   const result = await recordChargeDispute({
     dispute,
     eventType,
     eventCreatedAt: input.eventCreatedAt,
-    accountId: input.connectedAccountId,
+    accountId: connectedAccountId,
   });
   log.info({
     stripeWebhook: {
@@ -1429,53 +1283,6 @@ async function handleChargeDispute(input: {
         ? { paymentId: result.paymentId, reservationId: result.reservationId }
         : { issue: result.reason }),
     },
-  });
-}
-
-/**
- * A customer disputed/charged back a rental payment. The disputed funds (and, for a
- * lost dispute, the application fee) are pulled from the connected account, so reverse
- * the platform fees collected on that payment. Treated as a full reversal; if the store
- * later WINS the dispute, the fee can be re-collected manually (rare).
- */
-async function handleChargeDisputeCreated(dispute: Stripe.Dispute) {
-  const paymentIntentId =
-    typeof dispute.payment_intent === "string"
-      ? dispute.payment_intent
-      : (dispute.payment_intent?.id ?? null);
-  if (!paymentIntentId) {
-    log.info({
-      stripeWebhook: {
-        event: "charge.dispute.created",
-        issue: "missing_payment_intent",
-        disputeId: dispute.id,
-      },
-    });
-    return;
-  }
-  await reversePlatformFees({
-    paymentIntentId,
-    refundRatio: 1,
-    idempotencyScope: `dispute_${dispute.id}`,
-  });
-
-  // Referral Program: a disputed qualifying payment claws back the Referrer Reward
-  // (within the clawback window). Best-effort; never block dispute processing.
-  await clawbackReferrerRewardForQualifyingPayment({
-    stripePaymentIntentId: paymentIntentId,
-  }).catch((error) => {
-    log.error({
-      referral: {
-        event: "reward_clawback_failed",
-        trigger: "dispute",
-        disputeId: dispute.id,
-        error: describeError(error),
-      },
-    });
-  });
-
-  log.info({
-    stripeWebhook: { event: "charge.dispute.created", disputeId: dispute.id, paymentIntentId },
   });
 }
 

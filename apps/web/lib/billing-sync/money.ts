@@ -81,6 +81,27 @@ export function mulDivHalfUp(a: bigint, n: bigint, d: bigint): bigint {
   return (B2 * a * n + d) / (B2 * d);
 }
 
+/**
+ * fees.md §9: the cumulative part of a charge's application fee to give back, and what
+ * is left to refund. The money lost is what was refunded plus what disputes withdrew,
+ * capped at the charge.
+ */
+export function reversalAtSource(input: {
+  readonly feeMinor: number;
+  readonly feeRefundedMinor: number;
+  readonly chargeMinor: number;
+  readonly refundedMinor: number;
+  readonly disputedMinor: number;
+}): { readonly targetMinor: number; readonly incrementMinor: number } {
+  const fee = BigInt(input.feeMinor);
+  const charge = BigInt(input.chargeMinor);
+  let lost = BigInt(input.refundedMinor) + BigInt(input.disputedMinor);
+  if (lost > charge) lost = charge;
+  const target = fee === B0 || charge <= B0 ? B0 : mulDivHalfUp(fee, lost, charge);
+  const increment = target - BigInt(input.feeRefundedMinor);
+  return { targetMinor: Number(target), incrementMinor: Number(increment > B0 ? increment : B0) };
+}
+
 /** fees.md §4: the insurance part of one payment. */
 export function insuranceShare(input: {
   readonly insuranceMinor: number;
