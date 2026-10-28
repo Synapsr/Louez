@@ -93,7 +93,8 @@ export function findPlanPrice<P extends PlanPriceConfig & Pick<Plan, "slug">>(
   for (const plan of plans) {
     for (const currency of SUPPORTED_CURRENCIES) {
       for (const interval of ["monthly", "yearly"] as const) {
-        if (getPlanPriceId(plan, interval, currency) === priceId) return { plan, interval, currency };
+        if (getPlanPriceId(plan, interval, currency) === priceId)
+          return { plan, interval, currency };
       }
     }
   }

@@ -15,9 +15,11 @@ import { DEFAULT_REFERRAL_PROGRAM_CONFIG } from "@/lib/referral/config";
 
 // The legacy guard and the platform customer (louez-billing docs/api, README §8.3 and
 // §8.4; design §4.8). In service mode, Louez's legacy code writes and bills nothing for
-// a store the billing service bills, at the time of each fact, and never creates its
-// platform customer. A legacy store, and every store without BILLING_SERVICE_URL, is
-// billed as before. billing-off.test.ts covers LOUEZ_BILLING off.
+// a store the billing service bills, at the time of each fact, and creates its platform
+// customer only for a plan checkout. A legacy store, and every store without
+// BILLING_SERVICE_URL, is billed as before. Louez's plans, for every store (§8.7): one
+// live subscription per store, changed in place, its status and plan written by the
+// platform webhook. billing-off.test.ts covers LOUEZ_BILLING off.
 //
 // Times are relative to the real clock: new stores are those created from 2026-06-01,
 // and the switched stores are billed by the service from 2026-09-01, both in the past.

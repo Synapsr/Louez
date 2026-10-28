@@ -541,8 +541,9 @@ export function SubscriptionManagement({
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* The billing service's words for pay-as-you-go, for a store it bills. */}
-          {showsOfferLabel && (
+          {/* The billing service's words for pay-as-you-go, for a store it bills;
+              otherwise the price, in the actual billing currency and interval. */}
+          {showsOfferLabel ? (
             <div className="space-y-1">
               <p className="text-muted-foreground text-sm">{tBilling('offerTitle')}</p>
               {offerLabel ? (
@@ -551,35 +552,32 @@ export function SubscriptionManagement({
                 <p className="text-muted-foreground text-sm">{tBilling('offerPending')}</p>
               )}
             </div>
-          )}
-
-          {/* Pricing info - use actual billing currency and interval */}
-          {!showsOfferLabel && (
-          <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-bold">
-              {formatPrice(
-                currentPlan?.price
-                  ? subscription?.billingInterval === 'yearly'
-                    ? getYearlyPrice(currentPlan)
-                    : currentPlan.price
-                  : 0,
-                subscription?.billingCurrency || currency,
+          ) : (
+            <div className="flex items-baseline gap-1">
+              <span className="text-4xl font-bold">
+                {formatPrice(
+                  currentPlan?.price
+                    ? subscription?.billingInterval === 'yearly'
+                      ? getYearlyPrice(currentPlan)
+                      : currentPlan.price
+                    : 0,
+                  subscription?.billingCurrency || currency,
+                )}
+              </span>
+              {currentPlan?.price !== 0 && (
+                <span className="text-muted-foreground">
+                  /{' '}
+                  {subscription?.billingInterval === 'yearly'
+                    ? t('year')
+                    : t('month')}
+                </span>
               )}
-            </span>
-            {currentPlan?.price !== 0 && (
-              <span className="text-muted-foreground">
-                /{' '}
-                {subscription?.billingInterval === 'yearly'
-                  ? t('year')
-                  : t('month')}
-              </span>
-            )}
-            {currentPlan?.price === 0 && (
-              <span className="text-muted-foreground ml-2">
-                {t('payAsYouGo.badge')}
-              </span>
-            )}
-          </div>
+              {currentPlan?.price === 0 && (
+                <span className="text-muted-foreground ml-2">
+                  {t('payAsYouGo.badge')}
+                </span>
+              )}
+            </div>
           )}
 
           {/* Billing period */}

@@ -1,9 +1,9 @@
-import type Stripe from 'stripe'
+import type Stripe from "stripe";
 
-import type { subscriptions } from '@louez/db'
+import type { subscriptions } from "@louez/db";
 
 /** The `status` column of a store's `subscriptions` row. */
-export type SubscriptionRowStatus = (typeof subscriptions.$inferSelect)['status']
+export type SubscriptionRowStatus = (typeof subscriptions.$inferSelect)["status"];
 
 /**
  * The row status of a Stripe subscription status (louez-billing docs/api, README §8.7).
@@ -19,24 +19,24 @@ export function rowStatus(
   serviceBills: boolean,
 ): SubscriptionRowStatus {
   switch (stripeStatus) {
-    case 'active':
-      return 'active'
-    case 'trialing':
-      return 'trialing'
-    case 'past_due':
-      return 'past_due'
-    case 'canceled':
-      return 'cancelled'
+    case "active":
+      return "active";
+    case "trialing":
+      return "trialing";
+    case "past_due":
+      return "past_due";
+    case "canceled":
+      return "cancelled";
     // `unpaid`, `incomplete`, `incomplete_expired`, `paused`, and any status Stripe adds.
     default:
-      return serviceBills ? 'cancelled' : 'active'
+      return serviceBills ? "cancelled" : "active";
   }
 }
 
 type LiveSubscriptionRow = {
-  readonly stripeSubscriptionId: string | null
-  readonly status: SubscriptionRowStatus
-}
+  readonly stripeSubscriptionId: string | null;
+  readonly status: SubscriptionRowStatus;
+};
 
 /**
  * Whether the row holds a Stripe subscription that is not over. Then a plan checkout
@@ -46,5 +46,5 @@ type LiveSubscriptionRow = {
 export function hasLiveSubscription<Row extends LiveSubscriptionRow>(
   row: Row | null | undefined,
 ): row is Row & { readonly stripeSubscriptionId: string } {
-  return Boolean(row?.stripeSubscriptionId) && row?.status !== 'cancelled'
+  return Boolean(row?.stripeSubscriptionId) && row?.status !== "cancelled";
 }

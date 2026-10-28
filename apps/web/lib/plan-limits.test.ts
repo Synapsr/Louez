@@ -31,7 +31,11 @@ test("no plan is in force with a slug Louez does not know or no Stripe subscript
 test("a plan is in force while active, trialing or past due", () => {
   for (const planSlug of ["pro", "ultra"]) {
     for (const status of ["active", "trialing", "past_due"] as const) {
-      assert.equal(planInForce({ ...PRO_IN_FORCE, planSlug, status }), true, `${planSlug} ${status}`);
+      assert.equal(
+        planInForce({ ...PRO_IN_FORCE, planSlug, status }),
+        true,
+        `${planSlug} ${status}`,
+      );
     }
   }
 });

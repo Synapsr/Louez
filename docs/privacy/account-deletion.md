@@ -23,7 +23,7 @@ Louez does not keep a dormant Store, user profile, product catalogue, customer l
 
 Invoices issued or received by a merchant through a Store are deleted with the Store. The owner must export any documents they are required to keep before deleting the account.
 
-On Louez Cloud, inside the purge transaction, Louez also queues a closing snapshot of each deleted Store and of each reservation it may still be billed for, for the billing service. It first locks those reservations and their payments, so a payment recorded during the deletion is in the snapshot. They carry no name, contact, address or renter data, and the Store snapshot drops its slug and owners.
+On Louez Cloud, inside the purge transaction, Louez also queues a closing snapshot of each deleted Store and of each reservation it may still be billed for, for the billing service. It first locks those reservations and their payments, and the Store rows its snapshot reads, so a payment or a plan change recorded during the deletion is in the snapshot. They carry no name, contact, address or renter data, and the Store snapshot drops its slug and owners.
 
 Louez retains only billing records for transactions where Louez itself is the supplier or regulated party, such as platform invoices and completed SMS or AI-credit purchases. Each record is copied into `legal_retention_records`, encrypted with AES-256-GCM, detached from the deleted user and Store identifiers, and assigned an expiry ten years after the relevant financial year closes. The daily cron permanently deletes records after that date.
 

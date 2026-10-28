@@ -35,7 +35,10 @@ test("a store Louez's legacy code bills keeps today's reading", () => {
 
 test("at a completed checkout, today's reading is still trialing, else active", () => {
   for (const stripeStatus of ["active", "trialing", "incomplete"] as const) {
-    assert.equal(rowStatus(stripeStatus, false), stripeStatus === "trialing" ? "trialing" : "active");
+    assert.equal(
+      rowStatus(stripeStatus, false),
+      stripeStatus === "trialing" ? "trialing" : "active",
+    );
   }
 });
 
