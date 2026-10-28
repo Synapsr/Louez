@@ -1,17 +1,44 @@
 import { and, eq } from "drizzle-orm";
 
-import { storeLegalProfiles, storeMarketplaceChannels, storeMembers, stores } from "@louez/db";
+import {
+  storeLegalProfiles,
+  storeMarketplaceChannels,
+  storeMembers,
+  stores,
+  subscriptions,
+} from "@louez/db";
 
 import { normalizeCurrency } from "@/lib/billing-sync/money";
+import { type PlanRow, planInForce } from "@/lib/plan-limits";
 
 import type { BuiltSnapshot, SnapshotKey, SnapshotReader } from "./build-snapshot";
-import { compareCodeUnits, countryOrNull, snapshotChecks } from "./snapshot-checks";
-import type { StoreSnapshotData } from "./snapshot-data";
+import {
+  type SnapshotChecks,
+  compareCodeUnits,
+  countryOrNull,
+  snapshotChecks,
+} from "./snapshot-checks";
+import type { StorePlanSnapshot, StoreSnapshotData } from "./snapshot-data";
 
 // openapi.yaml StoreSnapshotV1. No store name, contact or legal identity (README §11,
-// Q2): the slug, ids, settings codes and Connect and marketplace facts only.
+// Q2): the slug, ids, settings codes, Connect and marketplace facts, and the Louez plan.
 
 const MAX_OWNERS = 50;
+
+/** The plan in force on the store's row (planInForce, README §8.7), or null. */
+function planSnapshot(
+  checks: SnapshotChecks,
+  row: (PlanRow & { readonly stripeCustomerId: string | null }) | null,
+): StorePlanSnapshot | null {
+  if (!planInForce(row)) return null;
+  if (row.planSlug !== "pro" && row.planSlug !== "ultra")
+    return checks.fail(`plan ${row.planSlug} is not one the contract knows`);
+  return {
+    slug: row.planSlug,
+    status: row.status,
+    stripeCustomerId: checks.textOrNull("plan.stripeCustomerId", row.stripeCustomerId || null, 255),
+  };
+}
 
 export async function buildStoreSnapshot(
   db: SnapshotReader,
@@ -65,6 +92,18 @@ export async function buildStoreSnapshot(
     .where(eq(storeMarketplaceChannels.storeId, key.storeId))
     .limit(1);
 
+  const [subscription] = await db
+    .select({
+      billingMode: subscriptions.billingMode,
+      planSlug: subscriptions.planSlug,
+      status: subscriptions.status,
+      stripeSubscriptionId: subscriptions.stripeSubscriptionId,
+      stripeCustomerId: subscriptions.stripeCustomerId,
+    })
+    .from(subscriptions)
+    .where(eq(subscriptions.storeId, key.storeId))
+    .limit(1);
+
   const settings = store.settings;
   const timezone = typeof settings?.timezone === "string" ? settings.timezone : null;
   const data: StoreSnapshotData = {
@@ -101,6 +140,7 @@ export async function buildStoreSnapshot(
       signupOrigin: checks.textOrNull("referral.signupOrigin", store.signupOrigin, 32),
     },
     finalReservations: null,
+    plan: planSnapshot(checks, subscription ?? null),
   };
   return { kind: "snapshot", data };
 }

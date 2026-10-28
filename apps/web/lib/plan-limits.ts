@@ -41,6 +41,57 @@ export interface StoreLimits {
 // Usage Queries
 // ============================================================================
 
+/** The columns of a store's `subscriptions` row that say which plan it is on. */
+export type PlanRow = Pick<
+  typeof subscriptions.$inferSelect,
+  'billingMode' | 'planSlug' | 'status' | 'stripeSubscriptionId'
+>
+
+/** A row whose plan is in force (planInForce). */
+export type PlanInForceRow<Row extends PlanRow> = Row & {
+  readonly billingMode: 'subscription'
+  readonly status: 'active' | 'trialing' | 'past_due'
+  readonly stripeSubscriptionId: string
+}
+
+/**
+ * Whether a Louez plan is in force on the row (louez-billing docs/api, README §8.7):
+ * subscription billing, a status other than `cancelled`, a plan Louez knows, and a
+ * Stripe subscription that bills it. The `store` snapshot sends the plan only then.
+ * On every row with a Stripe subscription id it agrees with getStorePlan, which also
+ * gives a plan's limits to a row the platform admin set to subscription billing.
+ */
+export function planInForce<Row extends PlanRow>(
+  row: Row | null | undefined,
+): row is PlanInForceRow<Row> {
+  return (
+    row !== null &&
+    row !== undefined &&
+    row.billingMode === 'subscription' &&
+    row.status !== 'cancelled' &&
+    Boolean(row.stripeSubscriptionId) &&
+    getPlan(row.planSlug) !== undefined
+  )
+}
+
+/** The plan a store's row gives, with platform billing on (getStorePlan). */
+export function storePlanOfRow(
+  row: Pick<PlanRow, 'billingMode' | 'planSlug' | 'status'> | null | undefined,
+): Plan {
+  // Pay-as-you-go stores get the unlimited PAYG plan regardless of plan slug.
+  if (row?.billingMode === 'pay_as_you_go') {
+    return getPayAsYouGoPlan()
+  }
+
+  // No subscription or a cancelled one → no paid tier active, fall back to the
+  // default plan (pay-as-you-go: unlimited, billed per rental, no monthly fee).
+  if (!row || row.status === 'cancelled') {
+    return getDefaultPlan()
+  }
+
+  return getPlan(row.planSlug) || getDefaultPlan()
+}
+
 /**
  * Get the current plan for a store. Without platform billing (LOUEZ_BILLING off) a store
  * has no plan to buy, so every store gets the unlimited pay-as-you-go plan, whatever row
@@ -53,20 +104,7 @@ export async function getStorePlan(storeId: string): Promise<Plan> {
     where: eq(subscriptions.storeId, storeId),
     columns: { planSlug: true, status: true, billingMode: true },
   })
-
-  // Pay-as-you-go stores get the unlimited PAYG plan regardless of plan slug.
-  if (subscription?.billingMode === 'pay_as_you_go') {
-    return getPayAsYouGoPlan()
-  }
-
-  // No subscription or a cancelled one → no paid tier active, fall back to the
-  // default plan (pay-as-you-go: unlimited, billed per rental, no monthly fee).
-  if (!subscription || subscription.status === 'cancelled') {
-    return getDefaultPlan()
-  }
-
-  const plan = getPlan(subscription.planSlug)
-  return plan || getDefaultPlan()
+  return storePlanOfRow(subscription)
 }
 
 /**

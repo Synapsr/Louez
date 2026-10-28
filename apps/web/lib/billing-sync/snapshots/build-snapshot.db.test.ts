@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
 
+import { eq } from "drizzle-orm";
+
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import type { BuiltSnapshot, SnapshotKey } from "./build-snapshot";
@@ -33,7 +35,9 @@ const FIELDS = {
     "marketplace",
     "referral",
     "finalReservations",
+    "plan",
   ],
+  StorePlan: ["slug", "status", "stripeCustomerId"],
   StripeConnect: ["accountId", "chargesEnabled", "onboardingComplete"],
   Marketplace: ["status", "firstPublishedAt", "cohortRank", "lifetimeFeeWaiverAt"],
   Referral: ["referredByStoreId", "referredByUserId", "signupOrigin"],
@@ -173,6 +177,7 @@ function checkStoreShape(data: unknown) {
   hasFields("StripeConnect", store.stripeConnect, "store.stripeConnect");
   hasFields("Marketplace", store.marketplace, "store.marketplace");
   hasFields("Referral", store.referral, "store.referral");
+  if (store.plan !== null) hasFields("StorePlan", store.plan, "store.plan");
 }
 
 function checkReservationShape(data: unknown) {
@@ -704,6 +709,8 @@ describe("billing snapshots (database)", { skip: skipWithoutTestDatabase() }, ()
         signupOrigin: "referral",
       },
       finalReservations: null,
+      // On pay-as-you-go.
+      plan: null,
     });
   });
 
@@ -729,7 +736,58 @@ describe("billing snapshots (database)", { skip: skipWithoutTestDatabase() }, ()
       },
       referral: { referredByStoreId: null, referredByUserId: null, signupOrigin: null },
       finalReservations: null,
+      // No subscriptions row.
+      plan: null,
     });
+  });
+
+  test("store: the plan is sent while one is in force, null otherwise", async () => {
+    // OTHER_STORE has no row yet: no plan.
+    const planOf = async () => {
+      const data = snapshotData(await build(storeKey("store", OTHER_STORE)));
+      checkStoreShape(data);
+      return record(data, "store").plan;
+    };
+    assert.equal(await planOf(), null);
+
+    const proInForce = {
+      billingMode: "subscription",
+      planSlug: "pro",
+      status: "active",
+      stripeSubscriptionId: "sub_other",
+      stripeCustomerId: "cus_other",
+    } as const;
+    await louezDb.db
+      .insert(louezDb.subscriptions)
+      .values({ id: "sub_other_row", storeId: OTHER_STORE, ...proInForce });
+    const setRow = (values: Partial<typeof louezDb.subscriptions.$inferInsert>) =>
+      louezDb.db
+        .update(louezDb.subscriptions)
+        .set({ ...proInForce, ...values })
+        .where(eq(louezDb.subscriptions.storeId, OTHER_STORE));
+
+    assert.deepEqual(await planOf(), {
+      slug: "pro",
+      status: "active",
+      stripeCustomerId: "cus_other",
+    });
+    for (const status of ["trialing", "past_due"] as const) {
+      await setRow({ planSlug: "ultra", status, stripeCustomerId: null });
+      assert.deepEqual(await planOf(), { slug: "ultra", status, stripeCustomerId: null }, status);
+    }
+    for (const values of [
+      { status: "cancelled" },
+      { billingMode: "pay_as_you_go" },
+      { stripeSubscriptionId: null },
+      { planSlug: "pay_as_you_go" },
+      { planSlug: "start" },
+    ] as const) {
+      await setRow(values);
+      assert.equal(await planOf(), null, JSON.stringify(values));
+    }
+    await louezDb.db
+      .delete(louezDb.subscriptions)
+      .where(eq(louezDb.subscriptions.storeId, OTHER_STORE));
   });
 
   test("reservation: totals, payments by kind, refunds folded, disputes, Stripe refs, fees", async () => {

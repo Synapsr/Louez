@@ -42,6 +42,7 @@ const storeData = (slug: string): StoreSnapshotData => ({
   },
   referral: { referredByStoreId: null, referredByUserId: null, signupOrigin: null },
   finalReservations: null,
+  plan: null,
 });
 
 const reservationData = (number: string): ReservationSnapshotData => ({

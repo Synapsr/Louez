@@ -314,4 +314,38 @@ describe("final snapshots (database)", { skip: skipWithoutTestDatabase() }, () =
     assert.match(alerts[0]?.message ?? "", new RegExp(`reservation r_too_many of store ${STORE}`));
     assert.match(alerts[0]?.message ?? "", /payments has 201 entries/);
   });
+
+  test("the deletion locks the store's subscription row, and the closing body keeps its plan", async () => {
+    await louezDb.db.insert(louezDb.subscriptions).values({
+      id: "sub_final_row",
+      storeId: STORE,
+      planSlug: "pro",
+      billingMode: "subscription",
+      status: "active",
+      stripeSubscriptionId: "sub_final",
+      stripeCustomerId: "cus_final",
+    });
+    const probe = await database.connect();
+    try {
+      await louezDb.db.transaction(async (tx) => {
+        await finals.lockFinalSnapshotFacts(tx, [STORE]);
+        // A plan written now would be missing from the closing body: it has to wait.
+        await assert.rejects(
+          probe.query("SELECT id FROM subscriptions WHERE store_id = ? FOR UPDATE NOWAIT", [STORE]),
+          /NOWAIT/,
+        );
+        await finals.writeFinalSnapshots(tx, [STORE], { observedAt: OBSERVED_AT });
+      });
+    } finally {
+      await probe.end();
+    }
+    const store = payloadSchema.parse(
+      (await rows()).find((row) => row.type === "store")?.finalPayload,
+    );
+    assert.deepEqual(store.data.plan, {
+      slug: "pro",
+      status: "active",
+      stripeCustomerId: "cus_final",
+    });
+  });
 });

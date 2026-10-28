@@ -242,7 +242,7 @@ const RESERVATION_FACTS = [
   "reservation_activity",
   "platform_fee",
 ] as const;
-const STORE_FACTS = ["store_legal_profiles", "store_marketplace_channels"] as const;
+const STORE_FACTS = ["store_legal_profiles", "store_marketplace_channels", "subscriptions"] as const;
 
 /**
  * Locks the rows the final snapshots read: the stores' reservations, then each of

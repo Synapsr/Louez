@@ -9,6 +9,13 @@ import type { PaymentKind } from "@/lib/billing-sync/fee-metadata";
 
 export type MarketplaceStatus = "setup_required" | "pending" | "published" | "paused" | "disabled";
 
+/** openapi.yaml StorePlan: a Louez plan in force (README §8.7). */
+export type StorePlanSnapshot = {
+  readonly slug: "pro" | "ultra";
+  readonly status: "active" | "trialing" | "past_due";
+  readonly stripeCustomerId: string | null;
+};
+
 export type StoreSnapshotData = {
   readonly deleted: boolean;
   readonly slug: string | null;
@@ -40,6 +47,11 @@ export type StoreSnapshotData = {
     readonly aggregateId: string;
     readonly version: number;
   }> | null;
+  /**
+   * The Louez plan in force, or null when none is (1.1.0). Unlike the other fields, a
+   * snapshot without it says nothing of the plan (README §13), so Louez always sends it.
+   */
+  readonly plan: StorePlanSnapshot | null;
 };
 
 export type ReservationStatus =
