@@ -61,6 +61,14 @@ describe("billing queue marks (database)", { skip: skipWithoutTestDatabase() }, 
     ]);
   });
 
+  test("a subscription row write marks the store and its legacy snapshot", async () => {
+    await louezDb.markSubscriptionRow(louezDb.db, "s1");
+    assert.deepEqual(await rows(), [
+      { type: "store", id: "s1", version: 1, status: "pending", sentHash: null },
+      { type: "legacy_store", id: "s1", version: 1, status: "pending", sentHash: null },
+    ]);
+  });
+
   test("a mark rolls back with its transaction", async () => {
     await assert.rejects(
       louezDb.db.transaction(async (tx) => {

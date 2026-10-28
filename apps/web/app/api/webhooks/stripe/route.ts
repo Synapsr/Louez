@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
-import { db, markLegacyStore } from '@louez/db'
+import { db, markSubscriptionRow } from '@louez/db'
 import {
   aiCredits,
   aiCreditTransactions,
@@ -441,7 +441,7 @@ async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subscription
         updatedAt: new Date(),
       })
       .where(eq(subscriptions.id, subscription.id))
-    await markLegacyStore(tx, subscription.storeId)
+    await markSubscriptionRow(tx, subscription.storeId)
   })
 
   console.log(`Subscription updated: ${stripeSubscription.id} -> ${status}`)

@@ -43,6 +43,7 @@ const MARK_HELPERS = new Set([
   "markStoreReservations",
   "markStore",
   "markLegacyStore",
+  "markSubscriptionRow",
   "markLegacyMonth",
   "billingMarkStatement",
 ]);
@@ -494,9 +495,9 @@ test("writes that change a billing snapshot mark it", () => {
     "See [DL-13] in docs/code-review/04-data-layer.md. " +
     "A write to a table a billing snapshot reads marks the aggregate in the same " +
     "transaction: markReservation, markReservationIds, markStore, markLegacyStore, " +
-    "markLegacyMonth or markBillingDirty from @louez/db, or billingMarkStatement on a " +
-    "raw connection. Allowlist a write only when it changes no snapshot field, and fix " +
-    "or remove an entry that matches the wrong count.";
+    "markSubscriptionRow, markLegacyMonth or markBillingDirty from @louez/db, or " +
+    "billingMarkStatement on a raw connection. Allowlist a write only when it changes " +
+    "no snapshot field, and fix or remove an entry that matches the wrong count.";
   assert.deepEqual(
     {
       violations: remaining.map((v) => `${v.file}:${v.line} ${v.table}: ${v.expression}`),

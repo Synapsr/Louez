@@ -1,6 +1,6 @@
 import { after } from 'next/server'
 import { stripe } from './client'
-import { db, markLegacyStore } from '@louez/db'
+import { db, markSubscriptionRow } from '@louez/db'
 import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/lib/plans'
@@ -11,8 +11,9 @@ import { log } from '@/lib/evlog'
 import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
 import { env } from '@/env'
 
-// Every write to a subscription row marks the store's legacy_store snapshot for the
-// billing service in the same transaction. Stripe calls stay before it.
+// Every write to a subscription row marks the store's store and legacy_store snapshots
+// for the billing service in the same transaction (markSubscriptionRow). Stripe calls
+// stay before it.
 
 type SubscriptionColumns = Partial<Omit<typeof subscriptions.$inferInsert, 'id' | 'storeId'>>
 
@@ -31,7 +32,7 @@ async function updateStoreSubscription(
       .update(subscriptions)
       .set({ ...values, updatedAt: new Date() })
       .where(eq(subscriptions.storeId, storeId))
-    await markLegacyStore(tx, storeId)
+    await markSubscriptionRow(tx, storeId)
   })
 }
 
@@ -44,7 +45,7 @@ async function updateSubscriptionRow(
       .update(subscriptions)
       .set({ ...values, updatedAt: new Date() })
       .where(eq(subscriptions.id, row.id))
-    await markLegacyStore(tx, row.storeId)
+    await markSubscriptionRow(tx, row.storeId)
   })
 }
 

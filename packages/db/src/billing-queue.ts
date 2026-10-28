@@ -192,6 +192,26 @@ export function markLegacyStore(
   );
 }
 
+/**
+ * Marks what a store's `subscriptions` row feeds: the `store` snapshot's `plan`
+ * (README §8.7) and the `legacy_store` snapshot. For any write to the row's plan,
+ * mode, status or Stripe ids.
+ */
+export function markSubscriptionRow(
+  executor: MarkExecutor,
+  storeId: string,
+  options?: MarkOptions,
+): Promise<void> {
+  return markBillingDirty(
+    executor,
+    [
+      { type: "store", aggregateId: storeId, storeId },
+      { type: "legacy_store", aggregateId: storeId, storeId },
+    ],
+    options,
+  );
+}
+
 /** `period` is `YYYY-MM`, the `billing_month` of the fee or invoice row. */
 export function markLegacyMonth(
   executor: MarkExecutor,
