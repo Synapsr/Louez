@@ -57,7 +57,7 @@ export async function isBillingCardStepFlagOn(
  * card gate refuses reservations until a card is on file. The same rule sends the
  * billing settings' main button to the card page (billing-overview.ts). With
  * BILLING_GATE_DISABLED the gate lets reservations through, and the banners and the
- * settings show no block: the step does not claim one either.
+ * settings show no block and no card notice: the step does not claim one either.
  */
 export function asksForBillingCard(role: HandoffRole | null, policy: EffectivePolicy): boolean {
   const { reservations } = policy.terms;

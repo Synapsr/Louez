@@ -68,13 +68,13 @@ describe("describeBillingOverview", () => {
     assert.equal(localizedLabel(POLICY.labels.offer, "fr"), "Commission de test");
     assert.equal(localizedLabel(POLICY.labels.offer, "de"), "Testprovision");
     assert.equal(localizedLabel(POLICY.labels.offer, "ja"), "Test commission");
-    const overview = describeBillingOverview(access(), "it");
+    const overview = describeBillingOverview(access(), "it", false);
     assert.equal(overview.offer, "Test commission");
     assert.equal(overview.notice, "Add a card.");
   });
 
   test("a store without a card: blocked, and the main button opens the card page", () => {
-    assert.deepEqual(describeBillingOverview(access(), "fr"), {
+    assert.deepEqual(describeBillingOverview(access(), "fr", false), {
       offer: "Commission de test",
       notice: "Ajoutez une carte.",
       blockedReason: "payment_method_required",
@@ -90,20 +90,27 @@ describe("describeBillingOverview", () => {
         reservations: { allowed: false, reason: "payment_overdue" },
       },
     });
-    assert.equal(describeBillingOverview(overdue, "fr").blockedReason, "payment_overdue");
-    assert.equal(describeBillingOverview(overdue, "fr").primaryPage, "/");
+    assert.equal(describeBillingOverview(overdue, "fr", false).blockedReason, "payment_overdue");
+    assert.equal(describeBillingOverview(overdue, "fr", false).primaryPage, "/");
     const open = access({
       terms: { ...access().policy.terms, reservations: { allowed: true } },
       acceptsReservations: true,
     });
-    assert.equal(describeBillingOverview(open, "fr").blockedReason, null);
-    assert.equal(describeBillingOverview(open, "fr").primaryPage, "/");
+    assert.equal(describeBillingOverview(open, "fr", false).blockedReason, null);
+    assert.equal(describeBillingOverview(open, "fr", false).primaryPage, "/");
   });
 
-  test("BILLING_GATE_DISABLED: the store takes reservations, so no block is shown", () => {
-    const killSwitch = describeBillingOverview(access({ acceptsReservations: true }), "fr");
+  test("BILLING_GATE_DISABLED: the store takes reservations, so no block and no card notice", () => {
+    const killSwitch = describeBillingOverview(access({ acceptsReservations: true }), "fr", true);
     assert.equal(killSwitch.blockedReason, null);
+    assert.equal(killSwitch.notice, null);
     assert.equal(killSwitch.primaryPage, "/");
+    // Another notice still shows: only a missing card is moot without the gate.
+    const cardRemoved = access({
+      acceptsReservations: true,
+      policy: { ...POLICY, notice: { kind: "card_removed", blockAt: "2027-02-14T00:00:00Z" } },
+    });
+    assert.equal(describeBillingOverview(cardRemoved, "fr", true).notice, "Ajoutez une carte.");
   });
 
   test("a new store the service has not processed yet: no offer, blocked (fail closed)", () => {
@@ -119,19 +126,19 @@ describe("describeBillingOverview", () => {
         reservations: { allowed: false, reason: "payment_method_required" },
       },
     });
-    const overview = describeBillingOverview(pending, "fr");
+    const overview = describeBillingOverview(pending, "fr", false);
     assert.equal(overview.offer, null);
     assert.equal(overview.notice, null);
     assert.equal(overview.blockedReason, "payment_method_required");
   });
 
   test("a platform admin's view is read-only", () => {
-    assert.equal(describeBillingOverview(access({}, "platform_admin"), "fr").readOnly, true);
-    assert.equal(describeBillingOverview(access({}, "owner"), "fr").readOnly, false);
+    assert.equal(describeBillingOverview(access({}, "platform_admin"), "fr", false).readOnly, true);
+    assert.equal(describeBillingOverview(access({}, "owner"), "fr", false).readOnly, false);
   });
 
   test("a platform admin cannot add a card: on a store without one the button opens the overview", () => {
-    assert.deepEqual(describeBillingOverview(access({}, "platform_admin"), "fr"), {
+    assert.deepEqual(describeBillingOverview(access({}, "platform_admin"), "fr", false), {
       offer: "Commission de test",
       notice: "Ajoutez une carte.",
       blockedReason: "payment_method_required",

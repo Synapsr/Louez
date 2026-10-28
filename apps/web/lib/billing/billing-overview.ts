@@ -31,14 +31,20 @@ export function localizedLabel(text: LocalizedText, locale: string): string {
   return text[locale] ?? text.en;
 }
 
+/**
+ * With `gateDisabled` (BILLING_GATE_DISABLED) a missing card blocks nothing, so the
+ * card notice is left out, as on the dashboard banner (reservation-gate-banner.ts).
+ */
 export function describeBillingOverview(
   access: BillingHandoffAccess,
   locale: string,
+  gateDisabled: boolean,
 ): BillingOverview {
   const { policy, terms, acceptsReservations } = access.policy;
   const blockedReason =
     !acceptsReservations && !terms.reservations.allowed ? terms.reservations.reason : null;
-  const notice = policy?.labels.notice;
+  const cardNoticeMoot = gateDisabled && policy?.notice?.kind === "payment_method_missing";
+  const notice = cardNoticeMoot ? null : policy?.labels.notice;
   const readOnly = access.role === "platform_admin";
   return {
     offer: policy ? localizedLabel(policy.labels.offer, locale) : null,

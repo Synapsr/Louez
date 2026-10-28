@@ -119,7 +119,7 @@ describe("asksForBillingCard", () => {
       for (const terms of reservations) {
         for (const acceptsReservations of [true, false]) {
           const effective = policy(terms, acceptsReservations);
-          const overview = describeBillingOverview({ role, policy: effective }, "en");
+          const overview = describeBillingOverview({ role, policy: effective }, "en", false);
           assert.equal(
             asksForBillingCard(role, effective),
             overview.primaryPage === "/payment-method",

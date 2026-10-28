@@ -2,7 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 
-import { isBillingSyncEnabled } from "@louez/db";
+import { isBillingGateDisabled, isBillingSyncEnabled } from "@louez/db";
 
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { describeBillingOverview } from "@/lib/billing/billing-overview";
@@ -39,7 +39,7 @@ export default async function BillingSettingsPage() {
 
   return (
     <SettingsPageShell title={t("label")} description={t("description")}>
-      <BillingOverviewCard overview={describeBillingOverview(access, locale)} />
+      <BillingOverviewCard overview={describeBillingOverview(access, locale, isBillingGateDisabled())} />
       <BillingPageLinks />
     </SettingsPageShell>
   );
