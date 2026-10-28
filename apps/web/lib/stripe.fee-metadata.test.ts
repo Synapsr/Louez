@@ -268,4 +268,29 @@ describe("fee metadata v4 on Checkout Sessions", () => {
       hasBreakdown: false,
     });
   });
+
+  test("the webhook reads no legacy fee from a fee a service policy set", () => {
+    for (const policyScope of ["store", "default", "fail_closed"] as const) {
+      const intentMetadata = feeMetadata.buildFeeMetadataV4({
+        totalMinor: 250,
+        reservationMinor: 150,
+        marketplaceMinor: 100,
+        baseMinor: 3_750,
+        insuranceShareMinor: 0,
+        policyScope,
+        policyVersion: policyScope === "fail_closed" ? 0 : 2,
+        paymentKind: "rental",
+        reservationId: "res_5",
+        storeId: "store_1",
+      });
+      // The fee itself is read back as set (the payment's app_fee_* columns).
+      assert.equal(feeMetadata.readFeeMetadata(intentMetadata)?.reservationMinor, 150);
+      // A pending legacy row of the reservation stays to be billed: Stripe took none of it.
+      assert.deepEqual(metering.parseFeeMetadata(intentMetadata), {
+        reservationFeeCents: 0,
+        marketplaceFeeCents: 0,
+        hasBreakdown: true,
+      });
+    }
+  });
 });

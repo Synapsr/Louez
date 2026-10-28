@@ -1099,7 +1099,9 @@ export function buildFeeMetadata(
 
 /**
  * Read the legacy fee parts back from PaymentIntent metadata, v4 or the v3 keys of
- * sessions created before it. `hasBreakdown` is false when neither is there (an older
+ * sessions created before it. A fee set by a `store`, `default` or `fail_closed` policy
+ * is the service's, not a legacy one: its parts read as 0, so the webhook never settles
+ * a pending legacy row with it. `hasBreakdown` is false when neither is there (an older
  * session, or stripped metadata), so the webhook can fall back safely.
  */
 export function parseFeeMetadata(metadata: Record<string, string> | null | undefined): {
@@ -1108,9 +1110,10 @@ export function parseFeeMetadata(metadata: Record<string, string> | null | undef
   hasBreakdown: boolean;
 } {
   const facts = readFeeMetadata(metadata);
+  const legacy = facts?.policyScope === "legacy" ? facts : null;
   return {
-    reservationFeeCents: Math.max(0, facts?.reservationMinor ?? 0),
-    marketplaceFeeCents: Math.max(0, facts?.marketplaceMinor ?? 0),
+    reservationFeeCents: Math.max(0, legacy?.reservationMinor ?? 0),
+    marketplaceFeeCents: Math.max(0, legacy?.marketplaceMinor ?? 0),
     hasBreakdown: facts !== null,
   };
 }

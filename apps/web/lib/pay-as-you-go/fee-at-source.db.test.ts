@@ -562,7 +562,13 @@ describe("the policy's fee at source (database)", { skip: skipWithoutTestDatabas
       appFeeMetadataVersion: 4,
     });
 
-    // The Connect webhook then records the legacy fee rows of the charge: none here.
+    // The Connect webhook then records the legacy fee rows of the charge: none here. It
+    // reads no legacy fee from the metadata, and the legacy guard refuses one anyway.
+    assert.deepEqual(metering.parseFeeMetadata(intentMetadata), {
+      reservationFeeCents: 0,
+      marketplaceFeeCents: 0,
+      hasBreakdown: true,
+    });
     const recorded = {
       storeId: NEW_STORE,
       reservationId: "res_fas_session",
