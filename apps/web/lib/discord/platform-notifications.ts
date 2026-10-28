@@ -252,6 +252,22 @@ export async function notifySubscriptionCancelled(store: StoreInfo): Promise<voi
 }
 
 /**
+ * A store paid a second plan through another open Checkout: its row keeps the
+ * subscription it held, and staff cancel and refund the extra one in Stripe.
+ */
+export async function notifyExtraPlanSubscription(
+  store: StoreInfo,
+  keptSubscriptionId: string,
+  extraSubscriptionId: string
+): Promise<void> {
+  if (!isEnabled()) return
+  const link = storeLink(store.name, store.slug)
+  await send(
+    `⚠️ ${link} paid a second plan subscription: ${extraSubscriptionId} is not recorded, the store keeps ${keptSubscriptionId}. Cancel and refund ${extraSubscriptionId} in Stripe.`
+  )
+}
+
+/**
  * Sync the store owner's payment-method status to their fromHello profile as the
  * `hasPaymentMethod` attribute. Drives activation journeys (e.g. an email nudge to a
  * pay-as-you-go owner to add a card and "lock" their offer). Fire-and-forget: never

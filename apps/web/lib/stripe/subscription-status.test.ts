@@ -3,7 +3,12 @@ import { test } from "node:test";
 
 import type Stripe from "stripe";
 
-import { hasLiveSubscription, rowStatus } from "./subscription-status";
+import {
+  hasLiveSubscription,
+  rowStatus,
+  subscriptionEnded,
+  subscriptionHoldsPlan,
+} from "./subscription-status";
 
 // The row status of every Stripe subscription status (louez-billing docs/api, README
 // §8.7): strict for a store the billing service bills, today's reading otherwise.
@@ -39,6 +44,19 @@ test("at a completed checkout, today's reading is still trialing, else active", 
       rowStatus(stripeStatus, false),
       stripeStatus === "trialing" ? "trialing" : "active",
     );
+  }
+});
+
+test("only canceled and incomplete_expired are ended; a plan is held by what the row reads as in force", () => {
+  for (const [stripeStatus, expected] of EVERY_STATUS) {
+    const ended = stripeStatus === "canceled" || stripeStatus === "incomplete_expired";
+    assert.equal(subscriptionEnded(stripeStatus), ended, stripeStatus);
+    assert.equal(
+      subscriptionHoldsPlan(stripeStatus, true),
+      expected.service !== "cancelled",
+      `service ${stripeStatus}`,
+    );
+    assert.equal(subscriptionHoldsPlan(stripeStatus, false), !ended, `legacy ${stripeStatus}`);
   }
 });
 

@@ -33,6 +33,28 @@ export function rowStatus(
   }
 }
 
+/** Stripe statuses a subscription never leaves. */
+const ENDED_STATUSES: ReadonlySet<Stripe.Subscription.Status> = new Set([
+  "canceled",
+  "incomplete_expired",
+]);
+
+/** Whether Stripe has ended the subscription for good: it never bills again. */
+export function subscriptionEnded(stripeStatus: Stripe.Subscription.Status): boolean {
+  return ENDED_STATUSES.has(stripeStatus);
+}
+
+/**
+ * Whether a subscription in this Stripe status still holds the store's plan: Stripe
+ * has not ended it, and the store's row would not read it as `cancelled` (rowStatus).
+ */
+export function subscriptionHoldsPlan(
+  stripeStatus: Stripe.Subscription.Status,
+  serviceBills: boolean,
+): boolean {
+  return !subscriptionEnded(stripeStatus) && rowStatus(stripeStatus, serviceBills) !== "cancelled";
+}
+
 type LiveSubscriptionRow = {
   readonly stripeSubscriptionId: string | null;
   readonly status: SubscriptionRowStatus;

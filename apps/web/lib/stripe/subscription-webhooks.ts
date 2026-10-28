@@ -4,14 +4,20 @@ import { eq } from "drizzle-orm";
 
 import { db, legacyBillingAppliesAt, markSubscriptionRow, stores, subscriptions } from "@louez/db";
 
+import { isStripeNotFound } from "@/lib/billing-sync/gross-backfill-core";
 import {
+  notifyExtraPlanSubscription,
   notifySubscriptionActivated,
   notifySubscriptionCancelled,
 } from "@/lib/discord/platform-notifications";
 import { log } from "@/lib/evlog";
 import { findPlanPrice, getPlans } from "@/lib/plans";
 import { stripe } from "@/lib/stripe/client";
-import { rowStatus } from "@/lib/stripe/subscription-status";
+import {
+  rowStatus,
+  subscriptionEnded,
+  subscriptionHoldsPlan,
+} from "@/lib/stripe/subscription-status";
 import { activatePlanSubscription, endSubscriptionToPayAsYouGo } from "@/lib/stripe/subscriptions";
 
 // The platform webhook's plan events (app/api/webhooks/stripe/route.ts): a plan bought
@@ -34,12 +40,6 @@ export type SubscriptionCheckoutSession = {
   readonly customer: string | { readonly id: string } | null;
 };
 
-/** Stripe statuses a subscription never leaves. */
-const ENDED_STATUSES: ReadonlySet<Stripe.Subscription.Status> = new Set([
-  "canceled",
-  "incomplete_expired",
-]);
-
 const stripeObjectId = (value: string | { readonly id: string } | null): string | null =>
   typeof value === "string" ? value : (value?.id ?? null);
 
@@ -57,11 +57,40 @@ async function serviceBillsNow(storeId: string): Promise<boolean> {
 }
 
 /**
+ * The other subscription the store's row holds, when Stripe still bills it as the
+ * store's plan (subscriptionHoldsPlan): then a completed checkout is a second plan. One
+ * Stripe no longer has holds nothing.
+ */
+async function otherHeldSubscription(
+  storeId: string,
+  subscriptionId: string,
+  serviceBills: boolean,
+): Promise<string | null> {
+  const row = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.storeId, storeId),
+    columns: { stripeSubscriptionId: true },
+  });
+  const held = row?.stripeSubscriptionId;
+  if (!held || held === subscriptionId) return null;
+  try {
+    const current = await stripe.subscriptions.retrieve(held);
+    return subscriptionHoldsPlan(current.status, serviceBills) ? held : null;
+  } catch (error) {
+    if (isStripeNotFound(error)) return null;
+    throw error;
+  }
+}
+
+/**
  * `checkout.session.completed` of a plan checkout: the row holds the plan and its Stripe
  * ids. The plan is the one the subscription's price bills now, not the one the session
  * sold, which is older once the plan has changed in place; the plan sold is written only
  * for a price no plan has. A session whose subscription has ended since changes nothing:
  * the row may already hold the store's next subscription.
+ *
+ * Several plan Checkouts of a store can be open at once, so a store can pay a second
+ * plan. Its subscription is not written over one the row holds that Stripe still bills:
+ * staff are told to cancel and refund the extra one.
  */
 export async function handleSubscriptionCheckoutCompleted(
   session: SubscriptionCheckoutSession,
@@ -75,11 +104,25 @@ export async function handleSubscriptionCheckoutCompleted(
   }
 
   const stripeSubscription = await retrieveSubscription(subscriptionId);
-  if (ENDED_STATUSES.has(stripeSubscription.status)) {
+  if (subscriptionEnded(stripeSubscription.status)) {
     log.warn(
       "billing",
       `plan checkout of store ${storeId}: subscription ${subscriptionId} is ${stripeSubscription.status}, so its row is left as it is`,
     );
+    return;
+  }
+  const serviceBills = await serviceBillsNow(storeId);
+  const held = await otherHeldSubscription(storeId, subscriptionId, serviceBills);
+  if (held) {
+    log.error(
+      "billing",
+      `plan checkout of store ${storeId}: its row holds subscription ${held}, which Stripe still bills, so the second subscription ${subscriptionId} is not written; cancel and refund ${subscriptionId}`,
+    );
+    const store = await db.query.stores.findFirst({
+      where: eq(stores.id, storeId),
+      columns: { id: true, name: true, slug: true },
+    });
+    if (store) notifyExtraPlanSubscription(store, held, subscriptionId).catch(() => {});
     return;
   }
   const firstItem = stripeSubscription.items.data[0];
@@ -99,7 +142,7 @@ export async function handleSubscriptionCheckoutCompleted(
     planSlug,
     stripeSubscriptionId: stripeSubscription.id,
     stripeCustomerId: customerId,
-    status: rowStatus(stripeSubscription.status, await serviceBillsNow(storeId)),
+    status: rowStatus(stripeSubscription.status, serviceBills),
     currentPeriodEnd,
   });
 

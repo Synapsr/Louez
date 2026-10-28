@@ -7,7 +7,7 @@ import { after, afterEach, before, beforeEach, describe, test } from "node:test"
 import { pathToFileURL } from "node:url";
 
 import { and, eq, inArray } from "drizzle-orm";
-import type Stripe from "stripe";
+import Stripe from "stripe";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
@@ -19,7 +19,8 @@ import { DEFAULT_REFERRAL_PROGRAM_CONFIG } from "@/lib/referral/config";
 // customer only for a plan checkout. A legacy store, and every store without
 // BILLING_SERVICE_URL, is billed as before. Louez's plans, for every store (§8.7): one
 // live subscription per store, changed in place, its status and plan written by the
-// platform webhook. billing-off.test.ts covers LOUEZ_BILLING off.
+// platform webhook; one open plan Checkout per store, and a second plan paid through
+// another one never replaces the first. billing-off.test.ts covers LOUEZ_BILLING off.
 //
 // Times are relative to the real clock: new stores are those created from 2026-06-01,
 // and the switched stores are billed by the service from 2026-09-01, both in the past.
@@ -58,11 +59,24 @@ type FakeSubscription = {
   };
 };
 
+/** A Checkout Session on the platform account. */
+type FakeCheckoutSession = {
+  id: string;
+  customer: string;
+  mode: string;
+  status: "open" | "expired";
+  metadata: Record<string, string>;
+  expires_at?: number;
+};
+
 /** Stripe's platform account, in memory: the calls the tested code makes. */
 function createFakeStripe() {
   const calls: string[] = [];
   const invoices = new Map<string, FakeInvoice>();
   const subscriptions = new Map<string, FakeSubscription>();
+  const checkoutSessions = new Map<string, FakeCheckoutSession>();
+  /** Calls that fail, as `calls` writes them. */
+  const failing = new Set<string>();
   /** The params of each subscription update, in order. */
   const subscriptionUpdates: Array<{ id: string; params: unknown }> = [];
   const invoice = (id: string) => {
@@ -71,11 +85,28 @@ function createFakeStripe() {
     return found;
   };
   const field = (params: unknown, name: string) => String(Reflect.get(Object(params), name));
+  const call = (name: string) => {
+    calls.push(name);
+    if (failing.has(name)) throw new Error(`Stripe is down for ${name}`);
+  };
   return {
     calls,
+    failing,
     /** The invoices created, by id. */
     issued: invoices,
+    checkoutSessions,
     subscriptionUpdates,
+    /** Leaves a Checkout Session open on the platform account. */
+    addCheckoutSession(session: Omit<FakeCheckoutSession, "status">) {
+      checkoutSessions.set(session.id, { ...session, status: "open" });
+    },
+    /** The ids of the open Checkout Sessions, sorted. */
+    openCheckoutSessions() {
+      return [...checkoutSessions.values()]
+        .filter((session) => session.status === "open")
+        .map((session) => session.id)
+        .sort();
+    },
     /** Puts a subscription on the platform account, with one item at `priceId`. */
     addSubscription(id: string, priceId: string, values: Partial<FakeSubscription> = {}) {
       subscriptions.set(id, {
@@ -99,13 +130,22 @@ function createFakeStripe() {
       calls.length = 0;
       invoices.clear();
       subscriptions.clear();
+      checkoutSessions.clear();
+      failing.clear();
       subscriptionUpdates.length = 0;
     },
     subscriptions: {
       async retrieve(id: string) {
         calls.push(`subscriptions.retrieve ${id}`);
         const found = subscriptions.get(id);
-        if (!found) throw new Error(`No such subscription: ${id}`);
+        if (!found) {
+          throw new Stripe.errors.StripeInvalidRequestError({
+            type: "invalid_request_error",
+            code: "resource_missing",
+            statusCode: 404,
+            message: `No such subscription: '${id}'`,
+          });
+        }
         return structuredClone(found);
       },
       async update(id: string, params: unknown) {
@@ -119,9 +159,34 @@ function createFakeStripe() {
         async create(params: unknown) {
           const items: unknown = Reflect.get(Object(params), "line_items");
           const price = Array.isArray(items) ? field(items[0], "price") : "none";
-          const id = `cs_${field(params, "customer")}`;
-          calls.push(`checkout.sessions.create ${field(params, "customer")} ${price}`);
+          const customer = field(params, "customer");
+          const first = `cs_${customer}`;
+          const id = checkoutSessions.has(first) ? `${first}_${checkoutSessions.size + 1}` : first;
+          calls.push(`checkout.sessions.create ${customer} ${price}`);
+          const expiresAt: unknown = Reflect.get(Object(params), "expires_at");
+          checkoutSessions.set(id, {
+            id,
+            customer,
+            mode: field(params, "mode"),
+            status: "open",
+            metadata: { storeId: field(Reflect.get(Object(params), "metadata"), "storeId") },
+            ...(typeof expiresAt === "number" ? { expires_at: expiresAt } : {}),
+          });
           return { id, url: `https://checkout.stripe.test/${id}` };
+        },
+        async list(params: { customer: string; status: string }) {
+          call(`checkout.sessions.list ${params.customer}`);
+          const data = [...checkoutSessions.values()].filter(
+            (session) => session.customer === params.customer && session.status === params.status,
+          );
+          return { data: structuredClone(data) };
+        },
+        async expire(id: string) {
+          call(`checkout.sessions.expire ${id}`);
+          const found = checkoutSessions.get(id);
+          if (found?.status !== "open") throw new Error(`Checkout Session ${id} is not open`);
+          found.status = "expired";
+          return structuredClone(found);
         },
       },
     },
@@ -190,6 +255,8 @@ const currentStore = { id: "" };
 const discord = {
   notifyBillingAlert: async (_kind: string, _message: string): Promise<void> => undefined,
 };
+/** The admin notices of a second plan subscription. */
+const extraPlanNotices: string[] = [];
 
 /** What each stubbed module exports. A function is looked up at each call. */
 const stubs: Record<string, Record<string, unknown>> = {
@@ -239,6 +306,9 @@ const stubs: Record<string, Record<string, unknown>> = {
     notifyBillingAlert: (kind: string, message: string) => discord.notifyBillingAlert(kind, message),
     notifySubscriptionActivated: async () => undefined,
     notifySubscriptionCancelled: async () => undefined,
+    notifyExtraPlanSubscription: async (store: { id: string }, kept: string, extra: string) => {
+      extraPlanNotices.push(`${store.id} keeps ${kept}, extra ${extra}`);
+    },
   },
 };
 Reflect.set(globalThis, "__louezLegacyGuardStubs", stubs);
@@ -381,6 +451,9 @@ const STORES: ReadonlyArray<readonly [string, string]> = [
   ["lg_plan_new", NEW],
   ["lg_plan_buy", NEW],
   ["lg_plan_redo", NEW],
+  ["lg_plan_open", NEW],
+  ["lg_twice_old", OLD],
+  ["lg_twice_new", NEW],
 ];
 
 describe("legacy guard and platform customer (database)", { skip: skipWithoutTestDatabase() }, () => {
@@ -1139,6 +1212,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     });
     assert.deepEqual(fakeStripe.calls, [
       "customers.create cus_Created_lg_new",
+      "checkout.sessions.list cus_Created_lg_new",
       `checkout.sessions.create cus_Created_lg_new ${PRICE.proMonthly}`,
     ]);
     assert.deepEqual(await planColumns("lg_new"), {
@@ -1158,6 +1232,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     currentStore.id = "lg_new_card";
     await checkout();
     assert.deepEqual(fakeStripe.calls, [
+      "checkout.sessions.list cus_ServiceNewCard",
       `checkout.sessions.create cus_ServiceNewCard ${PRICE.proMonthly}`,
     ]);
 
@@ -1358,6 +1433,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
         url: `https://checkout.stripe.test/cs_cus_${storeId}`,
       });
       assert.deepEqual(fakeStripe.calls, [
+        `checkout.sessions.list cus_${storeId}`,
         `checkout.sessions.create cus_${storeId} ${PRICE.ultraMonthly}`,
       ]);
       await setPlanRow(storeId, { status: "active" });
@@ -1513,5 +1589,131 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     await checkout("sub_lg_plan_redo");
     assert.deepEqual(await planOf(), ["subscription", "pro", "active", "sub_lg_plan_redo_next"]);
     assert.deepEqual(await marksOf("lg_plan_redo"), []);
+  });
+
+  test("a plan Checkout first expires the store's other open plan Checkouts, and is payable for 31 minutes", async () => {
+    currentStore.id = "lg_plan_open";
+    const customer = "cus_Created_lg_plan_open";
+    const checkout = async () => {
+      const opened = await subscriptionActions.createCheckoutSession({
+        planSlug: "pro",
+        interval: "monthly",
+        currency: "eur",
+      });
+      assert.ok("sessionId" in opened, "a Checkout is opened");
+      return opened.sessionId;
+    };
+    const expired = () => fakeStripe.calls.filter((call) => call.startsWith("checkout.sessions.expire"));
+    // Also open on the customer: a top-up, and a plan Checkout another store made.
+    fakeStripe.addCheckoutSession({
+      id: "cs_topup",
+      customer,
+      mode: "payment",
+      metadata: { storeId: "lg_plan_open" },
+    });
+    fakeStripe.addCheckoutSession({
+      id: "cs_other_store",
+      customer,
+      mode: "subscription",
+      metadata: { storeId: "lg_other" },
+    });
+
+    const before = Math.floor(Date.now() / 1000);
+    const first = await checkout();
+    const second = await checkout();
+    const third = await checkout();
+    const after = Math.floor(Date.now() / 1000);
+    assert.deepEqual(expired(), [
+      `checkout.sessions.expire ${first}`,
+      `checkout.sessions.expire ${second}`,
+    ]);
+    assert.deepEqual(fakeStripe.openCheckoutSessions(), ["cs_other_store", "cs_topup", third].sort());
+    for (const id of [first, second, third]) {
+      const expiresAt = fakeStripe.checkoutSessions.get(id)?.expires_at ?? 0;
+      assert.ok(expiresAt >= before + 31 * 60 && expiresAt <= after + 31 * 60, `${id} ${expiresAt}`);
+    }
+
+    // Stripe fails to list them: the new Checkout opens all the same.
+    fakeStripe.calls.length = 0;
+    fakeStripe.failing.add(`checkout.sessions.list ${customer}`);
+    const fourth = await checkout();
+    assert.deepEqual(expired(), []);
+    fakeStripe.failing.clear();
+
+    // Stripe fails to expire one of them: the others are expired, and the new one opens.
+    fakeStripe.calls.length = 0;
+    fakeStripe.failing.add(`checkout.sessions.expire ${third}`);
+    const fifth = await checkout();
+    assert.deepEqual(expired(), [
+      `checkout.sessions.expire ${third}`,
+      `checkout.sessions.expire ${fourth}`,
+    ]);
+    assert.deepEqual(
+      fakeStripe.openCheckoutSessions(),
+      ["cs_other_store", "cs_topup", third, fifth].sort(),
+    );
+  });
+
+  test("a second plan subscription, paid through another open Checkout, leaves the row alone and tells staff, for an old and a new store", async () => {
+    for (const storeId of ["lg_twice_old", "lg_twice_new"]) {
+      const first = `sub_${storeId}_1`;
+      const second = `sub_${storeId}_2`;
+      const completed = (subscription: string) =>
+        webhooks.handleSubscriptionCheckoutCompleted({
+          metadata: { storeId, planSlug: "pro" },
+          subscription,
+          customer: `cus_${storeId}`,
+        });
+      const held = async () => {
+        const row = await planColumns(storeId);
+        return [row?.billingMode, row?.planSlug, row?.stripeSubscriptionId];
+      };
+      fakeStripe.addSubscription(first, PRICE.proMonthly);
+      fakeStripe.addSubscription(second, PRICE.ultraMonthly);
+      await completed(first);
+      assert.deepEqual(await held(), ["subscription", "pro", first], storeId);
+
+      // Both Checkouts were open; the second is paid while Stripe bills the first.
+      await clearMarks(storeId);
+      extraPlanNotices.length = 0;
+      await completed(second);
+      assert.deepEqual(await held(), ["subscription", "pro", first], storeId);
+      assert.deepEqual(await marksOf(storeId), [], storeId);
+      assert.deepEqual(extraPlanNotices, [`${storeId} keeps ${first}, extra ${second}`]);
+
+      // Once Stripe has ended the first one, whose deletion the webhook missed, the paid
+      // one is the store's plan.
+      extraPlanNotices.length = 0;
+      fakeStripe.addSubscription(first, PRICE.proMonthly, { status: "canceled" });
+      await completed(second);
+      assert.deepEqual(await held(), ["subscription", "ultra", second], storeId);
+      assert.deepEqual(await marksOf(storeId), ["legacy_store", "store"], storeId);
+
+      // Nor does one Stripe no longer has.
+      await setPlanRow(storeId, { stripeSubscriptionId: `sub_${storeId}_gone` });
+      await completed(second);
+      assert.deepEqual(await held(), ["subscription", "ultra", second], storeId);
+      assert.deepEqual(extraPlanNotices, [], storeId);
+    }
+
+    // Stripe stops collecting the plan (unpaid): it no longer holds a new store's plan
+    // (rowStatus), and still holds an old store's.
+    for (const [storeId, kept] of [
+      ["lg_twice_old", true],
+      ["lg_twice_new", false],
+    ] as const) {
+      const third = `sub_${storeId}_3`;
+      fakeStripe.addSubscription(`sub_${storeId}_2`, PRICE.ultraMonthly, { status: "unpaid" });
+      fakeStripe.addSubscription(third, PRICE.proMonthly);
+      extraPlanNotices.length = 0;
+      await webhooks.handleSubscriptionCheckoutCompleted({
+        metadata: { storeId, planSlug: "pro" },
+        subscription: third,
+        customer: `cus_${storeId}`,
+      });
+      const row = await planColumns(storeId);
+      assert.equal(row?.stripeSubscriptionId, kept ? `sub_${storeId}_2` : third, storeId);
+      assert.equal(extraPlanNotices.length, kept ? 1 : 0, storeId);
+    }
   });
 });

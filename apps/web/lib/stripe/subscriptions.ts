@@ -305,6 +305,42 @@ export async function getOffSessionCustomer(
   return checked
 }
 
+/**
+ * How long a plan Checkout stays payable. Stripe's minimum is 30 minutes after it
+ * creates the session; the extra minute covers the request and the clocks' drift.
+ */
+const PLAN_CHECKOUT_LIFETIME_SECONDS = 31 * 60
+
+/**
+ * Expires the plan Checkouts the store left open on its customer, before it opens
+ * another: each one paid would start a plan subscription of its own. A Checkout that
+ * cannot be listed or expired is logged and does not stop the new one; the checkout
+ * webhook then keeps the subscription the row holds (handleSubscriptionCheckoutCompleted).
+ */
+async function expireOpenPlanCheckouts(storeId: string, customerId: string): Promise<void> {
+  const open = await stripe.checkout.sessions
+    .list({ customer: customerId, status: 'open', limit: 100 })
+    .then((listed) => listed.data)
+    .catch((error: unknown) => {
+      log.error(
+        'billing',
+        `could not list the open Checkouts of customer ${customerId} of store ${storeId}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      return []
+    })
+  for (const session of open) {
+    if (session.mode !== 'subscription' || session.metadata?.storeId !== storeId) continue
+    try {
+      await stripe.checkout.sessions.expire(session.id)
+    } catch (error) {
+      log.error(
+        'billing',
+        `could not expire plan Checkout ${session.id} of store ${storeId}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+}
+
 export async function createSubscriptionCheckoutSession({
   storeId,
   planSlug,
@@ -348,10 +384,12 @@ export async function createSubscriptionCheckoutSession({
   const stripeCustomerId = await getPlanCustomerId(storeId)
   const hasTrial = Boolean(trialDays && trialDays > 0)
 
-  // Create the checkout session
+  // One open plan Checkout per store, payable for a short while only.
+  await expireOpenPlanCheckouts(storeId, stripeCustomerId)
   const session = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,
     mode: 'subscription',
+    expires_at: Math.floor(Date.now() / 1000) + PLAN_CHECKOUT_LIFETIME_SECONDS,
     line_items: [
       {
         price: priceId,
