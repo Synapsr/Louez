@@ -1,8 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { after, connection } from "next/server";
 
-import { auth } from "@/lib/auth";
 import { answerBillingReturn } from "@/lib/billing/billing-return-handler";
+import { getBillingSession } from "@/lib/billing/handoff-session";
+import { isPlatformAdmin } from "@/lib/platform-admin";
 import { getCurrentStore } from "@/lib/store-context";
 
 /**
@@ -16,8 +17,9 @@ export async function GET() {
   const answer = await answerBillingReturn({
     connection,
     after,
-    getUserId: async () => (await auth())?.user?.id ?? null,
+    getSession: getBillingSession,
     getStore: getCurrentStore,
+    isPlatformAdmin,
   });
   if (answer.kind === "not_found") notFound();
   redirect(answer.to);

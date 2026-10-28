@@ -15,6 +15,11 @@ import {
 // §12) against a fake billing service. The policy uses the public test values of
 // fees.md (Q33): 250 bps, a 150 marketplace fee.
 
+/** After the fake's BILLING_NEW_STORES_FROM, 2027-01-25: a store created since is new. */
+const NOW = new Date("2027-02-10T09:00:00Z");
+const NEW_STORE = "2027-02-01T00:00:00Z";
+const LEGACY_STORE = "2026-06-01T00:00:00Z";
+
 const policy = (storeId: string, version = 1) => ({
   schema: "louez.billing.policy/1",
   storeId,
@@ -61,6 +66,30 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
     restoreEnv = useFakeServiceEnv(service);
     louezDb = await import("@louez/db");
     handler = await import("./billing-return-handler");
+    // The service bills a new store (fail closed until it has a version); a store
+    // created before the cutoff, without a version, is legacy.
+    const store = (id: string, createdAt: string) => ({
+      id,
+      userId: "user_owner",
+      name: id,
+      slug: id.replaceAll("_", "-"),
+      createdAt: new Date(createdAt),
+    });
+    await louezDb.db
+      .insert(louezDb.stores)
+      .values([
+        ...[
+          "ret_store_member",
+          "ret_store_owner",
+          "ret_store_admin",
+          "ret_store_admin_mbr",
+          "ret_store_invalid",
+          "ret_store_conflict",
+          "ret_store_down",
+          "ret_store_alert",
+        ].map((id) => store(id, NEW_STORE)),
+        store("ret_store_legacy", LEGACY_STORE),
+      ]);
   });
 
   after(async () => {
@@ -70,10 +99,17 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
     await database?.drop();
   });
 
-  /** An owner of `storeId` coming back; `after` keeps its tasks, as Next.js runs them later. */
-  const returning = (storeId: string, overrides: Partial<BillingReturnRequest> = {}) => {
+  /**
+   * An owner of `storeId` coming back, or a platform admin with `admin`; `after` keeps
+   * its tasks, as Next.js runs them later.
+   */
+  const returning = (
+    storeId: string,
+    overrides: Partial<BillingReturnRequest> & { admin?: boolean } = {},
+  ) => {
     const calls: string[] = [];
     const afterTasks: Array<() => Promise<void>> = [];
+    const { admin = false, ...rest } = overrides;
     const request: BillingReturnRequest = {
       connection: async () => {
         calls.push("connection");
@@ -81,12 +117,14 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
       after: (task) => {
         afterTasks.push(task);
       },
-      getUserId: async () => {
-        calls.push("user");
-        return "user_owner";
+      getSession: async () => {
+        calls.push("session");
+        return { userId: "user_owner", email: "someone@example.test" };
       },
       getStore: async () => ({ id: storeId, role: "owner" }),
-      ...overrides,
+      isPlatformAdmin: () => admin,
+      now: () => NOW,
+      ...rest,
     };
     return { calls, afterTasks, answer: () => handler.answerBillingReturn(request) };
   };
@@ -137,7 +175,7 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
   });
 
   test("a signed-out visitor goes to the login page, then back to the route", async () => {
-    const visit = returning("ret_store_anon", { getUserId: async () => null });
+    const visit = returning("ret_store_anon", { getSession: async () => null });
     assert.deepEqual(await visit.answer(), {
       kind: "redirect",
       to: "/login?callbackUrl=%2Fdashboard%2Fbilling%2Freturn",
@@ -149,22 +187,11 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
     assert.deepEqual(await visit.answer(), { kind: "redirect", to: "/onboarding" });
   });
 
-  test("a member goes to the settings without a toast, and nothing is pulled", async () => {
-    service.handle("/stores/ret_store_member/policies", () => ({
-      status: 200,
-      body: storeSet("ret_store_member", [policy("ret_store_member")]),
-    }));
-    const visit = returning("ret_store_member", {
-      getStore: async () => ({ id: "ret_store_member", role: "member" }),
-    });
-    assert.deepEqual(await visit.answer(), { kind: "redirect", to: "/dashboard/settings" });
-    assert.deepEqual(requestsFor("ret_store_member"), []);
-  });
-
-  test("an owner's or a platform admin's return pulls the store and says billing is up to date", async () => {
+  test("whoever the hand-off turns away goes to the settings without a toast, and nothing is pulled", async () => {
+    // A member, and the owner of a legacy store (D4: no owner sees billing before M3).
     const visitors: ReadonlyArray<{ readonly storeId: string; readonly role: MemberRole }> = [
-      { storeId: "ret_store_owner", role: "owner" },
-      { storeId: "ret_store_admin", role: "platform_admin" },
+      { storeId: "ret_store_member", role: "member" },
+      { storeId: "ret_store_legacy", role: "owner" },
     ];
     for (const { storeId, role } of visitors) {
       service.handle(`/stores/${storeId}/policies`, () => ({
@@ -172,9 +199,35 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
         body: storeSet(storeId, [policy(storeId)]),
       }));
       const visit = returning(storeId, { getStore: async () => ({ id: storeId, role }) });
+      assert.deepEqual(
+        await visit.answer(),
+        { kind: "redirect", to: "/dashboard/settings" },
+        storeId,
+      );
+      assert.deepEqual(requestsFor(storeId), [], storeId);
+    }
+  });
+
+  test("an owner's or a platform admin's return pulls the store and says billing is up to date", async () => {
+    // A platform admin who is a plain member of the store gets a platform_admin token too.
+    const visitors: ReadonlyArray<{
+      readonly storeId: string;
+      readonly role: MemberRole;
+      readonly admin: boolean;
+    }> = [
+      { storeId: "ret_store_owner", role: "owner", admin: false },
+      { storeId: "ret_store_admin", role: "platform_admin", admin: true },
+      { storeId: "ret_store_admin_mbr", role: "member", admin: true },
+    ];
+    for (const { storeId, role, admin } of visitors) {
+      service.handle(`/stores/${storeId}/policies`, () => ({
+        status: 200,
+        body: storeSet(storeId, [policy(storeId)]),
+      }));
+      const visit = returning(storeId, { getStore: async () => ({ id: storeId, role }), admin });
       assert.deepEqual(await visit.answer(), {
         kind: "redirect",
-        to: "/dashboard/settings?billing=refreshed",
+        to: "/dashboard/settings/billing?billing=refreshed",
       });
       assert.equal(requestsFor(storeId).length, 1);
       const rows = await louezDb.db.select().from(louezDb.billingPolicies);
@@ -213,7 +266,7 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
       const visit = returning(storeId);
       assert.deepEqual(
         await visit.answer(),
-        { kind: "redirect", to: "/dashboard/settings?billing=pending" },
+        { kind: "redirect", to: "/dashboard/settings/billing?billing=pending" },
         storeId,
       );
     }
@@ -227,7 +280,7 @@ describe("billing return route (database)", { skip: skipWithoutTestDatabase() },
     const visit = returning("ret_store_alert");
     assert.deepEqual(await visit.answer(), {
       kind: "redirect",
-      to: "/dashboard/settings?billing=pending",
+      to: "/dashboard/settings/billing?billing=pending",
     });
     // policies_invalid: its Discord slot and webhook wait for `after`.
     assert.equal(visit.afterTasks.length, 1);

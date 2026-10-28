@@ -3,10 +3,10 @@ import type { MemberRole } from "@louez/utils";
 
 import {
   BILLING_RETURN_PATH,
-  BILLING_RETURN_TARGET,
   type BillingReturnOutcome,
   billingReturnTarget,
 } from "@/lib/billing/billing-return";
+import { type BillingSession, getBillingHandoffAccess } from "@/lib/billing/handoff-access";
 import { createBillingAlerts } from "@/lib/billing-sync/alerts";
 import { pullStorePolicies } from "@/lib/billing-sync/policies";
 import { log } from "@/lib/evlog";
@@ -24,9 +24,11 @@ export type BillingReturnRequest = {
   readonly connection: () => Promise<void>;
   /** `after` from next/server: the Discord part of an alert runs after the answer. */
   readonly after: (task: () => Promise<void>) => void;
-  readonly getUserId: () => Promise<string | null>;
+  readonly getSession: () => Promise<BillingSession | null>;
   /** The server-side active store, never a value from the query (README §10 step 1). */
   readonly getStore: () => Promise<{ readonly id: string; readonly role: MemberRole } | null>;
+  readonly isPlatformAdmin: (email: string | null) => boolean;
+  readonly now?: () => Date;
 };
 
 export type BillingReturnAnswer =
@@ -35,9 +37,9 @@ export type BillingReturnAnswer =
 
 /**
  * "Back to Louez" from the billing pages (louez-billing docs/api, README §10 step 4):
- * pulls the active store's policies, so a card added there reopens bookings within
- * seconds, then goes to the settings with a toast. On any failure Louez keeps its
- * cache. Only in service mode (README §12).
+ * for the viewers of `billingHandoffRole`, pulls the active store's policies, so a card
+ * added there reopens bookings within seconds, then goes to the billing settings with
+ * a toast. On any failure Louez keeps its cache. Only in service mode (README §12).
  */
 export async function answerBillingReturn(
   request: BillingReturnRequest,
@@ -45,15 +47,18 @@ export async function answerBillingReturn(
   await request.connection();
   if (!isBillingSyncEnabled()) return { kind: "not_found" };
 
-  if (!(await request.getUserId())) {
-    return { kind: "redirect", to: createLoginUrl(BILLING_RETURN_PATH) };
-  }
+  const session = await request.getSession();
+  if (!session) return { kind: "redirect", to: createLoginUrl(BILLING_RETURN_PATH) };
   const store = await request.getStore();
   if (!store) return { kind: "redirect", to: "/onboarding" };
-  // Only the people the hand-off lets in (README §10 step 1) come back from it.
-  if (store.role !== "owner" && store.role !== "platform_admin") {
-    return { kind: "redirect", to: BILLING_RETURN_TARGET };
-  }
+  // Only the people the hand-off lets in (README §10 step 1) come back from it. The
+  // others go to the settings, which have no billing page for them.
+  const access = await getBillingHandoffAccess(
+    store,
+    request.isPlatformAdmin(session.email),
+    request.now?.() ?? new Date(),
+  );
+  if (!access) return { kind: "redirect", to: "/dashboard/settings" };
 
   let outcome: BillingReturnOutcome = "pending";
   try {

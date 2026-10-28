@@ -3655,6 +3655,46 @@
         "refreshed": "Die Abrechnung ist auf dem neuesten Stand.",
         "pending": "Änderungen an der Abrechnung können einige Minuten brauchen, bis sie hier erscheinen."
       },
+      "billing": {
+        "label": "Abrechnung",
+        "description": "Ihr Louez-Angebot, Ihre Abrechnungskarte und Ihre Monatsabrechnungen.",
+        "offerTitle": "Ihr Louez-Angebot",
+        "offerPending": "Ihr Angebot erscheint hier, sobald Louez die Abrechnung für diesen Shop eingerichtet hat.",
+        "status": {
+          "accepting": "Nimmt Reservierungen an",
+          "blocked": "Reservierungen pausiert"
+        },
+        "blocked": {
+          "payment_method_required": "Fügen Sie eine Abrechnungskarte hinzu, um neue Reservierungen anzunehmen.",
+          "payment_overdue": "Eine Zahlung an Louez ist fehlgeschlagen. Begleichen Sie sie, um neue Reservierungen anzunehmen.",
+          "suspended": "Die Abrechnung dieses Shops ist ausgesetzt. Kontaktieren Sie Louez, um wieder Reservierungen anzunehmen."
+        },
+        "readOnly": "Als Plattform-Administrator sehen Sie die Abrechnung dieses Shops nur lesend.",
+        "manage": "Abrechnung verwalten",
+        "addCard": "Abrechnungskarte hinzufügen",
+        "pages": {
+          "title": "Auf den Abrechnungsseiten",
+          "paymentMethod": {
+            "title": "Abrechnungskarte",
+            "description": "Die Karte, die Louez für seine Gebühren belastet."
+          },
+          "statements": {
+            "title": "Monatsabrechnungen",
+            "description": "Was Louez Ihnen in Rechnung gestellt hat, Monat für Monat."
+          },
+          "details": {
+            "title": "Rechnungsdaten",
+            "description": "Name, Adresse und USt-IdNr. auf Ihren Rechnungen."
+          }
+        },
+        "handoff": {
+          "title": "Abrechnung wird geöffnet…",
+          "message": "Sie werden zu Ihren Abrechnungsseiten weitergeleitet.",
+          "continue": "Weiter",
+          "back": "Zurück zu Louez",
+          "unavailable": "Die Abrechnung kann gerade nicht geöffnet werden. Versuchen Sie es in ein paar Minuten erneut."
+        }
+      },
       "nav": {
         "storeDescription": "Informationen und Konfiguration",
         "appearanceDescription": "Logo, Farben und Design",
@@ -6134,6 +6174,7 @@
       "whatsNew": "Neuigkeiten",
       "settings": "Einstellungen",
       "settingsAdmin": "Administration",
+      "settingsBilling": "Abrechnung",
       "settingsApi": "API",
       "settingsAppearance": "Erscheinungsbild",
       "settingsDelivery": "Lieferung",

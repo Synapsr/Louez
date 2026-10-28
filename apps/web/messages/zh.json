@@ -3957,6 +3957,46 @@
         "refreshed": "账单信息已是最新。",
         "pending": "账单变更可能需要几分钟才会显示在这里。"
       },
+      "billing": {
+        "label": "账单",
+        "description": "您的 Louez 方案、账单卡和账单明细。",
+        "offerTitle": "您的 Louez 方案",
+        "offerPending": "Louez 为此商店设置好账单后，您的方案将显示在这里。",
+        "status": {
+          "accepting": "正在接受预订",
+          "blocked": "预订已暂停"
+        },
+        "blocked": {
+          "payment_method_required": "添加账单卡即可接受新预订。",
+          "payment_overdue": "一笔 Louez 账单付款失败。结清后即可接受新预订。",
+          "suspended": "此商店的账单已暂停。请联系 Louez 以重新接受预订。"
+        },
+        "readOnly": "作为平台管理员，您以只读方式查看此商店的账单。",
+        "manage": "管理账单",
+        "addCard": "添加账单卡",
+        "pages": {
+          "title": "在账单页面",
+          "paymentMethod": {
+            "title": "账单卡",
+            "description": "Louez 用于扣取其费用的银行卡。"
+          },
+          "statements": {
+            "title": "账单明细",
+            "description": "Louez 每月向您收取的费用。"
+          },
+          "details": {
+            "title": "账单信息",
+            "description": "发票上的名称、地址和增值税号。"
+          }
+        },
+        "handoff": {
+          "title": "正在打开账单…",
+          "message": "正在前往您的账单页面。",
+          "continue": "继续",
+          "back": "返回 Louez",
+          "unavailable": "目前无法打开账单。请几分钟后重试。"
+        }
+      },
       "nav": {
         "storeDescription": "信息和配置",
         "appearanceDescription": "标志、颜色和主题",
@@ -6134,6 +6174,7 @@
       "whatsNew": "有什么新消息",
       "settings": "设置",
       "settingsAdmin": "行政管理",
+      "settingsBilling": "账单",
       "settingsApi": "API",
       "settingsAppearance": "外观",
       "settingsDelivery": "发货",

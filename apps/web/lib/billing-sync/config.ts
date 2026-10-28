@@ -1,7 +1,8 @@
-import { isBillingSyncEnabled } from "@louez/db";
+import { isBillingSyncEnabled } from "@louez/db/billing-queue";
 
 // Louez's configuration for the billing service (louez-billing docs/api, README §4.3
-// and §12). Read from process.env at call time, like lib/billing/mode.ts.
+// and §12). Read from process.env at call time, like lib/billing/mode.ts. No database
+// import, so the proxy can read the service's origin for its CSP.
 
 export { isBillingSyncEnabled };
 
@@ -121,6 +122,21 @@ export function readBillingSyncConfig(env: NodeJS.ProcessEnv = process.env): Con
     ok: true,
     config: { origin, signingHost, outboundKeys, activeKid, responseKeys, newStoresFrom },
   };
+}
+
+/**
+ * The service's origin in service mode, null elsewhere. The billing pages live on it
+ * too (README §2, §10), so the CSP's `form-action` allows it. Lenient: a value that is
+ * not a URL gives null here, and the start-up check refuses it.
+ */
+export function billingServiceOrigin(): string | null {
+  if (!isBillingSyncEnabled()) return null;
+  try {
+    const { origin } = new URL(process.env.BILLING_SERVICE_URL ?? "");
+    return origin === "null" ? null : origin;
+  } catch {
+    return null;
+  }
 }
 
 let cached: { key: string; result: ConfigResult } | null = null;

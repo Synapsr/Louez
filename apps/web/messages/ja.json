@@ -3957,6 +3957,46 @@
         "refreshed": "請求情報は最新です。",
         "pending": "請求の変更がここに反映されるまで数分かかる場合があります。"
       },
+      "billing": {
+        "label": "請求",
+        "description": "Louez のプラン、請求用カード、明細書。",
+        "offerTitle": "Louez のプラン",
+        "offerPending": "Louez がこのストアの請求を設定すると、ここにプランが表示されます。",
+        "status": {
+          "accepting": "予約受付中",
+          "blocked": "予約を一時停止中"
+        },
+        "blocked": {
+          "payment_method_required": "新しい予約を受け付けるには、請求用カードを追加してください。",
+          "payment_overdue": "Louez の請求の支払いに失敗しました。新しい予約を受け付けるには、お支払いを完了してください。",
+          "suspended": "このストアの請求は停止されています。予約の受付を再開するには Louez にお問い合わせください。"
+        },
+        "readOnly": "プラットフォーム管理者として、このストアの請求を閲覧のみで表示しています。",
+        "manage": "請求を管理",
+        "addCard": "請求用カードを追加",
+        "pages": {
+          "title": "請求ページ",
+          "paymentMethod": {
+            "title": "請求用カード",
+            "description": "Louez が手数料を請求するカードです。"
+          },
+          "statements": {
+            "title": "明細書",
+            "description": "Louez からの請求を月ごとに確認できます。"
+          },
+          "details": {
+            "title": "請求先情報",
+            "description": "請求書に記載される名称、住所、VAT 番号です。"
+          }
+        },
+        "handoff": {
+          "title": "請求ページを開いています…",
+          "message": "請求ページに移動しています。",
+          "continue": "続行",
+          "back": "Louez に戻る",
+          "unavailable": "現在、請求ページを開けません。数分後にもう一度お試しください。"
+        }
+      },
       "nav": {
         "storeDescription": "情報と設定",
         "appearanceDescription": "ロゴ、色、テーマ",
@@ -6134,6 +6174,7 @@
       "whatsNew": "新機能",
       "settings": "設定",
       "settingsAdmin": "管理",
+      "settingsBilling": "請求",
       "settingsApi": "API",
       "settingsAppearance": "外観",
       "settingsDelivery": "配送",

@@ -3957,6 +3957,46 @@
         "refreshed": "결제 정보가 최신 상태입니다.",
         "pending": "결제 변경 사항이 여기에 표시되기까지 몇 분 정도 걸릴 수 있습니다."
       },
+      "billing": {
+        "label": "청구",
+        "description": "Louez 요금제, 청구 카드, 명세서입니다.",
+        "offerTitle": "Louez 요금제",
+        "offerPending": "Louez가 이 매장의 청구를 설정하면 요금제가 여기에 표시됩니다.",
+        "status": {
+          "accepting": "예약 접수 중",
+          "blocked": "예약 일시 중지됨"
+        },
+        "blocked": {
+          "payment_method_required": "새 예약을 받으려면 청구 카드를 추가하세요.",
+          "payment_overdue": "Louez 청구 결제에 실패했습니다. 새 예약을 받으려면 결제를 완료하세요.",
+          "suspended": "이 매장의 청구가 정지되었습니다. 다시 예약을 받으려면 Louez에 문의하세요."
+        },
+        "readOnly": "플랫폼 관리자로서 이 매장의 청구를 읽기 전용으로 보고 있습니다.",
+        "manage": "청구 관리",
+        "addCard": "청구 카드 추가",
+        "pages": {
+          "title": "청구 페이지",
+          "paymentMethod": {
+            "title": "청구 카드",
+            "description": "Louez가 수수료를 청구하는 카드입니다."
+          },
+          "statements": {
+            "title": "명세서",
+            "description": "Louez가 매월 청구한 내역입니다."
+          },
+          "details": {
+            "title": "청구 정보",
+            "description": "청구서에 표시되는 이름, 주소, VAT 번호입니다."
+          }
+        },
+        "handoff": {
+          "title": "청구 페이지를 여는 중…",
+          "message": "청구 페이지로 이동하고 있습니다.",
+          "continue": "계속",
+          "back": "Louez로 돌아가기",
+          "unavailable": "지금은 청구 페이지를 열 수 없습니다. 몇 분 후에 다시 시도하세요."
+        }
+      },
       "nav": {
         "storeDescription": "정보 및 구성",
         "appearanceDescription": "로고, 색상 및 테마",
@@ -6134,6 +6174,7 @@
       "whatsNew": "새로운 소식",
       "settings": "설정",
       "settingsAdmin": "행정",
+      "settingsBilling": "청구",
       "settingsApi": "API",
       "settingsAppearance": "외관",
       "settingsDelivery": "배송",

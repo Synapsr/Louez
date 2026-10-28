@@ -3958,6 +3958,46 @@
         "refreshed": "La facturation est à jour.",
         "pending": "Les changements de facturation peuvent mettre quelques minutes à apparaître ici."
       },
+      "billing": {
+        "label": "Facturation",
+        "description": "Votre offre Louez, votre carte de facturation et vos relevés.",
+        "offerTitle": "Votre offre Louez",
+        "offerPending": "Votre offre s'affichera ici dès que Louez aura mis en place la facturation de cette boutique.",
+        "status": {
+          "accepting": "Réservations ouvertes",
+          "blocked": "Réservations en pause"
+        },
+        "blocked": {
+          "payment_method_required": "Ajoutez une carte de facturation pour accepter de nouvelles réservations.",
+          "payment_overdue": "Un paiement de la facturation Louez a échoué. Réglez-le pour accepter de nouvelles réservations.",
+          "suspended": "La facturation de cette boutique est suspendue. Contactez Louez pour accepter de nouveau des réservations."
+        },
+        "readOnly": "En tant qu'administrateur de la plateforme, vous consultez la facturation de cette boutique en lecture seule.",
+        "manage": "Gérer la facturation",
+        "addCard": "Ajouter une carte de facturation",
+        "pages": {
+          "title": "Sur les pages de facturation",
+          "paymentMethod": {
+            "title": "Carte de facturation",
+            "description": "La carte que Louez débite pour ses frais."
+          },
+          "statements": {
+            "title": "Relevés",
+            "description": "Ce que Louez vous a facturé, mois par mois."
+          },
+          "details": {
+            "title": "Informations de facturation",
+            "description": "Le nom, l'adresse et le numéro de TVA de vos factures."
+          }
+        },
+        "handoff": {
+          "title": "Ouverture de la facturation…",
+          "message": "Nous vous emmenons vers vos pages de facturation.",
+          "continue": "Continuer",
+          "back": "Retour à Louez",
+          "unavailable": "La facturation ne peut pas s'ouvrir pour le moment. Réessayez dans quelques minutes."
+        }
+      },
       "nav": {
         "storeDescription": "Informations et configuration",
         "appearanceDescription": "Logo, couleurs et thème",
@@ -6134,6 +6174,7 @@
       "whatsNew": "Nouveautés",
       "settings": "Paramètres",
       "settingsAdmin": "Administration",
+      "settingsBilling": "Facturation",
       "settingsApi": "API",
       "settingsAppearance": "Apparence",
       "settingsDelivery": "Livraison",

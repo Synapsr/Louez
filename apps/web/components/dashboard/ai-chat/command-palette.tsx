@@ -100,6 +100,8 @@ const SEARCH_FEATURE_ID = "navigation-refresh";
 
 type DashboardCommandPaletteProps = {
   isPlatformAdmin?: boolean;
+  /** The viewer may open the billing service's pages for this store ("Facturation"). */
+  billingHandoffEnabled?: boolean;
   electronicInvoicingEnabled?: boolean;
   onCreateReservation: () => void;
   showAIChat: boolean;
@@ -107,6 +109,7 @@ type DashboardCommandPaletteProps = {
 
 export const DashboardCommandPalette = ({
   isPlatformAdmin = false,
+  billingHandoffEnabled = false,
   electronicInvoicingEnabled = true,
   onCreateReservation,
   showAIChat,
@@ -208,6 +211,7 @@ export const DashboardCommandPalette = ({
     () =>
       filterSettingsNavigationItems({
         billingEnabled,
+        billingHandoffEnabled,
         electronicInvoicingEnabled,
         isPlatformAdmin,
       }).map((item) => ({
@@ -216,7 +220,7 @@ export const DashboardCommandPalette = ({
         description: getMessageText(messages, item.descriptionPath),
         label: getMessageText(messages, item.labelPath),
       })),
-    [billingEnabled, isPlatformAdmin, electronicInvoicingEnabled, messages],
+    [billingEnabled, billingHandoffEnabled, isPlatformAdmin, electronicInvoicingEnabled, messages],
   );
 
   const trimmedQuery = query.trim();

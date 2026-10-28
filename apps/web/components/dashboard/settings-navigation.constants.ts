@@ -8,6 +8,7 @@ import {
   ClipboardIcon,
   ClockIcon,
   CodeIcon,
+  CreditCardIcon,
   DownloadIcon,
   FileCheckIcon,
   FileTextIcon,
@@ -41,6 +42,11 @@ export type SettingsNavigationItem = {
   platformAdminOnly?: boolean;
   /** Hidden unless the instance bills its stores (LOUEZ_BILLING=cloud). */
   requiresBilling?: boolean;
+  /**
+   * Hidden unless the viewer may open the billing service's pages for this store
+   * (lib/billing/handoff-access.ts), which needs the service.
+   */
+  requiresBillingHandoff?: boolean;
   /** Hidden unless the store's electronic-invoicing rollout flag is on. */
   requiresElectronicInvoicing?: boolean;
   searchPaths: string[];
@@ -329,6 +335,18 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     navigation: true,
     requiresBilling: true,
   },
+  // "Facturation": the billing service's offer, card and statements (design §6.1).
+  {
+    id: "billing",
+    href: "/dashboard/settings/billing",
+    icon: CreditCardIcon,
+    labelPath: "dashboard.settings.billing.label",
+    descriptionPath: "dashboard.settings.billing.description",
+    searchPaths: ["dashboard.settings.billing"],
+    group: "accountData",
+    navigation: true,
+    requiresBillingHandoff: true,
+  },
   {
     id: "export",
     href: "/dashboard/settings/export",
@@ -356,10 +374,12 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
 /** The items this viewer may see on this instance. */
 export const filterSettingsNavigationItems = ({
   billingEnabled,
+  billingHandoffEnabled,
   electronicInvoicingEnabled,
   isPlatformAdmin,
 }: {
   billingEnabled: boolean;
+  billingHandoffEnabled: boolean;
   electronicInvoicingEnabled: boolean;
   isPlatformAdmin: boolean;
 }): SettingsNavigationItem[] =>
@@ -367,5 +387,6 @@ export const filterSettingsNavigationItems = ({
     (item) =>
       (!item.platformAdminOnly || isPlatformAdmin) &&
       (!item.requiresBilling || billingEnabled) &&
+      (!item.requiresBillingHandoff || billingHandoffEnabled) &&
       (!item.requiresElectronicInvoicing || electronicInvoicingEnabled),
   );

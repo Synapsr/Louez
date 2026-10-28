@@ -3655,6 +3655,46 @@
         "refreshed": "La facturación está al día.",
         "pending": "Los cambios de facturación pueden tardar unos minutos en aparecer aquí."
       },
+      "billing": {
+        "label": "Facturación",
+        "description": "Tu oferta de Louez, tu tarjeta de facturación y tus extractos.",
+        "offerTitle": "Tu oferta de Louez",
+        "offerPending": "Tu oferta aparecerá aquí cuando Louez haya configurado la facturación de esta tienda.",
+        "status": {
+          "accepting": "Acepta reservas",
+          "blocked": "Reservas en pausa"
+        },
+        "blocked": {
+          "payment_method_required": "Añade una tarjeta de facturación para aceptar nuevas reservas.",
+          "payment_overdue": "Un pago de la facturación de Louez ha fallado. Regularízalo para aceptar nuevas reservas.",
+          "suspended": "La facturación de esta tienda está suspendida. Contacta con Louez para volver a aceptar reservas."
+        },
+        "readOnly": "Como administrador de la plataforma, ves la facturación de esta tienda en modo de solo lectura.",
+        "manage": "Gestionar la facturación",
+        "addCard": "Añadir una tarjeta de facturación",
+        "pages": {
+          "title": "En las páginas de facturación",
+          "paymentMethod": {
+            "title": "Tarjeta de facturación",
+            "description": "La tarjeta a la que Louez carga sus comisiones."
+          },
+          "statements": {
+            "title": "Extractos",
+            "description": "Lo que Louez te ha facturado, mes a mes."
+          },
+          "details": {
+            "title": "Datos de facturación",
+            "description": "El nombre, la dirección y el número de IVA de tus facturas."
+          }
+        },
+        "handoff": {
+          "title": "Abriendo la facturación…",
+          "message": "Te llevamos a tus páginas de facturación.",
+          "continue": "Continuar",
+          "back": "Volver a Louez",
+          "unavailable": "No se puede abrir la facturación en este momento. Inténtalo de nuevo en unos minutos."
+        }
+      },
       "nav": {
         "storeDescription": "Informacion y configuracion",
         "appearanceDescription": "Logo, colores y tema",
@@ -6134,6 +6174,7 @@
       "whatsNew": "Novedades",
       "settings": "Ajustes",
       "settingsAdmin": "Administración",
+      "settingsBilling": "Facturación",
       "settingsApi": "API",
       "settingsAppearance": "Apariencia",
       "settingsDelivery": "Entrega",

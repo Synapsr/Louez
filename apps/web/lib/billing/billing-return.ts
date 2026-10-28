@@ -1,3 +1,5 @@
+import { BILLING_SETTINGS_PATH } from "@/lib/billing/billing-routes";
+
 // "Back to Louez" from the billing pages (louez-billing docs/api, README §10 step 4):
 // the route that pulls the store's policies, where it then sends the owner, and the
 // toast it asks that page for.
@@ -5,8 +7,8 @@
 /** The route the service's `return_url` must name. */
 export const BILLING_RETURN_PATH = "/dashboard/billing/return";
 
-/** The settings page the route redirects to. */
-export const BILLING_RETURN_TARGET = "/dashboard/settings";
+/** The settings page the route redirects to: the billing card, with the fresh policy. */
+export const BILLING_RETURN_TARGET = BILLING_SETTINGS_PATH;
 
 /** The query parameter that carries the toast to show. */
 export const BILLING_RETURN_PARAM = "billing";

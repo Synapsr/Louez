@@ -3655,6 +3655,46 @@
         "refreshed": "La fatturazione è aggiornata.",
         "pending": "Le modifiche alla fatturazione possono richiedere qualche minuto prima di comparire qui."
       },
+      "billing": {
+        "label": "Fatturazione",
+        "description": "La tua offerta Louez, la tua carta di fatturazione e i tuoi estratti.",
+        "offerTitle": "La tua offerta Louez",
+        "offerPending": "La tua offerta comparirà qui quando Louez avrà configurato la fatturazione di questo negozio.",
+        "status": {
+          "accepting": "Accetta prenotazioni",
+          "blocked": "Prenotazioni in pausa"
+        },
+        "blocked": {
+          "payment_method_required": "Aggiungi una carta di fatturazione per accettare nuove prenotazioni.",
+          "payment_overdue": "Un pagamento della fatturazione Louez non è andato a buon fine. Saldalo per accettare nuove prenotazioni.",
+          "suspended": "La fatturazione di questo negozio è sospesa. Contatta Louez per accettare di nuovo prenotazioni."
+        },
+        "readOnly": "Come amministratore della piattaforma, vedi la fatturazione di questo negozio in sola lettura.",
+        "manage": "Gestisci la fatturazione",
+        "addCard": "Aggiungi una carta di fatturazione",
+        "pages": {
+          "title": "Nelle pagine di fatturazione",
+          "paymentMethod": {
+            "title": "Carta di fatturazione",
+            "description": "La carta su cui Louez addebita le sue commissioni."
+          },
+          "statements": {
+            "title": "Estratti",
+            "description": "Quanto Louez ti ha fatturato, mese per mese."
+          },
+          "details": {
+            "title": "Dati di fatturazione",
+            "description": "Il nome, l'indirizzo e la partita IVA sulle tue fatture."
+          }
+        },
+        "handoff": {
+          "title": "Apertura della fatturazione…",
+          "message": "Ti stiamo portando alle tue pagine di fatturazione.",
+          "continue": "Continua",
+          "back": "Torna a Louez",
+          "unavailable": "Non è possibile aprire la fatturazione in questo momento. Riprova tra qualche minuto."
+        }
+      },
       "nav": {
         "storeDescription": "Informazioni e configurazione",
         "appearanceDescription": "Logo, colori e tema",
@@ -6134,6 +6174,7 @@
       "whatsNew": "Novità",
       "settings": "Impostazioni",
       "settingsAdmin": "Amministrazione",
+      "settingsBilling": "Fatturazione",
       "settingsApi": "API",
       "settingsAppearance": "Aspetto",
       "settingsDelivery": "Consegna",

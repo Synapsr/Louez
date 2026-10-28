@@ -3655,6 +3655,46 @@
         "refreshed": "Rozliczenia są aktualne.",
         "pending": "Zmiany w rozliczeniach mogą pojawić się tutaj dopiero po kilku minutach."
       },
+      "billing": {
+        "label": "Rozliczenia",
+        "description": "Twoja oferta Louez, karta do rozliczeń i zestawienia.",
+        "offerTitle": "Twoja oferta Louez",
+        "offerPending": "Twoja oferta pojawi się tutaj, gdy Louez skonfiguruje rozliczenia tego sklepu.",
+        "status": {
+          "accepting": "Przyjmuje rezerwacje",
+          "blocked": "Rezerwacje wstrzymane"
+        },
+        "blocked": {
+          "payment_method_required": "Dodaj kartę do rozliczeń, aby przyjmować nowe rezerwacje.",
+          "payment_overdue": "Płatność za rozliczenia Louez nie powiodła się. Ureguluj ją, aby przyjmować nowe rezerwacje.",
+          "suspended": "Rozliczenia tego sklepu są zawieszone. Skontaktuj się z Louez, aby znów przyjmować rezerwacje."
+        },
+        "readOnly": "Jako administrator platformy widzisz rozliczenia tego sklepu tylko do odczytu.",
+        "manage": "Zarządzaj rozliczeniami",
+        "addCard": "Dodaj kartę do rozliczeń",
+        "pages": {
+          "title": "Na stronach rozliczeń",
+          "paymentMethod": {
+            "title": "Karta do rozliczeń",
+            "description": "Karta, którą Louez obciąża swoimi opłatami."
+          },
+          "statements": {
+            "title": "Zestawienia",
+            "description": "Co Louez Ci zafakturował, miesiąc po miesiącu."
+          },
+          "details": {
+            "title": "Dane do faktur",
+            "description": "Nazwa, adres i numer VAT na Twoich fakturach."
+          }
+        },
+        "handoff": {
+          "title": "Otwieranie rozliczeń…",
+          "message": "Przenosimy Cię na strony rozliczeń.",
+          "continue": "Dalej",
+          "back": "Wróć do Louez",
+          "unavailable": "Nie można teraz otworzyć rozliczeń. Spróbuj ponownie za kilka minut."
+        }
+      },
       "nav": {
         "storeDescription": "Informacje i konfiguracja",
         "appearanceDescription": "Logo, kolory i motyw",
@@ -6134,6 +6174,7 @@
       "whatsNew": "Nowości",
       "settings": "Ustawienia",
       "settingsAdmin": "Administracja",
+      "settingsBilling": "Rozliczenia",
       "settingsApi": "API",
       "settingsAppearance": "Wygląd",
       "settingsDelivery": "Dostawa",

@@ -3957,6 +3957,46 @@
         "refreshed": "Penagihan sudah diperbarui.",
         "pending": "Perubahan penagihan mungkin perlu beberapa menit untuk muncul di sini."
       },
+      "billing": {
+        "label": "Penagihan",
+        "description": "Penawaran Louez, kartu penagihan, dan laporan tagihan Anda.",
+        "offerTitle": "Penawaran Louez Anda",
+        "offerPending": "Penawaran Anda akan muncul di sini setelah Louez menyiapkan penagihan untuk toko ini.",
+        "status": {
+          "accepting": "Menerima reservasi",
+          "blocked": "Reservasi dijeda"
+        },
+        "blocked": {
+          "payment_method_required": "Tambahkan kartu penagihan untuk menerima reservasi baru.",
+          "payment_overdue": "Pembayaran tagihan Louez gagal. Lunasi untuk menerima reservasi baru.",
+          "suspended": "Penagihan untuk toko ini ditangguhkan. Hubungi Louez untuk kembali menerima reservasi."
+        },
+        "readOnly": "Sebagai admin platform, Anda melihat penagihan toko ini dalam mode baca saja.",
+        "manage": "Kelola penagihan",
+        "addCard": "Tambahkan kartu penagihan",
+        "pages": {
+          "title": "Di halaman penagihan",
+          "paymentMethod": {
+            "title": "Kartu penagihan",
+            "description": "Kartu yang ditagih Louez untuk biayanya."
+          },
+          "statements": {
+            "title": "Laporan tagihan",
+            "description": "Apa yang ditagihkan Louez kepada Anda, bulan demi bulan."
+          },
+          "details": {
+            "title": "Detail penagihan",
+            "description": "Nama, alamat, dan nomor PPN pada faktur Anda."
+          }
+        },
+        "handoff": {
+          "title": "Membuka penagihan…",
+          "message": "Mengarahkan Anda ke halaman penagihan.",
+          "continue": "Lanjutkan",
+          "back": "Kembali ke Louez",
+          "unavailable": "Penagihan tidak dapat dibuka saat ini. Coba lagi dalam beberapa menit."
+        }
+      },
       "nav": {
         "storeDescription": "Informasi dan konfigurasi",
         "appearanceDescription": "Logo, warna dan tema",
@@ -6134,6 +6174,7 @@
       "whatsNew": "Apa yang baru",
       "settings": "Pengaturan",
       "settingsAdmin": "Administrasi",
+      "settingsBilling": "Penagihan",
       "settingsApi": "API",
       "settingsAppearance": "Penampilan",
       "settingsDelivery": "Pengiriman",

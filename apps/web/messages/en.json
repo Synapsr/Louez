@@ -3958,6 +3958,46 @@
         "refreshed": "Billing is up to date.",
         "pending": "Billing changes can take a few minutes to appear here."
       },
+      "billing": {
+        "label": "Billing",
+        "description": "Your Louez offer, your billing card and your statements.",
+        "offerTitle": "Your Louez offer",
+        "offerPending": "Your offer will show here once Louez has set up billing for this store.",
+        "status": {
+          "accepting": "Taking reservations",
+          "blocked": "Reservations paused"
+        },
+        "blocked": {
+          "payment_method_required": "Add a billing card to take new reservations.",
+          "payment_overdue": "A Louez billing payment failed. Settle it to take new reservations.",
+          "suspended": "Billing for this store is suspended. Contact Louez to take reservations again."
+        },
+        "readOnly": "As a platform admin, you see this store's billing pages read-only.",
+        "manage": "Manage billing",
+        "addCard": "Add a billing card",
+        "pages": {
+          "title": "On the billing pages",
+          "paymentMethod": {
+            "title": "Billing card",
+            "description": "The card Louez charges for its fees."
+          },
+          "statements": {
+            "title": "Statements",
+            "description": "What Louez billed you, month by month."
+          },
+          "details": {
+            "title": "Billing details",
+            "description": "The name, address and VAT number on your invoices."
+          }
+        },
+        "handoff": {
+          "title": "Opening billing…",
+          "message": "Taking you to your billing pages.",
+          "continue": "Continue",
+          "back": "Back to Louez",
+          "unavailable": "Billing can't be opened right now. Try again in a few minutes."
+        }
+      },
       "nav": {
         "storeDescription": "Information and configuration",
         "appearanceDescription": "Logo, colors and theme",
@@ -6134,6 +6174,7 @@
       "whatsNew": "What's new",
       "settings": "Settings",
       "settingsAdmin": "Administration",
+      "settingsBilling": "Billing",
       "settingsApi": "API",
       "settingsAppearance": "Appearance",
       "settingsDelivery": "Delivery",

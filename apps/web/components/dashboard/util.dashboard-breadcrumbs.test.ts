@@ -28,6 +28,7 @@ test("covers every static dashboard breadcrumb route", () => {
     ["/dashboard/whats-new", ["whatsNew"]],
     ["/dashboard/settings", ["settings"]],
     ["/dashboard/settings/admin", ["settings", "settingsAdmin"]],
+    ["/dashboard/settings/billing", ["settings", "settingsBilling"]],
     ["/dashboard/settings/delivery", ["settings", "settingsDelivery"]],
     ["/dashboard/settings/export", ["settings", "settingsExport"]],
     ["/dashboard/settings/hours", ["settings", "settingsHours"]],

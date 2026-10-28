@@ -30,6 +30,7 @@ import { WhatsNewProvider } from "@/components/shared/whats-new-provider";
 import { getAiCreditsInfo, hasEverUsedAiCredits, microToCredits } from "@/lib/ai/advisor/credits";
 import { isAIChatConfigured } from "@/lib/ai/provider";
 import { auth } from "@/lib/auth";
+import { getBillingHandoffAccess } from "@/lib/billing/handoff-access";
 import { isSelfHosted } from "@/lib/hosting";
 import { parseKeyboardShortcutOverrides } from "@/lib/keyboard-shortcuts";
 import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
@@ -142,6 +143,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     getMarketplaceListingUrl(store.id),
     isElectronicInvoicingEnabled(store.id),
   ]);
+  const billingHandoffAccess = await getBillingHandoffAccess(store, isPlatformAdmin);
 
   return (
     <KeyboardShortcutsProvider
@@ -184,6 +186,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                         reservationLimits={limits.reservationsThisMonth}
                         planSlug={planSlug}
                         isPlatformAdmin={isPlatformAdmin}
+                        billingHandoffEnabled={billingHandoffAccess !== null}
                         electronicInvoicingEnabled={electronicInvoicingEnabled}
                       />
                     }

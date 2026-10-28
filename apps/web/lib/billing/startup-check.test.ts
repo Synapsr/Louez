@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { generateKeyPairSync } from "node:crypto";
 import { afterEach, describe, test } from "node:test";
 
 import {
@@ -17,8 +18,25 @@ const NAMES = [
   "BILLING_OUTBOUND_ACTIVE_KID",
   "BILLING_RESPONSE_KEYS",
   "BILLING_NEW_STORES_FROM",
+  "BILLING_SSO_PRIVATE_KEY",
+  "BILLING_SSO_KID",
 ] as const;
 const saved = Object.fromEntries(NAMES.map((name) => [name, process.env[name]]));
+
+/** A hand-off key of the test's own (README §4.3: Ed25519, PKCS#8 PEM). */
+const SSO_PRIVATE_KEY = generateKeyPairSync("ed25519")
+  .privateKey.export({ format: "pem", type: "pkcs8" })
+  .toString();
+const COMPLETE = {
+  LOUEZ_BILLING: "cloud",
+  BILLING_SERVICE_URL: "https://billing.example.com",
+  BILLING_OUTBOUND_KEYS: JSON.stringify({ "louez-req-a": "a".repeat(40) }),
+  BILLING_OUTBOUND_ACTIVE_KID: "louez-req-a",
+  BILLING_RESPONSE_KEYS: JSON.stringify({ "billing-res-a": "b".repeat(40) }),
+  BILLING_NEW_STORES_FROM: "2027-01-25T00:00:00Z",
+  BILLING_SSO_PRIVATE_KEY: SSO_PRIVATE_KEY,
+  BILLING_SSO_KID: "louez-sso-test-1",
+};
 
 function setEnv(values: Partial<Record<(typeof NAMES)[number], string>>) {
   for (const name of NAMES) {
@@ -60,15 +78,33 @@ describe("checkBillingSyncConfigAtStartup", () => {
   });
 
   test("a complete configuration starts", () => {
-    setEnv({
-      LOUEZ_BILLING: "cloud",
-      BILLING_SERVICE_URL: "https://billing.example.com",
-      BILLING_OUTBOUND_KEYS: JSON.stringify({ "louez-req-a": "a".repeat(40) }),
-      BILLING_OUTBOUND_ACTIVE_KID: "louez-req-a",
-      BILLING_RESPONSE_KEYS: JSON.stringify({ "billing-res-a": "b".repeat(40) }),
-      BILLING_NEW_STORES_FROM: "2027-01-25T00:00:00Z",
-    });
+    setEnv(COMPLETE);
     assert.equal(checkBillingSyncConfigAtStartup({ error: () => assert.fail("logged") }), true);
+  });
+
+  test("from M2, service mode refuses to start without the hand-off key and kid", () => {
+    // README §12. The lines name the variable, never its value.
+    for (const missing of ["BILLING_SSO_PRIVATE_KEY", "BILLING_SSO_KID"] as const) {
+      const errors: string[] = [];
+      setEnv({ ...COMPLETE, [missing]: undefined });
+      assert.equal(
+        checkBillingSyncConfigAtStartup({ error: (_tag, message) => errors.push(message) }),
+        false,
+        missing,
+      );
+      assert.deepEqual(errors, [
+        `billing service config: ${missing} is required`,
+        "billing service config is invalid, stopping",
+      ]);
+    }
+    const errors: string[] = [];
+    setEnv({ ...COMPLETE, BILLING_SSO_PRIVATE_KEY: SSO_PRIVATE_KEY.replace("PRIVATE", "PUBLIC") });
+    assert.equal(
+      checkBillingSyncConfigAtStartup({ error: (_tag, message) => errors.push(message) }),
+      false,
+    );
+    assert.ok(errors.some((line) => line.includes("Ed25519 private key in PKCS#8 PEM")));
+    assert.ok(errors.every((line) => !line.includes(SSO_PRIVATE_KEY.split("\n")[1] ?? "")));
   });
 
   test("in production, plain http to a loopback host is refused", () => {
@@ -77,14 +113,7 @@ describe("checkBillingSyncConfigAtStartup", () => {
     try {
       processEnv.NODE_ENV = "production";
       const errors: string[] = [];
-      setEnv({
-        LOUEZ_BILLING: "cloud",
-        BILLING_SERVICE_URL: "http://localhost:3100",
-        BILLING_OUTBOUND_KEYS: JSON.stringify({ "louez-req-a": "a".repeat(40) }),
-        BILLING_OUTBOUND_ACTIVE_KID: "louez-req-a",
-        BILLING_RESPONSE_KEYS: JSON.stringify({ "billing-res-a": "b".repeat(40) }),
-        BILLING_NEW_STORES_FROM: "2027-01-25T00:00:00Z",
-      });
+      setEnv({ ...COMPLETE, BILLING_SERVICE_URL: "http://localhost:3100" });
       assert.equal(
         checkBillingSyncConfigAtStartup({ error: (_tag, message) => errors.push(message) }),
         false,

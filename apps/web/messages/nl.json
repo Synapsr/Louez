@@ -3655,6 +3655,46 @@
         "refreshed": "De facturatie is bijgewerkt.",
         "pending": "Het kan enkele minuten duren voordat wijzigingen in de facturatie hier verschijnen."
       },
+      "billing": {
+        "label": "Facturatie",
+        "description": "Je Louez-aanbod, je factuurkaart en je overzichten.",
+        "offerTitle": "Je Louez-aanbod",
+        "offerPending": "Je aanbod verschijnt hier zodra Louez de facturatie voor deze winkel heeft ingesteld.",
+        "status": {
+          "accepting": "Neemt reserveringen aan",
+          "blocked": "Reserveringen gepauzeerd"
+        },
+        "blocked": {
+          "payment_method_required": "Voeg een factuurkaart toe om nieuwe reserveringen aan te nemen.",
+          "payment_overdue": "Een betaling aan Louez is mislukt. Voldoe die om nieuwe reserveringen aan te nemen.",
+          "suspended": "De facturatie van deze winkel is opgeschort. Neem contact op met Louez om weer reserveringen aan te nemen."
+        },
+        "readOnly": "Als platformbeheerder bekijk je de facturatie van deze winkel alleen-lezen.",
+        "manage": "Facturatie beheren",
+        "addCard": "Factuurkaart toevoegen",
+        "pages": {
+          "title": "Op de facturatiepagina's",
+          "paymentMethod": {
+            "title": "Factuurkaart",
+            "description": "De kaart die Louez voor zijn kosten belast."
+          },
+          "statements": {
+            "title": "Overzichten",
+            "description": "Wat Louez je heeft gefactureerd, maand voor maand."
+          },
+          "details": {
+            "title": "Factuurgegevens",
+            "description": "De naam, het adres en het btw-nummer op je facturen."
+          }
+        },
+        "handoff": {
+          "title": "Facturatie openen…",
+          "message": "We brengen je naar je facturatiepagina's.",
+          "continue": "Doorgaan",
+          "back": "Terug naar Louez",
+          "unavailable": "De facturatie kan nu niet worden geopend. Probeer het over een paar minuten opnieuw."
+        }
+      },
       "nav": {
         "storeDescription": "Informatie en configuratie",
         "appearanceDescription": "Logo, kleuren en thema",
@@ -6134,6 +6174,7 @@
       "whatsNew": "Nieuw",
       "settings": "Instellingen",
       "settingsAdmin": "Administratie",
+      "settingsBilling": "Facturatie",
       "settingsApi": "API",
       "settingsAppearance": "Uiterlijk",
       "settingsDelivery": "Levering",

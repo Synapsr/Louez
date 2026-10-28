@@ -9,6 +9,12 @@ import { cn } from "@louez/utils";
 interface DashboardListRowProps {
   href: string;
   onSelect?: () => void;
+  /**
+   * A plain link instead of next/link: for a route that answers a full page of its
+   * own, such as the billing hand-off, which must load as a document and never be
+   * prefetched.
+   */
+  documentLink?: boolean;
   /** Icon tile or avatar. */
   leading: ReactNode;
   title: ReactNode;
@@ -28,6 +34,7 @@ interface DashboardListRowProps {
 export const DashboardListRow = ({
   href,
   onSelect,
+  documentLink = false,
   leading,
   title,
   subtitle,
@@ -51,10 +58,17 @@ export const DashboardListRow = ({
       <ChevronRight className="text-muted-foreground/60 group-hover:text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
     </>
   );
-  return onSelect ? (
-    <button type="button" onClick={onSelect} className={cn(rowClassName, "w-full text-left")}>
+  if (onSelect) {
+    return (
+      <button type="button" onClick={onSelect} className={cn(rowClassName, "w-full text-left")}>
+        {content}
+      </button>
+    );
+  }
+  return documentLink ? (
+    <a href={href} className={rowClassName}>
       {content}
-    </button>
+    </a>
   ) : (
     <Link href={href} className={rowClassName}>
       {content}

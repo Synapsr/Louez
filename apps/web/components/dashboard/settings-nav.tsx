@@ -51,6 +51,8 @@ type SettingsSearchGroup = {
 
 type SettingsNavProps = {
   isPlatformAdmin?: boolean;
+  /** The viewer may open the billing service's pages for this store ("Facturation"). */
+  billingHandoffEnabled?: boolean;
   electronicInvoicingEnabled?: boolean;
   /** The settings page on screen, where it is not the one in the address bar: a demo scene. */
   pathname?: string;
@@ -60,6 +62,7 @@ type SettingsNavProps = {
 
 export const SettingsNav = ({
   isPlatformAdmin = false,
+  billingHandoffEnabled = false,
   electronicInvoicingEnabled = true,
   pathname: suppliedPathname,
   onNavigate,
@@ -77,10 +80,11 @@ export const SettingsNav = ({
     () =>
       filterSettingsNavigationItems({
         billingEnabled,
+        billingHandoffEnabled,
         electronicInvoicingEnabled,
         isPlatformAdmin,
       }),
-    [billingEnabled, isPlatformAdmin, electronicInvoicingEnabled],
+    [billingEnabled, billingHandoffEnabled, isPlatformAdmin, electronicInvoicingEnabled],
   );
 
   const navigationGroups = useMemo(

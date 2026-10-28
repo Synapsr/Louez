@@ -3,8 +3,13 @@ import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER, isDemoPath } from "@/lib/landing
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { LOUEZ_TERMS_PATH, isBillingOnlyPath } from "@/lib/billing/billing-routes";
+import {
+  LOUEZ_TERMS_PATH,
+  isBillingHandoffPath,
+  isBillingOnlyPath,
+} from "@/lib/billing/billing-routes";
 import { isBillingEnabled } from "@/lib/billing/mode";
+import { billingServiceOrigin } from "@/lib/billing-sync/config";
 import { isStandaloneMode } from "@/lib/deployment";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import {
@@ -55,14 +60,20 @@ function isEmbedPath(pathname: string): boolean {
   );
 }
 
+/** Set by NextResponse.rewrite: another route than the requested path answers. */
+const REWRITE_HEADER = "x-middleware-rewrite";
+
 function withRuntimeSecurityHeaders(
   response: NextResponse,
   pathname: string,
   publicEnv: PublicEnv,
 ) {
+  // Null outside service mode, so a self-hosted instance's headers stay as they were.
+  const billingOrigin = billingServiceOrigin();
   const options = {
     appDomain: publicEnv.NEXT_PUBLIC_APP_DOMAIN,
     appUrl: publicEnv.NEXT_PUBLIC_APP_URL,
+    billingOrigin: billingOrigin ?? undefined,
     demoParentOrigins: publicEnv.NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS,
     fromHelloApiUrl: publicEnv.NEXT_PUBLIC_FROMHELLO_API_URL,
     isDevelopment: process.env.NODE_ENV === "development",
@@ -74,8 +85,16 @@ function withRuntimeSecurityHeaders(
       ? buildEmbedSecurityHeaders(options)
       : buildSecurityHeaders(options);
 
+  // In service mode the billing hand-off sends a CSP and a frame policy of its own:
+  // Next.js drops a route's header when the proxy already set it
+  // (lib/billing/handoff-page.ts). Only when that route answers: a storefront host
+  // rewrites the same path to a store page, which keeps the proxy's headers.
+  const ownHeaders =
+    billingOrigin && isBillingHandoffPath(pathname) && !response.headers.has(REWRITE_HEADER)
+      ? new Set(["Content-Security-Policy", "X-Frame-Options"])
+      : null;
   for (const { key, value } of securityHeaders) {
-    response.headers.set(key, value);
+    if (!ownHeaders?.has(key)) response.headers.set(key, value);
   }
 
   return response;
