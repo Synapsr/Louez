@@ -192,21 +192,22 @@ async function failPull(
 }
 
 /**
- * `GET /policies` (README §8.2): with `If-None-Match` when the cache holds rows, with
- * `include=history` when it is empty. Inserts the pairs it lacks in one transaction.
+ * `GET /policies` (README §8.2): with `If-None-Match` once a set was pulled, with
+ * `include=history` until then. A store pull can fill the cache first, but only a set
+ * pull saves an ETag. Inserts the pairs it lacks in one transaction.
  */
 export async function pullPolicies(options: PolicyPullOptions = {}): Promise<PolicyPullResult> {
   const alerts = options.alerts ?? createBillingAlerts();
   const state = await readSyncState();
-  const empty = await isPolicyCacheEmpty();
-  const ifNoneMatch = !empty && state.policiesEtag ? `"${state.policiesEtag}"` : undefined;
+  const bootstrap = (await isPolicyCacheEmpty()) || !state.policiesEtag;
+  const ifNoneMatch = bootstrap ? undefined : `"${state.policiesEtag}"`;
 
   const response = await callBillingService(
     {
       endpoint: "policies",
       method: "GET",
       path: "/policies",
-      query: empty ? "include=history" : undefined,
+      query: bootstrap ? "include=history" : undefined,
       ifNoneMatch,
     },
     options.client,

@@ -474,6 +474,29 @@ describe("billing policy pull (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(cutoff.toISOString(), "2026-11-01T00:00:00.000Z");
   });
 
+  test("a store pull into an empty cache leaves the next set pull asking for history", async () => {
+    // A fresh install: nothing cached, no set pulled yet.
+    await louezDb.db.delete(louezDb.billingPolicies);
+    await louezDb.db
+      .update(louezDb.billingSyncState)
+      .set({ policiesEtag: null })
+      .where(eq(louezDb.billingSyncState.id, 1));
+    service.handle("/stores/pull_store_boot/policies", () => ({
+      status: 200,
+      body: storeSet("pull_store_boot", [storePolicy("pull_store_boot", 1)]),
+    }));
+    const pulled = await policies.pullStorePolicies("pull_store_boot", capture());
+    assert.equal(pulled.outcome, "updated");
+    reply = { status: 200, body: policySet("p-test-etag-0004", [DEFAULT_POLICY]) };
+
+    const result = await policies.pullPolicies(capture());
+
+    assert.equal(result.outcome, "updated");
+    const request = service.requests.at(-1);
+    assert.equal(request?.target, "/api/v1/louez/policies?include=history");
+    assert.equal(request?.headers["if-none-match"], undefined);
+  });
+
   // Last: the wait it sets holds every store pull of this process.
   test("a Retry-After on a store pull holds store pulls only, not the relay", async () => {
     service.handle("/stores/pull_store_h/policies", () => ({
