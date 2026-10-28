@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { MessageSquare } from 'lucide-react'
 import { after } from 'next/server'
 
-import { requireLegacyBilling, requirePlatformBilling } from '@/lib/billing/require-billing'
+import { legacyBillingApplies } from '@/lib/billing/policy'
+import { requirePlatformBilling } from '@/lib/billing/require-billing'
 import { getCurrentStore } from '@/lib/store-context'
 import { hasLiveSubscription } from '@/lib/stripe/subscription-status'
 import { syncStorePaymentMethodStatus } from '@/lib/discord/platform-notifications'
@@ -43,7 +44,11 @@ export default async function SubscriptionPage({
   if (!store) {
     redirect('/onboarding')
   }
-  await requireLegacyBilling(store.id)
+  // This page sits behind a redirect to the settings one (next.config.ts), which also
+  // sells plans to a store the billing service bills, without Louez's usage summary.
+  if (!(await legacyBillingApplies(store.id, new Date()))) {
+    redirect('/dashboard/settings/subscription')
+  }
 
   const t = await getTranslations('dashboard.settings.subscription')
   const params = await searchParams

@@ -5,10 +5,10 @@ import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/lib/plans'
 import { BillingDisabledError, isBillingEnabled } from '@/lib/billing/mode'
-import { getEffectivePolicy, legacyBillingApplies } from '@/lib/billing/policy'
+import { getEffectivePolicy } from '@/lib/billing/policy'
 import { type BillingAlerts, createBillingAlerts } from '@/lib/billing-sync/alerts'
 import { log } from '@/lib/evlog'
-import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
+import { ensurePlanRow } from '@/lib/pay-as-you-go/pricing-lock'
 import {
   hasLiveSubscription,
   rowStatus,
@@ -23,8 +23,9 @@ import { env } from '@/env'
 type SubscriptionColumns = Partial<Omit<typeof subscriptions.$inferInsert, 'id' | 'storeId'>>
 
 /**
- * Updates a store's row, creating it first with the pricing the store already pays
- * when Louez's legacy code bills the store at `at` (ensureSubscriptionRow).
+ * Updates a store's row, creating it first (ensurePlanRow): with the pricing the store
+ * already pays when Louez's legacy code bills it at `at`, with no pricing when the
+ * billing service does.
  */
 async function updateStoreSubscription(
   storeId: string,
@@ -32,7 +33,7 @@ async function updateStoreSubscription(
   at: Date = new Date(),
 ) {
   await db.transaction(async (tx) => {
-    await ensureSubscriptionRow(tx, storeId, at)
+    await ensurePlanRow(tx, storeId, at)
     await tx
       .update(subscriptions)
       .set({ ...values, updatedAt: new Date() })
@@ -111,10 +112,12 @@ async function findPlatformCustomer(
 }
 
 /**
- * Creates the platform customer of a store legacy at `at` and saves its id on the
- * store's row at once, so an abandoned checkout or a retry never creates a second one.
- * A store with no row yet gets one with the pricing it already pays (pay-as-you-go,
- * never the offer for new stores), so saving the id never changes what it is charged.
+ * Creates a store's platform customer, as Louez always has (`metadata.storeId`), and
+ * saves its id on the store's row at once, so an abandoned checkout or a retry never
+ * creates a second one. For a store legacy at `at`, and for the plan checkout of a store
+ * the billing service bills that holds no customer yet (README §8.4). A store with no
+ * row yet gets the one ensurePlanRow gives it, so saving the id never changes what it
+ * is charged.
  */
 async function createPlatformCustomer(storeId: string, at: Date): Promise<string> {
   const store = await db.query.stores.findFirst({
@@ -180,11 +183,11 @@ export async function getPlatformCustomerId(storeId: string): Promise<string | n
 
 /**
  * The platform customer a charge of Louez's own billing for a fact at `at` goes to:
- * the month-end invoice, at the end of its month as the run chose the store, a plan
- * checkout, a referral credit. Throws for a store Louez's legacy code does not bill at
- * `at`. A store legacy at `at` keeps its customer of then, and gets one when it has
- * none, also once the billing service bills it: Louez still invoices its last legacy
- * month (README §8.3, §8.4).
+ * the month-end invoice, at the end of its month as the run chose the store, a legacy
+ * store's plan checkout, a referral credit. Throws for a store Louez's legacy code
+ * does not bill at `at`. A store legacy at `at` keeps its customer of then, and gets
+ * one when it has none, also once the billing service bills it: Louez still invoices
+ * its last legacy month (README §8.3, §8.4).
  */
 export async function getLegacyPlatformCustomerId(
   storeId: string,
@@ -197,6 +200,29 @@ export async function getLegacyPlatformCustomerId(
     )
   }
   return customerId
+}
+
+/**
+ * The platform customer a store's plan checkout bills (louez-billing docs/api, README
+ * §8.4, Q46). A store legacy now keeps Louez's own (getLegacyPlatformCustomerId). A
+ * store the billing service bills takes the policy's customer, else the one on its
+ * row, else one Louez creates and keeps on its row. Top-ups never use this: they take
+ * the policy's customer only (getPlatformCustomerId).
+ */
+export async function getPlanCustomerId(storeId: string): Promise<string> {
+  if (!isBillingEnabled()) {
+    throw new BillingDisabledError('charge a store through the platform Stripe account')
+  }
+  const now = new Date()
+  const effective = await getEffectivePolicy(storeId, now)
+  if (effective.legacyBillingApplies) return getLegacyPlatformCustomerId(storeId, now)
+  const fromPolicy = effective.policy?.stripeCustomerId
+  if (fromPolicy) return fromPolicy
+  const row = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.storeId, storeId),
+    columns: { stripeCustomerId: true },
+  })
+  return row?.stripeCustomerId || createPlatformCustomer(storeId, now)
 }
 
 /** The parts of a retrieved Stripe customer the off-session check reads. */
@@ -293,9 +319,9 @@ export async function createSubscriptionCheckoutSession({
   successUrl,
   cancelUrl,
 }: CreateCheckoutSessionOptions) {
-  // A plan is Louez's own billing: a store the billing service bills buys none.
-  if (!(await legacyBillingApplies(storeId, new Date()))) {
-    throw new Error('Plans are not available for this store')
+  // Louez bills plans to every store, new ones included (README §8.7), on cloud only.
+  if (!isBillingEnabled()) {
+    throw new BillingDisabledError('sell a plan through the platform Stripe account')
   }
 
   // Get the plan from code
@@ -323,7 +349,7 @@ export async function createSubscriptionCheckoutSession({
   }
 
   // Persisted to the DB at creation, to avoid duplicates on abandoned checkouts.
-  const stripeCustomerId = await getLegacyPlatformCustomerId(storeId)
+  const stripeCustomerId = await getPlanCustomerId(storeId)
   const hasTrial = Boolean(trialDays && trialDays > 0)
 
   // Create the checkout session

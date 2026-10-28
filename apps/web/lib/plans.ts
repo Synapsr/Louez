@@ -1,9 +1,10 @@
 import { env } from '@/env';
 import { isBillingEnabled } from '@/lib/billing/mode';
-import type { Plan } from '@/lib/plans.shared';
+import { PAY_AS_YOU_GO_PLAN, type Plan } from '@/lib/plans.shared';
 
 export {
   CURRENCY_SYMBOLS,
+  PAY_AS_YOU_GO_PLAN,
   SUPPORTED_CURRENCIES,
   findPlanPrice,
   formatPlanPrice,
@@ -147,41 +148,6 @@ const BASE_PLANS: Record<
       phoneSupport: true,
       dedicatedManager: false,
     },
-  },
-};
-
-/**
- * Pseudo-plan for pay-as-you-go stores. Not purchasable as a subscription — it is
- * returned by `getStorePlan` when a store's billing mode is `pay_as_you_go`. PAYG
- * stores pay per rental, so every limit is unlimited and every feature is unlocked.
- * Exception: pay-as-you-go includes NO free SMS — unlike Pro/Ultra which bundle a
- * monthly allowance, PAYG stores pay for every SMS (via top-up credits).
- */
-export const PAY_AS_YOU_GO_PLAN: Plan = {
-  slug: 'pay_as_you_go',
-  name: 'Pay as you go',
-  description: 'Facturation à la location',
-  price: 0,
-  features: {
-    maxProducts: null,
-    maxReservationsPerMonth: null,
-    maxCustomers: null,
-    maxCollaborators: null,
-    maxSmsPerMonth: 0,
-    aiCreditsPerMonth: 0, // PAYG: no monthly allowance, prepaid credits only
-    onlinePayment: true,
-    analytics: true,
-    emailNotifications: true,
-    whiteLabel: true,
-    customDomain: true,
-    prioritySupport: true,
-    customerPortal: true,
-    reviewBooster: true,
-    aiAdvisor: true,
-    aiPhone: true,
-    apiAccess: true,
-    phoneSupport: true,
-    dedicatedManager: false,
   },
 };
 

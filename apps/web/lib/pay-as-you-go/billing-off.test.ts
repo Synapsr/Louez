@@ -194,6 +194,7 @@ describe("billing off", () => {
     const { executor, calls } = spyDatabase();
 
     await lock.ensureSubscriptionRow(executor, "store");
+    await lock.ensurePlanRow(executor, "store");
     await lock.addFreeReservations(executor, "store", 30);
     await lock.raiseFreeReservations(executor, "store", 30);
     assert.equal(
@@ -214,6 +215,22 @@ describe("billing off", () => {
   test("a platform charge is refused before any Stripe or database call", async () => {
     await assert.rejects(
       stripeSubscriptions.getPlatformCustomerId("store"),
+      (error: Error) => error.name === "BillingDisabledError",
+    );
+    // No plan is sold or changed.
+    await assert.rejects(
+      stripeSubscriptions.getPlanCustomerId("store"),
+      (error: Error) => error.name === "BillingDisabledError",
+    );
+    await assert.rejects(
+      stripeSubscriptions.createSubscriptionCheckoutSession({
+        storeId: "store",
+        planSlug: "pro",
+        interval: "monthly",
+        currency: "eur",
+        successUrl: "https://app.test/ok",
+        cancelUrl: "https://app.test/cancel",
+      }),
       (error: Error) => error.name === "BillingDisabledError",
     );
     await assert.rejects(

@@ -17,6 +17,7 @@ import {
   Check,
   CheckCircle,
   ChevronRight,
+  CreditCard,
   Crown,
   ExternalLink,
   FileText,
@@ -57,6 +58,7 @@ import { cn } from '@louez/utils';
 
 import {
   CURRENCY_SYMBOLS,
+  PAY_AS_YOU_GO_PLAN,
   SUPPORTED_CURRENCIES,
   getYearlyPrice,
   isPlanAvailable,
@@ -97,7 +99,7 @@ interface UsageStats {
   smsLimit: number | null;
 }
 
-interface SubscriptionManagementProps {
+export interface SubscriptionManagementProps {
   subscription: Subscription | null;
   plans: Plan[];
   canAccessBillingPortal: boolean;
@@ -115,6 +117,14 @@ interface SubscriptionManagementProps {
    * change that subscription's plan, after a confirmation, instead of opening a Checkout.
    */
   hasLiveSubscription?: boolean;
+  /**
+   * For a store the billing service bills: the service's words for the offer it pays
+   * as it goes (the policy's `labels.offer`), shown on the pay-as-you-go card instead
+   * of Louez's own pricing; null until Louez holds a policy.
+   */
+  offerLabel?: string | null;
+  /** The billing settings page, when the viewer may open the billing pages. */
+  billingSettingsHref?: string;
 }
 
 /** A plan change waiting for the owner's confirmation, as its card showed it. */
@@ -152,6 +162,8 @@ export function SubscriptionManagement({
   pendingBillingMode = null,
   showBackToPayAsYouGo = false,
   hasLiveSubscription = false,
+  offerLabel,
+  billingSettingsHref,
 }: SubscriptionManagementProps) {
   const locale = useLocale();
   const [loading, setLoading] = useState<string | null>(null);
@@ -172,6 +184,7 @@ export function SubscriptionManagement({
   const t = useTranslations('dashboard.settings.subscription');
   const { dateFns: dateLocale } = useFormatLocale();
   const tCommon = useTranslations('common');
+  const tBilling = useTranslations('dashboard.settings.billing');
   const tErrors = useTranslations('errors');
 
   const hasDiscount = discountPercent > 0;
@@ -387,12 +400,14 @@ export function SubscriptionManagement({
     return list;
   };
 
-  // Get the current plan info
+  // Get the current plan info. `plans` lists only the plans to buy, so a store on
+  // pay-as-you-go, or with no row, falls back to the pay-as-you-go pseudo-plan.
   const currentPlanSlug = subscription?.planSlug || 'pay_as_you_go';
   const currentPlan =
     subscription?.plan ||
     plans.find((p) => p.slug === currentPlanSlug) ||
-    plans[0];
+    (currentPlanSlug === 'pay_as_you_go' ? PAY_AS_YOU_GO_PLAN : plans[0]);
+  const showsOfferLabel = offerLabel !== undefined && currentPlan?.price === 0;
   const hasPaidSubscription =
     subscription?.stripeSubscriptionId && currentPlan?.price !== 0;
 
@@ -526,7 +541,20 @@ export function SubscriptionManagement({
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* The billing service's words for pay-as-you-go, for a store it bills. */}
+          {showsOfferLabel && (
+            <div className="space-y-1">
+              <p className="text-muted-foreground text-sm">{tBilling('offerTitle')}</p>
+              {offerLabel ? (
+                <p className="text-2xl font-bold">{offerLabel}</p>
+              ) : (
+                <p className="text-muted-foreground text-sm">{tBilling('offerPending')}</p>
+              )}
+            </div>
+          )}
+
           {/* Pricing info - use actual billing currency and interval */}
+          {!showsOfferLabel && (
           <div className="flex items-baseline gap-1">
             <span className="text-4xl font-bold">
               {formatPrice(
@@ -552,6 +580,7 @@ export function SubscriptionManagement({
               </span>
             )}
           </div>
+          )}
 
           {/* Billing period */}
           {hasPaidSubscription && subscription?.currentPeriodEnd && (
@@ -654,6 +683,13 @@ export function SubscriptionManagement({
               </Button>
             )}
 
+            {billingSettingsHref && (
+              <Button variant="outline" render={<Link href={billingSettingsHref} />}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                {tBilling('manage')}
+              </Button>
+            )}
+
             {hasPaidSubscription && !subscription?.cancelAtPeriodEnd && (
               <Button
                 variant="ghost"
@@ -666,9 +702,10 @@ export function SubscriptionManagement({
             )}
 
             {/* Owner-autonomous switch to pay-as-you-go — links to the tariffs
-                preview first (hidden when already scheduled or when a PAYG store
-                is here only to pick a plan). */}
+                preview first (hidden when already scheduled or when the store is
+                on pay-as-you-go already). */}
             {!showBackToPayAsYouGo &&
+              currentPlan?.price !== 0 &&
               pendingBillingMode !== 'pay_as_you_go' && (
                 <Button
                   variant="outline"

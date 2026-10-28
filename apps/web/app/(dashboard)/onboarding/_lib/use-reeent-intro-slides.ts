@@ -86,13 +86,15 @@ export const useReeentIntroSlides = (): ReeentIntroSlide[] => {
         }
       : {
           // The billing service's offer: its label is the figure, and Louez's words
-          // around it name no rate and no price.
+          // around it name no rate and no price. Louez's plans are sold to new stores
+          // too (louez-billing docs/api, README §8.7).
           key: "pricing",
           icon: PricingIcon,
           accent: "neutral",
           title: t("pricing.title"),
           amount: pricing.offer ? { value: pricing.offer } : undefined,
           body: t("pricing.details"),
+          bullets: [t("pricing.subscription"), t("pricing.switch")],
           note: isIndividual ? t("pricing.individualNote") : undefined,
         },
   ];

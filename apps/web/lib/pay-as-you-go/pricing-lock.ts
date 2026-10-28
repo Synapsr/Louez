@@ -8,10 +8,12 @@ import {
   billingMarkStatement,
   isBillingSyncEnabled,
   markLegacyStore,
+  markSubscriptionRow,
 } from '@louez/db/billing-queue';
 import { stores, subscriptions } from '@louez/db/schema';
 import type { PayAsYouGoConfig } from '@louez/types';
 
+import { isBillingEnabled } from '../billing/mode';
 import {
   PAYG_LADDER_V1,
   buildExistingStorePricing,
@@ -28,7 +30,7 @@ import {
  * MIGRATE_DATABASE_URL. For the same reason it imports the billing marks and the legacy
  * guard from their own entry points, not from `@louez/db`. Every write to a subscription
  * row marks the store's legacy_store snapshot for the billing service (louez-billing
- * docs/api, README §5.2).
+ * docs/api, README §5.2), and the plan row of a new store its store snapshot too.
  */
 
 /** What a never-frozen store was paying before the lock, written onto its row once. */
@@ -425,8 +427,54 @@ export async function ensureSubscriptionRow(
   at: Date = new Date(),
 ): Promise<void> {
   if (!(await legacyBillingAppliesAt(executor, storeId, at))) return;
+  await insertLegacyRow(executor, storeId);
+}
+
+async function insertLegacyRow(executor: Executor, storeId: string): Promise<void> {
   await executor.transaction(async (tx) => {
     if (await insertMissingRow(tx, storeId)) await markLegacyStore(tx, storeId);
+  });
+}
+
+/**
+ * Make sure a store has the row a Louez plan is written on (louez-billing docs/api,
+ * README §8.3 and §8.7), before a plan write path updates it. A store Louez's legacy
+ * code bills at `at` gets the row ensureSubscriptionRow gives it. A store the billing
+ * service bills gets one with no pricing at all, which nothing bills, so its plan, its
+ * status and its Stripe ids have somewhere to go: pay-as-you-go, no config, no pricing
+ * version, no free reservations. Nothing with platform billing off. Inside the
+ * caller's transaction it runs in a savepoint.
+ */
+export async function ensurePlanRow(
+  executor: Executor,
+  storeId: string,
+  at: Date = new Date(),
+): Promise<void> {
+  if (await legacyBillingAppliesAt(executor, storeId, at)) {
+    await insertLegacyRow(executor, storeId);
+    return;
+  }
+  if (!isBillingEnabled()) return;
+  await executor.transaction(async (tx) => {
+    const [store] = await tx
+      .select({ id: stores.id })
+      .from(stores)
+      .where(eq(stores.id, storeId))
+      .limit(1);
+    if (!store) return;
+    const [inserted] = await tx
+      .insert(subscriptions)
+      .values({
+        id: nanoid(),
+        storeId,
+        planSlug: 'pay_as_you_go',
+        billingMode: 'pay_as_you_go',
+        payAsYouGoConfig: null,
+        pricingVersion: null,
+        freeReservationsGranted: 0,
+      })
+      .onDuplicateKeyUpdate({ set: { storeId: sql`${subscriptions.storeId}` } });
+    if (inserted.affectedRows === 1) await markSubscriptionRow(tx, storeId);
   });
 }
 

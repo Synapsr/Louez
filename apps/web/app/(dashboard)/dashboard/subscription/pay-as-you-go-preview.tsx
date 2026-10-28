@@ -22,21 +22,30 @@ import {
 import { switchToPayAsYouGo } from './actions'
 import { PayAsYouGoPricing, type PricingBand } from './pay-as-you-go-pricing'
 
-interface PayAsYouGoPreviewProps {
-  flatRateCents: number | null
-  bands: PricingBand[]
-  currency: string
+type PayAsYouGoPreviewProps = {
   /** True when the store has an active paid plan → activation is deferred. */
   isPaidPlan: boolean
-}
+} & (
+  | {
+      /** Louez's own pricing, for a store Louez's legacy code bills. */
+      flatRateCents: number | null
+      bands: PricingBand[]
+      currency: string
+      offerLabel?: undefined
+    }
+  | {
+      /**
+       * For a store the billing service bills: the service's words for the offer it
+       * returns to, in place of Louez's pricing; null until Louez holds a policy.
+       */
+      offerLabel: string | null
+    }
+)
 
-export function PayAsYouGoPreview({
-  flatRateCents,
-  bands,
-  currency,
-  isPaidPlan,
-}: PayAsYouGoPreviewProps) {
+export function PayAsYouGoPreview(props: PayAsYouGoPreviewProps) {
+  const { isPaidPlan } = props
   const t = useTranslations('dashboard.settings.subscription.payAsYouGo')
+  const tBilling = useTranslations('dashboard.settings.billing')
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState(false)
@@ -72,7 +81,24 @@ export function PayAsYouGoPreview({
         <p className="text-muted-foreground">{t('previewDescription')}</p>
       </div>
 
-      <PayAsYouGoPricing flatRateCents={flatRateCents} bands={bands} currency={currency} />
+      {props.offerLabel === undefined ? (
+        <PayAsYouGoPricing
+          flatRateCents={props.flatRateCents}
+          bands={props.bands}
+          currency={props.currency}
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardDescription>{tBilling('offerTitle')}</CardDescription>
+            {props.offerLabel ? (
+              <CardTitle className="text-2xl">{props.offerLabel}</CardTitle>
+            ) : (
+              <CardDescription>{tBilling('offerPending')}</CardDescription>
+            )}
+          </CardHeader>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
