@@ -5,6 +5,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '@louez/db';
 import { referralRewards, stores, subscriptions } from '@louez/db';
 
+import { legacyBillingApplies } from '@/lib/billing/policy';
 import { priceForLocationIndex } from '@/lib/pay-as-you-go/config';
 import { getStoreBilling } from '@/lib/pay-as-you-go/metering';
 import { getReferralProgramConfig } from '@/lib/referral/defaults';
@@ -44,7 +45,10 @@ export interface ReferralStats {
 export interface ReferralProgramSummary {
   /** Free reservations the Referrer earns per qualified referral. */
   referrerReward: number;
-  /** Free reservations a Referred Store receives at sign-up. */
+  /**
+   * The program's welcome reward for a Referred Store, for analytics only: a store the
+   * billing service bills gets none (insertNewStoreSubscription).
+   */
   referredReward: number;
   /** Indicative euro value of the Referrer Reward (count × entry-tier tariff), in cents. */
   rewardValueCents: number;
@@ -187,7 +191,9 @@ export async function getReferralData(): Promise<{
  * count and its indicative euro value at the store's entry-tier tariff. Powers the
  * self-contained referral nudge (which fetches its own data over oRPC rather than threading
  * props through the deeply-nested payment UI). Cheaper than {@link getReferralData} — it
- * skips the referrals list and the reward ledger.
+ * skips the referrals list and the reward ledger. Null for a store the billing service
+ * bills: the reward is a credit on Louez's own billing, which it never gets
+ * (maybeGrantReferrerReward).
  */
 export async function getReferralRewardSummary(): Promise<{
   referrerReward: number;
@@ -200,6 +206,7 @@ export async function getReferralRewardSummary(): Promise<{
 } | null> {
   const store = await getCurrentStore();
   if (!store) return null;
+  if (!(await legacyBillingApplies(store.id, new Date()))) return null;
 
   const billing = await getStoreBilling(store.id);
   const unitValueCents = priceForLocationIndex(billing.config, 1);

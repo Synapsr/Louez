@@ -51,6 +51,8 @@ type SettingsSearchGroup = {
 
 type SettingsNavProps = {
   isPlatformAdmin?: boolean;
+  /** Louez's own billing bills this store now: its referral rewards are listed. */
+  legacyBillingEnabled?: boolean;
   /** The viewer may open the billing service's pages for this store ("Facturation"). */
   billingHandoffEnabled?: boolean;
   electronicInvoicingEnabled?: boolean;
@@ -62,6 +64,7 @@ type SettingsNavProps = {
 
 export const SettingsNav = ({
   isPlatformAdmin = false,
+  legacyBillingEnabled = false,
   billingHandoffEnabled = false,
   electronicInvoicingEnabled = true,
   pathname: suppliedPathname,
@@ -80,11 +83,18 @@ export const SettingsNav = ({
     () =>
       filterSettingsNavigationItems({
         billingEnabled,
+        legacyBillingEnabled,
         billingHandoffEnabled,
         electronicInvoicingEnabled,
         isPlatformAdmin,
       }),
-    [billingEnabled, billingHandoffEnabled, isPlatformAdmin, electronicInvoicingEnabled],
+    [
+      billingEnabled,
+      legacyBillingEnabled,
+      billingHandoffEnabled,
+      isPlatformAdmin,
+      electronicInvoicingEnabled,
+    ],
   );
 
   const navigationGroups = useMemo(

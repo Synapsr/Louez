@@ -214,8 +214,8 @@
       "sessionExpired": "La sessione è scaduta. Accedi di nuovo e riprova.",
       "passwordSignUpDisabled": "La creazione di un account con password non è disponibile. Usa un codice ricevuto via email."
     },
-    "referralBanner": "{storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
-    "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
+    "referralBanner": "{storeName} ti ha invitato su Louez — crea il tuo negozio in pochi minuti.",
+    "referralBannerGeneric": "Sei stato invitato su Louez — crea il tuo negozio in pochi minuti.",
     "socialProofRating": "4,9/5",
     "socialProofTrusted": "Oltre 450 noleggiatori si affidano a noi per gestire i loro noleggi",
     "review1Quote": "Abbiamo lasciato il nostro vecchio software quando i prezzi sono diventati troppo alti e siamo passati a Louez.io… e onestamente, nessun rimpianto! Semplice, flessibile, economico ed efficace.",
@@ -224,8 +224,8 @@
     "review2Role": "Co-fondatore · Bloom",
     "review3Quote": "Louez.io è una piattaforma affidabile, chiara e precisa. La gestione della stagione sarà molto più semplice e veloce.",
     "review3Role": "Co-fondatore · Les Frères Complices",
-    "perk1": "Le tue prime 15 prenotazioni in omaggio",
-    "perk2": "Max 1 € a prenotazione, decrescente col volume, 0% di commissioni, nessun abbonamento",
+    "perk1": "Prenotazioni 24/7, pagamento e cauzione online",
+    "perk2": "Contratti automatici e area clienti",
     "perk3": "Il tuo negozio online pronto in 5 minuti",
     "visitShop": "Vedi il negozio",
     "name": "Nome",
@@ -612,8 +612,8 @@
       "link": {
         "title": "Invita e guadagna",
         "description": "Condividi il tuo link e invita altri noleggiatori a unirsi a Louez.",
-        "reward": "Per ogni noleggiatore che inviti e che effettua la sua prima vendita, guadagni {referrer} prenotazioni gratuite (≈ {rewardValue}) — e lui inizia con {referred}.",
-        "rewardInvoiceCredit": "Per ogni noleggiatore che inviti e che effettua la sua prima vendita, guadagni un credito di {rewardValue} sulla fattura Louez — e lui inizia con {referred} prenotazioni gratuite.",
+        "reward": "Per ogni noleggiatore che inviti e che effettua la sua prima vendita, guadagni {referrer} prenotazioni gratuite (≈ {rewardValue}).",
+        "rewardInvoiceCredit": "Per ogni noleggiatore che inviti e che effettua la sua prima vendita, guadagni un credito di {rewardValue} sulla fattura Louez.",
         "copyLink": "Copia link",
         "linkCopied": "Link copiato!",
         "linkCopyFailed": "Impossibile copiare il link.",
@@ -644,8 +644,8 @@
       },
       "nudge": {
         "title": "Ti piace Louez?",
-        "description": "Invita un noleggiatore: guadagnate entrambi {count} prenotazioni gratuite (≈ {rewardValue}).",
-        "descriptionInvoiceCredit": "Invita un noleggiatore: lui inizia con {count} prenotazioni gratuite, tu guadagni {rewardValue} di credito.",
+        "description": "Invita un noleggiatore: guadagni {count} prenotazioni gratuite (≈ {rewardValue}) appena effettua la sua prima vendita online.",
+        "descriptionInvoiceCredit": "Invita un noleggiatore: guadagni {rewardValue} di credito appena effettua la sua prima vendita online.",
         "cta": "Invita",
         "dismiss": "Chiudi"
       },
@@ -659,7 +659,7 @@
         "open": "Come funziona",
         "title": "Come funziona il referral",
         "step1": "Condividi il tuo link di invito con altri noleggiatori.",
-        "step2": "Il tuo invitato inizia con {count} prenotazioni gratuite al momento della registrazione.",
+        "step2": "Il tuo invitato crea il suo negozio Louez dal tuo link.",
         "step3": "Non appena il tuo invitato effettua la sua prima vendita online di almeno {minAmount}, guadagni {count} prenotazioni gratuite.",
         "step3InvoiceCredit": "Non appena il tuo invitato effettua la sua prima vendita online di almeno {minAmount}, guadagni un credito sulla prossima fattura Louez.",
         "note": "Solo le vendite pagate online (carta/Stripe) sbloccano la ricompensa — i pagamenti manuali o in contanti non contano. Le prenotazioni gratuite sono noleggi senza commissione Louez."
@@ -5988,8 +5988,7 @@
             "enableLabel": "Attiva il canale reeent",
             "benefits": {
               "visibility": "Nuovi clienti provenienti dalla ricerca di reeent.",
-              "seo": "Una pagina dedicata alla tua attività, indicizzata dai motori di ricerca.",
-              "free": "Gratuito al lancio, senza commissioni sulle tue prenotazioni."
+              "seo": "Una pagina dedicata alla tua attività, indicizzata dai motori di ricerca."
             }
           },
           "storefront": {
@@ -6040,7 +6039,7 @@
             },
             "marketplaceTermsAccepted": {
               "label": "Condizioni del marketplace accettate",
-              "description": "Il marketplace è gratuito al lancio. Le condizioni riservano la possibilità di introdurre in futuro una commissione sulle prenotazioni provenienti dal marketplace.",
+              "description": "Le condizioni del marketplace si applicano alle prenotazioni provenienti da reeent, in aggiunta alla tua offerta Louez.",
               "acceptedAt": "Accettate il {date}"
             }
           }
@@ -8190,6 +8189,7 @@
           "quietMonth": "Un mese senza noleggi: nulla da pagare.",
           "subscription": "Un abbonamento mensile se noleggi molto.",
           "switch": "Passi dall'uno all'altro quando vuoi.",
+          "details": "Una volta creato il tuo negozio, trovi i dettagli della tua offerta nelle impostazioni di fatturazione.",
           "individualNote": "I redditi da noleggio vanno dichiarati in base alla tua situazione; se l'attività diventa professionale, ti chiederemo di cambiare stato."
         }
       }

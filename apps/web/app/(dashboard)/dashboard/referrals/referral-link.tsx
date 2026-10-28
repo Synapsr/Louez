@@ -118,15 +118,8 @@ export const ReferralLink = ({
           <Crown className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
             {rewardKind === 'invoice_credit'
-              ? t('rewardInvoiceCredit', {
-                  referred: referredReward,
-                  rewardValue,
-                })
-              : t('reward', {
-                  referrer: referrerReward,
-                  referred: referredReward,
-                  rewardValue,
-                })}
+              ? t('rewardInvoiceCredit', { rewardValue })
+              : t('reward', { referrer: referrerReward, rewardValue })}
           </p>
         </div>
 

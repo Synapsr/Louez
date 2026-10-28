@@ -214,8 +214,8 @@
       "sessionExpired": "Sesja wygasła. Zaloguj się ponownie i spróbuj jeszcze raz.",
       "passwordSignUpDisabled": "Zakładanie konta za pomocą hasła jest niedostępne. Użyj kodu wysłanego e-mailem."
     },
-    "referralBanner": "{storeName} zaprosił Cię do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
-    "referralBannerGeneric": "🎁 Zostałeś zaproszony do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
+    "referralBanner": "{storeName} zaprosił Cię do Louez — załóż swój sklep w kilka minut.",
+    "referralBannerGeneric": "Zostałeś zaproszony do Louez — załóż swój sklep w kilka minut.",
     "socialProofRating": "4,9/5",
     "socialProofTrusted": "Ponad 450 wypożyczalni powierza nam zarządzanie swoim wynajmem",
     "review1Quote": "Porzuciliśmy nasze stare oprogramowanie, gdy ceny stały się zbyt wysokie, i przeszliśmy na Louez.io… i szczerze mówiąc, zero żalu! Proste, elastyczne, ekonomiczne i skuteczne.",
@@ -224,8 +224,8 @@
     "review2Role": "Współzałożyciel · Bloom",
     "review3Quote": "Louez.io to niezawodna, przejrzysta i precyzyjna platforma. Zarządzanie sezonem będzie znacznie prostsze i szybsze.",
     "review3Role": "Współzałożyciel · Les Frères Complices",
-    "perk1": "Pierwsze 15 rezerwacji za darmo",
-    "perk2": "Maks. 1 € za rezerwację, im więcej, tym taniej, 0% prowizji, bez abonamentu",
+    "perk1": "Rezerwacje 24/7, płatność i kaucja online",
+    "perk2": "Automatyczne umowy i panel klienta",
     "perk3": "Twój sklep online gotowy w 5 minut",
     "visitShop": "Zobacz sklep",
     "name": "Imię",
@@ -612,8 +612,8 @@
       "link": {
         "title": "Polecaj i zyskuj",
         "description": "Udostępnij swój link i zaproś innych wynajmujących do Louez.",
-        "reward": "Za każdego poleconego wynajmującego, który dokona pierwszej sprzedaży, otrzymujesz {referrer} darmowych rezerwacji (≈ {rewardValue}) — a on zaczyna z {referred}.",
-        "rewardInvoiceCredit": "Za każdego poleconego wynajmującego, który dokona pierwszej sprzedaży, otrzymujesz kredyt {rewardValue} na fakturze Louez — a on zaczyna z {referred} darmowymi rezerwacjami.",
+        "reward": "Za każdego poleconego wynajmującego, który dokona pierwszej sprzedaży, otrzymujesz {referrer} darmowych rezerwacji (≈ {rewardValue}).",
+        "rewardInvoiceCredit": "Za każdego poleconego wynajmującego, który dokona pierwszej sprzedaży, otrzymujesz kredyt {rewardValue} na fakturze Louez.",
         "copyLink": "Kopiuj link",
         "linkCopied": "Link skopiowany!",
         "linkCopyFailed": "Nie można skopiować linku.",
@@ -644,8 +644,8 @@
       },
       "nudge": {
         "title": "Podoba Ci się Louez?",
-        "description": "Poleć wynajmującego — oboje zdobywacie {count} darmowych rezerwacji (≈ {rewardValue}).",
-        "descriptionInvoiceCredit": "Poleć wynajmującego — on zaczyna z {count} darmowymi rezerwacjami, Ty otrzymujesz kredyt {rewardValue}.",
+        "description": "Poleć wynajmującego — zdobywasz {count} darmowych rezerwacji (≈ {rewardValue}), gdy dokona pierwszej sprzedaży online.",
+        "descriptionInvoiceCredit": "Poleć wynajmującego — otrzymujesz kredyt {rewardValue}, gdy dokona pierwszej sprzedaży online.",
         "cta": "Poleć",
         "dismiss": "Zamknij"
       },
@@ -659,7 +659,7 @@
         "open": "Jak to działa",
         "title": "Jak działają polecenia",
         "step1": "Udostępnij swój link zaproszenia innym wynajmującym.",
-        "step2": "Twój polecony zaczyna z {count} darmowymi rezerwacjami zaraz po rejestracji.",
+        "step2": "Twój polecony zakłada sklep Louez przez Twój link.",
         "step3": "Gdy tylko Twój polecony dokona pierwszej sprzedaży online o wartości co najmniej {minAmount}, zdobywasz {count} darmowych rezerwacji.",
         "step3InvoiceCredit": "Gdy tylko Twój polecony dokona pierwszej sprzedaży online o wartości co najmniej {minAmount}, otrzymujesz kredyt na kolejnej fakturze Louez.",
         "note": "Tylko sprzedaż opłacona online (karta/Stripe) odblokowuje nagrodę — płatności ręczne lub gotówkowe się nie liczą. Darmowe rezerwacje to wynajmy bez prowizji Louez."
@@ -5988,8 +5988,7 @@
             "enableLabel": "Włącz kanał reeent",
             "benefits": {
               "visibility": "Nowi klienci z wyszukiwarki reeent.",
-              "seo": "Dedykowana strona Twojej firmy, indeksowana przez wyszukiwarki.",
-              "free": "Bezpłatnie na start, bez prowizji od Twoich rezerwacji."
+              "seo": "Dedykowana strona Twojej firmy, indeksowana przez wyszukiwarki."
             }
           },
           "storefront": {
@@ -6040,7 +6039,7 @@
             },
             "marketplaceTermsAccepted": {
               "label": "Zaakceptowane warunki marketplace",
-              "description": "Marketplace jest bezpłatny na start. Warunki zastrzegają możliwość wprowadzenia w przyszłości prowizji od rezerwacji pochodzących z marketplace.",
+              "description": "Warunki marketplace obowiązują rezerwacje z reeent, oprócz Twojej oferty Louez.",
               "acceptedAt": "Zaakceptowano {date}"
             }
           }
@@ -8190,6 +8189,7 @@
           "quietMonth": "Miesiąc bez wynajmu: nic do zapłaty.",
           "subscription": "Abonament miesięczny, jeśli wynajmujesz dużo.",
           "switch": "Formułę zmieniasz, kiedy chcesz.",
+          "details": "Po założeniu sklepu szczegóły Twojej oferty znajdziesz w ustawieniach rozliczeń.",
           "individualNote": "Przychody z wynajmu rozliczasz zgodnie ze swoją sytuacją; jeśli działalność stanie się zawodowa, poprosimy o zmianę statusu."
         }
       }

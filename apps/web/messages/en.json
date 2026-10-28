@@ -214,8 +214,8 @@
       "sessionExpired": "Your session has expired. Sign in again, then retry.",
       "passwordSignUpDisabled": "Creating an account with a password is not available. Use a code sent by email."
     },
-    "referralBanner": "{storeName} invited you to Louez — create your store and start with {count} free reservations.",
-    "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations.",
+    "referralBanner": "{storeName} invited you to Louez — set up your store in minutes.",
+    "referralBannerGeneric": "You've been invited to Louez — set up your store in minutes.",
     "socialProofRating": "4.9/5",
     "socialProofTrusted": "450+ rental businesses trust us to run their rentals",
     "review1Quote": "We left our old software when prices got too high for Louez.io… and honestly, no regrets! Simple, flexible, affordable and efficient.",
@@ -224,8 +224,8 @@
     "review2Role": "Co-founder · Bloom",
     "review3Quote": "Louez.io is a reliable, clear and precise platform. Managing the season will be so much simpler and faster.",
     "review3Role": "Co-founder · Les Frères Complices",
-    "perk1": "Your first 15 reservations are free",
-    "perk2": "Max €1 per reservation, less as you grow, 0% commission, no subscription",
+    "perk1": "24/7 bookings, online payment and deposit",
+    "perk2": "Automatic contracts and a client portal",
     "perk3": "Your online store ready in 5 minutes",
     "visitShop": "Visit the store",
     "name": "Name",
@@ -612,8 +612,8 @@
       "link": {
         "title": "Refer & earn",
         "description": "Share your link and invite other rental businesses to join Louez.",
-        "reward": "For every rental business you refer that makes its first sale, you earn {referrer} free reservations (≈ {rewardValue}) — and they start with {referred}.",
-        "rewardInvoiceCredit": "For every rental business you refer that makes its first sale, you earn a {rewardValue} credit on your Louez invoice — and they start with {referred} free reservations.",
+        "reward": "For every rental business you refer that makes its first sale, you earn {referrer} free reservations (≈ {rewardValue}).",
+        "rewardInvoiceCredit": "For every rental business you refer that makes its first sale, you earn a {rewardValue} credit on your Louez invoice.",
         "copyLink": "Copy link",
         "linkCopied": "Link copied!",
         "linkCopyFailed": "Could not copy the link.",
@@ -644,8 +644,8 @@
       },
       "nudge": {
         "title": "Enjoying Louez?",
-        "description": "Refer a rental business — you both earn {count} free reservations (≈ {rewardValue}).",
-        "descriptionInvoiceCredit": "Refer a rental business — they start with {count} free reservations, you earn a {rewardValue} credit.",
+        "description": "Refer a rental business — you earn {count} free reservations (≈ {rewardValue}) once they make their first online sale.",
+        "descriptionInvoiceCredit": "Refer a rental business — you earn a {rewardValue} credit once they make their first online sale.",
         "cta": "Refer",
         "dismiss": "Dismiss"
       },
@@ -659,7 +659,7 @@
         "open": "How it works",
         "title": "How referrals work",
         "step1": "Share your invitation link with other rental businesses.",
-        "step2": "Your referral starts with {count} free reservations the moment they sign up.",
+        "step2": "Your referral creates their Louez store through your link.",
         "step3": "As soon as your referral makes their first online sale of at least {minAmount}, you earn {count} free reservations.",
         "step3InvoiceCredit": "As soon as your referral makes their first online sale of at least {minAmount}, you earn a credit on your next Louez invoice.",
         "note": "Only sales paid online (card/Stripe) unlock the reward — manual or cash payments don't count. Free reservations are rentals with no Louez commission."
@@ -5988,8 +5988,7 @@
             "enableLabel": "Enable the reeent channel",
             "benefits": {
               "visibility": "New customers coming from reeent search.",
-              "seo": "A dedicated page for your business, indexed by search engines.",
-              "free": "Free at launch, with no commission on your bookings."
+              "seo": "A dedicated page for your business, indexed by search engines."
             }
           },
           "storefront": {
@@ -6040,7 +6039,7 @@
             },
             "marketplaceTermsAccepted": {
               "label": "Marketplace terms accepted",
-              "description": "The marketplace is free at launch. The terms reserve the right to introduce a commission later on bookings originating from the marketplace.",
+              "description": "The marketplace terms apply to bookings that come from reeent, on top of your Louez offer.",
               "acceptedAt": "Accepted on {date}"
             }
           }
@@ -8190,6 +8189,7 @@
           "quietMonth": "A month without rentals: nothing to pay.",
           "subscription": "A monthly subscription if you rent a lot.",
           "switch": "Switch between the two whenever you like.",
+          "details": "Once your store is created, its billing settings show your offer in full.",
           "individualNote": "Rental income is yours to declare according to your situation; if the activity becomes professional, we'll ask you to switch status."
         }
       }

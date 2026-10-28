@@ -214,8 +214,8 @@
       "sessionExpired": "Uw sessie is verlopen. Log opnieuw in en probeer het nog eens.",
       "passwordSignUpDisabled": "Een account aanmaken met een wachtwoord is niet mogelijk. Gebruik een code per e-mail."
     },
-    "referralBanner": "{storeName} heeft je uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
-    "referralBannerGeneric": "🎁 Je bent uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
+    "referralBanner": "{storeName} heeft je uitgenodigd voor Louez — maak je winkel aan in een paar minuten.",
+    "referralBannerGeneric": "Je bent uitgenodigd voor Louez — maak je winkel aan in een paar minuten.",
     "socialProofRating": "4,9/5",
     "socialProofTrusted": "Meer dan 450 verhuurders vertrouwen op ons voor het beheer van hun verhuur",
     "review1Quote": "We verlieten onze oude software toen de prijzen te hoog werden en stapten over naar Louez.io… en eerlijk gezegd: geen spijt! Eenvoudig, flexibel, voordelig en efficiënt.",
@@ -224,8 +224,8 @@
     "review2Role": "Medeoprichter · Bloom",
     "review3Quote": "Louez.io is een betrouwbaar, duidelijk en nauwkeurig platform. Het beheer van het seizoen wordt veel eenvoudiger en sneller.",
     "review3Role": "Medeoprichter · Les Frères Complices",
-    "perk1": "Je eerste 15 reserveringen gratis",
-    "perk2": "Max. € 1 per reservering, goedkoper naarmate je groeit, 0% commissie, geen abonnement",
+    "perk1": "Reserveringen 24/7, online betaling en borg",
+    "perk2": "Automatische contracten en klantenportaal",
     "perk3": "Je webshop klaar in 5 minuten",
     "visitShop": "Bekijk de winkel",
     "name": "Naam",
@@ -612,8 +612,8 @@
       "link": {
         "title": "Verwijs & verdien",
         "description": "Deel uw link en nodig andere verhuurders uit om zich aan te sluiten bij Louez.",
-        "reward": "Voor elke verhuurder die je aanbrengt en die zijn eerste verkoop doet, verdien je {referrer} gratis reserveringen (≈ {rewardValue}) — en hij start met {referred}.",
-        "rewardInvoiceCredit": "Voor elke verhuurder die je aanbrengt en die zijn eerste verkoop doet, verdien je {rewardValue} krediet op je Louez-factuur — en hij start met {referred} gratis reserveringen.",
+        "reward": "Voor elke verhuurder die je aanbrengt en die zijn eerste verkoop doet, verdien je {referrer} gratis reserveringen (≈ {rewardValue}).",
+        "rewardInvoiceCredit": "Voor elke verhuurder die je aanbrengt en die zijn eerste verkoop doet, verdien je {rewardValue} krediet op je Louez-factuur.",
         "copyLink": "Link kopiëren",
         "linkCopied": "Link gekopieerd!",
         "linkCopyFailed": "Kon de link niet kopiëren.",
@@ -644,8 +644,8 @@
       },
       "nudge": {
         "title": "Tevreden over Louez?",
-        "description": "Verwijs een verhuurder — jullie verdienen allebei {count} gratis reserveringen (≈ {rewardValue}).",
-        "descriptionInvoiceCredit": "Verwijs een verhuurder — hij start met {count} gratis reserveringen, jij verdient {rewardValue} krediet.",
+        "description": "Verwijs een verhuurder — je verdient {count} gratis reserveringen (≈ {rewardValue}) zodra hij zijn eerste online verkoop doet.",
+        "descriptionInvoiceCredit": "Verwijs een verhuurder — je verdient {rewardValue} krediet zodra hij zijn eerste online verkoop doet.",
         "cta": "Verwijzen",
         "dismiss": "Sluiten"
       },
@@ -659,7 +659,7 @@
         "open": "Hoe het werkt",
         "title": "Hoe verwijzingen werken",
         "step1": "Deel je uitnodigingslink met andere verhuurders.",
-        "step2": "Je verwijzing start met {count} gratis reserveringen zodra ze zich aanmelden.",
+        "step2": "Je verwijzing maakt zijn Louez-winkel aan via je link.",
         "step3": "Zodra je verwijzing zijn eerste online verkoop van minstens {minAmount} doet, verdien je {count} gratis reserveringen.",
         "step3InvoiceCredit": "Zodra je verwijzing zijn eerste online verkoop van minstens {minAmount} doet, verdien je krediet op je volgende Louez-factuur.",
         "note": "Alleen online betaalde verkopen (kaart/Stripe) ontgrendelen de beloning — handmatige of contante betalingen tellen niet. Gratis reserveringen zijn verhuringen zonder Louez-commissie."
@@ -5988,8 +5988,7 @@
             "enableLabel": "reeent-kanaal inschakelen",
             "benefits": {
               "visibility": "Nieuwe klanten via de zoekfunctie van reeent.",
-              "seo": "Een eigen pagina voor je bedrijf, geïndexeerd door zoekmachines.",
-              "free": "Gratis bij de lancering, zonder commissie op je reserveringen."
+              "seo": "Een eigen pagina voor je bedrijf, geïndexeerd door zoekmachines."
             }
           },
           "storefront": {
@@ -6040,7 +6039,7 @@
             },
             "marketplaceTermsAccepted": {
               "label": "Marketplace-voorwaarden geaccepteerd",
-              "description": "De marketplace is gratis bij de lancering. De voorwaarden behouden het recht voor om later een commissie in te voeren op reserveringen die van de marketplace komen.",
+              "description": "De marketplacevoorwaarden gelden voor reserveringen via reeent, naast je Louez-aanbod.",
               "acceptedAt": "Geaccepteerd op {date}"
             }
           }
@@ -8190,6 +8189,7 @@
           "quietMonth": "Een maand zonder verhuur: niets te betalen.",
           "subscription": "Een maandabonnement als je veel verhuurt.",
           "switch": "Je wisselt wanneer je wilt.",
+          "details": "Zodra je winkel is aangemaakt, vind je de details van je aanbod in de factuurinstellingen.",
           "individualNote": "Huurinkomsten geef je zelf op volgens je situatie; wordt het een beroepsactiviteit, dan vragen we je van status te wisselen."
         }
       }

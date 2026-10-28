@@ -59,8 +59,6 @@ const ITEM_PRICE_FIELDS = new Set(["unitPrice", "totalPrice"]);
 /** A percentage, or an amount next to a currency sign or code. */
 const FIGURE = /\d+(?:[.,]\d+)?\s?[%％]|[€$£¥₩₹]\s?\d|\d\s?€|\d\s?(?:EUR|USD|euros?)\b/u;
 
-const LEGACY_SIGN_IN =
-  "the legacy pay-as-you-go offer on the sign-in page, made neutral at T (design §8.4, Q19)";
 const REEENT =
   "the reeent marketplace fee and its launch waiver, today Louez's MARKETPLACE_FEE_CENTS";
 const PLANS = "the Pro and Ultra discount; Louez keeps those plans until after B (design Q10)";
@@ -68,7 +66,6 @@ const NOT_A_FEE = "not a platform fee";
 
 /** Message keys that hold a figure today, in every locale that has the key. */
 const KNOWN_FIGURES = new Map([
-  ["apps/web/messages:auth.perk2", LEGACY_SIGN_IN],
   ["apps/web/messages:dashboard.home.reeentStripe.description", REEENT],
   ["apps/web/messages:dashboard.settings.salesChannels.cohort.incentiveLine", REEENT],
   ["apps/web/messages:dashboard.settings.salesChannels.cohort.memberTitle", REEENT],

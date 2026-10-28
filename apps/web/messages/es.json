@@ -214,8 +214,8 @@
       "sessionExpired": "Tu sesión ha caducado. Vuelve a iniciar sesión e inténtalo de nuevo.",
       "passwordSignUpDisabled": "No se puede crear una cuenta con contraseña. Usa un código recibido por correo."
     },
-    "referralBanner": "{storeName} te ha invitado a Louez — crea tu tienda y empieza con {count} reservas gratis.",
-    "referralBannerGeneric": "🎁 Has sido invitado a Louez — crea tu tienda y empieza con {count} reservas gratis.",
+    "referralBanner": "{storeName} te ha invitado a Louez — crea tu tienda en pocos minutos.",
+    "referralBannerGeneric": "Has sido invitado a Louez — crea tu tienda en pocos minutos.",
     "socialProofRating": "4,9/5",
     "socialProofTrusted": "Más de 450 empresas de alquiler confían en nosotros para gestionar sus alquileres",
     "review1Quote": "Dejamos nuestro antiguo software cuando los precios subieron demasiado y nos pasamos a Louez.io… y sinceramente, ¡sin arrepentimientos! Simple, flexible, económico y eficaz.",
@@ -224,8 +224,8 @@
     "review2Role": "Cofundador · Bloom",
     "review3Quote": "Louez.io es una plataforma fiable, clara y precisa. La gestión de la temporada será mucho más sencilla y rápida.",
     "review3Role": "Cofundador · Les Frères Complices",
-    "perk1": "Tus primeras 15 reservas gratis",
-    "perk2": "Máx. 1 € por reserva, decreciente según el volumen, 0 % de comisión, sin suscripción",
+    "perk1": "Reservas 24/7, pago y fianza online",
+    "perk2": "Contratos automáticos y espacio cliente",
     "perk3": "Tu tienda online lista en 5 minutos",
     "visitShop": "Ver la tienda",
     "name": "Nombre",
@@ -612,8 +612,8 @@
       "link": {
         "title": "Recomiende y gane",
         "description": "Comparta su enlace e invite a otros arrendadores a unirse a Louez.",
-        "reward": "Por cada arrendador que recomiendes y que realice su primera venta, ganas {referrer} reservas gratis (≈ {rewardValue}) — y él empieza con {referred}.",
-        "rewardInvoiceCredit": "Por cada arrendador que recomiendes y que realice su primera venta, ganas un crédito de {rewardValue} en tu factura Louez — y él empieza con {referred} reservas gratis.",
+        "reward": "Por cada arrendador que recomiendes y que realice su primera venta, ganas {referrer} reservas gratis (≈ {rewardValue}).",
+        "rewardInvoiceCredit": "Por cada arrendador que recomiendes y que realice su primera venta, ganas un crédito de {rewardValue} en tu factura Louez.",
         "copyLink": "Copiar enlace",
         "linkCopied": "¡Enlace copiado!",
         "linkCopyFailed": "No se pudo copiar el enlace.",
@@ -644,8 +644,8 @@
       },
       "nudge": {
         "title": "¿Te gusta Louez?",
-        "description": "Recomienda a un arrendador: ambos ganáis {count} reservas gratis (≈ {rewardValue}).",
-        "descriptionInvoiceCredit": "Recomienda a un arrendador: él empieza con {count} reservas gratis y tú ganas {rewardValue} de crédito.",
+        "description": "Recomienda a un arrendador: ganas {count} reservas gratis (≈ {rewardValue}) en cuanto realice su primera venta online.",
+        "descriptionInvoiceCredit": "Recomienda a un arrendador: ganas {rewardValue} de crédito en cuanto realice su primera venta online.",
         "cta": "Recomendar",
         "dismiss": "Cerrar"
       },
@@ -659,7 +659,7 @@
         "open": "Cómo funciona",
         "title": "Cómo funcionan los referidos",
         "step1": "Comparte tu enlace de invitación con otros arrendadores.",
-        "step2": "Tu referido empieza con {count} reservas gratis en cuanto se registra.",
+        "step2": "Tu referido crea su tienda Louez desde tu enlace.",
         "step3": "En cuanto tu referido realice su primera venta online de al menos {minAmount}, ganas {count} reservas gratis.",
         "step3InvoiceCredit": "En cuanto tu referido realice su primera venta online de al menos {minAmount}, ganas un crédito en tu próxima factura Louez.",
         "note": "Solo las ventas pagadas online (tarjeta/Stripe) desbloquean la recompensa — los pagos manuales o en efectivo no cuentan. Las reservas gratis son alquileres sin comisión de Louez."
@@ -5988,8 +5988,7 @@
             "enableLabel": "Activar el canal reeent",
             "benefits": {
               "visibility": "Nuevos clientes procedentes de la búsqueda de reeent.",
-              "seo": "Una página dedicada a tu negocio, indexada por los buscadores.",
-              "free": "Gratis en el lanzamiento, sin comisión sobre tus reservas."
+              "seo": "Una página dedicada a tu negocio, indexada por los buscadores."
             }
           },
           "storefront": {
@@ -6040,7 +6039,7 @@
             },
             "marketplaceTermsAccepted": {
               "label": "Condiciones del marketplace aceptadas",
-              "description": "El marketplace es gratuito en el lanzamiento. Las condiciones reservan la posibilidad de introducir más adelante una comisión sobre las reservas originadas en el marketplace.",
+              "description": "Las condiciones del marketplace se aplican a las reservas que llegan desde reeent, además de tu oferta Louez.",
               "acceptedAt": "Aceptado el {date}"
             }
           }
@@ -8190,6 +8189,7 @@
           "quietMonth": "Un mes sin alquileres: nada que pagar.",
           "subscription": "Una suscripción mensual si alquilas mucho.",
           "switch": "Cambias de fórmula cuando quieras.",
+          "details": "Una vez creada tu tienda, encontrarás el detalle de tu oferta en los ajustes de facturación.",
           "individualNote": "Los ingresos por alquiler debes declararlos según tu situación; si la actividad pasa a ser profesional, te pediremos que cambies de estatus."
         }
       }

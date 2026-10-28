@@ -43,6 +43,11 @@ export type SettingsNavigationItem = {
   /** Hidden unless the instance bills its stores (LOUEZ_BILLING=cloud). */
   requiresBilling?: boolean;
   /**
+   * Hidden unless Louez's own billing bills this store now (lib/billing/policy.ts,
+   * legacyBillingApplies), which a store the billing service bills never gets.
+   */
+  requiresLegacyBilling?: boolean;
+  /**
    * Hidden unless the viewer may open the billing service's pages for this store
    * (lib/billing/handoff-access.ts), which needs the service.
    */
@@ -253,7 +258,8 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     searchPaths: ["dashboard.referrals"],
     group: "communication",
     navigation: true,
-    requiresBilling: true,
+    // The rewards are credits on Louez's own billing (maybeGrantReferrerReward).
+    requiresLegacyBilling: true,
   },
   {
     id: "widget",
@@ -374,11 +380,13 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
 /** The items this viewer may see on this instance. */
 export const filterSettingsNavigationItems = ({
   billingEnabled,
+  legacyBillingEnabled,
   billingHandoffEnabled,
   electronicInvoicingEnabled,
   isPlatformAdmin,
 }: {
   billingEnabled: boolean;
+  legacyBillingEnabled: boolean;
   billingHandoffEnabled: boolean;
   electronicInvoicingEnabled: boolean;
   isPlatformAdmin: boolean;
@@ -387,6 +395,7 @@ export const filterSettingsNavigationItems = ({
     (item) =>
       (!item.platformAdminOnly || isPlatformAdmin) &&
       (!item.requiresBilling || billingEnabled) &&
+      (!item.requiresLegacyBilling || legacyBillingEnabled) &&
       (!item.requiresBillingHandoff || billingHandoffEnabled) &&
       (!item.requiresElectronicInvoicing || electronicInvoicingEnabled),
   );

@@ -214,8 +214,8 @@
       "sessionExpired": "세션이 만료되었습니다. 다시 로그인한 후 재시도하세요.",
       "passwordSignUpDisabled": "비밀번호로 계정을 만들 수 없습니다. 이메일로 받은 코드를 사용하세요."
     },
-    "referralBanner": "{storeName}가 귀하를 Louez에 초대했습니다. 매장을 만들고 {count} 무료 예약으로 시작하세요.",
-    "referralBannerGeneric": "🎁 Louez에 초대되셨습니다. 매장을 만들고 {count} 무료 예약으로 시작해 보세요.",
+    "referralBanner": "{storeName}님이 Louez에 초대했습니다. 몇 분 만에 매장을 만들어 보세요.",
+    "referralBannerGeneric": "Louez에 초대되었습니다. 몇 분 만에 매장을 만들어 보세요.",
     "socialProofRating": "4.9/5",
     "socialProofTrusted": "450개 이상의 렌탈 업체가 당사를 신뢰하여 렌탈 서비스를 운영하고 있습니다.",
     "review1Quote": "Louez.io의 가격이 너무 높아졌을 때 우리는 이전 소프트웨어를 떠났습니다... 솔직히 말해서 후회하지 않습니다! 간단하고 유연하며 저렴하고 효율적입니다.",
@@ -224,8 +224,8 @@
     "review2Role": "공동 창업자 · 블룸",
     "review3Quote": "Louez.io는 안정적이고 명확하며 정확한 플랫폼입니다. 시즌 관리가 훨씬 더 간단하고 빨라질 것입니다.",
     "review3Role": "공동 창립자 · 레 프레르 콤플리스(Les Frères Complices)",
-    "perk1": "처음 15개 예약은 무료입니다.",
-    "perk2": "예약당 최대 €1, 성장에 따라 감소, 수수료 0%, 구독 없음",
+    "perk1": "24시간 예약, 온라인 결제 및 보증금",
+    "perk2": "자동 계약서와 고객 포털",
     "perk3": "5분 안에 온라인 매장이 준비됩니다",
     "visitShop": "매장 방문",
     "name": "이름",
@@ -612,8 +612,8 @@
       "link": {
         "title": "추천 및 적립",
         "description": "링크를 공유하고 다른 렌탈 업체를 초대하여 Louez에 가입하세요.",
-        "reward": "귀하가 추천한 모든 렌탈 업체에 대해 첫 번째 판매가 이루어지면 {referrer} 무료 예약(© {rewardValue})을 받게 되며 이는 {referred}로 시작됩니다.",
-        "rewardInvoiceCredit": "귀하가 추천한 모든 렌탈 업체에 대해 첫 번째 판매가 이루어지면 Louez 송장에 {rewardValue} 크레딧이 적립되며 {referred} 무료 예약으로 시작됩니다.",
+        "reward": "추천한 렌탈 업체가 첫 판매를 할 때마다 무료 예약 {referrer}건(≈ {rewardValue})을 받습니다.",
+        "rewardInvoiceCredit": "추천한 렌탈 업체가 첫 판매를 할 때마다 Louez 청구서에 {rewardValue} 크레딧이 적립됩니다.",
         "copyLink": "링크 복사",
         "linkCopied": "링크가 복사되었습니다!",
         "linkCopyFailed": "링크를 복사할 수 없습니다.",
@@ -644,8 +644,8 @@
       },
       "nudge": {
         "title": "Louez를 즐기시나요?",
-        "description": "렌탈 업체를 추천하세요. 두 분 모두 {count} 무료 예약(© {rewardValue})을 받으실 수 있습니다.",
-        "descriptionInvoiceCredit": "렌탈 업체를 추천하세요. {count} 무료 예약으로 시작하면 {rewardValue} 크레딧을 받으실 수 있습니다.",
+        "description": "렌탈 업체를 추천하세요. 첫 온라인 판매가 이루어지면 무료 예약 {count}건(≈ {rewardValue})을 받습니다.",
+        "descriptionInvoiceCredit": "렌탈 업체를 추천하세요. 첫 온라인 판매가 이루어지면 {rewardValue} 크레딧을 받습니다.",
         "cta": "참조",
         "dismiss": "닫기"
       },
@@ -659,7 +659,7 @@
         "open": "작동 원리",
         "title": "추천 작동 방식",
         "step1": "다른 렌탈 업체와 초대 링크를 공유하세요.",
-        "step2": "귀하의 추천은 가입하는 순간부터 {count} 무료 예약으로 시작됩니다.",
+        "step2": "추천받은 업체가 회원님의 링크로 Louez 매장을 만듭니다.",
         "step3": "귀하의 추천인이 최소 {minAmount} 이상의 첫 번째 온라인 판매를 완료하는 즉시 귀하는 {count} 무료 예약을 받으실 수 있습니다.",
         "step3InvoiceCredit": "귀하의 추천인이 최소 {minAmount} 이상의 첫 번째 온라인 판매를 완료하자마자 귀하는 다음 Louez 송장에 대한 크레딧을 받게 됩니다.",
         "note": "온라인(카드/Stripe)으로 결제된 판매만 보상을 받을 수 있습니다. 수동 또는 현금 결제는 포함되지 않습니다. 무료 예약은 Louez 수수료가 없는 렌탈입니다."
@@ -5987,8 +5987,7 @@
             "enableLabel": "재방송 채널 활성화",
             "benefits": {
               "visibility": "Reent Search에서 유입되는 신규 고객입니다.",
-              "seo": "검색 엔진에 의해 색인된 귀하의 비즈니스 전용 페이지입니다.",
-              "free": "출시 시 무료이며 예약에 대한 수수료가 없습니다."
+              "seo": "검색 엔진에 의해 색인된 귀하의 비즈니스 전용 페이지입니다."
             }
           },
           "storefront": {
@@ -6039,7 +6038,7 @@
             },
             "marketplaceTermsAccepted": {
               "label": "마켓플레이스 약관에 동의함",
-              "description": "마켓플레이스는 출시 시 무료입니다. 이 약관은 나중에 마켓플레이스에서 발생한 예약에 대해 수수료를 도입할 권리를 보유합니다.",
+              "description": "reeent에서 들어온 예약에는 Louez 요금제와 함께 마켓플레이스 약관이 적용됩니다.",
               "acceptedAt": "{date}에서 승인됨"
             }
           }
@@ -8190,6 +8189,7 @@
           "quietMonth": "임대료 없이 한 달: 지불할 금액이 없습니다.",
           "subscription": "많이 임대하는 경우 월간 구독.",
           "switch": "원할 때마다 둘 사이를 전환하세요.",
+          "details": "매장을 만든 후 청구 설정에서 요금제 세부 정보를 확인할 수 있습니다.",
           "individualNote": "임대소득은 귀하의 상황에 따라 신고하셔야 합니다. 활동이 전문화되면 상태 전환을 요청받게 됩니다."
         }
       }

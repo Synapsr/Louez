@@ -214,8 +214,8 @@
       "sessionExpired": "您的会话已过期，请重新登录后再试。",
       "passwordSignUpDisabled": "无法使用密码创建账户，请使用电子邮件验证码。"
     },
-    "referralBanner": "{storeName} 邀请您来到 Louez — 创建您的商店并从 {count} 免费预订开始。",
-    "referralBannerGeneric": "🎁 您已被邀请加入 Louez — 创建您的商店并从 {count} 免费预订开始。",
+    "referralBanner": "{storeName} 邀请您加入 Louez — 几分钟即可创建您的商店。",
+    "referralBannerGeneric": "您已受邀加入 Louez — 几分钟即可创建您的商店。",
     "socialProofRating": "4.9/5",
     "socialProofTrusted": "超过 450 家租赁企业信任我们来运营他们的租赁服务",
     "review1Quote": "当 Louez.io 的价格太高时，我们放弃了旧软件……说实话，没有遗憾！简单、灵活、经济且高效。",
@@ -224,8 +224,8 @@
     "review2Role": "联合创始人·布鲁姆",
     "review3Quote": "Louez.io是一个可靠、清晰、精确的平台。管理赛季将变得更加简单和快捷。",
     "review3Role": "联合创始人·Les Frères Complices",
-    "perk1": "前 15 次预订免费",
-    "perk2": "每次预订最高 1 欧元，随着您的增长而减少，0% 佣金，无需订阅",
+    "perk1": "全天候预订，在线支付与押金",
+    "perk2": "自动合同与客户门户",
     "perk3": "您的在线商店在 5 分钟内准备就绪",
     "visitShop": "参观商店",
     "name": "名称",
@@ -612,8 +612,8 @@
       "link": {
         "title": "推荐并赚取",
         "description": "分享您的链接并邀请其他租赁企业加入 Louez。",
-        "reward": "对于您推荐的每家首次销售的租赁企业，您都可以获得 {referrer} 免费预订（≈ {rewardValue}） - 它们从 {referred} 开始。",
-        "rewardInvoiceCredit": "对于您推荐的每家首次销售的租赁企业，您都可以在 Louez 发票上获得 {rewardValue} 积分 - 并且从 {referred} 免费预订开始。",
+        "reward": "您推荐的每家租赁商户完成首笔销售后，您可获得 {referrer} 次免费预订（≈ {rewardValue}）。",
+        "rewardInvoiceCredit": "您推荐的每家租赁商户完成首笔销售后，您的 Louez 账单可获得 {rewardValue} 抵扣额。",
         "copyLink": "复制链接",
         "linkCopied": "链接已复制！",
         "linkCopyFailed": "无法复制链接。",
@@ -644,8 +644,8 @@
       },
       "nudge": {
         "title": "喜欢 Louez 吗？",
-        "description": "推荐租赁业务 — 你们都可以获得 {count} 免费预订 (≈ {rewardValue})。",
-        "descriptionInvoiceCredit": "推荐租赁公司 — 他们从 {count} 免费预订开始，您将获得 {rewardValue} 积分。",
+        "description": "推荐租赁商户：对方完成首笔在线销售后，您可获得 {count} 次免费预订（≈ {rewardValue}）。",
+        "descriptionInvoiceCredit": "推荐租赁商户：对方完成首笔在线销售后，您可获得 {rewardValue} 抵扣额。",
         "cta": "参考",
         "dismiss": "解雇"
       },
@@ -659,7 +659,7 @@
         "open": "它是如何运作的",
         "title": "推荐如何运作",
         "step1": "与其他租赁企业分享您的邀请链接。",
-        "step2": "您的推荐人在注册后即可获得 {count} 免费预订。",
+        "step2": "被推荐的商户通过您的链接创建 Louez 商店。",
         "step3": "一旦您的推荐人首次在线销售至少 {minAmount}，您就可以获得 {count} 免费预订。",
         "step3InvoiceCredit": "一旦您的推荐人首次在线销售至少 {minAmount}，您就可以在下一张 Louez 发票上获得积分。",
         "note": "只有在线支付的销售（卡/Stripe）才能解锁奖励 - 手动或现金支付不计算在内。免费预订是指无需 Louez 佣金的租赁。"
@@ -5987,8 +5987,7 @@
             "enableLabel": "启用重新访问通道",
             "benefits": {
               "visibility": "来自重新搜索的新客户。",
-              "seo": "您的业务的专用页面，由搜索引擎索引。",
-              "free": "推出时免费，预订时无需支付佣金。"
+              "seo": "您的业务的专用页面，由搜索引擎索引。"
             }
           },
           "storefront": {
@@ -6039,7 +6038,7 @@
             },
             "marketplaceTermsAccepted": {
               "label": "接受市场条款",
-              "description": "该市场在启动时是免费的。这些条款保留稍后对来自市场的预订收取佣金的权利。",
+              "description": "来自 reeent 的预订除适用您的 Louez 方案外，还适用市场条款。",
               "acceptedAt": "在 {date} 上接受"
             }
           }
@@ -8190,6 +8189,7 @@
           "quietMonth": "一个月没有租金：无需支付任何费用。",
           "subscription": "如果您租用很多，则按月订阅。",
           "switch": "您可以随时在两者之间切换。",
+          "details": "创建商店后，您可以在账单设置中查看方案详情。",
           "individualNote": "租金收入由您根据您的情况申报；如果活动变得专业，我们会要求您切换状态。"
         }
       }

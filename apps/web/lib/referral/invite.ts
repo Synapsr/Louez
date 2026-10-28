@@ -13,15 +13,18 @@ import { getReferralProgramConfig } from './defaults';
 export interface ReferralInviteContext {
   /** The Referrer's store name, when resolvable (for "X invited you"). */
   referrerName: string | null;
-  /** Free reservations the Referred Store receives at sign-up. */
+  /**
+   * The program's welcome reward for a Referred Store, for analytics only. A store the
+   * billing service bills gets none (insertNewStoreSubscription), so the banner names none.
+   */
   freeReservations: number;
 }
 
 /**
- * Read the pending referral cookie and resolve who invited the visitor plus the welcome
- * reward they will receive, so login/sign-up can surface an invitation banner. Returns
- * null when there is no valid pending referral, or when the instance does not bill its
- * stores (the reward is a billing credit). Server-only.
+ * Read the pending referral cookie and resolve who invited the visitor, so login/sign-up
+ * can surface an invitation banner. Returns null when there is no valid pending referral,
+ * or when the instance does not bill its stores (the program's rewards are billing
+ * credits). Server-only.
  */
 export async function getReferralInviteContext(): Promise<ReferralInviteContext | null> {
   if (!isBillingEnabled()) return null;

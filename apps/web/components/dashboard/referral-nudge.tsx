@@ -112,10 +112,7 @@ export const ReferralNudge = ({ className }: ReferralNudgeProps) => {
           <p className="text-sm font-medium">{t('title')}</p>
           <p className="text-muted-foreground text-xs">
             {summary.rewardKind === 'invoice_credit'
-              ? t('descriptionInvoiceCredit', {
-                  count: summary.referrerReward,
-                  rewardValue,
-                })
+              ? t('descriptionInvoiceCredit', { rewardValue })
               : t('description', {
                   count: summary.referrerReward,
                   rewardValue,

@@ -31,6 +31,7 @@ import { getAiCreditsInfo, hasEverUsedAiCredits, microToCredits } from "@/lib/ai
 import { isAIChatConfigured } from "@/lib/ai/provider";
 import { auth } from "@/lib/auth";
 import { getBillingHandoffAccess } from "@/lib/billing/handoff-access";
+import { legacyBillingApplies } from "@/lib/billing/policy";
 import { isSelfHosted } from "@/lib/hosting";
 import { parseKeyboardShortcutOverrides } from "@/lib/keyboard-shortcuts";
 import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
@@ -128,6 +129,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     aiCredits,
     marketplaceListingUrl,
     electronicInvoicingEnabled,
+    legacyBillingEnabled,
   ] = await Promise.all([
     getCurrentPlanSlug(store.id),
     getStoreLimits(store.id),
@@ -142,6 +144,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     getSidebarAiCredits(store.id),
     getMarketplaceListingUrl(store.id),
     isElectronicInvoicingEnabled(store.id),
+    legacyBillingApplies(store.id, new Date()),
   ]);
   const billingHandoffAccess = await getBillingHandoffAccess(store, isPlatformAdmin);
 
@@ -186,6 +189,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                         reservationLimits={limits.reservationsThisMonth}
                         planSlug={planSlug}
                         isPlatformAdmin={isPlatformAdmin}
+                        legacyBillingEnabled={legacyBillingEnabled}
                         billingHandoffEnabled={billingHandoffAccess !== null}
                         electronicInvoicingEnabled={electronicInvoicingEnabled}
                       />

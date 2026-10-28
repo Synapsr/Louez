@@ -43,7 +43,7 @@ const ROTATION_MS = 8000;
 
 export const LoginSocialProof = () => {
   const t = useTranslations("auth");
-  // The perks are Louez Cloud's offer: an instance that does not bill shows none.
+  // The perks are Louez Cloud's: an instance that does not bill shows none.
   const { billingEnabled } = useInstanceConfig();
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);

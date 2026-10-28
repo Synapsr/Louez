@@ -214,8 +214,8 @@
       "sessionExpired": "Votre session a expiré. Reconnectez-vous puis réessayez.",
       "passwordSignUpDisabled": "La création de compte par mot de passe n'est pas disponible. Utilisez un code reçu par e-mail."
     },
-    "referralBanner": "{storeName} vous a invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
-    "referralBannerGeneric": "🎁 Vous avez été invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
+    "referralBanner": "{storeName} vous a invité sur Louez — créez votre boutique en quelques minutes.",
+    "referralBannerGeneric": "Vous avez été invité sur Louez — créez votre boutique en quelques minutes.",
     "socialProofRating": "4,9/5",
     "socialProofTrusted": "450+ loueurs nous font confiance pour gérer leurs locations",
     "review1Quote": "Nous avons quitté notre ancien logiciel devenu trop cher pour Louez.io… et franchement, aucun regret ! Simple, flexible, économique et efficace.",
@@ -224,8 +224,8 @@
     "review2Role": "Co-fondateur · Bloom",
     "review3Quote": "Louez.io est une plateforme fiable, claire et précise. La gestion de la saison sera beaucoup plus simple et rapide.",
     "review3Role": "Co-fondateur · Les Frères Complices",
-    "perk1": "Vos 15 premières réservations offertes",
-    "perk2": "1 € max par réservation, dégressif selon le volume, 0 % de commission, sans abonnement",
+    "perk1": "Réservations 24h/24, paiement et caution en ligne",
+    "perk2": "Contrats automatiques et espace client",
     "perk3": "Boutique en ligne prête en 5 minutes",
     "visitShop": "Voir la boutique",
     "name": "Nom",
@@ -612,8 +612,8 @@
       "link": {
         "title": "Parrainez et gagnez",
         "description": "Partagez votre lien et invitez d'autres loueurs à rejoindre Louez.",
-        "reward": "Pour chaque loueur parrainé qui réalise sa première vente, vous gagnez {referrer} réservations offertes (≈ {rewardValue}) — et votre filleul démarre avec {referred}.",
-        "rewardInvoiceCredit": "Pour chaque loueur parrainé qui réalise sa première vente, vous gagnez {rewardValue} de crédit sur votre facture Louez — et votre filleul démarre avec {referred} réservations offertes.",
+        "reward": "Pour chaque loueur parrainé qui réalise sa première vente, vous gagnez {referrer} réservations offertes (≈ {rewardValue}).",
+        "rewardInvoiceCredit": "Pour chaque loueur parrainé qui réalise sa première vente, vous gagnez {rewardValue} de crédit sur votre facture Louez.",
         "copyLink": "Copier le lien",
         "linkCopied": "Lien copié !",
         "linkCopyFailed": "Impossible de copier le lien.",
@@ -644,8 +644,8 @@
       },
       "nudge": {
         "title": "Vous aimez Louez ?",
-        "description": "Parrainez un loueur : vous gagnez tous les deux {count} réservations offertes (≈ {rewardValue}).",
-        "descriptionInvoiceCredit": "Parrainez un loueur : il démarre avec {count} réservations offertes, vous gagnez {rewardValue} de crédit.",
+        "description": "Parrainez un loueur : vous gagnez {count} réservations offertes (≈ {rewardValue}) dès sa première vente en ligne.",
+        "descriptionInvoiceCredit": "Parrainez un loueur : vous gagnez {rewardValue} de crédit dès sa première vente en ligne.",
         "cta": "Parrainer",
         "dismiss": "Fermer"
       },
@@ -659,7 +659,7 @@
         "open": "Comment ça marche",
         "title": "Comment fonctionne le parrainage",
         "step1": "Partagez votre lien d'invitation avec d'autres loueurs.",
-        "step2": "Votre filleul démarre avec {count} réservations offertes dès son inscription.",
+        "step2": "Votre filleul crée sa boutique Louez avec votre lien.",
         "step3": "Dès que votre filleul réalise sa première vente en ligne d'au moins {minAmount}, vous gagnez {count} réservations offertes.",
         "step3InvoiceCredit": "Dès que votre filleul réalise sa première vente en ligne d'au moins {minAmount}, vous gagnez un crédit sur votre prochaine facture Louez.",
         "note": "Seules les ventes payées en ligne (carte/Stripe) déclenchent la récompense — les paiements manuels ou en espèces ne comptent pas. Les réservations offertes sont des locations sans commission Louez."
@@ -5988,8 +5988,7 @@
             "enableLabel": "Activer le canal reeent",
             "benefits": {
               "visibility": "De nouveaux clients issus de la recherche reeent.",
-              "seo": "Une page dédiée à votre établissement, référencée sur les moteurs de recherche.",
-              "free": "Gratuit au lancement, sans commission sur vos réservations."
+              "seo": "Une page dédiée à votre établissement, référencée sur les moteurs de recherche."
             }
           },
           "storefront": {
@@ -6040,7 +6039,7 @@
             },
             "marketplaceTermsAccepted": {
               "label": "Conditions de la marketplace acceptées",
-              "description": "La marketplace est gratuite au lancement. Les conditions réservent la possibilité d'introduire plus tard une commission sur les réservations issues de la marketplace.",
+              "description": "Les conditions de la marketplace s'appliquent aux réservations venues de reeent, en plus de votre offre Louez.",
               "acceptedAt": "Accepté le {date}"
             }
           }
@@ -8190,6 +8189,7 @@
           "quietMonth": "Un mois sans location : rien à payer.",
           "subscription": "Un abonnement mensuel si vous louez beaucoup.",
           "switch": "On change de formule quand on veut.",
+          "details": "Une fois votre boutique créée, le détail de votre offre se trouve dans ses paramètres de facturation.",
           "individualNote": "Vos revenus de location sont à déclarer selon votre situation ; si l'activité devient professionnelle, nous vous demanderons de changer de statut."
         }
       }

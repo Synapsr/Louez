@@ -4,6 +4,8 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 
 import { type ReeentIntroStatus, reeentIntroSchema } from "@louez/validations";
 
+import type { ReeentIntroPricing } from "./reeent-intro-pricing";
+
 export interface ReeentIntroCohort {
   /** Launch-cohort seats still available, live from the marketplace channel. */
   remaining: number;
@@ -13,6 +15,8 @@ export interface ReeentIntroCohort {
 /** What the onboarding layout hands the shell so this step can be explained. */
 export interface ReeentIntroSeed {
   cohort: ReeentIntroCohort;
+  /** What the pricing slide says of a store created now. */
+  pricing: ReeentIntroPricing;
   initialStatus: ReeentIntroStatus | null;
   /** Where the walkthrough resumes — past the explanations once acknowledged. */
   initialPhase: number;
@@ -20,6 +24,7 @@ export interface ReeentIntroSeed {
 
 interface ReeentIntroContextValue {
   cohort: ReeentIntroCohort;
+  pricing: ReeentIntroPricing;
   status: ReeentIntroStatus | null;
   selectStatus: (value: unknown) => void;
   /** 0..n-1 walk through the explanations, n is the pro/particulier question. */
@@ -38,6 +43,7 @@ const ReeentIntroContext = createContext<ReeentIntroContextValue | null>(null);
 export function ReeentIntroProvider({
   children,
   cohort,
+  pricing,
   initialStatus,
   initialPhase,
 }: ReeentIntroSeed & { children: React.ReactNode }) {
@@ -57,8 +63,8 @@ export function ReeentIntroProvider({
   }, []);
 
   const value = useMemo(
-    () => ({ cohort, status, selectStatus, phase, goToPhase }),
-    [cohort, status, selectStatus, phase, goToPhase],
+    () => ({ cohort, pricing, status, selectStatus, phase, goToPhase }),
+    [cohort, pricing, status, selectStatus, phase, goToPhase],
   );
 
   return <ReeentIntroContext.Provider value={value}>{children}</ReeentIntroContext.Provider>;

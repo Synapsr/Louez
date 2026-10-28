@@ -9,8 +9,8 @@ export const AUTH_MESSAGE_NAMESPACES = ["auth", "common"] as const;
 
 /**
  * The messages of the sign-in pages. Without platform billing the Louez Cloud perks
- * (`auth.perk1` to `perk3`, its offer) are left out too, since the page does not show
- * them (louez-billing docs/plans/design.md §7.2).
+ * (`auth.perk1` to `perk3`) are left out too, since the page does not show them
+ * (louez-billing docs/plans/design.md §7.2).
  */
 export function selectAuthMessages(
   messages: AbstractIntlMessages,

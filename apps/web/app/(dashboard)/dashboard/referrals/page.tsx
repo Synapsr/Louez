@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { getTranslations } from 'next-intl/server';
 
-import { requirePlatformBilling } from '@/lib/billing/require-billing';
+import { requireLegacyBilling, requirePlatformBilling } from '@/lib/billing/require-billing';
 import { getCurrentStore } from '@/lib/store-context';
 
 import { getReferralData } from './actions';
@@ -20,6 +20,8 @@ export default async function ReferralsPage() {
   requirePlatformBilling();
   const store = await getCurrentStore();
   if (!store) redirect('/onboarding');
+  // The rewards are credits on Louez's own billing (maybeGrantReferrerReward).
+  await requireLegacyBilling(store.id);
 
   const t = await getTranslations('dashboard.referrals');
   const data = await getReferralData();
@@ -47,7 +49,6 @@ export default async function ReferralsPage() {
           <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
           <ReferralHowItWorks
             referrerReward={data.program.referrerReward}
-            referredReward={data.program.referredReward}
             referrerRewardKind={data.program.referrerRewardKind}
             minQualifyingAmountCents={data.program.minQualifyingAmountCents}
             currency={data.program.currency}

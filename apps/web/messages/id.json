@@ -214,8 +214,8 @@
       "sessionExpired": "Sesi Anda telah berakhir. Masuk kembali, lalu coba lagi.",
       "passwordSignUpDisabled": "Pembuatan akun dengan kata sandi tidak tersedia. Gunakan kode yang dikirim melalui email."
     },
-    "referralBanner": "{storeName} mengundang Anda ke Louez — buat toko Anda dan mulai dengan reservasi gratis {count}.",
-    "referralBannerGeneric": "🎁 Anda telah diundang ke Louez — buat toko Anda dan mulai dengan reservasi gratis {count}.",
+    "referralBanner": "{storeName} mengundang Anda ke Louez — buat toko Anda dalam beberapa menit.",
+    "referralBannerGeneric": "Anda telah diundang ke Louez — buat toko Anda dalam beberapa menit.",
     "socialProofRating": "4.9/5",
     "socialProofTrusted": "450+ bisnis persewaan memercayai kami untuk menjalankan persewaan mereka",
     "review1Quote": "Kami meninggalkan perangkat lunak lama kami ketika harga untuk Louez.io menjadi terlalu tinggi… dan sejujurnya, tidak ada penyesalan! Sederhana, fleksibel, terjangkau dan efisien.",
@@ -224,8 +224,8 @@
     "review2Role": "Salah satu pendiri · Bloom",
     "review3Quote": "Louez.io adalah platform yang andal, jelas, dan tepat. Mengelola musim akan jauh lebih sederhana dan cepat.",
     "review3Role": "Salah satu pendiri · Les Frères Complices",
-    "perk1": "15 reservasi pertama Anda gratis",
-    "perk2": "Maksimum €1 per reservasi, lebih sedikit seiring pertumbuhan Anda, komisi 0%, tanpa berlangganan",
+    "perk1": "Pemesanan 24/7, pembayaran dan deposit online",
+    "perk2": "Kontrak otomatis dan portal pelanggan",
     "perk3": "Toko online Anda siap dalam 5 menit",
     "visitShop": "Kunjungi toko",
     "name": "Nama",
@@ -612,8 +612,8 @@
       "link": {
         "title": "Referensikan & dapatkan",
         "description": "Bagikan tautan Anda dan undang bisnis persewaan lainnya untuk bergabung dengan Louez.",
-        "reward": "Untuk setiap bisnis persewaan yang Anda referensikan dan melakukan penjualan pertamanya, Anda mendapatkan {referrer} reservasi gratis (≈ {rewardValue}) — dan semuanya dimulai dengan {referred}.",
-        "rewardInvoiceCredit": "Untuk setiap bisnis persewaan yang Anda referensikan yang melakukan penjualan pertamanya, Anda mendapatkan kredit {rewardValue} pada faktur Louez Anda — dan semuanya dimulai dengan reservasi gratis {referred}.",
+        "reward": "Untuk setiap bisnis persewaan yang Anda referensikan dan melakukan penjualan pertamanya, Anda mendapatkan {referrer} reservasi gratis (≈ {rewardValue}).",
+        "rewardInvoiceCredit": "Untuk setiap bisnis persewaan yang Anda referensikan dan melakukan penjualan pertamanya, Anda mendapatkan kredit {rewardValue} pada faktur Louez Anda.",
         "copyLink": "Salin tautan",
         "linkCopied": "Tautan disalin!",
         "linkCopyFailed": "Tidak dapat menyalin tautan.",
@@ -644,8 +644,8 @@
       },
       "nudge": {
         "title": "Menikmati Louez?",
-        "description": "Referensikan bisnis persewaan — Anda berdua mendapatkan reservasi gratis {count} (≈ {rewardValue}).",
-        "descriptionInvoiceCredit": "Referensikan bisnis persewaan — dimulai dengan reservasi gratis {count}, Anda mendapatkan kredit {rewardValue}.",
+        "description": "Referensikan bisnis persewaan — Anda mendapatkan {count} reservasi gratis (≈ {rewardValue}) setelah penjualan online pertamanya.",
+        "descriptionInvoiceCredit": "Referensikan bisnis persewaan — Anda mendapatkan kredit {rewardValue} setelah penjualan online pertamanya.",
         "cta": "Rujuk",
         "dismiss": "Singkirkan"
       },
@@ -659,7 +659,7 @@
         "open": "Bagaimana cara kerjanya",
         "title": "Bagaimana referensi bekerja",
         "step1": "Bagikan tautan undangan Anda dengan bisnis persewaan lainnya.",
-        "step2": "Referral Anda dimulai dengan reservasi gratis {count} saat mereka mendaftar.",
+        "step2": "Referral Anda membuat toko Louez melalui tautan Anda.",
         "step3": "Segera setelah referal Anda melakukan penjualan online pertamanya minimal {minAmount}, Anda mendapatkan reservasi gratis {count}.",
         "step3InvoiceCredit": "Segera setelah referensi Anda melakukan penjualan online pertama mereka setidaknya sebesar {minAmount}, Anda mendapatkan kredit pada faktur Louez berikutnya.",
         "note": "Hanya penjualan yang dibayar secara online (kartu/Stripe) yang membuka hadiah — pembayaran manual atau tunai tidak dihitung. Reservasi gratis adalah penyewaan tanpa komisi Louez."
@@ -5987,8 +5987,7 @@
             "enableLabel": "Aktifkan saluran yang masuk",
             "benefits": {
               "visibility": "Pelanggan baru datang dari pencarian ulang.",
-              "seo": "Halaman khusus untuk bisnis Anda, diindeks oleh mesin pencari.",
-              "free": "Gratis saat peluncuran, tanpa komisi untuk pemesanan Anda."
+              "seo": "Halaman khusus untuk bisnis Anda, diindeks oleh mesin pencari."
             }
           },
           "storefront": {
@@ -6039,7 +6038,7 @@
             },
             "marketplaceTermsAccepted": {
               "label": "Persyaratan pasar diterima",
-              "description": "Pasar ini gratis saat diluncurkan. Ketentuan berhak untuk memperkenalkan komisi di kemudian hari atas pemesanan yang berasal dari pasar.",
+              "description": "Ketentuan marketplace berlaku untuk pemesanan yang datang dari reeent, selain penawaran Louez Anda.",
               "acceptedAt": "Diterima pada {date}"
             }
           }
@@ -8190,6 +8189,7 @@
           "quietMonth": "Sebulan tanpa sewa: tidak ada yang perlu dibayar.",
           "subscription": "Berlangganan bulanan jika Anda menyewa banyak.",
           "switch": "Beralih di antara keduanya kapan pun Anda mau.",
+          "details": "Setelah toko Anda dibuat, detail penawaran Anda ada di pengaturan penagihan.",
           "individualNote": "Pendapatan sewa adalah milik Anda untuk dinyatakan sesuai dengan situasi Anda; jika aktivitasnya menjadi profesional, kami akan meminta Anda untuk beralih status."
         }
       }

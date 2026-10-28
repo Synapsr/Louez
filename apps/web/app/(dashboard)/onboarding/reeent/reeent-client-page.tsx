@@ -54,10 +54,17 @@ export function ReeentClientPage() {
                 <p>
                   <span className="text-2xl font-semibold tracking-tight">
                     {slide.amount.value}
-                  </span>{" "}
-                  <span className="text-muted-foreground text-sm">{slide.amount.unit}</span>
+                  </span>
+                  {slide.amount.unit && (
+                    <>
+                      {" "}
+                      <span className="text-muted-foreground text-sm">{slide.amount.unit}</span>
+                    </>
+                  )}
                 </p>
-                <p className="text-muted-foreground text-sm">{slide.amount.detail}</p>
+                {slide.amount.detail && (
+                  <p className="text-muted-foreground text-sm">{slide.amount.detail}</p>
+                )}
               </div>
             )}
 

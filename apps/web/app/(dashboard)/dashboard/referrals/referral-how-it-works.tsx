@@ -10,7 +10,6 @@ import { useFormatLocale } from '@/hooks/use-format-locale';
 
 interface ReferralHowItWorksProps {
   referrerReward: number;
-  referredReward: number;
   referrerRewardKind: 'free_reservations' | 'invoice_credit';
   minQualifyingAmountCents: number;
   currency: string;
@@ -22,7 +21,6 @@ interface ReferralHowItWorksProps {
  */
 export function ReferralHowItWorks({
   referrerReward,
-  referredReward,
   referrerRewardKind,
   minQualifyingAmountCents,
   currency,
@@ -37,7 +35,7 @@ export function ReferralHowItWorks({
 
   const steps = [
     t('step1'),
-    t('step2', { count: referredReward }),
+    t('step2'),
     referrerRewardKind === 'invoice_credit'
       ? t('step3InvoiceCredit', { minAmount })
       : t('step3', { count: referrerReward, minAmount }),

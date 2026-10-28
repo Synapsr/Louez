@@ -42,7 +42,7 @@ type MarketplaceChannelFormProps = {
   storefrontUrl: string;
 };
 
-const MARKETPLACE_BENEFITS = ["visibility", "seo", "free"] as const;
+const MARKETPLACE_BENEFITS = ["visibility", "seo"] as const;
 
 const DISABLE_CONSEQUENCES = ["search", "redirect", "links"] as const;
 

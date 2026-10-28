@@ -24,6 +24,7 @@ export const DashboardHeaderActions = ({
   reservationLimits,
   planSlug,
   isPlatformAdmin = false,
+  legacyBillingEnabled = false,
   billingHandoffEnabled = false,
   electronicInvoicingEnabled = true,
 }: {
@@ -31,6 +32,7 @@ export const DashboardHeaderActions = ({
   reservationLimits: LimitStatus;
   planSlug: string;
   isPlatformAdmin?: boolean;
+  legacyBillingEnabled?: boolean;
   billingHandoffEnabled?: boolean;
   electronicInvoicingEnabled?: boolean;
 }) => {
@@ -77,6 +79,7 @@ export const DashboardHeaderActions = ({
       <div className="ml-auto flex shrink-0 items-center gap-2">
         <DashboardCommandPalette
           isPlatformAdmin={isPlatformAdmin}
+          legacyBillingEnabled={legacyBillingEnabled}
           billingHandoffEnabled={billingHandoffEnabled}
           electronicInvoicingEnabled={electronicInvoicingEnabled}
           showAIChat={showAIChat}

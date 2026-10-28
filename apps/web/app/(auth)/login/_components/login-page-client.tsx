@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-import { Gift } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { usePostHog } from 'posthog-js/react';
 
@@ -52,16 +52,11 @@ export const LoginPageClient = ({
         <div className="w-full max-w-md space-y-4">
           {referral ? (
             <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900/40 dark:bg-amber-950/30">
-              <Gift className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <UserPlus className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
               <p className="text-amber-800 dark:text-amber-200">
                 {referral.referrerName
-                  ? t('referralBanner', {
-                      storeName: referral.referrerName,
-                      count: referral.freeReservations,
-                    })
-                  : t('referralBannerGeneric', {
-                      count: referral.freeReservations,
-                    })}
+                  ? t('referralBanner', { storeName: referral.referrerName })
+                  : t('referralBannerGeneric')}
               </p>
             </div>
           ) : null}

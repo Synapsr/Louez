@@ -100,6 +100,8 @@ const SEARCH_FEATURE_ID = "navigation-refresh";
 
 type DashboardCommandPaletteProps = {
   isPlatformAdmin?: boolean;
+  /** Louez's own billing bills this store now: its referral rewards are listed. */
+  legacyBillingEnabled?: boolean;
   /** The viewer may open the billing service's pages for this store ("Facturation"). */
   billingHandoffEnabled?: boolean;
   electronicInvoicingEnabled?: boolean;
@@ -109,6 +111,7 @@ type DashboardCommandPaletteProps = {
 
 export const DashboardCommandPalette = ({
   isPlatformAdmin = false,
+  legacyBillingEnabled = false,
   billingHandoffEnabled = false,
   electronicInvoicingEnabled = true,
   onCreateReservation,
@@ -211,6 +214,7 @@ export const DashboardCommandPalette = ({
     () =>
       filterSettingsNavigationItems({
         billingEnabled,
+        legacyBillingEnabled,
         billingHandoffEnabled,
         electronicInvoicingEnabled,
         isPlatformAdmin,
@@ -220,7 +224,14 @@ export const DashboardCommandPalette = ({
         description: getMessageText(messages, item.descriptionPath),
         label: getMessageText(messages, item.labelPath),
       })),
-    [billingEnabled, billingHandoffEnabled, isPlatformAdmin, electronicInvoicingEnabled, messages],
+    [
+      billingEnabled,
+      legacyBillingEnabled,
+      billingHandoffEnabled,
+      isPlatformAdmin,
+      electronicInvoicingEnabled,
+      messages,
+    ],
   );
 
   const trimmedQuery = query.trim();
