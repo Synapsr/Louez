@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import * as nodeModule from "node:module";
 import { after, before, describe, test } from "node:test";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
@@ -45,6 +45,14 @@ const REFERRED_BY_USER = "store_purge_by_user";
 const REFERRER = "store_purge_referrer";
 const CO_OWNED = "store_purge_co_owned";
 const MEMBER_ONLY = "store_purge_member";
+/** The race tests run after the first one, which reads every queue row. */
+const RACE_REFERRER_USER = "user_race_referrer";
+const RACE_PAYING_USER = "user_race_paying";
+const RACE_DELETED_REFERRER = "store_race_referrer";
+const RACE_SURVIVING = "store_race_referred";
+const RACE_PAYING_STORE = "store_race_paying";
+const RACE_RESERVATION = "res_race";
+const RACE_PAYMENT = "pay_race";
 
 describe("account deletion billing marks (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
@@ -174,5 +182,169 @@ describe("account deletion billing marks (database)", { skip: skipWithoutTestDat
       .from(louezDb.billingSyncState);
     const alerts = z.record(z.string(), z.string()).parse(state?.alerts);
     assert.ok(alerts.final_snapshot_skipped, "the skipped reservation was alerted");
+  });
+
+  /** Resolves once a transaction on this test's database waits for a row lock. */
+  async function lockWait(): Promise<void> {
+    const waiting = z.array(z.object({ waiting: z.coerce.number() }));
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const [rows] = await louezDb.db.execute(
+        sql`SELECT COUNT(*) AS waiting FROM performance_schema.data_locks
+            WHERE OBJECT_SCHEMA = DATABASE() AND LOCK_STATUS = 'WAITING'`,
+      );
+      if ((waiting.parse(rows)[0]?.waiting ?? 0) > 0) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error("no transaction waited for a lock");
+  }
+
+  /** "committed", or the driver's error, such as a deadlock. */
+  const settle = (promise: Promise<unknown>) =>
+    promise.then(
+      () => "committed",
+      (error: unknown) => {
+        const cause = error instanceof Error ? error.cause : undefined;
+        if (cause instanceof Error) return cause.message;
+        return error instanceof Error ? error.message : String(error);
+      },
+    );
+
+  test("a store update that marks after writing does not deadlock with the purge", async () => {
+    await louezDb.db
+      .insert(louezDb.users)
+      .values([{ id: RACE_REFERRER_USER, email: "race-referrer@example.test" }]);
+    await louezDb.db.insert(louezDb.stores).values([
+      {
+        id: RACE_DELETED_REFERRER,
+        userId: RACE_REFERRER_USER,
+        name: "Referrer",
+        slug: "race-referrer",
+      },
+      {
+        id: RACE_SURVIVING,
+        userId: OTHER_USER,
+        name: "Referred",
+        slug: "race-referred",
+        referredByStoreId: RACE_DELETED_REFERRER,
+      },
+    ]);
+    await louezDb.db.insert(louezDb.storeMembers).values([
+      { storeId: RACE_DELETED_REFERRER, userId: RACE_REFERRER_USER, role: "owner" },
+      { storeId: RACE_SURVIVING, userId: OTHER_USER, role: "owner" },
+    ]);
+    const context = await repository.accountDeletionRepository.getContext(RACE_REFERRER_USER);
+    assert.ok(context, "the user exists");
+    let writer: Promise<string> = Promise.resolve("not started");
+
+    const purge = settle(
+      repository.accountDeletionRepository.purgeOwnedData(context, {
+        beforePurge: async () => {
+          let holding: () => void = () => undefined;
+          const held = new Promise<void>((resolve) => {
+            holding = resolve;
+          });
+          // A settings save on the referred store: its row first, its queue row last.
+          writer = settle(
+            louezDb.db.transaction(async (tx) => {
+              await tx
+                .update(louezDb.stores)
+                .set({ name: "Referred, renamed" })
+                .where(eq(louezDb.stores.id, RACE_SURVIVING));
+              holding();
+              await lockWait();
+              await louezDb.markStore(tx, RACE_SURVIVING);
+            }),
+          );
+          await held;
+        },
+      }),
+    );
+
+    assert.deepEqual(
+      { purge: await purge, writer: await writer },
+      { purge: "committed", writer: "committed" },
+    );
+    const [row] = await louezDb.db
+      .select({ version: louezDb.billingSyncQueue.version })
+      .from(louezDb.billingSyncQueue)
+      .where(eq(louezDb.billingSyncQueue.aggregateId, RACE_SURVIVING));
+    assert.equal(row?.version, 2, "marked by the save, then by the purge");
+  });
+
+  test("a payment write that commits during the purge is in the closing snapshot", async () => {
+    await louezDb.db
+      .insert(louezDb.users)
+      .values([{ id: RACE_PAYING_USER, email: "race-paying@example.test" }]);
+    await louezDb.db
+      .insert(louezDb.stores)
+      .values([
+        { id: RACE_PAYING_STORE, userId: RACE_PAYING_USER, name: "Paying", slug: "race-paying" },
+      ]);
+    await louezDb.db
+      .insert(louezDb.storeMembers)
+      .values([{ storeId: RACE_PAYING_STORE, userId: RACE_PAYING_USER, role: "owner" }]);
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: RACE_RESERVATION,
+      storeId: RACE_PAYING_STORE,
+      customerId: "customer_race",
+      number: "R-RACE-1",
+      status: "confirmed",
+      billableAt: new Date("2026-10-01T08:00:00Z"),
+      startDate: new Date("2026-10-10T09:00:00Z"),
+      endDate: new Date("2026-10-12T09:00:00Z"),
+      subtotalAmount: "100.00",
+      depositAmount: "0.00",
+      totalAmount: "100.00",
+    });
+    await louezDb.db.insert(louezDb.payments).values({
+      id: RACE_PAYMENT,
+      reservationId: RACE_RESERVATION,
+      amount: "100.00",
+      type: "rental",
+      method: "cash",
+      status: "completed",
+      paidAt: new Date("2026-10-01T08:00:00Z"),
+    });
+    const context = await repository.accountDeletionRepository.getContext(RACE_PAYING_USER);
+    assert.ok(context, "the user exists");
+    let holding: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      holding = resolve;
+    });
+    // A refund nets the payment: the payment row first, its reservation's queue row last.
+    const writer = settle(
+      louezDb.db.transaction(async (tx) => {
+        await tx
+          .update(louezDb.payments)
+          .set({ amount: "40.00" })
+          .where(eq(louezDb.payments.id, RACE_PAYMENT));
+        await louezDb.markReservation(tx, { id: RACE_RESERVATION, storeId: RACE_PAYING_STORE });
+        holding();
+        await lockWait();
+      }),
+    );
+    await held;
+
+    const purge = settle(
+      repository.accountDeletionRepository.purgeOwnedData(context, {
+        beforePurge: async () => undefined,
+      }),
+    );
+
+    assert.deepEqual(
+      { purge: await purge, writer: await writer },
+      { purge: "committed", writer: "committed" },
+    );
+    const [row] = await louezDb.db
+      .select({ final: louezDb.billingSyncQueue.finalPayload })
+      .from(louezDb.billingSyncQueue)
+      .where(eq(louezDb.billingSyncQueue.aggregateId, RACE_RESERVATION));
+    const payload = z
+      .object({ data: z.object({ payments: z.array(z.object({ grossMinor: z.number() })) }) })
+      .parse(row?.final);
+    assert.deepEqual(
+      payload.data.payments.map((payment) => payment.grossMinor),
+      [4000],
+    );
   });
 });

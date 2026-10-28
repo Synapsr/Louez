@@ -233,10 +233,61 @@ async function writeStoreFinalSnapshots(
   return { reservations: reservations.length, store: true, problems };
 }
 
+/** What the reservation builder reads, by reservation; the store builder's, by store. */
+const RESERVATION_FACTS = [
+  "reservation_items",
+  "payments",
+  "payment_disputes",
+  "payment_requests",
+  "reservation_activity",
+  "platform_fee",
+] as const;
+const STORE_FACTS = ["store_legal_profiles", "store_marketplace_channels"] as const;
+
+/**
+ * Locks the rows the final snapshots read: the stores' reservations, then each of
+ * their tables, then the stores' own. The locks also block inserts, which no foreign
+ * key fences. Call it before the purge transaction's first plain read: under
+ * REPEATABLE READ that read fixes the snapshot the final bodies are built from, so a
+ * payment or status written after it would be missing from them. The deletes take
+ * these locks anyway; they only start earlier. Without the billing service it locks
+ * nothing, like every mark.
+ */
+export async function lockFinalSnapshotFacts(
+  tx: Transaction,
+  storeIds: readonly string[],
+): Promise<void> {
+  if (!isBillingSyncEnabled() || storeIds.length === 0) return;
+  const stores = sql.join(
+    storeIds.map((id) => sql`${id}`),
+    sql`, `,
+  );
+  const reservations = await selectRows(
+    tx,
+    sql`SELECT id FROM reservations WHERE store_id IN (${stores}) ORDER BY id FOR UPDATE`,
+    idRow,
+  );
+  for (const table of RESERVATION_FACTS) {
+    for (let index = 0; index < reservations.length; index += MARK_CHUNK) {
+      const ids = reservations.slice(index, index + MARK_CHUNK).map(({ id }) => sql`${id}`);
+      await tx.execute(
+        sql`SELECT id FROM ${sql.identifier(table)}
+            WHERE reservation_id IN (${sql.join(ids, sql`, `)}) FOR UPDATE`,
+      );
+    }
+  }
+  for (const table of STORE_FACTS) {
+    await tx.execute(
+      sql`SELECT id FROM ${sql.identifier(table)} WHERE store_id IN (${stores}) FOR UPDATE`,
+    );
+  }
+}
+
 /**
  * Writes the final snapshots of the stores an account deletion is about to purge.
- * Call it inside the purge transaction, before any row is deleted, and pass the
- * problems it returns to `alertFinalSnapshotProblems` once the transaction commits.
+ * Call it inside the purge transaction, after `lockFinalSnapshotFacts` and before any
+ * row is deleted, and pass the problems it returns to `alertFinalSnapshotProblems`
+ * once the transaction commits.
  * Without the billing service it writes nothing, like every mark.
  */
 export async function writeFinalSnapshots(

@@ -12,6 +12,7 @@ import { env } from "@/env";
 import {
   type FinalSnapshotProblem,
   alertFinalSnapshotProblems,
+  lockFinalSnapshotFacts,
   writeFinalSnapshots,
 } from "@/lib/billing-sync/final-snapshots";
 
@@ -547,11 +548,11 @@ const purgeOwnedData = async (
     }
 
     await beforePurge();
+    // Before the first plain read, which fixes what the closing snapshots see.
+    await lockFinalSnapshotFacts(transaction, storeIds);
 
-    await markBillingDirty(
-      transaction,
-      await otherStoreBillingMarks(transaction, context.user.id, storeIds),
-    );
+    // Read before the referral rows go; marked last, after the stores rows it updates.
+    const otherMarks = await otherStoreBillingMarks(transaction, context.user.id, storeIds);
     // Before any row goes: the closing snapshots the billing service bills from.
     ({ problems: finalSnapshotProblems } = await writeFinalSnapshots(transaction, storeIds));
 
@@ -1043,6 +1044,10 @@ const purgeOwnedData = async (
           },
         });
     }
+
+    // Every writer locks its domain row before its queue row: marking the other stores
+    // earlier would deadlock with a store update that marks after writing.
+    await markBillingDirty(transaction, otherMarks);
 
     return {
       storesDeleted: storeIds.length,
