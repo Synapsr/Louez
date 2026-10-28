@@ -232,6 +232,9 @@ export function SubscriptionManagement({
       });
       if ('error' in result) {
         setError(result.error);
+      } else if ('url' in result && result.url) {
+        // Stripe had ended the subscription: the plan is bought through Checkout.
+        window.location.href = result.url;
       } else {
         router.refresh();
       }

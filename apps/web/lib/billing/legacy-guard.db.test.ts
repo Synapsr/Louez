@@ -20,7 +20,9 @@ import { DEFAULT_REFERRAL_PROGRAM_CONFIG } from "@/lib/referral/config";
 // BILLING_SERVICE_URL, is billed as before. Louez's plans, for every store (§8.7): one
 // live subscription per store, changed in place, its status and plan written by the
 // platform webhook; one open plan Checkout per store, and a second plan paid through
-// another one never replaces the first. billing-off.test.ts covers LOUEZ_BILLING off.
+// another one never replaces the first; a row whose subscription Stripe has ended goes
+// back to pay-as-you-go instead of blocking a plan. billing-off.test.ts covers
+// LOUEZ_BILLING off.
 //
 // Times are relative to the real clock: new stores are those created from 2026-06-01,
 // and the switched stores are billed by the service from 2026-09-01, both in the past.
@@ -454,6 +456,8 @@ const STORES: ReadonlyArray<readonly [string, string]> = [
   ["lg_plan_open", NEW],
   ["lg_twice_old", OLD],
   ["lg_twice_new", NEW],
+  ["lg_ended_old", OLD],
+  ["lg_ended_new", NEW],
 ];
 
 describe("legacy guard and platform customer (database)", { skip: skipWithoutTestDatabase() }, () => {
@@ -553,6 +557,13 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
           ...PLAN_ROW,
           stripeSubscriptionId: "sub_lg_plan_new",
           stripeCustomerId: "cus_lg_plan_new",
+          payAsYouGoConfig: null,
+          pricingVersion: null,
+        }),
+        row("lg_ended_old", { ...PLAN_ROW, stripeCustomerId: "cus_lg_ended_old" }),
+        row("lg_ended_new", {
+          ...PLAN_ROW,
+          stripeCustomerId: "cus_lg_ended_new",
           payAsYouGoConfig: null,
           pricingVersion: null,
         }),
@@ -1416,7 +1427,13 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
           interval: "monthly",
           currency: "eur",
         });
-      for (const status of ["active", "trialing", "past_due"] as const) {
+      // Stripe has not ended the subscription, whether it collects it or not.
+      for (const [status, stripeStatus] of [
+        ["active", "active"],
+        ["trialing", "unpaid"],
+        ["past_due", "past_due"],
+      ] as const) {
+        fakeStripe.addSubscription(`sub_${storeId}`, PRICE.proMonthly, { status: stripeStatus });
         await setPlanRow(storeId, { status });
         assert.deepEqual(
           await checkout(),
@@ -1424,7 +1441,8 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
           `${storeId} ${status}`,
         );
       }
-      assert.deepEqual(fakeStripe.calls, []);
+      assert.deepEqual(fakeStripe.calls, Array(3).fill(`subscriptions.retrieve sub_${storeId}`));
+      fakeStripe.calls.length = 0;
 
       // Once the row's subscription is over, a plan is bought again, on the row's customer.
       await setPlanRow(storeId, { status: "cancelled" });
@@ -1714,6 +1732,75 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
       const row = await planColumns(storeId);
       assert.equal(row?.stripeSubscriptionId, kept ? `sub_${storeId}_2` : third, storeId);
       assert.equal(extraPlanNotices.length, kept ? 1 : 0, storeId);
+    }
+  });
+
+  test("a row whose subscription Stripe has ended goes back to pay-as-you-go, and the plan is bought through Checkout, from both entry points, for an old and a new store", async () => {
+    const plan = { planSlug: "ultra", interval: "monthly", currency: "eur" } as const;
+    const entryPoints = {
+      checkout: () => subscriptionActions.createCheckoutSession(plan),
+      change: () => subscriptionActions.changeSubscriptionPlan(plan),
+    };
+    // The webhook missed `.deleted`: Stripe has ended the subscription, or no longer has it.
+    const endings = {
+      canceled: (id: string) =>
+        fakeStripe.addSubscription(id, PRICE.proMonthly, { status: "canceled" }),
+      incomplete_expired: (id: string) =>
+        fakeStripe.addSubscription(id, PRICE.proMonthly, { status: "incomplete_expired" }),
+      gone: () => undefined,
+    };
+    for (const storeId of ["lg_ended_old", "lg_ended_new"]) {
+      currentStore.id = storeId;
+      const subscription = `sub_${storeId}`;
+      const customer = `cus_${storeId}`;
+      for (const [entry, open] of Object.entries(entryPoints)) {
+        for (const [ending, end] of Object.entries(endings)) {
+          const label = `${storeId} ${entry} ${ending}`;
+          fakeStripe.reset();
+          end(subscription);
+          await setPlanRow(storeId, { ...PLAN_ROW, stripeSubscriptionId: subscription });
+          await clearMarks(storeId);
+
+          const answer = await open();
+          assert.equal(
+            Reflect.get(answer, "url"),
+            `https://checkout.stripe.test/cs_${customer}`,
+            label,
+          );
+          assert.deepEqual(
+            fakeStripe.calls,
+            [
+              `subscriptions.retrieve ${subscription}`,
+              `checkout.sessions.list ${customer}`,
+              `checkout.sessions.create ${customer} ${PRICE.ultraMonthly}`,
+            ],
+            label,
+          );
+          assert.deepEqual(fakeStripe.subscriptionUpdates, [], label);
+          // As `.deleted` writes it: pay-as-you-go at the pricing the row holds, both marks.
+          const row = await planColumns(storeId);
+          assert.deepEqual(
+            {
+              billingMode: row?.billingMode,
+              planSlug: row?.planSlug,
+              status: row?.status,
+              stripeSubscriptionId: row?.stripeSubscriptionId,
+              stripeCustomerId: row?.stripeCustomerId,
+              payAsYouGoConfig: row?.payAsYouGoConfig,
+            },
+            {
+              billingMode: "pay_as_you_go",
+              planSlug: "pay_as_you_go",
+              status: "active",
+              stripeSubscriptionId: null,
+              stripeCustomerId: customer,
+              payAsYouGoConfig: storeId === "lg_ended_old" ? { flatRateCents: 123 } : null,
+            },
+            label,
+          );
+          assert.deepEqual(await marksOf(storeId), ["legacy_store", "store"], label);
+        }
+      }
     }
   });
 });

@@ -26,6 +26,25 @@ const planChangeSchema = z.object({
   currency: z.enum(['eur', 'usd']),
 })
 
+type CurrentStore = NonNullable<Awaited<ReturnType<typeof getCurrentStore>>>
+
+/** The plan's Stripe Checkout for the store, with its trial and coupon. */
+function openPlanCheckout(
+  store: CurrentStore,
+  { planSlug, interval, currency }: z.infer<typeof planChangeSchema>,
+) {
+  return createSubscriptionCheckoutSession({
+    storeId: store.id,
+    planSlug,
+    interval,
+    currency,
+    trialDays: store.trialDays ?? 0,
+    stripeCouponId: store.stripeCouponId ?? undefined,
+    successUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?success=true`,
+    cancelUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?canceled=true`,
+  })
+}
+
 export async function createCheckoutSession({
   planSlug,
   interval,
@@ -45,18 +64,7 @@ export async function createCheckoutSession({
   }
 
   try {
-    const session = await createSubscriptionCheckoutSession({
-      storeId: store.id,
-      planSlug,
-      interval,
-      currency,
-      trialDays: store.trialDays ?? 0,
-      stripeCouponId: store.stripeCouponId ?? undefined,
-      successUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?success=true`,
-      cancelUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?canceled=true`,
-    })
-
-    return session
+    return await openPlanCheckout(store, { planSlug, interval, currency })
   } catch (error) {
     // A live subscription changes plan in place (changeSubscriptionPlan).
     if (error instanceof SubscriptionPlanError) {
@@ -71,11 +79,13 @@ export async function createCheckoutSession({
 
 /**
  * Moves the store's live plan subscription to another plan or interval, on the same
- * Stripe subscription, with the checkout's permission checks.
+ * Stripe subscription, with the checkout's permission checks. When Stripe had ended that
+ * subscription, the store is back on pay-as-you-go and gets the plan's Checkout instead:
+ * the page follows `url`.
  */
 export async function changeSubscriptionPlan(
   input: z.infer<typeof planChangeSchema>,
-): Promise<{ success: true } | { error: string }> {
+): Promise<{ success: true } | { url: string | null } | { error: string }> {
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'not_authenticated' }
@@ -92,8 +102,11 @@ export async function changeSubscriptionPlan(
 
   try {
     const { planSlug, interval, currency } = parsed.data
-    await changePlanInPlace(store.id, planSlug, interval, currency)
+    const outcome = await changePlanInPlace(store.id, planSlug, interval, currency)
     revalidatePath('/dashboard/settings/subscription')
+    if (outcome === 'subscription_ended') {
+      return { url: (await openPlanCheckout(store, parsed.data)).url }
+    }
     return { success: true }
   } catch (error) {
     if (error instanceof SubscriptionPlanError) {

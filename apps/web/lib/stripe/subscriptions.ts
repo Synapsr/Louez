@@ -7,9 +7,14 @@ import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/l
 import { BillingDisabledError, isBillingEnabled } from '@/lib/billing/mode'
 import { getEffectivePolicy } from '@/lib/billing/policy'
 import { type BillingAlerts, createBillingAlerts } from '@/lib/billing-sync/alerts'
+import { isStripeNotFound } from '@/lib/billing-sync/gross-backfill-core'
 import { log } from '@/lib/evlog'
 import { ensurePlanRow } from '@/lib/pay-as-you-go/pricing-lock'
-import { hasLiveSubscription, type SubscriptionRowStatus } from '@/lib/stripe/subscription-status'
+import {
+  hasLiveSubscription,
+  subscriptionEnded,
+  type SubscriptionRowStatus,
+} from '@/lib/stripe/subscription-status'
 import { env } from '@/env'
 
 // Every write to a subscription row marks the store's store and legacy_store snapshots
@@ -306,6 +311,33 @@ export async function getOffSessionCustomer(
 }
 
 /**
+ * The subscription a row holds, as Stripe has it now: read before a plan checkout is
+ * refused or a plan changes in place. One Stripe has ended (canceled,
+ * incomplete_expired) or no longer has means the webhook missed its `.deleted`: the row
+ * ends as that handler ends it (endSubscriptionToPayAsYouGo), so the store is back on
+ * pay-as-you-go with both marks, and the answer is null.
+ */
+async function currentHeldSubscription(row: {
+  readonly id: string
+  readonly storeId: string
+  readonly stripeSubscriptionId: string
+}) {
+  const current = await stripe.subscriptions
+    .retrieve(row.stripeSubscriptionId)
+    .catch((error: unknown) => {
+      if (isStripeNotFound(error)) return null
+      throw error
+    })
+  if (current && !subscriptionEnded(current.status)) return current
+  log.warn(
+    'billing',
+    `store ${row.storeId}: its row holds subscription ${row.stripeSubscriptionId}, which Stripe ${current ? `has ${current.status}` : 'no longer has'}, so the row goes back to pay-as-you-go`,
+  )
+  await endSubscriptionToPayAsYouGo(row.id, row.stripeSubscriptionId)
+  return null
+}
+
+/**
  * How long a plan Checkout stays payable. Stripe's minimum is 30 minutes after it
  * creates the session; the extra minute covers the request and the clocks' drift.
  */
@@ -371,12 +403,13 @@ export async function createSubscriptionCheckoutSession({
   }
 
   // One live plan subscription per store: a second Checkout would leave the first one
-  // billing. The plan page changes the live one in place (changeSubscriptionPlan).
+  // billing. The plan page changes the live one in place (changeSubscriptionPlan). One
+  // Stripe has ended no longer counts (currentHeldSubscription).
   const row = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
-    columns: { status: true, stripeSubscriptionId: true },
+    columns: { id: true, storeId: true, status: true, stripeSubscriptionId: true },
   })
-  if (hasLiveSubscription(row)) {
+  if (hasLiveSubscription(row) && (await currentHeldSubscription(row))) {
     throw new SubscriptionPlanError('live_subscription')
   }
 
@@ -439,19 +472,27 @@ export async function createSubscriptionCheckoutSession({
 }
 
 /**
+ * What a plan change did: `in_place` on the live subscription, or `subscription_ended`
+ * when Stripe had ended the row's subscription. The row is then on pay-as-you-go, and
+ * the plan is bought through Checkout.
+ */
+export type PlanChangeOutcome = 'in_place' | 'subscription_ended'
+
+/**
  * Moves the store's live plan subscription to another plan or interval on the same
  * Stripe subscription, for every store (plans-for-new-stores decision 5): its one item
  * gets the plan's price, prorated, at once. A cancellation the owner scheduled is
  * lifted, as buying the new plan would have done. Stripe's `customer.subscription.updated`
  * writes the plan from the price too (handleSubscriptionUpdated); the row gets it now,
- * so the page shows it.
+ * so the page shows it. A subscription Stripe has ended changes nothing in Stripe and
+ * ends the row (currentHeldSubscription).
  */
 export async function changeSubscriptionPlan(
   storeId: string,
   planSlug: string,
   interval: 'monthly' | 'yearly',
   currency: Currency,
-): Promise<void> {
+): Promise<PlanChangeOutcome> {
   if (!isBillingEnabled()) {
     throw new BillingDisabledError('change a plan on the platform Stripe account')
   }
@@ -472,7 +513,8 @@ export async function changeSubscriptionPlan(
     throw new SubscriptionPlanError('no_live_subscription')
   }
 
-  const current = await stripe.subscriptions.retrieve(row.stripeSubscriptionId)
+  const current = await currentHeldSubscription(row)
+  if (!current) return 'subscription_ended'
   const [item, ...others] = current.items.data
   if (!item || others.length > 0) {
     throw new SubscriptionPlanError('subscription_items')
@@ -480,7 +522,7 @@ export async function changeSubscriptionPlan(
   if (item.price.currency.toLowerCase() !== currency) {
     throw new SubscriptionPlanError('currency')
   }
-  if (item.price.id === priceId && !current.cancel_at_period_end) return
+  if (item.price.id === priceId && !current.cancel_at_period_end) return 'in_place'
 
   await stripe.subscriptions.update(current.id, {
     items: [{ id: item.id, price: priceId }],
@@ -489,6 +531,7 @@ export async function changeSubscriptionPlan(
     metadata: { planSlug: plan.slug, pendingBillingMode: '' },
   })
   await updateSubscriptionRow(row, { planSlug: plan.slug, cancelAtPeriodEnd: false })
+  return 'in_place'
 }
 
 export async function createCustomerPortalSession(storeId: string) {
@@ -649,11 +692,20 @@ export async function activatePlanSubscription(input: {
  * Return a store to pay-as-you-go when its Stripe subscription ended (owner-scheduled
  * switch or lapse). The free tier no longer exists, so the store keeps working with no
  * monthly fee and is billed per rental at the pricing already stored on its row: only
- * plan, mode, status and Stripe columns change.
+ * plan, mode, status and Stripe columns change. With `stripeSubscriptionId`, only while
+ * the row still holds that subscription.
  */
-export async function endSubscriptionToPayAsYouGo(subscriptionRowId: string) {
+export async function endSubscriptionToPayAsYouGo(
+  subscriptionRowId: string,
+  stripeSubscriptionId?: string,
+) {
   const row = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.id, subscriptionRowId),
+    where: and(
+      eq(subscriptions.id, subscriptionRowId),
+      stripeSubscriptionId === undefined
+        ? undefined
+        : eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId),
+    ),
     columns: { id: true, storeId: true },
   })
   if (!row) return
