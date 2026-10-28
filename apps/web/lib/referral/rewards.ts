@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
-import { db, isDuplicateKeyError, markLegacyStore } from '@louez/db';
+import { db, isDuplicateKeyError, legacyBillingAppliesAt, markLegacyStore } from '@louez/db';
 import { referralRewards, subscriptions } from '@louez/db';
 
 import { isBillingEnabled } from '@/lib/billing/mode';
@@ -12,7 +12,7 @@ import { addFreeReservations, ensureSubscriptionRow } from '@/lib/pay-as-you-go/
 import { captureReferralServerEvent } from '@/lib/referral/analytics';
 import { referralAnalyticsEvents } from '@/lib/referral/analytics-events';
 import { stripe } from '@/lib/stripe/client';
-import { getOrCreateStripeCustomer } from '@/lib/stripe/subscriptions';
+import { getLegacyPlatformCustomerId } from '@/lib/stripe/subscriptions';
 
 import { isWithinMonthlyCap } from './cap';
 import {
@@ -309,6 +309,18 @@ export async function maybeGrantReferrerReward(
     return { granted: false, reason: 'already_rewarded' };
   }
 
+  // The reward is a credit on Louez's own billing: none for a Referrer the billing
+  // service bills (louez-billing docs/api, README §8.3).
+  const at = input.at ?? new Date();
+  if (!(await legacyBillingAppliesAt(db, referrerStoreId, at))) {
+    await trackQualifyingPaymentEvaluated({
+      input,
+      granted: false,
+      reason: 'referrer_not_legacy_billed',
+    });
+    return { granted: false, reason: 'referrer_not_legacy_billed' };
+  }
+
   // Size the reward from the Referrer's own billing: free reservations valued at their
   // entry-tier pay-as-you-go price, or the equivalent euro credit if they are subscribed.
   const referrerBilling = await getStoreBilling(referrerStoreId);
@@ -322,7 +334,6 @@ export async function maybeGrantReferrerReward(
     unitValueCents,
   });
 
-  const at = input.at ?? new Date();
   const grantedMonth = billingMonthOf(at);
   const currency = (referrerBilling.config.currency || input.currency || 'eur')
     .toLowerCase()
@@ -377,7 +388,7 @@ export async function maybeGrantReferrerReward(
       let invoiceItemId: string | null = null;
       const customerId =
         reward.creditCents > 0
-          ? await getOrCreateStripeCustomer(referrerStoreId)
+          ? await getLegacyPlatformCustomerId(referrerStoreId)
           : null;
       try {
         await db.transaction(async (tx) => {
@@ -665,7 +676,7 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
       ) {
         const customerId =
           target.customerId ??
-          (await getOrCreateStripeCustomer(reward.referrerStoreId));
+          (await getLegacyPlatformCustomerId(reward.referrerStoreId));
         await stripe.invoiceItems.create(
           {
             customer: customerId,

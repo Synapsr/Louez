@@ -1,11 +1,13 @@
 'use server'
 
 import { getCurrentStore, hasPermission } from '@/lib/store-context'
+import { billingPageHref } from '@/lib/billing/billing-pages'
+import { legacyBillingApplies } from '@/lib/billing/policy'
 import {
   createSubscriptionCheckoutSession,
   createCustomerPortalSession,
   cancelSubscription as cancelSub,
-  getOrCreateStripeCustomer,
+  getPlatformCustomerId,
   reactivateSubscription as reactivateSub,
   switchToPayAsYouGo as switchToPayg,
 } from '@/lib/stripe/subscriptions'
@@ -67,7 +69,8 @@ export async function openCustomerPortal() {
  * Open the Stripe billing portal for a pay-as-you-go store. Unlike subscriptions,
  * a PAYG store may not have a Stripe customer yet (mode is toggled by an admin, not
  * via checkout), so we ensure one exists first. The portal lets the owner add a
- * payment method and view/pay their month-end invoices.
+ * payment method and view/pay their month-end invoices. A store the billing service
+ * bills adds its card on the billing pages instead (louez-billing docs/api, Q39).
  */
 export async function openBillingPortal() {
   const store = await getCurrentStore()
@@ -77,7 +80,12 @@ export async function openBillingPortal() {
     throw new Error('errors.permissionDenied')
   }
 
-  await getOrCreateStripeCustomer(store.id)
+  // Refuses with platform billing off, and never creates a customer for a store the
+  // billing service bills.
+  await getPlatformCustomerId(store.id)
+  if (!(await legacyBillingApplies(store.id, new Date()))) {
+    return { url: billingPageHref('/payment-method') }
+  }
   return createCustomerPortalSession(store.id)
 }
 

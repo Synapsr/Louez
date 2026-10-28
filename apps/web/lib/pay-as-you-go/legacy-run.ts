@@ -77,18 +77,18 @@ export interface MonthlyBillingLog {
 
 /**
  * The stores due for `billingMonth` when its run started that no run has reached: they
- * have no invoice row for it.
+ * have no invoice row for it. The stores with a row are left out before the legacy
+ * guard reads policies, so a call that finds every due store with its row, as most do,
+ * reads none.
  */
 export async function unbilledStoreIds(billingMonth: string): Promise<string[]> {
-  const [storeIds, reached] = await Promise.all([
-    monthlyBillingStoreIds(billingMonth),
-    db
-      .select({ storeId: payAsYouGoInvoices.storeId })
-      .from(payAsYouGoInvoices)
-      .where(eq(payAsYouGoInvoices.billingMonth, billingMonth)),
-  ]);
-  const billed = new Set(reached.map((row) => row.storeId));
-  return storeIds.filter((storeId) => !billed.has(storeId));
+  const reached = await db
+    .select({ storeId: payAsYouGoInvoices.storeId })
+    .from(payAsYouGoInvoices)
+    .where(eq(payAsYouGoInvoices.billingMonth, billingMonth));
+  return monthlyBillingStoreIds(billingMonth, {
+    exclude: new Set(reached.map((row) => row.storeId)),
+  });
 }
 
 /**

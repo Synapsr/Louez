@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { MessageSquare } from 'lucide-react'
 import { after } from 'next/server'
 
-import { requirePlatformBilling } from '@/lib/billing/require-billing'
+import { requireLegacyBilling, requirePlatformBilling } from '@/lib/billing/require-billing'
 import { getCurrentStore } from '@/lib/store-context'
 import { syncStorePaymentMethodStatus } from '@/lib/discord/platform-notifications'
 import { getSubscriptionWithPlan, getPlans, hasStripeCustomer, storeHasDefaultPaymentMethod } from '@/lib/stripe/subscriptions'
@@ -42,6 +42,7 @@ export default async function SubscriptionPage({
   if (!store) {
     redirect('/onboarding')
   }
+  await requireLegacyBilling(store.id)
 
   const t = await getTranslations('dashboard.settings.subscription')
   const params = await searchParams

@@ -1,18 +1,23 @@
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
+import { isBillingSyncEnabled } from "./billing-queue";
 import type { Database, Transaction } from "./index";
 import { billingPolicies, stores } from "./schema";
 
 // The effective billing policy of a store (louez-billing docs/api, README §8.3), read
 // from the cache that apps/web/lib/billing-sync/policies.ts fills. It lives here, next
 // to the billing marks, because the card gate runs in changeReservationStatus and
-// insertReservation, which packages/api and packages/mcp call too.
+// insertReservation, which packages/api and packages/mcp call too. The legacy guard
+// is here for the same reason: apps/web/lib/pay-as-you-go/pricing-lock.ts checks it in
+// the caller's transaction and must not load the app's database client, so it imports
+// this file from `@louez/db/billing-policy`.
 //
 // BILLING_NEW_STORES_FROM and BILLING_GATE_DISABLED are read from process.env at call
 // time, as isBillingSyncEnabled reads LOUEZ_BILLING: this package's env.ts declares
 // neither, apps/web/env.ts does, and its start-up check refuses a bad value in service
-// mode. Every function here except resolvePolicy is for service mode only (README §12).
+// mode. Every function here except resolvePolicy and the legacy guard is for service
+// mode only (README §12).
 
 export type PolicyExecutor = Database | Transaction;
 
@@ -166,29 +171,51 @@ export type StorePolicyRecords = {
 };
 
 /**
- * What resolving a store's policy reads: when the store was created, and the cached
- * versions of the store and of `*`, in one indexed query. A body that fails the schema
- * is left out, as a refused version would be (README §8.1).
+ * What resolving the policies of several stores reads, in two indexed queries: when
+ * each store was created, and the cached versions of those stores and of `*`. A store
+ * that does not exist is left out. A body that fails the schema is left out, as a
+ * refused version would be (README §8.1).
  */
+export async function readStoresPolicyRecords(
+  executor: PolicyExecutor,
+  storeIds: readonly string[],
+): Promise<StorePolicyRecords[]> {
+  const ids = [...new Set(storeIds)];
+  if (ids.length === 0) return [];
+  const found = await executor
+    .select({ id: stores.id, createdAt: stores.createdAt })
+    .from(stores)
+    .where(inArray(stores.id, ids));
+  if (found.length === 0) return [];
+  const rows = await executor
+    .select({ storeId: billingPolicies.storeId, body: billingPolicies.body })
+    .from(billingPolicies)
+    .where(inArray(billingPolicies.storeId, [...found.map((store) => store.id), "*"]));
+  const defaults: CachedPolicy[] = [];
+  const own = new Map<string, CachedPolicy[]>();
+  for (const { storeId, body } of rows) {
+    const parsed = billingPolicyCoreSchema.safeParse(body);
+    if (!parsed.success) continue;
+    const version = { ...parsed.data, body };
+    const list = storeId === "*" ? defaults : own.get(storeId);
+    if (list) list.push(version);
+    else own.set(storeId, [version]);
+  }
+  return found.map((store) => ({
+    storeId: store.id,
+    storeCreatedAt: store.createdAt,
+    versions: [...(own.get(store.id) ?? []), ...defaults],
+  }));
+}
+
+/** What resolving one store's policy reads (readStoresPolicyRecords). Throws for a missing store. */
 export async function readStorePolicyRecords(
   executor: PolicyExecutor,
   storeId: string,
 ): Promise<StorePolicyRecords> {
-  const [store] = await executor
-    .select({ createdAt: stores.createdAt })
-    .from(stores)
-    .where(eq(stores.id, storeId))
-    .limit(1);
-  if (!store) throw new Error(`store ${storeId} does not exist`);
-  const rows = await executor
-    .select({ body: billingPolicies.body })
-    .from(billingPolicies)
-    .where(inArray(billingPolicies.storeId, [storeId, "*"]));
-  const versions = rows.flatMap(({ body }) => {
-    const parsed = billingPolicyCoreSchema.safeParse(body);
-    return parsed.success ? [{ ...parsed.data, body }] : [];
-  });
-  return { storeId, storeCreatedAt: store.createdAt, versions };
+  const [records] = await readStoresPolicyRecords(executor, [storeId]);
+  if (!records) throw new Error(`store ${storeId} does not exist`);
+  return records;
 }
 
 export type StorePolicy = PolicyResolution & {
@@ -250,4 +277,52 @@ export async function newStoresCutoff(
     }
   }
   return new Date(cutoff);
+}
+
+/**
+ * What `legacyBillingApplies` is outside service mode (README §8.3, §12): false with
+ * LOUEZ_BILLING off, true for every store with LOUEZ_BILLING=cloud and no
+ * BILLING_SERVICE_URL. Null in service mode, where the resolver decides.
+ */
+function legacyBillingWithoutService(): boolean | null {
+  if (process.env.LOUEZ_BILLING !== "cloud") return false;
+  return isBillingSyncEnabled() ? null : true;
+}
+
+/**
+ * The stores of `storeIds` that Louez's legacy code bills at `at` (README §8.3's
+ * `legacyBillingApplies`), in their order and in two queries whatever their number.
+ * Outside service mode it reads nothing: none with LOUEZ_BILLING off, all of them
+ * without BILLING_SERVICE_URL. A store that does not exist has no creation date that
+ * makes it new and no policy, so it stays legacy, as the resolver's last case: its
+ * rows are billed as they always were.
+ */
+export async function legacyBilledStoreIds(
+  executor: PolicyExecutor,
+  storeIds: readonly string[],
+  at: Date,
+): Promise<string[]> {
+  const fixed = legacyBillingWithoutService();
+  if (fixed !== null) return fixed ? [...storeIds] : [];
+  const billedByService = new Set(
+    (await readStoresPolicyRecords(executor, storeIds))
+      .filter((records) => !effectiveStorePolicy(records, at).legacyBillingApplies)
+      .map((records) => records.storeId),
+  );
+  return storeIds.filter((storeId) => !billedByService.has(storeId));
+}
+
+/**
+ * Whether Louez's legacy code bills the store at `at` (legacyBilledStoreIds), read
+ * through `executor`, so a write checks it in its own transaction, also for a store
+ * that transaction has just created. apps/web/lib/billing/policy.ts gives the same
+ * answer for a request, from a cache the request shares, and throws for a store that
+ * does not exist.
+ */
+export async function legacyBillingAppliesAt(
+  executor: PolicyExecutor,
+  storeId: string,
+  at: Date,
+): Promise<boolean> {
+  return (await legacyBilledStoreIds(executor, [storeId], at)).length > 0;
 }

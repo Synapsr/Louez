@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  billingMonthEnd,
   canBillMonth,
   dueBillingMonth,
   firstUnbilledMonthStart,
@@ -90,4 +91,10 @@ test("the previous month stays unbilled until the run on the 1st", () => {
     firstUnbilledMonthStart(new Date("2026-01-01T04:45:00Z")),
     new Date("2025-12-01T00:00:00Z"),
   );
+});
+
+test("a billing month ends on the last millisecond before the next month", () => {
+  assert.equal(billingMonthEnd("2027-02").toISOString(), "2027-02-28T23:59:59.999Z");
+  assert.equal(billingMonthEnd("2026-12").toISOString(), "2026-12-31T23:59:59.999Z");
+  assert.throws(() => billingMonthEnd("2026-13"), /Not a billing month/);
 });

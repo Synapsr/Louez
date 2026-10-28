@@ -16,7 +16,8 @@ import { nanoid } from 'nanoid'
 import { SMS_TOPUP_PRICING } from '@/lib/plans'
 import type { SmsTopupPackage } from '@/lib/sms/sms-topup.constants'
 import { getStorePlan } from '@/lib/plan-limits'
-import { getOrCreateStripeCustomer } from './subscriptions'
+import { billingPageHref } from '@/lib/billing/billing-pages'
+import { getPlatformCustomerId } from './subscriptions'
 
 export interface CreateSmsTopupCheckoutOptions {
   storeId: string
@@ -30,7 +31,8 @@ export interface CreateSmsTopupCheckoutOptions {
 }
 
 export interface SmsTopupCheckoutResult {
-  sessionId: string
+  /** Null when no Checkout was started: the owner adds a card on the billing pages first. */
+  sessionId: string | null
   url: string | null
 }
 
@@ -82,8 +84,12 @@ export async function createSmsTopupCheckoutSession({
   // Calculate total
   const totalAmountCents = quantity * priceCents
 
-  // Get or create Stripe customer (persisted to DB to avoid duplicates on abandoned checkouts)
-  const stripeCustomerId = await getOrCreateStripeCustomer(storeId)
+  // Persisted to the DB at creation, to avoid duplicates on abandoned checkouts. A store
+  // the billing service bills and that has no card yet adds one there first (Q39).
+  const stripeCustomerId = await getPlatformCustomerId(storeId)
+  if (!stripeCustomerId) {
+    return { sessionId: null, url: billingPageHref('/payment-method') }
+  }
 
   // Create pending transaction record
   const transactionId = nanoid()

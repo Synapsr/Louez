@@ -8,8 +8,8 @@ import { isBillingEnabled } from '@/lib/billing/mode'
 import { log } from '@/lib/evlog'
 import { stripe } from '@/lib/stripe/client'
 import {
-  getOrCreateStripeCustomer,
-  storeHasDefaultPaymentMethod,
+  getOffSessionCustomer,
+  type OffSessionCustomerOptions,
 } from '@/lib/stripe/subscriptions'
 
 /**
@@ -20,8 +20,12 @@ import {
  *
  * Idempotent per hour via a UNIQUE dedup key, so repeated calls (one per model
  * run while the balance is low) never fire more than one charge per window.
+ * `customerCheck` is for tests: the alerts and the Stripe read of the customer check.
  */
-export async function maybeTriggerAutoTopup(storeId: string): Promise<void> {
+export async function maybeTriggerAutoTopup(
+  storeId: string,
+  customerCheck: OffSessionCustomerOptions = {},
+): Promise<void> {
   // An off-session card charge by the platform: none without platform billing.
   if (!isBillingEnabled()) return
   try {
@@ -63,16 +67,17 @@ export async function maybeTriggerAutoTopup(storeId: string): Promise<void> {
       return
     }
 
-    // Off-session charging needs a saved card.
-    if (!(await storeHasDefaultPaymentMethod(storeId))) {
+    // Off-session charging needs the store's own customer, never a new one, with a
+    // saved card (louez-billing docs/api, README §8.4).
+    const customer = await getOffSessionCustomer(storeId, customerCheck)
+    if (!customer.ok) {
       await db
         .update(aiCreditTransactions)
         .set({ status: 'failed' })
         .where(eq(aiCreditTransactions.id, transactionId))
       return
     }
-
-    const customerId = await getOrCreateStripeCustomer(storeId)
+    const { customerId } = customer
 
     // Create the invoice FIRST, excluding any stray pending items on the shared
     // platform customer, then bind a single line item to THIS invoice — so the

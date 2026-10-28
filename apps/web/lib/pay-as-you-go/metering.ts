@@ -4,9 +4,12 @@ import { nanoid } from "nanoid";
 import {
   type Database,
   type DatabaseOnConnection,
+  type PolicyExecutor,
   db,
   isBillingSyncEnabled,
   isDuplicateKeyError,
+  legacyBilledStoreIds,
+  legacyBillingAppliesAt,
   markBillingDirty,
   type MarkExecutor,
   type PolicyInvoicing,
@@ -34,6 +37,7 @@ import {
 } from "@/lib/billing-sync/fee-metadata";
 import { log } from "@/lib/evlog";
 
+import { billingMonthEnd } from "./billing-core";
 import {
   type ResolvedPayAsYouGoConfig,
   priceForLocationIndex,
@@ -195,6 +199,31 @@ async function markFeeRows(
   );
 }
 
+/**
+ * The fee rows the monthly run bills: those whose store Louez's legacy code bills at
+ * the end of the row's month, as the run reads it (monthlyBillingStoreIds, README
+ * §8.3). Read in the write's transaction, so a cancellation or a fee refund changes a
+ * row the run invoices, also after the billing service took the store over, and keeps
+ * any other row as it is.
+ */
+async function rowsBilledByTheMonthlyRun<
+  Row extends { readonly storeId: string; readonly billingMonth: string },
+>(executor: PolicyExecutor, rows: readonly Row[]): Promise<Row[]> {
+  const kept: Row[] = [];
+  for (const billingMonth of new Set(rows.map((row) => row.billingMonth))) {
+    const ofMonth = rows.filter((row) => row.billingMonth === billingMonth);
+    const legacy = new Set(
+      await legacyBilledStoreIds(
+        executor,
+        [...new Set(ofMonth.map((row) => row.storeId))],
+        billingMonthEnd(billingMonth),
+      ),
+    );
+    kept.push(...ofMonth.filter((row) => legacy.has(row.storeId)));
+  }
+  return kept;
+}
+
 // ============================================================================
 // Reservation fee (pay-as-you-go per-rental fee)
 // ============================================================================
@@ -222,11 +251,17 @@ interface RecordReservationFeeInput {
  * - A manual `pending` row is upgraded to `collected` if the fee is later collected at
  *   source (prevents double billing).
  * - No-op, without touching the database, when platform billing is off.
+ * - No-op for a store the billing service bills at `at`, the time of the fact
+ *   (louez-billing docs/api, README §8.3).
  */
 export async function recordReservationFee(
   input: RecordReservationFeeInput,
 ): Promise<{ recorded: boolean; reason?: string }> {
   if (!isBillingEnabled()) return { recorded: false, reason: "billing_off" };
+  const at = input.at ?? new Date();
+  if (!(await legacyBillingAppliesAt(db, input.storeId, at))) {
+    return { recorded: false, reason: "not_legacy_billed" };
+  }
   const billing = input.billing ?? (await getStoreBilling(input.storeId));
   if (billing.billingMode !== "pay_as_you_go") {
     return { recorded: false, reason: "not_pay_as_you_go" };
@@ -271,7 +306,6 @@ export async function recordReservationFee(
     return { recorded: false, reason: "already_recorded" };
   }
 
-  const at = input.at ?? new Date();
   const billingMonth = billingMonthOf(at);
   const currency = (input.currency || billing.config.currency || "eur").toLowerCase().slice(0, 3);
 
@@ -382,7 +416,9 @@ export async function recordReservationFee(
  * (`pending`) fee, AND a waived (`free`) fee — voiding a free row restores the store's
  * free-reservation credit. Online fees already collected at source are reversed via the
  * refund webhook (the money is real), so they are surfaced rather than voided.
- * No-op when platform billing is off.
+ * No-op when platform billing is off, and for a row the monthly run does not bill: its
+ * store is billed by the billing service at the end of the row's month (louez-billing
+ * docs/api, README §8.3).
  */
 export async function voidReservationFee(reservationId: string): Promise<{ voided: boolean }> {
   if (!isBillingEnabled()) return { voided: false };
@@ -400,7 +436,7 @@ export async function voidReservationFee(reservationId: string): Promise<{ voide
   );
   // The rows are read first for their store and month, which the marks need.
   const affectedRows = await db.transaction(async (tx) => {
-    const rows = await tx
+    const locked = await tx
       .select({
         id: platformFees.id,
         storeId: platformFees.storeId,
@@ -411,6 +447,7 @@ export async function voidReservationFee(reservationId: string): Promise<{ voide
       .from(platformFees)
       .where(voidable)
       .for("update");
+    const rows = await rowsBilledByTheMonthlyRun(tx, locked);
     if (rows.length === 0) return 0;
     const result = await tx
       .update(platformFees)
@@ -502,6 +539,12 @@ export async function recordMarketplaceFee(input: {
   at?: Date;
 }): Promise<{ recorded: boolean; reason?: string }> {
   if (!isBillingEnabled()) return { recorded: false, reason: "billing_off" };
+  // Louez's legacy billing: none for a store the billing service bills at the time of
+  // the fact (louez-billing docs/api, README §8.3).
+  const at = input.at ?? new Date();
+  if (!(await legacyBillingAppliesAt(db, input.storeId, at))) {
+    return { recorded: false, reason: "not_legacy_billed" };
+  }
   const dedupKey = marketplaceFeeKey(input.reservationId);
   const existing = await db.query.platformFees.findFirst({
     where: eq(platformFees.dedupKey, dedupKey),
@@ -544,7 +587,6 @@ export async function recordMarketplaceFee(input: {
     return { recorded: true, reason: "upgraded_to_collected" };
   }
 
-  const at = input.at ?? new Date();
   const currency = (input.currency || (await getStoreCurrency(input.storeId)) || "eur")
     .toLowerCase()
     .slice(0, 3);
@@ -600,7 +642,8 @@ export async function recordMarketplaceFee(input: {
  * the store still has free-reservation credits. Capped below the charge amount.
  * (With Stripe Standard accounts the connected account bears Stripe's processing fees,
  * so there is no separate platform payment fee.) No fee at all, reeent's included, when
- * platform billing is off.
+ * platform billing is off, or for a store the billing service bills when the Stripe
+ * session is created (`reference`, louez-billing docs/api, README §8.3).
  */
 export async function planStripeFees(opts: {
   storeId: string;
@@ -610,8 +653,10 @@ export async function planStripeFees(opts: {
   reference?: Date;
   includeMarketplaceFee?: boolean;
 }): Promise<StripeFeePlan> {
-  if (!isBillingEnabled()) {
-    return { applicationFeeCents: 0, reservationFeeCents: 0, marketplaceFeeCents: 0 };
+  const noFee = { applicationFeeCents: 0, reservationFeeCents: 0, marketplaceFeeCents: 0 };
+  if (!isBillingEnabled()) return noFee;
+  if (!(await legacyBillingAppliesAt(db, opts.storeId, opts.reference ?? new Date()))) {
+    return noFee;
   }
   const billing = opts.billing ?? (await getStoreBilling(opts.storeId));
   const maxFee = Math.max(0, opts.chargeCents - 1);
@@ -696,8 +741,8 @@ const NO_STRIPE_FEE: StripeFeePlan = {
 
 /**
  * The application fee of a Stripe charge Louez is about to create: what the legacy
- * planner returns, whatever the store's policy says, and nothing for a custom payment
- * request, as before. In service mode it also runs fees.md §8 on the store's cached
+ * planner returns, which is nothing for a store the billing service bills, and nothing
+ * for a custom payment request, as before. In service mode it also runs fees.md §8 on the store's cached
  * policy, a `louez_legacy` one as if the service invoiced the store, and logs both,
  * one line per payment. Expect constant differences (fees.md §5): the lines help debug
  * the service's prices and count nothing. The shadow never changes the fee, and its
@@ -958,7 +1003,8 @@ const TAKEN_AT_SOURCE = ["online", "marketplace_online"] as const;
  * too, when its fee did not fit the charge: Stripe took nothing for it, so a refund
  * never reverses it, billed or not. Called by the reversal at source after its Stripe
  * calls, with Drizzle on the connection that holds its lock; the amount is Stripe's,
- * so a repeat writes nothing. No-op when platform billing is off.
+ * so a repeat writes nothing. No-op when platform billing is off, and for a row the
+ * monthly run does not bill, as voidReservationFee (louez-billing docs/api, README §8.3).
  */
 export async function recordApplicationFeeRefund(
   input: {
@@ -980,7 +1026,7 @@ export async function recordApplicationFeeRefund(
       )
     : eq(platformFees.stripeApplicationFeeId, input.applicationFeeId);
   await executor.transaction(async (tx) => {
-    const rows = await tx
+    const locked = await tx
       .select({
         id: platformFees.id,
         storeId: platformFees.storeId,
@@ -1000,6 +1046,7 @@ export async function recordApplicationFeeRefund(
       )
       .orderBy(asc(platformFees.createdAt), asc(platformFees.id))
       .for("update");
+    const rows = await rowsBilledByTheMonthlyRun(tx, locked);
 
     const changed: typeof rows = [];
     for (const { row, amountReversedCents, fullyReversed } of splitFeeRefund(

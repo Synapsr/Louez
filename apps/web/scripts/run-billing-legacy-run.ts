@@ -20,7 +20,10 @@
  * environment anyway (shell-env.ts). --apply also needs, in the shell,
  * LOUEZ_BILLING=cloud and, when a store has something to invoice, the platform's
  * STRIPE_SECRET_KEY. Without BILLING_SERVICE_URL its marks write nothing: with the
- * billing service on, run `pnpm billing:mark -- --legacy` afterwards.
+ * billing service on, run `pnpm billing:mark -- --legacy` afterwards. The stores the
+ * billing service bills are left out only with LOUEZ_BILLING=cloud and
+ * BILLING_SERVICE_URL in the shell, as on the cron's instance: set both for a dry run
+ * that matches it once such stores exist.
  *
  * Usage:
  *   MIGRATE_DATABASE_URL="mysql://user:pass@host:port/db" \

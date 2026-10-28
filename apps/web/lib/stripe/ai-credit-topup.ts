@@ -13,10 +13,11 @@ import { nanoid } from 'nanoid'
 import { aiCreditTransactions, db, stores } from '@louez/db'
 
 import { creditsToMicro } from '@/lib/ai/advisor/credits'
+import { billingPageHref } from '@/lib/billing/billing-pages'
 import { getAiCreditPackages, type AiCreditPackage } from '@/lib/plans'
 
 import { stripe } from './client'
-import { getOrCreateStripeCustomer } from './subscriptions'
+import { getPlatformCustomerId } from './subscriptions'
 
 export interface CreateAiCreditTopupOptions {
   storeId: string
@@ -30,7 +31,8 @@ export interface CreateAiCreditTopupOptions {
 }
 
 export interface AiCreditTopupCheckoutResult {
-  sessionId: string
+  /** Null when no Checkout was started: the owner adds a card on the billing pages first. */
+  sessionId: string | null
   url: string | null
 }
 
@@ -64,7 +66,11 @@ export async function createAiCreditTopupCheckoutSession({
     throw new Error('Invalid AI credit package')
   }
 
-  const stripeCustomerId = await getOrCreateStripeCustomer(storeId)
+  // A store the billing service bills and that has no card yet adds one there (Q39).
+  const stripeCustomerId = await getPlatformCustomerId(storeId)
+  if (!stripeCustomerId) {
+    return { sessionId: null, url: billingPageHref('/payment-method') }
+  }
 
   const transactionId = nanoid()
   await db.insert(aiCreditTransactions).values({

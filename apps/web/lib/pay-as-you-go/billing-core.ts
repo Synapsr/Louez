@@ -80,6 +80,18 @@ export function monthlyBillingRunStart(billingMonth: string): Date {
   );
 }
 
+/**
+ * The last instant (UTC) of `billingMonth`, at which the monthly run reads the legacy
+ * guard (louez-billing docs/api, README §8.3): a store the billing service bills from
+ * the 1st of the next month, as every legacy store from B, is still billed by Louez
+ * for this month.
+ */
+export function billingMonthEnd(billingMonth: string): Date {
+  const start = parseBillingMonth(billingMonth);
+  if (!start) throw new Error(`Not a billing month: "${billingMonth}"`);
+  return new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1) - 1);
+}
+
 /** False for the current month, a future one, and the previous one until its run starts. */
 export function canBillMonth(billingMonth: string, now: Date): boolean {
   return now.getTime() >= monthlyBillingRunStart(billingMonth).getTime();

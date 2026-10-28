@@ -6,24 +6,16 @@ import { cookies } from "next/headers";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 
-import {
-  db,
-  markLegacyStore,
-  markStore,
-  storeMembers,
-  stores,
-  subscriptions,
-  users,
-} from "@louez/db";
+import { db, markLegacyStore, markStore, storeMembers, stores, users } from "@louez/db";
 import { type StoreInfoInput, storeInfoSchema } from "@louez/validations";
 import { defaultBusinessHours } from "@louez/validations";
 
 import { auth } from "@/lib/auth";
 import { getSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { creditAiCredits, getDefaultAiCredits } from "@/lib/ai/advisor/credits";
-import { isBillingEnabled } from "@/lib/billing/mode";
+import { legacyBillingApplies } from "@/lib/billing/policy";
 import { isStandaloneMode } from "@/lib/deployment";
-import { getNewStorePricing } from "@/lib/pay-as-you-go/defaults";
+import { insertNewStoreSubscription } from "@/lib/pay-as-you-go/new-store-subscription";
 import { raiseFreeReservations } from "@/lib/pay-as-you-go/pricing-lock";
 import { areAiCreditsEnabled } from "@/lib/plans";
 import { isPlatformAdmin } from "@/lib/platform-admin";
@@ -350,8 +342,12 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
     });
 
     if (isExistingIncompleteStore) {
-      // The Referred Reward is a billing credit: none without platform billing.
-      if (pendingReferral.attribution && isBillingEnabled()) {
+      // The Referred Reward is a legacy billing credit: none without platform billing,
+      // and none for a store the billing service bills (README §8.3).
+      if (
+        pendingReferral.attribution &&
+        (await legacyBillingApplies(storeToUpdate.id, new Date()))
+      ) {
         await grantReferredStoreWelcomeReward(storeToUpdate.id);
         await trackReferredRewardGranted({
           userId: session.user.id,
@@ -477,26 +473,15 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       await markStore(tx, createdStore.id);
       await markLegacyStore(tx, createdStore.id);
 
-      // New stores default to pay-as-you-go billing (the owner can switch to a
-      // subscription plan at any time from the subscription page). The current offer for
-      // new stores is written onto the row, and the store keeps it even if the offer
-      // later changes. Without platform billing the store gets no billing row at all.
-      if (isBillingEnabled()) {
-        const newStorePricing = getNewStorePricing(validated.data.currency);
-        await tx.insert(subscriptions).values({
-          storeId: createdStore.id,
-          planSlug: "pay_as_you_go",
-          billingMode: "pay_as_you_go",
-          ...newStorePricing,
-          // Welcome gift: free reservations (commission waived) for the new store. A
-          // store that signed up through a referral gets the larger Referred Reward.
-          freeReservationsGranted: referredByStoreId
-            ? getReferralProgramConfig().referredRewardFreeReservations
-            : newStorePricing.freeReservationsGranted,
-        });
-      }
+      // Pay-as-you-go with the offer for new stores, unless the store gets no legacy
+      // billing row: platform billing off, or a store the billing service bills.
+      const legacyBilled = await insertNewStoreSubscription(tx, {
+        storeId: createdStore.id,
+        currency: validated.data.currency,
+        referred: Boolean(referredByStoreId),
+      });
 
-      return createdStore;
+      return { id: createdStore.id, legacyBilled };
     });
     if (!newStore) {
       return { error: "errors.unauthorized" };
@@ -525,7 +510,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
     analyticsStoreId = newStore.id;
     analyticsReferralOutcome = pendingReferral.outcome;
 
-    if (pendingReferral.attribution && isBillingEnabled()) {
+    if (pendingReferral.attribution && newStore.legacyBilled) {
       await trackReferredRewardGranted({
         userId: session.user.id,
         storeId: newStore.id,

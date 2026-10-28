@@ -64,6 +64,7 @@ const feeEffects: ReservationBillingEffect[] = [
 describe("billing off", () => {
   let metering: typeof import("./metering");
   let lock: typeof import("./pricing-lock");
+  let newStore: typeof import("./new-store-subscription");
   let stripeSubscriptions: typeof import("@/lib/stripe/subscriptions");
   let planLimits: typeof import("@/lib/plan-limits");
   let plans: typeof import("@/lib/plans");
@@ -89,6 +90,7 @@ describe("billing off", () => {
   before(async () => {
     metering = await import("./metering");
     lock = await import("./pricing-lock");
+    newStore = await import("./new-store-subscription");
     stripeSubscriptions = await import("@/lib/stripe/subscriptions");
     planLimits = await import("@/lib/plan-limits");
     plans = await import("@/lib/plans");
@@ -191,15 +193,33 @@ describe("billing off", () => {
     await lock.ensureSubscriptionRow(executor, "store");
     await lock.addFreeReservations(executor, "store", 30);
     await lock.raiseFreeReservations(executor, "store", 30);
+    assert.equal(
+      await newStore.insertNewStoreSubscription(executor, {
+        storeId: "store",
+        currency: "eur",
+        referred: true,
+      }),
+      false,
+    );
+    // The legacy guard reads no policy: nobody is billed.
+    assert.equal(await database.legacyBillingAppliesAt(executor, "store", new Date()), false);
+    assert.deepEqual(await database.legacyBilledStoreIds(executor, ["store"], new Date()), []);
 
     assert.deepEqual(calls, []);
   });
 
   test("a platform charge is refused before any Stripe or database call", async () => {
     await assert.rejects(
-      stripeSubscriptions.getOrCreateStripeCustomer("store"),
+      stripeSubscriptions.getPlatformCustomerId("store"),
       (error: Error) => error.name === "BillingDisabledError",
     );
+    // A query would fail on the closed port: these answer without one.
+    assert.equal(await stripeSubscriptions.hasStripeCustomer("store"), false);
+    assert.equal(await stripeSubscriptions.storeHasDefaultPaymentMethod("store"), false);
+    assert.deepEqual(await stripeSubscriptions.getOffSessionCustomer("store"), {
+      ok: false,
+      reason: "no_customer",
+    });
   });
 
   test("SMS have no Louez quota and AI credits and number rental are off", async () => {
@@ -232,6 +252,11 @@ describe("billing off", () => {
 
     assert.throws(
       () => requireBilling.requirePlatformBilling(),
+      (error: unknown) =>
+        error instanceof Error && String(Reflect.get(error, "digest")).endsWith(";404"),
+    );
+    await assert.rejects(
+      requireBilling.requireLegacyBilling("store"),
       (error: unknown) =>
         error instanceof Error && String(Reflect.get(error, "digest")).endsWith(";404"),
     );

@@ -69,12 +69,14 @@ const DEFAULT_V1 = {
   invoicing: "service",
   applicationFee: OLD_STORE_V2_PERCENT.applicationFee,
 };
+// louez_legacy, as every M2 policy: the legacy planner charges the store, and the
+// shadow reads the percent fee as if the service invoiced it.
 const PERCENT_STORE_V1 = {
   ...base,
   storeId: PERCENT_STORE,
   version: 1,
   offerKey: "test-commission",
-  invoicing: "service",
+  invoicing: "louez_legacy",
   applicationFee: { ...OLD_STORE_V2_PERCENT.applicationFee, rateBps: 250 },
 };
 
@@ -443,7 +445,7 @@ describe("the fee at source in shadow (database)", { skip: skipWithoutTestDataba
       insuranceShareMinor: 5_000,
     });
     const [line] = shadowLines();
-    assert.deepEqual(line.policy, { source: "store", version: 1, invoicing: "service" });
+    assert.deepEqual(line.policy, { source: "store", version: 1, invoicing: "louez_legacy" });
     assert.equal(line.insuranceShareMinor, 5_000);
     assert.deepEqual(line.shadow, {
       totalMinor: 375,
@@ -504,8 +506,8 @@ describe("the fee at source in shadow (database)", { skip: skipWithoutTestDataba
     const [line] = shadowLines();
     assert.deepEqual(line.policy, { source: "fail_closed", version: null, invoicing: "service" });
     assert.deepEqual(line.shadow, NO_FEE);
-    // The legacy planner still decides what is charged (L3 adds its guard).
-    assert.equal(plan.applicationFeeCents, 123);
+    // The service bills the store, so the legacy planner charges nothing (L3's guard).
+    assert.equal(plan.applicationFeeCents, 0);
   });
 
   test("a custom payment request is charged nothing, as before, and still shadowed", async () => {

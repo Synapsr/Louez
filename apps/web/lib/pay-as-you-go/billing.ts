@@ -4,7 +4,9 @@ import type Stripe from 'stripe';
 
 import {
   db,
+  isBillingSyncEnabled,
   isDuplicateKeyError,
+  legacyBilledStoreIds,
   markLegacyMonth,
   type Transaction,
 } from '@louez/db';
@@ -15,10 +17,11 @@ import {
   getLocaleFromCountry,
   type EmailLocale,
 } from '@/lib/email/i18n';
-import { getOrCreateStripeCustomer } from '@/lib/stripe/subscriptions';
+import { getLegacyPlatformCustomerId } from '@/lib/stripe/subscriptions';
 import { stripe } from '@/lib/stripe/client';
 
 import {
+  billingMonthEnd,
   monthlyBillingRunStart,
   selectMonthlyBillingStoreIds,
   summarizeMonthlyPlatformFees,
@@ -45,9 +48,17 @@ function idemKey(kind: string, storeId: string, billingMonth: string): string {
  * to pay-as-you-go, since) is left out of the first list: such a store is billed only
  * through its pending fees. With none, it had nothing to invoice at 05:00, where the run
  * would only have voided its month.
+ *
+ * In service mode, a store the billing service bills at the end of the month is left
+ * out (legacyBillingApplies, louez-billing docs/api, README §8.3): the service bills it.
+ * Elsewhere every store stays in, as before: the cron runs the month only with
+ * LOUEZ_BILLING=cloud, and `billing:legacy-run` previews it without. The stores in
+ * `exclude` are left out before that check, which reads the policies of the stores it
+ * is given.
  */
 export async function monthlyBillingStoreIds(
   billingMonth: string,
+  options: { readonly exclude?: ReadonlySet<string> } = {},
 ): Promise<string[]> {
   const runStart = monthlyBillingRunStart(billingMonth);
   const paygStores = await db
@@ -71,10 +82,12 @@ export async function monthlyBillingStoreIds(
       ),
     );
 
-  return selectMonthlyBillingStoreIds(
+  const storeIds = selectMonthlyBillingStoreIds(
     paygStores.map((store) => store.storeId),
     storesWithUsage.map((store) => store.storeId),
-  );
+  ).filter((storeId) => !options.exclude?.has(storeId));
+  if (!isBillingSyncEnabled()) return storeIds;
+  return legacyBilledStoreIds(db, storeIds, billingMonthEnd(billingMonth));
 }
 
 interface BillStoreOutcome {
@@ -194,7 +207,13 @@ export async function billStoreForMonth(
   }
 
   // ---- Create & collect the Stripe invoice on the PLATFORM account. ----
-  const stripeCustomerId = await getOrCreateStripeCustomer(storeId);
+  // The customer of the store at the end of the month, the instant the run chose it at
+  // (monthlyBillingStoreIds): a store's last legacy month goes to Louez's customer,
+  // also once the billing service bills the store.
+  const stripeCustomerId = await getLegacyPlatformCustomerId(
+    storeId,
+    billingMonthEnd(billingMonth),
+  );
   const customer = await stripe.customers.retrieve(stripeCustomerId);
   if (customer.deleted) {
     throw new Error(

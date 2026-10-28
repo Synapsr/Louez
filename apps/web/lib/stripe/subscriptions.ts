@@ -1,9 +1,13 @@
+import { after } from 'next/server'
 import { stripe } from './client'
 import { db, markLegacyStore } from '@louez/db'
 import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/lib/plans'
 import { BillingDisabledError, isBillingEnabled } from '@/lib/billing/mode'
+import { getEffectivePolicy, legacyBillingApplies } from '@/lib/billing/policy'
+import { type BillingAlerts, createBillingAlerts } from '@/lib/billing-sync/alerts'
+import { log } from '@/lib/evlog'
 import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
 import { env } from '@/env'
 
@@ -12,10 +16,17 @@ import { env } from '@/env'
 
 type SubscriptionColumns = Partial<Omit<typeof subscriptions.$inferInsert, 'id' | 'storeId'>>
 
-/** Updates a store's row, creating it first with the pricing the store already pays. */
-async function updateStoreSubscription(storeId: string, values: SubscriptionColumns) {
+/**
+ * Updates a store's row, creating it first with the pricing the store already pays
+ * when Louez's legacy code bills the store at `at` (ensureSubscriptionRow).
+ */
+async function updateStoreSubscription(
+  storeId: string,
+  values: SubscriptionColumns,
+  at: Date = new Date(),
+) {
   await db.transaction(async (tx) => {
-    await ensureSubscriptionRow(tx, storeId)
+    await ensureSubscriptionRow(tx, storeId, at)
     await tx
       .update(subscriptions)
       .set({ ...values, updatedAt: new Date() })
@@ -49,28 +60,36 @@ interface CreateCheckoutSessionOptions {
 }
 
 /**
- * Get or create a Stripe customer for a store.
- *
- * Looks up the existing Stripe customer ID from the subscriptions table.
- * If none exists, creates a new Stripe customer and immediately persists
- * the ID to prevent duplicate customers on abandoned checkouts.
- *
- * Every platform charge (plan checkout, SMS and AI top-ups, the pay-as-you-go card
- * portal, month-end invoices, referral credits) starts here, so it refuses when platform
- * billing is off: such an instance charges no store and writes no billing rows.
+ * The store's customer on the platform Stripe account for a charge at `at`, read
+ * without creating one (louez-billing docs/api, README §8.4). For a store the billing
+ * service bills at `at`, only the service holds one: the policy's `stripeCustomerId`,
+ * null until the owner adds a card on the billing pages. For a store legacy at `at`,
+ * the policy's customer once the service has adopted it, otherwise the one Louez
+ * created (`subscriptions`). Null with LOUEZ_BILLING off, without a read.
  */
-export async function getOrCreateStripeCustomer(storeId: string): Promise<string> {
-  if (!isBillingEnabled()) {
-    throw new BillingDisabledError('charge a store through the platform Stripe account')
+async function findPlatformCustomer(
+  storeId: string,
+  at: Date,
+): Promise<{ readonly customerId: string | null; readonly legacy: boolean }> {
+  const effective = await getEffectivePolicy(storeId, at)
+  const fromPolicy = effective.policy?.stripeCustomerId ?? null
+  if (!effective.legacyBillingApplies || fromPolicy) {
+    return { customerId: fromPolicy, legacy: effective.legacyBillingApplies }
   }
-  const existingSubscription = await db.query.subscriptions.findFirst({
+  const row = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
+    columns: { stripeCustomerId: true },
   })
+  return { customerId: row?.stripeCustomerId ?? null, legacy: true }
+}
 
-  if (existingSubscription?.stripeCustomerId) {
-    return existingSubscription.stripeCustomerId
-  }
-
+/**
+ * Creates the platform customer of a store legacy at `at` and saves its id on the
+ * store's row at once, so an abandoned checkout or a retry never creates a second one.
+ * A store with no row yet gets one with the pricing it already pays (pay-as-you-go,
+ * never the offer for new stores), so saving the id never changes what it is charged.
+ */
+async function createPlatformCustomer(storeId: string, at: Date): Promise<string> {
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, storeId),
     columns: { id: true, name: true, email: true, userId: true },
@@ -97,12 +116,144 @@ export async function getOrCreateStripeCustomer(storeId: string): Promise<string
     },
   })
 
-  // Persist immediately to prevent duplicate customers on retry. A store with no row yet
-  // gets one with the pricing it already pays (pay-as-you-go, never the offer for new
-  // stores), so saving the customer id never changes what it is charged.
-  await updateStoreSubscription(storeId, { stripeCustomerId: customer.id })
+  await updateStoreSubscription(storeId, { stripeCustomerId: customer.id }, at)
 
   return customer.id
+}
+
+/**
+ * The store's platform customer for a charge at `at` (findPlatformCustomer), created
+ * when a store legacy at `at` has none. Refuses when platform billing is off: such an
+ * instance charges no store and writes no billing rows.
+ */
+async function resolvePlatformCustomer(
+  storeId: string,
+  at: Date,
+): Promise<{ readonly customerId: string | null; readonly legacy: boolean }> {
+  if (!isBillingEnabled()) {
+    throw new BillingDisabledError('charge a store through the platform Stripe account')
+  }
+  const found = await findPlatformCustomer(storeId, at)
+  if (found.customerId || !found.legacy) return found
+  return { customerId: await createPlatformCustomer(storeId, at), legacy: true }
+}
+
+/**
+ * The store's platform customer for a charge now: SMS and AI top-ups, the
+ * pay-as-you-go card portal (louez-billing docs/api, README §8.4).
+ *
+ * A legacy store keeps the customer Louez created, and gets one when it has none, as
+ * before, until B. For a store the billing service bills, Louez never creates one:
+ * null until the service has one. The caller then starts no charge and sends the owner
+ * to the billing pages to add a card (`/payment-method`, Q39).
+ */
+export async function getPlatformCustomerId(storeId: string): Promise<string | null> {
+  return (await resolvePlatformCustomer(storeId, new Date())).customerId
+}
+
+/**
+ * The platform customer a charge of Louez's own billing for a fact at `at` goes to:
+ * the month-end invoice, at the end of its month as the run chose the store, a plan
+ * checkout, a referral credit. Throws for a store Louez's legacy code does not bill at
+ * `at`. A store legacy at `at` keeps its customer of then, and gets one when it has
+ * none, also once the billing service bills it: Louez still invoices its last legacy
+ * month (README §8.3, §8.4).
+ */
+export async function getLegacyPlatformCustomerId(
+  storeId: string,
+  at: Date = new Date(),
+): Promise<string> {
+  const { customerId, legacy } = await resolvePlatformCustomer(storeId, at)
+  if (!legacy || !customerId) {
+    throw new Error(
+      `Store ${storeId} is billed by the billing service at ${at.toISOString()}: no Louez platform charge`,
+    )
+  }
+  return customerId
+}
+
+/** The parts of a retrieved Stripe customer the off-session check reads. */
+export type RetrievedPlatformCustomer = {
+  readonly id: string
+  readonly deleted?: unknown
+  readonly metadata?: Readonly<Record<string, string>> | null
+  readonly invoice_settings?: { readonly default_payment_method?: unknown } | null
+  readonly default_source?: unknown
+}
+
+export type OffSessionCustomer =
+  | { readonly ok: true; readonly customerId: string }
+  | {
+      readonly ok: false
+      readonly reason:
+        | 'no_customer'
+        | 'unavailable'
+        | 'deleted'
+        | 'other_store'
+        | 'no_payment_method'
+    }
+
+/**
+ * The store a platform customer belongs to: `metadata.billing_store_id`, which the
+ * billing service sets, otherwise the `metadata.storeId` Louez sets (README §8.4, §9).
+ */
+export function platformCustomerStoreId(customer: RetrievedPlatformCustomer): string | null {
+  return customer.metadata?.billing_store_id || customer.metadata?.storeId || null
+}
+
+/** Whether an off-session charge of `storeId` may use this customer (README §8.4). */
+export function checkOffSessionCustomer(
+  customer: RetrievedPlatformCustomer,
+  storeId: string,
+): OffSessionCustomer {
+  if (customer.deleted === true) return { ok: false, reason: 'deleted' }
+  if (platformCustomerStoreId(customer) !== storeId) return { ok: false, reason: 'other_store' }
+  const hasPaymentMethod = Boolean(
+    customer.invoice_settings?.default_payment_method || customer.default_source,
+  )
+  if (!hasPaymentMethod) return { ok: false, reason: 'no_payment_method' }
+  return { ok: true, customerId: customer.id }
+}
+
+export type OffSessionCustomerOptions = {
+  readonly alerts?: BillingAlerts
+  readonly retrieveCustomer?: (customerId: string) => Promise<RetrievedPlatformCustomer>
+}
+
+/**
+ * The customer an off-session charge (the AI auto top-up) may use: the store's platform
+ * customer, never a new one, retrieved from Stripe, not deleted, with a default payment
+ * method, and whose metadata names this store (README §8.4). A customer that names
+ * another store is refused with an alert. The request handlers that charge wait for
+ * this answer, so the alert's Discord part runs after theirs (`after`).
+ */
+export async function getOffSessionCustomer(
+  storeId: string,
+  options: OffSessionCustomerOptions = {},
+): Promise<OffSessionCustomer> {
+  const alerts = options.alerts ?? createBillingAlerts({ schedule: after })
+  const retrieveCustomer =
+    options.retrieveCustomer ?? ((customerId: string) => stripe.customers.retrieve(customerId))
+  const { customerId } = await findPlatformCustomer(storeId, new Date())
+  if (!customerId) return { ok: false, reason: 'no_customer' }
+  let customer: RetrievedPlatformCustomer
+  try {
+    customer = await retrieveCustomer(customerId)
+  } catch (error) {
+    log.error(
+      'billing',
+      `could not retrieve platform customer ${customerId} of store ${storeId}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    return { ok: false, reason: 'unavailable' }
+  }
+  const checked = checkOffSessionCustomer(customer, storeId)
+  if (!checked.ok && checked.reason === 'other_store') {
+    await alerts.alert(
+      'platform_customer_mismatch',
+      `platform customer ${customerId} of store ${storeId} names store ${platformCustomerStoreId(customer) ?? 'none'} in its metadata: off-session charge refused`,
+    )
+  }
+  return checked
 }
 
 export async function createSubscriptionCheckoutSession({
@@ -115,6 +266,11 @@ export async function createSubscriptionCheckoutSession({
   successUrl,
   cancelUrl,
 }: CreateCheckoutSessionOptions) {
+  // A plan is Louez's own billing: a store the billing service bills buys none.
+  if (!(await legacyBillingApplies(storeId, new Date()))) {
+    throw new Error('Plans are not available for this store')
+  }
+
   // Get the plan from code
   const plan = getPlan(planSlug)
 
@@ -129,8 +285,8 @@ export async function createSubscriptionCheckoutSession({
     throw new Error(`Price not configured for this plan in ${currency.toUpperCase()}`)
   }
 
-  // Get or create Stripe customer (persisted to DB to avoid duplicates on abandoned checkouts)
-  const stripeCustomerId = await getOrCreateStripeCustomer(storeId)
+  // Persisted to the DB at creation, to avoid duplicates on abandoned checkouts.
+  const stripeCustomerId = await getLegacyPlatformCustomerId(storeId)
   const hasTrial = Boolean(trialDays && trialDays > 0)
 
   // Create the checkout session
@@ -205,11 +361,8 @@ export async function createCustomerPortalSession(storeId: string) {
 }
 
 export async function hasStripeCustomer(storeId: string): Promise<boolean> {
-  const subscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.storeId, storeId),
-    columns: { stripeCustomerId: true },
-  })
-  return !!subscription?.stripeCustomerId
+  const { customerId } = await findPlatformCustomer(storeId, new Date())
+  return customerId !== null
 }
 
 /**
@@ -219,14 +372,11 @@ export async function hasStripeCustomer(storeId: string): Promise<boolean> {
  * manual payment until a card is added.
  */
 export async function storeHasDefaultPaymentMethod(storeId: string): Promise<boolean> {
-  const subscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.storeId, storeId),
-    columns: { stripeCustomerId: true },
-  })
-  if (!subscription?.stripeCustomerId) return false
+  const { customerId } = await findPlatformCustomer(storeId, new Date())
+  if (!customerId) return false
 
   try {
-    const customer = await stripe.customers.retrieve(subscription.stripeCustomerId)
+    const customer = await stripe.customers.retrieve(customerId)
     if (customer.deleted) return false
     return Boolean(customer.invoice_settings?.default_payment_method || customer.default_source)
   } catch (error) {

@@ -3,6 +3,7 @@ import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { nanoid } from 'nanoid';
 
 import type { Database, Transaction } from '@louez/db';
+import { legacyBillingAppliesAt } from '@louez/db/billing-policy';
 import {
   billingMarkStatement,
   isBillingSyncEnabled,
@@ -10,8 +11,6 @@ import {
 } from '@louez/db/billing-queue';
 import { stores, subscriptions } from '@louez/db/schema';
 import type { PayAsYouGoConfig } from '@louez/types';
-
-import { isBillingEnabled } from '@/lib/billing/mode';
 
 import {
   PAYG_LADDER_V1,
@@ -26,9 +25,10 @@ import {
  * The freeze uses raw SQL on purpose: the cloud backfill runs it BEFORE migration 0081
  * adds `pricing_version`, and Drizzle inserts list every column of the schema. It takes
  * an explicit connection and never imports the app's `db`, so scripts can point it at
- * MIGRATE_DATABASE_URL. For the same reason it imports the billing marks from their own
- * entry point, not from `@louez/db`. Every write to a subscription row marks the store's
- * legacy_store snapshot for the billing service (louez-billing docs/api, README §5.2).
+ * MIGRATE_DATABASE_URL. For the same reason it imports the billing marks and the legacy
+ * guard from their own entry points, not from `@louez/db`. Every write to a subscription
+ * row marks the store's legacy_store snapshot for the billing service (louez-billing
+ * docs/api, README §5.2).
  */
 
 /** What a never-frozen store was paying before the lock, written onto its row once. */
@@ -409,24 +409,37 @@ async function insertMissingRow(tx: Transaction, storeId: string): Promise<boole
  * Make sure an EXISTING store has a subscription row before a write path updates it.
  * A missing row is created with exactly the pricing the store already resolves to
  * (`buildExistingStorePricing`), so callers only ever update their own columns and never
- * change what the store pays. Concurrent callers are safe (unique store_id). Creates
- * nothing when platform billing is off: such an instance writes no billing rows. Inside
- * the caller's transaction it runs in a savepoint.
+ * change what the store pays. Concurrent callers are safe (unique store_id). Inside the
+ * caller's transaction it runs in a savepoint.
+ *
+ * Creates nothing unless Louez's legacy code bills the store at `at`, the time of the
+ * fact the write is for, now by default (legacyBillingApplies, README §8.3): an
+ * instance with platform billing off writes no billing rows, and a store the billing
+ * service bills must not get a legacy row, which would have Louez bill it too (design
+ * §4.8). The month-end invoice passes the end of its month, so a store's last legacy
+ * month keeps the customer it is invoiced to.
  */
-export async function ensureSubscriptionRow(executor: Executor, storeId: string): Promise<void> {
-  if (!isBillingEnabled()) return;
+export async function ensureSubscriptionRow(
+  executor: Executor,
+  storeId: string,
+  at: Date = new Date(),
+): Promise<void> {
+  if (!(await legacyBillingAppliesAt(executor, storeId, at))) return;
   await executor.transaction(async (tx) => {
     if (await insertMissingRow(tx, storeId)) await markLegacyStore(tx, storeId);
   });
 }
 
-/** Writes the allowance, creating a missing row first, and marks the store. */
+/**
+ * Writes the allowance, creating a missing row first, and marks the store. Writes
+ * nothing unless Louez's legacy code bills the store now, as ensureSubscriptionRow.
+ */
 async function writeFreeReservations(
   executor: Executor,
   storeId: string,
   granted: SQL,
 ): Promise<void> {
-  if (!isBillingEnabled()) return;
+  if (!(await legacyBillingAppliesAt(executor, storeId, new Date()))) return;
   await executor.transaction(async (tx) => {
     await insertMissingRow(tx, storeId);
     await tx
@@ -440,7 +453,7 @@ async function writeFreeReservations(
 /**
  * Add free reservations to an existing store (referral reward for the Referrer). Only the
  * allowance changes; a missing row is created first with the pricing the store already
- * pays. No-op when platform billing is off.
+ * pays. No-op when platform billing is off or the billing service bills the store.
  */
 export async function addFreeReservations(
   executor: Executor,
@@ -457,7 +470,8 @@ export async function addFreeReservations(
 /**
  * Raise an existing store's allowance to at least `count` (welcome reward of a Referred
  * Store that finishes onboarding). Only the allowance changes; a missing row is created
- * first with the pricing the store already pays. No-op when platform billing is off.
+ * first with the pricing the store already pays. No-op when platform billing is off or
+ * the billing service bills the store.
  */
 export async function raiseFreeReservations(
   executor: Executor,

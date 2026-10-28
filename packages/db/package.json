@@ -11,6 +11,7 @@
     "./env": "./src/env.ts",
     "./payment-receipts": "./src/payment-receipts.ts",
     "./billing-queue": "./src/billing-queue.ts",
+    "./billing-policy": "./src/billing-policy.ts",
     "./testing": "./src/testing/test-database.ts"
   },
   "scripts": {
