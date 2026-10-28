@@ -19,8 +19,9 @@ import messages from "@/messages/fr.json";
 
 // The plan page's grid and pay-as-you-go preview (plans-for-new-stores L7, L8). A store
 // the billing service bills sees the service's words for pay-as-you-go, never Louez's
-// pricing, and a link to its billing settings; an old store sees what it always saw.
-// The server actions and the router are stubs; the label is a fake one.
+// pricing, and a link to its billing settings. An old store sees what it saw before,
+// except that pay-as-you-go is its current plan when it is on it. The server actions and
+// the router are stubs; the label is a fake one.
 
 // tsx loads the shared UI package through CommonJS with the classic JSX runtime.
 Object.assign(globalThis, { React });
@@ -222,11 +223,27 @@ describe("plan page views", () => {
     assert.ok(html.includes("Annuler l'abonnement"));
   });
 
-  test("an old store's grid is unchanged: Louez's pay-as-you-go price and the way back", () => {
+  test("an old pay-as-you-go store sees pay-as-you-go as its current plan, and the way back", () => {
+    // Before the plans for new stores, this card showed the first plan on sale, Pro, with
+    // its price: a leftover of the free plan, which used to come first.
     const html = grid({ subscription: PAYG_ROW, showBackToPayAsYouGo: true });
+    assert.ok(html.includes("Pay as you go"));
     assert.ok(html.includes("À la location"));
     assert.ok(html.includes("Retour à l'usage"));
-    assert.ok(!html.includes("Votre offre Louez"));
+    for (const absent of ["Votre offre Louez", "Passer au paiement à la location"]) {
+      assert.ok(!html.includes(absent), absent);
+    }
+    assert.deepEqual(planButtons(html), ["Choisir ce plan:enabled", "Choisir ce plan:enabled"]);
+  });
+
+  test("an old store on a plan keeps its price and the switch to pay-as-you-go", () => {
+    const html = grid({ subscription: PRO_SUBSCRIPTION, hasLiveSubscription: true });
+    assert.ok(html.includes("Passer au paiement à la location"));
+    assert.ok(html.includes("Annuler l'abonnement"));
+    for (const absent of ["Votre offre Louez", "À la location", "Pay as you go"]) {
+      assert.ok(!html.includes(absent), absent);
+    }
+    assert.deepEqual(planButtons(html), ["Plan actuel:disabled", "Choisir ce plan:enabled"]);
   });
 
   test("the pay-as-you-go preview names the service's offer instead of Louez's ladder", () => {
