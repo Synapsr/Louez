@@ -92,8 +92,18 @@ export {
   invalidReservationTransitionMessage,
   isBillableReservationStatus,
   isFeeVoidingReservationStatus,
+  requiresReservationGate,
   toWholeSeconds,
 } from "./reservation-status";
+export {
+  STORE_NOT_ACCEPTING_RESERVATIONS,
+  StoreNotAcceptingReservationsError,
+  assertStoreCanTakeReservations,
+  isStoreNotAcceptingReservationsError,
+  readReservationGate,
+  readStoresNotAcceptingReservations,
+} from "./reservation-gate";
+export type { ReservationGate, ReservationGateReason } from "./reservation-gate";
 export type {
   ChangeReservationStatusInput,
   ChangeReservationStatusResult,

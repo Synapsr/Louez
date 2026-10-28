@@ -746,6 +746,96 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
     );
   });
 
+  test("a closed card gate: the dashboard, the assistant and MCP are refused with a generic answer, and nothing is written", async () => {
+    // Service mode with a blocking policy of the store's own, which no M2 policy is.
+    const env = ["BILLING_SERVICE_URL", "BILLING_NEW_STORES_FROM"] as const;
+    const saved = env.map((name) => [name, process.env[name]] as const);
+    process.env.BILLING_SERVICE_URL = "http://127.0.0.1:1";
+    process.env.BILLING_NEW_STORES_FROM = "2027-01-25T00:00:00Z";
+    const body = {
+      schema: "louez.billing.policy/1",
+      storeId: STORE,
+      version: 1,
+      effectiveFrom: "2026-01-01T00:00:00Z",
+      issuedAt: "2026-01-01T00:00:00Z",
+      newStoresCreatedFrom: null,
+      offerKey: "test-legacy",
+      invoicing: "louez_legacy",
+      currency: "EUR",
+      applicationFee: { kind: "none" },
+      marketplaceFeeMinor: 0,
+      reservations: { allowed: false, reason: "payment_overdue" },
+      notice: { kind: "payment_failed", blockAt: null },
+      stripeCustomerId: null,
+      labels: { offer: { fr: "Offre", en: "Offer" }, notice: null },
+    };
+    await louezDb.db.insert(louezDb.billingPolicies).values({
+      storeId: STORE,
+      version: 1,
+      effectiveFrom: new Date(body.effectiveFrom),
+      body,
+    });
+    try {
+      const [storeRow] = await louezDb.db
+        .select()
+        .from(louezDb.stores)
+        .where(eq(louezDb.stores.id, STORE));
+      assert.ok(storeRow);
+      const pending = await createReservation("pending");
+      const quote = await createReservation("quote");
+      const refusal =
+        "Not changed: this store is not taking new reservations right now. The dashboard shows the store owner why.";
+
+      assert.deepEqual(
+        await service.updateStatus({
+          store: storeRow,
+          actor: "store_user",
+          actorUserId: USER,
+          reservationId: pending,
+          status: "confirmed",
+        }),
+        { ok: false, error: "store_not_accepting_reservations" },
+      );
+      assert.deepEqual(await askAssistant({ reservationId: pending, status: "confirmed" }), {
+        error: refusal,
+      });
+      assert.deepEqual(await askMcp({ reservationId: quote, status: "confirmed" }), {
+        text: refusal,
+        isError: true,
+      });
+      assert.deepEqual(senders(), []);
+      for (const [id, status] of [
+        [pending, "pending"],
+        [quote, "quote"],
+      ] as const) {
+        const row = await readReservation(id);
+        assert.equal(row?.status, status);
+        assert.equal(row?.billableAt, null);
+        assert.deepEqual(await readActivity(id), []);
+        assert.deepEqual(await readFees(id), []);
+      }
+
+      // What is already billable moves on, and a cancellation goes through.
+      const rental = await createReservation("confirmed");
+      for (const [reservationId, status] of [
+        [rental, "ongoing"],
+        [pending, "cancelled"],
+      ] as const) {
+        const answer = await askAssistant({ reservationId, status });
+        assert.ok("success" in answer && answer.success, `${reservationId} → ${status}`);
+        assert.equal((await readReservation(reservationId))?.status, status);
+      }
+    } finally {
+      await louezDb.db
+        .delete(louezDb.billingPolicies)
+        .where(eq(louezDb.billingPolicies.storeId, STORE));
+      for (const [name, value] of saved) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
+  });
+
   test("a reservation of another store is not found", async () => {
     const id = await createReservation("pending", { storeId: OTHER_STORE });
 

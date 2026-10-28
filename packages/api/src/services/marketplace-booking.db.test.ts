@@ -26,15 +26,15 @@ const PAST = () => new Date(Date.now() - 60_000);
 const FUTURE = () => new Date(Date.now() + 60 * 60_000);
 const QUOTE_SECRET = "quote-secret";
 
-/** A quote token signed as `createQuoteToken` signs it, already expired. */
-function signQuoteToken(storeId: string): string {
+/** A quote token signed as `createQuoteToken` signs it, already expired unless told. */
+function signQuoteToken(storeId: string, expiresAt: Date = PAST()): string {
   const payload = {
     version: 1,
     storeId,
     startAt: "2026-02-01T09:00:00.000Z",
     endAt: "2026-02-03T09:00:00.000Z",
     locale: "en",
-    expiresAt: PAST().toISOString(),
+    expiresAt: expiresAt.toISOString(),
     currency: "EUR",
     lines: [],
     subtotal: 10,
@@ -579,6 +579,40 @@ describe(
       assert.deepEqual(runner.runs, [
         { effects: [voidOf(store.storeId, id)], committed: ["cancelled"] },
       ]);
+    });
+
+    test("a hold the card gate refuses answers store_not_accepting_reservations, and leaves the attempt to retry", async () => {
+      const store = await createStore();
+      const quoteToken = signQuoteToken(store.storeId, FUTURE());
+      const bookingAttemptId = nextId("attempt");
+
+      await assert.rejects(
+        booking.holdMarketplaceBooking({
+          adapter: {
+            createReservation: async () => ({
+              success: false,
+              error: "errors.storeNotAcceptingReservations",
+            }),
+          },
+          input: {
+            quoteToken,
+            bookingAttemptId,
+            customer: { email: "ada@example.com", firstName: "Ada", lastName: "Lovelace" },
+          },
+          runReservationEffects: recordingRunner().run,
+          secret: QUOTE_SECRET,
+        }),
+        (error) =>
+          error instanceof ApiServiceError &&
+          error.code === "BAD_REQUEST" &&
+          error.key === "store_not_accepting_reservations",
+      );
+
+      const [attempt] = await louezDb.db
+        .select({ status: louezDb.marketplaceBookingAttempts.status })
+        .from(louezDb.marketplaceBookingAttempts)
+        .where(eq(louezDb.marketplaceBookingAttempts.bookingAttemptId, bookingAttemptId));
+      assert.deepEqual(attempt, { status: "creating_hold" });
     });
 
     test("a failed payment cancels a pending booking in checkout, and nothing else", async () => {

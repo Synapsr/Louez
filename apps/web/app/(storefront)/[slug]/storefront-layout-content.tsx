@@ -1,8 +1,10 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { getMessages } from "next-intl/server";
 
 import { MarketplaceChannelBadge } from "@/components/storefront/shell/marketplace-channel-badge";
+import { ReservationGateOwnerBanner } from "@/components/storefront/shell/reservation-gate-owner-banner";
 import {
   StorefrontProviders,
   type StorefrontShellVariant,
@@ -87,6 +89,14 @@ export const StorefrontLayoutContent = async ({ children, params }: StorefrontLa
         channelBadge={
           variant === "marketplace" ? (
             <MarketplaceChannelBadge marketplaceUrl={env.MARKETPLACE_URL} />
+          ) : undefined
+        }
+        ownerNotice={
+          // The card gate's owner-only line; nothing outside service mode.
+          variant === "store" ? (
+            <Suspense fallback={null}>
+              <ReservationGateOwnerBanner storeId={store.id} />
+            </Suspense>
           ) : undefined
         }
       >

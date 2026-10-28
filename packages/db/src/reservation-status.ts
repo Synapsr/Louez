@@ -9,6 +9,7 @@ import {
 } from "./consumable-stock";
 import { markReservation } from "./billing-queue";
 import type { Transaction } from "./index";
+import { assertStoreCanTakeReservations } from "./reservation-gate";
 import { reservationActivity, reservations } from "./schema";
 
 export type ReservationStatus = (typeof reservations.$inferSelect)["status"];
@@ -150,6 +151,19 @@ const DEFAULT_ACTIVITY_TYPE: Partial<Record<ReservationStatus, ReservationActivi
 
 const FEE_VOIDING_STATUSES: readonly ReservationStatus[] = ["cancelled", "rejected", "declined"];
 
+/**
+ * Whether the card gate guards this change (README §8.4): a change into the billable
+ * set, unless a completed payment asks for it. The renter already paid then.
+ * `confirmed → ongoing → completed` stays inside the set and is never refused.
+ */
+export function requiresReservationGate(
+  from: ReservationStatus,
+  to: ReservationStatus,
+  actor: ReservationActor,
+): boolean {
+  return actor !== "payment" && !isBillableReservationStatus(from) && isBillableReservationStatus(to);
+}
+
 /** Whether a change into this status voids the reservation's fees: the rental was withdrawn. */
 export function isFeeVoidingReservationStatus(status: ReservationStatus): boolean {
   return FEE_VOIDING_STATUSES.includes(status);
@@ -245,6 +259,9 @@ export function planReservationStatusChange(
  * change, moves consumable stock, writes the status and its dates, and logs the
  * activity, all in the caller's transaction. It returns the fee effects; the
  * caller runs them after commit.
+ *
+ * A change into the billable set throws StoreNotAcceptingReservationsError when the
+ * store's card gate is closed (requiresReservationGate), before anything is written.
  */
 export async function changeReservationStatus(
   tx: Transaction,
@@ -265,8 +282,12 @@ export async function changeReservationStatus(
     .for("update");
   if (!locked) return { changed: false, from: null, reason: "not_found" };
 
-  const plan = planReservationStatusChange(locked, { ...input, now: input.now ?? new Date() });
+  const now = input.now ?? new Date();
+  const plan = planReservationStatusChange(locked, { ...input, now });
   if (!plan.changed) return { changed: false, from: locked.status, reason: plan.reason };
+  if (requiresReservationGate(locked.status, input.to, input.actor)) {
+    await assertStoreCanTakeReservations(tx, input.storeId, now);
+  }
 
   const change = { from: locked.status, to: input.to };
   await input.beforeWrite?.(tx, change);

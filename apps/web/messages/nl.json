@@ -468,6 +468,15 @@
       "newReservation": "Nieuwe reservering #{number}",
       "newReservationDescription": "Er is een nieuwe reserveringsaanvraag binnengekomen"
     },
+    "reservationGate": {
+      "pausedTitle": "Nieuwe reserveringen zijn gepauzeerd",
+      "pausedDescription": "Klanten kunnen niet online boeken en nieuwe bevestigingen wachten tot de facturatie van de winkel in orde is.",
+      "noticeTitle": "De facturatie vraagt je aandacht",
+      "noticeDescription": "Controleer de facturatie van de winkel om reserveringen te blijven ontvangen.",
+      "manageBilling": "Facturatie beheren",
+      "storefrontDescription": "Klanten zien dat de winkel geen online reserveringen aanneemt.",
+      "openDashboard": "Naar dashboard"
+    },
     "pendingAlert": {
       "singlePending": "1 openstaande aanvraag",
       "multiplePending": "{count} openstaande aanvragen",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "Deze winkel neemt op dit moment geen online reserveringen aan. {hasContact, select, yes {Neem contact op met de winkel: {contact}} other {Neem rechtstreeks contact op met de winkel.}}",
     "generic": "Er is een fout opgetreden",
     "pageLoadError": "We konden deze pagina niet laden. Probeer het opnieuw.",
     "notFound": "Pagina niet gevonden",

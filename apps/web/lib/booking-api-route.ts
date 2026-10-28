@@ -2,6 +2,7 @@ import type { ZodType } from "zod";
 import type { NextResponse } from "next/server";
 
 import { ApiServiceError } from "@louez/api/services";
+import { STORE_NOT_ACCEPTING_RESERVATIONS } from "@louez/db";
 
 import { env } from "@/env";
 import { apiJson, statusFromServiceCode } from "@/lib/api-service-response";
@@ -97,6 +98,7 @@ export function bookingServiceError(error: ApiServiceError) {
       "invalid_quote",
       "payment_unavailable",
       "quote_expired",
+      STORE_NOT_ACCEPTING_RESERVATIONS,
     ].includes(error.key)
   ) {
     return bookingJson({ error: error.key }, 409);

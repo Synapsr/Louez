@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { stripTypeScriptTypes } from "node:module";
+import { createRequire, stripTypeScriptTypes } from "node:module";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 import { z } from "zod";
+
+const { renterGateRefusalParams } = createRequire(import.meta.url)(
+  "../../../../../../lib/billing/reservation-gate-error.ts",
+);
 
 const source = readFileSync(new URL("./actions.ts", import.meta.url), "utf8");
 const start = source.indexOf("const describeError");
@@ -21,7 +25,12 @@ const sideEffectsOf = (calls) =>
   calls.filter((call) => ["session", "effects", "analytics", "notify"].includes(call));
 
 /** The three actions with fake dependencies. `calls` records the order of side effects. */
-const setup = ({ refuse = false, sessionThrows = false } = {}) => {
+class StoreNotAcceptingReservationsError extends Error {
+  storeId = "store";
+  reason = "payment_method_required";
+}
+
+const setup = ({ refuse = false, sessionThrows = false, gateClosed = false } = {}) => {
   const calls = [];
   const changes = [];
   const effectRuns = [];
@@ -38,6 +47,7 @@ const setup = ({ refuse = false, sessionThrows = false } = {}) => {
     slug: "shop",
     name: "Shop",
     email: "shop@example.test",
+    phone: "+33 6 12 34 56 78",
     settings: { currency: "EUR" },
     notificationSettings: {},
     cgv: "",
@@ -89,6 +99,7 @@ const setup = ({ refuse = false, sessionThrows = false } = {}) => {
         calls.push("change");
         changes.push(input);
         if (refuse) return { changed: false, from: "confirmed", reason: "unexpected_status" };
+        if (gateClosed) throw new StoreNotAcceptingReservationsError("closed");
         await input.beforeWrite?.();
         return { changed: true, from: "quote", to: input.to, effects };
       },
@@ -96,6 +107,13 @@ const setup = ({ refuse = false, sessionThrows = false } = {}) => {
       validateReservationContract: step("contract"),
       ConsumableStockError: class extends Error {},
       ReservationInventoryError: class extends Error {},
+      isStoreNotAcceptingReservationsError: (error) =>
+        error instanceof StoreNotAcceptingReservationsError,
+      logReservationGateRefusal: (refusal, surface) => {
+        calls.push(`gate:${surface}:${refusal.reason}`);
+      },
+      STORE_NOT_ACCEPTING_RESERVATIONS_ERROR: "errors.storeNotAcceptingReservations",
+      renterGateRefusalParams,
       runReservationEffects: async (list) => {
         calls.push("effects");
         effectRuns.push(list);
@@ -155,6 +173,20 @@ test("acceptQuote refuses a quote that changed meanwhile", async () => {
   const result = await actions.acceptQuote("shop", reservationId);
 
   assert.equal(result.error, "invalidStatus");
+  assert.deepEqual(sideEffectsOf(calls), []);
+});
+
+test("acceptQuote answers a closed card gate with the generic key and the store's contact, and does nothing else", async () => {
+  const { actions, calls } = setup({ gateClosed: true });
+  const result = await actions.acceptQuote("shop", reservationId);
+
+  assert.equal(result.error, "errors.storeNotAcceptingReservations");
+  assert.deepEqual(
+    { ...result.errorParams },
+    { hasContact: "yes", contact: "+33 6 12 34 56 78 · shop@example.test" },
+  );
+  assert.equal(calls.includes("gate:quote_acceptance:payment_method_required"), true);
+  assert.equal(calls.includes("inventory"), false);
   assert.deepEqual(sideEffectsOf(calls), []);
 });
 

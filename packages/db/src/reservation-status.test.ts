@@ -6,6 +6,7 @@ import {
   RESERVATION_ACTORS,
   invalidReservationTransitionMessage,
   planReservationStatusChange,
+  requiresReservationGate,
   type LockedReservation,
   type PlanReservationStatusChangeInput,
   type ReservationActivityType,
@@ -165,7 +166,9 @@ describe("planReservationStatusChange", () => {
     });
   }
 
-  test("no gate: every actor can make a reservation billable, and nothing else refuses", () => {
+  // The card gate is changeReservationStatus's, on the store's policy: the plan refuses
+  // only on the status graph.
+  test("the plan alone: every actor can make a reservation billable, and nothing else refuses", () => {
     const reasons = new Set<string>();
     for (const actor of RESERVATION_ACTORS) {
       for (const from of STATUSES) {
@@ -189,6 +192,23 @@ describe("planReservationStatusChange", () => {
       "not_allowed",
       "unexpected_status",
     ]);
+  });
+
+  test("the card gate guards every allowed change into the billable set, unless a payment asks", () => {
+    for (const actor of RESERVATION_ACTORS) {
+      for (const from of STATUSES) {
+        for (const to of STATUSES) {
+          // A change the graph refuses never reaches the gate.
+          if (!canTransitionReservationStatus(from, to)) continue;
+          const enters = ALLOWED[`${from}→${to}`]?.billable === "enters";
+          assert.equal(
+            requiresReservationGate(from, to, actor),
+            enters && actor !== "payment",
+            `${from} → ${to} by ${actor}`,
+          );
+        }
+      }
+    }
   });
 
   test("expectedFrom refuses any other locked status, after already_in_target", () => {

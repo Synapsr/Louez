@@ -468,6 +468,15 @@
       "newReservation": "新規予約 #{number}",
       "newReservationDescription": "新しい予約リクエストが届きました"
     },
+    "reservationGate": {
+      "pausedTitle": "新しい予約は一時停止中です",
+      "pausedDescription": "ストアの請求が最新の状態になるまで、お客様はオンラインで予約できず、新しい確定も保留されます。",
+      "noticeTitle": "請求の確認が必要です",
+      "noticeDescription": "予約の受付を続けるには、ストアの請求を確認してください。",
+      "manageBilling": "請求の管理",
+      "storefrontDescription": "お客様には、このストアが現在オンライン予約を受け付けていないと表示されます。",
+      "openDashboard": "ダッシュボードに移動"
+    },
     "pendingAlert": {
       "singlePending": "保留中のリクエストが 1 件あります",
       "multiplePending": "{count} 保留中のリクエスト",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "このストアは現在オンライン予約を受け付けていません。{hasContact, select, yes {ストアの連絡先：{contact}} other {ストアに直接お問い合わせください。}}",
     "generic": "エラーが発生しました",
     "pageLoadError": "このページを読み込めませんでした。もう一度試してください。",
     "notFound": "ページが見つかりません",

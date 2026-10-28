@@ -468,6 +468,15 @@
       "newReservation": "新预订#{number}",
       "newReservationDescription": "新的预订请求已到达"
     },
+    "reservationGate": {
+      "pausedTitle": "新预订已暂停",
+      "pausedDescription": "在商店账单更新之前，客户无法在线预订，新的确认也会暂缓。",
+      "noticeTitle": "账单需要您处理",
+      "noticeDescription": "请检查商店账单，以便继续接受预订。",
+      "manageBilling": "管理账单",
+      "storefrontDescription": "客户会看到该商店目前不接受在线预订。",
+      "openDashboard": "转到仪表板"
+    },
     "pendingAlert": {
       "singlePending": "1 个待处理请求",
       "multiplePending": "{count} 待处理请求",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "该商店目前不接受在线预订。{hasContact, select, yes {商店联系方式：{contact}} other {请直接联系商店。}}",
     "generic": "发生错误",
     "pageLoadError": "我们无法加载此页面。请再试一次。",
     "notFound": "找不到页面",

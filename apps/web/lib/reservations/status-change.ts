@@ -6,6 +6,7 @@ import {
   ConsumableStockError,
   db,
   invalidReservationTransitionMessage,
+  isStoreNotAcceptingReservationsError,
   reservations,
   stores,
 } from "@louez/db";
@@ -19,6 +20,7 @@ import type { McpStatusChangeInput, McpStatusChangeResult } from "@louez/mcp";
 import type { NotificationEventType } from "@louez/types";
 
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { logReservationGateRefusal } from "@/lib/billing/reservation-gate";
 import {
   notifyEquipmentPickedUp,
   notifyReservationCancelled,
@@ -107,7 +109,9 @@ export type StoreStatusChangeOutcome =
   /** Refused under the lock: gone, already there, changed since the read, or not allowed. */
   | { ok: false; error: "refused"; refusal: StatusChangeRefusal }
   /** The items or the stock are no longer free. `message` is an `errors.*` key. */
-  | { ok: false; error: "unavailable"; message: string };
+  | { ok: false; error: "unavailable"; message: string }
+  /** The store's card gate is closed (README §8.4): nothing was written. */
+  | { ok: false; error: "store_not_accepting_reservations" };
 
 // The MCP server's contract (packages/mcp/src/deps.ts); the assistant uses it too.
 export type AgentStatusChangeInput = Omit<McpStatusChangeInput, "actor"> & {
@@ -177,6 +181,10 @@ const agentUnavailableMessages: Partial<Record<string, string>> = {
   "errors.productNoLongerAvailable":
     "Not confirmed: some items of this reservation are no longer available for its dates.",
 };
+
+/** The card gate's answer to the assistant and MCP: generic, as the dashboard's. */
+const AGENT_GATE_REFUSAL =
+  "Not changed: this store is not taking new reservations right now. The dashboard shows the store owner why.";
 
 // JSON drops an Error's fields, so the event carries them, the stack too.
 const errorFields = (error: unknown): StatusChangeFailure["reservation"]["error"] =>
@@ -285,6 +293,11 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
     } catch (error) {
       const unavailable = toUnavailable(error);
       if (unavailable) return unavailable;
+      // Only a change into the billable set asks the card gate.
+      if (isStoreNotAcceptingReservationsError(error)) {
+        logReservationGateRefusal(error, actor === "store_user" ? "dashboard" : actor);
+        return { ok: false, error: "store_not_accepting_reservations" };
+      }
       throw error;
     }
     if (!change.changed) {
@@ -649,6 +662,9 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
           });
 
     if (outcome.ok || outcome.error === "not_found") return outcome;
+    if (outcome.error === "store_not_accepting_reservations") {
+      return { ok: false, error: "refused", message: AGENT_GATE_REFUSAL };
+    }
     if (outcome.error === "unavailable") {
       return {
         ok: false,

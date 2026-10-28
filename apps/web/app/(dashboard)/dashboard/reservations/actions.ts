@@ -22,6 +22,7 @@ import {
   db,
   getEffectiveProductQuantities,
   insertReservation,
+  isStoreNotAcceptingReservationsError,
   isStripeRefundPaymentSql,
   loadConsumableReservedQuantities,
   markReservation,
@@ -50,7 +51,7 @@ import {
   reservations,
   verificationCodes,
 } from "@louez/db";
-import type { Rate } from "@louez/types";
+import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, type Rate } from "@louez/types";
 import type {
   BookingAttributeAxis,
   DeliverySettings,
@@ -90,6 +91,7 @@ import {
 
 import { auth } from "@/lib/auth";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { checkReservationGate, logReservationGateRefusal } from "@/lib/billing/reservation-gate";
 import { notifyNewReservation, notifyPaymentReceived } from "@/lib/discord/platform-notifications";
 import { sendEmail } from "@/lib/email/client";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
@@ -423,6 +425,13 @@ async function generateReservationNumber(storeId: string): Promise<string> {
   return `${year}-${String(nextNumber).padStart(4, "0")}`;
 }
 
+/** The answer to a booking the card gate refused inside its transaction. */
+function refuseClosedGate(error: unknown) {
+  if (!isStoreNotAcceptingReservationsError(error)) throw error;
+  logReservationGateRefusal(error, "dashboard");
+  return { ok: false as const, error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, shortfalls: [] };
+}
+
 export async function updateReservationStatus(
   reservationId: string,
   status: ReservationStatus,
@@ -443,6 +452,9 @@ export async function updateReservationStatus(
   });
   if (!outcome.ok) {
     if (outcome.error === "unavailable") return { error: outcome.message };
+    if (outcome.error === "store_not_accepting_reservations") {
+      return { error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR };
+    }
     // A stale read, a retry of the same change and a refused change get one answer.
     return {
       error:
@@ -598,6 +610,13 @@ export async function createManualReservation(data: CreateReservationData) {
   const store = await getStoreForUser();
   if (!store) {
     return { error: "errors.unauthorized" };
+  }
+
+  // A booking created as confirmed asks the card gate (README §8.4) before it writes a
+  // new customer or calls the routing API. insertReservation asks again under the
+  // transaction, and that answer is the one that counts.
+  if (!data.sendAsQuote && !(await checkReservationGate(store.id, "dashboard")).accepts) {
+    return { error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR };
   }
 
   let customerId = data.customerId;
@@ -964,7 +983,7 @@ export async function createManualReservation(data: CreateReservationData) {
   }
   const totalAmount = subtotalAmount - manualDiscountAmount + deliveryFeeAmount;
 
-  // Create reservation
+  // Create reservation. Created as confirmed, insertReservation asks the card gate.
   const reservationId = nanoid();
   const reservationWriteResult = await db.transaction(async (tx) => {
     const requestedProductIds = [...new Set(productDetails.map((detail) => detail.product.id))];
@@ -1370,7 +1389,7 @@ export async function createManualReservation(data: CreateReservationData) {
       overbookingShortfalls: shortfalls,
       effects,
     };
-  });
+  }).catch(refuseClosedGate);
 
   if (!reservationWriteResult.ok) {
     return {

@@ -26,6 +26,8 @@ interface StorefrontShellProps {
   customerIdentity?: { firstName: string; lastName: string; email: string } | null;
   /** Sales-channel badge for the marketplace header. */
   channelBadge?: ReactNode;
+  /** A line above everything that only the signed-in owner sees. */
+  ownerNotice?: ReactNode;
   children: ReactNode;
 }
 
@@ -44,6 +46,7 @@ export const StorefrontShell = ({
   customerInitials,
   customerIdentity,
   channelBadge,
+  ownerNotice,
   children,
 }: StorefrontShellProps) => {
   const isDark = theme.mode === "dark";
@@ -81,6 +84,7 @@ export const StorefrontShell = ({
       )}
     >
       {themeHead}
+      {ownerNotice}
       {announcement ? <AnnouncementBar announcement={announcement} /> : null}
       <StoreHeader
         storeName={store.name}

@@ -468,6 +468,15 @@
       "newReservation": "Nuova prenotazione #{number}",
       "newReservationDescription": "E arrivata una nuova richiesta di prenotazione"
     },
+    "reservationGate": {
+      "pausedTitle": "Le nuove prenotazioni sono in pausa",
+      "pausedDescription": "I clienti non possono prenotare online e le nuove conferme restano in attesa finché la fatturazione del negozio non è in regola.",
+      "noticeTitle": "La fatturazione richiede la tua attenzione",
+      "noticeDescription": "Controlla la fatturazione del negozio per continuare a ricevere prenotazioni.",
+      "manageBilling": "Gestisci fatturazione",
+      "storefrontDescription": "I clienti vedono che il negozio non accetta prenotazioni online.",
+      "openDashboard": "Vai alla dashboard"
+    },
     "pendingAlert": {
       "singlePending": "1 richiesta in attesa",
       "multiplePending": "{count} richieste in attesa",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "Questo negozio non accetta prenotazioni online al momento. {hasContact, select, yes {Contatta il negozio: {contact}} other {Contatta direttamente il negozio.}}",
     "generic": "Si e verificato un errore",
     "pageLoadError": "Non siamo riusciti a caricare questa pagina. Riprova.",
     "notFound": "Pagina non trovata",

@@ -44,10 +44,12 @@ import {
 } from "@louez/ui";
 import { cn, formatCurrency } from "@louez/utils";
 
+import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-dialog";
 import { useStoreTimezone } from "@/contexts/store-context";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
+import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
@@ -129,6 +131,7 @@ export function SmartReservationActions({
   const [isLoading, setIsLoading] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [gateDialogOpen, setGateDialogOpen] = useState(false);
   const [pickupConfirmOpen, setPickupConfirmOpen] = useState(false);
   const [returnConfirmOpen, setReturnConfirmOpen] = useState(false);
   const [inspectionPromptOpen, setInspectionPromptOpen] = useState<"departure" | "return" | null>(
@@ -316,7 +319,7 @@ export function SmartReservationActions({
 
       toastManager.add({ title: t("statusUpdated"), type: "success" });
       await invalidateReservationAll(queryClient, reservationId);
-    } catch {
+    } catch (error) {
       if (analyticsAction) {
         captureReservationActionFailed({
           reservationId,
@@ -325,7 +328,8 @@ export function SmartReservationActions({
           properties: { error_code: "status_update_failed", status_after: newStatus },
         });
       }
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      if (isReservationGateRefusal(error)) setGateDialogOpen(true);
+      else toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
       setIsLoading(false);
       setAcknowledgeWarnings(false);
@@ -1042,6 +1046,8 @@ export function SmartReservationActions({
           </DialogFooter>
         </DialogPopup>
       </Dialog>
+
+      <ReservationGateDialog open={gateDialogOpen} onOpenChange={setGateDialogOpen} />
     </>
   );
 }

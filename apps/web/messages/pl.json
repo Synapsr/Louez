@@ -468,6 +468,15 @@
       "newReservation": "Nowa rezerwacja #{number}",
       "newReservationDescription": "Otrzymano nowe żądanie rezerwacji"
     },
+    "reservationGate": {
+      "pausedTitle": "Nowe rezerwacje są wstrzymane",
+      "pausedDescription": "Klienci nie mogą rezerwować online, a nowe potwierdzenia czekają, aż rozliczenia sklepu będą aktualne.",
+      "noticeTitle": "Rozliczenia wymagają Twojej uwagi",
+      "noticeDescription": "Sprawdź rozliczenia sklepu, aby nadal przyjmować rezerwacje.",
+      "manageBilling": "Zarządzaj płatnościami",
+      "storefrontDescription": "Klienci widzą, że sklep nie przyjmuje rezerwacji online.",
+      "openDashboard": "Przejdź do panelu"
+    },
     "pendingAlert": {
       "singlePending": "1 oczekujące żądanie",
       "multiplePending": "{count} oczekujących żądań",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "Ten sklep nie przyjmuje teraz rezerwacji online. {hasContact, select, yes {Skontaktuj się ze sklepem: {contact}} other {Skontaktuj się bezpośrednio ze sklepem.}}",
     "generic": "Wystąpił błąd",
     "pageLoadError": "Nie mogliśmy załadować tej strony. Spróbuj ponownie.",
     "notFound": "Nie znaleziono strony",

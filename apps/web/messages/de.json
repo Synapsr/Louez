@@ -468,6 +468,15 @@
       "newReservation": "Neue Reservierung #{number}",
       "newReservationDescription": "Eine neue Reservierungsanfrage ist eingegangen"
     },
+    "reservationGate": {
+      "pausedTitle": "Neue Reservierungen sind pausiert",
+      "pausedDescription": "Kunden können nicht online buchen, und neue Bestätigungen warten, bis die Abrechnung des Shops auf dem neuesten Stand ist.",
+      "noticeTitle": "Die Abrechnung braucht Ihre Aufmerksamkeit",
+      "noticeDescription": "Prüfen Sie die Abrechnung des Shops, um weiter Reservierungen anzunehmen.",
+      "manageBilling": "Rechnungen verwalten",
+      "storefrontDescription": "Kunden sehen, dass der Shop gerade keine Online-Reservierungen annimmt.",
+      "openDashboard": "Zum Dashboard"
+    },
     "pendingAlert": {
       "singlePending": "1 ausstehende Anfrage",
       "multiplePending": "{count} ausstehende Anfragen",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "Dieser Shop nimmt gerade keine Online-Reservierungen an. {hasContact, select, yes {Kontaktieren Sie den Shop: {contact}} other {Bitte kontaktieren Sie den Shop direkt.}}",
     "generic": "Ein Fehler ist aufgetreten",
     "pageLoadError": "Wir konnten diese Seite nicht laden. Bitte versuchen Sie es erneut.",
     "notFound": "Seite nicht gefunden",

@@ -468,6 +468,15 @@
       "newReservation": "New reservation #{number}",
       "newReservationDescription": "A new reservation request has arrived"
     },
+    "reservationGate": {
+      "pausedTitle": "New reservations are paused",
+      "pausedDescription": "Customers can't book online and new confirmations are on hold until the store's billing is up to date.",
+      "noticeTitle": "Billing needs your attention",
+      "noticeDescription": "Check the store's billing to keep taking reservations.",
+      "manageBilling": "Manage billing",
+      "storefrontDescription": "Customers see that the store isn't taking reservations online.",
+      "openDashboard": "Go to dashboard"
+    },
     "pendingAlert": {
       "singlePending": "1 pending request",
       "multiplePending": "{count} pending requests",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "This store isn't taking reservations online right now. {hasContact, select, yes {Contact the store: {contact}} other {Please contact the store directly.}}",
     "generic": "An error occurred",
     "pageLoadError": "We couldn't load this page. Please try again.",
     "notFound": "Page not found",

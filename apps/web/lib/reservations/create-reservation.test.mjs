@@ -5,6 +5,10 @@ import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 const { validateStripePaymentAmount } = createRequire(import.meta.url)("@louez/utils");
 const { getCheckoutChargeAmount } = createRequire(import.meta.url)("./build-stripe-line-items.ts");
+const { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR } = createRequire(import.meta.url)("@louez/types");
+const { renterGateRefusalParams } = createRequire(import.meta.url)(
+  "../billing/reservation-gate-error.ts",
+);
 
 const source = readFileSync(new URL("./create-reservation.ts", import.meta.url), "utf8");
 const compiled = stripTypeScriptTypes(
@@ -27,6 +31,8 @@ for (const mode of ["request", "payment", "payment-unavailable"]) {
     const create = runInNewContext(`${compiled}; createReservation`, {
       checkMarketplaceCapability: async () => null,
       prepareReservation: async () => ({ ok: true, prepared }),
+      checkReservationGate: async () => ({ accepts: true }),
+      STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
       writeReservation: async () => ({
         ok: true,
         replay: false,
@@ -79,15 +85,19 @@ const checkoutFixture = ({
   source = "online",
   mode = "payment",
   paymentUrl = "https://stripe.example.test/pay",
+  gate = { accepts: true },
+  contact = { phone: "+33 6 12 34 56 78", email: "shop@example.test" },
 } = {}) => {
   const writes = [];
   const cancellations = [];
   const notifications = [];
+  const gateChecks = [];
   const runReservationEffects = async () => {};
   const prepared = {
     store: {
       id: "store",
       slug: "shop",
+      ...contact,
       settings: { currency: "EUR", onlinePaymentDepositPercentage: 100 },
     },
     totals: { total },
@@ -101,6 +111,12 @@ const checkoutFixture = ({
   const create = runInNewContext(`${compiled}; createReservation`, {
     checkMarketplaceCapability: async () => null,
     prepareReservation: async () => ({ ok: true, prepared }),
+    checkReservationGate: async (storeId, surface) => {
+      gateChecks.push({ storeId, surface });
+      return gate;
+    },
+    STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
+    renterGateRefusalParams,
     getEffectiveReservationMode: () => mode,
     getCheckoutChargeAmount,
     validateStripePaymentAmount,
@@ -133,6 +149,7 @@ const checkoutFixture = ({
     writes,
     cancellations,
     notifications,
+    gateChecks,
     runReservationEffects,
     submit: () =>
       create({
@@ -174,6 +191,48 @@ for (const options of [{ mode: "request" }, { source: "phone" }]) {
     assert.equal(result.ok, true);
     assert.equal(result.paymentUrl, null);
     assert.equal(fixture.notifications.length, 1);
+  });
+}
+
+for (const source of ["online", "marketplace", "phone"]) {
+  test(`${source}: a closed card gate refuses the booking before anything is written`, async () => {
+    const fixture = checkoutFixture({
+      total: 10,
+      source,
+      gate: { accepts: false, reason: "payment_method_required" },
+    });
+    const result = await fixture.submit();
+    assert.equal(result.ok, false);
+    // Generic, with the store's contact: renters never see a billing reason.
+    assert.equal(result.error, "errors.storeNotAcceptingReservations");
+    assert.deepEqual({ ...result.params }, {
+      hasContact: "yes",
+      contact: "+33 6 12 34 56 78 · shop@example.test",
+    });
+    assert.deepEqual(fixture.gateChecks, [{ storeId: "store", surface: source }]);
+    assert.equal(fixture.writes.length, 0);
+    assert.equal(fixture.notifications.length, 0);
+    assert.equal(fixture.cancellations.length, 0);
+  });
+
+  test(`${source}: a closed card gate of a store with no contact says so`, async () => {
+    const fixture = checkoutFixture({
+      total: 10,
+      source,
+      gate: { accepts: false, reason: "payment_method_required" },
+      contact: { phone: null, email: null },
+    });
+    const result = await fixture.submit();
+    assert.equal(result.error, "errors.storeNotAcceptingReservations");
+    assert.deepEqual({ ...result.params }, { hasContact: "no", contact: "" });
+    assert.equal(fixture.writes.length, 0);
+  });
+
+  test(`${source}: an open card gate changes nothing`, async () => {
+    const fixture = checkoutFixture({ total: 10, source });
+    assert.equal((await fixture.submit()).ok, true);
+    assert.equal(fixture.gateChecks.length, 1);
+    assert.equal(fixture.writes.length, 1);
   });
 }
 

@@ -22,13 +22,19 @@ import {
   type ReservationInsertValues,
   type Transaction,
 } from "@louez/db";
-import type { ProductSnapshot, StoreSettings } from "@louez/types";
+import {
+  STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
+  type ProductSnapshot,
+  type StoreSettings,
+} from "@louez/types";
 import type { CreateReservationCustomerInput } from "@louez/validations";
 import { advisorValidationCovers, validateStripePaymentAmount } from "@louez/utils";
 
 import { env } from "@/env";
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { checkReservationGate } from "@/lib/billing/reservation-gate";
+import { renterGateRefusalParams } from "@/lib/billing/reservation-gate-error";
 import { normalizeCurrency } from "@/lib/billing-sync/money";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
@@ -1046,6 +1052,13 @@ export const createReservation = async (
     if (!preparation.ok) return preparation;
     const { prepared } = preparation;
     const { store, totals, insurance, promo, delivery, cart } = prepared;
+
+    // The card gate (README §8.4): the booking is written as pending, and its
+    // confirmation after payment is never refused, so the start of the booking is.
+    // The renter gets the store's contact, never the reason (design §4.7).
+    if (!(await checkReservationGate(store.id, request.source)).accepts) {
+      return failReservation(STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, renterGateRefusalParams(store));
+    }
 
     const effectiveReservationMode =
       request.source === "phone" ? "request" : getEffectiveReservationMode(store);

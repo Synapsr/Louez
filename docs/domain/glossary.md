@@ -40,6 +40,10 @@ _Avoid_: paid reservation (a billable reservation may be unpaid), confirmed (alo
 Louez billing its Stores: the Louez commission, plans, top-ups, referral rewards and month-end invoices. On only when `LOUEZ_BILLING=cloud` (Louez Cloud); a self-hosted instance, single-store or multi-store, bills no Store, writes no billing rows, gives every Store every feature without a plan limit, and has no plan, billing, referral or platform-admin page.
 _Avoid_: payments (a Customer paying a Store), Stripe Connect
 
+**Card gate**:
+The refusal of a step that would make a new Reservation billable while the Store's billing policy says it is not taking reservations: no card on file, an overdue payment, or a suspension. Only with Platform billing through the billing service; a completed payment, drafts, quotes, pick-ups, returns and cancellations always go through, and `BILLING_GATE_DISABLED=true` opens it. Customers see only that the Store is not taking reservations online, and how to contact it.
+_Avoid_: block, paywall
+
 **Hosting identity**:
 Who hosts an instance (`LOUEZ_HOSTED_BY`): unset when the operator hosts it, `lumycloud` for Louez Cloud. It decides the storefront legal notice's hosting line and whether the dashboard asks for a GitHub star. Neither Platform billing nor the deployment mode (`LOUEZ_MODE`) decides it.
 _Avoid_: cloud mode, platform mode

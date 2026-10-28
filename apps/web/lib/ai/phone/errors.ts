@@ -119,6 +119,8 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
       `${str(p?.name)} vient d'être réservé par quelqu'un d'autre pour ces dates.`,
     productNotFound: () =>
       'Un des produits demandés est introuvable dans le catalogue.',
+    storeNotAcceptingReservations: () =>
+      "La boutique ne prend pas de nouvelles réservations pour le moment. Je peux laisser un message au responsable.",
     default: () => "Je n'ai pas pu valider la réservation pour ces dates.",
   },
   en: {
@@ -136,6 +138,8 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     productNoLongerAvailable: (p) =>
       `${str(p?.name)} was just booked by someone else for those dates.`,
     productNotFound: () => "One of the requested products isn't in the catalog.",
+    storeNotAcceptingReservations: () =>
+      "The store isn't taking new reservations right now. I can leave a message for the owner.",
     default: () => "I couldn't confirm the booking for those dates.",
   },
   de: {
@@ -155,6 +159,8 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
       `${str(p?.name)} wurde gerade von jemand anderem für diese Daten gebucht.`,
     productNotFound: () =>
       'Eines der angefragten Produkte ist nicht im Katalog.',
+    storeNotAcceptingReservations: () =>
+      'Das Geschäft nimmt im Moment keine neuen Reservierungen an. Ich kann dem Inhaber eine Nachricht hinterlassen.',
     default: () => 'Ich konnte die Buchung für diese Daten nicht bestätigen.',
   },
   es: {
@@ -174,6 +180,8 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
       `${str(p?.name)} acaba de ser reservado por otra persona para esas fechas.`,
     productNotFound: () =>
       'Uno de los productos solicitados no está en el catálogo.',
+    storeNotAcceptingReservations: () =>
+      'La tienda no acepta nuevas reservas en este momento. Puedo dejarle un mensaje al responsable.',
     default: () => 'No pude confirmar la reserva para esas fechas.',
   },
   it: {
@@ -192,6 +200,8 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     productNoLongerAvailable: (p) =>
       `${str(p?.name)} è appena stato prenotato da qualcun altro per quelle date.`,
     productNotFound: () => 'Uno dei prodotti richiesti non è nel catalogo.',
+    storeNotAcceptingReservations: () =>
+      'Il negozio non accetta nuove prenotazioni in questo momento. Posso lasciare un messaggio al titolare.',
     default: () => 'Non sono riuscito a confermare la prenotazione per quelle date.',
   },
   nl: {
@@ -211,6 +221,8 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
       `${str(p?.name)} is net door iemand anders geboekt voor die data.`,
     productNotFound: () =>
       'Een van de gevraagde producten staat niet in de catalogus.',
+    storeNotAcceptingReservations: () =>
+      'De winkel neemt op dit moment geen nieuwe reserveringen aan. Ik kan een bericht voor de eigenaar achterlaten.',
     default: () => 'Ik kon de reservering voor die data niet bevestigen.',
   },
   pl: {
@@ -229,6 +241,8 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     productNoLongerAvailable: (p) =>
       `${str(p?.name)} został właśnie zarezerwowany przez kogoś innego w tych terminach.`,
     productNotFound: () => 'Jednego z żądanych produktów nie ma w katalogu.',
+    storeNotAcceptingReservations: () =>
+      'Sklep nie przyjmuje teraz nowych rezerwacji. Mogę zostawić wiadomość dla właściciela.',
     default: () => 'Nie udało mi się potwierdzić rezerwacji na te terminy.',
   },
   pt: {
@@ -247,6 +261,8 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     productNoLongerAvailable: (p) =>
       `${str(p?.name)} acaba de ser reservado por outra pessoa para essas datas.`,
     productNotFound: () => 'Um dos produtos pedidos não está no catálogo.',
+    storeNotAcceptingReservations: () =>
+      'A loja não está a aceitar novas reservas neste momento. Posso deixar uma mensagem ao responsável.',
     default: () => 'Não consegui confirmar a reserva para essas datas.',
   },
 }

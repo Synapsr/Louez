@@ -12,6 +12,7 @@ import {
   productSeasonalPricingTiers,
   productUnits,
   products,
+  readStoresNotAcceptingReservations,
   storeMarketplaceCategoryMappings,
   storeMarketplaceChannels,
   stores,
@@ -86,6 +87,13 @@ export interface StoreSnapshot {
     enabled: boolean;
     maximumDistance: number | null;
   };
+  /**
+   * False while the store's card gate refuses new reservations (louez-billing
+   * docs/api, README §8.4): a hold would answer 409 store_not_accepting_reservations.
+   * Read when the page is built: a change of the gate alone does not move the
+   * store's `updatedAt`, so an incremental reader sees it with the store's next change.
+   */
+  bookable: boolean;
   storefrontUrl: string;
   updatedAt: string;
   version: number;
@@ -400,6 +408,7 @@ export async function listStoreSnapshots(params: CatalogListParams): Promise<{
 
   const pageRows = rows.slice(0, limit);
   const storeIds = pageRows.map((row) => row.id);
+  const notBookable = await readStoresNotAcceptingReservations(db, storeIds);
   const mappingRows =
     storeIds.length === 0
       ? []
@@ -471,6 +480,7 @@ export async function listStoreSnapshots(params: CatalogListParams): Promise<{
           ? (row.settings.delivery.maximumDistance ?? null)
           : null,
       },
+      bookable: !notBookable.has(row.id),
       storefrontUrl: params.getCanonicalUrl(row.slug, "/"),
       updatedAt: updatedAt.toISOString(),
       version: row.version,

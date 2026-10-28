@@ -468,6 +468,15 @@
       "newReservation": "Nouvelle réservation #{number}",
       "newReservationDescription": "Une nouvelle demande de réservation vient d'arriver"
     },
+    "reservationGate": {
+      "pausedTitle": "Les nouvelles réservations sont suspendues",
+      "pausedDescription": "Les clients ne peuvent pas réserver en ligne et les nouvelles confirmations sont en attente tant que la facturation de la boutique n'est pas à jour.",
+      "noticeTitle": "La facturation demande votre attention",
+      "noticeDescription": "Vérifiez la facturation de la boutique pour continuer à recevoir des réservations.",
+      "manageBilling": "Gérer la facturation",
+      "storefrontDescription": "Les clients voient que la boutique ne prend pas de réservations en ligne.",
+      "openDashboard": "Accéder au tableau de bord"
+    },
     "pendingAlert": {
       "singlePending": "1 demande en attente",
       "multiplePending": "{count} demandes en attente",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "Cette boutique ne prend pas de réservations en ligne pour le moment. {hasContact, select, yes {Contactez-la : {contact}} other {Contactez-la directement.}}",
     "generic": "Une erreur est survenue",
     "pageLoadError": "Nous n'avons pas pu charger cette page. Veuillez réessayer.",
     "notFound": "Page introuvable",

@@ -468,6 +468,15 @@
       "newReservation": "Nova reserva #{number}",
       "newReservationDescription": "Uma nova solicitacao de reserva chegou"
     },
+    "reservationGate": {
+      "pausedTitle": "As novas reservas estão pausadas",
+      "pausedDescription": "Os clientes não podem reservar online e as novas confirmações ficam em espera até que o faturamento da loja esteja em dia.",
+      "noticeTitle": "O faturamento precisa da sua atenção",
+      "noticeDescription": "Verifique o faturamento da loja para continuar recebendo reservas.",
+      "manageBilling": "Gerenciar faturamento",
+      "storefrontDescription": "Os clientes veem que a loja não está aceitando reservas online.",
+      "openDashboard": "Ir para o painel"
+    },
     "pendingAlert": {
       "singlePending": "1 solicitacao pendente",
       "multiplePending": "{count} solicitacoes pendentes",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "Esta loja não está aceitando reservas online no momento. {hasContact, select, yes {Entre em contato com a loja: {contact}} other {Entre em contato diretamente com a loja.}}",
     "generic": "Ocorreu um erro",
     "pageLoadError": "Nao foi possivel carregar esta pagina. Por favor, tente novamente.",
     "notFound": "Pagina nao encontrada",

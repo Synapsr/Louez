@@ -28,6 +28,8 @@ const STUBS: Record<string, string> = {
   "next/cache": "export function revalidatePath() {}\n",
   "@/lib/auth": "export async function auth() { return null; }\n",
   "@/lib/store-context": `export async function getCurrentStore() { return globalThis[${JSON.stringify(STORE_KEY)}] ?? null; }\n`,
+  // A quote's email is sent without being awaited, and would outlive the database.
+  "@/lib/notifications/customer-dispatcher": "export async function dispatchCustomerNotification() {}\n",
 };
 const ACTIONS_FILE = "/dashboard/reservations/actions.ts";
 const FILES_SDK = new URL("../../../../node_modules/files-sdk/dist/", import.meta.url);
@@ -440,6 +442,96 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
 
       assert.deepEqual(result, { error: "errors.endDateBeforeStart" });
       assert.equal(await readMarkVersion(reservationId), null);
+    });
+  });
+
+  describe("createManualReservation and the card gate", () => {
+    // A store created after BILLING_NEW_STORES_FROM that no policy covers: its gate
+    // fails closed (README §8.3). No M2 store is in this case.
+    const GATE_STORE = "store_actions_gate";
+    const saved = { newStoresFrom: process.env.BILLING_NEW_STORES_FROM };
+
+    before(async () => {
+      await louezDb.db.insert(louezDb.stores).values({
+        id: GATE_STORE,
+        userId: "owner_actions_gate",
+        name: "Gate",
+        slug: "actions-gate",
+        createdAt: new Date("2027-02-01T00:00:00Z"),
+      });
+    });
+
+    beforeEach(() => {
+      process.env.BILLING_NEW_STORES_FROM = "2027-01-25T00:00:00Z";
+      Reflect.set(globalThis, STORE_KEY, {
+        id: GATE_STORE,
+        userId: "",
+        name: "Gate",
+        slug: "actions-gate",
+        settings: { currency: "eur" },
+        stripeAccountId: null,
+      });
+    });
+
+    afterEach(() => {
+      if (saved.newStoresFrom === undefined) delete process.env.BILLING_NEW_STORES_FROM;
+      else process.env.BILLING_NEW_STORES_FROM = saved.newStoresFrom;
+      Reflect.set(globalThis, STORE_KEY, {
+        id: STORE,
+        userId: "",
+        name: "Actions",
+        slug: "actions",
+        settings: { currency: "usd" },
+        stripeAccountId: null,
+      });
+    });
+
+    const booking = (email: string, sendAsQuote: boolean) => ({
+      newCustomer: { email, firstName: "Walk", lastName: "In" },
+      startDate: START,
+      endDate: END,
+      items: [],
+      customItems: [
+        {
+          name: "Bike",
+          description: "",
+          unitPrice: 20,
+          deposit: 0,
+          quantity: 1,
+          pricingMode: "day" as const,
+        },
+      ],
+      sendAsQuote,
+    });
+
+    async function storeRows(email: string) {
+      const customerRows = await louezDb.db
+        .select({ id: louezDb.customers.id })
+        .from(louezDb.customers)
+        .where(and(eq(louezDb.customers.storeId, GATE_STORE), eq(louezDb.customers.email, email)));
+      const reservationRows = await louezDb.db
+        .select({ status: louezDb.reservations.status })
+        .from(louezDb.reservations)
+        .where(eq(louezDb.reservations.storeId, GATE_STORE));
+      return {
+        customers: customerRows.length,
+        statuses: reservationRows.map((row) => row.status),
+      };
+    }
+
+    test("a booking created as confirmed is refused before the new customer is written", async () => {
+      const email = "refused@example.test";
+      assert.deepEqual(await actions.createManualReservation(booking(email, false)), {
+        error: "errors.storeNotAcceptingReservations",
+      });
+      assert.deepEqual(await storeRows(email), { customers: 0, statuses: [] });
+    });
+
+    test("a quote never asks the gate", async () => {
+      const email = "quote@example.test";
+      const result = await actions.createManualReservation(booking(email, true));
+      assert.equal(result.error, undefined);
+      assert.deepEqual(await storeRows(email), { customers: 1, statuses: ["quote"] });
     });
   });
 });

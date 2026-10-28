@@ -17,6 +17,7 @@ import { DashboardBreadcrumbsProvider } from "@/components/dashboard/dashboard-b
 import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
 import { DashboardSidebarTrigger } from "@/components/dashboard/dashboard-sidebar-trigger";
 import { DashboardThemeShortcut } from "@/components/dashboard/dashboard-theme-shortcut";
+import { ReservationGateBanner } from "@/components/dashboard/reservation-gate-banner";
 import { ReservationPollingProvider } from "@/components/dashboard/reservation-polling-provider";
 import { SettingsSearchFocus } from "@/components/dashboard/settings-search-focus";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
@@ -187,6 +188,10 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                       />
                     }
                   >
+                    {/* The card gate's banner; nothing outside service mode. */}
+                    <Suspense fallback={null}>
+                      <ReservationGateBanner storeId={store.id} role={store.role} />
+                    </Suspense>
                     {children}
                   </DashboardContentFrame>
                 </DashboardBreadcrumbsProvider>

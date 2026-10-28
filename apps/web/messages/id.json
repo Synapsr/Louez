@@ -468,6 +468,15 @@
       "newReservation": "Reservasi baru #{number}",
       "newReservationDescription": "Permintaan reservasi baru telah tiba"
     },
+    "reservationGate": {
+      "pausedTitle": "Reservasi baru dijeda",
+      "pausedDescription": "Pelanggan tidak dapat memesan secara online dan konfirmasi baru ditahan sampai penagihan toko diperbarui.",
+      "noticeTitle": "Penagihan memerlukan perhatian Anda",
+      "noticeDescription": "Periksa penagihan toko agar tetap dapat menerima reservasi.",
+      "manageBilling": "Kelola penagihan",
+      "storefrontDescription": "Pelanggan melihat bahwa toko tidak menerima reservasi online.",
+      "openDashboard": "Buka dasbor"
+    },
     "pendingAlert": {
       "singlePending": "1 permintaan tertunda",
       "multiplePending": "{count} permintaan tertunda",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "Toko ini sedang tidak menerima reservasi online. {hasContact, select, yes {Hubungi toko: {contact}} other {Silakan hubungi toko secara langsung.}}",
     "generic": "Terjadi kesalahan",
     "pageLoadError": "Kami tidak dapat memuat halaman ini. Silakan coba lagi.",
     "notFound": "Halaman tidak ditemukan",

@@ -1,9 +1,10 @@
-import { supportedLocales } from "@louez/types";
+import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, supportedLocales } from "@louez/types";
 import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import {
+  STORE_NOT_ACCEPTING_RESERVATIONS,
   changeReservationStatus,
   customers,
   db,
@@ -710,6 +711,11 @@ export async function holdMarketplaceBooking(params: {
         result.error === "errors.invalidAmount"
       ) {
         throw new ApiServiceError("BAD_REQUEST", result.error, result.errorParams);
+      }
+      // The card gate (README §8.4): the route answers 409 with this code. The attempt
+      // stays `creating_hold`, so a retry of it asks the gate again.
+      if (result.error === STORE_NOT_ACCEPTING_RESERVATIONS_ERROR) {
+        throw new ApiServiceError("BAD_REQUEST", STORE_NOT_ACCEPTING_RESERVATIONS);
       }
       await tx
         .update(marketplaceBookingAttempts)

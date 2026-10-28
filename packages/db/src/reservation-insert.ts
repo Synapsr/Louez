@@ -1,5 +1,6 @@
 import { markReservation } from "./billing-queue";
 import type { Transaction } from "./index";
+import { assertStoreCanTakeReservations } from "./reservation-gate";
 import {
   isBillableReservationStatus,
   toWholeSeconds,
@@ -51,13 +52,21 @@ export function planReservationInsert(
  * The one way to insert a reservation at runtime. It writes no activity row and
  * consumes no stock: callers insert the items afterwards and log `created`
  * themselves. It returns the fee effects; the caller runs them after commit.
+ *
+ * A billable status (a booking created as confirmed) throws
+ * StoreNotAcceptingReservationsError when the store's card gate is closed, before
+ * the insert. Pending and quote bookings never ask.
  */
 export async function insertReservation(
   tx: Transaction,
   values: ReservationInsertValues,
   options: { now?: Date } = {},
 ): Promise<{ effects: ReservationBillingEffect[] }> {
-  const plan = planReservationInsert(values, options.now ?? new Date());
+  const now = options.now ?? new Date();
+  if (isBillableReservationStatus(values.status)) {
+    await assertStoreCanTakeReservations(tx, values.storeId, now);
+  }
+  const plan = planReservationInsert(values, now);
   await tx.insert(reservations).values(plan.row);
   await markReservation(tx, { id: values.id, storeId: values.storeId });
   return { effects: plan.effects };

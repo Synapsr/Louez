@@ -17,6 +17,8 @@ import {
   toastManager,
 } from "@louez/ui";
 
+import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-dialog";
+import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
@@ -44,6 +46,8 @@ interface ConfirmDialogsProps {
   setRejectDialogOpen: (open: boolean) => void;
   cancelDialogOpen: boolean;
   setCancelDialogOpen: (open: boolean) => void;
+  gateDialogOpen: boolean;
+  setGateDialogOpen: (open: boolean) => void;
   handleReject: () => Promise<void>;
   handleCancel: () => Promise<void>;
   loadingAction: string | null;
@@ -62,6 +66,7 @@ export function useReservationActions(): UseReservationActionsReturn {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [gateDialogOpen, setGateDialogOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
 
   const formatWarning = (warning: ActionWarning) => {
@@ -228,7 +233,7 @@ export function useReservationActions(): UseReservationActionsReturn {
 
       toastManager.add({ title: t("statusUpdated"), type: "success" });
       await invalidateReservationAll(queryClient, reservation.id);
-    } catch {
+    } catch (error) {
       if (analyticsAction) {
         captureReservationActionFailed({
           reservationId: reservation.id,
@@ -238,7 +243,8 @@ export function useReservationActions(): UseReservationActionsReturn {
           properties: { error_code: "status_update_failed", status_after: newStatus },
         });
       }
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      if (isReservationGateRefusal(error)) setGateDialogOpen(true);
+      else toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
       setLoadingAction(null);
     }
@@ -341,6 +347,8 @@ export function useReservationActions(): UseReservationActionsReturn {
       setRejectDialogOpen,
       cancelDialogOpen,
       setCancelDialogOpen,
+      gateDialogOpen,
+      setGateDialogOpen,
       handleReject,
       handleCancel,
       loadingAction,
@@ -353,6 +361,8 @@ export function ReservationConfirmDialogs({
   setRejectDialogOpen,
   cancelDialogOpen,
   setCancelDialogOpen,
+  gateDialogOpen,
+  setGateDialogOpen,
   handleReject,
   handleCancel,
   loadingAction,
@@ -403,6 +413,8 @@ export function ReservationConfirmDialogs({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ReservationGateDialog open={gateDialogOpen} onOpenChange={setGateDialogOpen} />
     </>
   );
 }

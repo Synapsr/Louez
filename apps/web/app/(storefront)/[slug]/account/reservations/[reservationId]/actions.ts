@@ -16,14 +16,18 @@ import {
   ConsumableStockError,
   changeReservationStatus,
   db,
+  isStoreNotAcceptingReservationsError,
   payments,
   reservations,
   stores,
   verificationCodes,
 } from "@louez/db";
 import type { ReservationBillingEffect } from "@louez/db";
+import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR } from "@louez/types";
 
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { logReservationGateRefusal } from "@/lib/billing/reservation-gate";
+import { renterGateRefusalParams } from "@/lib/billing/reservation-gate-error";
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
 import {
@@ -145,6 +149,15 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   } catch (error) {
     if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
       return { error: error.message };
+    }
+    // The card gate (README §8.4): the renter sees the generic text and the store's
+    // contact, no reason.
+    if (isStoreNotAcceptingReservationsError(error)) {
+      logReservationGateRefusal(error, "quote_acceptance");
+      return {
+        error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
+        errorParams: renterGateRefusalParams(store),
+      };
     }
     throw error;
   }

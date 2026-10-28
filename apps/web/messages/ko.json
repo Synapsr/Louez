@@ -468,6 +468,15 @@
       "newReservation": "신규 예약 #{number}",
       "newReservationDescription": "새로운 예약 요청이 도착했습니다"
     },
+    "reservationGate": {
+      "pausedTitle": "새 예약이 일시 중지되었습니다",
+      "pausedDescription": "매장 청구가 최신 상태가 될 때까지 고객은 온라인으로 예약할 수 없으며 새 확정은 보류됩니다.",
+      "noticeTitle": "청구 확인이 필요합니다",
+      "noticeDescription": "계속 예약을 받으려면 매장 청구를 확인하세요.",
+      "manageBilling": "청구 관리",
+      "storefrontDescription": "고객에게는 매장이 현재 온라인 예약을 받지 않는다고 표시됩니다.",
+      "openDashboard": "대시보드로 이동"
+    },
     "pendingAlert": {
       "singlePending": "대기 중인 요청 1개",
       "multiplePending": "{count} 대기 중인 요청",
@@ -8367,6 +8376,7 @@
     }
   },
   "errors": {
+    "storeNotAcceptingReservations": "이 매장은 현재 온라인 예약을 받지 않습니다. {hasContact, select, yes {매장 연락처: {contact}} other {매장에 직접 문의해 주세요.}}",
     "generic": "오류가 발생했습니다",
     "pageLoadError": "이 페이지를 로드할 수 없습니다. 다시 시도해 주세요.",
     "notFound": "페이지를 찾을 수 없습니다",
