@@ -14,11 +14,14 @@ import {
   cancelSubscription as cancelSub,
   changeSubscriptionPlan as changePlanInPlace,
   getPlatformCustomerId,
+  keepCurrentPlan as keepPlan,
+  previewSubscriptionPlanChange,
   reactivateSubscription as reactivateSub,
   switchToPayAsYouGo as switchToPayg,
 } from '@/lib/stripe/subscriptions'
 import { revalidatePath } from 'next/cache'
 import type { Currency } from '@/lib/plans.shared'
+import type { PlanChangePreviewAnswer } from './util.plan-change-preview'
 import { env } from '@/env'
 
 const planChangeSchema = z.object({
@@ -90,8 +93,51 @@ export async function createCheckoutSession({
 }
 
 /**
+ * What the change dialog says before the owner confirms (previewSubscriptionPlanChange):
+ * the amount Stripe charges now, or the day the new plan starts. `checkout` when Stripe
+ * had ended the subscription: confirming then opens the plan's Checkout.
+ */
+export async function previewPlanChange(
+  input: z.infer<typeof planChangeSchema>,
+): Promise<PlanChangePreviewAnswer> {
+  const store = await getCurrentStore()
+  if (!store) {
+    return { error: 'not_authenticated' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
+
+  const parsed = planChangeSchema.safeParse(input)
+  if (!parsed.success) {
+    return { error: 'errors.invalidData' }
+  }
+
+  try {
+    const { planSlug, interval, currency } = parsed.data
+    const preview = await previewSubscriptionPlanChange(store.id, planSlug, interval, currency)
+    if (preview.kind === 'subscription_ended') {
+      revalidatePath('/dashboard/settings/subscription')
+      return { kind: 'checkout' }
+    }
+    return preview
+  } catch (error) {
+    if (error instanceof SubscriptionPlanError) {
+      return { error: 'errors.unsupportedOperation' }
+    }
+    log.error(
+      'billing',
+      `plan change preview of store ${store.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    return { error: 'errors.generic' }
+  }
+}
+
+/**
  * Moves the store's live plan subscription to another plan or interval, on the same
- * Stripe subscription, with the checkout's permission checks. When Stripe had ended that
+ * Stripe subscription, with the checkout's permission checks: at once, or at the end of
+ * the paid period for a change that would leave a credit. When Stripe had ended that
  * subscription, the store is back on pay-as-you-go and gets the plan's Checkout instead:
  * the page follows `url`.
  */
@@ -116,7 +162,7 @@ export async function changeSubscriptionPlan(
     const { planSlug, interval, currency } = parsed.data
     const outcome = await changePlanInPlace(store.id, planSlug, interval, currency)
     revalidatePath('/dashboard/settings/subscription')
-    if (outcome === 'subscription_ended') {
+    if (outcome.kind === 'subscription_ended') {
       return { url: (await openPlanCheckout(store, parsed.data)).url }
     }
     return { success: true }
@@ -127,6 +173,30 @@ export async function changeSubscriptionPlan(
     log.error(
       'billing',
       `plan change of store ${store.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    return { error: 'errors.generic' }
+  }
+}
+
+/** Keeps the store's plan: drops the plan change that waits for the end of the paid period. */
+export async function keepCurrentPlan(): Promise<{ success: true } | { error: string }> {
+  const store = await getCurrentStore()
+  if (!store) {
+    return { error: 'not_authenticated' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
+
+  try {
+    await keepPlan(store.id)
+    revalidatePath('/dashboard/settings/subscription')
+    return { success: true }
+  } catch (error) {
+    log.error(
+      'billing',
+      `keeping the plan of store ${store.id} failed: ${error instanceof Error ? error.message : String(error)}`,
     )
     return { error: 'errors.generic' }
   }

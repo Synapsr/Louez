@@ -20,7 +20,9 @@ import { DEFAULT_REFERRAL_PROGRAM_CONFIG } from "@/lib/referral/config";
 // customer only for a plan checkout. A legacy store, and every store without
 // BILLING_SERVICE_URL, is billed as before. Louez's plans, for every store (§8.7): one
 // live subscription per store, changed in place once Stripe has charged the difference,
-// its status and plan written by the platform webhook; one open plan Checkout per store,
+// its status and plan written by the platform webhook, and a change that would leave a
+// credit put off to the end of the paid period with a schedule, which every other update
+// releases first; one open plan Checkout per store,
 // and a second plan paid through another one never replaces the first; a row whose
 // subscription Stripe has ended goes back to pay-as-you-go instead of blocking a plan.
 // Each write that starts, changes or ends a plan asks for the early sync once
@@ -56,13 +58,28 @@ type FakeInvoice = { id: string; customer: string; status: string; collection_me
 /** A platform subscription with its one item, as Stripe returns it. */
 type FakeSubscription = {
   id: string;
+  customer: string;
   status: string;
   cancel_at_period_end: boolean;
   metadata: Record<string, string>;
+  discounts: string[];
+  /** The schedule attached to it, until released. */
+  schedule: string | null;
   items: {
     data: Array<{ id: string; current_period_end: number; price: { id: string; currency: string } }>;
   };
 };
+
+/** A subscription schedule, with its phases as Stripe returns them: prices by id. */
+type FakeSchedule = {
+  id: string;
+  subscription: string;
+  status: "active" | "released";
+  phases: Array<{ start_date: number; end_date: number | null; items: Array<{ price: string }> }>;
+};
+
+/** What Stripe's preview of a plan change answers. */
+type FakePreview = { total: number; amount_due: number; currency: string };
 
 /** A Checkout Session on the platform account. */
 type FakeCheckoutSession = {
@@ -86,6 +103,11 @@ function createFakeStripe() {
   const subscriptionUpdates: Array<{ id: string; params: unknown }> = [];
   /** The subscriptions whose update Stripe refuses, with the error it answers. */
   const refusals = new Map<string, Stripe.errors.StripeError>();
+  const schedules = new Map<string, FakeSchedule>();
+  /** The params of each schedule update, in order. */
+  const scheduleUpdates: Array<{ id: string; params: unknown }> = [];
+  /** Stripe's preview of a change, by `<subscription> <price>`; an upgrade's by default. */
+  const previews = new Map<string, FakePreview>();
   const invoice = (id: string) => {
     const found = invoices.get(id);
     if (!found) throw new Error(`No such invoice: ${id}`);
@@ -96,6 +118,16 @@ function createFakeStripe() {
     calls.push(name);
     if (failing.has(name)) throw new Error(`Stripe is down for ${name}`);
   };
+  /** A call written with its ids, which fails when `failing` holds its name alone. */
+  const callOn = (name: string, ids: string) => {
+    calls.push(`${name} ${ids}`);
+    if (failing.has(name)) throw new Error(`Stripe is down for ${name}`);
+  };
+  const subscription = (id: string) => {
+    const found = subscriptions.get(id);
+    if (!found) throw new Error(`No such subscription: ${id}`);
+    return found;
+  };
   return {
     calls,
     failing,
@@ -104,6 +136,9 @@ function createFakeStripe() {
     checkoutSessions,
     subscriptionUpdates,
     refusals,
+    schedules,
+    scheduleUpdates,
+    previews,
     /** Leaves a Checkout Session open on the platform account. */
     addCheckoutSession(session: Omit<FakeCheckoutSession, "status">) {
       checkoutSessions.set(session.id, { ...session, status: "open" });
@@ -119,9 +154,12 @@ function createFakeStripe() {
     addSubscription(id: string, priceId: string, values: Partial<FakeSubscription> = {}) {
       subscriptions.set(id, {
         id,
+        customer: `cus_${id.replace(/^sub_/, "")}`,
         status: "active",
         cancel_at_period_end: false,
         metadata: { planSlug: "pro" },
+        discounts: [],
+        schedule: null,
         items: {
           data: [
             {
@@ -142,6 +180,29 @@ function createFakeStripe() {
       failing.clear();
       subscriptionUpdates.length = 0;
       refusals.clear();
+      schedules.clear();
+      scheduleUpdates.length = 0;
+      previews.clear();
+    },
+    /** Attaches a schedule whose next phase bills `nextPrice` from the period's end. */
+    attachSchedule(subscriptionId: string, nextPrice: string) {
+      const id = `sub_sched_${subscriptionId}`;
+      const current = subscription(subscriptionId);
+      current.schedule = id;
+      schedules.set(id, {
+        id,
+        subscription: subscriptionId,
+        status: "active",
+        phases: [
+          {
+            start_date: PERIOD_START,
+            end_date: PERIOD_END,
+            items: [{ price: current.items.data[0].price.id }],
+          },
+          { start_date: PERIOD_END, end_date: null, items: [{ price: nextPrice }] },
+        ],
+      });
+      return id;
     },
     subscriptions: {
       async retrieve(id: string) {
@@ -164,7 +225,64 @@ function createFakeStripe() {
         // subscription stays as it was.
         const refusal = refusals.get(id);
         if (refusal) throw refusal;
+        // A schedule manages the cancellation (tested 2026-10-29); a new price would apply
+        // at once, with a credit, so the tests refuse it too.
+        const held = subscriptions.get(id);
+        if (held?.schedule && Reflect.has(Object(params), "cancel_at_period_end")) {
+          throw new Stripe.errors.StripeInvalidRequestError({
+            type: "invalid_request_error",
+            statusCode: 400,
+            message: `The subscription is managed by the subscription schedule \`${held.schedule}\``,
+          });
+        }
+        if (held?.schedule) throw new Error(`subscription ${id} changed under schedule ${held.schedule}`);
         return { id };
+      },
+    },
+    subscriptionSchedules: {
+      async create(params: { from_subscription: string }) {
+        callOn("subscriptionSchedules.create", params.from_subscription);
+        const current = subscription(params.from_subscription);
+        if (current.schedule) {
+          throw new Error(`subscription already attached to schedule ${current.schedule}`);
+        }
+        const id = `sub_sched_${current.id}`;
+        current.schedule = id;
+        const created: FakeSchedule = {
+          id,
+          subscription: current.id,
+          status: "active",
+          phases: [
+            {
+              start_date: PERIOD_START,
+              end_date: PERIOD_END,
+              items: [{ price: current.items.data[0].price.id }],
+            },
+          ],
+        };
+        schedules.set(id, created);
+        return structuredClone(created);
+      },
+      async update(id: string, params: unknown) {
+        callOn("subscriptionSchedules.update", id);
+        scheduleUpdates.push({ id, params });
+        const found = schedules.get(id);
+        if (!found) throw new Error(`No such schedule: ${id}`);
+        return structuredClone(found);
+      },
+      async release(id: string) {
+        callOn("subscriptionSchedules.release", id);
+        const found = schedules.get(id);
+        if (found?.status !== "active") throw new Error(`schedule ${id} is not active`);
+        found.status = "released";
+        subscription(found.subscription).schedule = null;
+        return structuredClone(found);
+      },
+      async retrieve(id: string) {
+        callOn("subscriptionSchedules.retrieve", id);
+        const found = schedules.get(id);
+        if (!found) throw new Error(`No such schedule: ${id}`);
+        return structuredClone(found);
       },
     },
     checkout: {
@@ -215,6 +333,20 @@ function createFakeStripe() {
       },
     },
     invoices: {
+      async createPreview(params: {
+        subscription: string;
+        subscription_details: { items: Array<{ price: string }> };
+      }) {
+        const price = params.subscription_details.items[0].price;
+        callOn("invoices.createPreview", `${params.subscription} ${price}`);
+        return (
+          previews.get(`${params.subscription} ${price}`) ?? {
+            total: 4900,
+            amount_due: 4900,
+            currency: "eur",
+          }
+        );
+      },
       async create(params: unknown) {
         const created: FakeInvoice = {
           id: `in_${invoices.size + 1}`,
@@ -385,7 +517,8 @@ const AUGUST = new Date("2026-08-15T10:00:00Z");
 const SEPTEMBER = new Date("2026-09-15T10:00:00Z");
 const JUNE = new Date("2026-06-01T00:00:00Z");
 const PAYMENT_METHOD_LINK = "/dashboard/billing?to=/payment-method";
-/** The end of a plan's current period, in Stripe's seconds. */
+/** The start and the end of a plan's current period, in Stripe's seconds. */
+const PERIOD_START = Date.parse("2026-10-28T10:00:00Z") / 1000;
 const PERIOD_END = Date.parse("2026-11-28T10:00:00Z") / 1000;
 /** A Pro row, its Stripe ids aside. */
 const PLAN_ROW = { billingMode: "subscription", planSlug: "pro", status: "active" } as const;
@@ -1535,8 +1668,10 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
         { success: true },
         storeId,
       );
+      // Stripe previews the change first: an upgrade costs something, so it applies now.
       assert.deepEqual(fakeStripe.calls, [
         `subscriptions.retrieve sub_${storeId}`,
+        `invoices.createPreview sub_${storeId} ${PRICE.ultraMonthly}`,
         `subscriptions.update sub_${storeId}`,
       ]);
       assert.deepEqual(fakeStripe.subscriptionUpdates, [
@@ -1719,6 +1854,308 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
       columns: { planSlug: true },
     });
     assert.equal(row?.planSlug, "pro");
+  });
+
+  test("a plan change that costs something, or nothing, applies at once; one that would leave a credit starts at the end of the paid period", async () => {
+    for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
+      const subscription = `sub_${storeId}`;
+      currentStore.id = storeId;
+
+      // Nothing to pay, as during a trial: at once, as an upgrade.
+      fakeStripe.reset();
+      planSyncs.length = 0;
+      await setPlanRow(storeId, { status: "active", planSlug: "ultra", cancelAtPeriodEnd: false });
+      fakeStripe.addSubscription(subscription, PRICE.ultraMonthly);
+      fakeStripe.previews.set(`${subscription} ${PRICE.proMonthly}`, {
+        total: 0,
+        amount_due: 0,
+        currency: "eur",
+      });
+      assert.deepEqual(await customers.changeSubscriptionPlan(storeId, "pro", "monthly", "eur"), {
+        kind: "in_place",
+      });
+      assert.deepEqual(fakeStripe.calls, [
+        `subscriptions.retrieve ${subscription}`,
+        `invoices.createPreview ${subscription} ${PRICE.proMonthly}`,
+        `subscriptions.update ${subscription}`,
+      ]);
+      assert.equal((await planColumns(storeId))?.planSlug, "pro", storeId);
+      assert.deepEqual(planSyncs, [storeId]);
+
+      // A credit, Ultra monthly to Pro monthly: a schedule, and the store keeps Ultra. The
+      // cancellation the owner had scheduled is lifted first, before any schedule exists.
+      for (const cancelAtPeriodEnd of [false, true]) {
+        const label = `${storeId} cancelAtPeriodEnd=${cancelAtPeriodEnd}`;
+        fakeStripe.reset();
+        planSyncs.length = 0;
+        await setPlanRow(storeId, { status: "active", planSlug: "ultra", cancelAtPeriodEnd });
+        fakeStripe.addSubscription(subscription, PRICE.ultraMonthly, {
+          cancel_at_period_end: cancelAtPeriodEnd,
+          discounts: ["di_store_coupon"],
+          metadata: { planSlug: "ultra", pendingBillingMode: "pay_as_you_go" },
+        });
+        fakeStripe.previews.set(`${subscription} ${PRICE.proMonthly}`, {
+          total: -11000,
+          amount_due: 0,
+          currency: "eur",
+        });
+        await clearMarks(storeId);
+
+        assert.deepEqual(
+          await customers.changeSubscriptionPlan(storeId, "pro", "monthly", "eur"),
+          { kind: "scheduled", planSlug: "pro", at: new Date(PERIOD_END * 1000) },
+          label,
+        );
+        assert.deepEqual(
+          fakeStripe.calls,
+          [
+            `subscriptions.retrieve ${subscription}`,
+            `invoices.createPreview ${subscription} ${PRICE.proMonthly}`,
+            ...(cancelAtPeriodEnd ? [`subscriptions.update ${subscription}`] : []),
+            `subscriptionSchedules.create ${subscription}`,
+            `subscriptionSchedules.update sub_sched_${subscription}`,
+          ],
+          label,
+        );
+        assert.deepEqual(
+          fakeStripe.subscriptionUpdates,
+          cancelAtPeriodEnd
+            ? [
+                {
+                  id: subscription,
+                  params: { cancel_at_period_end: false, metadata: { pendingBillingMode: "" } },
+                },
+              ]
+            : [],
+          label,
+        );
+        // The phases name the subscription's discount, or Stripe drops its coupon.
+        assert.deepEqual(
+          fakeStripe.scheduleUpdates,
+          [
+            {
+              id: `sub_sched_${subscription}`,
+              params: {
+                end_behavior: "release",
+                proration_behavior: "none",
+                phases: [
+                  {
+                    items: [{ price: PRICE.ultraMonthly, quantity: 1 }],
+                    start_date: PERIOD_START,
+                    end_date: PERIOD_END,
+                    discounts: [{ discount: "di_store_coupon" }],
+                  },
+                  {
+                    items: [{ price: PRICE.proMonthly, quantity: 1 }],
+                    duration: { interval: "month", interval_count: 1 },
+                    discounts: [{ discount: "di_store_coupon" }],
+                    metadata: { planSlug: "pro" },
+                  },
+                ],
+              },
+            },
+          ],
+          label,
+        );
+        const row = await louezDb.db.query.subscriptions.findFirst({
+          where: eq(louezDb.subscriptions.storeId, storeId),
+          columns: { planSlug: true, cancelAtPeriodEnd: true },
+        });
+        assert.deepEqual(row, { planSlug: "ultra", cancelAtPeriodEnd: false }, label);
+        assert.deepEqual(await marksOf(storeId), cancelAtPeriodEnd ? ["legacy_store", "store"] : [], label);
+        assert.deepEqual(planSyncs, [], label);
+      }
+
+      // At the period end Stripe bills the new price: the webhook writes it, and the plan
+      // in force changes then.
+      fakeStripe.addSubscription(subscription, PRICE.proMonthly);
+      await webhooks.handleSubscriptionUpdated(subscriptionEvent(subscription, "active"));
+      assert.equal((await planColumns(storeId))?.planSlug, "pro", storeId);
+      assert.deepEqual(planSyncs, [storeId]);
+    }
+
+    // A yearly plan's next phase lasts a year.
+    fakeStripe.reset();
+    currentStore.id = "lg_plan_new";
+    fakeStripe.addSubscription("sub_lg_plan_new", PRICE.ultraYearly);
+    fakeStripe.previews.set(`sub_lg_plan_new ${PRICE.proYearly}`, {
+      total: -40000,
+      amount_due: 0,
+      currency: "eur",
+    });
+    assert.deepEqual(
+      await subscriptionActions.changeSubscriptionPlan({
+        planSlug: "pro",
+        interval: "yearly",
+        currency: "eur",
+      }),
+      { success: true },
+    );
+    const phases: unknown = Reflect.get(Object(fakeStripe.scheduleUpdates[0]?.params), "phases");
+    assert.deepEqual(Reflect.get(Object(Array.isArray(phases) ? phases[1] : null), "duration"), {
+      interval: "year",
+      interval_count: 1,
+    });
+    await setPlanRow("lg_plan_new", { planSlug: "pro" });
+  });
+
+  test("a pending plan change is released before any other update of the subscription, and the price the store pays keeps it", async () => {
+    const storeId = "lg_plan_new";
+    const subscription = "sub_lg_plan_new";
+    const schedule = `sub_sched_${subscription}`;
+    currentStore.id = storeId;
+    /** Ultra monthly, with Pro monthly waiting for the end of the paid period. */
+    const pending = async () => {
+      fakeStripe.reset();
+      await setPlanRow(storeId, { status: "active", planSlug: "ultra", cancelAtPeriodEnd: false });
+      fakeStripe.addSubscription(subscription, PRICE.ultraMonthly);
+      fakeStripe.attachSchedule(subscription, PRICE.proMonthly);
+    };
+    const released = (...after: string[]) => [
+      `subscriptions.retrieve ${subscription}`,
+      `subscriptionSchedules.release ${schedule}`,
+      ...after,
+    ];
+
+    // A cancellation, which Stripe refuses while the schedule is attached.
+    await pending();
+    assert.deepEqual(await subscriptionActions.cancelSubscription(), { success: true });
+    assert.deepEqual(fakeStripe.calls, released(`subscriptions.update ${subscription}`));
+    assert.deepEqual(fakeStripe.subscriptionUpdates, [
+      { id: subscription, params: { cancel_at_period_end: true } },
+    ]);
+
+    // The switch to pay-as-you-go at the period end.
+    await pending();
+    const switched = await subscriptionActions.switchToPayAsYouGo();
+    assert.equal(Reflect.get(switched, "mode"), "deferred");
+    assert.deepEqual(fakeStripe.calls, released(`subscriptions.update ${subscription}`));
+
+    // Lifting a cancellation also works with nothing attached.
+    await pending();
+    assert.deepEqual(await subscriptionActions.reactivateSubscription(), { success: true });
+    assert.deepEqual(fakeStripe.calls, released(`subscriptions.update ${subscription}`));
+    fakeStripe.calls.length = 0;
+    assert.deepEqual(await subscriptionActions.reactivateSubscription(), { success: true });
+    assert.deepEqual(fakeStripe.calls, [
+      `subscriptions.retrieve ${subscription}`,
+      `subscriptions.update ${subscription}`,
+    ]);
+
+    // Another change that costs something: previewed while the schedule holds, then
+    // applied once it is released.
+    await pending();
+    assert.deepEqual(await customers.changeSubscriptionPlan(storeId, "ultra", "yearly", "eur"), {
+      kind: "in_place",
+    });
+    assert.deepEqual(fakeStripe.calls, [
+      `subscriptions.retrieve ${subscription}`,
+      `invoices.createPreview ${subscription} ${PRICE.ultraYearly}`,
+      `subscriptionSchedules.release ${schedule}`,
+      `subscriptions.update ${subscription}`,
+    ]);
+
+    // Another change that would leave a credit replaces the pending one.
+    await pending();
+    fakeStripe.previews.set(`${subscription} ${PRICE.proYearly}`, {
+      total: -1000,
+      amount_due: 0,
+      currency: "eur",
+    });
+    assert.equal(
+      (await customers.changeSubscriptionPlan(storeId, "pro", "yearly", "eur")).kind,
+      "scheduled",
+    );
+    assert.deepEqual(fakeStripe.calls, [
+      `subscriptions.retrieve ${subscription}`,
+      `invoices.createPreview ${subscription} ${PRICE.proYearly}`,
+      `subscriptionSchedules.release ${schedule}`,
+      `subscriptionSchedules.create ${subscription}`,
+      `subscriptionSchedules.update ${schedule}`,
+    ]);
+
+    // A preview Stripe cannot answer keeps the pending change.
+    await pending();
+    fakeStripe.failing.add("invoices.createPreview");
+    assert.deepEqual(
+      await subscriptionActions.changeSubscriptionPlan({
+        planSlug: "ultra",
+        interval: "yearly",
+        currency: "eur",
+      }),
+      { error: "errors.generic" },
+    );
+    assert.equal(fakeStripe.schedules.get(schedule)?.status, "active");
+
+    // The price the store pays: the pending change is dropped, nothing else changes.
+    await pending();
+    assert.deepEqual(await customers.changeSubscriptionPlan(storeId, "ultra", "monthly", "eur"), {
+      kind: "kept",
+    });
+    assert.deepEqual(fakeStripe.calls, released());
+    assert.deepEqual(fakeStripe.subscriptionUpdates, []);
+
+    // The page's button to keep the plan.
+    await pending();
+    assert.deepEqual(await subscriptionActions.keepCurrentPlan(), { success: true });
+    assert.deepEqual(fakeStripe.calls, released());
+    assert.equal((await planColumns(storeId))?.planSlug, "ultra");
+    await setPlanRow(storeId, { planSlug: "pro", cancelAtPeriodEnd: false });
+  });
+
+  test("the change dialog's preview says what Stripe charges now, or the day the new plan starts, and changes nothing", async () => {
+    const subscription = "sub_lg_plan_old";
+    currentStore.id = "lg_plan_old";
+    await setPlanRow("lg_plan_old", { status: "active", planSlug: "pro", cancelAtPeriodEnd: false });
+    const preview = () =>
+      subscriptionActions.previewPlanChange({ planSlug: "ultra", interval: "monthly", currency: "eur" });
+
+    fakeStripe.reset();
+    fakeStripe.addSubscription(subscription, PRICE.proMonthly);
+    fakeStripe.previews.set(`${subscription} ${PRICE.ultraMonthly}`, {
+      total: 11000,
+      amount_due: 11000,
+      currency: "eur",
+    });
+    assert.deepEqual(await preview(), { kind: "now", amountDue: 11000, currency: "eur" });
+
+    fakeStripe.previews.set(`${subscription} ${PRICE.ultraMonthly}`, {
+      total: -11000,
+      amount_due: 0,
+      currency: "eur",
+    });
+    assert.deepEqual(await preview(), {
+      kind: "at_period_end",
+      at: new Date(PERIOD_END * 1000),
+    });
+
+    // With a change pending, the preview leaves its schedule alone.
+    fakeStripe.attachSchedule(subscription, PRICE.proYearly);
+    fakeStripe.failing.add("invoices.createPreview");
+    assert.deepEqual(await preview(), { error: "errors.generic" });
+    assert.deepEqual(fakeStripe.subscriptionUpdates, []);
+    assert.deepEqual(fakeStripe.scheduleUpdates, []);
+    assert.ok(!fakeStripe.calls.some((name) => name.startsWith("subscriptionSchedules.")));
+  });
+
+  test("the plan page reads the pending plan change from the subscription's schedule, and only hides it when Stripe cannot say", async () => {
+    const subscription = "sub_lg_plan_new";
+    fakeStripe.reset();
+    await setPlanRow("lg_plan_new", { status: "active", planSlug: "pro", cancelAtPeriodEnd: false });
+    fakeStripe.addSubscription(subscription, PRICE.proMonthly);
+    const read = async () => {
+      const page = await customers.getSubscriptionWithPlan("lg_plan_new");
+      return { pendingPlanChange: page?.pendingPlanChange, currency: page?.billingCurrency };
+    };
+
+    assert.deepEqual(await read(), { pendingPlanChange: null, currency: "eur" });
+    fakeStripe.attachSchedule(subscription, PRICE.ultraYearly);
+    assert.deepEqual(await read(), {
+      pendingPlanChange: { planSlug: "ultra", interval: "yearly", at: new Date(PERIOD_END * 1000) },
+      currency: "eur",
+    });
+    fakeStripe.failing.add("subscriptionSchedules.retrieve");
+    assert.deepEqual(await read(), { pendingPlanChange: null, currency: "eur" });
   });
 
   test("an update writes the plan its price bills, for an old and a new store", async () => {

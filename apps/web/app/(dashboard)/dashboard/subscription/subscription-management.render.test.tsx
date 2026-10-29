@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { after, before, describe, test } from "node:test";
 import { pathToFileURL } from "node:url";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
 import React, { type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -21,8 +22,10 @@ import messages from "@/messages/fr.json";
 // the billing service bills sees the service's words for pay-as-you-go, never Louez's
 // pricing, and a link to its billing settings. An old store sees what it saw before,
 // except that pay-as-you-go is its current plan when it is on it. The plan change dialog
-// says when the difference is charged, which a change of interval alters, and why the
-// last confirmation failed. The server actions and the router are stubs; the label is a
+// says what Stripe's preview answers, the amount charged now or the day the new plan
+// starts, while it loads and when it fails, and why the last confirmation failed. A plan
+// change waiting for the end of the paid period shows on the page, with the button to
+// keep the current plan. The server actions and the router are stubs; the label is a
 // fake one.
 
 // tsx loads the shared UI package through CommonJS with the classic JSX runtime.
@@ -40,6 +43,8 @@ const actionsUrl = stub(
   [
     "createCheckoutSession",
     "changeSubscriptionPlan",
+    "previewPlanChange",
+    "keepCurrentPlan",
     "cancelSubscription",
     "openCustomerPortal",
     "reactivateSubscription",
@@ -63,6 +68,9 @@ Reflect.get(
   ) {
     const fromThisFolder = String(context.parentURL).includes("/dashboard/subscription/");
     if (fromThisFolder && specifier === "./actions") return { url: actionsUrl, shortCircuit: true };
+    // The plan change preview's query factory imports the actions by their path.
+    if (specifier === "@/app/(dashboard)/dashboard/subscription/actions")
+      return { url: actionsUrl, shortCircuit: true };
     if (fromThisFolder && specifier === "next/navigation")
       return { url: navigationUrl, shortCircuit: true };
     return next(specifier, context);
@@ -70,8 +78,7 @@ Reflect.get(
 });
 
 const OFFER_LABEL = "Offre de test";
-const PRORATION_NOTE =
-  "La différence est prélevée dès maintenant, au prorata de la période en cours. Pour un plan moins cher, elle est déduite de vos prochaines factures.";
+const PERIOD_END = new Date("2026-11-28T10:00:00Z");
 const features: Plan["features"] = {
   maxProducts: 50,
   maxReservationsPerMonth: 100,
@@ -158,7 +165,7 @@ describe("plan page views", () => {
         })}
       >
         <NextIntlClientProvider locale="fr" timeZone="Europe/Paris" messages={messages}>
-          {node}
+          <QueryClientProvider client={new QueryClient()}>{node}</QueryClientProvider>
         </NextIntlClientProvider>
       </PublicEnvProvider>,
     )
@@ -252,69 +259,108 @@ describe("plan page views", () => {
     assert.deepEqual(planButtons(html), ["Plan actuel:disabled", "Choisir ce plan:enabled"]);
   });
 
-  test("the plan change dialog says the difference is charged now, under the plans", () => {
-    const html = render(
+  /** The plan change dialog's body, Pro to Ultra monthly, with what the preview answered. */
+  const summary = (
+    preview: import("./util.plan-change-preview").PlanChangePreviewView,
+    error?: string,
+  ) =>
+    render(
       <views.planChange.PlanChangeSummary
         currentPlanName="Pro"
-        currentInterval="monthly"
         newPlanName="Ultra"
         newPlanPrice="10€"
         interval="monthly"
+        preview={preview}
+        error={error}
       />,
     );
-    assert.ok(html.includes("10€ HT / mois"));
-    assert.ok(html.includes(PRORATION_NOTE));
-    assert.ok(html.indexOf(PRORATION_NOTE) > html.indexOf("10€ HT / mois"));
-    assert.ok(!html.includes('role="alert"'));
+  const NOTES = [
+    "Calcul du montant à payer…",
+    "Montant prélevé aujourd’hui",
+    "Rien à payer aujourd’hui",
+  ];
+
+  test("the plan change dialog says what Stripe charges now, under the plans", () => {
+    const now = summary({ status: "now", amountDue: 13200, currency: "eur" });
+    const note =
+      "Montant prélevé aujourd’hui : 132,00 €. Votre nouveau plan commence tout de suite.";
+    assert.ok(now.includes("10€ HT / mois"));
+    assert.ok(now.includes(note), now);
+    assert.ok(now.indexOf(note) > now.indexOf("10€ HT / mois"));
+    assert.ok(!now.includes('role="alert"'));
+
+    // Nothing to pay, as during a trial.
+    const free = summary({ status: "now", amountDue: 0, currency: "eur" });
+    assert.ok(
+      free.includes("Rien à payer aujourd’hui. Votre nouveau plan commence tout de suite."),
+    );
+    assert.ok(!free.includes("Montant prélevé"));
   });
 
-  test("a change of interval says the new period starts today, not that it is prorated", () => {
-    const change = (currentInterval: "monthly" | "yearly", interval: "monthly" | "yearly") =>
-      render(
-        <views.planChange.PlanChangeSummary
-          currentPlanName="Ultra"
-          currentInterval={currentInterval}
-          newPlanName="Pro"
-          newPlanPrice="10€"
-          interval={interval}
-        />,
-      );
-    const toYearly = change("monthly", "yearly");
+  test("a change that would leave a credit says the day it starts, and that the plan stays until then", () => {
+    const html = summary({ status: "at_period_end", at: PERIOD_END });
     assert.ok(
-      toYearly.includes(
-        "La facturation annuelle commence aujourd’hui : l’année est prélevée dès maintenant, moins la part non utilisée de la période en cours. Votre plan se renouvellera ensuite dans un an.",
+      html.includes(
+        "Rien à payer aujourd’hui. Votre nouveau plan commence le 28 novembre 2026. D’ici là, vous gardez votre plan actuel.",
       ),
+      html,
     );
-    assert.ok(!toYearly.includes(PRORATION_NOTE));
-    const toMonthly = change("yearly", "monthly");
-    assert.ok(toMonthly.includes("La facturation mensuelle commence aujourd’hui"));
-    assert.ok(!toMonthly.includes(PRORATION_NOTE));
-    // Yearly to yearly is a plan change.
-    assert.ok(change("yearly", "yearly").includes(PRORATION_NOTE));
+    assert.ok(!html.includes("tout de suite"));
+  });
+
+  test("while Stripe previews the change, the dialog says so; a failed preview shows its error and no note", () => {
+    const loading = summary({ status: "loading" });
+    assert.ok(loading.includes("Calcul du montant à payer…"));
+    assert.ok(loading.includes('role="status"'));
+    assert.ok(!loading.includes("Rien à payer") && !loading.includes("Montant prélevé"));
+
+    const failed = summary({ status: "error", error: "errors.generic" }, messages.errors.generic);
+    assert.ok(failed.includes(messages.errors.generic));
+    for (const note of NOTES) assert.ok(!failed.includes(note), note);
+    // A checkout answer, for a subscription Stripe had ended, shows no note either.
+    const checkout = summary({ status: "checkout" });
+    for (const note of NOTES) assert.ok(!checkout.includes(note), note);
   });
 
   test("a refused plan change shows its reason in the dialog, under the note", () => {
     const reason = messages.errors.planPaymentFailed;
-    const html = render(
-      <views.planChange.PlanChangeSummary
-        currentPlanName="Pro"
-        currentInterval={null}
-        newPlanName="Ultra"
-        newPlanPrice="10€"
-        interval="monthly"
-        error={reason}
-      />,
-    );
+    const html = summary({ status: "now", amountDue: 13200, currency: "eur" }, reason);
     assert.ok(html.includes(reason));
-    assert.ok(html.indexOf(reason) > html.indexOf(PRORATION_NOTE));
+    assert.ok(html.indexOf(reason) > html.indexOf("Montant prélevé aujourd’hui"));
 
     // The dialog opens only after a click, which a static render cannot make: the page's
-    // source is checked instead, so that its dialog keeps this body and the reason.
+    // source is checked instead, so that its dialog keeps this body, the preview, the
+    // reason, and a confirmation that waits for the preview.
     const page = readFileSync(new URL("./subscription-management.tsx", import.meta.url), "utf8");
     const opens = page.indexOf("open={pendingChange !== null}");
     assert.ok(opens > 0);
     const dialog = page.slice(opens, page.indexOf("</Dialog>", opens));
-    assert.match(dialog, /<PlanChangeSummary\b[\s\S]*?\berror=\{changeError && errorText\(changeError\)\}[\s\S]*?\/>/);
+    assert.match(dialog, /<PlanChangeSummary\b[\s\S]*?\bpreview=\{changePreview\}[\s\S]*?\/>/);
+    assert.match(
+      dialog,
+      /error=\{\s*changePreview\.status === 'error'\s*\? errorText\(changePreview\.error\)\s*: changeError && errorText\(changeError\)\s*\}/,
+    );
+    assert.match(dialog, /disabled=\{loading !== null \|\| !canConfirmPlanChange\(changePreview\)\}/);
+    assert.match(
+      page,
+      /useQuery\(\s*subscriptionQueries\.planChangePreview\(\s*pendingChange && \{/,
+    );
+  });
+
+  test("a plan change waiting for the end of the paid period shows on the page, with the button to keep the plan", () => {
+    const pending = grid({
+      subscription: {
+        ...PRO_SUBSCRIPTION,
+        pendingPlanChange: { planSlug: "ultra", interval: "yearly", at: PERIOD_END },
+      },
+      hasLiveSubscription: true,
+    });
+    assert.ok(pending.includes("Pro jusqu’au 28 novembre 2026, puis Ultra annuel."), pending);
+    assert.match(pending, /<button[^>]*><span[^>]*>Garder Pro<\/span><\/button>/);
+
+    const none = grid({ subscription: { ...PRO_SUBSCRIPTION, pendingPlanChange: null }, hasLiveSubscription: true });
+    assert.ok(!none.includes("puis Ultra"));
+    assert.ok(!none.includes("Garder Pro"));
   });
 
   test("the pay-as-you-go preview names the service's offer instead of Louez's ladder", () => {

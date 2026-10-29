@@ -4,6 +4,8 @@ import { CheckSolidIcon, SparklesSolidIcon } from '@louez/ui/icons'
 
 import { useEffect, useState } from 'react'
 
+import { useQuery } from '@tanstack/react-query'
+
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -70,12 +72,15 @@ import {
   cancelSubscription,
   changeSubscriptionPlan,
   createCheckoutSession,
+  keepCurrentPlan,
   openCustomerPortal,
   reactivateSubscription,
 } from './actions';
 import { PlanChangeSummary } from './plan-change-summary';
 import { planButtonAction } from './util.plan-button';
+import { canConfirmPlanChange, planChangePreviewView } from './util.plan-change-preview';
 import { useFormatLocale } from '@/hooks/use-format-locale';
+import { subscriptionQueries } from '@/lib/queries/subscription.queries';
 
 interface Subscription {
   id: string;
@@ -88,6 +93,15 @@ interface Subscription {
   plan: Plan | undefined;
   billingInterval: 'monthly' | 'yearly' | null;
   billingCurrency: Currency | null;
+  /**
+   * The plan change that starts at the end of the paid period, read from Stripe's
+   * schedule (getSubscriptionWithPlan); null without one, or when Stripe could not be read.
+   */
+  pendingPlanChange?: {
+    planSlug: string;
+    interval: 'monthly' | 'yearly';
+    at: Date;
+  } | null;
 }
 
 interface UsageStats {
@@ -184,6 +198,17 @@ export function SubscriptionManagement({
   // Why the plan change failed, shown in its dialog, where the owner is looking.
   const [changeError, setChangeError] = useState<string | null>(null);
   const router = useRouter();
+  // Stripe's preview of the change, read as its dialog opens.
+  const previewQuery = useQuery(
+    subscriptionQueries.planChangePreview(
+      pendingChange && {
+        planSlug: pendingChange.plan.slug,
+        interval: pendingChange.interval,
+        currency: pendingChange.currency,
+      },
+    ),
+  );
+  const changePreview = planChangePreviewView(previewQuery);
   const t = useTranslations('dashboard.settings.subscription');
   const { dateFns: dateLocale } = useFormatLocale();
   const tCommon = useTranslations('common');
@@ -292,6 +317,23 @@ export function SubscriptionManagement({
     } catch (err) {
       setShowCancelModal(false);
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleKeepCurrentPlan = async () => {
+    setLoading('keep');
+    setError(null);
+    try {
+      const result = await keepCurrentPlan();
+      if ('error' in result) {
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
+    } catch {
+      setError('errors.generic');
     } finally {
       setLoading(null);
     }
@@ -430,6 +472,11 @@ export function SubscriptionManagement({
   const showsOfferLabel = offerLabel !== undefined && currentPlan?.price === 0;
   const hasPaidSubscription =
     subscription?.stripeSubscriptionId && currentPlan?.price !== 0;
+  const pendingPlanChange = subscription?.pendingPlanChange ?? null;
+  const pendingPlanName = pendingPlanChange
+    ? (plans.find((p) => p.slug === pendingPlanChange.planSlug)?.name ??
+      pendingPlanChange.planSlug)
+    : null;
 
   return (
     <div className="space-y-8">
@@ -495,6 +542,32 @@ export function SubscriptionManagement({
               {pendingBillingMode === 'pay_as_you_go'
                 ? t('payAsYouGo.cancelSwitch')
                 : t('reactivate')}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* A plan change that would have left a credit starts at the end of the paid
+          period; until then the store keeps its plan, and may keep it for good. */}
+      {pendingPlanChange && pendingPlanName && (
+        <Alert variant="info">
+          <CalendarDays className="h-4 w-4" />
+          <AlertDescription>
+            {t('pendingPlanChange', {
+              currentPlan: currentPlan?.name ?? '',
+              date: format(pendingPlanChange.at, 'dd MMMM yyyy', {
+                locale: dateLocale,
+              }),
+              newPlan: pendingPlanName,
+              interval: pendingPlanChange.interval,
+            })}
+            <Button
+              variant="link"
+              className="ml-2 h-auto p-0"
+              onClick={handleKeepCurrentPlan}
+              disabled={loading !== null}
+            >
+              {t('keepCurrentPlan', { plan: currentPlan?.name ?? '' })}
             </Button>
           </AlertDescription>
         </Alert>
@@ -1034,7 +1107,7 @@ export function SubscriptionManagement({
       </div>
 
       {/* Plan change on the live subscription: confirmed first, with the plan's price and
-          when the difference is billed. */}
+          what Stripe says the change does, once it has said it. */}
       <Dialog
         open={pendingChange !== null}
         onOpenChange={(open) => {
@@ -1049,18 +1122,22 @@ export function SubscriptionManagement({
             {pendingChange && (
               <PlanChangeSummary
                 currentPlanName={currentPlan?.name}
-                currentInterval={subscription?.billingInterval ?? null}
                 newPlanName={pendingChange.plan.name}
                 newPlanPrice={formatPrice(pendingChange.price, pendingChange.currency)}
                 interval={pendingChange.interval}
-                error={changeError && errorText(changeError)}
+                preview={changePreview}
+                error={
+                  changePreview.status === 'error'
+                    ? errorText(changePreview.error)
+                    : changeError && errorText(changeError)
+                }
               />
             )}
           </DialogPanel>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button
               onClick={handleChangePlan}
-              disabled={loading !== null}
+              disabled={loading !== null || !canConfirmPlanChange(changePreview)}
               className="w-full"
             >
               {loading !== null ? t('processing') : tCommon('confirm')}
