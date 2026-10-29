@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { after } from "next/server";
+import { after, connection } from "next/server";
 
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -61,6 +61,9 @@ type SettingsSubscriptionPageProps = {
  * pay-as-you-go and a link to its billing settings.
  */
 const SettingsSubscriptionPage = async ({ searchParams }: SettingsSubscriptionPageProps) => {
+  // Read LOUEZ_BILLING at request time: before a dynamic API, Cache Components
+  // would run this check during the build, which has no LOUEZ_BILLING, and serve a 404.
+  await connection();
   requirePlatformBilling();
   const store = await getCurrentStore();
 

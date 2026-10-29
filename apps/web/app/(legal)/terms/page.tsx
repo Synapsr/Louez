@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 
@@ -18,7 +19,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** Louez Cloud's terms of service: an instance that does not bill its stores has none. */
-export default function TermsPage() {
+export default async function TermsPage() {
+  // Read LOUEZ_BILLING at request time: before a dynamic API, Cache Components
+  // would run this check during the build, which has no LOUEZ_BILLING, and serve a 404.
+  await connection();
   requirePlatformBilling();
   return <LegalPage namespace="legalPages.terms" sectionCount={9} />;
 }

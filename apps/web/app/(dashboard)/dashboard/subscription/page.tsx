@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { MessageSquare } from 'lucide-react'
-import { after } from 'next/server'
+import { after, connection } from 'next/server'
 
 import { legacyBillingApplies } from '@/lib/billing/policy'
 import { requirePlatformBilling } from '@/lib/billing/require-billing'
@@ -38,6 +38,9 @@ export default async function SubscriptionPage({
     topup?: string
   }>
 }) {
+  // Read LOUEZ_BILLING at request time: before a dynamic API, Cache Components
+  // would run this check during the build, which has no LOUEZ_BILLING, and serve a 404.
+  await connection()
   requirePlatformBilling()
   const store = await getCurrentStore()
 

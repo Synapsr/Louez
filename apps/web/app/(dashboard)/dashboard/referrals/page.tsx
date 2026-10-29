@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import { redirect } from 'next/navigation';
 
 import { getTranslations } from 'next-intl/server';
@@ -17,6 +18,9 @@ import { ReferralsList } from './referrals-list';
 export const instant = false;
 
 export default async function ReferralsPage() {
+  // Read LOUEZ_BILLING at request time: before a dynamic API, Cache Components
+  // would run this check during the build, which has no LOUEZ_BILLING, and serve a 404.
+  await connection();
   requirePlatformBilling();
   const store = await getCurrentStore();
   if (!store) redirect('/onboarding');

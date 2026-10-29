@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
@@ -13,6 +14,9 @@ import { AdminSettingsForm } from "./admin-settings-form";
 export const instant = false;
 
 export default async function AdminSettingsPage() {
+  // Read LOUEZ_BILLING at request time: before a dynamic API, Cache Components
+  // would run this check during the build, which has no LOUEZ_BILLING, and serve a 404.
+  await connection();
   requirePlatformBilling();
   const store = await getCurrentStore();
 

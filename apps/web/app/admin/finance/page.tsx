@@ -1,3 +1,4 @@
+import { connection } from 'next/server'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 
@@ -39,6 +40,9 @@ function formatMonth(billingMonth: string, locale: string): string {
 }
 
 export default async function PlatformFinancePage() {
+  // Read LOUEZ_BILLING at request time: before a dynamic API, Cache Components
+  // would run this check during the build, which has no LOUEZ_BILLING, and serve a 404.
+  await connection()
   requirePlatformBilling()
   // Defense-in-depth: the /admin layout already gates platform-admin access, but the
   // page re-checks so it can never render for a non-admin even if reached directly.
