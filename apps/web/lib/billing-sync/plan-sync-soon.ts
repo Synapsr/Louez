@@ -214,7 +214,9 @@ async function syncCycle(storeId: string, steps: Steps, run: Run): Promise<boole
 /**
  * Runs `run` under the task's lock, trying it every LOCK_RETRY_MS for up to LOCK_WAIT_MS
  * in all, each try in its turn among this process's steps. Between tries it holds no
- * connection, and it stops trying once the server is shutting down.
+ * connection. Once the server is shutting down, it stops trying, leaves the queue for
+ * its turn, and does not start `run`, even with the lock in hand: Next waits for every
+ * `after` task before it exits.
  */
 async function underLock<T>(
   task: PlanSyncTask,
@@ -222,10 +224,20 @@ async function underLock<T>(
   run: () => Promise<T>,
 ): Promise<LockedRun<T>> {
   const deadline = steps.now() + LOCK_WAIT_MS;
+  const unlessShutDown = async (work: () => Promise<LockedRun<T>>): Promise<LockedRun<T>> =>
+    steps.shutdown.aborted ? { ran: false } : work();
   for (;;) {
     if (steps.shutdown.aborted) return { ran: false };
-    const turn = await lockedSteps(Math.max(0, deadline - steps.now()), () =>
-      steps.lock(task, run),
+    const turn = await lockedSteps(
+      Math.max(0, deadline - steps.now()),
+      () =>
+        unlessShutDown(async () => {
+          const locked = await steps.lock(task, () =>
+            unlessShutDown(async () => ({ ran: true, value: await run() })),
+          );
+          return locked.ran ? locked.value : { ran: false };
+        }),
+      steps.shutdown,
     );
     if (turn.ran && turn.value.ran) return turn.value;
     const wait = Math.min(LOCK_RETRY_MS, deadline - steps.now());

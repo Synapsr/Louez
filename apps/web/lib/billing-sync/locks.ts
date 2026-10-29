@@ -66,31 +66,41 @@ export function withBillingLock<T>(
 
 /**
  * At most `size` runs at once in this process. A run waits its turn for up to
- * `waitMs`, then does not run. A run that waits on a named lock holds a pooled
- * connection all along: the limit keeps a burst of them from taking the whole pool
- * the rest of the app queries on.
+ * `waitMs`, or until `signal` aborts, then does not run. A run that waits on a named
+ * lock holds a pooled connection all along: the limit keeps a burst of them from taking
+ * the whole pool the rest of the app queries on.
  */
 export function createRunLimit(size: number) {
   let running = 0;
   const waiting: Array<() => void> = [];
 
-  const turn = (waitMs: number) =>
+  const turn = (waitMs: number, signal?: AbortSignal) =>
     new Promise<boolean>((resolve) => {
-      const wake = () => {
+      const stop = () => {
         clearTimeout(timer);
-        resolve(true);
-      };
-      const timer = setTimeout(() => {
+        signal?.removeEventListener("abort", stop);
         const index = waiting.indexOf(wake);
         if (index !== -1) waiting.splice(index, 1);
         resolve(false);
-      }, waitMs);
+      };
+      const wake = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", stop);
+        resolve(true);
+      };
+      const timer = setTimeout(stop, waitMs);
       waiting.push(wake);
+      signal?.addEventListener("abort", stop, { once: true });
     });
 
-  return async function limited<T>(waitMs: number, run: () => Promise<T>): Promise<LockedRun<T>> {
+  return async function limited<T>(
+    waitMs: number,
+    run: () => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<LockedRun<T>> {
+    if (signal?.aborted) return { ran: false };
     if (running < size) running++;
-    else if (!(await turn(waitMs))) return { ran: false };
+    else if (!(await turn(waitMs, signal))) return { ran: false };
     try {
       return { ran: true, value: await run() };
     } finally {

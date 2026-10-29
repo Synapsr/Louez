@@ -61,6 +61,31 @@ describe("createRunLimit", () => {
     assert.deepEqual(await limited(0, async () => "next"), { ran: true, value: "next" });
   });
 
+  test("a run waiting for its turn leaves the queue when its signal aborts", async () => {
+    const limited = createRunLimit(1);
+    const blocker = gate();
+    const first = limited(1_000, () => blocker.opened);
+    const stop = new AbortController();
+    let ranLate = false;
+    const startedAt = Date.now();
+    const waiting = limited(
+      60_000,
+      async () => {
+        ranLate = true;
+      },
+      stop.signal,
+    );
+    stop.abort();
+    assert.deepEqual(await waiting, { ran: false });
+    assert.ok(Date.now() - startedAt < 1_000);
+    assert.deepEqual(await limited(0, async () => "never", stop.signal), { ran: false });
+
+    blocker.open();
+    await first;
+    assert.equal(ranLate, false);
+    assert.deepEqual(await limited(0, async () => "next"), { ran: true, value: "next" });
+  });
+
   test("a run that throws frees its place", async () => {
     const limited = createRunLimit(1);
     await assert.rejects(

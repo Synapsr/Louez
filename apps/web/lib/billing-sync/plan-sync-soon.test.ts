@@ -365,6 +365,50 @@ describe("syncPlanSoon", () => {
         assert.match(run.info[0] ?? "", /stopped, the server is shutting down/, String(busy));
       }
     });
+    test("leaves the queue for a step's turn, and starts no step once it holds the lock", async () => {
+      // Two syncs hold the process's two places for locked steps, until `held` opens.
+      const held = gate();
+      const blockers = [harness(), harness()].map((blocker) => {
+        blocker.options = {
+          ...blocker.options,
+          relay: async () => {
+            await held.opened;
+            return { outcome: "ok", detail: null };
+          },
+        };
+        return blocker.sync(newStore());
+      });
+      await tick();
+
+      const queued = harness();
+      const storeId = newStore();
+      const syncing = queued.sync(storeId);
+      await tick();
+      queued.shutdown.abort();
+      const startedAt = Date.now();
+      await syncing;
+      assert.ok(Date.now() - startedAt < 1000, `${Date.now() - startedAt} ms`);
+      assert.deepEqual(queued.locks, []);
+      assert.deepEqual(queued.events, []);
+      assert.match(queued.info[0] ?? "", /stopped, the server is shutting down/);
+      held.open();
+      await Promise.all(blockers);
+
+      // The shutdown comes while the step takes its lock: the heartbeat does not start.
+      const locked = harness();
+      locked.options = {
+        ...locked.options,
+        lock: async <T>(task: string, work: () => Promise<T>): Promise<LockedRun<T>> => {
+          locked.locks.push(task);
+          if (task === "heartbeat") locked.shutdown.abort();
+          return { ran: true, value: await work() };
+        },
+      };
+      await locked.sync(newStore());
+      assert.deepEqual(locked.locks, ["relay", "heartbeat"]);
+      assert.deepEqual(locked.events, ["relay at 0"]);
+      assert.match(locked.info[0] ?? "", /stopped, the server is shutting down, the cron takes over, 1 heartbeat\(s\)/);
+    });
   });
 
   describe("failures", () => {
