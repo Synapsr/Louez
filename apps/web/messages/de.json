@@ -3663,7 +3663,7 @@
       },
       "billing": {
         "label": "Abrechnung",
-        "description": "Ihr Louez-Angebot, Ihre Abrechnungskarte und Ihre Monatsabrechnungen.",
+        "description": "Ihr Louez-Angebot, dieser Monat, Ihre Abrechnungskarte, Ihre Rechnungsdaten und Ihre Monatsabrechnungen.",
         "offerTitle": "Ihr Louez-Angebot",
         "offerPending": "Ihr Angebot erscheint hier, sobald Louez die Abrechnung für diesen Shop eingerichtet hat.",
         "status": {
@@ -3677,28 +3677,107 @@
         },
         "readOnly": "Als Plattform-Administrator sehen Sie die Abrechnung dieses Shops nur lesend.",
         "manage": "Abrechnung verwalten",
-        "addCard": "Abrechnungskarte hinzufügen",
-        "pages": {
-          "title": "Auf den Abrechnungsseiten",
-          "paymentMethod": {
-            "title": "Abrechnungskarte",
-            "description": "Die Karte, die Louez für seine Gebühren belastet."
-          },
-          "statements": {
-            "title": "Monatsabrechnungen",
-            "description": "Was Louez Ihnen in Rechnung gestellt hat, Monat für Monat."
-          },
-          "details": {
-            "title": "Rechnungsdaten",
-            "description": "Name, Adresse und USt-IdNr. auf Ihren Rechnungen."
-          }
+        "loadFailed": "Die Abrechnung konnte nicht geladen werden. Versuchen Sie es gleich noch einmal.",
+        "settingUp": "Ihre Abrechnung wird gerade eingerichtet. Schauen Sie in ein paar Minuten wieder auf dieser Seite vorbei.",
+        "month": {
+          "title": "Dieser Monat",
+          "atSource": "An der Quelle einbehalten",
+          "due": "Voraussichtlicher Restbetrag",
+          "credit": "Voraussichtliches Guthaben",
+          "statementAt": "Nächste Monatsabrechnung: {date}."
         },
-        "handoff": {
-          "title": "Abrechnung wird geöffnet…",
-          "message": "Sie werden zu Ihren Abrechnungsseiten weitergeleitet.",
-          "continue": "Weiter",
-          "back": "Zurück zu Louez",
-          "unavailable": "Die Abrechnung kann gerade nicht geöffnet werden. Versuchen Sie es in ein paar Minuten erneut."
+        "card": {
+          "title": "Abrechnungskarte",
+          "description": "Louez belastet diese Karte mit dem, was die an der Quelle einbehaltenen Gebühren nicht abdecken.",
+          "saved": "{brand} mit Endziffern {last4}",
+          "otherBrand": "Karte",
+          "onFile": "Eine Zahlungsmethode ist hinterlegt.",
+          "expires": "Gültig bis {date}",
+          "expired": "Abgelaufen seit {date}. Ersetzen Sie sie, damit Ihre Monatsabrechnungen bezahlt werden können.",
+          "missing": "Noch keine Abrechnungskarte.",
+          "unknown": "Ihre Abrechnungskarte wird hier noch nicht angezeigt.",
+          "notNeeded": "Keine Karte nötig: Ihrem Shop wird nichts berechnet.",
+          "inLouez": "Die Zahlungsmethode dieses Shops wird vorerst in seinem Abonnement verwaltet.",
+          "add": "Karte hinzufügen",
+          "replace": "Karte ersetzen",
+          "opening": "Stripe wird geöffnet…",
+          "stripeNote": "Sie geben Ihre Karte auf der sicheren Seite von Stripe ein und kehren dann hierher zurück.",
+          "startFailed": "Die Stripe-Seite konnte nicht geöffnet werden. Versuchen Sie es gleich noch einmal.",
+          "off": "Das Hinzufügen einer Karte ist noch nicht verfügbar."
+        },
+        "details": {
+          "title": "Rechnungsdaten",
+          "description": "Diese Angaben stehen auf Ihren Rechnungen von Louez.",
+          "noCustomer": "Fügen Sie zuerst eine Abrechnungskarte hinzu. Ihre Rechnungsdaten werden mit ihr gespeichert.",
+          "unavailable": "Ihre Rechnungsdaten können gerade nicht angezeigt werden. Versuchen Sie es später erneut.",
+          "legalName": "Firmenname",
+          "legalNameHint": "Der Name Ihres Unternehmens, wie er eingetragen ist.",
+          "email": "E-Mail für Rechnungen",
+          "emailHint": "Rechnungen und Zahlungsbelege werden an diese Adresse gesendet.",
+          "line1": "Adresse",
+          "line2": "Adresszusatz (optional)",
+          "postalCode": "Postleitzahl",
+          "city": "Ort",
+          "state": "Bundesland oder Region (optional)",
+          "country": "Land",
+          "countryPlaceholder": "Land auswählen",
+          "vatNumber": "EU-USt-IdNr. (optional)",
+          "vatNumberHint": "Mit Ländercode, zum Beispiel FR12345678901. Lassen Sie das Feld leer, wenn Ihr Unternehmen keine hat.",
+          "vat": {
+            "pending": "Diese Nummer wird bei VIES, dem USt-IdNr.-Dienst der EU, geprüft. Laden Sie die Seite in ein paar Minuten neu.",
+            "verified": "VIES bestätigt diese USt-IdNr.",
+            "unverified": "VIES erkennt diese USt-IdNr. nicht. Prüfen Sie sie und speichern Sie erneut.",
+            "unavailable": "VIES war für die Prüfung dieser Nummer nicht erreichbar. Speichern Sie später erneut.",
+            "unknown": "Diese USt-IdNr. wurde noch nicht geprüft."
+          },
+          "errors": {
+            "required": "Dieses Feld ist erforderlich.",
+            "email": "Geben Sie eine gültige E-Mail-Adresse ein.",
+            "refused": "Dieser Wert wurde abgelehnt. Prüfen Sie ihn und versuchen Sie es erneut.",
+            "vatNumber": "Diese USt-IdNr. wurde abgelehnt. Geben Sie eine EU-USt-IdNr. mit Ländercode ein, zum Beispiel FR12345678901.",
+            "unavailable": "Ihre Rechnungsdaten können noch nicht gespeichert werden. Fügen Sie zuerst eine Abrechnungskarte hinzu.",
+            "failed": "Ihre Rechnungsdaten konnten nicht gespeichert werden. Versuchen Sie es gleich noch einmal."
+          },
+          "save": "Speichern",
+          "saved": "Rechnungsdaten gespeichert."
+        },
+        "statements": {
+          "title": "Monatsabrechnungen",
+          "description": "Was Louez Ihrem Shop berechnet, Monat für Monat.",
+          "notFinal": "Noch nicht endgültig: Diese Beträge folgen dem aktuellen Stand Ihrer Reservierungen und Zahlungen. Rechnungen sind noch nicht verfügbar.",
+          "open": "Vorläufig",
+          "summary": "Geschuldet {owed} · An der Quelle einbehalten {atSource}",
+          "creditOf": "Guthaben von {amount}",
+          "legacy": "Louez rechnet mit Ihrem Shop vorerst wie bisher ab. Ihre Monatsabrechnungen erscheinen hier, sobald Ihre Abrechnung auf diese Seite umzieht.",
+          "legacyUntil": "Louez rechnet mit Ihrem Shop bis zum {date} wie bisher ab. Ab dann erscheinen Ihre Monatsabrechnungen hier.",
+          "empty": "Noch keine Monatsabrechnung. Die erste erscheint hier, sobald Ihrem Shop etwas berechnet wird."
+        },
+        "statement": {
+          "totals": "Summen",
+          "owed": "Geschuldet",
+          "atSource": "An der Quelle einbehalten",
+          "due": "Restbetrag",
+          "credit": "Guthaben",
+          "groups": {
+            "commission": "Provision auf Zahlungen",
+            "unpaid": "Provision auf unbezahlte Beträge",
+            "reservations": "Reservierungsgebühren",
+            "marketplace": "Marktplatzgebühren",
+            "atSource": "An der Quelle einbehalten"
+          },
+          "lines": {
+            "pay": "Zahlung",
+            "refund": "Rückerstattung",
+            "dispute_open": "Streitfall eröffnet",
+            "dispute_close": "Streitfall gewonnen",
+            "uncollected": "Unbezahlter Teil der Reservierung",
+            "rental": "Reservierung",
+            "mkt": "Buchung über den Marktplatz",
+            "fee": "An der Quelle einbehaltene Gebühr",
+            "feerefund": "An der Quelle erstattete Gebühr"
+          },
+          "reservation": "Reservierung {number}",
+          "adjusts": "Korrektur für {period}"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "Abrechnungskarte hinzufügen",
       "description": "Louez belastet diese Karte mit seinen Gebühren. Sobald sie hinterlegt ist, kann Ihr Shop Reservierungen annehmen.",
-      "secureNote": "Sie fügen die Karte auf der sicheren Abrechnungsseite von Louez hinzu und kommen danach direkt hierher zurück.",
+      "secureNote": "Sie geben die Karte auf der sicheren Seite von Stripe ein und kehren dann direkt hierher zurück.",
       "addCard": "Karte hinzufügen",
       "later": "Später",
-      "laterNote": "Solange keine Karte hinterlegt ist, kann Ihr Shop keine neuen Reservierungen annehmen. Sie können sie jederzeit in Ihren Abrechnungseinstellungen hinzufügen."
+      "laterNote": "Solange keine Karte hinterlegt ist, kann Ihr Shop keine neuen Reservierungen annehmen. Sie können sie jederzeit in Ihren Abrechnungseinstellungen hinzufügen.",
+      "startFailed": "Die Stripe-Seite konnte nicht geöffnet werden. Versuchen Sie es gleich noch einmal."
     },
     "complete": {
       "title": "Ihr Shop ist bereit!",

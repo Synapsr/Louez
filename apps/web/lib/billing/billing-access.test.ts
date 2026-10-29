@@ -4,14 +4,14 @@ import { afterEach, describe, test } from "node:test";
 import type { PolicyInvoicing } from "@louez/db";
 import type { MemberRole } from "@louez/utils";
 
-import { billingHandoffRole, getBillingHandoffAccess } from "./handoff-access";
+import { billingViewerRole, getBillingAccess } from "./billing-access";
 
-// Who sees "Facturation" and opens the billing pages (README §10 step 1, §12; M2 plan
-// D4). The database cases are in handoff-handler.db.test.ts.
+// Who sees "Facturation" and its billing pages (README §10, §12; M2 plan D4). The
+// database cases are in card-return.db.test.ts.
 
-describe("billingHandoffRole", () => {
+describe("billingViewerRole", () => {
   const role = (memberRole: MemberRole, isPlatformAdmin: boolean, invoicing: PolicyInvoicing) =>
-    billingHandoffRole({ memberRole, isPlatformAdmin, invoicing });
+    billingViewerRole({ memberRole, isPlatformAdmin, invoicing });
 
   test("the owner, only when the service bills the store", () => {
     assert.equal(role("owner", false, "service"), "owner");
@@ -37,7 +37,7 @@ describe("billingHandoffRole", () => {
   });
 });
 
-describe("getBillingHandoffAccess outside service mode", () => {
+describe("getBillingAccess outside service mode", () => {
   const saved = {
     LOUEZ_BILLING: process.env.LOUEZ_BILLING,
     BILLING_SERVICE_URL: process.env.BILLING_SERVICE_URL,
@@ -65,7 +65,7 @@ describe("getBillingHandoffAccess outside service mode", () => {
       setEnv(env);
       for (const [role, isPlatformAdmin] of viewers) {
         assert.equal(
-          await getBillingHandoffAccess({ id: "acc_store", role }, isPlatformAdmin),
+          await getBillingAccess({ id: "acc_store", role }, isPlatformAdmin),
           null,
           `${JSON.stringify(env)} ${role} admin=${isPlatformAdmin}`,
         );

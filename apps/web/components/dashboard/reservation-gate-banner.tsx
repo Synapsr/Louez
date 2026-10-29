@@ -8,11 +8,8 @@ import { InfoCircleIcon, TriangleAlertIcon } from "@louez/ui/icons";
 import type { MemberRole } from "@louez/utils";
 
 import { getEffectivePolicy } from "@/lib/billing/policy";
-import {
-  BILLING_PAYMENT_METHOD_HREF,
-  canManageBilling,
-  reservationGateBanner,
-} from "@/lib/billing/reservation-gate-banner";
+import { BILLING_SETTINGS_PATH } from "@/lib/billing/billing-routes";
+import { canManageBilling, reservationGateBanner } from "@/lib/billing/reservation-gate-banner";
 import { log } from "@/lib/evlog";
 
 type ReservationGateBannerProps = {
@@ -52,7 +49,7 @@ export const ReservationGateBanner = async ({ storeId, role }: ReservationGateBa
       </AlertDescription>
       {canManageBilling(role) && (
         <AlertAction>
-          <Button size="sm" render={<Link href={BILLING_PAYMENT_METHOD_HREF} />}>
+          <Button size="sm" render={<Link href={BILLING_SETTINGS_PATH} />}>
             {t("manageBilling")}
           </Button>
         </AlertAction>

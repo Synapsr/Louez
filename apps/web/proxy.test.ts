@@ -33,9 +33,8 @@ describe("proxy billing gate", () => {
     for (const path of [
       "/dashboard/settings/subscription",
       "/dashboard/subscription?plans=1",
-      "/dashboard/billing",
-      "/dashboard/billing/return",
       "/dashboard/settings/billing",
+      "/dashboard/settings/billing/statements",
       "/dashboard/settings/referrals",
       "/dashboard/ai-credits",
       "/dashboard/settings/admin",
@@ -95,54 +94,6 @@ describe("proxy billing gate", () => {
     } finally {
       globalThis.fetch = realFetch;
       process.env.LOUEZ_MODE = "platform";
-    }
-  });
-
-  test("with the billing service, its pages join form-action; elsewhere nothing changes", async () => {
-    // README §10 step 2 and §12: in service mode only.
-    const formAction = async () =>
-      /form-action ([^;]*)/.exec(
-        (await visit("/dashboard")).headers.get("Content-Security-Policy") ?? "",
-      )?.[1];
-    assert.equal(await formAction(), "'self'");
-    process.env.BILLING_SERVICE_URL = "https://billing.example.test";
-    assert.equal(await formAction(), "'self'", "LOUEZ_BILLING off");
-    process.env.LOUEZ_BILLING = "cloud";
-    assert.equal(await formAction(), "'self' https://billing.example.test");
-    delete process.env.BILLING_SERVICE_URL;
-    assert.equal(await formAction(), "'self'", "cloud without the service");
-  });
-
-  test("the billing hand-off keeps its own CSP and frame policy; the return does not", async () => {
-    process.env.LOUEZ_BILLING = "cloud";
-    process.env.BILLING_SERVICE_URL = "https://billing.example.test";
-    for (const path of ["/dashboard/billing", "/dashboard/billing/?to=%2Fdetails"]) {
-      const response = await visit(path);
-      assert.equal(response.headers.get("Content-Security-Policy"), null, path);
-      assert.equal(response.headers.get("X-Frame-Options"), null, path);
-      assert.equal(response.headers.get("X-Content-Type-Options"), "nosniff", path);
-    }
-    for (const path of ["/dashboard/billing/return", "/dashboard/settings/billing"]) {
-      const response = await visit(path);
-      assert.match(response.headers.get("Content-Security-Policy") ?? "", /form-action/, path);
-      assert.equal(response.headers.get("X-Frame-Options"), "SAMEORIGIN", path);
-    }
-    // On a storefront host the same path is a store page, not the hand-off.
-    const storefront = await visit("/dashboard/billing", "shop.localhost:3000");
-    assert.match(
-      storefront.headers.get("x-middleware-rewrite") ?? "",
-      /\/shop\/dashboard\/billing$/,
-    );
-    assert.match(storefront.headers.get("Content-Security-Policy") ?? "", /form-action/);
-    assert.equal(storefront.headers.get("X-Frame-Options"), "SAMEORIGIN");
-    // Outside service mode the proxy's headers are as before, on its 404 too.
-    for (const billing of [undefined, "cloud"]) {
-      if (billing) process.env.LOUEZ_BILLING = billing;
-      else delete process.env.LOUEZ_BILLING;
-      delete process.env.BILLING_SERVICE_URL;
-      const response = await visit("/dashboard/billing");
-      assert.match(response.headers.get("Content-Security-Policy") ?? "", /form-action 'self';/);
-      assert.equal(response.headers.get("X-Frame-Options"), "SAMEORIGIN");
     }
   });
 

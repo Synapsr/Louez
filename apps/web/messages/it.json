@@ -3663,7 +3663,7 @@
       },
       "billing": {
         "label": "Fatturazione",
-        "description": "La tua offerta Louez, la tua carta di fatturazione e i tuoi estratti.",
+        "description": "La tua offerta Louez, questo mese, la tua carta di fatturazione, i tuoi dati di fatturazione e i tuoi estratti.",
         "offerTitle": "La tua offerta Louez",
         "offerPending": "La tua offerta comparirà qui quando Louez avrà configurato la fatturazione di questo negozio.",
         "status": {
@@ -3677,28 +3677,107 @@
         },
         "readOnly": "Come amministratore della piattaforma, vedi la fatturazione di questo negozio in sola lettura.",
         "manage": "Gestisci la fatturazione",
-        "addCard": "Aggiungi una carta di fatturazione",
-        "pages": {
-          "title": "Nelle pagine di fatturazione",
-          "paymentMethod": {
-            "title": "Carta di fatturazione",
-            "description": "La carta su cui Louez addebita le sue commissioni."
-          },
-          "statements": {
-            "title": "Estratti",
-            "description": "Quanto Louez ti ha fatturato, mese per mese."
-          },
-          "details": {
-            "title": "Dati di fatturazione",
-            "description": "Il nome, l'indirizzo e la partita IVA sulle tue fatture."
-          }
+        "loadFailed": "Impossibile caricare la fatturazione. Riprova tra un attimo.",
+        "settingUp": "La tua fatturazione è in fase di configurazione. Ricontrolla questa pagina tra qualche minuto.",
+        "month": {
+          "title": "Questo mese",
+          "atSource": "Trattenuto alla fonte",
+          "due": "Saldo previsto",
+          "credit": "Credito previsto",
+          "statementAt": "Prossimo estratto: {date}."
         },
-        "handoff": {
-          "title": "Apertura della fatturazione…",
-          "message": "Ti stiamo portando alle tue pagine di fatturazione.",
-          "continue": "Continua",
-          "back": "Torna a Louez",
-          "unavailable": "Non è possibile aprire la fatturazione in questo momento. Riprova tra qualche minuto."
+        "card": {
+          "title": "Carta di fatturazione",
+          "description": "Louez addebita su questa carta ciò che le commissioni trattenute alla fonte non coprono.",
+          "saved": "{brand} che termina con {last4}",
+          "otherBrand": "Carta",
+          "onFile": "È salvato un metodo di pagamento.",
+          "expires": "Scade a {date}",
+          "expired": "Scaduta da {date}. Sostituiscila perché i tuoi estratti possano essere pagati.",
+          "missing": "Nessuna carta di fatturazione per ora.",
+          "unknown": "La tua carta di fatturazione non è ancora visibile qui.",
+          "notNeeded": "Nessuna carta necessaria: al tuo negozio non viene fatturato nulla.",
+          "inLouez": "Per ora il metodo di pagamento di questo negozio si gestisce nel suo abbonamento.",
+          "add": "Aggiungi una carta",
+          "replace": "Sostituisci la carta",
+          "opening": "Apertura di Stripe…",
+          "stripeNote": "Inserisci la carta nella pagina sicura di Stripe, poi torni qui.",
+          "startFailed": "Impossibile aprire la pagina di Stripe. Riprova tra un attimo.",
+          "off": "L'aggiunta di una carta non è ancora disponibile."
+        },
+        "details": {
+          "title": "Dati di fatturazione",
+          "description": "Le tue fatture di Louez riportano questi dati.",
+          "noCustomer": "Aggiungi prima una carta di fatturazione. I tuoi dati di fatturazione vengono salvati insieme a essa.",
+          "unavailable": "Al momento non è possibile mostrare i tuoi dati di fatturazione. Riprova più tardi.",
+          "legalName": "Ragione sociale",
+          "legalNameHint": "Il nome della tua attività, come risulta registrato.",
+          "email": "Email di fatturazione",
+          "emailHint": "Fatture e ricevute di pagamento vengono inviate a questo indirizzo.",
+          "line1": "Indirizzo",
+          "line2": "Indirizzo, riga 2 (facoltativo)",
+          "postalCode": "CAP",
+          "city": "Città",
+          "state": "Provincia o regione (facoltativo)",
+          "country": "Paese",
+          "countryPlaceholder": "Scegli un paese",
+          "vatNumber": "Partita IVA UE (facoltativa)",
+          "vatNumberHint": "Con il prefisso del paese, ad esempio FR12345678901. Lascia vuoto se la tua attività non ne ha una.",
+          "vat": {
+            "pending": "Verifica di questo numero presso VIES, il servizio UE per le partite IVA. Ricarica la pagina tra qualche minuto.",
+            "verified": "VIES conferma questa partita IVA.",
+            "unverified": "VIES non riconosce questa partita IVA. Controllala, poi salva di nuovo.",
+            "unavailable": "Non è stato possibile contattare VIES per verificare questo numero. Salva di nuovo più tardi.",
+            "unknown": "Questa partita IVA non è ancora stata verificata."
+          },
+          "errors": {
+            "required": "Questo campo è obbligatorio.",
+            "email": "Inserisci un indirizzo email valido.",
+            "refused": "Questo valore è stato rifiutato. Controllalo e riprova.",
+            "vatNumber": "Questa partita IVA è stata rifiutata. Inserisci una partita IVA UE con il prefisso del paese, ad esempio FR12345678901.",
+            "unavailable": "I tuoi dati di fatturazione non possono ancora essere salvati. Aggiungi prima una carta di fatturazione.",
+            "failed": "Impossibile salvare i tuoi dati di fatturazione. Riprova tra un attimo."
+          },
+          "save": "Salva",
+          "saved": "Dati di fatturazione salvati."
+        },
+        "statements": {
+          "title": "Estratti",
+          "description": "Quanto Louez fattura al tuo negozio, mese per mese.",
+          "notFinal": "Non ancora definitivi: questi importi seguono le tue prenotazioni e i tuoi pagamenti allo stato attuale. Le fatture non sono ancora disponibili.",
+          "open": "Provvisorio",
+          "summary": "Dovuto {owed} · Trattenuto alla fonte {atSource}",
+          "creditOf": "Credito di {amount}",
+          "legacy": "Per ora Louez fattura il tuo negozio come prima. I tuoi estratti compariranno qui quando la tua fatturazione passerà a questa pagina.",
+          "legacyUntil": "Louez fattura il tuo negozio come prima fino al {date}. Da quel momento i tuoi estratti compaiono qui.",
+          "empty": "Nessun estratto per ora. Il primo comparirà qui quando qualcosa verrà fatturato al tuo negozio."
+        },
+        "statement": {
+          "totals": "Totali",
+          "owed": "Dovuto",
+          "atSource": "Trattenuto alla fonte",
+          "due": "Saldo",
+          "credit": "Credito",
+          "groups": {
+            "commission": "Commissione sui pagamenti",
+            "unpaid": "Commissione sugli importi non pagati",
+            "reservations": "Commissioni sulle prenotazioni",
+            "marketplace": "Commissioni del marketplace",
+            "atSource": "Trattenuto alla fonte"
+          },
+          "lines": {
+            "pay": "Pagamento",
+            "refund": "Rimborso",
+            "dispute_open": "Contestazione aperta",
+            "dispute_close": "Contestazione vinta",
+            "uncollected": "Parte non pagata della prenotazione",
+            "rental": "Prenotazione",
+            "mkt": "Prenotazione dal marketplace",
+            "fee": "Commissione trattenuta alla fonte",
+            "feerefund": "Commissione rimborsata alla fonte"
+          },
+          "reservation": "Prenotazione {number}",
+          "adjusts": "Rettifica per {period}"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "Aggiungi una carta di fatturazione",
       "description": "Louez addebita le sue commissioni su questa carta. Appena è registrata, il tuo negozio può accettare prenotazioni.",
-      "secureNote": "Aggiungi la carta sulla pagina di fatturazione sicura di Louez, poi torni direttamente qui.",
+      "secureNote": "Inserisci la carta nella pagina sicura di Stripe, poi torni subito qui.",
       "addCard": "Aggiungi una carta",
       "later": "Più tardi",
-      "laterNote": "Finché non è registrata una carta, il tuo negozio non può accettare nuove prenotazioni. Puoi aggiungerla quando vuoi dalle impostazioni di fatturazione."
+      "laterNote": "Finché non è registrata una carta, il tuo negozio non può accettare nuove prenotazioni. Puoi aggiungerla quando vuoi dalle impostazioni di fatturazione.",
+      "startFailed": "Impossibile aprire la pagina di Stripe. Riprova tra un attimo."
     },
     "complete": {
       "title": "Il tuo negozio e pronto!",

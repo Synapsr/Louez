@@ -13,7 +13,7 @@ import { nanoid } from 'nanoid'
 import { aiCreditTransactions, db, stores } from '@louez/db'
 
 import { creditsToMicro } from '@/lib/ai/advisor/credits'
-import { billingPageHref } from '@/lib/billing/billing-pages'
+import { BILLING_SETTINGS_PATH } from '@/lib/billing/billing-routes'
 import { getAiCreditPackages, type AiCreditPackage } from '@/lib/plans'
 
 import { stripe } from './client'
@@ -69,7 +69,7 @@ export async function createAiCreditTopupCheckoutSession({
   // A store the billing service bills and that has no card yet adds one there (Q39).
   const stripeCustomerId = await getPlatformCustomerId(storeId)
   if (!stripeCustomerId) {
-    return { sessionId: null, url: billingPageHref('/payment-method') }
+    return { sessionId: null, url: BILLING_SETTINGS_PATH }
   }
 
   const transactionId = nanoid()

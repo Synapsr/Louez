@@ -1,46 +1,109 @@
 import { getLocale, getTranslations } from "next-intl/server";
-import { notFound, redirect } from "next/navigation";
-import { connection } from "next/server";
+import { redirect } from "next/navigation";
+import { after } from "next/server";
 
-import { isBillingGateDisabled, isBillingSyncEnabled } from "@louez/db";
+import { isBillingGateDisabled } from "@louez/db";
+import { BuildingIcon, FileTextIcon } from "@louez/ui/icons";
 
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
+import { DashboardIconTile } from "@/components/dashboard/shared/dashboard-icon-tile";
+import { DashboardListRow } from "@/components/dashboard/shared/dashboard-list-row";
+import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
 import { describeBillingOverview } from "@/lib/billing/billing-overview";
-import { getBillingHandoffAccess } from "@/lib/billing/handoff-access";
-import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
-import { getCurrentStore } from "@/lib/store-context";
+import { withBillingReturnOutcome } from "@/lib/billing/billing-return";
+import { BILLING_SETTINGS_PATH, BILLING_STATEMENTS_PATH } from "@/lib/billing/billing-routes";
+import { finishCardReturn, readCheckoutSessionId } from "@/lib/billing/card-return";
+import { requireBillingPages } from "@/lib/billing/require-billing-pages";
+import { getBillingDetails, getBillingOverview } from "@/lib/billing-sync/pages";
 
+import { BillingCardSection } from "./billing-card-section";
+import { BillingDetailsFormView } from "./billing-details-form";
+import { BillingMonthCard } from "./billing-month-card";
+import { BillingNotLoaded } from "./billing-not-loaded";
 import { BillingOverviewCard } from "./billing-overview-card";
-import { BillingPageLinks } from "./billing-page-links";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
 
 /**
- * "Facturation": the store's offer and card gate from the cached policy, and the way
- * to the billing service's pages (louez-billing docs/plans/design.md §6.1). Only in
- * service mode, for the viewers of `billingHandoffRole`.
+ * "Facturation" (louez-billing docs/api, README §10; design §6.1): the offer and the
+ * card gate from the cached policy, then, from the billing service, this month, the
+ * billing card and the billing details, and the way to the statements. Stripe
+ * Checkout comes back here with `?checkout=`: the card is saved, then the page shows
+ * once more with the toast.
  */
-export default async function BillingSettingsPage() {
-  await connection();
-  if (!isBillingSyncEnabled()) notFound();
+export default async function BillingSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
+  const { store, access } = await requireBillingPages();
+  const readOnly = access.role !== "owner";
 
-  const store = await getCurrentStore();
-  if (!store) redirect("/onboarding");
+  const checkoutSessionId = readCheckoutSessionId((await searchParams).checkout);
+  if (checkoutSessionId && !readOnly) {
+    const outcome = await finishCardReturn({ storeId: store.id, checkoutSessionId, after });
+    redirect(withBillingReturnOutcome(BILLING_SETTINGS_PATH, outcome));
+  }
 
-  const access = await getBillingHandoffAccess(store, await isCurrentUserPlatformAdmin());
-  if (!access) redirect("/dashboard/settings");
-
-  const [t, locale] = await Promise.all([
+  const locale = await getLocale();
+  const [t, overview, details] = await Promise.all([
     getTranslations("dashboard.settings.billing"),
-    getLocale(),
+    getBillingOverview(store.id, locale),
+    getBillingDetails(store.id),
   ]);
 
   return (
     <SettingsPageShell title={t("label")} description={t("description")}>
-      <BillingOverviewCard overview={describeBillingOverview(access, locale, isBillingGateDisabled())} />
-      <BillingPageLinks />
+      <BillingOverviewCard
+        overview={describeBillingOverview(access, locale, isBillingGateDisabled())}
+      />
+
+      {overview.ok ? (
+        <>
+          {overview.value.month && (
+            <BillingMonthCard
+              month={overview.value.month}
+              timeZone={overview.value.timeZone}
+              locale={locale}
+            />
+          )}
+          <BillingCardSection
+            card={overview.value.card}
+            savedCard={overview.value.savedCard}
+            unavailable={overview.value.cardSetupUnavailable}
+            readOnly={readOnly}
+          />
+        </>
+      ) : (
+        <BillingNotLoaded failure={overview} />
+      )}
+
+      <DashboardSectionCard
+        title={t("details.title")}
+        description={t("details.description")}
+        icon={BuildingIcon}
+      >
+        {details.ok && details.value.kind === "ready" ? (
+          <BillingDetailsFormView details={details.value} readOnly={readOnly} />
+        ) : details.ok ? (
+          <p className="text-muted-foreground text-sm">
+            {details.value.kind === "no_customer" ? t("details.noCustomer") : t("details.unavailable")}
+          </p>
+        ) : (
+          <BillingNotLoaded failure={details} />
+        )}
+      </DashboardSectionCard>
+
+      <DashboardSectionCard title={t("statements.title")} contentClassName="space-y-1">
+        <DashboardListRow
+          href={BILLING_STATEMENTS_PATH}
+          leading={<DashboardIconTile icon={FileTextIcon} size="sm" />}
+          title={<span className="font-medium">{t("statements.title")}</span>}
+          subtitle={t("statements.description")}
+        />
+      </DashboardSectionCard>
     </SettingsPageShell>
   );
 }

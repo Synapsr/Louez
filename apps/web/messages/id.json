@@ -3965,7 +3965,7 @@
       },
       "billing": {
         "label": "Penagihan",
-        "description": "Penawaran Louez, kartu penagihan, dan laporan tagihan Anda.",
+        "description": "Penawaran Louez Anda, bulan ini, kartu penagihan, detail penagihan, dan laporan tagihan Anda.",
         "offerTitle": "Penawaran Louez Anda",
         "offerPending": "Penawaran Anda akan muncul di sini setelah Louez menyiapkan penagihan untuk toko ini.",
         "status": {
@@ -3979,28 +3979,107 @@
         },
         "readOnly": "Sebagai admin platform, Anda melihat penagihan toko ini dalam mode baca saja.",
         "manage": "Kelola penagihan",
-        "addCard": "Tambahkan kartu penagihan",
-        "pages": {
-          "title": "Di halaman penagihan",
-          "paymentMethod": {
-            "title": "Kartu penagihan",
-            "description": "Kartu yang ditagih Louez untuk biayanya."
-          },
-          "statements": {
-            "title": "Laporan tagihan",
-            "description": "Apa yang ditagihkan Louez kepada Anda, bulan demi bulan."
-          },
-          "details": {
-            "title": "Detail penagihan",
-            "description": "Nama, alamat, dan nomor PPN pada faktur Anda."
-          }
+        "loadFailed": "Penagihan tidak dapat dimuat. Coba lagi sebentar lagi.",
+        "settingUp": "Penagihan Anda sedang disiapkan. Periksa halaman ini lagi dalam beberapa menit.",
+        "month": {
+          "title": "Bulan ini",
+          "atSource": "Dipotong langsung",
+          "due": "Perkiraan sisa tagihan",
+          "credit": "Perkiraan kredit",
+          "statementAt": "Laporan tagihan berikutnya: {date}."
         },
-        "handoff": {
-          "title": "Membuka penagihan…",
-          "message": "Mengarahkan Anda ke halaman penagihan.",
-          "continue": "Lanjutkan",
-          "back": "Kembali ke Louez",
-          "unavailable": "Penagihan tidak dapat dibuka saat ini. Coba lagi dalam beberapa menit."
+        "card": {
+          "title": "Kartu penagihan",
+          "description": "Louez menagihkan ke kartu ini apa yang tidak tertutup oleh biaya yang dipotong langsung.",
+          "saved": "{brand} berakhiran {last4}",
+          "otherBrand": "Kartu",
+          "onFile": "Metode pembayaran sudah tersimpan.",
+          "expires": "Berlaku hingga {date}",
+          "expired": "Kedaluwarsa sejak {date}. Ganti kartu ini agar laporan tagihan Anda dapat dibayar.",
+          "missing": "Belum ada kartu penagihan.",
+          "unknown": "Kartu penagihan Anda belum ditampilkan di sini.",
+          "notNeeded": "Tidak perlu kartu: tidak ada yang ditagihkan ke toko Anda.",
+          "inLouez": "Untuk saat ini, metode pembayaran toko ini dikelola di langganannya.",
+          "add": "Tambahkan kartu",
+          "replace": "Ganti kartu",
+          "opening": "Membuka Stripe…",
+          "stripeNote": "Anda memasukkan kartu di halaman aman Stripe, lalu kembali ke sini.",
+          "startFailed": "Halaman Stripe tidak dapat dibuka. Coba lagi sebentar lagi.",
+          "off": "Penambahan kartu belum tersedia."
+        },
+        "details": {
+          "title": "Detail penagihan",
+          "description": "Faktur Anda dari Louez menampilkan detail ini.",
+          "noCustomer": "Tambahkan kartu penagihan terlebih dahulu. Detail penagihan Anda disimpan bersama kartu tersebut.",
+          "unavailable": "Detail penagihan Anda tidak dapat ditampilkan saat ini. Coba lagi nanti.",
+          "legalName": "Nama resmi",
+          "legalNameHint": "Nama usaha Anda, sesuai pendaftarannya.",
+          "email": "Email penagihan",
+          "emailHint": "Faktur dan tanda terima pembayaran dikirim ke alamat ini.",
+          "line1": "Alamat",
+          "line2": "Alamat baris 2 (opsional)",
+          "postalCode": "Kode pos",
+          "city": "Kota",
+          "state": "Provinsi atau wilayah (opsional)",
+          "country": "Negara",
+          "countryPlaceholder": "Pilih negara",
+          "vatNumber": "Nomor PPN UE (opsional)",
+          "vatNumberHint": "Dengan kode negaranya, misalnya FR12345678901. Kosongkan jika usaha Anda tidak memilikinya.",
+          "vat": {
+            "pending": "Memeriksa nomor ini di VIES, layanan nomor PPN Uni Eropa. Muat ulang halaman dalam beberapa menit.",
+            "verified": "VIES mengonfirmasi nomor PPN ini.",
+            "unverified": "VIES tidak mengenali nomor PPN ini. Periksa, lalu simpan lagi.",
+            "unavailable": "VIES tidak dapat dihubungi untuk memeriksa nomor ini. Simpan lagi nanti.",
+            "unknown": "Nomor PPN ini belum diperiksa."
+          },
+          "errors": {
+            "required": "Kolom ini wajib diisi.",
+            "email": "Masukkan alamat email yang valid.",
+            "refused": "Nilai ini ditolak. Periksa, lalu coba lagi.",
+            "vatNumber": "Nomor PPN ini ditolak. Masukkan nomor PPN UE dengan kode negaranya, misalnya FR12345678901.",
+            "unavailable": "Detail penagihan Anda belum dapat disimpan. Tambahkan kartu penagihan terlebih dahulu.",
+            "failed": "Detail penagihan Anda tidak dapat disimpan. Coba lagi sebentar lagi."
+          },
+          "save": "Simpan",
+          "saved": "Detail penagihan disimpan."
+        },
+        "statements": {
+          "title": "Laporan tagihan",
+          "description": "Apa yang ditagihkan Louez ke toko Anda, bulan demi bulan.",
+          "notFinal": "Belum final: jumlah ini mengikuti reservasi dan pembayaran Anda saat ini. Faktur belum tersedia.",
+          "open": "Belum final",
+          "summary": "Terutang {owed} · Dipotong langsung {atSource}",
+          "creditOf": "Kredit sebesar {amount}",
+          "legacy": "Untuk saat ini, Louez menagih toko Anda seperti sebelumnya. Laporan tagihan Anda akan muncul di sini setelah penagihan Anda pindah ke halaman ini.",
+          "legacyUntil": "Louez menagih toko Anda seperti sebelumnya hingga {date}. Setelah itu, laporan tagihan Anda muncul di sini.",
+          "empty": "Belum ada laporan tagihan. Laporan pertama Anda muncul di sini setelah ada yang ditagihkan ke toko Anda."
+        },
+        "statement": {
+          "totals": "Total",
+          "owed": "Terutang",
+          "atSource": "Dipotong langsung",
+          "due": "Sisa tagihan",
+          "credit": "Kredit",
+          "groups": {
+            "commission": "Komisi atas pembayaran",
+            "unpaid": "Komisi atas jumlah yang belum dibayar",
+            "reservations": "Biaya reservasi",
+            "marketplace": "Biaya marketplace",
+            "atSource": "Dipotong langsung"
+          },
+          "lines": {
+            "pay": "Pembayaran",
+            "refund": "Pengembalian dana",
+            "dispute_open": "Sengketa dibuka",
+            "dispute_close": "Sengketa dimenangkan",
+            "uncollected": "Bagian reservasi yang belum dibayar",
+            "rental": "Reservasi",
+            "mkt": "Pemesanan melalui marketplace",
+            "fee": "Biaya yang dipotong langsung",
+            "feerefund": "Biaya potongan yang dikembalikan"
+          },
+          "reservation": "Reservasi {number}",
+          "adjusts": "Koreksi untuk {period}"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "Tambahkan kartu penagihan",
       "description": "Louez menagih biayanya ke kartu ini. Setelah tersimpan, toko Anda dapat menerima reservasi.",
-      "secureNote": "Anda menambahkan kartu di halaman penagihan Louez yang aman, lalu langsung kembali ke sini.",
+      "secureNote": "Anda memasukkan kartu di halaman aman Stripe, lalu langsung kembali ke sini.",
       "addCard": "Tambahkan kartu",
       "later": "Nanti",
-      "laterNote": "Selama belum ada kartu yang tersimpan, toko Anda tidak dapat menerima reservasi baru. Anda dapat menambahkannya kapan saja di pengaturan penagihan."
+      "laterNote": "Selama belum ada kartu yang tersimpan, toko Anda tidak dapat menerima reservasi baru. Anda dapat menambahkannya kapan saja di pengaturan penagihan.",
+      "startFailed": "Halaman Stripe tidak dapat dibuka. Coba lagi sebentar lagi."
     },
     "complete": {
       "title": "Toko Anda sudah siap!",

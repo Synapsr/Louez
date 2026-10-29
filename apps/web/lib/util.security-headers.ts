@@ -2,11 +2,6 @@ import { getDemoParentOrigins } from "./landing-demos/policy";
 export interface SecurityHeadersOptions {
   appDomain?: string;
   appUrl?: string;
-  /**
-   * The billing service's pages, in service mode only: the hand-off posts its form
-   * there (louez-billing docs/api, README §10 step 2).
-   */
-  billingOrigin?: string;
   demoParentOrigins?: string;
   fromHelloApiUrl?: string;
   isDevelopment: boolean;
@@ -38,12 +33,10 @@ const getStorefrontWildcard = (appDomain?: string): string | null => {
 
 const buildContentSecurityPolicy = ({
   appDomain,
-  billingOrigin,
   fromHelloApiUrl,
   isDevelopment,
   openReplayIngestPoint,
 }: SecurityHeadersOptions): string => {
-  const billingPagesOrigin = getOrigin(billingOrigin);
   const fromHelloOrigin = getOrigin(fromHelloApiUrl);
   const openReplayOrigin = getOrigin(openReplayIngestPoint);
   const storefrontWildcard = getStorefrontWildcard(appDomain);
@@ -117,7 +110,7 @@ const buildContentSecurityPolicy = ({
     "media-src": ["'self'", "https://www.youtube.com", "https://youtube.com"],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
-    "form-action": ["'self'", ...(billingPagesOrigin ? [billingPagesOrigin] : [])],
+    "form-action": ["'self'"],
     "frame-ancestors": ["'self'"],
     ...(!isDevelopment ? { "upgrade-insecure-requests": [] } : {}),
   };

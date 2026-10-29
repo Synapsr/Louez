@@ -5,17 +5,19 @@ import { useTranslations } from "next-intl";
 import { Button } from "@louez/ui";
 import { CreditCardIcon, ShieldCheckIcon } from "@louez/ui/icons";
 
+import { useCardSetup } from "@/app/(dashboard)/dashboard/settings/billing/use-card-setup";
+
 import { OnboardingStepHeader } from "../_components/step-header";
 import { useBillingCardStep } from "./use-billing-card-step";
 
 /**
- * The card itself is added on the billing pages, never in Louez: the main button is a
- * plain link to the hand-off, a full page that leaves the dashboard and is never
- * prefetched. Generic words only (louez-billing docs/plans/design.md §6.4).
+ * The card itself is entered on Stripe Checkout, which comes back here. Generic words
+ * only (louez-billing docs/plans/design.md §6.4).
  */
-export const BillingCardClientPage = ({ cardHref }: { cardHref: string }) => {
+export const BillingCardClientPage = () => {
   const t = useTranslations("onboarding.billingCard");
   const { handleLater } = useBillingCardStep();
+  const card = useCardSetup("onboarding");
 
   return (
     <>
@@ -31,10 +33,15 @@ export const BillingCardClientPage = ({ cardHref }: { cardHref: string }) => {
         {/* One action group, as on the payment step: the card is the single primary
             action, "later" stays a ghost right under it. */}
         <div className="space-y-2 pt-2">
-          <Button className="w-full" render={<a href={cardHref} />}>
+          <Button className="w-full" onClick={card.start} isPending={card.opening}>
             <CreditCardIcon className="size-4" />
             {t("addCard")}
           </Button>
+          {card.failed && (
+            <p className="text-destructive text-sm" role="alert">
+              {t("startFailed")}
+            </p>
+          )}
           <Button type="button" variant="ghost" className="w-full" onClick={handleLater}>
             {t("later")}
           </Button>

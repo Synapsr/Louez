@@ -3965,7 +3965,7 @@
       },
       "billing": {
         "label": "账单",
-        "description": "您的 Louez 方案、账单卡和账单明细。",
+        "description": "您的 Louez 方案、本月情况、账单卡、账单信息和账单明细。",
         "offerTitle": "您的 Louez 方案",
         "offerPending": "Louez 为此商店设置好账单后，您的方案将显示在这里。",
         "status": {
@@ -3979,28 +3979,107 @@
         },
         "readOnly": "作为平台管理员，您以只读方式查看此商店的账单。",
         "manage": "管理账单",
-        "addCard": "添加账单卡",
-        "pages": {
-          "title": "在账单页面",
-          "paymentMethod": {
-            "title": "账单卡",
-            "description": "Louez 用于扣取其费用的银行卡。"
-          },
-          "statements": {
-            "title": "账单明细",
-            "description": "Louez 每月向您收取的费用。"
-          },
-          "details": {
-            "title": "账单信息",
-            "description": "发票上的名称、地址和增值税号。"
-          }
+        "loadFailed": "账单加载失败。请稍后重试。",
+        "settingUp": "正在为您设置账单。请几分钟后再查看此页面。",
+        "month": {
+          "title": "本月",
+          "atSource": "已从收款中扣除",
+          "due": "预计待付余额",
+          "credit": "预计抵扣额",
+          "statementAt": "下一份账单明细：{date}"
         },
-        "handoff": {
-          "title": "正在打开账单…",
-          "message": "正在前往您的账单页面。",
-          "continue": "继续",
-          "back": "返回 Louez",
-          "unavailable": "目前无法打开账单。请几分钟后重试。"
+        "card": {
+          "title": "账单卡",
+          "description": "从收款中扣除的费用不足以覆盖的部分，Louez 将从此卡扣取。",
+          "saved": "{brand}，尾号 {last4}",
+          "otherBrand": "银行卡",
+          "onFile": "已保存一种付款方式。",
+          "expires": "有效期至 {date}",
+          "expired": "已于 {date} 过期。请更换此卡，以便支付您的账单明细。",
+          "missing": "尚未添加账单卡。",
+          "unknown": "您的账单卡暂时无法在此显示。",
+          "notNeeded": "无需银行卡：您的商店没有任何费用。",
+          "inLouez": "此商店的付款方式目前在其订阅中管理。",
+          "add": "添加银行卡",
+          "replace": "更换银行卡",
+          "opening": "正在打开 Stripe…",
+          "stripeNote": "您将在 Stripe 的安全页面输入银行卡信息，然后返回此处。",
+          "startFailed": "无法打开 Stripe 页面。请稍后重试。",
+          "off": "暂时无法添加银行卡。"
+        },
+        "details": {
+          "title": "账单信息",
+          "description": "您从 Louez 收到的发票会显示这些信息。",
+          "noCustomer": "请先添加账单卡。您的账单信息会随卡一起保存。",
+          "unavailable": "暂时无法显示您的账单信息。请稍后重试。",
+          "legalName": "法定名称",
+          "legalNameHint": "您企业的注册名称。",
+          "email": "账单邮箱",
+          "emailHint": "发票和付款收据会发送到此地址。",
+          "line1": "地址",
+          "line2": "地址第 2 行（可选）",
+          "postalCode": "邮政编码",
+          "city": "城市",
+          "state": "州或地区（可选）",
+          "country": "国家/地区",
+          "countryPlaceholder": "选择国家/地区",
+          "vatNumber": "欧盟增值税号（可选）",
+          "vatNumberHint": "包含国家代码，例如 FR12345678901。如果您的企业没有，请留空。",
+          "vat": {
+            "pending": "正在通过欧盟增值税号查询服务 VIES 核验此号码。请几分钟后刷新页面。",
+            "verified": "VIES 已确认此增值税号。",
+            "unverified": "VIES 无法识别此增值税号。请检查后重新保存。",
+            "unavailable": "无法连接 VIES 核验此号码。请稍后重新保存。",
+            "unknown": "此增值税号尚未核验。"
+          },
+          "errors": {
+            "required": "此字段为必填项。",
+            "email": "请输入有效的邮箱地址。",
+            "refused": "此值被拒绝。请检查后重试。",
+            "vatNumber": "此增值税号被拒绝。请输入带国家代码的欧盟增值税号，例如 FR12345678901。",
+            "unavailable": "暂时无法保存您的账单信息。请先添加账单卡。",
+            "failed": "您的账单信息保存失败。请稍后重试。"
+          },
+          "save": "保存",
+          "saved": "账单信息已保存。"
+        },
+        "statements": {
+          "title": "账单明细",
+          "description": "Louez 每月向您的商店收取的费用。",
+          "notFinal": "尚未最终确定：这些金额会随您当前的预订和付款情况变化。发票暂不可用。",
+          "open": "暂定",
+          "summary": "应付 {owed} · 已从收款中扣除 {atSource}",
+          "creditOf": "抵扣额 {amount}",
+          "legacy": "目前，Louez 仍按原有方式向您的商店收费。您的账单转到此页面后，账单明细将显示在这里。",
+          "legacyUntil": "在 {date} 之前，Louez 仍按原有方式向您的商店收费。此后，账单明细将显示在这里。",
+          "empty": "暂无账单明细。向您的商店收取费用后，第一份明细将显示在这里。"
+        },
+        "statement": {
+          "totals": "合计",
+          "owed": "应付",
+          "atSource": "已从收款中扣除",
+          "due": "待付余额",
+          "credit": "抵扣额",
+          "groups": {
+            "commission": "付款佣金",
+            "unpaid": "未付金额佣金",
+            "reservations": "预订费用",
+            "marketplace": "市场费用",
+            "atSource": "已从收款中扣除"
+          },
+          "lines": {
+            "pay": "付款",
+            "refund": "退款",
+            "dispute_open": "争议已发起",
+            "dispute_close": "争议胜诉",
+            "uncollected": "预订未付部分",
+            "rental": "预订",
+            "mkt": "市场预订",
+            "fee": "从收款中扣除的费用",
+            "feerefund": "退回的已扣除费用"
+          },
+          "reservation": "预订 {number}",
+          "adjusts": "{period} 的更正"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "添加账单卡",
       "description": "Louez 从这张卡扣取其费用。保存后，您的商店即可接受预订。",
-      "secureNote": "您将在 Louez 的安全账单页面添加银行卡，然后直接返回这里。",
+      "secureNote": "您将在 Stripe 的安全页面输入银行卡信息，然后直接返回此处。",
       "addCard": "添加银行卡",
       "later": "稍后",
-      "laterNote": "在保存银行卡之前，您的商店无法接受新的预订。您可以随时在账单设置中添加。"
+      "laterNote": "在保存银行卡之前，您的商店无法接受新的预订。您可以随时在账单设置中添加。",
+      "startFailed": "无法打开 Stripe 页面。请稍后重试。"
     },
     "complete": {
       "title": "您的商店已准备好！",

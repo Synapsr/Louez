@@ -124,21 +124,6 @@ export function readBillingSyncConfig(env: NodeJS.ProcessEnv = process.env): Con
   };
 }
 
-/**
- * The service's origin in service mode, null elsewhere. The billing pages live on it
- * too (README §2, §10), so the CSP's `form-action` allows it. Lenient: a value that is
- * not a URL gives null here, and the start-up check refuses it.
- */
-export function billingServiceOrigin(): string | null {
-  if (!isBillingSyncEnabled()) return null;
-  try {
-    const { origin } = new URL(process.env.BILLING_SERVICE_URL ?? "");
-    return origin === "null" ? null : origin;
-  } catch {
-    return null;
-  }
-}
-
 let cached: { key: string; result: ConfigResult } | null = null;
 
 /** The checked configuration; throws with every error when it is not valid. */

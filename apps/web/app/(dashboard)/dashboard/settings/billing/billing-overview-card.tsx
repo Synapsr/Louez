@@ -1,20 +1,18 @@
 import { getTranslations } from "next-intl/server";
 
-import { Alert, AlertDescription, Badge, Button } from "@louez/ui";
-import { ExternalLinkIcon, ShieldCheckIcon, WalletIcon, WarningIcon } from "@louez/ui/icons";
+import { Alert, AlertDescription, Badge } from "@louez/ui";
+import { ShieldCheckIcon, WalletIcon, WarningIcon } from "@louez/ui/icons";
 
 import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
 import type { BillingOverview } from "@/lib/billing/billing-overview";
-import { billingHandoffHref } from "@/lib/billing/billing-routes";
 
 type BillingOverviewCardProps = {
   overview: BillingOverview;
 };
 
 /**
- * The store's offer and card gate, from the cached policy, and the button to the
- * billing pages. The labels are the service's words, shown as text. A plain link, not
- * next/link: the hand-off is a full page that leaves the dashboard, never prefetched.
+ * The store's offer and card gate, from the cached policy: what Louez enforces now.
+ * The labels are the service's words, shown as text.
  */
 export const BillingOverviewCard = async ({ overview }: BillingOverviewCardProps) => {
   const t = await getTranslations("dashboard.settings.billing");
@@ -53,11 +51,6 @@ export const BillingOverviewCard = async ({ overview }: BillingOverviewCardProps
           <AlertDescription>{t("readOnly")}</AlertDescription>
         </Alert>
       )}
-
-      <Button render={<a href={billingHandoffHref(overview.primaryPage)} />}>
-        {overview.primaryPage === "/payment-method" ? t("addCard") : t("manage")}
-        <ExternalLinkIcon className="size-4" />
-      </Button>
     </DashboardSectionCard>
   );
 };

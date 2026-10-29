@@ -12,10 +12,10 @@ export const useBillingCardStep = () => {
   const router = useRouter();
   const nextPath = getNextOnboardingPath(useOnboardingSteps(), BILLING_CARD_STEP_PATH);
 
-  // The owner often lands here from the billing pages, on a fresh page load.
+  // The owner often lands here from Stripe Checkout, on a fresh page load.
   useDraftPreview();
 
-  // Nothing to save: the card lives on the billing pages, and the store keeps asking
+  // Nothing to save: the card is the billing service's, and the store keeps asking
   // for it (dashboard banner, billing settings) until it is there.
   const handleLater = () => router.push(nextPath);
 

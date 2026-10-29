@@ -3965,7 +3965,7 @@
       },
       "billing": {
         "label": "청구",
-        "description": "Louez 요금제, 청구 카드, 명세서입니다.",
+        "description": "Louez 요금제, 이번 달 현황, 청구 카드, 청구 정보, 명세서입니다.",
         "offerTitle": "Louez 요금제",
         "offerPending": "Louez가 이 매장의 청구를 설정하면 요금제가 여기에 표시됩니다.",
         "status": {
@@ -3979,28 +3979,107 @@
         },
         "readOnly": "플랫폼 관리자로서 이 매장의 청구를 읽기 전용으로 보고 있습니다.",
         "manage": "청구 관리",
-        "addCard": "청구 카드 추가",
-        "pages": {
-          "title": "청구 페이지",
-          "paymentMethod": {
-            "title": "청구 카드",
-            "description": "Louez가 수수료를 청구하는 카드입니다."
-          },
-          "statements": {
-            "title": "명세서",
-            "description": "Louez가 매월 청구한 내역입니다."
-          },
-          "details": {
-            "title": "청구 정보",
-            "description": "청구서에 표시되는 이름, 주소, VAT 번호입니다."
-          }
+        "loadFailed": "청구 정보를 불러오지 못했습니다. 잠시 후 다시 시도하세요.",
+        "settingUp": "청구를 설정하고 있습니다. 몇 분 후에 이 페이지를 다시 확인하세요.",
+        "month": {
+          "title": "이번 달",
+          "atSource": "결제 시 차감됨",
+          "due": "예상 잔액",
+          "credit": "예상 크레딧",
+          "statementAt": "다음 명세서: {date}"
         },
-        "handoff": {
-          "title": "청구 페이지를 여는 중…",
-          "message": "청구 페이지로 이동하고 있습니다.",
-          "continue": "계속",
-          "back": "Louez로 돌아가기",
-          "unavailable": "지금은 청구 페이지를 열 수 없습니다. 몇 분 후에 다시 시도하세요."
+        "card": {
+          "title": "청구 카드",
+          "description": "결제 시 차감되는 수수료로 충당되지 않는 금액을 Louez가 이 카드로 청구합니다.",
+          "saved": "{brand}, 끝자리 {last4}",
+          "otherBrand": "카드",
+          "onFile": "결제 수단이 등록되어 있습니다.",
+          "expires": "만료일 {date}",
+          "expired": "{date}에 만료되었습니다. 명세서를 결제할 수 있도록 카드를 교체하세요.",
+          "missing": "아직 청구 카드가 없습니다.",
+          "unknown": "청구 카드가 아직 여기에 표시되지 않습니다.",
+          "notNeeded": "카드가 필요 없습니다. 매장에 청구되는 금액이 없습니다.",
+          "inLouez": "이 매장의 결제 수단은 당분간 구독에서 관리됩니다.",
+          "add": "카드 추가",
+          "replace": "카드 교체",
+          "opening": "Stripe를 여는 중…",
+          "stripeNote": "Stripe의 보안 페이지에서 카드를 입력한 다음 여기로 돌아옵니다.",
+          "startFailed": "Stripe 페이지를 열 수 없습니다. 잠시 후 다시 시도하세요.",
+          "off": "아직 카드를 추가할 수 없습니다."
+        },
+        "details": {
+          "title": "청구 정보",
+          "description": "Louez 청구서에 이 정보가 표시됩니다.",
+          "noCustomer": "먼저 청구 카드를 추가하세요. 청구 정보는 카드와 함께 저장됩니다.",
+          "unavailable": "지금은 청구 정보를 표시할 수 없습니다. 나중에 다시 시도하세요.",
+          "legalName": "법인명",
+          "legalNameHint": "등록된 사업체 이름입니다.",
+          "email": "청구 이메일",
+          "emailHint": "청구서와 결제 영수증이 이 주소로 발송됩니다.",
+          "line1": "주소",
+          "line2": "상세 주소 (선택)",
+          "postalCode": "우편번호",
+          "city": "도시",
+          "state": "주 또는 지역 (선택)",
+          "country": "국가",
+          "countryPlaceholder": "국가 선택",
+          "vatNumber": "EU VAT 번호 (선택)",
+          "vatNumberHint": "FR12345678901처럼 국가 코드를 포함해 입력하세요. 사업체에 번호가 없으면 비워 두세요.",
+          "vat": {
+            "pending": "EU의 VAT 번호 확인 서비스인 VIES에서 이 번호를 확인하고 있습니다. 몇 분 후에 페이지를 새로고침하세요.",
+            "verified": "VIES에서 이 VAT 번호를 확인했습니다.",
+            "unverified": "VIES에서 이 VAT 번호를 인식하지 못했습니다. 번호를 확인한 후 다시 저장하세요.",
+            "unavailable": "VIES에 연결할 수 없어 이 번호를 확인하지 못했습니다. 나중에 다시 저장하세요.",
+            "unknown": "이 VAT 번호는 아직 확인되지 않았습니다."
+          },
+          "errors": {
+            "required": "필수 항목입니다.",
+            "email": "올바른 이메일 주소를 입력하세요.",
+            "refused": "이 값이 거부되었습니다. 확인한 후 다시 시도하세요.",
+            "vatNumber": "이 VAT 번호가 거부되었습니다. FR12345678901처럼 국가 코드가 포함된 EU VAT 번호를 입력하세요.",
+            "unavailable": "아직 청구 정보를 저장할 수 없습니다. 먼저 청구 카드를 추가하세요.",
+            "failed": "청구 정보를 저장하지 못했습니다. 잠시 후 다시 시도하세요."
+          },
+          "save": "저장",
+          "saved": "청구 정보가 저장되었습니다."
+        },
+        "statements": {
+          "title": "명세서",
+          "description": "Louez가 매장에 청구하는 내역을 월별로 보여 줍니다.",
+          "notFinal": "아직 확정되지 않았습니다. 이 금액은 현재 예약과 결제 상태를 따릅니다. 청구서는 아직 제공되지 않습니다.",
+          "open": "미확정",
+          "summary": "청구액 {owed} · 결제 시 차감 {atSource}",
+          "creditOf": "{amount} 크레딧",
+          "legacy": "당분간 Louez는 기존 방식으로 매장에 청구합니다. 청구가 이 페이지로 옮겨지면 명세서가 여기에 표시됩니다.",
+          "legacyUntil": "{date}까지 Louez는 기존 방식으로 매장에 청구합니다. 그 이후부터 명세서가 여기에 표시됩니다.",
+          "empty": "아직 명세서가 없습니다. 매장에 청구되는 항목이 생기면 첫 명세서가 여기에 표시됩니다."
+        },
+        "statement": {
+          "totals": "합계",
+          "owed": "청구액",
+          "atSource": "결제 시 차감됨",
+          "due": "잔액",
+          "credit": "크레딧",
+          "groups": {
+            "commission": "결제에 대한 수수료",
+            "unpaid": "미납 금액에 대한 수수료",
+            "reservations": "예약 수수료",
+            "marketplace": "마켓플레이스 수수료",
+            "atSource": "결제 시 차감됨"
+          },
+          "lines": {
+            "pay": "결제",
+            "refund": "환불",
+            "dispute_open": "분쟁 제기됨",
+            "dispute_close": "분쟁 승소",
+            "uncollected": "예약 미납분",
+            "rental": "예약",
+            "mkt": "마켓플레이스 예약",
+            "fee": "결제 시 차감된 수수료",
+            "feerefund": "차감된 수수료 환급"
+          },
+          "reservation": "예약 {number}",
+          "adjusts": "{period} 정정"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "청구 카드 추가",
       "description": "Louez는 이 카드로 수수료를 청구합니다. 카드가 등록되면 매장에서 예약을 받을 수 있습니다.",
-      "secureNote": "Louez의 안전한 청구 페이지에서 카드를 추가한 다음 바로 여기로 돌아옵니다.",
+      "secureNote": "Stripe의 보안 페이지에서 카드를 입력한 다음 바로 여기로 돌아옵니다.",
       "addCard": "카드 추가",
       "later": "나중에",
-      "laterNote": "카드가 등록될 때까지 매장에서 새 예약을 받을 수 없습니다. 청구 설정에서 언제든지 추가할 수 있습니다."
+      "laterNote": "카드가 등록될 때까지 매장에서 새 예약을 받을 수 없습니다. 청구 설정에서 언제든지 추가할 수 있습니다.",
+      "startFailed": "Stripe 페이지를 열 수 없습니다. 잠시 후 다시 시도하세요."
     },
     "complete": {
       "title": "매장이 준비되었습니다!",

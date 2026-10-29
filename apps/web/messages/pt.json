@@ -3663,7 +3663,7 @@
       },
       "billing": {
         "label": "Faturamento",
-        "description": "Sua oferta Louez, seu cartão de faturamento e seus extratos.",
+        "description": "Sua oferta Louez, este mês, seu cartão de faturamento, seus dados de faturamento e seus extratos.",
         "offerTitle": "Sua oferta Louez",
         "offerPending": "Sua oferta aparecerá aqui assim que a Louez configurar o faturamento desta loja.",
         "status": {
@@ -3677,28 +3677,107 @@
         },
         "readOnly": "Como administrador da plataforma, você vê o faturamento desta loja somente para leitura.",
         "manage": "Gerenciar faturamento",
-        "addCard": "Adicionar um cartão de faturamento",
-        "pages": {
-          "title": "Nas páginas de faturamento",
-          "paymentMethod": {
-            "title": "Cartão de faturamento",
-            "description": "O cartão que a Louez cobra pelas suas taxas."
-          },
-          "statements": {
-            "title": "Extratos",
-            "description": "O que a Louez faturou de você, mês a mês."
-          },
-          "details": {
-            "title": "Dados de faturamento",
-            "description": "O nome, o endereço e o número de IVA das suas faturas."
-          }
+        "loadFailed": "Não foi possível carregar o faturamento. Tente novamente em instantes.",
+        "settingUp": "Seu faturamento está sendo configurado. Volte a esta página em alguns minutos.",
+        "month": {
+          "title": "Este mês",
+          "atSource": "Retido na fonte",
+          "due": "Saldo previsto",
+          "credit": "Crédito previsto",
+          "statementAt": "Próximo extrato: {date}."
         },
-        "handoff": {
-          "title": "Abrindo o faturamento…",
-          "message": "Estamos levando você às suas páginas de faturamento.",
-          "continue": "Continuar",
-          "back": "Voltar para a Louez",
-          "unavailable": "Não é possível abrir o faturamento agora. Tente novamente em alguns minutos."
+        "card": {
+          "title": "Cartão de faturamento",
+          "description": "A Louez cobra neste cartão o que as taxas retidas na fonte não cobrem.",
+          "saved": "{brand} com final {last4}",
+          "otherBrand": "Cartão",
+          "onFile": "Há uma forma de pagamento salva.",
+          "expires": "Vence em {date}",
+          "expired": "Vencido em {date}. Substitua-o para que seus extratos possam ser pagos.",
+          "missing": "Nenhum cartão de faturamento ainda.",
+          "unknown": "Seu cartão de faturamento ainda não aparece aqui.",
+          "notNeeded": "Nenhum cartão necessário: nada é faturado para sua loja.",
+          "inLouez": "Por enquanto, a forma de pagamento desta loja é gerenciada na assinatura dela.",
+          "add": "Adicionar um cartão",
+          "replace": "Substituir cartão",
+          "opening": "Abrindo a Stripe…",
+          "stripeNote": "Você informa o cartão na página segura da Stripe e depois volta para cá.",
+          "startFailed": "Não foi possível abrir a página da Stripe. Tente novamente em instantes.",
+          "off": "Ainda não é possível adicionar um cartão."
+        },
+        "details": {
+          "title": "Dados de faturamento",
+          "description": "Suas faturas da Louez mostram estes dados.",
+          "noCustomer": "Primeiro, adicione um cartão de faturamento. Seus dados de faturamento são salvos com ele.",
+          "unavailable": "Não é possível mostrar seus dados de faturamento agora. Tente novamente mais tarde.",
+          "legalName": "Razão social",
+          "legalNameHint": "O nome da sua empresa, como está registrado.",
+          "email": "E-mail de faturamento",
+          "emailHint": "Faturas e recibos de pagamento são enviados para este endereço.",
+          "line1": "Endereço",
+          "line2": "Complemento (opcional)",
+          "postalCode": "Código postal",
+          "city": "Cidade",
+          "state": "Estado ou região (opcional)",
+          "country": "País",
+          "countryPlaceholder": "Escolha um país",
+          "vatNumber": "Número de IVA da UE (opcional)",
+          "vatNumberHint": "Com o código do país, por exemplo FR12345678901. Deixe em branco se sua empresa não tiver um.",
+          "vat": {
+            "pending": "Verificando este número no VIES, o serviço de números de IVA da UE. Recarregue a página em alguns minutos.",
+            "verified": "O VIES confirma este número de IVA.",
+            "unverified": "O VIES não reconhece este número de IVA. Confira-o e salve novamente.",
+            "unavailable": "Não foi possível acessar o VIES para verificar este número. Salve novamente mais tarde.",
+            "unknown": "Este número de IVA ainda não foi verificado."
+          },
+          "errors": {
+            "required": "Este campo é obrigatório.",
+            "email": "Informe um endereço de e-mail válido.",
+            "refused": "Este valor foi recusado. Confira-o e tente novamente.",
+            "vatNumber": "Este número de IVA foi recusado. Informe um número de IVA da UE com o código do país, por exemplo FR12345678901.",
+            "unavailable": "Seus dados de faturamento ainda não podem ser salvos. Primeiro, adicione um cartão de faturamento.",
+            "failed": "Não foi possível salvar seus dados de faturamento. Tente novamente em instantes."
+          },
+          "save": "Salvar",
+          "saved": "Dados de faturamento salvos."
+        },
+        "statements": {
+          "title": "Extratos",
+          "description": "O que a Louez fatura para sua loja, mês a mês.",
+          "notFinal": "Ainda não definitivo: estes valores acompanham suas reservas e pagamentos como estão agora. As faturas ainda não estão disponíveis.",
+          "open": "Provisório",
+          "summary": "Devido {owed} · Retido na fonte {atSource}",
+          "creditOf": "Crédito de {amount}",
+          "legacy": "Por enquanto, a Louez fatura sua loja como antes. Seus extratos aparecerão aqui quando seu faturamento passar para esta página.",
+          "legacyUntil": "A Louez fatura sua loja como antes até {date}. A partir daí, seus extratos aparecem aqui.",
+          "empty": "Nenhum extrato ainda. O primeiro aparece aqui quando algo for faturado para sua loja."
+        },
+        "statement": {
+          "totals": "Totais",
+          "owed": "Devido",
+          "atSource": "Retido na fonte",
+          "due": "Saldo",
+          "credit": "Crédito",
+          "groups": {
+            "commission": "Comissão sobre pagamentos",
+            "unpaid": "Comissão sobre valores não pagos",
+            "reservations": "Taxas de reserva",
+            "marketplace": "Taxas do marketplace",
+            "atSource": "Retido na fonte"
+          },
+          "lines": {
+            "pay": "Pagamento",
+            "refund": "Reembolso",
+            "dispute_open": "Contestação aberta",
+            "dispute_close": "Contestação ganha",
+            "uncollected": "Parte não paga da reserva",
+            "rental": "Reserva",
+            "mkt": "Reserva pelo marketplace",
+            "fee": "Taxa retida na fonte",
+            "feerefund": "Taxa reembolsada na fonte"
+          },
+          "reservation": "Reserva {number}",
+          "adjusts": "Correção de {period}"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "Adicione um cartão de faturamento",
       "description": "A Louez cobra as suas taxas neste cartão. Assim que ele estiver registrado, sua loja pode aceitar reservas.",
-      "secureNote": "Você adiciona o cartão na página de faturamento segura da Louez e volta direto para cá.",
+      "secureNote": "Você informa o cartão na página segura da Stripe e volta direto para cá.",
       "addCard": "Adicionar um cartão",
       "later": "Mais tarde",
-      "laterNote": "Enquanto nenhum cartão estiver registrado, sua loja não pode aceitar novas reservas. Você pode adicioná-lo a qualquer momento nas configurações de faturamento."
+      "laterNote": "Enquanto nenhum cartão estiver registrado, sua loja não pode aceitar novas reservas. Você pode adicioná-lo a qualquer momento nas configurações de faturamento.",
+      "startFailed": "Não foi possível abrir a página da Stripe. Tente novamente em instantes."
     },
     "complete": {
       "title": "Sua loja esta pronta!",

@@ -519,7 +519,7 @@ const NEW = "2026-07-01T00:00:00Z";
 const AUGUST = new Date("2026-08-15T10:00:00Z");
 const SEPTEMBER = new Date("2026-09-15T10:00:00Z");
 const JUNE = new Date("2026-06-01T00:00:00Z");
-const PAYMENT_METHOD_LINK = "/dashboard/billing?to=/payment-method";
+const PAYMENT_METHOD_LINK = "/dashboard/settings/billing";
 /**
  * The start and the end of a plan's current period, in Stripe's seconds, around the real
  * clock: the plan page reads a pending change from the phases that start after now.
@@ -1366,7 +1366,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
   test("the pay-as-you-go pages send a store the service bills to its billing pages", async () => {
     await assert.rejects(requireBilling.requireLegacyBilling("lg_new"), (error: unknown) =>
       String(error instanceof Error ? Reflect.get(error, "digest") : "").includes(
-        ";/dashboard/billing?to=/;",
+        ";/dashboard/settings/billing;",
       ),
     );
     await requireBilling.requireLegacyBilling("lg_old");

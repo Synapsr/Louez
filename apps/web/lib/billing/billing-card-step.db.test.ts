@@ -244,8 +244,7 @@ describe("billing card step (database)", { skip: skipWithoutTestDatabase() }, ()
 
   test("the step list has it once the payment step has completed the flow's store", async () => {
     // At LATER, a store created now would not need a card, but this one still does: a
-    // full load of the step page (back from the billing pages or Stripe) lists the step
-    // the page shows.
+    // full load of the step page (back from Stripe) lists the step the page shows.
     assert.equal(await listed("bcs_needs_card", true, { now: LATER }), true);
     assert.equal(await listed("bcs_needs_card", false, { now: LATER }), true);
     assert.equal(await listed("bcs_has_card", true, { now: LATER }), false);

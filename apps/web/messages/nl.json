@@ -3663,7 +3663,7 @@
       },
       "billing": {
         "label": "Facturatie",
-        "description": "Je Louez-aanbod, je factuurkaart en je overzichten.",
+        "description": "Je Louez-aanbod, deze maand, je factuurkaart, je factuurgegevens en je overzichten.",
         "offerTitle": "Je Louez-aanbod",
         "offerPending": "Je aanbod verschijnt hier zodra Louez de facturatie voor deze winkel heeft ingesteld.",
         "status": {
@@ -3677,28 +3677,107 @@
         },
         "readOnly": "Als platformbeheerder bekijk je de facturatie van deze winkel alleen-lezen.",
         "manage": "Facturatie beheren",
-        "addCard": "Factuurkaart toevoegen",
-        "pages": {
-          "title": "Op de facturatiepagina's",
-          "paymentMethod": {
-            "title": "Factuurkaart",
-            "description": "De kaart die Louez voor zijn kosten belast."
-          },
-          "statements": {
-            "title": "Overzichten",
-            "description": "Wat Louez je heeft gefactureerd, maand voor maand."
-          },
-          "details": {
-            "title": "Factuurgegevens",
-            "description": "De naam, het adres en het btw-nummer op je facturen."
-          }
+        "loadFailed": "De facturatie kon niet worden geladen. Probeer het zo opnieuw.",
+        "settingUp": "Je facturatie wordt ingesteld. Kijk over een paar minuten weer op deze pagina.",
+        "month": {
+          "title": "Deze maand",
+          "atSource": "Aan de bron ingehouden",
+          "due": "Verwacht restbedrag",
+          "credit": "Verwacht tegoed",
+          "statementAt": "Volgend overzicht: {date}."
         },
-        "handoff": {
-          "title": "Facturatie openen…",
-          "message": "We brengen je naar je facturatiepagina's.",
-          "continue": "Doorgaan",
-          "back": "Terug naar Louez",
-          "unavailable": "De facturatie kan nu niet worden geopend. Probeer het over een paar minuten opnieuw."
+        "card": {
+          "title": "Factuurkaart",
+          "description": "Louez belast op deze kaart wat de aan de bron ingehouden kosten niet dekken.",
+          "saved": "{brand} eindigend op {last4}",
+          "otherBrand": "Kaart",
+          "onFile": "Er is een betaalmethode opgeslagen.",
+          "expires": "Verloopt {date}",
+          "expired": "Verlopen sinds {date}. Vervang de kaart zodat je overzichten betaald kunnen worden.",
+          "missing": "Nog geen factuurkaart.",
+          "unknown": "Je factuurkaart wordt hier nog niet getoond.",
+          "notNeeded": "Geen kaart nodig: er wordt niets aan je winkel gefactureerd.",
+          "inLouez": "De betaalmethode van deze winkel wordt voorlopig in het abonnement beheerd.",
+          "add": "Kaart toevoegen",
+          "replace": "Kaart vervangen",
+          "opening": "Stripe openen…",
+          "stripeNote": "Je voert je kaart in op de beveiligde pagina van Stripe en komt daarna hier terug.",
+          "startFailed": "De pagina van Stripe kon niet worden geopend. Probeer het zo opnieuw.",
+          "off": "Een kaart toevoegen is nog niet beschikbaar."
+        },
+        "details": {
+          "title": "Factuurgegevens",
+          "description": "Je facturen van Louez tonen deze gegevens.",
+          "noCustomer": "Voeg eerst een factuurkaart toe. Je factuurgegevens worden samen met die kaart opgeslagen.",
+          "unavailable": "Je factuurgegevens kunnen nu niet worden getoond. Probeer het later opnieuw.",
+          "legalName": "Officiële bedrijfsnaam",
+          "legalNameHint": "De naam van je bedrijf, zoals geregistreerd.",
+          "email": "E-mailadres voor facturen",
+          "emailHint": "Facturen en betaalbewijzen worden naar dit adres gestuurd.",
+          "line1": "Adres",
+          "line2": "Adresregel 2 (optioneel)",
+          "postalCode": "Postcode",
+          "city": "Plaats",
+          "state": "Provincie of regio (optioneel)",
+          "country": "Land",
+          "countryPlaceholder": "Kies een land",
+          "vatNumber": "EU-btw-nummer (optioneel)",
+          "vatNumberHint": "Met de landcode, bijvoorbeeld FR12345678901. Laat leeg als je bedrijf er geen heeft.",
+          "vat": {
+            "pending": "Dit nummer wordt gecontroleerd bij VIES, de btw-nummerdienst van de EU. Laad de pagina over een paar minuten opnieuw.",
+            "verified": "VIES bevestigt dit btw-nummer.",
+            "unverified": "VIES herkent dit btw-nummer niet. Controleer het en sla opnieuw op.",
+            "unavailable": "VIES was niet bereikbaar om dit nummer te controleren. Sla later opnieuw op.",
+            "unknown": "Dit btw-nummer is nog niet gecontroleerd."
+          },
+          "errors": {
+            "required": "Dit veld is verplicht.",
+            "email": "Voer een geldig e-mailadres in.",
+            "refused": "Deze waarde is geweigerd. Controleer de waarde en probeer het opnieuw.",
+            "vatNumber": "Dit btw-nummer is geweigerd. Voer een EU-btw-nummer met landcode in, bijvoorbeeld FR12345678901.",
+            "unavailable": "Je factuurgegevens kunnen nog niet worden opgeslagen. Voeg eerst een factuurkaart toe.",
+            "failed": "Je factuurgegevens konden niet worden opgeslagen. Probeer het zo opnieuw."
+          },
+          "save": "Opslaan",
+          "saved": "Factuurgegevens opgeslagen."
+        },
+        "statements": {
+          "title": "Overzichten",
+          "description": "Wat Louez je winkel factureert, maand voor maand.",
+          "notFinal": "Nog niet definitief: deze bedragen volgen je reserveringen en betalingen zoals ze nu zijn. Facturen zijn nog niet beschikbaar.",
+          "open": "Voorlopig",
+          "summary": "Verschuldigd {owed} · Aan de bron ingehouden {atSource}",
+          "creditOf": "Tegoed van {amount}",
+          "legacy": "Louez factureert je winkel voorlopig zoals voorheen. Je overzichten verschijnen hier zodra je facturatie naar deze pagina verhuist.",
+          "legacyUntil": "Louez factureert je winkel tot {date} zoals voorheen. Daarna verschijnen je overzichten hier.",
+          "empty": "Nog geen overzicht. Je eerste verschijnt hier zodra er iets aan je winkel wordt gefactureerd."
+        },
+        "statement": {
+          "totals": "Totalen",
+          "owed": "Verschuldigd",
+          "atSource": "Aan de bron ingehouden",
+          "due": "Restbedrag",
+          "credit": "Tegoed",
+          "groups": {
+            "commission": "Commissie op betalingen",
+            "unpaid": "Commissie op onbetaalde bedragen",
+            "reservations": "Reserveringskosten",
+            "marketplace": "Marktplaatskosten",
+            "atSource": "Aan de bron ingehouden"
+          },
+          "lines": {
+            "pay": "Betaling",
+            "refund": "Terugbetaling",
+            "dispute_open": "Geschil geopend",
+            "dispute_close": "Geschil gewonnen",
+            "uncollected": "Onbetaald deel van de reservering",
+            "rental": "Reservering",
+            "mkt": "Boeking via de marktplaats",
+            "fee": "Aan de bron ingehouden kosten",
+            "feerefund": "Aan de bron terugbetaalde kosten"
+          },
+          "reservation": "Reservering {number}",
+          "adjusts": "Correctie voor {period}"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "Voeg een factuurkaart toe",
       "description": "Louez belast zijn kosten op deze kaart. Zodra die is vastgelegd, kan je winkel reserveringen aannemen.",
-      "secureNote": "Je voegt de kaart toe op de beveiligde factuurpagina van Louez en komt daarna meteen hier terug.",
+      "secureNote": "Je voert de kaart in op de beveiligde pagina van Stripe en komt daarna direct hier terug.",
       "addCard": "Kaart toevoegen",
       "later": "Later",
-      "laterNote": "Zolang er geen kaart is vastgelegd, kan je winkel geen nieuwe reserveringen aannemen. Je kunt hem altijd toevoegen in je factuurinstellingen."
+      "laterNote": "Zolang er geen kaart is vastgelegd, kan je winkel geen nieuwe reserveringen aannemen. Je kunt hem altijd toevoegen in je factuurinstellingen.",
+      "startFailed": "De pagina van Stripe kon niet worden geopend. Probeer het zo opnieuw."
     },
     "complete": {
       "title": "Uw winkel is klaar!",

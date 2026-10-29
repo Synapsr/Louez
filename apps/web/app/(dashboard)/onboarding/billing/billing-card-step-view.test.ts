@@ -3,14 +3,14 @@ import { test } from "node:test";
 
 import { billingCardStepView } from "./billing-card-step-view";
 
-// What the onboarding's "Billing card" page answers (M2 plan L6): the step and its
-// link, or the next step with the toast of the return from the billing pages.
+// What the onboarding's "Billing card" page answers (M2 plan L6): the step, or the
+// next step with the toast of the return from Stripe Checkout.
 
-test("the step's button opens the card page through the hand-off, and comes back here", () => {
+test("the step shows while it applies", () => {
   for (const billing of [null, "pending", "junk"]) {
     assert.deepEqual(
       billingCardStepView({ shown: true, needsSource: true, billing }),
-      { kind: "show", cardHref: "/dashboard/billing?to=%2Fpayment-method&from=onboarding" },
+      { kind: "show" },
       String(billing),
     );
   }

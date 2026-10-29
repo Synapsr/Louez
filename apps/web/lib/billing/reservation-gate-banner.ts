@@ -7,9 +7,6 @@ import type { EffectivePolicy } from "./policy";
 // when a refused action is tried. Louez keeps only generic text (design §6.4): the
 // service's label, when there is one, is the only specific wording.
 
-/** The hand-off to the billing page where an owner adds a card (README §10). */
-export const BILLING_PAYMENT_METHOD_HREF = "/dashboard/billing?to=/payment-method";
-
 /** A policy label: plain text in `fr`, `en` and maybe other languages (README §8.4). */
 export type PolicyLabel = { readonly en: string; readonly [language: string]: string };
 

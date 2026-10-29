@@ -15,7 +15,7 @@ import {
 } from "@/app/(dashboard)/dashboard/subscription/subscription-management";
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { BILLING_SETTINGS_PATH } from "@/lib/billing/billing-routes";
-import { getBillingHandoffAccess } from "@/lib/billing/handoff-access";
+import { getBillingAccess } from "@/lib/billing/billing-access";
 import {
   getEffectivePolicy,
   getUncreatedStorePolicy,
@@ -146,7 +146,7 @@ const SettingsSubscriptionPage = async ({ searchParams }: SettingsSubscriptionPa
       getEffectivePolicy(store.id, now),
       getUncreatedStorePolicy(now),
       getLocale(),
-      isCurrentUserPlatformAdmin().then((isAdmin) => getBillingHandoffAccess(store, isAdmin, now)),
+      isCurrentUserPlatformAdmin().then((isAdmin) => getBillingAccess(store, isAdmin, now)),
     ]);
     const page = describeNewStoreSubscriptionPage({
       row: subscription,

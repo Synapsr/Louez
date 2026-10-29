@@ -3663,7 +3663,7 @@
       },
       "billing": {
         "label": "Rozliczenia",
-        "description": "Twoja oferta Louez, karta do rozliczeń i zestawienia.",
+        "description": "Twoja oferta Louez, bieżący miesiąc, karta do rozliczeń, dane do faktur i zestawienia.",
         "offerTitle": "Twoja oferta Louez",
         "offerPending": "Twoja oferta pojawi się tutaj, gdy Louez skonfiguruje rozliczenia tego sklepu.",
         "status": {
@@ -3677,28 +3677,107 @@
         },
         "readOnly": "Jako administrator platformy widzisz rozliczenia tego sklepu tylko do odczytu.",
         "manage": "Zarządzaj rozliczeniami",
-        "addCard": "Dodaj kartę do rozliczeń",
-        "pages": {
-          "title": "Na stronach rozliczeń",
-          "paymentMethod": {
-            "title": "Karta do rozliczeń",
-            "description": "Karta, którą Louez obciąża swoimi opłatami."
-          },
-          "statements": {
-            "title": "Zestawienia",
-            "description": "Co Louez Ci zafakturował, miesiąc po miesiącu."
-          },
-          "details": {
-            "title": "Dane do faktur",
-            "description": "Nazwa, adres i numer VAT na Twoich fakturach."
-          }
+        "loadFailed": "Nie udało się wczytać rozliczeń. Spróbuj ponownie za chwilę.",
+        "settingUp": "Twoje rozliczenia są właśnie konfigurowane. Wróć na tę stronę za kilka minut.",
+        "month": {
+          "title": "Ten miesiąc",
+          "atSource": "Pobrane u źródła",
+          "due": "Przewidywana kwota do zapłaty",
+          "credit": "Przewidywana nadpłata",
+          "statementAt": "Następne zestawienie: {date}."
         },
-        "handoff": {
-          "title": "Otwieranie rozliczeń…",
-          "message": "Przenosimy Cię na strony rozliczeń.",
-          "continue": "Dalej",
-          "back": "Wróć do Louez",
-          "unavailable": "Nie można teraz otworzyć rozliczeń. Spróbuj ponownie za kilka minut."
+        "card": {
+          "title": "Karta do rozliczeń",
+          "description": "Louez obciąża tę kartę kwotą, której nie pokrywają opłaty pobrane u źródła.",
+          "saved": "{brand} z końcówką {last4}",
+          "otherBrand": "Karta",
+          "onFile": "Metoda płatności jest zapisana.",
+          "expires": "Ważna do {date}",
+          "expired": "Wygasła {date}. Wymień ją, aby można było opłacić Twoje zestawienia.",
+          "missing": "Nie ma jeszcze karty do rozliczeń.",
+          "unknown": "Twoja karta do rozliczeń nie jest tu jeszcze widoczna.",
+          "notNeeded": "Karta nie jest potrzebna: Twój sklep nie jest niczym obciążany.",
+          "inLouez": "Metodą płatności tego sklepu zarządza się na razie w jego subskrypcji.",
+          "add": "Dodaj kartę",
+          "replace": "Wymień kartę",
+          "opening": "Otwieranie Stripe…",
+          "stripeNote": "Dane karty wpisujesz na bezpiecznej stronie Stripe, a potem wracasz tutaj.",
+          "startFailed": "Nie udało się otworzyć strony Stripe. Spróbuj ponownie za chwilę.",
+          "off": "Dodawanie karty nie jest jeszcze dostępne."
+        },
+        "details": {
+          "title": "Dane do faktur",
+          "description": "Te dane widnieją na fakturach od Louez.",
+          "noCustomer": "Najpierw dodaj kartę do rozliczeń. Dane do faktur zapisują się razem z nią.",
+          "unavailable": "Nie można teraz wyświetlić Twoich danych do faktur. Spróbuj ponownie później.",
+          "legalName": "Nazwa firmy",
+          "legalNameHint": "Nazwa Twojej firmy zgodna z rejestrem.",
+          "email": "E-mail do faktur",
+          "emailHint": "Faktury i potwierdzenia płatności są wysyłane na ten adres.",
+          "line1": "Adres",
+          "line2": "Adres, wiersz 2 (opcjonalnie)",
+          "postalCode": "Kod pocztowy",
+          "city": "Miasto",
+          "state": "Województwo lub region (opcjonalnie)",
+          "country": "Kraj",
+          "countryPlaceholder": "Wybierz kraj",
+          "vatNumber": "Unijny numer VAT (opcjonalnie)",
+          "vatNumberHint": "Z kodem kraju, na przykład FR12345678901. Zostaw puste, jeśli Twoja firma go nie ma.",
+          "vat": {
+            "pending": "Sprawdzamy ten numer w VIES, unijnej usłudze weryfikacji numerów VAT. Odśwież stronę za kilka minut.",
+            "verified": "VIES potwierdza ten numer VAT.",
+            "unverified": "VIES nie rozpoznaje tego numeru VAT. Sprawdź go i zapisz ponownie.",
+            "unavailable": "Nie udało się połączyć z VIES, aby sprawdzić ten numer. Zapisz ponownie później.",
+            "unknown": "Ten numer VAT nie został jeszcze sprawdzony."
+          },
+          "errors": {
+            "required": "To pole jest wymagane.",
+            "email": "Wpisz prawidłowy adres e-mail.",
+            "refused": "Ta wartość została odrzucona. Sprawdź ją i spróbuj ponownie.",
+            "vatNumber": "Ten numer VAT został odrzucony. Wpisz unijny numer VAT z kodem kraju, na przykład FR12345678901.",
+            "unavailable": "Nie można jeszcze zapisać Twoich danych do faktur. Najpierw dodaj kartę do rozliczeń.",
+            "failed": "Nie udało się zapisać Twoich danych do faktur. Spróbuj ponownie za chwilę."
+          },
+          "save": "Zapisz",
+          "saved": "Dane do faktur zapisane."
+        },
+        "statements": {
+          "title": "Zestawienia",
+          "description": "Co Louez fakturuje Twojemu sklepowi, miesiąc po miesiącu.",
+          "notFinal": "Jeszcze nieostateczne: te kwoty odzwierciedlają bieżący stan Twoich rezerwacji i płatności. Faktury nie są jeszcze dostępne.",
+          "open": "Wstępne",
+          "summary": "Należne {owed} · Pobrane u źródła {atSource}",
+          "creditOf": "Nadpłata {amount}",
+          "legacy": "Na razie Louez rozlicza Twój sklep tak jak dotąd. Zestawienia pojawią się tutaj, gdy Twoje rozliczenia przeniosą się na tę stronę.",
+          "legacyUntil": "Louez rozlicza Twój sklep tak jak dotąd do {date}. Od tej daty zestawienia pojawiają się tutaj.",
+          "empty": "Nie ma jeszcze zestawień. Pierwsze pojawi się tutaj, gdy Twój sklep zostanie czymś obciążony."
+        },
+        "statement": {
+          "totals": "Sumy",
+          "owed": "Należne",
+          "atSource": "Pobrane u źródła",
+          "due": "Do zapłaty",
+          "credit": "Nadpłata",
+          "groups": {
+            "commission": "Prowizja od płatności",
+            "unpaid": "Prowizja od niezapłaconych kwot",
+            "reservations": "Opłaty za rezerwacje",
+            "marketplace": "Opłaty za marketplace",
+            "atSource": "Pobrane u źródła"
+          },
+          "lines": {
+            "pay": "Płatność",
+            "refund": "Zwrot",
+            "dispute_open": "Otwarty spór",
+            "dispute_close": "Wygrany spór",
+            "uncollected": "Niezapłacona część rezerwacji",
+            "rental": "Rezerwacja",
+            "mkt": "Rezerwacja przez marketplace",
+            "fee": "Opłata pobrana u źródła",
+            "feerefund": "Opłata zwrócona u źródła"
+          },
+          "reservation": "Rezerwacja {number}",
+          "adjusts": "Korekta za {period}"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "Dodaj kartę do rozliczeń",
       "description": "Louez obciąża tę kartę swoimi opłatami. Gdy tylko zostanie zapisana, Twój sklep może przyjmować rezerwacje.",
-      "secureNote": "Kartę dodajesz na bezpiecznej stronie rozliczeń Louez, a potem wracasz prosto tutaj.",
+      "secureNote": "Dane karty wpisujesz na bezpiecznej stronie Stripe, a potem od razu wracasz tutaj.",
       "addCard": "Dodaj kartę",
       "later": "Później",
-      "laterNote": "Dopóki nie zapiszesz karty, Twój sklep nie może przyjmować nowych rezerwacji. Możesz ją dodać w każdej chwili w ustawieniach rozliczeń."
+      "laterNote": "Dopóki nie zapiszesz karty, Twój sklep nie może przyjmować nowych rezerwacji. Możesz ją dodać w każdej chwili w ustawieniach rozliczeń.",
+      "startFailed": "Nie udało się otworzyć strony Stripe. Spróbuj ponownie za chwilę."
     },
     "complete": {
       "title": "Twój sklep jest gotowy!",

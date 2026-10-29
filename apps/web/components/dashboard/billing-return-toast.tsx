@@ -10,9 +10,9 @@ import { toastManager } from "@louez/ui";
 import { BILLING_RETURN_PARAM, readBillingReturnOutcome } from "@/lib/billing/billing-return";
 
 /**
- * The toast of the return from the billing pages (`/dashboard/billing/return`), which
- * redirects to the settings or the onboarding with `?billing=`. Shown once, then the
- * parameter leaves the URL. `BillingReturnToastSlot` mounts it, in service mode only.
+ * The toast of the return from Stripe Checkout with a card: the page it came back to
+ * saves the card, then shows again with `?billing=`. Shown once, then the parameter
+ * leaves the URL. `BillingReturnToastSlot` mounts it, in service mode only.
  */
 export const BillingReturnToast = () => {
   const t = useTranslations("dashboard.settings.billingReturn");

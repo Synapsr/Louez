@@ -30,7 +30,7 @@ import { WhatsNewProvider } from "@/components/shared/whats-new-provider";
 import { getAiCreditsInfo, hasEverUsedAiCredits, microToCredits } from "@/lib/ai/advisor/credits";
 import { isAIChatConfigured } from "@/lib/ai/provider";
 import { auth } from "@/lib/auth";
-import { getBillingHandoffAccess } from "@/lib/billing/handoff-access";
+import { getBillingAccess } from "@/lib/billing/billing-access";
 import { legacyBillingApplies } from "@/lib/billing/policy";
 import { isSelfHosted } from "@/lib/hosting";
 import { parseKeyboardShortcutOverrides } from "@/lib/keyboard-shortcuts";
@@ -146,7 +146,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     isElectronicInvoicingEnabled(store.id),
     legacyBillingApplies(store.id, new Date()),
   ]);
-  const billingHandoffAccess = await getBillingHandoffAccess(store, isPlatformAdmin);
+  const billingAccess = await getBillingAccess(store, isPlatformAdmin);
 
   return (
     <KeyboardShortcutsProvider
@@ -190,7 +190,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                         planSlug={planSlug}
                         isPlatformAdmin={isPlatformAdmin}
                         legacyBillingEnabled={legacyBillingEnabled}
-                        billingHandoffEnabled={billingHandoffAccess !== null}
+                        billingPagesEnabled={billingAccess !== null}
                         electronicInvoicingEnabled={electronicInvoicingEnabled}
                       />
                     }

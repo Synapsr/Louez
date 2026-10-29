@@ -102,8 +102,8 @@ type DashboardCommandPaletteProps = {
   isPlatformAdmin?: boolean;
   /** Louez's own billing bills this store now: its referral rewards are listed. */
   legacyBillingEnabled?: boolean;
-  /** The viewer may open the billing service's pages for this store ("Facturation"). */
-  billingHandoffEnabled?: boolean;
+  /** The viewer may see the billing pages of this store ("Facturation"). */
+  billingPagesEnabled?: boolean;
   electronicInvoicingEnabled?: boolean;
   onCreateReservation: () => void;
   showAIChat: boolean;
@@ -112,7 +112,7 @@ type DashboardCommandPaletteProps = {
 export const DashboardCommandPalette = ({
   isPlatformAdmin = false,
   legacyBillingEnabled = false,
-  billingHandoffEnabled = false,
+  billingPagesEnabled = false,
   electronicInvoicingEnabled = true,
   onCreateReservation,
   showAIChat,
@@ -215,7 +215,7 @@ export const DashboardCommandPalette = ({
       filterSettingsNavigationItems({
         billingEnabled,
         legacyBillingEnabled,
-        billingHandoffEnabled,
+        billingPagesEnabled,
         electronicInvoicingEnabled,
         isPlatformAdmin,
       }).map((item) => ({
@@ -227,7 +227,7 @@ export const DashboardCommandPalette = ({
     [
       billingEnabled,
       legacyBillingEnabled,
-      billingHandoffEnabled,
+      billingPagesEnabled,
       isPlatformAdmin,
       electronicInvoicingEnabled,
       messages,

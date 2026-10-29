@@ -12,7 +12,7 @@ import {
   showsBillingCardStep,
 } from "./billing-card-step";
 import { describeBillingOverview } from "./billing-overview";
-import type { HandoffRole } from "./handoff";
+import type { BillingViewerRole } from "./billing-access";
 import type { EffectivePolicy } from "./policy";
 
 // The onboarding's "Billing card" step (M2 plan L6): its PostHog flag fails closed,
@@ -107,14 +107,14 @@ describe("asksForBillingCard", () => {
     );
   });
 
-  test("exactly when the billing settings' main button opens the card page", () => {
+  test("exactly when the billing settings tell an owner a card is missing", () => {
     const reservations: ReadonlyArray<PolicyReservations> = [
       { allowed: true },
       { allowed: false, reason: "payment_method_required" },
       { allowed: false, reason: "payment_overdue" },
       { allowed: false, reason: "suspended" },
     ];
-    const roles: ReadonlyArray<HandoffRole> = ["owner", "platform_admin"];
+    const roles: ReadonlyArray<BillingViewerRole> = ["owner", "platform_admin"];
     for (const role of roles) {
       for (const terms of reservations) {
         for (const acceptsReservations of [true, false]) {
@@ -122,7 +122,7 @@ describe("asksForBillingCard", () => {
           const overview = describeBillingOverview({ role, policy: effective }, "en", false);
           assert.equal(
             asksForBillingCard(role, effective),
-            overview.primaryPage === "/payment-method",
+            role === "owner" && overview.blockedReason === "payment_method_required",
             `${role} ${JSON.stringify(terms)} accepts=${acceptsReservations}`,
           );
         }

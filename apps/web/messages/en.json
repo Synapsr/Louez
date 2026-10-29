@@ -3966,7 +3966,7 @@
       },
       "billing": {
         "label": "Billing",
-        "description": "Your Louez offer, your billing card and your statements.",
+        "description": "Your Louez offer, this month, your billing card, your billing details and your statements.",
         "offerTitle": "Your Louez offer",
         "offerPending": "Your offer will show here once Louez has set up billing for this store.",
         "status": {
@@ -3978,30 +3978,109 @@
           "payment_overdue": "A Louez billing payment failed. Settle it to take new reservations.",
           "suspended": "Billing for this store is suspended. Contact Louez to take reservations again."
         },
-        "readOnly": "As a platform admin, you see this store's billing pages read-only.",
+        "readOnly": "As a platform admin, you see this store's billing read-only.",
         "manage": "Manage billing",
-        "addCard": "Add a billing card",
-        "pages": {
-          "title": "On the billing pages",
-          "paymentMethod": {
-            "title": "Billing card",
-            "description": "The card Louez charges for its fees."
-          },
-          "statements": {
-            "title": "Statements",
-            "description": "What Louez billed you, month by month."
-          },
-          "details": {
-            "title": "Billing details",
-            "description": "The name, address and VAT number on your invoices."
-          }
+        "loadFailed": "Billing couldn't load. Try again in a moment.",
+        "settingUp": "Your billing is being set up. Check this page again in a few minutes.",
+        "month": {
+          "title": "This month",
+          "atSource": "Taken at source",
+          "due": "Expected remainder",
+          "credit": "Expected credit",
+          "statementAt": "Next statement: {date}."
         },
-        "handoff": {
-          "title": "Opening billing…",
-          "message": "Taking you to your billing pages.",
-          "continue": "Continue",
-          "back": "Back to Louez",
-          "unavailable": "Billing can't be opened right now. Try again in a few minutes."
+        "card": {
+          "title": "Billing card",
+          "description": "Louez charges this card what the fees taken at source don't cover.",
+          "saved": "{brand} ending in {last4}",
+          "otherBrand": "Card",
+          "onFile": "A payment method is saved.",
+          "expires": "Expires {date}",
+          "expired": "Expired {date}. Replace it so your statements can be paid.",
+          "missing": "No billing card yet.",
+          "unknown": "Your billing card isn't shown here yet.",
+          "notNeeded": "No card needed: nothing is billed to your store.",
+          "inLouez": "This store's payment method is managed in its subscription for now.",
+          "add": "Add a card",
+          "replace": "Replace card",
+          "opening": "Opening Stripe…",
+          "stripeNote": "You enter your card on Stripe's secure page, then come back here.",
+          "startFailed": "Stripe's page couldn't open. Try again in a moment.",
+          "off": "Adding a card isn't available yet."
+        },
+        "details": {
+          "title": "Billing details",
+          "description": "Your invoices from Louez show these details.",
+          "noCustomer": "Add a billing card first. Your billing details are saved with it.",
+          "unavailable": "Your billing details can't be shown right now. Try again later.",
+          "legalName": "Legal name",
+          "legalNameHint": "Your business's name, as registered.",
+          "email": "Billing email",
+          "emailHint": "Invoices and payment receipts are sent to this address.",
+          "line1": "Address",
+          "line2": "Address line 2 (optional)",
+          "postalCode": "Postal code",
+          "city": "City",
+          "state": "State or region (optional)",
+          "country": "Country",
+          "countryPlaceholder": "Choose a country",
+          "vatNumber": "EU VAT number (optional)",
+          "vatNumberHint": "With its country code, such as FR12345678901. Leave it empty if your business has none.",
+          "vat": {
+            "pending": "Checking this number with VIES, the EU's VAT number service. Reload the page in a few minutes.",
+            "verified": "VIES confirms this VAT number.",
+            "unverified": "VIES doesn't recognize this VAT number. Check it, then save again.",
+            "unavailable": "VIES couldn't be reached to check this number. Save again later.",
+            "unknown": "This VAT number hasn't been checked yet."
+          },
+          "errors": {
+            "required": "This field is required.",
+            "email": "Enter a valid email address.",
+            "refused": "This value was refused. Check it and try again.",
+            "vatNumber": "This VAT number was refused. Enter an EU VAT number with its country code, such as FR12345678901.",
+            "unavailable": "Your billing details can't be saved yet. Add a billing card first.",
+            "failed": "Your billing details couldn't be saved. Try again in a moment."
+          },
+          "save": "Save",
+          "saved": "Billing details saved."
+        },
+        "statements": {
+          "title": "Statements",
+          "description": "What Louez bills your store, month by month.",
+          "notFinal": "Not final yet: these amounts follow your reservations and payments as they stand. Invoices aren't available yet.",
+          "open": "Not final",
+          "summary": "Owed {owed} · Taken at source {atSource}",
+          "creditOf": "Credit of {amount}",
+          "legacy": "Louez bills your store as before for now. Your statements will appear here once your billing moves to this page.",
+          "legacyUntil": "Louez bills your store as before until {date}. Your statements appear here from then on.",
+          "empty": "No statement yet. Your first one appears here once something is billed to your store."
+        },
+        "statement": {
+          "totals": "Totals",
+          "owed": "Owed",
+          "atSource": "Taken at source",
+          "due": "Remainder",
+          "credit": "Credit",
+          "groups": {
+            "commission": "Commission on payments",
+            "unpaid": "Commission on unpaid amounts",
+            "reservations": "Reservation fees",
+            "marketplace": "Marketplace fees",
+            "atSource": "Taken at source"
+          },
+          "lines": {
+            "pay": "Payment",
+            "refund": "Refund",
+            "dispute_open": "Dispute opened",
+            "dispute_close": "Dispute won",
+            "uncollected": "Unpaid part of the reservation",
+            "rental": "Reservation",
+            "mkt": "Marketplace booking",
+            "fee": "Fee taken at source",
+            "feerefund": "Fee refunded at source"
+          },
+          "reservation": "Reservation {number}",
+          "adjusts": "Correction for {period}"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "Add a billing card",
       "description": "Louez charges its fees to this card. Once it's on file, your store can take reservations.",
-      "secureNote": "You add the card on Louez's secure billing page, then come straight back here.",
+      "secureNote": "You enter the card on Stripe's secure page, then come straight back here.",
       "addCard": "Add a card",
       "later": "Later",
-      "laterNote": "Until a card is on file, your store can't take new reservations. You can add it anytime in your billing settings."
+      "laterNote": "Until a card is on file, your store can't take new reservations. You can add it anytime in your billing settings.",
+      "startFailed": "Stripe's page couldn't open. Try again in a moment."
     },
     "complete": {
       "title": "Your store is ready!",

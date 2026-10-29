@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import { describeBillingOverview, localizedLabel } from "./billing-overview";
-import type { BillingHandoffAccess } from "./handoff-access";
+import type { BillingAccess } from "./billing-access";
 import type { EffectivePolicy } from "./policy";
 import type { PolicyV1 } from "@/lib/billing-sync/policies";
 
 // What the "Facturation" card says, from the cached policy (design §6.1, README §8.4).
-// Who sees it is in handoff-access.test.ts. The policy uses the public test values
+// Who sees it is in billing-access.test.ts. The policy uses the public test values
 // of fees.md (Q33): 250 bps, a 150 marketplace fee.
 
 const POLICY: PolicyV1 = {
@@ -40,8 +40,8 @@ const POLICY: PolicyV1 = {
 
 function access(
   overrides: Partial<EffectivePolicy> = {},
-  role: BillingHandoffAccess["role"] = "owner",
-): BillingHandoffAccess {
+  role: BillingAccess["role"] = "owner",
+): BillingAccess {
   return {
     role,
     policy: {
@@ -73,17 +73,16 @@ describe("describeBillingOverview", () => {
     assert.equal(overview.notice, "Add a card.");
   });
 
-  test("a store without a card: blocked, and the main button opens the card page", () => {
+  test("a store without a card: blocked", () => {
     assert.deepEqual(describeBillingOverview(access(), "fr", false), {
       offer: "Commission de test",
       notice: "Ajoutez une carte.",
       blockedReason: "payment_method_required",
       readOnly: false,
-      primaryPage: "/payment-method",
     });
   });
 
-  test("other blocks open the overview; an open store shows no block", () => {
+  test("another block reads as such; an open store shows no block", () => {
     const overdue = access({
       terms: {
         ...access().policy.terms,
@@ -91,20 +90,17 @@ describe("describeBillingOverview", () => {
       },
     });
     assert.equal(describeBillingOverview(overdue, "fr", false).blockedReason, "payment_overdue");
-    assert.equal(describeBillingOverview(overdue, "fr", false).primaryPage, "/");
     const open = access({
       terms: { ...access().policy.terms, reservations: { allowed: true } },
       acceptsReservations: true,
     });
     assert.equal(describeBillingOverview(open, "fr", false).blockedReason, null);
-    assert.equal(describeBillingOverview(open, "fr", false).primaryPage, "/");
   });
 
   test("BILLING_GATE_DISABLED: the store takes reservations, so no block and no card notice", () => {
     const killSwitch = describeBillingOverview(access({ acceptsReservations: true }), "fr", true);
     assert.equal(killSwitch.blockedReason, null);
     assert.equal(killSwitch.notice, null);
-    assert.equal(killSwitch.primaryPage, "/");
     // Another notice still shows: only a missing card is moot without the gate.
     const cardRemoved = access({
       acceptsReservations: true,
@@ -135,15 +131,5 @@ describe("describeBillingOverview", () => {
   test("a platform admin's view is read-only", () => {
     assert.equal(describeBillingOverview(access({}, "platform_admin"), "fr", false).readOnly, true);
     assert.equal(describeBillingOverview(access({}, "owner"), "fr", false).readOnly, false);
-  });
-
-  test("a platform admin cannot add a card: on a store without one the button opens the overview", () => {
-    assert.deepEqual(describeBillingOverview(access({}, "platform_admin"), "fr", false), {
-      offer: "Commission de test",
-      notice: "Ajoutez une carte.",
-      blockedReason: "payment_method_required",
-      readOnly: true,
-      primaryPage: "/",
-    });
   });
 });

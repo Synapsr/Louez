@@ -3,7 +3,7 @@
 import { z } from 'zod'
 
 import { getCurrentStore, hasPermission } from '@/lib/store-context'
-import { billingPageHref } from '@/lib/billing/billing-pages'
+import { BILLING_SETTINGS_PATH } from '@/lib/billing/billing-routes'
 import { log } from '@/lib/evlog'
 import { legacyBillingApplies } from '@/lib/billing/policy'
 import {
@@ -240,7 +240,7 @@ export async function openBillingPortal() {
   // billing service bills.
   await getPlatformCustomerId(store.id)
   if (!(await legacyBillingApplies(store.id, new Date()))) {
-    return { url: billingPageHref('/payment-method') }
+    return { url: BILLING_SETTINGS_PATH }
   }
   return createCustomerPortalSession(store.id)
 }

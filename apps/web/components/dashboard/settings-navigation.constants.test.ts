@@ -10,11 +10,11 @@ const ids = (options: Parameters<typeof filterSettingsNavigationItems>[0]) =>
   filterSettingsNavigationItems(options).map((item) => item.id);
 
 test("billing pages are listed only when the instance bills its stores", () => {
-  const off = ids({ billingEnabled: false, legacyBillingEnabled: false, billingHandoffEnabled: false, electronicInvoicingEnabled: true, isPlatformAdmin: true });
+  const off = ids({ billingEnabled: false, legacyBillingEnabled: false, billingPagesEnabled: false, electronicInvoicingEnabled: true, isPlatformAdmin: true });
   for (const id of ["subscription", "referrals", "admin"]) assert.ok(!off.includes(id), id);
   assert.ok(off.includes("payments"), "online payments are not platform billing");
 
-  const on = ids({ billingEnabled: true, legacyBillingEnabled: true, billingHandoffEnabled: false, electronicInvoicingEnabled: true, isPlatformAdmin: true });
+  const on = ids({ billingEnabled: true, legacyBillingEnabled: true, billingPagesEnabled: false, electronicInvoicingEnabled: true, isPlatformAdmin: true });
   for (const id of ["subscription", "referrals", "admin"]) assert.ok(on.includes(id), id);
   assert.deepEqual(
     on.filter((id) => !off.includes(id)).sort(),
@@ -26,8 +26,8 @@ test("billing pages are listed only when the instance bills its stores", () => {
 test("referrals are listed only for a store Louez's own billing bills", () => {
   // Their rewards are credits on Louez's own billing: a store the billing service bills
   // never gets one (maybeGrantReferrerReward), so its menu does not offer them.
-  const legacy = ids({ billingEnabled: true, legacyBillingEnabled: true, billingHandoffEnabled: false, electronicInvoicingEnabled: true, isPlatformAdmin: false });
-  const service = ids({ billingEnabled: true, legacyBillingEnabled: false, billingHandoffEnabled: true, electronicInvoicingEnabled: true, isPlatformAdmin: false });
+  const legacy = ids({ billingEnabled: true, legacyBillingEnabled: true, billingPagesEnabled: false, electronicInvoicingEnabled: true, isPlatformAdmin: false });
+  const service = ids({ billingEnabled: true, legacyBillingEnabled: false, billingPagesEnabled: true, electronicInvoicingEnabled: true, isPlatformAdmin: false });
   assert.ok(legacy.includes("referrals"));
   assert.ok(!service.includes("referrals"));
   assert.deepEqual(
@@ -38,19 +38,19 @@ test("referrals are listed only for a store Louez's own billing bills", () => {
 });
 
 test("the platform-admin and invoicing rules still apply", () => {
-  const member = ids({ billingEnabled: true, legacyBillingEnabled: true, billingHandoffEnabled: false, electronicInvoicingEnabled: false, isPlatformAdmin: false });
+  const member = ids({ billingEnabled: true, legacyBillingEnabled: true, billingPagesEnabled: false, electronicInvoicingEnabled: false, isPlatformAdmin: false });
   assert.ok(!member.includes("admin"));
   assert.ok(member.includes("subscription"));
 });
 
 test("Facturation is listed only for a viewer who may open the billing pages", () => {
-  // lib/billing/handoff-access.ts decides it: service mode, then the owner of a store
+  // lib/billing/billing-access.ts decides it: service mode, then the owner of a store
   // the service bills or a platform admin (M2 plan D4).
   for (const isPlatformAdmin of [false, true]) {
     const hidden = ids({
       billingEnabled: true,
       legacyBillingEnabled: true,
-      billingHandoffEnabled: false,
+      billingPagesEnabled: false,
       electronicInvoicingEnabled: true,
       isPlatformAdmin,
     });
@@ -58,7 +58,7 @@ test("Facturation is listed only for a viewer who may open the billing pages", (
     const shown = ids({
       billingEnabled: true,
       legacyBillingEnabled: true,
-      billingHandoffEnabled: true,
+      billingPagesEnabled: true,
       electronicInvoicingEnabled: true,
       isPlatformAdmin,
     });

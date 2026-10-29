@@ -16,10 +16,8 @@ import {
 } from "@louez/ui";
 
 import { useStore } from "@/contexts/store-context";
-import {
-  BILLING_PAYMENT_METHOD_HREF,
-  canManageBilling,
-} from "@/lib/billing/reservation-gate-banner";
+import { BILLING_SETTINGS_PATH } from "@/lib/billing/billing-routes";
+import { canManageBilling } from "@/lib/billing/reservation-gate-banner";
 
 type ReservationGateDialogProps = {
   open: boolean;
@@ -48,9 +46,7 @@ export const ReservationGateDialog = ({ open, onOpenChange }: ReservationGateDia
             {tCommon("close")}
           </AlertDialogClose>
           {canManageBilling(role) && (
-            <Button render={<Link href={BILLING_PAYMENT_METHOD_HREF} />}>
-              {t("manageBilling")}
-            </Button>
+            <Button render={<Link href={BILLING_SETTINGS_PATH} />}>{t("manageBilling")}</Button>
           )}
         </AlertDialogFooter>
       </AlertDialogContent>

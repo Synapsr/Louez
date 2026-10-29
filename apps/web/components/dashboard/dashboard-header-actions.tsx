@@ -25,7 +25,7 @@ export const DashboardHeaderActions = ({
   planSlug,
   isPlatformAdmin = false,
   legacyBillingEnabled = false,
-  billingHandoffEnabled = false,
+  billingPagesEnabled = false,
   electronicInvoicingEnabled = true,
 }: {
   showAIChat: boolean;
@@ -33,7 +33,7 @@ export const DashboardHeaderActions = ({
   planSlug: string;
   isPlatformAdmin?: boolean;
   legacyBillingEnabled?: boolean;
-  billingHandoffEnabled?: boolean;
+  billingPagesEnabled?: boolean;
   electronicInvoicingEnabled?: boolean;
 }) => {
   const t = useTranslations("dashboard");
@@ -80,7 +80,7 @@ export const DashboardHeaderActions = ({
         <DashboardCommandPalette
           isPlatformAdmin={isPlatformAdmin}
           legacyBillingEnabled={legacyBillingEnabled}
-          billingHandoffEnabled={billingHandoffEnabled}
+          billingPagesEnabled={billingPagesEnabled}
           electronicInvoicingEnabled={electronicInvoicingEnabled}
           showAIChat={showAIChat}
           onCreateReservation={handleCreateReservation}

@@ -1,24 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  billingReturnOriginPath,
-  billingReturnTarget,
-  readBillingReturnOutcome,
-  withBillingReturnOutcome,
-} from "./billing-return";
+import { readBillingReturnOutcome, withBillingReturnOutcome } from "./billing-return";
 
-// Where "Back to Louez" lands (louez-billing docs/api, README §10 step 4): the billing
-// settings, or the onboarding's card step when the hand-off left from it.
+// The toast of the owner's return from Stripe Checkout (louez-billing docs/api, README
+// §10 step 5).
 
-test("the return lands on the settings, or on the onboarding's card step", () => {
-  assert.equal(billingReturnOriginPath(null), "/dashboard/settings/billing");
-  assert.equal(billingReturnOriginPath("onboarding"), "/onboarding/billing");
-  assert.equal(billingReturnTarget("refreshed"), "/dashboard/settings/billing?billing=refreshed");
-  assert.equal(billingReturnTarget("pending", "onboarding"), "/onboarding/billing?billing=pending");
-});
-
-test("the toast travels to the next step only as one of its two outcomes", () => {
+test("the toast travels only as one of its two outcomes", () => {
   assert.equal(
     withBillingReturnOutcome("/onboarding/source", "refreshed"),
     "/onboarding/source?billing=refreshed",

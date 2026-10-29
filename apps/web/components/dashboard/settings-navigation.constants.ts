@@ -48,10 +48,10 @@ export type SettingsNavigationItem = {
    */
   requiresLegacyBilling?: boolean;
   /**
-   * Hidden unless the viewer may open the billing service's pages for this store
-   * (lib/billing/handoff-access.ts), which needs the service.
+   * Hidden unless the viewer may see the billing pages of this store
+   * (lib/billing/billing-access.ts), which need the service.
    */
-  requiresBillingHandoff?: boolean;
+  requiresBillingPages?: boolean;
   /** Hidden unless the store's electronic-invoicing rollout flag is on. */
   requiresElectronicInvoicing?: boolean;
   searchPaths: string[];
@@ -341,7 +341,8 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     navigation: true,
     requiresBilling: true,
   },
-  // "Facturation": the billing service's offer, card and statements (design §6.1).
+  // "Facturation": the offer, the card, the billing details and the statements, from
+  // the billing service (design §6.1).
   {
     id: "billing",
     href: "/dashboard/settings/billing",
@@ -351,7 +352,7 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     searchPaths: ["dashboard.settings.billing"],
     group: "accountData",
     navigation: true,
-    requiresBillingHandoff: true,
+    requiresBillingPages: true,
   },
   {
     id: "export",
@@ -381,13 +382,13 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
 export const filterSettingsNavigationItems = ({
   billingEnabled,
   legacyBillingEnabled,
-  billingHandoffEnabled,
+  billingPagesEnabled,
   electronicInvoicingEnabled,
   isPlatformAdmin,
 }: {
   billingEnabled: boolean;
   legacyBillingEnabled: boolean;
-  billingHandoffEnabled: boolean;
+  billingPagesEnabled: boolean;
   electronicInvoicingEnabled: boolean;
   isPlatformAdmin: boolean;
 }): SettingsNavigationItem[] =>
@@ -396,6 +397,6 @@ export const filterSettingsNavigationItems = ({
       (!item.platformAdminOnly || isPlatformAdmin) &&
       (!item.requiresBilling || billingEnabled) &&
       (!item.requiresLegacyBilling || legacyBillingEnabled) &&
-      (!item.requiresBillingHandoff || billingHandoffEnabled) &&
+      (!item.requiresBillingPages || billingPagesEnabled) &&
       (!item.requiresElectronicInvoicing || electronicInvoicingEnabled),
   );

@@ -1,11 +1,16 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { eq } from "drizzle-orm";
 
 import { db, users } from "@louez/db";
 
 import { auth } from "@/lib/auth";
+import { getBillingAccess } from "@/lib/billing/billing-access";
 import { showsBillingCardStep } from "@/lib/billing/billing-card-step";
+import { withBillingReturnOutcome } from "@/lib/billing/billing-return";
+import { BILLING_CARD_STEP_PATH } from "@/lib/billing/billing-routes";
+import { finishCardReturn, readCheckoutSessionId } from "@/lib/billing/card-return";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
 import { getCurrentStore } from "@/lib/store-context";
 
@@ -17,14 +22,15 @@ import { billingCardStepView } from "./billing-card-step-view";
 export const instant = false;
 
 /**
- * The "Billing card" step (lib/billing/billing-card-step.ts): the owner adds the card
- * on the billing pages, through the hand-off, and the return comes back here with
- * `?billing=`. billing-card-step-view.ts decides the answer.
+ * The "Billing card" step (lib/billing/billing-card-step.ts): the owner enters the card
+ * on Stripe Checkout, which comes back here with `?checkout=`. The card is saved, then
+ * the page comes back once more with the toast's `?billing=`, and
+ * billing-card-step-view.ts decides the answer.
  */
 export default async function OnboardingBillingCardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing?: string }>;
+  searchParams: Promise<{ billing?: string; checkout?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -40,6 +46,16 @@ export default async function OnboardingBillingCardPage({
     isCurrentUserPlatformAdmin(),
   ]);
 
+  const { billing, checkout } = await searchParams;
+  const checkoutSessionId = readCheckoutSessionId(checkout);
+  if (store && checkoutSessionId) {
+    const access = await getBillingAccess(store, isPlatformAdmin);
+    if (access?.role === "owner") {
+      const outcome = await finishCardReturn({ storeId: store.id, checkoutSessionId, after });
+      redirect(withBillingReturnOutcome(BILLING_CARD_STEP_PATH, outcome));
+    }
+  }
+
   const view = billingCardStepView({
     shown: await showsBillingCardStep({
       userId: session.user.id,
@@ -47,9 +63,9 @@ export default async function OnboardingBillingCardPage({
       stores: store ? [store] : [],
     }),
     needsSource: !user?.acquisitionChannel,
-    billing: (await searchParams).billing ?? null,
+    billing: billing ?? null,
   });
   if (view.kind === "redirect") redirect(view.to);
 
-  return <BillingCardClientPage cardHref={view.cardHref} />;
+  return <BillingCardClientPage />;
 }

@@ -4,7 +4,7 @@ import { isValidElement } from "react";
 
 import { BillingReturnToastSlot } from "./billing-return-toast-slot";
 
-// The toast of the return from the billing pages exists in service mode only
+// The toast of the return from Stripe Checkout exists in service mode only
 // (louez-billing docs/api, README §12): elsewhere `?billing=refreshed` shows nothing.
 
 const saved = {

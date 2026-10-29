@@ -53,8 +53,8 @@ type SettingsNavProps = {
   isPlatformAdmin?: boolean;
   /** Louez's own billing bills this store now: its referral rewards are listed. */
   legacyBillingEnabled?: boolean;
-  /** The viewer may open the billing service's pages for this store ("Facturation"). */
-  billingHandoffEnabled?: boolean;
+  /** The viewer may see the billing pages of this store ("Facturation"). */
+  billingPagesEnabled?: boolean;
   electronicInvoicingEnabled?: boolean;
   /** The settings page on screen, where it is not the one in the address bar: a demo scene. */
   pathname?: string;
@@ -65,7 +65,7 @@ type SettingsNavProps = {
 export const SettingsNav = ({
   isPlatformAdmin = false,
   legacyBillingEnabled = false,
-  billingHandoffEnabled = false,
+  billingPagesEnabled = false,
   electronicInvoicingEnabled = true,
   pathname: suppliedPathname,
   onNavigate,
@@ -84,14 +84,14 @@ export const SettingsNav = ({
       filterSettingsNavigationItems({
         billingEnabled,
         legacyBillingEnabled,
-        billingHandoffEnabled,
+        billingPagesEnabled,
         electronicInvoicingEnabled,
         isPlatformAdmin,
       }),
     [
       billingEnabled,
       legacyBillingEnabled,
-      billingHandoffEnabled,
+      billingPagesEnabled,
       isPlatformAdmin,
       electronicInvoicingEnabled,
     ],

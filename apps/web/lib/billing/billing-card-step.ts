@@ -4,16 +4,16 @@ import { isBillingSyncEnabled } from "@louez/db";
 import type { MemberRole } from "@louez/utils";
 
 import { env } from "@/env";
-import type { HandoffRole } from "@/lib/billing/handoff";
-import { billingHandoffRole, getBillingHandoffAccess } from "@/lib/billing/handoff-access";
+import type { BillingViewerRole } from "@/lib/billing/billing-access";
+import { billingViewerRole, getBillingAccess } from "@/lib/billing/billing-access";
 import { type EffectivePolicy, getUncreatedStorePolicy } from "@/lib/billing/policy";
 import { log } from "@/lib/evlog";
 import { getPostHogServer } from "@/lib/posthog";
 
 // The onboarding's "Billing card" step (louez-billing docs/plans/design.md §4.7; M2
-// plan L6): after the payment step, it sends the owner of a store the billing service
-// bills, and whose policy asks for a card, through the hand-off to `/payment-method`
-// and back. Nobody sees it with LOUEZ_BILLING off, without the service, on a legacy
+// plan L6): after the payment step, it asks the owner of a store the billing service
+// bills, and whose policy asks for a card, to add one through Stripe Checkout, which
+// comes back to the step. Nobody sees it with LOUEZ_BILLING off, without the service, on a legacy
 // store, with BILLING_GATE_DISABLED, or while its PostHog flag is not on.
 
 /** The PostHog flag of the step, evaluated for the signed-in user. */
@@ -52,14 +52,17 @@ export async function isBillingCardStepFlagOn(
 }
 
 /**
- * Whether the policy asks the viewer for a card: they open the billing pages as the
- * owner, which only a store the service bills allows (`billingHandoffRole`), and the
- * card gate refuses reservations until a card is on file. The same rule sends the
- * billing settings' main button to the card page (billing-overview.ts). With
+ * Whether the policy asks the viewer for a card: they see the billing pages as the
+ * owner, which only a store the service bills allows (`billingViewerRole`), and the
+ * card gate refuses reservations until a card is on file, as the billing settings say
+ * (billing-overview.ts). With
  * BILLING_GATE_DISABLED the gate lets reservations through, and the banners and the
  * settings show no block and no card notice: the step does not claim one either.
  */
-export function asksForBillingCard(role: HandoffRole | null, policy: EffectivePolicy): boolean {
+export function asksForBillingCard(
+  role: BillingViewerRole | null,
+  policy: EffectivePolicy,
+): boolean {
   const { reservations } = policy.terms;
   return (
     role === "owner" &&
@@ -106,11 +109,11 @@ async function storeAsksForBillingCard(
   now: Date,
 ): Promise<boolean> {
   if (store) {
-    const access = await getBillingHandoffAccess(store, isPlatformAdmin, now);
+    const access = await getBillingAccess(store, isPlatformAdmin, now);
     return access !== null && asksForBillingCard(access.role, access.policy);
   }
   const policy = await getUncreatedStorePolicy(now);
-  const role = billingHandoffRole({
+  const role = billingViewerRole({
     memberRole: "owner",
     isPlatformAdmin,
     invoicing: policy.terms.invoicing,

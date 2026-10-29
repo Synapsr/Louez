@@ -1,5 +1,4 @@
 import { env } from '@/env';
-import { readHandoffSigningKey } from '@/lib/billing/handoff';
 import { isBillingSyncEnabled, readBillingSyncConfig } from '@/lib/billing-sync/config';
 import { isStandaloneMode } from '@/lib/deployment';
 import { log } from '@/lib/evlog';
@@ -59,17 +58,15 @@ export function checkPayAsYouGoOfferAtStartup(
 
 /**
  * Server-start check of the billing service variables (louez-billing docs/api, README
- * §12), the hand-off's signing key included from M2. In service mode (LOUEZ_BILLING=cloud
- * with BILLING_SERVICE_URL) it logs every problem and returns false, and the caller
- * stops the server. Outside service mode the variables are ignored and it returns true.
+ * §12). In service mode (LOUEZ_BILLING=cloud with BILLING_SERVICE_URL) it logs every
+ * problem and returns false, and the caller stops the server. Outside service mode the
+ * variables are ignored and it returns true.
  */
 export function checkBillingSyncConfigAtStartup(logger: StartupLogger = log): boolean {
   if (!isBillingSyncEnabled()) return true;
-  const errors = [readBillingSyncConfig(), readHandoffSigningKey()].flatMap((result) =>
-    result.ok ? [] : result.errors,
-  );
-  if (errors.length === 0) return true;
-  for (const error of errors) logger.error('billing', `billing service config: ${error}`);
+  const result = readBillingSyncConfig();
+  if (result.ok) return true;
+  for (const error of result.errors) logger.error('billing', `billing service config: ${error}`);
   logger.error('billing', 'billing service config is invalid, stopping');
   return false;
 }

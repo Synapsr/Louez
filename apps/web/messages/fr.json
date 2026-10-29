@@ -3966,7 +3966,7 @@
       },
       "billing": {
         "label": "Facturation",
-        "description": "Votre offre Louez, votre carte de facturation et vos relevés.",
+        "description": "Votre offre Louez, le mois en cours, votre carte et vos informations de facturation, et vos relevés.",
         "offerTitle": "Votre offre Louez",
         "offerPending": "Votre offre s'affichera ici dès que Louez aura mis en place la facturation de cette boutique.",
         "status": {
@@ -3980,28 +3980,107 @@
         },
         "readOnly": "En tant qu'administrateur de la plateforme, vous consultez la facturation de cette boutique en lecture seule.",
         "manage": "Gérer la facturation",
-        "addCard": "Ajouter une carte de facturation",
-        "pages": {
-          "title": "Sur les pages de facturation",
-          "paymentMethod": {
-            "title": "Carte de facturation",
-            "description": "La carte que Louez débite pour ses frais."
-          },
-          "statements": {
-            "title": "Relevés",
-            "description": "Ce que Louez vous a facturé, mois par mois."
-          },
-          "details": {
-            "title": "Informations de facturation",
-            "description": "Le nom, l'adresse et le numéro de TVA de vos factures."
-          }
+        "loadFailed": "La facturation n'a pas pu se charger. Réessayez dans un instant.",
+        "settingUp": "Votre facturation est en cours de mise en place. Revenez sur cette page dans quelques minutes.",
+        "month": {
+          "title": "Ce mois-ci",
+          "atSource": "Prélevé à la source",
+          "due": "Reste à payer prévu",
+          "credit": "Crédit prévu",
+          "statementAt": "Prochain relevé : {date}."
         },
-        "handoff": {
-          "title": "Ouverture de la facturation…",
-          "message": "Nous vous emmenons vers vos pages de facturation.",
-          "continue": "Continuer",
-          "back": "Retour à Louez",
-          "unavailable": "La facturation ne peut pas s'ouvrir pour le moment. Réessayez dans quelques minutes."
+        "card": {
+          "title": "Carte de facturation",
+          "description": "Louez débite sur cette carte ce que les frais prélevés à la source ne couvrent pas.",
+          "saved": "{brand} se terminant par {last4}",
+          "otherBrand": "Carte",
+          "onFile": "Un moyen de paiement est enregistré.",
+          "expires": "Expire en {date}",
+          "expired": "Expirée depuis {date}. Remplacez-la pour que vos relevés puissent être payés.",
+          "missing": "Aucune carte de facturation pour l'instant.",
+          "unknown": "Votre carte de facturation ne s'affiche pas encore ici.",
+          "notNeeded": "Aucune carte nécessaire : rien n'est facturé à votre boutique.",
+          "inLouez": "Le moyen de paiement de cette boutique se gère pour l'instant dans son abonnement.",
+          "add": "Ajouter une carte",
+          "replace": "Remplacer la carte",
+          "opening": "Ouverture de Stripe…",
+          "stripeNote": "Vous saisissez votre carte sur la page sécurisée de Stripe, puis vous revenez ici.",
+          "startFailed": "La page de Stripe n'a pas pu s'ouvrir. Réessayez dans un instant.",
+          "off": "L'ajout d'une carte n'est pas encore disponible."
+        },
+        "details": {
+          "title": "Informations de facturation",
+          "description": "Ces informations figurent sur les factures de Louez.",
+          "noCustomer": "Ajoutez d'abord une carte de facturation. Vos informations de facturation sont enregistrées avec elle.",
+          "unavailable": "Vos informations de facturation ne peuvent pas s'afficher pour le moment. Réessayez plus tard.",
+          "legalName": "Raison sociale",
+          "legalNameHint": "Le nom de votre entreprise, tel qu'il est enregistré.",
+          "email": "E-mail de facturation",
+          "emailHint": "Les factures et les reçus de paiement sont envoyés à cette adresse.",
+          "line1": "Adresse",
+          "line2": "Complément d'adresse (facultatif)",
+          "postalCode": "Code postal",
+          "city": "Ville",
+          "state": "Région ou État (facultatif)",
+          "country": "Pays",
+          "countryPlaceholder": "Choisissez un pays",
+          "vatNumber": "Numéro de TVA intracommunautaire (facultatif)",
+          "vatNumberHint": "Avec son code pays, par exemple FR12345678901. Laissez vide si votre entreprise n'en a pas.",
+          "vat": {
+            "pending": "Vérification de ce numéro auprès de VIES, le service européen des numéros de TVA. Rechargez la page dans quelques minutes.",
+            "verified": "VIES confirme ce numéro de TVA.",
+            "unverified": "VIES ne reconnaît pas ce numéro de TVA. Vérifiez-le, puis enregistrez à nouveau.",
+            "unavailable": "VIES n'a pas pu être joint pour vérifier ce numéro. Enregistrez à nouveau plus tard.",
+            "unknown": "Ce numéro de TVA n'a pas encore été vérifié."
+          },
+          "errors": {
+            "required": "Ce champ est obligatoire.",
+            "email": "Saisissez une adresse e-mail valide.",
+            "refused": "Cette valeur a été refusée. Vérifiez-la et réessayez.",
+            "vatNumber": "Ce numéro de TVA a été refusé. Saisissez un numéro de TVA européen avec son code pays, par exemple FR12345678901.",
+            "unavailable": "Vos informations de facturation ne peuvent pas encore être enregistrées. Ajoutez d'abord une carte de facturation.",
+            "failed": "Vos informations de facturation n'ont pas pu être enregistrées. Réessayez dans un instant."
+          },
+          "save": "Enregistrer",
+          "saved": "Informations de facturation enregistrées."
+        },
+        "statements": {
+          "title": "Relevés",
+          "description": "Ce que Louez facture à votre boutique, mois par mois.",
+          "notFinal": "Pas encore définitif : ces montants suivent vos réservations et vos paiements tels qu'ils sont. Les factures ne sont pas encore disponibles.",
+          "open": "Provisoire",
+          "summary": "Dû {owed} · Prélevé à la source {atSource}",
+          "creditOf": "Crédit de {amount}",
+          "legacy": "Pour l'instant, Louez facture votre boutique comme avant. Vos relevés apparaîtront ici dès que votre facturation passera sur cette page.",
+          "legacyUntil": "Louez facture votre boutique comme avant jusqu'au {date}. Vos relevés apparaissent ici à partir de cette date.",
+          "empty": "Aucun relevé pour l'instant. Le premier apparaîtra ici dès que quelque chose sera facturé à votre boutique."
+        },
+        "statement": {
+          "totals": "Totaux",
+          "owed": "Dû",
+          "atSource": "Prélevé à la source",
+          "due": "Reste à payer",
+          "credit": "Crédit",
+          "groups": {
+            "commission": "Commission sur les paiements",
+            "unpaid": "Commission sur les montants impayés",
+            "reservations": "Frais de réservation",
+            "marketplace": "Frais de la marketplace",
+            "atSource": "Prélevé à la source"
+          },
+          "lines": {
+            "pay": "Paiement",
+            "refund": "Remboursement",
+            "dispute_open": "Litige ouvert",
+            "dispute_close": "Litige gagné",
+            "uncollected": "Part impayée de la réservation",
+            "rental": "Réservation",
+            "mkt": "Réservation via la marketplace",
+            "fee": "Frais prélevés à la source",
+            "feerefund": "Frais remboursés à la source"
+          },
+          "reservation": "Réservation {number}",
+          "adjusts": "Correction pour {period}"
         }
       },
       "nav": {
@@ -8116,10 +8195,11 @@
     "billingCard": {
       "title": "Ajoutez une carte de facturation",
       "description": "Louez débite ses frais sur cette carte. Dès qu'elle est enregistrée, votre boutique peut accepter des réservations.",
-      "secureNote": "Vous ajoutez la carte sur la page de facturation sécurisée de Louez, puis vous revenez directement ici.",
+      "secureNote": "Vous saisissez la carte sur la page sécurisée de Stripe, puis vous revenez directement ici.",
       "addCard": "Ajouter une carte",
       "later": "Plus tard",
-      "laterNote": "Tant qu'aucune carte n'est enregistrée, votre boutique ne peut pas accepter de nouvelles réservations. Vous pouvez l'ajouter à tout moment dans vos paramètres de facturation."
+      "laterNote": "Tant qu'aucune carte n'est enregistrée, votre boutique ne peut pas accepter de nouvelles réservations. Vous pouvez l'ajouter à tout moment dans vos paramètres de facturation.",
+      "startFailed": "La page de Stripe n'a pas pu s'ouvrir. Réessayez dans un instant."
     },
     "complete": {
       "title": "Votre boutique est prête !",

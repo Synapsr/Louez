@@ -219,7 +219,7 @@ async function resolvePlatformCustomer(
  * A legacy store keeps the customer Louez created, and gets one when it has none, as
  * before, until B. For a store the billing service bills, Louez never creates one:
  * null until the service has one. The caller then starts no charge and sends the owner
- * to the billing pages to add a card (`/payment-method`, Q39).
+ * to the billing settings to add a card (Q39).
  */
 export async function getPlatformCustomerId(storeId: string): Promise<string | null> {
   return (await resolvePlatformCustomer(storeId, new Date())).customerId
