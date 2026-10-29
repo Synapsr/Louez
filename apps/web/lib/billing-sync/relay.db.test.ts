@@ -472,6 +472,41 @@ describe("billing relay (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal(state?.serverErrorRuns, 0);
   });
 
+  test("a run that does not count server errors leaves single-event mode and the event's count to the others", async () => {
+    snapshots.set("store:s9", { kind: "snapshot", data: storeData("s-nine") });
+    await louezDb.markStore(louezDb.db, "s9");
+    const uncounted = () => run(captureAlerts(), { countsServerErrors: false });
+    const state = async () => (await louezDb.db.select().from(louezDb.billingSyncState))[0];
+    service.handle("/events", () => ({ status: 500, body: { code: "internal_error" } }));
+    try {
+      // The early plan sync's runs, on top of the cron's: none moves the count.
+      await run();
+      for (let index = 0; index < 3; index += 1) {
+        assert.equal((await uncounted()).result.outcome, "transport_failure");
+      }
+      assert.deepEqual(
+        [(await state())?.serverErrorRuns, (await state())?.singleEventMode],
+        [1, false],
+      );
+      assert.equal((await state())?.consecutiveFailures, 4);
+
+      // In single-event mode, the event alone is skipped, not counted.
+      await louezDb.db.update(louezDb.billingSyncState).set({ singleEventMode: true });
+      await uncounted();
+      const skipped = await row("store", "s9");
+      assert.deepEqual([skipped?.status, skipped?.lastError ?? ""], ["pending", ""]);
+      await run();
+      assert.match((await row("store", "s9"))?.lastError ?? "", /^server_error 1\/3/);
+    } finally {
+      service.handle("/events", answerEvents);
+    }
+    // A clean run that does not count leaves single-event mode on; the next clean one ends it.
+    await uncounted();
+    assert.equal((await state())?.singleEventMode, true);
+    await run();
+    assert.equal((await state())?.singleEventMode, false);
+  });
+
   test("a change undone while its send is in flight is sent again", async () => {
     snapshots.set("store:s6", { kind: "snapshot", data: storeData("s-six") });
     await louezDb.markStore(louezDb.db, "s6");

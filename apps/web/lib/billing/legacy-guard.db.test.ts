@@ -24,8 +24,8 @@ import { DEFAULT_REFERRAL_PROGRAM_CONFIG } from "@/lib/referral/config";
 // and a second plan paid through another one never replaces the first; a row whose
 // subscription Stripe has ended goes back to pay-as-you-go instead of blocking a plan.
 // Each write that starts, changes or ends a plan asks for the early sync once
-// (syncPlanSoon, plans-for-new-stores decision 8). billing-off.test.ts covers
-// LOUEZ_BILLING off.
+// (syncPlanSoon, plans-for-new-stores decision 8), and no other write does.
+// billing-off.test.ts covers LOUEZ_BILLING off.
 //
 // Times are relative to the real clock: new stores are those created from 2026-06-01,
 // and the switched stores are billed by the service from 2026-09-01, both in the past.
@@ -1316,6 +1316,13 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     });
     assert.deepEqual(planSyncs, ["lg_plan_buy"]);
     assert.deepEqual(await Promise.all(plansAtSync), [["subscription", "pro"]]);
+    // Stripe delivers it again: the row is written again, and the plan stays as it was.
+    await webhooks.handleSubscriptionCheckoutCompleted({
+      metadata: { storeId: "lg_plan_buy", planSlug: "pro" },
+      subscription: "sub_lg_plan_buy",
+      customer: "cus_lg_plan_buy",
+    });
+    assert.deepEqual(planSyncs, ["lg_plan_buy"]);
     assert.deepEqual(await planColumns("lg_plan_buy"), {
       billingMode: "subscription",
       planSlug: "pro",
@@ -1439,6 +1446,8 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
   });
 
   test("a subscription Stripe no longer collects ends a new store's plan, not an old store's", async () => {
+    await setPlanRow("lg_plan_new", { ...PLAN_ROW, stripeSubscriptionId: "sub_lg_plan_new" });
+    planSyncs.length = 0;
     const statusAfter = async (storeId: string, status: Stripe.Subscription.Status) => {
       fakeStripe.addSubscription(`sub_${storeId}`, PRICE.proMonthly, { status });
       await webhooks.handleSubscriptionUpdated(subscriptionEvent(`sub_${storeId}`, status));
@@ -1448,15 +1457,19 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
       assert.equal(await statusAfter("lg_plan_new", status), "cancelled", status);
       assert.equal(await statusAfter("lg_plan_old", status), "active", status);
     }
-    // Stripe's retry window keeps the plan in force, for both.
+    // Only the first one ended a plan: the new store's.
+    assert.deepEqual(planSyncs, ["lg_plan_new"]);
+    // Stripe's retry window keeps the plan in force, for both: the new store's is back.
     assert.equal(await statusAfter("lg_plan_new", "past_due"), "past_due");
     assert.equal(await statusAfter("lg_plan_old", "past_due"), "past_due");
+    assert.deepEqual(planSyncs, ["lg_plan_new", "lg_plan_new"]);
 
+    // A status that keeps the plan in force marks the snapshots, with no early sync.
     await clearMarks("lg_plan_new");
     planSyncs.length = 0;
     assert.equal(await statusAfter("lg_plan_new", "active"), "active");
     assert.deepEqual(await marksOf("lg_plan_new"), ["legacy_store", "store"]);
-    assert.deepEqual(planSyncs, ["lg_plan_new"]);
+    assert.deepEqual(planSyncs, []);
   });
 
   test("a store with a live plan subscription is refused a second Checkout, old or new", async () => {
@@ -1545,6 +1558,32 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
       );
       assert.deepEqual(planSyncs, [storeId]);
       assert.deepEqual(await Promise.all(plansAtSync), [["subscription", "ultra"]]);
+    }
+
+    // Another interval of the same plan, or a cancellation lifted on it, changes Stripe
+    // and the row but not the plan in force: no early sync.
+    for (const [price, interval, cancelAtPeriodEnd] of [
+      [PRICE.ultraMonthly, "yearly", false],
+      [PRICE.ultraYearly, "yearly", true],
+    ] as const) {
+      fakeStripe.reset();
+      planSyncs.length = 0;
+      await setPlanRow("lg_plan_new", { cancelAtPeriodEnd });
+      fakeStripe.addSubscription("sub_lg_plan_new", price, {
+        cancel_at_period_end: cancelAtPeriodEnd,
+      });
+      assert.deepEqual(
+        await subscriptionActions.changeSubscriptionPlan({
+          planSlug: "ultra",
+          interval,
+          currency: "eur",
+        }),
+        { success: true },
+        `${price} ${interval}`,
+      );
+      assert.equal(fakeStripe.subscriptionUpdates.length, 1, `${price} ${interval}`);
+      assert.equal((await planColumns("lg_plan_new"))?.planSlug, "ultra");
+      assert.deepEqual(planSyncs, [], `${price} ${interval}`);
     }
 
     // Another currency than the subscription's, which Stripe cannot change, or no live
@@ -1985,7 +2024,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     }
   });
 
-  test("a platform admin's billing mode change asks for the early plan sync; other settings do not", async () => {
+  test("a platform admin's billing mode change that ends the plan asks for the early plan sync; other settings do not", async () => {
     const admin = await import("@/app/(dashboard)/dashboard/settings/admin/actions");
     session.userId = "lg_admin_user";
     process.env.PLATFORM_ADMIN_EMAILS = "lg_admin_user@louez.test";
@@ -2013,6 +2052,12 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     await setPlanRow("lg_admin", { billingMode: "subscription" });
     assert.deepEqual(await save({ freeReservationsGranted: 5 }), { success: true });
     assert.equal((await planColumns("lg_admin"))?.freeReservationsGranted, 5);
+    assert.deepEqual(planSyncs, []);
+
+    // Without a Stripe subscription, no plan is in force in either billing mode.
+    await setPlanRow("lg_admin", { stripeSubscriptionId: null });
+    assert.deepEqual(await save({ billingMode: "pay_as_you_go" }), { success: true });
+    assert.equal((await planColumns("lg_admin"))?.billingMode, "pay_as_you_go");
     assert.deepEqual(planSyncs, []);
   });
 });

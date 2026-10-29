@@ -12,6 +12,7 @@ import { isStripeNotFound } from '@/lib/billing-sync/gross-backfill-core'
 import { syncPlanSoon } from '@/lib/billing-sync/plan-sync-soon'
 import { log } from '@/lib/evlog'
 import { ensurePlanRow } from '@/lib/pay-as-you-go/pricing-lock'
+import { lockPlanInForce } from '@/lib/plan-limits'
 import {
   hasLiveSubscription,
   subscriptionEnded,
@@ -21,8 +22,11 @@ import { env } from '@/env'
 
 // Every write to a subscription row marks the store's store and legacy_store snapshots
 // for the billing service in the same transaction (markSubscriptionRow). Stripe calls
-// stay before it. A write that starts, changes or ends the plan in force then, for a
-// store the billing service bills, sends them within seconds (syncPlanSoon).
+// stay before it. The two row writers below also read the plan in force before and
+// after the write (lockPlanInForce). When the write started, changed or ended it, they
+// send it within seconds once committed, for a store the billing service bills
+// (syncPlanSoon). Any other write, such as a renewal or a status in Stripe's retry
+// window, leaves the plan to the cron: the service issues no version for it.
 
 type SubscriptionColumns = Partial<Omit<typeof subscriptions.$inferInsert, 'id' | 'storeId'>>
 
@@ -36,27 +40,34 @@ async function updateStoreSubscription(
   values: SubscriptionColumns,
   at: Date = new Date(),
 ) {
-  await db.transaction(async (tx) => {
+  const planChanged = await db.transaction(async (tx) => {
     await ensurePlanRow(tx, storeId, at)
+    const planBefore = await lockPlanInForce(tx, storeId)
     await tx
       .update(subscriptions)
       .set({ ...values, updatedAt: new Date() })
       .where(eq(subscriptions.storeId, storeId))
     await markSubscriptionRow(tx, storeId)
+    return (await lockPlanInForce(tx, storeId)) !== planBefore
   })
+  if (planChanged) syncPlanSoon(storeId)
 }
 
-async function updateSubscriptionRow(
+/** Updates the store's row `row.id`; the platform webhook's subscription update writes through it too. */
+export async function updateSubscriptionRow(
   row: { id: string; storeId: string },
   values: SubscriptionColumns,
 ) {
-  await db.transaction(async (tx) => {
+  const planChanged = await db.transaction(async (tx) => {
+    const planBefore = await lockPlanInForce(tx, row.storeId)
     await tx
       .update(subscriptions)
       .set({ ...values, updatedAt: new Date() })
       .where(eq(subscriptions.id, row.id))
     await markSubscriptionRow(tx, row.storeId)
+    return (await lockPlanInForce(tx, row.storeId)) !== planBefore
   })
+  if (planChanged) syncPlanSoon(row.storeId)
 }
 
 /**
@@ -602,7 +613,6 @@ export async function changeSubscriptionPlan(
     throw new SubscriptionPlanError(refusal)
   }
   await updateSubscriptionRow(row, { planSlug: plan.slug, cancelAtPeriodEnd: false })
-  syncPlanSoon(storeId)
   return 'in_place'
 }
 
@@ -705,8 +715,7 @@ export type SwitchToPayAsYouGoResult =
  *   subscription so the deletion webhook flips the mode then — no double billing.
  * Neither changes the plan in force now: the immediate switch is for a row without a
  * Stripe subscription, which planInForce never counts, and the deferred one only sets
- * cancelAtPeriodEnd. So neither calls syncPlanSoon: the deletion webhook does, when the
- * plan ends.
+ * cancelAtPeriodEnd. The plan ends with the deletion webhook.
  */
 export async function switchToPayAsYouGo(storeId: string): Promise<SwitchToPayAsYouGoResult> {
   const subscription = await db.query.subscriptions.findFirst({
@@ -762,7 +771,6 @@ export async function activatePlanSubscription(input: {
     currentPeriodEnd: input.currentPeriodEnd,
     cancelAtPeriodEnd: false,
   })
-  syncPlanSoon(input.storeId)
 }
 
 /**
@@ -794,7 +802,6 @@ export async function endSubscriptionToPayAsYouGo(
     cancelAtPeriodEnd: false,
     currentPeriodEnd: null,
   })
-  syncPlanSoon(row.storeId)
 }
 
 export async function getSubscriptionWithPlan(storeId: string) {

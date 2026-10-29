@@ -1,4 +1,4 @@
-import { db } from '@louez/db'
+import { type Transaction, db } from '@louez/db'
 import {
   products,
   reservations,
@@ -72,6 +72,38 @@ export function planInForce<Row extends PlanRow>(
     Boolean(row.stripeSubscriptionId) &&
     getPlan(row.planSlug) !== undefined
   )
+}
+
+/**
+ * The slug of the plan in force on the row (planInForce), or null. It is all the billing
+ * service reads of the store snapshot's plan to issue a version of the store's policy
+ * (louez-billing docs/api, README §8.7): a status, period or cancellation change that
+ * keeps the plan in force issues none.
+ */
+export function planInForceSlug(row: PlanRow | null | undefined): string | null {
+  return planInForce(row) ? row.planSlug : null
+}
+
+/**
+ * The plan in force on the store's row (planInForceSlug), read in `tx` with the row
+ * locked, so a concurrent write waits. Read before and after a write in the same
+ * transaction, it tells whether the write started, changed or ended the plan, the one
+ * kind of write that calls syncPlanSoon (lib/billing-sync/plan-sync-soon.ts). Call it
+ * once the row exists: a locking read of a missing row takes a gap lock, and two
+ * transactions that then insert it deadlock.
+ */
+export async function lockPlanInForce(tx: Transaction, storeId: string): Promise<string | null> {
+  const [row] = await tx
+    .select({
+      billingMode: subscriptions.billingMode,
+      planSlug: subscriptions.planSlug,
+      status: subscriptions.status,
+      stripeSubscriptionId: subscriptions.stripeSubscriptionId,
+    })
+    .from(subscriptions)
+    .where(eq(subscriptions.storeId, storeId))
+    .for('update')
+  return planInForceSlug(row)
 }
 
 /** The plan a store's row gives, with platform billing on (getStorePlan). */

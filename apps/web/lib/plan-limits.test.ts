@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { type PlanRow, planInForce, storePlanOfRow } from "./plan-limits";
+import { type PlanRow, planInForce, planInForceSlug, storePlanOfRow } from "./plan-limits";
 
 // When a Louez plan is in force on a store's row (louez-billing docs/api, README §8.7):
 // the rule the store snapshot sends, beside the plan getStorePlan gives.
@@ -54,4 +54,13 @@ test("on every row with a Stripe subscription id, it agrees with getStorePlan", 
   const adminSet = { ...PRO_IN_FORCE, stripeSubscriptionId: null };
   assert.equal(storePlanOfRow(adminSet).slug, "pro");
   assert.equal(planInForce(adminSet), false);
+});
+
+test("the plan in force is its slug, or null: a status that keeps it in force does not change it", () => {
+  assert.equal(planInForceSlug(PRO_IN_FORCE), "pro");
+  assert.equal(planInForceSlug({ ...PRO_IN_FORCE, status: "past_due" }), "pro");
+  assert.equal(planInForceSlug({ ...PRO_IN_FORCE, planSlug: "ultra" }), "ultra");
+  assert.equal(planInForceSlug({ ...PRO_IN_FORCE, status: "cancelled" }), null);
+  assert.equal(planInForceSlug({ ...PRO_IN_FORCE, stripeSubscriptionId: null }), null);
+  assert.equal(planInForceSlug(undefined), null);
 });

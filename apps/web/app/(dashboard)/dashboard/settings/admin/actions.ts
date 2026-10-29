@@ -13,6 +13,7 @@ import { isBillingEnabled } from '@/lib/billing/mode'
 import { syncPlanSoon } from '@/lib/billing-sync/plan-sync-soon'
 import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
 import { buildAdminBillingPatch } from '@/lib/pay-as-you-go/pricing-lock-core'
+import { lockPlanInForce } from '@/lib/plan-limits'
 
 const paygTierSchema = z.object({
   upToCount: z.number().int().positive().nullable(),
@@ -129,7 +130,7 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
   }
 
   // Persist trial/discount (stores) and billing mode/pricing (subscriptions) atomically.
-  const billingModeChanged = await db.transaction(async (tx) => {
+  const planChanged = await db.transaction(async (tx) => {
     await tx
       .update(stores)
       .set({
@@ -147,6 +148,7 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
     })
     // A store without a row gets one with the pricing it already pays.
     await ensureSubscriptionRow(tx, store.id)
+    const planBefore = await lockPlanInForce(tx, store.id)
 
     const patch = buildAdminBillingPatch({
       submitted: { billingMode, payAsYouGoConfig, freeReservationsGranted },
@@ -162,10 +164,10 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
     // Trial, discount and the subscription row make the store's legacy_store snapshot;
     // the row's billing mode also makes its store snapshot's plan.
     await markSubscriptionRow(tx, store.id)
-    return patch.billingMode !== undefined
+    // Of these settings, only the billing mode can change the plan in force.
+    return (await lockPlanInForce(tx, store.id)) !== planBefore
   })
-  // Of these settings, only the billing mode can change the plan in force (planInForce).
-  if (billingModeChanged) syncPlanSoon(store.id)
+  if (planChanged) syncPlanSoon(store.id)
 
   revalidatePath('/dashboard/settings/admin')
   revalidatePath('/dashboard/settings/subscription')

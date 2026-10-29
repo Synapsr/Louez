@@ -5,8 +5,8 @@ import type { LockedRun } from "./locks";
 import { type PlanSyncOptions, type PlanSyncStep, syncPlanSoon } from "./plan-sync-soon";
 
 // The early sync of a plan write (louez-billing docs/plans/plans-for-new-stores.md
-// decision 8): a relay at once, then heartbeats at +10, +20, +30 and +45 seconds until
-// the store's newer policy version is cached. Every step is a fake on a fake clock;
+// decision 8): a relay at once, then heartbeats at +10, +20, +30 and +45 seconds from
+// the relay's start. Every step is a fake on a fake clock, except where a test says so;
 // plan-sync-soon.db.test.ts runs the defaults against a database.
 
 /** A promise the test resolves when it wants. */
@@ -24,6 +24,9 @@ let storeCount = 0;
 /** A store id of its own per test: the runs going are counted per store, per process. */
 const newStore = () => `ps_store_${(storeCount += 1)}`;
 
+/** The heartbeat fake's answer. */
+const OK: PlanSyncStep = { outcome: "ok" };
+
 /** Fakes for every step: the clock moves only when a step sleeps or a test moves it. */
 function harness(overrides: Partial<PlanSyncOptions> = {}) {
   let at = 0;
@@ -33,14 +36,16 @@ function harness(overrides: Partial<PlanSyncOptions> = {}) {
   const warn: string[] = [];
   const tasks: Array<() => Promise<void>> = [];
   const cache: { version: number | null } = { version: 3 };
+  const shutdown = new AbortController();
   const now = () => at;
   const options: PlanSyncOptions = {
     schedule: (task) => {
       tasks.push(task);
     },
     now,
-    sleep: async (ms) => {
-      at += ms;
+    // An aborted sleep ends at once.
+    sleep: async (ms, signal) => {
+      if (!signal.aborted) at += ms;
     },
     billsStore: async () => true,
     waitingForRetryAfter: async () => false,
@@ -51,16 +56,13 @@ function harness(overrides: Partial<PlanSyncOptions> = {}) {
     },
     heartbeat: async () => {
       events.push(`heartbeat at ${now()}`);
-      return { outcome: "ok" };
+      return OK;
     },
-    lock: async <T>(
-      task: string,
-      timeoutSeconds: number,
-      run: () => Promise<T>,
-    ): Promise<LockedRun<T>> => {
-      locks.push(`${task} ${timeoutSeconds}`);
+    lock: async <T>(task: string, run: () => Promise<T>): Promise<LockedRun<T>> => {
+      locks.push(task);
       return { ran: true, value: await run() };
     },
+    shutdown: shutdown.signal,
     log: {
       info: (_tag, message) => void info.push(message),
       warn: (_tag, message) => void warn.push(message),
@@ -75,13 +77,14 @@ function harness(overrides: Partial<PlanSyncOptions> = {}) {
     warn,
     tasks,
     cache,
+    shutdown,
     options,
     advance(ms: number) {
       at += ms;
     },
     /** Schedules the sync of `storeId` and runs what was scheduled, like `after`. */
     async sync(storeId: string) {
-      syncPlanSoon(storeId, options);
+      syncPlanSoon(storeId, this.options);
       await this.runScheduled();
     },
     async runScheduled() {
@@ -89,6 +92,27 @@ function harness(overrides: Partial<PlanSyncOptions> = {}) {
     },
   };
 }
+
+/** A heartbeat fake that caches `versions[n]` on its nth call, from 0. */
+function pulling(run: { events: string[]; now(): number; cache: { version: number | null } }) {
+  return (versions: ReadonlyArray<number | null>) => {
+    let beats = 0;
+    return async () => {
+      run.events.push(`heartbeat at ${run.now()}`);
+      const version = versions[beats];
+      beats += 1;
+      if (version !== undefined && version !== null) run.cache.version = version;
+      return OK;
+    };
+  };
+}
+
+const FOUR_HEARTBEATS = [
+  "heartbeat at 10000",
+  "heartbeat at 20000",
+  "heartbeat at 30000",
+  "heartbeat at 45000",
+];
 
 describe("syncPlanSoon", () => {
   test("does nothing for a store the billing service does not bill", async () => {
@@ -132,118 +156,139 @@ describe("syncPlanSoon", () => {
     assert.equal(run.events[0], "relay at 0");
   });
 
-  test("relays at once, then runs heartbeats until a newer version is cached, then stops", async () => {
+  test("relays at once, then runs all four heartbeats, at +10, +20, +30 and +45 seconds", async () => {
     const storeId = newStore();
-    let beats = 0;
-    const run = harness({
-      heartbeat: async () => {
-        run.events.push(`heartbeat at ${run.now()}`);
-        beats += 1;
-        // The second heartbeat pulls the plan's version.
-        if (beats === 2) run.cache.version = 4;
-        return { outcome: "ok" };
-      },
-    });
+    const run = harness();
+    // The second heartbeat pulls the plan's version; the next two still run.
+    run.options = { ...run.options, heartbeat: pulling(run)([null, 4]) };
     await run.sync(storeId);
-    assert.deepEqual(run.events, ["relay at 0", "heartbeat at 10000", "heartbeat at 20000"]);
-    assert.deepEqual(run.locks, ["relay 25", "heartbeat 25", "heartbeat 25"]);
+    assert.deepEqual(run.events, ["relay at 0", ...FOUR_HEARTBEATS]);
+    assert.deepEqual(run.locks, ["relay", "heartbeat", "heartbeat", "heartbeat", "heartbeat"]);
     assert.deepEqual(run.info, [
-      `plan sync of store ${storeId}: policy v4 cached, 2 heartbeat(s), 20000 ms`,
+      `plan sync of store ${storeId}: policy v4 cached, 4 heartbeat(s), 45000 ms`,
     ]);
     assert.deepEqual(run.warn, []);
   });
 
-  test("a store with no version of its own yet stops at its first one", async () => {
-    const run = harness({
-      heartbeat: async () => {
-        run.cache.version = 1;
-        return { outcome: "ok" };
-      },
-    });
-    run.cache.version = null;
-    await run.sync(newStore());
-    assert.match(run.info[0] ?? "", /policy v1 cached, 1 heartbeat\(s\)/);
-  });
-
-  test("stops after four heartbeats, at +10, +20, +30 and +45 seconds, and leaves the rest to the cron", async () => {
+  test("with no newer version cached, the line says the cron takes over", async () => {
     const storeId = newStore();
     const run = harness();
     await run.sync(storeId);
-    assert.deepEqual(run.events, [
-      "relay at 0",
-      "heartbeat at 10000",
-      "heartbeat at 20000",
-      "heartbeat at 30000",
-      "heartbeat at 45000",
-    ]);
+    assert.deepEqual(run.events, ["relay at 0", ...FOUR_HEARTBEATS]);
     assert.deepEqual(run.info, [
-      `plan sync of store ${storeId}: no newer policy version cached yet, the cron takes over, 4 heartbeat(s), 45000 ms`,
+      `plan sync of store ${storeId}: no newer policy version cached, the cron takes over, 4 heartbeat(s), 45000 ms`,
     ]);
   });
 
-  test("a version another heartbeat pulled stops the run without one of its own", async () => {
-    const run = harness({
-      // The cron's heartbeat caches the version 5 seconds after the relay.
-      newestVersion: async () => (run.now() >= 5000 ? 4 : 3),
-    });
+  test("a store with no version of its own yet counts its first one", async () => {
+    const run = harness();
+    run.options = { ...run.options, heartbeat: pulling(run)([1]) };
+    run.cache.version = null;
     await run.sync(newStore());
-    assert.deepEqual(run.events, ["relay at 0"]);
-    assert.match(run.info[0] ?? "", /policy v4 cached, 0 heartbeat\(s\), 10000 ms/);
+    assert.match(run.info[0] ?? "", /policy v1 cached, 4 heartbeat\(s\)/);
   });
 
-  test("a version noted before the relay counts once cached while the relay waits for its lock", async () => {
-    const run = harness({
-      lock: async <T>(task: string, _seconds: number, work: () => Promise<T>) => {
-        // The cron holds the relay lock; its heartbeat caches the version meanwhile.
-        if (task === "relay") run.cache.version = 4;
-        return { ran: true, value: await work() } satisfies LockedRun<T>;
-      },
+  describe("a newer version that may not answer the plan", () => {
+    test("cached while the relay waits for its lock, it ends nothing", async () => {
+      const run = harness({
+        lock: async <T>(task: string, work: () => Promise<T>) => {
+          // The cron's heartbeat caches a staff change's v4 meanwhile.
+          if (task === "relay") run.cache.version = 4;
+          return { ran: true, value: await work() } satisfies LockedRun<T>;
+        },
+      });
+      // The plan's v5 comes with the second heartbeat.
+      run.options = { ...run.options, heartbeat: pulling(run)([null, 5]) };
+      await run.sync(newStore());
+      assert.deepEqual(run.events, ["relay at 0", ...FOUR_HEARTBEATS]);
+      assert.match(run.info[0] ?? "", /policy v5 cached, 4 heartbeat\(s\), 45000 ms$/);
     });
-    await run.sync(newStore());
-    assert.deepEqual(run.events, ["relay at 0"]);
-    assert.match(run.info[0] ?? "", /policy v4 cached, 0 heartbeat\(s\)/);
+
+    test("pulled by the sync's own first heartbeat, it ends nothing either", async () => {
+      const run = harness();
+      // A card's v4 comes with the first heartbeat, just before the plan job issues v5.
+      run.options = { ...run.options, heartbeat: pulling(run)([4, 5]) };
+      await run.sync(newStore());
+      assert.deepEqual(run.events, ["relay at 0", ...FOUR_HEARTBEATS]);
+      assert.match(run.info[0] ?? "", /policy v5 cached, 4 heartbeat\(s\)/);
+    });
   });
 
-  test("a busy lock is waited for, not skipped, and the heartbeats count from the relay's end", async () => {
-    const run = harness({
-      lock: async <T>(task: string, seconds: number, work: () => Promise<T>) => {
-        run.locks.push(`${task} ${seconds}`);
-        // The cron's relay holds the lock for 7 more seconds.
-        if (task === "relay") run.advance(7000);
-        return { ran: true, value: await work() } satisfies LockedRun<T>;
-      },
-      heartbeat: async () => {
-        run.events.push(`heartbeat at ${run.now()}`);
-        run.cache.version = 4;
-        return { outcome: "ok" };
-      },
+  describe("locks", () => {
+    test("a taken lock is tried every second, and the heartbeats count from the relay's start", async () => {
+      const run = harness({
+        lock: async <T>(task: string, work: () => Promise<T>) => {
+          run.locks.push(`${task} at ${run.now()}`);
+          // The cron's relay holds the lock for 7 seconds.
+          if (task === "relay" && run.now() < 7000) return { ran: false } satisfies LockedRun<T>;
+          return { ran: true, value: await work() } satisfies LockedRun<T>;
+        },
+      });
+      await run.sync(newStore());
+      assert.deepEqual(
+        run.locks.filter((lock) => lock.startsWith("relay")),
+        [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000].map((at) => `relay at ${at}`),
+      );
+      assert.deepEqual(run.events, [
+        "relay at 7000",
+        "heartbeat at 17000",
+        "heartbeat at 27000",
+        "heartbeat at 37000",
+        "heartbeat at 52000",
+      ]);
     });
-    await run.sync(newStore());
-    assert.deepEqual(run.locks, ["relay 25", "heartbeat 25"]);
-    assert.deepEqual(run.events, ["relay at 7000", "heartbeat at 17000"]);
-  });
 
-  test("a lock still busy after the wait skips that step only", async () => {
-    const storeId = newStore();
-    const run = harness({
-      lock: async <T>(task: string, seconds: number, work: () => Promise<T>) => {
-        run.locks.push(`${task} ${seconds}`);
-        if (task === "relay") {
-          run.advance(25_000);
-          return { ran: false } satisfies LockedRun<T>;
-        }
-        return { ran: true, value: await work() } satisfies LockedRun<T>;
-      },
+    test("after a long relay, the first heartbeat runs at once", async () => {
+      const run = harness({
+        relay: async () => {
+          run.events.push(`relay at ${run.now()}`);
+          // A backlog: the relay runs to its time limit.
+          run.advance(10_000);
+          return { outcome: "ok", detail: null };
+        },
+      });
+      await run.sync(newStore());
+      assert.deepEqual(run.events, ["relay at 0", ...FOUR_HEARTBEATS]);
     });
-    await run.sync(storeId);
-    // The relay that held the lock may have sent the store: the heartbeats still run.
-    assert.deepEqual(run.events, [
-      "heartbeat at 35000",
-      "heartbeat at 45000",
-      "heartbeat at 55000",
-      "heartbeat at 70000",
-    ]);
-    assert.match(run.info[0] ?? "", /4 heartbeat\(s\), 70000 ms, the relay lock stayed busy$/);
+
+    test("a relay lock taken for 25 seconds: no heartbeat, the cron sends the store", async () => {
+      const storeId = newStore();
+      const run = harness({
+        lock: async <T>(task: string, work: () => Promise<T>) => {
+          run.locks.push(task);
+          if (task === "relay") return { ran: false } satisfies LockedRun<T>;
+          return { ran: true, value: await work() } satisfies LockedRun<T>;
+        },
+      });
+      await run.sync(storeId);
+      assert.deepEqual(run.events, []);
+      // From 0 to 25 seconds, a try each second.
+      assert.deepEqual(run.locks, Array.from({ length: 26 }, () => "relay"));
+      assert.deepEqual(run.info, [
+        `plan sync of store ${storeId}: the relay lock stayed busy, the cron sends the store, 0 heartbeat(s), 25000 ms`,
+      ]);
+    });
+
+    test("a heartbeat lock taken for 25 seconds skips that heartbeat only", async () => {
+      let heartbeatTries = 0;
+      const run = harness({
+        lock: async <T>(task: string, work: () => Promise<T>) => {
+          if (task === "heartbeat" && (heartbeatTries += 1) <= 26) {
+            return { ran: false } satisfies LockedRun<T>;
+          }
+          return { ran: true, value: await work() } satisfies LockedRun<T>;
+        },
+      });
+      await run.sync(newStore());
+      // The first one tries from +10 to +35 seconds; the second and third are due by then.
+      assert.deepEqual(run.events, [
+        "relay at 0",
+        "heartbeat at 35000",
+        "heartbeat at 35000",
+        "heartbeat at 45000",
+      ]);
+      assert.match(run.info[0] ?? "", /4 heartbeat\(s\), 45000 ms$/);
+    });
   });
 
   describe("a Retry-After from the service", () => {
@@ -259,7 +304,7 @@ describe("syncPlanSoon", () => {
       const run = harness({ relay: async () => ({ outcome: "waiting", detail: null }) });
       await run.sync(storeId);
       assert.deepEqual(run.events, []);
-      assert.deepEqual(run.locks, ["relay 25"]);
+      assert.deepEqual(run.locks, ["relay"]);
       assert.deepEqual(run.info, [
         `plan sync of store ${storeId}: stopped, the billing service asked Louez to wait, 0 heartbeat(s), 0 ms`,
       ]);
@@ -277,8 +322,48 @@ describe("syncPlanSoon", () => {
     test("on a heartbeat: no more of them", async () => {
       const run = harness({ heartbeat: async () => ({ outcome: "waiting", detail: null }) });
       await run.sync(newStore());
-      assert.deepEqual(run.locks, ["relay 25", "heartbeat 25"]);
+      assert.deepEqual(run.locks, ["relay", "heartbeat"]);
       assert.match(run.info[0] ?? "", /asked Louez to wait, 1 heartbeat\(s\)/);
+    });
+  });
+
+  describe("a shutdown", () => {
+    test("during the heartbeats stops the sync instead of waiting for the next one", async () => {
+      const storeId = newStore();
+      const run = harness();
+      run.options = {
+        ...run.options,
+        heartbeat: async () => {
+          run.events.push(`heartbeat at ${run.now()}`);
+          run.shutdown.abort();
+          return OK;
+        },
+      };
+      await run.sync(storeId);
+      assert.deepEqual(run.events, ["relay at 0", "heartbeat at 10000"]);
+      assert.deepEqual(run.info, [
+        `plan sync of store ${storeId}: stopped, the server is shutting down, the cron takes over, 1 heartbeat(s), 10000 ms`,
+      ]);
+    });
+
+    test("wakes the default sleep, between heartbeats and between lock tries", async () => {
+      // The real clock and sleep: the sync must end in milliseconds, not seconds.
+      for (const busy of [false, true]) {
+        const run = harness({ now: undefined, sleep: undefined });
+        run.options = {
+          ...run.options,
+          relay: async () => ({ outcome: "ok", detail: null }),
+          lock: async <T>(task: string, work: () => Promise<T>) =>
+            busy && task === "relay"
+              ? ({ ran: false } satisfies LockedRun<T>)
+              : ({ ran: true, value: await work() } satisfies LockedRun<T>),
+        };
+        const startedAt = Date.now();
+        setTimeout(() => run.shutdown.abort(), 50);
+        await run.sync(newStore());
+        assert.ok(Date.now() - startedAt < 2000, `busy ${busy}: ${Date.now() - startedAt} ms`);
+        assert.match(run.info[0] ?? "", /stopped, the server is shutting down/, String(busy));
+      }
     });
   });
 
@@ -316,7 +401,7 @@ describe("syncPlanSoon", () => {
         heartbeat: async () => ({ outcome: "failed", detail: "HTTP 500" }),
       });
       await beaten.sync(newStore());
-      assert.deepEqual(beaten.locks, ["relay 25", "heartbeat 25"]);
+      assert.deepEqual(beaten.locks, ["relay", "heartbeat"]);
       assert.match(beaten.warn[0] ?? "", /the heartbeat ended failed: HTTP 500, 1 heartbeat\(s\)/);
     });
 
@@ -351,52 +436,106 @@ describe("syncPlanSoon", () => {
   });
 
   describe("coalescing", () => {
-    test("a call during the relay asks for one more cycle instead of a second run", async () => {
+    test("a call during the relay starts the next cycle right after it", async () => {
       const storeId = newStore();
       const relayGate = gate();
       let relays = 0;
       const run = harness({
         relay: async () => {
           relays += 1;
-          run.events.push(`relay ${relays}`);
+          run.events.push(`relay ${relays} at ${run.now()}`);
           if (relays === 1) await relayGate.opened;
           return { outcome: "ok", detail: null };
         },
-        heartbeat: async () => {
-          run.events.push("heartbeat");
-          run.cache.version = (run.cache.version ?? 0) + 1;
-          return { outcome: "ok" };
-        },
       });
+      run.options = { ...run.options, heartbeat: pulling(run)([4]) };
       syncPlanSoon(storeId, run.options);
-      const first = run.tasks.shift();
-      const going = first?.();
+      const going = run.tasks.shift()?.();
       await tick();
-      assert.deepEqual(run.events, ["relay 1"]);
+      assert.deepEqual(run.events, ["relay 1 at 0"]);
 
       // A second write while the first relay runs: its task ends at once.
       syncPlanSoon(storeId, run.options);
       await run.runScheduled();
-      assert.deepEqual(run.events, ["relay 1"]);
+      assert.deepEqual(run.events, ["relay 1 at 0"]);
 
       relayGate.open();
       await going;
-      assert.deepEqual(run.events, ["relay 1", "heartbeat", "relay 2", "heartbeat"]);
-      assert.equal(run.info.length, 2);
+      assert.deepEqual(run.events, ["relay 1 at 0", "relay 2 at 0", ...FOUR_HEARTBEATS]);
+      assert.deepEqual(run.info, [
+        `plan sync of store ${storeId}: another plan write came, the next relay sends it, 0 heartbeat(s), 0 ms`,
+        `plan sync of store ${storeId}: policy v4 cached, 4 heartbeat(s), 45000 ms`,
+      ]);
+    });
+
+    test("a call during the heartbeats relays at once, and that cycle may find no newer version", async () => {
+      const storeId = newStore();
+      let beats = 0;
+      const run = harness();
+      run.options = {
+        ...run.options,
+        heartbeat: async () => {
+          run.events.push(`heartbeat at ${run.now()}`);
+          beats += 1;
+          if (beats === 1) {
+            // The first heartbeat pulls the plan's version; then the plan changes again,
+            // in a way that issues no version, such as a write racing the first one.
+            run.cache.version = 4;
+            syncPlanSoon(storeId, run.options);
+            await run.runScheduled();
+          }
+          return OK;
+        },
+      };
+      await run.sync(storeId);
+      assert.deepEqual(run.events, [
+        "relay at 0",
+        "heartbeat at 10000",
+        "relay at 10000",
+        "heartbeat at 20000",
+        "heartbeat at 30000",
+        "heartbeat at 40000",
+        "heartbeat at 55000",
+      ]);
+      assert.deepEqual(run.info, [
+        `plan sync of store ${storeId}: another plan write came, the next relay sends it, 1 heartbeat(s), 10000 ms`,
+        `plan sync of store ${storeId}: no newer policy version cached, the cron takes over, 4 heartbeat(s), 45000 ms`,
+      ]);
+    });
+
+    test("a call wakes the default sleep, so the next relay does not wait for the heartbeat", async () => {
+      // The real clock and sleep; the second cycle stops on a Retry-After at its relay.
+      const storeId = newStore();
+      let relays = 0;
+      const run = harness({ now: undefined, sleep: undefined });
+      run.options = {
+        ...run.options,
+        relay: async () => {
+          relays += 1;
+          run.events.push(`relay ${relays}`);
+          if (relays === 1) {
+            setTimeout(() => {
+              syncPlanSoon(storeId, run.options);
+              void run.runScheduled();
+            }, 50);
+            return { outcome: "ok", detail: null };
+          }
+          return { outcome: "waiting", detail: null };
+        },
+      };
+      const startedAt = Date.now();
+      await run.sync(storeId);
+      assert.ok(Date.now() - startedAt < 2000, `${Date.now() - startedAt} ms`);
+      assert.deepEqual(run.events, ["relay 1", "relay 2"]);
     });
 
     test("a call while the run waits for the relay lock is in that relay", async () => {
       const storeId = newStore();
       const lockGate = gate();
       const run = harness({
-        lock: async <T>(task: string, _seconds: number, work: () => Promise<T>) => {
+        lock: async <T>(task: string, work: () => Promise<T>) => {
           if (task === "relay") await lockGate.opened;
           return { ran: true, value: await work() } satisfies LockedRun<T>;
-        },
-        heartbeat: async () => {
-          run.events.push("heartbeat");
-          run.cache.version = 4;
-          return { outcome: "ok" };
         },
       });
       syncPlanSoon(storeId, run.options);
@@ -407,7 +546,8 @@ describe("syncPlanSoon", () => {
 
       lockGate.open();
       await going;
-      assert.deepEqual(run.events, ["relay at 0", "heartbeat"]);
+      assert.deepEqual(run.events, ["relay at 0", ...FOUR_HEARTBEATS]);
+      assert.equal(run.info.length, 1);
     });
 
     test("other stores run at once, but at most two steps hold a connection at a time", async () => {
@@ -415,7 +555,7 @@ describe("syncPlanSoon", () => {
       let holding = 0;
       let most = 0;
       const run = harness({
-        lock: async <T>(_task: string, _seconds: number, work: () => Promise<T>) => {
+        lock: async <T>(_task: string, work: () => Promise<T>) => {
           holding += 1;
           most = Math.max(most, holding);
           try {
@@ -429,10 +569,6 @@ describe("syncPlanSoon", () => {
           await relayGate.opened;
           return { outcome: "ok", detail: null };
         },
-        heartbeat: async () => {
-          run.cache.version = 99;
-          return { outcome: "ok" };
-        },
       });
       const stores = [newStore(), newStore(), newStore()];
       for (const storeId of stores) syncPlanSoon(storeId, run.options);
@@ -443,7 +579,11 @@ describe("syncPlanSoon", () => {
 
       relayGate.open();
       await Promise.all(going);
-      assert.deepEqual(run.events, ["relay", "relay", "relay"]);
+      assert.deepEqual(
+        run.events.filter((event) => event === "relay"),
+        ["relay", "relay", "relay"],
+      );
+      assert.equal(run.info.length, 3);
       assert.equal(most, 2);
     });
   });

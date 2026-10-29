@@ -8,8 +8,8 @@ import type { PlanSyncOptions } from "./plan-sync-soon";
 
 // The early sync of a plan write against a database (louez-billing
 // docs/plans/plans-for-new-stores.md decision 8): who bills the store, the store's own
-// newest cached version, a stored Retry-After, and a MySQL lock waited for. The relay
-// and the heartbeat are fakes; plan-sync-soon.test.ts covers the run itself.
+// newest cached version, a stored Retry-After, and a MySQL lock tried until it is free.
+// The relay and the heartbeat are fakes; plan-sync-soon.test.ts covers the run itself.
 
 const NEW_STORES_FROM = "2026-06-01T00:00:00Z";
 const OLD_STORE = "pss_old";
@@ -109,7 +109,8 @@ describe("syncPlanSoon (database)", { skip: skipWithoutTestDatabase() }, () => {
 
   /**
    * Fakes for the relay, the heartbeat, the lock and the clock; the test of who bills
-   * the store, the cache read and the Retry-After are the defaults.
+   * the store, the cache read and the Retry-After are the defaults. `heartbeat` runs on
+   * the first heartbeat only.
    */
   function fakes(heartbeat: () => Promise<void> = async () => {}) {
     let at = 0;
@@ -128,10 +129,11 @@ describe("syncPlanSoon (database)", { skip: skipWithoutTestDatabase() }, () => {
       },
       heartbeat: async () => {
         events.push("heartbeat");
-        await heartbeat();
+        if (events.filter((event) => event === "heartbeat").length === 1) await heartbeat();
         return { outcome: "ok" };
       },
-      lock: async (_task, _seconds, run) => ({ ran: true, value: await run() }),
+      lock: async (_task, run) => ({ ran: true, value: await run() }),
+      shutdown: new AbortController().signal,
       log: { info: (_tag, message) => void info.push(message), warn: () => {} },
     };
     return {
@@ -156,17 +158,16 @@ describe("syncPlanSoon (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.deepEqual(run.events, []);
 
     await run.sync(NEW_STORE);
-    assert.deepEqual(run.events, ["relay", "heartbeat"]);
+    assert.deepEqual(run.events, ["relay", "heartbeat", "heartbeat", "heartbeat", "heartbeat"]);
     assert.match(
       run.info[0] ?? "",
-      /^plan sync of store pss_new: policy v3 cached, 1 heartbeat\(s\)/,
+      /^plan sync of store pss_new: policy v3 cached, 4 heartbeat\(s\)/,
     );
   });
 
-  test("a newer * version is not the store's answer", async () => {
+  test("a newer * version is not the store's", async () => {
     const run = fakes(async () => {
-      // The first heartbeat caches a * version; the later ones cache nothing.
-      if (run.events.filter((event) => event === "heartbeat").length > 1) return;
+      // The first heartbeat caches a * version.
       const body = policy("*", 2, { newStoresCreatedFrom: NEW_STORES_FROM });
       await louezDb.db.insert(louezDb.billingPolicies).values({
         storeId: "*",
@@ -177,7 +178,7 @@ describe("syncPlanSoon (database)", { skip: skipWithoutTestDatabase() }, () => {
     });
     await run.sync(UNVERSIONED_STORE);
     assert.deepEqual(run.events, ["relay", "heartbeat", "heartbeat", "heartbeat", "heartbeat"]);
-    assert.match(run.info[0] ?? "", /no newer policy version cached yet/);
+    assert.match(run.info[0] ?? "", /no newer policy version cached, the cron takes over/);
   });
 
   test("a Retry-After the service stored holds it", async () => {
@@ -191,20 +192,26 @@ describe("syncPlanSoon (database)", { skip: skipWithoutTestDatabase() }, () => {
     }
   });
 
-  test("waits for a MySQL lock another connection holds, then runs under it", async () => {
+  test("tries a MySQL lock another connection holds until it is free, holding no connection meanwhile", async () => {
     // Lock names of the test's own: the billing locks belong to the whole MySQL server.
     const prefix = `louez:test:plan-sync:${randomBytes(4).toString("hex")}`;
+    const relayLock = `${prefix}:relay`;
     const mysql = await import("mysql2/promise");
     const holder = await mysql.createConnection({ uri: process.env.DATABASE_URL ?? "" });
     try {
-      await holder.query("SELECT GET_LOCK(?, 0)", [`${prefix}:relay`]);
-      const timeouts: number[] = [];
+      await holder.query("SELECT GET_LOCK(?, 0)", [relayLock]);
+      let tries = 0;
       let relayedAt = 0;
       const run = fakes(() => cache(NEW_STORE, 10));
       const going = run.sync(NEW_STORE, {
-        lock: (task, seconds, work) => {
-          timeouts.push(seconds);
-          return locks.withNamedLock(`${prefix}:${task}`, seconds, work);
+        // The real clock, with sleeps cut short: the lock is tried every 100 ms, and
+        // the heartbeats follow one another.
+        now: Date.now,
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, Math.min(ms, 100))),
+        // The default's lock, under the test's names: one try, no wait.
+        lock: (task, work) => {
+          if (task === "relay") tries += 1;
+          return locks.withNamedLock(`${prefix}:${task}`, 0, work);
         },
         relay: async () => {
           relayedAt = Date.now();
@@ -213,12 +220,19 @@ describe("syncPlanSoon (database)", { skip: skipWithoutTestDatabase() }, () => {
       });
       await new Promise((resolve) => setTimeout(resolve, 1200));
       assert.equal(relayedAt, 0, "the relay waits while the lock is held");
+      assert.ok(tries > 1, `${tries} tries`);
+      // No connection to the test's database sits in GET_LOCK, as one waiting for its
+      // timeout would.
+      const [waiting] = await holder.query(
+        "SELECT COUNT(*) AS waiting FROM information_schema.PROCESSLIST WHERE STATE = 'User lock' AND DB = DATABASE()",
+      );
+      assert.deepEqual(waiting, [{ waiting: 0 }]);
+
       const releasedAt = Date.now();
-      await holder.query("SELECT RELEASE_LOCK(?)", [`${prefix}:relay`]);
+      await holder.query("SELECT RELEASE_LOCK(?)", [relayLock]);
       await going;
       assert.ok(relayedAt >= releasedAt, "the relay runs once the lock is free");
-      assert.deepEqual(timeouts, [25, 25]);
-      assert.match(run.info[0] ?? "", /policy v10 cached, 1 heartbeat\(s\)/);
+      assert.match(run.info[0] ?? "", /policy v10 cached, 4 heartbeat\(s\)/);
     } finally {
       await holder.end();
     }

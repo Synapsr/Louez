@@ -2,10 +2,9 @@ import type Stripe from "stripe";
 
 import { eq } from "drizzle-orm";
 
-import { db, legacyBillingAppliesAt, markSubscriptionRow, stores, subscriptions } from "@louez/db";
+import { db, legacyBillingAppliesAt, stores, subscriptions } from "@louez/db";
 
 import { isStripeNotFound } from "@/lib/billing-sync/gross-backfill-core";
-import { syncPlanSoon } from "@/lib/billing-sync/plan-sync-soon";
 import {
   notifyExtraPlanSubscription,
   notifySubscriptionActivated,
@@ -19,12 +18,17 @@ import {
   subscriptionEnded,
   subscriptionHoldsPlan,
 } from "@/lib/stripe/subscription-status";
-import { activatePlanSubscription, endSubscriptionToPayAsYouGo } from "@/lib/stripe/subscriptions";
+import {
+  activatePlanSubscription,
+  endSubscriptionToPayAsYouGo,
+  updateSubscriptionRow,
+} from "@/lib/stripe/subscriptions";
 
 // The platform webhook's plan events (app/api/webhooks/stripe/route.ts): a plan bought
-// through Checkout, a subscription Stripe updated, and its end. Each row write marks
-// the store's snapshots (markSubscriptionRow), then, for a store the billing service
-// bills, sends them within seconds (syncPlanSoon).
+// through Checkout, a subscription Stripe updated, and its end. Each row write goes
+// through lib/stripe/subscriptions.ts, which marks the store's snapshots and, when the
+// write started, changed or ended the plan in force, sends it within seconds
+// (syncPlanSoon).
 //
 // Stripe may deliver an event late, twice or out of order, and redelivers one the
 // webhook failed. So the checkout and update handlers read the subscription from
@@ -197,20 +201,13 @@ export async function handleSubscriptionUpdated(event: SubscriptionRef): Promise
     );
   }
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(subscriptions)
-      .set({
-        ...(billed ? { planSlug: billed.plan.slug } : {}),
-        status,
-        currentPeriodEnd,
-        cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-        updatedAt: new Date(),
-      })
-      .where(eq(subscriptions.id, subscription.id));
-    await markSubscriptionRow(tx, subscription.storeId);
+  // Most updates, such as a renewal, keep the plan in force: then no early sync.
+  await updateSubscriptionRow(subscription, {
+    ...(billed ? { planSlug: billed.plan.slug } : {}),
+    status,
+    currentPeriodEnd,
+    cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
   });
-  syncPlanSoon(subscription.storeId);
 
   log.info(
     "billing",

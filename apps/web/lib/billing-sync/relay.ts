@@ -575,6 +575,14 @@ export type RelayOptions = {
   /** The snapshot builder; tests pass their own. */
   readonly build?: SnapshotBuilder;
   readonly timeLimitMs?: number;
+  /**
+   * Whether the run's 5xx answers and timeouts count toward single-event mode, and in
+   * that mode toward an event's errors alone, and whether a clean run ends that mode.
+   * The counts were sized for the cron's one run a minute, so the early plan sync's
+   * runs (plan-sync-soon.ts), which come on top, pass false and leave all of it to the
+   * cron's runs. True by default.
+   */
+  readonly countsServerErrors?: boolean;
 };
 
 export type RelayCounts = {
@@ -600,6 +608,8 @@ type RunFailure = CallFailure & { readonly alert?: string };
 type RunMode = {
   /** From billing_sync_state: three server-error runs switched it on. */
   readonly persistentSingle: boolean;
+  /** RelayOptions.countsServerErrors. */
+  readonly countsServerErrors: boolean;
   /** A 400 or 413 on a batch: one event per request for the rest of this run. */
   forcedSingle: boolean;
   serverErrorsAlone: number;
@@ -634,6 +644,7 @@ export async function runRelay(options: RelayOptions = {}): Promise<RelayRunResu
   const newStoresFrom = await newStoresCutoff(db, config.newStoresFrom);
   const mode: RunMode = {
     persistentSingle: state.singleEventMode,
+    countsServerErrors: options.countsServerErrors ?? true,
     forcedSingle: false,
     serverErrorsAlone: 0,
   };
@@ -814,8 +825,9 @@ async function deliver(
       (await checkBillingHealth(client))
     ) {
       // The service is up, so this event is the problem; the other stores keep flowing.
+      // A run that does not count server errors leaves the event as it is.
       mode.serverErrorsAlone += 1;
-      if (await markServerErrorAlone(alone, outcome.detail)) {
+      if (mode.countsServerErrors && (await markServerErrorAlone(alone, outcome.detail))) {
         counts.dead += 1;
         await alerts.alert(
           "event_dead",
@@ -875,7 +887,7 @@ async function finishRun(input: {
   let singleEventMode = mode.persistentSingle;
 
   if (failure === null) {
-    const clean = mode.serverErrorsAlone === 0;
+    const clean = mode.serverErrorsAlone === 0 && mode.countsServerErrors;
     // One clean run brings the relay back to batches.
     if (clean) singleEventMode = false;
     await updateSyncState({
@@ -892,7 +904,12 @@ async function finishRun(input: {
     });
   } else {
     let serverErrorRuns: number | null = null;
-    if (failure.kind === "transport" && failure.serverError && !mode.persistentSingle) {
+    if (
+      failure.kind === "transport" &&
+      failure.serverError &&
+      !mode.persistentSingle &&
+      mode.countsServerErrors
+    ) {
       // Three such runs in a row while /health answers mean the batches are the problem.
       const [state] = await selectRows(
         db,
