@@ -73,6 +73,7 @@ import {
   openCustomerPortal,
   reactivateSubscription,
 } from './actions';
+import { PlanChangeSummary } from './plan-change-summary';
 import { planButtonAction } from './util.plan-button';
 import { useFormatLocale } from '@/hooks/use-format-locale';
 
@@ -1016,7 +1017,8 @@ export function SubscriptionManagement({
         </p>
       </div>
 
-      {/* Plan change on the live subscription: confirmed first, with the plan's price. */}
+      {/* Plan change on the live subscription: confirmed first, with the plan's price and
+          when the difference is billed. */}
       <Dialog
         open={pendingChange !== null}
         onOpenChange={(open) => {
@@ -1029,21 +1031,12 @@ export function SubscriptionManagement({
           </DialogHeader>
           <DialogPanel>
             {pendingChange && (
-              <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                <div className="min-w-0">
-                  <p className="text-muted-foreground text-xs">{t('currentPlanBadge')}</p>
-                  <p className="truncate text-sm font-medium">{currentPlan?.name}</p>
-                </div>
-                <ChevronRight className="text-muted-foreground h-4 w-4 flex-shrink-0" />
-                <div className="min-w-0 text-right">
-                  <p className="truncate text-sm font-medium">{pendingChange.plan.name}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {formatPrice(pendingChange.price, pendingChange.currency)}{' '}
-                    {t('excludingTax')} /{' '}
-                    {pendingChange.interval === 'yearly' ? t('year') : t('month')}
-                  </p>
-                </div>
-              </div>
+              <PlanChangeSummary
+                currentPlanName={currentPlan?.name}
+                newPlanName={pendingChange.plan.name}
+                newPlanPrice={formatPrice(pendingChange.price, pendingChange.currency)}
+                interval={pendingChange.interval}
+              />
             )}
           </DialogPanel>
           <DialogFooter className="flex-col gap-2 sm:flex-col">

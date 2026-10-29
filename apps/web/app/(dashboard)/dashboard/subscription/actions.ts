@@ -110,6 +110,8 @@ export async function changeSubscriptionPlan(
     return { success: true }
   } catch (error) {
     if (error instanceof SubscriptionPlanError) {
+      // Stripe could not charge the difference: the plan has not changed.
+      if (error.reason === 'payment_failed') return { error: 'errors.planPaymentFailed' }
       return { error: 'errors.unsupportedOperation' }
     }
     log.error(

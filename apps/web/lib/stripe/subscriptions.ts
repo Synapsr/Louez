@@ -1,4 +1,5 @@
 import { after } from 'next/server'
+import Stripe from 'stripe'
 import { stripe } from './client'
 import { db, markSubscriptionRow } from '@louez/db'
 import { stores, subscriptions, users, storeMembers } from '@louez/db'
@@ -56,7 +57,10 @@ async function updateSubscriptionRow(
   })
 }
 
-/** Why a plan checkout or a plan change cannot go on: the actions answer `errors.unsupportedOperation`. */
+/**
+ * Why a plan checkout or a plan change cannot go on: the actions answer
+ * `errors.planPaymentFailed` for `payment_failed`, `errors.unsupportedOperation` otherwise.
+ */
 export type SubscriptionPlanRefusal =
   /** A checkout while the row holds a live subscription: change its plan instead. */
   | 'live_subscription'
@@ -66,6 +70,11 @@ export type SubscriptionPlanRefusal =
   | 'subscription_items'
   /** Stripe cannot move a subscription to another currency. */
   | 'currency'
+  /**
+   * Stripe could not charge a plan change's difference at once: the card was declined,
+   * or the bank asks for a confirmation (3D Secure). The subscription has not changed.
+   */
+  | 'payment_failed'
 
 export class SubscriptionPlanError extends Error {
   readonly reason: SubscriptionPlanRefusal
@@ -481,11 +490,17 @@ export type PlanChangeOutcome = 'in_place' | 'subscription_ended'
 /**
  * Moves the store's live plan subscription to another plan or interval on the same
  * Stripe subscription, for every store (plans-for-new-stores decision 5): its one item
- * gets the plan's price, prorated, at once. A cancellation the owner scheduled is
- * lifted, as buying the new plan would have done. Stripe's `customer.subscription.updated`
- * writes the plan from the price too (handleSubscriptionUpdated); the row gets it now,
- * so the page shows it. A subscription Stripe has ended changes nothing in Stripe and
- * ends the row (currentHeldSubscription).
+ * gets the plan's price, and Stripe invoices and charges the prorated difference at
+ * once, not on the renewal invoice, which a store that cancels first never pays. The
+ * change applies only if Stripe takes that payment now: a declined card, or a bank that
+ * asks for a confirmation, leaves the subscription as it was and throws
+ * SubscriptionPlanError('payment_failed'). A cheaper plan credits the difference to the
+ * customer's balance, which the next invoices use. A cancellation the owner scheduled
+ * is lifted, as buying the new plan would have done. Stripe's
+ * `customer.subscription.updated` writes the plan from the price too
+ * (handleSubscriptionUpdated); the row gets it once Stripe has changed the
+ * subscription, so the page shows it. A subscription Stripe has ended changes nothing
+ * in Stripe and ends the row (currentHeldSubscription).
  */
 export async function changeSubscriptionPlan(
   storeId: string,
@@ -524,12 +539,26 @@ export async function changeSubscriptionPlan(
   }
   if (item.price.id === priceId && !current.cancel_at_period_end) return 'in_place'
 
-  await stripe.subscriptions.update(current.id, {
-    items: [{ id: item.id, price: priceId }],
-    proration_behavior: 'create_prorations',
-    cancel_at_period_end: false,
-    metadata: { planSlug: plan.slug, pendingBillingMode: '' },
-  })
+  try {
+    await stripe.subscriptions.update(current.id, {
+      items: [{ id: item.id, price: priceId }],
+      proration_behavior: 'always_invoice',
+      payment_behavior: 'error_if_incomplete',
+      cancel_at_period_end: false,
+      metadata: { planSlug: plan.slug, pendingBillingMode: '' },
+    })
+  } catch (error) {
+    // Stripe answers a card error, 3D Secure included, and leaves the subscription as it
+    // was. Only its code is logged, never the card.
+    if (error instanceof Stripe.errors.StripeCardError) {
+      log.warn(
+        'billing',
+        `plan change of store ${storeId} to ${plan.slug}: Stripe could not charge the difference (${error.code ?? 'no code'})`,
+      )
+      throw new SubscriptionPlanError('payment_failed')
+    }
+    throw error
+  }
   await updateSubscriptionRow(row, { planSlug: plan.slug, cancelAtPeriodEnd: false })
   return 'in_place'
 }

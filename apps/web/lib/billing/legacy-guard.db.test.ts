@@ -18,11 +18,11 @@ import { DEFAULT_REFERRAL_PROGRAM_CONFIG } from "@/lib/referral/config";
 // a store the billing service bills, at the time of each fact, and creates its platform
 // customer only for a plan checkout. A legacy store, and every store without
 // BILLING_SERVICE_URL, is billed as before. Louez's plans, for every store (§8.7): one
-// live subscription per store, changed in place, its status and plan written by the
-// platform webhook; one open plan Checkout per store, and a second plan paid through
-// another one never replaces the first; a row whose subscription Stripe has ended goes
-// back to pay-as-you-go instead of blocking a plan. billing-off.test.ts covers
-// LOUEZ_BILLING off.
+// live subscription per store, changed in place once Stripe has charged the difference,
+// its status and plan written by the platform webhook; one open plan Checkout per store,
+// and a second plan paid through another one never replaces the first; a row whose
+// subscription Stripe has ended goes back to pay-as-you-go instead of blocking a plan.
+// billing-off.test.ts covers LOUEZ_BILLING off.
 //
 // Times are relative to the real clock: new stores are those created from 2026-06-01,
 // and the switched stores are billed by the service from 2026-09-01, both in the past.
@@ -81,6 +81,8 @@ function createFakeStripe() {
   const failing = new Set<string>();
   /** The params of each subscription update, in order. */
   const subscriptionUpdates: Array<{ id: string; params: unknown }> = [];
+  /** The subscriptions whose update Stripe refuses with a card error, with its code. */
+  const declined = new Map<string, string>();
   const invoice = (id: string) => {
     const found = invoices.get(id);
     if (!found) throw new Error(`No such invoice: ${id}`);
@@ -98,6 +100,7 @@ function createFakeStripe() {
     issued: invoices,
     checkoutSessions,
     subscriptionUpdates,
+    declined,
     /** Leaves a Checkout Session open on the platform account. */
     addCheckoutSession(session: Omit<FakeCheckoutSession, "status">) {
       checkoutSessions.set(session.id, { ...session, status: "open" });
@@ -135,6 +138,7 @@ function createFakeStripe() {
       checkoutSessions.clear();
       failing.clear();
       subscriptionUpdates.length = 0;
+      declined.clear();
     },
     subscriptions: {
       async retrieve(id: string) {
@@ -153,6 +157,17 @@ function createFakeStripe() {
       async update(id: string, params: unknown) {
         calls.push(`subscriptions.update ${id}`);
         subscriptionUpdates.push({ id, params });
+        // Stripe's answer when it cannot charge a plan change's difference at once: the
+        // subscription stays as it was.
+        const code = declined.get(id);
+        if (code) {
+          throw new Stripe.errors.StripeCardError({
+            type: "card_error",
+            code,
+            statusCode: 402,
+            message: "Your card was declined.",
+          });
+        }
         return { id };
       },
     },
@@ -1487,7 +1502,8 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
           id: `sub_${storeId}`,
           params: {
             items: [{ id: `si_sub_${storeId}`, price: PRICE.ultraMonthly }],
-            proration_behavior: "create_prorations",
+            proration_behavior: "always_invoice",
+            payment_behavior: "error_if_incomplete",
             cancel_at_period_end: false,
             metadata: { planSlug: "ultra", pendingBillingMode: "" },
           },
@@ -1511,6 +1527,54 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     assert.deepEqual(await change("eur"), { error: "errors.unsupportedOperation" });
     assert.deepEqual(fakeStripe.subscriptionUpdates, []);
     await setPlanRow("lg_plan_new", { status: "active" });
+  });
+
+  test("a plan change Stripe cannot charge at once leaves the subscription and the row as they were", async () => {
+    // A declined card, and a bank that asks for 3D Secure, which an update cannot pass.
+    for (const code of ["card_declined", "subscription_payment_intent_requires_action"]) {
+      for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
+        fakeStripe.reset();
+        currentStore.id = storeId;
+        await setPlanRow(storeId, { status: "active", planSlug: "pro", cancelAtPeriodEnd: true });
+        fakeStripe.addSubscription(`sub_${storeId}`, PRICE.proMonthly, { cancel_at_period_end: true });
+        fakeStripe.declined.set(`sub_${storeId}`, code);
+        const rowBefore = await louezDb.db.query.subscriptions.findFirst({
+          where: eq(louezDb.subscriptions.storeId, storeId),
+        });
+        await clearMarks(storeId);
+
+        await assert.rejects(
+          customers.changeSubscriptionPlan(storeId, "ultra", "monthly", "eur"),
+          (error) =>
+            error instanceof customers.SubscriptionPlanError && error.reason === "payment_failed",
+          `${storeId} ${code}`,
+        );
+        assert.deepEqual(
+          await subscriptionActions.changeSubscriptionPlan({
+            planSlug: "ultra",
+            interval: "monthly",
+            currency: "eur",
+          }),
+          { error: "errors.planPaymentFailed" },
+          `${storeId} ${code}`,
+        );
+        assert.deepEqual(
+          fakeStripe.subscriptionUpdates.map((update) => update.id),
+          [`sub_${storeId}`, `sub_${storeId}`],
+        );
+        assert.deepEqual(
+          await louezDb.db.query.subscriptions.findFirst({
+            where: eq(louezDb.subscriptions.storeId, storeId),
+          }),
+          rowBefore,
+          `${storeId} ${code}`,
+        );
+        assert.deepEqual(await marksOf(storeId), [], `${storeId} ${code}`);
+      }
+    }
+    for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
+      await setPlanRow(storeId, { cancelAtPeriodEnd: false });
+    }
   });
 
   test("an update writes the plan its price bills, for an old and a new store", async () => {

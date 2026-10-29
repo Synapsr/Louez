@@ -20,8 +20,9 @@ import messages from "@/messages/fr.json";
 // The plan page's grid and pay-as-you-go preview (plans-for-new-stores L7, L8). A store
 // the billing service bills sees the service's words for pay-as-you-go, never Louez's
 // pricing, and a link to its billing settings. An old store sees what it saw before,
-// except that pay-as-you-go is its current plan when it is on it. The server actions and
-// the router are stubs; the label is a fake one.
+// except that pay-as-you-go is its current plan when it is on it. The plan change dialog
+// says the difference is charged at once. The server actions and the router are stubs;
+// the label is a fake one.
 
 // tsx loads the shared UI package through CommonJS with the classic JSX runtime.
 Object.assign(globalThis, { React });
@@ -135,11 +136,13 @@ describe("plan page views", () => {
   let views: {
     management: typeof import("./subscription-management");
     preview: typeof import("./pay-as-you-go-preview");
+    planChange: typeof import("./plan-change-summary");
   };
   before(async () => {
     views = {
       management: await import("./subscription-management"),
       preview: await import("./pay-as-you-go-preview"),
+      planChange: await import("./plan-change-summary"),
     };
   });
 
@@ -244,6 +247,22 @@ describe("plan page views", () => {
       assert.ok(!html.includes(absent), absent);
     }
     assert.deepEqual(planButtons(html), ["Plan actuel:disabled", "Choisir ce plan:enabled"]);
+  });
+
+  test("the plan change dialog says the difference is charged now, under the plans", () => {
+    const html = render(
+      <views.planChange.PlanChangeSummary
+        currentPlanName="Pro"
+        newPlanName="Ultra"
+        newPlanPrice="10€"
+        interval="monthly"
+      />,
+    );
+    const note =
+      "La différence est prélevée dès maintenant, au prorata de la période en cours. Pour un plan moins cher, elle est déduite de vos prochaines factures.";
+    assert.ok(html.includes("10€ HT / mois"));
+    assert.ok(html.includes(note));
+    assert.ok(html.indexOf(note) > html.indexOf("10€ HT / mois"));
   });
 
   test("the pay-as-you-go preview names the service's offer instead of Louez's ladder", () => {
