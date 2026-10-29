@@ -8452,6 +8452,7 @@
     "planPaymentFailed": "Ihre Karte wurde abgelehnt, daher konnte die Differenz nicht abgebucht werden. Ihr Plan wurde nicht geändert. Aktualisieren Sie Ihre Karte über „Meine Rechnungen ansehen“ und versuchen Sie es dann erneut.",
     "planPaymentConfirmationRequired": "Ihre Bank verlangt eine Bestätigung der Zahlung der Differenz, die auf dieser Seite nicht möglich ist. Ihr Plan wurde nicht geändert. Fügen Sie über „Meine Rechnungen ansehen“ eine andere Karte hinzu und versuchen Sie es erneut, oder wenden Sie sich an den Support.",
     "planNoPaymentMethod": "Es ist keine Karte hinterlegt, daher konnte die Differenz nicht abgebucht werden. Ihr Plan wurde nicht geändert. Fügen Sie über „Meine Rechnungen ansehen“ eine Karte hinzu und versuchen Sie es dann erneut.",
+    "planChangeNoLongerPending": "Dieser Planwechsel steht nicht mehr aus: Er hat bereits begonnen oder wurde verworfen. Die Seite zeigt jetzt Ihren aktuellen Plan.",
     "permissionDenied": "Unzureichende Berechtigung",
     "customerNotFound": "Kunde nicht gefunden",
     "reservationNotFound": "Reservierung nicht gefunden",

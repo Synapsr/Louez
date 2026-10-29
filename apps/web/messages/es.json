@@ -8452,6 +8452,7 @@
     "planPaymentFailed": "Tu tarjeta ha sido rechazada, así que no se ha podido cobrar la diferencia. Tu plan no ha cambiado. Actualiza tu tarjeta desde «Ver mis facturas» y vuelve a intentarlo.",
     "planPaymentConfirmationRequired": "Tu banco pide confirmar el pago de la diferencia, algo que no se puede hacer desde esta página. Tu plan no ha cambiado. Añade otra tarjeta desde «Ver mis facturas» y vuelve a intentarlo, o contacta con soporte.",
     "planNoPaymentMethod": "No hay ninguna tarjeta registrada, así que no se ha podido cobrar la diferencia. Tu plan no ha cambiado. Añade una tarjeta desde «Ver mis facturas» y vuelve a intentarlo.",
+    "planChangeNoLongerPending": "Este cambio de plan ya no está pendiente: ya ha empezado o se ha descartado. La página muestra ahora tu plan actual.",
     "permissionDenied": "Permiso insuficiente",
     "customerNotFound": "Cliente no encontrado",
     "reservationNotFound": "Reserva no encontrada",

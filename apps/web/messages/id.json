@@ -8452,6 +8452,7 @@
     "planPaymentFailed": "Kartu Anda ditolak, sehingga selisihnya tidak dapat ditagih. Paket Anda tidak berubah. Perbarui kartu Anda melalui “Lihat faktur saya”, lalu coba lagi.",
     "planPaymentConfirmationRequired": "Bank Anda meminta konfirmasi pembayaran selisih, yang tidak dapat dilakukan dari halaman ini. Paket Anda tidak berubah. Tambahkan kartu lain melalui “Lihat faktur saya”, lalu coba lagi, atau hubungi dukungan.",
     "planNoPaymentMethod": "Belum ada kartu yang tersimpan, sehingga selisihnya tidak dapat ditagih. Paket Anda tidak berubah. Tambahkan kartu melalui “Lihat faktur saya”, lalu coba lagi.",
+    "planChangeNoLongerPending": "Perubahan paket ini tidak lagi tertunda: perubahan sudah dimulai, atau sudah dibatalkan. Halaman kini menampilkan paket Anda saat ini.",
     "permissionDenied": "Izin tidak mencukupi",
     "customerNotFound": "Pelanggan tidak ditemukan",
     "reservationNotFound": "Reservasi tidak ditemukan",

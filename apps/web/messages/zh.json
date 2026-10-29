@@ -8452,6 +8452,7 @@
     "planPaymentFailed": "您的卡被拒绝，因此无法扣除差额。您的计划没有变更。请通过“查看我的发票”更新您的卡，然后重试。",
     "planPaymentConfirmationRequired": "您的银行要求确认差额付款，但无法在此页面完成确认。您的计划没有变更。请通过“查看我的发票”添加另一张卡后重试，或联系支持人员。",
     "planNoPaymentMethod": "您尚未保存任何卡，因此无法扣除差额。您的计划没有变更。请通过“查看我的发票”添加一张卡，然后重试。",
+    "planChangeNoLongerPending": "此计划变更已不再待生效：它已经开始，或已被放弃。页面现在显示您当前的计划。",
     "permissionDenied": "权限不足",
     "customerNotFound": "未找到客户",
     "reservationNotFound": "未找到预订",

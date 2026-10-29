@@ -8452,6 +8452,7 @@
     "planPaymentFailed": "Karta została odrzucona, więc nie udało się pobrać różnicy. Twój plan się nie zmienił. Zaktualizuj kartę przez „Zobacz moje faktury”, a potem spróbuj ponownie.",
     "planPaymentConfirmationRequired": "Bank prosi o potwierdzenie płatności za różnicę, czego nie można zrobić na tej stronie. Twój plan się nie zmienił. Dodaj inną kartę przez „Zobacz moje faktury” i spróbuj ponownie albo skontaktuj się z pomocą.",
     "planNoPaymentMethod": "Nie zapisano żadnej karty, więc nie udało się pobrać różnicy. Twój plan się nie zmienił. Dodaj kartę przez „Zobacz moje faktury”, a potem spróbuj ponownie.",
+    "planChangeNoLongerPending": "Ta zmiana planu już nie czeka: już się zaczęła albo została porzucona. Strona pokazuje teraz Twój obecny plan.",
     "permissionDenied": "Niewystarczające uprawnienia",
     "customerNotFound": "Nie znaleziono klienta",
     "reservationNotFound": "Nie znaleziono rezerwacji",

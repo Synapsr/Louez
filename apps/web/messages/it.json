@@ -8452,6 +8452,7 @@
     "planPaymentFailed": "La carta è stata rifiutata, quindi non è stato possibile addebitare la differenza. Il tuo piano non è cambiato. Aggiorna la carta da «Visualizza le mie fatture», poi riprova.",
     "planPaymentConfirmationRequired": "La banca chiede di confermare il pagamento della differenza, cosa che non è possibile da questa pagina. Il tuo piano non è cambiato. Aggiungi un'altra carta da «Visualizza le mie fatture», poi riprova, oppure contatta l'assistenza.",
     "planNoPaymentMethod": "Non è registrata nessuna carta, quindi non è stato possibile addebitare la differenza. Il tuo piano non è cambiato. Aggiungi una carta da «Visualizza le mie fatture», poi riprova.",
+    "planChangeNoLongerPending": "Questo cambio di piano non è più in attesa: è già iniziato, oppure è stato annullato. La pagina mostra ora il tuo piano attuale.",
     "permissionDenied": "Permessi insufficienti",
     "customerNotFound": "Cliente non trovato",
     "reservationNotFound": "Prenotazione non trovata",

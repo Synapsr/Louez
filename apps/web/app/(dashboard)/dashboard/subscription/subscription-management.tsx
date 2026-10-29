@@ -259,7 +259,8 @@ export function SubscriptionManagement({
     setChangeError(null);
   };
 
-  // A refused change, such as a declined card, keeps the dialog open with its reason.
+  // A refused change, such as a declined card, keeps the dialog open with its reason. The
+  // page refreshes behind it, in case Stripe could not take back what the change undid.
   const handleChangePlan = async () => {
     if (!pendingChange) return;
     setLoading(pendingChange.plan.slug);
@@ -273,6 +274,7 @@ export function SubscriptionManagement({
       });
       if ('error' in result) {
         setChangeError(result.error);
+        router.refresh();
       } else if ('url' in result && result.url) {
         // Stripe had ended the subscription: the plan is bought through Checkout.
         closeChangeDialog();
@@ -327,11 +329,9 @@ export function SubscriptionManagement({
     setError(null);
     try {
       const result = await keepCurrentPlan();
-      if ('error' in result) {
-        setError(result.error);
-      } else {
-        router.refresh();
-      }
+      if ('error' in result) setError(result.error);
+      // On an error too: the page shows the plan as it is, such as one that has started.
+      router.refresh();
     } catch {
       setError('errors.generic');
     } finally {

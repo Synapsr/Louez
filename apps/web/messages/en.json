@@ -8452,6 +8452,7 @@
     "planPaymentFailed": "Your card was declined, so the difference could not be charged. Your plan has not changed. Update your card from “View my invoices”, then try again.",
     "planPaymentConfirmationRequired": "Your bank is asking to confirm the payment of the difference, which cannot be done from this page. Your plan has not changed. Add another card from “View my invoices”, then try again, or contact support.",
     "planNoPaymentMethod": "There is no card on file, so the difference could not be charged. Your plan has not changed. Add a card from “View my invoices”, then try again.",
+    "planChangeNoLongerPending": "This plan change is no longer waiting: it has already started, or it was dropped. The page now shows your current plan.",
     "permissionDenied": "Insufficient permission",
     "customerNotFound": "Customer not found",
     "reservationNotFound": "Reservation not found",

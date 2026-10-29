@@ -94,8 +94,9 @@ export async function createCheckoutSession({
 
 /**
  * What the change dialog says before the owner confirms (previewSubscriptionPlanChange):
- * the amount Stripe charges now, or the day the new plan starts. `checkout` when Stripe
- * had ended the subscription: confirming then opens the plan's Checkout.
+ * the amount Stripe charges now, or the day the new plan starts. `checkout` when the row
+ * holds no live subscription, or Stripe had ended it: confirming then opens the plan's
+ * Checkout (changeSubscriptionPlan).
  */
 export async function previewPlanChange(
   input: z.infer<typeof planChangeSchema>,
@@ -137,9 +138,9 @@ export async function previewPlanChange(
 /**
  * Moves the store's live plan subscription to another plan or interval, on the same
  * Stripe subscription, with the checkout's permission checks: at once, or at the end of
- * the paid period for a change that would leave a credit. When Stripe had ended that
- * subscription, the store is back on pay-as-you-go and gets the plan's Checkout instead:
- * the page follows `url`.
+ * the paid period for a change that would leave a credit. When the row holds no live
+ * subscription, such as after the dialog's preview found it ended in Stripe, the store
+ * is on pay-as-you-go and gets the plan's Checkout instead: the page follows `url`.
  */
 export async function changeSubscriptionPlan(
   input: z.infer<typeof planChangeSchema>,
@@ -178,7 +179,11 @@ export async function changeSubscriptionPlan(
   }
 }
 
-/** Keeps the store's plan: drops the plan change that waits for the end of the paid period. */
+/**
+ * Keeps the store's plan: drops the plan change that waits for the end of the paid
+ * period. `errors.planChangeNoLongerPending` when none waits any more, as on a page
+ * loaded before the new plan started.
+ */
 export async function keepCurrentPlan(): Promise<{ success: true } | { error: string }> {
   const store = await getCurrentStore()
   if (!store) {
@@ -194,6 +199,9 @@ export async function keepCurrentPlan(): Promise<{ success: true } | { error: st
     revalidatePath('/dashboard/settings/subscription')
     return { success: true }
   } catch (error) {
+    if (error instanceof SubscriptionPlanError && error.reason === 'no_pending_plan_change') {
+      return { error: 'errors.planChangeNoLongerPending' }
+    }
     log.error(
       'billing',
       `keeping the plan of store ${store.id} failed: ${error instanceof Error ? error.message : String(error)}`,

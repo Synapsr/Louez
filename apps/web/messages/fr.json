@@ -8452,6 +8452,7 @@
     "planPaymentFailed": "Votre carte a été refusée : la différence n’a pas pu être prélevée. Votre plan n’a pas changé. Mettez à jour votre carte depuis « Voir mes factures », puis réessayez.",
     "planPaymentConfirmationRequired": "Votre banque demande de confirmer le paiement de la différence, ce qui n’est pas possible depuis cette page. Votre plan n’a pas changé. Ajoutez une autre carte depuis « Voir mes factures », puis réessayez, ou contactez le support.",
     "planNoPaymentMethod": "Aucune carte n’est enregistrée : la différence n’a pas pu être prélevée. Votre plan n’a pas changé. Ajoutez une carte depuis « Voir mes factures », puis réessayez.",
+    "planChangeNoLongerPending": "Ce changement de plan n’est plus en attente : il a déjà commencé, ou il a été abandonné. La page affiche maintenant votre plan actuel.",
     "permissionDenied": "Permission insuffisante",
     "customerNotFound": "Client introuvable",
     "reservationNotFound": "Réservation introuvable",

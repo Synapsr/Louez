@@ -8452,6 +8452,7 @@
     "planPaymentFailed": "O cartão foi recusado, por isso não foi possível cobrar a diferença. O seu plano não mudou. Atualize o cartão em «Ver minhas faturas» e tente novamente.",
     "planPaymentConfirmationRequired": "O banco pede a confirmação do pagamento da diferença, o que não é possível nesta página. O seu plano não mudou. Adicione outro cartão em «Ver minhas faturas» e tente novamente, ou contacte o suporte.",
     "planNoPaymentMethod": "Não há nenhum cartão associado à sua conta, por isso não foi possível cobrar a diferença. O seu plano não mudou. Adicione um cartão em «Ver minhas faturas» e tente novamente.",
+    "planChangeNoLongerPending": "Esta mudança de plano já não está pendente: já começou ou foi descartada. A página mostra agora o seu plano atual.",
     "permissionDenied": "Permissão insuficiente",
     "customerNotFound": "Cliente nao encontrado",
     "reservationNotFound": "Reserva nao encontrada",

@@ -85,8 +85,11 @@ export async function updateSubscriptionRow(
 export type SubscriptionPlanRefusal =
   /** A checkout while the row holds a live subscription: change its plan instead. */
   | 'live_subscription'
-  /** A plan change without a live subscription to change. */
-  | 'no_live_subscription'
+  /**
+   * The owner keeps the plan, but no plan change waits for the end of the paid period:
+   * it has started, or was dropped, since the page was loaded.
+   */
+  | 'no_pending_plan_change'
   /** A subscription with more or fewer than one item: Louez never makes one. */
   | 'subscription_items'
   /** Stripe cannot move a subscription to another currency. */
@@ -568,6 +571,47 @@ async function releasePendingPlanChange(
 }
 
 /**
+ * The phase of the subscription's schedule that has not started: the plan change waiting
+ * for the end of the paid period (schedulePlanChange), with its price and the day it
+ * starts. Null without a schedule, and once the new price bills: the schedule stays
+ * attached through that phase.
+ */
+async function pendingSchedulePhase(subscription: Pick<Stripe.Subscription, 'schedule'>) {
+  const scheduleId = attachedScheduleId(subscription)
+  if (!scheduleId) return null
+  const schedule = await stripe.subscriptionSchedules.retrieve(scheduleId)
+  const now = Date.now() / 1000
+  const next = schedule.phases.find((phase) => phase.start_date > now)
+  const price = next?.items[0]?.price
+  if (!next || !price) return null
+  return {
+    priceId: typeof price === 'string' ? price : price.id,
+    at: new Date(next.start_date * 1000),
+  }
+}
+
+/** A plan change waiting for the end of the paid period, with what schedulePlanChange takes. */
+type PendingPlan = {
+  readonly plan: Plan
+  readonly priceId: string
+  readonly interval: 'monthly' | 'yearly'
+  readonly at: Date
+}
+
+/**
+ * The plan change waiting for the end of the paid period (pendingSchedulePhase), with
+ * its plan and interval. Null without one, and for a price no plan has.
+ */
+async function readPendingPlan(
+  subscription: Pick<Stripe.Subscription, 'schedule'>,
+): Promise<PendingPlan | null> {
+  const phase = await pendingSchedulePhase(subscription)
+  if (!phase) return null
+  const billed = findPlanPrice(getPlans(), phase.priceId)
+  return billed ? { plan: billed.plan, interval: billed.interval, ...phase } : null
+}
+
+/**
  * Puts the new price on the subscription at the end of its paid period, with a schedule:
  * until then, it bills the price it bills now; the renewal invoice charges the new
  * price, and the schedule then releases the subscription. Nothing is credited, so no
@@ -624,12 +668,58 @@ async function schedulePlanChange(
 }
 
 /**
+ * Puts back what a plan change undid before it failed, so the owner's error is the whole
+ * story: the pending plan change it released (`pending`), or the cancellation it lifted,
+ * with the switch to pay-as-you-go the owner had asked for (`cancellation`, read on the
+ * subscription before the change). The change failed with the price the store pays still
+ * billed. A failure here is logged, and the caller still throws the change's own error.
+ */
+async function restoreAfterFailedChange(
+  storeId: string,
+  current: Stripe.Subscription,
+  item: Stripe.SubscriptionItem,
+  undone: { readonly pending: PendingPlan | null; readonly cancellation: boolean },
+): Promise<void> {
+  const failed = (what: string, error: unknown) =>
+    log.error(
+      'billing',
+      `store ${storeId}: could not put back ${what} of subscription ${current.id} after a failed plan change: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  if (undone.cancellation) {
+    await stripe.subscriptions
+      .update(current.id, {
+        cancel_at_period_end: true,
+        metadata: { pendingBillingMode: current.metadata.pendingBillingMode ?? '' },
+      })
+      .catch((error: unknown) => failed('the cancellation', error))
+  }
+  const { pending } = undone
+  if (pending) {
+    await schedulePlanChange(
+      storeId,
+      current,
+      item,
+      pending.plan,
+      pending.priceId,
+      pending.interval,
+    ).then(
+      () =>
+        log.info(
+          'billing',
+          `store ${storeId}: the plan change to ${pending.plan.slug} ${pending.interval} waits again for the end of the paid period`,
+        ),
+      (error: unknown) => failed('the pending plan change', error),
+    )
+  }
+}
+
+/**
  * What a plan change did. `in_place`: the subscription bills the new price from now on,
  * and Stripe has charged the difference. `scheduled`: the new plan starts `at`, the end
  * of the paid period; the store keeps its plan until then. `kept`: the store asked for
  * the price it pays, so it keeps it, and a pending change is dropped.
- * `subscription_ended`: Stripe had ended the row's subscription; the row is then on
- * pay-as-you-go, and the plan is bought through Checkout.
+ * `subscription_ended`: the row holds no live subscription, or one Stripe had ended, which
+ * puts the row back on pay-as-you-go; the plan is bought through Checkout.
  */
 export type PlanChangeOutcome =
   | { readonly kind: 'in_place' }
@@ -649,7 +739,9 @@ export type PlanChangePreview =
 
 /**
  * The plan, its price and the store's live subscription with its one item, for a plan
- * change; null when Stripe had ended the subscription (currentHeldSubscription).
+ * change. Null when the row holds no live subscription, such as one a preview has just
+ * ended, or when Stripe had ended it (currentHeldSubscription): the plan is then bought
+ * through Checkout.
  */
 async function planChangeTarget(
   storeId: string,
@@ -673,9 +765,7 @@ async function planChangeTarget(
     where: eq(subscriptions.storeId, storeId),
     columns: { id: true, storeId: true, status: true, stripeSubscriptionId: true },
   })
-  if (!hasLiveSubscription(row)) {
-    throw new SubscriptionPlanError('no_live_subscription')
-  }
+  if (!hasLiveSubscription(row)) return null
 
   const current = await currentHeldSubscription(row)
   if (!current) return null
@@ -751,8 +841,10 @@ export async function previewSubscriptionPlanChange(
  * waits for the year's end; Ultra yearly switches at once.
  *
  * A pending change is dropped first (releasePendingPlanChange), and asking for the price
- * the store pays keeps it. A subscription Stripe has ended changes nothing in Stripe and
- * ends the row (currentHeldSubscription).
+ * the store pays keeps it. When Stripe refuses the change, or the schedule, what it undid
+ * is put back (restoreAfterFailedChange): the pending change, or the lifted cancellation. A row
+ * without a live subscription changes nothing in Stripe, and one whose subscription
+ * Stripe has ended goes back to pay-as-you-go (planChangeTarget).
  */
 export async function changeSubscriptionPlan(
   storeId: string,
@@ -765,8 +857,10 @@ export async function changeSubscriptionPlan(
   const { plan, priceId, row, current, item } = target
 
   const samePrice = item.price.id === priceId
-  // Read before the release, so a failed preview keeps the pending change.
+  // Read before the release, so a failed read keeps the pending change.
   const credits = !samePrice && (await previewInvoiceNow(current, item, priceId)).total < 0
+  // Read before the release too, to put it back if the change fails.
+  const pending = samePrice ? null : await readPendingPlan(current)
   await releasePendingPlanChange(storeId, current)
   if (samePrice && !current.cancel_at_period_end) return { kind: 'kept' }
 
@@ -777,7 +871,16 @@ export async function changeSubscriptionPlan(
         metadata: { pendingBillingMode: '' },
       })
     }
-    const at = await schedulePlanChange(storeId, current, item, plan, priceId, interval)
+    let at: Date
+    try {
+      at = await schedulePlanChange(storeId, current, item, plan, priceId, interval)
+    } catch (error) {
+      await restoreAfterFailedChange(storeId, current, item, {
+        pending,
+        cancellation: current.cancel_at_period_end,
+      })
+      throw error
+    }
     if (current.cancel_at_period_end) {
       await updateSubscriptionRow(row, { cancelAtPeriodEnd: false })
     }
@@ -805,6 +908,7 @@ export async function changeSubscriptionPlan(
       'billing',
       `plan change of store ${storeId} to ${plan.slug}: Stripe could not charge the difference (${refusal}, ${error.code ?? 'no code'}${error.decline_code ? `, ${error.decline_code}` : ''})`,
     )
+    await restoreAfterFailedChange(storeId, current, item, { pending, cancellation: false })
     throw new SubscriptionPlanError(refusal)
   }
   await updateSubscriptionRow(row, { planSlug: plan.slug, cancelAtPeriodEnd: false })
@@ -813,15 +917,21 @@ export async function changeSubscriptionPlan(
 
 /**
  * Keeps the plan the store pays: drops the plan change that waits for the end of the
- * paid period (releasePendingPlanChange). Changes nothing without one.
+ * paid period (releasePendingPlanChange). Without one, as on a page loaded before the
+ * new plan started, it changes nothing and throws a SubscriptionPlanError
+ * (`no_pending_plan_change`): releasing a schedule whose new price already bills would
+ * keep that price, not the old one.
  */
 export async function keepCurrentPlan(storeId: string): Promise<void> {
   const row = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
     columns: { stripeSubscriptionId: true },
   })
-  if (!row?.stripeSubscriptionId) return
+  if (!row?.stripeSubscriptionId) throw new SubscriptionPlanError('no_pending_plan_change')
   const current = await stripe.subscriptions.retrieve(row.stripeSubscriptionId)
+  if (!(await pendingSchedulePhase(current))) {
+    throw new SubscriptionPlanError('no_pending_plan_change')
+  }
   await releasePendingPlanChange(storeId, current)
 }
 
@@ -1036,25 +1146,13 @@ async function readPendingPlanChange(
   storeId: string,
   subscription: Pick<Stripe.Subscription, 'id' | 'schedule'>,
 ): Promise<PendingPlanChange | null> {
-  const scheduleId = attachedScheduleId(subscription)
-  if (!scheduleId) return null
   try {
-    const schedule = await stripe.subscriptionSchedules.retrieve(scheduleId)
-    const now = Date.now() / 1000
-    const next = schedule.phases.find((phase) => phase.start_date > now)
-    const price = next?.items[0]?.price
-    if (!next || !price) return null
-    const billed = findPlanPrice(getPlans(), typeof price === 'string' ? price : price.id)
-    if (!billed) return null
-    return {
-      planSlug: billed.plan.slug,
-      interval: billed.interval,
-      at: new Date(next.start_date * 1000),
-    }
+    const pending = await readPendingPlan(subscription)
+    return pending && { planSlug: pending.plan.slug, interval: pending.interval, at: pending.at }
   } catch (error) {
     log.error(
       'billing',
-      `store ${storeId}: could not read schedule ${scheduleId} of subscription ${subscription.id}: ${error instanceof Error ? error.message : String(error)}`,
+      `store ${storeId}: could not read schedule ${attachedScheduleId(subscription)} of subscription ${subscription.id}: ${error instanceof Error ? error.message : String(error)}`,
     )
     return null
   }
