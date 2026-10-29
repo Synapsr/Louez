@@ -62,6 +62,7 @@
 - [ ] Errors handled at route level, not raw DB errors to client
 - [ ] Reservation status changes and inserts use `changeReservationStatus` / `insertReservation`, and their effects run after commit ([DL-12](04-data-layer.md))
 - [ ] A write that can change a billing snapshot marks it in the same transaction ([DL-13](04-data-layer.md))
+- [ ] A write that starts, changes or ends a store's plan calls `syncPlanSoon` once it has committed ([DL-13](04-data-layer.md))
 
 ## Forms
 

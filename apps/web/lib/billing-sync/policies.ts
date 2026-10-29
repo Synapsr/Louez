@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { eq, inArray, max } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -165,6 +165,22 @@ export async function isPolicyCacheEmpty(executor: SyncExecutor = db): Promise<b
     .from(billingPolicies)
     .limit(1);
   return rows.length === 0;
+}
+
+/**
+ * The newest version of the store's own policy in the cache, not counting `*`, or null
+ * when it has none. A newer one means the service's answer to a change has arrived
+ * (lib/billing-sync/plan-sync-soon.ts).
+ */
+export async function newestCachedStoreVersion(
+  storeId: string,
+  executor: SyncExecutor = db,
+): Promise<number | null> {
+  const [row] = await executor
+    .select({ version: max(billingPolicies.version) })
+    .from(billingPolicies)
+    .where(eq(billingPolicies.storeId, storeId));
+  return row?.version ?? null;
 }
 
 function describePolicy(raw: unknown): string {

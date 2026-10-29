@@ -10,6 +10,7 @@ import { getCurrentStore } from '@/lib/store-context'
 import { isCurrentUserPlatformAdmin } from '@/lib/platform-admin'
 import { createStoreCoupon } from '@/lib/stripe/coupons'
 import { isBillingEnabled } from '@/lib/billing/mode'
+import { syncPlanSoon } from '@/lib/billing-sync/plan-sync-soon'
 import { ensureSubscriptionRow } from '@/lib/pay-as-you-go/pricing-lock'
 import { buildAdminBillingPatch } from '@/lib/pay-as-you-go/pricing-lock-core'
 
@@ -128,7 +129,7 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
   }
 
   // Persist trial/discount (stores) and billing mode/pricing (subscriptions) atomically.
-  await db.transaction(async (tx) => {
+  const billingModeChanged = await db.transaction(async (tx) => {
     await tx
       .update(stores)
       .set({
@@ -161,7 +162,10 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
     // Trial, discount and the subscription row make the store's legacy_store snapshot;
     // the row's billing mode also makes its store snapshot's plan.
     await markSubscriptionRow(tx, store.id)
+    return patch.billingMode !== undefined
   })
+  // Of these settings, only the billing mode can change the plan in force (planInForce).
+  if (billingModeChanged) syncPlanSoon(store.id)
 
   revalidatePath('/dashboard/settings/admin')
   revalidatePath('/dashboard/settings/subscription')

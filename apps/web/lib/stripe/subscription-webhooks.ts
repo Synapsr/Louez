@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db, legacyBillingAppliesAt, markSubscriptionRow, stores, subscriptions } from "@louez/db";
 
 import { isStripeNotFound } from "@/lib/billing-sync/gross-backfill-core";
+import { syncPlanSoon } from "@/lib/billing-sync/plan-sync-soon";
 import {
   notifyExtraPlanSubscription,
   notifySubscriptionActivated,
@@ -22,7 +23,8 @@ import { activatePlanSubscription, endSubscriptionToPayAsYouGo } from "@/lib/str
 
 // The platform webhook's plan events (app/api/webhooks/stripe/route.ts): a plan bought
 // through Checkout, a subscription Stripe updated, and its end. Each row write marks
-// the store's snapshots (markSubscriptionRow).
+// the store's snapshots (markSubscriptionRow), then, for a store the billing service
+// bills, sends them within seconds (syncPlanSoon).
 //
 // Stripe may deliver an event late, twice or out of order, and redelivers one the
 // webhook failed. So the checkout and update handlers read the subscription from
@@ -208,6 +210,7 @@ export async function handleSubscriptionUpdated(event: SubscriptionRef): Promise
       .where(eq(subscriptions.id, subscription.id));
     await markSubscriptionRow(tx, subscription.storeId);
   });
+  syncPlanSoon(subscription.storeId);
 
   log.info(
     "billing",

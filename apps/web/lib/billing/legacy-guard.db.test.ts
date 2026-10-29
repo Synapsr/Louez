@@ -11,6 +11,7 @@ import Stripe from "stripe";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import type { AdminSettingsInput } from "@/app/(dashboard)/dashboard/settings/admin/actions";
 import { DEFAULT_REFERRAL_PROGRAM_CONFIG } from "@/lib/referral/config";
 
 // The legacy guard and the platform customer (louez-billing docs/api, README §8.3 and
@@ -22,13 +23,15 @@ import { DEFAULT_REFERRAL_PROGRAM_CONFIG } from "@/lib/referral/config";
 // its status and plan written by the platform webhook; one open plan Checkout per store,
 // and a second plan paid through another one never replaces the first; a row whose
 // subscription Stripe has ended goes back to pay-as-you-go instead of blocking a plan.
-// billing-off.test.ts covers LOUEZ_BILLING off.
+// Each write that starts, changes or ends a plan asks for the early sync once
+// (syncPlanSoon, plans-for-new-stores decision 8). billing-off.test.ts covers
+// LOUEZ_BILLING off.
 //
 // Times are relative to the real clock: new stores are those created from 2026-06-01,
 // and the switched stores are billed by the service from 2026-09-01, both in the past.
 //
-// Stripe, the session, Next.js, analytics and Discord are stubs: no network call. The
-// database is real.
+// Stripe, the session, Next.js, analytics, Discord and the early plan sync are stubs: no
+// network call. The database is real.
 
 process.env.SKIP_ENV_VALIDATION = "true";
 process.env.AI_CREDIT_PACKAGES = '[{"credits":100,"priceCents":250}]';
@@ -267,6 +270,14 @@ const discord = {
 };
 /** The admin notices of a second plan subscription. */
 const extraPlanNotices: string[] = [];
+/** The stores the early plan sync was asked for, in order; plan-sync-soon.test.ts tests the sync. */
+const planSyncs: string[] = [];
+/**
+ * The store's plan as another connection reads it when the sync is asked for: the new
+ * plan once the write has committed, the old one when the call comes before the commit.
+ */
+const plansAtSync: Array<Promise<unknown>> = [];
+const planReader = { read: async (_storeId: string): Promise<unknown> => null };
 
 /** What each stubbed module exports. A function is looked up at each call. */
 const stubs: Record<string, Record<string, unknown>> = {
@@ -318,6 +329,12 @@ const stubs: Record<string, Record<string, unknown>> = {
     notifySubscriptionCancelled: async () => undefined,
     notifyExtraPlanSubscription: async (store: { id: string }, kept: string, extra: string) => {
       extraPlanNotices.push(`${store.id} keeps ${kept}, extra ${extra}`);
+    },
+  },
+  "@/lib/billing-sync/plan-sync-soon": {
+    syncPlanSoon: (storeId: string) => {
+      planSyncs.push(storeId);
+      plansAtSync.push(planReader.read(storeId));
     },
   },
 };
@@ -466,6 +483,7 @@ const STORES: ReadonlyArray<readonly [string, string]> = [
   ["lg_twice_new", NEW],
   ["lg_ended_old", OLD],
   ["lg_ended_new", NEW],
+  ["lg_admin", OLD],
 ];
 
 describe("legacy guard and platform customer (database)", { skip: skipWithoutTestDatabase() }, () => {
@@ -491,6 +509,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     "BILLING_SERVICE_URL",
     "BILLING_NEW_STORES_FROM",
     "LOUEZ_MODE",
+    "PLATFORM_ADMIN_EMAILS",
   ] as const;
   const saved = new Map(names.map((name) => [name, process.env[name]]));
   let feeCounter = 0;
@@ -513,6 +532,10 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     subscriptionActions = await import("@/app/(dashboard)/dashboard/subscription/actions");
     onboarding = await import("@/app/(dashboard)/onboarding/actions");
     webhooks = await import("@/lib/stripe/subscription-webhooks");
+    planReader.read = async (storeId) => {
+      const row = await planColumns(storeId);
+      return [row?.billingMode, row?.planSlug];
+    };
 
     await louezDb.db.insert(louezDb.stores).values(
       STORES.map(([id, createdAt]) => ({
@@ -575,6 +598,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
           payAsYouGoConfig: null,
           pricingVersion: null,
         }),
+        row("lg_admin", { ...PLAN_ROW, stripeSubscriptionId: "sub_lg_admin" }),
       ]);
   });
   after(async () => {
@@ -586,6 +610,8 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     process.env.BILLING_SERVICE_URL = "http://127.0.0.1:1";
     process.env.BILLING_NEW_STORES_FROM = NEW_STORES_FROM;
     fakeStripe.reset();
+    planSyncs.length = 0;
+    plansAtSync.length = 0;
   });
   afterEach(() => {
     for (const [name, value] of saved) {
@@ -1288,6 +1314,8 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
       subscription: "sub_lg_plan_buy",
       customer: "cus_lg_plan_buy",
     });
+    assert.deepEqual(planSyncs, ["lg_plan_buy"]);
+    assert.deepEqual(await Promise.all(plansAtSync), [["subscription", "pro"]]);
     assert.deepEqual(await planColumns("lg_plan_buy"), {
       billingMode: "subscription",
       planSlug: "pro",
@@ -1317,7 +1345,11 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     assert.deepEqual(sms, { sessionId: null, url: PAYMENT_METHOD_LINK });
 
     await clearMarks("lg_plan_buy");
+    planSyncs.length = 0;
+    plansAtSync.length = 0;
     await webhooks.handleSubscriptionDeleted({ id: "sub_lg_plan_buy", metadata: {} });
+    assert.deepEqual(planSyncs, ["lg_plan_buy"]);
+    assert.deepEqual(await Promise.all(plansAtSync), [["pay_as_you_go", "pay_as_you_go"]]);
     const ended = await planColumns("lg_plan_buy");
     assert.deepEqual(
       [ended?.billingMode, ended?.planSlug, ended?.stripeSubscriptionId],
@@ -1421,8 +1453,10 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     assert.equal(await statusAfter("lg_plan_old", "past_due"), "past_due");
 
     await clearMarks("lg_plan_new");
+    planSyncs.length = 0;
     assert.equal(await statusAfter("lg_plan_new", "active"), "active");
     assert.deepEqual(await marksOf("lg_plan_new"), ["legacy_store", "store"]);
+    assert.deepEqual(planSyncs, ["lg_plan_new"]);
   });
 
   test("a store with a live plan subscription is refused a second Checkout, old or new", async () => {
@@ -1469,6 +1503,8 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
   test("a plan change swaps the price of the store's one subscription, for an old and a new store", async () => {
     for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
       fakeStripe.reset();
+      planSyncs.length = 0;
+      plansAtSync.length = 0;
       currentStore.id = storeId;
       await setPlanRow(storeId, { status: "active", planSlug: "pro", cancelAtPeriodEnd: true });
       // The owner had scheduled the switch to pay-as-you-go: choosing a plan lifts it.
@@ -1507,11 +1543,14 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
         { planSlug: row?.planSlug, stripeSubscriptionId: row?.stripeSubscriptionId },
         { planSlug: "ultra", stripeSubscriptionId: `sub_${storeId}` },
       );
+      assert.deepEqual(planSyncs, [storeId]);
+      assert.deepEqual(await Promise.all(plansAtSync), [["subscription", "ultra"]]);
     }
 
     // Another currency than the subscription's, which Stripe cannot change, or no live
     // subscription: refused, and Stripe is not changed.
     fakeStripe.reset();
+    planSyncs.length = 0;
     fakeStripe.addSubscription("sub_lg_plan_new", PRICE.ultraMonthly);
     const change = (currency: "eur" | "usd") =>
       subscriptionActions.changeSubscriptionPlan({ planSlug: "pro", interval: "monthly", currency });
@@ -1519,6 +1558,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     await setPlanRow("lg_plan_new", { status: "cancelled" });
     assert.deepEqual(await change("eur"), { error: "errors.unsupportedOperation" });
     assert.deepEqual(fakeStripe.subscriptionUpdates, []);
+    assert.deepEqual(planSyncs, []);
     await setPlanRow("lg_plan_new", { status: "active" });
   });
 
@@ -1733,9 +1773,11 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     await checkout("sub_lg_plan_redo_next");
     assert.deepEqual(await planOf(), ["subscription", "pro", "active", "sub_lg_plan_redo_next"]);
     await clearMarks("lg_plan_redo");
+    planSyncs.length = 0;
     await checkout("sub_lg_plan_redo");
     assert.deepEqual(await planOf(), ["subscription", "pro", "active", "sub_lg_plan_redo_next"]);
     assert.deepEqual(await marksOf("lg_plan_redo"), []);
+    assert.deepEqual(planSyncs, []);
   });
 
   test("a plan Checkout first expires the store's other open plan Checkouts, and is payable for 31 minutes", async () => {
@@ -1823,9 +1865,11 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
       // Both Checkouts were open; the second is paid while Stripe bills the first.
       await clearMarks(storeId);
       extraPlanNotices.length = 0;
+      planSyncs.length = 0;
       await completed(second);
       assert.deepEqual(await held(), ["subscription", "pro", first], storeId);
       assert.deepEqual(await marksOf(storeId), [], storeId);
+      assert.deepEqual(planSyncs, [], storeId);
       assert.deepEqual(extraPlanNotices, [`${storeId} keeps ${first}, extra ${second}`]);
 
       // Once Stripe has ended the first one, whose deletion the webhook missed, the paid
@@ -1886,6 +1930,8 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
         for (const [ending, end] of Object.entries(endings)) {
           const label = `${storeId} ${entry} ${ending}`;
           fakeStripe.reset();
+          planSyncs.length = 0;
+          plansAtSync.length = 0;
           end(subscription);
           await setPlanRow(storeId, { ...PLAN_ROW, stripeSubscriptionId: subscription });
           await clearMarks(storeId);
@@ -1928,8 +1974,45 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
             label,
           );
           assert.deepEqual(await marksOf(storeId), ["legacy_store", "store"], label);
+          assert.deepEqual(planSyncs, [storeId], label);
+          assert.deepEqual(
+            await Promise.all(plansAtSync),
+            [["pay_as_you_go", "pay_as_you_go"]],
+            label,
+          );
         }
       }
     }
+  });
+
+  test("a platform admin's billing mode change asks for the early plan sync; other settings do not", async () => {
+    const admin = await import("@/app/(dashboard)/dashboard/settings/admin/actions");
+    session.userId = "lg_admin_user";
+    process.env.PLATFORM_ADMIN_EMAILS = "lg_admin_user@louez.test";
+    currentStore.id = "lg_admin";
+    const loaded: AdminSettingsInput["loaded"] = {
+      billingMode: "subscription",
+      payAsYouGoConfig: { flatRateCents: 123, tiers: [], currency: "eur" },
+      freeReservationsGranted: 0,
+    };
+    const save = (values: Partial<AdminSettingsInput["loaded"]>) =>
+      admin.updateAdminSettings({
+        trialDays: 0,
+        discountPercent: 0,
+        discountDurationMonths: 0,
+        ...loaded,
+        ...values,
+        loaded,
+      });
+
+    assert.deepEqual(await save({ billingMode: "pay_as_you_go" }), { success: true });
+    assert.equal((await planColumns("lg_admin"))?.billingMode, "pay_as_you_go");
+    assert.deepEqual(planSyncs, ["lg_admin"]);
+
+    planSyncs.length = 0;
+    await setPlanRow("lg_admin", { billingMode: "subscription" });
+    assert.deepEqual(await save({ freeReservationsGranted: 5 }), { success: true });
+    assert.equal((await planColumns("lg_admin"))?.freeReservationsGranted, 5);
+    assert.deepEqual(planSyncs, []);
   });
 });

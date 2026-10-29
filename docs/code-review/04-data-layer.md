@@ -97,6 +97,8 @@ Mark only when a field the builders read can change (`apps/web/lib/billing-sync/
 
 `scripts/billing-marks.test.mjs` enforces this rule in `pnpm test`. A file that writes payments, disputes, platform fees, pay-as-you-go invoices, subscriptions, legal profiles, members, marketplace channels, referral rewards or reservation items, or updates a column the builders read on stores, reservations or reservation items, must reference a mark helper. It checks the file, not the transaction. A write that changes no snapshot field goes on the test's allowlist with its reason.
 
+A write that starts, changes or ends the plan in force on a `subscriptions` row (`planInForce`) also calls `syncPlanSoon` from `apps/web/lib/billing-sync/plan-sync-soon.ts` once it has committed. For a store the billing service bills, the plan then reaches the service and its policy version comes back within seconds, not the cron's 1 to 3 minutes, during which a payment keeps the old fee (louez-billing `docs/plans/plans-for-new-stores.md` decision 8).
+
 ---
 
 ## Related

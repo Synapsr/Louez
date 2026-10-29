@@ -9,6 +9,7 @@ import { BillingDisabledError, isBillingEnabled } from '@/lib/billing/mode'
 import { getEffectivePolicy } from '@/lib/billing/policy'
 import { type BillingAlerts, createBillingAlerts } from '@/lib/billing-sync/alerts'
 import { isStripeNotFound } from '@/lib/billing-sync/gross-backfill-core'
+import { syncPlanSoon } from '@/lib/billing-sync/plan-sync-soon'
 import { log } from '@/lib/evlog'
 import { ensurePlanRow } from '@/lib/pay-as-you-go/pricing-lock'
 import {
@@ -20,7 +21,8 @@ import { env } from '@/env'
 
 // Every write to a subscription row marks the store's store and legacy_store snapshots
 // for the billing service in the same transaction (markSubscriptionRow). Stripe calls
-// stay before it.
+// stay before it. A write that starts, changes or ends the plan in force then, for a
+// store the billing service bills, sends them within seconds (syncPlanSoon).
 
 type SubscriptionColumns = Partial<Omit<typeof subscriptions.$inferInsert, 'id' | 'storeId'>>
 
@@ -600,6 +602,7 @@ export async function changeSubscriptionPlan(
     throw new SubscriptionPlanError(refusal)
   }
   await updateSubscriptionRow(row, { planSlug: plan.slug, cancelAtPeriodEnd: false })
+  syncPlanSoon(storeId)
   return 'in_place'
 }
 
@@ -700,6 +703,10 @@ export type SwitchToPayAsYouGoResult =
  * - With no active Stripe subscription (already PAYG / uninitialized): flips immediately.
  * - On a paid plan: schedules cancellation at period end and tags the Stripe
  *   subscription so the deletion webhook flips the mode then — no double billing.
+ * Neither changes the plan in force now: the immediate switch is for a row without a
+ * Stripe subscription, which planInForce never counts, and the deferred one only sets
+ * cancelAtPeriodEnd. So neither calls syncPlanSoon: the deletion webhook does, when the
+ * plan ends.
  */
 export async function switchToPayAsYouGo(storeId: string): Promise<SwitchToPayAsYouGoResult> {
   const subscription = await db.query.subscriptions.findFirst({
@@ -755,6 +762,7 @@ export async function activatePlanSubscription(input: {
     currentPeriodEnd: input.currentPeriodEnd,
     cancelAtPeriodEnd: false,
   })
+  syncPlanSoon(input.storeId)
 }
 
 /**
@@ -786,6 +794,7 @@ export async function endSubscriptionToPayAsYouGo(
     cancelAtPeriodEnd: false,
     currentPeriodEnd: null,
   })
+  syncPlanSoon(row.storeId)
 }
 
 export async function getSubscriptionWithPlan(storeId: string) {
