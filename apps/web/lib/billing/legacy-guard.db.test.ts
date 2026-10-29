@@ -81,8 +81,8 @@ function createFakeStripe() {
   const failing = new Set<string>();
   /** The params of each subscription update, in order. */
   const subscriptionUpdates: Array<{ id: string; params: unknown }> = [];
-  /** The subscriptions whose update Stripe refuses with a card error, with its code. */
-  const declined = new Map<string, string>();
+  /** The subscriptions whose update Stripe refuses, with the error it answers. */
+  const refusals = new Map<string, Stripe.errors.StripeError>();
   const invoice = (id: string) => {
     const found = invoices.get(id);
     if (!found) throw new Error(`No such invoice: ${id}`);
@@ -100,7 +100,7 @@ function createFakeStripe() {
     issued: invoices,
     checkoutSessions,
     subscriptionUpdates,
-    declined,
+    refusals,
     /** Leaves a Checkout Session open on the platform account. */
     addCheckoutSession(session: Omit<FakeCheckoutSession, "status">) {
       checkoutSessions.set(session.id, { ...session, status: "open" });
@@ -138,7 +138,7 @@ function createFakeStripe() {
       checkoutSessions.clear();
       failing.clear();
       subscriptionUpdates.length = 0;
-      declined.clear();
+      refusals.clear();
     },
     subscriptions: {
       async retrieve(id: string) {
@@ -159,15 +159,8 @@ function createFakeStripe() {
         subscriptionUpdates.push({ id, params });
         // Stripe's answer when it cannot charge a plan change's difference at once: the
         // subscription stays as it was.
-        const code = declined.get(id);
-        if (code) {
-          throw new Stripe.errors.StripeCardError({
-            type: "card_error",
-            code,
-            statusCode: 402,
-            message: "Your card was declined.",
-          });
-        }
+        const refusal = refusals.get(id);
+        if (refusal) throw refusal;
         return { id };
       },
     },
@@ -1530,14 +1523,52 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
   });
 
   test("a plan change Stripe cannot charge at once leaves the subscription and the row as they were", async () => {
-    // A declined card, and a bank that asks for 3D Secure, which an update cannot pass.
-    for (const code of ["card_declined", "subscription_payment_intent_requires_action"]) {
+    const cardError = (code: string, declineCode?: string) =>
+      new Stripe.errors.StripeCardError({
+        type: "card_error",
+        code,
+        decline_code: declineCode,
+        statusCode: 402,
+        message: "Your card was declined.",
+      });
+    const refusals = [
+      { case: "declined", error: cardError("card_declined"), reason: "payment_failed" },
+      // A bank that asks for 3D Secure, which an update cannot pass.
+      {
+        case: "3D Secure",
+        error: cardError("subscription_payment_intent_requires_action"),
+        reason: "payment_confirmation_required",
+      },
+      {
+        case: "authentication declined",
+        error: cardError("card_declined", "authentication_required"),
+        reason: "payment_confirmation_required",
+      },
+      // A customer with no card, such as a store whose trial Checkout collected none.
+      {
+        case: "no card",
+        error: new Stripe.errors.StripeInvalidRequestError({
+          type: "invalid_request_error",
+          code: "resource_missing",
+          statusCode: 400,
+          message: "This customer has no attached payment source or default payment method.",
+        }),
+        reason: "no_payment_method",
+      },
+    ];
+    const actionErrors: Record<string, string> = {
+      payment_failed: "errors.planPaymentFailed",
+      payment_confirmation_required: "errors.planPaymentConfirmationRequired",
+      no_payment_method: "errors.planNoPaymentMethod",
+    };
+    for (const refusal of refusals) {
       for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
+        const label = `${storeId} ${refusal.case}`;
         fakeStripe.reset();
         currentStore.id = storeId;
         await setPlanRow(storeId, { status: "active", planSlug: "pro", cancelAtPeriodEnd: true });
         fakeStripe.addSubscription(`sub_${storeId}`, PRICE.proMonthly, { cancel_at_period_end: true });
-        fakeStripe.declined.set(`sub_${storeId}`, code);
+        fakeStripe.refusals.set(`sub_${storeId}`, refusal.error);
         const rowBefore = await louezDb.db.query.subscriptions.findFirst({
           where: eq(louezDb.subscriptions.storeId, storeId),
         });
@@ -1546,8 +1577,8 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
         await assert.rejects(
           customers.changeSubscriptionPlan(storeId, "ultra", "monthly", "eur"),
           (error) =>
-            error instanceof customers.SubscriptionPlanError && error.reason === "payment_failed",
-          `${storeId} ${code}`,
+            error instanceof customers.SubscriptionPlanError && error.reason === refusal.reason,
+          label,
         );
         assert.deepEqual(
           await subscriptionActions.changeSubscriptionPlan({
@@ -1555,8 +1586,8 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
             interval: "monthly",
             currency: "eur",
           }),
-          { error: "errors.planPaymentFailed" },
-          `${storeId} ${code}`,
+          { error: actionErrors[refusal.reason] },
+          label,
         );
         assert.deepEqual(
           fakeStripe.subscriptionUpdates.map((update) => update.id),
@@ -1567,14 +1598,48 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
             where: eq(louezDb.subscriptions.storeId, storeId),
           }),
           rowBefore,
-          `${storeId} ${code}`,
+          label,
         );
-        assert.deepEqual(await marksOf(storeId), [], `${storeId} ${code}`);
+        assert.deepEqual(await marksOf(storeId), [], label);
       }
     }
     for (const storeId of ["lg_plan_old", "lg_plan_new"]) {
       await setPlanRow(storeId, { cancelAtPeriodEnd: false });
     }
+  });
+
+  test("a missing object Stripe names is not a missing card: the change fails as any error", async () => {
+    const storeId = "lg_plan_new";
+    fakeStripe.reset();
+    currentStore.id = storeId;
+    await setPlanRow(storeId, { status: "active", planSlug: "pro" });
+    fakeStripe.addSubscription(`sub_${storeId}`, PRICE.proMonthly);
+    const missingPrice = new Stripe.errors.StripeInvalidRequestError({
+      type: "invalid_request_error",
+      code: "resource_missing",
+      param: "items[0][price]",
+      statusCode: 400,
+      message: `No such price: '${PRICE.ultraMonthly}'`,
+    });
+    fakeStripe.refusals.set(`sub_${storeId}`, missingPrice);
+
+    await assert.rejects(
+      customers.changeSubscriptionPlan(storeId, "ultra", "monthly", "eur"),
+      (error) => error === missingPrice,
+    );
+    assert.deepEqual(
+      await subscriptionActions.changeSubscriptionPlan({
+        planSlug: "ultra",
+        interval: "monthly",
+        currency: "eur",
+      }),
+      { error: "errors.generic" },
+    );
+    const row = await louezDb.db.query.subscriptions.findFirst({
+      where: eq(louezDb.subscriptions.storeId, storeId),
+      columns: { planSlug: true },
+    });
+    assert.equal(row?.planSlug, "pro");
   });
 
   test("an update writes the plan its price bills, for an old and a new store", async () => {

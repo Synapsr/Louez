@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import * as nodeModule from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -21,8 +21,9 @@ import messages from "@/messages/fr.json";
 // the billing service bills sees the service's words for pay-as-you-go, never Louez's
 // pricing, and a link to its billing settings. An old store sees what it saw before,
 // except that pay-as-you-go is its current plan when it is on it. The plan change dialog
-// says the difference is charged at once. The server actions and the router are stubs;
-// the label is a fake one.
+// says when the difference is charged, which a change of interval alters, and why the
+// last confirmation failed. The server actions and the router are stubs; the label is a
+// fake one.
 
 // tsx loads the shared UI package through CommonJS with the classic JSX runtime.
 Object.assign(globalThis, { React });
@@ -69,6 +70,8 @@ Reflect.get(
 });
 
 const OFFER_LABEL = "Offre de test";
+const PRORATION_NOTE =
+  "La différence est prélevée dès maintenant, au prorata de la période en cours. Pour un plan moins cher, elle est déduite de vos prochaines factures.";
 const features: Plan["features"] = {
   maxProducts: 50,
   maxReservationsPerMonth: 100,
@@ -253,16 +256,65 @@ describe("plan page views", () => {
     const html = render(
       <views.planChange.PlanChangeSummary
         currentPlanName="Pro"
+        currentInterval="monthly"
         newPlanName="Ultra"
         newPlanPrice="10€"
         interval="monthly"
       />,
     );
-    const note =
-      "La différence est prélevée dès maintenant, au prorata de la période en cours. Pour un plan moins cher, elle est déduite de vos prochaines factures.";
     assert.ok(html.includes("10€ HT / mois"));
-    assert.ok(html.includes(note));
-    assert.ok(html.indexOf(note) > html.indexOf("10€ HT / mois"));
+    assert.ok(html.includes(PRORATION_NOTE));
+    assert.ok(html.indexOf(PRORATION_NOTE) > html.indexOf("10€ HT / mois"));
+    assert.ok(!html.includes('role="alert"'));
+  });
+
+  test("a change of interval says the new period starts today, not that it is prorated", () => {
+    const change = (currentInterval: "monthly" | "yearly", interval: "monthly" | "yearly") =>
+      render(
+        <views.planChange.PlanChangeSummary
+          currentPlanName="Ultra"
+          currentInterval={currentInterval}
+          newPlanName="Pro"
+          newPlanPrice="10€"
+          interval={interval}
+        />,
+      );
+    const toYearly = change("monthly", "yearly");
+    assert.ok(
+      toYearly.includes(
+        "La facturation annuelle commence aujourd’hui : l’année est prélevée dès maintenant, moins la part non utilisée de la période en cours. Votre plan se renouvellera ensuite dans un an.",
+      ),
+    );
+    assert.ok(!toYearly.includes(PRORATION_NOTE));
+    const toMonthly = change("yearly", "monthly");
+    assert.ok(toMonthly.includes("La facturation mensuelle commence aujourd’hui"));
+    assert.ok(!toMonthly.includes(PRORATION_NOTE));
+    // Yearly to yearly is a plan change.
+    assert.ok(change("yearly", "yearly").includes(PRORATION_NOTE));
+  });
+
+  test("a refused plan change shows its reason in the dialog, under the note", () => {
+    const reason = messages.errors.planPaymentFailed;
+    const html = render(
+      <views.planChange.PlanChangeSummary
+        currentPlanName="Pro"
+        currentInterval={null}
+        newPlanName="Ultra"
+        newPlanPrice="10€"
+        interval="monthly"
+        error={reason}
+      />,
+    );
+    assert.ok(html.includes(reason));
+    assert.ok(html.indexOf(reason) > html.indexOf(PRORATION_NOTE));
+
+    // The dialog opens only after a click, which a static render cannot make: the page's
+    // source is checked instead, so that its dialog keeps this body and the reason.
+    const page = readFileSync(new URL("./subscription-management.tsx", import.meta.url), "utf8");
+    const opens = page.indexOf("open={pendingChange !== null}");
+    assert.ok(opens > 0);
+    const dialog = page.slice(opens, page.indexOf("</Dialog>", opens));
+    assert.match(dialog, /<PlanChangeSummary\b[\s\S]*?\berror=\{changeError && errorText\(changeError\)\}[\s\S]*?\/>/);
   });
 
   test("the pay-as-you-go preview names the service's offer instead of Louez's ladder", () => {

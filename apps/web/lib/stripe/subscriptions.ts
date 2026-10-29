@@ -58,8 +58,9 @@ async function updateSubscriptionRow(
 }
 
 /**
- * Why a plan checkout or a plan change cannot go on: the actions answer
- * `errors.planPaymentFailed` for `payment_failed`, `errors.unsupportedOperation` otherwise.
+ * Why a plan checkout or a plan change cannot go on. The actions answer
+ * `errors.unsupportedOperation`, except for the three payment refusals, which have their
+ * own message (PLAN_PAYMENT_ERRORS in the plan page's actions).
  */
 export type SubscriptionPlanRefusal =
   /** A checkout while the row holds a live subscription: change its plan instead. */
@@ -71,10 +72,20 @@ export type SubscriptionPlanRefusal =
   /** Stripe cannot move a subscription to another currency. */
   | 'currency'
   /**
-   * Stripe could not charge a plan change's difference at once: the card was declined,
-   * or the bank asks for a confirmation (3D Secure). The subscription has not changed.
+   * Stripe could not charge a plan change's difference at once: the card was declined.
+   * The subscription has not changed.
    */
   | 'payment_failed'
+  /**
+   * The bank asks to confirm the payment of the difference (3D Secure), which an update
+   * cannot do. The subscription has not changed.
+   */
+  | 'payment_confirmation_required'
+  /**
+   * The customer has no card to charge the difference to, such as a store whose trial
+   * Checkout collected none. The subscription has not changed.
+   */
+  | 'no_payment_method'
 
 export class SubscriptionPlanError extends Error {
   readonly reason: SubscriptionPlanRefusal
@@ -481,6 +492,36 @@ export async function createSubscriptionCheckoutSession({
 }
 
 /**
+ * Why Stripe refused a plan change, when the refusal is about paying the difference at
+ * once; null for any other error, which the caller rethrows. Stripe answers a card error
+ * for a declined card, and for a bank asking for 3D Secure
+ * (`subscription_payment_intent_requires_action`, or the decline code
+ * `authentication_required`). For a customer without a card, it answers HTTP 400,
+ * `resource_missing` with no `param` ("This customer has no attached payment source or
+ * default payment method"); a missing object, such as a price, comes with a `param` or a
+ * 404.
+ */
+function planChangePaymentRefusal(
+  error: Stripe.errors.StripeError,
+): SubscriptionPlanRefusal | null {
+  if (error instanceof Stripe.errors.StripeCardError) {
+    const asksConfirmation =
+      error.code === 'subscription_payment_intent_requires_action' ||
+      error.decline_code === 'authentication_required'
+    return asksConfirmation ? 'payment_confirmation_required' : 'payment_failed'
+  }
+  if (
+    error instanceof Stripe.errors.StripeInvalidRequestError &&
+    error.statusCode === 400 &&
+    error.code === 'resource_missing' &&
+    !error.param
+  ) {
+    return 'no_payment_method'
+  }
+  return null
+}
+
+/**
  * What a plan change did: `in_place` on the live subscription, or `subscription_ended`
  * when Stripe had ended the row's subscription. The row is then on pay-as-you-go, and
  * the plan is bought through Checkout.
@@ -492,15 +533,15 @@ export type PlanChangeOutcome = 'in_place' | 'subscription_ended'
  * Stripe subscription, for every store (plans-for-new-stores decision 5): its one item
  * gets the plan's price, and Stripe invoices and charges the prorated difference at
  * once, not on the renewal invoice, which a store that cancels first never pays. The
- * change applies only if Stripe takes that payment now: a declined card, or a bank that
- * asks for a confirmation, leaves the subscription as it was and throws
- * SubscriptionPlanError('payment_failed'). A cheaper plan credits the difference to the
- * customer's balance, which the next invoices use. A cancellation the owner scheduled
- * is lifted, as buying the new plan would have done. Stripe's
+ * change applies only if Stripe takes that payment now: a declined card, a bank that
+ * asks for a confirmation, or a customer with no card leaves the subscription as it was
+ * and throws a SubscriptionPlanError (planChangePaymentRefusal). A cheaper plan credits
+ * the difference to the customer's balance, which the next invoices use. A cancellation
+ * the owner scheduled is lifted, as buying the new plan would have done. Stripe's
  * `customer.subscription.updated` writes the plan from the price too
- * (handleSubscriptionUpdated); the row gets it once Stripe has changed the
- * subscription, so the page shows it. A subscription Stripe has ended changes nothing
- * in Stripe and ends the row (currentHeldSubscription).
+ * (handleSubscriptionUpdated); the row gets it once Stripe has changed the subscription,
+ * so the page shows it. A subscription Stripe has ended changes nothing in Stripe and
+ * ends the row (currentHeldSubscription).
  */
 export async function changeSubscriptionPlan(
   storeId: string,
@@ -548,16 +589,15 @@ export async function changeSubscriptionPlan(
       metadata: { planSlug: plan.slug, pendingBillingMode: '' },
     })
   } catch (error) {
-    // Stripe answers a card error, 3D Secure included, and leaves the subscription as it
-    // was. Only its code is logged, never the card.
-    if (error instanceof Stripe.errors.StripeCardError) {
-      log.warn(
-        'billing',
-        `plan change of store ${storeId} to ${plan.slug}: Stripe could not charge the difference (${error.code ?? 'no code'})`,
-      )
-      throw new SubscriptionPlanError('payment_failed')
-    }
-    throw error
+    if (!(error instanceof Stripe.errors.StripeError)) throw error
+    const refusal = planChangePaymentRefusal(error)
+    if (!refusal) throw error
+    // Stripe left the subscription as it was. Only its codes are logged, never the card.
+    log.warn(
+      'billing',
+      `plan change of store ${storeId} to ${plan.slug}: Stripe could not charge the difference (${refusal}, ${error.code ?? 'no code'}${error.decline_code ? `, ${error.decline_code}` : ''})`,
+    )
+    throw new SubscriptionPlanError(refusal)
   }
   await updateSubscriptionRow(row, { planSlug: plan.slug, cancelAtPeriodEnd: false })
   return 'in_place'

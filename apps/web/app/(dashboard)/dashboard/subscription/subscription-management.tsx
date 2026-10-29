@@ -181,6 +181,8 @@ export function SubscriptionManagement({
   );
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [pendingChange, setPendingChange] = useState<PendingPlanChange | null>(null);
+  // Why the plan change failed, shown in its dialog, where the owner is looking.
+  const [changeError, setChangeError] = useState<string | null>(null);
   const router = useRouter();
   const t = useTranslations('dashboard.settings.subscription');
   const { dateFns: dateLocale } = useFormatLocale();
@@ -189,6 +191,12 @@ export function SubscriptionManagement({
   const tErrors = useTranslations('errors');
 
   const hasDiscount = discountPercent > 0;
+
+  /** An action's `errors.*` key in the owner's language, the generic error otherwise. */
+  const errorText = (key: string) => {
+    const name = key.replace(/^errors\./, '');
+    return tErrors.has(name) ? tErrors(name) : tErrors('generic');
+  };
 
   useEffect(() => {
     if (showSuccess || showCanceled) {
@@ -221,10 +229,17 @@ export function SubscriptionManagement({
     }
   };
 
+  const closeChangeDialog = () => {
+    setPendingChange(null);
+    setChangeError(null);
+  };
+
+  // A refused change, such as a declined card, keeps the dialog open with its reason.
   const handleChangePlan = async () => {
     if (!pendingChange) return;
     setLoading(pendingChange.plan.slug);
     setError(null);
+    setChangeError(null);
     try {
       const result = await changeSubscriptionPlan({
         planSlug: pendingChange.plan.slug,
@@ -232,17 +247,18 @@ export function SubscriptionManagement({
         currency: pendingChange.currency,
       });
       if ('error' in result) {
-        setError(result.error);
+        setChangeError(result.error);
       } else if ('url' in result && result.url) {
         // Stripe had ended the subscription: the plan is bought through Checkout.
+        closeChangeDialog();
         window.location.href = result.url;
       } else {
+        closeChangeDialog();
         router.refresh();
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+    } catch {
+      setChangeError('errors.generic');
     } finally {
-      setPendingChange(null);
       setLoading(null);
     }
   };
@@ -433,7 +449,7 @@ export function SubscriptionManagement({
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{tCommon('error')}</AlertTitle>
-          <AlertDescription>{tErrors.has(error.replace(/^errors\./, '')) ? tErrors(error.replace(/^errors\./, '')) : tErrors('generic')}</AlertDescription>
+          <AlertDescription>{errorText(error)}</AlertDescription>
         </Alert>
       )}
 
@@ -1022,7 +1038,7 @@ export function SubscriptionManagement({
       <Dialog
         open={pendingChange !== null}
         onOpenChange={(open) => {
-          if (!open && loading === null) setPendingChange(null);
+          if (!open && loading === null) closeChangeDialog();
         }}
       >
         <DialogPopup className="sm:max-w-md">
@@ -1033,9 +1049,11 @@ export function SubscriptionManagement({
             {pendingChange && (
               <PlanChangeSummary
                 currentPlanName={currentPlan?.name}
+                currentInterval={subscription?.billingInterval ?? null}
                 newPlanName={pendingChange.plan.name}
                 newPlanPrice={formatPrice(pendingChange.price, pendingChange.currency)}
                 interval={pendingChange.interval}
+                error={changeError && errorText(changeError)}
               />
             )}
           </DialogPanel>
@@ -1049,7 +1067,7 @@ export function SubscriptionManagement({
             </Button>
             <Button
               variant="ghost"
-              onClick={() => setPendingChange(null)}
+              onClick={closeChangeDialog}
               disabled={loading !== null}
               className="w-full"
             >

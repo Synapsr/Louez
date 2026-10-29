@@ -8,6 +8,7 @@ import { log } from '@/lib/evlog'
 import { legacyBillingApplies } from '@/lib/billing/policy'
 import {
   SubscriptionPlanError,
+  type SubscriptionPlanRefusal,
   createSubscriptionCheckoutSession,
   createCustomerPortalSession,
   cancelSubscription as cancelSub,
@@ -27,6 +28,17 @@ const planChangeSchema = z.object({
 })
 
 type CurrentStore = NonNullable<Awaited<ReturnType<typeof getCurrentStore>>>
+
+/**
+ * What the owner reads when Stripe could not charge a plan change's difference: the plan
+ * has not changed, and each message says what to do. Any other refusal answers
+ * `errors.unsupportedOperation`.
+ */
+const PLAN_PAYMENT_ERRORS: Partial<Record<SubscriptionPlanRefusal, string>> = {
+  payment_failed: 'errors.planPaymentFailed',
+  payment_confirmation_required: 'errors.planPaymentConfirmationRequired',
+  no_payment_method: 'errors.planNoPaymentMethod',
+}
 
 /** The plan's Stripe Checkout for the store, with its trial and coupon. */
 function openPlanCheckout(
@@ -110,9 +122,7 @@ export async function changeSubscriptionPlan(
     return { success: true }
   } catch (error) {
     if (error instanceof SubscriptionPlanError) {
-      // Stripe could not charge the difference: the plan has not changed.
-      if (error.reason === 'payment_failed') return { error: 'errors.planPaymentFailed' }
-      return { error: 'errors.unsupportedOperation' }
+      return { error: PLAN_PAYMENT_ERRORS[error.reason] ?? 'errors.unsupportedOperation' }
     }
     log.error(
       'billing',
