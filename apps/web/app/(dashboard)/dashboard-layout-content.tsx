@@ -113,7 +113,7 @@ export const DashboardLayoutContent = async ({ children }: { children: React.Rea
             >
               <div className="bg-background min-h-screen">{children}</div>
               <SwRegister />
-              {/* The return from Stripe Checkout lands in the settings or the onboarding. */}
+              {/* The return from Stripe Checkout lands in the billing settings. */}
               <BillingReturnToastSlot />
             </GleapProvider>
           </OpenReplayProvider>

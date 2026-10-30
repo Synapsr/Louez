@@ -7,13 +7,10 @@ export const BILLING_SETTINGS_PATH = "/dashboard/settings/billing";
 /** The statements, under the billing settings. */
 export const BILLING_STATEMENTS_PATH = `${BILLING_SETTINGS_PATH}/statements`;
 
-/** The onboarding step that asks a new store's owner for a billing card. */
-export const BILLING_CARD_STEP_PATH = "/onboarding/billing";
-
 /**
  * Pages that exist only for platform billing (louez-billing docs/plans/design.md §7.2):
- * plans and invoices, referrals, the per-store admin pricing, the billing service's
- * settings and onboarding step, and the platform finance area. With
+ * plans and invoices, referrals, the per-store admin pricing, the billing settings,
+ * and the platform finance area. With
  * LOUEZ_BILLING off the proxy answers 404 for them before any layout runs, so an
  * unsigned visitor gets the same answer as an owner, and each page also checks the mode
  * itself. AI credits have their own switch (`areAiCreditsEnabled`), which needs
@@ -23,7 +20,6 @@ export const BILLING_ONLY_PATHS = [
   "/dashboard/subscription",
   "/dashboard/settings/subscription",
   BILLING_SETTINGS_PATH,
-  BILLING_CARD_STEP_PATH,
   "/dashboard/referrals",
   "/dashboard/settings/referrals",
   "/dashboard/ai-credits",

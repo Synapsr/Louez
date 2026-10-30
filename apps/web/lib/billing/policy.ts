@@ -43,7 +43,7 @@ export type EffectivePolicy = {
   /** The cached version in force, the store's own or `*`. */
   readonly policy: PolicyV1 | null;
   readonly terms: PolicyTerms;
-  /** False when the card gate refuses billable reservations (BILLING_GATE_DISABLED counted). */
+  /** False when the card gate refuses billable reservations. */
   readonly acceptsReservations: boolean;
 };
 

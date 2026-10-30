@@ -41,7 +41,7 @@ export const useStripeConnectStart = ({ fromReeent }: { fromReeent: boolean }) =
     orpc.dashboard.onboarding.complete.mutationOptions(),
   );
 
-  // When the billing card or the source step is still due, the Stripe KYC detour
+  // When the source step is still due, the Stripe KYC detour
   // must come back to it instead of the settings callback screen.
   const stripeReturnPath = getStripeKycReturnPath(steps);
 

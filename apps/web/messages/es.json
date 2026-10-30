@@ -8192,15 +8192,6 @@
         }
       }
     },
-    "billingCard": {
-      "title": "Añade una tarjeta de facturación",
-      "description": "Louez carga sus comisiones a esta tarjeta. En cuanto esté registrada, tu tienda podrá aceptar reservas.",
-      "secureNote": "Introduces la tarjeta en la página segura de Stripe y vuelves directamente aquí.",
-      "addCard": "Añadir una tarjeta",
-      "later": "Más tarde",
-      "laterNote": "Mientras no haya una tarjeta registrada, tu tienda no podrá aceptar nuevas reservas. Puedes añadirla cuando quieras desde la configuración de facturación.",
-      "startFailed": "No se pudo abrir la página de Stripe. Inténtalo de nuevo en un momento."
-    },
     "complete": {
       "title": "Su tienda esta lista!",
       "description": "Felicitaciones, su tienda ya esta en linea",
@@ -8237,7 +8228,6 @@
       "branding": "Personalizacion",
       "product": "Primer producto",
       "payment": "Pagos",
-      "billing": "Tarjeta de facturación",
       "profile": "Perfil",
       "source": "Fuente",
       "reeent": "reeent"

@@ -22,21 +22,14 @@ export type ReservationGateBanner = {
   readonly label: string | null;
 };
 
-/**
- * The banner of a store's effective policy, or null when there is nothing to say.
- * With `gateDisabled` (BILLING_GATE_DISABLED, README §8.5) a missing card blocks
- * nothing, so its notice, whose label says a card is needed to take reservations, is
- * left out: the billing pages ask for the card, as the service's overview does then.
- */
+/** The banner of a store's effective policy, or null when there is nothing to say. */
 export function reservationGateBanner(
   effective: Pick<EffectivePolicy, "acceptsReservations" | "policy">,
   locale: string,
-  gateDisabled: boolean,
 ): ReservationGateBanner | null {
   const notice = effective.policy?.labels.notice ?? null;
   const label = notice ? policyLabel(notice, locale) : null;
   if (!effective.acceptsReservations) return { kind: "paused", label };
-  if (gateDisabled && effective.policy?.notice?.kind === "payment_method_missing") return null;
   if (effective.policy?.notice) return { kind: "notice", label };
   return null;
 }

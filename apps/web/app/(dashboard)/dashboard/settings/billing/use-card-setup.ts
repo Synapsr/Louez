@@ -5,10 +5,10 @@ import { useEffect, useState, useTransition } from "react";
 import { startBillingCardSetup } from "./actions";
 
 /**
- * "Add a card": opens Stripe Checkout in setup mode, which comes back to the page that
- * opened it (`from`). `opening` stays on until the browser leaves for Stripe.
+ * "Add a card": opens Stripe Checkout in setup mode, which comes back to the billing
+ * settings. `opening` stays on until the browser leaves for Stripe.
  */
-export function useCardSetup(from: "settings" | "onboarding") {
+export function useCardSetup() {
   const [pending, startTransition] = useTransition();
   const [leaving, setLeaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -26,7 +26,7 @@ export function useCardSetup(from: "settings" | "onboarding") {
   const start = () => {
     setFailed(false);
     startTransition(async () => {
-      const result = await startBillingCardSetup(from);
+      const result = await startBillingCardSetup();
       if ("url" in result) {
         setLeaving(true);
         window.location.assign(result.url);

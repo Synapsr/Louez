@@ -65,7 +65,7 @@ describe("catalog feed bookable (database)", { skip: skipWithoutTestDatabase() }
   let louezDb: typeof import("@louez/db");
   let catalog: typeof import("./catalog");
   const saved = new Map(
-    ["LOUEZ_BILLING", "BILLING_SERVICE_URL", "BILLING_NEW_STORES_FROM", "BILLING_GATE_DISABLED"].map(
+    ["LOUEZ_BILLING", "BILLING_SERVICE_URL", "BILLING_NEW_STORES_FROM"].map(
       (name) => [name, process.env[name]] as const,
     ),
   );
@@ -79,7 +79,6 @@ describe("catalog feed bookable (database)", { skip: skipWithoutTestDatabase() }
     process.env.LOUEZ_BILLING = "cloud";
     process.env.BILLING_SERVICE_URL = "http://127.0.0.1:1";
     process.env.BILLING_NEW_STORES_FROM = NEW_STORES_FROM.toISOString();
-    delete process.env.BILLING_GATE_DISABLED;
 
     const stores: Array<[string, Date]> = [
       [LEGACY, at(-60)],

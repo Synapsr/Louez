@@ -16,8 +16,7 @@ import { isBillingSyncEnabled } from "./billing-queue";
 //
 // Only in service mode (LOUEZ_BILLING=cloud with BILLING_SERVICE_URL, README §12). With
 // billing off, a self-hosted instance, or in cloud mode without the service, the gate
-// is always open and never reads the policy table. BILLING_GATE_DISABLED=true opens it
-// in service mode too.
+// is always open and never reads the policy table.
 
 /** Why a store is not taking reservations. Louez never shows it to renters. */
 export type ReservationGateReason = Extract<PolicyReservations, { allowed: false }>["reason"];
@@ -54,9 +53,9 @@ export function isStoreNotAcceptingReservationsError(
   return error instanceof StoreNotAcceptingReservationsError;
 }
 
-/** The gate of a resolved policy: closed when it refuses, BILLING_GATE_DISABLED counted. */
+/** The gate of a resolved policy: closed when it refuses. */
 function gateOf(policy: StorePolicy): ReservationGate {
-  if (policy.acceptsReservations || policy.reservations.allowed) return OPEN;
+  if (policy.reservations.allowed) return OPEN;
   return { accepts: false, reason: policy.reservations.reason };
 }
 

@@ -35,13 +35,13 @@ const NOTICE_LABELS = { fr: "Ajoutez une carte.", en: "Add a card.", de: "Karte 
 describe("reservationGateBanner", () => {
   test("an allowed policy with no notice, M2's only shape, shows nothing", () => {
     assert.equal(
-      reservationGateBanner({ acceptsReservations: true, policy: policy({}) }, "fr", false),
+      reservationGateBanner({ acceptsReservations: true, policy: policy({}) }, "fr"),
       null,
     );
   });
 
   test("the built-in and legacy policies show nothing", () => {
-    assert.equal(reservationGateBanner({ acceptsReservations: true, policy: null }, "en", false), null);
+    assert.equal(reservationGateBanner({ acceptsReservations: true, policy: null }, "en"), null);
   });
 
   test("a closed gate pauses, with the service's label in the reader's language", () => {
@@ -50,53 +50,33 @@ describe("reservationGateBanner", () => {
       notice: { kind: "payment_method_missing", blockAt: null },
       labels: { offer: { fr: "Offre", en: "Offer" }, notice: NOTICE_LABELS },
     });
-    assert.deepEqual(reservationGateBanner({ acceptsReservations: false, policy: blocked }, "de", false), {
+    assert.deepEqual(reservationGateBanner({ acceptsReservations: false, policy: blocked }, "de"), {
       kind: "paused",
       label: "Karte hinzufügen.",
     });
     // A language the service did not write falls back to English.
-    assert.deepEqual(reservationGateBanner({ acceptsReservations: false, policy: blocked }, "ja", false), {
+    assert.deepEqual(reservationGateBanner({ acceptsReservations: false, policy: blocked }, "ja"), {
       kind: "paused",
       label: "Add a card.",
     });
   });
 
   test("fail closed: no version, so Louez's generic text", () => {
-    assert.deepEqual(reservationGateBanner({ acceptsReservations: false, policy: null }, "fr", false), {
+    assert.deepEqual(reservationGateBanner({ acceptsReservations: false, policy: null }, "fr"), {
       kind: "paused",
       label: null,
     });
   });
 
-  test("a notice before its block, or under BILLING_GATE_DISABLED, is a notice", () => {
+  test("a notice before its block is a notice", () => {
     const scheduled = policy({
       notice: { kind: "card_removed", blockAt: "2027-02-14T00:00:00Z" },
       labels: { offer: { fr: "Offre", en: "Offer" }, notice: NOTICE_LABELS },
     });
-    for (const gateDisabled of [false, true]) {
-      assert.deepEqual(
-        reservationGateBanner({ acceptsReservations: true, policy: scheduled }, "fr", gateDisabled),
-        { kind: "notice", label: "Ajoutez une carte." },
-      );
-    }
-  });
-
-  test("BILLING_GATE_DISABLED: a missing card blocks nothing, so it gets no banner", () => {
-    // The launch's `*` version: a new store with no card is refused, and told why.
-    const noCard = policy({
-      reservations: { allowed: false, reason: "payment_method_required" },
-      notice: { kind: "payment_method_missing", blockAt: null },
-      labels: { offer: { fr: "Offre", en: "Offer" }, notice: NOTICE_LABELS },
+    assert.deepEqual(reservationGateBanner({ acceptsReservations: true, policy: scheduled }, "fr"), {
+      kind: "notice",
+      label: "Ajoutez une carte.",
     });
-    assert.equal(
-      reservationGateBanner({ acceptsReservations: true, policy: noCard }, "fr", true),
-      null,
-    );
-    // With the gate on, the same version pauses the store.
-    assert.deepEqual(
-      reservationGateBanner({ acceptsReservations: false, policy: noCard }, "fr", false),
-      { kind: "paused", label: "Ajoutez une carte." },
-    );
   });
 });
 

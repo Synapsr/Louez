@@ -5,12 +5,11 @@ import { isBillingOnlyPath } from "./billing-routes";
 
 // The billing pages' routes (louez-billing docs/api, README §10, §12).
 
-test("the billing settings, their statements and the card step exist only with platform billing", () => {
+test("the billing settings and their statements exist only with platform billing", () => {
   for (const path of [
     "/dashboard/settings/billing",
     "/dashboard/settings/billing/statements",
     "/dashboard/settings/billing/statements/2027-02-EUR",
-    "/onboarding/billing",
   ]) {
     assert.ok(isBillingOnlyPath(path), path);
   }

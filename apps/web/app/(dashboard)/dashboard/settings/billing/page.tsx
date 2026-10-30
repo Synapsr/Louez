@@ -2,7 +2,6 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 
-import { isBillingGateDisabled } from "@louez/db";
 import { BuildingIcon, FileTextIcon } from "@louez/ui/icons";
 
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
@@ -56,9 +55,7 @@ export default async function BillingSettingsPage({
 
   return (
     <SettingsPageShell title={t("label")} description={t("description")}>
-      <BillingOverviewCard
-        overview={describeBillingOverview(access, locale, isBillingGateDisabled())}
-      />
+      <BillingOverviewCard overview={describeBillingOverview(access, locale)} />
 
       {overview.ok ? (
         <>

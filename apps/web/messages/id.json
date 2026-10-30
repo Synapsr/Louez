@@ -8192,15 +8192,6 @@
         }
       }
     },
-    "billingCard": {
-      "title": "Tambahkan kartu penagihan",
-      "description": "Louez menagih biayanya ke kartu ini. Setelah tersimpan, toko Anda dapat menerima reservasi.",
-      "secureNote": "Anda memasukkan kartu di halaman aman Stripe, lalu langsung kembali ke sini.",
-      "addCard": "Tambahkan kartu",
-      "later": "Nanti",
-      "laterNote": "Selama belum ada kartu yang tersimpan, toko Anda tidak dapat menerima reservasi baru. Anda dapat menambahkannya kapan saja di pengaturan penagihan.",
-      "startFailed": "Halaman Stripe tidak dapat dibuka. Coba lagi sebentar lagi."
-    },
     "complete": {
       "title": "Toko Anda sudah siap!",
       "description": "Selamat, toko Anda sekarang sudah online",
@@ -8237,7 +8228,6 @@
       "branding": "Kustomisasi",
       "product": "Produk pertama",
       "payment": "Pembayaran",
-      "billing": "Kartu penagihan",
       "profile": "Profil",
       "source": "Sumber",
       "reeent": "benar"

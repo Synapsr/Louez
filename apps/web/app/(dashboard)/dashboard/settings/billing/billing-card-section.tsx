@@ -31,7 +31,7 @@ export const BillingCardSection = ({
   readOnly,
 }: BillingCardSectionProps) => {
   const t = useTranslations("dashboard.settings.billing.card");
-  const setup = useCardSetup("settings");
+  const setup = useCardSetup();
   const canChange = !readOnly && unavailable === null;
 
   return (

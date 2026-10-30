@@ -41,7 +41,7 @@ Louez billing its Stores: the Louez commission, plans, top-ups, referral rewards
 _Avoid_: payments (a Customer paying a Store), Stripe Connect
 
 **Card gate**:
-The refusal of a step that would make a new Reservation billable while the Store's billing policy says it is not taking reservations: no card on file, an overdue payment, or a suspension. Only with Platform billing through the billing service; a completed payment, drafts, quotes, pick-ups, returns and cancellations always go through, and `BILLING_GATE_DISABLED=true` opens it. Customers see only that the Store is not taking reservations online, and how to contact it.
+The refusal of a step that would make a new Reservation billable while the Store's billing policy says it is not taking reservations: an unpaid balance at its limit, an overdue payment, or a suspension. A missing card alone never closes it. Only with Platform billing through the billing service; a completed payment, drafts, quotes, pick-ups, returns and cancellations always go through. Customers see only that the Store is not taking reservations online, and how to contact it.
 _Avoid_: block, paywall
 
 **Hosting identity**:

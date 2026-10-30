@@ -6,7 +6,7 @@ import { z } from "zod";
 import { env } from "@/env";
 import { auth } from "@/lib/auth";
 import { getBillingAccess } from "@/lib/billing/billing-access";
-import { BILLING_CARD_STEP_PATH, BILLING_SETTINGS_PATH } from "@/lib/billing/billing-routes";
+import { BILLING_SETTINGS_PATH } from "@/lib/billing/billing-routes";
 import {
   type BillingDetailsField,
   type BillingDetailsForm,
@@ -67,19 +67,18 @@ export async function saveBillingDetailsAction(
 }
 
 /**
- * Stripe Checkout in setup mode for the store's card. It comes back to the page that
- * opened it, which saves the card (lib/billing/card-return.ts).
+ * Stripe Checkout in setup mode for the store's card. It comes back to the billing
+ * settings, which save the card (lib/billing/card-return.ts).
  */
-export async function startBillingCardSetup(
-  from: "settings" | "onboarding",
-): Promise<{ readonly url: string } | BillingActionError> {
+export async function startBillingCardSetup(): Promise<
+  { readonly url: string } | BillingActionError
+> {
   const owner = await ownerOfActiveStore();
   if (!owner) return { error: "forbidden" };
-  const path = from === "onboarding" ? BILLING_CARD_STEP_PATH : BILLING_SETTINGS_PATH;
   const started = await startCardSetup(owner.storeId, {
     userId: owner.userId,
     locale: await getLocale(),
-    returnUrl: `${env.NEXT_PUBLIC_APP_URL}${path}`,
+    returnUrl: `${env.NEXT_PUBLIC_APP_URL}${BILLING_SETTINGS_PATH}`,
   });
   if (started.ok) return { url: started.value.url };
   return { error: started.reason === "failed" ? "failed" : "unavailable" };

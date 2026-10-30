@@ -8192,15 +8192,6 @@
         }
       }
     },
-    "billingCard": {
-      "title": "Abrechnungskarte hinzufügen",
-      "description": "Louez belastet diese Karte mit seinen Gebühren. Sobald sie hinterlegt ist, kann Ihr Shop Reservierungen annehmen.",
-      "secureNote": "Sie geben die Karte auf der sicheren Seite von Stripe ein und kehren dann direkt hierher zurück.",
-      "addCard": "Karte hinzufügen",
-      "later": "Später",
-      "laterNote": "Solange keine Karte hinterlegt ist, kann Ihr Shop keine neuen Reservierungen annehmen. Sie können sie jederzeit in Ihren Abrechnungseinstellungen hinzufügen.",
-      "startFailed": "Die Stripe-Seite konnte nicht geöffnet werden. Versuchen Sie es gleich noch einmal."
-    },
     "complete": {
       "title": "Ihr Shop ist bereit!",
       "description": "Herzlichen Glückwunsch, Ihr Shop ist jetzt online",
@@ -8237,7 +8228,6 @@
       "branding": "Anpassung",
       "product": "Erstes Produkt",
       "payment": "Zahlungen",
-      "billing": "Abrechnungskarte",
       "profile": "Profil",
       "source": "Quelle",
       "reeent": "reeent"

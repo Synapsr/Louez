@@ -8192,15 +8192,6 @@
         }
       }
     },
-    "billingCard": {
-      "title": "添加账单卡",
-      "description": "Louez 从这张卡扣取其费用。保存后，您的商店即可接受预订。",
-      "secureNote": "您将在 Stripe 的安全页面输入银行卡信息，然后直接返回此处。",
-      "addCard": "添加银行卡",
-      "later": "稍后",
-      "laterNote": "在保存银行卡之前，您的商店无法接受新的预订。您可以随时在账单设置中添加。",
-      "startFailed": "无法打开 Stripe 页面。请稍后重试。"
-    },
     "complete": {
       "title": "您的商店已准备好！",
       "description": "恭喜您，您的商店现已上线",
@@ -8237,7 +8228,6 @@
       "branding": "定制化",
       "product": "第一个产品",
       "payment": "付款方式",
-      "billing": "账单卡",
       "profile": "公司简介",
       "source": "来源",
       "reeent": "最近的"

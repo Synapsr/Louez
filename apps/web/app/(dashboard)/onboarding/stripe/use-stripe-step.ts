@@ -26,7 +26,7 @@ export const useStripeStep = () => {
   const t = useTranslations("onboarding.stripe");
   const showError = useOnboardingErrorToast();
   const { updatePreview } = useOnboardingPreview();
-  // The billing card step or the source step when this flow has them.
+  // The source step when this flow has it.
   const nextPath = getNextOnboardingPath(useOnboardingSteps(), "/onboarding/stripe");
 
   const completeOnboardingMutation = useMutation(

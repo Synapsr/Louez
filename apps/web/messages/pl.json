@@ -8192,15 +8192,6 @@
         }
       }
     },
-    "billingCard": {
-      "title": "Dodaj kartę do rozliczeń",
-      "description": "Louez obciąża tę kartę swoimi opłatami. Gdy tylko zostanie zapisana, Twój sklep może przyjmować rezerwacje.",
-      "secureNote": "Dane karty wpisujesz na bezpiecznej stronie Stripe, a potem od razu wracasz tutaj.",
-      "addCard": "Dodaj kartę",
-      "later": "Później",
-      "laterNote": "Dopóki nie zapiszesz karty, Twój sklep nie może przyjmować nowych rezerwacji. Możesz ją dodać w każdej chwili w ustawieniach rozliczeń.",
-      "startFailed": "Nie udało się otworzyć strony Stripe. Spróbuj ponownie za chwilę."
-    },
     "complete": {
       "title": "Twój sklep jest gotowy!",
       "description": "Gratulacje, Twój sklep jest teraz online",
@@ -8237,7 +8228,6 @@
       "branding": "Personalizacja",
       "product": "Pierwszy produkt",
       "payment": "Płatności",
-      "billing": "Karta do rozliczeń",
       "profile": "Profil",
       "source": "Źródło",
       "reeent": "reeent"

@@ -9,7 +9,7 @@ import { useOnboardingDraft } from "./use-onboarding-draft";
 
 /**
  * Keeps the live preview in sync with the saved draft, for the steps after the store
- * and branding ones: after a reload, or a return from Stripe or the billing pages, the
+ * and branding ones: after a reload, or a return from Stripe, the
  * preview starts empty.
  */
 export const useDraftPreview = () => {

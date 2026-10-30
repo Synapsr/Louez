@@ -5,9 +5,8 @@ import { pullStorePolicies } from "@/lib/billing-sync/policies";
 import { log } from "@/lib/evlog";
 
 // The owner's return from Stripe Checkout with a card (louez-billing docs/api, README
-// §10 step 5). Checkout comes back to the page that opened it, the billing settings or
-// the onboarding's card step, with `?checkout=<session id>`: that page saves the card
-// here, then shows the toast of the outcome.
+// §10 step 5). Checkout comes back to the billing settings with `?checkout=<session
+// id>`: the page saves the card here, then shows the toast of the outcome.
 
 /** The `?checkout=` Stripe puts in the return URL: a Checkout Session id, or null. */
 export function readCheckoutSessionId(value: string | null | undefined): string | null {

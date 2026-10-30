@@ -392,8 +392,6 @@ export const env = createEnv({
     BILLING_RESPONSE_KEYS: z.string().optional(),
     // Stores created at or after this ISO instant are new (README §8.3, Q26).
     BILLING_NEW_STORES_FROM: z.string().optional(),
-    // "true" ignores the card gate during an outage (README §8.5).
-    BILLING_GATE_DISABLED: z.string().optional(),
 
     // ===== Development =====
     AUTO_DB_SETUP: z
@@ -512,7 +510,6 @@ export const env = createEnv({
     BILLING_OUTBOUND_ACTIVE_KID: process.env.BILLING_OUTBOUND_ACTIVE_KID,
     BILLING_RESPONSE_KEYS: process.env.BILLING_RESPONSE_KEYS,
     BILLING_NEW_STORES_FROM: process.env.BILLING_NEW_STORES_FROM,
-    BILLING_GATE_DISABLED: process.env.BILLING_GATE_DISABLED,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
     PAYG_DEFAULT_PRICING: process.env.PAYG_DEFAULT_PRICING,

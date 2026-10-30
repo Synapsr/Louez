@@ -7,26 +7,17 @@ import {
   type StorePolicyRecords,
   billingNewStoresFrom,
   effectiveStorePolicy,
-  isBillingGateDisabled,
 } from "./billing-policy";
 
 // The effective policy from cached records (louez-billing docs/api, README §8.3 and
 // §8.5). The resolver itself runs on the contract's vectors in
 // apps/web/lib/billing/policy.test.ts.
 
-const saved = {
-  newStoresFrom: process.env.BILLING_NEW_STORES_FROM,
-  gateDisabled: process.env.BILLING_GATE_DISABLED,
-};
+const savedNewStoresFrom = process.env.BILLING_NEW_STORES_FROM;
 
 afterEach(() => {
-  for (const [name, value] of [
-    ["BILLING_NEW_STORES_FROM", saved.newStoresFrom],
-    ["BILLING_GATE_DISABLED", saved.gateDisabled],
-  ] as const) {
-    if (value === undefined) delete process.env[name];
-    else process.env[name] = value;
-  }
+  if (savedNewStoresFrom === undefined) delete process.env.BILLING_NEW_STORES_FROM;
+  else process.env.BILLING_NEW_STORES_FROM = savedNewStoresFrom;
 });
 
 function version(
@@ -65,24 +56,6 @@ describe("effectiveStorePolicy", () => {
     assert.equal(policy.legacyBillingApplies, false);
     assert.deepEqual(policy.reservations, { allowed: false, reason: "payment_method_required" });
     assert.equal(policy.acceptsReservations, false);
-  });
-
-  test("BILLING_GATE_DISABLED=true lets reservations through, and keeps what the policy says", () => {
-    process.env.BILLING_NEW_STORES_FROM = "2027-01-25T00:00:00Z";
-    process.env.BILLING_GATE_DISABLED = "true";
-    const blocking = version({
-      storeId: "*",
-      newStoresCreatedFrom: "2027-01-25T00:00:00Z",
-      reservations: { allowed: false, reason: "payment_method_required" },
-    });
-    const policy = effectiveStorePolicy(
-      records("2027-02-01T00:00:00Z", [blocking]),
-      new Date("2027-02-02T00:00:00Z"),
-    );
-    assert.equal(policy.source, "default");
-    assert.equal(policy.applied, blocking);
-    assert.equal(policy.reservations.allowed, false);
-    assert.equal(policy.acceptsReservations, true);
   });
 
   test("the version in force is the one returned, with its body", () => {
@@ -132,14 +105,5 @@ describe("billing variables", () => {
     assert.equal(billingNewStoresFrom()?.toISOString(), "2027-01-25T00:00:00.000Z");
     process.env.BILLING_NEW_STORES_FROM = "soon";
     assert.throws(() => billingNewStoresFrom(), /BILLING_NEW_STORES_FROM/);
-  });
-
-  test("BILLING_GATE_DISABLED is on only for true", () => {
-    delete process.env.BILLING_GATE_DISABLED;
-    assert.equal(isBillingGateDisabled(), false);
-    process.env.BILLING_GATE_DISABLED = "1";
-    assert.equal(isBillingGateDisabled(), false);
-    process.env.BILLING_GATE_DISABLED = "true";
-    assert.equal(isBillingGateDisabled(), true);
   });
 });

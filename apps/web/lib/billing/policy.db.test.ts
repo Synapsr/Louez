@@ -69,12 +69,7 @@ describe("getEffectivePolicy (database)", { skip: skipWithoutTestDatabase() }, (
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let policy: typeof import("./policy");
-  const names = [
-    "LOUEZ_BILLING",
-    "BILLING_SERVICE_URL",
-    "BILLING_NEW_STORES_FROM",
-    "BILLING_GATE_DISABLED",
-  ] as const;
+  const names = ["LOUEZ_BILLING", "BILLING_SERVICE_URL", "BILLING_NEW_STORES_FROM"] as const;
   const saved = new Map(names.map((name) => [name, process.env[name]]));
 
   before(async () => {
@@ -106,7 +101,6 @@ describe("getEffectivePolicy (database)", { skip: skipWithoutTestDatabase() }, (
     process.env.LOUEZ_BILLING = "cloud";
     process.env.BILLING_SERVICE_URL = "http://127.0.0.1:1";
     process.env.BILLING_NEW_STORES_FROM = NEW_STORES_FROM;
-    delete process.env.BILLING_GATE_DISABLED;
   });
   afterEach(() => {
     for (const [name, value] of saved) {
@@ -181,17 +175,6 @@ describe("getEffectivePolicy (database)", { skip: skipWithoutTestDatabase() }, (
     assert.equal(own.terms.invoicing, "service");
     assert.deepEqual(own.terms.applicationFee, { ...percent, rateBps: 250 });
     assert.equal(own.acceptsReservations, true);
-  });
-
-  test("BILLING_GATE_DISABLED=true opens the gate and keeps the fee", async () => {
-    process.env.BILLING_GATE_DISABLED = "true";
-    const effective = await policy.getEffectivePolicy(
-      "pol_new_store",
-      new Date("2027-02-03T00:00:00Z"),
-    );
-    assert.equal(effective.acceptsReservations, true);
-    assert.equal(effective.terms.reservations.allowed, false);
-    assert.deepEqual(effective.terms.applicationFee, percent);
   });
 
   test("a new store with no version in force fails closed: no fee, no billable reservation", async () => {

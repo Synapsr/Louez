@@ -13,10 +13,9 @@ import { billingPolicies, stores } from "./schema";
 // the caller's transaction and must not load the app's database client, so it imports
 // this file from `@louez/db/billing-policy`.
 //
-// BILLING_NEW_STORES_FROM and BILLING_GATE_DISABLED are read from process.env at call
-// time, as isBillingSyncEnabled reads LOUEZ_BILLING: this package's env.ts declares
-// neither, apps/web/env.ts does, and its start-up check refuses a bad value in service
-// mode. Every function here except resolvePolicy and the legacy guard is for service
+// BILLING_NEW_STORES_FROM is read from process.env at call time, as
+// isBillingSyncEnabled reads LOUEZ_BILLING: this package's env.ts does not declare it,
+// apps/web/env.ts does, and its start-up check refuses a bad value in service mode. Every function here except resolvePolicy and the legacy guard is for service
 // mode only (README §12).
 
 export type PolicyExecutor = Database | Transaction;
@@ -155,11 +154,6 @@ export function billingNewStoresFrom(): Date | null {
   return date;
 }
 
-/** `BILLING_GATE_DISABLED=true`: the card gate ignores `reservations.allowed: false` (README §8.5). */
-export function isBillingGateDisabled(): boolean {
-  return process.env.BILLING_GATE_DISABLED?.trim() === "true";
-}
-
 /** One cached version: the fields read here, and the body as Louez stored it. */
 export type CachedPolicy = BillingPolicyCore & { readonly body: unknown };
 
@@ -246,7 +240,7 @@ export type StorePolicy = PolicyResolution & {
    * new and no version is in force (fail closed); allowed for a legacy store.
    */
   readonly reservations: PolicyReservations;
-  /** False when the gate refuses billable reservations: blocked, without BILLING_GATE_DISABLED. */
+  /** False when the gate refuses billable reservations: `reservations.allowed` is false. */
   readonly acceptsReservations: boolean;
 };
 
@@ -272,7 +266,7 @@ export function effectiveStorePolicy(records: StorePolicyRecords, at: Date): Sto
     ...resolution,
     applied,
     reservations,
-    acceptsReservations: reservations.allowed || isBillingGateDisabled(),
+    acceptsReservations: reservations.allowed,
   };
 }
 

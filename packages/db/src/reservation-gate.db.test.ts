@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, afterEach, before, beforeEach, describe, test } from "node:test";
+import { after, before, beforeEach, describe, test } from "node:test";
 
 import { eq, sql } from "drizzle-orm";
 
@@ -17,12 +17,7 @@ import {
 
 const NEW_STORES_FROM = "2027-01-25T00:00:00Z";
 const NOW = new Date("2027-02-01T10:00:00Z");
-const ENV_NAMES = [
-  "LOUEZ_BILLING",
-  "BILLING_SERVICE_URL",
-  "BILLING_NEW_STORES_FROM",
-  "BILLING_GATE_DISABLED",
-] as const;
+const ENV_NAMES = ["LOUEZ_BILLING", "BILLING_SERVICE_URL", "BILLING_NEW_STORES_FROM"] as const;
 
 /** A store created before the cutoff with no version of its own: legacy. */
 const LEGACY = "gate_legacy";
@@ -109,10 +104,6 @@ describe("card gate (database)", { skip: skipWithoutTestDatabase() }, () => {
     process.env.LOUEZ_BILLING = "cloud";
     process.env.BILLING_SERVICE_URL = "http://127.0.0.1:1";
     process.env.BILLING_NEW_STORES_FROM = NEW_STORES_FROM;
-    delete process.env.BILLING_GATE_DISABLED;
-  });
-  afterEach(() => {
-    delete process.env.BILLING_GATE_DISABLED;
   });
 
   function store(id: string, createdAt: string) {
@@ -310,24 +301,6 @@ describe("card gate (database)", { skip: skipWithoutTestDatabase() }, () => {
     await assert.rejects(created.run(), refusal("payment_method_required"));
     const id = await fixture(NEW_STORE, "pending");
     await assert.rejects(change(NEW_STORE, id, "confirmed"), refusal("payment_method_required"));
-  });
-
-  test("disabled: BILLING_GATE_DISABLED=true opens a closed gate", async () => {
-    process.env.BILLING_GATE_DISABLED = "true";
-    for (const storeId of [BLOCKED, NEW_STORE]) {
-      assert.deepEqual(await louezDb.readReservationGate(louezDb.db, storeId, NOW), {
-        accepts: true,
-      });
-      const created = insert(storeId, "confirmed");
-      await created.run();
-      assert.equal((await readStatus(created.id))?.status, "confirmed");
-      const id = await fixture(storeId, "pending");
-      assert.equal((await change(storeId, id, "confirmed")).changed, true);
-    }
-    assert.deepEqual(
-      await louezDb.readStoresNotAcceptingReservations(louezDb.db, [BLOCKED, NEW_STORE], NOW),
-      new Set(),
-    );
   });
 
   test("a scheduled block closes the gate at its effectiveFrom, and a higher version reopens it", async () => {

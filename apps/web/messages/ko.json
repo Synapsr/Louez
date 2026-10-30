@@ -8192,15 +8192,6 @@
         }
       }
     },
-    "billingCard": {
-      "title": "청구 카드 추가",
-      "description": "Louez는 이 카드로 수수료를 청구합니다. 카드가 등록되면 매장에서 예약을 받을 수 있습니다.",
-      "secureNote": "Stripe의 보안 페이지에서 카드를 입력한 다음 바로 여기로 돌아옵니다.",
-      "addCard": "카드 추가",
-      "later": "나중에",
-      "laterNote": "카드가 등록될 때까지 매장에서 새 예약을 받을 수 없습니다. 청구 설정에서 언제든지 추가할 수 있습니다.",
-      "startFailed": "Stripe 페이지를 열 수 없습니다. 잠시 후 다시 시도하세요."
-    },
     "complete": {
       "title": "매장이 준비되었습니다!",
       "description": "축하합니다. 귀하의 매장이 이제 온라인 상태가 되었습니다.",
@@ -8237,7 +8228,6 @@
       "branding": "맞춤화",
       "product": "첫 번째 제품",
       "payment": "결제",
-      "billing": "청구 카드",
       "profile": "프로필",
       "source": "소스",
       "reeent": "재회하다"

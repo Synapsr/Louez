@@ -17,8 +17,7 @@ import type { ApplicationFeeInput } from "./metering";
 // fees.md §8; m2-plan L8). Every Stripe application fee Louez sets comes from the
 // store's policy when the session is created, and fee metadata v4 and the payment's
 // app_fee_* columns name that policy. Louez's legacy pay-as-you-go code writes nothing
-// for such a store, and BILLING_GATE_DISABLED lets it take bookings while its policy
-// refuses them, fee included. fee-shadow.db.test.ts covers the stores the legacy
+// for such a store. fee-shadow.db.test.ts covers the stores the legacy
 // planner charges, legacy-guard.db.test.ts the rest of the legacy guard.
 //
 // The policies use the public test values of fees.md §12 (Q33): 123 and 250 bps, a
@@ -167,18 +166,12 @@ describe("the policy's fee at source (database)", { skip: skipWithoutTestDatabas
   let billing: typeof import("./billing");
   let legacyRun: typeof import("./legacy-run");
   let repair: typeof import("./legacy-fee-repair");
-  let effects: typeof import("@/lib/billing/reservation-effects");
   let feeMetadata: typeof import("@/lib/billing-sync/fee-metadata");
   let completion: typeof import("@/lib/stripe/payment-completion");
   let paymentSession: typeof import("@/lib/reservations/payment-session");
   let smsTopup: typeof import("@/lib/stripe/sms-topup");
   const sessions: Stripe.Checkout.SessionCreateParams[] = [];
-  const names = [
-    "LOUEZ_BILLING",
-    "BILLING_SERVICE_URL",
-    "BILLING_NEW_STORES_FROM",
-    "BILLING_GATE_DISABLED",
-  ] as const;
+  const names = ["LOUEZ_BILLING", "BILLING_SERVICE_URL", "BILLING_NEW_STORES_FROM"] as const;
   const saved = new Map(names.map((name) => [name, process.env[name]]));
   let info: ReturnType<typeof spyInfo>;
 
@@ -190,7 +183,6 @@ describe("the policy's fee at source (database)", { skip: skipWithoutTestDatabas
     billing = await import("./billing");
     legacyRun = await import("./legacy-run");
     repair = await import("./legacy-fee-repair");
-    effects = await import("@/lib/billing/reservation-effects");
     feeMetadata = await import("@/lib/billing-sync/fee-metadata");
     completion = await import("@/lib/stripe/payment-completion");
     paymentSession = await import("@/lib/reservations/payment-session");
@@ -303,7 +295,6 @@ describe("the policy's fee at source (database)", { skip: skipWithoutTestDatabas
     process.env.LOUEZ_BILLING = "cloud";
     process.env.BILLING_SERVICE_URL = "http://127.0.0.1:1";
     process.env.BILLING_NEW_STORES_FROM = NEW_STORES_FROM;
-    delete process.env.BILLING_GATE_DISABLED;
     sessions.length = 0;
     info = spyInfo();
   });
@@ -590,46 +581,6 @@ describe("the policy's fee at source (database)", { skip: skipWithoutTestDatabas
       .select({ id: louezDb.platformFees.id })
       .from(louezDb.platformFees)
       .where(eq(louezDb.platformFees.storeId, NEW_STORE));
-    assert.deepEqual(rows, []);
-  });
-
-  test("BILLING_GATE_DISABLED=true: a store its policy refuses takes bookings, and pays the fee", async () => {
-    const booking = (id: string) =>
-      louezDb.db.transaction((tx) =>
-        louezDb.insertReservation(tx, {
-          id,
-          storeId: NEW_STORE,
-          customerId: "cust_fas",
-          number: id,
-          status: "confirmed",
-          startDate: new Date("2030-12-01T09:00:00Z"),
-          endDate: new Date("2030-12-03T09:00:00Z"),
-          subtotalAmount: "200.00",
-          depositAmount: "0.00",
-          totalAmount: "200.00",
-          source: "marketplace",
-        }),
-      );
-    // The `*` version refuses reservations: the gate is closed.
-    await assert.rejects(booking("res_fas_gate_closed"), (error: unknown) =>
-      louezDb.isStoreNotAcceptingReservationsError(error),
-    );
-
-    process.env.BILLING_GATE_DISABLED = "true";
-    const { effects: fees } = await booking("res_fas_gate_open");
-    await effects.runReservationEffects(fees);
-    assert.deepEqual(await metering.planApplicationFee(rental(NEW_STORE, "res_fas_gate_open")), {
-      applicationFeeCents: 650,
-      reservationFeeCents: 500,
-      marketplaceFeeCents: 150,
-      baseMinor: 20_000,
-      ...fromDefault,
-    });
-    // Its confirmation wrote no legacy fee, as for every store the service bills.
-    const rows = await louezDb.db
-      .select({ id: louezDb.platformFees.id })
-      .from(louezDb.platformFees)
-      .where(eq(louezDb.platformFees.reservationId, "res_fas_gate_open"));
     assert.deepEqual(rows, []);
   });
 

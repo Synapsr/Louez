@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { getLocale, getTranslations } from "next-intl/server";
 
-import { isBillingGateDisabled } from "@louez/db";
 import { Alert, AlertAction, AlertDescription, AlertTitle, Button } from "@louez/ui";
 import { InfoCircleIcon, TriangleAlertIcon } from "@louez/ui/icons";
 import type { MemberRole } from "@louez/utils";
@@ -19,8 +18,7 @@ type ReservationGateBannerProps = {
 
 /**
  * The dashboard banner of the card gate (README §8.4): when the store's policy pauses
- * new reservations or carries a notice, except a missing card's notice under
- * BILLING_GATE_DISABLED. Outside service mode the effective policy is built in, allows
+ * new reservations or carries a notice. Outside service mode the effective policy is built in, allows
  * reservations and has no notice, so nothing renders.
  */
 export const ReservationGateBanner = async ({ storeId, role }: ReservationGateBannerProps) => {
@@ -35,7 +33,7 @@ export const ReservationGateBanner = async ({ storeId, role }: ReservationGateBa
     }),
     getLocale(),
   ]);
-  const banner = effective ? reservationGateBanner(effective, locale, isBillingGateDisabled()) : null;
+  const banner = effective ? reservationGateBanner(effective, locale) : null;
   if (!banner) return null;
 
   const t = await getTranslations("dashboard.reservationGate");

@@ -40,7 +40,6 @@ describe("proxy billing gate", () => {
       "/dashboard/settings/admin",
       "/admin",
       "/admin/finance",
-      "/onboarding/billing",
     ]) {
       const response = await visit(path);
       assert.equal(response.status, 404, path);

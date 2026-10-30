@@ -1,12 +1,9 @@
-import { BILLING_CARD_STEP_PATH } from "@/lib/billing/billing-routes";
-
 export const ONBOARDING_STEPS = [
   { path: "/onboarding/reeent", key: "reeent", labelKey: "steps.reeent" },
   { path: "/onboarding/profile", key: "profile", labelKey: "steps.profile" },
   { path: "/onboarding", key: "store", labelKey: "steps.store" },
   { path: "/onboarding/branding", key: "branding", labelKey: "steps.branding" },
   { path: "/onboarding/stripe", key: "payment", labelKey: "steps.payment" },
-  { path: BILLING_CARD_STEP_PATH, key: "billing", labelKey: "steps.billing" },
   { path: "/onboarding/source", key: "source", labelKey: "steps.source" },
 ] as const;
 
@@ -23,19 +20,15 @@ export function getOnboardingStepKey(pathname: string): OnboardingStepKey | null
 
 // The reeent, profile and source steps are user-level: they only appear the
 // first time (arrived from reeent / profile not completed / acquisition channel
-// not answered yet). The billing step is store-level: only a store the billing
-// service bills, and asks for a card, gets it (lib/billing/billing-card-step.ts).
-// Everyone else sees exactly the flow they saw before.
+// not answered yet). Everyone else goes straight from the store to its payments.
 export function getOnboardingSteps(options: {
   needsReeentIntro: boolean;
   needsProfile: boolean;
-  needsBillingCard: boolean;
   needsSource: boolean;
 }): OnboardingStep[] {
   return ONBOARDING_STEPS.filter((step) => {
     if (step.path === "/onboarding/reeent") return options.needsReeentIntro;
     if (step.path === "/onboarding/profile") return options.needsProfile;
-    if (step.path === BILLING_CARD_STEP_PATH) return options.needsBillingCard;
     if (step.path === "/onboarding/source") return options.needsSource;
     return true;
   });
@@ -61,7 +54,7 @@ export function getNextOnboardingPath(
 
 /**
  * Where Stripe's hosted KYC, started at the payment step, comes back to: the next step
- * of this flow (the billing card or the source step), or null for the settings
+ * of this flow (the source step), or null for the settings
  * callback screen when the flow ends with the payment step.
  */
 export function getStripeKycReturnPath(

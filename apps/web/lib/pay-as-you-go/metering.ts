@@ -871,8 +871,7 @@ export async function planApplicationFee(
  * fees.md §8 on the policy in force, for a store the legacy planner does not charge.
  * Logs the fee and the facts it read, one line per payment. A new store with no
  * version in force, its own or `*`, fails closed and takes no fee (README §8.3): its
- * line is a warning, and the first such payment of the store in this process alerts,
- * since with BILLING_GATE_DISABLED its bookings go on.
+ * line is a warning, and the first such payment of the store in this process alerts.
  */
 async function planPolicyFee(
   input: ApplicationFeeInput,

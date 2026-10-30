@@ -8192,15 +8192,6 @@
         }
       }
     },
-    "billingCard": {
-      "title": "Voeg een factuurkaart toe",
-      "description": "Louez belast zijn kosten op deze kaart. Zodra die is vastgelegd, kan je winkel reserveringen aannemen.",
-      "secureNote": "Je voert de kaart in op de beveiligde pagina van Stripe en komt daarna direct hier terug.",
-      "addCard": "Kaart toevoegen",
-      "later": "Later",
-      "laterNote": "Zolang er geen kaart is vastgelegd, kan je winkel geen nieuwe reserveringen aannemen. Je kunt hem altijd toevoegen in je factuurinstellingen.",
-      "startFailed": "De pagina van Stripe kon niet worden geopend. Probeer het zo opnieuw."
-    },
     "complete": {
       "title": "Uw winkel is klaar!",
       "description": "Gefeliciteerd, uw winkel is nu online",
@@ -8237,7 +8228,6 @@
       "branding": "Aanpassing",
       "product": "Eerste product",
       "payment": "Betalingen",
-      "billing": "Factuurkaart",
       "profile": "Profiel",
       "source": "Bron",
       "reeent": "reeent"

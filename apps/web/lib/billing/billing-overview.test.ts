@@ -68,13 +68,13 @@ describe("describeBillingOverview", () => {
     assert.equal(localizedLabel(POLICY.labels.offer, "fr"), "Commission de test");
     assert.equal(localizedLabel(POLICY.labels.offer, "de"), "Testprovision");
     assert.equal(localizedLabel(POLICY.labels.offer, "ja"), "Test commission");
-    const overview = describeBillingOverview(access(), "it", false);
+    const overview = describeBillingOverview(access(), "it");
     assert.equal(overview.offer, "Test commission");
     assert.equal(overview.notice, "Add a card.");
   });
 
   test("a store without a card: blocked", () => {
-    assert.deepEqual(describeBillingOverview(access(), "fr", false), {
+    assert.deepEqual(describeBillingOverview(access(), "fr"), {
       offer: "Commission de test",
       notice: "Ajoutez une carte.",
       blockedReason: "payment_method_required",
@@ -89,24 +89,12 @@ describe("describeBillingOverview", () => {
         reservations: { allowed: false, reason: "payment_overdue" },
       },
     });
-    assert.equal(describeBillingOverview(overdue, "fr", false).blockedReason, "payment_overdue");
+    assert.equal(describeBillingOverview(overdue, "fr").blockedReason, "payment_overdue");
     const open = access({
       terms: { ...access().policy.terms, reservations: { allowed: true } },
       acceptsReservations: true,
     });
-    assert.equal(describeBillingOverview(open, "fr", false).blockedReason, null);
-  });
-
-  test("BILLING_GATE_DISABLED: the store takes reservations, so no block and no card notice", () => {
-    const killSwitch = describeBillingOverview(access({ acceptsReservations: true }), "fr", true);
-    assert.equal(killSwitch.blockedReason, null);
-    assert.equal(killSwitch.notice, null);
-    // Another notice still shows: only a missing card is moot without the gate.
-    const cardRemoved = access({
-      acceptsReservations: true,
-      policy: { ...POLICY, notice: { kind: "card_removed", blockAt: "2027-02-14T00:00:00Z" } },
-    });
-    assert.equal(describeBillingOverview(cardRemoved, "fr", true).notice, "Ajoutez une carte.");
+    assert.equal(describeBillingOverview(open, "fr").blockedReason, null);
   });
 
   test("a new store the service has not processed yet: no offer, blocked (fail closed)", () => {
@@ -122,14 +110,14 @@ describe("describeBillingOverview", () => {
         reservations: { allowed: false, reason: "payment_method_required" },
       },
     });
-    const overview = describeBillingOverview(pending, "fr", false);
+    const overview = describeBillingOverview(pending, "fr");
     assert.equal(overview.offer, null);
     assert.equal(overview.notice, null);
     assert.equal(overview.blockedReason, "payment_method_required");
   });
 
   test("a platform admin's view is read-only", () => {
-    assert.equal(describeBillingOverview(access({}, "platform_admin"), "fr", false).readOnly, true);
-    assert.equal(describeBillingOverview(access({}, "owner"), "fr", false).readOnly, false);
+    assert.equal(describeBillingOverview(access({}, "platform_admin"), "fr").readOnly, true);
+    assert.equal(describeBillingOverview(access({}, "owner"), "fr").readOnly, false);
   });
 });
