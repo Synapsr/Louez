@@ -204,6 +204,22 @@
       "body": "Le numéro {number} de {storeName} a été détaché et n'est plus actif. Vous pouvez choisir un nouveau numéro à tout moment depuis votre Assistant IA."
     }
   },
+  "balanceLimit": {
+    "balanceLabel": "Solde impayé :",
+    "limitLabel": "Limite :",
+    "cta": "Ajouter une carte",
+    "footer": "Une fois la carte enregistrée, Louez y prélève vos relevés, sans action de votre part.",
+    "near": {
+      "subject": "{storeName} : votre solde impayé approche de sa limite",
+      "title": "Votre solde impayé approche de sa limite",
+      "body": "Ce que {storeName} doit à Louez et n'a pas encore réglé approche de sa limite. Une fois celle-ci atteinte, votre boutique n'acceptera plus de nouvelles réservations. Ajoutez une carte de facturation pour que vos relevés soient réglés automatiquement."
+    },
+    "reached": {
+      "subject": "{storeName} : les nouvelles réservations sont suspendues",
+      "title": "Votre solde impayé a atteint sa limite",
+      "body": "Ce que {storeName} doit à Louez et n'a pas encore réglé a atteint sa limite : votre boutique n'accepte plus de nouvelles réservations pour l'instant. Ajoutez une carte de facturation pour reprendre les réservations."
+    }
+  },
   "teamInvitation": {
     "subject": "{inviterName} vous invite à rejoindre {storeName}",
     "title": "Invitation à rejoindre l'équipe",

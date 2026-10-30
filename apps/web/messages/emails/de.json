@@ -183,6 +183,22 @@
       "body": "Die Nummer {number} von {storeName} wurde getrennt und ist nicht mehr aktiv. Sie können jederzeit über Ihren KI-Assistenten eine neue Nummer wählen."
     }
   },
+  "balanceLimit": {
+    "balanceLabel": "Offener Saldo:",
+    "limitLabel": "Limit:",
+    "cta": "Karte hinzufügen",
+    "footer": "Sobald eine Karte hinterlegt ist, belastet Louez Ihre Abrechnungen darauf, ohne dass Sie etwas tun müssen.",
+    "near": {
+      "subject": "{storeName}: Ihr offener Saldo nähert sich dem Limit",
+      "title": "Ihr offener Saldo nähert sich dem Limit",
+      "body": "Der Betrag, den {storeName} Louez schuldet und noch nicht bezahlt hat, nähert sich seinem Limit. Sobald es erreicht ist, nimmt Ihr Shop keine neuen Reservierungen mehr an. Fügen Sie eine Abrechnungskarte hinzu, damit Ihre Abrechnungen automatisch bezahlt werden."
+    },
+    "reached": {
+      "subject": "{storeName}: Neue Reservierungen sind pausiert",
+      "title": "Ihr offener Saldo hat sein Limit erreicht",
+      "body": "Der Betrag, den {storeName} Louez schuldet und noch nicht bezahlt hat, hat sein Limit erreicht. Ihr Shop nimmt daher vorerst keine neuen Reservierungen an. Fügen Sie eine Abrechnungskarte hinzu, um wieder Reservierungen anzunehmen."
+    }
+  },
   "teamInvitation": {
     "subject": "{inviterName} lädt Sie ein, {storeName} beizutreten",
     "title": "Team-Einladung",

@@ -183,6 +183,22 @@
       "body": "Il numero {number} di {storeName} è stato scollegato e non è più attivo. Puoi scegliere un nuovo numero in qualsiasi momento dal tuo Assistente IA."
     }
   },
+  "balanceLimit": {
+    "balanceLabel": "Saldo non pagato:",
+    "limitLabel": "Limite:",
+    "cta": "Aggiungi una carta",
+    "footer": "Una volta registrata la carta, Louez vi addebita i tuoi estratti, senza che tu debba fare nulla.",
+    "near": {
+      "subject": "{storeName}: il tuo saldo non pagato si avvicina al limite",
+      "title": "Il tuo saldo non pagato si avvicina al limite",
+      "body": "Quanto {storeName} deve a Louez e non ha ancora pagato si avvicina al limite. Una volta raggiunto, il tuo negozio non accetterà più nuove prenotazioni. Aggiungi una carta di fatturazione così i tuoi estratti vengono pagati da soli."
+    },
+    "reached": {
+      "subject": "{storeName}: le nuove prenotazioni sono sospese",
+      "title": "Il tuo saldo non pagato ha raggiunto il limite",
+      "body": "Quanto {storeName} deve a Louez e non ha ancora pagato ha raggiunto il limite, quindi per ora il tuo negozio non accetta nuove prenotazioni. Aggiungi una carta di fatturazione per accettare di nuovo prenotazioni."
+    }
+  },
   "teamInvitation": {
     "subject": "{inviterName} ti invita a unirti a {storeName}",
     "title": "Invito al team",

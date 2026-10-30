@@ -192,6 +192,22 @@
       "body": "El número {number} de {storeName} ha sido desvinculado y ya no está activo. Puedes elegir un nuevo número en cualquier momento desde tu Asistente IA."
     }
   },
+  "balanceLimit": {
+    "balanceLabel": "Saldo pendiente:",
+    "limitLabel": "Límite:",
+    "cta": "Añadir una tarjeta",
+    "footer": "Cuando haya una tarjeta registrada, Louez cargará en ella tus extractos, sin que tengas que hacer nada.",
+    "near": {
+      "subject": "{storeName}: tu saldo pendiente se acerca a su límite",
+      "title": "Tu saldo pendiente se acerca a su límite",
+      "body": "Lo que {storeName} debe a Louez y aún no ha pagado se acerca a su límite. Cuando lo alcance, tu tienda dejará de aceptar nuevas reservas. Añade una tarjeta de facturación para que tus extractos se paguen solos."
+    },
+    "reached": {
+      "subject": "{storeName}: las nuevas reservas están en pausa",
+      "title": "Tu saldo pendiente ha alcanzado su límite",
+      "body": "Lo que {storeName} debe a Louez y aún no ha pagado ha alcanzado su límite, así que tu tienda no acepta nuevas reservas por ahora. Añade una tarjeta de facturación para volver a aceptar reservas."
+    }
+  },
   "teamInvitation": {
     "subject": "{inviterName} le invita a unirse a {storeName}",
     "title": "Invitacion al equipo",

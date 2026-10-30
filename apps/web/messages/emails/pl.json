@@ -183,6 +183,22 @@
       "body": "Numer {number} sklepu {storeName} został odłączony i nie jest już aktywny. W każdej chwili możesz wybrać nowy numer w swoim Asystencie AI."
     }
   },
+  "balanceLimit": {
+    "balanceLabel": "Nieopłacone saldo:",
+    "limitLabel": "Limit:",
+    "cta": "Dodaj kartę",
+    "footer": "Gdy karta zostanie zapisana, Louez będzie nią opłacać Twoje zestawienia bez Twojego udziału.",
+    "near": {
+      "subject": "{storeName}: Twoje nieopłacone saldo zbliża się do limitu",
+      "title": "Twoje nieopłacone saldo zbliża się do limitu",
+      "body": "Kwota, którą {storeName} jest winien Louez i jeszcze jej nie zapłacił, zbliża się do limitu. Po jego osiągnięciu Twój sklep przestanie przyjmować nowe rezerwacje. Dodaj kartę do rozliczeń, aby Twoje zestawienia były opłacane automatycznie."
+    },
+    "reached": {
+      "subject": "{storeName}: nowe rezerwacje są wstrzymane",
+      "title": "Twoje nieopłacone saldo osiągnęło limit",
+      "body": "Kwota, którą {storeName} jest winien Louez i jeszcze jej nie zapłacił, osiągnęła limit, więc Twój sklep na razie nie przyjmuje nowych rezerwacji. Dodaj kartę do rozliczeń, aby znów przyjmować rezerwacje."
+    }
+  },
   "teamInvitation": {
     "subject": "{inviterName} zaprasza Cię do {storeName}",
     "title": "Zaproszenie do zespołu",

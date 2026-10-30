@@ -192,6 +192,22 @@
       "body": "Het nummer {number} van {storeName} is losgekoppeld en niet meer actief. Je kunt op elk moment een nieuw nummer kiezen via je AI-assistent."
     }
   },
+  "balanceLimit": {
+    "balanceLabel": "Openstaand saldo:",
+    "limitLabel": "Limiet:",
+    "cta": "Kaart toevoegen",
+    "footer": "Zodra er een kaart is vastgelegd, schrijft Louez je overzichten daarvan af, zonder dat je iets hoeft te doen.",
+    "near": {
+      "subject": "{storeName}: je openstaande saldo nadert de limiet",
+      "title": "Je openstaande saldo nadert de limiet",
+      "body": "Wat {storeName} aan Louez verschuldigd is en nog niet heeft betaald, nadert de limiet. Zodra die is bereikt, neemt je winkel geen nieuwe reserveringen meer aan. Voeg een factuurkaart toe, zodat je overzichten vanzelf worden betaald."
+    },
+    "reached": {
+      "subject": "{storeName}: nieuwe reserveringen zijn gepauzeerd",
+      "title": "Je openstaande saldo heeft de limiet bereikt",
+      "body": "Wat {storeName} aan Louez verschuldigd is en nog niet heeft betaald, heeft de limiet bereikt. Je winkel neemt daarom voorlopig geen nieuwe reserveringen aan. Voeg een factuurkaart toe om weer reserveringen aan te nemen."
+    }
+  },
   "teamInvitation": {
     "subject": "{inviterName} nodigt u uit om lid te worden van {storeName}",
     "title": "Teamuitnodiging",

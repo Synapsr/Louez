@@ -30,6 +30,7 @@ import {
   PhoneCallbackLandlordEmail,
   ContactMessageEmail,
   VoiceNumberBillingEmail,
+  BalanceLimitEmail,
   TeamInvitationEmail,
   RewardUnlockedEmail,
   ThankYouReviewEmail,
@@ -1229,6 +1230,66 @@ export async function sendVoiceNumberBillingEmail({
       to,
       subject,
       templateType: `voice_number_${variant}`,
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Balance limit email: the store's unpaid balance with Louez nears or reaches its limit
+export async function sendBalanceLimitEmail({
+  variant,
+  to,
+  storeId,
+  storeName,
+  primaryColor,
+  balance,
+  limit,
+  ctaUrl,
+  locale = 'fr',
+}: {
+  variant: 'near' | 'reached'
+  to: string
+  storeId: string
+  storeName: string
+  primaryColor?: string
+  balance: string
+  limit: string | null
+  ctaUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.balanceLimit[variant].subject.replace('{storeName}', storeName)
+  const html = await render(
+    BalanceLimitEmail({
+      variant,
+      storeName,
+      primaryColor: primaryColor || '#0066FF',
+      balance,
+      limit,
+      ctaUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: 'Louez.io' })
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: `balance_limit_${variant}`,
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: `balance_limit_${variant}`,
       status: 'failed',
       error: String(error),
     })

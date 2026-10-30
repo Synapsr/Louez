@@ -204,6 +204,22 @@
       "body": "The number {number} for {storeName} has been detached and is no longer active. You can pick a new number anytime from your AI Assistant."
     }
   },
+  "balanceLimit": {
+    "balanceLabel": "Unpaid balance:",
+    "limitLabel": "Limit:",
+    "cta": "Add a card",
+    "footer": "Once a card is on file, Louez charges your statements to it, with nothing for you to do.",
+    "near": {
+      "subject": "{storeName}: your unpaid balance is nearing its limit",
+      "title": "Your unpaid balance is nearing its limit",
+      "body": "The amount {storeName} owes Louez and hasn't paid yet is close to its limit. Once it reaches it, your store will stop taking new reservations. Add a billing card so your statements are paid on their own."
+    },
+    "reached": {
+      "subject": "{storeName}: new reservations are paused",
+      "title": "Your unpaid balance has reached its limit",
+      "body": "The amount {storeName} owes Louez and hasn't paid yet has reached its limit, so your store isn't taking new reservations for now. Add a billing card to take reservations again."
+    }
+  },
   "teamInvitation": {
     "subject": "{inviterName} invites you to join {storeName}",
     "title": "Team invitation",

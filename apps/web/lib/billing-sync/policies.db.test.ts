@@ -497,6 +497,71 @@ describe("billing policy pull (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(request?.headers["if-none-match"], undefined);
   });
 
+  test("a version that moves a store into a balance notice emails its owner once (README §8.8)", async () => {
+    const crossings: Array<{ storeId: string; version: number }> = [];
+    const notifyBalanceLimit = async (found: readonly { storeId: string; version: number }[]) =>
+      void crossings.push(...found);
+    const labels = { offer: DEFAULT_POLICY.labels.offer, notice: { fr: "Solde", en: "Balance" } };
+    const versions: unknown[] = [];
+    const issue = (version: number, kind: string | null, closed = false) =>
+      versions.push({
+        ...storePolicy("pol_balance", version),
+        reservations: closed
+          ? { allowed: false, reason: "balance_limit_reached" }
+          : { allowed: true },
+        notice: kind ? { kind, blockAt: null } : null,
+        labels: kind ? labels : { ...labels, notice: null },
+      });
+    let pulls = 0;
+    const pull = async () => {
+      pulls += 1;
+      reply = { status: 200, body: policySet(`p-test-etag-bal-${pulls}`, [...versions]) };
+      const result = await policies.pullPolicies({ ...capture(), notifyBalanceLimit });
+      assert.equal(result.outcome, "updated");
+      return crossings.map(({ version }) => version);
+    };
+
+    issue(1, null);
+    assert.deepEqual(await pull(), []);
+    issue(2, "balance_limit_near");
+    assert.deepEqual(await pull(), [2]);
+    // The same set again caches nothing, so nothing is sent again.
+    assert.deepEqual(await pull(), [2]);
+    // Near, then over the limit: the same crossing.
+    issue(3, "balance_limit_reached", true);
+    assert.deepEqual(await pull(), [2]);
+    // Back under, then straight past the limit: a new crossing.
+    issue(4, null);
+    assert.deepEqual(await pull(), [2]);
+    issue(5, "balance_limit_reached", true);
+    assert.deepEqual(await pull(), [2, 5]);
+    // Another notice is no crossing.
+    issue(6, "card_expiring");
+    assert.deepEqual(await pull(), [2, 5]);
+  });
+
+  test("an email that fails leaves the pull's result and cache as they are", async () => {
+    service.handle("/stores/pull_store_bal/policies", () => ({
+      status: 200,
+      body: storeSet("pull_store_bal", [
+        {
+          ...storePolicy("pull_store_bal", 1),
+          notice: { kind: "balance_limit_near", blockAt: null },
+        },
+      ]),
+    }));
+    const { captured, alerts } = capture();
+    const result = await policies.pullStorePolicies("pull_store_bal", {
+      alerts,
+      notifyBalanceLimit: async () => {
+        throw new Error("smtp down");
+      },
+    });
+    assert.equal(result.outcome, "updated");
+    assert.ok((await stored()).some((row) => row.storeId === "pull_store_bal"));
+    assert.ok(captured.errors.some((line) => line.includes("smtp down")));
+  });
+
   // Last: the wait it sets holds every store pull of this process.
   test("a Retry-After on a store pull holds store pulls only, not the relay", async () => {
     service.handle("/stores/pull_store_h/policies", () => ({

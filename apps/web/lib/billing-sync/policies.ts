@@ -14,6 +14,11 @@ import {
 } from "@louez/db";
 
 import { type BillingAlerts, createBillingAlerts } from "@/lib/billing-sync/alerts";
+import {
+  type BalanceLimitCrossing,
+  type CachedNotice,
+  balanceLimitCrossings,
+} from "@/lib/billing-sync/balance-limit-crossings";
 import { canonicalJson } from "@/lib/billing-sync/canonical-json";
 import {
   type BillingCallResult,
@@ -112,9 +117,7 @@ export const policyV1Schema = z
     applicationFee: policyApplicationFee,
     marketplaceFeeMinor: amountMinor,
     reservations: policyReservations,
-    notice: z
-      .object({ kind: policyNoticeKind, blockAt: timestamp.nullable() })
-      .nullable(),
+    notice: z.object({ kind: policyNoticeKind, blockAt: timestamp.nullable() }).nullable(),
     stripeCustomerId: z
       .string()
       .regex(/^cus_[A-Za-z0-9]{1,250}$/)
@@ -165,6 +168,12 @@ export type StorePolicyPullResult =
 export type PolicyPullOptions = {
   readonly alerts?: BillingAlerts;
   readonly client?: BillingClientOptions;
+  /**
+   * Emails the owners of the stores a pull moved into a balance notice (README §8.8),
+   * once the cache write has committed. lib/billing-sync/balance-limit-email.ts by
+   * default.
+   */
+  readonly notifyBalanceLimit?: (crossings: readonly BalanceLimitCrossing[]) => Promise<void>;
 };
 
 export async function isPolicyCacheEmpty(executor: SyncExecutor = db): Promise<boolean> {
@@ -248,7 +257,7 @@ export async function pullPolicies(options: PolicyPullOptions = {}): Promise<Pol
       await alerts.alert("response_invalid", `GET /policies: ${set.reason}`);
       return { outcome: "failed", detail: set.reason };
     }
-    const counts = await storePolicies(set.value.policies, alerts, (tx) =>
+    const counts = await storePolicies(set.value.policies, alerts, options, (tx) =>
       updateSyncState({ policiesEtag: set.value.etag, lastPolicyPullAt: new Date() }, tx),
     );
     return { outcome: "updated", ...counts };
@@ -341,7 +350,7 @@ async function requestStorePolicies(
       await alerts.alert("policies_store_mismatch", `${label}: ${detail}`);
       return { outcome: "failed", detail };
     }
-    return { outcome: "updated", ...(await storePolicies(set.value.policies, alerts)) };
+    return { outcome: "updated", ...(await storePolicies(set.value.policies, alerts, options)) };
   }
 
   if (
@@ -363,7 +372,9 @@ async function requestStorePolicies(
  * Inserts the versions Louez lacks, in one transaction with `inTransaction`. A version
  * that fails the schema is refused; a known one with other content keeps the stored
  * row. Both alert. So does a new `*` version whose `newStoresCreatedFrom` is not
- * BILLING_NEW_STORES_FROM, which is cached all the same (README §8.3).
+ * BILLING_NEW_STORES_FROM, which is cached all the same (README §8.3). Once the write
+ * has committed, the owners of the stores it moved into a balance notice get their
+ * email (README §8.8); a failed email never fails the pull.
  *
  * The heartbeat's pull and a store pull, in this process or another, can insert the
  * same new version at once. The loser's insert fails once the winner commits, and it
@@ -372,6 +383,7 @@ async function requestStorePolicies(
 async function storePolicies(
   rawPolicies: readonly unknown[],
   alerts: BillingAlerts,
+  options: PolicyPullOptions,
   inTransaction?: (tx: Transaction) => Promise<void>,
 ): Promise<PolicyCounts> {
   const invalid: string[] = [];
@@ -395,6 +407,8 @@ async function storePolicies(
   const write = async () => {
     const conflicts: string[] = [];
     const insertedDefaults: PolicyV1[] = [];
+    const storedNotices: CachedNotice[] = [];
+    const insertedNotices: CachedNotice[] = [];
     let inserted = 0;
     await db.transaction(async (tx) => {
       const storeIds = [...new Set([...candidates.values()].map(({ policy }) => policy.storeId))];
@@ -421,6 +435,11 @@ async function storePolicies(
           });
           inserted += 1;
           if (policy.storeId === "*") insertedDefaults.push(policy);
+          insertedNotices.push({
+            storeId: policy.storeId,
+            version: policy.version,
+            noticeKind: policy.notice?.kind ?? null,
+          });
           continue;
         }
         // Compared on the fields Louez understands; the stored row always wins.
@@ -429,9 +448,17 @@ async function storePolicies(
           conflicts.push(`${policy.storeId} v${policy.version}`);
         }
       }
+      // What the stores that got a version had before, for their balance emails.
+      const changed = new Set(insertedNotices.map((notice) => notice.storeId));
+      for (const row of stored) {
+        if (!changed.has(row.storeId)) continue;
+        const parsed = policyV1Schema.safeParse(row.body);
+        const noticeKind = parsed.success ? (parsed.data.notice?.kind ?? null) : null;
+        storedNotices.push({ storeId: row.storeId, version: row.version, noticeKind });
+      }
       await inTransaction?.(tx);
     });
-    return { inserted, conflicts, insertedDefaults };
+    return { inserted, conflicts, insertedDefaults, storedNotices, insertedNotices };
   };
 
   let written: Awaited<ReturnType<typeof write>>;
@@ -442,6 +469,7 @@ async function storePolicies(
     written = await write();
   }
   const { inserted, conflicts, insertedDefaults } = written;
+  await notifyCrossings(written.storedNotices, written.insertedNotices, options, alerts);
 
   if (invalid.length > 0) {
     await alerts.alert(
@@ -479,4 +507,27 @@ async function storePolicies(
     invalid: invalid.length,
     conflicts: conflicts.length,
   };
+}
+
+/** The balance limit's emails of one committed write (README §8.8). */
+async function notifyCrossings(
+  stored: readonly CachedNotice[],
+  inserted: readonly CachedNotice[],
+  options: PolicyPullOptions,
+  alerts: BillingAlerts,
+): Promise<void> {
+  const crossings = balanceLimitCrossings(stored, inserted);
+  if (crossings.length === 0) return;
+  try {
+    // Loaded only for a crossing: it brings the email templates.
+    const notify =
+      options.notifyBalanceLimit ??
+      (await import("@/lib/billing-sync/balance-limit-email")).notifyBalanceLimitCrossings;
+    await notify(crossings);
+  } catch (error) {
+    alerts.log.error(
+      "billing",
+      `balance limit emails failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
