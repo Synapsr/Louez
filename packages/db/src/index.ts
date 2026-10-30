@@ -18,8 +18,12 @@ const pool =
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    // A pooled connection can sit idle for long at night, and Docker Swarm's network
+    // drops one after 15 idle minutes without telling either end. A query sent on it
+    // then waits about 15 minutes for Linux to give up. A probe after one idle minute
+    // keeps it open. 0 would leave the OS default, two hours.
     enableKeepAlive: true,
-    keepAliveInitialDelay: 0,
+    keepAliveInitialDelay: 60_000,
   });
 
 // In development, cache the pool to avoid "Too many connections" errors
