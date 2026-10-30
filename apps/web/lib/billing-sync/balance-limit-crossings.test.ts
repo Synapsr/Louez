@@ -51,11 +51,15 @@ describe("balanceLimitCrossings", () => {
     );
   });
 
-  test("into an empty cache, the version just below among the new ones decides", () => {
+  test("into an empty cache, a run of notices that started in the new versions sends once", () => {
     const history = [v("s1", 1), v("s1", 2, "balance_limit_near")];
     assert.deepEqual(balanceLimitCrossings([], history), [{ storeId: "s1", version: 2 }]);
+    // ok, near, reached: nobody was told yet, so the newest version is announced.
+    const run = [v("s4", 1), v("s4", 2, "balance_limit_near"), v("s4", 3, "balance_limit_reached")];
+    assert.deepEqual(balanceLimitCrossings([], run), [{ storeId: "s4", version: 3 }]);
+    // A history that starts with the notice: no version before the run, so it is told.
     const already = [v("s2", 1, "balance_limit_near"), v("s2", 2, "balance_limit_reached")];
-    assert.deepEqual(balanceLimitCrossings([], already), []);
+    assert.deepEqual(balanceLimitCrossings([], already), [{ storeId: "s2", version: 2 }]);
     // A store whose first version has the notice has no version before it.
     assert.deepEqual(balanceLimitCrossings([], [v("s3", 1, "balance_limit_near")]), [
       { storeId: "s3", version: 1 },

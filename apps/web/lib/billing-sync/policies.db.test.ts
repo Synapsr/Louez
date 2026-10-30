@@ -559,6 +559,8 @@ describe("billing policy pull (database)", { skip: skipWithoutTestDatabase() }, 
     });
     assert.equal(result.outcome, "updated");
     assert.ok((await stored()).some((row) => row.storeId === "pull_store_bal"));
+    // The emails run apart from the pull, which returned without waiting for them.
+    await new Promise((resolve) => setImmediate(resolve));
     assert.ok(captured.errors.some((line) => line.includes("smtp down")));
   });
 

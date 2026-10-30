@@ -469,7 +469,9 @@ async function storePolicies(
     written = await write();
   }
   const { inserted, conflicts, insertedDefaults } = written;
-  await notifyCrossings(written.storedNotices, written.insertedNotices, options, alerts);
+  // After the commit and apart from the pull: a slow mail server never holds it. No retry
+  // (README §8.8): an email lost to a crash or a failure is not sent again.
+  void notifyCrossings(written.storedNotices, written.insertedNotices, options, alerts);
 
   if (invalid.length > 0) {
     await alerts.alert(
