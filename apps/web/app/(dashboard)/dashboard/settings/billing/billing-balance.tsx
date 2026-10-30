@@ -8,10 +8,12 @@ import type { BillingBalance as BillingBalanceView } from "@/lib/billing-sync/pa
 /**
  * What the store owes and has not paid, with its limit when staff set one (README
  * §8.8). Louez reads the service's numbers and `standing`, never a limit of its own.
+ * Nothing to say with no balance and no limit, such as while a card is on file.
  */
 export const BillingBalance = ({ balance }: { balance: BillingBalanceView }) => {
   const t = useTranslations("dashboard.settings.billing.card");
   const locale = useLocale();
+  if (balance.amountMinor === 0 && balance.limitMinor === null) return null;
   const amount = formatMinor(balance.amountMinor, balance.currency, locale);
   const text =
     balance.limitMinor === null
