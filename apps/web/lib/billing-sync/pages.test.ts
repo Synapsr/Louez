@@ -23,13 +23,14 @@ const OVERVIEW = {
   tariff: { kind: "offer", label: "Test" },
   card: "missing",
   savedCard: null,
-  notice: null,
-  blocked: "payment_method_required",
+  notice: { kind: "balance_limit_reached", text: "Ajoutez une carte.", blockAt: null },
+  blocked: "balance_limit_reached",
   month: {
     period: "2027-02",
     currencies: [{ currency: "EUR", atSourceMinor: 0, dueMinor: 0 }],
     statementAt: "2027-03-01T00:00:00.000Z",
   },
+  balance: { currency: "EUR", amountMinor: 1234, limitMinor: 1200, standing: "reached" },
   cardSetupUnavailable: null,
 };
 
@@ -64,6 +65,8 @@ describe("billing pages calls", () => {
     assert.ok(fr.ok);
     assert.equal(fr.value.card, "missing");
     assert.equal(fr.value.month?.currencies[0]?.currency, "EUR");
+    assert.equal(fr.value.notice?.kind, "balance_limit_reached");
+    assert.deepEqual(fr.value.balance, OVERVIEW.balance);
     await getBillingOverview("pg_store", "de");
     const targets = service.requests
       .filter((request) => request.target.includes("/stores/pg_store/billing"))
@@ -72,6 +75,18 @@ describe("billing pages calls", () => {
       ["GET", "/api/v1/louez/stores/pg_store/billing?lang=fr", true],
       ["GET", "/api/v1/louez/stores/pg_store/billing?lang=en", true],
     ]);
+  });
+
+  test("reads Louez's own add_card notice, and no balance from a service before 1.3.0", async () => {
+    const { balance: _balance, ...before13 } = OVERVIEW;
+    service.handle("/stores/pg_card/billing", () => ({
+      status: 200,
+      body: { ...before13, notice: { kind: "add_card" }, blocked: null },
+    }));
+    const overview = await getBillingOverview("pg_card", "fr");
+    assert.ok(overview.ok);
+    assert.deepEqual(overview.value.notice, { kind: "add_card" });
+    assert.equal(overview.value.balance, null);
   });
 
   test("says why it has nothing: setting up, not found, unavailable, or failed", async () => {

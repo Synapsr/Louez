@@ -3673,6 +3673,7 @@
         "blocked": {
           "payment_method_required": "Voeg een factuurkaart toe om nieuwe reserveringen aan te nemen.",
           "payment_overdue": "Een betaling aan Louez is mislukt. Voldoe die om nieuwe reserveringen aan te nemen.",
+          "balance_limit_reached": "Je openstaande saldo heeft de limiet bereikt. Voeg een factuurkaart toe om weer reserveringen aan te nemen.",
           "suspended": "De facturatie van deze winkel is opgeschort. Neem contact op met Louez om weer reserveringen aan te nemen."
         },
         "readOnly": "Als platformbeheerder bekijk je de facturatie van deze winkel alleen-lezen.",
@@ -3698,6 +3699,9 @@
           "unknown": "Je factuurkaart wordt hier nog niet getoond.",
           "notNeeded": "Geen kaart nodig: er wordt niets aan je winkel gefactureerd.",
           "inLouez": "De betaalmethode van deze winkel wordt voorlopig in het abonnement beheerd.",
+          "balance": "Openstaand saldo: {amount}",
+          "balanceWithLimit": "Openstaand saldo: {amount} · limiet {limit}",
+          "addCardNotice": "Voeg een kaart toe, zodat je overzichten worden betaald zonder dat je iets hoeft te doen.",
           "add": "Kaart toevoegen",
           "replace": "Kaart vervangen",
           "opening": "Stripe openen…",

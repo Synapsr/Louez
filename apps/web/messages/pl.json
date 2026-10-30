@@ -3673,6 +3673,7 @@
         "blocked": {
           "payment_method_required": "Dodaj kartę do rozliczeń, aby przyjmować nowe rezerwacje.",
           "payment_overdue": "Płatność za rozliczenia Louez nie powiodła się. Ureguluj ją, aby przyjmować nowe rezerwacje.",
+          "balance_limit_reached": "Twoje nieopłacone saldo osiągnęło limit. Dodaj kartę do rozliczeń, aby znów przyjmować rezerwacje.",
           "suspended": "Rozliczenia tego sklepu są zawieszone. Skontaktuj się z Louez, aby znów przyjmować rezerwacje."
         },
         "readOnly": "Jako administrator platformy widzisz rozliczenia tego sklepu tylko do odczytu.",
@@ -3698,6 +3699,9 @@
           "unknown": "Twoja karta do rozliczeń nie jest tu jeszcze widoczna.",
           "notNeeded": "Karta nie jest potrzebna: Twój sklep nie jest niczym obciążany.",
           "inLouez": "Metodą płatności tego sklepu zarządza się na razie w jego subskrypcji.",
+          "balance": "Nieopłacone saldo: {amount}",
+          "balanceWithLimit": "Nieopłacone saldo: {amount} · limit {limit}",
+          "addCardNotice": "Dodaj kartę, aby Twoje zestawienia były opłacane bez Twojego udziału.",
           "add": "Dodaj kartę",
           "replace": "Wymień kartę",
           "opening": "Otwieranie Stripe…",

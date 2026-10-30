@@ -3975,6 +3975,7 @@
         "blocked": {
           "payment_method_required": "새 예약을 받으려면 청구 카드를 추가하세요.",
           "payment_overdue": "Louez 청구 결제에 실패했습니다. 새 예약을 받으려면 결제를 완료하세요.",
+          "balance_limit_reached": "미납 잔액이 한도에 도달했습니다. 예약을 다시 받으려면 청구 카드를 추가하세요.",
           "suspended": "이 매장의 청구가 정지되었습니다. 다시 예약을 받으려면 Louez에 문의하세요."
         },
         "readOnly": "플랫폼 관리자로서 이 매장의 청구를 읽기 전용으로 보고 있습니다.",
@@ -4000,6 +4001,9 @@
           "unknown": "청구 카드가 아직 여기에 표시되지 않습니다.",
           "notNeeded": "카드가 필요 없습니다. 매장에 청구되는 금액이 없습니다.",
           "inLouez": "이 매장의 결제 수단은 당분간 구독에서 관리됩니다.",
+          "balance": "미납 잔액: {amount}",
+          "balanceWithLimit": "미납 잔액: {amount} · 한도 {limit}",
+          "addCardNotice": "카드를 추가하면 명세서가 자동으로 결제됩니다.",
           "add": "카드 추가",
           "replace": "카드 교체",
           "opening": "Stripe를 여는 중…",

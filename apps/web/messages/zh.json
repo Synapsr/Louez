@@ -3975,6 +3975,7 @@
         "blocked": {
           "payment_method_required": "添加账单卡即可接受新预订。",
           "payment_overdue": "一笔 Louez 账单付款失败。结清后即可接受新预订。",
+          "balance_limit_reached": "您的未付余额已达到上限。添加账单卡即可重新接受预订。",
           "suspended": "此商店的账单已暂停。请联系 Louez 以重新接受预订。"
         },
         "readOnly": "作为平台管理员，您以只读方式查看此商店的账单。",
@@ -4000,6 +4001,9 @@
           "unknown": "您的账单卡暂时无法在此显示。",
           "notNeeded": "无需银行卡：您的商店没有任何费用。",
           "inLouez": "此商店的付款方式目前在其订阅中管理。",
+          "balance": "未付余额：{amount}",
+          "balanceWithLimit": "未付余额：{amount} · 上限 {limit}",
+          "addCardNotice": "添加一张卡，账单将自动支付，无需您操作。",
           "add": "添加银行卡",
           "replace": "更换银行卡",
           "opening": "正在打开 Stripe…",

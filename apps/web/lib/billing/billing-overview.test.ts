@@ -90,6 +90,13 @@ describe("describeBillingOverview", () => {
       },
     });
     assert.equal(describeBillingOverview(overdue, "fr").blockedReason, "payment_overdue");
+    const overLimit = access({
+      terms: {
+        ...access().policy.terms,
+        reservations: { allowed: false, reason: "balance_limit_reached" },
+      },
+    });
+    assert.equal(describeBillingOverview(overLimit, "fr").blockedReason, "balance_limit_reached");
     const open = access({
       terms: { ...access().policy.terms, reservations: { allowed: true } },
       acceptsReservations: true,

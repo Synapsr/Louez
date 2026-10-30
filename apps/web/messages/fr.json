@@ -3976,6 +3976,7 @@
         "blocked": {
           "payment_method_required": "Ajoutez une carte de facturation pour accepter de nouvelles réservations.",
           "payment_overdue": "Un paiement de la facturation Louez a échoué. Réglez-le pour accepter de nouvelles réservations.",
+          "balance_limit_reached": "Votre solde impayé a atteint sa limite. Ajoutez une carte de facturation pour reprendre les réservations.",
           "suspended": "La facturation de cette boutique est suspendue. Contactez Louez pour accepter de nouveau des réservations."
         },
         "readOnly": "En tant qu'administrateur de la plateforme, vous consultez la facturation de cette boutique en lecture seule.",
@@ -4001,6 +4002,9 @@
           "unknown": "Votre carte de facturation ne s'affiche pas encore ici.",
           "notNeeded": "Aucune carte nécessaire : rien n'est facturé à votre boutique.",
           "inLouez": "Le moyen de paiement de cette boutique se gère pour l'instant dans son abonnement.",
+          "balance": "Solde impayé : {amount}",
+          "balanceWithLimit": "Solde impayé : {amount} · limite {limit}",
+          "addCardNotice": "Ajoutez une carte pour que vos relevés soient réglés sans action de votre part.",
           "add": "Ajouter une carte",
           "replace": "Remplacer la carte",
           "opening": "Ouverture de Stripe…",

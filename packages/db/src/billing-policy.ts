@@ -34,7 +34,12 @@ export const policyReservations = z.union([
   z.object({ allowed: z.literal(true) }),
   z.object({
     allowed: z.literal(false),
-    reason: z.enum(["payment_method_required", "payment_overdue", "suspended"]),
+    reason: z.enum([
+      "payment_method_required",
+      "payment_overdue",
+      "suspended",
+      "balance_limit_reached",
+    ]),
   }),
 ]);
 export type PolicyReservations = z.infer<typeof policyReservations>;

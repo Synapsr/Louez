@@ -28,7 +28,8 @@ export const instant = false;
 /**
  * "Facturation" (louez-billing docs/api, README §10; design §6.1): the offer and the
  * card gate from the cached policy, then, from the billing service, this month, the
- * billing card and the billing details, and the way to the statements. Stripe
+ * billing card with the unpaid balance, the billing details, and the way to the
+ * statements. Stripe
  * Checkout comes back here with `?checkout=`: the card is saved, then the page shows
  * once more with the toast.
  */
@@ -69,6 +70,8 @@ export default async function BillingSettingsPage({
           <BillingCardSection
             card={overview.value.card}
             savedCard={overview.value.savedCard}
+            balance={overview.value.balance}
+            asksForCard={overview.value.notice?.kind === "add_card"}
             unavailable={overview.value.cardSetupUnavailable}
             readOnly={readOnly}
           />

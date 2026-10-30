@@ -7,6 +7,7 @@ import {
   readProblemCode,
   readSignedJson,
 } from "@/lib/billing-sync/client";
+import { policyNoticeKind } from "@/lib/billing-sync/policies";
 import { log } from "@/lib/evlog";
 
 // The billing pages' reads and writes, from the billing service (louez-billing
@@ -25,10 +26,29 @@ const savedCardSchema = z.object({
 });
 export type BillingSavedCard = z.infer<typeof savedCardSchema>;
 
+/**
+ * The overview's notice: the policy's, in the service's words, or `add_card` for a
+ * store the service bills with no card and no other notice, which Louez words itself.
+ */
+const overviewNoticeSchema = z.union([
+  z.object({ kind: policyNoticeKind, text: z.string(), blockAt: z.string().nullable() }),
+  z.object({ kind: z.literal("add_card") }),
+]);
+
+/** What the store owes and has not paid, and its limit (README §8.8). */
+const balanceSchema = z.object({
+  currency: z.string(),
+  amountMinor: z.number(),
+  limitMinor: z.number().nullable(),
+  standing: z.enum(["ok", "near", "reached"]),
+});
+export type BillingBalance = z.infer<typeof balanceSchema>;
+
 const overviewSchema = z.object({
   timeZone: z.string(),
   card: z.enum(["saved", "missing", "unknown", "not_needed", "in_louez"]),
   savedCard: savedCardSchema.nullable(),
+  notice: overviewNoticeSchema.nullable(),
   month: z
     .object({
       period,
@@ -38,6 +58,8 @@ const overviewSchema = z.object({
       statementAt: z.string(),
     })
     .nullable(),
+  // Missing from a service before 1.3.0.
+  balance: balanceSchema.nullable().default(null),
   cardSetupUnavailable: z.enum(["off", "in_louez"]).nullable(),
 });
 export type BillingOverviewView = z.infer<typeof overviewSchema>;

@@ -3673,6 +3673,7 @@
         "blocked": {
           "payment_method_required": "Adicione um cartão de faturamento para aceitar novas reservas.",
           "payment_overdue": "Um pagamento do faturamento Louez falhou. Quite-o para aceitar novas reservas.",
+          "balance_limit_reached": "O seu saldo em aberto atingiu o limite. Adicione um cartão de faturamento para voltar a aceitar reservas.",
           "suspended": "O faturamento desta loja está suspenso. Entre em contato com a Louez para voltar a aceitar reservas."
         },
         "readOnly": "Como administrador da plataforma, você vê o faturamento desta loja somente para leitura.",
@@ -3698,6 +3699,9 @@
           "unknown": "Seu cartão de faturamento ainda não aparece aqui.",
           "notNeeded": "Nenhum cartão necessário: nada é faturado para sua loja.",
           "inLouez": "Por enquanto, a forma de pagamento desta loja é gerenciada na assinatura dela.",
+          "balance": "Saldo em aberto: {amount}",
+          "balanceWithLimit": "Saldo em aberto: {amount} · limite {limit}",
+          "addCardNotice": "Adicione um cartão para que seus extratos sejam pagos sem nenhuma ação sua.",
           "add": "Adicionar um cartão",
           "replace": "Substituir cartão",
           "opening": "Abrindo a Stripe…",

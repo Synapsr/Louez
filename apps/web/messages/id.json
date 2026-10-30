@@ -3975,6 +3975,7 @@
         "blocked": {
           "payment_method_required": "Tambahkan kartu penagihan untuk menerima reservasi baru.",
           "payment_overdue": "Pembayaran tagihan Louez gagal. Lunasi untuk menerima reservasi baru.",
+          "balance_limit_reached": "Saldo yang belum dibayar telah mencapai batasnya. Tambahkan kartu penagihan untuk menerima reservasi lagi.",
           "suspended": "Penagihan untuk toko ini ditangguhkan. Hubungi Louez untuk kembali menerima reservasi."
         },
         "readOnly": "Sebagai admin platform, Anda melihat penagihan toko ini dalam mode baca saja.",
@@ -4000,6 +4001,9 @@
           "unknown": "Kartu penagihan Anda belum ditampilkan di sini.",
           "notNeeded": "Tidak perlu kartu: tidak ada yang ditagihkan ke toko Anda.",
           "inLouez": "Untuk saat ini, metode pembayaran toko ini dikelola di langganannya.",
+          "balance": "Saldo belum dibayar: {amount}",
+          "balanceWithLimit": "Saldo belum dibayar: {amount} · batas {limit}",
+          "addCardNotice": "Tambahkan kartu agar tagihan Anda dibayar tanpa perlu tindakan dari Anda.",
           "add": "Tambahkan kartu",
           "replace": "Ganti kartu",
           "opening": "Membuka Stripe…",

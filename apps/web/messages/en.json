@@ -3976,6 +3976,7 @@
         "blocked": {
           "payment_method_required": "Add a billing card to take new reservations.",
           "payment_overdue": "A Louez billing payment failed. Settle it to take new reservations.",
+          "balance_limit_reached": "Your unpaid balance has reached its limit. Add a billing card to take reservations again.",
           "suspended": "Billing for this store is suspended. Contact Louez to take reservations again."
         },
         "readOnly": "As a platform admin, you see this store's billing read-only.",
@@ -4001,6 +4002,9 @@
           "unknown": "Your billing card isn't shown here yet.",
           "notNeeded": "No card needed: nothing is billed to your store.",
           "inLouez": "This store's payment method is managed in its subscription for now.",
+          "balance": "Unpaid balance: {amount}",
+          "balanceWithLimit": "Unpaid balance: {amount} · limit {limit}",
+          "addCardNotice": "Add a card so your statements are paid without you doing anything.",
           "add": "Add a card",
           "replace": "Replace card",
           "opening": "Opening Stripe…",

@@ -86,6 +86,17 @@ export const policyApplicationFee = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("per_reservation"), amountMinor }),
 ]);
 
+/** `notice.kind` of a policy; `balance_limit_*` since 1.3.0 (README §8.8). */
+export const policyNoticeKind = z.enum([
+  "payment_method_missing",
+  "payment_failed",
+  "card_expiring",
+  "card_removed",
+  "balance_limit_near",
+  "balance_limit_reached",
+]);
+export type PolicyNoticeKind = z.infer<typeof policyNoticeKind>;
+
 /** `PolicyV1` of openapi.yaml, written in Louez. Unknown fields are dropped. */
 export const policyV1Schema = z
   .object({
@@ -102,10 +113,7 @@ export const policyV1Schema = z
     marketplaceFeeMinor: amountMinor,
     reservations: policyReservations,
     notice: z
-      .object({
-        kind: z.enum(["payment_method_missing", "payment_failed", "card_expiring", "card_removed"]),
-        blockAt: timestamp.nullable(),
-      })
+      .object({ kind: policyNoticeKind, blockAt: timestamp.nullable() })
       .nullable(),
     stripeCustomerId: z
       .string()

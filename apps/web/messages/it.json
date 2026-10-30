@@ -3673,6 +3673,7 @@
         "blocked": {
           "payment_method_required": "Aggiungi una carta di fatturazione per accettare nuove prenotazioni.",
           "payment_overdue": "Un pagamento della fatturazione Louez non è andato a buon fine. Saldalo per accettare nuove prenotazioni.",
+          "balance_limit_reached": "Il tuo saldo non pagato ha raggiunto il limite. Aggiungi una carta di fatturazione per accettare di nuovo prenotazioni.",
           "suspended": "La fatturazione di questo negozio è sospesa. Contatta Louez per accettare di nuovo prenotazioni."
         },
         "readOnly": "Come amministratore della piattaforma, vedi la fatturazione di questo negozio in sola lettura.",
@@ -3698,6 +3699,9 @@
           "unknown": "La tua carta di fatturazione non è ancora visibile qui.",
           "notNeeded": "Nessuna carta necessaria: al tuo negozio non viene fatturato nulla.",
           "inLouez": "Per ora il metodo di pagamento di questo negozio si gestisce nel suo abbonamento.",
+          "balance": "Saldo non pagato: {amount}",
+          "balanceWithLimit": "Saldo non pagato: {amount} · limite {limit}",
+          "addCardNotice": "Aggiungi una carta così i tuoi estratti vengono pagati senza che tu debba fare nulla.",
           "add": "Aggiungi una carta",
           "replace": "Sostituisci la carta",
           "opening": "Apertura di Stripe…",
