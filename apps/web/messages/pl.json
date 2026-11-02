@@ -3673,7 +3673,7 @@
         "blocked": {
           "payment_method_required": "Dodaj kartę do rozliczeń, aby przyjmować nowe rezerwacje.",
           "payment_overdue": "Płatność za rozliczenia Louez nie powiodła się. Ureguluj ją, aby przyjmować nowe rezerwacje.",
-          "balance_limit_reached": "Twoje nieopłacone saldo osiągnęło limit. Dodaj kartę do rozliczeń, aby znów przyjmować rezerwacje.",
+          "balance_limit_reached": "Saldo do zapłaty osiągnęło limit dla sklepów bez karty. Dodaj kartę do rozliczeń, a rezerwacje zostaną wznowione.",
           "suspended": "Rozliczenia tego sklepu są zawieszone. Skontaktuj się z Louez, aby znów przyjmować rezerwacje."
         },
         "readOnly": "Jako administrator platformy widzisz rozliczenia tego sklepu tylko do odczytu.",

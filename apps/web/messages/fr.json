@@ -469,7 +469,7 @@
       "newReservationDescription": "Une nouvelle demande de réservation vient d'arriver"
     },
     "reservationGate": {
-      "pausedTitle": "Les nouvelles réservations sont suspendues",
+      "pausedTitle": "Les nouvelles réservations sont en pause",
       "pausedDescription": "Les clients ne peuvent pas réserver en ligne et les nouvelles confirmations sont en attente tant que la facturation de la boutique n'est pas à jour.",
       "noticeTitle": "La facturation demande votre attention",
       "noticeDescription": "Vérifiez la facturation de la boutique pour continuer à recevoir des réservations.",
@@ -3976,7 +3976,7 @@
         "blocked": {
           "payment_method_required": "Ajoutez une carte de facturation pour accepter de nouvelles réservations.",
           "payment_overdue": "Un paiement de la facturation Louez a échoué. Réglez-le pour accepter de nouvelles réservations.",
-          "balance_limit_reached": "Votre solde impayé a atteint sa limite. Ajoutez une carte de facturation pour reprendre les réservations.",
+          "balance_limit_reached": "Votre solde à régler a atteint le plafond prévu sans carte. Ajoutez une carte de facturation et les réservations reprennent.",
           "suspended": "La facturation de cette boutique est suspendue. Contactez Louez pour accepter de nouveau des réservations."
         },
         "readOnly": "En tant qu'administrateur de la plateforme, vous consultez la facturation de cette boutique en lecture seule.",

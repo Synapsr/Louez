@@ -3673,7 +3673,7 @@
         "blocked": {
           "payment_method_required": "Fügen Sie eine Abrechnungskarte hinzu, um neue Reservierungen anzunehmen.",
           "payment_overdue": "Eine Zahlung an Louez ist fehlgeschlagen. Begleichen Sie sie, um neue Reservierungen anzunehmen.",
-          "balance_limit_reached": "Ihr offener Saldo hat sein Limit erreicht. Fügen Sie eine Abrechnungskarte hinzu, um wieder Reservierungen anzunehmen.",
+          "balance_limit_reached": "Ihr offener Betrag hat die Grenze für Shops ohne Karte erreicht. Fügen Sie eine Abrechnungskarte hinzu, dann laufen die Reservierungen weiter.",
           "suspended": "Die Abrechnung dieses Shops ist ausgesetzt. Kontaktieren Sie Louez, um wieder Reservierungen anzunehmen."
         },
         "readOnly": "Als Plattform-Administrator sehen Sie die Abrechnung dieses Shops nur lesend.",

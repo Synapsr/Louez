@@ -3673,7 +3673,7 @@
         "blocked": {
           "payment_method_required": "Aggiungi una carta di fatturazione per accettare nuove prenotazioni.",
           "payment_overdue": "Un pagamento della fatturazione Louez non è andato a buon fine. Saldalo per accettare nuove prenotazioni.",
-          "balance_limit_reached": "Il tuo saldo non pagato ha raggiunto il limite. Aggiungi una carta di fatturazione per accettare di nuovo prenotazioni.",
+          "balance_limit_reached": "Il saldo da pagare ha raggiunto il limite previsto senza carta. Aggiungi una carta di fatturazione e le prenotazioni ripartono.",
           "suspended": "La fatturazione di questo negozio è sospesa. Contatta Louez per accettare di nuovo prenotazioni."
         },
         "readOnly": "Come amministratore della piattaforma, vedi la fatturazione di questo negozio in sola lettura.",

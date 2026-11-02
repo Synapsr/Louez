@@ -3976,7 +3976,7 @@
         "blocked": {
           "payment_method_required": "Add a billing card to take new reservations.",
           "payment_overdue": "A Louez billing payment failed. Settle it to take new reservations.",
-          "balance_limit_reached": "Your unpaid balance has reached its limit. Add a billing card to take reservations again.",
+          "balance_limit_reached": "Your balance due has reached the limit for stores without a card. Add a billing card and reservations resume.",
           "suspended": "Billing for this store is suspended. Contact Louez to take reservations again."
         },
         "readOnly": "As a platform admin, you see this store's billing read-only.",

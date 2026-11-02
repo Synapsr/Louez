@@ -15,6 +15,7 @@ export {
   IconBox as ProductGlassIcon,
   IconCalendar as ReservationsGlassIcon,
   IconChartBar as AnalyticsGlassIcon,
+  IconCreditCards as BillingGlassIcon,
   IconGear as SettingsGlassIcon,
   IconHelpChat as HelpGlassIcon,
   IconHouse as HomeGlassIcon,

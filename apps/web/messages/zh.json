@@ -3975,7 +3975,7 @@
         "blocked": {
           "payment_method_required": "添加账单卡即可接受新预订。",
           "payment_overdue": "一笔 Louez 账单付款失败。结清后即可接受新预订。",
-          "balance_limit_reached": "您的未付余额已达到上限。添加账单卡即可重新接受预订。",
+          "balance_limit_reached": "您的待付余额已达到未绑卡店铺的上限。添加账单卡后即可恢复预订。",
           "suspended": "此商店的账单已暂停。请联系 Louez 以重新接受预订。"
         },
         "readOnly": "作为平台管理员，您以只读方式查看此商店的账单。",

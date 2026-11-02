@@ -179,6 +179,9 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                     aiCredits={aiCredits}
                     marketplaceListingUrl={marketplaceListingUrl}
                     isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
+                    reservationsPaused={
+                      billingAccess !== null && !billingAccess.policy.acceptsReservations
+                    }
                   />
                   <DashboardContentFrame
                     trigger={<DashboardSidebarTrigger />}
