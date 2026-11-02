@@ -19,15 +19,14 @@ export function selectMonthlyBillingStoreIds(
   return [...new Set([...payAsYouGoStoreIds, ...pendingFeeStoreIds])];
 }
 
-export function summarizeMonthlyPlatformFees(
-  rows: readonly MonthlyPlatformFeeRow[],
-  includePayAsYouGoUsage: boolean,
-) {
-  const includedRows = rows.filter((row) => {
-    if (row.source.startsWith("marketplace_")) return true;
-    return includePayAsYouGoUsage;
-  });
-  const billableRows = includedRows.filter(
+/**
+ * A store's month as the monthly run bills it. Every row counts, whatever the store's
+ * billing mode at the run: Louez records a usage fee only while the store is on
+ * pay-as-you-go, so a store that moved to a plan during the month still pays what it
+ * owed before (Téo, 2026-11-02).
+ */
+export function summarizeMonthlyPlatformFees(rows: readonly MonthlyPlatformFeeRow[]) {
+  const billableRows = rows.filter(
     (row) => row.source !== "free" && row.source !== "marketplace_waived",
   );
   const pendingUsageRows = billableRows.filter(
@@ -45,7 +44,7 @@ export function summarizeMonthlyPlatformFees(
   );
 
   return {
-    locationCount: includedRows.length,
+    locationCount: rows.length,
     grossAmountCents: billableRows.reduce((sum, row) => sum + row.amountCents, 0),
     collectedAtSourceCents: collectedRows.reduce((sum, row) => sum + row.amountCents, 0),
     invoicedAmountCents: usageFeeAmountCents + marketplaceFeeAmountCents,

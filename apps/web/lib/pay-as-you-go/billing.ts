@@ -102,13 +102,7 @@ interface BillStoreOutcome {
  */
 export async function readStoreMonthTotals(storeId: string, billingMonth: string) {
   // ---- Aggregate this month's usage. ----
-  const [subscription, storeBillingPreferences] = await Promise.all([
-    db.query.subscriptions.findFirst({
-      where: eq(subscriptions.storeId, storeId),
-      columns: { billingMode: true },
-    }),
-    getStoreBillingPreferences(storeId),
-  ]);
+  const storeBillingPreferences = await getStoreBillingPreferences(storeId);
   // Invoice in the store's currency — it must match the currency the at-source
   // commission was collected in (same tariff numbers across currencies). The amounts
   // come from the ledger, so no pricing config is needed here.
@@ -135,10 +129,7 @@ export async function readStoreMonthTotals(storeId: string, billingMonth: string
   // manual (pending) fees; collected fees were already charged at source. Because
   // gross = collected + pending, collected can never exceed gross — there is no
   // month-end over-collection to refund.
-  const summary = summarizeMonthlyPlatformFees(
-    rows,
-    subscription?.billingMode !== 'subscription',
-  );
+  const summary = summarizeMonthlyPlatformFees(rows);
 
   return { currency, country: storeBillingPreferences.country, summary };
 }

@@ -18,6 +18,7 @@ const FREE_STORE = "store_marks_free";
 const PAID_STORE = "store_marks_paid";
 const UPGRADE_STORE = "store_marks_upgrade";
 const RACE_STORE = "store_marks_race";
+const PLAN_STORE = "store_marks_plan";
 const JANUARY = new Date("2026-01-15T10:00:00Z");
 
 describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () => {
@@ -47,6 +48,7 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
         freeReservationsGranted: 0,
       },
       { id: "sub_marks_race", storeId: RACE_STORE, ...payAsYouGo, freeReservationsGranted: 0 },
+      { id: "sub_marks_plan", storeId: PLAN_STORE, ...payAsYouGo, freeReservationsGranted: 0 },
     ]);
     // The reservation marks read the store from the reservation row.
     const reservation = (id: string, storeId: string) => ({
@@ -69,6 +71,7 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
         reservation("res_marks_online", PAID_STORE),
         reservation("res_marks_upgrade", UPGRADE_STORE),
         reservation("res_marks_race", RACE_STORE),
+        reservation("res_marks_plan", PLAN_STORE),
       ]);
   });
   after(async () => {
@@ -182,6 +185,25 @@ describe("legacy fee marks (database)", { skip: skipWithoutTestDatabase() }, () 
       "reservation res_marks_online v2",
       `legacy_month ${PAID_STORE}:2026-01 v4`,
     ]);
+  });
+
+  test("a store that moves to a plan still owes the month's usage it recorded before", async () => {
+    await metering.recordReservationFee({
+      storeId: PLAN_STORE,
+      reservationId: "res_marks_plan",
+      source: "manual",
+      at: JANUARY,
+    });
+    await louezDb.db
+      .update(louezDb.subscriptions)
+      .set({ billingMode: "subscription", planSlug: "pro" })
+      .where(eq(louezDb.subscriptions.storeId, PLAN_STORE));
+
+    const billing = await import("./billing");
+    const { summary } = await billing.readStoreMonthTotals(PLAN_STORE, "2026-01");
+    assert.equal(summary.usageLocationCount, 1);
+    assert.equal(summary.usageFeeAmountCents, 123);
+    assert.equal(summary.invoicedAmountCents, 123);
   });
 
   test("a manual fee later taken at source marks its reservation", async () => {

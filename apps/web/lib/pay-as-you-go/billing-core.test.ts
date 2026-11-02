@@ -19,20 +19,19 @@ test("monthly billing includes subscription stores with pending marketplace fees
   ]);
 });
 
-test("subscription-store invoices contain only the marketplace line", () => {
-  const summary = summarizeMonthlyPlatformFees(
-    [
-      { amountCents: 250, source: "manual", status: "pending" },
-      { amountCents: 100, source: "marketplace_manual", status: "pending" },
-    ],
-    false,
-  );
+test("a store that moved to a plan still pays the month's usage it owed before", () => {
+  const summary = summarizeMonthlyPlatformFees([
+    { amountCents: 250, source: "manual", status: "pending" },
+    { amountCents: 100, source: "marketplace_manual", status: "pending" },
+    { amountCents: 300, source: "online", status: "collected" },
+  ]);
 
-  assert.equal(summary.usageFeeAmountCents, 0);
-  assert.equal(summary.usageLocationCount, 0);
+  assert.equal(summary.usageFeeAmountCents, 250);
+  assert.equal(summary.usageLocationCount, 1);
   assert.equal(summary.marketplaceFeeAmountCents, 100);
   assert.equal(summary.marketplaceReservationCount, 1);
-  assert.equal(summary.invoicedAmountCents, 100);
+  assert.equal(summary.collectedAtSourceCents, 300);
+  assert.equal(summary.invoicedAmountCents, 350);
 });
 
 test("a billing month is YYYY-MM, and its run starts on the 1st after it at 05:00 UTC", () => {
