@@ -24,7 +24,7 @@ import {
   productAnalyticsEvents,
 } from "@/lib/product-analytics/analytics-events";
 
-import { CheckoutStorePausedNotice } from "./components/checkout-store-paused-notice";
+import { CheckoutStorePausedDialog } from "./components/checkout-store-paused-dialog";
 import { CheckoutFormView } from "./checkout-form-view";
 
 import type {
@@ -387,52 +387,55 @@ export const CheckoutForm = ({
       summaryProps={summaryProps}
       stepRef={stepRef}
       error={
-        serverError?.message === STORE_NOT_ACCEPTING_RESERVATIONS_ERROR ? (
-          <CheckoutStorePausedNotice
+        serverError &&
+        serverErrorMessage &&
+        serverError.message !== STORE_NOT_ACCEPTING_RESERVATIONS_ERROR && (
+          <Alert variant="error" className="mb-4">
+            <AlertCircle />
+            <AlertTitle>{t("submitError.title")}</AlertTitle>
+            <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+              <span>{serverErrorMessage}</span>
+              {serverError.step !== stepFlow.currentStep && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    stepFlow.goToStep(serverError.step);
+                    clearServerError();
+                  }}
+                >
+                  {t("submitError.goToStep")}
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        )
+      }
+      footer={
+        <>
+          <DatePickerModal
+            storeSlug={storeSlug}
+            pricingMode={pricingMode}
+            businessHours={businessHours}
+            advanceNotice={advanceNotice.issue?.advanceNoticeMinutes ?? advanceNoticeMinutes}
+            minRentalMinutes={minRentalMinutes}
+            timezone={timezone}
+            isOpen={isDatePickerOpen}
+            onClose={() => setIsDatePickerOpen(false)}
+            initialStartDate={globalStartDate ?? undefined}
+            initialEndDate={globalEndDate ?? undefined}
+            redirectOnSubmit={false}
+          />
+          {/* The card gate's refusal: nothing for the renter to fix, so no inline error. */}
+          <CheckoutStorePausedDialog
+            open={serverError?.message === STORE_NOT_ACCEPTING_RESERVATIONS_ERROR}
+            onClose={clearServerError}
             storeName={storeName}
             storeEmail={storeEmail}
             storePhone={storePhone}
           />
-        ) : (
-          serverError &&
-          serverErrorMessage && (
-            <Alert variant="error" className="mb-4">
-              <AlertCircle />
-              <AlertTitle>{t("submitError.title")}</AlertTitle>
-              <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
-                <span>{serverErrorMessage}</span>
-                {serverError.step !== stepFlow.currentStep && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      stepFlow.goToStep(serverError.step);
-                      clearServerError();
-                    }}
-                  >
-                    {t("submitError.goToStep")}
-                  </Button>
-                )}
-              </AlertDescription>
-            </Alert>
-          )
-        )
-      }
-      footer={
-        <DatePickerModal
-          storeSlug={storeSlug}
-          pricingMode={pricingMode}
-          businessHours={businessHours}
-          advanceNotice={advanceNotice.issue?.advanceNoticeMinutes ?? advanceNoticeMinutes}
-          minRentalMinutes={minRentalMinutes}
-          timezone={timezone}
-          isOpen={isDatePickerOpen}
-          onClose={() => setIsDatePickerOpen(false)}
-          initialStartDate={globalStartDate ?? undefined}
-          initialEndDate={globalEndDate ?? undefined}
-          redirectOnSubmit={false}
-        />
+        </>
       }
     >
       <form.AppForm>
