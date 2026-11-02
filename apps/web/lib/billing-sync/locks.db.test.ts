@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
+import { hostname } from "node:os";
 
 import type { RowDataPacket } from "mysql2/promise";
 
@@ -79,7 +80,11 @@ describe("named locks (database)", { skip: skipWithoutTestDatabase() }, () => {
         await sleep(2_500);
         return lockIsFree();
       },
-      { idleSeconds: 1, pingMs: 200, log: { error: (_tag, message) => errors.push(message) } },
+      {
+        idleSeconds: 1,
+        pingMs: 200,
+        log: { error: (_tag, message) => errors.push(message), warn: () => {} },
+      },
     );
     assert.deepEqual(result, { ran: true, value: false });
     assert.deepEqual(errors, []);
@@ -98,12 +103,52 @@ describe("named locks (database)", { skip: skipWithoutTestDatabase() }, () => {
         freedDuringRun = await lockIsFree();
         return "ran";
       },
-      { idleSeconds: 1, pingMs: 60_000, log: { error: (_tag, message) => errors.push(message) } },
+      {
+        idleSeconds: 1,
+        pingMs: 60_000,
+        log: { error: (_tag, message) => errors.push(message), warn: () => {} },
+      },
     );
     assert.deepEqual(result, { ran: true, value: "ran" });
     assert.equal(freedDuringRun, true);
     assert.equal(errors.length, 1);
     assert.match(errors[0] ?? "", /lock louez:test:locks: release failed .*within 1 s/);
+    assert.equal(await lockIsFree(), true);
+  });
+
+  test("a lock taken too long by one connection is logged with its holder, then not again before the interval", async () => {
+    const holder = await louezDb.db.$client.getConnection();
+    try {
+      const [rows] = await holder.query<RowDataPacket[]>(
+        "SELECT CONNECTION_ID() AS id, GET_LOCK(?, 0) AS got",
+        [LOCK],
+      );
+      assert.equal(Number(rows[0]?.got), 1);
+      const id = Number(rows[0]?.id);
+      const warnings: string[] = [];
+      const options = {
+        busyLogAfterMs: 0,
+        busyLogEveryMs: 60_000,
+        log: { error: () => {}, warn: (_tag: string, message: string) => warnings.push(message) },
+      };
+      assert.deepEqual(await locks.withNamedLock(LOCK, 0, async () => "ran", options), {
+        ran: false,
+      });
+      assert.deepEqual(await locks.withNamedLock(LOCK, 0, async () => "ran", options), {
+        ran: false,
+      });
+      assert.equal(warnings.length, 1);
+      assert.match(
+        warnings[0] ?? "",
+        new RegExp(
+          `^lock louez:test:locks: taken for at least 0 min by MySQL connection ${id} ` +
+            `\\(root@[^,]+, louez@${hostname()}, Sleep for \\d+ s\\); KILL ${id} frees it$`,
+        ),
+      );
+    } finally {
+      await holder.query("SELECT RELEASE_LOCK(?)", [LOCK]);
+      holder.release();
+    }
     assert.equal(await lockIsFree(), true);
   });
 });

@@ -1,4 +1,4 @@
-import type { RowDataPacket } from "mysql2/promise";
+import type { PoolConnection, RowDataPacket } from "mysql2/promise";
 import { z } from "zod";
 
 import { type DatabaseOnConnection, databaseOnConnection, db } from "@louez/db";
@@ -37,11 +37,32 @@ const LOCK_PING_MS = 30_000;
 /** How long the release and the reset may take before the connection counts as broken. */
 const LOCK_QUERY_TIMEOUT_MS = 10_000;
 
+/** A lock that stays taken this long by the same connection is logged, with who holds it… */
+const BUSY_LOG_AFTER_MS = 2 * 60_000;
+/** …and again at most this often while it stays taken. */
+const BUSY_LOG_EVERY_MS = 10 * 60_000;
+
 export type NamedLockOptions = {
   readonly idleSeconds?: number;
   readonly pingMs?: number;
-  readonly log?: { error(tag: string, message: string): void };
+  readonly busyLogAfterMs?: number;
+  readonly busyLogEveryMs?: number;
+  readonly log?: {
+    error(tag: string, message: string): void;
+    warn(tag: string, message: string): void;
+  };
 };
+
+/** Each lock this process found taken: by which connection, since when, last logged when. */
+const busyLocks = new Map<string, { holder: number; since: number; loggedAt: number | null }>();
+
+const holderRow = z.object({
+  user: z.string().nullable(),
+  host: z.string().nullable(),
+  command: z.string().nullable(),
+  seconds: z.union([z.number(), z.string()]).nullable(),
+  program: z.string().nullable(),
+});
 
 /** `query`, or a rejection after `ms`: a query sent on a dead connection may wait 15 minutes. */
 function within<T>(query: Promise<T>, ms: number): Promise<T> {
@@ -56,13 +77,63 @@ function within<T>(query: Promise<T>, ms: number): Promise<T> {
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /**
+ * Who holds `name`, logged once the same connection has held it `busyLogAfterMs`: on the
+ * dev app, on 2026-11-02, the heartbeat lock stayed taken 55 min by a client this process
+ * could not name. Reading another session needs MySQL's PROCESS privilege; without it
+ * the log gives the connection id alone.
+ */
+async function noteBusyLock(
+  connection: PoolConnection,
+  name: string,
+  options: { afterMs: number; everyMs: number; logs: Required<NamedLockOptions>["log"] },
+): Promise<void> {
+  const [rows] = await connection.query<RowDataPacket[]>("SELECT IS_USED_LOCK(?) AS holder", [
+    name,
+  ]);
+  const holder = Number(rows[0]?.holder);
+  if (!Number.isInteger(holder) || holder <= 0) return;
+
+  const now = Date.now();
+  const known = busyLocks.get(name);
+  const busy = known?.holder === holder ? known : { holder, since: now, loggedAt: null };
+  busyLocks.set(name, busy);
+  if (now - busy.since < options.afterMs) return;
+  if (busy.loggedAt !== null && now - busy.loggedAt < options.everyMs) return;
+  busy.loggedAt = now;
+
+  let who = "";
+  try {
+    const [details] = await connection.query<RowDataPacket[]>(
+      `SELECT p.USER AS user, p.HOST AS host, p.COMMAND AS command, p.TIME AS seconds,
+         (SELECT a.ATTR_VALUE FROM performance_schema.session_connect_attrs a
+           WHERE a.PROCESSLIST_ID = p.ID AND a.ATTR_NAME = 'program_name') AS program
+       FROM performance_schema.processlist p WHERE p.ID = ?`,
+      [holder],
+    );
+    const row = z.array(holderRow).parse(details)[0];
+    if (row) {
+      const client = row.program ?? "a client without program_name, so older than this log";
+      who = ` (${row.user}@${row.host}, ${client}, ${row.command} for ${row.seconds} s)`;
+    }
+  } catch (error) {
+    who = ` (no details: ${errorMessage(error)})`;
+  }
+  const minutes = Math.floor((now - busy.since) / 60_000);
+  options.logs.warn(
+    "billing",
+    `lock ${name}: taken for at least ${minutes} min by MySQL connection ${holder}${who}; KILL ${holder} frees it`,
+  );
+}
+
+/**
  * Runs `run` under `GET_LOCK(name, timeoutSeconds)`, or not at all when the lock is
  * still taken after the timeout or MySQL fails to take it. `run` gets Drizzle on the
  * connection that holds the lock: a transaction opened on it stays on that connection.
  *
  * The connection's `wait_timeout` is `LOCK_IDLE_SECONDS` while it holds the lock, and
  * a ping every `LOCK_PING_MS` keeps it under that limit during a long run. A lock whose
- * connection Louez loses is so freed within the limit, and the loss is logged.
+ * connection Louez loses is so freed within the limit, and the loss is logged. A lock
+ * found taken by the same connection for `BUSY_LOG_AFTER_MS` is logged with its holder.
  */
 export async function withNamedLock<T>(
   name: string,
@@ -88,7 +159,24 @@ export async function withNamedLock<T>(
       healthy = false;
       throw error;
     }
-    if (Number(got) !== 1) return { ran: false };
+    if (Number(got) !== 1) {
+      if (Number(got) === 0) {
+        try {
+          await within(
+            noteBusyLock(connection, name, {
+              afterMs: options.busyLogAfterMs ?? BUSY_LOG_AFTER_MS,
+              everyMs: options.busyLogEveryMs ?? BUSY_LOG_EVERY_MS,
+              logs,
+            }),
+            LOCK_QUERY_TIMEOUT_MS,
+          );
+        } catch {
+          healthy = false;
+        }
+      }
+      return { ran: false };
+    }
+    busyLocks.delete(name);
     const ping = setInterval(() => {
       connection.query("SELECT 1").catch(() => {});
     }, pingMs);

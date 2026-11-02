@@ -1,3 +1,5 @@
+import { hostname } from "node:os";
+
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import * as schema from "./schema";
@@ -24,6 +26,10 @@ const pool =
     // keeps it open. 0 would leave the OS default, two hours.
     enableKeepAlive: true,
     keepAliveInitialDelay: 60_000,
+    // Names the machine in MySQL's performance_schema.session_connect_attrs: behind
+    // Docker Swarm's ingress, a client that comes through a published port shows the
+    // ingress's address, not its own.
+    connectAttributes: { program_name: `louez@${hostname()}` },
   });
 
 // In development, cache the pool to avoid "Too many connections" errors
