@@ -103,13 +103,15 @@ async function main(): Promise<number> {
   const connection = await cli.connectTarget();
   await connection.end();
 
-  const [louez, payments, validations, countries, { and, eq }] = await Promise.all([
-    import("@louez/db"),
-    import("../lib/reservations/dashboard-payment-writes"),
-    import("@louez/validations"),
-    import("../lib/utils/countries"),
-    import("drizzle-orm"),
-  ]);
+  const [louez, payments, reservationEffects, validations, countries, { and, eq }] =
+    await Promise.all([
+      import("@louez/db"),
+      import("../lib/reservations/dashboard-payment-writes"),
+      import("../lib/billing/reservation-effects"),
+      import("@louez/validations"),
+      import("../lib/utils/countries"),
+      import("drizzle-orm"),
+    ]);
   const { db } = louez;
   const changed = shell.changes();
   if (changed.length > 0) {
@@ -235,7 +237,8 @@ async function main(): Promise<number> {
       return;
     }
     const now = new Date();
-    await db.transaction(async (tx) => {
+    const effects = await db.transaction(async (tx) => {
+      const inserted = [];
       await tx.insert(louez.customers).values({
         id: customerId,
         storeId,
@@ -251,7 +254,7 @@ async function main(): Promise<number> {
         start.setUTCHours(8, 0, 0, 0);
         const end = new Date(start);
         end.setUTCDate(end.getUTCDate() + booking.days);
-        await louez.insertReservation(tx, {
+        const { effects } = await louez.insertReservation(tx, {
           id: reservationId,
           storeId,
           customerId,
@@ -264,6 +267,7 @@ async function main(): Promise<number> {
           totalAmount: booking.amount,
           currency: "EUR",
         });
+        inserted.push(...effects);
         await tx.insert(louez.reservationItems).values({
           id: id(`especes:item:${n}`),
           reservationId,
@@ -287,7 +291,10 @@ async function main(): Promise<number> {
           notes: null,
         });
       }
+      return inserted;
     });
+    // As every insert: the fee effects run once the bookings are committed.
+    await reservationEffects.runReservationEffects(effects);
     console.log(`+ cash bookings: ${CASH_BOOKINGS.length} confirmed and paid`);
   }
 
