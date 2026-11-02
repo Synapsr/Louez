@@ -45,7 +45,10 @@ export const CheckoutAddressFields = withForm({
                   onChange={(address, latitude, longitude) => {
                     field.handleChange(address);
                     onCoordinatesChange({ latitude, longitude });
-                    if (latitude === null && longitude === null) {
+                    // Postal code and city that came from a picked address go
+                    // stale once it is edited. Typed or autofilled ones stay.
+                    const wasResolved = coordinates.latitude != null;
+                    if (wasResolved && latitude === null && longitude === null) {
                       form.setFieldValue("postalCode", "");
                       form.setFieldValue("city", "");
                     }
@@ -60,6 +63,7 @@ export const CheckoutAddressFields = withForm({
                   placeholder={t("addressPlaceholder")}
                   ariaInvalid={hasError}
                   showMapPicker={false}
+                  autoComplete="address-line1"
                 />
                 {hasError && (
                   <p className="text-xs text-destructive">

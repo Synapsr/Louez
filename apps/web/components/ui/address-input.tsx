@@ -52,6 +52,11 @@ interface AddressInputProps {
   source?: AddressInputSource;
   /** Whether clearing the field may return focus to the input. */
   autoFocus?: boolean;
+  /**
+   * Browser autofill token, such as `address-line1`. Without it, browsers and
+   * password managers are kept away so they do not cover the suggestions.
+   */
+  autoComplete?: string;
 }
 
 export const AddressInput = ({
@@ -72,6 +77,7 @@ export const AddressInput = ({
   onAddressResolved,
   source,
   autoFocus = true,
+  autoComplete,
 }: AddressInputProps) => {
   const t = useTranslations('common.addressInput');
   const queryClient = useQueryClient();
@@ -376,12 +382,13 @@ export const AddressInput = ({
             placeholder={placeholder || t('placeholder')}
             disabled={disabled}
             aria-invalid={ariaInvalid}
-            autoComplete="one-time-code"
+            autoComplete={autoComplete ?? 'one-time-code'}
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
-            data-form-type="other"
-            data-lpignore="true"
+            {...(autoComplete
+              ? {}
+              : { 'data-form-type': 'other', 'data-lpignore': 'true' })}
           />
           <InputGroupAddon align="inline-end" className="gap-0.5 py-1">
             {isLoading && (
