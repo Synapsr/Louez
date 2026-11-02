@@ -7239,6 +7239,13 @@
         "title": "Votre commande n'a pas pu être envoyée",
         "goToStep": "Corriger"
       },
+      "storePaused": {
+        "title": "Les réservations en ligne sont en pause",
+        "description": "Cette boutique ne prend pas de réservations en ligne pour le moment.",
+        "descriptionNamed": "{storeName} ne prend pas de réservations en ligne pour le moment.",
+        "contactHint": "Contactez-la directement pour réserver ces dates.",
+        "contactLater": "Réessayez un peu plus tard."
+      },
       "payAmount": "Payer {amount}",
       "blocked": {
         "resolving": "Vérification de la disponibilité…",

@@ -11,6 +11,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { usePostHog } from "posthog-js/react";
 
 import { Alert, AlertDescription, AlertTitle, Button } from "@louez/ui";
+import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR } from "@louez/types";
 
 import { DatePickerModal } from "@/components/storefront/date-picker-modal";
 import { useAnalytics } from "@/contexts/analytics-context";
@@ -23,6 +24,7 @@ import {
   productAnalyticsEvents,
 } from "@/lib/product-analytics/analytics-events";
 
+import { CheckoutStorePausedNotice } from "./components/checkout-store-paused-notice";
 import { CheckoutFormView } from "./checkout-form-view";
 
 import type {
@@ -78,6 +80,8 @@ export const CheckoutForm = ({
   storeLatitude,
   storeLongitude,
   storeName,
+  storeEmail,
+  storePhone,
   storeCountry,
   locations,
   tulipInsurance,
@@ -383,27 +387,36 @@ export const CheckoutForm = ({
       summaryProps={summaryProps}
       stepRef={stepRef}
       error={
-        serverError && serverErrorMessage && (
-          <Alert variant="error" className="mb-4">
-            <AlertCircle />
-            <AlertTitle>{t("submitError.title")}</AlertTitle>
-            <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
-              <span>{serverErrorMessage}</span>
-              {serverError.step !== stepFlow.currentStep && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    stepFlow.goToStep(serverError.step);
-                    clearServerError();
-                  }}
-                >
-                  {t("submitError.goToStep")}
-                </Button>
-              )}
-            </AlertDescription>
-          </Alert>
+        serverError?.message === STORE_NOT_ACCEPTING_RESERVATIONS_ERROR ? (
+          <CheckoutStorePausedNotice
+            storeName={storeName}
+            storeEmail={storeEmail}
+            storePhone={storePhone}
+          />
+        ) : (
+          serverError &&
+          serverErrorMessage && (
+            <Alert variant="error" className="mb-4">
+              <AlertCircle />
+              <AlertTitle>{t("submitError.title")}</AlertTitle>
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+                <span>{serverErrorMessage}</span>
+                {serverError.step !== stepFlow.currentStep && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      stepFlow.goToStep(serverError.step);
+                      clearServerError();
+                    }}
+                  >
+                    {t("submitError.goToStep")}
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          )
         )
       }
       footer={

@@ -7239,6 +7239,13 @@
         "title": "注文を送信できませんでした",
         "goToStep": "これを修正してください"
       },
+      "storePaused": {
+        "title": "オンライン予約は一時停止中です",
+        "description": "このストアは現在オンライン予約を受け付けていません。",
+        "descriptionNamed": "{storeName}は現在オンライン予約を受け付けていません。",
+        "contactHint": "この日程で予約するには、ストアに直接お問い合わせください。",
+        "contactLater": "しばらくしてからもう一度お試しください。"
+      },
       "payAmount": "{amount}を支払う",
       "blocked": {
         "resolving": "空き状況を確認中…",

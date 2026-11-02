@@ -7239,6 +7239,13 @@
         "title": "Ihre Bestellung konnte nicht gesendet werden",
         "goToStep": "Korrigieren"
       },
+      "storePaused": {
+        "title": "Online-Buchungen sind pausiert",
+        "description": "Dieser Shop nimmt derzeit keine Online-Reservierungen an.",
+        "descriptionNamed": "{storeName} nimmt derzeit keine Online-Reservierungen an.",
+        "contactHint": "Kontaktieren Sie den Shop direkt, um diese Termine zu buchen.",
+        "contactLater": "Versuchen Sie es etwas später noch einmal."
+      },
       "payAmount": "{amount} zahlen",
       "blocked": {
         "resolving": "Verfügbarkeit wird geprüft…",

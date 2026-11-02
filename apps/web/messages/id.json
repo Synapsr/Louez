@@ -7239,6 +7239,13 @@
         "title": "Pesanan Anda tidak dapat dikirim",
         "goToStep": "Perbaiki ini"
       },
+      "storePaused": {
+        "title": "Reservasi online sedang dijeda",
+        "description": "Toko ini sedang tidak menerima reservasi online.",
+        "descriptionNamed": "{storeName} sedang tidak menerima reservasi online.",
+        "contactHint": "Hubungi toko secara langsung untuk memesan tanggal ini.",
+        "contactLater": "Coba lagi sebentar lagi."
+      },
       "payAmount": "Bayar {amount}",
       "blocked": {
         "resolving": "Memeriksa ketersediaan…",

@@ -7239,6 +7239,13 @@
         "title": "주문을 보낼 수 없습니다",
         "goToStep": "이 문제를 해결"
       },
+      "storePaused": {
+        "title": "온라인 예약이 일시 중지되었습니다",
+        "description": "이 매장은 현재 온라인 예약을 받지 않습니다.",
+        "descriptionNamed": "{storeName}은(는) 현재 온라인 예약을 받지 않습니다.",
+        "contactHint": "이 날짜로 예약하려면 매장에 직접 문의하세요.",
+        "contactLater": "잠시 후 다시 시도해 주세요."
+      },
       "payAmount": "{amount} 지불",
       "blocked": {
         "resolving": "이용 가능 여부 확인 중…",

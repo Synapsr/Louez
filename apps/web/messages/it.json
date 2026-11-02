@@ -7239,6 +7239,13 @@
         "title": "Non è stato possibile inviare il tuo ordine",
         "goToStep": "Correggi"
       },
+      "storePaused": {
+        "title": "Le prenotazioni online sono in pausa",
+        "description": "Questo negozio non accetta prenotazioni online in questo momento.",
+        "descriptionNamed": "{storeName} non accetta prenotazioni online in questo momento.",
+        "contactHint": "Contatta direttamente il negozio per prenotare queste date.",
+        "contactLater": "Riprova un po' più tardi."
+      },
       "payAmount": "Paga {amount}",
       "blocked": {
         "resolving": "Verifica della disponibilità…",

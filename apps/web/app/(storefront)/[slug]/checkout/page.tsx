@@ -139,6 +139,8 @@ const CheckoutPage = async ({ params }: CheckoutPageProps) => {
           storeLatitude={toNumber(store.latitude)}
           storeLongitude={toNumber(store.longitude)}
           storeName={store.name}
+          storeEmail={store.email}
+          storePhone={store.phone}
           storeCountry={store.settings?.country ?? "FR"}
           locations={locations}
           tulipInsurance={{

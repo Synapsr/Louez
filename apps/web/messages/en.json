@@ -7239,6 +7239,13 @@
         "title": "Your order could not be sent",
         "goToStep": "Fix this"
       },
+      "storePaused": {
+        "title": "Online booking is paused",
+        "description": "This store isn't taking online reservations right now.",
+        "descriptionNamed": "{storeName} isn't taking online reservations right now.",
+        "contactHint": "Contact the store directly to book these dates.",
+        "contactLater": "Please try again a little later."
+      },
       "payAmount": "Pay {amount}",
       "blocked": {
         "resolving": "Checking availability…",

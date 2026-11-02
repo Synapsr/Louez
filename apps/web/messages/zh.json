@@ -7239,6 +7239,13 @@
         "title": "您的订单无法发送",
         "goToStep": "解决这个问题"
       },
+      "storePaused": {
+        "title": "在线预订已暂停",
+        "description": "该店铺目前暂不接受在线预订。",
+        "descriptionNamed": "{storeName} 目前暂不接受在线预订。",
+        "contactHint": "如需预订这些日期，请直接联系店铺。",
+        "contactLater": "请稍后再试。"
+      },
       "payAmount": "支付{amount}",
       "blocked": {
         "resolving": "正在检查可用性...",

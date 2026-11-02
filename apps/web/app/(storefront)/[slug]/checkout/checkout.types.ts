@@ -53,6 +53,9 @@ export interface CheckoutFormProps {
   storeLatitude?: number | null;
   storeLongitude?: number | null;
   storeName?: string;
+  /** The store's public contacts, offered when the store is not taking bookings. */
+  storeEmail?: string | null;
+  storePhone?: string | null;
   /** ISO-2 country of the store — drives the company-identity fields (SIREN/BCE). */
   storeCountry: string;
   locations?: CheckoutLocationOption[];

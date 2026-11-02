@@ -7239,6 +7239,13 @@
         "title": "Nie udało się wysłać zamówienia",
         "goToStep": "Popraw"
       },
+      "storePaused": {
+        "title": "Rezerwacje online są wstrzymane",
+        "description": "Ten sklep nie przyjmuje teraz rezerwacji online.",
+        "descriptionNamed": "{storeName} nie przyjmuje teraz rezerwacji online.",
+        "contactHint": "Skontaktuj się bezpośrednio ze sklepem, aby zarezerwować te terminy.",
+        "contactLater": "Spróbuj ponownie nieco później."
+      },
       "payAmount": "Zapłać {amount}",
       "blocked": {
         "resolving": "Sprawdzanie dostępności…",

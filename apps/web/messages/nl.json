@@ -7239,6 +7239,13 @@
         "title": "Uw bestelling kon niet worden verzonden",
         "goToStep": "Corrigeren"
       },
+      "storePaused": {
+        "title": "Online reserveren is gepauzeerd",
+        "description": "Deze winkel neemt op dit moment geen online reserveringen aan.",
+        "descriptionNamed": "{storeName} neemt op dit moment geen online reserveringen aan.",
+        "contactHint": "Neem rechtstreeks contact op met de winkel om deze data te boeken.",
+        "contactLater": "Probeer het iets later opnieuw."
+      },
       "payAmount": "{amount} betalen",
       "blocked": {
         "resolving": "Beschikbaarheid controleren…",
