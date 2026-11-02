@@ -61,6 +61,7 @@
     "billing:mark": "pnpm --filter=@louez/web billing:mark",
     "billing:legacy-run": "pnpm --filter=@louez/web billing:legacy-run",
     "billing:gross-backfill": "pnpm --filter=@louez/web billing:gross-backfill",
+    "billing:qa-stores": "pnpm --filter=@louez/web billing:qa-stores",
     "pricing:fix-pricing-mode": "pnpm --filter=@louez/db run pricing:fix-pricing-mode",
     "pricing:preflight": "pnpm --filter=@louez/db run pricing:preflight",
     "pricing:backfill": "pnpm --filter=@louez/db run pricing:backfill",

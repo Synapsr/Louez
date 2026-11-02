@@ -20,6 +20,7 @@
     "billing:mark": "node --import tsx scripts/run-billing-mark.ts",
     "billing:legacy-run": "node --import tsx scripts/run-billing-legacy-run.ts",
     "billing:gross-backfill": "node --import tsx scripts/run-billing-gross-backfill.ts",
+    "billing:qa-stores": "node --import tsx scripts/run-billing-qa-stores.ts",
     "pwa:icons": "tsx scripts/generate-pwa-icons.ts",
     "dev-localify": "echo Localify URL: https://louez.localify && AUTH_URL=https://louez.localify NEXT_PUBLIC_APP_URL=https://louez.localify NEXT_PUBLIC_APP_DOMAIN=louez.localify next dev --hostname 127.0.0.1 --port 60441 --turbopack",
     "demo:documents": "node --import tsx scripts/landing-demo-documents.mts",
