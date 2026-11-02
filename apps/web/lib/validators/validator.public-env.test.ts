@@ -53,6 +53,7 @@ test("treats empty optional values as unset, as the bundled Compose file passes 
     NEXT_PUBLIC_UMAMI_SCRIPT_URL: "",
     NEXT_PUBLIC_OPENREPLAY_INGEST_POINT: "",
     NEXT_PUBLIC_FROMHELLO_API_URL: " ",
+    NEXT_PUBLIC_META_PIXEL_ID: "",
     NEXT_PUBLIC_POSTHOG_HOST: "",
   };
   const config = readPublicEnvRuntime({
@@ -64,7 +65,18 @@ test("treats empty optional values as unset, as the bundled Compose file passes 
   assert.equal(config.NEXT_PUBLIC_UMAMI_SCRIPT_URL, undefined);
   assert.equal(config.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT, undefined);
   assert.equal(config.NEXT_PUBLIC_FROMHELLO_API_URL, undefined);
+  assert.equal(config.NEXT_PUBLIC_META_PIXEL_ID, undefined);
   assert.equal(config.NEXT_PUBLIC_POSTHOG_HOST, "https://eu.i.posthog.com");
+});
+
+test("accepts a numeric Meta pixel ID and rejects anything else", () => {
+  const base = { NEXT_PUBLIC_APP_URL: "https://app.example.com" };
+
+  assert.equal(
+    parsePublicEnv({ ...base, NEXT_PUBLIC_META_PIXEL_ID: "123456" }).NEXT_PUBLIC_META_PIXEL_ID,
+    "123456",
+  );
+  assert.throws(() => parsePublicEnv({ ...base, NEXT_PUBLIC_META_PIXEL_ID: "not-a-pixel" }));
 });
 
 test("falls back to AUTH_URL when the public origin is passed empty", () => {

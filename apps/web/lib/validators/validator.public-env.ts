@@ -48,6 +48,10 @@ export const publicEnvSchema = z.object({
   NEXT_PUBLIC_FROMHELLO_API_URL: z.url().optional(),
   NEXT_PUBLIC_FROMHELLO_KEY: z.string().optional(),
   NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN: z.string().optional(),
+  NEXT_PUBLIC_META_PIXEL_ID: z
+    .string()
+    .regex(/^\d+$/, "NEXT_PUBLIC_META_PIXEL_ID must contain only digits")
+    .optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -110,6 +114,7 @@ export const getPublicEnvRuntimeValues = (
     NEXT_PUBLIC_FROMHELLO_API_URL: source.NEXT_PUBLIC_FROMHELLO_API_URL,
     NEXT_PUBLIC_FROMHELLO_KEY: source.NEXT_PUBLIC_FROMHELLO_KEY,
     NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN: source.NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN,
+    NEXT_PUBLIC_META_PIXEL_ID: source.NEXT_PUBLIC_META_PIXEL_ID,
   } satisfies Record<keyof PublicEnv, string | undefined>;
 };
 

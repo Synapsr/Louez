@@ -17,6 +17,20 @@ test("adds runtime deployment origins to the CSP", () => {
   assert.match(csp ?? "", /frame-src[^;]*https:\/\/\*\.runtime\.example\.com/);
 });
 
+test("allows Meta's origins only when a pixel is configured", () => {
+  const cspFor = (metaPixelId?: string) =>
+    buildSecurityHeaders({ isDevelopment: false, metaPixelId }).find(
+      (header) => header.key === "Content-Security-Policy",
+    )?.value ?? "";
+
+  assert.doesNotMatch(cspFor(), /facebook/);
+
+  const csp = cspFor("123456");
+  assert.match(csp, /script-src[^;]*https:\/\/connect\.facebook\.net/);
+  assert.match(csp, /img-src[^;]*https:\/\/www\.facebook\.com/);
+  assert.match(csp, /connect-src[^;]*https:\/\/www\.facebook\.com/);
+});
+
 test("allows OpenFreeMap assets without the retired CARTO and Leaflet origins", () => {
   const headers = buildSecurityHeaders({
     isDevelopment: false,

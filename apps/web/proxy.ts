@@ -70,7 +70,7 @@ function withRuntimeSecurityHeaders(
     ? buildDemoSecurityHeaders(options)
     : isEmbedPath(pathname)
       ? buildEmbedSecurityHeaders(options)
-      : buildSecurityHeaders(options);
+      : buildSecurityHeaders({ ...options, metaPixelId: publicEnv.NEXT_PUBLIC_META_PIXEL_ID });
 
   for (const { key, value } of securityHeaders) {
     response.headers.set(key, value);

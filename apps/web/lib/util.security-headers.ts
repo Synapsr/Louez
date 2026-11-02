@@ -5,6 +5,7 @@ export interface SecurityHeadersOptions {
   demoParentOrigins?: string;
   fromHelloApiUrl?: string;
   isDevelopment: boolean;
+  metaPixelId?: string;
   openReplayIngestPoint?: string;
 }
 
@@ -35,6 +36,7 @@ const buildContentSecurityPolicy = ({
   appDomain,
   fromHelloApiUrl,
   isDevelopment,
+  metaPixelId,
   openReplayIngestPoint,
 }: SecurityHeadersOptions): string => {
   const fromHelloOrigin = getOrigin(fromHelloApiUrl);
@@ -54,6 +56,7 @@ const buildContentSecurityPolicy = ({
       "'unsafe-inline'",
       "'unsafe-eval'",
       ...(fromHelloOrigin ? [fromHelloOrigin] : []),
+      ...(metaPixelId ? ["https://connect.facebook.net"] : []),
     ],
     "style-src": ["'self'", "'unsafe-inline'", "https://gleapjs.com"],
     "img-src": [
@@ -81,6 +84,7 @@ const buildContentSecurityPolicy = ({
       "https://*.wasabisys.com",
       "https://*.linodeobjects.com",
       ...(fromHelloOrigin ? [fromHelloOrigin] : []),
+      ...(metaPixelId ? ["https://www.facebook.com"] : []),
     ],
     "font-src": ["'self'", "data:"],
     "connect-src": [
@@ -96,6 +100,7 @@ const buildContentSecurityPolicy = ({
       ...(isDevelopment ? ["ws://localhost:*", "ws://127.0.0.1:*"] : []),
       ...(fromHelloOrigin ? [fromHelloOrigin] : []),
       ...(openReplayOrigin ? [openReplayOrigin] : []),
+      ...(metaPixelId ? ["https://www.facebook.com"] : []),
     ],
     "frame-src": [
       "'self'",

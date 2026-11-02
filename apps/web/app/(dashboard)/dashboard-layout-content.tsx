@@ -7,6 +7,7 @@ import { getMessages } from "next-intl/server";
 import { SwRegister } from "@/components/dashboard/sw-register";
 import { FromHelloProvider } from "@/components/fromhello-provider";
 import { GleapProvider } from "@/components/dashboard/gleap-provider";
+import { MetaSignedUpEvent } from "@/components/dashboard/meta-signed-up-event";
 import { OpenReplayProvider } from "@/components/openreplay-provider";
 import { PostHogProvider } from "@/components/posthog-provider";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -91,6 +92,7 @@ export const DashboardLayoutContent = async ({ children }: { children: React.Rea
                   : undefined
               }
             />
+            {store?.onboardingCompleted && <MetaSignedUpEvent />}
             <GleapProvider
               user={
                 session.user?.id && session.user?.email

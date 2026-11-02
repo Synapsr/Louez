@@ -24,6 +24,8 @@ All notable changes to Louez are documented here.
 
 - **Passkey migration** — Migration `0079_passkeys` adds the passkey table and widens `verification.value` to `text`, preserving existing data. Docker installations apply it at startup. Keep `AUTH_URL` aligned with the public management origin and use HTTPS (localhost is supported for development); no new environment variable is required. See the [deployment and security notes](docs/architecture/passkeys.md).
 
+- **Optional Meta pixel event** — Set `NEXT_PUBLIC_META_PIXEL_ID` to send one `fh_signed_up` custom event from the dashboard, per browser every 30 days, for stores that finished onboarding. It sends nothing else, never loads on storefronts, and nothing changes when the variable is empty.
+
 ---
 
 ## [2.3.1] - October 14, 2026
