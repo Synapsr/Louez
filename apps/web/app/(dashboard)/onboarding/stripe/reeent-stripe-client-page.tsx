@@ -22,7 +22,7 @@ export const ReeentStripeClientPage = () => {
   const router = useRouter();
   const t = useTranslations("onboarding.stripe");
   const tCommon = useTranslations("common");
-  const { form, isPending } = useStripeStep();
+  const { form, isPending, isNavigating } = useStripeStep();
   const { startStripeConnect, isConnecting, hasPendingAccount } = useStripeConnectStart({
     fromReeent: true,
   });
@@ -70,7 +70,12 @@ export const ReeentStripeClientPage = () => {
                 {t(hasPendingAccount ? "panel.payment.resumeNow" : "panel.payment.configureNow")}
               </Button>
             </div>
-            <form.SubscribeButton variant="ghost" className="w-full" disabled={isConnecting}>
+            <form.SubscribeButton
+              variant="ghost"
+              className="w-full"
+              disabled={isConnecting}
+              isPending={isNavigating}
+            >
               {t("reeent.later")}
             </form.SubscribeButton>
             <p className="text-muted-foreground text-xs leading-relaxed">{t("reeent.laterNote")}</p>

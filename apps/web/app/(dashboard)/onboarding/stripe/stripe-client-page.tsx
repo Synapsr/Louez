@@ -18,7 +18,7 @@ export function OnboardingStripeClientPage() {
   const router = useRouter();
   const t = useTranslations("onboarding.stripe");
   const tCommon = useTranslations("common");
-  const { form, reservationMode, isPending } = useStripeStep();
+  const { form, reservationMode, isPending, isNavigating } = useStripeStep();
 
   return (
     <>
@@ -82,7 +82,9 @@ export function OnboardingStripeClientPage() {
             >
               {tCommon("back")}
             </Button>
-            <form.SubscribeButton className="flex-1">{tCommon("confirm")}</form.SubscribeButton>
+            <form.SubscribeButton className="flex-1" isPending={isNavigating}>
+              {tCommon("confirm")}
+            </form.SubscribeButton>
           </div>
         </form.Form>
       </form.AppForm>

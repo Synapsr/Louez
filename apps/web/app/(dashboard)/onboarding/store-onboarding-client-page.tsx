@@ -44,8 +44,15 @@ export function StoreOnboardingClientPage({
   const router = useRouter();
   const t = useTranslations("onboarding.store");
   const tCommon = useTranslations("common");
-  const { form, clearSlugSubmitError, handleCountrySelection, country, latitude, longitude } =
-    useStoreStep({ editingStoreId, initialCountry, shouldDetectBrowserCountry });
+  const {
+    form,
+    clearSlugSubmitError,
+    handleCountrySelection,
+    country,
+    latitude,
+    longitude,
+    isNavigating,
+  } = useStoreStep({ editingStoreId, initialCountry, shouldDetectBrowserCountry });
 
   const { NEXT_PUBLIC_APP_DOMAIN: domain } = usePublicEnv();
   const canSwitchAccount = Boolean(currentStoreId && stores.length > 0);
@@ -171,12 +178,15 @@ export function StoreOnboardingClientPage({
               <Button
                 type="button"
                 variant="ghost"
+                disabled={isNavigating}
                 onClick={() => router.push("/onboarding/profile")}
               >
                 {tCommon("back")}
               </Button>
             )}
-            <form.SubscribeButton className="flex-1">{tCommon("next")}</form.SubscribeButton>
+            <form.SubscribeButton className="flex-1" isPending={isNavigating}>
+              {tCommon("next")}
+            </form.SubscribeButton>
           </div>
         </form.Form>
       </form.AppForm>

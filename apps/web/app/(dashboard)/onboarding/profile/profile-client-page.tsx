@@ -66,7 +66,13 @@ export function ProfileClientPage({
   const t = useTranslations("onboarding.profile");
   const tCommon = useTranslations("common");
 
-  const { form, handleImageSelected, handleImageRemove, isUploading } = useProfileStep({
+  const {
+    form,
+    handleImageSelected,
+    handleImageRemove,
+    isUploading,
+    isNavigating,
+  } = useProfileStep({
     initialName,
     initialImage,
     initialBusinessType,
@@ -179,7 +185,9 @@ export function ProfileClientPage({
             )}
           </form.AppField>
 
-          <form.SubscribeButton className="mt-2 w-full">{tCommon("next")}</form.SubscribeButton>
+          <form.SubscribeButton className="mt-2 w-full" isPending={isNavigating}>
+            {tCommon("next")}
+          </form.SubscribeButton>
         </form.Form>
       </form.AppForm>
     </>

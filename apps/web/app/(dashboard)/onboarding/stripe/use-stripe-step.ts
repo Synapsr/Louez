@@ -2,8 +2,6 @@
 
 import { useEffect } from "react";
 
-import { useRouter } from "next/navigation";
-
 import { useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -20,14 +18,15 @@ import { useOnboardingPreview } from "../_lib/preview-context";
 import { getNextOnboardingPath } from "../_lib/steps";
 import { useOnboardingSteps } from "../_lib/steps-context";
 import { useDraftPreview } from "../_lib/use-draft-preview";
+import { useStepNavigation } from "../_lib/use-step-navigation";
 
 export const useStripeStep = () => {
-  const router = useRouter();
   const t = useTranslations("onboarding.stripe");
   const showError = useOnboardingErrorToast();
   const { updatePreview } = useOnboardingPreview();
   // The source step when this flow has it.
   const nextPath = getNextOnboardingPath(useOnboardingSteps(), "/onboarding/stripe");
+  const { goToNextStep, isNavigating } = useStepNavigation(nextPath);
 
   const completeOnboardingMutation = useMutation(
     orpc.dashboard.onboarding.complete.mutationOptions(),
@@ -48,7 +47,7 @@ export const useStripeStep = () => {
         toastManager.add({ title: t("configComplete"), type: "success" });
         // Signal the welcome animation via sessionStorage (more reliable than URL params)
         sessionStorage.setItem("louez-show-welcome", "1");
-        router.push(nextPath);
+        goToNextStep();
       } catch (error) {
         showError(error);
       }
@@ -64,6 +63,7 @@ export const useStripeStep = () => {
   return {
     form,
     reservationMode,
-    isPending: completeOnboardingMutation.isPending,
+    isNavigating,
+    isPending: completeOnboardingMutation.isPending || isNavigating,
   };
 };

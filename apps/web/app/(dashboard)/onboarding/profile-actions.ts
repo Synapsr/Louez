@@ -15,6 +15,9 @@ import { persistSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { auth } from "@/lib/auth";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+
+import { sendAfterResponse } from "./_lib/send-after-response";
+
 const updateUserProfileSchema = profileSchema.extend({
   // undefined = keep the current image, null = remove it, string = uploaded URL.
   imageUrl: z.string().url().nullable().optional(),
@@ -53,21 +56,23 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
     })
     .where(eq(users.id, session.user.id));
 
-  await captureProductServerEvent({
-    distinctId: session.user.id,
-    event: productAnalyticsEvents.onboardingProfileCompleted,
-    properties: {
-      business_type: parsed.data.businessType,
-      product_category: parsed.data.productCategory,
-      fleet_size: parsed.data.fleetSize,
-      avatar_action: imageUrl === undefined ? "kept" : imageUrl ? "uploaded" : "removed",
-      $set: {
-        ...(parsed.data.businessType ? { business_type: parsed.data.businessType } : {}),
-        ...(parsed.data.productCategory ? { product_category: parsed.data.productCategory } : {}),
-        ...(parsed.data.fleetSize ? { fleet_size: parsed.data.fleetSize } : {}),
+  sendAfterResponse(() =>
+    captureProductServerEvent({
+      distinctId: session.user.id,
+      event: productAnalyticsEvents.onboardingProfileCompleted,
+      properties: {
+        business_type: parsed.data.businessType,
+        product_category: parsed.data.productCategory,
+        fleet_size: parsed.data.fleetSize,
+        avatar_action: imageUrl === undefined ? "kept" : imageUrl ? "uploaded" : "removed",
+        $set: {
+          ...(parsed.data.businessType ? { business_type: parsed.data.businessType } : {}),
+          ...(parsed.data.productCategory ? { product_category: parsed.data.productCategory } : {}),
+          ...(parsed.data.fleetSize ? { fleet_size: parsed.data.fleetSize } : {}),
+        },
       },
-    },
-  });
+    }),
+  );
 
   return { success: true as const, imageUrl };
 }
@@ -107,29 +112,33 @@ export async function saveAcquisitionChannel(input: AcquisitionInput) {
     .where(eq(users.id, session.user.id));
 
   if (parsed.data.channel !== "skipped") {
-    await captureProductServerEvent({
-      distinctId: session.user.id,
-      event: productAnalyticsEvents.acquisitionChannelReported,
-      properties: {
-        acquisition_channel: parsed.data.channel,
-        acquisition_channel_other: other,
-        $set: {
+    sendAfterResponse(() =>
+      captureProductServerEvent({
+        distinctId: session.user.id,
+        event: productAnalyticsEvents.acquisitionChannelReported,
+        properties: {
           acquisition_channel: parsed.data.channel,
+          acquisition_channel_other: other,
+          $set: {
+            acquisition_channel: parsed.data.channel,
+          },
         },
-      },
-    });
+      }),
+    );
   } else {
     // A dedicated event (rather than acquisition_channel_reported with
     // channel=skipped) keeps the channel breakdowns clean while still
     // closing the funnel for users who skip the question.
-    await captureProductServerEvent({
-      distinctId: session.user.id,
-      event: productAnalyticsEvents.onboardingSourceSkipped,
-      properties: {
-        feature: "onboarding",
-        surface: "dashboard",
-      },
-    });
+    sendAfterResponse(() =>
+      captureProductServerEvent({
+        distinctId: session.user.id,
+        event: productAnalyticsEvents.onboardingSourceSkipped,
+        properties: {
+          feature: "onboarding",
+          surface: "dashboard",
+        },
+      }),
+    );
   }
 
   return { success: true as const };

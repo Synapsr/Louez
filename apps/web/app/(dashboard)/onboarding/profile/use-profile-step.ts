@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
-import { useRouter } from "next/navigation";
-
 import { revalidateLogic, useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -21,6 +19,7 @@ import { useImageUpload } from "@/hooks/use-image-upload";
 
 import { useOnboardingErrorToast } from "../_lib/onboarding-error-toast";
 import { useOnboardingPreview } from "../_lib/preview-context";
+import { useStepNavigation } from "../_lib/use-step-navigation";
 import { updateUserProfile } from "../profile-actions";
 
 interface ProfileFormValues {
@@ -47,7 +46,7 @@ export const useProfileStep = ({
   initialProductCategory,
   initialFleetSize,
 }: UseProfileStepParams) => {
-  const router = useRouter();
+  const { goToNextStep, isNavigating } = useStepNavigation("/onboarding");
   const tValidation = useTranslations("validation");
   const showError = useOnboardingErrorToast();
   const { updatePreview } = useOnboardingPreview();
@@ -130,7 +129,7 @@ export const useProfileStep = ({
     onSubmit: async ({ value }) => {
       try {
         await mutation.mutateAsync(value);
-        router.push("/onboarding");
+        goToNextStep();
       } catch (error) {
         showError(error);
       }
@@ -165,5 +164,6 @@ export const useProfileStep = ({
     handleImageSelected,
     handleImageRemove,
     isUploading,
+    isNavigating,
   };
 };
