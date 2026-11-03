@@ -1,7 +1,6 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { after } from "next/server";
 
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
@@ -29,6 +28,8 @@ import { referralCookieDomain, referralCookieSecure } from "@/lib/referral/link"
 import { getActiveStoreId, setActiveStoreId, verifyStoreAccess } from "@/lib/store-context";
 import { getTimezoneForCountry } from "@/lib/utils/countries";
 import { generateReferralCode, isValidReferralCode } from "@/lib/utils/referral";
+
+import { sendAfterResponse } from "./_lib/send-after-response";
 
 type ReferralAttributionOutcome =
   | "no_cookie"
@@ -350,7 +351,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       ) {
         await grantReferredStoreWelcomeReward(storeToUpdate.id);
         const { referredByStoreId } = pendingReferral.attribution;
-        after(() =>
+        sendAfterResponse(() =>
           trackReferredRewardGranted({
             userId: session.user.id,
             storeId: storeToUpdate.id,
@@ -361,7 +362,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       }
       await consumeReferralCookie(pendingReferral.referralCookie);
 
-      after(() =>
+      sendAfterResponse(() =>
         trackReferralAttributionResolved({
           userId: session.user.id,
           storeId: storeToUpdate.id,
@@ -503,7 +504,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       });
     }
 
-    after(() =>
+    sendAfterResponse(() =>
       trackReferralAttributionResolved({
         userId: session.user.id,
         storeId: newStore.id,
@@ -519,7 +520,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
 
     if (pendingReferral.attribution && newStore.legacyBilled) {
       const { referredByStoreId: referrerStoreId } = pendingReferral.attribution;
-      after(() =>
+      sendAfterResponse(() =>
         trackReferredRewardGranted({
           userId: session.user.id,
           storeId: newStore.id,
@@ -538,7 +539,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
   }
 
   if (analyticsStoreId) {
-    after(() =>
+    sendAfterResponse(() =>
       captureProductServerEvent({
         distinctId: session.user.id,
         event: productAnalyticsEvents.onboardingStoreInfoSaved,
