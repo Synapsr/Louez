@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useRouter } from "next/navigation";
-
 import { useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
@@ -28,6 +26,7 @@ import { useImageUpload } from "@/hooks/use-image-upload";
 import { useOnboardingErrorToast } from "../_lib/onboarding-error-toast";
 import { useOnboardingPreview } from "../_lib/preview-context";
 import { useOnboardingDraft } from "../_lib/use-onboarding-draft";
+import { useStepNavigation } from "../_lib/use-step-navigation";
 
 const HEX_COLOR_PATTERN = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
@@ -38,7 +37,7 @@ const DEFAULT_BRANDING_VALUES: BrandingInput = {
 };
 
 export const useBrandingStep = () => {
-  const router = useRouter();
+  const { goToNextStep, isNavigating } = useStepNavigation("/onboarding/stripe");
   const tValidation = useTranslations("validation");
   const showError = useOnboardingErrorToast();
   const posthog = usePostHog();
@@ -103,7 +102,7 @@ export const useBrandingStep = () => {
           void deleteImage(previousLogoUrl).catch(() => undefined);
         }
 
-        router.push("/onboarding/stripe");
+        goToNextStep();
       } catch (error) {
         if (uploadedKey) {
           void deleteImage(uploadedKey).catch(() => undefined);
@@ -188,6 +187,7 @@ export const useBrandingStep = () => {
     handleLogoSelected,
     handleLogoRemove,
     isUploading,
-    isBusy: updateBrandingMutation.isPending || isUploading,
+    isNavigating,
+    isBusy: updateBrandingMutation.isPending || isUploading || isNavigating,
   };
 };

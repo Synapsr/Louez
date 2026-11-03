@@ -36,8 +36,15 @@ export function BrandingClientPage() {
   const router = useRouter();
   const t = useTranslations("onboarding.branding");
   const tCommon = useTranslations("common");
-  const { form, logoPreviewUrl, handleLogoSelected, handleLogoRemove, isUploading, isBusy } =
-    useBrandingStep();
+  const {
+    form,
+    logoPreviewUrl,
+    handleLogoSelected,
+    handleLogoRemove,
+    isUploading,
+    isBusy,
+    isNavigating,
+  } = useBrandingStep();
 
   return (
     <>
@@ -150,7 +157,7 @@ export function BrandingClientPage() {
             >
               {tCommon("back")}
             </Button>
-            <form.SubscribeButton className="flex-1" disabled={isBusy}>
+            <form.SubscribeButton className="flex-1" disabled={isBusy} isPending={isNavigating}>
               {tCommon("next")}
             </form.SubscribeButton>
           </div>

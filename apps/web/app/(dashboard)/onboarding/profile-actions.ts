@@ -1,5 +1,7 @@
 "use server";
 
+import { after } from "next/server";
+
 import { eq, sql } from "drizzle-orm";
 
 import { db, users } from "@louez/db";
@@ -53,21 +55,23 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
     })
     .where(eq(users.id, session.user.id));
 
-  await captureProductServerEvent({
-    distinctId: session.user.id,
-    event: productAnalyticsEvents.onboardingProfileCompleted,
-    properties: {
-      business_type: parsed.data.businessType,
-      product_category: parsed.data.productCategory,
-      fleet_size: parsed.data.fleetSize,
-      avatar_action: imageUrl === undefined ? "kept" : imageUrl ? "uploaded" : "removed",
-      $set: {
-        ...(parsed.data.businessType ? { business_type: parsed.data.businessType } : {}),
-        ...(parsed.data.productCategory ? { product_category: parsed.data.productCategory } : {}),
-        ...(parsed.data.fleetSize ? { fleet_size: parsed.data.fleetSize } : {}),
+  after(() =>
+    captureProductServerEvent({
+      distinctId: session.user.id,
+      event: productAnalyticsEvents.onboardingProfileCompleted,
+      properties: {
+        business_type: parsed.data.businessType,
+        product_category: parsed.data.productCategory,
+        fleet_size: parsed.data.fleetSize,
+        avatar_action: imageUrl === undefined ? "kept" : imageUrl ? "uploaded" : "removed",
+        $set: {
+          ...(parsed.data.businessType ? { business_type: parsed.data.businessType } : {}),
+          ...(parsed.data.productCategory ? { product_category: parsed.data.productCategory } : {}),
+          ...(parsed.data.fleetSize ? { fleet_size: parsed.data.fleetSize } : {}),
+        },
       },
-    },
-  });
+    }),
+  );
 
   return { success: true as const, imageUrl };
 }
@@ -107,29 +111,33 @@ export async function saveAcquisitionChannel(input: AcquisitionInput) {
     .where(eq(users.id, session.user.id));
 
   if (parsed.data.channel !== "skipped") {
-    await captureProductServerEvent({
-      distinctId: session.user.id,
-      event: productAnalyticsEvents.acquisitionChannelReported,
-      properties: {
-        acquisition_channel: parsed.data.channel,
-        acquisition_channel_other: other,
-        $set: {
+    after(() =>
+      captureProductServerEvent({
+        distinctId: session.user.id,
+        event: productAnalyticsEvents.acquisitionChannelReported,
+        properties: {
           acquisition_channel: parsed.data.channel,
+          acquisition_channel_other: other,
+          $set: {
+            acquisition_channel: parsed.data.channel,
+          },
         },
-      },
-    });
+      }),
+    );
   } else {
     // A dedicated event (rather than acquisition_channel_reported with
     // channel=skipped) keeps the channel breakdowns clean while still
     // closing the funnel for users who skip the question.
-    await captureProductServerEvent({
-      distinctId: session.user.id,
-      event: productAnalyticsEvents.onboardingSourceSkipped,
-      properties: {
-        feature: "onboarding",
-        surface: "dashboard",
-      },
-    });
+    after(() =>
+      captureProductServerEvent({
+        distinctId: session.user.id,
+        event: productAnalyticsEvents.onboardingSourceSkipped,
+        properties: {
+          feature: "onboarding",
+          surface: "dashboard",
+        },
+      }),
+    );
   }
 
   return { success: true as const };

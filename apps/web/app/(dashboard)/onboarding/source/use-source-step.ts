@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { revalidateLogic, useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ import {
 import { useAppForm } from "@/hooks/form/form";
 
 import { useOnboardingErrorToast } from "../_lib/onboarding-error-toast";
+import { useStepNavigation } from "../_lib/use-step-navigation";
 import { saveAcquisitionChannel } from "../profile-actions";
 
 // Form-shaped schema: the channel starts empty until the user picks one
@@ -24,8 +25,10 @@ const sourceFormSchema = z.object({
 });
 
 export const useSourceStep = () => {
-  const router = useRouter();
+  const { goToNextStep, isNavigating } = useStepNavigation("/dashboard");
   const showError = useOnboardingErrorToast();
+  // Both actions lead to the dashboard: this tells which button shows the wait.
+  const [lastAction, setLastAction] = useState<"finish" | "skip">("finish");
 
   const mutation = useMutation({
     mutationFn: async (value: AcquisitionInput) => {
@@ -49,12 +52,13 @@ export const useSourceStep = () => {
     validators: { onSubmit: sourceFormSchema },
     onSubmit: async ({ value }) => {
       if (!value.channel) return;
+      setLastAction("finish");
       try {
         await mutation.mutateAsync({
           channel: value.channel,
           other: value.other,
         });
-        router.push("/dashboard");
+        goToNextStep();
       } catch (error) {
         showError(error);
       }
@@ -64,13 +68,24 @@ export const useSourceStep = () => {
   const channel = useStore(form.store, (s) => s.values.channel);
 
   const handleSkip = async () => {
+    setLastAction("skip");
     try {
       await mutation.mutateAsync({ channel: "skipped", other: "" });
     } catch {
       // Skipping must never block the user from reaching the dashboard.
     }
-    router.push("/dashboard");
+    goToNextStep();
   };
 
-  return { form, channel, handleSkip, isPending: mutation.isPending };
+  // Derived from the work in flight, so nothing stays pending once it ends,
+  // including when the page is shown again from the history.
+  const isPending = mutation.isPending || isNavigating;
+
+  return {
+    form,
+    channel,
+    handleSkip,
+    isPending,
+    isSkipping: isPending && lastAction === "skip",
+  };
 };

@@ -25,7 +25,7 @@ const CHANNEL_LABEL_KEY: Record<AcquisitionChannel, string> = {
 
 export function SourceClientPage() {
   const t = useTranslations("onboarding.source");
-  const { form, channel, handleSkip, isPending } = useSourceStep();
+  const { form, channel, handleSkip, isSkipping, isPending } = useSourceStep();
 
   return (
     <>
@@ -79,10 +79,15 @@ export function SourceClientPage() {
               className="text-muted-foreground"
               onClick={handleSkip}
               disabled={isPending}
+              isPending={isSkipping}
             >
               {t("skip")}
             </Button>
-            <form.SubscribeButton className="flex-1" disabled={!channel}>
+            <form.SubscribeButton
+              className="flex-1"
+              disabled={!channel || isPending}
+              isPending={isPending && !isSkipping}
+            >
               {t("finish")}
             </form.SubscribeButton>
           </div>

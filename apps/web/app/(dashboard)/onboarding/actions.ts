@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { after } from "next/server";
 
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
@@ -349,23 +349,28 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
         (await legacyBillingApplies(storeToUpdate.id, new Date()))
       ) {
         await grantReferredStoreWelcomeReward(storeToUpdate.id);
-        await trackReferredRewardGranted({
-          userId: session.user.id,
-          storeId: storeToUpdate.id,
-          referrerStoreId: pendingReferral.attribution.referredByStoreId,
-          currency: validated.data.currency,
-        });
+        const { referredByStoreId } = pendingReferral.attribution;
+        after(() =>
+          trackReferredRewardGranted({
+            userId: session.user.id,
+            storeId: storeToUpdate.id,
+            referrerStoreId: referredByStoreId,
+            currency: validated.data.currency,
+          }),
+        );
       }
       await consumeReferralCookie(pendingReferral.referralCookie);
 
-      await trackReferralAttributionResolved({
-        userId: session.user.id,
-        storeId: storeToUpdate.id,
-        pendingReferral,
-        isExistingIncompleteStore: true,
-        currency: validated.data.currency,
-        country: validated.data.country,
-      });
+      after(() =>
+        trackReferralAttributionResolved({
+          userId: session.user.id,
+          storeId: storeToUpdate.id,
+          pendingReferral,
+          isExistingIncompleteStore: true,
+          currency: validated.data.currency,
+          country: validated.data.country,
+        }),
+      );
     }
 
     analyticsStoreId = storeToUpdate.id;
@@ -498,25 +503,30 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       });
     }
 
-    await trackReferralAttributionResolved({
-      userId: session.user.id,
-      storeId: newStore.id,
-      pendingReferral,
-      isExistingIncompleteStore: false,
-      currency: validated.data.currency,
-      country: validated.data.country,
-    });
+    after(() =>
+      trackReferralAttributionResolved({
+        userId: session.user.id,
+        storeId: newStore.id,
+        pendingReferral,
+        isExistingIncompleteStore: false,
+        currency: validated.data.currency,
+        country: validated.data.country,
+      }),
+    );
 
     analyticsStoreId = newStore.id;
     analyticsReferralOutcome = pendingReferral.outcome;
 
     if (pendingReferral.attribution && newStore.legacyBilled) {
-      await trackReferredRewardGranted({
-        userId: session.user.id,
-        storeId: newStore.id,
-        referrerStoreId: pendingReferral.attribution.referredByStoreId,
-        currency: validated.data.currency,
-      });
+      const { referredByStoreId: referrerStoreId } = pendingReferral.attribution;
+      after(() =>
+        trackReferredRewardGranted({
+          userId: session.user.id,
+          storeId: newStore.id,
+          referrerStoreId,
+          currency: validated.data.currency,
+        }),
+      );
     }
 
     // Set as active store (will succeed since we just created ownership above)
@@ -528,27 +538,28 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
   }
 
   if (analyticsStoreId) {
-    await captureProductServerEvent({
-      distinctId: session.user.id,
-      event: productAnalyticsEvents.onboardingStoreInfoSaved,
-      properties: {
-        feature: "onboarding",
-        surface: "dashboard",
-        store_id: analyticsStoreId,
-        is_existing_incomplete_store: analyticsIsExistingIncompleteStore,
-        referral_outcome: analyticsReferralOutcome,
-        country: validated.data.country,
-        currency: validated.data.currency,
-        has_address: Boolean(validated.data.address),
-        has_coordinates: Boolean(
-          validated.data.latitude != null && validated.data.longitude != null,
-        ),
-        has_email: Boolean(validated.data.email),
-        has_phone: Boolean(validated.data.phone),
-      },
-    });
+    after(() =>
+      captureProductServerEvent({
+        distinctId: session.user.id,
+        event: productAnalyticsEvents.onboardingStoreInfoSaved,
+        properties: {
+          feature: "onboarding",
+          surface: "dashboard",
+          store_id: analyticsStoreId,
+          is_existing_incomplete_store: analyticsIsExistingIncompleteStore,
+          referral_outcome: analyticsReferralOutcome,
+          country: validated.data.country,
+          currency: validated.data.currency,
+          has_address: Boolean(validated.data.address),
+          has_coordinates: Boolean(
+            validated.data.latitude != null && validated.data.longitude != null,
+          ),
+          has_email: Boolean(validated.data.email),
+          has_phone: Boolean(validated.data.phone),
+        },
+      }),
+    );
   }
 
-  revalidatePath("/onboarding");
   return { success: true };
 }

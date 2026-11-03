@@ -2,8 +2,6 @@
 
 import { useEffect, useRef } from "react";
 
-import { useRouter } from "next/navigation";
-
 import { revalidateLogic, useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -23,6 +21,7 @@ import { useAppForm } from "@/hooks/form/form";
 import { useOnboardingErrorToast } from "./_lib/onboarding-error-toast";
 import { useOnboardingPreview } from "./_lib/preview-context";
 import { useOnboardingDraft } from "./_lib/use-onboarding-draft";
+import { useStepNavigation } from "./_lib/use-step-navigation";
 import { createStore } from "./actions";
 
 interface UseStoreStepParams {
@@ -36,7 +35,7 @@ export const useStoreStep = ({
   initialCountry,
   shouldDetectBrowserCountry,
 }: UseStoreStepParams) => {
-  const router = useRouter();
+  const { goToNextStep, isNavigating } = useStepNavigation("/onboarding/branding");
   const tErrors = useTranslations("errors");
   const tValidation = useTranslations("validation");
   const showError = useOnboardingErrorToast();
@@ -96,7 +95,7 @@ export const useStoreStep = ({
     onSubmit: async ({ value }) => {
       try {
         await mutation.mutateAsync(value);
-        router.push("/onboarding/branding");
+        goToNextStep();
       } catch (error) {
         if (error instanceof Error && error.message === "errors.unauthenticated") {
           window.location.replace(createLoginUrl("/onboarding"));
@@ -209,5 +208,6 @@ export const useStoreStep = ({
     country: formValues.country,
     latitude: formValues.latitude,
     longitude: formValues.longitude,
+    isNavigating,
   };
 };
