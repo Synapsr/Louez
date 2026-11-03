@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `dismissed_notices` json;

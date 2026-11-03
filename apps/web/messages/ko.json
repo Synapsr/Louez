@@ -6170,7 +6170,8 @@
           "memberTitle": "재회 평생 제안 - 재회 커미션 0 €",
           "memberRank": "회원번호 출시 코호트의 {rank}",
           "incentiveBadge": "출시 제안",
-          "incentiveLine": "{remaining} 자리는 평생 동안 0€ 재수수료로 남습니다."
+          "incentiveLine": "{remaining} 자리는 평생 동안 0€ 재수수료로 남습니다.",
+          "dismiss": "숨기기"
         }
       },
       "extensions": {

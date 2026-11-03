@@ -6171,7 +6171,8 @@
           "memberTitle": "Oferta reeent vitalícia — 0 € de comissão reeent",
           "memberRank": "Membro n.º {rank} da coorte de lançamento",
           "incentiveBadge": "Oferta de lançamento",
-          "incentiveLine": "ainda {remaining} lugares com 0 € de comissão reeent vitalícia"
+          "incentiveLine": "ainda {remaining} lugares com 0 € de comissão reeent vitalícia",
+          "dismiss": "Ocultar"
         }
       },
       "extensions": {

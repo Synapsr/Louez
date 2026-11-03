@@ -6171,7 +6171,8 @@
           "memberTitle": "Oferta reeent na zawsze — 0 € prowizji reeent",
           "memberRank": "Członek nr {rank} kohorty startowej",
           "incentiveBadge": "Oferta startowa",
-          "incentiveLine": "jeszcze {remaining} miejsc z 0 € prowizji reeent na zawsze"
+          "incentiveLine": "jeszcze {remaining} miejsc z 0 € prowizji reeent na zawsze",
+          "dismiss": "Ukryj"
         }
       },
       "extensions": {

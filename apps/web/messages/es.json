@@ -6171,7 +6171,8 @@
           "memberTitle": "Oferta reeent de por vida — 0 € de comisión reeent",
           "memberRank": "Miembro n.º {rank} de la cohorte de lanzamiento",
           "incentiveBadge": "Oferta de lanzamiento",
-          "incentiveLine": "quedan {remaining} plazas con 0 € de comisión reeent de por vida"
+          "incentiveLine": "quedan {remaining} plazas con 0 € de comisión reeent de por vida",
+          "dismiss": "Ocultar"
         }
       },
       "extensions": {

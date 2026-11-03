@@ -6170,7 +6170,8 @@
           "memberTitle": "penawaran seumur hidup yang nyata — 0 € komisi yang nyata",
           "memberRank": "Nomor anggota. {rank} dari kelompok peluncuran",
           "incentiveBadge": "Peluncuran penawaran",
-          "incentiveLine": "Tempat {remaining} tersisa dengan komisi 0 € seumur hidup"
+          "incentiveLine": "Tempat {remaining} tersisa dengan komisi 0 € seumur hidup",
+          "dismiss": "Sembunyikan"
         }
       },
       "extensions": {

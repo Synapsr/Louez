@@ -6171,7 +6171,8 @@
           "memberTitle": "reeent lifetime offer — 0 € reeent commission",
           "memberRank": "Member no. {rank} of the launch cohort",
           "incentiveBadge": "Launch offer",
-          "incentiveLine": "{remaining} spots left with 0 € reeent commission for life"
+          "incentiveLine": "{remaining} spots left with 0 € reeent commission for life",
+          "dismiss": "Hide"
         }
       },
       "extensions": {

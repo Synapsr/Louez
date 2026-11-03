@@ -6171,7 +6171,8 @@
           "memberTitle": "reeent-aanbieding voor het leven — 0 € reeent-commissie",
           "memberRank": "Lid nr. {rank} van de lanceercohort",
           "incentiveBadge": "Lanceeraanbieding",
-          "incentiveLine": "nog {remaining} plaatsen met 0 € reeent-commissie voor het leven"
+          "incentiveLine": "nog {remaining} plaatsen met 0 € reeent-commissie voor het leven",
+          "dismiss": "Verbergen"
         }
       },
       "extensions": {

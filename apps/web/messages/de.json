@@ -6171,7 +6171,8 @@
           "memberTitle": "reeent-Angebot auf Lebenszeit — 0 € reeent-Provision",
           "memberRank": "Mitglied Nr. {rank} der Startkohorte",
           "incentiveBadge": "Startangebot",
-          "incentiveLine": "noch {remaining} Plätze mit 0 € reeent-Provision auf Lebenszeit"
+          "incentiveLine": "noch {remaining} Plätze mit 0 € reeent-Provision auf Lebenszeit",
+          "dismiss": "Ausblenden"
         }
       },
       "extensions": {

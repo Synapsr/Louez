@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { env } from "@/env";
 import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
-import { db } from "@louez/db";
+import { db, users } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
 import { reservations } from "@louez/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
@@ -9,6 +9,7 @@ import { getStoreMetrics, determineStoreState, getTimeOfDay } from "@/lib/dashbo
 import { getIntendedReservationMode, isStripeChargeable } from "@/lib/reservation-mode";
 import type { OnlinePaymentsStep } from "@/components/dashboard/home";
 import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
+import { parseDismissedNotices, type DismissibleNoticeId } from "@/lib/dashboard/dismissed-notices";
 import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
 import {
   DashboardAlert,
@@ -118,6 +119,7 @@ interface DashboardContentProps {
   /** The store signed up from the reeent consumer marketplace (ADR 010). */
   isFromReeent: boolean;
   hasStripeAccount: boolean;
+  dismissedNoticeIds: DismissibleNoticeId[];
 }
 
 async function DashboardContent({
@@ -127,6 +129,7 @@ async function DashboardContent({
   onlinePaymentsStep,
   isFromReeent,
   hasStripeAccount,
+  dismissedNoticeIds,
 }: DashboardContentProps) {
   // Fetch all data in parallel
   const [metrics, departures, returns, pending, channelState, cohort] = await Promise.all([
@@ -171,6 +174,7 @@ async function DashboardContent({
           lifetimeFeeWaiverAt={lifetimeFeeWaiverAt}
           cohortRank={channelState.channel?.cohortRank ?? null}
           remaining={cohort.remaining}
+          dismissedNoticeIds={dismissedNoticeIds}
         />
       )}
 
@@ -214,6 +218,12 @@ export default async function DashboardHomePage() {
 
   const session = await auth();
   const firstName = session?.user?.name?.split(" ")[0] || "";
+  const userRow = session?.user?.id
+    ? await db.query.users.findFirst({
+        columns: { dismissedNotices: true },
+        where: eq(users.id, session.user.id),
+      })
+    : undefined;
 
   // Stores that want online payments get a checklist step tracking the
   // Stripe KYC left pending during onboarding (payment mode silently degrades
@@ -233,6 +243,7 @@ export default async function DashboardHomePage() {
       onlinePaymentsStep={onlinePaymentsStep}
       isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
       hasStripeAccount={store.stripeAccountId !== null}
+      dismissedNoticeIds={parseDismissedNotices(userRow?.dismissedNotices)}
     />
   );
 }

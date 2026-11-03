@@ -6171,7 +6171,8 @@
           "memberTitle": "Offerta reeent a vita — 0 € di commissione reeent",
           "memberRank": "Membro n° {rank} della coorte di lancio",
           "incentiveBadge": "Offerta di lancio",
-          "incentiveLine": "ancora {remaining} posti con 0 € di commissione reeent a vita"
+          "incentiveLine": "ancora {remaining} posti con 0 € di commissione reeent a vita",
+          "dismiss": "Nascondi"
         }
       },
       "extensions": {

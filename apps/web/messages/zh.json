@@ -6170,7 +6170,8 @@
           "memberTitle": "重新终身优惠 — 0 € 重新佣金",
           "memberRank": "会员号发布队列中的 {rank}",
           "incentiveBadge": "推出优惠",
-          "incentiveLine": "{remaining} 终身可享受 0 欧元佣金"
+          "incentiveLine": "{remaining} 终身可享受 0 欧元佣金",
+          "dismiss": "隐藏"
         }
       },
       "extensions": {

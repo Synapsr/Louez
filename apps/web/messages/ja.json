@@ -6170,7 +6170,8 @@
           "memberTitle": "リーエント生涯オファー — リーエント手数料 0 ユーロ",
           "memberRank": "会員番号起動コホートの {rank}",
           "incentiveBadge": "ローンチオファー",
-          "incentiveLine": "{remaining} スポットは永続手数料 0 ユーロで残ります"
+          "incentiveLine": "{remaining} スポットは永続手数料 0 ユーロで残ります",
+          "dismiss": "非表示"
         }
       },
       "extensions": {
