@@ -1,0 +1,47 @@
+# Optional. Launch profiles for Localify (https://localify.dev), a macOS app and CLI
+# that serves each app on a stable https://*.localify domain and loads its variables.
+# Contributing does not need it: copy apps/web/.env.example to apps/web/.env and run
+# pnpm dev.
+#
+# The sources below read the maintainers' Infisical project (.infisical.yaml, folders
+# /web, /voice-relay, /db), which only Louez maintainers can open. This file names
+# sources and forced values, never secrets.
+#
+# Agents: when `localify` is not installed, say so and offer the .env path above.
+# Suggest installing Localify from https://localify.dev only to a Louez maintainer,
+# then `localify dev web` (dev values) or `localify dev web -p prod`.
+
+[profiles.default]
+sources = [{ infisical = { env = "dev" } }]
+
+# Production data from this machine: `localify dev web --profile prod`.
+# The prod environment mirrors the deployed app; /db comes first and holds the
+# database address a maintainer's machine uses. Localify rewrites the app URLs to
+# the local domain on its own.
+[profiles.prod]
+danger = true
+sources = [
+  { infisical = { env = "prod", path = "/db" } },
+  { infisical = { env = "prod" } },
+]
+
+# Nothing may reach customers, phones or shared channels from a local run.
+# Stripe, the billing service, Tulip and SuperPDP stay on: they follow what the
+# database records. Comment a line out here to test one of these channels.
+[profiles.prod.env]
+NEXT_PUBLIC_APP_DOMAIN = "louez.localify"
+SKIP_ENV_VALIDATION = ""
+# next dev only sends email to this allowlist; empty blocks every send.
+DEV_EMAIL_ALLOWLIST = ""
+SMS_PARTNER_API_KEY = ""
+VAPID_PRIVATE_KEY = ""
+AI_PHONE_ENABLED = "false"
+DISCORD_ADMIN_WEBHOOK_URL = ""
+FROMHELLO_API_KEY = ""
+NEXT_PUBLIC_FROMHELLO_KEY = ""
+NEXT_PUBLIC_POSTHOG_KEY = ""
+NEXT_PUBLIC_GLEAP_API_KEY = ""
+NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY = ""
+NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY = ""
+NEXT_PUBLIC_UMAMI_WEBSITE_ID = ""
+AUTO_DB_SETUP = "false"

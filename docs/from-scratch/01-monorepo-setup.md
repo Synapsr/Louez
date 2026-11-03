@@ -86,10 +86,31 @@ All internal packages use the `@louez/` scope:
 
 ## Environment variables
 
-- `.env` at the root, loaded by the app framework (Next.js, Vite, etc.)
-- Never commit `.env` — use `.env.example` as a template
+- `.env` in the app folder (`apps/web/.env`), loaded by the app framework (Next.js, Vite, etc.)
+- Never commit `.env` — use the app's `.env.example` as a template
 - Server-only variables have no prefix
 - Client variables use the framework's prefix (`NEXT_PUBLIC_`, `VITE_`, etc.)
+
+### Maintainers: Infisical through Localify
+
+Louez maintainers keep no `.env` file. They run the apps through
+[Localify](https://localify.dev), a macOS app and CLI, which reads the values from the
+Infisical project linked by `.infisical.yaml`: one folder per unit (`/web`,
+`/voice-relay`, `/db`), with the same keys in `dev` and `prod`. `prod` mirrors the
+deployed app; deployed production still reads its variables from Easypanel.
+
+```bash
+localify dev web                                  # dev values
+localify dev web --profile prod                   # production data, side effects off (localify.toml)
+cd packages/db && localify exec -- pnpm db:studio # any command that is not a service
+```
+
+- When code starts reading a new variable, add it to the unit's `.env.example` and to both
+  Infisical environments, with an empty value where it does not apply.
+- `localify.toml` forces the values that keep a local run on production data from reaching
+  customers. Add a line there for any new outbound channel.
+- Contributors without access keep using a plain `.env` per app: the code only reads
+  `process.env`.
 
 ### Env validation — decentralized per-package
 

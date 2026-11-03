@@ -28,14 +28,11 @@ yarn-error.log*
 .evlog/
 
 # Local env files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*
 
-# Keep .env.example
+# Keep the variable lists
 !.env.example
+!.env.schema
 
 # Build Outputs
 .next/
