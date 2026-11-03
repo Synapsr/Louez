@@ -11,8 +11,14 @@ import { log } from "@/lib/evlog";
 // Default: 24 hours, configurable via env
 const CACHE_TTL_HOURS = env.GOOGLE_PLACES_CACHE_TTL_HOURS ?? 24;
 
-const toErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
+/**
+ * drizzle's query error carries only the SQL and its parameters in `message`;
+ * the driver's reason (duplicate key, packet too large...) is its `cause`.
+ */
+const toErrorMessage = (error: unknown): string => {
+  if (!(error instanceof Error)) return String(error);
+  return error.cause instanceof Error ? error.cause.message : error.message;
+};
 
 /**
  * Fetch an image and convert to base64
@@ -49,45 +55,45 @@ async function processReviewsWithPhotos(reviews: GoogleReview[]): Promise<Google
 }
 
 /**
+ * Writes one place's cache row. An upsert on the unique `place_id`: two
+ * requests that both found no row (a storefront's first visitors arrive
+ * together) both write, and the second one updates instead of failing.
+ * Keyed on the id the store asked for, the one every read looks up, even if
+ * Google answers with a newer id for the same place.
+ */
+async function writeCache(
+  placeId: string,
+  details: PlaceDetails,
+  reviews: GoogleReview[],
+): Promise<void> {
+  const now = new Date();
+  const values = {
+    name: details.name,
+    address: details.address,
+    rating: details.rating?.toString() || null,
+    reviewCount: details.reviewCount,
+    reviews,
+    mapsUrl: details.mapsUrl,
+    fetchedAt: now,
+    expiresAt: new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000),
+  };
+
+  await db
+    .insert(googlePlacesCache)
+    .values({ placeId, ...values })
+    .onDuplicateKeyUpdate({ set: values });
+}
+
+/**
  * Refresh cache in background (fire and forget)
  * This function does not block - it updates the cache asynchronously
  */
-async function refreshCacheInBackground(placeId: string, existingCache: boolean): Promise<void> {
+async function refreshCacheInBackground(placeId: string): Promise<void> {
   try {
     const fresh = await getPlaceDetails(placeId);
     if (!fresh) return;
 
-    const reviewsWithPhotos = await processReviewsWithPhotos(fresh.reviews);
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000);
-
-    if (existingCache) {
-      await db
-        .update(googlePlacesCache)
-        .set({
-          name: fresh.name,
-          address: fresh.address,
-          rating: fresh.rating?.toString() || null,
-          reviewCount: fresh.reviewCount,
-          reviews: reviewsWithPhotos,
-          mapsUrl: fresh.mapsUrl,
-          fetchedAt: now,
-          expiresAt,
-        })
-        .where(eq(googlePlacesCache.placeId, placeId));
-    } else {
-      await db.insert(googlePlacesCache).values({
-        placeId: fresh.placeId,
-        name: fresh.name,
-        address: fresh.address,
-        rating: fresh.rating?.toString() || null,
-        reviewCount: fresh.reviewCount,
-        reviews: reviewsWithPhotos,
-        mapsUrl: fresh.mapsUrl,
-        fetchedAt: now,
-        expiresAt,
-      });
-    }
+    await writeCache(placeId, fresh, await processReviewsWithPhotos(fresh.reviews));
   } catch (error) {
     log.error("google-places", `background refresh failed: ${toErrorMessage(error)}`);
   }
@@ -120,7 +126,7 @@ export const getCachedPlaceDetails = cache(
       // This implements "stale-while-revalidate" pattern
       if (cached) {
         // Trigger background refresh (fire and forget - don't await)
-        refreshCacheInBackground(placeId, true).catch(() => {});
+        refreshCacheInBackground(placeId).catch(() => {});
         // Return stale data immediately
         return transformCacheToDetails(cached);
       }
@@ -135,19 +141,8 @@ export const getCachedPlaceDetails = cache(
       const reviewsWithPhotos = await processReviewsWithPhotos(fresh.reviews);
 
       // Save to cache (best effort; storefront rendering should not depend on this write)
-      const expiresAt = new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000);
       try {
-        await db.insert(googlePlacesCache).values({
-          placeId: fresh.placeId,
-          name: fresh.name,
-          address: fresh.address,
-          rating: fresh.rating?.toString() || null,
-          reviewCount: fresh.reviewCount,
-          reviews: reviewsWithPhotos,
-          mapsUrl: fresh.mapsUrl,
-          fetchedAt: now,
-          expiresAt,
-        });
+        await writeCache(placeId, fresh, reviewsWithPhotos);
       } catch (cacheWriteError) {
         log.error("google-places", `cache write failed: ${toErrorMessage(cacheWriteError)}`);
       }
@@ -234,48 +229,15 @@ export async function refreshAllStoresCache(): Promise<{
           continue;
         }
 
-        const reviewsWithPhotos = await processReviewsWithPhotos(fresh.reviews);
-        const now = new Date();
-        const expiresAt = new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000);
-
-        // Check if cache exists
-        const existing = await db.query.googlePlacesCache.findFirst({
-          where: eq(googlePlacesCache.placeId, settings.googlePlaceId),
-        });
-
-        if (existing) {
-          await db
-            .update(googlePlacesCache)
-            .set({
-              name: fresh.name,
-              address: fresh.address,
-              rating: fresh.rating?.toString() || null,
-              reviewCount: fresh.reviewCount,
-              reviews: reviewsWithPhotos,
-              mapsUrl: fresh.mapsUrl,
-              fetchedAt: now,
-              expiresAt,
-            })
-            .where(eq(googlePlacesCache.placeId, settings.googlePlaceId));
-        } else {
-          await db.insert(googlePlacesCache).values({
-            placeId: fresh.placeId,
-            name: fresh.name,
-            address: fresh.address,
-            rating: fresh.rating?.toString() || null,
-            reviewCount: fresh.reviewCount,
-            reviews: reviewsWithPhotos,
-            mapsUrl: fresh.mapsUrl,
-            fetchedAt: now,
-            expiresAt,
-          });
-        }
+        await writeCache(
+          settings.googlePlaceId,
+          fresh,
+          await processReviewsWithPhotos(fresh.reviews),
+        );
 
         result.refreshed++;
       } catch (error) {
-        result.errors.push(
-          `Store ${store.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
+        result.errors.push(`Store ${store.id}: ${toErrorMessage(error)}`);
       }
     }
   } catch (error) {
