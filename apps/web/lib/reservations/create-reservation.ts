@@ -1016,9 +1016,9 @@ const writeReservation = async (
     ) {
       await saveCheckoutItemDetails(tx, {
         storeId: store.id,
-        reservationId: resumable.id,
+        reservationId: resumed.id,
         itemIdByLine: matchPendingCheckoutItems(
-          resumable.items,
+          resumed.items,
           itemValues.slice(0, request.items.length),
         ),
         itemDetails: checkoutFields.itemDetails,
