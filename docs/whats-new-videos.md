@@ -285,6 +285,7 @@ Le message est « c'est court » : la vidéo doit l'être.
 **À préparer** — [ ] une boutique réglée sur la France, pour que les suggestions soient pertinentes, [ ] un client avec un vrai historique de réservations (sinon les stats affichent des zéros), [ ] un numéro de pièce **fictif** mais crédible, jamais un vrai, [ ] aucun modèle adopté au départ, sinon les boutons affichent déjà « Ajouté ».
 
 **Pièges**
+
 - ⌘K ne cherche dans les champs qu'à partir de 3 caractères, et depuis le début de la valeur : taper le numéro depuis son premier caractère.
 - La recherche est limitée à 5 champs par boutique. En cas de répétition, archiver les champs de la prise précédente.
 
@@ -305,6 +306,7 @@ Le message est « plus besoin d'attendre le code » : la connexion par mot de pa
 **À préparer** — [ ] un compte de démo dont la boîte mail peut apparaître à l'écran, [ ] une instance qui envoie vraiment les e-mails (après déploiement de #61, ou une instance de dev avec SMTP), [ ] un mot de passe jetable, puisqu'il apparaît en clair au plan 2, [ ] **le gestionnaire de mots de passe du navigateur désactivé** : ses fenêtres de suggestion et d'enregistrement cassent chaque plan.
 
 **Pièges**
+
 - Les tentatives sont limitées par minute : 5 essais de mot de passe, 3 envois de code, 3 changements de mot de passe. Entre deux prises, laisser passer une minute.
 - Définir ou modifier un mot de passe déconnecte les autres appareils. Ne pas tourner avec une autre session ouverte dont on a besoin.
 
