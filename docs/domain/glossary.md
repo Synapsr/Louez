@@ -57,7 +57,7 @@ Who hosts an instance (`LOUEZ_HOSTED_BY`): unset when the operator hosts it, `lu
 _Avoid_: cloud mode, platform mode
 
 **Offer for new Stores**:
-The pay-as-you-go pricing (`PAYG_DEFAULT_PRICING`) and free-reservation allowance (`PAYG_FREE_RESERVATIONS`) written onto a Store's subscription when the Store is created, with Platform billing on. A Store then pays what its own subscription says, so changing the offer never reprices it.
+The built-in pay-as-you-go ladder and free-reservation allowance (`PAYG_FREE_RESERVATIONS`) written onto a Store's subscription when Louez's own billing creates the Store, with Platform billing on. A Store then pays what its own subscription says, so changing the offer never reprices it.
 _Avoid_: default pricing, platform default
 
 **Pricing version**:

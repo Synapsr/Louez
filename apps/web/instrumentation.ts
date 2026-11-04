@@ -15,21 +15,14 @@ export async function register() {
       .then(({ reportBillingModeAtStartup }) => reportBillingModeAtStartup())
       .catch(() => undefined);
 
-    // With platform billing, refuse to start without the hosting identity, on a malformed
-    // offer for new stores or, with the billing service, on a wrong BILLING_* variable,
-    // like a failed migration (the checks log why). Not during `next build`, which has no
-    // runtime secrets.
+    // With platform billing, refuse to start without the hosting identity or, with the
+    // billing service, on a wrong BILLING_* variable, like a failed migration (the checks
+    // log why). Not during `next build`, which has no runtime secrets.
     if (process.env.NEXT_PHASE !== 'phase-production-build') {
-      const {
-        checkBillingSyncConfigAtStartup,
-        checkHostingAtStartup,
-        checkPayAsYouGoOfferAtStartup,
-      } = await import('./lib/billing/startup-check');
-      const checks = [
-        checkHostingAtStartup(),
-        checkPayAsYouGoOfferAtStartup(),
-        checkBillingSyncConfigAtStartup(),
-      ];
+      const { checkBillingSyncConfigAtStartup, checkHostingAtStartup } = await import(
+        './lib/billing/startup-check'
+      );
+      const checks = [checkHostingAtStartup(), checkBillingSyncConfigAtStartup()];
       if (checks.includes(false)) process.exit(1);
     }
 

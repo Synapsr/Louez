@@ -326,20 +326,11 @@ export const env = createEnv({
     FROMHELLO_API_KEY: z.string().optional(),
 
     // ===== Pay-as-you-go offer for new stores (LOUEZ_BILLING=cloud only) =====
-    // PAYG_DEFAULT_PRICING and PAYG_FREE_RESERVATIONS are written onto a NEW store's
-    // subscription row when the store is created, and only when platform billing is on
-    // (LOUEZ_BILLING=cloud). Existing stores pay what their own row says, so changing them
-    // only affects stores created afterwards.
-    // PAYG_DEFAULT_PRICING: JSON per-rental pricing. Omitted/empty → the built-in ladder.
-    // Read as a plain string here; with LOUEZ_BILLING=cloud the server refuses to start
-    // when it is malformed (lib/billing/startup-check.ts), so a bad offer fails the deploy
-    // instead of silently mispricing. A self-hosted instance never reads it. Examples:
-    //   {"flatRateCents":25}                                  → 0.25€ per rental, flat
-    //   {"tiers":[{"upToCount":50,"priceCents":25},{"upToCount":null,"priceCents":100}]}
-    // PAYG_FREE_RESERVATIONS: free reservations gifted at creation (the welcome
-    // allowance). While credits remain, a rental's pay-as-you-go commission is waived.
-    // Editable per store in admin. Default 15.
-    PAYG_DEFAULT_PRICING: z.string().optional(),
+    // PAYG_FREE_RESERVATIONS is written onto a NEW store's subscription row when Louez's
+    // own billing creates it, with the built-in per-rental ladder. Existing stores pay
+    // what their own row says, so changing it only affects stores created afterwards.
+    // It is the welcome allowance: while credits remain, a rental's pay-as-you-go
+    // commission is waived. Editable per store in admin. Default 15.
     PAYG_FREE_RESERVATIONS: z.coerce.number().int().min(0).max(100_000).default(15),
 
     // First stores published on reeent receive a lifetime marketplace-fee waiver.
@@ -512,7 +503,6 @@ export const env = createEnv({
     BILLING_NEW_STORES_FROM: process.env.BILLING_NEW_STORES_FROM,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
-    PAYG_DEFAULT_PRICING: process.env.PAYG_DEFAULT_PRICING,
     PAYG_FREE_RESERVATIONS: process.env.PAYG_FREE_RESERVATIONS,
     REEENT_LAUNCH_COHORT_SIZE: process.env.REEENT_LAUNCH_COHORT_SIZE,
     MARKETPLACE_DEFAULT_PUBLICATION_ENABLED: process.env.MARKETPLACE_DEFAULT_PUBLICATION_ENABLED,

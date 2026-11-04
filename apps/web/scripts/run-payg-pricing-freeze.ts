@@ -18,7 +18,7 @@
  * Usage:
  *   MIGRATE_DATABASE_URL="mysql://user:pass@host:port/db" \
  *     pnpm payg:freeze-pricing -- \
- *     --pricing='<PAYG_DEFAULT_PRICING json>'|builtin --free-reservations=15 \
+ *     --pricing='<offer json>'|builtin --free-reservations=15 \
  *     [--apply] [--accept-mismatch] [--report=freeze-report.json]
  */
 import { accessSync, constants, writeFileSync } from "node:fs";

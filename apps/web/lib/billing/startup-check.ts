@@ -3,9 +3,8 @@ import { isBillingSyncEnabled, readBillingSyncConfig } from '@/lib/billing-sync/
 import { isStandaloneMode } from '@/lib/deployment';
 import { log } from '@/lib/evlog';
 import { describeHostingMisconfiguration } from '@/lib/hosting';
-import { parsePayAsYouGoConfig } from '@/lib/pay-as-you-go/config';
 
-import { describeBillingMisconfiguration, getRawBillingSetting, isBillingEnabled } from './mode';
+import { describeBillingMisconfiguration, getRawBillingSetting } from './mode';
 
 type StartupLogger = { error(tag: string, message: string): void };
 
@@ -36,24 +35,6 @@ export function checkHostingAtStartup(
   if (!problem) return true;
   logger.error('billing', problem.message);
   return !problem.stop;
-}
-
-/**
- * Server-start check of the offer for new stores. With LOUEZ_BILLING=cloud, a set but
- * malformed PAYG_DEFAULT_PRICING is logged and the start is refused: new stores would
- * otherwise get the built-in ladder. A self-hosted instance never reads it.
- */
-export function checkPayAsYouGoOfferAtStartup(
-  logger: StartupLogger = log,
-  rawPricing: string | undefined = env.PAYG_DEFAULT_PRICING,
-): boolean {
-  if (!isBillingEnabled() || !rawPricing?.trim()) return true;
-  if (parsePayAsYouGoConfig(rawPricing)) return true;
-  logger.error(
-    'billing',
-    'PAYG_DEFAULT_PRICING is not a valid pay-as-you-go config (JSON with flatRateCents or tiers), stopping',
-  );
-  return false;
 }
 
 /**

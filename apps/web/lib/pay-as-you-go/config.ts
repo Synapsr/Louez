@@ -4,8 +4,8 @@ import type { PayAsYouGoConfig, PayAsYouGoTier } from '@louez/types';
 
 /**
  * Canonical validation for a pay-as-you-go pricing config. Shared by the admin
- * settings action and the `PAYG_DEFAULT_PRICING` env var so the same rules apply
- * wherever a config enters the system. All fields are optional — omitted tiers fall
+ * settings action and the pricing scripts so the same rules apply wherever a config
+ * enters the system. All fields are optional — omitted tiers fall
  * back to the frozen `BUILT_IN_PAY_AS_YOU_GO_TIERS` in `resolvePayAsYouGoConfig`.
  */
 export const payAsYouGoTierSchema = z.object({
@@ -44,9 +44,7 @@ export const payAsYouGoConfigSchema = z
 
 /**
  * Resolve a pay-as-you-go config from a parsed object or a raw JSON string, or null when
- * it is empty or malformed. env.ts hands PAYG_DEFAULT_PRICING over as the raw string and
- * parsing happens here; with LOUEZ_BILLING=cloud a malformed value stops the server at
- * start (lib/billing/startup-check.ts).
+ * it is empty or malformed.
  */
 export function parsePayAsYouGoConfig(raw: unknown): PayAsYouGoConfig | null {
   if (raw === null || raw === undefined || raw === '') return null;
@@ -77,10 +75,9 @@ export function parsePayAsYouGoConfig(raw: unknown): PayAsYouGoConfig | null {
  */
 
 /**
- * The built-in per-rental ladder (1€ / 0,80€ / 0,50€): the offer for new stores when
- * PAYG_DEFAULT_PRICING is empty, and the tiers a config without tiers resolves to.
- * Frozen: stores priced on it depend on these exact numbers. Never edit it; a new offer
- * for new stores gets its own constant or goes in PAYG_DEFAULT_PRICING.
+ * The built-in per-rental ladder (1€ / 0,80€ / 0,50€): the offer for new stores, and
+ * the tiers a config without tiers resolves to. Frozen: stores priced on it depend on
+ * these exact numbers. Never edit it; a new offer for new stores gets its own constant.
  */
 export const BUILT_IN_PAY_AS_YOU_GO_TIERS: PayAsYouGoTier[] = [
   { upToCount: 50, priceCents: 100 }, // 1€ for the first 50 rentals/month

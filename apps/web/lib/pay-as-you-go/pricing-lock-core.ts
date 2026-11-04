@@ -4,16 +4,15 @@ import {
   DEFAULT_PAY_AS_YOU_GO_CURRENCY,
   BUILT_IN_PAY_AS_YOU_GO_TIERS,
   type ResolvedPayAsYouGoConfig,
-  parsePayAsYouGoConfig,
   resolvePayAsYouGoConfig,
 } from './config';
 
 /**
  * Pricing lock: each store keeps the pricing frozen on its own subscription row.
  *
- * The offer for new stores (PAYG_DEFAULT_PRICING, PAYG_FREE_RESERVATIONS) is read only
- * when a store is created. Before this lock, a store with no stored config followed that
- * env value live; the pricing freeze copies what such a store was paying onto its row,
+ * The offer for new stores (the built-in ladder, PAYG_FREE_RESERVATIONS) is read only
+ * when a store is created. Before this lock, a store with no stored config followed the
+ * env offer live; the pricing freeze copies what such a store was paying onto its row,
  * once. Pure module: no env, no database.
  */
 
@@ -73,15 +72,6 @@ export function normalizeCurrency(currency: string | null | undefined): string {
 }
 
 /**
- * The per-rental offer configured by the env (PAYG_DEFAULT_PRICING), or the built-in
- * ladder when it is empty or malformed. env.ts hands over the raw JSON string, parsed
- * here (the cloud start-up check refuses a malformed one: lib/billing/startup-check.ts).
- */
-export function resolveEnvPayAsYouGoOffer(rawPricing: unknown): PayAsYouGoConfig {
-  return parsePayAsYouGoConfig(rawPricing) ?? LEGACY_PAY_AS_YOU_GO_CONFIG;
-}
-
-/**
  * The free-reservation count configured by the env (PAYG_FREE_RESERVATIONS). A raw string
  * or undefined (SKIP_ENV_VALIDATION) is coerced; anything unusable gives the schema default.
  */
@@ -115,18 +105,17 @@ export interface SubscriptionPricingValues {
   freeReservationsGranted: number;
 }
 
-/** The pricing a NEW store gets: the env offer, frozen on its row at creation. */
+/**
+ * The pricing a NEW store gets: the built-in ladder and the env's free reservations,
+ * frozen on its row at creation.
+ */
 export function buildNewStorePricing(input: {
-  rawPricing: unknown;
   rawFreeReservations: unknown;
   currency: string;
 }): SubscriptionPricingValues {
   return {
     pricingVersion: PAYG_LADDER_V1,
-    payAsYouGoConfig: buildFrozenPayAsYouGoConfig(
-      resolveEnvPayAsYouGoOffer(input.rawPricing),
-      input.currency,
-    ),
+    payAsYouGoConfig: buildFrozenPayAsYouGoConfig(LEGACY_PAY_AS_YOU_GO_CONFIG, input.currency),
     freeReservationsGranted: resolveEnvFreeReservations(input.rawFreeReservations),
   };
 }

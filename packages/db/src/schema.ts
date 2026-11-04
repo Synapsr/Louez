@@ -232,7 +232,7 @@ export const subscriptions = mysqlTable(
       .notNull(),
 
     // The store's own pay-as-you-go pricing, frozen when the store is created. Changing
-    // the offer for new stores (PAYG_DEFAULT_PRICING) never touches it. Null only on
+    // the offer for new stores never touches it. Null only on
     // legacy rows that the pricing freeze has not reached yet.
     payAsYouGoConfig: json("pay_as_you_go_config").$type<PayAsYouGoConfig>(),
 
