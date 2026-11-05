@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { env } from "@/env";
 import { PRODUCT_IMAGE_FRAMING_MODES, type ProductImageFramingMode } from "@/lib/ai/image/framing";
+import type { BackgroundRemovalMethod } from "@/lib/ai/image/process-product-image";
 import {
   getImageEnhanceCredits,
   type ImageEnhanceCostSource,
@@ -83,7 +84,9 @@ const manifestSchema = z.object({
     aiModel: z.string().nullable(),
     aiQuality: z.string().nullable(),
     framingMode: z.enum(PRODUCT_IMAGE_FRAMING_MODES).nullable().optional(),
-    backgroundRemovalMethod: z.enum(["chroma-key", "semantic-fallback", "semantic"]).optional(),
+    backgroundRemovalMethod: z
+      .enum(["chroma-key", "semantic-fallback", "semantic", "native-transparent"])
+      .optional(),
     backgroundRemovalModel: z.string(),
   }),
   benchmark: z
@@ -123,7 +126,9 @@ interface PersistImageProcessingDebugRunInput {
   storeId: string;
   operation: z.infer<typeof operationSchema>;
   framingMode: ProductImageFramingMode | null;
-  backgroundRemovalMethod: "chroma-key" | "semantic-fallback" | "semantic";
+  backgroundRemovalMethod: BackgroundRemovalMethod;
+  /** GPT Image model that ran, null for a plain background removal. */
+  aiModel: string | null;
   createdAt: Date;
   sourceKey: string;
   outputKey: string;
@@ -307,7 +312,7 @@ export async function persistImageProcessingDebugRun(
       outputKey: input.outputKey,
       totalDurationMs: Math.max(0, Math.round(input.totalDurationMs)),
       configuration: {
-        aiModel: input.operation === "enhance" ? env.AI_IMAGE_MODEL?.trim() || "gpt-image-2" : null,
+        aiModel: input.aiModel,
         aiQuality: input.operation === "enhance" ? (env.AI_IMAGE_QUALITY ?? "medium") : null,
         framingMode: input.operation === "enhance" ? input.framingMode : null,
         backgroundRemovalMethod: input.backgroundRemovalMethod,

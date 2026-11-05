@@ -292,7 +292,7 @@ export const env = createEnv({
     // background-removal service above is configured. The dedicated key takes
     // precedence over AI_API_KEY when AI_PROVIDER === 'openai'.
     AI_IMAGE_OPENAI_API_KEY: z.string().optional(),
-    // Image-edit model (defaults to gpt-image-2). Overrides must support the
+    // Image-edit model (defaults to gpt-image-2.6-sunburst). Overrides must support the
     // flexible 1600x1200 size and opaque output contract.
     AI_IMAGE_MODEL: z.string().optional(),
     // Render quality asked of GPT Image. Higher = slower and more expensive.
@@ -304,7 +304,7 @@ export const env = createEnv({
     // step). Defaults to 0 = free, so metering it is an explicit operator
     // decision rather than an accident of the shared credit layer.
     AI_IMAGE_BG_REMOVAL_CREDITS: z.coerce.number().min(0).default(0),
-    // GPT Image token prices in USD per 1M tokens. Defaults match GPT Image 2
+    // GPT Image token prices in USD per 1M tokens. Defaults match GPT Image 2.6
     // standard pricing; override all three when using another model or tariff.
     AI_IMAGE_TEXT_INPUT_USD_PER_MTOK: z.coerce.number().min(0).default(5),
     AI_IMAGE_INPUT_USD_PER_MTOK: z.coerce.number().min(0).default(8),

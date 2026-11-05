@@ -6,7 +6,10 @@ import { useState } from "react";
 import { Button, Checkbox, toastManager } from "@louez/ui";
 import { cn } from "@louez/utils";
 
-import { IMAGE_PROCESSING_BENCHMARK_FILTER } from "@/lib/ai/image/benchmark-fixtures";
+import {
+  IMAGE_PROCESSING_BENCHMARK_FILTER,
+  IMAGE_PROCESSING_BENCHMARK_VARIANTS,
+} from "@/lib/ai/image/benchmark-fixtures";
 
 interface BenchmarkCase {
   id: string;
@@ -27,8 +30,33 @@ export const ImageProcessingBenchmarkButton = ({ cases }: ImageProcessingBenchma
   const router = useRouter();
   const [state, setState] = useState<BenchmarkState>({ status: "idle" });
   const [enabledCaseIds, setEnabledCaseIds] = useState(() => new Set(cases.map(({ id }) => id)));
+  const [enabledVariantIds, setEnabledVariantIds] = useState(
+    () =>
+      new Set<string>(
+        IMAGE_PROCESSING_BENCHMARK_VARIANTS.filter((variant) => variant.selectedByDefault).map(
+          ({ id }) => id,
+        ),
+      ),
+  );
   const selectedCases = cases.filter(({ id }) => enabledCaseIds.has(id));
+  const selectedVariants = IMAGE_PROCESSING_BENCHMARK_VARIANTS.filter(({ id }) =>
+    enabledVariantIds.has(id),
+  );
+  // Image by image, every selected variant in a row, so results compare side by side.
+  const runs = selectedCases.flatMap((benchmarkCase) =>
+    selectedVariants.map((variant) => ({ benchmarkCase, variant })),
+  );
   const isRunning = state.status === "running";
+
+  const setVariantEnabled = (variantId: string, enabled: boolean) => {
+    if (isRunning) return;
+    setEnabledVariantIds((current) => {
+      const next = new Set(current);
+      if (enabled) next.add(variantId);
+      else next.delete(variantId);
+      return next;
+    });
+  };
 
   const setCaseEnabled = (caseId: string, enabled: boolean) => {
     if (isRunning) return;
@@ -41,15 +69,16 @@ export const ImageProcessingBenchmarkButton = ({ cases }: ImageProcessingBenchma
   };
 
   const runBenchmark = async () => {
-    if (isRunning || selectedCases.length === 0) return;
+    if (isRunning || runs.length === 0) return;
 
     const suiteId = crypto.randomUUID();
-    for (const [index, benchmarkCase] of selectedCases.entries()) {
+    for (const [index, { benchmarkCase, variant }] of runs.entries()) {
+      const runLabel = `${benchmarkCase.label} · ${variant.label}`;
       setState({
         status: "running",
         current: index + 1,
-        total: selectedCases.length,
-        label: benchmarkCase.label,
+        total: runs.length,
+        label: runLabel,
       });
 
       let response: Response;
@@ -60,13 +89,14 @@ export const ImageProcessingBenchmarkButton = ({ cases }: ImageProcessingBenchma
           body: JSON.stringify({
             suiteId,
             fixtureId: benchmarkCase.id,
-            suiteSize: selectedCases.length,
+            variantId: variant.id,
+            suiteSize: runs.length,
           }),
         });
       } catch {
         setState({ status: "idle" });
         toastManager.add({
-          title: `Suite interrompue sur « ${benchmarkCase.label} »`,
+          title: `Suite interrompue sur « ${runLabel} »`,
           description:
             "La requête réseau n’a pas abouti. Les tests déjà terminés restent visibles.",
           type: "error",
@@ -80,7 +110,7 @@ export const ImageProcessingBenchmarkButton = ({ cases }: ImageProcessingBenchma
       if (!response.ok) {
         setState({ status: "idle" });
         toastManager.add({
-          title: `Suite interrompue sur « ${benchmarkCase.label} »`,
+          title: `Suite interrompue sur « ${runLabel} »`,
           description: `Le serveur a répondu avec le statut ${response.status}. Les tests déjà terminés restent visibles.`,
           type: "error",
         });
@@ -94,7 +124,7 @@ export const ImageProcessingBenchmarkButton = ({ cases }: ImageProcessingBenchma
     setState({ status: "idle" });
     toastManager.add({
       title: "Suite de test terminée",
-      description: `${selectedCases.length} cas ont exécuté le flow IA complet.`,
+      description: `${runs.length} générations ont exécuté le flow IA complet.`,
       type: "success",
     });
     router.push(
@@ -107,7 +137,9 @@ export const ImageProcessingBenchmarkButton = ({ cases }: ImageProcessingBenchma
       ? `Test ${state.current}/${state.total}`
       : selectedCases.length === 0
         ? "Sélectionnez une image"
-        : `Lancer ${selectedCases.length} test${selectedCases.length > 1 ? "s" : ""}`;
+        : selectedVariants.length === 0
+          ? "Sélectionnez un modèle"
+          : `Lancer ${runs.length} test${runs.length > 1 ? "s" : ""}`;
 
   return (
     <div className="space-y-4 rounded-xl border bg-card p-4 sm:p-5">
@@ -115,9 +147,9 @@ export const ImageProcessingBenchmarkButton = ({ cases }: ImageProcessingBenchma
         <div className="space-y-1">
           <h2 className="font-semibold">Suite de non-régression IA</h2>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Sélectionnez les images, puis exécutez séquentiellement GPT Image, le détourage et la
-            standardisation. Aucun crédit boutique n’est débité, mais chaque image activée déclenche
-            un appel OpenAI au coût réel.
+            Sélectionnez les images et les modèles, puis exécutez séquentiellement GPT Image, le
+            détourage et la standardisation. Aucun crédit boutique n’est débité, mais chaque
+            génération (image × modèle) déclenche un appel OpenAI au coût réel.
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
@@ -126,7 +158,7 @@ export const ImageProcessingBenchmarkButton = ({ cases }: ImageProcessingBenchma
             onClick={runBenchmark}
             isPending={isRunning}
             pendingContent={progressLabel}
-            disabled={selectedCases.length === 0}
+            disabled={runs.length === 0}
           >
             {progressLabel}
           </Button>
@@ -137,6 +169,37 @@ export const ImageProcessingBenchmarkButton = ({ cases }: ImageProcessingBenchma
           </p>
         </div>
       </div>
+
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Modèles à comparer</legend>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {IMAGE_PROCESSING_BENCHMARK_VARIANTS.map((variant) => (
+            <label
+              key={variant.id}
+              htmlFor={`benchmark-variant-${variant.id}`}
+              className={cn(
+                "flex items-start gap-2.5 rounded-lg border p-3 text-xs transition-[border-color,opacity]",
+                enabledVariantIds.has(variant.id) ? "border-primary/40" : "opacity-60",
+                isRunning ? "cursor-default" : "cursor-pointer",
+              )}
+            >
+              <Checkbox
+                id={`benchmark-variant-${variant.id}`}
+                checked={enabledVariantIds.has(variant.id)}
+                disabled={isRunning}
+                onCheckedChange={(checked) => setVariantEnabled(variant.id, checked === true)}
+              />
+              <span className="min-w-0">
+                <span className="block font-medium text-foreground">{variant.label}</span>
+                <span className="mt-0.5 block font-mono text-[11px] text-muted-foreground">
+                  {variant.model}
+                </span>
+                <span className="mt-1 block text-muted-foreground">{variant.description}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <div className="flex flex-wrap gap-1">
         <Button

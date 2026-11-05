@@ -100,6 +100,8 @@ interface UseProductImageEnhanceParams {
   enabled: boolean;
   backgroundRemovalEnabled: boolean;
   productId?: string;
+  /** Name typed in the form, so the AI knows which item to keep. */
+  productName?: string;
   imagesPreviews: string[];
   /**
    * Swaps an accepted enhanced object into form state. Returns `false` when the
@@ -167,13 +169,20 @@ async function requestProcessedImage(
   imageKey: string,
   imageUrl: string,
   productId: string | undefined,
+  productName: string | undefined,
   operation: ProductImageOperation,
   signal: AbortSignal,
 ): Promise<ProductImageEnhanceResponse> {
   const response = await fetch(ENHANCE_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ imageKey, imageUrl, productId, operation }),
+    body: JSON.stringify({
+      imageKey,
+      imageUrl,
+      productId,
+      productName: productName?.trim() || undefined,
+      operation,
+    }),
     // Aborting this also aborts the server's `request.signal`, which is what
     // stops the provider call and, above all, prevents the debit.
     signal,
@@ -191,6 +200,7 @@ export function useProductImageEnhance({
   enabled,
   backgroundRemovalEnabled,
   productId,
+  productName,
   imagesPreviews,
   replaceImage,
   keepGeneratedImage,
@@ -404,6 +414,7 @@ export function useProductImageEnhance({
               imageKey,
               imageUrl,
               productId,
+              productName,
               operation,
               controller.signal,
             );
@@ -515,6 +526,7 @@ export function useProductImageEnhance({
       getEnhanceErrorMessage,
       hasUsedCredits,
       productId,
+      productName,
       raiseCreditsAlert,
       refreshBalance,
       setImageStatus,

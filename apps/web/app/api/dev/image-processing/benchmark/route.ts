@@ -11,8 +11,10 @@ import { BackgroundRemovalError } from "@/lib/ai/image/background-removal";
 import {
   IMAGE_PROCESSING_BENCHMARK_CASES,
   IMAGE_PROCESSING_BENCHMARK_SCOPE_ID,
+  IMAGE_PROCESSING_BENCHMARK_VARIANTS,
   type ImageProcessingBenchmarkCase,
   getImageProcessingBenchmarkCase,
+  getImageProcessingBenchmarkVariant,
 } from "@/lib/ai/image/benchmark-fixtures";
 import { isAiImageEnhanceEnabled } from "@/lib/ai/image/credits";
 import {
@@ -34,7 +36,12 @@ export const maxDuration = 360;
 const requestSchema = z.object({
   suiteId: z.uuid(),
   fixtureId: z.string().min(1).max(80),
-  suiteSize: z.number().int().min(1).max(IMAGE_PROCESSING_BENCHMARK_CASES.length),
+  variantId: z.string().min(1).max(80),
+  suiteSize: z
+    .number()
+    .int()
+    .min(1)
+    .max(IMAGE_PROCESSING_BENCHMARK_CASES.length * IMAGE_PROCESSING_BENCHMARK_VARIANTS.length),
 });
 
 const supportedMimeTypes = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -143,6 +150,10 @@ const handlePost = async (request: Request) => {
   if (!fixture) {
     return NextResponse.json({ code: "unknown_fixture" }, { status: 404 });
   }
+  const variant = getImageProcessingBenchmarkVariant(parsed.data.variantId);
+  if (!variant) {
+    return NextResponse.json({ code: "unknown_variant" }, { status: 404 });
+  }
 
   let source: Buffer;
   let sourceKey: string;
@@ -170,6 +181,9 @@ const handlePost = async (request: Request) => {
       source,
       sourceMimeType,
       operation: "enhance",
+      productName: fixture.productName,
+      imageModel: variant.model,
+      nativeTransparency: variant.nativeTransparency,
       signal: request.signal,
     });
     if (processed.chromaFallbackReason) {
@@ -183,16 +197,17 @@ const handlePost = async (request: Request) => {
       operation: "enhance",
       framingMode: processed.standardized.resolvedFramingMode,
       backgroundRemovalMethod: processed.backgroundRemovalMethod,
+      aiModel: processed.imageModel,
       createdAt,
       sourceKey,
-      outputKey: `benchmark/${parsed.data.suiteId}/${fixture.id}-ai.webp`,
+      outputKey: `benchmark/${parsed.data.suiteId}/${fixture.id}-${variant.id}-ai.webp`,
       totalDurationMs: processed.totalDurationMs,
       stages: processed.stages,
       benchmark: {
         suiteId: parsed.data.suiteId,
         suiteSize: parsed.data.suiteSize,
         fixtureId: fixture.id,
-        fixtureLabel: fixture.label,
+        fixtureLabel: `${fixture.label} · ${variant.label}`,
       },
       economics: {
         chargedCredits: 0,
@@ -206,6 +221,7 @@ const handlePost = async (request: Request) => {
       runId,
       suiteId: parsed.data.suiteId,
       fixtureId: fixture.id,
+      variantId: variant.id,
       framingMode: processed.standardized.resolvedFramingMode,
     });
   } catch (error) {

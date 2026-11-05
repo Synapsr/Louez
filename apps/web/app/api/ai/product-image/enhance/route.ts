@@ -61,6 +61,7 @@ const requestSchema = z.object({
   imageKey: z.string().min(1).max(300),
   imageUrl: z.string().min(1).max(2_048).optional(),
   productId: z.string().length(21).optional(),
+  productName: z.string().trim().max(200).optional(),
   operation: z.enum(["enhance", "remove-background"]).default("enhance"),
 });
 
@@ -219,6 +220,7 @@ const handlePost = async (request: Request) => {
       source,
       sourceMimeType,
       operation,
+      productName: parsed.data.productName,
       signal: request.signal,
     });
     if (processed.chromaFallbackReason) {
@@ -310,6 +312,7 @@ const handlePost = async (request: Request) => {
       operation,
       framingMode: operation === "enhance" ? processed.standardized.resolvedFramingMode : null,
       backgroundRemovalMethod: processed.backgroundRemovalMethod,
+      aiModel: processed.imageModel,
       createdAt: new Date(processingStartedAt),
       sourceKey: imageSource.key,
       outputKey: key,

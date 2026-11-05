@@ -39,6 +39,7 @@ import {
 interface UseProductFormMediaParams {
   form: ProductFormComponentApi;
   productId?: string;
+  productName?: string;
   imagesPreviews: string[];
   imageHistory: ProductImageHistory[];
   imageEnhanceEnabled?: boolean;
@@ -124,6 +125,7 @@ const dataUrlToFile = (dataUrl: string, filename: string) => {
 export function useProductFormMedia({
   form,
   productId,
+  productName,
   imagesPreviews,
   imageHistory,
   imageEnhanceEnabled = false,
@@ -577,6 +579,7 @@ export function useProductFormMedia({
     enabled: imageEnhanceEnabled,
     backgroundRemovalEnabled: imageBackgroundRemovalEnabled,
     productId,
+    productName,
     imagesPreviews,
     replaceImage: replaceImageWithEnhanced,
     keepGeneratedImage: keepGeneratedImageInHistory,

@@ -35,7 +35,17 @@ const getAlphaBounds = async (input: Buffer) => {
   return { minX, minY, maxX, maxY, width: info.width, height: info.height };
 };
 
-const createProduct = ({ left, top }: { left: number; top: number }) =>
+const createProduct = ({
+  left,
+  top,
+  width = 200,
+  height = 150,
+}: {
+  left: number;
+  top: number;
+  width?: number;
+  height?: number;
+}) =>
   sharp({
     create: {
       width: 400,
@@ -48,8 +58,8 @@ const createProduct = ({ left, top }: { left: number; top: number }) =>
       {
         input: {
           create: {
-            width: 200,
-            height: 150,
+            width,
+            height,
             channels: 4,
             background: { r: 255, g: 0, b: 0, alpha: 1 },
           },
@@ -216,6 +226,25 @@ test("auto framing preserves a fully enclosed provider composition", async () =>
   assertApproximately(bounds.maxY, 89);
 });
 
+test("auto framing gives a small detached product the shared padding", async () => {
+  // 50x40 off-center in a 400x300 composition: fitted into the 100x60 box
+  // left by a 30px margin on every side.
+  const source = await createProduct({ left: 10, top: 20, width: 50, height: 40 });
+  const result = await standardizeProductImage(source, {
+    canvasWidth: 160,
+    canvasHeight: 120,
+    fillRatio: 0.5,
+    framingStrategy: "auto",
+  });
+  const bounds = await getAlphaBounds(result.buffer);
+
+  assert.equal(result.resolvedFramingMode, "recenter");
+  assertApproximately(bounds.minY, 30);
+  assertApproximately(bounds.maxY, 89);
+  assertApproximately(bounds.minX, 42);
+  assertApproximately(bounds.maxX, 117);
+});
+
 test("explicit recentering still trims and centers a detached product", async () => {
   const source = await createProduct({ left: 10, top: 20 });
   const result = await standardizeProductImage(source, {
@@ -231,4 +260,18 @@ test("explicit recentering still trims and centers a detached product", async ()
   assert.equal(bounds.maxX, 119);
   assert.equal(bounds.minY, 30);
   assert.equal(bounds.maxY, 89);
+});
+
+test("whole products of any shape get the same margin in pixels", async () => {
+  const wide = await createProduct({ left: 0, top: 100, width: 380, height: 60 });
+  const tall = await createProduct({ left: 150, top: 10, width: 60, height: 280 });
+  const options = { canvasWidth: 160, canvasHeight: 120, fillRatio: 0.5 } as const;
+  const wideBounds = await getAlphaBounds((await standardizeProductImage(wide, options)).buffer);
+  const tallBounds = await getAlphaBounds((await standardizeProductImage(tall, options)).buffer);
+
+  // The limiting side of each product sits 30px from the canvas edge.
+  assertApproximately(wideBounds.minX, 30);
+  assertApproximately(159 - wideBounds.maxX, 30);
+  assertApproximately(tallBounds.minY, 30);
+  assertApproximately(119 - tallBounds.maxY, 30);
 });

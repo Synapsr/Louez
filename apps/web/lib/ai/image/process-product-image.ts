@@ -13,12 +13,18 @@ export const PRODUCT_IMAGE_OPERATIONS = ["enhance", "remove-background"] as cons
 
 export type ProductImageOperation = (typeof PRODUCT_IMAGE_OPERATIONS)[number];
 export type ProductImageMimeType = "image/jpeg" | "image/png" | "image/webp";
-export type BackgroundRemovalMethod = "chroma-key" | "semantic-fallback" | "semantic";
+export type BackgroundRemovalMethod =
+  | "chroma-key"
+  | "semantic-fallback"
+  | "semantic"
+  | "native-transparent";
 
 export interface ProcessProductImageResult {
   standardized: StandardizedProductImage;
   stages: ImageProcessingDebugStageInput[];
   imageUsage: ImageTokenUsage | null;
+  /** GPT Image model that ran, null when no AI step ran. */
+  imageModel: string | null;
   backgroundRemovalMethod: BackgroundRemovalMethod;
   chromaFallbackReason: string | null;
   totalDurationMs: number;
@@ -32,6 +38,15 @@ export const processProductImage = async (input: {
   source: Buffer;
   sourceMimeType: ProductImageMimeType;
   operation: ProductImageOperation;
+  /** Name the merchant gave the item; tells the AI which object to keep. */
+  productName?: string;
+  /** Dev benchmark only: run another GPT Image model than the configured one. */
+  imageModel?: string;
+  /**
+   * Dev benchmark only: let GPT Image 2.6 render the transparent background
+   * itself instead of a chroma key that our own step removes.
+   */
+  nativeTransparency?: boolean;
   signal?: AbortSignal;
 }): Promise<ProcessProductImageResult> => {
   const processingStartedAt = Date.now();
@@ -44,21 +59,47 @@ export const processProductImage = async (input: {
     },
   ];
   let imageUsage: ImageTokenUsage | null = null;
+  let imageModel: string | null = null;
   let backgroundRemovalMethod: BackgroundRemovalMethod = "semantic";
   let chromaFallbackReason: string | null = null;
   let isolated: Buffer;
   let backgroundRemovalStartedAt: number;
 
-  if (input.operation === "enhance") {
+  if (input.operation === "enhance" && input.nativeTransparency) {
+    const aiStartedAt = Date.now();
+    const enhanced = await enhanceProductImage({
+      buffer: input.source,
+      mimeType: input.sourceMimeType,
+      backdrop: { kind: "transparent" },
+      productName: input.productName,
+      model: input.imageModel,
+      signal: input.signal,
+    });
+    imageUsage = enhanced.usage;
+    imageModel = enhanced.model;
+    stages.push({
+      id: "ai-enhanced",
+      label: "Après GPT Image (fond transparent natif)",
+      buffer: enhanced.buffer,
+      contentType: "image/png",
+      durationMs: Date.now() - aiStartedAt,
+    });
+    backgroundRemovalStartedAt = Date.now();
+    isolated = enhanced.buffer;
+    backgroundRemovalMethod = "native-transparent";
+  } else if (input.operation === "enhance") {
     const chromaColor = await selectChromaKeyColor(input.source);
     const aiStartedAt = Date.now();
     const enhanced = await enhanceProductImage({
       buffer: input.source,
       mimeType: input.sourceMimeType,
-      chromaColor,
+      backdrop: { kind: "chroma-key", color: chromaColor },
+      productName: input.productName,
+      model: input.imageModel,
       signal: input.signal,
     });
     imageUsage = enhanced.usage;
+    imageModel = enhanced.model;
     stages.push({
       id: "ai-enhanced",
       label: "Après GPT Image",
@@ -114,6 +155,7 @@ export const processProductImage = async (input: {
     standardized,
     stages,
     imageUsage,
+    imageModel,
     backgroundRemovalMethod,
     chromaFallbackReason,
     totalDurationMs: Date.now() - processingStartedAt,

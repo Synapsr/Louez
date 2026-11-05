@@ -5,6 +5,10 @@ import type { ProductImageFramingMode } from "@/lib/ai/image/framing";
 export interface StandardizeOptions {
   canvasWidth?: number;
   canvasHeight?: number;
+  /**
+   * Share of the canvas height a whole product may fill. The margin it leaves
+   * is applied in pixels on every side, so all images share the same padding.
+   */
   fillRatio?: number;
   framingStrategy?: "auto" | "recenter";
 }
@@ -93,10 +97,10 @@ export async function standardizeProductImage(
   const resolvedFramingMode: ProductImageFramingMode =
     framingStrategy === "auto" && touchesEdge ? "preserve" : "recenter";
 
-  if (framingStrategy === "auto") {
-    // The provider already composes its output on the requested 4:3 canvas.
-    // Transparent space is part of that composition: trimming it can zoom a
-    // wide product (a bike, for example) and cut the edges it already touches.
+  if (resolvedFramingMode === "preserve") {
+    // The product crosses an edge of the provider's 4:3 composition: it is
+    // cropped on purpose. Trimming the transparent space could zoom a wide
+    // product (a bike, for example) and cut the edges it already touches.
     const buffer = await source
       .clone()
       .resize({
@@ -111,12 +115,15 @@ export async function standardizeProductImage(
     return { buffer, contentType: "image/webp", resolvedFramingMode };
   }
 
+  // A whole product is trimmed and fitted into the same centered box, so every
+  // catalog image shares the same padding whatever framing the model chose.
+  const padding = Math.round((canvasHeight * (1 - fillRatio)) / 2);
   const { data: product, info: productInfo } = await source
     .clone()
     .extract({ left: minX, top: minY, width, height })
     .resize({
-      width: Math.floor(canvasWidth * fillRatio),
-      height: Math.floor(canvasHeight * fillRatio),
+      width: canvasWidth - 2 * padding,
+      height: canvasHeight - 2 * padding,
       fit: "inside",
       withoutEnlargement: false,
     })

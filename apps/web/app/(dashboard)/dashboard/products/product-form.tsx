@@ -496,6 +496,7 @@ export function ProductForm({
   const media = useProductFormMedia({
     form: form as unknown as ProductFormComponentApi,
     productId: product?.id,
+    productName: watchedValues.name,
     imagesPreviews,
     imageHistory,
     imageEnhanceEnabled,

@@ -435,13 +435,15 @@ const ImageProcessingDevPage = async ({ searchParams }: ImageProcessingDevPagePr
                     ) : null}
                     <span>
                       Détourage :{" "}
-                      {run.configuration.backgroundRemovalMethod === "chroma-key"
-                        ? "fond chroma"
-                        : run.configuration.backgroundRemovalMethod === "semantic-fallback"
-                          ? "fond chroma, puis fallback worker"
-                          : run.configuration.backgroundRemovalModel === "worker-managed"
-                            ? "modèle géré par le worker"
-                            : run.configuration.backgroundRemovalModel}
+                      {run.configuration.backgroundRemovalMethod === "native-transparent"
+                        ? "fond transparent rendu par le modèle"
+                        : run.configuration.backgroundRemovalMethod === "chroma-key"
+                          ? "fond chroma"
+                          : run.configuration.backgroundRemovalMethod === "semantic-fallback"
+                            ? "fond chroma, puis fallback worker"
+                            : run.configuration.backgroundRemovalModel === "worker-managed"
+                              ? "modèle géré par le worker"
+                              : run.configuration.backgroundRemovalModel}
                     </span>
                     <span className="font-mono">Run {run.runId}</span>
                     {run.benchmark ? (
