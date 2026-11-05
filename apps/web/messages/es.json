@@ -1982,6 +1982,20 @@
             "unassigned": "Desasignada de una reserva",
             "updated": "Unidad modificada"
           }
+        },
+        "customerFields": {
+          "title": "Información solicitada al cliente",
+          "description": "Solicitada online o anotada por artículo.",
+          "scope": {
+            "customer": "Ficha de cliente",
+            "item": "Por artículo"
+          },
+          "collect": {
+            "never": "Solo el equipo",
+            "optional": "Online · Opcional",
+            "required": "Online · Obligatorio"
+          },
+          "manage": "Gestionar en Ficha de cliente"
         }
       }
     },
@@ -3148,15 +3162,28 @@
       },
       "filter": {
         "type": "Tipo de cliente",
-        "all": "Todos los clientes"
+        "all": "Todos los clientes",
+        "created": "Fecha de creación",
+        "anyDate": "Cualquier fecha",
+        "source": "Origen",
+        "allSources": "Todos los orígenes",
+        "channel": "Canal",
+        "allChannels": "Todos los canales",
+        "reset": "Restablecer filtros",
+        "importRun": "De una importación",
+        "noResults": "Ningún cliente coincide con estos filtros.",
+        "from": "Desde el {date}",
+        "to": "hasta el {date}",
+        "more": "Filtros",
+        "createdFrom": "Creados desde el",
+        "createdTo": "Creados hasta el",
+        "remove": "Quitar el filtro"
       },
       "deleteConfirm": {
         "title": "Eliminar este cliente?",
         "description": "Esta accion es irreversible. El cliente sera eliminado permanentemente."
       },
       "form": {
-        "personalInfo": "Informacion personal",
-        "personalInfoDescription": "Informacion basica del cliente",
         "businessCustomer": "Cliente empresarial",
         "businessCustomerDescription": "Marque si este cliente representa una empresa",
         "companyName": "Nombre de la empresa",
@@ -3176,8 +3203,6 @@
         "emailPlaceholder": "juan.garcia@ejemplo.com",
         "phone": "Telefono",
         "phonePlaceholder": "+34 612 345 678",
-        "addressSection": "Direccion",
-        "addressDescription": "Direccion del cliente (opcional)",
         "address": "Direccion",
         "addressPlaceholder": "Calle Principal 123",
         "postalCode": "Codigo postal",
@@ -3190,7 +3215,17 @@
         "internalNotesDescription": "Notas privadas sobre este cliente (no visibles para el cliente)",
         "notesPlaceholder": "Agregue notas sobre este cliente...",
         "save": "Guardar",
-        "createCustomer": "Crear cliente"
+        "createCustomer": "Crear cliente",
+        "customerKind": "Tipo de cliente",
+        "birthDate": "Fecha de nacimiento",
+        "ageYears": "{age, plural, one {# año} other {# años}}",
+        "acquisitionSource": "¿Cómo le conoció?",
+        "acquisitionSourcePlaceholder": "Seleccionar",
+        "acquisitionSourceDetail": "Especifique",
+        "acquisitionSourceDetailPlaceholder": "Oficina de turismo, feria, hotel colaborador…",
+        "socialSection": "Redes y enlaces",
+        "customizeFields": "Personalizar los campos",
+        "fieldsTitle": "Información del cliente"
       },
       "countries": {
         "FR": "Francia",
@@ -3205,6 +3240,80 @@
       "quickCreate": {
         "title": "Nuevo cliente",
         "description": "El cliente se creará y se seleccionará automáticamente."
+      },
+      "sources": {
+        "word_of_mouth": "Boca a boca",
+        "search_engine": "Búsqueda en Google",
+        "social_media": "Redes sociales",
+        "walk_in": "Pasó por delante de la tienda",
+        "partner": "Colaborador u oficina de turismo",
+        "ads": "Publicidad",
+        "returning": "Ya era cliente",
+        "other": "Otro"
+      },
+      "channels": {
+        "dashboard": "Creado por el equipo",
+        "storefront": "Tienda online",
+        "marketplace": "reeent",
+        "import": "Importación",
+        "api": "API",
+        "ai": "Asistente IA"
+      },
+      "social": {
+        "add": "Agregar un enlace",
+        "remove": "Quitar {network}",
+        "open": "Abrir {network}",
+        "placeholderHandle": "@usuario o enlace del perfil",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+34 612 34 56 78",
+        "whatsapp": "WhatsApp",
+        "empty": "Sin enlaces"
+      },
+      "fields": {
+        "yes": "Sí",
+        "no": "No",
+        "reveal": "Mostrar",
+        "hide": "Ocultar",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "selectPlaceholder": "Seleccionar",
+        "suspicious": "Este número parece no ser válido. Compruébelo: se guardará de todos modos.",
+        "duplicate": "Ya lo usa {name}.",
+        "viewCustomer": "Ver la ficha",
+        "complete": "{count, plural, one {Completar # campo} other {Completar # campos}}",
+        "issues": {
+          "required": "Este campo es obligatorio.",
+          "invalidNumber": "Introduzca un número.",
+          "invalidDate": "Fecha no válida.",
+          "invalidOption": "Elija un valor de la lista.",
+          "invalidEmail": "Dirección de correo no válida.",
+          "invalidPhone": "Número de teléfono no válido.",
+          "invalidUrl": "Enlace no válido."
+        }
+      },
+      "detail": {
+        "newReservation": "Nueva reserva",
+        "edit": "Editar",
+        "moreActions": "Más acciones",
+        "createdVia": "Creado vía: {channel}",
+        "bornOn": "Nació el {date}",
+        "source": "Origen",
+        "lastRental": "Último alquiler",
+        "never": "Nunca",
+        "editSection": "Editar: {section}",
+        "editSectionDescription": "Solo se modificarán estos datos.",
+        "sectionSaved": "Cambios guardados",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "infoCard": "Información",
+        "emptyInfo": "Todavía no se ha rellenado nada."
+      },
+      "pagination": {
+        "showing": "{from}–{to} de {total}",
+        "perPage": "Por página",
+        "previous": "Página anterior",
+        "next": "Página siguiente",
+        "pageOf": "Página {page} de {pages}"
       }
     },
     "calendar": {
@@ -4533,6 +4642,14 @@
           "statusRequired": "Seleccione al menos un estado.",
           "noContracts": "Ninguna reserva coincide con este período y estos estados.",
           "exportFailed": "Error en la exportación. Por favor, inténtelo de nuevo."
+        },
+        "customers": {
+          "title": "Clientes",
+          "description": "Exporta las fichas de tus clientes: datos de contacto, fecha de nacimiento, origen, canal de creación y tus campos personalizados.",
+          "button": "Exportar clientes",
+          "dateRangeHint": "El periodo se aplica a la fecha de creación de las fichas. Déjalo vacío para exportar todos tus clientes.",
+          "includeSensitive": "Incluir los datos sensibles",
+          "includeSensitiveWarning": "Los campos marcados como sensibles aparecerán sin ocultar en el archivo: guárdalo en un lugar seguro."
         }
       },
       "embed": {
@@ -6179,6 +6296,460 @@
         "title": "Prolongaciones automáticas",
         "description": "Los clientes pueden prolongar si hay disponibilidad y se puede calcular el suplemento. Los casos especiales requieren su aprobación.",
         "maxDays": "Máximo de días adicionales (vacío: sin límite)"
+      },
+      "customerFields": {
+        "title": "Ficha de cliente",
+        "native": {
+          "birthDate": "Fecha de nacimiento",
+          "acquisitionSource": "Origen del cliente",
+          "socialLinks": "Redes y enlaces"
+        },
+        "field": {
+          "add": "Agregar un campo",
+          "delete": "Eliminar definitivamente",
+          "drag": "Reordenar"
+        },
+        "badges": {
+          "required": "Obligatorio",
+          "sensitive": "Sensible",
+          "online": {
+            "optional": "Online · Opcional",
+            "required": "Online · Obligatorio"
+          },
+          "noTarget": "Ningún producto seleccionado",
+          "hidden": "Oculto",
+          "louez": "Campo de Louez"
+        },
+        "dialog": {
+          "label": "Etiqueta",
+          "labelPlaceholder": "Número de permiso",
+          "options": "Opciones",
+          "optionsPlaceholder": "Escriba una opción y pulse Intro",
+          "unit": "Unidad",
+          "unitPlaceholder": "cm, kg, km…",
+          "helpText": "Texto de ayuda",
+          "helpTextPlaceholder": "Indicación que se muestra bajo el campo",
+          "appliesTo": "Se aplica a",
+          "appliesToAll": "Todos",
+          "appliesToIndividual": "Particulares",
+          "appliesToBusiness": "Empresas",
+          "types": {
+            "text": "Texto",
+            "textarea": "Texto largo",
+            "number": "Número",
+            "date": "Fecha",
+            "select": "Lista de opciones",
+            "checkbox": "Sí / No",
+            "phone": "Teléfono",
+            "email": "Correo electrónico",
+            "url": "Enlace"
+          },
+          "flags": {
+            "requiredHelp": "No se puede guardar la ficha sin este campo.",
+            "sensitive": "Dato sensible",
+            "sensitiveHelp": "Oculto por defecto en la ficha y excluido de las exportaciones.",
+            "contract": "Mostrar en el contrato",
+            "contractHelp": "Se agrega bajo los datos de contacto del cliente.",
+            "search": "Incluir en la búsqueda",
+            "searchHelp": "Escriba el valor para encontrar al cliente. También avisa de los duplicados.",
+            "list": "Mostrar en la lista",
+            "listHelp": "Agrega una columna a la lista de clientes.",
+            "requiredTeam": "Obligatorio para su equipo",
+            "sensitiveItemHelp": "Oculto por defecto en la reserva.",
+            "contractItemHelp": "Se agrega bajo la línea del artículo alquilado."
+          },
+          "labelPlaceholderItem": "Número de calzado",
+          "scopes": {
+            "customerDescription": "Un valor por cliente: permiso, documento de identidad…",
+            "item": "Por artículo alquilado",
+            "itemDescription": "Un valor por persona o por material: altura, número de calzado…"
+          },
+          "online": {
+            "title": "Reserva online",
+            "description": "Lo que sus clientes rellenan al reservar en su tienda."
+          }
+        },
+        "templates": {
+          "dialogTitle": "Plantillas de campos",
+          "dialogDescription": "Agregue un conjunto de campos con un clic. Después podrá renombrarlos, reordenarlos o archivarlos.",
+          "privacyNote": "Recoja solo lo que realmente necesite: usted es responsable de los datos de sus clientes.",
+          "groups": {
+            "country": "Por país",
+            "activity": "Por actividad",
+            "general": "General"
+          },
+          "adopt": "Agregar",
+          "adopted": "Agregado",
+          "fieldsCount": "{count, plural, one {# campo} other {# campos}}",
+          "adoptedToast": "{count, plural, one {# campo agregado} other {# campos agregados}}",
+          "identityDocument": {
+            "name": "Documento de identidad",
+            "description": "El justificante que se pide al entregar el material.",
+            "fields": {
+              "id_document_type": {
+                "label": "Tipo de documento",
+                "options": {
+                  "idCard": "Carné de identidad",
+                  "passport": "Pasaporte",
+                  "residencePermit": "Permiso de residencia",
+                  "drivingLicense": "Permiso de conducir",
+                  "other": "Otro"
+                }
+              },
+              "id_document_number": {
+                "label": "Número del documento"
+              },
+              "id_document_expiry": {
+                "label": "Fecha de caducidad"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "Contacto de emergencia",
+            "description": "La persona a la que avisar si surge un problema durante el alquiler.",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "Nombre"
+              },
+              "emergency_contact_phone": {
+                "label": "Teléfono"
+              },
+              "emergency_contact_relation": {
+                "label": "Relación con el cliente",
+                "options": {
+                  "partner": "Cónyuge o pareja",
+                  "parent": "Padre o madre",
+                  "friend": "Amigo/a",
+                  "colleague": "Compañero/a de trabajo",
+                  "other": "Otro"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "Clientes profesionales",
+            "description": "El contacto de contabilidad y la referencia que debe figurar en sus documentos.",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "Contacto de contabilidad"
+              },
+              "accounting_email": {
+                "label": "Correo de contabilidad"
+              },
+              "purchase_order_reference": {
+                "label": "Referencia del pedido de compra"
+              }
+            }
+          },
+          "brazil": {
+            "name": "Brasil",
+            "description": "CPF o CNPJ, con verificación del número, y RG.",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "Organismo emisor"
+              }
+            }
+          },
+          "spain": {
+            "name": "España",
+            "description": "DNI o NIE, con verificación de la letra de control.",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "Italia",
+            "description": "Codice fiscale, con verificación del carácter de control.",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "Portugal",
+            "description": "NIF, con verificación del dígito de control.",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "Vehículos y motos",
+            "description": "El permiso de conducir, que se recoge en el contrato.",
+            "fields": {
+              "driving_license_number": {
+                "label": "Número de permiso"
+              },
+              "driving_license_date": {
+                "label": "Fecha de obtención"
+              },
+              "driving_license_categories": {
+                "label": "Clases"
+              }
+            }
+          },
+          "ski": {
+            "name": "Esquí y montaña",
+            "description": "Las medidas para preparar el material antes de que llegue el cliente.",
+            "fields": {
+              "height_cm": {
+                "label": "Altura"
+              },
+              "weight_kg": {
+                "label": "Peso"
+              },
+              "shoe_size": {
+                "label": "Número de calzado"
+              },
+              "ski_level": {
+                "label": "Nivel",
+                "options": {
+                  "beginner": "Principiante",
+                  "intermediate": "Intermedio",
+                  "advanced": "Avanzado",
+                  "expert": "Experto"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "Bicicletas",
+            "description": "Lo necesario para ajustar la bici antes de que llegue el cliente.",
+            "fields": {
+              "height_cm": {
+                "label": "Altura"
+              },
+              "bike_saddle_height": {
+                "label": "Altura del sillín"
+              },
+              "bike_preferences": {
+                "label": "Preferencias"
+              }
+            }
+          },
+          "boating": {
+            "name": "Náutica",
+            "description": "La licencia de navegación, que se recoge en el contrato.",
+            "fields": {
+              "boat_license_number": {
+                "label": "Número de licencia de navegación"
+              },
+              "boat_license_type": {
+                "label": "Tipo de licencia",
+                "options": {
+                  "coastal": "Costera",
+                  "offshore": "De altura",
+                  "inland": "Aguas interiores",
+                  "none": "Sin licencia"
+                }
+              }
+            }
+          },
+          "perItem": "Por artículo alquilado"
+        },
+        "deleteDialog": {
+          "title": "¿Eliminar «{label}»?",
+          "description": "El campo desaparecerá de todas las fichas. Esta acción es irreversible.",
+          "withValues": "{count, plural, one {# cliente tiene un valor en este campo: se borrará.} other {# clientes tienen un valor en este campo: se borrarán.}}",
+          "confirm": "Eliminar definitivamente",
+          "cancel": "Cancelar",
+          "descriptionItem": "El campo desaparecerá de todas las reservas. Esta acción es irreversible.",
+          "withItemValues": "{count, plural, one {# artículo alquilado tiene un valor en este campo: se borrará.} other {# artículos alquilados tienen un valor en este campo: se borrarán.}}",
+          "hideInstead": "Mejor ocultar"
+        },
+        "preview": {
+          "client": {
+            "previewFor": "Vista previa para",
+            "noProduct": "No se ha encontrado ningún producto",
+            "sampleProduct": "Artículo alquilado",
+            "oneCardPerUnit": "Una tarjeta por artículo alquilado: dos bicis, dos tarjetas.",
+            "emptyProduct": "No se pide nada al cliente para este producto.",
+            "emptyAll": "Por ahora no se pide nada al cliente.",
+            "emptyHint": "Ajuste «Pedir al cliente» en Opcional u Obligatorio para que un campo aparezca aquí."
+          }
+        },
+        "toasts": {
+          "created": "Campo agregado",
+          "deleted": "Campo eliminado",
+          "hidden": "Campo ocultado"
+        },
+        "online": {
+          "collect": "Pedir al cliente",
+          "collectModes": {
+            "never": "No",
+            "optional": "Opcional",
+            "required": "Obligatorio"
+          },
+          "collectHelp": {
+            "never": "No: solo lo ve su equipo.",
+            "customer": {
+              "optional": "Se ofrece al cliente cuando reserva online.",
+              "required": "El cliente debe rellenarlo para reservar online."
+            },
+            "item": {
+              "optional": "Se ofrece para cada artículo alquilado al reservar online.",
+              "required": "Debe rellenarse para cada artículo alquilado antes de reservar online."
+            }
+          },
+          "target": "Para",
+          "targetModes": {
+            "all": "Todas las reservas",
+            "products": "Productos concretos"
+          },
+          "targetHelp": {
+            "customer": {
+              "all": "Se pide en cada reserva online.",
+              "products": "Solo se pide si el carrito contiene alguno de estos productos."
+            },
+            "item": {
+              "all": "Cada artículo alquilado lleva este campo, sea cual sea el producto.",
+              "products": "Solo los artículos de estas categorías y productos llevan este campo."
+            }
+          },
+          "targetsNone": "Ningún producto seleccionado: este campo no se aplica a ninguna reserva.",
+          "targetsPlaceholder": "Categoría o producto…",
+          "targetsEmpty": "Sin resultados",
+          "groups": {
+            "categories": "Categorías",
+            "products": "Productos"
+          },
+          "productCount": "{count, plural, =0 {Ningún producto} one {# producto} other {# productos}}",
+          "productStatus": {
+            "draft": "Borrador",
+            "archived": "Archivado"
+          },
+          "customerEditable": "El cliente puede modificarlo desde su cuenta",
+          "customerEditableHint": "Lo encuentra en su cuenta de cliente y puede actualizarlo.",
+          "customerEditableNeverHint": "Disponible cuando el campo se pide al cliente."
+        },
+        "sectionOnline": {
+          "adoptedTitle": "¿Para qué productos?",
+          "adoptedDescription": "Los campos de «{section}» se guardan para cada artículo alquilado. Elija los productos correspondientes y, si lo necesita, pida al cliente que los rellene.",
+          "apply": "Aplicar",
+          "later": "Más tarde"
+        },
+        "builder": {
+          "templates": {
+            "all": "Ver todas las plantillas"
+          },
+          "locked": {
+            "addressPlaceholder": "Calle, código postal, ciudad, país",
+            "label": "Campo imprescindible",
+            "sheetNote": "Campo imprescindible: siempre presente en la ficha. Solo se pueden ajustar su posición y su ancho."
+          },
+          "field": {
+            "select": "Editar «{label}»",
+            "actions": "Acciones del campo «{label}»",
+            "draftBadge": "Nuevo",
+            "draftPlaceholder": "Nuevo campo"
+          },
+          "item": {
+            "empty": "Altura, número de calzado, nivel… Agregue lo que necesita saber para preparar cada artículo."
+          },
+          "inspector": {
+            "newTitle": "Nuevo campo",
+            "add": "Agregar",
+            "cancel": "Cancelar",
+            "close": "Cerrar",
+            "general": "General",
+            "advanced": "Opciones avanzadas",
+            "saving": "Guardando…",
+            "saved": "Guardado",
+            "format": "Formato",
+            "formatHelp": "Louez comprueba el número introducido y le da formato.",
+            "formatFreeHelp": "Se acepta cualquier texto.",
+            "formats": {
+              "free": "Texto libre",
+              "br_cpf_cnpj": "CPF / CNPJ (Brasil)",
+              "es_dni_nie": "DNI / NIE (España)",
+              "it_codice_fiscale": "Codice fiscale (Italia)",
+              "pt_nif": "NIF (Portugal)"
+            }
+          },
+          "picker": {
+            "title": "Agregar un campo",
+            "suggested": "Plantillas sugeridas",
+            "templates": "Plantillas",
+            "examples": {
+              "customer": {
+                "text": "Número de permiso",
+                "textarea": "Observaciones sobre el cliente",
+                "number": "Años de práctica",
+                "date": "Fecha de caducidad del permiso",
+                "select": "Tipo de documento de identidad",
+                "checkbox": "Descargo de responsabilidad firmado",
+                "phone": "Contacto de emergencia",
+                "email": "Correo de facturación",
+                "url": "Enlace a un documento"
+              },
+              "item": {
+                "text": "Número de taquilla",
+                "textarea": "Preferencias de ajuste",
+                "number": "Altura (cm)",
+                "date": "Fecha de nacimiento del ciclista",
+                "select": "Nivel: principiante, avanzado…",
+                "checkbox": "Silla infantil",
+                "phone": "Teléfono del participante",
+                "email": "Correo del participante",
+                "url": "Enlace a la ruta"
+              }
+            }
+          },
+          "native": {
+            "fixed": "Campo de Louez: su nombre y su tipo son fijos."
+          },
+          "visibility": {
+            "shown": {
+              "customer": "Mostrar en la ficha",
+              "item": "Mostrar en la reserva"
+            },
+            "shownHint": {
+              "customer": "Su equipo lo ve y lo rellena en cada ficha de cliente.",
+              "item": "Su equipo lo rellena para cada artículo alquilado."
+            },
+            "hiddenHint": {
+              "customer": "Oculto: ya no aparece en las fichas de cliente. Sus valores se conservan.",
+              "item": "Oculto: ya no aparece en las reservas. Sus valores se conservan."
+            }
+          },
+          "online": {
+            "hiddenNote": "Oculto: no se pide al cliente. Muéstrelo para ofrecerlo al reservar."
+          },
+          "pageDescription": "Los campos de sus fichas de cliente, dispuestos tal como los muestran sus formularios.",
+          "preview": {
+            "open": "Vista previa del cliente",
+            "description": "Lo que sus clientes rellenan al reservar online."
+          },
+          "layout": {
+            "title": "Diseño"
+          },
+          "width": {
+            "label": "Ancho",
+            "full": "Completo",
+            "half": "Medio",
+            "fullLabel": "Ancho completo",
+            "halfLabel": "Medio ancho",
+            "hint": "Dos campos de medio ancho comparten una fila.",
+            "fixed": "Este campo siempre ocupa toda la fila."
+          },
+          "record": {
+            "customer": "En la ficha",
+            "item": "En la reserva"
+          },
+          "toasts": {
+            "applied": "Ajustes aplicados"
+          }
+        }
       }
     },
     "commandPalette": {
@@ -6281,7 +6852,8 @@
       "settingsReviewBooster": "Impulso de reseñas",
       "settingsTaxes": "Impuestos",
       "productsEdit": "Editar",
-      "reservationsEdit": "Editar"
+      "reservationsEdit": "Editar",
+      "settingsCustomerFields": "Ficha de cliente"
     },
     "notificationsCenter": {
       "title": "Notificaciones",
@@ -6373,6 +6945,10 @@
         "optional-password": {
           "title": "Una contraseña, si la quieres",
           "description": "Añade una contraseña a tu cuenta para iniciar sesión sin esperar el código recibido por correo. El código sigue siempre disponible."
+        },
+        "customer-custom-fields": {
+          "title": "Fichas de cliente a su medida",
+          "description": "Agregue sus propios campos o parta de una plantilla por país y por actividad: permiso de conducir, documento de identidad, medidas, CPF…"
         }
       }
     },
@@ -6496,6 +7072,17 @@
       "sourceHint": "Ver el código fuente",
       "star": "Dejar una estrella",
       "later": "Más tarde"
+    },
+    "reservationDetails": {
+      "itemDetails": {
+        "title": "Detalles del alquiler",
+        "incomplete": "Por completar",
+        "empty": "Nada registrado todavía",
+        "sheetDescription": "Quién usa cada artículo y qué hay que preparar.",
+        "participantName": "¿Para quién?",
+        "participantNamePlaceholder": "Nombre",
+        "saved": "Detalles del alquiler guardados"
+      }
     }
   },
   "storefront": {
@@ -7025,7 +7612,8 @@
         "contact": "Contacto",
         "delivery": "Entrega",
         "address": "Dirección",
-        "confirm": "Confirmación"
+        "confirm": "Confirmación",
+        "details": "Detalles del alquiler"
       },
       "deliveryDescription": "Elija cómo recibir y devolver su equipo",
       "deliveryRequiredDescription": "La entrega es obligatoria para este pedido",
@@ -7295,6 +7883,10 @@
           "unavailable": "El pago en línea no está disponible en esta tienda.",
           "sessionFailed": "No se ha podido reanudar el pago. Inténtelo de nuevo en unos instantes."
         }
+      },
+      "customFields": {
+        "savedSummary": "Datos ya registrados",
+        "detailsIntro": "Esta información ayuda a {store} a preparar su material."
       }
     },
     "confirmation": {
@@ -7843,6 +8435,17 @@
         "paymentDescription": "Se avisará a la tienda. Si ya has pagado o dejado una fianza, contacta con la tienda para solicitar su reembolso o liberación. Esta acción no genera un reembolso automático.",
         "adminSubject": "Solicitud #{number} cancelada por el cliente",
         "adminBody": "{name} ha cancelado la solicitud de reserva #{number} antes de tu confirmación. Puedes consultar su historial en tu panel."
+      },
+      "customerFields": {
+        "title": "Información adicional",
+        "description": "Solicitada por {store} al reservar. Si la mantiene al día, no tendrá que volver a escribirla."
+      },
+      "rentalDetails": {
+        "title": "Detalles del alquiler",
+        "editableHint": "Puede modificarlos hasta el inicio del alquiler.",
+        "toComplete": "Por completar",
+        "saved": "Detalles guardados",
+        "saveError": "No se han podido guardar los detalles. Revise los campos e inténtelo de nuevo."
       }
     },
     "marketplaceShell": {
@@ -8040,6 +8643,23 @@
       "breakdownTitle": "Precio por temporada",
       "from": "Desde",
       "averageRate": "De media en tus fechas"
+    },
+    "customerFields": {
+      "optionalLabel": "{label} (opcional)",
+      "sensitiveNote": "Solo visible para {store}, para gestionar tu reserva.",
+      "suspicious": "Este número no parece válido. Revísalo o continúa de todos modos.",
+      "participantLabel": "¿Para quién?",
+      "participantPlaceholder": "Nombre (opcional)",
+      "unitCounter": "{index} / {count}",
+      "unitEmpty": "Sin rellenar",
+      "recapValue": "{label}: {value}",
+      "profile": {
+        "title": "Perfil",
+        "birthDate": "Fecha de nacimiento",
+        "acquisitionSource": "¿Cómo nos conoció?",
+        "acquisitionSourceDetail": "Especifique",
+        "socialLinks": "Redes y enlaces"
+      }
     }
   },
   "onboarding": {
@@ -8705,7 +9325,22 @@
     "requestCancellationPaymentChanged": "La información del pago ha cambiado. Revísala antes de volver a confirmar la cancelación.",
     "promoCodeProductsAlreadyDiscounted": "Este código no se aplica a productos que ya están en promoción.",
     "paymentAmountTooSmall": "El pago con tarjeta requiere un mínimo de {minimumAmount, number} {currency}. Modifica el carrito o contacta con la tienda.",
-    "checkoutPaymentFailed": "No se pudo iniciar el pago. Tu reserva no se ha confirmado. Inténtalo de nuevo o contacta con la tienda."
+    "checkoutPaymentFailed": "No se pudo iniciar el pago. Tu reserva no se ha confirmado. Inténtalo de nuevo o contacta con la tienda.",
+    "customFieldsInvalid": "Algunos campos adicionales no son válidos.",
+    "optionsRequired": "Agregue al menos una opción.",
+    "customerFields": {
+      "tooManyFields": "Ha alcanzado el número máximo de campos activos. Archive uno para agregar otro.",
+      "tooManySearchable": "Se pueden incluir en la búsqueda cinco campos como máximo.",
+      "tooManyListFields": "Se pueden mostrar en la lista dos campos como máximo."
+    },
+    "customFieldRequired": "Por favor, complete «{field}».",
+    "customFieldInvalid": "«{field}» no es válido.",
+    "itemDetailRequired": "Por favor, complete «{field}» para {product} (n.º {unit}).",
+    "itemDetailInvalid": "«{field}» no es válido para {product} (n.º {unit}).",
+    "reservationDetailsLocked": "Estos datos ya no se pueden modificar: el alquiler ha comenzado o ha finalizado.",
+    "customerNotAuthenticated": "Inicie sesión en su cuenta de cliente para continuar.",
+    "profileFieldRequired": "Por favor, complete «{field}».",
+    "profileFieldInvalid": "«{field}» no es válido."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

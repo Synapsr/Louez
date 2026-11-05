@@ -1,3 +1,5 @@
+import { getCustomerAccountFields } from "@louez/api/services/customer-profile-fields";
+
 import { CustomerCommunicationsForm } from "@/components/storefront/account/customer-communications-form";
 import { getCustomerReminderPreferences } from "@/lib/notifications/customer-reminder-preferences";
 import type { Metadata } from "next";
@@ -9,6 +11,8 @@ import { requireCustomerSession } from "@/lib/customer-auth/require-customer-ses
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { toCheckoutInitialCustomer } from "@/app/(storefront)/[slug]/checkout/util.checkout-customer";
 
+import { CustomerExtraFieldsSection } from "./customer-extra-fields-section";
+
 export const generateMetadata = async (): Promise<Metadata> => {
   const t = await getTranslations("storefront.account.profile");
   return { title: t("title"), robots: { index: false, follow: false } };
@@ -19,7 +23,15 @@ const CustomerProfilePage = async ({ params }: { params: Promise<{ slug: string 
   const store = await getStoreBySlug(slug);
   if (!store) notFound();
   const session = await requireCustomerSession(store, "/account/profile");
-  const preferences = await getCustomerReminderPreferences(store.id, session.customerId);
+  // What `storefront.customerFields.myValues` answers, read here for the first paint.
+  const [preferences, extraFields] = await Promise.all([
+    getCustomerReminderPreferences(store.id, session.customerId),
+    getCustomerAccountFields({
+      storeId: store.id,
+      customerId: session.customerId,
+      settings: store.settings,
+    }),
+  ]);
   const t = await getTranslations("storefront.account.profile");
   return (
     <StorefrontSection contentClassName="flex max-w-2xl flex-col gap-6 sm:gap-8">
@@ -32,6 +44,7 @@ const CustomerProfilePage = async ({ params }: { params: Promise<{ slug: string 
         storeSlug={slug}
         country={store.settings?.country ?? "FR"}
       />
+      {extraFields && <CustomerExtraFieldsSection initialData={extraFields} />}
       <CustomerCommunicationsForm storeSlug={slug} preferences={preferences} />
     </StorefrontSection>
   );

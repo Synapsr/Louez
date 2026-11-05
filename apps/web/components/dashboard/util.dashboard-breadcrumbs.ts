@@ -89,6 +89,10 @@ const staticBreadcrumbRoutes = [
     translationKey: "settingsPayments",
   },
   {
+    href: "/dashboard/settings/customer-fields",
+    translationKey: "settingsCustomerFields",
+  },
+  {
     href: "/dashboard/settings/promo-codes",
     translationKey: "settingsPromoCodes",
   },

@@ -5,7 +5,7 @@ import {
   isValidExportDateRange,
 } from './date-range'
 
-export const exportTypes = ['payments', 'reservations', 'products'] as const
+export const exportTypes = ['payments', 'reservations', 'products', 'customers'] as const
 export type ExportType = (typeof exportTypes)[number]
 
 export const exportFormats = ['csv', 'json'] as const
@@ -17,10 +17,14 @@ export const exportParamsSchema = z
     format: z.enum(exportFormats),
     startDate: z.iso.date().optional(),
     endDate: z.iso.date().optional(),
+    /** Customers export only: sensitive custom fields are left out unless asked for. */
+    includeSensitive: z.enum(['true', 'false']).optional(),
   })
   .refine(
     (data) => {
       if (data.type === 'products') return true
+      // Customers: the whole list, or a creation period given in full.
+      if (data.type === 'customers') return Boolean(data.startDate) === Boolean(data.endDate)
       return data.startDate && data.endDate
     },
     { message: 'Date range is required for this export type' }
@@ -44,10 +48,11 @@ export type ExportRequestParams = z.infer<typeof exportParamsSchema>
 
 export type ExportParams = Omit<
   ExportRequestParams,
-  'startDate' | 'endDate'
+  'startDate' | 'endDate' | 'includeSensitive'
 > & {
   startDate?: Date
   endDate?: Date
+  includeSensitive?: boolean
 }
 
 export const contractExportStatuses = [

@@ -6,6 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import { usePostHog } from "posthog-js/react";
 
 import type { LegMethod } from "@louez/types";
+import type { CheckoutFieldIssue } from "@louez/validations";
 
 import { useAnalytics } from "@/contexts/analytics-context";
 import type { Locale } from "@/i18n/config";
@@ -18,6 +19,7 @@ import {
 import { createReservation } from "../actions";
 import type {
   CheckoutBlockedReason,
+  CheckoutFieldsPlan,
   CheckoutFormValues,
   CheckoutSubmitError,
   DeliveryAddress,
@@ -60,19 +62,31 @@ interface UseCheckoutSubmitParams {
   promoCode?: string;
   advisorConversationId?: string;
   blockedReason: CheckoutBlockedReason | null;
+  /** Custom fields asked for the buyer's type; lines in the order of `items`. */
+  checkoutFields: CheckoutFieldsPlan;
+  /** The checkout has its "Détails de la location" step, where item-detail errors point. */
+  hasDetailsStep: boolean;
   onAdvanceNoticeRejected: (params: {
     advanceNoticeMinutes?: number;
     minimumStartTime?: string;
   }) => void;
+  /** The server refused custom field values: every issue, to mark the exact fields. */
+  onCheckoutFieldIssues: (issues: CheckoutFieldIssue[]) => void;
 }
 
 class SubmitError extends Error {
   readonly params: Record<string, string | number>;
+  readonly fieldIssues: CheckoutFieldIssue[];
 
-  constructor(message: string, params: Record<string, string | number> = {}) {
+  constructor(
+    message: string,
+    params: Record<string, string | number> = {},
+    fieldIssues: CheckoutFieldIssue[] = [],
+  ) {
     super(message);
     this.name = "CheckoutSubmitError";
     this.params = params;
+    this.fieldIssues = fieldIssues;
   }
 }
 
@@ -97,7 +111,10 @@ export const useCheckoutSubmit = ({
   promoCode,
   advisorConversationId,
   blockedReason,
+  checkoutFields,
+  hasDetailsStep,
   onAdvanceNoticeRejected,
+  onCheckoutFieldIssues,
 }: UseCheckoutSubmitParams) => {
   const posthog = usePostHog();
   const { trackEvent } = useAnalytics();
@@ -136,11 +153,16 @@ export const useCheckoutSubmit = ({
         promoCode,
         advisorConversationId,
         resumeReservationId: readPendingCheckout(storeId),
+        checkoutFields,
       });
 
       const result = await createReservation(payload);
       if (!result.success) {
-        throw new SubmitError(result.error, sanitizeTranslationParams(result.errorParams));
+        throw new SubmitError(
+          result.error,
+          sanitizeTranslationParams(result.errorParams),
+          result.details?.code === "checkout_fields_invalid" ? result.details.issues : [],
+        );
       }
       return result;
     },
@@ -190,6 +212,9 @@ export const useCheckoutSubmit = ({
       setIsRedirecting(false);
       const message = error instanceof SubmitError ? error.message : "errors.generic";
       const params = error instanceof SubmitError ? error.params : {};
+      if (error instanceof SubmitError && error.fieldIssues.length > 0) {
+        onCheckoutFieldIssues(error.fieldIssues);
+      }
 
       if (message === ADVANCE_NOTICE_ERROR) {
         onAdvanceNoticeRejected({
@@ -215,7 +240,7 @@ export const useCheckoutSubmit = ({
         step:
           message === ADVANCE_NOTICE_ERROR
             ? "confirm"
-            : getStepForErrorKey(message, isDeliveryEnabled),
+            : getStepForErrorKey(message, isDeliveryEnabled, hasDetailsStep),
       });
     },
   });

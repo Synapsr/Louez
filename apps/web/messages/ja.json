@@ -1982,6 +1982,20 @@
             "unassigned": "予約からの割り当てが解除されました",
             "updated": "ユニットが更新されました"
           }
+        },
+        "customerFields": {
+          "title": "顧客に求める情報",
+          "description": "オンラインで入力を求めるか、レンタル品ごとに記録します。",
+          "scope": {
+            "customer": "顧客情報",
+            "item": "レンタル品ごと"
+          },
+          "collect": {
+            "never": "チームのみ",
+            "optional": "オンライン · 任意",
+            "required": "オンライン · 必須"
+          },
+          "manage": "「顧客情報」で管理"
         }
       }
     },
@@ -3148,15 +3162,28 @@
       },
       "filter": {
         "type": "顧客タイプ",
-        "all": "すべてのお客様"
+        "all": "すべてのお客様",
+        "created": "作成日",
+        "anyDate": "すべての日付",
+        "source": "流入経路",
+        "allSources": "すべての流入経路",
+        "channel": "チャネル",
+        "allChannels": "すべてのチャネル",
+        "reset": "フィルターをリセット",
+        "importRun": "インポートから",
+        "noResults": "これらのフィルターに一致する顧客はいません。",
+        "from": "{date}から",
+        "to": "{date}まで",
+        "more": "フィルター",
+        "createdFrom": "作成日（開始）",
+        "createdTo": "作成日（終了）",
+        "remove": "フィルターを解除"
       },
       "deleteConfirm": {
         "title": "この顧客を削除しますか?",
         "description": "この操作は元に戻せません。顧客は完全に削除されます。"
       },
       "form": {
-        "personalInfo": "個人情報",
-        "personalInfoDescription": "お客様の基本情報",
         "businessCustomer": "法人のお客様",
         "businessCustomerDescription": "この顧客が会社を代表しているかどうかを確認する",
         "companyName": "会社名",
@@ -3176,8 +3203,6 @@
         "emailPlaceholder": "john.doe@example.com",
         "phone": "電話",
         "phonePlaceholder": "+1 234 567 8900",
-        "addressSection": "住所",
-        "addressDescription": "顧客の住所 (オプション)",
         "address": "住所",
         "addressPlaceholder": "123 メインストリート",
         "postalCode": "郵便番号",
@@ -3190,7 +3215,17 @@
         "internalNotesDescription": "この顧客に関する個人的なメモ (顧客には表示されません)",
         "notesPlaceholder": "この顧客に関するメモを追加...",
         "save": "保存",
-        "createCustomer": "顧客の作成"
+        "createCustomer": "顧客の作成",
+        "customerKind": "顧客タイプ",
+        "birthDate": "生年月日",
+        "ageYears": "{age, plural, other {#歳}}",
+        "acquisitionSource": "当店を知ったきっかけ",
+        "acquisitionSourcePlaceholder": "選択",
+        "acquisitionSourceDetail": "詳細",
+        "acquisitionSourceDetailPlaceholder": "観光案内所、展示会、提携ホテル…",
+        "socialSection": "SNS・リンク",
+        "customizeFields": "フィールドをカスタマイズ",
+        "fieldsTitle": "顧客情報"
       },
       "countries": {
         "FR": "フランス",
@@ -3205,6 +3240,80 @@
       "quickCreate": {
         "title": "新規のお客様",
         "description": "顧客は自動的に作成され、選択されます。"
+      },
+      "sources": {
+        "word_of_mouth": "口コミ",
+        "search_engine": "Google検索",
+        "social_media": "SNS",
+        "walk_in": "店頭で見かけた",
+        "partner": "提携先・観光案内所",
+        "ads": "広告",
+        "returning": "リピーター",
+        "other": "その他"
+      },
+      "channels": {
+        "dashboard": "スタッフが作成",
+        "storefront": "オンラインストア",
+        "marketplace": "reeent",
+        "import": "インポート",
+        "api": "API",
+        "ai": "AIアシスタント"
+      },
+      "social": {
+        "add": "リンクを追加",
+        "remove": "{network}を削除",
+        "open": "{network}を開く",
+        "placeholderHandle": "@handle またはプロフィールのリンク",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+81 90 1234 5678",
+        "whatsapp": "WhatsApp",
+        "empty": "リンクなし"
+      },
+      "fields": {
+        "yes": "はい",
+        "no": "いいえ",
+        "reveal": "表示",
+        "hide": "非表示",
+        "copy": "コピー",
+        "copied": "コピーしました",
+        "selectPlaceholder": "選択",
+        "suspicious": "この番号は正しくない可能性があります。ご確認ください。このままでも保存されます。",
+        "duplicate": "すでに{name}で使用されています。",
+        "viewCustomer": "顧客情報を見る",
+        "complete": "{count, plural, other {#件のフィールドを入力}}",
+        "issues": {
+          "required": "このフィールドは必須です。",
+          "invalidNumber": "数値を入力してください。",
+          "invalidDate": "日付が無効です。",
+          "invalidOption": "リストから値を選択してください。",
+          "invalidEmail": "メールアドレスが無効です。",
+          "invalidPhone": "電話番号が無効です。",
+          "invalidUrl": "リンクが無効です。"
+        }
+      },
+      "detail": {
+        "newReservation": "新規予約",
+        "edit": "編集",
+        "moreActions": "その他の操作",
+        "createdVia": "作成経路: {channel}",
+        "bornOn": "{date}生まれ",
+        "source": "流入経路",
+        "lastRental": "最終レンタル",
+        "never": "なし",
+        "editSection": "編集: {section}",
+        "editSectionDescription": "この情報のみが変更されます。",
+        "sectionSaved": "変更を保存しました",
+        "save": "保存",
+        "cancel": "キャンセル",
+        "infoCard": "情報",
+        "emptyInfo": "まだ何も入力されていません。"
+      },
+      "pagination": {
+        "showing": "{from}–{to}件 / 全{total}件",
+        "perPage": "表示件数",
+        "previous": "前のページ",
+        "next": "次のページ",
+        "pageOf": "{page} / {pages}ページ"
       }
     },
     "calendar": {
@@ -4669,6 +4778,14 @@
           "statusRequired": "少なくとも 1 つのステータスを選択します。",
           "noContracts": "この日付範囲およびこれらのステータスに一致する予約はありません。",
           "exportFailed": "エクスポートに失敗しました。もう一度試してください。"
+        },
+        "customers": {
+          "title": "顧客",
+          "description": "顧客情報をエクスポートします。連絡先、生年月日、流入経路、作成チャネル、カスタムフィールドが含まれます。",
+          "button": "顧客をエクスポート",
+          "dateRangeHint": "期間は各顧客情報の作成日に適用されます。空欄のままにすると、すべての顧客をエクスポートします。",
+          "includeSensitive": "機密データを含める",
+          "includeSensitiveWarning": "機密に設定されたフィールドは、マスクされずにファイルに記載されます。ファイルは安全な場所に保管してください。"
         }
       },
       "embed": {
@@ -6179,7 +6296,461 @@
         "description": "お客様は機器が利用可能な場合に延長することができ、追加料金を計算できます。特別な場合にはあなたの承認が必要です。",
         "maxDays": "最大追加日数 (無制限の場合は空白のままにします)"
       },
-      "readOnlyNotice": "読み取り専用: 所有者と管理者のみがこのストアの設定を変更できます。"
+      "readOnlyNotice": "読み取り専用: 所有者と管理者のみがこのストアの設定を変更できます。",
+      "customerFields": {
+        "title": "顧客情報",
+        "native": {
+          "birthDate": "生年月日",
+          "acquisitionSource": "顧客の流入経路",
+          "socialLinks": "SNS・リンク"
+        },
+        "field": {
+          "add": "フィールドを追加",
+          "delete": "完全に削除",
+          "drag": "並べ替え"
+        },
+        "badges": {
+          "required": "必須",
+          "sensitive": "機密",
+          "online": {
+            "optional": "オンライン · 任意",
+            "required": "オンライン · 必須"
+          },
+          "noTarget": "商品が未選択",
+          "hidden": "非表示",
+          "louez": "Louez 標準フィールド"
+        },
+        "dialog": {
+          "label": "ラベル",
+          "labelPlaceholder": "免許証番号",
+          "options": "選択肢",
+          "optionsPlaceholder": "選択肢を入力して Enter",
+          "unit": "単位",
+          "unitPlaceholder": "cm、kg、km…",
+          "helpText": "入力のヒント",
+          "helpTextPlaceholder": "フィールドの下に表示されます",
+          "appliesTo": "対象",
+          "appliesToAll": "全員",
+          "appliesToIndividual": "個人",
+          "appliesToBusiness": "法人",
+          "types": {
+            "text": "テキスト",
+            "textarea": "長文テキスト",
+            "number": "数値",
+            "date": "日付",
+            "select": "選択リスト",
+            "checkbox": "はい / いいえ",
+            "phone": "電話番号",
+            "email": "メールアドレス",
+            "url": "リンク"
+          },
+          "flags": {
+            "requiredHelp": "このフィールドが未入力の場合、顧客情報を保存できません。",
+            "sensitive": "機密データ",
+            "sensitiveHelp": "顧客情報では初期状態で非表示になり、エクスポートにも含まれません。",
+            "contract": "契約書に表示",
+            "contractHelp": "顧客の連絡先の下に追加されます。",
+            "search": "検索対象に含める",
+            "searchHelp": "値を入力して顧客を検索できます。重複の検出にも使われます。",
+            "list": "一覧に表示",
+            "listHelp": "顧客一覧に列を追加します。",
+            "requiredTeam": "チームの入力時は必須",
+            "sensitiveItemHelp": "予約では初期状態で非表示になります。",
+            "contractItemHelp": "レンタル品の行の下に記載されます。"
+          },
+          "labelPlaceholderItem": "靴のサイズ",
+          "scopes": {
+            "customerDescription": "顧客ごとに1つの値：免許証、身分証明書…",
+            "item": "レンタル品ごと",
+            "itemDescription": "人または機材ごとに1つの値：身長、靴のサイズ…"
+          },
+          "online": {
+            "title": "オンライン予約",
+            "description": "顧客がストアで予約する際に入力する内容です。"
+          }
+        },
+        "templates": {
+          "dialogTitle": "フィールドテンプレート",
+          "dialogDescription": "ワンクリックで複数のフィールドをまとめて追加できます。追加後に名前の変更、並べ替え、アーカイブが可能です。",
+          "privacyNote": "本当に必要な情報だけを収集してください。顧客データの管理責任はご自身にあります。",
+          "groups": {
+            "country": "国別",
+            "activity": "業種別",
+            "general": "一般"
+          },
+          "adopt": "追加",
+          "adopted": "追加済み",
+          "fieldsCount": "{count, plural, other {#件のフィールド}}",
+          "adoptedToast": "{count, plural, other {#件のフィールドを追加しました}}",
+          "identityDocument": {
+            "name": "身分証明書",
+            "description": "機材の引き渡し時に提示を求める本人確認書類。",
+            "fields": {
+              "id_document_type": {
+                "label": "書類の種類",
+                "options": {
+                  "idCard": "IDカード",
+                  "passport": "パスポート",
+                  "residencePermit": "在留カード",
+                  "drivingLicense": "運転免許証",
+                  "other": "その他"
+                }
+              },
+              "id_document_number": {
+                "label": "書類番号"
+              },
+              "id_document_expiry": {
+                "label": "有効期限"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "緊急連絡先",
+            "description": "レンタル中に問題が起きた際の連絡先。",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "氏名"
+              },
+              "emergency_contact_phone": {
+                "label": "電話番号"
+              },
+              "emergency_contact_relation": {
+                "label": "続柄",
+                "options": {
+                  "partner": "配偶者・パートナー",
+                  "parent": "親",
+                  "friend": "友人",
+                  "colleague": "同僚",
+                  "other": "その他"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "法人顧客",
+            "description": "経理担当者と、書類に記載する参照番号。",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "経理担当者"
+              },
+              "accounting_email": {
+                "label": "経理用メールアドレス"
+              },
+              "purchase_order_reference": {
+                "label": "発注書番号"
+              }
+            }
+          },
+          "brazil": {
+            "name": "ブラジル",
+            "description": "CPF または CNPJ（番号の検証付き）と RG。",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "発行機関"
+              }
+            }
+          },
+          "spain": {
+            "name": "スペイン",
+            "description": "DNI または NIE（チェック文字の検証付き）。",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "イタリア",
+            "description": "Codice fiscale（チェック文字の検証付き）。",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "ポルトガル",
+            "description": "NIF（チェックディジットの検証付き）。",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "車両・スクーター",
+            "description": "運転免許証の情報を契約書に記載します。",
+            "fields": {
+              "driving_license_number": {
+                "label": "免許証番号"
+              },
+              "driving_license_date": {
+                "label": "取得日"
+              },
+              "driving_license_categories": {
+                "label": "免許の種類"
+              }
+            }
+          },
+          "ski": {
+            "name": "スキー・山岳",
+            "description": "顧客の来店前に用具を準備するための体格情報。",
+            "fields": {
+              "height_cm": {
+                "label": "身長"
+              },
+              "weight_kg": {
+                "label": "体重"
+              },
+              "shoe_size": {
+                "label": "靴のサイズ"
+              },
+              "ski_level": {
+                "label": "レベル",
+                "options": {
+                  "beginner": "初級",
+                  "intermediate": "中級",
+                  "advanced": "上級",
+                  "expert": "エキスパート"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "自転車",
+            "description": "顧客の来店前に自転車を調整するための情報。",
+            "fields": {
+              "height_cm": {
+                "label": "身長"
+              },
+              "bike_saddle_height": {
+                "label": "サドルの高さ"
+              },
+              "bike_preferences": {
+                "label": "好み"
+              }
+            }
+          },
+          "boating": {
+            "name": "ボート・マリン",
+            "description": "船舶免許の情報を契約書に記載します。",
+            "fields": {
+              "boat_license_number": {
+                "label": "船舶免許番号"
+              },
+              "boat_license_type": {
+                "label": "免許の種類",
+                "options": {
+                  "coastal": "沿岸",
+                  "offshore": "外洋",
+                  "inland": "内水面",
+                  "none": "免許なし"
+                }
+              }
+            }
+          },
+          "perItem": "レンタル品ごと"
+        },
+        "deleteDialog": {
+          "title": "「{label}」を削除しますか？",
+          "description": "このフィールドはすべての顧客情報から削除されます。この操作は元に戻せません。",
+          "withValues": "{count, plural, other {#人の顧客がこのフィールドに値を入力しています。これらの値は消去されます。}}",
+          "confirm": "完全に削除",
+          "cancel": "キャンセル",
+          "descriptionItem": "このフィールドはすべての予約から削除されます。この操作は元に戻せません。",
+          "withItemValues": "{count, plural, other {#点のレンタル品がこのフィールドに値を持っています。これらの値は消去されます。}}",
+          "hideInstead": "代わりに非表示にする"
+        },
+        "preview": {
+          "client": {
+            "previewFor": "プレビュー対象",
+            "noProduct": "商品が見つかりません",
+            "sampleProduct": "レンタル品",
+            "oneCardPerUnit": "レンタル品ごとにカードが1枚。自転車が2台ならカードも2枚です。",
+            "emptyProduct": "この商品では、顧客に入力を求める項目はありません。",
+            "emptyAll": "現在、顧客に入力を求める項目はありません。",
+            "emptyHint": "フィールドの「顧客に入力を求める」を「任意」または「必須」に設定すると、ここに表示されます。"
+          }
+        },
+        "toasts": {
+          "created": "フィールドを追加しました",
+          "deleted": "フィールドを削除しました",
+          "hidden": "フィールドを非表示にしました"
+        },
+        "online": {
+          "collect": "顧客に入力を求める",
+          "collectModes": {
+            "never": "いいえ",
+            "optional": "任意",
+            "required": "必須"
+          },
+          "collectHelp": {
+            "never": "いいえ：チームのみが閲覧できます。",
+            "customer": {
+              "optional": "オンライン予約の際に、顧客が任意で入力できます。",
+              "required": "オンラインで予約するには、顧客による入力が必須です。"
+            },
+            "item": {
+              "optional": "オンライン予約の際に、レンタル品ごとに任意で入力できます。",
+              "required": "オンラインで予約するには、レンタル品ごとの入力が必須です。"
+            }
+          },
+          "target": "適用範囲",
+          "targetModes": {
+            "all": "すべての予約",
+            "products": "特定の商品"
+          },
+          "targetHelp": {
+            "customer": {
+              "all": "すべてのオンライン予約で入力を求めます。",
+              "products": "カートにこれらの商品のいずれかが含まれる場合のみ入力を求めます。"
+            },
+            "item": {
+              "all": "商品を問わず、すべてのレンタル品にこのフィールドが付きます。",
+              "products": "これらのカテゴリーと商品のレンタル品にのみ、このフィールドが付きます。"
+            }
+          },
+          "targetsNone": "商品が選択されていません。このフィールドはどの予約にも適用されません。",
+          "targetsPlaceholder": "カテゴリーまたは商品…",
+          "targetsEmpty": "結果はありません",
+          "groups": {
+            "categories": "カテゴリー",
+            "products": "商品"
+          },
+          "productCount": "{count, plural, =0 {商品なし} other {#件の商品}}",
+          "productStatus": {
+            "draft": "下書き",
+            "archived": "アーカイブ済み"
+          },
+          "customerEditable": "顧客がアカウントから編集できる",
+          "customerEditableHint": "顧客は自分の顧客アカウントで確認し、更新できます。",
+          "customerEditableNeverHint": "フィールドで顧客に入力を求めると利用できます。"
+        },
+        "sectionOnline": {
+          "adoptedTitle": "どの商品が対象ですか？",
+          "adoptedDescription": "「{section}」のフィールドはレンタル品ごとに記録されます。対象の商品を選び、必要に応じて顧客に入力を求めてください。",
+          "apply": "適用",
+          "later": "後で"
+        },
+        "builder": {
+          "templates": {
+            "all": "すべてのテンプレートを見る"
+          },
+          "locked": {
+            "addressPlaceholder": "番地、郵便番号、市区町村、国",
+            "label": "基本フィールド",
+            "sheetNote": "基本フィールド：常に顧客情報に表示されます。変更できるのは位置と幅のみです。"
+          },
+          "field": {
+            "select": "「{label}」を編集",
+            "actions": "「{label}」フィールドの操作",
+            "draftBadge": "新規",
+            "draftPlaceholder": "新しいフィールド"
+          },
+          "item": {
+            "empty": "身長、靴のサイズ、レベル… 各レンタル品の準備に必要な情報を追加してください。"
+          },
+          "inspector": {
+            "newTitle": "新しいフィールド",
+            "add": "追加",
+            "cancel": "キャンセル",
+            "close": "閉じる",
+            "general": "一般",
+            "advanced": "詳細オプション",
+            "saving": "保存中…",
+            "saved": "保存済み",
+            "format": "形式",
+            "formatHelp": "Louez が入力された番号を検証し、書式を整えます。",
+            "formatFreeHelp": "どのようなテキストでも入力できます。",
+            "formats": {
+              "free": "自由入力",
+              "br_cpf_cnpj": "CPF / CNPJ（ブラジル）",
+              "es_dni_nie": "DNI / NIE（スペイン）",
+              "it_codice_fiscale": "Codice fiscale（イタリア）",
+              "pt_nif": "NIF（ポルトガル）"
+            }
+          },
+          "picker": {
+            "title": "フィールドを追加",
+            "suggested": "おすすめのテンプレート",
+            "templates": "テンプレート",
+            "examples": {
+              "customer": {
+                "text": "免許証番号",
+                "textarea": "顧客に関するメモ",
+                "number": "経験年数",
+                "date": "免許証の有効期限",
+                "select": "身分証明書の種類",
+                "checkbox": "免責同意書に署名済み",
+                "phone": "緊急連絡先",
+                "email": "請求先メールアドレス",
+                "url": "証明書類へのリンク"
+              },
+              "item": {
+                "text": "ロッカー番号",
+                "textarea": "調整の希望",
+                "number": "身長（cm）",
+                "date": "ライダーの生年月日",
+                "select": "レベル：初級、上級…",
+                "checkbox": "チャイルドシート",
+                "phone": "利用者の電話番号",
+                "email": "利用者のメールアドレス",
+                "url": "ルートへのリンク"
+              }
+            }
+          },
+          "native": {
+            "fixed": "Louez 標準フィールド：名前とタイプは変更できません。"
+          },
+          "visibility": {
+            "shown": {
+              "customer": "顧客情報に表示",
+              "item": "予約に表示"
+            },
+            "shownHint": {
+              "customer": "チームがすべての顧客情報でこのフィールドを確認し、入力します。",
+              "item": "チームがレンタル品ごとにこのフィールドを入力します。"
+            },
+            "hiddenHint": {
+              "customer": "非表示：顧客情報に表示されなくなります。値は保持されます。",
+              "item": "非表示：予約に表示されなくなります。値は保持されます。"
+            }
+          },
+          "online": {
+            "hiddenNote": "非表示：顧客には入力を求めません。表示すると、予約時に顧客へ入力を求めることができます。"
+          },
+          "pageDescription": "顧客情報のフィールドを、フォームでの表示どおりに配置しています。",
+          "preview": {
+            "open": "顧客向けプレビュー",
+            "description": "顧客がオンライン予約の際に入力する内容です。"
+          },
+          "layout": {
+            "title": "レイアウト"
+          },
+          "width": {
+            "label": "幅",
+            "full": "全幅",
+            "half": "半幅",
+            "fullLabel": "全幅",
+            "halfLabel": "半幅",
+            "hint": "半幅のフィールドは2つで1行を分け合います。",
+            "fixed": "このフィールドは常に1行全体を使います。"
+          },
+          "record": {
+            "customer": "顧客情報",
+            "item": "予約"
+          },
+          "toasts": {
+            "applied": "設定を適用しました"
+          }
+        }
+      }
     },
     "commandPalette": {
       "title": "コマンドパレット",
@@ -6281,7 +6852,8 @@
       "settingsReviewBooster": "レビューブースター",
       "settingsTaxes": "税金",
       "productsEdit": "編集",
-      "reservationsEdit": "編集"
+      "reservationsEdit": "編集",
+      "settingsCustomerFields": "顧客情報"
     },
     "notificationsCenter": {
       "title": "通知",
@@ -6373,6 +6945,10 @@
         "optional-password": {
           "title": "必要に応じてパスワードを設定",
           "description": "アカウントにパスワードを追加すると、メールのコードを待たずにログインできます。コードによるログインも引き続き利用できます。"
+        },
+        "customer-custom-fields": {
+          "title": "顧客情報を自由にカスタマイズ",
+          "description": "独自のフィールドを追加するか、国や業種別のテンプレートから始められます。免許証、身分証明書、体格、CPF…"
         }
       }
     },
@@ -6496,6 +7072,17 @@
       "sourceHint": "ソースコードを参照する",
       "star": "スターを残す",
       "later": "たぶん後で"
+    },
+    "reservationDetails": {
+      "itemDetails": {
+        "title": "レンタルの詳細",
+        "incomplete": "要入力",
+        "empty": "まだ何も入力されていません",
+        "sheetDescription": "各レンタル品の利用者と、準備すべきものです。",
+        "participantName": "利用者",
+        "participantNamePlaceholder": "名",
+        "saved": "レンタルの詳細を保存しました"
+      }
     }
   },
   "storefront": {
@@ -7025,7 +7612,8 @@
         "contact": "お問い合わせ",
         "delivery": "配送",
         "address": "住所",
-        "confirm": "確認"
+        "confirm": "確認",
+        "details": "レンタルの詳細"
       },
       "deliveryDescription": "機器の受け取りと返却方法を選択してください",
       "deliveryRequiredDescription": "この注文には配送が必要です",
@@ -7295,6 +7883,10 @@
           "unavailable": "このストアではオンライン決済はご利用いただけません。",
           "sessionFailed": "支払いを再開できませんでした。しばらくしてからもう一度試してください。"
         }
+      },
+      "customFields": {
+        "savedSummary": "入力済みの情報",
+        "detailsIntro": "この情報は、{store}が機材を準備する際に役立ちます。"
       }
     },
     "confirmation": {
@@ -7843,6 +8435,17 @@
         "paymentDescription": "店舗に通知されます。すでに支払いまたはデポジットを提供した場合は、返金またはリリースについてストアにお問い合わせください。このアクションでは、自動返金は行われません。",
         "adminSubject": "リクエスト #{number} が顧客によってキャンセルされました",
         "adminBody": "{name} は確認前に予約リクエスト #{number} をキャンセルしました。ダッシュボードでその履歴を確認できます。"
+      },
+      "customerFields": {
+        "title": "追加情報",
+        "description": "ご予約の際に{store}から求められる情報です。最新の状態にしておけば、再入力の手間が省けます。"
+      },
+      "rentalDetails": {
+        "title": "レンタルの詳細",
+        "editableHint": "レンタル開始まで変更できます。",
+        "toComplete": "要入力",
+        "saved": "詳細を保存しました",
+        "saveError": "詳細を保存できませんでした。入力内容を確認して、もう一度お試しください。"
       }
     },
     "marketplaceShell": {
@@ -8040,6 +8643,23 @@
       "breakdownTitle": "季節ごとの料金",
       "from": "から",
       "averageRate": "日付全体の平均"
+    },
+    "customerFields": {
+      "optionalLabel": "{label}（任意）",
+      "sensitiveNote": "{store}のみが閲覧でき、予約の手続きにのみ使用されます。",
+      "suspicious": "この番号は正しくない可能性があります。確認するか、このまま続けてください。",
+      "participantLabel": "ご利用者",
+      "participantPlaceholder": "名（任意）",
+      "unitCounter": "{index} / {count}",
+      "unitEmpty": "未入力",
+      "recapValue": "{label}：{value}",
+      "profile": {
+        "title": "プロフィール",
+        "birthDate": "生年月日",
+        "acquisitionSource": "当店を知ったきっかけは何ですか？",
+        "acquisitionSourceDetail": "具体的にご記入ください",
+        "socialLinks": "SNS・リンク"
+      }
     }
   },
   "onboarding": {
@@ -8705,7 +9325,22 @@
     "requestCancellationPaymentChanged": "お支払い情報が変更になりました。再度キャンセルを確認する前に確認してください。",
     "promoCodeProductsAlreadyDiscounted": "このコードは、すでにプロモーション中の製品には適用されません。",
     "paymentAmountTooSmall": "カード払いの最低金額は{minimumAmount, number} {currency}です。カートを変更するか、店舗にお問い合わせください。",
-    "checkoutPaymentFailed": "支払いを開始できませんでした。予約は確定していません。再試行するか、店舗にお問い合わせください。"
+    "checkoutPaymentFailed": "支払いを開始できませんでした。予約は確定していません。再試行するか、店舗にお問い合わせください。",
+    "customFieldsInvalid": "一部の追加フィールドが無効です。",
+    "optionsRequired": "選択肢を1つ以上追加してください。",
+    "customerFields": {
+      "tooManyFields": "有効なフィールドの上限に達しました。新しく追加するには、いずれかをアーカイブしてください。",
+      "tooManySearchable": "検索対象にできるフィールドは最大5つです。",
+      "tooManyListFields": "一覧に表示できるフィールドは最大2つです。"
+    },
+    "customFieldRequired": "「{field}」を入力してください。",
+    "customFieldInvalid": "「{field}」が正しくありません。",
+    "itemDetailRequired": "{product}（{unit}点目）の「{field}」を入力してください。",
+    "itemDetailInvalid": "{product}（{unit}点目）の「{field}」が正しくありません。",
+    "reservationDetailsLocked": "レンタルが開始または終了したため、この情報は変更できません。",
+    "customerNotAuthenticated": "続行するにはお客様アカウントにログインしてください。",
+    "profileFieldRequired": "「{field}」を入力してください。",
+    "profileFieldInvalid": "「{field}」が正しくありません。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",

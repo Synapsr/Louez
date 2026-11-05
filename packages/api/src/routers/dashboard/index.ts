@@ -4,6 +4,7 @@ import { dashboardProcedure } from "../../procedures";
 import { dashboardAiAdvisorRouter } from "./ai-advisor";
 import { dashboardApiKeysRouter } from "./api-keys";
 import { dashboardCategoriesRouter } from "./categories";
+import { dashboardCustomerFieldsRouter } from "./customer-fields";
 import { dashboardCustomersRouter } from "./customers";
 import { dashboardIntegrationsRouter } from "./integrations";
 import { dashboardNotificationsRouter } from "./notifications";
@@ -12,6 +13,7 @@ import { dashboardOnlineStoreRouter } from "./online-store";
 import { dashboardPaymentsRouter } from "./payments";
 import { dashboardProductsRouter } from "./products";
 import { dashboardReferralRouter } from "./referral";
+import { dashboardReservationDetailsRouter } from "./reservation-details";
 import { dashboardReservationsRouter } from "./reservations";
 import { dashboardSearchRouter } from "./search";
 import { dashboardVariantsRouter } from "./variants";
@@ -42,8 +44,10 @@ export const dashboardRouter = {
   apiKeys: dashboardApiKeysRouter,
   categories: dashboardCategoriesRouter,
   customers: dashboardCustomersRouter,
+  customerFields: dashboardCustomerFieldsRouter,
   integrations: dashboardIntegrationsRouter,
   reservations: dashboardReservationsRouter,
+  reservationDetails: dashboardReservationDetailsRouter,
   search: dashboardSearchRouter,
   onboarding: dashboardOnboardingRouter,
   onlineStore: dashboardOnlineStoreRouter,

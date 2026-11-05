@@ -1,5 +1,11 @@
 import { composeConfirmationPreview } from "@/lib/document-previews/compose-confirmation-preview";
-import { DeleteAccountEmail, getDeleteAccountEmailSubject } from "@louez/email/templates";
+import {
+  DeleteAccountEmail,
+  getDeleteAccountEmailSubject,
+  getOtpEmailSubject,
+  getPasswordChangedEmailSubject,
+  PasswordChangedEmail,
+} from "@louez/email/templates";
 
 import {
   composeContractEmail,
@@ -686,6 +692,25 @@ export const EMAIL_DOCUMENT_PREVIEWS: readonly EmailDocumentPreview[] = [
     compose: ({ locale }) => ({
       subject: null,
       element: MagicLinkEmail({ url, locale }),
+    }),
+  }),
+  platformEmail({
+    id: "otp-forget-password",
+    title: "Code de réinitialisation du mot de passe",
+    description: "Code à usage unique pour choisir un nouveau mot de passe.",
+    compose: ({ locale }) => ({
+      subject: `${getOtpEmailSubject(locale, "forget-password")}: 482913`,
+      element: OTPEmail({ otp: "482913", locale, purpose: "forget-password" }),
+    }),
+  }),
+  platformEmail({
+    id: "password-changed",
+    title: "Mot de passe ajouté, modifié ou retiré",
+    description:
+      "E-mail d'information envoyé à chaque changement de mot de passe, avec le lien « Ce n'était pas moi ».",
+    compose: ({ locale }) => ({
+      subject: getPasswordChangedEmailSubject(locale, "added"),
+      element: PasswordChangedEmail({ event: "added", url, locale }),
     }),
   }),
   platformEmail({

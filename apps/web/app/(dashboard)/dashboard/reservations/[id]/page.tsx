@@ -20,6 +20,7 @@ import { and, desc, eq, gt, inArray, isNull, ne, notInArray } from "drizzle-orm"
 import { redirect, notFound } from "next/navigation";
 
 import { getDashboardReservationById } from "@louez/api/services";
+import { listReservationItemDetails } from "@louez/api/services/customer-fields-online";
 import { DEFAULT_INSPECTION_SETTINGS } from "@louez/types";
 
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
@@ -124,7 +125,7 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
   const linkedPaymentIds = db
     .select({ paymentId: invoicePayments.paymentId })
     .from(invoicePayments);
-  const [reservationInvoices, legalProfile, uninvoicedPayment] = await Promise.all([
+  const [reservationInvoices, legalProfile, uninvoicedPayment, itemDetails] = await Promise.all([
     db
       .select({
         id: invoices.id,
@@ -161,6 +162,7 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
       )
       .limit(1)
       .then(([payment]) => payment ?? null),
+    listReservationItemDetails({ storeId: store.id, reservationId: id, audience: "team" }),
   ]);
 
   const formattedDepartureInspection =
@@ -232,6 +234,7 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
         returnInspection={formattedReturnInspection}
         invoices={reservationInvoices}
         canGenerateInvoice={Boolean(legalProfile?.invoicingEnabled && uninvoicedPayment)}
+        initialItemDetails={itemDetails}
       />
     </>
   );

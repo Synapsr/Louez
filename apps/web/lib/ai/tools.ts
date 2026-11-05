@@ -27,6 +27,16 @@ import {
 } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
+import {
+  customerFieldSearchCondition,
+  getCustomerFieldValues,
+  listCustomerFieldDefinitions,
+  saveCustomerFieldValues,
+} from "@louez/api/services/customer-fields";
+import {
+  checkCustomerFieldEntries,
+  toReadableCustomerFields,
+} from "@louez/api/services/customer-tools";
 
 import {
   deleteRecordedPayment,
@@ -69,6 +79,25 @@ export interface AIToolServices {
 const defaultServices: AIToolServices = {
   changeReservationStatus: changeReservationStatusAsAgent,
 };
+// A list of pairs rather than a free-form object: some providers refuse a tool
+// parameter that declares no property.
+const customFieldEntriesSchema = z
+  .array(
+    z.object({
+      field: z
+        .string()
+        .describe("The custom field's label as shown on the customer record, or its key"),
+      value: z
+        .string()
+        .describe(
+          'The value. Checkboxes take "true" or "false", dates YYYY-MM-DD. An empty string clears the field.',
+        ),
+    }),
+  )
+  .optional()
+  .describe(
+    "Custom fields defined by the store (ID numbers, licence, sizes…). An unknown field name returns the list of available fields.",
+  );
 
 // ---------------------------------------------------------------------------
 // Tool factory
@@ -490,7 +519,12 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
     list_customers: tool({
       description: "List customers with optional search, type filter, and date filter",
       inputSchema: z.object({
-        search: z.string().optional().describe("Search by name or email"),
+        search: z
+          .string()
+          .optional()
+          .describe(
+            "Search by name, email, or the start of a searchable custom field (an ID or licence number)",
+          ),
         type: z.enum(["individual", "business"]).optional(),
         since: z
           .string()
@@ -524,9 +558,9 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         if (since) conditions.push(gte(customers.createdAt, new Date(since)));
         if (search) {
           const s = `%${search.toLowerCase()}%`;
-          conditions.push(
-            sql`(LOWER(${customers.firstName}) LIKE ${s} OR LOWER(${customers.lastName}) LIKE ${s} OR LOWER(${customers.email}) LIKE ${s})`,
-          );
+          const nativeMatch = sql`(LOWER(${customers.firstName}) LIKE ${s} OR LOWER(${customers.lastName}) LIKE ${s} OR LOWER(${customers.email}) LIKE ${s})`;
+          const customMatch = customerFieldSearchCondition(ctx.storeId, search);
+          conditions.push(customMatch ? sql`(${nativeMatch} OR ${customMatch})` : nativeMatch);
         }
 
         const rows = await db
@@ -555,7 +589,8 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
     }),
 
     get_customer: tool({
-      description: "Get detailed customer profile with reservation history",
+      description:
+        "Get detailed customer profile with reservation history and the store's custom fields. Custom fields the store flagged as sensitive are never returned: their labels come back in `withheldSensitiveFields`, which means the value exists on the record and can be read by the merchant in the dashboard, not that it is missing.",
       inputSchema: z.object({
         customerId: z.string().describe("The customer ID"),
       }),
@@ -573,7 +608,14 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         });
 
         if (!customer) return { error: "Customer not found" };
-        return { customer };
+
+        const [definitions, values] = await Promise.all([
+          listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true, scope: "customer" }),
+          getCustomerFieldValues(ctx.storeId, customer.id),
+        ]);
+        const { fields, withheld } = toReadableCustomerFields(definitions, values);
+
+        return { customer, customFields: fields, withheldSensitiveFields: withheld };
       },
     }),
 
@@ -586,8 +628,17 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         phone: z.string().optional(),
         customerType: z.enum(["individual", "business"]).optional(),
         companyName: z.string().optional(),
+        customFields: customFieldEntriesSchema,
       }),
-      execute: async ({ email, firstName, lastName, phone, customerType, companyName }) => {
+      execute: async ({
+        email,
+        firstName,
+        lastName,
+        phone,
+        customerType,
+        companyName,
+        customFields,
+      }) => {
         requirePermission(ctx, "customers", "write");
 
         const existing = await db.query.customers.findFirst({
@@ -596,20 +647,43 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         });
         if (existing) return { error: "A customer with this email already exists" };
 
-        const [created] = await db
-          .insert(customers)
-          .values({
-            storeId: ctx.storeId,
-            email,
-            firstName,
-            lastName,
-            phone: phone ?? null,
-            customerType: customerType ?? "individual",
-            companyName: companyName ?? null,
-          })
-          .$returningId();
+        const definitions = await listCustomerFieldDefinitions(ctx.storeId, {
+          activeOnly: true,
+          scope: "customer",
+        });
+        const checked = checkCustomerFieldEntries({
+          definitions,
+          entries: customFields,
+          customerType: customerType ?? "individual",
+          partial: false,
+        });
+        if (!checked.ok) return { error: checked.error };
 
-        return { id: created.id, firstName, lastName, email };
+        const createdId = await db.transaction(async (tx) => {
+          const [created] = await tx
+            .insert(customers)
+            .values({
+              storeId: ctx.storeId,
+              email,
+              firstName,
+              lastName,
+              phone: phone ?? null,
+              customerType: customerType ?? "individual",
+              companyName: companyName ?? null,
+              createdVia: "ai",
+            })
+            .$returningId();
+
+          await saveCustomerFieldValues(tx, {
+            storeId: ctx.storeId,
+            customerId: created.id,
+            values: checked.values,
+            definitions,
+          });
+          return created.id;
+        });
+
+        return { id: createdId, firstName, lastName, email };
       },
     }),
 
@@ -625,13 +699,14 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         city: z.string().optional(),
         postalCode: z.string().optional(),
         notes: z.string().optional(),
+        customFields: customFieldEntriesSchema,
       }),
-      execute: async ({ customerId, ...updates }) => {
+      execute: async ({ customerId, customFields, ...updates }) => {
         requirePermission(ctx, "customers", "write");
 
         const existing = await db.query.customers.findFirst({
           where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
-          columns: { id: true, email: true },
+          columns: { id: true, email: true, customerType: true },
         });
         if (!existing) return { error: "Customer not found" };
 
@@ -648,11 +723,37 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           if (value !== undefined) updateData[key] = value;
         }
 
-        if (Object.keys(updateData).length === 0) {
+        const hasCustomFields = (customFields?.length ?? 0) > 0;
+        if (Object.keys(updateData).length === 0 && !hasCustomFields) {
           return { error: "No fields to update" };
         }
 
-        await db.update(customers).set(updateData).where(eq(customers.id, customerId));
+        const definitions = await listCustomerFieldDefinitions(ctx.storeId, {
+          activeOnly: true,
+          scope: "customer",
+        });
+        const checked = checkCustomerFieldEntries({
+          definitions,
+          entries: customFields,
+          customerType: existing.customerType,
+          partial: true,
+        });
+        if (!checked.ok) return { error: checked.error };
+
+        await db.transaction(async (tx) => {
+          if (Object.keys(updateData).length > 0) {
+            await tx
+              .update(customers)
+              .set(updateData)
+              .where(and(eq(customers.id, customerId), eq(customers.storeId, ctx.storeId)));
+          }
+          await saveCustomerFieldValues(tx, {
+            storeId: ctx.storeId,
+            customerId,
+            values: checked.values,
+            definitions,
+          });
+        });
         return { success: true, customerId };
       },
     }),

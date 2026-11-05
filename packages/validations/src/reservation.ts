@@ -1,6 +1,9 @@
 import { supportedLocales } from "@louez/types";
 import { z } from "zod";
 
+import { checkoutItemDetailsSchema, customerFieldSubmittedValuesSchema } from "./customer-fields";
+import { customerProfileValuesInputSchema } from "./customer-profile-fields";
+
 const emailSchema = (message: string) => z.string().trim().toLowerCase().pipe(z.email(message));
 
 export const reservationStatusSchema = z.enum([
@@ -172,6 +175,18 @@ export const createReservationInputSchema = z.object({
    * Reused as-is when the cart is unchanged, cancelled when it differs.
    */
   resumeReservationId: z.string().regex(RESERVATION_ID_REGEX).optional(),
+  /**
+   * Custom customer fields the checkout asked (definition id → value). The
+   * server re-resolves what is asked and drops anything else.
+   */
+  customerFields: customerFieldSubmittedValuesSchema.optional(),
+  /** "Détails de la location": item-scope values per rented unit, by cart line. */
+  itemDetails: checkoutItemDetailsSchema.optional(),
+  /**
+   * Native profile fields the checkout asked (birth date, source, links).
+   * Same rule as `customerFields`: re-resolved server-side, the rest dropped.
+   */
+  profileFields: customerProfileValuesInputSchema.optional(),
 });
 
 /** `storefront.promo.validate`: the code plus the cart lines to price server-side. */

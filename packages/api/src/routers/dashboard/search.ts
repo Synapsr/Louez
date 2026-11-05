@@ -4,6 +4,7 @@ import { z } from "zod";
 import { customers, db, products, reservations } from "@louez/db";
 
 import { dashboardProcedure } from "../../procedures";
+import { customerFieldSearchCondition } from "../../services/customer-fields";
 import { toORPCError } from "../../utils/orpc-error";
 
 const RESULT_LIMIT = 5;
@@ -47,6 +48,8 @@ const global = dashboardProcedure
     try {
       const storeId = context.store.id;
       const term = `%${input.query}%`;
+      // Searchable custom fields: an ID or licence number finds its customer.
+      const customFieldMatch = customerFieldSearchCondition(storeId, input.query);
 
       const [productRows, reservationRows, customerRows] = await Promise.all([
         db
@@ -106,6 +109,7 @@ const global = dashboardProcedure
                 like(customers.companyName, term),
                 like(customers.email, term),
                 like(customers.phone, term),
+                ...(customFieldMatch ? [customFieldMatch] : []),
               ),
             ),
           )

@@ -1,388 +1,123 @@
-'use client'
+"use client";
 
-import { useRouter } from 'next/navigation'
-import { useEffect, useTransition, useState } from 'react'
-import { useTranslations } from 'next-intl'
-import { useStore } from '@tanstack/react-form'
+import { useEffect } from "react";
 
-import { Button, Label } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { PhoneInput } from '@/components/ui/phone-input'
-import { Switch } from '@louez/ui'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@louez/ui'
-import { customerSchema } from '@louez/validations'
-import { createCustomer, updateCustomer } from './actions'
-import { useAppForm } from '@/hooks/form/form'
-import { getFieldError } from '@/hooks/form/form-context'
-import { RootError } from '@/components/form/root-error'
-import { trackOpenReplayEvent } from '@/lib/openreplay/client'
-import {
-  openReplayEvents,
-  type DashboardCreationSource,
-} from '@/lib/openreplay/events'
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-interface Customer {
-  id: string
-  customerType: 'individual' | 'business'
-  email: string
-  firstName: string
-  lastName: string
-  companyName: string | null
-  companyNumber: string | null
-  vatNumber: string | null
-  phone: string | null
-  address: string | null
-  city: string | null
-  postalCode: string | null
-  country: string | null
-  notes: string | null
-}
+import { useStore } from "@tanstack/react-form";
+import { useTranslations } from "next-intl";
+
+import type { CustomerFieldValues } from "@louez/types";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
+import { type CustomerFormLayoutItem, selectCustomerFormItems } from "@louez/validations";
+
+import { RootError } from "@/components/form/root-error";
+import { trackOpenReplayEvent } from "@/lib/openreplay/client";
+import { openReplayEvents } from "@/lib/openreplay/events";
+
+import { CustomerFormFields } from "./customer-form-fields";
+import { CustomerFormTypeSwitch } from "./customer-form-type-switch";
+import type { CustomerFormCustomer, CustomerFormOpenReplaySource } from "./customer-form.types";
+import { useCustomerForm } from "./use-customer-form";
 
 interface CustomerFormProps {
-  customer?: Customer
-  openReplaySource?: DashboardCreationSource
+  customer?: CustomerFormCustomer;
+  /** The customer form's layout, hidden items left out, both customer types. */
+  items: CustomerFormLayoutItem[];
+  initialCustomFields?: CustomerFieldValues;
+  /** Owners get a shortcut to the field editor. */
+  canCustomize: boolean;
+  openReplaySource?: CustomerFormOpenReplaySource;
 }
 
-const COUNTRY_CODES = ['FR', 'BE', 'CH', 'LU', 'MC', 'CA'] as const
-
-export function CustomerForm({
+export const CustomerForm = ({
   customer,
-  openReplaySource = 'direct',
-}: CustomerFormProps) {
-  const router = useRouter()
-  const t = useTranslations('dashboard.customers.form')
-  const tCountries = useTranslations('dashboard.customers.countries')
-  const tCommon = useTranslations('common')
-  const [isPending, startTransition] = useTransition()
-  const isEditing = !!customer
-  const [rootError, setRootError] = useState<string | null>(null)
+  items,
+  initialCustomFields = {},
+  canCustomize,
+  openReplaySource = "direct",
+}: CustomerFormProps) => {
+  const router = useRouter();
+  const t = useTranslations("dashboard.customers.form");
+  const tCommon = useTranslations("common");
+  const isEditing = customer !== undefined;
+  const { form, rootError, fieldIssues } = useCustomerForm({
+    customer,
+    initialCustomFields,
+    items,
+    save: customer ? { kind: "update", customerId: customer.id } : { kind: "create" },
+    onSaved: (customerId) => {
+      if (!isEditing) {
+        trackOpenReplayEvent(openReplayEvents.dashboardCustomerCreationCompleted, {
+          journey: "customer_creation",
+          step: "completed",
+          source: openReplaySource,
+        });
+      }
+      router.push(`/dashboard/customers/${customerId}`);
+    },
+  });
 
   useEffect(() => {
-    if (isEditing) {
-      return
-    }
+    if (isEditing) return;
 
     trackOpenReplayEvent(openReplayEvents.dashboardCustomerCreationStarted, {
-      journey: 'customer_creation',
-      step: 'started',
+      journey: "customer_creation",
+      step: "started",
       source: openReplaySource,
-    })
-  }, [isEditing, openReplaySource])
+    });
+  }, [isEditing, openReplaySource]);
 
-  const form = useAppForm({
-    defaultValues: {
-      customerType: customer?.customerType || ('individual' as const),
-      email: customer?.email || '',
-      firstName: customer?.firstName || '',
-      lastName: customer?.lastName || '',
-      companyName: customer?.companyName || undefined,
-      companyNumber: customer?.companyNumber || undefined,
-      vatNumber: customer?.vatNumber || undefined,
-      phone: customer?.phone || undefined,
-      address: customer?.address || undefined,
-      city: customer?.city || undefined,
-      postalCode: customer?.postalCode || undefined,
-      country: customer?.country || undefined,
-      notes: customer?.notes || undefined,
-    },
-    onSubmit: async ({ value }) => {
-      setRootError(null)
-
-      // Validate with Zod
-      const validation = customerSchema.safeParse(value)
-      if (!validation.success) {
-        const firstError = validation.error.issues[0]
-        if (firstError) {
-          setRootError(firstError.message)
-        }
-        return
-      }
-
-      startTransition(async () => {
-        const result = isEditing
-          ? await updateCustomer(customer.id, validation.data)
-          : await createCustomer(validation.data)
-
-        if (result.error) {
-          setRootError(result.error)
-          return
-        }
-
-        if (!isEditing) {
-          trackOpenReplayEvent(
-            openReplayEvents.dashboardCustomerCreationCompleted,
-            {
-              journey: 'customer_creation',
-              step: 'completed',
-              source: openReplaySource,
-            },
-          )
-        }
-
-        if (isEditing) {
-          router.push(`/dashboard/customers/${customer.id}`)
-        } else {
-          router.push('/dashboard/customers')
-        }
-      })
-    },
-  })
-
-  const customerType = useStore(form.store, (s) => s.values.customerType)
-  const country = useStore(form.store, (s) => s.values.country)
-
-  const companyNumberLabel =
-    country === 'FR'
-      ? t('companyNumberSiren')
-      : country === 'BE'
-        ? t('companyNumberBce')
-        : t('companyNumber')
+  const customerType = useStore(form.store, (state) => state.values.customerType);
 
   return (
     <form.AppForm>
-      <form.Form className="space-y-6">
+      <form.Form className="space-y-4 sm:space-y-6">
         <RootError error={rootError} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('personalInfo')}</CardTitle>
-          <CardDescription>
-            {t('personalInfoDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {/* Business customer toggle */}
-          <form.Field name="customerType">
-            {(field) => (
-              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <Label className="text-base">{t('businessCustomer')}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {t('businessCustomerDescription')}
-                  </p>
-                </div>
-                <Switch
-                  checked={field.state.value === 'business'}
-                  onCheckedChange={(checked) => {
-                    field.handleChange(checked ? 'business' : 'individual')
-                    if (!checked) {
-                      form.setFieldValue('companyName', undefined)
-                      form.setFieldValue('companyNumber', undefined)
-                      form.setFieldValue('vatNumber', undefined)
-                    }
-                  }}
-                />
-              </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("fieldsTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-6">
+            <CustomerFormTypeSwitch form={form} />
+            <CustomerFormFields
+              form={form}
+              items={selectCustomerFormItems(items, { customerType })}
+              fieldIssues={fieldIssues}
+              customerId={customer?.id}
+            />
+            {canCustomize && (
+              <Link
+                href="/dashboard/settings/customer-fields"
+                className="text-muted-foreground hover:text-foreground justify-self-start text-sm underline underline-offset-2"
+              >
+                {t("customizeFields")}
+              </Link>
             )}
-          </form.Field>
+          </CardContent>
+        </Card>
 
-          {/* Company name - only shown for business customers */}
-          {customerType === 'business' && (
-            <form.Field name="companyName">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('companyName')} *</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value || ''}
-                    onChange={(e) => field.handleChange(e.target.value || undefined)}
-                    onBlur={field.handleBlur}
-                    placeholder={t('companyNamePlaceholder')}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {getFieldError(field.state.meta.errors[0])}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
-          )}
-
-          {/* Company identifiers - optional, used to issue a B2B invoice */}
-          {customerType === 'business' && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <form.Field name="companyNumber">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor={field.name}>{companyNumberLabel}</Label>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      inputMode="numeric"
-                      autoComplete="off"
-                      value={field.state.value || ''}
-                      onChange={(e) => field.handleChange(e.target.value || undefined)}
-                      onBlur={field.handleBlur}
-                      placeholder={t('companyNumberPlaceholder')}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      {t('companyNumberHelp')}
-                    </p>
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm font-medium text-destructive">
-                        {getFieldError(field.state.meta.errors[0])}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
-
-              <form.Field name="vatNumber">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor={field.name}>{t('vatNumber')}</Label>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      autoComplete="off"
-                      value={field.state.value || ''}
-                      onChange={(e) => field.handleChange(e.target.value || undefined)}
-                      onBlur={field.handleBlur}
-                      placeholder={t('vatNumberPlaceholder')}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm font-medium text-destructive">
-                        {getFieldError(field.state.meta.errors[0])}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
-            </div>
-          )}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <form.AppField name="firstName">
-              {(field) => <field.Input label={t('firstName')} placeholder={t('firstNamePlaceholder')} />}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("internalNotes")}</CardTitle>
+            <CardDescription>{t("internalNotesDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form.AppField name="notes">
+              {(field) => <field.Textarea rows={4} placeholder={t("notesPlaceholder")} />}
             </form.AppField>
+          </CardContent>
+        </Card>
 
-            <form.AppField name="lastName">
-              {(field) => <field.Input label={t('lastName')} placeholder={t('lastNamePlaceholder')} />}
-            </form.AppField>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <form.AppField name="email">
-              {(field) => <field.Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} />}
-            </form.AppField>
-
-            <form.Field name="phone">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('phone')}</Label>
-                  <PhoneInput
-                    value={field.state.value || ''}
-                    onChange={field.handleChange}
-                    placeholder={t('phonePlaceholder')}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {getFieldError(field.state.meta.errors[0])}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('addressSection')}</CardTitle>
-          <CardDescription>
-            {t('addressDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <form.AppField name="address">
-            {(field) => <field.Input label={t('address')} placeholder={t('addressPlaceholder')} />}
-          </form.AppField>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <form.AppField name="postalCode">
-              {(field) => <field.Input label={t('postalCode')} placeholder={t('postalCodePlaceholder')} />}
-            </form.AppField>
-
-            <form.AppField name="city">
-              {(field) => <field.Input label={t('city')} placeholder={t('cityPlaceholder')} />}
-            </form.AppField>
-
-            <form.Field name="country">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('country')}</Label>
-                  <Select
-                    value={field.state.value || undefined}
-                    onValueChange={(value) => { if (value !== null) field.handleChange(value || undefined) }}
-                  >
-                    <SelectTrigger id={field.name}>
-                      <SelectValue placeholder={t('selectCountry')}>
-                        {field.state.value ? tCountries(field.state.value) : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COUNTRY_CODES.map((code) => (
-                        <SelectItem key={code} value={code} label={tCountries(code)}>
-                          {tCountries(code)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {getFieldError(field.state.meta.errors[0])}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('internalNotes')}</CardTitle>
-          <CardDescription>
-            {t('internalNotesDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form.AppField name="notes">
-            {(field) => <field.Textarea placeholder={t('notesPlaceholder')} rows={4} />}
-          </form.AppField>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-        >
-          {tCommon('cancel')}
-        </Button>
-        <Button type="submit" isPending={isPending}>
-          {isEditing ? t('save') : t('createCustomer')}
-        </Button>
-      </div>
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={() => router.back()}>
+            {tCommon("cancel")}
+          </Button>
+          <form.SubscribeButton>{isEditing ? t("save") : t("createCustomer")}</form.SubscribeButton>
+        </div>
       </form.Form>
     </form.AppForm>
-  )
-}
+  );
+};

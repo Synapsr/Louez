@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { CalendarCheckIcon, PricingIcon, ProductIcon } from "@louez/ui/icons";
+import { CalendarCheckIcon, PricingIcon, ProductIcon, UsersIcon } from "@louez/ui/icons";
 
 import { ContractExportCard } from "./contract-export-card";
 import { TabularExportCard } from "./tabular-export-card";
@@ -45,6 +45,22 @@ export const ExportForm = ({ timezone }: ExportFormProps) => {
         description={t("products.description")}
         buttonLabel={t("products.button")}
         showDateRange={false}
+        timezone={timezone}
+      />
+
+      <TabularExportCard
+        type="customers"
+        icon={UsersIcon}
+        title={t("customers.title")}
+        description={t("customers.description")}
+        buttonLabel={t("customers.button")}
+        showDateRange
+        dateRangeOptional
+        dateRangeHint={t("customers.dateRangeHint")}
+        sensitiveOptIn={{
+          label: t("customers.includeSensitive"),
+          warning: t("customers.includeSensitiveWarning"),
+        }}
         timezone={timezone}
       />
     </div>

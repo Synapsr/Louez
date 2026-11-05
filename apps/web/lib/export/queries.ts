@@ -9,6 +9,7 @@ import {
 } from "@louez/db";
 import { resolveReservationBilling } from "@louez/utils";
 import { eq, and, between, asc, desc } from "drizzle-orm";
+import { queryCustomersExport } from "./customers";
 import type { ExportParams } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -270,5 +271,7 @@ export async function queryExportData(storeId: string, params: ExportParams): Pr
       const data = await queryProductsData(storeId);
       return { headers: PRODUCT_HEADERS, rows: productsToRows(data), json: data };
     }
+    case "customers":
+      return queryCustomersExport(storeId, params);
   }
 }

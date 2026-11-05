@@ -14,8 +14,8 @@ export const PRICING_OPTIONS = {
   "free-reservations": { type: "string" },
 } as const;
 
-export const PRICING_USAGE = `  --pricing=<json>|builtin  What stores without a stored config pay today: the deployment's
-                            PAYG_DEFAULT_PRICING JSON, or "builtin" when it is empty.
+export const PRICING_USAGE = `  --pricing=<json>|builtin  What stores without a stored config pay today: the JSON offer
+                            the deployment ran with, or "builtin" for the built-in ladder.
   --free-reservations=<n>   The deployment's PAYG_FREE_RESERVATIONS (15 when unset).`;
 
 export function fail(message: string): never {

@@ -5,7 +5,13 @@ import { ArrowRight, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button, Collapsible, CollapsiblePanel, CollapsibleTrigger, StepContent } from "@louez/ui";
+import type {
+  CheckoutProfileField,
+  CustomerExtraLayoutItem,
+  CustomerFieldPublic,
+} from "@louez/validations";
 
+import type { CustomerProfileFormValues } from "@/components/storefront/customer-fields/customer-fields.types";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { buildLoginPath } from "@/lib/customer-auth/util.account-redirect";
 
@@ -15,6 +21,7 @@ import type { CheckoutInitialCustomer, DeliveryAddress } from "../checkout.types
 import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
 import { CheckoutAddressFields } from "./checkout-address-fields";
 import { CheckoutBusinessFields } from "./checkout-business-fields";
+import { CheckoutCustomerFields } from "./checkout-customer-fields";
 import { CheckoutStepActions } from "./checkout-step-actions";
 
 const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
@@ -28,6 +35,18 @@ interface CheckoutContactStepProps {
   onSessionCustomer: (customer: CheckoutInitialCustomer | null) => void;
   coordinates: Pick<DeliveryAddress, "latitude" | "longitude">;
   onCoordinatesChange: (coordinates: Pick<DeliveryAddress, "latitude" | "longitude">) => void;
+  /** Native profile fields this cart asks (birth date, source, links). */
+  profileFields: CheckoutProfileField[];
+  /** Customer-scope custom fields this cart asks the buyer's type. */
+  customerFields: CustomerFieldPublic[];
+  /** How the owner laid those native and custom fields out. */
+  customerLayout: CustomerExtraLayoutItem[];
+  /** Values the signed-in customer has on file; empty for a guest. */
+  savedCustomerFieldValues: Record<string, string>;
+  /** Native values the signed-in customer has on file; blank for a guest. */
+  savedCustomerProfileValues: CustomerProfileFormValues;
+  /** What the store asks is still loading: going on now could skip a question. */
+  isCustomFieldsLoading: boolean;
   onContinue: () => void;
   /** Direction the step flow moved in, for the entrance animation. */
   stepDirection: "forward" | "backward";
@@ -45,6 +64,12 @@ export const CheckoutContactStep = withForm({
     onSessionCustomer,
     coordinates,
     onCoordinatesChange,
+    profileFields,
+    customerFields,
+    customerLayout,
+    savedCustomerFieldValues,
+    savedCustomerProfileValues,
+    isCustomFieldsLoading,
     onContinue,
     stepDirection,
   }) => {
@@ -182,6 +207,15 @@ export const CheckoutContactStep = withForm({
             <CheckoutBusinessFields form={form} storeId={storeId} country={storeCountry} />
           )}
 
+          <CheckoutCustomerFields
+            form={form}
+            profileFields={profileFields}
+            fields={customerFields}
+            layout={customerLayout}
+            savedValues={savedCustomerFieldValues}
+            savedProfile={savedCustomerProfileValues}
+          />
+
           <Collapsible defaultOpen={hasNotes}>
             <CollapsibleTrigger className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground">
               {t("notesDisclosure")}
@@ -208,6 +242,7 @@ export const CheckoutContactStep = withForm({
             type="button"
             size="lg"
             onClick={onContinue}
+            isPending={isCustomFieldsLoading}
             className="h-12 w-full lg:h-10 lg:w-auto lg:ml-auto"
           >
             {t("continue")}

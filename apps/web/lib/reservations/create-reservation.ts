@@ -2,6 +2,9 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { validateRequiredAccessoryLines } from "@louez/api/services";
+import { saveCustomerFieldValues } from "@louez/api/services/customer-fields";
+import { saveReservationItemDetails } from "@louez/api/services/customer-fields-online";
+import { saveCustomerProfileValues } from "@louez/api/services/customer-profile-fields";
 import { loadPricingCatalog, type PricingCatalog } from "@louez/api/services/pricing-catalog";
 import {
   aiAdvisorConversations,
@@ -27,7 +30,10 @@ import {
   type ProductSnapshot,
   type StoreSettings,
 } from "@louez/types";
-import type { CreateReservationCustomerInput } from "@louez/validations";
+import {
+  resolveCustomerProfileSettings,
+  type CreateReservationCustomerInput,
+} from "@louez/validations";
 import { advisorValidationCovers, validateStripePaymentAmount } from "@louez/utils";
 
 import { env } from "@/env";
@@ -87,9 +93,15 @@ import {
   resolveCustomerCompanyIdentity,
   type CustomerCompanyIdentity,
 } from "./billing-snapshot";
+import {
+  NO_CHECKOUT_CUSTOMER_FIELDS,
+  prepareCheckoutCustomerFields,
+  type CheckoutCustomerFields,
+} from "./checkout-customer-fields";
 import { upsertCustomer } from "./upsert-customer";
 import {
   isSamePendingCheckout,
+  matchPendingCheckoutItems,
   type PendingCheckoutItem,
   type PendingCheckoutReservation,
 } from "./util.pending-checkout";
@@ -124,12 +136,17 @@ interface PreparedReservation {
   customerPhone: string | null;
   companyIdentity: CustomerCompanyIdentity;
   advisorConversation: AdvisorConversation | null;
+  /** Custom field values the web checkout asked, validated; nothing for trusted callers. */
+  checkoutFields: CheckoutCustomerFields;
 }
 
 type PrepareInput = QuoteReservationRequest & {
   customer: CreateReservationCustomerInput;
   advisorConversationId?: string;
   clientAmounts: { subtotal: number; deposit: number; total: number } | null;
+  customerFields?: CreateReservationRequest["customerFields"];
+  itemDetails?: CreateReservationRequest["itemDetails"];
+  profileFields?: CreateReservationRequest["profileFields"];
 };
 
 const getErrorKey = (error: unknown, fallback: string): string =>
@@ -365,6 +382,23 @@ const prepareReservation = async (
   }
   const cart = priced.cart;
 
+  // What the checkout asks is re-resolved here, never trusted from the client.
+  // Trusted callers (marketplace, phone) are asked nothing.
+  const checkoutFields =
+    input.source === "online"
+      ? await prepareCheckoutCustomerFields({
+          storeId: store.id,
+          customer: input.customer,
+          items: input.items,
+          customerFields: input.customerFields,
+          itemDetails: input.itemDetails,
+          profileFields: input.profileFields,
+          profileSettings: resolveCustomerProfileSettings(settings?.customerProfile),
+          productNameOf: (productId) => catalog.get(productId)?.name ?? "",
+        })
+      : { ok: true as const, fields: NO_CHECKOUT_CUSTOMER_FIELDS };
+  if (!checkoutFields.ok) return checkoutFields;
+
   const deliveryResult = await resolveDelivery({
     store,
     settings: settings?.delivery,
@@ -456,6 +490,7 @@ const prepareReservation = async (
       customerPhone,
       companyIdentity,
       advisorConversation: advisor.conversation,
+      checkoutFields: checkoutFields.fields,
     },
   };
 };
@@ -530,7 +565,7 @@ interface ResumableCheckout {
   id: string;
   number: string;
   reservation: PendingCheckoutReservation;
-  items: PendingCheckoutItem[];
+  items: (PendingCheckoutItem & { id: string })[];
 }
 
 const findResumableCheckout = async (
@@ -849,6 +884,36 @@ export const supersedePendingCheckout = async (
   };
 };
 
+/** The checkout's per-unit details, written onto the rows of their cart lines. */
+const saveCheckoutItemDetails = async (
+  tx: Transaction,
+  params: {
+    storeId: string;
+    reservationId: string;
+    /** Reservation item id of each cart line, in cart order. */
+    itemIdByLine: readonly (string | null)[];
+    itemDetails: CheckoutCustomerFields["itemDetails"];
+  },
+): Promise<void> => {
+  await saveReservationItemDetails(tx, {
+    storeId: params.storeId,
+    reservationId: params.reservationId,
+    items: params.itemDetails.flatMap((line) => {
+      const reservationItemId = params.itemIdByLine[line.lineIndex];
+      return reservationItemId
+        ? [
+            {
+              reservationItemId,
+              managedDefinitionIds: line.managedDefinitionIds,
+              managesParticipantName: true,
+              units: line.units,
+            },
+          ]
+        : [];
+    }),
+  });
+};
+
 /** Best effort: a superseded session the customer could still pay is closed. */
 const expireCheckoutSessions = (stripeAccountId: string | null, sessionIds: string[]): void => {
   if (!stripeAccountId || sessionIds.length === 0) return;
@@ -868,7 +933,7 @@ const writeReservation = async (
   prepared: PreparedReservation,
   resumable: ResumableCheckout | null,
 ): Promise<WriteResult> => {
-  const { store, promo, window } = prepared;
+  const { store, promo, window, checkoutFields } = prepared;
   const settings: StoreSettings | null = store.settings;
   const blockingStatuses = getBlockingReservationStatuses(
     settings?.pendingBlocksAvailability ?? true,
@@ -911,6 +976,7 @@ const writeReservation = async (
       tx,
       storeId: store.id,
       storeCountry: prepared.storeCountry,
+      source: request.source,
       customer: request.customer,
       phone: prepared.customerPhone,
       companyIdentity: prepared.companyIdentity,
@@ -919,15 +985,44 @@ const writeReservation = async (
       return failReservation("errors.createCustomerError");
     }
 
+    // A signed-in buyer updates their own values; anyone else typing this
+    // e-mail only fills what the customer does not hold yet.
+    if (checkoutFields.customerDefinitions.length > 0) {
+      await saveCustomerFieldValues(tx, {
+        storeId: store.id,
+        customerId: customer.id,
+        values: checkoutFields.customerValues,
+        definitions: checkoutFields.customerDefinitions,
+        mode: request.customerSignedIn ? "overwrite" : "fillEmpty",
+      });
+    }
+    // Same rule for the native profile fields (birth date, source, links).
+    await saveCustomerProfileValues(tx, {
+      storeId: store.id,
+      customerId: customer.id,
+      values: checkoutFields.profileValues,
+      mode: request.customerSignedIn ? "overwrite" : "fillEmpty",
+    });
+
     const reservationValues = buildReservationValues(request, prepared, customer.id);
     const itemValues = buildReservationItemValues(request, prepared, resolvedCombinationByLineKey);
 
     // Same cart, same customer, same options: the earlier reservation is the
-    // booking. Nothing is written; the caller sends the customer back to pay it.
+    // booking. Only what this attempt recorded per unit is written onto it;
+    // the caller sends the customer back to pay it.
     if (
       resumed &&
       isSamePendingCheckout(resumed, { reservation: reservationValues, items: itemValues })
     ) {
+      await saveCheckoutItemDetails(tx, {
+        storeId: store.id,
+        reservationId: resumed.id,
+        itemIdByLine: matchPendingCheckoutItems(
+          resumed.items,
+          itemValues.slice(0, request.items.length),
+        ),
+        itemDetails: checkoutFields.itemDetails,
+      });
       return {
         ok: true,
         replay: false,
@@ -956,9 +1051,17 @@ const writeReservation = async (
     });
     effects.push(...inserted.effects);
 
-    for (const item of itemValues) {
+    // Ids are set here so each cart line's unit details can point at its row.
+    const itemRows = itemValues.map((item) => ({ ...item, id: nanoid() }));
+    for (const item of itemRows) {
       await tx.insert(reservationItems).values({ reservationId, ...item });
     }
+    await saveCheckoutItemDetails(tx, {
+      storeId: store.id,
+      reservationId,
+      itemIdByLine: itemRows.slice(0, request.items.length).map((item) => item.id),
+      itemDetails: checkoutFields.itemDetails,
+    });
 
     await tx.insert(reservationActivity).values({
       id: nanoid(),

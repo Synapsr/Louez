@@ -1982,6 +1982,20 @@
             "unassigned": "예약에서 할당 해제됨",
             "updated": "단위가 업데이트되었습니다."
           }
+        },
+        "customerFields": {
+          "title": "고객에게 요청하는 정보",
+          "description": "온라인으로 요청하거나 물품별로 기록합니다.",
+          "scope": {
+            "customer": "고객 정보",
+            "item": "물품별"
+          },
+          "collect": {
+            "never": "팀 전용",
+            "optional": "온라인 · 선택사항",
+            "required": "온라인 · 필수"
+          },
+          "manage": "‘고객 정보’에서 관리"
         }
       }
     },
@@ -3148,15 +3162,28 @@
       },
       "filter": {
         "type": "고객 유형",
-        "all": "모든 고객"
+        "all": "모든 고객",
+        "created": "생성일",
+        "anyDate": "모든 날짜",
+        "source": "유입 경로",
+        "allSources": "모든 유입 경로",
+        "channel": "채널",
+        "allChannels": "모든 채널",
+        "reset": "필터 초기화",
+        "importRun": "가져오기로 추가됨",
+        "noResults": "이 필터와 일치하는 고객이 없습니다.",
+        "from": "{date}부터",
+        "to": "{date}까지",
+        "more": "필터",
+        "createdFrom": "생성일 (시작)",
+        "createdTo": "생성일 (종료)",
+        "remove": "필터 제거"
       },
       "deleteConfirm": {
         "title": "이 고객을 삭제하시겠습니까?",
         "description": "이 작업은 되돌릴 수 없습니다. 고객이 영구적으로 삭제됩니다."
       },
       "form": {
-        "personalInfo": "개인정보",
-        "personalInfoDescription": "고객의 기본정보",
         "businessCustomer": "비즈니스 고객",
         "businessCustomerDescription": "이 고객이 회사를 대표하는지 확인하세요.",
         "companyName": "회사명",
@@ -3176,8 +3203,6 @@
         "emailPlaceholder": "john.doe@example.com",
         "phone": "전화",
         "phonePlaceholder": "+1 234 567 8900",
-        "addressSection": "주소",
-        "addressDescription": "고객 주소(선택사항)",
         "address": "주소",
         "addressPlaceholder": "123 메인 스트리트",
         "postalCode": "우편번호",
@@ -3190,7 +3215,17 @@
         "internalNotesDescription": "이 고객에 대한 비공개 메모(고객에게 표시되지 않음)",
         "notesPlaceholder": "이 고객에 대한 메모를 추가하세요...",
         "save": "저장",
-        "createCustomer": "고객 생성"
+        "createCustomer": "고객 생성",
+        "customerKind": "고객 유형",
+        "birthDate": "생년월일",
+        "ageYears": "{age, plural, other {#세}}",
+        "acquisitionSource": "매장을 어떻게 알게 되었나요?",
+        "acquisitionSourcePlaceholder": "선택",
+        "acquisitionSourceDetail": "세부 내용",
+        "acquisitionSourceDetailPlaceholder": "관광 안내소, 박람회, 제휴 호텔…",
+        "socialSection": "소셜 및 링크",
+        "customizeFields": "필드 맞춤설정",
+        "fieldsTitle": "고객 정보"
       },
       "countries": {
         "FR": "프랑스",
@@ -3205,6 +3240,80 @@
       "quickCreate": {
         "title": "신규 고객",
         "description": "고객이 자동으로 생성되고 선택됩니다."
+      },
+      "sources": {
+        "word_of_mouth": "입소문",
+        "search_engine": "Google 검색",
+        "social_media": "소셜 미디어",
+        "walk_in": "매장 앞을 지나가다가",
+        "partner": "제휴처 또는 관광 안내소",
+        "ads": "광고",
+        "returning": "기존 고객",
+        "other": "기타"
+      },
+      "channels": {
+        "dashboard": "팀에서 생성",
+        "storefront": "온라인 상점",
+        "marketplace": "reeent",
+        "import": "가져오기",
+        "api": "API",
+        "ai": "AI 어시스턴트"
+      },
+      "social": {
+        "add": "링크 추가",
+        "remove": "{network} 제거",
+        "open": "{network} 열기",
+        "placeholderHandle": "@handle 또는 프로필 링크",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+82 10 1234 5678",
+        "whatsapp": "WhatsApp",
+        "empty": "링크 없음"
+      },
+      "fields": {
+        "yes": "예",
+        "no": "아니요",
+        "reveal": "표시",
+        "hide": "숨기기",
+        "copy": "복사",
+        "copied": "복사됨",
+        "selectPlaceholder": "선택",
+        "suspicious": "이 번호가 올바르지 않은 것 같습니다. 다시 확인하세요. 그래도 저장은 됩니다.",
+        "duplicate": "{name} 고객이 이미 사용 중입니다.",
+        "viewCustomer": "고객 정보 보기",
+        "complete": "{count, plural, other {필드 #개 입력하기}}",
+        "issues": {
+          "required": "이 필드는 필수입니다.",
+          "invalidNumber": "숫자를 입력하세요.",
+          "invalidDate": "잘못된 날짜입니다.",
+          "invalidOption": "목록에서 값을 선택하세요.",
+          "invalidEmail": "잘못된 이메일 주소입니다.",
+          "invalidPhone": "잘못된 전화번호입니다.",
+          "invalidUrl": "잘못된 링크입니다."
+        }
+      },
+      "detail": {
+        "newReservation": "신규 예약",
+        "edit": "편집",
+        "moreActions": "추가 작업",
+        "createdVia": "생성 경로: {channel}",
+        "bornOn": "{date} 출생",
+        "source": "유입 경로",
+        "lastRental": "마지막 대여",
+        "never": "없음",
+        "editSection": "편집: {section}",
+        "editSectionDescription": "이 정보만 변경됩니다.",
+        "sectionSaved": "변경사항이 저장되었습니다",
+        "save": "저장",
+        "cancel": "취소",
+        "infoCard": "정보",
+        "emptyInfo": "아직 입력된 내용이 없습니다."
+      },
+      "pagination": {
+        "showing": "{total}명 중 {from}–{to}",
+        "perPage": "페이지당",
+        "previous": "이전 페이지",
+        "next": "다음 페이지",
+        "pageOf": "{pages}페이지 중 {page}페이지"
       }
     },
     "calendar": {
@@ -4669,6 +4778,14 @@
           "statusRequired": "상태를 하나 이상 선택하세요.",
           "noContracts": "이 날짜 범위 및 상태와 일치하는 예약이 없습니다.",
           "exportFailed": "내보내기에 실패했습니다. 다시 시도해 주세요."
+        },
+        "customers": {
+          "title": "고객",
+          "description": "연락처 정보, 생년월일, 유입 경로, 생성 채널, 맞춤 필드를 포함한 고객 정보를 내보냅니다.",
+          "button": "고객 내보내기",
+          "dateRangeHint": "기간은 각 고객 정보가 생성된 날짜를 기준으로 적용됩니다. 모든 고객을 내보내려면 비워 두세요.",
+          "includeSensitive": "민감한 데이터 포함",
+          "includeSensitiveWarning": "민감 정보로 표시된 필드가 가려지지 않은 채 파일에 표시됩니다. 파일을 안전한 곳에 보관하세요."
         }
       },
       "embed": {
@@ -6179,7 +6296,461 @@
         "description": "고객은 장비를 사용할 수 있을 때 연장할 수 있으며 추가 비용을 계산할 수 있습니다. 특별한 경우에는 귀하의 승인이 필요합니다.",
         "maxDays": "최대 추가 일수(제한이 없으면 비워두세요)"
       },
-      "readOnlyNotice": "읽기 전용: 소유자와 관리자만 이 스토어의 설정을 변경할 수 있습니다."
+      "readOnlyNotice": "읽기 전용: 소유자와 관리자만 이 스토어의 설정을 변경할 수 있습니다.",
+      "customerFields": {
+        "title": "고객 정보",
+        "native": {
+          "birthDate": "생년월일",
+          "acquisitionSource": "고객 유입 경로",
+          "socialLinks": "소셜 및 링크"
+        },
+        "field": {
+          "add": "필드 추가",
+          "delete": "영구 삭제",
+          "drag": "순서 변경"
+        },
+        "badges": {
+          "required": "필수",
+          "sensitive": "민감 정보",
+          "online": {
+            "optional": "온라인 · 선택사항",
+            "required": "온라인 · 필수"
+          },
+          "noTarget": "선택된 제품 없음",
+          "hidden": "숨김",
+          "louez": "Louez 필드"
+        },
+        "dialog": {
+          "label": "레이블",
+          "labelPlaceholder": "면허 번호",
+          "options": "선택 항목",
+          "optionsPlaceholder": "선택 항목을 입력한 후 Enter",
+          "unit": "단위",
+          "unitPlaceholder": "cm, kg, km…",
+          "helpText": "입력 도움말",
+          "helpTextPlaceholder": "필드 아래에 표시됩니다",
+          "appliesTo": "적용 대상",
+          "appliesToAll": "모두",
+          "appliesToIndividual": "개인",
+          "appliesToBusiness": "비즈니스",
+          "types": {
+            "text": "텍스트",
+            "textarea": "긴 텍스트",
+            "number": "숫자",
+            "date": "날짜",
+            "select": "선택 목록",
+            "checkbox": "예 / 아니요",
+            "phone": "전화",
+            "email": "이메일",
+            "url": "링크"
+          },
+          "flags": {
+            "requiredHelp": "이 필드를 입력하지 않으면 고객 정보를 저장할 수 없습니다.",
+            "sensitive": "민감한 데이터",
+            "sensitiveHelp": "고객 정보에서 기본적으로 숨겨지며 내보내기에서 제외됩니다.",
+            "contract": "계약서에 표시",
+            "contractHelp": "고객 연락처 정보 아래에 추가됩니다.",
+            "search": "검색에 포함",
+            "searchHelp": "값을 입력하여 고객을 찾을 수 있습니다. 중복 여부도 알려 줍니다.",
+            "list": "목록에 표시",
+            "listHelp": "고객 목록에 열을 추가합니다.",
+            "requiredTeam": "팀 입력 시 필수",
+            "sensitiveItemHelp": "예약에서 기본적으로 숨겨집니다.",
+            "contractItemHelp": "대여 물품 행 아래에 표시됩니다."
+          },
+          "labelPlaceholderItem": "신발 사이즈",
+          "scopes": {
+            "customerDescription": "고객당 하나의 값: 면허, 신분증…",
+            "item": "대여 물품별",
+            "itemDescription": "사람 또는 장비당 하나의 값: 키, 신발 사이즈…"
+          },
+          "online": {
+            "title": "온라인 예약",
+            "description": "고객이 매장에서 예약할 때 입력하는 내용입니다."
+          }
+        },
+        "templates": {
+          "dialogTitle": "필드 템플릿",
+          "dialogDescription": "클릭 한 번으로 필드 묶음을 추가하세요. 추가한 후 이름 변경, 순서 변경, 보관이 가능합니다.",
+          "privacyNote": "꼭 필요한 정보만 수집하세요. 고객 데이터에 대한 책임은 귀하에게 있습니다.",
+          "groups": {
+            "country": "국가별",
+            "activity": "업종별",
+            "general": "일반"
+          },
+          "adopt": "추가",
+          "adopted": "추가됨",
+          "fieldsCount": "{count, plural, other {필드 #개}}",
+          "adoptedToast": "{count, plural, other {필드 #개가 추가되었습니다}}",
+          "identityDocument": {
+            "name": "신분증",
+            "description": "장비 인도 시 요청하는 신원 증빙 서류입니다.",
+            "fields": {
+              "id_document_type": {
+                "label": "서류 유형",
+                "options": {
+                  "idCard": "신분증",
+                  "passport": "여권",
+                  "residencePermit": "체류 허가증",
+                  "drivingLicense": "운전면허증",
+                  "other": "기타"
+                }
+              },
+              "id_document_number": {
+                "label": "서류 번호"
+              },
+              "id_document_expiry": {
+                "label": "만료일"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "비상 연락처",
+            "description": "대여 중 문제가 생겼을 때 연락할 사람입니다.",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "이름"
+              },
+              "emergency_contact_phone": {
+                "label": "전화"
+              },
+              "emergency_contact_relation": {
+                "label": "관계",
+                "options": {
+                  "partner": "배우자",
+                  "parent": "부모",
+                  "friend": "친구",
+                  "colleague": "동료",
+                  "other": "기타"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "비즈니스 고객",
+            "description": "회계 담당자와 문서에 기재할 참조 번호입니다.",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "회계 담당자"
+              },
+              "accounting_email": {
+                "label": "회계 담당 이메일"
+              },
+              "purchase_order_reference": {
+                "label": "발주서 참조 번호"
+              }
+            }
+          },
+          "brazil": {
+            "name": "브라질",
+            "description": "번호 검증이 포함된 CPF 또는 CNPJ, 그리고 RG.",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "발급 기관"
+              }
+            }
+          },
+          "spain": {
+            "name": "스페인",
+            "description": "확인 문자 검증이 포함된 DNI 또는 NIE.",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "이탈리아",
+            "description": "확인 문자 검증이 포함된 Codice fiscale.",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "포르투갈",
+            "description": "확인 숫자 검증이 포함된 NIF.",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "차량 및 스쿠터",
+            "description": "계약서에 기재되는 운전면허 정보입니다.",
+            "fields": {
+              "driving_license_number": {
+                "label": "면허 번호"
+              },
+              "driving_license_date": {
+                "label": "취득일"
+              },
+              "driving_license_categories": {
+                "label": "면허 종류"
+              }
+            }
+          },
+          "ski": {
+            "name": "스키 및 산악",
+            "description": "고객이 도착하기 전에 장비를 준비하기 위한 신체 치수입니다.",
+            "fields": {
+              "height_cm": {
+                "label": "키"
+              },
+              "weight_kg": {
+                "label": "체중"
+              },
+              "shoe_size": {
+                "label": "신발 사이즈"
+              },
+              "ski_level": {
+                "label": "실력",
+                "options": {
+                  "beginner": "초급",
+                  "intermediate": "중급",
+                  "advanced": "상급",
+                  "expert": "전문가"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "자전거",
+            "description": "고객이 도착하기 전에 자전거를 세팅하는 데 필요한 정보입니다.",
+            "fields": {
+              "height_cm": {
+                "label": "키"
+              },
+              "bike_saddle_height": {
+                "label": "안장 높이"
+              },
+              "bike_preferences": {
+                "label": "선호 사항"
+              }
+            }
+          },
+          "boating": {
+            "name": "보트",
+            "description": "계약서에 기재되는 보트 면허 정보입니다.",
+            "fields": {
+              "boat_license_number": {
+                "label": "보트 면허 번호"
+              },
+              "boat_license_type": {
+                "label": "면허 종류",
+                "options": {
+                  "coastal": "연안",
+                  "offshore": "원양",
+                  "inland": "내수면",
+                  "none": "면허 없음"
+                }
+              }
+            }
+          },
+          "perItem": "대여 물품별"
+        },
+        "deleteDialog": {
+          "title": "“{label}” 필드를 삭제하시겠습니까?",
+          "description": "이 필드는 모든 고객 정보에서 사라집니다. 이 작업은 되돌릴 수 없습니다.",
+          "withValues": "{count, plural, other {고객 #명이 이 필드에 값을 가지고 있습니다. 해당 값은 삭제됩니다.}}",
+          "confirm": "영구 삭제",
+          "cancel": "취소",
+          "descriptionItem": "이 필드는 모든 예약에서 사라집니다. 이 작업은 되돌릴 수 없습니다.",
+          "withItemValues": "{count, plural, other {대여 물품 #개가 이 필드에 값을 가지고 있습니다. 해당 값은 삭제됩니다.}}",
+          "hideInstead": "대신 숨기기"
+        },
+        "preview": {
+          "client": {
+            "previewFor": "미리보기 대상",
+            "noProduct": "제품을 찾을 수 없습니다",
+            "sampleProduct": "대여 물품",
+            "oneCardPerUnit": "대여 물품마다 카드 한 장: 자전거 두 대면 카드도 두 장입니다.",
+            "emptyProduct": "이 제품에 대해 고객에게 요청하는 정보가 없습니다.",
+            "emptyAll": "아직 고객에게 요청하는 정보가 없습니다.",
+            "emptyHint": "필드의 ‘고객에게 요청’을 ‘선택사항’ 또는 ‘필수’로 설정하면 여기에 표시됩니다."
+          }
+        },
+        "toasts": {
+          "created": "필드가 추가되었습니다",
+          "deleted": "필드가 삭제되었습니다",
+          "hidden": "필드가 숨겨졌습니다"
+        },
+        "online": {
+          "collect": "고객에게 요청",
+          "collectModes": {
+            "never": "아니요",
+            "optional": "선택사항",
+            "required": "필수"
+          },
+          "collectHelp": {
+            "never": "아니요: 팀만 볼 수 있습니다.",
+            "customer": {
+              "optional": "온라인 예약 시 고객이 선택적으로 입력할 수 있습니다.",
+              "required": "온라인으로 예약하려면 고객이 반드시 입력해야 합니다."
+            },
+            "item": {
+              "optional": "온라인 예약 시 대여 물품마다 선택적으로 입력할 수 있습니다.",
+              "required": "온라인으로 예약하려면 대여 물품마다 반드시 입력해야 합니다."
+            }
+          },
+          "target": "적용 범위",
+          "targetModes": {
+            "all": "모든 예약",
+            "products": "특정 제품"
+          },
+          "targetHelp": {
+            "customer": {
+              "all": "모든 온라인 예약에서 요청합니다.",
+              "products": "장바구니에 이 제품 중 하나가 담겨 있을 때만 요청합니다."
+            },
+            "item": {
+              "all": "제품과 관계없이 모든 대여 물품에 이 필드가 적용됩니다.",
+              "products": "이 카테고리와 제품의 물품에만 이 필드가 적용됩니다."
+            }
+          },
+          "targetsNone": "선택된 제품이 없습니다. 이 필드는 어떤 예약에도 적용되지 않습니다.",
+          "targetsPlaceholder": "카테고리 또는 제품…",
+          "targetsEmpty": "결과 없음",
+          "groups": {
+            "categories": "카테고리",
+            "products": "제품"
+          },
+          "productCount": "{count, plural, =0 {제품 없음} other {제품 #개}}",
+          "productStatus": {
+            "draft": "초안",
+            "archived": "보관됨"
+          },
+          "customerEditable": "고객이 계정에서 수정 가능",
+          "customerEditableHint": "고객이 고객 계정에서 확인하고 수정할 수 있습니다.",
+          "customerEditableNeverHint": "필드를 고객에게 요청하도록 설정하면 사용할 수 있습니다."
+        },
+        "sectionOnline": {
+          "adoptedTitle": "어떤 제품에 적용할까요?",
+          "adoptedDescription": "‘{section}’ 필드는 대여 물품마다 기록됩니다. 해당 제품을 선택하고, 필요하면 고객에게 입력을 요청하세요.",
+          "apply": "적용",
+          "later": "나중에"
+        },
+        "builder": {
+          "templates": {
+            "all": "모든 템플릿 보기"
+          },
+          "locked": {
+            "addressPlaceholder": "도로명, 우편번호, 도시, 국가",
+            "label": "기본 필드",
+            "sheetNote": "기본 필드: 항상 고객 정보에 표시됩니다. 위치와 너비만 변경할 수 있습니다."
+          },
+          "field": {
+            "select": "‘{label}’ 편집",
+            "actions": "‘{label}’ 필드 작업",
+            "draftBadge": "신규",
+            "draftPlaceholder": "새 필드"
+          },
+          "item": {
+            "empty": "키, 신발 사이즈, 실력… 각 물품을 준비하는 데 필요한 정보를 추가하세요."
+          },
+          "inspector": {
+            "newTitle": "새 필드",
+            "add": "추가",
+            "cancel": "취소",
+            "close": "닫기",
+            "general": "일반",
+            "advanced": "고급 옵션",
+            "saving": "저장 중…",
+            "saved": "저장됨",
+            "format": "형식",
+            "formatHelp": "Louez가 입력된 번호를 검증하고 형식을 맞춥니다.",
+            "formatFreeHelp": "모든 텍스트를 입력할 수 있습니다.",
+            "formats": {
+              "free": "자유 입력",
+              "br_cpf_cnpj": "CPF / CNPJ(브라질)",
+              "es_dni_nie": "DNI / NIE(스페인)",
+              "it_codice_fiscale": "Codice fiscale(이탈리아)",
+              "pt_nif": "NIF(포르투갈)"
+            }
+          },
+          "picker": {
+            "title": "필드 추가",
+            "suggested": "추천 템플릿",
+            "templates": "템플릿",
+            "examples": {
+              "customer": {
+                "text": "면허 번호",
+                "textarea": "고객 관련 메모",
+                "number": "경력 연수",
+                "date": "면허 만료일",
+                "select": "신분증 유형",
+                "checkbox": "면책 동의서 서명 완료",
+                "phone": "비상 연락처",
+                "email": "청구용 이메일",
+                "url": "증빙 서류 링크"
+              },
+              "item": {
+                "text": "사물함 번호",
+                "textarea": "세팅 선호 사항",
+                "number": "키(cm)",
+                "date": "라이더 생년월일",
+                "select": "실력: 초급, 상급…",
+                "checkbox": "어린이용 시트",
+                "phone": "이용자 전화번호",
+                "email": "이용자 이메일",
+                "url": "코스 링크"
+              }
+            }
+          },
+          "native": {
+            "fixed": "Louez 필드: 이름과 유형은 고정되어 있습니다."
+          },
+          "visibility": {
+            "shown": {
+              "customer": "고객 정보에 표시",
+              "item": "예약에 표시"
+            },
+            "shownHint": {
+              "customer": "팀이 모든 고객 정보에서 이 필드를 확인하고 입력합니다.",
+              "item": "팀이 대여 물품마다 이 필드를 입력합니다."
+            },
+            "hiddenHint": {
+              "customer": "숨김: 더 이상 고객 정보에 표시되지 않습니다. 값은 유지됩니다.",
+              "item": "숨김: 더 이상 예약에 표시되지 않습니다. 값은 유지됩니다."
+            }
+          },
+          "online": {
+            "hiddenNote": "숨김: 고객에게 요청하지 않습니다. 표시하면 예약 시 고객에게 요청할 수 있습니다."
+          },
+          "pageDescription": "고객 정보의 필드가 양식에 표시되는 그대로 배치되어 있습니다.",
+          "preview": {
+            "open": "고객 화면 미리보기",
+            "description": "고객이 온라인으로 예약할 때 입력하는 내용입니다."
+          },
+          "layout": {
+            "title": "레이아웃"
+          },
+          "width": {
+            "label": "너비",
+            "full": "전체",
+            "half": "절반",
+            "fullLabel": "전체 너비",
+            "halfLabel": "절반 너비",
+            "hint": "절반 너비 필드 두 개가 한 줄을 나눠 씁니다.",
+            "fixed": "이 필드는 항상 한 줄 전체를 차지합니다."
+          },
+          "record": {
+            "customer": "고객 정보",
+            "item": "예약"
+          },
+          "toasts": {
+            "applied": "설정이 적용되었습니다"
+          }
+        }
+      }
     },
     "commandPalette": {
       "title": "명령 팔레트",
@@ -6281,7 +6852,8 @@
       "settingsReviewBooster": "리뷰 부스터",
       "settingsTaxes": "세금",
       "productsEdit": "편집",
-      "reservationsEdit": "편집"
+      "reservationsEdit": "편집",
+      "settingsCustomerFields": "고객 정보"
     },
     "notificationsCenter": {
       "title": "알림",
@@ -6373,6 +6945,10 @@
         "optional-password": {
           "title": "원할 때 비밀번호 설정",
           "description": "계정에 비밀번호를 추가하면 이메일 코드를 기다리지 않고 로그인할 수 있습니다. 코드 로그인은 계속 사용할 수 있습니다."
+        },
+        "customer-custom-fields": {
+          "title": "원하는 대로 구성하는 고객 정보",
+          "description": "직접 필드를 추가하거나 국가별, 업종별 템플릿으로 시작하세요. 면허, 신분증, 신체 치수, CPF…"
         }
       }
     },
@@ -6496,6 +7072,17 @@
       "sourceHint": "소스 코드 찾아보기",
       "star": "별표를 남겨주세요",
       "later": "어쩌면 나중에"
+    },
+    "reservationDetails": {
+      "itemDetails": {
+        "title": "대여 세부 정보",
+        "incomplete": "입력 필요",
+        "empty": "아직 입력된 내용이 없습니다",
+        "sheetDescription": "각 물품을 누가 사용하는지, 무엇을 준비해야 하는지 확인하세요.",
+        "participantName": "누가 사용하나요?",
+        "participantNamePlaceholder": "이름",
+        "saved": "대여 세부 정보가 저장되었습니다"
+      }
     }
   },
   "storefront": {
@@ -7025,7 +7612,8 @@
         "contact": "연락처",
         "delivery": "배송",
         "address": "주소",
-        "confirm": "확인"
+        "confirm": "확인",
+        "details": "대여 세부 정보"
       },
       "deliveryDescription": "장비 수령 및 반납 방법을 선택하세요.",
       "deliveryRequiredDescription": "이 주문에는 배송이 필요합니다.",
@@ -7295,6 +7883,10 @@
           "unavailable": "이 매장에서는 온라인 결제가 불가능합니다.",
           "sessionFailed": "결제를 다시 시작할 수 없습니다. 잠시 후에 다시 시도해 보세요."
         }
+      },
+      "customFields": {
+        "savedSummary": "이미 등록된 정보",
+        "detailsIntro": "이 정보는 {store}에서 장비를 준비하는 데 도움이 됩니다."
       }
     },
     "confirmation": {
@@ -7843,6 +8435,17 @@
         "paymentDescription": "매장으로 알려드립니다. 이미 입금 또는 입금을 하신 경우, 환불 또는 출고를 위해 매장으로 연락주시기 바랍니다. 이 조치는 자동 환불을 발행하지 않습니다.",
         "adminSubject": "고객이 요청 #{number}를 취소했습니다.",
         "adminBody": "{name}는 귀하가 확인하기 전에 예약 요청 #{number}을 취소했습니다. 대시보드에서 해당 기록을 볼 수 있습니다."
+      },
+      "customerFields": {
+        "title": "추가 정보",
+        "description": "예약 시 {store}에서 요청하는 정보입니다. 최신 상태로 유지하면 다시 입력하지 않아도 됩니다."
+      },
+      "rentalDetails": {
+        "title": "대여 세부 정보",
+        "editableHint": "대여가 시작되기 전까지 변경할 수 있습니다.",
+        "toComplete": "입력 필요",
+        "saved": "세부 정보가 저장되었습니다",
+        "saveError": "세부 정보를 저장하지 못했습니다. 입력 항목을 확인하고 다시 시도해 주세요."
       }
     },
     "marketplaceShell": {
@@ -8040,6 +8643,23 @@
       "breakdownTitle": "계절별 가격",
       "from": "에서",
       "averageRate": "선택한 날짜 전체의 평균"
+    },
+    "customerFields": {
+      "optionalLabel": "{label} (선택사항)",
+      "sensitiveNote": "{store}만 볼 수 있으며 예약 처리에만 사용됩니다.",
+      "suspicious": "번호가 올바르지 않은 것 같습니다. 확인하거나 그대로 계속하세요.",
+      "participantLabel": "누가 사용하나요?",
+      "participantPlaceholder": "이름 (선택사항)",
+      "unitCounter": "{index} / {count}",
+      "unitEmpty": "입력된 내용 없음",
+      "recapValue": "{label}: {value}",
+      "profile": {
+        "title": "프로필",
+        "birthDate": "생년월일",
+        "acquisitionSource": "저희 매장을 어떻게 알게 되셨나요?",
+        "acquisitionSourceDetail": "자세히 적어 주세요",
+        "socialLinks": "소셜 및 링크"
+      }
     }
   },
   "onboarding": {
@@ -8705,7 +9325,22 @@
     "requestCancellationPaymentChanged": "결제정보가 변경되었습니다. 취소를 다시 확인하기 전에 검토해 보세요.",
     "promoCodeProductsAlreadyDiscounted": "이 코드는 이미 프로모션 중인 제품에는 적용되지 않습니다.",
     "paymentAmountTooSmall": "카드 결제 최소 금액은 {minimumAmount, number} {currency}입니다. 장바구니를 수정하거나 매장에 문의하세요.",
-    "checkoutPaymentFailed": "결제를 시작할 수 없습니다. 예약이 확정되지 않았습니다. 다시 시도하거나 매장에 문의하세요."
+    "checkoutPaymentFailed": "결제를 시작할 수 없습니다. 예약이 확정되지 않았습니다. 다시 시도하거나 매장에 문의하세요.",
+    "customFieldsInvalid": "일부 추가 필드가 올바르지 않습니다.",
+    "optionsRequired": "선택 항목을 하나 이상 추가하세요.",
+    "customerFields": {
+      "tooManyFields": "활성 필드 수가 최대치에 도달했습니다. 새 필드를 추가하려면 기존 필드 하나를 보관하세요.",
+      "tooManySearchable": "검색에는 최대 5개의 필드까지 포함할 수 있습니다.",
+      "tooManyListFields": "목록에는 최대 2개의 필드까지 표시할 수 있습니다."
+    },
+    "customFieldRequired": "‘{field}’ 항목을 입력해 주세요.",
+    "customFieldInvalid": "‘{field}’ 항목이 올바르지 않습니다.",
+    "itemDetailRequired": "{product}({unit}번)의 ‘{field}’ 항목을 입력해 주세요.",
+    "itemDetailInvalid": "{product}({unit}번)의 ‘{field}’ 항목이 올바르지 않습니다.",
+    "reservationDetailsLocked": "대여가 시작되었거나 종료되어 이 정보는 더 이상 수정할 수 없습니다.",
+    "customerNotAuthenticated": "계속하려면 고객 계정에 로그인해 주세요.",
+    "profileFieldRequired": "‘{field}’ 항목을 입력해 주세요.",
+    "profileFieldInvalid": "‘{field}’ 항목이 올바르지 않습니다."
   },
   "welcome": {
     "greeting": "Louez.io에 오신 것을 환영합니다",

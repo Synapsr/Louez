@@ -83,6 +83,20 @@ const getDeviceType = (): DeviceType => {
   return "desktop";
 };
 
+/**
+ * `crypto.randomUUID` only exists in secure contexts: a storefront served over
+ * plain HTTP (self-hosted on a LAN, a local preview) must not crash on it.
+ * `getRandomValues` does exist there, and `/api/track` only accepts a UUID.
+ */
+const createSessionId = (): string => {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // RFC 4122 variant
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};
+
 /** Per-tab session id, created once and kept in sessionStorage. */
 const getOrCreateSessionId = (): string => {
   try {
@@ -90,11 +104,11 @@ const getOrCreateSessionId = (): string => {
     if (stored) {
       return stored;
     }
-    const sessionId = crypto.randomUUID();
+    const sessionId = createSessionId();
     sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
     return sessionId;
   } catch {
-    return crypto.randomUUID();
+    return createSessionId();
   }
 };
 

@@ -39,6 +39,8 @@ Sans `media`, l'entrée s'affiche en texte seul — aucun placeholder, rien à c
 - [ ] `product-creation-flow-redesign` — Une seule page et votre produit est en ligne (~35 s)
 - [x] `reservation-creation-simplified` — Une réservation, une seule page · 53 s · en ligne
 - [x] `storefront-redesign` — Une nouvelle boutique en ligne, un nouvel éditeur · 91 s · en ligne
+- [ ] `customer-custom-fields` — Des fiches clients à votre image (~50 s)
+- [ ] `optional-password` — Un mot de passe, si vous le souhaitez (~35 s)
 
 ### Traitement appliqué
 
@@ -264,6 +266,51 @@ Le message est « c'est court » : la vidéo doit l'être.
 **Hors montage** — [ ] les rubriques **Pages légales** et **Référencement**, [ ] la bascule d'aperçu **Téléphone**, [ ] l'enregistrement et le retour sur la boutique publiée. La vidéo se termine dans l'éditeur plutôt que sur le résultat.
 
 **Encodage** — la plus longue de la série, d'où le CRF 26 prévu plus haut : 4,7 Mo. Poster pris à 0,4 s, sur le héro de la boutique. Le plan de l'éditeur vers 64 s racontait mieux les deux moitiés de l'annonce, mais son aperçu est encore rempli de placeholders gris.
+
+---
+
+## 13. `customer-custom-fields` — ~50 s
+
+**Deux mouvements : on règle la fiche dans les paramètres, puis on la remplit sur un client.** Le modèle qui s'ajoute en un clic et le numéro retrouvé par ⌘K sont les deux plans qui vendent.
+
+- [ ] **0–4 s** — **Paramètres → Fiche client**. Plan fixe : **Suggestions pour vous**, la carte **Champs Louez**, l'**Aperçu** à droite.
+- [ ] **4–12 s** — **Parcourir les modèles** → onglet **Par activité** → **Ski et montagne** → **Ajouter** : le bouton passe à **Ajouté**. Onglet **Général** → **Pièce d'identité** → **Ajouter**. Fermer : deux sections sont apparues et l'aperçu s'est rempli.
+- [ ] **12–20 s** — Ouvrir **Numéro de la pièce**. Activer **Donnée sensible**, puis **Inclure dans la recherche**. Enregistrer : les badges s'affichent sur la ligne.
+- [ ] **20–24 s** — Glisser **Pointure** en tête de sa section. L'aperçu suit.
+- [ ] **24–34 s** — Fiche d'un client. Crayon de la section **Mensurations** (celle du modèle ski) : le panneau latéral ne montre que ces quatre champs. Saisir taille, poids, pointure et niveau, enregistrer. La section est remplie sans que la page ait changé.
+- [ ] **34–40 s** — Section **Identité** → « Compléter 3 champs », saisir le type et le numéro de pièce. Sur la fiche, il s'affiche masqué, sauf les 4 derniers caractères. Clic sur l'œil pour le révéler, puis le masquer à nouveau.
+- [ ] **40–47 s** — `⌘K`, taper le numéro de pièce. Le client remonte. Entrée : retour sur sa fiche.
+- [ ] **47–50 s** — Plan final sur la fiche complète : les quatre stats, puis la colonne des sections.
+
+**À préparer** — [ ] une boutique réglée sur la France, pour que les suggestions soient pertinentes, [ ] un client avec un vrai historique de réservations (sinon les stats affichent des zéros), [ ] un numéro de pièce **fictif** mais crédible, jamais un vrai, [ ] aucun modèle adopté au départ, sinon les boutons affichent déjà « Ajouté ».
+
+**Pièges**
+
+- ⌘K ne cherche dans les champs qu'à partir de 3 caractères, et depuis le début de la valeur : taper le numéro depuis son premier caractère.
+- La recherche est limitée à 5 champs par boutique. En cas de répétition, archiver les champs de la prise précédente.
+
+**Variante** — si le montage le permet, ajouter 4 s sur le **contrat PDF** d'une réservation du client : un champ réglé sur **Afficher sur le contrat** apparaît sous ses coordonnées.
+
+---
+
+## 14. `optional-password` — ~35 s
+
+Le message est « plus besoin d'attendre le code » : la connexion par mot de passe doit être instantanée à l'écran. Le code par e-mail n'apparaît que dans le plan « Mot de passe oublié ».
+
+- [ ] **0–4 s** — **Mon compte**, carte **Connexion**. Plan fixe sur les trois lignes : **Code par e-mail** « Toujours actif », **Google**, **Mot de passe** « Non défini ».
+- [ ] **4–12 s** — **Définir** → « Définir un mot de passe ». Taper le mot de passe : la règle « Au moins 8 caractères » se coche pendant la saisie. Clic sur l'œil pour le montrer une seconde. **Définir le mot de passe** : notification « Mot de passe défini », la ligne affiche « Défini le … ».
+- [ ] **12–20 s** — Se déconnecter. Écran de connexion : saisir l'e-mail, **Se connecter avec un mot de passe**, taper le mot de passe. On arrive sur le tableau de bord, sans attente.
+- [ ] **20–24 s** — Se déconnecter à nouveau. L'écran de connexion s'ouvre directement sur le mot de passe : Louez a retenu la méthode.
+- [ ] **24–35 s** — **Mot de passe oublié ?** → e-mail → code à 6 chiffres reçu par e-mail → « Choisissez un nouveau mot de passe » → **Enregistrer et me connecter**. Fin sur le tableau de bord.
+
+**À préparer** — [ ] un compte de démo dont la boîte mail peut apparaître à l'écran, [ ] une instance qui envoie vraiment les e-mails (après déploiement de #61, ou une instance de dev avec SMTP), [ ] un mot de passe jetable, puisqu'il apparaît en clair au plan 2, [ ] **le gestionnaire de mots de passe du navigateur désactivé** : ses fenêtres de suggestion et d'enregistrement cassent chaque plan.
+
+**Pièges**
+
+- Les tentatives sont limitées par minute : 5 essais de mot de passe, 3 envois de code, 3 changements de mot de passe. Entre deux prises, laisser passer une minute.
+- Définir ou modifier un mot de passe déconnecte les autres appareils. Ne pas tourner avec une autre session ouverte dont on a besoin.
+
+**Hors montage** — l'e-mail « mot de passe modifié » et la page **Ce n'était pas vous ?** : 4 s de plus si l'on veut montrer la sécurité. Ne pas cliquer **Sécuriser mon compte** pendant la prise : il retire le mot de passe et déconnecte tout.
 
 ---
 

@@ -185,7 +185,15 @@ interface StepContentProps {
   direction?: "forward" | "backward";
 }
 
+/**
+ * A step sliding in. Once it has settled it drops its `filter` and
+ * `will-change`: either one makes it the containing block of a `fixed` child,
+ * and a checkbox's hidden native input is one. Pinned to the top of the step,
+ * that input pulled the page up each time a label focused it.
+ */
 export function StepContent({ children, className, direction = "forward" }: StepContentProps) {
+  const [settled, setSettled] = useState(false);
+
   return (
     <motion.div
       initial={{
@@ -193,10 +201,11 @@ export function StepContent({ children, className, direction = "forward" }: Step
         x: direction === "forward" ? 16 : -16,
         filter: "blur(4px)",
       }}
-      animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+      animate={{ opacity: 1, x: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
       transition={{ type: "spring", duration: 0.45, bounce: 0 }}
+      onAnimationComplete={() => setSettled(true)}
       className={className}
-      style={{ willChange: "transform, opacity, filter" }}
+      style={settled ? undefined : { willChange: "transform, opacity, filter" }}
     >
       {children}
     </motion.div>

@@ -6,7 +6,13 @@ import type { Locale } from "@/i18n/config";
 import { normalizePhoneNumber } from "@/lib/sms/phone";
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 
-import type { CheckoutFormValues, DeliveryAddress, TulipInsuranceMode } from "./checkout.types";
+import type {
+  CheckoutFieldsPlan,
+  CheckoutFormValues,
+  DeliveryAddress,
+  TulipInsuranceMode,
+} from "./checkout.types";
+import { getCheckoutFieldsSubmission } from "./util.checkout-custom-fields";
 
 interface BuildReservationPayloadInput {
   storeId: string;
@@ -31,6 +37,8 @@ interface BuildReservationPayloadInput {
   advisorConversationId?: string;
   /** Pending reservation of an earlier attempt, reused or replaced server-side. */
   resumeReservationId?: string;
+  /** Custom fields this cart asks (for the buyer's type); lines in the order of `items`. */
+  checkoutFields?: CheckoutFieldsPlan;
 }
 
 type DeliveryLeg = CreateReservationInput["delivery"] extends { outbound: infer TLeg } | undefined
@@ -59,6 +67,20 @@ const buildDeliveryLeg = (
 
 const optionalTrimmed = (value: string): string | undefined => value.trim() || undefined;
 
+/** The custom and native field keys of the payload, left out entirely when the cart asks nothing. */
+const buildCheckoutFieldsPayload = (
+  values: CheckoutFormValues,
+  plan: CheckoutFieldsPlan | undefined,
+): Pick<CreateReservationInput, "profileFields" | "customerFields" | "itemDetails"> => {
+  if (!plan) return {};
+  const submission = getCheckoutFieldsSubmission(values, plan);
+  return {
+    ...(plan.profileFields.length > 0 ? { profileFields: submission.profileFields } : {}),
+    ...(plan.customerFields.length > 0 ? { customerFields: submission.customerFields } : {}),
+    ...(submission.itemDetails.length > 0 ? { itemDetails: submission.itemDetails } : {}),
+  };
+};
+
 export const buildReservationPayload = ({
   storeId,
   locale,
@@ -77,6 +99,7 @@ export const buildReservationPayload = ({
   promoCode,
   advisorConversationId,
   resumeReservationId,
+  checkoutFields,
 }: BuildReservationPayloadInput): CreateReservationInput => ({
   storeId,
   customer: {
@@ -133,4 +156,5 @@ export const buildReservationPayload = ({
     outbound: buildDeliveryLeg(outboundMethod, outboundAddress, pickupLocationId),
     return: buildDeliveryLeg(returnMethod, returnAddress, returnLocationId),
   },
+  ...buildCheckoutFieldsPayload(values, checkoutFields),
 });

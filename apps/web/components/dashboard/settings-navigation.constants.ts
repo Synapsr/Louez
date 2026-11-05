@@ -27,6 +27,7 @@ import {
   TagIcon,
   TerminalIcon,
   TruckIcon,
+  UsersIcon,
 } from "@louez/ui/icons";
 
 export type SettingsNavigationGroupId = "store" | "rental" | "communication" | "accountData";
@@ -206,6 +207,16 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     labelPath: "dashboard.settings.inspection.title",
     descriptionPath: "dashboard.settings.inspection.description",
     searchPaths: ["dashboard.settings.inspection"],
+    group: "rental",
+    navigation: true,
+  },
+  {
+    id: "customer-fields",
+    href: "/dashboard/settings/customer-fields",
+    icon: UsersIcon,
+    labelPath: "dashboard.settings.customerFields.title",
+    descriptionPath: "dashboard.settings.customerFields.description",
+    searchPaths: ["dashboard.settings.customerFields"],
     group: "rental",
     navigation: true,
   },

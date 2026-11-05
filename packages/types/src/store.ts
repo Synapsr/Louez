@@ -1,3 +1,4 @@
+import type { CustomerFormLayout, CustomerProfileSettings } from "./customer";
 import type { AppliedProductPromotion } from "./product-promotion";
 export interface TimeRange {
   openTime: string; // "HH:mm" e.g. "09:00"
@@ -327,6 +328,10 @@ export interface StoreSettings {
   social?: StoreSocialLinks;
   /** Free text at the bottom of the storefront footer (SIRET, accreditation, affiliation). */
   footerNote?: string | null;
+  /** Visibility of the optional native blocks of the customer record. */
+  customerProfile?: CustomerProfileSettings;
+  /** Order and width of the Louez fields in the customer form layout. */
+  customerFormLayout?: CustomerFormLayout;
 }
 
 // ============================================================================

@@ -14,7 +14,7 @@
  * Usage:
  *   MIGRATE_DATABASE_URL="mysql://user:pass@host:port/db" \
  *     pnpm payg:audit-pricing -- \
- *     --pricing='<PAYG_DEFAULT_PRICING json>'|builtin --free-reservations=15 [--json=audit.json]
+ *     --pricing='<offer json>'|builtin --free-reservations=15 [--json=audit.json]
  */
 import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";

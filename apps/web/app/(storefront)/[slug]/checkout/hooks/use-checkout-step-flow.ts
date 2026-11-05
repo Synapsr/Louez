@@ -9,6 +9,8 @@ type StepDirection = "forward" | "backward";
 
 interface UseCheckoutStepFlowParams {
   isDeliveryEnabled: boolean;
+  /** A cart line asks item-scope custom fields: "Détails de la location" follows the contact step. */
+  hasDetailsStep: boolean;
   validateCurrentStep: (currentStep: StepId) => Promise<boolean>;
   /** Element scrolled into view when the step changes. */
   scrollTargetRef: RefObject<HTMLElement | null>;
@@ -16,6 +18,7 @@ interface UseCheckoutStepFlowParams {
 
 export const useCheckoutStepFlow = ({
   isDeliveryEnabled,
+  hasDetailsStep,
   validateCurrentStep,
   scrollTargetRef,
 }: UseCheckoutStepFlowParams) => {
@@ -23,7 +26,10 @@ export const useCheckoutStepFlow = ({
   const [stepDirection, setStepDirection] = useState<StepDirection>("forward");
   const previousStepRef = useRef<StepId>("contact");
 
-  const steps = useMemo(() => getCheckoutStepIds({ isDeliveryEnabled }), [isDeliveryEnabled]);
+  const steps = useMemo(
+    () => getCheckoutStepIds({ isDeliveryEnabled, hasDetailsStep }),
+    [hasDetailsStep, isDeliveryEnabled],
+  );
 
   const resolvedStep: StepId = steps.includes(currentStep) ? currentStep : steps[steps.length - 1];
   const currentStepIndex = steps.indexOf(resolvedStep);

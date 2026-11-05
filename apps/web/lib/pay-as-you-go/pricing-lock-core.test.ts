@@ -10,12 +10,11 @@ import {
   buildFrozenPayAsYouGoConfig,
   buildNewStorePricing,
   resolveEnvFreeReservations,
-  resolveEnvPayAsYouGoOffer,
   resolveStorePricing,
   samePayAsYouGoPricing,
 } from './pricing-lock-core';
 
-const LAUNCH_OFFER = '{"flatRateCents":25}';
+const LAUNCH_OFFER = { flatRateCents: 25 };
 const NEW_LADDER = {
   tiers: [
     { upToCount: 10, priceCents: 300 },
@@ -36,15 +35,24 @@ test('a row without config resolves to the frozen legacy ladder, never to an env
   assert.equal(pricing.freeReservationsGranted, 4);
 });
 
+test('a new store gets the built-in ladder and the free reservations, frozen on its row', () => {
+  const values = buildNewStorePricing({ rawFreeReservations: '20', currency: 'USD' });
+
+  assert.equal(values.pricingVersion, PAYG_LADDER_V1);
+  assert.deepEqual(values.payAsYouGoConfig, {
+    flatRateCents: null,
+    tiers: BUILT_IN_PAY_AS_YOU_GO_TIERS,
+    currency: 'usd',
+  });
+  assert.equal(values.freeReservationsGranted, 20);
+});
+
 test('each store pays the offer frozen on its own row, whatever the offer for new stores', () => {
-  const rowFrom = (rawPricing: unknown) => {
-    const values = buildNewStorePricing({ rawPricing, rawFreeReservations: '15', currency: 'eur' });
-    return {
-      billingMode: 'pay_as_you_go' as const,
-      payAsYouGoConfig: values.payAsYouGoConfig,
-      freeReservationsGranted: values.freeReservationsGranted,
-    };
-  };
+  const rowFrom = (offer: Parameters<typeof buildFrozenPayAsYouGoConfig>[0]) => ({
+    billingMode: 'pay_as_you_go' as const,
+    payAsYouGoConfig: buildFrozenPayAsYouGoConfig(offer, 'eur'),
+    freeReservationsGranted: 15,
+  });
   // A store created under the launch offer, then one created after the offer changed.
   const launchStore = resolveStorePricing(rowFrom(LAUNCH_OFFER), 'eur');
   const laterStore = resolveStorePricing(rowFrom(NEW_LADDER), 'eur');
@@ -113,14 +121,6 @@ test('a frozen config writes every tier out and keeps a flat rate', () => {
       currency: 'usd',
     },
   );
-});
-
-test('the env offer accepts a parsed object or raw JSON, and ignores malformed input', () => {
-  assert.deepEqual(resolveEnvPayAsYouGoOffer(LAUNCH_OFFER), { flatRateCents: 25 });
-  assert.deepEqual(resolveEnvPayAsYouGoOffer({ flatRateCents: 25 }), { flatRateCents: 25 });
-  assert.deepEqual(resolveEnvPayAsYouGoOffer('').tiers, BUILT_IN_PAY_AS_YOU_GO_TIERS);
-  assert.deepEqual(resolveEnvPayAsYouGoOffer('{not json').tiers, BUILT_IN_PAY_AS_YOU_GO_TIERS);
-  assert.deepEqual(resolveEnvPayAsYouGoOffer(undefined).tiers, BUILT_IN_PAY_AS_YOU_GO_TIERS);
 });
 
 test('the env free-reservation count is coerced like the env schema', () => {

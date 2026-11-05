@@ -14,9 +14,8 @@ if (TEST_DATABASE_URL) {
   process.env.SKIP_ENV_VALIDATION = 'true';
   // The billing write paths only run on an instance that bills its stores.
   process.env.LOUEZ_BILLING = 'cloud';
-  // The env offer for new stores. It differs from the built-in ladder and 15, so an
-  // existing store that reads it by mistake is visible.
-  process.env.PAYG_DEFAULT_PRICING = '{"flatRateCents":30}';
+  // The env's free reservations for new stores. It differs from 15, so an existing
+  // store that reads it by mistake is visible.
   process.env.PAYG_FREE_RESERVATIONS = '20';
 }
 
@@ -129,7 +128,7 @@ describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
     await freeze(BACKFILL_OFFER);
 
     const legacyRow = await readRow(legacy);
-    assert.equal(legacyRow?.config?.flatRateCents, 40, 'the terms passed, not the env offer');
+    assert.equal(legacyRow?.config?.flatRateCents, 40, 'the terms passed');
     assert.equal(legacyRow?.pricing_version, 'payg-ladder-v1');
     assert.equal(legacyRow?.free_reservations_granted, 7, 'an existing allowance is kept');
     assert.equal((await readRow(subscribed))?.config?.flatRateCents, 40, 'kept for a later switch');
@@ -171,7 +170,7 @@ describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
     assert.equal(a.freeReservationsGranted, 4);
 
     const b = await metering.getStoreBilling(unfrozen);
-    assert.equal(b.config.flatRateCents, null, 'not the 30c env offer');
+    assert.equal(b.config.flatRateCents, null, 'the legacy ladder');
     assert.deepEqual(b.config.tiers, core.LEGACY_PAY_AS_YOU_GO_CONFIG.tiers);
 
     const c = await metering.getStoreBilling(noRow);
@@ -258,7 +257,7 @@ describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
     assert.equal(after?.pricing_version, before?.pricing_version);
     const created = await readRow(withoutRow);
     assert.equal(created?.billing_mode, 'subscription');
-    assert.equal(created?.config?.flatRateCents, null, 'the legacy ladder, not the env offer');
+    assert.equal(created?.config?.flatRateCents, null, 'the legacy ladder');
     assert.equal(created?.free_reservations_granted, core.LEGACY_FREE_RESERVATIONS);
   });
 
@@ -278,7 +277,7 @@ describe('pricing lock (database)', { skip: !TEST_DATABASE_URL }, () => {
     assert.deepEqual(await readRow(referrer), { ...referrerBefore, free_reservations_granted: 40 });
     assert.deepEqual(await readRow(referred), { ...referredBefore, free_reservations_granted: 30 });
     const created = await readRow(legacyReferrer);
-    assert.equal(created?.config?.flatRateCents, null, 'the legacy ladder, not the env offer');
+    assert.equal(created?.config?.flatRateCents, null, 'the legacy ladder');
     assert.equal(created?.free_reservations_granted, core.LEGACY_FREE_RESERVATIONS + 30);
   });
 });

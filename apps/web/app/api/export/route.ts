@@ -23,6 +23,7 @@ export async function GET(request: Request) {
     format: url.searchParams.get('format'),
     startDate: url.searchParams.get('startDate') || undefined,
     endDate: url.searchParams.get('endDate') || undefined,
+    includeSensitive: url.searchParams.get('includeSensitive') || undefined,
   })
 
   if (!parsed.success) {
@@ -42,6 +43,7 @@ export async function GET(request: Request) {
     type: requestParams.type,
     format: requestParams.format,
     ...dateRange,
+    includeSensitive: requestParams.includeSensitive === 'true',
   }
   const data = await queryExportData(store.id, params)
 

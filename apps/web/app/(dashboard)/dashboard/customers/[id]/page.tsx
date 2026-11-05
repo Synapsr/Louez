@@ -1,8 +1,16 @@
-import { db } from "@louez/db";
+import { notFound, redirect } from "next/navigation";
+
+import { and, desc, eq } from "drizzle-orm";
+
+import {
+  getCustomerFieldValues,
+  listCustomerFieldDefinitions,
+} from "@louez/api/services/customer-fields";
+import { customers, db, reservations } from "@louez/db";
+import { resolveStoreCustomerFormLayout } from "@louez/validations";
+
 import { getCurrentStore } from "@/lib/store-context";
-import { customers, reservations } from "@louez/db";
-import { eq, and, desc } from "drizzle-orm";
-import { redirect, notFound } from "next/navigation";
+
 import { CustomerDetailView } from "./customer-detail-view";
 import { getCustomerStats } from "./util.customer-stats";
 
@@ -42,6 +50,11 @@ const CustomerPage = async ({ params }: CustomerPageProps) => {
       country: true,
       notes: true,
       createdAt: true,
+      birthDate: true,
+      acquisitionSource: true,
+      acquisitionSourceDetail: true,
+      createdVia: true,
+      socialLinks: true,
     },
   });
 
@@ -49,34 +62,47 @@ const CustomerPage = async ({ params }: CustomerPageProps) => {
     notFound();
   }
 
-  // Get customer reservations with items
-  const customerReservations = await db.query.reservations.findMany({
-    where: and(eq(reservations.customerId, customer.id), eq(reservations.storeId, store.id)),
-    columns: {
-      id: true,
-      number: true,
-      status: true,
-      startDate: true,
-      endDate: true,
-      totalAmount: true,
-      billingSnapshot: true,
-    },
-    with: {
-      items: {
-        columns: { id: true, quantity: true },
-        with: {
-          product: { columns: { name: true } },
+  const [customerReservations, definitions, customFields] = await Promise.all([
+    db.query.reservations.findMany({
+      where: and(eq(reservations.customerId, customer.id), eq(reservations.storeId, store.id)),
+      columns: {
+        id: true,
+        number: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        totalAmount: true,
+        billingSnapshot: true,
+        createdAt: true,
+      },
+      with: {
+        items: {
+          columns: { id: true, quantity: true },
+          with: {
+            product: { columns: { name: true } },
+          },
         },
       },
-    },
-    orderBy: [desc(reservations.createdAt)],
-  });
+      orderBy: [desc(reservations.createdAt)],
+    }),
+    listCustomerFieldDefinitions(store.id, { activeOnly: true, scope: "customer" }),
+    getCustomerFieldValues(store.id, customer.id),
+  ]);
 
   return (
     <CustomerDetailView
       customer={customer}
       reservations={customerReservations}
       stats={getCustomerStats(customerReservations)}
+      currency={store.settings?.currency || "EUR"}
+      timezone={store.settings?.timezone}
+      storeCountry={store.settings?.country ?? "FR"}
+      items={resolveStoreCustomerFormLayout({
+        settings: store.settings,
+        scope: "customer",
+        definitions,
+      })}
+      customFields={customFields}
     />
   );
 };

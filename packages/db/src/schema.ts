@@ -1,4 +1,4 @@
-import type { ProductPromotion } from "@louez/types";
+import type { CustomerFieldValues, CustomerSocialLinks, ProductPromotion } from "@louez/types";
 import { relations } from "drizzle-orm";
 import {
   bigint,
@@ -232,7 +232,7 @@ export const subscriptions = mysqlTable(
       .notNull(),
 
     // The store's own pay-as-you-go pricing, frozen when the store is created. Changing
-    // the offer for new stores (PAYG_DEFAULT_PRICING) never touches it. Null only on
+    // the offer for new stores never touches it. Null only on
     // legacy rows that the pricing freeze has not reached yet.
     payAsYouGoConfig: json("pay_as_you_go_config").$type<PayAsYouGoConfig>(),
 
@@ -1241,6 +1241,31 @@ export const customers = mysqlTable(
     postalCode: varchar("postal_code", { length: 20 }),
     country: varchar("country", { length: 2 }).default("FR"),
 
+    // Profile
+    birthDate: date("birth_date", { mode: "string" }),
+    // How the customer heard about the store, as declared by the merchant.
+    acquisitionSource: mysqlEnum("acquisition_source", [
+      "word_of_mouth",
+      "search_engine",
+      "social_media",
+      "walk_in",
+      "partner",
+      "ads",
+      "returning",
+      "other",
+    ]),
+    acquisitionSourceDetail: varchar("acquisition_source_detail", { length: 255 }),
+    // Where the record was created. Set by the code path, never by input.
+    createdVia: mysqlEnum("created_via", [
+      "dashboard",
+      "storefront",
+      "marketplace",
+      "import",
+      "api",
+      "ai",
+    ]),
+    socialLinks: json("social_links").$type<CustomerSocialLinks>(),
+
     // Internal notes
     notes: text("notes"),
 
@@ -1251,8 +1276,128 @@ export const customers = mysqlTable(
   (table) => ({
     uniqueEmailPerStore: unique("customers_unique_email_per_store").on(table.storeId, table.email),
     storeIdx: index("customers_store_idx").on(table.storeId),
+    storeCreatedIdx: index("customers_store_created_idx").on(table.storeId, table.createdAt),
     emailIdx: index("customers_email_idx").on(table.email),
     marketplaceUserIdx: index("customers_marketplace_user_idx").on(table.marketplaceUserId),
+  }),
+);
+
+// ============================================================================
+// Customer custom fields (store-level definitions, per-customer values)
+// ============================================================================
+
+export const customerFieldDefinitions = mysqlTable(
+  "customer_field_definitions",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    // Stable identity: a template adopted twice resolves to the same row, and
+    // values survive a relabel.
+    key: varchar("key", { length: 64 }).notNull(),
+    label: varchar("label", { length: 100 }).notNull(),
+    type: mysqlEnum("field_type", [
+      "text",
+      "textarea",
+      "number",
+      "date",
+      "select",
+      "checkbox",
+      "phone",
+      "email",
+      "url",
+    ]).notNull(),
+    // Known identifier format of a text field (validation + normalisation).
+    format: varchar("format", { length: 32 }),
+    options: json("options").$type<string[]>(),
+    unit: varchar("unit", { length: 32 }),
+    helpText: varchar("help_text", { length: 255 }),
+    // No longer read or written: fields form one ordered list. Kept so no data is lost.
+    section: varchar("section", { length: 100 }).notNull(),
+    // One numeric space with the Louez fields' positions in stores.settings.customerFormLayout.
+    position: int("position").notNull().default(0),
+    // A whole form row, or half of one next to another field.
+    width: mysqlEnum("width", ["full", "half"]).notNull().default("full"),
+    appliesTo: mysqlEnum("applies_to", ["all", "individual", "business"]).notNull().default("all"),
+    isRequired: boolean("is_required").notNull().default(false),
+    isSensitive: boolean("is_sensitive").notNull().default(false),
+    showOnContract: boolean("show_on_contract").notNull().default(false),
+    isSearchable: boolean("is_searchable").notNull().default(false),
+    showInList: boolean("show_in_list").notNull().default(false),
+    // Template the field was adopted from, when any.
+    templateKey: varchar("template_key", { length: 64 }),
+    isActive: boolean("is_active").notNull().default(true),
+    // Where a value lives: on the customer record, or per rented unit on the
+    // reservation (reservation_item_details). Fixed at creation, like the type.
+    scope: mysqlEnum("scope", ["customer", "item"]).notNull().default("customer"),
+    // Whether the storefront checkout asks it: never means team only.
+    collectMode: mysqlEnum("collect_mode", ["never", "optional", "required"])
+      .notNull()
+      .default("never"),
+    // `products` limits the field to the targets in customer_field_targets.
+    targetMode: mysqlEnum("target_mode", ["all", "products"]).notNull().default("all"),
+    // The customer sees and updates it from their storefront account.
+    customerEditable: boolean("customer_editable").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index("customer_field_definitions_store_idx").on(table.storeId, table.position),
+    uniqueStoreKey: unique("customer_field_definitions_store_key_unique").on(
+      table.storeId,
+      table.key,
+    ),
+  }),
+);
+
+export const customerFieldValues = mysqlTable(
+  "customer_field_values",
+  {
+    id: id(),
+    // Denormalised so a lookup by value is a store-scoped index seek.
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    customerId: varchar("customer_id", { length: 21 }).notNull(),
+    definitionId: varchar("definition_id", { length: 21 }).notNull(),
+    value: varchar("value", { length: 2000 }).notNull(),
+    // Lowercased, punctuation stripped. Only set for searchable definitions.
+    searchValue: varchar("search_value", { length: 191 }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueCustomerDefinition: unique("customer_field_values_customer_definition_unique").on(
+      table.customerId,
+      table.definitionId,
+    ),
+    storeSearchIdx: index("customer_field_values_store_search_idx").on(
+      table.storeId,
+      table.searchValue,
+    ),
+    definitionIdx: index("customer_field_values_definition_idx").on(table.definitionId),
+  }),
+);
+
+/**
+ * Products and categories a definition is limited to when its target mode is
+ * `products`. Rows are replaced as a whole, never updated.
+ */
+export const customerFieldTargets = mysqlTable(
+  "customer_field_targets",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    definitionId: varchar("definition_id", { length: 21 }).notNull(),
+    targetType: mysqlEnum("target_type", ["category", "product"]).notNull(),
+    targetId: varchar("target_id", { length: 21 }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueDefinitionTarget: unique("customer_field_targets_definition_target_unique").on(
+      table.definitionId,
+      table.targetType,
+      table.targetId,
+    ),
+    storeIdx: index("customer_field_targets_store_idx").on(table.storeId),
+    targetIdx: index("customer_field_targets_target_idx").on(table.targetId),
   }),
 );
 
@@ -2878,6 +3023,56 @@ export const reservationItemUnitsRelations = relations(reservationItemUnits, ({ 
 }));
 
 // ============================================================================
+// Reservation Item Details (item-scope custom field values, per rented unit)
+// ============================================================================
+
+/**
+ * What was recorded for one rented unit (`unit_index` 0..quantity-1): who
+ * uses it and the values of item-scope custom fields. JSON because the block
+ * is always read and written whole, never filtered in SQL; keys without a
+ * live definition are ignored by readers.
+ */
+export const reservationItemDetails = mysqlTable(
+  "reservation_item_details",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    reservationId: varchar("reservation_id", { length: 21 }).notNull(),
+    reservationItemId: varchar("reservation_item_id", { length: 21 }).notNull(),
+    unitIndex: int("unit_index").notNull(),
+    participantName: varchar("participant_name", { length: 100 }),
+    values: json("values").$type<CustomerFieldValues>().notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueItemUnit: unique("reservation_item_details_item_unit_unique").on(
+      table.reservationItemId,
+      table.unitIndex,
+    ),
+    reservationIdx: index("reservation_item_details_reservation_idx").on(table.reservationId),
+    storeIdx: index("reservation_item_details_store_idx").on(table.storeId),
+    // A line removed from a reservation takes what was recorded for it along.
+    reservationItemFk: foreignKey({
+      name: "rid_reservation_item_fk",
+      columns: [table.reservationItemId],
+      foreignColumns: [reservationItems.id],
+    }).onDelete("cascade"),
+  }),
+);
+
+export const reservationItemDetailsRelations = relations(reservationItemDetails, ({ one }) => ({
+  reservation: one(reservations, {
+    fields: [reservationItemDetails.reservationId],
+    references: [reservations.id],
+  }),
+  reservationItem: one(reservationItems, {
+    fields: [reservationItemDetails.reservationItemId],
+    references: [reservationItems.id],
+  }),
+}));
+
+// ============================================================================
 // Product Accessories (Upsell/Cross-sell)
 // ============================================================================
 
@@ -2927,6 +3122,37 @@ export const customersRelations = relations(customers, ({ one, many }) => ({
   reservations: many(reservations),
   invoices: many(invoices),
   sessions: many(customerSessions),
+  fieldValues: many(customerFieldValues),
+}));
+
+export const customerFieldDefinitionsRelations = relations(
+  customerFieldDefinitions,
+  ({ one, many }) => ({
+    store: one(stores, {
+      fields: [customerFieldDefinitions.storeId],
+      references: [stores.id],
+    }),
+    values: many(customerFieldValues),
+    targets: many(customerFieldTargets),
+  }),
+);
+
+export const customerFieldTargetsRelations = relations(customerFieldTargets, ({ one }) => ({
+  definition: one(customerFieldDefinitions, {
+    fields: [customerFieldTargets.definitionId],
+    references: [customerFieldDefinitions.id],
+  }),
+}));
+
+export const customerFieldValuesRelations = relations(customerFieldValues, ({ one }) => ({
+  customer: one(customers, {
+    fields: [customerFieldValues.customerId],
+    references: [customers.id],
+  }),
+  definition: one(customerFieldDefinitions, {
+    fields: [customerFieldValues.definitionId],
+    references: [customerFieldDefinitions.id],
+  }),
 }));
 
 export const customerSessionsRelations = relations(customerSessions, ({ one }) => ({
@@ -2959,6 +3185,7 @@ export const reservationsRelations = relations(reservations, ({ one, many }) => 
   activity: many(reservationActivity),
   calendarEvents: many(reservationCalendarEvents),
   invoices: many(invoices),
+  itemDetails: many(reservationItemDetails),
 }));
 
 export const marketplaceBookingAttemptsRelations = relations(
@@ -2999,6 +3226,7 @@ export const reservationItemsRelations = relations(reservationItems, ({ one, man
     references: [products.id],
   }),
   assignedUnits: many(reservationItemUnits),
+  details: many(reservationItemDetails),
 }));
 
 export const paymentsRelations = relations(payments, ({ one, many }) => ({
