@@ -8646,7 +8646,8 @@
     },
     "customerFields": {
       "optionalLabel": "{label} (opcional)",
-      "sensitiveNote": "Solo visible para {store}",
+      "sensitiveNote": "Solo visible para {store}, para gestionar tu reserva.",
+      "suspicious": "Este número no parece válido. Revísalo o continúa de todos modos.",
       "participantLabel": "¿Para quién?",
       "participantPlaceholder": "Nombre (opcional)",
       "unitCounter": "{index} / {count}",

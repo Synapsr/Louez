@@ -6,7 +6,9 @@ import { Checkbox, Label } from "@louez/ui";
 
 import { CustomerFieldControl } from "./customer-field-control";
 import { CustomerFieldHints } from "./customer-field-hints";
+import { CustomerFieldSensitiveLock } from "./customer-field-sensitive-lock";
 import type { StorefrontCustomerField } from "./customer-fields.types";
+import { getCustomerFieldHintKind } from "./util.customer-field-hint";
 
 interface CustomerFieldInputProps {
   field: StorefrontCustomerField;
@@ -36,7 +38,7 @@ export const CustomerFieldInput = ({
   const label =
     field.collectMode === "required" ? field.label : t("optionalLabel", { label: field.label });
   const hintsId = `${id}-hints`;
-  const describedBy = field.helpText || field.isSensitive || error ? hintsId : undefined;
+  const describedBy = getCustomerFieldHintKind(field, value, error) ? hintsId : undefined;
 
   if (field.type === "checkbox") {
     return (
@@ -52,6 +54,7 @@ export const CustomerFieldInput = ({
           <Label htmlFor={id} className="text-sm font-normal">
             {label}
           </Label>
+          {field.isSensitive && <CustomerFieldSensitiveLock />}
         </div>
         <CustomerFieldHints id={hintsId} field={field} value={value} error={error} />
       </div>
@@ -60,9 +63,12 @@ export const CustomerFieldInput = ({
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <Label htmlFor={id} data-error={Boolean(error)}>
-        {label}
-      </Label>
+      <div className="flex items-center gap-1">
+        <Label htmlFor={id} data-error={Boolean(error)}>
+          {label}
+        </Label>
+        {field.isSensitive && <CustomerFieldSensitiveLock />}
+      </div>
       <CustomerFieldControl
         field={field}
         id={id}

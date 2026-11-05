@@ -8646,7 +8646,8 @@
     },
     "customerFields": {
       "optionalLabel": "{label} (optioneel)",
-      "sensitiveNote": "Alleen zichtbaar voor {store}",
+      "sensitiveNote": "Alleen zichtbaar voor {store}, voor het afhandelen van de reservering.",
+      "suspicious": "Dit nummer lijkt ongeldig. Controleer het of ga toch verder.",
       "participantLabel": "Voor wie?",
       "participantPlaceholder": "Voornaam (optioneel)",
       "unitCounter": "{index} / {count}",

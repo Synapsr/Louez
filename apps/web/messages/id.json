@@ -8646,7 +8646,8 @@
     },
     "customerFields": {
       "optionalLabel": "{label} (opsional)",
-      "sensitiveNote": "Hanya dapat dilihat oleh {store}",
+      "sensitiveNote": "Hanya dapat dilihat oleh {store}, untuk keperluan pemesanan.",
+      "suspicious": "Nomor ini tampaknya tidak valid. Periksa kembali atau tetap lanjutkan.",
       "participantLabel": "Untuk siapa?",
       "participantPlaceholder": "Nama depan (opsional)",
       "unitCounter": "{index} / {count}",

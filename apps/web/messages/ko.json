@@ -8646,7 +8646,8 @@
     },
     "customerFields": {
       "optionalLabel": "{label} (선택사항)",
-      "sensitiveNote": "{store}만 볼 수 있습니다",
+      "sensitiveNote": "{store}만 볼 수 있으며 예약 처리에만 사용됩니다.",
+      "suspicious": "번호가 올바르지 않은 것 같습니다. 확인하거나 그대로 계속하세요.",
       "participantLabel": "누가 사용하나요?",
       "participantPlaceholder": "이름 (선택사항)",
       "unitCounter": "{index} / {count}",

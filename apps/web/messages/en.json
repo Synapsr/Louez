@@ -8646,7 +8646,8 @@
     },
     "customerFields": {
       "optionalLabel": "{label} (optional)",
-      "sensitiveNote": "Only visible to {store}",
+      "sensitiveNote": "Only visible to {store}, to handle your booking.",
+      "suspicious": "This number doesn't look valid. Check it, or continue anyway.",
       "participantLabel": "Who is it for?",
       "participantPlaceholder": "First name (optional)",
       "unitCounter": "{index} / {count}",

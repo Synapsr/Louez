@@ -1,5 +1,6 @@
 "use client";
 
+import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { CustomerFieldDefinition } from "@louez/types";
@@ -173,7 +174,13 @@ export const CustomerFieldControl = ({
       )}
       {error && <p className="text-destructive text-sm">{error}</p>}
       {!error && hasSuspiciousIdentityValue(definition.format, value) && (
-        <p className="text-badge-warning-foreground text-sm">{t("suspicious")}</p>
+        <p className="flex items-start gap-1.5 text-sm">
+          <TriangleAlert
+            aria-hidden
+            className="text-badge-warning-foreground mt-0.5 size-4 shrink-0"
+          />
+          {t("suspicious")}
+        </p>
       )}
       {!preview && definition.isSearchable && (
         <CustomerFieldDuplicateHint

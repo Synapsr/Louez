@@ -8646,7 +8646,8 @@
     },
     "customerFields": {
       "optionalLabel": "{label}（任意）",
-      "sensitiveNote": "{store}のみが閲覧できます",
+      "sensitiveNote": "{store}のみが閲覧でき、予約の手続きにのみ使用されます。",
+      "suspicious": "この番号は正しくない可能性があります。確認するか、このまま続けてください。",
       "participantLabel": "ご利用者",
       "participantPlaceholder": "名（任意）",
       "unitCounter": "{index} / {count}",

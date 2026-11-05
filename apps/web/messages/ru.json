@@ -8646,7 +8646,8 @@
     },
     "customerFields": {
       "optionalLabel": "{label} (необязательно)",
-      "sensitiveNote": "Доступно только магазину {store}",
+      "sensitiveNote": "Доступно только магазину {store}, для оформления бронирования.",
+      "suspicious": "Похоже, номер указан неверно. Проверьте его или продолжите.",
       "participantLabel": "Для кого?",
       "participantPlaceholder": "Имя (необязательно)",
       "unitCounter": "{index} / {count}",

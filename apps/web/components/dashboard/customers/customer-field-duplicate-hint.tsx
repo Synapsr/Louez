@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { useQuery } from "@tanstack/react-query";
+import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useDebounce } from "@/hooks/use-debounce";
@@ -38,15 +39,18 @@ export const CustomerFieldDuplicateHint = ({
   const name = duplicate.companyName ?? `${duplicate.firstName} ${duplicate.lastName}`;
 
   return (
-    <p className="text-badge-warning-foreground text-sm">
-      {t("duplicate", { name })}{" "}
-      <Link
-        href={`/dashboard/customers/${duplicate.customerId}`}
-        target="_blank"
-        className="underline underline-offset-2"
-      >
-        {t("viewCustomer")}
-      </Link>
+    <p className="flex items-start gap-1.5 text-sm">
+      <TriangleAlert aria-hidden className="text-badge-warning-foreground mt-0.5 size-4 shrink-0" />
+      <span>
+        {t("duplicate", { name })}{" "}
+        <Link
+          href={`/dashboard/customers/${duplicate.customerId}`}
+          target="_blank"
+          className="underline underline-offset-2"
+        >
+          {t("viewCustomer")}
+        </Link>
+      </span>
     </p>
   );
 };

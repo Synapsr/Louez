@@ -8646,7 +8646,8 @@
     },
     "customerFields": {
       "optionalLabel": "{label}（可选）",
-      "sensitiveNote": "仅 {store} 可见",
+      "sensitiveNote": "仅 {store} 可见，仅用于处理您的预订。",
+      "suspicious": "此号码似乎无效。请检查，或直接继续。",
       "participantLabel": "使用者是谁？",
       "participantPlaceholder": "名字（可选）",
       "unitCounter": "{index} / {count}",

@@ -20,11 +20,11 @@ import type {
   StorefrontCustomerField,
 } from "./customer-fields.types";
 
-/** A native field has no help text, is not sensitive and has no identifier format. */
-export const NO_PROFILE_FIELD_HINTS: Pick<
-  StorefrontCustomerField,
-  "helpText" | "isSensitive" | "format"
-> = { helpText: null, isSensitive: false, format: null };
+/** A native field has no help text and no identifier format. */
+export const NO_PROFILE_FIELD_HINTS: Pick<StorefrontCustomerField, "helpText" | "format"> = {
+  helpText: null,
+  format: null,
+};
 
 export const EMPTY_CUSTOMER_PROFILE_FORM_VALUES: CustomerProfileFormValues = {
   birthDate: "",
