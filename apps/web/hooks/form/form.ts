@@ -10,6 +10,7 @@ import { FormDuration } from '@/components/form/form-duration'
 import { FormPriceDuration } from '@/components/form/form-price-duration'
 import { FormReservationDatePicker } from '@/components/form/form-reservation-date-picker'
 import { FormOtp } from '@/components/form/form-otp'
+import { FormPassword } from '@/components/form/form-password'
 import { FormImageUpload } from '@/components/form/form-image-upload'
 import { FormPhoneInput } from '@/components/form/form-phone-input'
 import { FormCountrySelect } from '@/components/form/form-country-select'
@@ -27,6 +28,7 @@ export const { useAppForm, withForm } = createFormHook({
     Checkbox: FormCheckbox,
     Combobox: FormCombobox,
     Otp: FormOtp,
+    Password: FormPassword,
     ImageUpload: FormImageUpload,
     PhoneInput: FormPhoneInput,
     CountrySelect: FormCountrySelect,

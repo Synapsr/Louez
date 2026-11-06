@@ -1,3 +1,4 @@
+import { processImportQueue } from "@/lib/import/process-import-queue";
 import { reconcileRentalExtensions } from "@/lib/reservations/extension-service";
 import { NextResponse } from "next/server";
 
@@ -72,6 +73,10 @@ async function handleCron(request: Request) {
   try {
     tasks.push("rental-extensions");
     results.rentalExtensions = await reconcileRentalExtensions();
+
+    // Imports whose wizard was closed: every minute
+    tasks.push("import-queue");
+    results.importQueue = await processImportQueue();
 
     // Review requests: every minute
     tasks.push("review-requests");

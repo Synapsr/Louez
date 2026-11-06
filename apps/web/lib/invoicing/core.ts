@@ -71,7 +71,7 @@ interface SnapshotCustomer {
   city: string | null;
   postalCode: string | null;
   country: string | null;
-  email: string;
+  email: string | null;
   phone: string | null;
 }
 
@@ -119,6 +119,11 @@ interface En16931Party {
   vat_identifier?: string;
 }
 
+/** BT-49 is optional in EN 16931: a B2C buyer entered without e-mail carries none. */
+type En16931Buyer = Omit<En16931Party, "electronic_address"> & {
+  electronic_address?: En16931ElectronicAddress;
+};
+
 interface En16931Line {
   identifier: string;
   invoiced_quantity: string;
@@ -157,7 +162,7 @@ export type En16931Invoice = {
     business_process_type: string;
   };
   seller: En16931Party;
-  buyer: En16931Party;
+  buyer: En16931Buyer;
   totals: {
     sum_invoice_lines_amount: string;
     total_without_vat: string;
@@ -591,19 +596,25 @@ function toEn16931Buyer(
   buyer: InvoiceBuyerSnapshot,
   processingRule: "b2b" | "b2c",
   fallbackCountry: string,
-): En16931Party {
+): En16931Buyer {
   const isB2b = processingRule === "b2b";
+  // An empty BT-49 would be rejected: a buyer without e-mail simply has none.
+  const b2cAddress: Pick<En16931Buyer, "electronic_address"> = buyer.email
+    ? { electronic_address: { scheme: "EM", value: buyer.email } }
+    : {};
   return {
     name:
       isB2b && buyer.companyName
         ? buyer.companyName
         : `${buyer.firstName} ${buyer.lastName}`.trim(),
-    electronic_address: isB2b
+    ...(isB2b
       ? {
-          scheme: buyer.companyNumberScheme === "be_bce" ? "0208" : "0225",
-          value: buyer.companyNumber ?? "",
+          electronic_address: {
+            scheme: buyer.companyNumberScheme === "be_bce" ? "0208" : "0225",
+            value: buyer.companyNumber ?? "",
+          },
         }
-      : { scheme: "EM", value: buyer.email },
+      : b2cAddress),
     postal_address: toEn16931Address(buyer.address, fallbackCountry),
     ...(isB2b && buyer.companyNumber
       ? {

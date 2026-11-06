@@ -1371,6 +1371,7 @@ export function EditReservationForm({
                 isDeliveryCalculating={delivery.isCalculating}
                 hasChanges={hasChanges}
                 notifyCustomerByEmail={notifyCustomerByEmail}
+                canNotifyCustomer={reservation.customer.hasEmail}
                 onNotifyCustomerByEmailChange={setNotifyCustomerByEmail}
                 hasScheduleChanges={hasScheduleChanges}
                 onSave={handleSave}

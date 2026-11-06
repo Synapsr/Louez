@@ -1,4 +1,9 @@
+import {
+  getCustomerFieldValues,
+  listCustomerFieldDefinitions,
+} from '@louez/api/services/customer-fields'
 import { db } from '@louez/db'
+import { hasPermission } from '@louez/utils'
 import { getCurrentStore } from '@/lib/store-context'
 import { customers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
@@ -40,6 +45,11 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
     notFound()
   }
 
+  const [definitions, customFields] = await Promise.all([
+    listCustomerFieldDefinitions(store.id, { activeOnly: true }),
+    getCustomerFieldValues(store.id, customer.id),
+  ])
+
   const customerBreadcrumbLabel =
     customer.customerType === 'business' && customer.companyName
       ? customer.companyName
@@ -66,7 +76,13 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
         </div>
       </div>
 
-      <CustomerForm customer={customer} />
+      <CustomerForm
+        customer={customer}
+        definitions={definitions}
+        initialCustomFields={customFields}
+        profileSettings={store.settings?.customerProfile ?? {}}
+        canCustomize={hasPermission(store.role, 'manage_settings')}
+      />
     </div>
   )
 }

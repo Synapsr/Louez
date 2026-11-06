@@ -108,6 +108,8 @@ export interface Reservation {
   customer: {
     firstName: string;
     lastName: string;
+    /** The modification notice has no SMS version: without e-mail it can't be sent. */
+    hasEmail: boolean;
   };
 }
 

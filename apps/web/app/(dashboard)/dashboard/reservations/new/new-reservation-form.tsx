@@ -36,12 +36,13 @@ import {
   DialogTitle,
 } from "@louez/ui";
 import { Label } from "@louez/ui";
-import { cn, formatCurrency } from "@louez/utils";
+import { cn, formatCurrency, hasCustomerEmail } from "@louez/utils";
 
 import { invalidateReservationList } from "@/lib/orpc/invalidation";
 import { trackOpenReplayEvent } from "@/lib/openreplay/client";
 import { openReplayEvents } from "@/lib/openreplay/events";
 import { orpc } from "@/lib/orpc/react";
+import { getCustomerMessageChannel } from "@/lib/reservations/util.customer-message-channel";
 import {
   dashboardReservationAnalyticsBaseProperties,
   productAnalyticsEvents,
@@ -129,6 +130,7 @@ export function NewReservationForm({
   customers,
   products,
   tulipInsuranceMode,
+  smsConfigured,
   businessHours,
   advanceNoticeMinutes = 0,
   pendingBlocksAvailability = true,
@@ -383,7 +385,7 @@ export function NewReservationForm({
         tulipInsuranceMode === "required"
           ? true
           : tulipInsuranceMode === "optional"
-            ? tulipInsuranceOptIn
+            ? tulipInsuranceOptIn && !isTulipInsuranceBlockedByEmail
             : false;
 
       const result = await createReservationMutation.mutateAsync({
@@ -553,6 +555,15 @@ export function NewReservationForm({
     [createdCustomers, customers],
   );
   const selectedCustomer = allCustomers.find((c) => c.id === watchCustomerId);
+  // A customer without e-mail gets the SMS confirmation (or none), can't
+  // accept a quote online and can't take out Tulip insurance.
+  const customerHasEmail = !selectedCustomer || hasCustomerEmail(selectedCustomer);
+  const isTulipInsuranceBlockedByEmail = !customerHasEmail;
+  const confirmationChannel = selectedCustomer
+    ? getCustomerMessageChannel("customer_reservation_confirmed", selectedCustomer, {
+        smsConfigured,
+      })
+    : "email";
   const isNewCustomer = createdCustomers.some((c) => c.id === watchCustomerId);
 
   const handleCustomerCreated = (customer: Customer) => {
@@ -654,7 +665,7 @@ export function NewReservationForm({
     tulipInsuranceMode === "required"
       ? true
       : tulipInsuranceMode === "optional"
-        ? tulipInsuranceOptIn
+        ? tulipInsuranceOptIn && !isTulipInsuranceBlockedByEmail
         : false;
   const tulipInsuranceQuoteItems = useMemo(
     () =>
@@ -728,9 +739,11 @@ export function NewReservationForm({
   const tulipInsuranceQuoteErrorKey = tulipInsuranceQuoteQuery.isError
     ? "errors.tulipQuoteFailed"
     : (tulipInsuranceQuotePreview?.quoteError ?? null);
-  const tulipInsuranceQuoteErrorMessage = tulipInsuranceQuoteErrorKey
-    ? tErrors(tulipInsuranceQuoteErrorKey.replace("errors.", ""))
-    : null;
+  // A missing e-mail is already explained next to the insurance option.
+  const tulipInsuranceQuoteErrorMessage =
+    tulipInsuranceQuoteErrorKey && tulipInsuranceQuoteErrorKey !== "errors.insuranceRequiresEmail"
+      ? tErrors(tulipInsuranceQuoteErrorKey.replace("errors.", ""))
+      : null;
   const delivery = useNewReservationDelivery({
     deliverySettings,
     storeLatitude,
@@ -1539,6 +1552,7 @@ export function NewReservationForm({
                   tulipInsuranceAmount={tulipInsuranceAmount}
                   isTulipInsuranceQuoteLoading={isTulipInsuranceQuoteLoading}
                   tulipInsuranceQuoteErrorMessage={tulipInsuranceQuoteErrorMessage}
+                  tulipInsuranceRequiresEmail={isTulipInsuranceBlockedByEmail}
                   startDate={watchStartDate}
                   endDate={watchEndDate}
                   availabilityWarnings={availabilityWarnings}
@@ -1640,6 +1654,8 @@ export function NewReservationForm({
                 depositOverride={depositOverride}
                 onDepositOverrideChange={setDepositOverride}
                 sendConfirmationEmail={sendConfirmationEmail}
+                confirmationChannel={confirmationChannel}
+                canSendQuote={customerHasEmail}
                 onSendConfirmationEmailChange={setSendConfirmationEmail}
                 onNavigateToSection={scrollToSection}
               />
@@ -1666,20 +1682,23 @@ export function NewReservationForm({
             {/* With the cancel gone on the phone, the two decisions share the
                 whole bar — flex-1 with a zero basis splits it evenly. */}
             <div className="flex min-w-0 items-center gap-3 max-sm:flex-1 max-sm:gap-2">
-              <Button
-                type="submit"
-                variant="outline"
-                size="lg"
-                isPending={isSaving && sendAsQuoteRef.current}
-                disabled={isSaving}
-                onClick={() => {
-                  sendAsQuoteRef.current = true;
-                }}
-                className="max-sm:flex-1 max-sm:px-4"
-              >
-                <FileText data-slot="icon" className="max-sm:hidden" />
-                {t("sendAsQuote")}
-              </Button>
+              {/* A quote is accepted online, from the account an e-mail opens. */}
+              {customerHasEmail && (
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="lg"
+                  isPending={isSaving && sendAsQuoteRef.current}
+                  disabled={isSaving}
+                  onClick={() => {
+                    sendAsQuoteRef.current = true;
+                  }}
+                  className="max-sm:flex-1 max-sm:px-4"
+                >
+                  <FileText data-slot="icon" className="max-sm:hidden" />
+                  {t("sendAsQuote")}
+                </Button>
+              )}
               <Button
                 type="submit"
                 size="lg"
@@ -1719,7 +1738,10 @@ export function NewReservationForm({
         discountAmount={globalDiscountAmount}
         deposit={effectiveDeposit}
         total={total}
-        willSendConfirmationEmail={confirmDrawer.asQuote || sendConfirmationEmail}
+        confirmationChannel={confirmDrawer.asQuote ? "email" : confirmationChannel}
+        willSendConfirmationEmail={
+          confirmDrawer.asQuote || (sendConfirmationEmail && confirmationChannel !== null)
+        }
         periodWarnings={periodWarnings}
         availabilityWarnings={availabilityWarnings}
       />

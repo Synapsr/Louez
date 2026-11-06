@@ -18,7 +18,8 @@ import { PaymentRequestPage } from "./payment-request-page";
 
 interface PayPageProps {
   params: Promise<{ slug: string; reservationId: string }>;
-  searchParams: Promise<{ token?: string }>;
+  /** `paid=1`: back from Stripe without an account to land in (customer without e-mail). */
+  searchParams: Promise<{ token?: string; paid?: string }>;
 }
 
 type OutcomeTone = "success" | "pending" | "info" | "destructive";
@@ -59,7 +60,7 @@ export const generateMetadata = async ({ params }: PayPageProps): Promise<Metada
 };
 
 const PayPage = async ({ params, searchParams }: PayPageProps) => {
-  const [{ slug, reservationId }, { token }, t] = await Promise.all([
+  const [{ slug, reservationId }, { token, paid }, t] = await Promise.all([
     params,
     searchParams,
     getTranslations("storefront.pay"),
@@ -80,6 +81,30 @@ const PayPage = async ({ params, searchParams }: PayPageProps) => {
           icon={presentation.icon}
           title={t(`errors.${presentation.key}Title`)}
           description={t(`errors.${presentation.key}Description`)}
+        >
+          <Button
+            variant="outline"
+            size="xl"
+            className="h-12 w-full lg:h-10 sm:w-auto"
+            render={<StorefrontLink href="/" />}
+          >
+            {t("backToStore")}
+          </Button>
+        </OutcomeHeader>
+      </StorefrontSection>
+    );
+  }
+
+  // The webhook records the payment a moment later: confirm it rather than
+  // offering to pay again.
+  if (paid === "1") {
+    return (
+      <StorefrontSection width="narrow">
+        <OutcomeHeader
+          tone="success"
+          icon={<CheckIcon />}
+          title={t("received.title")}
+          description={t("received.description", { store: data.store.name })}
         >
           <Button
             variant="outline"

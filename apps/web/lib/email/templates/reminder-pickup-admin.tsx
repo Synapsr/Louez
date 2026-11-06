@@ -29,7 +29,7 @@ interface ReminderPickupAdminEmailProps {
   storeCountry?: string | null;
   customerFirstName: string;
   customerLastName: string;
-  customerEmail: string;
+  customerEmail: string | null;
   customerPhone?: string | null;
   reservationNumber: string;
   startDate: Date;
@@ -101,7 +101,9 @@ export function ReminderPickupAdminEmail({
           label={stripLabelColon(messages.customer)}
           value={`${customerFirstName} ${customerLastName}`}
         />
-        <DetailRow label={stripLabelColon(messages.email)} value={customerEmail} />
+        {customerEmail && (
+          <DetailRow label={stripLabelColon(messages.email)} value={customerEmail} />
+        )}
         {customerPhone && (
           <DetailRow label={stripLabelColon(messages.phone)} value={customerPhone} />
         )}

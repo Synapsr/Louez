@@ -1,33 +1,30 @@
-import { db } from "@louez/db";
-import { getCurrentStore } from "@/lib/store-context";
-import { customers, reservations } from "@louez/db";
-import { eq, and, desc } from "drizzle-orm";
-import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { format } from "date-fns";
+import { notFound, redirect } from "next/navigation";
 
+import { formatDistanceToNow } from "date-fns";
+import { and, desc, eq } from "drizzle-orm";
+import { ArrowLeft, Building2, CalendarDays, CreditCard, History, Pencil, Plus, Receipt } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import {
-  ArrowLeft,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Pencil,
-  CreditCard,
-  Building2,
-} from "lucide-react";
 
-import { Button } from "@louez/ui";
-import { Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
-import { Badge } from "@louez/ui";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@louez/ui";
-import { formatCurrency, isBusinessBilling, resolveReservationBilling } from "@louez/utils";
+import {
+  getCustomerFieldValues,
+  listCustomerFieldDefinitions,
+} from "@louez/api/services/customer-fields";
+import { customers, db, reservations } from "@louez/db";
+import { Badge, Button } from "@louez/ui";
+import { formatCurrency } from "@louez/utils";
+
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
-import { EmailContactPopover } from "@/components/dashboard/email-contact-popover";
-import { PhoneContactPopover } from "@/components/dashboard/phone-contact-popover";
-import { CustomerNotes } from "./customer-notes";
+import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
+import { DashboardStatCard } from "@/components/dashboard/shared/dashboard-stat-card";
+import { UserAvatar } from "@/components/dashboard/shared/user-avatar";
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
+import { getCurrentStore } from "@/lib/store-context";
+import { formatStoreDate } from "@/lib/utils/store-date";
+
+import { CustomerNotes } from "./customer-notes";
+import { CustomerRecordSide } from "./customer-record-side";
+import { CustomerReservationsCard } from "./customer-reservations-card";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -37,19 +34,8 @@ interface CustomerPageProps {
   params: Promise<{ id: string }>;
 }
 
-const statusVariants: Record<string, "pending" | "progress" | "success" | "failed"> = {
-  pending: "pending",
-  confirmed: "success",
-  ongoing: "progress",
-  completed: "success",
-  cancelled: "failed",
-  rejected: "failed",
-};
-
 export default async function CustomerPage({ params }: CustomerPageProps) {
   const t = await getTranslations("dashboard.customers");
-  const tReservations = await getTranslations("dashboard.reservations");
-  const tCommon = await getTranslations("common");
   const { intl: formatLocale, dateFns: dateLocale } = await getRequestFormatLocale();
   const store = await getCurrentStore();
 
@@ -67,269 +53,151 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
     notFound();
   }
 
-  // Get customer reservations with items
-  const customerReservations = await db.query.reservations.findMany({
-    where: eq(reservations.customerId, customer.id),
-    with: {
-      items: {
-        with: {
-          product: true,
-        },
-      },
-    },
-    orderBy: [desc(reservations.createdAt)],
-  });
+  const [customerReservations, definitions, customFields] = await Promise.all([
+    db.query.reservations.findMany({
+      where: and(eq(reservations.customerId, customer.id), eq(reservations.storeId, store.id)),
+      with: { items: { with: { product: { columns: { name: true } } } } },
+      orderBy: [desc(reservations.createdAt)],
+    }),
+    listCustomerFieldDefinitions(store.id, { activeOnly: true }),
+    getCustomerFieldValues(store.id, customer.id),
+  ]);
 
-  // Calculate stats
-  const stats = {
-    totalReservations: customerReservations.length,
-    completedReservations: customerReservations.filter((r) => r.status === "completed").length,
-    totalSpent: customerReservations
-      .filter((r) => r.status === "completed" || r.status === "ongoing")
-      .reduce((sum, r) => sum + parseFloat(r.totalAmount), 0),
-    avgOrderValue:
-      customerReservations.length > 0
-        ? customerReservations.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) /
-          customerReservations.length
-        : 0,
-  };
-  const customerBreadcrumbLabel =
-    customer.customerType === "business" && customer.companyName
-      ? customer.companyName
-      : `${customer.firstName} ${customer.lastName}`.trim();
+  const currency = store.settings?.currency || "EUR";
+  const timezone = store.settings?.timezone;
+  const counted = customerReservations.filter(
+    (reservation) => reservation.status === "completed" || reservation.status === "ongoing",
+  );
+  const totalSpent = counted.reduce((sum, reservation) => sum + parseFloat(reservation.totalAmount), 0);
+  const completedCount = customerReservations.filter(
+    (reservation) => reservation.status === "completed",
+  ).length;
+  const averageOrder =
+    customerReservations.length > 0
+      ? customerReservations.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) /
+        customerReservations.length
+      : 0;
+  const lastReservation = customerReservations[0];
+
+  const isBusiness = customer.customerType === "business" && Boolean(customer.companyName);
+  const fullName = `${customer.firstName} ${customer.lastName}`.trim();
+  const displayName = isBusiness ? (customer.companyName ?? fullName) : fullName;
 
   return (
-    <div className="space-y-6">
-      <DashboardBreadcrumbLabel label={customerBreadcrumbLabel} />
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" render={<Link href="/dashboard/customers" />}>
-            <ArrowLeft className="h-4 w-4" />
+    <div className="space-y-4 sm:space-y-6">
+      <DashboardBreadcrumbLabel label={displayName} />
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button
+            render={<Link href="/dashboard/customers" />}
+            variant="ghost"
+            size="icon"
+            className="-ml-2 shrink-0"
+          >
+            <ArrowLeft className="size-4" />
           </Button>
-          <div className="space-y-1">
-            {customer.customerType === "business" && customer.companyName ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-muted-foreground" />
-                    {customer.companyName}
-                  </h1>
-                  <Badge variant="expired" className="font-normal">
-                    {t("customerType.business")}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {t("contact")}: {customer.firstName} {customer.lastName} · {t("customerSince")}{" "}
-                  {format(customer.createdAt, "dd MMMM yyyy", { locale: dateLocale })}
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight">
-                    {customer.firstName} {customer.lastName}
-                  </h1>
-                  <Badge variant="expired" className="font-normal">
-                    {t("customerType.individual")}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {t("customerSince")}{" "}
-                  {format(customer.createdAt, "dd MMMM yyyy", { locale: dateLocale })}
-                </p>
-              </>
-            )}
+          <UserAvatar seed={customer.email ?? customer.id} size={44} />
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">{displayName}</h1>
+              <Badge variant="expired" className="font-normal">
+                {isBusiness && <Building2 className="size-3" />}
+                {t(`customerType.${customer.customerType}`)}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              {isBusiness && `${t("contact")} : ${fullName} · `}
+              {t("customerSince")} {formatStoreDate(customer.createdAt, timezone, "MEDIUM_DATE", formatLocale)}
+              {customer.createdVia &&
+                ` · ${t("detail.createdVia", { channel: t(`channels.${customer.createdVia}`) })}`}
+            </p>
           </div>
         </div>
-        <Button render={<Link href={`/dashboard/customers/${customer.id}/edit`} />}>
-          <Pencil className="mr-2 h-4 w-4" />
-          {tCommon("edit")}
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            render={<Link href={`/dashboard/customers/${customer.id}/edit`} />}
+            variant="outline"
+          >
+            <Pencil className="size-4" />
+            {t("detail.edit")}
+          </Button>
+          <Button render={<Link href={`/dashboard/reservations/new?customerId=${customer.id}`} />}>
+            <Plus className="size-4" />
+            {t("detail.newReservation")}
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("totalReservations")}</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalReservations}</div>
-            <p className="text-xs text-muted-foreground">
-              {t("completedCount", { count: stats.completedReservations })}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("totalSpent")}</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(stats.totalSpent, "EUR", formatLocale)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("averageOrder")}</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(stats.avgOrderValue, "EUR", formatLocale)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("completionRate")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.totalReservations > 0
-                ? Math.round((stats.completedReservations / stats.totalReservations) * 100)
-                : 0}
-              %
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <DashboardStatCard
+          title={t("totalReservations")}
+          value={customerReservations.length}
+          subtitle={t("completedCount", { count: completedCount })}
+          icon={CalendarDays}
+          accent="primary"
+        />
+        <DashboardStatCard
+          title={t("totalSpent")}
+          value={formatCurrency(totalSpent, currency, formatLocale)}
+          icon={CreditCard}
+          accent="success"
+        />
+        <DashboardStatCard
+          title={t("averageOrder")}
+          value={formatCurrency(averageOrder, currency, formatLocale)}
+          icon={Receipt}
+          accent="neutral"
+        />
+        <DashboardStatCard
+          title={t("detail.lastRental")}
+          value={
+            lastReservation
+              ? formatDistanceToNow(lastReservation.createdAt, { addSuffix: true, locale: dateLocale })
+              : t("detail.never")
+          }
+          icon={History}
+          accent="progress"
+        />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Contact Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("contact")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <EmailContactPopover email={customer.email} className="text-foreground" />
-            </div>
-            {customer.phone && (
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <PhoneContactPopover phone={customer.phone} className="text-foreground" />
-              </div>
-            )}
-            {(customer.address || customer.city || customer.postalCode) && (
-              <div className="flex items-start gap-3">
-                <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                <div>
-                  {customer.address && <div>{customer.address}</div>}
-                  {(customer.postalCode || customer.city) && (
-                    <div>
-                      {customer.postalCode} {customer.city}
-                    </div>
-                  )}
-                  {customer.country && customer.country !== "FR" && (
-                    <div className="text-muted-foreground">{customer.country}</div>
-                  )}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Notes */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>{t("notes.title")}</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+        <div className="min-w-0 space-y-4 sm:space-y-6 lg:col-span-2">
+          <CustomerReservationsCard
+            reservations={customerReservations}
+            customer={customer}
+            currency={currency}
+            timezone={timezone}
+            formatLocale={formatLocale}
+          />
+          <DashboardSectionCard title={t("notes.title")}>
             <CustomerNotes customerId={customer.id} initialNotes={customer.notes || ""} />
-          </CardContent>
-        </Card>
-      </div>
+          </DashboardSectionCard>
+        </div>
 
-      {/* Reservations */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("reservationHistory")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {customerReservations.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              {t("noReservationsForCustomer")}
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{tReservations("number")}</TableHead>
-                  <TableHead>{tReservations("period")}</TableHead>
-                  <TableHead>{t("products")}</TableHead>
-                  <TableHead>{t("billedAs")}</TableHead>
-                  <TableHead>{tCommon("status")}</TableHead>
-                  <TableHead className="text-right">{t("amount")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {customerReservations.map((reservation) => {
-                  const billing = resolveReservationBilling(reservation, customer);
-                  return (
-                    <TableRow key={reservation.id}>
-                      <TableCell>
-                        <Link
-                          href={`/dashboard/reservations/${reservation.id}`}
-                          className="font-medium hover:underline"
-                        >
-                          #{reservation.number}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {format(reservation.startDate, "dd/MM/yyyy", { locale: dateLocale })}
-                          {" - "}
-                          {format(reservation.endDate, "dd/MM/yyyy", { locale: dateLocale })}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {reservation.items.map((item, idx) => (
-                            <span key={item.id}>
-                              {idx > 0 && ", "}
-                              {item.product?.name || t("deletedProduct")}
-                              {item.quantity > 1 && ` (x${item.quantity})`}
-                            </span>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {isBusinessBilling(billing) ? (
-                          <span className="flex items-center gap-1.5 text-sm">
-                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                            {billing.companyName}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            {t("customerType.individual")}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusVariants[reservation.status]}>
-                          {tReservations(`status.${reservation.status}`)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(parseFloat(reservation.totalAmount), "EUR", formatLocale)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        <CustomerRecordSide
+          customer={{
+            id: customer.id,
+            customerType: customer.customerType,
+            email: customer.email,
+            phone: customer.phone,
+            address: customer.address,
+            city: customer.city,
+            postalCode: customer.postalCode,
+            country: customer.country,
+            birthDate: customer.birthDate,
+            acquisitionSource: customer.acquisitionSource,
+            acquisitionSourceDetail: customer.acquisitionSourceDetail,
+            createdVia: customer.createdVia,
+            socialLinks: customer.socialLinks,
+          }}
+          definitions={definitions}
+          customFields={customFields}
+          profileSettings={store.settings?.customerProfile ?? {}}
+          storeCountry={store.settings?.country ?? "FR"}
+          locale={formatLocale}
+        />
+      </div>
     </div>
   );
 }

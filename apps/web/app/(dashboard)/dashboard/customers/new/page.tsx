@@ -3,6 +3,9 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 
+import { listCustomerFieldDefinitions } from '@louez/api/services/customer-fields'
+import { hasPermission } from '@louez/utils'
+
 import { getCurrentStore } from '@/lib/store-context'
 import { resolveDashboardCreationSource } from '@/lib/openreplay/events'
 import { Button } from '@louez/ui'
@@ -28,6 +31,8 @@ export default async function NewCustomerPage({
     redirect('/onboarding')
   }
 
+  const definitions = await listCustomerFieldDefinitions(store.id, { activeOnly: true })
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -42,7 +47,12 @@ export default async function NewCustomerPage({
         </div>
       </div>
 
-      <CustomerForm openReplaySource={openReplaySource} />
+      <CustomerForm
+        definitions={definitions}
+        profileSettings={store.settings?.customerProfile ?? {}}
+        canCustomize={hasPermission(store.role, 'manage_settings')}
+        openReplaySource={openReplaySource}
+      />
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql-proxy";
 import { enUS } from "date-fns/locale";
 import { formatInTimeZone } from "date-fns-tz";
+import * as paymentReceipts from "@louez/db/payment-receipts";
 import * as schema from "@louez/db/schema";
 import windowUtils from "./util.sales-window.ts";
 
@@ -22,6 +23,7 @@ function loadQueries(file, db, extra = {}) {
   return runInNewContext(`${code}; ({${functions.join(",")}})`, {
     ...orm,
     ...schema,
+    ...paymentReceipts,
     ...windowUtils,
     db,
     alias,
@@ -43,7 +45,7 @@ function fixture() {
   sqlite.exec(`
     CREATE TABLE reservations (id TEXT, store_id TEXT, customer_id TEXT, reservation_status TEXT, start_date TEXT, end_date TEXT, total_amount REAL, subtotal_amount REAL, deposit_amount REAL);
     CREATE TABLE reservation_items (id TEXT, reservation_id TEXT, product_id TEXT, quantity INTEGER, total_price REAL);
-    CREATE TABLE payments (id TEXT, reservation_id TEXT, amount REAL, payment_status TEXT, payment_type TEXT, payment_method TEXT, paid_at TEXT, created_at TEXT, refund_of_payment_id TEXT);
+    CREATE TABLE payments (id TEXT, reservation_id TEXT, amount REAL, payment_status TEXT, payment_type TEXT, payment_method TEXT, paid_at TEXT, created_at TEXT, refund_of_payment_id TEXT, stripe_refund_id TEXT, stripe_payment_intent_id TEXT, stripe_checkout_session_id TEXT);
     CREATE TABLE products (id TEXT, store_id TEXT, name TEXT, quantity INTEGER, track_units INTEGER, product_status TEXT, stock_kind TEXT);
     CREATE TABLE product_units (product_id TEXT, lifecycle_status TEXT);
     CREATE TABLE customers (id TEXT, first_name TEXT, last_name TEXT, company_name TEXT, customer_type TEXT);
@@ -70,11 +72,20 @@ function fixture() {
     id,
     amount,
     date,
-    { status = "completed", type = "rental", reservation = "r", refund = null, paidAt = true } = {},
+    {
+      status = "completed",
+      type = "rental",
+      reservation = "r",
+      refund = null,
+      paidAt = true,
+      stripeRefund = null,
+      stripeIntent = null,
+      stripeSession = null,
+    } = {},
   ) => {
     const timestamp = formatInTimeZone(date, "UTC", "yyyy-MM-dd HH:mm:ss.SSS");
     sqlite
-      .prepare("INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)")
+      .prepare("INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
       .run(
         id,
         reservation,
@@ -85,6 +96,9 @@ function fixture() {
         paidAt ? timestamp : null,
         timestamp,
         refund,
+        stripeRefund,
+        stripeIntent,
+        stripeSession,
       );
   };
   return { sqlite, queries, pay };
@@ -180,6 +194,58 @@ test("upcoming balances subtract payments, restore manual refunds and ignore dep
     f.pay("paid", 200, new Date("2026-09-01"));
     result = await f.queries.getUpcomingRevenue("store", now);
     assert.equal(result.revenue, 91, "legacy total includes a 100 euro deposit");
+  } finally {
+    f.sqlite.close();
+  }
+});
+
+test("a Stripe refund row is never a receipt, while the netted charge it refunds still is", async () => {
+  const f = fixture();
+  try {
+    const window = windowUtils.getSalesWindow("30d", now);
+    // Partial refund as the webhook records it: the charge is brought down to its net
+    // amount and the refund gets its own positive row carrying only the refund id.
+    f.pay("charge", 70, window.start, { stripeIntent: "pi_1", stripeSession: "cs_1" });
+    f.pay("refund-row", 30, window.start, { stripeRefund: "re_1" });
+    // Full refund: the charge leaves the receipts through its status.
+    f.pay("refunded-charge", 0, window.start, { status: "refunded", stripeIntent: "pi_2" });
+    f.pay("full-refund-row", 50, window.start, { stripeRefund: "re_2" });
+    // Older webhooks stamped the refund id on the netted charge itself: still a receipt.
+    f.pay("legacy-charge", 40, window.start, { stripeRefund: "re_3", stripeIntent: "pi_3" });
+    const [headline, chart, methods, products, customers] = await Promise.all([
+      f.queries.getSalesPaymentStats("store", window),
+      f.queries.getRevenueTimeSeries("store", window, enUS),
+      f.queries.getRevenueByPaymentMethod("store", window),
+      f.queries.getTopProductsByRevenue("store", window),
+      f.queries.getTopCustomersByRevenue("store", window),
+    ]);
+    assert.equal(headline.periodRevenue, 110);
+    assert.equal(headline.periodPaymentCount, 2);
+    assert.equal(headline.totalRevenue, 110);
+    assert.equal(
+      chart.reduce((sum, row) => sum + row.revenue, 0),
+      110,
+    );
+    assert.equal(
+      methods.reduce((sum, row) => sum + row.amount, 0),
+      110,
+    );
+    assert.equal(products.totalRevenue, 110);
+    assert.equal(Number(customers[0].totalRevenue), 110);
+  } finally {
+    f.sqlite.close();
+  }
+});
+
+test("upcoming balances do not count a Stripe refund row as money paid", async () => {
+  const f = fixture();
+  try {
+    // 200 paid by card then 30 refunded through Stripe: 170 kept out of 291.
+    f.pay("charge", 170, new Date("2026-09-01"), { stripeIntent: "pi_1" });
+    f.pay("refund-row", 30, new Date("2026-09-02"), { stripeRefund: "re_1" });
+    const result = await f.queries.getUpcomingRevenue("store", now);
+    assert.equal(result.revenue, 121);
+    assert.equal(result.reservationCount, 1);
   } finally {
     f.sqlite.close();
   }

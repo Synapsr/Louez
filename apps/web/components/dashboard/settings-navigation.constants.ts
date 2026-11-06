@@ -8,6 +8,7 @@ import {
   ClipboardIcon,
   ClockIcon,
   CodeIcon,
+  DatabaseIcon,
   DownloadIcon,
   FileCheckIcon,
   FileTextIcon,
@@ -26,6 +27,7 @@ import {
   TagIcon,
   TerminalIcon,
   TruckIcon,
+  UsersIcon,
 } from "@louez/ui/icons";
 
 export type SettingsNavigationGroupId = "store" | "rental" | "communication" | "accountData";
@@ -197,6 +199,16 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     navigation: true,
   },
   {
+    id: "customer-fields",
+    href: "/dashboard/settings/customer-fields",
+    icon: UsersIcon,
+    labelPath: "dashboard.settings.customerFields.title",
+    descriptionPath: "dashboard.settings.customerFields.description",
+    searchPaths: ["dashboard.settings.customerFields"],
+    group: "rental",
+    navigation: true,
+  },
+  {
     id: "promo-codes",
     href: "/dashboard/settings/promo-codes",
     icon: TagIcon,
@@ -322,6 +334,16 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     labelPath: "dashboard.settings.subscription.label",
     descriptionPath: "dashboard.settings.subscription.description",
     searchPaths: ["dashboard.settings.subscription", "dashboard.settings.subscriptionSettings"],
+    group: "accountData",
+    navigation: true,
+  },
+  {
+    id: "import",
+    href: "/dashboard/settings/import",
+    icon: DatabaseIcon,
+    labelPath: "dashboard.settings.import.title",
+    descriptionPath: "dashboard.settings.import.description",
+    searchPaths: ["dashboard.settings.import"],
     group: "accountData",
     navigation: true,
   },

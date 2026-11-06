@@ -203,6 +203,8 @@ const nextConfig: NextConfig = {
     "louez-storefront-redesign.localify",
     "*.louez-storefront-redesign.localify",
     'landing-demos.louez.localify',
+    // Tailscale preview of a local dev server (tailscale serve)
+    "*.tailf4e66.ts.net",
   ],
 };
 

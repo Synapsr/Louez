@@ -31,7 +31,8 @@ export interface InvoiceBuyerSnapshot {
   companyNumberScheme: InvoiceCompanyNumberScheme | null
   vatNumber: string | null
   address: InvoiceAddressSnapshot | null
-  email: string
+  /** Null for a customer entered without e-mail; invoices issued before stay as they are. */
+  email: string | null
   phone: string | null
 }
 

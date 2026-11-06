@@ -189,6 +189,29 @@ test("B2C inclusive invoices carry email routing, BAR note, and service lines", 
   });
 });
 
+test("B2C invoices of a customer without e-mail omit the buyer electronic address", () => {
+  const built = buildInvoiceSnapshots(
+    { ...baseSource, customer: { ...baseSource.customer, email: null } },
+    {
+      number: "F-2026-00044",
+      issueDate: "2026-08-20",
+      type: "invoice",
+      currency: "EUR",
+      amountInclTax: "170.00",
+    },
+  );
+
+  assert.equal(built.processingRule, "b2c");
+  assert.equal(built.buyer.email, null);
+  // BT-49 is optional: absent, never an empty value the platform would reject.
+  assert.equal("electronic_address" in built.en16931.buyer, false);
+  assert.equal(built.en16931.buyer.name, "Alice Martin");
+  assert.deepEqual(built.en16931.seller.electronic_address, {
+    scheme: "0225",
+    value: "123456789",
+  });
+});
+
 test("B2B exclusive invoices use the customer's SIREN electronic address", () => {
   const built = buildInvoiceSnapshots(
     {

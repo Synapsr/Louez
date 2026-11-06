@@ -160,16 +160,26 @@ export const initiatePayment = async (
   const currency = paymentRequest.currency;
   const chargeCents = toStripeCents(Number.parseFloat(paymentRequest.amount), currency);
 
+  // A customer without e-mail has no account to land in: back to this page,
+  // which then confirms the payment.
+  const customerEmail = reservation.customer.email;
+  const payPageUrl = getStorefrontUrl(
+    store.slug,
+    `/pay/${reservation.id}?token=${encodeURIComponent(parsed.data.token)}`,
+  );
+
   try {
     const [successUrl, locale] = await Promise.all([
-      createReservationInstantAccessUrl({
-        storeId: store.id,
-        storeSlug: store.slug,
-        customerEmail: reservation.customer.email,
-        reservationId: reservation.id,
-        redirectPath: `/account/reservations/${reservation.id}?event=payment_received`,
-        ttlMs: PAYMENT_RETURN_ACCESS_TTL_MS,
-      }),
+      customerEmail
+        ? createReservationInstantAccessUrl({
+            storeId: store.id,
+            storeSlug: store.slug,
+            customerEmail,
+            reservationId: reservation.id,
+            redirectPath: `/account/reservations/${reservation.id}?event=payment_received`,
+            ttlMs: PAYMENT_RETURN_ACCESS_TTL_MS,
+          })
+        : `${payPageUrl}&paid=1`,
       getLocale(),
     ]);
 
@@ -189,16 +199,13 @@ export const initiatePayment = async (
       stripeAccountId: store.stripeAccountId,
       reservationId: reservation.id,
       reservationNumber: reservation.number,
-      customerEmail: reservation.customer.email,
+      customerEmail,
       customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
       amount: chargeCents,
       description: paymentRequest.description,
       currency,
       successUrl,
-      cancelUrl: getStorefrontUrl(
-        store.slug,
-        `/pay/${reservation.id}?token=${encodeURIComponent(parsed.data.token)}`,
-      ),
+      cancelUrl: payPageUrl,
       paymentRequestId: paymentRequest.id,
       applicationFeeAmount: feePlan?.applicationFeeCents,
       feeMetadata: feePlan ? buildFeeMetadata(feePlan) : undefined,

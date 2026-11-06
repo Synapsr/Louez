@@ -65,6 +65,10 @@ interface NewReservationSummaryPanelProps {
   depositOverride: number | null;
   onDepositOverrideChange: (value: number | null) => void;
   sendConfirmationEmail: boolean;
+  /** How the confirmation reaches this customer; null when it cannot. */
+  confirmationChannel: "email" | "sms" | null;
+  /** False for a customer without e-mail: a quote is accepted online. */
+  canSendQuote: boolean;
   onSendConfirmationEmailChange: (checked: boolean) => void;
   onNavigateToSection: (sectionId: ReservationSectionId) => void;
 }
@@ -91,6 +95,8 @@ export function NewReservationSummaryPanel({
   depositOverride,
   onDepositOverrideChange,
   sendConfirmationEmail,
+  confirmationChannel,
+  canSendQuote,
   onSendConfirmationEmailChange,
   onNavigateToSection,
 }: NewReservationSummaryPanelProps) {
@@ -123,7 +129,7 @@ export function NewReservationSummaryPanel({
   const customerName = selectedCustomer
     ? `${selectedCustomer.firstName} ${selectedCustomer.lastName}`
     : null;
-  const customerEmail = selectedCustomer?.email;
+  const customerContact = selectedCustomer?.email || selectedCustomer?.phone;
 
   const durationLabel = useReservationDurationLabel(detailedDuration, duration);
 
@@ -189,8 +195,8 @@ export function NewReservationSummaryPanel({
                 </Badge>
               )}
             </div>
-            {customerEmail && (
-              <p className="text-muted-foreground truncate text-xs">{customerEmail}</p>
+            {customerContact && (
+              <p className="text-muted-foreground truncate text-xs">{customerContact}</p>
             )}
           </div>
         )}
@@ -368,19 +374,28 @@ export function NewReservationSummaryPanel({
 
         <Separator />
 
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="sendConfirmationEmail"
-            checked={sendConfirmationEmail}
-            onCheckedChange={(checked) => onSendConfirmationEmailChange(checked === true)}
-          />
-          <label
-            htmlFor="sendConfirmationEmail"
-            className="text-muted-foreground min-w-0 cursor-pointer text-sm leading-tight"
-          >
-            {t("sendConfirmationEmail")}
-          </label>
-        </div>
+        {confirmationChannel ? (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="sendConfirmationEmail"
+              checked={sendConfirmationEmail}
+              onCheckedChange={(checked) => onSendConfirmationEmailChange(checked === true)}
+            />
+            <label
+              htmlFor="sendConfirmationEmail"
+              className="text-muted-foreground min-w-0 cursor-pointer text-sm leading-tight"
+            >
+              {confirmationChannel === "sms"
+                ? t("sendConfirmationSms")
+                : t("sendConfirmationEmail")}
+            </label>
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-xs">{t("noChannelHint")}</p>
+        )}
+        {confirmationChannel && !canSendQuote && (
+          <p className="text-muted-foreground text-xs">{t("noEmailQuoteHint")}</p>
+        )}
       </CardContent>
     </Card>
   );

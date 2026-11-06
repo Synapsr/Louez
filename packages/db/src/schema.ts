@@ -1,4 +1,9 @@
-import type { ProductPromotion } from "@louez/types";
+import type {
+  CustomerSocialLinks,
+  ImportColumnMapping,
+  ImportRunCounts,
+  ProductPromotion,
+} from "@louez/types";
 import { relations } from "drizzle-orm";
 import {
   bigint,
@@ -151,6 +156,20 @@ export const verification = mysqlTable("verification", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
 });
+
+// Request counters of the auth endpoints (better-auth database rate limiting).
+export const authRateLimits = mysqlTable(
+  "auth_rate_limits",
+  {
+    id: id(),
+    key: varchar("key", { length: 255 }).notNull(),
+    count: int("count").notNull(),
+    lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+  },
+  (table) => ({
+    uniqueKey: unique("auth_rate_limits_key_unique").on(table.key),
+  }),
+);
 
 // ============================================================================
 // Subscriptions (simplified - plans defined in code)
@@ -1166,8 +1185,10 @@ export const customers = mysqlTable(
     // Customer type (individual or business)
     customerType: customerType.default("individual").notNull(),
 
-    // Identity
-    email: varchar("email", { length: 255 }).notNull(),
+    // Identity. The e-mail is optional for customers entered by the team (at the counter,
+    // on a manual reservation, by import): a phone number is then required instead. Checkout,
+    // the public API and the marketplace always provide one.
+    email: varchar("email", { length: 255 }),
     firstName: varchar("first_name", { length: 255 }).notNull(),
     lastName: varchar("last_name", { length: 255 }).notNull(),
     marketplaceUserId: varchar("marketplace_user_id", { length: 255 }),
@@ -1185,6 +1206,31 @@ export const customers = mysqlTable(
     postalCode: varchar("postal_code", { length: 20 }),
     country: varchar("country", { length: 2 }).default("FR"),
 
+    // Profile
+    birthDate: date("birth_date", { mode: "string" }),
+    // How the customer heard about the store, as declared by the merchant.
+    acquisitionSource: mysqlEnum("acquisition_source", [
+      "word_of_mouth",
+      "search_engine",
+      "social_media",
+      "walk_in",
+      "partner",
+      "ads",
+      "returning",
+      "other",
+    ]),
+    acquisitionSourceDetail: varchar("acquisition_source_detail", { length: 255 }),
+    // Where the record was created. Set by the code path, never by input.
+    createdVia: mysqlEnum("created_via", [
+      "dashboard",
+      "storefront",
+      "marketplace",
+      "import",
+      "api",
+      "ai",
+    ]),
+    socialLinks: json("social_links").$type<CustomerSocialLinks>(),
+
     // Internal notes
     notes: text("notes"),
 
@@ -1195,8 +1241,182 @@ export const customers = mysqlTable(
   (table) => ({
     uniqueEmailPerStore: unique("customers_unique_email_per_store").on(table.storeId, table.email),
     storeIdx: index("customers_store_idx").on(table.storeId),
+    storeCreatedIdx: index("customers_store_created_idx").on(table.storeId, table.createdAt),
+    // Without an e-mail, a phone number is what tells two records of the same person apart.
+    storePhoneIdx: index("customers_store_phone_idx").on(table.storeId, table.phone),
     emailIdx: index("customers_email_idx").on(table.email),
     marketplaceUserIdx: index("customers_marketplace_user_idx").on(table.marketplaceUserId),
+  }),
+);
+
+// ============================================================================
+// Customer custom fields (store-level definitions, per-customer values)
+// ============================================================================
+
+export const customerFieldDefinitions = mysqlTable(
+  "customer_field_definitions",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    // Stable identity: a template adopted twice resolves to the same row, and
+    // values survive a relabel.
+    key: varchar("key", { length: 64 }).notNull(),
+    label: varchar("label", { length: 100 }).notNull(),
+    type: mysqlEnum("field_type", [
+      "text",
+      "textarea",
+      "number",
+      "date",
+      "select",
+      "checkbox",
+      "phone",
+      "email",
+      "url",
+    ]).notNull(),
+    // Known identifier format of a text field (validation + normalisation).
+    format: varchar("format", { length: 32 }),
+    options: json("options").$type<string[]>(),
+    unit: varchar("unit", { length: 32 }),
+    helpText: varchar("help_text", { length: 255 }),
+    section: varchar("section", { length: 100 }).notNull(),
+    position: int("position").notNull().default(0),
+    appliesTo: mysqlEnum("applies_to", ["all", "individual", "business"]).notNull().default("all"),
+    isRequired: boolean("is_required").notNull().default(false),
+    isSensitive: boolean("is_sensitive").notNull().default(false),
+    showOnContract: boolean("show_on_contract").notNull().default(false),
+    isSearchable: boolean("is_searchable").notNull().default(false),
+    showInList: boolean("show_in_list").notNull().default(false),
+    // Template the field was adopted from, when any.
+    templateKey: varchar("template_key", { length: 64 }),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index("customer_field_definitions_store_idx").on(table.storeId, table.position),
+    uniqueStoreKey: unique("customer_field_definitions_store_key_unique").on(
+      table.storeId,
+      table.key,
+    ),
+  }),
+);
+
+export const customerFieldValues = mysqlTable(
+  "customer_field_values",
+  {
+    id: id(),
+    // Denormalised so a lookup by value is a store-scoped index seek.
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    customerId: varchar("customer_id", { length: 21 }).notNull(),
+    definitionId: varchar("definition_id", { length: 21 }).notNull(),
+    value: varchar("value", { length: 2000 }).notNull(),
+    // Lowercased, punctuation stripped. Only set for searchable definitions.
+    searchValue: varchar("search_value", { length: 191 }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueCustomerDefinition: unique("customer_field_values_customer_definition_unique").on(
+      table.customerId,
+      table.definitionId,
+    ),
+    storeSearchIdx: index("customer_field_values_store_search_idx").on(
+      table.storeId,
+      table.searchValue,
+    ),
+    definitionIdx: index("customer_field_values_definition_idx").on(table.definitionId),
+  }),
+);
+
+// ============================================================================
+// Data import (runs, staged rows, provenance)
+// ============================================================================
+
+export const importRuns = mysqlTable(
+  "import_runs",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    entityType: mysqlEnum("entity_type", ["customers", "products"]).notNull(),
+    // Free label of where the data comes from ("csv", "paste", a software name).
+    source: varchar("source", { length: 64 }).notNull(),
+    fileName: varchar("file_name", { length: 255 }),
+    status: mysqlEnum("import_status", [
+      "draft",
+      "ready",
+      "running",
+      "completed",
+      "failed",
+      "reverted",
+    ])
+      .notNull()
+      .default("draft"),
+    duplicateStrategy: mysqlEnum("duplicate_strategy", ["fill_empty", "overwrite", "skip"])
+      .notNull()
+      .default("fill_empty"),
+    mapping: json("mapping").$type<ImportColumnMapping>(),
+    counts: json("counts").$type<ImportRunCounts>(),
+    createdByUserId: varchar("created_by_user_id", { length: 21 }),
+    startedAt: timestamp("started_at", { mode: "date" }),
+    completedAt: timestamp("completed_at", { mode: "date" }),
+    revertedAt: timestamp("reverted_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index("import_runs_store_idx").on(table.storeId, table.createdAt),
+    statusIdx: index("import_runs_status_idx").on(table.status, table.updatedAt),
+  }),
+);
+
+// Staging area: personal data, purged once the undo window is over.
+export const importRows = mysqlTable(
+  "import_rows",
+  {
+    id: id(),
+    runId: varchar("run_id", { length: 21 }).notNull(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    rowIndex: int("row_index").notNull(),
+    // Source row as parsed in the browser: column name → cell.
+    payload: json("payload").$type<Record<string, string>>().notNull(),
+    status: mysqlEnum("row_status", ["pending", "created", "updated", "skipped", "error"])
+      .notNull()
+      .default("pending"),
+    errors: json("errors").$type<{ field: string | null; code: string }[]>(),
+    entityId: varchar("entity_id", { length: 21 }),
+    // Values overwritten by the import, kept to undo an update.
+    previousValues: json("previous_values").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueRunRow: unique("import_rows_run_row_unique").on(table.runId, table.rowIndex),
+    runStatusIdx: index("import_rows_run_status_idx").on(table.runId, table.status),
+  }),
+);
+
+// Provenance: ids only, kept for good so a second import of the same source is idempotent.
+export const importRecords = mysqlTable(
+  "import_records",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    source: varchar("source", { length: 64 }).notNull(),
+    entityType: mysqlEnum("entity_type", ["customers", "products"]).notNull(),
+    externalId: varchar("external_id", { length: 191 }).notNull(),
+    entityId: varchar("entity_id", { length: 21 }).notNull(),
+    runId: varchar("run_id", { length: 21 }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueExternal: unique("import_records_external_unique").on(
+      table.storeId,
+      table.source,
+      table.entityType,
+      table.externalId,
+    ),
+    entityIdx: index("import_records_entity_idx").on(table.entityId),
+    runIdx: index("import_records_run_idx").on(table.runId),
   }),
 );
 
@@ -1229,7 +1449,9 @@ export const customerSessions = mysqlTable("customer_sessions", {
 
 export const verificationCodes = mysqlTable("verification_codes", {
   id: id(),
-  email: varchar("email", { length: 255 }).notNull(),
+  // Null only for a link sent by SMS to a customer without e-mail (a deposit
+  // authorisation request): such a link is checked by its token alone.
+  email: varchar("email", { length: 255 }),
   storeId: varchar("store_id", { length: 21 }).notNull(),
   code: varchar("code", { length: 6 }).notNull(),
   type: varchar("type", { length: 20 }).notNull(), // 'magic_link' | 'code' | 'instant_access'
@@ -2698,6 +2920,29 @@ export const customersRelations = relations(customers, ({ one, many }) => ({
   reservations: many(reservations),
   invoices: many(invoices),
   sessions: many(customerSessions),
+  fieldValues: many(customerFieldValues),
+}));
+
+export const customerFieldDefinitionsRelations = relations(
+  customerFieldDefinitions,
+  ({ one, many }) => ({
+    store: one(stores, {
+      fields: [customerFieldDefinitions.storeId],
+      references: [stores.id],
+    }),
+    values: many(customerFieldValues),
+  }),
+);
+
+export const customerFieldValuesRelations = relations(customerFieldValues, ({ one }) => ({
+  customer: one(customers, {
+    fields: [customerFieldValues.customerId],
+    references: [customers.id],
+  }),
+  definition: one(customerFieldDefinitions, {
+    fields: [customerFieldValues.definitionId],
+    references: [customerFieldDefinitions.id],
+  }),
 }));
 
 export const customerSessionsRelations = relations(customerSessions, ({ one }) => ({

@@ -20,6 +20,10 @@ export interface Payment {
   type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture' | 'adjustment'
   method: 'cash' | 'card' | 'transfer' | 'check' | 'other' | 'stripe'
   status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
+  refundOfPaymentId?: string | null
+  stripeRefundId?: string | null
+  stripePaymentIntentId?: string | null
+  stripeCheckoutSessionId?: string | null
 }
 
 export interface Reservation {

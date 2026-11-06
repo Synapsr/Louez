@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { z } from 'zod';
 
 import { authClient } from '@louez/auth/client';
+import { MIN_PASSWORD_LENGTH } from '@louez/auth/password-policy';
 
 import {
   createAuthMutationError,
@@ -19,11 +20,9 @@ import {
 import { useAppForm } from '@/hooks/form/form';
 
 import { useCallbackUrl } from './use-callback-url';
+import { rememberLastSignInMethod } from './util.last-sign-in-method';
 
 export type PasswordMode = 'signIn' | 'signUp';
-
-// better-auth's default minimum password length.
-const MIN_PASSWORD_LENGTH = 8;
 
 export const usePasswordStep = () => {
   const t = useTranslations('auth');
@@ -97,6 +96,7 @@ export const usePasswordStep = () => {
         } else {
           await signInMutation.mutateAsync(value);
         }
+        rememberLastSignInMethod('password');
         window.location.href = callbackUrl;
       } catch (error) {
         setRootError(resolveAuthErrorMessage(t, getMutationAuthCode(error)));

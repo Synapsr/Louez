@@ -2,7 +2,7 @@ import { and, eq, isNull, ne, or } from "drizzle-orm";
 
 import { db, reservations } from "@louez/db";
 import type { TulipPublicMode } from "@louez/types";
-import { resolveReservationBilling } from "@louez/utils";
+import { hasCustomerEmail, resolveReservationBilling } from "@louez/utils";
 
 import {
   TulipApiError,
@@ -39,7 +39,7 @@ type ReservationCustomerLike = {
   companyName?: string | null;
   firstName: string;
   lastName: string;
-  email: string;
+  email: string | null;
   phone: string | null;
   address: string | null;
   city: string | null;
@@ -249,7 +249,11 @@ function getEnabledTulipProductTypes(
   return enabledTypes.length > 0 ? new Set(enabledTypes) : null;
 }
 
+/** Tulip binds the policy to the renter's e-mail: no contract can be taken out without one. */
 function toTulipCustomerInput(customer: ReservationCustomerLike): TulipCustomerInput {
+  if (!hasCustomerEmail(customer)) {
+    throw new Error("errors.insuranceRequiresEmail");
+  }
   return {
     customerType: customer.customerType,
     companyName: customer.companyName,

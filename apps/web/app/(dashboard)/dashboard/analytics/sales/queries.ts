@@ -1,7 +1,15 @@
 import type { Locale as DateFnsLocale } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
-import { db, customers, payments, products, reservationItems, reservations } from "@louez/db";
+import { and, count, desc, eq, sql } from "drizzle-orm";
+import {
+  db,
+  customers,
+  isPaymentReceiptSql,
+  payments,
+  products,
+  reservationItems,
+  reservations,
+} from "@louez/db";
 import type { PaymentMethodKey, PaymentMethodTotal } from "./payment-methods-breakdown";
 import {
   allocateSalesAmounts,
@@ -21,7 +29,7 @@ const rentalReceiptConditions = (storeId: string) => [
   eq(reservations.storeId, storeId),
   eq(payments.status, "completed"),
   eq(payments.type, "rental"),
-  isNull(payments.refundOfPaymentId),
+  isPaymentReceiptSql(),
 ];
 
 /** A payment counts on the day it was cashed in, falling back to its creation. */

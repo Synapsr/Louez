@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   Label,
   RadioGroup,
   RadioGroupItem,
@@ -33,6 +34,11 @@ interface TabularExportCardProps {
   description: string;
   buttonLabel: string;
   showDateRange: boolean;
+  /** The period narrows the export; left empty, everything is exported. */
+  dateRangeOptional?: boolean;
+  dateRangeHint?: string;
+  /** Data the export leaves out unless the merchant ticks this box. */
+  sensitiveOptIn?: { label: string; warning: string };
   timezone?: string;
 }
 
@@ -43,16 +49,23 @@ export const TabularExportCard = ({
   description,
   buttonLabel,
   showDateRange,
+  dateRangeOptional = false,
+  dateRangeHint,
+  sensitiveOptIn,
   timezone,
 }: TabularExportCardProps) => {
   const t = useTranslations("dashboard.settings.export");
   const [format, setFormat] = useState<ExportFormat>("csv");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [includeSensitive, setIncludeSensitive] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
-    if (showDateRange && (!startDate || !endDate)) {
+    const isRangeIncomplete = dateRangeOptional
+      ? Boolean(startDate) !== Boolean(endDate)
+      : !startDate || !endDate;
+    if (showDateRange && isRangeIncomplete) {
       toastManager.add({ title: t("errors.dateRequired"), type: "error" });
       return;
     }
@@ -78,6 +91,7 @@ export const TabularExportCard = ({
       const params = new URLSearchParams({ type, format });
       if (startDateValue) params.set("startDate", startDateValue);
       if (endDateValue) params.set("endDate", endDateValue);
+      if (sensitiveOptIn && includeSensitive) params.set("includeSensitive", "true");
 
       const response = await fetch(`/api/export?${params.toString()}`);
       if (!response.ok) throw new Error(response.statusText);
@@ -121,6 +135,22 @@ export const TabularExportCard = ({
                 timezone={timezone}
               />
             </div>
+            {dateRangeHint && (
+              <p className="text-muted-foreground text-xs sm:col-span-2">{dateRangeHint}</p>
+            )}
+          </div>
+        )}
+
+        {sensitiveOptIn && (
+          <div className="space-y-1">
+            <Label className="flex cursor-pointer items-center gap-2 text-sm font-normal">
+              <Checkbox
+                checked={includeSensitive}
+                onCheckedChange={(checked) => setIncludeSensitive(checked)}
+              />
+              {sensitiveOptIn.label}
+            </Label>
+            <p className="text-muted-foreground pl-6 text-xs">{sensitiveOptIn.warning}</p>
           </div>
         )}
 

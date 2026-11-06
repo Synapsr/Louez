@@ -14,6 +14,7 @@ import {
   Check,
   Pencil,
   Loader2,
+  MessageSquare,
 } from "lucide-react";
 import { toastManager } from "@louez/ui";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,6 +27,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@louez/ui";
+
+import { getCustomerContactChannel, hasCustomerEmail } from "@louez/utils";
 
 import { ReservationIdentity } from "./reservation-identity";
 import { SendEmailModal } from "./send-email-modal";
@@ -55,7 +58,8 @@ interface Customer {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
 }
 
 interface ReservationHeaderProps {
@@ -74,6 +78,7 @@ interface ReservationHeaderProps {
   depositCollected: number;
   depositReturned: number;
   totalAmount: number;
+  smsConfigured: boolean;
   // Optional
   sentEmails?: string[];
   currency?: string;
@@ -96,6 +101,7 @@ export function ReservationHeader({
   depositCollected,
   depositReturned,
   totalAmount: _totalAmount,
+  smsConfigured,
   sentEmails = [],
   currency: _currency = "EUR",
   readOnly = false,
@@ -144,6 +150,19 @@ export function ReservationHeader({
 
   const isFullyPaid =
     rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount);
+  // Without an e-mail the messages go out as SMS where they can, and the
+  // customer has no online account for the access link to open.
+  const messageChannel = getCustomerContactChannel(customer, { smsAvailable: smsConfigured });
+  const messageRecipient =
+    messageChannel === "email" && customer.email
+      ? { channel: messageChannel, to: customer.email }
+      : messageChannel === "sms" && customer.phone
+        ? { channel: messageChannel, to: customer.phone }
+        : null;
+  const hasOnlineAccount = hasCustomerEmail(customer);
+  const MessageIcon = messageRecipient?.channel === "sms" ? MessageSquare : Mail;
+  const messageLabel =
+    messageRecipient?.channel === "sms" ? t("actions.sendSms") : t("actions.sendEmail");
   const canEdit = !["completed", "cancelled", "rejected", "declined"].includes(status);
 
   const handleGenerateAccessUrl = async (
@@ -274,16 +293,18 @@ export function ReservationHeader({
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Email button */}
-            <Button
-              variant="outline"
-              disabled={readOnly}
-              onClick={() => setEmailModalOpen(true)}
-              className="hidden sm:flex"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              {t("actions.sendEmail")}
-            </Button>
+            {/* Message button: e-mail, or SMS for a customer without one */}
+            {messageRecipient && (
+              <Button
+                variant="outline"
+                disabled={readOnly}
+                onClick={() => setEmailModalOpen(true)}
+                className="hidden sm:flex"
+              >
+                <MessageIcon className="h-4 w-4 mr-2" />
+                {messageLabel}
+              </Button>
+            )}
 
             {/* Contract download button - always visible */}
             <Button
@@ -307,10 +328,12 @@ export function ReservationHeader({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 {/* Mobile-only items */}
-                <DropdownMenuItem onClick={() => setEmailModalOpen(true)} className="sm:hidden">
-                  <Mail className="h-4 w-4 mr-2" />
-                  {t("actions.sendEmail")}
-                </DropdownMenuItem>
+                {messageRecipient && (
+                  <DropdownMenuItem onClick={() => setEmailModalOpen(true)} className="sm:hidden">
+                    <MessageIcon className="h-4 w-4 mr-2" />
+                    {messageLabel}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handleDownloadContract} className="sm:hidden">
                   <FileText className="h-4 w-4 mr-2" />
                   {t("contract.download")}
@@ -331,23 +354,28 @@ export function ReservationHeader({
                   <Printer className="h-4 w-4 mr-2" />
                   {t("actions.print")}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleCopyLink}>
-                  {copiedLink ? (
-                    <Check className="h-4 w-4 mr-2 text-emerald-600" />
-                  ) : (
-                    <Copy className="h-4 w-4 mr-2" />
-                  )}
-                  {t("actions.copyLink")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleViewAsCustomer} disabled={isGeneratingLink}>
-                  {isGeneratingLink ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                  )}
-                  {t("actions.viewAsCustomer")}
-                </DropdownMenuItem>
+                {/* The access link opens the online account, which needs an e-mail. */}
+                {hasOnlineAccount && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleCopyLink}>
+                      {copiedLink ? (
+                        <Check className="h-4 w-4 mr-2 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-4 w-4 mr-2" />
+                      )}
+                      {t("actions.copyLink")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleViewAsCustomer} disabled={isGeneratingLink}>
+                      {isGeneratingLink ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                      )}
+                      {t("actions.viewAsCustomer")}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -355,8 +383,9 @@ export function ReservationHeader({
       </div>
 
       {/* Email Modal */}
-      {!readOnly && (
+      {!readOnly && messageRecipient && (
         <SendEmailModal
+          recipient={messageRecipient}
           open={emailModalOpen}
           onOpenChange={setEmailModalOpen}
           reservationId={reservationId}

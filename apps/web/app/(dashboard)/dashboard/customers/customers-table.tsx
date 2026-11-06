@@ -1,5 +1,8 @@
 'use client'
 
+import type { CustomerFieldDefinition, CustomerFieldValues } from '@louez/types'
+
+import { CustomerFieldValue } from '@/components/dashboard/customers/customer-field-value'
 import Link from 'next/link'
 import { format } from 'date-fns'
 
@@ -44,7 +47,7 @@ import { useFormatLocale } from '@/hooks/use-format-locale'
 interface Customer {
   id: string
   customerType: 'individual' | 'business'
-  email: string
+  email: string | null
   firstName: string
   lastName: string
   companyName: string | null
@@ -54,13 +57,16 @@ interface Customer {
   reservationCount: number
   totalSpent: string
   lastReservation: Date | string | null
+  customFields: CustomerFieldValues
 }
 
 interface CustomersTableProps {
   customers: Customer[]
+  /** Custom fields the store chose to show as columns. */
+  listFields: CustomerFieldDefinition[]
 }
 
-export function CustomersTable({ customers }: CustomersTableProps) {
+export function CustomersTable({ customers, listFields }: CustomersTableProps) {
   const t = useTranslations('dashboard.customers')
   const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale()
   const tCommon = useTranslations('common')
@@ -110,6 +116,11 @@ export function CustomersTable({ customers }: CustomersTableProps) {
             <TableRow>
               <TableHead>{t('customer')}</TableHead>
               <TableHead>{t('contact')}</TableHead>
+              {listFields.map((field) => (
+                <TableHead key={field.id} className="hidden lg:table-cell">
+                  {field.label}
+                </TableHead>
+              ))}
               <TableHead className="text-center">{t('totalReservations')}</TableHead>
               <TableHead className="text-right">{t('totalSpent')}</TableHead>
               <TableHead>{t('lastReservation')}</TableHead>
@@ -152,10 +163,12 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                 </TableCell>
                 <TableCell>
                   <div className="space-y-1">
-                    <div className="flex items-center gap-1 text-sm">
-                      <Mail className="h-3 w-3 text-muted-foreground" />
-                      <EmailContactPopover email={customer.email} className="text-foreground" />
-                    </div>
+                    {customer.email && (
+                      <div className="flex items-center gap-1 text-sm">
+                        <Mail className="h-3 w-3 text-muted-foreground" />
+                        <EmailContactPopover email={customer.email} className="text-foreground" />
+                      </div>
+                    )}
                     {customer.phone && (
                       <div className="flex items-center gap-1 text-sm">
                         <Phone className="h-3 w-3 text-muted-foreground" />
@@ -164,6 +177,18 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                     )}
                   </div>
                 </TableCell>
+                {listFields.map((field) => (
+                  <TableCell key={field.id} className="hidden text-sm lg:table-cell">
+                    {customer.customFields[field.id] ? (
+                      <CustomerFieldValue
+                        definition={field}
+                        value={customer.customFields[field.id] ?? ''}
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                ))}
                 <TableCell className="text-center">
                   <Badge variant="expired">{customer.reservationCount}</Badge>
                 </TableCell>

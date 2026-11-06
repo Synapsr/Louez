@@ -131,6 +131,8 @@ export interface NewReservationFormProps {
   customers: Customer[];
   products: Product[];
   tulipInsuranceMode: TulipPublicMode;
+  /** Lets a customer without e-mail get the SMS version of the confirmation. */
+  smsConfigured: boolean;
   businessHours?: BusinessHours;
   advanceNoticeMinutes?: number;
   pendingBlocksAvailability?: boolean;

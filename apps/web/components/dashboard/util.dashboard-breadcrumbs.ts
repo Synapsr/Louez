@@ -31,6 +31,7 @@ const staticBreadcrumbRoutes = [
   },
   { href: "/dashboard/customers", translationKey: "customers" },
   { href: "/dashboard/customers/new", translationKey: "customersNew" },
+  { href: "/dashboard/finances", translationKey: "finances" },
   {
     href: "/dashboard/purchase-invoices",
     translationKey: "purchaseInvoices",
@@ -55,6 +56,14 @@ const staticBreadcrumbRoutes = [
   {
     href: "/dashboard/settings/delivery",
     translationKey: "settingsDelivery",
+  },
+  {
+    href: "/dashboard/settings/import/new",
+    translationKey: "settingsImportNew",
+  },
+  {
+    href: "/dashboard/settings/import",
+    translationKey: "settingsImport",
   },
   {
     href: "/dashboard/settings/export",
@@ -83,6 +92,10 @@ const staticBreadcrumbRoutes = [
   {
     href: "/dashboard/settings/payments",
     translationKey: "settingsPayments",
+  },
+  {
+    href: "/dashboard/settings/customer-fields",
+    translationKey: "settingsCustomerFields",
   },
   {
     href: "/dashboard/settings/promo-codes",

@@ -132,3 +132,52 @@ test('reservation list payment status handles legacy totals that included deposi
   assert.equal(status.status, 'paid');
   assert.equal(status.totalDue, 100);
 });
+
+test('reservation list payment status subtracts refunds and ignores Stripe refund rows', () => {
+  const manualRefund = getPaymentStatus(
+    createReservation({
+      payments: [
+        { id: 'payment-1', amount: '100.00', type: 'rental', method: 'cash', status: 'completed' },
+        {
+          id: 'payment-2',
+          amount: '30.00',
+          type: 'rental',
+          method: 'cash',
+          status: 'completed',
+          refundOfPaymentId: 'payment-1',
+        },
+      ],
+    }),
+  );
+  assert.equal(manualRefund.totalPaid, 70);
+  assert.equal(manualRefund.status, 'partial');
+
+  // Stripe brings the charge down to its net amount and adds a positive refund row.
+  const stripeRefund = getPaymentStatus(
+    createReservation({
+      payments: [
+        {
+          id: 'payment-1',
+          amount: '70.00',
+          type: 'rental',
+          method: 'stripe',
+          status: 'completed',
+          stripePaymentIntentId: 'pi_1',
+          stripeCheckoutSessionId: null,
+        },
+        {
+          id: 'payment-2',
+          amount: '30.00',
+          type: 'rental',
+          method: 'stripe',
+          status: 'completed',
+          stripeRefundId: 're_1',
+          stripePaymentIntentId: null,
+          stripeCheckoutSessionId: null,
+        },
+      ],
+    }),
+  );
+  assert.equal(stripeRefund.totalPaid, 70);
+  assert.equal(stripeRefund.status, 'partial');
+});

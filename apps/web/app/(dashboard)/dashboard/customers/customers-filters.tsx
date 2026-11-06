@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Plus, Users } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useDebouncedCallback } from 'use-debounce';
 
 import { Button } from '@louez/ui';
@@ -20,15 +20,23 @@ import {
 
 import { SearchInput } from '@/components/ui/search-input';
 
+import { CustomersActiveFilters } from './customers-active-filters';
+import { CustomersMoreFilters } from './customers-more-filters';
+
 interface CustomersFiltersProps {
   totalCount: number;
+  /** Customers matching the filters, shown instead of the total once something narrows the list. */
+  filteredCount: number | null;
 }
 
-export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
+const MORE_FILTER_KEYS = ['source', 'channel', 'createdFrom', 'createdTo', 'import'] as const;
+
+export function CustomersFilters({ totalCount, filteredCount }: CustomersFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('dashboard.customers');
   const tCommon = useTranslations('common');
+  const format = useFormatter();
 
   const currentType = searchParams.get('type') || 'all';
   const currentSort = searchParams.get('sort') || 'recent';
@@ -59,6 +67,7 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
     } else {
       params.delete('search');
     }
+    params.delete('page');
     router.push(`?${params.toString()}`);
   }, 300);
 
@@ -73,6 +82,7 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
 
     const params = new URLSearchParams(searchParams);
     params.delete('search');
+    params.delete('page');
     router.push(`?${params.toString()}`);
   };
 
@@ -84,6 +94,7 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
     } else {
       params.delete('sort');
     }
+    params.delete('page');
     router.push(`?${params.toString()}`);
   };
 
@@ -95,15 +106,51 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
     } else {
       params.delete('type');
     }
+    params.delete('page');
     router.push(`?${params.toString()}`);
   };
 
+  const moreFilters = {
+    source: searchParams.get('source') ?? '',
+    channel: searchParams.get('channel') ?? '',
+    createdFrom: searchParams.get('createdFrom') ?? '',
+    createdTo: searchParams.get('createdTo') ?? '',
+  };
+
+  const setParams = (changes: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    params.delete('page');
+    router.push(`?${params.toString()}`);
+  };
+
+  const formatDay = (day: string) =>
+    format.dateTime(new Date(`${day}T00:00:00`), { dateStyle: 'medium' });
+
+  const activeFilters = [
+    moreFilters.createdFrom && {
+      key: 'createdFrom',
+      label: t('filter.from', { date: formatDay(moreFilters.createdFrom) }),
+    },
+    moreFilters.createdTo && {
+      key: 'createdTo',
+      label: t('filter.to', { date: formatDay(moreFilters.createdTo) }),
+    },
+    moreFilters.source && { key: 'source', label: t(`sources.${moreFilters.source}`) },
+    moreFilters.channel && { key: 'channel', label: t(`channels.${moreFilters.channel}`) },
+    searchParams.get('import') && { key: 'import', label: t('filter.importRun') },
+  ].filter((filter): filter is { key: string; label: string } => Boolean(filter));
+
   return (
+    <div className="space-y-3">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-muted-foreground flex items-center gap-2">
         <Users className="h-4 w-4" />
         <span className="text-sm">
-          {t('customerCount', { count: totalCount })}
+          {t('customerCount', { count: filteredCount ?? totalCount })}
         </span>
       </div>
 
@@ -155,6 +202,8 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
           </SelectContent>
         </Select>
 
+        <CustomersMoreFilters value={moreFilters} onChange={setParams} />
+
         <Button
           render={<Link href="/dashboard/customers/new?source=customers_page" />}
         >
@@ -162,6 +211,12 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
           {tCommon('add')}
         </Button>
       </div>
+    </div>
+    <CustomersActiveFilters
+      filters={activeFilters}
+      onRemove={(key) => setParams({ [key]: '' })}
+      onReset={() => setParams(Object.fromEntries(MORE_FILTER_KEYS.map((key) => [key, ''])))}
+    />
     </div>
   );
 }

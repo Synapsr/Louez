@@ -1,7 +1,7 @@
 import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { and, count, eq, gte, lte, sql } from 'drizzle-orm';
 
-import { customers, db, payments, products, reservations } from '@louez/db';
+import { customers, db, isPaymentReceiptSql, payments, products, reservations } from '@louez/db';
 
 /**
  * Store metrics for adaptive dashboard
@@ -62,8 +62,9 @@ export interface RentalPaymentRevenueStats {
 }
 
 /**
- * Completed rental payments, every method included (Stripe and manual alike) —
- * deposits and refunds stay out through the `rental` type filter.
+ * Completed rental payments, every method included (Stripe and manual alike).
+ * Deposits stay out through the `rental` type filter; refunds are stored as
+ * `rental` rows too, so they are excluded explicitly.
  */
 async function getRentalPaymentStats(params: {
   storeId: string;
@@ -95,6 +96,7 @@ async function getRentalPaymentStats(params: {
         eq(reservations.storeId, storeId),
         eq(payments.status, 'completed'),
         eq(payments.type, 'rental'),
+        isPaymentReceiptSql(),
         ...dateConditions,
       ),
     );

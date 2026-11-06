@@ -9,6 +9,7 @@ import { generateContract } from "@/lib/pdf/generate";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { getConnectedAccountPayoutPage } from "@/lib/stripe/connected-account-finances";
+import { getStoreLimits } from "@/lib/plan-limits";
 import { getCurrentStore } from "@/lib/store-context";
 import { invalidateStoreViewport } from "@/lib/storefront/get-store-viewport";
 
@@ -143,6 +144,10 @@ async function handleRequest(request: Request) {
       regenerateContract: async (reservationId: string) => {
         await generateContract({ reservationId, regenerate: true });
       },
+      getRemainingCustomerQuota: async (storeId: string) =>
+        (await getStoreLimits(storeId)).customers.remaining,
+      getRemainingProductQuota: async (storeId: string) =>
+        (await getStoreLimits(storeId)).products.remaining,
       notifyStoreCreated: async (store: {
         id: string;
         name: string;

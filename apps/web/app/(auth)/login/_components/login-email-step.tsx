@@ -5,13 +5,13 @@ import { useTranslations } from 'next-intl';
 import { Button, Separator } from '@louez/ui';
 import { cn } from '@louez/utils';
 
+import { GoogleIcon } from '@/components/shared/google-icon';
 import { reeentRichTags } from '@/components/shared/reeent-wordmark';
 import {
   REEENT_SIGNUP_ORIGIN,
   type SignupOrigin,
 } from '@/lib/utils/signup-origin';
 
-import { GoogleIcon } from './google-icon';
 import { LoginErrorAlert } from './login-error-alert';
 import { useEmailStep } from './use-email-step';
 
@@ -19,7 +19,7 @@ interface LoginEmailStepProps {
   onOtpSent: (email: string) => void;
   /** Hidden when Google OAuth is not configured on this instance. */
   showGoogle?: boolean;
-  /** Present when password sign-in is also available (standalone mode). */
+  /** Present when password sign-in is also available on this instance. */
   onUsePassword?: () => void;
   /** Co-brands the entry screen for visitors sent here by another surface. */
   signupOrigin?: SignupOrigin | null;

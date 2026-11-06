@@ -9,6 +9,9 @@ import { db } from "@louez/db";
 import { reservations, customers, reviewRequestLogs } from "@louez/db";
 import { eq, and, lte, gte, inArray, sql } from "drizzle-orm";
 import { sendThankYouReviewSms } from "@/lib/sms/send";
+import { isSmsConfigured } from "@/lib/sms/client";
+import { logCustomerMessageSkipped } from "@/lib/reservations/log-customer-message";
+import { getCustomerMessageChannel } from "@/lib/reservations/util.customer-message-channel";
 import { buildReviewUrl } from "@/lib/google-places";
 import { sendThankYouReviewEmail } from "@/lib/email/send";
 import { getLocaleFromCountry, type EmailLocale } from "@/lib/email/i18n";
@@ -66,8 +69,14 @@ export async function processReviewRequests(): Promise<ProcessResult> {
 
       // Process email requests
       if (settings.autoSendThankYouEmail) {
-        const emailResult = await processEmailRequests(store, settings, fullReviewUrl, locale);
+        const emailResult = await processEmailRequests(
+          store,
+          settings,
+          { email: fullReviewUrl, sms: shortReviewUrl },
+          locale,
+        );
         result.emailsSent += emailResult.sent;
+        result.smsSent += emailResult.smsSent;
         result.errors.push(...emailResult.errors);
       }
 
@@ -101,10 +110,10 @@ async function processEmailRequests(
     theme: { primaryColor?: string } | null;
   },
   settings: ReviewBoosterSettings,
-  reviewUrl: string,
+  reviewUrls: { email: string; sms: string },
   locale: EmailLocale,
-): Promise<{ sent: number; errors: string[] }> {
-  const result = { sent: 0, errors: [] as string[] };
+): Promise<{ sent: number; smsSent: number; errors: string[] }> {
+  const result = { sent: 0, smsSent: 0, errors: [] as string[] };
   const delayMs = settings.emailDelayHours * 60 * 60 * 1000;
   const cutoffDate = new Date(Date.now() - delayMs);
   const maxAgeDate = new Date(Date.now() - MAX_ELIGIBILITY_WINDOW_MS);
@@ -135,19 +144,66 @@ async function processEmailRequests(
   if (reservationIds.length === 0) return result;
 
   const existingLogs = await db.query.reviewRequestLogs.findMany({
-    where: and(
-      inArray(reviewRequestLogs.reservationId, reservationIds),
-      eq(reviewRequestLogs.channel, "email"),
-    ),
+    where: inArray(reviewRequestLogs.reservationId, reservationIds),
   });
-  const sentReservationIds = new Set(existingLogs.map((l) => l.reservationId));
+  const sentReservationIds = new Set(
+    existingLogs.filter((l) => l.channel === "email").map((l) => l.reservationId),
+  );
+  const smsSentReservationIds = new Set(
+    existingLogs.filter((l) => l.channel === "sms").map((l) => l.reservationId),
+  );
 
   for (const { reservation, customer } of eligibleReservations) {
     if (sentReservationIds.has(reservation.id)) continue;
 
+    const customerEmail = customer.email;
+    if (!customerEmail) {
+      // The SMS pass reaches this customer when the store runs it; otherwise
+      // the SMS version stands in for the e-mail, once.
+      if (settings.autoSendThankYouSms || smsSentReservationIds.has(reservation.id)) continue;
+      const channel = getCustomerMessageChannel("review_request", customer, {
+        smsConfigured: isSmsConfigured(),
+      });
+      if (channel !== "sms" || !customer.phone) {
+        logCustomerMessageSkipped({
+          message: "review_request",
+          storeId: store.id,
+          reservationId: reservation.id,
+          customerId: customer.id,
+        });
+        continue;
+      }
+      const smsResult = await sendThankYouReviewSms({
+        store: { id: store.id, name: store.name },
+        customer: {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          phone: customer.phone,
+        },
+        reservation: { id: reservation.id, number: reservation.number },
+        reviewUrl: reviewUrls.sms,
+        locale,
+      });
+      if (smsResult.success) {
+        await db.insert(reviewRequestLogs).values({
+          reservationId: reservation.id,
+          storeId: store.id,
+          customerId: customer.id,
+          channel: "sms",
+        });
+        result.smsSent++;
+      } else {
+        result.errors.push(
+          `SMS error for reservation ${reservation.number}: ${smsResult.error ?? "Unknown"}`,
+        );
+      }
+      continue;
+    }
+
     try {
       await sendThankYouReviewEmail({
-        to: customer.email,
+        to: customerEmail,
         store: {
           id: store.id,
           name: store.name,
@@ -165,7 +221,7 @@ async function processEmailRequests(
           startDate: reservation.startDate,
           endDate: reservation.endDate,
         },
-        reviewUrl,
+        reviewUrl: reviewUrls.email,
         locale,
       });
 
@@ -313,10 +369,14 @@ export async function sendManualReviewRequest(
   const storeSettings = store.settings as { country?: string } | null;
   const locale = getLocaleFromCountry(storeSettings?.country);
 
+  // An e-mail request to a customer without e-mail goes out as its SMS version.
+  const customerEmail = customer.email;
+  const sentChannel = channel === "email" && customerEmail ? "email" : "sms";
+
   try {
-    if (channel === "email") {
+    if (sentChannel === "email" && customerEmail) {
       await sendThankYouReviewEmail({
-        to: customer.email,
+        to: customerEmail,
         store: {
           id: store.id,
           name: store.name,
@@ -339,7 +399,10 @@ export async function sendManualReviewRequest(
       });
     } else {
       if (!customer.phone) {
-        return { success: false, error: "Customer has no phone number" };
+        return {
+          success: false,
+          error: channel === "sms" ? "Customer has no phone number" : "errors.customerUnreachable",
+        };
       }
 
       const smsResult = await sendThankYouReviewSms({
@@ -365,7 +428,7 @@ export async function sendManualReviewRequest(
       reservationId: reservation.id,
       storeId: store.id,
       customerId: customer.id,
-      channel,
+      channel: sentChannel,
     });
 
     return { success: true };

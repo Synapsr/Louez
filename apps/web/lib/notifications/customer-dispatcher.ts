@@ -35,7 +35,11 @@ import {
   sendPaymentRequestSms,
   sendDepositAuthorizationRequestSms,
 } from "@/lib/sms/send";
+import { log } from "@/lib/evlog";
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
+import { logCustomerMessageSkipped } from "@/lib/reservations/log-customer-message";
+import { resolveNotificationDelivery } from "@/lib/reservations/util.customer-message-channel";
+import { isSmsConfigured } from "@/lib/sms/client";
 import type { EmailAttachment } from "@/lib/email/client";
 import type {
   CustomerNotificationEventType,
@@ -98,7 +102,8 @@ export interface CustomerNotificationCustomer {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
+  /** Null for a customer entered by the team without one: SMS stands in when it can. */
+  email: string | null;
   phone?: string | null;
 }
 
@@ -219,26 +224,52 @@ export async function dispatchCustomerNotification(
     ? await getCustomerReminderPreferences(ctx.store.id, ctx.customer.id)
     : null;
   const channels = resolveCustomerReminderChannels(eventType, prefs, customerPreferences);
+  const delivery = resolveNotificationDelivery({
+    message: eventType,
+    channels,
+    smsAllowed: resolveCustomerReminderChannels(
+      eventType,
+      { email: true, sms: true },
+      customerPreferences,
+    ).sms,
+    smsConfigured: isSmsConfigured(),
+    customer: { email: ctx.customer.email, phone: ctx.customer.phone ?? null },
+  });
 
   // Get custom template if any, with backward compatibility
   const customTemplate = settings.templates?.[eventType];
   const mergedContent = mergeTemplateWithLegacy(eventType, customTemplate, ctx.store.emailSettings);
 
+  if ((channels.email || channels.sms) && !delivery.email && !delivery.sms) {
+    logCustomerMessageSkipped({
+      message: eventType,
+      storeId: ctx.store.id,
+      reservationId: ctx.reservation.id,
+      customerId: ctx.customer.id,
+    });
+  }
+
   // Send email if enabled
-  if (channels.email && ctx.customer.email) {
+  const { email } = ctx.customer;
+  if (delivery.email && email) {
     try {
-      await sendCustomerEmail(eventType, ctx, locale, mergedContent);
+      await sendCustomerEmail(
+        eventType,
+        { ...ctx, customer: { ...ctx.customer, email } },
+        locale,
+        mergedContent,
+      );
       result.email.sent = true;
     } catch (error) {
       result.email.error = error instanceof Error ? error.message : "Unknown error";
       console.error(`Failed to send customer email for ${eventType}:`, error);
     }
-  } else if (!channels.email) {
+  } else if (!delivery.email) {
     result.email.skipped = true;
   }
 
-  // Send SMS if enabled
-  if (channels.sms && ctx.customer.phone) {
+  // Send SMS if enabled, or in place of an e-mail the customer cannot receive
+  if (delivery.sms) {
     // Check quota first
     const quota = await getSmsQuotaStatus(ctx.store.id);
     if (!quota.allowed) {
@@ -246,15 +277,32 @@ export async function dispatchCustomerNotification(
       result.sms.error = "SMS limit reached";
     } else {
       try {
-        await sendCustomerSms(eventType, ctx, locale, customTemplate);
-        result.sms.sent = true;
+        const smsResult = await sendCustomerSms(eventType, ctx, locale, customTemplate);
+        result.sms.sent = smsResult?.success === true;
+        if (smsResult && !smsResult.success) {
+          result.sms.error = smsResult.error;
+          result.sms.limitReached = smsResult.limitReached;
+        }
       } catch (error) {
         result.sms.error = error instanceof Error ? error.message : "Unknown error";
         console.error(`Failed to send customer SMS for ${eventType}:`, error);
       }
     }
-  } else if (!channels.sms) {
+  } else {
     result.sms.skipped = true;
+  }
+
+  if (delivery.smsFallback) {
+    log.info({
+      customerMessage: {
+        event: "sms_fallback",
+        message: eventType,
+        storeId: ctx.store.id,
+        reservationId: ctx.reservation.id,
+        sent: result.sms.sent,
+        ...(result.sms.error && { error: result.sms.error }),
+      },
+    });
   }
 
   return result;
@@ -265,7 +313,7 @@ export async function dispatchCustomerNotification(
  */
 async function sendCustomerEmail(
   eventType: CustomerNotificationEventType,
-  ctx: CustomerNotificationContext,
+  ctx: CustomerNotificationContext & { customer: { email: string } },
   locale: EmailLocale,
   customContent?: { subject?: string; greeting?: string; message?: string; signature?: string },
 ) {

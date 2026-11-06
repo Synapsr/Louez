@@ -6,18 +6,27 @@ import { Button, Separator } from '@louez/ui';
 
 import { useState } from 'react';
 
-import { GoogleIcon } from './google-icon';
+import { GoogleIcon } from '@/components/shared/google-icon';
+
 import { LoginErrorAlert } from './login-error-alert';
 import { useGoogleSignIn } from './use-google-sign-in';
 import { usePasswordStep } from './use-password-step';
 
 interface LoginPasswordStepProps {
   showGoogle: boolean;
+  /**
+   * False on the platform: an account is created by e-mail code or Google
+   * there, and a password is only ever added to it afterwards.
+   */
+  allowSignUp: boolean;
+  onForgotPassword: () => void;
   onUseEmailCode?: () => void;
 }
 
 export const LoginPasswordStep = ({
   showGoogle,
+  allowSignUp,
+  onForgotPassword,
   onUseEmailCode,
 }: LoginPasswordStepProps) => {
   const t = useTranslations('auth');
@@ -92,14 +101,29 @@ export const LoginPasswordStep = ({
 
             <form.AppField name="password">
               {(field) => (
-                <field.Input
+                <field.Password
                   label={t('password')}
-                  type="password"
                   placeholder={t('passwordPlaceholder')}
-                  className="*:h-12"
+                  autoComplete={
+                    mode === 'signUp' ? 'new-password' : 'current-password'
+                  }
+                  showRules={mode === 'signUp'}
+                  className="h-12"
                 />
               )}
             </form.AppField>
+
+            {mode === 'signIn' && (
+              <p className="text-right text-sm">
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  className="text-muted-foreground hover:text-primary underline underline-offset-4"
+                >
+                  {t('forgotPassword')}
+                </button>
+              </p>
+            )}
 
             <form.SubscribeButton
               size="xl"
@@ -114,16 +138,18 @@ export const LoginPasswordStep = ({
         <LoginErrorAlert message={rootError ?? googleError} />
 
         <div className="space-y-2 text-center text-sm">
-          <p className="text-muted-foreground">
-            {mode === 'signUp' ? t('alreadyHaveAccount') : t('noAccountYet')}{' '}
-            <button
-              type="button"
-              onClick={toggleMode}
-              className="text-foreground hover:text-primary font-medium underline underline-offset-4"
-            >
-              {mode === 'signUp' ? t('login') : t('createAccount')}
-            </button>
-          </p>
+          {allowSignUp && (
+            <p className="text-muted-foreground">
+              {mode === 'signUp' ? t('alreadyHaveAccount') : t('noAccountYet')}{' '}
+              <button
+                type="button"
+                onClick={toggleMode}
+                className="text-foreground hover:text-primary font-medium underline underline-offset-4"
+              >
+                {mode === 'signUp' ? t('login') : t('createAccount')}
+              </button>
+            </p>
+          )}
           {onUseEmailCode && (
             <p>
               <button

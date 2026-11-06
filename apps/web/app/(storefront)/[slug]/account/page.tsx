@@ -77,7 +77,17 @@ export default async function AccountPage({ params }: AccountPageProps) {
     },
     with: {
       items: { columns: { id: true, productSnapshot: true, quantity: true } },
-      payments: { columns: { type: true, status: true, amount: true } },
+      payments: {
+        columns: {
+          type: true,
+          status: true,
+          amount: true,
+          refundOfPaymentId: true,
+          stripeRefundId: true,
+          stripePaymentIntentId: true,
+          stripeCheckoutSessionId: true,
+        },
+      },
     },
   });
 

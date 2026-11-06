@@ -18,7 +18,7 @@ import {
 } from "@louez/db";
 import type { ProductSnapshot, StoreSettings } from "@louez/types";
 import type { CreateReservationCustomerInput } from "@louez/validations";
-import { advisorValidationCovers } from "@louez/utils";
+import { advisorValidationCovers, hasCustomerEmail } from "@louez/utils";
 
 import { env } from "@/env";
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
@@ -534,7 +534,10 @@ const findResumableCheckout = async (
     },
   });
   if (!existing) return null;
-  if (existing.customer.email.trim().toLowerCase() !== customerEmail.trim().toLowerCase()) {
+  if (
+    !hasCustomerEmail(existing.customer) ||
+    existing.customer.email.trim().toLowerCase() !== customerEmail.trim().toLowerCase()
+  ) {
     return null;
   }
   if (
@@ -550,11 +553,11 @@ const findMarketplaceReplay = async (
   tx: Transaction,
   storeId: string,
   reservationId: string,
+  customerEmail: string,
 ): Promise<Extract<WriteResult, { replay: true }> | ReservationFailure | null> => {
   const existing = await tx.query.reservations.findFirst({
     where: eq(reservations.id, reservationId),
     columns: { id: true, storeId: true, customerId: true, number: true, source: true },
-    with: { customer: { columns: { email: true } } },
   });
   if (!existing) return null;
   if (existing.storeId !== storeId || existing.source !== "marketplace") {
@@ -566,7 +569,9 @@ const findMarketplaceReplay = async (
     reservationId: existing.id,
     reservationNumber: existing.number,
     customerId: existing.customerId,
-    customerEmail: existing.customer.email,
+    // The replayed attempt carries the booking's own e-mail: the store may
+    // have edited the customer record since.
+    customerEmail,
   };
 };
 
@@ -830,7 +835,12 @@ const writeReservation = async (
     );
 
     if (request.reservationId) {
-      const replay = await findMarketplaceReplay(tx, store.id, request.reservationId);
+      const replay = await findMarketplaceReplay(
+        tx,
+        store.id,
+        request.reservationId,
+        request.customer.email,
+      );
       if (replay) return replay;
     }
 
@@ -853,6 +863,7 @@ const writeReservation = async (
       tx,
       storeId: store.id,
       storeCountry: prepared.storeCountry,
+      source: request.source,
       customer: request.customer,
       phone: prepared.customerPhone,
       companyIdentity: prepared.companyIdentity,

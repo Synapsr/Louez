@@ -411,6 +411,7 @@ export default async function EditReservationPage({ params }: EditReservationPag
         customer: {
           firstName: reservation.customer.firstName,
           lastName: reservation.customer.lastName,
+          hasEmail: Boolean(reservation.customer.email),
         },
       }}
       availableProducts={availableProductsWithEffectiveQuantity.map(mapProduct)}

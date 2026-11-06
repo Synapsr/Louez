@@ -69,7 +69,7 @@ export interface NotificationContext {
   customer?: {
     firstName: string
     lastName: string
-    email: string
+    email: string | null
     phone?: string | null
   }
   payment?: {
@@ -644,7 +644,7 @@ export interface AdminReminderContext {
   customer: {
     firstName: string
     lastName: string
-    email: string
+    email: string | null
     phone?: string | null
   }
   dashboardUrl: string

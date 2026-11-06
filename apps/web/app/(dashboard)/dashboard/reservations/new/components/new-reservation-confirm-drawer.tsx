@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Check, FileText, Mail, MailX } from "lucide-react";
+import { AlertTriangle, Check, FileText, Mail, MailX, MessageSquare } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -55,6 +55,8 @@ interface NewReservationConfirmDrawerProps {
 
   /** Resolved server-side rule, not the raw toggle — a quote always mails. */
   willSendConfirmationEmail: boolean;
+  /** SMS for a customer without e-mail; null when nothing can reach them. */
+  confirmationChannel: "email" | "sms" | null;
   periodWarnings: PeriodWarning[];
   availabilityWarnings: AvailabilityWarning[];
 }
@@ -87,6 +89,7 @@ export function NewReservationConfirmDrawer({
   deposit,
   total,
   willSendConfirmationEmail,
+  confirmationChannel,
   periodWarnings,
   availabilityWarnings,
 }: NewReservationConfirmDrawerProps) {
@@ -159,8 +162,10 @@ export function NewReservationConfirmDrawer({
                   </Badge>
                 )}
               </div>
-              {customer.email && (
-                <p className="text-muted-foreground truncate text-xs">{customer.email}</p>
+              {(customer.email || customer.phone) && (
+                <p className="text-muted-foreground truncate text-xs">
+                  {customer.email || customer.phone}
+                </p>
               )}
             </div>
           )}
@@ -285,12 +290,18 @@ export function NewReservationConfirmDrawer({
           {/* What happens on confirm, spelled out — the toggle itself lives in
               the summary panel and is not reachable from here. */}
           <p className="text-muted-foreground flex items-start gap-2 text-xs">
-            {willSendConfirmationEmail ? (
-              <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            ) : (
+            {!willSendConfirmationEmail ? (
               <MailX className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            ) : confirmationChannel === "sms" ? (
+              <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             )}
-            {willSendConfirmationEmail ? t("confirmDrawer.emailOn") : t("confirmDrawer.emailOff")}
+            {!willSendConfirmationEmail
+              ? t("confirmDrawer.emailOff")
+              : confirmationChannel === "sms"
+                ? t("confirmDrawer.smsOn")
+                : t("confirmDrawer.emailOn")}
           </p>
         </DrawerPanel>
 

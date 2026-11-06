@@ -129,6 +129,61 @@ test("insurance, late returns, negotiated prices, delivery and deposit expiry re
   assert.equal(extensionManualReason(base(), end), null);
 });
 
+test("a Stripe refund linked to its charge is not subtracted twice; a manual refund is, once", async () => {
+  const { extensionManualReason } = await load();
+  const withPayments = (payments: unknown) =>
+    ({ ...base(), payments }) as unknown as ExtensionReservation;
+  const stripeIds = { stripePaymentIntentId: null, stripeCheckoutSessionId: null };
+
+  // 25 paid by card, 5 refunded through Stripe: the webhook left the charge at
+  // its net 20, which still covers the 20 due.
+  const stripeRefunded = withPayments([
+    {
+      id: "charge",
+      type: "rental",
+      status: "completed",
+      amount: "20.00",
+      stripeRefundId: null,
+      stripePaymentIntentId: "pi_1",
+      stripeCheckoutSessionId: null,
+      refundOfPaymentId: null,
+    },
+    {
+      id: "refund",
+      type: "rental",
+      status: "completed",
+      amount: "5.00",
+      stripeRefundId: "re_1",
+      refundOfPaymentId: "charge",
+      ...stripeIds,
+    },
+  ]);
+  assert.equal(extensionManualReason(stripeRefunded, end), null);
+
+  // 20 paid in cash, 5 given back by hand: the cash row stays gross, 15 is left.
+  const manuallyRefunded = withPayments([
+    {
+      id: "cash",
+      type: "rental",
+      status: "completed",
+      amount: "20.00",
+      stripeRefundId: null,
+      refundOfPaymentId: null,
+      ...stripeIds,
+    },
+    {
+      id: "refund",
+      type: "rental",
+      status: "completed",
+      amount: "5.00",
+      stripeRefundId: null,
+      refundOfPaymentId: "cash",
+      ...stripeIds,
+    },
+  ]);
+  assert.equal(extensionManualReason(manuallyRefunded, end), "unpaid");
+});
+
 test("closed statuses, extension duration caps and closed return times are rejected", async () => {
   const { quoteExtension } = await load();
   for (const status of ["cancelled", "completed", "rejected", "pending", "quote"] as const)

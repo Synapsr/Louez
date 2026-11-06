@@ -148,7 +148,11 @@ export interface BookingSnapshot {
   currency: string;
   totalAmount: string;
   depositAmount: string;
-  customerEmail: string;
+  /**
+   * Always set when the marketplace books; null only if the store later
+   * removed the address from the customer record.
+   */
+  customerEmail: string | null;
   marketplaceUserId: string | null;
   items: Array<{
     productId: string;
@@ -891,7 +895,7 @@ type BookingRow = {
   attemptStatus: string;
   bookingAttemptId: string;
   bookingNumber: string;
-  customerEmail: string;
+  customerEmail: string | null;
   depositAmount: string;
   endAt: Date;
   expiresAt: Date;
@@ -1309,7 +1313,7 @@ export async function getMarketplaceReservationContext(reservationId: string): P
   storeId: string;
   storeSlug: string;
   customerId: string;
-  customerEmail: string;
+  customerEmail: string | null;
   reservationStatus: string;
   signedAt: Date | null;
   contractAvailable: boolean;

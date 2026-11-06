@@ -44,7 +44,8 @@ export interface ManualReservationEmailPayload {
  */
 export interface ManualEmailRenderContext {
   store: ComposeStore
-  customer: ComposeCustomer
+  /** The recipient: these e-mails are only offered for a customer who has one. */
+  customer: ComposeCustomer & { email: string }
   reservation: {
     id: string
     number: string

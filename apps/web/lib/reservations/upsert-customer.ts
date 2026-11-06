@@ -2,6 +2,8 @@ import { and, eq } from "drizzle-orm";
 
 import type { Transaction } from "@louez/db";
 import { customers } from "@louez/db";
+import type { CustomerCreatedVia } from "@louez/types";
+import { hasCustomerEmail } from "@louez/utils";
 import {
   isValidCompanyNumber,
   resolveCompanyNumberScheme,
@@ -9,8 +11,17 @@ import {
 } from "@louez/validations";
 
 import type { CustomerCompanyIdentity } from "./billing-snapshot";
+import type { ReservationSource } from "./reservation.types";
 
-export type UpsertedCustomer = typeof customers.$inferSelect;
+/** Checkout customers are matched and created by e-mail, so they always have one. */
+export type UpsertedCustomer = typeof customers.$inferSelect & { email: string };
+
+/** The channel a new customer is credited to. "phone" is the AI receptionist. */
+const CREATED_VIA_BY_SOURCE = {
+  online: "storefront",
+  marketplace: "marketplace",
+  phone: "ai",
+} as const satisfies Record<ReservationSource, CustomerCreatedVia>;
 
 /**
  * Customer identity is `(storeId, email)`. A new customer takes the checkout
@@ -23,11 +34,15 @@ export type UpsertedCustomer = typeof customers.$inferSelect;
  * profile between individual and business. A business checkout refreshes the
  * saved company so the next checkout can offer it; an individual checkout
  * leaves the saved company alone.
+ *
+ * `createdVia` records where the customer first came from: it is written with
+ * the new record and never revisited by a later checkout.
  */
 export const upsertCustomer = async ({
   tx,
   storeId,
   storeCountry,
+  source,
   customer,
   phone,
   companyIdentity,
@@ -35,6 +50,7 @@ export const upsertCustomer = async ({
   tx: Transaction;
   storeId: string;
   storeCountry: string;
+  source: ReservationSource;
   customer: CreateReservationCustomerInput;
   phone: string | null;
   companyIdentity: CustomerCompanyIdentity;
@@ -61,10 +77,12 @@ export const upsertCustomer = async ({
         city: customer.city || null,
         postalCode: customer.postalCode || null,
         country: storeCountry,
+        createdVia: CREATED_VIA_BY_SOURCE[source],
       })
       .$returningId();
 
-    return (await tx.query.customers.findFirst({ where: eq(customers.id, inserted.id) })) ?? null;
+    const created = await tx.query.customers.findFirst({ where: eq(customers.id, inserted.id) });
+    return created && hasCustomerEmail(created) ? created : null;
   }
 
   // Identifiers already on file survive a checkout that omits them; the
@@ -99,5 +117,5 @@ export const upsertCustomer = async ({
     })
     .where(eq(customers.id, existing.id));
 
-  return existing;
+  return hasCustomerEmail(existing) ? existing : null;
 };

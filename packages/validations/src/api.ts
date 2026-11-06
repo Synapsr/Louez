@@ -2,14 +2,12 @@ import { productPromotionSchema } from "./product-promotion";
 import { z } from "zod";
 
 import { isValidImageUrl } from "./image";
-import { reservationStatusSchema } from "./reservation";
+import { manualReservationNewCustomerSchema, reservationStatusSchema } from "./reservation";
 
 const dateTimeOrDateSchema = z
   .string()
   .datetime({ offset: true })
   .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/));
-
-const customerEmailSchema = z.string().trim().toLowerCase().pipe(z.email().max(320));
 
 export const storefrontAvailabilityInputSchema = z.object({
   startDate: dateTimeOrDateSchema,
@@ -549,14 +547,7 @@ export const dashboardReservationPreviewTulipQuoteInputSchema = z.object({
 export const dashboardReservationPreviewManualTulipQuoteInputSchema = z.object({
   payload: z.object({
     customerId: z.string().length(21).optional(),
-    newCustomer: z
-      .object({
-        email: customerEmailSchema,
-        firstName: z.string().trim().min(1).max(200),
-        lastName: z.string().trim().min(1).max(200),
-        phone: z.string().trim().max(50).optional(),
-      })
-      .optional(),
+    newCustomer: manualReservationNewCustomerSchema.optional(),
     startDate: z.union([dateTimeOrDateSchema, z.date()]),
     endDate: z.union([dateTimeOrDateSchema, z.date()]),
     tulipInsuranceOptIn: z.boolean().optional(),
@@ -574,14 +565,7 @@ export const dashboardReservationPreviewManualTulipQuoteInputSchema = z.object({
 export const dashboardReservationCreateManualReservationInputSchema = z.object({
   payload: z.object({
     customerId: z.string().length(21).optional(),
-    newCustomer: z
-      .object({
-        email: customerEmailSchema,
-        firstName: z.string().trim().min(1).max(200),
-        lastName: z.string().trim().min(1).max(200),
-        phone: z.string().trim().max(50).optional(),
-      })
-      .optional(),
+    newCustomer: manualReservationNewCustomerSchema.optional(),
     startDate: z.union([dateTimeOrDateSchema, z.date()]),
     endDate: z.union([dateTimeOrDateSchema, z.date()]),
     items: z.array(

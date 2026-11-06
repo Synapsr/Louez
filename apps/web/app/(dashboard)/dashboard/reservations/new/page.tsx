@@ -20,6 +20,7 @@ import {
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { resolveDashboardCreationSource } from '@/lib/openreplay/events';
+import { isSmsConfigured } from '@/lib/sms';
 import { getCurrentStore } from '@/lib/store-context';
 import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
@@ -241,6 +242,7 @@ export default async function NewReservationPage({
         customers={customersList}
         products={productsList}
         tulipInsuranceMode={tulipInsuranceMode}
+        smsConfigured={isSmsConfigured()}
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
         pendingBlocksAvailability={

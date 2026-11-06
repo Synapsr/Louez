@@ -64,7 +64,7 @@ export function CustomerCombobox({
     const query = searchQuery.toLowerCase();
     return customers.filter((customer) => {
       const fullName = `${customer.firstName} ${customer.lastName}`.toLowerCase();
-      const email = customer.email.toLowerCase();
+      const email = customer.email?.toLowerCase() ?? "";
       const phone = customer.phone?.toLowerCase() || "";
 
       return fullName.includes(query) || email.includes(query) || phone.includes(query);
@@ -134,7 +134,9 @@ export function CustomerCombobox({
             <p className="text-foreground truncate font-medium">
               {selectedCustomer.firstName} {selectedCustomer.lastName}
             </p>
-            <p className="text-muted-foreground truncate text-xs">{selectedCustomer.email}</p>
+            <p className="text-muted-foreground truncate text-xs">
+              {selectedCustomer.email ?? selectedCustomer.phone}
+            </p>
           </div>
         </div>
       ) : (
@@ -195,7 +197,9 @@ export function CustomerCombobox({
                 <p className="truncate font-medium">
                   {customer.firstName} {customer.lastName}
                 </p>
-                <p className="text-muted-foreground truncate text-xs">{customer.email}</p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {customer.email ?? customer.phone}
+                </p>
               </div>
               {customer.phone && (
                 <span className="text-muted-foreground max-w-24 truncate text-xs">

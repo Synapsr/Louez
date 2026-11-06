@@ -19,22 +19,37 @@ import {
 import { useAppForm } from '@/hooks/form/form';
 
 import { useCallbackUrl } from './use-callback-url';
+import { rememberLastSignInMethod } from './util.last-sign-in-method';
+
+/**
+ * What a valid code does. Signing in consumes it on the spot; a password
+ * reset only checks it here and hands it over — better-auth consumes it
+ * together with the new password, on the next screen.
+ */
+export type OtpStepFlow =
+  | { purpose: 'sign-in' }
+  | { purpose: 'forget-password'; onVerified: (otp: string) => void };
 
 interface UseOtpStepParams {
   email: string;
+  flow: OtpStepFlow;
 }
 
-export const useOtpStep = ({ email }: UseOtpStepParams) => {
+export const useOtpStep = ({ email, flow }: UseOtpStepParams) => {
   const t = useTranslations('auth');
   const callbackUrl = useCallbackUrl();
   const [rootError, setRootError] = useState<string | null>(null);
 
   const verifyOtpMutation = useMutation({
     mutationFn: async (otp: string) => {
-      const result = await authClient.signIn.emailOtp({
-        email,
-        otp,
-      });
+      const result =
+        flow.purpose === 'sign-in'
+          ? await authClient.signIn.emailOtp({ email, otp })
+          : await authClient.emailOtp.checkVerificationOtp({
+              email,
+              otp,
+              type: 'forget-password',
+            });
 
       if (result.error) {
         throw createAuthMutationError(getAuthErrorCode(result.error));
@@ -66,10 +81,18 @@ export const useOtpStep = ({ email }: UseOtpStepParams) => {
 
       try {
         await verifyOtpMutation.mutateAsync(value.otp);
-        window.location.href = callbackUrl;
       } catch (error) {
         setRootError(resolveAuthErrorMessage(t, getMutationAuthCode(error)));
+        return;
       }
+
+      if (flow.purpose === 'forget-password') {
+        flow.onVerified(value.otp);
+        return;
+      }
+
+      rememberLastSignInMethod('emailOtp');
+      window.location.href = callbackUrl;
     },
   });
 

@@ -38,6 +38,7 @@ import { ReservationStoreLegsSummary } from "@/components/dashboard/reservation-
 import { storeLegLocationFromSnapshot } from "@/components/dashboard/util.reservation-store-legs";
 import { InvoiceDocumentsCard, type ReservationInvoiceDocument } from "./invoice-documents-card";
 import { getReservationDeliveryDisplayMode } from "./util.reservation-delivery-display";
+import { getCustomerContactHint } from "./util.customer-contact-hint";
 
 type ReservationStatus =
   | "pending"
@@ -123,7 +124,7 @@ export function ReservationDetailClient({
   storeSlug,
   currency,
   storeTimezone,
-  smsConfigured: _smsConfigured,
+  smsConfigured,
   stripeConfigured,
   inspectionSettings,
   showStoreLocations,
@@ -196,6 +197,7 @@ export function ReservationDetailClient({
   });
 
   const rentalPaid = getNetCompletedPaymentAmount(reservation.payments || [], "rental");
+  const contactHintKey = getCustomerContactHint(reservation.customer, { smsConfigured });
 
   const depositCollected = (reservation.payments || [])
     .filter((p: any) => p.type === "deposit" && p.status === "completed")
@@ -267,7 +269,9 @@ export function ReservationDetailClient({
           firstName: reservation.customer.firstName,
           lastName: reservation.customer.lastName,
           email: reservation.customer.email,
+          phone: reservation.customer.phone,
         }}
+        smsConfigured={smsConfigured}
         storeSlug={storeSlug}
         rentalAmount={rental}
         rentalPaid={rentalPaid}
@@ -326,15 +330,22 @@ export function ReservationDetailClient({
 
                 {/* Contact (email + phone) */}
                 <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0 text-sm text-muted-foreground">
-                  <EmailContactPopover
-                    disabled={readOnly}
-                    email={reservation.customer.email}
-                    className="min-w-0 truncate"
-                  />
+                  {reservation.customer.email && (
+                    <EmailContactPopover
+                      disabled={readOnly}
+                      email={reservation.customer.email}
+                      className="min-w-0 truncate"
+                    />
+                  )}
                   {reservation.customer.phone && (
                     <PhoneContactPopover disabled={readOnly} phone={reservation.customer.phone} />
                   )}
                 </div>
+                {contactHintKey && (
+                  <p className="text-xs text-muted-foreground">
+                    {t(`contactHint.${contactHintKey}`)}
+                  </p>
+                )}
 
                 {reservation.customer.address && (
                   <p className="text-xs text-muted-foreground truncate flex items-start gap-1">
@@ -645,6 +656,7 @@ export function ReservationDetailClient({
               email: reservation.customer.email,
               phone: reservation.customer.phone,
             }}
+            smsConfigured={smsConfigured}
             stripeConfigured={stripeConfigured}
             defaultPaymentMethod={defaultPaymentMethod}
             paymentModalOpen={paymentModalOpen}

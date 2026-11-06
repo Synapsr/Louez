@@ -32,7 +32,7 @@ interface DiscordNotificationContext {
   customer?: {
     firstName: string
     lastName: string
-    email: string
+    email: string | null
     phone?: string | null
   }
   payment?: {
@@ -99,11 +99,8 @@ export async function sendNewReservationDiscord(ctx: DiscordNotificationContext)
         value: `${ctx.customer.firstName} ${ctx.customer.lastName}`,
         inline: true,
       },
-      {
-        name: 'Email',
-        value: ctx.customer.email,
-        inline: true,
-      },
+      // Discord rejects an empty field value: no e-mail, no field.
+      ...(ctx.customer.email ? [{ name: 'Email', value: ctx.customer.email, inline: true }] : []),
       {
         name: 'Dates',
         value: `${formatDate(ctx.reservation.startDate)} - ${formatDate(ctx.reservation.endDate)}`,

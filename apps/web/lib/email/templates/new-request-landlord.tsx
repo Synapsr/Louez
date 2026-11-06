@@ -23,7 +23,7 @@ interface NewRequestLandlordEmailProps {
   primaryColor?: string;
   customerFirstName: string;
   customerLastName: string;
-  customerEmail: string;
+  customerEmail: string | null;
   reservationNumber: string;
   startDate: Date;
   endDate: Date;
@@ -85,7 +85,9 @@ export function NewRequestLandlordEmail({
           label={stripLabelColon(messages.customer)}
           value={`${customerFirstName} ${customerLastName}`}
         />
-        <DetailRow label={stripLabelColon(messages.email)} value={customerEmail} />
+        {customerEmail && (
+          <DetailRow label={stripLabelColon(messages.email)} value={customerEmail} />
+        )}
         <DetailRow
           label={stripLabelColon(messages.period)}
           value={`${formatDate(startDate)} – ${formatDate(endDate)}`}

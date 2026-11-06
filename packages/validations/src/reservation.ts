@@ -1,6 +1,12 @@
 import { z } from "zod";
 
+import { isPossiblePhoneNumberInput } from "./phone";
+
 const emailSchema = (message: string) => z.string().trim().toLowerCase().pipe(z.email(message));
+
+/** A customer entered by the team needs one way to be reached: an e-mail or a phone. */
+const hasContact = (customer: { email?: string; phone?: string }) =>
+  Boolean(customer.email?.trim() || customer.phone?.trim());
 
 export const reservationStatusSchema = z.enum([
   "pending",
@@ -25,25 +31,31 @@ export const createReservationItemSchema = (
 export const createManualReservationSchema = (
   t: (key: string, params?: Record<string, string | number | Date>) => string,
 ) =>
-  z.object({
-    // Customer
-    customerType: z.enum(["existing", "new"]),
-    customerId: z.string().optional(),
-    email: emailSchema(t("email")).optional(),
-    firstName: z.string().min(1, t("required")).optional(),
-    lastName: z.string().min(1, t("required")).optional(),
-    phone: z.string().optional(),
+  z
+    .object({
+      // Customer
+      customerType: z.enum(["existing", "new"]),
+      customerId: z.string().optional(),
+      email: emailSchema(t("email")).optional(),
+      firstName: z.string().min(1, t("required")).optional(),
+      lastName: z.string().min(1, t("required")).optional(),
+      phone: z.string().optional(),
 
-    // Dates
-    startDate: z.date({ message: t("required") }),
-    endDate: z.date({ message: t("required") }),
+      // Dates
+      startDate: z.date({ message: t("required") }),
+      endDate: z.date({ message: t("required") }),
 
-    // Items
-    items: z.array(createReservationItemSchema(t)).min(1, t("required")),
+      // Items
+      items: z.array(createReservationItemSchema(t)).min(1, t("required")),
 
-    // Notes
-    internalNotes: z.string().optional(),
-  });
+      // Notes
+      internalNotes: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.customerType === "new" && !hasContact(data)) {
+        ctx.addIssue({ code: "custom", message: t("contactRequired"), path: ["email"] });
+      }
+    });
 
 // Default schemas for server-side validation
 export const reservationItemSchema = z.object({
@@ -51,25 +63,62 @@ export const reservationItemSchema = z.object({
   quantity: z.number().min(1, "validation.minValue"),
 });
 
-export const manualReservationSchema = z.object({
-  // Customer
-  customerType: z.enum(["existing", "new"]),
-  customerId: z.string().optional(),
-  email: emailSchema("validation.email").optional(),
-  firstName: z.string().min(1, "validation.required").optional(),
-  lastName: z.string().min(1, "validation.required").optional(),
-  phone: z.string().optional(),
+export const manualReservationSchema = z
+  .object({
+    // Customer
+    customerType: z.enum(["existing", "new"]),
+    customerId: z.string().optional(),
+    email: emailSchema("validation.email").optional(),
+    firstName: z.string().min(1, "validation.required").optional(),
+    lastName: z.string().min(1, "validation.required").optional(),
+    phone: z.string().optional(),
 
-  // Dates
-  startDate: z.date({ message: "validation.required" }),
-  endDate: z.date({ message: "validation.required" }),
+    // Dates
+    startDate: z.date({ message: "validation.required" }),
+    endDate: z.date({ message: "validation.required" }),
 
-  // Items
-  items: z.array(reservationItemSchema).min(1, "validation.required"),
+    // Items
+    items: z.array(reservationItemSchema).min(1, "validation.required"),
 
-  // Notes
-  internalNotes: z.string().optional(),
-});
+    // Notes
+    internalNotes: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.customerType === "new" && !hasContact(data)) {
+      ctx.addIssue({ code: "custom", message: "validation.contactRequired", path: ["email"] });
+    }
+  });
+
+/** A blank optional field ("" from an untouched input) reads as absent. */
+const blankToUndefined = (value: string | undefined) => value || undefined;
+
+/**
+ * A customer the team creates while booking at the counter. Unlike the
+ * storefront checkout (`createReservationCustomerSchema`), the e-mail is
+ * optional: a phone number is enough to reach them.
+ */
+export const manualReservationNewCustomerSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .pipe(z.union([z.literal(""), z.email("validation.email").max(320)]))
+      .optional()
+      .transform(blankToUndefined),
+    firstName: z.string().trim().min(1).max(200),
+    lastName: z.string().trim().min(1).max(200),
+    phone: z
+      .string()
+      .trim()
+      .max(50)
+      .refine((value) => !value || isPossiblePhoneNumberInput(value), "validation.invalidPhone")
+      .optional()
+      .transform(blankToUndefined),
+  })
+  .refine(hasContact, { message: "validation.contactRequired", path: ["email"] });
+
+export type ManualReservationNewCustomer = z.infer<typeof manualReservationNewCustomerSchema>;
 
 export const updateReservationNotesSchema = z.object({
   internalNotes: z.string().optional(),

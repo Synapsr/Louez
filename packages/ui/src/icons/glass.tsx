@@ -18,6 +18,7 @@ export {
   IconGear as SettingsGlassIcon,
   IconHelpChat as HelpGlassIcon,
   IconHouse as HomeGlassIcon,
+  IconMoneyBill as FinancesGlassIcon,
   IconPhone as InstallAppGlassIcon,
   IconSparkle2 as WhatsNewGlassIcon,
   IconTeam as TeamGlassIcon,

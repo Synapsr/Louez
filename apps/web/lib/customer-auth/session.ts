@@ -8,6 +8,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { customerSessions, db, stores } from "@louez/db";
+import { hasCustomerEmail } from "@louez/utils";
 
 import {
   CUSTOMER_SESSION_COOKIE,
@@ -16,7 +17,10 @@ import {
   type CustomerSessionCookie,
 } from "@/lib/customer-auth/cookie";
 
-type SessionCustomer = NonNullable<Awaited<ReturnType<typeof db.query.customers.findFirst>>>;
+type CustomerRow = NonNullable<Awaited<ReturnType<typeof db.query.customers.findFirst>>>;
+
+/** The online account is keyed on the e-mail: a signed-in customer always has one. */
+type SessionCustomer = CustomerRow & { email: string };
 
 export interface CustomerSession {
   customerId: string;
@@ -57,6 +61,9 @@ const readSessionFromCookie = async (storeId: string): Promise<CustomerSession |
 
     // A session is only valid on the store its customer belongs to.
     if (!session || session.customer.storeId !== storeId) return null;
+    // A customer without e-mail has no online account: the team may have
+    // removed the address since this session was opened.
+    if (!hasCustomerEmail(session.customer)) return null;
 
     return { customerId: session.customer.id, customer: session.customer };
   } catch {

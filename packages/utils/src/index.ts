@@ -34,6 +34,9 @@ export { hasPermission, type Permission, type MemberRole } from "./permissions";
 // Business hours
 export { normalizeDaySchedule } from "./business-hours";
 export { toAbsoluteUrl } from "./url";
+export * from "./customer-social-links";
+export * from "./customer-contact";
+export * from "./import/delimited-text";
 
 // Rich-text HTML (dashboard editor) allow-list sanitiser
 export { sanitizeRichTextHtml } from "./html/sanitize-rich-text";
@@ -51,5 +54,9 @@ export {
 } from "./reservation-billing";
 
 export { hasReservationInsuranceCoverage } from "./util.reservation-insurance";
+
+// Cash ledger (dashboard → Finances)
+export * from "./util.payment-movement";
+export * from "./util.finance-period";
 
 export * from "./pricing/product-promotion";

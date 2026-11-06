@@ -152,6 +152,19 @@
       "selectCustomer": "Seleziona un cliente",
       "createCustomer": "Crea un cliente",
       "createNamed": "Crea «{query}»"
+    },
+    "pagination": {
+      "showing": "Visualizzazione da {start} a {end} di {total}",
+      "perPage": "Per pagina",
+      "page": "Pagina {current} di {total}",
+      "previous": "Pagina precedente",
+      "next": "Pagina successiva"
+    },
+    "dateRangePicker": {
+      "placeholder": "Scegli un periodo",
+      "pickStart": "Scegli il primo giorno",
+      "pickEnd": "Scegli l'ultimo giorno",
+      "maxDays": "{count, plural, one {# giorno al massimo} other {# giorni al massimo}}"
     }
   },
   "auth": {
@@ -180,7 +193,7 @@
     "loginDescription": "Inserisci la tua email per continuare. Se non hai un account, verrà creato automaticamente.",
     "reeentLoginTitle": "Benvenuto su louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent è la vetrina, louez è il tuo strumento: prenotazioni, pagamenti e calendario si gestiscono qui. Se non hai un account, verrà creato automaticamente.",
-    "linkWillBeSent": "Un link sicuro ti verrà inviato via email. Nessuna password da ricordare.",
+    "linkWillBeSent": "Riceverai un codice monouso via email. La password resta facoltativa.",
     "checkEmail": "Controlla la tua email",
     "emailSentTo": "Un link di accesso e stato inviato a",
     "clickLinkToSignIn": "Clicca sul link nell'email per accedere. Il link scade tra 24 ore.",
@@ -200,7 +213,19 @@
       "verification": "Il link di verifica non e valido o e scaduto.",
       "default": "Si e verificato un errore. Riprova.",
       "passwordTooShort": "La password deve contenere almeno 8 caratteri.",
-      "registrationClosed": "Le registrazioni sono chiuse su questa istanza. Chiedi un invito al proprietario."
+      "registrationClosed": "Le registrazioni sono chiuse su questa istanza. Chiedi un invito al proprietario.",
+      "invalidCode": "Questo codice non è corretto.",
+      "codeExpired": "Questo codice è scaduto. Richiedine uno nuovo.",
+      "tooManyAttempts": "Troppi tentativi con questo codice. Richiedine uno nuovo.",
+      "tooManyRequests": "Troppi tentativi. Attendi un minuto prima di riprovare.",
+      "passwordTooLong": "La password non può superare i 128 caratteri.",
+      "invalidPassword": "La password attuale non è corretta.",
+      "currentPasswordRequired": "Inserisci la tua password attuale.",
+      "passwordAlreadySet": "Questo account ha già una password.",
+      "passwordNotSet": "Questo account non ha nessuna password.",
+      "passwordRemovalUnavailable": "Su questa istanza la password è l'unico modo per accedere: non può essere rimossa.",
+      "sessionExpired": "La sessione è scaduta. Accedi di nuovo e riprova.",
+      "passwordSignUpDisabled": "La creazione di un account con password non è disponibile. Usa un codice ricevuto via email."
     },
     "referralBanner": "{storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
     "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
@@ -224,7 +249,22 @@
     "alreadyHaveAccount": "Hai già un account?",
     "usePasswordInstead": "Accedi con una password",
     "useEmailCodeInstead": "Accedi con un codice via email",
-    "passwordLoginDescription": "Accedi con la tua email e la tua password."
+    "passwordLoginDescription": "Accedi con la tua email e la tua password.",
+    "forgotPasswordTitle": "Password dimenticata",
+    "forgotPasswordDescription": "Inserisci l'email del tuo account: ti inviamo un codice per scegliere una nuova password.",
+    "forgotPasswordLogsDescription": "Inserisci l'email del tuo account. Questa istanza non invia email: il codice comparirà nei log del server.",
+    "resetCodeSentDescription": "Se esiste un account per <strong>{email}</strong>, gli abbiamo appena inviato un codice di 6 cifre. Inseriscilo qui sotto per scegliere una nuova password.",
+    "newPasswordTitle": "Scegli una nuova password",
+    "newPasswordDescription": "Accederai non appena sarà salvata. Gli altri tuoi dispositivi verranno disconnessi.",
+    "newPassword": "Nuova password",
+    "saveNewPassword": "Salva e accedi",
+    "requestNewCode": "Ricevi un nuovo codice",
+    "backToLogin": "Torna all'accesso",
+    "showPassword": "Mostra la password",
+    "hidePassword": "Nascondi la password",
+    "passwordRules": {
+      "minLength": "Almeno {count} caratteri"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} ti invita a unirti al team",
@@ -853,7 +893,8 @@
       "analyticsSales": "Vendite",
       "analyticsTraffic": "Traffico",
       "multiStore": "Multi-negozio",
-      "aiCredits": "Crediti IA"
+      "aiCredits": "Crediti IA",
+      "finances": "Finanze"
     },
     "home": {
       "viewAll": "Vedi tutto",
@@ -2244,7 +2285,8 @@
         "viewContract": "Vedi contratto",
         "copyLink": "Copia link cliente",
         "viewAsCustomer": "Vedi come cliente",
-        "print": "Stampa"
+        "print": "Stampa",
+        "sendSms": "Invia SMS"
       },
       "edit": {
         "button": "Modifica",
@@ -2315,7 +2357,8 @@
           "tooFar": "L'indirizzo supera la distanza massima ({maxDistance} km)",
           "savings": "Risparmio",
           "deliveryFee": "Spese di consegna"
-        }
+        },
+        "notifyCustomerNoEmail": "Questo cliente non ha un'email: non verrà avvisato della modifica."
       },
       "contract": {
         "title": "Contratto",
@@ -2391,7 +2434,8 @@
           "disabledPastStart": "Protezione Tulip disattivata per questo periodo passato.",
           "calculating": "Calcolo della garanzia...",
           "estimatedAmount": "Garanzia stimata: {amount}",
-          "previewUnavailable": "Impossibile ricalcolare l'importo Tulip."
+          "previewUnavailable": "Impossibile ricalcolare l'importo Tulip.",
+          "requiresEmail": "L'assicurazione Tulip richiede l'email del cliente: aggiungila alla sua scheda per proporla."
         },
         "duration": "Durata",
         "exact": "esatto",
@@ -2411,7 +2455,8 @@
           "descriptionQuote": "Rivedi il riepilogo prima di inviare il preventivo.",
           "warningsTitle": "Punti da verificare",
           "emailOn": "Verrà inviata un'email di conferma al cliente.",
-          "emailOff": "Nessuna email verrà inviata al cliente."
+          "emailOff": "Nessuna email verrà inviata al cliente.",
+          "smsOn": "Verrà inviata una conferma al cliente via SMS."
         },
         "adjustmentsTitle": "Importi e opzioni",
         "adjustmentsDescription": "Regola lo sconto, il deposito e l'invio della conferma.",
@@ -2550,7 +2595,10 @@
           "label": "Sconto",
           "add": "Aggiungi uno sconto",
           "remove": "Rimuovi lo sconto"
-        }
+        },
+        "sendConfirmationSms": "Invia la conferma via SMS",
+        "noChannelHint": "Questo cliente non ha un'email e non può ricevere SMS: non gli verrà inviata alcuna conferma.",
+        "noEmailQuoteHint": "I preventivi si accettano online: aggiungi un'email alla scheda del cliente per inviargliene uno."
       },
       "rejectDialog": {
         "title": "Rifiuta richiesta",
@@ -2810,7 +2858,10 @@
         "linkCopied": "Link copiato",
         "copyFailed": "Copia fallita",
         "stripeNotConfigured": "Stripe non configurato",
-        "stripeNotConfiguredDescription": "Configura Stripe nelle impostazioni per inviare richieste di pagamento online."
+        "stripeNotConfiguredDescription": "Configura Stripe nelle impostazioni per inviare richieste di pagamento online.",
+        "noEmail": "nessuna email",
+        "smsUnavailable": "SMS non attivi",
+        "noChannelAvailable": "Aggiungi un'email o un telefono alla scheda del cliente per inviargli questa richiesta."
       },
       "onlinePayment": {
         "title": "Pagamento online",
@@ -2928,6 +2979,16 @@
             "name": "Link di accesso cliente",
             "description": "Invia un'email con il link di monitoraggio della prenotazione"
           }
+        },
+        "sms": {
+          "title": "Invia un SMS",
+          "description": "Invia un SMS a {name} ({phone})",
+          "selectTemplate": "Scegli tipo SMS",
+          "onlySmsTemplates": "Questo cliente non ha un'email: sono proposti solo i messaggi che esistono come SMS.",
+          "customName": "SMS personalizzato",
+          "customDescription": "Scrivi un SMS personalizzato al cliente",
+          "send": "Invia SMS",
+          "sendSuccess": "SMS inviato"
         }
       },
       "linkCopied": "Link copiato negli appunti",
@@ -2954,7 +3015,12 @@
         "planning": "Planning"
       },
       "displayCards": "Vista schede",
-      "displayTable": "Vista tabella"
+      "displayTable": "Vista tabella",
+      "contactHint": {
+        "smsOnly": "Senza email, questo cliente riceve i messaggi via SMS e non ha un'area clienti online.",
+        "noEmail": "Aggiungi un'email alla scheda del cliente per inviargli messaggi.",
+        "noContact": "Aggiungi un'email o un telefono alla scheda del cliente per inviargli messaggi."
+      }
     },
     "customers": {
       "title": "Clienti",
@@ -3017,7 +3083,22 @@
       },
       "filter": {
         "type": "Tipo di cliente",
-        "all": "Tutti i clienti"
+        "all": "Tutti i clienti",
+        "created": "Data di creazione",
+        "anyDate": "Tutte le date",
+        "source": "Provenienza",
+        "allSources": "Tutte le provenienze",
+        "channel": "Canale",
+        "allChannels": "Tutti i canali",
+        "reset": "Reimposta filtri",
+        "importRun": "Da un'importazione",
+        "noResults": "Nessun cliente corrisponde a questi filtri.",
+        "from": "Da: {date}",
+        "to": "A: {date}",
+        "more": "Filtri",
+        "createdFrom": "Creati dal",
+        "createdTo": "Creati fino al",
+        "remove": "Rimuovi il filtro"
       },
       "deleteConfirm": {
         "title": "Eliminare questo cliente?",
@@ -3059,7 +3140,23 @@
         "internalNotesDescription": "Note private su questo cliente (non visibili al cliente)",
         "notesPlaceholder": "Aggiungi note su questo cliente...",
         "save": "Salva",
-        "createCustomer": "Crea cliente"
+        "createCustomer": "Crea cliente",
+        "customerKind": "Tipo di cliente",
+        "moreInfo": "Informazioni aggiuntive",
+        "moreInfoDescription": "Facoltativo. Potrai completarle anche più tardi dalla scheda.",
+        "profileSection": "Profilo",
+        "birthDate": "Data di nascita",
+        "ageYears": "{age, plural, one {# anno} other {# anni}}",
+        "acquisitionSource": "Come ti ha conosciuto?",
+        "acquisitionSourcePlaceholder": "Seleziona",
+        "acquisitionSourceDetail": "Specifica",
+        "acquisitionSourceDetailPlaceholder": "Ufficio turistico, fiera, hotel partner…",
+        "socialSection": "Social e link",
+        "customizeFields": "Personalizza i campi",
+        "fieldCount": "{count, plural, one {# campo} other {# campi}}",
+        "filledCount": "{count, plural, one {# compilato} other {# compilati}}",
+        "emailOptional": "Email",
+        "contactHint": "Basta un'email o un numero di telefono. Senza email, i messaggi partono via SMS quando possibile."
       },
       "countries": {
         "FR": "Francia",
@@ -3074,6 +3171,88 @@
       "quickCreate": {
         "title": "Nuovo cliente",
         "description": "Il cliente verrà creato e selezionato automaticamente."
+      },
+      "sources": {
+        "word_of_mouth": "Passaparola",
+        "search_engine": "Ricerca su Google",
+        "social_media": "Social network",
+        "walk_in": "Passando davanti al negozio",
+        "partner": "Partner o ufficio turistico",
+        "ads": "Pubblicità",
+        "returning": "Già cliente",
+        "other": "Altro"
+      },
+      "channels": {
+        "dashboard": "Creato dal team",
+        "storefront": "Negozio online",
+        "marketplace": "reeent",
+        "import": "Importazione",
+        "api": "API",
+        "ai": "Assistente IA"
+      },
+      "social": {
+        "add": "Aggiungi un link",
+        "remove": "Rimuovi {network}",
+        "open": "Apri {network}",
+        "placeholderHandle": "@nomeutente o link del profilo",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+39 312 345 6789",
+        "whatsapp": "WhatsApp",
+        "empty": "Nessun link"
+      },
+      "fields": {
+        "yes": "Sì",
+        "no": "No",
+        "reveal": "Mostra",
+        "hide": "Nascondi",
+        "copy": "Copia",
+        "copied": "Copiato",
+        "selectPlaceholder": "Seleziona",
+        "suspicious": "Questo numero sembra non valido. Controllalo: verrà salvato comunque.",
+        "duplicate": "Già usato da {name}.",
+        "viewCustomer": "Vedi la scheda",
+        "complete": "{count, plural, one {Completa # campo} other {Completa # campi}}",
+        "issues": {
+          "required": "Questo campo è obbligatorio.",
+          "invalidNumber": "Inserisci un numero.",
+          "invalidDate": "Data non valida.",
+          "invalidOption": "Scegli un valore dall'elenco.",
+          "invalidEmail": "Indirizzo email non valido.",
+          "invalidPhone": "Numero di telefono non valido.",
+          "invalidUrl": "Link non valido."
+        }
+      },
+      "detail": {
+        "newReservation": "Nuova prenotazione",
+        "edit": "Modifica",
+        "moreActions": "Altre azioni",
+        "createdVia": "Creato tramite: {channel}",
+        "contactCard": "Recapiti",
+        "profileCard": "Profilo",
+        "bornOn": "Nascita: {date}",
+        "source": "Provenienza",
+        "lastRental": "Ultimo noleggio",
+        "never": "Mai",
+        "noAddress": "Indirizzo non indicato",
+        "noPhone": "Telefono non indicato",
+        "emptyProfile": "Nessuna informazione sul profilo.",
+        "editSection": "Modifica: {section}",
+        "editSectionDescription": "Verranno modificate solo queste informazioni.",
+        "sectionSaved": "Modifiche salvate",
+        "save": "Salva",
+        "cancel": "Annulla",
+        "noEmail": "Nessuna email"
+      },
+      "pagination": {
+        "showing": "{from}–{to} di {total}",
+        "perPage": "Per pagina",
+        "previous": "Pagina precedente",
+        "next": "Pagina successiva",
+        "pageOf": "Pagina {page} di {pages}"
+      },
+      "similar": {
+        "found": "Esiste già un cliente simile: {name}.",
+        "view": "Apri la scheda"
       }
     },
     "calendar": {
@@ -4307,6 +4486,14 @@
           "statusRequired": "Seleziona almeno uno stato.",
           "noContracts": "Nessuna prenotazione corrisponde al periodo e agli stati selezionati.",
           "exportFailed": "Esportazione fallita. Riprova."
+        },
+        "customers": {
+          "title": "Clienti",
+          "description": "Esporta le schede dei tuoi clienti: recapiti, data di nascita, provenienza, canale di creazione e i tuoi campi personalizzati.",
+          "button": "Esporta i clienti",
+          "dateRangeHint": "Il periodo si riferisce alla data di creazione delle schede. Lascialo vuoto per esportare tutti i tuoi clienti.",
+          "includeSensitive": "Includi i dati sensibili",
+          "includeSensitiveWarning": "I campi contrassegnati come sensibili compariranno in chiaro nel file: conservalo in un luogo sicuro."
         }
       },
       "embed": {
@@ -5283,7 +5470,7 @@
         "active": "Attivo",
         "activeSessions": "Sessioni attive",
         "activeSessionsDescription": "Gestisci le tue sessioni di accesso",
-        "sessionCount": "{count} sessione",
+        "sessionCount": "{count, plural, one {# dispositivo connesso} other {# dispositivi connessi}}",
         "changePassword": "Cambia password",
         "dangerZone": "Zona pericolosa",
         "dangerZoneDescription": "Azioni irreversibili sul tuo account",
@@ -5346,6 +5533,51 @@
           "saved": "Scorciatoie salvate",
           "conflict": "Questa scorciatoia è già usata per «{action}».",
           "resetAction": "Ripristina «{action}»"
+        },
+        "signIn": {
+          "title": "Accesso",
+          "description": "I modi per accedere al tuo account",
+          "emailCode": "Codice via email",
+          "alwaysActive": "Sempre attivo",
+          "unavailable": "Non disponibile",
+          "google": "Google",
+          "linked": "Collegato",
+          "notLinked": "Non collegato",
+          "linkGoogle": "Collega",
+          "googleLinkError": "Impossibile collegare questo account Google. Verifica che usi lo stesso indirizzo email del tuo account Louez.",
+          "password": "Password",
+          "passwordNotSet": "Non impostata",
+          "passwordSetOn": "Impostata il {date}",
+          "setPassword": "Imposta",
+          "changePassword": "Modifica",
+          "removePassword": "Rimuovi",
+          "setPasswordTitle": "Imposta una password",
+          "setPasswordDescription": "La password è facoltativa: il codice ricevuto via email resta sempre disponibile. Gli altri tuoi dispositivi verranno disconnessi.",
+          "newPasswordLabel": "Nuova password",
+          "currentPasswordLabel": "Password attuale",
+          "setPasswordSubmit": "Imposta la password",
+          "changePasswordDescription": "Gli altri tuoi dispositivi verranno disconnessi.",
+          "changePasswordSubmit": "Modifica la password",
+          "removePasswordTitle": "Rimuovere la password?",
+          "removePasswordDescription": "Continuerai ad accedere con un codice ricevuto via email. Potrai impostare una nuova password in qualsiasi momento.",
+          "removePasswordConfirm": "Rimuovi la password",
+          "cancel": "Annulla",
+          "passwordSetToast": "Password impostata",
+          "passwordChangedToast": "Password modificata",
+          "passwordRemovedToast": "Password rimossa"
+        },
+        "passwordAlert": {
+          "title": "Non sei stato tu?",
+          "description": "La password dell'account {email} è appena stata aggiunta, modificata o rimossa. Se non c'entri nulla, metti al sicuro il tuo account adesso.",
+          "effectPassword": "La password verrà rimossa dall'account.",
+          "effectSessions": "Tutti i dispositivi verranno disconnessi, compreso questo.",
+          "effectSignIn": "Accederai di nuovo con un codice ricevuto via email.",
+          "unavailable": "Su questa istanza la password è l'unico modo per accedere: non può essere rimossa. Modificala dal tuo account.",
+          "confirm": "Metti al sicuro il mio account",
+          "itWasMe": "Sono stato io",
+          "doneTitle": "Il tuo account è al sicuro",
+          "doneDescription": "La password è stata rimossa e tutti i dispositivi sono stati disconnessi. Accedi di nuovo con un codice ricevuto via email.",
+          "signInAgain": "Accedi di nuovo"
         }
       },
       "admin": {
@@ -5883,6 +6115,546 @@
         "title": "Prolungamenti automatici",
         "description": "I clienti possono prolungare se il materiale è disponibile e il supplemento è calcolabile. I casi particolari richiedono la tua approvazione.",
         "maxDays": "Giorni aggiuntivi massimi (vuoto: nessun limite)"
+      },
+      "customerFields": {
+        "title": "Scheda cliente",
+        "description": "Scegli quali informazioni conservare sui tuoi clienti, oltre al nome e ai recapiti.",
+        "limits": "{count} / {max} campi attivi",
+        "suggestions": {
+          "title": "Suggerimenti per te",
+          "description": "In base al paese e all'attività del tuo negozio.",
+          "browse": "Sfoglia i modelli",
+          "dismiss": "Nascondi i suggerimenti"
+        },
+        "native": {
+          "title": "Campi Louez",
+          "description": "Informazioni che Louez sa sfruttare. Nascondi quelle che non ti servono.",
+          "birthDate": "Data di nascita",
+          "birthDateHelp": "Mostra anche l'età del cliente.",
+          "acquisitionSource": "Provenienza del cliente",
+          "acquisitionSourceHelp": "Come il cliente ti ha conosciuto.",
+          "socialLinks": "Social e link",
+          "socialLinksHelp": "Instagram, sito web, WhatsApp…",
+          "visibility": {
+            "hidden": "Nascosto",
+            "optional": "Facoltativo",
+            "required": "Obbligatorio"
+          },
+          "saved": "Impostazione salvata"
+        },
+        "sections": {
+          "add": "Aggiungi una sezione",
+          "namePlaceholder": "Nome della sezione",
+          "defaultName": "Informazioni aggiuntive",
+          "rename": "Rinomina la sezione",
+          "moveUp": "Sposta su",
+          "moveDown": "Sposta giù",
+          "actions": "Azioni della sezione"
+        },
+        "field": {
+          "add": "Aggiungi un campo",
+          "edit": "Modifica",
+          "archive": "Archivia",
+          "restore": "Riattiva",
+          "delete": "Elimina definitivamente",
+          "moveTo": "Sposta in",
+          "actions": "Azioni del campo",
+          "active": "Attivo",
+          "drag": "Riordina",
+          "valueCount": "{count, plural, =0 {Nessun valore} one {Compilato per # cliente} other {Compilato per # clienti}}"
+        },
+        "badges": {
+          "required": "Obbligatorio",
+          "sensitive": "Sensibile",
+          "contract": "Contratto",
+          "search": "Ricerca",
+          "list": "Elenco",
+          "business": "Aziende",
+          "individual": "Privati"
+        },
+        "dialog": {
+          "createTitle": "Nuovo campo",
+          "createDescription": "Comparirà nella scheda di tutti i tuoi clienti.",
+          "editTitle": "Modifica il campo",
+          "editDescription": "I valori già inseriti vengono mantenuti.",
+          "label": "Etichetta",
+          "labelPlaceholder": "Numero di patente",
+          "type": "Tipo",
+          "typeLocked": "Il tipo non può più cambiare una volta creato il campo.",
+          "options": "Opzioni",
+          "optionsPlaceholder": "Scrivi un'opzione e premi Invio",
+          "unit": "Unità",
+          "unitPlaceholder": "cm, kg, km…",
+          "helpText": "Testo di aiuto",
+          "helpTextPlaceholder": "Indicazione mostrata sotto il campo",
+          "section": "Sezione",
+          "newSection": "Nuova sezione…",
+          "appliesTo": "Si applica a",
+          "appliesToAll": "Tutti",
+          "appliesToIndividual": "Privati",
+          "appliesToBusiness": "Aziende",
+          "save": "Salva",
+          "create": "Aggiungi il campo",
+          "cancel": "Annulla",
+          "types": {
+            "text": "Testo",
+            "textarea": "Testo lungo",
+            "number": "Numero",
+            "date": "Data",
+            "select": "Elenco di opzioni",
+            "checkbox": "Sì / No",
+            "phone": "Telefono",
+            "email": "Email",
+            "url": "Link"
+          },
+          "flags": {
+            "required": "Obbligatorio",
+            "requiredHelp": "Impossibile salvare la scheda senza questo campo.",
+            "sensitive": "Dato sensibile",
+            "sensitiveHelp": "Nascosto per impostazione predefinita nella scheda ed escluso dalle esportazioni.",
+            "contract": "Mostra nel contratto",
+            "contractHelp": "Aggiunto sotto i recapiti del cliente.",
+            "search": "Includi nella ricerca",
+            "searchHelp": "Digita il valore per ritrovare il cliente. Segnala anche i duplicati.",
+            "list": "Mostra nell'elenco",
+            "listHelp": "Aggiunge una colonna all'elenco dei clienti."
+          }
+        },
+        "templates": {
+          "dialogTitle": "Modelli di campi",
+          "dialogDescription": "Aggiungi un gruppo di campi con un clic. Potrai poi rinominarli, riordinarli o archiviarli.",
+          "privacyNote": "Raccogli solo ciò che ti serve davvero: sei responsabile dei dati dei tuoi clienti.",
+          "groups": {
+            "country": "Per paese",
+            "activity": "Per attività",
+            "general": "Generale"
+          },
+          "adopt": "Aggiungi",
+          "adopted": "Aggiunto",
+          "fieldsCount": "{count, plural, one {# campo} other {# campi}}",
+          "adoptedToast": "{count, plural, one {# campo aggiunto} other {# campi aggiunti}}",
+          "identityDocument": {
+            "name": "Documento d'identità",
+            "description": "Il documento richiesto alla consegna dell'attrezzatura.",
+            "section": "Identità",
+            "fields": {
+              "id_document_type": {
+                "label": "Tipo di documento",
+                "options": {
+                  "idCard": "Carta d'identità",
+                  "passport": "Passaporto",
+                  "residencePermit": "Permesso di soggiorno",
+                  "drivingLicense": "Patente di guida",
+                  "other": "Altro"
+                }
+              },
+              "id_document_number": {
+                "label": "Numero del documento"
+              },
+              "id_document_expiry": {
+                "label": "Data di scadenza"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "Contatto di emergenza",
+            "description": "La persona da avvisare in caso di problemi durante il noleggio.",
+            "section": "Contatto di emergenza",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "Nome"
+              },
+              "emergency_contact_phone": {
+                "label": "Telefono"
+              },
+              "emergency_contact_relation": {
+                "label": "Rapporto con il cliente",
+                "options": {
+                  "partner": "Coniuge o partner",
+                  "parent": "Genitore",
+                  "friend": "Amico/a",
+                  "colleague": "Collega",
+                  "other": "Altro"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "Clienti aziendali",
+            "description": "Il contatto della contabilità e il riferimento da riportare sui tuoi documenti.",
+            "section": "Fatturazione",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "Contatto contabilità"
+              },
+              "accounting_email": {
+                "label": "Email contabilità"
+              },
+              "purchase_order_reference": {
+                "label": "Riferimento ordine d'acquisto"
+              }
+            }
+          },
+          "brazil": {
+            "name": "Brasile",
+            "description": "CPF o CNPJ, con verifica del numero, e RG.",
+            "section": "Identità",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "Ente di rilascio"
+              }
+            }
+          },
+          "spain": {
+            "name": "Spagna",
+            "description": "DNI o NIE, con verifica della lettera di controllo.",
+            "section": "Identità",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "Italia",
+            "description": "Codice fiscale, con verifica del carattere di controllo.",
+            "section": "Identità",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "Portogallo",
+            "description": "NIF, con verifica della cifra di controllo.",
+            "section": "Identità",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "Veicoli e due ruote",
+            "description": "La patente di guida, riportata nel contratto.",
+            "section": "Patente di guida",
+            "fields": {
+              "driving_license_number": {
+                "label": "Numero di patente"
+              },
+              "driving_license_date": {
+                "label": "Data di conseguimento"
+              },
+              "driving_license_categories": {
+                "label": "Categorie"
+              }
+            }
+          },
+          "ski": {
+            "name": "Sci e montagna",
+            "description": "Le misure per preparare l'attrezzatura prima dell'arrivo del cliente.",
+            "section": "Misure",
+            "fields": {
+              "height_cm": {
+                "label": "Altezza"
+              },
+              "weight_kg": {
+                "label": "Peso"
+              },
+              "shoe_size": {
+                "label": "Numero di scarpe"
+              },
+              "ski_level": {
+                "label": "Livello",
+                "options": {
+                  "beginner": "Principiante",
+                  "intermediate": "Intermedio",
+                  "advanced": "Avanzato",
+                  "expert": "Esperto"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "Biciclette",
+            "description": "Quello che serve per regolare la bici prima che arrivi il cliente.",
+            "section": "Regolazioni bici",
+            "fields": {
+              "height_cm": {
+                "label": "Altezza"
+              },
+              "bike_saddle_height": {
+                "label": "Altezza della sella"
+              },
+              "bike_preferences": {
+                "label": "Preferenze"
+              }
+            }
+          },
+          "boating": {
+            "name": "Nautica",
+            "description": "La patente nautica, riportata nel contratto.",
+            "section": "Patente nautica",
+            "fields": {
+              "boat_license_number": {
+                "label": "Numero della patente nautica"
+              },
+              "boat_license_type": {
+                "label": "Tipo di patente",
+                "options": {
+                  "coastal": "Costiera",
+                  "offshore": "D'altura",
+                  "inland": "Acque interne",
+                  "none": "Senza patente"
+                }
+              }
+            }
+          }
+        },
+        "deleteDialog": {
+          "title": "Eliminare «{label}»?",
+          "description": "Il campo scomparirà da tutte le schede. Questa azione è irreversibile.",
+          "withValues": "{count, plural, one {# cliente ha un valore in questo campo: verrà cancellato.} other {# clienti hanno un valore in questo campo: verranno cancellati.}}",
+          "archiveInstead": "Archivia invece",
+          "confirm": "Elimina definitivamente",
+          "cancel": "Annulla"
+        },
+        "archived": {
+          "title": "Campi archiviati",
+          "description": "Nascosti dalle schede, i loro valori vengono mantenuti."
+        },
+        "preview": {
+          "title": "Anteprima",
+          "description": "Quello che vedrà il tuo team quando crea un cliente.",
+          "empty": "Aggiungi un campo per vedere l'anteprima."
+        },
+        "empty": {
+          "title": "Nessun campo personalizzato",
+          "description": "Parti da un modello o crea il tuo primo campo."
+        },
+        "toasts": {
+          "created": "Campo aggiunto",
+          "updated": "Campo modificato",
+          "archived": "Campo archiviato",
+          "restored": "Campo riattivato",
+          "deleted": "Campo eliminato",
+          "reordered": "Ordine salvato",
+          "sectionRenamed": "Sezione rinominata"
+        }
+      },
+      "import": {
+        "title": "Importazione",
+        "description": "Riprendi i tuoi clienti da un foglio di calcolo o da un altro software. Non viene scritto nulla prima della tua verifica.",
+        "newImport": "Nuova importazione",
+        "history": {
+          "title": "Importazioni precedenti",
+          "empty": "Ancora nessuna importazione",
+          "emptyDescription": "Le tue importazioni appariranno qui. Ognuna può essere annullata.",
+          "result": "{created} creati · {updated} aggiornati · {skipped} ignorati · {errors} errori",
+          "viewCustomers": "Vedi i clienti",
+          "downloadErrors": "Scarica gli errori",
+          "revert": "Annulla questa importazione",
+          "revertTitle": "Annullare questa importazione?",
+          "revertDescription": "I clienti creati da questa importazione verranno eliminati, tranne quelli che nel frattempo hanno una prenotazione o sono stati modificati. I clienti aggiornati ritroveranno i valori precedenti.",
+          "revertConfirm": "Annulla l'importazione",
+          "revertDone": "{reverted, plural, one {# scheda ripristinata} other {# schede ripristinate}}, {kept, plural, =0 {nessuna mantenuta} one {# mantenuta} other {# mantenute}}",
+          "keep": "Mantieni",
+          "status": {
+            "running": "In corso",
+            "completed": "Completata",
+            "failed": "Non riuscita",
+            "reverted": "Annullata",
+            "draft": "Bozza",
+            "ready": "Pronta"
+          },
+          "entity": {
+            "customers": "Clienti",
+            "products": "Prodotti"
+          }
+        },
+        "steps": {
+          "source": "Origine",
+          "sourceDescription": "Cosa importi",
+          "file": "File",
+          "fileDescription": "I tuoi dati",
+          "columns": "Colonne",
+          "columnsDescription": "Corrispondenze",
+          "review": "Verifica",
+          "reviewDescription": "Prima di scrivere",
+          "run": "Importazione",
+          "runDescription": "Risultato"
+        },
+        "actions": {
+          "back": "Indietro",
+          "next": "Continua",
+          "cancel": "Esci",
+          "done": "Termina"
+        },
+        "source": {
+          "title": "Cosa vuoi importare?",
+          "customers": "Clienti",
+          "customersDescription": "Recapiti, azienda, campi personalizzati.",
+          "products": "Prodotti",
+          "originTitle": "Da dove arrivano i tuoi dati?",
+          "file": "Un file CSV",
+          "fileDescription": "Esportato da Excel, Google Sheets o un altro software.",
+          "paste": "Un copia-incolla",
+          "pasteDescription": "Seleziona le celle nel foglio di calcolo, copia, incolla.",
+          "hint": "Non serve riformattare il file: è Louez ad adattarsi alle tue colonne."
+        },
+        "file": {
+          "drop": "Trascina qui il tuo file",
+          "browse": "oppure clicca per sceglierlo",
+          "formats": "CSV o TSV, massimo 5.000 righe",
+          "reading": "Lettura del file…",
+          "pasteLabel": "Incolla le tue celle",
+          "pastePlaceholder": "Incolla qui le righe copiate dal tuo foglio di calcolo, intestazioni comprese.",
+          "replace": "Scegli un altro file",
+          "detected": "{rows, plural, one {# riga} other {# righe}} · {columns, plural, one {# colonna} other {# colonne}}",
+          "previewTitle": "Anteprima delle prime righe",
+          "tooManyRows": "Questo file contiene {rows} righe. Il limite è 5.000: dividilo in più file.",
+          "noRows": "Nessuna riga trovata sotto la riga delle intestazioni.",
+          "unreadable": "Impossibile leggere questo file. Salvalo in formato CSV e riprova.",
+          "staging": "Invio delle righe… {done} / {total}"
+        },
+        "columns": {
+          "title": "A cosa corrisponde ogni colonna?",
+          "description": "Louez ha riconosciuto ciò che poteva. Verifica, completa, ignora il resto.",
+          "sourceColumn": "Colonna del file",
+          "target": "Campo Louez",
+          "recognized": "Riconosciuto",
+          "toMap": "Da associare",
+          "ignored": "Ignorata",
+          "ignore": "Ignora questa colonna",
+          "createField": "Crea il campo «{name}»",
+          "groupNative": "Scheda cliente",
+          "groupCustom": "Campi personalizzati",
+          "noSample": "vuota",
+          "summary": "Riepilogo",
+          "mapped": "{count, plural, one {# associata} other {# associate}}",
+          "ignoredCount": "{count, plural, one {# ignorata} other {# ignorate}}",
+          "requiredTitle": "Indispensabile",
+          "missingEmail": "Associa una colonna all'email.",
+          "missingName": "Associa una colonna al nome.",
+          "fieldCreated": "Campo «{name}» creato",
+          "fields": {
+            "externalId": "Identificativo di origine",
+            "fullName": "Nome e cognome (da separare)",
+            "firstName": "Nome",
+            "lastName": "Cognome",
+            "email": "Email",
+            "phone": "Telefono",
+            "companyName": "Azienda",
+            "companyNumber": "Numero d'impresa",
+            "vatNumber": "Partita IVA",
+            "address": "Indirizzo",
+            "postalCode": "CAP",
+            "city": "Città",
+            "country": "Paese",
+            "birthDate": "Data di nascita",
+            "notes": "Note interne"
+          },
+          "contactLabel": "Email o telefono",
+          "missingContact": "Associa una colonna all'email o al telefono."
+        },
+        "review": {
+          "title": "Ecco cosa farà l'importazione",
+          "description": "Non è ancora stato scritto nulla.",
+          "create": "Da creare",
+          "update": "Da aggiornare",
+          "skip": "Ignorate",
+          "error": "Errori",
+          "strategyTitle": "Quando il cliente esiste già",
+          "fillEmpty": "Completa i campi vuoti",
+          "fillEmptyDescription": "Consigliato. Ciò che hai già inserito non viene mai modificato.",
+          "overwrite": "Sostituisci con il file",
+          "overwriteDescription": "Prevalgono i valori del file. Una colonna assente dal file non cancella nulla.",
+          "skipExisting": "Non toccarlo",
+          "skipExistingDescription": "Vengono creati solo i nuovi clienti.",
+          "row": "Riga {index}",
+          "sampleNote": "Anteprima delle prime {count} righe di questa categoria.",
+          "emptyTab": "Nessuna riga in questa categoria.",
+          "fix": "Correggi",
+          "saveFix": "Salva",
+          "cancelFix": "Annulla",
+          "dateOrder": "Date lette nel formato {format}.",
+          "dmy": "giorno/mese/anno",
+          "mdy": "mese/giorno/anno",
+          "start": "{count, plural, =0 {Niente da importare} one {Importa # cliente} other {Importa # clienti}}",
+          "reasons": {
+            "emailRequired": "Email mancante",
+            "emailInvalid": "Email non valida",
+            "nameRequired": "Nome o cognome mancante",
+            "duplicateInFile": "Già presente più in alto nel file",
+            "alreadyExists": "Cliente già esistente",
+            "planLimit": "Oltre il limite del tuo piano",
+            "nothingToUpdate": "Niente da completare",
+            "writeFailed": "Scrittura non riuscita",
+            "contactRequired": "Nessuna email o telefono utilizzabile"
+          },
+          "warnings": {
+            "phoneInvalid": "telefono illeggibile, ignorato",
+            "countryUnknown": "paese non riconosciuto, ignorato",
+            "birthDateInvalid": "data di nascita illeggibile, ignorata",
+            "customFieldInvalid": "valore di un campo personalizzato non valido, ignorato"
+          }
+        },
+        "run": {
+          "running": "Importazione in corso…",
+          "runningHint": "Puoi lasciare questa pagina: l'importazione riprenderà da dove si era fermata.",
+          "progress": "{done} / {total} righe",
+          "doneTitle": "Importazione completata",
+          "doneDescription": "Puoi annullarla dalla pagina Importazione.",
+          "created": "Creati",
+          "updated": "Aggiornati",
+          "skipped": "Ignorati",
+          "errors": "Errori",
+          "viewCustomers": "Vedi i clienti importati",
+          "downloadErrors": "Scarica gli errori",
+          "another": "Importa un altro file"
+        },
+        "products": {
+          "sourceDescription": "Nome, prezzo, categoria, deposito, quantità. Importati come bozza.",
+          "draftNote": "I prodotti vengono creati come bozza: aggiungi le tue foto e verifica le tariffe prima di pubblicarli nel tuo negozio.",
+          "existingNote": "Un prodotto che esiste già mantiene le sue foto, il deposito e le categorie: l'importazione non li tocca mai.",
+          "missingName": "Associa una colonna al nome del prodotto.",
+          "missingPrice": "Associa una colonna al prezzo.",
+          "start": "{count, plural, =0 {Niente da importare} one {Importa # prodotto} other {Importa # prodotti}}",
+          "view": "Vedi i prodotti importati",
+          "viewHistory": "Vedi i prodotti",
+          "strategyTitle": "Quando il prodotto esiste già",
+          "fillEmptyDescription": "Consigliato. Viene aggiunta solo una descrizione mancante.",
+          "overwriteDescription": "Prevalgono il prezzo, la descrizione e la quantità del file.",
+          "skipExistingDescription": "Vengono creati solo i nuovi prodotti.",
+          "fields": {
+            "externalId": "Riferimento di origine",
+            "name": "Nome prodotto",
+            "description": "Descrizione",
+            "category": "Categoria",
+            "price": "Prezzo",
+            "pricingMode": "Periodo (ora, giorno, settimana)",
+            "deposit": "Deposito",
+            "quantity": "Quantità"
+          },
+          "reasons": {
+            "productNameRequired": "Nome del prodotto mancante",
+            "priceRequired": "Prezzo mancante",
+            "priceInvalid": "Prezzo illeggibile",
+            "productAlreadyExists": "Prodotto già esistente"
+          },
+          "warnings": {
+            "depositInvalid": "deposito illeggibile, impostato a 0",
+            "quantityInvalid": "quantità illeggibile, impostata a 1",
+            "pricingModeUnknown": "periodo non riconosciuto, tariffa al giorno"
+          }
+        }
       }
     },
     "commandPalette": {
@@ -5984,7 +6756,11 @@
       "settingsReviewBooster": "Booster recensioni",
       "settingsTaxes": "Tasse",
       "productsEdit": "Modifica",
-      "reservationsEdit": "Modifica"
+      "reservationsEdit": "Modifica",
+      "settingsCustomerFields": "Scheda cliente",
+      "finances": "Finanze",
+      "settingsImport": "Importazione",
+      "settingsImportNew": "Nuova importazione"
     },
     "notificationsCenter": {
       "title": "Notifiche",
@@ -6072,6 +6848,22 @@
         "reservation-creation-simplified": {
           "title": "Una prenotazione, una sola pagina",
           "description": "Niente più tappe da incatenare: cliente, periodo, prodotti e consegna stanno su una pagina, con il riepilogo sempre accanto. E tutto ciò che costringeva a riaprire la prenotazione — uno sconto, un prezzo trattato, la cauzione, un cliente di passaggio — si sistema sul posto."
+        },
+        "finances": {
+          "title": "Finanze: la tua cassa, i saldi da incassare e i depositi",
+          "description": "Una nuova schermata per sapere quanto hai incassato e con quale metodo di pagamento, chi ti deve ancora dei soldi e quali depositi trattieni. Con un'esportazione per il commercialista e un riepilogo di cassa da stampare."
+        },
+        "optional-password": {
+          "title": "Una password, se la vuoi",
+          "description": "Aggiungi una password al tuo account per accedere senza aspettare il codice ricevuto via email. Il codice resta sempre disponibile."
+        },
+        "customer-custom-fields": {
+          "title": "Schede cliente su misura per te",
+          "description": "Aggiungi i tuoi campi o parti da un modello per paese e per attività: patente, documento d'identità, misure, CPF…"
+        },
+        "customer-import": {
+          "title": "Importa i tuoi clienti",
+          "description": "Da un CSV o con un semplice copia-incolla. Louez riconosce le tue colonne, ti mostra il risultato prima di scrivere, e ogni importazione si può annullare."
         }
       }
     },
@@ -6195,6 +6987,205 @@
       "sourceHint": "Sfoglia il codice sorgente",
       "star": "Lascia una stella",
       "later": "Più tardi"
+    },
+    "finances": {
+      "title": "Finanze",
+      "description": "Tieni sotto controllo gli incassi, i saldi da incassare e i depositi.",
+      "loadError": "Impossibile caricare questi dati. Riprova tra un istante.",
+      "period": {
+        "label": "Periodo",
+        "today": "Oggi",
+        "yesterday": "Ieri",
+        "7d": "Ultimi 7 giorni",
+        "month": "Questo mese",
+        "lastMonth": "Mese scorso",
+        "custom": "Personalizzato"
+      },
+      "export": {
+        "label": "Esporta",
+        "csv": "Esporta il periodo in CSV",
+        "csvHint": "Un file per il commercialista",
+        "print": "Stampa il riepilogo",
+        "printHint": "Il foglio di chiusura cassa",
+        "preparing": "Preparazione del riepilogo…",
+        "csvError": "Impossibile generare l'esportazione. Riprova tra un istante.",
+        "printError": "Impossibile preparare il riepilogo. Riprova tra un istante."
+      },
+      "stats": {
+        "moneyIn": "Incassato",
+        "moneyOut": "Rimborsato e restituito",
+        "moneyOutHint": "Rimborsi e depositi restituiti",
+        "net": "Saldo netto",
+        "netHint": "Incassato meno rimborsato",
+        "outstanding": "Da incassare",
+        "outstandingReservations": "{count, plural, =0 {Nessuna prenotazione} one {# prenotazione} other {# prenotazioni}}",
+        "movements": "{count, plural, =0 {Nessun movimento} one {# movimento} other {# movimenti}}",
+        "vsPrevious": "rispetto al periodo precedente"
+      },
+      "chart": {
+        "title": "Entrate e uscite",
+        "descriptionDay": "Giorno per giorno, nel periodo scelto",
+        "descriptionMonth": "Mese per mese, nel periodo scelto",
+        "moneyIn": "Entrate",
+        "moneyOut": "Uscite",
+        "net": "Saldo",
+        "empty": "Nessun movimento in questo periodo."
+      },
+      "methods": {
+        "title": "Per metodo di pagamento",
+        "description": "Clicca su un metodo per filtrare il registro",
+        "empty": "Nessun incasso in questo periodo.",
+        "filterBy": "Filtra il registro per {method}",
+        "out": "di cui {amount} di uscite",
+        "stripe": "Online (Stripe)",
+        "cash": "Contanti",
+        "card": "Carta",
+        "transfer": "Bonifico",
+        "check": "Assegno",
+        "other": "Altro"
+      },
+      "tabs": {
+        "movements": "Movimenti",
+        "outstanding": "Da incassare",
+        "deposits": "Depositi"
+      },
+      "filters": {
+        "searchPlaceholder": "Cliente, n. di prenotazione…",
+        "clearSearch": "Cancella la ricerca",
+        "direction": {
+          "label": "Direzione",
+          "all": "Tutto",
+          "in": "Entrate",
+          "out": "Uscite"
+        },
+        "method": "Metodo di pagamento",
+        "allMethods": "Tutti i metodi",
+        "more": "Filtri",
+        "nature": "Tipo",
+        "allNatures": "Tutti i tipi",
+        "status": "Stato",
+        "allStatuses": "Incassati e in attesa",
+        "amount": "Importo",
+        "minAmount": "Minimo",
+        "maxAmount": "Massimo",
+        "apply": "Applica",
+        "reset": "Reimposta",
+        "clearAll": "Cancella tutto",
+        "remove": "Rimuovi il filtro {label}",
+        "activeMin": "Da {amount}",
+        "activeMax": "Fino a {amount}",
+        "activeSearch": "«{term}»",
+        "amountInvalid": "Inserisci un importo valido.",
+        "amountRangeError": "Il massimo deve essere maggiore o uguale al minimo."
+      },
+      "nature": {
+        "rental": "Noleggio",
+        "deposit": "Deposito incassato",
+        "depositHold": "Preautorizzazione del deposito",
+        "depositCapture": "Deposito addebitato",
+        "depositReturn": "Deposito restituito",
+        "refund": "Rimborso",
+        "damage": "Danni",
+        "adjustment": "Rettifica"
+      },
+      "status": {
+        "settled": "Incassato",
+        "pending": "In attesa",
+        "held": "Preautorizzazione attiva",
+        "failed": "Non riuscito",
+        "cancelled": "Annullato"
+      },
+      "table": {
+        "time": "Ora",
+        "customer": "Cliente",
+        "nature": "Tipo",
+        "method": "Metodo",
+        "amount": "Importo",
+        "dayNet": "Saldo del giorno",
+        "unknownCustomer": "Cliente sconosciuto",
+        "openDetails": "Vedi il dettaglio del movimento",
+        "emptyTitle": "Nessun movimento",
+        "emptyDescription": "Niente corrisponde a questo periodo e a questi filtri."
+      },
+      "detail": {
+        "title": "Dettaglio del movimento",
+        "date": "Data",
+        "method": "Metodo di pagamento",
+        "status": "Stato",
+        "customer": "Cliente",
+        "reservation": "Prenotazione",
+        "notes": "Note",
+        "notCounted": "Questo movimento non rientra nei totali finché non è incassato.",
+        "grossNotice": "Importo incassato in origine. Da allora sono stati rimborsati {refunded}: ne restano {net}.",
+        "original": "Pagamento di origine",
+        "refunds": "Rimborsi di questo pagamento",
+        "stripe": "Identificativi Stripe",
+        "stripePaymentIntent": "Pagamento",
+        "stripeCharge": "Addebito",
+        "stripeCheckoutSession": "Sessione di pagamento",
+        "stripeRefund": "Rimborso",
+        "copy": "Copia",
+        "openReservation": "Apri la prenotazione",
+        "invoice": "Fattura {number}",
+        "creditNote": "Nota di credito {number}"
+      },
+      "outstanding": {
+        "hint": "Il saldo dovuto non dipende dal periodo scelto.",
+        "summary": "{count, plural, one {# prenotazione} other {# prenotazioni}} · {amount} da incassare",
+        "customer": "Cliente",
+        "reservation": "Prenotazione",
+        "dates": "Date",
+        "total": "Totale",
+        "paid": "Pagato",
+        "remaining": "Saldo dovuto",
+        "age": "Anzianità",
+        "ageUpcoming": "In arrivo",
+        "ageToday": "Oggi",
+        "ageDays": "{count, plural, one {# giorno} other {# giorni}}",
+        "statusConfirmed": "Confermata",
+        "statusOngoing": "In corso",
+        "statusCompleted": "Completata",
+        "emptyTitle": "Niente da incassare",
+        "emptyDescription": "Tutte le prenotazioni confermate, in corso o completate sono saldate."
+      },
+      "deposits": {
+        "holdsTitle": "Preautorizzazioni attive",
+        "holdsDescription": "Importi bloccati sulla carta del cliente, non ancora incassati.",
+        "holdsEmpty": "Nessuna preautorizzazione in corso.",
+        "holdsTotal": "{amount} bloccati",
+        "expiresOn": "Scade il {date}",
+        "expiresIn": "Scade tra {count, plural, =0 {meno di un giorno} one {# giorno} other {# giorni}}",
+        "expired": "Scaduta",
+        "noExpiry": "Scadenza sconosciuta",
+        "toReturnTitle": "Depositi incassati da restituire",
+        "toReturnDescription": "Depositi incassati che non sono stati restituiti per intero.",
+        "toReturnEmpty": "Nessun deposito da restituire.",
+        "toReturnTotal": "{amount} da restituire",
+        "rentalOver": "Noleggio concluso",
+        "cashedReturned": "Incassato {cashed} · restituito {returned}",
+        "historyTitle": "Cronologia recente",
+        "historyDescription": "Gli ultimi movimenti dei depositi.",
+        "historyEmpty": "Ancora nessun movimento di deposito.",
+        "eventCashed": "Deposito incassato",
+        "eventCaptured": "Deposito addebitato",
+        "eventReturned": "Deposito restituito",
+        "eventReleased": "Preautorizzazione rilasciata"
+      },
+      "firstUse": {
+        "title": "I tuoi incassi appariranno qui",
+        "description": "Appena un pagamento viene registrato su una prenotazione, lo ritrovi qui, ordinato per giorno e per metodo di pagamento.",
+        "cta": "Crea una prenotazione",
+        "stripeHint": "Per incassare online, collega Stripe in",
+        "stripeLink": "Impostazioni → Pagamenti"
+      },
+      "print": {
+        "title": "Riepilogo di cassa",
+        "printedAt": "Stampato il {date}",
+        "byMethod": "Totali per metodo di pagamento",
+        "movements": "Movimenti",
+        "total": "Totale",
+        "truncated": "Elenco limitato ai primi {count} movimenti. Esporta il periodo in CSV per l'elenco completo."
+      }
     }
   },
   "storefront": {
@@ -7047,6 +8038,10 @@
         "errorTitle": "Errore",
         "errorDescription": "Si è verificato un errore. Riprova.",
         "generic": "Si è verificato un errore. Riprova."
+      },
+      "received": {
+        "title": "Pagamento ricevuto",
+        "description": "Grazie, il tuo pagamento è stato registrato. {store} è stato informato."
       }
     },
     "authorizeDeposit": {
@@ -8118,7 +9113,8 @@
     "color": "Formato colore non valido",
     "invalidFormat": "Formato non valido",
     "maxItems": "Massimo {max} elementi",
-    "duplicateValue": "Valore duplicato"
+    "duplicateValue": "Valore duplicato",
+    "contactRequired": "Inserisci almeno un'email o un numero di telefono."
   },
   "upgradeModal": {
     "upgradeNow": "Aggiorna ora",
@@ -8378,7 +9374,26 @@
     "requestCancellationStatusChanged": "Lo stato della richiesta è cambiato. Non può più essere annullata qui. Contatta il negozio.",
     "requestCancellationPaymentPending": "Un pagamento è ancora in corso per questa richiesta. Riprova dopo l’aggiornamento o contatta il negozio.",
     "requestCancellationPaymentChanged": "Le informazioni sul pagamento sono cambiate. Controllale prima di confermare nuovamente l’annullamento.",
-    "promoCodeProductsAlreadyDiscounted": "Questo codice non si applica ai prodotti già in promozione."
+    "promoCodeProductsAlreadyDiscounted": "Questo codice non si applica ai prodotti già in promozione.",
+    "customFieldsInvalid": "Alcuni campi aggiuntivi non sono validi.",
+    "optionsRequired": "Aggiungi almeno un'opzione.",
+    "customerFields": {
+      "tooManyFields": "Hai raggiunto il numero massimo di campi attivi. Archiviane uno per aggiungerne un altro.",
+      "tooManySearchable": "Si possono includere nella ricerca al massimo cinque campi.",
+      "tooManyListFields": "Si possono mostrare nell'elenco al massimo due campi."
+    },
+    "import": {
+      "runNotFound": "Importazione non trovata.",
+      "notEditable": "Questa importazione non può più essere modificata.",
+      "tooManyRows": "Il file supera le 5.000 righe. Dividilo in più file.",
+      "empty": "Il file non contiene righe da importare.",
+      "notRevertible": "Solo un'importazione completata può essere annullata.",
+      "unsupportedEntity": "Questo tipo di importazione non è ancora disponibile."
+    },
+    "contactRequired": "Il cliente deve mantenere almeno un'email o un numero di telefono.",
+    "customerUnreachable": "Impossibile contattare questo cliente: aggiungi un'email alla sua scheda, o un telefono se gli SMS sono attivi.",
+    "customerEmailRequired": "Questo messaggio si invia solo via email: aggiungi un'email alla scheda del cliente.",
+    "insuranceRequiresEmail": "La copertura danni/furto Tulip richiede l'email del cliente: aggiungila alla sua scheda o rimuovi la copertura."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

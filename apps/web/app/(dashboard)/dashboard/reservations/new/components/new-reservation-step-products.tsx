@@ -68,6 +68,8 @@ interface NewReservationStepProductsProps {
   tulipInsuranceAmount: number;
   isTulipInsuranceQuoteLoading: boolean;
   tulipInsuranceQuoteErrorMessage: string | null;
+  /** The selected customer has no e-mail, which Tulip needs to issue a policy. */
+  tulipInsuranceRequiresEmail: boolean;
   startDate: Date | undefined;
   endDate: Date | undefined;
   availabilityWarnings: AvailabilityWarning[];
@@ -110,6 +112,7 @@ export function NewReservationStepProducts({
   tulipInsuranceAmount,
   isTulipInsuranceQuoteLoading,
   tulipInsuranceQuoteErrorMessage,
+  tulipInsuranceRequiresEmail,
   startDate,
   endDate,
   availabilityWarnings,
@@ -143,7 +146,8 @@ export function NewReservationStepProducts({
     ? products.find((product) => product.id === confirmUnavailableProductId)
     : undefined;
   const isTulipInsuranceEnabledForReservation =
-    tulipInsuranceMode === "required" || (tulipInsuranceMode === "optional" && tulipInsuranceOptIn);
+    tulipInsuranceMode === "required" ||
+    (tulipInsuranceMode === "optional" && tulipInsuranceOptIn && !tulipInsuranceRequiresEmail);
   const visibleTulipInsuranceAmount = isTulipInsuranceEnabledForReservation
     ? tulipInsuranceAmount
     : 0;
@@ -1038,7 +1042,8 @@ export function NewReservationStepProducts({
                     <div className="mt-3 flex items-center space-x-2">
                       <Checkbox
                         id="manual-form-tulip-insurance-opt-in"
-                        checked={tulipInsuranceOptIn}
+                        checked={tulipInsuranceOptIn && !tulipInsuranceRequiresEmail}
+                        disabled={tulipInsuranceRequiresEmail}
                         onCheckedChange={(checked) => onTulipInsuranceOptInChange(checked === true)}
                       />
                       <label
@@ -1048,6 +1053,12 @@ export function NewReservationStepProducts({
                         {t("tulipInsurance.optionalLabel")}
                       </label>
                     </div>
+                  )}
+
+                  {tulipInsuranceRequiresEmail && (
+                    <p className="text-muted-foreground mt-2 text-xs">
+                      {t("tulipInsurance.requiresEmail")}
+                    </p>
                   )}
 
                   {isTulipInsuranceEnabledForReservation && (

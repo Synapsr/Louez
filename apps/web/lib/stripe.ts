@@ -156,7 +156,8 @@ interface CreateCheckoutSessionParams {
   stripeAccountId: string;
   reservationId: string;
   reservationNumber: string;
-  customerEmail: string;
+  /** Prefills Stripe Checkout; null for a customer entered without e-mail (Stripe asks for none). */
+  customerEmail: string | null;
   customerName?: string | null;
   lineItems: CheckoutLineItem[];
   depositAmount?: number; // In cents - stored in metadata for later authorization hold
@@ -256,7 +257,7 @@ export async function createCheckoutSession({
     mode: "payment",
     payment_method_types: ["card"],
     line_items: stripeLineItems,
-    customer_email: customerEmail,
+    ...(customerEmail ? { customer_email: customerEmail } : {}),
     client_reference_id: paymentReference.clientReferenceId,
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
@@ -321,7 +322,8 @@ interface CreatePaymentRequestSessionParams {
   stripeAccountId: string;
   reservationId: string;
   reservationNumber: string;
-  customerEmail: string;
+  /** Prefills Stripe Checkout; null for a customer entered without e-mail (Stripe asks for none). */
+  customerEmail: string | null;
   customerName?: string | null;
   amount: number; // In cents
   description: string;
@@ -382,7 +384,7 @@ export async function createPaymentRequestSession({
         quantity: 1,
       },
     ],
-    customer_email: customerEmail,
+    ...(customerEmail ? { customer_email: customerEmail } : {}),
     client_reference_id: paymentReference.clientReferenceId,
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,

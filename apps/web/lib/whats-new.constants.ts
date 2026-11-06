@@ -4,6 +4,8 @@ import type { Badge } from "@louez/ui";
 import {
   AccentSparklesIcon,
   CalendarPlusIcon,
+  DatabaseIcon,
+  KeyIcon,
   KeyboardIcon,
   LayersIcon,
   LayoutIcon,
@@ -14,6 +16,8 @@ import {
   ReservationsIcon,
   SearchIcon,
   TagIcon,
+  UsersIcon,
+  WalletIcon,
 } from "@louez/ui/icons";
 
 type BadgeVariant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
@@ -109,6 +113,42 @@ export const parseWhatsNewDate = (date: string) => {
  * `content/whats-new/<id>/<locale>.md`.
  */
 export const WHATS_NEW_ANNOUNCEMENTS: WhatsNewAnnouncement[] = [
+  {
+    id: "customer-custom-fields",
+    category: "feature",
+    date: "2026-09-18",
+    titleKey: "announcements.customer-custom-fields.title",
+    descriptionKey: "announcements.customer-custom-fields.description",
+    href: "/dashboard/settings/customer-fields",
+    icon: UsersIcon,
+  },
+  {
+    id: "customer-import",
+    category: "feature",
+    date: "2026-09-18",
+    titleKey: "announcements.customer-import.title",
+    descriptionKey: "announcements.customer-import.description",
+    href: "/dashboard/settings/import",
+    icon: DatabaseIcon,
+  },
+  {
+    id: "optional-password",
+    category: "feature",
+    date: "2026-09-18",
+    titleKey: "announcements.optional-password.title",
+    descriptionKey: "announcements.optional-password.description",
+    href: "/dashboard/account",
+    icon: KeyIcon,
+  },
+  {
+    id: "finances",
+    category: "feature",
+    date: "2026-09-18",
+    titleKey: "announcements.finances.title",
+    descriptionKey: "announcements.finances.description",
+    href: "/dashboard/finances",
+    icon: WalletIcon,
+  },
   {
     id: "storefront-redesign",
     category: "feature",

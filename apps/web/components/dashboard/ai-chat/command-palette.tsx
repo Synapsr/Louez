@@ -312,7 +312,7 @@ export const DashboardCommandPalette = ({
           (customer): CommandAction => ({
             value: `customer-${customer.id}`,
             label: customer.name,
-            description: customer.email,
+            description: customer.email ?? undefined,
             keywords: "",
             icon: UsersIcon,
             kind: "navigate",

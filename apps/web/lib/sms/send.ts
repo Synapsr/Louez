@@ -42,7 +42,7 @@ const SMS_TEMPLATES: Record<EmailLocale, {
     request_received: ({ storeName, number }) =>
       `${storeName}\nDemande #${number} reçue. Confirmation sous 24h.`,
     request_accepted: ({ storeName, number }) =>
-      `${storeName}\nDemande #${number} acceptée! Consultez vos emails.`,
+      `${storeName}\nDemande #${number} acceptée, votre réservation est confirmée.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nDemande #${number} non disponible. Contactez-nous.`,
     instant_access: ({ storeName, number, url }) =>
@@ -62,7 +62,7 @@ const SMS_TEMPLATES: Record<EmailLocale, {
     request_received: ({ storeName, number }) =>
       `${storeName}\nRequest #${number} received. Confirmation within 24h.`,
     request_accepted: ({ storeName, number }) =>
-      `${storeName}\nRequest #${number} accepted! Check your email.`,
+      `${storeName}\nRequest #${number} accepted, your booking is confirmed.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nRequest #${number} unavailable. Contact us.`,
     instant_access: ({ storeName, number, url }) =>
@@ -82,7 +82,7 @@ const SMS_TEMPLATES: Record<EmailLocale, {
     request_received: ({ storeName, number }) =>
       `${storeName}\nAnfrage #${number} erhalten. Bestaetigung in 24h.`,
     request_accepted: ({ storeName, number }) =>
-      `${storeName}\nAnfrage #${number} akzeptiert! E-Mail pruefen.`,
+      `${storeName}\nAnfrage #${number} angenommen, Ihre Buchung ist bestaetigt.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nAnfrage #${number} nicht verfuegbar. Kontaktieren Sie uns.`,
     instant_access: ({ storeName, number, url }) =>
@@ -102,7 +102,7 @@ const SMS_TEMPLATES: Record<EmailLocale, {
     request_received: ({ storeName, number }) =>
       `${storeName}\nSolicitud #${number} recibida. Confirmacion en 24h.`,
     request_accepted: ({ storeName, number }) =>
-      `${storeName}\nSolicitud #${number} aceptada! Revisa tu email.`,
+      `${storeName}\nSolicitud #${number} aceptada, su reserva esta confirmada.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nSolicitud #${number} no disponible. Contactenos.`,
     instant_access: ({ storeName, number, url }) =>
@@ -122,7 +122,7 @@ const SMS_TEMPLATES: Record<EmailLocale, {
     request_received: ({ storeName, number }) =>
       `${storeName}\nRichiesta #${number} ricevuta. Conferma entro 24h.`,
     request_accepted: ({ storeName, number }) =>
-      `${storeName}\nRichiesta #${number} accettata! Controlla email.`,
+      `${storeName}\nRichiesta #${number} accettata, la prenotazione è confermata.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nRichiesta #${number} non disponibile. Contattaci.`,
     instant_access: ({ storeName, number, url }) =>
@@ -142,7 +142,7 @@ const SMS_TEMPLATES: Record<EmailLocale, {
     request_received: ({ storeName, number }) =>
       `${storeName}\nAanvraag #${number} ontvangen. Bevestiging binnen 24u.`,
     request_accepted: ({ storeName, number }) =>
-      `${storeName}\nAanvraag #${number} geaccepteerd! Check je email.`,
+      `${storeName}\nAanvraag #${number} geaccepteerd, uw boeking is bevestigd.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nAanvraag #${number} niet beschikbaar. Neem contact op.`,
     instant_access: ({ storeName, number, url }) =>
@@ -162,7 +162,7 @@ const SMS_TEMPLATES: Record<EmailLocale, {
     request_received: ({ storeName, number }) =>
       `${storeName}\nZamowienie #${number} otrzymane. Potwierdzenie w 24h.`,
     request_accepted: ({ storeName, number }) =>
-      `${storeName}\nZamowienie #${number} zaakceptowane! Sprawdz email.`,
+      `${storeName}\nZamowienie #${number} zaakceptowane, rezerwacja potwierdzona.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nZamowienie #${number} niedostepne. Skontaktuj sie.`,
     instant_access: ({ storeName, number, url }) =>
@@ -182,7 +182,7 @@ const SMS_TEMPLATES: Record<EmailLocale, {
     request_received: ({ storeName, number }) =>
       `${storeName}\nPedido #${number} recebido. Confirmacao em 24h.`,
     request_accepted: ({ storeName, number }) =>
-      `${storeName}\nPedido #${number} aceito! Verifique seu email.`,
+      `${storeName}\nPedido #${number} aceite, a sua reserva esta confirmada.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nPedido #${number} indisponivel. Entre em contato.`,
     instant_access: ({ storeName, number, url }) =>

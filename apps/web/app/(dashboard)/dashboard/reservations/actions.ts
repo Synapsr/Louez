@@ -27,6 +27,7 @@ import {
   consumeReservationStock,
   db,
   getEffectiveProductQuantities,
+  isStripeRefundPaymentSql,
   loadConsumableReservedQuantities,
   reconcileReservationStock,
   reservationStatusConsumesStock,
@@ -73,6 +74,7 @@ import {
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
   hasCompleteAttributes,
+  hasCustomerEmail,
   matchesSelectedAttributes,
   resolveReservationBilling,
 } from "@louez/utils";
@@ -104,6 +106,7 @@ import {
 } from "@/lib/discord/platform-notifications";
 import { sendEmail } from "@/lib/email/client";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
+import { log } from "@/lib/evlog";
 import {
   buildManualReservationEmail,
   toManualEmailRenderContext,
@@ -148,11 +151,23 @@ import {
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
+import { logCustomerMessageSkipped } from "@/lib/reservations/log-customer-message";
+import {
+  getCustomerMessageChannel,
+  getManualTemplateMessage,
+  isManualMessageTemplate,
+} from "@/lib/reservations/util.customer-message-channel";
+import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
   isSmsConfigured,
   sendAccessLinkSms,
+  sendCustomSms,
   sendDepositAuthorizationRequestSms,
   sendPaymentRequestSms,
+  sendReminderPickupSms,
+  sendReminderReturnSms,
+  sendReservationConfirmationSms,
+  type SmsSendResult,
 } from "@/lib/sms";
 import { getCurrentStore } from "@/lib/store-context";
 import { getStorefrontUrl } from "@/lib/storefront-url";
@@ -658,13 +673,18 @@ export async function updateReservationStatus(
     }));
 
     try {
-      const contractUrl = await createReservationInstantAccessUrl({
-        storeId: store.id,
-        storeSlug: store.slug,
-        customerEmail: reservation.customer.email,
-        reservationId,
-        redirectPath: `/account/reservations/${reservationId}/contract`,
-      });
+      // The contract link logs into the online account, which only exists
+      // with an e-mail; the SMS version of this message carries no link.
+      const customerEmail = reservation.customer.email;
+      const contractUrl = customerEmail
+        ? await createReservationInstantAccessUrl({
+            storeId: store.id,
+            storeSlug: store.slug,
+            customerEmail,
+            reservationId,
+            redirectPath: `/account/reservations/${reservationId}/contract`,
+          })
+        : undefined;
       const termsUrl = store.cgv?.trim() ? getStorefrontUrl(store.slug, "/terms") : null;
 
       dispatchCustomerNotification("customer_request_accepted", {
@@ -965,7 +985,8 @@ export async function updateReservationNotes(reservationId: string, internalNote
 interface CreateReservationData {
   customerId?: string;
   newCustomer?: {
-    email: string;
+    /** Optional at the counter: a phone number is enough to reach the customer. */
+    email?: string;
     firstName: string;
     lastName: string;
     phone?: string;
@@ -1047,26 +1068,56 @@ export async function createManualReservation(data: CreateReservationData) {
     return { error: "errors.unauthorized" };
   }
 
+  const tulipMode = await getDashboardTulipInsuranceMode(store.id);
+  const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
+    mode: tulipMode,
+    requested: data.tulipInsuranceOptIn,
+    defaultOptional: true,
+  });
+  // Tulip binds the policy to the renter's e-mail: without one, a reservation
+  // with insured products is refused before anything is written.
+  const isInsuranceBlocked = async (email: string | null | undefined) =>
+    tulipInsuranceOptIn &&
+    !email?.trim() &&
+    (
+      await getTulipCoverageSummary(
+        data.items.map(({ productId, quantity }) => ({ productId, quantity })),
+      )
+    ).insuredProductCount > 0;
+
   let customerId = data.customerId;
 
   // Create new customer if needed
   if (!customerId && data.newCustomer) {
-    // Check if customer exists
-    const existingCustomer = await db.query.customers.findFirst({
-      where: and(eq(customers.storeId, store.id), eq(customers.email, data.newCustomer.email)),
-    });
+    const newCustomerEmail = data.newCustomer.email;
+    // The e-mail identifies a customer; without one, the team creates a new record.
+    const existingCustomer = newCustomerEmail
+      ? await db.query.customers.findFirst({
+          where: and(eq(customers.storeId, store.id), eq(customers.email, newCustomerEmail)),
+        })
+      : undefined;
 
     if (existingCustomer) {
       customerId = existingCustomer.id;
     } else {
+      if (!newCustomerEmail && !data.newCustomer.phone?.trim()) {
+        return { error: "errors.contactRequired" };
+      }
+      if (await isInsuranceBlocked(newCustomerEmail)) {
+        return { error: "errors.insuranceRequiresEmail" };
+      }
+      if (data.sendAsQuote && !newCustomerEmail) {
+        return { error: "errors.customerEmailRequired" };
+      }
       const newCustomerId = nanoid();
       await db.insert(customers).values({
         id: newCustomerId,
         storeId: store.id,
-        email: data.newCustomer.email,
+        email: newCustomerEmail ?? null,
         firstName: data.newCustomer.firstName,
         lastName: data.newCustomer.lastName,
         phone: data.newCustomer.phone || null,
+        createdVia: "dashboard",
       });
       customerId = newCustomerId;
     }
@@ -1084,12 +1135,13 @@ export async function createManualReservation(data: CreateReservationData) {
     return { error: "errors.customerNotFound" };
   }
 
-  const tulipMode = await getDashboardTulipInsuranceMode(store.id);
-  const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
-    mode: tulipMode,
-    requested: data.tulipInsuranceOptIn,
-    defaultOptional: true,
-  });
+  if (await isInsuranceBlocked(customer.email)) {
+    return { error: "errors.insuranceRequiresEmail" };
+  }
+  // A quote is accepted online, from the account an e-mail opens.
+  if (data.sendAsQuote && !hasCustomerEmail(customer)) {
+    return { error: "errors.customerEmailRequired" };
+  }
 
   // Calculate totals
   let subtotalAmount = 0;
@@ -1935,6 +1987,12 @@ export async function createManualReservation(data: CreateReservationData) {
         : []),
     ];
 
+    const confirmationChannel = getCustomerMessageChannel(
+      "customer_reservation_confirmed",
+      customer,
+      { smsConfigured: isSmsConfigured() },
+    );
+
     if (data.sendAsQuote) {
       // Generate authenticated access token for the quote URL
       const token = nanoid(64);
@@ -1970,7 +2028,7 @@ export async function createManualReservation(data: CreateReservationData) {
       }).catch((error) => {
         console.error("Failed to send quote email:", error);
       });
-    } else {
+    } else if (confirmationChannel === "email" && hasCustomerEmail(customer)) {
       // Send confirmation email
       const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
       sendReservationConfirmationEmail({
@@ -1991,6 +2049,39 @@ export async function createManualReservation(data: CreateReservationData) {
         locale: getLocaleFromCountry(store.settings?.country),
       }).catch((error) => {
         console.error("Failed to send reservation confirmation email:", error);
+      });
+    } else if (confirmationChannel === "sms") {
+      sendReservationConfirmationSms({
+        store: storeData,
+        customer: customerData,
+        reservation: {
+          id: reservationId,
+          number: reservationNumber,
+          startDate: data.startDate,
+          endDate: data.endDate,
+        },
+      })
+        .then((result) => {
+          if (!result.success) {
+            log.warn({
+              customerMessage: {
+                event: "sms_failed",
+                message: "customer_reservation_confirmed",
+                reservationId,
+                error: result.error,
+              },
+            });
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to send reservation confirmation SMS:", error);
+        });
+    } else {
+      logCustomerMessageSkipped({
+        message: "customer_reservation_confirmed",
+        storeId: store.id,
+        reservationId,
+        customerId: customer.id,
       });
     }
   }
@@ -2134,8 +2225,8 @@ type UpdateReservationResult = {
     params?: Record<string, string | number>;
   }>;
   emailNotification?:
-    | { status: "sent"; to: string }
-    | { status: "failed"; error: string; to: string };
+    | { status: "sent"; to: string | null }
+    | { status: "failed"; error: string; to: string | null };
 } & Record<string, unknown>;
 
 type ReservationItemInsertValues = typeof reservationItems.$inferInsert;
@@ -2231,7 +2322,7 @@ type ReservationTulipQuotePreviewCustomer = {
   companyName?: string | null;
   firstName: string;
   lastName: string;
-  email: string;
+  email: string | null;
   phone?: string | null;
   address?: string | null;
   city?: string | null;
@@ -2242,7 +2333,7 @@ type ReservationTulipQuotePreviewCustomer = {
 interface PreviewManualReservationTulipQuoteData extends PreviewReservationTulipQuoteData {
   customerId?: string;
   newCustomer?: {
-    email: string;
+    email?: string;
     firstName: string;
     lastName: string;
     phone?: string;
@@ -2311,12 +2402,29 @@ async function resolveReservationTulipQuotePreview(params: {
     });
   }
 
+  // Tulip binds the policy to the renter's e-mail: say so up front rather
+  // than failing when the reservation is saved.
+  const customerEmail = params.customer.email;
+  if (!customerEmail) {
+    const coverageSummary = await getTulipCoverageSummary(quoteItems);
+    return createEmptyReservationTulipQuotePreview(params.mode, {
+      requestedOptIn,
+      ...(coverageSummary.insuredProductCount > 0 && {
+        quoteUnavailable: true,
+        quoteError: "errors.insuranceRequiresEmail",
+      }),
+      insuredProductCount: coverageSummary.insuredProductCount,
+      uninsuredProductCount: coverageSummary.uninsuredProductCount,
+      insuredProductIds: coverageSummary.insuredProductIds,
+    });
+  }
+
   const customer = {
     customerType: params.customer.customerType,
     companyName: params.customer.companyName,
     firstName: params.customer.firstName,
     lastName: params.customer.lastName,
-    email: params.customer.email,
+    email: customerEmail,
     phone: params.customer.phone || "",
     address: params.customer.address || "",
     city: params.customer.city || "",
@@ -2406,7 +2514,7 @@ export async function previewManualReservationTulipQuote(
       companyName: null,
       firstName: data.newCustomer.firstName,
       lastName: data.newCustomer.lastName,
-      email: data.newCustomer.email,
+      email: data.newCustomer.email ?? null,
       phone: data.newCustomer.phone || "",
       address: "",
       city: "",
@@ -2965,8 +3073,12 @@ export async function updateReservation(
   }
 
   if (nextTulipInsuranceOptIn && insuranceQuoteItems.length > 0) {
-    if (!reservation.customer) {
-      tulipWarnings.push({ key: "errors.customerNotFound" });
+    const customerEmail = reservation.customer?.email;
+    if (!reservation.customer || !customerEmail) {
+      // Tulip binds the policy to the renter's e-mail: nothing to re-quote without one.
+      tulipWarnings.push({
+        key: reservation.customer ? "errors.insuranceRequiresEmail" : "errors.customerNotFound",
+      });
       if (previousTulipInsuranceAmount) {
         nextTulipInsuranceAmount = previousTulipInsuranceAmount;
       }
@@ -2978,7 +3090,7 @@ export async function updateReservation(
             ...resolveReservationBilling(reservation, reservation.customer),
             firstName: reservation.customer.firstName,
             lastName: reservation.customer.lastName,
-            email: reservation.customer.email,
+            email: customerEmail,
             phone: reservation.customer.phone || "",
             address: reservation.customer.address || "",
             city: reservation.customer.city || "",
@@ -3667,8 +3779,8 @@ export async function updateReservation(
   ];
 
   let emailNotification:
-    | { status: "sent"; to: string }
-    | { status: "failed"; error: string; to: string }
+    | { status: "sent"; to: string | null }
+    | { status: "failed"; error: string; to: string | null }
     | undefined;
 
   if (data.notifyCustomerByEmail) {
@@ -3787,15 +3899,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   }
 
   if (data.amount > 0 && data.type === "rental") {
-    const paymentsById = new Map(reservation.payments.map((payment) => [payment.id, payment]));
-    const rentalPaid = reservation.payments.reduce((total, payment) => {
-      if (payment.status !== "completed") return total;
-      if (payment.refundOfPaymentId) {
-        const originalPayment = paymentsById.get(payment.refundOfPaymentId);
-        return originalPayment?.type === "rental" ? total - Number(payment.amount) : total;
-      }
-      return payment.type === "rental" ? total + Number(payment.amount) : total;
-    }, 0);
+    const rentalPaid = getRentalPaid(reservation.payments);
     const rentalRemaining = roundMoney(getReservationRentalAmount(reservation) - rentalPaid);
 
     if (data.amount > rentalRemaining) {
@@ -3931,7 +4035,13 @@ export async function refundManualPayment(reservationId: string, data: RefundMan
         })
         .from(payments)
         .where(
-          and(eq(payments.refundOfPaymentId, originalPayment.id), eq(payments.status, "completed")),
+          and(
+            eq(payments.refundOfPaymentId, originalPayment.id),
+            eq(payments.status, "completed"),
+            // A Stripe refund linked to its charge already came off that
+            // charge's amount: counting it here would subtract it twice.
+            not(isStripeRefundPaymentSql()),
+          ),
         );
 
       const remainingAmount = roundMoney(
@@ -4719,6 +4829,12 @@ export async function sendReservationModificationEmail(
     return { error: "errors.reservationNotFound" };
   }
 
+  // The notice has no SMS version.
+  const customerEmail = reservation.customer.email;
+  if (!customerEmail) {
+    return { error: "errors.customerEmailRequired" };
+  }
+
   const storeData = {
     id: store.id,
     name: store.name,
@@ -4735,7 +4851,7 @@ export async function sendReservationModificationEmail(
   const customerData = {
     firstName: reservation.customer.firstName,
     lastName: reservation.customer.lastName,
-    email: reservation.customer.email,
+    email: customerEmail,
   };
 
   const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
@@ -4809,21 +4925,97 @@ async function getManualEmailContext(reservationId: string) {
   return { store, reservation };
 }
 
-export async function sendReservationEmail(reservationId: string, data: SendReservationEmailData) {
-  if (!isEmailConfigured()) {
-    return { error: "errors.emailSendFailed" };
+type ManualEmailContext = Exclude<
+  Awaited<ReturnType<typeof getManualEmailContext>>,
+  { error: string }
+>;
+
+/**
+ * The SMS version of a manual message, for a customer without e-mail. The
+ * dialog only offers the templates that have one; an additional message
+ * does not fit in an SMS and is left out.
+ */
+async function sendManualMessageBySms(
+  { store, reservation }: ManualEmailContext,
+  data: SendReservationEmailData,
+): Promise<{ success?: true; error?: string }> {
+  const template = isManualMessageTemplate(data.templateId) ? data.templateId : null;
+  const channel = template
+    ? getCustomerMessageChannel(getManualTemplateMessage(template), reservation.customer, {
+        smsConfigured: isSmsConfigured(),
+      })
+    : null;
+  const phone = reservation.customer.phone;
+  if (!template || channel !== "sms" || !phone) {
+    return { error: "errors.customerUnreachable" };
   }
 
+  const smsStore = { id: store.id, name: store.name, settings: store.settings };
+  const smsCustomer = {
+    id: reservation.customer.id,
+    firstName: reservation.customer.firstName,
+    lastName: reservation.customer.lastName,
+    phone,
+  };
+  const customMessage = data.customMessage?.trim();
+
+  // Only the reminders and the custom message have an SMS version.
+  let result: SmsSendResult;
+  if (template === "reminder_pickup") {
+    result = await sendReminderPickupSms({ store: smsStore, customer: smsCustomer, reservation });
+  } else if (template === "reminder_return") {
+    result = await sendReminderReturnSms({ store: smsStore, customer: smsCustomer, reservation });
+  } else if (customMessage) {
+    result = await sendCustomSms({
+      store: smsStore,
+      customer: smsCustomer,
+      reservation,
+      message: customMessage,
+    });
+  } else {
+    return { error: "errors.invalidData" };
+  }
+
+  if (!result.success) {
+    return { error: result.limitReached ? "errors.smsLimitReached" : "errors.smsSendFailed" };
+  }
+
+  await logReservationActivity(reservation.id, "note_updated", {
+    templateId: template,
+    to: phone,
+    method: "sms",
+  });
+  revalidatePath(`/dashboard/reservations/${reservation.id}`);
+  await captureReservationActionSucceeded({
+    distinctId: store.userId,
+    storeId: store.id,
+    reservationId: reservation.id,
+    action: reservationAnalyticsActions.sendEmail,
+    properties: { template_id: template, channel: "sms" },
+  });
+  return { success: true };
+}
+
+export async function sendReservationEmail(reservationId: string, data: SendReservationEmailData) {
   const context = await getManualEmailContext(reservationId);
   if ("error" in context) {
     return { error: context.error };
   }
   const { store, reservation } = context;
 
+  const customerEmail = reservation.customer.email;
+  if (!customerEmail) {
+    return sendManualMessageBySms(context, data);
+  }
+
+  if (!isEmailConfigured()) {
+    return { error: "errors.emailSendFailed" };
+  }
+
   try {
     const email = await buildManualReservationEmail({
       store,
-      reservation,
+      reservation: { ...reservation, customer: { ...reservation.customer, email: customerEmail } },
       payload: data,
       mode: "send",
     });
@@ -4900,9 +5092,16 @@ export async function getManualEmailRenderContext(
   if ("error" in context) {
     return { error: context.error ?? "errors.reservationNotFound" };
   }
+  const customerEmail = context.reservation.customer.email;
+  if (!customerEmail) {
+    return { error: "errors.customerEmailRequired" };
+  }
 
   try {
-    return await toManualEmailRenderContext(context.store, context.reservation);
+    return await toManualEmailRenderContext(context.store, {
+      ...context.reservation,
+      customer: { ...context.reservation.customer, email: customerEmail },
+    });
   } catch (error) {
     console.error("Failed to build the email render context:", error);
     return { error: "errors.emailPreviewFailed" };
@@ -4927,6 +5126,11 @@ export async function generateAccessUrl(reservationId: string) {
 
   if (!reservation) {
     return { error: "errors.reservationNotFound" as const };
+  }
+
+  // The link opens the online account, which only a customer with an e-mail has.
+  if (!reservation.customer.email) {
+    return { error: "errors.customerEmailRequired" as const };
   }
 
   const token = nanoid(64);
@@ -4972,6 +5176,12 @@ export async function sendAccessLink(reservationId: string, data?: { customMessa
     return { error: "errors.reservationNotFound" };
   }
 
+  // The link opens the online account, which only a customer with an e-mail has.
+  const customerEmail = reservation.customer.email;
+  if (!customerEmail) {
+    return { error: "errors.customerEmailRequired" };
+  }
+
   try {
     // Generate secure 64-char token
     const token = nanoid(64);
@@ -4980,7 +5190,7 @@ export async function sendAccessLink(reservationId: string, data?: { customMessa
     // Store token in verificationCodes table
     await db.insert(verificationCodes).values({
       id: nanoid(),
-      email: reservation.customer.email,
+      email: customerEmail,
       storeId: store.id,
       code: "", // Not used for instant_access
       type: "instant_access",
@@ -4997,7 +5207,7 @@ export async function sendAccessLink(reservationId: string, data?: { customMessa
     // never drift apart; the token above stays here, with its activity log.
     const email = await buildManualReservationEmail({
       store,
-      reservation,
+      reservation: { ...reservation, customer: { ...reservation.customer, email: customerEmail } },
       payload: { templateId: "access_link", customMessage: data?.customMessage },
       mode: "send",
       accessUrl,
@@ -5097,6 +5307,11 @@ export async function sendAccessLinkBySms(reservationId: string) {
 
   if (!reservation.customer.phone) {
     return { error: "errors.customerNoPhone" };
+  }
+
+  // The link opens the online account, which only a customer with an e-mail has.
+  if (!reservation.customer.email) {
+    return { error: "errors.customerEmailRequired" };
   }
 
   try {
@@ -5214,8 +5429,28 @@ export async function requestPayment(
       return { error: "errors.noChannelSelected" };
     }
 
+    // An e-mail request to a customer without e-mail goes out as its SMS version.
+    const customerEmail = reservation.customer.email;
+    const smsFallback =
+      data.channels.email &&
+      !customerEmail &&
+      getCustomerMessageChannel(
+        data.type === "deposit"
+          ? "customer_deposit_authorization_requested"
+          : "customer_payment_requested",
+        reservation.customer,
+        { smsConfigured: isSmsConfigured() },
+      ) === "sms";
+    const channels = {
+      email: data.channels.email && Boolean(customerEmail),
+      sms: data.channels.sms || smsFallback,
+    };
+    if (!channels.email && !channels.sms) {
+      return { error: "errors.customerUnreachable" };
+    }
+
     // Validate SMS - customer must have phone number
-    if (data.channels.sms && !reservation.customer.phone) {
+    if (channels.sms && !reservation.customer.phone) {
       return { error: "errors.customerNoPhone" };
     }
 
@@ -5303,11 +5538,11 @@ export async function requestPayment(
     // Send notifications
     const notificationResults: { email?: boolean; sms?: boolean } = {};
 
-    if (data.channels.email) {
+    if (channels.email && customerEmail) {
       try {
         if (data.type === "deposit") {
           await sendDepositAuthorizationRequestEmail({
-            to: reservation.customer.email,
+            to: customerEmail,
             store: {
               id: store.id,
               name: store.name,
@@ -5321,7 +5556,7 @@ export async function requestPayment(
             customer: {
               firstName: reservation.customer.firstName,
               lastName: reservation.customer.lastName,
-              email: reservation.customer.email,
+              email: customerEmail,
             },
             reservation: {
               id: reservationId,
@@ -5334,7 +5569,7 @@ export async function requestPayment(
           });
         } else {
           await sendPaymentRequestEmail({
-            to: reservation.customer.email,
+            to: customerEmail,
             store: {
               id: store.id,
               name: store.name,
@@ -5348,7 +5583,7 @@ export async function requestPayment(
             customer: {
               firstName: reservation.customer.firstName,
               lastName: reservation.customer.lastName,
-              email: reservation.customer.email,
+              email: customerEmail,
             },
             reservation: {
               id: reservationId,
@@ -5368,52 +5603,49 @@ export async function requestPayment(
       }
     }
 
-    if (data.channels.sms && reservation.customer.phone) {
+    if (channels.sms && reservation.customer.phone) {
+      const smsStore = { id: store.id, name: store.name, settings: store.settings };
+      const smsCustomer = {
+        id: reservation.customer.id,
+        firstName: reservation.customer.firstName,
+        lastName: reservation.customer.lastName,
+        phone: reservation.customer.phone,
+      };
+      const smsReservation = { id: reservationId, number: reservation.number };
       try {
-        if (data.type === "deposit") {
-          await sendDepositAuthorizationRequestSms({
-            store: {
-              id: store.id,
-              name: store.name,
-              settings: store.settings,
+        const smsResult =
+          data.type === "deposit"
+            ? await sendDepositAuthorizationRequestSms({
+                store: smsStore,
+                customer: smsCustomer,
+                reservation: smsReservation,
+                depositAmount: amount,
+                authorizationUrl: paymentUrl,
+                currency,
+              })
+            : await sendPaymentRequestSms({
+                store: smsStore,
+                customer: smsCustomer,
+                reservation: smsReservation,
+                amount,
+                paymentUrl,
+                currency,
+              });
+        notificationResults.sms = smsResult.success;
+        if (!smsResult.success) {
+          log.warn({
+            customerMessage: {
+              event: "sms_failed",
+              message:
+                data.type === "deposit"
+                  ? "customer_deposit_authorization_requested"
+                  : "customer_payment_requested",
+              reservationId,
+              smsFallback,
+              error: smsResult.error,
             },
-            customer: {
-              id: reservation.customer.id,
-              firstName: reservation.customer.firstName,
-              lastName: reservation.customer.lastName,
-              phone: reservation.customer.phone,
-            },
-            reservation: {
-              id: reservationId,
-              number: reservation.number,
-            },
-            depositAmount: amount,
-            authorizationUrl: paymentUrl,
-            currency,
-          });
-        } else {
-          await sendPaymentRequestSms({
-            store: {
-              id: store.id,
-              name: store.name,
-              settings: store.settings,
-            },
-            customer: {
-              id: reservation.customer.id,
-              firstName: reservation.customer.firstName,
-              lastName: reservation.customer.lastName,
-              phone: reservation.customer.phone,
-            },
-            reservation: {
-              id: reservationId,
-              number: reservation.number,
-            },
-            amount,
-            paymentUrl,
-            currency,
           });
         }
-        notificationResults.sms = true;
       } catch (error) {
         console.error("Failed to send payment request SMS:", error);
         notificationResults.sms = false;
@@ -5425,7 +5657,7 @@ export async function requestPayment(
       type: data.type,
       amount,
       currency,
-      channels: data.channels,
+      channels,
       notificationResults,
       paymentUrl,
       isPaymentRequest: true,
@@ -5440,8 +5672,8 @@ export async function requestPayment(
       action: reservationAnalyticsActions.requestPayment,
       properties: {
         payment_type: data.type,
-        channel_email: data.channels.email,
-        channel_sms: data.channels.sms,
+        channel_email: channels.email,
+        channel_sms: channels.sms,
         email_sent: notificationResults.email ?? null,
         sms_sent: notificationResults.sms ?? null,
       },

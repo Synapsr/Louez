@@ -80,7 +80,8 @@ type StoreWithEmailDateSettings = Store & {
 interface Customer {
   firstName: string
   lastName: string
-  email: string
+  /** Display only: every send takes its recipient in `to`. */
+  email: string | null
 }
 
 interface ReservationItem {
@@ -778,7 +779,7 @@ export async function sendReminderPickupAdminEmail({
 }: {
   to: string
   store: Store
-  customer: { firstName: string; lastName: string; email: string; phone?: string | null }
+  customer: { firstName: string; lastName: string; email: string | null; phone?: string | null }
   reservation: {
     id: string
     number: string
@@ -851,7 +852,7 @@ export async function sendReminderReturnAdminEmail({
 }: {
   to: string
   store: Store
-  customer: { firstName: string; lastName: string; email: string; phone?: string | null }
+  customer: { firstName: string; lastName: string; email: string | null; phone?: string | null }
   reservation: {
     id: string
     number: string

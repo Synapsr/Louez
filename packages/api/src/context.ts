@@ -48,6 +48,8 @@ export type BaseStoreData = {
   logoUrl: string | null;
   stripeAccountId: string | null;
   stripeChargesEnabled: boolean | null;
+  /** Timezone and currency: what store-local day bounds are computed from. */
+  settings: StoreSettings | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -119,6 +121,10 @@ export interface BaseContext {
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
   getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
+  /** Customers the store's plan still allows, null when unlimited. Plans live in the app. */
+  getRemainingCustomerQuota?: (storeId: string) => Promise<number | null>;
+  /** Products the store's plan still allows, null when unlimited. */
+  getRemainingProductQuota?: (storeId: string) => Promise<number | null>;
   getConnectedAccountPayoutPage?: (input: { accountId: string; cursor?: string }) => Promise<{
     items: Array<{
       id: string;
@@ -232,7 +238,7 @@ export interface BaseContext {
     previewManualTulipQuote?: (data: {
       customerId?: string;
       newCustomer?: {
-        email: string;
+        email?: string;
         firstName: string;
         lastName: string;
         phone?: string;
@@ -260,7 +266,7 @@ export interface BaseContext {
     createManualReservation?: (data: {
       customerId?: string;
       newCustomer?: {
-        email: string;
+        email?: string;
         firstName: string;
         lastName: string;
         phone?: string;

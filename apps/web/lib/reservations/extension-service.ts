@@ -190,7 +190,7 @@ export const startExtension = async (input: {
     {
       mode: "payment",
       payment_method_types: ["card"],
-      customer_email: reservation.customer.email,
+      ...(reservation.customer.email ? { customer_email: reservation.customer.email } : {}),
       expires_at: Math.floor(attempt.expiresMs / 1000),
       success_url: `${url}/extension-return?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: url,
@@ -419,15 +419,22 @@ export const finishExtensionEffects = async (
     },
     locale: getLocaleFromCountry(reservation.store.settings?.country),
   };
+  const customerEmail = reservation.customer.email;
   const deliveries = await Promise.allSettled([
-    sendReservationModifiedEmail({
-      ...email,
-      to: reservation.customer.email,
-      reservationUrl: getStorefrontUrl(
-        reservation.store.slug,
-        `/account/reservations/${reservationId}`,
-      ),
-    }),
+    // The notice has no SMS version: a customer without e-mail sees the new
+    // dates on the page they just paid from.
+    ...(customerEmail
+      ? [
+          sendReservationModifiedEmail({
+            ...email,
+            to: customerEmail,
+            reservationUrl: getStorefrontUrl(
+              reservation.store.slug,
+              `/account/reservations/${reservationId}`,
+            ),
+          }),
+        ]
+      : []),
     ...(reservation.store.email
       ? [
           sendReservationModifiedEmail({

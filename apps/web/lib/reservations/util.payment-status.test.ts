@@ -9,7 +9,18 @@ import {
   hasRentalPaymentInProgress,
   isRefundRow,
   isRentalPaid,
+  isStripeRefundRow,
 } from "./util.payment-status";
+
+/** A Stripe refund as the webhook records it: its own positive row carrying only the refund id. */
+const stripeRefund = (amount: string, type = "rental") => ({
+  type,
+  status: "completed",
+  amount,
+  stripeRefundId: "re_1",
+  stripePaymentIntentId: null,
+  stripeCheckoutSessionId: null,
+});
 
 describe("isRentalPaid", () => {
   test("only a completed rental payment counts", () => {
@@ -17,6 +28,44 @@ describe("isRentalPaid", () => {
     assert.equal(isRentalPaid([{ type: "deposit", status: "completed", amount: "10" }]), false);
     assert.equal(isRentalPaid([{ type: "rental", status: "pending", amount: "10" }]), false);
     assert.equal(isRentalPaid([]), false);
+  });
+
+  test("a refund row never makes a rental paid", () => {
+    // Fully refunded through Stripe: the charge is `refunded`, only the refund row is completed.
+    assert.equal(
+      isRentalPaid([
+        { type: "rental", status: "refunded", amount: "0", stripePaymentIntentId: "pi_1" },
+        stripeRefund("100"),
+      ]),
+      false,
+    );
+    assert.equal(
+      isRentalPaid([{ type: "rental", status: "completed", amount: "10", refundOfPaymentId: "a" }]),
+      false,
+    );
+  });
+});
+
+describe("isStripeRefundRow", () => {
+  test("needs the refund id and no id of the charge", () => {
+    assert.equal(isStripeRefundRow(stripeRefund("30")), true);
+    // Older webhooks stamped the refund id on the netted charge itself.
+    assert.equal(
+      isStripeRefundRow({
+        ...stripeRefund("70"),
+        stripePaymentIntentId: "pi_1",
+      }),
+      false,
+    );
+    assert.equal(
+      isStripeRefundRow({ ...stripeRefund("70"), stripeCheckoutSessionId: "cs_1" }),
+      false,
+    );
+    assert.equal(isStripeRefundRow({}), false);
+  });
+
+  test("stays off when the charge ids were not loaded, so a receipt is never dropped by mistake", () => {
+    assert.equal(isStripeRefundRow({ stripeRefundId: "re_1" }), false);
   });
 });
 
@@ -66,6 +115,36 @@ describe("getRentalPaid", () => {
       80.5,
     );
   });
+
+  test("a Stripe refund row is neither added nor subtracted: its charge is already net", () => {
+    assert.equal(
+      getRentalPaid([
+        {
+          id: "a",
+          type: "rental",
+          status: "completed",
+          amount: "70",
+          stripePaymentIntentId: "pi_1",
+        },
+        { id: "b", ...stripeRefund("30") },
+      ]),
+      70,
+    );
+    // Same once the refund row also points at its charge.
+    assert.equal(
+      getRentalPaid([
+        {
+          id: "a",
+          type: "rental",
+          status: "completed",
+          amount: "70",
+          stripePaymentIntentId: "pi_1",
+        },
+        { id: "b", ...stripeRefund("30"), refundOfPaymentId: "a" },
+      ]),
+      70,
+    );
+  });
 });
 
 describe("getDamageFees", () => {
@@ -98,5 +177,6 @@ describe("getCustomerPaymentRows", () => {
     );
     assert.equal(isRefundRow({ type: "deposit_return", status: "completed", amount: 1 }), true);
     assert.equal(isRefundRow({ type: "rental", status: "completed", amount: 1 }), false);
+    assert.equal(isRefundRow(stripeRefund("30")), true);
   });
 });

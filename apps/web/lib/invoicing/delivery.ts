@@ -9,6 +9,7 @@ import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { sendPaymentConfirmationEmail } from "@/lib/email/send";
 import { log } from "@/lib/evlog";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
+import { logCustomerMessageSkipped } from "@/lib/reservations/log-customer-message";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 
 const MAX_DOCUMENT_ATTACHMENTS_BYTES = 8 * 1024 * 1024;
@@ -54,7 +55,10 @@ export async function prepareInitialInvoiceEmailDelivery(
     },
   });
 
-  if (!initialInvoice) return { attachments: [] };
+  // The attachments ride on the confirmation e-mail: without an address
+  // there is nothing to attach them to (the invoice stays downloadable).
+  if (!initialInvoice?.reservation.customer.email) return { attachments: [] };
+  const customerEmail = initialInvoice.reservation.customer.email;
 
   const contract = await db.query.documents.findFirst({
     where: and(eq(documents.reservationId, reservationId), eq(documents.type, "contract")),
@@ -96,7 +100,7 @@ export async function prepareInitialInvoiceEmailDelivery(
     : await createReservationInstantAccessUrl({
         storeId: reservation.store.id,
         storeSlug: reservation.store.slug,
-        customerEmail: reservation.customer.email,
+        customerEmail,
         reservationId,
       });
 
@@ -132,7 +136,7 @@ export async function trySendInitialInvoicePaymentConfirmation(paymentId: string
           columns: { id: true, number: true },
           with: {
             customer: {
-              columns: { firstName: true, lastName: true, email: true },
+              columns: { id: true, firstName: true, lastName: true, email: true },
             },
             store: {
               columns: {
@@ -155,9 +159,20 @@ export async function trySendInitialInvoicePaymentConfirmation(paymentId: string
     if (!payment) return;
 
     const { reservation } = payment;
+    const customerEmail = reservation.customer.email;
+    // No SMS version: the invoice and contract it carries stay in the dashboard.
+    if (!customerEmail) {
+      logCustomerMessageSkipped({
+        message: "payment_confirmation",
+        storeId: reservation.store.id,
+        reservationId: reservation.id,
+        customerId: reservation.customer.id,
+      });
+      return;
+    }
     const delivery = await tryPrepareInitialInvoiceEmailDelivery(reservation.id);
     await sendPaymentConfirmationEmail({
-      to: reservation.customer.email,
+      to: customerEmail,
       store: reservation.store,
       customer: reservation.customer,
       reservation,

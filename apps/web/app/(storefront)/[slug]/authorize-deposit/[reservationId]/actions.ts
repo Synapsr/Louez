@@ -12,6 +12,7 @@ import {
   createReservationInstantAccessUrl,
 } from "@/lib/customer-auth/instant-access";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { getStorefrontUrl } from "@/lib/storefront-url";
 import { createDepositAuthorizationIntent, toStripeCents } from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
 
@@ -39,7 +40,7 @@ export type DepositAuthorizationData =
         theme: { primaryColor: string; mode: "light" | "dark" } | null;
       };
       reservation: { id: string; number: string; depositAmount: number };
-      customer: { firstName: string; email: string };
+      customer: { firstName: string; email: string | null };
       currency: string;
     }
   | { ok: false; error: DepositAuthorizationError };
@@ -216,15 +217,23 @@ export const confirmDepositAuthorization = async (
 
   const { store, reservation, currency, depositAmount } = context;
   const { paymentIntentId } = parsed.data;
-  const buildRedirectUrl = () =>
-    createReservationInstantAccessUrl({
-      storeId: store.id,
-      storeSlug: store.slug,
-      customerEmail: reservation.customer.email,
-      reservationId: reservation.id,
-      redirectPath: `/account/reservations/${reservation.id}?event=deposit_authorized`,
-      ttlMs: INSTANT_ACCESS_SHORT_TTL_MS,
-    });
+  // A customer without e-mail has no account to land in: back to this page,
+  // which then shows the deposit as authorised.
+  const customerEmail = reservation.customer.email;
+  const buildRedirectUrl = async () =>
+    customerEmail
+      ? createReservationInstantAccessUrl({
+          storeId: store.id,
+          storeSlug: store.slug,
+          customerEmail,
+          reservationId: reservation.id,
+          redirectPath: `/account/reservations/${reservation.id}?event=deposit_authorized`,
+          ttlMs: INSTANT_ACCESS_SHORT_TTL_MS,
+        })
+      : getStorefrontUrl(
+          store.slug,
+          `/authorize-deposit/${reservation.id}?token=${encodeURIComponent(parsed.data.token)}`,
+        );
 
   try {
     const existingHold = await db.query.payments.findFirst({

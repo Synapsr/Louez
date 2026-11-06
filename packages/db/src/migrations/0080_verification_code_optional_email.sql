@@ -1,0 +1,1 @@
+ALTER TABLE `verification_codes` MODIFY COLUMN `email` varchar(255);

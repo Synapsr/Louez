@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { isValidElement, type ReactNode } from "react";
 import * as nodeModule from "node:module";
 import fr from "@/messages/fr.json";
+import type { ContractCustomerFieldLine } from "./util.contract-customer-fields";
 
 const fixtureDirectory = mkdtempSync(join(tmpdir(), "louez-contract-test-"));
 const fixturePath = join(fixtureDirectory, "env.cjs");
@@ -39,7 +40,7 @@ const textOf = (node: ReactNode): string => {
   return "";
 };
 
-const renderText = async (automatic: boolean) => {
+const renderText = async (automatic: boolean, customFieldLines?: ContractCustomerFieldLine[]) => {
   const { ContractDocument } = await import("./contract");
   return textOf(
     ContractDocument({
@@ -69,6 +70,7 @@ const renderText = async (automatic: boolean) => {
           email: "test@example.invalid",
           phone: null,
           address: null,
+          customFieldLines,
         },
         items: [],
         payments: [],
@@ -92,4 +94,14 @@ test("existing customer signatures retain their original wording", async () => {
   const text = await renderText(false);
   assert.ok(text.includes(fr.contract.signature.customerText));
   assert.ok(!text.includes(fr.contract.signature.automaticText));
+});
+
+test("custom fields flagged for the contract are printed under the customer", async () => {
+  const text = await renderText(false, [
+    { id: "cpf", label: "CPF / CNPJ", value: "529.982.247-25" },
+    { id: "boat", label: "Permis bateau", value: null },
+  ]);
+  assert.ok(text.includes("CPF / CNPJ : 529.982.247-25"));
+  assert.ok(text.includes("Permis bateau"));
+  assert.ok(!text.includes("Permis bateau :"));
 });

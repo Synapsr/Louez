@@ -47,9 +47,10 @@ interface RequestPaymentModalProps {
   reservationNumber: string;
   customer: {
     firstName: string;
-    email: string;
+    email: string | null;
     phone?: string | null;
   };
+  smsConfigured: boolean;
   totalAmount: number;
   paidAmount: number;
   depositAmount: number;
@@ -66,6 +67,7 @@ export function RequestPaymentModal({
   reservationId,
   reservationNumber: _reservationNumber,
   customer,
+  smsConfigured,
   totalAmount,
   paidAmount,
   depositAmount,
@@ -79,8 +81,12 @@ export function RequestPaymentModal({
 
   const [selectedType, setSelectedType] = useState<PaymentType | null>(null);
   const [customAmount, setCustomAmount] = useState("");
-  const [sendEmail, setSendEmail] = useState(true);
-  const [sendSms, setSendSms] = useState(false);
+  const hasEmail = Boolean(customer.email);
+  const canSendSms = Boolean(customer.phone) && smsConfigured;
+  // A customer without e-mail gets the link by SMS; with neither, it can't be sent.
+  const defaultChannels = { email: hasEmail, sms: !hasEmail && canSendSms };
+  const [sendEmail, setSendEmail] = useState(defaultChannels.email);
+  const [sendSms, setSendSms] = useState(defaultChannels.sms);
   const [customMessage, setCustomMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
@@ -90,7 +96,6 @@ export function RequestPaymentModal({
   const canRequestDeposit =
     depositAmount > 0 && depositStatus !== "held" && depositStatus !== "captured";
   const canRequestRental = remainingRental >= 0.5;
-  const hasPhone = !!customer.phone;
 
   const paymentTypes = useMemo(() => {
     const types: Array<{
@@ -142,6 +147,7 @@ export function RequestPaymentModal({
   }, [selectedType, customAmount, remainingRental, depositAmount]);
 
   const isValidAmount = selectedAmount >= 0.5;
+  const isUnreachable = !hasEmail && !canSendSms;
   const hasChannel = sendEmail || sendSms;
   const canSubmit = selectedType && isValidAmount && hasChannel && stripeConfigured;
 
@@ -214,8 +220,8 @@ export function RequestPaymentModal({
   const resetForm = () => {
     setSelectedType(null);
     setCustomAmount("");
-    setSendEmail(true);
-    setSendSms(false);
+    setSendEmail(defaultChannels.email);
+    setSendSms(defaultChannels.sms);
     setCustomMessage("");
     setPaymentUrl(null);
     setCopied(false);
@@ -386,14 +392,22 @@ export function RequestPaymentModal({
                         id="email"
                         checked={sendEmail}
                         onCheckedChange={(checked) => setSendEmail(!!checked)}
+                        disabled={!hasEmail}
                       />
                       <label
                         htmlFor="email"
-                        className="flex items-center gap-2 text-sm cursor-pointer"
+                        className={cn(
+                          "flex items-center gap-2 text-sm cursor-pointer",
+                          !hasEmail && "opacity-50 cursor-not-allowed",
+                        )}
                       >
                         <Mail className="h-4 w-4 text-muted-foreground" />
                         {t("email")}
-                        <span className="text-muted-foreground">({customer.email})</span>
+                        {customer.email ? (
+                          <span className="text-muted-foreground">({customer.email})</span>
+                        ) : (
+                          <span className="text-muted-foreground italic">({t("noEmail")})</span>
+                        )}
                       </label>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -401,26 +415,34 @@ export function RequestPaymentModal({
                         id="sms"
                         checked={sendSms}
                         onCheckedChange={(checked) => setSendSms(!!checked)}
-                        disabled={!hasPhone}
+                        disabled={!canSendSms}
                       />
                       <label
                         htmlFor="sms"
                         className={cn(
                           "flex items-center gap-2 text-sm cursor-pointer",
-                          !hasPhone && "opacity-50 cursor-not-allowed",
+                          !canSendSms && "opacity-50 cursor-not-allowed",
                         )}
                       >
                         <MessageSquare className="h-4 w-4 text-muted-foreground" />
                         {t("sms")}
-                        {hasPhone ? (
+                        {!customer.phone ? (
+                          <span className="text-muted-foreground italic">({t("noPhone")})</span>
+                        ) : smsConfigured ? (
                           <span className="text-muted-foreground">({customer.phone})</span>
                         ) : (
-                          <span className="text-muted-foreground italic">({t("noPhone")})</span>
+                          <span className="text-muted-foreground italic">
+                            ({t("smsUnavailable")})
+                          </span>
                         )}
                       </label>
                     </div>
                   </div>
-                  {!hasChannel && <p className="text-xs text-destructive">{t("selectChannel")}</p>}
+                  {isUnreachable ? (
+                    <p className="text-xs text-muted-foreground">{t("noChannelAvailable")}</p>
+                  ) : (
+                    !hasChannel && <p className="text-xs text-destructive">{t("selectChannel")}</p>
+                  )}
                 </div>
               )}
 

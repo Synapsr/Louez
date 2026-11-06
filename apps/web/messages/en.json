@@ -152,6 +152,19 @@
       "selectCustomer": "Select a customer",
       "createCustomer": "Create a customer",
       "createNamed": "Create “{query}”"
+    },
+    "pagination": {
+      "showing": "Showing {start} to {end} of {total}",
+      "perPage": "Per page",
+      "page": "Page {current} of {total}",
+      "previous": "Previous page",
+      "next": "Next page"
+    },
+    "dateRangePicker": {
+      "placeholder": "Pick a date range",
+      "pickStart": "Pick the first day",
+      "pickEnd": "Pick the last day",
+      "maxDays": "{count, plural, one {# day at most} other {# days at most}}"
     }
   },
   "auth": {
@@ -180,7 +193,7 @@
     "loginDescription": "Enter your email to continue. If you don't have an account, one will be created for you.",
     "reeentLoginTitle": "Welcome to louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent is the storefront, louez is your tool: bookings, payments and calendar are handled here. If you don't have an account, one will be created for you.",
-    "linkWillBeSent": "A secure link will be sent to your email. No password to remember.",
+    "linkWillBeSent": "A one-time code will be sent to your email. A password stays optional.",
     "checkEmail": "Check your email",
     "emailSentTo": "A login link has been sent to",
     "clickLinkToSignIn": "Click the link in the email to sign in. The link expires in 24 hours.",
@@ -200,7 +213,19 @@
       "verification": "The verification link is invalid or has expired.",
       "default": "An error occurred. Please try again.",
       "passwordTooShort": "Password must be at least 8 characters.",
-      "registrationClosed": "Registration is closed on this instance. Ask the owner for an invitation."
+      "registrationClosed": "Registration is closed on this instance. Ask the owner for an invitation.",
+      "invalidCode": "This code is incorrect.",
+      "codeExpired": "This code has expired. Request a new one.",
+      "tooManyAttempts": "Too many tries with this code. Request a new one.",
+      "tooManyRequests": "Too many attempts. Wait a minute before trying again.",
+      "passwordTooLong": "The password cannot be longer than 128 characters.",
+      "invalidPassword": "The current password is incorrect.",
+      "currentPasswordRequired": "Enter your current password.",
+      "passwordAlreadySet": "A password is already set on this account.",
+      "passwordNotSet": "No password is set on this account.",
+      "passwordRemovalUnavailable": "The password is the only way to sign in on this instance: it cannot be removed.",
+      "sessionExpired": "Your session has expired. Sign in again, then retry.",
+      "passwordSignUpDisabled": "Creating an account with a password is not available. Use a code sent by email."
     },
     "referralBanner": "{storeName} invited you to Louez — create your store and start with {count} free reservations.",
     "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations.",
@@ -224,7 +249,22 @@
     "alreadyHaveAccount": "Already have an account?",
     "usePasswordInstead": "Sign in with a password instead",
     "useEmailCodeInstead": "Sign in with an email code instead",
-    "passwordLoginDescription": "Sign in with your email and password."
+    "passwordLoginDescription": "Sign in with your email and password.",
+    "forgotPasswordTitle": "Forgot your password",
+    "forgotPasswordDescription": "Enter the email of your account: we'll send you a code to choose a new password.",
+    "forgotPasswordLogsDescription": "Enter the email of your account. This instance does not send emails: the code will show up in the server logs.",
+    "resetCodeSentDescription": "If an account exists for <strong>{email}</strong>, a 6-digit code was just sent to it. Enter it below to choose a new password.",
+    "newPasswordTitle": "Choose a new password",
+    "newPasswordDescription": "You'll be signed in as soon as it is saved. Your other devices will be signed out.",
+    "newPassword": "New password",
+    "saveNewPassword": "Save and sign in",
+    "requestNewCode": "Get a new code",
+    "backToLogin": "Back to sign-in",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "passwordRules": {
+      "minLength": "At least {count} characters"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} invites you to join the team",
@@ -853,7 +893,8 @@
       "settings": "Settings",
       "store": "My store",
       "multiStore": "Multi-store",
-      "aiCredits": "AI credits"
+      "aiCredits": "AI credits",
+      "finances": "Finances"
     },
     "multiStore": {
       "title": "Multi-store",
@@ -2283,7 +2324,8 @@
         "viewContract": "View contract",
         "copyLink": "Copy customer link",
         "viewAsCustomer": "View as customer",
-        "print": "Print"
+        "print": "Print",
+        "sendSms": "Send SMS"
       },
       "edit": {
         "button": "Edit",
@@ -2354,7 +2396,8 @@
           "tooFar": "Address exceeds maximum distance ({maxDistance} km)",
           "savings": "Savings",
           "deliveryFee": "Delivery fee"
-        }
+        },
+        "notifyCustomerNoEmail": "This customer has no email: they won't be notified of the change."
       },
       "contract": {
         "title": "Contract",
@@ -2430,7 +2473,8 @@
           "disabledPastStart": "Tulip protection disabled for this past period.",
           "calculating": "Calculating coverage...",
           "estimatedAmount": "Estimated coverage: {amount}",
-          "previewUnavailable": "Tulip amount could not be recalculated."
+          "previewUnavailable": "Tulip amount could not be recalculated.",
+          "requiresEmail": "Tulip insurance needs the customer's email: add it to their profile to offer it."
         },
         "duration": "Duration",
         "exact": "exact",
@@ -2450,7 +2494,8 @@
           "descriptionQuote": "Review the summary before sending the quote.",
           "warningsTitle": "Worth checking",
           "emailOn": "A confirmation email will be sent to the customer.",
-          "emailOff": "No email will be sent to the customer."
+          "emailOff": "No email will be sent to the customer.",
+          "smsOn": "A confirmation will be sent to the customer by SMS."
         },
         "adjustmentsTitle": "Amounts and options",
         "adjustmentsDescription": "Adjust the discount, the deposit and the confirmation email.",
@@ -2589,7 +2634,10 @@
           "label": "Discount",
           "add": "Add a discount",
           "remove": "Remove discount"
-        }
+        },
+        "sendConfirmationSms": "Send the confirmation by SMS",
+        "noChannelHint": "This customer has no email and can't receive SMS: no confirmation will be sent.",
+        "noEmailQuoteHint": "Quotes are accepted online: add an email to the customer's profile to send one."
       },
       "rejectDialog": {
         "title": "Reject request",
@@ -2849,7 +2897,10 @@
         "linkCopied": "Link copied",
         "copyFailed": "Failed to copy",
         "stripeNotConfigured": "Stripe not configured",
-        "stripeNotConfiguredDescription": "Configure Stripe in settings to send online payment requests."
+        "stripeNotConfiguredDescription": "Configure Stripe in settings to send online payment requests.",
+        "noEmail": "no email",
+        "smsUnavailable": "SMS not enabled",
+        "noChannelAvailable": "Add an email or a phone number to the customer's profile to send them this request."
       },
       "onlinePayment": {
         "title": "Online Payment",
@@ -2967,6 +3018,16 @@
             "name": "Customer access link",
             "description": "Send an email with the reservation tracking link"
           }
+        },
+        "sms": {
+          "title": "Send an SMS",
+          "description": "Send an SMS to {name} ({phone})",
+          "selectTemplate": "Choose SMS type",
+          "onlySmsTemplates": "This customer has no email: only the messages that exist as SMS are offered.",
+          "customName": "Custom SMS",
+          "customDescription": "Write a custom SMS to the customer",
+          "send": "Send SMS",
+          "sendSuccess": "SMS sent"
         }
       },
       "linkCopied": "Link copied to clipboard",
@@ -2993,7 +3054,12 @@
         "planning": "Planning"
       },
       "displayCards": "Card view",
-      "displayTable": "Table view"
+      "displayTable": "Table view",
+      "contactHint": {
+        "smsOnly": "Without an email, this customer gets their messages by SMS and has no online customer account.",
+        "noEmail": "Add an email to the customer's profile to send them messages.",
+        "noContact": "Add an email or a phone number to the customer's profile to send them messages."
+      }
     },
     "customers": {
       "title": "Customers",
@@ -3056,7 +3122,22 @@
       },
       "filter": {
         "type": "Customer type",
-        "all": "All customers"
+        "all": "All customers",
+        "created": "Creation date",
+        "anyDate": "Any date",
+        "source": "Source",
+        "allSources": "All sources",
+        "channel": "Channel",
+        "allChannels": "All channels",
+        "reset": "Reset filters",
+        "importRun": "From an import",
+        "noResults": "No customer matches these filters.",
+        "from": "From {date}",
+        "to": "to {date}",
+        "more": "Filters",
+        "createdFrom": "Created from",
+        "createdTo": "Created until",
+        "remove": "Remove filter"
       },
       "deleteConfirm": {
         "title": "Delete this customer?",
@@ -3098,7 +3179,23 @@
         "internalNotesDescription": "Private notes about this customer (not visible to customer)",
         "notesPlaceholder": "Add notes about this customer...",
         "save": "Save",
-        "createCustomer": "Create customer"
+        "createCustomer": "Create customer",
+        "customerKind": "Customer type",
+        "moreInfo": "Additional information",
+        "moreInfoDescription": "Optional. You can also fill these in later from the customer record.",
+        "profileSection": "Profile",
+        "birthDate": "Date of birth",
+        "ageYears": "{age, plural, one {# year old} other {# years old}}",
+        "acquisitionSource": "How did they hear about you?",
+        "acquisitionSourcePlaceholder": "Select",
+        "acquisitionSourceDetail": "Details",
+        "acquisitionSourceDetailPlaceholder": "Tourist office, trade show, partner hotel…",
+        "socialSection": "Social and links",
+        "customizeFields": "Customize fields",
+        "fieldCount": "{count, plural, one {# field} other {# fields}}",
+        "filledCount": "{count, plural, one {# filled in} other {# filled in}}",
+        "emailOptional": "Email",
+        "contactHint": "An email or a phone number is enough. Without an email, messages go out by SMS where possible."
       },
       "countries": {
         "FR": "France",
@@ -3113,6 +3210,88 @@
       "quickCreate": {
         "title": "New customer",
         "description": "The customer will be created and selected automatically."
+      },
+      "sources": {
+        "word_of_mouth": "Word of mouth",
+        "search_engine": "Google search",
+        "social_media": "Social media",
+        "walk_in": "Walked past the shop",
+        "partner": "Partner or tourist office",
+        "ads": "Advertising",
+        "returning": "Returning customer",
+        "other": "Other"
+      },
+      "channels": {
+        "dashboard": "Created by the team",
+        "storefront": "Online store",
+        "marketplace": "reeent",
+        "import": "Import",
+        "api": "API",
+        "ai": "AI assistant"
+      },
+      "social": {
+        "add": "Add a link",
+        "remove": "Remove {network}",
+        "open": "Open {network}",
+        "placeholderHandle": "@handle or profile link",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+44 7700 900123",
+        "whatsapp": "WhatsApp",
+        "empty": "No links"
+      },
+      "fields": {
+        "yes": "Yes",
+        "no": "No",
+        "reveal": "Show",
+        "hide": "Hide",
+        "copy": "Copy",
+        "copied": "Copied",
+        "selectPlaceholder": "Select",
+        "suspicious": "This number looks invalid. Double-check it: it will be saved anyway.",
+        "duplicate": "Already used by {name}.",
+        "viewCustomer": "View record",
+        "complete": "{count, plural, one {Fill in # field} other {Fill in # fields}}",
+        "issues": {
+          "required": "This field is required.",
+          "invalidNumber": "Enter a number.",
+          "invalidDate": "Invalid date.",
+          "invalidOption": "Pick a value from the list.",
+          "invalidEmail": "Invalid email address.",
+          "invalidPhone": "Invalid phone number.",
+          "invalidUrl": "Invalid link."
+        }
+      },
+      "detail": {
+        "newReservation": "New reservation",
+        "edit": "Edit",
+        "moreActions": "More actions",
+        "createdVia": "Created via: {channel}",
+        "contactCard": "Contact details",
+        "profileCard": "Profile",
+        "bornOn": "Born on {date}",
+        "source": "Source",
+        "lastRental": "Last rental",
+        "never": "Never",
+        "noAddress": "No address on file",
+        "noPhone": "No phone on file",
+        "emptyProfile": "No profile information.",
+        "editSection": "Edit: {section}",
+        "editSectionDescription": "Only this information will be changed.",
+        "sectionSaved": "Changes saved",
+        "save": "Save",
+        "cancel": "Cancel",
+        "noEmail": "No email on file"
+      },
+      "pagination": {
+        "showing": "{from}–{to} of {total}",
+        "perPage": "Per page",
+        "previous": "Previous page",
+        "next": "Next page",
+        "pageOf": "Page {page} of {pages}"
+      },
+      "similar": {
+        "found": "A similar customer already exists: {name}.",
+        "view": "View record"
       }
     },
     "calendar": {
@@ -4444,6 +4623,14 @@
           "statusRequired": "Select at least one status.",
           "noContracts": "No reservations match this date range and these statuses.",
           "exportFailed": "Export failed. Please try again."
+        },
+        "customers": {
+          "title": "Customers",
+          "description": "Export your customer records: contact details, birth date, origin, creation channel and your custom fields.",
+          "button": "Export customers",
+          "dateRangeHint": "The period applies to the date each record was created. Leave it empty to export all your customers.",
+          "includeSensitive": "Include sensitive data",
+          "includeSensitiveWarning": "Fields marked as sensitive will appear unmasked in the file: keep it somewhere safe."
         }
       },
       "embed": {
@@ -5420,7 +5607,7 @@
         "active": "Active",
         "activeSessions": "Active sessions",
         "activeSessionsDescription": "Manage your login sessions",
-        "sessionCount": "{count} session",
+        "sessionCount": "{count, plural, one {# device signed in} other {# devices signed in}}",
         "changePassword": "Change password",
         "dangerZone": "Danger zone",
         "dangerZoneDescription": "Irreversible actions on your account",
@@ -5483,6 +5670,51 @@
           "saved": "Shortcuts saved",
           "conflict": "This shortcut is already used for “{action}”.",
           "resetAction": "Reset “{action}”"
+        },
+        "signIn": {
+          "title": "Sign-in",
+          "description": "The ways to sign in to your account",
+          "emailCode": "Email code",
+          "alwaysActive": "Always on",
+          "unavailable": "Unavailable",
+          "google": "Google",
+          "linked": "Linked",
+          "notLinked": "Not linked",
+          "linkGoogle": "Link",
+          "googleLinkError": "This Google account could not be linked. Make sure it uses the same email address as your Louez account.",
+          "password": "Password",
+          "passwordNotSet": "Not set",
+          "passwordSetOn": "Set on {date}",
+          "setPassword": "Set",
+          "changePassword": "Change",
+          "removePassword": "Remove",
+          "setPasswordTitle": "Set a password",
+          "setPasswordDescription": "A password is optional: the code sent by email always stays available. Your other devices will be signed out.",
+          "newPasswordLabel": "New password",
+          "currentPasswordLabel": "Current password",
+          "setPasswordSubmit": "Set password",
+          "changePasswordDescription": "Your other devices will be signed out.",
+          "changePasswordSubmit": "Change password",
+          "removePasswordTitle": "Remove the password?",
+          "removePasswordDescription": "You'll keep signing in with a code sent by email. You can set a new password at any time.",
+          "removePasswordConfirm": "Remove password",
+          "cancel": "Cancel",
+          "passwordSetToast": "Password set",
+          "passwordChangedToast": "Password changed",
+          "passwordRemovedToast": "Password removed"
+        },
+        "passwordAlert": {
+          "title": "Wasn't you?",
+          "description": "The password of the account {email} was just added, changed or removed. If you had nothing to do with it, secure your account now.",
+          "effectPassword": "The password will be removed from the account.",
+          "effectSessions": "Every device will be signed out, this one included.",
+          "effectSignIn": "You'll sign back in with a code sent by email.",
+          "unavailable": "On this instance the password is the only way to sign in: it cannot be removed. Change it from your account instead.",
+          "confirm": "Secure my account",
+          "itWasMe": "It was me",
+          "doneTitle": "Your account is secured",
+          "doneDescription": "The password was removed and every device was signed out. Sign back in with a code sent by email.",
+          "signInAgain": "Sign in again"
         }
       },
       "admin": {
@@ -5883,6 +6115,546 @@
         "title": "Automatic rental extensions",
         "description": "Customers can extend when equipment is available and the extra cost can be calculated. Special cases require your approval.",
         "maxDays": "Maximum extra days (leave empty for no limit)"
+      },
+      "customerFields": {
+        "title": "Customer record",
+        "description": "Choose what you keep about your customers, beyond their name and contact details.",
+        "limits": "{count} / {max} active fields",
+        "suggestions": {
+          "title": "Suggested for you",
+          "description": "Based on your store's country and activity.",
+          "browse": "Browse templates",
+          "dismiss": "Hide suggestions"
+        },
+        "native": {
+          "title": "Louez fields",
+          "description": "Information Louez knows how to use. Hide what you do not need.",
+          "birthDate": "Date of birth",
+          "birthDateHelp": "Also shows the customer's age.",
+          "acquisitionSource": "Customer source",
+          "acquisitionSourceHelp": "How the customer heard about you.",
+          "socialLinks": "Social and links",
+          "socialLinksHelp": "Instagram, website, WhatsApp…",
+          "visibility": {
+            "hidden": "Hidden",
+            "optional": "Optional",
+            "required": "Required"
+          },
+          "saved": "Setting saved"
+        },
+        "sections": {
+          "add": "Add a section",
+          "namePlaceholder": "Section name",
+          "defaultName": "Additional information",
+          "rename": "Rename section",
+          "moveUp": "Move up",
+          "moveDown": "Move down",
+          "actions": "Section actions"
+        },
+        "field": {
+          "add": "Add a field",
+          "edit": "Edit",
+          "archive": "Archive",
+          "restore": "Reactivate",
+          "delete": "Delete permanently",
+          "moveTo": "Move to",
+          "actions": "Field actions",
+          "active": "Active",
+          "drag": "Reorder",
+          "valueCount": "{count, plural, =0 {No values} one {# customer filled in} other {# customers filled in}}"
+        },
+        "badges": {
+          "required": "Required",
+          "sensitive": "Sensitive",
+          "contract": "Contract",
+          "search": "Search",
+          "list": "List",
+          "business": "Businesses",
+          "individual": "Individuals"
+        },
+        "dialog": {
+          "createTitle": "New field",
+          "createDescription": "It will appear on every customer record.",
+          "editTitle": "Edit field",
+          "editDescription": "Values already entered are kept.",
+          "label": "Label",
+          "labelPlaceholder": "Licence number",
+          "type": "Type",
+          "typeLocked": "The type can no longer change once the field exists.",
+          "options": "Choices",
+          "optionsPlaceholder": "Type a choice then Enter",
+          "unit": "Unit",
+          "unitPlaceholder": "cm, kg, km…",
+          "helpText": "Input hint",
+          "helpTextPlaceholder": "Shown under the field",
+          "section": "Section",
+          "newSection": "New section…",
+          "appliesTo": "Applies to",
+          "appliesToAll": "Everyone",
+          "appliesToIndividual": "Individuals",
+          "appliesToBusiness": "Businesses",
+          "save": "Save",
+          "create": "Add field",
+          "cancel": "Cancel",
+          "types": {
+            "text": "Text",
+            "textarea": "Long text",
+            "number": "Number",
+            "date": "Date",
+            "select": "Choice list",
+            "checkbox": "Yes / No",
+            "phone": "Phone",
+            "email": "Email",
+            "url": "Link"
+          },
+          "flags": {
+            "required": "Required",
+            "requiredHelp": "The record cannot be saved without it.",
+            "sensitive": "Sensitive data",
+            "sensitiveHelp": "Hidden by default on the record and left out of exports.",
+            "contract": "Show on the contract",
+            "contractHelp": "Added under the customer's contact details.",
+            "search": "Include in search",
+            "searchHelp": "Type the value to find the customer. Also flags duplicates.",
+            "list": "Show in the list",
+            "listHelp": "Adds a column to the customer list."
+          }
+        },
+        "templates": {
+          "dialogTitle": "Field templates",
+          "dialogDescription": "Add a set of fields in one click. You can then rename, reorder or archive them.",
+          "privacyNote": "Only collect what you really need: you are responsible for your customers' data.",
+          "groups": {
+            "country": "By country",
+            "activity": "By activity",
+            "general": "General"
+          },
+          "adopt": "Add",
+          "adopted": "Added",
+          "fieldsCount": "{count, plural, one {# field} other {# fields}}",
+          "adoptedToast": "{count, plural, one {# field added} other {# fields added}}",
+          "identityDocument": {
+            "name": "Identity document",
+            "description": "The proof of identity asked for at handover.",
+            "section": "Identity",
+            "fields": {
+              "id_document_type": {
+                "label": "Document type",
+                "options": {
+                  "idCard": "ID card",
+                  "passport": "Passport",
+                  "residencePermit": "Residence permit",
+                  "drivingLicense": "Driving licence",
+                  "other": "Other"
+                }
+              },
+              "id_document_number": {
+                "label": "Document number"
+              },
+              "id_document_expiry": {
+                "label": "Expiry date"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "Emergency contact",
+            "description": "Who to call if something goes wrong during the rental.",
+            "section": "Emergency contact",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "Name"
+              },
+              "emergency_contact_phone": {
+                "label": "Phone"
+              },
+              "emergency_contact_relation": {
+                "label": "Relationship",
+                "options": {
+                  "partner": "Partner",
+                  "parent": "Parent",
+                  "friend": "Friend",
+                  "colleague": "Colleague",
+                  "other": "Other"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "Business customers",
+            "description": "The accounts contact and the reference to quote on your documents.",
+            "section": "Billing",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "Accounts contact"
+              },
+              "accounting_email": {
+                "label": "Accounts email"
+              },
+              "purchase_order_reference": {
+                "label": "Purchase order reference"
+              }
+            }
+          },
+          "brazil": {
+            "name": "Brazil",
+            "description": "CPF or CNPJ, with number verification, and RG.",
+            "section": "Identity",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "Issuing authority"
+              }
+            }
+          },
+          "spain": {
+            "name": "Spain",
+            "description": "DNI or NIE, with control letter verification.",
+            "section": "Identity",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "Italy",
+            "description": "Codice fiscale, with control character verification.",
+            "section": "Identity",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "Portugal",
+            "description": "NIF, with control digit verification.",
+            "section": "Identity",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "Vehicles and scooters",
+            "description": "The driving licence, carried over to the contract.",
+            "section": "Driving licence",
+            "fields": {
+              "driving_license_number": {
+                "label": "Licence number"
+              },
+              "driving_license_date": {
+                "label": "Date obtained"
+              },
+              "driving_license_categories": {
+                "label": "Categories"
+              }
+            }
+          },
+          "ski": {
+            "name": "Ski and mountain",
+            "description": "Measurements to prepare the gear before the customer arrives.",
+            "section": "Measurements",
+            "fields": {
+              "height_cm": {
+                "label": "Height"
+              },
+              "weight_kg": {
+                "label": "Weight"
+              },
+              "shoe_size": {
+                "label": "Shoe size"
+              },
+              "ski_level": {
+                "label": "Level",
+                "options": {
+                  "beginner": "Beginner",
+                  "intermediate": "Intermediate",
+                  "advanced": "Advanced",
+                  "expert": "Expert"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "Bikes",
+            "description": "What you need to set the bike up before the customer arrives.",
+            "section": "Bike setup",
+            "fields": {
+              "height_cm": {
+                "label": "Height"
+              },
+              "bike_saddle_height": {
+                "label": "Saddle height"
+              },
+              "bike_preferences": {
+                "label": "Preferences"
+              }
+            }
+          },
+          "boating": {
+            "name": "Boating",
+            "description": "The boat licence, carried over to the contract.",
+            "section": "Boat licence",
+            "fields": {
+              "boat_license_number": {
+                "label": "Boat licence number"
+              },
+              "boat_license_type": {
+                "label": "Licence type",
+                "options": {
+                  "coastal": "Coastal",
+                  "offshore": "Offshore",
+                  "inland": "Inland waters",
+                  "none": "No licence"
+                }
+              }
+            }
+          }
+        },
+        "deleteDialog": {
+          "title": "Delete “{label}”?",
+          "description": "The field will disappear from every record. This cannot be undone.",
+          "withValues": "{count, plural, one {# customer has a value for this field: it will be erased.} other {# customers have a value for this field: they will be erased.}}",
+          "archiveInstead": "Archive instead",
+          "confirm": "Delete permanently",
+          "cancel": "Cancel"
+        },
+        "archived": {
+          "title": "Archived fields",
+          "description": "Hidden from records, their values are kept."
+        },
+        "preview": {
+          "title": "Preview",
+          "description": "What your team sees when creating a customer.",
+          "empty": "Add a field to see the preview."
+        },
+        "empty": {
+          "title": "No custom fields",
+          "description": "Start from a template or create your first field."
+        },
+        "toasts": {
+          "created": "Field added",
+          "updated": "Field updated",
+          "archived": "Field archived",
+          "restored": "Field reactivated",
+          "deleted": "Field deleted",
+          "reordered": "Order saved",
+          "sectionRenamed": "Section renamed"
+        }
+      },
+      "import": {
+        "title": "Import",
+        "description": "Bring your customers over from a spreadsheet or another tool. Nothing is written before you have checked it.",
+        "newImport": "New import",
+        "history": {
+          "title": "Previous imports",
+          "empty": "No imports yet",
+          "emptyDescription": "Your imports will show up here. Each one can be undone.",
+          "result": "{created} created · {updated} updated · {skipped} skipped · {errors} errors",
+          "viewCustomers": "View customers",
+          "downloadErrors": "Download errors",
+          "revert": "Undo this import",
+          "revertTitle": "Undo this import?",
+          "revertDescription": "Customers created by this import will be deleted, except those that have since got a reservation or been edited. Updated customers get their previous values back.",
+          "revertConfirm": "Undo import",
+          "revertDone": "{reverted, plural, one {# record restored} other {# records restored}}, {kept, plural, =0 {none kept} one {# kept} other {# kept}}",
+          "keep": "Keep",
+          "status": {
+            "running": "Running",
+            "completed": "Completed",
+            "failed": "Failed",
+            "reverted": "Undone",
+            "draft": "Draft",
+            "ready": "Ready"
+          },
+          "entity": {
+            "customers": "Customers",
+            "products": "Products"
+          }
+        },
+        "steps": {
+          "source": "Source",
+          "sourceDescription": "What you import",
+          "file": "File",
+          "fileDescription": "Your data",
+          "columns": "Columns",
+          "columnsDescription": "Mapping",
+          "review": "Review",
+          "reviewDescription": "Before writing",
+          "run": "Import",
+          "runDescription": "Result"
+        },
+        "actions": {
+          "back": "Back",
+          "next": "Continue",
+          "cancel": "Leave",
+          "done": "Finish"
+        },
+        "source": {
+          "title": "What do you want to import?",
+          "customers": "Customers",
+          "customersDescription": "Contact details, company, custom fields.",
+          "products": "Products",
+          "originTitle": "Where does your data come from?",
+          "file": "A CSV file",
+          "fileDescription": "Exported from Excel, Google Sheets or another tool.",
+          "paste": "Copy and paste",
+          "pasteDescription": "Select your cells in the spreadsheet, copy, paste.",
+          "hint": "No need to reformat your file: Louez adapts to your columns."
+        },
+        "file": {
+          "drop": "Drop your file here",
+          "browse": "or click to choose it",
+          "formats": "CSV or TSV, 5,000 rows at most",
+          "reading": "Reading the file…",
+          "pasteLabel": "Paste your cells",
+          "pastePlaceholder": "Paste the rows copied from your spreadsheet here, headers included.",
+          "replace": "Choose another file",
+          "detected": "{rows, plural, one {# row} other {# rows}} · {columns, plural, one {# column} other {# columns}}",
+          "previewTitle": "Preview of the first rows",
+          "tooManyRows": "This file has {rows} rows. The limit is 5,000: split it into several files.",
+          "noRows": "No rows found under the header line.",
+          "unreadable": "This file could not be read. Save it as CSV and try again.",
+          "staging": "Sending rows… {done} / {total}"
+        },
+        "columns": {
+          "title": "What does each column hold?",
+          "description": "Louez recognised what it could. Check, complete, ignore the rest.",
+          "sourceColumn": "File column",
+          "target": "Louez field",
+          "recognized": "Recognised",
+          "toMap": "To map",
+          "ignored": "Ignored",
+          "ignore": "Ignore this column",
+          "createField": "Create the field “{name}”",
+          "groupNative": "Customer record",
+          "groupCustom": "Custom fields",
+          "noSample": "empty",
+          "summary": "Summary",
+          "mapped": "{count, plural, one {# mapped} other {# mapped}}",
+          "ignoredCount": "{count, plural, one {# ignored} other {# ignored}}",
+          "requiredTitle": "Required",
+          "missingEmail": "Map a column to the email.",
+          "missingName": "Map a column to the name.",
+          "fieldCreated": "Field “{name}” created",
+          "fields": {
+            "externalId": "Original identifier",
+            "fullName": "First and last name (to split)",
+            "firstName": "First name",
+            "lastName": "Last name",
+            "email": "Email",
+            "phone": "Phone",
+            "companyName": "Company",
+            "companyNumber": "Company number",
+            "vatNumber": "VAT number",
+            "address": "Address",
+            "postalCode": "Postal code",
+            "city": "City",
+            "country": "Country",
+            "birthDate": "Date of birth",
+            "notes": "Internal notes"
+          },
+          "contactLabel": "Email or phone",
+          "missingContact": "Map a column to the email or the phone."
+        },
+        "review": {
+          "title": "Here is what the import will do",
+          "description": "Nothing has been written yet.",
+          "create": "To create",
+          "update": "To update",
+          "skip": "Skipped",
+          "error": "Errors",
+          "strategyTitle": "When the customer already exists",
+          "fillEmpty": "Fill in empty fields",
+          "fillEmptyDescription": "Recommended. What you already entered is never changed.",
+          "overwrite": "Replace with the file",
+          "overwriteDescription": "The file's values win. A column missing from the file erases nothing.",
+          "skipExisting": "Leave them alone",
+          "skipExistingDescription": "Only new customers are created.",
+          "row": "Row {index}",
+          "sampleNote": "Preview of the first {count} rows of this category.",
+          "emptyTab": "No rows in this category.",
+          "fix": "Fix",
+          "saveFix": "Save",
+          "cancelFix": "Cancel",
+          "dateOrder": "Dates read as {format}.",
+          "dmy": "day/month/year",
+          "mdy": "month/day/year",
+          "start": "{count, plural, =0 {Nothing to import} one {Import # customer} other {Import # customers}}",
+          "reasons": {
+            "emailRequired": "Missing email",
+            "emailInvalid": "Invalid email",
+            "nameRequired": "Missing first or last name",
+            "duplicateInFile": "Already present higher in the file",
+            "alreadyExists": "Customer already exists",
+            "planLimit": "Beyond your plan's limit",
+            "nothingToUpdate": "Nothing to fill in",
+            "writeFailed": "Could not be written",
+            "contactRequired": "No usable email or phone"
+          },
+          "warnings": {
+            "phoneInvalid": "unreadable phone, ignored",
+            "countryUnknown": "unknown country, ignored",
+            "birthDateInvalid": "unreadable date of birth, ignored",
+            "customFieldInvalid": "invalid custom field value, ignored"
+          }
+        },
+        "run": {
+          "running": "Importing…",
+          "runningHint": "You can leave this page: the import resumes where it stopped.",
+          "progress": "{done} / {total} rows",
+          "doneTitle": "Import complete",
+          "doneDescription": "You can undo it from the Import page.",
+          "created": "Created",
+          "updated": "Updated",
+          "skipped": "Skipped",
+          "errors": "Errors",
+          "viewCustomers": "View imported customers",
+          "downloadErrors": "Download errors",
+          "another": "Import another file"
+        },
+        "products": {
+          "sourceDescription": "Name, price, category, deposit, quantity. Imported as drafts.",
+          "draftNote": "Products are created as drafts: add your photos and check your rates before publishing them to your store.",
+          "existingNote": "A product that already exists keeps its photos, deposit and categories: the import never touches them.",
+          "missingName": "Map a column to the product name.",
+          "missingPrice": "Map a column to the price.",
+          "start": "{count, plural, =0 {Nothing to import} one {Import # product} other {Import # products}}",
+          "view": "View imported products",
+          "viewHistory": "View products",
+          "strategyTitle": "When the product already exists",
+          "fillEmptyDescription": "Recommended. Only a missing description is added.",
+          "overwriteDescription": "The file's price, description and quantity win.",
+          "skipExistingDescription": "Only new products are created.",
+          "fields": {
+            "externalId": "Original reference",
+            "name": "Product name",
+            "description": "Description",
+            "category": "Category",
+            "price": "Price",
+            "pricingMode": "Period (hour, day, week)",
+            "deposit": "Deposit",
+            "quantity": "Quantity"
+          },
+          "reasons": {
+            "productNameRequired": "Missing product name",
+            "priceRequired": "Missing price",
+            "priceInvalid": "Unreadable price",
+            "productAlreadyExists": "Product already exists"
+          },
+          "warnings": {
+            "depositInvalid": "unreadable deposit, set to 0",
+            "quantityInvalid": "unreadable quantity, set to 1",
+            "pricingModeUnknown": "unknown period, priced per day"
+          }
+        }
       }
     },
     "commandPalette": {
@@ -5984,7 +6756,11 @@
       "settingsReviewBooster": "Review booster",
       "settingsTaxes": "Taxes",
       "productsEdit": "Edit",
-      "reservationsEdit": "Edit"
+      "reservationsEdit": "Edit",
+      "settingsCustomerFields": "Customer record",
+      "finances": "Finances",
+      "settingsImport": "Import",
+      "settingsImportNew": "New import"
     },
     "notificationsCenter": {
       "title": "Notifications",
@@ -6072,6 +6848,22 @@
         "reservation-creation-simplified": {
           "title": "One reservation, one page",
           "description": "No more steps to walk through: customer, period, products and delivery all fit on one page, with the summary always beside you. And everything that used to mean reopening the reservation afterwards — a discount, a negotiated price, the deposit, a walk-in customer — is now settled on the spot."
+        },
+        "finances": {
+          "title": "Finances: your till, what you are owed and your deposits",
+          "description": "A new screen to see what you took in and by which payment method, who still owes you money and which deposits you hold. With an export for your accountant and a till summary to print."
+        },
+        "optional-password": {
+          "title": "A password, if you want one",
+          "description": "Add a password to your account to sign in without waiting for the code sent by email. The code always stays available."
+        },
+        "customer-custom-fields": {
+          "title": "Customer records your way",
+          "description": "Add your own fields or start from a template by country and activity: licence, identity document, measurements, CPF…"
+        },
+        "customer-import": {
+          "title": "Import your customers",
+          "description": "From a CSV or a simple copy and paste. Louez recognises your columns, shows the result before writing, and every import can be undone."
         }
       }
     },
@@ -6195,6 +6987,205 @@
       "sourceHint": "Browse the source code",
       "star": "Leave a star",
       "later": "Maybe later"
+    },
+    "finances": {
+      "title": "Finances",
+      "description": "Keep track of the money you take in, what customers still owe and the deposits you hold.",
+      "loadError": "This data could not be loaded. Try again in a moment.",
+      "period": {
+        "label": "Period",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "7d": "Last 7 days",
+        "month": "This month",
+        "lastMonth": "Last month",
+        "custom": "Custom"
+      },
+      "export": {
+        "label": "Export",
+        "csv": "Export this period as CSV",
+        "csvHint": "A file for your accountant",
+        "print": "Print the summary",
+        "printHint": "Your till closing sheet",
+        "preparing": "Preparing the summary…",
+        "csvError": "The export could not be generated. Try again in a moment.",
+        "printError": "The summary could not be prepared. Try again in a moment."
+      },
+      "stats": {
+        "moneyIn": "Money in",
+        "moneyOut": "Refunded and returned",
+        "moneyOutHint": "Refunds and deposits given back",
+        "net": "Net balance",
+        "netHint": "Money in minus money out",
+        "outstanding": "Outstanding",
+        "outstandingReservations": "{count, plural, =0 {No reservation} one {# reservation} other {# reservations}}",
+        "movements": "{count, plural, =0 {No movement} one {# movement} other {# movements}}",
+        "vsPrevious": "compared with the previous period"
+      },
+      "chart": {
+        "title": "Money in and out",
+        "descriptionDay": "Day by day over the selected period",
+        "descriptionMonth": "Month by month over the selected period",
+        "moneyIn": "Money in",
+        "moneyOut": "Money out",
+        "net": "Balance",
+        "empty": "No movement over this period."
+      },
+      "methods": {
+        "title": "By payment method",
+        "description": "Click a method to filter the ledger",
+        "empty": "Nothing was taken in over this period.",
+        "filterBy": "Filter the ledger on {method}",
+        "out": "including {amount} paid out",
+        "stripe": "Online (Stripe)",
+        "cash": "Cash",
+        "card": "Card",
+        "transfer": "Bank transfer",
+        "check": "Cheque",
+        "other": "Other"
+      },
+      "tabs": {
+        "movements": "Movements",
+        "outstanding": "Outstanding",
+        "deposits": "Deposits"
+      },
+      "filters": {
+        "searchPlaceholder": "Customer, reservation number…",
+        "clearSearch": "Clear search",
+        "direction": {
+          "label": "Direction",
+          "all": "All",
+          "in": "Money in",
+          "out": "Money out"
+        },
+        "method": "Payment method",
+        "allMethods": "All methods",
+        "more": "Filters",
+        "nature": "Type",
+        "allNatures": "All types",
+        "status": "Status",
+        "allStatuses": "Settled and pending",
+        "amount": "Amount",
+        "minAmount": "Minimum",
+        "maxAmount": "Maximum",
+        "apply": "Apply",
+        "reset": "Reset",
+        "clearAll": "Clear all",
+        "remove": "Remove the {label} filter",
+        "activeMin": "From {amount}",
+        "activeMax": "Up to {amount}",
+        "activeSearch": "“{term}”",
+        "amountInvalid": "Enter a valid amount.",
+        "amountRangeError": "The maximum must be greater than or equal to the minimum."
+      },
+      "nature": {
+        "rental": "Rental",
+        "deposit": "Deposit taken",
+        "depositHold": "Deposit hold",
+        "depositCapture": "Deposit captured",
+        "depositReturn": "Deposit returned",
+        "refund": "Refund",
+        "damage": "Damages",
+        "adjustment": "Adjustment"
+      },
+      "status": {
+        "settled": "Settled",
+        "pending": "Pending",
+        "held": "Hold active",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "table": {
+        "time": "Time",
+        "customer": "Customer",
+        "nature": "Type",
+        "method": "Method",
+        "amount": "Amount",
+        "dayNet": "Day balance",
+        "unknownCustomer": "Unknown customer",
+        "openDetails": "View the movement's details",
+        "emptyTitle": "No movement",
+        "emptyDescription": "Nothing matches this period and these filters."
+      },
+      "detail": {
+        "title": "Movement details",
+        "date": "Date",
+        "method": "Payment method",
+        "status": "Status",
+        "customer": "Customer",
+        "reservation": "Reservation",
+        "notes": "Notes",
+        "notCounted": "This movement is left out of the totals until it is settled.",
+        "grossNotice": "Amount originally taken. {refunded} has been refunded since: {net} is left.",
+        "original": "Original payment",
+        "refunds": "Refunds of this payment",
+        "stripe": "Stripe identifiers",
+        "stripePaymentIntent": "Payment",
+        "stripeCharge": "Charge",
+        "stripeCheckoutSession": "Checkout session",
+        "stripeRefund": "Refund",
+        "copy": "Copy",
+        "openReservation": "Open the reservation",
+        "invoice": "Invoice {number}",
+        "creditNote": "Credit note {number}"
+      },
+      "outstanding": {
+        "hint": "What is owed does not depend on the selected period.",
+        "summary": "{count, plural, one {# reservation} other {# reservations}} · {amount} outstanding",
+        "customer": "Customer",
+        "reservation": "Reservation",
+        "dates": "Dates",
+        "total": "Total",
+        "paid": "Paid",
+        "remaining": "Balance due",
+        "age": "Overdue for",
+        "ageUpcoming": "Upcoming",
+        "ageToday": "Today",
+        "ageDays": "{count, plural, one {# day} other {# days}}",
+        "statusConfirmed": "Confirmed",
+        "statusOngoing": "Ongoing",
+        "statusCompleted": "Completed",
+        "emptyTitle": "Nothing outstanding",
+        "emptyDescription": "Every confirmed, ongoing or completed reservation is paid in full."
+      },
+      "deposits": {
+        "holdsTitle": "Active holds",
+        "holdsDescription": "Amounts held on the customer's card, not taken yet.",
+        "holdsEmpty": "No hold in progress.",
+        "holdsTotal": "{amount} held",
+        "expiresOn": "Expires on {date}",
+        "expiresIn": "Expires in {count, plural, =0 {less than a day} one {# day} other {# days}}",
+        "expired": "Expired",
+        "noExpiry": "Unknown expiry",
+        "toReturnTitle": "Deposits to give back",
+        "toReturnDescription": "Deposits you took and have not returned in full.",
+        "toReturnEmpty": "No deposit to give back.",
+        "toReturnTotal": "{amount} to return",
+        "rentalOver": "Rental completed",
+        "cashedReturned": "Taken {cashed} · returned {returned}",
+        "historyTitle": "Recent history",
+        "historyDescription": "The latest deposit movements.",
+        "historyEmpty": "No deposit movement yet.",
+        "eventCashed": "Deposit taken",
+        "eventCaptured": "Deposit captured",
+        "eventReturned": "Deposit returned",
+        "eventReleased": "Hold released"
+      },
+      "firstUse": {
+        "title": "Your takings will show up here",
+        "description": "As soon as a payment is recorded on a reservation, you will find it here, sorted by day and by payment method.",
+        "cta": "Create a reservation",
+        "stripeHint": "To take payments online, connect Stripe in",
+        "stripeLink": "Settings → Payments"
+      },
+      "print": {
+        "title": "Till summary",
+        "printedAt": "Printed on {date}",
+        "byMethod": "Totals by payment method",
+        "movements": "Movements",
+        "total": "Total",
+        "truncated": "List limited to the first {count} movements. Export the period as CSV for the full list."
+      }
     }
   },
   "storefront": {
@@ -7047,6 +8038,10 @@
         "errorTitle": "Error",
         "errorDescription": "An error occurred. Please try again.",
         "generic": "An error occurred. Please try again."
+      },
+      "received": {
+        "title": "Payment received",
+        "description": "Thank you, your payment has been recorded. {store} has been notified."
       }
     },
     "authorizeDeposit": {
@@ -8118,7 +9113,8 @@
     "duplicateValue": "Duplicate value",
     "invalidYoutubeUrl": "The YouTube URL is not valid",
     "invalidImageUrl": "The image URL is not valid",
-    "color": "Invalid color format"
+    "color": "Invalid color format",
+    "contactRequired": "Enter at least an email or a phone number."
   },
   "upgradeModal": {
     "upgradeNow": "Upgrade now",
@@ -8378,7 +9374,26 @@
     "requestCancellationStatusChanged": "The status of this request has changed. It can no longer be cancelled here. Contact the store.",
     "requestCancellationPaymentPending": "A payment is still in progress for this request. Try again after it updates or contact the store.",
     "requestCancellationPaymentChanged": "The payment information has changed. Review it before confirming cancellation again.",
-    "promoCodeProductsAlreadyDiscounted": "This code does not apply to products already on promotion."
+    "promoCodeProductsAlreadyDiscounted": "This code does not apply to products already on promotion.",
+    "customFieldsInvalid": "Some additional fields are invalid.",
+    "optionsRequired": "Add at least one choice.",
+    "customerFields": {
+      "tooManyFields": "You reached the maximum number of active fields. Archive one to add another.",
+      "tooManySearchable": "Up to five fields can be included in search.",
+      "tooManyListFields": "Up to two fields can be shown in the list."
+    },
+    "import": {
+      "runNotFound": "Import not found.",
+      "notEditable": "This import can no longer be edited.",
+      "tooManyRows": "The file has more than 5,000 rows. Split it into several files.",
+      "empty": "The file has no rows to import.",
+      "notRevertible": "Only a completed import can be undone.",
+      "unsupportedEntity": "This kind of import is not available yet."
+    },
+    "contactRequired": "The customer must keep at least an email or a phone number.",
+    "customerUnreachable": "This customer can't be reached: add an email to their profile, or a phone number if SMS is enabled.",
+    "customerEmailRequired": "This message can only be sent by email: add an email to the customer's profile.",
+    "insuranceRequiresEmail": "Tulip breakage/theft coverage needs the customer's email: add it to their profile or remove the coverage."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

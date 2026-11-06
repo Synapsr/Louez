@@ -23,6 +23,7 @@ import {
   AiAssistantGlassIcon,
   AnalyticsGlassIcon,
   CustomersGlassIcon,
+  FinancesGlassIcon,
   HomeGlassIcon,
   ProductGlassIcon,
   ReservationsGlassIcon,
@@ -63,6 +64,7 @@ const mainNavigation = [
   { key: "home", href: "/dashboard", icon: HomeGlassIcon },
   { key: "reservations", href: "/dashboard/reservations", icon: ReservationsGlassIcon },
   { key: "customers", href: "/dashboard/customers", icon: CustomersGlassIcon },
+  { key: "finances", href: "/dashboard/finances", icon: FinancesGlassIcon },
 ];
 
 /** What the assistant produces first, then what configures it. */

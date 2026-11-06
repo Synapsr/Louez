@@ -156,8 +156,8 @@ export default async function DashboardMainLayout({ children }: { children: Reac
           timezone={settings.timezone}
         >
           <ReservationPollingProvider interval={30000}>
-            <div className="dashboard relative h-svh overflow-hidden">
-              <SidebarProvider className="h-full min-h-0 overflow-hidden">
+            <div className="dashboard relative h-svh overflow-hidden print:h-auto print:overflow-visible">
+              <SidebarProvider className="h-full min-h-0 overflow-hidden print:h-auto print:overflow-visible">
                 <DashboardBreadcrumbsProvider>
                   <DashboardSidebar
                     planSlug={planSlug}

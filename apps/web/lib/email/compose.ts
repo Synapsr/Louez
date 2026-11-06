@@ -40,7 +40,8 @@ export interface ComposeStore {
 export interface ComposeCustomer {
   firstName: string
   lastName: string
-  email: string
+  /** Display only: the recipient is passed separately. */
+  email: string | null
 }
 
 export interface ComposedEmail {

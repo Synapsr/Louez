@@ -189,7 +189,7 @@ export const InvoiceDocument = (props: InvoiceDocumentProps) => {
               </Text>
             ) : null}
             {renderAddressBlock(props.buyer.address)}
-            <Text style={styles.partyInfo}>{props.buyer.email}</Text>
+            {props.buyer.email ? <Text style={styles.partyInfo}>{props.buyer.email}</Text> : null}
             {props.buyer.phone ? <Text style={styles.partyInfo}>{props.buyer.phone}</Text> : null}
             {props.buyer.companyNumber ? (
               <Text style={invoiceStyles.legalLine}>

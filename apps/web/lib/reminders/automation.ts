@@ -27,6 +27,7 @@ import {
   type NotificationSettings,
   type NotificationChannelConfig,
 } from '@louez/types'
+import { hasCustomerEmail } from '@louez/utils'
 import { env } from '@/env'
 
 interface ProcessResult {
@@ -196,6 +197,11 @@ async function processStoreReminders(store: ReminderStore, result: ProcessResult
       const items: ReminderWorkItem[] = []
       for (const e of eligible) {
         const alreadySent = sentByReservation.get(e.reservation.id) ?? new Set<ReminderChannel>()
+        // A customer without e-mail gets the SMS version in place of the
+        // e-mail: once that SMS went out, the e-mail reminder is done too.
+        const smsCoversEmail =
+          pass.audience === 'customer' && !hasCustomerEmail(e.customer) && alreadySent.has('sms')
+        if (smsCoversEmail) alreadySent.add('email')
         const hasPending = Array.from(enabledChannels).some((ch) => !alreadySent.has(ch))
         if (hasPending) items.push({ ...e, alreadySent })
       }

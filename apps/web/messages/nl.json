@@ -152,6 +152,19 @@
       "selectCustomer": "Selecteer een klant",
       "createCustomer": "Klant aanmaken",
       "createNamed": "“{query}” aanmaken"
+    },
+    "pagination": {
+      "showing": "Toont {start} tot {end} van {total}",
+      "perPage": "Per pagina",
+      "page": "Pagina {current} van {total}",
+      "previous": "Vorige pagina",
+      "next": "Volgende pagina"
+    },
+    "dateRangePicker": {
+      "placeholder": "Kies een periode",
+      "pickStart": "Kies de eerste dag",
+      "pickEnd": "Kies de laatste dag",
+      "maxDays": "{count, plural, one {Maximaal # dag} other {Maximaal # dagen}}"
     }
   },
   "auth": {
@@ -180,7 +193,7 @@
     "loginDescription": "Voer uw e-mail in om door te gaan. Als u geen account heeft, wordt er automatisch een aangemaakt.",
     "reeentLoginTitle": "Welkom bij louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent is de etalage, louez is uw tool: reserveringen, betalingen en agenda beheert u hier. Als u geen account heeft, wordt er automatisch een aangemaakt.",
-    "linkWillBeSent": "Een beveiligde link wordt naar uw e-mail gestuurd. Geen wachtwoord te onthouden.",
+    "linkWillBeSent": "U ontvangt een eenmalige code per e-mail. Een wachtwoord blijft optioneel.",
     "checkEmail": "Controleer uw e-mail",
     "emailSentTo": "Een inloglink is verzonden naar",
     "clickLinkToSignIn": "Klik op de link in de e-mail om in te loggen. De link verloopt over 24 uur.",
@@ -200,7 +213,19 @@
       "verification": "De verificatielink is ongeldig of verlopen.",
       "default": "Er is een fout opgetreden. Probeer het opnieuw.",
       "passwordTooShort": "Het wachtwoord moet minimaal 8 tekens bevatten.",
-      "registrationClosed": "Registratie is gesloten op deze instantie. Vraag de eigenaar om een uitnodiging."
+      "registrationClosed": "Registratie is gesloten op deze instantie. Vraag de eigenaar om een uitnodiging.",
+      "invalidCode": "Deze code is onjuist.",
+      "codeExpired": "Deze code is verlopen. Vraag een nieuwe aan.",
+      "tooManyAttempts": "Te veel pogingen met deze code. Vraag een nieuwe aan.",
+      "tooManyRequests": "Te veel pogingen. Wacht een minuut voordat u het opnieuw probeert.",
+      "passwordTooLong": "Het wachtwoord mag niet langer zijn dan 128 tekens.",
+      "invalidPassword": "Het huidige wachtwoord is onjuist.",
+      "currentPasswordRequired": "Vul uw huidige wachtwoord in.",
+      "passwordAlreadySet": "Dit account heeft al een wachtwoord.",
+      "passwordNotSet": "Dit account heeft geen wachtwoord.",
+      "passwordRemovalUnavailable": "Op deze instantie is het wachtwoord de enige manier om in te loggen: het kan niet worden verwijderd.",
+      "sessionExpired": "Uw sessie is verlopen. Log opnieuw in en probeer het nog eens.",
+      "passwordSignUpDisabled": "Een account aanmaken met een wachtwoord is niet mogelijk. Gebruik een code per e-mail."
     },
     "referralBanner": "{storeName} heeft je uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
     "referralBannerGeneric": "🎁 Je bent uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
@@ -224,7 +249,22 @@
     "alreadyHaveAccount": "Heb je al een account?",
     "usePasswordInstead": "Inloggen met een wachtwoord",
     "useEmailCodeInstead": "Inloggen met een e-mailcode",
-    "passwordLoginDescription": "Log in met je e-mailadres en wachtwoord."
+    "passwordLoginDescription": "Log in met je e-mailadres en wachtwoord.",
+    "forgotPasswordTitle": "Wachtwoord vergeten",
+    "forgotPasswordDescription": "Vul het e-mailadres van uw account in: we sturen u een code waarmee u een nieuw wachtwoord kiest.",
+    "forgotPasswordLogsDescription": "Vul het e-mailadres van uw account in. Deze instantie verstuurt geen e-mails: de code verschijnt in de serverlogs.",
+    "resetCodeSentDescription": "Als er een account bestaat voor <strong>{email}</strong>, is daar zojuist een 6-cijferige code naartoe gestuurd. Vul die hieronder in om een nieuw wachtwoord te kiezen.",
+    "newPasswordTitle": "Kies een nieuw wachtwoord",
+    "newPasswordDescription": "U wordt ingelogd zodra het is opgeslagen. Uw andere apparaten worden uitgelogd.",
+    "newPassword": "Nieuw wachtwoord",
+    "saveNewPassword": "Opslaan en inloggen",
+    "requestNewCode": "Nieuwe code ontvangen",
+    "backToLogin": "Terug naar inloggen",
+    "showPassword": "Wachtwoord tonen",
+    "hidePassword": "Wachtwoord verbergen",
+    "passwordRules": {
+      "minLength": "Minstens {count} tekens"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} nodigt u uit om lid te worden van het team",
@@ -853,7 +893,8 @@
       "settings": "Instellingen",
       "store": "Mijn winkel",
       "multiStore": "Multi-winkel",
-      "aiCredits": "AI-tegoed"
+      "aiCredits": "AI-tegoed",
+      "finances": "Financiën"
     },
     "home": {
       "viewAll": "Alles bekijken",
@@ -2244,7 +2285,8 @@
         "viewContract": "Contract bekijken",
         "copyLink": "Klantlink kopiëren",
         "viewAsCustomer": "Bekijken als klant",
-        "print": "Afdrukken"
+        "print": "Afdrukken",
+        "sendSms": "Sms verzenden"
       },
       "edit": {
         "button": "Bewerken",
@@ -2315,7 +2357,8 @@
           "tooFar": "Adres overschrijdt maximale afstand ({maxDistance} km)",
           "savings": "Besparing",
           "deliveryFee": "Bezorgkosten"
-        }
+        },
+        "notifyCustomerNoEmail": "Deze klant heeft geen e-mailadres: hij wordt niet op de hoogte gebracht van de wijziging."
       },
       "contract": {
         "title": "Contract",
@@ -2391,7 +2434,8 @@
           "disabledPastStart": "Tulip bescherming uitgeschakeld voor deze periode in het verleden.",
           "calculating": "Dekking berekenen...",
           "estimatedAmount": "Geschatte dekking: {amount}",
-          "previewUnavailable": "Het Tulip bedrag kon niet opnieuw worden berekend."
+          "previewUnavailable": "Het Tulip bedrag kon niet opnieuw worden berekend.",
+          "requiresEmail": "De Tulip-verzekering heeft het e-mailadres van de klant nodig: voeg het toe aan het profiel om haar aan te bieden."
         },
         "duration": "Duur",
         "exact": "exact",
@@ -2411,7 +2455,8 @@
           "descriptionQuote": "Controleer het overzicht voordat u de offerte verstuurt.",
           "warningsTitle": "Aandachtspunten",
           "emailOn": "Er wordt een bevestigingsmail naar de klant verzonden.",
-          "emailOff": "Er wordt geen e-mail naar de klant verzonden."
+          "emailOff": "Er wordt geen e-mail naar de klant verzonden.",
+          "smsOn": "Er wordt een bevestiging per sms naar de klant verzonden."
         },
         "adjustmentsTitle": "Bedragen en opties",
         "adjustmentsDescription": "Pas de korting, de borg en het verzenden van de bevestiging aan.",
@@ -2550,7 +2595,10 @@
           "label": "Korting",
           "add": "Korting toevoegen",
           "remove": "Korting verwijderen"
-        }
+        },
+        "sendConfirmationSms": "Bevestiging per sms verzenden",
+        "noChannelHint": "Deze klant heeft geen e-mailadres en kan geen sms ontvangen: er wordt geen bevestiging verstuurd.",
+        "noEmailQuoteHint": "Offertes worden online geaccepteerd: voeg een e-mailadres toe aan het klantprofiel om er een te versturen."
       },
       "rejectDialog": {
         "title": "Aanvraag afwijzen",
@@ -2810,7 +2858,10 @@
         "linkCopied": "Link gekopieerd",
         "copyFailed": "Kopiëren mislukt",
         "stripeNotConfigured": "Stripe niet geconfigureerd",
-        "stripeNotConfiguredDescription": "Configureer Stripe in de instellingen om online betalingsverzoeken te verzenden."
+        "stripeNotConfiguredDescription": "Configureer Stripe in de instellingen om online betalingsverzoeken te verzenden.",
+        "noEmail": "geen e-mail",
+        "smsUnavailable": "sms niet ingeschakeld",
+        "noChannelAvailable": "Voeg een e-mailadres of telefoonnummer toe aan het klantprofiel om dit verzoek te versturen."
       },
       "onlinePayment": {
         "title": "Online Betaling",
@@ -2928,6 +2979,16 @@
             "name": "Klanttoegangslink",
             "description": "Stuur een e-mail met de reserveringstrackinglink"
           }
+        },
+        "sms": {
+          "title": "Sms verzenden",
+          "description": "Verstuur een sms naar {name} ({phone})",
+          "selectTemplate": "Kies sms-type",
+          "onlySmsTemplates": "Deze klant heeft geen e-mailadres: alleen berichten die als sms bestaan worden aangeboden.",
+          "customName": "Aangepaste sms",
+          "customDescription": "Schrijf een aangepaste sms naar de klant",
+          "send": "Sms verzenden",
+          "sendSuccess": "Sms verzonden"
         }
       },
       "linkCopied": "Link gekopieerd naar klembord",
@@ -2954,7 +3015,12 @@
         "planning": "Planning"
       },
       "displayCards": "Kaartweergave",
-      "displayTable": "Tabelweergave"
+      "displayTable": "Tabelweergave",
+      "contactHint": {
+        "smsOnly": "Zonder e-mailadres ontvangt deze klant berichten per sms en heeft hij geen online klantaccount.",
+        "noEmail": "Voeg een e-mailadres toe aan het klantprofiel om berichten te versturen.",
+        "noContact": "Voeg een e-mailadres of telefoonnummer toe aan het klantprofiel om berichten te versturen."
+      }
     },
     "customers": {
       "title": "Klanten",
@@ -3017,7 +3083,22 @@
       },
       "filter": {
         "type": "Klanttype",
-        "all": "Alle klanten"
+        "all": "Alle klanten",
+        "created": "Aanmaakdatum",
+        "anyDate": "Alle datums",
+        "source": "Herkomst",
+        "allSources": "Elke herkomst",
+        "channel": "Kanaal",
+        "allChannels": "Alle kanalen",
+        "reset": "Filters resetten",
+        "importRun": "Uit een import",
+        "noResults": "Geen klant komt overeen met deze filters.",
+        "from": "Vanaf {date}",
+        "to": "t/m {date}",
+        "more": "Filters",
+        "createdFrom": "Aangemaakt vanaf",
+        "createdTo": "Aangemaakt t/m",
+        "remove": "Filter verwijderen"
       },
       "deleteConfirm": {
         "title": "Deze klant verwijderen?",
@@ -3059,7 +3140,23 @@
         "internalNotesDescription": "Privénotities over deze klant (niet zichtbaar voor klant)",
         "notesPlaceholder": "Voeg notities toe over deze klant...",
         "save": "Opslaan",
-        "createCustomer": "Klant aanmaken"
+        "createCustomer": "Klant aanmaken",
+        "customerKind": "Klanttype",
+        "moreInfo": "Aanvullende gegevens",
+        "moreInfoDescription": "Optioneel. U kunt ze ook later bij de klant aanvullen.",
+        "profileSection": "Profiel",
+        "birthDate": "Geboortedatum",
+        "ageYears": "{age, plural, one {# jaar} other {# jaar}}",
+        "acquisitionSource": "Hoe heeft de klant u leren kennen?",
+        "acquisitionSourcePlaceholder": "Selecteren",
+        "acquisitionSourceDetail": "Toelichting",
+        "acquisitionSourceDetailPlaceholder": "Toeristenbureau, beurs, partnerhotel…",
+        "socialSection": "Sociale media en links",
+        "customizeFields": "Velden aanpassen",
+        "fieldCount": "{count, plural, one {# veld} other {# velden}}",
+        "filledCount": "{count, plural, one {# ingevuld} other {# ingevuld}}",
+        "emailOptional": "E-mail",
+        "contactHint": "Een e-mailadres of een telefoonnummer is voldoende. Zonder e-mail worden berichten waar mogelijk per sms verstuurd."
       },
       "countries": {
         "FR": "Frankrijk",
@@ -3074,6 +3171,88 @@
       "quickCreate": {
         "title": "Nieuwe klant",
         "description": "De klant wordt aangemaakt en automatisch geselecteerd."
+      },
+      "sources": {
+        "word_of_mouth": "Mond-tot-mondreclame",
+        "search_engine": "Zoeken op Google",
+        "social_media": "Sociale media",
+        "walk_in": "Langs de winkel gelopen",
+        "partner": "Partner of toeristenbureau",
+        "ads": "Reclame",
+        "returning": "Was al klant",
+        "other": "Overig"
+      },
+      "channels": {
+        "dashboard": "Aangemaakt door het team",
+        "storefront": "Online winkel",
+        "marketplace": "reeent",
+        "import": "Import",
+        "api": "API",
+        "ai": "AI-assistent"
+      },
+      "social": {
+        "add": "Link toevoegen",
+        "remove": "{network} verwijderen",
+        "open": "{network} openen",
+        "placeholderHandle": "@gebruikersnaam of profiellink",
+        "placeholderWebsite": "https://…",
+        "placeholderWhatsapp": "+31 6 12345678",
+        "whatsapp": "WhatsApp",
+        "empty": "Geen links"
+      },
+      "fields": {
+        "yes": "Ja",
+        "no": "Nee",
+        "reveal": "Tonen",
+        "hide": "Verbergen",
+        "copy": "Kopiëren",
+        "copied": "Gekopieerd",
+        "selectPlaceholder": "Selecteren",
+        "suspicious": "Dit nummer lijkt ongeldig. Controleer het: het wordt toch opgeslagen.",
+        "duplicate": "Al in gebruik bij {name}.",
+        "viewCustomer": "Klant bekijken",
+        "complete": "{count, plural, one {# veld invullen} other {# velden invullen}}",
+        "issues": {
+          "required": "Dit veld is verplicht.",
+          "invalidNumber": "Voer een getal in.",
+          "invalidDate": "Ongeldige datum.",
+          "invalidOption": "Kies een waarde uit de lijst.",
+          "invalidEmail": "Ongeldig e-mailadres.",
+          "invalidPhone": "Ongeldig telefoonnummer.",
+          "invalidUrl": "Ongeldige link."
+        }
+      },
+      "detail": {
+        "newReservation": "Nieuwe reservering",
+        "edit": "Bewerken",
+        "moreActions": "Meer acties",
+        "createdVia": "Aangemaakt via: {channel}",
+        "contactCard": "Contactgegevens",
+        "profileCard": "Profiel",
+        "bornOn": "Geboren op {date}",
+        "source": "Herkomst",
+        "lastRental": "Laatste verhuur",
+        "never": "Nooit",
+        "noAddress": "Geen adres ingevuld",
+        "noPhone": "Geen telefoonnummer ingevuld",
+        "emptyProfile": "Geen profielgegevens.",
+        "editSection": "Bewerken: {section}",
+        "editSectionDescription": "Alleen deze gegevens worden gewijzigd.",
+        "sectionSaved": "Wijzigingen opgeslagen",
+        "save": "Opslaan",
+        "cancel": "Annuleren",
+        "noEmail": "Geen e-mailadres"
+      },
+      "pagination": {
+        "showing": "{from}–{to} van {total}",
+        "perPage": "Per pagina",
+        "previous": "Vorige pagina",
+        "next": "Volgende pagina",
+        "pageOf": "Pagina {page} van {pages}"
+      },
+      "similar": {
+        "found": "Er bestaat al een vergelijkbare klant: {name}.",
+        "view": "Klantgegevens bekijken"
       }
     },
     "calendar": {
@@ -4307,6 +4486,14 @@
           "statusRequired": "Selecteer ten minste één status.",
           "noContracts": "Geen reserveringen komen overeen met deze periode en statussen.",
           "exportFailed": "Export mislukt. Probeer het opnieuw."
+        },
+        "customers": {
+          "title": "Klanten",
+          "description": "Exporteer je klantfiches: contactgegevens, geboortedatum, herkomst, aanmaakkanaal en je aangepaste velden.",
+          "button": "Klanten exporteren",
+          "dateRangeHint": "De periode heeft betrekking op de aanmaakdatum van de fiches. Laat ze leeg om al je klanten te exporteren.",
+          "includeSensitive": "Gevoelige gegevens opnemen",
+          "includeSensitiveWarning": "Velden die als gevoelig zijn gemarkeerd, staan leesbaar in het bestand: bewaar het op een veilige plek."
         }
       },
       "embed": {
@@ -5283,7 +5470,7 @@
         "active": "Actief",
         "activeSessions": "Actieve sessies",
         "activeSessionsDescription": "Beheer uw inlogsessies",
-        "sessionCount": "{count} sessie",
+        "sessionCount": "{count, plural, one {# ingelogd apparaat} other {# ingelogde apparaten}}",
         "changePassword": "Wachtwoord wijzigen",
         "dangerZone": "Gevarenzone",
         "dangerZoneDescription": "Onomkeerbare acties op uw account",
@@ -5346,6 +5533,51 @@
           "saved": "Sneltoetsen opgeslagen",
           "conflict": "Deze sneltoets wordt al gebruikt voor ‘{action}’.",
           "resetAction": "‘{action}’ herstellen"
+        },
+        "signIn": {
+          "title": "Inloggen",
+          "description": "De manieren om in te loggen op uw account",
+          "emailCode": "Code per e-mail",
+          "alwaysActive": "Altijd actief",
+          "unavailable": "Niet beschikbaar",
+          "google": "Google",
+          "linked": "Gekoppeld",
+          "notLinked": "Niet gekoppeld",
+          "linkGoogle": "Koppelen",
+          "googleLinkError": "Dit Google-account kon niet worden gekoppeld. Controleer of het hetzelfde e-mailadres gebruikt als uw Louez-account.",
+          "password": "Wachtwoord",
+          "passwordNotSet": "Niet ingesteld",
+          "passwordSetOn": "Ingesteld op {date}",
+          "setPassword": "Instellen",
+          "changePassword": "Wijzigen",
+          "removePassword": "Verwijderen",
+          "setPasswordTitle": "Een wachtwoord instellen",
+          "setPasswordDescription": "Een wachtwoord is optioneel: de code per e-mail blijft altijd beschikbaar. Uw andere apparaten worden uitgelogd.",
+          "newPasswordLabel": "Nieuw wachtwoord",
+          "currentPasswordLabel": "Huidig wachtwoord",
+          "setPasswordSubmit": "Wachtwoord instellen",
+          "changePasswordDescription": "Uw andere apparaten worden uitgelogd.",
+          "changePasswordSubmit": "Wachtwoord wijzigen",
+          "removePasswordTitle": "Wachtwoord verwijderen?",
+          "removePasswordDescription": "U blijft inloggen met een code per e-mail. U kunt op elk moment een nieuw wachtwoord instellen.",
+          "removePasswordConfirm": "Wachtwoord verwijderen",
+          "cancel": "Annuleren",
+          "passwordSetToast": "Wachtwoord ingesteld",
+          "passwordChangedToast": "Wachtwoord gewijzigd",
+          "passwordRemovedToast": "Wachtwoord verwijderd"
+        },
+        "passwordAlert": {
+          "title": "Was u dit niet?",
+          "description": "Het wachtwoord van het account {email} is zojuist toegevoegd, gewijzigd of verwijderd. Hebt u hier niets mee te maken, beveilig dan nu uw account.",
+          "effectPassword": "Het wachtwoord wordt van het account verwijderd.",
+          "effectSessions": "Alle apparaten worden uitgelogd, ook dit apparaat.",
+          "effectSignIn": "U logt daarna opnieuw in met een code per e-mail.",
+          "unavailable": "Op deze instantie is het wachtwoord de enige manier om in te loggen: het kan niet worden verwijderd. Wijzig het vanuit uw account.",
+          "confirm": "Mijn account beveiligen",
+          "itWasMe": "Dit was ik zelf",
+          "doneTitle": "Uw account is beveiligd",
+          "doneDescription": "Het wachtwoord is verwijderd en alle apparaten zijn uitgelogd. Log opnieuw in met een code per e-mail.",
+          "signInAgain": "Opnieuw inloggen"
         }
       },
       "admin": {
@@ -5883,6 +6115,546 @@
         "title": "Automatische huurverlengingen",
         "description": "Klanten kunnen verlengen bij beschikbaarheid en een berekenbare meerprijs. Bijzondere gevallen vereisen uw goedkeuring.",
         "maxDays": "Maximum extra dagen (leeg: geen limiet)"
+      },
+      "customerFields": {
+        "title": "Klantgegevens",
+        "description": "Kies welke gegevens u over uw klanten bewaart, naast naam en contactgegevens.",
+        "limits": "{count} / {max} actieve velden",
+        "suggestions": {
+          "title": "Suggesties voor u",
+          "description": "Op basis van het land en de activiteit van uw winkel.",
+          "browse": "Sjablonen bekijken",
+          "dismiss": "Suggesties verbergen"
+        },
+        "native": {
+          "title": "Louez-velden",
+          "description": "Gegevens waar Louez iets mee kan. Verberg wat u niet nodig hebt.",
+          "birthDate": "Geboortedatum",
+          "birthDateHelp": "Toont ook de leeftijd van de klant.",
+          "acquisitionSource": "Herkomst van de klant",
+          "acquisitionSourceHelp": "Hoe de klant u heeft leren kennen.",
+          "socialLinks": "Sociale media en links",
+          "socialLinksHelp": "Instagram, website, WhatsApp…",
+          "visibility": {
+            "hidden": "Verborgen",
+            "optional": "Optioneel",
+            "required": "Verplicht"
+          },
+          "saved": "Instelling opgeslagen"
+        },
+        "sections": {
+          "add": "Sectie toevoegen",
+          "namePlaceholder": "Naam van de sectie",
+          "defaultName": "Aanvullende gegevens",
+          "rename": "Sectie hernoemen",
+          "moveUp": "Omhoog",
+          "moveDown": "Omlaag",
+          "actions": "Acties voor de sectie"
+        },
+        "field": {
+          "add": "Veld toevoegen",
+          "edit": "Bewerken",
+          "archive": "Archiveren",
+          "restore": "Opnieuw activeren",
+          "delete": "Definitief verwijderen",
+          "moveTo": "Verplaatsen naar",
+          "actions": "Acties voor het veld",
+          "active": "Actief",
+          "drag": "Volgorde wijzigen",
+          "valueCount": "{count, plural, =0 {Geen waarden} one {Ingevuld bij # klant} other {Ingevuld bij # klanten}}"
+        },
+        "badges": {
+          "required": "Verplicht",
+          "sensitive": "Gevoelig",
+          "contract": "Contract",
+          "search": "Zoeken",
+          "list": "Lijst",
+          "business": "Zakelijk",
+          "individual": "Particulier"
+        },
+        "dialog": {
+          "createTitle": "Nieuw veld",
+          "createDescription": "Het verschijnt bij al uw klanten.",
+          "editTitle": "Veld bewerken",
+          "editDescription": "Reeds ingevulde waarden blijven behouden.",
+          "label": "Label",
+          "labelPlaceholder": "Rijbewijsnummer",
+          "type": "Type",
+          "typeLocked": "Het type kan niet meer worden gewijzigd zodra het veld is aangemaakt.",
+          "options": "Keuzemogelijkheden",
+          "optionsPlaceholder": "Typ een keuze en druk op Enter",
+          "unit": "Eenheid",
+          "unitPlaceholder": "cm, kg, km…",
+          "helpText": "Hulptekst",
+          "helpTextPlaceholder": "Aanwijzing die onder het veld staat",
+          "section": "Sectie",
+          "newSection": "Nieuwe sectie…",
+          "appliesTo": "Geldt voor",
+          "appliesToAll": "Iedereen",
+          "appliesToIndividual": "Particulier",
+          "appliesToBusiness": "Zakelijk",
+          "save": "Opslaan",
+          "create": "Veld toevoegen",
+          "cancel": "Annuleren",
+          "types": {
+            "text": "Tekst",
+            "textarea": "Lange tekst",
+            "number": "Getal",
+            "date": "Datum",
+            "select": "Keuzelijst",
+            "checkbox": "Ja / Nee",
+            "phone": "Telefoon",
+            "email": "E-mail",
+            "url": "Link"
+          },
+          "flags": {
+            "required": "Verplicht",
+            "requiredHelp": "Zonder dit veld kan de klant niet worden opgeslagen.",
+            "sensitive": "Gevoelig gegeven",
+            "sensitiveHelp": "Standaard verborgen bij de klant en niet opgenomen in exports.",
+            "contract": "Tonen op het contract",
+            "contractHelp": "Wordt toegevoegd onder de contactgegevens van de klant.",
+            "search": "Opnemen in de zoekfunctie",
+            "searchHelp": "Typ de waarde om de klant terug te vinden. Signaleert ook dubbelen.",
+            "list": "Tonen in de lijst",
+            "listHelp": "Voegt een kolom toe aan de klantenlijst."
+          }
+        },
+        "templates": {
+          "dialogTitle": "Veldsjablonen",
+          "dialogDescription": "Voeg met één klik een set velden toe. Daarna kunt u ze hernoemen, anders ordenen of archiveren.",
+          "privacyNote": "Verzamel alleen wat u echt nodig hebt: u bent verantwoordelijk voor de gegevens van uw klanten.",
+          "groups": {
+            "country": "Per land",
+            "activity": "Per activiteit",
+            "general": "Algemeen"
+          },
+          "adopt": "Toevoegen",
+          "adopted": "Toegevoegd",
+          "fieldsCount": "{count, plural, one {# veld} other {# velden}}",
+          "adoptedToast": "{count, plural, one {# veld toegevoegd} other {# velden toegevoegd}}",
+          "identityDocument": {
+            "name": "Identiteitsbewijs",
+            "description": "Het bewijs dat bij de overdracht van het materiaal wordt gevraagd.",
+            "section": "Identiteit",
+            "fields": {
+              "id_document_type": {
+                "label": "Type document",
+                "options": {
+                  "idCard": "Identiteitskaart",
+                  "passport": "Paspoort",
+                  "residencePermit": "Verblijfsvergunning",
+                  "drivingLicense": "Rijbewijs",
+                  "other": "Overig"
+                }
+              },
+              "id_document_number": {
+                "label": "Documentnummer"
+              },
+              "id_document_expiry": {
+                "label": "Vervaldatum"
+              }
+            }
+          },
+          "emergencyContact": {
+            "name": "Noodcontact",
+            "description": "De persoon die gewaarschuwd moet worden bij problemen tijdens de verhuur.",
+            "section": "Noodcontact",
+            "fields": {
+              "emergency_contact_name": {
+                "label": "Naam"
+              },
+              "emergency_contact_phone": {
+                "label": "Telefoon"
+              },
+              "emergency_contact_relation": {
+                "label": "Relatie tot de klant",
+                "options": {
+                  "partner": "Partner",
+                  "parent": "Ouder",
+                  "friend": "Vriend(in)",
+                  "colleague": "Collega",
+                  "other": "Overig"
+                }
+              }
+            }
+          },
+          "businessContacts": {
+            "name": "Zakelijke klanten",
+            "description": "De contactpersoon van de boekhouding en de referentie die op uw documenten moet staan.",
+            "section": "Facturatie",
+            "fields": {
+              "accounting_contact_name": {
+                "label": "Contactpersoon boekhouding"
+              },
+              "accounting_email": {
+                "label": "E-mail boekhouding"
+              },
+              "purchase_order_reference": {
+                "label": "Referentie inkooporder"
+              }
+            }
+          },
+          "brazil": {
+            "name": "Brazilië",
+            "description": "CPF of CNPJ, met controle van het nummer, en RG.",
+            "section": "Identiteit",
+            "fields": {
+              "br_cpf_cnpj": {
+                "label": "CPF / CNPJ"
+              },
+              "br_rg": {
+                "label": "RG"
+              },
+              "br_rg_issuer": {
+                "label": "Uitgevende instantie"
+              }
+            }
+          },
+          "spain": {
+            "name": "Spanje",
+            "description": "DNI of NIE, met controle van de controleletter.",
+            "section": "Identiteit",
+            "fields": {
+              "es_dni_nie": {
+                "label": "DNI / NIE"
+              }
+            }
+          },
+          "italy": {
+            "name": "Italië",
+            "description": "Codice fiscale, met controle van het controleteken.",
+            "section": "Identiteit",
+            "fields": {
+              "it_codice_fiscale": {
+                "label": "Codice fiscale"
+              }
+            }
+          },
+          "portugal": {
+            "name": "Portugal",
+            "description": "NIF, met controle van het controlecijfer.",
+            "section": "Identiteit",
+            "fields": {
+              "pt_nif": {
+                "label": "NIF"
+              }
+            }
+          },
+          "vehicles": {
+            "name": "Voertuigen en tweewielers",
+            "description": "Het rijbewijs, overgenomen op het contract.",
+            "section": "Rijbewijs",
+            "fields": {
+              "driving_license_number": {
+                "label": "Rijbewijsnummer"
+              },
+              "driving_license_date": {
+                "label": "Behaald op"
+              },
+              "driving_license_categories": {
+                "label": "Categorieën"
+              }
+            }
+          },
+          "ski": {
+            "name": "Ski en bergsport",
+            "description": "De lichaamsmaten om het materiaal klaar te zetten voordat de klant aankomt.",
+            "section": "Lichaamsmaten",
+            "fields": {
+              "height_cm": {
+                "label": "Lengte"
+              },
+              "weight_kg": {
+                "label": "Gewicht"
+              },
+              "shoe_size": {
+                "label": "Schoenmaat"
+              },
+              "ski_level": {
+                "label": "Niveau",
+                "options": {
+                  "beginner": "Beginner",
+                  "intermediate": "Gemiddeld",
+                  "advanced": "Gevorderd",
+                  "expert": "Expert"
+                }
+              }
+            }
+          },
+          "bikes": {
+            "name": "Fietsen",
+            "description": "Wat u nodig hebt om de fiets af te stellen voordat de klant aankomt.",
+            "section": "Fietsafstelling",
+            "fields": {
+              "height_cm": {
+                "label": "Lengte"
+              },
+              "bike_saddle_height": {
+                "label": "Zadelhoogte"
+              },
+              "bike_preferences": {
+                "label": "Voorkeuren"
+              }
+            }
+          },
+          "boating": {
+            "name": "Watersport",
+            "description": "Het vaarbewijs, overgenomen op het contract.",
+            "section": "Vaarbewijs",
+            "fields": {
+              "boat_license_number": {
+                "label": "Nummer vaarbewijs"
+              },
+              "boat_license_type": {
+                "label": "Type vaarbewijs",
+                "options": {
+                  "coastal": "Kustwateren",
+                  "offshore": "Open zee",
+                  "inland": "Binnenwateren",
+                  "none": "Zonder vaarbewijs"
+                }
+              }
+            }
+          }
+        },
+        "deleteDialog": {
+          "title": "“{label}” verwijderen?",
+          "description": "Het veld verdwijnt bij alle klanten. Deze actie is onomkeerbaar.",
+          "withValues": "{count, plural, one {# klant heeft een waarde in dit veld: die wordt gewist.} other {# klanten hebben een waarde in dit veld: die worden gewist.}}",
+          "archiveInstead": "Liever archiveren",
+          "confirm": "Definitief verwijderen",
+          "cancel": "Annuleren"
+        },
+        "archived": {
+          "title": "Gearchiveerde velden",
+          "description": "Verborgen bij de klanten, de waarden blijven bewaard."
+        },
+        "preview": {
+          "title": "Voorbeeld",
+          "description": "Wat uw team ziet bij het aanmaken van een klant.",
+          "empty": "Voeg een veld toe om het voorbeeld te zien."
+        },
+        "empty": {
+          "title": "Geen aangepaste velden",
+          "description": "Begin met een sjabloon of maak uw eerste veld aan."
+        },
+        "toasts": {
+          "created": "Veld toegevoegd",
+          "updated": "Veld gewijzigd",
+          "archived": "Veld gearchiveerd",
+          "restored": "Veld opnieuw geactiveerd",
+          "deleted": "Veld verwijderd",
+          "reordered": "Volgorde opgeslagen",
+          "sectionRenamed": "Sectie hernoemd"
+        }
+      },
+      "import": {
+        "title": "Importeren",
+        "description": "Neem uw klanten over uit een spreadsheet of andere software. Er wordt niets weggeschreven voordat u alles hebt gecontroleerd.",
+        "newImport": "Nieuwe import",
+        "history": {
+          "title": "Eerdere imports",
+          "empty": "Nog geen imports",
+          "emptyDescription": "Uw imports verschijnen hier. Elke import kan ongedaan worden gemaakt.",
+          "result": "{created} aangemaakt · {updated} bijgewerkt · {skipped} overgeslagen · {errors} fouten",
+          "viewCustomers": "Klanten bekijken",
+          "downloadErrors": "Fouten downloaden",
+          "revert": "Deze import ongedaan maken",
+          "revertTitle": "Deze import ongedaan maken?",
+          "revertDescription": "De klanten die door deze import zijn aangemaakt, worden verwijderd, behalve klanten die sindsdien een reservering hebben of zijn gewijzigd. Bijgewerkte klanten krijgen hun vorige waarden terug.",
+          "revertConfirm": "Import ongedaan maken",
+          "revertDone": "{reverted, plural, one {# klant hersteld} other {# klanten hersteld}}, {kept, plural, =0 {geen behouden} one {# behouden} other {# behouden}}",
+          "keep": "Behouden",
+          "status": {
+            "running": "Bezig",
+            "completed": "Voltooid",
+            "failed": "Mislukt",
+            "reverted": "Ongedaan gemaakt",
+            "draft": "Concept",
+            "ready": "Klaar"
+          },
+          "entity": {
+            "customers": "Klanten",
+            "products": "Producten"
+          }
+        },
+        "steps": {
+          "source": "Bron",
+          "sourceDescription": "Wat u importeert",
+          "file": "Bestand",
+          "fileDescription": "Uw gegevens",
+          "columns": "Kolommen",
+          "columnsDescription": "Koppelingen",
+          "review": "Controle",
+          "reviewDescription": "Vóór het wegschrijven",
+          "run": "Import",
+          "runDescription": "Resultaat"
+        },
+        "actions": {
+          "back": "Terug",
+          "next": "Doorgaan",
+          "cancel": "Afsluiten",
+          "done": "Afronden"
+        },
+        "source": {
+          "title": "Wat wilt u importeren?",
+          "customers": "Klanten",
+          "customersDescription": "Contactgegevens, bedrijf, aangepaste velden.",
+          "products": "Producten",
+          "originTitle": "Waar komen uw gegevens vandaan?",
+          "file": "Een CSV-bestand",
+          "fileDescription": "Geëxporteerd uit Excel, Google Sheets of andere software.",
+          "paste": "Kopiëren en plakken",
+          "pasteDescription": "Selecteer uw cellen in de spreadsheet, kopieer, plak.",
+          "hint": "U hoeft uw bestand niet om te bouwen: Louez past zich aan uw kolommen aan."
+        },
+        "file": {
+          "drop": "Sleep uw bestand hierheen",
+          "browse": "of klik om het te kiezen",
+          "formats": "CSV of TSV, maximaal 5.000 rijen",
+          "reading": "Bestand wordt gelezen…",
+          "pasteLabel": "Plak uw cellen",
+          "pastePlaceholder": "Plak hier de rijen die u uit uw spreadsheet hebt gekopieerd, inclusief kolomkoppen.",
+          "replace": "Ander bestand kiezen",
+          "detected": "{rows, plural, one {# rij} other {# rijen}} · {columns, plural, one {# kolom} other {# kolommen}}",
+          "previewTitle": "Voorbeeld van de eerste rijen",
+          "tooManyRows": "Dit bestand bevat {rows} rijen. De limiet is 5.000: splits het in meerdere bestanden.",
+          "noRows": "Geen rijen gevonden onder de rij met kolomkoppen.",
+          "unreadable": "Dit bestand kon niet worden gelezen. Sla het op als CSV en probeer het opnieuw.",
+          "staging": "Rijen worden verzonden… {done} / {total}"
+        },
+        "columns": {
+          "title": "Waar staat elke kolom voor?",
+          "description": "Louez heeft herkend wat het kon. Controleer, vul aan en negeer de rest.",
+          "sourceColumn": "Kolom in het bestand",
+          "target": "Louez-veld",
+          "recognized": "Herkend",
+          "toMap": "Te koppelen",
+          "ignored": "Genegeerd",
+          "ignore": "Deze kolom negeren",
+          "createField": "Veld “{name}” aanmaken",
+          "groupNative": "Klantgegevens",
+          "groupCustom": "Aangepaste velden",
+          "noSample": "leeg",
+          "summary": "Samenvatting",
+          "mapped": "{count, plural, one {# gekoppeld} other {# gekoppeld}}",
+          "ignoredCount": "{count, plural, one {# genegeerd} other {# genegeerd}}",
+          "requiredTitle": "Vereist",
+          "missingEmail": "Koppel een kolom aan het e-mailadres.",
+          "missingName": "Koppel een kolom aan de naam.",
+          "fieldCreated": "Veld “{name}” aangemaakt",
+          "fields": {
+            "externalId": "Oorspronkelijke ID",
+            "fullName": "Voor- en achternaam (te splitsen)",
+            "firstName": "Voornaam",
+            "lastName": "Achternaam",
+            "email": "E-mail",
+            "phone": "Telefoon",
+            "companyName": "Bedrijf",
+            "companyNumber": "Ondernemingsnummer",
+            "vatNumber": "Btw-nummer",
+            "address": "Adres",
+            "postalCode": "Postcode",
+            "city": "Stad",
+            "country": "Land",
+            "birthDate": "Geboortedatum",
+            "notes": "Interne notities"
+          },
+          "contactLabel": "E-mail of telefoon",
+          "missingContact": "Koppel een kolom aan het e-mailadres of het telefoonnummer."
+        },
+        "review": {
+          "title": "Dit gaat de import doen",
+          "description": "Er is nog niets weggeschreven.",
+          "create": "Aan te maken",
+          "update": "Bij te werken",
+          "skip": "Overgeslagen",
+          "error": "Fouten",
+          "strategyTitle": "Als de klant al bestaat",
+          "fillEmpty": "Lege velden aanvullen",
+          "fillEmptyDescription": "Aanbevolen. Wat u al hebt ingevuld, wordt nooit gewijzigd.",
+          "overwrite": "Vervangen door het bestand",
+          "overwriteDescription": "De waarden uit het bestand gaan voor. Een kolom die in het bestand ontbreekt, wist niets.",
+          "skipExisting": "Ongemoeid laten",
+          "skipExistingDescription": "Alleen nieuwe klanten worden aangemaakt.",
+          "row": "Rij {index}",
+          "sampleNote": "Voorbeeld van de eerste {count} rijen van deze categorie.",
+          "emptyTab": "Geen rijen in deze categorie.",
+          "fix": "Corrigeren",
+          "saveFix": "Opslaan",
+          "cancelFix": "Annuleren",
+          "dateOrder": "Datums gelezen als {format}.",
+          "dmy": "dag/maand/jaar",
+          "mdy": "maand/dag/jaar",
+          "start": "{count, plural, =0 {Niets te importeren} one {# klant importeren} other {# klanten importeren}}",
+          "reasons": {
+            "emailRequired": "E-mailadres ontbreekt",
+            "emailInvalid": "Ongeldig e-mailadres",
+            "nameRequired": "Voor- of achternaam ontbreekt",
+            "duplicateInFile": "Staat al eerder in het bestand",
+            "alreadyExists": "Klant bestaat al",
+            "planLimit": "Boven de limiet van uw plan",
+            "nothingToUpdate": "Niets aan te vullen",
+            "writeFailed": "Wegschrijven mislukt",
+            "contactRequired": "Geen bruikbaar e-mailadres of telefoonnummer"
+          },
+          "warnings": {
+            "phoneInvalid": "telefoonnummer onleesbaar, genegeerd",
+            "countryUnknown": "land niet herkend, genegeerd",
+            "birthDateInvalid": "geboortedatum onleesbaar, genegeerd",
+            "customFieldInvalid": "waarde van een aangepast veld ongeldig, genegeerd"
+          }
+        },
+        "run": {
+          "running": "Import bezig…",
+          "runningHint": "U kunt deze pagina verlaten: de import gaat verder waar hij was gestopt.",
+          "progress": "{done} / {total} rijen",
+          "doneTitle": "Import voltooid",
+          "doneDescription": "U kunt deze ongedaan maken op de pagina Importeren.",
+          "created": "Aangemaakt",
+          "updated": "Bijgewerkt",
+          "skipped": "Overgeslagen",
+          "errors": "Fouten",
+          "viewCustomers": "Geïmporteerde klanten bekijken",
+          "downloadErrors": "Fouten downloaden",
+          "another": "Nog een bestand importeren"
+        },
+        "products": {
+          "sourceDescription": "Naam, prijs, categorie, borg, aantal. Geïmporteerd als concept.",
+          "draftNote": "De producten worden als concept aangemaakt: voeg uw foto's toe en controleer uw tarieven voordat u ze in uw winkel publiceert.",
+          "existingNote": "Een product dat al bestaat, behoudt zijn foto's, borg en categorieën: de import komt daar nooit aan.",
+          "missingName": "Koppel een kolom aan de productnaam.",
+          "missingPrice": "Koppel een kolom aan de prijs.",
+          "start": "{count, plural, =0 {Niets te importeren} one {# product importeren} other {# producten importeren}}",
+          "view": "Geïmporteerde producten bekijken",
+          "viewHistory": "Producten bekijken",
+          "strategyTitle": "Als het product al bestaat",
+          "fillEmptyDescription": "Aanbevolen. Alleen een ontbrekende beschrijving wordt toegevoegd.",
+          "overwriteDescription": "Prijs, beschrijving en aantal uit het bestand gaan voor.",
+          "skipExistingDescription": "Alleen nieuwe producten worden aangemaakt.",
+          "fields": {
+            "externalId": "Oorspronkelijke referentie",
+            "name": "Productnaam",
+            "description": "Beschrijving",
+            "category": "Categorie",
+            "price": "Prijs",
+            "pricingMode": "Periode (uur, dag, week)",
+            "deposit": "Borg",
+            "quantity": "Aantal"
+          },
+          "reasons": {
+            "productNameRequired": "Productnaam ontbreekt",
+            "priceRequired": "Prijs ontbreekt",
+            "priceInvalid": "Prijs onleesbaar",
+            "productAlreadyExists": "Product bestaat al"
+          },
+          "warnings": {
+            "depositInvalid": "borg onleesbaar, op 0 gezet",
+            "quantityInvalid": "aantal onleesbaar, op 1 gezet",
+            "pricingModeUnknown": "periode niet herkend, tarief per dag"
+          }
+        }
       }
     },
     "commandPalette": {
@@ -5984,7 +6756,11 @@
       "settingsReviewBooster": "Reviewbooster",
       "settingsTaxes": "Belastingen",
       "productsEdit": "Bewerken",
-      "reservationsEdit": "Bewerken"
+      "reservationsEdit": "Bewerken",
+      "settingsCustomerFields": "Klantgegevens",
+      "finances": "Financiën",
+      "settingsImport": "Importeren",
+      "settingsImportNew": "Nieuwe import"
     },
     "notificationsCenter": {
       "title": "Meldingen",
@@ -6072,6 +6848,22 @@
         "reservation-creation-simplified": {
           "title": "Eén reservering, één pagina",
           "description": "Geen stappen meer om door te lopen: klant, periode, producten en levering passen op één pagina, met het overzicht altijd ernaast. En alles waarvoor u de reservering daarna opnieuw moest openen — een korting, een afgesproken prijs, de waarborg, een passant — regelt u nu meteen."
+        },
+        "finances": {
+          "title": "Financiën: je kassa, openstaande bedragen en borgsommen",
+          "description": "Een nieuw scherm dat laat zien wat je hebt ontvangen en via welke betaalmethode, wie je nog geld schuldig is en welke borgsommen je in handen hebt. Met een export voor je boekhouder en een kassaoverzicht om af te drukken."
+        },
+        "optional-password": {
+          "title": "Een wachtwoord, als u dat wilt",
+          "description": "Voeg een wachtwoord toe aan uw account om in te loggen zonder op de code per e-mail te wachten. De code blijft altijd beschikbaar."
+        },
+        "customer-custom-fields": {
+          "title": "Klantgegevens op uw maat",
+          "description": "Voeg uw eigen velden toe of begin met een sjabloon per land en per activiteit: rijbewijs, identiteitsbewijs, lichaamsmaten, CPF…"
+        },
+        "customer-import": {
+          "title": "Importeer uw klanten",
+          "description": "Vanuit een CSV of met simpel kopiëren en plakken. Louez herkent uw kolommen, toont het resultaat voordat er iets wordt weggeschreven, en elke import kan ongedaan worden gemaakt."
         }
       }
     },
@@ -6195,6 +6987,205 @@
       "sourceHint": "Bekijk de broncode",
       "star": "Laat een ster achter",
       "later": "Later"
+    },
+    "finances": {
+      "title": "Financiën",
+      "description": "Houd je ontvangsten, openstaande bedragen en borgsommen bij.",
+      "loadError": "Deze gegevens konden niet worden geladen. Probeer het zo opnieuw.",
+      "period": {
+        "label": "Periode",
+        "today": "Vandaag",
+        "yesterday": "Gisteren",
+        "7d": "Laatste 7 dagen",
+        "month": "Deze maand",
+        "lastMonth": "Vorige maand",
+        "custom": "Aangepast"
+      },
+      "export": {
+        "label": "Exporteren",
+        "csv": "Periode exporteren als CSV",
+        "csvHint": "Een bestand voor je boekhouder",
+        "print": "Overzicht afdrukken",
+        "printHint": "Je kassa-afsluiting",
+        "preparing": "Overzicht wordt voorbereid…",
+        "csvError": "De export kon niet worden gemaakt. Probeer het zo opnieuw.",
+        "printError": "Het overzicht kon niet worden voorbereid. Probeer het zo opnieuw."
+      },
+      "stats": {
+        "moneyIn": "Ontvangen",
+        "moneyOut": "Terugbetaald en teruggegeven",
+        "moneyOutHint": "Terugbetalingen en teruggegeven borg",
+        "net": "Nettosaldo",
+        "netHint": "Ontvangen min terugbetaald",
+        "outstanding": "Nog te ontvangen",
+        "outstandingReservations": "{count, plural, =0 {Geen reservering} one {# reservering} other {# reserveringen}}",
+        "movements": "{count, plural, =0 {Geen mutatie} one {# mutatie} other {# mutaties}}",
+        "vsPrevious": "vergeleken met de vorige periode"
+      },
+      "chart": {
+        "title": "Inkomsten en uitgaven",
+        "descriptionDay": "Dag voor dag, over de gekozen periode",
+        "descriptionMonth": "Maand voor maand, over de gekozen periode",
+        "moneyIn": "Inkomend",
+        "moneyOut": "Uitgaand",
+        "net": "Saldo",
+        "empty": "Geen mutaties in deze periode."
+      },
+      "methods": {
+        "title": "Per betaalmethode",
+        "description": "Klik op een methode om het journaal te filteren",
+        "empty": "Niets ontvangen in deze periode.",
+        "filterBy": "Journaal filteren op {method}",
+        "out": "waarvan {amount} uitgaand",
+        "stripe": "Online (Stripe)",
+        "cash": "Contant",
+        "card": "Pinpas",
+        "transfer": "Overboeking",
+        "check": "Cheque",
+        "other": "Anders"
+      },
+      "tabs": {
+        "movements": "Mutaties",
+        "outstanding": "Nog te ontvangen",
+        "deposits": "Borg"
+      },
+      "filters": {
+        "searchPlaceholder": "Klant, reserveringsnummer…",
+        "clearSearch": "Zoekopdracht wissen",
+        "direction": {
+          "label": "Richting",
+          "all": "Alles",
+          "in": "Inkomend",
+          "out": "Uitgaand"
+        },
+        "method": "Betaalmethode",
+        "allMethods": "Alle methoden",
+        "more": "Filters",
+        "nature": "Soort",
+        "allNatures": "Alle soorten",
+        "status": "Status",
+        "allStatuses": "Verwerkt en in afwachting",
+        "amount": "Bedrag",
+        "minAmount": "Minimum",
+        "maxAmount": "Maximum",
+        "apply": "Toepassen",
+        "reset": "Herstellen",
+        "clearAll": "Alles wissen",
+        "remove": "Filter {label} verwijderen",
+        "activeMin": "Vanaf {amount}",
+        "activeMax": "Tot {amount}",
+        "activeSearch": "“{term}”",
+        "amountInvalid": "Voer een geldig bedrag in.",
+        "amountRangeError": "Het maximum moet groter dan of gelijk aan het minimum zijn."
+      },
+      "nature": {
+        "rental": "Verhuur",
+        "deposit": "Borg ontvangen",
+        "depositHold": "Borgreservering",
+        "depositCapture": "Borg geïnd",
+        "depositReturn": "Borg teruggegeven",
+        "refund": "Terugbetaling",
+        "damage": "Schade",
+        "adjustment": "Aanpassing"
+      },
+      "status": {
+        "settled": "Verwerkt",
+        "pending": "In afwachting",
+        "held": "Reservering actief",
+        "failed": "Mislukt",
+        "cancelled": "Geannuleerd"
+      },
+      "table": {
+        "time": "Tijd",
+        "customer": "Klant",
+        "nature": "Soort",
+        "method": "Methode",
+        "amount": "Bedrag",
+        "dayNet": "Dagsaldo",
+        "unknownCustomer": "Onbekende klant",
+        "openDetails": "Details van de mutatie bekijken",
+        "emptyTitle": "Geen mutaties",
+        "emptyDescription": "Niets komt overeen met deze periode en deze filters."
+      },
+      "detail": {
+        "title": "Details van de mutatie",
+        "date": "Datum",
+        "method": "Betaalmethode",
+        "status": "Status",
+        "customer": "Klant",
+        "reservation": "Reservering",
+        "notes": "Notities",
+        "notCounted": "Deze mutatie telt pas mee in de totalen zodra ze is verwerkt.",
+        "grossNotice": "Oorspronkelijk ontvangen bedrag. Sindsdien is {refunded} terugbetaald: er blijft {net} over.",
+        "original": "Oorspronkelijke betaling",
+        "refunds": "Terugbetalingen van deze betaling",
+        "stripe": "Stripe-kenmerken",
+        "stripePaymentIntent": "Betaling",
+        "stripeCharge": "Afschrijving",
+        "stripeCheckoutSession": "Checkoutsessie",
+        "stripeRefund": "Terugbetaling",
+        "copy": "Kopiëren",
+        "openReservation": "Reservering openen",
+        "invoice": "Factuur {number}",
+        "creditNote": "Creditnota {number}"
+      },
+      "outstanding": {
+        "hint": "Het openstaande bedrag hangt niet af van de gekozen periode.",
+        "summary": "{count, plural, one {# reservering} other {# reserveringen}} · {amount} nog te ontvangen",
+        "customer": "Klant",
+        "reservation": "Reservering",
+        "dates": "Data",
+        "total": "Totaal",
+        "paid": "Betaald",
+        "remaining": "Openstaand",
+        "age": "Openstaand sinds",
+        "ageUpcoming": "Komend",
+        "ageToday": "Vandaag",
+        "ageDays": "{count, plural, one {# dag} other {# dagen}}",
+        "statusConfirmed": "Bevestigd",
+        "statusOngoing": "Lopend",
+        "statusCompleted": "Afgerond",
+        "emptyTitle": "Niets meer te ontvangen",
+        "emptyDescription": "Alle bevestigde, lopende of afgeronde reserveringen zijn betaald."
+      },
+      "deposits": {
+        "holdsTitle": "Actieve reserveringen op de kaart",
+        "holdsDescription": "Bedragen die op de kaart van de klant zijn vastgezet, nog niet geïnd.",
+        "holdsEmpty": "Geen lopende reservering.",
+        "holdsTotal": "{amount} vastgezet",
+        "expiresOn": "Verloopt op {date}",
+        "expiresIn": "Verloopt over {count, plural, =0 {minder dan een dag} one {# dag} other {# dagen}}",
+        "expired": "Verlopen",
+        "noExpiry": "Vervaldatum onbekend",
+        "toReturnTitle": "Ontvangen borg om terug te geven",
+        "toReturnDescription": "Ontvangen borgsommen die nog niet volledig zijn teruggegeven.",
+        "toReturnEmpty": "Geen borg om terug te geven.",
+        "toReturnTotal": "{amount} terug te geven",
+        "rentalOver": "Verhuur afgerond",
+        "cashedReturned": "Ontvangen {cashed} · teruggegeven {returned}",
+        "historyTitle": "Recente geschiedenis",
+        "historyDescription": "De laatste borgmutaties.",
+        "historyEmpty": "Nog geen borgmutaties.",
+        "eventCashed": "Borg ontvangen",
+        "eventCaptured": "Borg geïnd",
+        "eventReturned": "Borg teruggegeven",
+        "eventReleased": "Reservering vrijgegeven"
+      },
+      "firstUse": {
+        "title": "Je ontvangsten verschijnen hier",
+        "description": "Zodra er een betaling op een reservering is geregistreerd, vind je die hier terug, gesorteerd per dag en per betaalmethode.",
+        "cta": "Reservering aanmaken",
+        "stripeHint": "Om online te innen, koppel je Stripe via",
+        "stripeLink": "Instellingen → Betalingen"
+      },
+      "print": {
+        "title": "Kassaoverzicht",
+        "printedAt": "Afgedrukt op {date}",
+        "byMethod": "Totalen per betaalmethode",
+        "movements": "Mutaties",
+        "total": "Totaal",
+        "truncated": "Lijst beperkt tot de eerste {count} mutaties. Exporteer de periode als CSV voor de volledige lijst."
+      }
     }
   },
   "storefront": {
@@ -7047,6 +8038,10 @@
         "errorTitle": "Fout",
         "errorDescription": "Er is een fout opgetreden. Probeer het opnieuw.",
         "generic": "Er is een fout opgetreden. Probeer het opnieuw."
+      },
+      "received": {
+        "title": "Betaling ontvangen",
+        "description": "Bedankt, je betaling is geregistreerd. {store} is op de hoogte gebracht."
       }
     },
     "authorizeDeposit": {
@@ -8118,7 +9113,8 @@
     "color": "Ongeldig kleurformaat",
     "invalidFormat": "Ongeldig formaat",
     "maxItems": "Maximaal {max} items",
-    "duplicateValue": "Dubbele waarde"
+    "duplicateValue": "Dubbele waarde",
+    "contactRequired": "Vul ten minste een e-mailadres of een telefoonnummer in."
   },
   "upgradeModal": {
     "upgradeNow": "Nu upgraden",
@@ -8378,7 +9374,26 @@
     "requestCancellationStatusChanged": "De status van deze aanvraag is gewijzigd. Je kunt deze hier niet meer annuleren. Neem contact op met de winkel.",
     "requestCancellationPaymentPending": "Er loopt nog een betaling voor deze aanvraag. Probeer het na de update opnieuw of neem contact op met de winkel.",
     "requestCancellationPaymentChanged": "De betalingsinformatie is gewijzigd. Controleer deze voordat je de annulering opnieuw bevestigt.",
-    "promoCodeProductsAlreadyDiscounted": "Deze code geldt niet voor producten die al in de aanbieding zijn."
+    "promoCodeProductsAlreadyDiscounted": "Deze code geldt niet voor producten die al in de aanbieding zijn.",
+    "customFieldsInvalid": "Sommige aanvullende velden zijn ongeldig.",
+    "optionsRequired": "Voeg minstens één keuze toe.",
+    "customerFields": {
+      "tooManyFields": "U hebt het maximale aantal actieve velden bereikt. Archiveer er een om een nieuw veld toe te voegen.",
+      "tooManySearchable": "Er kunnen maximaal vijf velden in de zoekfunctie worden opgenomen.",
+      "tooManyListFields": "Er kunnen maximaal twee velden in de lijst worden getoond."
+    },
+    "import": {
+      "runNotFound": "Import niet gevonden.",
+      "notEditable": "Deze import kan niet meer worden gewijzigd.",
+      "tooManyRows": "Het bestand bevat meer dan 5.000 rijen. Splits het in meerdere bestanden.",
+      "empty": "Het bestand bevat geen rijen om te importeren.",
+      "notRevertible": "Alleen een voltooide import kan ongedaan worden gemaakt.",
+      "unsupportedEntity": "Dit type import is nog niet beschikbaar."
+    },
+    "contactRequired": "De klant moet ten minste een e-mailadres of een telefoonnummer behouden.",
+    "customerUnreachable": "Deze klant is niet bereikbaar: voeg een e-mailadres toe aan het klantprofiel, of een telefoonnummer als sms is ingeschakeld.",
+    "customerEmailRequired": "Dit bericht kan alleen per e-mail worden verstuurd: voeg een e-mailadres toe aan het klantprofiel.",
+    "insuranceRequiresEmail": "De breuk-/diefstaldekking van Tulip heeft het e-mailadres van de klant nodig: voeg het toe aan het profiel of verwijder de dekking."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

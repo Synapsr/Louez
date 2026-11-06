@@ -7,8 +7,11 @@ import {
   customers,
   effectiveProductQuantitySql,
 } from "@louez/db";
+import { getFinanceExport } from "@louez/api/services";
 import { resolveReservationBilling } from "@louez/utils";
+import { formatInTimeZone } from "date-fns-tz";
 import { eq, and, between, asc, desc } from "drizzle-orm";
+import { queryCustomersExport } from "./customers";
 import type { ExportParams } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -247,6 +250,65 @@ function productsToRows(data: Awaited<ReturnType<typeof queryProductsData>>): st
 }
 
 // ---------------------------------------------------------------------------
+// Cash flow (Finances ledger)
+// ---------------------------------------------------------------------------
+
+const CASHFLOW_HEADERS = [
+  "Date",
+  "Time",
+  "Reservation #",
+  "Customer",
+  "Type",
+  "Method",
+  "Direction",
+  "Amount",
+  "Currency",
+  "Stored Amount",
+  "Payment ID",
+  "Refund Of Payment ID",
+  "Stripe Payment Intent ID",
+  "Stripe Charge ID",
+  "Stripe Refund ID",
+  "Notes",
+];
+
+/**
+ * The ledger the Finances screen shows, not the raw `payments` rows: amounts
+ * are signed, a refunded Stripe charge reads at its gross amount ("Stored
+ * Amount" keeps what the database holds), and only settled movements are listed.
+ */
+async function queryCashflowData(storeId: string, params: ExportParams) {
+  if (!params.startDay || !params.endDay) return { timezone: "UTC", rows: [] };
+  return getFinanceExport({
+    storeId,
+    timezone: params.timezone,
+    period: { period: "custom", from: params.startDay, to: params.endDay },
+  });
+}
+
+function cashflowToRows({ timezone, rows }: Awaited<ReturnType<typeof queryCashflowData>>): string[][] {
+  return rows.map((row) => [
+    // Store-local day and time: the day a movement falls on is the store's.
+    formatInTimeZone(row.date, timezone, "yyyy-MM-dd"),
+    formatInTimeZone(row.date, timezone, "HH:mm"),
+    str(row.reservationNumber),
+    str(row.customerName),
+    str(row.nature),
+    str(row.method),
+    str(row.direction),
+    row.amount.toFixed(2),
+    str(row.currency),
+    row.storedAmount.toFixed(2),
+    str(row.id),
+    str(row.refundOfPaymentId),
+    str(row.stripePaymentIntentId),
+    str(row.stripeChargeId),
+    str(row.stripeRefundId),
+    str(row.notes),
+  ]);
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -270,5 +332,11 @@ export async function queryExportData(storeId: string, params: ExportParams): Pr
       const data = await queryProductsData(storeId);
       return { headers: PRODUCT_HEADERS, rows: productsToRows(data), json: data };
     }
+    case "cashflow": {
+      const data = await queryCashflowData(storeId, params);
+      return { headers: CASHFLOW_HEADERS, rows: cashflowToRows(data), json: data.rows };
+    }
+    case "customers":
+      return queryCustomersExport(storeId, params);
   }
 }

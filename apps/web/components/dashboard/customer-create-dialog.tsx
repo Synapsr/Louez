@@ -20,6 +20,7 @@ import { type CustomerType, createCustomerSchema } from "@louez/validations";
 
 import { createCustomer } from "@/app/(dashboard)/dashboard/customers/actions";
 
+import { CustomerSimilarHint } from "@/components/dashboard/customers/customer-similar-hint";
 import { RootError } from "@/components/form/root-error";
 
 import { useAppForm } from "@/hooks/form/form";
@@ -37,7 +38,7 @@ interface CustomerCreateDialogProps {
 
 interface QuickCustomerValues {
   customerType: CustomerType;
-  email: string;
+  email?: string;
   firstName: string;
   lastName: string;
   phone?: string;
@@ -64,7 +65,7 @@ export const CustomerCreateDialog = ({
   const createCustomerMutation = useMutation({
     mutationFn: async (values: QuickCustomerValues) => {
       const customer = {
-        email: values.email.trim().toLowerCase(),
+        email: values.email?.trim().toLowerCase() || null,
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
         phone: values.phone?.trim() || null,
@@ -73,6 +74,7 @@ export const CustomerCreateDialog = ({
       const result = await createCustomer({
         ...customer,
         customerType: values.customerType,
+        email: customer.email ?? undefined,
         phone: customer.phone ?? undefined,
       });
 
@@ -156,7 +158,7 @@ export const CustomerCreateDialog = ({
               <form.AppField name="email">
                 {(field) => (
                   <field.Input
-                    label={t("form.email")}
+                    label={t("form.emailOptional")}
                     placeholder={t("form.emailPlaceholder")}
                     type="email"
                   />
@@ -171,6 +173,16 @@ export const CustomerCreateDialog = ({
                   />
                 )}
               </form.AppField>
+              <p className="text-muted-foreground text-sm">{t("form.contactHint")}</p>
+              <form.Subscribe
+                selector={(state) => ({
+                  email: state.values.email ?? "",
+                  phone: state.values.phone ?? "",
+                  lastName: state.values.lastName,
+                })}
+              >
+                {(contact) => <CustomerSimilarHint {...contact} />}
+              </form.Subscribe>
             </DialogPanel>
 
             <DialogFooter>

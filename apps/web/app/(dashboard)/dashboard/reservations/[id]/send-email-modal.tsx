@@ -36,6 +36,11 @@ import {
 import { cn } from "@louez/utils";
 
 import { invalidateReservationAll, invalidateReservationDetail } from "@/lib/orpc/invalidation";
+import {
+  getManualTemplateMessage,
+  hasSmsVersion,
+  isManualMessageTemplate,
+} from "@/lib/reservations/util.customer-message-channel";
 import type { DashboardAccent } from "@/components/dashboard/shared/dashboard-accent";
 import { DashboardIconTile } from "@/components/dashboard/shared/dashboard-icon-tile";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -61,8 +66,16 @@ interface Customer {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
 }
+
+/** Who the message goes to: the e-mail, or the phone of a customer without one. */
+interface MessageRecipient {
+  channel: "email" | "sms";
+  to: string;
+}
+
+const hasSmsTemplate = (templateId: string) =>
+  isManualMessageTemplate(templateId) && hasSmsVersion(getManualTemplateMessage(templateId));
 
 interface EmailTemplate {
   id: string;
@@ -168,6 +181,7 @@ interface SendEmailModalProps {
   reservationId: string;
   reservationNumber: string;
   customer: Customer;
+  recipient: MessageRecipient;
   status: ReservationStatus;
   isFullyPaid: boolean;
   sentEmails?: string[];
@@ -179,6 +193,7 @@ export function SendEmailModal({
   reservationId,
   reservationNumber,
   customer,
+  recipient,
   status,
   isFullyPaid,
   sentEmails = [],
@@ -197,9 +212,13 @@ export function SendEmailModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
+  // An SMS has no subject, no layout to preview and no room for an extra note.
+  const isSms = recipient.channel === "sms";
+
   // Only wide viewports get the live preview beside the form: elsewhere it goes
   // behind a button, and gating it in JS keeps the request from firing at all.
-  const showSidePreview = useMediaQuery("(min-width: 1024px)");
+  const isWideViewport = useMediaQuery("(min-width: 1024px)");
+  const showSidePreview = isWideViewport && !isSms;
 
   const extraFieldsRef = useRef<HTMLDivElement>(null);
   // Arrow keys move through a radio group *and* change its value, so focusing the
@@ -244,8 +263,9 @@ export function SendEmailModal({
     }),
   );
 
-  const availableTemplates = EMAIL_TEMPLATES.filter((template) =>
-    template.available(status, isFullyPaid),
+  const availableTemplates = EMAIL_TEMPLATES.filter(
+    (template) =>
+      template.available(status, isFullyPaid) && (!isSms || hasSmsTemplate(template.id)),
   );
 
   const handleSend = async () => {
@@ -263,7 +283,7 @@ export function SendEmailModal({
       reservationId,
       reservationStatus: status,
       action: reservationAnalyticsActions.sendEmail,
-      properties: { template_id: selectedTemplate, channel: "email" },
+      properties: { template_id: selectedTemplate, channel: recipient.channel },
     });
 
     setIsLoading(true);
@@ -284,7 +304,7 @@ export function SendEmailModal({
         });
       }
 
-      toastManager.add({ title: t("sendSuccess"), type: "success" });
+      toastManager.add({ title: isSms ? t("sms.sendSuccess") : t("sendSuccess"), type: "success" });
       onOpenChange(false);
       resetForm();
     } catch {
@@ -294,8 +314,8 @@ export function SendEmailModal({
         action: reservationAnalyticsActions.sendEmail,
         properties: {
           template_id: selectedTemplate,
-          channel: "email",
-          error_code: "email_send_failed",
+          channel: recipient.channel,
+          error_code: isSms ? "sms_send_failed" : "email_send_failed",
         },
       });
       toastManager.add({ title: t("sendError"), type: "error" });
@@ -321,9 +341,13 @@ export function SendEmailModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogPopup className={cn("max-w-lg", showSidePreview && "lg:max-w-5xl")}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">{t("title")}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {isSms ? t("sms.title") : t("title")}
+          </DialogTitle>
           <DialogDescription>
-            {t("description", { name: customer.firstName, email: customer.email })}
+            {isSms
+              ? t("sms.description", { name: customer.firstName, phone: recipient.to })
+              : t("description", { name: customer.firstName, email: recipient.to })}
           </DialogDescription>
         </DialogHeader>
 
@@ -332,8 +356,11 @@ export function SendEmailModal({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label id={templateLabelId} render={<span />}>
-                  {t("selectTemplate")}
+                  {isSms ? t("sms.selectTemplate") : t("selectTemplate")}
                 </Label>
+                {isSms && (
+                  <p className="text-muted-foreground text-xs">{t("sms.onlySmsTemplates")}</p>
+                )}
                 <RadioGroup
                   aria-labelledby={templateLabelId}
                   className="gap-1.5"
@@ -361,7 +388,9 @@ export function SendEmailModal({
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2">
                             <span className="truncate font-medium text-foreground text-sm">
-                              {t(`templates.${template.id}.name`)}
+                              {isSms && template.id === "custom"
+                                ? t("sms.customName")
+                                : t(`templates.${template.id}.name`)}
                             </span>
                             {wasSent && (
                               <Badge size="sm" variant="success">
@@ -371,7 +400,9 @@ export function SendEmailModal({
                             )}
                           </span>
                           <span className="mt-0.5 block text-muted-foreground text-xs">
-                            {t(`templates.${template.id}.description`)}
+                            {isSms && template.id === "custom"
+                              ? t("sms.customDescription")
+                              : t(`templates.${template.id}.description`)}
                           </span>
                         </span>
                         <Radio className="shrink-0" value={template.id} />
@@ -386,15 +417,17 @@ export function SendEmailModal({
                   className="animate-in fade-in slide-in-from-top-2 space-y-3 duration-200"
                   ref={extraFieldsRef}
                 >
-                  <div className="space-y-2">
-                    <Label htmlFor={subjectId}>{t("customSubject")}</Label>
-                    <Input
-                      id={subjectId}
-                      value={customSubject}
-                      onChange={(event) => setCustomSubject(event.target.value)}
-                      placeholder={t("customSubjectPlaceholder", { number: reservationNumber })}
-                    />
-                  </div>
+                  {!isSms && (
+                    <div className="space-y-2">
+                      <Label htmlFor={subjectId}>{t("customSubject")}</Label>
+                      <Input
+                        id={subjectId}
+                        value={customSubject}
+                        onChange={(event) => setCustomSubject(event.target.value)}
+                        placeholder={t("customSubjectPlaceholder", { number: reservationNumber })}
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor={messageId}>
                       {t("customMessage")} <span className="text-destructive">*</span>
@@ -410,7 +443,7 @@ export function SendEmailModal({
                 </div>
               )}
 
-              {selectedTemplate && selectedTemplate !== "custom" && (
+              {selectedTemplate && selectedTemplate !== "custom" && !isSms && (
                 <div
                   className="animate-in fade-in slide-in-from-top-2 space-y-2 duration-200"
                   ref={extraFieldsRef}
@@ -461,7 +494,7 @@ export function SendEmailModal({
           >
             {tCommon("cancel")}
           </Button>
-          {selectedTemplate && !showSidePreview && (
+          {selectedTemplate && !showSidePreview && !isSms && (
             <Button
               // A custom email with no message has nothing to render yet.
               disabled={selectedTemplate === "custom" && !customMessage.trim()}
@@ -474,11 +507,11 @@ export function SendEmailModal({
           )}
           <Button disabled={!selectedTemplate} isPending={isLoading} onClick={handleSend}>
             <SendIcon />
-            {t("send")}
+            {isSms ? t("sms.send") : t("send")}
           </Button>
         </DialogFooter>
 
-        {selectedTemplate && !showSidePreview && (
+        {selectedTemplate && !showSidePreview && !isSms && (
           <EmailPreviewDialog
             customMessage={customMessage}
             customSubject={customSubject}

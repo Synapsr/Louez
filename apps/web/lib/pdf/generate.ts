@@ -1,4 +1,8 @@
 import { validateReservationContract } from "@louez/api/services";
+import {
+  getCustomerFieldValues,
+  listCustomerFieldDefinitions,
+} from "@louez/api/services/customer-fields";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { ContractDocument, ContractTranslations, SupportedLocale } from "./contract";
 import { db } from "@louez/db";
@@ -6,6 +10,7 @@ import { documents, reservations, stores } from "@louez/db";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { convertImageForPdf } from "./image-utils";
+import { getContractCustomerFieldLines } from "./util.contract-customer-fields";
 import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
 import { getLogoForLightBackground, resolveReservationBilling } from "@louez/utils";
 
@@ -19,6 +24,7 @@ import itMessages from "@/messages/it.json";
 import ptMessages from "@/messages/pt.json";
 import plMessages from "@/messages/pl.json";
 import { isLocale } from "@/lib/i18n/format-locale";
+import { formatStoreDate } from "@/lib/utils/store-date";
 
 interface GenerateContractOptions {
   reservationId: string;
@@ -186,6 +192,23 @@ export async function generateContract({
 
   const insuredProductIds = await getReservationInsuredProductIds(reservation);
 
+  // Read at generation time: the stored PDF keeps these values even if the
+  // customer record or the field definitions change afterwards.
+  const [customerFieldDefinitions, customerFieldValues] = await Promise.all([
+    listCustomerFieldDefinitions(reservation.storeId, { activeOnly: true }),
+    getCustomerFieldValues(reservation.storeId, reservation.customer.id),
+  ]);
+  const customFieldLines = getContractCustomerFieldLines(
+    customerFieldDefinitions,
+    customerFieldValues,
+    {
+      customerType: reservation.customer.customerType,
+      // A calendar day has no timezone: noon UTC never slips to the day before.
+      formatDate: (isoDate) =>
+        formatStoreDate(new Date(`${isoDate}T12:00:00Z`), "UTC", "MEDIUM_DATE", locale),
+    },
+  );
+
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(
     ContractDocument({
@@ -207,6 +230,7 @@ export async function generateContract({
         customer: {
           ...reservation.customer,
           ...resolveReservationBilling(reservation, reservation.customer),
+          customFieldLines,
         },
         outboundMethod: reservation.outboundMethod,
         returnMethod: reservation.returnMethod,

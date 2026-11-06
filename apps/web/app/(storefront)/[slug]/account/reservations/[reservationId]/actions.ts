@@ -271,7 +271,8 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
     const contractUrl = await createReservationInstantAccessUrl({
       storeId: store.id,
       storeSlug,
-      customerEmail: reservation.customer.email,
+      // The reservation is the signed-in customer's, who always has an e-mail.
+      customerEmail: session.customer.email,
       reservationId,
       redirectPath: `/account/reservations/${reservationId}/contract`,
     });

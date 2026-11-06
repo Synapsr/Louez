@@ -1,7 +1,7 @@
 import { and, count, eq, gte, inArray, lt, sql } from "drizzle-orm";
 
 import { alias } from "drizzle-orm/mysql-core";
-import { db, effectiveProductQuantitySql, payments } from "@louez/db";
+import { db, effectiveProductQuantitySql, isStripeRefundPaymentSql, payments } from "@louez/db";
 import { products, reservationItems, reservations } from "@louez/db";
 
 import { getSalesGrowth, type SalesWindow } from "./util.sales-window";
@@ -93,6 +93,7 @@ export async function getUpcomingRevenue(
     .select({
       reservationId: payments.reservationId,
       amount: sql<string>`SUM(CASE
+      WHEN ${isStripeRefundPaymentSql()} THEN 0
       WHEN ${payments.refundOfPaymentId} IS NULL AND ${payments.type} = 'rental' THEN ${payments.amount}
       WHEN ${original.type} = 'rental' AND ${original.status} = 'completed' THEN -${payments.amount}
       ELSE 0 END)`.as("net_paid"),
