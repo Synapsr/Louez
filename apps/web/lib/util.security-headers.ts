@@ -5,8 +5,13 @@ export interface SecurityHeadersOptions {
   demoParentOrigins?: string;
   fromHelloApiUrl?: string;
   isDevelopment: boolean;
+  /** Klibon's affiliate tag loads (components/klibon-tag.tsx): allow its script and pings. */
+  klibonEnabled?: boolean;
   openReplayIngestPoint?: string;
 }
+
+/** Serves the Klibon tag, and receives its visit ping (image) and signup beacon. */
+const KLIBON_ORIGIN = "https://go.klibon.com";
 
 export interface SecurityHeader {
   key: string;
@@ -35,9 +40,11 @@ const buildContentSecurityPolicy = ({
   appDomain,
   fromHelloApiUrl,
   isDevelopment,
+  klibonEnabled = false,
   openReplayIngestPoint,
 }: SecurityHeadersOptions): string => {
   const fromHelloOrigin = getOrigin(fromHelloApiUrl);
+  const klibonOrigins = klibonEnabled ? [KLIBON_ORIGIN] : [];
   const openReplayOrigin = getOrigin(openReplayIngestPoint);
   const storefrontWildcard = getStorefrontWildcard(appDomain);
   const directives = {
@@ -54,6 +61,7 @@ const buildContentSecurityPolicy = ({
       "'unsafe-inline'",
       "'unsafe-eval'",
       ...(fromHelloOrigin ? [fromHelloOrigin] : []),
+      ...klibonOrigins,
     ],
     "style-src": ["'self'", "'unsafe-inline'", "https://gleapjs.com"],
     "img-src": [
@@ -81,6 +89,7 @@ const buildContentSecurityPolicy = ({
       "https://*.wasabisys.com",
       "https://*.linodeobjects.com",
       ...(fromHelloOrigin ? [fromHelloOrigin] : []),
+      ...klibonOrigins,
     ],
     "font-src": ["'self'", "data:"],
     "connect-src": [
@@ -96,6 +105,7 @@ const buildContentSecurityPolicy = ({
       ...(isDevelopment ? ["ws://localhost:*", "ws://127.0.0.1:*"] : []),
       ...(fromHelloOrigin ? [fromHelloOrigin] : []),
       ...(openReplayOrigin ? [openReplayOrigin] : []),
+      ...klibonOrigins,
     ],
     "frame-src": [
       "'self'",
