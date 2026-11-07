@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  raceOnOpenTransaction,
+  skipWithoutTestDatabase,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import type { RouterClient } from "@orpc/server";
 
@@ -55,6 +60,8 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
   let orm: typeof import("drizzle-orm");
   let apiKeys: typeof import("../../services/api-keys");
   let router: typeof import("./products").dashboardProductsRouter;
+  let validations: typeof import("@louez/validations");
+  let productsService: typeof import("../../services/products");
 
   const events: ApiEvent[] = [];
   const ports = {
@@ -72,6 +79,8 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     orm = await import("drizzle-orm");
     apiKeys = await import("../../services/api-keys");
     ({ dashboardProductsRouter: router } = await import("./products"));
+    validations = await import("@louez/validations");
+    productsService = await import("../../services/products");
 
     await louezDb.db.insert(louezDb.users).values([
       { id: OWNER, email: "owner@pr.test" },
@@ -100,6 +109,8 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     await louezDb.db.delete(louezDb.productPricingTiers);
     await louezDb.db.delete(louezDb.productAccessories);
     await louezDb.db.delete(louezDb.productCategories);
+    await louezDb.db.delete(louezDb.reservationItems);
+    await louezDb.db.delete(louezDb.reservations);
     await louezDb.db.delete(louezDb.productUnitEvents);
     await louezDb.db.delete(louezDb.productUnits);
     await louezDb.db.delete(louezDb.products);
@@ -203,7 +214,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(created.status, "active");
     assert.equal(created.pricingKind, "duration");
     assert.equal(created.price, "40.00");
-    assert.deepEqual(created.basePriceDuration, { duration: 1, unit: "day" });
+    assert.deepEqual(created.basePriceDuration, { price: "40.00", duration: 1, unit: "day" });
     assert.equal(created.quantity, 1);
     assert.equal(created.currency, "EUR");
     assert.deepEqual(created.rateTiers, []);
@@ -428,7 +439,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       await apiKey().then((key) => key()),
     );
     assert.equal(updated.price, "70.00");
-    assert.deepEqual(updated.basePriceDuration, { duration: 1, unit: "day" });
+    assert.deepEqual(updated.basePriceDuration, { price: "70.00", duration: 1, unit: "day" });
     assert.equal(updated.description, null);
     assert.equal(updated.deposit, "100.00", "unchanged");
     assert.deepEqual(await tiersOf(created.id), [{ period: 3 * 1440, price: "150.00" }]);
@@ -871,5 +882,357 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       "PRODUCT_NOT_FOUND",
     );
     assert.deepEqual((await run("list", {}, mine())).items, []);
+  });
+
+  // --- Review fixes ---------------------------------------------------------
+
+  /** A new fixed-price product, as the dashboard form submits it. */
+  const fixedFormPayload = () =>
+    validations
+      .createProductSchema((key) => key)
+      .parse({
+        name: "Gas bottle",
+        description: "",
+        aiContext: "",
+        categoryIds: [],
+        price: "12",
+        // The price editor of a fixed product changes `price` only: the base
+        // period stays as the form started it.
+        basePriceDuration: { price: "", duration: 1, unit: "day" },
+        deposit: "",
+        quantity: "1",
+        status: "active",
+        images: [],
+        imageHistory: [],
+        stockKind: "returnable",
+        pricingKind: "fixed",
+        pricingMode: "day",
+        pricingTiers: [],
+        rateTiers: [{ price: "", duration: 1, unit: "day" }],
+        enforceStrictTiers: true,
+        taxSettings: { inheritFromStore: true },
+        promotion: null,
+        videoUrl: "",
+        accessories: [],
+        trackUnits: false,
+        units: [],
+        bookingAttributeAxes: [],
+      });
+
+  test("the form's fixed-price product saves, its dormant base period and tiers ignored", async () => {
+    const created = await run("create", fixedFormPayload(), session());
+    assert.equal(created.pricingKind, "fixed");
+    assert.equal(created.price, "12.00");
+    assert.equal(created.basePriceDuration, null);
+    assert.deepEqual(await tiersOf(created.id), []);
+
+    const updated = await run(
+      "update",
+      { ...fixedFormPayload(), id: created.id, price: "14" },
+      session(),
+    );
+    assert.equal(updated.price, "14.00");
+  });
+
+  test("the reservation timeline needs reservations and customers read on a connection", async () => {
+    const created = await run("create", { name: "Van", price: "90" }, session());
+    const window = {
+      id: created.id,
+      from: new Date("2027-01-01T00:00:00Z"),
+      to: new Date("2027-02-01T00:00:00Z"),
+    };
+    const productsOnly = await apiKey({
+      permissions: { ...readWrite, reservations: "none", customers: "none" },
+    });
+    const refused = await rejects(
+      run("getReservationTimeline", window, productsOnly()),
+      "PERMISSION_DENIED",
+    );
+    assert.deepEqual(refused.data.details, { required: "reservations:read" });
+    const noCustomers = await apiKey({ permissions: { ...readWrite, customers: "none" } });
+    await rejects(run("getReservationTimeline", window, noCustomers()), "PERMISSION_DENIED");
+
+    const allowed = await apiKey();
+    assert.deepEqual(await run("getReservationTimeline", window, allowed()), {
+      reservations: [],
+      downtimes: [],
+    });
+    assert.deepEqual(await run("getReservationTimeline", window, session(MEMBER)), {
+      reservations: [],
+      downtimes: [],
+    });
+  });
+
+  test("an update waits for a checkout holding the product, then sees its reservation", async () => {
+    const created = await run(
+      "create",
+      {
+        name: "Race kayak",
+        price: "40",
+        trackUnits: true,
+        units: [{ identifier: "RK-1" }, { identifier: "RK-2" }],
+      },
+      session(),
+    );
+    const [kept] = created.units;
+    const { drizzle } = await import("drizzle-orm/mysql2");
+
+    const answers = await raceOnOpenTransaction(
+      database,
+      async (holder) => {
+        // What checkout does: the product's row first, then the booking.
+        await holder.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [created.id]);
+        const checkout = drizzle(holder);
+        await checkout.insert(louezDb.reservations).values({
+          id: "pr_race_reservation1",
+          storeId: STORE,
+          customerId: "customer",
+          number: "PR-RACE-1",
+          status: "confirmed",
+          startDate: new Date("2030-06-01T09:00:00Z"),
+          endDate: new Date("2030-06-03T09:00:00Z"),
+          subtotalAmount: "80.00",
+          depositAmount: "0.00",
+          totalAmount: "80.00",
+        });
+        await checkout.insert(louezDb.reservationItems).values({
+          reservationId: "pr_race_reservation1",
+          productId: created.id,
+          quantity: 2,
+          unitPrice: "40.00",
+          depositPerUnit: "0.00",
+          totalPrice: "80.00",
+          combinationKey: "__default",
+          productSnapshot: { name: "Race kayak", description: null, images: [] },
+        });
+      },
+      [
+        () =>
+          run(
+            "update",
+            { id: created.id, units: [{ id: kept.id, identifier: kept.identifier }] },
+            session(),
+          ).then(
+            () => "saved",
+            (error: { data?: { code?: string } }) => error.data?.code,
+          ),
+      ],
+    );
+    assert.deepEqual(answers, ["PRODUCT_UNIT_CAPACITY_CONFLICT"]);
+    const units = await louezDb.db
+      .select({ id: louezDb.productUnits.id })
+      .from(louezDb.productUnits)
+      .where(orm.eq(louezDb.productUnits.productId, created.id));
+    assert.equal(units.length, 2, "the booked unit is still there");
+  });
+
+  test("a member cannot delete a seasonal price", async () => {
+    const created = await run("create", { name: "Jet ski", price: "200" }, session());
+    const season = await run(
+      "createSeasonalPricing",
+      {
+        productId: created.id,
+        name: "Summer",
+        startDate: "2027-06-01",
+        endDate: "2027-08-31",
+        price: "250",
+      },
+      session(MEMBER),
+    );
+    await rejects(
+      run("deleteSeasonalPricing", { id: season.id }, session(MEMBER)),
+      "PERMISSION_DENIED",
+    );
+    await run("deleteSeasonalPricing", { id: season.id }, session());
+  });
+
+  test("former fields sent in a partial update take effect", async () => {
+    const boats = await category("Boats");
+    const rafts = await category("Rafts");
+    const created = await run(
+      "create",
+      { name: "Raft", price: "10", categoryIds: [boats] },
+      session(),
+    );
+
+    const moved = await run("update", { id: created.id, categoryId: rafts }, session());
+    assert.deepEqual(moved.categoryIds, [rafts]);
+
+    await run(
+      "update",
+      { id: created.id, pricingTiers: [{ minDuration: 3, discountPercent: 10 }] },
+      session(),
+    );
+    assert.deepEqual(await tiersOf(created.id), [{ period: 3 * 1440, price: "27.00" }]);
+
+    const hourly = await run(
+      "update",
+      { id: created.id, price: "15", pricingMode: "hour" },
+      session(),
+    );
+    assert.deepEqual(hourly.basePriceDuration, { price: "15.00", duration: 1, unit: "hour" });
+    assert.equal(hourly.pricingMode, "hour");
+  });
+
+  test("what products_get returns can be sent back to products_update", async () => {
+    const context = await apiKey();
+    const boats = await category("Boats");
+    const duration = await run(
+      "create",
+      {
+        name: "Round trip",
+        categoryIds: [boats],
+        basePriceDuration: { price: "30", duration: 1, unit: "day" },
+        rateTiers: [{ price: "75", duration: 3, unit: "day" }],
+        deposit: "100",
+      },
+      context(),
+    );
+    const fixed = await run(
+      "create",
+      { name: "Round fixed", price: "9", pricingKind: "fixed" },
+      context(),
+    );
+
+    for (const id of [duration.id, fixed.id]) {
+      const read = await run("get", { id }, context());
+      const saved = await run("update", read, context());
+      const { updatedAt: _readAt, ...readRest } = read;
+      const { updatedAt: _savedAt, ...savedRest } = saved;
+      assert.deepEqual(savedRest, readRest, `${read.name} is unchanged`);
+    }
+  });
+
+  test("oversized lists are refused before any lock, and duplicate tiers group in one pass", async () => {
+    await rejects(
+      run(
+        "create",
+        {
+          name: "Fleet",
+          price: "5",
+          trackUnits: true,
+          units: Array.from({ length: 1001 }, (_, index) => ({ identifier: `F-${index}` })),
+        },
+        session(),
+      ),
+      "BAD_REQUEST",
+    );
+    await rejects(
+      run(
+        "create",
+        {
+          name: "Ladder",
+          price: "5",
+          rateTiers: Array.from({ length: 51 }, (_, index) => ({
+            price: "5",
+            duration: index + 2,
+            unit: "day" as const,
+          })),
+        },
+        session(),
+      ),
+      "BAD_REQUEST",
+    );
+    const rows = await louezDb.db
+      .select({ id: louezDb.products.id })
+      .from(louezDb.products)
+      .where(orm.eq(louezDb.products.storeId, STORE));
+    assert.equal(rows.length, 0);
+
+    const started = Date.now();
+    const indexes = productsService.duplicateRatePeriodIndexes(
+      Array.from({ length: 200_000 }, () => ({ period: 1440 })),
+    );
+    assert.equal(indexes.length, 200_000);
+    assert.ok(Date.now() - started < 2_000, "linear in the number of tiers");
+  });
+
+  test("a unit deletion names the units, and a token stops matching when they change", async () => {
+    const context = await apiKey();
+    const created = await run(
+      "create",
+      {
+        name: "Skis",
+        price: "25",
+        trackUnits: true,
+        bookingAttributeAxes: [{ key: "size", label: "Size", position: 0 }],
+        units: [
+          { identifier: "S-1", attributes: { size: "160" } },
+          { identifier: "S-2", attributes: { size: "170" } },
+          { identifier: "S-3", attributes: { size: "180" } },
+        ],
+      },
+      session(),
+    );
+    const [first, second, third] = created.units;
+    const input = {
+      id: created.id,
+      units: [{ id: first.id, identifier: first.identifier, attributes: first.attributes }],
+    };
+    const asked = await rejects(run("update", input, context()), "CONFIRMATION_REQUIRED");
+    const preview = (
+      asked.data.details as {
+        preview: {
+          summary: string;
+          details: {
+            deletesUnitCount: number;
+            deletesUnits: Array<{ identifier: string; attributes: Record<string, string> }>;
+          };
+        };
+      }
+    ).preview;
+    assert.equal(preview.details.deletesUnitCount, 2);
+    assert.deepEqual(
+      preview.details.deletesUnits.map((unit) => [unit.identifier, unit.attributes.size]),
+      [
+        ["S-2", "170"],
+        ["S-3", "180"],
+      ],
+    );
+    assert.match(preview.summary, /delete 2 unit\(s\): S-2 \(size 170\), S-3 \(size 180\)/);
+
+    // The dashboard renames a unit the preview named: the human saw another name.
+    await run(
+      "update",
+      {
+        id: created.id,
+        units: [first, second, { ...third, identifier: "S-3 spare" }].map((unit) => ({
+          id: unit.id,
+          identifier: unit.identifier,
+          attributes: unit.attributes,
+        })),
+      },
+      session(),
+    );
+    await rejects(
+      run("update", input, context({ "louez-confirmation": tokenOf(asked) })),
+      "CONFIRMATION_INVALID",
+    );
+  });
+
+  test("two reorders at once leave one of the two orders, every place taken once", async () => {
+    const ids: string[] = [];
+    for (const name of ["Aa", "Bb", "Cc", "Dd", "Ee"]) {
+      ids.push((await run("create", { name, price: "1" }, session())).id);
+    }
+    const reversed = [...ids].reverse();
+    await Promise.all([
+      run("reorder", { ids }, session()),
+      run("reorder", { ids: reversed }, session()),
+    ]);
+    const rows = await louezDb.db
+      .select({ id: louezDb.products.id, position: louezDb.products.displayOrder })
+      .from(louezDb.products)
+      .where(orm.eq(louezDb.products.storeId, STORE))
+      .orderBy(louezDb.products.displayOrder);
+    assert.deepEqual(
+      rows.map((row) => row.position),
+      [0, 1, 2, 3, 4],
+    );
+    const order = rows.map((row) => row.id);
+    assert.ok(
+      JSON.stringify(order) === JSON.stringify(ids) ||
+        JSON.stringify(order) === JSON.stringify(reversed),
+    );
   });
 });

@@ -226,7 +226,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
         categoryId: category.id,
       }),
     );
-    assert.deepEqual(created.basePriceDuration, { duration: 1, unit: "week" });
+    assert.deepEqual(created.basePriceDuration, { price: "60.00", duration: 1, unit: "week" });
     assert.equal(created.quantity, 3);
     assert.deepEqual(created.categoryIds, [category.id]);
 
@@ -289,5 +289,29 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       ((await missing.json()) as { data: { code: string } }).data.code,
       "PRODUCT_NOT_FOUND",
     );
+  });
+
+  test("list_products still pages with page and pageSize", async () => {
+    const authorization = await key();
+    await louezDb.db.delete(louezDb.products);
+    for (const name of ["Page one", "Page two", "Page three"]) {
+      output(await mcpCall(authorization, "products_create", { name, price: "5" }));
+    }
+    const first = output(await mcpCall(authorization, "list_products", { page: 1, pageSize: 2 }));
+    const second = output(await mcpCall(authorization, "list_products", { page: 2, pageSize: 2 }));
+    const third = output(await mcpCall(authorization, "list_products", { page: 3, pageSize: 2 }));
+    const names = (page: Json) => (page.items as Json[]).map((item) => item.name);
+    assert.equal(names(first).length, 2);
+    assert.equal(names(second).length, 1);
+    assert.deepEqual(names(third), []);
+    assert.deepEqual([...names(first), ...names(second)].sort(), [
+      "Page one",
+      "Page three",
+      "Page two",
+    ]);
+    assert.equal(second.nextCursor, null);
+
+    const bad = await mcpCall(authorization, "list_products", { page: 0 });
+    assert.equal(toolError(bad)?.code, "INVALID_ARGUMENT");
   });
 });
