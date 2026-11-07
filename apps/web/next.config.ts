@@ -115,26 +115,19 @@ const nextConfig: NextConfig = {
     // Only this instance's bucket. See lib/storage/image-optimizer.ts.
     remotePatterns: storageImagePattern ? [storageImagePattern] : [],
   },
-  // Storefront tenant subdomains are <store-slug>.<env>.louez.localify (three
-  // levels). Next's wildcard only matches one label, so *.louez.localify does
-  // NOT cover them — add the per-env tenant wildcard or the dev server 403s the
-  // client bundle and the page never hydrates.
+  // Every Localify host of the project, so a new worktree needs no change:
+  // louez.localify itself, and each worktree and storefront under it, such as
+  // <store-slug>.<env>.louez.localify. In Next, `**` matches any number of
+  // labels but not the bare domain, hence both entries. Without them the dev
+  // server 403s the client bundle and HMR, and the page never hydrates. Public
+  // URLs (*.localify.fyi) need nothing here: Localify 1.3.2 and later hands
+  // Next's dev files the local origin. The last two hosts belong to the separate
+  // louez-storefront-redesign Localify project.
   allowedDevOrigins: [
     "louez.localify",
-    "*.louez.localify",
-    "feat-inventory.louez.localify",
-    "*.feat-inventory.louez.localify",
-    "worktree-onboarding-redesign.louez.localify",
-    "*.worktree-onboarding-redesign.louez.localify",
-    "agent-redesign-product-creation-flow.louez.localify",
-    "*.agent-redesign-product-creation-flow.louez.localify",
-    "feat-marketplace-channel.louez.localify",
-    "*.feat-marketplace-channel.louez.localify",
-    "feat-storefront-redesign.louez.localify",
-    "*.feat-storefront-redesign.louez.localify",
+    "**.louez.localify",
     "louez-storefront-redesign.localify",
     "*.louez-storefront-redesign.localify",
-    "landing-demos.louez.localify",
   ],
 };
 

@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 export const env = createEnv({
   server: {
+    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     AUTH_SECRET: z.string().min(1, 'AUTH_SECRET is required'),
     AUTH_URL: z.url('AUTH_URL must be a valid URL'),
     // Google OAuth is optional: without credentials the provider is not
@@ -11,6 +12,7 @@ export const env = createEnv({
     AUTH_GOOGLE_SECRET: z.string().optional(),
   },
   runtimeEnv: {
+    NODE_ENV: process.env.NODE_ENV,
     AUTH_SECRET: process.env.AUTH_SECRET,
     AUTH_URL: process.env.AUTH_URL,
     AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
