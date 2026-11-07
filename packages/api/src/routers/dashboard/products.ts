@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
 import {
+  PRODUCT_PAGE_MAX,
   createProductInput,
   createSeasonalPricingInput,
   deleteProductInput,
@@ -34,6 +35,8 @@ import {
   createImageUploadOutput,
 } from "../../contracts/uploads";
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
+import { platformErrors } from "../../platform/errors";
+import { allows } from "../../platform/permissions";
 import { storeProcedure, type ActorStore } from "../../platform/procedures";
 import type { ApiPorts } from "../../platform/ports";
 import type { StoreActor } from "../../platform/actor";
@@ -135,7 +138,19 @@ const list = storeProcedure
       description:
         "List the store's products in the catalog's order, with their price, stock and main category, and the count per status. Filter by status, categoryIds or part of the name. Returns up to `limit` products (default 100, at most 200) and a nextCursor for the next page; nextCursor is null on the last page. Use products_get for a product's tiers, units and accessories.",
       bundle: "catalog",
-      aliases: [{ name: "list_products", renamedArgs: { categoryId: "categoryIds" } }],
+      aliases: [
+        {
+          name: "list_products",
+          renamedArgs: { categoryId: "categoryIds" },
+          paging: {
+            page: "page",
+            pageSize: "pageSize",
+            defaultPageSize: 50,
+            maxPageSize: 100,
+            maxStep: PRODUCT_PAGE_MAX,
+          },
+        },
+      ],
       annotations: { readOnlyHint: true },
     },
   })
@@ -209,7 +224,8 @@ const update = storeProcedure
           updatedAt: preview.product.updatedAt.toISOString(),
           deletedTierCount: preview.deletedTierCount,
           deletedSeasonalPricingCount: preview.deletedSeasonalPricingCount,
-          deletedUnitIds: preview.deletedUnits.map((unit) => unit.id),
+          // Every unit the preview names, as it names it.
+          deletedUnits: preview.deletedUnits,
         },
         details: {
           product: { id: preview.product.id, name: preview.product.name },
@@ -220,7 +236,12 @@ const update = storeProcedure
                 deletesSeasonalPrices: preview.deletedSeasonalPricingCount,
               }
             : {}),
-          ...(preview.deletedUnits.length > 0 ? { deletesUnits: preview.deletedUnits } : {}),
+          ...(preview.deletedUnits.length > 0
+            ? {
+                deletesUnitCount: preview.deletedUnits.length,
+                deletesUnits: preview.deletedUnits,
+              }
+            : {}),
         },
       })),
     }),
@@ -415,7 +436,7 @@ const getReservationTimeline = storeProcedure
     mcp: {
       name: "products_get_reservation_timeline",
       description:
-        "When a product is out: the reservations that hold it between `from` and `to` (ISO 8601, at most 400 days apart), with their dates, customer, quantity and assigned units, and the downtimes of its units in that window.",
+        "When a product is out: the reservations that hold it between `from` and `to` (ISO 8601, at most 400 days apart), with their dates, customer, amounts, quantity and assigned units, and the downtimes of its units in that window. Needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.",
       bundle: "catalog",
       annotations: { readOnlyHint: true },
     },
@@ -423,7 +444,17 @@ const getReservationTimeline = storeProcedure
   .route({ method: "GET", path: "/products/{id}/reservation-timeline" })
   .input(productTimelineInput)
   .output(productTimelineOutput)
-  .handler(({ context, input }) => getProductReservationTimeline(context.actor.storeId, input));
+  .handler(({ context, input }) => {
+    // It shows reservations (numbers, dates, amounts) and their customers:
+    // the connection must read those too, not only products.
+    for (const domain of ["reservations", "customers"] as const) {
+      const required = { domain, level: "read" as const };
+      if (!allows(context.actor.role, context.actor.credential.scopes, required)) {
+        throw platformErrors.permissionDenied(`${domain}:read`);
+      }
+    }
+    return getProductReservationTimeline(context.actor.storeId, input);
+  });
 
 // --- Seasonal pricing --------------------------------------------------------
 
@@ -496,7 +527,7 @@ const duplicateSeasonalPricingProcedure = storeProcedure
 const deleteSeasonalPricingProcedure = storeProcedure
   .meta({
     capability: "products.deleteSeasonalPricing",
-    scope: { domain: "products", level: "write" },
+    scope: { domain: "products", level: "write", role: "delete" },
     sensitive: "destructive",
     mcp: {
       name: "products_delete_seasonal_pricing",

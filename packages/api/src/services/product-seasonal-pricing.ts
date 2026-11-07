@@ -150,10 +150,13 @@ async function readSeasons(executor: Transaction | typeof db, where: SQL, limit:
             ),
           )
           .orderBy(asc(productSeasonalPricingTiers.displayOrder));
-  const seasons = rows.map((row) => ({
-    ...row,
-    tiers: tiers.filter((tier) => tier.seasonalPricingId === row.id),
-  }));
+  const tiersBySeason = new Map<string, typeof tiers>();
+  for (const tier of tiers) {
+    const list = tiersBySeason.get(tier.seasonalPricingId);
+    if (list) list.push(tier);
+    else tiersBySeason.set(tier.seasonalPricingId, [tier]);
+  }
+  const seasons = rows.map((row) => ({ ...row, tiers: tiersBySeason.get(row.id) ?? [] }));
   return seasons.map(
     (season): SeasonalPricing => ({
       id: season.id,

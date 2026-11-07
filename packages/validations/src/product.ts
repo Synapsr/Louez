@@ -218,7 +218,12 @@ function hasDuplicateRateTierPeriods(
   return false;
 }
 
-function ignoreDurationPricingForFixed(input: unknown): unknown {
+/**
+ * A fixed price takes no duration pricing: the form keeps its base period and
+ * tiers around (they may be empty or half typed) and they are dropped, not
+ * checked. The API contract runs it before its own validation too.
+ */
+export function ignoreDurationPricingForFixed(input: unknown): unknown {
   const parsed = z.record(z.string(), z.unknown()).safeParse(input);
   if (!parsed.success || parsed.data.pricingKind !== 'fixed') {
     return input;

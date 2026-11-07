@@ -279,8 +279,8 @@ function imageHistoryUrls(data: Pick<ProductInput, "imageHistory">): string[] {
 async function assignedBlockingUnitIds(
   executor: Executor,
   params: { unitIds: string[]; storeId: string; pendingBlocksAvailability: boolean },
-): Promise<string[]> {
-  if (params.unitIds.length === 0) return [];
+): Promise<Set<string>> {
+  if (params.unitIds.length === 0) return new Set();
   const rows = await executor
     .select({ productUnitId: reservationItemUnits.productUnitId })
     .from(reservationItemUnits)
@@ -297,7 +297,7 @@ async function assignedBlockingUnitIds(
         reservationStillHoldsUnitsSql(),
       ),
     );
-  return [...new Set(rows.flatMap((row) => (row.productUnitId ? [row.productUnitId] : [])))];
+  return new Set(rows.flatMap((row) => (row.productUnitId ? [row.productUnitId] : [])));
 }
 
 function legacyPricingModeFromUnit(
@@ -336,15 +336,19 @@ function buildRateTierRows(
     .sort((a, b) => a.period - b.period);
 }
 
-function duplicateRatePeriodIndexes(rows: Array<{ period: number }>): number[] {
+/** Indexes of the rows whose period another row has too, in one pass. */
+export function duplicateRatePeriodIndexes(rows: Array<{ period: number }>): number[] {
   const byPeriod = new Map<number, number[]>();
   rows.forEach((row, index) => {
-    byPeriod.set(row.period, [...(byPeriod.get(row.period) ?? []), index]);
+    const indexes = byPeriod.get(row.period);
+    if (indexes) indexes.push(index);
+    else byPeriod.set(row.period, [index]);
   });
-  return [...byPeriod.values()]
-    .filter((indexes) => indexes.length > 1)
-    .flat()
-    .sort((a, b) => a - b);
+  const duplicates: number[] = [];
+  for (const indexes of byPeriod.values()) {
+    if (indexes.length > 1) for (const index of indexes) duplicates.push(index);
+  }
+  return duplicates.sort((a, b) => a - b);
 }
 
 /** Runs the dashboard's product rules on the input; a failure lists its issues. */
@@ -531,12 +535,14 @@ async function toProduct(product: LoadedProduct, currency: string): Promise<Prod
     slug: product.slug,
     description: product.description,
     aiContext: product.aiContext,
-    status: product.status,
+    // A row from before the default reads as the form shows it.
+    status: product.status ?? "active",
     categoryIds: categoryIdsOf(product),
     currency,
     pricingKind: product.pricingKind,
     price: product.price,
-    basePriceDuration: product.pricingKind === "fixed" ? null : baseDurationOf(product),
+    basePriceDuration:
+      product.pricingKind === "fixed" ? null : { price: product.price, ...baseDurationOf(product) },
     pricingMode: product.pricingMode,
     rateTiers: storedRateTiers(product, product.pricingTiers),
     enforceStrictTiers: product.enforceStrictTiers,
@@ -565,6 +571,39 @@ async function toProduct(product: LoadedProduct, currency: string): Promise<Prod
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   };
+}
+
+/** Locks the product's row (a locking read sees the latest commit); not found otherwise. */
+async function lockProduct(tx: Transaction, storeId: string, id: string) {
+  const [row] = await tx
+    .select({
+      id: products.id,
+      name: products.name,
+      stockKind: products.stockKind,
+      updatedAt: products.updatedAt,
+    })
+    .from(products)
+    .where(and(eq(products.id, id), eq(products.storeId, storeId)))
+    .for("update");
+  if (!row) throw productErrors.notFound(id);
+  return row;
+}
+
+/**
+ * Locks the product's units, in id order, after its row: unit assignment
+ * takes the reservation, the product, then the units.
+ */
+async function lockProductUnits(tx: Transaction, productId: string) {
+  return tx
+    .select({
+      id: productUnits.id,
+      identifier: productUnits.identifier,
+      combinationKey: productUnits.combinationKey,
+    })
+    .from(productUnits)
+    .where(eq(productUnits.productId, productId))
+    .orderBy(asc(productUnits.id))
+    .for("update");
 }
 
 /** Throws PRODUCT_NOT_FOUND unless the store has the product. */
@@ -846,8 +885,12 @@ export interface ProductUpdatePreview {
   /** Switching to fixed pricing deletes these. */
   deletedTierCount: number;
   deletedSeasonalPricingCount: number;
-  /** Active units the update deletes (left out of `units`, or unit tracking turned off). */
-  deletedUnits: Array<{ id: string; identifier: string }>;
+  /**
+   * Active units the update deletes (left out of `units`, or unit tracking
+   * turned off), each with its identifier and variant values, as the human
+   * must see them before confirming.
+   */
+  deletedUnits: Array<{ id: string; identifier: string; attributes: Record<string, string> }>;
   summary: string;
 }
 
@@ -897,6 +940,23 @@ function storedAsInput(product: LoadedProduct): Record<string, unknown> {
   };
 }
 
+type Patch = Partial<Omit<UpdateProductInput, "id">>;
+
+/**
+ * The fields sent, with the former ones in their current form: a single
+ * `categoryId` is the list of categories, a null base rate (as products_get
+ * gives it for fixed pricing) is none.
+ */
+function canonicalPatch(patch: Patch): Patch {
+  const { categoryId, ...rest } = patch;
+  const canonical: Patch = { ...rest };
+  if (canonical.basePriceDuration === null) delete canonical.basePriceDuration;
+  if (categoryId !== undefined && canonical.categoryIds === undefined) {
+    canonical.categoryIds = categoryId ? [categoryId] : [];
+  }
+  return canonical;
+}
+
 /**
  * The update as a whole form: the stored product with the sent fields over
  * it. `price` alone on a duration product changes the base rate's price.
@@ -905,10 +965,16 @@ function storedAsInput(product: LoadedProduct): Record<string, unknown> {
  */
 function mergeUpdate(product: LoadedProduct, patch: UpdateProductInput) {
   const { id: _id, ...sent } = patch;
-  const defined = Object.fromEntries(
-    Object.entries(sent).filter(([, value]) => value !== undefined),
-  ) as Partial<Omit<UpdateProductInput, "id">>;
-  const merged: Record<string, unknown> = { ...storedAsInput(product), ...defined };
+  const defined = canonicalPatch(
+    Object.fromEntries(Object.entries(sent).filter(([, value]) => value !== undefined)) as Patch,
+  );
+  const stored = storedAsInput(product);
+  const merged: Record<string, unknown> = { ...stored, ...defined };
+  // The percentage tiers sent stand for the rate tiers: the stored ones must
+  // not shadow them (the schema takes rateTiers first).
+  if (defined.pricingTiers !== undefined && defined.rateTiers === undefined) {
+    delete merged.rateTiers;
+  }
 
   // null clears.
   for (const field of ["description", "aiContext", "videoUrl"] as const) {
@@ -918,15 +984,18 @@ function mergeUpdate(product: LoadedProduct, patch: UpdateProductInput) {
   if (defined.quantity !== undefined) merged.quantity = String(defined.quantity);
 
   const pricingKind = (merged.pricingKind as string | undefined) ?? "duration";
-  if (
-    defined.price !== undefined &&
-    defined.basePriceDuration === undefined &&
-    pricingKind === "duration"
-  ) {
-    merged.basePriceDuration = {
-      ...(merged.basePriceDuration as Record<string, unknown>),
-      price: defined.price,
-    };
+  if (defined.basePriceDuration === undefined && pricingKind === "duration") {
+    const base = stored.basePriceDuration as { price: string; duration: number; unit: string };
+    // A former base period sent alone is the base rate per 1 of it.
+    if (defined.pricingMode !== undefined) {
+      merged.basePriceDuration = {
+        price: defined.price ?? base.price,
+        duration: 1,
+        unit: defined.pricingMode,
+      };
+    } else if (defined.price !== undefined) {
+      merged.basePriceDuration = { ...base, price: defined.price };
+    }
   }
 
   const syncUnits =
@@ -960,6 +1029,19 @@ export async function updateProduct(
     db.transaction(async (tx) => {
       refusal = null;
       await lockStoreProducts(tx, storeId);
+      // Every lock before the first plain read: InnoDB reads at the snapshot of
+      // that first read, so a reservation committed while this waited for the
+      // product's row must not be missed. Checkout locks the product first,
+      // then reads the stock and inserts; this takes the product, then its
+      // reservations when the stock kind changes, then its units.
+      const current = await lockProduct(tx, storeId, input.id);
+      const stockKindChanges =
+        input.stockKind !== undefined && input.stockKind !== current.stockKind;
+      const canChangeStockKind = stockKindChanges
+        ? await lockProductReservationsForStockKindChange(tx, { productId: input.id, storeId })
+        : true;
+      await lockProductUnits(tx, input.id);
+
       const product = await loadProduct(tx, storeId, input.id);
       const { merged, syncUnits } = mergeUpdate(product, input);
       const data = validateProduct(merged);
@@ -1030,10 +1112,8 @@ export async function updateProduct(
         storeId,
         pendingBlocksAvailability,
       });
-      if (blockedIds.length > 0) {
-        throw productErrors.unitsAssigned(
-          unitsToDelete.filter((unit) => blockedIds.includes(unit.id)),
-        );
+      if (blockedIds.size > 0) {
+        throw productErrors.unitsAssigned(unitsToDelete.filter((unit) => blockedIds.has(unit.id)));
       }
 
       if (syncUnits && trackUnits) {
@@ -1051,21 +1131,9 @@ export async function updateProduct(
 
       const categoryIds = await resolveCategoryIds(tx, storeId, data);
 
-      // Stock kind: reservations of the product are locked before its row,
-      // as every stock-kind writer does.
-      const stockKindChanges = product.stockKind !== pricing.stockKind;
-      const canChangeStockKind = stockKindChanges
-        ? await lockProductReservationsForStockKindChange(tx, { productId: product.id, storeId })
-        : true;
-      const [locked] = await tx
-        .select({ stockKind: products.stockKind })
-        .from(products)
-        .where(and(eq(products.id, product.id), eq(products.storeId, storeId)))
-        .for("update");
-      if (!locked) throw productErrors.notFound(product.id);
-      if (locked.stockKind !== pricing.stockKind && (!stockKindChanges || !canChangeStockKind)) {
-        throw productErrors.stockKindLocked();
-      }
+      // The stock kind cannot change while a confirmed or ongoing
+      // reservation holds the product (its reservations are locked above).
+      if (stockKindChanges && !canChangeStockKind) throw productErrors.stockKindLocked();
 
       // What the update destroys, asked for under the lock.
       const [{ seasonalCount }] =
@@ -1079,7 +1147,11 @@ export async function updateProduct(
         archives: data.status === "archived" && product.status !== "archived",
         deletedTierCount: pricing.pricingKind === "fixed" ? product.pricingTiers.length : 0,
         deletedSeasonalPricingCount: seasonalCount,
-        deletedUnits: unitsToDelete.map((unit) => ({ id: unit.id, identifier: unit.identifier })),
+        deletedUnits: unitsToDelete.map((unit) => ({
+          id: unit.id,
+          identifier: unit.identifier,
+          attributes: (unit.attributes as Record<string, string> | null) ?? {},
+        })),
       });
       if (
         options.confirm &&
@@ -1178,6 +1250,12 @@ export async function updateProduct(
   return getProduct(actor, input.id);
 }
 
+/** "SKI-2 (size 170)": a unit as a person tells it apart. */
+function unitLabel(unit: { identifier: string; attributes: Record<string, string> }) {
+  const values = Object.entries(unit.attributes).map(([key, value]) => `${key} ${value}`);
+  return values.length > 0 ? `${unit.identifier} (${values.join(", ")})` : unit.identifier;
+}
+
 function updatePreview(
   product: LoadedProduct,
   effects: Omit<ProductUpdatePreview, "product" | "summary">,
@@ -1188,7 +1266,7 @@ function updatePreview(
       ? `delete its ${effects.deletedTierCount} pricing tier(s) and ${effects.deletedSeasonalPricingCount} seasonal price(s) by switching to fixed pricing`
       : null,
     effects.deletedUnits.length > 0
-      ? `delete ${effects.deletedUnits.length} unit(s): ${effects.deletedUnits.map((unit) => unit.identifier).join(", ")}`
+      ? `delete ${effects.deletedUnits.length} unit(s): ${effects.deletedUnits.map(unitLabel).join(", ")}`
       : null,
   ].filter(Boolean);
   return {
@@ -1294,10 +1372,9 @@ async function checkUnitCapacity(
   const assignedByItem = new Map<string, string[]>();
   for (const row of assignedRows) {
     if (!row.productUnitId) continue;
-    assignedByItem.set(row.reservationItemId, [
-      ...(assignedByItem.get(row.reservationItemId) ?? []),
-      row.productUnitId,
-    ]);
+    const held = assignedByItem.get(row.reservationItemId);
+    if (held) held.push(row.productUnitId);
+    else assignedByItem.set(row.reservationItemId, [row.productUnitId]);
   }
   // The key each kept unit will carry after the save.
   const proposedKeyByUnitId = new Map(
@@ -1559,29 +1636,19 @@ export async function deleteProduct(
 
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
-    const [product] = await tx
-      .select({ id: products.id, name: products.name, updatedAt: products.updatedAt })
-      .from(products)
-      .where(and(eq(products.id, id), eq(products.storeId, storeId)))
-      .limit(1);
-    if (!product) throw productErrors.notFound(id);
-
-    const units = await tx
-      .select({
-        id: productUnits.id,
-        identifier: productUnits.identifier,
-        combinationKey: productUnits.combinationKey,
-      })
-      .from(productUnits)
-      .where(eq(productUnits.productId, id))
-      .orderBy(asc(productUnits.identifier));
+    // The product, then its units, before the first plain read: a unit
+    // assigned meanwhile is seen (see `updateProduct`).
+    const product = await lockProduct(tx, storeId, id);
+    const units = (await lockProductUnits(tx, id)).sort((a, b) =>
+      a.identifier.localeCompare(b.identifier),
+    );
     const blockedIds = await assignedBlockingUnitIds(tx, {
       unitIds: units.map((unit) => unit.id),
       storeId,
       pendingBlocksAvailability: actor.store.settings?.pendingBlocksAvailability ?? true,
     });
-    if (blockedIds.length > 0) {
-      throw productErrors.unitsAssigned(units.filter((unit) => blockedIds.includes(unit.id)));
+    if (blockedIds.size > 0) {
+      throw productErrors.unitsAssigned(units.filter((unit) => blockedIds.has(unit.id)));
     }
 
     if (options.confirm) {

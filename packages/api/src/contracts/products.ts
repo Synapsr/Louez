@@ -1,5 +1,6 @@
 import {
   bookingAttributeAxisSchema,
+  ignoreDurationPricingForFixed,
   priceDurationSchema,
   productAccessoryLinkSchema,
   productFieldsSchema,
@@ -30,6 +31,19 @@ export const PRODUCT_ACTIVITY_PAGE_MAX = 50;
 export const SEASONAL_PRICING_PAGE_MAX = 200;
 /** Widest window `products.getReservationTimeline` reads at once, in days. */
 export const PRODUCT_TIMELINE_MAX_DAYS = 400;
+
+/**
+ * Most items a product write takes per list, checked before any lock. The
+ * form generates 100 units at a time, shows 5 images and a handful of tiers;
+ * these bounds leave room for large fleets while keeping a write short.
+ */
+export const PRODUCT_WRITE_LIMITS = {
+  units: 1000,
+  rateTiers: 50,
+  accessories: 100,
+  categoryIds: 100,
+  images: 20,
+} as const;
 
 const idSchema = z.string().min(1).max(64);
 const cursorSchema = z
@@ -76,9 +90,13 @@ const productWriteShape = {
   aiContext: fields.aiContext.describe(
     "Private notes for the storefront AI advisor (constraints, ideal uses). Never shown to customers.",
   ),
-  categoryIds: fields.categoryIds.describe(
-    "Ids of the store's categories (categories_list), main category first. Unknown ids are ignored.",
-  ),
+  categoryIds: z
+    .array(z.string())
+    .max(PRODUCT_WRITE_LIMITS.categoryIds)
+    .optional()
+    .describe(
+      "Ids of the store's categories (categories_list), main category first. Unknown ids are ignored.",
+    ),
   categoryId: fields.categoryId.describe(
     "Former single category. Use categoryIds; ignored when categoryIds is sent.",
   ),
@@ -103,19 +121,28 @@ const productWriteShape = {
       'Decimal string, e.g. "25.00". For fixed pricing, the price per item. For duration pricing, the base price when basePriceDuration is left out.',
     ),
   basePriceDuration: priceDurationSchema
+    .nullable()
     .optional()
     .describe(
-      'Base rate of a duration product: `price` for `duration` × `unit`, e.g. { "price": "30", "duration": 1, "unit": "day" } or { "price": "20", "duration": 4, "unit": "hour" }. Left out, it is `price` per 1 pricingMode.',
+      'Base rate of a duration product: `price` for `duration` × `unit`, e.g. { "price": "30", "duration": 1, "unit": "day" } or { "price": "20", "duration": 4, "unit": "hour" }. Left out, it is `price` per 1 pricingMode. Null, as products_get gives it for fixed pricing, means none. Ignored for fixed pricing.',
     ),
   pricingMode: pricingModeSchema
     .optional()
     .describe(
       "Former base period (hour, day, week). Used only when basePriceDuration is left out; default day.",
     ),
-  rateTiers: z.array(rateTierSchema).optional().describe(TIERS_DESCRIPTION),
-  pricingTiers: fields.pricingTiers.describe(
-    "Former percentage tiers ({ minDuration, discountPercent }). Use rateTiers; ignored when rateTiers is sent.",
-  ),
+  rateTiers: z
+    .array(rateTierSchema)
+    .max(PRODUCT_WRITE_LIMITS.rateTiers)
+    .optional()
+    .describe(TIERS_DESCRIPTION),
+  pricingTiers: fields.pricingTiers
+    .unwrap()
+    .max(PRODUCT_WRITE_LIMITS.rateTiers)
+    .optional()
+    .describe(
+      "Former percentage tiers ({ minDuration, discountPercent }). Use rateTiers; ignored when rateTiers is sent.",
+    ),
   enforceStrictTiers: fields.enforceStrictTiers.describe(
     "Duration pricing only. true: whole periods (a rental is charged the next tier or base duration up); false: prorated between tiers.",
   ),
@@ -128,9 +155,13 @@ const productWriteShape = {
     .describe(
       "Stock: how many items the store has. Ignored when trackUnits is true (the active units count). Default 1.",
     ),
-  images: fields.images.describe(
-    "Image URLs, first one main. Upload each with products_create_image_upload, then use the url products_complete_image_upload returns.",
-  ),
+  images: fields.images
+    .unwrap()
+    .max(PRODUCT_WRITE_LIMITS.images)
+    .optional()
+    .describe(
+      "Image URLs, first one main. Upload each with products_create_image_upload, then use the url products_complete_image_upload returns.",
+    ),
   imageHistory: fields.imageHistory.describe(
     "Editing history of each image (crops, AI enhancements), as the dashboard keeps it. Agents leave it out.",
   ),
@@ -143,6 +174,7 @@ const productWriteShape = {
   ),
   accessories: z
     .array(productAccessoryLinkSchema)
+    .max(PRODUCT_WRITE_LIMITS.accessories)
     .optional()
     .describe(
       "Other products of the store offered with this one: { accessoryId, required, quantity } (quantity per item of this product). required true books it with every rental. Sending the list replaces every link.",
@@ -150,7 +182,11 @@ const productWriteShape = {
   trackUnits: fields.trackUnits.describe(
     "Returnable products only: track each item as a unit with its own identifier.",
   ),
-  units: z.array(productUnitSchema).optional().describe(UNITS_DESCRIPTION),
+  units: z
+    .array(productUnitSchema)
+    .max(PRODUCT_WRITE_LIMITS.units)
+    .optional()
+    .describe(UNITS_DESCRIPTION),
   bookingAttributeAxes: z
     .array(bookingAttributeAxisSchema)
     .max(3)
@@ -160,7 +196,16 @@ const productWriteShape = {
     ),
 };
 
-export const createProductInput = z.object(productWriteShape);
+/**
+ * Runs the form's fixed-price rule before the fields are checked: a fixed
+ * product's dormant base period and tiers, as the form keeps them, are
+ * dropped (`ignoreDurationPricingForFixed`). The JSON Schema agents get is the
+ * object's.
+ */
+const withFixedPricingIgnored = <T extends z.ZodObject>(schema: T) =>
+  z.preprocess((input: z.input<T>) => ignoreDurationPricingForFixed(input), schema);
+
+export const createProductInput = withFixedPricingIgnored(z.object(productWriteShape));
 export type CreateProductInput = z.infer<typeof createProductInput>;
 
 /**
@@ -168,18 +213,20 @@ export type CreateProductInput = z.infer<typeof createProductInput>;
  * AI context, the video, the tax settings or the promotion. A list sent
  * (rateTiers, accessories, units, categoryIds, images) replaces the stored one.
  */
-export const updateProductInput = z.object({
-  id: idSchema,
-  ...z.object(productWriteShape).partial().shape,
-  description: z.string().nullable().optional().describe("New description; null clears it."),
-  aiContext: fields.aiContext.unwrap().nullable().optional().describe("Null clears it."),
-  videoUrl: fields.videoUrl.nullable().describe("A YouTube URL; null or empty removes it."),
-  taxSettings: fields.taxSettings
-    .unwrap()
-    .nullable()
-    .optional()
-    .describe("Null goes back to the store's VAT rate."),
-});
+export const updateProductInput = withFixedPricingIgnored(
+  z.object({
+    id: idSchema,
+    ...z.object(productWriteShape).partial().shape,
+    description: z.string().nullable().optional().describe("New description; null clears it."),
+    aiContext: fields.aiContext.unwrap().nullable().optional().describe("Null clears it."),
+    videoUrl: fields.videoUrl.nullable().describe("A YouTube URL; null or empty removes it."),
+    taxSettings: fields.taxSettings
+      .unwrap()
+      .nullable()
+      .optional()
+      .describe("Null goes back to the store's VAT rate."),
+  }),
+);
 export type UpdateProductInput = z.infer<typeof updateProductInput>;
 
 // --- Output ------------------------------------------------------------------
@@ -201,7 +248,7 @@ export const productSchema = z.object({
   slug: z.string().nullable(),
   description: z.string().nullable(),
   aiContext: z.string().nullable(),
-  status: productStatusSchema.nullable(),
+  status: productStatusSchema,
   /** The categories, main one first. */
   categoryIds: z.array(z.string()),
   /** Currency of every amount, from the store's settings (ISO 4217). */
@@ -209,8 +256,10 @@ export const productSchema = z.object({
   pricingKind: pricingKindSchema,
   /** Fixed pricing: the price per item. Duration pricing: the base rate's price. */
   price: z.string(),
-  /** Duration pricing: the base rate's duration; null for fixed pricing. */
-  basePriceDuration: z.object({ duration: z.number().int(), unit: durationUnitSchema }).nullable(),
+  /** Duration pricing: the base rate, as products_update takes it; null for fixed pricing. */
+  basePriceDuration: z
+    .object({ price: z.string(), duration: z.number().int(), unit: durationUnitSchema })
+    .nullable(),
   pricingMode: pricingModeSchema,
   rateTiers: z.array(rateTierOutput),
   enforceStrictTiers: z.boolean(),
