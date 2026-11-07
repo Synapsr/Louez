@@ -28,6 +28,19 @@ test("allows OpenFreeMap assets without the retired CARTO and Leaflet origins", 
   assert.doesNotMatch(csp, /cartocdn|unpkg\.com/);
 });
 
+test("allows Klibon's tag, ping and signup beacon only when Klibon is on", () => {
+  const cspOf = (klibonEnabled: boolean) =>
+    buildSecurityHeaders({ isDevelopment: false, klibonEnabled }).find(
+      (header) => header.key === "Content-Security-Policy",
+    )?.value ?? "";
+  const on = cspOf(true);
+
+  for (const directive of ["script-src", "img-src", "connect-src"]) {
+    assert.match(on, new RegExp(`${directive}[^;]*https://go\\.klibon\\.com`));
+  }
+  assert.doesNotMatch(cspOf(false), /klibon/);
+});
+
 test("embed headers allow framing without emitting X-Frame-Options", () => {
   const headers = buildEmbedSecurityHeaders({
     appDomain: "runtime.example.com",
