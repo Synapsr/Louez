@@ -1,15 +1,19 @@
 import {
   db,
+  inspections,
   productUnitDowntimes,
   productUnitEvents,
   productUnits,
   products,
+  reservationItemUnits,
+  reservationItems,
+  reservations,
   retryOnceOnDeadlock,
   type Transaction,
 } from "@louez/db";
 import type { BookingAttributeAxis } from "@louez/types";
 import { buildCombinationKey } from "@louez/utils";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { z } from "zod";
 
@@ -182,6 +186,50 @@ async function lockDowntime(tx: Transaction, storeId: string, downtimeId: string
   return downtime;
 }
 
+/**
+ * The lines a downtime may leave out of its conflicts: those that hold the
+ * unit, of reservations of the store whose return inspection is done, so the
+ * unit is back (the return flow declares a repair right after). Any other
+ * line is refused.
+ */
+async function checkedExclusions(
+  tx: Transaction,
+  storeId: string,
+  unitId: string,
+  ids: readonly string[] | undefined,
+) {
+  const wanted = [...new Set(ids ?? [])];
+  if (wanted.length === 0) return new Set<string>();
+  const rows = await tx
+    .selectDistinct({ id: reservationItems.id })
+    .from(reservationItems)
+    .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+    .innerJoin(
+      reservationItemUnits,
+      eq(reservationItemUnits.reservationItemId, reservationItems.id),
+    )
+    .innerJoin(
+      inspections,
+      and(
+        eq(inspections.reservationId, reservations.id),
+        eq(inspections.storeId, storeId),
+        eq(inspections.type, "return"),
+        inArray(inspections.status, ["completed", "signed"]),
+      ),
+    )
+    .where(
+      and(
+        inArray(reservationItems.id, wanted),
+        eq(reservations.storeId, storeId),
+        eq(reservationItemUnits.productUnitId, unitId),
+      ),
+    );
+  const valid = new Set(rows.map((row) => row.id));
+  const invalid = wanted.filter((id) => !valid.has(id));
+  if (invalid.length > 0) throw productUnitErrors.exclusionInvalid(invalid);
+  return valid;
+}
+
 const unitChanged = (actor: ProductActor, productId: string) =>
   emit(actor, { type: "product.units.changed", store: eventStore(actor), productId });
 
@@ -217,14 +265,17 @@ export async function declareDowntime(
     db.transaction(async (tx) => {
       refusal = null;
       const { product, unit } = await lockUnit(tx, storeId, ref);
+      const excluded = await checkedExclusions(
+        tx,
+        storeId,
+        unit.id,
+        input.excludeReservationItemIds,
+      );
+      // The confirmation names every booking; exclusions only trim the list returned.
       const conflicts = await getUnitConflicts(
         unit.id,
         { start: input.startsAt, end: endsAt },
-        {
-          ...conflictSettings(actor),
-          executor: tx,
-          excludeReservationItemIds: input.excludeReservationItemIds,
-        },
+        { ...conflictSettings(actor), executor: tx },
       );
       if (options.confirm && conflicts.length > 0) {
         refusal = await options.confirm(
@@ -270,7 +321,10 @@ export async function declareDowntime(
           },
         }),
       );
-      result = { downtimeId, conflicts };
+      result = {
+        downtimeId,
+        conflicts: conflicts.filter((conflict) => !excluded.has(conflict.reservationItemId)),
+      };
     }),
   );
 
@@ -309,14 +363,16 @@ export async function updateDowntime(
       const reason = input.reason ?? downtime.reason;
       const note = input.note === undefined ? downtime.note : normalizeNullableText(input.note);
 
+      const excluded = await checkedExclusions(
+        tx,
+        storeId,
+        unit.id,
+        input.excludeReservationItemIds,
+      );
       const conflicts = await getUnitConflicts(
         unit.id,
         { start: startsAt, end: endsAt },
-        {
-          ...conflictSettings(actor),
-          executor: tx,
-          excludeReservationItemIds: input.excludeReservationItemIds,
-        },
+        { ...conflictSettings(actor), executor: tx },
       );
       if (options.confirm && conflicts.length > 0) {
         refusal = await options.confirm(
@@ -363,7 +419,7 @@ export async function updateDowntime(
           },
         }),
       );
-      conflictsFound = conflicts;
+      conflictsFound = conflicts.filter((conflict) => !excluded.has(conflict.reservationItemId));
     }),
   );
 

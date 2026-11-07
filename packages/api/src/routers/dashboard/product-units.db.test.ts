@@ -100,6 +100,7 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
 
   beforeEach(async () => {
     events.length = 0;
+    await louezDb.db.delete(louezDb.inspections);
     await louezDb.db.delete(louezDb.reservationItemUnits);
     await louezDb.db.delete(louezDb.reservationItems);
     await louezDb.db.delete(louezDb.reservations);
@@ -540,6 +541,44 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
     );
     const now = await run("closeDowntime", { downtimeId: current.downtimeId }, session());
     assert.ok(Math.abs(now.endsAt.getTime() - Date.now()) < 60_000);
+  });
+
+  async function completeReturnInspection(reservationId: string) {
+    await louezDb.db.insert(louezDb.inspections).values({
+      storeId: STORE,
+      reservationId,
+      type: "return",
+      status: "completed",
+    });
+  }
+
+  test("excluded lines are refused unless their unit came back through a return inspection", async () => {
+    const { product, first } = await trackedProduct();
+    const booking = await book(product.id, first);
+    const context = await apiKey();
+    const input = {
+      unitId: first,
+      reason: "repair" as const,
+      startsAt: JUNE_1,
+      endsAt: JUNE_3,
+      excludeReservationItemIds: [booking.itemId],
+    };
+
+    // Excluding the overlapping booking does not skip the agent's confirmation.
+    await rejects(run("declareDowntime", input, context()), "DOWNTIME_EXCLUSION_INVALID");
+    await rejects(run("declareDowntime", input, session()), "DOWNTIME_EXCLUSION_INVALID");
+
+    // The return flow's case: the reservation's return inspection is done.
+    await completeReturnInspection(booking.reservationId);
+    const asked = await rejects(run("declareDowntime", input, context()), "CONFIRMATION_REQUIRED");
+    assert.deepEqual(
+      previewOf(asked).details.reservations?.map((reservation) => reservation.number),
+      [booking.number],
+      "the confirmation names every booking, excluded or not",
+    );
+    // The dashboard's list leaves the returned booking out.
+    const declared = await run("declareDowntime", input, session());
+    assert.deepEqual(declared.conflicts, []);
   });
 
   // --- Races ----------------------------------------------------------------

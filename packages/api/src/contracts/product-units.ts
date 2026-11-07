@@ -34,7 +34,7 @@ const excludeReservationItemIdsSchema = z
   .max(100)
   .optional()
   .describe(
-    "Reservation lines to leave out of the overlap check, such as the lines of the reservation the unit just came back from.",
+    "Lines of reservations whose return inspection is done and that hold this unit (the unit is back): they are left out of the conflicts returned. Any other line is refused. A confirmation still names every booking.",
   );
 
 // --- History -----------------------------------------------------------------
@@ -209,6 +209,13 @@ export const productUnitErrors = {
       message: `This downtime already ends at ${downtime.endsAt.toISOString()}: closing only ends a downtime earlier. To move its end later, use products_update_downtime, which checks the bookings it would overlap.`,
       i18nKey: "errors.downtimeCloseExtends",
       details: { id: downtime.id, endsAt: downtime.endsAt.toISOString() },
+    }),
+  exclusionInvalid: (ids: string[]) =>
+    apiError("BAD_REQUEST", "DOWNTIME_EXCLUSION_INVALID", {
+      message:
+        "excludeReservationItemIds only takes lines that hold this unit, of reservations whose return inspection is done. Leave these out.",
+      i18nKey: "errors.invalidData",
+      details: { reservationItemIds: ids },
     }),
   alreadyRetired: (id: string) =>
     apiError("CONFLICT", "UNIT_ALREADY_RETIRED", {
