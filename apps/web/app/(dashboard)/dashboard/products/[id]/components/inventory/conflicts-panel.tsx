@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { AlertTriangle, CheckCircle2, ExternalLink } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -25,6 +26,7 @@ import {
   toastManager,
 } from '@louez/ui';
 
+import { invalidateProductInventory } from '@/lib/orpc/invalidation';
 import { formatDateRange } from '@/lib/utils';
 import { useFormatLocale } from '@/hooks/use-format-locale';
 
@@ -53,6 +55,7 @@ export const ConflictsPanel = ({
   const { intl: formatLocale } = useFormatLocale();
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [selectedCandidates, setSelectedCandidates] = useState<
     Record<string, string>
   >({});
@@ -137,6 +140,7 @@ export const ConflictsPanel = ({
         [conflict.reservationItemId]: 'reassigned',
       }));
       toastManager.add({ title: t('reassignedToast'), type: 'success' });
+      await invalidateProductInventory(queryClient);
       router.refresh();
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' });

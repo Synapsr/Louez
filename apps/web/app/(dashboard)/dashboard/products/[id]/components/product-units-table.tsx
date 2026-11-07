@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Package } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -23,6 +23,7 @@ import type { UnitAttributes } from '@louez/types';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatDate } from '@/lib/utils';
 import { useFormatLocale } from '@/hooks/use-format-locale';
+import { invalidateProductInventory } from '@/lib/orpc/invalidation';
 import { orpc } from '@/lib/orpc/react';
 
 import type { ProductInventoryUnit } from '../queries';
@@ -52,6 +53,7 @@ export const ProductUnitsTable = ({ units, readOnly = false }: ProductUnitsTable
   const tInventory = useTranslations('dashboard.inventory');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const queryClient = useQueryClient();
   const closeDowntimeMutation = useMutation(
     orpc.dashboard.products.closeDowntime.mutationOptions(),
   );
@@ -84,6 +86,7 @@ export const ProductUnitsTable = ({ units, readOnly = false }: ProductUnitsTable
         title: tInventory('toasts.downtimeClosed'),
         type: 'success',
       });
+      await invalidateProductInventory(queryClient);
       router.refresh();
     } catch (error) {
       toastManager.add({
@@ -102,6 +105,7 @@ export const ProductUnitsTable = ({ units, readOnly = false }: ProductUnitsTable
       await reinstateMutation.mutateAsync({ unitId: unit.id });
 
       toastManager.add({ title: tInventory('toasts.reinstated'), type: 'success' });
+      await invalidateProductInventory(queryClient);
       router.refresh();
     } catch (error) {
       toastManager.add({

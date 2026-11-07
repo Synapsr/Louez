@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -25,6 +25,7 @@ import {
 import { toDatePickerValue } from '@louez/utils';
 
 import { DatePicker } from '@/components/ui/date-time-picker';
+import { invalidateProductInventory } from '@/lib/orpc/invalidation';
 import { orpc } from '@/lib/orpc/react';
 
 import type { ProductInventoryUnit } from '../../queries';
@@ -45,6 +46,7 @@ export const EditUnitDetailsDialog = ({
   const tReservationForm = useTranslations('dashboard.reservations.manualForm');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const queryClient = useQueryClient();
   const updateMutation = useMutation(
     orpc.dashboard.products.updateUnitDetails.mutationOptions(),
   );
@@ -79,6 +81,7 @@ export const EditUnitDetailsDialog = ({
       });
 
       toastManager.add({ title: t('successToast'), type: 'success' });
+      await invalidateProductInventory(queryClient);
       router.refresh();
       onOpenChange(false);
     } catch (error) {

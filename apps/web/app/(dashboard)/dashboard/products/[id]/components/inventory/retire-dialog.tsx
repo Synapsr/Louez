@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -27,6 +27,7 @@ import {
   toastManager,
 } from '@louez/ui';
 
+import { invalidateProductInventory } from '@/lib/orpc/invalidation';
 import { orpc } from '@/lib/orpc/react';
 
 import type { ProductInventoryUnit } from '../../queries';
@@ -54,6 +55,7 @@ export const RetireDialog = ({
   const tReasons = useTranslations('dashboard.inventory.retirementReasons');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const queryClient = useQueryClient();
   const retireMutation = useMutation(
     orpc.dashboard.products.retireUnit.mutationOptions(),
   );
@@ -87,6 +89,7 @@ export const RetireDialog = ({
       });
 
       toastManager.add({ title: t('successToast'), type: 'success' });
+      await invalidateProductInventory(queryClient);
       router.refresh();
 
       if (result.conflicts.length > 0) {

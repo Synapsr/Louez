@@ -45,6 +45,7 @@ import { cn, findMatchingVariant } from "@louez/utils";
 
 import { VariantColorPicker } from "@/components/dashboard/variant-color-picker";
 import { apiErrorKey } from "@/lib/orpc/errors";
+import { invalidateProductInventory, invalidateVariantCatalog } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
 import { productsQueries } from "@/lib/queries/products.queries";
 import { type ResolvedVariantPreset, resolveVariantPresets } from "@/lib/variant-presets";
@@ -232,11 +233,7 @@ const VariantManager = ({
   }, [activeOverrides, definitions, resolvedPresets]);
   const activeCount = managedVariants.filter((variant) => variant.isActive).length;
 
-  const invalidate = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: orpc.dashboard.products.listVariants.key() }),
-      queryClient.invalidateQueries({ queryKey: orpc.dashboard.products.getVariantUsage.key() }),
-    ]);
+  const invalidate = () => invalidateVariantCatalog(queryClient);
 
   const ensureDefinitionMutation = useMutation(
     orpc.dashboard.products.ensureVariantDefinition.mutationOptions(),
@@ -345,7 +342,8 @@ const VariantManager = ({
     try {
       const { key, label } = toWithdraw.definition;
       const result = await withdrawMutation.mutateAsync({ id: toWithdraw.definition.id });
-      await invalidate();
+      // The products changed too: their axes, units and booked lines.
+      await invalidateProductInventory(queryClient);
       setToWithdraw(null);
       notifyWithdrawn(result.affectedProductCount);
       onWithdrawnRef.current?.({ key, label });

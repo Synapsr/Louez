@@ -64,6 +64,7 @@ import {
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { apiErrorKey } from "@/lib/orpc/errors";
+import { invalidateVariantCatalog } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
 import { productsQueries } from "@/lib/queries/products.queries";
 import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
@@ -788,11 +789,7 @@ export function UnitTrackingEditor({
   const queryClient = useQueryClient();
   const variantCatalogQuery = useQuery(productsQueries.variants());
   const variantCatalog: VariantCatalogDefinition[] = variantCatalogQuery.data?.items ?? [];
-  const invalidateVariants = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: orpc.dashboard.products.listVariants.key() }),
-      queryClient.invalidateQueries({ queryKey: orpc.dashboard.products.getVariantUsage.key() }),
-    ]);
+  const invalidateVariants = () => invalidateVariantCatalog(queryClient);
   const ensureDefinitionMutation = useMutation(
     orpc.dashboard.products.ensureVariantDefinition.mutationOptions({
       onSuccess: () => invalidateVariants(),

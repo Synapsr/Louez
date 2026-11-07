@@ -10,6 +10,28 @@ export async function invalidateProductsList(queryClient: QueryClient) {
   await queryClient.invalidateQueries({ queryKey: productsQueries.listKey() })
 }
 
+/**
+ * Everything the products domain caches: the lists, a unit's history, the
+ * reservation timeline, the variant catalog. After a unit, downtime or
+ * withdrawal changes what they show; the server-rendered parts of the page
+ * still need `router.refresh()`.
+ */
+export async function invalidateProductInventory(queryClient: QueryClient) {
+  await queryClient.invalidateQueries({ queryKey: productsQueries.key() })
+}
+
+/** The store's variant catalog and which products use each variant. */
+export async function invalidateVariantCatalog(queryClient: QueryClient) {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: orpc.dashboard.products.listVariants.key(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: orpc.dashboard.products.getVariantUsage.key(),
+    }),
+  ])
+}
+
 export async function invalidateReservationDetail(
   queryClient: QueryClient,
   reservationId: string,

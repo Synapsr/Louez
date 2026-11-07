@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Wrench } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -22,6 +22,7 @@ import {
 } from '@louez/ui';
 
 import { getApiErrorMessage } from '@/app/(dashboard)/dashboard/products/[id]/components/inventory/util.inventory-format';
+import { invalidateProductInventory } from '@/lib/orpc/invalidation';
 import { orpc } from '@/lib/orpc/react';
 
 interface RepairDowntimeSuggestionUnit {
@@ -55,6 +56,7 @@ export const RepairDowntimeSuggestionDialog = ({
     'dashboard.settings.inspection.wizard.repairDowntime',
   );
   const tErrors = useTranslations('errors');
+  const queryClient = useQueryClient();
   const declareMutation = useMutation(
     orpc.dashboard.products.declareDowntime.mutationOptions(),
   );
@@ -126,6 +128,7 @@ export const RepairDowntimeSuggestionDialog = ({
             type: 'error',
           });
           setSelectedUnitIds(remainingUnitIds);
+          await invalidateProductInventory(queryClient);
           return;
         }
 
@@ -139,6 +142,7 @@ export const RepairDowntimeSuggestionDialog = ({
         title: t('createdToast', { count: selectedUnits.length }),
         type: 'success',
       });
+      await invalidateProductInventory(queryClient);
 
       if (conflictedUnits.length > 0) {
         const distinctProducts = Array.from(

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -29,6 +29,7 @@ import {
 } from '@louez/ui';
 
 import { ReservationDatePickerControl } from '@/components/form/form-reservation-date-picker';
+import { invalidateProductInventory } from '@/lib/orpc/invalidation';
 import { orpc } from '@/lib/orpc/react';
 
 import type { ProductInventoryUnit } from '../../queries';
@@ -56,6 +57,7 @@ export const DowntimeDialog = ({
   const tReasons = useTranslations('dashboard.inventory.downtimeReasons');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const queryClient = useQueryClient();
   const declareMutation = useMutation(
     orpc.dashboard.products.declareDowntime.mutationOptions(),
   );
@@ -124,6 +126,7 @@ export const DowntimeDialog = ({
         title: t(isEditing ? 'editSuccessToast' : 'successToast'),
         type: 'success',
       });
+      await invalidateProductInventory(queryClient);
       router.refresh();
 
       if (result.conflicts.length > 0) {
