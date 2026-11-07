@@ -581,6 +581,57 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
     assert.deepEqual(declared.conflicts, []);
   });
 
+  test("a downtime's token voids when a named booking moves or a replacement unit is taken", async () => {
+    const { product, first, second } = await trackedProduct();
+    const booking = await book(product.id, first);
+    const context = await apiKey();
+    const input = { unitId: first, reason: "repair" as const, startsAt: MAY_30, endsAt: JUNE_5 };
+
+    const asked = await rejects(run("declareDowntime", input, context()), "CONFIRMATION_REQUIRED");
+    // Rescheduled, same line: the dates the preview showed are gone.
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ endDate: new Date("2030-06-04T09:00:00Z") })
+      .where(orm.eq(louezDb.reservations.id, booking.reservationId));
+    await rejects(
+      run("declareDowntime", input, context({ "louez-confirmation": tokenOf(asked) })),
+      "CONFIRMATION_INVALID",
+    );
+
+    const again = await rejects(run("declareDowntime", input, context()), "CONFIRMATION_REQUIRED");
+    // The replacement the preview offered gets booked meanwhile.
+    await book(product.id, second, { start: JUNE_2, end: JUNE_3 });
+    await rejects(
+      run("declareDowntime", input, context({ "louez-confirmation": tokenOf(again) })),
+      "CONFIRMATION_INVALID",
+    );
+  });
+
+  test("a partial downtime update's token is bound to the dates it inherits", async () => {
+    const { product, first } = await trackedProduct();
+    await book(product.id, first);
+    const { downtimeId } = await run(
+      "declareDowntime",
+      { unitId: first, reason: "maintenance", startsAt: MAY_30, endsAt: JUNE_5 },
+      session(),
+    );
+    const context = await apiKey();
+    const input = { downtimeId, reason: "repair" as const };
+    const asked = await rejects(run("updateDowntime", input, context()), "CONFIRMATION_REQUIRED");
+    assert.match(previewOf(asked).summary, /2030-05-30T09:00:00.000Z to 2030-06-05T09:00:00.000Z/);
+
+    // Someone moves the downtime's end: the window the preview showed is gone.
+    await run(
+      "updateDowntime",
+      { downtimeId, endsAt: new Date("2030-06-06T09:00:00Z") },
+      session(),
+    );
+    await rejects(
+      run("updateDowntime", input, context({ "louez-confirmation": tokenOf(asked) })),
+      "CONFIRMATION_INVALID",
+    );
+  });
+
   // --- Races ----------------------------------------------------------------
 
   /** What checkout does while the call waits: the product's row first, then the booking. */

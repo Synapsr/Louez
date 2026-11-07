@@ -58,10 +58,12 @@ interface UnitRef {
   productId: string;
 }
 
-/** What a preview names: the unit, its product, and the reservations that hold it then. */
+/** What a preview names: the unit, its product, the window, and every reservation that holds it then. */
 export interface UnitAvailabilityPreview {
   unit: { id: string; identifier: string };
   product: { id: string; name: string };
+  /** The downtime's window once merged with what is stored; a retirement's starts now. */
+  window: { start: Date; end: Date | null };
   conflicts: UnitConflict[];
   summary: string;
 }
@@ -282,6 +284,7 @@ export async function declareDowntime(
           {
             unit: { id: unit.id, identifier: unit.identifier },
             product: { id: product.id, name: product.name },
+            window: { start: input.startsAt, end: endsAt },
             conflicts,
             summary:
               `Take the unit "${unit.identifier}" of "${product.name}" out of service ${describeWindow(input.startsAt, endsAt)}.` +
@@ -379,6 +382,7 @@ export async function updateDowntime(
           {
             unit: { id: unit.id, identifier: unit.identifier },
             product: { id: product.id, name: product.name },
+            window: { start: startsAt, end: endsAt },
             conflicts,
             summary:
               `Keep the unit "${unit.identifier}" of "${product.name}" out of service ${describeWindow(startsAt, endsAt)}.` +
@@ -567,6 +571,7 @@ export async function retireUnit(
           {
             unit: { id: unit.id, identifier: unit.identifier },
             product: { id: product.id, name: product.name },
+            window: { start: now, end: null },
             conflicts,
             summary:
               `Retire the unit "${unit.identifier}" of "${product.name}" (${input.reason}): it leaves the stock from now on.` +

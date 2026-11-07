@@ -32,23 +32,49 @@ const UNIT_HELP =
 const CONFIRM_HELP =
   "the first call answers CONFIRMATION_REQUIRED with a preview naming those reservations: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.";
 
-/** What a confirmation of a unit leaving availability binds: the unit, and the bookings named. */
-const availabilityConfirmation = (preview: UnitAvailabilityPreview) => ({
+/**
+ * What a confirmation of a unit leaving availability binds: every fact the
+ * preview shows. The unit, the window once merged with what is stored (a
+ * retirement starts now, so its window is left out), and each booking with
+ * its dates and the units offered to replace it.
+ */
+const availabilityConfirmation = (preview: UnitAvailabilityPreview, bindWindow = true) => ({
   state: {
     unitId: preview.unit.id,
     identifier: preview.unit.identifier,
-    reservationItemIds: preview.conflicts.map((conflict) => conflict.reservationItemId).sort(),
+    ...(bindWindow
+      ? {
+          window: {
+            start: preview.window.start.toISOString(),
+            end: preview.window.end?.toISOString() ?? null,
+          },
+        }
+      : {}),
+    conflicts: preview.conflicts
+      .map((conflict) => ({
+        reservationItemId: conflict.reservationItemId,
+        reservationId: conflict.reservationId,
+        startDate: conflict.startDate.toISOString(),
+        endDate: conflict.endDate.toISOString(),
+        replacementUnitIds: conflict.replacementCandidates.map((candidate) => candidate.id).sort(),
+      }))
+      .sort((left, right) => left.reservationItemId.localeCompare(right.reservationItemId)),
   },
   details: {
     unit: preview.unit,
     product: preview.product,
+    from: preview.window.start.toISOString(),
+    until: preview.window.end?.toISOString() ?? null,
     reservations: preview.conflicts.map((conflict) => ({
       id: conflict.reservationId,
       number: conflict.reservationNumber,
       customerName: conflict.customerName,
       startDate: conflict.startDate.toISOString(),
       endDate: conflict.endDate.toISOString(),
-      replacementUnits: conflict.replacementCandidates.map((candidate) => candidate.identifier),
+      replacementUnits: conflict.replacementCandidates.map((candidate) => ({
+        id: candidate.id,
+        identifier: candidate.identifier,
+      })),
     })),
   },
 });
@@ -183,7 +209,9 @@ export const retireUnit = storeProcedure
   .output(retireUnitOutput)
   .handler(({ context, input, path }) =>
     units.retireUnit(productActor(context), input, {
-      confirm: confirmUnderLock(context, path, input, availabilityConfirmation),
+      confirm: confirmUnderLock(context, path, input, (preview) =>
+        availabilityConfirmation(preview, false),
+      ),
     }),
   );
 
