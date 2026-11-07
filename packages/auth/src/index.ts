@@ -146,6 +146,10 @@ const DEV_AUTH_HOSTS = [
   "*.louez.localify",
   "louez.localify.fyi",
   "louez--*.localify.fyi",
+  // The public URL of the project served from another machine, which Localify
+  // names louez-<login> because "louez" is taken (e.g. a preview run on a
+  // build machine of the tailnet).
+  "louez-*.localify.fyi",
 ];
 
 const authBaseURL =
