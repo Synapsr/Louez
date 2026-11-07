@@ -726,6 +726,71 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
     assert.equal((await readReservation(id))?.status, "confirmed");
   });
 
+  test("a product added while a confirmation waits starts it over, instead of deadlocking", async () => {
+    const id = await createReservation("pending");
+    await addItem(id, { stockKind: "returnable", stock: 5, quantity: 1 });
+    const added = nextId("prd");
+    await louezDb.db.insert(louezDb.products).values({
+      id: added,
+      storeId: STORE,
+      name: added,
+      price: "1.00",
+      pricingMode: "day",
+      stockKind: "returnable",
+      quantity: 5,
+    });
+    const { drizzle } = await import("drizzle-orm/mysql2");
+
+    // An edit holds the reservation and adds a line of `added`; an update of
+    // `added` holds that product, with writes behind it.
+    const edit = await database.connect();
+    const update = await database.connect();
+    let confirmation: Promise<unknown> | undefined;
+    try {
+      await edit.beginTransaction();
+      await edit.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+      await drizzle(edit)
+        .insert(louezDb.reservationItems)
+        .values({
+          id: nextId("itm"),
+          reservationId: id,
+          productId: added,
+          quantity: 1,
+          unitPrice: "5.00",
+          depositPerUnit: "0.00",
+          totalPrice: "5.00",
+          productSnapshot: { name: "Paddle", description: null, images: [] },
+        });
+      await update.beginTransaction();
+      await update.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [added]);
+      for (let index = 0; index < 5; index += 1) {
+        await update.query(
+          "INSERT INTO product_units (id, product_id, identifier) VALUES (?, ?, ?)",
+          [nextId("unt"), added, `ADDED-${index}`],
+        );
+      }
+
+      confirmation = askAssistant({ reservationId: id, status: "confirmed" }).then(
+        (answer) => answer,
+        (error: unknown) => ({ thrown: String(error) }),
+      );
+      // It read the products before the line existed and waits for the reservation.
+      await waitForLockWaits(edit, database.name, 1);
+      await edit.commit();
+      // Now it waits for `added`: it must not hold the reservation meanwhile.
+      await waitForLockWaits(update, database.name, 1);
+      await update.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+      await update.rollback();
+    } finally {
+      await edit.end();
+      await update.end();
+    }
+
+    const answer = await confirmation;
+    assert.ok(answer && typeof answer === "object" && "success" in answer, JSON.stringify(answer));
+    assert.equal((await readReservation(id))?.status, "confirmed");
+  });
+
   test("of an assistant and an MCP confirmation at once, the second is refused", async () => {
     const id = await createReservation("pending");
 

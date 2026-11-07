@@ -456,6 +456,7 @@ export async function updateReservationStatus(
     if (outcome.error === "store_not_accepting_reservations") {
       return { error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR };
     }
+    if (outcome.error === "busy") return { error: "errors.reservationStatusChanged" };
     // A stale read, a retry of the same change and a refused change get one answer.
     return {
       error:
@@ -486,6 +487,7 @@ export async function cancelReservation(reservationId: string) {
   if (!outcome.ok) {
     if (outcome.error === "not_found") return { error: "errors.reservationNotFound" };
     if (outcome.error === "unavailable") return { error: outcome.message };
+    if (outcome.error === "busy") return { error: "errors.reservationStatusChanged" };
     // Gone, or already cancelled, completed, rejected or declined.
     return { error: "errors.cannotCancelReservation" };
   }

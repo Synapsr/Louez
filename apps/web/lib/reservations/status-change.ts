@@ -40,7 +40,11 @@ import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-e
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { ReservationInventoryError } from "@/lib/reservations/reserve-inventory";
-import { changeStoreReservationStatus } from "@/lib/reservations/store-status-change";
+import {
+  changeStoreReservationStatus,
+  isStoreStatusChangeConflict,
+  retryStoreStatusChange,
+} from "@/lib/reservations/store-status-change";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { evaluateReservationRules } from "@/lib/utils/reservation-rules";
 
@@ -111,7 +115,12 @@ export type StoreStatusChangeOutcome =
   /** The items or the stock are no longer free. `message` is an `errors.*` key. */
   | { ok: false; error: "unavailable"; message: string }
   /** The store's card gate is closed (README §8.4): nothing was written. */
-  | { ok: false; error: "store_not_accepting_reservations" };
+  | { ok: false; error: "store_not_accepting_reservations" }
+  /**
+   * The reservation kept changing under the change (a line added, a lost
+   * deadlock) past its retries: nothing was written, trying again may work.
+   */
+  | { ok: false; error: "busy" };
 
 // The MCP server's contract (packages/mcp/src/deps.ts); the assistant uses it too.
 export type AgentStatusChangeInput = Omit<McpStatusChangeInput, "actor"> & {
@@ -267,32 +276,35 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
 
     let change: ChangeReservationStatusResult;
     try {
-      change = await db.transaction(
-        (tx) =>
-          changeStoreReservationStatus(tx, {
-            reservationId,
-            storeId: store.id,
-            to: status,
-            actor,
-            actorUserId,
-            // Refuses when someone changed the status since the read above.
-            expectedFrom: reservation.status,
-            dates: { startDate: reservation.startDate, endDate: reservation.endDate },
-            activity: {
-              metadata: {
-                ...(status === "rejected" && rejectionReason && { rejectionReason }),
-                ...(validationWarnings.length > 0 && {
-                  validationWarnings,
-                  validationWarningsCount: validationWarnings.length,
-                }),
+      change = await retryStoreStatusChange(() =>
+        db.transaction(
+          (tx) =>
+            changeStoreReservationStatus(tx, {
+              reservationId,
+              storeId: store.id,
+              to: status,
+              actor,
+              actorUserId,
+              // Refuses when someone changed the status since the read above.
+              expectedFrom: reservation.status,
+              dates: { startDate: reservation.startDate, endDate: reservation.endDate },
+              activity: {
+                metadata: {
+                  ...(status === "rejected" && rejectionReason && { rejectionReason }),
+                  ...(validationWarnings.length > 0 && {
+                    validationWarnings,
+                    validationWarningsCount: validationWarnings.length,
+                  }),
+                },
               },
-            },
-          }),
-        { isolationLevel: "read committed" },
+            }),
+          { isolationLevel: "read committed" },
+        ),
       );
     } catch (error) {
       const unavailable = toUnavailable(error);
       if (unavailable) return unavailable;
+      if (isStoreStatusChangeConflict(error)) return { ok: false, error: "busy" };
       // Only a change into the billable set asks the card gate.
       if (isStoreNotAcceptingReservationsError(error)) {
         logReservationGateRefusal(error, actor === "store_user" ? "dashboard" : actor);
@@ -533,21 +545,24 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
 
     let cancellation: ChangeReservationStatusResult;
     try {
-      cancellation = await db.transaction(
-        (tx) =>
-          changeStoreReservationStatus(tx, {
-            reservationId,
-            storeId: store.id,
-            to: "cancelled",
-            actor,
-            actorUserId,
-            dates: { startDate: reservation.startDate, endDate: reservation.endDate },
-          }),
-        { isolationLevel: "read committed" },
+      cancellation = await retryStoreStatusChange(() =>
+        db.transaction(
+          (tx) =>
+            changeStoreReservationStatus(tx, {
+              reservationId,
+              storeId: store.id,
+              to: "cancelled",
+              actor,
+              actorUserId,
+              dates: { startDate: reservation.startDate, endDate: reservation.endDate },
+            }),
+          { isolationLevel: "read committed" },
+        ),
       );
     } catch (error) {
       const unavailable = toUnavailable(error);
       if (unavailable) return unavailable;
+      if (isStoreStatusChangeConflict(error)) return { ok: false, error: "busy" };
       throw error;
     }
     // Gone, or already cancelled, completed, rejected or declined.
@@ -664,6 +679,14 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
           });
 
     if (outcome.ok || outcome.error === "not_found") return outcome;
+    if (outcome.error === "busy") {
+      return {
+        ok: false,
+        error: "refused",
+        message:
+          "Not changed: the reservation was being changed at the same time. Nothing was done; try again in a moment.",
+      };
+    }
     if (outcome.error === "store_not_accepting_reservations") {
       return { ok: false, error: "refused", message: AGENT_GATE_REFUSAL };
     }
