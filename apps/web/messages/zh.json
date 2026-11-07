@@ -9308,6 +9308,7 @@
     "unitNotRetired": "该单位尚未退役",
     "variantLimitReached": "此店铺的规格数量已达上限（100 个）。",
     "variantValueLimitReached": "此规格的选项值数量已达上限（200 个）。",
+    "downtimeCloseExtends": "此停用已在更早的时间结束。如需延长，请修改其日期。",
     "advisorValidationRequired": "这家商店需要在预订前与顾问进行简短的核实",
     "conversationNotFound": "找不到对话",
     "featureNotAvailable": "您的计划不提供此功能",

@@ -9308,6 +9308,7 @@
     "unitNotRetired": "This unit is not retired",
     "variantLimitReached": "This store already has the most variants it may hold (100).",
     "variantValueLimitReached": "This variant already has the most values it may hold (200).",
+    "downtimeCloseExtends": "This downtime already ends earlier. To end it later, change its dates.",
     "advisorValidationRequired": "This store requires a short check with the advisor before booking",
     "conversationNotFound": "Conversation not found",
     "featureNotAvailable": "This feature is not available on your plan",

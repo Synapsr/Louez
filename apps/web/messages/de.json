@@ -9308,6 +9308,7 @@
     "unitNotRetired": "Diese Einheit ist nicht ausgemustert",
     "variantLimitReached": "Dieser Shop hat bereits die maximale Anzahl an Varianten (100).",
     "variantValueLimitReached": "Diese Variante hat bereits die maximale Anzahl an Werten (200).",
+    "downtimeCloseExtends": "Diese Ausfallzeit endet bereits früher. Um sie zu verlängern, ändern Sie ihre Daten.",
     "advisorValidationRequired": "Dieser Shop erfordert vor der Reservierung eine kurze Überprüfung mit dem Berater",
     "conversationNotFound": "Gespräch nicht gefunden",
     "featureNotAvailable": "Diese Funktion ist in Ihrem Plan nicht verfügbar",

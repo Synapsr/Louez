@@ -9308,6 +9308,7 @@
     "unitNotRetired": "Ta jednostka nie jest wycofana",
     "variantLimitReached": "Ten sklep ma już maksymalną liczbę wariantów (100).",
     "variantValueLimitReached": "Ten wariant ma już maksymalną liczbę wartości (200).",
+    "downtimeCloseExtends": "Ta niedostępność kończy się już wcześniej. Aby ją wydłużyć, zmień jej daty.",
     "advisorValidationRequired": "Ten sklep wymaga krótkiej weryfikacji z doradcą przed dokonaniem rezerwacji",
     "conversationNotFound": "Nie znaleziono rozmowy",
     "featureNotAvailable": "Ta funkcja nie jest dostępna w Twoim planie",

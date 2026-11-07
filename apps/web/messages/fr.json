@@ -9308,6 +9308,7 @@
     "unitNotRetired": "Cette unité n’est pas retirée du parc",
     "variantLimitReached": "Cette boutique a déjà le nombre maximal de variantes (100).",
     "variantValueLimitReached": "Cette variante a déjà le nombre maximal de valeurs (200).",
+    "downtimeCloseExtends": "Cette indisponibilité se termine déjà plus tôt. Pour la prolonger, modifiez ses dates.",
     "advisorValidationRequired": "Cette boutique demande une courte vérification avec le conseiller avant de réserver",
     "conversationNotFound": "Conversation introuvable",
     "featureNotAvailable": "Cette fonctionnalité n'est pas disponible avec votre forfait",

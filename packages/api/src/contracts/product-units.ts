@@ -137,7 +137,9 @@ export const closeDowntimeInput = z.object({
   endsAt: z.coerce
     .date()
     .optional()
-    .describe("When the unit is back, after the downtime's start. Default: now."),
+    .describe(
+      "When the unit is back: after the downtime's start, and not after its current end. Default: now.",
+    ),
 });
 export const closeDowntimeOutput = z.object({
   downtimeId: z.string(),
@@ -201,6 +203,12 @@ export const productUnitErrors = {
     apiError("BAD_REQUEST", "DOWNTIME_DATES_INVALID", {
       message: "A downtime must end after it starts.",
       i18nKey: "errors.invalidData",
+    }),
+  closeExtends: (downtime: { id: string; endsAt: Date }) =>
+    apiError("CONFLICT", "DOWNTIME_CLOSE_EXTENDS", {
+      message: `This downtime already ends at ${downtime.endsAt.toISOString()}: closing only ends a downtime earlier. To move its end later, use products_update_downtime, which checks the bookings it would overlap.`,
+      i18nKey: "errors.downtimeCloseExtends",
+      details: { id: downtime.id, endsAt: downtime.endsAt.toISOString() },
     }),
   alreadyRetired: (id: string) =>
     apiError("CONFLICT", "UNIT_ALREADY_RETIRED", {

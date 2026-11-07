@@ -485,6 +485,63 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
     );
   });
 
+  // --- Review fixes ---------------------------------------------------------
+
+  const JUNE_2 = new Date("2030-06-02T09:00:00Z");
+  const JUNE_5 = new Date("2030-06-05T09:00:00Z");
+  const MAY_30 = new Date("2030-05-30T09:00:00Z");
+
+  test("closing only ends a downtime earlier: a later end, or an ended downtime, is refused", async () => {
+    const { product, first } = await trackedProduct();
+    const context = await apiKey();
+    const { downtimeId } = await run(
+      "declareDowntime",
+      { unitId: first, reason: "repair", startsAt: MAY_30, endsAt: JUNE_2 },
+      context(),
+    );
+    // A booking right after the downtime: closing later would overlap it.
+    await book(product.id, first, { start: new Date("2030-06-03T09:00:00Z"), end: JUNE_5 });
+
+    const later = await rejects(
+      run("closeDowntime", { downtimeId, endsAt: JUNE_5 }, context()),
+      "DOWNTIME_CLOSE_EXTENDS",
+    );
+    assert.match(String((later as unknown as Error).message), /products_update_downtime/);
+    let [stored] = (await run("getUnitHistory", { unitId: first }, session())).downtimes;
+    assert.equal(stored.endsAt, JUNE_2.toISOString(), "nothing moved");
+
+    // Earlier, or at its end, is fine.
+    const closed = await run("closeDowntime", { downtimeId, endsAt: JUNE_1 }, context());
+    assert.equal(closed.endsAt.toISOString(), JUNE_1.toISOString());
+    [stored] = (await run("getUnitHistory", { unitId: first }, session())).downtimes;
+    assert.equal(stored.endsAt, JUNE_1.toISOString());
+
+    // A downtime that already ended: closing it now would extend it to now.
+    const ended = await run(
+      "declareDowntime",
+      {
+        unitId: first,
+        reason: "other",
+        startsAt: new Date(Date.now() - 3 * 86_400_000),
+        endsAt: new Date(Date.now() - 86_400_000),
+      },
+      session(),
+    );
+    await rejects(
+      run("closeDowntime", { downtimeId: ended.downtimeId }, session()),
+      "DOWNTIME_CLOSE_EXTENDS",
+    );
+
+    // The dashboard's button closes a current downtime now.
+    const current = await run(
+      "declareDowntime",
+      { unitId: first, reason: "maintenance", startsAt: new Date(Date.now() - 3_600_000) },
+      session(),
+    );
+    const now = await run("closeDowntime", { downtimeId: current.downtimeId }, session());
+    assert.ok(Math.abs(now.endsAt.getTime() - Date.now()) < 60_000);
+  });
+
   // --- Races ----------------------------------------------------------------
 
   /** What checkout does while the call waits: the product's row first, then the booking. */

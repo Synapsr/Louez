@@ -372,7 +372,11 @@ export async function updateDowntime(
   return { downtimeId: ref.id, conflicts: conflictsFound };
 }
 
-/** Ends a downtime at `endsAt`, now by default: the unit is back in service from then. */
+/**
+ * Ends a downtime at `endsAt`, now by default: the unit is back in service
+ * from then. Closing only ends it earlier: a later end, which could overlap
+ * bookings, goes through `updateDowntime` and its checks.
+ */
 export async function closeDowntime(actor: ProductActor, input: CloseDowntimeInput) {
   const { storeId } = actor;
   const endsAt = input.endsAt ?? new Date();
@@ -383,6 +387,9 @@ export async function closeDowntime(actor: ProductActor, input: CloseDowntimeInp
       const { unit } = await lockUnit(tx, storeId, { id: ref.unitId, productId: ref.productId });
       const downtime = await lockDowntime(tx, storeId, ref.id);
       if (downtime.startsAt >= endsAt) throw productUnitErrors.downtimeDates();
+      if (downtime.endsAt && endsAt > downtime.endsAt) {
+        throw productUnitErrors.closeExtends({ id: downtime.id, endsAt: downtime.endsAt });
+      }
 
       await tx
         .update(productUnitDowntimes)

@@ -9308,6 +9308,7 @@
     "unitNotRetired": "このユニットは退役していません",
     "variantLimitReached": "このストアのバリエーション数は上限（100）に達しています。",
     "variantValueLimitReached": "このバリエーションの値の数は上限（200）に達しています。",
+    "downtimeCloseExtends": "この利用停止はすでにそれより早く終了します。延長するには日付を変更してください。",
     "advisorValidationRequired": "この店舗では、予約する前にアドバイザーに簡単な確認をする必要があります",
     "conversationNotFound": "会話が見つかりません",
     "featureNotAvailable": "この機能はご利用のプランでは利用できません",

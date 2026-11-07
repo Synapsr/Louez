@@ -9308,6 +9308,7 @@
     "unitNotRetired": "Questa unità non è ritirata dal parco",
     "variantLimitReached": "Questo negozio ha già il numero massimo di varianti (100).",
     "variantValueLimitReached": "Questa variante ha già il numero massimo di valori (200).",
+    "downtimeCloseExtends": "Questa indisponibilità termina già prima. Per prolungarla, modificane le date.",
     "advisorValidationRequired": "Questo negozio richiede una breve verifica con il consulente prima di prenotare",
     "conversationNotFound": "Conversazione non trovata",
     "featureNotAvailable": "Questa funzione non è disponibile nel tuo piano",
