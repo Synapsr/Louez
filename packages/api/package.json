@@ -21,6 +21,8 @@
     "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts",
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
     "./services/promo": "./src/services/promo.ts",
+    "./services/unit-availability": "./src/services/unit-availability.ts",
+    "./services/unit-conflicts": "./src/services/unit-conflicts.ts",
     "./services/unit-mutations": "./src/services/unit-mutations.ts"
   },
   "scripts": {

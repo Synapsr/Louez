@@ -29,7 +29,7 @@ import {
 
 import type { Reservation } from "@/app/(dashboard)/dashboard/reservations/reservations-types";
 import { getCurrentStore } from "@/lib/store-context";
-import { getUnitConflictFlags } from "@/lib/utils/unit-conflicts";
+import { getUnitConflictFlags } from "@louez/api/services/unit-conflicts";
 
 /**
  * Read-only data-layer queries for the product dashboard (view) page.

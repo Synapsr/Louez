@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq } from "drizzle-orm";
 
 import {
   buildUnitRentableDuringPredicate,
@@ -10,17 +10,19 @@ import {
   type BlockingReservationStatus,
   type Database,
   type Transaction,
-} from '@louez/db';
-import type { BookingAttributeAxis, UnitAttributes } from '@louez/types';
+} from "@louez/db";
+import type { BookingAttributeAxis, UnitAttributes } from "@louez/types";
 import {
   DEFAULT_COMBINATION_KEY,
   canonicalizeAttributes,
   isPooledCombinationKey,
   matchesSelectedAttributes,
-} from '@louez/utils';
+} from "@louez/utils";
 
 export type { BlockingReservationStatus };
 export { getBlockingReservationStatuses };
+
+type Executor = Database | Transaction;
 
 export interface AvailableUnit {
   id: string;
@@ -38,6 +40,8 @@ type AvailableUnitsForProductOptions = UnitAvailabilityOptions & {
   combinationKey?: string | null;
   /** Values the units must carry when no exact combination applies. */
   selectedAttributes?: UnitAttributes | null;
+  /** The caller's transaction when it holds one; the pool otherwise. */
+  executor?: Executor;
 };
 
 export interface UnitAssignmentScope {
@@ -55,7 +59,7 @@ export interface UnitAssignmentScope {
  * transaction never waits on a second pool connection.
  */
 export async function resolveUnitAssignmentScope(
-  executor: Database | Transaction,
+  executor: Executor,
   input: {
     productId: string;
     combinationKey: string | null;
@@ -87,19 +91,16 @@ export function unitMatchesAssignmentScope(
     : matchesSelectedAttributes(scope.selectedAttributes, unit.attributes);
 }
 
-export function isUnitRentableDuring(startDate: Date, endDate: Date) {
-  return buildUnitRentableDuringPredicate(db, startDate, endDate);
-}
-
 export async function getAvailableUnitsForProduct(
   productId: string,
   startDate: Date,
   endDate: Date,
   options: AvailableUnitsForProductOptions,
 ): Promise<AvailableUnit[]> {
+  const executor = options.executor ?? db;
   const unitConditions = [
     eq(productUnits.productId, productId),
-    isUnitRentableDuring(startDate, endDate),
+    buildUnitRentableDuringPredicate(executor, startDate, endDate),
   ];
 
   if (options.combinationKey) {
@@ -107,7 +108,7 @@ export async function getAvailableUnitsForProduct(
   }
 
   const allUnits = (
-    await db
+    await executor
       .select({
         id: productUnits.id,
         identifier: productUnits.identifier,
@@ -117,16 +118,14 @@ export async function getAvailableUnitsForProduct(
       .from(productUnits)
       .where(and(...unitConditions))
   )
-    .filter((unit) =>
-      matchesSelectedAttributes(options.selectedAttributes, unit.attributes),
-    )
+    .filter((unit) => matchesSelectedAttributes(options.selectedAttributes, unit.attributes))
     .map(({ id, identifier, notes }) => ({ id, identifier, notes }));
 
   if (allUnits.length === 0) {
     return [];
   }
 
-  const busyUnitIds = await findBusyUnitIds(db, {
+  const busyUnitIds = await findBusyUnitIds(executor, {
     unitIds: allUnits.map((unit) => unit.id),
     start: startDate,
     end: endDate,

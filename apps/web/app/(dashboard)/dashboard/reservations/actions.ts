@@ -179,7 +179,7 @@ import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
   resolveUnitAssignmentScope,
   unitMatchesAssignmentScope,
-} from "@/lib/utils/unit-availability";
+} from "@louez/api/services/unit-availability";
 
 function getActionErrorKey(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.startsWith("errors.")) {
@@ -5518,7 +5518,7 @@ export async function getAvailableUnitsForReservationItem(reservationItemId: str
 
     // 2. Get available units using the utility
     const { getAvailableUnitsForProduct, getBlockingReservationStatuses } =
-      await import("@/lib/utils/unit-availability");
+      await import("@louez/api/services/unit-availability");
     const blockingStatuses = getBlockingReservationStatuses(
       store.settings?.pendingBlocksAvailability ?? true,
     );

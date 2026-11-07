@@ -43,7 +43,7 @@ import {
 
 import { auth } from '@/lib/auth';
 import { getCurrentStore } from '@/lib/store-context';
-import { getUnitConflicts } from '@/lib/utils/unit-conflicts';
+import { getUnitConflicts } from '@louez/api/services/unit-conflicts';
 import { buildUnitEvent, updateUnits } from '@louez/api/services/unit-mutations';
 import {
   lockReservationProducts,
@@ -52,7 +52,7 @@ import {
 import {
   resolveUnitAssignmentScope,
   unitMatchesAssignmentScope,
-} from '@/lib/utils/unit-availability';
+} from '@louez/api/services/unit-availability';
 
 async function getStoreForUser() {
   return getCurrentStore();

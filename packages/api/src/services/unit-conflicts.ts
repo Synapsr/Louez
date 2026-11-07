@@ -1,6 +1,4 @@
-import { reservationAvailabilityEndSql } from "@louez/db";
 import { and, eq, gt, inArray, lt, not, sql } from "drizzle-orm";
-import "server-only";
 
 import {
   buildReservationOverlapPredicate,
@@ -8,9 +6,12 @@ import {
   db,
   productUnits,
   products,
+  reservationAvailabilityEndSql,
   reservationItemUnits,
   reservationItems,
   reservations,
+  type Database,
+  type Transaction,
 } from "@louez/db";
 
 import {
@@ -20,6 +21,12 @@ import {
   getBlockingReservationStatuses,
   resolveUnitAssignmentScope,
 } from "./unit-availability";
+
+/**
+ * The reservations that hold a unit over a window, and the units that could
+ * serve each of them instead. A downtime or a retirement shows them, so the
+ * owner can move each booking to another unit.
+ */
 
 export type UnitConflictWindow = {
   start: Date;
@@ -38,6 +45,8 @@ export type UnitConflict = {
 
 type GetUnitConflictsOptions = {
   storeId: string;
+  /** The caller's transaction when it holds the unit's locks; the pool otherwise. */
+  executor?: Database | Transaction;
   pendingBlocksAvailability?: boolean;
   turnoverBufferMinutes?: number;
   excludeReservationItemId?: string;
@@ -63,8 +72,9 @@ export async function getUnitConflicts(
 ): Promise<UnitConflict[]> {
   const blockingStatuses = getBlockingStatuses(options.pendingBlocksAvailability);
   const turnoverBufferMinutes = options.turnoverBufferMinutes ?? 0;
+  const executor = options.executor ?? db;
 
-  const [unit] = await db
+  const [unit] = await executor
     .select({
       id: productUnits.id,
       productId: productUnits.productId,
@@ -115,7 +125,7 @@ export async function getUnitConflicts(
     conditions.push(not(inArray(reservationItems.id, uniqueExcludedReservationItemIds)));
   }
 
-  const conflicts = await db
+  const conflicts = await executor
     .select({
       reservationId: reservations.id,
       reservationNumber: reservations.number,
@@ -132,36 +142,38 @@ export async function getUnitConflicts(
     .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))
     .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
     .leftJoin(customers, eq(reservations.customerId, customers.id))
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .orderBy(reservations.startDate, reservationItems.id);
 
-  return Promise.all(
-    conflicts.map(async ({ itemCombinationKey, itemSelectedAttributes, ...conflict }) => {
-      // Replacements are the units the booked line may be served from, not
-      // only the current unit's combination: a pooled line takes any unit.
-      const scope = await resolveUnitAssignmentScope(db, {
-        productId: unit.productId,
-        combinationKey: itemCombinationKey,
-        selectedAttributes: itemSelectedAttributes,
-      });
-      const candidates = await getAvailableUnitsForProduct(
-        unit.productId,
-        conflict.startDate,
-        conflict.endDate,
-        {
-          blockingStatuses,
-          turnoverBufferMinutes,
-          excludeReservationItemId: conflict.reservationItemId,
-          combinationKey: scope.combinationKey,
-          selectedAttributes: scope.selectedAttributes,
-        },
-      );
-
-      return {
-        ...conflict,
-        replacementCandidates: candidates.filter((candidate) => candidate.id !== unit.id),
-      };
-    }),
-  );
+  // One at a time: a transaction's connection runs one query at once.
+  const withCandidates: UnitConflict[] = [];
+  for (const { itemCombinationKey, itemSelectedAttributes, ...conflict } of conflicts) {
+    // Replacements are the units the booked line may be served from, not
+    // only the current unit's combination: a pooled line takes any unit.
+    const scope = await resolveUnitAssignmentScope(executor, {
+      productId: unit.productId,
+      combinationKey: itemCombinationKey,
+      selectedAttributes: itemSelectedAttributes,
+    });
+    const candidates = await getAvailableUnitsForProduct(
+      unit.productId,
+      conflict.startDate,
+      conflict.endDate,
+      {
+        blockingStatuses,
+        turnoverBufferMinutes,
+        excludeReservationItemId: conflict.reservationItemId,
+        combinationKey: scope.combinationKey,
+        selectedAttributes: scope.selectedAttributes,
+        executor,
+      },
+    );
+    withCandidates.push({
+      ...conflict,
+      replacementCandidates: candidates.filter((candidate) => candidate.id !== unit.id),
+    });
+  }
+  return withCandidates;
 }
 
 export async function getUnitConflictFlags(
