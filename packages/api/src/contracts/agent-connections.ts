@@ -45,6 +45,12 @@ export const agentClientSchema = z.object({
   /** True only for a client id on Louez's own list of known clients. */
   verified: z.boolean(),
   /**
+   * Where the app serves the website icon of the host in `declaredBy`
+   * (`agentClientIconUrl`), fetched by Louez. Null for a client that
+   * registered itself: the logo it declares is never shown.
+   */
+  iconUrl: z.string().nullable(),
+  /**
    * Host the browser goes back to with the code: the redirect URI of this
    * authorization request, as the authorization server signed it. Null in
    * the list, which has no request.
@@ -54,6 +60,11 @@ export const agentClientSchema = z.object({
   loopbackRedirect: z.boolean(),
 });
 export type AgentClient = z.infer<typeof agentClientSchema>;
+
+/** The app route that serves a client's icon, from Louez's origin. */
+export const AGENT_CLIENT_ICON_PATH = "/api/agent-connections/client-icon";
+export const agentClientIconUrl = (clientId: string): string =>
+  `${AGENT_CLIENT_ICON_PATH}?client_id=${encodeURIComponent(clientId)}`;
 
 export const agentConnectionSchema = z.object({
   id: z.string(),

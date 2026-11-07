@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@louez/ui";
@@ -12,6 +14,7 @@ interface AgentClientIdentityProps {
     name: string | null;
     declaredBy: string | null;
     verified: boolean;
+    iconUrl: string | null;
   };
   size?: "default" | "large";
 }
@@ -19,15 +22,32 @@ interface AgentClientIdentityProps {
 /**
  * Who an OAuth client says it is: the name it declared, and who declared it
  * (the host that serves its metadata document, or nobody for a client that
- * registered itself). "Vérifié" only for a client on Louez's own list. The
- * client's logo is not shown: it is an image from another site, chosen by
- * the client.
+ * registered itself). "Vérifié" only for a client on Louez's own list.
+ *
+ * The tile shows the website icon of the host that declared the client,
+ * served by Louez from its own origin (`iconUrl`), or a bot when it has none
+ * or it fails to load. A client that registered itself keeps the bot: the
+ * logo it declares is never shown, as it could copy another client's.
  */
 export const AgentClientIdentity = ({ client, size = "default" }: AgentClientIdentityProps) => {
   const t = useTranslations("agentConnections");
+  // The URL that failed, so a new URL is tried again.
+  const [failedIconUrl, setFailedIconUrl] = useState<string | null>(null);
+  const iconUrl = client.iconUrl !== failedIconUrl ? client.iconUrl : null;
   return (
     <div className="flex min-w-0 items-start gap-3">
-      <DashboardIconTile icon={BotIcon} accent="primary" />
+      {iconUrl ? (
+        <DashboardIconTile accent="neutral">
+          <img
+            src={iconUrl}
+            alt=""
+            className="size-5 object-contain"
+            onError={() => setFailedIconUrl(iconUrl)}
+          />
+        </DashboardIconTile>
+      ) : (
+        <DashboardIconTile icon={BotIcon} accent="primary" />
+      )}
       <div className="min-w-0 space-y-1">
         <p className={size === "large" ? "text-lg font-semibold" : "text-sm font-medium"}>
           {client.name ?? t("unknownClient")}

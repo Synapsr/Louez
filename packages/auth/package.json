@@ -11,6 +11,7 @@
     "./client": "./src/client.ts",
     "./env": "./src/env.ts",
     "./oauth": "./src/oauth.ts",
+    "./oauth-client-icon": "./src/oauth-client-icon.ts",
     "./platform-admin": "./src/platform-admin.ts",
     "./password": "./src/password.ts",
     "./password-policy": "./src/password-policy.ts",

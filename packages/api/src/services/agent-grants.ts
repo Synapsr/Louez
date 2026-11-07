@@ -8,9 +8,11 @@ import {
   stores,
   users,
 } from "@louez/db";
+import { clientIconOrigin } from "@louez/auth/oauth-client-icon";
 import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
 
 import {
+  agentClientIconUrl,
   agentConnectionErrors,
   type AgentClient,
   type AgentConnection,
@@ -143,17 +145,25 @@ const clientColumns = {
 };
 
 function toAgentClient(
-  row: { clientId: string; name: string | null; clientDiscoveryId: string | null },
+  row: {
+    clientId: string;
+    name: string | null;
+    clientDiscoveryId: string | null;
+    disabled: boolean | null;
+  },
   redirectUri: string | null,
 ): AgentClient {
   // A client from a metadata document has its URL as its id: that URL's host
-  // served what the client declares.
-  const declaredBy = row.clientDiscoveryId !== null ? hostOf(row.clientId) : null;
+  // served what the client declares, and its website icon stands for it.
+  const fromDocument = row.clientDiscoveryId !== null;
+  const declaredBy = fromDocument ? hostOf(row.clientId) : null;
+  const hasIcon = fromDocument && !row.disabled && clientIconOrigin(row.clientId) !== null;
   return {
     clientId: row.clientId,
     name: row.name,
     declaredBy,
     verified: VERIFIED_CLIENT_IDS.has(row.clientId),
+    iconUrl: hasIcon ? agentClientIconUrl(row.clientId) : null,
     redirectHost: hostOf(redirectUri),
     loopbackRedirect: isLoopback(redirectUri),
   };

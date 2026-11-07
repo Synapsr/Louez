@@ -73,6 +73,7 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
   let orpc: typeof import("@orpc/server");
   let orm: typeof import("drizzle-orm");
   let grants: typeof import("../services/agent-grants");
+  let icons: typeof import("../services/agent-client-icons");
   let connections: typeof import("../routers/dashboard/agent-connections").dashboardAgentConnectionsRouter;
   let stores: typeof import("../routers/dashboard/stores").dashboardStoresRouter;
   let fixture: ReturnType<typeof import("./testing").createFixtureRouter>;
@@ -86,6 +87,7 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     orpc = await import("@orpc/server");
     orm = await import("drizzle-orm");
     grants = await import("../services/agent-grants");
+    icons = await import("../services/agent-client-icons");
     ({ dashboardAgentConnectionsRouter: connections } =
       await import("../routers/dashboard/agent-connections"));
     ({ dashboardStoresRouter: stores } = await import("../routers/dashboard/stores"));
@@ -221,7 +223,13 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
       sig: "ok",
     }).toString();
     const asked = await call<{
-      client: { name: string; declaredBy: string; verified: boolean; redirectHost: string };
+      client: {
+        name: string;
+        declaredBy: string;
+        verified: boolean;
+        iconUrl: string | null;
+        redirectHost: string;
+      };
       stores: Array<{ id: string; role: string }>;
       current: unknown;
     }>(connections.getAuthorization, { oauthQuery }, session(), [
@@ -232,6 +240,11 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     assert.equal(asked.client.name, "Claude");
     assert.equal(asked.client.declaredBy, "claude.oa.test", "declared by its document's host");
     assert.equal(asked.client.verified, false, "a metadata document alone verifies nothing");
+    assert.equal(
+      asked.client.iconUrl,
+      `/api/agent-connections/client-icon?client_id=${encodeURIComponent(CLIENT)}`,
+      "the icon of the host that declared it",
+    );
     assert.equal(asked.client.redirectHost, "client.oa.test");
     assert.deepEqual(
       asked.stores.map((store) => [store.id, store.role]),
@@ -304,6 +317,7 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
           name: string;
           declaredBy: string | null;
           verified: boolean;
+          iconUrl: string | null;
           redirectHost: string;
           loopbackRedirect: boolean;
         };
@@ -327,12 +341,15 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
       name: "Claude",
       declaredBy: "evil.oa.test",
       verified: false,
+      iconUrl:
+        "/api/agent-connections/client-icon?client_id=https%3A%2F%2Fevil.oa.test%2Fclaude.json",
       redirectHost: "evil.oa.test",
       loopbackRedirect: false,
     });
 
     const registered = await ask("dcr-claude-lookalike", "http://127.0.0.1:53111/callback");
     assert.equal(registered.client.declaredBy, null, "registered itself: declared by nobody");
+    assert.equal(registered.client.iconUrl, null, "its declared logo is never shown");
     assert.equal(registered.client.verified, false);
     assert.equal(registered.client.redirectHost, "127.0.0.1:53111");
     assert.equal(registered.client.loopbackRedirect, true);
@@ -630,7 +647,7 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     const listed = await call<{
       items: Array<{
         id: string;
-        client: { name: string };
+        client: { name: string; iconUrl: string | null };
         stores: { all: boolean; items?: Array<{ id: string }> };
         lastActionAt: Date | null;
       }>;
@@ -639,6 +656,7 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     assert.equal(listed.items.length, 1);
     assert.equal(listed.items[0].id, id);
     assert.equal(listed.items[0].client.name, "Claude");
+    assert.ok(listed.items[0].client.iconUrl, "the list shows the icon too");
     assert.deepEqual(
       listed.items[0].stores.items?.map((store) => store.id),
       [STORE_A],
@@ -682,5 +700,36 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
       .from(louezDb.apiOperations)
       .where(orm.eq(louezDb.apiOperations.procedure, "dashboard.agentConnections.update"));
     assert.equal(recorded[0]?.credentialKind, "session");
+  });
+
+  // --- Client icons -----------------------------------------------------------
+
+  test("only a client from a metadata document has an icon, from its client id's origin", async () => {
+    const asked: string[] = [];
+    const lookup = async (origin: string) => {
+      asked.push(origin);
+      return { contentType: "image/png" as const, body: new Uint8Array([1]) };
+    };
+
+    const icon = await icons.loadAgentClientIcon(CLIENT, lookup);
+    assert.equal(icon?.contentType, "image/png");
+    assert.deepEqual(asked, ["https://claude.oa.test"], "the stored id's origin, not its uri");
+
+    assert.equal(await icons.loadAgentClientIcon(OTHER_CLIENT, lookup), null, "registered itself");
+    assert.equal(await icons.loadAgentClientIcon("https://unknown.oa.test/c.json", lookup), null);
+
+    await louezDb.db
+      .update(louezDb.oauthClients)
+      .set({ disabled: true })
+      .where(orm.eq(louezDb.oauthClients.clientId, CLIENT));
+    try {
+      assert.equal(await icons.loadAgentClientIcon(CLIENT, lookup), null, "a disabled client");
+    } finally {
+      await louezDb.db
+        .update(louezDb.oauthClients)
+        .set({ disabled: false })
+        .where(orm.eq(louezDb.oauthClients.clientId, CLIENT));
+    }
+    assert.deepEqual(asked, ["https://claude.oa.test"], "nothing else was fetched");
   });
 });
