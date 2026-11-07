@@ -2424,10 +2424,31 @@
       },
       "contract": {
         "title": "Contrato",
-        "signed": "Assinado em {date}",
-        "notSigned": "Nao assinado",
         "generate": "Gerar contrato",
-        "download": "Baixar"
+        "download": "Baixar",
+        "signedBadge": "Contrato assinado",
+        "unsignedBadge": "Contrato não assinado",
+        "signedOn": "Em {date}",
+        "unsignedTooltip": "O cliente ainda não aceitou o contrato. Pode assiná-lo pelo link do e-mail ou na loja, no levantamento.",
+        "methods": {
+          "checkout": "Aceite na reserva online",
+          "payment_page": "Assinado na página de pagamento",
+          "account": "Assinado na área de cliente",
+          "in_store": "Assinado na loja"
+        },
+        "signInStore": "Assinar na loja",
+        "sendSignatureLink": "Enviar para assinatura",
+        "signatureLinkSent": "Link de assinatura enviado ao cliente",
+        "signDialog": {
+          "title": "Assinatura do contrato na loja",
+          "description": "Deixe o cliente ler o contrato e assinar neste dispositivo. A assinatura e o nome dele aparecerão no contrato.",
+          "viewContract": "Abrir o contrato",
+          "signerName": "Nome do signatário",
+          "acceptance": "O cliente leu o contrato e as condições de aluguer e aceita-as.",
+          "confirm": "Validar a assinatura",
+          "success": "Contrato assinado",
+          "alreadySigned": "Este contrato já está assinado."
+        }
       },
       "notes": {
         "title": "Notas internas",
@@ -2696,6 +2717,9 @@
         "quote_accepted": "Orçamento aceite",
         "quote_declined": "Orçamento recusado",
         "overbooked": "Sobrerreservada",
+        "contract_signed": "Contrato assinado",
+        "contractUnsigned": "Sem contrato assinado",
+        "signedBy": "Assinado por {name}",
         "showAll": "Mostrar tudo ({count} eventos)",
         "showLess": "Mostrar menos",
         "paymentFailure": {
@@ -2757,6 +2781,11 @@
         "warningDepositTitle": "Caução não coletada",
         "warningDepositDescription": "A caução de {amount} ainda não foi coletada. Certifique-se de coletá-la antes da entrega.",
         "acknowledgePickupWarnings": "Entendo e desejo continuar apesar destes avisos",
+        "contractUnsigned": "Contrato não assinado",
+        "warningContractTitle": "Contrato não assinado",
+        "warningContractDescription": "O cliente ainda não assinou o contrato. Peça a assinatura na loja ou continue sem assinatura: ficará registado no histórico.",
+        "acknowledgePickupWithoutSignature": "Compreendo e quero continuar, mesmo sem contrato assinado",
+        "warningContractRequiredDescription": "A sua loja exige a assinatura do contrato antes do levantamento. Peça ao cliente que assine na loja para continuar.",
         "confirmPickup": "Confirmar retirada",
         "returnConfirmTitle": "Confirmar devolução",
         "returnConfirmDescription": "Verifique o estado do equipamento e o resumo financeiro antes de confirmar.",
@@ -6297,6 +6326,16 @@
         "description": "Os clientes podem prolongar se houver disponibilidade e o suplemento for calculável. Os casos especiais requerem a sua aprovação.",
         "maxDays": "Máximo de dias adicionais (vazio: sem limite)"
       },
+      "contractSignature": {
+        "title": "Assinatura do contrato",
+        "description": "O que acontece quando marca uma reserva como levantada e o cliente não assinou o contrato.",
+        "optional": "Opcional",
+        "optionalDescription": "Sem aviso no levantamento. O selo «Contrato não assinado» continua visível na reserva.",
+        "recommended": "Recomendada",
+        "recommendedDescription": "Um aviso propõe a assinatura na loja. Pode entregar o material sem assinatura; fica registado no histórico.",
+        "required": "Obrigatória",
+        "requiredDescription": "O levantamento é recusado enquanto o contrato não estiver assinado, online pelo cliente ou na loja."
+      },
       "customerFields": {
         "title": "Ficha de cliente",
         "native": {
@@ -7935,6 +7974,8 @@
       "redirecting": "Redirecionando para o pagamento...",
       "securePayment": "Pagamento seguro por Stripe",
       "backToStore": "Voltar à loja",
+      "acceptContractRich": "Li e aceito as <terms>condições gerais de aluguer</terms>",
+      "acceptContractRequired": "Aceite as condições gerais de aluguer para continuar.",
       "errors": {
         "expiredTitle": "Link expirado",
         "expiredDescription": "Este link de pagamento expirou. Contacte a loja para solicitar um novo.",
@@ -8088,7 +8129,7 @@
       "signContract": "Assinar contrato",
       "contractSigned": "Contrato assinado",
       "downloadContract": "Baixar contrato",
-      "signContractConfirmation": "Ao continuar, confirma que leu e aceita este contrato de aluguer.",
+      "signContractConfirmation": "Aceita o <contract>contrato de aluguer</contract> e as condições gerais de aluguer. A data e o seu endereço IP são registados.",
       "signContractError": "Não foi possível assinar o contrato. Tente novamente.",
       "invoiceDocuments": {
         "title": "Faturas e notas de crédito",
@@ -9010,10 +9051,10 @@
       "customerText": "Reconheco que li e concordo com os termos e condicoes gerais de aluguel sem reservas.",
       "dateLabel": "Data:",
       "ipLabel": "IP:",
-      "automatic": "Validado automaticamente",
-      "automaticText": "Este contrato foi validado automaticamente de acordo com as condições de aluguer.",
       "atBooking": "Assinado na reserva",
       "atBookingText": "Condições gerais de aluguer aceites na reserva online, o que vale como assinatura do presente contrato.",
+      "inStore": "Assinado na loja",
+      "signerLabel": "Signatário:",
       "signedOnLabel": "Assinado em:",
       "validatedOnLabel": "Validado em:"
     },
@@ -9136,6 +9177,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Esta loja não está aceitando reservas online no momento. {hasContact, select, yes {Entre em contato com a loja: {contact}} other {Entre em contato diretamente com a loja.}}",
     "generic": "Ocorreu um erro",
+    "contractNotSignable": "Este contrato já não pode ser assinado.",
+    "contractSignatureRequired": "Esta loja exige que o cliente assine o contrato antes do levantamento.",
     "pageLoadError": "Nao foi possivel carregar esta pagina. Por favor, tente novamente.",
     "notFound": "Pagina nao encontrada",
     "notFoundDescription": "A pagina que voce procura nao existe ou foi movida.",

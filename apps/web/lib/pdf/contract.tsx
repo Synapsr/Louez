@@ -16,6 +16,7 @@ import { formatStoreDate } from "@/lib/utils/store-date";
 import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
 import { toAbsoluteUrl } from "@louez/utils";
 import { env } from "@/env";
+import type { ContractSignatureMethod } from "@louez/db";
 import type { ReservationLocationSnapshot } from "@louez/types";
 import type { ContractCustomerFieldLine } from "./util.contract-customer-fields";
 import type { ContractItemDetailLine } from "./util.contract-item-details";
@@ -99,10 +100,10 @@ export interface ContractTranslations {
     pending: string;
     landlordText: string;
     customerText: string;
-    automatic: string;
-    automaticText: string;
     atBooking: string;
     atBookingText: string;
+    inStore: string;
+    signerLabel: string;
     signedOnLabel: string;
     validatedOnLabel: string;
     dateLabel: string;
@@ -208,11 +209,15 @@ interface Reservation {
   subtotalExclTax?: string | null;
   taxAmount?: string | null;
   taxRate?: string | null;
+  /** The customer's acceptance: at checkout, on the payment page, from their account or in store. */
   signedAt?: Date | null;
-  automaticContractValidation?: boolean;
-  /** Booked on the storefront, whose checkout requires accepting the rental terms: that is the signature. */
-  signedAtBooking?: boolean;
+  /** When the contract became final, on confirmation or payment. */
+  contractValidatedAt?: Date | null;
+  /** "checkout" means the storefront booking itself, whose rental terms the customer accepted. */
+  signatureMethod?: ContractSignatureMethod | null;
   signatureIp?: string | null;
+  /** Drawn by the customer on the renter's device, when signed in store. */
+  drawnSignature?: { signerName: string; image: string } | null;
   createdAt: Date;
   customer: Customer;
   items: ReservationItem[];
@@ -290,14 +295,13 @@ export function ContractDocument({
   const formatShortDate = (date: Date) => formatStoreDate(date, timezone, "SHORT_DATE", locale);
   const formatDateOnly = (date: Date) => formatStoreDate(date, timezone, "MEDIUM_DATE", locale);
 
-  const customerSignature =
-    reservation.signedAt && !reservation.automaticContractValidation
-      ? "signed"
-      : reservation.signedAtBooking
-        ? "atBooking"
-        : reservation.automaticContractValidation
-          ? "automatic"
-          : "pending";
+  const customerSignature = !reservation.signedAt
+    ? "pending"
+    : reservation.signatureMethod === "checkout"
+      ? "atBooking"
+      : reservation.signatureMethod === "in_store"
+        ? "inStore"
+        : "signed";
 
   return (
     <Document>
@@ -673,9 +677,9 @@ export function ContractDocument({
             </View>
 
             {/*
-              A customer who drew a signature keeps it. A storefront booking was signed by accepting
-              the rental terms at checkout, then validated. Other automatic validations are not a
-              customer signature.
+              Only the customer signs: by accepting the rental terms at checkout, on the payment
+              page, from their account, or by drawing a signature on the renter's device. Until
+              then the contract waits for them, validated or not.
             */}
             <View style={styles.signatureBox}>
               <View style={styles.signatureHeader}>
@@ -689,8 +693,8 @@ export function ContractDocument({
                 >
                   {customerSignature === "atBooking"
                     ? t.signature.atBooking
-                    : customerSignature === "automatic"
-                      ? t.signature.automatic
+                    : customerSignature === "inStore"
+                      ? t.signature.inStore
                       : customerSignature === "signed"
                         ? t.signature.signed
                         : t.signature.pending}
@@ -700,23 +704,21 @@ export function ContractDocument({
                 <Text style={styles.signatureText}>
                   {customerSignature === "atBooking"
                     ? t.signature.atBookingText
-                    : customerSignature === "automatic"
-                      ? t.signature.automaticText
-                      : t.signature.customerText}
+                    : t.signature.customerText}
                 </Text>
                 {customerSignature === "atBooking" ? (
                   <>
                     <View style={styles.signatureDateRow}>
                       <Text style={styles.signatureDateLabel}>{t.signature.signedOnLabel}</Text>
                       <Text style={styles.signatureDate}>
-                        {formatDateTimePrecise(reservation.createdAt)}
+                        {formatDateTimePrecise(reservation.signedAt ?? reservation.createdAt)}
                       </Text>
                     </View>
-                    {reservation.signedAt && (
+                    {reservation.contractValidatedAt && (
                       <View style={styles.signatureDateRow}>
                         <Text style={styles.signatureDateLabel}>{t.signature.validatedOnLabel}</Text>
                         <Text style={styles.signatureDate}>
-                          {formatDateTimePrecise(reservation.signedAt)}
+                          {formatDateTimePrecise(reservation.contractValidatedAt)}
                         </Text>
                       </View>
                     )}
@@ -731,11 +733,27 @@ export function ContractDocument({
                     </View>
                   )
                 )}
-                {customerSignature === "signed" && reservation.signatureIp && (
-                  <Text style={styles.signatureIp}>
-                    {t.signature.ipLabel} {reservation.signatureIp}
-                  </Text>
+                {customerSignature === "inStore" && reservation.drawnSignature && (
+                  <>
+                    <View style={styles.signatureDateRow}>
+                      <Text style={styles.signatureDateLabel}>{t.signature.signerLabel}</Text>
+                      <Text style={styles.signatureDate}>
+                        {reservation.drawnSignature.signerName}
+                      </Text>
+                    </View>
+                    <Image
+                      src={reservation.drawnSignature.image}
+                      style={styles.signatureImage}
+                    />
+                  </>
                 )}
+                {/* In store, the address is the renter's own: the drawn signature stands instead. */}
+                {(customerSignature === "atBooking" || customerSignature === "signed") &&
+                  reservation.signatureIp && (
+                    <Text style={styles.signatureIp}>
+                      {t.signature.ipLabel} {reservation.signatureIp}
+                    </Text>
+                  )}
               </View>
             </View>
           </View>

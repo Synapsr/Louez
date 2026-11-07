@@ -6,7 +6,7 @@ import type { Transaction } from "@louez/db";
 import { validateReservationContract } from "./reservation-contract-validation";
 
 const harness = (
-  reservation: { status: string; signedAt: Date | null } | null,
+  reservation: { status: string; contractValidatedAt: Date | null } | null,
   hasPayment = false,
 ) => {
   const writes: unknown[] = [];
@@ -42,20 +42,23 @@ const harness = (
 };
 
 test("confirmed reservations are validated once with an explicit automatic audit record", async () => {
-  const h = harness({ status: "confirmed", signedAt: null });
+  const h = harness({ status: "confirmed", contractValidatedAt: null });
   const timestamp = await validateReservationContract(h.tx, "reservation", "store", "confirmation");
   assert.ok(timestamp instanceof Date);
-  assert.deepEqual(h.writes[0], { signedAt: timestamp, signatureIp: null, updatedAt: timestamp });
+  assert.deepEqual(h.writes[0], { contractValidatedAt: timestamp, updatedAt: timestamp });
   assert.equal(h.writes.length, 2);
   assert.match(JSON.stringify(h.writes[1]), /automatic_contract_validation/);
   for (const condition of h.conditions) assert.ok(condition.params.includes("store"));
 });
 
-test("existing signatures, missing and closed reservations are left untouched", async () => {
+test("validated, missing and closed reservations are left untouched", async () => {
   for (const row of [
     null,
-    { status: "confirmed", signedAt: new Date() },
-    ...["cancelled", "rejected", "declined"].map((status) => ({ status, signedAt: null })),
+    { status: "confirmed", contractValidatedAt: new Date() },
+    ...["cancelled", "rejected", "declined"].map((status) => ({
+      status,
+      contractValidatedAt: null,
+    })),
   ]) {
     const h = harness(row, true);
     assert.equal(await validateReservationContract(h.tx, "reservation", "store", "payment"), null);
@@ -66,14 +69,14 @@ test("existing signatures, missing and closed reservations are left untouched", 
 test("pending reservations and quotes require a persisted successful rental payment", async () => {
   for (const status of ["pending", "quote"]) {
     for (const hasPayment of [false, true]) {
-      const h = harness({ status, signedAt: null }, hasPayment);
+      const h = harness({ status, contractValidatedAt: null }, hasPayment);
       const result = await validateReservationContract(h.tx, "reservation", "store", "payment");
       assert.equal(result !== null, hasPayment);
       assert.ok(h.conditions[1].params.includes("rental"));
       assert.ok(h.conditions[1].params.includes("completed"));
       assert.ok(h.conditions[1].params.includes("0"));
     }
-    const h = harness({ status, signedAt: null }, true);
+    const h = harness({ status, contractValidatedAt: null }, true);
     assert.equal(
       await validateReservationContract(h.tx, "reservation", "store", "confirmation"),
       null,

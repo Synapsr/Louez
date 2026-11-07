@@ -59,6 +59,8 @@ export interface ManualEmailRenderContext {
   logoUrl: string | null
   /** Precomputed so Stripe account details never cross the network. */
   showPaymentCta: boolean
+  /** An unsigned contract turns the contract email and the pickup reminder into a request to sign. */
+  contractSigned: boolean
 }
 
 export interface BuildManualEmailFromContextOptions {
@@ -66,6 +68,8 @@ export interface BuildManualEmailFromContextOptions {
   contractUrl?: string
   /** Real minted URL for a send; falls back to the reservation page (preview). */
   accessUrl?: string
+  /** Real minted URL for a send; falls back to the reservation page (preview). */
+  contractSignatureUrl?: string
   /** `cid:` logo reference for a send; falls back to the context's URL. */
   logoUrl?: string | null
 }
@@ -96,6 +100,9 @@ export async function buildManualReservationEmailFromContext(
   const logoUrl = options.logoUrl !== undefined ? options.logoUrl : context.logoUrl
   const additionalMessage = payload.customMessage?.trim() || null
   const customSubject = payload.customSubject?.trim() || null
+  const contractSignatureUrl = context.contractSigned
+    ? undefined
+    : (options.contractSignatureUrl ?? context.reservationUrl)
 
   switch (payload.templateId) {
     case 'contract': {
@@ -104,6 +111,7 @@ export async function buildManualReservationEmailFromContext(
         customer,
         reservationNumber: reservation.number,
         contractUrl: options.contractUrl ?? context.reservationUrl,
+        contractSignatureUrl,
         additionalMessage,
         customSubject,
         locale,
@@ -141,6 +149,7 @@ export async function buildManualReservationEmailFromContext(
           startDate: new Date(reservation.startDate),
         },
         reservationUrl: context.reservationUrl,
+        contractSignatureUrl,
         additionalMessage,
         locale,
         logoUrl,

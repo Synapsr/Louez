@@ -2463,10 +2463,31 @@
       },
       "contract": {
         "title": "Vertrag",
-        "signed": "Unterschrieben am {date}",
-        "notSigned": "Nicht unterschrieben",
         "generate": "Vertrag erstellen",
-        "download": "Herunterladen"
+        "download": "Herunterladen",
+        "signedBadge": "Vertrag unterschrieben",
+        "unsignedBadge": "Vertrag nicht unterschrieben",
+        "signedOn": "Am {date}",
+        "unsignedTooltip": "Der Kunde hat den Vertrag noch nicht angenommen. Er kann ihn über den Link in seiner E-Mail oder bei der Abholung vor Ort unterschreiben.",
+        "methods": {
+          "checkout": "Bei der Online-Buchung akzeptiert",
+          "payment_page": "Auf der Zahlungsseite unterschrieben",
+          "account": "Im Kundenkonto unterschrieben",
+          "in_store": "Vor Ort unterschrieben"
+        },
+        "signInStore": "Vor Ort unterschreiben lassen",
+        "sendSignatureLink": "Zur Unterschrift senden",
+        "signatureLinkSent": "Unterschriftslink an den Kunden gesendet",
+        "signDialog": {
+          "title": "Vertrag vor Ort unterschreiben",
+          "description": "Lassen Sie den Kunden den Vertrag lesen und auf diesem Gerät unterschreiben. Unterschrift und Name erscheinen auf dem Vertrag.",
+          "viewContract": "Vertrag öffnen",
+          "signerName": "Name des Unterzeichners",
+          "acceptance": "Der Kunde hat den Vertrag und die Mietbedingungen gelesen und akzeptiert sie.",
+          "confirm": "Unterschrift bestätigen",
+          "success": "Vertrag unterschrieben",
+          "alreadySigned": "Dieser Vertrag ist bereits unterschrieben."
+        }
       },
       "notes": {
         "title": "Interne Notizen",
@@ -2735,6 +2756,9 @@
         "quote_accepted": "Angebot angenommen",
         "quote_declined": "Angebot abgelehnt",
         "overbooked": "Überbucht",
+        "contract_signed": "Vertrag unterschrieben",
+        "contractUnsigned": "Ohne unterschriebenen Vertrag",
+        "signedBy": "Unterschrieben von {name}",
         "showAll": "Alle anzeigen ({count} Ereignisse)",
         "showLess": "Weniger anzeigen",
         "paymentFailure": {
@@ -2796,6 +2820,11 @@
         "warningDepositTitle": "Kaution nicht eingezogen",
         "warningDepositDescription": "Die Kaution von {amount} wurde noch nicht eingezogen. Stellen Sie sicher, dass sie vor der Übergabe eingezogen wird.",
         "acknowledgePickupWarnings": "Ich verstehe und möchte trotz dieser Warnungen fortfahren",
+        "contractUnsigned": "Vertrag nicht unterschrieben",
+        "warningContractTitle": "Vertrag nicht unterschrieben",
+        "warningContractDescription": "Der Kunde hat seinen Vertrag noch nicht unterschrieben. Lassen Sie ihn vor Ort unterschreiben oder fahren Sie ohne Unterschrift fort: Das wird im Verlauf vermerkt.",
+        "acknowledgePickupWithoutSignature": "Ich verstehe und möchte auch ohne unterschriebenen Vertrag fortfahren",
+        "warningContractRequiredDescription": "Ihr Geschäft verlangt die Vertragsunterschrift vor der Abholung. Lassen Sie den Kunden vor Ort unterschreiben, um fortzufahren.",
         "confirmPickup": "Abholung bestätigen",
         "returnConfirmTitle": "Rückgabe bestätigen",
         "returnConfirmDescription": "Prüfen Sie den Zustand des Equipments und die Finanzübersicht vor der Bestätigung.",
@@ -6297,6 +6326,16 @@
         "description": "Kunden können bei Verfügbarkeit und berechenbarem Aufpreis verlängern. Sonderfälle erfordern Ihre Zustimmung.",
         "maxDays": "Maximale zusätzliche Tage (leer: unbegrenzt)"
       },
+      "contractSignature": {
+        "title": "Vertragsunterschrift",
+        "description": "Was passiert, wenn Sie eine Reservierung als abgeholt markieren, obwohl der Kunde seinen Vertrag nicht unterschrieben hat.",
+        "optional": "Optional",
+        "optionalDescription": "Keine Warnung bei der Abholung. Das Badge „Vertrag nicht unterschrieben“ bleibt an der Reservierung sichtbar.",
+        "recommended": "Empfohlen",
+        "recommendedDescription": "Eine Warnung schlägt vor, vor Ort unterschreiben zu lassen. Sie können die Ausrüstung ohne Unterschrift übergeben; das wird im Verlauf vermerkt.",
+        "required": "Erforderlich",
+        "requiredDescription": "Die Abholung wird verweigert, bis der Vertrag unterschrieben ist, online durch den Kunden oder vor Ort."
+      },
       "customerFields": {
         "title": "Kundendaten",
         "native": {
@@ -7935,6 +7974,8 @@
       "redirecting": "Weiterleitung zur Zahlung...",
       "securePayment": "Sichere Zahlung über Stripe",
       "backToStore": "Zurück zum Shop",
+      "acceptContractRich": "Ich habe die <terms>Allgemeinen Mietbedingungen</terms> gelesen und akzeptiere sie",
+      "acceptContractRequired": "Akzeptieren Sie die Allgemeinen Mietbedingungen, um fortzufahren.",
       "errors": {
         "expiredTitle": "Link abgelaufen",
         "expiredDescription": "Dieser Zahlungslink ist abgelaufen. Bitte kontaktieren Sie den Vermieter für einen neuen Link.",
@@ -8088,7 +8129,7 @@
       "signContract": "Vertrag unterschreiben",
       "contractSigned": "Vertrag unterschrieben",
       "downloadContract": "Vertrag herunterladen",
-      "signContractConfirmation": "Mit dem Fortfahren bestätigen Sie, dass Sie diesen Mietvertrag gelesen haben und akzeptieren.",
+      "signContractConfirmation": "Sie akzeptieren den <contract>Mietvertrag</contract> und die Allgemeinen Mietbedingungen. Datum und Ihre IP-Adresse werden gespeichert.",
       "signContractError": "Der Vertrag konnte nicht unterzeichnet werden. Bitte versuchen Sie es erneut.",
       "invoiceDocuments": {
         "title": "Rechnungen und Gutschriften",
@@ -9010,10 +9051,10 @@
       "customerText": "Ich bestätige, dass ich die allgemeinen Mietbedingungen gelesen habe und ohne Vorbehalt akzeptiere.",
       "dateLabel": "Datum:",
       "ipLabel": "IP:",
-      "automatic": "Automatisch bestätigt",
-      "automaticText": "Dieser Vertrag wurde gemäß den Mietbedingungen automatisch bestätigt.",
       "atBooking": "Bei der Buchung unterschrieben",
       "atBookingText": "Allgemeine Mietbedingungen bei der Online-Buchung akzeptiert, was als Unterzeichnung dieses Vertrags gilt.",
+      "inStore": "Vor Ort unterschrieben",
+      "signerLabel": "Unterzeichner:",
       "signedOnLabel": "Unterschrieben:",
       "validatedOnLabel": "Bestätigt:"
     },
@@ -9136,6 +9177,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Dieser Shop nimmt gerade keine Online-Reservierungen an. {hasContact, select, yes {Kontaktieren Sie den Shop: {contact}} other {Bitte kontaktieren Sie den Shop direkt.}}",
     "generic": "Ein Fehler ist aufgetreten",
+    "contractNotSignable": "Dieser Vertrag kann nicht mehr unterschrieben werden.",
+    "contractSignatureRequired": "Dieses Geschäft verlangt, dass der Kunde seinen Vertrag vor der Abholung unterschreibt.",
     "pageLoadError": "Wir konnten diese Seite nicht laden. Bitte versuchen Sie es erneut.",
     "notFound": "Seite nicht gefunden",
     "notFoundDescription": "Die gesuchte Seite existiert nicht oder wurde verschoben.",

@@ -26,6 +26,8 @@ interface ReminderPickupEmailProps {
   reservationNumber: string;
   startDate: Date;
   reservationUrl: string;
+  /** Set while the customer has not signed the contract: the reminder asks them to. */
+  contractSignatureUrl?: string;
   customContent?: EmailCustomContent;
   /** Free text the store owner added when sending this reminder by hand. */
   additionalMessage?: string | null;
@@ -45,6 +47,7 @@ export function ReminderPickupEmail({
   reservationNumber,
   startDate,
   reservationUrl,
+  contractSignatureUrl,
   customContent,
   additionalMessage,
   locale = "fr",
@@ -118,6 +121,17 @@ export function ReminderPickupEmail({
       <EmailText small>
         {messages.dontForget} {messages.bringId} · {messages.bringConfirmation}
       </EmailText>
+
+      {contractSignatureUrl && (
+        <>
+          <EmailText>{messages.contractSignature}</EmailText>
+          <CtaButton
+            href={contractSignatureUrl}
+            label={messages.signContract}
+            primaryColor={primaryColor}
+          />
+        </>
+      )}
 
       <CtaButton href={reservationUrl} label={tc.viewReservation} primaryColor={primaryColor} />
 

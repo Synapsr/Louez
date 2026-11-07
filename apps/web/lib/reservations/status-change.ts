@@ -111,7 +111,9 @@ export type StoreStatusChangeOutcome =
   /** The items or the stock are no longer free. `message` is an `errors.*` key. */
   | { ok: false; error: "unavailable"; message: string }
   /** The store's card gate is closed (README §8.4): nothing was written. */
-  | { ok: false; error: "store_not_accepting_reservations" };
+  | { ok: false; error: "store_not_accepting_reservations" }
+  /** The store requires the signed contract before pickup and the customer has not signed. */
+  | { ok: false; error: "contract_unsigned" };
 
 // The MCP server's contract (packages/mcp/src/deps.ts); the assistant uses it too.
 export type AgentStatusChangeInput = Omit<McpStatusChangeInput, "actor"> & {
@@ -256,6 +258,14 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
       return { ok: false, error: "not_found" };
     }
 
+    if (
+      status === "ongoing" &&
+      !reservation.signedAt &&
+      store.settings?.contractSignatureMode === "required"
+    ) {
+      return { ok: false, error: "contract_unsigned" };
+    }
+
     const validationWarnings =
       status === "confirmed"
         ? evaluateReservationRules({
@@ -281,6 +291,8 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
             activity: {
               metadata: {
                 ...(status === "rejected" && rejectionReason && { rejectionReason }),
+                // Handed over before the customer accepted the contract: kept in the history.
+                ...(status === "ongoing" && !reservation.signedAt && { contractUnsigned: true }),
                 ...(validationWarnings.length > 0 && {
                   validationWarnings,
                   validationWarningsCount: validationWarnings.length,
@@ -664,6 +676,14 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
     if (outcome.ok || outcome.error === "not_found") return outcome;
     if (outcome.error === "store_not_accepting_reservations") {
       return { ok: false, error: "refused", message: AGENT_GATE_REFUSAL };
+    }
+    if (outcome.error === "contract_unsigned") {
+      return {
+        ok: false,
+        error: "refused",
+        message:
+          "Not changed: this store requires the customer to sign the contract before pickup, and they have not signed it yet.",
+      };
     }
     if (outcome.error === "unavailable") {
       return {

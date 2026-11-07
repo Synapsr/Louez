@@ -73,6 +73,11 @@ export type CreateReservationRequest = CreateReservationInput & {
    * is on file; otherwise they only fill what is missing.
    */
   customerSignedIn?: boolean;
+  /**
+   * Server-only: the web checkout's IP address. Its checkout requires accepting the
+   * rental terms, which signs the contract; the IP is recorded with it.
+   */
+  termsAcceptedFromIp?: string;
 };
 
 /** A quote prices the same cart without a customer, amounts or notes. */
@@ -87,6 +92,7 @@ export type QuoteReservationRequest = Omit<
   | "reservationId"
   | "marketplaceSecret"
   | "customerSignedIn"
+  | "termsAcceptedFromIp"
   | "customerFields"
   | "itemDetails"
   | "profileFields"

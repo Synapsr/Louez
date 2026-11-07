@@ -40,7 +40,7 @@
     "title": "予約確定しました！",
     "body": "ご予約#{number}が確認されました。概要は次のとおりです。",
     "summary": "概要",
-    "contractSignature": "契約書は添付されており、オンラインで署名する準備ができています。",
+    "contractSignature": "レンタル契約書の準備ができました。受け取り前にオンラインで署名してください。",
     "signContract": "契約書に署名します"
   },
   "requestReceived": {
@@ -86,7 +86,9 @@
     "dontForget": "忘れないでください:",
     "bringId": "有効なID",
     "bringConfirmation": "ご予約確認書",
-    "seeTomorrow": "また明日！"
+    "seeTomorrow": "また明日！",
+    "contractSignature": "賃貸契約書にまだご署名いただいていません。お受け取りの前にオンラインでご署名ください。",
+    "signContract": "契約書に署名する"
   },
   "reminderReturn": {
     "subject": "リマインダー: {date} での機器の返却",
@@ -329,7 +331,9 @@
     "subject": "レンタル契約書 #{number}",
     "title": "レンタル契約書",
     "body": "こちらがご予約#{number}のレンタル契約書です。",
-    "downloadContract": "契約書をダウンロードする"
+    "downloadContract": "契約書をダウンロードする",
+    "signBody": "ご予約 #{number} の賃貸契約書です。お受け取りの前にオンラインでお読みいただき、ご署名ください。",
+    "signContract": "契約書に署名する"
   },
   "customMessage": {
     "subject": "ご予約について #{number}"

@@ -102,6 +102,7 @@ const PayPage = async ({ params, searchParams }: PayPageProps) => {
         reservation={data.reservation}
         paymentRequest={data.paymentRequest}
         customerFirstName={data.customer.firstName}
+        requiresContractAcceptance={data.requiresContractAcceptance}
         token={token ?? ""}
       />
     </StorefrontSection>

@@ -2424,10 +2424,31 @@
       },
       "contract": {
         "title": "Contratto",
-        "signed": "Firmato il {date}",
-        "notSigned": "Non firmato",
         "generate": "Genera contratto",
-        "download": "Scarica"
+        "download": "Scarica",
+        "signedBadge": "Contratto firmato",
+        "unsignedBadge": "Contratto non firmato",
+        "signedOn": "Il {date}",
+        "unsignedTooltip": "Il cliente non ha ancora accettato il contratto. Può firmarlo dal link ricevuto via email o in negozio al ritiro.",
+        "methods": {
+          "checkout": "Accettato alla prenotazione online",
+          "payment_page": "Firmato nella pagina di pagamento",
+          "account": "Firmato dall'area cliente",
+          "in_store": "Firmato in negozio"
+        },
+        "signInStore": "Fai firmare in negozio",
+        "sendSignatureLink": "Invia per la firma",
+        "signatureLinkSent": "Link di firma inviato al cliente",
+        "signDialog": {
+          "title": "Firma del contratto in negozio",
+          "description": "Lascia che il cliente legga il contratto e firmi su questo dispositivo. La sua firma e il suo nome compariranno sul contratto.",
+          "viewContract": "Apri il contratto",
+          "signerName": "Nome del firmatario",
+          "acceptance": "Il cliente ha letto il contratto e le condizioni di noleggio e le accetta.",
+          "confirm": "Conferma la firma",
+          "success": "Contratto firmato",
+          "alreadySigned": "Questo contratto è già firmato."
+        }
       },
       "notes": {
         "title": "Note interne",
@@ -2696,6 +2717,9 @@
         "quote_accepted": "Preventivo accettato",
         "quote_declined": "Preventivo rifiutato",
         "overbooked": "Overbooking",
+        "contract_signed": "Contratto firmato",
+        "contractUnsigned": "Senza contratto firmato",
+        "signedBy": "Firmato da {name}",
         "showAll": "Mostra tutto ({count} eventi)",
         "showLess": "Mostra meno",
         "paymentFailure": {
@@ -2757,6 +2781,11 @@
         "warningDepositTitle": "Deposito non riscosso",
         "warningDepositDescription": "Il deposito di {amount} non è ancora stato riscosso. Assicurati di riscuoterlo prima della consegna.",
         "acknowledgePickupWarnings": "Capisco e desidero continuare nonostante questi avvisi",
+        "contractUnsigned": "Contratto non firmato",
+        "warningContractTitle": "Contratto non firmato",
+        "warningContractDescription": "Il cliente non ha ancora firmato il contratto. Fallo firmare in negozio o continua senza firma: verrà annotato nella cronologia.",
+        "acknowledgePickupWithoutSignature": "Ho capito e voglio continuare, anche senza contratto firmato",
+        "warningContractRequiredDescription": "Il tuo negozio richiede la firma del contratto prima del ritiro. Fai firmare il cliente in negozio per continuare.",
         "confirmPickup": "Conferma ritiro",
         "returnConfirmTitle": "Conferma restituzione",
         "returnConfirmDescription": "Verifica le condizioni dell'attrezzatura e il riepilogo finanziario prima di confermare.",
@@ -6297,6 +6326,16 @@
         "description": "I clienti possono prolungare se il materiale è disponibile e il supplemento è calcolabile. I casi particolari richiedono la tua approvazione.",
         "maxDays": "Giorni aggiuntivi massimi (vuoto: nessun limite)"
       },
+      "contractSignature": {
+        "title": "Firma del contratto",
+        "description": "Cosa succede quando segni una prenotazione come ritirata e il cliente non ha firmato il contratto.",
+        "optional": "Facoltativa",
+        "optionalDescription": "Nessun avviso al ritiro. Il badge «Contratto non firmato» resta visibile sulla prenotazione.",
+        "recommended": "Consigliata",
+        "recommendedDescription": "Un avviso propone di farlo firmare in negozio. Puoi consegnare l'attrezzatura senza firma; viene annotato nella cronologia.",
+        "required": "Obbligatoria",
+        "requiredDescription": "Il ritiro è rifiutato finché il contratto non è firmato, online dal cliente o in negozio."
+      },
       "customerFields": {
         "title": "Scheda cliente",
         "native": {
@@ -7935,6 +7974,8 @@
       "redirecting": "Reindirizzamento al pagamento...",
       "securePayment": "Pagamento sicuro con Stripe",
       "backToStore": "Torna al negozio",
+      "acceptContractRich": "Ho letto e accetto le <terms>condizioni generali di noleggio</terms>",
+      "acceptContractRequired": "Accetta le condizioni generali di noleggio per continuare.",
       "errors": {
         "expiredTitle": "Link scaduto",
         "expiredDescription": "Questo link di pagamento è scaduto. Contatta il negozio per richiederne uno nuovo.",
@@ -8088,7 +8129,7 @@
       "signContract": "Firma contratto",
       "contractSigned": "Contratto firmato",
       "downloadContract": "Scarica contratto",
-      "signContractConfirmation": "Continuando, confermi di aver letto e accettato questo contratto di noleggio.",
+      "signContractConfirmation": "Accetti il <contract>contratto di noleggio</contract> e le condizioni generali di noleggio. La data e il tuo indirizzo IP vengono registrati.",
       "signContractError": "Non è stato possibile firmare il contratto. Riprova.",
       "invoiceDocuments": {
         "title": "Fatture e note di credito",
@@ -9010,10 +9051,10 @@
       "customerText": "Riconosco di aver letto e accetto i termini e le condizioni generali di noleggio senza riserve.",
       "dateLabel": "Data:",
       "ipLabel": "IP:",
-      "automatic": "Convalidato automaticamente",
-      "automaticText": "Questo contratto è stato convalidato automaticamente in base alle condizioni di noleggio.",
       "atBooking": "Firmato alla prenotazione",
       "atBookingText": "Condizioni generali di noleggio accettate al momento della prenotazione online, il che vale come firma del presente contratto.",
+      "inStore": "Firmato in negozio",
+      "signerLabel": "Firmatario:",
       "signedOnLabel": "Firmato il:",
       "validatedOnLabel": "Convalidato il:"
     },
@@ -9136,6 +9177,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Questo negozio non accetta prenotazioni online al momento. {hasContact, select, yes {Contatta il negozio: {contact}} other {Contatta direttamente il negozio.}}",
     "generic": "Si e verificato un errore",
+    "contractNotSignable": "Questo contratto non può più essere firmato.",
+    "contractSignatureRequired": "Questo negozio richiede che il cliente firmi il contratto prima del ritiro.",
     "pageLoadError": "Non siamo riusciti a caricare questa pagina. Riprova.",
     "notFound": "Pagina non trovata",
     "notFoundDescription": "La pagina che stai cercando non esiste o e stata spostata.",

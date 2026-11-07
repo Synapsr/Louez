@@ -1,4 +1,4 @@
-/** Customer actions: respond to a quote, pay, or download the validated contract. */
+/** Customer actions: respond to a quote, pay, sign or download the contract. */
 
 export interface ReservationActionsInput {
   status: string;
@@ -22,10 +22,17 @@ export interface ReservationActions {
 
 const CONTRACT_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing", "completed"]);
 const PAYABLE_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing"]);
+// A finished rental is no longer signed: its contract stays as it was.
+const SIGNABLE_STATUSES: ReadonlySet<string> = new Set(["confirmed", "ongoing"]);
+
+/** The customer can sign a contract the store confirmed, until the rental ends. */
+export const canSignContract = (status: string, isSigned: boolean): boolean =>
+  SIGNABLE_STATUSES.has(status) && !isSigned;
 
 export const getReservationActions = ({
   status,
   isRentalPaid,
+  isSigned,
   stripeAccountId,
   stripeChargesEnabled,
 }: ReservationActionsInput): ReservationActions => {
@@ -33,7 +40,7 @@ export const getReservationActions = ({
   const stripeActive = Boolean(stripeAccountId) && stripeChargesEnabled === true;
   const canPay = PAYABLE_STATUSES.has(status) && !isRentalPaid && stripeActive;
   const canDownloadContract = CONTRACT_STATUSES.has(status);
-  const canSign = false;
+  const canSign = canSignContract(status, isSigned);
 
   const required: ReservationRequiredAction | null = canAcceptQuote
     ? "quote"

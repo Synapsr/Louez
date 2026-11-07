@@ -146,6 +146,7 @@ describe("settings actions billing marks (database)", { skip: skipWithoutTestDat
         advanceNoticeMinutes: 0,
         turnoverBufferMinutes: 0,
         requireCustomerAddress: false,
+        contractSignatureMode: "recommended",
       }),
       { success: true },
     );

@@ -39,7 +39,9 @@
     "subject": "La tua prenotazione #{number} e confermata",
     "title": "Prenotazione confermata!",
     "body": "La tua prenotazione #{number} e confermata. Ecco il riepilogo:",
-    "summary": "Riepilogo"
+    "summary": "Riepilogo",
+    "contractSignature": "Il tuo contratto di noleggio è pronto. Firmalo online prima di ritirare l'attrezzatura.",
+    "signContract": "Firma il contratto"
   },
   "requestReceived": {
     "subject": "Richiesta prenotazione #{number} ricevuta",
@@ -75,7 +77,9 @@
     "dontForget": "Non dimenticare:",
     "bringId": "Un documento d'identita valido",
     "bringConfirmation": "La tua conferma di prenotazione",
-    "seeTomorrow": "Ci vediamo domani!"
+    "seeTomorrow": "Ci vediamo domani!",
+    "contractSignature": "Il tuo contratto di noleggio non è ancora firmato. Firmalo online prima di ritirare l'attrezzatura.",
+    "signContract": "Firma il contratto"
   },
   "reminderReturn": {
     "subject": "Promemoria: ritorno attrezzatura il {date}",
@@ -252,7 +256,9 @@
     "method": "Metodo",
     "reservation": "Prenotazione",
     "confirmation": "Il tuo pagamento è stato elaborato con successo.",
-    "keepEmail": "Conserva questa email come ricevuta di pagamento."
+    "keepEmail": "Conserva questa email come ricevuta di pagamento.",
+    "contractSignature": "Il tuo contratto è allegato e pronto per essere firmato online.",
+    "signContract": "Firma il contratto"
   },
   "paymentFailed": {
     "subject": "Pagamento fallito - Prenotazione #{number}",
@@ -315,7 +321,9 @@
     "subject": "Il tuo contratto di noleggio #{number}",
     "title": "Il tuo contratto di noleggio",
     "body": "Ecco il contratto di noleggio per la tua prenotazione #{number}.",
-    "downloadContract": "Scarica il contratto"
+    "downloadContract": "Scarica il contratto",
+    "signBody": "Ecco il contratto di noleggio per la tua prenotazione #{number}. Leggilo e firmalo online prima di ritirare l'attrezzatura.",
+    "signContract": "Firma il contratto"
   },
   "customMessage": {
     "subject": "Riguardo alla tua prenotazione #{number}"

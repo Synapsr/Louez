@@ -306,7 +306,7 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
     const [row] = await louezDb.db
       .select({
         status: louezDb.reservations.status,
-        signedAt: louezDb.reservations.signedAt,
+        contractValidatedAt: louezDb.reservations.contractValidatedAt,
         updatedAt: louezDb.reservations.updatedAt,
         billableAt: louezDb.reservations.billableAt,
       })
@@ -424,7 +424,7 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
         },
       ],
     ]);
-    assert.ok(row?.signedAt, "the contract is validated");
+    assert.ok(row?.contractValidatedAt, "the contract is validated");
     assert.equal(await readStock(productId), 3);
     assert.ok(row && row.updatedAt > BEFORE, "updatedAt moves");
     const activity = await readActivity(id);
@@ -596,6 +596,50 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
       [{ id: STORE, name: "Status store", slug: "status-store" }, id, 10, "EUR"],
     ]);
     assert.equal((await readReservation(id))?.status, "completed");
+  });
+
+  test("a store that requires the signed contract refuses an unsigned pickup until it is signed", async () => {
+    const stores = louezDb.stores;
+    const [storeRow] = await louezDb.db.select().from(stores).where(eq(stores.id, STORE));
+    assert.ok(storeRow?.settings);
+    const settings = storeRow.settings;
+    await louezDb.db
+      .update(stores)
+      .set({ settings: { ...settings, contractSignatureMode: "required" } })
+      .where(eq(stores.id, STORE));
+    try {
+      const [requiring] = await louezDb.db.select().from(stores).where(eq(stores.id, STORE));
+      assert.ok(requiring);
+      const id = await createReservation("confirmed");
+      const pickup = {
+        store: requiring,
+        actor: "store_user",
+        actorUserId: USER,
+        reservationId: id,
+        status: "ongoing",
+      } as const;
+
+      assert.deepEqual(await service.updateStatus(pickup), {
+        ok: false,
+        error: "contract_unsigned",
+      });
+      assert.deepEqual(await askAssistant({ reservationId: id, status: "ongoing" }), {
+        error:
+          "Not changed: this store requires the customer to sign the contract before pickup, and they have not signed it yet.",
+      });
+      assert.deepEqual(senders(), []);
+      assert.equal((await readReservation(id))?.status, "confirmed");
+      assert.deepEqual(await readActivity(id), []);
+
+      await louezDb.db
+        .update(louezDb.reservations)
+        .set({ signedAt: new Date(), signatureMethod: "in_store" })
+        .where(eq(louezDb.reservations.id, id));
+      assert.equal((await service.updateStatus(pickup)).ok, true);
+      assert.equal((await readReservation(id))?.status, "ongoing");
+    } finally {
+      await louezDb.db.update(stores).set({ settings }).where(eq(stores.id, STORE));
+    }
   });
 
   test("items another booking holds refuse the confirmation with a clear answer", async () => {

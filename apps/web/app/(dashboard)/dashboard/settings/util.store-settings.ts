@@ -1,4 +1,4 @@
-import type { StoreSettings } from "@louez/types";
+import type { ContractSignatureMode, StoreSettings } from "@louez/types";
 
 import { getTimezoneForCountry } from "@/lib/utils/countries";
 
@@ -23,6 +23,7 @@ export interface ReservationRulesInput {
   advanceNoticeMinutes: number;
   turnoverBufferMinutes: number;
   requireCustomerAddress: boolean;
+  contractSignatureMode: ContractSignatureMode;
 }
 
 /** The required keys, for a store that was created before it had any settings. */
@@ -79,5 +80,6 @@ export function buildReservationRulesUpdate(
     advanceNoticeMinutes: input.advanceNoticeMinutes,
     turnoverBufferMinutes: input.turnoverBufferMinutes,
     requireCustomerAddress: input.requireCustomerAddress,
+    contractSignatureMode: input.contractSignatureMode,
   };
 }

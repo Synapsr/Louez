@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   Clock,
   CreditCard,
+  FileClock,
   Loader2,
   Package,
   Shield,
@@ -42,6 +43,7 @@ import {
   Label,
   Textarea,
 } from "@louez/ui";
+import type { ContractSignatureMode } from "@louez/types";
 import { cn, formatCurrency } from "@louez/utils";
 
 import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-dialog";
@@ -50,6 +52,7 @@ import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
+import { isContractSignatureRequiredRefusal } from "@/lib/reservations/contract-signature-refusal";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
@@ -59,6 +62,7 @@ import {
 } from "@/lib/product-analytics/reservation-analytics-client";
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 
+import { ContractInStoreSignDialog } from "./contract-in-store-sign-dialog";
 import { MobileReservationQuickActions } from "./mobile-reservation-quick-actions";
 
 type ReservationStatus =
@@ -97,6 +101,10 @@ interface SmartReservationActionsProps {
   inspectionMode?: InspectionMode;
   hasDepartureInspection?: boolean;
   hasReturnInspection?: boolean;
+  // Contract info
+  contractSigned: boolean;
+  contractSignatureMode: ContractSignatureMode;
+  customerName: string;
   onRecordPayment: () => void;
 }
 
@@ -117,6 +125,9 @@ export function SmartReservationActions({
   inspectionMode = "optional",
   hasDepartureInspection = false,
   hasReturnInspection = false,
+  contractSigned,
+  contractSignatureMode,
+  customerName,
   onRecordPayment,
   readOnly = false,
 }: SmartReservationActionsProps) {
@@ -139,6 +150,11 @@ export function SmartReservationActions({
   );
   const [rejectionReason, setRejectionReason] = useState("");
   const [acknowledgeWarnings, setAcknowledgeWarnings] = useState(false);
+  // Signing from the pickup warning goes back to the pickup confirmation when done.
+  const [signDialog, setSignDialog] = useState<{ open: boolean; fromPickup: boolean }>({
+    open: false,
+    fromPickup: false,
+  });
 
   const formatWarning = (warning: ActionWarning) => {
     const key = warning.key.replace("errors.", "");
@@ -216,7 +232,14 @@ export function SmartReservationActions({
   // Determine warnings
   const hasPaymentWarning = !isRentalFullyPaid && status === "confirmed";
   const hasDepositWarning = !isDepositCovered && status === "confirmed";
-  const hasWarnings = hasPaymentWarning || hasDepositWarning;
+  const hasContractWarning =
+    !contractSigned && status === "confirmed" && contractSignatureMode !== "optional";
+  // The store refuses the pickup until the customer signs: no "continue anyway".
+  const isContractBlocking = hasContractWarning && contractSignatureMode === "required";
+  const hasWarnings = hasPaymentWarning || hasDepositWarning || hasContractWarning;
+  const needsAcknowledgement =
+    hasPaymentWarning || hasDepositWarning || (hasContractWarning && !isContractBlocking);
+  const canSignInStore = !contractSigned && (status === "confirmed" || status === "ongoing");
 
   const updateStatusMutation = useMutation(
     orpc.dashboard.reservations.updateStatus.mutationOptions({
@@ -252,6 +275,12 @@ export function SmartReservationActions({
           );
         }
       },
+    }),
+  );
+
+  const sendSignatureLinkMutation = useMutation(
+    orpc.dashboard.reservations.sendReservationEmail.mutationOptions({
+      onSuccess: () => invalidateReservationAll(queryClient, reservationId),
     }),
   );
 
@@ -329,6 +358,8 @@ export function SmartReservationActions({
         });
       }
       if (isReservationGateRefusal(error)) setGateDialogOpen(true);
+      else if (isContractSignatureRequiredRefusal(error))
+        toastManager.add({ title: tErrors("contractSignatureRequired"), type: "error" });
       else toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
       setIsLoading(false);
@@ -386,6 +417,63 @@ export function SmartReservationActions({
       void handlePickup();
     }
   };
+
+  const openSignInStore = (fromPickup: boolean) => {
+    if (fromPickup) setPickupConfirmOpen(false);
+    setSignDialog({ open: true, fromPickup });
+  };
+
+  // The contract email asks an unsigned customer to sign, through a link that signs them in.
+  const sendSignatureLink = async () => {
+    try {
+      await sendSignatureLinkMutation.mutateAsync({
+        reservationId,
+        payload: { templateId: "contract" },
+      });
+      toastManager.add({ title: t("contract.signatureLinkSent"), type: "success" });
+    } catch {
+      toastManager.add({ title: tErrors("generic"), type: "error" });
+    }
+  };
+
+  const handleSignDialogChange = (open: boolean) => {
+    setSignDialog((current) => ({ ...current, open }));
+    if (!open && signDialog.fromPickup) {
+      setAcknowledgeWarnings(false);
+      setPickupConfirmOpen(true);
+    }
+  };
+
+  const contractActionClassName =
+    "text-[11px] font-medium underline underline-offset-2 hover:text-amber-700 disabled:opacity-50 dark:hover:text-amber-300";
+
+  const renderContractUnsignedRow = () => (
+    <div className="space-y-1 text-amber-600 dark:text-amber-400">
+      <div className="flex items-center gap-1.5">
+        <FileClock className="h-3 w-3 shrink-0" />
+        <p className="text-[11px]">{t("smartActions.contractUnsigned")}</p>
+      </div>
+      {!readOnly && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 pl-[18px]">
+          <button
+            type="button"
+            className={contractActionClassName}
+            onClick={() => openSignInStore(false)}
+          >
+            {t("contract.signInStore")}
+          </button>
+          <button
+            type="button"
+            className={contractActionClassName}
+            disabled={sendSignatureLinkMutation.isPending}
+            onClick={() => void sendSignatureLink()}
+          >
+            {t("contract.sendSignatureLink")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   const handleReturnIntent = () => {
     if (shouldPromptReturnInspection) {
@@ -507,7 +595,7 @@ export function SmartReservationActions({
               </Button>
 
               {/* Inline warnings */}
-              {hasWarnings && (
+              {(hasPaymentWarning || hasDepositWarning) && (
                 <div className="space-y-1.5 pt-1">
                   {hasPaymentWarning && (
                     <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
@@ -531,6 +619,7 @@ export function SmartReservationActions({
                   )}
                 </div>
               )}
+              {canSignInStore && renderContractUnsignedRow()}
 
               {canCancel && (
                 <div className="pt-2 border-t mt-3">
@@ -574,6 +663,8 @@ export function SmartReservationActions({
                 <ArrowDownRight data-slot="icon" />
                 {t("actions.markReturned")}
               </Button>
+
+              {canSignInStore && <div className="pt-1">{renderContractUnsignedRow()}</div>}
 
               {canCancel && (
                 <div className="pt-2 border-t mt-3">
@@ -800,60 +891,94 @@ export function SmartReservationActions({
           <DialogPanel>
             <div className="space-y-4">
               {/* Warnings Box */}
-              <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
-                {hasPaymentWarning && (
-                  <div className="flex items-start gap-3">
-                    <div className="p-1.5 rounded-full bg-amber-100 dark:bg-amber-900/50 shrink-0">
-                      <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              {hasWarnings && (
+                <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
+                  {hasContractWarning && (
+                    <div className="flex items-start gap-3">
+                      <div className="p-1.5 rounded-full bg-amber-100 dark:bg-amber-900/50 shrink-0">
+                        <FileClock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                            {t("smartActions.warningContractTitle")}
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                            {isContractBlocking
+                              ? t("smartActions.warningContractRequiredDescription")
+                              : t("smartActions.warningContractDescription")}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={readOnly}
+                          onClick={() => openSignInStore(true)}
+                        >
+                          {t("contract.signInStore")}
+                        </Button>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                        {t("smartActions.warningPaymentTitle")}
-                      </p>
-                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                        {t("smartActions.warningPaymentDescription", {
-                          paid: formatCurrency(rentalPaid, currency, formatLocale),
-                          total: formatCurrency(rentalAmount, currency, formatLocale),
-                          remaining: formatCurrency(rentalRemaining, currency, formatLocale),
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {hasDepositWarning && (
-                  <div className="flex items-start gap-3">
-                    <div className="p-1.5 rounded-full bg-amber-100 dark:bg-amber-900/50 shrink-0">
-                      <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  {hasPaymentWarning && (
+                    <div className="flex items-start gap-3">
+                      <div className="p-1.5 rounded-full bg-amber-100 dark:bg-amber-900/50 shrink-0">
+                        <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                          {t("smartActions.warningPaymentTitle")}
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                          {t("smartActions.warningPaymentDescription", {
+                            paid: formatCurrency(rentalPaid, currency, formatLocale),
+                            total: formatCurrency(rentalAmount, currency, formatLocale),
+                            remaining: formatCurrency(rentalRemaining, currency, formatLocale),
+                          })}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                        {t("smartActions.warningDepositTitle")}
-                      </p>
-                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                        {t("smartActions.warningDepositDescription", {
-                          amount: formatCurrency(depositRemaining, currency, formatLocale),
-                        })}
-                      </p>
+                  )}
+
+                  {hasDepositWarning && (
+                    <div className="flex items-start gap-3">
+                      <div className="p-1.5 rounded-full bg-amber-100 dark:bg-amber-900/50 shrink-0">
+                        <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                          {t("smartActions.warningDepositTitle")}
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                          {t("smartActions.warningDepositDescription", {
+                            amount: formatCurrency(depositRemaining, currency, formatLocale),
+                          })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Acknowledgment checkbox */}
-              <div className="flex items-start space-x-3">
-                <Checkbox
-                  id="acknowledge-pickup"
-                  checked={acknowledgeWarnings}
-                  onCheckedChange={(checked) => setAcknowledgeWarnings(checked === true)}
-                />
-                <label
-                  htmlFor="acknowledge-pickup"
-                  className="text-sm text-muted-foreground leading-tight cursor-pointer"
-                >
-                  {t("smartActions.acknowledgePickupWarnings")}
-                </label>
-              </div>
+              {needsAcknowledgement && (
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="acknowledge-pickup"
+                    checked={acknowledgeWarnings}
+                    onCheckedChange={(checked) => setAcknowledgeWarnings(checked === true)}
+                  />
+                  <label
+                    htmlFor="acknowledge-pickup"
+                    className="text-sm text-muted-foreground leading-tight cursor-pointer"
+                  >
+                    {hasContractWarning && !isContractBlocking
+                      ? t("smartActions.acknowledgePickupWithoutSignature")
+                      : t("smartActions.acknowledgePickupWarnings")}
+                  </label>
+                </div>
+              )}
             </div>
           </DialogPanel>
 
@@ -869,10 +994,14 @@ export function SmartReservationActions({
             <Button
               onClick={handlePickup}
               isPending={isLoading}
-              disabled={readOnly || !acknowledgeWarnings}
+              disabled={
+                readOnly || isContractBlocking || (needsAcknowledgement && !acknowledgeWarnings)
+              }
               className={cn(
                 "sm:flex-1",
-                acknowledgeWarnings ? "bg-amber-600 hover:bg-amber-700 text-white" : "",
+                needsAcknowledgement && acknowledgeWarnings && !isContractBlocking
+                  ? "bg-amber-600 hover:bg-amber-700 text-white"
+                  : "",
               )}
             >
               <ArrowUpRight data-slot="icon" />
@@ -1046,6 +1175,13 @@ export function SmartReservationActions({
           </DialogFooter>
         </DialogPopup>
       </Dialog>
+
+      <ContractInStoreSignDialog
+        open={signDialog.open}
+        onOpenChange={handleSignDialogChange}
+        reservationId={reservationId}
+        customerName={customerName}
+      />
 
       <ReservationGateDialog open={gateDialogOpen} onOpenChange={setGateDialogOpen} />
     </>

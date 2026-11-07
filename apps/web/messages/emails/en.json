@@ -40,7 +40,7 @@
     "title": "Reservation confirmed!",
     "body": "Your reservation #{number} is confirmed. Here is the summary:",
     "summary": "Summary",
-    "contractSignature": "Your contract is attached and ready to sign online.",
+    "contractSignature": "Your rental contract is ready. Sign it online before you pick up the equipment.",
     "signContract": "Sign the contract"
   },
   "requestReceived": {
@@ -86,7 +86,9 @@
     "dontForget": "Don't forget:",
     "bringId": "A valid ID",
     "bringConfirmation": "Your reservation confirmation",
-    "seeTomorrow": "See you tomorrow!"
+    "seeTomorrow": "See you tomorrow!",
+    "contractSignature": "Your rental contract is not signed yet. Please sign it online before you pick up the equipment.",
+    "signContract": "Sign the contract"
   },
   "reminderReturn": {
     "subject": "Reminder: equipment return on {date}",
@@ -329,7 +331,9 @@
     "subject": "Your rental contract #{number}",
     "title": "Your rental contract",
     "body": "Here is the rental contract for your reservation #{number}.",
-    "downloadContract": "Download the contract"
+    "downloadContract": "Download the contract",
+    "signBody": "Here is the rental contract for your reservation #{number}. Please read and sign it online before you pick up the equipment.",
+    "signContract": "Sign the contract"
   },
   "customMessage": {
     "subject": "About your reservation #{number}"

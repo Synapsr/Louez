@@ -198,11 +198,11 @@ Le build ne connaît pas `NEXT_PUBLIC_APP_DOMAIN`, lue à l’exécution : le sc
 
 ### Signature du client sur le contrat
 
-Le bloc « Client » du contrat distingue trois cas :
+Seul le client signe (`signedAt`, `signatureIp`). La validation à la confirmation ou au paiement est à part (`contractValidatedAt`) et ne vaut pas signature. Le bloc « Client » du contrat distingue trois cas :
 
-- une réservation faite sur la boutique (`source: "online"`), dont le paiement exige d’accepter les conditions (`acceptCgv`), est « Signé à la réservation » : l’acceptation vaut signature. Le bloc imprime « Signé le » (création de la réservation) et, une fois le contrat validé, « Validé le » ;
-- un client qui a réellement signé (hors validation automatique) garde « Signé », avec la date et l’IP ;
-- les autres validations automatiques (réservation créée par le loueur, marketplace) restent « Validé automatiquement ».
+- une réservation faite sur la boutique (`source: "online"`), dont le paiement exige d’accepter les conditions (`acceptCgv`), est « Signé à la réservation » : l’acceptation vaut signature. Le bloc imprime « Signé le » (création de la réservation), l’IP du checkout quand elle est connue et, une fois le contrat validé, « Validé le » ;
+- un client qui signe ensuite, en cochant les conditions sur la page de paiement envoyée par le loueur ou depuis son espace client, est « Signé », avec la date et l’IP ;
+- sinon le contrat reste « En attente de signature », même validé (réservation créée par le loueur, marketplace, téléphone).
 
 Le dossier de démonstration est une réservation en ligne. L’aperçu `contract-at-booking` montre ce cas.
 

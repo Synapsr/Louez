@@ -40,7 +40,7 @@
     "title": "예약이 확인되었습니다!",
     "body": "귀하의 예약번호 #{number}가 확인되었습니다. 요약은 다음과 같습니다.",
     "summary": "요약",
-    "contractSignature": "계약서가 첨부되었으며 온라인으로 서명할 준비가 되었습니다.",
+    "contractSignature": "대여 계약서가 준비되었습니다. 장비를 수령하기 전에 온라인으로 서명해 주세요.",
     "signContract": "계약서에 서명하세요"
   },
   "requestReceived": {
@@ -86,7 +86,9 @@
     "dontForget": "잊지 마세요:",
     "bringId": "유효한 신분증",
     "bringConfirmation": "예약 확인",
-    "seeTomorrow": "내일 봐요!"
+    "seeTomorrow": "내일 봐요!",
+    "contractSignature": "렌탈 계약서에 아직 서명하지 않으셨습니다. 장비를 수령하기 전에 온라인으로 서명해 주세요.",
+    "signContract": "계약서 서명"
   },
   "reminderReturn": {
     "subject": "알림: {date}에서 장비 반납",
@@ -329,7 +331,9 @@
     "subject": "임대 계약 #{number}",
     "title": "임대 계약",
     "body": "예약 #{number}에 대한 임대 계약은 다음과 같습니다.",
-    "downloadContract": "계약서 다운로드"
+    "downloadContract": "계약서 다운로드",
+    "signBody": "예약 #{number}의 렌탈 계약서입니다. 장비를 수령하기 전에 온라인으로 읽고 서명해 주세요.",
+    "signContract": "계약서 서명"
   },
   "customMessage": {
     "subject": "예약 정보 #{number}"

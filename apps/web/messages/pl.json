@@ -2424,10 +2424,31 @@
       },
       "contract": {
         "title": "Umowa",
-        "signed": "Podpisano {date}",
-        "notSigned": "Niepodpisana",
         "generate": "Wygeneruj umowę",
-        "download": "Pobierz"
+        "download": "Pobierz",
+        "signedBadge": "Umowa podpisana",
+        "unsignedBadge": "Umowa niepodpisana",
+        "signedOn": "Dnia {date}",
+        "unsignedTooltip": "Klient nie zaakceptował jeszcze umowy. Może ją podpisać przez link z e-maila lub na miejscu przy odbiorze.",
+        "methods": {
+          "checkout": "Zaakceptowana przy rezerwacji online",
+          "payment_page": "Podpisana na stronie płatności",
+          "account": "Podpisana w koncie klienta",
+          "in_store": "Podpisana na miejscu"
+        },
+        "signInStore": "Podpisz na miejscu",
+        "sendSignatureLink": "Wyślij do podpisu",
+        "signatureLinkSent": "Link do podpisu wysłany do klienta",
+        "signDialog": {
+          "title": "Podpisanie umowy na miejscu",
+          "description": "Pozwól klientowi przeczytać umowę i podpisać ją na tym urządzeniu. Jego podpis i imię i nazwisko pojawią się na umowie.",
+          "viewContract": "Otwórz umowę",
+          "signerName": "Imię i nazwisko podpisującego",
+          "acceptance": "Klient zapoznał się z umową i warunkami wynajmu i je akceptuje.",
+          "confirm": "Zatwierdź podpis",
+          "success": "Umowa podpisana",
+          "alreadySigned": "Ta umowa jest już podpisana."
+        }
       },
       "notes": {
         "title": "Notatki wewnętrzne",
@@ -2696,6 +2717,9 @@
         "quote_accepted": "Oferta zaakceptowana",
         "quote_declined": "Oferta odrzucona",
         "overbooked": "Nadmiarowa",
+        "contract_signed": "Umowa podpisana",
+        "contractUnsigned": "Bez podpisanej umowy",
+        "signedBy": "Podpisane przez: {name}",
         "showAll": "Pokaż wszystko ({count} wydarzeń)",
         "showLess": "Pokaż mniej",
         "paymentFailure": {
@@ -2757,6 +2781,11 @@
         "warningDepositTitle": "Kaucja niepobrana",
         "warningDepositDescription": "Kaucja w wysokości {amount} nie została jeszcze pobrana. Upewnij się, że ją pobierzesz przed wydaniem sprzętu.",
         "acknowledgePickupWarnings": "Rozumiem i chcę kontynuować mimo tych ostrzeżeń",
+        "contractUnsigned": "Umowa niepodpisana",
+        "warningContractTitle": "Umowa niepodpisana",
+        "warningContractDescription": "Klient nie podpisał jeszcze umowy. Poproś o podpis na miejscu lub kontynuuj bez podpisu: zostanie to zapisane w historii.",
+        "acknowledgePickupWithoutSignature": "Rozumiem i chcę kontynuować, nawet bez podpisanej umowy",
+        "warningContractRequiredDescription": "Twój sklep wymaga podpisania umowy przed odbiorem. Poproś klienta o podpis na miejscu, aby kontynuować.",
         "confirmPickup": "Potwierdź odbiór",
         "returnConfirmTitle": "Potwierdź zwrot",
         "returnConfirmDescription": "Sprawdź stan sprzętu i podsumowanie finansowe przed potwierdzeniem.",
@@ -6297,6 +6326,16 @@
         "description": "Klienci mogą przedłużyć wynajem przy dostępności sprzętu i znanej dopłacie. Szczególne przypadki wymagają Twojej zgody.",
         "maxDays": "Maksymalna liczba dodatkowych dni (puste: bez limitu)"
       },
+      "contractSignature": {
+        "title": "Podpis umowy",
+        "description": "Co się dzieje, gdy oznaczasz rezerwację jako odebraną, a klient nie podpisał umowy.",
+        "optional": "Opcjonalny",
+        "optionalDescription": "Brak ostrzeżenia przy odbiorze. Oznaczenie „Umowa niepodpisana” pozostaje widoczne w rezerwacji.",
+        "recommended": "Zalecany",
+        "recommendedDescription": "Ostrzeżenie proponuje podpisanie na miejscu. Możesz wydać sprzęt bez podpisu; zostanie to zapisane w historii.",
+        "required": "Wymagany",
+        "requiredDescription": "Odbiór jest odrzucany, dopóki umowa nie zostanie podpisana, online przez klienta lub na miejscu."
+      },
       "customerFields": {
         "title": "Karta klienta",
         "native": {
@@ -7935,6 +7974,8 @@
       "redirecting": "Przekierowanie do płatności...",
       "securePayment": "Bezpieczna płatność przez Stripe",
       "backToStore": "Powrót do sklepu",
+      "acceptContractRich": "Przeczytałem i akceptuję <terms>ogólne warunki wynajmu</terms>",
+      "acceptContractRequired": "Zaakceptuj ogólne warunki wynajmu, aby kontynuować.",
       "errors": {
         "expiredTitle": "Link wygasł",
         "expiredDescription": "Ten link do płatności wygasł. Skontaktuj się ze sklepem, aby uzyskać nowy.",
@@ -8088,7 +8129,7 @@
       "signContract": "Podpisz umowę",
       "contractSigned": "Umowa podpisana",
       "downloadContract": "Pobierz umowę",
-      "signContractConfirmation": "Kontynuując, potwierdzasz przeczytanie i akceptację tej umowy najmu.",
+      "signContractConfirmation": "Akceptujesz <contract>umowę najmu</contract> oraz ogólne warunki wynajmu. Data i Twój adres IP zostaną zapisane.",
       "signContractError": "Nie udało się podpisać umowy. Spróbuj ponownie.",
       "invoiceDocuments": {
         "title": "Faktury i noty kredytowe",
@@ -9010,10 +9051,10 @@
       "customerText": "Potwierdzam, że zapoznałem się z ogólnymi warunkami najmu i akceptuję je bez zastrzeżeń.",
       "dateLabel": "Data:",
       "ipLabel": "IP:",
-      "automatic": "Zatwierdzono automatycznie",
-      "automaticText": "Ta umowa została automatycznie zatwierdzona zgodnie z warunkami wynajmu.",
       "atBooking": "Podpisano przy rezerwacji",
       "atBookingText": "Ogólne warunki wynajmu zaakceptowane podczas rezerwacji online, co jest równoznaczne z podpisaniem niniejszej umowy.",
+      "inStore": "Podpisana na miejscu",
+      "signerLabel": "Podpisujący:",
       "signedOnLabel": "Podpisano:",
       "validatedOnLabel": "Zatwierdzono:"
     },
@@ -9136,6 +9177,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Ten sklep nie przyjmuje teraz rezerwacji online. {hasContact, select, yes {Skontaktuj się ze sklepem: {contact}} other {Skontaktuj się bezpośrednio ze sklepem.}}",
     "generic": "Wystąpił błąd",
+    "contractNotSignable": "Tej umowy nie można już podpisać.",
+    "contractSignatureRequired": "Ten sklep wymaga, aby klient podpisał umowę przed odbiorem.",
     "pageLoadError": "Nie mogliśmy załadować tej strony. Spróbuj ponownie.",
     "notFound": "Nie znaleziono strony",
     "notFoundDescription": "Strona, której szukasz, nie istnieje lub została przeniesiona.",
