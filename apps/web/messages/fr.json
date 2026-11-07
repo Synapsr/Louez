@@ -5840,6 +5840,7 @@
           "membershipsLeft": "Vous quitterez aussi {count, plural, one {# autre boutique} other {# autres boutiques}} dont vous êtes membre.",
           "businessDocumentsDeleted": "{count, plural, one {# facture métier de votre boutique sera supprimée de Louez} other {# factures métier de vos boutiques seront supprimées de Louez}}. Exportez-les avant de continuer si vous devez les conserver.",
           "legalRetention": "{count, plural, one {# justificatif de facturation Louez sera conservé} other {# justificatifs de facturation Louez seront conservés}} pendant 10 ans à compter de la clôture de l’exercice, dans une archive séparée à accès limité.",
+          "googleCalendarNotice": "Louez supprimera l’agenda qu’il a créé dans votre Google Agenda. Si Google ne permet plus à Louez d’y accéder, cet agenda restera dans votre compte Google : vous pourrez le supprimer depuis Google Agenda.",
           "confirmationLabel": "Saisissez {email} pour confirmer",
           "passwordLabel": "Mot de passe actuel",
           "passwordRequired": "Saisissez votre mot de passe actuel.",

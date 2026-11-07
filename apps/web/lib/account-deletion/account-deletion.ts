@@ -66,6 +66,7 @@ export type AccountDeletionPreview =
       membershipsToLeave: number;
       legalRecordsToRetain: number;
       businessDocumentsToDelete: number;
+      googleCalendarConnected: boolean;
     }
   | {
       status: "blocked";
@@ -131,6 +132,9 @@ export const getAccountDeletionPreview = async ({
     businessDocumentsToDelete: context.stores.reduce(
       (total, store) => total + store.businessDocumentCount,
       0,
+    ),
+    googleCalendarConnected: context.externalResources.googleCalendarConnections.some(
+      (connection) => Boolean(connection.calendarId),
     ),
   };
 };

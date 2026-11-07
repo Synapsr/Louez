@@ -5703,6 +5703,7 @@
           "membershipsLeft": "Opuścisz również {count, plural, one {# inny sklep} other {# inne sklepy}}, w których jesteś członkiem.",
           "businessDocumentsDeleted": "{count, plural, one {# faktura firmowa Twojego sklepu zostanie usunięta z Louez} other {# faktury firmowe Twoich sklepów zostaną usunięte z Louez}}. Wyeksportuj je wcześniej, jeśli musisz je zachować.",
           "legalRetention": "{count, plural, one {# dokument rozliczeniowy Louez będzie przechowywany} other {# dokumenty rozliczeniowe Louez będą przechowywane}} przez 10 lat od zamknięcia roku obrotowego, w oddzielnym archiwum z ograniczonym dostępem.",
+          "googleCalendarNotice": "Louez usunie kalendarz, który utworzył w Twoim Kalendarzu Google. Jeśli Google nie daje mu już do niego dostępu, kalendarz zostanie na Twoim koncie Google i możesz go usunąć w Kalendarzu Google.",
           "confirmationLabel": "Wpisz {email}, aby potwierdzić",
           "passwordLabel": "Aktualne hasło",
           "passwordRequired": "Wpisz aktualne hasło.",

@@ -5839,6 +5839,7 @@
           "membershipsLeft": "Anda juga akan pergi {count,plural,one{# toko lain} other{# toko lain}} di mana Anda menjadi anggotanya.",
           "businessDocumentsDeleted": "{count,plural,one{# faktur bisnis dari toko Anda akan dihapus dari Louez} other{# faktur bisnis dari toko Anda akan dihapus dari Louez}}. Ekspor sebelum melanjutkan jika Anda perlu menyimpannya.",
           "legalRetention": "{count,plural,one{# Catatan penagihan Louez akan disimpan} other{# Catatan penagihan Louez akan disimpan}} selama 10 tahun setelah tahun keuangan ditutup, dalam arsip terpisah dengan akses terbatas.",
+          "googleCalendarNotice": "Louez akan menghapus kalender yang dibuatnya di Google Kalender Anda. Jika Google tidak lagi memberi Louez akses, kalender itu tetap ada di akun Google Anda dan Anda dapat menghapusnya dari Google Kalender.",
           "confirmationLabel": "Masukkan {email} untuk mengonfirmasi",
           "passwordLabel": "Kata sandi saat ini",
           "passwordRequired": "Masukkan kata sandi Anda saat ini.",

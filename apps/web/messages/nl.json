@@ -5703,6 +5703,7 @@
           "membershipsLeft": "U verlaat ook {count, plural, one {# andere winkel} other {# andere winkels}} waarvan u lid bent.",
           "businessDocumentsDeleted": "{count, plural, one {# bedrijfsfactuur van uw winkel wordt uit Louez verwijderd} other {# bedrijfsfacturen van uw winkels worden uit Louez verwijderd}}. Exporteer ze eerst als u ze moet bewaren.",
           "legalRetention": "{count, plural, one {# Louez-facturatiebewijs wordt} other {# Louez-facturatiebewijzen worden}} 10 jaar na afsluiting van het boekjaar bewaard in een afzonderlijk archief met beperkte toegang.",
+          "googleCalendarNotice": "Louez verwijdert de agenda die het in uw Google Agenda heeft aangemaakt. Geeft Google Louez daar geen toegang meer toe, dan blijft die agenda in uw Google-account staan en kunt u hem zelf verwijderen in Google Agenda.",
           "confirmationLabel": "Voer {email} in om te bevestigen",
           "passwordLabel": "Huidig wachtwoord",
           "passwordRequired": "Voer uw huidige wachtwoord in.",
