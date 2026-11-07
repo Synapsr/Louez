@@ -38,6 +38,7 @@ import { useAppForm } from "@/hooks/form/form";
 import { apiErrorKey } from "@/lib/orpc/errors";
 import { orpc } from "@/lib/orpc/react";
 import { categoriesQueries } from "@/lib/queries/categories.queries";
+import { productsQueries } from "@/lib/queries/products.queries";
 
 import { ProductAssuranceSection } from "./components/product-assurance-section";
 import { ProductFormEditToc } from "./components/product-form-edit-toc";
@@ -51,7 +52,6 @@ import { ProductImageEnhanceDialog } from "./components/product-image-enhance-di
 import { ProductImageEnhancePromoDialog } from "./components/product-image-enhance-promo-dialog";
 import { useProductFormMedia } from "./hooks/use-product-form-media";
 import { useProductFormMutations } from "./hooks/use-product-form-mutations";
-import { getProductSeasonalPricings } from "./seasonal-actions";
 import type {
   BookingAttributeAxisData,
   Category,
@@ -202,16 +202,24 @@ export function ProductForm({
   const [selectedSeasonalPeriodId, setSelectedSeasonalPeriodId] = useState<string | null>(null);
   const [isLoadingSeasonalPricings, setIsLoadingSeasonalPricings] = useState(false);
 
+  // Seasons save themselves (see use-seasonal-pricing-draft): the form keeps
+  // its own copy, read fresh from the API each time it loads them.
+  const loadSeasonalPricings = useCallback(
+    (productId: string) => {
+      setIsLoadingSeasonalPricings(true);
+      queryClient
+        .fetchQuery({ ...productsQueries.seasonalPricings(productId), staleTime: 0 })
+        .then((result) => setSeasonalPricings(result.items))
+        .catch(() => undefined)
+        .finally(() => setIsLoadingSeasonalPricings(false));
+    },
+    [queryClient],
+  );
+
   useEffect(() => {
     if (!product?.id) return;
-    setIsLoadingSeasonalPricings(true);
-    getProductSeasonalPricings(product.id).then((result) => {
-      if (result && "data" in result) {
-        setSeasonalPricings(result.data as SeasonalPricingData[]);
-      }
-      setIsLoadingSeasonalPricings(false);
-    });
-  }, [product?.id]);
+    loadSeasonalPricings(product.id);
+  }, [product?.id, loadSeasonalPricings]);
 
   // When seasonal pricings are emptied (signal to reload), refetch
   useEffect(() => {
@@ -219,14 +227,14 @@ export function ProductForm({
     if (isLoadingSeasonalPricings) return;
     // Only reload if we had a selected period (meaning a duplicate happened)
     if (!selectedSeasonalPeriodId) return;
-    setIsLoadingSeasonalPricings(true);
-    getProductSeasonalPricings(product.id).then((result) => {
-      if (result && "data" in result) {
-        setSeasonalPricings(result.data as SeasonalPricingData[]);
-      }
-      setIsLoadingSeasonalPricings(false);
-    });
-  }, [product?.id, seasonalPricings.length, isLoadingSeasonalPricings, selectedSeasonalPeriodId]);
+    loadSeasonalPricings(product.id);
+  }, [
+    product?.id,
+    seasonalPricings.length,
+    isLoadingSeasonalPricings,
+    selectedSeasonalPeriodId,
+    loadSeasonalPricings,
+  ]);
 
   // Convert product pricing tiers to input format
   const initialPricingTiers: LegacyPricingTierInput[] =

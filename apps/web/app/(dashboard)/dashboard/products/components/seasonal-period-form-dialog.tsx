@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 
+import { useMutation } from '@tanstack/react-query';
 import { CalendarIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useFormatLocale } from '@/hooks/use-format-locale';
@@ -23,14 +24,14 @@ import {
   PopoverTrigger,
 } from '@louez/ui';
 
-import {
-  createSeasonalPricing,
-} from '../seasonal-actions';
+import { orpc } from '@/lib/orpc/react';
+
 import type {
   PriceDurationValue,
   RateTierInput,
   SeasonalPricingData,
 } from '../types';
+import { seasonalPricingErrorMessage } from './util.seasonal-pricing-error';
 
 interface SeasonalPeriodFormDialogProps {
   open: boolean;
@@ -106,6 +107,10 @@ export function SeasonalPeriodFormDialog({
   onUpdated,
 }: SeasonalPeriodFormDialogProps) {
   const t = useTranslations('dashboard.products.form');
+  const tErrors = useTranslations('errors');
+  const { mutateAsync: createSeasonalPricing } = useMutation(
+    orpc.dashboard.products.createSeasonalPricing.mutationOptions(),
+  );
   const { intl: formatLocale, dateFns: calendarLocale } = useFormatLocale();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -182,41 +187,16 @@ export function SeasonalPeriodFormDialog({
           })),
         };
 
-        const result = await createSeasonalPricing(payload);
-
-        if (result && 'error' in result) {
-          setError(t(result.error as any) || result.error || null);
+        let created: SeasonalPricingData;
+        try {
+          created = await createSeasonalPricing(payload);
+        } catch (failure) {
+          setError(seasonalPricingErrorMessage(failure, t, tErrors));
           return;
         }
 
-        if (result && 'id' in result) {
-          // Build the SeasonalPricingData to return
-          const newPeriod: SeasonalPricingData = {
-            id: result.id,
-            name: name.trim(),
-            startDate: startStr,
-            endDate: endStr,
-            price: basePrice,
-            tiers: baseRateTiers.map((tier, index) => ({
-              id: '',
-              period:
-                tier.duration *
-                (tier.unit === 'week'
-                  ? 10080
-                  : tier.unit === 'day'
-                    ? 1440
-                    : tier.unit === 'hour'
-                      ? 60
-                      : 1),
-              price: tier.price.replace(',', '.'),
-              minDuration: null,
-              discountPercent: null,
-              displayOrder: index,
-            })),
-          };
-          onCreated(newPeriod);
-          onOpenChange(false);
-        }
+        onCreated(created);
+        onOpenChange(false);
       }
     });
   };

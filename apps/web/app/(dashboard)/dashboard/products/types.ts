@@ -14,6 +14,8 @@ import type {
 import type { DurationUnit } from "@louez/utils";
 import type { ProductAccessoryLinkInput, ProductInput } from "@louez/validations";
 
+import type { orpcClient } from "@/lib/orpc/client";
+
 export interface Category {
   id: string;
   name: string;
@@ -46,10 +48,8 @@ export interface ProductCounts {
   archived: number;
 }
 
-export interface ProductsList {
-  products: ProductListItem[];
-  counts: ProductCounts;
-}
+/** A page of the products list, as `dashboard.products.list` returns it. */
+export type ProductsList = Awaited<ReturnType<typeof orpcClient.dashboard.products.list>>;
 
 export interface SeasonalPricingData {
   id: string;

@@ -1,28 +1,23 @@
 import { tool } from "ai";
-import { and, desc, eq, exists, gte, inArray, like, lte, or, sql, sum } from "drizzle-orm";
+import { and, desc, eq, exists, gte, inArray, lte, or, sql, sum } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import {
-  categories,
   customers,
   dailyStats,
   db,
-  effectiveProductQuantitySql,
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
-  marketplaceCatalogTombstones,
   loadConsumableReservedQuantities,
   payments,
-  productCategories,
   productStats,
   productUnits,
   products,
   reservationItems,
   reservations,
   stores,
-  nextProductSlug,
 } from "@louez/db";
 import type { AppRouter } from "@louez/api";
 import type { ApiKeyPermissions } from "@louez/db/schema";
@@ -66,6 +61,7 @@ export type AIChatContext = {
 /** The procedures the assistant calls, through a server-side client bound to the user's session. */
 export type AssistantApi = {
   categories: RouterClient<AppRouter["dashboard"]["categories"]>;
+  products: RouterClient<AppRouter["dashboard"]["products"]>;
 };
 
 function assistantApi(ctx: AIChatContext): AssistantApi {
@@ -144,131 +140,93 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         search: z.string().optional().describe("Search by product name"),
       }),
       execute: async ({ status, categoryId, search }) => {
-        requirePermission(ctx, "products", "read");
-
-        const conditions = [eq(products.storeId, ctx.storeId)];
-        if (status && status !== "all") conditions.push(eq(products.status, status));
-        if (categoryId)
-          conditions.push(
-            inArray(
-              products.id,
-              db
-                .select({ id: productCategories.productId })
-                .from(productCategories)
-                .where(eq(productCategories.categoryId, categoryId)),
-            ),
-          );
-        if (search) conditions.push(like(products.name, `%${search}%`));
-
-        const rows = await db
-          .select({
-            id: products.id,
-            name: products.name,
-            price: products.price,
-            deposit: products.deposit,
-            pricingMode: products.pricingMode,
-            stockKind: products.stockKind,
-            quantity: effectiveProductQuantitySql(),
-            status: products.status,
-            categoryName: categories.name,
-          })
-          .from(products)
-          .leftJoin(categories, eq(products.categoryId, categories.id))
-          .where(and(...conditions))
-          .orderBy(products.displayOrder, products.name)
-          .limit(50);
-
-        const [countResult] = await db
-          .select({ total: sql<number>`COUNT(*)` })
-          .from(products)
-          .where(and(...conditions));
-
+        const page = await assistantApi(ctx).products.list({
+          status,
+          categoryIds: categoryId ? [categoryId] : undefined,
+          search,
+          limit: 50,
+        });
         return {
-          products: rows.map((product) => ({
-            ...product,
+          products: page.items.map((product) => ({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            deposit: product.deposit,
+            pricingKind: product.pricingKind,
+            pricingMode: product.pricingMode,
+            stockKind: product.stockKind,
             quantity: product.stockKind === "untracked" ? null : product.quantity,
+            status: product.status,
+            categoryName: product.category?.name ?? null,
           })),
-          total: countResult?.total ?? 0,
+          total: status && status !== "all" ? page.counts[status] : page.counts.all,
+          currency: page.currency,
         };
       },
     }),
 
     get_product: tool({
-      description: "Get detailed information about a specific product",
+      description:
+        "Get detailed information about a specific product: pricing and tiers, stock and units, accessories",
       inputSchema: z.object({
         productId: z.string().describe("The product ID"),
       }),
       execute: async ({ productId }) => {
-        requirePermission(ctx, "products", "read");
-
-        const product = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
-          with: { category: true, pricingTiers: true, units: true },
-        });
-
-        if (!product) return { error: "Product not found" };
-
-        const effectiveQuantity =
-          product.stockKind === "untracked"
-            ? null
-            : product.trackUnits
-              ? product.units.filter((unit) => unit.lifecycleStatus === "active").length
-              : product.quantity;
-
-        return { product: { ...product, quantity: effectiveQuantity } };
+        const product = await assistantApi(ctx).products.get({ id: productId });
+        return {
+          product: {
+            ...product,
+            quantity: product.stockKind === "untracked" ? null : product.quantity,
+          },
+        };
       },
     }),
 
     create_product: tool({
-      description: "Create a new product in the catalog",
+      description:
+        "Create a new product in the catalog. A duration product is priced per base period; tiers are the total price for a longer duration.",
       inputSchema: z.object({
-        name: z.string().min(1).describe("Product name"),
+        name: z.string().min(2).describe("Product name"),
         description: z.string().optional().describe("Product description"),
-        price: z.string().describe('Price per period (e.g. "25.00")'),
+        price: z.string().describe('Price per period, or the fixed price (e.g. "25.00")'),
         deposit: z.string().optional().describe('Deposit amount (e.g. "100.00")'),
-        pricingMode: z.enum(["hour", "day", "week"]).describe("Pricing period"),
-        quantity: z.number().int().min(1).optional().describe("Stock quantity (default 1)"),
+        pricingKind: z
+          .enum(["duration", "fixed"])
+          .optional()
+          .describe("duration (default): priced per period; fixed: one price per item"),
+        pricingMode: z.enum(["hour", "day", "week"]).optional().describe("Pricing period"),
+        rateTiers: z
+          .array(
+            z.object({
+              duration: z.number().int().min(1),
+              unit: z.enum(["hour", "day", "week"]),
+              price: z.string().describe("Total price for exactly this duration"),
+            }),
+          )
+          .optional()
+          .describe("Degressive rates of a duration product"),
+        quantity: z.number().int().min(0).optional().describe("Stock quantity (default 1)"),
         categoryId: z.string().optional().describe("Category ID"),
       }),
-      execute: async ({ name, description, price, deposit, pricingMode, quantity, categoryId }) => {
-        requirePermission(ctx, "products", "write");
-
-        const [created] = await db
-          .insert(products)
-          .values({
-            storeId: ctx.storeId,
-            name,
-            slug: await nextProductSlug(db, ctx.storeId, name),
-            description: description ?? null,
-            price,
-            deposit: deposit ?? "0",
-            pricingMode,
-            quantity: quantity ?? 1,
-            categoryId: categoryId ?? null,
-            status: "active",
-          })
-          .$returningId();
-
-        if (categoryId) {
-          await db.insert(productCategories).values({
-            productId: created.id,
-            categoryId,
-            position: 0,
-          });
-        }
-
+      execute: async ({ categoryId, ...input }) => {
+        const product = await assistantApi(ctx).products.create({
+          ...input,
+          categoryIds: categoryId ? [categoryId] : undefined,
+        });
         return {
-          id: created.id,
-          name,
-          price,
-          pricingMode,
-          quantity: quantity ?? 1,
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          pricingKind: product.pricingKind,
+          pricingMode: product.pricingMode,
+          quantity: product.quantity,
         };
       },
     }),
 
     update_product: tool({
-      description: "Update an existing product",
+      description:
+        "Update an existing product. Send only the fields to change; price alone changes a duration product's base price.",
       inputSchema: z.object({
         productId: z.string().describe("The product ID to update"),
         name: z.string().optional().describe("New product name"),
@@ -279,89 +237,24 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         status: z.enum(["active", "draft", "archived"]).optional().describe("New status"),
       }),
       execute: async ({ productId, ...updates }) => {
-        requirePermission(ctx, "products", "write");
-
-        const existing = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
-          columns: { id: true, status: true },
-        });
-        if (!existing) return { error: "Product not found" };
-
-        const updateData: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(updates)) {
-          if (value !== undefined) updateData[key] = value;
-        }
-
-        if (Object.keys(updateData).length === 0) {
+        if (Object.values(updates).every((value) => value === undefined)) {
           return { error: "No fields to update" };
         }
-        updateData.updatedAt = new Date();
-
-        await db.transaction(async (tx) => {
-          await tx.update(products).set(updateData).where(eq(products.id, productId));
-
-          if (
-            existing.status === "active" &&
-            updates.status !== undefined &&
-            updates.status !== "active"
-          ) {
-            await tx.insert(marketplaceCatalogTombstones).values({
-              entityType: "product",
-              entityId: productId,
-              deletedAt: new Date(),
-            });
-          }
-        });
+        await assistantApi(ctx).products.update({ id: productId, ...updates });
         return { success: true, productId };
       },
     }),
 
     archive_product: tool({
-      description: "Archive a product (soft delete)",
+      description:
+        "Archive a product (soft delete): it leaves the storefront and the catalog; its reservations are kept",
       inputSchema: z.object({
         productId: z.string().describe("The product ID to archive"),
       }),
       execute: async ({ productId }) => {
-        requirePermission(ctx, "products", "write");
-
-        const existing = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
-          columns: { id: true, name: true, status: true },
-        });
-        if (!existing) return { error: "Product not found" };
-
-        const [activeCount] = await db
-          .select({ count: sql<number>`COUNT(*)` })
-          .from(reservationItems)
-          .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-          .where(
-            and(
-              eq(reservationItems.productId, productId),
-              inArray(reservations.status, ["pending", "confirmed", "ongoing"] as const),
-            ),
-          );
-
-        if (activeCount && activeCount.count > 0) {
-          return {
-            error: `Cannot archive: ${activeCount.count} active reservation(s) use this product`,
-          };
-        }
-
-        await db.transaction(async (tx) => {
-          await tx
-            .update(products)
-            .set({ status: "archived", updatedAt: new Date() })
-            .where(eq(products.id, productId));
-
-          if (existing.status === "active") {
-            await tx.insert(marketplaceCatalogTombstones).values({
-              entityType: "product",
-              entityId: productId,
-              deletedAt: new Date(),
-            });
-          }
-        });
-        return { success: true, name: existing.name };
+        const product = await assistantApi(ctx).products.get({ id: productId });
+        await assistantApi(ctx).products.updateStatus({ id: productId, status: "archived" });
+        return { success: true, name: product.name };
       },
     }),
 

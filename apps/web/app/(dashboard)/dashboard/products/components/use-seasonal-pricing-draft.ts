@@ -12,14 +12,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
+
 import { toastManager } from "@louez/ui";
 import { type DurationUnit, minutesToPriceDuration, tierDisplayMaxUnit } from "@louez/utils";
 
 import type { PriceDurationValue } from "@/components/ui/price-duration-input";
 
-import { updateSeasonalPricing } from "../seasonal-actions";
+import { orpc } from "@/lib/orpc/react";
+
 import type { RateTierInput, SeasonalPricingData } from "../types";
 import { usePricingMath } from "./use-pricing-draft";
+import { seasonalPricingErrorMessage } from "./util.seasonal-pricing-error";
 
 export type SeasonalSaveStatus = "idle" | "saving" | "saved";
 
@@ -66,6 +71,11 @@ export function useSeasonalPricingDraft({
   /** Keep edits local without autosave or a flush to the server. */
   readOnly?: boolean;
 }) {
+  const t = useTranslations("dashboard.products.form");
+  const tErrors = useTranslations("errors");
+  const { mutateAsync: updateSeasonalPricing } = useMutation(
+    orpc.dashboard.products.updateSeasonalPricing.mutationOptions(),
+  );
   const [baseRate, setBaseRateState] = useState<PriceDurationValue>({
     price: "",
     duration: fallbackDuration,
@@ -99,25 +109,26 @@ export function useSeasonalPricingDraft({
     const { period: current, baseRate: rate, tiers: rows } = latest.current;
     if (!current) return false;
 
-    const result = await updateSeasonalPricing(current.id, {
-      name: current.name,
-      startDate: current.startDate,
-      endDate: current.endDate,
-      price: rate.price.replace(",", "."),
-      rateTiers: rows.map((tier) => ({
-        price: tier.price.replace(",", "."),
-        duration: tier.duration,
-        unit: tier.unit,
-      })),
-    });
-
-    if (result && "error" in result) {
-      toastManager.add({ title: result.error, type: "error" });
+    try {
+      await updateSeasonalPricing({
+        id: current.id,
+        name: current.name,
+        startDate: current.startDate,
+        endDate: current.endDate,
+        price: rate.price.replace(",", "."),
+        rateTiers: rows.map((tier) => ({
+          price: tier.price.replace(",", "."),
+          duration: tier.duration,
+          unit: tier.unit,
+        })),
+      });
+    } catch (error) {
+      toastManager.add({ title: seasonalPricingErrorMessage(error, t, tErrors), type: "error" });
       return false;
     }
     onPriceSaved(current.id, rate.price.replace(",", "."));
     return true;
-  }, [onPriceSaved, readOnly]);
+  }, [onPriceSaved, readOnly, updateSeasonalPricing, t, tErrors]);
 
   useEffect(() => {
     if (readOnly || !isDirty || !period) return;

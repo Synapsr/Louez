@@ -1,8 +1,11 @@
+import type { Transport } from "./actor";
+
 /**
  * What the agent-ready API takes from the app that serves it: only what is
  * bound to Next.js or to the billing service, and, for now, the image
- * storage (see `StoragePort`). Business code (Stripe, e-mail…) lives in the
- * package as services and adapters, never here.
+ * storage (see `StoragePort`) and the app's effects of a write
+ * (`afterCommit`). Business code (Stripe, e-mail…) lives in the package as
+ * services and adapters, never here.
  *
  * Every handler of the app (RPC, OpenAPI, MCP, uploads) builds the same object
  * and puts it in the context as `ports`.
@@ -11,7 +14,39 @@ export interface ApiPorts {
   /** Features of the plan in force for the store (billing owns plans). */
   planFeatures: (storeId: string) => Promise<{ apiAccess: boolean }>;
   storage: StoragePort;
+  /**
+   * The effects of a committed write that the app still owns: page
+   * revalidation (Next.js), platform notifications (Discord, fromHello) and
+   * product analytics (PostHog). Called once the transaction has committed;
+   * it must never throw, and the answer does not wait for it.
+   */
+  afterCommit: (event: ApiEvent) => void;
 }
+
+/** The store an event happened in, as the app's effects need it. */
+export interface ApiEventStore {
+  id: string;
+  name: string;
+  slug: string;
+  /** The store owner: analytics count the event on them. */
+  ownerUserId: string;
+}
+
+/** What a committed write did, for `afterCommit`. */
+export type ApiEvent =
+  | {
+      type: "product.created";
+      store: ApiEventStore;
+      transport: Transport;
+      productId: string;
+      productName: string;
+      /** Facts about the new product, for analytics. */
+      facts: Record<string, string | number | boolean | null>;
+    }
+  | { type: "product.updated"; store: ApiEventStore; productId: string; productName: string }
+  /** A change the products list shows: status, deletion, duplicate, order. */
+  | { type: "products.changed"; store: ApiEventStore }
+  | { type: "product.seasonalPricing.changed"; store: ApiEventStore; productId: string };
 
 /** How a caller sends the bytes of an upload: one HTTP request, as given. */
 export type UploadTarget =

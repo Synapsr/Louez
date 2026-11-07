@@ -1,5 +1,4 @@
-import { getDashboardProductsList } from '@louez/api/services'
-
+import { serverApi } from '@/lib/api/server-api'
 import { getCurrentStore } from '@/lib/store-context'
 import { getStoreLimits, getStorePlan } from '@/lib/plan-limits'
 import { ProductsPageContent } from './products-page-content'
@@ -34,8 +33,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const categoryIds = parseCategoryIds(params.category)
   const search = params.search?.trim() ?? ''
 
+  const api = await serverApi()
   const [initialData, limits, plan] = await Promise.all([
-    getDashboardProductsList({ storeId: store.id, status, categoryIds, search }),
+    api.products.list({ status, categoryIds, search }),
     getStoreLimits(store.id),
     getStorePlan(store.id),
   ])

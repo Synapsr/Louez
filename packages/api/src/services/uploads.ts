@@ -26,7 +26,10 @@ import type { StoragePort, UploadTarget } from "../platform/ports";
  */
 
 /** Kinds the API takes. The avatar is the user's, not the store's: never here. */
-export const API_UPLOAD_KINDS = ["category"] as const satisfies readonly ImageUploadKind[];
+export const API_UPLOAD_KINDS = [
+  "category",
+  "product",
+] as const satisfies readonly ImageUploadKind[];
 export type ApiUploadKind = (typeof API_UPLOAD_KINDS)[number];
 
 /** How long an upload URL works. */

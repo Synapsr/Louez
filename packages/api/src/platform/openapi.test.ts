@@ -102,7 +102,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories and the stores at short REST paths named after their tools", async () => {
+  test("serves the categories, the products and the stores at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -131,6 +131,23 @@ describe("OpenAPI document", () => {
         "POST /categories/reorder": "categories_reorder",
         "POST /categories/image-uploads": "categories_create_image_upload",
         "POST /categories/image-uploads/complete": "categories_complete_image_upload",
+        "GET /products": "products_list",
+        "POST /products": "products_create",
+        "GET /products/{id}": "products_get",
+        "PATCH /products/{id}": "products_update",
+        "DELETE /products/{id}": "products_delete",
+        "POST /products/{id}/status": "products_update_status",
+        "POST /products/{id}/duplicate": "products_duplicate",
+        "POST /products/reorder": "products_reorder",
+        "POST /products/image-uploads": "products_create_image_upload",
+        "POST /products/image-uploads/complete": "products_complete_image_upload",
+        "GET /products/{id}/activity": "products_get_activity",
+        "GET /products/{id}/reservation-timeline": "products_get_reservation_timeline",
+        "GET /products/{productId}/seasonal-pricings": "products_list_seasonal_pricings",
+        "POST /products/{productId}/seasonal-pricings": "products_create_seasonal_pricing",
+        "PATCH /products/seasonal-pricings/{id}": "products_update_seasonal_pricing",
+        "POST /products/seasonal-pricings/{id}/duplicate": "products_duplicate_seasonal_pricing",
+        "DELETE /products/seasonal-pricings/{id}": "products_delete_seasonal_pricing",
         "GET /stores": "stores_list",
       },
     );
@@ -144,6 +161,10 @@ describe("OpenAPI document", () => {
       "#/components/parameters/LouezConfirmation",
     ]);
     assert.deepEqual(refs("POST /categories"), ["#/components/parameters/IdempotencyKey"]);
+    assert.deepEqual(refs("PATCH /products/{id}"), [
+      "#/components/parameters/IdempotencyKey",
+      "#/components/parameters/LouezConfirmation",
+    ]);
     // Its output is an upload URL: never stored, so no idempotency key.
     assert.deepEqual(refs("POST /categories/image-uploads"), []);
     assert.deepEqual(

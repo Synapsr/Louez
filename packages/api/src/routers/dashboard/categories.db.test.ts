@@ -65,6 +65,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     get storage() {
       return storage;
     },
+    afterCommit: () => {},
   };
 
   before(async () => {

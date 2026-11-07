@@ -6,8 +6,9 @@
  * now live beside the card title, and the three rare actions collapse in here.
  */
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 import { Check, Copy, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
@@ -29,9 +30,11 @@ import {
   toastManager,
 } from "@louez/ui";
 
-import { deleteSeasonalPricing, duplicateSeasonalPricing } from "../seasonal-actions";
+import { orpc } from "@/lib/orpc/react";
+
 import type { SeasonalPricingData } from "../types";
 import type { SeasonalSaveStatus } from "./use-seasonal-pricing-draft";
+import { seasonalPricingErrorMessage } from "./util.seasonal-pricing-error";
 
 export function SeasonalSaveIndicator({ status }: { status: SeasonalSaveStatus }) {
   const t = useTranslations("dashboard.products.form");
@@ -69,35 +72,36 @@ export function SeasonalActionsMenu({
   disabled?: boolean;
 }) {
   const t = useTranslations("dashboard.products.form");
+  const tErrors = useTranslations("errors");
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const duplicateMutation = useMutation(
+    orpc.dashboard.products.duplicateSeasonalPricing.mutationOptions(),
+  );
+  const deleteMutation = useMutation(
+    orpc.dashboard.products.deleteSeasonalPricing.mutationOptions(),
+  );
+  const isPending = duplicateMutation.isPending || deleteMutation.isPending;
 
   const handleDuplicate = async () => {
     // Whatever is still pending in the debounce belongs in the copy.
     await onBeforeDuplicate();
-    startTransition(async () => {
-      const result = await duplicateSeasonalPricing(period.id);
-      if (result && "error" in result) {
-        toastManager.add({ title: result.error, type: "error" });
-        return;
-      }
-      if (result && "id" in result) {
-        toastManager.add({ title: t("seasonDuplicated"), type: "success" });
-        onDuplicated(result.id);
-      }
-    });
+    try {
+      const copy = await duplicateMutation.mutateAsync({ id: period.id });
+      toastManager.add({ title: t("seasonDuplicated"), type: "success" });
+      onDuplicated(copy.id);
+    } catch (error) {
+      toastManager.add({ title: seasonalPricingErrorMessage(error, t, tErrors), type: "error" });
+    }
   };
 
-  const handleDelete = () => {
-    startTransition(async () => {
-      const result = await deleteSeasonalPricing(period.id);
-      if (result && "error" in result) {
-        toastManager.add({ title: result.error, type: "error" });
-        return;
-      }
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync({ id: period.id });
       setConfirmOpen(false);
       onDeleted();
-    });
+    } catch (error) {
+      toastManager.add({ title: seasonalPricingErrorMessage(error, t, tErrors), type: "error" });
+    }
   };
 
   return (

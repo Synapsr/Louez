@@ -43,7 +43,11 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
   let handleMcpRequest: typeof import("./transports/http").handleMcpRequest;
   let httpOptions: import("./transports/http").McpHttpOptions;
 
-  const ports = { planFeatures: async () => ({ apiAccess: true }), storage: createMemoryStorage() };
+  const ports = {
+    planFeatures: async () => ({ apiAccess: true }),
+    storage: createMemoryStorage(),
+    afterCommit: () => {},
+  };
 
   before(async () => {
     tokens = await createTestAccessTokens({ issuer: ISSUER, audience: RESOURCE });
@@ -169,7 +173,7 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.ok(daily.includes("stores_list"));
     assert.ok(daily.includes("list_reservations"), "a daily hand-written tool");
     assert.ok(!daily.includes("categories_list"), "the catalog bundle is not listed");
-    assert.ok(!daily.includes("list_products"));
+    assert.ok(!daily.includes("products_list"));
 
     // Not listed is not forbidden: the call is authorized where it runs.
     const hidden = await withClient(await bearer(), (client) =>
@@ -182,7 +186,8 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       (await client.listTools()).tools.map((tool) => tool.name),
     );
     assert.ok(both.includes("categories_list"));
-    assert.ok(both.includes("list_products"));
+    assert.ok(both.includes("products_list"));
+    assert.ok(!both.includes("list_products"), "a former name is callable, never listed");
 
     const key = await apiKeys.createApiKey({
       db: louezDb.db,

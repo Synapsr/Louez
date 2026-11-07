@@ -78,7 +78,11 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
   let stores: typeof import("../routers/dashboard/stores").dashboardStoresRouter;
   let fixture: ReturnType<typeof import("./testing").createFixtureRouter>;
 
-  const ports = { planFeatures: async () => ({ apiAccess: true }), storage: createMemoryStorage() };
+  const ports = {
+    planFeatures: async () => ({ apiAccess: true }),
+    storage: createMemoryStorage(),
+    afterCommit: () => {},
+  };
 
   before(async () => {
     tokens = await createTestAccessTokens({ issuer: ISSUER, audience: RESOURCE });

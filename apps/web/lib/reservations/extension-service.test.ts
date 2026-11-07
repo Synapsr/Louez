@@ -169,6 +169,8 @@ const dependencies = {
   markReservation: async (_tx: unknown, row: { id: string }) => {
     marks.push(row.id);
   },
+  // From @louez/db too: no deadlock here, the operation runs once.
+  retryOnceOnDeadlock: <T>(operation: () => Promise<T>) => operation(),
   getStorefrontUrl: (_slug: string, path = "") => `https://example.invalid${path}`,
   generateContract: async () => {
     contractCalls++;

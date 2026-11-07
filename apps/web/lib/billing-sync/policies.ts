@@ -11,6 +11,7 @@ import {
   markStore,
   policyInvoicing,
   policyReservations,
+  isDatabaseDeadlock,
 } from "@louez/db";
 
 import { type BillingAlerts, createBillingAlerts } from "@/lib/billing-sync/alerts";
@@ -34,7 +35,6 @@ import {
   readSyncState,
   updateSyncState,
 } from "@/lib/billing-sync/state";
-import { isDatabaseDeadlock } from "@/lib/db/retry-once-on-deadlock";
 
 // The policy cache (louez-billing docs/api, README §8.1 and §8.2). Louez keeps every
 // (storeId, version) it receives, never deletes or overwrites one, and refuses a

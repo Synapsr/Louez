@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 
-import { DEFAULT_COMBINATION_KEY } from "@louez/utils";
+// @louez/utils is a CommonJS workspace package: its named exports are not
+// statically visible to the ESM loader, so read it through require.
+const { DEFAULT_COMBINATION_KEY } = createRequire(import.meta.url)("@louez/utils") as {
+  DEFAULT_COMBINATION_KEY: string;
+};
 
 import {
   type TrackedUnitCapacityReservation,
   hasTrackedUnitCapacityConflict,
   shouldValidateTrackedUnitCapacity,
-} from "./util.product-unit-capacity";
+} from "./product-unit-capacity";
 
 const now = new Date("2026-07-29T08:00:00.000Z");
 

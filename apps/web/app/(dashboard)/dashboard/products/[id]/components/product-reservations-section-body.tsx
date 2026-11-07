@@ -29,7 +29,7 @@ import type {
 } from '@/app/(dashboard)/dashboard/reservations/reservations-types';
 import { EmptyState } from '@/components/ui/empty-state';
 
-import type { ProductTimelineData } from '../reservation-timeline-actions';
+import type { ProductTimelineData } from './reservations-timeline/types';
 
 import { ProductReservationsTimeline } from './reservations-timeline/product-reservations-timeline';
 

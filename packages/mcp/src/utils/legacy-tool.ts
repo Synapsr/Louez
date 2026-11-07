@@ -114,7 +114,7 @@ export function legacyTool<Shape extends z.ZodRawShape>(
         requirePermission(ctx, scope.domain, scope.level, scope.role);
         await ctx.countCall();
         // Known limit, accepted until these tools become procedures (lots
-        // 2a/2c reservations and payments, 3 products): the preview's state is
+        // 2a/2c reservations and payments): the preview's state is
         // read and the token checked here, outside the transaction the
         // handler writes in, so a change landing between this check and the
         // write is not caught. A procedure asks under its domain's lock

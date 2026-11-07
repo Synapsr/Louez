@@ -48,7 +48,11 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
   let mcpCall: (authorization: string, name: string, args: object) => Promise<ToolResult>;
   let mcpTools: (authorization: string) => Promise<string[]>;
 
-  const ports = { planFeatures: async () => ({ apiAccess: true }), storage: createMemoryStorage() };
+  const ports = {
+    planFeatures: async () => ({ apiAccess: true }),
+    storage: createMemoryStorage(),
+    afterCommit: () => {},
+  };
 
   before(async () => {
     database = await createTestDatabase("api_categories_transports");

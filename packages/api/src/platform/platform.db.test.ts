@@ -31,7 +31,11 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
   let zod: typeof import("zod");
 
   let apiAccess = true;
-  const ports = { planFeatures: async () => ({ apiAccess }), storage: createMemoryStorage() };
+  const ports = {
+    planFeatures: async () => ({ apiAccess }),
+    storage: createMemoryStorage(),
+    afterCommit: () => {},
+  };
 
   before(async () => {
     database = await createTestDatabase("agent_platform");

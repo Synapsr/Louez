@@ -16,7 +16,7 @@ export * from "./notification-settings";
 export * from "./onboarding";
 export * from "./product-activity";
 export * from "./product-unit-history";
-export * from "./products-dashboard";
+export * from "./accessory-candidates";
 export * from "./push-notifications";
 export * from "./reservation-poll";
 export * from "./reservation-sign";

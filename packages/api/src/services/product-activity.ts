@@ -1,13 +1,10 @@
-import { and, desc, eq, lt, or } from "drizzle-orm";
+import { and, desc, eq, lt, or, type SQL } from "drizzle-orm";
 
 import { db, productUnitEvents, productUnits } from "@louez/db";
 
-export const PRODUCT_ACTIVITY_PAGE_SIZE = 12;
+import { productErrors } from "../contracts/products";
 
-export interface ProductUnitActivityCursor {
-  createdAt: string;
-  id: string;
-}
+const PRODUCT_ACTIVITY_PAGE_SIZE = 12;
 
 export interface ProductUnitActivityItem {
   id: string;
@@ -21,9 +18,14 @@ export interface ProductUnitActivityItem {
 
 export interface ProductUnitActivityPage {
   items: ProductUnitActivityItem[];
-  nextCursor: ProductUnitActivityCursor | null;
+  /** The id of the page's last event; null on the last page. */
+  nextCursor: string | null;
 }
 
+/**
+ * One page of the unit events of a product, newest first. The cursor is the
+ * id of the previous page's last event, read back in the store.
+ */
 export const getProductUnitActivityPage = async ({
   storeId,
   productId,
@@ -32,17 +34,22 @@ export const getProductUnitActivityPage = async ({
 }: {
   storeId: string;
   productId: string;
-  cursor?: ProductUnitActivityCursor;
+  cursor?: string;
   limit?: number;
 }): Promise<ProductUnitActivityPage> => {
-  const cursorDate = cursor ? new Date(cursor.createdAt) : null;
-  const cursorCondition =
-    cursor && cursorDate
-      ? or(
-          lt(productUnitEvents.createdAt, cursorDate),
-          and(eq(productUnitEvents.createdAt, cursorDate), lt(productUnitEvents.id, cursor.id)),
-        )
-      : undefined;
+  let cursorCondition: SQL | undefined;
+  if (cursor) {
+    const [after] = await db
+      .select({ createdAt: productUnitEvents.createdAt, id: productUnitEvents.id })
+      .from(productUnitEvents)
+      .where(and(eq(productUnitEvents.id, cursor), eq(productUnitEvents.storeId, storeId)))
+      .limit(1);
+    if (!after) throw productErrors.invalidCursor("products_get_activity");
+    cursorCondition = or(
+      lt(productUnitEvents.createdAt, after.createdAt),
+      and(eq(productUnitEvents.createdAt, after.createdAt), lt(productUnitEvents.id, after.id)),
+    );
+  }
 
   const rows = await db
     .select({
@@ -74,8 +81,5 @@ export const getProductUnitActivityPage = async ({
   }));
   const lastItem = items.at(-1);
 
-  return {
-    items,
-    nextCursor: hasNextPage && lastItem ? { createdAt: lastItem.createdAt, id: lastItem.id } : null,
-  };
+  return { items, nextCursor: hasNextPage && lastItem ? lastItem.id : null };
 };

@@ -148,13 +148,15 @@ export function registerExposedTools(
       call: (args) => callProcedure(entry, ctx, args),
     });
 
-    // Former names: callable, never listed, the old argument names mapped on.
+    // Former names: callable, never listed, the old argument names mapped on
+    // and the arguments the old tool implied set.
     for (const alias of entry.meta.mcp.aliases ?? []) {
       const renamed = Object.entries(alias.renamedArgs ?? {});
+      const fixed = alias.fixedArgs ?? {};
       addTool(server, {
         name: alias.name,
         description: `Former name of ${name}, kept for agents set up before. ${description}`,
-        inputSchema: aliasInputSchema(toolInputSchema(entry, ctx), renamed),
+        inputSchema: aliasInputSchema(toolInputSchema(entry, ctx), renamed, Object.keys(fixed)),
         annotations,
         listed: false,
         call: (args) => {
@@ -165,20 +167,28 @@ export function registerExposedTools(
               delete mapped[from];
             }
           }
-          return callProcedure(entry, ctx, mapped);
+          return callProcedure(entry, ctx, { ...mapped, ...fixed });
         },
       });
     }
   }
 }
 
-/** The tool's input schema with the new argument names put back to the old ones. */
+/**
+ * The tool's input schema with the new argument names put back to the old
+ * ones, without the arguments the alias sets itself.
+ */
 function aliasInputSchema(
   schema: Tool["inputSchema"],
   renamed: ReadonlyArray<[from: string, to: string]>,
+  fixed: readonly string[],
 ): Tool["inputSchema"] {
   const properties: Record<string, unknown> = { ...schema.properties };
   let required = schema.required ? [...schema.required] : undefined;
+  for (const field of fixed) {
+    delete properties[field];
+    required = required?.filter((name) => name !== field);
+  }
   for (const [from, to] of renamed) {
     if (to in properties) {
       properties[from] = properties[to];

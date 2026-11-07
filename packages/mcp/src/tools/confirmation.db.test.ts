@@ -20,7 +20,6 @@ process.env.BILLING_SERVICE_URL = "http://localhost:3100";
 
 const STORE = "store_mcp_confirm";
 const USER = "user_mcp_confirm";
-const PRODUCT = "prod_mcp_confirm_001";
 const permissions = {
   reservations: "write",
   products: "write",
@@ -49,7 +48,6 @@ describe(
 
     async function connect(confirmSensitive: boolean) {
       const { registerPaymentTools } = await import("./payments");
-      const { registerProductTools } = await import("./products");
       const { registerReservationTools } = await import("./reservations");
       const { testRequestContext } = await import("../testing/reservation-tools-client");
       const ctx = testRequestContext({
@@ -71,7 +69,6 @@ describe(
           recorded.push(payment);
         },
       });
-      registerProductTools(server, ctx);
       const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
       await server.connect(serverTransport);
       const client = new Client({ name: "test", version: "0.0.0" });
@@ -194,33 +191,7 @@ describe(
       assert.equal(recorded.length, 0);
     });
 
-    test("archiving and deleting wait for the confirmation", async () => {
-      await louezDb.db.insert(louezDb.products).values({
-        id: PRODUCT,
-        storeId: STORE,
-        name: "Kayak",
-        price: "40.00",
-        pricingMode: "day",
-      });
-      const token = confirmationToken(
-        await confirming.callTool({ name: "archive_product", arguments: { productId: PRODUCT } }),
-      );
-      const before = await louezDb.db.query.products.findFirst({
-        where: eq(louezDb.products.id, PRODUCT),
-        columns: { status: true },
-      });
-      assert.notEqual(before?.status, "archived");
-      const archived = await confirming.callTool({
-        name: "archive_product",
-        arguments: { productId: PRODUCT, confirmationToken: token },
-      });
-      assert.notEqual(archived.isError, true, JSON.stringify(archived.content));
-      const after = await louezDb.db.query.products.findFirst({
-        where: eq(louezDb.products.id, PRODUCT),
-        columns: { status: true },
-      });
-      assert.equal(after?.status, "archived");
-
+    test("deleting a payment waits for the confirmation", async () => {
       const id = await reservation("confirmed");
       const [payment] = await louezDb.db
         .insert(louezDb.payments)
@@ -239,85 +210,6 @@ describe(
         where: eq(louezDb.payments.id, payment.id),
       });
       assert.ok(kept, "the payment is still there");
-    });
-
-    test("update_product asks before archiving or deleting prices, not for a plain edit", async () => {
-      const id = "prod_mcp_confirm_002";
-      await louezDb.db.insert(louezDb.products).values({
-        id,
-        storeId: STORE,
-        name: "Canoe",
-        price: "60.00",
-        pricingMode: "day",
-        status: "active",
-      });
-      await louezDb.db.insert(louezDb.productPricingTiers).values({
-        productId: id,
-        minDuration: 3,
-        discountPercent: "10",
-      });
-      await louezDb.db.insert(louezDb.productSeasonalPricing).values({
-        productId: id,
-        name: "Summer",
-        startDate: "2027-06-01",
-        endDate: "2027-08-31",
-        price: "80.00",
-      });
-      const product = () =>
-        louezDb.db.query.products.findFirst({
-          where: eq(louezDb.products.id, id),
-          columns: { name: true, status: true, pricingKind: true },
-        });
-      const tiers = async () =>
-        (
-          await louezDb.db
-            .select()
-            .from(louezDb.productPricingTiers)
-            .where(eq(louezDb.productPricingTiers.productId, id))
-        ).length +
-        (
-          await louezDb.db
-            .select()
-            .from(louezDb.productSeasonalPricing)
-            .where(eq(louezDb.productSeasonalPricing.productId, id))
-        ).length;
-
-      // A plain edit runs at once, even with confirmation on.
-      const renamed = await confirming.callTool({
-        name: "update_product",
-        arguments: { productId: id, name: "Canoe XL" },
-      });
-      assert.notEqual(renamed.isError, true, JSON.stringify(renamed.content));
-      assert.equal((await product())?.name, "Canoe XL");
-
-      // Archiving waits.
-      confirmationToken(
-        await confirming.callTool({
-          name: "update_product",
-          arguments: { productId: id, status: "archived" },
-        }),
-      );
-      assert.equal((await product())?.status, "active");
-
-      // Fixed pricing would delete the tier and the seasonal price: it waits too.
-      const args = { productId: id, pricingKind: "fixed" };
-      const first = await confirming.callTool({ name: "update_product", arguments: args });
-      const token = confirmationToken(first);
-      assert.match(JSON.stringify(first.content), /1 pricing tier\(s\) and 1 seasonal price\(s\)/);
-      assert.equal(await tiers(), 2);
-      assert.equal((await product())?.pricingKind, "duration");
-
-      const done = await confirming.callTool({
-        name: "update_product",
-        arguments: { ...args, confirmationToken: token },
-      });
-      assert.notEqual(done.isError, true, JSON.stringify(done.content));
-      assert.equal(await tiers(), 0);
-      assert.equal((await product())?.pricingKind, "fixed");
-
-      // Fixed again, with nothing left to delete: a plain edit.
-      const again = await confirming.callTool({ name: "update_product", arguments: args });
-      assert.notEqual(again.isError, true, JSON.stringify(again.content));
     });
 
     test("a connection with confirmation off runs at once", async () => {

@@ -69,7 +69,11 @@ export function testRequestContext(input: {
     userId: input.userId,
     storeName: input.storeName ?? "Test store",
     headers: new Headers(),
-    ports: { planFeatures: async () => ({ apiAccess: true }), storage: createMemoryStorage() },
+    ports: {
+      planFeatures: async () => ({ apiAccess: true }),
+      storage: createMemoryStorage(),
+      afterCommit: () => {},
+    },
     countCall: async () => undefined,
   };
 }

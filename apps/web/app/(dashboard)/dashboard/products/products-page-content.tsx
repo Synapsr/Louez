@@ -72,7 +72,7 @@ export function ProductsPageContent({
   })
   const categoriesQuery = useQuery(categoriesQueries.list())
 
-  const products = productsQuery.data?.products ?? []
+  const products = productsQuery.data?.items ?? []
   const counts = productsQuery.data?.counts ?? EMPTY_COUNTS
 
   // Determine which products to show vs blur

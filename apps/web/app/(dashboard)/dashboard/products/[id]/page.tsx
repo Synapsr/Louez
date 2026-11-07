@@ -5,10 +5,10 @@ import { getLocale } from "next-intl/server";
 
 import { db } from "@louez/db";
 import { products } from "@louez/db";
-import { PRODUCT_ACTIVITY_PAGE_SIZE, getProductUnitActivityPage } from "@louez/api/services";
 
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 
+import { serverApi } from "@/lib/api/server-api";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { ProductActivityFeed } from "./components/product-activity-feed";
@@ -118,11 +118,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         pageSize: RESERVATIONS_PAGE_SIZE,
       }),
       product.trackUnits
-        ? getProductUnitActivityPage({
-            storeId: store.id,
-            productId: id,
-            limit: PRODUCT_ACTIVITY_PAGE_SIZE,
-          })
+        ? serverApi().then((api) => api.products.getActivity({ id }))
         : Promise.resolve({ items: [], nextCursor: null }),
     ]);
 

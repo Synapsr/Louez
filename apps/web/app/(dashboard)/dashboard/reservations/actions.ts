@@ -28,6 +28,7 @@ import {
   markReservation,
   reconcileReservationStock,
   reservationStatusConsumesStock,
+  retryOnceOnDeadlock,
 } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
@@ -174,12 +175,11 @@ import {
 } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
 import { evaluateReservationRules } from "@/lib/utils/reservation-rules";
-import { buildUnitEvent } from "@/lib/utils/unit-mutations";
+import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
   resolveUnitAssignmentScope,
   unitMatchesAssignmentScope,
 } from "@/lib/utils/unit-availability";
-import { retryOnceOnDeadlock } from "@/lib/db/retry-once-on-deadlock";
 
 function getActionErrorKey(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.startsWith("errors.")) {

@@ -537,9 +537,12 @@ export const createCategorySchema = (
     imageUrl: storedImageUrlSchema.optional().nullable(),
   });
 
-// Default schemas for server-side validation
-export const productSchema = z
-  .preprocess(ignoreDurationPricingForFixed, z.object({
+/**
+ * The fields of a product as the server takes them, before the cross-field
+ * rules of `productSchema`. The API contract reuses them to describe its
+ * input; `productSchema` stays the one validation.
+ */
+export const productFieldsSchema = z.object({
     name: z
       .string()
       .min(2, 'validation.minLength')
@@ -589,7 +592,11 @@ export const productSchema = z
       .array(bookingAttributeAxisSchema)
       .max(3, 'validation.maxItems')
       .optional(),
-  }))
+  });
+
+// Default schemas for server-side validation
+export const productSchema = z
+  .preprocess(ignoreDurationPricingForFixed, productFieldsSchema)
   .superRefine((data, ctx) => {
     if (data.pricingKind === 'fixed') {
       if (

@@ -3,17 +3,14 @@
 import { useState } from 'react';
 
 import { useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import { toastManager } from '@louez/ui';
 
-import {
-  deleteProduct,
-  duplicateProduct,
-  updateProductStatus,
-} from '@/app/(dashboard)/dashboard/products/actions';
-import { invalidateProductsList } from '@/lib/orpc/invalidation';
+import { apiErrorKey } from '@/lib/orpc/errors';
+import { orpc } from '@/lib/orpc/react';
+import { productsQueries } from '@/lib/queries/products.queries';
 
 type ProductStatus = 'draft' | 'active' | 'archived' | null;
 
@@ -21,11 +18,6 @@ export interface ActionableProduct {
   id: string;
   status: ProductStatus;
 }
-
-type ProductActionResult = {
-  error?: string;
-  failedUnitIdentifiers?: string[];
-};
 
 /**
  * Shared mutation logic for product status/duplicate/delete actions.
@@ -44,27 +36,29 @@ export function useProductActions({ readOnly = false }: { readOnly?: boolean } =
    * by the server — both need refreshing after a mutation.
    */
   const refreshProducts = async () => {
-    await invalidateProductsList(queryClient);
+    await queryClient.invalidateQueries({ queryKey: productsQueries.key() });
     router.refresh();
   };
+
+  const statusMutation = useMutation(orpc.dashboard.products.updateStatus.mutationOptions());
+  const duplicateMutation = useMutation(orpc.dashboard.products.duplicate.mutationOptions());
+  const deleteMutation = useMutation(orpc.dashboard.products.delete.mutationOptions());
 
   const [isLoading, setIsLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] =
     useState<ActionableProduct | null>(null);
 
-  const getActionErrorMessage = (result: ProductActionResult) => {
-    const errorKey = result.error?.startsWith('errors.')
-      ? result.error.replace('errors.', '')
-      : null;
-    const message = errorKey && result.error ? tErrors(errorKey) : result.error;
-    const identifiers = result.failedUnitIdentifiers?.filter(Boolean);
-
-    if (identifiers && identifiers.length > 0) {
-      return `${message || tErrors('generic')} (${identifiers.join(', ')})`;
-    }
-
-    return message || tErrors('generic');
+  /** The error's message; the units a reservation holds are named after it. */
+  const getActionErrorMessage = (error: unknown) => {
+    const key = apiErrorKey(error);
+    const message = key && tErrors.has(key) ? tErrors(key) : tErrors('generic');
+    const details = (error as { data?: { details?: { identifiers?: unknown } } } | null)?.data
+      ?.details;
+    const identifiers = Array.isArray(details?.identifiers)
+      ? details.identifiers.filter((identifier): identifier is string => Boolean(identifier))
+      : [];
+    return identifiers.length > 0 ? `${message} (${identifiers.join(', ')})` : message;
   };
 
   const handleStatusToggle = async (product: ActionableProduct) => {
@@ -72,24 +66,17 @@ export function useProductActions({ readOnly = false }: { readOnly?: boolean } =
     const newStatus = product.status === 'active' ? 'draft' : 'active';
     setIsLoading(true);
     try {
-      const result = await updateProductStatus(product.id, newStatus);
-      if (result.error) {
-        toastManager.add({
-          title: getActionErrorMessage(result),
-          type: 'error',
-        });
-      } else {
-        toastManager.add({
-          title:
-            newStatus === 'active'
-              ? t('productPublished')
-              : t('productUnpublished'),
-          type: 'success',
-        });
-        await refreshProducts();
-      }
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+      await statusMutation.mutateAsync({ id: product.id, status: newStatus });
+      toastManager.add({
+        title:
+          newStatus === 'active'
+            ? t('productPublished')
+            : t('productUnpublished'),
+        type: 'success',
+      });
+      await refreshProducts();
+    } catch (error) {
+      toastManager.add({ title: getActionErrorMessage(error), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -99,18 +86,11 @@ export function useProductActions({ readOnly = false }: { readOnly?: boolean } =
     if (readOnly) return;
     setIsLoading(true);
     try {
-      const result = await updateProductStatus(product.id, 'archived');
-      if (result.error) {
-        toastManager.add({
-          title: getActionErrorMessage(result),
-          type: 'error',
-        });
-      } else {
-        toastManager.add({ title: t('productArchived'), type: 'success' });
-        await refreshProducts();
-      }
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+      await statusMutation.mutateAsync({ id: product.id, status: 'archived' });
+      toastManager.add({ title: t('productArchived'), type: 'success' });
+      await refreshProducts();
+    } catch (error) {
+      toastManager.add({ title: getActionErrorMessage(error), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -120,18 +100,11 @@ export function useProductActions({ readOnly = false }: { readOnly?: boolean } =
     if (readOnly) return;
     setIsLoading(true);
     try {
-      const result = await duplicateProduct(product.id);
-      if (result.error) {
-        toastManager.add({
-          title: getActionErrorMessage(result),
-          type: 'error',
-        });
-      } else {
-        toastManager.add({ title: t('productDuplicated'), type: 'success' });
-        await refreshProducts();
-      }
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+      await duplicateMutation.mutateAsync({ id: product.id });
+      toastManager.add({ title: t('productDuplicated'), type: 'success' });
+      await refreshProducts();
+    } catch (error) {
+      toastManager.add({ title: getActionErrorMessage(error), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -154,23 +127,16 @@ export function useProductActions({ readOnly = false }: { readOnly?: boolean } =
 
     setIsLoading(true);
     try {
-      const result = await deleteProduct(productToDelete.id);
-      if (result.error) {
-        toastManager.add({
-          title: getActionErrorMessage(result),
-          type: 'error',
-        });
+      await deleteMutation.mutateAsync({ id: productToDelete.id });
+      toastManager.add({ title: t('productDeleted'), type: 'success' });
+      if (options?.redirectTo) {
+        await queryClient.invalidateQueries({ queryKey: productsQueries.key() });
+        router.push(options.redirectTo);
       } else {
-        toastManager.add({ title: t('productDeleted'), type: 'success' });
-        if (options?.redirectTo) {
-          await invalidateProductsList(queryClient);
-          router.push(options.redirectTo);
-        } else {
-          await refreshProducts();
-        }
+        await refreshProducts();
       }
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+    } catch (error) {
+      toastManager.add({ title: getActionErrorMessage(error), type: 'error' });
     } finally {
       setIsLoading(false);
       setDeleteDialogOpen(false);

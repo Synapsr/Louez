@@ -1,7 +1,6 @@
 import { getAccessoryCandidates } from "@louez/api/services";
-import { categories, db } from "@louez/db";
+import { serverApi } from "@/lib/api/server-api";
 import { getCurrentStore } from "@/lib/store-context";
-import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -22,11 +21,10 @@ export default async function NewProductPage() {
     redirect("/onboarding");
   }
 
-  const [categoriesList, availableAccessories] = await Promise.all([
-    db.query.categories.findMany({
-      where: eq(categories.storeId, store.id),
-      orderBy: [categories.order],
-    }),
+  const api = await serverApi();
+  // The form reads every category itself; the first page shows until then.
+  const [categoriesPage, availableAccessories] = await Promise.all([
+    api.categories.list({}),
     getAccessoryCandidates({ storeId: store.id }),
   ]);
 
@@ -41,7 +39,7 @@ export default async function NewProductPage() {
 
       <ProductForm
         key="new-product"
-        categories={categoriesList}
+        categories={categoriesPage.items}
         availableAccessories={availableAccessories}
         storeTaxSettings={store.settings?.tax}
         currency={store.settings?.currency ?? "EUR"}

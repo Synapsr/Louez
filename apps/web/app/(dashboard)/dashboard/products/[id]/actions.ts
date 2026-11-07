@@ -19,6 +19,7 @@ import {
   reservationItemUnits,
   reservationItems,
   reservations,
+  retryOnceOnDeadlock,
 } from '@louez/db';
 import { buildCombinationKey } from '@louez/utils';
 import {
@@ -43,7 +44,7 @@ import {
 import { auth } from '@/lib/auth';
 import { getCurrentStore } from '@/lib/store-context';
 import { getUnitConflicts } from '@/lib/utils/unit-conflicts';
-import { buildUnitEvent, updateUnits } from '@/lib/utils/unit-mutations';
+import { buildUnitEvent, updateUnits } from '@louez/api/services/unit-mutations';
 import {
   lockReservationProducts,
   reserveInventory,
@@ -52,7 +53,6 @@ import {
   resolveUnitAssignmentScope,
   unitMatchesAssignmentScope,
 } from '@/lib/utils/unit-availability';
-import { retryOnceOnDeadlock } from '@/lib/db/retry-once-on-deadlock';
 
 async function getStoreForUser() {
   return getCurrentStore();

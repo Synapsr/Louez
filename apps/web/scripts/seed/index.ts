@@ -31,7 +31,7 @@ import {
   PAYG_LADDER_V1,
   buildFrozenPayAsYouGoConfig,
 } from '../../lib/pay-as-you-go/pricing-lock-core';
-import { createUnits } from '../../lib/utils/unit-mutations';
+import { createUnits } from '@louez/api/services/unit-mutations';
 import {
   STORE_CONFIGS,
   type StoreConfig,

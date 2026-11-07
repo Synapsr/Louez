@@ -1,5 +1,6 @@
 import type { ApiPorts } from "@louez/api";
 
+import { runAfterCommit } from "@/lib/api/after-commit";
 import { getStorePlan } from "@/lib/plan-limits";
 import { apiStorage } from "@/lib/storage/api-storage";
 
@@ -13,4 +14,5 @@ export const apiPorts: ApiPorts = {
     return { apiAccess: plan.features.apiAccess };
   },
   storage: apiStorage,
+  afterCommit: runAfterCommit,
 };

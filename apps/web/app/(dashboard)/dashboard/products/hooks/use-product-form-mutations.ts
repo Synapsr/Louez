@@ -1,14 +1,16 @@
 import { useCallback, useRef } from "react";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 import type { ProductInput } from "@louez/validations";
 import type { ProductImageHistory } from "@louez/types";
 
 import { useImageUpload } from "@/hooks/use-image-upload";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpcClient } from "@/lib/orpc/client";
+import { productsQueries } from "@/lib/queries/products.queries";
 
-import { createProduct, updateProduct } from "../actions";
 import { collectProductImageUrls } from "../utils/util.product-image-history";
 
 interface UseProductFormMutationsParams {
@@ -22,14 +24,12 @@ export interface ProductActionErrorDetails {
   duplicateRateTierIndexes?: number[];
 }
 
-interface ProductActionErrorPayload {
-  error: string;
-  details?: ProductActionErrorDetails;
-}
-
-function isProductActionErrorPayload(value: unknown): value is ProductActionErrorPayload {
-  if (!value || typeof value !== "object") return false;
-  return "error" in value && typeof (value as { error?: unknown }).error === "string";
+/** The API error's code and details, when the save was refused. */
+function errorData(error: unknown): { code?: string; details?: Record<string, unknown> } {
+  const data = (error as { data?: unknown } | null)?.data;
+  return data && typeof data === "object"
+    ? (data as { code?: string; details?: Record<string, unknown> })
+    : {};
 }
 
 export function useProductFormMutations({
@@ -41,21 +41,19 @@ export function useProductFormMutations({
   const { deleteImage } = useImageUpload("product");
   const persistedImagesRef = useRef(collectProductImageUrls(initialImages, initialImageHistory));
 
+  const queryClient = useQueryClient();
   const productMutation = useMutation({
     mutationFn: async (value: ProductInput) => {
       const submittedImages = collectProductImageUrls(value.images ?? [], value.imageHistory ?? []);
       const persistedImages = persistedImagesRef.current;
 
-      const result = productId ? await updateProduct(productId, value) : await createProduct(value);
-
-      if (result.error) {
-        // Keep freshly uploaded files available for a retry. The media hook
-        // still owns their cleanup if the user removes them or leaves the form.
-        throw {
-          error: result.error,
-          details: "details" in result && result.details ? result.details : undefined,
-        } satisfies ProductActionErrorPayload;
-      }
+      // A refused save throws: freshly uploaded files stay available for a
+      // retry. The media hook still owns their cleanup if the user removes
+      // them or leaves the form.
+      const result = productId
+        ? await orpcClient.dashboard.products.update({ ...value, id: productId })
+        : await orpcClient.dashboard.products.create(value);
+      void queryClient.invalidateQueries({ queryKey: productsQueries.key() });
 
       if (productId) {
         const removedImages = persistedImages.filter((image) => !submittedImages.includes(image));
@@ -69,33 +67,24 @@ export function useProductFormMutations({
 
   const getActionErrorMessage = useCallback(
     (error: unknown) => {
-      if (isProductActionErrorPayload(error)) {
-        if (error.error.startsWith("errors.")) {
-          return tErrors(error.error.replace("errors.", ""));
-        }
-
-        return error.error;
-      }
-
-      if (error instanceof Error) {
-        if (error.message.startsWith("errors.")) {
-          return tErrors(error.message.replace("errors.", ""));
-        }
-
-        return error.message;
-      }
-
-      return tErrors("generic");
+      // An input the contract refuses has no key of its own: invalid data.
+      const key =
+        apiErrorKey(error) ??
+        ((error as { code?: unknown } | null)?.code === "BAD_REQUEST" ? "invalidData" : null);
+      return key && tErrors.has(key) ? tErrors(key) : tErrors("generic");
     },
     [tErrors],
   );
 
   const getActionErrorDetails = useCallback(
     (error: unknown): ProductActionErrorDetails | undefined => {
-      if (isProductActionErrorPayload(error)) {
-        return error.details;
-      }
-      return undefined;
+      const { code, details } = errorData(error);
+      if (code !== "PRODUCT_DUPLICATE_RATE_PERIODS") return undefined;
+      const indexes = details?.duplicateRateTierIndexes;
+      return {
+        code: "duplicate_rate_periods",
+        duplicateRateTierIndexes: Array.isArray(indexes) ? (indexes as number[]) : [],
+      };
     },
     [],
   );

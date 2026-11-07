@@ -184,6 +184,14 @@ export async function POST(req: Request) {
           ports: apiPorts,
         },
       }),
+      products: createRouterClient(appRouter.dashboard.products, {
+        context: {
+          headers: storeHeaders(req.headers, store.id),
+          transport: "rpc",
+          ports: apiPorts,
+        },
+        path: ["dashboard", "products"],
+      }),
     },
   };
 
