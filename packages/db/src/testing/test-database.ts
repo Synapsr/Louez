@@ -165,7 +165,8 @@ export async function raceOnOpenTransaction<T>(
   }
 }
 
-async function waitForLockWaits(
+/** Resolves once `count` transactions of the database wait on a lock; fails after 5 seconds. */
+export async function waitForLockWaits(
   connection: mysql.Connection,
   databaseName: string,
   count: number,

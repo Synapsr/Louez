@@ -89,6 +89,12 @@ if (change.changed) await runReservationEffects(change.effects);
 
 Seeds that insert backdated rows set `billableAt` with `initialBillableAt` and stay on the allowlist. `packages/db/src/scripts/reservations-backfill-billable-at.ts` reruns the backfill of migration 0083 with the SQL of the migration file: it writes `billable_at` and `withdrawn_at` outside the helpers, and the test cannot see it.
 
+#### Lock order
+
+A transaction that locks rows of several of these tables takes them in this order: the store row (a domain's write lock, `SELECT … FOR UPDATE` on `stores`), then products by id, then reservations, then product units by id. Checkout (`lockReservationProducts` before the booking), the product writes of packages/api and the store's status changes (`changeStoreReservationStatus`, which locks the reservation's products before `changeReservationStatus` locks the reservation) follow it, so none of them is a deadlock victim of another. Take the locks before the transaction's first plain read, or run it READ COMMITTED: under REPEATABLE READ that first read fixes the snapshot, and a row committed while the transaction waited for a lock is not seen.
+
+The status changes of checkout payments, webhooks and the customer's own account still lock the reservation first. They are not fixed yet; until they are, a product update that changes the stock kind retries once on a deadlock (`retryOnceOnDeadlock`).
+
 ### [DL-13] Writes that change a billing snapshot mark it
 
 With the billing service on, Louez sends it snapshots of stores, reservations and legacy billing (louez-billing `docs/api`). A write that can change a snapshot marks its aggregate in the same transaction, with `markReservation`, `markReservationIds`, `markStoreReservations`, `markStore`, `markLegacyStore`, `markSubscriptionRow` (a `subscriptions` row), `markLegacyMonth` or `markBillingDirty` from `@louez/db`, or `billingMarkStatement` on a raw mysql2 connection. A write with no transaction gets one, with its mark; Stripe calls, emails and fetches stay outside it. `changeReservationStatus` and `insertReservation` mark the reservation themselves. With the service off, the marks write nothing.

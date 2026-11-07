@@ -10,6 +10,7 @@ import {
   createTestDatabase,
   raceOnLockedRow,
   skipWithoutTestDatabase,
+  waitForLockWaits,
   type TestDatabase,
 } from "@louez/db/testing";
 import type { ReservationToolsClient } from "@louez/mcp/testing";
@@ -689,6 +690,40 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
       assert.deepEqual(row?.updatedAt, BEFORE);
       assert.deepEqual(await readActivity(id), []);
     }
+  });
+
+  test("a confirmation waits for a product update holding the product, instead of deadlocking", async () => {
+    const id = await createReservation("pending");
+    const productId = await addItem(id, { stockKind: "returnable", stock: 5, quantity: 1 });
+
+    // A product update changing the stock kind: the product's row first, with
+    // writes behind it, then the product's reservations. The status change has
+    // written nothing, so a deadlock would make it the victim.
+    const holder = await database.connect();
+    let confirmation: Promise<unknown> | undefined;
+    try {
+      await holder.beginTransaction();
+      await holder.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [productId]);
+      for (let index = 0; index < 5; index += 1) {
+        await holder.query(
+          "INSERT INTO product_units (id, product_id, identifier) VALUES (?, ?, ?)",
+          [nextId("unt"), productId, `LOCK-${index}`],
+        );
+      }
+      confirmation = askAssistant({ reservationId: id, status: "confirmed" }).then(
+        (answer) => answer,
+        (error: unknown) => ({ thrown: String(error) }),
+      );
+      await waitForLockWaits(holder, database.name, 1);
+      await holder.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+      await holder.rollback();
+    } finally {
+      await holder.end();
+    }
+
+    const answer = await confirmation;
+    assert.ok(answer && typeof answer === "object" && "success" in answer, JSON.stringify(answer));
+    assert.equal((await readReservation(id))?.status, "confirmed");
   });
 
   test("of an assistant and an MCP confirmation at once, the second is refused", async () => {

@@ -533,15 +533,17 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
 
     let cancellation: ChangeReservationStatusResult;
     try {
-      cancellation = await db.transaction((tx) =>
-        changeStoreReservationStatus(tx, {
-          reservationId,
-          storeId: store.id,
-          to: "cancelled",
-          actor,
-          actorUserId,
-          dates: { startDate: reservation.startDate, endDate: reservation.endDate },
-        }),
+      cancellation = await db.transaction(
+        (tx) =>
+          changeStoreReservationStatus(tx, {
+            reservationId,
+            storeId: store.id,
+            to: "cancelled",
+            actor,
+            actorUserId,
+            dates: { startDate: reservation.startDate, endDate: reservation.endDate },
+          }),
+        { isolationLevel: "read committed" },
       );
     } catch (error) {
       const unavailable = toUnavailable(error);
