@@ -4,6 +4,10 @@ import { after, before, beforeEach, describe, mock, test } from "node:test";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import type { RouterClient } from "@orpc/server";
+
+import type { BaseContext } from "../../context";
+
 import { createMemoryStorage, type MemoryStorage } from "../../platform/memory-storage";
 
 // What the upload tokens and the image ownership checks read, before the
@@ -102,8 +106,6 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
 
   // --- Callers --------------------------------------------------------------
 
-  type Procedure = (typeof router)[keyof typeof router];
-
   function session(userId = OWNER, store = STORE) {
     return {
       headers: new Headers({ [SESSION_HEADER]: userId, cookie: `louez_active_store=${store}` }),
@@ -140,13 +142,21 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     });
   }
 
-  function run<P extends Procedure>(
-    procedure: P,
-    input: Parameters<typeof orpc.call<P>>[1],
-    context: ReturnType<typeof session>,
-  ) {
-    const name = Object.entries(router).find(([, entry]) => entry === procedure)?.[0] ?? "";
-    return orpc.call(procedure, input, { context, path: ["dashboard", "categories", name] });
+  type Router = typeof router;
+  type Client = RouterClient<Router>;
+
+  /** Calls a categories procedure as the dashboard, the API or MCP would, with its full path. */
+  function run<K extends keyof Router>(
+    name: K,
+    input: Parameters<Client[K]>[0],
+    context: BaseContext,
+  ): ReturnType<Client[K]> {
+    const client = orpc.createRouterClient(router, {
+      context,
+      path: ["dashboard", "categories"],
+    }) as Client;
+    const call = client[name] as (input: Parameters<Client[K]>[0]) => ReturnType<Client[K]>;
+    return call(input);
   }
 
   async function rejects(promise: Promise<unknown>, code: string) {
@@ -193,24 +203,24 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
   // --- Create ---------------------------------------------------------------
 
   test("creating a name twice returns the same category, whatever its case", async () => {
-    const first = await run(router.create, { name: "Bikes", description: "Two wheels" }, session());
+    const first = await run("create", { name: "Bikes", description: "Two wheels" }, session());
     assert.equal(first.created, true);
     assert.equal(first.position, 1);
     assert.equal(first.productCount, 0);
 
-    const again = await run(router.create, { name: "  bikes " }, session());
+    const again = await run("create", { name: "  bikes " }, session());
     assert.equal(again.created, false);
     assert.equal(again.id, first.id);
     assert.equal(again.description, "Two wheels", "returned as is, not changed");
     assert.equal(await categoryCount(), 1);
 
-    const second = await run(router.create, { name: "Scooters" }, session());
+    const second = await run("create", { name: "Scooters" }, session());
     assert.equal(second.position, 2, "placed last");
   });
 
   test("concurrent creations of one name insert it once", async () => {
     const results = await Promise.all(
-      Array.from({ length: 6 }, () => run(router.create, { name: "Tents" }, session())),
+      Array.from({ length: 6 }, () => run("create", { name: "Tents" }, session())),
     );
     assert.equal(new Set(results.map((result) => result.id)).size, 1);
     assert.equal(results.filter((result) => result.created).length, 1);
@@ -221,7 +231,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     const context = await apiKey();
     const settled = await Promise.allSettled(
       [1, 2].map(() =>
-        run(router.create, { name: "Kayaks" }, context({ "idempotency-key": "create-kayaks" })),
+        run("create", { name: "Kayaks" }, context({ "idempotency-key": "create-kayaks" })),
       ),
     );
     const done = settled.filter((result) => result.status === "fulfilled");
@@ -243,14 +253,14 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
 
     // A later retry replays the stored result.
     const replay = context({ "idempotency-key": "create-kayaks" });
-    const replayed = await run(router.create, { name: "Kayaks" }, replay);
+    const replayed = await run("create", { name: "Kayaks" }, replay);
     assert.equal(replay.receipt.replayed, true);
     assert.equal(replayed.name, "Kayaks");
   });
 
   test("an image must be one of this store's category images", async () => {
     const own = `https://files.louez.test/${STORE}/categories/aaaaaaaaaaaaaaaaaaaaa.png`;
-    const created = await run(router.create, { name: "Boats", imageUrl: own }, session());
+    const created = await run("create", { name: "Boats", imageUrl: own }, session());
     assert.equal(created.imageUrl, own);
 
     for (const imageUrl of [
@@ -259,11 +269,11 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       "https://evil.test/image.png",
     ]) {
       await rejects(
-        run(router.create, { name: "Other boats", imageUrl }, session()),
+        run("create", { name: "Other boats", imageUrl }, session()),
         "CATEGORY_IMAGE_INVALID",
       );
       await rejects(
-        run(router.update, { id: created.id, imageUrl }, session()),
+        run("update", { id: created.id, imageUrl }, session()),
         "CATEGORY_IMAGE_INVALID",
       );
     }
@@ -273,7 +283,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
 
   test("the list pages through every category once, in the store's order", async () => {
     for (const name of ["Delta", "alpha", "Charlie", "bravo", "Echo"]) {
-      await run(router.create, { name }, session());
+      await run("create", { name }, session());
     }
     // Same position for two: the name, then the id, break the tie.
     await louezDb.db
@@ -284,18 +294,18 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     const names: string[] = [];
     let cursor: string | undefined;
     for (let page = 0; page < 5; page += 1) {
-      const result = await run(router.list, { limit: 2, cursor }, session());
+      const result = await run("list", { limit: 2, cursor }, session());
       names.push(...result.items.map((item) => item.name));
       if (!result.nextCursor) break;
       cursor = result.nextCursor;
     }
     assert.deepEqual(names, ["bravo", "Charlie", "Delta", "alpha", "Echo"]);
 
-    const all = await run(router.list, {}, session());
+    const all = await run("list", {}, session());
     assert.equal(all.items.length, 5);
     assert.equal(all.nextCursor, null);
 
-    await rejects(run(router.list, { cursor: "not-a-cursor" }, session()), "INVALID_CURSOR");
+    await rejects(run("list", { cursor: "not-a-cursor" }, session()), "INVALID_CURSOR");
   });
 
   // --- Update ---------------------------------------------------------------
@@ -303,18 +313,18 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
   test("an update changes only the fields it sends; null clears", async () => {
     const image = `https://files.louez.test/${STORE}/categories/bbbbbbbbbbbbbbbbbbbbb.png`;
     const created = await run(
-      router.create,
+      "create",
       { name: "Ski", description: "Winter", imageUrl: image },
       session(),
     );
 
-    const renamed = await run(router.update, { id: created.id, name: "Skis" }, session());
+    const renamed = await run("update", { id: created.id, name: "Skis" }, session());
     assert.equal(renamed.name, "Skis");
     assert.equal(renamed.description, "Winter");
     assert.equal(renamed.imageUrl, image);
 
     const cleared = await run(
-      router.update,
+      "update",
       { id: created.id, description: null, imageUrl: null },
       session(),
     );
@@ -322,28 +332,25 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     assert.equal(cleared.description, null);
     assert.equal(cleared.imageUrl, null);
 
-    await run(router.create, { name: "Snowboards" }, session());
+    await run("create", { name: "Snowboards" }, session());
     await rejects(
-      run(router.update, { id: created.id, name: "snowboards" }, session()),
+      run("update", { id: created.id, name: "snowboards" }, session()),
       "CATEGORY_NAME_TAKEN",
     );
-    await rejects(
-      run(router.update, { id: "nope", name: "Nope" }, session()),
-      "CATEGORY_NOT_FOUND",
-    );
+    await rejects(run("update", { id: "nope", name: "Nope" }, session()), "CATEGORY_NOT_FOUND");
   });
 
   // --- Delete ---------------------------------------------------------------
 
   test("an API key deletes after a confirmation bound to the products and the category", async () => {
     const context = await apiKey();
-    const bikes = await run(router.create, { name: "Bikes" }, context());
-    const helmets = await run(router.create, { name: "Helmets" }, context());
+    const bikes = await run("create", { name: "Bikes" }, context());
+    const helmets = await run("create", { name: "Helmets" }, context());
     const onlyBikes = await product(STORE, [bikes.id]);
     const both = await product(STORE, [bikes.id, helmets.id]);
 
     const asked = await rejects(
-      run(router.delete, { id: bikes.id }, context()),
+      run("delete", { id: bikes.id }, context()),
       "CONFIRMATION_REQUIRED",
     );
     const details = asked.data.details as {
@@ -357,32 +364,28 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     // A product linked since the preview: the token no longer matches.
     const later = await product(STORE, [bikes.id]);
     await rejects(
-      run(
-        router.delete,
-        { id: bikes.id },
-        context({ "louez-confirmation": details.confirmationToken }),
-      ),
+      run("delete", { id: bikes.id }, context({ "louez-confirmation": details.confirmationToken })),
       "CONFIRMATION_INVALID",
     );
 
     // A rename since the preview: neither.
     const second = await rejects(
-      run(router.delete, { id: bikes.id }, context()),
+      run("delete", { id: bikes.id }, context()),
       "CONFIRMATION_REQUIRED",
     );
     const token = (second.data.details as { confirmationToken: string }).confirmationToken;
-    await run(router.update, { id: bikes.id, name: "Bicycles" }, context());
+    await run("update", { id: bikes.id, name: "Bicycles" }, context());
     await rejects(
-      run(router.delete, { id: bikes.id }, context({ "louez-confirmation": token })),
+      run("delete", { id: bikes.id }, context({ "louez-confirmation": token })),
       "CONFIRMATION_INVALID",
     );
 
     const third = await rejects(
-      run(router.delete, { id: bikes.id }, context()),
+      run("delete", { id: bikes.id }, context()),
       "CONFIRMATION_REQUIRED",
     );
     const deleted = await run(
-      router.delete,
+      "delete",
       { id: bikes.id },
       context({
         "louez-confirmation": (third.data.details as { confirmationToken: string })
@@ -404,16 +407,16 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       [both]: helmets.id,
       [later]: null,
     });
-    await rejects(run(router.get, { id: bikes.id }, context()), "CATEGORY_NOT_FOUND");
+    await rejects(run("get", { id: bikes.id }, context()), "CATEGORY_NOT_FOUND");
   });
 
   test("the dashboard deletes directly, and can move the products to another category", async () => {
-    const bikes = await run(router.create, { name: "Bikes" }, session());
-    const cycles = await run(router.create, { name: "Cycles" }, session());
+    const bikes = await run("create", { name: "Bikes" }, session());
+    const cycles = await run("create", { name: "Cycles" }, session());
     const linked = await product(STORE, [bikes.id]);
 
     const deleted = await run(
-      router.delete,
+      "delete",
       { id: bikes.id, replacementCategoryId: cycles.id },
       session(),
     );
@@ -422,7 +425,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       affectedProductCount: 1,
       replacementCategoryId: cycles.id,
     });
-    const moved = await run(router.get, { id: cycles.id }, session());
+    const moved = await run("get", { id: cycles.id }, session());
     assert.equal(moved.productCount, 1);
     const [row] = await louezDb.db
       .select({ categoryId: louezDb.products.categoryId })
@@ -431,18 +434,18 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     assert.equal(row.categoryId, cycles.id);
 
     await rejects(
-      run(router.delete, { id: cycles.id, replacementCategoryId: cycles.id }, session()),
+      run("delete", { id: cycles.id, replacementCategoryId: cycles.id }, session()),
       "CATEGORY_REPLACEMENT_INVALID",
     );
   });
 
   test("deleting a category into a replacement that is deleted at the same time leaves no dangling link", async () => {
-    const a = await run(router.create, { name: "Race A" }, session());
-    const b = await run(router.create, { name: "Race B" }, session());
+    const a = await run("create", { name: "Race A" }, session());
+    const b = await run("create", { name: "Race B" }, session());
     const linked = await product(STORE, [a.id]);
     const results = await Promise.allSettled([
-      run(router.delete, { id: a.id, replacementCategoryId: b.id }, session()),
-      run(router.delete, { id: b.id }, session()),
+      run("delete", { id: a.id, replacementCategoryId: b.id }, session()),
+      run("delete", { id: b.id }, session()),
     ]);
     assert.ok(results.some((result) => result.status === "fulfilled"));
     const [row] = await louezDb.db
@@ -466,13 +469,11 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
   test("many confirmations asked at once never starve the connection pool", async () => {
     const context = await apiKey();
     const created = await Promise.all(
-      Array.from({ length: 15 }, (_, index) =>
-        run(router.create, { name: `Pool ${index}` }, context()),
-      ),
+      Array.from({ length: 15 }, (_, index) => run("create", { name: `Pool ${index}` }, context())),
     );
     const started = Date.now();
     const asked = await Promise.allSettled(
-      created.map((category) => run(router.delete, { id: category.id }, context())),
+      created.map((category) => run("delete", { id: category.id }, context())),
     );
     assert.ok(Date.now() - started < 10_000, "no lock wait timeout");
     for (const result of asked) {
@@ -484,11 +485,11 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
 
   test("the token stops matching when the products left without a category change", async () => {
     const context = await apiKey();
-    const shoes = await run(router.create, { name: "Shoes" }, context());
-    const socks = await run(router.create, { name: "Socks" }, context());
+    const shoes = await run("create", { name: "Shoes" }, context());
+    const socks = await run("create", { name: "Socks" }, context());
     const linked = await product(STORE, [shoes.id, socks.id]);
     const asked = await rejects(
-      run(router.delete, { id: shoes.id }, context()),
+      run("delete", { id: shoes.id }, context()),
       "CONFIRMATION_REQUIRED",
     );
     const details = asked.data.details as {
@@ -507,11 +508,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
         ),
       );
     await rejects(
-      run(
-        router.delete,
-        { id: shoes.id },
-        context({ "louez-confirmation": details.confirmationToken }),
-      ),
+      run("delete", { id: shoes.id }, context({ "louez-confirmation": details.confirmationToken })),
       "CONFIRMATION_INVALID",
     );
   });
@@ -525,39 +522,33 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
         order: index + 1,
       })),
     );
-    const first = await run(router.list, {}, session());
+    const first = await run("list", {}, session());
     assert.equal(first.items.length, 500);
     assert.ok(first.nextCursor && first.nextCursor.length <= 64);
-    const second = await run(router.list, { cursor: first.nextCursor }, session());
+    const second = await run("list", { cursor: first.nextCursor }, session());
     assert.equal(second.items.length, 1);
     assert.equal(second.nextCursor, null);
 
     const all = [...first.items, ...second.items].map((category) => category.id);
-    const reordered = await run(router.reorder, { ids: [...all].reverse() }, session());
+    const reordered = await run("reorder", { ids: [...all].reverse() }, session());
     assert.equal(reordered.items.length, 501);
   });
 
   test("a member without the delete permission cannot delete", async () => {
-    const created = await run(router.create, { name: "Members" }, session(MEMBER));
+    const created = await run("create", { name: "Members" }, session(MEMBER));
     assert.equal(created.created, true, "a member writes");
-    await rejects(run(router.delete, { id: created.id }, session(MEMBER)), "PERMISSION_DENIED");
+    await rejects(run("delete", { id: created.id }, session(MEMBER)), "PERMISSION_DENIED");
   });
 
   test("a key of one store never reaches another store's category", async () => {
-    const theirs = await run(router.create, { name: "Theirs" }, session(OWNER, OTHER_STORE));
+    const theirs = await run("create", { name: "Theirs" }, session(OWNER, OTHER_STORE));
     const mine = await apiKey();
 
-    await rejects(run(router.get, { id: theirs.id }, mine()), "CATEGORY_NOT_FOUND");
-    await rejects(
-      run(router.update, { id: theirs.id, name: "Mine" }, mine()),
-      "CATEGORY_NOT_FOUND",
-    );
-    await rejects(run(router.delete, { id: theirs.id }, mine()), "CATEGORY_NOT_FOUND");
-    assert.deepEqual((await run(router.list, {}, mine())).items, []);
-    assert.equal(
-      (await run(router.get, { id: theirs.id }, session(OWNER, OTHER_STORE))).name,
-      "Theirs",
-    );
+    await rejects(run("get", { id: theirs.id }, mine()), "CATEGORY_NOT_FOUND");
+    await rejects(run("update", { id: theirs.id, name: "Mine" }, mine()), "CATEGORY_NOT_FOUND");
+    await rejects(run("delete", { id: theirs.id }, mine()), "CATEGORY_NOT_FOUND");
+    assert.deepEqual((await run("list", {}, mine())).items, []);
+    assert.equal((await run("get", { id: theirs.id }, session(OWNER, OTHER_STORE))).name, "Theirs");
   });
 
   // --- Reorder --------------------------------------------------------------
@@ -565,21 +556,21 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
   test("reorder takes every category once and sets the order", async () => {
     const ids = [];
     for (const name of ["One", "Two", "Three"])
-      ids.push((await run(router.create, { name }, session())).id);
+      ids.push((await run("create", { name }, session())).id);
 
     const reversed = [...ids].reverse();
-    const result = await run(router.reorder, { ids: reversed }, session());
+    const result = await run("reorder", { ids: reversed }, session());
     assert.deepEqual(
       result.items.map((item) => item.position),
       [1, 2, 3],
     );
     assert.deepEqual(
-      (await run(router.list, {}, session())).items.map((item) => item.name),
+      (await run("list", {}, session())).items.map((item) => item.name),
       ["Three", "Two", "One"],
     );
 
     const mismatch = await rejects(
-      run(router.reorder, { ids: [ids[0], ids[0], "unknown"] }, session()),
+      run("reorder", { ids: [ids[0], ids[0], "unknown"] }, session()),
       "CATEGORY_ORDER_MISMATCH",
     );
     assert.deepEqual(mismatch.data.details, {
@@ -594,7 +585,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
   test("an upload through the app: create, send the bytes, complete, then use the url", async () => {
     const context = await apiKey();
     const started = await run(
-      router.createImageUpload,
+      "createImageUpload",
       { contentType: "image/png", size: PNG.byteLength },
       context({ "idempotency-key": "ignored" }),
     );
@@ -605,7 +596,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
 
     const put = (body: Uint8Array, headers: Record<string, string>, withToken = token) =>
       uploadHandler.handleUploadRequest(
-        new Request(url, { method: "PUT", body, headers }),
+        new Request(url, { method: "PUT", body: new Blob([body as BlobPart]), headers }),
         withToken,
         ports,
       );
@@ -628,14 +619,11 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     assert.equal(tooLarge.status, 413);
     assert.equal(storage.objects.size, 0, "nothing stored yet");
 
-    await rejects(
-      run(router.completeImageUpload, { key: started.key }, context()),
-      "UPLOAD_NOT_FOUND",
-    );
+    await rejects(run("completeImageUpload", { key: started.key }, context()), "UPLOAD_NOT_FOUND");
     const stored = await put(PNG, { "content-type": "image/png" });
     assert.equal(stored.status, 200);
 
-    const completed = await run(router.completeImageUpload, { key: started.key }, context());
+    const completed = await run("completeImageUpload", { key: started.key }, context());
     assert.deepEqual(completed, {
       key: started.key,
       url: `https://files.louez.test/${started.key}`,
@@ -644,11 +632,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     });
     assert.equal(storage.objects.get(started.key)?.public, true);
 
-    const category = await run(
-      router.create,
-      { name: "Pictured", imageUrl: completed.url },
-      context(),
-    );
+    const category = await run("create", { name: "Pictured", imageUrl: completed.url }, context());
     assert.equal(category.imageUrl, completed.url);
 
     // The upload URL is never stored, even with an idempotency key.
@@ -663,7 +647,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     storage = createMemoryStorage({ direct: true });
     const context = await apiKey();
     const started = await run(
-      router.createImageUpload,
+      "createImageUpload",
       { contentType: "image/png", size: 10 },
       context(),
     );
@@ -677,13 +661,13 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       public: false,
     });
     await rejects(
-      run(router.completeImageUpload, { key: started.key }, context()),
+      run("completeImageUpload", { key: started.key }, context()),
       "UPLOAD_CONTENT_INVALID",
     );
     assert.equal(storage.objects.has(started.key), false, "deleted");
 
     storage.objects.set(started.key, { bytes: PNG, contentType: "image/png", public: false });
-    const completed = await run(router.completeImageUpload, { key: started.key }, context());
+    const completed = await run("completeImageUpload", { key: started.key }, context());
     assert.equal(completed.size, PNG.byteLength);
   });
 
@@ -699,7 +683,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       "UPLOAD_KIND_NOT_ALLOWED",
     );
     await rejects(
-      run(router.createImageUpload, { contentType: "image/svg+xml" as never, size: 10 }, context()),
+      run("createImageUpload", { contentType: "image/svg+xml" as never, size: 10 }, context()),
       "BAD_REQUEST",
     );
     await rejects(
@@ -712,11 +696,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       "UPLOAD_TYPE_NOT_ALLOWED",
     );
     await rejects(
-      run(
-        router.createImageUpload,
-        { contentType: "image/png", size: 5 * 1024 * 1024 + 1 },
-        context(),
-      ),
+      run("createImageUpload", { contentType: "image/png", size: 5 * 1024 * 1024 + 1 }, context()),
       "UPLOAD_TOO_LARGE",
     );
 
@@ -727,7 +707,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       `${STORE}/products/ccccccccccccccccccccc.png`,
       `${STORE}/categories/../${OTHER_STORE}/categories/ccccccccccccccccccccc.png`,
     ]) {
-      await rejects(run(router.completeImageUpload, { key }, context()), "UPLOAD_NOT_OWNED");
+      await rejects(run("completeImageUpload", { key }, context()), "UPLOAD_NOT_OWNED");
     }
     assert.equal(storage.objects.get(theirs)?.public, false, "left alone");
   });
