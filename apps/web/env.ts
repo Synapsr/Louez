@@ -325,6 +325,11 @@ export const env = createEnv({
     FROMHELLO_API_URL: z.url().optional(),
     FROMHELLO_API_KEY: z.string().optional(),
 
+    // ===== Klibon affiliate program (LOUEZ_BILLING=cloud only) =====
+    // The program id from the Klibon dashboard. Set, the sign-in, onboarding and dashboard
+    // pages load its tag, and plan Checkouts carry the affiliate's code. Unset: no tag.
+    KLIBON_PROGRAM_ID: z.uuid().optional(),
+
     // ===== Pay-as-you-go offer for new stores (LOUEZ_BILLING=cloud only) =====
     // PAYG_FREE_RESERVATIONS is written onto a NEW store's subscription row when Louez's
     // own billing creates it, with the built-in per-rental ladder. Existing stores pay
@@ -493,6 +498,7 @@ export const env = createEnv({
     AI_IMAGE_DEBUG_ENABLED: process.env.AI_IMAGE_DEBUG_ENABLED,
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
+    KLIBON_PROGRAM_ID: process.env.KLIBON_PROGRAM_ID,
     LOUEZ_MODE: process.env.LOUEZ_MODE,
     LOUEZ_BILLING: process.env.LOUEZ_BILLING,
     LOUEZ_HOSTED_BY: process.env.LOUEZ_HOSTED_BY,

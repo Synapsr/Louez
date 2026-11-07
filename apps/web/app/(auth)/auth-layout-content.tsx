@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { isBillingEnabled } from "@/lib/billing/mode";
 import { selectAuthMessages } from "@/lib/i18n/auth-messages";
+import { KlibonTag } from "@/components/klibon-tag";
 import { PostHogProvider } from "@/components/posthog-provider";
 
 export const AuthLayoutContent = async ({ children }: { children: React.ReactNode }) => {
@@ -20,6 +21,7 @@ export const AuthLayoutContent = async ({ children }: { children: React.ReactNod
     <PostHogProvider>
       <NextIntlClientProvider messages={messages}>
         <div className="dashboard min-h-screen bg-background">{children}</div>
+        <KlibonTag />
       </NextIntlClientProvider>
     </PostHogProvider>
   );

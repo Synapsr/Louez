@@ -12,6 +12,7 @@ import {
   isValidImageUrlClient,
 } from "@louez/validations";
 
+import { readAffiliateReferral, reportAffiliateSignup } from "@/lib/acquisition/klibon-browser";
 import { getDefaultCurrencyForCountry } from "@/lib/utils/currency";
 import { createLoginUrl } from "@/lib/utils/util.url";
 import { detectCountryFromBrowser } from "@/lib/utils/util.browser-country-detection";
@@ -44,9 +45,12 @@ export const useStoreStep = ({
 
   const mutation = useMutation({
     mutationFn: async (value: StoreInfoInput) => {
-      const result = await createStore(value, editingStoreId);
+      const result = await createStore(value, editingStoreId, readAffiliateReferral());
       if (result.error) {
         throw new Error(result.error);
+      }
+      if (result.affiliateSignupEmail) {
+        reportAffiliateSignup(result.affiliateSignupEmail);
       }
       return result;
     },
