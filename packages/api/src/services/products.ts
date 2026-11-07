@@ -969,12 +969,15 @@ function assertListLimits(sent: ListLengths, stored: ListLengths = {}) {
 const listLengths = (data: {
   units?: readonly unknown[];
   rateTiers?: readonly unknown[];
+  pricingTiers?: readonly unknown[];
   accessories?: readonly unknown[];
   categoryIds?: readonly unknown[] | null;
   images?: readonly unknown[];
 }): ListLengths => ({
   units: data.units?.length,
-  rateTiers: data.rateTiers?.length,
+  // The tiers that will be saved: rateTiers when sent, else the former
+  // percentage tiers, which the schema takes in their place.
+  rateTiers: data.rateTiers?.length ?? data.pricingTiers?.length,
   accessories: data.accessories?.length,
   categoryIds: data.categoryIds?.length,
   images: data.images?.length,

@@ -1342,4 +1342,33 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       ],
     );
   });
+
+  test("former percentage tiers count against the tier limit, on create and on update", async () => {
+    const percentageTiers = Array.from({ length: 51 }, (_, index) => ({
+      minDuration: index + 2,
+      discountPercent: 1,
+    }));
+    const created = await rejects(
+      run("create", { name: "Old ladder", price: "10", pricingTiers: percentageTiers }, session()),
+      "PRODUCT_LIST_TOO_LONG",
+    );
+    assert.deepEqual(created.data.details, { list: "rateTiers", max: 50, stored: 0 });
+
+    const plain = await run("create", { name: "No ladder", price: "10" }, session());
+    await rejects(
+      run("update", { id: plain.id, pricingTiers: percentageTiers }, session()),
+      "PRODUCT_LIST_TOO_LONG",
+    );
+    // rateTiers sent take precedence: the percentage tiers are ignored then.
+    const saved = await run(
+      "update",
+      {
+        id: plain.id,
+        rateTiers: [{ price: "25", duration: 3, unit: "day" }],
+        pricingTiers: percentageTiers,
+      },
+      session(),
+    );
+    assert.equal(saved.rateTiers.length, 1);
+  });
 });
