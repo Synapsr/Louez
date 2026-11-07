@@ -10,6 +10,7 @@
     "./account-deletion": "./src/account-deletion.ts",
     "./client": "./src/client.ts",
     "./env": "./src/env.ts",
+    "./platform-admin": "./src/platform-admin.ts",
     "./password": "./src/password.ts",
     "./password-policy": "./src/password-policy.ts"
   },

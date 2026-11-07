@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  char,
   customType,
   date,
   decimal,
@@ -3947,6 +3948,12 @@ export type ApiKeyPermissions = {
   payments: "none" | "read" | "write";
   analytics: "none" | "read";
   settings: "none" | "read" | "write";
+  // Domains added with the agent-ready API. Keys created before have none of
+  // them, and a missing domain reads as "none" (packages/api platform/permissions).
+  online_store?: "none" | "read" | "write";
+  integrations?: "none" | "read" | "write";
+  team?: "none" | "read" | "write";
+  billing?: "none" | "read" | "write";
 };
 
 export const apiKeys = mysqlTable(
@@ -3961,6 +3968,11 @@ export const apiKeys = mysqlTable(
     keyHash: varchar("key_hash", { length: 64 }).notNull(),
 
     permissions: json("permissions").$type<ApiKeyPermissions>().notNull(),
+    /**
+     * Sensitive operations (money, deletion, sends, spending) wait for a
+     * confirmation when true. Only a dashboard session may change it.
+     */
+    confirmSensitive: boolean("confirm_sensitive").default(true).notNull(),
 
     lastUsedAt: timestamp("last_used_at", { mode: "date" }),
     expiresAt: timestamp("expires_at", { mode: "date" }),
@@ -3984,6 +3996,89 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ============================================================================
+// Agent-ready API: operations, confirmations, rate limits
+// ============================================================================
+
+/**
+ * One row per write made through the API, whatever the transport (dashboard
+ * RPC, OpenAPI, MCP). It is the audit trail ("done by Claude"), the
+ * idempotency record (same key + same input replays the stored result) and the
+ * receipt an agent reads to know whether an operation happened.
+ */
+export const apiOperations = mysqlTable(
+  "api_operations",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    userId: varchar("user_id", { length: 21 }).notNull(),
+    credentialKind: mysqlEnum("credential_kind", ["session", "api_key", "oauth"]).notNull(),
+    /** API key or OAuth grant id; null for a dashboard session. */
+    credentialId: varchar("credential_id", { length: 64 }),
+    /** Verified client name (an OAuth client, an API key's name). */
+    clientName: varchar("client_name", { length: 100 }),
+    transport: mysqlEnum("transport", ["rpc", "openapi", "mcp"]).notNull(),
+    /** Procedure path, e.g. `dashboard.categories.create`. */
+    procedure: varchar("procedure", { length: 120 }).notNull(),
+    /** Scope of idempotency keys: the credential id, or the user id for a session. */
+    actorKey: varchar("actor_key", { length: 64 }).notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 100 }),
+    /** SHA-256 of the normalized input. */
+    inputHash: char("input_hash", { length: 64 }).notNull(),
+    /**
+     * `unknown`: the handler returned but its outcome could not be recorded,
+     * so whether it committed is not known. Retries are refused until someone
+     * reconciles it, rather than risking a second run.
+     */
+    status: mysqlEnum("status", ["running", "succeeded", "failed", "unknown"]).notNull(),
+    /** Main record the operation touched, when it has one. */
+    targetId: varchar("target_id", { length: 64 }),
+    result: json("result"),
+    error: json("error").$type<{ code: string; message: string }>(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    idempotencyUnique: unique("api_operations_idempotency_unique").on(
+      table.storeId,
+      table.actorKey,
+      table.idempotencyKey,
+    ),
+    storeCreatedIdx: index("api_operations_store_created_idx").on(table.storeId, table.createdAt),
+  }),
+);
+
+/**
+ * A preview handed to a caller before a sensitive operation. The caller sends
+ * the id back to execute; the row binds it to the actor, the store, the
+ * procedure, the exact input and the business state the preview showed, and
+ * can be consumed once.
+ */
+export const apiConfirmations = mysqlTable(
+  "api_confirmations",
+  {
+    /** The confirmation token itself: 32 random bytes, base64url. */
+    id: varchar("id", { length: 64 }).primaryKey(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    procedure: varchar("procedure", { length: 120 }).notNull(),
+    /** SHA-256 of actor, credential, store, procedure, input and state. */
+    bindingHash: char("binding_hash", { length: 64 }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    consumedAt: timestamp("consumed_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    expiresIdx: index("api_confirmations_expires_idx").on(table.expiresAt),
+  }),
+);
+
+/** Fixed-window counters shared by every app instance, for agent and API calls. */
+export const apiRateLimits = mysqlTable("api_rate_limits", {
+  key: varchar("key", { length: 191 }).primaryKey(),
+  windowStart: bigint("window_start", { mode: "number" }).notNull(),
+  count: int("count").notNull(),
+});
 
 // Web Push device subscriptions. One row per browser/device, owned by a user
 // (a user can belong to many stores via store_members; send-time fan-out

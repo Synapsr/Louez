@@ -4813,6 +4813,8 @@
         "noKeys": "Aucune clé API. Créez-en une pour commencer.",
         "keyRevoked": "Clé API révoquée.",
         "lastUsed": "Dernière utilisation",
+        "confirmSensitive": "Confirmer avant les actions sensibles",
+        "confirmSensitiveSaved": "Réglage enregistré",
         "endpointsTitle": "Points d'accès",
         "endpointsDescription": "Utilisez ces points d'accès pour vous connecter aux données de votre boutique.",
         "mcpServerTitle": "Serveur MCP (HTTP)",

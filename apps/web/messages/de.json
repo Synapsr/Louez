@@ -4676,6 +4676,8 @@
         "noKeys": "Noch keine API-Schlüssel. Erstellen Sie einen, um zu beginnen.",
         "keyRevoked": "API-Schlüssel widerrufen.",
         "lastUsed": "Zuletzt verwendet",
+        "confirmSensitive": "Vor sensiblen Aktionen bestätigen",
+        "confirmSensitiveSaved": "Einstellung gespeichert",
         "endpointsTitle": "Endpunkte",
         "endpointsDescription": "Verwenden Sie diese Endpunkte, um auf Ihre Shop-Daten zuzugreifen.",
         "mcpServerTitle": "MCP-Server (HTTP)",

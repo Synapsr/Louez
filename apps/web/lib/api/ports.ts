@@ -1,0 +1,14 @@
+import type { ApiPorts } from "@louez/api";
+
+import { getStorePlan } from "@/lib/plan-limits";
+
+/**
+ * What the app lends the agent-ready API (packages/api platform/ports.ts).
+ * Every transport (RPC, OpenAPI, MCP) passes this same object.
+ */
+export const apiPorts: ApiPorts = {
+  planFeatures: async (storeId) => {
+    const plan = await getStorePlan(storeId);
+    return { apiAccess: plan.features.apiAccess };
+  },
+};

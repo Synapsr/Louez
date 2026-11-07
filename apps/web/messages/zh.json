@@ -4812,6 +4812,8 @@
         "noKeys": "还没有 API 密钥。创建一个以开始使用。",
         "keyRevoked": "API 密钥已撤销。",
         "lastUsed": "上次使用",
+        "confirmSensitive": "敏感操作前需确认",
+        "confirmSensitiveSaved": "设置已保存",
         "endpointsTitle": "端点",
         "endpointsDescription": "使用这些端点连接到您的商店数据。",
         "mcpServerTitle": "MCP 服务器（HTTP）",

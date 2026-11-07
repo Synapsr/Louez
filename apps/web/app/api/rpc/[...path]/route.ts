@@ -3,6 +3,7 @@ import { RPCHandler } from "@orpc/server/fetch";
 
 import { appRouter } from "@louez/api/router";
 
+import { apiPorts } from "@/lib/api/ports";
 import { notifyStoreCreated as sendStoreCreatedNotification } from "@/lib/discord/platform-notifications";
 import { log, useLogger, withEvlog } from "@/lib/evlog";
 import { generateContract } from "@/lib/pdf/generate";
@@ -87,6 +88,8 @@ async function handleRequest(request: Request) {
     prefix: "/api/rpc",
     context: {
       headers: request.headers,
+      transport: "rpc",
+      ports: apiPorts,
       getCurrentStore,
       invalidateStoreViewport,
       getCustomerSession,

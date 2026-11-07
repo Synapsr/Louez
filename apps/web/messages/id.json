@@ -4812,6 +4812,8 @@
         "noKeys": "Belum ada kunci API. Buat satu untuk memulai.",
         "keyRevoked": "Kunci API dicabut.",
         "lastUsed": "Terakhir digunakan",
+        "confirmSensitive": "Konfirmasi sebelum tindakan sensitif",
+        "confirmSensitiveSaved": "Pengaturan disimpan",
         "endpointsTitle": "Titik akhir",
         "endpointsDescription": "Gunakan titik akhir ini untuk terhubung ke data penyimpanan Anda.",
         "mcpServerTitle": "Server MCP (HTTP)",

@@ -4676,6 +4676,8 @@
         "noKeys": "Nenhuma chave API. Crie uma para começar.",
         "keyRevoked": "Chave API revogada.",
         "lastUsed": "Último uso",
+        "confirmSensitive": "Confirmar antes de ações sensíveis",
+        "confirmSensitiveSaved": "Configuração salva",
         "endpointsTitle": "Endpoints",
         "endpointsDescription": "Use estes endpoints para acessar os dados da sua loja.",
         "mcpServerTitle": "Servidor MCP (HTTP)",

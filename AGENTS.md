@@ -62,6 +62,7 @@ Load only the `code-review/` docs that match what you're touching — not the fu
 | React components or hooks            | [docs/code-review/03-react-patterns.md](docs/code-review/03-react-patterns.md) + [docs/from-scratch/05-frontend.md](docs/from-scratch/05-frontend.md) |
 | Forms (TanStack Form, `useAppForm`)  | [docs/from-scratch/05-frontend.md](docs/from-scratch/05-frontend.md) (Forms section)                                                                  |
 | DB queries, oRPC routes, React Query | [docs/code-review/04-data-layer.md](docs/code-review/04-data-layer.md) + [docs/from-scratch/04-backend.md](docs/from-scratch/04-backend.md)           |
+| Dashboard actions, API, MCP tools    | [docs/architecture/api-and-agents.md](docs/architecture/api-and-agents.md) — every user action is one `storeProcedure`, never a server action         |
 | Tailwind / styling                   | [docs/code-review/05-styling.md](docs/code-review/05-styling.md)                                                                                      |
 | Translations / i18n                  | [docs/from-scratch/05-frontend.md](docs/from-scratch/05-frontend.md) (Internationalization section)                                                   |
 | Auth, security, user input           | [docs/code-review/06-security.md](docs/code-review/06-security.md)                                                                                    |

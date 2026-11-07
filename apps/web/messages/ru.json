@@ -4812,6 +4812,8 @@
         "noKeys": "Ключей API пока нет. Создайте его, чтобы начать.",
         "keyRevoked": "Ключ API отозван.",
         "lastUsed": "Последнее использование",
+        "confirmSensitive": "Подтверждать перед важными действиями",
+        "confirmSensitiveSaved": "Настройка сохранена",
         "endpointsTitle": "Конечные точки",
         "endpointsDescription": "Используйте эти конечные точки для подключения к данным вашего магазина.",
         "mcpServerTitle": "MCP Сервер (HTTP)",

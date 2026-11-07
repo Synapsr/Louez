@@ -117,7 +117,7 @@ const BASE_PLANS: Record<
       reviewBooster: true,
       aiAdvisor: true,
       aiPhone: true,
-      apiAccess: false,
+      apiAccess: true,
       phoneSupport: false,
       dedicatedManager: false,
     },

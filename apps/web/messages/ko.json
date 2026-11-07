@@ -4812,6 +4812,8 @@
         "noKeys": "아직 API 키가 없습니다. 시작하려면 계정을 만드세요.",
         "keyRevoked": "API 키가 취소되었습니다.",
         "lastUsed": "마지막으로 사용됨",
+        "confirmSensitive": "민감한 작업 전에 확인",
+        "confirmSensitiveSaved": "설정이 저장되었습니다",
         "endpointsTitle": "엔드포인트",
         "endpointsDescription": "이러한 엔드포인트를 사용하여 매장 데이터에 연결하세요.",
         "mcpServerTitle": "MCP 서버(HTTP)",

@@ -4813,6 +4813,8 @@
         "noKeys": "No API keys yet. Create one to get started.",
         "keyRevoked": "API key revoked.",
         "lastUsed": "Last used",
+        "confirmSensitive": "Confirm before sensitive actions",
+        "confirmSensitiveSaved": "Setting saved",
         "endpointsTitle": "Endpoints",
         "endpointsDescription": "Use these endpoints to connect to your store data.",
         "mcpServerTitle": "MCP Server (HTTP)",

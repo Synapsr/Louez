@@ -4812,6 +4812,8 @@
         "noKeys": "API キーはまだありません。まずは作成してください。",
         "keyRevoked": "API キーが取り消されました。",
         "lastUsed": "最後に使用した",
+        "confirmSensitive": "重要な操作の前に確認する",
+        "confirmSensitiveSaved": "設定を保存しました",
         "endpointsTitle": "エンドポイント",
         "endpointsDescription": "これらのエンドポイントを使用してストア データに接続します。",
         "mcpServerTitle": "MCP サーバー (HTTP)",

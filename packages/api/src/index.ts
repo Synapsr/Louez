@@ -23,5 +23,9 @@ export {
   requirePermission,
 } from './procedures'
 
+// The agent-ready API's platform: what the app's transports need to serve it
+export type { ApiPorts } from './platform/ports'
+export type { Transport } from './platform/actor'
+
 // Re-export ORPCError for custom error handling
 export { ORPCError } from '@orpc/server'

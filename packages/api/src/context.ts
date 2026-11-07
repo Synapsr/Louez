@@ -1,5 +1,8 @@
 import type { StoreSettings } from "@louez/types";
 
+import type { Transport } from "./platform/actor";
+import type { OperationReceipt } from "./platform/operations";
+import type { ApiPorts } from "./platform/ports";
 import type { AvailabilityMemo } from "./services/availability";
 
 /**
@@ -115,6 +118,12 @@ type CalendarIntegrationState = {
  */
 export interface BaseContext {
   headers: Headers;
+  /** Which way the call came in; the agent-ready procedures refuse a call without it. */
+  transport?: Transport;
+  /** What the app lends the agent-ready procedures (platform/ports.ts). */
+  ports?: ApiPorts;
+  /** Filled with the operation id of a write, for the transport to hand out. */
+  receipt?: OperationReceipt;
   invalidateStoreViewport?: (storeSlug: string) => void | Promise<void>;
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
   getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;

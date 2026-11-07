@@ -4676,6 +4676,8 @@
         "noKeys": "Nog geen API-sleutels. Maak er een aan om te beginnen.",
         "keyRevoked": "API-sleutel ingetrokken.",
         "lastUsed": "Laatst gebruikt",
+        "confirmSensitive": "Bevestigen vóór gevoelige acties",
+        "confirmSensitiveSaved": "Instelling opgeslagen",
         "endpointsTitle": "Eindpunten",
         "endpointsDescription": "Gebruik deze endpoints om toegang te krijgen tot uw winkelgegevens.",
         "mcpServerTitle": "MCP-server (HTTP)",

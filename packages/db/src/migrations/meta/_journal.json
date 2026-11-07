@@ -666,6 +666,13 @@
       "when": 1793804859850,
       "tag": "0089_customer_field_width",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "5",
+      "when": 1794049786011,
+      "tag": "0090_agent_api_operations",
+      "breakpoints": true
     }
   ]
 }

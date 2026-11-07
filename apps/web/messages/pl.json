@@ -4676,6 +4676,8 @@
         "noKeys": "Brak kluczy API. Utwórz jeden, aby rozpocząć.",
         "keyRevoked": "Klucz API unieważniony.",
         "lastUsed": "Ostatnio użyty",
+        "confirmSensitive": "Potwierdzaj przed wrażliwymi działaniami",
+        "confirmSensitiveSaved": "Ustawienie zapisane",
         "endpointsTitle": "Punkty dostępu",
         "endpointsDescription": "Użyj tych punktów dostępu, aby uzyskać dostęp do danych sklepu.",
         "mcpServerTitle": "Serwer MCP (HTTP)",
