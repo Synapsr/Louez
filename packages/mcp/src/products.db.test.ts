@@ -159,7 +159,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const products = exposure.procedures.filter((entry) =>
       entry.path.startsWith("dashboard.products."),
     );
-    assert.equal(products.length, 18);
+    assert.equal(products.length, 36);
     assert.deepEqual([...new Set(products.map((entry) => entry.meta.mcp.bundle))], ["catalog"]);
     // Former names: aliases, and list_products as its own unlisted procedure.
     const aliases = [
@@ -179,6 +179,28 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const writer = await mcpTools(await key());
     assert.ok(writer.includes("products_create"));
     assert.ok(writer.includes("products_delete_seasonal_pricing"));
+    for (const name of [
+      "products_get_unit_history",
+      "products_declare_downtime",
+      "products_update_downtime",
+      "products_close_downtime",
+      "products_delete_downtime",
+      "products_retire_unit",
+      "products_reinstate_unit",
+      "products_update_unit_details",
+      "products_list_variants",
+      "products_create_variant",
+      "products_update_variant",
+      "products_set_variant_active",
+      "products_delete_variant",
+      "products_get_variant_usage",
+      "products_withdraw_variant",
+      "products_create_variant_value",
+      "products_update_variant_value",
+      "products_delete_variant_value",
+    ]) {
+      assert.ok(writer.includes(name), `${name} is listed`);
+    }
     for (const alias of aliases) assert.ok(!writer.includes(alias), `${alias} is not listed`);
 
     const reader = await mcpTools(await key(readOnly));
@@ -295,6 +317,79 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       ((await missing.json()) as { data: { code: string } }).data.code,
       "PRODUCT_NOT_FOUND",
     );
+  });
+
+  test("units and variants: a downtime over a booking waits for the user, the catalog has REST paths", async () => {
+    const authorization = await key();
+    const created = output(
+      await mcpCall(authorization, "products_create", {
+        name: "Sea kayak",
+        price: "40",
+        trackUnits: true,
+        units: [{ identifier: "SK-1" }],
+      }),
+    );
+    const [unit] = created.units as Json[];
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: "pt_booking_000000001",
+      storeId: STORE,
+      customerId: "customer",
+      number: "PT-1",
+      status: "confirmed",
+      startDate: new Date("2030-06-01T09:00:00Z"),
+      endDate: new Date("2030-06-03T09:00:00Z"),
+      subtotalAmount: "80.00",
+      depositAmount: "0.00",
+      totalAmount: "80.00",
+    });
+    await louezDb.db.insert(louezDb.reservationItems).values({
+      id: "pt_booking_item_00001",
+      reservationId: "pt_booking_000000001",
+      productId: created.id as string,
+      quantity: 1,
+      unitPrice: "40.00",
+      depositPerUnit: "0.00",
+      totalPrice: "80.00",
+      combinationKey: "__default",
+      productSnapshot: { name: "Sea kayak", description: null, images: [] },
+    });
+    await louezDb.db.insert(louezDb.reservationItemUnits).values({
+      reservationItemId: "pt_booking_item_00001",
+      productUnitId: unit.id as string,
+      identifierSnapshot: "SK-1",
+    });
+
+    const args = { unitId: unit.id, reason: "repair", startsAt: "2030-06-02T00:00:00Z" };
+    const first = await mcpCall(authorization, "products_declare_downtime", args);
+    assert.match(JSON.stringify(first.content), /PT-1/);
+    const declared = output(
+      await mcpCall(authorization, "products_declare_downtime", {
+        ...args,
+        confirmationToken: tokenOf(first),
+      }),
+    );
+    assert.equal((declared.conflicts as Json[]).length, 1);
+
+    const history = await openApi("GET", `/products/units/${unit.id}/history`, null, {
+      authorization,
+    });
+    assert.equal(history.status, 200, await history.clone().text());
+    assert.equal(((await history.json()) as { downtimes: Json[] }).downtimes.length, 1);
+
+    const variant = await openApi(
+      "POST",
+      "/variants",
+      { label: "Couleur", kind: "color", values: [{ label: "Rouge", colorHex: "#FF0000" }] },
+      { authorization },
+    );
+    assert.equal(variant.status, 200, await variant.clone().text());
+    const listed = output(await mcpCall(authorization, "products_list_variants", {}));
+    assert.deepEqual(
+      (listed.items as Json[]).map((item) => item.label),
+      ["Couleur"],
+    );
+    const usage = await openApi("GET", "/variants/usage", null, { authorization });
+    assert.equal(usage.status, 200, await usage.clone().text());
   });
 
   test("list_products still pages with page and pageSize", async () => {
