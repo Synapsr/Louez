@@ -105,7 +105,9 @@ This proves the caller saw the preview. It does not prove that a human approved,
 
 The app lends the API only what is bound to Next.js or owned by the billing service, as one `ApiPorts` object (`platform/ports.ts`). The app builds it in `apps/web/lib/api/ports.ts`, and every handler passes it as `context.ports`. Stripe, e-mail and the other providers are adapters inside the package, not ports.
 
-Image storage is a port for now (`ports.storage`, built in `apps/web/lib/storage/api-storage.ts`). The storage client is configured from the app's environment and shared with the dashboard's file routes and the `/files` route. It moves into the package as an adapter when a second domain (products, lot 3) uploads through the API. The port only stores, reads and publishes; the upload service in the package decides which keys a store owns.
+The effects of a write that the app still owns go through one port, `ports.afterCommit(event)`, called once the transaction has committed: page revalidation (`revalidatePath`), the platform notifications (Discord, fromHello) and the product analytics (PostHog). The service emits a typed `ApiEvent` (`product.created`, `product.updated`, …); the app maps it to its effects in `apps/web/lib/api/after-commit.ts`, revalidating at once and running the rest in `after()`. The port never throws and the answer never waits for it. A domain adds its events to `ApiEvent`.
+
+Image storage is a port for now (`ports.storage`, built in `apps/web/lib/storage/api-storage.ts`). The storage client is configured from the app's environment and shared with the dashboard's file routes and the `/files` route. Categories and products upload through it; it moves into the package as an adapter in a later lot. The port only stores, reads and publishes; the upload service in the package decides which keys a store owns.
 
 ## Exposure registry
 
@@ -137,7 +139,7 @@ The spec (`/api/v1/openapi.json`) and a Scalar reference (`/api/v1/docs`) are ge
 
 ## Uploads
 
-A file goes up in three calls, the same on OpenAPI and MCP. The upload service (`services/uploads.ts`) serves every store-owned kind of image; `API_UPLOAD_KINDS` lists the kinds open to the API. Categories expose it as `categories_create_image_upload` and `categories_complete_image_upload`.
+A file goes up in three calls, the same on OpenAPI and MCP. The upload service (`services/uploads.ts`) serves every store-owned kind of image; `API_UPLOAD_KINDS` lists the kinds open to the API. Categories expose it as `categories_create_image_upload` and `categories_complete_image_upload`, products as `products_create_image_upload` and `products_complete_image_upload`.
 
 1. The create-upload procedure takes the type and the size. It refuses another type, a size over the kind's limit and a kind the API does not take. It mints a key in the store's folder for the kind (`<storeId>/categories/<id>.png`) and returns it with one HTTP request to send the bytes, valid ten minutes:
    - a public bucket gives a presigned upload straight to the bucket (`PUT` with headers, or a multipart `POST` with fields), bound to the type and the size limit;
@@ -164,7 +166,7 @@ The steps a domain lot follows, as categories did (lot 0c):
 6. **Old paths.** Delete the hand-written MCP tools and the server actions of the domain. Other callers go through the procedures too, never the service: the in-app AI assistant calls them with a server-side client bound to the user's session (`AIChatContext.api`, built in `apps/web/app/api/chat/route.ts`), so its rights are the dashboard's. A migrated capability may keep only a route that serves the browser.
 7. **Dashboard.** Call the procedures through the options factories of `apps/web/lib/queries/<domain>.queries.ts`. Show errors with `apiErrorKey`. Keep the dashboard's own confirmation dialogs: a session never gets `CONFIRMATION_REQUIRED`.
 8. **Tests.** On the database: each procedure from a session and from a key, the partial update, the confirmation (preview, token, a state change that voids it), another store's ids (not found), a member without the permission, idempotent retries. Through the real handlers: the same calls give the same results and error codes on RPC, OpenAPI and MCP (`packages/mcp/src/categories.db.test.ts`). The OpenAPI test checks the routes.
-9. **Agents.** A hand-written tool the procedure replaces keeps its name as an alias (`meta.mcp.aliases`, with `renamedArgs` for renamed arguments): callable, never listed, removed at the end of the migration. The PR names the tools that changed for MCP users: old name, new name, what differs.
+9. **Agents.** A hand-written tool the procedure replaces keeps its name as an alias (`meta.mcp.aliases`, with `renamedArgs` for renamed arguments and `fixedArgs` for arguments the old tool implied, such as `archive_product`, which is `products_update_status` with `status: "archived"`): callable, never listed, removed at the end of the migration. The PR names the tools that changed for MCP users: old name, new name, what differs.
 
 ## MCP
 
@@ -195,9 +197,9 @@ The steps a domain lot follows, as categories did (lot 0c):
 
 ### Hand-written tools
 
-The tools, resources and prompts written before the bridge stay until their domain moves to procedures. They already sit behind the same boundary: the per-request context, `requirePermission` with the role cut down to the scopes (a missing domain is `none`), the plan check and the shared rate limit. Their platform errors answer in the bridge's format. Those that move money, delete or send to a customer (`update_reservation_status`, `record_payment`, `delete_payment`, `return_deposit`, `archive_product`, and `update_product` when it archives or, by switching to fixed pricing, deletes pricing tiers and seasonal prices) declare `sensitive` on `legacyTool`: they take `confirmationToken` and run through `requireConfirmation` before their handler, with a preview of the call and a state read from the record (its status, the amounts, the counts it would delete), under the procedure name `mcp.<tool>`. A call that takes none of a tool's sensitive paths runs directly.
+The tools, resources and prompts written before the bridge stay until their domain moves to procedures. They already sit behind the same boundary: the per-request context, `requirePermission` with the role cut down to the scopes (a missing domain is `none`), the plan check and the shared rate limit. Their platform errors answer in the bridge's format. Those that move money, delete or send to a customer (`update_reservation_status`, `record_payment`, `delete_payment`, `return_deposit`) declare `sensitive` on `legacyTool`: they take `confirmationToken` and run through `requireConfirmation` before their handler, with a preview of the call and a state read from the record (its status, the amounts, the counts it would delete), under the procedure name `mcp.<tool>`. A call that takes none of a tool's sensitive paths runs directly.
 
-Known limit, accepted until these tools become procedures (lots 2a and 2c for reservations and payments, 3 for products): the confirmation's state is read and its token checked before the handler, outside the transaction it writes in, so a change landing between the check and the write is not caught. A procedure asks for its confirmation under its domain's lock, inside the write. The store settings tools also need the `manage_settings` permission, as in the dashboard.
+Known limit, accepted until these tools become procedures (lots 2a and 2c for reservations and payments): the confirmation's state is read and its token checked before the handler, outside the transaction it writes in, so a change landing between the check and the write is not caught. A procedure asks for its confirmation under its domain's lock, inside the write. The store settings tools also need the `manage_settings` permission, as in the dashboard.
 
 ## OAuth for agents
 
