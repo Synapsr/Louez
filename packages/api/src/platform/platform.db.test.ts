@@ -4,6 +4,8 @@ import { after, before, describe, mock, test } from "node:test";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
+import { createMemoryStorage } from "./memory-storage";
+
 // tsx loads these packages as CommonJS, whose `export *` names ESM cannot see.
 const require = createRequire(import.meta.url);
 for (const name of ["@louez/types", "@louez/utils"]) {
@@ -29,7 +31,7 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
   let zod: typeof import("zod");
 
   let apiAccess = true;
-  const ports = { planFeatures: async () => ({ apiAccess }) };
+  const ports = { planFeatures: async () => ({ apiAccess }), storage: createMemoryStorage() };
 
   before(async () => {
     database = await createTestDatabase("agent_platform");

@@ -3,6 +3,7 @@ import { after, before, describe, mock, test } from "node:test";
 
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
+import { createMemoryStorage } from "@louez/api/platform/memory-storage";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
@@ -49,7 +50,7 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
   let httpOptions: import("./transports/http").McpHttpOptions;
   let handleMcpRequest: typeof import("./transports/http").handleMcpRequest;
 
-  const ports = { planFeatures: async () => ({ apiAccess: true }) };
+  const ports = { planFeatures: async () => ({ apiAccess: true }), storage: createMemoryStorage() };
   const allRead = {
     reservations: "read",
     products: "read",
@@ -59,7 +60,12 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
     analytics: "read",
     settings: "read",
   } as const;
-  const allWrite = { ...allRead, categories: "write", settings: "write" } as const;
+  const allWrite = {
+    ...allRead,
+    categories: "write",
+    products: "write",
+    settings: "write",
+  } as const;
 
   before(async () => {
     database = await createTestDatabase("api_transports");
@@ -500,8 +506,8 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
     const client = await connectHttp((await key({ permissions: allRead })).authorization);
     try {
       const names = (await client.listTools()).tools.map((tool) => tool.name);
-      assert.ok(names.includes("list_categories"));
-      assert.ok(!names.includes("create_category"), "a read-only key does not see writes");
+      assert.ok(names.includes("list_products"));
+      assert.ok(!names.includes("create_product"), "a read-only key does not see writes");
       assert.ok(!names.includes("update_store_info"));
     } finally {
       await client.close();
@@ -525,7 +531,7 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.match(text(denied), /needs customers:read/);
       assert.match(text(denied), /code: PERMISSION_DENIED/);
 
-      const allowed = await client.callTool({ name: "list_categories", arguments: {} });
+      const allowed = await client.callTool({ name: "list_products", arguments: {} });
       assert.notEqual(allowed.isError, true, text(allowed));
     } finally {
       await client.close();
@@ -545,8 +551,8 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.match(text(denied), /code: PERMISSION_DENIED/);
       // A member may still write what a member writes.
       const created = await member.callTool({
-        name: "create_category",
-        arguments: { name: "Bikes" },
+        name: "create_product",
+        arguments: { name: "Bike", price: "25.00" },
       });
       assert.notEqual(created.isError, true, text(created));
     } finally {

@@ -1,5 +1,4 @@
 export { registerProductTools } from './products'
-export { registerCategoryTools } from './categories'
 export { registerReservationTools } from './reservations'
 export { registerCustomerTools } from './customers'
 export { registerPaymentTools } from './payments'

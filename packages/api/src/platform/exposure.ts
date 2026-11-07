@@ -11,7 +11,16 @@ import type { ProcedureScope } from "./permissions";
  * is listed here. Each line is reviewed: a procedure enters when its contract
  * follows docs/architecture/api-and-agents.md.
  */
-export const EXPOSED_PROCEDURES: readonly string[] = [];
+export const EXPOSED_PROCEDURES: readonly string[] = [
+  "dashboard.categories.list",
+  "dashboard.categories.get",
+  "dashboard.categories.create",
+  "dashboard.categories.update",
+  "dashboard.categories.delete",
+  "dashboard.categories.reorder",
+  "dashboard.categories.createImageUpload",
+  "dashboard.categories.completeImageUpload",
+];
 
 /** Arguments the MCP bridge adds to a tool and maps onto headers. */
 export const BRIDGE_ARGUMENTS = ["idempotencyKey", "confirmationToken"] as const;
@@ -174,8 +183,10 @@ export function createExposure(
       continue;
     }
     const meta = node["~orpc"].meta as ExposedMeta;
-    if (names.has(meta.mcp.name)) problems.push(`${path}: tool name ${meta.mcp.name} is taken`);
-    names.add(meta.mcp.name);
+    for (const name of [meta.mcp.name, ...(meta.mcp.aliases ?? []).map((alias) => alias.name)]) {
+      if (names.has(name)) problems.push(`${path}: tool name ${name} is taken`);
+      names.add(name);
+    }
     const [, inputJsonSchema] = jsonSchemaConverter.convert(node["~orpc"].inputSchema, {
       strategy: "input",
     });

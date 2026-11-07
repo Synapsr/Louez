@@ -688,16 +688,6 @@ export const productSchema = z
     }
   });
 
-export const categorySchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, 'validation.minLength')
-    .max(255, 'validation.maxLength'),
-  description: z.string().optional().nullable(),
-  imageUrl: storedImageUrlSchema.optional().nullable(),
-});
-
 type ParsedProductInput = z.infer<typeof productSchema>;
 export type ProductInput = Omit<
   ParsedProductInput,
@@ -707,4 +697,3 @@ export type ProductInput = Omit<
   pricingKind?: 'duration' | 'fixed';
   stockKind?: 'returnable' | 'consumable' | 'untracked';
 };
-export type CategoryInput = z.infer<typeof categorySchema>;

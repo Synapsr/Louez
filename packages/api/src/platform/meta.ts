@@ -21,6 +21,13 @@ export interface McpExposure {
     idempotentHint?: boolean;
     openWorldHint?: boolean;
   };
+  /**
+   * Names the tool had before it was served by this procedure. They stay
+   * callable, never listed, so agents set up before the rename keep working;
+   * `renamedArgs` maps an old argument name onto the new one. Removed at the
+   * end of the migration (lot 9).
+   */
+  aliases?: ReadonlyArray<{ name: string; renamedArgs?: Readonly<Record<string, string>> }>;
 }
 
 /**

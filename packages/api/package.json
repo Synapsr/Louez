@@ -7,9 +7,11 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./contracts/*": "./src/contracts/*.ts",
     "./platform/*": "./src/platform/*.ts",
     "./router": "./src/router.ts",
     "./services": "./src/services/index.ts",
+    "./services/categories": "./src/services/categories.ts",
     "./services/customer-fields": "./src/services/customer-fields.ts",
     "./services/customer-fields-online": "./src/services/customer-fields-online.ts",
     "./services/customer-profile-fields": "./src/services/customer-profile-fields.ts",

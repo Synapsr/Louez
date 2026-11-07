@@ -131,5 +131,48 @@ export function registerExposedTools(
       listed: allows(role, credential.scopes, entry.meta.scope),
       call: (args) => callProcedure(entry, ctx, args),
     });
+
+    // Former names: callable, never listed, the old argument names mapped on.
+    for (const alias of entry.meta.mcp.aliases ?? []) {
+      const renamed = Object.entries(alias.renamedArgs ?? {});
+      addTool(server, {
+        name: alias.name,
+        description: `Former name of ${name}, kept for agents set up before. ${description}`,
+        inputSchema: aliasInputSchema(toolInputSchema(entry), renamed),
+        annotations,
+        listed: false,
+        call: (args) => {
+          const mapped = { ...args };
+          for (const [from, to] of renamed) {
+            if (from in mapped) {
+              mapped[to] = mapped[from];
+              delete mapped[from];
+            }
+          }
+          return callProcedure(entry, ctx, mapped);
+        },
+      });
+    }
   }
+}
+
+/** The tool's input schema with the new argument names put back to the old ones. */
+function aliasInputSchema(
+  schema: Tool["inputSchema"],
+  renamed: ReadonlyArray<[from: string, to: string]>,
+): Tool["inputSchema"] {
+  const properties: Record<string, unknown> = { ...schema.properties };
+  let required = schema.required ? [...schema.required] : undefined;
+  for (const [from, to] of renamed) {
+    if (to in properties) {
+      properties[from] = properties[to];
+      delete properties[to];
+    }
+    required = required?.map((field) => (field === to ? from : field));
+  }
+  return {
+    ...schema,
+    properties: properties as NonNullable<Tool["inputSchema"]["properties"]>,
+    ...(required ? { required } : {}),
+  };
 }

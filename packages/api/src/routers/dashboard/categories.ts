@@ -1,304 +1,233 @@
-import { categories, db, nextCategorySlug, productCategories, products } from '@louez/db';
-import { categorySchema, isOwnedImageUrl } from '@louez/validations';
-import { and, asc, count, eq, inArray, ne, sql } from 'drizzle-orm';
-import { ORPCError } from '@orpc/server';
-import { z } from 'zod';
-
-import { dashboardProcedure } from '../../procedures';
-
-const categoryOutputSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().nullable().optional(),
-  imageUrl: z.string().nullable().optional(),
-  productCount: z.number().optional(),
-});
-
-const list = dashboardProcedure
-  .output(z.array(categoryOutputSchema))
-  .handler(async ({ context }) => {
-    return db
-      .select({
-        id: categories.id,
-        name: categories.name,
-        description: categories.description,
-        imageUrl: categories.imageUrl,
-        productCount: count(productCategories.productId),
-      })
-      .from(categories)
-      .leftJoin(
-        productCategories,
-        eq(productCategories.categoryId, categories.id),
-      )
-      .where(eq(categories.storeId, context.store.id))
-      .groupBy(
-        categories.id,
-        categories.name,
-        categories.description,
-        categories.imageUrl,
-        categories.order,
-      )
-      .orderBy(asc(categories.order), asc(categories.name));
-  });
-
-const create = dashboardProcedure
-  .input(categorySchema)
-  .output(categoryOutputSchema)
-  .handler(async ({ context, input }) => {
-    const name = input.name;
-    const description = input.description?.trim() || null;
-    const imageUrl = input.imageUrl || null;
-
-    if (
-      imageUrl &&
-      !isOwnedImageUrl(imageUrl, `${context.store.id}/categories`)
-    ) {
-      throw new ORPCError('BAD_REQUEST', { message: 'errors.invalidData' });
-    }
-
-    // Idempotent by name: return the existing category instead of duplicating
-    const existing = await db
-      .select({
-        id: categories.id,
-        name: categories.name,
-        description: categories.description,
-        imageUrl: categories.imageUrl,
-      })
-      .from(categories)
-      .where(
-        and(
-          eq(categories.storeId, context.store.id),
-          eq(sql`LOWER(${categories.name})`, name.toLowerCase()),
-        ),
-      )
-      .limit(1);
-    if (existing[0]) {
-      return existing[0];
-    }
-
-    const [{ maxOrder }] = await db
-      .select({ maxOrder: sql<number>`COALESCE(MAX(${categories.order}), 0)` })
-      .from(categories)
-      .where(eq(categories.storeId, context.store.id));
-
-    const [created] = await db
-      .insert(categories)
-      .values({
-        storeId: context.store.id,
-        name,
-        slug: await nextCategorySlug(db, context.store.id, name),
-        description,
-        imageUrl,
-        order: maxOrder + 1,
-      })
-      .$returningId();
-
-    return { id: created.id, name, description, imageUrl, productCount: 0 };
-  });
-
-const update = dashboardProcedure
-  .input(categorySchema.extend({ id: z.string() }))
-  .output(categoryOutputSchema)
-  .handler(async ({ context, input }) => {
-    const category = await db.query.categories.findFirst({
-      columns: { id: true, description: true, imageUrl: true },
-      where: and(
-        eq(categories.id, input.id),
-        eq(categories.storeId, context.store.id),
-      ),
-    });
-
-    if (!category) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.categoryNotFound' });
-    }
-
-    const description =
-      input.description === undefined
-        ? category.description
-        : input.description?.trim() || null;
-    const imageUrl =
-      input.imageUrl === undefined ? category.imageUrl : input.imageUrl || null;
-
-    if (
-      imageUrl &&
-      imageUrl !== category.imageUrl &&
-      !isOwnedImageUrl(imageUrl, `${context.store.id}/categories`)
-    ) {
-      throw new ORPCError('BAD_REQUEST', { message: 'errors.invalidData' });
-    }
-
-    const duplicate = await db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(
-        and(
-          eq(categories.storeId, context.store.id),
-          ne(categories.id, input.id),
-          eq(sql`LOWER(${categories.name})`, input.name.toLowerCase()),
-        ),
-      )
-      .limit(1);
-
-    if (duplicate[0]) {
-      throw new ORPCError('CONFLICT', { message: 'errors.invalidData' });
-    }
-
-    await db
-      .update(categories)
-      .set({
-        name: input.name,
-        description,
-        imageUrl,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(categories.id, input.id),
-          eq(categories.storeId, context.store.id),
-        ),
-      );
-
-    return { id: input.id, name: input.name, description, imageUrl };
-  });
-
-const remove = dashboardProcedure
-  .input(
-    z.object({
-      id: z.string(),
-      replacementCategoryId: z.string().nullable().optional(),
-    }),
-  )
-  .output(z.object({ id: z.string() }))
-  .handler(async ({ context, input }) => {
-    const replacementCategoryId = input.replacementCategoryId ?? null;
-    const category = await db.query.categories.findFirst({
-      columns: { id: true },
-      where: and(
-        eq(categories.id, input.id),
-        eq(categories.storeId, context.store.id),
-      ),
-    });
-
-    if (!category) {
-      throw new ORPCError('NOT_FOUND', { message: 'errors.categoryNotFound' });
-    }
-
-    if (replacementCategoryId === input.id) {
-      throw new ORPCError('BAD_REQUEST', { message: 'errors.invalidData' });
-    }
-
-    if (replacementCategoryId) {
-      const replacement = await db.query.categories.findFirst({
-        columns: { id: true },
-        where: and(
-          eq(categories.id, replacementCategoryId),
-          eq(categories.storeId, context.store.id),
-        ),
-      });
-
-      if (!replacement) {
-        throw new ORPCError('BAD_REQUEST', {
-          message: 'errors.categoryNotFound',
-        });
-      }
-    }
-
-    await db.transaction(async (tx) => {
-      const affectedLinks = await tx
-        .select({
-          productId: productCategories.productId,
-          position: productCategories.position,
-        })
-        .from(productCategories)
-        .innerJoin(products, eq(products.id, productCategories.productId))
-        .where(
-          and(
-            eq(products.storeId, context.store.id),
-            eq(productCategories.categoryId, input.id),
-          ),
-        );
-
-      await tx
-        .delete(productCategories)
-        .where(eq(productCategories.categoryId, input.id));
-
-      const affectedIds = affectedLinks.map((link) => link.productId);
-      if (affectedIds.length > 0) {
-        if (replacementCategoryId) {
-          const existingReplacementLinks =
-            await tx.query.productCategories.findMany({
-              columns: { productId: true },
-              where: and(
-                inArray(productCategories.productId, affectedIds),
-                eq(productCategories.categoryId, replacementCategoryId),
-              ),
-            });
-          const alreadyLinked = new Set(
-            existingReplacementLinks.map((link) => link.productId),
-          );
-          const replacementLinks = affectedLinks
-            .filter((link) => !alreadyLinked.has(link.productId))
-            .map((link) => ({
-              productId: link.productId,
-              categoryId: replacementCategoryId,
-              position: link.position,
-            }));
-
-          if (replacementLinks.length > 0) {
-            await tx.insert(productCategories).values(replacementLinks);
-          }
-        }
-
-        const remainingLinks = await tx.query.productCategories.findMany({
-          where: inArray(productCategories.productId, affectedIds),
-          orderBy: [productCategories.position],
-        });
-        const replacementByProduct = new Map<string, string>();
-
-        for (const link of remainingLinks) {
-          if (!replacementByProduct.has(link.productId)) {
-            replacementByProduct.set(link.productId, link.categoryId);
-          }
-        }
-
-        for (const productId of affectedIds) {
-          await tx
-            .update(products)
-            .set({
-              categoryId:
-                replacementCategoryId ??
-                replacementByProduct.get(productId) ??
-                null,
-            })
-            .where(
-              and(
-                eq(products.id, productId),
-                eq(products.storeId, context.store.id),
-                eq(products.categoryId, input.id),
-              ),
-            );
-        }
-      }
-
-      await tx
-        .delete(categories)
-        .where(
-          and(
-            eq(categories.id, input.id),
-            eq(categories.storeId, context.store.id),
-          ),
-        );
-    });
-
-    return { id: input.id };
-  });
+import {
+  createCategoryInput,
+  createCategoryOutput,
+  categorySchema,
+  deleteCategoryInput,
+  deleteCategoryOutput,
+  getCategoryInput,
+  listCategoriesInput,
+  listCategoriesOutput,
+  reorderCategoriesInput,
+  reorderCategoriesOutput,
+  updateCategoryInput,
+} from "../../contracts/categories";
+import {
+  completeImageUploadInput,
+  completeImageUploadOutput,
+  createImageUploadInput,
+  createImageUploadOutput,
+} from "../../contracts/uploads";
+import { checkConfirmation } from "../../platform/confirmation";
+import { storeProcedure } from "../../platform/procedures";
+import {
+  createCategory,
+  deleteCategory,
+  getCategory,
+  listCategories,
+  reorderCategories,
+  updateCategory,
+} from "../../services/categories";
+import { completeImageUpload, createImageUpload } from "../../services/uploads";
 
 /**
- * Dashboard categories router
+ * Categories, on every transport: the dashboard (RPC), `/api/v1/categories`
+ * (OpenAPI) and the `categories_*` MCP tools. The logic is in
+ * services/categories.ts; this file holds the contract, the rights and the
+ * confirmation.
  */
+
+const list = storeProcedure
+  .meta({
+    capability: "categories.list",
+    scope: { domain: "categories", level: "read" },
+    mcp: {
+      name: "categories_list",
+      description:
+        "List the store's product categories in the store's order, with how many products each holds. Returns up to `limit` categories (default and maximum 500) and a nextCursor to fetch the next page; nextCursor is null on the last page.",
+      bundle: "catalog",
+      aliases: [{ name: "list_categories" }],
+      annotations: { readOnlyHint: true },
+    },
+  })
+  .route({ method: "GET", path: "/categories" })
+  .input(listCategoriesInput)
+  .output(listCategoriesOutput)
+  .handler(({ context, input }) => listCategories(context.actor.storeId, input));
+
+const get = storeProcedure
+  .meta({
+    capability: "categories.get",
+    scope: { domain: "categories", level: "read" },
+    mcp: {
+      name: "categories_get",
+      description: "Get one product category of the store by its id.",
+      bundle: "catalog",
+      annotations: { readOnlyHint: true },
+    },
+  })
+  .route({ method: "GET", path: "/categories/{id}" })
+  .input(getCategoryInput)
+  .output(categorySchema)
+  .handler(({ context, input }) => getCategory(context.actor.storeId, input.id));
+
+const create = storeProcedure
+  .meta({
+    capability: "categories.create",
+    scope: { domain: "categories", level: "write" },
+    mcp: {
+      name: "categories_create",
+      description:
+        "Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with `created: false`. To give it an image, upload one with categories_create_image_upload first and pass the `url` that categories_complete_image_upload returns as `imageUrl`.",
+      bundle: "catalog",
+      aliases: [{ name: "create_category" }],
+      annotations: { idempotentHint: true },
+    },
+  })
+  .route({ method: "POST", path: "/categories" })
+  .input(createCategoryInput)
+  .output(createCategoryOutput)
+  .handler(({ context, input }) => createCategory(context.actor.storeId, input));
+
+const update = storeProcedure
+  .meta({
+    capability: "categories.update",
+    scope: { domain: "categories", level: "write" },
+    mcp: {
+      name: "categories_update",
+      description:
+        "Change a product category. Send only the fields to change: a field left out stays as it is, and null clears the description or the image. A name another category of the store already has is refused.",
+      bundle: "catalog",
+      aliases: [{ name: "update_category", renamedArgs: { categoryId: "id" } }],
+      annotations: { idempotentHint: true },
+    },
+  })
+  .route({ method: "PATCH", path: "/categories/{id}" })
+  .input(updateCategoryInput)
+  .output(categorySchema)
+  .handler(({ context, input }) => updateCategory(context.actor.storeId, input));
+
+const remove = storeProcedure
+  .meta({
+    capability: "categories.delete",
+    scope: { domain: "categories", level: "write", role: "delete" },
+    sensitive: "destructive",
+    mcp: {
+      name: "categories_delete",
+      description:
+        "Delete a product category. Its products keep their other categories, or move to `replacementCategoryId` when given. The first call answers CONFIRMATION_REQUIRED with a preview of how many products lose the category: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
+      bundle: "catalog",
+      aliases: [{ name: "delete_category", renamedArgs: { categoryId: "id" } }],
+      annotations: { destructiveHint: true },
+    },
+  })
+  .route({ method: "DELETE", path: "/categories/{id}" })
+  .input(deleteCategoryInput)
+  .output(deleteCategoryOutput)
+  .handler(({ context, input, path }) =>
+    deleteCategory(context.actor.storeId, input, {
+      // Asked under the deletion's own lock: what the preview shows is what
+      // happens. Any change to it since the preview (a product linked or
+      // unlinked, the category or the replacement renamed or changed) makes
+      // the token stale. `updatedAt` counts whole seconds, so names are bound
+      // too.
+      confirm: (preview, tx) =>
+        checkConfirmation({
+          executor: tx,
+          actor: context.actor,
+          headers: context.headers,
+          procedure: path.join("."),
+          input,
+          state: {
+            affectedProductCount: preview.affectedProductCount,
+            uncategorizedProductCount: preview.uncategorizedProductCount,
+            name: preview.category.name,
+            updatedAt: preview.category.updatedAt.toISOString(),
+            replacement: preview.replacement,
+          },
+          preview: {
+            summary: preview.summary,
+            details: {
+              category: { id: preview.category.id, name: preview.category.name },
+              replacement: preview.replacement,
+              affectedProductCount: preview.affectedProductCount,
+              uncategorizedProductCount: preview.uncategorizedProductCount,
+            },
+          },
+        }),
+    }),
+  );
+
+const reorder = storeProcedure
+  .meta({
+    capability: "categories.reorder",
+    scope: { domain: "categories", level: "write" },
+    mcp: {
+      name: "categories_reorder",
+      description:
+        "Set the order of the store's categories, as the storefront shows them. Send the ids of every category of the store, each once, in the new order (list them first).",
+      bundle: "catalog",
+      annotations: { idempotentHint: true },
+    },
+  })
+  .route({ method: "POST", path: "/categories/reorder" })
+  .input(reorderCategoriesInput)
+  .output(reorderCategoriesOutput)
+  .handler(({ context, input }) => reorderCategories(context.actor.storeId, input.ids));
+
+const createImageUploadProcedure = storeProcedure
+  .meta({
+    capability: "categories.uploadImage",
+    scope: { domain: "categories", level: "write" },
+    // The upload URL lets its bearer write to the store's storage: never stored.
+    secretOutput: true,
+    mcp: {
+      name: "categories_create_image_upload",
+      description:
+        "Start uploading a category image (JPEG, PNG, GIF or WebP, 5 MB at most). Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. Then call categories_complete_image_upload with the key.",
+      bundle: "catalog",
+    },
+  })
+  .route({ method: "POST", path: "/categories/image-uploads" })
+  .input(createImageUploadInput)
+  .output(createImageUploadOutput)
+  .handler(({ context, input }) =>
+    createImageUpload(context.ports.storage, {
+      storeId: context.actor.storeId,
+      kind: "category",
+      ...input,
+    }),
+  );
+
+const completeImageUploadProcedure = storeProcedure
+  .meta({
+    capability: "categories.uploadImage",
+    scope: { domain: "categories", level: "write" },
+    mcp: {
+      name: "categories_complete_image_upload",
+      description:
+        "Finish a category image upload: checks the file that arrived at the key and returns its public `url`. Set that url as `imageUrl` with categories_create or categories_update. A file that is not a valid image of the declared type is deleted and refused.",
+      bundle: "catalog",
+      annotations: { idempotentHint: true },
+    },
+  })
+  .route({ method: "POST", path: "/categories/image-uploads/complete" })
+  .input(completeImageUploadInput)
+  .output(completeImageUploadOutput)
+  .handler(({ context, input }) =>
+    completeImageUpload(context.ports.storage, {
+      storeId: context.actor.storeId,
+      kind: "category",
+      key: input.key,
+    }),
+  );
+
 export const dashboardCategoriesRouter = {
   list,
+  get,
   create,
   update,
   delete: remove,
+  reorder,
+  createImageUpload: createImageUploadProcedure,
+  completeImageUpload: completeImageUploadProcedure,
 };

@@ -211,6 +211,15 @@ export function registerProductTools(server: McpServer, ctx: McpRequestContext) 
         return toolError("Consumable products must use fixed pricing.");
       }
 
+      // A category id from another store must not be linked to this one.
+      if (categoryId) {
+        const category = await db.query.categories.findFirst({
+          where: and(eq(categories.id, categoryId), eq(categories.storeId, ctx.storeId)),
+          columns: { id: true },
+        });
+        if (!category) return toolError(`This store has no category ${categoryId}.`);
+      }
+
       const [created] = await db
         .insert(products)
         .values({

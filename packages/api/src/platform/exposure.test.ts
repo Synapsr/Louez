@@ -64,6 +64,25 @@ describe("exposure registry", () => {
     assert.equal(served.procedures.length, exposure.EXPOSED_PROCEDURES.length);
   });
 
+  test("every migrated capability is exposed, and every exposed procedure is in the inventory", async () => {
+    const { appRouter } = await import("../router");
+    const { capabilities } = await import("./inventory");
+    const served = exposure.createExposure(appRouter);
+    const exposedCapabilities = new Set(served.procedures.map(({ meta }) => meta.capability));
+
+    const known = new Set<string>(capabilities.map((capability) => capability.id));
+    const unknown = served.procedures
+      .filter(({ meta }) => !meta.capability || !known.has(meta.capability))
+      .map(({ path, meta }) => `${path}: ${meta.capability ?? "no capability"}`);
+    assert.deepEqual(unknown, [], "Exposed procedures whose capability is not in the inventory");
+
+    const notExposed = capabilities
+      .filter((capability) => "migrated" in capability && capability.migrated)
+      .map((capability) => capability.id)
+      .filter((id) => !exposedCapabilities.has(id));
+    assert.deepEqual(notExposed, [], "Migrated capabilities no exposed procedure serves");
+  });
+
   test("serves only the listed procedures, at their paths", () => {
     const router = testing.createFixtureRouter();
     const served = exposure.createExposure(router, ["fixture.notes.list"]);

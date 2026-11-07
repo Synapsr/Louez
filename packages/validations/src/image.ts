@@ -19,6 +19,42 @@ export const MAX_LOGO_SIZE = 2 * 1024 * 1024;
  */
 export const MAX_HERO_SIZE = 5 * 1024 * 1024;
 
+/** Image types every upload accepts. */
+export const IMAGE_UPLOAD_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+] as const;
+
+export type ImageUploadMimeType = (typeof IMAGE_UPLOAD_MIME_TYPES)[number];
+
+export const IMAGE_UPLOAD_KINDS = [
+  "avatar",
+  "logo",
+  "hero",
+  "product",
+  "category",
+  "inspection",
+] as const;
+
+export type ImageUploadKind = (typeof IMAGE_UPLOAD_KINDS)[number];
+
+/**
+ * Where each kind of image is stored, under the store's folder (the avatar
+ * under the user's), and how large it may be. Shared by the dashboard's file
+ * routes and the API's upload procedures.
+ */
+export const IMAGE_UPLOAD_CONFIG = {
+  avatar: { folder: null, maxSize: MAX_LOGO_SIZE },
+  logo: { folder: "logo", maxSize: MAX_LOGO_SIZE },
+  // Keep hero images in the existing logo folder for backward compatibility.
+  hero: { folder: "logo", maxSize: MAX_HERO_SIZE },
+  product: { folder: "products", maxSize: MAX_IMAGE_SIZE },
+  category: { folder: "categories", maxSize: MAX_HERO_SIZE },
+  inspection: { folder: "inspections", maxSize: MAX_IMAGE_SIZE },
+} as const satisfies Record<ImageUploadKind, { folder: string | null; maxSize: number }>;
+
 /**
  * Client-safe image URL validation for use in browser-side Zod schemas.
  * Does NOT depend on server-only env variables (S3_PUBLIC_URL).
@@ -126,6 +162,10 @@ export function isOwnedImageUrl(url: string, ownerPrefix: string): boolean {
     // URLs in development, so production stays bucket-only.
     return env.NODE_ENV === "development" && isValidImageUrl(url);
   }
+
+  // A path a browser or a proxy would resolve elsewhere (`..`, `.`, an
+  // encoded or back slash, an encoded dot) proves nothing about its folder.
+  if (/(^|\/)\.{1,2}(\/|$)|\\|%2e|%2f|%5c/i.test(storagePath)) return false;
 
   const normalizedPrefix = ownerPrefix.replace(/^\/+|\/+$/g, "");
   return storagePath.startsWith(`${normalizedPrefix}/`) && isValidImageUrl(url);

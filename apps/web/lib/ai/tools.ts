@@ -23,9 +23,10 @@ import {
   reservations,
   stores,
   nextProductSlug,
-  nextCategorySlug,
 } from "@louez/db";
+import type { AppRouter } from "@louez/api";
 import type { ApiKeyPermissions } from "@louez/db/schema";
+import type { RouterClient } from "@orpc/server";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
 import {
   customerFieldSearchCondition,
@@ -54,7 +55,23 @@ export type AIChatContext = {
   userId: string;
   storeName: string;
   permissions: ApiKeyPermissions;
+  /**
+   * The agent-ready procedures, called as the signed-in user (their session,
+   * their current role), like the dashboard calls them. Domains move here as
+   * they migrate (docs/architecture/api-and-agents.md).
+   */
+  api?: AssistantApi;
 };
+
+/** The procedures the assistant calls, through a server-side client bound to the user's session. */
+export type AssistantApi = {
+  categories: RouterClient<AppRouter["dashboard"]["categories"]>;
+};
+
+function assistantApi(ctx: AIChatContext): AssistantApi {
+  if (!ctx.api) throw new Error("The assistant has no API client for this request.");
+  return ctx.api;
+}
 
 function requirePermission(
   ctx: AIChatContext,
@@ -1325,49 +1342,40 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
 
     // ── Categories ────────────────────────────────────────────────────────
 
+    // The categories procedures themselves, as the signed-in user: the same
+    // rights and rules as the dashboard, the API and MCP.
     list_categories: tool({
-      description: "List all product categories",
+      description: "List all product categories, with how many products each holds",
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, "categories", "read");
-
-        const rows = await db.query.categories.findMany({
-          where: eq(categories.storeId, ctx.storeId),
-          with: { products: { columns: { id: true } } },
-          orderBy: [categories.order, categories.name],
-        });
-
+        const items = [];
+        let cursor: string | undefined;
+        do {
+          const page = await assistantApi(ctx).categories.list({ cursor });
+          items.push(...page.items);
+          cursor = page.nextCursor ?? undefined;
+        } while (cursor);
         return {
-          categories: rows.map((c) => ({
-            id: c.id,
-            name: c.name,
-            description: c.description,
-            productCount: c.products.length,
+          categories: items.map((category) => ({
+            id: category.id,
+            name: category.name,
+            description: category.description,
+            productCount: category.productCount,
           })),
         };
       },
     }),
 
     create_category: tool({
-      description: "Create a new product category",
+      description:
+        "Create a new product category; an existing category with the same name is returned instead",
       inputSchema: z.object({
-        name: z.string().min(1),
+        name: z.string().min(2),
         description: z.string().optional(),
       }),
       execute: async ({ name, description }) => {
-        requirePermission(ctx, "categories", "write");
-
-        const [created] = await db
-          .insert(categories)
-          .values({
-            storeId: ctx.storeId,
-            name,
-            slug: await nextCategorySlug(db, ctx.storeId, name),
-            description: description ?? null,
-          })
-          .$returningId();
-
-        return { id: created.id, name };
+        const category = await assistantApi(ctx).categories.create({ name, description });
+        return { id: category.id, name: category.name, created: category.created };
       },
     }),
 
@@ -1375,47 +1383,27 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
       description: "Update an existing product category",
       inputSchema: z.object({
         categoryId: z.string().describe("The category ID"),
-        name: z.string().optional().describe("New name"),
+        name: z.string().min(2).optional().describe("New name"),
         description: z.string().optional().describe("New description"),
       }),
       execute: async ({ categoryId, name, description }) => {
-        requirePermission(ctx, "categories", "write");
-
-        const existing = await db.query.categories.findFirst({
-          where: and(eq(categories.storeId, ctx.storeId), eq(categories.id, categoryId)),
-          columns: { id: true },
-        });
-        if (!existing) return { error: "Category not found" };
-
-        const updateData: Record<string, unknown> = {};
-        if (name !== undefined) updateData.name = name;
-        if (description !== undefined) updateData.description = description;
-
-        if (Object.keys(updateData).length === 0) {
+        if (name === undefined && description === undefined) {
           return { error: "No fields to update" };
         }
-
-        await db.update(categories).set(updateData).where(eq(categories.id, categoryId));
+        await assistantApi(ctx).categories.update({ id: categoryId, name, description });
         return { success: true, categoryId };
       },
     }),
 
     delete_category: tool({
-      description: "Delete a product category (products will be unassigned)",
+      description:
+        "Delete a product category; its products keep their other categories, or have none left",
       inputSchema: z.object({
         categoryId: z.string().describe("The category ID to delete"),
       }),
       execute: async ({ categoryId }) => {
-        requirePermission(ctx, "categories", "write");
-
-        const existing = await db.query.categories.findFirst({
-          where: and(eq(categories.storeId, ctx.storeId), eq(categories.id, categoryId)),
-          columns: { id: true, name: true },
-        });
-        if (!existing) return { error: "Category not found" };
-
-        await db.delete(categories).where(eq(categories.id, categoryId));
-        return { success: true, name: existing.name };
+        const deleted = await assistantApi(ctx).categories.delete({ id: categoryId });
+        return { success: true, affectedProductCount: deleted.affectedProductCount };
       },
     }),
 

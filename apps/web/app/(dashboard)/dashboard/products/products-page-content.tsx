@@ -137,7 +137,7 @@ export function ProductsPageContent({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <ProductsFilters
-            categories={categoriesQuery.data ?? []}
+            categories={categoriesQuery.data?.items ?? []}
             counts={counts}
             isLoadingCategories={categoriesQuery.isPending}
           />

@@ -115,9 +115,10 @@ export const storeProcedure = accountProcedure.use(
       throw platformErrors.permissionDenied(`${meta.scope.domain}:${meta.scope.level}`);
     }
 
+    const { ports } = context;
+    if (!ports) throw missingTransport();
     if (credential.kind !== "session") {
-      if (!context.ports) throw missingTransport();
-      const features = await context.ports.planFeatures(storeActor.storeId);
+      const features = await ports.planFeatures(storeActor.storeId);
       if (!features.apiAccess) throw platformErrors.apiAccessNotInPlan();
 
       const limit = await consumeRateLimit(rateLimitKey(credential));
@@ -127,7 +128,7 @@ export const storeProcedure = accountProcedure.use(
     const store = await db.query.stores.findFirst({ where: eq(stores.id, storeActor.storeId) });
     if (!store) throw platformErrors.noStore();
 
-    const nextContext = { actor: storeActor, store: store as ActorStore };
+    const nextContext = { actor: storeActor, store: store as ActorStore, ports };
     if (meta.scope.level !== "write") return next({ context: nextContext });
 
     // The handler's output is what an idempotent retry gets back; `output()`

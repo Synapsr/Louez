@@ -5,7 +5,6 @@ import type { McpRequestContext } from "./auth/context";
 import { registerExposedTools } from "./bridge";
 import type { McpServerDeps } from "./deps";
 import { registerProductTools } from "./tools/products";
-import { registerCategoryTools } from "./tools/categories";
 import { registerReservationTools } from "./tools/reservations";
 import { registerCustomerTools } from "./tools/customers";
 import { registerPaymentTools } from "./tools/payments";
@@ -36,7 +35,6 @@ export function createMcpServer(
 
   // Hand-written tools, moved to procedures domain by domain
   registerProductTools(server, ctx);
-  registerCategoryTools(server, ctx);
   registerReservationTools(server, ctx, deps);
   registerCustomerTools(server, ctx);
   registerPaymentTools(server, ctx, deps);

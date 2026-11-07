@@ -80,6 +80,12 @@ export interface Capability {
   plan: CapabilityPlan;
   /** `["session"]`: never callable by an agent (no privilege escalation, plan section 2). */
   actors?: readonly ["session"];
+  /**
+   * Served by exposed procedures on every transport: no server action or
+   * hand-written MCP tool is left (a route may remain for the browser, such
+   * as the file upload route). The tests hold it to that.
+   */
+  migrated?: true;
 }
 
 /** A `"use server"` module that holds no store-user capability, with the reason. */
@@ -190,7 +196,6 @@ const ORPC = {
 const MCP = {
   analytics: `${TOOLS}/analytics.ts`,
   calendar: `${TOOLS}/calendar.ts`,
-  categories: `${TOOLS}/categories.ts`,
   customers: `${TOOLS}/customers.ts`,
   payments: `${TOOLS}/payments.ts`,
   products: `${TOOLS}/products.ts`,
@@ -907,44 +912,63 @@ export const capabilities = [
     plan: { lot: "3" },
   },
 
-  // --- Categories (0c pilot) ---------------------------------------------
+  // --- Categories (0c pilot): served by procedures on every transport ------
   {
     id: "categories.list",
-    sources: [procedure("categories", "list"), tool(MCP.categories, "list_categories")],
+    sources: [procedure("categories", "list")],
     kind: "read",
     plan: { lot: "0c" },
+    migrated: true,
+  },
+  {
+    id: "categories.get",
+    sources: [procedure("categories", "get")],
+    kind: "read",
+    plan: { lot: "0c" },
+    migrated: true,
   },
   {
     id: "categories.create",
-    sources: [procedure("categories", "create"), tool(MCP.categories, "create_category")],
+    sources: [procedure("categories", "create")],
     kind: "write",
     plan: { lot: "0c" },
+    migrated: true,
   },
   {
     id: "categories.update",
-    sources: [procedure("categories", "update"), tool(MCP.categories, "update_category")],
+    sources: [procedure("categories", "update")],
     kind: "write",
     plan: { lot: "0c" },
+    migrated: true,
   },
   {
     id: "categories.delete",
-    sources: [procedure("categories", "delete"), tool(MCP.categories, "delete_category")],
+    sources: [procedure("categories", "delete")],
     kind: "write",
     sensitive: "destructive",
     plan: { lot: "0c" },
+    migrated: true,
   },
   {
+    // The dashboard still sends the bytes through its file route (progress,
+    // same-origin); agents use the two procedures.
     id: "categories.uploadImage",
-    sources: [route(ROUTE.files, "POST (kind=category)")],
+    sources: [
+      route(ROUTE.files, "POST (kind=category)"),
+      procedure("categories", "createImageUpload"),
+      procedure("categories", "completeImageUpload"),
+    ],
     kind: "write",
     plan: { lot: "0c" },
+    migrated: true,
   },
   {
-    // Planned in the pilot; the dashboard has no category ordering yet.
+    // The dashboard has no ordering screen yet; the API and agents have it.
     id: "categories.reorder",
-    sources: [],
+    sources: [procedure("categories", "reorder")],
     kind: "write",
     plan: { lot: "0c" },
+    migrated: true,
   },
 
   // --- Customers (4) ------------------------------------------------------

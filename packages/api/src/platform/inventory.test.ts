@@ -145,3 +145,14 @@ test("every source file exists and names something in it", () => {
   assert.deepEqual(missingFiles, [], "Source files that do not exist");
   assert.deepEqual(missingNames, [], "Sources whose name is not in the file");
 });
+
+test("a migrated capability has no server action or hand-written MCP tool left", () => {
+  const legacy = capabilities
+    .filter((capability) => "migrated" in capability && capability.migrated)
+    .flatMap((capability) =>
+      capability.sources
+        .filter((source) => source.kind === "server-action" || source.kind === "mcp-tool")
+        .map((source) => `${capability.id}: ${source.kind} ${source.name}`),
+    );
+  assert.deepEqual(legacy, []);
+});

@@ -6,6 +6,7 @@
  * per-request resolver read the database.
  */
 import type { ApiKeyPermissions } from "@louez/db";
+import { createMemoryStorage } from "@louez/api/platform/memory-storage";
 import { normalizeScopes } from "@louez/api/platform/permissions";
 import { Client, InMemoryTransport as ClientInMemoryTransport } from "@modelcontextprotocol/client";
 import { McpServer } from "@modelcontextprotocol/server";
@@ -60,7 +61,7 @@ export function testRequestContext(input: {
     userId: input.userId,
     storeName: input.storeName ?? "Test store",
     headers: new Headers(),
-    ports: { planFeatures: async () => ({ apiAccess: true }) },
+    ports: { planFeatures: async () => ({ apiAccess: true }), storage: createMemoryStorage() },
     countCall: async () => undefined,
   };
 }
