@@ -63,6 +63,12 @@ export const platformErrors = {
       message: "You have no access to this store, or to any store yet.",
       i18nKey: "errors.unauthorized",
     }),
+  storeRequired: () =>
+    apiError("BAD_REQUEST", "STORE_REQUIRED", {
+      message:
+        "This connection covers several stores. Say which one: pass storeId (an id from stores_list), or the Louez-Store header.",
+      i18nKey: "errors.unauthorized",
+    }),
   permissionDenied: (required: string) =>
     apiError("FORBIDDEN", "PERMISSION_DENIED", {
       message: `This connection or role does not allow it (needs ${required}).`,

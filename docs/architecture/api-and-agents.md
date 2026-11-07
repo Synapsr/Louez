@@ -2,11 +2,13 @@
 
 Every action a store user can take in the dashboard is one oRPC procedure in `packages/api`. The same procedure serves three transports:
 
-| Transport | Endpoint   | Credential                             | Caller                                |
-| --------- | ---------- | -------------------------------------- | ------------------------------------- |
-| RPC       | `/api/rpc` | dashboard session cookie               | the dashboard, through TanStack Query |
-| OpenAPI   | `/api/v1`  | API key (`Bearer lz_…`)                | scripts, n8n, integrations            |
-| MCP       | `/api/mcp` | API key; OAuth access token from lot 1 | Claude, ChatGPT and other agents      |
+| Transport | Endpoint   | Credential                     | Caller                                |
+| --------- | ---------- | ------------------------------ | ------------------------------------- |
+| RPC       | `/api/rpc` | dashboard session cookie       | the dashboard, through TanStack Query |
+| OpenAPI   | `/api/v1`  | API key (`Bearer lz_…`)        | scripts, n8n, integrations            |
+| MCP       | `/api/mcp` | OAuth access token, or API key | Claude, ChatGPT and other agents      |
+
+`/api/rpc` also requires the header `x-csrf-token: orpc` on every call (oRPC's simple CSRF protection, `apps/web/lib/orpc/csrf.ts`): only script on the app's origin can add it, so no other site, same-site ones included, can call a procedure with the user's cookie. The app's link sends it; a call without it gets 403 `CSRF_TOKEN_MISMATCH`.
 
 No transport holds business logic. Validation, authorization, the logic itself and the audit record live in the procedure, so the dashboard, the API and the agents cannot drift apart.
 
@@ -49,7 +51,7 @@ The package has four layers. `contracts/<domain>.ts` holds the input and output 
 
 The handler reads `context.actor` (user, credential, transport, store id and role), `context.store` (the store row) and `context.ports`.
 
-`accountProcedure` is for calls made before any store is chosen, such as listing or creating stores.
+`accountProcedure` is for calls made before any store is chosen, such as listing or creating stores. It runs steps 1 to 3, and a key or a token counts on the connection's rate limit. An account procedure that is exposed declares `meta.account: true` instead of a scope: every connection may call it, and it answers for the connection's own account and stores only (`stores_list`).
 
 ## Contract conventions
 
@@ -168,8 +170,8 @@ The steps a domain lot follows, as categories did (lot 0c):
 
 `/api/mcp` (`apps/web/app/api/mcp/route.ts`) serves Streamable HTTP with the official SDK v2, statelessly. No session is kept between requests.
 
-- Every request resolves its own context (`packages/mcp/src/auth/resolve.ts`): the key, the store and the role held there now, and the plan's API access. A revoked key, a removed member or a lower role applies on the next request.
-- A request that fails there never reaches MCP. It gets the platform's error as JSON, with its HTTP status, and `WWW-Authenticate: Bearer` on a 401.
+- Every request resolves its own context (`packages/mcp/src/auth/resolve.ts`): the key or the access token and its grant, the store and the role held there now, and the plan's API access. A revoked key or grant, a removed member or a lower role applies on the next request.
+- A request that fails there never reaches MCP. It gets the platform's error as JSON, with its HTTP status. A 401 carries `WWW-Authenticate: Bearer` with `resource_metadata`, where an MCP client starts OAuth, and `error="invalid_token"` when a token was sent.
 - Each request gets a server built for it. GET and DELETE answer 405: there is no session to stream on or to close.
 - Rate limiting is the shared limiter. A tool call counts once, where it runs. Every other request counts at the door.
 
@@ -179,15 +181,59 @@ The steps a domain lot follows, as categories did (lot 0c):
 
 - The name, description and annotations come from `meta.mcp`. The arguments are the input's JSON Schema.
 - A write (`scope.level: "write"`) takes an optional `idempotencyKey`. A sensitive procedure takes an optional `confirmationToken`.
-- The tool calls the procedure with `transport: "mcp"` and new headers: the request's `Authorization` and `Louez-Store`, `idempotency-key` from `idempotencyKey`, and `louez-confirmation` from `confirmationToken`. The procedure validates the input, so a bad input fails as it does on the other transports.
+- The tool calls the procedure with `transport: "mcp"` and new headers: the request's `Authorization`, `Louez-Store` set to the request's store, `idempotency-key` from `idempotencyKey`, and `louez-confirmation` from `confirmationToken`. The procedure validates the input, so a bad input fails as it does on the other transports.
 - On success, `structuredContent` is the output as JSON (dates as ISO strings). A text block says it is done and repeats the JSON. A write puts its receipt in `_meta`: `io.louez/operationId` and `io.louez/replayed`.
 - On failure, the result has `isError: true`. Its text gives the message, `code`, `retryable` and the details; `structuredContent.error` holds the same facts. `CONFIRMATION_REQUIRED` spells out the preview and the token, and tells the model to ask the user, then call again with the same arguments and `confirmationToken`.
 
-`tools/list` shows only the tools the connection may call: the member's role cut down to the connection's scopes. The list only shows. Every exposed tool can still be called, and the procedure authorizes the call, so a refusal says `PERMISSION_DENIED` instead of "not found". `packages/mcp/src/tool-registry.ts` serves the list and the calls, because the SDK cannot show a subset of what may be called.
+`tools/list` shows only the tools of the connection's bundles that it may call: the member's role cut down to the connection's scopes. The list only shows. Every exposed tool can still be called, and the procedure authorizes the call, so a refusal says `PERMISSION_DENIED` instead of "not found". `packages/mcp/src/tool-registry.ts` serves the list and the calls, because the SDK cannot show a subset of what may be called.
+
+### Stores, tool bundles and instructions
+
+- **Stores.** A connection over several stores (an OAuth grant) names the store of each request: the `Louez-Store` header, or the `storeId` argument every store tool then takes. The handler reads `storeId` from the tool call before the context is resolved, so hand-written tools get it too. Without one, the tools are listed, a call that needs a store answers `STORE_REQUIRED`, and resources and prompts are not served. A `storeId` the connection does not reach answers `NO_STORE_ACCESS` from the tool, not from the door. `stores_list` (an account procedure) needs no store.
+- **Bundles.** `meta.mcp.bundle` says which bundle a tool is in (`daily`, `catalog`, `settings`, `integrations`, `team`, `billing`); a hand-written tool's bundle follows its domain. `tools/list` shows only the bundles of an OAuth grant; an API key lists every bundle. A tool outside the bundles is still callable: the bundles only show, the scope authorizes.
+- **Instructions.** The server's instructions name the store, the bundles listed and those that are not, and say that the user enables a bundle in Louez (Settings > Integrations > MCP > Connected agents), never the agent.
 
 ### Hand-written tools
 
-The tools, resources and prompts written before the bridge stay until their domain moves to procedures. They already sit behind the same boundary: the per-request context, `requirePermission` with the role cut down to the scopes (a missing domain is `none`), the plan check and the shared rate limit. Their platform errors answer in the bridge's format. The store settings tools also need the `manage_settings` permission, as in the dashboard.
+The tools, resources and prompts written before the bridge stay until their domain moves to procedures. They already sit behind the same boundary: the per-request context, `requirePermission` with the role cut down to the scopes (a missing domain is `none`), the plan check and the shared rate limit. Their platform errors answer in the bridge's format. Those that move money, delete or send to a customer (`update_reservation_status`, `record_payment`, `delete_payment`, `return_deposit`, `archive_product`, and `update_product` when it archives or, by switching to fixed pricing, deletes pricing tiers and seasonal prices) declare `sensitive` on `legacyTool`: they take `confirmationToken` and run through `requireConfirmation` before their handler, with a preview of the call and a state read from the record (its status, the amounts, the counts it would delete), under the procedure name `mcp.<tool>`. A call that takes none of a tool's sensitive paths runs directly.
+
+Known limit, accepted until these tools become procedures (lots 2a and 2c for reservations and payments, 3 for products): the confirmation's state is read and its token checked before the handler, outside the transaction it writes in, so a change landing between the check and the write is not caught. A procedure asks for its confirmation under its domain's lock, inside the write. The store settings tools also need the `manage_settings` permission, as in the dashboard.
+
+## OAuth for agents
+
+Claude.ai, ChatGPT and other MCP clients connect by signing in to Louez, without a key. Louez is the authorization server (Better Auth's `@better-auth/mcp` plugin over its OAuth 2.1 provider) and `/api/mcp` the protected resource. The plugins are set in `packages/auth/src/oauth.ts`.
+
+### The flow
+
+1. The client calls `/api/mcp` without a token. The answer is a 401 with `WWW-Authenticate: Bearer resource_metadata="<app>/.well-known/oauth-protected-resource/api/mcp"`.
+2. It reads that document (resource `<app>/api/mcp`, authorization server `<app>/api/auth`), then `<app>/.well-known/oauth-authorization-server/api/auth`. The app's `/.well-known/*` routes hand these paths to Better Auth, which answers them before routing; `/api/auth/.well-known/openid-configuration` is served too.
+3. It identifies itself. A Client ID Metadata Document (CIMD, the `cimd()` plugin, MCP 2026-07-28 profile) is the preferred way: the `client_id` is an HTTPS URL that Louez fetches with a resolve-once, private-address-refusing transport. Dynamic client registration (`/api/auth/oauth2/register`) stays open for clients that only know it, restricted: the standard scopes and the MCP resource only, no client-credentials grant, rate limited. No session may manage clients or resources (`clientPrivileges` and `resourcePrivileges` refuse), and the session JWT endpoint of the JWT plugin is off.
+4. The browser goes to `/api/auth/oauth2/authorize`. Signed out, it lands on the usual `/login` with a signed query; every sign-in method then goes back to the authorization endpoint (`util.oauth-authorize-url.ts`). Signed in, it lands on the consent page, `/oauth/consent`.
+5. The consent page shows who asks without vouching for it: the name the client declared, who declared it (the host serving its metadata document, or "registered dynamically"), and the host of this request's `redirect_uri`, the one Better Auth checked and signed, where the code goes; a loopback redirect gets a warning, as any local program can receive it. "Vérifié" is only for a client id on `VERIFIED_CLIENT_IDS` (`services/agent-grants.ts`), empty for now. Then the terms below. Accepting calls `dashboard.agentConnections.authorize`: the grant is saved first, then Better Auth records its consent and issues the code. Refusing sends `access_denied` back.
+6. The client exchanges the code (PKCE) for an access token bound to the resource, a JWT signed by the JWT plugin (`at+jwt`, one hour), and a refresh token (`offline_access`).
+
+The issuer and the resource come from `AUTH_URL`'s origin, even where the development base URL follows the request host: a token names one issuer. OAuth needs HTTPS (plain HTTP on a loopback host only); an instance on plain HTTP serves no OAuth and keeps API keys.
+
+### Grants
+
+A grant (`api_agent_grants`, one per user and client, linked to the client and the user like Better Auth's consent) holds what the user accepted:
+
+- **Stores**: one, several (`api_agent_grant_stores`), or all of the user's stores, current and future ones.
+- **Rights preset**: `read` ("Lecture seule": read on every domain) or `write` ("Lecture et modification": write on every domain, analytics staying read-only). The member's role still cuts it down.
+- **Confirmation**: "Demander une confirmation avant les actions sensibles", on by default (`confirmSensitive`).
+- **Tool bundles**: `daily` by default; the others are opted in.
+
+Creating, changing and revoking a grant are session-only procedures (`dashboard.agentConnections.*`, `actors: ["session"]`), recorded in `api_operations` on the dashboard's current store. "Agents connectés" on Settings > Integrations > MCP lists the grants with their stores, preset, bundles, last action (the last write in `api_operations`) and creation date. Revoking deletes the grant; its consent and its tokens go with it (see below), so the next authorization asks again.
+
+### The access token on each call
+
+`resolveAccountActor` takes a bearer that is not `lz_…` as an access token, on MCP only (OpenAPI takes keys, RPC sessions). It is verified in full: signature against the JWT plugin's keys (read in process, cached five minutes), issuer, audience (the MCP resource), expiry, type `at+jwt`, `azp`; a DPoP-bound token is refused. Then the grant of that user and client is read again, with its client, which must not be disabled. Each access token names the grant it was issued under (`louez_grant`), and the grant read must be that one.
+
+A token lineage is bound to its grant, not to the user's current one. The grant id is Better Auth's consent reference (`postLogin.consentReferenceId`, read when the authorization starts): the provider stores it on the consent, the code and every refresh token, and carries it to each token refreshed from them. The claim is that reference; issuing a token for a reference whose grant is gone fails with `invalid_grant`, and for JWT access tokens the claims are made before the refresh token rotates, so a refused refresh leaves nothing behind. In the database, `reference_id` on `oauth_consents`, `oauth_refresh_tokens` and `oauth_access_tokens` is a foreign key to `api_agent_grants.id` with `ON DELETE CASCADE`: revoking (deleting the grant) deletes its consent and its whole token lineage in the same statement, and a rotation that inserts its new row after the revoke fails on the key (InnoDB locks the parent row for the child insert, so the two serialize). An unused code from before a revoke is refused at the exchange. A replayed old refresh token no longer exists, so it never triggers the provider's family invalidation, which would otherwise delete every refresh token of the user and client, the new grant's included. Grant ids are never reused, so a deleted grant is its own tombstone. Anything that fails is `UNAUTHENTICATED`; nothing falls back to another credential.
+
+Known limit, in Better Auth 1.7.18 itself: a refresh replay already in flight when the grant is revoked (read before the revoke, sent after a reconnect, outside the provider's 30-second reuse window) reaches the provider's family invalidation, which deletes every refresh token of the user and client, the new grant's included. It grants nothing, and the agent signs in again; it needs a stolen, already-revoked refresh token. Fix upstream: scope `invalidateRefreshFamily` to the token's `referenceId`. A refresh that loses the race against a revoke also answers 500 with an empty body instead of `invalid_grant`.
+
+The credential is `kind: "oauth"`, its id the grant id, its client name the OAuth client's, its scopes the preset's, `confirmSensitive` the grant's. `storeId` is set when the grant covers one store; otherwise `stores` lists the granted ones (null for all) and the caller names one, as in [Stores, tool bundles and instructions](#stores-tool-bundles-and-instructions). The member's role in that store is read on every call, so a removed member is refused. A platform admin gets no staff powers through a token.
 
 ---
 

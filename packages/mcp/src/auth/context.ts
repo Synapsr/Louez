@@ -1,6 +1,8 @@
 import type { StoreActor } from "@louez/api/platform/actor";
 import { platformErrors } from "@louez/api/platform/errors";
-import { allows, type ApiDomain } from "@louez/api/platform/permissions";
+import type { McpBundle } from "@louez/api/platform/meta";
+import { allows, type ApiDomain, type ProcedureScope } from "@louez/api/platform/permissions";
+import type { MemberRole } from "@louez/utils";
 import type { ApiPorts } from "@louez/api/platform/ports";
 import type { Permission } from "@louez/utils";
 
@@ -11,7 +13,27 @@ import type { Permission } from "@louez/utils";
  * (auth/resolve.ts).
  */
 export interface McpRequestContext {
+  /**
+   * The store actor of the request. When no store is chosen (`storeChosen`
+   * false), the first store the connection reaches: tools are listed from it
+   * but a call that needs a store is refused with STORE_REQUIRED.
+   */
   actor: StoreActor;
+  /**
+   * A store is known: the connection has one (an API key, a grant over one
+   * store), or the request named one (the `Louez-Store` header, or the
+   * `storeId` argument of its tool call).
+   */
+  storeChosen: boolean;
+  /** The connection covers several stores: every tool takes a `storeId` argument. */
+  multiStore: boolean;
+  /**
+   * Why the store a tool call named cannot be used (not a store of the
+   * connection): the call answers with it instead of running.
+   */
+  storeError: Error | null;
+  /** The role tools are listed with: the highest the user holds among the stores reached. */
+  listingRole: MemberRole;
   /** The actor's store and user, for short. */
   storeId: string;
   userId: string;
@@ -36,6 +58,24 @@ export function hasPermission(
   role?: Permission,
 ): boolean {
   return allows(ctx.actor.role, ctx.actor.credential.scopes, { domain, level, role });
+}
+
+/**
+ * Whether `tools/list` shows a tool: it is in one of the connection's bundles
+ * (an API key lists them all), and the listing role cut down to the
+ * connection's scopes allows its scope. An account tool (no scope, such as
+ * `stores_list`) is always listed. Listing only shows: the call is authorized
+ * where it runs.
+ */
+export function isListed(
+  ctx: McpRequestContext,
+  scope: ProcedureScope | undefined,
+  bundle: McpBundle,
+): boolean {
+  if (!scope) return true;
+  const { bundles, scopes } = ctx.actor.credential;
+  if (bundles && !bundles.includes(bundle)) return false;
+  return allows(ctx.listingRole, scopes, scope);
 }
 
 /** Throws PERMISSION_DENIED unless the actor may do this (see `hasPermission`). */

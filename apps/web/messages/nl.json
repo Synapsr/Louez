@@ -9342,7 +9342,9 @@
     "reservationDetailsLocked": "Deze gegevens kunnen niet meer worden gewijzigd: de huur is begonnen of afgelopen.",
     "customerNotAuthenticated": "Log in op uw klantaccount om verder te gaan.",
     "profileFieldRequired": "Vul „{field}” in.",
-    "profileFieldInvalid": "„{field}” is ongeldig."
+    "profileFieldInvalid": "„{field}” is ongeldig.",
+    "agentConnectionNotFound": "Deze gekoppelde agent bestaat niet meer.",
+    "oauthRequestInvalid": "Dit koppelverzoek is niet meer geldig. Start het opnieuw vanuit uw agent."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",
@@ -9437,5 +9439,111 @@
     "nav": {
       "finance": "Financiën"
     }
+  },
+  "agentConnections": {
+    "presetsTitle": "Rechten",
+    "presets": {
+      "read": {
+        "label": "Alleen lezen",
+        "description": "De agent bekijkt uw reserveringen, producten, klanten en cijfers en wijzigt niets."
+      },
+      "write": {
+        "label": "Lezen en bewerken",
+        "description": "De agent kan ook aanmaken en wijzigen, binnen uw rol. Statistieken blijven alleen-lezen."
+      }
+    },
+    "storesTitle": "Winkels",
+    "storesAll": "Al mijn winkels, ook toekomstige",
+    "storesAllHint": "Een winkel die u later aanmaakt of waaraan u deelneemt, hoort er ook bij.",
+    "storesNone": "Kies minstens één winkel.",
+    "roles": {
+      "owner": "Eigenaar",
+      "member": "Lid"
+    },
+    "confirm": {
+      "label": "Om bevestiging vragen vóór gevoelige acties",
+      "description": "Betalingen, terugbetalingen, verwijderingen en berichten aan klanten wachten eerst op uw akkoord."
+    },
+    "bundlesTitle": "Getoonde tools",
+    "bundlesHint": "De agent ziet deze toolpakketten. U kunt er later meer toevoegen.",
+    "bundlesNone": "Kies minstens één toolpakket.",
+    "recommended": "Aanbevolen",
+    "bundles": {
+      "daily": {
+        "label": "Dagelijkse operaties",
+        "description": "Reserveringen, agenda, klanten, betalingen en cijfers."
+      },
+      "catalog": {
+        "label": "Catalogus",
+        "description": "Producten, categorieën en voorraad."
+      },
+      "settings": {
+        "label": "Instellingen",
+        "description": "Winkelinstellingen en webwinkel."
+      },
+      "integrations": {
+        "label": "Integraties",
+        "description": "Diensten gekoppeld aan Louez."
+      },
+      "team": {
+        "label": "Team",
+        "description": "Teamleden."
+      },
+      "billing": {
+        "label": "Abonnement",
+        "description": "Louez-abonnement en facturen."
+      }
+    },
+    "verified": "Geverifieerd",
+    "unverified": "Naam niet geverifieerd",
+    "unknownClient": "Een app",
+    "consent": {
+      "metaTitle": "Een agent koppelen",
+      "title": "{client} koppelen aan Louez",
+      "description": "{client} kan voor u handelen in de gekozen winkels, binnen de grenzen hieronder en die van uw rol.",
+      "accept": "Toestaan",
+      "refuse": "Weigeren",
+      "invalidTitle": "Verzoek verlopen",
+      "invalidDescription": "Dit koppelverzoek is niet meer geldig. Start de koppeling opnieuw vanuit uw agent.",
+      "noStoreTitle": "Geen winkel",
+      "noStoreDescription": "Maak een winkel aan voordat u een agent koppelt.",
+      "redirectNotice": "Na uw toestemming wordt de toegang naar {host} gestuurd.",
+      "footer": "U kunt deze toegang altijd wijzigen of intrekken via Instellingen, Integraties, MCP.",
+      "loopbackWarning": "De toegang wordt naar een lokaal adres op deze computer gestuurd: elk programma dat erop draait kan zich voordoen als deze app. Sta het alleen toe als u de koppeling net zelf hebt gestart."
+    },
+    "list": {
+      "title": "Gekoppelde agents",
+      "description": "De assistenten die u toestemming gaf om in uw winkels te handelen.",
+      "empty": "Geen gekoppelde agent",
+      "emptyDescription": "Voeg Louez toe als connector in Claude of ChatGPT: hier kiest u wat hij mag doen.",
+      "allStores": "Al mijn winkels",
+      "connectedOn": "Gekoppeld op {date}",
+      "lastAction": "Laatste actie op {date}",
+      "noAction": "Nog geen actie",
+      "edit": "Bewerken",
+      "revoke": "Ontkoppelen",
+      "saved": "Instellingen opgeslagen",
+      "revoked": "Agent ontkoppeld",
+      "editTitle": "Toegang van {client}",
+      "editDescription": "Wijzigingen gelden vanaf zijn volgende actie.",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "revokeTitle": "{client} ontkoppelen?",
+      "revokeDescription": "De agent verliest meteen de toegang. Om hem opnieuw te koppelen, moet u hem opnieuw toestemming geven.",
+      "revokeConfirm": "Ontkoppelen"
+    },
+    "guide": {
+      "title": "Een agent koppelen",
+      "description": "Het adres van de Louez MCP-server, voor Claude, ChatGPT en andere assistenten.",
+      "oauthTitle": "Claude.ai, ChatGPT en andere MCP-clients",
+      "oauthDescription": "Voeg een aangepaste connector toe met dit adres. De assistent stuurt u naar Louez om in te loggen en te kiezen wat hij mag doen, zonder sleutel te kopiëren.",
+      "claudeSteps": "Claude: Instellingen, Connectors, Aangepaste connector toevoegen, plak dan het adres.",
+      "chatgptSteps": "ChatGPT: voeg een app (connector) toe met dit adres en OAuth-authenticatie.",
+      "keyTitle": "Scripts, n8n en clients zonder OAuth",
+      "keyDescription": "Maak hieronder een API-sleutel aan en stuur die in de header Authorization: Bearer.",
+      "oauthUnavailable": "Inloggen met uw account vereist een HTTPS-adres. Gebruik op deze instantie een API-sleutel."
+    },
+    "declaredBy": "Naam opgegeven door {origin}",
+    "declaredByItself": "Naam opgegeven door de app (dynamisch geregistreerd)"
   }
 }

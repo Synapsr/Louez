@@ -5,6 +5,8 @@ import type { RouterClient } from "@orpc/server";
 import { getPublicEnvSnapshot } from "@/components/shared/public-env-provider";
 import { getStorefrontSlugFromHost } from "@/lib/util.host";
 
+import { rpcCsrfLinkPlugin } from "./csrf";
+
 /**
  * Store slug set by the StoreProvider during render. It is the authority on
  * which store the page belongs to: the server resolved it, whatever the host
@@ -42,6 +44,8 @@ const getRpcUrl = (): string => {
 };
 
 const link = new RPCLink({
+  // The header `/api/rpc` requires of every call (./csrf.ts).
+  plugins: [rpcCsrfLinkPlugin()],
   // Resolve lazily: PublicEnvProvider installs the validated runtime config
   // before any child query can execute.
   url: getRpcUrl,

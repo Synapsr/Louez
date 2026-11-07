@@ -34,7 +34,17 @@ import { sendPasswordChangedNotice } from "./password-notice";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./password-policy";
 import { authIpAddressOptions, authRateLimitOptions } from "./rate-limit";
 import { getLocaleFromHeaders } from "./request-locale";
-import { createPasskeyOptions, passkeyAfter, passkeyBefore } from "./passkey";
+import { currentGrantId, isGrantActive } from "./grant-lineage";
+import { authTables } from "./tables";
+import {
+  answerOAuthConsent,
+  createAccessTokenVerifier,
+  mcpOAuthEndpoints,
+  mcpOAuthPlugins,
+  readOAuthConsentQuery,
+  type OAuthConsentRequest,
+} from "./oauth";
+import { createPasskeyOptions, passkeyBefore } from "./passkey";
 
 // Standalone (self-host) deployments make email + password the primary
 // sign-in so the first owner can create an account with zero external
@@ -152,10 +162,17 @@ const DEV_AUTH_HOSTS = [
   "louez-*.localify.fyi",
 ];
 
-const authBaseURL =
-  env.NODE_ENV === "development"
-    ? { allowedHosts: DEV_AUTH_HOSTS, fallback: env.AUTH_URL }
-    : env.AUTH_URL;
+const isDevelopment = env.NODE_ENV === "development";
+
+const authBaseURL = isDevelopment
+  ? { allowedHosts: DEV_AUTH_HOSTS, fallback: env.AUTH_URL }
+  : env.AUTH_URL;
+
+/**
+ * OAuth for MCP clients, on AUTH_URL's origin (./oauth.ts). Null on a
+ * self-hosted instance served over plain HTTP: API keys only there.
+ */
+export const mcpOAuth = mcpOAuthEndpoints(env.AUTH_URL);
 
 // ============================================================================
 // Auth instance (direct — no factory/singleton)
@@ -169,15 +186,12 @@ export const authInstance = betterAuth({
 
   database: drizzleAdapter(db, {
     provider: "mysql",
-    schema: {
-      user: schema.users,
-      account: schema.accounts,
-      session: schema.sessions,
-      verification: schema.verification,
-      rateLimit: schema.authRateLimits,
-      passkey: schema.passkeyTable,
-    },
+    schema: authTables,
   }),
+
+  // The JWT plugin's session token endpoint: a session JWT is signed with the
+  // access tokens' key, so it is never handed out.
+  disabledPaths: ["/token"],
 
   advanced: {
     cookiePrefix: AUTH_COOKIE_PREFIX,
@@ -185,6 +199,10 @@ export const authInstance = betterAuth({
       generateId: () => nanoid(),
     },
     ipAddress: authIpAddressOptions,
+    // Better Auth 1.7 reads the request host from `Host` only. Localify
+    // forwards the public host in X-Forwarded-Host, which the dynamic base URL
+    // of development needs; production has a fixed base URL.
+    trustedProxyHeaders: isDevelopment,
   },
 
   rateLimit: authRateLimitOptions,
@@ -316,7 +334,6 @@ export const authInstance = betterAuth({
       };
     }),
     after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path.startsWith("/passkey/")) return passkeyAfter(ctx);
       if (ctx.path !== "/change-password") return;
       if (ctx.context.returned instanceof APIError) return;
 
@@ -332,6 +349,7 @@ export const authInstance = betterAuth({
 
   plugins: [
     passkey(createPasskeyOptions(env.AUTH_URL)),
+    ...(mcpOAuth ? mcpOAuthPlugins(mcpOAuth, { currentGrantId, isGrantActive }) : []),
     magicLink({
       sendMagicLink: async ({ email, url }, ctx) => {
         const reqHeaders = ctx?.request ? new Headers(ctx.request.headers) : new Headers();
@@ -416,6 +434,37 @@ export const authInstance = betterAuth({
     },
   },
 });
+
+/**
+ * Verifies an access token sent to the MCP endpoint: signature against this
+ * server's keys, issuer, audience (the MCP resource), expiry and type. Null
+ * when it fails, or when OAuth is off on this instance.
+ */
+export const verifyMcpAccessToken = mcpOAuth
+  ? createAccessTokenVerifier({
+      issuer: mcpOAuth.issuer,
+      audience: mcpOAuth.resource,
+      loadJwks: () => authInstance.api.getJwks(),
+    })
+  : async () => null;
+
+/** The pending authorization behind a consent page's signed query, or null. */
+export function readConsentRequest(oauthQuery: string): Promise<OAuthConsentRequest | null> {
+  return readOAuthConsentQuery(oauthQuery, env.AUTH_SECRET);
+}
+
+/**
+ * Accepts or refuses a pending authorization for the signed-in user of
+ * `headers`. Returns where to send the browser: back to the client.
+ */
+export function answerConsent(input: {
+  oauthQuery: string;
+  accept: boolean;
+  headers: Headers;
+}): Promise<string> {
+  if (!mcpOAuth) throw new Error("OAuth is not served on this instance (AUTH_URL is not HTTPS).");
+  return answerOAuthConsent(authInstance, mcpOAuth, input);
+}
 
 // ============================================================================
 // Session accessor

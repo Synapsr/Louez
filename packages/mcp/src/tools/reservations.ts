@@ -242,6 +242,32 @@ export function registerReservationTools(
       );
       return toolResult(`${updated}\nWarnings: ${warnings.join(", ")}`);
     },
+    {
+      // It can email the customer, move stock and create or cancel an insurance contract.
+      sensitive: {
+        kind: "send",
+        confirm: async ({ reservationId, status: to, rejectionReason }) => {
+          const reservation = await db.query.reservations.findFirst({
+            where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+            columns: { number: true, status: true },
+          });
+          if (!reservation) return null;
+          return {
+            preview: {
+              summary: `Change reservation #${reservation.number} from ${formatStatus(reservation.status)} to ${formatStatus(to)}. The customer may be emailed and the stock and insurance updated, as in the dashboard.`,
+              details: {
+                reservationId,
+                number: reservation.number,
+                from: reservation.status,
+                to,
+                ...(rejectionReason ? { rejectionReason } : {}),
+              },
+            },
+            state: { status: reservation.status },
+          };
+        },
+      },
+    },
   );
 
   // ── update_reservation_notes ───────────────────────────────────────────

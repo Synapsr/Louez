@@ -1,11 +1,13 @@
 import { db, storeMembers, stores } from "@louez/db";
 import { isPlatformAdmin } from "@louez/auth/platform-admin";
 import type { MemberRole } from "@louez/utils";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
+import { loadActiveGrant } from "../services/agent-grants";
 import { validateApiKey } from "../services/api-keys";
 import { platformErrors } from "./errors";
-import { normalizeScopes, type ConnectionScopes } from "./permissions";
+import type { McpBundle } from "./meta";
+import { normalizeScopes, presetScopes, type ConnectionScopes } from "./permissions";
 
 /** The three ways into the API. */
 export type Transport = "rpc" | "openapi" | "mcp";
@@ -14,12 +16,11 @@ export type CredentialKind = "session" | "api_key" | "oauth";
 /**
  * What each transport accepts. A credential a transport does not accept is
  * refused; it never falls back to another one (no cookie behind a bad token).
- * OAuth joins `mcp` with lot 1.
  */
 export const ACCEPTED_CREDENTIALS: Record<Transport, readonly CredentialKind[]> = {
   rpc: ["session"],
   openapi: ["api_key"],
-  mcp: ["api_key"],
+  mcp: ["api_key", "oauth"],
 };
 
 const API_KEY_PREFIX = "lz_";
@@ -33,12 +34,22 @@ export interface Credential {
   clientName: string | null;
   userId: string;
   email: string | null;
-  /** The only store an API key works on; null when the caller picks. */
+  /**
+   * The only store the connection works on: an API key's store, or the one
+   * store of an OAuth grant. Null when the caller picks.
+   */
   storeId: string | null;
+  /**
+   * The stores an OAuth grant covers. Null for a grant over every store of
+   * the user (current and future ones), and for a session or an API key.
+   */
+  stores: readonly string[] | null;
   /** What the connection was granted; null for a session (the role alone applies). */
   scopes: ConnectionScopes | null;
   /** Sensitive operations wait for a confirmation. Always false for a session: the dashboard has its own dialogs. */
   confirmSensitive: boolean;
+  /** The tool bundles MCP lists for an OAuth grant; null lists them all (session, API key). */
+  bundles: readonly McpBundle[] | null;
 }
 
 /** Someone authenticated, before any store is chosen. */
@@ -88,10 +99,13 @@ export async function resolveAccountActor(input: {
   const accepted = ACCEPTED_CREDENTIALS[input.transport];
   const token = bearerToken(input.headers);
 
+  if (token !== null && !token.startsWith(API_KEY_PREFIX)) {
+    if (!accepted.includes("oauth")) throw platformErrors.credentialNotAccepted(input.transport);
+    return resolveOAuthActor(input.transport, token);
+  }
+
   if (token !== null) {
-    if (!token.startsWith(API_KEY_PREFIX) || !accepted.includes("api_key")) {
-      throw platformErrors.credentialNotAccepted(input.transport);
-    }
+    if (!accepted.includes("api_key")) throw platformErrors.credentialNotAccepted(input.transport);
     const key = await validateApiKey({ db, rawKey: token });
     if (!key) throw platformErrors.unauthenticated("This API key is invalid, expired or revoked.");
 
@@ -112,8 +126,10 @@ export async function resolveAccountActor(input: {
         userId: user.id,
         email: user.email,
         storeId: key.storeId,
+        stores: null,
         scopes: normalizeScopes(key.permissions),
         confirmSensitive: key.confirmSensitive,
+        bundles: null,
       },
     };
   }
@@ -133,8 +149,55 @@ export async function resolveAccountActor(input: {
       userId: user.id,
       email: user.email,
       storeId: null,
+      stores: null,
       scopes: null,
       confirmSensitive: false,
+      bundles: null,
+    },
+  };
+}
+
+/** How an access token is verified. Better Auth by default; tests replace the module. */
+async function verifyAccessToken(token: string) {
+  const { verifyMcpAccessToken } = await import("@louez/auth");
+  return verifyMcpAccessToken(token);
+}
+
+/**
+ * An OAuth access token, checked in full: signature, issuer, audience (the
+ * MCP resource), expiry and type, then the grant the user accepted for that
+ * client, read again now, which must be the very grant the token names. A
+ * revoked grant or a disabled client refuses the call; nothing falls back to
+ * another credential.
+ */
+async function resolveOAuthActor(transport: Transport, token: string): Promise<AccountActor> {
+  const verified = await verifyAccessToken(token);
+  if (!verified) {
+    throw platformErrors.unauthenticated("This access token is invalid or expired.");
+  }
+  const grant = await loadActiveGrant({ userId: verified.userId, clientId: verified.clientId });
+  // The token must be one of this grant's: a token issued before a revoke
+  // names the old grant, and never acts for the one made on reconnecting.
+  if (!grant || grant.id !== verified.grantId) {
+    throw platformErrors.unauthenticated(
+      "This connection was revoked, or its client is no longer allowed. Connect again.",
+    );
+  }
+  return {
+    transport,
+    // A connected agent acts for its user's memberships, never as platform staff.
+    isPlatformAdmin: false,
+    credential: {
+      kind: "oauth",
+      id: grant.id,
+      clientName: grant.clientName,
+      userId: grant.userId,
+      email: grant.email,
+      storeId: grant.stores?.length === 1 ? grant.stores[0] : null,
+      stores: grant.stores,
+      scopes: presetScopes(grant.preset),
+      confirmSensitive: grant.confirmSensitive,
+      bundles: grant.bundles,
     },
   };
 }
@@ -153,10 +216,14 @@ function cookieValue(headers: Headers, name: string): string | null {
  * The store an actor acts on, and the role they hold there now, read on every
  * call: a member removed or demoted loses access on their next request.
  *
- * - API key: its store, through its owner's current membership.
+ * - API key, or a grant over one store: that store, through the user's
+ *   current membership. `requestedStoreId` must match it.
+ * - OAuth grant over several stores: `requestedStoreId` (the `Louez-Store`
+ *   header, or the `storeId` argument of a tool), among the granted stores
+ *   the user is still a member of. Without it, the one such store when there
+ *   is one; otherwise STORE_REQUIRED.
  * - Session: the dashboard's active store cookie, else the first store, like
  *   `getCurrentStore`. Platform staff may open any store.
- * - `requestedStoreId` (OAuth grants over several stores, lot 1) must match.
  */
 export async function resolveStoreActor(
   actor: AccountActor,
@@ -171,6 +238,19 @@ export async function resolveStoreActor(
     const role = await memberRole(credential.storeId, credential.userId);
     if (!role) throw platformErrors.noStore();
     return { ...actor, storeId: credential.storeId, role };
+  }
+
+  if (credential.kind === "oauth") {
+    const reachable = await connectionStores(actor);
+    if (input.requestedStoreId) {
+      const chosen = reachable.find((store) => store.id === input.requestedStoreId);
+      if (!chosen) throw platformErrors.noStore();
+      return { ...actor, storeId: chosen.id, role: chosen.role };
+    }
+    if (reachable.length === 1)
+      return { ...actor, storeId: reachable[0].id, role: reachable[0].role };
+    if (reachable.length === 0) throw platformErrors.noStore();
+    throw platformErrors.storeRequired();
   }
 
   const wanted = input.requestedStoreId ?? cookieValue(input.headers, ACTIVE_STORE_COOKIE);
@@ -209,6 +289,36 @@ export async function resolveStoreActor(
     .limit(1);
   if (!first) throw platformErrors.noStore();
   return { ...actor, storeId: first.storeId, role: first.role as MemberRole };
+}
+
+/** A store a connection may act on, with the role the user holds there now. */
+export interface ReachableStore {
+  id: string;
+  name: string;
+  slug: string;
+  role: MemberRole;
+}
+
+/**
+ * The stores a connection may act on now, by name: an API key's store, a
+ * grant's stores (or all of the user's), a session's memberships. Each one
+ * through the user's current membership, so a store they left drops out.
+ */
+export async function connectionStores(actor: AccountActor): Promise<ReachableStore[]> {
+  const { credential } = actor;
+  const only = credential.storeId ? [credential.storeId] : credential.stores;
+  if (only && only.length === 0) return [];
+  const rows = await db
+    .select({ id: stores.id, name: stores.name, slug: stores.slug, role: storeMembers.role })
+    .from(storeMembers)
+    .innerJoin(stores, eq(stores.id, storeMembers.storeId))
+    .where(
+      only
+        ? and(eq(storeMembers.userId, credential.userId), inArray(storeMembers.storeId, [...only]))
+        : eq(storeMembers.userId, credential.userId),
+    )
+    .orderBy(asc(stores.name), asc(stores.id));
+  return rows.map((row) => ({ ...row, role: row.role as MemberRole }));
 }
 
 async function memberRole(storeId: string, userId: string): Promise<MemberRole | null> {

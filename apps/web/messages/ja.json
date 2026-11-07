@@ -9342,7 +9342,9 @@
     "reservationDetailsLocked": "レンタルが開始または終了したため、この情報は変更できません。",
     "customerNotAuthenticated": "続行するにはお客様アカウントにログインしてください。",
     "profileFieldRequired": "「{field}」を入力してください。",
-    "profileFieldInvalid": "「{field}」が正しくありません。"
+    "profileFieldInvalid": "「{field}」が正しくありません。",
+    "agentConnectionNotFound": "この接続済みのエージェントは存在しません。",
+    "oauthRequestInvalid": "この接続リクエストは無効になりました。エージェントからやり直してください。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",
@@ -9437,5 +9439,111 @@
     "nav": {
       "finance": "金融"
     }
+  },
+  "agentConnections": {
+    "presetsTitle": "権限",
+    "presets": {
+      "read": {
+        "label": "閲覧のみ",
+        "description": "エージェントは予約、商品、顧客、数値を閲覧するだけで、何も変更しません。"
+      },
+      "write": {
+        "label": "閲覧と編集",
+        "description": "エージェントはあなたの役割の範囲内で作成や変更もできます。統計は閲覧のみのままです。"
+      }
+    },
+    "storesTitle": "ストア",
+    "storesAll": "すべてのストア（今後のストアを含む）",
+    "storesAllHint": "今後作成または参加するストアも含まれます。",
+    "storesNone": "ストアを1つ以上選択してください。",
+    "roles": {
+      "owner": "オーナー",
+      "member": "メンバー"
+    },
+    "confirm": {
+      "label": "重要な操作の前に確認を求める",
+      "description": "支払い、返金、削除、顧客へのメッセージは、まずあなたの承認を待ちます。"
+    },
+    "bundlesTitle": "表示するツール",
+    "bundlesHint": "エージェントにはこれらのツールセットが表示されます。後から追加できます。",
+    "bundlesNone": "ツールセットを1つ以上選択してください。",
+    "recommended": "おすすめ",
+    "bundles": {
+      "daily": {
+        "label": "日々の業務",
+        "description": "予約、カレンダー、顧客、支払い、数値。"
+      },
+      "catalog": {
+        "label": "カタログ",
+        "description": "商品、カテゴリ、在庫。"
+      },
+      "settings": {
+        "label": "設定",
+        "description": "ストアの設定とオンラインストア。"
+      },
+      "integrations": {
+        "label": "連携",
+        "description": "Louez に接続されたサービス。"
+      },
+      "team": {
+        "label": "チーム",
+        "description": "チームメンバー。"
+      },
+      "billing": {
+        "label": "サブスクリプション",
+        "description": "Louez のサブスクリプションと請求書。"
+      }
+    },
+    "verified": "確認済み",
+    "unverified": "名前は未確認",
+    "unknownClient": "アプリ",
+    "consent": {
+      "metaTitle": "エージェントを接続",
+      "title": "{client} を Louez に接続",
+      "description": "{client} は、選択したストアで、以下の範囲とあなたの役割の範囲内であなたの代わりに操作できます。",
+      "accept": "許可",
+      "refuse": "拒否",
+      "invalidTitle": "リクエストの期限切れ",
+      "invalidDescription": "この接続リクエストは無効になりました。エージェントから接続をやり直してください。",
+      "noStoreTitle": "ストアがありません",
+      "noStoreDescription": "エージェントを接続する前にストアを作成してください。",
+      "redirectNotice": "許可すると、アクセス権は {host} に送られます。",
+      "footer": "このアクセスは、設定、連携、MCP からいつでも変更または取り消せます。",
+      "loopbackWarning": "アクセス権はこのコンピューター上のローカルアドレスに送られます。そこで動作するどのプログラムもこのアプリになりすませます。ご自身で接続を開始した直後の場合のみ許可してください。"
+    },
+    "list": {
+      "title": "接続済みのエージェント",
+      "description": "ストアでの操作を許可したアシスタントです。",
+      "empty": "接続済みのエージェントはありません",
+      "emptyDescription": "Claude または ChatGPT で Louez をコネクタとして追加すると、ここで許可する内容を選べます。",
+      "allStores": "すべてのストア",
+      "connectedOn": "{date} に接続",
+      "lastAction": "最後の操作 {date}",
+      "noAction": "まだ操作はありません",
+      "edit": "編集",
+      "revoke": "接続を解除",
+      "saved": "設定を保存しました",
+      "revoked": "エージェントの接続を解除しました",
+      "editTitle": "{client} のアクセス",
+      "editDescription": "変更は次の操作から適用されます。",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "revokeTitle": "{client} の接続を解除しますか？",
+      "revokeDescription": "エージェントはすぐにアクセスを失います。再接続するには、もう一度許可が必要です。",
+      "revokeConfirm": "接続を解除"
+    },
+    "guide": {
+      "title": "エージェントを接続",
+      "description": "Claude、ChatGPT などのアシスタント向けの Louez MCP サーバーのアドレスです。",
+      "oauthTitle": "Claude.ai、ChatGPT などの MCP クライアント",
+      "oauthDescription": "このアドレスでカスタムコネクタを追加します。アシスタントが Louez に案内し、サインインして許可する内容を選べます。キーのコピーは不要です。",
+      "claudeSteps": "Claude：設定、コネクタ、カスタムコネクタを追加 の順に進み、アドレスを貼り付けます。",
+      "chatgptSteps": "ChatGPT：このアドレスと OAuth 認証でアプリ（コネクタ）を追加します。",
+      "keyTitle": "スクリプト、n8n、OAuth 非対応のクライアント",
+      "keyDescription": "下で API キーを作成し、Authorization: Bearer ヘッダーで送信します。",
+      "oauthUnavailable": "アカウントでのサインインには HTTPS のアドレスが必要です。このインスタンスでは API キーを使用してください。"
+    },
+    "declaredBy": "名前の申告元：{origin}",
+    "declaredByItself": "名前はアプリ自身による申告です（動的登録）"
   }
 }

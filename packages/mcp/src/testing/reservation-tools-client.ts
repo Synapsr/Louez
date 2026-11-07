@@ -30,7 +30,8 @@ export interface ReservationToolsClient {
 /**
  * A request context as `resolveMcpContext` builds it for an API key, without
  * the database: the key's permissions, the owner's role (owner by default),
- * and no rate limit.
+ * and no rate limit. `confirmSensitive` is the key's setting (on by default,
+ * as for a new key); a test of a sensitive tool's effects turns it off.
  */
 export function testRequestContext(input: {
   storeId: string;
@@ -39,6 +40,7 @@ export function testRequestContext(input: {
   role?: MemberRole;
   apiKeyId?: string;
   permissions: Partial<ApiKeyPermissions>;
+  confirmSensitive?: boolean;
 }): McpRequestContext {
   return {
     actor: {
@@ -53,10 +55,16 @@ export function testRequestContext(input: {
         userId: input.userId,
         email: null,
         storeId: input.storeId,
+        stores: null,
         scopes: normalizeScopes(input.permissions),
-        confirmSensitive: true,
+        confirmSensitive: input.confirmSensitive ?? true,
+        bundles: null,
       },
     },
+    storeChosen: true,
+    multiStore: false,
+    storeError: null,
+    listingRole: input.role ?? "owner",
     storeId: input.storeId,
     userId: input.userId,
     storeName: input.storeName ?? "Test store",

@@ -56,6 +56,8 @@ describe("MCP payment tools (database)", { skip: skipWithoutTestDatabase() }, ()
       userId: USER,
       storeName: "MCP payments",
       permissions,
+      // What the tools write; their confirmation is in confirmation.db.test.ts.
+      confirmSensitive: false,
     });
 
     const server = new McpServer({ name: "louez", version: "0.0.0" });

@@ -9342,7 +9342,9 @@
     "reservationDetailsLocked": "대여가 시작되었거나 종료되어 이 정보는 더 이상 수정할 수 없습니다.",
     "customerNotAuthenticated": "계속하려면 고객 계정에 로그인해 주세요.",
     "profileFieldRequired": "‘{field}’ 항목을 입력해 주세요.",
-    "profileFieldInvalid": "‘{field}’ 항목이 올바르지 않습니다."
+    "profileFieldInvalid": "‘{field}’ 항목이 올바르지 않습니다.",
+    "agentConnectionNotFound": "이 연결된 에이전트는 더 이상 존재하지 않습니다.",
+    "oauthRequestInvalid": "이 연결 요청은 더 이상 유효하지 않습니다. 에이전트에서 다시 시작하세요."
   },
   "welcome": {
     "greeting": "Louez.io에 오신 것을 환영합니다",
@@ -9437,5 +9439,111 @@
     "nav": {
       "finance": "금융"
     }
+  },
+  "agentConnections": {
+    "presetsTitle": "권한",
+    "presets": {
+      "read": {
+        "label": "읽기 전용",
+        "description": "에이전트가 예약, 상품, 고객, 수치를 조회만 하고 아무것도 변경하지 않습니다."
+      },
+      "write": {
+        "label": "읽기 및 수정",
+        "description": "에이전트가 역할 범위 안에서 생성과 수정도 할 수 있습니다. 통계는 읽기 전용으로 유지됩니다."
+      }
+    },
+    "storesTitle": "스토어",
+    "storesAll": "내 모든 스토어(향후 스토어 포함)",
+    "storesAllHint": "나중에 만들거나 참여하는 스토어도 포함됩니다.",
+    "storesNone": "스토어를 하나 이상 선택하세요.",
+    "roles": {
+      "owner": "소유자",
+      "member": "멤버"
+    },
+    "confirm": {
+      "label": "민감한 작업 전에 확인 요청",
+      "description": "결제, 환불, 삭제, 고객에게 보내는 메시지는 먼저 승인을 기다립니다."
+    },
+    "bundlesTitle": "표시되는 도구",
+    "bundlesHint": "에이전트에게 이 도구 묶음이 표시됩니다. 나중에 더 추가할 수 있습니다.",
+    "bundlesNone": "도구 묶음을 하나 이상 선택하세요.",
+    "recommended": "추천",
+    "bundles": {
+      "daily": {
+        "label": "일일 운영",
+        "description": "예약, 캘린더, 고객, 결제 및 수치."
+      },
+      "catalog": {
+        "label": "카탈로그",
+        "description": "상품, 카테고리 및 재고."
+      },
+      "settings": {
+        "label": "설정",
+        "description": "스토어 설정 및 온라인 스토어."
+      },
+      "integrations": {
+        "label": "통합",
+        "description": "Louez에 연결된 서비스."
+      },
+      "team": {
+        "label": "팀",
+        "description": "팀 멤버."
+      },
+      "billing": {
+        "label": "구독",
+        "description": "Louez 구독 및 청구서."
+      }
+    },
+    "verified": "확인됨",
+    "unverified": "이름 확인되지 않음",
+    "unknownClient": "앱",
+    "consent": {
+      "metaTitle": "에이전트 연결",
+      "title": "{client}을(를) Louez에 연결",
+      "description": "{client}은(는) 선택한 스토어에서 아래 범위와 내 역할의 범위 안에서 나를 대신해 작업할 수 있습니다.",
+      "accept": "허용",
+      "refuse": "거부",
+      "invalidTitle": "요청 만료",
+      "invalidDescription": "이 연결 요청은 더 이상 유효하지 않습니다. 에이전트에서 연결을 다시 시작하세요.",
+      "noStoreTitle": "스토어 없음",
+      "noStoreDescription": "에이전트를 연결하기 전에 스토어를 만드세요.",
+      "redirectNotice": "허용하면 접근 권한이 {host}(으)로 전송됩니다.",
+      "footer": "이 접근 권한은 설정, 통합, MCP에서 언제든지 변경하거나 해제할 수 있습니다.",
+      "loopbackWarning": "접근 권한이 이 컴퓨터의 로컬 주소로 전송됩니다. 이 컴퓨터에서 실행되는 어떤 프로그램이든 이 앱을 사칭할 수 있습니다. 방금 직접 연결을 시작한 경우에만 허용하세요."
+    },
+    "list": {
+      "title": "연결된 에이전트",
+      "description": "스토어에서 작업하도록 허용한 어시스턴트입니다.",
+      "empty": "연결된 에이전트 없음",
+      "emptyDescription": "Claude 또는 ChatGPT에서 Louez를 커넥터로 추가하면 여기에서 허용할 작업을 선택합니다.",
+      "allStores": "내 모든 스토어",
+      "connectedOn": "{date}에 연결됨",
+      "lastAction": "마지막 작업 {date}",
+      "noAction": "아직 작업 없음",
+      "edit": "수정",
+      "revoke": "연결 해제",
+      "saved": "설정이 저장되었습니다",
+      "revoked": "에이전트 연결이 해제되었습니다",
+      "editTitle": "{client}의 접근 권한",
+      "editDescription": "변경 사항은 다음 작업부터 적용됩니다.",
+      "save": "저장",
+      "cancel": "취소",
+      "revokeTitle": "{client} 연결을 해제할까요?",
+      "revokeDescription": "에이전트가 즉시 접근 권한을 잃습니다. 다시 연결하려면 다시 허용해야 합니다.",
+      "revokeConfirm": "연결 해제"
+    },
+    "guide": {
+      "title": "에이전트 연결",
+      "description": "Claude, ChatGPT 및 기타 어시스턴트를 위한 Louez MCP 서버 주소입니다.",
+      "oauthTitle": "Claude.ai, ChatGPT 및 기타 MCP 클라이언트",
+      "oauthDescription": "이 주소로 사용자 지정 커넥터를 추가하세요. 어시스턴트가 Louez로 안내하여 로그인하고 허용할 작업을 선택하게 하며, 키를 복사할 필요가 없습니다.",
+      "claudeSteps": "Claude: 설정, 커넥터, 사용자 지정 커넥터 추가 후 주소를 붙여넣으세요.",
+      "chatgptSteps": "ChatGPT: 이 주소와 OAuth 인증으로 앱(커넥터)을 추가하세요.",
+      "keyTitle": "스크립트, n8n 및 OAuth 미지원 클라이언트",
+      "keyDescription": "아래에서 API 키를 만들고 Authorization: Bearer 헤더로 보내세요.",
+      "oauthUnavailable": "계정 로그인에는 HTTPS 주소가 필요합니다. 이 인스턴스에서는 API 키를 사용하세요."
+    },
+    "declaredBy": "{origin}에서 선언한 이름",
+    "declaredByItself": "앱이 직접 선언한 이름(동적 등록)"
   }
 }

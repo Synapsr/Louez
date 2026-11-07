@@ -85,12 +85,3 @@ export const passkeyBefore = async (ctx: PasskeyHookContext) => {
     });
   }
 };
-
-/** Better Auth 1.6.25 otherwise requests UV as merely preferred at sign-in. */
-export const passkeyAfter = async (ctx: PasskeyHookContext) => {
-  if (ctx.path !== "/passkey/generate-authenticate-options") return;
-  const options: unknown = ctx.context.returned;
-  if (options && typeof options === "object" && "challenge" in options) {
-    return ctx.json({ ...options, userVerification: "required" });
-  }
-};

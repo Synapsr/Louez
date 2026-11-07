@@ -8,4 +8,4 @@ export type {
 export type { McpPaymentDeps, McpRecordedPayment } from "./tools/payments";
 export type { McpRequestContext } from "./auth/context";
 export { requirePermission, hasPermission } from "./auth/context";
-export { resolveMcpContext } from "./auth/resolve";
+export { resolveMcpAccount, resolveMcpContext } from "./auth/resolve";

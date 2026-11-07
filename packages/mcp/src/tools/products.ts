@@ -427,6 +427,58 @@ export function registerProductTools(server: McpServer, ctx: McpRequestContext) 
 
       return toolResult(`Product ${productId} updated successfully.`);
     },
+    {
+      // Archiving takes the product off the storefront; fixed pricing deletes
+      // its pricing tiers and seasonal prices. Other edits run directly.
+      sensitive: {
+        kind: "destructive",
+        confirm: async ({ productId, status, pricingKind }) => {
+          const product = await db.query.products.findFirst({
+            where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
+            columns: { name: true, status: true },
+          });
+          if (!product) return null;
+          const archives = status === "archived" && product.status !== "archived";
+          let tiers = 0;
+          let seasonalPrices = 0;
+          if (pricingKind === "fixed") {
+            const [tierCount] = await db
+              .select({ count: sql<number>`COUNT(*)` })
+              .from(productPricingTiers)
+              .where(eq(productPricingTiers.productId, productId));
+            const [seasonalCount] = await db
+              .select({ count: sql<number>`COUNT(*)` })
+              .from(productSeasonalPricing)
+              .where(eq(productSeasonalPricing.productId, productId));
+            tiers = Number(tierCount?.count ?? 0);
+            seasonalPrices = Number(seasonalCount?.count ?? 0);
+          }
+          const dropsPrices = tiers + seasonalPrices > 0;
+          if (!archives && !dropsPrices) return null;
+          const effects = [
+            archives ? "archive it (it leaves the storefront and the catalog)" : null,
+            dropsPrices
+              ? `delete its ${tiers} pricing tier(s) and ${seasonalPrices} seasonal price(s) by switching to fixed pricing`
+              : null,
+          ].filter(Boolean);
+          return {
+            preview: {
+              summary: `Update the product "${product.name}": ${effects.join(", and ")}.`,
+              details: {
+                productId,
+                name: product.name,
+                status: product.status,
+                ...(archives ? { archives: true } : {}),
+                ...(dropsPrices
+                  ? { deletesPricingTiers: tiers, deletesSeasonalPrices: seasonalPrices }
+                  : {}),
+              },
+            },
+            state: { status: product.status, tiers, seasonalPrices },
+          };
+        },
+      },
+    },
   );
 
   // ── archive_product ────────────────────────────────────────────────────
@@ -479,6 +531,25 @@ export function registerProductTools(server: McpServer, ctx: McpRequestContext) 
       });
 
       return toolResult(`Product "${existing.name}" archived successfully.`);
+    },
+    {
+      sensitive: {
+        kind: "destructive",
+        confirm: async ({ productId }) => {
+          const product = await db.query.products.findFirst({
+            where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
+            columns: { name: true, status: true },
+          });
+          if (!product) return null;
+          return {
+            preview: {
+              summary: `Archive the product "${product.name}": it leaves the storefront and the catalog.`,
+              details: { productId, name: product.name, status: product.status },
+            },
+            state: { status: product.status },
+          };
+        },
+      },
     },
   );
 }

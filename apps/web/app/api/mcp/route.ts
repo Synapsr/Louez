@@ -1,3 +1,4 @@
+import { mcpOAuth } from "@louez/auth";
 import type { McpServerDeps } from "@louez/mcp";
 import { handleMcpRequest, type McpHttpOptions } from "@louez/mcp/http";
 import { createExposure } from "@louez/api/platform/exposure";
@@ -19,10 +20,13 @@ const options: McpHttpOptions = {
   deps: mcpDeps,
   ports: apiPorts,
   procedures: createExposure(appRouter).procedures,
+  // A 401 points MCP clients (Claude.ai, ChatGPT…) to where they sign in.
+  resourceMetadataUrl: mcpOAuth?.resourceMetadataUrl,
 };
 
-// Stateless Streamable HTTP: every request is authorized on its own. GET and
-// DELETE get 405 from the SDK, as there is no session.
+// Stateless Streamable HTTP: every request is authorized on its own, with an
+// API key or an OAuth access token. GET and DELETE get 405 from the SDK, as
+// there is no session.
 async function handle(request: Request) {
   return handleMcpRequest(request, options);
 }

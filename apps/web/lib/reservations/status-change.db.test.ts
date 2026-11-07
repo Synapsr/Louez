@@ -151,6 +151,8 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
       storeName: "Status store",
       apiKeyId: "key_status_change",
       permissions,
+      // The status change itself; the tool's confirmation is tested in packages/mcp.
+      confirmSensitive: false,
     });
     mcp = await connectReservationTools(mcpCtx, {
       changeReservationStatus: service.changeAsAgent,

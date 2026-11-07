@@ -4,6 +4,7 @@ import { RPCHandler } from "@orpc/server/fetch";
 import { appRouter } from "@louez/api/router";
 
 import { apiPorts } from "@/lib/api/ports";
+import { rpcCsrfHandlerPlugin } from "@/lib/orpc/csrf";
 import { notifyStoreCreated as sendStoreCreatedNotification } from "@/lib/discord/platform-notifications";
 import { log, useLogger, withEvlog } from "@/lib/evlog";
 import { generateContract } from "@/lib/pdf/generate";
@@ -60,6 +61,9 @@ import {
 import { getCustomerSession } from "@/app/(storefront)/[slug]/account/actions";
 
 const handler = new RPCHandler(appRouter, {
+  // A call without the app's custom header is refused: no cross-site request
+  // rides the session cookie (lib/orpc/csrf.ts).
+  plugins: [rpcCsrfHandlerPlugin()],
   interceptors: [
     onError((error) => {
       const rpcError = error instanceof Error ? error : new Error("Unknown oRPC error");

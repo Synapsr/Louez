@@ -20,12 +20,14 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.categories.reorder",
   "dashboard.categories.createImageUpload",
   "dashboard.categories.completeImageUpload",
+  "dashboard.stores.list",
 ];
 
 /** Arguments the MCP bridge adds to a tool and maps onto headers. */
-export const BRIDGE_ARGUMENTS = ["idempotencyKey", "confirmationToken"] as const;
+export const BRIDGE_ARGUMENTS = ["idempotencyKey", "confirmationToken", "storeId"] as const;
 
-export type ExposedMeta = ApiMeta & { scope: ProcedureScope; mcp: McpExposure };
+/** A served procedure has a scope, or is an account procedure (`meta.account`) without one. */
+export type ExposedMeta = ApiMeta & { scope?: ProcedureScope; mcp: McpExposure };
 
 /** One procedure the OpenAPI and MCP transports serve. */
 export interface ExposedProcedure {
@@ -61,7 +63,7 @@ function isExposure(mcp: ApiMeta["mcp"]): mcp is McpExposure {
 
 /**
  * Why a listed path may not be served; empty when it may. A served procedure
- * has a scope, an input and an output schema, an MCP exposure (not an
+ * has a scope (or is an account procedure), an input and an output schema, an MCP exposure (not an
  * exclusion), takes and returns an object, and is not reserved to a session or
  * to platform staff.
  */
@@ -70,7 +72,8 @@ function problemsOf(path: string, node: unknown): string[] {
   const def = node["~orpc"];
   const meta = def.meta as ApiMeta;
   const problems: string[] = [];
-  if (!meta.scope) problems.push(`${path}: no meta.scope`);
+  if (!meta.scope && !meta.account) problems.push(`${path}: no meta.scope`);
+  if (meta.scope && meta.account) problems.push(`${path}: an account procedure has no scope`);
   if (!def.inputSchema) problems.push(`${path}: no input schema`);
   if (!def.outputSchema) problems.push(`${path}: no output schema`);
   if (!meta.mcp) problems.push(`${path}: no meta.mcp`);
@@ -107,7 +110,7 @@ function documented(
   ownOperationId: boolean,
 ): OpenAPI.OperationObject {
   const parameters = [...(operation.parameters ?? [])];
-  const isWrite = meta.scope.level === "write";
+  const isWrite = meta.scope?.level === "write";
   if (isWrite && !meta.secretOutput) {
     parameters.push({ $ref: "#/components/parameters/IdempotencyKey" });
   }
@@ -131,7 +134,7 @@ function documented(
     // The tool name, unless the procedure names its operation: stable for SDKs.
     operationId: ownOperationId ? operation.operationId : meta.mcp.name,
     description: operation.description ?? meta.mcp.description,
-    tags: operation.tags ?? [meta.scope.domain],
+    tags: operation.tags ?? [meta.scope?.domain ?? "account"],
     parameters,
     responses,
   };

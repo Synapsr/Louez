@@ -18,7 +18,7 @@ import { consumeRateLimit, rateLimitKey } from "./rate-limit";
 /** Store row handed to agent-ready procedures. */
 export type ActorStore = typeof stores.$inferSelect;
 
-/** Header with which a caller picks a store when its connection covers several (OAuth, lot 1). */
+/** Header with which a caller picks a store when its connection covers several (an OAuth grant). */
 export const STORE_HEADER = "louez-store";
 
 // Validation runs outside every middleware: the input is parsed before the
@@ -62,11 +62,8 @@ function missingTransport() {
   });
 }
 
-/**
- * A signed-in account, before any store: list one's stores, create a store.
- * The credential is checked on every call.
- */
-export const accountProcedure = base.use(async ({ context, next, procedure }) => {
+/** Who calls, checked on every call: shared by the account and the store procedures. */
+const authenticated = base.use(async ({ context, next, procedure }) => {
   if (!context.transport) throw missingTransport();
   const meta = procedure["~orpc"].meta;
   const actor: AccountActor = await resolveAccountActor({
@@ -82,9 +79,23 @@ export const accountProcedure = base.use(async ({ context, next, procedure }) =>
 });
 
 /**
+ * A signed-in account, before any store: list one's stores, create a store.
+ * The credential is checked on every call; a key or a token counts on the
+ * connection's rate limit, as a store call does.
+ */
+export const accountProcedure = authenticated.use(async ({ context, next }) => {
+  const { credential } = context.actor;
+  if (credential.kind !== "session") {
+    const limit = await consumeRateLimit(rateLimitKey(credential));
+    if (!limit.allowed) throw platformErrors.rateLimited(limit.retryAfterSeconds);
+  }
+  return next();
+});
+
+/**
  * An action on one store. On every call, before the handler:
  *
- * 1. (accountProcedure) the credential is accepted by the transport and
+ * 1. the credential is accepted by the transport and
  *    still valid; the procedure allows this kind of credential
  *    (`meta.actors`), and platform staff only (`meta.platformAdmin`);
  * 3. the store is resolved with the role the user holds there now;
@@ -95,7 +106,7 @@ export const accountProcedure = base.use(async ({ context, next, procedure }) =>
  * Writes (`scope.level === "write"`) then run through `runOperation`:
  * recorded, and replayed for a repeated idempotency key.
  */
-export const storeProcedure = accountProcedure.use(
+export const storeProcedure = authenticated.use(
   async ({ context, next, path, procedure }, input, output) => {
     const meta = procedure["~orpc"].meta;
     const { actor } = context;

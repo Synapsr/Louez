@@ -102,7 +102,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories at short REST paths named after their tools", async () => {
+  test("serves the categories and the stores at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -131,6 +131,7 @@ describe("OpenAPI document", () => {
         "POST /categories/reorder": "categories_reorder",
         "POST /categories/image-uploads": "categories_create_image_upload",
         "POST /categories/image-uploads/complete": "categories_complete_image_upload",
+        "GET /stores": "stores_list",
       },
     );
 

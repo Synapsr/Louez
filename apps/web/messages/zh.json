@@ -9342,7 +9342,9 @@
     "reservationDetailsLocked": "租赁已开始或已结束，这些信息无法再修改。",
     "customerNotAuthenticated": "请登录您的客户账户以继续。",
     "profileFieldRequired": "请填写“{field}”。",
-    "profileFieldInvalid": "“{field}”无效。"
+    "profileFieldInvalid": "“{field}”无效。",
+    "agentConnectionNotFound": "此已连接的智能体已不存在。",
+    "oauthRequestInvalid": "此连接请求已失效。请在您的智能体中重新发起。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",
@@ -9437,5 +9439,111 @@
     "nav": {
       "finance": "金融"
     }
+  },
+  "agentConnections": {
+    "presetsTitle": "权限",
+    "presets": {
+      "read": {
+        "label": "只读",
+        "description": "智能体可以查看您的预订、产品、客户和数据，但不做任何修改。"
+      },
+      "write": {
+        "label": "读取和修改",
+        "description": "智能体还可以在您的角色范围内创建和修改。统计数据仍为只读。"
+      }
+    },
+    "storesTitle": "店铺",
+    "storesAll": "我的所有店铺，包括以后的店铺",
+    "storesAllHint": "您以后创建或加入的店铺也会包含在内。",
+    "storesNone": "请至少选择一个店铺。",
+    "roles": {
+      "owner": "所有者",
+      "member": "成员"
+    },
+    "confirm": {
+      "label": "敏感操作前请求确认",
+      "description": "付款、退款、删除和发给客户的消息会先等待您的同意。"
+    },
+    "bundlesTitle": "显示的工具",
+    "bundlesHint": "智能体会看到这些工具组。您以后可以添加更多。",
+    "bundlesNone": "请至少选择一个工具组。",
+    "recommended": "推荐",
+    "bundles": {
+      "daily": {
+        "label": "日常运营",
+        "description": "预订、日历、客户、付款和数据。"
+      },
+      "catalog": {
+        "label": "目录",
+        "description": "产品、分类和库存。"
+      },
+      "settings": {
+        "label": "设置",
+        "description": "店铺设置和在线商店。"
+      },
+      "integrations": {
+        "label": "集成",
+        "description": "与 Louez 连接的服务。"
+      },
+      "team": {
+        "label": "团队",
+        "description": "团队成员。"
+      },
+      "billing": {
+        "label": "订阅",
+        "description": "Louez 订阅和发票。"
+      }
+    },
+    "verified": "已验证",
+    "unverified": "名称未验证",
+    "unknownClient": "一个应用",
+    "consent": {
+      "metaTitle": "连接智能体",
+      "title": "将 {client} 连接到 Louez",
+      "description": "{client} 将可以在您选择的店铺中代表您操作，受以下限制以及您角色的限制。",
+      "accept": "允许",
+      "refuse": "拒绝",
+      "invalidTitle": "请求已过期",
+      "invalidDescription": "此连接请求已失效。请在您的智能体中重新发起连接。",
+      "noStoreTitle": "没有店铺",
+      "noStoreDescription": "请先创建店铺，再连接智能体。",
+      "redirectNotice": "您同意后，访问权限将发送到 {host}。",
+      "footer": "您可以随时在 设置、集成、MCP 中修改或撤销此访问权限。",
+      "loopbackWarning": "访问权限将发送到这台电脑上的本地地址：其上运行的任何程序都可以冒充此应用。仅当您刚刚亲自发起连接时才允许。"
+    },
+    "list": {
+      "title": "已连接的智能体",
+      "description": "您授权在店铺中操作的助手。",
+      "empty": "没有已连接的智能体",
+      "emptyDescription": "在 Claude 或 ChatGPT 中将 Louez 添加为连接器：您将在这里选择它可以做什么。",
+      "allStores": "我的所有店铺",
+      "connectedOn": "连接于 {date}",
+      "lastAction": "最后操作于 {date}",
+      "noAction": "暂无操作",
+      "edit": "修改",
+      "revoke": "断开连接",
+      "saved": "设置已保存",
+      "revoked": "智能体已断开",
+      "editTitle": "{client} 的访问权限",
+      "editDescription": "更改将从它的下一次操作开始生效。",
+      "save": "保存",
+      "cancel": "取消",
+      "revokeTitle": "断开 {client}？",
+      "revokeDescription": "智能体会立即失去访问权限。若要重新连接，需要再次授权。",
+      "revokeConfirm": "断开连接"
+    },
+    "guide": {
+      "title": "连接智能体",
+      "description": "Louez MCP 服务器的地址，适用于 Claude、ChatGPT 和其他助手。",
+      "oauthTitle": "Claude.ai、ChatGPT 和其他 MCP 客户端",
+      "oauthDescription": "使用此地址添加自定义连接器。助手会将您带到 Louez 登录并选择它可以做什么，无需复制密钥。",
+      "claudeSteps": "Claude：设置、连接器、添加自定义连接器，然后粘贴地址。",
+      "chatgptSteps": "ChatGPT：使用此地址和 OAuth 认证添加一个应用（连接器）。",
+      "keyTitle": "脚本、n8n 和不支持 OAuth 的客户端",
+      "keyDescription": "在下方创建 API 密钥，并在 Authorization: Bearer 请求头中发送。",
+      "oauthUnavailable": "使用账户登录需要 HTTPS 地址。在此实例上，请使用 API 密钥。"
+    },
+    "declaredBy": "名称由 {origin} 声明",
+    "declaredByItself": "名称由应用自行声明（动态注册）"
   }
 }

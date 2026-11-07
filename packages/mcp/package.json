@@ -29,6 +29,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@louez/auth": "workspace:*",
     "@louez/config": "workspace:*",
     "@orpc/client": "1.14.14",
     "@types/node": "^25.3.5",

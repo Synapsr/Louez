@@ -11,6 +11,7 @@
     "./platform/*": "./src/platform/*.ts",
     "./router": "./src/router.ts",
     "./services": "./src/services/index.ts",
+    "./services/agent-grants": "./src/services/agent-grants.ts",
     "./services/categories": "./src/services/categories.ts",
     "./services/customer-fields": "./src/services/customer-fields.ts",
     "./services/customer-fields-online": "./src/services/customer-fields-online.ts",

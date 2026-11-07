@@ -69,3 +69,20 @@ export function allows(
   if (!scopes) return true;
   return LEVEL_RANK[scopes[required.domain]] >= LEVEL_RANK[required.level];
 }
+
+/** The rights presets of an agent connection (OAuth grant), chosen on the consent page. */
+export const AGENT_PRESETS = ["read", "write"] as const;
+export type AgentPreset = (typeof AGENT_PRESETS)[number];
+
+/**
+ * The scopes of a preset. "Lecture seule": read on every domain. "Lecture et
+ * modification": write on every domain, analytics staying read-only. The
+ * member's role still cuts them down, and session-only actions stay out of
+ * reach whatever the preset.
+ */
+export function presetScopes(preset: AgentPreset): ConnectionScopes {
+  const scopes = {} as ConnectionScopes;
+  for (const domain of API_DOMAINS) scopes[domain] = preset;
+  scopes.analytics = "read";
+  return scopes;
+}

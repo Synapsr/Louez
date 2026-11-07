@@ -88,6 +88,7 @@ const MARKETPLACE_CHANNEL = "marketplace";
 const DASHBOARD_ROUTES = [
   "/login",
   "/register",
+  "/oauth", // the OAuth consent page of agent connections
   "/dashboard",
   "/onboarding",
   "/online-store",

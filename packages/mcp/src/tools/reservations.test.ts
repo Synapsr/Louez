@@ -21,7 +21,14 @@ const permissions = {
   analytics: "read",
   settings: "read",
 } as const;
-const ctx = testRequestContext({ storeId: "store_mcp", userId: "user_mcp", permissions });
+// Confirmation off: this suite checks what the tool does, not its confirmation
+// (confirmation.db.test.ts).
+const ctx = testRequestContext({
+  storeId: "store_mcp",
+  userId: "user_mcp",
+  permissions,
+  confirmSensitive: false,
+});
 
 describe("MCP status tool", () => {
   let client: ReservationToolsClient;
@@ -42,6 +49,7 @@ describe("MCP status tool", () => {
         storeId: "store_mcp",
         userId: "user_mcp",
         permissions: { ...permissions, reservations: "read" },
+        confirmSensitive: false,
       }),
       deps,
     );

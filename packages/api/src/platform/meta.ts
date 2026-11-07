@@ -7,6 +7,25 @@ import type { ProcedureScope } from "./permissions";
  */
 export type SensitiveKind = "money" | "destructive" | "send" | "spend";
 
+/**
+ * Tool bundles. A connection's scopes say what it may call; its bundles say
+ * which tools `tools/list` shows, so a model is not handed every tool at once.
+ * An OAuth grant picks them on the consent page (`daily` by default); an API
+ * key lists every bundle.
+ */
+export const MCP_BUNDLES = [
+  "daily",
+  "catalog",
+  "settings",
+  "integrations",
+  "team",
+  "billing",
+] as const;
+export type McpBundle = (typeof MCP_BUNDLES)[number];
+
+/** The bundle a grant starts with. */
+export const DEFAULT_MCP_BUNDLES: readonly McpBundle[] = ["daily"];
+
 /** How a procedure shows up as an MCP tool. */
 export interface McpExposure {
   /** `domain_action`, stable. A breaking change takes a new name. */
@@ -14,7 +33,7 @@ export interface McpExposure {
   /** Written for a model: what it does, when to use it, what it returns. */
   description: string;
   /** Tool bundle the tool is listed in; the connection picks its bundles. */
-  bundle: "daily" | "catalog" | "settings" | "integrations" | "team" | "billing";
+  bundle: McpBundle;
   annotations?: {
     readOnlyHint?: boolean;
     destructiveHint?: boolean;
@@ -39,6 +58,12 @@ export interface ApiMeta {
   /** Capability id from platform/inventory.ts, e.g. `categories.create`. */
   capability?: string;
   scope?: ProcedureScope;
+  /**
+   * An account procedure (`accountProcedure`): no store, so no scope. Every
+   * connection may call it; it answers for the connection's own account and
+   * stores only, such as `stores_list`.
+   */
+  account?: true;
   /** Credentials allowed to call it. Default: every credential the transport accepts. */
   actors?: readonly CredentialKind[];
   /** Platform staff only, from a dashboard session. */

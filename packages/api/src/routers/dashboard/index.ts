@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { dashboardProcedure } from "../../procedures";
+import { dashboardAgentConnectionsRouter } from "./agent-connections";
 import { dashboardAiAdvisorRouter } from "./ai-advisor";
 import { dashboardApiKeysRouter } from "./api-keys";
 import { dashboardCategoriesRouter } from "./categories";
@@ -16,6 +17,7 @@ import { dashboardReferralRouter } from "./referral";
 import { dashboardReservationDetailsRouter } from "./reservation-details";
 import { dashboardReservationsRouter } from "./reservations";
 import { dashboardSearchRouter } from "./search";
+import { dashboardStoresRouter } from "./stores";
 import { dashboardVariantsRouter } from "./variants";
 
 /**
@@ -40,6 +42,7 @@ const ping = dashboardProcedure
  */
 export const dashboardRouter = {
   ping,
+  agentConnections: dashboardAgentConnectionsRouter,
   aiAdvisor: dashboardAiAdvisorRouter,
   apiKeys: dashboardApiKeysRouter,
   categories: dashboardCategoriesRouter,
@@ -49,6 +52,7 @@ export const dashboardRouter = {
   reservations: dashboardReservationsRouter,
   reservationDetails: dashboardReservationDetailsRouter,
   search: dashboardSearchRouter,
+  stores: dashboardStoresRouter,
   onboarding: dashboardOnboardingRouter,
   onlineStore: dashboardOnlineStoreRouter,
   payments: dashboardPaymentsRouter,

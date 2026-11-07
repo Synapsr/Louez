@@ -149,6 +149,25 @@ export function registerPaymentTools(
           `- Amount: ${formatCurrency(amount)}\n` +
           `- Method: ${method}`
       )
+    },
+    {
+      sensitive: {
+        kind: 'money',
+        confirm: async ({ reservationId, type, amount, method }) => {
+          const reservation = await db.query.reservations.findFirst({
+            where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+            columns: { number: true, status: true },
+          })
+          if (!reservation) return null
+          return {
+            preview: {
+              summary: `Record a ${type} payment of ${formatCurrency(amount)} (${method}) on reservation #${reservation.number}.`,
+              details: { reservationId, number: reservation.number, type, amount, method },
+            },
+            state: { status: reservation.status },
+          }
+        },
+      },
     }
   )
 
@@ -185,6 +204,32 @@ export function registerPaymentTools(
       })
 
       return toolResult(`Payment deleted (reservation #${payment.reservation?.number}).`)
+    },
+    {
+      sensitive: {
+        kind: 'destructive',
+        confirm: async ({ paymentId }) => {
+          const payment = await db.query.payments.findFirst({
+            where: eq(payments.id, paymentId),
+            columns: { amount: true, type: true, method: true, status: true },
+            with: { reservation: { columns: { storeId: true, number: true } } },
+          })
+          if (!payment || payment.reservation?.storeId !== ctx.storeId) return null
+          return {
+            preview: {
+              summary: `Delete the ${payment.type} payment of ${formatCurrency(payment.amount)} (${payment.method}) on reservation #${payment.reservation.number}.`,
+              details: {
+                paymentId,
+                number: payment.reservation.number,
+                type: payment.type,
+                amount: payment.amount,
+                method: payment.method,
+              },
+            },
+            state: { amount: payment.amount, status: payment.status },
+          }
+        },
+      },
     }
   )
 
@@ -253,6 +298,37 @@ export function registerPaymentTools(
           `- Amount: ${formatCurrency(amount)}\n` +
           `- Method: ${method}`
       )
+    },
+    {
+      sensitive: {
+        kind: 'money',
+        confirm: async ({ reservationId, amount, method }) => {
+          const reservation = await db.query.reservations.findFirst({
+            where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+            columns: { number: true },
+            with: { payments: { columns: { type: true, status: true, amount: true } } },
+          })
+          if (!reservation) return null
+          const completed = (kind: string) =>
+            reservation.payments
+              .filter((p) => p.type === kind && p.status === 'completed')
+              .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+          const returnable = completed('deposit') - completed('deposit_return')
+          return {
+            preview: {
+              summary: `Return ${formatCurrency(amount)} of deposit (${method}) on reservation #${reservation.number}.`,
+              details: {
+                reservationId,
+                number: reservation.number,
+                amount,
+                method,
+                returnable: returnable.toFixed(2),
+              },
+            },
+            state: { returnable: returnable.toFixed(2) },
+          }
+        },
+      },
     }
   )
 }

@@ -175,6 +175,7 @@ const ROUTE = {
 
 /** oRPC router file per key of `dashboardRouter`. */
 const ORPC = {
+  agentConnections: `${ROUTERS}/agent-connections.ts`,
   aiAdvisor: `${ROUTERS}/ai-advisor.ts`,
   apiKeys: `${ROUTERS}/api-keys.ts`,
   categories: `${ROUTERS}/categories.ts`,
@@ -190,6 +191,7 @@ const ORPC = {
   reservationDetails: `${ROUTERS}/reservation-details.ts`,
   reservations: `${ROUTERS}/reservations.ts`,
   search: `${ROUTERS}/search.ts`,
+  stores: `${ROUTERS}/stores.ts`,
   variants: `${ROUTERS}/variants.ts`,
 } as const;
 
@@ -1933,9 +1935,10 @@ export const capabilities = [
   },
   {
     id: "stores.list",
-    sources: [],
+    sources: [procedure("stores", "list")],
     kind: "read",
     plan: { lot: "1" },
+    migrated: true,
   },
   {
     id: "stores.create",
@@ -2016,14 +2019,26 @@ export const capabilities = [
     actors: ["session"],
   },
   {
+    // The consent page: what is asked, then the answer. A session only: the
+    // agent waiting for the code never grants itself anything.
+    id: "account.authorizeAgentConnection",
+    sources: [
+      procedure("agentConnections", "getAuthorization"),
+      procedure("agentConnections", "authorize"),
+    ],
+    kind: "write",
+    plan: { lot: "1" },
+    actors: ["session"],
+  },
+  {
     id: "account.listAgentConnections",
-    sources: [],
+    sources: [procedure("agentConnections", "list")],
     kind: "read",
     plan: { lot: "1" },
   },
   {
     id: "account.revokeAgentConnection",
-    sources: [],
+    sources: [procedure("agentConnections", "revoke")],
     kind: "write",
     sensitive: "destructive",
     plan: { lot: "1" },
@@ -2031,7 +2046,7 @@ export const capabilities = [
   },
   {
     id: "account.updateAgentConnection",
-    sources: [],
+    sources: [procedure("agentConnections", "update")],
     kind: "write",
     plan: { lot: "1" },
     actors: ["session"],

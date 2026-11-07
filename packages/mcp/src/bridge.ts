@@ -1,13 +1,13 @@
 import { CONFIRMATION_HEADER } from "@louez/api/platform/confirmation";
 import type { ExposedProcedure } from "@louez/api/platform/exposure";
 import { apiError } from "@louez/api/platform/errors";
+import { platformErrors } from "@louez/api/platform/errors";
 import { IDEMPOTENCY_HEADER, type OperationReceipt } from "@louez/api/platform/operations";
-import { allows } from "@louez/api/platform/permissions";
 import { STORE_HEADER } from "@louez/api/platform/procedures";
 import type { CallToolResult, McpServer, Tool } from "@modelcontextprotocol/server";
 import { call } from "@orpc/server";
 
-import type { McpRequestContext } from "./auth/context";
+import { isListed, type McpRequestContext } from "./auth/context";
 import { addTool } from "./tool-registry";
 import { errorResult } from "./utils/errors";
 
@@ -15,14 +15,31 @@ import { errorResult } from "./utils/errors";
 export const OPERATION_ID_META = "io.louez/operationId";
 export const REPLAYED_META = "io.louez/replayed";
 
+/** The `storeId` argument every store tool takes when the connection covers several stores. */
+export const STORE_ARGUMENT = {
+  type: "string",
+  minLength: 1,
+  maxLength: 64,
+  description:
+    "The store to act on: an id from stores_list. Required, as this connection covers several stores.",
+} as const;
+
+/** The `confirmationToken` argument of a sensitive tool, mapped onto `Louez-Confirmation`. */
+export const CONFIRMATION_ARGUMENT = {
+  type: "string",
+  description:
+    "Leave it out on the first call: the tool answers CONFIRMATION_REQUIRED with a preview and this token. After the user confirms, call again with the same arguments and the token.",
+} as const;
+
 /**
  * The arguments of a tool: the procedure's input, plus the headers it maps.
  * Only listed: the procedure validates the input, as it does for RPC and
  * OpenAPI, so every transport answers a bad input with the same error.
  */
-function toolInputSchema(entry: ExposedProcedure): Tool["inputSchema"] {
+function toolInputSchema(entry: ExposedProcedure, ctx: McpRequestContext): Tool["inputSchema"] {
   const properties = { ...(entry.inputJsonSchema.properties as Record<string, unknown>) };
-  if (entry.meta.scope.level === "write" && !entry.meta.secretOutput) {
+  if (ctx.multiStore && entry.meta.scope) properties.storeId = STORE_ARGUMENT;
+  if (entry.meta.scope?.level === "write" && !entry.meta.secretOutput) {
     properties.idempotencyKey = {
       type: "string",
       minLength: 1,
@@ -31,13 +48,7 @@ function toolInputSchema(entry: ExposedProcedure): Tool["inputSchema"] {
         "Optional. A unique string for this action, such as a UUID. Retrying with the same key and the same arguments returns the first result instead of acting twice.",
     };
   }
-  if (entry.meta.sensitive) {
-    properties.confirmationToken = {
-      type: "string",
-      description:
-        "Leave it out on the first call: the tool answers CONFIRMATION_REQUIRED with a preview and this token. After the user confirms, call again with the same arguments and the token.",
-    };
-  }
+  if (entry.meta.sensitive) properties.confirmationToken = CONFIRMATION_ARGUMENT;
   return { ...entry.inputJsonSchema, properties } as Tool["inputSchema"];
 }
 
@@ -56,7 +67,13 @@ async function callProcedure(
   ctx: McpRequestContext,
   args: Record<string, unknown>,
 ): Promise<CallToolResult> {
-  const { idempotencyKey, confirmationToken, ...input } = args;
+  // The store was read from `storeId` when the request came in.
+  const { idempotencyKey, confirmationToken, storeId: _store, ...input } = args;
+  const needsStore = entry.meta.scope !== undefined;
+  if (needsStore && ctx.storeError) return errorResult(entry.meta.mcp.name, ctx.storeError);
+  if (needsStore && !ctx.storeChosen) {
+    return errorResult(entry.meta.mcp.name, platformErrors.storeRequired());
+  }
   // A malformed control argument must not silently drop its protection (a
   // number as idempotency key would run the write twice): refuse the call.
   for (const [name, value] of [
@@ -74,10 +91,9 @@ async function callProcedure(
     }
   }
   const headers = new Headers();
-  for (const name of ["authorization", STORE_HEADER]) {
-    const value = ctx.headers.get(name);
-    if (value) headers.set(name, value);
-  }
+  const authorization = ctx.headers.get("authorization");
+  if (authorization) headers.set("authorization", authorization);
+  if (needsStore) headers.set(STORE_HEADER, ctx.storeId);
   if (typeof idempotencyKey === "string") headers.set(IDEMPOTENCY_HEADER, idempotencyKey);
   if (typeof confirmationToken === "string") headers.set(CONFIRMATION_HEADER, confirmationToken);
 
@@ -110,25 +126,25 @@ async function callProcedure(
 }
 
 /**
- * Registers one tool per exposed procedure. `tools/list` shows only those the
- * actor may call (the member's role cut down to the connection's scopes); a
- * call to any of them reaches the procedure, which authorizes it, so a refusal
- * says why (PERMISSION_DENIED) instead of "not found".
+ * Registers one tool per exposed procedure. `tools/list` shows only those of
+ * the connection's bundles that the actor may call (the member's role cut
+ * down to the connection's scopes); a call to any of them reaches the
+ * procedure, which authorizes it, so a refusal says why (PERMISSION_DENIED)
+ * instead of "not found".
  */
 export function registerExposedTools(
   server: McpServer,
   ctx: McpRequestContext,
   procedures: readonly ExposedProcedure[],
 ): void {
-  const { role, credential } = ctx.actor;
   for (const entry of procedures) {
-    const { name, description, annotations } = entry.meta.mcp;
+    const { name, description, annotations, bundle } = entry.meta.mcp;
     addTool(server, {
       name,
       description,
-      inputSchema: toolInputSchema(entry),
+      inputSchema: toolInputSchema(entry, ctx),
       annotations,
-      listed: allows(role, credential.scopes, entry.meta.scope),
+      listed: isListed(ctx, entry.meta.scope, bundle),
       call: (args) => callProcedure(entry, ctx, args),
     });
 
@@ -138,7 +154,7 @@ export function registerExposedTools(
       addTool(server, {
         name: alias.name,
         description: `Former name of ${name}, kept for agents set up before. ${description}`,
-        inputSchema: aliasInputSchema(toolInputSchema(entry), renamed),
+        inputSchema: aliasInputSchema(toolInputSchema(entry, ctx), renamed),
         annotations,
         listed: false,
         call: (args) => {

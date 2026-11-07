@@ -9342,7 +9342,9 @@
     "reservationDetailsLocked": "Estos datos ya no se pueden modificar: el alquiler ha comenzado o ha finalizado.",
     "customerNotAuthenticated": "Inicie sesión en su cuenta de cliente para continuar.",
     "profileFieldRequired": "Por favor, complete «{field}».",
-    "profileFieldInvalid": "«{field}» no es válido."
+    "profileFieldInvalid": "«{field}» no es válido.",
+    "agentConnectionNotFound": "Este agente conectado ya no existe.",
+    "oauthRequestInvalid": "Esta solicitud de conexión ya no es válida. Iníciela de nuevo desde su agente."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",
@@ -9437,5 +9439,111 @@
     "nav": {
       "finance": "Finanzas"
     }
+  },
+  "agentConnections": {
+    "presetsTitle": "Permisos",
+    "presets": {
+      "read": {
+        "label": "Solo lectura",
+        "description": "El agente consulta sus reservas, productos, clientes y cifras, sin modificar nada."
+      },
+      "write": {
+        "label": "Lectura y edición",
+        "description": "El agente también puede crear y modificar, dentro de su rol. Las estadísticas siguen en solo lectura."
+      }
+    },
+    "storesTitle": "Tiendas",
+    "storesAll": "Todas mis tiendas, incluidas las futuras",
+    "storesAllHint": "Una tienda que cree o a la que se una más adelante también estará incluida.",
+    "storesNone": "Elija al menos una tienda.",
+    "roles": {
+      "owner": "Propietario",
+      "member": "Miembro"
+    },
+    "confirm": {
+      "label": "Pedir confirmación antes de las acciones sensibles",
+      "description": "Pagos, reembolsos, eliminaciones y mensajes a clientes esperan primero su aprobación."
+    },
+    "bundlesTitle": "Herramientas mostradas",
+    "bundlesHint": "El agente ve estos conjuntos de herramientas. Podrá añadir más después.",
+    "bundlesNone": "Elija al menos un conjunto de herramientas.",
+    "recommended": "Recomendado",
+    "bundles": {
+      "daily": {
+        "label": "Operaciones del día",
+        "description": "Reservas, calendario, clientes, pagos y cifras."
+      },
+      "catalog": {
+        "label": "Catálogo",
+        "description": "Productos, categorías y stock."
+      },
+      "settings": {
+        "label": "Ajustes",
+        "description": "Ajustes de la tienda y tienda en línea."
+      },
+      "integrations": {
+        "label": "Integraciones",
+        "description": "Servicios conectados a Louez."
+      },
+      "team": {
+        "label": "Equipo",
+        "description": "Miembros del equipo."
+      },
+      "billing": {
+        "label": "Suscripción",
+        "description": "Suscripción y facturas de Louez."
+      }
+    },
+    "verified": "Verificado",
+    "unverified": "Nombre no verificado",
+    "unknownClient": "Una aplicación",
+    "consent": {
+      "metaTitle": "Conectar un agente",
+      "title": "Conectar {client} a Louez",
+      "description": "{client} podrá actuar por usted en las tiendas elegidas, dentro de los límites siguientes y los de su rol.",
+      "accept": "Permitir",
+      "refuse": "Rechazar",
+      "invalidTitle": "Solicitud caducada",
+      "invalidDescription": "Esta solicitud de conexión ya no es válida. Vuelva a iniciar la conexión desde su agente.",
+      "noStoreTitle": "Ninguna tienda",
+      "noStoreDescription": "Cree una tienda antes de conectar un agente.",
+      "redirectNotice": "Tras su aprobación, el acceso se enviará a {host}.",
+      "footer": "Puede cambiar o retirar este acceso en cualquier momento en Ajustes, Integraciones, MCP.",
+      "loopbackWarning": "El acceso se enviará a una dirección local de este ordenador: cualquier programa que se ejecute en él puede hacerse pasar por esta aplicación. Permítalo solo si acaba de iniciar la conexión usted mismo."
+    },
+    "list": {
+      "title": "Agentes conectados",
+      "description": "Los asistentes que ha autorizado a actuar en sus tiendas.",
+      "empty": "Ningún agente conectado",
+      "emptyDescription": "Añada Louez como conector en Claude o ChatGPT: aquí elegirá lo que puede hacer.",
+      "allStores": "Todas mis tiendas",
+      "connectedOn": "Conectado el {date}",
+      "lastAction": "Última acción el {date}",
+      "noAction": "Ninguna acción por ahora",
+      "edit": "Editar",
+      "revoke": "Desconectar",
+      "saved": "Ajustes guardados",
+      "revoked": "Agente desconectado",
+      "editTitle": "Acceso de {client}",
+      "editDescription": "Los cambios se aplican desde su próxima acción.",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "revokeTitle": "¿Desconectar {client}?",
+      "revokeDescription": "El agente pierde el acceso de inmediato. Para volver a conectarlo, tendrá que autorizarlo de nuevo.",
+      "revokeConfirm": "Desconectar"
+    },
+    "guide": {
+      "title": "Conectar un agente",
+      "description": "La dirección del servidor MCP de Louez, para Claude, ChatGPT y otros asistentes.",
+      "oauthTitle": "Claude.ai, ChatGPT y otros clientes MCP",
+      "oauthDescription": "Añada un conector personalizado con esta dirección. El asistente le envía a Louez para iniciar sesión y elegir lo que puede hacer, sin copiar ninguna clave.",
+      "claudeSteps": "Claude: Ajustes, Conectores, Añadir conector personalizado y pegue la dirección.",
+      "chatgptSteps": "ChatGPT: añada una aplicación (conector) con esta dirección y autenticación OAuth.",
+      "keyTitle": "Scripts, n8n y clientes sin OAuth",
+      "keyDescription": "Cree una clave API abajo y envíela en el encabezado Authorization: Bearer.",
+      "oauthUnavailable": "Iniciar sesión con su cuenta requiere una dirección HTTPS. En esta instancia, use una clave API."
+    },
+    "declaredBy": "Nombre declarado por {origin}",
+    "declaredByItself": "Nombre declarado por la aplicación (registrada dinámicamente)"
   }
 }

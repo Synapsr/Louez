@@ -9342,7 +9342,9 @@
     "reservationDetailsLocked": "Data ini tidak dapat diubah lagi: penyewaan sudah dimulai atau selesai.",
     "customerNotAuthenticated": "Masuk ke akun pelanggan Anda untuk melanjutkan.",
     "profileFieldRequired": "Harap isi “{field}”.",
-    "profileFieldInvalid": "“{field}” tidak valid."
+    "profileFieldInvalid": "“{field}” tidak valid.",
+    "agentConnectionNotFound": "Agen terhubung ini sudah tidak ada.",
+    "oauthRequestInvalid": "Permintaan koneksi ini sudah tidak berlaku. Mulai ulang dari agen Anda."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",
@@ -9437,5 +9439,111 @@
     "nav": {
       "finance": "Keuangan"
     }
+  },
+  "agentConnections": {
+    "presetsTitle": "Hak akses",
+    "presets": {
+      "read": {
+        "label": "Hanya baca",
+        "description": "Agen melihat reservasi, produk, pelanggan, dan angka Anda tanpa mengubah apa pun."
+      },
+      "write": {
+        "label": "Baca dan ubah",
+        "description": "Agen juga dapat membuat dan mengubah, dalam batas peran Anda. Statistik tetap hanya baca."
+      }
+    },
+    "storesTitle": "Toko",
+    "storesAll": "Semua toko saya, termasuk yang akan datang",
+    "storesAllHint": "Toko yang Anda buat atau ikuti nanti juga akan termasuk.",
+    "storesNone": "Pilih setidaknya satu toko.",
+    "roles": {
+      "owner": "Pemilik",
+      "member": "Anggota"
+    },
+    "confirm": {
+      "label": "Minta konfirmasi sebelum tindakan sensitif",
+      "description": "Pembayaran, pengembalian dana, penghapusan, dan pesan ke pelanggan menunggu persetujuan Anda terlebih dahulu."
+    },
+    "bundlesTitle": "Alat yang ditampilkan",
+    "bundlesHint": "Agen melihat kumpulan alat ini. Anda dapat menambahkan lainnya nanti.",
+    "bundlesNone": "Pilih setidaknya satu kumpulan alat.",
+    "recommended": "Disarankan",
+    "bundles": {
+      "daily": {
+        "label": "Operasi harian",
+        "description": "Reservasi, kalender, pelanggan, pembayaran, dan angka."
+      },
+      "catalog": {
+        "label": "Katalog",
+        "description": "Produk, kategori, dan stok."
+      },
+      "settings": {
+        "label": "Pengaturan",
+        "description": "Pengaturan toko dan toko online."
+      },
+      "integrations": {
+        "label": "Integrasi",
+        "description": "Layanan yang terhubung ke Louez."
+      },
+      "team": {
+        "label": "Tim",
+        "description": "Anggota tim."
+      },
+      "billing": {
+        "label": "Langganan",
+        "description": "Langganan dan tagihan Louez."
+      }
+    },
+    "verified": "Terverifikasi",
+    "unverified": "Nama belum diverifikasi",
+    "unknownClient": "Sebuah aplikasi",
+    "consent": {
+      "metaTitle": "Hubungkan agen",
+      "title": "Hubungkan {client} ke Louez",
+      "description": "{client} dapat bertindak atas nama Anda di toko yang dipilih, dalam batas di bawah ini dan batas peran Anda.",
+      "accept": "Izinkan",
+      "refuse": "Tolak",
+      "invalidTitle": "Permintaan kedaluwarsa",
+      "invalidDescription": "Permintaan koneksi ini sudah tidak berlaku. Mulai ulang koneksi dari agen Anda.",
+      "noStoreTitle": "Tidak ada toko",
+      "noStoreDescription": "Buat toko sebelum menghubungkan agen.",
+      "redirectNotice": "Setelah Anda izinkan, akses akan dikirim ke {host}.",
+      "footer": "Anda dapat mengubah atau mencabut akses ini kapan saja di Pengaturan, Integrasi, MCP.",
+      "loopbackWarning": "Akses akan dikirim ke alamat lokal di komputer ini: program apa pun yang berjalan di sana bisa menyamar sebagai aplikasi ini. Izinkan hanya jika Anda baru saja memulai koneksi sendiri."
+    },
+    "list": {
+      "title": "Agen terhubung",
+      "description": "Asisten yang Anda izinkan bertindak di toko Anda.",
+      "empty": "Tidak ada agen terhubung",
+      "emptyDescription": "Tambahkan Louez sebagai konektor di Claude atau ChatGPT: di sini Anda memilih apa yang boleh dilakukannya.",
+      "allStores": "Semua toko saya",
+      "connectedOn": "Terhubung pada {date}",
+      "lastAction": "Tindakan terakhir pada {date}",
+      "noAction": "Belum ada tindakan",
+      "edit": "Ubah",
+      "revoke": "Putuskan",
+      "saved": "Pengaturan disimpan",
+      "revoked": "Agen diputuskan",
+      "editTitle": "Akses {client}",
+      "editDescription": "Perubahan berlaku sejak tindakan berikutnya.",
+      "save": "Simpan",
+      "cancel": "Batal",
+      "revokeTitle": "Putuskan {client}?",
+      "revokeDescription": "Agen langsung kehilangan akses. Untuk menghubungkannya lagi, Anda harus mengizinkannya kembali.",
+      "revokeConfirm": "Putuskan"
+    },
+    "guide": {
+      "title": "Hubungkan agen",
+      "description": "Alamat server MCP Louez, untuk Claude, ChatGPT, dan asisten lainnya.",
+      "oauthTitle": "Claude.ai, ChatGPT, dan klien MCP lainnya",
+      "oauthDescription": "Tambahkan konektor khusus dengan alamat ini. Asisten mengarahkan Anda ke Louez untuk masuk dan memilih apa yang boleh dilakukannya, tanpa menyalin kunci.",
+      "claudeSteps": "Claude: Pengaturan, Konektor, Tambahkan konektor khusus, lalu tempel alamatnya.",
+      "chatgptSteps": "ChatGPT: tambahkan aplikasi (konektor) dengan alamat ini dan autentikasi OAuth.",
+      "keyTitle": "Skrip, n8n, dan klien tanpa OAuth",
+      "keyDescription": "Buat kunci API di bawah dan kirimkan di header Authorization: Bearer.",
+      "oauthUnavailable": "Masuk dengan akun Anda memerlukan alamat HTTPS. Pada instans ini, gunakan kunci API."
+    },
+    "declaredBy": "Nama dinyatakan oleh {origin}",
+    "declaredByItself": "Nama dinyatakan oleh aplikasi itu sendiri (pendaftaran dinamis)"
   }
 }

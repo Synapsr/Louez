@@ -149,9 +149,10 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
     );
     // OpenAPI wants a key: no credential, refused.
     await rejects(orpc.call(read, undefined, { context: context("openapi") }), "UNAUTHENTICATED");
-    // A token that is not a key is refused on MCP until OAuth lands.
+    // A token that is not a key is refused on OpenAPI; on MCP it is an OAuth
+    // access token (platform/oauth.db.test.ts).
     await rejects(
-      orpc.call(read, undefined, { context: context("mcp", bearer("eyJ.some.jwt")) }),
+      orpc.call(read, undefined, { context: context("openapi", bearer("eyJ.some.jwt")) }),
       "CREDENTIAL_NOT_ACCEPTED",
     );
     // An invalid key is refused.
@@ -317,8 +318,10 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
         userId: OWNER,
         email: "owner@pl.test",
         storeId: null,
+        stores: null,
         scopes: null,
         confirmSensitive: false,
+        bundles: null,
       },
     };
     const resolved = await resolveStoreActor(staff, { headers: new Headers() });

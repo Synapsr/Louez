@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import type { McpRequestContext } from "./auth/context";
 import { registerExposedTools } from "./bridge";
 import type { McpServerDeps } from "./deps";
+import { serverInstructions } from "./instructions";
 import { registerProductTools } from "./tools/products";
 import { registerReservationTools } from "./tools/reservations";
 import { registerCustomerTools } from "./tools/customers";
@@ -26,10 +27,10 @@ export function createMcpServer(
   deps: McpServerDeps,
   procedures: readonly ExposedProcedure[],
 ): McpServer {
-  const server = new McpServer({
-    name: "louez",
-    version: "0.2.0",
-  });
+  const server = new McpServer(
+    { name: "louez", version: "0.3.0" },
+    { instructions: serverInstructions(ctx) },
+  );
 
   registerExposedTools(server, ctx, procedures);
 
@@ -42,9 +43,12 @@ export function createMcpServer(
   registerSettingsTools(server, ctx);
   registerCalendarTools(server, ctx);
 
-  // Register resources & prompts
-  registerResources(server, ctx);
-  registerPrompts(server, ctx);
+  // Resources and prompts read one store. A connection over several stores
+  // that named none gets the tools only (stores_list, then storeId).
+  if (ctx.storeChosen) {
+    registerResources(server, ctx);
+    registerPrompts(server, ctx);
+  }
 
   return server;
 }
