@@ -48,4 +48,11 @@ export const productsQueries = {
   /** Reservations and unit downtimes of a product over a window. */
   reservationTimeline: (input: { id: string; from: Date; to: Date }) =>
     orpc.dashboard.products.getReservationTimeline.queryOptions({ input }),
+  /** One unit's events, assignments and downtimes. */
+  unitHistory: (unitId: string) =>
+    orpc.dashboard.products.getUnitHistory.queryOptions({
+      input: { unitId },
+      staleTime: 30_000,
+    }),
 };
+

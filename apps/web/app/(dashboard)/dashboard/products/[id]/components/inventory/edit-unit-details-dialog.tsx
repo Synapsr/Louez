@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -24,10 +25,10 @@ import {
 import { toDatePickerValue } from '@louez/utils';
 
 import { DatePicker } from '@/components/ui/date-time-picker';
+import { orpc } from '@/lib/orpc/react';
 
-import { updateUnitDetails } from '../../actions';
 import type { ProductInventoryUnit } from '../../queries';
-import { getTranslatedActionError } from './util.inventory-format';
+import { getApiErrorMessage } from './util.inventory-format';
 
 interface EditUnitDetailsDialogProps {
   open: boolean;
@@ -44,6 +45,9 @@ export const EditUnitDetailsDialog = ({
   const tReservationForm = useTranslations('dashboard.reservations.manualForm');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const updateMutation = useMutation(
+    orpc.dashboard.products.updateUnitDetails.mutationOptions(),
+  );
   const [notes, setNotes] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [purchasedAt, setPurchasedAt] = useState<Date | undefined>();
@@ -67,26 +71,21 @@ export const EditUnitDetailsDialog = ({
 
     setIsSubmitting(true);
     try {
-      const result = await updateUnitDetails({
+      await updateMutation.mutateAsync({
         unitId: unit.id,
         notes,
-        purchasePrice: purchasePrice || null,
+        purchasePrice: purchasePrice.trim() || null,
         purchasedAt: purchasedAt ?? null,
       });
-
-      if ('error' in result && result.error) {
-        toastManager.add({
-          title: getTranslatedActionError(result.error, tErrors),
-          type: 'error',
-        });
-        return;
-      }
 
       toastManager.add({ title: t('successToast'), type: 'success' });
       router.refresh();
       onOpenChange(false);
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+    } catch (error) {
+      toastManager.add({
+        title: getApiErrorMessage(error, tErrors),
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }

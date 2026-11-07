@@ -1,6 +1,3 @@
-import { ORPCError } from "@orpc/server";
-import { z } from "zod";
-
 import {
   LEGACY_PAGE_MAX_OFFSET,
   createProductInput,
@@ -36,13 +33,9 @@ import {
   createImageUploadInput,
   createImageUploadOutput,
 } from "../../contracts/uploads";
-import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
 import { platformErrors } from "../../platform/errors";
 import { allows } from "../../platform/permissions";
-import { storeProcedure, type ActorStore } from "../../platform/procedures";
-import type { ApiPorts } from "../../platform/ports";
-import type { StoreActor } from "../../platform/actor";
-import { dashboardProcedure } from "../../procedures";
+import { storeProcedure } from "../../platform/procedures";
 import { getProductUnitActivityPage } from "../../services/product-activity";
 import { getProductReservationTimeline } from "../../services/product-reservation-timeline";
 import {
@@ -53,12 +46,6 @@ import {
   updateSeasonalPricing,
 } from "../../services/product-seasonal-pricing";
 import {
-  PRODUCT_UNIT_DOWNTIME_REASONS,
-  PRODUCT_UNIT_DOWNTIME_STATUSES,
-  PRODUCT_UNIT_EVENT_TYPES,
-  getProductUnitHistory,
-} from "../../services/product-unit-history";
-import {
   assertOwnedProduct,
   createProduct,
   deleteProduct,
@@ -68,63 +55,27 @@ import {
   reorderProducts,
   updateProduct,
   updateProductStatus,
-  type ProductActor,
 } from "../../services/products";
 import { completeImageUpload, createImageUpload } from "../../services/uploads";
+import { confirmUnderLock, productActor } from "./product-context";
+import {
+  closeDowntime,
+  declareDowntime,
+  deleteDowntime,
+  getUnitHistory,
+  reinstateUnit,
+  retireUnit,
+  updateDowntime,
+  updateUnitDetails,
+} from "./product-units";
 
 /**
  * Products, on every transport: the dashboard (RPC), `/api/v1/products`
  * (OpenAPI) and the `products_*` MCP tools. The logic is in
  * services/products.ts and services/product-seasonal-pricing.ts; this file
- * holds the contract, the rights and the confirmations.
- *
- * Units, downtimes and the variant catalog move in lot 3b: `unitHistory`
- * below is still a dashboard-only procedure.
+ * holds the contract, the rights and the confirmations. Units and downtimes
+ * are in product-units.ts; the variant catalog moves next.
  */
-
-interface ProductContext {
-  actor: StoreActor;
-  store: ActorStore;
-  ports: ApiPorts;
-  headers: Headers;
-}
-
-function productActor(context: ProductContext): ProductActor {
-  return {
-    storeId: context.actor.storeId,
-    userId: context.actor.credential.userId,
-    transport: context.actor.transport,
-    store: {
-      id: context.store.id,
-      name: context.store.name,
-      slug: context.store.slug,
-      ownerUserId: context.store.userId,
-      settings: context.store.settings ?? null,
-    },
-    afterCommit: context.ports.afterCommit,
-  };
-}
-
-/** A confirmation asked under the write's lock, bound to what the preview shows. */
-function confirmUnderLock<TPreview extends { summary: string }>(
-  context: ProductContext,
-  path: readonly string[],
-  input: unknown,
-  describe: (preview: TPreview) => { state: unknown; details: ConfirmationPreview["details"] },
-) {
-  return (preview: TPreview, tx: Parameters<typeof checkConfirmation>[0]["executor"]) => {
-    const { state, details } = describe(preview);
-    return checkConfirmation({
-      executor: tx,
-      actor: context.actor,
-      headers: context.headers,
-      procedure: path.join("."),
-      input,
-      state,
-      preview: { summary: preview.summary, details },
-    });
-  };
-}
 
 const TIERS_HELP =
   'Pricing: a duration product has a base rate (basePriceDuration, e.g. { "price": "30", "duration": 1, "unit": "day" }) and optional rateTiers (prix dégressifs): each tier is the TOTAL price of a rental of exactly that duration, e.g. { "duration": 7, "unit": "day", "price": "150" } for a week. A fixed product has one price per item (pricingKind "fixed"). Seasons are set with products_create_seasonal_pricing.';
@@ -580,74 +531,6 @@ const deleteSeasonalPricingProcedure = storeProcedure
     }),
   );
 
-// --- Units (lot 3b) ----------------------------------------------------------
-
-const unitTimelineEntrySchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("event"),
-    id: z.string(),
-    type: z.enum(PRODUCT_UNIT_EVENT_TYPES),
-    actorUserId: z.string().nullable(),
-    actorName: z.string().nullable(),
-    payload: z.record(z.string(), z.unknown()).nullable(),
-    createdAt: z.string().datetime(),
-  }),
-  z.object({
-    kind: z.literal("assignment"),
-    id: z.string(),
-    type: z.literal("assigned"),
-    reservationId: z.string(),
-    reservationNumber: z.string(),
-    reservationItemId: z.string(),
-    identifierSnapshot: z.string(),
-    customerName: z.string().nullable(),
-    startDate: z.string().datetime(),
-    endDate: z.string().datetime(),
-    createdAt: z.string().datetime(),
-  }),
-]);
-
-const unitHistory = dashboardProcedure
-  .input(z.object({ unitId: z.string().min(1) }))
-  .output(
-    z.object({
-      timeline: z.array(unitTimelineEntrySchema),
-      downtimes: z.array(
-        z.object({
-          id: z.string(),
-          reason: z.enum(PRODUCT_UNIT_DOWNTIME_REASONS),
-          startsAt: z.string().datetime(),
-          endsAt: z.string().datetime().nullable(),
-          note: z.string().nullable(),
-          status: z.enum(PRODUCT_UNIT_DOWNTIME_STATUSES),
-        }),
-      ),
-    }),
-  )
-  .handler(async ({ context, input }) => {
-    try {
-      const history = await getProductUnitHistory({
-        storeId: context.store.id,
-        unitId: input.unitId,
-      });
-
-      if (!history) {
-        throw new ORPCError("NOT_FOUND", { message: "errors.notFound" });
-      }
-
-      return history;
-    } catch (error) {
-      if (error instanceof ORPCError) {
-        throw error;
-      }
-
-      console.error("Error loading product unit history:", error);
-      throw new ORPCError("INTERNAL_SERVER_ERROR", {
-        message: "errors.generic",
-      });
-    }
-  });
-
 export const dashboardProductsRouter = {
   list,
   listLegacyPage,
@@ -667,5 +550,13 @@ export const dashboardProductsRouter = {
   updateSeasonalPricing: updateSeasonalPricingProcedure,
   duplicateSeasonalPricing: duplicateSeasonalPricingProcedure,
   deleteSeasonalPricing: deleteSeasonalPricingProcedure,
-  unitHistory,
+  // Units and downtimes (product-units.ts)
+  getUnitHistory,
+  declareDowntime,
+  updateDowntime,
+  closeDowntime,
+  deleteDowntime,
+  retireUnit,
+  reinstateUnit,
+  updateUnitDetails,
 };

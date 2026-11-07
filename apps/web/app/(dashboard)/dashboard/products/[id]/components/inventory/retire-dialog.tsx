@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -26,7 +27,8 @@ import {
   toastManager,
 } from '@louez/ui';
 
-import { retireUnit } from '../../actions';
+import { orpc } from '@/lib/orpc/react';
+
 import type { ProductInventoryUnit } from '../../queries';
 import { ConflictsPanel } from './conflicts-panel';
 import {
@@ -35,7 +37,7 @@ import {
   isRetirementReasonOption,
 } from './inventory.constants';
 import type { InventoryConflict } from './unit-types';
-import { getTranslatedActionError } from './util.inventory-format';
+import { getApiErrorMessage } from './util.inventory-format';
 
 interface RetireDialogProps {
   open: boolean;
@@ -52,6 +54,9 @@ export const RetireDialog = ({
   const tReasons = useTranslations('dashboard.inventory.retirementReasons');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const retireMutation = useMutation(
+    orpc.dashboard.products.retireUnit.mutationOptions(),
+  );
   const [reason, setReason] = useState<RetirementReasonOption>('broken');
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,21 +80,11 @@ export const RetireDialog = ({
 
     setIsSubmitting(true);
     try {
-      const result = await retireUnit({
+      const result = await retireMutation.mutateAsync({
         unitId: unit.id,
         reason,
         note,
       });
-
-      if (!result.success) {
-        toastManager.add({
-          title: result.error
-            ? getTranslatedActionError(result.error, tErrors)
-            : tErrors('generic'),
-          type: 'error',
-        });
-        return;
-      }
 
       toastManager.add({ title: t('successToast'), type: 'success' });
       router.refresh();
@@ -100,8 +95,11 @@ export const RetireDialog = ({
       }
 
       onOpenChange(false);
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+    } catch (error) {
+      toastManager.add({
+        title: getApiErrorMessage(error, tErrors),
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }

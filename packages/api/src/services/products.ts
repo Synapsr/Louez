@@ -95,7 +95,11 @@ export interface ProductActor {
   userId: string | null;
   transport: Transport;
   store: ApiEventStore & {
-    settings: { pendingBlocksAvailability?: boolean; currency?: string } | null;
+    settings: {
+      pendingBlocksAvailability?: boolean;
+      turnoverBufferMinutes?: number;
+      currency?: string;
+    } | null;
   };
   /** The app's effects, run after the commit (`ApiPorts.afterCommit`). */
   afterCommit: (event: ApiEvent) => void;
@@ -118,7 +122,7 @@ export async function lockStoreProducts(tx: Transaction, storeId: string) {
 }
 
 /** An effect must never fail a write that has committed. */
-function emit(actor: ProductActor, event: ApiEvent) {
+export function emit(actor: ProductActor, event: ApiEvent) {
   try {
     actor.afterCommit(event);
   } catch (error) {
@@ -126,7 +130,7 @@ function emit(actor: ProductActor, event: ApiEvent) {
   }
 }
 
-const eventStore = (actor: ProductActor): ApiEventStore => ({
+export const eventStore = (actor: ProductActor): ApiEventStore => ({
   id: actor.store.id,
   name: actor.store.name,
   slug: actor.store.slug,

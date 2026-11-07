@@ -825,55 +825,69 @@ export const capabilities = [
     migrated: true,
   },
 
-  // --- Stock and variants (3b) ---------------------------------------------
+  // --- Units and downtimes (3b): served by procedures ------------------------
   {
     id: "products.getUnitHistory",
-    sources: [procedure("products", "unitHistory")],
+    sources: [procedure("products", "getUnitHistory")],
     kind: "read",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
+    // Sensitive when the downtime overlaps reservations that hold the unit.
     id: "products.declareDowntime",
-    sources: [action(SA.product, "declareDowntime")],
-    kind: "write",
-    plan: { lot: "3" },
-  },
-  {
-    id: "products.updateDowntime",
-    sources: [action(SA.product, "updateDowntime")],
-    kind: "write",
-    plan: { lot: "3" },
-  },
-  {
-    id: "products.closeDowntime",
-    sources: [action(SA.product, "closeDowntime")],
-    kind: "write",
-    plan: { lot: "3" },
-  },
-  {
-    id: "products.deleteDowntime",
-    sources: [action(SA.product, "deleteDowntime")],
+    sources: [procedure("products", "declareDowntime")],
     kind: "write",
     sensitive: "destructive",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
-    id: "products.retireUnit",
-    sources: [action(SA.product, "retireUnit")],
+    // Sensitive when the new dates overlap reservations that hold the unit.
+    id: "products.updateDowntime",
+    sources: [procedure("products", "updateDowntime")],
+    kind: "write",
+    sensitive: "destructive",
+    plan: { lot: "3" },
+    migrated: true,
+  },
+  {
+    id: "products.closeDowntime",
+    sources: [procedure("products", "closeDowntime")],
     kind: "write",
     plan: { lot: "3" },
+    migrated: true,
+  },
+  {
+    id: "products.deleteDowntime",
+    sources: [procedure("products", "deleteDowntime")],
+    kind: "write",
+    sensitive: "destructive",
+    plan: { lot: "3" },
+    migrated: true,
+  },
+  {
+    // Takes the unit out of the stock: always confirmed by an agent.
+    id: "products.retireUnit",
+    sources: [procedure("products", "retireUnit")],
+    kind: "write",
+    sensitive: "destructive",
+    plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.reinstateUnit",
-    sources: [action(SA.product, "reinstateUnit")],
+    sources: [procedure("products", "reinstateUnit")],
     kind: "write",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.updateUnitDetails",
-    sources: [action(SA.product, "updateUnitDetails")],
+    sources: [procedure("products", "updateUnitDetails")],
     kind: "write",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.listVariants",

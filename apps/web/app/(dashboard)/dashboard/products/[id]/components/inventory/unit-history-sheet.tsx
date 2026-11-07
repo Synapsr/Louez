@@ -24,7 +24,7 @@ import {
   SpinnerSolidIcon,
 } from "@louez/ui/icons";
 
-import { productUnitHistoryQueries } from "@/lib/queries/product-unit-history.queries";
+import { productsQueries } from "@/lib/queries/products.queries";
 import { formatDateTime, formatRelativeTime } from "@/lib/utils";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
@@ -62,7 +62,7 @@ export const UnitHistorySheet = ({ open, unit, onOpenChange }: UnitHistorySheetP
   const { intl: formatLocale } = useFormatLocale();
   const unitId = unit?.id ?? "";
   const historyQuery = useQuery({
-    ...productUnitHistoryQueries.detail(unitId),
+    ...productsQueries.unitHistory(unitId),
     enabled: open && unit !== null,
   });
   const timeline = historyQuery.data?.timeline ?? [];

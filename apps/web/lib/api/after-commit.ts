@@ -37,6 +37,7 @@ function pathsToRevalidate(event: ApiEvent): string[] {
     case "products.changed":
       return ["/dashboard/products"];
     case "product.updated":
+    case "product.units.changed":
       return [
         "/dashboard/products",
         `/dashboard/products/${event.productId}`,

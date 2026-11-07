@@ -38,6 +38,14 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.products.updateSeasonalPricing",
   "dashboard.products.duplicateSeasonalPricing",
   "dashboard.products.deleteSeasonalPricing",
+  "dashboard.products.getUnitHistory",
+  "dashboard.products.declareDowntime",
+  "dashboard.products.updateDowntime",
+  "dashboard.products.closeDowntime",
+  "dashboard.products.deleteDowntime",
+  "dashboard.products.retireUnit",
+  "dashboard.products.reinstateUnit",
+  "dashboard.products.updateUnitDetails",
   "dashboard.stores.list",
 ];
 

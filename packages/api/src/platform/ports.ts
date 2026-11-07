@@ -46,7 +46,9 @@ export type ApiEvent =
   | { type: "product.updated"; store: ApiEventStore; productId: string; productName: string }
   /** A change the products list shows: status, deletion, duplicate, order. */
   | { type: "products.changed"; store: ApiEventStore }
-  | { type: "product.seasonalPricing.changed"; store: ApiEventStore; productId: string };
+  | { type: "product.seasonalPricing.changed"; store: ApiEventStore; productId: string }
+  /** A unit retired, reinstated or changed, or a downtime declared, changed or removed. */
+  | { type: "product.units.changed"; store: ApiEventStore; productId: string };
 
 /** How a caller sends the bytes of an upload: one HTTP request, as given. */
 export type UploadTarget =

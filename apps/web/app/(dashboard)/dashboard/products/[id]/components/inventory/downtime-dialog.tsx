@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -28,8 +29,8 @@ import {
 } from '@louez/ui';
 
 import { ReservationDatePickerControl } from '@/components/form/form-reservation-date-picker';
+import { orpc } from '@/lib/orpc/react';
 
-import { declareDowntime, updateDowntime } from '../../actions';
 import type { ProductInventoryUnit } from '../../queries';
 import { ConflictsPanel } from './conflicts-panel';
 import {
@@ -38,7 +39,7 @@ import {
   isDowntimeReasonOption,
 } from './inventory.constants';
 import type { InventoryConflict } from './unit-types';
-import { getTranslatedActionError } from './util.inventory-format';
+import { getApiErrorMessage } from './util.inventory-format';
 
 interface DowntimeDialogProps {
   open: boolean;
@@ -55,6 +56,12 @@ export const DowntimeDialog = ({
   const tReasons = useTranslations('dashboard.inventory.downtimeReasons');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const declareMutation = useMutation(
+    orpc.dashboard.products.declareDowntime.mutationOptions(),
+  );
+  const updateMutation = useMutation(
+    orpc.dashboard.products.updateDowntime.mutationOptions(),
+  );
   const [reason, setReason] = useState<DowntimeReasonOption>('maintenance');
   const [startsAt, setStartsAt] = useState<Date | undefined>(() => new Date());
   const [endsAt, setEndsAt] = useState<Date | undefined>();
@@ -98,30 +105,20 @@ export const DowntimeDialog = ({
     setIsSubmitting(true);
     try {
       const result = currentDowntime
-        ? await updateDowntime({
+        ? await updateMutation.mutateAsync({
             downtimeId: currentDowntime.id,
             reason,
             startsAt,
             endsAt: endsAtDate,
             note,
           })
-        : await declareDowntime({
+        : await declareMutation.mutateAsync({
             unitId: unit.id,
             reason,
             startsAt,
             endsAt: endsAtDate,
             note,
           });
-
-      if (!result.success) {
-        toastManager.add({
-          title: result.error
-            ? getTranslatedActionError(result.error, tErrors)
-            : tErrors('generic'),
-          type: 'error',
-        });
-        return;
-      }
 
       toastManager.add({
         title: t(isEditing ? 'editSuccessToast' : 'successToast'),
@@ -135,8 +132,11 @@ export const DowntimeDialog = ({
       }
 
       onOpenChange(false);
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+    } catch (error) {
+      toastManager.add({
+        title: getApiErrorMessage(error, tErrors),
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }

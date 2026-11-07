@@ -1,3 +1,3 @@
-import type { UnitConflict } from '@louez/api/services/unit-conflicts';
+import type { UnitConflictOutput } from '@louez/api/contracts/product-units';
 
-export type InventoryConflict = UnitConflict;
+export type InventoryConflict = UnitConflictOutput;

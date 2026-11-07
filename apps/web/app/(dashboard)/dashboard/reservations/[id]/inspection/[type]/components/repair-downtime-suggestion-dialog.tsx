@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 
+import { useMutation } from '@tanstack/react-query';
 import { AlertTriangle, Wrench } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -20,8 +21,8 @@ import {
   toastManager,
 } from '@louez/ui';
 
-import { declareDowntime } from '@/app/(dashboard)/dashboard/products/[id]/actions';
-import { getTranslatedActionError } from '@/app/(dashboard)/dashboard/products/[id]/components/inventory/util.inventory-format';
+import { getApiErrorMessage } from '@/app/(dashboard)/dashboard/products/[id]/components/inventory/util.inventory-format';
+import { orpc } from '@/lib/orpc/react';
 
 interface RepairDowntimeSuggestionUnit {
   id: string;
@@ -54,6 +55,9 @@ export const RepairDowntimeSuggestionDialog = ({
     'dashboard.settings.inspection.wizard.repairDowntime',
   );
   const tErrors = useTranslations('errors');
+  const declareMutation = useMutation(
+    orpc.dashboard.products.declareDowntime.mutationOptions(),
+  );
   const [selectedUnitIds, setSelectedUnitIds] = useState<Set<string>>(
     () => new Set(units.map((unit) => unit.id)),
   );
@@ -106,20 +110,19 @@ export const RepairDowntimeSuggestionDialog = ({
 
     try {
       for (const unit of selectedUnits) {
-        const result = await declareDowntime({
-          unitId: unit.id,
-          reason: 'repair',
-          startsAt,
-          endsAt: null,
-          note,
-          excludeReservationItemIds: reservationItemIds,
-        });
-
-        if (!result.success) {
+        let result;
+        try {
+          result = await declareMutation.mutateAsync({
+            unitId: unit.id,
+            reason: 'repair',
+            startsAt,
+            endsAt: null,
+            note,
+            excludeReservationItemIds: reservationItemIds,
+          });
+        } catch (error) {
           toastManager.add({
-            title: result.error
-              ? getTranslatedActionError(result.error, tErrors)
-              : tErrors('generic'),
+            title: getApiErrorMessage(error, tErrors),
             type: 'error',
           });
           setSelectedUnitIds(remainingUnitIds);
