@@ -1550,7 +1550,8 @@
             "basePricing": "Basistarife",
             "title": "Preissimulation",
             "subtitle": "Gesamtpreis nach Mietdauer"
-          }
+          },
+          "limitReached": "Ein Produkt hat höchstens {max} Tarife."
         },
         "unitTracking": {
           "toggle": "Einzelne Einheiten verfolgen",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "Neuer Wert…",
           "noVariants": "Keine Varianten",
           "variantsCount": "{count, plural, one {# Variante} other {# Varianten}}",
-          "unitImages": "Fotos der Einheit"
+          "unitImages": "Fotos der Einheit",
+          "limitReached": "Ein Produkt hat höchstens {max} Einheiten. Entfernen Sie eine, um eine weitere hinzuzufügen."
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",

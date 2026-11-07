@@ -21,6 +21,7 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.categories.createImageUpload",
   "dashboard.categories.completeImageUpload",
   "dashboard.products.list",
+  "dashboard.products.listLegacyPage",
   "dashboard.products.get",
   "dashboard.products.create",
   "dashboard.products.update",
@@ -59,7 +60,10 @@ export interface ExposedProcedure {
 /** What the transports serve: the list, and the same procedures as a router. */
 export interface Exposure {
   procedures: readonly ExposedProcedure[];
-  /** Only the exposed procedures, at their paths, with their OpenAPI documentation. */
+  /**
+   * Only the exposed procedures, at their paths, with their OpenAPI
+   * documentation; former MCP-only tools (`meta.mcp.listed: false`) left out.
+   */
   router: AnyRouter;
 }
 
@@ -223,8 +227,10 @@ export function createExposure(
     );
   }
 
+  // A former tool kept for MCP agents (`meta.mcp.listed: false`) stays off OpenAPI.
   const served: Record<string, unknown> = {};
-  for (const { path, procedure } of procedures) {
+  for (const { path, procedure, meta } of procedures) {
+    if (meta.mcp.listed === false) continue;
     const segments = path.split(".");
     let node = served;
     for (const segment of segments.slice(0, -1)) {

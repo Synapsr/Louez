@@ -1550,7 +1550,8 @@
             "basePricing": "Tarifas base",
             "title": "Simulación de precio",
             "subtitle": "Precio total según la duración del alquiler"
-          }
+          },
+          "limitReached": "Un producto admite como máximo {max} tarifas."
         },
         "unitTracking": {
           "toggle": "Rastrear unidades individuales",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "Nuevo valor…",
           "noVariants": "Sin variantes",
           "variantsCount": "{count, plural, one {# variante} other {# variantes}}",
-          "unitImages": "Fotos de la unidad"
+          "unitImages": "Fotos de la unidad",
+          "limitReached": "Un producto admite como máximo {max} unidades. Elimina una para añadir otra."
         },
         "previewTitle": "Vista previa",
         "previewDescription": "Asi es como aparecera su producto en el catalogo",

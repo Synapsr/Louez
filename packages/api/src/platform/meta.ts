@@ -45,23 +45,20 @@ export interface McpExposure {
    * callable, never listed, so agents set up before the rename keep working;
    * `renamedArgs` maps an old argument name onto the new one, and
    * `fixedArgs` sets arguments the old tool implied (`archive_product` is
-   * `products_update_status` with `status: "archived"`). `paging` keeps a
-   * former tool's offset paging (`page`, `pageSize`) over the cursor list.
-   * Removed at the end of the migration (lot 9).
+   * `products_update_status` with `status: "archived"`). Removed at the end
+   * of the migration (lot 9).
    */
   aliases?: ReadonlyArray<{
     name: string;
     renamedArgs?: Readonly<Record<string, string>>;
     fixedArgs?: Readonly<Record<string, string | number | boolean>>;
-    paging?: {
-      page: string;
-      pageSize: string;
-      defaultPageSize: number;
-      maxPageSize: number;
-      /** The procedure's largest `limit`, used to skip the rows before the page. */
-      maxStep: number;
-    };
   }>;
+  /**
+   * false: a former tool that no alias can express (its offset paging), kept
+   * as its own procedure for agents set up before. Callable on MCP, never
+   * listed, not served on OpenAPI. Removed at the end of the migration (lot 9).
+   */
+  listed?: false;
 }
 
 /**

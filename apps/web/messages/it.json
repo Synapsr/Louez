@@ -1511,7 +1511,8 @@
             "basePricing": "Tariffe base",
             "title": "Simulazione del prezzo",
             "subtitle": "Prezzo totale in base alla durata del noleggio"
-          }
+          },
+          "limitReached": "Un prodotto ha al massimo {max} tariffe."
         },
         "unitTracking": {
           "toggle": "Traccia unità individuali",
@@ -1652,7 +1653,8 @@
           "addValuePlaceholder": "Nuovo valore…",
           "noVariants": "Nessuna variante",
           "variantsCount": "{count, plural, one {# variante} other {# varianti}}",
-          "unitImages": "Foto dell'unità"
+          "unitImages": "Foto dell'unità",
+          "limitReached": "Un prodotto ha al massimo {max} unità. Rimuovine una per aggiungerne un'altra."
         },
         "previewTitle": "Anteprima",
         "previewDescription": "Ecco come apparira il tuo prodotto nel catalogo",

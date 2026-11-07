@@ -1550,7 +1550,8 @@
             "basePricing": "基本定价",
             "title": "价格模拟",
             "subtitle": "按租赁期限收取的总价"
-          }
+          },
+          "limitReached": "每个商品最多 {max} 个价格档。"
         },
         "unitTracking": {
           "toggle": "跟踪各个单位",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "新价值...",
           "noVariants": "无变体",
           "variantsCount": "{count,plural,one{# 变体} other{# 变体}}",
-          "unitImages": "单位照片"
+          "unitImages": "单位照片",
+          "limitReached": "每个商品最多 {max} 个单位。删除一个后才能再添加。"
         },
         "previewTitle": "预览",
         "previewDescription": "以下是您的产品在目录中的显示方式",

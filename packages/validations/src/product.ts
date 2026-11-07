@@ -219,6 +219,23 @@ function hasDuplicateRateTierPeriods(
 }
 
 /**
+ * Most items each list of a product holds, shared by the form's editors and
+ * the API. The form generates 100 units at a time and shows 5 images; these
+ * leave room for large fleets while keeping a save short. A product stored
+ * with more before a limit existed still saves, as long as the list does not
+ * grow.
+ */
+export const PRODUCT_LIST_LIMITS = {
+  units: 1000,
+  rateTiers: 50,
+  accessories: 100,
+  categoryIds: 100,
+  images: 20,
+} as const;
+
+export type ProductListName = keyof typeof PRODUCT_LIST_LIMITS;
+
+/**
  * A fixed price takes no duration pricing: the form keeps its base period and
  * tiers around (they may be empty or half typed) and they are dropped, not
  * checked. The API contract runs it before its own validation too.

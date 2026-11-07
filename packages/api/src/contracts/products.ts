@@ -1,6 +1,7 @@
 import {
   bookingAttributeAxisSchema,
   ignoreDurationPricingForFixed,
+  PRODUCT_LIST_LIMITS,
   priceDurationSchema,
   productAccessoryLinkSchema,
   productFieldsSchema,
@@ -33,16 +34,16 @@ export const SEASONAL_PRICING_PAGE_MAX = 200;
 export const PRODUCT_TIMELINE_MAX_DAYS = 400;
 
 /**
- * Most items a product write takes per list, checked before any lock. The
- * form generates 100 units at a time, shows 5 images and a handful of tiers;
- * these bounds leave room for large fleets while keeping a write short.
+ * Most items a write may send per list, checked before any lock: ten times
+ * the product limits (`PRODUCT_LIST_LIMITS`), so a product stored with more
+ * than a limit still saves, while the service holds new lists to the limits.
  */
 export const PRODUCT_WRITE_LIMITS = {
-  units: 1000,
-  rateTiers: 50,
-  accessories: 100,
-  categoryIds: 100,
-  images: 20,
+  units: PRODUCT_LIST_LIMITS.units * 10,
+  rateTiers: PRODUCT_LIST_LIMITS.rateTiers * 10,
+  accessories: PRODUCT_LIST_LIMITS.accessories * 10,
+  categoryIds: PRODUCT_LIST_LIMITS.categoryIds * 10,
+  images: PRODUCT_LIST_LIMITS.images * 10,
 } as const;
 
 const idSchema = z.string().min(1).max(64);
@@ -364,6 +365,24 @@ export const listProductsOutput = z.object({
   }),
 });
 
+/** Deepest row the former `list_products` paging reaches; past it, the cursor list. */
+export const LEGACY_PAGE_MAX_OFFSET = 10_000;
+
+/** The former `list_products` tool's arguments: offset paging, one category. */
+export const legacyListProductsInput = z.object({
+  status: listProductsInput.shape.status,
+  categoryId: idSchema.optional().describe("Only products in this category."),
+  search: listProductsInput.shape.search,
+  page: z.number().int().min(1).optional().describe("Page number (default 1)."),
+  pageSize: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .optional()
+    .describe("Results per page (default 50, max 100)."),
+});
+
 export const getProductInput = z.object({ id: idSchema });
 
 export const updateProductStatusInput = z.object({
@@ -637,6 +656,18 @@ export const productErrors = {
       message:
         "The stock kind cannot change while a confirmed or ongoing reservation holds the product.",
       i18nKey: "errors.cannotChangeStockKindWithActiveReservations",
+    }),
+  listTooLong: (list: string, max: number, stored: number) =>
+    apiError("BAD_REQUEST", "PRODUCT_LIST_TOO_LONG", {
+      message: `A product holds at most ${max} ${list}${stored > max ? `; this one already holds ${stored}, so it may keep them but not add more` : ""}.`,
+      i18nKey: "errors.invalidData",
+      details: { list, max, stored },
+    }),
+  legacyPageTooDeep: () =>
+    apiError("BAD_REQUEST", "LEGACY_PAGE_TOO_DEEP", {
+      message: `list_products pages through the first ${LEGACY_PAGE_MAX_OFFSET} products only. Use products_list and follow its nextCursor to read further.`,
+      i18nKey: "errors.invalidData",
+      details: { maxOffset: LEGACY_PAGE_MAX_OFFSET, tool: "products_list" },
     }),
   invalidCursor: (tool: string) =>
     apiError("BAD_REQUEST", "INVALID_CURSOR", {

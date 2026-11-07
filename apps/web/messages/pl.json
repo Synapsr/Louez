@@ -1511,7 +1511,8 @@
             "basePricing": "Cennik bazowy",
             "title": "Symulacja ceny",
             "subtitle": "Łączna cena według czasu wynajmu"
-          }
+          },
+          "limitReached": "Produkt może mieć najwyżej {max} stawek."
         },
         "unitTracking": {
           "toggle": "Śledź pojedyncze jednostki",
@@ -1652,7 +1653,8 @@
           "addValuePlaceholder": "Nowa wartość…",
           "noVariants": "Brak wariantów",
           "variantsCount": "{count, plural, one {# wariant} few {# warianty} many {# wariantów} other {# wariantu}}",
-          "unitImages": "Zdjęcia egzemplarza"
+          "unitImages": "Zdjęcia egzemplarza",
+          "limitReached": "Produkt może mieć najwyżej {max} jednostek. Usuń jedną, aby dodać kolejną."
         },
         "previewTitle": "Podgląd",
         "previewDescription": "Zobacz jak produkt będzie wyglądał w katalogu",

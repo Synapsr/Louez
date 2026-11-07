@@ -1550,7 +1550,8 @@
             "basePricing": "Penetapan harga dasar",
             "title": "Simulasi harga",
             "subtitle": "Total harga yang dikenakan berdasarkan durasi sewa"
-          }
+          },
+          "limitReached": "Satu produk paling banyak memiliki {max} tarif."
         },
         "unitTracking": {
           "toggle": "Lacak unit individu",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "Nilai baru…",
           "noVariants": "Tidak ada varian",
           "variantsCount": "{count,plural,one{# varian} other{# varian}}",
-          "unitImages": "Foto satuan"
+          "unitImages": "Foto satuan",
+          "limitReached": "Satu produk paling banyak memiliki {max} satuan. Hapus satu untuk menambahkan yang lain."
         },
         "previewTitle": "Pratinjau",
         "previewDescription": "Berikut tampilan produk Anda di katalog",

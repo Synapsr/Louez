@@ -1550,7 +1550,8 @@
             "basePricing": "Base pricing",
             "title": "Price simulation",
             "subtitle": "Total price charged by rental duration"
-          }
+          },
+          "limitReached": "A product holds at most {max} rates."
         },
         "unitTracking": {
           "toggle": "Track individual units",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "New value…",
           "noVariants": "No variants",
           "variantsCount": "{count, plural, one {# variant} other {# variants}}",
-          "unitImages": "Unit photos"
+          "unitImages": "Unit photos",
+          "limitReached": "A product holds at most {max} units. Remove one to add another."
         },
         "previewTitle": "Preview",
         "previewDescription": "Here's how your product will appear in the catalog",

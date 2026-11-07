@@ -1550,7 +1550,8 @@
             "basePricing": "Tarifs de base",
             "title": "Simulation du prix",
             "subtitle": "Prix total facturé selon la durée de location"
-          }
+          },
+          "limitReached": "Un produit compte au plus {max} tarifs."
         },
         "unitTracking": {
           "toggle": "Suivre les unités individuellement",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "Nouvelle valeur…",
           "noVariants": "Aucune variante",
           "variantsCount": "{count, plural, one {# variante} other {# variantes}}",
-          "unitImages": "Photos de l'unité"
+          "unitImages": "Photos de l'unité",
+          "limitReached": "Un produit compte au plus {max} unités. Retirez-en une pour en ajouter une autre."
         },
         "previewTitle": "Aperçu",
         "previewDescription": "Voici comment votre produit apparaîtra dans le catalogue",

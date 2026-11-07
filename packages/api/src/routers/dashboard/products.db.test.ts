@@ -1115,6 +1115,20 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
         },
         session(),
       ),
+      "PRODUCT_LIST_TOO_LONG",
+    );
+    // Past ten times the limit, the contract refuses before the service runs.
+    await rejects(
+      run(
+        "create",
+        {
+          name: "Huge fleet",
+          price: "5",
+          trackUnits: true,
+          units: Array.from({ length: 10_001 }, (_, index) => ({ identifier: `H-${index}` })),
+        },
+        session(),
+      ),
       "BAD_REQUEST",
     );
     await rejects(
@@ -1131,7 +1145,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
         },
         session(),
       ),
-      "BAD_REQUEST",
+      "PRODUCT_LIST_TOO_LONG",
     );
     const rows = await louezDb.db
       .select({ id: louezDb.products.id })
@@ -1233,6 +1247,99 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     assert.ok(
       JSON.stringify(order) === JSON.stringify(ids) ||
         JSON.stringify(order) === JSON.stringify(reversed),
+    );
+  });
+
+  test("a product stored past a list limit still saves, as long as the list does not grow", async () => {
+    const created = await run(
+      "create",
+      { name: "Big fleet", price: "5", trackUnits: true },
+      session(),
+    );
+    // Units from before the limit: more than the form may add today.
+    await louezDb.db.insert(louezDb.productUnits).values(
+      Array.from({ length: 1002 }, (_, index) => ({
+        id: `pr_fleet_unit_${String(index).padStart(6, "0")}`,
+        productId: created.id,
+        identifier: `BF-${String(index).padStart(4, "0")}`,
+      })),
+    );
+    const stored = (await run("get", { id: created.id }, session())).units.map((unit) => ({
+      id: unit.id,
+      identifier: unit.identifier,
+    }));
+    assert.equal(stored.length, 1002);
+
+    const renamed = stored.map((unit, index) =>
+      index === 0 ? { ...unit, identifier: "BF-renamed" } : unit,
+    );
+    const saved = await run("update", { id: created.id, units: renamed }, session());
+    assert.equal(saved.quantity, 1002);
+    assert.equal(saved.units.find((unit) => unit.id === stored[0].id)?.identifier, "BF-renamed");
+
+    // Fewer is fine, one more is not.
+    await run("update", { id: created.id, units: renamed.slice(0, 1001) }, session());
+    const grown = await rejects(
+      run(
+        "update",
+        {
+          id: created.id,
+          units: [
+            ...renamed.slice(0, 1001),
+            { identifier: "BF-new-1" },
+            { identifier: "BF-new-2" },
+          ],
+        },
+        session(),
+      ),
+      "PRODUCT_LIST_TOO_LONG",
+    );
+    assert.deepEqual(grown.data.details, { list: "units", max: 1000, stored: 1001 });
+  });
+
+  test("a product with a retired unit goes through get then update unchanged", async () => {
+    const created = await run(
+      "create",
+      {
+        name: "Bikes with history",
+        price: "20",
+        trackUnits: true,
+        units: [{ identifier: "BH-1" }, { identifier: "BH-2" }],
+      },
+      session(),
+    );
+    const [active, retired] = created.units;
+    await louezDb.db
+      .update(louezDb.productUnits)
+      .set({ lifecycleStatus: "retired", retiredAt: new Date() })
+      .where(orm.eq(louezDb.productUnits.id, retired.id));
+    // A variant added since: the retired unit has no value for it.
+    await run(
+      "update",
+      {
+        id: created.id,
+        bookingAttributeAxes: [{ key: "color", label: "Color", position: 0 }],
+        units: [{ id: active.id, identifier: active.identifier, attributes: { color: "red" } }],
+      },
+      session(),
+    );
+
+    const context = await apiKey();
+    const read = await run("get", { id: created.id }, context());
+    assert.deepEqual(
+      read.units.map((unit) => [unit.identifier, unit.lifecycleStatus]),
+      [
+        ["BH-1", "active"],
+        ["BH-2", "retired"],
+      ],
+    );
+    const saved = await run("update", read, context());
+    assert.deepEqual(
+      saved.units.map((unit) => [unit.identifier, unit.lifecycleStatus, unit.attributes]),
+      [
+        ["BH-1", "active", { color: "red" }],
+        ["BH-2", "retired", {}],
+      ],
     );
   });
 });

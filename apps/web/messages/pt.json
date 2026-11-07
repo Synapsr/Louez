@@ -1511,7 +1511,8 @@
             "basePricing": "Tarifas base",
             "title": "Simulação de preço",
             "subtitle": "Preço total consoante a duração do aluguer"
-          }
+          },
+          "limitReached": "Um produto tem no máximo {max} taxas."
         },
         "unitTracking": {
           "toggle": "Rastrear unidades individuais",
@@ -1652,7 +1653,8 @@
           "addValuePlaceholder": "Novo valor…",
           "noVariants": "Sem variantes",
           "variantsCount": "{count, plural, one {# variante} other {# variantes}}",
-          "unitImages": "Fotos da unidade"
+          "unitImages": "Fotos da unidade",
+          "limitReached": "Um produto tem no máximo {max} unidades. Remova uma para adicionar outra."
         },
         "previewTitle": "Previa",
         "previewDescription": "Veja como seu produto aparecera no catalogo",

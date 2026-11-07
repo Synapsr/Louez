@@ -37,6 +37,7 @@ import {
   validatePricingTiers,
 } from "@louez/utils";
 import {
+  PRODUCT_LIST_LIMITS,
   isOwnedImageUrl,
   productSchema as productRules,
   type ProductInput,
@@ -631,7 +632,10 @@ const listPosition = sql<number>`COALESCE(${products.displayOrder}, 0)`.mapWith(
  */
 export async function listProducts(
   actor: Pick<ProductActor, "storeId" | "store">,
-  input: z.infer<typeof listProductsInput>,
+  input: z.infer<typeof listProductsInput> & {
+    /** Rows to skip, for the former `list_products` paging only, in place of a cursor. */
+    offset?: number;
+  },
 ) {
   const { storeId } = actor;
   const limit = input.limit ?? PRODUCT_PAGE_DEFAULT;
@@ -683,7 +687,8 @@ export async function listProducts(
       .from(products)
       .where(and(...conditions))
       .orderBy(asc(listPosition), desc(products.createdAt), asc(products.id))
-      .limit(limit + 1),
+      .limit(limit + 1)
+      .offset(input.offset ?? 0),
     db
       .select({ status: products.status, count: count() })
       .from(products)
@@ -750,6 +755,7 @@ export async function listProducts(
  * analytics event and revalidates the products list (app effects).
  */
 export async function createProduct(actor: ProductActor, input: CreateProductInput) {
+  assertListLimits(listLengths(input));
   const data = validateProduct(toProductInput(input, { status: "active", quantity: "1" }));
   const { storeId } = actor;
 
@@ -942,6 +948,38 @@ function storedAsInput(product: LoadedProduct): Record<string, unknown> {
 
 type Patch = Partial<Omit<UpdateProductInput, "id">>;
 
+type ListLengths = Partial<Record<keyof typeof PRODUCT_LIST_LIMITS, number>>;
+
+/**
+ * Holds each list sent to its limit (`PRODUCT_LIST_LIMITS`), unless the
+ * product already stores more and the list does not grow: a save never
+ * forces a merchant to drop units or images to keep the rest.
+ */
+function assertListLimits(sent: ListLengths, stored: ListLengths = {}) {
+  for (const [list, max] of Object.entries(PRODUCT_LIST_LIMITS) as Array<
+    [keyof typeof PRODUCT_LIST_LIMITS, number]
+  >) {
+    const length = sent[list];
+    if (length === undefined || length <= max) continue;
+    const kept = stored[list] ?? 0;
+    if (length > kept) throw productErrors.listTooLong(list, max, kept);
+  }
+}
+
+const listLengths = (data: {
+  units?: readonly unknown[];
+  rateTiers?: readonly unknown[];
+  accessories?: readonly unknown[];
+  categoryIds?: readonly unknown[] | null;
+  images?: readonly unknown[];
+}): ListLengths => ({
+  units: data.units?.length,
+  rateTiers: data.rateTiers?.length,
+  accessories: data.accessories?.length,
+  categoryIds: data.categoryIds?.length,
+  images: data.images?.length,
+});
+
 /**
  * The fields sent, with the former ones in their current form: a single
  * `categoryId` is the list of categories, a null base rate (as products_get
@@ -969,6 +1007,16 @@ function mergeUpdate(product: LoadedProduct, patch: UpdateProductInput) {
     Object.fromEntries(Object.entries(sent).filter(([, value]) => value !== undefined)) as Patch,
   );
   const stored = storedAsInput(product);
+  // Retired units are the product's but not the form's: products_get returns
+  // them, and sent back they are left out, not checked against today's
+  // variants. A unit of another product stays ignored further on.
+  if (defined.units) {
+    const retired = new Set(
+      product.units.filter((unit) => unit.lifecycleStatus !== "active").map((unit) => unit.id),
+    );
+    defined.units = defined.units.filter((unit) => !(unit.id && retired.has(unit.id)));
+  }
+  assertListLimits(listLengths(defined), listLengths(stored as Parameters<typeof listLengths>[0]));
   const merged: Record<string, unknown> = { ...stored, ...defined };
   // The percentage tiers sent stand for the rate tiers: the stored ones must
   // not shadow them (the schema takes rateTiers first).

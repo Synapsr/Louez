@@ -1511,7 +1511,8 @@
             "basePricing": "Basistarieven",
             "title": "Prijssimulatie",
             "subtitle": "Totale prijs per huurperiode"
-          }
+          },
+          "limitReached": "Een product heeft maximaal {max} tarieven."
         },
         "unitTracking": {
           "toggle": "Individuele eenheden volgen",
@@ -1652,7 +1653,8 @@
           "addValuePlaceholder": "Nieuwe waarde…",
           "noVariants": "Geen varianten",
           "variantsCount": "{count, plural, one {# variant} other {# varianten}}",
-          "unitImages": "Foto's van de eenheid"
+          "unitImages": "Foto's van de eenheid",
+          "limitReached": "Een product heeft maximaal {max} eenheden. Verwijder er een om een andere toe te voegen."
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",

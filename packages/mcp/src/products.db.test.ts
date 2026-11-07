@@ -26,6 +26,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let apiKeys: typeof import("@louez/api/services");
+  let orm: typeof import("drizzle-orm");
   let exposure: import("@louez/api/platform/exposure").Exposure;
   let openApi: (
     method: string,
@@ -46,6 +47,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     database = await createTestDatabase("api_products_tools");
     louezDb = await import("@louez/db");
     apiKeys = await import("@louez/api/services");
+    orm = await import("drizzle-orm");
     const { appRouter } = await import("@louez/api/router");
     const { createExposure } = await import("@louez/api/platform/exposure");
     const { createOpenApiHandler, handleOpenApiRequest } =
@@ -157,11 +159,15 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const products = exposure.procedures.filter((entry) =>
       entry.path.startsWith("dashboard.products."),
     );
-    assert.equal(products.length, 17);
+    assert.equal(products.length, 18);
     assert.deepEqual([...new Set(products.map((entry) => entry.meta.mcp.bundle))], ["catalog"]);
-    const aliases = products.flatMap((entry) =>
-      (entry.meta.mcp.aliases ?? []).map((alias) => alias.name),
-    );
+    // Former names: aliases, and list_products as its own unlisted procedure.
+    const aliases = [
+      ...products.flatMap((entry) => (entry.meta.mcp.aliases ?? []).map((alias) => alias.name)),
+      ...products
+        .filter((entry) => entry.meta.mcp.listed === false)
+        .map((entry) => entry.meta.mcp.name),
+    ];
     assert.deepEqual(aliases.sort(), [
       "archive_product",
       "create_product",
@@ -312,6 +318,49 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(second.nextCursor, null);
 
     const bad = await mcpCall(authorization, "list_products", { page: 0 });
-    assert.equal(toolError(bad)?.code, "INVALID_ARGUMENT");
+    assert.equal(toolError(bad)?.code, "BAD_REQUEST");
+  });
+
+  test("a deep list_products page is one read, counted once, and bounded", async () => {
+    const authorization = await key();
+    await louezDb.db.delete(louezDb.products);
+    await louezDb.db.insert(louezDb.products).values(
+      Array.from({ length: 250 }, (_, index) => ({
+        id: `pt_deep_${String(index).padStart(12, "0")}`,
+        storeId: STORE,
+        name: `Deep ${String(index).padStart(3, "0")}`,
+        price: "1.00",
+        pricingMode: "day" as const,
+      })),
+    );
+    const counted = async () => {
+      const [row] = await louezDb.db
+        .select({ total: orm.sql<number>`COALESCE(SUM(${louezDb.apiRateLimits.count}), 0)` })
+        .from(louezDb.apiRateLimits);
+      return Number(row?.total ?? 0);
+    };
+
+    // A connection's own requests count too: a first page is the yardstick.
+    const start = await counted();
+    output(await mcpCall(authorization, "list_products", { page: 1, pageSize: 100 }));
+    const firstPageCost = (await counted()) - start;
+    const before = await counted();
+    const third = output(await mcpCall(authorization, "list_products", { page: 3, pageSize: 100 }));
+    assert.equal((third.items as Json[]).length, 50);
+    assert.equal(
+      (await counted()) - before,
+      firstPageCost,
+      "a deep page costs what a first page costs",
+    );
+
+    const tooDeep = await mcpCall(authorization, "list_products", { page: 101, pageSize: 100 });
+    const error = toolError(tooDeep) as { code?: string; message?: string } | undefined;
+    assert.equal(error?.code, "LEGACY_PAGE_TOO_DEEP");
+    assert.match(JSON.stringify(tooDeep.content), /products_list/);
+    // The last page within the bound is still served.
+    const last = output(
+      await mcpCall(authorization, "list_products", { page: 100, pageSize: 100 }),
+    );
+    assert.deepEqual(last.items, []);
   });
 });

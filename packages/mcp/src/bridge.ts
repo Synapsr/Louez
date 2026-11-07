@@ -66,7 +66,6 @@ async function callProcedure(
   entry: ExposedProcedure,
   ctx: McpRequestContext,
   args: Record<string, unknown>,
-  paging?: LegacyPage,
 ): Promise<CallToolResult> {
   // The store was read from `storeId` when the request came in.
   const { idempotencyKey, confirmationToken, storeId: _store, ...input } = args;
@@ -99,13 +98,11 @@ async function callProcedure(
   if (typeof confirmationToken === "string") headers.set(CONFIRMATION_HEADER, confirmationToken);
 
   const receipt: OperationReceipt = {};
-  const run = (procedureInput: Record<string, unknown>) =>
-    call(entry.procedure, procedureInput, {
+  try {
+    const output = await call(entry.procedure, input, {
       context: { headers, transport: "mcp", ports: ctx.ports, receipt },
       path: entry.path.split("."),
     });
-  try {
-    const output = paging ? await runPage(run, input, paging) : await run(input);
     const structuredContent = jsonSafe(output);
     const status = receipt.replayed ? "Done earlier (replayed)." : "Done.";
     const operation = receipt.operationId ? ` Operation ${receipt.operationId}.` : "";
@@ -128,60 +125,6 @@ async function callProcedure(
   }
 }
 
-/** A page of a former tool's offset paging (`aliases[].paging`), as rows to skip and to return. */
-interface LegacyPage {
-  skip: number;
-  size: number;
-  /** Most rows one call returns, as the procedure caps its `limit`. */
-  step: number;
-}
-
-type CursorPage = { items: unknown[]; nextCursor: string | null } & Record<string, unknown>;
-
-/**
- * One offset page through a cursor list: the rows before it are read and
- * dropped, a full step at a time, then the page is read. Each call counts
- * on the rate limit, as the former tool's deep pages cost their offset too.
- */
-async function runPage(
-  run: (input: Record<string, unknown>) => Promise<unknown>,
-  input: Record<string, unknown>,
-  page: LegacyPage,
-): Promise<CursorPage> {
-  let cursor: string | undefined;
-  let remaining = page.skip;
-  while (remaining > 0) {
-    const limit = Math.min(remaining, page.step);
-    const skipped = (await run({ ...input, cursor, limit })) as CursorPage;
-    if (!skipped.nextCursor) return { ...skipped, items: [], nextCursor: null };
-    cursor = skipped.nextCursor;
-    remaining -= limit;
-  }
-  return (await run({ ...input, cursor, limit: page.size })) as CursorPage;
-}
-
-/** The page the former arguments ask for, or the error to answer. */
-function legacyPage(
-  paging: NonNullable<NonNullable<ExposedProcedure["meta"]["mcp"]["aliases"]>[number]["paging"]>,
-  args: Record<string, unknown>,
-): LegacyPage | Error {
-  const page = args[paging.page] ?? 1;
-  const size = args[paging.pageSize] ?? paging.defaultPageSize;
-  const valid = (value: unknown, max: number) =>
-    typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= max;
-  if (!valid(page, Number.MAX_SAFE_INTEGER) || !valid(size, paging.maxPageSize)) {
-    return apiError("BAD_REQUEST", "INVALID_ARGUMENT", {
-      message: `${paging.page} is a whole number from 1, ${paging.pageSize} one from 1 to ${paging.maxPageSize}.`,
-      details: { arguments: [paging.page, paging.pageSize] },
-    });
-  }
-  return {
-    skip: ((page as number) - 1) * (size as number),
-    size: size as number,
-    step: paging.maxStep,
-  };
-}
-
 /**
  * Registers one tool per exposed procedure. `tools/list` shows only those of
  * the connection's bundles that the actor may call (the member's role cut
@@ -201,7 +144,8 @@ export function registerExposedTools(
       description,
       inputSchema: toolInputSchema(entry, ctx),
       annotations,
-      listed: isListed(ctx, entry.meta.scope, bundle),
+      // A former tool served as it was is callable, never listed.
+      listed: entry.meta.mcp.listed !== false && isListed(ctx, entry.meta.scope, bundle),
       call: (args) => callProcedure(entry, ctx, args),
     });
 
@@ -213,12 +157,7 @@ export function registerExposedTools(
       addTool(server, {
         name: alias.name,
         description: `Former name of ${name}, kept for agents set up before. ${description}`,
-        inputSchema: aliasInputSchema(
-          toolInputSchema(entry, ctx),
-          renamed,
-          Object.keys(fixed),
-          alias.paging,
-        ),
+        inputSchema: aliasInputSchema(toolInputSchema(entry, ctx), renamed, Object.keys(fixed)),
         annotations,
         listed: false,
         call: (args) => {
@@ -229,12 +168,7 @@ export function registerExposedTools(
               delete mapped[from];
             }
           }
-          if (!alias.paging) return callProcedure(entry, ctx, { ...mapped, ...fixed });
-          const page = legacyPage(alias.paging, mapped);
-          if (page instanceof Error) return Promise.resolve(errorResult(alias.name, page));
-          delete mapped[alias.paging.page];
-          delete mapped[alias.paging.pageSize];
-          return callProcedure(entry, ctx, { ...mapped, ...fixed }, page);
+          return callProcedure(entry, ctx, { ...mapped, ...fixed });
         },
       });
     }
@@ -249,25 +183,8 @@ function aliasInputSchema(
   schema: Tool["inputSchema"],
   renamed: ReadonlyArray<[from: string, to: string]>,
   fixed: readonly string[],
-  paging?: { page: string; pageSize: string; defaultPageSize: number; maxPageSize: number },
 ): Tool["inputSchema"] {
   const properties: Record<string, unknown> = { ...schema.properties };
-  if (paging) {
-    // The former offset paging stands for the cursor.
-    delete properties.cursor;
-    delete properties.limit;
-    properties[paging.page] = {
-      type: "integer",
-      minimum: 1,
-      description: "Page number (default 1)",
-    };
-    properties[paging.pageSize] = {
-      type: "integer",
-      minimum: 1,
-      maximum: paging.maxPageSize,
-      description: `Results per page (default ${paging.defaultPageSize}, max ${paging.maxPageSize})`,
-    };
-  }
   let required = schema.required ? [...schema.required] : undefined;
   for (const field of fixed) {
     delete properties[field];

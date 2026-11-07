@@ -1550,7 +1550,8 @@
             "basePricing": "기본 가격",
             "title": "가격 시뮬레이션",
             "subtitle": "대여 기간별로 청구되는 총 가격"
-          }
+          },
+          "limitReached": "상품 하나에 요금은 최대 {max}개까지입니다."
         },
         "unitTracking": {
           "toggle": "개별 단위 추적",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "새로운 가치…",
           "noVariants": "변형 없음",
           "variantsCount": "{count,plural,one{# 변형} other{# 변형}}",
-          "unitImages": "유닛 사진"
+          "unitImages": "유닛 사진",
+          "limitReached": "상품 하나에 유닛은 최대 {max}개까지입니다. 추가하려면 하나를 삭제하세요."
         },
         "previewTitle": "미리보기",
         "previewDescription": "귀하의 제품이 카탈로그에 표시되는 방식은 다음과 같습니다.",

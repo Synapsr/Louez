@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
 import {
-  PRODUCT_PAGE_MAX,
+  LEGACY_PAGE_MAX_OFFSET,
   createProductInput,
   createSeasonalPricingInput,
   deleteProductInput,
@@ -10,12 +10,14 @@ import {
   deleteSeasonalPricingOutput,
   duplicateProductInput,
   getProductInput,
+  legacyListProductsInput,
   listProductsInput,
   listProductsOutput,
   listSeasonalPricingsInput,
   listSeasonalPricingsOutput,
   productActivityInput,
   productActivityOutput,
+  productErrors,
   productSchema,
   productTimelineInput,
   productTimelineOutput,
@@ -138,19 +140,6 @@ const list = storeProcedure
       description:
         "List the store's products in the catalog's order, with their price, stock and main category, and the count per status. Filter by status, categoryIds or part of the name. Returns up to `limit` products (default 100, at most 200) and a nextCursor for the next page; nextCursor is null on the last page. Use products_get for a product's tiers, units and accessories.",
       bundle: "catalog",
-      aliases: [
-        {
-          name: "list_products",
-          renamedArgs: { categoryId: "categoryIds" },
-          paging: {
-            page: "page",
-            pageSize: "pageSize",
-            defaultPageSize: 50,
-            maxPageSize: 100,
-            maxStep: PRODUCT_PAGE_MAX,
-          },
-        },
-      ],
       annotations: { readOnlyHint: true },
     },
   })
@@ -158,6 +147,35 @@ const list = storeProcedure
   .input(listProductsInput)
   .output(listProductsOutput)
   .handler(({ context, input }) => listProducts(productActor(context), input));
+
+// The former list_products tool, with its offset paging: one read, counted
+// once, bounded. No alias expresses a page number over a cursor.
+const listLegacyPage = storeProcedure
+  .meta({
+    capability: "products.list",
+    scope: { domain: "products", level: "read" },
+    mcp: {
+      name: "list_products",
+      description: `Former tool, kept for agents set up before: use products_list. Lists the store's products by page (page, pageSize up to 100) within the first ${LEGACY_PAGE_MAX_OFFSET} products.`,
+      bundle: "catalog",
+      listed: false,
+      annotations: { readOnlyHint: true },
+    },
+  })
+  .input(legacyListProductsInput)
+  .output(listProductsOutput)
+  .handler(({ context, input }) => {
+    const pageSize = input.pageSize ?? 50;
+    const offset = ((input.page ?? 1) - 1) * pageSize;
+    if (offset >= LEGACY_PAGE_MAX_OFFSET) throw productErrors.legacyPageTooDeep();
+    return listProducts(productActor(context), {
+      status: input.status,
+      categoryIds: input.categoryId ? [input.categoryId] : undefined,
+      search: input.search,
+      limit: Math.min(pageSize, LEGACY_PAGE_MAX_OFFSET - offset),
+      offset,
+    });
+  });
 
 const get = storeProcedure
   .meta({
@@ -632,6 +650,7 @@ const unitHistory = dashboardProcedure
 
 export const dashboardProductsRouter = {
   list,
+  listLegacyPage,
   get,
   create,
   update,

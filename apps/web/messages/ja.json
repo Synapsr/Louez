@@ -1550,7 +1550,8 @@
             "basePricing": "基本料金",
             "title": "価格シミュレーション",
             "subtitle": "レンタル期間ごとに請求される合計料金"
-          }
+          },
+          "limitReached": "1つの商品に設定できる料金は最大{max}件です。"
         },
         "unitTracking": {
           "toggle": "個々のユニットを追跡する",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "新しい価値観…",
           "noVariants": "バリエーションなし",
           "variantsCount": "{count,plural,one{# 異形} other{# バリエーション}}",
-          "unitImages": "ユニット写真"
+          "unitImages": "ユニット写真",
+          "limitReached": "1つの商品に登録できるユニットは最大{max}件です。追加するには1件削除してください。"
         },
         "previewTitle": "プレビュー",
         "previewDescription": "あなたの商品がカタログにどのように表示されるか",
