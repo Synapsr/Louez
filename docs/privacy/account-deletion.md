@@ -65,8 +65,8 @@ Deletion is fail-closed. If Louez knows about a provider-side resource and canno
 | SuperPDP              | Revoke OAuth tokens; statutory invoice retention still applies at each regulated party                                      | Existing SuperPDP OAuth credentials and `INTEGRATION_ENCRYPTION_KEY`          |
 | Tulip                 | Delete products created and mapped by Louez; existing insurance contracts follow Tulip's contractual retention rules        | `TULIP_API_KEY`                                                               |
 | PostHog               | Delete the person and queue deletion of associated events                                                                   | `POSTHOG_PROJECT_ID`, `POSTHOG_PERSONAL_API_KEY`, optional `POSTHOG_API_HOST` |
-| Gleap                 | Delete the identified project user                                                                                          | `GLEAP_API_TOKEN`                                                             |
-| OpenReplay            | Schedule deletion of the identified user, sessions, events, metadata, and recordings                                        | `OPENREPLAY_API_URL`, `OPENREPLAY_ORGANIZATION_API_KEY`                       |
+| Gleap                 | Delete the identified contact and their conversations                                                                       | `GLEAP_API_TOKEN`                                                             |
+| OpenReplay            | Schedule deletion of the identified user, sessions, events, metadata, and recordings                                        | `OPENREPLAY_API_URL` (public API base), `OPENREPLAY_ORGANIZATION_API_KEY`     |
 
 When Louez reports to the billing service (`LOUEZ_BILLING=cloud` with `BILLING_SERVICE_URL`), it leaves Stripe Billing customers to that service, which bills the final statement and then closes or anonymises the customer after its retention period. Louez still cancels the customer's plan subscription and removes the Stripe Connect accounts.
 
