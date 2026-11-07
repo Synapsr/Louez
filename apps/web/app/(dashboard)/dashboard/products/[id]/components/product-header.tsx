@@ -77,10 +77,18 @@ interface ProductHeaderProps {
   };
   storeSlug: string;
   readOnly?: boolean;
+  /** The member may delete products: otherwise the delete action is hidden. */
+  canDelete?: boolean;
   onBack?: () => void;
 }
 
-export const ProductHeader = ({ product, storeSlug, readOnly = false, onBack }: ProductHeaderProps) => {
+export const ProductHeader = ({
+  product,
+  storeSlug,
+  readOnly = false,
+  canDelete = true,
+  onBack,
+}: ProductHeaderProps) => {
   const headerRef = useRef<HTMLDivElement>(null);
   const t = useTranslations('dashboard.products');
   const tDetail = useTranslations('dashboard.products.detail');
@@ -149,14 +157,18 @@ export const ProductHeader = ({ product, storeSlug, readOnly = false, onBack }: 
             {t('archive')}
           </DropdownMenuItem>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => requestDelete(product)}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          {tCommon('delete')}
-        </DropdownMenuItem>
+        {canDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => requestDelete(product)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {tCommon('delete')}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

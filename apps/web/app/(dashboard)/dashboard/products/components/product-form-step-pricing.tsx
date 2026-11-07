@@ -76,6 +76,8 @@ interface PricingStepProps {
   onSelectSeasonalPeriod?: (id: string | null) => void;
   onSeasonalPricingsChange?: (pricings: SeasonalPricingData[]) => void;
   isLoadingSeasonalPricings?: boolean;
+  /** The member may delete seasons. */
+  canDeleteSeasons?: boolean;
   /** Preview rates locally, without seasonal mutations or metadata dialogs. */
   readOnly?: boolean;
   autoFocus?: boolean;
@@ -139,6 +141,7 @@ function PricingCard(props: PricingStepProps) {
     onSelectSeasonalPeriod,
     onSeasonalPricingsChange,
     isLoadingSeasonalPricings = false,
+    canDeleteSeasons = true,
     showValidationErrors = false,
     duplicateRateTierIndexes,
     onRateTiersEdit,
@@ -251,6 +254,7 @@ function PricingCard(props: PricingStepProps) {
                 <SeasonalActionsMenu
                   period={selectedPeriod}
                   disabled={isSaving}
+                  canDelete={canDeleteSeasons}
                   onBeforeDuplicate={seasonal.flush}
                   onEditMetadata={() => {
                     setEditingPeriod(selectedPeriod);

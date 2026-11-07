@@ -150,6 +150,8 @@ export interface ProductFormProps {
   showAiContext?: boolean;
   imageEnhanceEnabled?: boolean;
   imageBackgroundRemovalEnabled?: boolean;
+  /** The member may delete what the form deletes (seasonal prices). */
+  canDelete?: boolean;
 }
 
 export type ProductFormValues = Omit<ProductInput, "taxSettings"> & {

@@ -48,8 +48,8 @@ export function useProductFormMutations({
       const persistedImages = persistedImagesRef.current;
 
       // A refused save throws: freshly uploaded files stay available for a
-      // retry. The media hook still owns their cleanup if the user removes
-      // them or leaves the form.
+      // retry. The media hook deletes one when the user removes it from the
+      // form; leaving the form keeps them (see use-product-form-media).
       const result = productId
         ? await orpcClient.dashboard.products.update({ ...value, id: productId })
         : await orpcClient.dashboard.products.create(value);

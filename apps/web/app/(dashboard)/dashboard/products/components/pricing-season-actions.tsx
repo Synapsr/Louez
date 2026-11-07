@@ -63,6 +63,7 @@ export function SeasonalActionsMenu({
   onDuplicated,
   onBeforeDuplicate,
   disabled,
+  canDelete = true,
 }: {
   period: SeasonalPricingData;
   onEditMetadata: () => void;
@@ -70,6 +71,8 @@ export function SeasonalActionsMenu({
   onDuplicated: (newId: string) => void;
   onBeforeDuplicate: () => Promise<void>;
   disabled?: boolean;
+  /** The member may delete seasons: otherwise the delete action is hidden. */
+  canDelete?: boolean;
 }) {
   const t = useTranslations("dashboard.products.form");
   const tErrors = useTranslations("errors");
@@ -129,14 +132,18 @@ export function SeasonalActionsMenu({
             <Copy className="mr-2 h-4 w-4" />
             {t("duplicateSeason")}
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onClick={() => setConfirmOpen(true)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            {t("deleteSeason")}
-          </DropdownMenuItem>
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => setConfirmOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t("deleteSeason")}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

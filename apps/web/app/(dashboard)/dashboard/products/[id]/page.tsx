@@ -14,6 +14,7 @@ import { getCurrentStore } from "@/lib/store-context";
 import { ProductActivityFeed } from "./components/product-activity-feed";
 import { ProductCustomerFieldsCard } from "./components/product-customer-fields-card";
 import { ProductHeader } from "./components/product-header";
+import { productPermissions } from "../util.product-permissions";
 import { ProductInfoSection } from "./components/product-info-section";
 import { ProductInventorySection } from "./components/product-inventory-section";
 import { ProductQuickFacts } from "./components/product-quick-facts";
@@ -150,6 +151,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           categories,
         }}
         storeSlug={store.slug}
+        canDelete={productPermissions(store.role).canDelete}
       />
 
       {/* `min-w-0` on both columns: the timeline and the unit table are wider

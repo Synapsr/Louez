@@ -37,6 +37,8 @@ interface ProductsPageContentProps {
   limits: LimitStatus
   planSlug: string
   currency?: string
+  /** The member may delete products. */
+  canDelete: boolean
 }
 
 export function ProductsPageContent({
@@ -45,6 +47,7 @@ export function ProductsPageContent({
   limits,
   planSlug,
   currency,
+  canDelete,
 }: ProductsPageContentProps) {
   const t = useTranslations('dashboard.products')
   const queryClient = useQueryClient()
@@ -185,7 +188,7 @@ export function ProductsPageContent({
             </Button>
           </div>
         ) : (
-          <ProductsTable products={visibleProducts} currency={currency} />
+          <ProductsTable products={visibleProducts} currency={currency} canDelete={canDelete} />
         )}
       </div>
 
@@ -194,7 +197,7 @@ export function ProductsPageContent({
         <div className="relative">
           {/* Blurred table */}
           <div className="blur-sm pointer-events-none select-none opacity-60">
-            <ProductsTable products={blurredProducts} currency={currency} />
+            <ProductsTable products={blurredProducts} currency={currency} canDelete={canDelete} />
           </div>
 
           {/* Overlay */}

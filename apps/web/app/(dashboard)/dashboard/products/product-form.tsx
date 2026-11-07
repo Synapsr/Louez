@@ -146,6 +146,7 @@ export function ProductForm({
   showAiContext = false,
   imageEnhanceEnabled = false,
   imageBackgroundRemovalEnabled = false,
+  canDelete = false,
 }: ProductFormProps) {
   const router = useRouter();
   const t = useTranslations("dashboard.products.form");
@@ -749,6 +750,7 @@ export function ProductForm({
                     onSelectSeasonalPeriod={setSelectedSeasonalPeriodId}
                     onSeasonalPricingsChange={setSeasonalPricings}
                     isLoadingSeasonalPricings={isLoadingSeasonalPricings}
+                    canDeleteSeasons={canDelete}
                   />
                 </div>
 
