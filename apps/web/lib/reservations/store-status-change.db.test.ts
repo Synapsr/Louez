@@ -175,6 +175,21 @@ describe("store status change (database)", { skip: skipWithoutTestDatabase() }, 
       { isolationLevel: "read committed" },
     );
 
+  test("a status change that keeps conflicting gives up after three runs, as a conflict", async () => {
+    let runs = 0;
+    let caught: unknown;
+    try {
+      await statusChange.retryStoreStatusChange(async () => {
+        runs += 1;
+        throw new statusChange.ReservationProductsChangedError("res_busy");
+      });
+    } catch (error) {
+      caught = error;
+    }
+    assert.equal(runs, 3);
+    assert.ok(statusChange.isStoreStatusChangeConflict(caught), "the caller answers busy");
+  });
+
   test("a confirmation consumes stock, validates the contract and logs the change", async () => {
     const id = await createReservation("pending");
     const productId = await createProduct({ stockKind: "consumable", stock: 5 });

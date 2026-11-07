@@ -85,6 +85,26 @@ describe("MCP status tool", () => {
     ]);
   });
 
+  test("contention past the app's retries answers a stable, retryable error", async () => {
+    answer = { ok: false, error: "busy" };
+    const result = await client.callRaw("update_reservation_status", {
+      reservationId: "res_busy",
+      status: "confirmed",
+    });
+
+    assert.equal(result.isError, true);
+    assert.deepEqual((result.structuredContent as { error?: unknown } | undefined)?.error, {
+      message:
+        "The reservation was being changed at the same time, so nothing was done. Call again with the same arguments in a moment.",
+      code: "RESERVATION_BUSY",
+      retryable: true,
+      details: { reservationId: "res_busy" },
+    });
+    const text = (result.content as Array<{ text?: string }>).map((part) => part.text).join("");
+    assert.match(text, /RESERVATION_BUSY/);
+    assert.match(text, /retryable: true/);
+  });
+
   test("lists the warnings the dashboard would show", async () => {
     answer = {
       ok: true,

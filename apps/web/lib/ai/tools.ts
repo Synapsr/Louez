@@ -365,6 +365,13 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           actorUserId: ctx.userId,
         });
         if (!result.ok) {
+          if (result.error === "busy") {
+            return {
+              error:
+                "Not changed: the reservation was being changed at the same time. Nothing was done; try again in a moment.",
+              retryable: true,
+            };
+          }
           return { error: result.error === "not_found" ? "Reservation not found" : result.message };
         }
 

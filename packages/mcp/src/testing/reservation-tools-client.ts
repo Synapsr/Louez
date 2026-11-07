@@ -9,7 +9,7 @@ import type { ApiKeyPermissions } from "@louez/db";
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
 import { normalizeScopes } from "@louez/api/platform/permissions";
 import { Client, InMemoryTransport as ClientInMemoryTransport } from "@modelcontextprotocol/client";
-import { McpServer } from "@modelcontextprotocol/server";
+import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import type { MemberRole } from "@louez/utils";
 
 import type { McpRequestContext } from "../auth/context";
@@ -24,6 +24,8 @@ export interface ToolAnswer {
 
 export interface ReservationToolsClient {
   call(name: string, args: Record<string, unknown>): Promise<ToolAnswer>;
+  /** The whole tool result, structuredContent included. */
+  callRaw(name: string, args: Record<string, unknown>): Promise<CallToolResult>;
   close(): Promise<void>;
 }
 
@@ -100,6 +102,8 @@ export async function connectReservationTools(
         .join("");
       return { text, isError: result.isError === true };
     },
+    callRaw: async (name, args) =>
+      (await client.callTool({ name, arguments: args })) as CallToolResult,
     close: () => client.close(),
   };
 }

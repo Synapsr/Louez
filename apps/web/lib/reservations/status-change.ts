@@ -679,14 +679,8 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
           });
 
     if (outcome.ok || outcome.error === "not_found") return outcome;
-    if (outcome.error === "busy") {
-      return {
-        ok: false,
-        error: "refused",
-        message:
-          "Not changed: the reservation was being changed at the same time. Nothing was done; try again in a moment.",
-      };
-    }
+    // Temporary contention, not a refusal: the caller may try again.
+    if (outcome.error === "busy") return { ok: false, error: "busy" };
     if (outcome.error === "store_not_accepting_reservations") {
       return { ok: false, error: "refused", message: AGENT_GATE_REFUSAL };
     }

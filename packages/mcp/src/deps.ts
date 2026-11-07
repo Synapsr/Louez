@@ -23,7 +23,12 @@ export type McpStatusChangeResult =
     }
   | { ok: false; error: "not_found" }
   /** `message` is the answer to give. */
-  | { ok: false; error: "refused"; message: string };
+  | { ok: false; error: "refused"; message: string }
+  /**
+   * The reservation kept changing under the change past its retries: nothing
+   * was done, and the same call may succeed in a moment.
+   */
+  | { ok: false; error: "busy" };
 
 /** What the reservation tools take from the app. */
 export interface McpReservationDeps {

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { customers, db, reservations } from "@louez/db";
 import { and, eq, desc, sql, gte } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/server";
+import { apiError } from "@louez/api/platform/errors";
 
 import type { McpRequestContext } from "../auth/context";
 import type { McpReservationDeps } from "../deps";
@@ -9,6 +10,18 @@ import { formatCurrency, formatDate, formatDateTime, formatStatus } from "../uti
 import { toolError, toolResult } from "../utils/errors";
 import { legacyTool } from "../utils/legacy-tool";
 import { paginationParams } from "../utils/pagination";
+
+const reservationErrors = {
+  /** Temporary contention past the retries: nothing was done, the same call may succeed. */
+  busy: (reservationId: string) =>
+    apiError("CONFLICT", "RESERVATION_BUSY", {
+      message:
+        "The reservation was being changed at the same time, so nothing was done. Call again with the same arguments in a moment.",
+      i18nKey: "errors.reservationStatusChanged",
+      retryable: true,
+      details: { reservationId },
+    }),
+};
 
 export function registerReservationTools(
   server: McpServer,
@@ -230,6 +243,9 @@ export function registerReservationTools(
         actorUserId: ctx.userId,
         rejectionReason,
       });
+      // Thrown, so legacyTool answers in the platform's error shape: a stable
+      // code, retryable, and structuredContent.error.
+      if (!result.ok && result.error === "busy") throw reservationErrors.busy(reservationId);
       if (!result.ok) {
         return toolError(result.error === "not_found" ? "Reservation not found." : result.message);
       }
