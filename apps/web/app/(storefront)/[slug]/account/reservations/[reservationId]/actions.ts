@@ -19,6 +19,7 @@ import {
   isStoreNotAcceptingReservationsError,
   payments,
   reservations,
+  retryTransactionOnDeadlock,
   stores,
   verificationCodes,
 } from "@louez/db";
@@ -127,24 +128,28 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   // so the store scope of the lock is enough.
   let effects: ReservationBillingEffect[] | null = null;
   try {
-    effects = await db.transaction(
-      async (tx) => {
-        const change = await changeReservationStatus(tx, {
-          reservationId,
-          storeId: store.id,
-          to: "confirmed",
-          actor: "customer",
-          actorUserId: null,
-          expectedFrom: "quote",
-          beforeWrite: () => checkExistingReservationInventory(tx, reservationId, store.id),
-          activity: { type: "quote_accepted", metadata: { source: "quote_acceptance" } },
-        });
-        if (!change.changed) return null;
+    // Either side of the reservation-then-product lock pair may lose a
+    // deadlock: the whole transaction runs again (DL-12).
+    effects = await retryTransactionOnDeadlock(() =>
+      db.transaction(
+        async (tx) => {
+          const change = await changeReservationStatus(tx, {
+            reservationId,
+            storeId: store.id,
+            to: "confirmed",
+            actor: "customer",
+            actorUserId: null,
+            expectedFrom: "quote",
+            beforeWrite: () => checkExistingReservationInventory(tx, reservationId, store.id),
+            activity: { type: "quote_accepted", metadata: { source: "quote_acceptance" } },
+          });
+          if (!change.changed) return null;
 
-        await validateReservationContract(tx, reservationId, store.id, "quote_acceptance");
-        return change.effects;
-      },
-      { isolationLevel: "read committed" },
+          await validateReservationContract(tx, reservationId, store.id, "quote_acceptance");
+          return change.effects;
+        },
+        { isolationLevel: "read committed" },
+      ),
     );
   } catch (error) {
     if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
@@ -335,20 +340,23 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   }
 
   // Under the lock, so a quote the store confirmed meanwhile is not declined.
-  const effects = await db.transaction(
-    async (tx) => {
-      const change = await changeReservationStatus(tx, {
-        reservationId,
-        storeId: store.id,
-        to: "declined",
-        actor: "customer",
-        actorUserId: null,
-        expectedFrom: "quote",
-        activity: { type: "quote_declined", metadata: { source: "quote_decline" } },
-      });
-      return change.changed ? change.effects : null;
-    },
-    { isolationLevel: "read committed" },
+  // A lost deadlock runs the whole transaction again (DL-12).
+  const effects = await retryTransactionOnDeadlock(() =>
+    db.transaction(
+      async (tx) => {
+        const change = await changeReservationStatus(tx, {
+          reservationId,
+          storeId: store.id,
+          to: "declined",
+          actor: "customer",
+          actorUserId: null,
+          expectedFrom: "quote",
+          activity: { type: "quote_declined", metadata: { source: "quote_decline" } },
+        });
+        return change.changed ? change.effects : null;
+      },
+      { isolationLevel: "read committed" },
+    ),
   );
   if (!effects) {
     return { error: "invalidStatus" };
@@ -434,48 +442,51 @@ export async function cancelReservationRequest(
   });
   if (!reservation) return { error: "reservationNotFound" };
 
-  const result = await db.transaction(
-    async (tx) => {
-      const [locked] = await tx
-        .select({ status: reservations.status })
-        .from(reservations)
-        .where(scope)
-        .for("update");
-      if (!locked) return { error: "reservationNotFound" };
-      if (locked.status === "cancelled") return { changed: false, effects: [] };
-      if (locked.status !== "pending") return { error: "requestCancellationStatusChanged" };
+  // A lost deadlock runs the whole transaction again (DL-12).
+  const result = await retryTransactionOnDeadlock(() =>
+    db.transaction(
+      async (tx) => {
+        const [locked] = await tx
+          .select({ status: reservations.status })
+          .from(reservations)
+          .where(scope)
+          .for("update");
+        if (!locked) return { error: "reservationNotFound" };
+        if (locked.status === "cancelled") return { changed: false, effects: [] };
+        if (locked.status !== "pending") return { error: "requestCancellationStatusChanged" };
 
-      const paymentRows = await tx
-        .select({ status: payments.status, method: payments.method })
-        .from(payments)
-        .where(eq(payments.reservationId, reservation.id))
-        .for("update");
-      // A checkout can still settle asynchronously. Leave its reservation intact.
-      if (
-        paymentRows.some((payment) => payment.method === "stripe" && payment.status === "pending")
-      ) {
-        return { error: "requestCancellationPaymentPending" };
-      }
-      if (
-        !parsed.data.acknowledgePayment &&
-        paymentRows.some((payment) => ["completed", "authorized"].includes(payment.status))
-      ) {
-        return { error: "requestCancellationPaymentChanged" };
-      }
-      const change = await changeReservationStatus(tx, {
-        reservationId: reservation.id,
-        storeId: store.id,
-        to: "cancelled",
-        actor: "customer",
-        actorUserId: null,
-        expectedFrom: "pending",
-        activity: { metadata: { source: "customer_request_cancellation" } },
-      });
-      // The row is locked above, so this cannot happen. It narrows the type.
-      if (!change.changed) return { error: "requestCancellationStatusChanged" };
-      return { changed: true, effects: change.effects };
-    },
-    { isolationLevel: "read committed" },
+        const paymentRows = await tx
+          .select({ status: payments.status, method: payments.method })
+          .from(payments)
+          .where(eq(payments.reservationId, reservation.id))
+          .for("update");
+        // A checkout can still settle asynchronously. Leave its reservation intact.
+        if (
+          paymentRows.some((payment) => payment.method === "stripe" && payment.status === "pending")
+        ) {
+          return { error: "requestCancellationPaymentPending" };
+        }
+        if (
+          !parsed.data.acknowledgePayment &&
+          paymentRows.some((payment) => ["completed", "authorized"].includes(payment.status))
+        ) {
+          return { error: "requestCancellationPaymentChanged" };
+        }
+        const change = await changeReservationStatus(tx, {
+          reservationId: reservation.id,
+          storeId: store.id,
+          to: "cancelled",
+          actor: "customer",
+          actorUserId: null,
+          expectedFrom: "pending",
+          activity: { metadata: { source: "customer_request_cancellation" } },
+        });
+        // The row is locked above, so this cannot happen. It narrows the type.
+        if (!change.changed) return { error: "requestCancellationStatusChanged" };
+        return { changed: true, effects: change.effects };
+      },
+      { isolationLevel: "read committed" },
+    ),
   );
   if ("error" in result) return { error: result.error };
   await runReservationEffects(result.effects);

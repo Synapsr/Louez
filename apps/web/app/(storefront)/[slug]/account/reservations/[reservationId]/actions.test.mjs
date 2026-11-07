@@ -5,8 +5,13 @@ import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 import { z } from "zod";
 
-const { renterGateRefusalParams } = createRequire(import.meta.url)(
+const requireModule = createRequire(import.meta.url);
+const { renterGateRefusalParams } = requireModule(
   "../../../../../../lib/billing/reservation-gate-error.ts",
+);
+// The real retry: these actions lock a reservation, then its products (DL-12).
+const { retryTransactionOnDeadlock } = requireModule(
+  "../../../../../../../../packages/db/src/deadlock.ts",
 );
 
 const source = readFileSync(new URL("./actions.ts", import.meta.url), "utf8");
@@ -30,7 +35,13 @@ class StoreNotAcceptingReservationsError extends Error {
   reason = "payment_method_required";
 }
 
-const setup = ({ refuse = false, sessionThrows = false, gateClosed = false } = {}) => {
+const setup = ({
+  refuse = false,
+  sessionThrows = false,
+  gateClosed = false,
+  deadlocks = 0,
+} = {}) => {
+  let deadlocksLeft = deadlocks;
   const calls = [];
   const changes = [];
   const effectRuns = [];
@@ -95,9 +106,18 @@ const setup = ({ refuse = false, sessionThrows = false, gateClosed = false } = {
         transaction: async (run) => run(tx),
       },
       getCustomerSession: async () => ({ customerId: "customer", customer }),
+      retryTransactionOnDeadlock,
       changeReservationStatus: async (_tx, input) => {
         calls.push("change");
         changes.push(input);
+        // MySQL picked this transaction as a deadlock victim: rolled back whole.
+        if (deadlocksLeft > 0) {
+          deadlocksLeft -= 1;
+          throw Object.assign(new Error("Deadlock found"), {
+            code: "ER_LOCK_DEADLOCK",
+            errno: 1213,
+          });
+        }
         if (refuse) return { changed: false, from: "confirmed", reason: "unexpected_status" };
         if (gateClosed) throw new StoreNotAcceptingReservationsError("closed");
         await input.beforeWrite?.();
@@ -159,6 +179,21 @@ test("acceptQuote opens the payment session before it records the fee", async ()
   ]);
   assert.equal(effectRuns.length, 1);
   assert.equal(effectRuns[0], effects);
+});
+
+test("acceptQuote runs again when it loses a deadlock, and records the fee once", async () => {
+  const { actions, changes, effectRuns } = setup({ deadlocks: 1 });
+  const result = await actions.acceptQuote("shop", reservationId);
+
+  assert.equal(result.success, true);
+  assert.equal(changes.length, 2, "the transaction ran twice");
+  assert.equal(effectRuns.length, 1, "the fee once, after the commit");
+});
+
+test("declineQuote runs again when it loses a deadlock", async () => {
+  const decline = setup({ deadlocks: 1 });
+  assert.equal((await decline.actions.declineQuote("shop", reservationId)).success, true);
+  assert.equal(decline.effectRuns.length, 1);
 });
 
 test("acceptQuote still records the fee when the payment session throws", async () => {

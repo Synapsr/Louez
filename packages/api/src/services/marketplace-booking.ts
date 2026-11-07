@@ -12,6 +12,7 @@ import {
   payments,
   reservationItems,
   reservations,
+  retryTransactionOnDeadlock,
   stores,
 } from "@louez/db";
 import type { ReservationBillingEffect, ReservationEffectRunner } from "@louez/db";
@@ -1116,28 +1117,32 @@ export async function cancelMarketplaceBooking(params: {
   }
 
   // The helper locks the row, restocks a confirmed or ongoing booking and logs the activity.
-  const effects = await db.transaction(async (tx) => {
-    const change = await changeReservationStatus(tx, {
-      reservationId: reservation.id,
-      storeId: reservation.storeId,
-      to: "cancelled",
-      actor: "marketplace",
-      actorUserId: null,
-      activity: { metadata: { source: "marketplace" } },
-    });
-    if (!change.changed) {
-      if (change.reason === "not_found") {
-        throw new ApiServiceError("NOT_FOUND", "errors.reservationNotFound");
+  // It locks the reservation, then the products: a lost deadlock runs the whole
+  // transaction again (DL-12); the effects run once, after it.
+  const effects = await retryTransactionOnDeadlock(() =>
+    db.transaction(async (tx) => {
+      const change = await changeReservationStatus(tx, {
+        reservationId: reservation.id,
+        storeId: reservation.storeId,
+        to: "cancelled",
+        actor: "marketplace",
+        actorUserId: null,
+        activity: { metadata: { source: "marketplace" } },
+      });
+      if (!change.changed) {
+        if (change.reason === "not_found") {
+          throw new ApiServiceError("NOT_FOUND", "errors.reservationNotFound");
+        }
+        // Cancelled or finished since the read above.
+        throw notCancellable();
       }
-      // Cancelled or finished since the read above.
-      throw notCancellable();
-    }
-    await tx
-      .update(marketplaceBookingAttempts)
-      .set({ status: "cancelled", updatedAt: new Date() })
-      .where(eq(marketplaceBookingAttempts.reservationId, reservation.id));
-    return change.effects;
-  });
+      await tx
+        .update(marketplaceBookingAttempts)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(eq(marketplaceBookingAttempts.reservationId, reservation.id));
+      return change.effects;
+    }),
+  );
 
   await params.adapter.runReservationEffects(effects);
   await params.adapter.releasePendingPayments({

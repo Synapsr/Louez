@@ -5,7 +5,12 @@ import { after, before, describe, test } from "node:test";
 import { eq } from "drizzle-orm";
 
 import type { ReservationBillingEffect, ReservationStatus } from "@louez/db";
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  skipWithoutTestDatabase,
+  waitForLockWaits,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import { getCheckoutFailure } from "./util.checkout-failure";
 
@@ -191,6 +196,46 @@ describe("checkout status changes (database)", { skip: skipWithoutTestDatabase()
 
   const confirmPaid = (reservationId: string) =>
     payment.confirmPaidReservationOrThrow({ reservationId, storeId: STORE, ...PAID });
+
+  test("a paid confirmation that loses a deadlock to a product update runs again and confirms", async () => {
+    const id = await createReservation("pending");
+    const item = await addConsumable(id, { stock: 5, quantity: 2 });
+
+    // A product update: the product's row first, with writes behind it, then
+    // the product's reservations. The confirmation takes the reservation,
+    // then the product, so one of the two must lose.
+    const update = await database.connect();
+    let confirmed: Promise<unknown> | undefined;
+    try {
+      await update.beginTransaction();
+      await update.query("SELECT id FROM products WHERE id = ? FOR UPDATE", [item.productId]);
+      for (let index = 0; index < 5; index += 1) {
+        await update.query(
+          "INSERT INTO product_units (id, product_id, identifier) VALUES (?, ?, ?)",
+          [nextId("unt"), item.productId, `PAID-${index}`],
+        );
+      }
+      confirmed = confirmPaid(id).then(
+        (result) => result,
+        (error: unknown) => ({ thrown: String(error) }),
+      );
+      await waitForLockWaits(update, database.name, 1);
+      // The confirmation holds the reservation and waits for the product:
+      // asking for the reservation makes MySQL roll the lighter one back.
+      await update.query("SELECT id FROM reservations WHERE id = ? FOR UPDATE", [id]);
+      await update.rollback();
+    } finally {
+      await update.end();
+    }
+
+    assert.equal(await confirmed, true);
+    assert.equal((await readReservation(id))?.status, "confirmed");
+    assert.deepEqual(await readStock(item), { stock: 3, consumed: 2 });
+    const confirmations = (await readActivity(id)).filter(
+      (row) => row.activityType === "confirmed",
+    );
+    assert.equal(confirmations.length, 1, "one confirmation, recorded once");
+  });
 
   test("a paid pending checkout is confirmed, with its stock and its activity row", async () => {
     const id = await createReservation("pending");

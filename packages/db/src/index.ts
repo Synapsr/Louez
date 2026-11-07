@@ -128,7 +128,7 @@ export { initialBillableAt, insertReservation } from "./reservation-insert";
 export type { ReservationInsertValues } from "./reservation-insert";
 export { countBillableReservationsWithoutBillableAt } from "./reservation-invariants";
 export { isDuplicateKeyError } from "./duplicate-key";
-export { isDatabaseDeadlock, retryOnceOnDeadlock } from "./deadlock";
+export { isDatabaseDeadlock, retryOnceOnDeadlock, retryTransactionOnDeadlock } from "./deadlock";
 
 export { SLUG_MAX_LENGTH, isSlug, pickUniqueSlug, slugify } from "./slug";
 export { nextCategorySlug, nextProductSlug } from "./slugs";
