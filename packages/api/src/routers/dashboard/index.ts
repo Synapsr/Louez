@@ -18,7 +18,6 @@ import { dashboardReservationDetailsRouter } from "./reservation-details";
 import { dashboardReservationsRouter } from "./reservations";
 import { dashboardSearchRouter } from "./search";
 import { dashboardStoresRouter } from "./stores";
-import { dashboardVariantsRouter } from "./variants";
 
 /**
  * Example dashboard procedure for testing the setup
@@ -59,5 +58,4 @@ export const dashboardRouter = {
   products: dashboardProductsRouter,
   notifications: dashboardNotificationsRouter,
   referral: dashboardReferralRouter,
-  variants: dashboardVariantsRouter,
 };

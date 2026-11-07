@@ -9306,6 +9306,8 @@
     "tulipProductTypeDisabled": "Esta categoria de produto Tulip não está ativada para esta loja.",
     "unitAlreadyRetired": "Esta unidade já foi retirada",
     "unitNotRetired": "Esta unidade não foi retirada",
+    "variantLimitReached": "Esta loja já tem o número máximo de variantes (100).",
+    "variantValueLimitReached": "Esta variante já tem o número máximo de valores (200).",
     "advisorValidationRequired": "Esta loja exige uma breve verificação com o consultor antes de reservar",
     "conversationNotFound": "Conversa não encontrada",
     "featureNotAvailable": "Este recurso não está disponível no seu plano",

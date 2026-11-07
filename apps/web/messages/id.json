@@ -9306,6 +9306,8 @@
     "tulipProductTypeDisabled": "Kategori produk Tulip ini tidak diaktifkan untuk toko ini.",
     "unitAlreadyRetired": "Unit ini sudah pensiun",
     "unitNotRetired": "Unit ini belum pensiun",
+    "variantLimitReached": "Toko ini sudah memiliki jumlah varian maksimum (100).",
+    "variantValueLimitReached": "Varian ini sudah memiliki jumlah nilai maksimum (200).",
     "advisorValidationRequired": "Toko ini memerlukan pemeriksaan singkat dengan penasihat sebelum memesan",
     "conversationNotFound": "Percakapan tidak ditemukan",
     "featureNotAvailable": "Fitur ini tidak tersedia pada paket Anda",

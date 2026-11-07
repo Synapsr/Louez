@@ -6,6 +6,7 @@ import { orpc } from "@/lib/orpc/react";
 type SeasonalPricingPage = Awaited<
   ReturnType<typeof orpcClient.dashboard.products.listSeasonalPricings>
 >;
+type VariantPage = Awaited<ReturnType<typeof orpcClient.dashboard.products.listVariants>>;
 
 export interface ProductsListInput {
   status?: "all" | "active" | "draft" | "archived";
@@ -54,5 +55,30 @@ export const productsQueries = {
       input: { unitId },
       staleTime: 30_000,
     }),
+  /**
+   * The store's whole variant catalog: the pages read one after the other,
+   * under the list's own key.
+   */
+  variants: () =>
+    queryOptions({
+      queryKey: variantsKey(),
+      queryFn: async ({ signal }): Promise<VariantPage> => {
+        const items: VariantPage["items"] = [];
+        let cursor: string | undefined;
+        do {
+          const page = await orpcClient.dashboard.products.listVariants({ cursor }, { signal });
+          items.push(...page.items);
+          cursor = page.nextCursor ?? undefined;
+        } while (cursor);
+        return { items, nextCursor: null };
+      },
+    }),
+  /** The key `variants()` caches the catalog under, for optimistic updates. */
+  variantsKey: () => variantsKey(),
+  /** Which products use each variant. */
+  variantUsage: () => orpc.dashboard.products.getVariantUsage.queryOptions({ input: {} }),
 };
 
+function variantsKey() {
+  return orpc.dashboard.products.listVariants.queryOptions({ input: {} }).queryKey;
+}

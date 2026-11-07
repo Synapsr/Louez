@@ -757,6 +757,7 @@ export function ProductForm({
                 <div id="section-stock" className="scroll-mt-8">
                   <ProductFormSectionStock
                     form={form as unknown as ProductFormComponentApi}
+                    canDelete={canDelete}
                     productId={product.id}
                     stockKindChangeBlockers={stockKindChangeBlockers}
                     watchedValues={watchedValues}

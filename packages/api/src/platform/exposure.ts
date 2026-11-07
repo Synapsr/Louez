@@ -46,6 +46,16 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.products.retireUnit",
   "dashboard.products.reinstateUnit",
   "dashboard.products.updateUnitDetails",
+  "dashboard.products.listVariants",
+  "dashboard.products.ensureVariantDefinition",
+  "dashboard.products.updateVariantDefinition",
+  "dashboard.products.setVariantDefinitionActive",
+  "dashboard.products.deleteVariantDefinition",
+  "dashboard.products.getVariantUsage",
+  "dashboard.products.withdrawVariantFromProducts",
+  "dashboard.products.createVariantValue",
+  "dashboard.products.updateVariantValue",
+  "dashboard.products.deleteVariantValue",
   "dashboard.stores.list",
 ];
 

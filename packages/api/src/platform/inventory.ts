@@ -189,7 +189,6 @@ const ORPC = {
   reservations: `${ROUTERS}/reservations.ts`,
   search: `${ROUTERS}/search.ts`,
   stores: `${ROUTERS}/stores.ts`,
-  variants: `${ROUTERS}/variants.ts`,
 } as const;
 
 const MCP = {
@@ -825,7 +824,7 @@ export const capabilities = [
     migrated: true,
   },
 
-  // --- Units and downtimes (3b): served by procedures ------------------------
+  // --- Units, downtimes and variants (3b): served by procedures --------------
   {
     id: "products.getUnitHistory",
     sources: [procedure("products", "getUnitHistory")],
@@ -891,66 +890,76 @@ export const capabilities = [
   },
   {
     id: "products.listVariants",
-    sources: [procedure("variants", "list")],
+    sources: [procedure("products", "listVariants")],
     kind: "read",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.ensureVariantDefinition",
-    sources: [procedure("variants", "ensureDefinition")],
+    sources: [procedure("products", "ensureVariantDefinition")],
     kind: "write",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.updateVariantDefinition",
-    sources: [procedure("variants", "updateDefinition")],
+    sources: [procedure("products", "updateVariantDefinition")],
     kind: "write",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.setVariantDefinitionActive",
-    sources: [procedure("variants", "setDefinitionActive")],
+    sources: [procedure("products", "setVariantDefinitionActive")],
     kind: "write",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.deleteVariantDefinition",
-    sources: [procedure("variants", "deleteDefinition")],
+    sources: [procedure("products", "deleteVariantDefinition")],
     kind: "write",
     sensitive: "destructive",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.getVariantUsage",
-    sources: [procedure("variants", "usage")],
+    sources: [procedure("products", "getVariantUsage")],
     kind: "read",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.withdrawVariantFromProducts",
-    sources: [procedure("variants", "withdrawFromProducts")],
+    sources: [procedure("products", "withdrawVariantFromProducts")],
     kind: "write",
     sensitive: "destructive",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.createVariantValue",
-    sources: [procedure("variants", "createValue")],
+    sources: [procedure("products", "createVariantValue")],
     kind: "write",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.updateVariantValue",
-    sources: [procedure("variants", "updateValue")],
+    sources: [procedure("products", "updateVariantValue")],
     kind: "write",
     plan: { lot: "3" },
+    migrated: true,
   },
   {
     id: "products.deleteVariantValue",
-    sources: [procedure("variants", "deleteValue")],
+    sources: [procedure("products", "deleteVariantValue")],
     kind: "write",
     sensitive: "destructive",
     plan: { lot: "3" },
+    migrated: true,
   },
 
   // --- Categories (0c pilot): served by procedures on every transport ------

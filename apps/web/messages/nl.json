@@ -9306,6 +9306,8 @@
     "tulipProductTypeDisabled": "Deze Tulip productcategorie is niet ingeschakeld voor deze winkel.",
     "unitAlreadyRetired": "Deze eenheid is al uitgefaseerd",
     "unitNotRetired": "Deze eenheid is niet uitgefaseerd",
+    "variantLimitReached": "Deze winkel heeft al het maximale aantal varianten (100).",
+    "variantValueLimitReached": "Deze variant heeft al het maximale aantal waarden (200).",
     "advisorValidationRequired": "Deze winkel vereist een korte verificatie met de adviseur voordat u kunt reserveren",
     "conversationNotFound": "Gesprek niet gevonden",
     "featureNotAvailable": "Deze functie is niet beschikbaar in uw plan",

@@ -68,13 +68,25 @@ import {
   updateDowntime,
   updateUnitDetails,
 } from "./product-units";
+import {
+  createVariantValue,
+  deleteVariantDefinition,
+  deleteVariantValue,
+  ensureVariantDefinition,
+  getVariantUsage,
+  listVariants,
+  setVariantDefinitionActive,
+  updateVariantDefinition,
+  updateVariantValue,
+  withdrawVariantFromProducts,
+} from "./product-variants";
 
 /**
  * Products, on every transport: the dashboard (RPC), `/api/v1/products`
  * (OpenAPI) and the `products_*` MCP tools. The logic is in
  * services/products.ts and services/product-seasonal-pricing.ts; this file
  * holds the contract, the rights and the confirmations. Units and downtimes
- * are in product-units.ts; the variant catalog moves next.
+ * are in product-units.ts, the variant catalog in product-variants.ts.
  */
 
 const TIERS_HELP =
@@ -559,4 +571,15 @@ export const dashboardProductsRouter = {
   retireUnit,
   reinstateUnit,
   updateUnitDetails,
+  // The store's variant catalog (product-variants.ts)
+  listVariants,
+  ensureVariantDefinition,
+  updateVariantDefinition,
+  setVariantDefinitionActive,
+  deleteVariantDefinition,
+  getVariantUsage,
+  withdrawVariantFromProducts,
+  createVariantValue,
+  updateVariantValue,
+  deleteVariantValue,
 };

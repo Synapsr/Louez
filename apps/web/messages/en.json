@@ -9306,6 +9306,8 @@
     "tulipProductTypeDisabled": "This Tulip product category is not enabled for this store.",
     "unitAlreadyRetired": "This unit is already retired",
     "unitNotRetired": "This unit is not retired",
+    "variantLimitReached": "This store already has the most variants it may hold (100).",
+    "variantValueLimitReached": "This variant already has the most values it may hold (200).",
     "advisorValidationRequired": "This store requires a short check with the advisor before booking",
     "conversationNotFound": "Conversation not found",
     "featureNotAvailable": "This feature is not available on your plan",

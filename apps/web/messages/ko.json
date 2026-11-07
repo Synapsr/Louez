@@ -9306,6 +9306,8 @@
     "tulipProductTypeDisabled": "이 튤립 제품 카테고리는 이 매장에서 활성화되지 않습니다.",
     "unitAlreadyRetired": "이 장치는 이미 폐기되었습니다.",
     "unitNotRetired": "이 장치는 폐기되지 않았습니다.",
+    "variantLimitReached": "이 스토어의 옵션 수가 이미 최대치(100개)입니다.",
+    "variantValueLimitReached": "이 옵션의 값 수가 이미 최대치(200개)입니다.",
     "advisorValidationRequired": "이 매장은 예약 전 상담사와 간단한 확인이 필요합니다.",
     "conversationNotFound": "대화를 찾을 수 없습니다.",
     "featureNotAvailable": "이 기능은 귀하의 요금제에서 사용할 수 없습니다",

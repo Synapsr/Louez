@@ -9306,6 +9306,8 @@
     "tulipProductTypeDisabled": "このチューリップ製品カテゴリはこのストアでは有効になっていません。",
     "unitAlreadyRetired": "このユニットはすでに退役しています",
     "unitNotRetired": "このユニットは退役していません",
+    "variantLimitReached": "このストアのバリエーション数は上限（100）に達しています。",
+    "variantValueLimitReached": "このバリエーションの値の数は上限（200）に達しています。",
     "advisorValidationRequired": "この店舗では、予約する前にアドバイザーに簡単な確認をする必要があります",
     "conversationNotFound": "会話が見つかりません",
     "featureNotAvailable": "この機能はご利用のプランでは利用できません",

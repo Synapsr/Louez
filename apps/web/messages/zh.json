@@ -9306,6 +9306,8 @@
     "tulipProductTypeDisabled": "该商店未启用此郁金香产品类别。",
     "unitAlreadyRetired": "该单位已经退役",
     "unitNotRetired": "该单位尚未退役",
+    "variantLimitReached": "此店铺的规格数量已达上限（100 个）。",
+    "variantValueLimitReached": "此规格的选项值数量已达上限（200 个）。",
     "advisorValidationRequired": "这家商店需要在预订前与顾问进行简短的核实",
     "conversationNotFound": "找不到对话",
     "featureNotAvailable": "您的计划不提供此功能",

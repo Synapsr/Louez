@@ -63,7 +63,9 @@ import {
 } from "@/components/dashboard/variant-manager";
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
 import { useImageUpload } from "@/hooks/use-image-upload";
+import { apiErrorKey } from "@/lib/orpc/errors";
 import { orpc } from "@/lib/orpc/react";
+import { productsQueries } from "@/lib/queries/products.queries";
 import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
 import { resolveVariantPresets } from "@/lib/variant-presets";
 
@@ -729,6 +731,8 @@ interface UnitTrackingEditorProps {
   disabled?: boolean;
   showValidationErrors?: boolean;
   productId?: string;
+  /** Deleting a catalog variant or value needs the member's delete permission. */
+  canDelete?: boolean;
 }
 
 const MAX_GENERATED_UNITS = 100;
@@ -759,9 +763,11 @@ export function UnitTrackingEditor({
   disabled = false,
   showValidationErrors = false,
   productId,
+  canDelete = false,
 }: UnitTrackingEditorProps) {
   const t = useTranslations("dashboard.products.form.unitTracking");
   const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
   // The editor mounts once the stock choice is made. Arriving on unit tracking
   // with a declared quantity seeds the generator with it, instead of creating
   // empty (and invalid) unit rows.
@@ -780,24 +786,21 @@ export function UnitTrackingEditor({
 
   // Store-level shared variant catalog
   const queryClient = useQueryClient();
-  const variantCatalogQuery = useQuery(orpc.dashboard.variants.list.queryOptions());
-  const variantCatalog: VariantCatalogDefinition[] = variantCatalogQuery.data ?? [];
+  const variantCatalogQuery = useQuery(productsQueries.variants());
+  const variantCatalog: VariantCatalogDefinition[] = variantCatalogQuery.data?.items ?? [];
+  const invalidateVariants = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: orpc.dashboard.products.listVariants.key() }),
+      queryClient.invalidateQueries({ queryKey: orpc.dashboard.products.getVariantUsage.key() }),
+    ]);
   const ensureDefinitionMutation = useMutation(
-    orpc.dashboard.variants.ensureDefinition.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: orpc.dashboard.variants.key(),
-        });
-      },
+    orpc.dashboard.products.ensureVariantDefinition.mutationOptions({
+      onSuccess: () => invalidateVariants(),
     }),
   );
   const createValueMutation = useMutation(
-    orpc.dashboard.variants.createValue.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: orpc.dashboard.variants.key(),
-        });
-      },
+    orpc.dashboard.products.createVariantValue.mutationOptions({
+      onSuccess: () => invalidateVariants(),
     }),
   );
 
@@ -820,8 +823,12 @@ export function UnitTrackingEditor({
   const ensureVariantDefinition = async (input: EnsureDefinitionInput) => {
     try {
       return await ensureDefinitionMutation.mutateAsync(input);
-    } catch {
-      toastManager.add({ title: tCommon("error"), type: "error" });
+    } catch (error) {
+      const key = apiErrorKey(error);
+      toastManager.add({
+        title: key && tErrors.has(key) ? tErrors(key) : tCommon("error"),
+        type: "error",
+      });
       return null;
     }
   };
@@ -1324,6 +1331,7 @@ export function UnitTrackingEditor({
         open={variantManagerOpen}
         onOpenChange={setVariantManagerOpen}
         onWithdrawn={withdrawVariantFromDraft}
+        canDelete={canDelete}
       />
     </div>
   );
