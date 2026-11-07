@@ -1,12 +1,12 @@
 import { z } from 'zod'
 import { db, dailyStats, productStats, products, reservations } from '@louez/db'
 import { and, eq, gte, lte, desc, sql, sum } from 'drizzle-orm'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 
-import type { McpSessionContext } from '../auth/context'
-import { requirePermission } from '../auth/context'
+import type { McpRequestContext } from '../auth/context'
 import { formatCurrency, formatDate } from '../utils/formatting'
 import { toolResult } from '../utils/errors'
+import { legacyTool } from '../utils/legacy-tool'
 
 function periodToRange(period: string): { start: Date; end: Date } {
   const end = new Date()
@@ -30,15 +30,17 @@ function periodToRange(period: string): { start: Date; end: Date } {
   return { start, end }
 }
 
-export function registerAnalyticsTools(server: McpServer, ctx: McpSessionContext) {
-  server.tool(
+export function registerAnalyticsTools(server: McpServer, ctx: McpRequestContext) {
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'analytics', level: 'read' },
     'get_dashboard_stats',
     'Get key dashboard metrics (revenue, reservations, visitors) for a given period',
     {
       period: z.enum(['7d', '30d', '90d', '12m']).optional().describe('Time period (default 30d)'),
     },
     async ({ period }) => {
-      requirePermission(ctx, 'analytics', 'read')
       const { start, end } = periodToRange(period ?? '30d')
 
       const stats = await db
@@ -86,7 +88,10 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpSessionContext
     }
   )
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'analytics', level: 'read' },
     'get_revenue_report',
     'Get a revenue breakdown over a date range',
     {
@@ -94,7 +99,6 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpSessionContext
       endDate: z.string().describe('End date (YYYY-MM-DD)'),
     },
     async ({ startDate, endDate }) => {
-      requirePermission(ctx, 'analytics', 'read')
       const start = new Date(startDate)
       const end = new Date(endDate)
 
@@ -140,7 +144,10 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpSessionContext
     }
   )
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'analytics', level: 'read' },
     'get_product_performance',
     'Get top-performing products by views, reservations, and revenue',
     {
@@ -148,7 +155,6 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpSessionContext
       limit: z.number().optional().describe('Number of products to show (default 10)'),
     },
     async ({ period, limit: maxResults }) => {
-      requirePermission(ctx, 'analytics', 'read')
       const { start, end } = periodToRange(period ?? '30d')
       const lim = Math.min(maxResults ?? 10, 50)
 

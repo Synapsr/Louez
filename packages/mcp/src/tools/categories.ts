@@ -1,20 +1,21 @@
 import { z } from 'zod'
 import { categories, db, nextCategorySlug } from '@louez/db'
 import { and, eq } from 'drizzle-orm'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 
-import type { McpSessionContext } from '../auth/context'
-import { requirePermission } from '../auth/context'
+import type { McpRequestContext } from '../auth/context'
 import { toolError, toolResult } from '../utils/errors'
+import { legacyTool } from '../utils/legacy-tool'
 
-export function registerCategoryTools(server: McpServer, ctx: McpSessionContext) {
-  server.tool(
+export function registerCategoryTools(server: McpServer, ctx: McpRequestContext) {
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'categories', level: 'read' },
     'list_categories',
     'List all product categories',
     {},
     async () => {
-      requirePermission(ctx, 'categories', 'read')
-
       const rows = await db.query.categories.findMany({
         where: eq(categories.storeId, ctx.storeId),
         with: { products: { columns: { id: true } } },
@@ -31,7 +32,10 @@ export function registerCategoryTools(server: McpServer, ctx: McpSessionContext)
     }
   )
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'categories', level: 'write' },
     'create_category',
     'Create a new product category',
     {
@@ -39,8 +43,6 @@ export function registerCategoryTools(server: McpServer, ctx: McpSessionContext)
       description: z.string().optional().describe('Category description'),
     },
     async ({ name, description }) => {
-      requirePermission(ctx, 'categories', 'write')
-
       const [created] = await db
         .insert(categories)
         .values({
@@ -55,7 +57,10 @@ export function registerCategoryTools(server: McpServer, ctx: McpSessionContext)
     }
   )
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'categories', level: 'write' },
     'update_category',
     'Update an existing category',
     {
@@ -64,8 +69,6 @@ export function registerCategoryTools(server: McpServer, ctx: McpSessionContext)
       description: z.string().optional().describe('New description'),
     },
     async ({ categoryId, name, description }) => {
-      requirePermission(ctx, 'categories', 'write')
-
       const existing = await db.query.categories.findFirst({
         where: and(eq(categories.storeId, ctx.storeId), eq(categories.id, categoryId)),
         columns: { id: true },
@@ -86,15 +89,16 @@ export function registerCategoryTools(server: McpServer, ctx: McpSessionContext)
     }
   )
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'categories', level: 'write' },
     'delete_category',
     'Delete a category (products will be unassigned)',
     {
       categoryId: z.string().describe('The category ID to delete'),
     },
     async ({ categoryId }) => {
-      requirePermission(ctx, 'categories', 'write')
-
       const existing = await db.query.categories.findFirst({
         where: and(eq(categories.storeId, ctx.storeId), eq(categories.id, categoryId)),
         columns: { id: true, name: true },

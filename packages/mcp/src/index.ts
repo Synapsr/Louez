@@ -6,6 +6,6 @@ export type {
   McpStatusChangeResult,
 } from "./deps";
 export type { McpPaymentDeps, McpRecordedPayment } from "./tools/payments";
-export { resolveApiKeyContext } from "./auth/api-keys";
-export type { McpSessionContext } from "./auth/context";
+export type { McpRequestContext } from "./auth/context";
 export { requirePermission, hasPermission } from "./auth/context";
+export { resolveMcpContext } from "./auth/resolve";

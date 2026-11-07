@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -15,9 +15,9 @@ import {
 } from '@louez/api/services/customer-tools';
 import { customers, db, reservations, stores } from '@louez/db';
 
-import type { McpSessionContext } from '../auth/context';
-import { requirePermission } from '../auth/context';
+import type { McpRequestContext } from '../auth/context';
 import { toolError, toolResult } from '../utils/errors';
+import { legacyTool } from '../utils/legacy-tool';
 import { formatCurrency, formatDate, formatStatus } from '../utils/formatting';
 import { paginationParams } from '../utils/pagination';
 
@@ -51,9 +51,12 @@ const countryParam = z
 
 export function registerCustomerTools(
   server: McpServer,
-  ctx: McpSessionContext,
+  ctx: McpRequestContext,
 ) {
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'customers', level: 'read' },
     'list_customers',
     'List customers with optional search and filters',
     {
@@ -71,7 +74,6 @@ export function registerCustomerTools(
       pageSize: z.number().optional(),
     },
     async ({ search, type, page, pageSize }) => {
-      requirePermission(ctx, 'customers', 'read');
       const { limit, offset } = paginationParams({ page, pageSize });
 
       const conditions = [eq(customers.storeId, ctx.storeId)];
@@ -116,15 +118,16 @@ export function registerCustomerTools(
     },
   );
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'customers', level: 'read' },
     'get_customer',
     "Get detailed customer profile with reservation history and the store's custom fields. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
     {
       customerId: z.string().describe('The customer ID'),
     },
     async ({ customerId }) => {
-      requirePermission(ctx, 'customers', 'read');
-
       const customer = await db.query.customers.findFirst({
         where: and(
           eq(customers.storeId, ctx.storeId),
@@ -185,7 +188,10 @@ export function registerCustomerTools(
     },
   );
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'customers', level: 'write' },
     'create_customer',
     'Create a new customer',
     {
@@ -234,8 +240,6 @@ export function registerCustomerTools(
       country,
       customFields,
     }) => {
-      requirePermission(ctx, 'customers', 'write');
-
       const type = customerType ?? 'individual';
       if (type !== 'business' && (companyNumber || vatNumber)) {
         return toolError(
@@ -318,7 +322,10 @@ export function registerCustomerTools(
     },
   );
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'customers', level: 'write' },
     'update_customer',
     'Update an existing customer',
     {
@@ -356,8 +363,6 @@ export function registerCustomerTools(
       country,
       ...updates
     }) => {
-      requirePermission(ctx, 'customers', 'write');
-
       const existing = await db.query.customers.findFirst({
         where: and(
           eq(customers.storeId, ctx.storeId),

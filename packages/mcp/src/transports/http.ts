@@ -1,214 +1,133 @@
-import { randomUUID, timingSafeEqual } from "crypto";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import type { ExposedProcedure } from "@louez/api/platform/exposure";
+import type { ApiPorts } from "@louez/api/platform/ports";
+import { createMcpHandler } from "@modelcontextprotocol/server";
+import { ORPCError } from "@orpc/server";
 
-import { resolveApiKeyContext } from "../auth/api-keys";
-import type { McpSessionContext } from "../auth/context";
+import type { McpRequestContext } from "../auth/context";
+import { resolveMcpContext } from "../auth/resolve";
 import type { McpServerDeps } from "../deps";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpServer } from "../server";
 
-// ── Session management ─────────────────────────────────────────────────
-// The MCP protocol requires a stateful session: the client sends `initialize`,
-// then `initialized`, then tool calls — each as separate HTTP requests.
-// We keep server+transport pairs alive in an in-memory Map keyed by session ID
-// and route subsequent requests to the correct instance.
-
-interface McpSession {
-  server: McpServer;
-  transport: WebStandardStreamableHTTPServerTransport;
-  ctx: McpSessionContext;
-  rawKey: string;
-  createdAt: number;
+export interface McpHttpOptions {
+  /** What the app lends the hand-written tools. */
+  deps: McpServerDeps;
+  /** What the app lends the procedures (`apiPorts`). */
+  ports: ApiPorts;
+  /** The procedures served as tools (`createExposure(appRouter).procedures`). */
+  procedures: readonly ExposedProcedure[];
 }
 
-const sessions = new Map<string, McpSession>();
-const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
-function removeSession(sessionId: string) {
-  const session = sessions.get(sessionId);
-  if (session) {
-    sessions.delete(sessionId);
-    void session.server.close();
-  }
+/** A platform error as the HTTP answer of a request that never reached MCP. */
+function errorResponse(error: ORPCError<string, unknown>): Response {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (error.status === 401) headers.set("WWW-Authenticate", 'Bearer realm="louez"');
+  const retryAfter = (error.data as { details?: { retryAfterSeconds?: number } } | undefined)
+    ?.details?.retryAfterSeconds;
+  if (retryAfter) headers.set("Retry-After", String(retryAfter));
+  return new Response(JSON.stringify(error.toJSON()), { status: error.status, headers });
 }
 
-function cleanExpiredSessions() {
-  const now = Date.now();
-  for (const [id, session] of sessions) {
-    if (now - session.createdAt > SESSION_TTL_MS) {
-      removeSession(id);
-    }
-  }
-}
+/** The SDK's own limit on a request body; this handler parses before it does. */
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
-// ── Rate limiting ─────────────────────────────────────────────────────
-// Simple in-memory sliding window per API key.
-// High limits since MCP tool calls don't consume our tokens.
+const jsonResponse = (body: unknown, status: number) =>
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
-interface RateLimitEntry {
-  count: number;
-  windowStart: number;
-}
-
-const rateLimits = new Map<string, RateLimitEntry>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 120; // 120 requests per minute
-
-function checkRateLimit(apiKeyId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimits.get(apiKeyId);
-
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimits.set(apiKeyId, { count: 1, windowStart: now });
-    return true;
-  }
-
-  entry.count++;
-  return entry.count <= RATE_LIMIT_MAX_REQUESTS;
-}
-
-// ── Auth helpers ───────────────────────────────────────────────────────
-
-function extractBearerToken(request: Request): string | null {
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return null;
-  return authorization.slice(7);
-}
-
-function keysMatch(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, "utf-8");
-  const bufB = Buffer.from(b, "utf-8");
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
-
-function jsonResponse(body: Record<string, unknown>, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-// ── Request handlers ───────────────────────────────────────────────────
+type ReadBody =
+  | { kind: "none" }
+  | { kind: "json"; value: unknown }
+  | { kind: "too-large" }
+  | { kind: "invalid" };
 
 /**
- * Handle an incoming MCP HTTP request (POST or GET with session).
- *
- * - First request (no session ID): authenticates via API key, creates a
- *   server+transport pair, processes the `initialize` handshake, and stores
- *   the session.
- * - Subsequent requests (with Mcp-Session-Id header): verifies the API key
- *   matches the session, then routes to the existing transport.
- *
- * `deps` reach the server of a new session.
+ * Reads a POST body as JSON, at most `MAX_BODY_BYTES`, stopping as soon as it
+ * goes past. The body is consumed here and handed to the SDK parsed.
  */
-export async function handleMcpRequest(request: Request, deps: McpServerDeps): Promise<Response> {
-  cleanExpiredSessions();
+async function readJson(request: Request): Promise<ReadBody> {
+  if (request.method !== "POST" || !request.body) return { kind: "none" };
+  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return { kind: "too-large" };
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_BODY_BYTES) {
+      void reader.cancel();
+      return { kind: "too-large" };
+    }
+    chunks.push(value);
+  }
+  try {
+    return { kind: "json", value: JSON.parse(Buffer.concat(chunks).toString("utf8")) };
+  } catch {
+    return { kind: "invalid" };
+  }
+}
 
-  const rawKey = extractBearerToken(request);
-  if (!rawKey) {
+/**
+ * How many messages of the request count on the rate limit here. A tool call
+ * counts when it runs (in the procedure, or in the hand-written tool); every
+ * other message, batched or not, counts here.
+ */
+function callsToCount(body: unknown): number {
+  const messages = Array.isArray(body) ? body : [body];
+  return messages.filter(
+    (message) =>
+      !(
+        typeof message === "object" &&
+        message !== null &&
+        (message as { method?: unknown }).method === "tools/call"
+      ),
+  ).length;
+}
+
+/**
+ * Serves one MCP request over Streamable HTTP, statelessly: no session is
+ * kept between requests. Each request resolves its own context (the key is
+ * checked, the store and the role read again, the plan's API access checked)
+ * and gets a server built for it, so a revoked key or a lower role applies on
+ * the next request.
+ *
+ * Requests that fail authentication never reach MCP: they get the platform's
+ * error as JSON, with its HTTP status.
+ */
+export async function handleMcpRequest(
+  request: Request,
+  options: McpHttpOptions,
+): Promise<Response> {
+  // Who calls comes first: an anonymous request is refused before its body
+  // is read.
+  let ctx: McpRequestContext;
+  try {
+    ctx = await resolveMcpContext({ headers: request.headers, ports: options.ports });
+  } catch (error) {
+    if (error instanceof ORPCError) return errorResponse(error);
+    throw error;
+  }
+
+  const body = await readJson(request);
+  if (body.kind === "too-large") return jsonResponse({ error: "Request body too large." }, 413);
+  if (body.kind === "invalid") {
     return jsonResponse(
-      { error: "Missing or invalid Authorization header. Use: Bearer <api-key>" },
-      401,
+      { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
+      400,
     );
   }
-
-  // ── Existing session ──────────────────────────────────────────────
-  const sessionId = request.headers.get("mcp-session-id");
-  if (sessionId) {
-    const session = sessions.get(sessionId);
-    if (!session) {
-      return jsonResponse({ error: "Session not found or expired. Re-initialize." }, 404);
-    }
-
-    // Verify the API key matches the one used to create the session
-    if (!keysMatch(rawKey, session.rawKey)) {
-      return jsonResponse({ error: "API key does not match session." }, 401);
-    }
-
-    // Rate limit check
-    if (!checkRateLimit(session.ctx.apiKeyId)) {
-      return jsonResponse({ error: "Rate limit exceeded. Max 120 requests per minute." }, 429);
-    }
-
-    return session.transport.handleRequest(request);
+  try {
+    const count = body.kind === "json" ? callsToCount(body.value) : 1;
+    for (let left = count; left > 0; left -= 1) await ctx.countCall();
+  } catch (error) {
+    if (error instanceof ORPCError) return errorResponse(error);
+    throw error;
   }
 
-  // ── New session ───────────────────────────────────────────────────
-  const ctx = await resolveApiKeyContext(rawKey);
-  if (!ctx) {
-    return jsonResponse({ error: "Invalid API key. It may be expired or revoked." }, 401);
-  }
-
-  // Rate limit check for new sessions too
-  if (!checkRateLimit(ctx.apiKeyId)) {
-    return jsonResponse({ error: "Rate limit exceeded. Max 120 requests per minute." }, 429);
-  }
-
-  const server = createMcpServer(ctx, deps);
-  const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-    onsessionclosed: (closedSessionId: string) => {
-      removeSession(closedSessionId);
-    },
+  // One handler per request, bound to this request's context. It keeps
+  // nothing once the answer is sent. GET and DELETE (2025 session operations)
+  // get 405 from the SDK: there is no session to stream on or to close.
+  const handler = createMcpHandler(() => createMcpServer(ctx, options.deps, options.procedures), {
+    legacy: "stateless",
   });
-
-  await server.connect(transport);
-
-  const response = await transport.handleRequest(request);
-
-  // The transport includes the session ID in the response header after initialize
-  const newSessionId = response.headers.get("mcp-session-id");
-  if (newSessionId) {
-    sessions.set(newSessionId, { server, transport, ctx, rawKey, createdAt: Date.now() });
-  }
-
-  return response;
-}
-
-/**
- * Handle MCP session termination (DELETE with Mcp-Session-Id header).
- */
-export async function handleMcpDelete(request: Request): Promise<Response> {
-  const rawKey = extractBearerToken(request);
-  if (!rawKey) {
-    return jsonResponse({ error: "Missing or invalid Authorization header." }, 401);
-  }
-
-  const sessionId = request.headers.get("mcp-session-id");
-  if (!sessionId) {
-    return jsonResponse({ error: "Missing Mcp-Session-Id header" }, 400);
-  }
-
-  const session = sessions.get(sessionId);
-  if (!session) {
-    // Already gone — idempotent success
-    return new Response(null, { status: 204 });
-  }
-
-  // Verify the API key matches
-  if (!keysMatch(rawKey, session.rawKey)) {
-    return jsonResponse({ error: "API key does not match session." }, 401);
-  }
-
-  const response = await session.transport.handleRequest(request);
-  removeSession(sessionId);
-  return response;
-}
-
-/**
- * Discovery endpoint — returns server metadata for MCP clients.
- * Called via GET when no Mcp-Session-Id header is present.
- */
-export function handleMcpDiscovery(): Response {
-  return new Response(
-    JSON.stringify({
-      name: "louez",
-      version: "0.1.0",
-      description: "Louez rental management MCP server",
-      transport: "streamable-http",
-      authentication: "bearer",
-    }),
-    { headers: { "Content-Type": "application/json" } },
-  );
+  return handler.fetch(request, body.kind === "json" ? { parsedBody: body.value } : undefined);
 }

@@ -2,14 +2,16 @@
  * The reservation tools behind an in-memory MCP client, for tests: calls go
  * through the SDK, which validates the arguments as in production.
  *
- * Only these tools. The full server loads @louez/api, whose named imports from
- * @louez/validations (CommonJS) fail when Node loads this package as ESM.
+ * Only these tools, with a context built in memory: the full server and the
+ * per-request resolver read the database.
  */
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ApiKeyPermissions } from "@louez/db";
+import { normalizeScopes } from "@louez/api/platform/permissions";
+import { Client, InMemoryTransport as ClientInMemoryTransport } from "@modelcontextprotocol/client";
+import { McpServer } from "@modelcontextprotocol/server";
+import type { MemberRole } from "@louez/utils";
 
-import type { McpSessionContext } from "../auth/context";
+import type { McpRequestContext } from "../auth/context";
 import type { McpReservationDeps } from "../deps";
 import { registerReservationTools } from "../tools/reservations";
 
@@ -24,13 +26,52 @@ export interface ReservationToolsClient {
   close(): Promise<void>;
 }
 
+/**
+ * A request context as `resolveMcpContext` builds it for an API key, without
+ * the database: the key's permissions, the owner's role (owner by default),
+ * and no rate limit.
+ */
+export function testRequestContext(input: {
+  storeId: string;
+  userId: string;
+  storeName?: string;
+  role?: MemberRole;
+  apiKeyId?: string;
+  permissions: Partial<ApiKeyPermissions>;
+}): McpRequestContext {
+  return {
+    actor: {
+      transport: "mcp",
+      isPlatformAdmin: false,
+      storeId: input.storeId,
+      role: input.role ?? "owner",
+      credential: {
+        kind: "api_key",
+        id: input.apiKeyId ?? "key_test",
+        clientName: "Test key",
+        userId: input.userId,
+        email: null,
+        storeId: input.storeId,
+        scopes: normalizeScopes(input.permissions),
+        confirmSensitive: true,
+      },
+    },
+    storeId: input.storeId,
+    userId: input.userId,
+    storeName: input.storeName ?? "Test store",
+    headers: new Headers(),
+    ports: { planFeatures: async () => ({ apiAccess: true }) },
+    countCall: async () => undefined,
+  };
+}
+
 export async function connectReservationTools(
-  ctx: McpSessionContext,
+  ctx: McpRequestContext,
   deps: McpReservationDeps,
 ): Promise<ReservationToolsClient> {
   const server = new McpServer({ name: "louez", version: "0.0.0" });
   registerReservationTools(server, ctx, deps);
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const [clientTransport, serverTransport] = ClientInMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: "test", version: "0.0.0" });
   await client.connect(clientTransport);

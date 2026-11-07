@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 
-import type { McpSessionContext } from "../auth/context";
 import type { McpStatusChangeInput, McpStatusChangeResult } from "../deps";
 import {
   connectReservationTools,
+  testRequestContext,
   type ReservationToolsClient,
 } from "../testing/reservation-tools-client";
 
@@ -12,21 +12,16 @@ import {
 // dashboard does (apps/web/lib/reservations/status-change.db.test.ts). Here: what
 // it sends and what it answers.
 
-const ctx: McpSessionContext = {
-  storeId: "store_mcp",
-  userId: "user_mcp",
-  storeName: "MCP store",
-  apiKeyId: "key_mcp",
-  permissions: {
-    reservations: "write",
-    products: "read",
-    customers: "read",
-    categories: "read",
-    payments: "read",
-    analytics: "read",
-    settings: "read",
-  },
-};
+const permissions = {
+  reservations: "write",
+  products: "read",
+  customers: "read",
+  categories: "read",
+  payments: "read",
+  analytics: "read",
+  settings: "read",
+} as const;
+const ctx = testRequestContext({ storeId: "store_mcp", userId: "user_mcp", permissions });
 
 describe("MCP status tool", () => {
   let client: ReservationToolsClient;
@@ -43,7 +38,11 @@ describe("MCP status tool", () => {
     };
     client = await connectReservationTools(ctx, deps);
     readOnly = await connectReservationTools(
-      { ...ctx, permissions: { ...ctx.permissions, reservations: "read" } },
+      testRequestContext({
+        storeId: "store_mcp",
+        userId: "user_mcp",
+        permissions: { ...permissions, reservations: "read" },
+      }),
       deps,
     );
   });
@@ -133,7 +132,8 @@ describe("MCP status tool", () => {
     });
 
     assert.equal(isError, true);
-    assert.match(text, /Permission denied: requires reservations:write/);
+    assert.match(text, /needs reservations:write/);
+    assert.match(text, /code: PERMISSION_DENIED/);
     assert.deepEqual(calls, []);
   });
 });

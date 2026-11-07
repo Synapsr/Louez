@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { z } from "zod";
 
@@ -17,21 +17,22 @@ import {
 } from "@louez/db";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
 
-import type { McpSessionContext } from "../auth/context";
-import { requirePermission } from "../auth/context";
+import type { McpRequestContext } from "../auth/context";
 import { toolResult } from "../utils/errors";
+import { legacyTool } from "../utils/legacy-tool";
 import { formatCurrency, formatDate, formatDateTime } from "../utils/formatting";
 
-export function registerCalendarTools(server: McpServer, ctx: McpSessionContext) {
-  server.tool(
+export function registerCalendarTools(server: McpServer, ctx: McpRequestContext) {
+  legacyTool(
+    server,
+    ctx,
+    { domain: "reservations", level: "read" },
     "calendar_upcoming",
     "Get upcoming pickups and returns for the next N days",
     {
       days: z.number().optional().describe("Number of days to look ahead (default 7)"),
     },
     async ({ days }) => {
-      requirePermission(ctx, "reservations", "read");
-
       const lookAhead = Math.min(days ?? 7, 90);
       const now = new Date();
       const future = new Date();
@@ -105,13 +106,14 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
     },
   );
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "reservations", level: "read" },
     "calendar_overdue",
     "Get overdue returns (ongoing reservations past their end date)",
     {},
     async () => {
-      requirePermission(ctx, "reservations", "read");
-
       const now = new Date();
 
       const overdue = await db
@@ -148,7 +150,10 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
     },
   );
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "products", level: "read" },
     "check_availability",
     "Check product availability for a date range",
     {
@@ -157,8 +162,6 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
       endDate: z.string().describe("End date (YYYY-MM-DD)"),
     },
     async ({ productId, startDate, endDate }) => {
-      requirePermission(ctx, "products", "read");
-
       const start = new Date(startDate);
       const end = new Date(endDate);
 

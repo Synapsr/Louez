@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { and, eq, inArray, like, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -19,15 +19,18 @@ import {
   nextProductSlug,
 } from "@louez/db";
 
-import type { McpSessionContext } from "../auth/context";
-import { requirePermission } from "../auth/context";
+import type { McpRequestContext } from "../auth/context";
 import { toolError, toolResult } from "../utils/errors";
+import { legacyTool } from "../utils/legacy-tool";
 import { formatCurrency, formatDate } from "../utils/formatting";
 import { paginationParams } from "../utils/pagination";
 
-export function registerProductTools(server: McpServer, ctx: McpSessionContext) {
+export function registerProductTools(server: McpServer, ctx: McpRequestContext) {
   // ── list_products ──────────────────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "products", level: "read" },
     "list_products",
     "List products in the store catalog with optional filters",
     {
@@ -41,7 +44,6 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
       pageSize: z.number().optional().describe("Results per page (default 50, max 100)"),
     },
     async ({ status, categoryId, search, page, pageSize }) => {
-      requirePermission(ctx, "products", "read");
       const { limit, offset } = paginationParams({ page, pageSize });
 
       const conditions = [eq(products.storeId, ctx.storeId)];
@@ -105,15 +107,16 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
   );
 
   // ── get_product ────────────────────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "products", level: "read" },
     "get_product",
     "Get detailed information about a specific product",
     {
       productId: z.string().describe("The product ID"),
     },
     async ({ productId }) => {
-      requirePermission(ctx, "products", "read");
-
       const product = await db.query.products.findFirst({
         where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
         with: {
@@ -167,7 +170,10 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
   );
 
   // ── create_product ─────────────────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "products", level: "write" },
     "create_product",
     "Create a new product in the catalog",
     {
@@ -201,8 +207,6 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
       quantity,
       categoryId,
     }) => {
-      requirePermission(ctx, "products", "write");
-
       if (stockKind === "consumable" && pricingKind !== "fixed") {
         return toolError("Consumable products must use fixed pricing.");
       }
@@ -248,7 +252,10 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
   );
 
   // ── update_product ─────────────────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "products", level: "write" },
     "update_product",
     "Update an existing product",
     {
@@ -266,8 +273,6 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
       status: z.enum(["active", "draft", "archived"]).optional().describe("New status"),
     },
     async ({ productId, ...updates }) => {
-      requirePermission(ctx, "products", "write");
-
       const existing = await db.query.products.findFirst({
         where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
         columns: {
@@ -416,15 +421,16 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
   );
 
   // ── archive_product ────────────────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "products", level: "write" },
     "archive_product",
     "Archive a product (soft delete)",
     {
       productId: z.string().describe("The product ID to archive"),
     },
     async ({ productId }) => {
-      requirePermission(ctx, "products", "write");
-
       const existing = await db.query.products.findFirst({
         where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
         columns: { id: true, name: true, status: true },

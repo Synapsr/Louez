@@ -1,17 +1,16 @@
 import { z } from 'zod'
 import { db, reservations, customers, dailyStats } from '@louez/db'
 import { and, eq, gte, lte, sql, sum } from 'drizzle-orm'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 
-import type { McpSessionContext } from '../auth/context'
+import type { McpRequestContext } from '../auth/context'
 import { requirePermission } from '../auth/context'
 import { formatCurrency, formatDate, formatStatus } from '../utils/formatting'
 
-export function registerPromptTemplates(server: McpServer, ctx: McpSessionContext) {
-  server.prompt(
+export function registerPromptTemplates(server: McpServer, ctx: McpRequestContext) {
+  server.registerPrompt(
     'daily-briefing',
-    'Generate a structured daily briefing with key metrics and upcoming actions',
-    {},
+    { description: 'Generate a structured daily briefing with key metrics and upcoming actions' },
     async () => {
       requirePermission(ctx, 'analytics', 'read')
 
@@ -129,10 +128,12 @@ export function registerPromptTemplates(server: McpServer, ctx: McpSessionContex
     }
   )
 
-  server.prompt(
+  server.registerPrompt(
     'reservation-summary',
-    'Generate a comprehensive summary of a specific reservation',
-    { reservationId: z.string().describe('The reservation ID to summarize') },
+    {
+      description: 'Generate a comprehensive summary of a specific reservation',
+      argsSchema: z.object({ reservationId: z.string().describe('The reservation ID to summarize') }),
+    },
     async ({ reservationId }) => {
       requirePermission(ctx, 'reservations', 'read')
 

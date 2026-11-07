@@ -1,6 +1,8 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ExposedProcedure } from "@louez/api/platform/exposure";
+import { McpServer } from "@modelcontextprotocol/server";
 
-import type { McpSessionContext } from "./auth/context";
+import type { McpRequestContext } from "./auth/context";
+import { registerExposedTools } from "./bridge";
 import type { McpServerDeps } from "./deps";
 import { registerProductTools } from "./tools/products";
 import { registerCategoryTools } from "./tools/categories";
@@ -14,18 +16,25 @@ import { registerResources } from "./resources/index";
 import { registerPrompts } from "./prompts/index";
 
 /**
- * Create a fully configured MCP server instance for a given session context.
- * The context is resolved once at connection time (from an API key) and
- * injected into every tool, resource, and prompt handler. The deps come from
- * the app and reach the tools that need them.
+ * The MCP server for one request. The context is resolved for that request
+ * (see `resolveMcpContext`), so every request reads the credential, the
+ * membership and the role again. The exposed procedures come first; the
+ * hand-written tools, resources and prompts follow until their domain moves to
+ * procedures. The deps come from the app and reach the tools that need them.
  */
-export function createMcpServer(ctx: McpSessionContext, deps: McpServerDeps): McpServer {
+export function createMcpServer(
+  ctx: McpRequestContext,
+  deps: McpServerDeps,
+  procedures: readonly ExposedProcedure[],
+): McpServer {
   const server = new McpServer({
     name: "louez",
-    version: "0.1.0",
+    version: "0.2.0",
   });
 
-  // Register all tools
+  registerExposedTools(server, ctx, procedures);
+
+  // Hand-written tools, moved to procedures domain by domain
   registerProductTools(server, ctx);
   registerCategoryTools(server, ctx);
   registerReservationTools(server, ctx, deps);

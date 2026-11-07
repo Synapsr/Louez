@@ -1,22 +1,25 @@
 import { z } from "zod";
 import { customers, db, reservations } from "@louez/db";
 import { and, eq, desc, sql, gte } from "drizzle-orm";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 
-import type { McpSessionContext } from "../auth/context";
-import { requirePermission } from "../auth/context";
+import type { McpRequestContext } from "../auth/context";
 import type { McpReservationDeps } from "../deps";
 import { formatCurrency, formatDate, formatDateTime, formatStatus } from "../utils/formatting";
 import { toolError, toolResult } from "../utils/errors";
+import { legacyTool } from "../utils/legacy-tool";
 import { paginationParams } from "../utils/pagination";
 
 export function registerReservationTools(
   server: McpServer,
-  ctx: McpSessionContext,
+  ctx: McpRequestContext,
   deps: McpReservationDeps,
 ) {
   // ── list_reservations ──────────────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "reservations", level: "read" },
     "list_reservations",
     "List reservations with optional filters (status, period, search)",
     {
@@ -30,7 +33,6 @@ export function registerReservationTools(
       pageSize: z.number().optional(),
     },
     async ({ status, period, search, page, pageSize }) => {
-      requirePermission(ctx, "reservations", "read");
       const { limit, offset } = paginationParams({ page, pageSize });
 
       const conditions = [eq(reservations.storeId, ctx.storeId)];
@@ -100,15 +102,16 @@ export function registerReservationTools(
   );
 
   // ── get_reservation ────────────────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "reservations", level: "read" },
     "get_reservation",
     "Get complete details of a specific reservation",
     {
       reservationId: z.string().describe("The reservation ID"),
     },
     async ({ reservationId }) => {
-      requirePermission(ctx, "reservations", "read");
-
       const reservation = await db.query.reservations.findFirst({
         where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
         with: {
@@ -198,7 +201,10 @@ export function registerReservationTools(
   );
 
   // ── update_reservation_status ──────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "reservations", level: "write" },
     "update_reservation_status",
     "Change the status of a reservation: confirm, reject, cancel, mark as picked up (ongoing) or returned (completed). Like the dashboard, it also emails the customer when a request is confirmed or rejected, notifies the store, and, when the store uses insurance, creates the contract on a confirmation and cancels it on a cancellation.",
     {
@@ -216,8 +222,6 @@ export function registerReservationTools(
         ),
     },
     async ({ reservationId, status: newStatus, rejectionReason }) => {
-      requirePermission(ctx, "reservations", "write");
-
       const result = await deps.changeReservationStatus({
         storeId: ctx.storeId,
         reservationId,
@@ -241,7 +245,10 @@ export function registerReservationTools(
   );
 
   // ── update_reservation_notes ───────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "reservations", level: "write" },
     "update_reservation_notes",
     "Update internal notes on a reservation",
     {
@@ -249,8 +256,6 @@ export function registerReservationTools(
       notes: z.string().describe("The new internal notes content"),
     },
     async ({ reservationId, notes }) => {
-      requirePermission(ctx, "reservations", "write");
-
       const existing = await db.query.reservations.findFirst({
         where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
         columns: { id: true, number: true },
@@ -268,13 +273,14 @@ export function registerReservationTools(
   );
 
   // ── get_reservation_poll ───────────────────────────────────────────────
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: "reservations", level: "read" },
     "get_reservation_poll",
     "Get quick reservation counters by status (pending, ongoing, etc.)",
     {},
     async () => {
-      requirePermission(ctx, "reservations", "read");
-
       const rows = await db
         .select({
           status: reservations.status,

@@ -1,30 +1,32 @@
 import type { McpServerDeps } from "@louez/mcp";
-import { handleMcpRequest, handleMcpDelete, handleMcpDiscovery } from "@louez/mcp/http";
+import { handleMcpRequest, type McpHttpOptions } from "@louez/mcp/http";
+import { createExposure } from "@louez/api/platform/exposure";
+import { appRouter } from "@louez/api/router";
 import { nanoid } from "nanoid";
 
+import { apiPorts } from "@/lib/api/ports";
 import { insertRecordedPayment } from "@/lib/reservations/dashboard-payment-writes";
 import { changeReservationStatusAsAgent } from "@/lib/reservations/status-change";
 
-// The app code the MCP tools need. packages/mcp cannot import it. The payment id
-// is made here because packages/mcp has no id generator.
+// The app code the hand-written MCP tools need. packages/mcp cannot import it.
+// The payment id is made here because packages/mcp has no id generator.
 const mcpDeps = {
   changeReservationStatus: changeReservationStatusAsAgent,
   insertRecordedPayment: (tx, payment) => insertRecordedPayment(tx, { ...payment, id: nanoid() }),
 } satisfies McpServerDeps;
 
-export async function POST(request: Request) {
-  return handleMcpRequest(request, mcpDeps);
+const options: McpHttpOptions = {
+  deps: mcpDeps,
+  ports: apiPorts,
+  procedures: createExposure(appRouter).procedures,
+};
+
+// Stateless Streamable HTTP: every request is authorized on its own. GET and
+// DELETE get 405 from the SDK, as there is no session.
+async function handle(request: Request) {
+  return handleMcpRequest(request, options);
 }
 
-export async function GET(request: Request) {
-  // If session ID present, this is an SSE stream request — delegate to transport
-  if (request.headers.get("mcp-session-id")) {
-    return handleMcpRequest(request, mcpDeps);
-  }
-  // Otherwise, return server discovery metadata
-  return handleMcpDiscovery();
-}
-
-export async function DELETE(request: Request) {
-  return handleMcpDelete(request);
-}
+export const POST = handle;
+export const GET = handle;
+export const DELETE = handle;

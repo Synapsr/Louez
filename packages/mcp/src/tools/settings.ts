@@ -1,24 +1,25 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db, stores } from '@louez/db';
 
-import type { McpSessionContext } from '../auth/context';
-import { requirePermission } from '../auth/context';
+import type { McpRequestContext } from '../auth/context';
 import { toolError, toolResult } from '../utils/errors';
+import { legacyTool } from '../utils/legacy-tool';
 
 export function registerSettingsTools(
   server: McpServer,
-  ctx: McpSessionContext,
+  ctx: McpRequestContext,
 ) {
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'settings', level: 'read' },
     'get_store_settings',
     'Get complete store configuration (name, contact, settings)',
     {},
     async () => {
-      requirePermission(ctx, 'settings', 'read');
-
       const store = await db.query.stores.findFirst({
         where: eq(stores.id, ctx.storeId),
       });
@@ -49,7 +50,10 @@ export function registerSettingsTools(
     },
   );
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'settings', level: 'write', role: 'manage_settings' },
     'update_store_info',
     'Update store contact information',
     {
@@ -60,8 +64,6 @@ export function registerSettingsTools(
       description: z.string().optional().describe('Store description'),
     },
     async (updates) => {
-      requirePermission(ctx, 'settings', 'write');
-
       const updateData: Record<string, unknown> = {};
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.email !== undefined) updateData.email = updates.email;
@@ -80,7 +82,10 @@ export function registerSettingsTools(
     },
   );
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'settings', level: 'write', role: 'manage_settings' },
     'update_store_legal',
     'Update legal documents (terms of service, legal notice)',
     {
@@ -95,8 +100,6 @@ export function registerSettingsTools(
         .describe('Include terms in rental contracts'),
     },
     async (updates) => {
-      requirePermission(ctx, 'settings', 'write');
-
       const updateData: Record<string, unknown> = {};
       if (updates.cgv !== undefined) updateData.cgv = updates.cgv;
       if (updates.legalNotice !== undefined)

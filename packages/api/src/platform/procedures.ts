@@ -13,7 +13,7 @@ import { apiError, platformErrors } from "./errors";
 import type { ApiMeta } from "./meta";
 import { IDEMPOTENCY_HEADER, runOperation } from "./operations";
 import { allows } from "./permissions";
-import { consumeRateLimit } from "./rate-limit";
+import { consumeRateLimit, rateLimitKey } from "./rate-limit";
 
 /** Store row handed to agent-ready procedures. */
 export type ActorStore = typeof stores.$inferSelect;
@@ -120,9 +120,7 @@ export const storeProcedure = accountProcedure.use(
       const features = await context.ports.planFeatures(storeActor.storeId);
       if (!features.apiAccess) throw platformErrors.apiAccessNotInPlan();
 
-      const limit = await consumeRateLimit(
-        `${credential.kind}:${credential.id ?? credential.userId}`,
-      );
+      const limit = await consumeRateLimit(rateLimitKey(credential));
       if (!limit.allowed) throw platformErrors.rateLimited(limit.retryAfterSeconds);
     }
 

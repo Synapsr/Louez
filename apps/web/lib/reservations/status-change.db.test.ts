@@ -12,7 +12,6 @@ import {
   skipWithoutTestDatabase,
   type TestDatabase,
 } from "@louez/db/testing";
-import type { McpSessionContext } from "@louez/mcp";
 import type { ReservationToolsClient } from "@louez/mcp/testing";
 
 import type { createAITools } from "../ai/tools";
@@ -60,14 +59,6 @@ const permissions = {
   settings: "read",
 } as const;
 
-const mcpCtx: McpSessionContext = {
-  storeId: STORE,
-  userId: USER,
-  storeName: "Status store",
-  apiKeyId: "key_status_change",
-  permissions,
-};
-
 type StatusTool = ReturnType<typeof createAITools>["update_reservation_status"];
 type StatusInput = Parameters<NonNullable<StatusTool["execute"]>>[0];
 
@@ -103,7 +94,9 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
     aiTools = await import("../ai/tools");
     const { createReservationStatusService } = await import("./status-change");
     const { runReservationEffects } = await import("../billing/reservation-effects");
-    const { connectReservationTools } = await import("@louez/mcp/testing");
+    // @louez/mcp is an ES module that reaches CommonJS packages by name.
+    await import("@louez/mcp/testing/cjs-named-exports");
+    const { connectReservationTools, testRequestContext } = await import("@louez/mcp/testing");
 
     const note = (sender: keyof StatusChangeDeps, args: unknown[]) => {
       calls.push({ sender, args });
@@ -151,6 +144,13 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
         note("captureReservationActionSucceeded", [event]);
       },
       log: { error: (event) => errors.push(event) },
+    });
+    const mcpCtx = testRequestContext({
+      storeId: STORE,
+      userId: USER,
+      storeName: "Status store",
+      apiKeyId: "key_status_change",
+      permissions,
     });
     mcp = await connectReservationTools(mcpCtx, {
       changeReservationStatus: service.changeAsAgent,

@@ -1,8 +1,15 @@
 import { apiRateLimits, db } from "@louez/db";
 import { sql } from "drizzle-orm";
 
+import type { Credential } from "./actor";
+
 /** Calls a connection may make per window, whatever the transport. */
 export const API_RATE_LIMIT = { windowMs: 60_000, max: 120 } as const;
+
+/** The rate limit counter of a connection: one per key or grant, shared by every transport. */
+export function rateLimitKey(credential: Credential): string {
+  return `${credential.kind}:${credential.id ?? credential.userId}`;
+}
 
 /**
  * Counts one call for `key` and says whether it fits in the current window.

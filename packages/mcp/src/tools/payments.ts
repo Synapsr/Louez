@@ -2,12 +2,12 @@ import { z } from 'zod'
 import { db, markReservation, payments, reservations, stores, type Transaction } from '@louez/db'
 import type { StoreSettings } from '@louez/types'
 import { and, eq } from 'drizzle-orm'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 
-import type { McpSessionContext } from '../auth/context'
-import { requirePermission } from '../auth/context'
+import type { McpRequestContext } from '../auth/context'
 import { formatCurrency, formatDateTime } from '../utils/formatting'
 import { toolError, toolResult } from '../utils/errors'
+import { legacyTool } from '../utils/legacy-tool'
 
 /** A payment the store records by hand, as the app's writer takes it. */
 export interface McpRecordedPayment {
@@ -44,18 +44,19 @@ async function loadStoreSettings(storeId: string) {
 
 export function registerPaymentTools(
   server: McpServer,
-  ctx: McpSessionContext,
+  ctx: McpRequestContext,
   deps: McpPaymentDeps
 ) {
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'payments', level: 'read' },
     'list_payments',
     'List all payments for a specific reservation',
     {
       reservationId: z.string().describe('The reservation ID'),
     },
     async ({ reservationId }) => {
-      requirePermission(ctx, 'payments', 'read')
-
       const reservation = await db.query.reservations.findFirst({
         where: and(
           eq(reservations.storeId, ctx.storeId),
@@ -88,7 +89,10 @@ export function registerPaymentTools(
     }
   )
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'payments', level: 'write' },
     'record_payment',
     'Record a manual payment for a reservation',
     {
@@ -103,8 +107,6 @@ export function registerPaymentTools(
       notes: z.string().optional().describe('Optional notes'),
     },
     async ({ reservationId, type, amount, method, notes }) => {
-      requirePermission(ctx, 'payments', 'write')
-
       const numAmount = parseFloat(amount)
       if (isNaN(numAmount) || numAmount === 0) {
         return toolError('Amount must be a non-zero number.')
@@ -150,15 +152,16 @@ export function registerPaymentTools(
     }
   )
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'payments', level: 'write' },
     'delete_payment',
     'Delete a payment record',
     {
       paymentId: z.string().describe('The payment ID to delete'),
     },
     async ({ paymentId }) => {
-      requirePermission(ctx, 'payments', 'write')
-
       const payment = await db.query.payments.findFirst({
         where: eq(payments.id, paymentId),
         with: {
@@ -185,7 +188,10 @@ export function registerPaymentTools(
     }
   )
 
-  server.tool(
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'payments', level: 'write' },
     'return_deposit',
     'Record a deposit return for a reservation',
     {
@@ -195,8 +201,6 @@ export function registerPaymentTools(
       notes: z.string().optional().describe('Optional notes'),
     },
     async ({ reservationId, amount, method, notes }) => {
-      requirePermission(ctx, 'payments', 'write')
-
       const numAmount = parseFloat(amount)
       if (isNaN(numAmount) || numAmount <= 0) {
         return toolError('Amount must be greater than zero.')
