@@ -132,6 +132,27 @@ const AUTH_COOKIE_PREFIX = dbEnv.DATABASE_URL.endsWith(PROD_DATABASE_SUFFIX)
     ? "louez-dev"
     : "better-auth";
 
+/**
+ * In development the app answers on every Localify host of the project: the
+ * namespace, each worktree and storefront under it, and its Localify Cloud
+ * public URLs. Better Auth then takes its base URL, and the origin it trusts,
+ * from the host a request came in on, read from X-Forwarded-Host, among these
+ * hosts only; any other host falls back to AUTH_URL. So a new worktree or a
+ * public URL works without editing AUTH_URL. Production keeps the fixed
+ * AUTH_URL.
+ */
+const DEV_AUTH_HOSTS = [
+  "louez.localify",
+  "*.louez.localify",
+  "louez.localify.fyi",
+  "louez--*.localify.fyi",
+];
+
+const authBaseURL =
+  env.NODE_ENV === "development"
+    ? { allowedHosts: DEV_AUTH_HOSTS, fallback: env.AUTH_URL }
+    : env.AUTH_URL;
+
 // ============================================================================
 // Auth instance (direct — no factory/singleton)
 // ============================================================================
@@ -139,7 +160,7 @@ const AUTH_COOKIE_PREFIX = dbEnv.DATABASE_URL.endsWith(PROD_DATABASE_SUFFIX)
 export const authInstance = betterAuth({
   basePath: "/api/auth",
   secret: env.AUTH_SECRET,
-  baseURL: env.AUTH_URL,
+  baseURL: authBaseURL,
   trustedOrigins: [env.AUTH_URL],
 
   database: drizzleAdapter(db, {
