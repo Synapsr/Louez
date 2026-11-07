@@ -9,6 +9,7 @@ import { db, markLegacyStore, markStore, storeMembers, stores, users } from "@lo
 import { type StoreInfoInput, storeInfoSchema } from "@louez/validations";
 import { defaultBusinessHours } from "@louez/validations";
 
+import { parseAffiliateReferral } from "@/lib/acquisition/klibon";
 import { auth } from "@/lib/auth";
 import { getSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { creditAiCredits, getDefaultAiCredits } from "@/lib/ai/advisor/credits";
@@ -37,6 +38,7 @@ type ReferralAttributionOutcome =
   | "existing_owner"
   | "unknown_referrer"
   | "self_referral"
+  | "affiliate_referral"
   | "already_attributed"
   | "attributed";
 
@@ -51,15 +53,24 @@ const editingStoreIdSchema = z.string().length(21).nullable();
 async function resolvePendingReferralAttribution({
   currentUserId,
   ignoredOwnedStoreId,
+  affiliateReferral,
 }: {
   currentUserId: string;
   ignoredOwnedStoreId?: string;
+  /** The Klibon affiliate code the visitor carries (lib/acquisition/klibon.ts). */
+  affiliateReferral: string | undefined;
 }): Promise<PendingReferralAttribution> {
   const cookieStore = await cookies();
   const referralCookie = cookieStore.get("louez_referral")?.value ?? null;
 
   if (!referralCookie) {
     return { referralCookie, attribution: null, outcome: "no_cookie" };
+  }
+
+  // A store sent by a Klibon affiliate earns the affiliate's commission, not the store
+  // referral rewards as well: the affiliate's code wins, and the cookie is consumed.
+  if (affiliateReferral) {
+    return { referralCookie, attribution: null, outcome: "affiliate_referral" };
   }
 
   if (!isValidReferralCode(referralCookie)) {
@@ -199,7 +210,17 @@ async function trackReferredRewardGranted({
   });
 }
 
-export async function createStore(data: StoreInfoInput, editingStoreId: string | null = null) {
+/**
+ * Saves the store step of onboarding: creates the store, or updates the incomplete one.
+ * `affiliateReferral` is the Klibon code the browser read (readAffiliateReferral).
+ * `affiliateSignupEmail`, on the first save of a store by its owner, is the account's
+ * email for the page to report to Klibon (reportAffiliateSignup); null otherwise.
+ */
+export async function createStore(
+  data: StoreInfoInput,
+  editingStoreId: string | null = null,
+  affiliateReferral: string | null = null,
+) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "errors.unauthenticated" };
@@ -221,6 +242,8 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
   let analyticsStoreId: string | null = null;
   let analyticsIsExistingIncompleteStore = false;
   let analyticsReferralOutcome: ReferralAttributionOutcome | null = null;
+  let isOwnerFirstSave = false;
+  const affiliateCode = parseAffiliateReferral(affiliateReferral);
 
   if (validatedEditingStoreId.data) {
     const role = await verifyStoreAccess(validatedEditingStoreId.data);
@@ -300,6 +323,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
         : await resolvePendingReferralAttribution({
             currentUserId: session.user.id,
             ignoredOwnedStoreId: storeToUpdate.id,
+            affiliateReferral: affiliateCode,
           });
 
     // Preserve settings that are configured after onboarding when the owner revisits this step.
@@ -377,6 +401,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
     analyticsStoreId = storeToUpdate.id;
     analyticsIsExistingIncompleteStore = isExistingIncompleteStore;
     analyticsReferralOutcome = isExistingIncompleteStore ? pendingReferral.outcome : null;
+    isOwnerFirstSave = isExistingIncompleteStore && storeToUpdate.userId === session.user.id;
 
     // Ensure the updated store stays active for subsequent onboarding steps
     const setStoreResult = await setActiveStoreId(storeToUpdate.id);
@@ -404,6 +429,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
     // Resolve referral code from cookie (set during login with ?ref= param)
     const pendingReferral = await resolvePendingReferralAttribution({
       currentUserId: session.user.id,
+      affiliateReferral: affiliateCode,
     });
     const referredByUserId = pendingReferral.attribution?.referredByUserId ?? null;
     const referredByStoreId = pendingReferral.attribution?.referredByStoreId ?? null;
@@ -517,6 +543,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
 
     analyticsStoreId = newStore.id;
     analyticsReferralOutcome = pendingReferral.outcome;
+    isOwnerFirstSave = true;
 
     if (pendingReferral.attribution && newStore.legacyBilled) {
       const { referredByStoreId: referrerStoreId } = pendingReferral.attribution;
@@ -562,5 +589,8 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
     );
   }
 
-  return { success: true };
+  return {
+    success: true,
+    affiliateSignupEmail: isOwnerFirstSave ? session.user.email : null,
+  };
 }

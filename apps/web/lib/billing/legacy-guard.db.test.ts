@@ -1530,6 +1530,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     await signUp("u_onboard_service");
     assert.deepEqual(await onboarding.createStore(storeInfo("lg-onboard-service")), {
       success: true,
+      affiliateSignupEmail: "u_onboard_service@louez.test",
     });
     const service = await storeOf("u_onboard_service");
     assert.equal(service.referredByStoreId, "lg_referrer");
@@ -1549,6 +1550,7 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     session.activeStoreId = resumed.id;
     assert.deepEqual(await onboarding.createStore(storeInfo("lg-resume-service")), {
       success: true,
+      affiliateSignupEmail: "u_resume_service@louez.test",
     });
     assert.equal(await subscriptionRow(resumed.id), undefined);
     assert.ok(referralEvents.length > 0 && !referralEvents.includes(REWARD_EVENT));
@@ -1558,11 +1560,21 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     await signUp("u_onboard_legacy");
     assert.deepEqual(await onboarding.createStore(storeInfo("lg-onboard-legacy")), {
       success: true,
+      affiliateSignupEmail: "u_onboard_legacy@louez.test",
     });
     const legacy = await storeOf("u_onboard_legacy");
     assert.ok((await subscriptionRow(legacy.id))?.payAsYouGoConfig);
     assert.ok(referralEvents.includes(REWARD_EVENT));
     assert.ok(productEvents.length > 0);
+
+    // A Klibon affiliate's code wins over the store referral: no referrer, no reward.
+    await signUp("u_onboard_affiliate");
+    assert.deepEqual(
+      await onboarding.createStore(storeInfo("lg-onboard-affiliate"), null, "aff_42"),
+      { success: true, affiliateSignupEmail: "u_onboard_affiliate@louez.test" },
+    );
+    assert.equal((await storeOf("u_onboard_affiliate")).referredByStoreId, null);
+    assert.ok(referralEvents.length > 0 && !referralEvents.includes(REWARD_EVENT));
 
     session.referralCode = "";
   });

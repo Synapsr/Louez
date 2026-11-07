@@ -58,6 +58,7 @@ import {
 } from '@louez/ui';
 import { cn } from '@louez/utils';
 
+import { readAffiliateReferral } from '@/lib/acquisition/klibon-browser';
 import {
   CURRENCY_SYMBOLS,
   PAY_AS_YOU_GO_PLAN,
@@ -240,6 +241,7 @@ export function SubscriptionManagement({
         planSlug,
         interval: isYearly ? 'yearly' : 'monthly',
         currency,
+        affiliateReferral: readAffiliateReferral(),
       });
 
       if (result.url) {
@@ -267,11 +269,15 @@ export function SubscriptionManagement({
     setError(null);
     setChangeError(null);
     try {
-      const result = await changeSubscriptionPlan({
-        planSlug: pendingChange.plan.slug,
-        interval: pendingChange.interval,
-        currency: pendingChange.currency,
-      });
+      // On pay-as-you-go again, the change opens the plan's Checkout: it carries the code.
+      const result = await changeSubscriptionPlan(
+        {
+          planSlug: pendingChange.plan.slug,
+          interval: pendingChange.interval,
+          currency: pendingChange.currency,
+        },
+        readAffiliateReferral(),
+      );
       if ('error' in result) {
         setChangeError(result.error);
         router.refresh();
