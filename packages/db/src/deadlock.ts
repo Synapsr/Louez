@@ -36,15 +36,31 @@ export async function retryOnceOnDeadlock<T>(operation: () => Promise<T>): Promi
  */
 export async function retryTransactionOnDeadlock<T>(
   operation: () => Promise<T>,
-  options: { attempts?: number; retryOn?: (error: unknown) => boolean } = {},
+  options: {
+    attempts?: number;
+    retryOn?: (error: unknown) => boolean;
+    /** Waits between runs; tests pass their own. */
+    sleep?: (ms: number) => Promise<void>;
+  } = {},
 ): Promise<T> {
   const attempts = options.attempts ?? 3;
   const retryOn = options.retryOn ?? isDatabaseDeadlock;
+  const sleep = options.sleep ?? ((ms) => new Promise<void>((done) => setTimeout(done, ms)));
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await operation();
     } catch (error) {
       if (attempt >= attempts || !retryOn(error)) throw error;
+      await sleep(deadlockRetryDelayMs(attempt));
     }
   }
+}
+
+/**
+ * The wait before the next run: 20 to 80 ms at random, times the runs so far,
+ * so two transactions that collided do not collide again at once. Three runs
+ * wait at most 80 + 160 ms.
+ */
+export function deadlockRetryDelayMs(failedRuns: number, random: () => number = Math.random) {
+  return Math.round((20 + random() * 60) * failedRuns);
 }
