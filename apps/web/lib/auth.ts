@@ -38,16 +38,25 @@ setUserCreatedHook(async ({ userId }) => {
 });
 
 setUserDeleteRequestHook(async ({ userId }) => {
-  const context = await accountDeletionRepository.getContext(userId);
-  if (!context) {
-    throw new Error('Account not found');
-  }
-  assertAccountDeletionExternalConfiguration(context);
-  if (
-    context.stores.some((store) => store.legalRecordCount > 0) &&
-    !env.LEGAL_ARCHIVE_ENCRYPTION_KEY
-  ) {
-    throw new Error('Legal archive encryption is not configured');
+  try {
+    const context = await accountDeletionRepository.getContext(userId);
+    if (!context) {
+      throw new Error('Account not found');
+    }
+    assertAccountDeletionExternalConfiguration(context);
+    if (
+      context.stores.some((store) => store.legalRecordCount > 0) &&
+      !env.LEGAL_ARCHIVE_ENCRYPTION_KEY
+    ) {
+      throw new Error('Legal archive encryption is not configured');
+    }
+  } catch (error) {
+    // The user only sees "temporarily unavailable": the cause goes to the logs.
+    log.warn(
+      'account-deletion',
+      `request refused for user ${userId}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    throw error;
   }
 });
 
