@@ -52,7 +52,7 @@ All of it is erased with its owner. Deleting a Customer removes their custom fie
 
 ## External processors
 
-Deletion is fail-closed. If Louez knows about a provider-side resource and cannot remove or revoke it, the local database remains intact so the owner can retry safely.
+Deletion is fail-closed. If Louez knows about a provider-side resource and cannot remove or revoke it, the local database remains intact so the owner can retry safely. One exception: a Louez-created Google calendar that Google no longer lets Louez reach (the owner revoked access, or the token expired for good) lives in the owner's own Google account, so deletion goes on, the deletion dialog tells the owner they can remove it from Google Calendar, and the server logs it.
 
 | Processor             | Deletion action                                                                                                             | Required private configuration                                                |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -60,7 +60,7 @@ Deletion is fail-closed. If Louez knows about a provider-side resource and canno
 | Stripe Billing        | Cancel subscriptions immediately, then delete customers                                                                     | `STRIPE_SECRET_KEY`                                                           |
 | Stripe Connect        | Delete the connected account when Stripe permits it; a live Standard account must first be disconnected in Stripe Dashboard | `STRIPE_SECRET_KEY`                                                           |
 | Twilio                | Release provisioned numbers before deleting bindings                                                                        | Existing Twilio credentials                                                   |
-| Google Calendar       | Delete Louez-created calendars and revoke OAuth tokens                                                                      | Existing Google Calendar OAuth credentials and `INTEGRATION_ENCRYPTION_KEY`   |
+| Google Calendar       | Delete Louez-created calendars and revoke OAuth tokens; a calendar Google no longer lets Louez reach stays with its owner   | Existing Google Calendar OAuth credentials and `INTEGRATION_ENCRYPTION_KEY`   |
 | Google sign-in        | Revoke access and refresh tokens                                                                                            | Stored Better Auth credentials                                                |
 | SuperPDP              | Revoke OAuth tokens; statutory invoice retention still applies at each regulated party                                      | Existing SuperPDP OAuth credentials and `INTEGRATION_ENCRYPTION_KEY`          |
 | Tulip                 | Delete products created and mapped by Louez; existing insurance contracts follow Tulip's contractual retention rules        | `TULIP_API_KEY`                                                               |

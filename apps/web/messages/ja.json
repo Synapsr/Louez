@@ -5839,6 +5839,7 @@
           "membershipsLeft": "あなたも去るでしょう {count,plural,one{# 他の店} other{# 他の店舗}} あなたが会員になっているところ。",
           "businessDocumentsDeleted": "{count,plural,one{# ストアからのビジネス請求書は Louez から削除されます} other{# ストアからのビジネス請求書は Louez から削除されます}}。保持する必要がある場合は、続行する前にエクスポートしてください。",
           "legalRetention": "{count,plural,one{# Louez の請求記録は保持されます} other{# Louez の請求記録は保存されます}} 会計年度終了後 10 年間、アクセスが制限された別のアーカイブに保管されます。",
+          "googleCalendarNotice": "Louez が Google カレンダーに作成したカレンダーは削除されます。Google が Louez へのアクセスを許可していない場合、そのカレンダーは Google アカウントに残るため、Google カレンダーから削除してください。",
           "confirmationLabel": "確認のために「{email}」と入力してください",
           "passwordLabel": "現在のパスワード",
           "passwordRequired": "現在のパスワードを入力してください。",

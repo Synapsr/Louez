@@ -262,6 +262,11 @@ export const AccountDeletionDialog = ({ preview, verification }: AccountDeletion
                         })}
                       </p>
                     )}
+                    {preview.googleCalendarConnected && (
+                      <p className="text-muted-foreground">
+                        {t("accountDeletion.googleCalendarNotice")}
+                      </p>
+                    )}
                   </div>
 
                   <form.AppField name="confirmation">

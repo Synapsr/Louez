@@ -5840,6 +5840,7 @@
           "membershipsLeft": "You will also leave {count, plural, one {# other store} other {# other stores}} where you are a member.",
           "businessDocumentsDeleted": "{count, plural, one {# business invoice from your store will be deleted from Louez} other {# business invoices from your stores will be deleted from Louez}}. Export them before continuing if you need to keep them.",
           "legalRetention": "{count, plural, one {# Louez billing record will be kept} other {# Louez billing records will be kept}} for 10 years after the financial year closes, in a separate restricted-access archive.",
+          "googleCalendarNotice": "Louez will delete the calendar it created in your Google Calendar. If Google no longer gives Louez access to it, that calendar stays in your Google account and you can delete it from Google Calendar.",
           "confirmationLabel": "Enter {email} to confirm",
           "passwordLabel": "Current password",
           "passwordRequired": "Enter your current password.",

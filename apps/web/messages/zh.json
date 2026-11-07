@@ -5839,6 +5839,7 @@
           "membershipsLeft": "你也会离开 {count,plural,one{# 其他商店} other{# 其他商店}} 您是哪里的会员。",
           "businessDocumentsDeleted": "{count,plural,one{# 您商店的商业发票将从 Louez 中删除} other{# 您商店的商业发票将从 Louez 中删除}}。如果您需要保留它们，请先导出它们，然后再继续。",
           "legalRetention": "{count,plural,one{# Louez 计费记录将被保留} other{# Louez 计费记录将被保留}} 财政年度结束后 10 年内，保存在单独的受限访问档案中。",
+          "googleCalendarNotice": "Louez 会删除它在您的 Google 日历中创建的日历。如果 Google 不再允许 Louez 访问该日历，它会保留在您的 Google 账号中，您可以在 Google 日历中自行删除。",
           "confirmationLabel": "输入{email}确认",
           "passwordLabel": "当前密码",
           "passwordRequired": "输入您当前的密码。",

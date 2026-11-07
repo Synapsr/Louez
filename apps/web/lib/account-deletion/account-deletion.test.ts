@@ -73,6 +73,7 @@ test("allows deletion when every owned store has no other member", async () => {
     membershipsToLeave: 0,
     legalRecordsToRetain: 0,
     businessDocumentsToDelete: 0,
+    googleCalendarConnected: false,
   });
 });
 
@@ -94,6 +95,7 @@ test("leaves member-only stores without deleting them", async () => {
     membershipsToLeave: 2,
     legalRecordsToRetain: 0,
     businessDocumentsToDelete: 0,
+    googleCalendarConnected: false,
   });
 });
 

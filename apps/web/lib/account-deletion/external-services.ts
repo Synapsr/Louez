@@ -5,6 +5,7 @@ import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { isBillingSyncEnabled } from "@louez/db/billing-queue";
 
 import { env } from "@/env";
+import { log } from "@/lib/evlog";
 import { releaseNumberBinding } from "@/lib/ai/phone/number-release";
 import { decryptIntegrationSecret } from "@/lib/integrations/credentials";
 import {
@@ -207,6 +208,7 @@ interface GoogleCleanupDependencies {
   isCredentialUnavailableError: (error: unknown) => boolean;
   now: () => number;
   refreshAccessToken: typeof refreshGoogleCalendarAccessToken;
+  reportCalendarLeftBehind: (calendarId: string) => void;
   revokeToken: typeof revokeGoogleToken;
 }
 
@@ -217,6 +219,11 @@ const googleCleanupDependencies = {
     error instanceof GoogleCalendarApiError && (error.status === 400 || error.status === 401),
   now: Date.now,
   refreshAccessToken: refreshGoogleCalendarAccessToken,
+  reportCalendarLeftBehind: (calendarId: string) =>
+    log.warn(
+      "account-deletion",
+      `Google calendar ${calendarId} left in the owner's Google account: Google no longer grants Louez access`,
+    ),
   revokeToken: revokeGoogleToken,
 } satisfies GoogleCleanupDependencies;
 
@@ -257,9 +264,10 @@ export const cleanupGoogleConnections = async (
         calendarId: connection.calendarId,
       });
     } else if (connection.calendarId) {
-      throw new Error(
-        "Known Google Calendar could not be deleted because no usable credential remains",
-      );
+      // Google no longer lets Louez in, so the calendar can only be removed by
+      // its owner, in their own Google account. Blocking here would make the
+      // account impossible to delete; the deletion dialog warns them instead.
+      dependencies.reportCalendarLeftBehind(connection.calendarId);
     }
 
     for (const token of [refreshToken, accessToken].filter((value): value is string =>
