@@ -2463,10 +2463,31 @@
       },
       "contract": {
         "title": "Kontrak",
-        "signed": "Ditandatangani pada {date}",
-        "notSigned": "Tidak ditandatangani",
         "generate": "Hasilkan kontrak",
-        "download": "Unduh"
+        "download": "Unduh",
+        "signedBadge": "Kontrak ditandatangani",
+        "unsignedBadge": "Kontrak belum ditandatangani",
+        "signedOn": "Pada {date}",
+        "unsignedTooltip": "Pelanggan belum menyetujui kontrak. Mereka dapat menandatanganinya melalui tautan di email, atau di toko saat pengambilan.",
+        "methods": {
+          "checkout": "Disetujui saat pemesanan online",
+          "payment_page": "Ditandatangani di halaman pembayaran",
+          "account": "Ditandatangani dari akun pelanggan",
+          "in_store": "Ditandatangani di toko"
+        },
+        "signInStore": "Tanda tangan di toko",
+        "sendSignatureLink": "Kirim untuk ditandatangani",
+        "signatureLinkSent": "Tautan tanda tangan dikirim ke pelanggan",
+        "signDialog": {
+          "title": "Tanda tangan kontrak di toko",
+          "description": "Biarkan pelanggan membaca kontrak lalu menandatanganinya di perangkat ini. Tanda tangan dan namanya akan tercantum di kontrak.",
+          "viewContract": "Buka kontrak",
+          "signerName": "Nama penanda tangan",
+          "acceptance": "Pelanggan telah membaca kontrak dan syarat sewa serta menyetujuinya.",
+          "confirm": "Konfirmasi tanda tangan",
+          "success": "Kontrak ditandatangani",
+          "alreadySigned": "Kontrak ini sudah ditandatangani."
+        }
       },
       "notes": {
         "title": "Catatan dalaman",
@@ -2735,6 +2756,9 @@
         "quote_accepted": "Penawaran diterima",
         "quote_declined": "Penawaran ditolak",
         "overbooked": "Pemesanan berlebih",
+        "contract_signed": "Kontrak ditandatangani",
+        "contractUnsigned": "Tanpa kontrak bertanda tangan",
+        "signedBy": "Ditandatangani oleh {name}",
         "showAll": "Tampilkan semua (acara {count})",
         "showLess": "Tampilkan lebih sedikit",
         "paymentFailure": {
@@ -2796,6 +2820,11 @@
         "warningDepositTitle": "Uang jaminan belum diterima",
         "warningDepositDescription": "Deposit {amount} belum diambil. Pastikan untuk mengambilnya sebelum menyerahkan peralatan.",
         "acknowledgePickupWarnings": "Saya memahami dan ingin melanjutkan meskipun ada peringatan ini",
+        "contractUnsigned": "Kontrak belum ditandatangani",
+        "warningContractTitle": "Kontrak belum ditandatangani",
+        "warningContractDescription": "Pelanggan belum menandatangani kontraknya. Minta tanda tangan di toko, atau lanjutkan tanpa tanda tangan: ini akan dicatat di riwayat.",
+        "acknowledgePickupWithoutSignature": "Saya mengerti dan ingin melanjutkan, meskipun kontrak belum ditandatangani",
+        "warningContractRequiredDescription": "Toko Anda mewajibkan kontrak ditandatangani sebelum pengambilan. Minta pelanggan menandatangani di toko untuk melanjutkan.",
         "confirmPickup": "Konfirmasi pengambilan",
         "returnConfirmTitle": "Konfirmasi pengembalian",
         "returnConfirmDescription": "Periksa kondisi peralatan dan ringkasan keuangan sebelum mengkonfirmasi pengembalian.",
@@ -6296,6 +6325,16 @@
         "description": "Pelanggan dapat memperpanjang ketika peralatan tersedia dan biaya tambahan dapat dihitung. Kasus khusus memerlukan persetujuan Anda.",
         "maxDays": "Maksimum tambahan hari (biarkan kosong tanpa batas)"
       },
+      "contractSignature": {
+        "title": "Tanda tangan kontrak",
+        "description": "Apa yang terjadi saat Anda menandai reservasi sudah diambil sementara pelanggan belum menandatangani kontraknya.",
+        "optional": "Opsional",
+        "optionalDescription": "Tidak ada peringatan saat pengambilan. Lencana \"Kontrak belum ditandatangani\" tetap terlihat di reservasi.",
+        "recommended": "Disarankan",
+        "recommendedDescription": "Peringatan menawarkan tanda tangan di toko. Anda dapat menyerahkan peralatan tanpa tanda tangan; ini dicatat di riwayat.",
+        "required": "Wajib",
+        "requiredDescription": "Pengambilan ditolak sampai kontrak ditandatangani, secara online oleh pelanggan atau di toko."
+      },
       "readOnlyNotice": "Hanya baca: hanya pemilik dan administrator yang dapat mengubah pengaturan toko ini.",
       "customerFields": {
         "title": "Data pelanggan",
@@ -7935,6 +7974,8 @@
       "redirecting": "Mengalihkan ke pembayaran...",
       "securePayment": "Pembayaran aman dengan Stripe",
       "backToStore": "Kembali ke toko",
+      "acceptContractRich": "Saya telah membaca dan menerima <terms>syarat dan ketentuan sewa</terms>",
+      "acceptContractRequired": "Terima syarat dan ketentuan sewa untuk melanjutkan.",
       "errors": {
         "expiredTitle": "Tautan sudah habis masa berlakunya",
         "expiredDescription": "Tautan pembayaran ini telah kedaluwarsa. Silakan hubungi toko untuk meminta yang baru.",
@@ -8088,7 +8129,7 @@
       "signContract": "Tanda tangani kontrak",
       "contractSigned": "Kontrak ditandatangani",
       "downloadContract": "Unduh kontrak",
-      "signContractConfirmation": "Dengan melanjutkan, Anda mengonfirmasi bahwa Anda telah membaca dan menerima kontrak sewa ini.",
+      "signContractConfirmation": "Anda menerima <contract>kontrak sewa</contract> serta syarat dan ketentuan sewa. Tanggal dan alamat IP Anda dicatat.",
       "signContractError": "Kontrak tidak dapat ditandatangani. Silakan coba lagi.",
       "invoiceDocuments": {
         "title": "Faktur dan nota kredit",
@@ -9010,10 +9051,10 @@
       "customerText": "Saya mengakui bahwa saya telah membaca dan menyetujui syarat dan ketentuan sewa umum tanpa syarat.",
       "dateLabel": "Tanggal:",
       "ipLabel": "IP:",
-      "automatic": "Divalidasi secara otomatis",
-      "automaticText": "Kontrak secara otomatis divalidasi ketika reservasi dikonfirmasi atau dibayar.",
       "atBooking": "Ditandatangani saat pemesanan",
       "atBookingText": "Persetujuan atas ketentuan sewa saat memesan secara online dianggap sebagai penandatanganan kontrak ini.",
+      "inStore": "Ditandatangani di toko",
+      "signerLabel": "Penanda tangan:",
       "signedOnLabel": "Ditandatangani pada:",
       "validatedOnLabel": "Divalidasi pada:"
     },
@@ -9136,6 +9177,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Toko ini sedang tidak menerima reservasi online. {hasContact, select, yes {Hubungi toko: {contact}} other {Silakan hubungi toko secara langsung.}}",
     "generic": "Terjadi kesalahan",
+    "contractNotSignable": "Kontrak ini tidak dapat ditandatangani lagi.",
+    "contractSignatureRequired": "Toko ini mewajibkan pelanggan menandatangani kontraknya sebelum pengambilan.",
     "pageLoadError": "Kami tidak dapat memuat halaman ini. Silakan coba lagi.",
     "notFound": "Halaman tidak ditemukan",
     "notFoundDescription": "Halaman yang Anda cari tidak ada atau telah dipindahkan.",

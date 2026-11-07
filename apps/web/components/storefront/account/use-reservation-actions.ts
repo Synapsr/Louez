@@ -12,6 +12,7 @@ import {
   cancelReservationRequest,
   createReservationPaymentSession,
   declineQuote,
+  signContract,
 } from "@/app/(storefront)/[slug]/account/reservations/[reservationId]/actions";
 
 import { invalidateStorefrontReservationData } from "@/lib/queries/storefront.invalidation";
@@ -131,5 +132,16 @@ export const useReservationActions = ({
     },
   });
 
-  return { pay, accept, decline, cancel, error };
+  const sign = useMutation({
+    mutationFn: async () => {
+      if (readOnly) return null;
+      const result = await signContract(storeSlug, reservationId);
+      if (!("success" in result)) toActionError(result);
+    },
+    onMutate: () => setError(null),
+    onSuccess: refreshReservation,
+    onError: (failure) => fail(failure, tErrors("generic")),
+  });
+
+  return { pay, accept, decline, cancel, sign, error };
 };

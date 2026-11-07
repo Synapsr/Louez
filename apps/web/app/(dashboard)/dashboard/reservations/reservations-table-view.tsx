@@ -28,6 +28,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@louez/ui";
+import {
+  ContractSignatureBadge,
+  showsContractSignature,
+} from "@/components/dashboard/contract-signature-badge";
 import { formatStoreDateRange } from "@/lib/utils/store-date";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 import { getCurrencySymbol } from "@louez/utils";
@@ -176,13 +180,14 @@ export function ReservationsTableView({
                 {t("paymentStatusLabel")}
               </SortableHead>
               <TableHead className="hidden lg:table-cell">{t("payments")}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t("contract.title")}</TableHead>
               <TableHead className="w-[50px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {reservations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                   {t("noReservations")}
                 </TableCell>
               </TableRow>
@@ -354,6 +359,16 @@ export function ReservationsTableView({
                             </div>
                           </TooltipContent>
                         </Tooltip>
+                      )}
+                    </TableCell>
+
+                    {/* Contract (hidden on small screens) */}
+                    <TableCell className="hidden lg:table-cell">
+                      {showsContractSignature(status, reservation.signedAt) && (
+                        <ContractSignatureBadge
+                          signedAt={reservation.signedAt}
+                          signatureMethod={reservation.signatureMethod}
+                        />
                       )}
                     </TableCell>
 

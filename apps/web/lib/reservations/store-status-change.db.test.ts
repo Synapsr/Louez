@@ -137,13 +137,14 @@ describe("store status change (database)", { skip: skipWithoutTestDatabase() }, 
     const [row] = await louezDb.db
       .select({
         status: louezDb.reservations.status,
-        signed: louezDb.reservations.signedAt,
+        validated: louezDb.reservations.contractValidatedAt,
+        signedAt: louezDb.reservations.signedAt,
         billableAt: louezDb.reservations.billableAt,
         withdrawnAt: louezDb.reservations.withdrawnAt,
       })
       .from(louezDb.reservations)
       .where(eq(louezDb.reservations.id, id));
-    return row && { ...row, signed: row.signed !== null };
+    return row && { ...row, validated: row.validated !== null };
   }
 
   async function readActivity(id: string) {
@@ -196,7 +197,8 @@ describe("store status change (database)", { skip: skipWithoutTestDatabase() }, 
     );
     const row = await readReservation(id);
     assert.equal(row?.status, "confirmed");
-    assert.equal(row?.signed, true);
+    assert.equal(row?.validated, true);
+    assert.equal(row?.signedAt, null, "validation is not the customer's signature");
     assert.ok(row?.billableAt);
     assert.deepEqual(await readStock(productId, itemId), { stock: 3, consumed: 2 });
     // Both rows can share a second, so they are matched by type, not by order.
@@ -279,7 +281,7 @@ describe("store status change (database)", { skip: skipWithoutTestDatabase() }, 
     );
     const row = await readReservation(id);
     assert.equal(row?.status, "cancelled");
-    assert.equal(row?.signed, false, "a cancellation validates no contract");
+    assert.equal(row?.validated, false, "a cancellation validates no contract");
     assert.ok(row?.withdrawnAt);
     assert.deepEqual(await readStock(productId, itemId), { stock: 5, consumed: 0 });
 
@@ -368,6 +370,6 @@ describe("store status change (database)", { skip: skipWithoutTestDatabase() }, 
       assert.deepEqual(await readActivity(id), []);
     }
     assert.equal((await readReservation(confirmed))?.status, "confirmed");
-    assert.equal((await readReservation(confirmed))?.signed, false);
+    assert.equal((await readReservation(confirmed))?.validated, false);
   });
 });

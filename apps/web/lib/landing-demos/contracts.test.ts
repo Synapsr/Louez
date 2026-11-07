@@ -39,16 +39,16 @@ test("contract snapshots use the rolling default booking and keep its financial 
   }
 });
 
-test("PDF validation uses the reservation confirmation time and has no signature or IP", () => {
+test("PDF is signed at booking and validated at confirmation, without an IP", () => {
   const snapshot = createDemoContractSnapshot();
   const first = createDemoContractDetail("fr", snapshot);
   const second = createDemoContractDetail("fr", snapshot);
   assert.deepEqual(first, second);
   const props = createDemoContractProps("fr", snapshot, fr.contract);
-  assert.equal(props.reservation.automaticContractValidation, true);
   assert.equal(props.reservation.signatureIp, null);
+  assert.deepEqual(props.reservation.signedAt, first.reservation.createdAt);
   assert.deepEqual(
-    props.reservation.signedAt,
+    props.reservation.contractValidatedAt,
     first.reservation.activity.find((item) => item.activityType === "confirmed")?.createdAt,
   );
   assert.deepEqual(props.document.generatedAt, first.reservation.createdAt);

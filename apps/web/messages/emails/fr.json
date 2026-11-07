@@ -40,7 +40,7 @@
     "title": "Réservation confirmée !",
     "body": "Votre réservation #{number} est confirmée. Voici le récapitulatif :",
     "summary": "Récapitulatif",
-    "contractSignature": "Votre contrat est joint et prêt à être signé en ligne.",
+    "contractSignature": "Votre contrat de location est prêt. Signez-le en ligne avant de récupérer le matériel.",
     "signContract": "Signer le contrat"
   },
   "requestReceived": {
@@ -86,7 +86,9 @@
     "dontForget": "N'oubliez pas :",
     "bringId": "Une pièce d'identité",
     "bringConfirmation": "Votre confirmation de réservation",
-    "seeTomorrow": "À demain !"
+    "seeTomorrow": "À demain !",
+    "contractSignature": "Votre contrat de location n'est pas encore signé. Merci de le signer en ligne avant de récupérer le matériel.",
+    "signContract": "Signer le contrat"
   },
   "reminderReturn": {
     "subject": "Rappel : retour de votre matériel le {date}",
@@ -329,7 +331,9 @@
     "subject": "Votre contrat de location #{number}",
     "title": "Votre contrat de location",
     "body": "Voici le contrat de location pour votre réservation #{number}.",
-    "downloadContract": "Télécharger le contrat"
+    "downloadContract": "Télécharger le contrat",
+    "signBody": "Voici le contrat de location de votre réservation #{number}. Merci de le lire et de le signer en ligne avant de récupérer le matériel.",
+    "signContract": "Signer le contrat"
   },
   "customMessage": {
     "subject": "À propos de votre réservation #{number}"

@@ -2463,10 +2463,31 @@
       },
       "contract": {
         "title": "Contract",
-        "signed": "Signed on {date}",
-        "notSigned": "Not signed",
         "generate": "Generate contract",
-        "download": "Download"
+        "download": "Download",
+        "signedBadge": "Contract signed",
+        "unsignedBadge": "Contract not signed",
+        "signedOn": "On {date}",
+        "unsignedTooltip": "The customer hasn't accepted the contract yet. They can sign it from the link in their email, or in store at pickup.",
+        "methods": {
+          "checkout": "Accepted when booking online",
+          "payment_page": "Signed on the payment page",
+          "account": "Signed from their customer account",
+          "in_store": "Signed in store"
+        },
+        "signInStore": "Sign in store",
+        "sendSignatureLink": "Send for signature",
+        "signatureLinkSent": "Signing link sent to the customer",
+        "signDialog": {
+          "title": "Sign the contract in store",
+          "description": "Let the customer read the contract, then sign on this device. Their signature and name will appear on the contract.",
+          "viewContract": "Open the contract",
+          "signerName": "Signer's name",
+          "acceptance": "The customer has read the contract and the rental terms and accepts them.",
+          "confirm": "Confirm signature",
+          "success": "Contract signed",
+          "alreadySigned": "This contract is already signed."
+        }
       },
       "notes": {
         "title": "Internal notes",
@@ -2735,6 +2756,9 @@
         "quote_accepted": "Quote accepted",
         "quote_declined": "Quote declined",
         "overbooked": "Overbooked",
+        "contract_signed": "Contract signed",
+        "contractUnsigned": "Without signed contract",
+        "signedBy": "Signed by {name}",
         "showAll": "Show all ({count} events)",
         "showLess": "Show less",
         "paymentFailure": {
@@ -2796,6 +2820,11 @@
         "warningDepositTitle": "Deposit not collected",
         "warningDepositDescription": "The {amount} deposit has not been collected yet. Make sure to collect it before handing over the equipment.",
         "acknowledgePickupWarnings": "I understand and wish to continue despite these warnings",
+        "contractUnsigned": "Contract not signed",
+        "warningContractTitle": "Contract not signed",
+        "warningContractDescription": "The customer hasn't signed their contract yet. Have them sign it in store, or continue without a signature: it will be noted in the history.",
+        "acknowledgePickupWithoutSignature": "I understand and want to continue, even without a signed contract",
+        "warningContractRequiredDescription": "Your store requires the contract to be signed before pickup. Have the customer sign in store to continue.",
         "confirmPickup": "Confirm pickup",
         "returnConfirmTitle": "Confirm return",
         "returnConfirmDescription": "Check the equipment condition and financial summary before confirming the return.",
@@ -6297,6 +6326,16 @@
         "description": "Customers can extend when equipment is available and the extra cost can be calculated. Special cases require your approval.",
         "maxDays": "Maximum extra days (leave empty for no limit)"
       },
+      "contractSignature": {
+        "title": "Contract signature",
+        "description": "What happens when you mark a reservation picked up while the customer hasn't signed their contract.",
+        "optional": "Optional",
+        "optionalDescription": "No warning at pickup. The \"Contract not signed\" badge stays visible on the reservation.",
+        "recommended": "Recommended",
+        "recommendedDescription": "A warning offers to have it signed in store. You can hand over the equipment without a signature; it is noted in the history.",
+        "required": "Required",
+        "requiredDescription": "Pickup is refused until the contract is signed, online by the customer or in store."
+      },
       "customerFields": {
         "title": "Customer record",
         "native": {
@@ -7935,6 +7974,8 @@
       "redirecting": "Redirecting to payment...",
       "securePayment": "Secure payment by Stripe",
       "backToStore": "Back to store",
+      "acceptContractRich": "I have read and accept the <terms>rental terms and conditions</terms>",
+      "acceptContractRequired": "Accept the rental terms and conditions to continue.",
       "errors": {
         "expiredTitle": "Link expired",
         "expiredDescription": "This payment link has expired. Please contact the store to request a new one.",
@@ -8088,7 +8129,7 @@
       "signContract": "Sign contract",
       "contractSigned": "Contract signed",
       "downloadContract": "Download contract",
-      "signContractConfirmation": "By continuing, you confirm that you have read and accept this rental contract.",
+      "signContractConfirmation": "You accept the <contract>rental contract</contract> and the rental terms and conditions. The date and your IP address are recorded.",
       "signContractError": "The contract could not be signed. Please try again.",
       "invoiceDocuments": {
         "title": "Invoices and credit notes",
@@ -9010,10 +9051,10 @@
       "customerText": "I acknowledge that I have read and agree to the general rental terms and conditions without reservation.",
       "dateLabel": "Date:",
       "ipLabel": "IP:",
-      "automatic": "Automatically validated",
-      "automaticText": "Contract automatically validated when the reservation is confirmed or paid.",
       "atBooking": "Signed at booking",
       "atBookingText": "Rental terms accepted when booking online, which counts as signing this contract.",
+      "inStore": "Signed in store",
+      "signerLabel": "Signer:",
       "signedOnLabel": "Signed on:",
       "validatedOnLabel": "Validated on:"
     },
@@ -9136,6 +9177,8 @@
   "errors": {
     "storeNotAcceptingReservations": "This store isn't taking reservations online right now. {hasContact, select, yes {Contact the store: {contact}} other {Please contact the store directly.}}",
     "generic": "An error occurred",
+    "contractNotSignable": "This contract can no longer be signed.",
+    "contractSignatureRequired": "This store requires the customer to sign their contract before pickup.",
     "pageLoadError": "We couldn't load this page. Please try again.",
     "notFound": "Page not found",
     "notFoundDescription": "The page you're looking for doesn't exist or has been moved.",

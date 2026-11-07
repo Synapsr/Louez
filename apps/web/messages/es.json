@@ -2463,10 +2463,31 @@
       },
       "contract": {
         "title": "Contrato",
-        "signed": "Firmado el {date}",
-        "notSigned": "No firmado",
         "generate": "Generar contrato",
-        "download": "Descargar"
+        "download": "Descargar",
+        "signedBadge": "Contrato firmado",
+        "unsignedBadge": "Contrato sin firmar",
+        "signedOn": "El {date}",
+        "unsignedTooltip": "El cliente aún no ha aceptado el contrato. Puede firmarlo desde el enlace de su correo o en la tienda al recoger.",
+        "methods": {
+          "checkout": "Aceptado al reservar en línea",
+          "payment_page": "Firmado en la página de pago",
+          "account": "Firmado desde su cuenta de cliente",
+          "in_store": "Firmado en la tienda"
+        },
+        "signInStore": "Firmar en la tienda",
+        "sendSignatureLink": "Enviar para firmar",
+        "signatureLinkSent": "Enlace de firma enviado al cliente",
+        "signDialog": {
+          "title": "Firma del contrato en la tienda",
+          "description": "Deje que el cliente lea el contrato y firme en este dispositivo. Su firma y su nombre aparecerán en el contrato.",
+          "viewContract": "Abrir el contrato",
+          "signerName": "Nombre del firmante",
+          "acceptance": "El cliente ha leído el contrato y las condiciones de alquiler y las acepta.",
+          "confirm": "Validar la firma",
+          "success": "Contrato firmado",
+          "alreadySigned": "Este contrato ya está firmado."
+        }
       },
       "notes": {
         "title": "Notas internas",
@@ -2735,6 +2756,9 @@
         "quote_accepted": "Presupuesto aceptado",
         "quote_declined": "Presupuesto rechazado",
         "overbooked": "Sobrevendida",
+        "contract_signed": "Contrato firmado",
+        "contractUnsigned": "Sin contrato firmado",
+        "signedBy": "Firmado por {name}",
         "showAll": "Ver todo ({count} eventos)",
         "showLess": "Ver menos",
         "paymentFailure": {
@@ -2796,6 +2820,11 @@
         "warningDepositTitle": "Depósito no cobrado",
         "warningDepositDescription": "El depósito de {amount} aún no se ha cobrado. Asegúrese de cobrarlo antes de entregar el equipo.",
         "acknowledgePickupWarnings": "Entiendo y deseo continuar a pesar de estas advertencias",
+        "contractUnsigned": "Contrato sin firmar",
+        "warningContractTitle": "Contrato sin firmar",
+        "warningContractDescription": "El cliente aún no ha firmado su contrato. Pídale que lo firme en la tienda o continúe sin firma: quedará registrado en el historial.",
+        "acknowledgePickupWithoutSignature": "Entiendo y deseo continuar, incluso sin contrato firmado",
+        "warningContractRequiredDescription": "Su tienda exige la firma del contrato antes de la recogida. Pida al cliente que firme en la tienda para continuar.",
         "confirmPickup": "Confirmar recogida",
         "returnConfirmTitle": "Confirmar devolución",
         "returnConfirmDescription": "Verifique el estado del equipo y el resumen financiero antes de confirmar.",
@@ -6297,6 +6326,16 @@
         "description": "Los clientes pueden prolongar si hay disponibilidad y se puede calcular el suplemento. Los casos especiales requieren su aprobación.",
         "maxDays": "Máximo de días adicionales (vacío: sin límite)"
       },
+      "contractSignature": {
+        "title": "Firma del contrato",
+        "description": "Qué ocurre cuando marca una reserva como recogida y el cliente no ha firmado su contrato.",
+        "optional": "Opcional",
+        "optionalDescription": "Sin aviso en la recogida. La insignia «Contrato sin firmar» sigue visible en la reserva.",
+        "recommended": "Recomendada",
+        "recommendedDescription": "Un aviso propone firmarlo en la tienda. Puede entregar el material sin firma; queda registrado en el historial.",
+        "required": "Obligatoria",
+        "requiredDescription": "La recogida se rechaza mientras el contrato no esté firmado, en línea por el cliente o en la tienda."
+      },
       "customerFields": {
         "title": "Ficha de cliente",
         "native": {
@@ -7935,6 +7974,8 @@
       "redirecting": "Redirigiendo al pago...",
       "securePayment": "Pago seguro con Stripe",
       "backToStore": "Volver a la tienda",
+      "acceptContractRich": "He leído y acepto las <terms>condiciones generales de alquiler</terms>",
+      "acceptContractRequired": "Acepta las condiciones generales de alquiler para continuar.",
       "errors": {
         "expiredTitle": "Enlace caducado",
         "expiredDescription": "Este enlace de pago ha caducado. Contacte con la tienda para solicitar uno nuevo.",
@@ -8099,7 +8140,7 @@
       "signContract": "Firmar contrato",
       "contractSigned": "Contrato firmado",
       "downloadContract": "Descargar contrato",
-      "signContractConfirmation": "Al continuar, confirma que ha leído y acepta este contrato de alquiler.",
+      "signContractConfirmation": "Acepta el <contract>contrato de alquiler</contract> y las condiciones generales de alquiler. Se registran la fecha y su dirección IP.",
       "signContractError": "No se pudo firmar el contrato. Inténtelo de nuevo.",
       "invoiceDocuments": {
         "title": "Facturas y notas de crédito",
@@ -9010,10 +9051,10 @@
       "customerText": "Reconozco que he leido y acepto los terminos y condiciones generales de alquiler sin reservas.",
       "dateLabel": "Fecha:",
       "ipLabel": "IP:",
-      "automatic": "Validado automáticamente",
-      "automaticText": "Este contrato se ha validado automáticamente conforme a las condiciones de alquiler.",
       "atBooking": "Firmado al reservar",
       "atBookingText": "Condiciones generales de alquiler aceptadas al reservar en línea, lo que equivale a la firma del presente contrato.",
+      "inStore": "Firmado en la tienda",
+      "signerLabel": "Firmante:",
       "signedOnLabel": "Firmado el:",
       "validatedOnLabel": "Validado el:"
     },
@@ -9136,6 +9177,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Esta tienda no acepta reservas en línea en este momento. {hasContact, select, yes {Ponte en contacto con la tienda: {contact}} other {Ponte en contacto directamente con la tienda.}}",
     "generic": "Ocurrio un error",
+    "contractNotSignable": "Este contrato ya no se puede firmar.",
+    "contractSignatureRequired": "Esta tienda exige que el cliente firme su contrato antes de la recogida.",
     "pageLoadError": "No pudimos cargar esta pagina. Por favor intente de nuevo.",
     "notFound": "Pagina no encontrada",
     "notFoundDescription": "La pagina que busca no existe o ha sido movida.",

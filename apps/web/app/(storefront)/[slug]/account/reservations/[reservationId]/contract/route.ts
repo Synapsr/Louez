@@ -40,17 +40,17 @@ const getPreferredLocale = (acceptLanguage: string | null): SupportedLocale => {
 };
 
 /**
- * The stored contract is served as is when nothing changed since it was
- * generated (no edit, no signature after it) and no language was forced;
- * otherwise it is regenerated in the requested language.
+ * The stored contract is served as is when it is final and nothing changed since it was
+ * generated (no edit, no signature after it) and no language was forced; otherwise it is
+ * regenerated in the requested language.
  */
 const isStoredContractCurrent = (
   contract: { generatedAt: Date } | undefined,
-  reservation: { updatedAt: Date; signedAt: Date | null },
+  reservation: { updatedAt: Date; signedAt: Date | null; contractValidatedAt: Date | null },
   forcedLocale: boolean,
 ): contract is { generatedAt: Date } =>
   contract !== undefined &&
-  reservation.signedAt !== null &&
+  reservation.contractValidatedAt !== null &&
   !forcedLocale &&
   contract.generatedAt >= reservation.updatedAt &&
   (reservation.signedAt === null || contract.generatedAt >= reservation.signedAt);
@@ -75,7 +75,14 @@ export async function GET(
   }
 
   const reservation = await db.query.reservations.findFirst({
-    columns: { id: true, status: true, updatedAt: true, signedAt: true, locale: true },
+    columns: {
+      id: true,
+      status: true,
+      updatedAt: true,
+      signedAt: true,
+      contractValidatedAt: true,
+      locale: true,
+    },
     where: and(
       eq(reservations.id, reservationId),
       eq(reservations.storeId, store.id),

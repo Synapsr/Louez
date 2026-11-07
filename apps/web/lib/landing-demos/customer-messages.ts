@@ -59,6 +59,7 @@ export const createDemoEmailContext = (
     logoUrl: null,
     reservationUrl: "https://maisonduvelo.example/account/reservations/demo-reservation-0",
     showPaymentCta: false,
+    contractSigned: true,
   };
 };
 

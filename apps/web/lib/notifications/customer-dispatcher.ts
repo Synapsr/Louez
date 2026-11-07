@@ -334,6 +334,7 @@ async function sendCustomerEmail(
       return sendReminderPickupEmail({
         ...emailParams,
         reservationUrl: ctx.reservationUrl || "",
+        contractSignatureUrl: ctx.contractSignatureUrl,
       });
 
     case "customer_reminder_return":

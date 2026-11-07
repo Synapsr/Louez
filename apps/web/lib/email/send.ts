@@ -622,6 +622,8 @@ interface ReminderPickupEmailParams {
     startDate: Date
   }
   reservationUrl: string
+  /** Set while the customer has not signed the contract: the reminder asks them to. */
+  contractSignatureUrl?: string
   additionalMessage?: string | null
   locale?: EmailLocale
 }
@@ -631,6 +633,7 @@ export async function renderReminderPickupEmail({
   customer,
   reservation,
   reservationUrl,
+  contractSignatureUrl,
   additionalMessage,
   locale = 'fr',
 }: ReminderPickupEmailParams): Promise<RenderedEmail> {
@@ -640,6 +643,7 @@ export async function renderReminderPickupEmail({
     customer,
     reservation: { number: reservation.number, startDate: reservation.startDate },
     reservationUrl,
+    contractSignatureUrl,
     additionalMessage,
     locale,
     logoUrl: logo.url,
@@ -655,6 +659,7 @@ export async function sendReminderPickupEmail({
   customer,
   reservation,
   reservationUrl,
+  contractSignatureUrl,
   additionalMessage,
   locale = 'fr',
 }: ReminderPickupEmailParams & { to: string }) {
@@ -663,6 +668,7 @@ export async function sendReminderPickupEmail({
     customer,
     reservation,
     reservationUrl,
+    contractSignatureUrl,
     additionalMessage,
     locale,
   })

@@ -1462,6 +1462,16 @@ export const depositStatus = mysqlEnum("deposit_status", [
   "failed", // Authorization failed
 ]);
 
+// Where the customer accepted the contract: in the checkout, on the payment page, from
+// their account, or in store on the renter's device (with a drawn signature).
+export const CONTRACT_SIGNATURE_METHODS = [
+  "checkout",
+  "payment_page",
+  "account",
+  "in_store",
+] as const;
+export type ContractSignatureMethod = (typeof CONTRACT_SIGNATURE_METHODS)[number];
+
 export const reservations = mysqlTable(
   "reservations",
   {
@@ -1497,9 +1507,13 @@ export const reservations = mysqlTable(
     taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
     taxRate: decimal("tax_rate", { precision: 5, scale: 2 }),
 
-    // Signature
+    // The customer's acceptance of the contract: at checkout, on the payment page, from
+    // their account, or in store on the renter's device. Never set by a status change.
     signedAt: timestamp("signed_at", { mode: "date" }),
     signatureIp: varchar("signature_ip", { length: 50 }),
+    signatureMethod: varchar("signature_method", { length: 20 }).$type<ContractSignatureMethod>(),
+    // When the contract became final, on confirmation or payment. Not a customer signature.
+    contractValidatedAt: timestamp("contract_validated_at", { mode: "date" }),
 
     // Deposit (caution) management
     depositStatus: depositStatus.default("pending"),
@@ -1967,6 +1981,7 @@ export const activityType = mysqlEnum("activity_type", [
   "inspection_signed", // Customer signed the inspection
   "quote_accepted", // Customer accepted a quote
   "quote_declined", // Customer declined a quote
+  "contract_signed", // Customer accepted the rental contract
 ]);
 
 export const reservationActivity = mysqlTable(
@@ -1988,6 +2003,15 @@ export const reservationActivity = mysqlTable(
     userIdx: index("reservation_activity_user_idx").on(table.userId),
   }),
 );
+
+// A signature drawn in store, kept apart so reservation lists never load the image.
+export const reservationContractSignatures = mysqlTable("reservation_contract_signatures", {
+  id: id(),
+  reservationId: varchar("reservation_id", { length: 21 }).notNull().unique(),
+  signerName: varchar("signer_name", { length: 255 }).notNull(),
+  image: longtext("image").notNull(), // PNG data URL
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
 
 export const documents = mysqlTable("documents", {
   id: id(),

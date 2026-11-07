@@ -187,6 +187,22 @@ export const DEFAULT_INSPECTION_SETTINGS: InspectionSettings = {
 };
 
 // ============================================================================
+// Contract signature
+// ============================================================================
+
+/**
+ * What marking a reservation picked up does while the customer has not signed the contract:
+ * - 'optional': nothing, the badge on the reservation is enough
+ * - 'recommended': a warning, staff can have it signed in store or hand over anyway
+ * - 'required': refused until the contract is signed
+ */
+export type ContractSignatureMode = "optional" | "recommended" | "required";
+
+export const CONTRACT_SIGNATURE_MODES = ["optional", "recommended", "required"] as const;
+
+export const DEFAULT_CONTRACT_SIGNATURE_MODE: ContractSignatureMode = "recommended";
+
+// ============================================================================
 // Integrations Settings
 // ============================================================================
 
@@ -321,6 +337,8 @@ export interface StoreSettings {
   billingAddress?: BillingAddress; // Separate billing address for contracts
   delivery?: DeliverySettings; // Delivery configuration
   inspection?: InspectionSettings; // Inventory inspection (etat des lieux)
+  /** Whether the contract must be signed before pickup. Absent: 'recommended'. */
+  contractSignatureMode?: ContractSignatureMode;
   integrationData?: IntegrationData;
   /** Storefront contact page: channels offered and form forwarding. */
   contact?: StoreContactSettings;

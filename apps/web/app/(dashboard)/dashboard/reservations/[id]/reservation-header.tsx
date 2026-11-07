@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@louez/ui";
 
-import { ReservationIdentity } from "./reservation-identity";
+import { ReservationIdentity, type ReservationIdentityProps } from "./reservation-identity";
 import { ContractDownloadContext } from "@/lib/document-previews/contract-download-context";
 import { SendEmailModal } from "./send-email-modal";
 import { generateAccessUrl } from "@/app/(dashboard)/dashboard/reservations/actions";
@@ -70,6 +70,7 @@ interface ReservationHeaderProps {
   depositCollected: number;
   depositReturned: number;
   totalAmount: number;
+  contractSignature?: ReservationIdentityProps["contractSignature"];
   // Optional
   sentEmails?: string[];
   currency?: string;
@@ -95,6 +96,7 @@ export function ReservationHeader({
   depositCollected,
   depositReturned,
   totalAmount: _totalAmount,
+  contractSignature,
   sentEmails = [],
   currency: _currency = "EUR",
   readOnly = false,
@@ -237,6 +239,7 @@ export function ReservationHeader({
               depositAmount={depositAmount}
               depositCollected={depositCollected}
               depositReturned={depositReturned}
+              contractSignature={contractSignature}
             />
           </div>
 

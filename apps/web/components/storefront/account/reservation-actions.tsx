@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { CreditCardIcon, DownloadIcon } from "lucide-react";
+import { CreditCardIcon, DownloadIcon, PenLineIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@louez/ui";
@@ -22,11 +22,11 @@ interface ReservationActionsProps {
   contractHref: string;
 }
 
-type PendingDialog = "accept" | "decline" | "cancel" | null;
+type PendingDialog = "accept" | "decline" | "cancel" | "sign" | null;
 
 /**
  * The single actions zone of a reservation: one primary button (accept
- * the quote, pay) and its secondaries, sitting in the page's status bar.
+ * the quote, pay, else sign) and its secondaries, sitting in the page's status bar.
  * Nothing renders when the customer has nothing to do and no contract to
  * download.
  */
@@ -40,8 +40,9 @@ export const ReservationActions = ({
   onAcceptQuote,
 }: ReservationActionsProps) => {
   const t = useTranslations("storefront.account");
+  const tCommon = useTranslations("common");
   const [dialog, setDialog] = useState<PendingDialog>(null);
-  const { pay, accept, decline, cancel, error } = useReservationActions({
+  const { pay, accept, decline, cancel, sign, error } = useReservationActions({
     storeSlug,
     reservationId,
     hasPayment,
@@ -53,10 +54,12 @@ export const ReservationActions = ({
     actions.canCancelRequest ||
     actions.canAcceptQuote ||
     actions.canPay ||
+    actions.canSign ||
     actions.canDownloadContract;
   if (!hasAnything && !error) return null;
 
-  const isBusy = pay.isPending || accept.isPending || decline.isPending || cancel.isPending;
+  const isBusy =
+    pay.isPending || accept.isPending || decline.isPending || cancel.isPending || sign.isPending;
   const closeDialog = () => setDialog(null);
 
   return (
@@ -110,6 +113,19 @@ export const ReservationActions = ({
           </Button>
         ) : null}
 
+        {actions.canSign ? (
+          <Button
+            size="xl"
+            variant={actions.canPay || actions.canAcceptQuote ? "outline" : "default"}
+            className="w-full sm:h-10 sm:w-auto"
+            disabled={isBusy}
+            onClick={() => setDialog("sign")}
+          >
+            <PenLineIcon data-slot="icon" />
+            {t("signContract")}
+          </Button>
+        ) : null}
+
         {actions.canDownloadContract ? (
           <Button
             size="xl"
@@ -143,6 +159,30 @@ export const ReservationActions = ({
         destructive
         isPending={cancel.isPending}
         onConfirm={() => cancel.mutate(undefined, { onSettled: closeDialog })}
+      />
+      <ReservationConfirmDialog
+        modal={!readOnly}
+        open={dialog === "sign"}
+        onOpenChange={(open) => {
+          if (!sign.isPending) setDialog(open ? "sign" : null);
+        }}
+        title={t("signContractTitle")}
+        description={t.rich("signContractConfirmation", {
+          contract: (chunks) => (
+            <a
+              href={contractHref}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              {chunks}
+            </a>
+          ),
+        })}
+        cancelLabel={tCommon("cancel")}
+        confirmLabel={t("confirmSign")}
+        isPending={sign.isPending}
+        onConfirm={() => sign.mutate(undefined, { onSettled: closeDialog })}
       />
       <ReservationConfirmDialog
         modal={!readOnly}

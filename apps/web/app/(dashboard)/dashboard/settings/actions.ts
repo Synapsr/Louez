@@ -1,6 +1,7 @@
 "use server";
 
 import { db, markStore, markStoreReservations, stores } from "@louez/db";
+import { CONTRACT_SIGNATURE_MODES } from "@louez/types";
 import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -29,6 +30,7 @@ const slugSchema = z
 const extensionRulesSchema = z.object({
   automaticExtensions: z.boolean(),
   maxExtensionDays: z.number().int().min(1).max(365).nullable(),
+  contractSignatureMode: z.enum(CONTRACT_SIGNATURE_MODES),
 });
 
 /** Country, currency and billing address (the "Entreprise" settings page). */

@@ -40,7 +40,7 @@
     "title": "预订已确认！",
     "body": "您的预订#{number} 已确认。总结如下：",
     "summary": "总结",
-    "contractSignature": "您的合同已附上并准备在线签署。",
+    "contractSignature": "您的租赁合同已准备就绪。请在取货前在线签署。",
     "signContract": "签订合同"
   },
   "requestReceived": {
@@ -86,7 +86,9 @@
     "dontForget": "不要忘记：",
     "bringId": "有效身份证件",
     "bringConfirmation": "您的预订确认",
-    "seeTomorrow": "明天见！"
+    "seeTomorrow": "明天见！",
+    "contractSignature": "您的租赁合同尚未签署。请在取件前在线签署。",
+    "signContract": "签署合同"
   },
   "reminderReturn": {
     "subject": "提醒：{date} 上的设备归还",
@@ -329,7 +331,9 @@
     "subject": "您的租赁合同#{number}",
     "title": "您的租赁合同",
     "body": "这是您预订的租赁合同#{number}。",
-    "downloadContract": "下载合同"
+    "downloadContract": "下载合同",
+    "signBody": "这是您预订 #{number} 的租赁合同。请在取件前在线阅读并签署。",
+    "signContract": "签署合同"
   },
   "customMessage": {
     "subject": "关于您的预订#{number}"

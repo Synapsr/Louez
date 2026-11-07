@@ -39,7 +39,9 @@
     "subject": "Uw reservering #{number} is bevestigd",
     "title": "Reservering bevestigd!",
     "body": "Uw reservering #{number} is bevestigd. Hier is de samenvatting:",
-    "summary": "Samenvatting"
+    "summary": "Samenvatting",
+    "contractSignature": "Uw huurcontract is klaar. Onderteken het online voordat u het materiaal ophaalt.",
+    "signContract": "Contract ondertekenen"
   },
   "requestReceived": {
     "subject": "Reserveringsaanvraag #{number} ontvangen",
@@ -84,7 +86,9 @@
     "dontForget": "Vergeet niet:",
     "bringId": "Een geldig identiteitsbewijs",
     "bringConfirmation": "Uw reserveringsbevestiging",
-    "seeTomorrow": "Tot morgen!"
+    "seeTomorrow": "Tot morgen!",
+    "contractSignature": "Uw huurcontract is nog niet ondertekend. Onderteken het online voordat u het materiaal ophaalt.",
+    "signContract": "Contract ondertekenen"
   },
   "reminderReturn": {
     "subject": "Herinnering: materiaal retourneren op {date}",
@@ -261,7 +265,9 @@
     "method": "Methode",
     "reservation": "Reservering",
     "confirmation": "Uw betaling is succesvol verwerkt.",
-    "keepEmail": "Bewaar deze e-mail als betalingsbewijs."
+    "keepEmail": "Bewaar deze e-mail als betalingsbewijs.",
+    "contractSignature": "Uw contract is bijgevoegd en klaar om online te ondertekenen.",
+    "signContract": "Contract ondertekenen"
   },
   "paymentFailed": {
     "subject": "Betaling mislukt - Reservering #{number}",
@@ -315,7 +321,9 @@
     "subject": "Uw huurcontract #{number}",
     "title": "Uw huurcontract",
     "body": "Hier is het huurcontract voor uw reservering #{number}.",
-    "downloadContract": "Contract downloaden"
+    "downloadContract": "Contract downloaden",
+    "signBody": "Hier is het huurcontract voor uw reservering #{number}. Lees en onderteken het online voordat u het materiaal ophaalt.",
+    "signContract": "Contract ondertekenen"
   },
   "customMessage": {
     "subject": "Over uw reservering #{number}"

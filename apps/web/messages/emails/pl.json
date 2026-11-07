@@ -39,7 +39,9 @@
     "subject": "Twoja rezerwacja #{number} jest potwierdzona",
     "title": "Rezerwacja potwierdzona!",
     "body": "Twoja rezerwacja #{number} jest potwierdzona. Oto podsumowanie:",
-    "summary": "Podsumowanie"
+    "summary": "Podsumowanie",
+    "contractSignature": "Twoja umowa najmu jest gotowa. Podpisz ją online przed odbiorem sprzętu.",
+    "signContract": "Podpisz umowę"
   },
   "requestReceived": {
     "subject": "Żądanie rezerwacji #{number} otrzymane",
@@ -75,7 +77,9 @@
     "dontForget": "Nie zapomnij:",
     "bringId": "Ważny dokument tożsamości",
     "bringConfirmation": "Potwierdzenie rezerwacji",
-    "seeTomorrow": "Do zobaczenia jutro!"
+    "seeTomorrow": "Do zobaczenia jutro!",
+    "contractSignature": "Twoja umowa najmu nie została jeszcze podpisana. Podpisz ją online przed odbiorem sprzętu.",
+    "signContract": "Podpisz umowę"
   },
   "reminderReturn": {
     "subject": "Przypomnienie: zwrot sprzętu — {date}",
@@ -252,7 +256,9 @@
     "method": "Metoda",
     "reservation": "Rezerwacja",
     "confirmation": "Twoja płatność została pomyślnie przetworzona.",
-    "keepEmail": "Zachowaj ten e-mail jako potwierdzenie płatności."
+    "keepEmail": "Zachowaj ten e-mail jako potwierdzenie płatności.",
+    "contractSignature": "Twoja umowa jest w załączniku i gotowa do podpisania online.",
+    "signContract": "Podpisz umowę"
   },
   "paymentFailed": {
     "subject": "Płatność nieudana - Rezerwacja #{number}",
@@ -315,7 +321,9 @@
     "subject": "Twoja umowa najmu #{number}",
     "title": "Twoja umowa najmu",
     "body": "Oto umowa najmu dla Twojej rezerwacji #{number}.",
-    "downloadContract": "Pobierz umowę"
+    "downloadContract": "Pobierz umowę",
+    "signBody": "Oto umowa najmu dla Twojej rezerwacji #{number}. Przeczytaj ją i podpisz online przed odbiorem sprzętu.",
+    "signContract": "Podpisz umowę"
   },
   "customMessage": {
     "subject": "W sprawie Twojej rezerwacji #{number}"

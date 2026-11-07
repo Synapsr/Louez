@@ -46,6 +46,7 @@ interface ManualReservationEmailReservation {
   customer: { firstName: string; lastName: string; email: string };
   items: { productSnapshot: { name: string }; quantity: number; totalPrice: string }[];
   payments?: { type: string; status: string }[];
+  signedAt: Date | null;
 }
 
 interface BuildManualReservationEmailParams {
@@ -117,6 +118,7 @@ export async function toManualEmailRenderContext(
     reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservation.id}`),
     logoUrl: logo.url,
     showPaymentCta: !isPaid && isStripeEnabled,
+    contractSigned: reservation.signedAt !== null,
   };
 }
 
@@ -139,7 +141,18 @@ export async function buildManualReservationEmail({
   const logo = await resolveEmailLogo(getLogoForLightBackground(store));
   const options: BuildManualEmailFromContextOptions = { logoUrl: logo.url };
 
-  if (payload.templateId === "contract") {
+  const asksForSignature =
+    !reservation.signedAt &&
+    (payload.templateId === "contract" || payload.templateId === "reminder_pickup");
+
+  if (asksForSignature) {
+    options.contractSignatureUrl = await createReservationInstantAccessUrl({
+      storeId: store.id,
+      storeSlug: store.slug,
+      customerEmail: reservation.customer.email,
+      reservationId: reservation.id,
+    });
+  } else if (payload.templateId === "contract") {
     options.contractUrl = await createReservationInstantAccessUrl({
       storeId: store.id,
       storeSlug: store.slug,

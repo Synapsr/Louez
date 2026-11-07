@@ -139,6 +139,9 @@ export function createDemoReservationPages(
         number: String(1042 + index),
         source: "online",
         status,
+        // Booked on the storefront, so the customer accepted the contract at checkout.
+        signedAt: new Date(start.getTime() - 2 * 86_400_000),
+        signatureMethod: "checkout" as const,
         startDate: start,
         endDate: end,
         subtotalAmount: display.subtotalAmount,

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Building2, ExternalLink, MapPin, Pencil, Store, Truck, Shield, User } from "lucide-react";
 
 import type { ReservationItemDetailsView } from "@louez/api/services/customer-fields-online";
+import { DEFAULT_CONTRACT_SIGNATURE_MODE, type ContractSignatureMode } from "@louez/types";
 import { Button } from "@louez/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
 import {
@@ -87,6 +88,7 @@ interface ReservationDetailClientProps {
   smsConfigured: boolean;
   stripeConfigured: boolean;
   inspectionSettings: InspectionSettingsLike;
+  contractSignatureMode?: ContractSignatureMode;
   showStoreLocations: boolean;
   departureInspection: InspectionData | null;
   returnInspection: InspectionData | null;
@@ -131,6 +133,7 @@ export function ReservationDetailClient({
   smsConfigured: _smsConfigured,
   stripeConfigured,
   inspectionSettings,
+  contractSignatureMode = DEFAULT_CONTRACT_SIGNATURE_MODE,
   showStoreLocations,
   departureInspection,
   returnInspection,
@@ -283,6 +286,10 @@ export function ReservationDetailClient({
         depositCollected={depositCollected}
         depositReturned={depositReturned}
         totalAmount={parseFloat(reservation.totalAmount)}
+        contractSignature={{
+          signedAt: reservation.signedAt,
+          signatureMethod: reservation.signatureMethod,
+        }}
         currency={currency}
         sentEmails={reservation.sentEmails || []}
       />
@@ -498,6 +505,9 @@ export function ReservationDetailClient({
             inspectionMode={inspectionSettings.mode}
             hasDepartureInspection={!!departureInspection}
             hasReturnInspection={!!returnInspection}
+            contractSigned={!!reservation.signedAt}
+            contractSignatureMode={contractSignatureMode}
+            customerName={`${reservation.customer.firstName} ${reservation.customer.lastName}`.trim()}
             onRecordPayment={() => setPaymentModalOpen(true)}
           />
 

@@ -2472,10 +2472,31 @@
       },
       "contract": {
         "title": "Contrat",
-        "signed": "Signé le {date}",
-        "notSigned": "Non signé",
         "generate": "Générer le contrat",
-        "download": "Télécharger"
+        "download": "Télécharger",
+        "signedBadge": "Contrat signé",
+        "unsignedBadge": "Contrat non signé",
+        "signedOn": "Le {date}",
+        "unsignedTooltip": "Le client n'a pas encore accepté le contrat. Il peut le signer depuis le lien reçu par email, ou sur place au retrait.",
+        "methods": {
+          "checkout": "Accepté à la réservation en ligne",
+          "payment_page": "Signé sur la page de paiement",
+          "account": "Signé depuis l'espace client",
+          "in_store": "Signé sur place"
+        },
+        "signInStore": "Faire signer sur place",
+        "sendSignatureLink": "Envoyer pour signature",
+        "signatureLinkSent": "Lien de signature envoyé au client",
+        "signDialog": {
+          "title": "Signature du contrat sur place",
+          "description": "Laissez le client relire le contrat puis signer sur cet appareil. Sa signature et son nom figureront sur le contrat.",
+          "viewContract": "Ouvrir le contrat",
+          "signerName": "Nom du signataire",
+          "acceptance": "Le client a pris connaissance du contrat et des conditions générales de location et les accepte.",
+          "confirm": "Valider la signature",
+          "success": "Contrat signé",
+          "alreadySigned": "Ce contrat est déjà signé."
+        }
       },
       "notes": {
         "title": "Notes internes",
@@ -2744,6 +2765,9 @@
         "quote_accepted": "Devis accepté",
         "quote_declined": "Devis refusé",
         "overbooked": "Sur-réservée",
+        "contract_signed": "Contrat signé",
+        "contractUnsigned": "Sans contrat signé",
+        "signedBy": "Signé par {name}",
         "showAll": "Voir tout ({count} événements)",
         "showLess": "Voir moins",
         "paymentFailure": {
@@ -2805,6 +2829,11 @@
         "warningDepositTitle": "Caution non encaissée",
         "warningDepositDescription": "La caution de {amount} n'a pas encore été encaissée. Assurez-vous de l'encaisser avant la remise du matériel.",
         "acknowledgePickupWarnings": "Je comprends et souhaite continuer malgré ces avertissements",
+        "contractUnsigned": "Contrat non signé",
+        "warningContractTitle": "Contrat non signé",
+        "warningContractDescription": "Le client n'a pas encore signé son contrat. Faites-le signer sur place, ou continuez sans signature : ce sera noté dans l'historique.",
+        "acknowledgePickupWithoutSignature": "Je comprends et souhaite continuer, même sans contrat signé",
+        "warningContractRequiredDescription": "Votre boutique exige la signature du contrat avant le retrait. Faites signer le client sur place pour continuer.",
         "confirmPickup": "Confirmer le retrait",
         "returnConfirmTitle": "Confirmer le retour",
         "returnConfirmDescription": "Vérifiez l'état du matériel et le résumé financier avant de confirmer le retour.",
@@ -6297,6 +6326,16 @@
         "description": "Les clients peuvent prolonger si le matériel est disponible et le supplément calculable. Les cas particuliers nécessitent votre accord.",
         "maxDays": "Nombre de jours supplémentaires maximum (vide : sans limite)"
       },
+      "contractSignature": {
+        "title": "Signature du contrat",
+        "description": "Ce qui se passe quand vous marquez une réservation récupérée alors que le client n'a pas signé son contrat.",
+        "optional": "Optionnelle",
+        "optionalDescription": "Pas d'alerte au retrait. Le badge « Contrat non signé » reste visible sur la réservation.",
+        "recommended": "Recommandée",
+        "recommendedDescription": "Une alerte propose de faire signer sur place. Vous pouvez remettre le matériel sans signature, c'est noté dans l'historique.",
+        "required": "Obligatoire",
+        "requiredDescription": "Le retrait est refusé tant que le contrat n'est pas signé, en ligne par le client ou sur place."
+      },
       "customerFields": {
         "title": "Fiche client",
         "native": {
@@ -7935,6 +7974,8 @@
       "redirecting": "Redirection vers le paiement...",
       "securePayment": "Paiement sécurisé par Stripe",
       "backToStore": "Retour à la boutique",
+      "acceptContractRich": "J'ai lu et j'accepte les <terms>conditions générales de location</terms>",
+      "acceptContractRequired": "Acceptez les conditions générales de location pour continuer.",
       "errors": {
         "expiredTitle": "Lien expiré",
         "expiredDescription": "Ce lien de paiement a expiré. Veuillez contacter le loueur pour en obtenir un nouveau.",
@@ -8088,7 +8129,7 @@
       "signContract": "Signer le contrat",
       "contractSigned": "Contrat signé",
       "downloadContract": "Télécharger le contrat",
-      "signContractConfirmation": "En continuant, vous confirmez avoir lu et accepter ce contrat de location.",
+      "signContractConfirmation": "Vous acceptez le <contract>contrat de location</contract> et les conditions générales de location. La date et votre adresse IP sont enregistrées.",
       "signContractError": "Le contrat n’a pas pu être signé. Veuillez réessayer.",
       "invoiceDocuments": {
         "title": "Factures et avoirs",
@@ -9010,10 +9051,10 @@
       "customerText": "Je reconnais avoir pris connaissance des conditions générales de location et les accepte sans réserve.",
       "dateLabel": "Date :",
       "ipLabel": "IP :",
-      "automatic": "Validé automatiquement",
-      "automaticText": "Contrat validé automatiquement lors de la confirmation ou du paiement de la réservation.",
       "atBooking": "Signé à la réservation",
       "atBookingText": "Conditions générales de location acceptées lors de la réservation en ligne, ce qui vaut signature du présent contrat.",
+      "inStore": "Signé sur place",
+      "signerLabel": "Signataire :",
       "signedOnLabel": "Signé le :",
       "validatedOnLabel": "Validé le :"
     },
@@ -9136,6 +9177,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Cette boutique ne prend pas de réservations en ligne pour le moment. {hasContact, select, yes {Contactez-la : {contact}} other {Contactez-la directement.}}",
     "generic": "Une erreur est survenue",
+    "contractNotSignable": "Ce contrat ne peut plus être signé.",
+    "contractSignatureRequired": "Cette boutique exige que le client signe son contrat avant le retrait.",
     "pageLoadError": "Nous n'avons pas pu charger cette page. Veuillez réessayer.",
     "notFound": "Page introuvable",
     "notFoundDescription": "La page que vous recherchez n'existe pas ou a été déplacée.",

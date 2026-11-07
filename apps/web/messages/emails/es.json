@@ -39,7 +39,9 @@
     "subject": "Su reserva #{number} esta confirmada",
     "title": "Reserva confirmada!",
     "body": "Su reserva #{number} esta confirmada. Aqui esta el resumen:",
-    "summary": "Resumen"
+    "summary": "Resumen",
+    "contractSignature": "Su contrato de alquiler está listo. Fírmelo en línea antes de recoger el material.",
+    "signContract": "Firmar el contrato"
   },
   "requestReceived": {
     "subject": "Solicitud de reserva #{number} recibida",
@@ -84,7 +86,9 @@
     "dontForget": "No olvide:",
     "bringId": "Una identificacion valida",
     "bringConfirmation": "Su confirmacion de reserva",
-    "seeTomorrow": "Hasta manana!"
+    "seeTomorrow": "Hasta manana!",
+    "contractSignature": "Su contrato de alquiler aún no está firmado. Fírmelo en línea antes de recoger el material.",
+    "signContract": "Firmar el contrato"
   },
   "reminderReturn": {
     "subject": "Recordatorio: devolucion de equipo el {date}",
@@ -261,7 +265,9 @@
     "method": "Método",
     "reservation": "Reserva",
     "confirmation": "Su pago ha sido procesado correctamente.",
-    "keepEmail": "Guarde este correo como comprobante de pago."
+    "keepEmail": "Guarde este correo como comprobante de pago.",
+    "contractSignature": "Su contrato va adjunto y está listo para firmarse en línea.",
+    "signContract": "Firmar el contrato"
   },
   "paymentFailed": {
     "subject": "Pago fallido - Reserva #{number}",
@@ -315,7 +321,9 @@
     "subject": "Su contrato de alquiler #{number}",
     "title": "Su contrato de alquiler",
     "body": "Aquí tiene el contrato de alquiler de su reserva #{number}.",
-    "downloadContract": "Descargar el contrato"
+    "downloadContract": "Descargar el contrato",
+    "signBody": "Aquí tiene el contrato de alquiler de su reserva #{number}. Léalo y fírmelo en línea antes de recoger el material.",
+    "signContract": "Firmar el contrato"
   },
   "customMessage": {
     "subject": "Sobre su reserva #{number}"

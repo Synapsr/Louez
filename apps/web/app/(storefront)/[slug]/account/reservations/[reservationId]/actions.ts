@@ -5,9 +5,14 @@ import {
   ReservationInventoryError,
 } from "@/lib/reservations/reserve-inventory";
 
-import { validateReservationContract } from "@louez/api/services";
+import {
+  ApiServiceError,
+  signReservationAsCustomer,
+  validateReservationContract,
+} from "@louez/api/services";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -48,6 +53,8 @@ import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { log } from "@/lib/evlog";
 import { sendRequestCancelledEmail } from "@/lib/email/send-request-cancelled-email";
 import { cancelTulipContractForReservation } from "@/lib/integrations/tulip/contracts";
+import { generateContract } from "@/lib/pdf/generate";
+import { canSignContract } from "@/lib/reservations/util.reservation-actions";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 
 const describeError = (error: unknown): string =>
@@ -90,6 +97,63 @@ export async function createReservationPaymentSession(storeSlug: string, reserva
     resolved.session.customerId,
     "account_page",
   );
+}
+
+/** The customer signs the contract from their account: the date and their IP are recorded. */
+export async function signContract(storeSlug: string, reservationId: string) {
+  const parsed = reservationActionInputSchema.safeParse({
+    storeSlug,
+    reservationId,
+  });
+  if (!parsed.success) return { error: "invalidData" };
+
+  const resolved = await resolveCustomerStore(parsed.data.storeSlug);
+  if ("error" in resolved) return { error: resolved.error };
+  const { store, session } = resolved;
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, parsed.data.reservationId),
+      eq(reservations.storeId, store.id),
+      eq(reservations.customerId, session.customerId),
+    ),
+    columns: { status: true, signedAt: true },
+  });
+  if (!reservation) return { error: "reservationNotFound" };
+
+  if (!canSignContract(reservation.status, reservation.signedAt !== null)) {
+    return { error: "contractNotSignable" };
+  }
+
+  try {
+    await signReservationAsCustomer({
+      reservationId: parsed.data.reservationId,
+      storeId: store.id,
+      customerId: session.customerId,
+      headers: await headers(),
+      regenerateContract: async (id) => {
+        await generateContract({ reservationId: id, regenerate: true });
+      },
+    });
+  } catch (error) {
+    // Cancelled or closed meanwhile.
+    if (error instanceof ApiServiceError && error.key === "errors.contractNotSignable") {
+      return { error: "contractNotSignable" };
+    }
+    // Signed meanwhile (a second tab), or signed but the PDF failed: the signature holds,
+    // and the contract is rebuilt on its next download.
+    const signed =
+      error instanceof ApiServiceError &&
+      ["errors.contractAlreadySigned", "errors.contractGenerationFailed"].includes(error.key);
+    if (!signed) {
+      log.error("reservation", `customer signature failed: ${describeError(error)}`);
+      return { error: "generic" };
+    }
+  }
+
+  revalidatePath(`/${storeSlug}/account`);
+  revalidatePath(`/${storeSlug}/account/reservations/${reservationId}`);
+  return { success: true };
 }
 
 export async function acceptQuote(storeSlug: string, reservationId: string) {

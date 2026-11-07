@@ -18,6 +18,7 @@ import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispa
 import { dispatchAdminReminder, dispatchAdminDigest } from '@/lib/notifications/dispatcher'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { getStorefrontUrl } from '@/lib/storefront-url'
+import { createReservationInstantAccessUrl } from '@/lib/reservations/instant-access'
 import { formatStoreDate } from '@/lib/utils/store-date'
 import type { DigestEntry } from '@/lib/email/templates'
 import {
@@ -379,6 +380,21 @@ async function sendCustomerReminder(
     },
   }
 
+  // An unsigned contract rides along with the pickup email, through a link that signs
+  // the customer in. Minted only when that email is still to be sent.
+  const contractSignatureUrl =
+    type === 'pickup' &&
+    !reservation.signedAt &&
+    store.slug &&
+    adjustedSettings[eventType].email
+      ? await createReservationInstantAccessUrl({
+          storeId: store.id,
+          storeSlug: store.slug,
+          customerEmail: customer.email,
+          reservationId: reservation.id,
+        })
+      : undefined
+
   const dispatchResult = await dispatchCustomerNotification(eventType, {
     store: {
       id: store.id,
@@ -410,6 +426,7 @@ async function sendCustomerReminder(
       depositAmount: Number(reservation.depositAmount),
     },
     reservationUrl,
+    contractSignatureUrl,
   })
 
   const sent: ReminderChannel[] = []

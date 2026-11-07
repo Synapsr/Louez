@@ -2,6 +2,10 @@
 import { useTranslations } from "next-intl";
 import { Badge } from "@louez/ui";
 import type { ComponentProps } from "react";
+import {
+  ContractSignatureBadge,
+  showsContractSignature,
+} from "@/components/dashboard/contract-signature-badge";
 import { PaymentStatusBadge } from "./payment-status-badge";
 import { STATUS_CONFIG } from "../reservations-utils";
 
@@ -11,6 +15,7 @@ export interface ReservationIdentityProps extends Omit<
 > {
   reservationNumber: string;
   status: keyof typeof STATUS_CONFIG;
+  contractSignature?: ComponentProps<typeof ContractSignatureBadge>;
 }
 
 export const ReservationIdentity = ({
@@ -21,6 +26,7 @@ export const ReservationIdentity = ({
   depositAmount,
   depositCollected,
   depositReturned,
+  contractSignature,
 }: ReservationIdentityProps) => {
   const t = useTranslations("dashboard.reservations");
   return (
@@ -38,6 +44,9 @@ export const ReservationIdentity = ({
           depositCollected={depositCollected}
           depositReturned={depositReturned}
         />
+        {contractSignature && showsContractSignature(status, contractSignature.signedAt) && (
+          <ContractSignatureBadge {...contractSignature} />
+        )}
       </div>
     </div>
   );

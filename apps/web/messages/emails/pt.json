@@ -39,7 +39,9 @@
     "subject": "Sua reserva #{number} esta confirmada",
     "title": "Reserva confirmada!",
     "body": "Sua reserva #{number} esta confirmada. Aqui esta o resumo:",
-    "summary": "Resumo"
+    "summary": "Resumo",
+    "contractSignature": "O seu contrato de aluguer está pronto. Assine-o online antes de levantar o material.",
+    "signContract": "Assinar o contrato"
   },
   "requestReceived": {
     "subject": "Solicitacao de reserva #{number} recebida",
@@ -75,7 +77,9 @@
     "dontForget": "Nao esqueca:",
     "bringId": "Um documento de identidade valido",
     "bringConfirmation": "Sua confirmacao de reserva",
-    "seeTomorrow": "Ate amanha!"
+    "seeTomorrow": "Ate amanha!",
+    "contractSignature": "Seu contrato de aluguel ainda não foi assinado. Assine-o online antes de retirar o equipamento.",
+    "signContract": "Assinar o contrato"
   },
   "reminderReturn": {
     "subject": "Lembrete: devolucao do equipamento em {date}",
@@ -252,7 +256,9 @@
     "method": "Método",
     "reservation": "Reserva",
     "confirmation": "Seu pagamento foi processado com sucesso.",
-    "keepEmail": "Guarde este e-mail como comprovante de pagamento."
+    "keepEmail": "Guarde este e-mail como comprovante de pagamento.",
+    "contractSignature": "O seu contrato segue em anexo e está pronto para ser assinado online.",
+    "signContract": "Assinar o contrato"
   },
   "paymentFailed": {
     "subject": "Pagamento falhado - Reserva #{number}",
@@ -315,7 +321,9 @@
     "subject": "Seu contrato de locação #{number}",
     "title": "Seu contrato de locação",
     "body": "Segue o contrato de locação da sua reserva #{number}.",
-    "downloadContract": "Baixar o contrato"
+    "downloadContract": "Baixar o contrato",
+    "signBody": "Aqui está o contrato de aluguel da sua reserva #{number}. Leia e assine-o online antes de retirar o equipamento.",
+    "signContract": "Assinar o contrato"
   },
   "customMessage": {
     "subject": "Sobre a sua reserva #{number}"

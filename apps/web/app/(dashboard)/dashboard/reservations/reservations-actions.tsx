@@ -19,6 +19,7 @@ import {
 
 import { ReservationGateDialog } from "@/components/dashboard/reservation-gate-dialog";
 import { isReservationGateRefusal } from "@/lib/billing/reservation-gate-error";
+import { isContractSignatureRequiredRefusal } from "@/lib/reservations/contract-signature-refusal";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
@@ -244,6 +245,8 @@ export function useReservationActions(): UseReservationActionsReturn {
         });
       }
       if (isReservationGateRefusal(error)) setGateDialogOpen(true);
+      else if (isContractSignatureRequiredRefusal(error))
+        toastManager.add({ title: tErrors("contractSignatureRequired"), type: "error" });
       else toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
       setLoadingAction(null);

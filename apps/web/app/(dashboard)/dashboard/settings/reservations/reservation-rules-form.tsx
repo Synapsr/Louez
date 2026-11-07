@@ -8,10 +8,16 @@ import { revalidateLogic, useStore } from "@tanstack/react-form";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 
-import type { StoreSettings } from "@louez/types";
-import { toastManager } from "@louez/ui";
+import {
+  CONTRACT_SIGNATURE_MODES,
+  DEFAULT_CONTRACT_SIGNATURE_MODE,
+  type StoreSettings,
+} from "@louez/types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, toastManager } from "@louez/ui";
+import { FileCheckIcon } from "@louez/ui/icons";
 
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
+import { FormRadioCardGroup } from "@/components/form/form-radio-card-group";
 import { RootError } from "@/components/form/root-error";
 import { useAppForm } from "@/hooks/form/form";
 import { getMaxRentalMinutes, getMinRentalMinutes } from "@/lib/utils/rental-duration";
@@ -32,6 +38,7 @@ const reservationRulesSchema = z.object({
   advanceNoticeMinutes: z.number().int().min(0),
   turnoverBufferMinutes: z.number().int().min(0).max(10080),
   requireCustomerAddress: z.boolean(),
+  contractSignatureMode: z.enum(CONTRACT_SIGNATURE_MODES),
 });
 
 interface ReservationRulesFormProps {
@@ -66,6 +73,7 @@ export const ReservationRulesForm = ({
       advanceNoticeMinutes: settings?.advanceNoticeMinutes ?? 1440,
       turnoverBufferMinutes: settings?.turnoverBufferMinutes ?? 0,
       requireCustomerAddress: settings?.requireCustomerAddress ?? false,
+      contractSignatureMode: settings?.contractSignatureMode ?? DEFAULT_CONTRACT_SIGNATURE_MODE,
     },
     validators: { onSubmit: reservationRulesSchema },
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
@@ -127,6 +135,33 @@ export const ReservationRulesForm = ({
               )}
             </form.AppField>
           </section>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileCheckIcon className="h-5 w-5 shrink-0" />
+                {t("contractSignature.title")}
+              </CardTitle>
+              <CardDescription>{t("contractSignature.description")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form.Field name="contractSignatureMode">
+                {(field) => (
+                  <FormRadioCardGroup
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                    options={CONTRACT_SIGNATURE_MODES.map((mode) => ({
+                      value: mode,
+                      label: t(`contractSignature.${mode}`),
+                      description: t(`contractSignature.${mode}Description`),
+                    }))}
+                    columns={1}
+                    errors={field.state.meta.errors}
+                  />
+                )}
+              </form.Field>
+            </CardContent>
+          </Card>
 
           <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
         </form.Form>

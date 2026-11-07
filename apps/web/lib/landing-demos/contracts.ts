@@ -40,6 +40,7 @@ export const createDemoContractDetail = (locale: Locale, snapshot: DemoContractS
     reservation: {
       ...detail.reservation,
       createdAt,
+      signedAt: createdAt,
       activity: detail.reservation.activity.map((activity) => ({
         ...activity,
         createdAt: shiftDate(activity.createdAt),
@@ -68,10 +69,8 @@ export const createDemoContractProps = (
   return {
     reservation: {
       ...reservation,
-      automaticContractValidation: true,
-      // The demo reservation was booked on the storefront.
-      signedAtBooking: true,
-      signedAt: validation?.createdAt ?? reservation.createdAt,
+      // Signed at checkout on the storefront, validated on confirmation.
+      contractValidatedAt: validation?.createdAt ?? reservation.createdAt,
       signatureIp: null,
       items: (reservation.items ?? []).map((item) => ({
         productSnapshot: { name: item.product?.name ?? "" },

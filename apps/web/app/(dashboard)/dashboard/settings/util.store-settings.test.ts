@@ -31,6 +31,7 @@ const reservationRulesInput = {
   advanceNoticeMinutes: 2880,
   turnoverBufferMinutes: 30,
   requireCustomerAddress: true,
+  contractSignatureMode: "required",
 } satisfies ReservationRulesInput;
 
 /** A store that has been through every settings page once. */
@@ -182,6 +183,7 @@ test("booking rules update sets every rule", () => {
   assert.equal(nextSettings.advanceNoticeMinutes, 2880);
   assert.equal(nextSettings.turnoverBufferMinutes, 30);
   assert.equal(nextSettings.requireCustomerAddress, true);
+  assert.equal(nextSettings.contractSignatureMode, "required");
 });
 
 test("both builders fill the required keys for a store without settings", () => {

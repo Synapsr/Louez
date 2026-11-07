@@ -40,6 +40,10 @@ import {
 } from "@louez/ui";
 
 import type { Reservation, ReservationStatus } from "./reservations-types";
+import {
+  ContractSignatureBadge,
+  showsContractSignature,
+} from "@/components/dashboard/contract-signature-badge";
 import { PAYMENT_STATUS_VARIANTS, STATUS_CONFIG, getPaymentStatus } from "./reservations-utils";
 import {
   getReservationDetailHref,
@@ -185,6 +189,12 @@ export function ReservationsCardView({
                               </div>
                             </TooltipContent>
                           </Tooltip>
+                        )}
+                        {showsContractSignature(status, reservation.signedAt) && (
+                          <ContractSignatureBadge
+                            signedAt={reservation.signedAt}
+                            signatureMethod={reservation.signatureMethod}
+                          />
                         )}
                       </div>
 

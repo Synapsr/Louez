@@ -229,6 +229,7 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
         stripeConfigured={stripeConfigured}
         defaultPaymentMethod={defaultPaymentMethod}
         inspectionSettings={inspectionSettings}
+        contractSignatureMode={store.settings?.contractSignatureMode}
         showStoreLocations={Boolean(store.settings?.delivery?.multiLocationEnabled)}
         departureInspection={formattedDepartureInspection}
         returnInspection={formattedReturnInspection}
