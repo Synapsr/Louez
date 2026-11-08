@@ -361,7 +361,7 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
       number: id,
       from: "pending",
       to: "confirmed",
-      links: { dashboard: `${TEST_APP_URL}/dashboard/reservations/${id}` },
+      links: { dashboard: `${TEST_APP_URL}/dashboard/reservations/${id}?store=${STORE}` },
     });
 
     assert.deepEqual(senders(), [
@@ -660,7 +660,7 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
       number: id,
       from: "pending",
       to: "confirmed",
-      links: { dashboard: `${TEST_APP_URL}/dashboard/reservations/${id}` },
+      links: { dashboard: `${TEST_APP_URL}/dashboard/reservations/${id}?store=${STORE}` },
       warnings: [{ key: "errors.tulipNotConfigured" }],
     });
 

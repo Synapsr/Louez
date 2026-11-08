@@ -67,7 +67,7 @@ export function registerPaymentTools(
         columns: { id: true, number: true },
       })
       if (!reservation) return toolError('Reservation not found.')
-      const links = linksLine(reservationLinks(ctx.ports.urls, reservation))
+      const links = linksLine(reservationLinks(ctx.ports.urls, { id: ctx.storeId }, reservation))
 
       const rows = await db.query.payments.findMany({
         where: eq(payments.reservationId, reservationId),
@@ -151,7 +151,7 @@ export function registerPaymentTools(
           `- Type: ${type}\n` +
           `- Amount: ${formatCurrency(amount)}\n` +
           `- Method: ${method}\n\n` +
-          linksLine(reservationLinks(ctx.ports.urls, reservation))
+          linksLine(reservationLinks(ctx.ports.urls, { id: ctx.storeId }, reservation))
       )
     },
     {
@@ -209,7 +209,7 @@ export function registerPaymentTools(
 
       return toolResult(
         `Payment deleted (reservation #${payment.reservation?.number}).\n\n` +
-          linksLine(reservationLinks(ctx.ports.urls, { id: payment.reservationId }))
+          linksLine(reservationLinks(ctx.ports.urls, { id: ctx.storeId }, { id: payment.reservationId }))
       )
     },
     {
@@ -304,7 +304,7 @@ export function registerPaymentTools(
         `Deposit returned for reservation #${reservation.number}.\n` +
           `- Amount: ${formatCurrency(amount)}\n` +
           `- Method: ${method}\n\n` +
-          linksLine(reservationLinks(ctx.ports.urls, reservation))
+          linksLine(reservationLinks(ctx.ports.urls, { id: ctx.storeId }, reservation))
       )
     },
     {

@@ -472,14 +472,12 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
         price: "30",
       });
       const product = output(created) as { id: string; slug: string; links: Json };
-      const dashboard = `${TEST_APP_URL}/dashboard/products/${product.id}`;
+      const dashboard = `${TEST_APP_URL}/dashboard/products/${product.id}?store=${STORE}`;
       const storefront = `https://pt-store-a.louez.test/product/${product.slug}`;
       assert.deepEqual(product.links, { dashboard, storefront });
       const [text] = created.content as Array<{ type: string; text: string }>;
-      assert.match(
-        text.text,
-        new RegExp(`Links to give the user: dashboard ${dashboard}, storefront ${storefront}\\.`),
-      );
+      const line = `Links to give the user: dashboard ${dashboard}, storefront ${storefront}.`;
+      assert.ok(text.text.includes(line), text.text);
 
       const listed = output(await mcpCall(authorization, "products_list", {})) as {
         items: Array<{ id: string; links: Json }>;
@@ -497,7 +495,9 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       const found = await mcpCall(authorization, "get_customer", { customerId: customer.id });
       const [customerText] = found.content as Array<{ type: string; text: string }>;
       assert.ok(
-        customerText.text.includes(`dashboard ${TEST_APP_URL}/dashboard/customers/${customer.id}`),
+        customerText.text.includes(
+          `dashboard ${TEST_APP_URL}/dashboard/customers/${customer.id}?store=${STORE}`,
+        ),
         customerText.text,
       );
     } finally {

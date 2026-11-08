@@ -12,17 +12,17 @@ process.env.LOUEZ_MODE = "platform";
 
 const load = async () => (await import("./urls")).apiUrls;
 
-const online = { slug: "ddm", onboardingCompleted: true };
+const online = { id: "s1", slug: "ddm", onboardingCompleted: true };
 const kayak = { id: "p1", slug: "kayak", status: "active" };
 
 test("platform: the dashboard is on the app URL, the storefront on the store's subdomain", async () => {
   const urls = await load();
   assert.deepEqual(productLinks(urls, online, kayak), {
-    dashboard: "https://app.louez.test/dashboard/products/p1",
+    dashboard: "https://app.louez.test/dashboard/products/p1?store=s1",
     storefront: "https://ddm.louez.test/product/kayak",
   });
   assert.deepEqual(storeLinks(urls, online), {
-    dashboard: "https://app.louez.test/dashboard",
+    dashboard: "https://app.louez.test/dashboard?store=s1",
     storefront: "https://ddm.louez.test",
   });
 });
@@ -33,7 +33,7 @@ test("standalone: the storefront is the app URL's root, without the slug", async
   process.env.LOUEZ_MODE = "standalone";
   try {
     assert.deepEqual(productLinks(urls, online, kayak), {
-      dashboard: "https://app.louez.test/dashboard/products/p1",
+      dashboard: "https://app.louez.test/dashboard/products/p1?store=s1",
       storefront: "https://app.louez.test/product/kayak",
     });
   } finally {
@@ -44,9 +44,12 @@ test("standalone: the storefront is the app URL's root, without the slug", async
 test("an inactive product, or a store in onboarding, links the dashboard only", async () => {
   const urls = await load();
   assert.deepEqual(productLinks(urls, online, { ...kayak, status: "draft" }), {
-    dashboard: "https://app.louez.test/dashboard/products/p1",
+    dashboard: "https://app.louez.test/dashboard/products/p1?store=s1",
   });
-  assert.deepEqual(productLinks(urls, { slug: "ddm", onboardingCompleted: false }, kayak), {
-    dashboard: "https://app.louez.test/dashboard/products/p1",
-  });
+  assert.deepEqual(
+    productLinks(urls, { id: "s1", slug: "ddm", onboardingCompleted: false }, kayak),
+    {
+      dashboard: "https://app.louez.test/dashboard/products/p1?store=s1",
+    },
+  );
 });

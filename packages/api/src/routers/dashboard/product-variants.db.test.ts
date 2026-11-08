@@ -322,7 +322,7 @@ describe("product variants procedures (database)", { skip: skipWithoutTestDataba
         products: [board, kayak].map((product) => ({
           id: product.id,
           name: product.name,
-          links: { dashboard: `${TEST_APP_URL}/dashboard/products/${product.id}` },
+          links: { dashboard: `${TEST_APP_URL}/dashboard/products/${product.id}?store=${STORE}` },
         })),
       },
     ]);

@@ -123,6 +123,8 @@ const customFieldEntriesSchema = z
 // ---------------------------------------------------------------------------
 
 export function createAITools(ctx: AIChatContext, services: AIToolServices = defaultServices) {
+  /** The chat's store, named by every dashboard link the tools return. */
+  const linkStore = { id: ctx.storeId };
   /** The settings a recorded payment's currency and insurance share are read with. */
   const loadStoreSettings = async () => {
     const store = await db.query.stores.findFirst({
@@ -329,7 +331,10 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .where(and(...conditions));
 
         return {
-          reservations: rows.map((row) => ({ ...row, links: reservationLinks(ctx.urls, row) })),
+          reservations: rows.map((row) => ({
+            ...row,
+            links: reservationLinks(ctx.urls, linkStore, row),
+          })),
           total: countResult?.total ?? 0,
         };
       },
@@ -356,10 +361,10 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         return {
           reservation: {
             ...reservation,
-            links: reservationLinks(ctx.urls, reservation),
+            links: reservationLinks(ctx.urls, linkStore, reservation),
             customer: reservation.customer && {
               ...reservation.customer,
-              links: customerLinks(ctx.urls, reservation.customer),
+              links: customerLinks(ctx.urls, linkStore, reservation.customer),
             },
           },
         };
@@ -403,7 +408,7 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           number: result.number,
           from: result.from,
           to: result.to,
-          links: reservationLinks(ctx.urls, { id: reservationId }),
+          links: reservationLinks(ctx.urls, linkStore, { id: reservationId }),
           // What the dashboard shows after the change: rule warnings, a failed contract.
           ...(result.warnings.length > 0 && { warnings: result.warnings }),
         };
@@ -432,7 +437,7 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         return {
           success: true,
           number: existing.number,
-          links: reservationLinks(ctx.urls, existing),
+          links: reservationLinks(ctx.urls, linkStore, existing),
         };
       },
     }),
@@ -530,7 +535,10 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .where(and(...conditions));
 
         return {
-          customers: rows.map((row) => ({ ...row, links: customerLinks(ctx.urls, row) })),
+          customers: rows.map((row) => ({
+            ...row,
+            links: customerLinks(ctx.urls, linkStore, row),
+          })),
           total: countResult?.total ?? 0,
         };
       },
@@ -566,10 +574,10 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         return {
           customer: {
             ...customer,
-            links: customerLinks(ctx.urls, customer),
+            links: customerLinks(ctx.urls, linkStore, customer),
             reservations: customer.reservations.map((reservation) => ({
               ...reservation,
-              links: reservationLinks(ctx.urls, reservation),
+              links: reservationLinks(ctx.urls, linkStore, reservation),
             })),
           },
           customFields: fields,
@@ -647,7 +655,7 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           firstName,
           lastName,
           email,
-          links: customerLinks(ctx.urls, { id: createdId }),
+          links: customerLinks(ctx.urls, linkStore, { id: createdId }),
         };
       },
     }),
@@ -719,7 +727,11 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
             definitions,
           });
         });
-        return { success: true, customerId, links: customerLinks(ctx.urls, { id: customerId }) };
+        return {
+          success: true,
+          customerId,
+          links: customerLinks(ctx.urls, linkStore, { id: customerId }),
+        };
       },
     }),
 
@@ -1134,7 +1146,7 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
 
         const withLinks = <T extends { id: string }>(row: T) => ({
           ...row,
-          links: reservationLinks(ctx.urls, row),
+          links: reservationLinks(ctx.urls, linkStore, row),
         });
         return {
           pickups: pickups.map(withLinks),
@@ -1173,7 +1185,10 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .limit(50);
 
         return {
-          overdue: overdue.map((row) => ({ ...row, links: reservationLinks(ctx.urls, row) })),
+          overdue: overdue.map((row) => ({
+            ...row,
+            links: reservationLinks(ctx.urls, linkStore, row),
+          })),
         };
       },
     }),

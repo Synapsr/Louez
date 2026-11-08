@@ -15,7 +15,7 @@ test("localhost: the storefront is path-routed under the store's slug", async ()
   assert.deepEqual(
     productLinks(
       apiUrls,
-      { slug: "ddm", onboardingCompleted: true },
+      { id: "s1", slug: "ddm", onboardingCompleted: true },
       {
         id: "p1",
         slug: "kayak",
@@ -23,7 +23,7 @@ test("localhost: the storefront is path-routed under the store's slug", async ()
       },
     ),
     {
-      dashboard: "http://localhost:3000/dashboard/products/p1",
+      dashboard: "http://localhost:3000/dashboard/products/p1?store=s1",
       storefront: "http://localhost:3000/ddm/product/kayak",
     },
   );

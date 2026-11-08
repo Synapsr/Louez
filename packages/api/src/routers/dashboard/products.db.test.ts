@@ -589,7 +589,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       const created = await run("create", { name: "Kayak links", price: "30" }, context());
       assert.ok(created.slug);
       const expected = {
-        dashboard: `${TEST_APP_URL}/dashboard/products/${created.id}`,
+        dashboard: `${TEST_APP_URL}/dashboard/products/${created.id}?store=${STORE}`,
         storefront: `https://pr-store-a.louez.test/product/${created.slug}`,
       };
       assert.deepEqual(created.links, expected);
@@ -606,7 +606,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
         context(),
       );
       assert.deepEqual(draft.links, {
-        dashboard: `${TEST_APP_URL}/dashboard/products/${draft.id}`,
+        dashboard: `${TEST_APP_URL}/dashboard/products/${draft.id}?store=${STORE}`,
       });
       const copy = await run("duplicate", { id: created.id }, context());
       assert.equal(copy.links.storefront, undefined);
@@ -630,7 +630,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       id: created.id,
       status: "active",
       previousStatus: "draft",
-      links: { dashboard: `${TEST_APP_URL}/dashboard/products/${created.id}` },
+      links: { dashboard: `${TEST_APP_URL}/dashboard/products/${created.id}?store=${STORE}` },
     });
 
     const asked = await rejects(

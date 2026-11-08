@@ -42,7 +42,7 @@ export function serverInstructions(ctx: McpRequestContext): string {
     );
     if (others.length > 0) {
       lines.push(
-        `Not listed: ${others.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}. When the user asks for one of these, tell them to enable the bundle in Louez: Settings > Integrations > MCP > Connected agents (${agentConnectionsLinks(ctx.ports.urls).dashboard}). You cannot enable it yourself.`,
+        `Not listed: ${others.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}. When the user asks for one of these, tell them to enable the bundle in Louez: Settings > Integrations > MCP > Connected agents (${agentConnectionsLinks(ctx.ports.urls, { id: ctx.storeId }).dashboard}). You cannot enable it yourself.`,
       );
     }
   }

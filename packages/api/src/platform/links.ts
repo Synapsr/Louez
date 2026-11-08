@@ -7,19 +7,41 @@ import type { UrlsPort } from "./ports";
  * under `app/(dashboard)/dashboard`, the storefront under
  * `app/(storefront)/[slug]`.
  *
+ * A dashboard link names its store (`?store=<id>`): the dashboard shows the
+ * active store of the browser, so the app switches to the named one when the
+ * user is a member, then drops the parameter (apps/web proxy.ts and
+ * app/api/active-store).
+ *
  * A storefront link is given only when the public can open it: the store has
  * finished onboarding (the storefront answers 404 before that) and, for a
  * product, the product is active (a draft or archived product has no public
  * page).
  */
 
+/** The query parameter of a dashboard link that names its store. */
+export const DASHBOARD_STORE_PARAM = "store";
+
+/** What a dashboard link needs from the store. */
+export interface DashboardLinkStore {
+  id: string;
+}
+
 /** What a link needs from the store. */
-export interface LinkStore {
+export interface LinkStore extends DashboardLinkStore {
   slug: string;
   onboardingCompleted: boolean | null;
 }
 
 const segment = (value: string) => encodeURIComponent(value);
+
+/** A dashboard path of a store, with the store named. */
+export function dashboardPath(store: DashboardLinkStore, path: string): string {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}${DASHBOARD_STORE_PARAM}=${segment(store.id)}`;
+}
+
+const dashboardUrl = (urls: UrlsPort, store: DashboardLinkStore, path: string) =>
+  urls.dashboard(dashboardPath(store, path));
 
 /** Whether the store's storefront answers the public. */
 export const isStorefrontPublic = (store: LinkStore): boolean => store.onboardingCompleted === true;
@@ -27,7 +49,7 @@ export const isStorefrontPublic = (store: LinkStore): boolean => store.onboardin
 /** The store's dashboard home, and its storefront home. */
 export function storeLinks(urls: UrlsPort, store: LinkStore): ResourceLinks {
   return {
-    dashboard: urls.dashboard("/dashboard"),
+    dashboard: dashboardUrl(urls, store, "/dashboard"),
     ...(isStorefrontPublic(store) ? { storefront: urls.storefront(store.slug, "/") } : {}),
   };
 }
@@ -43,7 +65,7 @@ export function productLinks(
   product: { id: string; slug?: string | null; status?: string | null },
 ): ResourceLinks {
   return {
-    dashboard: urls.dashboard(`/dashboard/products/${segment(product.id)}`),
+    dashboard: dashboardUrl(urls, store, `/dashboard/products/${segment(product.id)}`),
     ...(product.status === "active" && isStorefrontPublic(store)
       ? // The page takes the slug, or the id on products older than slugs.
         {
@@ -66,7 +88,7 @@ export function categoryLinks(
   category: { id: string; slug: string | null },
 ): ResourceLinks {
   return {
-    dashboard: urls.dashboard("/dashboard/categories"),
+    dashboard: dashboardUrl(urls, store, "/dashboard/categories"),
     ...(isStorefrontPublic(store)
       ? {
           storefront: urls.storefront(
@@ -79,16 +101,28 @@ export function categoryLinks(
 }
 
 /** A reservation's dashboard page. The customer's own page needs their sign-in: no link. */
-export function reservationLinks(urls: UrlsPort, reservation: { id: string }): ResourceLinks {
-  return { dashboard: urls.dashboard(`/dashboard/reservations/${segment(reservation.id)}`) };
+export function reservationLinks(
+  urls: UrlsPort,
+  store: DashboardLinkStore,
+  reservation: { id: string },
+): ResourceLinks {
+  return {
+    dashboard: dashboardUrl(urls, store, `/dashboard/reservations/${segment(reservation.id)}`),
+  };
 }
 
 /** A customer's dashboard page. */
-export function customerLinks(urls: UrlsPort, customer: { id: string }): ResourceLinks {
-  return { dashboard: urls.dashboard(`/dashboard/customers/${segment(customer.id)}`) };
+export function customerLinks(
+  urls: UrlsPort,
+  store: DashboardLinkStore,
+  customer: { id: string },
+): ResourceLinks {
+  return {
+    dashboard: dashboardUrl(urls, store, `/dashboard/customers/${segment(customer.id)}`),
+  };
 }
 
 /** Settings > Integrations > MCP, where the user manages connected agents and their bundles. */
-export function agentConnectionsLinks(urls: UrlsPort): ResourceLinks {
-  return { dashboard: urls.dashboard("/dashboard/settings/integrations/mcp") };
+export function agentConnectionsLinks(urls: UrlsPort, store: DashboardLinkStore): ResourceLinks {
+  return { dashboard: dashboardUrl(urls, store, "/dashboard/settings/integrations/mcp") };
 }

@@ -112,7 +112,7 @@ export function registerCustomerTools(
           `- **${c.firstName} ${c.lastName}** (${c.id})\n` +
           `  ${c.email}${c.phone ? ` | ${c.phone}` : ''} | ${c.customerType}\n` +
           `  Registered: ${formatDate(c.createdAt)}\n` +
-          `  Dashboard: ${customerLinks(ctx.ports.urls, c).dashboard}`,
+          `  Dashboard: ${customerLinks(ctx.ports.urls, { id: ctx.storeId }, c).dashboard}`,
       );
 
       return toolResult(
@@ -159,7 +159,7 @@ export function registerCustomerTools(
           ? `- **Address**: ${customer.address}, ${customer.city} ${customer.postalCode}\n`
           : '') +
         `- **Registered**: ${formatDate(customer.createdAt)}\n` +
-        `\n${linksLine(customerLinks(ctx.ports.urls, customer))}\n`;
+        `\n${linksLine(customerLinks(ctx.ports.urls, { id: ctx.storeId }, customer))}\n`;
 
       const [definitions, values] = await Promise.all([
         listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true, scope: 'customer' }),
@@ -184,7 +184,7 @@ export function registerCustomerTools(
       if (customer.reservations.length > 0) {
         text += `\n### Recent reservations (${customer.reservations.length})\n`;
         for (const r of customer.reservations) {
-          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)} — ${reservationLinks(ctx.ports.urls, r).dashboard}\n`;
+          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)} — ${reservationLinks(ctx.ports.urls, { id: ctx.storeId }, r).dashboard}\n`;
         }
       }
 
@@ -322,7 +322,7 @@ export function registerCustomerTools(
           `- **Name**: ${firstName} ${lastName}\n` +
           `- **ID**: ${createdId}\n` +
           `- **Email**: ${email}\n\n` +
-          linksLine(customerLinks(ctx.ports.urls, { id: createdId })),
+          linksLine(customerLinks(ctx.ports.urls, { id: ctx.storeId }, { id: createdId })),
       );
     },
   );
@@ -471,7 +471,7 @@ export function registerCustomerTools(
 
       return toolResult(
         `Customer ${customerId} updated successfully.\n\n` +
-          linksLine(customerLinks(ctx.ports.urls, { id: customerId })),
+          linksLine(customerLinks(ctx.ports.urls, { id: ctx.storeId }, { id: customerId })),
       );
     },
   );
