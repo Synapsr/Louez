@@ -1972,7 +1972,7 @@ export async function sendPaymentConfirmationEmail({
   }
 }
 
-// Payment Failed Email
+// Payment Failed Email, to the customer. Not sent today: kept for future off-session charges.
 export async function sendPaymentFailedEmail({
   to,
   store,
