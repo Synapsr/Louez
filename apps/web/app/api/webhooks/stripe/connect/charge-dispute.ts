@@ -83,6 +83,7 @@ export async function handleChargeDispute(
     await notifyDisputed({
       reservationId: result.reservationId,
       amount: fromStripeCents(dispute.amount, dispute.currency.toUpperCase()),
+      currency: dispute.currency.toUpperCase(),
     });
   }
 }

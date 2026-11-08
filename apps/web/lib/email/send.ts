@@ -1065,6 +1065,8 @@ export async function sendPaymentAdminEmail({
   customer,
   reservation,
   amount,
+  amountCurrency,
+  reservationCurrency,
   dashboardUrl,
   locale = 'fr',
 }: {
@@ -1080,10 +1082,15 @@ export async function sendPaymentAdminEmail({
     totalAmount: number
   }
   amount: number
+  /** The payment's own currency; the reservation's when absent. */
+  amountCurrency?: string
+  /** The reservation's currency; the store's when absent. */
+  reservationCurrency?: string
   dashboardUrl: string
   locale?: EmailLocale
 }) {
   const subject = getPaymentAdminEmailSubject(kind, reservation.number, locale)
+  const currency = reservationCurrency || store.settings?.currency || 'EUR'
   const html = await render(
     PaymentAdminEmail({
       kind,
@@ -1097,7 +1104,8 @@ export async function sendPaymentAdminEmail({
       reservationTotal: reservation.totalAmount,
       dashboardUrl,
       locale,
-      currency: store.settings?.currency || 'EUR',
+      currency,
+      amountCurrency: amountCurrency || currency,
       storeTimezone: store.settings?.timezone,
       storeCountryCode: store.settings?.country,
     })

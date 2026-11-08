@@ -379,9 +379,9 @@ const runCheckoutPaymentCompletion = async ({
 
     dispatchNotification("payment_received", {
       store: toAdminNotificationStore(store),
-      reservation: toNotificationReservation(reservation),
+      reservation: { ...toNotificationReservation(reservation), currency: reservation.currency },
       customer: toNotificationCustomer(reservation.customer),
-      payment: { amount: totalAmount },
+      payment: { amount: totalAmount, currency },
     }).catch((error: unknown) => {
       log.error("checkout", `payment received notification failed: ${describeError(error)}`);
     });

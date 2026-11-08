@@ -9,6 +9,7 @@ import { sendNewRequestLandlordEmail, sendPaymentAdminEmail } from "@/lib/email/
 import type { PaymentAdminEmailKind } from "@/lib/email/templates";
 
 import type { NotificationContext } from "./dispatcher";
+import { paymentCurrencyOf, reservationCurrencyOf } from "./util.notification-currency";
 
 /**
  * The store owner's email for an event, sent by dispatchNotification when the
@@ -133,6 +134,8 @@ export async function sendAdminEventEmail(
         customer,
         reservation,
         amount: ctx.payment?.amount ?? reservation.totalAmount,
+        amountCurrency: paymentCurrencyOf(ctx),
+        reservationCurrency: reservationCurrencyOf(ctx),
         dashboardUrl,
         locale,
       });

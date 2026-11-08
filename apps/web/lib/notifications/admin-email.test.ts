@@ -282,6 +282,60 @@ describe("dispatchNotification email channel", () => {
   });
 });
 
+describe("payment currencies", () => {
+  test("the amount keeps the payment's currency, the total the reservation's", async () => {
+    const sent = noneSent();
+    const base = ctx();
+    await sendAdminEventEmail(
+      "payment_disputed",
+      ctx({
+        store: { ...base.store, settings: { currency: "EUR" } },
+        reservation: base.reservation && { ...base.reservation, currency: "GBP" },
+        payment: { amount: 80, currency: "USD" },
+      }),
+      fakeDeps(sent),
+    );
+    assert.equal(sent.payment[0]?.amountCurrency, "USD");
+    assert.equal(sent.payment[0]?.reservationCurrency, "GBP");
+  });
+
+  test("without their own, they fall back to the reservation's, then the store's", async () => {
+    const sent = noneSent();
+    const base = ctx();
+    await sendAdminEventEmail(
+      "payment_received",
+      ctx({
+        store: { ...base.store, settings: { currency: "CHF" } },
+        reservation: base.reservation && { ...base.reservation, currency: null },
+        payment: { amount: 80 },
+      }),
+      fakeDeps(sent),
+    );
+    assert.equal(sent.payment[0]?.amountCurrency, "CHF");
+    assert.equal(sent.payment[0]?.reservationCurrency, "CHF");
+  });
+
+  test("the email formats each amount in its own currency", async () => {
+    const html = await render(
+      templates.PaymentAdminEmail({
+        kind: "disputed",
+        storeName: "Vélos du port",
+        reservationNumber: "R-1001",
+        startDate: new Date("2027-05-01T08:00:00Z"),
+        endDate: new Date("2027-05-03T08:00:00Z"),
+        amount: 80,
+        reservationTotal: 120,
+        dashboardUrl: "https://app.example.test/dashboard/reservations/res_1",
+        locale: "en",
+        currency: "EUR",
+        amountCurrency: "USD",
+      }),
+    );
+    assert.match(html, /\$80\.00/);
+    assert.match(html, /€120\.00/);
+  });
+});
+
 describe("payment email to the owner", () => {
   const locales: EmailLocale[] = [
     "fr",

@@ -41,6 +41,10 @@ import {
 } from "@/lib/email/send";
 import type { DigestEntry } from "@/lib/email/templates";
 import { sendAdminEventEmail } from "@/lib/notifications/admin-email";
+import {
+  paymentCurrencyOf,
+  reservationCurrencyOf,
+} from "@/lib/notifications/util.notification-currency";
 import { isPushConfigured, sendPush } from "@/lib/push/client";
 import { buildAdminPushPayload } from "@/lib/push/notifications";
 import type { NotificationEventType, NotificationSettings } from "@louez/types";
@@ -70,6 +74,8 @@ export interface NotificationContext {
     totalAmount: number;
     /** The customer's message, shown in the new reservation email. */
     customerNotes?: string | null;
+    /** The reservation's own currency; the store's when null. */
+    currency?: string | null;
   };
   customer?: {
     firstName: string;
@@ -79,6 +85,8 @@ export interface NotificationContext {
   };
   payment?: {
     amount: number;
+    /** The payment's own currency (upper case); the reservation's when absent. */
+    currency?: string;
   };
 }
 
@@ -668,9 +676,9 @@ function buildAdminSmsMessage(
     number: ctx.reservation?.number || "",
     customerName: ctx.customer ? `${ctx.customer.firstName} ${ctx.customer.lastName}` : "",
     amount: ctx.payment
-      ? formatCurrencyForSms(ctx.payment.amount, ctx.store.settings?.currency)
+      ? formatCurrencyForSms(ctx.payment.amount, paymentCurrencyOf(ctx))
       : ctx.reservation
-        ? formatCurrencyForSms(ctx.reservation.totalAmount, ctx.store.settings?.currency)
+        ? formatCurrencyForSms(ctx.reservation.totalAmount, reservationCurrencyOf(ctx))
         : "",
   };
 
@@ -872,14 +880,14 @@ export async function dispatchNotification(
       reservation: ctx.reservation
         ? {
             ...ctx.reservation,
-            currency: ctx.store.settings?.currency,
+            currency: reservationCurrencyOf(ctx),
           }
         : undefined,
       customer: ctx.customer,
       payment: ctx.payment
         ? {
             ...ctx.payment,
-            currency: ctx.store.settings?.currency,
+            currency: paymentCurrencyOf(ctx),
           }
         : undefined,
     };

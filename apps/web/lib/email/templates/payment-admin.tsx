@@ -26,7 +26,10 @@ interface PaymentAdminEmailProps {
   reservationTotal: number;
   dashboardUrl: string;
   locale?: EmailLocale;
+  /** The reservation total's currency. */
   currency?: string;
+  /** The payment's own currency; the reservation's when absent. */
+  amountCurrency?: string;
   storeTimezone?: string | null;
   storeCountryCode?: string | null;
 }
@@ -52,6 +55,7 @@ export function PaymentAdminEmail({
   dashboardUrl,
   locale = "fr",
   currency = "EUR",
+  amountCurrency,
   storeTimezone,
   storeCountryCode,
 }: PaymentAdminEmailProps) {
@@ -59,6 +63,7 @@ export function PaymentAdminEmail({
   const event = messages[kind];
   const datePatterns = getDateFormatPatterns(locale);
   const formatCurrency = getCurrencyFormatter(locale, currency);
+  const formatAmount = getCurrencyFormatter(locale, amountCurrency || currency);
   const formatDate = (date: Date) =>
     formatEmailDateInStoreTimezone(
       date,
@@ -97,7 +102,7 @@ export function PaymentAdminEmail({
           value={`${formatDate(startDate)} – ${formatDate(endDate)}`}
         />
         <DetailRow label={messages.total} value={formatCurrency(reservationTotal)} />
-        <DetailRow label={event.amount} value={formatCurrency(amount)} emphasis="amount" />
+        <DetailRow label={event.amount} value={formatAmount(amount)} emphasis="amount" />
       </Section>
 
       <CtaButton href={dashboardUrl} label={messages.viewReservation} primaryColor={primaryColor} />

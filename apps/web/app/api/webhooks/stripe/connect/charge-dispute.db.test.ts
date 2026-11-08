@@ -124,8 +124,8 @@ describe("charge.dispute.* (database)", { skip: skipWithoutTestDatabase() }, () 
     const STORE = "store_dispute_notify";
     const RESERVATION = "res_dispute_notify";
     const CHARGE = `ch_${RUN}_notify`;
-    const calls: Array<{ reservationId: string; amount: number }> = [];
-    const notify = async (input: { reservationId: string; amount: number }) => {
+    const calls: Array<{ reservationId: string; amount: number; currency: string }> = [];
+    const notify = async (input: { reservationId: string; amount: number; currency: string }) => {
       calls.push(input);
     };
 
@@ -182,7 +182,7 @@ describe("charge.dispute.* (database)", { skip: skipWithoutTestDatabase() }, () 
       await handleWithNotify("charge.dispute.created");
       await handleWithNotify("charge.dispute.funds_withdrawn");
 
-      assert.deepEqual(calls, [{ reservationId: RESERVATION, amount: 100 }]);
+      assert.deepEqual(calls, [{ reservationId: RESERVATION, amount: 100, currency: "EUR" }]);
     });
 
     test("is not sent for a dispute first seen closed, nor for an unknown payment", async () => {

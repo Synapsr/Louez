@@ -68,6 +68,22 @@ test("a payment push shows the payment's amount, not the reservation's", () => {
   assert.doesNotMatch(payload?.body ?? "", /120/);
 });
 
+test("a payment push uses the payment's currency, a reservation push the reservation's", () => {
+  const withCurrencies: NotificationContext = {
+    ...ctx,
+    reservation: ctx.reservation && { ...ctx.reservation, currency: "GBP" },
+    payment: { amount: 80, currency: "USD" },
+  };
+  assert.match(
+    buildAdminPushPayload("payment_failed", withCurrencies, "en")?.body ?? "",
+    /dollars/,
+  );
+  assert.match(
+    buildAdminPushPayload("reservation_confirmed", withCurrencies, "en")?.body ?? "",
+    /livres/,
+  );
+});
+
 test("reminders and payloads without a reservation are not pushed", () => {
   assert.equal(buildAdminPushPayload("reservation_reminder_pickup", ctx, "en"), null);
   assert.equal(

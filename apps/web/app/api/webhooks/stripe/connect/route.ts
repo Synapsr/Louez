@@ -69,6 +69,8 @@ type ReservationWithRelations = {
   totalAmount: string;
   depositAmount: string | null;
   depositStatus: string | null;
+  /** Frozen at creation; null on rows from before it existed. */
+  currency: string | null;
   store: ReservationStore;
   customer: ReservationCustomer | null;
   items: Array<{
@@ -1138,6 +1140,7 @@ async function handleDepositFailed(
         startDate: reservation.startDate,
         endDate: reservation.endDate,
         totalAmount: Number(reservation.totalAmount),
+        currency: reservation.currency,
       },
       customer: reservation.customer
         ? {
@@ -1149,6 +1152,7 @@ async function handleDepositFailed(
         : undefined,
       payment: {
         amount,
+        currency,
       },
     }).catch((error: unknown) => {
       log.error({

@@ -14,11 +14,20 @@ export async function notifyPaymentDisputed(input: {
   readonly reservationId: string;
   /** The disputed amount, in the currency's main unit. */
   readonly amount: number;
+  /** The dispute's currency, upper case. */
+  readonly currency: string;
 }): Promise<void> {
   try {
     const reservation = await db.query.reservations.findFirst({
       where: eq(reservations.id, input.reservationId),
-      columns: { id: true, number: true, startDate: true, endDate: true, totalAmount: true },
+      columns: {
+        id: true,
+        number: true,
+        startDate: true,
+        endDate: true,
+        totalAmount: true,
+        currency: true,
+      },
       with: {
         store: {
           columns: {
@@ -46,9 +55,10 @@ export async function notifyPaymentDisputed(input: {
         startDate: reservation.startDate,
         endDate: reservation.endDate,
         totalAmount: Number(reservation.totalAmount),
+        currency: reservation.currency,
       },
       customer: reservation.customer ?? undefined,
-      payment: { amount: input.amount },
+      payment: { amount: input.amount, currency: input.currency },
     });
   } catch (error) {
     log.error({

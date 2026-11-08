@@ -9,6 +9,10 @@ import { formatCurrencyForSms } from "@louez/utils";
 
 import type { EmailLocale } from "@/lib/email/i18n";
 import type { NotificationContext } from "@/lib/notifications/dispatcher";
+import {
+  paymentCurrencyOf,
+  reservationCurrencyOf,
+} from "@/lib/notifications/util.notification-currency";
 
 import type { PushPayload } from "./client";
 
@@ -147,10 +151,10 @@ export function buildAdminPushPayload(
     eventType === "payment_received" ||
     eventType === "payment_failed" ||
     eventType === "payment_disputed";
-  const amount = formatCurrencyForSms(
-    isPayment && ctx.payment ? ctx.payment.amount : ctx.reservation.totalAmount,
-    ctx.store.settings?.currency,
-  );
+  const amount =
+    isPayment && ctx.payment
+      ? formatCurrencyForSms(ctx.payment.amount, paymentCurrencyOf(ctx))
+      : formatCurrencyForSms(ctx.reservation.totalAmount, reservationCurrencyOf(ctx));
   const customerName = ctx.customer
     ? `${ctx.customer.firstName} ${ctx.customer.lastName}`.trim()
     : "";
