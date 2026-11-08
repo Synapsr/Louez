@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -13,15 +14,28 @@ import { isReservedSlug } from "@louez/validations";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 
-/** First path segments of the app router: folders of `app`, through route groups. */
+/** An interception marker, `(.)`, `(..)` or `(...)`, maybe repeated: `(..)(..)photo`. */
+const INTERCEPTION_MARKER = /^(?:\(\.{1,3}\))+/;
+
+/**
+ * First path segments of the app router, as Next.js reads its folders: a
+ * route group `(name)` and a parallel route slot `@name` add no segment, so
+ * the walk goes through them; an intercepting route `(.)name` serves `name`;
+ * a dynamic segment `[name]` and a private folder `_name` are no fixed root.
+ */
 function routeRoots(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     if (!entry.isDirectory()) return [];
-    const { name } = entry;
-    // A route group adds no segment; a private folder or a dynamic one is no root.
-    if (name.startsWith("(") && name.endsWith(")")) return routeRoots(join(dir, name));
-    if (name.startsWith("_") || name.startsWith("[")) return [];
-    return [name];
+    const name = entry.name;
+    if (
+      (name.startsWith("(") && name.endsWith(")") && !INTERCEPTION_MARKER.test(name)) ||
+      name.startsWith("@")
+    ) {
+      return routeRoots(join(dir, name));
+    }
+    const segment = name.replace(INTERCEPTION_MARKER, "");
+    if (!segment || segment.startsWith("_") || segment.startsWith("[")) return [];
+    return [segment];
   });
 }
 
@@ -50,4 +64,36 @@ test("every first segment of the app and of the proxy is a reserved store addres
     [],
     "Add these to RESERVED_SLUGS in packages/validations/src/onboarding.ts",
   );
+});
+
+test("the walk reads route groups, parallel slots and intercepting routes as Next.js does", () => {
+  const root = mkdtempSync(join(tmpdir(), "louez-route-roots-"));
+  try {
+    for (const path of [
+      "(marketing)/pricing",
+      "(marketing)/(nested)/about",
+      "@modal/(.)photos",
+      "@modal/default-slot-page",
+      "(..)(..)gallery",
+      "(...)login-modal",
+      "[slug]/shop",
+      "[...rest]",
+      "_components/x",
+      "plain",
+    ]) {
+      mkdirSync(join(root, path), { recursive: true });
+    }
+    writeFileSync(join(root, "layout.tsx"), "");
+    assert.deepEqual(routeRoots(root).sort(), [
+      "about",
+      "default-slot-page",
+      "gallery",
+      "login-modal",
+      "photos",
+      "plain",
+      "pricing",
+    ]);
+  } finally {
+    rmSync(root, { recursive: true });
+  }
 });
