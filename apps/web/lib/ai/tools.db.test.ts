@@ -287,9 +287,9 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
     assert.equal((await paymentsOf(reservationId)).length, 1);
     assert.deepEqual(await queue(), []);
   });
-  test("a customer's reservations carry links only for a user who may read reservations", async () => {
+  test("a customer's reservation history, ids and links show only to a user who may read reservations", async () => {
     // A reservation of the customer, for its history.
-    await createReservation();
+    const reservationId = await createReservation();
     await louezDb.db
       .insert(louezDb.customers)
       .values({
@@ -321,14 +321,17 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
     const customerOf = async (scoped: Tools) => {
       const output = await scoped.get_customer.execute?.({ customerId: "customer" }, options);
       assert.ok(output && "customer" in output, JSON.stringify(output));
-      const { customer } = output;
-      assert.ok(customer);
-      return customer;
+      return JSON.stringify(output);
     };
-    const noReservations = await customerOf(toolsWith({ reservations: "none" }));
-    assert.ok(noReservations.links.dashboard.includes("/dashboard/customers/customer"));
-    assert.ok(noReservations.reservations.every((reservation) => !("links" in reservation)));
-    const withReservations = await customerOf(toolsWith({}));
-    assert.ok(withReservations.reservations.some((reservation) => "links" in reservation));
+
+    const blind = await customerOf(toolsWith({ reservations: "none" }));
+    assert.ok(blind.includes(`/dashboard/customers/customer?store=${STORE}`), blind);
+    assert.ok(!blind.includes(reservationId), blind);
+    assert.ok(!blind.includes("/dashboard/reservations/"), blind);
+    // Only the fields the tool picks: nothing of the store's row.
+    assert.ok(!blind.includes('"storeId"'), blind);
+
+    const seeing = await customerOf(toolsWith({}));
+    assert.ok(seeing.includes(`/dashboard/reservations/${reservationId}?store=${STORE}`), seeing);
   });
 });

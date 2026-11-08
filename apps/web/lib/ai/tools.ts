@@ -449,7 +449,7 @@ export function createAITools(ctx: AIChatContext) {
 
     get_customer: tool({
       description:
-        "Get detailed customer profile with reservation history and the store's custom fields. Custom fields the store flagged as sensitive are never returned: their labels come back in `withheldSensitiveFields`, which means the value exists on the record and can be read by the merchant in the dashboard, not that it is missing.",
+        "Get detailed customer profile with the store's custom fields, and the reservation history when the user may read reservations. Custom fields the store flagged as sensitive are never returned: their labels come back in `withheldSensitiveFields`, which means the value exists on the record and can be read by the merchant in the dashboard, not that it is missing.",
       inputSchema: z.object({
         customerId: z.string().describe("The customer ID"),
       }),
@@ -458,11 +458,22 @@ export function createAITools(ctx: AIChatContext) {
 
         const customer = await db.query.customers.findFirst({
           where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
-          with: {
-            reservations: {
-              orderBy: [desc(reservations.createdAt)],
-              limit: 10,
-            },
+          columns: {
+            id: true,
+            customerType: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            companyName: true,
+            companyNumber: true,
+            vatNumber: true,
+            address: true,
+            city: true,
+            postalCode: true,
+            country: true,
+            notes: true,
+            createdAt: true,
           },
         });
 
@@ -474,16 +485,39 @@ export function createAITools(ctx: AIChatContext) {
         ]);
         const { fields, withheld } = toReadableCustomerFields(definitions, values);
 
+        // The history is reservation data (ids, numbers, amounts): only for
+        // a user who may read reservations, each with its link.
+        const history = mayRead(ctx, "reservations")
+          ? (
+              await db
+                .select({
+                  id: reservations.id,
+                  number: reservations.number,
+                  status: reservations.status,
+                  startDate: reservations.startDate,
+                  endDate: reservations.endDate,
+                  totalAmount: reservations.totalAmount,
+                })
+                .from(reservations)
+                .where(
+                  and(
+                    eq(reservations.storeId, ctx.storeId),
+                    eq(reservations.customerId, customer.id),
+                  ),
+                )
+                .orderBy(desc(reservations.createdAt))
+                .limit(10)
+            ).map((reservation) => ({
+              ...reservation,
+              links: reservationLinks(ctx.urls, linkStore, reservation),
+            }))
+          : undefined;
+
         return {
           customer: {
             ...customer,
             links: customerLinks(ctx.urls, linkStore, customer),
-            reservations: customer.reservations.map((reservation) => ({
-              ...reservation,
-              ...(mayRead(ctx, "reservations")
-                ? { links: reservationLinks(ctx.urls, linkStore, reservation) }
-                : {}),
-            })),
+            ...(history ? { reservations: history } : {}),
           },
           customFields: fields,
           withheldSensitiveFields: withheld,
