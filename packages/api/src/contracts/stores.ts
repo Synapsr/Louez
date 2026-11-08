@@ -1,5 +1,5 @@
 import { storeInfoSchema } from "@louez/validations";
-import { SUPPORTED_COUNTRIES } from "@louez/utils";
+import { SUPPORTED_COUNTRIES, SUPPORTED_CURRENCY_CODES } from "@louez/utils";
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
@@ -57,6 +57,11 @@ export const SLUG_SUGGESTION_COUNT = 3;
 
 const COUNTRY_CODES = SUPPORTED_COUNTRIES.map((country) => country.code) as [string, ...string[]];
 
+/** A currency a store may use: the ones the app formats and Stripe charges in. */
+export const currencyField = z
+  .enum(SUPPORTED_CURRENCY_CODES)
+  .describe(`An ISO 4217 code among ${SUPPORTED_CURRENCY_CODES.join(", ")}.`);
+
 const slugField = storeInfoSchema.shape.slug.describe(
   "The store's web address: 3 to 50 lowercase letters, digits and hyphens. Check it first with stores_check_slug_availability.",
 );
@@ -85,10 +90,7 @@ export const createStoreInput = z.object({
   country: z
     .enum(COUNTRY_CODES)
     .describe("Where the store is, as an ISO 3166-1 alpha-2 code (FR). It sets the time zone."),
-  currency: z
-    .string()
-    .regex(/^[A-Z]{3}$/)
-    .describe("The store's currency, as an ISO 4217 code (EUR)."),
+  currency: currencyField.describe("The store's currency, as an ISO 4217 code (EUR)."),
   address: storeInfoSchema.shape.address.describe("The store's postal address, on one line."),
   latitude: storeInfoSchema.shape.latitude,
   longitude: storeInfoSchema.shape.longitude,

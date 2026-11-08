@@ -459,6 +459,13 @@ describe(
       assert.deepEqual(before.items, []);
       assert.match(before.hint ?? "", /stores_create/);
 
+      // A currency Louez does not support is refused before any preview.
+      for (const currency of ["ZZZ", "BTC"]) {
+        await assert.rejects(
+          create(await agent(), { currency }),
+          (error: unknown) => (error as { code?: string }).code === "BAD_REQUEST",
+        );
+      }
       const refused = await rejects(create(await agent()), "CONFIRMATION_REQUIRED");
       const preview = refused.data.details?.preview as {
         summary: string;
@@ -782,6 +789,10 @@ describe(
       const reserved = await check("admin");
       assert.equal(reserved.reason, "reserved");
       assert.ok(reserved.suggestions.every((slug) => slug !== "admin"));
+      // The app's own first segments, which the proxy routes before any store.
+      for (const slug of ["online-store", "active-store"]) {
+        assert.equal((await check(slug)).reason, "reserved", slug);
+      }
 
       const fromName = await check("Surf à Brest !");
       assert.equal(fromName.reason, "invalid");

@@ -94,7 +94,8 @@ export const useStoreStep = ({
     },
     onSubmit: async ({ value }) => {
       try {
-        await mutation.mutateAsync(value);
+        // Validated on submit: the parse only narrows the currency to a supported code.
+        await mutation.mutateAsync(storeInfoSchema.parse(value));
         goToNextStep();
       } catch (error) {
         if (error instanceof Error && error.message === "errors.unauthenticated") {

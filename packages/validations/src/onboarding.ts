@@ -1,4 +1,5 @@
 import { supportedLocales } from "@louez/types";
+import { SUPPORTED_CURRENCY_CODES } from "@louez/utils/currencies";
 import { z } from "zod";
 
 import { isValidImageUrl, isValidImageUrlClient } from "./image";
@@ -34,6 +35,18 @@ export const RESERVED_SLUGS = [
   "invite",
   "webhook",
   "webhooks",
+  // The app's other first path segments and the proxy's own roots
+  // (apps/web/lib/reserved-slugs.test.ts keeps this list complete).
+  "account-deleted",
+  "active-store",
+  "demos",
+  "dev",
+  "embed",
+  "favicon",
+  "ingest",
+  "multi-store",
+  "online-store",
+  "styles",
 
   // Brand protection
   "louez",
@@ -203,7 +216,7 @@ export const createStoreInfoSchema = (
       .regex(/^[a-z0-9-]+$/, t("slug"))
       .refine((val) => !isReservedSlug(val), t("slugReserved")),
     country: z.string().length(2),
-    currency: z.string().min(3).max(3),
+    currency: z.enum(SUPPORTED_CURRENCY_CODES),
     address: z.string().or(z.literal("")),
     latitude: z.number().nullable(),
     longitude: z.number().nullable(),
@@ -268,7 +281,7 @@ export const storeInfoSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "validation.slug")
     .refine((val) => !isReservedSlug(val), "validation.slugReserved"),
   country: z.string().length(2),
-  currency: z.string().min(3).max(3),
+  currency: z.enum(SUPPORTED_CURRENCY_CODES),
   address: z.string().optional().or(z.literal("")),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),

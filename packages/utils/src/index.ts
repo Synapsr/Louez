@@ -38,8 +38,9 @@ export * from "./advance-notice";
 export * from "./reservation-rules";
 export { toAbsoluteUrl } from "./url";
 
-// Countries a store can be in, with their time zones, and store referral codes
+// Countries a store can be in, with their time zones, its currencies, and store referral codes
 export * from "./countries";
+export * from "./currencies";
 export * from "./referral-code";
 export * from "./customer-social-links";
 

@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { z } from "zod";
 
 import type { StoreSettings } from "@louez/types";
+import { SUPPORTED_CURRENCY_CODES } from "@louez/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, toastManager } from "@louez/ui";
 import { BuildingIcon } from "@louez/ui/icons";
 
@@ -23,7 +24,7 @@ import { StoreSettingsBillingSection } from "./components/store-settings-billing
 
 const companySettingsSchema = z.object({
   country: z.string().length(2),
-  currency: z.string().length(3),
+  currency: z.enum(SUPPORTED_CURRENCY_CODES),
   billingAddressSameAsStore: z.boolean(),
   billingAddress: z.string(),
   billingCity: z.string(),
@@ -60,9 +61,11 @@ export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
     onSubmit: async ({ value }) => {
       setRootError(null);
       try {
+        // Validated on submit: the parse only narrows the currency to a supported code.
+        const { currency } = companySettingsSchema.parse(value);
         await updateCompany.mutateAsync({
           country: value.country,
-          currency: value.currency,
+          currency,
           billingAddress: value.billingAddressSameAsStore
             ? { sameAsStore: true }
             : {
