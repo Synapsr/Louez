@@ -2,11 +2,13 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
+import { storeLinks } from '@louez/api/platform/links';
 import { db, stores } from '@louez/db';
 
 import type { McpRequestContext } from '../auth/context';
 import { toolError, toolResult } from '../utils/errors';
 import { legacyTool } from '../utils/legacy-tool';
+import { linksLine } from '../utils/links';
 
 export function registerSettingsTools(
   server: McpServer,
@@ -17,7 +19,7 @@ export function registerSettingsTools(
     ctx,
     { domain: 'settings', level: 'read' },
     'get_store_settings',
-    'Get complete store configuration (name, contact, settings)',
+    "Get complete store configuration (name, contact, settings), with the links to the store's dashboard and, once online, its storefront: give the user those URLs.",
     {},
     async () => {
       const store = await db.query.stores.findFirst({
@@ -28,6 +30,7 @@ export function registerSettingsTools(
 
       return toolResult(
         `## ${store.name}\n\n` +
+          `${linksLine(storeLinks(ctx.ports.urls, store))}\n\n` +
           `- **Slug**: ${store.slug}\n` +
           `- **Email**: ${store.email ?? '—'}\n` +
           `- **Phone**: ${store.phone ?? '—'}\n` +

@@ -4,7 +4,7 @@ import { after, before, describe, mock, test } from "node:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
-import { createTestUrls } from "@louez/api/platform/test-urls";
+import { createTestUrls, TEST_APP_URL } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
@@ -459,5 +459,52 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       await mcpCall(authorization, "list_products", { page: 100, pageSize: 100 }),
     );
     assert.deepEqual(last.items, []);
+  });
+  test("a tool's answer carries the record's links, built from the deployment's urls", async () => {
+    const authorization = await key({ ...readOnly, products: "write" });
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ onboardingCompleted: true })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    try {
+      const created = await mcpCall(authorization, "products_create", {
+        name: "Linked kayak",
+        price: "30",
+      });
+      const product = output(created) as { id: string; slug: string; links: Json };
+      const dashboard = `${TEST_APP_URL}/dashboard/products/${product.id}`;
+      const storefront = `https://pt-store-a.louez.test/product/${product.slug}`;
+      assert.deepEqual(product.links, { dashboard, storefront });
+      const [text] = created.content as Array<{ type: string; text: string }>;
+      assert.match(
+        text.text,
+        new RegExp(`Links to give the user: dashboard ${dashboard}, storefront ${storefront}\\.`),
+      );
+
+      const listed = output(await mcpCall(authorization, "products_list", {})) as {
+        items: Array<{ id: string; links: Json }>;
+      };
+      assert.deepEqual(listed.items.find((item) => item.id === product.id)?.links, {
+        dashboard,
+        storefront,
+      });
+
+      // A hand-written tool gives the customer's page in its text.
+      const [customer] = await louezDb.db
+        .insert(louezDb.customers)
+        .values({ storeId: STORE, email: "linked@pt.test", firstName: "Lina", lastName: "Link" })
+        .$returningId();
+      const found = await mcpCall(authorization, "get_customer", { customerId: customer.id });
+      const [customerText] = found.content as Array<{ type: string; text: string }>;
+      assert.ok(
+        customerText.text.includes(`dashboard ${TEST_APP_URL}/dashboard/customers/${customer.id}`),
+        customerText.text,
+      );
+    } finally {
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ onboardingCompleted: false })
+        .where(orm.eq(louezDb.stores.id, STORE));
+    }
   });
 });

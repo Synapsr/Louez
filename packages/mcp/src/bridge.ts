@@ -10,6 +10,7 @@ import { call } from "@orpc/server";
 import { isListed, type McpRequestContext } from "./auth/context";
 import { addTool } from "./tool-registry";
 import { errorResult } from "./utils/errors";
+import { linksLine, outputLinks } from "./utils/links";
 
 /** `_meta` keys of a tool result. */
 export const OPERATION_ID_META = "io.louez/operationId";
@@ -106,9 +107,15 @@ async function callProcedure(
     const structuredContent = jsonSafe(output);
     const status = receipt.replayed ? "Done earlier (replayed)." : "Done.";
     const operation = receipt.operationId ? ` Operation ${receipt.operationId}.` : "";
+    // A record's links on their own line, so a model hands them on as they are.
+    const links = outputLinks(structuredContent);
+    const linkLine = links ? `\n${linksLine(links)}` : "";
     return {
       content: [
-        { type: "text", text: `${status}${operation}\n${JSON.stringify(structuredContent)}` },
+        {
+          type: "text",
+          text: `${status}${operation}${linkLine}\n${JSON.stringify(structuredContent)}`,
+        },
       ],
       structuredContent,
       ...(receipt.operationId

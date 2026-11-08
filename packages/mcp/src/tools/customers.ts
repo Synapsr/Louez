@@ -13,11 +13,13 @@ import {
   resolveCustomerCompanyFields,
   toReadableCustomerFields,
 } from '@louez/api/services/customer-tools';
+import { customerLinks, reservationLinks } from '@louez/api/platform/links';
 import { customers, db, reservations, stores } from '@louez/db';
 
 import type { McpRequestContext } from '../auth/context';
 import { toolError, toolResult } from '../utils/errors';
 import { legacyTool } from '../utils/legacy-tool';
+import { linksLine } from '../utils/links';
 import { formatCurrency, formatDate, formatStatus } from '../utils/formatting';
 import { paginationParams } from '../utils/pagination';
 
@@ -58,7 +60,7 @@ export function registerCustomerTools(
     ctx,
     { domain: 'customers', level: 'read' },
     'list_customers',
-    'List customers with optional search and filters',
+    "List customers with optional search and filters. Each customer comes with the link to its dashboard page: give the user that URL to open it.",
     {
       search: z
         .string()
@@ -109,7 +111,8 @@ export function registerCustomerTools(
         (c) =>
           `- **${c.firstName} ${c.lastName}** (${c.id})\n` +
           `  ${c.email}${c.phone ? ` | ${c.phone}` : ''} | ${c.customerType}\n` +
-          `  Registered: ${formatDate(c.createdAt)}`,
+          `  Registered: ${formatDate(c.createdAt)}\n` +
+          `  Dashboard: ${customerLinks(ctx.ports.urls, c).dashboard}`,
       );
 
       return toolResult(
@@ -123,7 +126,7 @@ export function registerCustomerTools(
     ctx,
     { domain: 'customers', level: 'read' },
     'get_customer',
-    "Get detailed customer profile with reservation history and the store's custom fields. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
+    "Get detailed customer profile with reservation history and the store's custom fields, with the links to the customer's and each reservation's dashboard page: give the user those URLs to open them. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
     {
       customerId: z.string().describe('The customer ID'),
     },
@@ -155,7 +158,8 @@ export function registerCustomerTools(
         (customer.address
           ? `- **Address**: ${customer.address}, ${customer.city} ${customer.postalCode}\n`
           : '') +
-        `- **Registered**: ${formatDate(customer.createdAt)}\n`;
+        `- **Registered**: ${formatDate(customer.createdAt)}\n` +
+        `\n${linksLine(customerLinks(ctx.ports.urls, customer))}\n`;
 
       const [definitions, values] = await Promise.all([
         listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true, scope: 'customer' }),
@@ -180,7 +184,7 @@ export function registerCustomerTools(
       if (customer.reservations.length > 0) {
         text += `\n### Recent reservations (${customer.reservations.length})\n`;
         for (const r of customer.reservations) {
-          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)}\n`;
+          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)} — ${reservationLinks(ctx.ports.urls, r).dashboard}\n`;
         }
       }
 
@@ -193,7 +197,7 @@ export function registerCustomerTools(
     ctx,
     { domain: 'customers', level: 'write' },
     'create_customer',
-    'Create a new customer',
+    'Create a new customer. Answers with the link to its dashboard page, to give the user.',
     {
       email: z.email().describe('Customer email'),
       firstName: z.string().min(1).describe('First name'),
@@ -317,7 +321,8 @@ export function registerCustomerTools(
         `Customer created successfully.\n\n` +
           `- **Name**: ${firstName} ${lastName}\n` +
           `- **ID**: ${createdId}\n` +
-          `- **Email**: ${email}`,
+          `- **Email**: ${email}\n\n` +
+          linksLine(customerLinks(ctx.ports.urls, { id: createdId })),
       );
     },
   );
@@ -327,7 +332,7 @@ export function registerCustomerTools(
     ctx,
     { domain: 'customers', level: 'write' },
     'update_customer',
-    'Update an existing customer',
+    'Update an existing customer. Answers with the link to its dashboard page, to give the user.',
     {
       customerId: z.string().describe('The customer ID'),
       firstName: z.string().optional(),
@@ -464,7 +469,10 @@ export function registerCustomerTools(
         });
       });
 
-      return toolResult(`Customer ${customerId} updated successfully.`);
+      return toolResult(
+        `Customer ${customerId} updated successfully.\n\n` +
+          linksLine(customerLinks(ctx.ports.urls, { id: customerId })),
+      );
     },
   );
 }

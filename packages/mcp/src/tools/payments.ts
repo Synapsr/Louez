@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { reservationLinks } from '@louez/api/platform/links'
 import { db, markReservation, payments, reservations, stores, type Transaction } from '@louez/db'
 import type { StoreSettings } from '@louez/types'
 import { and, eq } from 'drizzle-orm'
@@ -8,6 +9,7 @@ import type { McpRequestContext } from '../auth/context'
 import { formatCurrency, formatDateTime } from '../utils/formatting'
 import { toolError, toolResult } from '../utils/errors'
 import { legacyTool } from '../utils/legacy-tool'
+import { linksLine } from '../utils/links'
 
 /** A payment the store records by hand, as the app's writer takes it. */
 export interface McpRecordedPayment {
@@ -52,7 +54,7 @@ export function registerPaymentTools(
     ctx,
     { domain: 'payments', level: 'read' },
     'list_payments',
-    'List all payments for a specific reservation',
+    "List all payments for a specific reservation, with the link to the reservation's dashboard page to give the user.",
     {
       reservationId: z.string().describe('The reservation ID'),
     },
@@ -65,6 +67,7 @@ export function registerPaymentTools(
         columns: { id: true, number: true },
       })
       if (!reservation) return toolError('Reservation not found.')
+      const links = linksLine(reservationLinks(ctx.ports.urls, reservation))
 
       const rows = await db.query.payments.findMany({
         where: eq(payments.reservationId, reservationId),
@@ -72,7 +75,7 @@ export function registerPaymentTools(
       })
 
       if (rows.length === 0) {
-        return toolResult(`No payments recorded for reservation #${reservation.number}.`)
+        return toolResult(`No payments recorded for reservation #${reservation.number}.\n\n${links}`)
       }
 
       const lines = rows.map(
@@ -84,7 +87,7 @@ export function registerPaymentTools(
       )
 
       return toolResult(
-        `## Payments — Reservation #${reservation.number} (${rows.length})\n\n${lines.join('\n\n')}`
+        `## Payments — Reservation #${reservation.number} (${rows.length})\n\n${lines.join('\n\n')}\n\n${links}`
       )
     }
   )
@@ -94,7 +97,7 @@ export function registerPaymentTools(
     ctx,
     { domain: 'payments', level: 'write' },
     'record_payment',
-    'Record a manual payment for a reservation',
+    "Record a manual payment for a reservation. Answers with the link to the reservation's dashboard page, to give the user.",
     {
       reservationId: z.string().describe('The reservation ID'),
       type: z
@@ -147,7 +150,8 @@ export function registerPaymentTools(
         `Payment recorded for reservation #${reservation.number}.\n\n` +
           `- Type: ${type}\n` +
           `- Amount: ${formatCurrency(amount)}\n` +
-          `- Method: ${method}`
+          `- Method: ${method}\n\n` +
+          linksLine(reservationLinks(ctx.ports.urls, reservation))
       )
     },
     {
@@ -176,7 +180,7 @@ export function registerPaymentTools(
     ctx,
     { domain: 'payments', level: 'write' },
     'delete_payment',
-    'Delete a payment record',
+    "Delete a payment record. Answers with the link to the reservation's dashboard page, to give the user.",
     {
       paymentId: z.string().describe('The payment ID to delete'),
     },
@@ -203,7 +207,10 @@ export function registerPaymentTools(
         await markReservation(tx, { id: payment.reservationId, storeId: ctx.storeId })
       })
 
-      return toolResult(`Payment deleted (reservation #${payment.reservation?.number}).`)
+      return toolResult(
+        `Payment deleted (reservation #${payment.reservation?.number}).\n\n` +
+          linksLine(reservationLinks(ctx.ports.urls, { id: payment.reservationId }))
+      )
     },
     {
       sensitive: {
@@ -238,7 +245,7 @@ export function registerPaymentTools(
     ctx,
     { domain: 'payments', level: 'write' },
     'return_deposit',
-    'Record a deposit return for a reservation',
+    "Record a deposit return for a reservation. Answers with the link to the reservation's dashboard page, to give the user.",
     {
       reservationId: z.string().describe('The reservation ID'),
       amount: z.string().describe('Amount to return'),
@@ -296,7 +303,8 @@ export function registerPaymentTools(
       return toolResult(
         `Deposit returned for reservation #${reservation.number}.\n` +
           `- Amount: ${formatCurrency(amount)}\n` +
-          `- Method: ${method}`
+          `- Method: ${method}\n\n` +
+          linksLine(reservationLinks(ctx.ports.urls, reservation))
       )
     },
     {

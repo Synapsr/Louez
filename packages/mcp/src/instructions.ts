@@ -1,3 +1,4 @@
+import { agentConnectionsLinks } from "@louez/api/platform/links";
 import { MCP_BUNDLES, type McpBundle } from "@louez/api/platform/meta";
 
 import type { McpRequestContext } from "./auth/context";
@@ -41,11 +42,14 @@ export function serverInstructions(ctx: McpRequestContext): string {
     );
     if (others.length > 0) {
       lines.push(
-        `Not listed: ${others.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}. When the user asks for one of these, tell them to enable the bundle in Louez: Settings > Integrations > MCP > Connected agents. You cannot enable it yourself.`,
+        `Not listed: ${others.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}. When the user asks for one of these, tell them to enable the bundle in Louez: Settings > Integrations > MCP > Connected agents (${agentConnectionsLinks(ctx.ports.urls).dashboard}). You cannot enable it yourself.`,
       );
     }
   }
 
+  lines.push(
+    "Records come with `links`: absolute URLs to their page in the Louez dashboard and, when the public can see it, on the store's online store. When the user wants to see or open something, give them these URLs as they are. Never build, guess or shorten a Louez URL; without a link, name the record instead.",
+  );
   lines.push(
     "Sensitive actions (money, deletion, messages to customers) may answer CONFIRMATION_REQUIRED with a preview: show it to the user and call again with the token only after they agree.",
   );
