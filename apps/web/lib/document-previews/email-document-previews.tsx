@@ -602,8 +602,13 @@ export const EMAIL_DOCUMENT_PREVIEWS: readonly EmailDocumentPreview[] = [
   ),
   statusChangeAdminPreview(
     "cancelled",
-    "Réservation annulée par le client (loueur)",
-    "Le loueur est prévenu que le client a annulé sa demande ou refusé le devis.",
+    "Demande annulée par le client (loueur)",
+    "Le loueur est prévenu que le client a annulé sa demande de réservation.",
+  ),
+  statusChangeAdminPreview(
+    "quote_declined",
+    "Devis refusé par le client (loueur)",
+    "Le loueur est prévenu que le client a refusé son devis.",
   ),
   paymentAdminPreview(
     "received",

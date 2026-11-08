@@ -191,9 +191,14 @@
       "body": "Pelanggan telah mengonfirmasi reservasi #{number} di {storeName}."
     },
     "cancelled": {
-      "subject": "Reservasi #{number} dibatalkan oleh pelanggan",
+      "subject": "Permintaan #{number} dibatalkan oleh pelanggan",
       "title": "Dibatalkan oleh pelanggan",
       "body": "Pelanggan telah membatalkan reservasi #{number} di {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Penawaran #{number} ditolak oleh pelanggan",
+      "title": "Penawaran ditolak oleh pelanggan",
+      "body": "Pelanggan telah menolak penawaran #{number} di {storeName}."
     }
   },
   "supplierInvoiceReceived": {

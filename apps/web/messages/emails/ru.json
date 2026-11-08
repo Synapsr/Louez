@@ -191,9 +191,14 @@
       "body": "Клиент подтвердил бронирование #{number} в {storeName}."
     },
     "cancelled": {
-      "subject": "Клиент отменил бронирование #{number}",
+      "subject": "Запрос № {number} отменен клиентом",
       "title": "Отменено клиентом",
       "body": "Клиент отменил бронирование #{number} в {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Клиент отклонил смету #{number}",
+      "title": "Смета отклонена клиентом",
+      "body": "Клиент отклонил смету #{number} в {storeName}."
     }
   },
   "supplierInvoiceReceived": {

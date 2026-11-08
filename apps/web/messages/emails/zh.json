@@ -191,9 +191,14 @@
       "body": "客户已确认 {storeName} 上的预订 #{number}。"
     },
     "cancelled": {
-      "subject": "客户已取消预订 #{number}",
+      "subject": "请求 #{number} 已被客户取消",
       "title": "客户已取消",
       "body": "客户已取消 {storeName} 上的预订 #{number}。"
+    },
+    "quote_declined": {
+      "subject": "客户已拒绝报价 #{number}",
+      "title": "客户已拒绝报价",
+      "body": "客户已拒绝 {storeName} 上的报价 #{number}。"
     }
   },
   "supplierInvoiceReceived": {

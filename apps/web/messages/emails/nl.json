@@ -191,9 +191,14 @@
       "body": "De klant heeft reservering #{number} bij {storeName} bevestigd."
     },
     "cancelled": {
-      "subject": "Reservering #{number} geannuleerd door de klant",
+      "subject": "Aanvraag #{number} geannuleerd door de klant",
       "title": "Geannuleerd door de klant",
       "body": "De klant heeft reservering #{number} bij {storeName} geannuleerd."
+    },
+    "quote_declined": {
+      "subject": "Offerte #{number} geweigerd door de klant",
+      "title": "Offerte geweigerd door de klant",
+      "body": "De klant heeft offerte #{number} bij {storeName} geweigerd."
     }
   },
   "contactMessage": {

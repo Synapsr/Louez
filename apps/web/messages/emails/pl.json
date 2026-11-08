@@ -182,9 +182,14 @@
       "body": "Klient potwierdził rezerwację #{number} w {storeName}."
     },
     "cancelled": {
-      "subject": "Rezerwacja #{number} anulowana przez klienta",
+      "subject": "Prośba #{number} anulowana przez klienta",
       "title": "Anulowana przez klienta",
       "body": "Klient anulował rezerwację #{number} w {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Wycena #{number} odrzucona przez klienta",
+      "title": "Wycena odrzucona przez klienta",
+      "body": "Klient odrzucił wycenę #{number} w {storeName}."
     }
   },
   "contactMessage": {

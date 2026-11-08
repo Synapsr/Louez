@@ -191,9 +191,14 @@
       "body": "고객이 {storeName}의 예약 #{number}을(를) 확정했습니다."
     },
     "cancelled": {
-      "subject": "고객이 예약 #{number}을(를) 취소했습니다",
+      "subject": "고객이 요청 #{number}를 취소했습니다.",
       "title": "고객이 취소함",
       "body": "고객이 {storeName}의 예약 #{number}을(를) 취소했습니다."
+    },
+    "quote_declined": {
+      "subject": "고객이 견적 #{number}을(를) 거부했습니다",
+      "title": "고객이 견적을 거부함",
+      "body": "고객이 {storeName}의 견적 #{number}을(를) 거부했습니다."
     }
   },
   "supplierInvoiceReceived": {

@@ -191,9 +191,14 @@
       "body": "Le client a confirmé la réservation #{number} sur {storeName}."
     },
     "cancelled": {
-      "subject": "Réservation #{number} annulée par le client",
+      "subject": "Demande #{number} annulée par le client",
       "title": "Annulée par le client",
       "body": "Le client a annulé la réservation #{number} sur {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Devis #{number} refusé par le client",
+      "title": "Devis refusé par le client",
+      "body": "Le client a refusé le devis #{number} sur {storeName}."
     }
   },
   "supplierInvoiceReceived": {

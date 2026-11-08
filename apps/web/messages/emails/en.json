@@ -191,9 +191,14 @@
       "body": "The customer confirmed reservation #{number} on {storeName}."
     },
     "cancelled": {
-      "subject": "Reservation #{number} cancelled by the customer",
+      "subject": "Request #{number} cancelled by the customer",
       "title": "Cancelled by the customer",
       "body": "The customer cancelled reservation #{number} on {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Quote #{number} declined by the customer",
+      "title": "Quote declined by the customer",
+      "body": "The customer declined quote #{number} on {storeName}."
     }
   },
   "supplierInvoiceReceived": {

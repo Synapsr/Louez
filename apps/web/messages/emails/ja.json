@@ -191,9 +191,14 @@
       "body": "お客様が {storeName} の予約 #{number} を確定しました。"
     },
     "cancelled": {
-      "subject": "お客様が予約 #{number} をキャンセルしました",
+      "subject": "リクエスト #{number} が顧客によってキャンセルされました",
       "title": "お客様がキャンセルしました",
       "body": "お客様が {storeName} の予約 #{number} をキャンセルしました。"
+    },
+    "quote_declined": {
+      "subject": "お客様が見積 #{number} を却下しました",
+      "title": "お客様が見積を却下しました",
+      "body": "お客様が {storeName} の見積 #{number} を却下しました。"
     }
   },
   "supplierInvoiceReceived": {

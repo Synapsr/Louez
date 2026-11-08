@@ -231,10 +231,19 @@ describe("owner email per event", () => {
       { sent: true },
     );
     assert.deepEqual(
+      await sendAdminEventEmail(
+        "reservation_cancelled",
+        ctx({ reservation, quoteDeclined: true }),
+        fakeDeps(sent),
+      ),
+      { sent: true },
+    );
+    assert.deepEqual(
       sent.statusChange.map((email) => [email.kind, email.to, email.reservationCurrency]),
       [
         ["confirmed", "contact@velos.test", "GBP"],
         ["cancelled", "contact@velos.test", "GBP"],
+        ["quote_declined", "contact@velos.test", "GBP"],
       ],
     );
   });
@@ -342,7 +351,7 @@ describe("dispatchNotification email channel", () => {
 });
 
 describe("status change email to the owner", () => {
-  test("renders in every locale, for a confirmation and a cancellation", async () => {
+  test("renders in every locale, for a confirmation, a cancellation and a declined quote", async () => {
     const locales: EmailLocale[] = [
       "fr",
       "en",
@@ -358,7 +367,8 @@ describe("status change email to the owner", () => {
       "id",
       "ko",
     ];
-    for (const kind of ["confirmed", "cancelled"] satisfies StatusChangeAdminEmailKind[]) {
+    const kinds: StatusChangeAdminEmailKind[] = ["confirmed", "cancelled", "quote_declined"];
+    for (const kind of kinds) {
       for (const locale of locales) {
         const html = await render(
           templates.StatusChangeAdminEmail({

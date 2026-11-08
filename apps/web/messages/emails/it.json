@@ -182,9 +182,14 @@
       "body": "Il cliente ha confermato la prenotazione #{number} su {storeName}."
     },
     "cancelled": {
-      "subject": "Prenotazione #{number} annullata dal cliente",
+      "subject": "Richiesta #{number} annullata dal cliente",
       "title": "Annullata dal cliente",
       "body": "Il cliente ha annullato la prenotazione #{number} su {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Preventivo #{number} rifiutato dal cliente",
+      "title": "Preventivo rifiutato dal cliente",
+      "body": "Il cliente ha rifiutato il preventivo #{number} su {storeName}."
     }
   },
   "contactMessage": {

@@ -228,7 +228,7 @@ test("declineQuote voids the fee before it tells the store", async () => {
   assert.equal(effectRuns[0], effects);
 });
 
-test("declineQuote tells the owner the customer cancelled, in the quote's currency", async () => {
+test("declineQuote tells the owner the customer declined the quote, in its currency", async () => {
   const { actions, notifications } = setup();
   await actions.declineQuote("shop", reservationId);
 
@@ -236,6 +236,7 @@ test("declineQuote tells the owner the customer cancelled, in the quote's curren
   const [[event, ctx]] = notifications;
   assert.equal(event, "reservation_cancelled");
   assert.equal(ctx.actor, "customer");
+  assert.equal(ctx.quoteDeclined, true);
   assert.equal(ctx.reservation.currency, "GBP");
 });
 

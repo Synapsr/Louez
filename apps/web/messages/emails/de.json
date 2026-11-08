@@ -182,9 +182,14 @@
       "body": "Der Kunde hat die Reservierung #{number} bei {storeName} bestätigt."
     },
     "cancelled": {
-      "subject": "Reservierung #{number} vom Kunden storniert",
+      "subject": "Anfrage #{number} vom Kunden storniert",
       "title": "Vom Kunden storniert",
       "body": "Der Kunde hat die Reservierung #{number} bei {storeName} storniert."
+    },
+    "quote_declined": {
+      "subject": "Angebot #{number} vom Kunden abgelehnt",
+      "title": "Angebot vom Kunden abgelehnt",
+      "body": "Der Kunde hat das Angebot #{number} bei {storeName} abgelehnt."
     }
   },
   "contactMessage": {

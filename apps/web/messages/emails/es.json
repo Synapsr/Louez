@@ -191,9 +191,14 @@
       "body": "El cliente ha confirmado la reserva #{number} en {storeName}."
     },
     "cancelled": {
-      "subject": "Reserva #{number} cancelada por el cliente",
+      "subject": "Solicitud #{number} cancelada por el cliente",
       "title": "Cancelada por el cliente",
       "body": "El cliente ha cancelado la reserva #{number} en {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Presupuesto #{number} rechazado por el cliente",
+      "title": "Presupuesto rechazado por el cliente",
+      "body": "El cliente ha rechazado el presupuesto #{number} en {storeName}."
     }
   },
   "contactMessage": {

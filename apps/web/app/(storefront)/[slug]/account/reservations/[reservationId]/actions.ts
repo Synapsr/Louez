@@ -438,6 +438,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   // Notify the store owner
   dispatchNotification("reservation_cancelled", {
     actor: "customer",
+    quoteDeclined: true,
     store: {
       id: store.id,
       name: store.name,

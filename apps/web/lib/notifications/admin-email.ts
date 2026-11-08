@@ -41,16 +41,24 @@ const ADMIN_EMAIL_EVENTS: readonly AdminEmailEvent[] = [
   "payment_disputed",
 ];
 
-const STATUS_EMAIL_KINDS: Record<
-  Extract<AdminEmailEvent, "reservation_confirmed" | "reservation_cancelled">,
-  StatusChangeAdminEmailKind
-> = {
-  reservation_confirmed: "confirmed",
-  reservation_cancelled: "cancelled",
-};
+type StatusChangeEvent = Extract<
+  AdminEmailEvent,
+  "reservation_confirmed" | "reservation_cancelled"
+>;
+
+/** A cancellation the customer made is a cancelled request or a declined quote. */
+const statusEmailKind = (
+  eventType: StatusChangeEvent,
+  ctx: NotificationContext,
+): StatusChangeAdminEmailKind =>
+  eventType === "reservation_confirmed"
+    ? "confirmed"
+    : ctx.quoteDeclined
+      ? "quote_declined"
+      : "cancelled";
 
 const PAYMENT_EMAIL_KINDS: Record<
-  Exclude<AdminEmailEvent, "reservation_new" | keyof typeof STATUS_EMAIL_KINDS>,
+  Exclude<AdminEmailEvent, "reservation_new" | StatusChangeEvent>,
   PaymentAdminEmailKind
 > = {
   payment_received: "received",
@@ -157,7 +165,7 @@ export async function sendAdminEventEmail(
     } else if (eventType === "reservation_confirmed" || eventType === "reservation_cancelled") {
       await deps.sendStatusChangeAdminEmail({
         to,
-        kind: STATUS_EMAIL_KINDS[eventType],
+        kind: statusEmailKind(eventType, ctx),
         store,
         customer,
         reservation,

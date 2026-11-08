@@ -64,6 +64,8 @@ export type NotificationActor = "customer" | "store" | "system";
 export interface NotificationContext {
   /** Decides, for a confirmation or a cancellation, whether the owner gets an email. */
   actor: NotificationActor;
+  /** For a cancellation the customer made: they declined a quote, not a request. */
+  quoteDeclined?: boolean;
   store: {
     id: string;
     name: string;

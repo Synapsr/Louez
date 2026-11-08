@@ -10,7 +10,7 @@ import {
 import { formatEmailDateInStoreTimezone } from "../date-time";
 
 /** What the customer did to a reservation, for the store owner. */
-export type StatusChangeAdminEmailKind = "confirmed" | "cancelled";
+export type StatusChangeAdminEmailKind = "confirmed" | "cancelled" | "quote_declined";
 
 interface StatusChangeAdminEmailProps {
   kind: StatusChangeAdminEmailKind;
