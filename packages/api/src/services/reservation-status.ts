@@ -30,6 +30,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { reservationErrors, type StatusChangeOutput } from "../contracts/reservations";
 import type { Transport } from "../platform/actor";
+import { sha256, stableStringify } from "../platform/hash";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import { resolveDateChangeRequests } from "./date-change-requests";
 import { validateReservationContract } from "./reservation-contract-validation";
@@ -95,6 +96,12 @@ export interface StatusChangePreview {
   } | null;
   /** The insurance contract the change creates or cancels. */
   insuranceContract: "created" | "cancelled" | null;
+  /**
+   * A hash of where the messages go (each channel and its address), never
+   * shown: the confirmation binds it, so a changed email or phone voids the
+   * token even when the preview could not show them.
+   */
+  recipientsHash: string;
 }
 
 /** Asks the caller to confirm, under the change's locks: null goes on, an error stops. */
@@ -327,6 +334,14 @@ async function buildPreview(
     reducesAvailability: takesStock(locked.status, to),
     money: moneyFacts,
     insuranceContract,
+    recipientsHash: sha256(
+      stableStringify(
+        messages.map((entry) => ({
+          channel: entry.channel,
+          to: entry.channel === "email" ? locked.customer?.email : locked.customer?.phone,
+        })),
+      ),
+    ),
   };
 }
 

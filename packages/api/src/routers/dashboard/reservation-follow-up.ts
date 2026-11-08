@@ -74,15 +74,17 @@ const statusCaller = (context: ProductContext): StatusChangeCaller => ({
 });
 
 /**
- * The confirmation of a status change, bound to what its preview shows: the
- * status it starts from, the dates, the amounts, the messages and the money.
- * A change since (the reservation moved, a payment recorded, a setting that
- * stops a message) voids the token.
+ * The confirmation of a status change, bound to what its preview shows (the
+ * status it starts from, the dates, the amounts, the messages and the money)
+ * and to where the messages go. A change since (the reservation moved, a
+ * payment recorded, a setting that stops a message, the customer's email or
+ * phone) voids the token.
  */
 const statusConfirmation = (context: ProductContext, path: readonly string[], input: unknown) =>
   confirmUnderLock(context, path, input, (preview: StatusChangePreview) => {
-    const { summary: _summary, ...details } = preview;
-    return { state: details, details };
+    const { summary: _summary, recipientsHash, ...details } = preview;
+    // The recipients are bound even where the preview may not show them.
+    return { state: { ...details, recipientsHash }, details };
   });
 
 const CUSTOMER_NOTE =
