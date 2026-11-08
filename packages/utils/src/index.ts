@@ -46,7 +46,7 @@ export * from "./customer-social-links";
 
 // Rich-text HTML (dashboard editor): whether it shows text. Its sanitiser is
 // server-only, at `@louez/utils/sanitize-rich-text`.
-export { hasRichTextContent } from "./html/rich-text-content";
+export { RICH_TEXT_MAX_DEPTH, hasRichTextContent } from "./html/rich-text-content";
 
 // AI advisor
 export { advisorValidationCovers } from "./ai-advisor";

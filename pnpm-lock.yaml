@@ -744,6 +744,9 @@ importers:
       date-fns-tz:
         specifier: ^3.2.0
         version: 3.2.0(date-fns@4.1.0)
+      htmlparser2:
+        specifier: 12.0.0
+        version: 12.0.0
       sanitize-html:
         specifier: 2.18.1
         version: 2.18.1

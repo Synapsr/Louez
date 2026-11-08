@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { Parser } from "htmlparser2";
+
 import { hasRichTextContent } from "./rich-text-content";
-import { sanitizeRichTextHtml as sanitize } from "./sanitize-rich-text";
+import {
+  RICH_TEXT_MAX_DEPTH,
+  richTextTooDeep,
+  sanitizeRichTextHtml as sanitize,
+} from "./sanitize-rich-text";
 
 /** Sanitised once, then saved again and rendered again: the same each time. */
 const stable = (html: string) => {
@@ -12,15 +18,24 @@ const stable = (html: string) => {
   return once;
 };
 
-/** The deepest nesting of sanitised HTML, which only holds the editor's tags. */
+/** The deepest nesting of HTML as htmlparser2, the sanitiser's parser, reads it. */
 const depthOf = (html: string) => {
   let depth = 0;
   let deepest = 0;
-  for (const [, closing, name] of html.matchAll(/<(\/?)([a-z][a-z\d]*)/g)) {
-    if (name === "br" || name === "hr") continue;
-    depth += closing ? -1 : 1;
-    deepest = Math.max(deepest, depth);
-  }
+  const parser = new Parser(
+    {
+      onopentag: () => {
+        depth += 1;
+        deepest = Math.max(deepest, depth);
+      },
+      onclosetag: () => {
+        depth -= 1;
+      },
+    },
+    { decodeEntities: false },
+  );
+  parser.write(html);
+  parser.end();
   return deepest;
 };
 
@@ -111,16 +126,6 @@ test("text that only looks like a tag stays text", () => {
   assert.equal(stable("<p>1 <2</p>"), "<p>1 &lt;2</p>");
 });
 
-test("tags past the deepest nesting read as text; editor nesting is untouched", () => {
-  const deep = `${"<blockquote>".repeat(300)}x${"</blockquote>".repeat(300)}`;
-  const out = stable(deep);
-  assert.equal(depthOf(out), 256);
-  assert.ok(out.includes("&lt;blockquote&gt;"));
-  const nested =
-    "<blockquote><ul><li><p><strong><em><u><s>deep</s></u></em></strong></p></li></ul></blockquote>";
-  assert.equal(stable(nested), nested);
-});
-
 test("an editor left empty shows nothing", () => {
   for (const html of ["", "<p></p>", "<p>&nbsp;</p>", "<p> </p>", "<h2> </h2><br />"]) {
     assert.equal(hasRichTextContent(html), false, html);
@@ -174,25 +179,6 @@ test("four times the input costs about four times as much, never sixteen", () =>
   }
 });
 
-test("a self-closing or stray tag does not hide depth from the count", () => {
-  // The parser opens `<em/>` (it ignores the slash in HTML) and `</bogus>` closes nothing.
-  assert.equal(depthOf(stable("<em/>".repeat(300))), 256);
-  assert.equal(depthOf(stable("<em></bogus>".repeat(300))), 256);
-  // A matched close frees its level: closed pairs never pile up, and none is lost.
-  const pairs = stable("<em>x</em>".repeat(1_000));
-  assert.equal(depthOf(pairs), 1);
-  assert.equal(pairs.match(/<em>/g)?.length, 1_000);
-  // Implied closes free theirs too, as for the parser.
-  const paragraphs = stable("<p>x".repeat(1_000));
-  assert.equal(paragraphs.match(/<p>/g)?.length, 1_000);
-});
-
-test("a close inside a raw-text element frees no level", () => {
-  // `</em>` inside a script is text for the parser, which keeps the `em` open.
-  assert.ok(depthOf(stable("<em><script></em></script>".repeat(300))) <= 256);
-  assert.ok(depthOf(stable("<em><textarea></em></textarea>".repeat(300))) <= 256);
-});
-
 test("a long input is sanitised whole, and the result is stable", () => {
   const out = stable(`<p>${"&".repeat(70_000)}</p><p>tail</p>`);
   assert.ok(out.endsWith("<p>tail</p>"));
@@ -212,4 +198,71 @@ test("a link keeps its entities as written, pass after pass", () => {
     stable("<a href='https://x.test/?t=\"q\"'>x</a>"),
     '<a href="https://x.test/?t=&quot;q&quot;" rel="noopener noreferrer">x</a>',
   );
+});
+
+/**
+ * Inputs that nest deep where a hand-written tokenizer and htmlparser2 would
+ * disagree (comments, CDATA, odd attributes, foreign content, raw text, odd
+ * names): the depth is the parser's own, so none gets past the limit, and a
+ * second pass changes nothing.
+ */
+const DEEP_INPUTS: ReadonlyArray<[string, string]> = [
+  ["<em> × 300", "<em>".repeat(300)],
+  ["<em/> × 300", "<em/>".repeat(300)],
+  ["<em></bogus> × 300", "<em></bogus>".repeat(300)],
+  ["<em><script></em></script> × 300", "<em><script></em></script>".repeat(300)],
+  ["<!--> then <em> × 300", `<!-->${"<em>".repeat(300)}x`],
+  ["<em><![CDATA[></em>]]> × 300", "<em><![CDATA[></em>]]>".repeat(300)],
+  ['<em x=y=" > × 300', '<em x=y=" >'.repeat(300)],
+  ["<svg><title></svg> then <em> × 300", `<svg><title></svg>${"<em>".repeat(300)}`],
+  [
+    "<em><textarea></textareax></em></textarea> × 300",
+    "<em><textarea></textareax></em></textarea>".repeat(300),
+  ],
+  ["<em_x></em> × 300", "<em_x></em>".repeat(300)],
+  [
+    "<blockquote> × 300 around text",
+    `${"<blockquote>".repeat(300)}x${"</blockquote>".repeat(300)}`,
+  ],
+];
+
+test("deep inputs are caught as the parser reads them, and stay stable", () => {
+  for (const [name, html] of DEEP_INPUTS) {
+    assert.equal(richTextTooDeep(html), depthOf(html) > RICH_TEXT_MAX_DEPTH, name);
+    const once = stable(html);
+    assert.ok(depthOf(once) <= RICH_TEXT_MAX_DEPTH, `${name}: depth ${depthOf(once)}`);
+  }
+});
+
+test("past the deepest nesting, only the text is kept, escaped", () => {
+  const out = stable(
+    `${"<blockquote>".repeat(300)}Tom & <b>Jerry</b>${"</blockquote>".repeat(300)}`,
+  );
+  assert.equal(out, "Tom &amp; Jerry");
+});
+
+test("shallow foreign markup keeps its text and what follows", () => {
+  // Depth 2 for the parser, however many siblings.
+  const html = `<svg>${"<g/>".repeat(300)}</svg><p>tail</p>`;
+  assert.equal(richTextTooDeep(html), false);
+  assert.equal(stable(html), "<p>tail</p>");
+  assert.equal(stable(`<svg><image href="x"/>${"<image/>".repeat(300)}</svg><p>t</p>`), "<p>t</p>");
+});
+
+test("editor nesting is untouched", () => {
+  const nested =
+    "<blockquote><ul><li><p><strong><em><u><s>deep</s></u></em></strong></p></li></ul></blockquote>";
+  assert.equal(stable(nested), nested);
+  assert.equal(richTextTooDeep(nested), false);
+});
+
+test("the depth check stops at the limit: deep inputs at the write limit cost almost nothing", () => {
+  richTextTooDeep("<p>warm up</p>");
+  for (const unit of ["<b>", "<em>", "<em/>", "<em></bogus>", "<svg><g>", "<ul><li>"]) {
+    const html = unit.repeat(Math.floor(100_000 / unit.length));
+    const start = performance.now();
+    assert.equal(richTextTooDeep(html), true, unit);
+    const ms = performance.now() - start;
+    assert.ok(ms < 50, `${unit}: ${ms.toFixed(1)} ms`);
+  }
 });
