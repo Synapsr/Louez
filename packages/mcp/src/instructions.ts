@@ -1,3 +1,4 @@
+import { INBOX_POLL_MINUTES } from "@louez/api/contracts/inbox";
 import { agentConnectionsLinks } from "@louez/api/platform/links";
 import { MCP_BUNDLES, type McpBundle } from "@louez/api/platform/meta";
 import { accountRefusal } from "@louez/api/platform/permissions";
@@ -13,6 +14,9 @@ const BUNDLE_SUMMARY: Record<McpBundle, string> = {
   team: "team members",
   billing: "subscription and invoices from Louez",
 };
+
+/** Where an agent learns what needs the user, and how to poll it. */
+const INBOX_HELP = `What needs the user's attention (requests to answer, late returns, failed payments, messages that never went out…): inbox_list. To keep an eye on the store, call it every ${INBOX_POLL_MINUTES.min} to ${INBOX_POLL_MINUTES.max} minutes with the nextCursor of your last call: you get only what is new.`;
 
 /** How a new store goes live, for a model that just created one. */
 const LAUNCH_HELP =
@@ -52,6 +56,8 @@ export function serverInstructions(ctx: McpRequestContext): string {
       `To start another store for the user: stores_create.${offline ? "" : ` ${LAUNCH_HELP}`}`,
     );
   }
+
+  if (!ctx.noStore) lines.push(INBOX_HELP);
 
   const { bundles } = ctx.actor.credential;
   if (bundles) {
