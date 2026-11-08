@@ -54,6 +54,7 @@ export function testRequestContext(input: {
     storeId: input.storeId,
     userId: input.userId,
     storeName: input.storeName ?? "Test store",
+    storeOnline: true,
     headers: new Headers(),
     ports: {
       planFeatures: async () => ({ apiAccess: true }),

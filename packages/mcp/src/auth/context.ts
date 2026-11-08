@@ -55,6 +55,8 @@ export interface McpRequestContext {
   storeId: string;
   userId: string;
   storeName: string;
+  /** Whether the actor's store is online (its storefront is public); false with no store. */
+  storeOnline: boolean;
   /** The request's headers. The bridge forwards its credential to the procedures. */
   headers: Headers;
   ports: ApiPorts;

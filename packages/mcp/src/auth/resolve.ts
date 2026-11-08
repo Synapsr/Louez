@@ -66,6 +66,7 @@ export async function resolveMcpContext(input: {
       storeId: ACCOUNT_SCOPE,
       userId: credential.userId,
       storeName: "",
+      storeOnline: false,
       headers: input.headers,
       ports: input.ports,
       countCall,
@@ -91,7 +92,7 @@ export async function resolveMcpContext(input: {
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, actor.storeId),
-    columns: { name: true },
+    columns: { name: true, onboardingCompleted: true },
   });
   if (!store) throw platformErrors.noStore();
 
@@ -108,6 +109,7 @@ export async function resolveMcpContext(input: {
     storeId: actor.storeId,
     userId: credential.userId,
     storeName: store.name,
+    storeOnline: store.onboardingCompleted === true,
     headers: input.headers,
     ports: input.ports,
     countCall,

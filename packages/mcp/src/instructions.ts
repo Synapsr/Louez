@@ -14,6 +14,10 @@ const BUNDLE_SUMMARY: Record<McpBundle, string> = {
   billing: "subscription and invoices from Louez",
 };
 
+/** How a new store goes live, for a model that just created one. */
+const LAUNCH_HELP =
+  "A new store starts offline: stores_get_launch_checklist says what it still lacks and which tool fixes each item; stores_go_live puts it online once the user agrees with its preview.";
+
 /**
  * The server's instructions: which store it acts on, and which tool bundles
  * the connection lists. A bundle that is not listed is enabled by the user in
@@ -27,7 +31,7 @@ export function serverInstructions(ctx: McpRequestContext): string {
   if (ctx.noStore) {
     lines.push(
       mayCreateStores
-        ? "This account has no store yet. To start one: stores_check_slug_availability for its web address, then stores_create. Pass the new store's id as storeId to the other tools."
+        ? `This account has no store yet. To start one: stores_check_slug_availability for its web address, then stores_create. Pass the new store's id as storeId to the other tools. ${LAUNCH_HELP}`
         : "This connection reaches no store yet. The user creates a store in Louez, or connects this agent again with “Read and edit” rights on all their stores, so that it can create one with stores_create.",
     );
   } else if (ctx.multiStore && !ctx.storeChosen) {
@@ -41,8 +45,12 @@ export function serverInstructions(ctx: McpRequestContext): string {
   } else {
     lines.push(`Store: "${ctx.storeName}".`);
   }
+  const offline = !ctx.noStore && ctx.storeChosen && !ctx.storeOnline;
+  if (offline) lines.push(`This store is not online yet. ${LAUNCH_HELP}`);
   if (!ctx.noStore && mayCreateStores) {
-    lines.push("To start another store for the user: stores_create.");
+    lines.push(
+      `To start another store for the user: stores_create.${offline ? "" : ` ${LAUNCH_HELP}`}`,
+    );
   }
 
   const { bundles } = ctx.actor.credential;
