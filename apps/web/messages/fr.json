@@ -9467,7 +9467,7 @@
     },
     "confirm": {
       "label": "Demander une confirmation avant les actions sensibles",
-      "description": "Paiements, remboursements, suppressions et messages aux clients attendent d’abord votre accord."
+      "description": "Avant un paiement, un remboursement, une suppression ou un message à un client, l’agent reçoit d’abord un aperçu et doit confirmer. Il a pour consigne de vous le montrer et de vous demander avant."
     },
     "bundlesTitle": "Outils affichés",
     "bundlesHint": "L’agent voit ces ensembles d’outils. Vous pourrez en ajouter plus tard.",
@@ -9513,7 +9513,7 @@
       "noStoreTitle": "Aucune boutique",
       "noStoreDescription": "Créez une boutique avant de connecter un agent.",
       "redirectNotice": "Après votre accord, l’accès sera envoyé à {host}.",
-      "footer": "Vous pourrez modifier ou retirer cet accès à tout moment dans Réglages, Intégrations, MCP.",
+      "footer": "Vous pourrez modifier ou retirer cet accès à tout moment dans Paramètres, Intégrations, MCP.",
       "loopbackWarning": "L’accès sera envoyé à une adresse locale de cet ordinateur : n’importe quel programme qui y tourne peut se faire passer pour cette application. N’autorisez que si vous venez de lancer la connexion vous-même."
     },
     "list": {

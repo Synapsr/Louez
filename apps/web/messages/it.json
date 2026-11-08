@@ -9467,7 +9467,7 @@
     },
     "confirm": {
       "label": "Chiedi conferma prima delle azioni sensibili",
-      "description": "Pagamenti, rimborsi, eliminazioni e messaggi ai clienti attendono prima la sua approvazione."
+      "description": "Prima di un pagamento, un rimborso, un’eliminazione o un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare. Ha istruzione di mostrargliela e di chiederle prima."
     },
     "bundlesTitle": "Strumenti mostrati",
     "bundlesHint": "L’agente vede questi gruppi di strumenti. Potrà aggiungerne altri in seguito.",

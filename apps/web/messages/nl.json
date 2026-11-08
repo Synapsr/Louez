@@ -9467,7 +9467,7 @@
     },
     "confirm": {
       "label": "Om bevestiging vragen vóór gevoelige acties",
-      "description": "Betalingen, terugbetalingen, verwijderingen en berichten aan klanten wachten eerst op uw akkoord."
+      "description": "Vóór een betaling, terugbetaling, verwijdering of bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen. Hij is gevraagd u dat voorbeeld te tonen en het eerst aan u te vragen."
     },
     "bundlesTitle": "Getoonde tools",
     "bundlesHint": "De agent ziet deze toolpakketten. U kunt er later meer toevoegen.",

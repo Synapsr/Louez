@@ -9467,7 +9467,7 @@
     },
     "confirm": {
       "label": "Ask for confirmation before sensitive actions",
-      "description": "Payments, refunds, deletions and messages to customers wait for your approval first."
+      "description": "Before a payment, refund, deletion or message to a customer, the agent first gets a preview and has to confirm. It is told to show you the preview and ask you first."
     },
     "bundlesTitle": "Tools shown",
     "bundlesHint": "The agent sees these tool sets. You can add more later.",

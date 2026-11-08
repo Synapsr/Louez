@@ -9467,7 +9467,7 @@
     },
     "confirm": {
       "label": "Proś o potwierdzenie przed działaniami wrażliwymi",
-      "description": "Płatności, zwroty, usunięcia i wiadomości do klientów najpierw czekają na Twoją zgodę."
+      "description": "Przed płatnością, zwrotem, usunięciem lub wiadomością do klienta agent najpierw dostaje podgląd i musi potwierdzić. Ma polecenie pokazać Ci ten podgląd i najpierw zapytać."
     },
     "bundlesTitle": "Wyświetlane narzędzia",
     "bundlesHint": "Agent widzi te zestawy narzędzi. Później możesz dodać kolejne.",

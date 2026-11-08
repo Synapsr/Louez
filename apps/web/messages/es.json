@@ -9467,7 +9467,7 @@
     },
     "confirm": {
       "label": "Pedir confirmación antes de las acciones sensibles",
-      "description": "Pagos, reembolsos, eliminaciones y mensajes a clientes esperan primero su aprobación."
+      "description": "Antes de un pago, un reembolso, una eliminación o un mensaje a un cliente, el agente recibe primero una vista previa y debe confirmar. Tiene instrucciones de mostrársela y preguntarle antes."
     },
     "bundlesTitle": "Herramientas mostradas",
     "bundlesHint": "El agente ve estos conjuntos de herramientas. Podrá añadir más después.",
@@ -9513,7 +9513,7 @@
       "noStoreTitle": "Ninguna tienda",
       "noStoreDescription": "Cree una tienda antes de conectar un agente.",
       "redirectNotice": "Tras su aprobación, el acceso se enviará a {host}.",
-      "footer": "Puede cambiar o retirar este acceso en cualquier momento en Ajustes, Integraciones, MCP.",
+      "footer": "Puede cambiar o retirar este acceso en cualquier momento en Configuración, Integraciones, MCP.",
       "loopbackWarning": "El acceso se enviará a una dirección local de este ordenador: cualquier programa que se ejecute en él puede hacerse pasar por esta aplicación. Permítalo solo si acaba de iniciar la conexión usted mismo."
     },
     "list": {
