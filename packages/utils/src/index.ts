@@ -38,6 +38,9 @@ export * from "./advance-notice";
 export * from "./reservation-rules";
 export { toAbsoluteUrl } from "./url";
 
+// How a store hands its rentals over: delivery, pickup points, delivery-only modes
+export * from "./delivery-availability";
+
 // Countries a store can be in, with their time zones, its currencies, and store referral codes
 export * from "./countries";
 export * from "./currencies";

@@ -1,5 +1,6 @@
 import { getRouteDistance } from "@louez/api/services";
 import type { DeliverySettings } from "@louez/types";
+import { getDeliveryAvailability } from "@louez/utils";
 import type { CreateReservationDeliveryLegInput } from "@louez/validations";
 
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
@@ -91,10 +92,10 @@ export const resolveDelivery = async ({
     | undefined;
   subtotal: number;
 }): Promise<{ ok: true; delivery: ResolvedDelivery } | ReservationFailure> => {
-  const deliveryMode = settings?.mode || "optional";
-  const isDeliveryForced = deliveryMode === "required" || deliveryMode === "included";
-  const isDeliveryIncluded = deliveryMode === "included";
-  const isMultiLocationEnabled = Boolean(settings?.multiLocationEnabled);
+  // The same reading as checkout and the store's launch checklist.
+  const availability = getDeliveryAvailability(settings, store);
+  const isDeliveryIncluded = availability.deliveryIncluded;
+  const isMultiLocationEnabled = availability.multiLocation;
 
   const outboundLeg = delivery?.outbound;
   const returnLeg = delivery?.return;
@@ -130,7 +131,7 @@ export const resolveDelivery = async ({
   const returnLocation = returnResult.value;
 
   // A delivery-only store neither hands over nor takes back at a location.
-  if (isDeliveryForced && settings?.enabled && (!hasOutboundDelivery || !hasReturnDelivery)) {
+  if (availability.deliveryOnly && (!hasOutboundDelivery || !hasReturnDelivery)) {
     return failReservation("errors.deliveryRequired");
   }
 
