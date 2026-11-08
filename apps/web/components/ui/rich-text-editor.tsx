@@ -187,14 +187,16 @@ export const RichTextEditor = ({
     },
   });
 
-  // Sync external value changes
+  // Sync external value changes, silently: a sync is not an edit, so it must
+  // not call onChange (the server writes `<br />` where Tiptap writes `<br>`,
+  // and an untouched form would turn dirty).
   useEffect(() => {
-    editor?.setEditable(!disabled);
+    editor?.setEditable(!disabled, false);
   }, [editor, disabled]);
 
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value);
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [value, editor]);
 
