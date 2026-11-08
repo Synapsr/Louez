@@ -110,6 +110,7 @@ export {
   assertStoreCanTakeReservations,
   isStoreNotAcceptingReservationsError,
   readReservationGate,
+  readReservationGateSince,
   readStoresNotAcceptingReservations,
 } from "./reservation-gate";
 export type { ReservationGate, ReservationGateReason } from "./reservation-gate";

@@ -69,6 +69,23 @@ export async function readReservationGate(
   return gateOf(effectiveStorePolicy(await readStorePolicyRecords(executor, storeId), at));
 }
 
+/**
+ * The gate of a store at `at`, and since when it has been so: the version in
+ * force's `effectiveFrom`, or the store's creation when no version applies (a
+ * new store fails closed). Open outside service mode, without a read.
+ */
+export async function readReservationGateSince(
+  executor: PolicyExecutor,
+  storeId: string,
+  at: Date = new Date(),
+): Promise<ReservationGate & { readonly since: Date | null }> {
+  if (!isBillingSyncEnabled()) return { ...OPEN, since: null };
+  const records = await readStorePolicyRecords(executor, storeId);
+  const policy = effectiveStorePolicy(records, at);
+  const since = policy.applied ? new Date(policy.applied.effectiveFrom) : records.storeCreatedAt;
+  return { ...gateOf(policy), since };
+}
+
 /** Throws StoreNotAcceptingReservationsError when the store's gate is closed at `at`. */
 export async function assertStoreCanTakeReservations(
   executor: PolicyExecutor,

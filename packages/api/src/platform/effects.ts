@@ -393,7 +393,14 @@ export async function claimEffect(
     if (row.attempts >= EFFECT_MAX_ATTEMPTS) {
       await tx
         .update(apiEffects)
-        .set({ status: "abandoned", claimToken: null, lockedUntil: null })
+        // A terminal row is never tried again: its next attempt's date records
+        // when it was abandoned, which the inbox shows (services/inbox.ts).
+        .set({
+          status: "abandoned",
+          claimToken: null,
+          lockedUntil: null,
+          nextAttemptAt: dbNowPlus(0),
+        })
         .where(eq(apiEffects.id, id));
       return null;
     }
@@ -520,14 +527,16 @@ async function recordUncertain(id: string, token: string, error: unknown) {
 
 async function recordFailure(id: string, token: string, attempts: number, error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
+  const abandoned = attempts >= EFFECT_MAX_ATTEMPTS;
   await db
     .update(apiEffects)
     .set({
-      status: attempts >= EFFECT_MAX_ATTEMPTS ? "abandoned" : "failed",
+      status: abandoned ? "abandoned" : "failed",
       lockedUntil: null,
       claimToken: null,
       lastError: message.slice(0, 1000),
-      nextAttemptAt: dbNowPlus(effectRetryDelayMs(attempts)),
+      // An abandoned row keeps the time it was abandoned here, as claimEffect does.
+      nextAttemptAt: dbNowPlus(abandoned ? 0 : effectRetryDelayMs(attempts)),
     })
     .where(fenced(id, token));
 }
