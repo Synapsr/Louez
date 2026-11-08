@@ -22,11 +22,16 @@ import { nanoid } from "nanoid";
  *   one at a time, in the order they were added: a row waits while an earlier
  *   one of its key is not done.
  * - A row whose store or reservation is gone is cancelled, never sent.
+ * - Leases are granted and compared in the database's time (`NOW(3)`), never
+ *   an app server's clock: two servers whose clocks disagree still agree on
+ *   who holds a row.
  * - A sender gets an abort signal, passed down to its provider calls, which
- *   fires at its timeout (below the lease). A sender that times out keeps the
- *   row: its outcome is unknown, so the row (and its key) stays blocked until
- *   the lease ends, and only then runs again. A provider call that cannot be
- *   cancelled can therefore overlap a retry only after the full lease.
+ *   fires at its timeout or a margin before its lease ends, whichever comes
+ *   first, counted on a monotonic clock from the claim. A sender that times
+ *   out keeps the row: its outcome is unknown, so the row (and its key) stays
+ *   blocked until the lease ends, and only then runs again. A provider call
+ *   that cannot be cancelled can therefore overlap a retry only after the
+ *   full lease.
  *
  * An effect is sent at least once: a sender that dies between sending and
  * recording leaves its claim to expire, and the row runs again.
@@ -165,7 +170,13 @@ export type ApiEffect = {
 export interface EffectSendContext {
   /** Aborted at the sender's timeout: pass it to every provider call, and send nothing after it. */
   signal: AbortSignal;
-  /** Throws when this sender no longer holds the row. Call it right before sending. */
+  /**
+   * Throws once the sender is out of time, even if the signal's timer has
+   * not fired yet (a busy event loop delays timers). Call it right before a
+   * provider call that cannot be aborted.
+   */
+  throwIfAborted: () => void;
+  /** Throws when this sender no longer holds the row, or is out of time. Call it right before sending. */
   assertClaim: () => Promise<void>;
 }
 
@@ -184,7 +195,7 @@ export type ApiEffectSenders = {
 /** How long a sender holds a row before another may take it over. */
 export const EFFECT_LEASE_MS = 5 * 60_000;
 /** A sender is aborted at least this long before its lease ends. */
-const EFFECT_LEASE_MARGIN_MS = 30_000;
+export const EFFECT_LEASE_MARGIN_MS = 30_000;
 /**
  * When a sender's signal fires. Its provider calls stop then, if they honour
  * the signal; its row stays claimed until the lease ends either way.
@@ -273,9 +284,10 @@ type Claimed = {
   payload: Record<string, unknown>;
   attempts: number;
   token: string;
-  /** When the claim's lease ends: the sender must have stopped by then. */
-  lockedUntil: Date;
 };
+
+/** The database's time `ms` from now (negative: ago). App clocks never date a row. */
+const dbNowPlus = (ms: number) => sql`TIMESTAMPADD(MICROSECOND, ${Math.round(ms * 1000)}, NOW(3))`;
 
 /**
  * Takes a row for sending, in a short transaction: one that waits, one whose
@@ -284,12 +296,12 @@ type Claimed = {
  * ceiling is abandoned; a row whose store or reservation is gone is
  * cancelled. Null when the row is not this sender's to send now.
  *
- * The clock is read once the row is locked, so a wait for the lock does not
- * eat into the lease it grants.
+ * Every decision uses the database's time, read once the row is locked, so
+ * neither a wait for the lock nor an app server's clock changes the lease.
  */
 export async function claimEffect(
   id: string,
-  clock: () => Date = () => new Date(),
+  leaseMs: number = EFFECT_LEASE_MS,
 ): Promise<Claimed | null> {
   return db.transaction(async (tx) => {
     const [row] = await tx
@@ -303,18 +315,29 @@ export async function claimEffect(
         payload: apiEffects.payload,
         status: apiEffects.status,
         attempts: apiEffects.attempts,
-        nextAttemptAt: apiEffects.nextAttemptAt,
-        lockedUntil: apiEffects.lockedUntil,
       })
       .from(apiEffects)
       .where(eq(apiEffects.id, id))
       .for("update");
     if (!row) return null;
-    const now = clock();
+    // MySQL fixes NOW() when a statement starts: read it in a statement of its
+    // own, now that the row is locked. `now` is in the session's time zone, as
+    // the TIMESTAMP columns are read and written, so it goes back unchanged.
+    const [clock] = await tx
+      .select({
+        now: sql<string>`DATE_FORMAT(NOW(3), '%Y-%m-%d %H:%i:%s.%f')`,
+        leaseOver: sql<number | null>`${apiEffects.lockedUntil} < NOW(3)`,
+        retryDue: sql<number>`${apiEffects.nextAttemptAt} <= NOW(3)`,
+      })
+      .from(apiEffects)
+      .where(eq(apiEffects.id, id));
+    if (!clock) return null;
 
-    const takeover = row.status === "running" && row.lockedUntil !== null && row.lockedUntil < now;
+    const takeover = row.status === "running" && Number(clock.leaseOver) === 1;
     const takeable =
-      row.status === "pending" || (row.status === "failed" && row.nextAttemptAt <= now) || takeover;
+      row.status === "pending" ||
+      (row.status === "failed" && Number(clock.retryDue) === 1) ||
+      takeover;
     if (!takeable) return null;
     if (row.attempts >= EFFECT_MAX_ATTEMPTS) {
       await tx
@@ -365,43 +388,48 @@ export async function claimEffect(
     }
 
     const token = randomBytes(16).toString("hex");
-    const lockedUntil = new Date(now.getTime() + EFFECT_LEASE_MS);
     await tx
       .update(apiEffects)
       .set({
         status: "running",
         claimToken: token,
-        lockedUntil,
+        lockedUntil: sql`TIMESTAMPADD(MICROSECOND, ${Math.round(leaseMs * 1000)}, ${clock.now})`,
         attempts: row.attempts + 1,
       })
       .where(eq(apiEffects.id, id));
-    return {
-      id: row.id,
-      type: row.type,
-      payload: row.payload,
-      attempts: row.attempts + 1,
-      token,
-      lockedUntil,
-    };
+    return { id: row.id, type: row.type, payload: row.payload, attempts: row.attempts + 1, token };
   });
 }
 
-/** Whether a claim still holds: its token is the row's, and its lease has not run out. */
-async function holdsClaim(id: string, token: string, now: Date) {
+/** Whether a claim still holds, in the database's time: its token is the row's, and its lease has not run out. */
+async function holdsClaim(id: string, token: string) {
   const [row] = await db
-    .select({ claimToken: apiEffects.claimToken, lockedUntil: apiEffects.lockedUntil })
+    .select({ id: apiEffects.id })
     .from(apiEffects)
-    .where(and(eq(apiEffects.id, id), eq(apiEffects.status, "running")));
-  return Boolean(row && row.claimToken === token && row.lockedUntil && row.lockedUntil > now);
+    .where(
+      and(
+        eq(apiEffects.id, id),
+        eq(apiEffects.status, "running"),
+        eq(apiEffects.claimToken, token),
+        sql`${apiEffects.lockedUntil} > NOW(3)`,
+      ),
+    );
+  return Boolean(row);
 }
 
 const fenced = (id: string, token: string) =>
   and(eq(apiEffects.id, id), eq(apiEffects.status, "running"), eq(apiEffects.claimToken, token));
 
-async function recordSent(id: string, token: string, now: Date) {
+async function recordSent(id: string, token: string) {
   await db
     .update(apiEffects)
-    .set({ status: "sent", sentAt: now, lockedUntil: null, claimToken: null, lastError: null })
+    .set({
+      status: "sent",
+      sentAt: sql`NOW(3)`,
+      lockedUntil: null,
+      claimToken: null,
+      lastError: null,
+    })
     .where(fenced(id, token));
 }
 
@@ -432,13 +460,7 @@ async function recordUncertain(id: string, token: string, error: unknown) {
     .where(fenced(id, token));
 }
 
-async function recordFailure(
-  id: string,
-  token: string,
-  attempts: number,
-  error: unknown,
-  now: Date,
-) {
+async function recordFailure(id: string, token: string, attempts: number, error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   await db
     .update(apiEffects)
@@ -447,7 +469,7 @@ async function recordFailure(
       lockedUntil: null,
       claimToken: null,
       lastError: message.slice(0, 1000),
-      nextAttemptAt: new Date(now.getTime() + effectRetryDelayMs(attempts)),
+      nextAttemptAt: dbNowPlus(effectRetryDelayMs(attempts)),
     })
     .where(fenced(id, token));
 }
@@ -463,10 +485,10 @@ class EffectTimeout extends Error {
 }
 
 export interface DispatchOptions {
-  /** The clock, read at each claim and each outcome. Tests pass their own. */
-  now?: () => Date;
   /** How long a sender may run; below the lease. */
   sendTimeoutMs?: number;
+  /** How long a claim holds its row. Tests shorten it. */
+  leaseMs?: number;
 }
 
 /**
@@ -480,13 +502,13 @@ export async function dispatchEffects(
   senders: ApiEffectSenders,
   options: DispatchOptions = {},
 ): Promise<{ sent: number; failed: number; skipped: number }> {
-  const now = options.now ?? (() => new Date());
-  const timeoutMs = Math.min(options.sendTimeoutMs ?? EFFECT_SEND_TIMEOUT_MS, EFFECT_LEASE_MS / 2);
+  const leaseMs = options.leaseMs ?? EFFECT_LEASE_MS;
+  const timeoutMs = Math.min(options.sendTimeoutMs ?? EFFECT_SEND_TIMEOUT_MS, leaseMs / 2);
   const outcome = { sent: 0, failed: 0, skipped: 0 };
   for (const id of ids) {
     let claimed: Claimed | null;
     try {
-      claimed = await claimEffect(id, now);
+      claimed = await claimEffect(id, leaseMs);
     } catch {
       outcome.skipped += 1;
       continue;
@@ -497,24 +519,37 @@ export async function dispatchEffects(
     }
 
     const { token } = claimed;
-    // The abort fires at the sender's timeout or a margin before the lease
-    // ends, whichever comes first: a retry can take the row only after the
-    // lease, so an aborted signal is enough to fence the last provider call.
-    const untilLeaseMs = claimed.lockedUntil.getTime() - EFFECT_LEASE_MARGIN_MS - now().getTime();
-    const allowedMs = Math.max(0, Math.min(timeoutMs, untilLeaseMs));
+    // The lease was granted in the database's time when the claim committed,
+    // just before this point. Counted from here on a monotonic clock, the
+    // abort fires at the timeout or a margin before the lease ends, whichever
+    // comes first: a retry can take the row only after the lease, so an
+    // aborted sender is enough to fence the last provider call.
+    const allowedMs = Math.max(0, Math.min(timeoutMs, leaseMs - EFFECT_LEASE_MARGIN_MS));
+    const deadline = performance.now() + allowedMs;
     const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    const expire = () => {
+      if (!controller.signal.aborted) controller.abort(new EffectTimeout(allowedMs));
+    };
+    const timer = setTimeout(expire, allowedMs);
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => {
-        controller.abort();
-        reject(new EffectTimeout(allowedMs));
-      }, allowedMs);
+      controller.signal.addEventListener("abort", () => reject(controller.signal.reason), {
+        once: true,
+      });
     });
+    timeout.catch(() => {});
+    const throwIfAborted = () => {
+      if (performance.now() >= deadline) expire();
+      controller.signal.throwIfAborted();
+    };
     const context: EffectSendContext = {
       signal: controller.signal,
+      throwIfAborted,
       assertClaim: async () => {
-        controller.signal.throwIfAborted();
-        if (!(await holdsClaim(id, token, now()))) {
+        throwIfAborted();
+        const holds = await holdsClaim(id, token);
+        // The claim query itself may have outlasted the sender's time.
+        throwIfAborted();
+        if (!holds) {
           throw new Error("This sender no longer holds the effect: another one took it over.");
         }
       },
@@ -531,15 +566,16 @@ export async function dispatchEffects(
         await recordSkipped(id, token, result.skipped);
         outcome.skipped += 1;
       } else {
-        await recordSent(id, token, now());
+        await recordSent(id, token);
         outcome.sent += 1;
       }
     } catch (error) {
-      const outcomeUnknown = error instanceof EffectTimeout;
+      // Out of time, it may have sent part of it, or all: the outcome is unknown.
+      const outcomeUnknown = error instanceof EffectTimeout || controller.signal.aborted;
       await (
         outcomeUnknown
-          ? recordUncertain(id, token, error)
-          : recordFailure(id, token, claimed.attempts, error, now())
+          ? recordUncertain(id, token, controller.signal.reason ?? error)
+          : recordFailure(id, token, claimed.attempts, error)
       ).catch(() => {});
       outcome.failed += 1;
     } finally {
@@ -551,14 +587,14 @@ export async function dispatchEffects(
 
 /**
  * The cron's pass: the rows whose retry is due, those the first dispatch
- * never took, and those whose sender's claim expired, oldest first.
+ * never took, and those whose sender's claim expired, oldest first, in the
+ * database's time.
  */
 export async function retryDueEffects(
   senders: ApiEffectSenders,
   options: DispatchOptions & { limit?: number } = {},
 ) {
-  const clock = options.now ?? (() => new Date());
-  const now = clock();
+  const now = sql`NOW(3)`;
   const due = await db
     .select({ id: apiEffects.id })
     .from(apiEffects)
@@ -566,7 +602,7 @@ export async function retryDueEffects(
       or(
         and(
           eq(apiEffects.status, "pending"),
-          lt(apiEffects.createdAt, new Date(now.getTime() - EFFECT_PENDING_GRACE_MS)),
+          lt(apiEffects.createdAt, dbNowPlus(-EFFECT_PENDING_GRACE_MS)),
         ),
         and(eq(apiEffects.status, "failed"), lte(apiEffects.nextAttemptAt, now)),
         and(eq(apiEffects.status, "running"), lt(apiEffects.lockedUntil, now)),
@@ -577,19 +613,19 @@ export async function retryDueEffects(
   return dispatchEffects(
     due.map((row) => row.id),
     senders,
-    { now: clock, sendTimeoutMs: options.sendTimeoutMs },
+    { sendTimeoutMs: options.sendTimeoutMs, leaseMs: options.leaseMs },
   );
 }
 
 /** Deletes the done rows older than the retention: their payloads hold personal data. */
-export async function pruneEffects(now = new Date(), limit = 500) {
+export async function pruneEffects(limit = 500) {
   const old = await db
     .select({ id: apiEffects.id })
     .from(apiEffects)
     .where(
       and(
         inArray(apiEffects.status, [...DONE]),
-        lt(apiEffects.createdAt, new Date(now.getTime() - EFFECT_RETENTION_MS)),
+        lt(apiEffects.createdAt, dbNowPlus(-EFFECT_RETENTION_MS)),
       ),
     )
     .limit(limit);

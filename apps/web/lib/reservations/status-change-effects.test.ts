@@ -81,6 +81,7 @@ describe("reservation effect senders", () => {
 
   const context: EffectSendContext = {
     signal: new AbortController().signal,
+    throwIfAborted: () => {},
     assertClaim: async () => {
       claimChecks += 1;
     },
