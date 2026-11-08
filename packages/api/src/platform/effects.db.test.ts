@@ -221,6 +221,28 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     assert.equal(aborted, true);
   });
 
+  test("a sender whose lease is nearly over is aborted before it ends, whatever its timeout", async () => {
+    const [id = ""] = await enqueue(platform("late"));
+    // The claim is taken at `start`; by the time the sender starts, the lease
+    // is within its margin (a slow lock or pool), while the timeout is far off.
+    const start = new Date();
+    const clock = [start];
+    const now = () => clock.shift() ?? new Date(start.getTime() + effects.EFFECT_LEASE_MS - 10_000);
+    const provider: ApiEffectSenders = {
+      ...senders,
+      "reservation.platformNotification": async (payload, context) => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        // The last check before a provider that cannot be aborted, as SMTP does.
+        context.signal.throwIfAborted();
+        sent.push(payload.number);
+      },
+    };
+    const outcome = await effects.dispatchEffects([id], provider, { now, sendTimeoutMs: 60_000 });
+    assert.deepEqual(outcome, { sent: 0, failed: 1, skipped: 0 });
+    assert.deepEqual(sent, [], "nothing goes out once the lease may pass to a retry");
+    assert.equal(await statusOf(id), "running", "its outcome is unknown: it waits for the lease");
+  });
+
   test("an expired claim past the last attempt is abandoned, not run again", async () => {
     const [id = ""] = await enqueue(platform("A"));
     await louezDb.db.update(louezDb.apiEffects).set({

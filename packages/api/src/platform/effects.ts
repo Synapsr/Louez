@@ -183,6 +183,8 @@ export type ApiEffectSenders = {
 
 /** How long a sender holds a row before another may take it over. */
 export const EFFECT_LEASE_MS = 5 * 60_000;
+/** A sender is aborted at least this long before its lease ends. */
+const EFFECT_LEASE_MARGIN_MS = 30_000;
 /**
  * When a sender's signal fires. Its provider calls stop then, if they honour
  * the signal; its row stays claimed until the lease ends either way.
@@ -271,6 +273,8 @@ type Claimed = {
   payload: Record<string, unknown>;
   attempts: number;
   token: string;
+  /** When the claim's lease ends: the sender must have stopped by then. */
+  lockedUntil: Date;
 };
 
 /**
@@ -279,8 +283,14 @@ type Claimed = {
  * ceiling, with no earlier row of its key still to do. A row past the
  * ceiling is abandoned; a row whose store or reservation is gone is
  * cancelled. Null when the row is not this sender's to send now.
+ *
+ * The clock is read once the row is locked, so a wait for the lock does not
+ * eat into the lease it grants.
  */
-export async function claimEffect(id: string, now = new Date()): Promise<Claimed | null> {
+export async function claimEffect(
+  id: string,
+  clock: () => Date = () => new Date(),
+): Promise<Claimed | null> {
   return db.transaction(async (tx) => {
     const [row] = await tx
       .select({
@@ -300,6 +310,7 @@ export async function claimEffect(id: string, now = new Date()): Promise<Claimed
       .where(eq(apiEffects.id, id))
       .for("update");
     if (!row) return null;
+    const now = clock();
 
     const takeover = row.status === "running" && row.lockedUntil !== null && row.lockedUntil < now;
     const takeable =
@@ -354,12 +365,13 @@ export async function claimEffect(id: string, now = new Date()): Promise<Claimed
     }
 
     const token = randomBytes(16).toString("hex");
+    const lockedUntil = new Date(now.getTime() + EFFECT_LEASE_MS);
     await tx
       .update(apiEffects)
       .set({
         status: "running",
         claimToken: token,
-        lockedUntil: new Date(now.getTime() + EFFECT_LEASE_MS),
+        lockedUntil,
         attempts: row.attempts + 1,
       })
       .where(eq(apiEffects.id, id));
@@ -369,6 +381,7 @@ export async function claimEffect(id: string, now = new Date()): Promise<Claimed
       payload: row.payload,
       attempts: row.attempts + 1,
       token,
+      lockedUntil,
     };
   });
 }
@@ -473,7 +486,7 @@ export async function dispatchEffects(
   for (const id of ids) {
     let claimed: Claimed | null;
     try {
-      claimed = await claimEffect(id, now());
+      claimed = await claimEffect(id, now);
     } catch {
       outcome.skipped += 1;
       continue;
@@ -484,13 +497,18 @@ export async function dispatchEffects(
     }
 
     const { token } = claimed;
+    // The abort fires at the sender's timeout or a margin before the lease
+    // ends, whichever comes first: a retry can take the row only after the
+    // lease, so an aborted signal is enough to fence the last provider call.
+    const untilLeaseMs = claimed.lockedUntil.getTime() - EFFECT_LEASE_MARGIN_MS - now().getTime();
+    const allowedMs = Math.max(0, Math.min(timeoutMs, untilLeaseMs));
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
         controller.abort();
-        reject(new EffectTimeout(timeoutMs));
-      }, timeoutMs);
+        reject(new EffectTimeout(allowedMs));
+      }, allowedMs);
     });
     const context: EffectSendContext = {
       signal: controller.signal,
