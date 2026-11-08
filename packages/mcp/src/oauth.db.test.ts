@@ -5,6 +5,7 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 
 import { createTestAccessTokens } from "@louez/auth/testing";
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
+import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
@@ -48,6 +49,7 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
     dispatchEffects: () => {},
     storage: createMemoryStorage(),
     urls: createTestUrls(),

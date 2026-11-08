@@ -150,6 +150,16 @@ export interface ApiEffectPayloads {
     hasNotes: boolean;
     transport: "openapi" | "mcp";
   };
+  /** A new store's welcome credits for the AI advisor; none while the credit layer is off. */
+  "store.welcomeCredits": { storeId: string };
+  /** One analytics event of a store's creation: the onboarding's, or the referral program's. */
+  "store.creationAnalytics": {
+    event: "store_info_saved" | "referral_attribution_resolved" | "referred_reward_granted";
+    ownerUserId: string;
+    transport: "rpc" | "openapi" | "mcp";
+    /** The event's own facts; the sender adds the referral program's settings. */
+    properties: Record<string, string | number | boolean | null>;
+  };
 }
 
 export type ApiEffectType = keyof ApiEffectPayloads;

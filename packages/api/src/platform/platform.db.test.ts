@@ -5,6 +5,7 @@ import { after, before, describe, mock, test } from "node:test";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { createMemoryStorage } from "./memory-storage";
+import { createTestNewStores } from "./test-new-stores";
 import { createTestUrls } from "./test-urls";
 
 // tsx loads these packages as CommonJS, whose `export *` names ESM cannot see.
@@ -36,6 +37,7 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
     planFeatures: async () => ({ apiAccess }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
     dispatchEffects: () => {},
     storage: createMemoryStorage(),
     urls: createTestUrls(),

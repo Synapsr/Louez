@@ -1,4 +1,4 @@
-import type { ReservationEffectRunner, ReservationGateReason } from "@louez/db";
+import type { ReservationEffectRunner, ReservationGateReason, Transaction } from "@louez/db";
 
 import type { Transport } from "./actor";
 
@@ -36,7 +36,53 @@ export interface ApiPorts {
    * cron retries the failed ones. Never throws.
    */
   dispatchEffects: (ids: readonly string[]) => void;
+  newStores: NewStorePort;
 }
+
+/**
+ * What creating a store takes from the app (services/store-creation.ts): the
+ * billing of a new store, owned by the billing service and Louez's legacy
+ * pricing; the instance's mode; the sign-up attribution a dashboard request
+ * carries in its cookies.
+ */
+export interface NewStorePort {
+  /** A standalone instance hosts one store: a second one is refused. */
+  singleStore: () => boolean;
+  /** What a store created now in `currency` pays Louez: what the preview shows. */
+  terms: (input: { currency: string; referred: boolean }) => Promise<NewStoreTerms>;
+  /**
+   * Writes the new store's subscription row in the transaction that creates
+   * it (pay-as-you-go with the offer for new stores). True when Louez's own
+   * billing bills the store, false when it writes nothing.
+   */
+  insertSubscription: (
+    tx: Transaction,
+    input: { storeId: string; currency: string; referred: boolean },
+  ) => Promise<boolean>;
+  /**
+   * The referral code and the sign-up origin a dashboard request carries
+   * (cookies set when the user arrived), each null when absent or unknown.
+   */
+  signupAttribution: (headers: Headers) => {
+    referralCode: string | null;
+    signupOrigin: string | null;
+  };
+}
+
+/** What a new store pays Louez, as the billing code says it (see `NewStorePort.terms`). */
+export type NewStoreTerms =
+  /** An instance without platform billing. */
+  | { billing: "none" }
+  /** Louez's own billing: a fee per reservation, by monthly band, after free reservations. */
+  | {
+      billing: "pay_as_you_go";
+      freeReservations: number;
+      /** Fees in the store's currency, in minor units. */
+      tiers: ReadonlyArray<{ upToCount: number | null; priceMinor: number }>;
+      currency: string;
+    }
+  /** The billing service bills the store: its offer's label is the figure (null when unknown). */
+  | { billing: "offer"; offer: string | null };
 
 /**
  * The deployment's own addresses, from its settings (app URL, app domain,

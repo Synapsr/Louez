@@ -15,6 +15,7 @@ import type { BaseContext } from "../../context";
 import type { ApiEvent } from "../../platform/ports";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
 // What the image ownership checks read, before the modules that read them load.
@@ -69,6 +70,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
     dispatchEffects: () => {},
     storage: createMemoryStorage(),
     urls: createTestUrls(),

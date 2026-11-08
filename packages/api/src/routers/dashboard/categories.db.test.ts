@@ -9,6 +9,7 @@ import type { RouterClient } from "@orpc/server";
 import type { BaseContext } from "../../context";
 
 import { createMemoryStorage, type MemoryStorage } from "../../platform/memory-storage";
+import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls } from "../../platform/test-urls";
 
 // What the upload tokens and the image ownership checks read, before the
@@ -65,6 +66,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
     dispatchEffects: () => {},
     get storage() {
       return storage;

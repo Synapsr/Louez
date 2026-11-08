@@ -10,6 +10,7 @@ import type { BaseContext } from "../../context";
 import type { ApiEvent } from "../../platform/ports";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
 process.env.AUTH_SECRET ??= "product-variants-test-secret";
@@ -59,6 +60,7 @@ describe("product variants procedures (database)", { skip: skipWithoutTestDataba
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
     dispatchEffects: () => {},
     storage: createMemoryStorage(),
     urls: createTestUrls(),

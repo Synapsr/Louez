@@ -6,6 +6,7 @@ import { createTestAccessTokens } from "@louez/auth/testing";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { createMemoryStorage } from "./memory-storage";
+import { createTestNewStores } from "./test-new-stores";
 import { createTestUrls } from "./test-urls";
 
 // tsx loads these packages as CommonJS, whose `export *` names ESM cannot see.
@@ -83,6 +84,7 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
     dispatchEffects: () => {},
     storage: createMemoryStorage(),
     urls: createTestUrls(),

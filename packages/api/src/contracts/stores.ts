@@ -1,9 +1,14 @@
+import { storeInfoSchema } from "@louez/validations";
+import { SUPPORTED_COUNTRIES } from "@louez/utils";
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
 import { resourceLinksSchema } from "./links";
 
-/** The stores contract: the stores a connection may act on. No database here. */
+/**
+ * The stores contract: the stores a connection may act on, and a new one,
+ * before any store exists. No database here.
+ */
 
 /** Largest page `stores.list` returns, and its default. */
 export const STORE_PAGE_MAX = 100;
@@ -38,9 +43,128 @@ export const listStoresOutput = z.object({
   items: z.array(storeSummarySchema),
   /** Null on the last page. */
   nextCursor: z.string().nullable(),
+  /** What to do when the connection reaches no store: create one, or ask the user. */
+  hint: z.string().optional(),
+});
+
+// --- A new store ------------------------------------------------------------
+
+/** Stores a key or a token may create per account in 24 hours. A session has no cap. */
+export const STORE_CREATION_DAILY_LIMIT = 3;
+
+/** How many free addresses `stores_check_slug_availability` suggests. */
+export const SLUG_SUGGESTION_COUNT = 3;
+
+const COUNTRY_CODES = SUPPORTED_COUNTRIES.map((country) => country.code) as [string, ...string[]];
+
+const slugField = storeInfoSchema.shape.slug.describe(
+  "The store's web address: 3 to 50 lowercase letters, digits and hyphens. Check it first with stores_check_slug_availability.",
+);
+
+export const checkSlugAvailabilityInput = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .describe("The web address to check. A name works too: suggestions come from it."),
+});
+
+export const checkSlugAvailabilityOutput = z.object({
+  slug: z.string(),
+  available: z.boolean(),
+  /** Why not: another store has it, Louez keeps it, or it breaks the rules above. */
+  reason: z.enum(["taken", "reserved", "invalid"]).nullable(),
+  /** Free addresses close to the one asked, when it is not available. */
+  suggestions: z.array(z.string()),
+});
+
+export const createStoreInput = z.object({
+  name: storeInfoSchema.shape.name.describe("The store's name, as customers see it."),
+  slug: slugField,
+  country: z
+    .enum(COUNTRY_CODES)
+    .describe("Where the store is, as an ISO 3166-1 alpha-2 code (FR). It sets the time zone."),
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .describe("The store's currency, as an ISO 4217 code (EUR)."),
+  address: storeInfoSchema.shape.address.describe("The store's postal address, on one line."),
+  latitude: storeInfoSchema.shape.latitude,
+  longitude: storeInfoSchema.shape.longitude,
+  email: storeInfoSchema.shape.email.describe("The store's contact e-mail, shown to customers."),
+  phone: storeInfoSchema.shape.phone.describe(
+    "The store's contact phone, in international format (+33…).",
+  ),
+});
+export type CreateStoreInput = z.infer<typeof createStoreInput>;
+
+const feeTierSchema = z.object({
+  /** The band ends at this many reservations in the month; null: no end. */
+  upToReservationsPerMonth: z.number().int().nullable(),
+  amount: z.string(),
+  currency: z.string(),
+});
+
+/**
+ * What a store created now pays Louez, from the billing code: nothing on an
+ * instance without platform billing, Louez's pay-as-you-go pricing, or the
+ * offer of the billing service, whose label is the figure.
+ */
+export const newStoreTermsSchema = z.discriminatedUnion("billing", [
+  z.object({ billing: z.literal("none"), summary: z.string() }),
+  z.object({
+    billing: z.literal("pay_as_you_go"),
+    /** Reservations without a fee, as a welcome gift. */
+    freeReservations: z.number().int(),
+    feePerReservation: z.array(feeTierSchema),
+    summary: z.string(),
+  }),
+  z.object({
+    billing: z.literal("offer"),
+    offer: z.string().nullable(),
+    summary: z.string(),
+  }),
+]);
+export type NewStoreTermsView = z.infer<typeof newStoreTermsSchema>;
+
+export const createStoreOutput = z.object({
+  /** Pass it as `storeId` to the other tools. */
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  country: z.string(),
+  currency: z.string(),
+  timezone: z.string(),
+  /** False: the store is offline until the user launches it. */
+  online: z.boolean(),
+  /** The store's dashboard; no storefront link while it is offline. */
+  links: resourceLinksSchema,
+  /** Where the storefront will answer once the store is launched. Not open yet. */
+  futureStorefrontUrl: z.string(),
+  pricing: newStoreTermsSchema,
+  /** What the agent can do next, with the tools that exist. */
+  nextSteps: z.array(z.string()),
 });
 
 export const storeErrors = {
+  slugTaken: (slug: string, suggestions: string[]) =>
+    apiError("CONFLICT", "STORE_SLUG_TAKEN", {
+      message: `The web address "${slug}" is taken. Pick another one${suggestions.length > 0 ? `, such as ${suggestions.join(", ")}` : ""}.`,
+      i18nKey: "errors.slugTaken",
+      details: { slug, suggestions },
+    }),
+  creationLimit: (limit: number) =>
+    apiError("TOO_MANY_REQUESTS", "STORE_CREATION_LIMIT", {
+      message: `This account created ${limit} stores in the last 24 hours, the most an agent or an API key may. Try again tomorrow, or create the store in Louez.`,
+      retryable: true,
+      details: { limit, windowHours: 24 },
+    }),
+  singleStoreInstance: () =>
+    apiError("FORBIDDEN", "SINGLE_STORE_INSTANCE", {
+      message: "This Louez instance hosts a single store, and it already has one.",
+      i18nKey: "errors.standaloneSingleStore",
+    }),
   invalidCursor: () =>
     apiError("BAD_REQUEST", "INVALID_CURSOR", {
       message: "This cursor is not one stores_list returned. Start again without a cursor.",

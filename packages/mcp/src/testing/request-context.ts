@@ -4,6 +4,7 @@
  */
 import type { ApiKeyPermissions } from "@louez/db";
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
+import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls } from "@louez/api/platform/test-urls";
 import { normalizeScopes } from "@louez/api/platform/permissions";
 import type { MemberRole } from "@louez/utils";
@@ -59,6 +60,7 @@ export function testRequestContext(input: {
       afterCommit: () => {},
       runReservationEffects: async () => {},
       insurance: { createContract: async () => null, cancelContract: async () => {} },
+      newStores: createTestNewStores(),
       dispatchEffects: () => {},
     },
     countCall: async () => undefined,

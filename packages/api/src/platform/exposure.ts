@@ -68,6 +68,8 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.reservations.updateNotes",
   "dashboard.search.global",
   "dashboard.stores.list",
+  "dashboard.stores.checkSlugAvailability",
+  "dashboard.stores.create",
 ];
 
 /** Arguments the MCP bridge adds to a tool and maps onto headers. */

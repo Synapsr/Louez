@@ -7,6 +7,7 @@ import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { tulipInsurancePort } from "@/lib/integrations/tulip/insurance-port";
 import { getStorePlan } from "@/lib/plan-limits";
 import { apiStorage } from "@/lib/storage/api-storage";
+import { newStorePort } from "@/lib/stores/new-store-port";
 
 /**
  * What the app lends the agent-ready API (packages/api platform/ports.ts).
@@ -23,4 +24,5 @@ export const apiPorts: ApiPorts = {
   runReservationEffects,
   insurance: tulipInsurancePort,
   dispatchEffects: dispatchApiEffects,
+  newStores: newStorePort,
 };

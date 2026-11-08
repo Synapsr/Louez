@@ -31,5 +31,9 @@ export async function serverApi() {
       context,
       path: ["dashboard", "reservations"],
     }),
+    stores: createRouterClient(appRouter.dashboard.stores, {
+      context,
+      path: ["dashboard", "stores"],
+    }),
   };
 }

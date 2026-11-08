@@ -16,6 +16,7 @@ import type { BaseContext } from "../../context";
 import type { ApiEvent } from "../../platform/ports";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
 process.env.AUTH_SECRET ??= "reservations-test-secret";
@@ -88,6 +89,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         contracts.push(`cancel:${id}`);
       },
     },
+    newStores: createTestNewStores(),
     dispatchEffects: (ids: readonly string[]) => {
       dispatched.push(...ids);
     },

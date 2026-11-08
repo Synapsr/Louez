@@ -1983,8 +1983,27 @@ export const capabilities = [
     migrated: true,
   },
   {
+    // The onboarding's store step creates the store through this procedure;
+    // an agent connected over all the user's stores does too.
     id: "stores.create",
-    sources: [action(SA.onboarding, "createStore")],
+    sources: [procedure("stores", "create")],
+    kind: "write",
+    sensitive: "money",
+    plan: { lot: "8" },
+    migrated: true,
+  },
+  {
+    id: "stores.checkSlugAvailability",
+    sources: [procedure("stores", "checkSlugAvailability")],
+    kind: "read",
+    plan: { lot: "8" },
+    migrated: true,
+  },
+  {
+    // The onboarding's store step on a store that exists already: an
+    // incomplete store of the user, or the one being edited.
+    id: "stores.updateOnboardingInfo",
+    sources: [action(SA.onboarding, "saveStoreInfo")],
     kind: "write",
     plan: { lot: "8" },
   },

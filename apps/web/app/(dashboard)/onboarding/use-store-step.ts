@@ -22,7 +22,7 @@ import { useOnboardingErrorToast } from "./_lib/onboarding-error-toast";
 import { useOnboardingPreview } from "./_lib/preview-context";
 import { useOnboardingDraft } from "./_lib/use-onboarding-draft";
 import { useStepNavigation } from "./_lib/use-step-navigation";
-import { createStore } from "./actions";
+import { saveStoreInfo } from "./actions";
 
 interface UseStoreStepParams {
   editingStoreId: string | null;
@@ -44,7 +44,7 @@ export const useStoreStep = ({
 
   const mutation = useMutation({
     mutationFn: async (value: StoreInfoInput) => {
-      const result = await createStore(value, editingStoreId);
+      const result = await saveStoreInfo(value, editingStoreId);
       if (result.error) {
         throw new Error(result.error);
       }

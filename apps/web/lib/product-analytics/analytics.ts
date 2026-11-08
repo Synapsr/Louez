@@ -20,13 +20,18 @@ type ProductServerEvent = {
  * Sends one event to PostHog's capture API and checks the answer, for an
  * outbox row: throws when PostHog did not take it (the SDK's flush swallows
  * HTTP failures), answers `skipped` when analytics is not set up here. It
- * honours an outbox sender's abort (lib/api/effect-signal.ts).
+ * honours an outbox sender's abort (lib/api/effect-signal.ts). The caller
+ * gives every property, its area's base ones included.
  */
-export async function captureProductServerEventOrThrow({
+export async function captureServerEventOrThrow({
   distinctId,
   event,
   properties,
-}: ProductServerEvent): Promise<{ skipped: string } | undefined> {
+}: {
+  distinctId: string | null | undefined;
+  event: string;
+  properties: Record<string, unknown>;
+}): Promise<{ skipped: string } | undefined> {
   if (!distinctId) return { skipped: 'no one to count the event on' };
   if (!env.NEXT_PUBLIC_POSTHOG_KEY) return { skipped: 'analytics is not set up' };
   const host = (env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com').replace(/\/$/, '');
@@ -40,7 +45,6 @@ export async function captureProductServerEventOrThrow({
       // What posthog-node adds to a server event: no GeoIP from the server's
       // address, and the library that sent it.
       properties: {
-        ...productAnalyticsBaseProperties,
         ...properties,
         $lib: 'posthog-node',
         $geoip_disable: true,
@@ -51,6 +55,19 @@ export async function captureProductServerEventOrThrow({
   });
   if (!response.ok) throw new Error(`PostHog answered ${response.status}.`);
   return undefined;
+}
+
+/** A product event for an outbox row (see `captureServerEventOrThrow`). */
+export function captureProductServerEventOrThrow({
+  distinctId,
+  event,
+  properties,
+}: ProductServerEvent): Promise<{ skipped: string } | undefined> {
+  return captureServerEventOrThrow({
+    distinctId,
+    event,
+    properties: { ...productAnalyticsBaseProperties, ...properties },
+  });
 }
 
 export async function captureProductServerEvent({

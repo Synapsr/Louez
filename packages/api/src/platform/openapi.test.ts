@@ -178,6 +178,8 @@ describe("OpenAPI document", () => {
         "PATCH /reservations/{id}/notes": "reservations_update_notes",
         "GET /search": "search_global",
         "GET /stores": "stores_list",
+        "GET /stores/slug-availability": "stores_check_slug_availability",
+        "POST /stores": "stores_create",
       },
     );
 
@@ -190,6 +192,10 @@ describe("OpenAPI document", () => {
       "#/components/parameters/LouezConfirmation",
     ]);
     assert.deepEqual(refs("POST /categories"), ["#/components/parameters/IdempotencyKey"]);
+    assert.deepEqual(refs("POST /stores"), [
+      "#/components/parameters/IdempotencyKey",
+      "#/components/parameters/LouezConfirmation",
+    ]);
     assert.deepEqual(refs("POST /reservations/{id}/cancel"), [
       "#/components/parameters/IdempotencyKey",
       "#/components/parameters/LouezConfirmation",

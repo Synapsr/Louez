@@ -4,6 +4,7 @@ import { after, before, describe, mock, test } from "node:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
+import { createTestNewStores } from "@louez/api/platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
@@ -42,6 +43,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
     dispatchEffects: () => {},
     storage: createMemoryStorage(),
     urls: createTestUrls(),
