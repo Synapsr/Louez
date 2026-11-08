@@ -7,6 +7,7 @@ import 'server-only';
 import webpush from 'web-push';
 
 import { env } from '@/env';
+import { inEffectSender, PROVIDER_TIMEOUT_MS } from '@/lib/api/effect-signal';
 
 export interface PushTarget {
   endpoint: string;
@@ -59,7 +60,9 @@ export async function sendPush(
     await webpush.sendNotification(
       { endpoint: target.endpoint, keys: target.keys },
       JSON.stringify(payload),
-      { TTL: 60 * 60 * 12 }, // keep ~12h if the device is offline
+      // Keep ~12h if the device is offline. web-push takes no abort signal:
+      // under an outbox sender, its own timeout stays below the sender's.
+      { TTL: 60 * 60 * 12, ...(inEffectSender() ? { timeout: PROVIDER_TIMEOUT_MS } : {}) },
     );
     return { success: true };
   } catch (error) {

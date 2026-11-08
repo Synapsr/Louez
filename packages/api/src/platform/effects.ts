@@ -22,7 +22,11 @@ import { nanoid } from "nanoid";
  *   one at a time, in the order they were added: a row waits while an earlier
  *   one of its key is not done.
  * - A row whose store or reservation is gone is cancelled, never sent.
- * - A sender runs within a timeout below the claim's lease.
+ * - A sender gets an abort signal, passed down to its provider calls, which
+ *   fires at its timeout (below the lease). A sender that times out keeps the
+ *   row: its outcome is unknown, so the row (and its key) stays blocked until
+ *   the lease ends, and only then runs again. A provider call that cannot be
+ *   cancelled can therefore overlap a retry only after the full lease.
  *
  * An effect is sent at least once: a sender that dies between sending and
  * recording leaves its claim to expire, and the row runs again.
@@ -159,7 +163,7 @@ export type ApiEffect = {
 
 /** What a sender gets besides the payload. */
 export interface EffectSendContext {
-  /** Aborted when the sender ran out of time: it must not send after it. */
+  /** Aborted at the sender's timeout: pass it to every provider call, and send nothing after it. */
   signal: AbortSignal;
   /** Throws when this sender no longer holds the row. Call it right before sending. */
   assertClaim: () => Promise<void>;
@@ -179,7 +183,10 @@ export type ApiEffectSenders = {
 
 /** How long a sender holds a row before another may take it over. */
 export const EFFECT_LEASE_MS = 5 * 60_000;
-/** How long a sender may run: well within its lease. */
+/**
+ * When a sender's signal fires. Its provider calls stop then, if they honour
+ * the signal; its row stays claimed until the lease ends either way.
+ */
 export const EFFECT_SEND_TIMEOUT_MS = 2 * 60_000;
 /** Runs of one row before it is abandoned. */
 export const EFFECT_MAX_ATTEMPTS = 8;
@@ -398,6 +405,20 @@ async function recordSkipped(id: string, token: string, reason: string) {
     .where(fenced(id, token));
 }
 
+/**
+ * A sender that timed out: whether it sent is unknown. The row keeps its
+ * lease, so neither it nor a later row of its key runs before the lease
+ * ends; the claim is dropped, so the late sender can neither send past its
+ * next check nor record.
+ */
+async function recordUncertain(id: string, token: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  await db
+    .update(apiEffects)
+    .set({ claimToken: null, lastError: `Outcome unknown: ${message}`.slice(0, 1000) })
+    .where(fenced(id, token));
+}
+
 async function recordFailure(
   id: string,
   token: string,
@@ -496,7 +517,12 @@ export async function dispatchEffects(
         outcome.sent += 1;
       }
     } catch (error) {
-      await recordFailure(id, token, claimed.attempts, error, now()).catch(() => {});
+      const outcomeUnknown = error instanceof EffectTimeout;
+      await (
+        outcomeUnknown
+          ? recordUncertain(id, token, error)
+          : recordFailure(id, token, claimed.attempts, error, now())
+      ).catch(() => {});
       outcome.failed += 1;
     } finally {
       clearTimeout(timer);

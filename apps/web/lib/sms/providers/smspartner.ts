@@ -11,6 +11,7 @@
 import type { SmsProvider, SendSmsOptions, SendSmsResult } from '../types'
 import { validateAndNormalizePhone } from '../phone'
 import { env } from '@/env'
+import { providerSignal } from '@/lib/api/effect-signal'
 
 const API_ENDPOINT = 'https://api.smspartner.fr/v1/send'
 
@@ -120,6 +121,8 @@ export class SmsPartnerProvider implements SmsProvider {
     try {
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
+        // An outbox sender's abort and timeout (lib/api/effect-signal.ts).
+        signal: providerSignal(),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
         },

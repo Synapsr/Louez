@@ -718,6 +718,8 @@ async function pushToStoreMembers(
   eventType: NotificationEventType,
   ctx: NotificationContext,
   locale: ReturnType<typeof getLocaleFromCountry>,
+  /** Runs before each device's push: an outbox sender checks its claim there. */
+  beforeEach: () => Promise<void> = async () => {},
 ): Promise<{ sent: boolean; error?: string; devices: number }> {
   const payload = buildAdminPushPayload(eventType, ctx, locale);
   if (!payload) return { sent: false, devices: 0 };
@@ -735,6 +737,7 @@ async function pushToStoreMembers(
   let sent = false;
   let error: string | undefined;
   for (const sub of subs) {
+    await beforeEach();
     const sendResult = await sendPush(
       {
         endpoint: sub.endpoint,
@@ -777,7 +780,7 @@ function sendStoreDiscord(
  * Unlike `dispatchNotification`, it throws when the notification did not go
  * out, so the row is retried, and answers `skipped` when it has nothing to
  * send (the channel turned off, no address, no device, the SMS limit).
- * `beforeSend` runs right before the provider is called.
+ * `beforeSend` runs right before each provider call.
  */
 export async function sendStoreNotificationChannel(
   eventType: NotificationEventType,
@@ -807,8 +810,7 @@ export async function sendStoreNotificationChannel(
 
   if (channel === "push") {
     if (!isPushConfigured()) return { skipped: "push is not set up" };
-    await beforeSend();
-    const pushed = await pushToStoreMembers(eventType, ctx, locale);
+    const pushed = await pushToStoreMembers(eventType, ctx, locale, beforeSend);
     if (pushed.devices === 0) return { skipped: "no device is registered" };
     if (!pushed.sent) throw new Error(pushed.error || "No device got the push.");
     return undefined;

@@ -18,6 +18,7 @@ import { eq } from 'drizzle-orm'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 import type { SignInMethod } from '@/lib/utils/util.sign-in-method'
 import { env } from '@/env'
+import { providerSignal } from '@/lib/api/effect-signal'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +51,8 @@ async function sendOrThrow(message: string): Promise<void> {
   if (!env.DISCORD_ADMIN_WEBHOOK_URL) return
   const res = await fetch(env.DISCORD_ADMIN_WEBHOOK_URL, {
     method: 'POST',
+    // An outbox sender's abort and timeout (lib/api/effect-signal.ts).
+    signal: providerSignal(),
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content: message, username: 'Louez', flags: 4 }),
   })
@@ -101,6 +104,7 @@ async function trackFromHelloOrThrow(
   }
   const res = await fetch(`${env.FROMHELLO_API_URL}/api/events`, {
     method: 'POST',
+    signal: providerSignal(),
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': env.FROMHELLO_API_KEY,
