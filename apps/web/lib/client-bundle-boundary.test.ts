@@ -76,6 +76,8 @@ function readModule(file: string, text: string) {
     file.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
   );
   const specifiers: string[] = [];
+  /** Dynamic loads whose module is not written out: the walk cannot follow them. */
+  const unresolved: string[] = [];
   const visit = (node: ts.Node) => {
     if (ts.isImportDeclaration(node)) {
       if (!isTypeOnlyImport(node)) {
@@ -97,8 +99,16 @@ function readModule(file: string, text: string) {
       const isLoad =
         callee.kind === ts.SyntaxKind.ImportKeyword ||
         (ts.isIdentifier(callee) && callee.text === "require");
-      const text = isLoad ? specifierText(node.arguments[0]) : null;
-      if (text) specifiers.push(text);
+      if (isLoad) {
+        const argument = node.arguments[0];
+        const text = specifierText(argument);
+        if (text && !text.endsWith("*")) specifiers.push(text);
+        else {
+          const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
+          unresolved.push(`${line + 1}: ${node.getText(source).slice(0, 80)}`);
+          if (text) specifiers.push(text);
+        }
+      }
     }
     ts.forEachChild(node, visit);
   };
@@ -108,8 +118,16 @@ function readModule(file: string, text: string) {
     client: directives.includes("use client"),
     serverActions: directives.includes("use server"),
     specifiers,
+    unresolved,
   };
 }
+
+/**
+ * Client-reachable modules allowed a dynamic load the walk cannot follow,
+ * each with why it cannot reach the sanitiser. Empty: add one only with its
+ * reason.
+ */
+const UNRESOLVED_ALLOWED = new Map<string, string>([]);
 
 /** Whether a specifier names, or (a template's head) may name, a forbidden module. */
 const isForbidden = (specifier: string) =>
@@ -197,6 +215,18 @@ test("no client module reaches the rich-text sanitiser", () => {
     }
   }
   assert.deepEqual(offenders, [], "These client imports pull the sanitiser into the browser");
+
+  // A load the walk cannot follow could reach the sanitiser unseen.
+  const unfollowed = [...visited].flatMap((file) => {
+    const path = relative(repoRoot, file);
+    if (UNRESOLVED_ALLOWED.has(path)) return [];
+    return moduleOf(file).unresolved.map((load) => `${path}:${load}`);
+  });
+  assert.deepEqual(
+    unfollowed,
+    [],
+    "Client-reachable dynamic loads the walk cannot follow: write the module out, or allow it in UNRESOLVED_ALLOWED with the reason",
+  );
 });
 
 test("the parser reads directives and every kind of import", () => {
@@ -222,6 +252,12 @@ test("the parser reads directives and every kind of import", () => {
   );
   assert.equal(module.client, true);
   assert.deepEqual(module.specifiers, ["./c", "./d", "./f", "./g", "./h", "./locales/*", "./j"]);
+  assert.deepEqual(module.unresolved, ["13: import(`./locales/${locale}`)"]);
+  assert.deepEqual(
+    readModule("b.ts", "const load = (name: string) => import(`./util.${name}`);\nrequire(name);")
+      .unresolved,
+    ["1: import(`./util.${name}`)", "2: require(name)"],
+  );
   assert.equal(readModule("a.ts", '"use server";\nexport const x = 1;').serverActions, true);
   assert.equal(readModule("a.ts", 'const x = "use client";').client, false);
   assert.equal(isForbidden("@louez/utils/*"), true);
