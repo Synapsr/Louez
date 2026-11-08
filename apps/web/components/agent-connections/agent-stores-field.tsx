@@ -40,7 +40,8 @@ export const AgentStoresField = ({ stores, value, onChange, disabled }: AgentSto
           <Checkbox
             className="mt-0.5"
             checked={value.all}
-            disabled={disabled}
+            // With no store yet, the only choice is every store to come.
+            disabled={disabled || stores.length === 0}
             onCheckedChange={(checked) =>
               onChange(
                 checked ? { all: true } : { all: false, ids: stores.map((store) => store.id) },

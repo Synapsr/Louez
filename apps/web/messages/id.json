@@ -9511,8 +9511,8 @@
       "refuse": "Tolak",
       "invalidTitle": "Permintaan kedaluwarsa",
       "invalidDescription": "Permintaan koneksi ini sudah tidak berlaku. Mulai ulang koneksi dari agen Anda.",
-      "noStoreTitle": "Tidak ada toko",
-      "noStoreDescription": "Buat toko sebelum menghubungkan agen.",
+      "noStoreTitle": "Belum ada toko",
+      "noStoreDescription": "{client} dapat membuat toko untuk Anda jika Anda memberinya hak “Baca dan ubah”. Toko tetap offline sampai Anda meluncurkannya. Akses ini juga mencakup toko yang Anda buat nanti.",
       "redirectNotice": "Setelah Anda izinkan, akses akan dikirim ke {host}.",
       "footer": "Anda dapat mengubah atau mencabut akses ini kapan saja di Pengaturan, Integrasi, MCP.",
       "loopbackWarning": "Akses akan dikirim ke alamat lokal di komputer ini: program apa pun yang berjalan di sana bisa menyamar sebagai aplikasi ini. Izinkan hanya jika Anda baru saja memulai koneksi sendiri."

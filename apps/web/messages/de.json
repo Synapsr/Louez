@@ -9511,8 +9511,8 @@
       "refuse": "Ablehnen",
       "invalidTitle": "Anfrage abgelaufen",
       "invalidDescription": "Diese Verbindungsanfrage ist nicht mehr gültig. Starten Sie die Verbindung erneut in Ihrem Agenten.",
-      "noStoreTitle": "Kein Shop",
-      "noStoreDescription": "Erstellen Sie einen Shop, bevor Sie einen Agenten verbinden.",
+      "noStoreTitle": "Noch kein Shop",
+      "noStoreDescription": "{client} kann Ihren Shop für Sie erstellen, wenn Sie die Rechte „Lesen und bearbeiten“ erteilen. Der Shop bleibt offline, bis Sie ihn starten. Dieser Zugriff gilt auch für Shops, die Sie später erstellen.",
       "redirectNotice": "Nach Ihrer Zustimmung wird der Zugriff an {host} gesendet.",
       "footer": "Sie können diesen Zugriff jederzeit unter Einstellungen, Integrationen, MCP ändern oder entfernen.",
       "loopbackWarning": "Der Zugriff wird an eine lokale Adresse dieses Computers gesendet: Jedes dort laufende Programm kann sich als diese App ausgeben. Erlauben Sie ihn nur, wenn Sie die Verbindung gerade selbst gestartet haben."

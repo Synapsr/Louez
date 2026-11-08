@@ -9511,8 +9511,8 @@
       "refuse": "Recusar",
       "invalidTitle": "Pedido expirado",
       "invalidDescription": "Este pedido de conexão não é mais válido. Inicie a conexão novamente no seu agente.",
-      "noStoreTitle": "Nenhuma loja",
-      "noStoreDescription": "Crie uma loja antes de conectar um agente.",
+      "noStoreTitle": "Ainda não há loja",
+      "noStoreDescription": "{client} poderá criar a sua loja por você se lhe der os direitos «Leitura e edição». A loja fica offline até que você a lance. Este acesso também cobre as lojas que você criar depois.",
       "redirectNotice": "Após a sua autorização, o acesso será enviado para {host}.",
       "footer": "Você pode alterar ou remover este acesso a qualquer momento em Configurações, Integrações, MCP.",
       "loopbackWarning": "O acesso será enviado para um endereço local deste computador: qualquer programa em execução nele pode se passar por este aplicativo. Só permita se você acabou de iniciar a conexão."

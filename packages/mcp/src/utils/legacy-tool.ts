@@ -32,6 +32,7 @@ const BUNDLE_OF_DOMAIN: Record<ApiDomain, McpBundle> = {
   integrations: "integrations",
   team: "team",
   billing: "billing",
+  stores: "daily",
 };
 
 /**

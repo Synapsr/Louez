@@ -33,14 +33,15 @@ export const AGENT_PRESETS: readonly AgentPreset[] = ["read", "write"];
  * The terms the consent page starts from: what was granted before, else
  * every current store (listed one by one, so a store created later is not
  * included unless the user says so), read and write, confirmation on, the
- * day's operations.
+ * day's operations. A user with no store yet grants every store to come:
+ * the agent may then create the first one.
  */
 export const defaultAgentTerms = (
   storeIds: readonly string[],
   current: AgentTerms | null,
 ): AgentTerms =>
   current ?? {
-    stores: { all: false, ids: [...storeIds] },
+    stores: storeIds.length === 0 ? { all: true } : { all: false, ids: [...storeIds] },
     preset: "write",
     confirmSensitive: true,
     bundles: ["daily"],

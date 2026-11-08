@@ -4,15 +4,17 @@ import { eq } from "drizzle-orm";
 
 import type { BaseContext } from "../context";
 import {
+  ACCOUNT_SCOPE,
   resolveAccountActor,
   resolveStoreActor,
   type AccountActor,
+  type ScopedActor,
   type StoreActor,
 } from "./actor";
 import { apiError, platformErrors } from "./errors";
 import type { ApiMeta } from "./meta";
 import { IDEMPOTENCY_HEADER, runOperation } from "./operations";
-import { allows } from "./permissions";
+import { accountRefusal, allows } from "./permissions";
 import { consumeRateLimit, rateLimitKey } from "./rate-limit";
 
 /** Store row handed to agent-ready procedures. */
@@ -79,18 +81,90 @@ const authenticated = base.use(async ({ context, next, procedure }) => {
 });
 
 /**
- * A signed-in account, before any store: list one's stores, create a store.
- * The credential is checked on every call; a key or a token counts on the
- * connection's rate limit, as a store call does.
+ * A write's run through `runOperation`: recorded, and replayed for a repeated
+ * idempotency key. The handler's output is what an idempotent retry gets
+ * back; `output()` answers a replay without running the handler. The replayed
+ * output still goes through the procedure's output schema, which runs outside
+ * the middleware (see `base`).
  */
-export const accountProcedure = authenticated.use(async ({ context, next }) => {
-  const { credential } = context.actor;
-  if (credential.kind !== "session") {
-    const limit = await consumeRateLimit(rateLimitKey(credential));
-    if (!limit.allowed) throw platformErrors.rateLimited(limit.retryAfterSeconds);
-  }
-  return next();
-});
+async function recordWrite<T extends { output: unknown }>(input: {
+  actor: ScopedActor;
+  path: readonly string[];
+  meta: ApiMeta;
+  outputSchema: unknown;
+  headers: Headers;
+  receipt: BaseContext["receipt"];
+  rawInput: unknown;
+  run: () => T | PromiseLike<T>;
+  replay: (output: unknown) => T;
+}): Promise<T> {
+  let ran: T | undefined;
+  const result = await runOperation(
+    {
+      actor: input.actor,
+      procedure: input.path.join("."),
+      input: input.rawInput,
+      idempotencyKey: input.meta.secretOutput ? null : input.headers.get(IDEMPOTENCY_HEADER),
+      receipt: input.receipt,
+      toStored: (raw) => validateOutput(input.outputSchema, raw),
+    },
+    async () => {
+      ran = await input.run();
+      return ran.output;
+    },
+  );
+  return ran ?? input.replay(result);
+}
+
+/**
+ * A signed-in account, before any store: list one's stores, create a store,
+ * grant an agent. On every call, before the handler:
+ *
+ * 1. the credential is checked as for a store procedure (`meta.actors`,
+ *    `meta.platformAdmin` included);
+ * 2. a `meta.scope` is checked against the connection's scopes alone, as
+ *    there is no store and so no role (`accountRefusal`); a session may do
+ *    anything on its own account;
+ * 3. a key or a token counts on the connection's rate limit, as a store call
+ *    does.
+ *
+ * Writes (`scope.level === "write"`) then run through `runOperation`, on the
+ * account scope (`ACCOUNT_SCOPE`): recorded, and replayed for a repeated
+ * idempotency key.
+ */
+export const accountProcedure = authenticated.use(
+  async ({ context, next, path, procedure }, input, output) => {
+    const meta = procedure["~orpc"].meta;
+    const { actor } = context;
+    const { credential } = actor;
+    if (meta.scope) {
+      const refusal = accountRefusal(credential, meta.scope);
+      if (refusal === "bound" && credential.kind !== "session") {
+        throw platformErrors.connectionBoundToStores(credential.kind);
+      }
+      if (refusal)
+        throw platformErrors.permissionDenied(`${meta.scope.domain}:${meta.scope.level}`);
+    }
+    if (credential.kind !== "session") {
+      const limit = await consumeRateLimit(rateLimitKey(credential));
+      if (!limit.allowed) throw platformErrors.rateLimited(limit.retryAfterSeconds);
+    }
+    if (meta.scope?.level !== "write") return next();
+
+    return recordWrite({
+      actor: { ...actor, storeId: ACCOUNT_SCOPE },
+      path,
+      meta,
+      outputSchema: procedure["~orpc"].outputSchema,
+      headers: context.headers,
+      receipt: context.receipt,
+      rawInput: input,
+      run: () => next(),
+      // The cast only drops the context a replay does not add.
+      replay: (result) => output(result) as Awaited<ReturnType<typeof next>>,
+    });
+  },
+);
 
 /**
  * An action on one store. On every call, before the handler:
@@ -142,26 +216,17 @@ export const storeProcedure = authenticated.use(
     const nextContext = { actor: storeActor, store: store as ActorStore, ports };
     if (meta.scope.level !== "write") return next({ context: nextContext });
 
-    // The handler's output is what an idempotent retry gets back; `output()`
-    // answers a replay without running the handler. The replayed output still
-    // goes through the procedure's output schema, which runs outside this
-    // middleware (see `base`); the cast only drops the context a replay does
-    // not add.
-    let ran: Awaited<ReturnType<typeof next<typeof nextContext>>> | undefined;
-    const result = await runOperation(
-      {
-        actor: storeActor,
-        procedure: path.join("."),
-        input,
-        idempotencyKey: meta.secretOutput ? null : context.headers.get(IDEMPOTENCY_HEADER),
-        receipt: context.receipt,
-        toStored: (raw) => validateOutput(procedure["~orpc"].outputSchema, raw),
-      },
-      async () => {
-        ran = await next({ context: nextContext });
-        return ran.output;
-      },
-    );
-    return ran ?? (output(result) as typeof ran & object);
+    return recordWrite({
+      actor: storeActor,
+      path,
+      meta,
+      outputSchema: procedure["~orpc"].outputSchema,
+      headers: context.headers,
+      receipt: context.receipt,
+      rawInput: input,
+      run: () => next({ context: nextContext }),
+      // The cast only drops the context a replay does not add.
+      replay: (result) => output(result) as Awaited<ReturnType<typeof next<typeof nextContext>>>,
+    });
   },
 );

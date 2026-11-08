@@ -66,16 +66,6 @@ export const AgentConsentCard = ({ oauthQuery }: AgentConsentCardProps) => {
   const clientName = client.name ?? t("unknownClient");
   const answerError = answer.error ? apiErrorKey(answer.error) : null;
 
-  if (stores.length === 0) {
-    return (
-      <Alert variant="warning">
-        <WarningIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        <AlertTitle>{t("consent.noStoreTitle")}</AlertTitle>
-        <AlertDescription>{t("consent.noStoreDescription")}</AlertDescription>
-      </Alert>
-    );
-  }
-
   return (
     <Card>
       <CardHeader className="space-y-4 p-5 sm:p-6">
@@ -86,7 +76,15 @@ export const AgentConsentCard = ({ oauthQuery }: AgentConsentCardProps) => {
         </div>
       </CardHeader>
       <Separator />
-      <CardPanel className="p-5 sm:p-6">
+      <CardPanel className="space-y-6 p-5 sm:p-6">
+        {stores.length === 0 && (
+          <Alert variant="info">
+            <AlertTitle>{t("consent.noStoreTitle")}</AlertTitle>
+            <AlertDescription>
+              {t("consent.noStoreDescription", { client: clientName })}
+            </AlertDescription>
+          </Alert>
+        )}
         <AgentTermsFields
           stores={stores}
           value={terms}

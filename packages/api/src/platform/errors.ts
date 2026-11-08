@@ -75,6 +75,15 @@ export const platformErrors = {
       i18nKey: "errors.permissionDenied",
       details: { required },
     }),
+  /** An account write that needs a connection over all the user's stores, present and future. */
+  connectionBoundToStores: (kind: "api_key" | "oauth") =>
+    apiError("FORBIDDEN", "CONNECTION_BOUND_TO_STORES", {
+      message:
+        kind === "api_key"
+          ? "An API key works on its own store only, so it cannot add a store. Create the store in Louez, or connect an agent through OAuth with access to all your stores."
+          : "This connection covers chosen stores only, so it cannot add a store. The user can create the store in Louez, or let this agent reach all their stores, present and future: Settings > Integrations > MCP > Connected agents.",
+      i18nKey: "errors.permissionDenied",
+    }),
   sessionOnly: () =>
     apiError("FORBIDDEN", "SESSION_ONLY", {
       message: "Only the account owner, signed in to the Louez dashboard, can do this.",

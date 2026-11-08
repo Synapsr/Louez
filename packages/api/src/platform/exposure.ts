@@ -73,7 +73,7 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
 /** Arguments the MCP bridge adds to a tool and maps onto headers. */
 export const BRIDGE_ARGUMENTS = ["idempotencyKey", "confirmationToken", "storeId"] as const;
 
-/** A served procedure has a scope, or is an account procedure (`meta.account`) without one. */
+/** A served procedure has a scope, or is an account procedure (`meta.account`), whose scope is optional. */
 export type ExposedMeta = ApiMeta & { scope?: ProcedureScope; mcp: McpExposure };
 
 /** One procedure the OpenAPI and MCP transports serve. */
@@ -113,9 +113,9 @@ function isExposure(mcp: ApiMeta["mcp"]): mcp is McpExposure {
 
 /**
  * Why a listed path may not be served; empty when it may. A served procedure
- * has a scope (or is an account procedure), an input and an output schema, an MCP exposure (not an
- * exclusion), takes and returns an object, and is not reserved to a session or
- * to platform staff.
+ * has a scope (or is an account procedure), an input and an output schema, an
+ * MCP exposure (not an exclusion), takes and returns an object, and is not
+ * reserved to a session or to platform staff.
  */
 function problemsOf(path: string, node: unknown): string[] {
   if (!isProcedure(node)) return [`${path}: no procedure at this path`];
@@ -123,7 +123,6 @@ function problemsOf(path: string, node: unknown): string[] {
   const meta = def.meta as ApiMeta;
   const problems: string[] = [];
   if (!meta.scope && !meta.account) problems.push(`${path}: no meta.scope`);
-  if (meta.scope && meta.account) problems.push(`${path}: an account procedure has no scope`);
   if (!def.inputSchema) problems.push(`${path}: no input schema`);
   if (!def.outputSchema) problems.push(`${path}: no output schema`);
   if (!meta.mcp) problems.push(`${path}: no meta.mcp`);

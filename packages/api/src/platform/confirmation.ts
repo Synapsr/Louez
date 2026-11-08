@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { apiConfirmations, db, type Transaction } from "@louez/db";
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
 
-import type { StoreActor } from "./actor";
+import type { ScopedActor } from "./actor";
 import { apiError, platformErrors } from "./errors";
 import { sha256, stableStringify } from "./hash";
 
@@ -44,7 +44,7 @@ export async function requireConfirmation(input: ConfirmationCheck): Promise<voi
 }
 
 export interface ConfirmationCheck {
-  actor: StoreActor;
+  actor: ScopedActor;
   headers: Headers;
   procedure: string;
   input: unknown;

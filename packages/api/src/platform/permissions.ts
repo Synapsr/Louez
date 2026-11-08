@@ -1,4 +1,5 @@
 import type { ApiKeyPermissions } from "@louez/db";
+import type { Credential } from "./actor";
 import { hasPermission, type MemberRole, type Permission } from "@louez/utils";
 
 /**
@@ -17,6 +18,7 @@ export const API_DOMAINS = [
   "integrations",
   "team",
   "billing",
+  "stores",
 ] as const;
 
 export type ApiDomain = (typeof API_DOMAINS)[number];
@@ -68,6 +70,30 @@ export function allows(
   if (!hasPermission(role, permission)) return false;
   if (!scopes) return true;
   return LEVEL_RANK[scopes[required.domain]] >= LEVEL_RANK[required.level];
+}
+
+/**
+ * Why an account procedure (no store, so no role) refuses a connection, or
+ * null when it may run. A session may do anything on its own account; a key
+ * or a token needs the scope. Adding a store (`stores` write) also needs a
+ * connection over all the user's stores, present and future: one bound to
+ * some stores (an API key, a grant over chosen stores) would never reach the
+ * new store, and widening it is the user's call (plan, section 2).
+ */
+export function accountRefusal(
+  credential: Pick<Credential, "kind" | "storeId" | "stores" | "scopes">,
+  required: ProcedureScope,
+): "scope" | "bound" | null {
+  if (credential.kind === "session" || !credential.scopes) return null;
+  if (
+    required.domain === "stores" &&
+    required.level === "write" &&
+    (credential.kind !== "oauth" || credential.storeId !== null || credential.stores !== null)
+  ) {
+    return "bound";
+  }
+  if (LEVEL_RANK[credential.scopes[required.domain]] < LEVEL_RANK[required.level]) return "scope";
+  return null;
 }
 
 /** The rights presets of an agent connection (OAuth grant), chosen on the consent page. */

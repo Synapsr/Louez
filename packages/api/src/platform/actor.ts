@@ -59,9 +59,21 @@ export interface AccountActor {
   isPlatformAdmin: boolean;
 }
 
-/** Someone acting on one store, with the role they hold there now. */
-export interface StoreActor extends AccountActor {
+/**
+ * The store id an account write is recorded under (`api_operations`,
+ * `api_confirmations`): none, as the account acts before any store, such as
+ * creating one or granting an agent. Idempotency keys and confirmation
+ * tokens stay scoped to the user's connection.
+ */
+export const ACCOUNT_SCOPE = "";
+
+/** Someone whose write is recorded: on a store, or on the account (`ACCOUNT_SCOPE`). */
+export interface ScopedActor extends AccountActor {
   storeId: string;
+}
+
+/** Someone acting on one store, with the role they hold there now. */
+export interface StoreActor extends ScopedActor {
   role: MemberRole;
 }
 

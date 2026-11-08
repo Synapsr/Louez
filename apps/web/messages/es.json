@@ -9511,8 +9511,8 @@
       "refuse": "Rechazar",
       "invalidTitle": "Solicitud caducada",
       "invalidDescription": "Esta solicitud de conexión ya no es válida. Vuelva a iniciar la conexión desde su agente.",
-      "noStoreTitle": "Ninguna tienda",
-      "noStoreDescription": "Cree una tienda antes de conectar un agente.",
+      "noStoreTitle": "Todavía no hay tienda",
+      "noStoreDescription": "{client} podrá crear su tienda por usted si le da los derechos «Lectura y edición». La tienda seguirá sin conexión hasta que usted la lance. Este acceso también cubrirá las tiendas que cree después.",
       "redirectNotice": "Tras su aprobación, el acceso se enviará a {host}.",
       "footer": "Puede cambiar o retirar este acceso en cualquier momento en Configuración, Integraciones, MCP.",
       "loopbackWarning": "El acceso se enviará a una dirección local de este ordenador: cualquier programa que se ejecute en él puede hacerse pasar por esta aplicación. Permítalo solo si acaba de iniciar la conexión usted mismo."

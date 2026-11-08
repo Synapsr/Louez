@@ -1,7 +1,7 @@
 import { apiOperations, db } from "@louez/db";
 import { and, eq, sql } from "drizzle-orm";
 
-import type { StoreActor } from "./actor";
+import type { ScopedActor } from "./actor";
 import { isApiError, platformErrors } from "./errors";
 import { sha256, stableStringify } from "./hash";
 
@@ -57,7 +57,7 @@ function decodeResult(value: unknown): unknown {
  */
 export async function runOperation<T>(
   params: {
-    actor: StoreActor;
+    actor: ScopedActor;
     procedure: string;
     input: unknown;
     idempotencyKey: string | null;

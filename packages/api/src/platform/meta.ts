@@ -71,9 +71,11 @@ export interface ApiMeta {
   capability?: string;
   scope?: ProcedureScope;
   /**
-   * An account procedure (`accountProcedure`): no store, so no scope. Every
-   * connection may call it; it answers for the connection's own account and
-   * stores only, such as `stores_list`.
+   * An account procedure (`accountProcedure`): it acts before any store, for
+   * the connection's own account and stores only (`stores_list`,
+   * `stores_create`). Without `scope`, every connection may call it. With
+   * one, the connection's scopes alone decide (there is no role), and a write
+   * is recorded on the account scope (`accountRefusal`, `ACCOUNT_SCOPE`).
    */
   account?: true;
   /** Credentials allowed to call it. Default: every credential the transport accepts. */

@@ -9511,8 +9511,8 @@
       "refuse": "Odmów",
       "invalidTitle": "Prośba wygasła",
       "invalidDescription": "Ta prośba o połączenie jest już nieważna. Rozpocznij połączenie ponownie w swoim agencie.",
-      "noStoreTitle": "Brak sklepu",
-      "noStoreDescription": "Utwórz sklep, zanim połączysz agenta.",
+      "noStoreTitle": "Nie masz jeszcze sklepu",
+      "noStoreDescription": "{client} może utworzyć sklep za Ciebie, jeśli nadasz mu uprawnienia „Odczyt i edycja”. Sklep pozostanie offline, dopóki go nie uruchomisz. Ten dostęp obejmie też sklepy, które utworzysz później.",
       "redirectNotice": "Po Twojej zgodzie dostęp zostanie wysłany do {host}.",
       "footer": "Możesz zmienić lub cofnąć ten dostęp w dowolnym momencie w Ustawienia, Integracje, MCP.",
       "loopbackWarning": "Dostęp zostanie wysłany na lokalny adres tego komputera: każdy działający na nim program może podszyć się pod tę aplikację. Zezwól tylko, jeśli właśnie sam rozpocząłeś połączenie."

@@ -9511,8 +9511,8 @@
       "refuse": "Deny",
       "invalidTitle": "Request expired",
       "invalidDescription": "This connection request is no longer valid. Start the connection again from your agent.",
-      "noStoreTitle": "No store",
-      "noStoreDescription": "Create a store before you connect an agent.",
+      "noStoreTitle": "No store yet",
+      "noStoreDescription": "{client} can create your store for you if you give it “Read and edit” rights. The store stays offline until you launch it. This access also covers the stores you create later.",
       "redirectNotice": "Once you allow it, access will be sent to {host}.",
       "footer": "You can change or remove this access at any time in Settings, Integrations, MCP.",
       "loopbackWarning": "Access will be sent to a local address on this computer: any program running on it can pose as this app. Only allow it if you just started the connection yourself."

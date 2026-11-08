@@ -11,7 +11,7 @@ import {
   agentConnectionSchema,
 } from "../../contracts/agent-connections";
 import { connectionStores, type AccountActor } from "../../platform/actor";
-import { storeProcedure } from "../../platform/procedures";
+import { accountProcedure } from "../../platform/procedures";
 import {
   currentTerms,
   describeClient,
@@ -29,8 +29,11 @@ async function oauthServer() {
 
 // A connection's rights, its stores, its confirmation setting and its tool
 // bundles are set by the signed-in user only: an agent never changes what it
-// may do. The writes are recorded on the store the dashboard is on.
-const connections = storeProcedure.meta({
+// may do. They belong to the account, not to a store: a user with no store
+// yet can connect an agent that will create it. The writes are recorded on
+// the account scope.
+const connections = accountProcedure.meta({
+  account: true,
   scope: { domain: "integrations", level: "write" },
   actors: ["session"],
   mcp: { exclude: "agent connections are granted and managed by the user in the dashboard only" },
