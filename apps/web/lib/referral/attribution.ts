@@ -1,4 +1,4 @@
-import { isValidReferralCode } from '../utils/referral';
+import { isValidReferralCode } from '@louez/utils/referral-code';
 
 /** Minimal view of a candidate Referrer Store needed to resolve attribution. */
 export interface ReferrerStoreRef {

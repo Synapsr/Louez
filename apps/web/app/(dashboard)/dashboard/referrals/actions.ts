@@ -12,7 +12,7 @@ import { getReferralProgramConfig } from '@/lib/referral/defaults';
 import { buildReferralUrl } from '@/lib/referral/link';
 import type { ReferralRewardKind } from '@/lib/referral/reward';
 import { getCurrentStore } from '@/lib/store-context';
-import { generateReferralCode } from '@/lib/utils/referral';
+import { generateReferralCode } from '@louez/utils/referral-code';
 
 export interface ReferralData {
   id: string;

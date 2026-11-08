@@ -26,8 +26,8 @@ import { type ReferralAttribution, resolveReferralAttribution } from "@/lib/refe
 import { getReferralProgramConfig } from "@/lib/referral/defaults";
 import { referralCookieDomain, referralCookieSecure } from "@/lib/referral/link";
 import { getActiveStoreId, setActiveStoreId, verifyStoreAccess } from "@/lib/store-context";
-import { getTimezoneForCountry } from "@/lib/utils/countries";
-import { generateReferralCode, isValidReferralCode } from "@/lib/utils/referral";
+import { getTimezoneForCountry } from "@louez/utils/countries";
+import { generateReferralCode, isValidReferralCode } from "@louez/utils/referral-code";
 
 import { sendAfterResponse } from "./_lib/send-after-response";
 

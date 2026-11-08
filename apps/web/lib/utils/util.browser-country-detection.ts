@@ -1,4 +1,4 @@
-import { SUPPORTED_COUNTRIES, getCountryByCode } from "@/lib/utils/countries";
+import { SUPPORTED_COUNTRIES, getCountryByCode } from "@louez/utils/countries";
 
 export const ONBOARDING_FALLBACK_COUNTRY = "FR";
 

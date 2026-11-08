@@ -1,6 +1,6 @@
 import { formatStoreDate } from '@/lib/utils/store-date'
 import type { EmailLocale } from './i18n'
-import { getTimezoneForCountry } from '@/lib/utils/countries'
+import { getTimezoneForCountry } from '@louez/utils/countries'
 
 export function resolveStoreTimezone(
   timezone?: string | null,

@@ -1,6 +1,6 @@
 import type { StoreSettings } from "@louez/types";
 
-import { getTimezoneForCountry } from "@/lib/utils/countries";
+import { getTimezoneForCountry } from "@louez/utils/countries";
 
 export interface CompanySettingsInput {
   country: string;

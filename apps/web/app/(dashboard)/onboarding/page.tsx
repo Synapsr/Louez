@@ -8,7 +8,7 @@ import { db, users } from "@louez/db";
 import { auth } from "@/lib/auth";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
 import { getCurrentStore, getUserStores } from "@/lib/store-context";
-import { getCountryByCode } from "@/lib/utils/countries";
+import { getCountryByCode } from "@louez/utils/countries";
 import { ONBOARDING_FALLBACK_COUNTRY } from "@/lib/utils/util.browser-country-detection";
 import { detectCountryFromRequestHeaders } from "@/lib/utils/util.request-country-detection";
 

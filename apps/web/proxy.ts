@@ -13,7 +13,7 @@ import {
   buildEmbedSecurityHeaders,
   buildSecurityHeaders,
 } from "@/lib/util.security-headers";
-import { isValidReferralCode } from "@/lib/utils/referral";
+import { isValidReferralCode } from "@louez/utils/referral-code";
 import {
   isKnownSignupOrigin,
   SIGNUP_ORIGIN_COOKIE,
