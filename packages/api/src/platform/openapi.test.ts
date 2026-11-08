@@ -107,7 +107,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories, the products, the reservations, the settings, the online store and the stores at short REST paths named after their tools", async () => {
+  test("serves the categories, the products, the reservations, the settings, the online store, the stores and the inbox at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -207,6 +207,8 @@ describe("OpenAPI document", () => {
         "POST /stores": "stores_create",
         "GET /stores/launch-checklist": "stores_get_launch_checklist",
         "POST /stores/go-live": "stores_go_live",
+        "GET /inbox": "inbox_list",
+        "POST /inbox/acknowledge": "inbox_acknowledge",
       },
     );
 
@@ -231,6 +233,7 @@ describe("OpenAPI document", () => {
       "#/components/parameters/IdempotencyKey",
       "#/components/parameters/LouezConfirmation",
     ]);
+    assert.deepEqual(refs("POST /inbox/acknowledge"), ["#/components/parameters/IdempotencyKey"]);
     assert.deepEqual(refs("PATCH /reservations/{id}/notes"), [
       "#/components/parameters/IdempotencyKey",
     ]);

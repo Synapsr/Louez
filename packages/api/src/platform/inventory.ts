@@ -28,6 +28,7 @@ export type CapabilityDomain =
   | "sms"
   | "purchase_invoices"
   | "inspections"
+  | "inbox"
   | "ui";
 
 export type CapabilityLot =
@@ -43,7 +44,8 @@ export type CapabilityLot =
   | "5"
   | "6"
   | "7"
-  | "8";
+  | "8"
+  | "A1";
 
 /** A flow that leaves the API: the procedure hands the user a link (plan, section 7). */
 export type CapabilityHandoff =
@@ -174,6 +176,7 @@ const ORPC = {
   categories: `${ROUTERS}/categories.ts`,
   customerFields: `${ROUTERS}/customer-fields.ts`,
   customers: `${ROUTERS}/customers.ts`,
+  inbox: `${ROUTERS}/inbox.ts`,
   integrations: `${ROUTERS}/integrations.ts`,
   notifications: `${ROUTERS}/notifications.ts`,
   onboarding: `${ROUTERS}/onboarding.ts`,
@@ -295,6 +298,22 @@ export const capabilities = [
     sources: [procedure("search", "global")],
     kind: "read",
     plan: { lot: "2a" },
+    migrated: true,
+  },
+
+  // --- Inbox (A1): what needs the store's attention, served by procedures --
+  {
+    id: "inbox.list",
+    sources: [procedure("inbox", "list")],
+    kind: "read",
+    plan: { lot: "A1" },
+    migrated: true,
+  },
+  {
+    id: "inbox.acknowledge",
+    sources: [procedure("inbox", "acknowledge")],
+    kind: "write",
+    plan: { lot: "A1" },
     migrated: true,
   },
 

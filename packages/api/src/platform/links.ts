@@ -122,6 +122,15 @@ export function customerLinks(
   };
 }
 
+/** Another page of the store's dashboard, such as its billing or its purchase invoices. */
+export function dashboardPageLinks(
+  urls: UrlsPort,
+  store: DashboardLinkStore,
+  path: `/dashboard${string}`,
+): ResourceLinks {
+  return { dashboard: dashboardUrl(urls, store, path) };
+}
+
 /** Settings > Integrations > MCP, where the user manages connected agents and their bundles. */
 export function agentConnectionsLinks(urls: UrlsPort, store: DashboardLinkStore): ResourceLinks {
   return { dashboard: dashboardUrl(urls, store, "/dashboard/settings/integrations/mcp") };

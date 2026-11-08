@@ -92,6 +92,8 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.stores.create",
   "dashboard.stores.getLaunchChecklist",
   "dashboard.stores.completeOnboarding",
+  "dashboard.inbox.list",
+  "dashboard.inbox.acknowledge",
 ];
 
 /** Arguments the MCP bridge adds to a tool and maps onto headers. */

@@ -7,6 +7,7 @@ import { dashboardApiKeysRouter } from "./api-keys";
 import { dashboardCategoriesRouter } from "./categories";
 import { dashboardCustomerFieldsRouter } from "./customer-fields";
 import { dashboardCustomersRouter } from "./customers";
+import { dashboardInboxRouter } from "./inbox";
 import { dashboardIntegrationsRouter } from "./integrations";
 import { dashboardNotificationsRouter } from "./notifications";
 import { dashboardOnboardingRouter } from "./onboarding";
@@ -48,6 +49,7 @@ export const dashboardRouter = {
   categories: dashboardCategoriesRouter,
   customers: dashboardCustomersRouter,
   customerFields: dashboardCustomerFieldsRouter,
+  inbox: dashboardInboxRouter,
   integrations: dashboardIntegrationsRouter,
   reservations: dashboardReservationsRouter,
   reservationDetails: dashboardReservationDetailsRouter,
