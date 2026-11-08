@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { env } from '@/env';
+import { providerSignal } from '@/lib/api/effect-signal';
 import { getPostHogServer, shutdownPostHogServer } from '@/lib/posthog';
 import {
   type ProductAnalyticsEvent,
@@ -14,28 +16,54 @@ type ProductServerEvent = {
   properties?: Record<string, unknown>;
 };
 
-/** Captures and flushes the event; throws when PostHog did not take it. */
+/**
+ * Sends one event to PostHog's capture API and checks the answer, for an
+ * outbox row: throws when PostHog did not take it (the SDK's flush swallows
+ * HTTP failures), answers `skipped` when analytics is not set up here. It
+ * honours an outbox sender's abort (lib/api/effect-signal.ts).
+ */
 export async function captureProductServerEventOrThrow({
+  distinctId,
+  event,
+  properties,
+}: ProductServerEvent): Promise<{ skipped: string } | undefined> {
+  if (!distinctId) return { skipped: 'no one to count the event on' };
+  if (!env.NEXT_PUBLIC_POSTHOG_KEY) return { skipped: 'analytics is not set up' };
+  const host = (env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com').replace(/\/$/, '');
+  const response = await fetch(`${host}/i/v0/e/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_key: env.NEXT_PUBLIC_POSTHOG_KEY,
+      event,
+      distinct_id: distinctId,
+      properties: { ...productAnalyticsBaseProperties, ...properties },
+      timestamp: new Date().toISOString(),
+    }),
+    signal: providerSignal(),
+  });
+  if (!response.ok) throw new Error(`PostHog answered ${response.status}.`);
+  return undefined;
+}
+
+export async function captureProductServerEvent({
   distinctId,
   event,
   properties,
 }: ProductServerEvent) {
   if (!distinctId) return;
-  const posthog = getPostHogServer();
-  posthog.capture({
-    distinctId,
-    event,
-    properties: {
-      ...productAnalyticsBaseProperties,
-      ...properties,
-    },
-  });
-  await shutdownPostHogServer();
-}
 
-export async function captureProductServerEvent(event: ProductServerEvent) {
   try {
-    await captureProductServerEventOrThrow(event);
+    const posthog = getPostHogServer();
+    posthog.capture({
+      distinctId,
+      event,
+      properties: {
+        ...productAnalyticsBaseProperties,
+        ...properties,
+      },
+    });
+    await shutdownPostHogServer();
   } catch {
     // Product analytics must never block core product flows.
   }
@@ -49,35 +77,33 @@ type ReservationActionSucceeded = {
   properties?: Record<string, unknown>;
 };
 
-export async function captureReservationActionSucceeded(event: ReservationActionSucceeded) {
-  try {
-    await captureReservationActionSucceededOrThrow(event);
-  } catch {
-    // Product analytics must never block core product flows.
-  }
-}
-
-/** For an outbox row: throws when PostHog did not take the event, so it is retried. */
-export async function captureReservationActionSucceededOrThrow({
+const reservationActionEvent = ({
   distinctId,
   storeId,
   reservationId,
   action,
   properties,
-}: ReservationActionSucceeded) {
-  await captureProductServerEventOrThrow({
-    distinctId,
-    event: productAnalyticsEvents.reservationActionSucceeded,
-    properties: {
-      feature: 'reservation_management',
-      surface: 'dashboard',
-      source: 'server_mutation',
-      store_id: storeId,
-      reservation_id: reservationId,
-      action,
-      ...properties,
-    },
-  });
+}: ReservationActionSucceeded): ProductServerEvent => ({
+  distinctId,
+  event: productAnalyticsEvents.reservationActionSucceeded,
+  properties: {
+    feature: 'reservation_management',
+    surface: 'dashboard',
+    source: 'server_mutation',
+    store_id: storeId,
+    reservation_id: reservationId,
+    action,
+    ...properties,
+  },
+});
+
+export async function captureReservationActionSucceeded(event: ReservationActionSucceeded) {
+  await captureProductServerEvent(reservationActionEvent(event));
+}
+
+/** For an outbox row: throws when PostHog did not take the event, so it is retried. */
+export function captureReservationActionSucceededOrThrow(event: ReservationActionSucceeded) {
+  return captureProductServerEventOrThrow(reservationActionEvent(event));
 }
 
 export function toAnalyticsAmountCents(
