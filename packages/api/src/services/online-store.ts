@@ -7,7 +7,6 @@ import {
   type Transaction,
 } from "@louez/db";
 import type { StoreSettings, StoreTheme } from "@louez/types";
-import { hasRichTextContent } from "@louez/utils";
 import { sanitizeRichTextHtml } from "@louez/utils/sanitize-rich-text";
 import { isOwnedImageUrl, type UpdateOnlineStoreInput } from "@louez/validations";
 import { eq } from "drizzle-orm";
@@ -17,6 +16,7 @@ import { storeErrors } from "../contracts/stores";
 import { platformErrors } from "../platform/errors";
 import type { ApiEvent } from "../platform/ports";
 import type { ConfirmStep } from "./products";
+import { fitTextColumn, toStoredRichText } from "./rich-text";
 import type { SettingsActor } from "./settings";
 import { assertSlugFree, checkStoreSlug } from "./store-creation";
 
@@ -70,12 +70,6 @@ function emit(actor: SettingsActor, event: ApiEvent) {
   }
 }
 
-/** Editor HTML: null when the editor is empty, sanitised otherwise. */
-const toStoredRichText = (html: string): string | null => {
-  const sanitized = sanitizeRichTextHtml(html);
-  return hasRichTextContent(sanitized) ? sanitized : null;
-};
-
 // --- The editor -------------------------------------------------------------
 
 /**
@@ -99,8 +93,11 @@ export async function updateOnlineStore(actor: SettingsActor, input: UpdateOnlin
 
     if (identity) {
       values.name = identity.name;
-      values.tagline = identity.tagline === null ? null : toStoredRichText(identity.tagline);
-      values.description = toStoredRichText(identity.description);
+      values.tagline =
+        identity.tagline === null
+          ? null
+          : fitTextColumn("tagline", toStoredRichText(identity.tagline));
+      values.description = fitTextColumn("description", toStoredRichText(identity.description));
       if (identity.logoUrl !== undefined) values.logoUrl = identity.logoUrl || null;
       if (identity.darkLogoUrl !== undefined) values.darkLogoUrl = identity.darkLogoUrl || null;
       if (identity.faviconUrl !== undefined) values.faviconUrl = identity.faviconUrl || null;
@@ -132,8 +129,8 @@ export async function updateOnlineStore(actor: SettingsActor, input: UpdateOnlin
     }
 
     if (legal) {
-      values.cgv = sanitizeRichTextHtml(legal.cgv);
-      values.legalNotice = sanitizeRichTextHtml(legal.legalNotice);
+      values.cgv = fitTextColumn("terms", sanitizeRichTextHtml(legal.cgv));
+      values.legalNotice = fitTextColumn("legal notice", sanitizeRichTextHtml(legal.legalNotice));
       values.includeCgvInContract = legal.includeFullCgvInContract;
       settings.footerNote = legal.footerNote;
     }

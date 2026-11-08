@@ -389,6 +389,26 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
       null,
     );
 
+    // A link's entities stay as written, however often the text is saved again.
+    const linked = await run(
+      "updateLegal",
+      { cgv: '<p><a href="https://x.test/?q=&amp;amp;amp;&b=1">CGV</a></p>' },
+      key(),
+    );
+    assert.equal(
+      linked.legal.cgv,
+      '<p><a href="https://x.test/?q=&amp;amp;amp;&amp;b=1" rel="noopener noreferrer">CGV</a></p>',
+    );
+    const linkedAgain = await run("updateLegal", { cgv: linked.legal.cgv }, key());
+    assert.equal(linkedAgain.legal.cgv, linked.legal.cgv);
+
+    // Escaping can make a text longer than what was sent: past its column, it is refused.
+    const tooLong = await rejects(
+      run("updateLegal", { legalNotice: "&".repeat(60_000) }, key()),
+      "TEXT_TOO_LONG",
+    );
+    assert.equal(tooLong.data.details?.maxBytes, 65_535);
+
     const cleared = await run("updateLegal", { cgv: null }, key());
     assert.equal(cleared.legal.cgv, null);
     assert.equal(cleared.legal.includeCgvInContract, true);

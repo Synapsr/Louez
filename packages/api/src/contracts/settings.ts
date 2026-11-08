@@ -22,6 +22,9 @@ import { appearanceView } from "./online-store";
  * taxes). No database here.
  */
 
+/** What a MySQL TEXT column holds: the store's description, tagline, terms and legal notice. */
+export const TEXT_COLUMN_BYTES = 65_535;
+
 /** Bounds checked before any lock. A store above one keeps what it has; it may not grow. */
 export const SETTINGS_LIMITS = {
   /** Pickup and return points of a store. */
@@ -588,6 +591,12 @@ export const settingsErrors = {
       message: `Louez does not take ${currency}. Pick one of ${SUPPORTED_CURRENCY_CODES.join(", ")}.`,
       i18nKey: "errors.invalidData",
       details: { currency, supported: [...SUPPORTED_CURRENCY_CODES] },
+    }),
+  textTooLong: (field: string, bytes: number) =>
+    apiError("BAD_REQUEST", "TEXT_TOO_LONG", {
+      message: `The ${field} is too long once saved (${bytes} bytes of HTML; ${TEXT_COLUMN_BYTES} at most). Shorten it.`,
+      i18nKey: "errors.invalidData",
+      details: { field, bytes, maxBytes: TEXT_COLUMN_BYTES },
     }),
   nothingToUpdate: () =>
     apiError("BAD_REQUEST", "NOTHING_TO_UPDATE", {

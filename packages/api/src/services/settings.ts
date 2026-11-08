@@ -25,7 +25,6 @@ import {
   normalizeDaySchedule,
   WEEK_DAYS,
 } from "@louez/utils";
-import { sanitizeRichTextHtml } from "@louez/utils/sanitize-rich-text";
 import { defaultBusinessHours } from "@louez/validations";
 import { and, asc, count, desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -47,6 +46,7 @@ import { platformErrors } from "../platform/errors";
 import type { ApiEvent, ApiEventStore, SettingsSection } from "../platform/ports";
 import { toAppearanceView } from "./online-store";
 import type { ConfirmStep } from "./products";
+import { fitTextColumn, toEditorHtml } from "./rich-text";
 
 /**
  * The store settings an agent or the dashboard sets before a store goes
@@ -350,25 +350,6 @@ function emit(actor: SettingsActor, section: SettingsSection, slug: string) {
   }
 }
 
-/**
- * Editor HTML from what a caller sends: HTML is sanitised as the editor's
- * own; plain text becomes paragraphs (a blank line) and line breaks, so an
- * agent's text keeps its shape on the storefront. The sanitiser escapes the
- * text itself. Blank text is null.
- */
-export function toEditorHtml(text: string | null): string | null {
-  if (text === null) return null;
-  const html = /<[a-z][\s\S]*>/i.test(text)
-    ? text
-    : text
-        .trim()
-        .split(/\n\s*\n/)
-        .map((paragraph) => `<p>${paragraph.trim().replace(/\n/g, "<br />")}</p>`)
-        .join("");
-  const sanitized = sanitizeRichTextHtml(html);
-  return hasRichTextContent(sanitized) ? sanitized : null;
-}
-
 /** The fields of `next` that differ from `current`, with both values. */
 function diff<T extends Record<string, unknown>>(
   current: T,
@@ -438,7 +419,9 @@ export async function updateStoreInfo(actor: SettingsActor, input: UpdateStoreIn
     write: async () => {
       const values: Partial<typeof stores.$inferInsert> = { updatedAt: new Date() };
       if (input.name !== undefined) values.name = input.name;
-      if (input.description !== undefined) values.description = toEditorHtml(input.description);
+      if (input.description !== undefined) {
+        values.description = fitTextColumn("description", toEditorHtml(input.description));
+      }
       if (input.email !== undefined) values.email = input.email;
       if (input.phone !== undefined) values.phone = input.phone;
       if (input.address !== undefined) values.address = input.address;
@@ -532,8 +515,10 @@ export async function updateLegal(actor: SettingsActor, input: UpdateLegalInput)
   const row = await writeUnderLock(actor, "legal", undefined, async (current, tx) => ({
     write: async () => {
       const values: Partial<typeof stores.$inferInsert> = { updatedAt: new Date() };
-      if (input.cgv !== undefined) values.cgv = toEditorHtml(input.cgv);
-      if (input.legalNotice !== undefined) values.legalNotice = toEditorHtml(input.legalNotice);
+      if (input.cgv !== undefined) values.cgv = fitTextColumn("terms", toEditorHtml(input.cgv));
+      if (input.legalNotice !== undefined) {
+        values.legalNotice = fitTextColumn("legal notice", toEditorHtml(input.legalNotice));
+      }
       if (input.includeCgvInContract !== undefined) {
         values.includeCgvInContract = input.includeCgvInContract;
       }
