@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 
-import { eq } from "drizzle-orm";
+import { eq, sql, type SQLWrapper } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
@@ -12,6 +12,8 @@ import type { ApiEffect, ApiEffectSenders, EffectSendContext } from "./effects";
 // sends nothing; a sender that times out keeps its row blocked until its
 // lease ends; rows of one key go out in order; newer news supersedes; a row
 // whose store or reservation is gone is cancelled; done rows are pruned.
+// Leases and retries run on the database's time: tests make time pass by
+// moving the rows' dates back (`elapse`), and app clocks decide nothing.
 
 const STORE = "fx_store_0000000001";
 const RESERVATION = "fx_reservation_00001";
@@ -95,6 +97,16 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
   const enqueue = (...list: ApiEffect[]) =>
     louezDb.db.transaction((tx) => effects.enqueueEffects(tx, STORE, list));
   const statusOf = async (id: string) => (await effects.readEffects([id]))[0]?.status;
+  /** Time passes for the outbox: every date of its rows moves `ms` back. */
+  const elapse = (ms: number) => {
+    const back = (column: SQLWrapper) => sql`TIMESTAMPADD(MICROSECOND, ${-ms * 1000}, ${column})`;
+    const table = louezDb.apiEffects;
+    return louezDb.db.update(table).set({
+      createdAt: back(table.createdAt),
+      nextAttemptAt: back(table.nextAttemptAt),
+      lockedUntil: back(table.lockedUntil),
+    });
+  };
 
   test("a rolled back write leaves no row", async () => {
     await assert.rejects(
@@ -110,8 +122,7 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
   test("a failed effect is retried once due, and sent once", async () => {
     const ids = await enqueue(platform("A"));
     failNext = 1;
-    const start = new Date();
-    assert.deepEqual(await effects.dispatchEffects(ids, senders, { now: () => start }), {
+    assert.deepEqual(await effects.dispatchEffects(ids, senders), {
       sent: 0,
       failed: 1,
       skipped: 0,
@@ -121,30 +132,31 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     assert.equal(failed?.lastError, "discord is down");
     assert.equal(failed?.claimToken, null);
 
-    await effects.retryDueEffects(senders, { now: () => new Date(start.getTime() + 1_000) });
+    await elapse(1_000);
+    await effects.retryDueEffects(senders);
     assert.deepEqual(sent, [], "not due yet");
-    const due = new Date(start.getTime() + effects.effectRetryDelayMs(1) + 1_000);
-    await effects.retryDueEffects(senders, { now: () => due });
-    await effects.retryDueEffects(senders, { now: () => new Date(due.getTime() + 3_600_000) });
+    await elapse(effects.effectRetryDelayMs(1));
+    await effects.retryDueEffects(senders);
+    await elapse(3_600_000);
+    await effects.retryDueEffects(senders);
     assert.deepEqual(sent, ["A"], "sent once");
     assert.equal(await statusOf(ids[0] ?? ""), "sent");
   });
 
   test("a sender whose claim was taken over sends nothing and records nothing", async () => {
     const [id = ""] = await enqueue(platform("A"));
-    const start = new Date();
     let release = () => {};
     gate = new Promise<void>((resolve) => {
       release = resolve;
     });
 
     // A claims and stalls before it sends.
-    const a = effects.dispatchEffects([id], senders, { now: () => start, sendTimeoutMs: 60_000 });
+    const a = effects.dispatchEffects([id], senders, { sendTimeoutMs: 60_000 });
     await new Promise((resolve) => setTimeout(resolve, 100));
     // B finds A's claim expired, takes the row over and sends it.
     gate = null;
-    const later = new Date(start.getTime() + effects.EFFECT_LEASE_MS + 1_000);
-    const b = await effects.dispatchEffects([id], senders, { now: () => later });
+    await elapse(effects.EFFECT_LEASE_MS + 1_000);
+    const b = await effects.dispatchEffects([id], senders);
     assert.deepEqual(b, { sent: 1, failed: 0, skipped: 0 });
 
     // A wakes up: its claim no longer holds, so it neither sends nor records.
@@ -155,9 +167,8 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     assert.equal(row?.attempts, 2);
 
     // C, the cron, finds nothing to do.
-    await effects.retryDueEffects(senders, {
-      now: () => new Date(later.getTime() + effects.EFFECT_LEASE_MS * 2),
-    });
+    await elapse(effects.EFFECT_LEASE_MS * 2);
+    await effects.retryDueEffects(senders);
     assert.deepEqual(sent, ["A"], "exactly one send");
   });
 
@@ -179,8 +190,7 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
         sent.push(payload.number);
       },
     };
-    const start = new Date();
-    const stalled = effects.dispatchEffects([first], deaf, { now: () => start, sendTimeoutMs: 50 });
+    const stalled = effects.dispatchEffects([first], deaf, { sendTimeoutMs: 50 });
     assert.deepEqual(await stalled, { sent: 0, failed: 1, skipped: 0 });
     const [uncertain] = await effects.readEffects([first]);
     assert.equal(uncertain?.status, "running", "its outcome is unknown: it stays claimed");
@@ -188,17 +198,17 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     assert.match(uncertain?.lastError ?? "", /Outcome unknown/);
 
     // Before the lease ends, nothing of the key runs: not the retry, not the later row.
-    const beforeLease = new Date(start.getTime() + effects.EFFECT_LEASE_MS - 1_000);
-    await effects.retryDueEffects(senders, { now: () => beforeLease });
-    await effects.dispatchEffects([later], senders, { now: () => beforeLease });
+    await elapse(effects.EFFECT_LEASE_MS - 5_000);
+    await effects.retryDueEffects(senders);
+    await effects.dispatchEffects([later], senders);
     assert.deepEqual(sent, []);
     assert.equal(await statusOf(later), "pending");
 
     // The stalled sender delivers late; then the lease ends and the retry runs, then the later row.
     deliver();
     await new Promise((resolve) => setTimeout(resolve, 20));
-    const afterLease = new Date(start.getTime() + effects.EFFECT_LEASE_MS + 1_000);
-    await effects.retryDueEffects(senders, { now: () => afterLease });
+    await elapse(6_000);
+    await effects.retryDueEffects(senders);
     assert.deepEqual(sent, ["confirmed", "confirmed", "cancelled"], "at least once, and in order");
     assert.equal(await statusOf(first), "sent");
     assert.equal(await statusOf(later), "sent");
@@ -223,24 +233,105 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
 
   test("a sender whose lease is nearly over is aborted before it ends, whatever its timeout", async () => {
     const [id = ""] = await enqueue(platform("late"));
-    // The claim is taken at `start`; by the time the sender starts, the lease
-    // is within its margin (a slow lock or pool), while the timeout is far off.
-    const start = new Date();
-    const clock = [start];
-    const now = () => clock.shift() ?? new Date(start.getTime() + effects.EFFECT_LEASE_MS - 10_000);
+    // A lease 80 ms longer than the margin: the sender has 80 ms, though its timeout is a minute.
+    let threw: unknown;
     const provider: ApiEffectSenders = {
       ...senders,
       "reservation.platformNotification": async (payload, context) => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        // A busy event loop: the abort's timer cannot fire meanwhile.
+        const until = performance.now() + 150;
+        while (performance.now() < until) {
+          // Busy.
+        }
         // The last check before a provider that cannot be aborted, as SMTP does.
-        context.signal.throwIfAborted();
+        try {
+          context.throwIfAborted();
+        } catch (error) {
+          threw = error;
+          throw error;
+        }
         sent.push(payload.number);
       },
     };
-    const outcome = await effects.dispatchEffects([id], provider, { now, sendTimeoutMs: 60_000 });
+    const outcome = await effects.dispatchEffects([id], provider, {
+      sendTimeoutMs: 60_000,
+      leaseMs: effects.EFFECT_LEASE_MARGIN_MS + 80,
+    });
     assert.deepEqual(outcome, { sent: 0, failed: 1, skipped: 0 });
+    assert.match(String(threw), /did not finish within 80 ms/, "the monotonic deadline caught it");
     assert.deepEqual(sent, [], "nothing goes out once the lease may pass to a retry");
-    assert.equal(await statusOf(id), "running", "its outcome is unknown: it waits for the lease");
+    const [row] = await effects.readEffects([id]);
+    assert.equal(row?.status, "running", "its outcome is unknown: it waits for the lease");
+    assert.match(row?.lastError ?? "", /Outcome unknown/);
+  });
+
+  test("a claim check that outlasts the sender's time fails after its query", async () => {
+    const [id = ""] = await enqueue(platform("slow check"));
+    let rejectedAfterMs = 0;
+    const provider: ApiEffectSenders = {
+      ...senders,
+      "reservation.platformNotification": async (payload, context) => {
+        // Another session holds the table: the claim query waits 600 ms, the sender has 300.
+        const blocker = await louezDb.db.$client.getConnection();
+        await blocker.query("LOCK TABLES api_effects WRITE");
+        setTimeout(() => {
+          void blocker.query("UNLOCK TABLES").finally(() => blocker.release());
+        }, 600);
+        const started = performance.now();
+        try {
+          await context.assertClaim();
+        } finally {
+          rejectedAfterMs = performance.now() - started;
+        }
+        sent.push(payload.number);
+      },
+    };
+    const outcome = await effects.dispatchEffects([id], provider, {
+      sendTimeoutMs: 60_000,
+      leaseMs: effects.EFFECT_LEASE_MARGIN_MS + 300,
+    });
+    // The race ends at the abort; let the blocked check finish.
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    assert.deepEqual(outcome, { sent: 0, failed: 1, skipped: 0 });
+    assert.ok(rejectedAfterMs >= 500, `the check ran its query first (${rejectedAfterMs} ms)`);
+    assert.deepEqual(sent, [], "a claim that still held does not let a sender out of time send");
+  });
+
+  test("two dispatchers whose clocks disagree never hold a row at once", async (t) => {
+    const [id = ""] = await enqueue(platform("A"));
+    let release = () => {};
+    gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    // A claims and stalls; 60 seconds of its lease are left, in the database's time.
+    const a = effects.dispatchEffects([id], senders, { sendTimeoutMs: 60_000 });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await elapse(effects.EFFECT_LEASE_MS - 60_000);
+
+    // B's clock runs 61 seconds ahead, then an hour: it cannot take the row.
+    gate = null;
+    for (const ahead of [61_000, 3_600_000]) {
+      t.mock.timers.enable({ apis: ["Date"], now: Date.now() + ahead });
+      try {
+        assert.deepEqual(await effects.dispatchEffects([id], senders), {
+          sent: 0,
+          failed: 0,
+          skipped: 1,
+        });
+        await effects.retryDueEffects(senders);
+      } finally {
+        t.mock.timers.reset();
+      }
+    }
+    assert.deepEqual(sent, [], "B sent nothing");
+
+    // A still holds its claim: it sends, once.
+    release();
+    assert.deepEqual(await a, { sent: 1, failed: 0, skipped: 0 });
+    const [row] = await effects.readEffects([id]);
+    assert.equal(row?.status, "sent");
+    assert.equal(row?.attempts, 1);
+    assert.deepEqual(sent, ["A"]);
   });
 
   test("an expired claim past the last attempt is abandoned, not run again", async () => {
@@ -248,7 +339,7 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     await louezDb.db.update(louezDb.apiEffects).set({
       status: "running",
       attempts: effects.EFFECT_MAX_ATTEMPTS,
-      lockedUntil: new Date(Date.now() - 1_000),
+      lockedUntil: sql`TIMESTAMPADD(SECOND, -1, NOW(3))`,
       claimToken: "dead",
     });
     await effects.retryDueEffects(senders);
@@ -262,15 +353,12 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
       platform("cancelled", "reservation:r:platform:discord"),
     );
     failNext = 1;
-    const start = new Date();
-    await effects.dispatchEffects([first, second], senders, { now: () => start });
+    await effects.dispatchEffects([first, second], senders);
     assert.equal(await statusOf(first), "failed");
     assert.equal(await statusOf(second), "pending", "it waits for the first");
 
-    const due = new Date(
-      start.getTime() + effects.effectRetryDelayMs(1) + effects.EFFECT_PENDING_GRACE_MS,
-    );
-    await effects.retryDueEffects(senders, { now: () => due });
+    await elapse(effects.effectRetryDelayMs(1) + effects.EFFECT_PENDING_GRACE_MS);
+    await effects.retryDueEffects(senders);
     assert.deepEqual(sent, ["confirmed", "cancelled"], "in the order they were added");
   });
 
@@ -294,9 +382,8 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     assert.equal(row?.status, "superseded");
     assert.deepEqual(row?.payload, {}, "its personal data is gone");
     assert.equal(await statusOf(other), "pending", "a row of another kind stays");
-    await effects.retryDueEffects(senders, {
-      now: () => new Date(Date.now() + effects.EFFECT_PENDING_GRACE_MS + 1_000),
-    });
+    await elapse(effects.EFFECT_PENDING_GRACE_MS + 1_000);
+    await effects.retryDueEffects(senders);
     assert.deepEqual(sent, ["other kind", "new"]);
   });
 
@@ -316,8 +403,8 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
   test("done rows are deleted after the retention, the others kept", async () => {
     const [done = "", waiting = ""] = await enqueue(platform("A"), platform("B"));
     await effects.dispatchEffects([done], senders);
-    const later = new Date(Date.now() + effects.EFFECT_RETENTION_MS + 60_000);
-    assert.equal(await effects.pruneEffects(later), 1);
+    await elapse(effects.EFFECT_RETENTION_MS + 60_000);
+    assert.equal(await effects.pruneEffects(), 1);
     assert.deepEqual(
       (await effects.readEffects([done, waiting])).map((row) => row.id),
       [waiting],

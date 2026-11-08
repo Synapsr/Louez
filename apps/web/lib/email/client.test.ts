@@ -64,7 +64,7 @@ describe("app email client inside an outbox sender", () => {
     const controller = new AbortController();
     controller.abort(new Error("sender timed out"));
     await assert.rejects(
-      signals.withEffectSignal(controller.signal, () => client.sendEmail(options)),
+      signals.withEffectSignal({ signal: controller.signal }, () => client.sendEmail(options)),
       /sender timed out/,
     );
     assert.deepEqual(sent, []);
@@ -72,7 +72,7 @@ describe("app email client inside an outbox sender", () => {
 
   test("a live sender sends", async () => {
     const controller = new AbortController();
-    await signals.withEffectSignal(controller.signal, () => client.sendEmail(options));
+    await signals.withEffectSignal({ signal: controller.signal }, () => client.sendEmail(options));
     assert.deepEqual(sent, ["Accepted"]);
   });
 
