@@ -151,4 +151,10 @@ export const inboxErrors = {
       i18nKey: "errors.invalidData",
       details: { id },
     }),
+  notInInbox: (id: string) =>
+    apiError("NOT_FOUND", "INBOX_ITEM_NOT_FOUND", {
+      message: `"${id}" with this occurredAt is not in the store's inbox now: pass an item inbox_list returned, as it returned it.`,
+      i18nKey: "errors.notFound",
+      details: { id },
+    }),
 } as const;

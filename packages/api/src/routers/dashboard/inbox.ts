@@ -12,11 +12,13 @@ import {
 import { allows, type ApiDomain } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
 import {
+  INBOX_ACKNOWLEDGEMENT_RETENTION_DAYS,
   INBOX_HOLD_BACK_MS,
   INBOX_ITEM_DOMAINS,
   acknowledgeInbox,
   listInbox,
   mayShow,
+  type InboxReader,
   type InboxRights,
 } from "../../services/inbox";
 import { mayRead, type ProductContext } from "./product-context";
@@ -43,7 +45,29 @@ const READ_DOMAINS = [
 const reads = (context: ProductContext): InboxRights =>
   Object.fromEntries(READ_DOMAINS.map((domain) => [domain, mayRead(context, domain)]));
 
+/** Beside reservations, the domains whose read shows an item on their own. */
 const OPENED_BY = ["settings", "integrations"] as const satisfies readonly ApiDomain[];
+/**
+ * Beside reservations, every domain an item type is acknowledged under (its
+ * first, INBOX_ITEM_DOMAINS): a key that may change payments acknowledges a
+ * failed payment it reads.
+ */
+const ACKNOWLEDGED_UNDER = [
+  "payments",
+  "settings",
+  "integrations",
+] as const satisfies readonly ApiDomain[];
+
+const readerOf = (context: ProductContext): InboxReader => {
+  const { credential } = context.actor;
+  return {
+    store: context.store,
+    urls: context.ports.urls,
+    hostedBy: context.ports.hostedBy?.() ?? null,
+    reads: reads(context),
+    operationsOf: credential.kind === "session" ? null : (credential.id ?? credential.userId),
+  };
+};
 
 const list = storeProcedure
   .meta({
@@ -61,27 +85,15 @@ Polling: call it every ${INBOX_POLL_MINUTES.min} to ${INBOX_POLL_MINUTES.max} mi
   .route({ method: "GET", path: "/inbox" })
   .input(listInboxInput)
   .output(listInboxOutput)
-  .handler(({ context, input }) => {
-    const { credential } = context.actor;
-    return listInbox(
-      {
-        store: context.store,
-        urls: context.ports.urls,
-        hostedBy: context.ports.hostedBy?.() ?? null,
-        reads: reads(context),
-        operationsOf: credential.kind === "session" ? null : (credential.id ?? credential.userId),
-      },
-      input,
-    );
-  });
+  .handler(({ context, input }) => listInbox(readerOf(context), input));
 
 const acknowledge = storeProcedure
   .meta({
     capability: "inbox.acknowledge",
-    scope: { domain: "reservations", level: "write", anyOf: OPENED_BY },
+    scope: { domain: "reservations", level: "write", anyOf: ACKNOWLEDGED_UNDER },
     mcp: {
       name: "inbox_acknowledge",
-      description: `Mark inbox items as handled, for the whole store: they leave inbox_list for every member and agent. Pass each item's id and occurredAt as inbox_list returned them, up to ${INBOX_ACKNOWLEDGE_MAX} at once. An item that comes back later (the same id, a later occurredAt) shows again. Marking an item twice changes nothing. Use it when the user says they dealt with something, not instead of acting on it: an item whose record is handled leaves the inbox by itself. Needs write access to the item's first domain.`,
+      description: `Mark inbox items as handled, for the whole store: they leave inbox_list for every member and agent. Pass each item's id and occurredAt as inbox_list returned them, up to ${INBOX_ACKNOWLEDGE_MAX} at once. An item that comes back later (the same id, a later occurredAt) shows again. Each item must be in the inbox now with that occurredAt, or the call answers INBOX_ITEM_NOT_FOUND and marks nothing. Marking an item twice changes nothing. A mark is kept ${INBOX_ACKNOWLEDGEMENT_RETENTION_DAYS} days: an item still open after that shows again. Use it when the user says they dealt with something, not instead of acting on it: an item whose record is handled leaves the inbox by itself. Needs write access to the item's first domain.`,
       bundle: "daily",
       annotations: { idempotentHint: true },
     },
@@ -91,10 +103,11 @@ const acknowledge = storeProcedure
   .output(acknowledgeInboxOutput)
   .handler(({ context, input }) => {
     const { actor } = context;
-    const rights = reads(context);
+    const reader = readerOf(context);
     const mayWrite = (domain: ApiDomain) =>
       allows(actor.role, actor.credential.scopes, { domain, level: "write" });
     return acknowledgeInbox(
+      reader,
       {
         storeId: actor.storeId,
         userId: actor.credential.userId,
@@ -103,8 +116,10 @@ const acknowledge = storeProcedure
         may: (type: InboxItemType) => {
           const [first] = INBOX_ITEM_DOMAINS[type];
           return (
-            mayShow(rights, type) &&
-            (first ? mayWrite(first) : mayWrite("reservations") || OPENED_BY.some(mayWrite))
+            mayShow(reader.reads, type) &&
+            (first
+              ? mayWrite(first)
+              : mayWrite("reservations") || ACKNOWLEDGED_UNDER.some(mayWrite))
           );
         },
       },

@@ -3,19 +3,16 @@ import {
   apiOperations,
   customers,
   db,
-  getBlockingReservationStatuses,
   inboxAcknowledgements,
+  isPaymentReceiptSql,
   invoices,
   paymentDisputes,
   payments,
-  productUnitDowntimes,
   productUnits,
   products,
   readReservationGateSince,
   receivedInvoices,
   reservationActivity,
-  reservationItemUnits,
-  reservationItems,
   reservations,
   storeIntegrations,
   type ReservationGateReason,
@@ -23,6 +20,7 @@ import {
 import {
   and,
   asc,
+  desc,
   eq,
   exists,
   gt,
@@ -39,6 +37,7 @@ import {
 import { alias } from "drizzle-orm/mysql-core";
 
 import {
+  INBOX_ACKNOWLEDGE_MAX,
   INBOX_ITEM_TYPES,
   INBOX_PAGE_DEFAULT,
   inboxErrors,
@@ -59,6 +58,7 @@ import {
 } from "../platform/links";
 import type { UrlsPort } from "../platform/ports";
 import { getLaunchChecklist } from "./launch";
+import { findConflictingAssignments, loadStoreUnitWindows } from "./unit-conflicts";
 
 /**
  * The inbox: what needs the store's attention, read from where each thing
@@ -113,7 +113,12 @@ export type InboxRights = Partial<Record<ApiDomain, boolean>>;
 export interface InboxReader {
   store: LinkStore & {
     createdAt: Date;
-    settings: { currency?: string; timezone?: string; pendingBlocksAvailability?: boolean } | null;
+    settings: {
+      currency?: string;
+      timezone?: string;
+      pendingBlocksAvailability?: boolean;
+      turnoverBufferMinutes?: number;
+    } | null;
   };
   urls: UrlsPort;
   hostedBy: "lumycloud" | null;
@@ -188,6 +193,11 @@ interface Window {
   now: Date;
   /** Rows each source reads: one more than the page. */
   take: number;
+  /**
+   * Only these records, acknowledged ones included: the current occurrences
+   * an acknowledgement is checked against.
+   */
+  records?: readonly string[];
 }
 
 /**
@@ -211,6 +221,15 @@ function inWindow(
         sql`(${occurred} > ${time} OR (${occurred} = ${time} AND ${binary(recordId)} > ${binary(after.r)}))`,
       );
     }
+  }
+  if (window.records) {
+    conditions.push(
+      sql`${recordId} IN (${sql.join(
+        window.records.map((record) => sql`${record}`),
+        sql`, `,
+      )})`,
+    );
+    return sql`(${sql.join(conditions, sql` AND `)})`;
   }
   conditions.push(
     notExists(
@@ -325,8 +344,14 @@ type Source = (window: Window, shaper: Shaper) => Promise<Candidate[]>;
 
 /** Pending requests for the store to answer: not a checkout waiting for its payment, not a marketplace hold. */
 const bookingRequests: Source = async (window, shaper) => {
+  // From its creation, or from when its checkout stopped waiting for payment.
+  const checkoutEnded = sql`(SELECT MAX(${payments.updatedAt}) FROM ${payments} WHERE ${payments.reservationId} = ${reservations.id} AND ${payments.type} = 'rental' AND ${payments.method} = 'stripe' AND ${payments.stripeCheckoutSessionId} IS NOT NULL AND ${payments.status} <> 'pending')`;
+  const requestSince =
+    sql<Date>`GREATEST(${reservations.createdAt}, COALESCE(${checkoutEnded}, ${reservations.createdAt}))`.mapWith(
+      reservations.createdAt,
+    );
   const rows = await db
-    .select({ ...reservationColumns, occurredAt: reservations.createdAt })
+    .select({ ...reservationColumns, occurredAt: requestSince })
     .from(reservations)
     .leftJoin(customers, eq(customers.id, reservations.customerId))
     .where(
@@ -348,10 +373,10 @@ const bookingRequests: Source = async (window, shaper) => {
               ),
             ),
         ),
-        inWindow(window, "booking_request", reservations.createdAt, reservations.id),
+        inWindow(window, "booking_request", requestSince, reservations.id),
       ),
     )
-    .orderBy(...inOrder(reservations.createdAt, reservations.id))
+    .orderBy(...inOrder(requestSince, reservations.id))
     .limit(window.take);
 
   return rows.map((row) => {
@@ -433,8 +458,10 @@ const dateChangeRequests: Source = async (window, shaper) => {
 /** A confirmed reservation past its start, not marked picked up. */
 const latePickups: Source = async (window, shaper) => {
   // Late from its start, or from when it became confirmed or went back to it.
+  // Late from its start, or from the write that made it late: confirmed late,
+  // sent back to confirmed, or its start moved into the past.
   const occurred =
-    sql<Date>`GREATEST(${reservations.startDate}, COALESCE(${reservations.billableAt}, ${reservations.createdAt}), COALESCE(${reservations.pickedUpAt}, ${reservations.createdAt}))`.mapWith(
+    sql<Date>`GREATEST(${reservations.startDate}, ${reservations.updatedAt}, COALESCE(${reservations.billableAt}, ${reservations.createdAt}), COALESCE(${reservations.pickedUpAt}, ${reservations.createdAt}))`.mapWith(
       reservations.startDate,
     );
   const rows = await db
@@ -477,8 +504,10 @@ const latePickups: Source = async (window, shaper) => {
 
 /** An ongoing reservation past its end, not marked returned. */
 const lateReturns: Source = async (window, shaper) => {
+  // Late from its end, or from the write that made it late: picked up late,
+  // sent back to ongoing, or its end moved into the past.
   const occurred =
-    sql<Date>`GREATEST(${reservations.endDate}, COALESCE(${reservations.pickedUpAt}, ${reservations.createdAt}), COALESCE(${reservations.returnedAt}, ${reservations.createdAt}))`.mapWith(
+    sql<Date>`GREATEST(${reservations.endDate}, ${reservations.updatedAt}, COALESCE(${reservations.pickedUpAt}, ${reservations.createdAt}), COALESCE(${reservations.returnedAt}, ${reservations.createdAt}))`.mapWith(
       reservations.endDate,
     );
   const rows = await db
@@ -515,10 +544,15 @@ const lateReturns: Source = async (window, shaper) => {
   });
 };
 
+const DEPOSIT_ACTIVITY = "inbox_deposit_activity";
+const depositActivity = alias(reservationActivity, DEPOSIT_ACTIVITY);
+
 /** A deposit hold that expires soon, or has expired, on a reservation still open. */
 const expiringDeposits: Source = async (window, shaper) => {
+  // Two days before it expires, or when the hold was recorded here if later.
+  const authorizedAt = sql`(SELECT MAX(${depositActivity.createdAt}) FROM ${reservationActivity} AS ${sql.identifier(DEPOSIT_ACTIVITY)} WHERE ${depositActivity.reservationId} = ${reservations.id} AND ${depositActivity.activityType} = 'deposit_authorized')`;
   const occurred =
-    sql<Date>`${reservations.depositAuthorizationExpiresAt} - INTERVAL ${sql.raw(String(DEPOSIT_NOTICE_HOURS))} HOUR`.mapWith(
+    sql<Date>`GREATEST(${reservations.depositAuthorizationExpiresAt} - INTERVAL ${sql.raw(String(DEPOSIT_NOTICE_HOURS))} HOUR, COALESCE(${authorizedAt}, ${reservations.createdAt}))`.mapWith(
       reservations.startDate,
     );
   const rows = await db
@@ -573,12 +607,12 @@ const expiringDeposits: Source = async (window, shaper) => {
 
 /**
  * The latest failed online payment or deposit hold of an open reservation,
- * when nothing made it good since: a payment received or recorded after a
- * failed payment, a deposit that is no longer failed.
+ * when nothing made it good since: a rental payment completed after the
+ * failure (money received, not a refund; a payment request only sends a
+ * link), a deposit that is no longer failed.
  */
 const failedPayments: Source = async (window, shaper) => {
   const later = alias(reservationActivity, "inbox_later_activity");
-  const paid = alias(reservationActivity, "inbox_paid_activity");
   const rows = await db
     .select({
       ...reservationColumns,
@@ -625,12 +659,17 @@ const failedPayments: Source = async (window, shaper) => {
             notExists(
               db
                 .select({ one: sql`1` })
-                .from(paid)
+                .from(payments)
                 .where(
                   and(
-                    eq(paid.reservationId, reservations.id),
-                    inArray(paid.activityType, ["payment_received", "payment_added"]),
-                    sql`${paid.createdAt} >= ${reservationActivity.createdAt}`,
+                    eq(payments.reservationId, reservations.id),
+                    eq(payments.type, "rental"),
+                    eq(payments.status, "completed"),
+                    isPaymentReceiptSql(),
+                    // Recorded or paid after the failure: a checkout row made
+                    // before it counts once paid, a payment typed in later with
+                    // an earlier date counts from when it was recorded.
+                    sql`GREATEST(${payments.createdAt}, COALESCE(${payments.paidAt}, ${payments.createdAt})) >= ${reservationActivity.createdAt}`,
                   ),
                 ),
             ),
@@ -685,12 +724,12 @@ const failedPayments: Source = async (window, shaper) => {
 
 const DISPUTE_NEEDS_RESPONSE = ["needs_response", "warning_needs_response"];
 
-/** A Stripe dispute that is not closed. */
+/**
+ * A Stripe dispute that is not closed, from when its row was written here:
+ * Stripe's own date (`openedAt`) may be earlier than the webhook that brought it.
+ */
 const openDisputes: Source = async (window, shaper) => {
-  const occurred =
-    sql<Date>`COALESCE(${paymentDisputes.openedAt}, ${paymentDisputes.createdAt})`.mapWith(
-      paymentDisputes.createdAt,
-    );
+  const occurred = paymentDisputes.createdAt;
   const rows = await db
     .select({
       ...reservationColumns,
@@ -699,6 +738,7 @@ const openDisputes: Source = async (window, shaper) => {
       amountMinor: paymentDisputes.amountMinor,
       disputeCurrency: paymentDisputes.currency,
       stripeStatus: paymentDisputes.stripeStatus,
+      openedAt: paymentDisputes.openedAt,
     })
     .from(paymentDisputes)
     .innerJoin(reservations, eq(reservations.id, paymentDisputes.reservationId))
@@ -732,6 +772,7 @@ const openDisputes: Source = async (window, shaper) => {
         amount,
         currency,
         stripeStatus: row.stripeStatus,
+        openedAt: row.openedAt?.toISOString() ?? null,
       },
       tools: RESERVATION_TOOLS,
       links: about.links,
@@ -740,79 +781,122 @@ const openDisputes: Source = async (window, shaper) => {
 };
 
 /**
- * A booking that holds a unit retired, or out of service over its dates, as
- * the product page flags it: the booking needs another unit.
+ * A booking that holds a unit retired, or out of service over its dates with
+ * the store's turnover buffer, as the product page flags it (the same check,
+ * services/unit-conflicts.ts): the booking needs another unit. Read whole for
+ * the store, then put in the inbox's order here.
  */
 const unitConflicts: Source = async (window, shaper) => {
-  const now = at(window.now);
-  const downtimeChanged = sql`(SELECT MAX(${productUnitDowntimes.updatedAt}) FROM ${productUnitDowntimes} WHERE ${productUnitDowntimes.productUnitId} = ${reservationItemUnits.productUnitId} AND ${productUnitDowntimes.storeId} = ${window.storeId} AND (${productUnitDowntimes.endsAt} IS NULL OR ${productUnitDowntimes.endsAt} > ${now}) AND ${productUnitDowntimes.startsAt} < ${reservations.endDate} AND (${productUnitDowntimes.endsAt} IS NULL OR ${productUnitDowntimes.endsAt} > ${reservations.startDate}))`;
-  const retired = sql`${productUnits.lifecycleStatus} = 'retired'`;
-  const cause = sql`COALESCE(CASE WHEN ${retired} THEN COALESCE(${productUnits.retiredAt}, ${productUnits.updatedAt}) END, ${downtimeChanged})`;
-  // From when both the assignment and its cause existed.
-  const occurred = sql<Date>`GREATEST(${reservationItemUnits.assignedAt}, ${cause})`.mapWith(
-    reservations.startDate,
+  const settings = shaper.reader.store.settings;
+  const conflicts = await findConflictingAssignments(
+    await loadStoreUnitWindows(window.storeId, window.now),
+    {
+      storeId: window.storeId,
+      pendingBlocksAvailability: settings?.pendingBlocksAvailability,
+      turnoverBufferMinutes: settings?.turnoverBufferMinutes,
+    },
   );
-  const statuses = getBlockingReservationStatuses(
-    shaper.reader.store.settings?.pendingBlocksAvailability ?? true,
-  );
-  const rows = await db
-    .select({
-      ...reservationColumns,
-      assignmentId: reservationItemUnits.id,
-      occurredAt: occurred,
-      unitId: productUnits.id,
-      unitIdentifier: productUnits.identifier,
-      retired: sql<number>`${retired}`.mapWith(Number),
-      productId: products.id,
-      productName: products.name,
+  const records = window.records ? new Set(window.records) : null;
+  const placed = conflicts
+    .filter((conflict) => !records || records.has(conflict.assignmentId))
+    .map((conflict) => {
+      // From the first cause still there: a conflict is in the inbox once the
+      // booking, its dates as they are and that cause were all written.
+      const causeAt = Math.min(...conflict.causes.map((cause) => cause.changedAt.getTime()));
+      const occurredAt = new Date(
+        Math.max(conflict.assignedAt.getTime(), conflict.reservationUpdatedAt.getTime(), causeAt),
+      );
+      return {
+        conflict,
+        occurredAt,
+        position: { t: occurredAt.getTime(), k: "unit_conflict", r: conflict.assignmentId },
+      };
     })
-    .from(reservationItemUnits)
-    .innerJoin(reservationItems, eq(reservationItems.id, reservationItemUnits.reservationItemId))
-    .innerJoin(reservations, eq(reservations.id, reservationItems.reservationId))
-    .innerJoin(productUnits, eq(productUnits.id, reservationItemUnits.productUnitId))
-    .innerJoin(products, eq(products.id, productUnits.productId))
-    .leftJoin(customers, eq(customers.id, reservations.customerId))
-    .where(
-      and(
-        eq(reservations.storeId, window.storeId),
-        eq(products.storeId, window.storeId),
-        inArray(reservations.status, statuses),
-        gt(reservations.endDate, window.now),
-        sql`${cause} IS NOT NULL`,
-        inWindow(window, "unit_conflict", occurred, reservationItemUnits.id),
-      ),
+    .filter(
+      ({ position }) =>
+        position.t <= window.horizon.getTime() &&
+        (!window.after || comparePositions(position, window.after) > 0),
     )
-    .orderBy(...inOrder(occurred, reservationItemUnits.id))
-    .limit(window.take);
+    .sort((a, b) => comparePositions(a.position, b.position));
+  const shown = records
+    ? placed
+    : await withoutAcknowledged(window.storeId, placed, (entry) => ({
+        type: "unit_conflict",
+        recordId: entry.conflict.assignmentId,
+        occurredAt: entry.occurredAt,
+      }));
+  const page = shown.slice(0, window.take);
+  if (page.length === 0) return [];
 
-  return rows.map((row) => {
-    const about = aboutReservation(shaper, row);
-    const isRetired = row.retired === 1;
-    return candidate("unit_conflict", row.assignmentId, {
-      severity: "warning",
-      occurredAt: row.occurredAt,
-      summary: `${capitalize(about.name)} holds unit ${row.unitIdentifier} of ${row.productName}, which is ${
-        isRetired ? "retired" : "out of service over its dates"
-      }: move the booking to another unit in Louez${isRetired ? "" : ", or shorten the downtime"}.`,
-      reservation: about.reservation,
-      details: {
-        reservationId: row.id,
-        reservationNumber: row.number,
-        productId: row.productId,
-        unitId: row.unitId,
-        unitIdentifier: row.unitIdentifier,
-        reason: isRetired ? "retired" : "downtime",
-      },
-      tools: isRetired
-        ? ["reservations_get", "products_get_unit_history", "products_reinstate_unit"]
-        : [
-            "reservations_get",
-            "products_get_unit_history",
-            "products_update_downtime",
-            "products_close_downtime",
-          ],
-      links: about.links,
-    });
+  const [bookings, units] = await Promise.all([
+    db
+      .select(reservationColumns)
+      .from(reservations)
+      .leftJoin(customers, eq(customers.id, reservations.customerId))
+      .where(
+        and(
+          eq(reservations.storeId, window.storeId),
+          inArray(
+            reservations.id,
+            page.map((entry) => entry.conflict.reservationId),
+          ),
+        ),
+      ),
+    db
+      .select({
+        id: productUnits.id,
+        identifier: productUnits.identifier,
+        productId: products.id,
+        productName: products.name,
+      })
+      .from(productUnits)
+      .innerJoin(products, eq(products.id, productUnits.productId))
+      .where(
+        and(
+          eq(products.storeId, window.storeId),
+          inArray(
+            productUnits.id,
+            page.map((entry) => entry.conflict.productUnitId),
+          ),
+        ),
+      ),
+  ]);
+  const bookingById = new Map(bookings.map((row) => [row.id, row]));
+  const unitById = new Map(units.map((row) => [row.id, row]));
+
+  return page.flatMap(({ conflict, occurredAt }) => {
+    const booking = bookingById.get(conflict.reservationId);
+    const unit = unitById.get(conflict.productUnitId);
+    if (!booking || !unit) return [];
+    const about = aboutReservation(shaper, booking);
+    const isRetired = conflict.causes.some((cause) => cause.kind === "retired");
+    return [
+      candidate("unit_conflict", conflict.assignmentId, {
+        severity: "warning",
+        occurredAt,
+        summary: `${capitalize(about.name)} holds unit ${unit.identifier} of ${unit.productName}, which is ${
+          isRetired ? "retired" : "out of service over its dates"
+        }: move the booking to another unit in Louez${isRetired ? "" : ", or shorten the downtime"}.`,
+        reservation: about.reservation,
+        details: {
+          reservationId: booking.id,
+          reservationNumber: booking.number,
+          productId: unit.productId,
+          unitId: unit.id,
+          unitIdentifier: unit.identifier,
+          reason: isRetired ? "retired" : "downtime",
+        },
+        tools: isRetired
+          ? ["reservations_get", "products_get_unit_history", "products_reinstate_unit"]
+          : [
+              "reservations_get",
+              "products_get_unit_history",
+              "products_update_downtime",
+              "products_close_downtime",
+            ],
+        links: about.links,
+      }),
+    ];
   });
 };
 
@@ -1151,7 +1235,7 @@ const closedGate = async (window: Window, shaper: Shaper): Promise<Candidate[]> 
       occurredAt: gate.since,
       summary: GATE_SUMMARIES[gate.reason],
       reservation: null,
-      details: { reason: gate.reason },
+      details: { reason: gate.reason, effectiveFrom: gate.effectiveFrom?.toISOString() ?? null },
       tools: [],
       links: dashboardPageLinks(urls, store, "/dashboard/settings/billing"),
     }),
@@ -1228,12 +1312,26 @@ async function databaseNow(): Promise<Date> {
   return Number.isNaN(now.getTime()) ? new Date() : now;
 }
 
-/** The computed items the store acknowledged, out of `entries`. */
-async function dropAcknowledged(storeId: string, entries: Candidate[]): Promise<Candidate[]> {
+interface Occurrence {
+  type: InboxItemType;
+  recordId: string;
+  occurredAt: Date;
+}
+
+const occurrenceKey = (entry: { type: string; recordId: string; occurredAt: Date }) =>
+  `${entry.type}:${entry.recordId}@${entry.occurredAt.getTime()}`;
+
+/** `entries` without the occurrences the store acknowledged, for the items read in code. */
+async function withoutAcknowledged<T>(
+  storeId: string,
+  entries: T[],
+  occurrenceOf: (entry: T) => Occurrence,
+): Promise<T[]> {
   if (entries.length === 0) return entries;
+  const occurrences = entries.map(occurrenceOf);
   const acknowledged = await db
     .select({
-      itemType: inboxAcknowledgements.itemType,
+      type: inboxAcknowledgements.itemType,
       recordId: inboxAcknowledgements.recordId,
       occurredAt: inboxAcknowledgements.occurredAt,
     })
@@ -1241,22 +1339,66 @@ async function dropAcknowledged(storeId: string, entries: Candidate[]): Promise<
     .where(
       and(
         eq(inboxAcknowledgements.storeId, storeId),
-        inArray(
-          inboxAcknowledgements.itemType,
-          entries.map((entry) => entry.item.type),
-        ),
-        inArray(
-          inboxAcknowledgements.recordId,
-          entries.map((entry) => entry.recordId),
-        ),
+        inArray(inboxAcknowledgements.itemType, [
+          ...new Set(occurrences.map((entry) => entry.type)),
+        ]),
+        inArray(inboxAcknowledgements.recordId, [
+          ...new Set(occurrences.map((entry) => entry.recordId)),
+        ]),
       ),
     );
-  const keys = new Set(
-    acknowledged.map((row) => `${row.itemType}:${row.recordId}@${row.occurredAt.getTime()}`),
-  );
-  return entries.filter(
-    (entry) => !keys.has(`${entry.item.id}@${entry.item.occurredAt.getTime()}`),
-  );
+  const keys = new Set(acknowledged.map(occurrenceKey));
+  return entries.filter((_, index) => {
+    const occurrence = occurrences[index];
+    return !occurrence || !keys.has(occurrenceKey(occurrence));
+  });
+}
+
+const occurrenceOfCandidate = (entry: Candidate): Occurrence => ({
+  type: entry.item.type,
+  recordId: entry.recordId,
+  occurredAt: entry.item.occurredAt,
+});
+
+function shaperOf(reader: InboxReader): Shaper {
+  const format = dayFormatter(reader.store.settings?.timezone);
+  return {
+    reader,
+    day: (date: Date) => format.format(date),
+    currency: reader.store.settings?.currency ?? "EUR",
+  };
+}
+
+/**
+ * The items of `types` in the window, in the inbox's order. The items read
+ * in code are put in the window here; the others already are.
+ */
+async function readWindow(
+  reader: InboxReader,
+  types: readonly InboxItemType[],
+  window: Window,
+): Promise<Candidate[]> {
+  const shaper = shaperOf(reader);
+  const read = await Promise.all(types.map((type) => SOURCES[type](window, shaper)));
+  const inSqlWindow: Candidate[] = [];
+  const computed: Candidate[] = [];
+  types.forEach((type, index) => {
+    (COMPUTED.has(type) ? computed : inSqlWindow).push(...(read[index] ?? []));
+  });
+  const horizon = window.horizon.getTime();
+  const { after, records } = window;
+  const computedInWindow = computed.filter((entry) => {
+    const position = positionOf(entry);
+    return (
+      position.t <= horizon &&
+      (!after || comparePositions(position, after) > 0) &&
+      (!records || records.includes(entry.recordId))
+    );
+  });
+  const shown = records
+    ? computedInWindow
+    : await withoutAcknowledged(window.storeId, computedInWindow, occurrenceOfCandidate);
+  return [...inSqlWindow, ...shown].sort((a, b) => comparePositions(positionOf(a), positionOf(b)));
 }
 
 /**
@@ -1281,35 +1423,8 @@ export async function listInbox(
     now,
     take: limit + 1,
   };
-  const shaper: Shaper = {
-    reader,
-    day: (() => {
-      const format = dayFormatter(reader.store.settings?.timezone);
-      return (date: Date) => format.format(date);
-    })(),
-    currency: reader.store.settings?.currency ?? "EUR",
-  };
-
   const types = INBOX_ITEM_TYPES.filter((type) => mayShow(reader.reads, type));
-  const read = await Promise.all(types.map((type) => SOURCES[type](window, shaper)));
-
-  const inSqlWindow: Candidate[] = [];
-  const computed: Candidate[] = [];
-  types.forEach((type, index) => {
-    (COMPUTED.has(type) ? computed : inSqlWindow).push(...(read[index] ?? []));
-  });
-  const horizon = window.horizon.getTime();
-  const computedInWindow = await dropAcknowledged(
-    window.storeId,
-    computed.filter((entry) => {
-      const position = positionOf(entry);
-      return position.t <= horizon && (!after || comparePositions(position, after) > 0);
-    }),
-  );
-
-  const merged = [...inSqlWindow, ...computedInWindow].sort((a, b) =>
-    comparePositions(positionOf(a), positionOf(b)),
-  );
+  const merged = await readWindow(reader, types, window);
   const page = merged.slice(0, limit);
   const hasMore = merged.length > limit;
   const last = page.at(-1);
@@ -1317,13 +1432,18 @@ export async function listInbox(
   let next: Position;
   if (hasMore && last) next = positionOf(last);
   else {
-    const atHorizon: Position = { t: horizon, k: END_OF_INSTANT, r: "" };
+    const atHorizon: Position = { t: window.horizon.getTime(), k: END_OF_INSTANT, r: "" };
     next = after && comparePositions(after, atHorizon) > 0 ? after : atHorizon;
   }
   return { items: page.map((entry) => entry.item), nextCursor: encodeCursor(next), hasMore };
 }
 
 // --- Acknowledging -----------------------------------------------------------
+
+/** How long an acknowledgement is kept: an item still open after it shows again. */
+export const INBOX_ACKNOWLEDGEMENT_RETENTION_DAYS = 90;
+/** Acknowledgements a store keeps at most; past it, its oldest go first. */
+export const INBOX_ACKNOWLEDGEMENTS_PER_STORE = 2_000;
 
 /** Who acknowledges: the actor and what it may write. */
 export interface InboxAcknowledger {
@@ -1351,13 +1471,18 @@ function parseItemId(id: string): { type: InboxItemType; recordId: string } {
 /**
  * Marks items as handled for the whole store: they leave its inbox for every
  * member and agent, until the same record comes back with a new occurredAt.
- * Marking an item twice is a no-op.
+ * Each item must be one the store's inbox holds now, with the occurredAt it
+ * shows, read by the same queries as the list; marking an item twice is a
+ * no-op. A store keeps its latest INBOX_ACKNOWLEDGEMENTS_PER_STORE marks.
  */
 export async function acknowledgeInbox(
+  reader: InboxReader,
   actor: InboxAcknowledger,
   input: { items: ReadonlyArray<{ id: string; occurredAt: Date }> },
+  /** `now`: a clock for tests, in place of the database's. */
+  options: { now?: Date } = {},
 ) {
-  const unique = new Map<string, { type: InboxItemType; recordId: string; occurredAt: Date }>();
+  const unique = new Map<string, Occurrence>();
   for (const entry of input.items) {
     const parsed = parseItemId(entry.id);
     if (Number.isNaN(entry.occurredAt.getTime())) throw inboxErrors.invalidItem(entry.id);
@@ -1365,16 +1490,29 @@ export async function acknowledgeInbox(
       const [first = "reservations"] = INBOX_ITEM_DOMAINS[parsed.type];
       throw platformErrors.permissionDenied(`${first}:write`);
     }
-    unique.set(`${entry.id}@${entry.occurredAt.getTime()}`, {
-      ...parsed,
-      occurredAt: entry.occurredAt,
-    });
+    const occurrence = { ...parsed, occurredAt: entry.occurredAt };
+    unique.set(occurrenceKey(occurrence), occurrence);
   }
   const rows = [...unique.values()];
 
+  // The current occurrences of those records, as the list reads them.
+  const now = options.now ?? (await databaseNow());
+  const types = [...new Set(rows.map((row) => row.type))];
+  const current = await readWindow(reader, types, {
+    storeId: actor.storeId,
+    after: null,
+    horizon: new Date(now.getTime() - INBOX_HOLD_BACK_MS),
+    now,
+    take: rows.length + 1,
+    records: [...new Set(rows.map((row) => row.recordId))],
+  });
+  const currentKeys = new Set(current.map((entry) => occurrenceKey(occurrenceOfCandidate(entry))));
+  const unknown = rows.find((row) => !currentKeys.has(occurrenceKey(row)));
+  if (unknown) throw inboxErrors.notInInbox(`${unknown.type}:${unknown.recordId}`);
+
   const existing = await db
     .select({
-      itemType: inboxAcknowledgements.itemType,
+      type: inboxAcknowledgements.itemType,
       recordId: inboxAcknowledgements.recordId,
       occurredAt: inboxAcknowledgements.occurredAt,
     })
@@ -1388,12 +1526,8 @@ export async function acknowledgeInbox(
         ),
       ),
     );
-  const done = new Set(
-    existing.map((row) => `${row.itemType}:${row.recordId}@${row.occurredAt.getTime()}`),
-  );
-  const fresh = rows.filter(
-    (row) => !done.has(`${row.type}:${row.recordId}@${row.occurredAt.getTime()}`),
-  );
+  const done = new Set(existing.map(occurrenceKey));
+  const fresh = rows.filter((row) => !done.has(occurrenceKey(row)));
   if (fresh.length > 0) {
     await db
       .insert(inboxAcknowledgements)
@@ -1410,8 +1544,53 @@ export async function acknowledgeInbox(
       )
       // Two calls at once: the unique occurrence keeps the first.
       .onDuplicateKeyUpdate({ set: { storeId: sql`${inboxAcknowledgements.storeId}` } });
+    await trimStoreAcknowledgements(actor.storeId);
   }
   return { acknowledged: fresh.length, alreadyAcknowledged: rows.length - fresh.length };
+}
+
+/** Deletes a store's oldest acknowledgements past its cap. */
+async function trimStoreAcknowledgements(storeId: string) {
+  const beyond = await db
+    .select({ id: inboxAcknowledgements.id })
+    .from(inboxAcknowledgements)
+    .where(eq(inboxAcknowledgements.storeId, storeId))
+    .orderBy(desc(inboxAcknowledgements.createdAt), desc(inboxAcknowledgements.id))
+    .limit(INBOX_ACKNOWLEDGE_MAX)
+    .offset(INBOX_ACKNOWLEDGEMENTS_PER_STORE);
+  if (beyond.length === 0) return;
+  await db.delete(inboxAcknowledgements).where(
+    inArray(
+      inboxAcknowledgements.id,
+      beyond.map((row) => row.id),
+    ),
+  );
+}
+
+/**
+ * Deletes the acknowledgements past the retention, a batch at a time, for
+ * the cron. An item still open after it shows again; one handled since was
+ * out of the inbox anyway.
+ */
+export async function pruneInboxAcknowledgements(limit = 500) {
+  const old = await db
+    .select({ id: inboxAcknowledgements.id })
+    .from(inboxAcknowledgements)
+    .where(
+      lt(
+        inboxAcknowledgements.createdAt,
+        sql`NOW(3) - INTERVAL ${sql.raw(String(INBOX_ACKNOWLEDGEMENT_RETENTION_DAYS))} DAY`,
+      ),
+    )
+    .limit(limit);
+  if (old.length === 0) return 0;
+  await db.delete(inboxAcknowledgements).where(
+    inArray(
+      inboxAcknowledgements.id,
+      old.map((row) => row.id),
+    ),
+  );
+  return old.length;
 }
 
 // --- Words -------------------------------------------------------------------

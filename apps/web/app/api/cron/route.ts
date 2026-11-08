@@ -2,6 +2,7 @@ import { reconcileRentalExtensions } from "@/lib/reservations/extension-service"
 import { NextResponse } from "next/server";
 
 import { runMarketplaceDefaultPublication } from "@louez/api/services";
+import { pruneInboxAcknowledgements } from "@louez/api/services/inbox";
 
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from "@/lib/analytics/aggregation";
 import { runApiEffectsCron } from "@/lib/api/effects";
@@ -112,9 +113,17 @@ async function handleCron(request: Request) {
     : null;
   // The agent-ready API's outbox: started with the billing tasks and awaited
   // last, so a task that keeps failing before it never holds back the
-  // customer messages, notifications and analytics events it retries.
+  // customer messages, notifications and analytics events it retries. The
+  // inbox's acknowledgements past their retention go with it, on their own.
   const apiEffects = runIsolatedTasks(
-    [{ task: "api-effects", key: "apiEffects", run: () => runApiEffectsCron() }],
+    [
+      { task: "api-effects", key: "apiEffects", run: () => runApiEffectsCron() },
+      {
+        task: "inbox-acknowledgements",
+        key: "inboxAcknowledgements",
+        run: () => pruneInboxAcknowledgements(),
+      },
+    ],
     { request: logger, event: log },
   );
 
