@@ -808,6 +808,22 @@ export const NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
   "payment_disputed",
 ];
 
+/**
+ * The events whose email channel reaches the store owner. A confirmation or a
+ * cancellation is emailed only when the customer made it; a rejection, a pickup
+ * and a completion are always the owner's own actions, so they have no email.
+ */
+export const NOTIFICATION_EVENTS_WITH_OWNER_EMAIL: readonly NotificationEventType[] = [
+  "reservation_new",
+  "reservation_confirmed",
+  "reservation_cancelled",
+  "reservation_reminder_pickup",
+  "reservation_reminder_return",
+  "payment_received",
+  "payment_failed",
+  "payment_disputed",
+];
+
 export interface NotificationChannelConfig {
   email: boolean;
   sms: boolean;

@@ -6,6 +6,8 @@ import { render } from "@react-email/render";
 
 import {
   DEFAULT_NOTIFICATION_SETTINGS,
+  NOTIFICATION_EVENTS_WITH_OWNER_EMAIL,
+  NOTIFICATION_EVENT_TYPES,
   type NotificationEventType,
   type NotificationSettings,
 } from "@louez/types";
@@ -134,6 +136,20 @@ describe("owner email per event", () => {
       "reservation_completed",
     ] as const) {
       assert.equal(hasAdminEmail(event), false, event);
+    }
+  });
+
+  test("the settings show an email toggle exactly where an email can reach the owner", () => {
+    const reminders: NotificationEventType[] = [
+      "reservation_reminder_pickup",
+      "reservation_reminder_return",
+    ];
+    for (const event of NOTIFICATION_EVENT_TYPES) {
+      assert.equal(
+        NOTIFICATION_EVENTS_WITH_OWNER_EMAIL.includes(event),
+        hasAdminEmail(event) || reminders.includes(event),
+        event,
+      );
     }
   });
 

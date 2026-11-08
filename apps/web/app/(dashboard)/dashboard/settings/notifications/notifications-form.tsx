@@ -32,13 +32,15 @@ import { NotificationTemplateSheet } from "@/components/dashboard/notification-t
 import { PushManageCard } from "@/components/dashboard/push-manage-card";
 import { orpc } from "@/lib/orpc/react";
 import { updateDiscordWebhook, updateOwnerPhone, testDiscordWebhook } from "./actions";
-import type {
-  NotificationSettings,
-  NotificationEventType,
-  CustomerNotificationSettings,
-  CustomerNotificationEventType,
-  CustomerNotificationTemplate,
-  AdminReminderMode,
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  NOTIFICATION_EVENTS_WITH_OWNER_EMAIL,
+  type NotificationSettings,
+  type NotificationEventType,
+  type CustomerNotificationSettings,
+  type CustomerNotificationEventType,
+  type CustomerNotificationTemplate,
+  type AdminReminderMode,
 } from "@louez/types";
 import type { EmailLocale } from "@/lib/email/i18n";
 
@@ -193,7 +195,7 @@ export const NotificationsForm = ({
   // Admin toggle handler
   const handleToggle = async (
     eventType: NotificationEventType,
-    channel: "email" | "sms" | "discord",
+    channel: AdminChannel,
     enabled: boolean,
   ) => {
     setSettings((prev) => ({
@@ -424,6 +426,11 @@ export const NotificationsForm = ({
     void persistAdminReminderSettings({ digestHour: hour });
   };
 
+  // A store saved before a channel existed inherits that channel's default.
+  const channelConfig = (eventType: NotificationEventType) => ({
+    ...DEFAULT_NOTIFICATION_SETTINGS[eventType],
+    ...settings[eventType],
+  });
   const reservationEvents = NOTIFICATION_EVENTS.filter((e) => e.category === "reservation");
   const adminReminderEvents = NOTIFICATION_EVENTS.filter((e) => e.category === "reminder");
   const paymentEvents = NOTIFICATION_EVENTS.filter((e) => e.category === "payment");
@@ -619,6 +626,7 @@ export const NotificationsForm = ({
                     <span className="w-10 text-center">Email</span>
                     <span className="w-10 text-center">SMS</span>
                     <span className="w-10 text-center">Discord</span>
+                    <span className="w-10 text-center">Push</span>
                   </div>
                 </div>
                 {reservationEvents.map((event) => (
@@ -627,7 +635,9 @@ export const NotificationsForm = ({
                     eventType={event.type}
                     label={t(`events.reservation.${event.type}.label`)}
                     description={t(`events.reservation.${event.type}.description`)}
-                    config={settings[event.type]}
+                    config={channelConfig(event.type)}
+                    showEmail={NOTIFICATION_EVENTS_WITH_OWNER_EMAIL.includes(event.type)}
+                    showPush
                     onToggle={handleToggle}
                     smsDisabled={!isSmsConfigured || smsLimitReached}
                     smsTooltip={
@@ -662,6 +672,7 @@ export const NotificationsForm = ({
                     <span className="w-10 text-center">Email</span>
                     <span className="w-10 text-center">SMS</span>
                     <span className="w-10 text-center">Discord</span>
+                    <span className="w-10 text-center">Push</span>
                   </div>
                 </div>
                 {paymentEvents.map((event) => (
@@ -670,7 +681,9 @@ export const NotificationsForm = ({
                     eventType={event.type}
                     label={t(`events.payment.${event.type}.label`)}
                     description={t(`events.payment.${event.type}.description`)}
-                    config={settings[event.type]}
+                    config={channelConfig(event.type)}
+                    showEmail={NOTIFICATION_EVENTS_WITH_OWNER_EMAIL.includes(event.type)}
+                    showPush
                     onToggle={handleToggle}
                     smsDisabled={!isSmsConfigured || smsLimitReached}
                     smsTooltip={
@@ -879,7 +892,7 @@ export const NotificationsForm = ({
                     eventType={event.type}
                     label={t(`events.reminder.${event.type}.label`)}
                     description={t(`events.reminder.${event.type}.description`)}
-                    config={settings[event.type]}
+                    config={channelConfig(event.type)}
                     onToggle={handleToggle}
                     smsDisabled={!isSmsConfigured || smsLimitReached}
                     smsTooltip={
@@ -1131,16 +1144,18 @@ export const NotificationsForm = ({
 // Admin Notification Row
 // ============================================================================
 
+type AdminChannel = "email" | "sms" | "discord" | "push";
+
 interface NotificationRowProps {
   eventType: NotificationEventType;
   label: string;
   description: string;
-  config: { email: boolean; sms: boolean; discord: boolean };
-  onToggle: (
-    eventType: NotificationEventType,
-    channel: "email" | "sms" | "discord",
-    enabled: boolean,
-  ) => void;
+  config: { email: boolean; sms: boolean; discord: boolean; push: boolean };
+  onToggle: (eventType: NotificationEventType, channel: AdminChannel, enabled: boolean) => void;
+  /** False for an event whose email can never reach the owner: its cell stays empty. */
+  showEmail?: boolean;
+  /** Whether the row has a push column: every event but the reminders. */
+  showPush?: boolean;
   smsDisabled?: boolean;
   smsTooltip?: string;
   discordDisabled?: boolean;
@@ -1154,6 +1169,8 @@ const NotificationRow = ({
   description,
   config,
   onToggle,
+  showEmail = true,
+  showPush = false,
   smsDisabled,
   smsTooltip,
   discordDisabled,
@@ -1168,11 +1185,13 @@ const NotificationRow = ({
       </div>
       <div className="flex items-center gap-6 flex-shrink-0">
         <div className="w-10 flex justify-center">
-          <Switch
-            checked={config.email}
-            onCheckedChange={(checked) => onToggle(eventType, "email", checked)}
-            disabled={isPending}
-          />
+          {showEmail && (
+            <Switch
+              checked={config.email}
+              onCheckedChange={(checked) => onToggle(eventType, "email", checked)}
+              disabled={isPending}
+            />
+          )}
         </div>
         <div className="w-10 flex justify-center">
           {smsDisabled && smsTooltip ? (
@@ -1210,6 +1229,15 @@ const NotificationRow = ({
             />
           )}
         </div>
+        {showPush && (
+          <div className="w-10 flex justify-center">
+            <Switch
+              checked={config.push}
+              onCheckedChange={(checked) => onToggle(eventType, "push", checked)}
+              disabled={isPending}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
