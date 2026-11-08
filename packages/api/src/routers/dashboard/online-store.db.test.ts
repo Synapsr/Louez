@@ -473,6 +473,10 @@ describe("online store procedures (database)", { skip: skipWithoutTestDatabase()
       run("update", { identity: { ...identity, logoUrl: OTHER_LOGO } }, session()),
       "IMAGE_NOT_OWNED",
     );
+    await rejects(
+      run("update", { identity: { ...identity, description: "<em/>".repeat(300) } }, session()),
+      "TEXT_TOO_DEEP",
+    );
   });
 
   // --- Look and images ------------------------------------------------------

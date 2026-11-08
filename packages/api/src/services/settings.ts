@@ -46,7 +46,7 @@ import { platformErrors } from "../platform/errors";
 import type { ApiEvent, ApiEventStore, SettingsSection } from "../platform/ports";
 import { toAppearanceView } from "./online-store";
 import type { ConfirmStep } from "./products";
-import { fitTextColumn, toEditorHtml } from "./rich-text";
+import { agentTextToStoredHtml } from "./rich-text";
 
 /**
  * The store settings an agent or the dashboard sets before a store goes
@@ -415,13 +415,16 @@ const hasField = (input: Record<string, unknown>) =>
 /** Name, description and contact details. Not in any billing snapshot: no mark. */
 export async function updateStoreInfo(actor: SettingsActor, input: UpdateStoreInfoInput) {
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
+  // Parsed and sanitised before the lock: the lock only covers the write.
+  const description =
+    input.description === undefined
+      ? undefined
+      : agentTextToStoredHtml("description", input.description);
   const row = await writeUnderLock(actor, "storeInfo", undefined, async (current, tx) => ({
     write: async () => {
       const values: Partial<typeof stores.$inferInsert> = { updatedAt: new Date() };
       if (input.name !== undefined) values.name = input.name;
-      if (input.description !== undefined) {
-        values.description = fitTextColumn("description", toEditorHtml(input.description));
-      }
+      if (description !== undefined) values.description = description;
       if (input.email !== undefined) values.email = input.email;
       if (input.phone !== undefined) values.phone = input.phone;
       if (input.address !== undefined) values.address = input.address;
@@ -512,13 +515,17 @@ export async function updateCompany(
 /** Terms, legal notice and footer note. Text only: no mark, no confirmation. */
 export async function updateLegal(actor: SettingsActor, input: UpdateLegalInput) {
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
+  // Parsed and sanitised before the lock: the lock only covers the write.
+  const cgv = input.cgv === undefined ? undefined : agentTextToStoredHtml("terms", input.cgv);
+  const legalNotice =
+    input.legalNotice === undefined
+      ? undefined
+      : agentTextToStoredHtml("legal notice", input.legalNotice);
   const row = await writeUnderLock(actor, "legal", undefined, async (current, tx) => ({
     write: async () => {
       const values: Partial<typeof stores.$inferInsert> = { updatedAt: new Date() };
-      if (input.cgv !== undefined) values.cgv = fitTextColumn("terms", toEditorHtml(input.cgv));
-      if (input.legalNotice !== undefined) {
-        values.legalNotice = fitTextColumn("legal notice", toEditorHtml(input.legalNotice));
-      }
+      if (cgv !== undefined) values.cgv = cgv;
+      if (legalNotice !== undefined) values.legalNotice = legalNotice;
       if (input.includeCgvInContract !== undefined) {
         values.includeCgvInContract = input.includeCgvInContract;
       }

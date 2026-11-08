@@ -409,6 +409,17 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
     );
     assert.equal(tooLong.data.details?.maxBytes, 65_535);
 
+    // HTML nested deeper than any editor writes is refused, as the parser reads it.
+    await rejects(
+      run("updateLegal", { cgv: `<!-->${"<em>".repeat(300)}x` }, key()),
+      "TEXT_TOO_DEEP",
+    );
+    // A text that only looks like tags is plain text, handled in one pass.
+    const started = performance.now();
+    const scripts = await run("updateLegal", { legalNotice: "<script ".repeat(5_000) }, key());
+    assert.ok(performance.now() - started < 1_000);
+    assert.match(scripts.legal.legalNotice ?? "", /^<p>&lt;script /);
+
     const cleared = await run("updateLegal", { cgv: null }, key());
     assert.equal(cleared.legal.cgv, null);
     assert.equal(cleared.legal.includeCgvInContract, true);

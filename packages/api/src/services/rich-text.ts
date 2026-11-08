@@ -1,44 +1,59 @@
 import { hasRichTextContent } from "@louez/utils";
-import { sanitizeRichTextHtml } from "@louez/utils/sanitize-rich-text";
+import { richTextTooDeep, sanitizeRichTextHtml } from "@louez/utils/sanitize-rich-text";
 
 import { TEXT_COLUMN_BYTES, settingsErrors } from "../contracts/settings";
 
 /**
  * Editor HTML as the store's texts store it (description, tagline, terms,
- * legal notice), shared by the settings and the online store editor.
+ * legal notice), shared by the settings and the online store editor. Every
+ * function here runs before the write takes the store's lock: parsing and
+ * sanitising never hold it.
  */
-
-/** Editor HTML: null when the editor is empty, sanitised otherwise. */
-export const toStoredRichText = (html: string): string | null => {
-  const sanitized = sanitizeRichTextHtml(html);
-  return hasRichTextContent(sanitized) ? sanitized : null;
-};
 
 /**
- * Sanitised editor HTML, refused when it would not fit its TEXT column: the
- * sanitiser escapes, so the stored value can be longer than what was sent.
+ * Sanitised editor HTML ready to store: refused when it nests deeper than
+ * any editor writes, or when it would not fit its TEXT column (the
+ * sanitiser escapes, so the stored value can be longer than what was sent).
+ * `blankAsNull`: an editor left empty stores null.
  */
-export function fitTextColumn(field: string, html: string | null): string | null {
-  if (html === null) return null;
-  const bytes = Buffer.byteLength(html, "utf8");
+export function toStoredHtml(
+  field: string,
+  html: string,
+  options: { blankAsNull: boolean },
+): string | null {
+  if (richTextTooDeep(html)) throw settingsErrors.textTooDeep(field);
+  const sanitized = sanitizeRichTextHtml(html);
+  if (options.blankAsNull && !hasRichTextContent(sanitized)) return null;
+  const bytes = Buffer.byteLength(sanitized, "utf8");
   if (bytes > TEXT_COLUMN_BYTES) throw settingsErrors.textTooLong(field, bytes);
-  return html;
+  return sanitized;
+}
+
+/** Whether a text holds a tag: a `<` and a letter, then a `>` after it. One pass. */
+function looksLikeHtml(text: string): boolean {
+  const tag = /<[a-z]/i.exec(text);
+  return tag !== null && text.indexOf(">", tag.index) !== -1;
 }
 
 /**
- * Editor HTML from what a caller sends: HTML is sanitised as the editor's
- * own; plain text becomes paragraphs (a blank line) and line breaks, so an
- * agent's text keeps its shape on the storefront. The sanitiser escapes the
- * text itself. Blank text is null.
+ * Editor HTML from what an agent sends: HTML is sanitised as the editor's
+ * own; plain text becomes paragraphs (a blank line) and line breaks, so its
+ * shape survives on the storefront, and its `<` and `>` stay characters.
+ * Blank text is null.
  */
-export function toEditorHtml(text: string | null): string | null {
+export function agentTextToStoredHtml(field: string, text: string | null): string | null {
   if (text === null) return null;
-  const html = /<[a-z][\s\S]*>/i.test(text)
+  const html = looksLikeHtml(text)
     ? text
     : text
         .trim()
         .split(/\n\s*\n/)
-        .map((paragraph) => `<p>${paragraph.trim().replace(/\n/g, "<br />")}</p>`)
+        .map((paragraph) => {
+          // Text, not markup: its angle brackets are characters. An `&` is
+          // left to the sanitiser, which keeps an entity written as one.
+          const text = paragraph.trim().replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+          return `<p>${text.replaceAll("\n", "<br />")}</p>`;
+        })
         .join("");
-  return toStoredRichText(html);
+  return toStoredHtml(field, html, { blankAsNull: true });
 }

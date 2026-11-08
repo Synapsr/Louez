@@ -7,7 +7,6 @@ import {
   type Transaction,
 } from "@louez/db";
 import type { StoreSettings, StoreTheme } from "@louez/types";
-import { sanitizeRichTextHtml } from "@louez/utils/sanitize-rich-text";
 import { isOwnedImageUrl, type UpdateOnlineStoreInput } from "@louez/validations";
 import { eq } from "drizzle-orm";
 
@@ -16,7 +15,7 @@ import { storeErrors } from "../contracts/stores";
 import { platformErrors } from "../platform/errors";
 import type { ApiEvent } from "../platform/ports";
 import type { ConfirmStep } from "./products";
-import { fitTextColumn, toStoredRichText } from "./rich-text";
+import { toStoredHtml } from "./rich-text";
 import type { SettingsActor } from "./settings";
 import { assertSlugFree, checkStoreSlug } from "./store-creation";
 
@@ -85,6 +84,21 @@ export async function updateOnlineStore(actor: SettingsActor, input: UpdateOnlin
   assertOwnedImage(storeId, seo?.shareImageUrl);
   for (const image of home?.heroImages ?? []) assertOwnedImage(storeId, image);
 
+  // Parsed and sanitised before the lock: the lock only covers the write.
+  const texts = {
+    tagline:
+      identity && identity.tagline !== null
+        ? toStoredHtml("tagline", identity.tagline, { blankAsNull: true })
+        : null,
+    description: identity
+      ? toStoredHtml("description", identity.description, { blankAsNull: true })
+      : null,
+    cgv: legal ? toStoredHtml("terms", legal.cgv, { blankAsNull: false }) : null,
+    legalNotice: legal
+      ? toStoredHtml("legal notice", legal.legalNotice, { blankAsNull: false })
+      : null,
+  };
+
   const slug = await db.transaction(async (tx) => {
     const row = await lockStore(tx, storeId);
     const settings: StoreSettings = { ...SETTINGS_SEED, ...row.settings };
@@ -93,11 +107,8 @@ export async function updateOnlineStore(actor: SettingsActor, input: UpdateOnlin
 
     if (identity) {
       values.name = identity.name;
-      values.tagline =
-        identity.tagline === null
-          ? null
-          : fitTextColumn("tagline", toStoredRichText(identity.tagline));
-      values.description = fitTextColumn("description", toStoredRichText(identity.description));
+      values.tagline = texts.tagline;
+      values.description = texts.description;
       if (identity.logoUrl !== undefined) values.logoUrl = identity.logoUrl || null;
       if (identity.darkLogoUrl !== undefined) values.darkLogoUrl = identity.darkLogoUrl || null;
       if (identity.faviconUrl !== undefined) values.faviconUrl = identity.faviconUrl || null;
@@ -129,8 +140,8 @@ export async function updateOnlineStore(actor: SettingsActor, input: UpdateOnlin
     }
 
     if (legal) {
-      values.cgv = fitTextColumn("terms", sanitizeRichTextHtml(legal.cgv));
-      values.legalNotice = fitTextColumn("legal notice", sanitizeRichTextHtml(legal.legalNotice));
+      values.cgv = texts.cgv;
+      values.legalNotice = texts.legalNotice;
       values.includeCgvInContract = legal.includeFullCgvInContract;
       settings.footerNote = legal.footerNote;
     }

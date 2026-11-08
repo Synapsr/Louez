@@ -4,6 +4,7 @@ import {
   isPossiblePhoneNumberInput,
 } from "@louez/validations";
 import {
+  RICH_TEXT_MAX_DEPTH,
   SUPPORTED_COUNTRIES,
   SUPPORTED_CURRENCY_CODES,
   WEEK_DAYS,
@@ -591,6 +592,12 @@ export const settingsErrors = {
       message: `Louez does not take ${currency}. Pick one of ${SUPPORTED_CURRENCY_CODES.join(", ")}.`,
       i18nKey: "errors.invalidData",
       details: { currency, supported: [...SUPPORTED_CURRENCY_CODES] },
+    }),
+  textTooDeep: (field: string) =>
+    apiError("BAD_REQUEST", "TEXT_TOO_DEEP", {
+      message: `The ${field} nests its HTML tags more than ${RICH_TEXT_MAX_DEPTH} levels deep; no editor writes that. Send plain text or simpler HTML.`,
+      i18nKey: "errors.invalidData",
+      details: { field, maxDepth: RICH_TEXT_MAX_DEPTH },
     }),
   textTooLong: (field: string, bytes: number) =>
     apiError("BAD_REQUEST", "TEXT_TOO_LONG", {
