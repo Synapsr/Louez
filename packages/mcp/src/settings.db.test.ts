@@ -247,6 +247,11 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(texts.includeCgvInContract, true);
     const settings = output(await mcpCall(authorization, "get_store_settings", {}));
     assert.equal((settings.store as Json).email, "hello@sx.test");
+    // The former tool's name shows the summary too: no text unless asked.
+    const summary = settings.legal as { cgv: Json; textsIncluded: boolean };
+    assert.equal(summary.cgv.set, true);
+    assert.equal(summary.cgv.text, undefined);
+    assert.equal(summary.textsIncluded, false);
     assert.equal(
       (settings.links as Json).dashboard,
       `${TEST_APP_URL}/dashboard/settings?store=${STORE}`,
@@ -281,7 +286,16 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
 
     const read = await openApi("GET", "/settings", null, { authorization });
     assert.equal(read.status, 200);
-    assert.equal(((await read.json()) as { taxes: Json }).taxes.defaultRate, 20);
+    const body = (await read.json()) as { taxes: Json; legal: { textsIncluded: boolean } };
+    assert.equal(body.taxes.defaultRate, 20);
+    assert.equal(body.legal.textsIncluded, false);
+    const withTexts = await openApi("GET", "/settings?includeLegalTexts=true", null, {
+      authorization,
+    });
+    assert.equal(
+      ((await withTexts.json()) as { legal: { textsIncluded: boolean } }).legal.textsIncluded,
+      true,
+    );
 
     const created = await openApi(
       "POST",

@@ -1,5 +1,6 @@
 import {
   db,
+  lockStoreRow,
   markStore,
   markStoreReservations,
   storeLocations,
@@ -122,6 +123,7 @@ const storeColumns = {
   logoUrl: stores.logoUrl,
   darkLogoUrl: stores.darkLogoUrl,
   faviconUrl: stores.faviconUrl,
+  updatedAt: stores.updatedAt,
 };
 
 type StoreRow = {
@@ -130,11 +132,8 @@ type StoreRow = {
 
 /** Locks the store row, the first read of the transaction, and returns it. */
 async function lockStore(tx: Transaction, storeId: string): Promise<StoreRow> {
-  const [row] = await tx
-    .select(storeColumns)
-    .from(stores)
-    .where(eq(stores.id, storeId))
-    .for("update");
+  if (!(await lockStoreRow(tx, storeId))) throw platformErrors.noStore();
+  const [row] = await tx.select(storeColumns).from(stores).where(eq(stores.id, storeId));
   if (!row) throw platformErrors.noStore();
   return row;
 }
@@ -281,8 +280,24 @@ export const toLocationView = (row: LocationRow) => ({
   longitude: toNumber(row.longitude),
 });
 
+const legalTextSummary = (text: string | null, includeText: boolean) => ({
+  set: text !== null && text.replace(/<[^>]*>/g, "").trim() !== "",
+  length: text?.length ?? 0,
+  ...(includeText ? { text } : {}),
+});
+
+/** The legal texts as settings.get shows them: a summary, or the full texts too. */
+export const toLegalSummaryView = (row: StoreRow, includeTexts: boolean) => ({
+  cgv: legalTextSummary(row.cgv, includeTexts),
+  legalNotice: legalTextSummary(row.legalNotice, includeTexts),
+  includeCgvInContract: row.includeCgvInContract,
+  footerNote: settingsOf(row).footerNote ?? null,
+  updatedAt: row.updatedAt,
+  textsIncluded: includeTexts,
+});
+
 /** Everything the settings pages show, for one store. */
-export async function getSettings(storeId: string) {
+export async function getSettings(storeId: string, options: { includeLegalTexts?: boolean } = {}) {
   const [row] = await db.select(storeColumns).from(stores).where(eq(stores.id, storeId)).limit(1);
   if (!row) throw platformErrors.noStore();
   const locations = await db
@@ -297,7 +312,7 @@ export async function getSettings(storeId: string) {
     row,
     store: toStoreInfoView(row),
     company: toCompanyView(settings),
-    legal: toLegalView(row),
+    legal: toLegalSummaryView(row, options.includeLegalTexts === true),
     reservationRules: toReservationRulesView(settings),
     businessHours: toBusinessHoursView(settings),
     delivery: toDeliveryView(settings),
@@ -315,10 +330,18 @@ export async function getSettings(storeId: string) {
 
 // --- Writing helpers --------------------------------------------------------
 
-/** An effect must never fail a write that has committed. */
-function emit(actor: SettingsActor, section: SettingsSection) {
+/**
+ * The section's effects, after the commit, for the store as the write locked
+ * it: its slug may have changed since the request read it. An effect must
+ * never fail a write that has committed.
+ */
+function emit(actor: SettingsActor, section: SettingsSection, slug: string) {
   try {
-    actor.afterCommit({ type: "store.settingsUpdated", store: actor.store, section });
+    actor.afterCommit({
+      type: "store.settingsUpdated",
+      store: { ...actor.store, slug },
+      section,
+    });
   } catch (error) {
     console.error("A settings effect failed after its commit:", error);
   }
@@ -364,13 +387,15 @@ const describeChanges = (changes: Record<string, SettingsChange>) =>
     .join(", ");
 
 /**
- * Runs a settings write under the store lock. `apply` reads the locked row
+ * Runs a settings write under the store lock, then emits its section's
+ * effects. `apply` reads the locked row
  * and returns what to write, with the preview to confirm when the change is
  * one customers see at checkout; a refused confirmation commits the new
  * preview's row (nothing else) and throws once the transaction is over.
  */
 async function writeUnderLock<T>(
   actor: SettingsActor,
+  section: SettingsSection,
   confirm: ConfirmStep<SettingsPreview> | undefined,
   apply: (
     row: StoreRow,
@@ -379,8 +404,10 @@ async function writeUnderLock<T>(
 ): Promise<T> {
   let refusal: Error | null = null;
   let result: T | undefined;
+  let slug = actor.store.slug;
   await db.transaction(async (tx) => {
     const row = await lockStore(tx, actor.storeId);
+    slug = row.slug;
     const step = await apply(row, tx);
     if (confirm && step.preview && Object.keys(step.preview.changes).length > 0) {
       refusal = await confirm(step.preview, tx);
@@ -389,6 +416,7 @@ async function writeUnderLock<T>(
     result = await step.write();
   });
   if (refusal) throw refusal;
+  emit(actor, section, slug);
   return result as T;
 }
 
@@ -403,7 +431,7 @@ const hasField = (input: Record<string, unknown>) =>
 /** Name, description and contact details. Not in any billing snapshot: no mark. */
 export async function updateStoreInfo(actor: SettingsActor, input: UpdateStoreInfoInput) {
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
-  const row = await writeUnderLock(actor, undefined, async (current, tx) => ({
+  const row = await writeUnderLock(actor, "storeInfo", undefined, async (current, tx) => ({
     write: async () => {
       const values: Partial<typeof stores.$inferInsert> = { updatedAt: new Date() };
       if (input.name !== undefined) values.name = input.name;
@@ -424,7 +452,6 @@ export async function updateStoreInfo(actor: SettingsActor, input: UpdateStoreIn
       } as StoreRow;
     },
   }));
-  emit(actor, "storeInfo");
   return { row, store: toStoreInfoView(row) };
 }
 
@@ -443,7 +470,7 @@ export async function updateCompany(
   options: { confirm?: ConfirmStep<SettingsPreview> } = {},
 ) {
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
-  const settings = await writeUnderLock(actor, options.confirm, async (row, tx) => {
+  const settings = await writeUnderLock(actor, "company", options.confirm, async (row, tx) => {
     const current = settingsOf(row);
     const next: StoreSettings = { ...current };
     if (input.country !== undefined) {
@@ -483,7 +510,6 @@ export async function updateCompany(
       },
     };
   });
-  emit(actor, "company");
   return toCompanyView(settings);
 }
 
@@ -492,7 +518,7 @@ export async function updateCompany(
 /** Terms, legal notice and footer note. Text only: no mark, no confirmation. */
 export async function updateLegal(actor: SettingsActor, input: UpdateLegalInput) {
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
-  const row = await writeUnderLock(actor, undefined, async (current, tx) => ({
+  const row = await writeUnderLock(actor, "legal", undefined, async (current, tx) => ({
     write: async () => {
       const values: Partial<typeof stores.$inferInsert> = { updatedAt: new Date() };
       if (input.cgv !== undefined) values.cgv = toEditorHtml(input.cgv);
@@ -509,7 +535,6 @@ export async function updateLegal(actor: SettingsActor, input: UpdateLegalInput)
       return { ...current, ...values, settings } as StoreRow;
     },
   }));
-  emit(actor, "legal");
   return toLegalView(row);
 }
 
@@ -529,44 +554,48 @@ export async function updateReservationRules(
   options: { confirm?: ConfirmStep<SettingsPreview> } = {},
 ) {
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
-  const rules = await writeUnderLock(actor, options.confirm, async (row, tx) => {
-    const settings = settingsOf(row);
-    const current = toReservationRulesView(settings);
-    const next: ReservationRules = { ...current };
-    for (const [key, value] of Object.entries(input)) {
-      if (value !== undefined) (next as Record<string, unknown>)[key] = value;
-    }
-    if (next.maxRentalMinutes !== null && next.minRentalMinutes > next.maxRentalMinutes) {
-      throw settingsErrors.rangeInvalid(
-        "The shortest rental (minRentalMinutes) is longer than the longest one (maxRentalMinutes).",
-      );
-    }
-    if (
-      next.reservationMode === "payment" &&
-      current.reservationMode !== "payment" &&
-      row.stripeChargesEnabled !== true
-    ) {
-      throw settingsErrors.stripeRequired();
-    }
-    const changes = diff(current, next, CHECKOUT_RULES);
-    return {
-      preview: {
-        summary:
-          `Change how customers book: ${describeChanges(changes)}.` +
-          (changes.reservationMode
-            ? next.reservationMode === "payment"
-              ? " New bookings are paid online at checkout."
-              : " New bookings become requests the store accepts or declines; nothing is paid at checkout."
-            : ""),
-        changes,
-      },
-      write: async () => {
-        await updateSettingsColumn(tx, actor.storeId, { ...settings, ...next });
-        return next;
-      },
-    };
-  });
-  emit(actor, "reservationRules");
+  const rules = await writeUnderLock(
+    actor,
+    "reservationRules",
+    options.confirm,
+    async (row, tx) => {
+      const settings = settingsOf(row);
+      const current = toReservationRulesView(settings);
+      const next: ReservationRules = { ...current };
+      for (const [key, value] of Object.entries(input)) {
+        if (value !== undefined) (next as Record<string, unknown>)[key] = value;
+      }
+      if (next.maxRentalMinutes !== null && next.minRentalMinutes > next.maxRentalMinutes) {
+        throw settingsErrors.rangeInvalid(
+          "The shortest rental (minRentalMinutes) is longer than the longest one (maxRentalMinutes).",
+        );
+      }
+      if (
+        next.reservationMode === "payment" &&
+        current.reservationMode !== "payment" &&
+        row.stripeChargesEnabled !== true
+      ) {
+        throw settingsErrors.stripeRequired();
+      }
+      const changes = diff(current, next, CHECKOUT_RULES);
+      return {
+        preview: {
+          summary:
+            `Change how customers book: ${describeChanges(changes)}.` +
+            (changes.reservationMode
+              ? next.reservationMode === "payment"
+                ? " New bookings are paid online at checkout."
+                : " New bookings become requests the store accepts or declines; nothing is paid at checkout."
+              : ""),
+          changes,
+        },
+        write: async () => {
+          await updateSettingsColumn(tx, actor.storeId, { ...settings, ...next });
+          return next;
+        },
+      };
+    },
+  );
   return rules;
 }
 
@@ -575,7 +604,7 @@ export async function updateReservationRules(
 /** Weekly hours and closures. Only what customers may book changes: no confirmation. */
 export async function updateBusinessHours(actor: SettingsActor, input: UpdateBusinessHoursInput) {
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
-  const settings = await writeUnderLock(actor, undefined, async (row, tx) => {
+  const settings = await writeUnderLock(actor, "businessHours", undefined, async (row, tx) => {
     const current = settingsOf(row);
     const hours = storedBusinessHours(current);
     const next: BusinessHours = {
@@ -601,7 +630,6 @@ export async function updateBusinessHours(actor: SettingsActor, input: UpdateBus
       },
     };
   });
-  emit(actor, "businessHours");
   return toBusinessHoursView(settings);
 }
 
@@ -631,7 +659,7 @@ export async function updateDelivery(
   options: { confirm?: ConfirmStep<SettingsPreview> } = {},
 ) {
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
-  const settings = await writeUnderLock(actor, options.confirm, async (row, tx) => {
+  const settings = await writeUnderLock(actor, "delivery", options.confirm, async (row, tx) => {
     const settings = settingsOf(row);
     const stored = storedDelivery(settings);
     const current: DeliverySettings = {
@@ -677,7 +705,6 @@ export async function updateDelivery(
       },
     };
   });
-  emit(actor, "delivery");
   return toDeliveryView(settings);
 }
 
@@ -696,7 +723,7 @@ const coordinate = (value: number | null | undefined) =>
 
 /** A new pickup and return point. A store has `SETTINGS_LIMITS.locations` at most. */
 export async function createLocation(actor: SettingsActor, input: CreateLocationInput) {
-  const location = await writeUnderLock(actor, undefined, async (row, tx) => {
+  const location = await writeUnderLock(actor, "locations", undefined, async (row, tx) => {
     const [{ total }] = await tx
       .select({ total: count() })
       .from(storeLocations)
@@ -722,7 +749,6 @@ export async function createLocation(actor: SettingsActor, input: CreateLocation
       },
     };
   });
-  emit(actor, "locations");
   return toLocationView(location);
 }
 
@@ -730,7 +756,7 @@ export async function createLocation(actor: SettingsActor, input: CreateLocation
 export async function updateLocation(actor: SettingsActor, input: UpdateLocationInput) {
   const { id, ...fields } = input;
   if (!hasField(fields)) throw settingsErrors.nothingToUpdate();
-  const location = await writeUnderLock(actor, undefined, async (_row, tx) => {
+  const location = await writeUnderLock(actor, "locations", undefined, async (_row, tx) => {
     await lockedLocation(tx, actor.storeId, id);
     return {
       write: async () => {
@@ -750,7 +776,6 @@ export async function updateLocation(actor: SettingsActor, input: UpdateLocation
       },
     };
   });
-  emit(actor, "locations");
   return toLocationView(location);
 }
 
@@ -759,7 +784,7 @@ export async function setLocationActive(
   actor: SettingsActor,
   input: { id: string; isActive: boolean },
 ) {
-  const location = await writeUnderLock(actor, undefined, async (_row, tx) => {
+  const location = await writeUnderLock(actor, "locations", undefined, async (_row, tx) => {
     await lockedLocation(tx, actor.storeId, input.id);
     return {
       write: async () => {
@@ -771,7 +796,6 @@ export async function setLocationActive(
       },
     };
   });
-  emit(actor, "locations");
   return toLocationView(location);
 }
 
@@ -792,7 +816,7 @@ export async function updateTaxes(
   options: { confirm?: ConfirmStep<SettingsPreview> } = {},
 ) {
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
-  const settings = await writeUnderLock(actor, options.confirm, async (row, tx) => {
+  const settings = await writeUnderLock(actor, "taxes", options.confirm, async (row, tx) => {
     const settings = settingsOf(row);
     const stored = storedTax(settings);
     const current: TaxSettings = {
@@ -827,6 +851,5 @@ export async function updateTaxes(
       },
     };
   });
-  emit(actor, "taxes");
   return toTaxesView(settings);
 }

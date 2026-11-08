@@ -10,7 +10,7 @@ import {
   type PendingReferral,
   type ReferralAttributionOutcome,
 } from "@louez/api/services/store-creation";
-import { db, markStore, storeMembers, stores } from "@louez/db";
+import { db, markStore, mergeStoreRow, storeMembers, stores } from "@louez/db";
 import { getTimezoneForCountry } from "@louez/utils/countries";
 import { type StoreInfoInput, storeInfoSchema } from "@louez/validations";
 import { defaultBusinessHours } from "@louez/validations";
@@ -256,16 +256,18 @@ export async function saveStoreInfo(data: StoreInfoInput, editingStoreId: string
           ignoredOwnedStoreId: storeToUpdate.id,
         });
 
-  // Preserve settings that are configured after onboarding when the owner revisits this step.
-  const existingSettings = storeToUpdate.settings;
-  const existingBusinessHours =
-    existingSettings?.businessHours?.enabled !== undefined
-      ? existingSettings.businessHours
-      : defaultBusinessHours;
-  await db.transaction(async (tx) => {
-    await tx
-      .update(stores)
-      .set({
+  // Preserve settings that are configured after onboarding when the owner
+  // revisits this step, or that an agent set meanwhile: they are read under
+  // the store's lock.
+  await mergeStoreRow(db, storeToUpdate.id, async ({ settings: existingSettings }, tx) => {
+    const existingBusinessHours =
+      existingSettings?.businessHours?.enabled !== undefined
+        ? existingSettings.businessHours
+        : defaultBusinessHours;
+    // The slug, settings and referral columns are in the store's billing snapshot.
+    await markStore(tx, storeToUpdate.id);
+    return {
+      set: {
         name: validated.data.name,
         slug: validated.data.slug,
         address: validated.data.address || null,
@@ -289,11 +291,8 @@ export async function saveStoreInfo(data: StoreInfoInput, editingStoreId: string
           timezone: getTimezoneForCountry(validated.data.country),
           currency: validated.data.currency,
         },
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, storeToUpdate.id));
-    // The slug, settings and referral columns are in the store's billing snapshot.
-    await markStore(tx, storeToUpdate.id);
+      },
+    };
   });
 
   const storeId = storeToUpdate.id;

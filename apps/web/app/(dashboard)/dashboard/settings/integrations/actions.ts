@@ -1,42 +1,43 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath } from "next/cache";
 
-import { and, eq, inArray } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
-import { z } from 'zod';
+import { and, eq, inArray } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { z } from "zod";
 
 import {
   db,
   integrationCredentials,
   products,
   productsTulip,
+  mergeStoreRow,
   storeIntegrations,
   stores,
-} from '@louez/db';
-import type { StoreSettings, TulipPublicMode } from '@louez/types';
+} from "@louez/db";
+import type { StoreSettings, TulipPublicMode } from "@louez/types";
 
 import {
   getCalendarIntegrationState,
   updateGoogleCalendarSettings,
-} from '@/lib/integrations/calendar/state';
-import { ICS_CALENDAR_PROVIDER_KEY } from '@/lib/integrations/calendar/state';
-import { enqueueCalendarBackfill } from '@/lib/integrations/calendar/sync';
-import { GOOGLE_CALENDAR_PROVIDER_KEY } from '@/lib/integrations/providers/google-calendar/google-calendar-client';
-import { mapSuperPdpConnectionState } from '@/lib/integrations/providers/superpdp/connection';
-import { SUPERPDP_PROVIDER_KEY } from '@/lib/integrations/providers/superpdp/superpdp-client';
+} from "@/lib/integrations/calendar/state";
+import { ICS_CALENDAR_PROVIDER_KEY } from "@/lib/integrations/calendar/state";
+import { enqueueCalendarBackfill } from "@/lib/integrations/calendar/sync";
+import { GOOGLE_CALENDAR_PROVIDER_KEY } from "@/lib/integrations/providers/google-calendar/google-calendar-client";
+import { mapSuperPdpConnectionState } from "@/lib/integrations/providers/superpdp/connection";
+import { SUPERPDP_PROVIDER_KEY } from "@/lib/integrations/providers/superpdp/superpdp-client";
 import {
   getIntegration,
   getIntegrationDetail,
   listByCategory,
   listCategories,
   listIntegrations,
-} from '@/lib/integrations/registry';
+} from "@/lib/integrations/registry";
 import type {
   IntegrationCatalogItem,
   IntegrationCategorySummary,
   IntegrationDetail,
-} from '@/lib/integrations/registry/types';
+} from "@/lib/integrations/registry/types";
 import {
   TulipApiError,
   type TulipProduct,
@@ -46,17 +47,17 @@ import {
   tulipListProducts,
   tulipListRenters,
   tulipUpdateProduct,
-} from '@/lib/integrations/tulip/client';
-import { getTulipApiKey } from '@/lib/integrations/tulip/settings';
+} from "@/lib/integrations/tulip/client";
+import { getTulipApiKey } from "@/lib/integrations/tulip/settings";
 import {
   TULIP_PROVIDER_KEY,
   resolveTulipIntegrationForStore,
   saveTulipIntegrationForStore,
-} from '@/lib/integrations/tulip/state';
-import { getCurrentStore } from '@/lib/store-context';
-import type { StoreWithFullData } from '@/lib/store-context';
+} from "@/lib/integrations/tulip/state";
+import { getCurrentStore } from "@/lib/store-context";
+import type { StoreWithFullData } from "@/lib/store-context";
 
-import { env } from '@/env';
+import { env } from "@/env";
 
 type ActionError = {
   error: string;
@@ -87,125 +88,122 @@ export type IntegrationDetailState = {
 };
 
 const TULIP_PRODUCT_TYPES = [
-  'bike',
-  'wintersports',
-  'watersports',
-  'event',
-  'high-tech',
-  'small-tools',
-  'sports',
+  "bike",
+  "wintersports",
+  "watersports",
+  "event",
+  "high-tech",
+  "small-tools",
+  "sports",
 ] as const;
 
 const TULIP_PRODUCT_SUBTYPES = [
-  'standard',
-  'electric',
-  'cargo',
-  'remorque',
-  'furniture',
-  'tent',
-  'decorations',
-  'tableware',
-  'entertainment',
-  'action-cam',
-  'drone',
-  'camera',
-  'video-camera',
-  'stabilizer',
-  'phone',
-  'computer',
-  'tablet',
-  'small-appliance',
-  'large-appliance',
-  'other-electronic-equipment',
-  'construction-equipment',
-  'diy-tools',
-  'electric-diy-tools',
-  'gardening-tools',
-  'electric-gardening-tools',
-  'running-hiking',
-  'fishing',
-  'golf',
-  'racket-sports',
-  'horseriding',
-  'ball-sports',
-  'fitness',
-  'water-sports',
-  'other',
-  'kitesurf',
-  'foil',
-  'windsurf',
-  'sailboat',
-  'kayak',
-  'canoe',
-  'water-ski',
-  'wakeboard',
-  'mono-ski',
-  'buoy',
-  'paddle',
-  'surf',
-  'pedalo',
-  'ski',
-  'snowboard',
-  'snowshoe',
+  "standard",
+  "electric",
+  "cargo",
+  "remorque",
+  "furniture",
+  "tent",
+  "decorations",
+  "tableware",
+  "entertainment",
+  "action-cam",
+  "drone",
+  "camera",
+  "video-camera",
+  "stabilizer",
+  "phone",
+  "computer",
+  "tablet",
+  "small-appliance",
+  "large-appliance",
+  "other-electronic-equipment",
+  "construction-equipment",
+  "diy-tools",
+  "electric-diy-tools",
+  "gardening-tools",
+  "electric-gardening-tools",
+  "running-hiking",
+  "fishing",
+  "golf",
+  "racket-sports",
+  "horseriding",
+  "ball-sports",
+  "fitness",
+  "water-sports",
+  "other",
+  "kitesurf",
+  "foil",
+  "windsurf",
+  "sailboat",
+  "kayak",
+  "canoe",
+  "water-ski",
+  "wakeboard",
+  "mono-ski",
+  "buoy",
+  "paddle",
+  "surf",
+  "pedalo",
+  "ski",
+  "snowboard",
+  "snowshoe",
 ] as const;
 
 type TulipProductTypeValue = (typeof TULIP_PRODUCT_TYPES)[number];
 type TulipProductSubtypeValue = (typeof TULIP_PRODUCT_SUBTYPES)[number];
-const TULIP_LOUEZ_ORIGIN_TAG = '[louez-origin]';
+const TULIP_LOUEZ_ORIGIN_TAG = "[louez-origin]";
 const TULIP_LOUEZ_ORIGIN_FALLBACK_DESCRIPTION = `${TULIP_LOUEZ_ORIGIN_TAG} from Louez`;
 
-const TULIP_SUBTYPES_BY_TYPE: Record<
-  TulipProductTypeValue,
-  readonly TulipProductSubtypeValue[]
-> = {
-  bike: ['standard', 'electric', 'cargo', 'remorque'],
-  wintersports: ['ski', 'snowboard', 'snowshoe'],
+const TULIP_SUBTYPES_BY_TYPE: Record<TulipProductTypeValue, readonly TulipProductSubtypeValue[]> = {
+  bike: ["standard", "electric", "cargo", "remorque"],
+  wintersports: ["ski", "snowboard", "snowshoe"],
   watersports: [
-    'kitesurf',
-    'foil',
-    'windsurf',
-    'sailboat',
-    'kayak',
-    'canoe',
-    'water-ski',
-    'wakeboard',
-    'mono-ski',
-    'buoy',
-    'paddle',
-    'surf',
-    'pedalo',
+    "kitesurf",
+    "foil",
+    "windsurf",
+    "sailboat",
+    "kayak",
+    "canoe",
+    "water-ski",
+    "wakeboard",
+    "mono-ski",
+    "buoy",
+    "paddle",
+    "surf",
+    "pedalo",
   ],
-  event: ['furniture', 'tent', 'decorations', 'tableware', 'entertainment'],
-  'high-tech': [
-    'action-cam',
-    'drone',
-    'camera',
-    'video-camera',
-    'stabilizer',
-    'phone',
-    'computer',
-    'tablet',
-    'small-appliance',
-    'large-appliance',
-    'other-electronic-equipment',
+  event: ["furniture", "tent", "decorations", "tableware", "entertainment"],
+  "high-tech": [
+    "action-cam",
+    "drone",
+    "camera",
+    "video-camera",
+    "stabilizer",
+    "phone",
+    "computer",
+    "tablet",
+    "small-appliance",
+    "large-appliance",
+    "other-electronic-equipment",
   ],
-  'small-tools': [
-    'construction-equipment',
-    'diy-tools',
-    'electric-diy-tools',
-    'gardening-tools',
-    'electric-gardening-tools',
+  "small-tools": [
+    "construction-equipment",
+    "diy-tools",
+    "electric-diy-tools",
+    "gardening-tools",
+    "electric-gardening-tools",
   ],
   sports: [
-    'running-hiking',
-    'fishing',
-    'golf',
-    'racket-sports',
-    'horseriding',
-    'ball-sports',
-    'fitness',
-    'water-sports',
-    'other',
+    "running-hiking",
+    "fishing",
+    "golf",
+    "racket-sports",
+    "horseriding",
+    "ball-sports",
+    "fitness",
+    "water-sports",
+    "other",
   ],
 };
 
@@ -216,43 +214,31 @@ function isSubtypeAllowedForType(
   return TULIP_SUBTYPES_BY_TYPE[productType].includes(subtype);
 }
 
-function getDefaultSubtypeForType(
-  productType: TulipProductTypeValue,
-): TulipProductSubtypeValue {
-  return TULIP_SUBTYPES_BY_TYPE[productType][0] ?? 'standard';
+function getDefaultSubtypeForType(productType: TulipProductTypeValue): TulipProductSubtypeValue {
+  return TULIP_SUBTYPES_BY_TYPE[productType][0] ?? "standard";
 }
 
-function isKnownTulipProductType(
-  value: string | null | undefined,
-): value is TulipProductTypeValue {
-  return (
-    typeof value === 'string' &&
-    (TULIP_PRODUCT_TYPES as readonly string[]).includes(value)
-  );
+function isKnownTulipProductType(value: string | null | undefined): value is TulipProductTypeValue {
+  return typeof value === "string" && (TULIP_PRODUCT_TYPES as readonly string[]).includes(value);
 }
 
 function isKnownTulipProductSubtype(
   value: string | null | undefined,
 ): value is TulipProductSubtypeValue {
-  return (
-    typeof value === 'string' &&
-    (TULIP_PRODUCT_SUBTYPES as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (TULIP_PRODUCT_SUBTYPES as readonly string[]).includes(value);
 }
 
-function normalizeTulipOptionalText(
-  value: string | null | undefined,
-): string | null {
-  const normalized = typeof value === 'string' ? value.trim() : '';
+function normalizeTulipOptionalText(value: string | null | undefined): string | null {
+  const normalized = typeof value === "string" ? value.trim() : "";
   return normalized || null;
 }
 
 function parseTulipMargin(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) {
       return parsed;
@@ -267,9 +253,7 @@ type TulipMappingRecord = {
   tulipProductId: string;
 };
 
-async function readTulipMappingsByProductIds(
-  productIds: string[],
-): Promise<TulipMappingRecord[]> {
+async function readTulipMappingsByProductIds(productIds: string[]): Promise<TulipMappingRecord[]> {
   if (productIds.length === 0) {
     return [];
   }
@@ -302,10 +286,7 @@ async function readTulipMappingByProductId(
   };
 }
 
-async function upsertTulipMappingRow(params: {
-  productId: string;
-  tulipProductId: string;
-}) {
+async function upsertTulipMappingRow(params: { productId: string; tulipProductId: string }) {
   await db
     .insert(productsTulip)
     .values({
@@ -332,21 +313,14 @@ function toValidIsoDateString(value: string | null | undefined): string | null {
   return parsedDate.toISOString();
 }
 
-function isLouezOriginDescription(
-  description: string | null | undefined,
-): boolean {
+function isLouezOriginDescription(description: string | null | undefined): boolean {
   const normalized = normalizeTulipOptionalText(description)?.toLowerCase();
   if (!normalized) return false;
 
-  return (
-    normalized.includes(TULIP_LOUEZ_ORIGIN_TAG) ||
-    normalized.includes('from louez')
-  );
+  return normalized.includes(TULIP_LOUEZ_ORIGIN_TAG) || normalized.includes("from louez");
 }
 
-function buildLouezOriginDescription(
-  description: string | null | undefined,
-): string {
+function buildLouezOriginDescription(description: string | null | undefined): string {
   const normalized = normalizeTulipOptionalText(description);
   if (!normalized) {
     return TULIP_LOUEZ_ORIGIN_FALLBACK_DESCRIPTION;
@@ -428,25 +402,16 @@ async function resolveCreatedTulipProductId({
   return candidates.length === 1 ? candidates[0].id : null;
 }
 
-function pickTulipTranslationLabel(
-  translations: unknown,
-  fallback: string,
-): string {
-  if (!translations || typeof translations !== 'object') {
+function pickTulipTranslationLabel(translations: unknown, fallback: string): string {
+  if (!translations || typeof translations !== "object") {
     return fallback;
   }
 
   const record = translations as { fr?: unknown; en?: unknown };
-  const fr =
-    typeof record.fr === 'string' && record.fr.trim().length > 0
-      ? record.fr.trim()
-      : null;
+  const fr = typeof record.fr === "string" && record.fr.trim().length > 0 ? record.fr.trim() : null;
   if (fr) return fr;
 
-  const en =
-    typeof record.en === 'string' && record.en.trim().length > 0
-      ? record.en.trim()
-      : null;
+  const en = typeof record.en === "string" && record.en.trim().length > 0 ? record.en.trim() : null;
   return en || fallback;
 }
 
@@ -458,7 +423,7 @@ function normalizeTulipCatalog(rawProducts: unknown): TulipCatalogItem[] {
   const catalogMap = new Map<string, TulipCatalogItem>();
 
   for (const product of rawProducts) {
-    if (!product || typeof product !== 'object') continue;
+    if (!product || typeof product !== "object") continue;
 
     const productRecord = product as {
       product_type?: unknown;
@@ -466,9 +431,7 @@ function normalizeTulipCatalog(rawProducts: unknown): TulipCatalogItem[] {
       product_subtypes?: unknown;
     };
     const type =
-      typeof productRecord.product_type === 'string'
-        ? productRecord.product_type.trim()
-        : '';
+      typeof productRecord.product_type === "string" ? productRecord.product_type.trim() : "";
     if (!type) continue;
 
     const current = catalogMap.get(type) ?? {
@@ -478,42 +441,32 @@ function normalizeTulipCatalog(rawProducts: unknown): TulipCatalogItem[] {
     };
 
     if (Array.isArray(productRecord.product_subtypes)) {
-      const subtypeMap = new Map(
-        current.subtypes.map((subtype) => [subtype.type, subtype]),
-      );
+      const subtypeMap = new Map(current.subtypes.map((subtype) => [subtype.type, subtype]));
 
       for (const subtype of productRecord.product_subtypes) {
-        if (!subtype || typeof subtype !== 'object') continue;
+        if (!subtype || typeof subtype !== "object") continue;
         const subtypeRecord = subtype as {
           type?: unknown;
           translations?: unknown;
         };
-        const subtypeType =
-          typeof subtypeRecord.type === 'string'
-            ? subtypeRecord.type.trim()
-            : '';
+        const subtypeType = typeof subtypeRecord.type === "string" ? subtypeRecord.type.trim() : "";
         if (!subtypeType) continue;
 
         subtypeMap.set(subtypeType, {
           type: subtypeType,
-          label: pickTulipTranslationLabel(
-            subtypeRecord.translations,
-            subtypeType,
-          ),
+          label: pickTulipTranslationLabel(subtypeRecord.translations, subtypeType),
         });
       }
 
       current.subtypes = Array.from(subtypeMap.values()).sort((a, b) =>
-        a.label.localeCompare(b.label, 'fr'),
+        a.label.localeCompare(b.label, "fr"),
       );
     }
 
     catalogMap.set(type, current);
   }
 
-  return Array.from(catalogMap.values()).sort((a, b) =>
-    a.label.localeCompare(b.label, 'fr'),
-  );
+  return Array.from(catalogMap.values()).sort((a, b) => a.label.localeCompare(b.label, "fr"));
 }
 
 const tulipPurchasedDateSchema = z.union([
@@ -583,7 +536,7 @@ export type TulipProductState = {
     publicMode: TulipPublicMode;
   };
   tulipCatalog: TulipCatalogItem[];
-  tulipProducts: TulipIntegrationState['tulipProducts'];
+  tulipProducts: TulipIntegrationState["tulipProducts"];
   product: {
     id: string;
     name: string;
@@ -601,7 +554,7 @@ const connectTulipApiKeySchema = z.object({
 });
 
 const updateTulipConfigurationSchema = z.object({
-  publicMode: z.enum(['required', 'optional', 'no_public']),
+  publicMode: z.enum(["required", "optional", "no_public"]),
 });
 
 const upsertTulipProductMappingSchema = z.object({
@@ -637,7 +590,7 @@ const disconnectTulipSchema = z.object({});
 
 const updateGoogleCalendarSettingsSchema = z.object({
   syncPendingReservations: z.boolean(),
-  cancelledReservationBehavior: z.enum(['show', 'hide']),
+  cancelledReservationBehavior: z.enum(["show", "hide"]),
 });
 
 const disconnectGoogleCalendarSchema = z.object({
@@ -654,37 +607,33 @@ function toErrorMessage(error: unknown): string {
 
 function redactSensitiveErrorParts(message: string): string {
   return message
-    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]')
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
     .replace(
       /(authorization|cookie|password|secret|token|api[_-]?key|client[_-]?secret)(["'\s:=]+)([^"',\s]+)/gi,
-      '$1$2[redacted]',
+      "$1$2[redacted]",
     );
 }
 
 function toDebugErrorMessage(error: unknown): string {
   const message =
-    error instanceof Error
-      ? `${error.name}: ${error.message}`
-      : toErrorMessage(error);
+    error instanceof Error ? `${error.name}: ${error.message}` : toErrorMessage(error);
   const redactedMessage = redactSensitiveErrorParts(message);
 
-  return redactedMessage.length > 500
-    ? `${redactedMessage.slice(0, 500)}...`
-    : redactedMessage;
+  return redactedMessage.length > 500 ? `${redactedMessage.slice(0, 500)}...` : redactedMessage;
 }
 
 function getTulipErrorCode(payload: unknown): number | null {
-  if (!payload || typeof payload !== 'object') {
+  if (!payload || typeof payload !== "object") {
     return null;
   }
 
   const errorObject = (payload as { error?: unknown }).error;
-  if (!errorObject || typeof errorObject !== 'object') {
+  if (!errorObject || typeof errorObject !== "object") {
     return null;
   }
 
   const code = (errorObject as { code?: unknown }).code;
-  return typeof code === 'number' ? code : null;
+  return typeof code === "number" ? code : null;
 }
 
 function stringifyTulipPayload(payload: unknown): string | undefined {
@@ -692,7 +641,7 @@ function stringifyTulipPayload(payload: unknown): string | undefined {
     return undefined;
   }
 
-  if (typeof payload === 'string') {
+  if (typeof payload === "string") {
     return payload.trim() || undefined;
   }
 
@@ -712,7 +661,7 @@ function toActionError(error: unknown): ActionError {
   if (error instanceof TulipApiError) {
     const payloadDetails = stringifyTulipErrorPayload(error.payload);
 
-    console.error('[tulip] API error', {
+    console.error("[tulip] API error", {
       status: error.status,
       message: error.message,
       payload: error.payload,
@@ -720,14 +669,14 @@ function toActionError(error: unknown): ActionError {
 
     if (error.status === 401) {
       return {
-        error: 'errors.tulipApiKeyInvalid',
+        error: "errors.tulipApiKeyInvalid",
         details: payloadDetails,
       };
     }
 
     if (error.status === 403) {
       return {
-        error: 'errors.tulipActionForbidden',
+        error: "errors.tulipActionForbidden",
         details: payloadDetails,
       };
     }
@@ -736,52 +685,52 @@ function toActionError(error: unknown): ActionError {
       const code = getTulipErrorCode(error.payload);
       if (code === 4009) {
         return {
-          error: 'errors.tulipProductSubtypeInvalid',
+          error: "errors.tulipProductSubtypeInvalid",
           details: payloadDetails,
         };
       }
       if (code === 4005) {
         return {
-          error: 'errors.tulipProductPayloadInvalid',
+          error: "errors.tulipProductPayloadInvalid",
           details: payloadDetails,
         };
       }
       if (code === 4004 || code === 4006 || code === 4007) {
         return {
-          error: 'errors.tulipProductRequiredFieldsMissing',
+          error: "errors.tulipProductRequiredFieldsMissing",
           details: payloadDetails,
         };
       }
       if (code === 4999) {
         return {
-          error: 'errors.tulipProductNotFound',
+          error: "errors.tulipProductNotFound",
           details: payloadDetails,
         };
       }
     }
 
     return {
-      error: 'errors.tulipApiUnavailable',
+      error: "errors.tulipApiUnavailable",
       details: payloadDetails,
     };
   }
 
-  if (error instanceof Error && error.message.startsWith('errors.')) {
+  if (error instanceof Error && error.message.startsWith("errors.")) {
     return { error: error.message };
   }
 
-  console.error('[integrations] unexpected action error', error);
+  console.error("[integrations] unexpected action error", error);
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== "production") {
     return { error: toDebugErrorMessage(error) };
   }
 
-  return { error: 'errors.generic' };
+  return { error: "errors.generic" };
 }
 
 function toTulipRenterAttachError(error: unknown): ActionError {
   if (error instanceof TulipApiError) {
-    console.error('[tulip][connect] renter attach failed', {
+    console.error("[tulip][connect] renter attach failed", {
       status: error.status,
       message: error.message,
       payload: stringifyTulipPayload(error.payload) ?? error.payload,
@@ -789,38 +738,36 @@ function toTulipRenterAttachError(error: unknown): ActionError {
 
     if (error.status === 401) {
       return {
-        error: 'errors.tulipApiKeyInvalid',
+        error: "errors.tulipApiKeyInvalid",
       };
     }
 
     if (error.status === 403) {
       return {
-        error: 'errors.tulipActionForbidden',
+        error: "errors.tulipActionForbidden",
       };
     }
 
     return {
-      error: 'errors.tulipRenterAttachFailed',
+      error: "errors.tulipRenterAttachFailed",
     };
   }
 
   return toActionError(error);
 }
 
-async function getStoreOrError(): Promise<
-  { store: StoreWithFullData } | ActionError
-> {
+async function getStoreOrError(): Promise<{ store: StoreWithFullData } | ActionError> {
   const store = await getCurrentStore();
 
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   return { store };
 }
 
 function userCanManageIntegrations(store: StoreWithFullData): boolean {
-  return store.role === 'owner' || store.role === 'platform_admin';
+  return store.role === "owner" || store.role === "platform_admin";
 }
 
 async function applyCalendarRuntimeToCatalog(
@@ -861,9 +808,7 @@ async function applyTulipRuntimeToCatalog(
   store: StoreWithFullData,
   integrations: IntegrationCatalogItem[],
 ): Promise<IntegrationCatalogItem[]> {
-  if (
-    !integrations.some((integration) => integration.id === TULIP_PROVIDER_KEY)
-  ) {
+  if (!integrations.some((integration) => integration.id === TULIP_PROVIDER_KEY)) {
     return integrations;
   }
 
@@ -888,11 +833,7 @@ async function applySuperPdpRuntimeToCatalog(
   store: StoreWithFullData,
   integrations: IntegrationCatalogItem[],
 ): Promise<IntegrationCatalogItem[]> {
-  if (
-    !integrations.some(
-      (integration) => integration.id === SUPERPDP_PROVIDER_KEY,
-    )
-  ) {
+  if (!integrations.some((integration) => integration.id === SUPERPDP_PROVIDER_KEY)) {
     return integrations;
   }
 
@@ -919,8 +860,8 @@ async function applySuperPdpRuntimeToCatalog(
 
     const connected = Boolean(
       providerIntegration?.credentials &&
-        providerIntegration.superPdpSettings &&
-        ['active', 'error'].includes(providerIntegration.status),
+      providerIntegration.superPdpSettings &&
+      ["active", "error"].includes(providerIntegration.status),
     );
     return {
       ...integration,
@@ -928,8 +869,7 @@ async function applySuperPdpRuntimeToCatalog(
       connected,
       configured:
         connected &&
-        providerIntegration?.superPdpSettings?.companyVerificationStatus ===
-          'verified',
+        providerIntegration?.superPdpSettings?.companyVerificationStatus === "verified",
       connectionIssue: providerIntegration?.lastErrorMessage ?? null,
     };
   });
@@ -939,14 +879,8 @@ async function applyRuntimeToCatalog(
   store: StoreWithFullData,
   integrations: IntegrationCatalogItem[],
 ): Promise<IntegrationCatalogItem[]> {
-  const withCalendarRuntime = await applyCalendarRuntimeToCatalog(
-    store,
-    integrations,
-  );
-  const withTulipRuntime = await applyTulipRuntimeToCatalog(
-    store,
-    withCalendarRuntime,
-  );
+  const withCalendarRuntime = await applyCalendarRuntimeToCatalog(store, integrations);
+  const withTulipRuntime = await applyTulipRuntimeToCatalog(store, withCalendarRuntime);
   return applySuperPdpRuntimeToCatalog(store, withTulipRuntime);
 }
 
@@ -963,9 +897,9 @@ async function applyRuntimeToDetail(
 
 async function getProductsWithMappings(
   storeId: string,
-): Promise<TulipIntegrationState['products']> {
+): Promise<TulipIntegrationState["products"]> {
   const storeProducts = await db.query.products.findMany({
-    where: and(eq(products.storeId, storeId), eq(products.status, 'active')),
+    where: and(eq(products.storeId, storeId), eq(products.status, "active")),
     columns: {
       id: true,
       name: true,
@@ -981,17 +915,12 @@ async function getProductsWithMappings(
   let mappings: TulipMappingRecord[] = [];
 
   try {
-    mappings = await readTulipMappingsByProductIds(
-      storeProducts.map((product) => product.id),
-    );
+    mappings = await readTulipMappingsByProductIds(storeProducts.map((product) => product.id));
   } catch (error) {
-    console.warn(
-      '[tulip] Unable to read products_tulip mappings, falling back to unmapped state',
-      {
-        storeId,
-        error,
-      },
-    );
+    console.warn("[tulip] Unable to read products_tulip mappings, falling back to unmapped state", {
+      storeId,
+      error,
+    });
   }
 
   const mappingByProductId = new Map(
@@ -1011,9 +940,7 @@ async function getProductsWithMappings(
   }));
 }
 
-function normalizeTulipProducts(
-  rawProducts: Awaited<ReturnType<typeof tulipListProducts>>,
-) {
+function normalizeTulipProducts(rawProducts: Awaited<ReturnType<typeof tulipListProducts>>) {
   return rawProducts
     .map((product) => {
       const id = product.id?.trim();
@@ -1026,22 +953,17 @@ function normalizeTulipProducts(
         margin: parseTulipMargin(product.data?.margin),
         productType: product.productType || null,
         productSubtype: product.data?.productSubtype || null,
-        purchasedDate: product.purchasedDate?.trim()
-          ? product.purchasedDate
-          : null,
+        purchasedDate: product.purchasedDate?.trim() ? product.purchasedDate : null,
         valueExcl:
-          typeof product.valueExcl === 'number' &&
-          Number.isFinite(product.valueExcl)
+          typeof product.valueExcl === "number" && Number.isFinite(product.valueExcl)
             ? product.valueExcl
             : null,
         brand: product.data?.brand ?? null,
         model: product.data?.model ?? null,
       };
     })
-    .filter(
-      (product): product is NonNullable<typeof product> => product !== null,
-    )
-    .sort((a, b) => a.title.localeCompare(b.title, 'en'));
+    .filter((product): product is NonNullable<typeof product> => product !== null)
+    .sort((a, b) => a.title.localeCompare(b.title, "en"));
 }
 
 export async function listIntegrationsCatalogAction(
@@ -1051,16 +973,13 @@ export async function listIntegrationsCatalogAction(
     listIntegrationsCatalogSchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     const { store } = storeResult;
     const settings = (store.settings as StoreSettings | null) || null;
-    const integrations = await applyRuntimeToCatalog(
-      store,
-      listIntegrations(settings),
-    );
+    const integrations = await applyRuntimeToCatalog(store, listIntegrations(settings));
 
     return {
       categories: listCategories(settings),
@@ -1078,7 +997,7 @@ export async function listIntegrationsCategoryAction(
     const validated = listIntegrationsCategorySchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
@@ -1090,11 +1009,8 @@ export async function listIntegrationsCategoryAction(
       listByCategory(settings, validated.category),
     );
 
-    if (
-      integrations.length === 0 &&
-      !categories.some((item) => item.id === validated.category)
-    ) {
-      return { error: 'errors.integrationCategoryNotFound' };
+    if (integrations.length === 0 && !categories.some((item) => item.id === validated.category)) {
+      return { error: "errors.integrationCategoryNotFound" };
     }
 
     return {
@@ -1114,7 +1030,7 @@ export async function getIntegrationDetailAction(
     const validated = getIntegrationDetailSchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
@@ -1123,7 +1039,7 @@ export async function getIntegrationDetailAction(
     const integration = getIntegrationDetail(settings, validated.integrationId);
 
     if (!integration) {
-      return { error: 'errors.integrationNotFound' };
+      return { error: "errors.integrationNotFound" };
     }
 
     return {
@@ -1141,47 +1057,41 @@ export async function setIntegrationEnabledAction(
     const validated = setIntegrationEnabledSchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     const { store } = storeResult;
     if (!userCanManageIntegrations(store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
     const integration = getIntegration(validated.integrationId);
     if (!integration) {
-      return { error: 'errors.integrationNotFound' };
+      return { error: "errors.integrationNotFound" };
     }
 
     if (validated.integrationId === TULIP_PROVIDER_KEY) {
       const resolved = await resolveTulipIntegrationForStore(store.id);
 
       if (validated.enabled && !resolved.connected) {
-        return { error: 'errors.integrationNotConnected' };
+        return { error: "errors.integrationNotConnected" };
       }
 
       await saveTulipIntegrationForStore({
         storeId: store.id,
         connectedByUserId: store.userId,
         enabled: validated.enabled,
-        status: validated.enabled ? 'active' : 'disabled',
+        status: validated.enabled ? "active" : "disabled",
         publicMode: resolved.storedPublicMode,
         renterUid: resolved.settings.renterUid,
         archivedRenterUid: resolved.archivedRenterUid,
         connectedAt: resolved.settings.connectedAt,
       });
 
-      revalidatePath('/dashboard/settings/integrations');
-      revalidatePath(
-        '/dashboard/settings/integrations/categories/[category]',
-        'page',
-      );
-      revalidatePath(
-        '/dashboard/settings/integrations/[integrationId]',
-        'page',
-      );
+      revalidatePath("/dashboard/settings/integrations");
+      revalidatePath("/dashboard/settings/integrations/categories/[category]", "page");
+      revalidatePath("/dashboard/settings/integrations/[integrationId]", "page");
 
       return { success: true };
     }
@@ -1195,23 +1105,20 @@ export async function setIntegrationEnabledAction(
       });
 
       if (!existing) {
-        return { error: 'errors.integrationNotConnected' };
+        return { error: "errors.integrationNotConnected" };
       }
 
       await db
         .update(storeIntegrations)
         .set({
           enabled: validated.enabled,
-          status: validated.enabled ? 'active' : 'disabled',
+          status: validated.enabled ? "active" : "disabled",
           updatedAt: new Date(),
         })
         .where(eq(storeIntegrations.id, existing.id));
 
-      revalidatePath('/dashboard/settings/integrations');
-      revalidatePath(
-        '/dashboard/settings/integrations/[integrationId]',
-        'page',
-      );
+      revalidatePath("/dashboard/settings/integrations");
+      revalidatePath("/dashboard/settings/integrations/[integrationId]", "page");
 
       return { success: true };
     }
@@ -1230,16 +1137,16 @@ export async function setIntegrationEnabledAction(
         },
       });
       if (!existing?.credentials || !existing.superPdpSettings) {
-        return { error: 'errors.integrationNotConnected' };
+        return { error: "errors.integrationNotConnected" };
       }
 
       const connectionState = !validated.enabled
-        ? 'disconnected'
-        : existing.superPdpSettings.companyVerificationStatus === 'verified'
-          ? 'connected'
-          : existing.superPdpSettings.companyVerificationStatus === 'failed'
-            ? 'error'
-            : 'pending';
+        ? "disconnected"
+        : existing.superPdpSettings.companyVerificationStatus === "verified"
+          ? "connected"
+          : existing.superPdpSettings.companyVerificationStatus === "failed"
+            ? "error"
+            : "pending";
       await db
         .update(storeIntegrations)
         .set({
@@ -1251,11 +1158,8 @@ export async function setIntegrationEnabledAction(
         })
         .where(eq(storeIntegrations.id, existing.id));
 
-      revalidatePath('/dashboard/settings/integrations');
-      revalidatePath(
-        '/dashboard/settings/integrations/[integrationId]',
-        'page',
-      );
+      revalidatePath("/dashboard/settings/integrations");
+      revalidatePath("/dashboard/settings/integrations/[integrationId]", "page");
       return { success: true };
     }
 
@@ -1270,35 +1174,21 @@ export async function setIntegrationEnabledAction(
           .where(eq(stores.id, store.id));
       }
 
-      revalidatePath('/dashboard/settings/integrations');
-      revalidatePath(
-        '/dashboard/settings/integrations/[integrationId]',
-        'page',
-      );
+      revalidatePath("/dashboard/settings/integrations");
+      revalidatePath("/dashboard/settings/integrations/[integrationId]", "page");
 
       return { success: true };
     }
 
-    const currentSettings = (store.settings as StoreSettings | null) || null;
-    const nextSettings = integration.adapter.setEnabled(
-      currentSettings,
-      validated.enabled,
-    );
+    // The adapter changes integrationData of the settings as stored now,
+    // under the store's lock: a section saved meanwhile is kept.
+    await mergeStoreRow(db, store.id, ({ settings }) => ({
+      set: { settings: integration.adapter.setEnabled(settings, validated.enabled) },
+    }));
 
-    await db
-      .update(stores)
-      .set({
-        settings: nextSettings,
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, store.id));
-
-    revalidatePath('/dashboard/settings/integrations');
-    revalidatePath(
-      '/dashboard/settings/integrations/categories/[category]',
-      'page',
-    );
-    revalidatePath('/dashboard/settings/integrations/[integrationId]', 'page');
+    revalidatePath("/dashboard/settings/integrations");
+    revalidatePath("/dashboard/settings/integrations/categories/[category]", "page");
+    revalidatePath("/dashboard/settings/integrations/[integrationId]", "page");
 
     return { success: true };
   } catch (error) {
@@ -1311,7 +1201,7 @@ export async function getCalendarIntegrationStateAction(): Promise<
 > {
   try {
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
@@ -1330,12 +1220,12 @@ export async function updateGoogleCalendarSettingsAction(
   try {
     const validated = updateGoogleCalendarSettingsSchema.parse(input);
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     if (!userCanManageIntegrations(storeResult.store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
     const result = await updateGoogleCalendarSettings({
@@ -1343,9 +1233,9 @@ export async function updateGoogleCalendarSettingsAction(
       syncPendingReservations: validated.syncPendingReservations,
       cancelledReservationBehavior: validated.cancelledReservationBehavior,
     });
-    if ('error' in result) return result;
+    if ("error" in result) return result;
 
-    revalidatePath('/dashboard/settings/integrations/google-calendar');
+    revalidatePath("/dashboard/settings/integrations/google-calendar");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -1357,12 +1247,12 @@ export async function resyncGoogleCalendarAction(): Promise<
 > {
   try {
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     if (!userCanManageIntegrations(storeResult.store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
     const integration = await db.query.storeIntegrations.findFirst({
@@ -1376,7 +1266,7 @@ export async function resyncGoogleCalendarAction(): Promise<
     });
 
     if (!integration?.calendarSettings) {
-      return { error: 'errors.integrationNotConnected' };
+      return { error: "errors.integrationNotConnected" };
     }
 
     const result = await enqueueCalendarBackfill({
@@ -1388,10 +1278,10 @@ export async function resyncGoogleCalendarAction(): Promise<
 
     await db
       .update(storeIntegrations)
-      .set({ status: 'syncing', updatedAt: new Date() })
+      .set({ status: "syncing", updatedAt: new Date() })
       .where(eq(storeIntegrations.id, integration.id));
 
-    revalidatePath('/dashboard/settings/integrations/google-calendar');
+    revalidatePath("/dashboard/settings/integrations/google-calendar");
     return { success: true, enqueued: result.enqueued };
   } catch (error) {
     return toActionError(error);
@@ -1404,16 +1294,16 @@ export async function disconnectGoogleCalendarAction(
   try {
     const validated = disconnectGoogleCalendarSchema.parse(input);
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     if (!userCanManageIntegrations(storeResult.store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
     if (validated.deleteEvents) {
-      return { error: 'errors.unsupportedOperation' };
+      return { error: "errors.unsupportedOperation" };
     }
 
     const integration = await db.query.storeIntegrations.findFirst({
@@ -1436,15 +1326,15 @@ export async function disconnectGoogleCalendarAction(
         enabled: false,
         connectedByUserId: null,
         providerAccountEmail: null,
-        status: 'disabled',
+        status: "disabled",
         lastErrorCode: null,
         lastErrorMessage: null,
         updatedAt: new Date(),
       })
       .where(eq(storeIntegrations.id, integration.id));
 
-    revalidatePath('/dashboard/settings/integrations');
-    revalidatePath('/dashboard/settings/integrations/google-calendar');
+    revalidatePath("/dashboard/settings/integrations");
+    revalidatePath("/dashboard/settings/integrations/google-calendar");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -1456,7 +1346,7 @@ export async function getTulipIntegrationStateAction(): Promise<
 > {
   try {
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
@@ -1466,9 +1356,9 @@ export async function getTulipIntegrationStateAction(): Promise<
 
     const productsListPromise = getProductsWithMappings(store.id);
 
-    const renters: TulipIntegrationState['renters'] = [];
-    let tulipCatalog: TulipIntegrationState['tulipCatalog'] = [];
-    let tulipProducts: TulipIntegrationState['tulipProducts'] = [];
+    const renters: TulipIntegrationState["renters"] = [];
+    let tulipCatalog: TulipIntegrationState["tulipCatalog"] = [];
+    let tulipProducts: TulipIntegrationState["tulipProducts"] = [];
     let connectionIssue: string | null = null;
     let didLoadTulipProducts = false;
     let connected = false;
@@ -1483,74 +1373,50 @@ export async function getTulipIntegrationStateAction(): Promise<
         tulipListProducts(apiKey, { renterUid }),
       ]);
 
-      if (renterResult.status === 'fulfilled' && renterResult.value?.uid) {
+      if (renterResult.status === "fulfilled" && renterResult.value?.uid) {
         connected = true;
         supportsMargin = renterResult.value.options?.option === true;
         inclusionEnabled = renterResult.value.options?.inclusion === true;
-        tulipCatalog = normalizeTulipCatalog(
-          renterResult.value.options?.products,
-        );
-      } else if (renterResult.status === 'fulfilled') {
-        connectionIssue = 'errors.tulipRenterNotFound';
+        tulipCatalog = normalizeTulipCatalog(renterResult.value.options?.products);
+      } else if (renterResult.status === "fulfilled") {
+        connectionIssue = "errors.tulipRenterNotFound";
       } else {
         connectionIssue =
-          renterResult.reason instanceof TulipApiError &&
-          renterResult.reason.status === 404
-            ? 'errors.tulipRenterNotFound'
+          renterResult.reason instanceof TulipApiError && renterResult.reason.status === 404
+            ? "errors.tulipRenterNotFound"
             : toActionError(renterResult.reason).error;
       }
 
-      if (connected && tulipProductsResult.status === 'fulfilled') {
+      if (connected && tulipProductsResult.status === "fulfilled") {
         tulipProducts = normalizeTulipProducts(tulipProductsResult.value);
         didLoadTulipProducts = true;
-      } else if (
-        connected &&
-        tulipProductsResult.status === 'rejected' &&
-        !connectionIssue
-      ) {
+      } else if (connected && tulipProductsResult.status === "rejected" && !connectionIssue) {
         const productsError = tulipProductsResult.reason;
 
-        console.warn(
-          '[tulip] Unable to load Tulip products catalog, continuing without catalog',
-          {
-            storeId: store.id,
-            renterUid,
-            status:
-              productsError instanceof TulipApiError
-                ? productsError.status
-                : null,
-            payload:
-              productsError instanceof TulipApiError
-                ? productsError.payload
-                : null,
-            error:
-              productsError instanceof Error
-                ? productsError.message
-                : productsError,
-          },
-        );
+        console.warn("[tulip] Unable to load Tulip products catalog, continuing without catalog", {
+          storeId: store.id,
+          renterUid,
+          status: productsError instanceof TulipApiError ? productsError.status : null,
+          payload: productsError instanceof TulipApiError ? productsError.payload : null,
+          error: productsError instanceof Error ? productsError.message : productsError,
+        });
         if (
           productsError instanceof TulipApiError &&
           (productsError.status === 401 || productsError.status === 403)
         ) {
-          connectionIssue = 'errors.tulipProductCatalogUnavailable';
+          connectionIssue = "errors.tulipProductCatalogUnavailable";
         }
       }
     } else if (renterUid && !apiKey) {
-      connectionIssue = 'errors.tulipNotConfigured';
+      connectionIssue = "errors.tulipNotConfigured";
     }
 
     const rawProducts = await productsListPromise;
     const products = didLoadTulipProducts
       ? (() => {
-          const validTulipProductIds = new Set(
-            tulipProducts.map((tp) => tp.id),
-          );
+          const validTulipProductIds = new Set(tulipProducts.map((tp) => tp.id));
           return rawProducts.map((product) => {
-            if (
-              product.tulipProductId &&
-              !validTulipProductIds.has(product.tulipProductId)
-            ) {
+            if (product.tulipProductId && !validTulipProductIds.has(product.tulipProductId)) {
               return { ...product, tulipProductId: null };
             }
 
@@ -1566,7 +1432,7 @@ export async function getTulipIntegrationStateAction(): Promise<
       inclusionEnabled,
       connectedAt: settings.connectedAt,
       connectionIssue,
-      calendlyUrl: env.TULIP_CALENDLY_URL || 'https://calendly.com/',
+      calendlyUrl: env.TULIP_CALENDLY_URL || "https://calendly.com/",
       settings: {
         publicMode: settings.publicMode,
         renterUid: settings.renterUid,
@@ -1588,7 +1454,7 @@ export async function getTulipProductStateAction(
     const validated = getTulipProductStateSchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
@@ -1597,10 +1463,7 @@ export async function getTulipProductStateAction(
     const settings = resolved.settings;
 
     const product = await db.query.products.findFirst({
-      where: and(
-        eq(products.id, validated.productId),
-        eq(products.storeId, store.id),
-      ),
+      where: and(eq(products.id, validated.productId), eq(products.storeId, store.id)),
       columns: {
         id: true,
         name: true,
@@ -1609,13 +1472,13 @@ export async function getTulipProductStateAction(
     });
 
     if (!product) {
-      return { error: 'errors.productNotFound' };
+      return { error: "errors.productNotFound" };
     }
 
     const mapping = await readTulipMappingByProductId(product.id);
 
-    let tulipCatalog: TulipProductState['tulipCatalog'] = [];
-    let tulipProducts: TulipProductState['tulipProducts'] = [];
+    let tulipCatalog: TulipProductState["tulipCatalog"] = [];
+    let tulipProducts: TulipProductState["tulipProducts"] = [];
     let connectionIssue: string | null = null;
     let connected = false;
     let supportsMargin = false;
@@ -1626,7 +1489,7 @@ export async function getTulipProductStateAction(
       try {
         const renter = await tulipGetRenter(apiKey, renterUid);
         if (!renter?.uid) {
-          connectionIssue = 'errors.tulipRenterNotFound';
+          connectionIssue = "errors.tulipRenterNotFound";
         } else {
           connected = true;
           supportsMargin = renter.options?.option === true;
@@ -1635,11 +1498,11 @@ export async function getTulipProductStateAction(
       } catch (error) {
         connectionIssue =
           error instanceof TulipApiError && error.status === 404
-            ? 'errors.tulipRenterNotFound'
+            ? "errors.tulipRenterNotFound"
             : toActionError(error).error;
       }
     } else if (renterUid && !apiKey) {
-      connectionIssue = 'errors.tulipNotConfigured';
+      connectionIssue = "errors.tulipNotConfigured";
     }
 
     if (connected && apiKey && settings.enabled) {
@@ -1648,7 +1511,7 @@ export async function getTulipProductStateAction(
         tulipProducts = normalizeTulipProducts(rawProducts);
       } catch (error) {
         console.warn(
-          '[tulip] Unable to load Tulip products catalog for product assurance section',
+          "[tulip] Unable to load Tulip products catalog for product assurance section",
           {
             storeId: store.id,
             productId: product.id,
@@ -1658,11 +1521,8 @@ export async function getTulipProductStateAction(
             error: error instanceof Error ? error.message : error,
           },
         );
-        if (
-          error instanceof TulipApiError &&
-          (error.status === 401 || error.status === 403)
-        ) {
-          connectionIssue = 'errors.tulipProductCatalogUnavailable';
+        if (error instanceof TulipApiError && (error.status === 401 || error.status === 403)) {
+          connectionIssue = "errors.tulipProductCatalogUnavailable";
         }
       }
     }
@@ -1683,7 +1543,7 @@ export async function getTulipProductStateAction(
       supportsMargin,
       connectedAt: settings.connectedAt,
       connectionIssue,
-      calendlyUrl: env.TULIP_CALENDLY_URL || 'https://calendly.com/',
+      calendlyUrl: env.TULIP_CALENDLY_URL || "https://calendly.com/",
       settings: {
         publicMode: settings.publicMode,
       },
@@ -1708,26 +1568,26 @@ export async function connectTulipApiKeyAction(
     const validated = connectTulipApiKeySchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     const { store } = storeResult;
     if (!userCanManageIntegrations(store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
     const apiKey = getTulipApiKey();
     if (!apiKey) {
-      return { error: 'errors.tulipNotConfigured' };
+      return { error: "errors.tulipNotConfigured" };
     }
 
     const renterUid = validated.renterUid.trim();
     if (!renterUid) {
-      return { error: 'errors.tulipRenterNotFound' };
+      return { error: "errors.tulipRenterNotFound" };
     }
 
-    console.info('[tulip][connect] attaching renter uid', {
+    console.info("[tulip][connect] attaching renter uid", {
       storeId: store.id,
       renterUid,
     });
@@ -1738,7 +1598,7 @@ export async function connectTulipApiKeyAction(
     );
 
     if (isRenterAlreadyAttached) {
-      console.info('[tulip][connect] renter uid already attached', {
+      console.info("[tulip][connect] renter uid already attached", {
         storeId: store.id,
         renterUid,
       });
@@ -1751,7 +1611,7 @@ export async function connectTulipApiKeyAction(
           error.status === 400 &&
           getTulipErrorCode(error.payload) === 2002
         ) {
-          console.info('[tulip][connect] renter uid already registered', {
+          console.info("[tulip][connect] renter uid already registered", {
             storeId: store.id,
             renterUid,
           });
@@ -1766,13 +1626,13 @@ export async function connectTulipApiKeyAction(
       renter = await tulipGetRenter(apiKey, renterUid);
     } catch (error) {
       if (error instanceof TulipApiError && error.status === 404) {
-        return { error: 'errors.tulipRenterAttachFailed' };
+        return { error: "errors.tulipRenterAttachFailed" };
       }
 
       throw error;
     }
     if (!renter?.uid) {
-      return { error: 'errors.tulipRenterAttachFailed' };
+      return { error: "errors.tulipRenterAttachFailed" };
     }
 
     const connectedAt = new Date();
@@ -1781,19 +1641,19 @@ export async function connectTulipApiKeyAction(
       storeId: store.id,
       connectedByUserId: store.userId,
       enabled: true,
-      status: 'active',
+      status: "active",
       publicMode: resolvedBeforeSave.storedPublicMode,
       renterUid: renter.uid,
       archivedRenterUid: null,
       connectedAt,
     });
 
-    console.info('[tulip][connect] renter saved', {
+    console.info("[tulip][connect] renter saved", {
       storeId: store.id,
       renterUid: renter.uid,
     });
 
-    revalidatePath('/dashboard/settings/integrations');
+    revalidatePath("/dashboard/settings/integrations");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -1807,13 +1667,13 @@ export async function updateTulipConfigurationAction(
     const validated = updateTulipConfigurationSchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     const { store } = storeResult;
     if (!userCanManageIntegrations(store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
     const resolved = await resolveTulipIntegrationForStore(store.id);
@@ -1822,14 +1682,14 @@ export async function updateTulipConfigurationAction(
       storeId: store.id,
       connectedByUserId: store.userId,
       enabled: resolved.settings.enabled,
-      status: resolved.settings.enabled ? 'active' : 'disabled',
+      status: resolved.settings.enabled ? "active" : "disabled",
       publicMode: validated.publicMode,
       renterUid: resolved.settings.renterUid,
       archivedRenterUid: resolved.archivedRenterUid,
       connectedAt: resolved.settings.connectedAt,
     });
 
-    revalidatePath('/dashboard/settings/integrations');
+    revalidatePath("/dashboard/settings/integrations");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -1843,21 +1703,18 @@ export async function upsertTulipProductMappingAction(
     const validated = upsertTulipProductMappingSchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     const { store } = storeResult;
 
     if (!userCanManageIntegrations(store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
     const product = await db.query.products.findFirst({
-      where: and(
-        eq(products.id, validated.productId),
-        eq(products.storeId, store.id),
-      ),
+      where: and(eq(products.id, validated.productId), eq(products.storeId, store.id)),
       columns: {
         id: true,
         name: true,
@@ -1866,45 +1723,38 @@ export async function upsertTulipProductMappingAction(
     });
 
     if (!product) {
-      return { error: 'errors.productNotFound' };
+      return { error: "errors.productNotFound" };
     }
 
-    const existingMapping = await readTulipMappingByProductId(
-      validated.productId,
-    );
+    const existingMapping = await readTulipMappingByProductId(validated.productId);
     if (existingMapping?.tulipProductId === validated.tulipProductId) {
       return { success: true };
     }
 
     if (!validated.tulipProductId) {
-      await db
-        .delete(productsTulip)
-        .where(eq(productsTulip.productId, validated.productId));
+      await db.delete(productsTulip).where(eq(productsTulip.productId, validated.productId));
     } else {
       const tulipIntegration = await resolveTulipIntegrationForStore(store.id);
       const apiKey = getTulipApiKey();
       const renterUid = tulipIntegration.settings.renterUid?.trim() || null;
 
       if (!apiKey || !renterUid || !tulipIntegration.settings.enabled) {
-        return { error: 'errors.tulipNotConfigured' };
+        return { error: "errors.tulipNotConfigured" };
       }
 
       const tulipCatalog = await tulipListProducts(apiKey, { renterUid });
       const selectedTulipProduct =
-        tulipCatalog.find(
-          (candidate) => candidate.id === validated.tulipProductId,
-        ) ?? null;
+        tulipCatalog.find((candidate) => candidate.id === validated.tulipProductId) ?? null;
 
       if (!selectedTulipProduct) {
-        return { error: 'errors.tulipProductNotFound' };
+        return { error: "errors.tulipProductNotFound" };
       }
 
       let resolvedTulipProductId = validated.tulipProductId;
 
       if (!isLouezManagedTulipProduct(selectedTulipProduct)) {
         const resolvedProductType =
-          normalizeTulipOptionalText(selectedTulipProduct.productType) ||
-          'event';
+          normalizeTulipOptionalText(selectedTulipProduct.productType) || "event";
         const selectedSubtype = normalizeTulipOptionalText(
           selectedTulipProduct.data?.productSubtype,
         );
@@ -1920,31 +1770,20 @@ export async function upsertTulipProductMappingAction(
           resolvedSubtype = getDefaultSubtypeForType(resolvedProductType);
         }
         if (!resolvedSubtype) {
-          return { error: 'errors.tulipProductSubtypeInvalid' };
+          return { error: "errors.tulipProductSubtypeInvalid" };
         }
-        const selectedBrand = normalizeTulipOptionalText(
-          selectedTulipProduct.data?.brand,
-        );
-        const selectedModel = normalizeTulipOptionalText(
-          selectedTulipProduct.data?.model,
-        );
-        const selectedMargin = parseTulipMargin(
-          selectedTulipProduct.data?.margin,
-        );
+        const selectedBrand = normalizeTulipOptionalText(selectedTulipProduct.data?.brand);
+        const selectedModel = normalizeTulipOptionalText(selectedTulipProduct.data?.model);
+        const selectedMargin = parseTulipMargin(selectedTulipProduct.data?.margin);
         const selectedTitle =
-          normalizeTulipOptionalText(selectedTulipProduct.title) ??
-          product.name;
-        const selectedPurchasedDate = toValidIsoDateString(
-          selectedTulipProduct.purchasedDate,
-        );
+          normalizeTulipOptionalText(selectedTulipProduct.title) ?? product.name;
+        const selectedPurchasedDate = toValidIsoDateString(selectedTulipProduct.purchasedDate);
 
         const clonePayload = {
           uid: renterUid,
           product_type: resolvedProductType,
           title: selectedTitle,
-          description: buildLouezOriginDescription(
-            selectedTulipProduct.description,
-          ),
+          description: buildLouezOriginDescription(selectedTulipProduct.description),
           data: {
             product_subtype: resolvedSubtype,
             ...(selectedBrand ? { brand: selectedBrand } : {}),
@@ -1952,11 +1791,9 @@ export async function upsertTulipProductMappingAction(
             ...(selectedMargin != null ? { margin: selectedMargin } : {}),
             louez_product_ID: product.id,
           },
-          ...(selectedPurchasedDate
-            ? { purchased_date: selectedPurchasedDate }
-            : {}),
+          ...(selectedPurchasedDate ? { purchased_date: selectedPurchasedDate } : {}),
           value_excl:
-            typeof selectedTulipProduct.valueExcl === 'number' &&
+            typeof selectedTulipProduct.valueExcl === "number" &&
             Number.isFinite(selectedTulipProduct.valueExcl)
               ? selectedTulipProduct.valueExcl
               : Number(product.price),
@@ -1974,7 +1811,7 @@ export async function upsertTulipProductMappingAction(
         });
 
         if (!clonedProductId) {
-          return { error: 'errors.tulipInvalidProductResponse' };
+          return { error: "errors.tulipInvalidProductResponse" };
         }
 
         resolvedTulipProductId = clonedProductId;
@@ -1986,7 +1823,7 @@ export async function upsertTulipProductMappingAction(
       });
     }
 
-    revalidatePath('/dashboard/settings/integrations');
+    revalidatePath("/dashboard/settings/integrations");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -2000,31 +1837,28 @@ export async function pushTulipProductUpdateAction(
     const validated = pushTulipProductUpdateSchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     const { store } = storeResult;
 
     if (!userCanManageIntegrations(store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
     const tulipIntegration = await resolveTulipIntegrationForStore(store.id);
     const apiKey = getTulipApiKey();
     if (!apiKey) {
-      return { error: 'errors.tulipNotConfigured' };
+      return { error: "errors.tulipNotConfigured" };
     }
     const renterUid = tulipIntegration.settings.renterUid?.trim() || null;
     if (!renterUid || !tulipIntegration.settings.enabled) {
-      return { error: 'errors.tulipNotConfigured' };
+      return { error: "errors.tulipNotConfigured" };
     }
 
     const product = await db.query.products.findFirst({
-      where: and(
-        eq(products.id, validated.productId),
-        eq(products.storeId, store.id),
-      ),
+      where: and(eq(products.id, validated.productId), eq(products.storeId, store.id)),
       columns: {
         id: true,
         name: true,
@@ -2033,13 +1867,13 @@ export async function pushTulipProductUpdateAction(
     });
 
     if (!product) {
-      return { error: 'errors.productNotFound' };
+      return { error: "errors.productNotFound" };
     }
 
     const mapping = await readTulipMappingByProductId(product.id);
 
     if (!mapping?.tulipProductId) {
-      return { error: 'errors.tulipProductNotMapped' };
+      return { error: "errors.tulipProductNotMapped" };
     }
     let resolvedTulipProductId = mapping.tulipProductId;
 
@@ -2061,7 +1895,7 @@ export async function pushTulipProductUpdateAction(
         !isSubtypeAllowedForType(productType, resolvedSubtype)
       ) {
         console.warn(
-          '[tulip][update-product] subtype incompatible with selected product type, using default subtype',
+          "[tulip][update-product] subtype incompatible with selected product type, using default subtype",
           {
             storeId: store.id,
             productId: product.id,
@@ -2093,12 +1927,9 @@ export async function pushTulipProductUpdateAction(
     try {
       await tulipUpdateProduct(apiKey, resolvedTulipProductId, payload);
     } catch (error) {
-      if (
-        error instanceof TulipApiError &&
-        getTulipErrorCode(error.payload) === 4999
-      ) {
+      if (error instanceof TulipApiError && getTulipErrorCode(error.payload) === 4999) {
         console.warn(
-          '[tulip][update-product] mapped Tulip product not found, attempting mapping repair',
+          "[tulip][update-product] mapped Tulip product not found, attempting mapping repair",
           {
             storeId: store.id,
             productId: product.id,
@@ -2107,16 +1938,13 @@ export async function pushTulipProductUpdateAction(
         );
 
         const rawCatalog = await tulipListProducts(apiKey, { renterUid });
-        const payloadTitle =
-          typeof payload.title === 'string' ? payload.title : product.name;
+        const payloadTitle = typeof payload.title === "string" ? payload.title : product.name;
         const payloadData =
-          payload.data && typeof payload.data === 'object'
+          payload.data && typeof payload.data === "object"
             ? (payload.data as { brand?: string; model?: string })
             : {};
-        const payloadBrand =
-          typeof payloadData.brand === 'string' ? payloadData.brand : null;
-        const payloadModel =
-          typeof payloadData.model === 'string' ? payloadData.model : null;
+        const payloadBrand = typeof payloadData.brand === "string" ? payloadData.brand : null;
+        const payloadModel = typeof payloadData.model === "string" ? payloadData.model : null;
 
         const candidates = rawCatalog
           .map((candidate) => {
@@ -2168,9 +1996,7 @@ export async function pushTulipProductUpdateAction(
           (candidatesFromLouezProductId.length === 1
             ? candidatesFromLouezProductId[0]?.id
             : null) ??
-          (candidatesFromPayload.length === 1
-            ? candidatesFromPayload[0]?.id
-            : null);
+          (candidatesFromPayload.length === 1 ? candidatesFromPayload[0]?.id : null);
 
         if (repairedTulipProductId) {
           resolvedTulipProductId = repairedTulipProductId;
@@ -2187,26 +2013,24 @@ export async function pushTulipProductUpdateAction(
               getTulipErrorCode(retryError.payload) === 4999
             ) {
               console.warn(
-                '[tulip][update-product] repaired mapping still points to missing product; clearing mapping',
+                "[tulip][update-product] repaired mapping still points to missing product; clearing mapping",
                 {
                   storeId: store.id,
                   productId: product.id,
                   repairedTulipProductId: resolvedTulipProductId,
                 },
               );
-              await db
-                .delete(productsTulip)
-                .where(eq(productsTulip.productId, product.id));
-              revalidatePath('/dashboard/settings/integrations');
-              return { error: 'errors.tulipProductNotMapped' };
+              await db.delete(productsTulip).where(eq(productsTulip.productId, product.id));
+              revalidatePath("/dashboard/settings/integrations");
+              return { error: "errors.tulipProductNotMapped" };
             }
 
             throw retryError;
           }
-          revalidatePath('/dashboard/settings/integrations');
+          revalidatePath("/dashboard/settings/integrations");
         } else {
           console.warn(
-            '[tulip][update-product] unable to repair mapping automatically; clearing stale mapping',
+            "[tulip][update-product] unable to repair mapping automatically; clearing stale mapping",
             {
               storeId: store.id,
               productId: product.id,
@@ -2215,11 +2039,9 @@ export async function pushTulipProductUpdateAction(
               payloadCandidates: candidatesFromPayload.length,
             },
           );
-          await db
-            .delete(productsTulip)
-            .where(eq(productsTulip.productId, product.id));
-          revalidatePath('/dashboard/settings/integrations');
-          return { error: 'errors.tulipProductNotMapped' };
+          await db.delete(productsTulip).where(eq(productsTulip.productId, product.id));
+          revalidatePath("/dashboard/settings/integrations");
+          return { error: "errors.tulipProductNotMapped" };
         }
       } else {
         throw error;
@@ -2239,19 +2061,18 @@ export async function createTulipProductAction(
     const validated = createTulipProductSchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     const { store } = storeResult;
 
     if (!userCanManageIntegrations(store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
-    const tulipSettings = (await resolveTulipIntegrationForStore(store.id))
-      .settings;
-    console.info('[tulip][create-product] start', {
+    const tulipSettings = (await resolveTulipIntegrationForStore(store.id)).settings;
+    console.info("[tulip][create-product] start", {
       storeId: store.id,
       productId: validated.productId,
       hasApiKey: !!getTulipApiKey(),
@@ -2261,26 +2082,23 @@ export async function createTulipProductAction(
 
     const apiKey = getTulipApiKey();
     if (!apiKey) {
-      console.warn('[tulip][create-product] api key missing after resolution', {
+      console.warn("[tulip][create-product] api key missing after resolution", {
         storeId: store.id,
         productId: validated.productId,
       });
-      return { error: 'errors.tulipNotConfigured' };
+      return { error: "errors.tulipNotConfigured" };
     }
 
     const renterUid = tulipSettings.renterUid?.trim() || null;
     if (!renterUid || !tulipSettings.enabled) {
-      console.warn(
-        '[tulip][create-product] missing renter uid in tulip settings',
-        {
-          storeId: store.id,
-          productId: validated.productId,
-        },
-      );
-      return { error: 'errors.tulipNotConfigured' };
+      console.warn("[tulip][create-product] missing renter uid in tulip settings", {
+        storeId: store.id,
+        productId: validated.productId,
+      });
+      return { error: "errors.tulipNotConfigured" };
     }
 
-    console.info('[tulip][create-product] resolved api key', {
+    console.info("[tulip][create-product] resolved api key", {
       storeId: store.id,
       productId: validated.productId,
       keyLength: apiKey.length,
@@ -2288,10 +2106,7 @@ export async function createTulipProductAction(
     });
 
     const product = await db.query.products.findFirst({
-      where: and(
-        eq(products.id, validated.productId),
-        eq(products.storeId, store.id),
-      ),
+      where: and(eq(products.id, validated.productId), eq(products.storeId, store.id)),
       columns: {
         id: true,
         name: true,
@@ -2301,15 +2116,11 @@ export async function createTulipProductAction(
     });
 
     if (!product) {
-      return { error: 'errors.productNotFound' };
+      return { error: "errors.productNotFound" };
     }
 
-    const requestedProductType = normalizeTulipOptionalText(
-      validated.productType,
-    );
-    const requestedSubtype = normalizeTulipOptionalText(
-      validated.productSubtype,
-    );
+    const requestedProductType = normalizeTulipOptionalText(validated.productType);
+    const requestedSubtype = normalizeTulipOptionalText(validated.productSubtype);
     const resolvedBrand = validated.brand?.trim() || null;
     const resolvedModel = validated.model?.trim() || null;
     const resolvedValueExcl = validated.valueExcl ?? null;
@@ -2321,7 +2132,7 @@ export async function createTulipProductAction(
       !resolvedModel ||
       resolvedValueExcl == null
     ) {
-      return { error: 'errors.tulipProductRequiredFieldsMissing' };
+      return { error: "errors.tulipProductRequiredFieldsMissing" };
     }
 
     const resolvedProductType = requestedProductType;
@@ -2336,7 +2147,7 @@ export async function createTulipProductAction(
       !isSubtypeAllowedForType(resolvedProductType, resolvedSubtype)
     ) {
       console.warn(
-        '[tulip][create-product] subtype incompatible with selected product type, using default subtype',
+        "[tulip][create-product] subtype incompatible with selected product type, using default subtype",
         {
           storeId: store.id,
           productId: product.id,
@@ -2348,7 +2159,7 @@ export async function createTulipProductAction(
     }
 
     if (!resolvedSubtype) {
-      return { error: 'errors.tulipProductSubtypeInvalid' };
+      return { error: "errors.tulipProductSubtypeInvalid" };
     }
 
     const resolvedTitle = validated.title?.trim() || product.name;
@@ -2369,13 +2180,11 @@ export async function createTulipProductAction(
         ...(resolvedMargin != null ? { margin: resolvedMargin } : {}),
         louez_product_ID: product.id,
       },
-      ...(resolvedPurchasedDate
-        ? { purchased_date: resolvedPurchasedDate }
-        : {}),
+      ...(resolvedPurchasedDate ? { purchased_date: resolvedPurchasedDate } : {}),
       value_excl: resolvedValueExcl,
     };
 
-    console.info('[tulip][create-product] sending create request', {
+    console.info("[tulip][create-product] sending create request", {
       storeId: store.id,
       productId: product.id,
       tulipProductType: tulipPayload.product_type,
@@ -2390,7 +2199,7 @@ export async function createTulipProductAction(
       createdProduct = await tulipCreateProduct(apiKey, tulipPayload);
     } catch (error) {
       if (error instanceof TulipApiError) {
-        console.error('[tulip][create-product] tulip API rejected request', {
+        console.error("[tulip][create-product] tulip API rejected request", {
           storeId: store.id,
           productId: product.id,
           status: error.status,
@@ -2398,7 +2207,7 @@ export async function createTulipProductAction(
           payload: error.payload,
         });
       } else {
-        console.error('[tulip][create-product] unexpected error', {
+        console.error("[tulip][create-product] unexpected error", {
           storeId: store.id,
           productId: product.id,
           error: toErrorMessage(error),
@@ -2419,14 +2228,14 @@ export async function createTulipProductAction(
 
     if (!resolvedTulipProductId) {
       console.error(
-        '[tulip][create-product] unable to resolve Tulip product id from create response',
+        "[tulip][create-product] unable to resolve Tulip product id from create response",
         {
           storeId: store.id,
           productId: product.id,
           createResponse: createdProduct,
         },
       );
-      return { error: 'errors.tulipInvalidProductResponse' };
+      return { error: "errors.tulipInvalidProductResponse" };
     }
 
     await upsertTulipMappingRow({
@@ -2434,7 +2243,7 @@ export async function createTulipProductAction(
       tulipProductId: resolvedTulipProductId,
     });
 
-    revalidatePath('/dashboard/settings/integrations');
+    revalidatePath("/dashboard/settings/integrations");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -2448,13 +2257,13 @@ export async function disconnectTulipAction(
     disconnectTulipSchema.parse(input);
 
     const storeResult = await getStoreOrError();
-    if ('error' in storeResult) {
+    if ("error" in storeResult) {
       return { error: storeResult.error };
     }
 
     const { store } = storeResult;
     if (!userCanManageIntegrations(store)) {
-      return { error: 'errors.permissionDenied' };
+      return { error: "errors.permissionDenied" };
     }
 
     const resolved = await resolveTulipIntegrationForStore(store.id);
@@ -2463,7 +2272,7 @@ export async function disconnectTulipAction(
       storeId: store.id,
       connectedByUserId: null,
       enabled: false,
-      status: 'disabled',
+      status: "disabled",
       publicMode: resolved.storedPublicMode,
       renterUid: null,
       archivedRenterUid: activeRenterUid || resolved.archivedRenterUid,
@@ -2488,12 +2297,9 @@ export async function disconnectTulipAction(
       }
     });
 
-    revalidatePath('/dashboard/settings/integrations');
-    revalidatePath(
-      '/dashboard/settings/integrations/categories/[category]',
-      'page',
-    );
-    revalidatePath('/dashboard/settings/integrations/[integrationId]', 'page');
+    revalidatePath("/dashboard/settings/integrations");
+    revalidatePath("/dashboard/settings/integrations/categories/[category]", "page");
+    revalidatePath("/dashboard/settings/integrations/[integrationId]", "page");
 
     return { success: true };
   } catch (error) {

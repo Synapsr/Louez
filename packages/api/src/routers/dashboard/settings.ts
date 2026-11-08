@@ -76,7 +76,7 @@ const get = storeProcedure
     scope: READ,
     mcp: {
       name: "settings_get",
-      description: `Everything a store is set up with, in one call: its info and contact (store), company (country, time zone, currency, billing address), legal texts (terms, legal notice), the storefront (web address, URL, theme, logos, banner photos), reservation rules (booking mode, durations, notice, buffers, extensions), business hours and closures, delivery and pickup points (locations), taxes, and whether Stripe takes payments. Read it before changing a setting: each section has its settings_update_* tool, which takes the same field names. ${LINKS_HELP}`,
+      description: `Everything a store is set up with, in one call: its info and contact (store), company (country, time zone, currency, billing address), legal texts (whether the terms and the legal notice are set and their length; pass includeLegalTexts: true for the full texts, before editing them), the storefront (web address, URL, theme, logos, banner photos), reservation rules (booking mode, durations, notice, buffers, extensions), business hours and closures, delivery and pickup points (locations), taxes, and whether Stripe takes payments. Read it before changing a setting: each section has its settings_update_* tool, which takes the field names shown here (the legal texts as cgv and legalNotice). ${LINKS_HELP}`,
       bundle: "settings",
       aliases: [{ name: "get_store_settings" }],
       annotations: { readOnlyHint: true, idempotentHint: true },
@@ -85,8 +85,10 @@ const get = storeProcedure
   .route({ method: "GET", path: "/settings" })
   .input(getSettingsInput)
   .output(getSettingsOutput)
-  .handler(async ({ context }) => {
-    const { row: _row, ...settings } = await getSettings(context.actor.storeId);
+  .handler(async ({ context, input }) => {
+    const { row: _row, ...settings } = await getSettings(context.actor.storeId, {
+      includeLegalTexts: input.includeLegalTexts,
+    });
     return {
       ...settings,
       locations: settings.locations.map((location) => ({

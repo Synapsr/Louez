@@ -1,4 +1,11 @@
-import { db, isDuplicateKeyError, markStore, stores, type Transaction } from "@louez/db";
+import {
+  db,
+  isDuplicateKeyError,
+  lockStoreRow,
+  markStore,
+  stores,
+  type Transaction,
+} from "@louez/db";
 import type { StoreSettings, StoreTheme } from "@louez/types";
 import { sanitizeRichTextHtml } from "@louez/utils";
 import { isOwnedImageUrl, type UpdateOnlineStoreInput } from "@louez/validations";
@@ -31,6 +38,7 @@ const storefrontImagePrefix = (storeId: string) => `${storeId}/logo`;
 
 const lockedColumns = {
   slug: stores.slug,
+  onboardingCompleted: stores.onboardingCompleted,
   settings: stores.settings,
   theme: stores.theme,
   logoUrl: stores.logoUrl,
@@ -40,11 +48,8 @@ const lockedColumns = {
 
 /** Locks the store row, the first read of the transaction, and returns what the writes patch. */
 async function lockStore(tx: Transaction, storeId: string) {
-  const [row] = await tx
-    .select(lockedColumns)
-    .from(stores)
-    .where(eq(stores.id, storeId))
-    .for("update");
+  if (!(await lockStoreRow(tx, storeId))) throw platformErrors.noStore();
+  const [row] = await tx.select(lockedColumns).from(stores).where(eq(stores.id, storeId));
   if (!row) throw platformErrors.noStore();
   return row;
 }
@@ -85,7 +90,7 @@ export async function updateOnlineStore(actor: SettingsActor, input: UpdateOnlin
   assertOwnedImage(storeId, seo?.shareImageUrl);
   for (const image of home?.heroImages ?? []) assertOwnedImage(storeId, image);
 
-  await db.transaction(async (tx) => {
+  const slug = await db.transaction(async (tx) => {
     const row = await lockStore(tx, storeId);
     const settings: StoreSettings = { ...SETTINGS_SEED, ...row.settings };
     const theme: StoreTheme = { ...THEME_SEED, ...row.theme };
@@ -143,10 +148,16 @@ export async function updateOnlineStore(actor: SettingsActor, input: UpdateOnlin
     if (identity || contact || legal || seo) values.settings = settings;
 
     await tx.update(stores).set(values).where(eq(stores.id, storeId));
+    return row.slug;
   });
 
-  // The theme mode is served from a per-store cache; it travels in the identity section.
-  emit(actor, { type: "store.storefrontUpdated", store: actor.store, themeChanged: !!identity });
+  // The theme mode is served from a per-store cache, by the slug the store
+  // has now; it travels in the identity section.
+  emit(actor, {
+    type: "store.storefrontUpdated",
+    store: { ...actor.store, slug },
+    themeChanged: !!identity,
+  });
   return { success: true as const };
 }
 
@@ -201,12 +212,12 @@ export async function updateAppearance(actor: SettingsActor, input: UpdateAppear
       .update(stores)
       .set({ ...next, updatedAt: new Date() })
       .where(eq(stores.id, storeId));
-    return { ...next, themeChanged: row.theme?.mode !== theme.mode };
+    return { ...next, slug: row.slug, themeChanged: row.theme?.mode !== theme.mode };
   });
 
   emit(actor, {
     type: "store.storefrontUpdated",
-    store: actor.store,
+    store: { ...actor.store, slug: saved.slug },
     themeChanged: saved.themeChanged,
   });
   return toAppearanceView(saved);
@@ -245,7 +256,6 @@ export async function updateStoreSlug(
   input: { slug: string },
   options: {
     storefrontUrl: (slug: string) => string;
-    online: boolean;
     confirm?: ConfirmStep<SlugChangePreview>;
   },
 ) {
@@ -255,26 +265,30 @@ export async function updateStoreSlug(
 
   let refusal: Error | null = null;
   let previousSlug = actor.store.slug;
+  let online = false;
   try {
     await db.transaction(async (tx) => {
       const row = await lockStore(tx, storeId);
       previousSlug = row.slug;
+      online = row.onboardingCompleted === true;
       if (row.slug === input.slug) throw onlineStoreErrors.slugUnchanged(input.slug);
       if (options.confirm) {
         const previousUrl = options.storefrontUrl(row.slug);
         const url = options.storefrontUrl(input.slug);
+        // Launched or not as the row is now: a launch since the request read
+        // the store changes what breaks.
         refusal = await options.confirm(
           {
             summary:
               `Move the storefront from ${previousUrl} to ${url}.` +
-              (options.online
+              (online
                 ? " The store is online: every link to the old address (shared, printed, in search engines) stops working, as Louez keeps no redirect."
                 : " The store is not online yet, so no customer link breaks."),
             previousSlug: row.slug,
             slug: input.slug,
             previousUrl,
             url,
-            online: options.online,
+            online,
           },
           tx,
         );
@@ -298,5 +312,5 @@ export async function updateStoreSlug(
     store: { ...actor.store, slug: input.slug },
     previousSlug,
   });
-  return { slug: input.slug, previousSlug };
+  return { slug: input.slug, previousSlug, online };
 }

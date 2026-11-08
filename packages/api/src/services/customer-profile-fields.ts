@@ -1,4 +1,4 @@
-import { customers, db, stores } from "@louez/db";
+import { customers, db, lockStoreRow, stores } from "@louez/db";
 import type { Transaction } from "@louez/db";
 import {
   CUSTOMER_PROFILE_FIELD_KEYS,
@@ -83,11 +83,11 @@ export async function updateCustomerProfileField(
   input: CustomerProfileFieldUpdateInput,
 ): Promise<UpdateCustomerProfileFieldResult> {
   return db.transaction(async (tx): Promise<UpdateCustomerProfileFieldResult> => {
+    if (!(await lockStoreRow(tx, storeId))) return { ok: false, error: "storeNotFound" };
     const [store] = await tx
       .select({ settings: stores.settings })
       .from(stores)
-      .where(eq(stores.id, storeId))
-      .for("update");
+      .where(eq(stores.id, storeId));
     if (!store) return { ok: false, error: "storeNotFound" };
 
     const { field, ...patch } = input;

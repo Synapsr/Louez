@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { db, markStore, stores } from "@louez/db";
+import { db, markStore, mergeStoreRow, stores } from "@louez/db";
 import { type BrandingInput, type StripeSetupInput, isOwnedImageUrl } from "@louez/validations";
 
 import { ApiServiceError } from "./errors";
@@ -33,17 +33,14 @@ export async function updateOnboardingBranding(params: UpdateOnboardingBrandingP
     throw new ApiServiceError("BAD_REQUEST", "errors.invalidData");
   }
 
-  await db
-    .update(stores)
-    .set({
+  // The rest of the theme (banner photos, layout) is kept as stored.
+  const saved = await mergeStoreRow(db, storeId, ({ theme }) => ({
+    set: {
       logoUrl: input.logoUrl || null,
-      theme: {
-        mode: input.theme,
-        primaryColor: input.primaryColor,
-      },
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, storeId));
+      theme: { ...theme, mode: input.theme, primaryColor: input.primaryColor },
+    },
+  }));
+  if (!saved) throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
 
   return { success: true as const };
 }
@@ -59,28 +56,24 @@ export async function completeOnboarding(params: CompleteOnboardingParams) {
     throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
   }
 
-  const currentSettings = store.settings || {
-    minRentalMinutes: 60,
-    maxRentalMinutes: null,
-    advanceNoticeMinutes: 1440,
-    turnoverBufferMinutes: 0,
-    openingHours: null,
-  };
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(stores)
-      .set({
+  // The settings are read under the store's lock: another section saved
+  // meanwhile (taxes, hours) is kept.
+  await mergeStoreRow(db, storeId, async ({ settings }, tx) => {
+    // onboardingCompleted is in the store's billing snapshot.
+    await markStore(tx, storeId);
+    return {
+      set: {
         settings: {
-          ...currentSettings,
+          minRentalMinutes: 60,
+          maxRentalMinutes: null,
+          advanceNoticeMinutes: 1440,
+          turnoverBufferMinutes: 0,
+          ...settings,
           reservationMode: input.reservationMode,
         },
         onboardingCompleted: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, storeId));
-    // onboardingCompleted is in the store's billing snapshot.
-    await markStore(tx, storeId);
+      },
+    };
   });
 
   if (notifyStoreCreated) {

@@ -12,7 +12,7 @@ import {
   updateSlugOutput,
 } from "../../contracts/online-store";
 import { completeImageUploadOutput, createImageUploadOutput } from "../../contracts/uploads";
-import { isStorefrontPublic, onlineStoreLinks } from "../../platform/links";
+import { onlineStoreLinks } from "../../platform/links";
 import type { ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
 import {
@@ -73,10 +73,9 @@ const updateSlug = storeProcedure
   .output(updateSlugOutput)
   .handler(async ({ context, input, path }) => {
     const { urls } = context.ports;
-    const isOnline = isStorefrontPublic(context.store);
     const result = await updateStoreSlug(settingsActor(context), input, {
       storefrontUrl: (slug) => urls.storefront(slug, "/"),
-      online: isOnline,
+      // The preview and its binding read the slug and the launch state under the lock.
       confirm: confirmUnderLock<SlugChangePreview>(context, path, input, (preview) => ({
         state: { previousSlug: preview.previousSlug, online: preview.online },
         details: {
@@ -88,10 +87,15 @@ const updateSlug = storeProcedure
       })),
     });
     return {
-      ...result,
+      slug: result.slug,
+      previousSlug: result.previousSlug,
       storefrontUrl: urls.storefront(result.slug, "/"),
       oldLinksRedirect: false,
-      links: onlineStoreLinks(urls, { ...context.store, slug: result.slug }, "identity"),
+      links: onlineStoreLinks(
+        urls,
+        { id: context.store.id, slug: result.slug, onboardingCompleted: result.online },
+        "identity",
+      ),
     };
   });
 

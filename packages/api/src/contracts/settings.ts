@@ -9,6 +9,7 @@ import { z } from "zod";
 import { apiError } from "../platform/errors";
 import { resourceLinksSchema } from "./links";
 import { appearanceView } from "./online-store";
+import { currencyField } from "./stores";
 
 /**
  * The store settings contract: what a store needs before it goes live, read
@@ -36,11 +37,6 @@ const COUNTRY_CODES = SUPPORTED_COUNTRIES.map((country) => country.code) as [str
 const countryField = z
   .enum(COUNTRY_CODES)
   .describe("An ISO 3166-1 alpha-2 code among the countries Louez supports (FR).");
-
-const currencyField = z
-  .string()
-  .regex(/^[A-Z]{3}$/)
-  .describe("An ISO 4217 code (EUR).");
 
 /** Money in the store's currency, as a decimal string ("1.50"). */
 const moneyField = (max: number) =>
@@ -171,12 +167,40 @@ export const taxesView = z.object({
 
 // --- settings.get -----------------------------------------------------------
 
-export const getSettingsInput = z.object({});
+export const getSettingsInput = z.object({
+  // A GET takes it from the query string, as "true" or "false".
+  includeLegalTexts: z
+    .union([z.boolean(), z.enum(["true", "false"]).transform((value) => value === "true")])
+    .optional()
+    .describe(
+      "true returns the full terms and legal notice (up to 100,000 characters each). Left out, they come as a summary: whether each is set and its length.",
+    ),
+});
+
+/** A legal text as settings.get shows it by default: set or not, and how long. */
+const legalTextSummary = z.object({
+  set: z.boolean(),
+  /** Characters of its editor HTML. */
+  length: z.number().int(),
+  /** The editor HTML, only with includeLegalTexts. */
+  text: z.string().nullable().optional(),
+});
+
+export const legalSummaryView = z.object({
+  cgv: legalTextSummary,
+  legalNotice: legalTextSummary,
+  includeCgvInContract: z.boolean(),
+  footerNote: z.string().nullable(),
+  /** When the store's settings last changed (any of them): no date is kept per text. */
+  updatedAt: z.date(),
+  /** Whether `text` holds the full texts (includeLegalTexts). */
+  textsIncluded: z.boolean(),
+});
 
 export const getSettingsOutput = z.object({
   store: storeInfoView,
   company: companyView,
-  legal: legalView,
+  legal: legalSummaryView,
   reservationRules: reservationRulesView,
   businessHours: businessHoursView,
   delivery: deliveryView,

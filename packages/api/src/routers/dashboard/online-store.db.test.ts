@@ -271,7 +271,12 @@ describe("online store procedures (database)", { skip: skipWithoutTestDatabase()
     );
     const suggestions = taken.data.details?.suggestions as string[] | undefined;
     assert.ok((suggestions ?? []).length > 0);
-    await rejects(run("updateSlug", { slug: "dashboard" }, session()), "BAD_REQUEST");
+    // The app's own first segments, which the proxy routes before any store.
+    for (const slug of ["dashboard", "online-store", "active-store"]) {
+      await rejects(run("updateSlug", { slug }, session()), "BAD_REQUEST");
+      const check = await run("checkSlugAvailability", { slug }, session());
+      assert.equal(check.reason, "reserved", slug);
+    }
   });
 
   test("an agent confirms a slug change; a tampered, replayed or stale token is refused", async () => {
@@ -340,6 +345,52 @@ describe("online store procedures (database)", { skip: skipWithoutTestDatabase()
       ),
     );
     assert.deepEqual(results.sort(), ["STORE_SLUG_TAKEN", "moved"]);
+  });
+
+  test("a launch that commits while the slug change waits voids its token", async () => {
+    const key = await apiKey({ storeId: OTHER_STORE });
+    const refusal = await rejects(
+      run("updateSlug", { slug: "os-launched" }, key()),
+      "CONFIRMATION_REQUIRED",
+    );
+    const preview = refusal.data.details?.preview as { details: { online: boolean } } | undefined;
+    assert.equal(preview?.details.online, false);
+    const [result] = await raceOnOpenTransaction(
+      database,
+      async (holder) => {
+        await holder.query("UPDATE `stores` SET onboarding_completed = 1 WHERE id = ?", [
+          OTHER_STORE,
+        ]);
+      },
+      [
+        () =>
+          run(
+            "updateSlug",
+            { slug: "os-launched" },
+            key({ "louez-confirmation": tokenOf(refusal) }),
+          ).then(
+            () => "moved",
+            (error: { data?: { code?: string } }) => error.data?.code ?? String(error),
+          ),
+      ],
+    );
+    assert.equal(result, "CONFIRMATION_INVALID");
+    assert.equal((await storeRow(OTHER_STORE))?.slug, "os-other");
+  });
+
+  test("an editor save that waited for a rename names the store's new address", async () => {
+    await raceOnOpenTransaction(
+      database,
+      async (holder) => {
+        await holder.query("UPDATE `stores` SET slug = 'os-renamed' WHERE id = ?", [STORE]);
+      },
+      [() => run("updateAppearance", { mode: "dark" }, session())],
+    );
+    assert.deepEqual(events.at(-1), {
+      type: "store.storefrontUpdated",
+      store: { id: STORE, name: "Brest Surf", slug: "os-renamed", ownerUserId: OWNER },
+      themeChanged: true,
+    });
   });
 
   // --- The editor -----------------------------------------------------------

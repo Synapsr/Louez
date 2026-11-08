@@ -6,6 +6,7 @@ import {
   createTestDatabase,
   raceOnLockedRow,
   skipWithoutTestDatabase,
+  waitForLockWaits,
   type TestDatabase,
 } from "@louez/db/testing";
 
@@ -319,6 +320,22 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
     assert.doesNotMatch(html.store.description ?? "", /script|onclick/);
     assert.match(html.store.description ?? "", /<strong>there<\/strong>/);
 
+    // Saved again as it came back, then rendered by the storefront: unchanged.
+    const { sanitizeRichTextHtml } = await import("@louez/utils");
+    const entities = await run(
+      "updateStoreInfo",
+      { description: "Fish & chips &amp; more" },
+      key(),
+    );
+    assert.equal(entities.store.description, "<p>Fish &amp; chips &amp; more</p>");
+    const resaved = await run(
+      "updateStoreInfo",
+      { description: entities.store.description },
+      key(),
+    );
+    assert.equal(resaved.store.description, entities.store.description);
+    assert.equal(sanitizeRichTextHtml(resaved.store.description ?? ""), resaved.store.description);
+
     const cleared = await run("updateStoreInfo", { phone: null, description: "  " }, key());
     assert.equal(cleared.store.phone, null);
     assert.equal(cleared.store.description, null);
@@ -344,6 +361,17 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(legal.legal.footerNote, "SIRET 123");
     assert.equal(legal.links.dashboard, `${TEST_APP_URL}/online-store/legal?store=${STORE}`);
     assert.deepEqual(await storedSettings(), { ...SETTINGS, footerNote: "SIRET 123" });
+
+    // settings.get shows a summary unless asked for the texts.
+    const summary = (await run("get", {}, key())).legal;
+    assert.deepEqual(summary.cgv, { set: true, length: legal.legal.cgv?.length ?? 0 });
+    assert.equal(summary.legalNotice.set, false);
+    assert.equal(summary.textsIncluded, false);
+    assert.ok(summary.updatedAt instanceof Date);
+    const full = (await run("get", { includeLegalTexts: true }, key())).legal;
+    assert.equal(full.cgv.text, legal.legal.cgv);
+    assert.equal(full.legalNotice.text, null);
+    assert.equal(full.textsIncluded, true);
 
     const cleared = await run("updateLegal", { cgv: null }, key());
     assert.equal(cleared.legal.cgv, null);
@@ -387,7 +415,11 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
 
   test("company: an agent confirms a new currency; a tampered, replayed or stale token is refused", async () => {
     const key = await apiKey();
-    const input = { currency: "USD" };
+    // A code Louez does not support is refused before any preview.
+    for (const currency of ["ZZZ", "BTC", "HRK"]) {
+      await rejects(run("updateCompany", { currency } as never, key()), "BAD_REQUEST");
+    }
+    const input = { currency: "USD" as const };
     const refusal = await rejects(run("updateCompany", input, key()), "CONFIRMATION_REQUIRED");
     const preview = refusal.data.details?.preview as {
       summary: string;
@@ -693,6 +725,32 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(settings?.minRentalMinutes, 240);
     assert.equal(settings?.tax?.enabled, true);
     assert.equal(settings?.footerNote, "Both");
+  });
+
+  test("a writer outside these procedures keeps a section saved while it waited", async () => {
+    // Taxes take the lock first, then the onboarding's completion queues behind
+    // them: it reads the settings once it holds the lock, so it keeps the taxes.
+    const { completeOnboarding } = await import("../../services/onboarding");
+    const holder = await database.connect();
+    try {
+      await holder.beginTransaction();
+      await holder.query("SELECT id FROM `stores` WHERE id = ? FOR UPDATE", [STORE]);
+      const taxes = run("updateTaxes", { enabled: true }, session());
+      await waitForLockWaits(holder, database.name, 1);
+      const onboarding = completeOnboarding({
+        storeId: STORE,
+        input: { reservationMode: "payment" },
+      });
+      await waitForLockWaits(holder, database.name, 2);
+      await holder.commit();
+      await Promise.all([taxes, onboarding]);
+    } finally {
+      await holder.end();
+    }
+    const settings = await storedSettings();
+    assert.equal(settings?.tax?.enabled, true);
+    assert.equal(settings?.reservationMode, "payment");
+    assert.deepEqual(settings?.inspection, SETTINGS.inspection);
   });
 
   test("an idempotent retry returns the first answer without a second point", async () => {

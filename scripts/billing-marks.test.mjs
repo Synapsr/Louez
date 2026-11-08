@@ -128,11 +128,6 @@ const EXCLUDED_PREFIX = "packages/db/src/";
  */
 const ALLOWLIST = [
   {
-    file: "apps/web/app/(dashboard)/dashboard/settings/integrations/actions.ts",
-    writes: { stores: 1 },
-    reason: "the adapters return the stored settings with only integrationData changed",
-  },
-  {
     file: "apps/web/app/(dashboard)/dashboard/team/actions.ts",
     writes: { storeMembers: 2 },
     reason: "adds members with role member and removes non-owners only; the snapshot lists owners",
