@@ -19,7 +19,34 @@ test("a connection granted before starts from its terms", () => {
     confirmSensitive: false,
     bundles: ["daily" as const, "catalog" as const],
   };
-  assert.equal(defaultAgentTerms(["s1"], current), current);
+  assert.deepEqual(defaultAgentTerms(["s1"], current), current);
+});
+
+test("a store granted before that the user left is dropped", () => {
+  const current = {
+    stores: { all: false as const, ids: ["s1", "gone"] },
+    preset: "read" as const,
+    confirmSensitive: true,
+    bundles: ["daily" as const],
+  };
+  assert.deepEqual(defaultAgentTerms(["s1", "s2"], current).stores, { all: false, ids: ["s1"] });
+  // Every chosen store gone, others left: the user picks again.
+  const none = defaultAgentTerms(["s2"], { ...current, stores: { all: false, ids: ["gone"] } });
+  assert.deepEqual(none.stores, { all: false, ids: [] });
+  assert.equal(isAgentTermsComplete(none), false);
+});
+
+test("a user with no store any longer reconnects over every store to come", () => {
+  const stale = {
+    stores: { all: false as const, ids: ["gone"] },
+    preset: "write" as const,
+    confirmSensitive: true,
+    bundles: ["daily" as const],
+  };
+  const terms = defaultAgentTerms([], stale);
+  assert.deepEqual(terms.stores, { all: true });
+  assert.equal(isAgentTermsComplete(terms), true);
+  assert.deepEqual(defaultAgentTerms([], null).stores, { all: true });
 });
 
 test("stores and bundles toggle without duplicates, in a stable order", () => {

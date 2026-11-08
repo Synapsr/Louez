@@ -17,7 +17,7 @@ import {
 } from "@louez/ui";
 
 import { AgentTermsFields } from "./agent-terms-fields";
-import { isAgentTermsComplete, type AgentTerms } from "./util.agent-terms";
+import { defaultAgentTerms, isAgentTermsComplete, type AgentTerms } from "./util.agent-terms";
 
 interface AgentConnectionEditDialogProps {
   connection: AgentConnection;
@@ -45,7 +45,13 @@ export const AgentConnectionEditDialog = ({
   onClose,
 }: AgentConnectionEditDialogProps) => {
   const t = useTranslations("agentConnections");
-  const [terms, setTerms] = useState<AgentTerms>(() => termsOf(connection));
+  // A store the user left drops out: only their stores can be saved.
+  const [terms, setTerms] = useState<AgentTerms>(() =>
+    defaultAgentTerms(
+      stores.map((store) => store.id),
+      termsOf(connection),
+    ),
+  );
   const clientName = connection.client.name ?? t("unknownClient");
 
   return (
