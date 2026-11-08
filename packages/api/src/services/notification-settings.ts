@@ -1,4 +1,4 @@
-import { db, stores } from "@louez/db";
+import { db, mergeStoreRow, stores, type StoreJson, type StoreRowUpdate } from "@louez/db";
 import {
   DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
   DEFAULT_NOTIFICATION_SETTINGS,
@@ -62,61 +62,61 @@ const getNotificationSettings = async (storeId: string) => {
   return store;
 };
 
+/**
+ * Writes the notification settings from what is stored now, under the store
+ * row's lock: two settings saved at once (two switches, a template and a
+ * reminder) keep both changes.
+ */
+const mergeNotificationSettings = async (
+  storeId: string,
+  build: (current: StoreJson) => StoreRowUpdate,
+) => {
+  const saved = await mergeStoreRow(db, storeId, (current) => ({ set: build(current) }));
+  if (!saved) throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
+  return { success: true } satisfies { success: true };
+};
+
 export const updateSingleNotificationPreference = async ({
   storeId,
   input,
 }: UpdateSinglePreferenceParams) => {
-  const store = await getNotificationSettings(storeId);
-  const currentSettings: NotificationSettings = {
-    ...DEFAULT_NOTIFICATION_SETTINGS,
-    ...store.notificationSettings,
-  };
-  const currentEventSettings = currentSettings[input.eventType];
-  const updatedSettings: NotificationSettings = {
-    ...currentSettings,
-    [input.eventType]: {
-      ...currentEventSettings,
-      [input.channel]: input.enabled,
-    },
-  };
+  return mergeNotificationSettings(storeId, (store) => {
+    const currentSettings: NotificationSettings = {
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      ...store.notificationSettings,
+    };
+    const currentEventSettings = currentSettings[input.eventType];
+    const updatedSettings: NotificationSettings = {
+      ...currentSettings,
+      [input.eventType]: {
+        ...currentEventSettings,
+        [input.channel]: input.enabled,
+      },
+    };
 
-  await db
-    .update(stores)
-    .set({
-      notificationSettings: updatedSettings,
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, storeId));
-
-  return { success: true } satisfies { success: true };
+    return { notificationSettings: updatedSettings };
+  });
 };
 
 export const updateCustomerNotificationPreference = async ({
   storeId,
   input,
 }: UpdateCustomerPreferenceParams) => {
-  const store = await getNotificationSettings(storeId);
-  const currentSettings: CustomerNotificationSettings =
-    store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
-  const currentEventSettings = currentSettings[input.eventType];
-  const updatedSettings: CustomerNotificationSettings = {
-    ...currentSettings,
-    [input.eventType]: {
-      ...currentEventSettings,
-      [input.channel]: input.enabled,
-      enabled: input.enabled ? true : currentEventSettings.enabled,
-    },
-  };
+  return mergeNotificationSettings(storeId, (store) => {
+    const currentSettings: CustomerNotificationSettings =
+      store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+    const currentEventSettings = currentSettings[input.eventType];
+    const updatedSettings: CustomerNotificationSettings = {
+      ...currentSettings,
+      [input.eventType]: {
+        ...currentEventSettings,
+        [input.channel]: input.enabled,
+        enabled: input.enabled ? true : currentEventSettings.enabled,
+      },
+    };
 
-  await db
-    .update(stores)
-    .set({
-      customerNotificationSettings: updatedSettings,
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, storeId));
-
-  return { success: true } satisfies { success: true };
+    return { customerNotificationSettings: updatedSettings };
+  });
 };
 
 export const getCustomerNotificationTemplate = async ({
@@ -133,86 +133,65 @@ export const updateCustomerNotificationTemplate = async ({
   storeId,
   input,
 }: UpdateCustomerTemplateParams) => {
-  const store = await getNotificationSettings(storeId);
-  const currentSettings: CustomerNotificationSettings =
-    store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
-  const updatedSettings: CustomerNotificationSettings = {
-    ...currentSettings,
-    templates: {
-      ...currentSettings.templates,
-      [input.eventType]: input.template,
-    },
-  };
+  return mergeNotificationSettings(storeId, (store) => {
+    const currentSettings: CustomerNotificationSettings =
+      store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+    const updatedSettings: CustomerNotificationSettings = {
+      ...currentSettings,
+      templates: {
+        ...currentSettings.templates,
+        [input.eventType]: input.template,
+      },
+    };
 
-  await db
-    .update(stores)
-    .set({
-      customerNotificationSettings: updatedSettings,
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, storeId));
-
-  return { success: true } satisfies { success: true };
+    return { customerNotificationSettings: updatedSettings };
+  });
 };
 
 export const updateCustomerReminderSettings = async ({
   storeId,
   input,
 }: UpdateReminderSettingsParams) => {
-  const store = await getNotificationSettings(storeId);
-  const currentSettings: CustomerNotificationSettings =
-    store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
-  const updatedSettings: CustomerNotificationSettings = {
-    ...currentSettings,
-    reminderSettings: {
-      pickupReminderHours: input.pickupReminderHours,
-      returnReminderHours: input.returnReminderHours,
-    },
-  };
+  return mergeNotificationSettings(storeId, (store) => {
+    const currentSettings: CustomerNotificationSettings =
+      store.customerNotificationSettings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+    const updatedSettings: CustomerNotificationSettings = {
+      ...currentSettings,
+      reminderSettings: {
+        pickupReminderHours: input.pickupReminderHours,
+        returnReminderHours: input.returnReminderHours,
+      },
+    };
 
-  await db
-    .update(stores)
-    .set({
-      customerNotificationSettings: updatedSettings,
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, storeId));
-
-  return { success: true } satisfies { success: true };
+    return { customerNotificationSettings: updatedSettings };
+  });
 };
 
 export const updateAdminNotificationReminderSettings = async ({
   storeId,
   input,
 }: UpdateAdminReminderSettingsParams) => {
-  const store = await getNotificationSettings(storeId);
-  const currentSettings: NotificationSettings = {
-    ...DEFAULT_NOTIFICATION_SETTINGS,
-    ...store.notificationSettings,
-  };
-  const currentTiming = currentSettings.reminderSettings ?? {
-    pickupReminderHours: 24,
-    returnReminderHours: 24,
-    mode: "per_reservation" satisfies AdminReminderMode,
-    digestHour: 8,
-  };
-  const updatedSettings: NotificationSettings = {
-    ...currentSettings,
-    reminderSettings: {
-      pickupReminderHours: input.pickupReminderHours,
-      returnReminderHours: input.returnReminderHours,
-      mode: input.mode ?? currentTiming.mode ?? "per_reservation",
-      digestHour: input.digestHour ?? currentTiming.digestHour ?? 8,
-    },
-  };
+  return mergeNotificationSettings(storeId, (store) => {
+    const currentSettings: NotificationSettings = {
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      ...store.notificationSettings,
+    };
+    const currentTiming = currentSettings.reminderSettings ?? {
+      pickupReminderHours: 24,
+      returnReminderHours: 24,
+      mode: "per_reservation" satisfies AdminReminderMode,
+      digestHour: 8,
+    };
+    const updatedSettings: NotificationSettings = {
+      ...currentSettings,
+      reminderSettings: {
+        pickupReminderHours: input.pickupReminderHours,
+        returnReminderHours: input.returnReminderHours,
+        mode: input.mode ?? currentTiming.mode ?? "per_reservation",
+        digestHour: input.digestHour ?? currentTiming.digestHour ?? 8,
+      },
+    };
 
-  await db
-    .update(stores)
-    .set({
-      notificationSettings: updatedSettings,
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, storeId));
-
-  return { success: true } satisfies { success: true };
+    return { notificationSettings: updatedSettings };
+  });
 };
