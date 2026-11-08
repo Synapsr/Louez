@@ -677,6 +677,26 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
     );
   });
 
+  test("a product's activity needs reservations and customers read on a connection", async () => {
+    // Its assignment events carry reservation ids, and repair notes their numbers.
+    const { product, first } = await trackedProduct();
+    await book(product.id, first);
+    const productsOnly = await apiKey({
+      permissions: { ...readWrite, reservations: "none", customers: "none" },
+    });
+    const refused = await rejects(
+      run("getActivity", { id: product.id }, productsOnly()),
+      "PERMISSION_DENIED",
+    );
+    assert.deepEqual(refused.data.details, { required: "reservations:read" });
+    const noCustomers = await apiKey({ permissions: { ...readWrite, customers: "none" } });
+    await rejects(run("getActivity", { id: product.id }, noCustomers()), "PERMISSION_DENIED");
+
+    const allowed = await apiKey();
+    assert.ok((await run("getActivity", { id: product.id }, allowed())).items.length > 0);
+    assert.ok((await run("getActivity", { id: product.id }, session(MEMBER))).items.length > 0);
+  });
+
   test("a products-only key confirms with the bookings' dates, never their numbers or customers", async () => {
     const { product, first } = await trackedProduct();
     const booking = await book(product.id, first);

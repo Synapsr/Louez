@@ -390,7 +390,7 @@ const getActivity = storeProcedure
     mcp: {
       name: "products_get_activity",
       description:
-        "The history of a product's units, newest first: units created, changed, deleted, retired or reinstated, downtimes, assignments to reservations. Returns up to `limit` events (default 12, at most 50) and a nextCursor; nextCursor is null on the last page.",
+        "The history of a product's units, newest first: units created, changed, deleted, retired or reinstated, downtimes, assignments to reservations. Returns up to `limit` events (default 12, at most 50) and a nextCursor; nextCursor is null on the last page. Its events name reservations, so it needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.",
       bundle: "catalog",
       annotations: { readOnlyHint: true },
     },
@@ -399,6 +399,8 @@ const getActivity = storeProcedure
   .input(productActivityInput)
   .output(productActivityOutput)
   .handler(async ({ context, input }) => {
+    // Assignment events and repair notes name reservations.
+    requireReservationsAndCustomers(context);
     await assertOwnedProduct(context.actor.storeId, input.id);
     return getProductUnitActivityPage({
       storeId: context.actor.storeId,
