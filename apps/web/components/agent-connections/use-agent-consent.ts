@@ -20,18 +20,21 @@ export const useAgentConsent = (oauthQuery: string) => {
   const authorization = useQuery(agentConnectionsQueries.authorization(oauthQuery));
   const [edited, setTerms] = useState<AgentTerms | null>(null);
   const data = authorization.data;
-  const terms =
-    edited ??
-    (data
-      ? defaultAgentTerms(
-          data.stores.map((store) => store.id),
-          data.current,
-        )
-      : null);
+  // The user's edits are kept, but always against the stores they can open
+  // now: a store left since then drops out, and none left means every store.
+  const terms = data
+    ? defaultAgentTerms(
+        data.stores.map((store) => store.id),
+        edited ?? data.current,
+      )
+    : null;
 
   const answer = useMutation({
     ...agentConnectionsMutations.authorize(),
     onSuccess: ({ redirectUrl }) => window.location.assign(redirectUrl),
+    // A refusal may mean the user's stores changed meanwhile (a store left):
+    // read them again, so the terms above follow.
+    onError: () => void authorization.refetch(),
   });
 
   const accept = () => {
