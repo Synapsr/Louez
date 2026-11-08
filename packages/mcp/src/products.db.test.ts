@@ -538,15 +538,18 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const blind = await key({ ...readOnly, reservations: "none" });
     const customerText = await textOf(blind, "get_customer", { customerId: customer.id });
     assert.ok(customerText.includes(customerLink), customerText);
-    assert.ok(customerText.includes("#PT-SCOPED-1"), "the history itself stays");
+    assert.ok(
+      !customerText.includes("#PT-SCOPED-1"),
+      "no reservation history without reservations read",
+    );
     assert.ok(!customerText.includes(reservationId), customerText);
     const paymentsText = await textOf(blind, "list_payments", { reservationId });
     assert.ok(!paymentsText.includes(reservationLink), paymentsText);
 
     const seeing = await key({ ...readOnly, reservations: "read" });
-    assert.ok(
-      (await textOf(seeing, "get_customer", { customerId: customer.id })).includes(reservationLink),
-    );
+    const seenText = await textOf(seeing, "get_customer", { customerId: customer.id });
+    assert.ok(seenText.includes("#PT-SCOPED-1"), seenText);
+    assert.ok(seenText.includes(reservationLink), seenText);
     assert.ok((await textOf(seeing, "list_payments", { reservationId })).includes(reservationLink));
   });
 });

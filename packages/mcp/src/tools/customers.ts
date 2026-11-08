@@ -126,22 +126,18 @@ export function registerCustomerTools(
     ctx,
     { domain: 'customers', level: 'read' },
     'get_customer',
-    "Get detailed customer profile with reservation history and the store's custom fields, with the link to the customer's dashboard page and, when the connection may read reservations, each reservation's: give the user those URLs to open them. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
+    "Get detailed customer profile with the store's custom fields and, when the connection may read reservations, the reservation history, with the link to the customer's dashboard page and each reservation's: give the user those URLs to open them. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
     {
       customerId: z.string().describe('The customer ID'),
     },
     async ({ customerId }) => {
+      // The history is reservation data: only for a connection that may read reservations.
+      const readsReservations = hasPermission(ctx, 'reservations', 'read');
       const customer = await db.query.customers.findFirst({
         where: and(
           eq(customers.storeId, ctx.storeId),
           eq(customers.id, customerId),
         ),
-        with: {
-          reservations: {
-            orderBy: [desc(reservations.createdAt)],
-            limit: 10,
-          },
-        },
       });
 
       if (!customer) return toolError('Customer not found.');
@@ -181,15 +177,21 @@ export function registerCustomerTools(
         text += `\n### Notes\n${customer.notes}\n`;
       }
 
-      if (customer.reservations.length > 0) {
-        text += `\n### Recent reservations (${customer.reservations.length})\n`;
-        // A reservation's link names its id: only for a connection that may read reservations.
-        const linkReservations = hasPermission(ctx, 'reservations', 'read');
-        for (const r of customer.reservations) {
-          const link = linkReservations
-            ? ` — ${reservationLinks(ctx.ports.urls, { id: ctx.storeId }, r).dashboard}`
-            : '';
-          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)}${link}\n`;
+      const history = readsReservations
+        ? await db.query.reservations.findMany({
+            where: and(
+              eq(reservations.storeId, ctx.storeId),
+              eq(reservations.customerId, customer.id),
+            ),
+            orderBy: [desc(reservations.createdAt)],
+            limit: 10,
+          })
+        : [];
+      if (history.length > 0) {
+        text += `\n### Recent reservations (${history.length})\n`;
+        for (const r of history) {
+          const link = reservationLinks(ctx.ports.urls, { id: ctx.storeId }, r).dashboard;
+          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)} — ${link}\n`;
         }
       }
 
