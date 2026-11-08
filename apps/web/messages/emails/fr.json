@@ -178,6 +178,24 @@
       "amount": "Montant contesté"
     }
   },
+  "statusChangeAdmin": {
+    "customer": "Client",
+    "email": "E-mail",
+    "period": "Période",
+    "total": "Total de la réservation",
+    "viewReservation": "Voir la réservation",
+    "connectToManage": "Connectez-vous à votre tableau de bord pour gérer cette réservation.",
+    "confirmed": {
+      "subject": "Réservation #{number} confirmée par le client",
+      "title": "Confirmée par le client",
+      "body": "Le client a confirmé la réservation #{number} sur {storeName}."
+    },
+    "cancelled": {
+      "subject": "Réservation #{number} annulée par le client",
+      "title": "Annulée par le client",
+      "body": "Le client a annulé la réservation #{number} sur {storeName}."
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "Nouvelle facture fournisseur",
     "title": "Nouvelle facture fournisseur",

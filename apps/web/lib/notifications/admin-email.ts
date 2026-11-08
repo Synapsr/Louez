@@ -5,8 +5,12 @@ import type { NotificationEventType } from "@louez/types";
 
 import { env } from "@/env";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
-import { sendNewRequestLandlordEmail, sendPaymentAdminEmail } from "@/lib/email/send";
-import type { PaymentAdminEmailKind } from "@/lib/email/templates";
+import {
+  sendNewRequestLandlordEmail,
+  sendPaymentAdminEmail,
+  sendStatusChangeAdminEmail,
+} from "@/lib/email/send";
+import type { PaymentAdminEmailKind, StatusChangeAdminEmailKind } from "@/lib/email/templates";
 
 import type { NotificationContext } from "./dispatcher";
 import { paymentCurrencyOf, reservationCurrencyOf } from "./util.notification-currency";
@@ -14,22 +18,39 @@ import { paymentCurrencyOf, reservationCurrencyOf } from "./util.notification-cu
 /**
  * The store owner's email for an event, sent by dispatchNotification when the
  * store keeps that event's email channel on. Only the events below have an owner
- * template; any other event answers "not sent" rather than pretending.
+ * template, and a confirmation or a cancellation only when the customer made it;
+ * anything else answers "not sent" rather than pretending. The admin reminders
+ * send their own emails (dispatchAdminReminder).
  */
 type AdminEmailEvent = Extract<
   NotificationEventType,
-  "reservation_new" | "payment_received" | "payment_failed" | "payment_disputed"
+  | "reservation_new"
+  | "reservation_confirmed"
+  | "reservation_cancelled"
+  | "payment_received"
+  | "payment_failed"
+  | "payment_disputed"
 >;
 
 const ADMIN_EMAIL_EVENTS: readonly AdminEmailEvent[] = [
   "reservation_new",
+  "reservation_confirmed",
+  "reservation_cancelled",
   "payment_received",
   "payment_failed",
   "payment_disputed",
 ];
 
+const STATUS_EMAIL_KINDS: Record<
+  Extract<AdminEmailEvent, "reservation_confirmed" | "reservation_cancelled">,
+  StatusChangeAdminEmailKind
+> = {
+  reservation_confirmed: "confirmed",
+  reservation_cancelled: "cancelled",
+};
+
 const PAYMENT_EMAIL_KINDS: Record<
-  Exclude<AdminEmailEvent, "reservation_new">,
+  Exclude<AdminEmailEvent, "reservation_new" | keyof typeof STATUS_EMAIL_KINDS>,
   PaymentAdminEmailKind
 > = {
   payment_received: "received",
@@ -82,6 +103,7 @@ export interface AdminEmailDeps {
   findOwnerEmail: (storeId: string) => Promise<string | null>;
   sendNewRequestLandlordEmail: typeof sendNewRequestLandlordEmail;
   sendPaymentAdminEmail: typeof sendPaymentAdminEmail;
+  sendStatusChangeAdminEmail: typeof sendStatusChangeAdminEmail;
 }
 
 const defaultDeps: AdminEmailDeps = {
@@ -89,6 +111,7 @@ const defaultDeps: AdminEmailDeps = {
   findOwnerEmail,
   sendNewRequestLandlordEmail,
   sendPaymentAdminEmail,
+  sendStatusChangeAdminEmail,
 };
 
 const describeError = (error: unknown): string =>
@@ -106,6 +129,11 @@ export async function sendAdminEventEmail(
   if (!hasAdminEmail(eventType)) return { sent: false, error: "No email for this event" };
   const { reservation, customer } = ctx;
   if (!reservation) return { sent: false, error: "No reservation" };
+  const isStatusChange =
+    eventType === "reservation_confirmed" || eventType === "reservation_cancelled";
+  if (isStatusChange && ctx.actor !== "customer") {
+    return { sent: false, error: "Only a change the customer made is emailed" };
+  }
 
   try {
     const store = await deps.loadStore(ctx.store.id);
@@ -123,6 +151,17 @@ export async function sendAdminEventEmail(
         store,
         customer,
         reservation,
+        dashboardUrl,
+        locale,
+      });
+    } else if (eventType === "reservation_confirmed" || eventType === "reservation_cancelled") {
+      await deps.sendStatusChangeAdminEmail({
+        to,
+        kind: STATUS_EMAIL_KINDS[eventType],
+        store,
+        customer,
+        reservation,
+        reservationCurrency: reservationCurrencyOf(ctx),
         dashboardUrl,
         locale,
       });

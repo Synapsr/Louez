@@ -178,6 +178,24 @@
       "amount": "Importe impugnado"
     }
   },
+  "statusChangeAdmin": {
+    "customer": "Cliente",
+    "email": "Correo electrónico",
+    "period": "Periodo",
+    "total": "Total de la reserva",
+    "viewReservation": "Ver reserva",
+    "connectToManage": "Inicie sesión en su panel para gestionar esta reserva.",
+    "confirmed": {
+      "subject": "Reserva #{number} confirmada por el cliente",
+      "title": "Confirmada por el cliente",
+      "body": "El cliente ha confirmado la reserva #{number} en {storeName}."
+    },
+    "cancelled": {
+      "subject": "Reserva #{number} cancelada por el cliente",
+      "title": "Cancelada por el cliente",
+      "body": "El cliente ha cancelado la reserva #{number} en {storeName}."
+    }
+  },
   "contactMessage": {
     "subject": "Nuevo mensaje de {name} — {store}",
     "title": "Nuevo mensaje desde tu tienda",

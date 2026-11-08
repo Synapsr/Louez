@@ -169,6 +169,24 @@
       "amount": "Kwota sporna"
     }
   },
+  "statusChangeAdmin": {
+    "customer": "Klient",
+    "email": "E-mail",
+    "period": "Okres",
+    "total": "Łączna kwota rezerwacji",
+    "viewReservation": "Zobacz rezerwację",
+    "connectToManage": "Zaloguj się do panelu, aby zarządzać tą rezerwacją.",
+    "confirmed": {
+      "subject": "Rezerwacja #{number} potwierdzona przez klienta",
+      "title": "Potwierdzona przez klienta",
+      "body": "Klient potwierdził rezerwację #{number} w {storeName}."
+    },
+    "cancelled": {
+      "subject": "Rezerwacja #{number} anulowana przez klienta",
+      "title": "Anulowana przez klienta",
+      "body": "Klient anulował rezerwację #{number} w {storeName}."
+    }
+  },
   "contactMessage": {
     "subject": "Nowa wiadomość od {name} — {store}",
     "title": "Nowa wiadomość z Twojego sklepu",

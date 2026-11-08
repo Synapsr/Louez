@@ -54,7 +54,16 @@ import type { NotificationEventType, NotificationSettings } from "@louez/types";
 // Types
 // ============================================================================
 
+/**
+ * Who made the change an event reports: the customer (storefront, marketplace,
+ * phone agent), the store (its dashboard, assistant or MCP), or the system
+ * (Stripe's webhooks).
+ */
+export type NotificationActor = "customer" | "store" | "system";
+
 export interface NotificationContext {
+  /** Decides, for a confirmation or a cancellation, whether the owner gets an email. */
+  actor: NotificationActor;
   store: {
     id: string;
     name: string;
@@ -1081,6 +1090,7 @@ export async function dispatchAdminReminder(
     const message = buildAdminSmsMessage(
       eventType,
       {
+        actor: "system",
         store: ctx.store,
         reservation: ctx.reservation,
         customer: ctx.customer,

@@ -239,6 +239,7 @@ export async function handlePaymentFailure(
 
   deps
     .dispatchNotification("payment_failed", {
+      actor: "system",
       store: {
         id: reservation.store.id,
         name: reservation.store.name,

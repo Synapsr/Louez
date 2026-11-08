@@ -38,6 +38,7 @@ before(async () => {
 const INPUT = { reservationId: "res_dispute", amount: 100, currency: "EUR" };
 
 const CTX: NotificationContext = {
+  actor: "system",
   store: { id: "store_dispute", name: "Vélos du port" },
   reservation: {
     id: "res_dispute",

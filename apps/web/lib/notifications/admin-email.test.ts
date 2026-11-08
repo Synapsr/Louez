@@ -11,10 +11,10 @@ import {
 } from "@louez/types";
 
 import type { EmailLocale } from "@/lib/email/i18n";
-import type { PaymentAdminEmailKind } from "@/lib/email/templates";
+import type { PaymentAdminEmailKind, StatusChangeAdminEmailKind } from "@/lib/email/templates";
 
 import type { AdminEmailDeps, AdminEmailStore } from "./admin-email";
-import type { NotificationContext } from "./dispatcher";
+import type { NotificationActor, NotificationContext } from "./dispatcher";
 
 // The owner's email per event: which events have one, who receives it, and that
 // the store's email setting decides whether dispatchNotification sends it. The
@@ -71,6 +71,7 @@ const STORE: AdminEmailStore = {
 };
 
 const ctx = (overrides: Partial<NotificationContext> = {}): NotificationContext => ({
+  actor: "customer",
   store: { id: STORE.id, name: STORE.name, email: STORE.email },
   reservation: {
     id: "res_1",
@@ -88,9 +89,10 @@ const ctx = (overrides: Partial<NotificationContext> = {}): NotificationContext 
 interface Sent {
   newRequest: Parameters<AdminEmailDeps["sendNewRequestLandlordEmail"]>[0][];
   payment: Parameters<AdminEmailDeps["sendPaymentAdminEmail"]>[0][];
+  statusChange: Parameters<AdminEmailDeps["sendStatusChangeAdminEmail"]>[0][];
 }
 
-const noneSent = (): Sent => ({ newRequest: [], payment: [] });
+const noneSent = (): Sent => ({ newRequest: [], payment: [], statusChange: [] });
 
 const fakeDeps = (
   sent: Sent,
@@ -108,21 +110,26 @@ const fakeDeps = (
     if (options.fail) throw new Error("smtp down");
     return { success: true };
   },
+  sendStatusChangeAdminEmail: async (input) => {
+    sent.statusChange.push(input);
+    if (options.fail) throw new Error("smtp down");
+    return { success: true };
+  },
 });
 
 describe("owner email per event", () => {
-  test("only the new reservation and the payment events have an owner email", () => {
+  test("rejections, pickups and completions, the owner's own actions, have no email", () => {
     const withEmail: NotificationEventType[] = [
       "reservation_new",
+      "reservation_confirmed",
+      "reservation_cancelled",
       "payment_received",
       "payment_failed",
       "payment_disputed",
     ];
     for (const event of withEmail) assert.equal(hasAdminEmail(event), true, event);
     for (const event of [
-      "reservation_confirmed",
       "reservation_rejected",
-      "reservation_cancelled",
       "reservation_picked_up",
       "reservation_completed",
     ] as const) {
@@ -189,9 +196,43 @@ describe("owner email per event", () => {
 
   test("an event without an owner email is reported as not sent", async () => {
     const sent = noneSent();
-    const result = await sendAdminEventEmail("reservation_confirmed", ctx(), fakeDeps(sent));
+    const result = await sendAdminEventEmail("reservation_rejected", ctx(), fakeDeps(sent));
 
     assert.equal(result.sent, false);
+    assert.deepEqual(sent, noneSent());
+  });
+
+  test("a confirmation or a cancellation the customer made emails the owner", async () => {
+    const sent = noneSent();
+    const base = ctx();
+    const reservation = base.reservation && { ...base.reservation, currency: "GBP" };
+    assert.deepEqual(
+      await sendAdminEventEmail("reservation_confirmed", ctx({ reservation }), fakeDeps(sent)),
+      { sent: true },
+    );
+    assert.deepEqual(
+      await sendAdminEventEmail("reservation_cancelled", ctx({ reservation }), fakeDeps(sent)),
+      { sent: true },
+    );
+    assert.deepEqual(
+      sent.statusChange.map((email) => [email.kind, email.to, email.reservationCurrency]),
+      [
+        ["confirmed", "contact@velos.test", "GBP"],
+        ["cancelled", "contact@velos.test", "GBP"],
+      ],
+    );
+  });
+
+  test("the store's own changes, and the system's, send the owner no email", async () => {
+    const sent = noneSent();
+    const actors: NotificationActor[] = ["store", "system"];
+    const events: NotificationEventType[] = ["reservation_confirmed", "reservation_cancelled"];
+    for (const actor of actors) {
+      for (const event of events) {
+        const result = await sendAdminEventEmail(event, ctx({ actor }), fakeDeps(sent));
+        assert.equal(result.sent, false, `${actor} ${event}`);
+      }
+    }
     assert.deepEqual(sent, noneSent());
   });
 
@@ -269,18 +310,59 @@ describe("dispatchNotification email channel", () => {
 
   test("reports an event without an owner email as not sent", async () => {
     const result = await dispatchNotification(
-      "reservation_cancelled",
+      "reservation_rejected",
       ctx({
         store: {
           id: STORE.id,
           name: STORE.name,
           email: STORE.email,
-          notificationSettings: settingsWith("reservation_cancelled", true),
+          notificationSettings: settingsWith("reservation_rejected", true),
         },
       }),
     );
 
     assert.equal(result.email.sent, false);
+  });
+});
+
+describe("status change email to the owner", () => {
+  test("renders in every locale, for a confirmation and a cancellation", async () => {
+    const locales: EmailLocale[] = [
+      "fr",
+      "en",
+      "de",
+      "es",
+      "it",
+      "nl",
+      "pl",
+      "pt",
+      "zh",
+      "ja",
+      "ru",
+      "id",
+      "ko",
+    ];
+    for (const kind of ["confirmed", "cancelled"] satisfies StatusChangeAdminEmailKind[]) {
+      for (const locale of locales) {
+        const html = await render(
+          templates.StatusChangeAdminEmail({
+            kind,
+            storeName: "Vélos du port",
+            customer: { firstName: "Léa", lastName: "Martin", email: "lea@example.test" },
+            reservationNumber: "R-1001",
+            startDate: new Date("2027-05-01T08:00:00Z"),
+            endDate: new Date("2027-05-03T08:00:00Z"),
+            reservationTotal: 120,
+            dashboardUrl: "https://app.example.test/dashboard/reservations/res_1",
+            locale,
+            currency: "EUR",
+          }),
+        );
+        assert.match(html, /R-1001/, `${kind} ${locale}`);
+        assert.match(html, /Léa/, `${kind} ${locale}`);
+        assert.doesNotMatch(html, /\{(number|storeName)\}/, `${kind} ${locale}`);
+      }
+    }
   });
 });
 

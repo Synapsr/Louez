@@ -70,7 +70,8 @@ const loadContext = async (input: DisputeNotificationInput) => {
     },
   });
   if (!reservation) return null;
-  return {
+  const ctx: NotificationContext = {
+    actor: "system",
     store: reservation.store,
     reservation: {
       id: reservation.id,
@@ -83,6 +84,7 @@ const loadContext = async (input: DisputeNotificationInput) => {
     customer: reservation.customer ?? undefined,
     payment: { amount: input.amount, currency: input.currency },
   };
+  return ctx;
 };
 
 const defaultDeps: DisputeNotificationDeps = {

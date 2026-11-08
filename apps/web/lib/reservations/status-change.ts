@@ -440,6 +440,7 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
     if (eventType) {
       deps
         .dispatchNotification(eventType, {
+          actor: "store",
           store: {
             id: store.id,
             name: store.name,
@@ -582,6 +583,7 @@ export function createReservationStatusService(overrides: Partial<StatusChangeDe
     // Dispatch admin notifications (SMS, Discord) based on preferences
     deps
       .dispatchNotification("reservation_cancelled", {
+        actor: "store",
         store: {
           id: store.id,
           name: store.name,

@@ -25,6 +25,7 @@ const LOCALES: EmailLocale[] = [
 ];
 
 const ctx: NotificationContext = {
+  actor: "system",
   store: { id: "store_push", name: "Vélos du port", settings: { currency: "EUR" } },
   reservation: {
     id: "res_push",

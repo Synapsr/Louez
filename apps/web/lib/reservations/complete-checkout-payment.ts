@@ -378,6 +378,7 @@ const runCheckoutPaymentCompletion = async ({
     });
 
     dispatchNotification("payment_received", {
+      actor: "system",
       store: toAdminNotificationStore(store),
       reservation: { ...toNotificationReservation(reservation), currency: reservation.currency },
       customer: toNotificationCustomer(reservation.customer),
@@ -465,6 +466,7 @@ const runCheckoutPaymentCompletion = async ({
     }
 
     dispatchNotification("reservation_confirmed", {
+      actor: "system",
       store: toAdminNotificationStore(store),
       reservation: toNotificationReservation(reservation),
       customer: toNotificationCustomer(reservation.customer),

@@ -76,6 +76,7 @@ interface SenderCall {
   args: unknown[];
 }
 type CustomerNotification = Parameters<StatusChangeDeps["dispatchCustomerNotification"]>;
+type OwnerNotification = Parameters<StatusChangeDeps["dispatchNotification"]>;
 
 interface ItemFixture {
   stockKind: "consumable" | "returnable";
@@ -92,6 +93,7 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
   let mcp: ReservationToolsClient;
   let calls: SenderCall[] = [];
   let customerNotifications: CustomerNotification[] = [];
+  let ownerNotifications: OwnerNotification[] = [];
   let errors: StatusChangeFailure[] = [];
   let failTulip = false;
   let counter = 0;
@@ -134,6 +136,7 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
       },
       dispatchNotification: async (eventType, ctx) => {
         note("dispatchNotification", [eventType, ctx]);
+        ownerNotifications.push([eventType, ctx]);
         return {
           email: { sent: true },
           sms: { sent: false },
@@ -199,6 +202,7 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
   beforeEach(() => {
     calls = [];
     customerNotifications = [];
+    ownerNotifications = [];
     errors = [];
     failTulip = false;
   });
@@ -379,6 +383,8 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
     assert.match(accepted.termsUrl ?? "", /\/terms$/);
     assert.equal(accepted.paymentUrl, null);
     assert.equal(argsOf("dispatchNotification")[0]?.[0], "reservation_confirmed");
+    // The store's own change: the owner gets no email for it (admin-email.ts).
+    assert.equal(ownerNotifications[0]?.[1].actor, "store");
     assert.deepEqual(argsOf("notifyReservationConfirmed"), [
       [{ id: STORE, name: "Status store", slug: "status-store" }, id],
     ]);

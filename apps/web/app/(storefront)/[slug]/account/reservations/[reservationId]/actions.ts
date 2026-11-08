@@ -275,6 +275,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
 
   // Notify the store owner
   dispatchNotification("reservation_confirmed", {
+    actor: "customer",
     store: {
       id: store.id,
       name: store.name,
@@ -436,6 +437,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
 
   // Notify the store owner
   dispatchNotification("reservation_cancelled", {
+    actor: "customer",
     store: {
       id: store.id,
       name: store.name,
@@ -556,6 +558,7 @@ export async function cancelReservationRequest(
     }
     try {
       await dispatchNotification("reservation_cancelled", {
+        actor: "customer",
         store,
         reservation: {
           id: reservation.id,

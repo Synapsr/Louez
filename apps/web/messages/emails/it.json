@@ -169,6 +169,24 @@
       "amount": "Importo contestato"
     }
   },
+  "statusChangeAdmin": {
+    "customer": "Cliente",
+    "email": "Email",
+    "period": "Periodo",
+    "total": "Totale della prenotazione",
+    "viewReservation": "Visualizza prenotazione",
+    "connectToManage": "Accedi alla tua dashboard per gestire questa prenotazione.",
+    "confirmed": {
+      "subject": "Prenotazione #{number} confermata dal cliente",
+      "title": "Confermata dal cliente",
+      "body": "Il cliente ha confermato la prenotazione #{number} su {storeName}."
+    },
+    "cancelled": {
+      "subject": "Prenotazione #{number} annullata dal cliente",
+      "title": "Annullata dal cliente",
+      "body": "Il cliente ha annullato la prenotazione #{number} su {storeName}."
+    }
+  },
   "contactMessage": {
     "subject": "Nuovo messaggio da {name} — {store}",
     "title": "Nuovo messaggio dal tuo negozio",

@@ -178,6 +178,24 @@
       "amount": "Jumlah yang disengketakan"
     }
   },
+  "statusChangeAdmin": {
+    "customer": "Pelanggan",
+    "email": "Email",
+    "period": "Periode",
+    "total": "Total reservasi",
+    "viewReservation": "Lihat reservasi",
+    "connectToManage": "Masuk ke dasbor Anda untuk mengelola reservasi ini.",
+    "confirmed": {
+      "subject": "Reservasi #{number} dikonfirmasi oleh pelanggan",
+      "title": "Dikonfirmasi oleh pelanggan",
+      "body": "Pelanggan telah mengonfirmasi reservasi #{number} di {storeName}."
+    },
+    "cancelled": {
+      "subject": "Reservasi #{number} dibatalkan oleh pelanggan",
+      "title": "Dibatalkan oleh pelanggan",
+      "body": "Pelanggan telah membatalkan reservasi #{number} di {storeName}."
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "Faktur pemasok baru",
     "title": "Faktur pemasok baru",

@@ -30,6 +30,9 @@ import {
   PaymentAdminEmail,
   getPaymentAdminEmailSubject,
   type PaymentAdminEmailKind,
+  StatusChangeAdminEmail,
+  getStatusChangeAdminEmailSubject,
+  type StatusChangeAdminEmailKind,
   PhoneCallbackLandlordEmail,
   ContactMessageEmail,
   VoiceNumberBillingEmail,
@@ -1111,6 +1114,79 @@ export async function sendPaymentAdminEmail({
     })
   )
   const templateType = `payment_${kind}_admin`
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: store.name })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType,
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType,
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// The customer confirmed or cancelled a reservation: to the store owner.
+export async function sendStatusChangeAdminEmail({
+  to,
+  kind,
+  store,
+  customer,
+  reservation,
+  reservationCurrency,
+  dashboardUrl,
+  locale = 'fr',
+}: {
+  to: string
+  kind: StatusChangeAdminEmailKind
+  store: StoreWithEmailDateSettings
+  customer?: Customer | null
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+    totalAmount: number
+  }
+  /** The reservation's currency; the store's when absent. */
+  reservationCurrency?: string
+  dashboardUrl: string
+  locale?: EmailLocale
+}) {
+  const subject = getStatusChangeAdminEmailSubject(kind, reservation.number, locale)
+  const html = await render(
+    StatusChangeAdminEmail({
+      kind,
+      storeName: store.name,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      customer,
+      reservationNumber: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      reservationTotal: reservation.totalAmount,
+      dashboardUrl,
+      locale,
+      currency: reservationCurrency || store.settings?.currency || 'EUR',
+      storeTimezone: store.settings?.timezone,
+      storeCountryCode: store.settings?.country,
+    })
+  )
+  const templateType = `reservation_${kind}_admin`
 
   try {
     const result = await sendEmail({ to, subject, html, fromName: store.name })

@@ -178,6 +178,24 @@
       "amount": "異議の対象金額"
     }
   },
+  "statusChangeAdmin": {
+    "customer": "顧客",
+    "email": "メール",
+    "period": "期間",
+    "total": "予約合計",
+    "viewReservation": "予約を見る",
+    "connectToManage": "この予約を管理するには、ダッシュボードにログインしてください。",
+    "confirmed": {
+      "subject": "お客様が予約 #{number} を確定しました",
+      "title": "お客様が確定しました",
+      "body": "お客様が {storeName} の予約 #{number} を確定しました。"
+    },
+    "cancelled": {
+      "subject": "お客様が予約 #{number} をキャンセルしました",
+      "title": "お客様がキャンセルしました",
+      "body": "お客様が {storeName} の予約 #{number} をキャンセルしました。"
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "新しいサプライヤー請求書",
     "title": "新しいサプライヤー請求書",

@@ -22,6 +22,11 @@ export {
   getPaymentAdminEmailSubject,
   type PaymentAdminEmailKind,
 } from "./payment-admin";
+export {
+  StatusChangeAdminEmail,
+  getStatusChangeAdminEmailSubject,
+  type StatusChangeAdminEmailKind,
+} from "./status-change-admin";
 export { PhoneCallbackLandlordEmail } from "./phone-callback-landlord";
 export { ContactMessageEmail } from "./contact-message";
 export { VoiceNumberBillingEmail } from "./voice-number-billing";

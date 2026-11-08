@@ -44,9 +44,12 @@ import {
   ThankYouReviewEmail,
   VerificationCodeEmail,
   VoiceNumberBillingEmail,
+  StatusChangeAdminEmail,
   getPaymentAdminEmailSubject,
   getReservationModifiedEmailSubject,
+  getStatusChangeAdminEmailSubject,
   type PaymentAdminEmailKind,
+  type StatusChangeAdminEmailKind,
 } from "@/lib/email/templates";
 import type { BalanceLimitVariant } from "@/lib/email/templates/balance-limit";
 import type { VoiceNumberBillingVariant } from "@/lib/email/templates/voice-number-billing";
@@ -198,6 +201,36 @@ const paymentAdminPreview = (kind: PaymentAdminEmailKind, title: string, descrip
         startDate,
         endDate,
         amount: total,
+        reservationTotal: total,
+        dashboardUrl: url,
+        locale,
+        currency: store.currency,
+        storeTimezone: store.timezone,
+        storeCountryCode: store.country,
+      }),
+    }),
+  });
+
+/** The store owner's email about a change the customer made. */
+const statusChangeAdminPreview = (
+  kind: StatusChangeAdminEmailKind,
+  title: string,
+  description: string,
+) =>
+  storeEmail({
+    id: `reservation-${kind}-admin`,
+    title,
+    description,
+    compose: ({ store, locale }) => ({
+      subject: getStatusChangeAdminEmailSubject(kind, number, locale),
+      element: StatusChangeAdminEmail({
+        kind,
+        storeName: store.name,
+        primaryColor: store.primaryColor,
+        customer: previewCustomer,
+        reservationNumber: number,
+        startDate,
+        endDate,
         reservationTotal: total,
         dashboardUrl: url,
         locale,
@@ -562,6 +595,16 @@ export const EMAIL_DOCUMENT_PREVIEWS: readonly EmailDocumentPreview[] = [
       }),
     }),
   }),
+  statusChangeAdminPreview(
+    "confirmed",
+    "Réservation confirmée par le client (loueur)",
+    "Le loueur est prévenu que le client a confirmé la réservation, en acceptant le devis.",
+  ),
+  statusChangeAdminPreview(
+    "cancelled",
+    "Réservation annulée par le client (loueur)",
+    "Le loueur est prévenu que le client a annulé sa demande ou refusé le devis.",
+  ),
   paymentAdminPreview(
     "received",
     "Paiement reçu (loueur)",

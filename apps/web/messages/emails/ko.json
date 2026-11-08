@@ -178,6 +178,24 @@
       "amount": "이의 제기 금액"
     }
   },
+  "statusChangeAdmin": {
+    "customer": "고객",
+    "email": "이메일",
+    "period": "기간",
+    "total": "예약 총액",
+    "viewReservation": "예약 보기",
+    "connectToManage": "이 예약을 관리하려면 대시보드에 로그인하세요.",
+    "confirmed": {
+      "subject": "고객이 예약 #{number}을(를) 확정했습니다",
+      "title": "고객이 확정함",
+      "body": "고객이 {storeName}의 예약 #{number}을(를) 확정했습니다."
+    },
+    "cancelled": {
+      "subject": "고객이 예약 #{number}을(를) 취소했습니다",
+      "title": "고객이 취소함",
+      "body": "고객이 {storeName}의 예약 #{number}을(를) 취소했습니다."
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "새로운 공급업체 송장",
     "title": "새로운 공급업체 송장",

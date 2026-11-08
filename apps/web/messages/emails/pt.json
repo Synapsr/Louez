@@ -169,6 +169,24 @@
       "amount": "Valor contestado"
     }
   },
+  "statusChangeAdmin": {
+    "customer": "Cliente",
+    "email": "E-mail",
+    "period": "Período",
+    "total": "Total da reserva",
+    "viewReservation": "Ver reserva",
+    "connectToManage": "Entre no seu painel para gerenciar esta reserva.",
+    "confirmed": {
+      "subject": "Reserva #{number} confirmada pelo cliente",
+      "title": "Confirmada pelo cliente",
+      "body": "O cliente confirmou a reserva #{number} em {storeName}."
+    },
+    "cancelled": {
+      "subject": "Reserva #{number} cancelada pelo cliente",
+      "title": "Cancelada pelo cliente",
+      "body": "O cliente cancelou a reserva #{number} em {storeName}."
+    }
+  },
   "contactMessage": {
     "subject": "Nova mensagem de {name} — {store}",
     "title": "Nova mensagem da sua loja",

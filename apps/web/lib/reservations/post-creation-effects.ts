@@ -195,6 +195,7 @@ export const notifyRequestReceived = async ({
   });
 
   dispatchNotification("reservation_new", {
+    actor: "customer",
     store: {
       id: store.id,
       name: store.name,
