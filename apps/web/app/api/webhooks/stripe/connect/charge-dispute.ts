@@ -4,7 +4,7 @@ import { fromStripeCents } from "@/lib/stripe";
 
 import { recordChargeDispute } from "./charge-writes";
 import { type DisputeEventType, type DisputeInput, mapDisputeStatus } from "./dispute-facts";
-import { notifyPaymentDisputed } from "./dispute-notification";
+import { type DisputeNotificationInput, notifyPaymentDisputed } from "./dispute-notification";
 import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from "./fee-reversal";
 
 // `charge.dispute.*` on a connected account (louez-billing docs/api, fees.md §9 and
@@ -37,7 +37,7 @@ export async function handleChargeDispute(
     readonly connectedAccountId: string | undefined;
   },
   feeReversal: FeeReversalStripe = stripeFeeReversal,
-  notifyDisputed: typeof notifyPaymentDisputed = notifyPaymentDisputed,
+  notifyDisputed: (input: DisputeNotificationInput) => Promise<unknown> = notifyPaymentDisputed,
 ): Promise<void> {
   const { eventType, dispute, connectedAccountId } = input;
   const chargeId = stripeId(dispute.charge);
