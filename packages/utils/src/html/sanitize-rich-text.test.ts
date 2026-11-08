@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { realpathSync } from "node:fs";
+import { createRequire } from "node:module";
+
 import { Parser } from "htmlparser2";
 
 import { hasRichTextContent } from "./rich-text-content";
 import {
   RICH_TEXT_MAX_DEPTH,
   richTextTooDeep,
+  sanitizeRichText,
   sanitizeRichTextHtml as sanitize,
 } from "./sanitize-rich-text";
 
@@ -166,16 +170,43 @@ test("hostile inputs at the write limit are sanitised in linear time", () => {
   }
 });
 
+/** The median of an odd count of measures. */
+const median = (values: number[]) => [...values].sort((a, b) => a - b)[values.length >> 1] ?? 0;
+
+/**
+ * How much more a four times larger input costs: medians of seven runs,
+ * the two sizes taken in turn so a busy machine slows both alike.
+ */
+function growth(unit: string): { small: number; large: number } {
+  const smallHtml = unit.repeat(10_000);
+  const largeHtml = unit.repeat(40_000);
+  const small: number[] = [];
+  const large: number[] = [];
+  for (let run = 0; run < 7; run += 1) {
+    for (const [html, into] of [
+      [smallHtml, small],
+      [largeHtml, large],
+    ] as const) {
+      const start = performance.now();
+      sanitize(html);
+      into.push(performance.now() - start);
+    }
+  }
+  return { small: median(small), large: median(large) };
+}
+
 test("four times the input costs about four times as much, never sixteen", () => {
   sanitize("<p>warm up</p>");
-  for (const unit of ["<b>", "<em/>", "<em></bogus>", "<script ", "<a ", "<em>"]) {
-    const small = timed(unit.repeat(10_000));
-    const large = timed(unit.repeat(40_000));
-    // The floor absorbs timer noise on tiny runs.
-    assert.ok(
-      large < Math.max(small, 2) * 10,
-      `${unit}: ${small.toFixed(1)} ms, then ${large.toFixed(1)} ms`,
-    );
+  for (const unit of ["<a>", "<em>x</em>", "<a ", "<script ", "<b>", "<em/>", "<em></bogus>"]) {
+    // Linear grows about 4×, quadratic about 16×: under 10× passes. A
+    // measure spoiled by load is taken again; a quadratic one fails each time.
+    let last = { small: 0, large: 0 };
+    const passes = [0, 1, 2].some(() => {
+      last = growth(unit);
+      // The floor absorbs timer noise on runs of a fraction of a millisecond.
+      return last.large < Math.max(last.small, 1) * 10;
+    });
+    assert.ok(passes, `${unit}: ${last.small.toFixed(2)} ms, then ${last.large.toFixed(2)} ms`);
   }
 });
 
@@ -265,4 +296,52 @@ test("the depth check stops at the limit: deep inputs at the write limit cost al
     const ms = performance.now() - start;
     assert.ok(ms < 50, `${unit}: ${ms.toFixed(1)} ms`);
   }
+});
+
+test("a line break the sanitiser adds counts in the depth", () => {
+  const html = `${"<blockquote>".repeat(256)}a\nb${"</blockquote>".repeat(256)}`;
+  // As sent, 256 levels; once its line break is a `<br />`, 257.
+  assert.equal(richTextTooDeep(html), false);
+  const { html: out, tooDeep } = sanitizeRichText(html);
+  assert.equal(tooDeep, true);
+  assert.equal(out, "a<br />b");
+  assert.equal(stable(html), "a<br />b");
+  assert.ok(depthOf(out) <= RICH_TEXT_MAX_DEPTH);
+});
+
+test("too deep, a value shows its visible text only, as the sanitiser would", () => {
+  const deep = (inner: string) =>
+    `${"<blockquote>".repeat(300)}${inner}${"</blockquote>".repeat(300)}`;
+  // No attribute value, no script or style text, no comment.
+  assert.equal(stable(deep('<a title="PRIVATE>ATTRIBUTE">public</a>')), "public");
+  assert.equal(
+    stable(deep("<script>SECRET()</script><style>.s{}</style><!-- HIDDEN -->visible")),
+    "visible",
+  );
+  assert.equal(stable(deep("<textarea>typed</textarea><noscript>no</noscript>shown")), "shown");
+  // Canonical: line breaks and entities read as the sanitiser writes them.
+  assert.equal(stable(deep("a\nb")), "a<br />b");
+  assert.equal(stable(deep("Tom &amp; Jerry & co")), "Tom &amp; Jerry &amp; co");
+  assert.equal(stable(deep("1 < 2 > 0")), "1 &lt; 2 &gt; 0");
+});
+
+test("the deep fallback reads text in one pass, however deep", () => {
+  sanitize("<p>warm up</p>");
+  for (const unit of ["<b>", "<em></bogus>", "<svg><g>", "<em><script>x</script>"]) {
+    const html = unit.repeat(Math.floor(100_000 / unit.length));
+    const start = performance.now();
+    sanitize(html);
+    const ms = performance.now() - start;
+    assert.ok(ms < 200, `${unit}: ${ms.toFixed(1)} ms`);
+  }
+});
+
+test("the depth check parses with the very htmlparser2 sanitize-html uses", () => {
+  const require = createRequire(import.meta.url);
+  const own = realpathSync(require.resolve("htmlparser2"));
+  const fromSanitizeHtml = realpathSync(
+    createRequire(require.resolve("sanitize-html")).resolve("htmlparser2"),
+  );
+  // One module: a bump of either dependency that makes them differ fails here.
+  assert.equal(own, fromSanitizeHtml);
 });

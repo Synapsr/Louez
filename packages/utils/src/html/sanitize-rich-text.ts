@@ -1,4 +1,4 @@
-import { Parser, type ParserOptions } from "htmlparser2";
+import { Parser, Tokenizer, type ParserOptions, type TokenizerCallbacks } from "htmlparser2";
 import sanitizeHtml from "sanitize-html";
 
 import { RICH_TEXT_MAX_DEPTH } from "./rich-text-content";
@@ -89,17 +89,6 @@ export function richTextTooDeep(html: string): boolean {
   }
 }
 
-/**
- * HTML no editor wrote: its text without any markup, escaped. One linear
- * pass (`[^<>]*` stops at the next `<`), and stable when sanitised again.
- */
-const textOnly = (html: string): string =>
-  html
-    .replace(/<[^<>]*>/g, "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-
 const NAMED_ENTITIES: Record<string, string> = {
   amp: "&",
   apos: "'",
@@ -161,6 +150,82 @@ const OPTIONS: sanitizeHtml.IOptions = {
   textFilter: (text) => (text.trim() === "" ? text : text.replace(/\r?\n/g, "<br />")),
 };
 
+/** The elements whose content the sanitiser drops, as a set. */
+const DROPPED = new Set(DROPPED_WITH_CONTENT);
+
+const ignore = () => {};
+
+/**
+ * The text a value shows, as htmlparser2's tokenizer reads it: its text
+ * events only, so no attribute value and no comment, and none of the content
+ * of the elements the sanitiser drops (scripts, styles…). The tokenizer
+ * keeps no stack of open tags: one pass, however deep the input.
+ */
+function visibleText(html: string): string {
+  const parts: string[] = [];
+  let dropped: string | null = null;
+  let droppedDepth = 0;
+  const nameAt = (start: number, end: number) => html.slice(start, end).toLowerCase();
+  const callbacks: TokenizerCallbacks = {
+    onattribdata: ignore,
+    onattribentity: ignore,
+    onattribend: ignore,
+    onattribname: ignore,
+    oncdata: ignore,
+    oncomment: ignore,
+    ondeclaration: ignore,
+    onend: ignore,
+    onopentagend: ignore,
+    onprocessinginstruction: ignore,
+    onselfclosingtag: ignore,
+    ontextentity: ignore,
+    onopentagname: (start, end) => {
+      const name = nameAt(start, end);
+      if (dropped === null && DROPPED.has(name)) {
+        dropped = name;
+        droppedDepth = 1;
+      } else if (dropped === name) {
+        droppedDepth += 1;
+      }
+    },
+    onclosetag: (start, end) => {
+      if (dropped !== null && nameAt(start, end) === dropped) {
+        droppedDepth -= 1;
+        if (droppedDepth === 0) dropped = null;
+      }
+    },
+    ontext: (start, end) => {
+      if (dropped === null) parts.push(html.slice(start, end));
+    },
+  };
+  const tokenizer = new Tokenizer(PARSER_OPTIONS, callbacks);
+  tokenizer.write(html);
+  tokenizer.end();
+  return parts.join("");
+}
+
+/**
+ * HTML no editor wrote, too deep to keep its markup: its visible text, with
+ * `<` and `>` as characters, through the sanitiser like any text (a bare `&`
+ * escaped, an entity kept, line breaks as `<br />`). Shallow by
+ * construction, so a second pass returns the same string.
+ */
+const textOnly = (html: string): string =>
+  sanitizeHtml(visibleText(html).replaceAll("<", "&lt;").replaceAll(">", "&gt;"), OPTIONS);
+
+/**
+ * Sanitised editor HTML, and whether the value nests deeper than
+ * `RICH_TEXT_MAX_DEPTH`: as sent, or once sanitised (a line break the
+ * sanitiser turns into `<br />` counts too). Too deep, the HTML is the
+ * value's text alone; a write refuses it instead.
+ */
+export function sanitizeRichText(html: string): { html: string; tooDeep: boolean } {
+  if (richTextTooDeep(html)) return { html: textOnly(html), tooDeep: true };
+  const sanitized = sanitizeHtml(html, OPTIONS);
+  if (richTextTooDeep(sanitized)) return { html: textOnly(html), tooDeep: true };
+  return { html: sanitized, tooDeep: false };
+}
+
 /**
  * Keeps the editor's markup (allow-list above, attributes stripped except a
  * safe `href`) and drops every other tag while keeping its text, so a pasted
@@ -169,5 +234,4 @@ const OPTIONS: sanitizeHtml.IOptions = {
  * breaks become `<br />`. HTML nested deeper than `RICH_TEXT_MAX_DEPTH`
  * (never the editor's) comes out as its text alone: writes refuse it first.
  */
-export const sanitizeRichTextHtml = (html: string): string =>
-  richTextTooDeep(html) ? textOnly(html) : sanitizeHtml(html, OPTIONS);
+export const sanitizeRichTextHtml = (html: string): string => sanitizeRichText(html).html;
