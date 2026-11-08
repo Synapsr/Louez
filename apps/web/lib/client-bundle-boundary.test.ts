@@ -4,6 +4,10 @@ import { dirname, join, relative, resolve } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+// TypeScript 7 (the app's compiler) has no JavaScript parser API yet: the
+// classic compiler, 5.9, parses here, as it does for apps/voice-relay.
+import ts from "typescript-5";
+
 // The rich-text sanitiser parses HTML with sanitize-html (htmlparser2,
 // postcss): server code only. This walks the imports of every client module
 // ("use client"), through the app and the workspace packages, the way the
@@ -28,30 +32,90 @@ const listSources = (dir: string): string[] =>
     return /\.(ts|tsx)$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [path] : [];
   });
 
-const isClientModule = (source: string) => /^\s*(['"])use client\1/.test(source);
-/** A server action module: a client gets references to it, never its code. */
-const isServerActionModule = (source: string) => /^\s*(['"])use server\1/.test(source);
-
-/** Leaves comments out, so an import named in one is not followed. */
-const stripComments = (source: string) =>
-  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
-
-/** The specifiers a module loads at run time: no `import type`, no `export type`. */
-function runtimeSpecifiers(source: string): string[] {
-  const code = stripComments(source);
-  const specifiers: string[] = [];
-  const statement = /\b(import|export)\s+(type\s+)?([^;]*?)\bfrom\s*["']([^"']+)["']/g;
-  for (const match of code.matchAll(statement)) {
-    if (match[2]) continue;
-    specifiers.push(match[4] ?? "");
+/** The directive prologue of a module: its leading string statements, comments aside. */
+function directivesOf(source: ts.SourceFile): string[] {
+  const directives: string[] = [];
+  for (const statement of source.statements) {
+    if (!ts.isExpressionStatement(statement) || !ts.isStringLiteral(statement.expression)) break;
+    directives.push(statement.expression.text);
   }
-  for (const match of code.matchAll(/\bimport\s*["']([^"']+)["']/g))
-    specifiers.push(match[1] ?? "");
-  for (const match of code.matchAll(/\b(?:import|require)\(\s*["']([^"']+)["']\s*\)/g)) {
-    specifiers.push(match[1] ?? "");
-  }
-  return specifiers;
+  return directives;
 }
+
+/** Whether an import only brings types, so the compiler erases it. */
+const isTypeOnlyImport = (node: ts.ImportDeclaration) => {
+  const clause = node.importClause;
+  if (!clause) return false;
+  if (clause.isTypeOnly) return true;
+  // `import { type A, type B } from "x"`: every binding is a type, nothing is loaded.
+  const bindings = clause.namedBindings;
+  return (
+    !clause.name &&
+    bindings !== undefined &&
+    ts.isNamedImports(bindings) &&
+    bindings.elements.length > 0 &&
+    bindings.elements.every((element) => element.isTypeOnly)
+  );
+};
+
+/** A module specifier as written, or a dynamic template's fixed head ending in `*`. */
+const specifierText = (node: ts.Node | undefined): string | null => {
+  if (!node) return null;
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+  if (ts.isTemplateExpression(node)) return `${node.head.text}*`;
+  return null;
+};
+
+/** What a module is, from the TypeScript parser: its directives and its run-time imports. */
+function readModule(file: string, text: string) {
+  const source = ts.createSourceFile(
+    file,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    file.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const specifiers: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isImportDeclaration(node)) {
+      if (!isTypeOnlyImport(node)) {
+        const text = specifierText(node.moduleSpecifier);
+        if (text) specifiers.push(text);
+      }
+    } else if (ts.isExportDeclaration(node)) {
+      if (node.moduleSpecifier && !node.isTypeOnly) {
+        const text = specifierText(node.moduleSpecifier);
+        if (text) specifiers.push(text);
+      }
+    } else if (ts.isImportEqualsDeclaration(node)) {
+      if (!node.isTypeOnly && ts.isExternalModuleReference(node.moduleReference)) {
+        const text = specifierText(node.moduleReference.expression);
+        if (text) specifiers.push(text);
+      }
+    } else if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const isLoad =
+        callee.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(callee) && callee.text === "require");
+      const text = isLoad ? specifierText(node.arguments[0]) : null;
+      if (text) specifiers.push(text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  const directives = directivesOf(source);
+  return {
+    client: directives.includes("use client"),
+    serverActions: directives.includes("use server"),
+    specifiers,
+  };
+}
+
+/** Whether a specifier names, or (a template's head) may name, a forbidden module. */
+const isForbidden = (specifier: string) =>
+  specifier.endsWith("*")
+    ? [...FORBIDDEN_SPECIFIERS].some((forbidden) => forbidden.startsWith(specifier.slice(0, -1)))
+    : FORBIDDEN_SPECIFIERS.has(specifier);
 
 const withExtension = (base: string): string | null => {
   if (existsSync(base) && statSync(base).isFile()) return base;
@@ -100,19 +164,17 @@ function resolveSpecifier(specifier: string, from: string): string | null {
 }
 
 test("no client module reaches the rich-text sanitiser", () => {
-  const sources = listSources(webRoot);
-  const clientModules = sources.filter((file) => isClientModule(readFileSync(file, "utf8")));
-  assert.ok(clientModules.length > 50, `only ${clientModules.length} client modules found`);
-
-  const cache = new Map<string, string[]>();
-  const importsOf = (file: string) => {
-    let specifiers = cache.get(file);
-    if (!specifiers) {
-      specifiers = runtimeSpecifiers(readFileSync(file, "utf8"));
-      cache.set(file, specifiers);
+  const modules = new Map<string, ReturnType<typeof readModule>>();
+  const moduleOf = (file: string) => {
+    let module = modules.get(file);
+    if (!module) {
+      module = readModule(file, readFileSync(file, "utf8"));
+      modules.set(file, module);
     }
-    return specifiers;
+    return module;
   };
+  const clientModules = listSources(webRoot).filter((file) => moduleOf(file).client);
+  assert.ok(clientModules.length > 50, `only ${clientModules.length} client modules found`);
 
   const offenders: string[] = [];
   const visited = new Set<string>();
@@ -122,14 +184,14 @@ test("no client module reaches the rich-text sanitiser", () => {
       const { file, chain } = queue.shift() ?? { file: "", chain: [] };
       if (visited.has(file)) continue;
       visited.add(file);
-      for (const specifier of importsOf(file)) {
+      for (const specifier of moduleOf(file).specifiers) {
         const target = resolveSpecifier(specifier, file);
-        if (FORBIDDEN_SPECIFIERS.has(specifier) || (target && FORBIDDEN_FILES.has(target))) {
+        if (isForbidden(specifier) || (target && FORBIDDEN_FILES.has(target))) {
           offenders.push([...chain.map((step) => relative(repoRoot, step)), specifier].join(" → "));
           continue;
         }
         if (!target || visited.has(target)) continue;
-        if (isServerActionModule(readFileSync(target, "utf8"))) continue;
+        if (moduleOf(target).serverActions) continue;
         queue.push({ file: target, chain: [...chain, target] });
       }
     }
@@ -137,19 +199,31 @@ test("no client module reaches the rich-text sanitiser", () => {
   assert.deepEqual(offenders, [], "These client imports pull the sanitiser into the browser");
 });
 
-test("the walk sees a value import and skips a type-only one", () => {
-  assert.deepEqual(
-    runtimeSpecifiers(
-      [
-        'import type { A } from "@louez/utils/sanitize-rich-text";',
-        'import { type B, c } from "./c";',
-        'export * from "./d";',
-        'export type { E } from "./e";',
-        'import "./f";',
-        "// import { x } from './commented';",
-        'const g = await import("./g");',
-      ].join("\n"),
-    ),
-    ["./c", "./d", "./f", "./g"],
+test("the parser reads directives and every kind of import", () => {
+  const module = readModule(
+    "fixture.tsx",
+    [
+      "/** A comment first. */",
+      "// And another.",
+      '"use client";',
+      'import type { A } from "@louez/utils/sanitize-rich-text";',
+      'import { type B } from "./only-types";',
+      'import { type C, d } from "./c";',
+      'export * from "./d";',
+      'export type { E } from "./e";',
+      'import "./f";',
+      "// import { x } from './commented';",
+      'const g = await import ("./g");',
+      "const h = await import(`./h`);",
+      "const i = await import(`./locales/${locale}`);",
+      'const j = require("./j");',
+      'const k = <p>Don\'t stop: "./not-an-import"</p>;',
+    ].join("\n"),
   );
+  assert.equal(module.client, true);
+  assert.deepEqual(module.specifiers, ["./c", "./d", "./f", "./g", "./h", "./locales/*", "./j"]);
+  assert.equal(readModule("a.ts", '"use server";\nexport const x = 1;').serverActions, true);
+  assert.equal(readModule("a.ts", 'const x = "use client";').client, false);
+  assert.equal(isForbidden("@louez/utils/*"), true);
+  assert.equal(isForbidden("./locales/*"), false);
 });
