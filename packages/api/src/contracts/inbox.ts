@@ -137,6 +137,22 @@ export const acknowledgeInboxInput = z.object({
 export const acknowledgeInboxOutput = z.object({
   acknowledged: z.number().int().describe("Items marked handled by this call."),
   alreadyAcknowledged: z.number().int().describe("Items marked before."),
+  rejected: z
+    .array(
+      z.object({
+        id: z.string(),
+        occurredAt: z.date().describe("The occurredAt sent."),
+        currentOccurredAt: z
+          .date()
+          .nullable()
+          .describe(
+            "The occurrence the inbox holds now for this item: send it again with this occurredAt if the user means it. Null: the item left the inbox (handled, or no longer true); drop it.",
+          ),
+      }),
+    )
+    .describe(
+      "Items not in the inbox now with the occurredAt sent, left unmarked. To start again from what the inbox holds, call inbox_list without a cursor.",
+    ),
 });
 
 export const inboxErrors = {
@@ -149,12 +165,6 @@ export const inboxErrors = {
     apiError("BAD_REQUEST", "INBOX_ITEM_INVALID", {
       message: `"${id}" is not an inbox item id: pass the id inbox_list returned.`,
       i18nKey: "errors.invalidData",
-      details: { id },
-    }),
-  notInInbox: (id: string) =>
-    apiError("NOT_FOUND", "INBOX_ITEM_NOT_FOUND", {
-      message: `"${id}" with this occurredAt is not in the store's inbox now: pass an item inbox_list returned, as it returned it.`,
-      i18nKey: "errors.notFound",
       details: { id },
     }),
 } as const;

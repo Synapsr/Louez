@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  raceOnLockedRow,
+  skipWithoutTestDatabase,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import type { RouterClient } from "@orpc/server";
 
@@ -625,7 +630,9 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(ofType((await list()).items, "dispute_open").length, 0);
   });
 
-  async function bookedUnit() {
+  async function bookedUnit(
+    booking: { status?: "confirmed" | "ongoing"; start?: Date; end?: Date } = {},
+  ) {
     const productId = nextId("ib_prd");
     await louezDb.db.insert(louezDb.products).values({
       id: productId,
@@ -642,9 +649,10 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       createdAt: ago(10 * DAY),
       updatedAt: ago(10 * DAY),
     });
-    const reservationId = await reservation("confirmed", {
-      start: ahead(DAY),
-      end: ahead(3 * DAY),
+    const reservationId = await reservation(booking.status ?? "confirmed", {
+      start: booking.start ?? ahead(DAY),
+      end: booking.end ?? ahead(3 * DAY),
+      ...(booking.status === "ongoing" ? { pickedUpAt: booking.start ?? ago(DAY) } : {}),
     });
     const itemId = nextId("ib_itm");
     await louezDb.db.insert(louezDb.reservationItems).values({
@@ -748,6 +756,170 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       .set({ settings: SETTINGS })
       .where(orm.eq(louezDb.stores.id, STORE));
     assert.equal(ofType((await list()).items, "unit_conflict").length, 0);
+  });
+
+  test("a note does not bring back an acknowledged late pickup, late return or unit conflict; a schedule change does", async () => {
+    const pickup = await reservation("confirmed", {
+      start: ago(3 * HOUR),
+      end: ahead(DAY),
+      createdAt: ago(2 * DAY),
+    });
+    const late = await reservation("ongoing", {
+      start: ago(3 * DAY),
+      end: ago(DAY),
+      pickedUpAt: ago(3 * DAY),
+      createdAt: ago(4 * DAY),
+    });
+    const booked = await bookedUnit();
+    await louezDb.db.insert(louezDb.productUnitDowntimes).values({
+      id: nextId("ib_dwn"),
+      productUnitId: booked.unitId,
+      storeId: STORE,
+      reason: "repair",
+      startsAt: ago(HOUR),
+      endsAt: ahead(2 * DAY),
+      createdAt: ago(HOUR),
+      updatedAt: ago(HOUR),
+    });
+    const watched = ["pickup_overdue", "return_overdue", "unit_conflict"] as const;
+    const items = (await list()).items.filter((entry) =>
+      (watched as readonly string[]).includes(entry.type),
+    );
+    assert.equal(items.length, 3);
+    await run(
+      "acknowledge",
+      { items: items.map((entry) => ({ id: entry.id, occurredAt: entry.occurredAt })) },
+      session(),
+    );
+
+    const { updateReservationNotes } = await import("../../services/reservations");
+    const caller = {
+      storeId: STORE,
+      store: { id: STORE, name: "Brest Surf", slug: "ib-brest-surf", ownerUserId: OWNER },
+      transport: "mcp" as const,
+      ports,
+    };
+    for (const id of [pickup, late, booked.reservationId]) {
+      await updateReservationNotes(caller, { id, notes: "Customer called" });
+    }
+    // The notes were written (updatedAt moved), and nothing came back.
+    const [written] = await louezDb.db
+      .select({ updatedAt: louezDb.reservations.updatedAt })
+      .from(louezDb.reservations)
+      .where(orm.eq(louezDb.reservations.id, late));
+    assert.ok((written?.updatedAt.getTime() ?? 0) > ago(60_000).getTime());
+    assert.deepEqual(
+      (await list()).items.filter((entry) => (watched as readonly string[]).includes(entry.type)),
+      [],
+    );
+
+    // Its end moved earlier by an edit: the late return is new again.
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ endDate: ago(2 * DAY), scheduleChangedAt: ago(10 * 60_000) })
+      .where(orm.eq(louezDb.reservations.id, late));
+    const [back] = ofType((await list()).items, "return_overdue");
+    assert.equal(back?.id, `return_overdue:${late}`);
+  });
+
+  test("raising the turnover buffer dates the conflicts it makes from the change", async () => {
+    const reader = async () => ({
+      store: await storeRow(),
+      urls: ports.urls,
+      hostedBy: null,
+      reads: { reservations: true, customers: true, products: true },
+      operationsOf: null,
+    });
+    // One conflict without any buffer, one only with a 30-minute buffer.
+    const plain = await bookedUnit();
+    await louezDb.db.insert(louezDb.productUnitDowntimes).values({
+      id: nextId("ib_dwn"),
+      productUnitId: plain.unitId,
+      storeId: STORE,
+      reason: "repair",
+      startsAt: ago(HOUR),
+      endsAt: ahead(2 * DAY),
+      createdAt: ago(HOUR),
+      updatedAt: ago(HOUR),
+    });
+    const buffered = await bookedUnit();
+    const [booking] = await louezDb.db
+      .select({ endDate: louezDb.reservations.endDate })
+      .from(louezDb.reservations)
+      .where(orm.eq(louezDb.reservations.id, buffered.reservationId));
+    assert.ok(booking);
+    await louezDb.db.insert(louezDb.productUnitDowntimes).values({
+      id: nextId("ib_dwn"),
+      productUnitId: buffered.unitId,
+      storeId: STORE,
+      reason: "maintenance",
+      startsAt: new Date(booking.endDate.getTime() + 15 * 60_000),
+      endsAt: new Date(booking.endDate.getTime() + 2 * HOUR),
+      createdAt: ago(HOUR),
+      updatedAt: ago(HOUR),
+    });
+    const earlier = await inbox.listInbox(await reader(), {}, { now: ago(10 * 60_000) });
+    assert.deepEqual(
+      ofType(earlier.items, "unit_conflict").map((entry) => entry.id),
+      [`unit_conflict:${plain.assignmentId}`],
+    );
+
+    const { updateReservationRules } = await import("../../services/settings");
+    const actor = {
+      storeId: STORE,
+      store: { id: STORE, name: "Brest Surf", slug: "ib-brest-surf", ownerUserId: OWNER },
+      afterCommit: () => {},
+    };
+    await updateReservationRules(actor, { turnoverBufferMinutes: 30 });
+    const changedAt = (await storeRow()).availabilityRulesChangedAt;
+    assert.ok(changedAt && changedAt.getTime() > ago(60_000).getTime());
+
+    // Read a minute on, past the hold-back: only the conflict the buffer made is new.
+    const next = await inbox.listInbox(
+      await reader(),
+      { cursor: earlier.nextCursor },
+      { now: ahead(60_000) },
+    );
+    assert.deepEqual(
+      ofType(next.items, "unit_conflict").map((entry) => entry.id),
+      [`unit_conflict:${buffered.assignmentId}`],
+    );
+
+    // The same buffer again changes nothing.
+    await updateReservationRules(actor, { turnoverBufferMinutes: 30, minRentalMinutes: 30 });
+    assert.equal((await storeRow()).availabilityRulesChangedAt?.getTime(), changedAt.getTime());
+  });
+
+  test("a retired unit conflicts with a booking that ended within the buffer, as on the product page", async () => {
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ settings: { ...SETTINGS, turnoverBufferMinutes: 30 } })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    const booked = await bookedUnit({
+      status: "ongoing",
+      start: ago(DAY),
+      end: ago(15 * 60_000),
+    });
+    await louezDb.db
+      .update(louezDb.productUnits)
+      .set({ lifecycleStatus: "retired", retiredAt: ago(HOUR), updatedAt: ago(HOUR) })
+      .where(orm.eq(louezDb.productUnits.id, booked.unitId));
+
+    const { getUnitConflictFlags, unitConflictWindows } =
+      await import("../../services/unit-conflicts");
+    const units = await louezDb.db
+      .select()
+      .from(louezDb.productUnits)
+      .where(orm.eq(louezDb.productUnits.id, booked.unitId));
+    const flags = await getUnitConflictFlags(unitConflictWindows(units, [], new Date()), {
+      storeId: STORE,
+      pendingBlocksAvailability: false,
+      turnoverBufferMinutes: 30,
+    });
+    assert.equal(flags[booked.unitId], true, "the product page flags it");
+    const [item] = ofType((await list()).items, "unit_conflict");
+    assert.equal(item?.id, `unit_conflict:${booked.assignmentId}`);
+    assert.equal(item?.details.reason, "retired");
   });
 
   test("a booking created over the stock shows until it ends", async () => {
@@ -1163,7 +1335,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     });
     await louezDb.db
       .update(louezDb.reservations)
-      .set({ updatedAt: ago(10 * 60_000) })
+      .set({ scheduleChangedAt: ago(10 * 60_000) })
       .where(orm.eq(louezDb.reservations.id, shortened));
 
     const next = await inbox.listInbox(await reader(), { cursor: earlier.nextCursor });
@@ -1214,7 +1386,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       { items: [{ id: item.id, occurredAt: item.occurredAt }] },
       agent(),
     );
-    assert.deepEqual(result, { acknowledged: 1, alreadyAcknowledged: 0 });
+    assert.deepEqual(result, { acknowledged: 1, alreadyAcknowledged: 0, rejected: [] });
     assert.equal(ofType((await list()).items, "payment_failed").length, 0);
     assert.equal(ofType((await list(agent())).items, "payment_failed").length, 0);
     const [row] = await louezDb.db
@@ -1231,7 +1403,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       { items: [{ id: item.id, occurredAt: item.occurredAt }] },
       session(),
     );
-    assert.deepEqual(twice, { acknowledged: 0, alreadyAcknowledged: 1 });
+    assert.deepEqual(twice, { acknowledged: 0, alreadyAcknowledged: 1, rejected: [] });
 
     // A new failure is a new item.
     const latest = await activity(id, "payment_failed", { amount: 20 }, ago(HOUR));
@@ -1243,17 +1415,21 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     const other = await reservation("pending", { store: OTHER_STORE });
     const [theirs] = (await list(session(OTHER_STORE))).items;
     assert.ok(theirs);
-    await rejects(
-      run("acknowledge", { items: [{ id: theirs.id, occurredAt: theirs.occurredAt }] }, session()),
-      "INBOX_ITEM_NOT_FOUND",
+    const crossed = await run(
+      "acknowledge",
+      { items: [{ id: theirs.id, occurredAt: theirs.occurredAt }] },
+      session(),
     );
+    assert.deepEqual(crossed.rejected, [
+      { id: theirs.id, occurredAt: theirs.occurredAt, currentOccurredAt: null },
+    ]);
     assert.deepEqual(
       (await list(session(OTHER_STORE))).items.map((entry) => entry.reservation?.id),
       [other],
     );
   });
 
-  test("only an item the inbox holds now, with its occurredAt, can be acknowledged", async () => {
+  test("only an item the inbox holds now, with its occurredAt, is acknowledged; the others come back rejected", async () => {
     await reservation("pending");
     const [item] = (await list()).items;
     assert.ok(item);
@@ -1261,30 +1437,40 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       id: "booking_request:does_not_exist",
       occurredAt: ago(index * 1000),
     }));
-    await rejects(run("acknowledge", { items: forged }, session()), "INBOX_ITEM_NOT_FOUND");
-    await rejects(
-      run(
-        "acknowledge",
-        { items: [{ id: item.id, occurredAt: new Date(item.occurredAt.getTime() - 1000) }] },
-        session(),
-      ),
-      "INBOX_ITEM_NOT_FOUND",
+    const refused = await run("acknowledge", { items: forged }, session());
+    assert.equal(refused.acknowledged, 0);
+    assert.equal(refused.rejected.length, 100);
+    assert.ok(refused.rejected.every((entry) => entry.currentOccurredAt === null));
+
+    // Another occurrence of a real item: the current one comes back.
+    const shifted = new Date(item.occurredAt.getTime() - 1000);
+    const stale = await run(
+      "acknowledge",
+      { items: [{ id: item.id, occurredAt: shifted }] },
+      session(),
     );
-    // One unknown item refuses the whole call.
-    await rejects(
-      run(
-        "acknowledge",
-        {
-          items: [
-            { id: item.id, occurredAt: item.occurredAt },
-            { id: "booking_request:does_not_exist", occurredAt: item.occurredAt },
-          ],
-        },
-        session(),
-      ),
-      "INBOX_ITEM_NOT_FOUND",
-    );
+    assert.deepEqual(stale.rejected, [
+      { id: item.id, occurredAt: shifted, currentOccurredAt: item.occurredAt },
+    ]);
     assert.equal((await louezDb.db.select().from(louezDb.inboxAcknowledgements)).length, 0);
+
+    // A batch is accepted in part: the real item is marked, the unknown one is not.
+    const mixed = await run(
+      "acknowledge",
+      {
+        items: [
+          { id: item.id, occurredAt: item.occurredAt },
+          { id: "booking_request:does_not_exist", occurredAt: item.occurredAt },
+        ],
+      },
+      session(),
+    );
+    assert.equal(mixed.acknowledged, 1);
+    assert.deepEqual(
+      mixed.rejected.map((entry) => entry.id),
+      ["booking_request:does_not_exist"],
+    );
+    assert.equal((await louezDb.db.select().from(louezDb.inboxAcknowledgements)).length, 1);
 
     // Items read in code take the same check: the billing gate.
     await closeGate(ago(2 * HOUR), ago(2 * HOUR));
@@ -1296,7 +1482,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
         { items: [{ id: gate.id, occurredAt: gate.occurredAt }] },
         session(),
       ),
-      { acknowledged: 1, alreadyAcknowledged: 0 },
+      { acknowledged: 1, alreadyAcknowledged: 0, rejected: [] },
     );
     assert.equal(ofType((await list()).items, "billing_gate_closed").length, 0);
   });
@@ -1309,7 +1495,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.ok(item);
     assert.deepEqual(
       await run("acknowledge", { items: [{ id: item.id, occurredAt: item.occurredAt }] }, payer()),
-      { acknowledged: 1, alreadyAcknowledged: 0 },
+      { acknowledged: 1, alreadyAcknowledged: 0, rejected: [] },
     );
     // It may not acknowledge a booking request: that needs reservations write.
     await reservation("pending");
@@ -1319,6 +1505,45 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       run("acknowledge", { items: [{ id: request.id, occurredAt: request.occurredAt }] }, payer()),
       "PERMISSION_DENIED",
     );
+  });
+
+  test("two acknowledgements at once keep the store at its cap", async () => {
+    const cap = inbox.INBOX_ACKNOWLEDGEMENTS_PER_STORE;
+    const old = Array.from({ length: cap }, (_, index) => ({
+      storeId: STORE,
+      itemType: "booking_request",
+      recordId: `ib_cap_${index}`,
+      occurredAt: ago(DAY),
+      userId: OWNER,
+      createdAt: ago(DAY + index * 1000),
+    }));
+    for (let index = 0; index < old.length; index += 500) {
+      await louezDb.db.insert(louezDb.inboxAcknowledgements).values(old.slice(index, index + 500));
+    }
+    for (let index = 0; index < 200; index += 1) {
+      await reservation("pending", { createdAt: ago(HOUR + index * 1000) });
+    }
+    const first = await list(session(), { limit: 100 });
+    const second = await list(session(), { limit: 100, cursor: first.nextCursor });
+    const batch = (items: InboxItem[]) => ({
+      items: items.map((entry) => ({ id: entry.id, occurredAt: entry.occurredAt })),
+    });
+
+    // Both read their items, then wait on the store row; each then marks and evicts alone.
+    const results = await raceOnLockedRow(database, { table: "stores", id: STORE }, [
+      () => run("acknowledge", batch(first.items), session()),
+      () => run("acknowledge", batch(second.items), session()),
+    ]);
+    assert.deepEqual(
+      results.map((result) => result.acknowledged),
+      [100, 100],
+    );
+    const rows = await louezDb.db
+      .select({ id: louezDb.inboxAcknowledgements.id })
+      .from(louezDb.inboxAcknowledgements)
+      .where(orm.eq(louezDb.inboxAcknowledgements.storeId, STORE));
+    assert.equal(rows.length, cap);
+    assert.deepEqual((await list()).items, []);
   });
 
   test("a store keeps its latest acknowledgements, and the cron drops those past 90 days", async () => {

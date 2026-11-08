@@ -5,6 +5,7 @@ import {
   db,
   inboxAcknowledgements,
   isPaymentReceiptSql,
+  lockStoreRow,
   invoices,
   paymentDisputes,
   payments,
@@ -113,9 +114,9 @@ export type InboxRights = Partial<Record<ApiDomain, boolean>>;
 export interface InboxReader {
   store: LinkStore & {
     createdAt: Date;
-    settings: {
     /** When the turnover buffer or the pending rule last changed (null: never). */
     availabilityRulesChangedAt: Date | null;
+    settings: {
       currency?: string;
       timezone?: string;
       pendingBlocksAvailability?: boolean;
@@ -809,11 +810,11 @@ const unitConflicts: Source = async (window, shaper) => {
       // assignment, the booking's dates and status, that cause and, when they
       // make it, the store's availability rules were all as they are.
       const causeAt = Math.min(...conflict.causes.map((cause) => cause.changedAt.getTime()));
-      const occurredAt = new Date(
       const rulesAt =
         conflict.madeByRules && availabilityRulesChangedAt
           ? availabilityRulesChangedAt.getTime()
           : 0;
+      const occurredAt = new Date(
         Math.max(
           conflict.assignedAt.getTime(),
           conflict.scheduleChangedAt.getTime(),
@@ -1487,8 +1488,13 @@ function parseItemId(id: string): { type: InboxItemType; recordId: string } {
  * Marks items as handled for the whole store: they leave its inbox for every
  * member and agent, until the same record comes back with a new occurredAt.
  * Each item must be one the store's inbox holds now, with the occurredAt it
- * shows, read by the same queries as the list; marking an item twice is a
- * no-op. A store keeps its latest INBOX_ACKNOWLEDGEMENTS_PER_STORE marks.
+ * shows, read by the same queries as the list. The call marks those and
+ * returns the others in `rejected`, each with the occurrence the inbox holds
+ * now for its record, or null when the record left the inbox: a caller
+ * working from an old list keeps what still holds, and learns what to drop
+ * or send again, rather than losing the whole batch to one item handled
+ * meanwhile. Marking an item twice is a no-op. A store keeps its latest
+ * INBOX_ACKNOWLEDGEMENTS_PER_STORE marks.
  */
 export async function acknowledgeInbox(
   reader: InboxReader,
@@ -1522,64 +1528,75 @@ export async function acknowledgeInbox(
     records: [...new Set(rows.map((row) => row.recordId))],
   });
   const currentKeys = new Set(current.map((entry) => occurrenceKey(occurrenceOfCandidate(entry))));
-  const unknown = rows.find((row) => !currentKeys.has(occurrenceKey(row)));
-  if (unknown) throw inboxErrors.notInInbox(`${unknown.type}:${unknown.recordId}`);
-
-  const existing = await db
-    .select({
-      type: inboxAcknowledgements.itemType,
-      recordId: inboxAcknowledgements.recordId,
-      occurredAt: inboxAcknowledgements.occurredAt,
-    })
-    .from(inboxAcknowledgements)
-    .where(
-      and(
-        eq(inboxAcknowledgements.storeId, actor.storeId),
-        inArray(
-          inboxAcknowledgements.recordId,
-          rows.map((row) => row.recordId),
-        ),
-      ),
-    );
-  const done = new Set(existing.map(occurrenceKey));
-  const fresh = rows.filter((row) => !done.has(occurrenceKey(row)));
-  if (fresh.length > 0) {
-    await db
-      .insert(inboxAcknowledgements)
-      .values(
-        fresh.map((row) => ({
-          storeId: actor.storeId,
-          itemType: row.type,
-          recordId: row.recordId,
-          occurredAt: row.occurredAt,
-          userId: actor.userId,
-          credentialId: actor.credentialId,
-          clientName: actor.clientName,
-        })),
-      )
-      // Two calls at once: the unique occurrence keeps the first.
-      .onDuplicateKeyUpdate({ set: { storeId: sql`${inboxAcknowledgements.storeId}` } });
-    await trimStoreAcknowledgements(actor.storeId);
-  }
-  return { acknowledged: fresh.length, alreadyAcknowledged: rows.length - fresh.length };
-}
-
-/** Deletes a store's oldest acknowledgements past its cap. */
-async function trimStoreAcknowledgements(storeId: string) {
-  const beyond = await db
-    .select({ id: inboxAcknowledgements.id })
-    .from(inboxAcknowledgements)
-    .where(eq(inboxAcknowledgements.storeId, storeId))
-    .orderBy(desc(inboxAcknowledgements.createdAt), desc(inboxAcknowledgements.id))
-    .limit(INBOX_ACKNOWLEDGE_MAX)
-    .offset(INBOX_ACKNOWLEDGEMENTS_PER_STORE);
-  if (beyond.length === 0) return;
-  await db.delete(inboxAcknowledgements).where(
-    inArray(
-      inboxAcknowledgements.id,
-      beyond.map((row) => row.id),
-    ),
+  const currentOf = new Map(
+    current.map((entry) => [`${entry.item.type}:${entry.recordId}`, entry.item.occurredAt]),
   );
+  const accepted = rows.filter((row) => currentKeys.has(occurrenceKey(row)));
+  const rejected = rows
+    .filter((row) => !currentKeys.has(occurrenceKey(row)))
+    .map((row) => ({
+      id: `${row.type}:${row.recordId}`,
+      occurredAt: row.occurredAt,
+      currentOccurredAt: currentOf.get(`${row.type}:${row.recordId}`) ?? null,
+    }));
+  if (accepted.length === 0) return { acknowledged: 0, alreadyAcknowledged: 0, rejected };
+
+  // One store's marks are written one call at a time, under its row's lock,
+  // so two calls never evict the same oldest marks and overshoot the cap.
+  const fresh = await db.transaction(async (tx) => {
+    await lockStoreRow(tx, actor.storeId);
+    const existing = await tx
+      .select({
+        type: inboxAcknowledgements.itemType,
+        recordId: inboxAcknowledgements.recordId,
+        occurredAt: inboxAcknowledgements.occurredAt,
+      })
+      .from(inboxAcknowledgements)
+      .where(
+        and(
+          eq(inboxAcknowledgements.storeId, actor.storeId),
+          inArray(
+            inboxAcknowledgements.recordId,
+            accepted.map((row) => row.recordId),
+          ),
+        ),
+      );
+    const done = new Set(existing.map(occurrenceKey));
+    const toMark = accepted.filter((row) => !done.has(occurrenceKey(row)));
+    if (toMark.length === 0) return toMark;
+    await tx.insert(inboxAcknowledgements).values(
+      toMark.map((row) => ({
+        storeId: actor.storeId,
+        itemType: row.type,
+        recordId: row.recordId,
+        occurredAt: row.occurredAt,
+        userId: actor.userId,
+        credentialId: actor.credentialId,
+        clientName: actor.clientName,
+      })),
+    );
+    const beyond = await tx
+      .select({ id: inboxAcknowledgements.id })
+      .from(inboxAcknowledgements)
+      .where(eq(inboxAcknowledgements.storeId, actor.storeId))
+      .orderBy(desc(inboxAcknowledgements.createdAt), desc(inboxAcknowledgements.id))
+      .limit(INBOX_ACKNOWLEDGE_MAX)
+      .offset(INBOX_ACKNOWLEDGEMENTS_PER_STORE);
+    if (beyond.length > 0) {
+      await tx.delete(inboxAcknowledgements).where(
+        inArray(
+          inboxAcknowledgements.id,
+          beyond.map((row) => row.id),
+        ),
+      );
+    }
+    return toMark;
+  });
+  return {
+    acknowledged: fresh.length,
+    alreadyAcknowledged: accepted.length - fresh.length,
+    rejected,
+  };
 }
 
 /**

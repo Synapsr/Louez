@@ -245,7 +245,11 @@ describe("inbox tools (database)", { skip: skipWithoutTestDatabase() }, () => {
     );
     assert.equal(acknowledged.status, 200);
     assert.ok(acknowledged.headers.get("louez-operation-id"));
-    assert.deepEqual(await acknowledged.json(), { acknowledged: 1, alreadyAcknowledged: 0 });
+    assert.deepEqual(await acknowledged.json(), {
+      acknowledged: 1,
+      alreadyAcknowledged: 0,
+      rejected: [],
+    });
     const again = output(
       await withClient(authorization, (mcp) =>
         mcp.callTool({
@@ -254,7 +258,7 @@ describe("inbox tools (database)", { skip: skipWithoutTestDatabase() }, () => {
         }),
       ),
     );
-    assert.deepEqual(again, { acknowledged: 0, alreadyAcknowledged: 1 });
+    assert.deepEqual(again, { acknowledged: 0, alreadyAcknowledged: 1, rejected: [] });
     const empty = output(
       await withClient(authorization, (mcp) => mcp.callTool({ name: "inbox_list", arguments: {} })),
     );
