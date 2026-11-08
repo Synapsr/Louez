@@ -6,33 +6,15 @@ import { db, users } from '@louez/db'
 
 import { auth } from '@/lib/auth'
 import { dismissibleNoticeIdSchema, parseDismissedNotices } from '@/lib/dashboard/dismissed-notices'
-import { isStandaloneMode } from '@/lib/deployment'
-import { setActiveStoreId, verifyStoreAccess } from '@/lib/store-context'
+import { switchActiveStore } from '@/lib/store-context'
 import { revalidatePath } from 'next/cache'
 
 export async function switchStore(storeId: string) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return { error: 'errors.unauthenticated' }
-  }
-
-  // Standalone instances host a single store; the switcher UI is hidden and
-  // the action is denied so it cannot be reached through the API either.
-  if (isStandaloneMode()) {
-    return { error: 'errors.unauthorized' }
-  }
-
-  // setActiveStoreId now validates access internally (defense in depth)
-  // but we keep verifyStoreAccess for the explicit role check
-  const role = await verifyStoreAccess(storeId)
-
-  if (!role) {
-    return { error: 'errors.unauthorized' }
-  }
-
-  const result = await setActiveStoreId(storeId)
+  // The check is shared with the dashboard links that name a store
+  // (app/api/active-store); standalone instances never switch.
+  const result = await switchActiveStore(storeId)
   if (!result.success) {
-    return { error: result.error || 'errors.unauthorized' }
+    return { error: result.error }
   }
 
   revalidatePath('/dashboard')

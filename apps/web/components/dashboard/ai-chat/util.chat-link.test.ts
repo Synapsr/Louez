@@ -21,6 +21,14 @@ test("a dashboard link on the app's origin opens in the app, as a relative path"
     kind: "app",
     href: "/dashboard/customers/c1",
   });
+  // A link naming its store keeps it: the app switches, then drops it.
+  assert.deepEqual(
+    resolveChatLink("https://app.louez.test/dashboard/products/p1?store=s1", platform),
+    {
+      kind: "app",
+      href: "/dashboard/products/p1?store=s1",
+    },
+  );
   assert.deepEqual(resolveChatLink("http://localhost:3000/dashboard", local), {
     kind: "app",
     href: "/dashboard",

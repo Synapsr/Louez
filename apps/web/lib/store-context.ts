@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@louez/db'
 import { stores, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
+import { isStandaloneMode } from '@/lib/deployment'
 import { isPlatformAdmin } from '@/lib/platform-admin'
 import type { AiAdvisorSettings, AiPhoneSettings, StoreSettings, StoreTheme, EmailSettings, ReviewBoosterSettings, NotificationSettings, CustomerNotificationSettings } from '@louez/types'
 import { hasPermission, type MemberRole, type Permission } from '@louez/utils'
@@ -195,6 +196,38 @@ export async function setActiveStoreId(storeId: string): Promise<{ success: bool
     path: '/',
   })
 
+  return { success: true }
+}
+
+/**
+ * Make a store the active one, with the store switcher's check: a signed-in
+ * user who may open the store (a member, or platform staff). Standalone
+ * instances host a single store, so they never switch. In a Server Function
+ * or a Route Handler only, as it sets the cookie.
+ */
+export async function switchActiveStore(
+  storeId: string
+): Promise<{ success: true } | { success: false; error: string }> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: 'errors.unauthenticated' }
+  }
+
+  if (isStandaloneMode()) {
+    return { success: false, error: 'errors.unauthorized' }
+  }
+
+  // setActiveStoreId validates access too (defense in depth); this is the
+  // explicit role check.
+  const role = await verifyStoreAccess(storeId)
+  if (!role) {
+    return { success: false, error: 'errors.unauthorized' }
+  }
+
+  const result = await setActiveStoreId(storeId)
+  if (!result.success) {
+    return { success: false, error: result.error || 'errors.unauthorized' }
+  }
   return { success: true }
 }
 

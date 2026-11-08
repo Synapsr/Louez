@@ -6,6 +6,7 @@ import type { NextRequest } from "next/server";
 import { LOUEZ_TERMS_PATH, isBillingOnlyPath } from "@/lib/billing/billing-routes";
 import { isBillingEnabled } from "@/lib/billing/mode";
 import { isStandaloneMode } from "@/lib/deployment";
+import { activeStoreSwitchPath } from "@/lib/util.active-store-link";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import {
   buildDemoSecurityHeaders,
@@ -120,6 +121,23 @@ function createInternalRewriteUrl(request: NextRequest, pathname: string) {
   }
 
   return url;
+}
+
+/**
+ * A dashboard link that names its store (`?store=<id>`): handed to the
+ * active-store route, which switches the store when the user may open it and
+ * redirects to the same URL without the parameter. Null for any other request.
+ */
+function createActiveStoreSwitch(request: NextRequest): NextResponse | null {
+  // Page loads only: a Server Action posts to the page's URL and must reach it.
+  if (request.method !== "GET") return null;
+  const target = activeStoreSwitchPath(request.nextUrl);
+  if (!target) return null;
+  const url = createInternalRewriteUrl(request, "/");
+  const [pathname, search] = target.split("?");
+  url.pathname = pathname;
+  url.search = search ? `?${search}` : "";
+  return NextResponse.rewrite(url);
 }
 
 function createDashboardResponse(request: NextRequest) {
@@ -419,7 +437,11 @@ export async function proxy(request: NextRequest) {
   // deliberately absent here — the referral program is platform machinery.
   if (isStandaloneMode()) {
     if (isDashboardRoute(pathname)) {
-      return withRuntimeSecurityHeaders(NextResponse.next(), pathname, publicEnv);
+      return withRuntimeSecurityHeaders(
+        createActiveStoreSwitch(request) ?? NextResponse.next(),
+        pathname,
+        publicEnv,
+      );
     }
 
     const slug = await getStandaloneStoreSlug();
@@ -461,6 +483,8 @@ export async function proxy(request: NextRequest) {
   //   - localhost (when PREVIEW_STORE_SLUG is not set)
   if (subdomain === dashboardSubdomain || (isLocalhost && !subdomain)) {
     if (isAbsentLouezTerms(pathname)) return notFoundResponse(pathname, publicEnv);
+    const storeSwitch = createActiveStoreSwitch(request);
+    if (storeSwitch) return withRuntimeSecurityHeaders(storeSwitch, pathname, publicEnv);
     return withRuntimeSecurityHeaders(
       captureAcquisition(request, createDashboardResponse(request), host, appDomain),
       pathname,

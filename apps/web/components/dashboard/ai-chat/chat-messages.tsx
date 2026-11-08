@@ -89,8 +89,10 @@ const InlineFormat = ({ text }: { text: string }) => {
           const target = resolveChatLink(href, { appUrl, appDomain });
           if (!target) return label;
           if (target.kind === "app") {
+            // Not prefetched: a link naming its store switches the active
+            // store when followed, never on sight.
             return (
-              <Link key={j} href={target.href} className={LINK_CLASS}>
+              <Link key={j} href={target.href} prefetch={false} className={LINK_CLASS}>
                 {label}
               </Link>
             );

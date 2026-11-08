@@ -104,4 +104,41 @@ describe("proxy billing gate", () => {
     const on = await visit(`/login?ref=${REFERRAL_CODE}`);
     assert.equal(on.cookies.get("louez_referral")?.value, REFERRAL_CODE);
   });
+  test("a dashboard link naming its store goes to the active-store route, other requests do not", async () => {
+    const rewrite = async (path: string, host?: string) =>
+      (await visit(path, host)).headers.get("x-middleware-rewrite");
+    const target = new URL(
+      (await rewrite("/dashboard/products/p1?tab=units&store=s1&_rsc=x")) ?? "",
+    );
+    assert.equal(target.pathname, "/api/active-store");
+    assert.equal(target.searchParams.get("store"), "s1");
+    assert.equal(target.searchParams.get("next"), "/dashboard/products/p1?tab=units");
+
+    assert.equal(await rewrite("/dashboard/products/p1"), null);
+    const action = await proxy(
+      new NextRequest(new URL("/dashboard/products/p1?store=s1", "http://localhost:3000"), {
+        method: "POST",
+        headers: { host: "localhost:3000" },
+      }),
+    );
+    assert.equal(
+      action.headers.get("x-middleware-rewrite"),
+      null,
+      "a Server Action reaches its page",
+    );
+    assert.equal(await rewrite("/login?store=s1"), null);
+    // On a store's subdomain, /dashboard is a storefront path.
+    assert.match(
+      (await rewrite("/dashboard?store=s1", "shop.localhost:3000")) ?? "",
+      /\/shop\/dashboard/,
+    );
+
+    process.env.LOUEZ_MODE = "standalone";
+    try {
+      const standalone = new URL((await rewrite("/dashboard?store=s1")) ?? "");
+      assert.equal(standalone.pathname, "/api/active-store");
+    } finally {
+      process.env.LOUEZ_MODE = "platform";
+    }
+  });
 });
