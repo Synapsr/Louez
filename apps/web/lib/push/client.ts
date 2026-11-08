@@ -7,7 +7,11 @@ import 'server-only';
 import webpush from 'web-push';
 
 import { env } from '@/env';
-import { inEffectSender, PROVIDER_TIMEOUT_MS } from '@/lib/api/effect-signal';
+import {
+  inEffectSender,
+  PROVIDER_TIMEOUT_MS,
+  throwIfEffectAborted,
+} from '@/lib/api/effect-signal';
 
 export interface PushTarget {
   endpoint: string;
@@ -56,6 +60,9 @@ export async function sendPush(
   if (!ensureVapid()) {
     return { success: false, error: 'VAPID keys not configured' };
   }
+  // web-push cannot be aborted once started: an outbox sender out of time
+  // stops here, and the error reaches it (lib/api/effect-signal.ts).
+  throwIfEffectAborted();
   try {
     await webpush.sendNotification(
       { endpoint: target.endpoint, keys: target.keys },

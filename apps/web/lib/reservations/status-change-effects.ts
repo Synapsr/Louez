@@ -89,7 +89,7 @@ export function createReservationEffectSenders(
   const guarded =
     <P>(send: (payload: P, context: EffectSendContext) => Outcome) =>
     (payload: P, context: EffectSendContext) =>
-      withEffectSignal(context.signal, () => send(payload, context));
+      withEffectSignal(context, () => send(payload, context));
 
   return {
     "reservation.customerMessage": guarded(
