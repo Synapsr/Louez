@@ -22,6 +22,15 @@ export function providerSignal(): AbortSignal | undefined {
   return signal ? AbortSignal.any([signal, AbortSignal.timeout(PROVIDER_TIMEOUT_MS)]) : undefined;
 }
 
+/**
+ * Throws when the running sender was aborted (timed out, so its lease may
+ * pass to a retry). A provider call that cannot be aborted, such as SMTP,
+ * calls it last, after any preparation that may have stalled.
+ */
+export function throwIfEffectAborted(): void {
+  current.getStore()?.throwIfAborted();
+}
+
 /** Whether a sender is running: a provider without abort then uses its own timeout. */
 export function inEffectSender(): boolean {
   return current.getStore() !== undefined;

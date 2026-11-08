@@ -37,7 +37,14 @@ export async function captureProductServerEventOrThrow({
       api_key: env.NEXT_PUBLIC_POSTHOG_KEY,
       event,
       distinct_id: distinctId,
-      properties: { ...productAnalyticsBaseProperties, ...properties },
+      // What posthog-node adds to a server event: no GeoIP from the server's
+      // address, and the library that sent it.
+      properties: {
+        ...productAnalyticsBaseProperties,
+        ...properties,
+        $lib: 'posthog-node',
+        $geoip_disable: true,
+      },
       timestamp: new Date().toISOString(),
     }),
     signal: providerSignal(),

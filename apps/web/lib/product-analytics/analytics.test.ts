@@ -75,6 +75,11 @@ describe("strict analytics capture", () => {
     assert.equal(requests[0]?.url, "https://posthog.example.test/i/v0/e/");
     assert.equal(requests[0]?.body.api_key, "phc_test");
     assert.equal(requests[0]?.body.distinct_id, "owner");
+    // As posthog-node sends a server event: never located at the server's address.
+    const properties = requests[0]?.body.properties;
+    assert.ok(typeof properties === "object" && properties !== null);
+    assert.equal(Reflect.get(properties, "$geoip_disable"), true);
+    assert.equal(Reflect.get(properties, "$lib"), "posthog-node");
   });
 
   test("a 503 throws, so the outbox retries it", async () => {

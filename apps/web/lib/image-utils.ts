@@ -1,5 +1,7 @@
 import sharp from 'sharp'
 
+import { providerSignal } from '@/lib/api/effect-signal'
+
 /**
  * Checks if a URL points to an SVG image.
  */
@@ -53,6 +55,7 @@ export async function convertSvgToPngBuffer(
     } else {
       const response = await fetch(imageUrl, {
         headers: { Accept: 'image/*' },
+        signal: providerSignal(),
       })
 
       if (!response.ok) {
