@@ -36,9 +36,9 @@
     "expiry": "Questo codice scade tra 10 minuti. Se non hai richiesto questo codice, puoi ignorare tranquillamente questa email."
   },
   "confirmReservation": {
-    "subject": "La tua prenotazione #{number} e confermata",
+    "subject": "La tua prenotazione #{number} è confermata",
     "title": "Prenotazione confermata!",
-    "body": "La tua prenotazione #{number} e confermata. Ecco il riepilogo:",
+    "body": "La tua prenotazione #{number} è confermata. Ecco il riepilogo:",
     "summary": "Riepilogo",
     "contractSignature": "Il tuo contratto di noleggio è pronto. Firmalo online prima di ritirare l'attrezzatura.",
     "signContract": "Firma il contratto"
@@ -47,14 +47,14 @@
     "subject": "Richiesta prenotazione #{number} ricevuta",
     "title": "Richiesta ricevuta",
     "body": "Abbiamo ricevuto la tua richiesta di prenotazione.",
-    "review": "Il nostro team sta esaminando la tua richiesta e ti rispondera a breve.",
-    "confirmation": "Riceverai un'email di conferma una volta che la tua prenotazione sara convalidata.",
+    "review": "Il nostro team sta esaminando la tua richiesta e ti risponderà a breve.",
+    "confirmation": "Riceverai un'email di conferma una volta che la tua prenotazione sarà convalidata.",
     "seeYouSoon": "A presto,"
   },
   "requestAccepted": {
-    "subject": "La tua richiesta #{number} e stata accettata!",
+    "subject": "La tua richiesta #{number} è stata accettata!",
     "title": "Richiesta accettata!",
-    "body": "Buone notizie! La tua richiesta di prenotazione #{number} e stata accettata.",
+    "body": "Buone notizie! La tua richiesta di prenotazione #{number} è stata accettata.",
     "rentalPeriod": "Periodo di noleggio",
     "yourReservation": "La tua prenotazione",
     "proceedPayment": "Procedi al pagamento",
@@ -72,10 +72,10 @@
   "reminderPickup": {
     "subject": "Promemoria: il tuo noleggio inizia domani!",
     "title": "Il tuo noleggio inizia domani!",
-    "body": "Questo e un promemoria per la tua prenotazione #{number}.",
+    "body": "Questo è un promemoria per la tua prenotazione #{number}.",
     "scheduledPickup": "Ritiro programmato",
     "dontForget": "Non dimenticare:",
-    "bringId": "Un documento d'identita valido",
+    "bringId": "Un documento d'identità valido",
     "bringConfirmation": "La tua conferma di prenotazione",
     "seeTomorrow": "Ci vediamo domani!",
     "contractSignature": "Il tuo contratto di noleggio non è ancora firmato. Firmalo online prima di ritirare l'attrezzatura.",
@@ -84,9 +84,9 @@
   "reminderReturn": {
     "subject": "Promemoria: ritorno attrezzatura il {date}",
     "title": "Ricordati di restituire la tua attrezzatura",
-    "body": "Questo e un promemoria per la tua prenotazione #{number}. Il ritorno dell'attrezzatura e previsto per il {date}.",
+    "body": "Questo è un promemoria per la tua prenotazione #{number}. Il ritorno dell'attrezzatura è previsto per il {date}.",
     "scheduledReturn": "Ritorno programmato",
-    "returnInfo": "Restituisci l'attrezzatura in buone condizioni. Il deposito sara restituito dopo la verifica.",
+    "returnInfo": "Restituisci l'attrezzatura in buone condizioni. Il deposito sarà restituito dopo la verifica.",
     "thanks": "Grazie per la tua fiducia!"
   },
   "reminderPickupAdmin": {
@@ -213,7 +213,7 @@
     "expiry": "Questo invito scade tra 7 giorni. Se non hai richiesto di unirti a questo team, puoi ignorare tranquillamente questa email."
   },
   "baseLayout": {
-    "sentBy": "Questa email e stata inviata da {storeName}",
+    "sentBy": "Questa email è stata inviata da {storeName}",
     "ignoreIfNotYou": "Se non hai avviato questa azione, ignora questa email.",
     "poweredBy": "Powered by"
   },
@@ -221,9 +221,9 @@
     "subject": "Accedi alla tua prenotazione #{number}",
     "title": "Accedi alla tua prenotazione",
     "body": "Clicca per accedere alla tua prenotazione #{number}.",
-    "paymentPending": "Il pagamento di questa prenotazione e in sospeso.",
+    "paymentPending": "Il pagamento di questa prenotazione è in sospeso.",
     "viewAndPay": "Visualizza e paga",
-    "linkValid": "Questo link e valido per 30 giorni."
+    "linkValid": "Questo link è valido per 30 giorni."
   },
   "reservationCancelled": {
     "subject": "Prenotazione #{number} annullata",
