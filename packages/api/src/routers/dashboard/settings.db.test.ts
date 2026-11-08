@@ -414,6 +414,17 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
       run("updateLegal", { cgv: `<!-->${"<em>".repeat(300)}x` }, key()),
       "TEXT_TOO_DEEP",
     );
+    // At the limit as sent, past it once its line break is a `<br />`: refused too.
+    await rejects(
+      run(
+        "updateLegal",
+        {
+          cgv: `${"<blockquote>".repeat(256)}a\nb${"</blockquote>".repeat(256)}`,
+        },
+        key(),
+      ),
+      "TEXT_TOO_DEEP",
+    );
     // A text that only looks like tags is plain text, handled in one pass.
     const started = performance.now();
     const scripts = await run("updateLegal", { legalNotice: "<script ".repeat(5_000) }, key());

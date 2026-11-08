@@ -1,5 +1,5 @@
 import { hasRichTextContent } from "@louez/utils";
-import { richTextTooDeep, sanitizeRichTextHtml } from "@louez/utils/sanitize-rich-text";
+import { sanitizeRichText } from "@louez/utils/sanitize-rich-text";
 
 import { TEXT_COLUMN_BYTES, settingsErrors } from "../contracts/settings";
 
@@ -12,7 +12,7 @@ import { TEXT_COLUMN_BYTES, settingsErrors } from "../contracts/settings";
 
 /**
  * Sanitised editor HTML ready to store: refused when it nests deeper than
- * any editor writes, or when it would not fit its TEXT column (the
+ * any editor writes, as sent or once sanitised, or when it would not fit its TEXT column (the
  * sanitiser escapes, so the stored value can be longer than what was sent).
  * `blankAsNull`: an editor left empty stores null.
  */
@@ -21,8 +21,9 @@ export function toStoredHtml(
   html: string,
   options: { blankAsNull: boolean },
 ): string | null {
-  if (richTextTooDeep(html)) throw settingsErrors.textTooDeep(field);
-  const sanitized = sanitizeRichTextHtml(html);
+  // Too deep as sent, or once sanitised (a line break becomes a `<br />`).
+  const { html: sanitized, tooDeep } = sanitizeRichText(html);
+  if (tooDeep) throw settingsErrors.textTooDeep(field);
   if (options.blankAsNull && !hasRichTextContent(sanitized)) return null;
   const bytes = Buffer.byteLength(sanitized, "utf8");
   if (bytes > TEXT_COLUMN_BYTES) throw settingsErrors.textTooLong(field, bytes);

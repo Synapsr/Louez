@@ -1,4 +1,5 @@
 import {
+  PLAIN_TEXT_HELP,
   SETTINGS_LIMITS,
   createLocationInput,
   getSettingsInput,
@@ -112,7 +113,7 @@ const updateStoreInfoProcedure = storeProcedure
     scope: WRITE,
     mcp: {
       name: "settings_update_store_info",
-      description: `Change the store's name, description and contact details (email, phone, address, coordinates), as the storefront shows them. Send only the fields to change; null clears one. Send latitude and longitude with a new address: delivery distances are measured from them. The description takes plain text (blank lines make paragraphs) or simple HTML. Returns the store info. ${LINKS_HELP}`,
+      description: `Change the store's name, description and contact details (email, phone, address, coordinates), as the storefront shows them. Send only the fields to change; null clears one. Send latitude and longitude with a new address: delivery distances are measured from them. The description takes plain text (blank lines make paragraphs) or simple HTML. ${PLAIN_TEXT_HELP} Returns the store info. ${LINKS_HELP}`,
       bundle: "settings",
       aliases: [{ name: "update_store_info" }],
       annotations: { idempotentHint: true },
@@ -157,7 +158,7 @@ const updateLegalProcedure = storeProcedure
     scope: WRITE,
     mcp: {
       name: "settings_update_legal",
-      description: `Change the store's legal texts: terms and conditions (cgv), legal notice, whether the full terms are printed in rental contracts, and the storefront's footer note. Send only the fields to change; null clears a text. Texts take plain text (blank lines make paragraphs) or simple HTML, ${SETTINGS_LIMITS.richText} characters at most. Returns the legal texts, with the online store editor's legal page in \`links\`: give the user that URL.`,
+      description: `Change the store's legal texts: terms and conditions (cgv), legal notice, whether the full terms are printed in rental contracts, and the storefront's footer note. Send only the fields to change; null clears a text. Texts take plain text (blank lines make paragraphs) or simple HTML, ${SETTINGS_LIMITS.richText} characters at most. ${PLAIN_TEXT_HELP} Returns the legal texts, with the online store editor's legal page in \`links\`: give the user that URL.`,
       bundle: "settings",
       aliases: [{ name: "update_store_legal" }],
       annotations: { idempotentHint: true },

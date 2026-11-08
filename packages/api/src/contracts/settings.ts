@@ -26,6 +26,10 @@ import { appearanceView } from "./online-store";
 /** What a MySQL TEXT column holds: the store's description, tagline, terms and legal notice. */
 export const TEXT_COLUMN_BYTES = 65_535;
 
+/** How a text field takes plain text, for its description. */
+export const PLAIN_TEXT_HELP =
+  "Plain text is fine; a `<` then a letter, later closed by `>`, reads as HTML, so to keep a literal < or > write it as &lt; or &gt;.";
+
 /** Bounds checked before any lock. A store above one keeps what it has; it may not grow. */
 export const SETTINGS_LIMITS = {
   /** Pickup and return points of a store. */
@@ -251,7 +255,7 @@ export const updateStoreInfoInput = z.object({
     .nullable()
     .optional()
     .describe(
-      "What the store rents, shown on the storefront. Plain text or simple HTML; null clears it.",
+      `What the store rents, shown on the storefront. Plain text or simple HTML; null clears it. ${PLAIN_TEXT_HELP}`,
     ),
   email: z
     .email()
@@ -322,13 +326,17 @@ export const updateLegalInput = z.object({
     .max(SETTINGS_LIMITS.richText)
     .nullable()
     .optional()
-    .describe("Terms and conditions (CGV): plain text or simple HTML; null clears them."),
+    .describe(
+      `Terms and conditions (CGV): plain text or simple HTML; null clears them. ${PLAIN_TEXT_HELP}`,
+    ),
   legalNotice: z
     .string()
     .max(SETTINGS_LIMITS.richText)
     .nullable()
     .optional()
-    .describe("Legal notice (mentions légales): plain text or simple HTML; null clears it."),
+    .describe(
+      `Legal notice (mentions légales): plain text or simple HTML; null clears it. ${PLAIN_TEXT_HELP}`,
+    ),
   includeCgvInContract: z
     .boolean()
     .optional()
