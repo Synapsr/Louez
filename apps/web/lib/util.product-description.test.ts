@@ -51,6 +51,7 @@ test("neutralizes executable markup and unsafe links", () => {
     sanitizeProductDescriptionHtml(
       '<img src=x onerror="alert(1)"><script>alert(2)</script><a href="java&#115;cript:alert(3)">Lien</a>',
     ),
-    "alert(2)<a>Lien</a>",
+    // A script goes with its content.
+    "<a>Lien</a>",
   );
 });
