@@ -46,7 +46,11 @@ export function requireReservationsAndCustomers(context: ProductContext) {
   }
 }
 
-/** A confirmation asked under the write's lock, bound to what the preview shows. */
+/**
+ * A confirmation asked under the write's lock, bound to what the preview
+ * shows: `state`, and the summary and details themselves, so a name or a
+ * date the caller was shown that changes since voids the token.
+ */
 export function confirmUnderLock<TPreview extends { summary: string }>(
   context: ProductContext,
   path: readonly string[],
@@ -61,7 +65,7 @@ export function confirmUnderLock<TPreview extends { summary: string }>(
       headers: context.headers,
       procedure: path.join("."),
       input,
-      state,
+      state: { state, summary: preview.summary, details: details ?? null },
       preview: { summary: preview.summary, details },
     });
   };

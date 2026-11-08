@@ -73,38 +73,17 @@ function visibleConflict(conflict: UnitConflict, access: BookingAccess): UnitCon
 
 /**
  * What the preview of a unit leaving availability shows, redacted to what
- * the caller may see, and what its token binds: the unit, the window once
- * merged with what is stored (a retirement starts now, so its window is
- * left out), and each booking with its dates and replacement units.
+ * the caller may see. `confirmUnderLock` binds the token to these details
+ * and the summary, so any of them that changes voids it: a booking moved, a
+ * replacement taken or renamed, the product renamed. A retirement starts
+ * now: its window is not shown, and so not bound.
  */
 const availabilityConfirmation =
   (context: ProductContext, options: { showWindow: boolean }) =>
   (preview: UnitAvailabilityPreview) => {
     const access = bookingAccess(context);
     return {
-      state: {
-        unitId: preview.unit.id,
-        identifier: preview.unit.identifier,
-        ...(options.showWindow
-          ? {
-              window: {
-                start: preview.window.start.toISOString(),
-                end: preview.window.end?.toISOString() ?? null,
-              },
-            }
-          : {}),
-        conflicts: preview.conflicts
-          .map((conflict) => ({
-            reservationItemId: conflict.reservationItemId,
-            reservationId: conflict.reservationId,
-            startDate: conflict.startDate.toISOString(),
-            endDate: conflict.endDate.toISOString(),
-            replacementUnitIds: conflict.replacementCandidates
-              .map((candidate) => candidate.id)
-              .sort(),
-          }))
-          .sort((left, right) => left.reservationItemId.localeCompare(right.reservationItemId)),
-      },
+      state: { unitId: preview.unit.id },
       details: {
         unit: preview.unit,
         product: preview.product,

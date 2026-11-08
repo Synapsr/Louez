@@ -750,6 +750,43 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
     assert.equal(bookingsOf(full).details.reservations[0].customerName, "Ada Lovelace");
   });
 
+  test("a token voids when a name the preview shows changes: a replacement unit, the product", async () => {
+    const { product, first, second } = await trackedProduct();
+    await book(product.id, first);
+    const context = await apiKey();
+    const input = { unitId: first, reason: "broken" as const };
+
+    const asked = await rejects(run("retireUnit", input, context()), "CONFIRMATION_REQUIRED");
+    assert.match(JSON.stringify(asked.data.details), /"identifier":"K-2"/);
+    const units = (await run("get", { id: product.id }, session())).units;
+    await run(
+      "update",
+      {
+        id: product.id,
+        units: units.map((unit) =>
+          unit.id === second
+            ? { id: unit.id, identifier: "K-2b" }
+            : { id: unit.id, identifier: unit.identifier },
+        ),
+      },
+      session(),
+    );
+    await rejects(
+      run("retireUnit", input, context({ "louez-confirmation": tokenOf(asked) })),
+      "CONFIRMATION_INVALID",
+    );
+
+    const again = await rejects(run("retireUnit", input, context()), "CONFIRMATION_REQUIRED");
+    await run("update", { id: product.id, name: "Sea kayak" }, session());
+    await rejects(
+      run("retireUnit", input, context({ "louez-confirmation": tokenOf(again) })),
+      "CONFIRMATION_INVALID",
+    );
+    // Nothing changed: the token of a fresh preview still works.
+    const fresh = await rejects(run("retireUnit", input, context()), "CONFIRMATION_REQUIRED");
+    await run("retireUnit", input, context({ "louez-confirmation": tokenOf(fresh) }));
+  });
+
   // --- Races ----------------------------------------------------------------
 
   /** What checkout does while the call waits: the product's row first, then the booking. */
