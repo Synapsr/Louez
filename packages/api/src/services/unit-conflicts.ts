@@ -1,9 +1,10 @@
-import { and, eq, gt, inArray, lt, not, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, not, or, sql } from "drizzle-orm";
 
 import {
   buildReservationOverlapPredicate,
   customers,
   db,
+  productUnitDowntimes,
   productUnits,
   products,
   reservationAvailabilityEndSql,
@@ -176,30 +177,83 @@ export async function getUnitConflicts(
   return withCandidates;
 }
 
-export async function getUnitConflictFlags(
-  windows: Array<{ unitId: string; window: UnitConflictWindow }>,
+/** What makes a unit unable to serve over a window, and when that was last written here. */
+export type UnitConflictCause = { kind: "retired" | "downtime"; changedAt: Date };
+
+/** A window a unit cannot serve, with its cause. */
+export type UnitWindow = { unitId: string; window: UnitConflictWindow; cause: UnitConflictCause };
+
+/**
+ * The windows the product page checks a unit against: a retired unit
+ * conflicts with any booking still to end (an open window from now), an
+ * active one with each of its downtimes still open.
+ */
+export function unitConflictWindows(
+  units: ReadonlyArray<{ id: string; lifecycleStatus: string; updatedAt: Date }>,
+  openDowntimes: ReadonlyArray<{
+    productUnitId: string | null;
+    startsAt: Date;
+    endsAt: Date | null;
+    updatedAt: Date;
+  }>,
+  now: Date,
+): UnitWindow[] {
+  return units.flatMap((unit): UnitWindow[] => {
+    if (unit.lifecycleStatus === "retired") {
+      return [
+        {
+          unitId: unit.id,
+          window: { start: now, end: null },
+          cause: { kind: "retired", changedAt: unit.updatedAt },
+        },
+      ];
+    }
+    return openDowntimes
+      .filter((downtime) => downtime.productUnitId === unit.id)
+      .map((downtime) => ({
+        unitId: unit.id,
+        window: { start: downtime.startsAt, end: downtime.endsAt },
+        cause: { kind: "downtime", changedAt: downtime.updatedAt },
+      }));
+  });
+}
+
+/** A booking's hold on a unit that falls in one or more of the unit's windows. */
+export type ConflictingAssignment = {
+  /** The reservation_item_units row. */
+  assignmentId: string;
+  productUnitId: string;
+  reservationId: string;
+  assignedAt: Date;
+  /** When the reservation was last written: an edit of its dates may make the conflict. */
+  reservationUpdatedAt: Date;
+  /** The windows it falls in. */
+  causes: UnitConflictCause[];
+};
+
+/**
+ * The bookings that hold a unit over one of its windows, with the store's
+ * turnover buffer around each window: the check behind the product page's
+ * conflict flags and the inbox's unit conflicts.
+ */
+export async function findConflictingAssignments(
+  windows: readonly UnitWindow[],
   options: GetUnitConflictFlagsOptions,
-): Promise<Record<string, boolean>> {
-  const flags: Record<string, boolean> = {};
-  if (windows.length === 0) {
-    return flags;
-  }
+): Promise<ConflictingAssignment[]> {
+  if (windows.length === 0) return [];
 
   const blockingStatuses = getBlockingStatuses(options.pendingBlocksAvailability);
-  const turnoverBufferMinutes = options.turnoverBufferMinutes ?? 0;
-  const windowsByUnitId = new Map<string, UnitConflictWindow[]>();
-
+  const bufferMs = Math.max(0, options.turnoverBufferMinutes ?? 0) * 60_000;
+  const windowsByUnitId = new Map<string, UnitWindow[]>();
   for (const item of windows) {
-    flags[item.unitId] = false;
     const unitWindows = windowsByUnitId.get(item.unitId) ?? [];
-    unitWindows.push(item.window);
+    unitWindows.push(item);
     windowsByUnitId.set(item.unitId, unitWindows);
   }
 
   const unitIds = [...windowsByUnitId.keys()];
   const minStart = new Date(
-    Math.min(...windows.map((item) => item.window.start.getTime())) -
-      Math.max(0, turnoverBufferMinutes) * 60_000,
+    Math.min(...windows.map((item) => item.window.start.getTime())) - bufferMs,
   );
   const finiteEnds = windows
     .map((item) => item.window.end)
@@ -208,9 +262,6 @@ export async function getUnitConflictFlags(
     finiteEnds.length === windows.length
       ? new Date(Math.max(...finiteEnds.map((end) => end.getTime())))
       : null;
-  const bufferedMaxFiniteEnd = maxFiniteEnd
-    ? new Date(maxFiniteEnd.getTime() + Math.max(0, turnoverBufferMinutes) * 60_000)
-    : null;
 
   const conditions = [
     inArray(reservationItemUnits.productUnitId, unitIds),
@@ -218,14 +269,17 @@ export async function getUnitConflictFlags(
     inArray(reservations.status, blockingStatuses),
     gt(reservations.endDate, minStart),
   ];
-
-  if (bufferedMaxFiniteEnd) {
-    conditions.push(lt(reservations.startDate, bufferedMaxFiniteEnd));
+  if (maxFiniteEnd) {
+    conditions.push(lt(reservations.startDate, new Date(maxFiniteEnd.getTime() + bufferMs)));
   }
 
   const assignments = await db
     .select({
+      assignmentId: reservationItemUnits.id,
       productUnitId: reservationItemUnits.productUnitId,
+      assignedAt: reservationItemUnits.assignedAt,
+      reservationId: reservations.id,
+      reservationUpdatedAt: reservations.updatedAt,
       startDate: reservations.startDate,
       endDate: reservationAvailabilityEndSql(),
     })
@@ -234,31 +288,96 @@ export async function getUnitConflictFlags(
     .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
     .where(and(...conditions));
 
-  for (const assignment of assignments) {
-    if (!assignment.productUnitId) {
-      continue;
-    }
-
-    const unitWindows = windowsByUnitId.get(assignment.productUnitId) ?? [];
-
-    if (
-      unitWindows.some((window) => {
-        const bufferedStart = new Date(
-          window.start.getTime() - Math.max(0, turnoverBufferMinutes) * 60_000,
-        );
-        const bufferedEnd = window.end
-          ? new Date(window.end.getTime() + Math.max(0, turnoverBufferMinutes) * 60_000)
-          : null;
-
+  return assignments.flatMap((assignment): ConflictingAssignment[] => {
+    const { productUnitId } = assignment;
+    if (!productUnitId) return [];
+    const causes = (windowsByUnitId.get(productUnitId) ?? [])
+      .filter(({ window }) => {
+        const bufferedStart = new Date(window.start.getTime() - bufferMs);
+        const bufferedEnd = window.end ? new Date(window.end.getTime() + bufferMs) : null;
         return (
           assignment.endDate > bufferedStart &&
           (bufferedEnd === null || assignment.startDate < bufferedEnd)
         );
       })
-    ) {
-      flags[assignment.productUnitId] = true;
-    }
-  }
+      .map((item) => item.cause);
+    if (causes.length === 0) return [];
+    return [
+      {
+        assignmentId: assignment.assignmentId,
+        productUnitId,
+        reservationId: assignment.reservationId,
+        assignedAt: assignment.assignedAt,
+        reservationUpdatedAt: assignment.reservationUpdatedAt,
+        causes,
+      },
+    ];
+  });
+}
 
+/** Whether each unit has a booking over one of its windows, as the product page flags it. */
+export async function getUnitConflictFlags(
+  windows: readonly UnitWindow[],
+  options: GetUnitConflictFlagsOptions,
+): Promise<Record<string, boolean>> {
+  const flags: Record<string, boolean> = {};
+  for (const item of windows) flags[item.unitId] = false;
+  for (const assignment of await findConflictingAssignments(windows, options)) {
+    flags[assignment.productUnitId] = true;
+  }
   return flags;
+}
+
+/**
+ * Every window of the store's units, as the product page builds them for one
+ * product: its retired units that still hold a booking to end, and the open
+ * downtimes of its active units.
+ */
+export async function loadStoreUnitWindows(storeId: string, now: Date): Promise<UnitWindow[]> {
+  const [retired, downtimes] = await Promise.all([
+    db
+      .selectDistinct({
+        id: productUnits.id,
+        lifecycleStatus: productUnits.lifecycleStatus,
+        updatedAt: productUnits.updatedAt,
+      })
+      .from(productUnits)
+      .innerJoin(products, eq(products.id, productUnits.productId))
+      .innerJoin(reservationItemUnits, eq(reservationItemUnits.productUnitId, productUnits.id))
+      .innerJoin(reservationItems, eq(reservationItems.id, reservationItemUnits.reservationItemId))
+      .innerJoin(reservations, eq(reservations.id, reservationItems.reservationId))
+      .where(
+        and(
+          eq(products.storeId, storeId),
+          eq(productUnits.lifecycleStatus, "retired"),
+          eq(reservations.storeId, storeId),
+          gt(reservations.endDate, now),
+        ),
+      ),
+    db
+      .select({
+        id: productUnits.id,
+        lifecycleStatus: productUnits.lifecycleStatus,
+        updatedAt: productUnits.updatedAt,
+        productUnitId: productUnitDowntimes.productUnitId,
+        startsAt: productUnitDowntimes.startsAt,
+        endsAt: productUnitDowntimes.endsAt,
+        downtimeUpdatedAt: productUnitDowntimes.updatedAt,
+      })
+      .from(productUnitDowntimes)
+      .innerJoin(productUnits, eq(productUnits.id, productUnitDowntimes.productUnitId))
+      .where(
+        and(
+          eq(productUnitDowntimes.storeId, storeId),
+          eq(productUnits.lifecycleStatus, "active"),
+          or(isNull(productUnitDowntimes.endsAt), gt(productUnitDowntimes.endsAt, now)),
+        ),
+      ),
+  ]);
+  const activeUnits = new Map(downtimes.map((row) => [row.id, row]));
+  return unitConflictWindows(
+    [...retired, ...activeUnits.values()],
+    downtimes.map((row) => ({ ...row, updatedAt: row.downtimeUpdatedAt })),
+    now,
+  );
 }
