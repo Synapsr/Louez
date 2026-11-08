@@ -13,6 +13,7 @@ import {
   waitForLockWaits,
   type TestDatabase,
 } from "@louez/db/testing";
+import { createTestUrls, TEST_APP_URL } from "@louez/api/platform/test-urls";
 import type { ReservationToolsClient } from "@louez/mcp/testing";
 
 import type { createAITools } from "../ai/tools";
@@ -273,7 +274,13 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
   /** Runs the assistant's tool as the chat route builds it, for an owner of STORE. */
   async function askAssistant(input: StatusInput) {
     const tools = aiTools.createAITools(
-      { storeId: STORE, userId: USER, storeName: "Status store", permissions },
+      {
+        storeId: STORE,
+        userId: USER,
+        storeName: "Status store",
+        permissions,
+        urls: createTestUrls(),
+      },
       { changeReservationStatus: service.changeAsAgent },
     );
     const execute = tools.update_reservation_status.execute;
@@ -354,6 +361,7 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
       number: id,
       from: "pending",
       to: "confirmed",
+      links: { dashboard: `${TEST_APP_URL}/dashboard/reservations/${id}` },
     });
 
     assert.deepEqual(senders(), [
@@ -652,6 +660,7 @@ describe("assistant and MCP status changes (database)", { skip: skipWithoutTestD
       number: id,
       from: "pending",
       to: "confirmed",
+      links: { dashboard: `${TEST_APP_URL}/dashboard/reservations/${id}` },
       warnings: [{ key: "errors.tulipNotConfigured" }],
     });
 

@@ -6786,6 +6786,7 @@
       "disclaimer": "The AI assistant can make mistakes. Check important information.",
       "newConversation": "New conversation",
       "openFullPage": "Open full page",
+      "opensInNewTab": "opens in a new tab",
       "history": {
         "title": "History",
         "empty": "No conversations yet",

@@ -6786,6 +6786,7 @@
       "disclaimer": "AI アシスタントは間違いを犯す可能性があります。重要な情報を確認してください。",
       "newConversation": "新しい会話",
       "openFullPage": "全ページを開く",
+      "opensInNewTab": "新しいタブで開きます",
       "history": {
         "title": "歴史",
         "empty": "まだ会話はありません",

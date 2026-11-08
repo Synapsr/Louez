@@ -19,7 +19,8 @@ import {
   reservations,
   stores,
 } from "@louez/db";
-import type { AppRouter } from "@louez/api";
+import type { AppRouter, UrlsPort } from "@louez/api";
+import { customerLinks, reservationLinks } from "@louez/api/platform/links";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import type { RouterClient } from "@orpc/server";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
@@ -50,6 +51,11 @@ export type AIChatContext = {
   userId: string;
   storeName: string;
   permissions: ApiKeyPermissions;
+  /**
+   * The deployment's addresses, the API's `ports.urls`: the links the tools
+   * return are the ones agents get, and the chat opens them inside the app.
+   */
+  urls: UrlsPort;
   /**
    * The agent-ready procedures, called as the signed-in user (their session,
    * their current role), like the dashboard calls them. Domains move here as
@@ -158,6 +164,7 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
             quantity: product.stockKind === "untracked" ? null : product.quantity,
             status: product.status,
             categoryName: product.category?.name ?? null,
+            links: product.links,
           })),
           total: status && status !== "all" ? page.counts[status] : page.counts.all,
           currency: page.currency,
@@ -220,6 +227,7 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           pricingKind: product.pricingKind,
           pricingMode: product.pricingMode,
           quantity: product.quantity,
+          links: product.links,
         };
       },
     }),
@@ -240,8 +248,8 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         if (Object.values(updates).every((value) => value === undefined)) {
           return { error: "No fields to update" };
         }
-        await assistantApi(ctx).products.update({ id: productId, ...updates });
-        return { success: true, productId };
+        const product = await assistantApi(ctx).products.update({ id: productId, ...updates });
+        return { success: true, productId, links: product.links };
       },
     }),
 
@@ -253,8 +261,11 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
       }),
       execute: async ({ productId }) => {
         const product = await assistantApi(ctx).products.get({ id: productId });
-        await assistantApi(ctx).products.updateStatus({ id: productId, status: "archived" });
-        return { success: true, name: product.name };
+        const archived = await assistantApi(ctx).products.updateStatus({
+          id: productId,
+          status: "archived",
+        });
+        return { success: true, name: product.name, links: archived.links };
       },
     }),
 
@@ -317,7 +328,10 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .from(reservations)
           .where(and(...conditions));
 
-        return { reservations: rows, total: countResult?.total ?? 0 };
+        return {
+          reservations: rows.map((row) => ({ ...row, links: reservationLinks(ctx.urls, row) })),
+          total: countResult?.total ?? 0,
+        };
       },
     }),
 
@@ -339,7 +353,16 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         });
 
         if (!reservation) return { error: "Reservation not found" };
-        return { reservation };
+        return {
+          reservation: {
+            ...reservation,
+            links: reservationLinks(ctx.urls, reservation),
+            customer: reservation.customer && {
+              ...reservation.customer,
+              links: customerLinks(ctx.urls, reservation.customer),
+            },
+          },
+        };
       },
     }),
 
@@ -380,6 +403,7 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           number: result.number,
           from: result.from,
           to: result.to,
+          links: reservationLinks(ctx.urls, { id: reservationId }),
           // What the dashboard shows after the change: rule warnings, a failed contract.
           ...(result.warnings.length > 0 && { warnings: result.warnings }),
         };
@@ -405,7 +429,11 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .update(reservations)
           .set({ internalNotes: notes })
           .where(eq(reservations.id, reservationId));
-        return { success: true, number: existing.number };
+        return {
+          success: true,
+          number: existing.number,
+          links: reservationLinks(ctx.urls, existing),
+        };
       },
     }),
 
@@ -501,7 +529,10 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .from(customers)
           .where(and(...conditions));
 
-        return { customers: rows, total: countResult?.total ?? 0 };
+        return {
+          customers: rows.map((row) => ({ ...row, links: customerLinks(ctx.urls, row) })),
+          total: countResult?.total ?? 0,
+        };
       },
     }),
 
@@ -532,7 +563,18 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         ]);
         const { fields, withheld } = toReadableCustomerFields(definitions, values);
 
-        return { customer, customFields: fields, withheldSensitiveFields: withheld };
+        return {
+          customer: {
+            ...customer,
+            links: customerLinks(ctx.urls, customer),
+            reservations: customer.reservations.map((reservation) => ({
+              ...reservation,
+              links: reservationLinks(ctx.urls, reservation),
+            })),
+          },
+          customFields: fields,
+          withheldSensitiveFields: withheld,
+        };
       },
     }),
 
@@ -600,7 +642,13 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           return created.id;
         });
 
-        return { id: createdId, firstName, lastName, email };
+        return {
+          id: createdId,
+          firstName,
+          lastName,
+          email,
+          links: customerLinks(ctx.urls, { id: createdId }),
+        };
       },
     }),
 
@@ -671,7 +719,7 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
             definitions,
           });
         });
-        return { success: true, customerId };
+        return { success: true, customerId, links: customerLinks(ctx.urls, { id: customerId }) };
       },
     }),
 
@@ -1084,7 +1132,15 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .orderBy(reservations.endDate)
           .limit(50);
 
-        return { pickups, returns, days: lookAhead };
+        const withLinks = <T extends { id: string }>(row: T) => ({
+          ...row,
+          links: reservationLinks(ctx.urls, row),
+        });
+        return {
+          pickups: pickups.map(withLinks),
+          returns: returns.map(withLinks),
+          days: lookAhead,
+        };
       },
     }),
 
@@ -1116,7 +1172,9 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .orderBy(reservations.endDate)
           .limit(50);
 
-        return { overdue };
+        return {
+          overdue: overdue.map((row) => ({ ...row, links: reservationLinks(ctx.urls, row) })),
+        };
       },
     }),
 

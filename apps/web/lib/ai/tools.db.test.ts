@@ -4,6 +4,7 @@ import { after, before, beforeEach, describe, test } from "node:test";
 
 import { eq } from "drizzle-orm";
 
+import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import type { createAITools } from "./tools";
@@ -59,6 +60,7 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
       storeId: STORE,
       userId: USER,
       storeName: "AI payments",
+      urls: createTestUrls(),
       permissions: {
         reservations: "write",
         products: "read",

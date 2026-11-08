@@ -174,6 +174,7 @@ export async function POST(req: Request) {
     userId: session.user.id,
     storeName: store.name,
     permissions: roleToPermissions(store.role),
+    urls: apiPorts.urls,
     // The procedures, as this signed-in user, on this chat's store: the store
     // header is set to it, whatever the request sent.
     api: {

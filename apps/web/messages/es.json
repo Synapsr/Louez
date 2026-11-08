@@ -6786,6 +6786,7 @@
       "disclaimer": "El asistente de IA puede cometer errores. Comprueba la información importante.",
       "newConversation": "Nueva conversación",
       "openFullPage": "Abrir en página completa",
+      "opensInNewTab": "se abre en una pestaña nueva",
       "history": {
         "title": "Historial",
         "empty": "Sin conversaciones",
