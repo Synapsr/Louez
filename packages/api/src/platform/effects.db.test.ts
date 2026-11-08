@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 
+import { eq } from "drizzle-orm";
+
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import type { ApiEffect, ApiEffectSenders, EffectSendContext } from "./effects";
 
 // The outbox on the database: a rollback leaves no row; a failure is retried
 // and sent once; a sender whose claim was taken over changes nothing and
-// sends nothing; rows of one key go out in order; newer news supersedes; a
-// row whose store or reservation is gone is cancelled; done rows are pruned.
+// sends nothing; a sender that times out keeps its row blocked until its
+// lease ends; rows of one key go out in order; newer news supersedes; a row
+// whose store or reservation is gone is cancelled; done rows are pruned.
 
 const STORE = "fx_store_0000000001";
 const RESERVATION = "fx_reservation_00001";
@@ -158,18 +161,64 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     assert.deepEqual(sent, ["A"], "exactly one send");
   });
 
-  test("a sender runs within its timeout; the late outcome is ignored", async () => {
-    const [id = ""] = await enqueue(platform("A"));
-    checkClaim = false;
-    gate = new Promise<void>(() => {});
-    assert.deepEqual(await effects.dispatchEffects([id], senders, { sendTimeoutMs: 50 }), {
-      sent: 0,
-      failed: 1,
-      skipped: 0,
+  test("a sender that times out keeps its row, and its key, blocked until the lease ends", async () => {
+    const key = "reservation:r:customer:email";
+    const [first = "", later = ""] = await enqueue(
+      platform("confirmed", key),
+      platform("cancelled", key),
+    );
+    // A sender that ignores its signal and checks nothing: it stalls, then delivers.
+    let deliver = () => {};
+    const stall = new Promise<void>((resolve) => {
+      deliver = resolve;
     });
-    const [row] = await effects.readEffects([id]);
-    assert.equal(row?.status, "failed");
-    assert.match(row?.lastError ?? "", /did not finish/);
+    const deaf: ApiEffectSenders = {
+      ...senders,
+      "reservation.platformNotification": async (payload) => {
+        await stall;
+        sent.push(payload.number);
+      },
+    };
+    const start = new Date();
+    const stalled = effects.dispatchEffects([first], deaf, { now: () => start, sendTimeoutMs: 50 });
+    assert.deepEqual(await stalled, { sent: 0, failed: 1, skipped: 0 });
+    const [uncertain] = await effects.readEffects([first]);
+    assert.equal(uncertain?.status, "running", "its outcome is unknown: it stays claimed");
+    assert.equal(uncertain?.claimToken, null, "its late sender can no longer record");
+    assert.match(uncertain?.lastError ?? "", /Outcome unknown/);
+
+    // Before the lease ends, nothing of the key runs: not the retry, not the later row.
+    const beforeLease = new Date(start.getTime() + effects.EFFECT_LEASE_MS - 1_000);
+    await effects.retryDueEffects(senders, { now: () => beforeLease });
+    await effects.dispatchEffects([later], senders, { now: () => beforeLease });
+    assert.deepEqual(sent, []);
+    assert.equal(await statusOf(later), "pending");
+
+    // The stalled sender delivers late; then the lease ends and the retry runs, then the later row.
+    deliver();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const afterLease = new Date(start.getTime() + effects.EFFECT_LEASE_MS + 1_000);
+    await effects.retryDueEffects(senders, { now: () => afterLease });
+    assert.deepEqual(sent, ["confirmed", "confirmed", "cancelled"], "at least once, and in order");
+    assert.equal(await statusOf(first), "sent");
+    assert.equal(await statusOf(later), "sent");
+  });
+
+  test("the signal reaches the sender at its timeout", async () => {
+    const [id = ""] = await enqueue(platform("A"));
+    let aborted = false;
+    const listening: ApiEffectSenders = {
+      ...senders,
+      "reservation.platformNotification": (_payload, context) =>
+        new Promise((resolve) => {
+          context.signal.addEventListener("abort", () => {
+            aborted = true;
+            resolve(undefined);
+          });
+        }),
+    };
+    await effects.dispatchEffects([id], listening, { sendTimeoutMs: 50 });
+    assert.equal(aborted, true);
   });
 
   test("an expired claim past the last attempt is abandoned, not run again", async () => {
@@ -203,19 +252,30 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     assert.deepEqual(sent, ["confirmed", "cancelled"], "in the order they were added");
   });
 
-  test("newer news supersedes an unsent row of the same key prefix", async () => {
-    const [old = ""] = await enqueue(platform("old", "reservation:r:customer:email"));
+  test("newer news supersedes the unsent rows of its key prefix and kind only", async () => {
+    const [old = "", other = ""] = await enqueue(
+      platform("old", "reservation:r:customer:email"),
+      platform("other kind", "reservation:r:customer:email"),
+    );
+    await louezDb.db
+      .update(louezDb.apiEffects)
+      .set({ payload: { notification: "customer_request_accepted", number: "old" } })
+      .where(eq(louezDb.apiEffects.id, old));
     await louezDb.db.transaction(async (tx) => {
-      await effects.supersedeEffects(tx, STORE, "reservation:r:customer:");
+      await effects.supersedeEffects(tx, STORE, "reservation:r:customer:", {
+        field: "notification",
+        values: ["customer_request_accepted"],
+      });
       await effects.enqueueEffects(tx, STORE, [platform("new", "reservation:r:customer:email")]);
     });
     const [row] = await effects.readEffects([old]);
     assert.equal(row?.status, "superseded");
     assert.deepEqual(row?.payload, {}, "its personal data is gone");
+    assert.equal(await statusOf(other), "pending", "a row of another kind stays");
     await effects.retryDueEffects(senders, {
       now: () => new Date(Date.now() + effects.EFFECT_PENDING_GRACE_MS + 1_000),
     });
-    assert.deepEqual(sent, ["new"]);
+    assert.deepEqual(sent, ["other kind", "new"]);
   });
 
   test("a row whose reservation is gone is cancelled, never sent", async () => {

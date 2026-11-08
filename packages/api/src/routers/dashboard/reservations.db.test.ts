@@ -343,7 +343,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         payload: louezDb.apiEffects.payload,
       })
       .from(louezDb.apiEffects)
-      .orderBy(louezDb.apiEffects.createdAt, louezDb.apiEffects.type);
+      .orderBy(louezDb.apiEffects.seq);
   }
   const analyticsOf = async () =>
     (await outbox())
@@ -1000,6 +1000,18 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     }
   });
 
+  test("a pick-up leaves the unsent acceptance email to go out", async () => {
+    const id = await reservation("pending", { productId: await product() });
+    await run("updateStatus", { id, status: "confirmed" }, session());
+    await run("updateStatus", { id, status: "ongoing" }, session());
+    const messages = (await outbox()).filter((row) => row.type === "reservation.customerMessage");
+    assert.deepEqual(
+      messages.map((row) => [row.status, row.payload.notification]),
+      [["pending", "customer_request_accepted"]],
+      "the acceptance, with its contract link, is still true",
+    );
+  });
+
   test("a later status change supersedes the earlier customer message still unsent", async () => {
     const id = await reservation("pending", { productId: await product() });
     await run("updateStatus", { id, status: "confirmed" }, session());
@@ -1013,7 +1025,18 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     const storeRows = (await outbox()).filter(
       (row) => row.type === "reservation.storeNotification",
     );
-    assert.equal(storeRows.length, 6, "the store hears of both changes, in order");
+    assert.deepEqual(
+      storeRows.map((row) => row.payload.event),
+      [
+        "reservation_confirmed",
+        "reservation_confirmed",
+        "reservation_confirmed",
+        "reservation_cancelled",
+        "reservation_cancelled",
+        "reservation_cancelled",
+      ],
+      "the store hears of both changes, in order: the cancellation goes out",
+    );
     assert.ok(storeRows.every((row) => row.status === "pending"));
   });
 
