@@ -208,9 +208,10 @@ describe("launch tools (database)", { skip: skipWithoutTestDatabase() }, () => {
 
   test("the instructions point a store not online yet to the checklist and the launch", async () => {
     const authorization = await key();
+    const instructions = await mcpInstructions(authorization);
     assert.match(
-      await mcpInstructions(authorization),
-      /not online yet.*stores_get_launch_checklist.*stores_go_live/s,
+      instructions,
+      /not online yet[^\n]*stores_get_launch_checklist[^\n]*stores_go_live/,
     );
   });
 

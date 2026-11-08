@@ -250,6 +250,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       storeId: values.storeId ?? STORE,
       name: `Board ${id}`,
       price: values.price ?? "25.00",
+      pricingMode: "day",
       status: values.status ?? "active",
     });
   }
