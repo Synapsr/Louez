@@ -4409,7 +4409,7 @@ export const apiRateLimits = mysqlTable("api_rate_limits", {
  * item is one occurrence: its type, its record and when it happened. The row
  * hides that occurrence from the store's inbox for every member and agent; the
  * same record coming back later (a new `occurred_at`) shows again. Deleted with
- * the store.
+ * the store, past the retention, or past the store's cap (oldest first).
  */
 export const inboxAcknowledgements = mysqlTable(
   "inbox_acknowledgements",
@@ -4433,6 +4433,12 @@ export const inboxAcknowledgements = mysqlTable(
       table.recordId,
       table.occurredAt,
     ),
+    // A store's oldest rows go past its cap; every store's past the retention.
+    storeCreatedIdx: index("inbox_acknowledgements_store_created_idx").on(
+      table.storeId,
+      table.createdAt,
+    ),
+    createdIdx: index("inbox_acknowledgements_created_idx").on(table.createdAt),
   }),
 );
 

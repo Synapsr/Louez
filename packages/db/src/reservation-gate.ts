@@ -70,20 +70,27 @@ export async function readReservationGate(
 }
 
 /**
- * The gate of a store at `at`, and since when it has been so: the version in
- * force's `effectiveFrom`, or the store's creation when no version applies (a
- * new store fails closed). Open outside service mode, without a read.
+ * The gate of a store at `at`, and since when this instance has applied it:
+ * the later of when it received the version in force and that version's
+ * `effectiveFrom` (a version received late takes effect on arrival, one
+ * received early on its date), or the store's creation when no version
+ * applies (a new store fails closed). `effectiveFrom` is the billing
+ * service's own date. Open outside service mode, without a read.
  */
 export async function readReservationGateSince(
   executor: PolicyExecutor,
   storeId: string,
   at: Date = new Date(),
-): Promise<ReservationGate & { readonly since: Date | null }> {
-  if (!isBillingSyncEnabled()) return { ...OPEN, since: null };
+): Promise<ReservationGate & { readonly since: Date | null; readonly effectiveFrom: Date | null }> {
+  if (!isBillingSyncEnabled()) return { ...OPEN, since: null, effectiveFrom: null };
   const records = await readStorePolicyRecords(executor, storeId);
   const policy = effectiveStorePolicy(records, at);
-  const since = policy.applied ? new Date(policy.applied.effectiveFrom) : records.storeCreatedAt;
-  return { ...gateOf(policy), since };
+  const { applied } = policy;
+  if (!applied) return { ...gateOf(policy), since: records.storeCreatedAt, effectiveFrom: null };
+  const effectiveFrom = new Date(applied.effectiveFrom);
+  const received = applied.receivedAt ?? effectiveFrom;
+  const since = received > effectiveFrom ? received : effectiveFrom;
+  return { ...gateOf(policy), since, effectiveFrom };
 }
 
 /** Throws StoreNotAcceptingReservationsError when the store's gate is closed at `at`. */

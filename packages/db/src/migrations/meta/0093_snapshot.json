@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "be337180-adeb-418d-92fd-8c9a0811940f",
+  "id": "a4b88647-f7ab-4558-8f06-b0bb8124bc98",
   "prevId": "218024dc-7eed-4800-a0fd-4eec629971ec",
   "tables": {
     "account_departure_reason_counters": {
@@ -3768,7 +3768,23 @@
           "default": "(now())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "inbox_acknowledgements_store_created_idx": {
+          "name": "inbox_acknowledgements_store_created_idx",
+          "columns": [
+            "store_id",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "inbox_acknowledgements_created_idx": {
+          "name": "inbox_acknowledgements_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "inbox_acknowledgements_id": {
