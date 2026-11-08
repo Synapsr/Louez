@@ -12,10 +12,9 @@ import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
-import { notifyPaymentFailed, notifyStripeConnected } from "@/lib/discord/platform-notifications";
+import { notifyStripeConnected } from "@/lib/discord/platform-notifications";
 import { log } from "@/lib/evlog";
 import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
-import { dispatchNotification } from "@/lib/notifications/dispatcher";
 import {
   getStoreBilling,
   parseFeeMetadata,
@@ -32,6 +31,7 @@ import { env } from "@/env";
 
 import { handleChargeDispute } from "./charge-dispute";
 import { handleChargeRefunded } from "./charge-refund";
+import { handlePaymentFailure } from "./payment-failure";
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -205,7 +205,11 @@ export async function POST(request: Request) {
         break;
 
       case "payment_intent.payment_failed":
-        await handleDepositFailed(event.data.object as Stripe.PaymentIntent, connectedAccountId);
+        await handleDepositFailed(
+          event.data.object as Stripe.PaymentIntent,
+          connectedAccountId,
+          event.id,
+        );
         break;
 
       // Refund events
@@ -987,11 +991,13 @@ async function handleDepositCaptured(
 
 /**
  * Handles payment failure
- * Triggered when card is declined or payment fails
+ * Triggered when card is declined or payment fails. The owner is told once per
+ * event: a redelivered event is recognised and notifies nobody again.
  */
 async function handleDepositFailed(
   paymentIntent: Stripe.PaymentIntent,
-  connectedAccountId?: string,
+  connectedAccountId: string | undefined,
+  stripeEventId: string,
 ) {
   const reservationId = paymentIntent.metadata?.reservationId;
 
@@ -1011,170 +1017,7 @@ async function handleDepositFailed(
   );
   if (!valid || !reservation) return;
 
-  const currency = paymentIntent.currency.toUpperCase();
-  const amount = fromStripeCents(paymentIntent.amount, currency);
-  const errorMessage = paymentIntent.last_payment_error?.message || "Unknown error";
-  const errorCode = paymentIntent.last_payment_error?.code || null;
-  const declineCode = paymentIntent.last_payment_error?.decline_code || null;
-  const isDepositHold = paymentIntent.metadata?.type === "deposit_hold";
-
-  if (isDepositHold) {
-    // Handle deposit authorization failure. No payment changes, so no billing mark:
-    // the deposit status is not part of the reservation snapshot.
-    await db.transaction(async (tx) => {
-      await tx
-        .update(reservations)
-        .set({
-          depositStatus: "failed",
-          updatedAt: new Date(),
-        })
-        .where(eq(reservations.id, reservationId));
-
-      // Log deposit failed activity
-      await tx.insert(reservationActivity).values({
-        id: nanoid(),
-        reservationId,
-        activityType: "deposit_failed",
-        metadata: {
-          paymentIntentId: paymentIntent.id,
-          amount,
-          error: errorMessage,
-          errorCode,
-          declineCode,
-        },
-        createdAt: new Date(),
-      });
-    });
-
-    log.info({
-      stripeWebhook: {
-        event: "payment_failed",
-        kind: "deposit_hold",
-        reservationId,
-        paymentIntentId: paymentIntent.id,
-        errorCode,
-        declineCode,
-      },
-    });
-  } else {
-    // Handle rental payment failure
-    // If this payment was already completed, ignore stale failed events
-    // (e.g. first attempt failed but customer retried successfully).
-    const existingPayment = await db.query.payments.findFirst({
-      where: eq(payments.stripePaymentIntentId, paymentIntent.id),
-    });
-
-    if (existingPayment?.status === "completed") {
-      log.info({
-        stripeWebhook: {
-          event: "payment_failed",
-          issue: "stale_event_for_completed_payment",
-          reservationId,
-          paymentIntentId: paymentIntent.id,
-        },
-      });
-      return;
-    }
-
-    await db.transaction(async (tx) => {
-      if (existingPayment && existingPayment.status !== "failed") {
-        await tx
-          .update(payments)
-          .set({
-            status: "failed",
-            updatedAt: new Date(),
-          })
-          .where(eq(payments.id, existingPayment.id));
-        await markReservationIds(tx, [existingPayment.reservationId]);
-      }
-
-      // Log payment failed activity
-      await tx.insert(reservationActivity).values({
-        id: nanoid(),
-        reservationId,
-        activityType: "payment_failed",
-        metadata: {
-          paymentIntentId: paymentIntent.id,
-          amount,
-          currency,
-          method: "stripe",
-          error: errorMessage,
-          errorCode,
-          declineCode,
-        },
-        createdAt: new Date(),
-      });
-    });
-
-    if (reservation.source === "marketplace") {
-      await failMarketplaceBookingAttempt(reservationId, runReservationEffects);
-    }
-
-    log.info({
-      stripeWebhook: {
-        event: "payment_failed",
-        kind: "rental",
-        reservationId,
-        paymentIntentId: paymentIntent.id,
-        errorCode,
-        declineCode,
-      },
-    });
-  }
-
-  // Dispatch admin notification for payment failure
-  if (reservation) {
-    dispatchNotification("payment_failed", {
-      store: {
-        id: reservation.store.id,
-        name: reservation.store.name,
-        email: reservation.store.email,
-        discordWebhookUrl: reservation.store.discordWebhookUrl,
-        ownerPhone: reservation.store.ownerPhone,
-        notificationSettings: reservation.store.notificationSettings,
-        settings: reservation.store.settings,
-      },
-      reservation: {
-        id: reservationId,
-        number: reservation.number,
-        startDate: reservation.startDate,
-        endDate: reservation.endDate,
-        totalAmount: Number(reservation.totalAmount),
-        currency: reservation.currency,
-      },
-      customer: reservation.customer
-        ? {
-            firstName: reservation.customer.firstName,
-            lastName: reservation.customer.lastName,
-            email: reservation.customer.email,
-            phone: reservation.customer.phone,
-          }
-        : undefined,
-      payment: {
-        amount,
-        currency,
-      },
-    }).catch((error: unknown) => {
-      log.error({
-        stripeWebhook: {
-          event: "payment_failed",
-          issue: "notification_dispatch_failed",
-          reservationId,
-          error: describeError(error),
-        },
-      });
-    });
-
-    // Platform admin notification
-    notifyPaymentFailed(
-      {
-        id: reservation.store.id,
-        name: reservation.store.name,
-        slug: reservation.store.slug,
-      },
-      reservation.number,
-    ).catch(() => {});
-  }
+  await handlePaymentFailure({ reservation, stripeEventId, paymentIntent });
 }
 
 async function handleAccountUpdated(account: Stripe.Account) {
