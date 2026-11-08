@@ -58,6 +58,7 @@ describe("product variants procedures (database)", { skip: skipWithoutTestDataba
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    dispatchEffects: () => {},
     storage: createMemoryStorage(),
     afterCommit: (event: ApiEvent) => {
       events.push(event);

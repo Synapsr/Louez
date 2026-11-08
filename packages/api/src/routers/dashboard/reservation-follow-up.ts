@@ -283,7 +283,7 @@ const updateNotes = storeProcedure
         storeId: context.actor.storeId,
         store: statusCaller(context).store,
         transport: context.actor.transport,
-        afterCommit: context.ports.afterCommit,
+        ports: context.ports,
       },
       input,
     ),

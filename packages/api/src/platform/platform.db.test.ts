@@ -35,6 +35,7 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
     planFeatures: async () => ({ apiAccess }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    dispatchEffects: () => {},
     storage: createMemoryStorage(),
     afterCommit: () => {},
   };

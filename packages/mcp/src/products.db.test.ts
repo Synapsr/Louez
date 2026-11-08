@@ -41,6 +41,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    dispatchEffects: () => {},
     storage: createMemoryStorage(),
     afterCommit: () => {},
   };

@@ -57,6 +57,7 @@ export function testRequestContext(input: {
       afterCommit: () => {},
       runReservationEffects: async () => {},
       insurance: { createContract: async () => null, cancelContract: async () => {} },
+      dispatchEffects: () => {},
     },
     countCall: async () => undefined,
   };

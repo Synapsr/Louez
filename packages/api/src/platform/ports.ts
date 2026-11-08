@@ -1,4 +1,4 @@
-import type { ReservationEffectRunner, ReservationGateReason, ReservationStatus } from "@louez/db";
+import type { ReservationEffectRunner, ReservationGateReason } from "@louez/db";
 
 import type { Transport } from "./actor";
 
@@ -29,6 +29,12 @@ export interface ApiPorts {
    */
   runReservationEffects: ReservationEffectRunner;
   insurance: InsurancePort;
+  /**
+   * Sends effects a write added to the outbox (`platform/effects.ts`), once
+   * its transaction has committed. The app sends them after the answer; its
+   * cron retries the failed ones. Never throws.
+   */
+  dispatchEffects: (ids: readonly string[]) => void;
 }
 
 /**
@@ -69,28 +75,9 @@ export type ApiEvent =
   | { type: "product.seasonalPricing.changed"; store: ApiEventStore; productId: string }
   /** A unit retired, reinstated or changed, or a downtime declared, changed or removed. */
   | { type: "product.units.changed"; store: ApiEventStore; productId: string }
-  /**
-   * A reservation's status changed: the customer's email, the store's
-   * notifications and the analytics event follow from it in the app.
-   */
-  | {
-      type: "reservation.statusChanged";
-      store: ApiEventStore;
-      transport: Transport;
-      reservationId: string;
-      from: ReservationStatus;
-      to: ReservationStatus;
-      /** Kept for a rejection: the customer's email shows it. */
-      rejectionReason: string | null;
-      warningCount: number;
-    }
-  | {
-      type: "reservation.notesUpdated";
-      store: ApiEventStore;
-      transport: Transport;
-      reservationId: string;
-      hasNotes: boolean;
-    }
+  /** A reservation's status or notes changed: its pages are revalidated. Its messages go to the outbox. */
+  | { type: "reservation.statusChanged"; store: ApiEventStore; reservationId: string }
+  | { type: "reservation.notesUpdated"; store: ApiEventStore; reservationId: string }
   /** Not a write: the store's card gate refused a status change; the app logs it. */
   | {
       type: "reservation.gateRefused";

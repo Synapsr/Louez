@@ -64,6 +64,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    dispatchEffects: () => {},
     get storage() {
       return storage;
     },

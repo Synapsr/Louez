@@ -5,15 +5,8 @@ import type { ApiEvent } from "@louez/api";
 
 import { logReservationGateRefusal } from "@/lib/billing/reservation-gate";
 import { notifyProductCreated, notifyProductUpdated } from "@/lib/discord/platform-notifications";
-import {
-  captureProductServerEvent,
-  captureReservationActionSucceeded,
-} from "@/lib/product-analytics/analytics";
-import {
-  productAnalyticsEvents,
-  reservationAnalyticsActions,
-} from "@/lib/product-analytics/analytics-events";
-import { runStatusChangeEffects } from "@/lib/reservations/status-change-effects";
+import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
+import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 
 /**
  * The app's effects of a write the agent-ready API committed
@@ -92,23 +85,6 @@ function backgroundEffect(event: ApiEvent): (() => Promise<void>) | null {
       };
     case "product.updated":
       return () => notifyProductUpdated(storeInfo, event.productName);
-    case "reservation.statusChanged":
-      return () => runStatusChangeEffects(event);
-    case "reservation.notesUpdated":
-      // The dashboard records its own success event in the browser.
-      if (event.transport === "rpc") return null;
-      return () =>
-        captureReservationActionSucceeded({
-          distinctId: store.ownerUserId,
-          storeId: store.id,
-          reservationId: event.reservationId,
-          action: reservationAnalyticsActions.updateNotes,
-          properties: {
-            has_notes: event.hasNotes,
-            actor: event.transport,
-            surface: event.transport,
-          },
-        });
     case "reservation.gateRefused":
       return async () =>
         logReservationGateRefusal(

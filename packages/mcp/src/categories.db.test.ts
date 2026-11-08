@@ -52,6 +52,7 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     planFeatures: async () => ({ apiAccess: true }),
     runReservationEffects: async () => {},
     insurance: { createContract: async () => null, cancelContract: async () => {} },
+    dispatchEffects: () => {},
     storage: createMemoryStorage(),
     afterCommit: () => {},
   };

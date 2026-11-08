@@ -114,6 +114,11 @@ export interface CustomerNotificationReservation {
   taxRate?: number | null;
   subtotalExclTax?: number | null;
   taxAmount?: number | null;
+  /**
+   * The reservation's language, when the caller froze it with the message
+   * (an outbox row); otherwise it is read from the reservation.
+   */
+  locale?: string | null;
 }
 
 export interface CustomerNotificationContext {
@@ -209,11 +214,19 @@ export async function dispatchCustomerNotification(
     return result;
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, ctx.reservation.id), eq(reservations.storeId, ctx.store.id)),
-    columns: { locale: true },
-  });
-  const locale = resolveReservationEmailLocale(reservation?.locale, ctx.store.settings?.country);
+  const reservationLocale =
+    ctx.reservation.locale !== undefined
+      ? ctx.reservation.locale
+      : (
+          await db.query.reservations.findFirst({
+            where: and(
+              eq(reservations.id, ctx.reservation.id),
+              eq(reservations.storeId, ctx.store.id),
+            ),
+            columns: { locale: true },
+          })
+        )?.locale;
+  const locale = resolveReservationEmailLocale(reservationLocale, ctx.store.settings?.country);
 
   const customerPreferences = isCustomerReminder(eventType)
     ? await getCustomerReminderPreferences(ctx.store.id, ctx.customer.id)

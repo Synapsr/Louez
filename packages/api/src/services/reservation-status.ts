@@ -31,8 +31,10 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { reservationErrors, type StatusChangeOutput } from "../contracts/reservations";
 import type { Transport } from "../platform/actor";
 import { sha256, stableStringify } from "../platform/hash";
+import { amendEffectPayload, enqueueEffects } from "../platform/effects";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import { resolveDateChangeRequests } from "./date-change-requests";
+import { buildStatusChangeEffects } from "./reservation-effects";
 import { validateReservationContract } from "./reservation-contract-validation";
 import {
   ReservationInventoryError,
@@ -64,7 +66,7 @@ export interface StatusChangeCaller {
     settings: StoreSettings | null;
     customerNotificationSettings: CustomerNotificationSettings | null;
   };
-  ports: Pick<ApiPorts, "afterCommit" | "runReservationEffects" | "insurance">;
+  ports: Pick<ApiPorts, "afterCommit" | "runReservationEffects" | "insurance" | "dispatchEffects">;
 }
 
 /** What a status change will do, under its locks, for its confirmation. */
@@ -364,14 +366,17 @@ type TransactionOutcome =
       to: ReservationStatus;
       effects: ReservationBillingEffect[];
       warnings: StatusChangeOutput["warnings"];
+      /** The outbox rows of the change; the last is its analytics event. */
+      effectIds: string[];
     };
 
 /**
  * Changes a reservation's status, as the store asks: confirm, reject, pick
  * up, return or cancel. `confirm` is asked under the locks when the change
- * sends the customer a message, takes stock, or cancels. Then, once
- * committed: the fee, the insurance contract, and the app's effects (the
- * customer's message, the store's notifications, analytics, revalidation).
+ * sends the customer a message, takes stock, or cancels. The customer's
+ * message, the store's and the platform's notifications and the analytics
+ * event go to the outbox in the same transaction. Then, once committed: the
+ * fee, the insurance contract, the outbox's dispatch and the revalidation.
  */
 export async function changeStoreReservationStatus(
   caller: StatusChangeCaller,
@@ -442,6 +447,20 @@ export async function changeStoreReservationStatus(
             // It does nothing unless the reservation is now billable and not yet signed.
             await validateReservationContract(tx, id, storeId, "confirmation");
             await resolveDateChangeRequests(tx, id, locked.startDate, locked.endDate, change.to);
+            // The messages and notifications, as they are now, under the locks.
+            const effectIds = await enqueueEffects(
+              tx,
+              storeId,
+              await buildStatusChangeEffects(tx, {
+                storeId,
+                reservationId: id,
+                from: change.from,
+                to: change.to,
+                transport: caller.transport,
+                rejectionReason: request.rejectionReason ?? null,
+                warningCount: warnings.length,
+              }),
+            );
             return {
               kind: "changed",
               locked,
@@ -449,6 +468,7 @@ export async function changeStoreReservationStatus(
               to: change.to,
               effects: change.effects,
               warnings: warnings.map(({ key, params }) => ({ key, ...(params ? { params } : {}) })),
+              effectIds,
             };
           },
           { isolationLevel: "read committed" },
@@ -488,16 +508,17 @@ export async function changeStoreReservationStatus(
     await caller.ports.insurance.cancelContract(id);
   }
 
-  emit(caller, {
-    type: "reservation.statusChanged",
-    store: caller.store,
-    transport: caller.transport,
-    reservationId: id,
-    from: outcome.from,
-    to: outcome.to,
-    rejectionReason: outcome.to === "rejected" ? (request.rejectionReason ?? null) : null,
-    warningCount: warnings.length,
-  });
+  const analyticsId = outcome.effectIds.at(-1);
+  if (analyticsId && warnings.length !== outcome.warnings.length) {
+    await amendEffectPayload(analyticsId, "warningCount", warnings.length).catch(() => {});
+  }
+  try {
+    caller.ports.dispatchEffects(outcome.effectIds);
+  } catch (error) {
+    // The rows stay pending: the cron sends them.
+    console.error("Dispatching the effects of a status change failed:", error);
+  }
+  emit(caller, { type: "reservation.statusChanged", store: caller.store, reservationId: id });
 
   return {
     id,

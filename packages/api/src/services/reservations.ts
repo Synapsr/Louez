@@ -50,7 +50,8 @@ import {
   type listUpcomingInput,
 } from "../contracts/reservations";
 import type { Transport } from "../platform/actor";
-import type { ApiEvent, ApiEventStore } from "../platform/ports";
+import { enqueueEffects } from "../platform/effects";
+import type { ApiEventStore, ApiPorts } from "../platform/ports";
 import { customerFieldSearchCondition } from "./customer-fields";
 
 /**
@@ -603,34 +604,49 @@ export async function assertOwnedReservation(storeId: string, id: string) {
 
 /**
  * Replaces a reservation's internal notes. Notes are in no billing snapshot,
- * so they need no mark (DL-13). Then the app revalidates the page and, for
- * an API or agent call, records the analytics event (the dashboard records
- * its own in the browser).
+ * so they need no mark (DL-13). An API or agent call adds its analytics
+ * event to the outbox (the dashboard records its own in the browser); the
+ * app then revalidates the page.
  */
 export async function updateReservationNotes(
   caller: {
     storeId: string;
     store: ApiEventStore;
     transport: Transport;
-    afterCommit: (event: ApiEvent) => void;
+    ports: Pick<ApiPorts, "afterCommit" | "dispatchEffects">;
   },
   input: { id: string; notes: string },
 ) {
-  const { storeId } = caller;
+  const { storeId, transport } = caller;
   const owned = await assertOwnedReservation(storeId, input.id);
   const updatedAt = new Date();
-  await db
-    .update(reservations)
-    .set({ internalNotes: input.notes, updatedAt })
-    .where(and(eq(reservations.id, input.id), eq(reservations.storeId, storeId)));
+  const effectIds = await db.transaction(async (tx) => {
+    await tx
+      .update(reservations)
+      .set({ internalNotes: input.notes, updatedAt })
+      .where(and(eq(reservations.id, input.id), eq(reservations.storeId, storeId)));
+    // The dashboard records its own event in the browser.
+    if (transport === "rpc") return [];
+    return enqueueEffects(tx, storeId, [
+      {
+        type: "reservation.notesAnalytics",
+        payload: {
+          ownerUserId: caller.store.ownerUserId,
+          storeId,
+          reservationId: input.id,
+          hasNotes: input.notes.trim().length > 0,
+          transport,
+        },
+      },
+    ]);
+  });
 
   try {
-    caller.afterCommit({
+    if (effectIds.length > 0) caller.ports.dispatchEffects(effectIds);
+    caller.ports.afterCommit({
       type: "reservation.notesUpdated",
       store: caller.store,
-      transport: caller.transport,
       reservationId: input.id,
-      hasNotes: input.notes.trim().length > 0,
     });
   } catch (error) {
     console.error("A reservation effect failed after its commit:", error);

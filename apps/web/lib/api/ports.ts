@@ -1,6 +1,7 @@
 import type { ApiPorts } from "@louez/api";
 
 import { runAfterCommit } from "@/lib/api/after-commit";
+import { dispatchApiEffects } from "@/lib/api/effects";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { tulipInsurancePort } from "@/lib/integrations/tulip/insurance-port";
 import { getStorePlan } from "@/lib/plan-limits";
@@ -19,4 +20,5 @@ export const apiPorts: ApiPorts = {
   afterCommit: runAfterCommit,
   runReservationEffects,
   insurance: tulipInsurancePort,
+  dispatchEffects: dispatchApiEffects,
 };

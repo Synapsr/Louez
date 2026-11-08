@@ -4325,6 +4325,39 @@ export const apiConfirmations = mysqlTable(
   }),
 );
 
+/**
+ * The effects of a committed write that must not be lost: a customer's email,
+ * a store notification, an analytics event. The write's transaction adds one
+ * row per effect with everything the effect needs (`payload`), so a rollback
+ * leaves none and a later edit changes none. The app sends each row once the
+ * transaction commits, claiming it first so it runs once; the cron retries
+ * the failed ones with a backoff.
+ */
+export const apiEffects = mysqlTable(
+  "api_effects",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    /** What to do, e.g. `reservation.customerMessage`; the app maps it to its sender. */
+    type: varchar("type", { length: 64 }).notNull(),
+    payload: json("payload").$type<Record<string, unknown>>().notNull(),
+    /** `running` while a sender holds it (until `locked_until`); `abandoned` past the last attempt. */
+    status: mysqlEnum("status", ["pending", "running", "sent", "failed", "abandoned"])
+      .default("pending")
+      .notNull(),
+    attempts: int("attempts", { unsigned: true }).default(0).notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    lockedUntil: timestamp("locked_until", { mode: "date", fsp: 3 }),
+    lastError: varchar("last_error", { length: 1000 }),
+    sentAt: timestamp("sent_at", { mode: "date", fsp: 3 }),
+    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+  },
+  (table) => ({
+    dueIdx: index("api_effects_due_idx").on(table.status, table.nextAttemptAt),
+    storeIdx: index("api_effects_store_idx").on(table.storeId, table.createdAt),
+  }),
+);
+
 /** Fixed-window counters shared by every app instance, for agent and API calls. */
 export const apiRateLimits = mysqlTable("api_rate_limits", {
   key: varchar("key", { length: 191 }).primaryKey(),

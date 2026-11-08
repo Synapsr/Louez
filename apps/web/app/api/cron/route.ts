@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { runMarketplaceDefaultPublication } from "@louez/api/services";
 
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from "@/lib/analytics/aggregation";
+import { retryDueApiEffects } from "@/lib/api/effects";
 import { purgeExpiredLegalRetentionRecords } from "@/lib/account-deletion/retention-cleanup";
 import { createError, log, useLogger, withEvlog } from "@/lib/evlog";
 import { cleanExpiredCache, refreshAllStoresCache } from "@/lib/google-places/cache";
@@ -33,6 +34,8 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - Review requests: every minute (checks for eligible reservations)
  * - Automatic reminders: every minute (checks for upcoming pickups/returns)
  * - Calendar sync: every minute (pushes reservation updates to calendar providers)
+ * - API effects: every minute (retries the outbox rows of committed writes: customer
+ *   messages, notifications, analytics events; packages/api platform/effects.ts)
  * - Marketplace default publication: daily at 1:00 AM UTC when explicitly enabled
  * - Invoice transmission: every minute (converts, validates, and sends due invoices)
  * - Super PDP lifecycle polling: every minute (outgoing statuses and received invoices)
@@ -140,6 +143,16 @@ async function handleCron(request: Request) {
     // Calendar sync: every minute
     tasks.push("calendar-sync");
     results.calendarSync = await processCalendarSyncQueue();
+
+    // The agent-ready API's outbox: every minute, on its own so a failure
+    // never stops the other tasks. Retries the customer messages,
+    // notifications and analytics events that failed or were never sent.
+    const outbox = await runIsolatedTasks(
+      [{ task: "api-effects", key: "apiEffects", run: () => retryDueApiEffects(now) }],
+      { request: logger, event: log },
+    );
+    tasks.push(...outbox.tasks);
+    Object.assign(results, outbox.results);
 
     // Default publication is legally gated by the updated-CGV notice period and
     // remains entirely inert until production explicitly opts in.
