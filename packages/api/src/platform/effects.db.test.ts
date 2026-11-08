@@ -265,18 +265,45 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     assert.match(row?.lastError ?? "", /Outcome unknown/);
   });
 
+  test("the time a claim spends after reading the lease is spent from the sender's", async () => {
+    const [id = ""] = await enqueue(platform("slow claim"));
+    // Another session holds the stores table: the claim reads the database's
+    // clock, then waits 1 s on its store check, longer than the sender's time.
+    const blocker = await louezDb.db.$client.getConnection();
+    await blocker.query("LOCK TABLES stores WRITE");
+    setTimeout(() => {
+      void blocker.query("UNLOCK TABLES").finally(() => blocker.release());
+    }, 1_000);
+    const provider: ApiEffectSenders = {
+      ...senders,
+      "reservation.platformNotification": async (payload, context) => {
+        // The last check before a provider that cannot be aborted, as SMTP does.
+        context.throwIfAborted();
+        sent.push(payload.number);
+      },
+    };
+    const outcome = await effects.dispatchEffects([id], provider, {
+      sendTimeoutMs: 60_000,
+      leaseMs: effects.EFFECT_LEASE_MARGIN_MS + 300,
+    });
+    assert.deepEqual(outcome, { sent: 0, failed: 1, skipped: 0 });
+    assert.deepEqual(sent, [], "a sender whose time ran out during its claim never sends");
+    assert.equal(await statusOf(id), "running", "its outcome is unknown: it waits for the lease");
+  });
+
   test("a claim check that outlasts the sender's time fails after its query", async () => {
     const [id = ""] = await enqueue(platform("slow check"));
     let rejectedAfterMs = 0;
     const provider: ApiEffectSenders = {
       ...senders,
       "reservation.platformNotification": async (payload, context) => {
-        // Another session holds the table: the claim query waits 600 ms, the sender has 300.
+        // Another session holds the table: the claim query waits 3 s, the sender
+        // has 2 s from its claim. Wide gaps, so the setup's own time never decides.
         const blocker = await louezDb.db.$client.getConnection();
         await blocker.query("LOCK TABLES api_effects WRITE");
         setTimeout(() => {
           void blocker.query("UNLOCK TABLES").finally(() => blocker.release());
-        }, 600);
+        }, 3_000);
         const started = performance.now();
         try {
           await context.assertClaim();
@@ -288,12 +315,12 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     };
     const outcome = await effects.dispatchEffects([id], provider, {
       sendTimeoutMs: 60_000,
-      leaseMs: effects.EFFECT_LEASE_MARGIN_MS + 300,
+      leaseMs: effects.EFFECT_LEASE_MARGIN_MS + 2_000,
     });
     // The race ends at the abort; let the blocked check finish.
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
     assert.deepEqual(outcome, { sent: 0, failed: 1, skipped: 0 });
-    assert.ok(rejectedAfterMs >= 500, `the check ran its query first (${rejectedAfterMs} ms)`);
+    assert.ok(rejectedAfterMs >= 1_500, `the check ran its query first (${rejectedAfterMs} ms)`);
     assert.deepEqual(sent, [], "a claim that still held does not let a sender out of time send");
   });
 

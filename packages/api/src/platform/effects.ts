@@ -284,6 +284,12 @@ type Claimed = {
   payload: Record<string, unknown>;
   attempts: number;
   token: string;
+  /**
+   * `performance.now()` just before the database's clock was read for the
+   * lease: the sender's time is counted from here, so the rest of the claim
+   * (its commit included) is spent from the lease, never added to it.
+   */
+  grantedAt: number;
 };
 
 /** The database's time `ms` from now (negative: ago). App clocks never date a row. */
@@ -320,6 +326,7 @@ export async function claimEffect(
       .where(eq(apiEffects.id, id))
       .for("update");
     if (!row) return null;
+    const grantedAt = performance.now();
     // MySQL fixes NOW() when a statement starts: read it in a statement of its
     // own, now that the row is locked. `now` is in the session's time zone, as
     // the TIMESTAMP columns are read and written, so it goes back unchanged.
@@ -397,7 +404,14 @@ export async function claimEffect(
         attempts: row.attempts + 1,
       })
       .where(eq(apiEffects.id, id));
-    return { id: row.id, type: row.type, payload: row.payload, attempts: row.attempts + 1, token };
+    return {
+      id: row.id,
+      type: row.type,
+      payload: row.payload,
+      attempts: row.attempts + 1,
+      token,
+      grantedAt,
+    };
   });
 }
 
@@ -519,18 +533,18 @@ export async function dispatchEffects(
     }
 
     const { token } = claimed;
-    // The lease was granted in the database's time when the claim committed,
-    // just before this point. Counted from here on a monotonic clock, the
-    // abort fires at the timeout or a margin before the lease ends, whichever
-    // comes first: a retry can take the row only after the lease, so an
-    // aborted sender is enough to fence the last provider call.
+    // The lease starts at the database's clock read inside the claim. Counted
+    // on a monotonic clock from just before that read (so a slow commit is
+    // spent from it), the abort fires at the timeout or a margin before the
+    // lease ends, whichever comes first: a retry can take the row only after
+    // the lease, so an aborted sender is enough to fence the last provider call.
     const allowedMs = Math.max(0, Math.min(timeoutMs, leaseMs - EFFECT_LEASE_MARGIN_MS));
-    const deadline = performance.now() + allowedMs;
+    const deadline = claimed.grantedAt + allowedMs;
     const controller = new AbortController();
     const expire = () => {
       if (!controller.signal.aborted) controller.abort(new EffectTimeout(allowedMs));
     };
-    const timer = setTimeout(expire, allowedMs);
+    const timer = setTimeout(expire, Math.max(0, deadline - performance.now()));
     const timeout = new Promise<never>((_, reject) => {
       controller.signal.addEventListener("abort", () => reject(controller.signal.reason), {
         once: true,
