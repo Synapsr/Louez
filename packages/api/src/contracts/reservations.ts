@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
+import { resourceLinksSchema } from "./links";
 
 /**
  * The reservations follow-up contract: lists, detail, counters, calendar,
@@ -14,6 +15,11 @@ import { apiError } from "../platform/errors";
  * details, payment notes) are null or empty. A caller that may not read
  * payments gets no payment rows nor Stripe ids: only what was paid toward
  * the rental (`rentalPaid`), as the dashboard's list shows it.
+ *
+ * Every reservation an output holds carries `links`, its dashboard page; a
+ * customer shown with it carries the customer's. The base schemas below are
+ * what the services build; the outputs add the links (the router fills them
+ * from `ports.urls`).
  */
 
 /** Largest page `reservations.list` returns, and its default. */
@@ -79,6 +85,13 @@ const customerSummarySchema = z.object({
   lastName: z.string(),
   email: z.string(),
 });
+
+/** What every reservation, and every customer shown with one, gets in an output. */
+const linksShape = {
+  /** Its page in the dashboard: the URL to give the user. */
+  links: resourceLinksSchema,
+};
+const customerSummaryOutput = customerSummarySchema.extend(linksShape);
 
 // --- List --------------------------------------------------------------------
 
@@ -214,7 +227,8 @@ export const reservationCountsSchema = z.object({
 });
 export type ReservationCounts = z.infer<typeof reservationCountsSchema>;
 
-export const listReservationsOutput = z.object({
+/** A page of the list, as the service builds it. */
+export const reservationsPageSchema = z.object({
   items: z.array(reservationListItemSchema),
   /** Null on the last page. */
   nextCursor: z.string().nullable(),
@@ -224,7 +238,16 @@ export const listReservationsOutput = z.object({
   /** Currency of every amount. */
   currency: z.string(),
 });
-export type ReservationsPage = z.infer<typeof listReservationsOutput>;
+export type ReservationsPage = z.infer<typeof reservationsPageSchema>;
+
+export const listReservationsOutput = reservationsPageSchema.extend({
+  items: z.array(
+    reservationListItemSchema.extend({
+      ...linksShape,
+      customer: customerSummaryOutput.nullable(),
+    }),
+  ),
+});
 
 // --- Detail ------------------------------------------------------------------
 
@@ -431,11 +454,17 @@ export const reservationSchema = z.object({
 });
 export type Reservation = z.infer<typeof reservationSchema>;
 
+export const reservationOutput = reservationSchema.extend({
+  ...linksShape,
+  customer: reservationSchema.shape.customer.unwrap().extend(linksShape).nullable(),
+});
+
 // --- Counters ----------------------------------------------------------------
 
 export const pollReservationsInput = z.object({});
 
-export const pollReservationsOutput = z.object({
+/** The counters, as the service builds them. */
+export const reservationPollSchema = z.object({
   /** Requests waiting for the store's answer. */
   pendingCount: z.number().int(),
   /** Supplier invoices received and not handled yet. */
@@ -465,7 +494,17 @@ export const pollReservationsOutput = z.object({
     .nullable(),
   timestamp: z.string().datetime(),
 });
-export type ReservationPoll = z.infer<typeof pollReservationsOutput>;
+export type ReservationPoll = z.infer<typeof reservationPollSchema>;
+
+export const pollReservationsOutput = reservationPollSchema.extend({
+  pendingReservations: z.array(
+    reservationPollSchema.shape.pendingReservations.element.extend(linksShape),
+  ),
+  latestReservation: reservationPollSchema.shape.latestReservation
+    .unwrap()
+    .extend(linksShape)
+    .nullable(),
+});
 
 // --- Calendar and planning ---------------------------------------------------
 
@@ -529,7 +568,12 @@ export const calendarEntrySchema = z.object({
 export type CalendarEntry = z.infer<typeof calendarEntrySchema>;
 
 export const listCalendarPeriodOutput = z.object({
-  items: z.array(calendarEntrySchema),
+  items: z.array(
+    calendarEntrySchema.extend({
+      ...linksShape,
+      customer: calendarEntrySchema.shape.customer.unwrap().extend(linksShape).nullable(),
+    }),
+  ),
   currency: z.string(),
 });
 
@@ -564,7 +608,7 @@ export const planningEntrySchema = z.object({
 export type PlanningEntry = z.infer<typeof planningEntrySchema>;
 
 export const getPlanningTimelineOutput = z.object({
-  items: z.array(planningEntrySchema),
+  items: z.array(planningEntrySchema.extend(linksShape)),
   currency: z.string(),
 });
 
@@ -589,6 +633,10 @@ const agendaEntrySchema = z.object({
   totalAmount: moneySchema,
   customer: customerSummarySchema.nullable(),
 });
+const agendaEntryOutput = agendaEntrySchema.extend({
+  ...linksShape,
+  customer: customerSummaryOutput.nullable(),
+});
 
 export const listUpcomingInput = z.object({
   days: z.coerce
@@ -605,9 +653,9 @@ export const listUpcomingInput = z.object({
 
 export const listUpcomingOutput = z.object({
   /** Confirmed reservations that start in the window, soonest first. */
-  pickups: z.array(agendaEntrySchema),
+  pickups: z.array(agendaEntryOutput),
   /** Ongoing reservations due back in the window, soonest first. */
-  returns: z.array(agendaEntrySchema),
+  returns: z.array(agendaEntryOutput),
   /** True when a list was cut at `limit`. */
   hasMore: z.boolean(),
   from: z.date(),
@@ -619,7 +667,7 @@ export const listOverdueInput = z.object({ limit: agendaLimit });
 
 export const listOverdueOutput = z.object({
   /** Ongoing reservations past their end, the latest first. */
-  items: z.array(agendaEntrySchema.extend({ daysLate: z.number().int() })),
+  items: z.array(agendaEntryOutput.extend({ daysLate: z.number().int() })),
   hasMore: z.boolean(),
   currency: z.string(),
 });
@@ -654,7 +702,8 @@ export const updateReservationStatusInput = z.object({
 
 export const cancelReservationInput = z.object({ id: idSchema });
 
-export const statusChangeOutput = z.object({
+/** A status change, as the service returns it. */
+export const statusChangeSchema = z.object({
   id: z.string(),
   number: z.string(),
   from: reservationStatusSchema,
@@ -671,7 +720,9 @@ export const statusChangeOutput = z.object({
     }),
   ),
 });
-export type StatusChangeOutput = z.infer<typeof statusChangeOutput>;
+export type StatusChangeOutput = z.infer<typeof statusChangeSchema>;
+
+export const statusChangeOutput = statusChangeSchema.extend(linksShape);
 
 export const updateReservationNotesInput = z.object({
   id: idSchema,
@@ -683,6 +734,7 @@ export const updateReservationNotesOutput = z.object({
   number: z.string(),
   internalNotes: z.string(),
   updatedAt: z.date(),
+  ...linksShape,
 });
 
 // --- Global search -----------------------------------------------------------
@@ -694,7 +746,8 @@ export const globalSearchInput = z.object({
   query: z.string().trim().min(1).max(100).describe("Part of a name, number, email or phone."),
 });
 
-export const globalSearchOutput = z.object({
+/** The search's hits, as the service builds them. */
+export const globalSearchSchema = z.object({
   /** Empty when the connection may not read products. */
   products: z.array(
     z.object({
@@ -717,6 +770,13 @@ export const globalSearchOutput = z.object({
   ),
   /** Empty when the connection may not read customers. */
   customers: z.array(z.object({ id: z.string(), name: z.string(), email: z.string() })),
+});
+
+export const globalSearchOutput = globalSearchSchema.extend({
+  /** Each with its dashboard page. */
+  products: z.array(globalSearchSchema.shape.products.element.extend(linksShape)),
+  reservations: z.array(globalSearchSchema.shape.reservations.element.extend(linksShape)),
+  customers: z.array(globalSearchSchema.shape.customers.element.extend(linksShape)),
 });
 
 // --- Errors ------------------------------------------------------------------

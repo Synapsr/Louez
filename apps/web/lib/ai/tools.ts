@@ -295,6 +295,7 @@ export function createAITools(ctx: AIChatContext) {
             totalAmount: reservation.totalAmount,
             customerFirstName: reservation.customer?.firstName ?? null,
             customerLastName: reservation.customer?.lastName ?? null,
+            links: reservation.links,
           })),
           total: page.totalCount,
           currency: page.currency,
@@ -307,6 +308,8 @@ export function createAITools(ctx: AIChatContext) {
       inputSchema: z.object({
         reservationId: z.string().describe("The reservation ID"),
       }),
+      // The procedure's answer as it is: its links, and the customer only for
+      // a user who may read customers.
       execute: async ({ reservationId }) => ({
         reservation: await assistantApi(ctx).reservations.get({ id: reservationId }),
       }),
@@ -333,6 +336,7 @@ export function createAITools(ctx: AIChatContext) {
           number: change.number,
           from: change.from,
           to: change.to,
+          links: change.links,
           // What the dashboard shows after the change: rule warnings, a failed contract.
           ...(change.warnings.length > 0 && { warnings: change.warnings }),
         };
@@ -350,7 +354,7 @@ export function createAITools(ctx: AIChatContext) {
           id: reservationId,
           notes,
         });
-        return { success: true, number: updated.number };
+        return { success: true, number: updated.number, links: updated.links };
       },
     }),
 
@@ -998,6 +1002,7 @@ export function createAITools(ctx: AIChatContext) {
           customerFirstName: entry.customer?.firstName ?? null,
           customerLastName: entry.customer?.lastName ?? null,
           totalAmount: entry.totalAmount,
+          links: entry.links,
         });
         return {
           pickups: agenda.pickups.map((entry) => row(entry, entry.startDate)),
@@ -1021,6 +1026,7 @@ export function createAITools(ctx: AIChatContext) {
             customerFirstName: entry.customer?.firstName ?? null,
             customerLastName: entry.customer?.lastName ?? null,
             totalAmount: entry.totalAmount,
+            links: entry.links,
           })),
         };
       },

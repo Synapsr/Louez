@@ -16,7 +16,7 @@ import type { BaseContext } from "../../context";
 import type { ApiEvent } from "../../platform/ports";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
-import { createTestUrls } from "../../platform/test-urls";
+import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
 process.env.AUTH_SECRET ??= "reservations-test-secret";
 process.env.NODE_ENV = "test";
@@ -695,6 +695,95 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.deepEqual(limited.products, []);
     assert.equal(limited.reservations[0]?.number, "2030-0777");
     assert.equal(limited.reservations[0]?.customerName, "Ada Lovelace");
+  });
+
+  // --- Links ----------------------------------------------------------------
+
+  test("every reservation an answer holds links its dashboard page, and its customer's when shown", async () => {
+    const link = (id: string) => `${TEST_APP_URL}/dashboard/reservations/${id}?store=${STORE}`;
+    const customerLink = `${TEST_APP_URL}/dashboard/customers/${CUSTOMER}?store=${STORE}`;
+    const productId = await product(3);
+    const now = Date.now();
+    const pending = await reservation("pending", { productId, number: "2030-0888" });
+    const pickup = await reservation("confirmed", {
+      productId,
+      start: new Date(now + 2 * 86_400_000),
+      end: new Date(now + 4 * 86_400_000),
+    });
+    const late = await reservation("ongoing", {
+      productId,
+      start: new Date(now - 5 * 86_400_000),
+      end: new Date(now - 2 * 86_400_000),
+    });
+
+    const page = await run("list", { status: "pending" }, session());
+    const listed = page.items.find((item) => item.id === pending);
+    assert.equal(listed?.links.dashboard, link(pending));
+    assert.equal(listed?.customer?.links.dashboard, customerLink);
+
+    const detail = await run("get", { id: pending }, session());
+    assert.deepEqual(detail.links, { dashboard: link(pending) });
+    assert.equal(detail.customer?.links.dashboard, customerLink);
+
+    const poll = await run("poll", {}, session());
+    assert.equal(poll.pendingReservations[0]?.links.dashboard, link(pending));
+    assert.equal(poll.latestReservation?.links.dashboard, link(pending));
+
+    const calendar = await run("listCalendarPeriod", { from: START, to: END }, session());
+    const entry = calendar.items.find((item) => item.id === pending);
+    assert.equal(entry?.links.dashboard, link(pending));
+    assert.equal(entry?.customer?.links.dashboard, customerLink);
+    const planning = await run("getPlanningTimeline", { from: START, to: END }, session());
+    assert.equal(planning.items[0]?.links.dashboard, link(pending));
+
+    const upcoming = await run("listUpcoming", { days: 7 }, session());
+    assert.equal(upcoming.pickups[0]?.links.dashboard, link(pickup));
+    assert.equal(upcoming.pickups[0]?.customer?.links.dashboard, customerLink);
+    const overdue = await run("listOverdue", {}, session());
+    assert.equal(overdue.items[0]?.links.dashboard, link(late));
+
+    const found = await search("0888", session());
+    assert.equal(found.reservations[0]?.links.dashboard, link(pending));
+    const byName = await search("Lovelace", session());
+    assert.equal(byName.customers[0]?.links.dashboard, customerLink);
+    const byProduct = await search("Kayak", session());
+    assert.equal(
+      byProduct.products[0]?.links.dashboard,
+      `${TEST_APP_URL}/dashboard/products/${productId}?store=${STORE}`,
+    );
+
+    // Writes answer with the reservation's link too.
+    const notes = await run("updateNotes", { id: pickup, notes: "Paddles" }, session());
+    assert.equal(notes.links.dashboard, link(pickup));
+    const picked = await run("updateStatus", { id: pickup, status: "ongoing" }, session());
+    assert.equal(picked.links.dashboard, link(pickup));
+    const cancelled = await run("cancel", { id: pending }, session());
+    assert.equal(cancelled.links.dashboard, link(pending));
+  });
+
+  test("without customers read, no answer names the customer, links included", async () => {
+    const productId = await product(1);
+    const id = await reservation("confirmed", { productId });
+    const key = await apiKey({ ...everything, customers: "none" });
+
+    const detail = await run("get", { id }, key());
+    assert.equal(detail.customer, null);
+    assert.equal(
+      detail.links.dashboard,
+      `${TEST_APP_URL}/dashboard/reservations/${id}?store=${STORE}`,
+    );
+    const answers = [
+      detail,
+      await run("list", {}, key()),
+      await run("listCalendarPeriod", { from: START, to: END }, key()),
+      await run("getPlanningTimeline", { from: START, to: END }, key()),
+      await search(id, key()),
+    ];
+    for (const answer of answers) {
+      const serialized = JSON.stringify(answer);
+      assert.ok(!serialized.includes(CUSTOMER), serialized.slice(0, 300));
+      assert.ok(!serialized.includes("/dashboard/customers/"), serialized.slice(0, 300));
+    }
   });
 
   // --- Status changes ---------------------------------------------------------

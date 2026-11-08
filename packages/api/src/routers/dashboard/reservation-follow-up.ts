@@ -16,13 +16,14 @@ import {
   pollReservationsInput,
   pollReservationsOutput,
   reservationErrors,
-  reservationSchema,
+  reservationOutput,
   reservationWindowInput,
   statusChangeOutput,
   updateReservationNotesInput,
   updateReservationNotesOutput,
   updateReservationStatusInput,
 } from "../../contracts/reservations";
+import { customerLinks, productLinks, reservationLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
 import {
   changeStoreReservationStatus,
@@ -88,6 +89,37 @@ const statusConfirmation = (context: ProductContext, path: readonly string[], in
     return { state: { ...details, recipientsHash }, details };
   });
 
+/**
+ * The links an answer's records get: each reservation its dashboard page,
+ * each customer shown its own. A customer is shown only to a caller who may
+ * read customers (null otherwise), so its link follows the same rule.
+ */
+const linker = (context: ProductContext) => {
+  const { urls } = context.ports;
+  const { store } = context;
+  return {
+    reservation: <T extends { id: string }>(record: T) => ({
+      ...record,
+      links: reservationLinks(urls, store, record),
+    }),
+    customer: <T extends { id: string }>(customer: T | null) =>
+      customer && { ...customer, links: customerLinks(urls, store, customer) },
+    product: <T extends { id: string }>(product: T) => ({
+      ...product,
+      links: productLinks(urls, store, product),
+    }),
+  };
+};
+
+/** A reservation with its links, and its customer's when it is shown. */
+const withLinks = <T extends { id: string; customer: { id: string } | null }>(
+  link: ReturnType<typeof linker>,
+  record: T,
+) => ({ ...link.reservation(record), customer: link.customer(record.customer) });
+
+const LINKS_NOTE =
+  "Each reservation has `links` (its dashboard page) and each customer shown its own: give the user these URLs, never build one.";
+
 const CUSTOMER_NOTE =
   "Without read access to customers, the customer's name, email, addresses and notes are left out; without read access to payments, so are payment rows and Stripe ids (rentalPaid stays).";
 
@@ -99,7 +131,7 @@ const list = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_list",
-      description: `List the store's reservations as the dashboard does: by status (default: every open one), by period (today, this week, this month, on the start or the end date), by payment method (needs read access to payments), or by part of the number or the customer's name. Sorted by start date (newest first) unless sort says otherwise. Returns up to \`limit\` reservations (default 25, at most 100), the counts per status, the total that match and a nextCursor: to read further, call again with cursor set to it, same filters and sort; it is null on the last page. Page numbers stop at the first 10,000 reservations. Use reservations_get for one reservation's lines, payments and history. ${CUSTOMER_NOTE}`,
+      description: `List the store's reservations as the dashboard does: by status (default: every open one), by period (today, this week, this month, on the start or the end date), by payment method (needs read access to payments), or by part of the number or the customer's name. Sorted by start date (newest first) unless sort says otherwise. Returns up to \`limit\` reservations (default 25, at most 100), the counts per status, the total that match and a nextCursor: to read further, call again with cursor set to it, same filters and sort; it is null on the last page. Page numbers stop at the first 10,000 reservations. Use reservations_get for one reservation's lines, payments and history. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "list_reservations", renamedArgs: { pageSize: "limit" } }],
       annotations: { readOnlyHint: true },
@@ -108,7 +140,7 @@ const list = storeProcedure
   .route({ method: "GET", path: "/reservations" })
   .input(listReservationsInput)
   .output(listReservationsOutput)
-  .handler(({ context, input }) => {
+  .handler(async ({ context, input }) => {
     // The dashboard's numbered pages go as deep as the list; an agent follows the cursor.
     const offset = (input.page ?? 1) * (input.limit ?? RESERVATION_PAGE_DEFAULT);
     if (
@@ -118,7 +150,9 @@ const list = storeProcedure
     ) {
       throw reservationErrors.pageTooDeep();
     }
-    return listReservations(reader(context), input);
+    const link = linker(context);
+    const page = await listReservations(reader(context), input);
+    return { ...page, items: page.items.map((item) => withLinks(link, item)) };
   });
 
 const get = storeProcedure
@@ -127,7 +161,7 @@ const get = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_get",
-      description: `Get one reservation with everything its dashboard page shows: status and dates, customer, lines with their products and assigned units, amounts and taxes, payments, deposit, delivery or pickup, insurance, notes, documents and history (newest first). ${CUSTOMER_NOTE}`,
+      description: `Get one reservation with everything its dashboard page shows: status and dates, customer, lines with their products and assigned units, amounts and taxes, payments, deposit, delivery or pickup, insurance, notes, documents and history (newest first). ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "get_reservation", renamedArgs: { reservationId: "id" } }],
       annotations: { readOnlyHint: true },
@@ -135,8 +169,10 @@ const get = storeProcedure
   })
   .route({ method: "GET", path: "/reservations/{id}" })
   .input(getReservationInput)
-  .output(reservationSchema)
-  .handler(({ context, input }) => getReservation(reader(context), input.id));
+  .output(reservationOutput)
+  .handler(async ({ context, input }) =>
+    withLinks(linker(context), await getReservation(reader(context), input.id)),
+  );
 
 const poll = storeProcedure
   .meta({
@@ -145,7 +181,7 @@ const poll = storeProcedure
     mcp: {
       name: "reservations_poll",
       description:
-        "Quick counters: requests waiting for an answer (with the five newest), reservations per status, and supplier invoices to handle. Cheap to call often.",
+        "Quick counters: requests waiting for an answer (with the five newest, each with `links`, its dashboard page to give the user), reservations per status, and supplier invoices to handle. Cheap to call often.",
       bundle: "daily",
       aliases: [{ name: "get_reservation_poll" }],
       annotations: { readOnlyHint: true },
@@ -154,7 +190,15 @@ const poll = storeProcedure
   .route({ method: "GET", path: "/reservations/counters" })
   .input(pollReservationsInput)
   .output(pollReservationsOutput)
-  .handler(({ context }) => pollReservations(reader(context)));
+  .handler(async ({ context }) => {
+    const link = linker(context);
+    const poll = await pollReservations(reader(context));
+    return {
+      ...poll,
+      pendingReservations: poll.pendingReservations.map(link.reservation),
+      latestReservation: poll.latestReservation && link.reservation(poll.latestReservation),
+    };
+  });
 
 const listCalendarPeriodProcedure = storeProcedure
   .meta({
@@ -162,7 +206,7 @@ const listCalendarPeriodProcedure = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_list_calendar_period",
-      description: `The reservations that overlap a window (from, to: ISO 8601, at most 400 days apart), by start date, as the calendar shows them: status, dates, amounts, customer, lines and delivery legs. ${CUSTOMER_NOTE}`,
+      description: `The reservations that overlap a window (from, to: ISO 8601, at most 400 days apart), by start date, as the calendar shows them: status, dates, amounts, customer, lines and delivery legs. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       annotations: { readOnlyHint: true },
     },
@@ -170,7 +214,11 @@ const listCalendarPeriodProcedure = storeProcedure
   .route({ method: "GET", path: "/reservations/calendar" })
   .input(reservationWindowInput)
   .output(listCalendarPeriodOutput)
-  .handler(({ context, input }) => listCalendarPeriod(reader(context), input));
+  .handler(async ({ context, input }) => {
+    const link = linker(context);
+    const period = await listCalendarPeriod(reader(context), input);
+    return { ...period, items: period.items.map((item) => withLinks(link, item)) };
+  });
 
 const getPlanningTimelineProcedure = storeProcedure
   .meta({
@@ -178,7 +226,7 @@ const getPlanningTimelineProcedure = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_get_planning_timeline",
-      description: `The planning of a window (from, to: ISO 8601, at most 400 days apart): one entry per reservation and product, with the quantity, the assigned units and the delivery legs. ${CUSTOMER_NOTE}`,
+      description: `The planning of a window (from, to: ISO 8601, at most 400 days apart): one entry per reservation and product, with the quantity, the assigned units and the delivery legs. Each entry has \`links\`, its reservation's dashboard page, to give the user. ${CUSTOMER_NOTE}`,
       bundle: "daily",
       annotations: { readOnlyHint: true },
     },
@@ -186,7 +234,11 @@ const getPlanningTimelineProcedure = storeProcedure
   .route({ method: "GET", path: "/reservations/planning" })
   .input(reservationWindowInput)
   .output(getPlanningTimelineOutput)
-  .handler(({ context, input }) => getPlanningTimeline(reader(context), input));
+  .handler(async ({ context, input }) => {
+    const link = linker(context);
+    const planning = await getPlanningTimeline(reader(context), input);
+    return { ...planning, items: planning.items.map(link.reservation) };
+  });
 
 const listUpcomingProcedure = storeProcedure
   .meta({
@@ -194,7 +246,7 @@ const listUpcomingProcedure = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_list_upcoming",
-      description: `What comes from the start of today over the next days (7 by default, 1 for today only, at most 90): confirmed reservations to hand over (pickups) and ongoing ones due back (returns), soonest first. ${CUSTOMER_NOTE}`,
+      description: `What comes from the start of today over the next days (7 by default, 1 for today only, at most 90): confirmed reservations to hand over (pickups) and ongoing ones due back (returns), soonest first. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "calendar_upcoming" }],
       annotations: { readOnlyHint: true },
@@ -203,7 +255,15 @@ const listUpcomingProcedure = storeProcedure
   .route({ method: "GET", path: "/reservations/upcoming" })
   .input(listUpcomingInput)
   .output(listUpcomingOutput)
-  .handler(({ context, input }) => listUpcoming(reader(context), input));
+  .handler(async ({ context, input }) => {
+    const link = linker(context);
+    const agenda = await listUpcoming(reader(context), input);
+    return {
+      ...agenda,
+      pickups: agenda.pickups.map((item) => withLinks(link, item)),
+      returns: agenda.returns.map((item) => withLinks(link, item)),
+    };
+  });
 
 const listOverdueProcedure = storeProcedure
   .meta({
@@ -211,7 +271,7 @@ const listOverdueProcedure = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_list_overdue",
-      description: `Late returns: ongoing reservations past their end date, the longest overdue first, with the days late. ${CUSTOMER_NOTE}`,
+      description: `Late returns: ongoing reservations past their end date, the longest overdue first, with the days late. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "calendar_overdue" }],
       annotations: { readOnlyHint: true },
@@ -220,7 +280,11 @@ const listOverdueProcedure = storeProcedure
   .route({ method: "GET", path: "/reservations/overdue" })
   .input(listOverdueInput)
   .output(listOverdueOutput)
-  .handler(({ context, input }) => listOverdue(reader(context), input));
+  .handler(async ({ context, input }) => {
+    const link = linker(context);
+    const overdue = await listOverdue(reader(context), input);
+    return { ...overdue, items: overdue.items.map((item) => withLinks(link, item)) };
+  });
 
 // --- Writes ------------------------------------------------------------------
 
@@ -232,7 +296,7 @@ const updateStatus = storeProcedure
     mcp: {
       name: "reservations_update_status",
       description:
-        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing) or returned (completed), or cancel it (as reservations_cancel). The store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the change and the warnings the dashboard shows (opening hours, notice, durations, insurance).",
+        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing) or returned (completed), or cancel it (as reservations_cancel). The store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       aliases: [{ name: "update_reservation_status", renamedArgs: { reservationId: "id" } }],
       annotations: { destructiveHint: true },
@@ -241,11 +305,13 @@ const updateStatus = storeProcedure
   .route({ method: "POST", path: "/reservations/{id}/status" })
   .input(updateReservationStatusInput)
   .output(statusChangeOutput)
-  .handler(({ context, input, path }) =>
-    changeStoreReservationStatus(
-      statusCaller(context),
-      { id: input.id, to: input.status, rejectionReason: input.rejectionReason },
-      { confirm: statusConfirmation(context, path, input) },
+  .handler(async ({ context, input, path }) =>
+    linker(context).reservation(
+      await changeStoreReservationStatus(
+        statusCaller(context),
+        { id: input.id, to: input.status, rejectionReason: input.rejectionReason },
+        { confirm: statusConfirmation(context, path, input) },
+      ),
     ),
   );
 
@@ -257,7 +323,7 @@ const cancel = storeProcedure
     mcp: {
       name: "reservations_cancel",
       description:
-        "Cancel a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract is cancelled and the store's notifications follow. Nothing is refunded or released by itself, and the customer gets no message. The first call answers CONFIRMATION_REQUIRED with a preview (the customer, the dates, what was paid): show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
+        "Cancel a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract is cancelled and the store's notifications follow. Nothing is refunded or released by itself, and the customer gets no message. The first call answers CONFIRMATION_REQUIRED with a preview (the customer, the dates, what was paid): show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the change and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       annotations: { destructiveHint: true },
     },
@@ -265,11 +331,13 @@ const cancel = storeProcedure
   .route({ method: "POST", path: "/reservations/{id}/cancel" })
   .input(cancelReservationInput)
   .output(statusChangeOutput)
-  .handler(({ context, input, path }) =>
-    changeStoreReservationStatus(
-      statusCaller(context),
-      { id: input.id, to: "cancelled" },
-      { confirm: statusConfirmation(context, path, input) },
+  .handler(async ({ context, input, path }) =>
+    linker(context).reservation(
+      await changeStoreReservationStatus(
+        statusCaller(context),
+        { id: input.id, to: "cancelled" },
+        { confirm: statusConfirmation(context, path, input) },
+      ),
     ),
   );
 
@@ -280,7 +348,7 @@ const updateNotes = storeProcedure
     mcp: {
       name: "reservations_update_notes",
       description:
-        "Replace a reservation's internal notes, which only the store's team sees. An empty string clears them. Returns the notes.",
+        "Replace a reservation's internal notes, which only the store's team sees. An empty string clears them. Returns the notes and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       aliases: [{ name: "update_reservation_notes", renamedArgs: { reservationId: "id" } }],
       annotations: { idempotentHint: true },
@@ -289,15 +357,17 @@ const updateNotes = storeProcedure
   .route({ method: "PATCH", path: "/reservations/{id}/notes" })
   .input(updateReservationNotesInput)
   .output(updateReservationNotesOutput)
-  .handler(({ context, input }) =>
-    updateReservationNotes(
-      {
-        storeId: context.actor.storeId,
-        store: statusCaller(context).store,
-        transport: context.actor.transport,
-        ports: context.ports,
-      },
-      input,
+  .handler(async ({ context, input }) =>
+    linker(context).reservation(
+      await updateReservationNotes(
+        {
+          storeId: context.actor.storeId,
+          store: statusCaller(context).store,
+          transport: context.actor.transport,
+          ports: context.ports,
+        },
+        input,
+      ),
     ),
   );
 
@@ -310,7 +380,7 @@ export const globalSearchProcedure = storeProcedure
     mcp: {
       name: "search_global",
       description:
-        "Search the store at once, as the dashboard's search bar does: up to 5 products by name, 5 reservations by number or customer name, and 5 customers by name, company, email, phone or a searchable custom field. Products need read access to products, customers to customers; a section the connection may not read comes back empty.",
+        "Search the store at once, as the dashboard's search bar does: up to 5 products by name, 5 reservations by number or customer name, and 5 customers by name, company, email, phone or a searchable custom field. Products need read access to products, customers to customers; a section the connection may not read comes back empty. Each hit has `links`, its dashboard page to give the user.",
       bundle: "daily",
       annotations: { readOnlyHint: true },
     },
@@ -318,9 +388,21 @@ export const globalSearchProcedure = storeProcedure
   .route({ method: "GET", path: "/search" })
   .input(globalSearchInput)
   .output(globalSearchOutput)
-  .handler(({ context, input }) =>
-    globalSearch({ ...reader(context), products: mayRead(context, "products") }, input.query),
-  );
+  .handler(async ({ context, input }) => {
+    const link = linker(context);
+    const hits = await globalSearch(
+      { ...reader(context), products: mayRead(context, "products") },
+      input.query,
+    );
+    return {
+      products: hits.products.map(link.product),
+      reservations: hits.reservations.map(link.reservation),
+      customers: hits.customers.map((customer) => ({
+        ...customer,
+        links: customerLinks(context.ports.urls, context.store, customer),
+      })),
+    };
+  });
 
 // The follow-up procedures of `dashboard.reservations` (routers/dashboard/reservations.ts).
 export {

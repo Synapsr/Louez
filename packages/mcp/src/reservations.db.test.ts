@@ -4,7 +4,7 @@ import { after, before, describe, mock, test } from "node:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
-import { createTestUrls } from "@louez/api/platform/test-urls";
+import { createTestUrls, TEST_APP_URL } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
@@ -329,5 +329,24 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
 
     const missing = await openApi("GET", "/reservations/rt_missing", null, headers);
     assert.equal(missing.status, 404);
+  });
+  test("a reservation tool's answer carries its links, on their own line too", async () => {
+    const authorization = await key();
+    const id = await reservation("pending");
+    const dashboard = `${TEST_APP_URL}/dashboard/reservations/${id}?store=${STORE}`;
+    const got = await mcpCall(authorization, "reservations_get", { id });
+    const detail = output(got) as { links: Json; customer: { links: Json } | null };
+    assert.deepEqual(detail.links, { dashboard });
+    assert.deepEqual(detail.customer?.links, {
+      dashboard: `${TEST_APP_URL}/dashboard/customers/${CUSTOMER}?store=${STORE}`,
+    });
+    const [text] = got.content as Array<{ type: string; text: string }>;
+    assert.ok(text.text.includes(`Links to give the user: dashboard ${dashboard}.`), text.text);
+
+    // Without customers read, the customer and its link are left out.
+    const blind = await key({ ...readOnly, customers: "none" });
+    const redacted = JSON.stringify(output(await mcpCall(blind, "reservations_get", { id })));
+    assert.ok(!redacted.includes(CUSTOMER), redacted.slice(0, 300));
+    assert.ok(redacted.includes(dashboard));
   });
 });

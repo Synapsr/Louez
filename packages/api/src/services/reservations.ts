@@ -45,7 +45,7 @@ import {
   type ReservationCounts,
   type ReservationListItem,
   type ReservationPoll,
-  type globalSearchOutput,
+  type globalSearchSchema,
   type listOverdueInput,
   type listUpcomingInput,
 } from "../contracts/reservations";
@@ -1110,7 +1110,7 @@ export async function listOverdue(
 export async function globalSearch(
   reader: ReservationReader & { products: boolean },
   query: string,
-): Promise<z.infer<typeof globalSearchOutput>> {
+): Promise<z.infer<typeof globalSearchSchema>> {
   const { storeId } = reader;
   const term = `%${query}%`;
   // Searchable custom fields: an ID or licence number finds its customer.
