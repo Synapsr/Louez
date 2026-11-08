@@ -170,6 +170,12 @@
       "title": "付款失败",
       "body": "{storeName} 上预订 #{number} 的一笔付款未能完成。",
       "amount": "金额"
+    },
+    "disputed": {
+      "subject": "预订 #{number} 的付款被提出争议",
+      "title": "付款争议",
+      "body": "客户已就 {storeName} 上预订 #{number} 的一笔付款向其银行提出争议。请在 Stripe 控制台显示的截止日期前回应该争议。",
+      "amount": "争议金额"
     }
   },
   "supplierInvoiceReceived": {

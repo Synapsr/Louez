@@ -4583,6 +4583,10 @@
             "payment_failed": {
               "label": "Платеж не выполнен",
               "description": "Когда платеж не проходит"
+            },
+            "payment_disputed": {
+              "label": "Платёж оспорен",
+              "description": "Когда клиент оспаривает платёж в своём банке"
             }
           },
           "reminder": {

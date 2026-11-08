@@ -4583,6 +4583,10 @@
             "payment_failed": {
               "label": "결제 실패",
               "description": "결제 실패 시"
+            },
+            "payment_disputed": {
+              "label": "결제 이의 제기",
+              "description": "고객이 카드사에 결제 이의를 제기한 경우"
             }
           },
           "reminder": {

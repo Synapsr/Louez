@@ -4281,6 +4281,10 @@
             "payment_failed": {
               "label": "Betaling mislukt",
               "description": "Wanneer een betaling mislukt"
+            },
+            "payment_disputed": {
+              "label": "Betaling betwist",
+              "description": "Wanneer een klant een betaling bij zijn bank betwist"
             }
           },
           "reminder": {

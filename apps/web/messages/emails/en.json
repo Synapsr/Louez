@@ -170,6 +170,12 @@
       "title": "Payment failed",
       "body": "A payment for reservation #{number} on {storeName} did not go through.",
       "amount": "Amount"
+    },
+    "disputed": {
+      "subject": "Payment disputed for reservation #{number}",
+      "title": "Payment disputed",
+      "body": "The customer disputed a payment for reservation #{number} on {storeName} with their bank. Respond to the dispute from your Stripe dashboard before the deadline it shows.",
+      "amount": "Disputed amount"
     }
   },
   "supplierInvoiceReceived": {

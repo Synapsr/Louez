@@ -170,6 +170,12 @@
       "title": "결제 실패",
       "body": "{storeName}의 예약 #{number} 결제가 완료되지 않았습니다.",
       "amount": "금액"
+    },
+    "disputed": {
+      "subject": "예약 #{number} 결제에 이의가 제기되었습니다",
+      "title": "결제 이의 제기",
+      "body": "고객이 {storeName}의 예약 #{number} 결제에 대해 카드사에 이의를 제기했습니다. Stripe 대시보드에 표시된 기한 전에 대응하세요.",
+      "amount": "이의 제기 금액"
     }
   },
   "supplierInvoiceReceived": {

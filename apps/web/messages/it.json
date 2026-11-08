@@ -4281,6 +4281,10 @@
             "payment_failed": {
               "label": "Pagamento fallito",
               "description": "Quando un pagamento fallisce"
+            },
+            "payment_disputed": {
+              "label": "Pagamento contestato",
+              "description": "Quando un cliente contesta un pagamento presso la sua banca"
             }
           },
           "reminder": {

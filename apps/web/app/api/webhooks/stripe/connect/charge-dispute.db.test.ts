@@ -119,4 +119,78 @@ describe("charge.dispute.* (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(stripe.calls.retrieveCharge, 0);
     assert.equal(stripe.feeRefunded(), 0);
   });
+
+  describe("the owner's notification", () => {
+    const STORE = "store_dispute_notify";
+    const RESERVATION = "res_dispute_notify";
+    const CHARGE = `ch_${RUN}_notify`;
+    const calls: Array<{ reservationId: string; amount: number }> = [];
+    const notify = async (input: { reservationId: string; amount: number }) => {
+      calls.push(input);
+    };
+
+    before(async () => {
+      const { db } = louezDb;
+      await db.insert(louezDb.stores).values({
+        id: STORE,
+        userId: "owner",
+        name: "Dispute notify",
+        slug: "dispute-notify",
+        stripeAccountId: ACCOUNT,
+      });
+      await db.insert(louezDb.reservations).values({
+        id: RESERVATION,
+        storeId: STORE,
+        customerId: "customer",
+        number: "R-DISPUTE",
+        status: "confirmed",
+        startDate: new Date("2026-10-01T09:00:00Z"),
+        endDate: new Date("2026-10-03T09:00:00Z"),
+        subtotalAmount: "100.00",
+        depositAmount: "0.00",
+        totalAmount: "100.00",
+      });
+      await db.insert(louezDb.payments).values({
+        id: "pay_dispute_notify",
+        reservationId: RESERVATION,
+        amount: "100.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+        stripeChargeId: CHARGE,
+        grossMinor: 10_000,
+        currency: "EUR",
+        paidAt: new Date("2026-10-01T09:30:00Z"),
+      });
+    });
+
+    const handleWithNotify = (eventType: DisputeEventType, input: Partial<DisputeInput> = {}) =>
+      disputes.handleChargeDispute(
+        {
+          eventType,
+          dispute: { ...dispute(CHARGE), ...input },
+          eventCreatedAt: new Date(1_790_000_000_000),
+          connectedAccountId: ACCOUNT,
+        },
+        fakeStripe().port,
+        notify,
+      );
+
+    test("is sent once, by the first event of the dispute, with the disputed amount", async () => {
+      // Stripe does not order events: an update can arrive before the creation.
+      await handleWithNotify("charge.dispute.updated");
+      await handleWithNotify("charge.dispute.created");
+      await handleWithNotify("charge.dispute.funds_withdrawn");
+
+      assert.deepEqual(calls, [{ reservationId: RESERVATION, amount: 100 }]);
+    });
+
+    test("is not sent for a dispute first seen closed, nor for an unknown payment", async () => {
+      calls.length = 0;
+      await handleWithNotify("charge.dispute.closed", { id: `dp_${RUN}_closed`, status: "won" });
+      await handle("charge.dispute.created", `ch_${RUN}_unknown`, fakeStripe().port);
+
+      assert.deepEqual(calls, []);
+    });
+  });
 });

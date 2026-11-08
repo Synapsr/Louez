@@ -161,6 +161,12 @@
       "title": "Zahlung fehlgeschlagen",
       "body": "Eine Zahlung für die Reservierung #{number} bei {storeName} ist nicht durchgegangen.",
       "amount": "Betrag"
+    },
+    "disputed": {
+      "subject": "Zahlung für Reservierung #{number} angefochten",
+      "title": "Zahlung angefochten",
+      "body": "Der Kunde hat bei seiner Bank eine Zahlung für die Reservierung #{number} bei {storeName} angefochten. Antworten Sie in Ihrem Stripe-Dashboard vor der dort angegebenen Frist.",
+      "amount": "Angefochtener Betrag"
     }
   },
   "contactMessage": {

@@ -96,6 +96,7 @@ const NOTIFICATION_EVENTS: NotificationEvent[] = [
   { type: "reservation_reminder_return", category: "reminder" },
   { type: "payment_received", category: "payment" },
   { type: "payment_failed", category: "payment" },
+  { type: "payment_disputed", category: "payment" },
 ];
 
 const CUSTOMER_NOTIFICATION_EVENTS: CustomerNotificationEvent[] = [

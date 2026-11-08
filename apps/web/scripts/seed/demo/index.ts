@@ -512,6 +512,7 @@ function buildNotificationSettings(): NotificationSettings {
     reservation_reminder_return: emailOnly,
     payment_received: emailOnly,
     payment_failed: on,
+    payment_disputed: on,
     reminderSettings: {
       pickupReminderHours: 24,
       returnReminderHours: 12,

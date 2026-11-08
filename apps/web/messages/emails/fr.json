@@ -170,6 +170,12 @@
       "title": "Échec du paiement",
       "body": "Un paiement pour la réservation #{number} sur {storeName} n'a pas abouti.",
       "amount": "Montant"
+    },
+    "disputed": {
+      "subject": "Paiement contesté pour la réservation #{number}",
+      "title": "Paiement contesté",
+      "body": "Le client a contesté auprès de sa banque un paiement de la réservation #{number} sur {storeName}. Répondez à la contestation depuis votre tableau de bord Stripe avant la date limite qu'il indique.",
+      "amount": "Montant contesté"
     }
   },
   "supplierInvoiceReceived": {

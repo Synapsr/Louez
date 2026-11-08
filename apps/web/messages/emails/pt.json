@@ -161,6 +161,12 @@
       "title": "Falha no pagamento",
       "body": "Um pagamento da reserva #{number} em {storeName} não foi concluído.",
       "amount": "Valor"
+    },
+    "disputed": {
+      "subject": "Pagamento contestado da reserva #{number}",
+      "title": "Pagamento contestado",
+      "body": "O cliente contestou junto do banco um pagamento da reserva #{number} em {storeName}. Responda à contestação no seu painel Stripe antes do prazo indicado.",
+      "amount": "Valor contestado"
     }
   },
   "contactMessage": {

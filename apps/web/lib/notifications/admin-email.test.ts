@@ -11,6 +11,7 @@ import {
 } from "@louez/types";
 
 import type { EmailLocale } from "@/lib/email/i18n";
+import type { PaymentAdminEmailKind } from "@/lib/email/templates";
 
 import type { AdminEmailDeps, AdminEmailStore } from "./admin-email";
 import type { NotificationContext } from "./dispatcher";
@@ -115,6 +116,7 @@ describe("owner email per event", () => {
       "reservation_new",
       "payment_received",
       "payment_failed",
+      "payment_disputed",
     ];
     for (const event of withEmail) assert.equal(hasAdminEmail(event), true, event);
     for (const event of [
@@ -154,6 +156,15 @@ describe("owner email per event", () => {
     assert.deepEqual(result, { sent: true });
     assert.equal(sent.payment[0]?.kind, "failed");
     assert.equal(sent.payment[0]?.customer, undefined);
+  });
+
+  test("a disputed payment emails the owner with the disputed amount", async () => {
+    const sent = noneSent();
+    const result = await sendAdminEventEmail("payment_disputed", ctx(), fakeDeps(sent));
+
+    assert.deepEqual(result, { sent: true });
+    assert.equal(sent.payment[0]?.kind, "disputed");
+    assert.equal(sent.payment[0]?.amount, 80);
   });
 
   test("a new request sends the new request email with the customer's message", async () => {
@@ -288,7 +299,7 @@ describe("payment email to the owner", () => {
     "ko",
   ];
 
-  for (const kind of ["received", "failed"] as const) {
+  for (const kind of ["received", "failed", "disputed"] satisfies PaymentAdminEmailKind[]) {
     test(`${kind}: renders in every locale with the amount`, async () => {
       for (const locale of locales) {
         const html = await render(

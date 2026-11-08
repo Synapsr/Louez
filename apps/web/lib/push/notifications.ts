@@ -30,6 +30,7 @@ function supplementalTitles(
     reservation_completed: messages.notifications_RESERVATION_COMPLETED_TITLE,
     payment_received: messages.notifications_PAYMENT_RECEIVED_TITLE,
     payment_failed: messages.notifications_PAYMENT_FAILED_TITLE,
+    payment_disputed: messages.notifications_PAYMENT_DISPUTED_TITLE,
   };
 }
 
@@ -45,6 +46,7 @@ const PUSH_TITLES: Record<EmailLocale, Record<PushEventType, string>> = {
     reservation_completed: "Réservation terminée",
     payment_received: "Paiement reçu",
     payment_failed: "Échec du paiement",
+    payment_disputed: "Paiement contesté",
   },
   en: {
     reservation_new: "New reservation",
@@ -55,6 +57,7 @@ const PUSH_TITLES: Record<EmailLocale, Record<PushEventType, string>> = {
     reservation_completed: "Reservation completed",
     payment_received: "Payment received",
     payment_failed: "Payment failed",
+    payment_disputed: "Payment disputed",
   },
   de: {
     reservation_new: "Neue Reservierung",
@@ -65,6 +68,7 @@ const PUSH_TITLES: Record<EmailLocale, Record<PushEventType, string>> = {
     reservation_completed: "Reservierung abgeschlossen",
     payment_received: "Zahlung erhalten",
     payment_failed: "Zahlung fehlgeschlagen",
+    payment_disputed: "Zahlung angefochten",
   },
   es: {
     reservation_new: "Nueva reserva",
@@ -75,6 +79,7 @@ const PUSH_TITLES: Record<EmailLocale, Record<PushEventType, string>> = {
     reservation_completed: "Reserva completada",
     payment_received: "Pago recibido",
     payment_failed: "Pago fallido",
+    payment_disputed: "Pago impugnado",
   },
   it: {
     reservation_new: "Nuova prenotazione",
@@ -85,6 +90,7 @@ const PUSH_TITLES: Record<EmailLocale, Record<PushEventType, string>> = {
     reservation_completed: "Prenotazione completata",
     payment_received: "Pagamento ricevuto",
     payment_failed: "Pagamento non riuscito",
+    payment_disputed: "Pagamento contestato",
   },
   nl: {
     reservation_new: "Nieuwe reservering",
@@ -95,6 +101,7 @@ const PUSH_TITLES: Record<EmailLocale, Record<PushEventType, string>> = {
     reservation_completed: "Reservering afgerond",
     payment_received: "Betaling ontvangen",
     payment_failed: "Betaling mislukt",
+    payment_disputed: "Betaling betwist",
   },
   pl: {
     reservation_new: "Nowa rezerwacja",
@@ -105,6 +112,7 @@ const PUSH_TITLES: Record<EmailLocale, Record<PushEventType, string>> = {
     reservation_completed: "Rezerwacja zakończona",
     payment_received: "Płatność otrzymana",
     payment_failed: "Płatność nieudana",
+    payment_disputed: "Płatność zakwestionowana",
   },
   pt: {
     reservation_new: "Nova reserva",
@@ -115,6 +123,7 @@ const PUSH_TITLES: Record<EmailLocale, Record<PushEventType, string>> = {
     reservation_completed: "Reserva concluída",
     payment_received: "Pagamento recebido",
     payment_failed: "Falha no pagamento",
+    payment_disputed: "Pagamento contestado",
   },
 
   zh: supplementalTitles("zh"),
@@ -134,7 +143,10 @@ export function buildAdminPushPayload(
 ): PushPayload | null {
   if (!isPushEvent(eventType) || !ctx.reservation) return null;
 
-  const isPayment = eventType === "payment_received" || eventType === "payment_failed";
+  const isPayment =
+    eventType === "payment_received" ||
+    eventType === "payment_failed" ||
+    eventType === "payment_disputed";
   const amount = formatCurrencyForSms(
     isPayment && ctx.payment ? ctx.payment.amount : ctx.reservation.totalAmount,
     ctx.store.settings?.currency,

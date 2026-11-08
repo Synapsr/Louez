@@ -246,6 +246,7 @@ function generateNotificationSettings(): NotificationSettings {
     },
     payment_received: { email: true, sms: false, discord: false, push: false },
     payment_failed: { email: true, sms: false, discord: false, push: false },
+    payment_disputed: { email: true, sms: false, discord: false, push: false },
     reminderSettings: {
       pickupReminderHours: 24,
       returnReminderHours: 24,

@@ -4281,6 +4281,10 @@
             "payment_failed": {
               "label": "Pago fallido",
               "description": "Cuando un pago falla"
+            },
+            "payment_disputed": {
+              "label": "Pago impugnado",
+              "description": "Cuando un cliente impugna un pago ante su banco"
             }
           },
           "reminder": {

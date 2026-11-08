@@ -4281,6 +4281,10 @@
             "payment_failed": {
               "label": "Zahlung fehlgeschlagen",
               "description": "Wenn eine Zahlung fehlschlägt"
+            },
+            "payment_disputed": {
+              "label": "Zahlung angefochten",
+              "description": "Wenn ein Kunde eine Zahlung bei seiner Bank anficht"
             }
           },
           "reminder": {

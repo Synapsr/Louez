@@ -4584,6 +4584,10 @@
             "payment_failed": {
               "label": "Payment failed",
               "description": "When a payment fails"
+            },
+            "payment_disputed": {
+              "label": "Payment disputed",
+              "description": "When a customer disputes a payment with their bank"
             }
           },
           "reminder": {

@@ -4583,6 +4583,10 @@
             "payment_failed": {
               "label": "支払いに失敗しました",
               "description": "支払いが失敗した場合"
+            },
+            "payment_disputed": {
+              "label": "支払いの異議申し立て",
+              "description": "お客様がカード会社に支払いの異議を申し立てた場合"
             }
           },
           "reminder": {

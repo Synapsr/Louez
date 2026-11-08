@@ -153,7 +153,7 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
       eventCreatedAt: new Date(WITHDRAWN * 1000),
       accountId: ACCOUNT,
     });
-    assert.deepEqual(created, { recorded: true, paymentId, reservationId });
+    assert.deepEqual(created, { recorded: true, paymentId, reservationId, opened: true });
     assert.deepEqual(await readDispute("dp_won"), {
       paymentId,
       reservationId,
@@ -168,7 +168,7 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
       { type: "reservation", id: reservationId, storeId: STORE, version: 1 },
     ]);
 
-    await writes.recordChargeDispute({
+    const closed = await writes.recordChargeDispute({
       dispute: dispute({
         id: "dp_won",
         charge: "ch_dispute_won",
@@ -183,12 +183,15 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
       accountId: ACCOUNT,
     });
     // The creation event delivered again after the close changes nothing.
-    await writes.recordChargeDispute({
+    const again = await writes.recordChargeDispute({
       dispute: opened,
       eventType: "charge.dispute.funds_withdrawn",
       eventCreatedAt: new Date(WITHDRAWN * 1000),
       accountId: ACCOUNT,
     });
+    // Only the first event opened the dispute.
+    assert.equal(closed.recorded && closed.opened, false);
+    assert.equal(again.recorded && again.opened, false);
     assert.deepEqual(await readDispute("dp_won"), {
       paymentId,
       reservationId,
@@ -262,6 +265,7 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
       recorded: true,
       paymentId: captureId,
       reservationId: hold.reservationId,
+      opened: true,
     });
   });
 
@@ -292,7 +296,7 @@ describe("Connect webhook charge writes (database)", { skip: skipWithoutTestData
       eventCreatedAt: new Date(WITHDRAWN * 1000),
       accountId: ACCOUNT,
     });
-    assert.deepEqual(result, { recorded: true, paymentId, reservationId });
+    assert.deepEqual(result, { recorded: true, paymentId, reservationId, opened: true });
     assert.equal((await readDispute("dp_stamped"))?.paymentId, paymentId);
     assert.deepEqual(await queue(), [
       { type: "reservation", id: reservationId, storeId: STORE, version: 1 },

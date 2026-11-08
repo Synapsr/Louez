@@ -170,6 +170,12 @@
       "title": "支払いに失敗しました",
       "body": "{storeName} の予約 #{number} の支払いが完了しませんでした。",
       "amount": "金額"
+    },
+    "disputed": {
+      "subject": "予約 #{number} の支払いに異議申し立てがありました",
+      "title": "支払いの異議申し立て",
+      "body": "お客様が {storeName} の予約 #{number} の支払いについて、カード会社に異議を申し立てました。Stripe ダッシュボードに表示される期限までに対応してください。",
+      "amount": "異議の対象金額"
     }
   },
   "supplierInvoiceReceived": {

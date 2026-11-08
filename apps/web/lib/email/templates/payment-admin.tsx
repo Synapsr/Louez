@@ -10,7 +10,7 @@ import {
 import { formatEmailDateInStoreTimezone } from "../date-time";
 
 /** What happened to a reservation's payment, for the store owner. */
-export type PaymentAdminEmailKind = "received" | "failed";
+export type PaymentAdminEmailKind = "received" | "failed" | "disputed";
 
 interface PaymentAdminEmailProps {
   kind: PaymentAdminEmailKind;

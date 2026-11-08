@@ -1,8 +1,10 @@
 import { log } from "@/lib/evlog";
 import { clawbackReferrerRewardForQualifyingPayment } from "@/lib/referral/rewards";
+import { fromStripeCents } from "@/lib/stripe";
 
 import { recordChargeDispute } from "./charge-writes";
-import type { DisputeEventType, DisputeInput } from "./dispute-facts";
+import { type DisputeEventType, type DisputeInput, mapDisputeStatus } from "./dispute-facts";
+import { notifyPaymentDisputed } from "./dispute-notification";
 import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from "./fee-reversal";
 
 // `charge.dispute.*` on a connected account (louez-billing docs/api, fees.md §9 and
@@ -22,8 +24,10 @@ const stripeId = (value: string | { readonly id: string } | null): string | null
 /**
  * Every `charge.dispute.*` event updates the dispute's billing facts. The fee refund at
  * source runs first, reading the charge's disputes from Stripe; a reinstatement
- * restores no fee. The referral clawback runs on creation. Throws when the fee refund
- * fails, so the webhook answers 500 and Stripe retries.
+ * restores no fee. The referral clawback runs on creation. The owner is told once,
+ * by the first event Louez records of an open dispute, whatever its type: Stripe
+ * does not order events. Throws when the fee refund fails, so the webhook answers
+ * 500 and Stripe retries.
  */
 export async function handleChargeDispute(
   input: {
@@ -33,6 +37,7 @@ export async function handleChargeDispute(
     readonly connectedAccountId: string | undefined;
   },
   feeReversal: FeeReversalStripe = stripeFeeReversal,
+  notifyDisputed: typeof notifyPaymentDisputed = notifyPaymentDisputed,
 ): Promise<void> {
   const { eventType, dispute, connectedAccountId } = input;
   const chargeId = stripeId(dispute.charge);
@@ -73,4 +78,11 @@ export async function handleChargeDispute(
         : { issue: result.reason }),
     },
   });
+
+  if (result.recorded && result.opened && mapDisputeStatus(dispute.status).status === "open") {
+    await notifyDisputed({
+      reservationId: result.reservationId,
+      amount: fromStripeCents(dispute.amount, dispute.currency.toUpperCase()),
+    });
+  }
 }

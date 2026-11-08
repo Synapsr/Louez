@@ -170,6 +170,12 @@
       "title": "Pago fallido",
       "body": "Un pago de la reserva #{number} en {storeName} no se ha completado.",
       "amount": "Importe"
+    },
+    "disputed": {
+      "subject": "Pago impugnado de la reserva #{number}",
+      "title": "Pago impugnado",
+      "body": "El cliente ha impugnado ante su banco un pago de la reserva #{number} en {storeName}. Responda a la disputa desde su panel de Stripe antes de la fecha límite que indica.",
+      "amount": "Importe impugnado"
     }
   },
   "contactMessage": {

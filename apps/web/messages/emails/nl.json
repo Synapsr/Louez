@@ -170,6 +170,12 @@
       "title": "Betaling mislukt",
       "body": "Een betaling voor reservering #{number} bij {storeName} is niet gelukt.",
       "amount": "Bedrag"
+    },
+    "disputed": {
+      "subject": "Betaling betwist voor reservering #{number}",
+      "title": "Betaling betwist",
+      "body": "De klant heeft bij zijn bank een betaling voor reservering #{number} bij {storeName} betwist. Reageer op het geschil via uw Stripe-dashboard vóór de daar vermelde deadline.",
+      "amount": "Betwist bedrag"
     }
   },
   "contactMessage": {

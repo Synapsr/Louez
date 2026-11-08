@@ -4281,6 +4281,10 @@
             "payment_failed": {
               "label": "Płatność nieudana",
               "description": "Gdy płatność się nie powiedzie"
+            },
+            "payment_disputed": {
+              "label": "Płatność zakwestionowana",
+              "description": "Gdy klient zakwestionuje płatność w swoim banku"
             }
           },
           "reminder": {

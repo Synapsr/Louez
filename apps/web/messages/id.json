@@ -4583,6 +4583,10 @@
             "payment_failed": {
               "label": "Pembayaran gagal",
               "description": "Ketika pembayaran gagal"
+            },
+            "payment_disputed": {
+              "label": "Pembayaran disengketakan",
+              "description": "Ketika pelanggan menyengketakan pembayaran ke banknya"
             }
           },
           "reminder": {

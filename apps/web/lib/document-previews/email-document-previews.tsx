@@ -572,6 +572,11 @@ export const EMAIL_DOCUMENT_PREVIEWS: readonly EmailDocumentPreview[] = [
     "Échec de paiement (loueur)",
     "Le loueur est prévenu qu'un paiement n'a pas abouti.",
   ),
+  paymentAdminPreview(
+    "disputed",
+    "Paiement contesté (loueur)",
+    "Le loueur est prévenu qu'un client conteste un paiement auprès de sa banque.",
+  ),
   storeEmail({
     id: "reminder-pickup-admin",
     title: "Retrait à venir (loueur)",

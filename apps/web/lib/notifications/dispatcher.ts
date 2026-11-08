@@ -31,6 +31,7 @@ import {
   sendReminderDigestAdminDiscord,
   sendPaymentReceivedDiscord,
   sendPaymentFailedDiscord,
+  sendPaymentDisputedDiscord,
 } from "@/lib/discord/notifications";
 import {
   sendReminderPickupAdminEmail,
@@ -110,6 +111,7 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   reservation_reminder_return: { email: false, sms: false, discord: false, push: false },
   payment_received: { email: true, sms: false, discord: false, push: false },
   payment_failed: { email: true, sms: false, discord: false, push: false },
+  payment_disputed: { email: true, sms: false, discord: false, push: false },
 };
 
 // ============================================================================
@@ -134,6 +136,7 @@ type AdminSmsTemplates = {
   reservation_reminder_return: (vars: AdminSmsTemplateVars) => string;
   payment_received: (vars: AdminSmsTemplateVars) => string;
   payment_failed: (vars: AdminSmsTemplateVars) => string;
+  payment_disputed: (vars: AdminSmsTemplateVars) => string;
 };
 
 const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
@@ -157,6 +160,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Paiement reçu #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Échec paiement #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Paiement contesté #${number} : ${amount}`,
   },
   en: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -178,6 +183,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Payment received #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Payment failed #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Payment disputed #${number}: ${amount}`,
   },
   de: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -199,6 +206,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Zahlung erhalten #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Zahlung fehlgeschlagen #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Zahlung angefochten #${number}: ${amount}`,
   },
   es: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -218,6 +227,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pago recibido #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Pago fallido #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Pago impugnado #${number}: ${amount}`,
   },
   it: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -239,6 +250,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pagamento ricevuto #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Pagamento fallito #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Pagamento contestato #${number}: ${amount}`,
   },
   nl: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -260,6 +273,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Betaling ontvangen #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Betaling mislukt #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Betaling betwist #${number}: ${amount}`,
   },
   pl: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -281,6 +296,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Platnosc otrzymana #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Platnosc nieudana #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Platnosc zakwestionowana #${number}: ${amount}`,
   },
   pt: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -300,6 +317,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pagamento recebido #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Pagamento falhou #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Pagamento contestado #${number}: ${amount}`,
   },
 
   zh: {
@@ -360,6 +379,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
         value0: String(storeName),
         value1: String(number),
       }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
   },
   ja: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -418,6 +443,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_payment_failed", {
         value0: String(storeName),
         value1: String(number),
+      }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
       }),
   },
   ru: {
@@ -478,6 +509,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
         value0: String(storeName),
         value1: String(number),
       }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
   },
   id: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -537,6 +574,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
         value0: String(storeName),
         value1: String(number),
       }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
   },
   ko: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -595,6 +638,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_payment_failed", {
         value0: String(storeName),
         value1: String(number),
+      }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
       }),
   },
 };
@@ -714,6 +763,8 @@ function getDiscordSender(eventType: NotificationEventType) {
       return sendPaymentReceivedDiscord;
     case "payment_failed":
       return sendPaymentFailedDiscord;
+    case "payment_disputed":
+      return sendPaymentDisputedDiscord;
     default:
       return async () => ({ success: false, error: "Unknown event type" });
   }

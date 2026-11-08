@@ -4584,6 +4584,10 @@
             "payment_failed": {
               "label": "Paiement échoué",
               "description": "Quand un paiement échoue"
+            },
+            "payment_disputed": {
+              "label": "Paiement contesté",
+              "description": "Quand un client conteste un paiement auprès de sa banque"
             }
           },
           "reminder": {

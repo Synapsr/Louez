@@ -1057,7 +1057,7 @@ export async function sendNewRequestLandlordEmail({
   }
 }
 
-// A reservation's payment went through or failed: to the store owner.
+// A reservation's payment went through, failed or was disputed: to the store owner.
 export async function sendPaymentAdminEmail({
   to,
   kind,

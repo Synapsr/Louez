@@ -161,6 +161,12 @@
       "title": "Płatność nieudana",
       "body": "Płatność za rezerwację #{number} w {storeName} nie została zrealizowana.",
       "amount": "Kwota"
+    },
+    "disputed": {
+      "subject": "Płatność za rezerwację #{number} została zakwestionowana",
+      "title": "Płatność zakwestionowana",
+      "body": "Klient zakwestionował w swoim banku płatność za rezerwację #{number} w {storeName}. Odpowiedz na spór w panelu Stripe przed wskazanym tam terminem.",
+      "amount": "Kwota sporna"
     }
   },
   "contactMessage": {

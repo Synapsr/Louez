@@ -170,6 +170,12 @@
       "title": "Pembayaran gagal",
       "body": "Pembayaran untuk reservasi #{number} di {storeName} tidak berhasil.",
       "amount": "Jumlah"
+    },
+    "disputed": {
+      "subject": "Pembayaran untuk reservasi #{number} disengketakan",
+      "title": "Pembayaran disengketakan",
+      "body": "Pelanggan telah menyengketakan pembayaran untuk reservasi #{number} di {storeName} ke banknya. Tanggapi sengketa dari dasbor Stripe Anda sebelum batas waktu yang tertera.",
+      "amount": "Jumlah yang disengketakan"
     }
   },
   "supplierInvoiceReceived": {

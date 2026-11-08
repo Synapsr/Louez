@@ -791,7 +791,8 @@ export type NotificationEventType =
   | "reservation_reminder_pickup"
   | "reservation_reminder_return"
   | "payment_received"
-  | "payment_failed";
+  | "payment_failed"
+  | "payment_disputed";
 
 export const NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
   "reservation_new",
@@ -804,6 +805,7 @@ export const NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
   "reservation_reminder_return",
   "payment_received",
   "payment_failed",
+  "payment_disputed",
 ];
 
 export interface NotificationChannelConfig {
@@ -824,6 +826,7 @@ export interface NotificationSettings {
   reservation_reminder_return: NotificationChannelConfig;
   payment_received: NotificationChannelConfig;
   payment_failed: NotificationChannelConfig;
+  payment_disputed: NotificationChannelConfig;
 
   // Automatic admin reminder timing (independent of customer reminder timing)
   reminderSettings?: {
@@ -857,6 +860,8 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   reservation_reminder_return: { email: false, sms: false, discord: false, push: false },
   payment_received: { email: true, sms: false, discord: false, push: false },
   payment_failed: { email: true, sms: false, discord: false, push: false },
+  // A chargeback has a response deadline: the owner hears of it by email.
+  payment_disputed: { email: true, sms: false, discord: false, push: false },
 
   // Default admin reminder timing: 24 hours before event, per-reservation mode
   reminderSettings: {

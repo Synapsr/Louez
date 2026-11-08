@@ -161,6 +161,12 @@
       "title": "Pagamento non riuscito",
       "body": "Un pagamento per la prenotazione #{number} su {storeName} non è andato a buon fine.",
       "amount": "Importo"
+    },
+    "disputed": {
+      "subject": "Pagamento contestato per la prenotazione #{number}",
+      "title": "Pagamento contestato",
+      "body": "Il cliente ha contestato presso la sua banca un pagamento della prenotazione #{number} su {storeName}. Rispondi alla contestazione dalla dashboard di Stripe entro la scadenza indicata.",
+      "amount": "Importo contestato"
     }
   },
   "contactMessage": {

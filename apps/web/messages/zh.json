@@ -4583,6 +4583,10 @@
             "payment_failed": {
               "label": "付款失败",
               "description": "当付款失败时"
+            },
+            "payment_disputed": {
+              "label": "付款争议",
+              "description": "当客户向其银行就付款提出争议时"
             }
           },
           "reminder": {

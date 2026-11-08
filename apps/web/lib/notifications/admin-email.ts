@@ -6,6 +6,7 @@ import type { NotificationEventType } from "@louez/types";
 import { env } from "@/env";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { sendNewRequestLandlordEmail, sendPaymentAdminEmail } from "@/lib/email/send";
+import type { PaymentAdminEmailKind } from "@/lib/email/templates";
 
 import type { NotificationContext } from "./dispatcher";
 
@@ -16,14 +17,24 @@ import type { NotificationContext } from "./dispatcher";
  */
 type AdminEmailEvent = Extract<
   NotificationEventType,
-  "reservation_new" | "payment_received" | "payment_failed"
+  "reservation_new" | "payment_received" | "payment_failed" | "payment_disputed"
 >;
 
 const ADMIN_EMAIL_EVENTS: readonly AdminEmailEvent[] = [
   "reservation_new",
   "payment_received",
   "payment_failed",
+  "payment_disputed",
 ];
+
+const PAYMENT_EMAIL_KINDS: Record<
+  Exclude<AdminEmailEvent, "reservation_new">,
+  PaymentAdminEmailKind
+> = {
+  payment_received: "received",
+  payment_failed: "failed",
+  payment_disputed: "disputed",
+};
 
 export const hasAdminEmail = (eventType: NotificationEventType): eventType is AdminEmailEvent =>
   ADMIN_EMAIL_EVENTS.some((event) => event === eventType);
@@ -117,7 +128,7 @@ export async function sendAdminEventEmail(
     } else {
       await deps.sendPaymentAdminEmail({
         to,
-        kind: eventType === "payment_received" ? "received" : "failed",
+        kind: PAYMENT_EMAIL_KINDS[eventType],
         store,
         customer,
         reservation,
