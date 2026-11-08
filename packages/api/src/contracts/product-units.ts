@@ -86,10 +86,14 @@ export const unitHistoryOutput = z.object({
 
 // --- Conflicts -----------------------------------------------------------------
 
-/** A reservation that holds the unit while it is out, with the units that could serve it instead. */
+/**
+ * A reservation that holds the unit while it is out, with the units that
+ * could serve it instead. Without reservations read, its id and number are
+ * null; without customers read, so is the customer's name.
+ */
 export const unitConflictSchema = z.object({
-  reservationId: z.string(),
-  reservationNumber: z.string(),
+  reservationId: z.string().nullable(),
+  reservationNumber: z.string().nullable(),
   customerName: z.string().nullable(),
   startDate: z.date(),
   /** End of the booking, return buffer included. */

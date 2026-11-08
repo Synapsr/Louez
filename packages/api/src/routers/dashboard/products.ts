@@ -33,8 +33,6 @@ import {
   createImageUploadInput,
   createImageUploadOutput,
 } from "../../contracts/uploads";
-import { platformErrors } from "../../platform/errors";
-import { allows } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
 import { getProductUnitActivityPage } from "../../services/product-activity";
 import { getProductReservationTimeline } from "../../services/product-reservation-timeline";
@@ -57,7 +55,7 @@ import {
   updateProductStatus,
 } from "../../services/products";
 import { completeImageUpload, createImageUpload } from "../../services/uploads";
-import { confirmUnderLock, productActor } from "./product-context";
+import { confirmUnderLock, productActor, requireReservationsAndCustomers } from "./product-context";
 import {
   closeDowntime,
   declareDowntime,
@@ -428,12 +426,7 @@ const getReservationTimeline = storeProcedure
   .handler(({ context, input }) => {
     // It shows reservations (numbers, dates, amounts) and their customers:
     // the connection must read those too, not only products.
-    for (const domain of ["reservations", "customers"] as const) {
-      const required = { domain, level: "read" as const };
-      if (!allows(context.actor.role, context.actor.credential.scopes, required)) {
-        throw platformErrors.permissionDenied(`${domain}:read`);
-      }
-    }
+    requireReservationsAndCustomers(context);
     return getProductReservationTimeline(context.actor.storeId, input);
   });
 

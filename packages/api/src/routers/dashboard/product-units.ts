@@ -15,11 +15,19 @@ import {
   updateDowntimeOutput,
   updateUnitDetailsInput,
   updateUnitDetailsOutput,
+  type UnitConflictOutput,
 } from "../../contracts/product-units";
 import { storeProcedure } from "../../platform/procedures";
 import * as units from "../../services/product-units";
 import type { UnitAvailabilityPreview } from "../../services/product-units";
-import { confirmUnderLock, productActor } from "./product-context";
+import type { UnitConflict } from "../../services/unit-conflicts";
+import {
+  confirmUnderLock,
+  mayRead,
+  productActor,
+  requireReservationsAndCustomers,
+  type ProductContext,
+} from "./product-context";
 
 /**
  * A product's units and their downtimes, on every transport, as part of the
@@ -30,54 +38,113 @@ import { confirmUnderLock, productActor } from "./product-context";
 const UNIT_HELP =
   "A unit is one tracked item of a product (products_get lists them in units[], with their id).";
 const CONFIRM_HELP =
-  "the first call answers CONFIRMATION_REQUIRED with a preview naming those reservations: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.";
+  "the first call answers CONFIRMATION_REQUIRED with a preview of those reservations: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.";
+const BOOKING_ACCESS_HELP =
+  "A booking's number and id are null without read access to reservations, and its customer's name without read access to customers; its dates are always given.";
+
+interface BookingAccess {
+  reservations: boolean;
+  customers: boolean;
+}
+
+/** What the caller may see of the bookings that hold a unit: the member's role, cut down to the connection's scopes. */
+const bookingAccess = (context: ProductContext): BookingAccess => ({
+  reservations: mayRead(context, "reservations"),
+  customers: mayRead(context, "reservations") && mayRead(context, "customers"),
+});
 
 /**
- * What a confirmation of a unit leaving availability binds: every fact the
- * preview shows. The unit, the window once merged with what is stored (a
- * retirement starts now, so its window is left out), and each booking with
- * its dates and the units offered to replace it.
+ * A booking as the caller may see it. Without reservations read, its dates
+ * and line only (a confirmation still counts it); without customers read, no
+ * name. Replacements come in a stable order.
  */
-const availabilityConfirmation = (preview: UnitAvailabilityPreview, bindWindow = true) => ({
-  state: {
-    unitId: preview.unit.id,
-    identifier: preview.unit.identifier,
-    ...(bindWindow
-      ? {
-          window: {
-            start: preview.window.start.toISOString(),
-            end: preview.window.end?.toISOString() ?? null,
-          },
-        }
-      : {}),
-    conflicts: preview.conflicts
-      .map((conflict) => ({
-        reservationItemId: conflict.reservationItemId,
-        reservationId: conflict.reservationId,
-        startDate: conflict.startDate.toISOString(),
-        endDate: conflict.endDate.toISOString(),
-        replacementUnitIds: conflict.replacementCandidates.map((candidate) => candidate.id).sort(),
-      }))
-      .sort((left, right) => left.reservationItemId.localeCompare(right.reservationItemId)),
-  },
-  details: {
-    unit: preview.unit,
-    product: preview.product,
-    from: preview.window.start.toISOString(),
-    until: preview.window.end?.toISOString() ?? null,
-    reservations: preview.conflicts.map((conflict) => ({
-      id: conflict.reservationId,
-      number: conflict.reservationNumber,
-      customerName: conflict.customerName,
-      startDate: conflict.startDate.toISOString(),
-      endDate: conflict.endDate.toISOString(),
-      replacementUnits: conflict.replacementCandidates.map((candidate) => ({
-        id: candidate.id,
-        identifier: candidate.identifier,
-      })),
-    })),
-  },
-});
+function visibleConflict(conflict: UnitConflict, access: BookingAccess): UnitConflictOutput {
+  return {
+    ...conflict,
+    reservationId: access.reservations ? conflict.reservationId : null,
+    reservationNumber: access.reservations ? conflict.reservationNumber : null,
+    customerName: access.customers ? conflict.customerName : null,
+    replacementCandidates: [...conflict.replacementCandidates].sort(
+      (left, right) =>
+        left.identifier.localeCompare(right.identifier) || left.id.localeCompare(right.id),
+    ),
+  };
+}
+
+/**
+ * What the preview of a unit leaving availability shows, redacted to what
+ * the caller may see, and what its token binds: the unit, the window once
+ * merged with what is stored (a retirement starts now, so its window is
+ * left out), and each booking with its dates and replacement units.
+ */
+const availabilityConfirmation =
+  (context: ProductContext, options: { showWindow: boolean }) =>
+  (preview: UnitAvailabilityPreview) => {
+    const access = bookingAccess(context);
+    return {
+      state: {
+        unitId: preview.unit.id,
+        identifier: preview.unit.identifier,
+        ...(options.showWindow
+          ? {
+              window: {
+                start: preview.window.start.toISOString(),
+                end: preview.window.end?.toISOString() ?? null,
+              },
+            }
+          : {}),
+        conflicts: preview.conflicts
+          .map((conflict) => ({
+            reservationItemId: conflict.reservationItemId,
+            reservationId: conflict.reservationId,
+            startDate: conflict.startDate.toISOString(),
+            endDate: conflict.endDate.toISOString(),
+            replacementUnitIds: conflict.replacementCandidates
+              .map((candidate) => candidate.id)
+              .sort(),
+          }))
+          .sort((left, right) => left.reservationItemId.localeCompare(right.reservationItemId)),
+      },
+      details: {
+        unit: preview.unit,
+        product: preview.product,
+        ...(options.showWindow
+          ? {
+              from: preview.window.start.toISOString(),
+              until: preview.window.end?.toISOString() ?? null,
+            }
+          : {}),
+        reservations: preview.conflicts.map((raw) => {
+          const conflict = visibleConflict(raw, access);
+          return {
+            reservationItemId: conflict.reservationItemId,
+            id: conflict.reservationId,
+            number: conflict.reservationNumber,
+            customerName: conflict.customerName,
+            startDate: conflict.startDate.toISOString(),
+            endDate: conflict.endDate.toISOString(),
+            replacementUnits: conflict.replacementCandidates.map((candidate) => ({
+              id: candidate.id,
+              identifier: candidate.identifier,
+            })),
+          };
+        }),
+      },
+    };
+  };
+
+/** The answer's bookings, redacted as the preview was. */
+const withVisibleConflicts =
+  (context: ProductContext) =>
+  <T extends { conflicts: UnitConflict[] }>(
+    result: T,
+  ): Omit<T, "conflicts"> & { conflicts: UnitConflictOutput[] } => {
+    const access = bookingAccess(context);
+    return {
+      ...result,
+      conflicts: result.conflicts.map((conflict) => visibleConflict(conflict, access)),
+    };
+  };
 
 export const getUnitHistory = storeProcedure
   .meta({
@@ -85,7 +152,7 @@ export const getUnitHistory = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_get_unit_history",
-      description: `The history of one unit: its events (created, changed, retired, reinstated, downtimes, assignments), newest first, with who did them, and its downtimes (current, upcoming, past). ${UNIT_HELP}`,
+      description: `The history of one unit: its events (created, changed, retired, reinstated, downtimes, assignments), newest first, with who did them, and its downtimes (current, upcoming, past). ${UNIT_HELP} It shows the reservations and customers the unit served: it needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
       bundle: "catalog",
       annotations: { readOnlyHint: true },
     },
@@ -93,7 +160,10 @@ export const getUnitHistory = storeProcedure
   .route({ method: "GET", path: "/products/units/{unitId}/history" })
   .input(unitHistoryInput)
   .output(unitHistoryOutput)
-  .handler(({ context, input }) => units.getUnitHistory(context.actor.storeId, input.unitId));
+  .handler(({ context, input }) => {
+    requireReservationsAndCustomers(context);
+    return units.getUnitHistory(context.actor.storeId, input.unitId);
+  });
 
 export const declareDowntime = storeProcedure
   .meta({
@@ -102,7 +172,7 @@ export const declareDowntime = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_declare_downtime",
-      description: `Take a unit out of service for maintenance, a repair or another reason, from startsAt until endsAt (or until closed with products_close_downtime). It cannot be booked then. ${UNIT_HELP} Reservations that already hold the unit then keep it and are returned in conflicts, with the units that could serve them instead; when there are any, ${CONFIRM_HELP} Returns the downtime's id.`,
+      description: `Take a unit out of service for maintenance, a repair or another reason, from startsAt until endsAt (or until closed with products_close_downtime). It cannot be booked then. ${UNIT_HELP} Reservations that already hold the unit then keep it and are returned in conflicts, with the units that could serve them instead; when there are any, ${CONFIRM_HELP} ${BOOKING_ACCESS_HELP} Returns the downtime's id.`,
       bundle: "catalog",
       annotations: { destructiveHint: true },
     },
@@ -111,9 +181,16 @@ export const declareDowntime = storeProcedure
   .input(declareDowntimeInput)
   .output(declareDowntimeOutput)
   .handler(({ context, input, path }) =>
-    units.declareDowntime(productActor(context), input, {
-      confirm: confirmUnderLock(context, path, input, availabilityConfirmation),
-    }),
+    units
+      .declareDowntime(productActor(context), input, {
+        confirm: confirmUnderLock(
+          context,
+          path,
+          input,
+          availabilityConfirmation(context, { showWindow: true }),
+        ),
+      })
+      .then(withVisibleConflicts(context)),
   );
 
 export const updateDowntime = storeProcedure
@@ -123,7 +200,7 @@ export const updateDowntime = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_update_downtime",
-      description: `Change a downtime's reason, dates or note. Send only the fields to change; endsAt null makes it last until closed. Reservations that hold the unit over the new dates are returned in conflicts; when there are any, ${CONFIRM_HELP}`,
+      description: `Change a downtime's reason, dates or note. Send only the fields to change; endsAt null makes it last until closed. Reservations that hold the unit over the new dates are returned in conflicts; when there are any, ${CONFIRM_HELP} ${BOOKING_ACCESS_HELP}`,
       bundle: "catalog",
       annotations: { destructiveHint: true, idempotentHint: true },
     },
@@ -132,9 +209,16 @@ export const updateDowntime = storeProcedure
   .input(updateDowntimeInput)
   .output(updateDowntimeOutput)
   .handler(({ context, input, path }) =>
-    units.updateDowntime(productActor(context), input, {
-      confirm: confirmUnderLock(context, path, input, availabilityConfirmation),
-    }),
+    units
+      .updateDowntime(productActor(context), input, {
+        confirm: confirmUnderLock(
+          context,
+          path,
+          input,
+          availabilityConfirmation(context, { showWindow: true }),
+        ),
+      })
+      .then(withVisibleConflicts(context)),
   );
 
 export const closeDowntime = storeProcedure
@@ -199,7 +283,7 @@ export const retireUnit = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_retire_unit",
-      description: `Retire a unit for good (sold, lost, broken or other): it leaves the stock from now on and can no longer be booked; products_reinstate_unit undoes it. ${UNIT_HELP} Current and future reservations that hold it keep it and are returned in conflicts, with the units that could serve them instead. The first call answers CONFIRMATION_REQUIRED with a preview naming those reservations: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.`,
+      description: `Retire a unit for good (sold, lost, broken or other): it leaves the stock from now on and can no longer be booked; products_reinstate_unit undoes it. ${UNIT_HELP} Current and future reservations that hold it keep it and are returned in conflicts, with the units that could serve them instead. The first call answers CONFIRMATION_REQUIRED with a preview of those reservations: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. ${BOOKING_ACCESS_HELP}`,
       bundle: "catalog",
       annotations: { destructiveHint: true },
     },
@@ -208,11 +292,16 @@ export const retireUnit = storeProcedure
   .input(retireUnitInput)
   .output(retireUnitOutput)
   .handler(({ context, input, path }) =>
-    units.retireUnit(productActor(context), input, {
-      confirm: confirmUnderLock(context, path, input, (preview) =>
-        availabilityConfirmation(preview, false),
-      ),
-    }),
+    units
+      .retireUnit(productActor(context), input, {
+        confirm: confirmUnderLock(
+          context,
+          path,
+          input,
+          availabilityConfirmation(context, { showWindow: false }),
+        ),
+      })
+      .then(withVisibleConflicts(context)),
   );
 
 export const reinstateUnit = storeProcedure

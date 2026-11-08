@@ -188,17 +188,21 @@ export const ConflictsPanel = ({
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                      href={`/dashboard/reservations/${conflict.reservationId}`}
-                      className="font-medium hover:underline"
-                    >
-                      {t('reservation', {
-                        number: conflict.reservationNumber,
-                      })}
-                    </Link>
-                    <ExternalLink className="text-muted-foreground h-3.5 w-3.5" />
-                  </div>
+                  {/* A dashboard session always sees the booking; the API leaves
+                      its id and number out for a connection that may not. */}
+                  {conflict.reservationId ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/dashboard/reservations/${conflict.reservationId}`}
+                        className="font-medium hover:underline"
+                      >
+                        {t('reservation', {
+                          number: conflict.reservationNumber ?? '',
+                        })}
+                      </Link>
+                      <ExternalLink className="text-muted-foreground h-3.5 w-3.5" />
+                    </div>
+                  ) : null}
                   <p className="text-muted-foreground text-sm">
                     {formatDateRange(conflict.startDate, conflict.endDate, formatLocale)}
                   </p>

@@ -91,6 +91,14 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
       { storeId: OTHER_STORE, userId: OWNER, role: "owner" },
       { storeId: STORE, userId: MEMBER, role: "member" },
     ]);
+    // The customer of every booking these tests make.
+    await louezDb.db.insert(louezDb.customers).values({
+      id: "customer",
+      storeId: STORE,
+      email: "ada@pu.test",
+      firstName: "Ada",
+      lastName: "Lovelace",
+    });
   });
 
   after(async () => {
@@ -630,6 +638,116 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
       run("updateDowntime", input, context({ "louez-confirmation": tokenOf(asked) })),
       "CONFIRMATION_INVALID",
     );
+  });
+
+  // --- Second review --------------------------------------------------------
+
+  type PreviewBooking = {
+    id: string | null;
+    number: string | null;
+    customerName: string | null;
+    startDate: string;
+  };
+  const bookingsOf = (refusal: { data: { details?: Record<string, unknown> } }) =>
+    (
+      refusal.data.details as {
+        preview: { summary: string; details: { reservations: PreviewBooking[] } };
+      }
+    ).preview;
+
+  test("a unit's history needs reservations and customers read on a connection", async () => {
+    const { product, first } = await trackedProduct();
+    await book(product.id, first);
+    const productsOnly = await apiKey({
+      permissions: { ...readWrite, reservations: "none", customers: "none" },
+    });
+    const refused = await rejects(
+      run("getUnitHistory", { unitId: first }, productsOnly()),
+      "PERMISSION_DENIED",
+    );
+    assert.deepEqual(refused.data.details, { required: "reservations:read" });
+    const noCustomers = await apiKey({ permissions: { ...readWrite, customers: "none" } });
+    await rejects(run("getUnitHistory", { unitId: first }, noCustomers()), "PERMISSION_DENIED");
+
+    const allowed = await apiKey();
+    const history = await run("getUnitHistory", { unitId: first }, allowed());
+    assert.ok(history.timeline.some((entry) => entry.kind === "assignment"));
+    assert.ok(
+      (await run("getUnitHistory", { unitId: first }, session(MEMBER))).timeline.length > 0,
+    );
+  });
+
+  test("a products-only key confirms with the bookings' dates, never their numbers or customers", async () => {
+    const { product, first } = await trackedProduct();
+    const booking = await book(product.id, first);
+    const productsOnly = await apiKey({
+      permissions: { ...readWrite, reservations: "none", customers: "none" },
+    });
+    const declare = { unitId: first, reason: "repair" as const, startsAt: JUNE_1, endsAt: JUNE_3 };
+
+    const asked = await rejects(
+      run("declareDowntime", declare, productsOnly()),
+      "CONFIRMATION_REQUIRED",
+    );
+    const preview = bookingsOf(asked);
+    assert.deepEqual(
+      preview.details.reservations.map(({ id, number, customerName, startDate }) => ({
+        id,
+        number,
+        customerName,
+        startDate,
+      })),
+      [{ id: null, number: null, customerName: null, startDate: JUNE_1.toISOString() }],
+    );
+    const shown = JSON.stringify(asked.data.details);
+    assert.ok(!shown.includes(booking.number), "no booking number in the preview");
+    assert.ok(!shown.includes("Lovelace"), "no customer in the preview");
+    const declared = await run(
+      "declareDowntime",
+      declare,
+      productsOnly({ "louez-confirmation": tokenOf(asked) }),
+    );
+    assert.equal(declared.conflicts.length, 1);
+    assert.deepEqual(
+      [
+        declared.conflicts[0].reservationId,
+        declared.conflicts[0].reservationNumber,
+        declared.conflicts[0].customerName,
+      ],
+      [null, null, null],
+      "nor in the answer",
+    );
+
+    const update = { downtimeId: declared.downtimeId, reason: "maintenance" as const };
+    const updateAsked = await rejects(
+      run("updateDowntime", update, productsOnly()),
+      "CONFIRMATION_REQUIRED",
+    );
+    assert.ok(!JSON.stringify(updateAsked.data.details).includes(booking.number));
+
+    const retireAsked = await rejects(
+      run("retireUnit", { unitId: first, reason: "broken" }, productsOnly()),
+      "CONFIRMATION_REQUIRED",
+    );
+    assert.equal(bookingsOf(retireAsked).details.reservations.length, 1);
+    assert.ok(!JSON.stringify(retireAsked.data.details).includes(booking.number));
+    assert.ok(!JSON.stringify(retireAsked.data.details).includes("Lovelace"));
+
+    // Reservations read without customers: the numbers, not the names.
+    const noCustomers = await apiKey({ permissions: { ...readWrite, customers: "none" } });
+    const withNumbers = await rejects(
+      run("retireUnit", { unitId: first, reason: "broken" }, noCustomers()),
+      "CONFIRMATION_REQUIRED",
+    );
+    const [named] = bookingsOf(withNumbers).details.reservations;
+    assert.equal(named.number, booking.number);
+    assert.equal(named.customerName, null);
+    // A full key sees the customer.
+    const full = await rejects(
+      run("retireUnit", { unitId: first, reason: "broken" }, (await apiKey())()),
+      "CONFIRMATION_REQUIRED",
+    );
+    assert.equal(bookingsOf(full).details.reservations[0].customerName, "Ada Lovelace");
   });
 
   // --- Races ----------------------------------------------------------------

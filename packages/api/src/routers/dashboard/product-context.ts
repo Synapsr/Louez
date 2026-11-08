@@ -1,4 +1,6 @@
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
+import { platformErrors } from "../../platform/errors";
+import { allows } from "../../platform/permissions";
 import type { StoreActor } from "../../platform/actor";
 import type { ActorStore } from "../../platform/procedures";
 import type { ApiPorts } from "../../platform/ports";
@@ -30,6 +32,18 @@ export function productActor(context: ProductContext): ProductActor {
     },
     afterCommit: context.ports.afterCommit,
   };
+}
+
+/** Whether the caller may read a domain: the member's role, cut down to the connection's scopes. */
+export function mayRead(context: ProductContext, domain: "reservations" | "customers") {
+  return allows(context.actor.role, context.actor.credential.scopes, { domain, level: "read" });
+}
+
+/** Refuses an answer that shows reservations and their customers to a caller who may not read them. */
+export function requireReservationsAndCustomers(context: ProductContext) {
+  for (const domain of ["reservations", "customers"] as const) {
+    if (!mayRead(context, domain)) throw platformErrors.permissionDenied(`${domain}:read`);
+  }
 }
 
 /** A confirmation asked under the write's lock, bound to what the preview shows. */

@@ -100,12 +100,11 @@ function describeWindow(start: Date, end: Date | null) {
     : `from ${start.toISOString()} until it is closed`;
 }
 
+/** Counts the bookings only: the preview's details name them, as far as the caller may see them. */
 function describeConflicts(conflicts: UnitConflict[]) {
   if (conflicts.length === 0) return "";
-  const numbers = [...new Set(conflicts.map((conflict) => conflict.reservationNumber))];
-  return ` ${numbers.length} reservation(s) hold it then (${numbers.slice(0, 10).join(", ")}${
-    numbers.length > 10 ? ", …" : ""
-  }): they keep this unit until you move them to another one.`;
+  const count = new Set(conflicts.map((conflict) => conflict.reservationId)).size;
+  return ` ${count} reservation(s) hold it then: they keep this unit until you move them to another one.`;
 }
 
 /** Where a unit is: its product never changes, so this read may come before the locks. */
