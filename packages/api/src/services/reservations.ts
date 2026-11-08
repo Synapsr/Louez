@@ -11,7 +11,7 @@ import {
   reservations,
   storeIntegrations,
 } from "@louez/db";
-import { hasReservationInsuranceCoverage } from "@louez/utils";
+import { getSettledPaymentAmount, hasReservationInsuranceCoverage } from "@louez/utils";
 import {
   and,
   asc,
@@ -67,7 +67,17 @@ export interface ReservationReader {
   currency: string;
   /** The member's role, cut down to the connection's scopes, allows reading customers. */
   customers: boolean;
+  /** The same for payments: their rows, notes and Stripe ids. */
+  payments: boolean;
 }
+
+/** What was paid toward the rental, refunds taken off, as a decimal string. */
+const rentalPaidOf = (rows: Parameters<typeof getSettledPaymentAmount>[0]) =>
+  getSettledPaymentAmount(rows, "rental").toFixed(2);
+
+/** Activity entries about payments and deposits: their details need payments read. */
+const isPaymentActivity = (activityType: string) =>
+  activityType.startsWith("payment_") || activityType.startsWith("deposit_");
 
 const CLOSED_STATUSES = ["cancelled", "rejected", "declined"] as const;
 
@@ -372,6 +382,8 @@ export async function listReservations(reader: ReservationReader, input: ListRes
       {
         ...row,
         customer: reader.customers ? row.customer : null,
+        rentalPaid: rentalPaidOf(row.payments),
+        payments: reader.payments ? row.payments : [],
         items: row.items.map((item) => ({
           ...item,
           productSnapshot: { name: item.productSnapshot.name },
@@ -515,6 +527,7 @@ export async function getReservation(reader: ReservationReader, id: string): Pro
 
   const reservation: Reservation = {
     ...row,
+    rentalPaid: rentalPaidOf(row.payments),
     currency: row.currency ?? reader.currency,
     insuredProductIds: insured.map((mapping) => mapping.productId),
     items: row.items.map((item) => ({
@@ -527,13 +540,33 @@ export async function getReservation(reader: ReservationReader, id: string): Pro
       metadata: entry.metadata ?? null,
     })),
   };
-  return reader.customers ? reservation : withoutCustomer(reservation);
+  const visible = reader.payments ? reservation : withoutPayments(reservation);
+  return reader.customers ? visible : withoutCustomer(visible);
 }
 
-/** The reservation without its customer's data: who, where, what they wrote. */
+/** The reservation without its payment rows, Stripe ids and payment history details. */
+function withoutPayments(reservation: Reservation): Reservation {
+  return {
+    ...reservation,
+    payments: [],
+    stripePaymentMethodId: null,
+    activity: reservation.activity.map((entry) =>
+      isPaymentActivity(entry.activityType)
+        ? { ...entry, description: null, metadata: null }
+        : entry,
+    ),
+  };
+}
+
+/**
+ * The reservation without its customer's data: who, where, and every free
+ * text that may name them (a capture reason with a phone number, a note).
+ */
 function withoutCustomer(reservation: Reservation): Reservation {
   return {
     ...reservation,
+    internalNotes: null,
+    payments: reservation.payments.map((payment) => ({ ...payment, notes: null })),
     customerId: null,
     customer: null,
     billingSnapshot: null,
@@ -546,8 +579,12 @@ function withoutCustomer(reservation: Reservation): Reservation {
     returnCity: null,
     returnPostalCode: null,
     returnCountry: null,
-    // Activity details name emails, phones and what the customer asked.
-    activity: reservation.activity.map((entry) => ({ ...entry, metadata: null })),
+    // Activity texts and details name emails, phones and what the customer asked.
+    activity: reservation.activity.map((entry) => ({
+      ...entry,
+      description: null,
+      metadata: null,
+    })),
   };
 }
 

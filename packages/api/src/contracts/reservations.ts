@@ -9,8 +9,11 @@ import { apiError } from "../platform/errors";
  *
  * A caller that may not read customers (the member's role cut down to the
  * connection's scopes) gets every reservation without its customer: the
- * customer, the billing identity, the delivery and return addresses, the
- * customer's notes and the activity details are null or empty.
+ * customer, the billing identity, the delivery and return addresses, and
+ * every free text that may name them (notes, activity descriptions and
+ * details, payment notes) are null or empty. A caller that may not read
+ * payments gets no payment rows nor Stripe ids: only what was paid toward
+ * the rental (`rentalPaid`), as the dashboard's list shows it.
  */
 
 /** Largest page `reservations.list` returns, and its default. */
@@ -160,6 +163,8 @@ const reservationListItemSchema = z.object({
   depositAmount: moneySchema,
   totalAmount: moneySchema,
   customer: customerSummarySchema.nullable(),
+  /** What was paid toward the rental, refunds taken off. */
+  rentalPaid: moneySchema,
   items: z.array(
     z.object({
       id: z.string(),
@@ -170,6 +175,7 @@ const reservationListItemSchema = z.object({
       selectedAttributes: attributesSchema.nullable(),
     }),
   ),
+  /** The payment rows; empty when the caller may not read payments. */
   payments: z.array(
     z.object({
       id: z.string(),
@@ -265,9 +271,12 @@ export const reservationSchema = z.object({
     .enum(["none", "pending", "card_saved", "authorized", "captured", "released", "failed"])
     .nullable(),
   depositAuthorizationExpiresAt: z.date().nullable(),
-  /** The card saved for the deposit, by its Stripe id; null when none. */
+  /** The card saved for the deposit, by its Stripe id; null when none, or without payments read. */
   stripePaymentMethodId: z.string().nullable(),
+  /** What was paid toward the rental, refunds taken off. */
+  rentalPaid: moneySchema,
   customerNotes: z.string().nullable(),
+  /** The team's notes; null without customers read, as they may name the customer. */
   internalNotes: z.string().nullable(),
   /** store or address, for each leg. */
   outboundMethod: z.string(),
@@ -365,6 +374,7 @@ export const reservationSchema = z.object({
       ),
     }),
   ),
+  /** The payment rows; empty when the caller may not read payments. Notes are null without customers read. */
   payments: z.array(
     z.object({
       id: z.string(),
@@ -393,7 +403,10 @@ export const reservationSchema = z.object({
       generatedAt: z.date(),
     }),
   ),
-  /** Newest first. Without customers read, `metadata` is null. */
+  /**
+   * Newest first. Without customers read, `description` and `metadata` are
+   * null; without payments read, so are those of payment and deposit entries.
+   */
   activity: z.array(
     z.object({
       id: z.string(),

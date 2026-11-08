@@ -54,6 +54,7 @@ const reader = (context: ProductContext): ReservationReader => ({
   storeId: context.actor.storeId,
   currency: context.store.settings?.currency ?? "EUR",
   customers: mayRead(context, "customers"),
+  payments: mayRead(context, "payments"),
 });
 
 const statusCaller = (context: ProductContext): StatusChangeCaller => ({
@@ -85,7 +86,7 @@ const statusConfirmation = (context: ProductContext, path: readonly string[], in
   });
 
 const CUSTOMER_NOTE =
-  "Without read access to customers, the customer's name, email, addresses and notes are left out.";
+  "Without read access to customers, the customer's name, email, addresses and notes are left out; without read access to payments, so are payment rows and Stripe ids (rentalPaid stays).";
 
 // --- Reads -------------------------------------------------------------------
 
