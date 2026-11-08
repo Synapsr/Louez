@@ -11,11 +11,10 @@ import {
   reservations,
   stores,
 } from "@louez/db";
-import { isStripeRefundRow } from "@louez/utils";
+import { isStripeRefundRow, normalizeCurrency } from "@louez/utils";
 
 import {
   insuranceShare,
-  normalizeCurrency,
   reservationTotalsMinor,
   toMinor,
   type ReservationTotalsInput,

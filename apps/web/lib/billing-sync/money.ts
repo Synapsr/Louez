@@ -1,4 +1,5 @@
 import type { StoreSettings } from "@louez/types";
+import { beforeTaxRateBps, normalizeCurrency } from "@louez/utils";
 
 // Integer money for the billing contract (louez-billing docs/api, fees.md §2-§4).
 // Amounts are minor units as Stripe counts them. Nothing here goes through a float.
@@ -30,11 +31,6 @@ const B1 = BigInt(1);
 const B2 = BigInt(2);
 const B5000 = BigInt(5000);
 const B10000 = BigInt(10000);
-
-export function normalizeCurrency(currency: string | null | undefined, fallback = "EUR"): string {
-  const code = (currency ?? "").trim().toUpperCase();
-  return /^[A-Z]{3}$/.test(code) ? code : fallback;
-}
 
 export function currencyExponent(currency: string): 0 | 2 {
   return ZERO_DECIMAL.has(currency.toUpperCase()) ? 0 : 2;
@@ -193,18 +189,6 @@ export function reservationTotalsMinor(input: ReservationTotalsInput): Reservati
     total += taxOnTopMinor(input, insurance, BigInt(defaultBps), minor);
   }
   return { currency, totalInclTaxMinor: Math.max(0, total), insuranceMinor: insurance };
-}
-
-/**
- * The rate, in basis points, that `reservationTotalsMinor` charges on the untaxed
- * lines of a total the dashboard wrote, or null when the store's tax settings add
- * no tax to such a total. A tax settings change that moves it changes the totals
- * of every reservation whose total the dashboard wrote.
- */
-export function beforeTaxRateBps(tax: StoreSettings["tax"] | null | undefined): number | null {
-  if (tax?.enabled !== true || tax.displayMode !== "exclusive") return null;
-  const rate = Number(tax.defaultRate ?? 0);
-  return Number.isFinite(rate) && rate > 0 ? Math.round(rate * 100) : 0;
 }
 
 /** Within one minor unit: each writer sums floats before it rounds to cents. */

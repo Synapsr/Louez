@@ -34,14 +34,17 @@ import {
   resolveCustomerProfileSettings,
   type CreateReservationCustomerInput,
 } from "@louez/validations";
-import { advisorValidationCovers, validateStripePaymentAmount } from "@louez/utils";
+import {
+  advisorValidationCovers,
+  normalizeCurrency,
+  validateStripePaymentAmount,
+} from "@louez/utils";
 
 import { env } from "@/env";
 import { isAdvisorReachableForStore } from "@/lib/ai/advisor/eligibility";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { checkReservationGate } from "@/lib/billing/reservation-gate";
 import { renterGateRefusalParams } from "@/lib/billing/reservation-gate-error";
-import { normalizeCurrency } from "@/lib/billing-sync/money";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
 import { log } from "@/lib/evlog";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";

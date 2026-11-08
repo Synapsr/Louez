@@ -1,8 +1,8 @@
+import { normalizeCurrency } from "@louez/utils";
 import type { StoreSettings } from "@louez/types";
 
 import {
   insuranceShare,
-  normalizeCurrency,
   reservationTotalsMinor,
   toMinor,
   type ReservationTotalsInput,

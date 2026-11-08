@@ -2,7 +2,7 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 
 import { platformFees, referralRewards, stores, subscriptions } from "@louez/db";
 
-import { normalizeCurrency } from "@/lib/billing-sync/money";
+import { normalizeCurrency } from "@louez/utils";
 
 import type { BuiltSnapshot, SnapshotContext, SnapshotKey, SnapshotReader } from "./build-snapshot";
 import { isRecord, snapshotChecks } from "./snapshot-checks";

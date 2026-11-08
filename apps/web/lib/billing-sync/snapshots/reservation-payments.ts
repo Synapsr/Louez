@@ -1,8 +1,8 @@
 import type { payments, paymentDisputes, platformFees } from "@louez/db";
-import { isStripeRefundRow } from "@louez/utils";
+import { isStripeRefundRow, normalizeCurrency } from "@louez/utils";
 
 import type { PaymentKind } from "@/lib/billing-sync/fee-metadata";
-import { insuranceShare, normalizeCurrency } from "@/lib/billing-sync/money";
+import { insuranceShare } from "@/lib/billing-sync/money";
 
 import { compareCodeUnits, type SnapshotChecks } from "./snapshot-checks";
 import type {
