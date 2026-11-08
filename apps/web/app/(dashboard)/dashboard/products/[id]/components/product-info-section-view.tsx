@@ -22,7 +22,6 @@ import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import { ProductImageGallery } from "./product-image-gallery";
 import { ProductPricingTiersTable } from "./product-pricing-tiers-table";
-import { sanitizeProductDescriptionHtml } from "@/lib/util.product-description";
 
 interface ProductInfoSectionPricingTier {
   id: string;
@@ -51,7 +50,8 @@ interface ProductInfoSectionAccessory {
 }
 
 interface ProductInfoSectionProduct {
-  description: string | null;
+  /** Editor HTML, sanitised on the server (`ProductInfoSection`): the parser stays out of the browser. */
+  descriptionHtml: string | null;
   price: string;
   pricingKind?: PricingKind;
   basePeriodMinutes?: number | null;
@@ -95,12 +95,10 @@ export const ProductInfoSectionView = ({
       <CardContent className="space-y-6">
         {/* Description */}
         <div>
-          {product.description ? (
+          {product.descriptionHtml ? (
             <div
               className="prose prose-sm dark:prose-invert prose-headings:text-foreground prose-a:text-primary prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 prose-h1:text-xl prose-h2:text-lg prose-h3:text-base max-w-none text-sm text-muted-foreground wrap-break-word [&_a]:break-all **:min-w-0"
-              dangerouslySetInnerHTML={{
-                __html: sanitizeProductDescriptionHtml(product.description),
-              }}
+              dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
             />
           ) : (
             <p className="text-sm text-muted-foreground">{t("noDescription")}</p>

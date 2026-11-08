@@ -4228,6 +4228,7 @@
         "countryTimezone": "Timezone",
         "currency": "Currency",
         "currencyDescription": "The currency used to display prices and bill your customers",
+        "currencyLegacy": "{code} (no longer offered)",
         "locale": "Fallback language",
         "localeDescription": "Language used when the visitor's browser asks for none the store offers, and the language Google indexes your store in. A visitor always sees their browser language first.",
         "localeAuto": "Platform language (French)",

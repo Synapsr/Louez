@@ -44,8 +44,9 @@ export * from "./currencies";
 export * from "./referral-code";
 export * from "./customer-social-links";
 
-// Rich-text HTML (dashboard editor) allow-list sanitiser
-export { sanitizeRichTextHtml } from "./html/sanitize-rich-text";
+// Rich-text HTML (dashboard editor): whether it shows text. Its sanitiser is
+// server-only, at `@louez/utils/sanitize-rich-text`.
+export { hasRichTextContent } from "./html/rich-text-content";
 
 // AI advisor
 export { advisorValidationCovers } from "./ai-advisor";

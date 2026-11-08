@@ -19,7 +19,7 @@ test("keeps underline, which the editor emits on Cmd+U", () => {
 test("preserves plain text line breaks", () => {
   assert.equal(
     sanitizeProductDescriptionHtml("Première ligne\nDeuxième ligne"),
-    "Première ligne<br>Deuxième ligne",
+    "Première ligne<br />Deuxième ligne",
   );
 });
 

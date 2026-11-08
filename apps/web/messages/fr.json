@@ -4228,6 +4228,7 @@
         "countryTimezone": "Fuseau horaire",
         "currency": "Devise",
         "currencyDescription": "La devise utilisée pour afficher les prix et facturer vos clients",
+        "currencyLegacy": "{code} (n’est plus proposée)",
         "locale": "Langue de repli",
         "localeDescription": "Langue utilisée quand le navigateur du visiteur n'en demande aucune que la boutique propose, et dans laquelle Google indexe votre boutique. Un visiteur voit toujours d'abord la langue de son navigateur.",
         "localeAuto": "Langue de la plateforme (français)",

@@ -4227,6 +4227,7 @@
         "countryTimezone": "时区",
         "currency": "货币",
         "currencyDescription": "用于显示价格和向客户计费的货币",
+        "currencyLegacy": "{code}（已不再提供）",
         "locale": "后备语言",
         "localeDescription": "当访问者的浏览器要求商店不提供任何内容时使用的语言，以及 Google 为您的商店编制索引时使用的语言。访问者总是首先看到他们的浏览器语言。",
         "localeAuto": "平台语言（法语）",

@@ -18,6 +18,11 @@ interface FormCurrencySelectProps {
   description?: string;
   placeholder?: string;
   currencies?: readonly Currency[];
+  /**
+   * A currency the store already uses that new stores may no longer pick
+   * (one Stripe stopped taking): offered so the form keeps it as it is.
+   */
+  legacyCurrency?: { code: string; label: string } | null;
   onValueChange?: (currencyCode: string) => void;
 }
 
@@ -26,6 +31,7 @@ export const FormCurrencySelect = ({
   description,
   placeholder,
   currencies,
+  legacyCurrency,
   onValueChange,
 }: FormCurrencySelectProps) => {
   const field = useFieldContext<string>();
@@ -42,6 +48,10 @@ export const FormCurrencySelect = ({
     [currencies],
   );
   const selectedCurrency = sortedCurrencies.find((currency) => currency.code === field.state.value);
+  const legacy =
+    legacyCurrency && !sortedCurrencies.some((currency) => currency.code === legacyCurrency.code)
+      ? legacyCurrency
+      : null;
 
   const handleValueChange = (currencyCode: string | null) => {
     if (currencyCode === null) return;
@@ -74,9 +84,20 @@ export const FormCurrencySelect = ({
                 <span>{selectedCurrency.code}</span>
               </span>
             )}
+            {!selectedCurrency && legacy && field.state.value === legacy.code && (
+              <span>{legacy.code}</span>
+            )}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
+          {legacy && (
+            <SelectItem value={legacy.code} label={legacy.label} className="min-h-14 py-2">
+              <span className="grid">
+                <span className="text-xs font-medium">{legacy.code}</span>
+                <span className="text-[10px] text-muted-foreground">{legacy.label}</span>
+              </span>
+            </SelectItem>
+          )}
           {sortedCurrencies.map((currency) => (
             <SelectItem
               key={currency.code}

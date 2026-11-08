@@ -27,7 +27,12 @@ process.env.BILLING_SERVICE_URL = "http://localhost:3100";
 
 // tsx loads these packages as CommonJS, whose `export *` names ESM cannot see.
 const require = createRequire(import.meta.url);
-for (const name of ["@louez/types", "@louez/utils", "@louez/validations"]) {
+for (const name of [
+  "@louez/types",
+  "@louez/utils",
+  "@louez/utils/sanitize-rich-text",
+  "@louez/validations",
+]) {
   const namedExports: Record<string, unknown> = require(name);
   mock.module(name, { namedExports });
 }
@@ -321,7 +326,7 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
     assert.match(html.store.description ?? "", /<strong>there<\/strong>/);
 
     // Saved again as it came back, then rendered by the storefront: unchanged.
-    const { sanitizeRichTextHtml } = await import("@louez/utils");
+    const { sanitizeRichTextHtml } = await import("@louez/utils/sanitize-rich-text");
     const entities = await run(
       "updateStoreInfo",
       { description: "Fish & chips &amp; more" },
@@ -356,7 +361,7 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
       },
       key(),
     );
-    assert.equal(legal.legal.cgv, "<p>Article 1.<br>The board comes back clean.</p>");
+    assert.equal(legal.legal.cgv, "<p>Article 1.<br />The board comes back clean.</p>");
     assert.equal(legal.legal.includeCgvInContract, true);
     assert.equal(legal.legal.footerNote, "SIRET 123");
     assert.equal(legal.links.dashboard, `${TEST_APP_URL}/online-store/legal?store=${STORE}`);
@@ -372,6 +377,17 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
     assert.equal(full.cgv.text, legal.legal.cgv);
     assert.equal(full.legalNotice.text, null);
     assert.equal(full.textsIncluded, true);
+
+    // An editor left with a blank paragraph shows nothing: not set, as on the storefront.
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ legalNotice: "<p>&nbsp;</p>" })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    assert.equal((await run("get", {}, key())).legal.legalNotice.set, false);
+    assert.equal(
+      (await run("updateLegal", { legalNotice: "<p>&nbsp;</p>" }, key())).legal.legalNotice,
+      null,
+    );
 
     const cleared = await run("updateLegal", { cgv: null }, key());
     assert.equal(cleared.legal.cgv, null);
@@ -417,8 +433,9 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
     const key = await apiKey();
     // A code Louez does not support is refused before any preview.
     for (const currency of ["ZZZ", "BTC", "HRK"]) {
-      await rejects(run("updateCompany", { currency } as never, key()), "BAD_REQUEST");
+      await rejects(run("updateCompany", { currency }, key()), "CURRENCY_NOT_SUPPORTED");
     }
+    await rejects(run("updateCompany", { currency: "usd" }, key()), "BAD_REQUEST");
     const input = { currency: "USD" as const };
     const refusal = await rejects(run("updateCompany", input, key()), "CONFIRMATION_REQUIRED");
     const preview = refusal.data.details?.preview as {
@@ -460,6 +477,44 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
     // A billing address alone changes nothing customers pay: no confirmation.
     const address = await run("updateCompany", { billingAddress: { sameAsStore: true } }, key());
     assert.equal(address.company.billingAddress.sameAsStore, true);
+  });
+
+  test("company: a store set up in a currency Louez no longer takes keeps it while it saves the rest", async () => {
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ settings: { ...SETTINGS, currency: "HRK", country: "HR" } })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    const key = await apiKey();
+    // Sent back unchanged with a new address: no preview, no change of currency.
+    const saved = await run(
+      "updateCompany",
+      {
+        currency: "HRK",
+        billingAddress: {
+          sameAsStore: false,
+          address: "Ilica 1",
+          city: "Zagreb",
+          postalCode: "10000",
+          country: "HR",
+        },
+      },
+      key(),
+    );
+    assert.equal(saved.company.currency, "HRK");
+    assert.equal(saved.company.billingAddress.city, "Zagreb");
+    // Leaving it is a change customers see: confirmed as usual.
+    const refusal = await rejects(
+      run("updateCompany", { currency: "EUR" }, key()),
+      "CONFIRMATION_REQUIRED",
+    );
+    await run(
+      "updateCompany",
+      { currency: "EUR" },
+      key({ "louez-confirmation": tokenOf(refusal) }),
+    );
+    assert.equal((await storedSettings())?.currency, "EUR");
+    // And once left, it cannot be chosen again.
+    await rejects(run("updateCompany", { currency: "HRK" }, session()), "CURRENCY_NOT_SUPPORTED");
   });
 
   // --- Reservation rules ----------------------------------------------------

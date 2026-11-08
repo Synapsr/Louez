@@ -10,7 +10,7 @@ import { useTranslations } from "next-intl";
 import { z } from "zod";
 
 import type { StoreSettings } from "@louez/types";
-import { SUPPORTED_CURRENCY_CODES } from "@louez/utils";
+import { isSupportedCurrency } from "@louez/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, toastManager } from "@louez/ui";
 import { BuildingIcon } from "@louez/ui/icons";
 
@@ -21,16 +21,24 @@ import { apiErrorKey } from "@/lib/orpc/errors";
 import { orpc } from "@/lib/orpc/react";
 import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry } from "@/lib/utils/currency";
 import { StoreSettingsBillingSection } from "./components/store-settings-billing-section";
+import { buildCompanyUpdate } from "./util.company-settings";
 
-const companySettingsSchema = z.object({
-  country: z.string().length(2),
-  currency: z.enum(SUPPORTED_CURRENCY_CODES),
-  billingAddressSameAsStore: z.boolean(),
-  billingAddress: z.string(),
-  billingCity: z.string(),
-  billingPostalCode: z.string(),
-  billingCountry: z.string(),
-});
+/**
+ * A currency Louez supports, or the one the store already uses: a store set
+ * up in a currency Stripe no longer takes (HRK) keeps it until it changes.
+ */
+const createCompanySettingsSchema = (storedCurrency: string | null) =>
+  z.object({
+    country: z.string().length(2),
+    currency: z
+      .string()
+      .refine((code) => isSupportedCurrency(code) || code === storedCurrency, "errors.invalidData"),
+    billingAddressSameAsStore: z.boolean(),
+    billingAddress: z.string(),
+    billingCity: z.string(),
+    billingPostalCode: z.string(),
+    billingCountry: z.string(),
+  });
 
 interface CompanySettingsFormProps {
   settings: StoreSettings | null;
@@ -44,6 +52,12 @@ export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
   const updateCompany = useMutation(orpc.dashboard.settings.updateCompany.mutationOptions());
 
   const defaultCountry = settings?.country || "FR";
+  const storedCurrency = settings?.currency ?? null;
+  const legacyCurrency =
+    storedCurrency && !isSupportedCurrency(storedCurrency)
+      ? { code: storedCurrency, label: t("storeSettings.currencyLegacy", { code: storedCurrency }) }
+      : null;
+  const companySettingsSchema = createCompanySettingsSchema(storedCurrency);
   const billingAddress = settings?.billingAddress ?? { useSameAsStore: true };
 
   const form = useAppForm({
@@ -61,21 +75,7 @@ export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
     onSubmit: async ({ value }) => {
       setRootError(null);
       try {
-        // Validated on submit: the parse only narrows the currency to a supported code.
-        const { currency } = companySettingsSchema.parse(value);
-        await updateCompany.mutateAsync({
-          country: value.country,
-          currency,
-          billingAddress: value.billingAddressSameAsStore
-            ? { sameAsStore: true }
-            : {
-                sameAsStore: false,
-                address: value.billingAddress,
-                city: value.billingCity,
-                postalCode: value.billingPostalCode,
-                country: value.billingCountry,
-              },
-        });
+        await updateCompany.mutateAsync(buildCompanyUpdate(value, storedCurrency));
       } catch (error) {
         const key = apiErrorKey(error);
         setRootError(key && tErrors.has(key) ? tErrors(key) : tErrors("generic"));
@@ -129,6 +129,7 @@ export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
                   label={t("storeSettings.currency")}
                   description={t("storeSettings.currencyDescription")}
                   currencies={SUPPORTED_CURRENCIES}
+                  legacyCurrency={legacyCurrency}
                 />
               )}
             </form.AppField>

@@ -4227,6 +4227,7 @@
         "countryTimezone": "タイムゾーン",
         "currency": "通貨",
         "currencyDescription": "価格の表示と顧客への請求に使用される通貨",
+        "currencyLegacy": "{code}（現在は提供されていません）",
         "locale": "フォールバック言語",
         "localeDescription": "訪問者のブラウザがストアで提供されていないものを要求するときに使用される言語、および Google がストアのインデックスを作成する言語。訪問者は常にブラウザの言語を最初に目にします。",
         "localeAuto": "プラットフォーム言語 (フランス語)",

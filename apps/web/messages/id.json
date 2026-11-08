@@ -4227,6 +4227,7 @@
         "countryTimezone": "Zona waktu",
         "currency": "Mata uang",
         "currencyDescription": "Mata uang yang digunakan untuk menampilkan harga dan menagih pelanggan Anda",
+        "currencyLegacy": "{code} (tidak lagi tersedia)",
         "locale": "Bahasa cadangan",
         "localeDescription": "Bahasa yang digunakan saat browser pengunjung tidak menanyakan apa pun yang ditawarkan toko, dan bahasa yang digunakan Google untuk mengindeks toko Anda. Pengunjung selalu melihat bahasa browsernya terlebih dahulu.",
         "localeAuto": "Bahasa platform (Prancis)",

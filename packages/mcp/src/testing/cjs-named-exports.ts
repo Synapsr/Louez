@@ -17,7 +17,12 @@ export function apiDependencyUrl(name: string): string {
   return pathToFileURL(fromApi.resolve(name)).href;
 }
 
-for (const name of ["@louez/types", "@louez/utils", "@louez/validations"]) {
+for (const name of [
+  "@louez/types",
+  "@louez/utils",
+  "@louez/utils/sanitize-rich-text",
+  "@louez/validations",
+]) {
   const namedExports: Record<string, unknown> = fromApi(name);
   mock.module(apiDependencyUrl(name), { namedExports });
 }

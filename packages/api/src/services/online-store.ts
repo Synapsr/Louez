@@ -7,7 +7,8 @@ import {
   type Transaction,
 } from "@louez/db";
 import type { StoreSettings, StoreTheme } from "@louez/types";
-import { sanitizeRichTextHtml } from "@louez/utils";
+import { hasRichTextContent } from "@louez/utils";
+import { sanitizeRichTextHtml } from "@louez/utils/sanitize-rich-text";
 import { isOwnedImageUrl, type UpdateOnlineStoreInput } from "@louez/validations";
 import { eq } from "drizzle-orm";
 
@@ -72,7 +73,7 @@ function emit(actor: SettingsActor, event: ApiEvent) {
 /** Editor HTML: null when the editor is empty, sanitised otherwise. */
 const toStoredRichText = (html: string): string | null => {
   const sanitized = sanitizeRichTextHtml(html);
-  return sanitized.replace(/<[^>]*>/g, "").trim() === "" ? null : sanitized;
+  return hasRichTextContent(sanitized) ? sanitized : null;
 };
 
 // --- The editor -------------------------------------------------------------

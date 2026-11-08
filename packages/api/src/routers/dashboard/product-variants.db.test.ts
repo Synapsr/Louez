@@ -18,7 +18,12 @@ process.env.NODE_ENV = "test";
 
 // tsx loads these packages as CommonJS, whose `export *` names ESM cannot see.
 const require = createRequire(import.meta.url);
-for (const name of ["@louez/types", "@louez/utils", "@louez/validations"]) {
+for (const name of [
+  "@louez/types",
+  "@louez/utils",
+  "@louez/utils/sanitize-rich-text",
+  "@louez/validations",
+]) {
   const namedExports: Record<string, unknown> = require(name);
   mock.module(name, { namedExports });
 }

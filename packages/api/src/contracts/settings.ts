@@ -3,13 +3,17 @@ import {
   dayScheduleSchema,
   isPossiblePhoneNumberInput,
 } from "@louez/validations";
-import { SUPPORTED_COUNTRIES, WEEK_DAYS, type WeekDay } from "@louez/utils";
+import {
+  SUPPORTED_COUNTRIES,
+  SUPPORTED_CURRENCY_CODES,
+  WEEK_DAYS,
+  type WeekDay,
+} from "@louez/utils";
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
 import { resourceLinksSchema } from "./links";
 import { appearanceView } from "./online-store";
-import { currencyField } from "./stores";
 
 /**
  * The store settings contract: what a store needs before it goes live, read
@@ -291,10 +295,12 @@ export const updateCompanyInput = z.object({
     .describe(
       "Where the company is. It sets the store's time zone, which every date and opening hour follows.",
     ),
-  currency: currencyField
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
     .optional()
     .describe(
-      "The currency of every price, deposit and payment. Existing reservations keep their own.",
+      `The currency of every price, deposit and payment, among ${SUPPORTED_CURRENCY_CODES.join(", ")}. Existing reservations keep their own. A store set up in a currency no longer on the list may send it back unchanged.`,
     ),
   billingAddress: billingAddressInput
     .optional()
@@ -576,6 +582,12 @@ export const settingsErrors = {
       message: `A store has ${limit} pickup points at most. Deactivate or reuse one instead.`,
       i18nKey: "errors.locationLimitReached",
       details: { limit },
+    }),
+  currencyNotSupported: (currency: string) =>
+    apiError("BAD_REQUEST", "CURRENCY_NOT_SUPPORTED", {
+      message: `Louez does not take ${currency}. Pick one of ${SUPPORTED_CURRENCY_CODES.join(", ")}.`,
+      i18nKey: "errors.invalidData",
+      details: { currency, supported: [...SUPPORTED_CURRENCY_CODES] },
     }),
   nothingToUpdate: () =>
     apiError("BAD_REQUEST", "NOTHING_TO_UPDATE", {

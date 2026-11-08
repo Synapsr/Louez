@@ -186,7 +186,9 @@ export const createDemoProductDetail = (
   const totalCapacityDays = product.quantity * 30;
   const inventoryDetail: ProductInventoryDetail = { mode: "tracked", units };
   const infoProduct: ProductInfoSectionProps["product"] = {
-    description: product.id === "demo-city-bike" ? getDemoProductsText(locale).description : null,
+    // The demo's own text, not user input: no sanitising needed.
+    descriptionHtml:
+      product.id === "demo-city-bike" ? getDemoProductsText(locale).description : null,
     price: product.price,
     pricingKind: "duration",
     pricingMode: "day",

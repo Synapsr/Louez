@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./countries": "./src/countries.ts",
     "./currencies": "./src/currencies.ts",
-    "./referral-code": "./src/referral-code.ts"
+    "./referral-code": "./src/referral-code.ts",
+    "./sanitize-rich-text": "./src/html/sanitize-rich-text.ts"
   },
   "scripts": {
     "test": "node --import tsx --test \"src/**/*.test.ts\""
@@ -18,11 +19,13 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "sanitize-html": "2.18.1",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@louez/config": "workspace:*",
     "@types/node": "^20.19.27",
+    "@types/sanitize-html": "2.16.2",
     "tsx": "^4.21.0",
     "typescript": "catalog:"
   }

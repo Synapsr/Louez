@@ -3925,6 +3925,7 @@
         "countryTimezone": "Tijdzone",
         "currency": "Valuta",
         "currencyDescription": "De valuta die wordt gebruikt om prijzen weer te geven en uw klanten te factureren",
+        "currencyLegacy": "{code} (niet meer aangeboden)",
         "locale": "Terugvaltaal",
         "localeDescription": "Taal die wordt gebruikt als de browser van de bezoeker geen taal vraagt die de winkel aanbiedt, en waarin Google je winkel indexeert. Een bezoeker ziet altijd eerst zijn browsertaal.",
         "localeAuto": "Platformtaal (Frans)",

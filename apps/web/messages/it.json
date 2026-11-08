@@ -3925,6 +3925,7 @@
         "countryTimezone": "Fuso orario",
         "currency": "Valuta",
         "currencyDescription": "La valuta usata per mostrare i prezzi e fatturare i tuoi clienti",
+        "currencyLegacy": "{code} (non più disponibile)",
         "locale": "Lingua di riserva",
         "localeDescription": "Lingua usata quando il browser del visitatore non ne chiede nessuna tra quelle offerte dal negozio, e in cui Google indicizza il tuo negozio. Il visitatore vede sempre prima la lingua del suo browser.",
         "localeAuto": "Lingua della piattaforma (francese)",

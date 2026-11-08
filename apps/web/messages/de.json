@@ -3925,6 +3925,7 @@
         "countryTimezone": "Zeitzone",
         "currency": "Währung",
         "currencyDescription": "Die Währung für Preisanzeige und Kundenabrechnung",
+        "currencyLegacy": "{code} (nicht mehr angeboten)",
         "locale": "Ausweichsprache",
         "localeDescription": "Sprache, wenn der Browser des Besuchers keine vom Shop angebotene Sprache anfordert, und in der Google Ihren Shop indexiert. Besucher sehen immer zuerst ihre Browsersprache.",
         "localeAuto": "Plattformsprache (Französisch)",

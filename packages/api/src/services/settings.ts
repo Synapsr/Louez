@@ -20,10 +20,12 @@ import {
   getMinRentalMinutes,
   getTimezoneForCountry,
   normalizeCurrency,
+  hasRichTextContent,
+  isSupportedCurrency,
   normalizeDaySchedule,
-  sanitizeRichTextHtml,
   WEEK_DAYS,
 } from "@louez/utils";
+import { sanitizeRichTextHtml } from "@louez/utils/sanitize-rich-text";
 import { defaultBusinessHours } from "@louez/validations";
 import { and, asc, count, desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -281,7 +283,8 @@ export const toLocationView = (row: LocationRow) => ({
 });
 
 const legalTextSummary = (text: string | null, includeText: boolean) => ({
-  set: text !== null && text.replace(/<[^>]*>/g, "").trim() !== "",
+  // As the storefront decides whether to show it: `<p>&nbsp;</p>` shows nothing.
+  set: hasRichTextContent(text),
   length: text?.length ?? 0,
   ...(includeText ? { text } : {}),
 });
@@ -360,10 +363,10 @@ export function toEditorHtml(text: string | null): string | null {
     : text
         .trim()
         .split(/\n\s*\n/)
-        .map((paragraph) => `<p>${paragraph.trim().replace(/\n/g, "<br>")}</p>`)
+        .map((paragraph) => `<p>${paragraph.trim().replace(/\n/g, "<br />")}</p>`)
         .join("");
   const sanitized = sanitizeRichTextHtml(html);
-  return sanitized.replace(/<[^>]*>/g, "").trim() === "" ? null : sanitized;
+  return hasRichTextContent(sanitized) ? sanitized : null;
 }
 
 /** The fields of `next` that differ from `current`, with both values. */
@@ -472,6 +475,14 @@ export async function updateCompany(
   if (!hasField(input)) throw settingsErrors.nothingToUpdate();
   const settings = await writeUnderLock(actor, "company", options.confirm, async (row, tx) => {
     const current = settingsOf(row);
+    // A currency Louez no longer takes stays only as it is, never as a new choice.
+    if (
+      input.currency !== undefined &&
+      !isSupportedCurrency(input.currency) &&
+      input.currency !== current.currency
+    ) {
+      throw settingsErrors.currencyNotSupported(input.currency);
+    }
     const next: StoreSettings = { ...current };
     if (input.country !== undefined) {
       next.country = input.country;
