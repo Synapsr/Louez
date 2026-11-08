@@ -172,7 +172,7 @@ const updateLegalProcedure = storeProcedure
     scope: WRITE,
     mcp: {
       name: "settings_update_legal",
-      description: `Change the store's legal texts: terms and conditions (cgv), legal notice, whether the full terms are printed in rental contracts, and the storefront's footer note. Send only the fields to change; null clears a text. Texts take plain text (blank lines make paragraphs) or simple HTML, ${SETTINGS_LIMITS.richText} characters at most. ${PLAIN_TEXT_HELP} Returns the legal texts, with the online store editor's legal page in \`links\`: give the user that URL.`,
+      description: `Change the store's legal texts: terms and conditions (cgv), legal notice, whether the full terms are printed in rental contracts, and the storefront's footer note. Send only the fields to change; null clears a text. Texts take plain text (blank lines make paragraphs) or simple HTML, ${SETTINGS_LIMITS.richText} characters at most. ${PLAIN_TEXT_HELP} You may draft the terms and the legal notice yourself, from the store's data (settings_get for the rules, contact and company; settings_get_legal_profile for the legal identity; the products) and the user's answers to what the data lacks (such as the publication director): show the draft to the user, and save it once they agree. stores_get_launch_checklist says what the law asks of the store's country, and which legal information is still missing. Returns the legal texts, with the online store editor's legal page in \`links\`: give the user that URL.`,
       bundle: "settings",
       aliases: [{ name: "update_store_legal" }],
       annotations: { idempotentHint: true },

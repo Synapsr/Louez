@@ -214,6 +214,17 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       "update_store_legal",
     ]);
 
+    // The legal texts' tool lets the agent draft them, with the user's agreement.
+    const legal = settings.find((entry) => entry.meta.mcp.name === "settings_update_legal");
+    assert.match(
+      legal?.meta.mcp.description ?? "",
+      /draft the terms and the legal notice yourself/,
+    );
+    assert.match(
+      legal?.meta.mcp.description ?? "",
+      /show the draft to the user, and save it once they agree/,
+    );
+
     const writer = await mcpTools(await key());
     for (const entry of [...settings, ...onlineStore]) {
       assert.ok(writer.includes(entry.meta.mcp.name), entry.meta.mcp.name);
