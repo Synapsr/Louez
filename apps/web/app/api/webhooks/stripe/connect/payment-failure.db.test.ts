@@ -4,7 +4,12 @@ import { after, before, describe, test } from "node:test";
 
 import { eq } from "drizzle-orm";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  raceOnLockedRow,
+  skipWithoutTestDatabase,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import type {
   FailedPaymentIntent,
@@ -167,12 +172,16 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
     const reservation = await createReservation();
     const paymentIntent = intent(reservation.id, `pi_pf_${counter}`);
     const { deps, sent } = fakeDeps();
-    await Promise.all(
-      [1, 2].map(() =>
-        failure.handlePaymentFailure(
-          { reservation, stripeEventId: "evt_concurrent", paymentIntent },
-          deps,
-        ),
+    // Both deliveries wait on the reservation's lock before either records.
+    await raceOnLockedRow(
+      database,
+      { table: "reservations", id: reservation.id },
+      [1, 2].map(
+        () => () =>
+          failure.handlePaymentFailure(
+            { reservation, stripeEventId: "evt_concurrent", paymentIntent },
+            deps,
+          ),
       ),
     );
     assert.equal(sent.owner, 1);
@@ -267,6 +276,34 @@ describe("payment_intent.payment_failed (database)", { skip: skipWithoutTestData
       );
     }
     assert.equal(sent.marketplace, 2);
+    assert.equal(sent.owner, 1);
+  });
+
+  test("an expiry that throws does not stop the alert, and the redelivery retries it", async () => {
+    const reservation = await createReservation("marketplace");
+    const paymentIntent = intent(reservation.id, `pi_pf_${counter}`);
+    const { deps, sent } = fakeDeps();
+    let expiries = 0;
+    const failingOnce: PaymentFailureDeps = {
+      ...deps,
+      failMarketplaceBookingAttempt: async () => {
+        expiries += 1;
+        if (expiries === 1) throw new Error("marketplace down");
+      },
+    };
+    const handle = () =>
+      failure.handlePaymentFailure(
+        { reservation, stripeEventId: "evt_expiry", paymentIntent },
+        failingOnce,
+      );
+
+    await assert.rejects(handle(), /marketplace down/);
+    assert.equal(sent.owner, 1);
+    assert.equal(sent.platform, 1);
+
+    // Stripe redelivers after the 500: the expiry runs again, the owner is not told twice.
+    await handle();
+    assert.equal(expiries, 2);
     assert.equal(sent.owner, 1);
   });
 });

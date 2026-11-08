@@ -209,16 +209,6 @@ export async function handlePaymentFailure(
     paymentIntent,
   });
 
-  // Idempotent: it only expires an attempt still waiting for its checkout, so a
-  // redelivered event runs it again in case the first delivery stopped short.
-  if (
-    paymentIntent.metadata?.type !== "deposit_hold" &&
-    reservation.source === "marketplace" &&
-    (failure.recorded || failure.reason === "duplicate_event")
-  ) {
-    await deps.failMarketplaceBookingAttempt(reservation.id);
-  }
-
   if (!failure.recorded) {
     log.info({
       stripeWebhook: {
@@ -231,6 +221,8 @@ export async function handlePaymentFailure(
         paymentIntentId: paymentIntent.id,
       },
     });
+    // A redelivery is how a marketplace expiry that failed is tried again.
+    if (failure.reason === "duplicate_event") await expireMarketplaceAttempt(input, deps);
     return;
   }
 
@@ -291,4 +283,27 @@ export async function handlePaymentFailure(
       reservation.number,
     )
     .catch(() => {});
+
+  // After the alerts, so an expiry that throws does not stop them: the webhook then
+  // answers 500 and Stripe's redelivery tries the expiry again.
+  await expireMarketplaceAttempt(input, deps);
+}
+
+/**
+ * Expires a marketplace attempt still waiting for its checkout. Idempotent, so a
+ * redelivered event may run it again.
+ */
+async function expireMarketplaceAttempt(
+  input: {
+    readonly reservation: FailedPaymentReservation;
+    readonly paymentIntent: FailedPaymentIntent;
+  },
+  deps: PaymentFailureDeps,
+): Promise<void> {
+  if (
+    input.paymentIntent.metadata?.type !== "deposit_hold" &&
+    input.reservation.source === "marketplace"
+  ) {
+    await deps.failMarketplaceBookingAttempt(input.reservation.id);
+  }
 }
