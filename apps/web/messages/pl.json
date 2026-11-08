@@ -522,7 +522,7 @@
       "openStorefront": "Moja strona",
       "openReeentListing": "Moja strona reeent",
       "newReservation": "Nowa rezerwacja",
-      "reservationLimitReached": "Limit osiagniety",
+      "reservationLimitReached": "Limit osiągnięty",
       "help": "Pomoc",
       "feedback": "Pomoc i opinie",
       "aiCreditsLow": "Niskie saldo kredytów"
@@ -2059,9 +2059,9 @@
         "noCandidates": "Brak dostępnej jednostki",
         "reassign": "Przypisz ponownie",
         "leaveAsIs": "Pozostaw bez zmian",
-        "invalidUnitsToast": "Niedostepne jednostki: {identifiers}",
+        "invalidUnitsToast": "Niedostępne jednostki: {identifiers}",
         "bufferConflictTitle": "Konflikt bufora rotacji",
-        "bufferConflictDescription": "Ta jednostka zastepcza jest blokowana tylko przez bufor rotacji: {identifiers}. Przypisac ponownie mimo to?",
+        "bufferConflictDescription": "Ta jednostka zastępcza jest blokowana tylko przez bufor rotacji: {identifiers}. Przypisać ponownie mimo to?",
         "bufferConflictCancel": "Anuluj",
         "bufferConflictConfirm": "Przypisz ponownie mimo to"
       },
@@ -2363,8 +2363,8 @@
         "unitPrice": "Cena jedn.",
         "total": "Suma",
         "addItem": "Dodaj przedmiot",
-        "searchProductsPlaceholder": "Szukaj wsrod {count} przedmiotow...",
-        "noProductsFound": "Nie znaleziono przedmiotow",
+        "searchProductsPlaceholder": "Szukaj wśród {count} przedmiotów...",
+        "noProductsFound": "Nie znaleziono przedmiotów",
         "unavailableForPeriod": "Niedostępny",
         "stockConflictInline": "Żądane: {requested} · Dostępne: {available}",
         "availabilityConflicts": "{count, plural, one {# konflikt dostępności} few {# konflikty dostępności} other {# konfliktów dostępności}}",
@@ -2761,10 +2761,10 @@
         "saved": "Jednostki przypisane",
         "notes": "Notatki",
         "identifiers": "Identyfikatory: {identifiers}",
-        "invalidUnitsToast": "Niedostepne jednostki: {identifiers}",
+        "invalidUnitsToast": "Niedostępne jednostki: {identifiers}",
         "bufferConflictTitle": "Konflikt bufora rotacji",
-        "bufferConflictDescription": "Te jednostki sa blokowane tylko przez bufor rotacji: {identifiers}. Przypisac mimo to?",
-        "bufferConflictCancel": "Zachowaj wybor",
+        "bufferConflictDescription": "Te jednostki są blokowane tylko przez bufor rotacji: {identifiers}. Przypisać mimo to?",
+        "bufferConflictCancel": "Zachowaj wybór",
         "bufferConflictConfirm": "Przypisz mimo to",
         "optionsLabel": "Opcje",
         "clearSelection": "Wyczyść wybór",
@@ -3373,7 +3373,7 @@
         "unit": "Jednostka",
         "available": "Dostępny",
         "noProducts": "Brak produktów do wyświetlenia",
-        "resizeProductColumn": "Zmien szerokosc kolumny produktu",
+        "resizeProductColumn": "Zmień szerokość kolumny produktu",
         "reservationsCount": "{count, plural, one {# rezerwacja} few {# rezerwacje} many {# rezerwacji} other {# rezerwacji}}"
       },
       "timeline": {
@@ -3399,9 +3399,9 @@
         "reservationBelow": "Rezerwacja poniżej",
         "resetFilters": "Resetuj filtry",
         "dragHint": "Wskazówka: kliknij i przeciągnij po pustym zakresie, aby utworzyć wstępnie wypełnioną rezerwację.",
-        "searchProductsPlaceholder": "Szukaj wsrod {count} produktow...",
-        "noProductsFound": "Nie znaleziono produktow",
-        "productsSelected": "{count} produktow",
+        "searchProductsPlaceholder": "Szukaj wśród {count} produktów...",
+        "noProductsFound": "Nie znaleziono produktów",
+        "productsSelected": "{count} produktów",
         "filters": "Filtry",
         "filtersDescription": "Zawęź rezerwacje wyświetlane w kalendarzu.",
         "applyFilters": "Zastosuj",
@@ -3961,19 +3961,19 @@
       },
       "billingAddress": {
         "title": "Adres rozliczeniowy",
-        "description": "Ten adres bedzie uzywany na umowach najmu",
-        "sameAsStore": "Uzyj adresu sklepu",
-        "sameAsStoreDescription": "Adres rozliczeniowy bedzie taki sam jak adres sklepu",
+        "description": "Ten adres będzie używany na umowach najmu",
+        "sameAsStore": "Użyj adresu sklepu",
+        "sameAsStoreDescription": "Adres rozliczeniowy będzie taki sam jak adres sklepu",
         "address": "Adres",
-        "addressPlaceholder": "ul. Glowna 123",
+        "addressPlaceholder": "ul. Główna 123",
         "city": "Miasto",
         "cityPlaceholder": "Warszawa",
         "postalCode": "Kod pocztowy",
         "postalCodePlaceholder": "00-001",
         "country": "Kraj",
-        "preview": "Podglad adresu rozliczeniowego:",
-        "infoSameAddress": "Adres Twojego sklepu bedzie uzywany na umowach najmu.",
-        "infoDifferentAddress": "Adres rozliczeniowy pojawi sie na umowach. Adres sklepu pozostaje widoczny dla klientow, aby mogli Cie znalezc."
+        "preview": "Podgląd adresu rozliczeniowego:",
+        "infoSameAddress": "Adres Twojego sklepu będzie używany na umowach najmu.",
+        "infoDifferentAddress": "Adres rozliczeniowy pojawi się na umowach. Adres sklepu pozostaje widoczny dla klientów, aby mogli Cię znaleźć."
       },
       "appearanceSettings": {
         "title": "Wygląd",
@@ -4218,29 +4218,29 @@
           }
         },
         "title": "Powiadomienia",
-        "description": "Skonfiguruj sposob otrzymywania powiadomien o wydarzeniach w sklepie",
-        "saveError": "Blad podczas zapisywania",
+        "description": "Skonfiguruj sposób otrzymywania powiadomień o wydarzeniach w sklepie",
+        "saveError": "Błąd podczas zapisywania",
         "saved": "Ustawienia zapisane",
         "phone": {
           "title": "Numer telefonu",
-          "description": "Aby otrzymywac powiadomienia SMS",
+          "description": "Aby otrzymywać powiadomienia SMS",
           "placeholder": "+48 512 345 678",
           "configured": "Numer skonfigurowany",
           "saved": "Numer telefonu zapisany",
-          "invalidNumber": "Nieprawidlowy numer telefonu",
+          "invalidNumber": "Nieprawidłowy numer telefonu",
           "required": "Najpierw skonfiguruj numer telefonu"
         },
         "discord": {
           "title": "Discord",
           "description": "Otrzymuj natychmiastowe powiadomienia na serwerze Discord",
           "placeholder": "https://discord.com/api/webhooks/...",
-          "connected": "Polaczony",
+          "connected": "Połączony",
           "saved": "Webhook Discord zapisany",
-          "invalidUrl": "Nieprawidlowy URL webhooka",
+          "invalidUrl": "Nieprawidłowy URL webhooka",
           "test": "Testuj",
-          "testSuccess": "Powiadomienie testowe wyslane",
-          "testError": "Nie udalo sie wyslac testu",
-          "howTo": "Jak utworzyc webhook Discord?",
+          "testSuccess": "Powiadomienie testowe wysłane",
+          "testError": "Nie udało się wysłać testu",
+          "howTo": "Jak utworzyć webhook Discord?",
           "required": "Najpierw skonfiguruj Discord"
         },
         "events": {
@@ -4249,7 +4249,7 @@
             "title": "Wydarzenia rezerwacji",
             "reservation_new": {
               "label": "Nowe zapytanie",
-              "description": "Gdy klient wysyla nowe zapytanie"
+              "description": "Gdy klient wysyła nowe zapytanie"
             },
             "reservation_confirmed": {
               "label": "Rezerwacja potwierdzona",
@@ -4264,23 +4264,23 @@
               "description": "Gdy rezerwacja zostaje anulowana"
             },
             "reservation_picked_up": {
-              "label": "Sprzet odebrany",
-              "description": "Gdy klient odbiera sprzet"
+              "label": "Sprzęt odebrany",
+              "description": "Gdy klient odbiera sprzęt"
             },
             "reservation_completed": {
-              "label": "Rezerwacja zakonczona",
-              "description": "Gdy sprzet zostaje zwrocony"
+              "label": "Rezerwacja zakończona",
+              "description": "Gdy sprzęt zostaje zwrócony"
             }
           },
           "payment": {
-            "title": "Wydarzenia platnosci",
+            "title": "Wydarzenia płatności",
             "payment_received": {
-              "label": "Platnosc otrzymana",
-              "description": "Gdy platnosc sie powiedzie"
+              "label": "Płatność otrzymana",
+              "description": "Gdy płatność się powiedzie"
             },
             "payment_failed": {
-              "label": "Platnosc nieudana",
-              "description": "Gdy platnosc sie nie powiedzie"
+              "label": "Płatność nieudana",
+              "description": "Gdy płatność się nie powiedzie"
             }
           },
           "reminder": {
@@ -4297,60 +4297,60 @@
           }
         },
         "sms": {
-          "limitReached": "Osiagnieto limit SMS",
-          "limitReachedMessage": "Osiagnales miesieczny limit SMS.",
-          "lowCredits": "Pozostalo Ci {current} z {limit} SMS w tym miesiacu.",
-          "buyMore": "Kup wiecej SMS",
+          "limitReached": "Osiągnięto limit SMS",
+          "limitReachedMessage": "Osiągnąłeś miesięczny limit SMS.",
+          "lowCredits": "Pozostało Ci {current} z {limit} SMS w tym miesiącu.",
+          "buyMore": "Kup więcej SMS",
           "quotaLabel": "Kredyty SMS",
-          "manage": "Zarzadzaj",
-          "noCreditsLeft": "Brak kredytow SMS",
-          "noCreditsDescription": "Kup kredyty, aby wysylac SMS do klientow",
+          "manage": "Zarządzaj",
+          "noCreditsLeft": "Brak kredytów SMS",
+          "noCreditsDescription": "Kup kredyty, aby wysyłać SMS do klientów",
           "buyCredits": "Kup kredyty",
-          "remaining": "pozostalo",
-          "lowWarning": "Niski poziom kredytow"
+          "remaining": "pozostało",
+          "lowWarning": "Niski poziom kredytów"
         },
         "adminSection": {
           "title": "Powiadomienia administratora",
           "description": "Otrzymuj powiadomienia o zdarzeniach"
         },
         "customerSection": {
-          "title": "Powiadomienia dla klientow",
-          "description": "E-maile i SMS automatycznie wysylane do klientow"
+          "title": "Powiadomienia dla klientów",
+          "description": "E-maile i SMS automatycznie wysyłane do klientów"
         },
         "customerEvents": {
           "reservationTitle": "Proces rezerwacji",
           "reminderTitle": "Automatyczne przypomnienia",
           "customer_request_received": {
-            "label": "Prosba otrzymana",
-            "description": "Potwierdzenie prosby"
+            "label": "Prośba otrzymana",
+            "description": "Potwierdzenie prośby"
           },
           "customer_request_accepted": {
-            "label": "Prosba zaakceptowana",
-            "description": "Gdy akceptujesz prosbe"
+            "label": "Prośba zaakceptowana",
+            "description": "Gdy akceptujesz prośbę"
           },
           "customer_request_rejected": {
-            "label": "Prosba odrzucona",
-            "description": "Gdy odrzucasz prosbe"
+            "label": "Prośba odrzucona",
+            "description": "Gdy odrzucasz prośbę"
           },
           "customer_reservation_confirmed": {
             "label": "Rezerwacja potwierdzona",
-            "description": "Po udanej platnosci"
+            "description": "Po udanej płatności"
           },
           "customer_reminder_pickup": {
             "label": "Przypomnienie o odbiorze",
-            "description": "Wyslane przed data odbioru"
+            "description": "Wysłane przed datą odbioru"
           },
           "customer_reminder_return": {
             "label": "Przypomnienie o zwrocie",
-            "description": "Wyslane przed data zwrotu"
+            "description": "Wysłane przed datą zwrotu"
           },
-          "reminderDescription": "Skonfiguruj kiedy i jak Twoi klienci otrzymuja przypomnienia"
+          "reminderDescription": "Skonfiguruj kiedy i jak Twoi klienci otrzymują przypomnienia"
         },
         "reminderTiming": {
           "pickupLabel": "Wyprzedzenie przypomnienia o odbiorze",
           "returnLabel": "Wyprzedzenie przypomnienia o zwrocie",
-          "pickupDescription": "Czas przed poczatkiem wynajmu",
-          "returnDescription": "Czas przed koncem wynajmu",
+          "pickupDescription": "Czas przed początkiem wynajmu",
+          "returnDescription": "Czas przed końcem wynajmu",
           "hours": "{count, plural, =1 {1 godzina} =2 {2 godziny} =3 {3 godziny} =4 {4 godziny} other {# godzin}}"
         },
         "adminReminderTiming": {
@@ -4373,11 +4373,11 @@
           "emailSection": "E-mail",
           "smsSection": "SMS",
           "subject": "Temat e-maila",
-          "subjectHint": "Pozostaw puste dla domyslnego tematu",
-          "additionalMessage": "Niestandardowa wiadomosc",
-          "additionalMessagePlaceholder": "Dodaj wiadomosc, ktora pojawi sie w e-mailu",
-          "additionalMessageHint": "Ta wiadomosc zostanie dodana do domyslnej tresci",
-          "smsMessage": "Wiadomosc SMS",
+          "subjectHint": "Pozostaw puste dla domyślnego tematu",
+          "additionalMessage": "Niestandardowa wiadomość",
+          "additionalMessagePlaceholder": "Dodaj wiadomość, która pojawi się w e-mailu",
+          "additionalMessageHint": "Ta wiadomość zostanie dodana do domyślnej treści",
+          "smsMessage": "Wiadomość SMS",
           "smsVariables": "Zmienne: {storeName}, {number}, {startDate}, {endDate}",
           "reset": "Resetuj",
           "cancel": "Anuluj",
@@ -4956,9 +4956,9 @@
         "legalNoticePlaceholder": "Napisz informacje prawne...",
         "legalNoticeTemplate": "Szablon informacji prawnych",
         "contractPdfSettingsTitle": "PDF umowy",
-        "contractPdfSettingsDescription": "Wybierz, jak regulamin ma byc dolaczany do umow najmu",
-        "includeFullCgvInContract": "Dolacz pelny regulamin do PDF umowy",
-        "includeFullCgvInContractHelp": "Dodaje zalacznik z pelna trescia regulaminu. Po podpisaniu tresc pozostaje niezmienna w umowie.",
+        "contractPdfSettingsDescription": "Wybierz, jak regulamin ma być dołączany do umów najmu",
+        "includeFullCgvInContract": "Dołącz pełny regulamin do PDF umowy",
+        "includeFullCgvInContractHelp": "Dodaje załącznik z pełną treścią regulaminu. Po podpisaniu treść pozostaje niezmienna w umowie.",
         "useTemplate": "Użyj szablonu",
         "templates": "Szablony",
         "templatesDescription": "Użyj naszych szablonów jako punktu wyjścia",
@@ -8499,7 +8499,7 @@
       "legalInfo": "Informacje prawne",
       "cgv": "Regulamin",
       "legalNotice": "Nota prawna",
-      "signIn": "Zaloguj sie",
+      "signIn": "Zaloguj się",
       "allRightsReserved": "Wszelkie prawa zastrzeżone.",
       "poweredBy": "Napędzane przez",
       "navigation": "Nawigacja",
@@ -9214,7 +9214,7 @@
     "productRequired": "Produkt wymagany",
     "customerRequired": "Klient wymagany",
     "productUnavailable": "Produkt niedostępny: {name}",
-    "productNoLongerAvailable": "Produkt {name} nie jest juz dostepny na te daty. W miedzyczasie dokonano innej rezerwacji.",
+    "productNoLongerAvailable": "Produkt {name} nie jest już dostępny na te daty. W międzyczasie dokonano innej rezerwacji.",
     "insufficientCapacity": "Niewystarczająca dostępność w wybranym okresie.",
     "insufficientStock": "Niewystarczający stan magazynowy dla: {name} ({count} dostępne)",
     "tooManyUnitsAssigned": "Nie można przypisać więcej jednostek niż zarezerwowana ilość",

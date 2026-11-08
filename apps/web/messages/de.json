@@ -1789,7 +1789,7 @@
           "mappingSaving": "Wird gespeichert...",
           "dropdownValueExclTax": "{value} netto",
           "noResults": "Keine Tulip-Produkte gefunden",
-          "noRenterProducts": "Keine Tulip-Produkte fur diesen Vermieter gefunden",
+          "noRenterProducts": "Keine Tulip-Produkte für diesen Vermieter gefunden",
           "dialog": {
             "description": "Tulip-Produktdetails konfigurieren und Aktualisierungen übertragen.",
             "cancel": "Abbrechen",
@@ -3412,7 +3412,7 @@
         "unit": "Einheit",
         "available": "Verfügbar",
         "noProducts": "Keine Produkte anzuzeigen",
-        "resizeProductColumn": "Produktspalte vergrossern oder verkleinern",
+        "resizeProductColumn": "Produktspalte vergrößern oder verkleinern",
         "reservationsCount": "{count, plural, one {# Reservierung} other {# Reservierungen}}"
       },
       "timeline": {
@@ -4322,7 +4322,7 @@
           "reminderTitle": "Automatische Erinnerungen",
           "customer_request_received": {
             "label": "Anfrage erhalten",
-            "description": "Bestatigung der Anfrage"
+            "description": "Bestätigung der Anfrage"
           },
           "customer_request_accepted": {
             "label": "Anfrage akzeptiert",
@@ -4333,7 +4333,7 @@
             "description": "Wenn Sie eine Anfrage ablehnen"
           },
           "customer_reservation_confirmed": {
-            "label": "Reservierung bestatigt",
+            "label": "Reservierung bestätigt",
             "description": "Nach erfolgreicher Zahlung"
           },
           "customer_reminder_pickup": {
@@ -4341,21 +4341,21 @@
             "description": "Vor dem Abholdatum gesendet"
           },
           "customer_reminder_return": {
-            "label": "Ruckgabeerinnerung",
-            "description": "Vor dem Ruckgabedatum gesendet"
+            "label": "Rückgabeerinnerung",
+            "description": "Vor dem Rückgabedatum gesendet"
           },
           "reminderDescription": "Konfigurieren Sie wann und wie Ihre Kunden Erinnerungen erhalten"
         },
         "reminderTiming": {
           "pickupLabel": "Abholungserinnerung Vorlaufzeit",
-          "returnLabel": "Ruckgabeerinnerung Vorlaufzeit",
+          "returnLabel": "Rückgabeerinnerung Vorlaufzeit",
           "pickupDescription": "Zeit vor Mietbeginn",
           "returnDescription": "Zeit vor Mietende",
           "hours": "{count, plural, =1 {1 Stunde} other {# Stunden}}"
         },
         "adminReminderTiming": {
           "pickupLabel": "Abholungserinnerung Vorlaufzeit",
-          "returnLabel": "Ruckgabeerinnerung Vorlaufzeit",
+          "returnLabel": "Rückgabeerinnerung Vorlaufzeit",
           "pickupDescription": "Zeit vor einer Abholung, um Sie zu benachrichtigen",
           "returnDescription": "Zeit vor einer Rückgabe, um Sie zu benachrichtigen"
         },
@@ -4373,13 +4373,13 @@
           "emailSection": "E-Mail",
           "smsSection": "SMS",
           "subject": "E-Mail-Betreff",
-          "subjectHint": "Leer lassen fur Standardbetreff",
+          "subjectHint": "Leer lassen für Standardbetreff",
           "additionalMessage": "Benutzerdefinierte Nachricht",
-          "additionalMessagePlaceholder": "Fugen Sie eine Nachricht hinzu",
-          "additionalMessageHint": "Diese Nachricht wird zum Standardinhalt hinzugefugt",
+          "additionalMessagePlaceholder": "Fügen Sie eine Nachricht hinzu",
+          "additionalMessageHint": "Diese Nachricht wird zum Standardinhalt hinzugefügt",
           "smsMessage": "SMS-Nachricht",
           "smsVariables": "Variablen: {storeName}, {number}, {startDate}, {endDate}",
-          "reset": "Zurucksetzen",
+          "reset": "Zurücksetzen",
           "cancel": "Abbrechen",
           "save": "Speichern",
           "customized": "Angepasst",
@@ -7964,7 +7964,7 @@
       "pickupLabel": "Abholung im Geschäft",
       "deliveryFeeLabel": "Liefergebühr",
       "free": "Kostenlos",
-      "returnAddressLabel": "Ruckgabeadresse",
+      "returnAddressLabel": "Rückgabeadresse",
       "discountLabel": "Aktionsrabatt"
     },
     "pay": {
