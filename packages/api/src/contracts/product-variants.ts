@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
+import { resourceLinksSchema } from "./links";
 
 /**
  * The store's variant catalog (sizes, colors, custom variants and their
@@ -113,8 +114,8 @@ export const getVariantUsageOutput = z.object({
       definitionId: z.string(),
       /** Products that use the variant, as a booking axis or through their units' values. */
       productCount: z.number().int(),
-      /** The first of them by name, at most VARIANT_USAGE_PRODUCTS_MAX. */
-      products: z.array(productRefSchema),
+      /** The first of them by name, at most VARIANT_USAGE_PRODUCTS_MAX, with their dashboard page. */
+      products: z.array(productRefSchema.extend({ links: resourceLinksSchema })),
     }),
   ),
 });

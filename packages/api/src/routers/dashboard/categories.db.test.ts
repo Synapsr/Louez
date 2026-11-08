@@ -9,6 +9,7 @@ import type { RouterClient } from "@orpc/server";
 import type { BaseContext } from "../../context";
 
 import { createMemoryStorage, type MemoryStorage } from "../../platform/memory-storage";
+import { createTestUrls } from "../../platform/test-urls";
 
 // What the upload tokens and the image ownership checks read, before the
 // modules that read them load.
@@ -65,6 +66,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     get storage() {
       return storage;
     },
+    urls: createTestUrls(),
     afterCommit: () => {},
   };
 

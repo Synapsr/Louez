@@ -1,5 +1,5 @@
 // Export the router type for client-side type inference
-export type { AppRouter } from './router'
+export type { AppRouter } from "./router";
 
 // Export context types
 export type {
@@ -12,7 +12,7 @@ export type {
   StoreData,
   PublicStoreData,
   CustomerData,
-} from './context'
+} from "./context";
 
 // Export procedures for creating new routes
 export {
@@ -21,11 +21,11 @@ export {
   storefrontProcedure,
   storefrontAuthProcedure,
   requirePermission,
-} from './procedures'
+} from "./procedures";
 
 // The agent-ready API's platform: what the app's transports need to serve it
-export type { ApiEvent, ApiPorts, StoragePort } from './platform/ports'
-export type { Transport } from './platform/actor'
+export type { ApiEvent, ApiPorts, StoragePort, UrlsPort } from "./platform/ports";
+export type { Transport } from "./platform/actor";
 
 // Re-export ORPCError for custom error handling
-export { ORPCError } from '@orpc/server'
+export { ORPCError } from "@orpc/server";

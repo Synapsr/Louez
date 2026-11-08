@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
+import { resourceLinksSchema } from "./links";
 
 /** The stores contract: the stores a connection may act on. No database here. */
 
@@ -29,6 +30,8 @@ export const storeSummarySchema = z.object({
   slug: z.string(),
   /** The user's role in the store; what the connection may do there is this role cut down to its rights. */
   role: z.enum(["owner", "member"]),
+  /** The store's dashboard, and its storefront once the store is online. */
+  links: resourceLinksSchema,
 });
 
 export const listStoresOutput = z.object({

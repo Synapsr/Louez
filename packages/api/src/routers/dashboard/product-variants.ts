@@ -19,6 +19,7 @@ import {
   variantValueSchema,
   withdrawVariantOutput,
 } from "../../contracts/product-variants";
+import { productLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
 import * as variants from "../../services/product-variants";
 import { confirmUnderLock, productActor } from "./product-context";
@@ -137,7 +138,7 @@ export const getVariantUsage = storeProcedure
     mcp: {
       name: "products_get_variant_usage",
       description:
-        "Which products use each variant, as a booking axis or through their units' values: what products_withdraw_variant would change, and what keeps products_delete_variant from deleting it. Pass definitionId for one variant.",
+        "Which products use each variant, as a booking axis or through their units' values: what products_withdraw_variant would change, and what keeps products_delete_variant from deleting it. Each product has `links` with its dashboard page, the URL to give the user. Pass definitionId for one variant.",
       bundle: "catalog",
       annotations: { readOnlyHint: true },
     },
@@ -145,7 +146,18 @@ export const getVariantUsage = storeProcedure
   .route({ method: "GET", path: "/variants/usage" })
   .input(getVariantUsageInput)
   .output(getVariantUsageOutput)
-  .handler(({ context, input }) => variants.getVariantUsage(context.actor.storeId, input));
+  .handler(async ({ context, input }) => {
+    const usage = await variants.getVariantUsage(context.actor.storeId, input);
+    return {
+      items: usage.items.map((item) => ({
+        ...item,
+        products: item.products.map((product) => ({
+          ...product,
+          links: productLinks(context.ports.urls, context.store, product),
+        })),
+      })),
+    };
+  });
 
 export const withdrawVariantFromProducts = storeProcedure
   .meta({

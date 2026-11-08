@@ -15,6 +15,7 @@ import type { BaseContext } from "../../context";
 import type { ApiEvent } from "../../platform/ports";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
 // What the image ownership checks read, before the modules that read them load.
 process.env.AUTH_SECRET ??= "products-test-secret";
@@ -67,6 +68,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
     storage: createMemoryStorage(),
+    urls: createTestUrls(),
     afterCommit: (event: ApiEvent) => {
       events.push(event);
     },
@@ -573,13 +575,63 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     );
   });
 
+  // --- Links ----------------------------------------------------------------
+
+  test("a product's links come from the urls port: its dashboard page, and its storefront page once active in an online store", async () => {
+    const setOnline = (onboardingCompleted: boolean) =>
+      louezDb.db
+        .update(louezDb.stores)
+        .set({ onboardingCompleted })
+        .where(orm.eq(louezDb.stores.id, STORE));
+    await setOnline(true);
+    try {
+      const context = await apiKey();
+      const created = await run("create", { name: "Kayak links", price: "30" }, context());
+      assert.ok(created.slug);
+      const expected = {
+        dashboard: `${TEST_APP_URL}/dashboard/products/${created.id}`,
+        storefront: `https://pr-store-a.louez.test/product/${created.slug}`,
+      };
+      assert.deepEqual(created.links, expected);
+      assert.deepEqual((await run("get", { id: created.id }, context())).links, expected);
+      assert.deepEqual((await run("get", { id: created.id }, session())).links, expected);
+
+      const page = await run("list", {}, context());
+      assert.deepEqual(page.items.find((item) => item.id === created.id)?.links, expected);
+
+      // A draft has no public page; nor has a store back in onboarding.
+      const draft = await run(
+        "create",
+        { name: "Draft links", price: "30", status: "draft" },
+        context(),
+      );
+      assert.deepEqual(draft.links, {
+        dashboard: `${TEST_APP_URL}/dashboard/products/${draft.id}`,
+      });
+      const copy = await run("duplicate", { id: created.id }, context());
+      assert.equal(copy.links.storefront, undefined);
+      await setOnline(false);
+      assert.deepEqual((await run("get", { id: created.id }, context())).links, {
+        dashboard: expected.dashboard,
+      });
+    } finally {
+      await setOnline(false);
+    }
+  });
+
   // --- Status, delete, duplicate, order ------------------------------------
 
   test("archiving through the status asks an agent first; publishing does not", async () => {
     const context = await apiKey();
     const created = await run("create", { name: "Sup", price: "20", status: "draft" }, context());
     const published = await run("updateStatus", { id: created.id, status: "active" }, context());
-    assert.deepEqual(published, { id: created.id, status: "active", previousStatus: "draft" });
+    // The store is still in onboarding: no storefront to link to.
+    assert.deepEqual(published, {
+      id: created.id,
+      status: "active",
+      previousStatus: "draft",
+      links: { dashboard: `${TEST_APP_URL}/dashboard/products/${created.id}` },
+    });
 
     const asked = await rejects(
       run("updateStatus", { id: created.id, status: "archived" }, context()),

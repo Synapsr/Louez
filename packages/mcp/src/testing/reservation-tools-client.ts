@@ -7,6 +7,7 @@
  */
 import type { ApiKeyPermissions } from "@louez/db";
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
+import { createTestUrls } from "@louez/api/platform/test-urls";
 import { normalizeScopes } from "@louez/api/platform/permissions";
 import { Client, InMemoryTransport as ClientInMemoryTransport } from "@modelcontextprotocol/client";
 import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
@@ -74,6 +75,7 @@ export function testRequestContext(input: {
     ports: {
       planFeatures: async () => ({ apiAccess: true }),
       storage: createMemoryStorage(),
+      urls: createTestUrls(),
       afterCommit: () => {},
     },
     countCall: async () => undefined,

@@ -21,6 +21,23 @@ export interface ApiPorts {
    * it must never throw, and the answer does not wait for it.
    */
   afterCommit: (event: ApiEvent) => void;
+  urls: UrlsPort;
+}
+
+/**
+ * The deployment's own addresses, from its settings (app URL, app domain,
+ * deployment mode): a preview builds the preview's URLs. The links a
+ * procedure returns (platform/links.ts) are built only through this port.
+ */
+export interface UrlsPort {
+  /** Absolute URL of a dashboard path, such as `/dashboard/products/<id>`. */
+  dashboard: (path: string) => string;
+  /**
+   * Absolute URL of a path on a store's storefront, routed as this deployment
+   * routes storefronts (store subdomain, `/<slug>` on a local domain, or the
+   * app's root in standalone mode).
+   */
+  storefront: (storeSlug: string, path: string) => string;
 }
 
 /** The store an event happened in, as the app's effects need it. */

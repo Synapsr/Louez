@@ -56,7 +56,7 @@ async function validateOutput(schema: unknown, value: unknown): Promise<unknown>
   return result.value;
 }
 
-function missingTransport() {
+export function missingTransport() {
   return apiError("INTERNAL_SERVER_ERROR", "TRANSPORT_MISSING", {
     message: "The handler did not say which transport the call came through.",
   });

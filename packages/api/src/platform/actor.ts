@@ -296,6 +296,8 @@ export interface ReachableStore {
   id: string;
   name: string;
   slug: string;
+  /** Whether its storefront is online: a store in onboarding has none. */
+  onboardingCompleted: boolean | null;
   role: MemberRole;
 }
 
@@ -309,7 +311,13 @@ export async function connectionStores(actor: AccountActor): Promise<ReachableSt
   const only = credential.storeId ? [credential.storeId] : credential.stores;
   if (only && only.length === 0) return [];
   const rows = await db
-    .select({ id: stores.id, name: stores.name, slug: stores.slug, role: storeMembers.role })
+    .select({
+      id: stores.id,
+      name: stores.name,
+      slug: stores.slug,
+      onboardingCompleted: stores.onboardingCompleted,
+      role: storeMembers.role,
+    })
     .from(storeMembers)
     .innerJoin(stores, eq(stores.id, storeMembers.storeId))
     .where(

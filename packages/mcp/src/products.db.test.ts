@@ -4,6 +4,7 @@ import { after, before, describe, mock, test } from "node:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
+import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
@@ -40,6 +41,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
     storage: createMemoryStorage(),
+    urls: createTestUrls(),
     afterCommit: () => {},
   };
 

@@ -714,6 +714,7 @@ export async function listProducts(
           .select({
             id: products.id,
             name: products.name,
+            slug: products.slug,
             status: products.status,
             images: products.images,
             pricingKind: products.pricingKind,
@@ -1605,6 +1606,7 @@ export async function updateProductStatus(
   const { storeId } = actor;
   let refusal: Error | null = null;
   let previousStatus: StoredProduct["status"] = null;
+  let slug: string | null = null;
 
   await db.transaction(async (tx) => {
     await lockStoreProducts(tx, storeId);
@@ -1612,6 +1614,7 @@ export async function updateProductStatus(
       .select({
         id: products.id,
         name: products.name,
+        slug: products.slug,
         status: products.status,
         updatedAt: products.updatedAt,
       })
@@ -1620,6 +1623,7 @@ export async function updateProductStatus(
       .limit(1);
     if (!product) throw productErrors.notFound(input.id);
     previousStatus = product.status;
+    slug = product.slug;
 
     if (options.confirm && input.status === "archived" && product.status !== "archived") {
       const [{ active }] = await tx
@@ -1661,7 +1665,7 @@ export async function updateProductStatus(
 
   if (refusal) throw refusal;
   emit(actor, { type: "products.changed", store: eventStore(actor) });
-  return { id: input.id, status: input.status, previousStatus };
+  return { id: input.id, status: input.status, previousStatus, slug };
 }
 
 // --- Delete ------------------------------------------------------------------

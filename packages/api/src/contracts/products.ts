@@ -11,6 +11,7 @@ import {
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
+import { resourceLinksSchema } from "./links";
 
 /**
  * The products contract: what callers send and get back on every transport,
@@ -308,9 +309,17 @@ export const productSchema = z.object({
 });
 export type Product = z.infer<typeof productSchema>;
 
+/** A product as the procedures return it: the record and its links. */
+export const productOutput = productSchema.extend({
+  /** Its dashboard page, and its storefront page while it is active and the store online. */
+  links: resourceLinksSchema,
+});
+
 export const productListItemSchema = z.object({
   id: z.string(),
   name: z.string(),
+  /** URL segment of the storefront page; null on products older than slugs. */
+  slug: z.string().nullable(),
   status: productStatusSchema.nullable(),
   images: z.array(z.string()).nullable(),
   pricingKind: pricingKindSchema,
@@ -351,7 +360,7 @@ export const listProductsInput = z.object({
     ),
 });
 export const listProductsOutput = z.object({
-  items: z.array(productListItemSchema),
+  items: z.array(productListItemSchema.extend({ links: resourceLinksSchema })),
   /** Null on the last page. */
   nextCursor: z.string().nullable(),
   /** Currency of every amount. */
@@ -395,6 +404,8 @@ export const updateProductStatusOutput = z.object({
   id: z.string(),
   status: productStatusSchema,
   previousStatus: productStatusSchema.nullable(),
+  /** Its dashboard page, and its storefront page when the new status is active. */
+  links: resourceLinksSchema,
 });
 
 export const deleteProductInput = z.object({ id: idSchema });

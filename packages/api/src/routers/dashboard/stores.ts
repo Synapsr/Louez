@@ -5,7 +5,8 @@ import {
   STORE_PAGE_MAX,
 } from "../../contracts/stores";
 import { connectionStores } from "../../platform/actor";
-import { accountProcedure } from "../../platform/procedures";
+import { storeLinks } from "../../platform/links";
+import { accountProcedure, missingTransport } from "../../platform/procedures";
 
 /**
  * The stores the connection may act on, with the user's role in each: every
@@ -20,7 +21,7 @@ const list = accountProcedure
     mcp: {
       name: "stores_list",
       description:
-        "List the stores this connection may act on, with your role in each. When it covers several stores, pass the store's id as storeId to the other tools.",
+        "List the stores this connection may act on, with your role in each and its `links`: the store's dashboard and, once it is online, its storefront. Give the user those URLs when they ask where to see their store. When the connection covers several stores, pass the store's id as storeId to the other tools.",
       bundle: "daily",
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
@@ -29,6 +30,8 @@ const list = accountProcedure
   .input(listStoresInput)
   .output(listStoresOutput)
   .handler(async ({ context, input }) => {
+    const { ports } = context;
+    if (!ports) throw missingTransport();
     // Ordered by name, then id; a connection reaches few stores, so the page
     // is cut from the whole list.
     const all = await connectionStores(context.actor);
@@ -40,11 +43,12 @@ const list = accountProcedure
       start = index + 1;
     }
     const page = all.slice(start, start + limit);
-    const items = page.map(({ id, name, slug, role }) => ({
-      id,
-      name,
-      slug,
-      role: role === "owner" ? ("owner" as const) : ("member" as const),
+    const items = page.map((store) => ({
+      id: store.id,
+      name: store.name,
+      slug: store.slug,
+      role: store.role === "owner" ? ("owner" as const) : ("member" as const),
+      links: storeLinks(ports.urls, store),
     }));
     const last = page[page.length - 1];
     return { items, nextCursor: start + limit < all.length && last ? last.id : null };

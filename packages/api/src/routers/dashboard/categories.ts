@@ -1,7 +1,7 @@
 import {
   createCategoryInput,
   createCategoryOutput,
-  categorySchema,
+  categoryOutput,
   deleteCategoryInput,
   deleteCategoryOutput,
   getCategoryInput,
@@ -18,6 +18,8 @@ import {
   createImageUploadOutput,
 } from "../../contracts/uploads";
 import { checkConfirmation } from "../../platform/confirmation";
+import { categoryLinks, type LinkStore } from "../../platform/links";
+import type { UrlsPort } from "../../platform/ports";
 import { storeProcedure } from "../../platform/procedures";
 import {
   createCategory,
@@ -36,6 +38,15 @@ import { completeImageUpload, createImageUpload } from "../../services/uploads";
  * confirmation.
  */
 
+const LINKS_HELP =
+  "Its `links` hold the dashboard's categories page and, once the store is online, the storefront catalog filtered on the category: give the user these URLs, never build one.";
+
+/** A category with its links. */
+const withLinks = <T extends { id: string; slug: string | null }>(
+  context: { ports: { urls: UrlsPort }; store: LinkStore },
+  category: T,
+) => ({ ...category, links: categoryLinks(context.ports.urls, context.store, category) });
+
 const list = storeProcedure
   .meta({
     capability: "categories.list",
@@ -43,7 +54,7 @@ const list = storeProcedure
     mcp: {
       name: "categories_list",
       description:
-        "List the store's product categories in the store's order, with how many products each holds. Returns up to `limit` categories (default and maximum 500) and a nextCursor to fetch the next page; nextCursor is null on the last page.",
+        "List the store's product categories in the store's order, with how many products each holds. Returns up to `limit` categories (default and maximum 500) and a nextCursor to fetch the next page; nextCursor is null on the last page. Each category has `links`, the URLs to give the user.",
       bundle: "catalog",
       aliases: [{ name: "list_categories" }],
       annotations: { readOnlyHint: true },
@@ -52,7 +63,10 @@ const list = storeProcedure
   .route({ method: "GET", path: "/categories" })
   .input(listCategoriesInput)
   .output(listCategoriesOutput)
-  .handler(({ context, input }) => listCategories(context.actor.storeId, input));
+  .handler(async ({ context, input }) => {
+    const page = await listCategories(context.actor.storeId, input);
+    return { ...page, items: page.items.map((category) => withLinks(context, category)) };
+  });
 
 const get = storeProcedure
   .meta({
@@ -60,15 +74,17 @@ const get = storeProcedure
     scope: { domain: "categories", level: "read" },
     mcp: {
       name: "categories_get",
-      description: "Get one product category of the store by its id.",
+      description: `Get one product category of the store by its id. ${LINKS_HELP}`,
       bundle: "catalog",
       annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/categories/{id}" })
   .input(getCategoryInput)
-  .output(categorySchema)
-  .handler(({ context, input }) => getCategory(context.actor.storeId, input.id));
+  .output(categoryOutput)
+  .handler(async ({ context, input }) =>
+    withLinks(context, await getCategory(context.actor.storeId, input.id)),
+  );
 
 const create = storeProcedure
   .meta({
@@ -76,8 +92,7 @@ const create = storeProcedure
     scope: { domain: "categories", level: "write" },
     mcp: {
       name: "categories_create",
-      description:
-        "Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with `created: false`. To give it an image, upload one with categories_create_image_upload first and pass the `url` that categories_complete_image_upload returns as `imageUrl`.",
+      description: `Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with \`created: false\`. To give it an image, upload one with categories_create_image_upload first and pass the \`url\` that categories_complete_image_upload returns as \`imageUrl\`. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "create_category" }],
       annotations: { idempotentHint: true },
@@ -86,7 +101,9 @@ const create = storeProcedure
   .route({ method: "POST", path: "/categories" })
   .input(createCategoryInput)
   .output(createCategoryOutput)
-  .handler(({ context, input }) => createCategory(context.actor.storeId, input));
+  .handler(async ({ context, input }) =>
+    withLinks(context, await createCategory(context.actor.storeId, input)),
+  );
 
 const update = storeProcedure
   .meta({
@@ -94,8 +111,7 @@ const update = storeProcedure
     scope: { domain: "categories", level: "write" },
     mcp: {
       name: "categories_update",
-      description:
-        "Change a product category. Send only the fields to change: a field left out stays as it is, and null clears the description or the image. A name another category of the store already has is refused.",
+      description: `Change a product category. Send only the fields to change: a field left out stays as it is, and null clears the description or the image. A name another category of the store already has is refused. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "update_category", renamedArgs: { categoryId: "id" } }],
       annotations: { idempotentHint: true },
@@ -103,8 +119,10 @@ const update = storeProcedure
   })
   .route({ method: "PATCH", path: "/categories/{id}" })
   .input(updateCategoryInput)
-  .output(categorySchema)
-  .handler(({ context, input }) => updateCategory(context.actor.storeId, input));
+  .output(categoryOutput)
+  .handler(async ({ context, input }) =>
+    withLinks(context, await updateCategory(context.actor.storeId, input)),
+  );
 
 const remove = storeProcedure
   .meta({

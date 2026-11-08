@@ -15,6 +15,7 @@ import type { BaseContext } from "../../context";
 import type { ApiEvent } from "../../platform/ports";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { createTestUrls } from "../../platform/test-urls";
 
 process.env.AUTH_SECRET ??= "product-units-test-secret";
 process.env.NODE_ENV = "test";
@@ -65,6 +66,7 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
     storage: createMemoryStorage(),
+    urls: createTestUrls(),
     afterCommit: (event: ApiEvent) => {
       events.push(event);
     },

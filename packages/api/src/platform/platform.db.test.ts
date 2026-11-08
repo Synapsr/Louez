@@ -5,6 +5,7 @@ import { after, before, describe, mock, test } from "node:test";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { createMemoryStorage } from "./memory-storage";
+import { createTestUrls } from "./test-urls";
 
 // tsx loads these packages as CommonJS, whose `export *` names ESM cannot see.
 const require = createRequire(import.meta.url);
@@ -34,6 +35,7 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
   const ports = {
     planFeatures: async () => ({ apiAccess }),
     storage: createMemoryStorage(),
+    urls: createTestUrls(),
     afterCommit: () => {},
   };
 
@@ -492,7 +494,11 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
         .select({ result: louezDb.apiOperations.result })
         .from(louezDb.apiOperations)
         .where(orm.eq(louezDb.apiOperations.id, replayCtx.receipt.operationId!));
-      assert.deepEqual(stored.result, { id: "t_Tent", name: "Tent" }, "what the contract drops is never kept");
+      assert.deepEqual(
+        stored.result,
+        { id: "t_Tent", name: "Tent" },
+        "what the contract drops is never kept",
+      );
     });
 
     test("an operation whose outcome was not recorded refuses retries", async () => {

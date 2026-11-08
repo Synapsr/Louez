@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
+import { resourceLinksSchema } from "./links";
 
 /**
  * The categories contract: what callers send and get back on every transport,
@@ -48,6 +49,12 @@ export const categorySchema = z.object({
 });
 export type Category = z.infer<typeof categorySchema>;
 
+/** A category as the procedures return it: the record and its links. */
+export const categoryOutput = categorySchema.extend({
+  /** The dashboard's categories page, and the storefront catalog filtered on it once the store is online. */
+  links: resourceLinksSchema,
+});
+
 export const listCategoriesInput = z.object({
   cursor: z
     .string()
@@ -63,7 +70,7 @@ export const listCategoriesInput = z.object({
     .describe(`Categories per page, ${CATEGORY_PAGE_MAX} at most and by default.`),
 });
 export const listCategoriesOutput = z.object({
-  items: z.array(categorySchema),
+  items: z.array(categoryOutput),
   /** Null on the last page. */
   nextCursor: z.string().nullable(),
 });
@@ -75,7 +82,7 @@ export const createCategoryInput = z.object({
   description: descriptionSchema.optional(),
   imageUrl: imageUrlSchema.optional(),
 });
-export const createCategoryOutput = categorySchema.extend({
+export const createCategoryOutput = categoryOutput.extend({
   /** False when a category with the same name already existed and was returned as is. */
   created: z.boolean(),
 });

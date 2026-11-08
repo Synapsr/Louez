@@ -15,7 +15,7 @@ import {
   productActivityInput,
   productActivityOutput,
   productErrors,
-  productSchema,
+  productOutput,
   productTimelineInput,
   productTimelineOutput,
   reorderProductsInput,
@@ -33,6 +33,7 @@ import {
   createImageUploadInput,
   createImageUploadOutput,
 } from "../../contracts/uploads";
+import { productLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
 import { getProductUnitActivityPage } from "../../services/product-activity";
 import { getProductReservationTimeline } from "../../services/product-reservation-timeline";
@@ -55,7 +56,12 @@ import {
   updateProductStatus,
 } from "../../services/products";
 import { completeImageUpload, createImageUpload } from "../../services/uploads";
-import { confirmUnderLock, productActor, requireReservationsAndCustomers } from "./product-context";
+import {
+  confirmUnderLock,
+  productActor,
+  requireReservationsAndCustomers,
+  type ProductContext,
+} from "./product-context";
 import {
   closeDowntime,
   declareDowntime,
@@ -87,6 +93,24 @@ import {
  * are in product-units.ts, the variant catalog in product-variants.ts.
  */
 
+const LINKS_HELP =
+  "Its `links` hold the product's dashboard page and, while it is active, its storefront page: give the user these URLs, never build one.";
+
+/** A product, or a list item, with its links. */
+const withLinks = <T extends { id: string; slug: string | null; status: string | null }>(
+  context: ProductContext,
+  product: T,
+) => ({ ...product, links: productLinks(context.ports.urls, context.store, product) });
+
+/** A page of products, each with its links. */
+const withItemLinks = async (
+  context: ProductContext,
+  page: Promise<Awaited<ReturnType<typeof listProducts>>>,
+) => {
+  const result = await page;
+  return { ...result, items: result.items.map((item) => withLinks(context, item)) };
+};
+
 const TIERS_HELP =
   'Pricing: a duration product has a base rate (basePriceDuration, e.g. { "price": "30", "duration": 1, "unit": "day" }) and optional rateTiers (prix dégressifs): each tier is the TOTAL price of a rental of exactly that duration, e.g. { "duration": 7, "unit": "day", "price": "150" } for a week. A fixed product has one price per item (pricingKind "fixed"). Seasons are set with products_create_seasonal_pricing.';
 
@@ -99,7 +123,7 @@ const list = storeProcedure
     mcp: {
       name: "products_list",
       description:
-        "List the store's products in the catalog's order, with their price, stock and main category, and the count per status. Filter by status, categoryIds or part of the name. Returns up to `limit` products (default 100, at most 200) and a nextCursor for the next page; nextCursor is null on the last page. Use products_get for a product's tiers, units and accessories.",
+        "List the store's products in the catalog's order, with their price, stock and main category, and the count per status. Filter by status, categoryIds or part of the name. Returns up to `limit` products (default 100, at most 200) and a nextCursor for the next page; nextCursor is null on the last page. Each product has `links`: its dashboard page and, while it is active, its storefront page, the URLs to give the user. Use products_get for a product's tiers, units and accessories.",
       bundle: "catalog",
       annotations: { readOnlyHint: true },
     },
@@ -107,7 +131,9 @@ const list = storeProcedure
   .route({ method: "GET", path: "/products" })
   .input(listProductsInput)
   .output(listProductsOutput)
-  .handler(({ context, input }) => listProducts(productActor(context), input));
+  .handler(({ context, input }) =>
+    withItemLinks(context, listProducts(productActor(context), input)),
+  );
 
 // The former list_products tool, with its offset paging: one read, counted
 // once, bounded. No alias expresses a page number over a cursor.
@@ -129,13 +155,16 @@ const listLegacyPage = storeProcedure
     const pageSize = input.pageSize ?? 50;
     const offset = ((input.page ?? 1) - 1) * pageSize;
     if (offset >= LEGACY_PAGE_MAX_OFFSET) throw productErrors.legacyPageTooDeep();
-    return listProducts(productActor(context), {
-      status: input.status,
-      categoryIds: input.categoryId ? [input.categoryId] : undefined,
-      search: input.search,
-      limit: Math.min(pageSize, LEGACY_PAGE_MAX_OFFSET - offset),
-      offset,
-    });
+    return withItemLinks(
+      context,
+      listProducts(productActor(context), {
+        status: input.status,
+        categoryIds: input.categoryId ? [input.categoryId] : undefined,
+        search: input.search,
+        limit: Math.min(pageSize, LEGACY_PAGE_MAX_OFFSET - offset),
+        offset,
+      }),
+    );
   });
 
 const get = storeProcedure
@@ -144,8 +173,7 @@ const get = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_get",
-      description:
-        "Get one product of the store with everything its form holds: pricing (base rate, tiers), deposit, taxes, promotion, stock and units, variants, accessories, categories, images. The answer can be edited and sent back to products_update.",
+      description: `Get one product of the store with everything its form holds: pricing (base rate, tiers), deposit, taxes, promotion, stock and units, variants, accessories, categories, images. The answer can be edited and sent back to products_update. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "get_product", renamedArgs: { productId: "id" } }],
       annotations: { readOnlyHint: true },
@@ -153,8 +181,10 @@ const get = storeProcedure
   })
   .route({ method: "GET", path: "/products/{id}" })
   .input(getProductInput)
-  .output(productSchema)
-  .handler(({ context, input }) => getProduct(productActor(context), input.id));
+  .output(productOutput)
+  .handler(async ({ context, input }) =>
+    withLinks(context, await getProduct(productActor(context), input.id)),
+  );
 
 // --- Writes ------------------------------------------------------------------
 
@@ -164,15 +194,17 @@ const create = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_create",
-      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} Images: upload each with products_create_image_upload and products_complete_image_upload first. Returns the product as products_get does. Pass an idempotencyKey to retry safely.`,
+      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} Images: upload each with products_create_image_upload and products_complete_image_upload first. Returns the product as products_get does, with its \`links\`: give the user these URLs to see it. Pass an idempotencyKey to retry safely.`,
       bundle: "catalog",
       aliases: [{ name: "create_product" }],
     },
   })
   .route({ method: "POST", path: "/products" })
   .input(createProductInput)
-  .output(productSchema)
-  .handler(({ context, input }) => createProduct(productActor(context), input));
+  .output(productOutput)
+  .handler(async ({ context, input }) =>
+    withLinks(context, await createProduct(productActor(context), input)),
+  );
 
 const update = storeProcedure
   .meta({
@@ -181,7 +213,7 @@ const update = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_update",
-      description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, units, categoryIds, images) replaces the stored one. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the product.`,
+      description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, units, categoryIds, images) replaces the stored one. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the product. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "update_product", renamedArgs: { productId: "id" } }],
       annotations: { destructiveHint: true, idempotentHint: true },
@@ -189,41 +221,44 @@ const update = storeProcedure
   })
   .route({ method: "PATCH", path: "/products/{id}" })
   .input(updateProductInput)
-  .output(productSchema)
-  .handler(({ context, input, path }) =>
-    updateProduct(productActor(context), input, {
-      // Under the update's lock: what the preview shows is what happens. A
-      // change since (the product saved again, a unit, a tier, a season)
-      // makes the token stale. `updatedAt` counts whole seconds, so the
-      // name is bound too.
-      confirm: confirmUnderLock(context, path, input, (preview) => ({
-        state: {
-          name: preview.product.name,
-          status: preview.product.status,
-          updatedAt: preview.product.updatedAt.toISOString(),
-          deletedTierCount: preview.deletedTierCount,
-          deletedSeasonalPricingCount: preview.deletedSeasonalPricingCount,
-          // Every unit the preview names, as it names it.
-          deletedUnits: preview.deletedUnits,
-        },
-        details: {
-          product: { id: preview.product.id, name: preview.product.name },
-          ...(preview.archives ? { archives: true } : {}),
-          ...(preview.deletedTierCount + preview.deletedSeasonalPricingCount > 0
-            ? {
-                deletesPricingTiers: preview.deletedTierCount,
-                deletesSeasonalPrices: preview.deletedSeasonalPricingCount,
-              }
-            : {}),
-          ...(preview.deletedUnits.length > 0
-            ? {
-                deletesUnitCount: preview.deletedUnits.length,
-                deletesUnits: preview.deletedUnits,
-              }
-            : {}),
-        },
-      })),
-    }),
+  .output(productOutput)
+  .handler(async ({ context, input, path }) =>
+    withLinks(
+      context,
+      await updateProduct(productActor(context), input, {
+        // Under the update's lock: what the preview shows is what happens. A
+        // change since (the product saved again, a unit, a tier, a season)
+        // makes the token stale. `updatedAt` counts whole seconds, so the
+        // name is bound too.
+        confirm: confirmUnderLock(context, path, input, (preview) => ({
+          state: {
+            name: preview.product.name,
+            status: preview.product.status,
+            updatedAt: preview.product.updatedAt.toISOString(),
+            deletedTierCount: preview.deletedTierCount,
+            deletedSeasonalPricingCount: preview.deletedSeasonalPricingCount,
+            // Every unit the preview names, as it names it.
+            deletedUnits: preview.deletedUnits,
+          },
+          details: {
+            product: { id: preview.product.id, name: preview.product.name },
+            ...(preview.archives ? { archives: true } : {}),
+            ...(preview.deletedTierCount + preview.deletedSeasonalPricingCount > 0
+              ? {
+                  deletesPricingTiers: preview.deletedTierCount,
+                  deletesSeasonalPrices: preview.deletedSeasonalPricingCount,
+                }
+              : {}),
+            ...(preview.deletedUnits.length > 0
+              ? {
+                  deletesUnitCount: preview.deletedUnits.length,
+                  deletesUnits: preview.deletedUnits,
+                }
+              : {}),
+          },
+        })),
+      }),
+    ),
   );
 
 const updateStatus = storeProcedure
@@ -234,7 +269,7 @@ const updateStatus = storeProcedure
     mcp: {
       name: "products_update_status",
       description:
-        "Publish (active), unpublish (draft) or archive a product. Archiving takes it off the storefront and the catalog; its reservations are kept. Archiving first answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
+        "Publish (active), unpublish (draft) or archive a product. Archiving takes it off the storefront and the catalog; its reservations are kept. Archiving first answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the product's `links`: its dashboard page and, once active, its storefront page, the URLs to give the user.",
       bundle: "catalog",
       aliases: [
         {
@@ -249,8 +284,8 @@ const updateStatus = storeProcedure
   .route({ method: "POST", path: "/products/{id}/status" })
   .input(updateProductStatusInput)
   .output(updateProductStatusOutput)
-  .handler(({ context, input, path }) =>
-    updateProductStatus(productActor(context), input, {
+  .handler(async ({ context, input, path }) => {
+    const { slug, ...result } = await updateProductStatus(productActor(context), input, {
       confirm: confirmUnderLock(context, path, input, (preview) => ({
         state: {
           name: preview.product.name,
@@ -264,8 +299,12 @@ const updateStatus = storeProcedure
           activeReservationCount: preview.activeReservationCount,
         },
       })),
-    }),
-  );
+    });
+    return {
+      ...result,
+      links: productLinks(context.ports.urls, context.store, { ...result, slug }),
+    };
+  });
 
 const remove = storeProcedure
   .meta({
@@ -308,14 +347,16 @@ const duplicate = storeProcedure
     mcp: {
       name: "products_duplicate",
       description:
-        'Copy a product as a draft named "<name> (copy)", with its pricing, tiers, deposit, taxes, images and categories. Units are not copied: the copy counts the same stock without tracking units. Returns the new product.',
+        'Copy a product as a draft named "<name> (copy)", with its pricing, tiers, deposit, taxes, images and categories. Units are not copied: the copy counts the same stock without tracking units. Returns the new product, with its `links` (a draft has its dashboard page only).',
       bundle: "catalog",
     },
   })
   .route({ method: "POST", path: "/products/{id}/duplicate" })
   .input(duplicateProductInput)
-  .output(productSchema)
-  .handler(({ context, input }) => duplicateProduct(productActor(context), input.id));
+  .output(productOutput)
+  .handler(async ({ context, input }) =>
+    withLinks(context, await duplicateProduct(productActor(context), input.id)),
+  );
 
 const reorder = storeProcedure
   .meta({

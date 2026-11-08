@@ -10,6 +10,7 @@ import type { BaseContext } from "../../context";
 import type { ApiEvent } from "../../platform/ports";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
 process.env.AUTH_SECRET ??= "product-variants-test-secret";
 process.env.NODE_ENV = "test";
@@ -57,6 +58,7 @@ describe("product variants procedures (database)", { skip: skipWithoutTestDataba
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
     storage: createMemoryStorage(),
+    urls: createTestUrls(),
     afterCommit: (event: ApiEvent) => {
       events.push(event);
     },
@@ -316,10 +318,12 @@ describe("product variants procedures (database)", { skip: skipWithoutTestDataba
       {
         definitionId: size.id,
         productCount: 2,
-        products: [
-          { id: board.id, name: "Board" },
-          { id: kayak.id, name: "Kayak" },
-        ],
+        // Each with its dashboard page.
+        products: [board, kayak].map((product) => ({
+          id: product.id,
+          name: product.name,
+          links: { dashboard: `${TEST_APP_URL}/dashboard/products/${product.id}` },
+        })),
       },
     ]);
 
