@@ -3,7 +3,7 @@ import { formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
  * Admin Notification Dispatcher
  *
  * Handles sending notifications to store owners (admins) via multiple channels:
- * - Email (handled separately via existing email functions)
+ * - Email (to the store's address, see admin-email.ts)
  * - SMS (to owner phone with full i18n support - 13 languages)
  * - Discord (via webhooks)
  *
@@ -39,6 +39,7 @@ import {
   sendSupplierInvoiceReceivedEmail,
 } from "@/lib/email/send";
 import type { DigestEntry } from "@/lib/email/templates";
+import { sendAdminEventEmail } from "@/lib/notifications/admin-email";
 import { isPushConfigured, sendPush } from "@/lib/push/client";
 import { buildAdminPushPayload } from "@/lib/push/notifications";
 import type { NotificationEventType, NotificationSettings } from "@louez/types";
@@ -66,6 +67,8 @@ export interface NotificationContext {
     startDate: Date;
     endDate: Date;
     totalAmount: number;
+    /** The customer's message, shown in the new reservation email. */
+    customerNotes?: string | null;
   };
   customer?: {
     firstName: string;
@@ -77,6 +80,13 @@ export interface NotificationContext {
     amount: number;
   };
 }
+
+/** What dispatchNotification sends the owner's email with. A test replaces it. */
+export interface DispatchNotificationDeps {
+  sendAdminEventEmail: typeof sendAdminEventEmail;
+}
+
+const defaultDispatchDeps: DispatchNotificationDeps = { sendAdminEventEmail };
 
 export interface NotificationResult {
   email: { sent: boolean; error?: string };
@@ -718,11 +728,12 @@ function getDiscordSender(eventType: NotificationEventType) {
  *
  * @param eventType - The type of event that triggered the notification
  * @param ctx - Context containing store, reservation, customer, and payment info
- * @returns Results for each channel (email, sms, discord)
+ * @returns Results for each channel (email, sms, discord, push)
  */
 export async function dispatchNotification(
   eventType: NotificationEventType,
   ctx: NotificationContext,
+  deps: DispatchNotificationDeps = defaultDispatchDeps,
 ): Promise<NotificationResult> {
   const result: NotificationResult = {
     email: { sent: false },
@@ -740,11 +751,9 @@ export async function dispatchNotification(
   // Determine locale from store country
   const locale = getLocaleFromCountry(ctx.store.settings?.country);
 
-  // Email notification (for admin, this means sending to store email)
-  // Note: Admin emails are handled by existing functions like sendNewRequestLandlordEmail
-  // which are called separately from the action handlers
-  if (prefs.email && ctx.store.email) {
-    result.email.sent = true; // Handled by existing email functions
+  // Email to the store owner. Events without an owner template answer "not sent".
+  if (prefs.email) {
+    result.email = await deps.sendAdminEventEmail(eventType, ctx);
   }
 
   // SMS notification to store owner
@@ -926,9 +935,8 @@ export interface AdminReminderContext {
  * Dispatch an automatic admin reminder (upcoming pickup / return) to the store
  * owner across all enabled channels.
  *
- * Unlike dispatchNotification (event-driven, where admin emails are sent by
- * inline callers), reminders are cron-driven with no inline trigger, so this
- * owns the email send too. SMS and Discord reuse the same infrastructure.
+ * Reminders are cron-driven and have their own email templates, so this sends
+ * the email itself. SMS and Discord reuse the same infrastructure.
  */
 export async function dispatchAdminReminder(
   eventType: AdminReminderEventType,

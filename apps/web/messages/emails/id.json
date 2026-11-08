@@ -152,6 +152,26 @@
     "viewRequest": "Lihat permintaan",
     "connectToManage": "Masuk ke dasbor Anda untuk menerima atau menolak permintaan ini."
   },
+  "paymentAdmin": {
+    "customer": "Pelanggan",
+    "email": "Email",
+    "period": "Periode",
+    "total": "Total reservasi",
+    "viewReservation": "Lihat reservasi",
+    "connectToManage": "Masuk ke dasbor Anda untuk mengelola reservasi ini.",
+    "received": {
+      "subject": "Pembayaran diterima untuk reservasi #{number}",
+      "title": "Pembayaran diterima",
+      "body": "Seorang pelanggan telah membayar reservasi #{number} di {storeName}.",
+      "amount": "Jumlah dibayar"
+    },
+    "failed": {
+      "subject": "Pembayaran gagal untuk reservasi #{number}",
+      "title": "Pembayaran gagal",
+      "body": "Pembayaran untuk reservasi #{number} di {storeName} tidak berhasil.",
+      "amount": "Jumlah"
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "Faktur pemasok baru",
     "title": "Faktur pemasok baru",

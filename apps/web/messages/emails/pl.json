@@ -143,6 +143,26 @@
     "viewRequest": "Zobacz żądanie",
     "connectToManage": "Zaloguj się do panelu, aby zaakceptować lub odrzucić to żądanie."
   },
+  "paymentAdmin": {
+    "customer": "Klient",
+    "email": "E-mail",
+    "period": "Okres",
+    "total": "Łączna kwota rezerwacji",
+    "viewReservation": "Zobacz rezerwację",
+    "connectToManage": "Zaloguj się do panelu, aby zarządzać tą rezerwacją.",
+    "received": {
+      "subject": "Otrzymano płatność za rezerwację #{number}",
+      "title": "Płatność otrzymana",
+      "body": "Klient opłacił rezerwację #{number} w {storeName}.",
+      "amount": "Zapłacona kwota"
+    },
+    "failed": {
+      "subject": "Płatność za rezerwację #{number} nie powiodła się",
+      "title": "Płatność nieudana",
+      "body": "Płatność za rezerwację #{number} w {storeName} nie została zrealizowana.",
+      "amount": "Kwota"
+    }
+  },
   "contactMessage": {
     "subject": "Nowa wiadomość od {name} — {store}",
     "title": "Nowa wiadomość z Twojego sklepu",

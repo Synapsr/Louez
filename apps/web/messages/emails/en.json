@@ -152,6 +152,26 @@
     "viewRequest": "View request",
     "connectToManage": "Log in to your dashboard to accept or reject this request."
   },
+  "paymentAdmin": {
+    "customer": "Customer",
+    "email": "Email",
+    "period": "Period",
+    "total": "Reservation total",
+    "viewReservation": "View reservation",
+    "connectToManage": "Log in to your dashboard to manage this reservation.",
+    "received": {
+      "subject": "Payment received for reservation #{number}",
+      "title": "Payment received",
+      "body": "A customer paid for reservation #{number} on {storeName}.",
+      "amount": "Amount paid"
+    },
+    "failed": {
+      "subject": "Payment failed for reservation #{number}",
+      "title": "Payment failed",
+      "body": "A payment for reservation #{number} on {storeName} did not go through.",
+      "amount": "Amount"
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "New supplier invoice",
     "title": "New supplier invoice",

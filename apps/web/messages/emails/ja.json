@@ -152,6 +152,26 @@
     "viewRequest": "リクエストの表示",
     "connectToManage": "このリクエストを承認または拒否するには、ダッシュボードにログインしてください。"
   },
+  "paymentAdmin": {
+    "customer": "顧客",
+    "email": "メール",
+    "period": "期間",
+    "total": "予約合計",
+    "viewReservation": "予約を見る",
+    "connectToManage": "この予約を管理するには、ダッシュボードにログインしてください。",
+    "received": {
+      "subject": "予約 #{number} の支払いを受け取りました",
+      "title": "支払いを受け取りました",
+      "body": "お客様が {storeName} の予約 #{number} を支払いました。",
+      "amount": "支払額"
+    },
+    "failed": {
+      "subject": "予約 #{number} の支払いに失敗しました",
+      "title": "支払いに失敗しました",
+      "body": "{storeName} の予約 #{number} の支払いが完了しませんでした。",
+      "amount": "金額"
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "新しいサプライヤー請求書",
     "title": "新しいサプライヤー請求書",

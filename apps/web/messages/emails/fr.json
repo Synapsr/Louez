@@ -152,6 +152,26 @@
     "viewRequest": "Voir la demande",
     "connectToManage": "Connectez-vous à votre tableau de bord pour accepter ou refuser cette demande."
   },
+  "paymentAdmin": {
+    "customer": "Client",
+    "email": "E-mail",
+    "period": "Période",
+    "total": "Total de la réservation",
+    "viewReservation": "Voir la réservation",
+    "connectToManage": "Connectez-vous à votre tableau de bord pour gérer cette réservation.",
+    "received": {
+      "subject": "Paiement reçu pour la réservation #{number}",
+      "title": "Paiement reçu",
+      "body": "Un client a payé la réservation #{number} sur {storeName}.",
+      "amount": "Montant payé"
+    },
+    "failed": {
+      "subject": "Échec du paiement pour la réservation #{number}",
+      "title": "Échec du paiement",
+      "body": "Un paiement pour la réservation #{number} sur {storeName} n'a pas abouti.",
+      "amount": "Montant"
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "Nouvelle facture fournisseur",
     "title": "Nouvelle facture fournisseur",

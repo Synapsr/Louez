@@ -143,6 +143,26 @@
     "viewRequest": "Ver solicitação",
     "connectToManage": "Entre no seu painel para aceitar ou rejeitar esta solicitação."
   },
+  "paymentAdmin": {
+    "customer": "Cliente",
+    "email": "E-mail",
+    "period": "Período",
+    "total": "Total da reserva",
+    "viewReservation": "Ver reserva",
+    "connectToManage": "Entre no seu painel para gerenciar esta reserva.",
+    "received": {
+      "subject": "Pagamento recebido para a reserva #{number}",
+      "title": "Pagamento recebido",
+      "body": "Um cliente pagou a reserva #{number} em {storeName}.",
+      "amount": "Valor pago"
+    },
+    "failed": {
+      "subject": "Falha no pagamento da reserva #{number}",
+      "title": "Falha no pagamento",
+      "body": "Um pagamento da reserva #{number} em {storeName} não foi concluído.",
+      "amount": "Valor"
+    }
+  },
   "contactMessage": {
     "subject": "Nova mensagem de {name} — {store}",
     "title": "Nova mensagem da sua loja",

@@ -152,6 +152,26 @@
     "viewRequest": "Aanvraag bekijken",
     "connectToManage": "Log in op uw dashboard om deze aanvraag te accepteren of af te wijzen."
   },
+  "paymentAdmin": {
+    "customer": "Klant",
+    "email": "E-mail",
+    "period": "Periode",
+    "total": "Totaal van de reservering",
+    "viewReservation": "Reservering bekijken",
+    "connectToManage": "Log in op uw dashboard om deze reservering te beheren.",
+    "received": {
+      "subject": "Betaling ontvangen voor reservering #{number}",
+      "title": "Betaling ontvangen",
+      "body": "Een klant heeft reservering #{number} bij {storeName} betaald.",
+      "amount": "Betaald bedrag"
+    },
+    "failed": {
+      "subject": "Betaling mislukt voor reservering #{number}",
+      "title": "Betaling mislukt",
+      "body": "Een betaling voor reservering #{number} bij {storeName} is niet gelukt.",
+      "amount": "Bedrag"
+    }
+  },
   "contactMessage": {
     "subject": "Nieuw bericht van {name} — {store}",
     "title": "Nieuw bericht via uw winkel",
