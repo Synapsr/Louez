@@ -9,9 +9,9 @@ import { useTranslations } from "next-intl";
 import { Badge, Input, Label, Spinner } from "@louez/ui";
 import { SearchIcon } from "@louez/ui/icons";
 
-import type { CompanySearchResult } from "@/lib/recherche-entreprises";
+import type { CompanySearchResult } from "@louez/api/adapters/company-registry";
 
-import { searchCompanyRegistry } from "./actions";
+import { orpcClient } from "@/lib/orpc/client";
 
 const MIN_QUERY_LENGTH = 3;
 const DEBOUNCE_MS = 350;
@@ -54,7 +54,9 @@ export const CompanySearchField = ({ disabled: disabledProp = false, onSelect }:
 
     debounceRef.current = setTimeout(async () => {
       setIsSearching(true);
-      const response = await searchCompanyRegistry(value.trim());
+      const response = await orpcClient.dashboard.settings
+        .searchCompanyRegistry({ query: value.trim() })
+        .catch(() => ({ results: [] }));
       setResults(response.results);
       setHasSearched(true);
       setIsSearching(false);

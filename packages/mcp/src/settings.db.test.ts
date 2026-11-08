@@ -179,11 +179,14 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.deepEqual(settings.map((entry) => entry.meta.mcp.name).sort(), [
       "settings_create_location",
       "settings_get",
+      "settings_get_legal_profile",
+      "settings_search_company_registry",
       "settings_set_location_active",
       "settings_update_business_hours",
       "settings_update_company",
       "settings_update_delivery",
       "settings_update_legal",
+      "settings_update_legal_profile",
       "settings_update_location",
       "settings_update_reservation_rules",
       "settings_update_store_info",
@@ -264,6 +267,59 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const memberDenied = await mcpCall(member, "update_store_info", { phone: "+41 22 345 67 89" });
     assert.equal(toolError(memberDenied)?.code, "PERMISSION_DENIED");
     assert.notEqual((await mcpCall(member, "settings_get", {})).isError, true);
+  });
+
+  test("an agent fills the legal identity in two calls: the registry, then the profile", async () => {
+    const realFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                siren: "123456789",
+                nom_raison_sociale: "BREST SURF",
+                nature_juridique: "5710",
+                etat_administratif: "A",
+                siege: {
+                  siret: "12345678900012",
+                  numero_voie: "2",
+                  type_voie: "QUAI",
+                  libelle_voie: "DE LA DOUANE",
+                  code_postal: "29200",
+                  libelle_commune: "BREST",
+                },
+              },
+            ],
+          }),
+          { headers: { "content-type": "application/json" } },
+        )) as typeof fetch;
+      const authorization = await key();
+      const found = output(
+        await mcpCall(authorization, "settings_search_company_registry", { query: "brest surf" }),
+      );
+      const [company] = found.results as Array<Record<string, string>>;
+      assert.ok(company);
+      const saved = output(
+        await mcpCall(authorization, "settings_update_legal_profile", {
+          legalName: company.legalName,
+          legalForm: company.legalForm,
+          companyNumber: company.siren,
+          siret: company.siret,
+          vatNumber: company.vatNumber,
+          registeredAddress: company.address,
+          registeredPostalCode: company.postalCode,
+          registeredCity: company.city,
+        }),
+      );
+      assert.equal((saved.profile as Json).legalForm, "SAS");
+      const read = output(await mcpCall(authorization, "settings_get_legal_profile", {}));
+      assert.equal((read.profile as Json).companyNumber, "123456789");
+      const rest = await openApi("GET", "/settings/legal-profile", null, { authorization });
+      assert.equal(rest.status, 200);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 
   test("an agent confirms a tax change on MCP; OpenAPI serves the REST paths", async () => {

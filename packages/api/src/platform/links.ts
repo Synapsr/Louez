@@ -134,6 +134,7 @@ export const SETTINGS_PAGES = {
   hours: "/dashboard/settings/hours",
   delivery: "/dashboard/settings/delivery",
   taxes: "/dashboard/settings/taxes",
+  invoicing: "/dashboard/settings/invoicing",
 } as const;
 export type SettingsPage = keyof typeof SETTINGS_PAGES;
 

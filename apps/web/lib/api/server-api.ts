@@ -31,6 +31,10 @@ export async function serverApi() {
       context,
       path: ["dashboard", "reservations"],
     }),
+    settings: createRouterClient(appRouter.dashboard.settings, {
+      context,
+      path: ["dashboard", "settings"],
+    }),
     stores: createRouterClient(appRouter.dashboard.stores, {
       context,
       path: ["dashboard", "stores"],

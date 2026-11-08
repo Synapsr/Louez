@@ -22,6 +22,14 @@ import {
   updateTaxesInput,
   updateTaxesOutput,
 } from "../../contracts/settings";
+import {
+  getLegalProfileInput,
+  getLegalProfileOutput,
+  searchCompanyRegistryInput,
+  searchCompanyRegistryOutput,
+  upsertLegalProfileInput,
+  upsertLegalProfileOutput,
+} from "../../contracts/legal-profile";
 import { onlineStoreLinks, settingsLinks, type SettingsPage } from "../../platform/links";
 import type { ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
@@ -39,6 +47,12 @@ import {
   updateTaxes,
   type SettingsPreview,
 } from "../../services/settings";
+import {
+  getLegalProfile,
+  searchCompanyRegistry,
+  upsertLegalProfile,
+  type LegalProfilePreview,
+} from "../../services/legal-profile";
 import { confirmUnderLock, type ProductContext } from "./product-context";
 import { settingsActor } from "./settings-context";
 
@@ -319,6 +333,71 @@ const updateTaxesProcedure = storeProcedure
     links: links(context, "taxes"),
   }));
 
+// --- Legal identity ------------------------------------------------------------
+
+const getLegalProfileProcedure = storeProcedure
+  .meta({
+    capability: "settings.getLegalProfile",
+    scope: READ,
+    mcp: {
+      name: "settings_get_legal_profile",
+      description: `The store's legal identity, as invoices, contracts and the legal notice name it: legal name, legal form, company number (SIREN in France), SIRET, VAT number, trade register city, share capital, registered office, and the electronic invoicing switches. Null until the store saved one: fill it with settings_search_company_registry, then settings_update_legal_profile. ${LINKS_HELP}`,
+      bundle: "settings",
+      annotations: { readOnlyHint: true, idempotentHint: true },
+    },
+  })
+  .route({ method: "GET", path: "/settings/legal-profile" })
+  .input(getLegalProfileInput)
+  .output(getLegalProfileOutput)
+  .handler(async ({ context }) => ({
+    profile: await getLegalProfile(context.actor.storeId),
+    links: links(context, "invoicing"),
+  }));
+
+const searchCompanyRegistryProcedure = storeProcedure
+  .meta({
+    capability: "settings.searchCompanyRegistry",
+    scope: READ,
+    mcp: {
+      name: "settings_search_company_registry",
+      description:
+        "Look a French company up in the public registry (recherche-entreprises.api.gouv.fr) by its name, SIREN or SIRET, to fill the store's legal identity without typing it. Returns up to 8 matches with their SIREN, SIRET, legal name, legal form, VAT number, registered office and whether the company is still active. Show the matches to the user, and once they pick theirs, save it with settings_update_legal_profile (siren as companyNumber, address as registeredAddress, postalCode as registeredPostalCode, city as registeredCity). `available: false`: the registry did not answer; ask the user for the identity instead.",
+      bundle: "settings",
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+    },
+  })
+  .route({ method: "GET", path: "/settings/company-registry" })
+  .input(searchCompanyRegistryInput)
+  .output(searchCompanyRegistryOutput)
+  .handler(({ input }) => searchCompanyRegistry(input.query));
+
+const upsertLegalProfileProcedure = storeProcedure
+  .meta({
+    capability: "settings.upsertLegalProfile",
+    scope: WRITE,
+    sensitive: "money",
+    mcp: {
+      name: "settings_update_legal_profile",
+      description: `Save the store's legal identity: legal name, legal form, company number (the SIREN in France, 9 digits), SIRET, VAT number, trade register city, share capital and registered office. Look the company up first with settings_search_company_registry. A first save needs legalName, legalForm, companyNumber, registeredAddress, registeredPostalCode and registeredCity (country defaults to the store's); later, send only the fields to change, and null clears an optional one. Turning electronic invoicing on or off, or changing the VAT regime, changes how the store's invoices reach the tax network: that call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they agree, call again with the same arguments and the confirmationToken. The identity alone saves directly. Returns the profile. ${LINKS_HELP}`,
+      bundle: "settings",
+      annotations: { idempotentHint: true },
+    },
+  })
+  .route({ method: "PATCH", path: "/settings/legal-profile" })
+  .input(upsertLegalProfileInput)
+  .output(upsertLegalProfileOutput)
+  .handler(async ({ context, input, path }) => {
+    const settings = context.store.settings;
+    const profile = await upsertLegalProfile(settingsActor(context), input, {
+      fallbackCountry: settings?.billingAddress?.country ?? settings?.country ?? "FR",
+      confirm: confirmUnderLock<LegalProfilePreview>(context, path, input, (preview) => ({
+        state: preview.changes,
+        details: { changes: preview.changes },
+      })),
+    });
+    return { profile, links: links(context, "invoicing") };
+  });
+
 export const dashboardSettingsRouter = {
   get,
   updateStoreInfo: updateStoreInfoProcedure,
@@ -331,4 +410,7 @@ export const dashboardSettingsRouter = {
   updateLocation: updateLocationProcedure,
   setLocationActive: setLocationActiveProcedure,
   updateTaxes: updateTaxesProcedure,
+  getLegalProfile: getLegalProfileProcedure,
+  searchCompanyRegistry: searchCompanyRegistryProcedure,
+  upsertLegalProfile: upsertLegalProfileProcedure,
 };

@@ -5,6 +5,7 @@ import type { ApiEvent } from "@louez/api";
 import type { SettingsSection } from "@louez/api/platform/ports";
 
 import { logReservationGateRefusal } from "@/lib/billing/reservation-gate";
+import { syncSuperPdpVatRegime } from "@/lib/integrations/providers/superpdp/company";
 import {
   notifyProductCreated,
   notifyProductUpdated,
@@ -107,6 +108,8 @@ function pathsToRevalidate(event: ApiEvent): Array<string | { path: string; type
       return settingsPaths(event.section, event.store.slug);
     case "store.storefrontUpdated":
       return [];
+    case "store.legalProfileUpdated":
+      return ["/dashboard/settings/invoicing"];
     case "store.launched":
       // The dashboard's layout sent the store to the onboarding until now.
       return [
@@ -153,6 +156,9 @@ function backgroundEffect(event: ApiEvent): (() => Promise<void>) | null {
       };
     case "product.updated":
       return () => notifyProductUpdated(storeInfo, event.productName);
+    case "store.legalProfileUpdated":
+      // The PDP's e-reporting calendar follows the VAT regime (best effort).
+      return () => syncSuperPdpVatRegime(store.id);
     case "store.settingsUpdated":
       // The company and reservation rules pages notified the platform; the others never did.
       return event.section === "company" || event.section === "reservationRules"

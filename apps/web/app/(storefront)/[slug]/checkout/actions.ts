@@ -14,7 +14,10 @@ import {
 import { getCustomerSession } from "@/lib/customer-auth/session";
 import { log } from "@/lib/evlog";
 import { getTulipCoverageSummary } from "@/lib/integrations/tulip/contracts";
-import { searchFrenchCompanies, type CompanySearchResult } from "@/lib/recherche-entreprises";
+import {
+  searchFrenchCompanies,
+  type CompanySearchResult,
+} from "@louez/api/adapters/company-registry";
 import { createReservation as createReservationInternal } from "@/lib/reservations/create-reservation";
 import type {
   ReservationErrorParams,
@@ -57,7 +60,12 @@ export async function searchCheckoutCompanyRegistry(input: {
     return { results: [] };
   }
 
-  return { results: await searchFrenchCompanies(validated.data.query) };
+  const search = await searchFrenchCompanies(validated.data.query);
+  if (!search.ok) {
+    log.warn("recherche-entreprises", search.reason);
+    return { results: [] };
+  }
+  return { results: search.results };
 }
 
 const tulipQuotePreviewSchema = z.object({

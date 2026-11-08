@@ -1254,21 +1254,27 @@ export const capabilities = [
   },
   {
     id: "settings.getLegalProfile",
-    sources: [action(SA.invoicing, "getStoreLegalProfile")],
+    sources: [procedure("settings", "getLegalProfile")],
     kind: "read",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
+    // The identity saves directly; the electronic invoicing switches ask a confirmation.
     id: "settings.upsertLegalProfile",
-    sources: [action(SA.invoicing, "upsertStoreLegalProfile")],
+    sources: [procedure("settings", "upsertLegalProfile")],
     kind: "write",
+    sensitive: "money",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
+    // The checkout's company field keeps its own server action, for renters.
     id: "settings.searchCompanyRegistry",
-    sources: [action(SA.invoicing, "searchCompanyRegistry")],
+    sources: [procedure("settings", "searchCompanyRegistry")],
     kind: "read",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
     id: "settings.resetInvoicingSetup",

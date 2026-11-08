@@ -49,18 +49,25 @@ import {
   createStoreLegalProfileSchema,
   isPlausibleVatNumber,
   vatRegimeValues,
+  type StoreLegalProfileInput,
 } from "@louez/validations";
 import { cn } from "@louez/utils";
 
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 import { RootError } from "@/components/form/root-error";
-import type { CompanySearchResult } from "@/lib/recherche-entreprises";
+import type { CompanySearchResult } from "@louez/api/adapters/company-registry";
+import type { LegalProfileView } from "@louez/api/contracts/legal-profile";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpc } from "@/lib/orpc/react";
 import { getFieldError } from "@/hooks/form/form-context";
 import { useAppForm } from "@/hooks/form/form";
 
-import { upsertStoreLegalProfile, type StoreLegalProfileRecord } from "./actions";
 import { CompanySearchField } from "./company-search-field";
-import { isLegalIdentityComplete, toLegalProfileFormValues } from "./util.legal-profile-form";
+import {
+  isLegalIdentityComplete,
+  toLegalProfileFormValues,
+  toLegalProfileInput,
+} from "./util.legal-profile-form";
 import type { PdpTransmissionState, PdpVerificationStatus } from "./util.pdp-transmission";
 import {
   INVOICING_SETUP_STEPS,
@@ -74,7 +81,7 @@ import {
 
 type InvoicingFlowProps = {
   defaultCountry: string;
-  profile: StoreLegalProfileRecord | null;
+  profile: LegalProfileView | null;
   /** Server-derived snapshot; the page keys this component on it. */
   progress: InvoicingSetupProgress;
   /** Environment of the Super PDP enrollment, when one exists. */
@@ -168,13 +175,11 @@ export const InvoicingFlow = ({
     setStep(next);
   };
 
+  const upsertMutation = useMutation(orpc.dashboard.settings.upsertLegalProfile.mutationOptions());
   const saveMutation = useMutation({
-    mutationFn: upsertStoreLegalProfile,
-    onSuccess: (result, value) => {
-      if (result.status === "error") {
-        setRootError(tRoot(result.error));
-        return;
-      }
+    mutationFn: (value: StoreLegalProfileInput) =>
+      upsertMutation.mutateAsync(toLegalProfileInput(value)),
+    onSuccess: (_profile, value) => {
       toastManager.add({ title: t("saved"), type: "success" });
       setIsPrefilled(false);
       setIsEditingIdentity(false);
@@ -191,7 +196,7 @@ export const InvoicingFlow = ({
         }
       });
     },
-    onError: () => setRootError(tRoot("errors.generic")),
+    onError: (error) => setRootError(tRoot(`errors.${apiErrorKey(error) ?? "generic"}`)),
   });
 
   const form = useAppForm({

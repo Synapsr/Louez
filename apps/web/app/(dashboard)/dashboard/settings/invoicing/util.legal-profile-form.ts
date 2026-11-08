@@ -1,6 +1,5 @@
+import type { LegalProfileView, UpsertLegalProfileInput } from "@louez/api/contracts/legal-profile";
 import type { StoreLegalProfileInput } from "@louez/validations";
-
-import type { StoreLegalProfileRecord } from "./actions";
 
 /** Nullable DB columns become empty strings so every input stays controlled. */
 const orEmpty = (value: string | null | undefined) => value ?? "";
@@ -10,7 +9,7 @@ const orEmpty = (value: string | null | undefined) => value ?? "";
  * `fallbackCountry` seeds a fresh profile from the store's billing address.
  */
 export const toLegalProfileFormValues = (
-  profile: StoreLegalProfileRecord | null,
+  profile: LegalProfileView | null,
   fallbackCountry: string,
 ): StoreLegalProfileInput => ({
   legalName: orEmpty(profile?.legalName),
@@ -42,3 +41,24 @@ export const isLegalIdentityComplete = (values: StoreLegalProfileInput): boolean
   values.registeredPostalCode.trim().length > 0 &&
   values.registeredCity.trim().length > 0 &&
   values.country.trim().length === 2;
+
+const orNull = (value: string) => (value.trim().length > 0 ? value : null);
+
+/** The form's values as settings.upsertLegalProfile takes them: an empty optional field clears it. */
+export const toLegalProfileInput = (values: StoreLegalProfileInput): UpsertLegalProfileInput => ({
+  legalName: values.legalName,
+  legalForm: values.legalForm,
+  companyNumber: values.companyNumber,
+  siret: orNull(values.siret),
+  vatNumber: orNull(values.vatNumber),
+  rcsCity: orNull(values.rcsCity),
+  shareCapital: orNull(values.shareCapital),
+  registeredAddress: values.registeredAddress,
+  registeredAddressComplement: orNull(values.registeredAddressComplement),
+  registeredPostalCode: values.registeredPostalCode,
+  registeredCity: values.registeredCity,
+  country: values.country,
+  invoicingEnabled: values.invoicingEnabled,
+  vatRegime: values.vatRegime,
+  hasVatOnDebits: values.hasVatOnDebits,
+});

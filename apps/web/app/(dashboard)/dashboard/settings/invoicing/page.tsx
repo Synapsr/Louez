@@ -7,9 +7,9 @@ import { PurchaseInvoicesTable } from "@/app/(dashboard)/dashboard/purchase-invo
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { ElectronicInvoicingNotAvailable } from "@/components/dashboard/electronic-invoicing-not-available";
 import { isElectronicInvoicingEnabled } from "@/lib/invoicing/feature";
+import { serverApi } from "@/lib/api/server-api";
 import { getCurrentStore } from "@/lib/store-context";
 
-import { getStoreLegalProfile } from "./actions";
 import { DevResetButton } from "./dev-reset-button";
 import { InvoicingFlow } from "./invoicing-flow";
 import { PdpEnrollmentResultAlert } from "./pdp-enrollment-result-alert";
@@ -50,12 +50,11 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
   }
 
   const tPurchase = await getTranslations("dashboard.purchaseInvoices");
-  const [profileResult, enrollment, params] = await Promise.all([
-    getStoreLegalProfile(),
+  const [{ profile }, enrollment, params] = await Promise.all([
+    serverApi().then((api) => api.settings.getLegalProfile({})),
     getSuperPdpEnrollment(store.id),
     searchParams,
   ]);
-  const profile = profileResult.status === "success" ? profileResult.profile : null;
   const defaultCountry = store.settings?.billingAddress?.country ?? "FR";
 
   const formValues = toLegalProfileFormValues(profile, defaultCountry);
@@ -94,7 +93,7 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
       {/* Keyed on the row so only its creation (first save) or deletion (dev
           reset) remounts the flow — never a mid-wizard save. */}
       <InvoicingFlow
-        key={profile?.id ?? "empty"}
+        key={profile ? "saved" : "empty"}
         defaultCountry={defaultCountry}
         profile={profile}
         progress={progress}

@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-import { log } from "@/lib/evlog";
-
 /**
  * Client for the French public company registry
  * (https://recherche-entreprises.api.gouv.fr — free, no API key, no quota key).
  *
- * Called from server actions only: the API rejects browser origins and rate
- * limits per IP, so proxying keeps the storefront off its quota.
+ * Called from the server only: the API rejects browser origins and rate
+ * limits per IP, so proxying keeps the storefront off its quota. The
+ * dashboard's legal profile (settings.searchCompanyRegistry) and the
+ * checkout's company field use it.
  */
 const SEARCH_ENDPOINT = "https://recherche-entreprises.api.gouv.fr/search";
 const SEARCH_TIMEOUT_MS = 6000;
@@ -165,13 +165,21 @@ const toSearchResult = (company: RegistryCompany): CompanySearchResult | null =>
   };
 };
 
+/** A search's answer: the matches, or why the registry could not answer. */
+export type CompanyRegistrySearch =
+  | { ok: true; results: CompanySearchResult[] }
+  | { ok: false; reason: string };
+
 /**
  * Search French companies by name, SIREN or SIRET.
  *
- * Returns an empty list on any failure — the merchant can always type the
- * legal identity manually, so a registry outage must not block the form.
+ * Never throws: a registry outage answers `ok: false` with its reason, as
+ * the merchant can always type the legal identity by hand. The caller logs it.
  */
-export const searchFrenchCompanies = async (query: string): Promise<CompanySearchResult[]> => {
+export const searchFrenchCompanies = async (
+  query: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<CompanyRegistrySearch> => {
   const url = new URL(SEARCH_ENDPOINT);
   url.searchParams.set("q", query);
   url.searchParams.set("page", "1");
@@ -180,31 +188,31 @@ export const searchFrenchCompanies = async (query: string): Promise<CompanySearc
   url.searchParams.set("include", "siege");
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchImpl(url, {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
-      log.warn("recherche-entreprises", `search failed with status ${response.status}`);
-      return [];
+      return { ok: false, reason: `search failed with status ${response.status}` };
     }
 
     const payload = registrySearchResponseSchema.safeParse(await response.json());
 
     if (!payload.success) {
-      log.warn("recherche-entreprises", "search returned an unexpected payload shape");
-      return [];
+      return { ok: false, reason: "search returned an unexpected payload shape" };
     }
 
-    return (payload.data.results ?? [])
-      .map(toSearchResult)
-      .filter((result): result is CompanySearchResult => result !== null);
+    return {
+      ok: true,
+      results: (payload.data.results ?? [])
+        .map(toSearchResult)
+        .filter((result): result is CompanySearchResult => result !== null),
+    };
   } catch (error) {
-    log.error(
-      "recherche-entreprises",
-      `search unavailable: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return [];
+    return {
+      ok: false,
+      reason: `search unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    };
   }
 };

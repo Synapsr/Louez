@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { withForm } from "@/hooks/form/form";
-import type { CompanySearchResult } from "@/lib/recherche-entreprises";
+import type { CompanySearchResult } from "@louez/api/adapters/company-registry";
 
 import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
 import { CheckoutCompanySearchField } from "./checkout-company-search-field";
