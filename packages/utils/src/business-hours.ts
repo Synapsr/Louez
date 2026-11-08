@@ -324,4 +324,16 @@ export function buildStoreDate(date: Date, time: string, timezone?: string): Dat
  * 1 = Monday, 2 = Tuesday, ..., 6 = Saturday, 0 = Sunday
  */
 export const DAY_KEYS = [1, 2, 3, 4, 5, 6, 0] as const;
+
+/** Day names by schedule key: `WEEK_DAYS[0]` is Sunday, as `BusinessHours.schedule` counts. */
+export const WEEK_DAYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+export type WeekDay = (typeof WEEK_DAYS)[number];
 export type DayKey = (typeof DAY_KEYS)[number];

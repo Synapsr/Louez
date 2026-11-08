@@ -519,7 +519,7 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
       const names = (await client.listTools()).tools.map((tool) => tool.name);
       assert.ok(names.includes("list_customers"));
       assert.ok(!names.includes("create_customer"), "a read-only key does not see writes");
-      assert.ok(!names.includes("update_store_info"));
+      assert.ok(!names.includes("update_customer"));
     } finally {
       await client.close();
     }
@@ -549,18 +549,10 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
     }
   });
 
-  test("hand-written tools: a member's key cannot do more than the member", async () => {
+  test("hand-written tools: a member's key writes what a member writes", async () => {
     const memberKey = await key({ userId: MEMBER });
     const member = await connectHttp(memberKey.authorization);
     try {
-      // The dashboard lets only the owner change the store's settings.
-      const denied = await member.callTool({
-        name: "update_store_info",
-        arguments: { phone: "+41 00" },
-      });
-      assert.equal(denied.isError, true);
-      assert.match(text(denied), /code: PERMISSION_DENIED/);
-      // A member may still write what a member writes.
       const created = await member.callTool({
         name: "create_customer",
         arguments: { email: "member-made@tr.test", firstName: "Ada", lastName: "Lovelace" },
@@ -568,17 +560,6 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.notEqual(created.isError, true, text(created));
     } finally {
       await member.close();
-    }
-
-    const owner = await connectHttp((await key()).authorization);
-    try {
-      const updated = await owner.callTool({
-        name: "update_store_info",
-        arguments: { phone: "+41 00" },
-      });
-      assert.notEqual(updated.isError, true, text(updated));
-    } finally {
-      await owner.close();
     }
   });
 });

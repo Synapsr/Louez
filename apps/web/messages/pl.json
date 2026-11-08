@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "Uzupełnij pole „{field}”.",
     "profileFieldInvalid": "Pole „{field}” jest nieprawidłowe.",
     "agentConnectionNotFound": "Ten połączony agent już nie istnieje.",
-    "oauthRequestInvalid": "Ta prośba o połączenie jest już nieważna. Rozpocznij ją ponownie w swoim agencie."
+    "oauthRequestInvalid": "Ta prośba o połączenie jest już nieważna. Rozpocznij ją ponownie w swoim agencie.",
+    "stripeRequiredForPaymentMode": "Tryb płatności online wymaga połączonego konta Stripe. Połącz Stripe w Ustawienia > Płatności.",
+    "locationLimitReached": "Sklep może mieć maksymalnie 50 punktów odbioru. Dezaktywuj jeden lub użyj go ponownie."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

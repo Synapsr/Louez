@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "Harap isi “{field}”.",
     "profileFieldInvalid": "“{field}” tidak valid.",
     "agentConnectionNotFound": "Agen terhubung ini sudah tidak ada.",
-    "oauthRequestInvalid": "Permintaan koneksi ini sudah tidak berlaku. Mulai ulang dari agen Anda."
+    "oauthRequestInvalid": "Permintaan koneksi ini sudah tidak berlaku. Mulai ulang dari agen Anda.",
+    "stripeRequiredForPaymentMode": "Mode pembayaran online memerlukan akun Stripe yang terhubung. Hubungkan Stripe di Pengaturan > Pembayaran.",
+    "locationLimitReached": "Satu toko dapat memiliki paling banyak 50 titik pengambilan. Nonaktifkan salah satu atau gunakan kembali."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",

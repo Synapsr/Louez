@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "Bitte füllen Sie „{field}“ aus.",
     "profileFieldInvalid": "„{field}“ ist ungültig.",
     "agentConnectionNotFound": "Dieser verbundene Agent existiert nicht mehr.",
-    "oauthRequestInvalid": "Diese Verbindungsanfrage ist nicht mehr gültig. Starten Sie sie erneut in Ihrem Agenten."
+    "oauthRequestInvalid": "Diese Verbindungsanfrage ist nicht mehr gültig. Starten Sie sie erneut in Ihrem Agenten.",
+    "stripeRequiredForPaymentMode": "Der Online-Zahlungsmodus erfordert ein verbundenes Stripe-Konto. Verbinden Sie Stripe unter Einstellungen > Zahlungen.",
+    "locationLimitReached": "Ein Shop kann höchstens 50 Abholorte haben. Deaktivieren Sie einen oder verwenden Sie ihn erneut."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

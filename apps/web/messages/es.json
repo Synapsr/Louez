@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "Por favor, complete «{field}».",
     "profileFieldInvalid": "«{field}» no es válido.",
     "agentConnectionNotFound": "Este agente conectado ya no existe.",
-    "oauthRequestInvalid": "Esta solicitud de conexión ya no es válida. Iníciela de nuevo desde su agente."
+    "oauthRequestInvalid": "Esta solicitud de conexión ya no es válida. Iníciela de nuevo desde su agente.",
+    "stripeRequiredForPaymentMode": "El modo de pago en línea requiere una cuenta de Stripe conectada. Conecta Stripe en Ajustes > Pagos.",
+    "locationLimitReached": "Una tienda puede tener 50 puntos de recogida como máximo. Desactiva uno o reutilízalo."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

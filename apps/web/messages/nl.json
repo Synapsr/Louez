@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "Vul „{field}” in.",
     "profileFieldInvalid": "„{field}” is ongeldig.",
     "agentConnectionNotFound": "Deze gekoppelde agent bestaat niet meer.",
-    "oauthRequestInvalid": "Dit koppelverzoek is niet meer geldig. Start het opnieuw vanuit uw agent."
+    "oauthRequestInvalid": "Dit koppelverzoek is niet meer geldig. Start het opnieuw vanuit uw agent.",
+    "stripeRequiredForPaymentMode": "Online betalen vereist een gekoppeld Stripe-account. Koppel Stripe via Instellingen > Betalingen.",
+    "locationLimitReached": "Een winkel kan maximaal 50 afhaalpunten hebben. Deactiveer er een of gebruik er een opnieuw."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

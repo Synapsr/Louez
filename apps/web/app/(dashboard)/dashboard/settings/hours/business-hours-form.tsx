@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
 import { useStore } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 
 import { Plus, Trash2 } from "lucide-react";
@@ -44,12 +45,12 @@ import { ReservationDatePickerControl } from "@/components/form/form-reservation
 import { RootError } from "@/components/form/root-error";
 import { EmptyState } from "@/components/ui/empty-state";
 
-import { DAY_KEYS, buildStoreDate, generateTimeSlots } from "@louez/utils";
+import { DAY_KEYS, WEEK_DAYS, buildStoreDate, generateTimeSlots } from "@louez/utils";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { useAppForm } from "@/hooks/form/form";
-
-import { updateBusinessHours } from "./actions";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpc } from "@/lib/orpc/react";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
 const MAX_RANGES_PER_DAY = 4;
@@ -65,7 +66,8 @@ interface BusinessHoursFormProps {
 
 export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const updateHours = useMutation(orpc.dashboard.settings.updateBusinessHours.mutationOptions());
+  const tErrors = useTranslations("errors");
   const [closureDialogOpen, setClosureDialogOpen] = useState(false);
   const t = useTranslations("dashboard.settings.businessHours");
   const { dateFns: dateLocale } = useFormatLocale();
@@ -90,18 +92,27 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
     validators: { onSubmit: businessHoursSchema },
     onSubmit: async ({ value }) => {
       setRootError(null);
-      startTransition(async () => {
-        const result = await updateBusinessHours(value);
-        if (result.error) {
-          setRootError(result.error);
-          return;
-        }
-        toastManager.add({ title: t("saved"), type: "success" });
-        // Update the form baseline so isDirty becomes false
-        form.options.defaultValues = value;
-        form.reset();
-        router.refresh();
-      });
+      try {
+        await updateHours.mutateAsync({
+          enabled: value.enabled,
+          schedule: Object.fromEntries(
+            WEEK_DAYS.map((name, day) => [
+              name,
+              value.schedule[day as keyof typeof value.schedule],
+            ]),
+          ),
+          closurePeriods: value.closurePeriods,
+        });
+      } catch (error) {
+        const key = apiErrorKey(error);
+        setRootError(key && tErrors.has(key) ? tErrors(key) : tErrors("generic"));
+        return;
+      }
+      toastManager.add({ title: t("saved"), type: "success" });
+      // Update the form baseline so isDirty becomes false
+      form.options.defaultValues = value;
+      form.reset();
+      router.refresh();
     },
   });
 
@@ -269,7 +280,11 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
             </Card>
           </div>
 
-          <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={handleReset} />
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={updateHours.isPending}
+            onReset={handleReset}
+          />
         </form.Form>
       </form.AppForm>
     </div>

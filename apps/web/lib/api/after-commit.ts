@@ -2,9 +2,14 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
 import type { ApiEvent } from "@louez/api";
+import type { SettingsSection } from "@louez/api/platform/ports";
 
 import { logReservationGateRefusal } from "@/lib/billing/reservation-gate";
-import { notifyProductCreated, notifyProductUpdated } from "@/lib/discord/platform-notifications";
+import {
+  notifyProductCreated,
+  notifyProductUpdated,
+  notifyStoreSettingsUpdated,
+} from "@/lib/discord/platform-notifications";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 
@@ -16,7 +21,10 @@ import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events
  */
 export function runAfterCommit(event: ApiEvent): void {
   try {
-    for (const path of pathsToRevalidate(event)) revalidatePath(path);
+    for (const path of pathsToRevalidate(event)) {
+      if (typeof path === "string") revalidatePath(path);
+      else revalidatePath(path.path, path.type);
+    }
   } catch (error) {
     console.error("Revalidation after an API write failed:", error);
   }
@@ -32,7 +40,37 @@ export function runAfterCommit(event: ApiEvent): void {
   }
 }
 
-function pathsToRevalidate(event: ApiEvent): string[] {
+/** The pages each settings section shows, as its former server action revalidated them. */
+function settingsPaths(
+  section: SettingsSection,
+  storeSlug: string,
+): Array<string | { path: string; type: "layout" }> {
+  switch (section) {
+    case "company":
+      return ["/dashboard/settings", "/dashboard"];
+    case "reservationRules":
+      return ["/dashboard/settings/reservations", "/dashboard/settings", "/dashboard"];
+    case "businessHours":
+      // Every storefront page of the store: the layout covers the product pages too.
+      return [
+        "/dashboard/settings/hours",
+        "/dashboard/settings",
+        { path: `/${storeSlug}`, type: "layout" },
+      ];
+    case "delivery":
+      return ["/dashboard/settings/delivery", "/dashboard/settings"];
+    case "locations":
+      return ["/dashboard/settings/delivery"];
+    case "taxes":
+      return ["/dashboard/settings/taxes", { path: "/dashboard/products", type: "layout" }];
+    case "storeInfo":
+      return ["/dashboard"];
+    case "legal":
+      return [];
+  }
+}
+
+function pathsToRevalidate(event: ApiEvent): Array<string | { path: string; type: "layout" }> {
   switch (event.type) {
     case "product.created":
     case "products.changed":
@@ -53,6 +91,8 @@ function pathsToRevalidate(event: ApiEvent): string[] {
       return ["/dashboard/reservations", `/dashboard/reservations/${event.reservationId}`];
     case "reservation.notesUpdated":
       return [`/dashboard/reservations/${event.reservationId}`];
+    case "store.settingsUpdated":
+      return settingsPaths(event.section, event.store.slug);
     case "reservation.gateRefused":
       return [];
   }
@@ -85,6 +125,11 @@ function backgroundEffect(event: ApiEvent): (() => Promise<void>) | null {
       };
     case "product.updated":
       return () => notifyProductUpdated(storeInfo, event.productName);
+    case "store.settingsUpdated":
+      // The company and reservation rules pages notified the platform; the others never did.
+      return event.section === "company" || event.section === "reservationRules"
+        ? () => notifyStoreSettingsUpdated(storeInfo)
+        : null;
     case "reservation.gateRefused":
       return async () =>
         logReservationGateRefusal(

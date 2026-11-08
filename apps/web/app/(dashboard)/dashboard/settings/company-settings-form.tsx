@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
 import { revalidateLogic, useStore } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 
@@ -15,9 +16,9 @@ import { BuildingIcon } from "@louez/ui/icons";
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 import { RootError } from "@/components/form/root-error";
 import { useAppForm } from "@/hooks/form/form";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpc } from "@/lib/orpc/react";
 import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry } from "@/lib/utils/currency";
-
-import { updateCompanySettings } from "./actions";
 import { StoreSettingsBillingSection } from "./components/store-settings-billing-section";
 
 const companySettingsSchema = z.object({
@@ -37,8 +38,9 @@ interface CompanySettingsFormProps {
 export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
   const router = useRouter();
   const t = useTranslations("dashboard.settings");
-  const [isPending, startTransition] = useTransition();
+  const tErrors = useTranslations("errors");
   const [rootError, setRootError] = useState<string | null>(null);
+  const updateCompany = useMutation(orpc.dashboard.settings.updateCompany.mutationOptions());
 
   const defaultCountry = settings?.country || "FR";
   const billingAddress = settings?.billingAddress ?? { useSameAsStore: true };
@@ -57,16 +59,28 @@ export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
     onSubmit: async ({ value }) => {
       setRootError(null);
-      startTransition(async () => {
-        const result = await updateCompanySettings(value);
-        if (result.error) {
-          setRootError(result.error);
-          return;
-        }
-        toastManager.add({ title: t("settingsSaved"), type: "success" });
-        form.reset();
-        router.refresh();
-      });
+      try {
+        await updateCompany.mutateAsync({
+          country: value.country,
+          currency: value.currency,
+          billingAddress: value.billingAddressSameAsStore
+            ? { sameAsStore: true }
+            : {
+                sameAsStore: false,
+                address: value.billingAddress,
+                city: value.billingCity,
+                postalCode: value.billingPostalCode,
+                country: value.billingCountry,
+              },
+        });
+      } catch (error) {
+        const key = apiErrorKey(error);
+        setRootError(key && tErrors.has(key) ? tErrors(key) : tErrors("generic"));
+        return;
+      }
+      toastManager.add({ title: t("settingsSaved"), type: "success" });
+      form.reset();
+      router.refresh();
     },
   });
 
@@ -127,7 +141,11 @@ export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
           billingCountry={billingCountry}
         />
 
-        <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
+        <FloatingSaveBar
+          isDirty={isDirty}
+          isLoading={updateCompany.isPending}
+          onReset={() => form.reset()}
+        />
       </form.Form>
     </form.AppForm>
   );

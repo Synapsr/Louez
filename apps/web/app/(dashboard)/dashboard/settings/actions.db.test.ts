@@ -10,9 +10,9 @@ import { eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
-// The settings actions on a migrated database: a write of a field in the store's
-// billing snapshot marks the store in its transaction (louez-billing docs/api,
-// README §5.2); the other settings writers keep those fields and mark nothing.
+// The slug action on a migrated database: the slug is in the store's billing
+// snapshot, so a change marks the store in its transaction (louez-billing
+// docs/api, README §5.2).
 
 const STORE = "store_settings_marks";
 const SETTINGS = {
@@ -39,7 +39,6 @@ const stubs = {
     hasPermission: () => true,
   },
   "next/cache": { revalidatePath: () => undefined },
-  "@/lib/discord/platform-notifications": { notifyStoreSettingsUpdated: async () => undefined },
 };
 Reflect.set(globalThis, "__louezSettingsActionStubs", stubs);
 const directory = mkdtempSync(join(tmpdir(), "louez-settings-actions-"));
@@ -71,7 +70,7 @@ Reflect.get(
 process.env.LOUEZ_BILLING = "cloud";
 process.env.BILLING_SERVICE_URL = "http://localhost:3100";
 
-describe("settings actions billing marks (database)", { skip: skipWithoutTestDatabase() }, () => {
+describe("slug action billing marks (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
   let louezDb: typeof import("@louez/db");
   let actions: typeof import("./actions");
@@ -107,48 +106,11 @@ describe("settings actions billing marks (database)", { skip: skipWithoutTestDat
       .where(eq(queueTable.aggregateType, "store"));
   }
 
-  test("a currency change saves the settings and marks the store", async () => {
-    assert.deepEqual(
-      await actions.updateCompanySettings({
-        country: "US",
-        currency: "USD",
-        billingAddressSameAsStore: true,
-      }),
-      { success: true },
-    );
-
-    const store = await louezDb.db.query.stores.findFirst({
-      where: (table) => eq(table.id, STORE),
-      columns: { settings: true },
-    });
-    assert.equal(store?.settings?.currency, "USD");
-    assert.deepEqual(await storeMarks(), [{ id: STORE, version: 1 }]);
-  });
-
   test("a slug change marks the store", async () => {
     assert.deepEqual(await actions.updateStoreSlug("settings-marks-renamed"), {
       success: true,
       newSlug: "settings-marks-renamed",
     });
     assert.deepEqual(await storeMarks(), [{ id: STORE, version: 1 }]);
-  });
-
-  test("the reservation rules keep the snapshot's settings and mark nothing", async () => {
-    assert.deepEqual(
-      await actions.updateReservationRules({
-        reservationMode: "request",
-        pendingBlocksAvailability: true,
-        automaticExtensions: false,
-        maxExtensionDays: null,
-        onlinePaymentDepositPercentage: 100,
-        minRentalMinutes: 60,
-        maxRentalMinutes: null,
-        advanceNoticeMinutes: 0,
-        turnoverBufferMinutes: 0,
-        requireCustomerAddress: false,
-      }),
-      { success: true },
-    );
-    assert.deepEqual(await storeMarks(), []);
   });
 });

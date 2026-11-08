@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "Por favor, preencha “{field}”.",
     "profileFieldInvalid": "“{field}” não é válido.",
     "agentConnectionNotFound": "Este agente conectado não existe mais.",
-    "oauthRequestInvalid": "Este pedido de conexão não é mais válido. Inicie-o novamente no seu agente."
+    "oauthRequestInvalid": "Este pedido de conexão não é mais válido. Inicie-o novamente no seu agente.",
+    "stripeRequiredForPaymentMode": "O modo de pagamento online exige uma conta Stripe conectada. Conecte o Stripe em Configurações > Pagamentos.",
+    "locationLimitReached": "Uma loja pode ter no máximo 50 pontos de retirada. Desative um ou reutilize-o."
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

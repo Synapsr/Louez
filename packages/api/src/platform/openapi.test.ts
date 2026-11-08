@@ -102,7 +102,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories, the products, the reservations and the stores at short REST paths named after their tools", async () => {
+  test("serves the categories, the products, the reservations, the settings and the stores at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -177,6 +177,17 @@ describe("OpenAPI document", () => {
         "POST /reservations/{id}/cancel": "reservations_cancel",
         "PATCH /reservations/{id}/notes": "reservations_update_notes",
         "GET /search": "search_global",
+        "GET /settings": "settings_get",
+        "PATCH /settings/store-info": "settings_update_store_info",
+        "PATCH /settings/company": "settings_update_company",
+        "PATCH /settings/legal": "settings_update_legal",
+        "PATCH /settings/reservation-rules": "settings_update_reservation_rules",
+        "PATCH /settings/business-hours": "settings_update_business_hours",
+        "PATCH /settings/delivery": "settings_update_delivery",
+        "POST /settings/locations": "settings_create_location",
+        "PATCH /settings/locations/{id}": "settings_update_location",
+        "POST /settings/locations/{id}/active": "settings_set_location_active",
+        "PATCH /settings/taxes": "settings_update_taxes",
         "GET /stores": "stores_list",
         "GET /stores/slug-availability": "stores_check_slug_availability",
         "POST /stores": "stores_create",

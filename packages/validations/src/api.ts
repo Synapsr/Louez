@@ -518,12 +518,6 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
   }),
 });
 
-export const updateStoreLegalInputSchema = z.object({
-  cgv: z.string().max(100000, "errors.invalidData").optional(),
-  legalNotice: z.string().max(100000, "errors.invalidData").optional(),
-  includeFullCgvInContract: z.boolean().optional(),
-});
-
 const optionalContactEmailSchema = z
   .string()
   .trim()
@@ -902,7 +896,6 @@ export type DashboardReservationUpdateReservationInput = z.infer<
 export type DashboardReservationCreateManualReservationInput = z.infer<
   typeof dashboardReservationCreateManualReservationInputSchema
 >;
-export type UpdateStoreLegalInput = z.infer<typeof updateStoreLegalInputSchema>;
 export type UpdateStoreContactInput = z.infer<typeof updateStoreContactInputSchema>;
 export type UpdateStoreSeoInput = z.infer<typeof updateStoreSeoInputSchema>;
 export type UpdateStoreAppearanceInput = z.infer<typeof updateStoreAppearanceInputSchema>;

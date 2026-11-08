@@ -106,7 +106,7 @@ const checkSlugAvailability = accountProcedure
 const NEXT_STEPS = [
   "Pass the store's id as storeId to the other tools.",
   "Fill the catalog: categories_create, then products_create (prices, deposit, stock). Their tools are in the catalog bundle.",
-  "Complete the store's details and legal notices: update_store_info and update_store_legal, in the settings bundle.",
+  "Set the store up before launch, with the tools of the settings bundle: settings_get shows every setting; settings_update_store_info (description, contact, coordinates), settings_update_legal (terms and legal notice), settings_update_reservation_rules, settings_update_business_hours, settings_update_delivery and settings_create_location (pickup points), settings_update_taxes.",
   "The store stays offline until the user launches it: they finish in the Louez dashboard (the dashboard link), where their store is waiting with what you filled in.",
 ];
 

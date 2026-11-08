@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "「{field}」を入力してください。",
     "profileFieldInvalid": "「{field}」が正しくありません。",
     "agentConnectionNotFound": "この接続済みのエージェントは存在しません。",
-    "oauthRequestInvalid": "この接続リクエストは無効になりました。エージェントからやり直してください。"
+    "oauthRequestInvalid": "この接続リクエストは無効になりました。エージェントからやり直してください。",
+    "stripeRequiredForPaymentMode": "オンライン決済モードには Stripe アカウントの接続が必要です。設定 > 支払いで Stripe を接続してください。",
+    "locationLimitReached": "1 つのストアに設定できる受け取り場所は最大 50 件です。いずれかを無効にするか、再利用してください。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",

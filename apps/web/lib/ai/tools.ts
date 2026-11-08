@@ -68,6 +68,7 @@ export type AssistantApi = {
   categories: RouterClient<AppRouter["dashboard"]["categories"]>;
   products: RouterClient<AppRouter["dashboard"]["products"]>;
   reservations: RouterClient<AppRouter["dashboard"]["reservations"]>;
+  settings: RouterClient<AppRouter["dashboard"]["settings"]>;
 };
 
 function assistantApi(ctx: AIChatContext): AssistantApi {
@@ -1256,55 +1257,23 @@ export function createAITools(ctx: AIChatContext) {
     // ── Settings ──────────────────────────────────────────────────────────
 
     get_store_settings: tool({
-      description: "Get complete store configuration (name, contact, settings)",
+      description:
+        "Get the store's whole configuration: info and contact, company, legal texts, reservation rules, business hours, delivery and pickup points, taxes, with the link to its settings",
       inputSchema: z.object({}),
-      execute: async () => {
-        requirePermission(ctx, "settings", "read");
-
-        const store = await db.query.stores.findFirst({
-          where: eq(stores.id, ctx.storeId),
-        });
-
-        if (!store) return { error: "Store not found" };
-        return {
-          name: store.name,
-          slug: store.slug,
-          email: store.email,
-          phone: store.phone,
-          address: store.address,
-          description: store.description,
-          settings: store.settings,
-          theme: store.theme,
-          emailSettings: store.emailSettings,
-          stripeConnected: !!store.stripeOnboardingComplete,
-        };
-      },
+      execute: async () => assistantApi(ctx).settings.get({}),
     }),
 
     update_store_info: tool({
-      description: "Update store contact information",
+      description:
+        "Update the store's name, description and contact details; send only the fields to change, null clears one",
       inputSchema: z.object({
         name: z.string().optional(),
-        email: z.email().optional(),
-        phone: z.string().optional(),
-        address: z.string().optional(),
-        description: z.string().optional(),
+        email: z.email().nullable().optional(),
+        phone: z.string().nullable().optional(),
+        address: z.string().nullable().optional(),
+        description: z.string().nullable().optional(),
       }),
-      execute: async (updates) => {
-        requirePermission(ctx, "settings", "write");
-
-        const updateData: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(updates)) {
-          if (value !== undefined) updateData[key] = value;
-        }
-
-        if (Object.keys(updateData).length === 0) {
-          return { error: "No fields to update" };
-        }
-
-        await db.update(stores).set(updateData).where(eq(stores.id, ctx.storeId));
-        return { success: true };
-      },
+      execute: async (updates) => assistantApi(ctx).settings.updateStoreInfo(updates),
     }),
   };
 }

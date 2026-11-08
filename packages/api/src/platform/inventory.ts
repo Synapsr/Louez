@@ -164,7 +164,6 @@ const ROUTE = {
   invoice: `${API}/reservations/[id]/invoices/[invoiceId]/route.ts`,
   sign: `${API}/reservations/[id]/sign/route.ts`,
   appearance: `${API}/stores/appearance/route.ts`,
-  legal: `${API}/stores/legal/route.ts`,
   voicePreview: `${API}/voice/preview/route.ts`,
   voiceRecording: `${API}/voice/recording/[conversationId]/route.ts`,
 } as const;
@@ -187,6 +186,7 @@ const ORPC = {
   reservationDetails: `${ROUTERS}/reservation-details.ts`,
   reservations: `${ROUTERS}/reservations.ts`,
   search: `${ROUTERS}/search.ts`,
+  settings: `${ROUTERS}/settings.ts`,
   stores: `${ROUTERS}/stores.ts`,
 } as const;
 
@@ -195,7 +195,6 @@ const MCP = {
   calendar: `${TOOLS}/calendar.ts`,
   customers: `${TOOLS}/customers.ts`,
   payments: `${TOOLS}/payments.ts`,
-  settings: `${TOOLS}/settings.ts`,
 } as const;
 
 const action = (path: string, name: string): CapabilitySource => ({
@@ -1168,60 +1167,86 @@ export const capabilities = [
   // --- Store settings (6) -------------------------------------------------
   {
     id: "settings.get",
-    sources: [tool(MCP.settings, "get_store_settings")],
+    sources: [procedure("settings", "get")],
     kind: "read",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
-    id: "settings.updateCompany",
-    sources: [
-      action(SA.settings, "updateCompanySettings"),
-      tool(MCP.settings, "update_store_info"),
-    ],
+    id: "settings.updateStoreInfo",
+    sources: [procedure("settings", "updateStoreInfo")],
     kind: "write",
     plan: { lot: "6" },
+    migrated: true,
+  },
+  {
+    // Sensitive when the country or the currency changes.
+    id: "settings.updateCompany",
+    sources: [procedure("settings", "updateCompany")],
+    kind: "write",
+    sensitive: "money",
+    plan: { lot: "6" },
+    migrated: true,
   },
   {
     id: "settings.updateLegal",
-    sources: [route(ROUTE.legal, "PATCH"), tool(MCP.settings, "update_store_legal")],
+    sources: [procedure("settings", "updateLegal")],
     kind: "write",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
+    // Sensitive when the booking mode or the share paid online changes.
     id: "settings.updateReservationRules",
-    sources: [action(SA.settings, "updateReservationRules")],
+    sources: [procedure("settings", "updateReservationRules")],
     kind: "write",
+    sensitive: "money",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
     id: "settings.updateBusinessHours",
-    sources: [action(SA.hours, "updateBusinessHours")],
+    sources: [procedure("settings", "updateBusinessHours")],
     kind: "write",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
     id: "settings.updateDelivery",
-    sources: [action(SA.delivery, "updateDeliverySettings")],
+    sources: [procedure("settings", "updateDelivery")],
     kind: "write",
+    sensitive: "money",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
-    id: "settings.upsertLocation",
-    sources: [action(SA.delivery, "upsertStoreLocation")],
+    id: "settings.createLocation",
+    sources: [procedure("settings", "createLocation")],
     kind: "write",
     plan: { lot: "6" },
+    migrated: true,
+  },
+  {
+    id: "settings.updateLocation",
+    sources: [procedure("settings", "updateLocation")],
+    kind: "write",
+    plan: { lot: "6" },
+    migrated: true,
   },
   {
     id: "settings.setLocationActive",
-    sources: [action(SA.delivery, "setStoreLocationActive")],
+    sources: [procedure("settings", "setLocationActive")],
     kind: "write",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
     id: "settings.updateTaxes",
-    sources: [action(SA.taxes, "updateTaxSettings")],
+    sources: [procedure("settings", "updateTaxes")],
     kind: "write",
+    sensitive: "money",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
     id: "settings.updateInspections",

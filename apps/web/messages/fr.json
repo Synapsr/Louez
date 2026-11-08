@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "Veuillez renseigner « {field} ».",
     "profileFieldInvalid": "« {field} » n'est pas valide.",
     "agentConnectionNotFound": "Cet agent connecté n’existe plus.",
-    "oauthRequestInvalid": "Cette demande de connexion n’est plus valide. Relancez-la depuis votre agent."
+    "oauthRequestInvalid": "Cette demande de connexion n’est plus valide. Relancez-la depuis votre agent.",
+    "stripeRequiredForPaymentMode": "Le mode paiement en ligne nécessite un compte Stripe connecté. Connectez Stripe dans Paramètres > Paiements.",
+    "locationLimitReached": "Une boutique peut avoir 50 points de retrait au maximum. Désactivez-en un ou réutilisez-le."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

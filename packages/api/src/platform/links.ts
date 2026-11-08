@@ -126,3 +126,36 @@ export function customerLinks(
 export function agentConnectionsLinks(urls: UrlsPort, store: DashboardLinkStore): ResourceLinks {
   return { dashboard: dashboardUrl(urls, store, "/dashboard/settings/integrations/mcp") };
 }
+
+/** The settings pages of the dashboard, by section. */
+export const SETTINGS_PAGES = {
+  company: "/dashboard/settings",
+  reservations: "/dashboard/settings/reservations",
+  hours: "/dashboard/settings/hours",
+  delivery: "/dashboard/settings/delivery",
+  taxes: "/dashboard/settings/taxes",
+} as const;
+export type SettingsPage = keyof typeof SETTINGS_PAGES;
+
+/** A settings page of the store, and its storefront home once it is online. */
+export function settingsLinks(urls: UrlsPort, store: LinkStore, page: SettingsPage): ResourceLinks {
+  return {
+    dashboard: dashboardUrl(urls, store, SETTINGS_PAGES[page]),
+    ...(isStorefrontPublic(store) ? { storefront: urls.storefront(store.slug, "/") } : {}),
+  };
+}
+
+/** The online store editor's sections (apps/web `app/(dashboard)/online-store`). */
+export type OnlineStoreSection = "identity" | "home" | "contact" | "legal" | "seo";
+
+/** A section of the online store editor, and the storefront home once the store is online. */
+export function onlineStoreLinks(
+  urls: UrlsPort,
+  store: LinkStore,
+  section: OnlineStoreSection,
+): ResourceLinks {
+  return {
+    dashboard: dashboardUrl(urls, store, `/online-store/${section}`),
+    ...(isStorefrontPublic(store) ? { storefront: urls.storefront(store.slug, "/") } : {}),
+  };
+}

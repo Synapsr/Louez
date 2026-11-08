@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useStore } from "@tanstack/react-form";
-import { useTransition, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import {
@@ -20,7 +21,8 @@ import {
 } from "@louez/ui";
 import { InfoCircleIcon, PercentageIcon } from "@louez/ui/icons";
 
-import { updateTaxSettings } from "./actions";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpc } from "@/lib/orpc/react";
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 import { FormRadioCardGroup } from "@/components/form/form-radio-card-group";
 import type { StoreSettings, TaxSettings } from "@louez/types";
@@ -53,7 +55,8 @@ interface TaxSettingsFormProps {
 
 export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const updateTaxes = useMutation(orpc.dashboard.settings.updateTaxes.mutationOptions());
+  const tErrors = useTranslations("errors");
   const t = useTranslations("dashboard.settings.taxes");
   const tValidation = useTranslations("validation");
   const tCommon = useTranslations("common");
@@ -80,17 +83,21 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
     validators: { onSubmit: taxSettingsSchema },
     onSubmit: async ({ value }) => {
       setRootError(null);
-      startTransition(async () => {
-        const result = await updateTaxSettings(value);
-        if (result.error) {
-          setRootError(result.error);
-          return;
-        }
-        toastManager.add({ title: t("saved"), type: "success" });
-        form.options.defaultValues = value;
-        form.reset();
-        router.refresh();
-      });
+      try {
+        await updateTaxes.mutateAsync({
+          ...value,
+          taxLabel: value.taxLabel || null,
+          taxNumber: value.taxNumber || null,
+        });
+      } catch (error) {
+        const key = apiErrorKey(error);
+        setRootError(key && tErrors.has(key) ? tErrors(key) : tErrors("generic"));
+        return;
+      }
+      toastManager.add({ title: t("saved"), type: "success" });
+      form.options.defaultValues = value;
+      form.reset();
+      router.refresh();
     },
   });
 
@@ -254,7 +261,11 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
           </CardContent>
         </Card>
 
-        <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
+        <FloatingSaveBar
+          isDirty={isDirty}
+          isLoading={updateTaxes.isPending}
+          onReset={() => form.reset()}
+        />
       </form.Form>
     </form.AppForm>
   );

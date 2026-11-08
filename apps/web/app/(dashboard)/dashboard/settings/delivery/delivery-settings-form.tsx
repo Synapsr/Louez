@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 import Link from "next/link";
@@ -18,6 +17,7 @@ import {
   WarningIcon,
 } from "@louez/ui/icons";
 import { useStore } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
 
 import { Button } from "@louez/ui";
 import { Input } from "@louez/ui";
@@ -41,7 +41,8 @@ import { DeliveryTestMap } from "@/components/dashboard/delivery-test-map";
 import { FormRadioCardGroup } from "@/components/form/form-radio-card-group";
 import { calculateHaversineDistance } from "@/lib/utils/geo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
-import { setStoreLocationActive, updateDeliverySettings, upsertStoreLocation } from "./actions";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpc } from "@/lib/orpc/react";
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 import { InfoCallout } from "@/components/dashboard/info-callout";
 import { formatCurrency } from "@louez/utils";
@@ -123,8 +124,19 @@ export const DeliverySettingsForm = ({
   addressTestingEnabled = true,
 }: DeliverySettingsFormProps) => {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const updateDelivery = useMutation(orpc.dashboard.settings.updateDelivery.mutationOptions());
+  const createLocation = useMutation(orpc.dashboard.settings.createLocation.mutationOptions());
+  const updateLocation = useMutation(orpc.dashboard.settings.updateLocation.mutationOptions());
+  const setLocationActive = useMutation(
+    orpc.dashboard.settings.setLocationActive.mutationOptions(),
+  );
+  const isPending =
+    updateDelivery.isPending ||
+    createLocation.isPending ||
+    updateLocation.isPending ||
+    setLocationActive.isPending;
   const t = useTranslations("dashboard.settings.delivery");
+  const tErrors = useTranslations("errors");
   const currency = store.settings?.currency || "EUR";
   const tValidation = useTranslations("validation");
   const tCommon = useTranslations("common");
@@ -157,21 +169,34 @@ export const DeliverySettingsForm = ({
     onSubmit: async ({ value }) => {
       if (readOnly) return;
       setRootError(null);
-      startTransition(async () => {
-        const result = await updateDeliverySettings(value);
-        if (result.error) {
-          if (result.error === "errors.storeCoordinatesRequired") {
-            toastManager.add({ title: t("noCoordinatesError"), type: "error" });
-          } else {
-            setRootError(result.error);
-          }
-          return;
+      try {
+        await updateDelivery.mutateAsync({
+          enabled: value.enabled,
+          multiLocationEnabled: value.multiLocationEnabled,
+          mode: value.mode,
+          pricePerKm: String(value.pricePerKm),
+          minimumFee: String(value.minimumFee),
+          maximumDistanceKm: value.maximumDistance,
+          freeDeliveryThreshold:
+            value.freeDeliveryThreshold === null ? null : String(value.freeDeliveryThreshold),
+          minimumOrderAmountForDelivery:
+            value.minimumOrderAmountForDelivery === null
+              ? null
+              : String(value.minimumOrderAmountForDelivery),
+        });
+      } catch (error) {
+        const key = apiErrorKey(error);
+        if (key === "storeCoordinatesNotConfigured") {
+          toastManager.add({ title: t("noCoordinatesError"), type: "error" });
+        } else {
+          setRootError(key && tErrors.has(key) ? tErrors(key) : tErrors("generic"));
         }
-        toastManager.add({ title: t("saved"), type: "success" });
-        form.options.defaultValues = value;
-        form.reset();
-        router.refresh();
-      });
+        return;
+      }
+      toastManager.add({ title: t("saved"), type: "success" });
+      form.options.defaultValues = value;
+      form.reset();
+      router.refresh();
     },
   });
 
@@ -296,49 +321,53 @@ export const DeliverySettingsForm = ({
     setLocationLongitude(longitude);
   };
 
-  const handleSaveLocation = () => {
+  const handleSaveLocation = async () => {
     if (readOnly) return;
-    startTransition(async () => {
-      const result = await upsertStoreLocation({
-        id: editingLocation?.id,
-        name: locationName,
-        address: locationAddress,
-        latitude: locationLatitude,
-        longitude: locationLongitude,
-        country: store.settings?.country ?? "FR",
+    const fields = {
+      name: locationName,
+      address: locationAddress,
+      latitude: locationLatitude,
+      longitude: locationLongitude,
+    };
+    try {
+      if (editingLocation) await updateLocation.mutateAsync({ id: editingLocation.id, ...fields });
+      else await createLocation.mutateAsync(fields);
+    } catch (error) {
+      const key = apiErrorKey(error);
+      toastManager.add({
+        title: key === "locationLimitReached" ? tErrors(key) : t("locationsSaveError"),
+        type: "error",
       });
-      if (result.error) {
-        toastManager.add({ title: t("locationsSaveError"), type: "error" });
-        return;
-      }
-      toastManager.add({ title: t("locationsSaved"), type: "success" });
-      setLocationFormOpen(false);
-      router.refresh();
-    });
+      return;
+    }
+    toastManager.add({ title: t("locationsSaved"), type: "success" });
+    setLocationFormOpen(false);
+    router.refresh();
   };
 
-  const handleToggleLocationActive = (location: StoreLocation) => {
+  const handleToggleLocationActive = async (location: StoreLocation) => {
     if (readOnly) return;
-    startTransition(async () => {
-      const result = await setStoreLocationActive(location.id, !location.isActive);
-      if (result.error) {
-        toastManager.add({ title: t("locationsSaveError"), type: "error" });
-        return;
-      }
-      router.refresh();
-    });
+    try {
+      await setLocationActive.mutateAsync({ id: location.id, isActive: !location.isActive });
+    } catch {
+      toastManager.add({ title: t("locationsSaveError"), type: "error" });
+      return;
+    }
+    router.refresh();
   };
 
   return (
     <form.AppForm>
       <form.Form
         className="space-y-6"
-        {...(readOnly ? {
-          onSubmit: (event: FormEvent<HTMLFormElement>) => {
-            event.preventDefault();
-            event.stopPropagation();
-          },
-        } : {})}
+        {...(readOnly
+          ? {
+              onSubmit: (event: FormEvent<HTMLFormElement>) => {
+                event.preventDefault();
+                event.stopPropagation();
+              },
+            }
+          : {})}
       >
         <RootError error={rootError} />
 
@@ -455,53 +484,55 @@ export const DeliverySettingsForm = ({
                   ))}
                 </div>
 
-                {!readOnly && <Dialog open={locationFormOpen} onOpenChange={setLocationFormOpen}>
-                  <DialogPopup>
-                    <DialogPanel>
-                      <DialogHeader>
-                        <DialogTitle>
-                          {editingLocation ? t("locationsEdit") : t("locationsAdd")}
-                        </DialogTitle>
-                        <DialogDescription>{t("locationsDialogDescription")}</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="location-name">{t("locationsName")}</Label>
-                          <Input
-                            id="location-name"
-                            value={locationName}
-                            onChange={(event) => setLocationName(event.target.value)}
-                          />
+                {!readOnly && (
+                  <Dialog open={locationFormOpen} onOpenChange={setLocationFormOpen}>
+                    <DialogPopup>
+                      <DialogPanel>
+                        <DialogHeader>
+                          <DialogTitle>
+                            {editingLocation ? t("locationsEdit") : t("locationsAdd")}
+                          </DialogTitle>
+                          <DialogDescription>{t("locationsDialogDescription")}</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="location-name">{t("locationsName")}</Label>
+                            <Input
+                              id="location-name"
+                              value={locationName}
+                              onChange={(event) => setLocationName(event.target.value)}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>{t("locationsAddress")}</Label>
+                            <AddressInput
+                              value={locationAddress}
+                              latitude={locationLatitude}
+                              longitude={locationLongitude}
+                              onChange={handleLocationAddressChange}
+                            />
+                          </div>
                         </div>
-                        <div className="grid gap-2">
-                          <Label>{t("locationsAddress")}</Label>
-                          <AddressInput
-                            value={locationAddress}
-                            latitude={locationLatitude}
-                            longitude={locationLongitude}
-                            onChange={handleLocationAddressChange}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setLocationFormOpen(false)}
-                        >
-                          {tCommon("cancel")}
-                        </Button>
-                        <Button
-                          type="button"
-                          onClick={handleSaveLocation}
-                          disabled={!locationName.trim() || !locationAddress.trim() || isPending}
-                        >
-                          {tCommon("save")}
-                        </Button>
-                      </DialogFooter>
-                    </DialogPanel>
-                  </DialogPopup>
-                </Dialog>}
+                        <DialogFooter>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setLocationFormOpen(false)}
+                          >
+                            {tCommon("cancel")}
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={handleSaveLocation}
+                            disabled={!locationName.trim() || !locationAddress.trim() || isPending}
+                          >
+                            {tCommon("save")}
+                          </Button>
+                        </DialogFooter>
+                      </DialogPanel>
+                    </DialogPopup>
+                  </Dialog>
+                )}
               </div>
             )}
 

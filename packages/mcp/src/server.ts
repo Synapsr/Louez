@@ -8,7 +8,6 @@ import { serverInstructions } from "./instructions";
 import { registerCustomerTools } from "./tools/customers";
 import { registerPaymentTools } from "./tools/payments";
 import { registerAnalyticsTools } from "./tools/analytics";
-import { registerSettingsTools } from "./tools/settings";
 import { registerCalendarTools } from "./tools/calendar";
 import { registerResources } from "./resources/index";
 import { registerPrompts } from "./prompts/index";
@@ -36,7 +35,6 @@ export function createMcpServer(
   registerCustomerTools(server, ctx);
   registerPaymentTools(server, ctx, deps);
   registerAnalyticsTools(server, ctx);
-  registerSettingsTools(server, ctx);
   registerCalendarTools(server, ctx);
 
   // Resources and prompts read one store. A connection over several stores

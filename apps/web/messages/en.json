@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "Please fill in “{field}”.",
     "profileFieldInvalid": "“{field}” is not valid.",
     "agentConnectionNotFound": "This connected agent no longer exists.",
-    "oauthRequestInvalid": "This connection request is no longer valid. Start it again from your agent."
+    "oauthRequestInvalid": "This connection request is no longer valid. Start it again from your agent.",
+    "stripeRequiredForPaymentMode": "Online payment mode needs a connected Stripe account. Connect Stripe in Settings > Payments.",
+    "locationLimitReached": "A store can have 50 pickup points at most. Deactivate or reuse one instead."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

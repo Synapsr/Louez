@@ -4,18 +4,12 @@ import type {
   UpdateOnlineStoreInput,
   UpdateStoreAppearanceInput,
   UpdateStoreContactInput,
-  UpdateStoreLegalInput,
   UpdateStoreSeoInput,
 } from "@louez/validations";
 import { isOwnedImageUrl } from "@louez/validations";
 import { sanitizeRichTextHtml } from "@louez/utils";
 import { ApiServiceError } from "./errors";
 import { eq } from "drizzle-orm";
-
-interface UpdateStoreLegalParams {
-  storeId: string;
-  input: UpdateStoreLegalInput;
-}
 
 interface UpdateStoreAppearanceParams {
   storeId: string;
@@ -30,33 +24,6 @@ interface UpdateStoreContactParams {
 interface UpdateStoreSeoParams {
   storeId: string;
   input: UpdateStoreSeoInput;
-}
-
-export async function updateStoreLegal(params: UpdateStoreLegalParams) {
-  const { storeId, input } = params;
-  const { cgv, legalNotice, includeFullCgvInContract } = input;
-
-  const updateData: Record<string, unknown> = {
-    updatedAt: new Date(),
-  };
-
-  // Editor HTML is sanitised on write so the stored value is safe whatever
-  // renders it later (storefront pages, contract PDF).
-  if (cgv !== undefined) {
-    updateData.cgv = sanitizeRichTextHtml(cgv);
-  }
-
-  if (legalNotice !== undefined) {
-    updateData.legalNotice = sanitizeRichTextHtml(legalNotice);
-  }
-
-  if (includeFullCgvInContract !== undefined) {
-    updateData.includeCgvInContract = includeFullCgvInContract;
-  }
-
-  await db.update(stores).set(updateData).where(eq(stores.id, storeId));
-
-  return { success: true as const };
 }
 
 export async function updateStoreAppearance(params: UpdateStoreAppearanceParams) {

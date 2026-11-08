@@ -127,6 +127,17 @@ export interface ApiEventStore {
   ownerUserId: string;
 }
 
+/** A section of the store settings (services/settings.ts). */
+export type SettingsSection =
+  | "storeInfo"
+  | "company"
+  | "legal"
+  | "reservationRules"
+  | "businessHours"
+  | "delivery"
+  | "locations"
+  | "taxes";
+
 /** What a committed write did, for `afterCommit`. */
 export type ApiEvent =
   | {
@@ -147,6 +158,8 @@ export type ApiEvent =
   /** A reservation's status or notes changed: its pages are revalidated. Its messages go to the outbox. */
   | { type: "reservation.statusChanged"; store: ApiEventStore; reservationId: string }
   | { type: "reservation.notesUpdated"; store: ApiEventStore; reservationId: string }
+  /** A section of the store settings changed: its pages are revalidated. */
+  | { type: "store.settingsUpdated"; store: ApiEventStore; section: SettingsSection }
   /** Not a write: the store's card gate refused a status change; the app logs it. */
   | {
       type: "reservation.gateRefused";

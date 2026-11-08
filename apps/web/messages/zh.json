@@ -9350,7 +9350,9 @@
     "profileFieldRequired": "请填写“{field}”。",
     "profileFieldInvalid": "“{field}”无效。",
     "agentConnectionNotFound": "此已连接的智能体已不存在。",
-    "oauthRequestInvalid": "此连接请求已失效。请在您的智能体中重新发起。"
+    "oauthRequestInvalid": "此连接请求已失效。请在您的智能体中重新发起。",
+    "stripeRequiredForPaymentMode": "在线支付模式需要已连接的 Stripe 账户。请在“设置 > 付款”中连接 Stripe。",
+    "locationLimitReached": "每家店铺最多可设置 50 个取货点。请停用一个或重新使用已有的取货点。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",
