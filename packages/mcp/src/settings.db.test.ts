@@ -116,16 +116,14 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       { id: OWNER, email: "owner@sx.test" },
       { id: MEMBER, email: "member@sx.test" },
     ]);
-    await louezDb.db
-      .insert(louezDb.stores)
-      .values({
-        id: STORE,
-        userId: OWNER,
-        name: "Brest Surf",
-        slug: "sx-brest-surf",
-        latitude: "48.3904000",
-        longitude: "-4.4861000",
-      });
+    await louezDb.db.insert(louezDb.stores).values({
+      id: STORE,
+      userId: OWNER,
+      name: "Brest Surf",
+      slug: "sx-brest-surf",
+      latitude: "48.3904000",
+      longitude: "-4.4861000",
+    });
     await louezDb.db.insert(louezDb.storeMembers).values([
       { storeId: STORE, userId: OWNER, role: "owner" },
       { storeId: STORE, userId: MEMBER, role: "member" },
@@ -149,7 +147,7 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
   };
 
   async function key(
-    permissions: Permissions = { ...readOnly, settings: "write" },
+    permissions: Permissions = { ...readOnly, settings: "write", online_store: "write" },
     userId = OWNER,
   ) {
     const created = await apiKeys.createApiKey({
@@ -192,6 +190,18 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       "settings_update_taxes",
     ]);
     assert.deepEqual([...new Set(settings.map((entry) => entry.meta.mcp.bundle))], ["settings"]);
+    const onlineStore = exposure.procedures.filter((entry) =>
+      entry.path.startsWith("dashboard.onlineStore."),
+    );
+    assert.deepEqual(onlineStore.map((entry) => entry.meta.mcp.name).sort(), [
+      "online_store_check_slug_availability",
+      "online_store_complete_image_upload",
+      "online_store_create_image_upload",
+      "online_store_update",
+      "online_store_update_appearance",
+      "online_store_update_slug",
+    ]);
+    assert.deepEqual([...new Set(onlineStore.map((entry) => entry.meta.mcp.bundle))], ["settings"]);
     const aliases = settings.flatMap((entry) =>
       (entry.meta.mcp.aliases ?? []).map((alias) => alias.name),
     );
@@ -202,8 +212,9 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     ]);
 
     const writer = await mcpTools(await key());
-    for (const entry of settings)
+    for (const entry of [...settings, ...onlineStore]) {
       assert.ok(writer.includes(entry.meta.mcp.name), entry.meta.mcp.name);
+    }
     for (const alias of aliases) assert.ok(!writer.includes(alias), `${alias} is not listed`);
 
     const reader = await mcpTools(await key(readOnly));

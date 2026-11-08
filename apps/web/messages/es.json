@@ -9195,7 +9195,6 @@
     "updateCustomerError": "Error al actualizar cliente",
     "deleteCustomerError": "Error al eliminar cliente",
     "updateNotesError": "Error al actualizar notas",
-    "updateSettingsError": "Error al actualizar configuración",
     "createReservationError": "Error al crear reserva",
     "businessHoursViolation": "Los horarios seleccionados están fuera del horario comercial de la tienda",
     "returnAddressInvalid": "Coordenadas de la dirección de devolución inválidas",

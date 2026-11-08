@@ -11,6 +11,7 @@ import {
   notifyStoreSettingsUpdated,
 } from "@/lib/discord/platform-notifications";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
+import { invalidateStoreViewport } from "@/lib/storefront/get-store-viewport";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 
 /**
@@ -21,6 +22,7 @@ import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events
  */
 export function runAfterCommit(event: ApiEvent): void {
   try {
+    for (const slug of staleViewports(event)) invalidateStoreViewport(slug);
     for (const path of pathsToRevalidate(event)) {
       if (typeof path === "string") revalidatePath(path);
       else revalidatePath(path.path, path.type);
@@ -38,6 +40,14 @@ export function runAfterCommit(event: ApiEvent): void {
     // Outside a request (a script): run it now, without waiting.
     void run();
   }
+}
+
+/** The stores whose cached storefront theme colour no longer holds. */
+function staleViewports(event: ApiEvent): string[] {
+  if (event.type === "store.storefrontUpdated" && event.themeChanged) return [event.store.slug];
+  // A page visited at the new address before the move cached the default theme.
+  if (event.type === "store.slugChanged") return [event.previousSlug, event.store.slug];
+  return [];
 }
 
 /** The pages each settings section shows, as its former server action revalidated them. */
@@ -93,6 +103,16 @@ function pathsToRevalidate(event: ApiEvent): Array<string | { path: string; type
       return [`/dashboard/reservations/${event.reservationId}`];
     case "store.settingsUpdated":
       return settingsPaths(event.section, event.store.slug);
+    case "store.storefrontUpdated":
+      return [];
+    case "store.slugChanged":
+      return [
+        "/dashboard",
+        "/dashboard/settings",
+        "/online-store",
+        `/${event.previousSlug}`,
+        `/${event.store.slug}`,
+      ];
     case "reservation.gateRefused":
       return [];
   }

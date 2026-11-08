@@ -102,7 +102,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories, the products, the reservations, the settings and the stores at short REST paths named after their tools", async () => {
+  test("serves the categories, the products, the reservations, the settings, the online store and the stores at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -176,6 +176,12 @@ describe("OpenAPI document", () => {
         "POST /reservations/{id}/status": "reservations_update_status",
         "POST /reservations/{id}/cancel": "reservations_cancel",
         "PATCH /reservations/{id}/notes": "reservations_update_notes",
+        "PATCH /online-store": "online_store_update",
+        "GET /online-store/slug-availability": "online_store_check_slug_availability",
+        "POST /online-store/slug": "online_store_update_slug",
+        "PATCH /online-store/appearance": "online_store_update_appearance",
+        "POST /online-store/image-uploads": "online_store_create_image_upload",
+        "POST /online-store/image-uploads/complete": "online_store_complete_image_upload",
         "GET /search": "search_global",
         "GET /settings": "settings_get",
         "PATCH /settings/store-info": "settings_update_store_info",

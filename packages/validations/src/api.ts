@@ -582,23 +582,6 @@ const s3UrlSchema = z
   )
   .refine((url) => isValidImageUrl(url), "Invalid image URL. Must be a valid S3 URL.");
 
-export const updateStoreAppearanceInputSchema = z.object({
-  logoUrl: z.union([s3UrlSchema, z.literal(""), z.null()]).optional(),
-  darkLogoUrl: z.union([s3UrlSchema, z.literal(""), z.null()]).optional(),
-  theme: z
-    .object({
-      mode: z.enum(["light", "dark"]),
-      primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color"),
-      heroImages: z.array(s3UrlSchema).max(5).optional(),
-      heroLayout: z.enum(["cover", "split"]).optional(),
-      heroAlign: z.enum(["start", "center", "end"]).optional(),
-      heroVerticalAlign: z.enum(["start", "center", "end"]).optional(),
-      catalogBrowseMode: z.enum(["products", "categories"]).optional(),
-      maxDiscountPercent: z.number().int().min(0).max(100).nullish(),
-    })
-    .optional(),
-});
-
 // ---------------------------------------------------------------------------
 // Online store editor: one procedure, one optional slice per editor section.
 // A slice that is present replaces what it covers; an absent slice leaves
@@ -896,9 +879,6 @@ export type DashboardReservationUpdateReservationInput = z.infer<
 export type DashboardReservationCreateManualReservationInput = z.infer<
   typeof dashboardReservationCreateManualReservationInputSchema
 >;
-export type UpdateStoreContactInput = z.infer<typeof updateStoreContactInputSchema>;
-export type UpdateStoreSeoInput = z.infer<typeof updateStoreSeoInputSchema>;
-export type UpdateStoreAppearanceInput = z.infer<typeof updateStoreAppearanceInputSchema>;
 export type UpdateOnlineStoreInput = z.infer<typeof updateOnlineStoreInputSchema>;
 /** What the client sends: the same slices before the schema's transforms run. */
 export type UpdateOnlineStoreClientInput = z.input<typeof updateOnlineStoreInputSchema>;

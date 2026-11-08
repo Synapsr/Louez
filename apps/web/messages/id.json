@@ -9195,7 +9195,6 @@
     "updateCustomerError": "Terjadi kesalahan saat memperbarui pelanggan",
     "deleteCustomerError": "Terjadi kesalahan saat menghapus pelanggan",
     "updateNotesError": "Terjadi kesalahan saat memperbarui catatan",
-    "updateSettingsError": "Terjadi kesalahan saat memperbarui pengaturan",
     "createReservationError": "Terjadi kesalahan saat membuat reservasi",
     "businessHoursViolation": "Waktu yang dipilih berada di luar jam kerja toko",
     "returnAddressInvalid": "Koordinat alamat pengirim tidak valid",

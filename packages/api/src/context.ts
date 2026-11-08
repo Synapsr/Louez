@@ -124,7 +124,6 @@ export interface BaseContext {
   ports?: ApiPorts;
   /** Filled with the operation id of a write, for the transport to hand out. */
   receipt?: OperationReceipt;
-  invalidateStoreViewport?: (storeSlug: string) => void | Promise<void>;
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
   getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;

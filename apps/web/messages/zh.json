@@ -9195,7 +9195,6 @@
     "updateCustomerError": "更新客户时出错",
     "deleteCustomerError": "删除客户时出错",
     "updateNotesError": "更新笔记时出错",
-    "updateSettingsError": "更新设置时出错",
     "createReservationError": "创建预订时出错",
     "businessHoursViolation": "所选时间不在商店营业时间",
     "returnAddressInvalid": "返回地址坐标无效",

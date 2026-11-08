@@ -36,10 +36,10 @@ import {
   updateReservationRules,
   updateStoreInfo,
   updateTaxes,
-  type SettingsActor,
   type SettingsPreview,
 } from "../../services/settings";
 import { confirmUnderLock, type ProductContext } from "./product-context";
+import { settingsActor } from "./settings-context";
 
 /**
  * The store settings, on every transport: the dashboard's settings pages
@@ -57,17 +57,6 @@ const LINKS_HELP =
 
 const CONFIRM_HELP =
   "Customers see this change at checkout, so when it changes something the first call answers CONFIRMATION_REQUIRED with a preview of each value before and after: show it to the user, and once they agree, call again with the same arguments and the confirmationToken.";
-
-const settingsActor = (context: ProductContext): SettingsActor => ({
-  storeId: context.actor.storeId,
-  store: {
-    id: context.store.id,
-    name: context.store.name,
-    slug: context.store.slug,
-    ownerUserId: context.store.userId,
-  },
-  afterCommit: context.ports.afterCommit,
-});
 
 const links = (context: ProductContext, page: SettingsPage) =>
   settingsLinks(context.ports.urls, context.store, page);
@@ -87,7 +76,7 @@ const get = storeProcedure
     scope: READ,
     mcp: {
       name: "settings_get",
-      description: `Everything a store is set up with, in one call: its info and contact (store), company (country, time zone, currency, billing address), legal texts (terms, legal notice), reservation rules (booking mode, durations, notice, buffers, extensions), business hours and closures, delivery and pickup points (locations), taxes, and whether Stripe takes payments. Read it before changing a setting: each section has its settings_update_* tool, which takes the same field names. ${LINKS_HELP}`,
+      description: `Everything a store is set up with, in one call: its info and contact (store), company (country, time zone, currency, billing address), legal texts (terms, legal notice), the storefront (web address, URL, theme, logos, banner photos), reservation rules (booking mode, durations, notice, buffers, extensions), business hours and closures, delivery and pickup points (locations), taxes, and whether Stripe takes payments. Read it before changing a setting: each section has its settings_update_* tool, which takes the same field names. ${LINKS_HELP}`,
       bundle: "settings",
       aliases: [{ name: "get_store_settings" }],
       annotations: { readOnlyHint: true, idempotentHint: true },
@@ -104,6 +93,11 @@ const get = storeProcedure
         ...location,
         links: links(context, "delivery"),
       })),
+      storefront: {
+        ...settings.storefront,
+        url: context.ports.urls.storefront(settings.storefront.slug, "/"),
+        links: onlineStoreLinks(context.ports.urls, context.store, "identity"),
+      },
       links: links(context, "company"),
     };
   });

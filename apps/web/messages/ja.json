@@ -9195,7 +9195,6 @@
     "updateCustomerError": "顧客の更新エラー",
     "deleteCustomerError": "顧客の削除エラー",
     "updateNotesError": "ノートの更新中にエラーが発生しました",
-    "updateSettingsError": "設定更新エラー",
     "createReservationError": "予約作成エラー",
     "businessHoursViolation": "選択された時間は店舗の営業時間外です",
     "returnAddressInvalid": "無効な戻り先アドレス座標",

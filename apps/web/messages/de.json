@@ -9195,7 +9195,6 @@
     "updateCustomerError": "Fehler beim Aktualisieren des Kunden",
     "deleteCustomerError": "Fehler beim Löschen des Kunden",
     "updateNotesError": "Fehler beim Aktualisieren der Notizen",
-    "updateSettingsError": "Fehler beim Aktualisieren der Einstellungen",
     "createReservationError": "Fehler beim Erstellen der Reservierung",
     "businessHoursViolation": "Ausgewählte Zeiten liegen außerhalb der Öffnungszeiten des Shops",
     "returnAddressInvalid": "Ungültige Koordinaten der Rückgabeadresse",

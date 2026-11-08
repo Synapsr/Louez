@@ -42,6 +42,7 @@ import {
 } from "../contracts/settings";
 import { platformErrors } from "../platform/errors";
 import type { ApiEvent, ApiEventStore, SettingsSection } from "../platform/ports";
+import { toAppearanceView } from "./online-store";
 import type { ConfirmStep } from "./products";
 
 /**
@@ -116,6 +117,11 @@ const storeColumns = {
   legalNotice: stores.legalNotice,
   includeCgvInContract: stores.includeCgvInContract,
   stripeChargesEnabled: stores.stripeChargesEnabled,
+  tagline: stores.tagline,
+  theme: stores.theme,
+  logoUrl: stores.logoUrl,
+  darkLogoUrl: stores.darkLogoUrl,
+  faviconUrl: stores.faviconUrl,
 };
 
 type StoreRow = {
@@ -297,6 +303,12 @@ export async function getSettings(storeId: string) {
     delivery: toDeliveryView(settings),
     locations: locations.map(toLocationView),
     taxes: toTaxesView(settings),
+    storefront: {
+      slug: row.slug,
+      tagline: row.tagline,
+      locale: settings.locale ?? null,
+      appearance: toAppearanceView(row),
+    },
     payments: { stripeChargesEnabled: row.stripeChargesEnabled === true },
   };
 }

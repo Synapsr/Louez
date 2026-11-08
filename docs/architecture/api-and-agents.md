@@ -177,7 +177,7 @@ The spec (`/api/v1/openapi.json`) and a Scalar reference (`/api/v1/docs`) are ge
 
 ## Uploads
 
-A file goes up in three calls, the same on OpenAPI and MCP. The upload service (`services/uploads.ts`) serves every store-owned kind of image; `API_UPLOAD_KINDS` lists the kinds open to the API. Categories expose it as `categories_create_image_upload` and `categories_complete_image_upload`, products as `products_create_image_upload` and `products_complete_image_upload`.
+A file goes up in three calls, the same on OpenAPI and MCP. The upload service (`services/uploads.ts`) serves every store-owned kind of image; `API_UPLOAD_KINDS` lists the kinds open to the API. Categories expose it as `categories_create_image_upload` and `categories_complete_image_upload`, products as `products_create_image_upload` and `products_complete_image_upload`, the storefront's logos and banner photos as `online_store_create_image_upload` and `online_store_complete_image_upload`.
 
 1. The create-upload procedure takes the type and the size. It refuses another type, a size over the kind's limit and a kind the API does not take. It mints a key in the store's folder for the kind (`<storeId>/categories/<id>.png`) and returns it with one HTTP request to send the bytes, valid ten minutes:
    - a public bucket gives a presigned upload straight to the bucket (`PUT` with headers, or a multipart `POST` with fields), bound to the type and the size limit;
@@ -265,6 +265,14 @@ A human who opens the dashboard of an agent's store lands in the onboarding wiza
 - **Rules.** Payment mode needs Stripe charges enabled (`STRIPE_REQUIRED`), as the dashboard's dialog said; the shortest rental may not be longer than the longest one; delivery needs the store's coordinates (`STORE_COORDINATES_REQUIRED`). A store has 50 pickup points at most (`LOCATION_LIMIT_REACHED`); one above keeps them.
 - **Billing.** The company marks the store, and every reservation of the store on a new currency; taxes mark every reservation when the rate the dashboard's totals add changes (`beforeTaxRateBps`) ([DL-13](../code-review/04-data-layer.md)).
 - **Effects.** Each write emits `store.settingsUpdated` with its section: the app revalidates the section's pages (the business hours every storefront page of the store), and the company and reservation rules notify the platform, as their server actions did.
+
+`dashboard.onlineStore.*` (`routers/dashboard/online-store.ts`, `services/online-store.ts`, the `online_store_*` tools, also in the `settings` bundle, `/api/v1/online-store`) holds the storefront, under the `online_store` domain (an API key made before that domain existed has `none`) and `manage_settings`:
+
+- `online_store.update` is the online store editor's one save: each section it sends (identity, home, contact, legal, seo) replaces what it covers. `online_store.updateAppearance` takes the look field by field: theme, colour, logos, favicon, banner photos and their layout. Both take the store's own images only (`IMAGE_NOT_OWNED` otherwise), and both lock the store row before they patch the `theme` and `settings` JSON. A changed theme invalidates the storefront's cached theme colour (`store.storefrontUpdated`).
+- `online_store.createImageUpload` and `completeImageUpload` upload a logo or favicon (`kind: "logo"`) or a banner photo (`kind: "hero"`), as [Uploads](#uploads) describes; the dashboard keeps its own file route.
+- `online_store.checkSlugAvailability` and `online_store.updateSlug` change the store's web address. Louez keeps no history of former addresses, so a link to the old one stops working once the store is online: the change is sensitive (`destructive`) and its preview shows the old and the new URL and that nothing redirects, bound to the old address. A reserved address is refused by the input; one taken by another store before the lock answers `STORE_SLUG_TAKEN` with suggestions, and two stores taking the same address at once meet on the unique key, where the second gets the same answer. The slug is in the store's billing snapshot, so the store is marked. The app revalidates the dashboard, the editor and both storefront paths, and drops both addresses' cached theme (`store.slugChanged`).
+
+`settings.get` also shows the storefront: its address and URL, tagline, language and look.
 
 The former tools `get_store_settings`, `update_store_info` and `update_store_legal` are aliases of `settings_get`, `settings_update_store_info` and `settings_update_legal`, with the same arguments.
 

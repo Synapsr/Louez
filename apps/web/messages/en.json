@@ -9195,7 +9195,6 @@
     "updateCustomerError": "Error updating customer",
     "deleteCustomerError": "Error deleting customer",
     "updateNotesError": "Error updating notes",
-    "updateSettingsError": "Error updating settings",
     "createReservationError": "Error creating reservation",
     "businessHoursViolation": "Selected times are outside the store's business hours",
     "returnAddressInvalid": "Invalid return address coordinates",

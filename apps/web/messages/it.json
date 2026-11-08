@@ -9195,7 +9195,6 @@
     "updateCustomerError": "Errore nell'aggiornamento del cliente",
     "deleteCustomerError": "Errore nell'eliminazione del cliente",
     "updateNotesError": "Errore nell'aggiornamento delle note",
-    "updateSettingsError": "Errore nell'aggiornamento delle impostazioni",
     "createReservationError": "Errore nella creazione della prenotazione",
     "businessHoursViolation": "Gli orari selezionati sono al di fuori degli orari di apertura del negozio",
     "returnAddressInvalid": "Coordinate dell'indirizzo di reso non valide",

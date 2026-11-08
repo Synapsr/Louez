@@ -29,6 +29,8 @@ import type { StoragePort, UploadTarget } from "../platform/ports";
 export const API_UPLOAD_KINDS = [
   "category",
   "product",
+  "logo",
+  "hero",
 ] as const satisfies readonly ImageUploadKind[];
 export type ApiUploadKind = (typeof API_UPLOAD_KINDS)[number];
 

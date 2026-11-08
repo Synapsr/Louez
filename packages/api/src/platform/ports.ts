@@ -160,6 +160,10 @@ export type ApiEvent =
   | { type: "reservation.notesUpdated"; store: ApiEventStore; reservationId: string }
   /** A section of the store settings changed: its pages are revalidated. */
   | { type: "store.settingsUpdated"; store: ApiEventStore; section: SettingsSection }
+  /** The online store's sections or look changed; `themeChanged`: its cached theme colour is stale. */
+  | { type: "store.storefrontUpdated"; store: ApiEventStore; themeChanged: boolean }
+  /** The store moved to a new web address (`store.slug`). */
+  | { type: "store.slugChanged"; store: ApiEventStore; previousSlug: string }
   /** Not a write: the store's card gate refused a status change; the app logs it. */
   | {
       type: "reservation.gateRefused";

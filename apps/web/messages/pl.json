@@ -9195,7 +9195,6 @@
     "updateCustomerError": "Błąd aktualizacji klienta",
     "deleteCustomerError": "Błąd usuwania klienta",
     "updateNotesError": "Błąd aktualizacji notatek",
-    "updateSettingsError": "Błąd aktualizacji ustawień",
     "createReservationError": "Błąd tworzenia rezerwacji",
     "businessHoursViolation": "Wybrane godziny są poza godzinami otwarcia sklepu",
     "returnAddressInvalid": "Nieprawidłowe współrzędne adresu zwrotu",

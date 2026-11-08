@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { apiError } from "../platform/errors";
 import { resourceLinksSchema } from "./links";
+import { appearanceView } from "./online-store";
 
 /**
  * The store settings contract: what a store needs before it goes live, read
@@ -181,6 +182,19 @@ export const getSettingsOutput = z.object({
   delivery: deliveryView,
   locations: z.array(locationView),
   taxes: taxesView,
+  storefront: z.object({
+    /** The store's web address; online_store_update_slug moves it. */
+    slug: z.string(),
+    /** The storefront's home; it answers the public once the store is online. */
+    url: z.string(),
+    /** Editor HTML, a short lead under the name on the home page. */
+    tagline: z.string().nullable(),
+    /** The storefront's fallback language (ISO 639-1); null follows the visitor's browser. */
+    locale: z.string().nullable(),
+    appearance: appearanceView,
+    /** The online store editor. */
+    links: resourceLinksSchema,
+  }),
   payments: z.object({
     /** Card payments work at checkout only once Stripe is connected (a link from the dashboard). */
     stripeChargesEnabled: z.boolean(),

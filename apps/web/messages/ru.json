@@ -9195,7 +9195,6 @@
     "updateCustomerError": "Ошибка обновления клиента",
     "deleteCustomerError": "Ошибка удаления клиента.",
     "updateNotesError": "Ошибка обновления заметок.",
-    "updateSettingsError": "Ошибка обновления настроек.",
     "createReservationError": "Ошибка создания бронирования.",
     "businessHoursViolation": "Выбранное время находится вне рабочих часов магазина.",
     "returnAddressInvalid": "Неверные координаты обратного адреса",

@@ -9195,7 +9195,6 @@
     "updateCustomerError": "고객을 업데이트하는 중에 오류가 발생했습니다.",
     "deleteCustomerError": "고객을 삭제하는 중에 오류가 발생했습니다.",
     "updateNotesError": "메모를 업데이트하는 중에 오류가 발생했습니다.",
-    "updateSettingsError": "설정을 업데이트하는 중에 오류가 발생했습니다.",
     "createReservationError": "예약 생성 오류",
     "businessHoursViolation": "선택한 시간은 매장 영업시간 외입니다.",
     "returnAddressInvalid": "반송 주소 좌표가 잘못되었습니다.",

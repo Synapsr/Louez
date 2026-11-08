@@ -138,13 +138,6 @@ const ALLOWLIST = [
     reason: "adds members with role member and removes non-owners only; the snapshot lists owners",
   },
   {
-    file: "packages/api/src/services/store-settings.ts",
-    writes: { stores: 2 },
-    reason:
-      "appearance and the online store editor: other columns, and settings " +
-      "re-read with country, timezone, currency and tax kept",
-  },
-  {
     file: "apps/web/lib/reservations/create-reservation.ts",
     writes: { payments: 1, reservationItems: 1 },
     reason:
