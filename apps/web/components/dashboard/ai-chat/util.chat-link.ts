@@ -1,7 +1,15 @@
+import { DASHBOARD_STORE_PARAM } from "@louez/api/platform/links";
+
 /** What a link in an assistant answer opens. */
 export type ChatLink =
-  /** A page of this app's dashboard: a relative path, opened in the app. */
+  /** A page of this app's dashboard, in the current store: a relative path, opened in the app. */
   | { kind: "app"; href: string }
+  /**
+   * A dashboard page of another store: a full page load in the same tab, so
+   * nothing of the current store's client state (store context, query cache)
+   * carries over; the app asks before switching stores.
+   */
+  | { kind: "document"; href: string }
   /** A storefront of this deployment: opened in a new tab. */
   | { kind: "external"; href: string };
 
@@ -11,6 +19,8 @@ export interface ChatLinkSite {
   appUrl: string;
   /** NEXT_PUBLIC_APP_DOMAIN: storefronts live on it or on a subdomain of it. */
   appDomain: string;
+  /** The store the dashboard shows now. */
+  currentStoreId: string;
 }
 
 const isDashboardPath = (pathname: string) =>
@@ -29,7 +39,9 @@ const parse = (href: string, base?: string): URL | null => {
  * links built from this deployment's settings (`links` in their answers):
  *
  * - a dashboard page on this app's origin opens in the app (Next.js Link,
- *   relative path, same tab), as does a bare `/dashboard/…` path;
+ *   relative path, same tab), as does a bare `/dashboard/…` path; a link
+ *   naming the current store (`?store=`) drops it, and one naming another
+ *   store is a full page load instead;
  * - a page of this deployment's storefronts, on the app domain or a store
  *   subdomain of it, or on the app's origin in standalone mode or with local
  *   path routing, opens in a new tab;
@@ -47,6 +59,11 @@ export const resolveChatLink = (href: string, site: ChatLinkSite): ChatLink | nu
 
   if (url.origin === appOrigin) {
     if (isDashboardPath(url.pathname)) {
+      const store = url.searchParams.get(DASHBOARD_STORE_PARAM);
+      if (store !== null && store !== site.currentStoreId) {
+        return { kind: "document", href: `${url.pathname}${url.search}${url.hash}` };
+      }
+      url.searchParams.delete(DASHBOARD_STORE_PARAM);
       return { kind: "app", href: `${url.pathname}${url.search}${url.hash}` };
     }
     // Only an absolute link reaches the app's own storefront paths; a bare

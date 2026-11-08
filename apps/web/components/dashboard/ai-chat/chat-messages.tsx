@@ -10,6 +10,7 @@ import { ExternalLinkIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
 import { usePublicEnv } from "@/components/shared/public-env-provider";
+import { useStore } from "@/contexts/store-context";
 
 import { resolveChatLink } from "./util.chat-link";
 
@@ -70,13 +71,14 @@ const MessageParts = ({ parts }: { parts: UIMessage["parts"] }) => (
 
 /**
  * Render inline formatting: [link](url), **bold**, `code`, *italic*. A link
- * to this app's dashboard navigates in the app, a link to one of its
- * storefronts opens a new tab, anything else stays plain text
- * (`resolveChatLink`).
+ * to this app's dashboard navigates in the app (another store's page loads
+ * in full), a link to one of its storefronts opens a new tab, anything else
+ * stays plain text (`resolveChatLink`).
  */
 const InlineFormat = ({ text }: { text: string }) => {
   const t = useTranslations("dashboard.aiChat");
   const { NEXT_PUBLIC_APP_URL: appUrl, NEXT_PUBLIC_APP_DOMAIN: appDomain } = usePublicEnv();
+  const { storeId: currentStoreId } = useStore();
   // Links first: their label may itself contain ** or `, and matching those
   // before the link would split it in half.
   const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*.*?\*\*|`[^`]+`|\*[^*]+\*)/);
@@ -86,15 +88,22 @@ const InlineFormat = ({ text }: { text: string }) => {
         const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(segment);
         if (link) {
           const [, label, href] = link;
-          const target = resolveChatLink(href, { appUrl, appDomain });
+          const target = resolveChatLink(href, { appUrl, appDomain, currentStoreId });
           if (!target) return label;
           if (target.kind === "app") {
-            // Not prefetched: a link naming its store switches the active
-            // store when followed, never on sight.
             return (
-              <Link key={j} href={target.href} prefetch={false} className={LINK_CLASS}>
+              <Link key={j} href={target.href} className={LINK_CLASS}>
                 {label}
               </Link>
+            );
+          }
+          if (target.kind === "document") {
+            // Another store: a full page load, so the current store's client
+            // state never carries over.
+            return (
+              <a key={j} href={target.href} className={LINK_CLASS}>
+                {label}
+              </a>
             );
           }
           return (

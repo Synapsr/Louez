@@ -3,9 +3,21 @@ import test from "node:test";
 
 import { resolveChatLink } from "./util.chat-link";
 
-const platform = { appUrl: "https://app.louez.test", appDomain: "louez.test" };
-const local = { appUrl: "http://localhost:3000", appDomain: "localhost:3000" };
-const standalone = { appUrl: "https://location.example.test", appDomain: "location.example.test" };
+const platform = {
+  appUrl: "https://app.louez.test",
+  appDomain: "louez.test",
+  currentStoreId: "s1",
+};
+const local = {
+  appUrl: "http://localhost:3000",
+  appDomain: "localhost:3000",
+  currentStoreId: "s1",
+};
+const standalone = {
+  appUrl: "https://location.example.test",
+  appDomain: "location.example.test",
+  currentStoreId: "s1",
+};
 
 test("a dashboard link on the app's origin opens in the app, as a relative path", () => {
   assert.deepEqual(resolveChatLink("https://app.louez.test/dashboard/products/p1", platform), {
@@ -21,14 +33,6 @@ test("a dashboard link on the app's origin opens in the app, as a relative path"
     kind: "app",
     href: "/dashboard/customers/c1",
   });
-  // A link naming its store keeps it: the app switches, then drops it.
-  assert.deepEqual(
-    resolveChatLink("https://app.louez.test/dashboard/products/p1?store=s1", platform),
-    {
-      kind: "app",
-      href: "/dashboard/products/p1?store=s1",
-    },
-  );
   assert.deepEqual(resolveChatLink("http://localhost:3000/dashboard", local), {
     kind: "app",
     href: "/dashboard",
@@ -73,5 +77,23 @@ test("a dashboard path on another origin is not taken for an in-app one", () => 
   assert.deepEqual(resolveChatLink("https://ddm.louez.test/dashboard", platform), {
     kind: "external",
     href: "https://ddm.louez.test/dashboard",
+  });
+});
+
+test("a link naming the current store drops it and stays in the app", () => {
+  assert.deepEqual(
+    resolveChatLink("https://app.louez.test/dashboard/products/p1?tab=units&store=s1", platform),
+    { kind: "app", href: "/dashboard/products/p1?tab=units" },
+  );
+});
+
+test("a link naming another store is a full page load that keeps it", () => {
+  assert.deepEqual(
+    resolveChatLink("https://app.louez.test/dashboard/products/p1?store=s2", platform),
+    { kind: "document", href: "/dashboard/products/p1?store=s2" },
+  );
+  assert.deepEqual(resolveChatLink("/dashboard?store=s2", platform), {
+    kind: "document",
+    href: "/dashboard?store=s2",
   });
 });
