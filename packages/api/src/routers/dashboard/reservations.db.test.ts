@@ -67,6 +67,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
   const events: ApiEvent[] = [];
   const feeEffects: unknown[][] = [];
   const contracts: string[] = [];
+  const dispatched: string[] = [];
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
     storage: createMemoryStorage(),
@@ -84,6 +85,9 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       cancelContract: async (id: string) => {
         contracts.push(`cancel:${id}`);
       },
+    },
+    dispatchEffects: (ids: readonly string[]) => {
+      dispatched.push(...ids);
     },
   };
 
@@ -142,6 +146,8 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     events.length = 0;
     feeEffects.length = 0;
     contracts.length = 0;
+    dispatched.length = 0;
+    await louezDb.db.delete(louezDb.apiEffects);
     await louezDb.db.delete(louezDb.apiOperations);
     await louezDb.db.delete(louezDb.apiConfirmations);
     await louezDb.db.delete(louezDb.payments);
@@ -327,7 +333,22 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     return row?.status;
   }
 
-  const statusEvents = () => events.filter((event) => event.type === "reservation.statusChanged");
+  /** The outbox rows, oldest first. */
+  async function outbox() {
+    return louezDb.db
+      .select({
+        id: louezDb.apiEffects.id,
+        type: louezDb.apiEffects.type,
+        status: louezDb.apiEffects.status,
+        payload: louezDb.apiEffects.payload,
+      })
+      .from(louezDb.apiEffects)
+      .orderBy(louezDb.apiEffects.createdAt, louezDb.apiEffects.type);
+  }
+  const analyticsOf = async () =>
+    (await outbox())
+      .filter((row) => row.type === "reservation.statusAnalytics")
+      .map((row) => row.payload);
 
   // --- Reads ----------------------------------------------------------------
 
@@ -456,6 +477,117 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.equal(detail.currency, "EUR");
   });
 
+  test("without payments read, no payment rows nor Stripe ids, only what was paid", async () => {
+    const id = await reservation("confirmed", { number: "2030-0300" });
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ stripePaymentMethodId: "pm_secret" })
+      .where(orm.eq(louezDb.reservations.id, id));
+    await louezDb.db.insert(louezDb.payments).values({
+      reservationId: id,
+      amount: "20.00",
+      type: "rental",
+      method: "stripe",
+      status: "completed",
+      stripePaymentIntentId: "pi_secret",
+      notes: "Paid by phone",
+    });
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: nextId("rs_act"),
+      reservationId: id,
+      activityType: "payment_received",
+      description: "Stripe payment",
+      metadata: { paymentIntentId: "pi_secret" },
+    });
+    const key = await apiKey({ ...everything, payments: "none" });
+
+    const detail = await run("get", { id }, key());
+    assert.deepEqual(detail.payments, []);
+    assert.equal(detail.stripePaymentMethodId, null);
+    assert.equal(detail.rentalPaid, "20.00", "what was paid stays");
+    assert.equal(detail.activity[0]?.metadata, null);
+    assert.equal(detail.activity[0]?.description, null);
+    assert.equal(detail.customer?.firstName, "Ada", "customers are another right");
+
+    const page = await run("list", { search: "0300" }, key());
+    assert.deepEqual(page.items[0]?.payments, []);
+    assert.equal(page.items[0]?.rentalPaid, "20.00");
+    const poll = await run("poll", {}, key());
+    assert.ok(!JSON.stringify(poll).includes("pi_secret"));
+    const found = await search("0300", key());
+    assert.ok(!JSON.stringify(found).includes("pi_secret"));
+
+    const full = await run("get", { id }, (await apiKey())());
+    assert.equal(full.payments[0]?.stripePaymentIntentId, "pi_secret");
+    assert.equal(full.payments[0]?.notes, "Paid by phone");
+    assert.equal(full.stripePaymentMethodId, "pm_secret");
+  });
+
+  test("without customers read, no free text that may name the customer", async () => {
+    const id = await reservation("confirmed");
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ internalNotes: "Call Ada on 06 12 34 56 78" })
+      .where(orm.eq(louezDb.reservations.id, id));
+    await louezDb.db.insert(louezDb.payments).values({
+      reservationId: id,
+      amount: "50.00",
+      type: "deposit_capture",
+      method: "stripe",
+      status: "completed",
+      notes: "Ada broke the paddle, 06 12 34 56 78",
+    });
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: nextId("rs_act"),
+      reservationId: id,
+      activityType: "deposit_captured",
+      description: "Damage reported by phone 06 12 34 56 78",
+    });
+    const key = await apiKey({ ...everything, customers: "none" });
+
+    const detail = await run("get", { id }, key());
+    assert.equal(detail.internalNotes, null);
+    assert.equal(detail.payments[0]?.notes, null);
+    assert.equal(detail.activity[0]?.description, null);
+    assert.ok(!JSON.stringify(detail).includes("06 12 34 56 78"));
+    for (const answer of [
+      await run("list", {}, key()),
+      await run("poll", {}, key()),
+      await run("listCalendarPeriod", { from: START, to: END }, key()),
+      await run("getPlanningTimeline", { from: START, to: END }, key()),
+      await run("listUpcoming", { days: 90 }, key()),
+      await run("listOverdue", {}, key()),
+      await search(detail.number, key()),
+    ]) {
+      assert.ok(!JSON.stringify(answer).includes("Ada"), JSON.stringify(answer));
+      assert.ok(!JSON.stringify(answer).includes("06 12 34 56 78"));
+    }
+  });
+
+  test("numbered pages go as deep as the list", async () => {
+    await louezDb.db.insert(louezDb.reservations).values(
+      Array.from({ length: 402 }, (_, index) => ({
+        id: `rs_deep_${String(index).padStart(13, "0")}`,
+        storeId: STORE,
+        customerId: CUSTOMER,
+        number: `2031-${String(index).padStart(4, "0")}`,
+        status: "pending" as const,
+        startDate: new Date(START.getTime() + index * 60_000),
+        endDate: END,
+        subtotalAmount: "1.00",
+        depositAmount: "0.00",
+        totalAmount: "1.00",
+      })),
+    );
+    const page = await run(
+      "list",
+      { page: 401, limit: 1, sort: "number", sortDirection: "asc" },
+      session(),
+    );
+    assert.equal(page.items[0]?.number, "2031-0400");
+    assert.equal(page.totalCount, 402);
+  });
+
   test("the counters, the calendar, the planning and the agenda", async () => {
     const productId = await product(3);
     const now = Date.now();
@@ -533,11 +665,25 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.equal(stock?.quantity, 0, "the consumable left the stock");
     assert.equal(feeEffects.length, 1);
     assert.deepEqual(contracts, [`create:${id}`]);
+    // The messages and notifications are in the outbox, handed to the app once committed.
+    const rows = await outbox();
+    assert.deepEqual(rows.map((row) => row.type).sort(), [
+      "reservation.customerMessage",
+      "reservation.platformNotification",
+      "reservation.statusAnalytics",
+      "reservation.storeNotification",
+    ]);
+    assert.deepEqual([...dispatched].sort(), rows.map((row) => row.id).sort());
+    const message = rows.find((row) => row.type === "reservation.customerMessage")?.payload as {
+      notification: string;
+      customer: { email: string };
+      reservation: { startDate: string };
+    };
+    assert.equal(message.notification, "customer_request_accepted");
+    assert.equal(message.customer.email, "ada@rs.test");
+    assert.equal(message.reservation.startDate, START.toISOString());
     assert.deepEqual(
-      statusEvents().map(
-        (event) =>
-          event.type === "reservation.statusChanged" && [event.from, event.to, event.transport],
-      ),
+      (await analyticsOf()).map((payload) => [payload.from, payload.to, payload.transport]),
       [["pending", "confirmed", "rpc"]],
     );
     const activity = await louezDb.db
@@ -587,7 +733,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.deepEqual(preview.details.messages, [{ message: "request_accepted", channel: "email" }]);
     assert.equal(preview.details.reducesAvailability, true);
     assert.equal(await statusOf(id), "pending", "nothing was done");
-    assert.equal(statusEvents().length, 0);
+    assert.equal((await outbox()).length, 0, "no message is queued before the confirmation");
 
     await rejects(
       run("updateStatus", { id, status: "confirmed" }, key({ "louez-confirmation": "forged" })),
@@ -613,7 +759,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     );
     assert.equal(change.to, "confirmed");
     assert.deepEqual(
-      statusEvents().map((event) => event.type === "reservation.statusChanged" && event.transport),
+      (await analyticsOf()).map((payload) => payload.transport),
       ["openapi"],
     );
     const [activity] = await louezDb.db
@@ -672,6 +818,69 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.match(previewOf(again).summary, /No message goes to the customer/);
   });
 
+  test("a token is bound to where the messages go, even what the preview does not show", async () => {
+    const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({
+        customerNotificationSettings: {
+          ...DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
+          customer_request_accepted: { enabled: true, email: true, sms: true },
+        },
+      })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    await louezDb.db
+      .update(louezDb.customers)
+      .set({ phone: "+33600000001" })
+      .where(orm.eq(louezDb.customers.id, CUSTOMER));
+    try {
+      const id = await reservation("pending", { productId: await product() });
+      const key = await apiKey();
+      const token = tokenOf(
+        await rejects(
+          run("updateStatus", { id, status: "confirmed" }, key()),
+          "CONFIRMATION_REQUIRED",
+        ),
+      );
+      // The SMS would now go to another phone: the preview never showed it.
+      await louezDb.db
+        .update(louezDb.customers)
+        .set({ phone: "+33600000002" })
+        .where(orm.eq(louezDb.customers.id, CUSTOMER));
+      await rejects(
+        run("updateStatus", { id, status: "confirmed" }, key({ "louez-confirmation": token })),
+        "CONFIRMATION_INVALID",
+      );
+
+      // Without customers read the preview shows no email; it is bound all the same.
+      const blind = await apiKey({ ...everything, customers: "none" });
+      const blindRefusal = await rejects(
+        run("updateStatus", { id, status: "confirmed" }, blind()),
+        "CONFIRMATION_REQUIRED",
+      );
+      assert.equal(previewOf(blindRefusal).details.customer, null);
+      assert.ok(!JSON.stringify(previewOf(blindRefusal)).includes("ada@rs.test"));
+      await louezDb.db
+        .update(louezDb.customers)
+        .set({ email: "ada.new@rs.test" })
+        .where(orm.eq(louezDb.customers.id, CUSTOMER));
+      await rejects(
+        run(
+          "updateStatus",
+          { id, status: "confirmed" },
+          blind({ "louez-confirmation": tokenOf(blindRefusal) }),
+        ),
+        "CONFIRMATION_INVALID",
+      );
+      assert.equal(await statusOf(id), "pending");
+    } finally {
+      await louezDb.db
+        .update(louezDb.customers)
+        .set({ phone: null, email: "ada@rs.test" })
+        .where(orm.eq(louezDb.customers.id, CUSTOMER));
+    }
+  });
+
   test("a pick-up needs no confirmation, and its replay with the same key runs once", async () => {
     const id = await reservation("confirmed", { productId: await product() });
     const key = await apiKey();
@@ -683,7 +892,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     const replay = await run("updateStatus", { id, status: "ongoing" }, replayContext);
     assert.deepEqual(replay, change);
     assert.equal(replayContext.receipt.replayed, true);
-    assert.equal(statusEvents().length, 1, "the change ran once");
+    assert.equal((await analyticsOf()).length, 1, "the change ran, and queued its effects, once");
 
     await rejects(
       run("updateStatus", { id, status: "completed" }, key({ "idempotency-key": "pickup-1" })),
@@ -718,10 +927,9 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       { id, status: "rejected", rejectionReason: "Fully booked" },
       session(),
     );
-    const [event] = statusEvents();
-    assert.ok(event?.type === "reservation.statusChanged");
-    assert.equal(event.rejectionReason, "Fully booked");
-    assert.equal(event.to, "rejected");
+    const message = (await outbox()).find((row) => row.type === "reservation.customerMessage");
+    assert.equal(message?.payload.notification, "customer_request_rejected");
+    assert.equal(message?.payload.rejectionReason, "Fully booked");
   });
 
   // --- Cancellation -----------------------------------------------------------
@@ -795,6 +1003,14 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       events.map((event) => event.type),
       ["reservation.notesUpdated"],
     );
+    // An agent's change records its analytics event through the outbox.
+    assert.deepEqual(
+      (await outbox()).map((row) => [row.type, row.payload.transport, row.payload.hasNotes]),
+      [["reservation.notesAnalytics", "openapi", true]],
+    );
+    // The dashboard records its own in the browser.
+    await run("updateNotes", { id, notes: "" }, session());
+    assert.equal((await outbox()).length, 1);
   });
 
   // --- Concurrency (lock order: products, then the reservation) ---------------
@@ -821,6 +1037,7 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.equal(outcome, "RESERVATION_ITEMS_UNAVAILABLE");
     assert.equal(await statusOf(id), "pending", "nothing was written");
     assert.equal(feeEffects.length, 0);
+    assert.equal((await outbox()).length, 0, "a rolled back change queues no message");
   });
 
   test("of two confirmations of the last unit at once, one wins", async () => {
