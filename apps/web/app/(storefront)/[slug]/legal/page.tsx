@@ -9,7 +9,7 @@ import { RichText } from "@/components/storefront/ui/rich-text";
 import { getHostedBy } from "@/lib/hosting";
 import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
-import { hasRichTextContent } from "@/lib/util.rich-text";
+import { hasRichTextContent } from "@louez/utils";
 
 interface LegalNoticePageProps {
   params: Promise<{ slug: string }>;

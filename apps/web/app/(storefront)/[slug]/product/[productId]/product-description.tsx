@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import { RichTextHtml } from "@/components/storefront/ui/rich-text-html";
 import { SectionHeader } from "@/components/storefront/ui/section-header";
 
-import { hasRichTextContent } from "@/lib/util.rich-text";
+import { hasRichTextContent } from "@louez/utils";
 
 interface ProductDescriptionProps {
   /** The description's editor HTML, sanitised on the server (the product page does it). */

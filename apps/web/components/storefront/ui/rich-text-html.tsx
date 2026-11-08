@@ -1,6 +1,4 @@
-import { cn } from "@louez/utils";
-
-import { hasRichTextContent } from "@/lib/util.rich-text";
+import { cn, hasRichTextContent } from "@louez/utils";
 
 type RichTextSize = "sm" | "base" | "lg";
 

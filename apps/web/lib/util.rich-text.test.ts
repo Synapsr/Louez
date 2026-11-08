@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { hasRichTextContent, sanitizeRichTextHtml } from "./util.rich-text";
+import { hasRichTextContent } from "@louez/utils";
+
+import { sanitizeRichTextHtml } from "./util.rich-text";
 
 test("sanitizeRichTextHtml keeps editor markup and drops script tags", () => {
   assert.equal(

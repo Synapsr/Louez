@@ -1,3 +1,5 @@
+// Server only: it imports the sanitiser's parser. A client module takes
+// `hasRichTextContent` from @louez/utils and HTML its server parent sanitised.
 import { sanitizeProductDescriptionHtml } from "@/lib/util.product-description";
 
 export { sanitizeProductDescriptionHtml };
@@ -15,6 +17,3 @@ export { sanitizeProductDescriptionHtml };
  */
 export const sanitizeRichTextHtml = (html: string | null | undefined): string =>
   html ? sanitizeProductDescriptionHtml(html) : "";
-
-/** Whether editor HTML shows any text; shared with the API (`@louez/utils`). */
-export { hasRichTextContent } from "@louez/utils";
