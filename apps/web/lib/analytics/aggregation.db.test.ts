@@ -24,15 +24,22 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
   let aggregation: typeof import("./aggregation");
   let productRevenue: typeof import("./product-revenue");
 
-  const yesterday = startOfDay(subDays(new Date(), 1));
+  // A fixed clock: the run aggregates the day before NOW.
+  const NOW = new Date(2027, 2, 15, 10, 0, 0);
+  const yesterday = startOfDay(subDays(NOW, 1));
   const yesterdayNoon = new Date(yesterday.getTime() + 12 * 60 * 60 * 1000);
-  const today = startOfDay(new Date());
-  const tenDaysAgo = startOfDay(subDays(new Date(), 10));
+  const today = startOfDay(NOW);
+  const tenDaysAgo = startOfDay(subDays(NOW, 10));
   const tenDaysAgoNoon = new Date(tenDaysAgo.getTime() + 12 * 60 * 60 * 1000);
 
-  const reservation = (id: string, storeId = STORE): Insert<"reservations"> => ({
+  const reservation = (
+    id: string,
+    storeId = STORE,
+    currency: string | null = null,
+  ): Insert<"reservations"> => ({
     id,
     storeId,
+    currency,
     customerId: "customer",
     number: id,
     status: "confirmed",
@@ -137,6 +144,7 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
         reservation("res_thirds"),
         reservation("res_custom"),
         reservation("res_usd"),
+        reservation("res_gbp", STORE, "GBP"),
         reservation("res_old"),
         reservation("res_other", OTHER_STORE),
       ]);
@@ -151,6 +159,7 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
       item("res_custom", "prod_bike", "50.00"),
       item("res_custom", null, "50.00"),
       item("res_usd", "prod_bike", "100.00"),
+      item("res_gbp", "prod_bike", "100.00"),
       item("res_old", "prod_helmet", "100.00"),
       item("res_other", "prod_other", "100.00"),
     ]);
@@ -171,6 +180,8 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
       payment("pay_custom", "res_custom", "10.00", yesterdayNoon),
       // A receipt in another currency than the store's is left out.
       payment("pay_usd", "res_usd", "100.00", yesterdayNoon, { currency: "USD" }),
+      // Without a currency of its own, a receipt is in its reservation's: GBP here.
+      payment("pay_gbp", "res_gbp", "100.00", yesterdayNoon, { currency: null }),
       // Cashed in ten days ago: that day's revenue.
       payment("pay_old", "res_old", "100.00", tenDaysAgoNoon),
       // Another store's sale.
@@ -208,13 +219,19 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
     assert.deepEqual(Object.fromEntries(revenue.byDay.get(tenDaysAgo.getTime()) ?? []), {
       prod_helmet: 10_000,
     });
-    assert.deepEqual(revenue.skipped, [{ currency: "USD", count: 1 }]);
+    assert.deepEqual(
+      [...revenue.skipped].sort((a, b) => a.currency.localeCompare(b.currency)),
+      [
+        { currency: "GBP", count: 1 },
+        { currency: "USD", count: 1 },
+      ],
+    );
   });
 
   test("the daily aggregation records each product's revenue on its receipt day", async () => {
-    await aggregation.aggregateDailyAnalytics();
+    await aggregation.aggregateDailyAnalytics(NOW);
     // A second run writes the same figures.
-    await aggregation.aggregateDailyAnalytics();
+    await aggregation.aggregateDailyAnalytics(NOW);
 
     assert.deepEqual(await readStats(), {
       "yesterday:prod_bike": { views: 0, revenue: "65.00" },
@@ -233,7 +250,7 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
     await db.update(payments).set({ amount: "0.00" }).where(eq(payments.id, "pay_rental"));
     await db.delete(payments).where(eq(payments.id, "pay_old"));
 
-    await aggregation.aggregateDailyAnalytics();
+    await aggregation.aggregateDailyAnalytics(NOW);
 
     const stats = await readStats();
     assert.deepEqual(stats["yesterday:prod_bike"], { views: 0, revenue: "5.00" });

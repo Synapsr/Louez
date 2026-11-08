@@ -50,6 +50,7 @@ export async function getProductRevenueByDay(input: {
       reservationId: payments.reservationId,
       amount: payments.amount,
       currency: payments.currency,
+      reservationCurrency: reservations.currency,
       receivedAt: receiptDate.mapWith(reservations.createdAt),
     })
     .from(payments)
@@ -67,7 +68,13 @@ export async function getProductRevenueByDay(input: {
 
   const skippedByCurrency = new Map<string, number>();
   const inCurrency = receipts.filter((receipt) => {
-    const currency = (receipt.currency ?? input.currency).toUpperCase();
+    // The payment's own currency, else the one frozen on its reservation, else
+    // (rows from before either existed) the store's.
+    const currency = (
+      receipt.currency ||
+      receipt.reservationCurrency ||
+      input.currency
+    ).toUpperCase();
     if (currency === input.currency) return true;
     skippedByCurrency.set(currency, (skippedByCurrency.get(currency) ?? 0) + 1);
     return false;

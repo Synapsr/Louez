@@ -21,8 +21,7 @@ const centsToDecimal = (cents: number) => (cents / 100).toFixed(2)
  * Aggregate yesterday's analytics data into dailyStats and productStats tables.
  * This should run once daily (e.g., at 2:00 AM).
  */
-export async function aggregateDailyAnalytics() {
-  const now = new Date()
+export async function aggregateDailyAnalytics(now = new Date()) {
   const yesterday = startOfDay(subDays(now, 1))
   const today = startOfDay(now)
 
