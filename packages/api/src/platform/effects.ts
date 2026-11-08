@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 import { apiEffects, db, reservations, stores, type Transaction } from "@louez/db";
 import { and, asc, eq, inArray, like, lt, lte, or, sql } from "drizzle-orm";
@@ -69,6 +69,24 @@ type Status =
   | "declined";
 
 /** Every effect, by type, with its payload. Dates are ISO 8601 strings: payloads are JSON. */
+/**
+ * Who an analytics event is, fixed when its row is added: every retry sends
+ * the same id and time, so PostHog counts it once. Optional on the
+ * reservation events, whose rows added before it carry neither.
+ */
+export interface AnalyticsEventIdentity {
+  /** A UUID, PostHog's `uuid` of the event. */
+  eventUuid: string;
+  /** ISO 8601, when the write happened: PostHog's `timestamp` of the event. */
+  occurredAt: string;
+}
+
+/** A new analytics event's identity (see `AnalyticsEventIdentity`). */
+export const analyticsEventIdentity = (occurredAt: Date): AnalyticsEventIdentity => ({
+  eventUuid: randomUUID(),
+  occurredAt: occurredAt.toISOString(),
+});
+
 export interface ApiEffectPayloads {
   /** The customer hears of the answer to their request or quote, on one channel. */
   "reservation.customerMessage": {
@@ -132,7 +150,7 @@ export interface ApiEffectPayloads {
     currency: string | null;
   };
   /** The product analytics event of a status change. */
-  "reservation.statusAnalytics": {
+  "reservation.statusAnalytics": Partial<AnalyticsEventIdentity> & {
     ownerUserId: string;
     storeId: string;
     reservationId: string;
@@ -143,7 +161,7 @@ export interface ApiEffectPayloads {
     warningCount: number;
   };
   /** The product analytics event of a notes change by the API or an agent. */
-  "reservation.notesAnalytics": {
+  "reservation.notesAnalytics": Partial<AnalyticsEventIdentity> & {
     ownerUserId: string;
     storeId: string;
     reservationId: string;

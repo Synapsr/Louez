@@ -229,6 +229,7 @@ export function createReservationEffectSenders(
           storeId: payload.storeId,
           reservationId: payload.reservationId,
           action,
+          identity: { eventUuid: payload.eventUuid, occurredAt: payload.occurredAt },
           properties: {
             status_before: payload.from,
             status_after: payload.to,
@@ -249,6 +250,7 @@ export function createReservationEffectSenders(
           storeId: payload.storeId,
           reservationId: payload.reservationId,
           action: reservationAnalyticsActions.updateNotes,
+          identity: { eventUuid: payload.eventUuid, occurredAt: payload.occurredAt },
           properties: { has_notes: payload.hasNotes, ...actorProperties(payload.transport) },
         });
       },

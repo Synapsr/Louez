@@ -235,6 +235,8 @@ describe("reservation effect senders", () => {
 
     await senders["reservation.statusAnalytics"](
       {
+        eventUuid: "0190f3f0-5b6e-7c3a-9d2e-1a2b3c4d5e6f",
+        occurredAt: "2026-11-08T10:00:00.000Z",
         ownerUserId: "owner",
         storeId: "store",
         reservationId: "res",
@@ -246,9 +248,14 @@ describe("reservation effect senders", () => {
       context,
     );
     const [analytics] = argsOf("captureReservationActionSucceededOrThrow") as [
-      { action: string; properties: Record<string, unknown> },
+      { action: string; properties: Record<string, unknown>; identity: unknown },
     ];
     assert.equal(analytics.action, "cancel_reservation");
+    // The row's event id and time, the same on every retry.
+    assert.deepEqual(analytics.identity, {
+      eventUuid: "0190f3f0-5b6e-7c3a-9d2e-1a2b3c4d5e6f",
+      occurredAt: "2026-11-08T10:00:00.000Z",
+    });
     assert.deepEqual(analytics.properties, {
       status_before: "confirmed",
       status_after: "cancelled",

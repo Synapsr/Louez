@@ -50,7 +50,7 @@ import {
   type listUpcomingInput,
 } from "../contracts/reservations";
 import type { Transport } from "../platform/actor";
-import { enqueueEffects } from "../platform/effects";
+import { analyticsEventIdentity, enqueueEffects } from "../platform/effects";
 import { platformErrors } from "../platform/errors";
 import type { ApiEventStore, ApiPorts } from "../platform/ports";
 import { customerFieldSearchCondition } from "./customer-fields";
@@ -687,6 +687,7 @@ export async function updateReservationNotes(
       {
         type: "reservation.notesAnalytics",
         payload: {
+          ...analyticsEventIdentity(updatedAt),
           ownerUserId: caller.store.ownerUserId,
           storeId,
           reservationId: input.id,

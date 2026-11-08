@@ -82,6 +82,30 @@ describe("strict analytics capture", () => {
     assert.equal(Reflect.get(properties, "$lib"), "posthog-node");
   });
 
+  test("a retried row sends the same event id and time, so PostHog keeps one event", async () => {
+    const identity = {
+      eventUuid: "0190f3f0-5b6e-7c3a-9d2e-1a2b3c4d5e6f",
+      occurredAt: "2026-11-08T10:00:00.000Z",
+    };
+    status = 503;
+    await assert.rejects(
+      analytics.captureReservationActionSucceededOrThrow({ ...event, identity }),
+    );
+    status = 200;
+    await analytics.captureReservationActionSucceededOrThrow({ ...event, identity });
+    assert.equal(requests.length, 2);
+    for (const request of requests) {
+      assert.equal(request.body.uuid, identity.eventUuid);
+      assert.equal(request.body.timestamp, identity.occurredAt);
+    }
+  });
+
+  test("an event without an identity gets the time of sending and no id", async () => {
+    await analytics.captureReservationActionSucceededOrThrow(event);
+    assert.equal(requests[0]?.body.uuid, undefined);
+    assert.ok(Date.now() - Date.parse(String(requests[0]?.body.timestamp)) < 60_000);
+  });
+
   test("a 503 throws, so the outbox retries it", async () => {
     status = 503;
     await assert.rejects(

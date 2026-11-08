@@ -1,5 +1,7 @@
 import 'server-only';
 
+import type { AnalyticsEventIdentity } from '@louez/api/platform/effects';
+
 import { env } from '@/env';
 import { providerSignal } from '@/lib/api/effect-signal';
 import { getPostHogServer, shutdownPostHogServer } from '@/lib/posthog';
@@ -21,16 +23,20 @@ type ProductServerEvent = {
  * outbox row: throws when PostHog did not take it (the SDK's flush swallows
  * HTTP failures), answers `skipped` when analytics is not set up here. It
  * honours an outbox sender's abort (lib/api/effect-signal.ts). The caller
- * gives every property, its area's base ones included.
+ * gives every property, its area's base ones included. `identity` is the
+ * row's: the same event id and time on every retry, so PostHog keeps one
+ * event (its `uuid` and `timestamp`, as posthog-node sends them).
  */
 export async function captureServerEventOrThrow({
   distinctId,
   event,
   properties,
+  identity,
 }: {
   distinctId: string | null | undefined;
   event: string;
   properties: Record<string, unknown>;
+  identity?: Partial<AnalyticsEventIdentity>;
 }): Promise<{ skipped: string } | undefined> {
   if (!distinctId) return { skipped: 'no one to count the event on' };
   if (!env.NEXT_PUBLIC_POSTHOG_KEY) return { skipped: 'analytics is not set up' };
@@ -49,7 +55,8 @@ export async function captureServerEventOrThrow({
         $lib: 'posthog-node',
         $geoip_disable: true,
       },
-      timestamp: new Date().toISOString(),
+      timestamp: identity?.occurredAt ?? new Date().toISOString(),
+      ...(identity?.eventUuid ? { uuid: identity.eventUuid } : {}),
     }),
     signal: providerSignal(),
   });
@@ -62,11 +69,15 @@ export function captureProductServerEventOrThrow({
   distinctId,
   event,
   properties,
-}: ProductServerEvent): Promise<{ skipped: string } | undefined> {
+  identity,
+}: ProductServerEvent & { identity?: Partial<AnalyticsEventIdentity> }): Promise<
+  { skipped: string } | undefined
+> {
   return captureServerEventOrThrow({
     distinctId,
     event,
     properties: { ...productAnalyticsBaseProperties, ...properties },
+    identity,
   });
 }
 
@@ -125,9 +136,14 @@ export async function captureReservationActionSucceeded(event: ReservationAction
   await captureProductServerEvent(reservationActionEvent(event));
 }
 
-/** For an outbox row: throws when PostHog did not take the event, so it is retried. */
-export function captureReservationActionSucceededOrThrow(event: ReservationActionSucceeded) {
-  return captureProductServerEventOrThrow(reservationActionEvent(event));
+/**
+ * For an outbox row: throws when PostHog did not take the event, so it is retried,
+ * with the row's event id and time on every try.
+ */
+export function captureReservationActionSucceededOrThrow(
+  event: ReservationActionSucceeded & { identity?: Partial<AnalyticsEventIdentity> },
+) {
+  return captureProductServerEventOrThrow({ ...reservationActionEvent(event), identity: event.identity });
 }
 
 export function toAnalyticsAmountCents(

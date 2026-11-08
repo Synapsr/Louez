@@ -1,7 +1,12 @@
 import type { stores } from "@louez/db";
 
 import type { Transport } from "../platform/actor";
-import type { ApiEffect, ApiEffectPayloads, EffectStore } from "../platform/effects";
+import {
+  analyticsEventIdentity,
+  type ApiEffect,
+  type ApiEffectPayloads,
+  type EffectStore,
+} from "../platform/effects";
 
 /**
  * The outbox rows of a reservation status change: what the customer's
@@ -217,6 +222,7 @@ export function buildStatusChangeEffects(
     type: "reservation.statusAnalytics",
     reservationId,
     payload: {
+      ...analyticsEventIdentity(new Date()),
       ownerUserId: store.userId,
       storeId: store.id,
       reservationId,
