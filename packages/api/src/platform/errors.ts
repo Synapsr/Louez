@@ -63,6 +63,12 @@ export const platformErrors = {
       message: "You have no access to this store, or to any store yet.",
       i18nKey: "errors.unauthorized",
     }),
+  noStoreYet: () =>
+    apiError("FORBIDDEN", "NO_STORE_YET", {
+      message:
+        "This account has no store yet. Create one with stores_create (POST /stores), then call again with its id as storeId.",
+      i18nKey: "errors.unauthorized",
+    }),
   storeRequired: () =>
     apiError("BAD_REQUEST", "STORE_REQUIRED", {
       message:

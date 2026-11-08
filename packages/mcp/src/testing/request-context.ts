@@ -47,6 +47,8 @@ export function testRequestContext(input: {
     },
     storeChosen: true,
     multiStore: false,
+    noStore: false,
+    storeArgument: false,
     storeError: null,
     listingRole: input.role ?? "owner",
     storeId: input.storeId,

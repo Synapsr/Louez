@@ -75,7 +75,7 @@ export function legacyTool<Shape extends z.ZodRawShape>(
 ): void {
   const schema = z.object(shape);
   const { $schema: _dialect, ...inputSchema } = z.toJSONSchema(schema, { io: "input" });
-  if (ctx.multiStore) {
+  if (ctx.storeArgument) {
     inputSchema.properties = { ...inputSchema.properties, storeId: STORE_ARGUMENT };
   }
   const { sensitive } = options;

@@ -268,6 +268,104 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(byHeader.isError, undefined, JSON.stringify(byHeader.content));
   });
 
+  test("a grant over all stores of an account with none creates its first store", async () => {
+    const NEWCOMER = "mo_newcomer_user_001";
+    await louezDb.db.insert(louezDb.users).values({ id: NEWCOMER, email: "new@mo.test" });
+    const grantNewcomer = (preset: "read" | "write") =>
+      grants.saveGrant({
+        userId: NEWCOMER,
+        clientId: CLIENT,
+        terms: { stores: { all: true }, preset, confirmSensitive: true, bundles: ["daily"] },
+      });
+    const newcomer = async () => ({
+      authorization: `Bearer ${await tokens.sign({
+        userId: NEWCOMER,
+        clientId: CLIENT,
+        grantId: (await grants.loadActiveGrant({ userId: NEWCOMER, clientId: CLIENT }))?.id ?? null,
+      })}`,
+    });
+
+    // Read-only: the door opens, but stores_create is not offered.
+    await grantNewcomer("read");
+    const readOnly = await withClient(await newcomer(), async (client) => ({
+      tools: (await client.listTools()).tools.map((tool) => tool.name),
+      instructions: client.getInstructions() ?? "",
+    }));
+    assert.ok(readOnly.tools.includes("stores_list"));
+    assert.ok(!readOnly.tools.includes("stores_create"));
+    assert.match(readOnly.instructions, /reaches no store yet/);
+
+    await grantNewcomer("write");
+    const headers = await newcomer();
+    const { tools, instructions } = await withClient(headers, async (client) => ({
+      tools: (await client.listTools()).tools,
+      instructions: client.getInstructions() ?? "",
+    }));
+    const names = tools.map((tool) => tool.name);
+    assert.ok(names.includes("stores_create"), "shown whatever the bundles");
+    assert.ok(names.includes("stores_check_slug_availability"));
+    assert.ok(names.includes("reservations_list"), "the store's tools, listed as for its owner");
+    const createTool = tools.find((tool) => tool.name === "stores_create");
+    assert.ok(createTool?.inputSchema.properties?.idempotencyKey);
+    assert.ok(createTool?.inputSchema.properties?.confirmationToken);
+    assert.equal(createTool?.inputSchema.properties?.storeId, undefined);
+    assert.ok(
+      tools.find((tool) => tool.name === "reservations_list")?.inputSchema.properties?.storeId,
+      "store tools take storeId: the grant may gain stores",
+    );
+    assert.match(instructions, /no store yet/);
+    assert.match(instructions, /stores_create/);
+
+    const empty = await withClient(headers, (client) =>
+      client.callTool({ name: "stores_list", arguments: {} }),
+    );
+    assert.deepEqual((empty.structuredContent as { items: unknown[] }).items, []);
+    assert.match(String((empty.structuredContent as { hint?: string }).hint), /stores_create/);
+
+    for (const name of ["reservations_list", "list_reservations"]) {
+      const refused = await withClient(headers, (client) =>
+        client.callTool({ name, arguments: {} }),
+      );
+      assert.equal(refused.isError, true, name);
+      assert.match(JSON.stringify(refused.content), /NO_STORE_YET/, name);
+    }
+
+    const args = {
+      name: "Brest Surf",
+      slug: "mo-brest-surf",
+      country: "FR",
+      currency: "EUR",
+      idempotencyKey: "mo-create-1",
+    };
+    const asked = await withClient(headers, (client) =>
+      client.callTool({ name: "stores_create", arguments: args }),
+    );
+    assert.equal(errorCode(asked), "CONFIRMATION_REQUIRED");
+    const token = String(
+      (asked.structuredContent as { error: { details: { confirmationToken: string } } }).error
+        .details.confirmationToken,
+    );
+    const created = await withClient(headers, (client) =>
+      client.callTool({ name: "stores_create", arguments: { ...args, confirmationToken: token } }),
+    );
+    assert.equal(created.isError, undefined, JSON.stringify(created.content));
+    const storeId = (created.structuredContent as { id: string }).id;
+    assert.match(JSON.stringify(created.content), /dashboard\?store=/);
+
+    // The same connection now reaches the store it created.
+    const listed = await withClient(await newcomer(), (client) =>
+      client.callTool({ name: "stores_list", arguments: {} }),
+    );
+    assert.deepEqual(
+      (listed.structuredContent as { items: Array<{ id: string }> }).items.map((store) => store.id),
+      [storeId],
+    );
+    const reservations = await withClient(await newcomer(), (client) =>
+      client.callTool({ name: "reservations_list", arguments: {} }),
+    );
+    assert.equal(reservations.isError, undefined, JSON.stringify(reservations.content));
+  });
+
   test("a revoked grant refuses the next request", async () => {
     const { id } = await grant();
     const headers = await bearer();

@@ -7,7 +7,7 @@ import { STORE_HEADER } from "@louez/api/platform/procedures";
 import type { CallToolResult, McpServer, Tool } from "@modelcontextprotocol/server";
 import { call } from "@orpc/server";
 
-import { isListed, type McpRequestContext } from "./auth/context";
+import { isAccountToolListed, isListed, type McpRequestContext } from "./auth/context";
 import { addTool } from "./tool-registry";
 import { errorResult } from "./utils/errors";
 import { linksLine, outputLinks } from "./utils/links";
@@ -22,7 +22,7 @@ export const STORE_ARGUMENT = {
   minLength: 1,
   maxLength: 64,
   description:
-    "The store to act on: an id from stores_list. Required, as this connection covers several stores.",
+    "The store to act on: an id from stores_list, or the one stores_create returned. Required when this connection covers several stores.",
 } as const;
 
 /** The `confirmationToken` argument of a sensitive tool, mapped onto `Louez-Confirmation`. */
@@ -39,7 +39,7 @@ export const CONFIRMATION_ARGUMENT = {
  */
 function toolInputSchema(entry: ExposedProcedure, ctx: McpRequestContext): Tool["inputSchema"] {
   const properties = { ...(entry.inputJsonSchema.properties as Record<string, unknown>) };
-  if (ctx.multiStore && entry.meta.scope) properties.storeId = STORE_ARGUMENT;
+  if (ctx.storeArgument && !entry.meta.account) properties.storeId = STORE_ARGUMENT;
   if (entry.meta.scope?.level === "write" && !entry.meta.secretOutput) {
     properties.idempotencyKey = {
       type: "string",
@@ -70,7 +70,7 @@ async function callProcedure(
 ): Promise<CallToolResult> {
   // The store was read from `storeId` when the request came in.
   const { idempotencyKey, confirmationToken, storeId: _store, ...input } = args;
-  const needsStore = entry.meta.scope !== undefined;
+  const needsStore = !entry.meta.account;
   if (needsStore && ctx.storeError) return errorResult(entry.meta.mcp.name, ctx.storeError);
   if (needsStore && !ctx.storeChosen) {
     return errorResult(entry.meta.mcp.name, platformErrors.storeRequired());
@@ -152,7 +152,11 @@ export function registerExposedTools(
       inputSchema: toolInputSchema(entry, ctx),
       annotations,
       // A former tool served as it was is callable, never listed.
-      listed: entry.meta.mcp.listed !== false && isListed(ctx, entry.meta.scope, bundle),
+      listed:
+        entry.meta.mcp.listed !== false &&
+        (entry.meta.account
+          ? isAccountToolListed(ctx, entry.meta.scope)
+          : entry.meta.scope !== undefined && isListed(ctx, entry.meta.scope, bundle)),
       call: (args) => callProcedure(entry, ctx, args),
     });
 
