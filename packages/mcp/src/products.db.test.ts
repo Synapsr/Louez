@@ -39,6 +39,8 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
     storage: createMemoryStorage(),
     afterCommit: () => {},
   };
@@ -76,7 +78,6 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       ports,
       procedures: exposure.procedures,
       deps: {
-        changeReservationStatus: async () => ({ ok: false as const, error: "not_found" as const }),
         insertRecordedPayment: async () => undefined,
       },
     };

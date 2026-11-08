@@ -50,7 +50,7 @@ describe("MCP payment tools (database)", { skip: skipWithoutTestDatabase() }, ()
     // DATABASE_URL now points at the test database.
     louezDb = await import("@louez/db");
     const { registerPaymentTools } = await import("./payments");
-    const { testRequestContext } = await import("../testing/reservation-tools-client");
+    const { testRequestContext } = await import("../testing/request-context");
     const ctx = testRequestContext({
       storeId: STORE,
       userId: USER,

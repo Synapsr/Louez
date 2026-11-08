@@ -50,6 +50,8 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
     storage: createMemoryStorage(),
     afterCommit: () => {},
   };
@@ -110,7 +112,6 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
       ports,
       procedures: exposure.procedures,
       deps: {
-        changeReservationStatus: async () => ({ ok: false as const, error: "not_found" as const }),
         insertRecordedPayment: async () => undefined,
       },
     };

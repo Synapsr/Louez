@@ -141,33 +141,6 @@ export interface BaseContext {
     nextCursor: string | null;
   }>;
   dashboardReservationActions?: {
-    cancelReservation?: (reservationId: string) => Promise<{
-      success?: boolean;
-      error?: string;
-      errorDetails?: string | null;
-    }>;
-    updateReservationStatus?: (
-      reservationId: string,
-      status:
-        | "pending"
-        | "confirmed"
-        | "ongoing"
-        | "completed"
-        | "cancelled"
-        | "rejected"
-        | "quote"
-        | "declined",
-      rejectionReason?: string,
-    ) => Promise<
-      | { success?: boolean; error?: string }
-      | {
-          success?: boolean;
-          warnings?: Array<{
-            key: string;
-            params?: Record<string, string | number>;
-          }>;
-        }
-    >;
     updateReservation?: (
       reservationId: string,
       data: {

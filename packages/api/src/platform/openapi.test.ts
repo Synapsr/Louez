@@ -102,7 +102,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories, the products and the stores at short REST paths named after their tools", async () => {
+  test("serves the categories, the products, the reservations and the stores at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -166,6 +166,17 @@ describe("OpenAPI document", () => {
         "POST /variants/{definitionId}/values": "products_create_variant_value",
         "PATCH /variants/values/{id}": "products_update_variant_value",
         "DELETE /variants/values/{id}": "products_delete_variant_value",
+        "GET /reservations": "reservations_list",
+        "GET /reservations/{id}": "reservations_get",
+        "GET /reservations/counters": "reservations_poll",
+        "GET /reservations/calendar": "reservations_list_calendar_period",
+        "GET /reservations/planning": "reservations_get_planning_timeline",
+        "GET /reservations/upcoming": "reservations_list_upcoming",
+        "GET /reservations/overdue": "reservations_list_overdue",
+        "POST /reservations/{id}/status": "reservations_update_status",
+        "POST /reservations/{id}/cancel": "reservations_cancel",
+        "PATCH /reservations/{id}/notes": "reservations_update_notes",
+        "GET /search": "search_global",
         "GET /stores": "stores_list",
       },
     );
@@ -179,6 +190,13 @@ describe("OpenAPI document", () => {
       "#/components/parameters/LouezConfirmation",
     ]);
     assert.deepEqual(refs("POST /categories"), ["#/components/parameters/IdempotencyKey"]);
+    assert.deepEqual(refs("POST /reservations/{id}/cancel"), [
+      "#/components/parameters/IdempotencyKey",
+      "#/components/parameters/LouezConfirmation",
+    ]);
+    assert.deepEqual(refs("PATCH /reservations/{id}/notes"), [
+      "#/components/parameters/IdempotencyKey",
+    ]);
     assert.deepEqual(refs("PATCH /products/{id}"), [
       "#/components/parameters/IdempotencyKey",
       "#/components/parameters/LouezConfirmation",

@@ -192,6 +192,14 @@ export async function POST(req: Request) {
         },
         path: ["dashboard", "products"],
       }),
+      reservations: createRouterClient(appRouter.dashboard.reservations, {
+        context: {
+          headers: storeHeaders(req.headers, store.id),
+          transport: "rpc",
+          ports: apiPorts,
+        },
+        path: ["dashboard", "reservations"],
+      }),
     },
   };
 

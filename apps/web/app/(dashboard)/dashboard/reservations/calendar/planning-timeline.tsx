@@ -185,8 +185,8 @@ export function PlanningTimeline({
   // ---------------------------------------------------------------------------
 
   const chunkQueries = useMemo(
-    () => reservationPlanningQueries.forWindow(storeId, windowStart, daysCount),
-    [storeId, windowStart, daysCount],
+    () => reservationPlanningQueries.forWindow(windowStart, daysCount),
+    [windowStart, daysCount],
   );
 
   const {

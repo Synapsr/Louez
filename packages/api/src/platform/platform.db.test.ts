@@ -33,6 +33,8 @@ describe("agent-ready platform", { skip: skipWithoutTestDatabase() }, () => {
   let apiAccess = true;
   const ports = {
     planFeatures: async () => ({ apiAccess }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
     storage: createMemoryStorage(),
     afterCommit: () => {},
   };

@@ -27,5 +27,9 @@ export async function serverApi() {
       context,
       path: ["dashboard", "products"],
     }),
+    reservations: createRouterClient(appRouter.dashboard.reservations, {
+      context,
+      path: ["dashboard", "reservations"],
+    }),
   };
 }

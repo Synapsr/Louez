@@ -18,7 +18,7 @@ import {
 } from "@louez/utils";
 
 import { useFormatLocale } from "@/hooks/use-format-locale";
-import { orpc } from "@/lib/orpc/react";
+import { reservationsQueries } from "@/lib/queries/reservations.queries";
 import { captureReservationViewed } from "@/lib/product-analytics/reservation-analytics-client";
 
 import { ActivityTimelineV2 } from "./activity-timeline-v2";
@@ -149,9 +149,7 @@ export function ReservationDetailClient({
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const reservationQuery = useQuery({
-    ...orpc.dashboard.reservations.getById.queryOptions({
-      input: { reservationId },
-    }),
+    ...reservationsQueries.detail(reservationId),
     enabled: !readOnly,
     initialData: initialReservation,
     placeholderData: (prev) => prev,

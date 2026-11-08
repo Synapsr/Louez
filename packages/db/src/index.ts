@@ -99,7 +99,6 @@ export type {
 export {
   BILLABLE_RESERVATION_STATUSES,
   changeReservationStatus,
-  invalidReservationTransitionMessage,
   isBillableReservationStatus,
   isFeeVoidingReservationStatus,
   requiresReservationGate,

@@ -62,6 +62,8 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
   let storage: MemoryStorage = createMemoryStorage();
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
     get storage() {
       return storage;
     },

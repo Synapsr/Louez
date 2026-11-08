@@ -12,9 +12,9 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { toastManager } from '@louez/ui'
-import type { ReservationPollResponse } from '@louez/types'
+import type { ReservationPoll } from '@louez/api/contracts/reservations'
 import { useTranslations } from 'next-intl'
-import { orpc } from '@/lib/orpc/react'
+import { reservationsQueries } from '@/lib/queries/reservations.queries'
 import {
   invalidateReservationList,
   invalidateReservationTimelines,
@@ -23,7 +23,7 @@ import {
 interface ReservationPollingContextValue {
   pendingCount: number
   pendingSupplierInvoices: number
-  pendingReservations: ReservationPollResponse['pendingReservations']
+  pendingReservations: ReservationPoll['pendingReservations']
   isPolling: boolean
   lastUpdated: Date | null
   refresh: () => Promise<void>
@@ -54,7 +54,7 @@ export function ReservationPollingProvider({
   const [pendingCount, setPendingCount] = useState(0)
   const [pendingSupplierInvoices, setPendingSupplierInvoices] = useState(0)
   const [pendingReservations, setPendingReservations] = useState<
-    ReservationPollResponse['pendingReservations']
+    ReservationPoll['pendingReservations']
   >([])
   const [isPolling, setIsPolling] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -87,11 +87,7 @@ export function ReservationPollingProvider({
   const poll = useCallback(async () => {
     try {
       setIsPolling(true)
-      const data: ReservationPollResponse = await queryClient.fetchQuery(
-        orpc.dashboard.reservations.poll.queryOptions({
-          input: {},
-        }),
-      )
+      const data: ReservationPoll = await queryClient.fetchQuery(reservationsQueries.poll())
 
       // Always update pending count
       setPendingCount(data.pendingCount)

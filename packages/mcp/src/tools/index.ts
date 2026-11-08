@@ -1,4 +1,3 @@
-export { registerReservationTools } from './reservations'
 export { registerCustomerTools } from './customers'
 export { registerPaymentTools } from './payments'
 export { registerAnalyticsTools } from './analytics'

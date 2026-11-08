@@ -56,6 +56,17 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.products.createVariantValue",
   "dashboard.products.updateVariantValue",
   "dashboard.products.deleteVariantValue",
+  "dashboard.reservations.list",
+  "dashboard.reservations.get",
+  "dashboard.reservations.poll",
+  "dashboard.reservations.listCalendarPeriod",
+  "dashboard.reservations.getPlanningTimeline",
+  "dashboard.reservations.listUpcoming",
+  "dashboard.reservations.listOverdue",
+  "dashboard.reservations.updateStatus",
+  "dashboard.reservations.cancel",
+  "dashboard.reservations.updateNotes",
+  "dashboard.search.global",
   "dashboard.stores.list",
 ];
 

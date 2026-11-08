@@ -47,23 +47,3 @@ export interface CombinationResolutionResult {
   availableQuantity: number | null;
 }
 
-export interface ReservationPollResponse {
-  pendingCount: number;
-  pendingSupplierInvoices: number;
-  totalCount: number;
-  pendingReservations: {
-    id: string;
-    number: string;
-    status: string;
-    createdAt: string;
-    startDate: string;
-    customerName: string;
-  }[];
-  latestReservation: {
-    id: string;
-    number: string;
-    status: string;
-    createdAt: string;
-  } | null;
-  timestamp: string;
-}

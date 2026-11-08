@@ -7,7 +7,6 @@ import { eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
-import type { McpStatusChangeInput } from "../deps";
 import type { McpRecordedPayment } from "./payments";
 
 // The hand-written tools that move money, delete or send to a customer ask for
@@ -42,14 +41,12 @@ describe(
     let louezDb: typeof import("@louez/db");
     let confirming: Client;
     let direct: Client;
-    let statusChanges: McpStatusChangeInput[] = [];
     let recorded: McpRecordedPayment[] = [];
     let counter = 0;
 
     async function connect(confirmSensitive: boolean) {
       const { registerPaymentTools } = await import("./payments");
-      const { registerReservationTools } = await import("./reservations");
-      const { testRequestContext } = await import("../testing/reservation-tools-client");
+      const { testRequestContext } = await import("../testing/request-context");
       const ctx = testRequestContext({
         storeId: STORE,
         userId: USER,
@@ -58,12 +55,6 @@ describe(
         confirmSensitive,
       });
       const server = new McpServer({ name: "louez", version: "0.0.0" });
-      registerReservationTools(server, ctx, {
-        changeReservationStatus: async (input) => {
-          statusChanges.push(input);
-          return { ok: true, number: "R-1", from: "pending", to: input.to, warnings: [] };
-        },
-      });
       registerPaymentTools(server, ctx, {
         insertRecordedPayment: async (_tx, payment) => {
           recorded.push(payment);
@@ -97,7 +88,6 @@ describe(
     });
 
     beforeEach(() => {
-      statusChanges = [];
       recorded = [];
     });
 
@@ -133,31 +123,28 @@ describe(
       return token;
     }
 
-    test("a status change waits for the confirmation, then runs once", async () => {
+    test("a payment waits for the confirmation, then runs once", async () => {
       const id = await reservation();
-      const args = { reservationId: id, status: "confirmed" };
+      const args = { reservationId: id, type: "rental", amount: "80.00", method: "cash" };
 
-      const first = await confirming.callTool({
-        name: "update_reservation_status",
-        arguments: args,
-      });
+      const first = await confirming.callTool({ name: "record_payment", arguments: args });
       const token = confirmationToken(first);
       assert.match(JSON.stringify(first.content), new RegExp(`#${id}`), "the preview names it");
-      assert.equal(statusChanges.length, 0, "nothing was done: no status change, no email");
+      assert.equal(recorded.length, 0, "nothing was done yet");
 
       const second = await confirming.callTool({
-        name: "update_reservation_status",
+        name: "record_payment",
         arguments: { ...args, confirmationToken: token },
       });
       assert.notEqual(second.isError, true, JSON.stringify(second.content));
-      assert.equal(statusChanges.length, 1);
+      assert.equal(recorded.length, 1);
 
       const replay = await confirming.callTool({
-        name: "update_reservation_status",
+        name: "record_payment",
         arguments: { ...args, confirmationToken: token },
       });
       assert.equal(error(replay)?.code, "CONFIRMATION_INVALID", "a token works once");
-      assert.equal(statusChanges.length, 1);
+      assert.equal(recorded.length, 1);
     });
 
     test("a token stops working once the state it previewed changes", async () => {
@@ -214,13 +201,6 @@ describe(
 
     test("a connection with confirmation off runs at once", async () => {
       const id = await reservation();
-      const status = await direct.callTool({
-        name: "update_reservation_status",
-        arguments: { reservationId: id, status: "confirmed" },
-      });
-      assert.notEqual(status.isError, true, JSON.stringify(status.content));
-      assert.equal(statusChanges.length, 1);
-
       const paid = await direct.callTool({
         name: "record_payment",
         arguments: { reservationId: id, type: "rental", amount: "80.00", method: "cash" },
@@ -230,16 +210,20 @@ describe(
     });
 
     test("a record the preview cannot find goes to the tool, which answers for it", async () => {
-      // No preview to show: the app's status change gets the call and answers
-      // "not found" for a reservation outside the store (the stand-in here
-      // answers ok); nothing is asked to be confirmed.
+      // No preview to show: the tool gets the call and answers "not found" for
+      // a reservation outside the store; nothing is asked to be confirmed.
       const missing = await confirming.callTool({
-        name: "update_reservation_status",
-        arguments: { reservationId: "res_nowhere", status: "confirmed" },
+        name: "record_payment",
+        arguments: {
+          reservationId: "res_nowhere",
+          type: "rental",
+          amount: "80.00",
+          method: "cash",
+        },
       });
       assert.notEqual(error(missing)?.code, "CONFIRMATION_REQUIRED");
-      assert.equal(statusChanges.length, 1);
-      assert.equal(statusChanges[0]?.storeId, STORE, "scoped to the store, as the app checks");
+      assert.match(JSON.stringify(missing.content), /not found/);
+      assert.equal(recorded.length, 0);
     });
   },
 );

@@ -80,6 +80,8 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
     storage: createMemoryStorage(),
     afterCommit: () => {},
   };

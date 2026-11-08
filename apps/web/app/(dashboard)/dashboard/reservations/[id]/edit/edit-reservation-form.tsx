@@ -271,9 +271,7 @@ export function EditReservationForm({
       onSuccess: async () => {
         await invalidateReservationAll(queryClient, reservation.id);
         await queryClient.fetchQuery(
-          orpc.dashboard.reservations.getById.queryOptions({
-            input: { reservationId: reservation.id },
-          }),
+          orpc.dashboard.reservations.get.queryOptions({ input: { id: reservation.id } }),
         );
       },
     }),

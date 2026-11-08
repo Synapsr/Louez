@@ -1,11 +1,13 @@
+import type { ReservationEffectRunner, ReservationGateReason, ReservationStatus } from "@louez/db";
+
 import type { Transport } from "./actor";
 
 /**
  * What the agent-ready API takes from the app that serves it: only what is
  * bound to Next.js or to the billing service, and, for now, the image
- * storage (see `StoragePort`) and the app's effects of a write
- * (`afterCommit`). Business code (Stripe, e-mail…) lives in the package as
- * services and adapters, never here.
+ * storage (see `StoragePort`), the insurance contracts (`InsurancePort`) and
+ * the app's effects of a write (`afterCommit`). Business code (Stripe,
+ * e-mail…) lives in the package as services and adapters, never here.
  *
  * Every handler of the app (RPC, OpenAPI, MCP, uploads) builds the same object
  * and puts it in the context as `ports`.
@@ -21,6 +23,24 @@ export interface ApiPorts {
    * it must never throw, and the answer does not wait for it.
    */
   afterCommit: (event: ApiEvent) => void;
+  /**
+   * Records or voids the pay-as-you-go fee of a reservation status change
+   * (billing), right after its commit and before the answer. Never throws.
+   */
+  runReservationEffects: ReservationEffectRunner;
+  insurance: InsurancePort;
+}
+
+/**
+ * The store's insurance contracts (Tulip), lent to the reservation status
+ * changes until the integration moves into the package (lot 7). Both run
+ * after the commit and never throw: a failure is logged by the app.
+ */
+export interface InsurancePort {
+  /** Creates the contract of a confirmed reservation; the warning to show when it failed. */
+  createContract: (reservationId: string) => Promise<{ key: string } | null>;
+  /** Cancels the contract of a cancelled reservation. */
+  cancelContract: (reservationId: string) => Promise<void>;
 }
 
 /** The store an event happened in, as the app's effects need it. */
@@ -48,7 +68,36 @@ export type ApiEvent =
   | { type: "products.changed"; store: ApiEventStore }
   | { type: "product.seasonalPricing.changed"; store: ApiEventStore; productId: string }
   /** A unit retired, reinstated or changed, or a downtime declared, changed or removed. */
-  | { type: "product.units.changed"; store: ApiEventStore; productId: string };
+  | { type: "product.units.changed"; store: ApiEventStore; productId: string }
+  /**
+   * A reservation's status changed: the customer's email, the store's
+   * notifications and the analytics event follow from it in the app.
+   */
+  | {
+      type: "reservation.statusChanged";
+      store: ApiEventStore;
+      transport: Transport;
+      reservationId: string;
+      from: ReservationStatus;
+      to: ReservationStatus;
+      /** Kept for a rejection: the customer's email shows it. */
+      rejectionReason: string | null;
+      warningCount: number;
+    }
+  | {
+      type: "reservation.notesUpdated";
+      store: ApiEventStore;
+      transport: Transport;
+      reservationId: string;
+      hasNotes: boolean;
+    }
+  /** Not a write: the store's card gate refused a status change; the app logs it. */
+  | {
+      type: "reservation.gateRefused";
+      store: ApiEventStore;
+      transport: Transport;
+      reason: ReservationGateReason;
+    };
 
 /** How a caller sends the bytes of an upload: one HTTP request, as given. */
 export type UploadTarget =

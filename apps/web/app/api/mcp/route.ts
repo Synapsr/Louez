@@ -7,12 +7,10 @@ import { nanoid } from "nanoid";
 
 import { apiPorts } from "@/lib/api/ports";
 import { insertRecordedPayment } from "@/lib/reservations/dashboard-payment-writes";
-import { changeReservationStatusAsAgent } from "@/lib/reservations/status-change";
 
 // The app code the hand-written MCP tools need. packages/mcp cannot import it.
 // The payment id is made here because packages/mcp has no id generator.
 const mcpDeps = {
-  changeReservationStatus: changeReservationStatusAsAgent,
   insertRecordedPayment: (tx, payment) => insertRecordedPayment(tx, { ...payment, id: nanoid() }),
 } satisfies McpServerDeps;
 

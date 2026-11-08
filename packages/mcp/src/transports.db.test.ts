@@ -52,6 +52,8 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
     storage: createMemoryStorage(),
     afterCommit: () => {},
   };
@@ -147,7 +149,6 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
       ports,
       procedures: exposure.procedures,
       deps: {
-        changeReservationStatus: async () => ({ ok: false, error: "not_found" }),
         insertRecordedPayment: async () => undefined,
       },
     };
@@ -536,7 +537,7 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.match(text(denied), /needs customers:read/);
       assert.match(text(denied), /code: PERMISSION_DENIED/);
 
-      const allowed = await client.callTool({ name: "list_reservations", arguments: {} });
+      const allowed = await client.callTool({ name: "get_dashboard_stats", arguments: {} });
       assert.notEqual(allowed.isError, true, text(allowed));
     } finally {
       await client.close();
