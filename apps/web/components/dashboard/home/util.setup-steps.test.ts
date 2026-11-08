@@ -99,6 +99,8 @@ function checklistOf(facts: Facts): LaunchChecklistView {
       item("products", facts.pricedProduct),
       item("onlinePayments", facts.intended === "request" || facts.stripeChargeable),
     ],
+    legalRequirements: null,
+    warnings: [],
     milestones: {
       firstReservation: facts.firstReservation,
       firstCompletedReservation: facts.firstCompleted,

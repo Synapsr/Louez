@@ -247,6 +247,7 @@ const getLaunchChecklistProcedure = storeProcedure
       urls: context.ports.urls,
       // The first bookings show only to a caller who may read reservations.
       withMilestones: mayRead(context, "reservations"),
+      hostedBy: context.ports.hostedBy?.() ?? null,
     }),
   );
 
@@ -282,14 +283,18 @@ const completeOnboarding = storeProcedure
       input,
       {
         urls: ports.urls,
+        hostedBy: ports.hostedBy?.() ?? null,
         // The preview and its binding read the checklist under the store's lock.
         confirm: confirmUnderLock<GoLivePreview>(context, path, input, (preview) => ({
           state: {
             statuses: preview.statuses,
+            legalMissing: preview.legalMissing,
             bookingMode: preview.bookingMode,
             storefrontUrl: preview.storefrontUrl,
           },
           details: {
+            // First, so a client shows them before anything else.
+            warnings: preview.warnings,
             storefrontUrl: preview.storefrontUrl,
             bookingMode: preview.bookingMode,
             customersWillSee: preview.customersWillSee,
@@ -308,6 +313,7 @@ const completeOnboarding = storeProcedure
       storefrontUrl: checklist.storefrontUrl,
       bookingMode: result.bookingMode,
       remaining: checklist.items.filter((entry) => entry.status !== "done"),
+      warnings: checklist.warnings,
       links: checklist.links,
     };
   });

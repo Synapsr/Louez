@@ -37,6 +37,12 @@ export interface ApiPorts {
    */
   dispatchEffects: (ids: readonly string[]) => void;
   newStores: NewStorePort;
+  /**
+   * Who hosts this instance (`LOUEZ_HOSTED_BY`): on Louez Cloud the
+   * storefront's legal notice names the host itself. Absent or null: the
+   * operator hosts it, and the store's legal notice must name them.
+   */
+  hostedBy?: () => "lumycloud" | null;
 }
 
 /**

@@ -93,7 +93,9 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     afterCommit: (event: ApiEvent) => {
       events.push(event);
     },
+    hostedBy: (): "lumycloud" | null => hostedBy,
   };
+  let hostedBy: "lumycloud" | null = null;
 
   before(async () => {
     database = await createTestDatabase("api_launch");
@@ -120,6 +122,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
   });
 
   beforeEach(async () => {
+    hostedBy = null;
     events.length = 0;
     dispatched.length = 0;
     const { db } = louezDb;
@@ -127,6 +130,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       louezDb.billingSyncQueue,
       louezDb.billingPolicies,
       louezDb.apiEffects,
+      louezDb.storeLegalProfiles,
       louezDb.storeLocations,
       louezDb.reservations,
       louezDb.products,
@@ -255,6 +259,19 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     });
   }
 
+  async function legalProfile(storeId = STORE) {
+    await louezDb.db.insert(louezDb.storeLegalProfiles).values({
+      storeId,
+      legalName: "Brest Surf SAS",
+      legalForm: "SAS",
+      companyNumber: "123456789",
+      registeredAddress: "2 Quai de la Douane",
+      registeredPostalCode: "29200",
+      registeredCity: "Brest",
+      country: "FR",
+    });
+  }
+
   async function setStore(values: Partial<typeof louezDb.stores.$inferInsert>, storeId = STORE) {
     await louezDb.db.update(louezDb.stores).set(values).where(orm.eq(louezDb.stores.id, storeId));
   }
@@ -313,6 +330,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       .values({ id: "ln_cat_boards", storeId: STORE, name: "Boards" });
     await setStore({
       email: "hello@ln.test",
+      phone: "+33 2 98 00 00 00",
       address: "Plage du Moulin Blanc, Brest",
       cgv: "<p>Rental terms</p>",
       legalNotice: "<p>Brest Surf SAS</p>",
@@ -320,8 +338,11 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       stripeAccountId: "acct_ln",
       stripeChargesEnabled: true,
     });
+    await legalProfile();
     const checklist = await run("getLaunchChecklist", {}, session());
     for (const item of checklist.items) assert.equal(item.status, "done", item.key);
+    assert.deepEqual(checklist.warnings, []);
+    assert.equal(checklist.legalRequirements?.warning, null);
     assert.deepEqual(checklist.bookingMode, {
       intended: "payment",
       effective: "payment",
@@ -511,6 +532,123 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(done.launched, true);
     assert.equal(done.bookingMode.intended, "payment");
     assert.equal((await storeRow())?.settings?.reservationMode, "payment");
+  });
+
+  // --- French law -----------------------------------------------------------
+
+  test("a French store hears what the law asks, field by field, with the tool for each", async () => {
+    let checklist = await run("getLaunchChecklist", {}, session());
+    const legal = checklist.legalRequirements;
+    assert.ok(legal);
+    assert.equal(legal.audience, "consumers");
+    assert.deepEqual(Object.fromEntries(legal.fields.map((field) => [field.key, field.status])), {
+      legalName: "missing",
+      legalForm: "missing",
+      companyNumber: "missing",
+      registeredAddress: "missing",
+      contactEmail: "missing",
+      contactPhone: "missing",
+      publicationDirector: "missing",
+      // A self-hosted instance: the legal notice must name the operator.
+      host: "missing",
+    });
+    const byKey = new Map(legal.fields.map((field) => [field.key, field]));
+    assert.deepEqual(byKey.get("companyNumber")?.tools, [
+      "settings_search_company_registry",
+      "settings_update_legal_profile",
+    ]);
+    assert.deepEqual(byKey.get("contactPhone")?.tools, ["settings_update_store_info"]);
+    assert.deepEqual(byKey.get("publicationDirector")?.tools, ["settings_update_legal"]);
+    assert.equal(checklist.warnings.length, 1);
+    assert.match(checklist.warnings[0] ?? "", /^Warning: French law requires/);
+    assert.match(checklist.warnings[0] ?? "", /terms of sale and the legal notice/);
+    assert.match(checklist.warnings[0] ?? "", /can still go live/);
+    const items = new Map(checklist.items.map((entry) => [entry.key, entry]));
+    assert.match(items.get("terms")?.why ?? "", /French consumer law/);
+    assert.match(items.get("legalNotice")?.why ?? "", /LCEN, art\. 6.*Missing: company name/);
+    assert.ok(items.get("legalNotice")?.tools.includes("settings_update_legal_profile"));
+    // A warning, not a block.
+    assert.equal(checklist.canGoLive, true);
+    assert.deepEqual(checklist.blocking, []);
+
+    // The legal profile, the contact and the texts filled: on Louez Cloud,
+    // only what Louez cannot read in the text is left to check.
+    hostedBy = "lumycloud";
+    await legalProfile();
+    await setStore({
+      email: "hello@ln.test",
+      phone: "+33 2 98 00 00 00",
+      cgv: "<p>Terms</p>",
+      legalNotice: "<p>Brest Surf SAS, director Jo</p>",
+    });
+    checklist = await run("getLaunchChecklist", {}, session());
+    assert.deepEqual(
+      Object.fromEntries(
+        (checklist.legalRequirements?.fields ?? []).map((field) => [field.key, field.status]),
+      ),
+      {
+        legalName: "known",
+        legalForm: "known",
+        companyNumber: "known",
+        registeredAddress: "known",
+        contactEmail: "known",
+        contactPhone: "known",
+        publicationDirector: "inLegalNotice",
+        host: "automatic",
+      },
+    );
+    assert.deepEqual(checklist.legalRequirements?.missing, []);
+    assert.deepEqual(checklist.warnings, []);
+    assert.equal(statuses(checklist).legalNotice, "done");
+    assert.equal(statuses(checklist).terms, "done");
+
+    // A text without the identity Louez holds still says what it lacks.
+    await louezDb.db.delete(louezDb.storeLegalProfiles);
+    checklist = await run("getLaunchChecklist", {}, session());
+    assert.equal(statuses(checklist).legalNotice, "missing");
+    assert.deepEqual(checklist.legalRequirements?.missing, [
+      "legalName",
+      "legalForm",
+      "companyNumber",
+      "registeredAddress",
+    ]);
+  });
+
+  test("outside France no legal rule is claimed", async () => {
+    await setStore({ settings: { ...SETTINGS, country: "BE" } });
+    const checklist = await run("getLaunchChecklist", {}, session());
+    assert.equal(checklist.legalRequirements, null);
+    assert.deepEqual(checklist.warnings, []);
+    assert.doesNotMatch(
+      checklist.items.find((entry) => entry.key === "legalNotice")?.why ?? "",
+      /French/,
+    );
+  });
+
+  test("the go-live preview shows the legal warning first, and the launch still goes through", async () => {
+    const key = await apiKey();
+    const refusal = await rejects(run("completeOnboarding", {}, key()), "CONFIRMATION_REQUIRED");
+    const preview = (
+      refusal.data.details as {
+        preview: { summary: string; details: { warnings: string[] } & Record<string, unknown> };
+      }
+    ).preview;
+    assert.match(preview.summary, /^Warning: French law requires/);
+    assert.equal(Object.keys(preview.details)[0], "warnings");
+    assert.match(preview.details.warnings[0] ?? "", /publication director/);
+
+    // The identity saved since the preview: the warning it showed no longer holds.
+    await legalProfile();
+    await rejects(
+      run("completeOnboarding", {}, key({ "louez-confirmation": tokenOf(refusal) })),
+      "CONFIRMATION_INVALID",
+    );
+    const fresh = await rejects(run("completeOnboarding", {}, key()), "CONFIRMATION_REQUIRED");
+    const done = await run("completeOnboarding", {}, key({ "louez-confirmation": tokenOf(fresh) }));
+    assert.equal(done.launched, true);
+    assert.equal(done.warnings.length, 1);
+    assert.doesNotMatch(done.warnings[0] ?? "", /company name/);
+    assert.match(done.warnings[0] ?? "", /publication director/);
   });
 
   test("a store without its country or currency cannot go live", async () => {

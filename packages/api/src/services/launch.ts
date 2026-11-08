@@ -6,6 +6,7 @@ import {
   products,
   readReservationGate,
   reservations,
+  storeLegalProfiles,
   storeLocations,
   stores,
   type ReservationGate,
@@ -27,6 +28,11 @@ import {
 import { analyticsEventIdentity, enqueueEffects } from "../platform/effects";
 import { dashboardPath, isStorefrontPublic, storeLinks } from "../platform/links";
 import { platformErrors } from "../platform/errors";
+import {
+  FRENCH_TERMS_WHY,
+  frenchLegalNoticeWhy,
+  frenchLegalRequirements,
+} from "./legal-requirements";
 import type { Transport } from "../platform/actor";
 import type { ApiEvent, UrlsPort } from "../platform/ports";
 import type { ConfirmStep } from "./products";
@@ -77,6 +83,15 @@ export interface LaunchState {
   hasCategory: boolean;
   hasActiveLocation: boolean;
   gate: ReservationGate;
+  /** The legal identity's fields the legal notice names; null before the store saved one. */
+  legalProfile: {
+    legalName: string;
+    legalForm: string;
+    companyNumber: string;
+    registeredAddress: string;
+  } | null;
+  /** Who hosts this instance: on Louez Cloud the storefront names the host itself. */
+  hostedBy: "lumycloud" | null;
   /** Null when the caller may not read reservations. */
   milestones: { firstReservation: boolean; firstCompletedReservation: boolean } | null;
 }
@@ -91,7 +106,7 @@ async function exists(query: Promise<Array<{ id: string }>>): Promise<boolean> {
 export async function readLaunchState(
   executor: Executor,
   storeId: string,
-  options: { withMilestones: boolean },
+  options: { withMilestones: boolean; hostedBy: "lumycloud" | null },
 ): Promise<LaunchState> {
   const [store] = await executor.select(storeColumns).from(stores).where(eq(stores.id, storeId));
   if (!store) throw platformErrors.noStore();
@@ -102,6 +117,7 @@ export async function readLaunchState(
     hasCategory,
     hasActiveLocation,
     gate,
+    legalProfiles,
     firstReservation,
     firstCompleted,
   ] = await Promise.all([
@@ -140,6 +156,16 @@ export async function readLaunchState(
         .limit(1),
     ),
     readReservationGate(executor, storeId),
+    executor
+      .select({
+        legalName: storeLegalProfiles.legalName,
+        legalForm: storeLegalProfiles.legalForm,
+        companyNumber: storeLegalProfiles.companyNumber,
+        registeredAddress: storeLegalProfiles.registeredAddress,
+      })
+      .from(storeLegalProfiles)
+      .where(eq(storeLegalProfiles.storeId, storeId))
+      .limit(1),
     options.withMilestones
       ? exists(
           executor
@@ -167,6 +193,8 @@ export async function readLaunchState(
     hasCategory,
     hasActiveLocation,
     gate,
+    legalProfile: legalProfiles[0] ?? null,
+    hostedBy: options.hostedBy,
     milestones: options.withMilestones
       ? { firstReservation, firstCompletedReservation: firstCompleted }
       : null,
@@ -244,6 +272,18 @@ export function buildLaunchChecklist(
   const pickupGap = delivery.deliveryOnly
     ? "Delivery is the only way to get a rental, but the store has no usable coordinates: checkout cannot deliver, and a pickup is refused. Set the store's coordinates (settings_update_store_info), or let customers collect (settings_update_delivery)."
     : `The store has no address and no active pickup point${deliveryWithoutCoordinates ? ", and its delivery needs the store's coordinates, which it lacks" : " and no delivery"}: customers do not know where to collect their rental.`;
+
+  const termsWritten = hasRichTextContent(store.cgv);
+  const legalNoticeWritten = hasRichTextContent(store.legalNotice);
+  const legal = frenchLegalRequirements({
+    country: settings?.country,
+    termsWritten,
+    legalNoticeWritten,
+    email: store.email,
+    phone: store.phone,
+    profile: state.legalProfile,
+    hostedBy: state.hostedBy,
+  });
 
   const facts: Record<LaunchItemKey, ItemFacts> = {
     storeInfo: item(
@@ -331,7 +371,7 @@ export function buildLaunchChecklist(
       },
     ),
     terms: item(
-      hasRichTextContent(store.cgv),
+      termsWritten,
       {
         status: "done",
         required: false,
@@ -339,18 +379,38 @@ export function buildLaunchChecklist(
         why: "Customers accept them at checkout, and they can be added to the rental contract.",
         tools: ["settings_update_legal"],
       },
-      { status: "missing", why: "No terms and conditions: customers book without accepting any." },
+      {
+        status: "missing",
+        why: legal
+          ? `No terms of sale. ${FRENCH_TERMS_WHY}`
+          : "No terms and conditions: customers book without accepting any.",
+      },
     ),
     legalNotice: item(
-      hasRichTextContent(store.legalNotice),
+      legalNoticeWritten && (legal === null || legal.missing.length === 0),
       {
         status: "done",
         required: false,
         title: "Legal notice",
-        why: "Who runs the store (company, address, registration), which a business website must show in many countries.",
+        why: legal
+          ? frenchLegalNoticeWhy(legal)
+          : "Who runs the store (company, address, registration), which a business website must show in many countries.",
         tools: ["settings_update_legal"],
       },
-      { status: "missing", why: "No legal notice on the storefront." },
+      {
+        status: "missing",
+        why: legal ? frenchLegalNoticeWhy(legal) : "No legal notice on the storefront.",
+        tools: legal
+          ? [
+              ...new Set([
+                ...legal.fields
+                  .filter((field) => field.status === "missing")
+                  .flatMap((field) => field.tools),
+                "settings_update_legal",
+              ]),
+            ]
+          : ["settings_update_legal"],
+      },
     ),
     onlinePayments:
       mode.intended === "request"
@@ -429,6 +489,8 @@ export function buildLaunchChecklist(
     bookingMode: mode,
     catalog: { hasActiveProduct: state.hasActiveProduct, hasPricedProduct: state.hasPricedProduct },
     items,
+    legalRequirements: legal,
+    warnings: legal?.warning ? [legal.warning] : [],
     milestones: state.milestones,
     links: storeLinks(urls, linkStore),
   };
@@ -437,9 +499,12 @@ export function buildLaunchChecklist(
 /** The checklist of the actor's store, as it is now. */
 export async function getLaunchChecklist(
   storeId: string,
-  options: { urls: UrlsPort; withMilestones: boolean },
+  options: { urls: UrlsPort; withMilestones: boolean; hostedBy: "lumycloud" | null },
 ): Promise<LaunchChecklistView> {
-  const state = await readLaunchState(db, storeId, { withMilestones: options.withMilestones });
+  const state = await readLaunchState(db, storeId, {
+    withMilestones: options.withMilestones,
+    hostedBy: options.hostedBy,
+  });
   return { storeId, ...buildLaunchChecklist(state, options.urls) };
 }
 
@@ -452,6 +517,10 @@ export interface GoLivePreview {
   bookingMode: ReturnType<typeof bookingModeOf>;
   /** Each item's status: a change since the preview voids its token. */
   statuses: Partial<Record<LaunchItemKey, LaunchItemStatus>>;
+  /** Shown first: what the law asks that the store still lacks. Never a block. */
+  warnings: string[];
+  /** The legal fields still missing: a change since the preview voids its token. */
+  legalMissing: string[];
   /** What customers will see, in a few sentences. */
   customersWillSee: string[];
   stillMissing: Array<Pick<LaunchItem, "key" | "title" | "why">>;
@@ -505,6 +574,7 @@ function describeLaunch(
   for (const entry of checklist.items) statuses[entry.key] = entry.status;
   return {
     summary:
+      checklist.warnings.map((warning) => `${warning} `).join("") +
       `Put "${store.name}" online at ${checklist.storefrontUrl}: customers can find the store and book.` +
       (stillMissing.length > 0
         ? ` Still missing: ${stillMissing.map((entry) => entry.title.toLowerCase()).join(", ")}.`
@@ -512,6 +582,8 @@ function describeLaunch(
     storefrontUrl: checklist.storefrontUrl,
     bookingMode,
     statuses,
+    warnings: checklist.warnings,
+    legalMissing: checklist.legalRequirements?.missing ?? [],
     customersWillSee,
     stillMissing,
     optional,
@@ -550,14 +622,21 @@ export interface GoLiveResult {
 export async function goLive(
   actor: LaunchActor,
   input: GoLiveInput,
-  options: { urls: UrlsPort; confirm?: ConfirmStep<GoLivePreview> },
+  options: {
+    urls: UrlsPort;
+    hostedBy: "lumycloud" | null;
+    confirm?: ConfirmStep<GoLivePreview>;
+  },
 ): Promise<GoLiveResult> {
   const { storeId } = actor;
   let refusal: Error | null = null;
 
   const result = await db.transaction(async (tx) => {
     if (!(await lockStoreRow(tx, storeId))) throw platformErrors.noStore();
-    const state = await readLaunchState(tx, storeId, { withMilestones: false });
+    const state = await readLaunchState(tx, storeId, {
+      withMilestones: false,
+      hostedBy: options.hostedBy,
+    });
     const { store } = state;
     const checklist = buildLaunchChecklist(state, options.urls);
     const current = bookingModeOf(store);

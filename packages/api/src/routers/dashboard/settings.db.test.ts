@@ -843,7 +843,7 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
           transport: "rpc",
         },
         { reservationMode: "payment" },
-        { urls: ports.urls },
+        { urls: ports.urls, hostedBy: null },
       );
       await waitForLockWaits(holder, database.name, 2);
       await holder.commit();

@@ -61,6 +61,47 @@ export const bookingModeSchema = z.object({
   stripeChargeable: z.boolean(),
 });
 
+/** The legal identification a French store's legal notice must name. */
+export const LEGAL_FIELD_KEYS = [
+  "legalName",
+  "legalForm",
+  "companyNumber",
+  "registeredAddress",
+  "contactEmail",
+  "contactPhone",
+  "publicationDirector",
+  "host",
+] as const;
+export type LegalFieldKey = (typeof LEGAL_FIELD_KEYS)[number];
+
+/**
+ * What French law asks of a store selling to consumers: a warning, never a
+ * block. Field statuses: `known` (Louez holds it), `missing`, `automatic`
+ * (the storefront shows it itself), `inLegalNotice` (Louez does not store it
+ * and cannot check the legal notice's text for it).
+ */
+export const legalRequirementsSchema = z.object({
+  country: z.literal("FR"),
+  /** Louez has no setting for a store selling to businesses only. */
+  audience: z.literal("consumers"),
+  termsWritten: z.boolean(),
+  legalNoticeWritten: z.boolean(),
+  fields: z.array(
+    z.object({
+      key: z.enum(LEGAL_FIELD_KEYS),
+      label: z.string(),
+      status: z.enum(["known", "missing", "automatic", "inLegalNotice"]),
+      /** What to do about it. */
+      how: z.string(),
+      tools: z.array(z.string()),
+    }),
+  ),
+  missing: z.array(z.enum(LEGAL_FIELD_KEYS)),
+  /** The warning to show the user, or null when nothing is missing. */
+  warning: z.string().nullable(),
+});
+export type LegalRequirementsView = z.infer<typeof legalRequirementsSchema>;
+
 export const getLaunchChecklistInput = z.object({});
 
 export const launchChecklistOutput = z.object({
@@ -80,6 +121,10 @@ export const launchChecklistOutput = z.object({
    */
   catalog: z.object({ hasActiveProduct: z.boolean(), hasPricedProduct: z.boolean() }),
   items: z.array(launchItemSchema),
+  /** What the law asks of the store in its country; null where Louez knows no rule. */
+  legalRequirements: legalRequirementsSchema.nullable(),
+  /** Warnings to show the user before launch; they never stop it. */
+  warnings: z.array(z.string()),
   /**
    * The first bookings, as the dashboard's home follows them; null when the
    * connection may not read reservations.
@@ -111,6 +156,8 @@ export const goLiveOutput = z.object({
   bookingMode: bookingModeSchema,
   /** The items still missing or optional: worth finishing now that customers can come. */
   remaining: z.array(launchItemSchema),
+  /** Warnings to show the user, such as legal information French law requires. */
+  warnings: z.array(z.string()),
   /** The store's dashboard and its storefront, now public. */
   links: resourceLinksSchema,
 });

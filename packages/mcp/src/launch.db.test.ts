@@ -226,6 +226,8 @@ describe("launch tools (database)", { skip: skipWithoutTestDatabase() }, () => {
     const first = await mcpCall(authorization, "stores_go_live", { reservationMode: "request" });
     const text = (first.content as Array<{ text: string }>)[0]?.text ?? "";
     assert.match(text, /online at https:\/\/lx-brest-surf\.louez\.test/);
+    // A French store: the legal warning reaches the agent, and does not block.
+    assert.match(text, /Warning: French law requires/);
     const done = output(
       await mcpCall(authorization, "stores_go_live", {
         reservationMode: "request",
@@ -233,6 +235,7 @@ describe("launch tools (database)", { skip: skipWithoutTestDatabase() }, () => {
       }),
     );
     assert.equal(done.launched, true);
+    assert.equal((done.warnings as string[]).length, 1);
     assert.deepEqual(done.links, {
       dashboard: `${TEST_APP_URL}/dashboard?store=${STORE}`,
       storefront: "https://lx-brest-surf.louez.test",

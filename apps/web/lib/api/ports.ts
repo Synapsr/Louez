@@ -4,6 +4,7 @@ import { runAfterCommit } from "@/lib/api/after-commit";
 import { dispatchApiEffects } from "@/lib/api/effects";
 import { apiUrls } from "@/lib/api/urls";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
+import { getHostedBy } from "@/lib/hosting";
 import { tulipInsurancePort } from "@/lib/integrations/tulip/insurance-port";
 import { getStorePlan } from "@/lib/plan-limits";
 import { apiStorage } from "@/lib/storage/api-storage";
@@ -25,4 +26,5 @@ export const apiPorts: ApiPorts = {
   insurance: tulipInsurancePort,
   dispatchEffects: dispatchApiEffects,
   newStores: newStorePort,
+  hostedBy: getHostedBy,
 };
