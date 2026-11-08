@@ -64,7 +64,13 @@ const SETTINGS = {
   country: "FR",
   timezone: "Europe/Paris",
   // A section none of these procedures owns: every write keeps it.
-  inspection: { enabled: true, mode: "optional", requireCustomerSignature: false },
+  inspection: {
+    enabled: true,
+    mode: "optional",
+    requireCustomerSignature: false,
+    autoGeneratePdf: true,
+    maxPhotosPerItem: 10,
+  },
 } as const;
 const EXCLUSIVE_20 = { enabled: true, defaultRate: 20, displayMode: "exclusive" as const };
 
@@ -678,7 +684,7 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
   // --- Concurrency and retries ----------------------------------------------
 
   test("two writes of different sections at once keep both changes", async () => {
-    await raceOnLockedRow(database, { table: "stores", id: STORE }, [
+    await raceOnLockedRow<unknown>(database, { table: "stores", id: STORE }, [
       () => run("updateReservationRules", { minRentalMinutes: 240 }, session()),
       () => run("updateTaxes", { enabled: true }, session()),
       () => run("updateLegal", { footerNote: "Both" }, session()),
