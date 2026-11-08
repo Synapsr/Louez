@@ -1844,6 +1844,13 @@ export const reservations = mysqlTable(
   },
   (table) => ({
     storeIdx: index("reservations_store_idx").on(table.storeId),
+    // The store's open reservations by status: the inbox's requests and late
+    // pickups and returns, read every few minutes by polling agents.
+    storeStatusEndIdx: index("reservations_store_status_end_idx").on(
+      table.storeId,
+      table.status,
+      table.endDate,
+    ),
     customerIdx: index("reservations_customer_idx").on(table.customerId),
     statusIdx: index("reservations_status_idx").on(table.status),
     dateIdx: index("reservations_date_idx").on(table.startDate, table.endDate),
@@ -4356,7 +4363,8 @@ export const apiEffects = mysqlTable(
      * `running` while a sender holds it (until `locked_until`); `cancelled`
      * when it had nothing left to do (its store gone, its channel off);
      * `superseded` when newer news replaced it before it went out;
-     * `abandoned` past the last attempt.
+     * `abandoned` past the last attempt, its `next_attempt_at` then the time
+     * it was abandoned.
      */
     status: mysqlEnum("status", [
       "pending",
@@ -4395,6 +4403,38 @@ export const apiRateLimits = mysqlTable("api_rate_limits", {
   windowStart: bigint("window_start", { mode: "number" }).notNull(),
   count: int("count").notNull(),
 });
+
+/**
+ * Inbox items a store marked as handled (packages/api services/inbox.ts). An
+ * item is one occurrence: its type, its record and when it happened. The row
+ * hides that occurrence from the store's inbox for every member and agent; the
+ * same record coming back later (a new `occurred_at`) shows again. Deleted with
+ * the store.
+ */
+export const inboxAcknowledgements = mysqlTable(
+  "inbox_acknowledgements",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    itemType: varchar("item_type", { length: 40 }).notNull(),
+    /** The record the item is about: a reservation, a dispute, an outbox row… */
+    recordId: varchar("record_id", { length: 64 }).notNull(),
+    occurredAt: timestamp("occurred_at", { mode: "date", fsp: 3 }).notNull(),
+    /** Who marked it, and through which connection (null: a dashboard session). */
+    userId: varchar("user_id", { length: 21 }).notNull(),
+    credentialId: varchar("credential_id", { length: 64 }),
+    clientName: varchar("client_name", { length: 100 }),
+    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+  },
+  (table) => ({
+    occurrenceUnique: unique("inbox_acknowledgements_occurrence_unique").on(
+      table.storeId,
+      table.itemType,
+      table.recordId,
+      table.occurredAt,
+    ),
+  }),
+);
 
 /** Tool bundles an agent connection lists (packages/api platform/meta.ts). */
 export type AgentToolBundle =
