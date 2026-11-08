@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import { apiEffects, db, reservations, stores, type Transaction } from "@louez/db";
-import { and, asc, eq, inArray, like, lt, lte, or } from "drizzle-orm";
+import { and, asc, eq, inArray, like, lt, lte, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 /**
@@ -218,11 +218,18 @@ export async function enqueueEffects(
 }
 
 /**
- * Marks the unsent rows whose ordering key starts with `keyPrefix` as
- * superseded, in the write's transaction: newer news replaces them. A row a
- * sender holds is left to finish; the new rows wait for it.
+ * Marks the unsent rows whose ordering key starts with `keyPrefix`, and
+ * whose payload's `match.field` is one of `match.values`, as superseded, in
+ * the write's transaction: newer news replaces them. A row a sender holds is
+ * left to finish; the new rows wait for it.
  */
-export async function supersedeEffects(tx: Transaction, storeId: string, keyPrefix: string) {
+export async function supersedeEffects(
+  tx: Transaction,
+  storeId: string,
+  keyPrefix: string,
+  match: { field: string; values: readonly string[] },
+) {
+  if (match.values.length === 0) return;
   await tx
     .update(apiEffects)
     .set({ status: "superseded", payload: {}, claimToken: null })
@@ -231,6 +238,9 @@ export async function supersedeEffects(tx: Transaction, storeId: string, keyPref
         eq(apiEffects.storeId, storeId),
         like(apiEffects.orderingKey, `${keyPrefix.replace(/[\\%_]/g, "\\$&")}%`),
         inArray(apiEffects.status, ["pending", "failed"]),
+        inArray(sql`JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, ${`$.${match.field}`}))`, [
+          ...match.values,
+        ]),
       ),
     );
 }

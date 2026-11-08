@@ -12,9 +12,9 @@ import type { ApiEffect, ApiEffectPayloads, EffectStore } from "../platform/effe
  *
  * Ordering keys: `reservation:<id>:customer:<channel>`, `…:store:<channel>`
  * and `…:platform:<channel>`; rows of one key go out in order. A new status
- * change supersedes the customer messages of an earlier one still unsent
- * (they speak of a status that is no longer true); store and platform
- * notifications are records of each change, and all go out, in order.
+ * supersedes only the unsent customer messages it makes false
+ * (`SUPERSEDED_CUSTOMER_MESSAGES`); store and platform notifications are
+ * records of each change, and all go out, in order.
  */
 
 type Status = ApiEffectPayloads["reservation.statusAnalytics"]["to"];
@@ -45,6 +45,25 @@ export interface StatusChangeSnapshot {
   store: EffectStore & { userId: string; settings: StoreRow["settings"] };
   items: Array<{ name: string; quantity: number; unitPrice: string; totalPrice: string }>;
 }
+
+type CustomerNotification = ApiEffectPayloads["reservation.customerMessage"]["notification"];
+
+/**
+ * The unsent customer messages of an earlier change that a new status makes
+ * false, and so supersedes. Any other change supersedes nothing: a pick-up
+ * or a return leaves an acceptance email (and its contract link) to go out.
+ *
+ * | New status | Supersedes the unsent       | Why                                  |
+ * | ---------- | --------------------------- | ------------------------------------ |
+ * | cancelled  | acceptance (request, quote) | the booking it confirms is cancelled |
+ * | rejected   | acceptance                  | the request was refused after all    |
+ */
+export const SUPERSEDED_CUSTOMER_MESSAGES: Partial<
+  Record<Status, readonly CustomerNotification[]>
+> = {
+  cancelled: ["customer_request_accepted"],
+  rejected: ["customer_request_accepted"],
+};
 
 /** The ordering key prefix of a reservation's customer messages. */
 export const customerMessageKeyPrefix = (reservationId: string) =>

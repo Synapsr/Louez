@@ -35,6 +35,7 @@ import { amendEffectPayload, enqueueEffects, supersedeEffects } from "../platfor
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import { resolveDateChangeRequests } from "./date-change-requests";
 import {
+  SUPERSEDED_CUSTOMER_MESSAGES,
   buildStatusChangeEffects,
   customerMessageKeyPrefix,
   type StatusChangeSnapshot,
@@ -521,8 +522,14 @@ export async function changeStoreReservationStatus(
             // It does nothing unless the reservation is now billable and not yet signed.
             await validateReservationContract(tx, id, storeId, "confirmation");
             await resolveDateChangeRequests(tx, id, locked.startDate, locked.endDate, change.to);
-            // An earlier change's unsent customer messages are stale news now.
-            await supersedeEffects(tx, storeId, customerMessageKeyPrefix(id));
+            // An earlier change's unsent customer messages this one makes false.
+            const superseded = SUPERSEDED_CUSTOMER_MESSAGES[change.to];
+            if (superseded) {
+              await supersedeEffects(tx, storeId, customerMessageKeyPrefix(id), {
+                field: "notification",
+                values: superseded,
+              });
+            }
             const effectIds = await enqueueEffects(
               tx,
               storeId,
