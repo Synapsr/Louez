@@ -19,8 +19,11 @@ import { apiError } from "../platform/errors";
 /** Largest page `reservations.list` returns, and its default. */
 export const RESERVATION_PAGE_MAX = 100;
 export const RESERVATION_PAGE_DEFAULT = 25;
-/** Deepest numbered page `reservations.list` serves; past it, the cursor. */
-export const RESERVATION_PAGE_NUMBER_MAX = 400;
+/**
+ * A bound on numbered pages, only so the offset stays a sane number: no store
+ * has that many pages. The dashboard's pagination offers every page there is.
+ */
+export const RESERVATION_PAGE_NUMBER_MAX = 1_000_000;
 /** Widest window the calendar and the planning read at once, in days. */
 export const RESERVATION_WINDOW_MAX_DAYS = 400;
 /** Most rows `reservations.listUpcoming` and `reservations.listOverdue` return per list. */
