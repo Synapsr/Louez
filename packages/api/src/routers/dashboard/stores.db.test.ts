@@ -3,10 +3,15 @@ import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
 import { createTestAccessTokens } from "@louez/auth/testing";
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  skipWithoutTestDatabase,
+  waitForLockWaits,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
-import type { NewStorePort } from "../../platform/ports";
+import type { NewStorePort, NewStoreTerms } from "../../platform/ports";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls } from "../../platform/test-urls";
 
@@ -62,6 +67,15 @@ const REFERRER_USER = "sc_referrer_user_001";
 const REFERRER_STORE = "sc_referrer_store_01";
 const REFERRAL_CODE = "LOUEZABCDEFG";
 const CLIENT = "https://claude.sc.test/oauth/client.json";
+const PAY_AS_YOU_GO: NewStoreTerms = {
+  billing: "pay_as_you_go",
+  freeReservations: 15,
+  tiers: [
+    { upToCount: 50, priceMinor: 100 },
+    { upToCount: null, priceMinor: 50 },
+  ],
+  currency: "EUR",
+};
 
 describe(
   "stores.create and agent connections without a store (database)",
@@ -81,6 +95,7 @@ describe(
     let dispatched: string[] = [];
     let subscriptionCalls: Array<{ storeId: string; currency: string; referred: boolean }> = [];
     let newStores: Partial<NewStorePort> = {};
+    let termsInForce: NewStoreTerms = PAY_AS_YOU_GO;
     const ports = {
       planFeatures: async () => ({ apiAccess: true }),
       runReservationEffects: async () => {},
@@ -94,10 +109,13 @@ describe(
       // Read at each call, so a test can change one part.
       get newStores() {
         return createTestNewStores({
-          insertSubscription: async (_tx, input) => {
+          // What a new store pays, read when called, as the billing code does.
+          previewTerms: async () => termsInForce,
+          subscribe: async (_tx, input) => {
             subscriptionCalls.push(input);
-            return false;
+            return termsInForce;
           },
+          welcomeCredits: () => 5,
           ...newStores,
         });
       },
@@ -151,6 +169,7 @@ describe(
       dispatched = [];
       subscriptionCalls = [];
       newStores = {};
+      termsInForce = PAY_AS_YOU_GO;
       await louezDb.db.delete(louezDb.apiAgentGrants);
       await louezDb.db.delete(louezDb.apiOperations);
       await louezDb.db.delete(louezDb.apiConfirmations);
@@ -291,7 +310,8 @@ describe(
         "a referral code of its own",
       );
       assert.equal(row.referredByStoreId, null);
-      const settings = row.settings as Record<string, unknown>;
+      const { settings } = row;
+      assert.ok(settings);
       assert.equal(settings.reservationMode, "payment");
       assert.equal(settings.minRentalMinutes, 60);
       assert.equal(settings.maxRentalMinutes, null);
@@ -308,7 +328,7 @@ describe(
         .where(orm.eq(louezDb.storeMembers.storeId, created.id));
       assert.deepEqual(member, { userId: NEW_USER, role: "owner" });
 
-      // The subscription row is the billing code's, in the same transaction.
+      // The subscription is the billing code's, decided in the same transaction.
       assert.deepEqual(subscriptionCalls, [
         { storeId: created.id, currency: "EUR", referred: false },
       ]);
@@ -332,6 +352,18 @@ describe(
         ],
       );
       assert.deepEqual(dispatched.sort(), effects.map((effect) => effect.id).sort());
+      // The credits the store got at its creation, frozen in the row.
+      assert.deepEqual(effects[0]?.payload, { storeId: created.id, credits: 5 });
+      // Each event has its own id, and the creation's time, sent on every retry.
+      const identities = effects.slice(1).map((effect) => ({
+        eventUuid: String(effect.payload.eventUuid),
+        occurredAt: String(effect.payload.occurredAt),
+      }));
+      for (const identity of identities) {
+        assert.match(identity.eventUuid, /^[0-9a-f-]{36}$/);
+      }
+      assert.equal(new Set(identities.map((identity) => identity.eventUuid)).size, 2);
+      assert.equal(new Set(identities.map((identity) => identity.occurredAt)).size, 1);
       const saved = effects[2]?.payload.properties as Record<string, unknown>;
       assert.equal(saved.has_address, true);
       assert.equal(saved.has_phone, true);
@@ -361,10 +393,8 @@ describe(
     test("a dashboard request's referral and sign-up origin are recorded; the reward event only for a billed store", async () => {
       newStores = {
         signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: "reeent" }),
-        insertSubscription: async (_tx, input) => {
-          subscriptionCalls.push(input);
-          return true;
-        },
+        // No welcome credits configured: no row for them.
+        welcomeCredits: () => 0,
       };
       const created = await create(session());
       const row = await louezDb.db.query.stores.findFirst({
@@ -387,6 +417,30 @@ describe(
         .from(louezDb.apiEffects)
         .where(orm.eq(louezDb.apiEffects.storeId, created.id));
       assert.ok(events.some((event) => event.payload.event === "referred_reward_granted"));
+      assert.ok(!events.some((event) => "credits" in event.payload));
+
+      // A store the billing service bills gets no reward, and no reward event.
+      await louezDb.db.update(louezDb.users).set({ signupOrigin: null });
+      newStores = {
+        signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: null }),
+        subscribe: async () => ({ billing: "offer", offer: "4% per paid reservation" }),
+      };
+      await louezDb.db
+        .delete(louezDb.storeMembers)
+        .where(orm.eq(louezDb.storeMembers.userId, NEW_USER));
+      const service = await create(session(), { slug: "brest-surf-service" });
+      assert.equal(service.pricing.billing, "offer", "the answer shows the terms in force");
+      const serviceEvents = await louezDb.db
+        .select({ payload: louezDb.apiEffects.payload })
+        .from(louezDb.apiEffects)
+        .where(orm.eq(louezDb.apiEffects.storeId, service.id));
+      assert.ok(
+        serviceEvents.some((event) => event.payload.event === "referral_attribution_resolved"),
+      );
+      assert.ok(!serviceEvents.some((event) => event.payload.event === "referred_reward_granted"));
+      newStores = {
+        signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: "reeent" }),
+      };
 
       // An agent's request carries no attribution, even if the port would read one.
       await grant();
@@ -622,6 +676,83 @@ describe(
     test("a standalone instance with a store online refuses another one", async () => {
       newStores = { singleStore: () => true };
       await rejects(create(session()), "SINGLE_STORE_INSTANCE");
+    });
+
+    test("terms that changed while the creation waited for its lock create nothing and ask again", async () => {
+      await grant();
+      const refused = await rejects(create(await agent()), "CONFIRMATION_REQUIRED");
+      const token = String(refused.data.details?.confirmationToken);
+
+      // Another creation of the account holds the user row: this one waits for it.
+      const holder = await database.connect();
+      try {
+        await holder.beginTransaction();
+        await holder.query("SELECT id FROM users WHERE id = ? FOR UPDATE", [NEW_USER]);
+        const pending = create(await agent({ "louez-confirmation": token }));
+        await waitForLockWaits(holder, database.name, 1);
+        // Meanwhile the billing cutoff passed: a store created now is the service's.
+        termsInForce = { billing: "offer", offer: "4% per paid reservation" };
+        await holder.commit();
+        const stale = await rejects(pending, "STORE_TERMS_CHANGED");
+        assert.match(stale.message, /no store was created/);
+      } finally {
+        await holder.end();
+      }
+      assert.equal((await storesOf(NEW_USER)).length, 0, "rolled back, subscription included");
+      const effects = await louezDb.db
+        .select({ id: louezDb.apiEffects.id })
+        .from(louezDb.apiEffects);
+      assert.deepEqual(effects, []);
+
+      // A new preview shows the new terms; confirming them creates the store.
+      const again = await rejects(create(await agent()), "CONFIRMATION_REQUIRED");
+      const preview = again.data.details?.preview as { details: { pricing: { billing: string } } };
+      assert.equal(preview.details.pricing.billing, "offer");
+      const created = await create(
+        await agent({ "louez-confirmation": String(again.data.details?.confirmationToken) }),
+      );
+      assert.equal(created.pricing.billing, "offer");
+    });
+
+    test("a previous grant over stores the user left does not keep them: they choose again", async () => {
+      await louezDb.db
+        .insert(louezDb.storeMembers)
+        .values({ storeId: OWNER_STORE, userId: NEW_USER, role: "member" });
+      await grant({ stores: { all: false, ids: [OWNER_STORE] } });
+      await louezDb.db
+        .delete(louezDb.storeMembers)
+        .where(orm.eq(louezDb.storeMembers.userId, NEW_USER));
+
+      const oauthQuery = new URLSearchParams({
+        client_id: CLIENT,
+        redirect_uri: "https://client.sc.test/callback",
+        sig: "ok",
+      }).toString();
+      const consent = (name: string, input: Record<string, unknown>) =>
+        orpc.call(
+          (name === "authorize" ? connections.authorize : connections.getAuthorization) as never,
+          { oauthQuery, ...input } as never,
+          { context: session() as never, path: ["dashboard", "agentConnections", name] },
+        );
+      const asked = (await consent("getAuthorization", {})) as {
+        stores: unknown[];
+        current: { stores: { all: boolean; ids?: string[] } } | null;
+      };
+      assert.deepEqual(asked.stores, []);
+      // The page drops the store it no longer reaches (util.agent-terms.ts).
+      assert.deepEqual(asked.current?.stores, { all: false, ids: [OWNER_STORE] });
+
+      const terms = { accept: true, preset: "write", confirmSensitive: true, bundles: ["daily"] };
+      await rejects(
+        consent("authorize", { ...terms, stores: { all: false, ids: [OWNER_STORE] } }),
+        "AGENT_CONNECTION_STORE_INVALID",
+      );
+      const kept = await grants.loadActiveGrant({ userId: NEW_USER, clientId: CLIENT });
+      assert.deepEqual(kept?.stores, [OWNER_STORE], "a refused answer changes nothing");
+
+      await consent("authorize", { ...terms, stores: { all: true } });
+      const saved = await grants.loadActiveGrant({ userId: NEW_USER, clientId: CLIENT });
+      assert.equal(saved?.stores, null);
     });
 
     // --- Web address --------------------------------------------------------------

@@ -1514,95 +1514,90 @@ describe("legacy guard and platform customer (database)", { skip: skipWithoutTes
     assert.equal(await planInSnapshot(), null);
   });
 
-  test("a new store's port writes the legacy row and shows its terms only for a store Louez bills", async () => {
-      // packages/api store-creation.db.test.ts covers the rest of stores.create.
-      process.env.LOUEZ_MODE = "platform";
-      const created = async (id: string, referred: boolean) =>
-        louezDb.db.transaction(async (tx) => {
-          await tx.insert(louezDb.stores).values({
-            id,
-            userId: `user_${id}`,
-            name: id,
-            slug: id.replaceAll("_", "-"),
-          });
-          return newStorePort.newStorePort.insertSubscription(tx, {
-            storeId: id,
-            currency: "EUR",
-            referred,
-          });
+  test("a new store's port writes the legacy row only for a store Louez bills, and says so", async () => {
+    // packages/api routers/dashboard/stores.db.test.ts covers the rest of stores.create.
+    process.env.LOUEZ_MODE = "platform";
+    const subscribe = (id: string, referred: boolean) =>
+      louezDb.db.transaction(async (tx) => {
+        await tx.insert(louezDb.stores).values({
+          id,
+          userId: `user_${id}`,
+          name: id,
+          slug: id.replaceAll("_", "-"),
         });
+        return newStorePort.newStorePort.subscribe(tx, { storeId: id, currency: "EUR", referred });
+      });
 
-      // Created now: the service bills it, and its offer is what the preview shows.
-      assert.equal(await created("lg_port_service", true), false);
-      assert.equal(await subscriptionRow("lg_port_service"), undefined);
-      const offer = await newStorePort.newStorePort.terms({ currency: "EUR", referred: false });
-      assert.equal(offer.billing, "offer");
+    // Created now: the service bills it. The preview and the decision agree.
+    const preview = await newStorePort.newStorePort.previewTerms({ currency: "EUR", referred: true });
+    assert.equal(preview.billing, "offer");
+    assert.equal((await subscribe("lg_port_service", true)).billing, "offer");
+    assert.equal(await subscriptionRow("lg_port_service"), undefined);
 
-      // Without BILLING_SERVICE_URL every store is legacy: the row, with the referred
-      // reward, and the pay-as-you-go ladder in the preview.
-      delete process.env.BILLING_SERVICE_URL;
-      assert.equal(await created("lg_port_legacy", true), true);
-      const row = await subscriptionRow("lg_port_legacy");
-      assert.ok(row?.payAsYouGoConfig);
-      const terms = await newStorePort.newStorePort.terms({ currency: "EUR", referred: true });
-      assert.equal(terms.billing, "pay_as_you_go");
-      assert.ok(terms.billing === "pay_as_you_go" && terms.tiers.length > 0);
-      assert.equal(
-        terms.billing === "pay_as_you_go" && terms.freeReservations,
-        row?.freeReservationsGranted,
-        "the preview's free reservations are the row's",
-      );
-    });
+    // Without BILLING_SERVICE_URL every store is legacy: the row, with the referred
+    // reward, and the terms read from it.
+    delete process.env.BILLING_SERVICE_URL;
+    const terms = await subscribe("lg_port_legacy", true);
+    const row = await subscriptionRow("lg_port_legacy");
+    assert.ok(row?.payAsYouGoConfig);
+    assert.ok(terms.billing === "pay_as_you_go" && terms.tiers.length > 0);
+    assert.equal(terms.freeReservations, row?.freeReservationsGranted, "the terms are the row's");
+    assert.deepEqual(
+      await newStorePort.newStorePort.previewTerms({ currency: "EUR", referred: true }),
+      terms,
+      "the preview of a legacy store shows what its row gets",
+    );
+  });
 
-    test("onboarding gives the referred welcome reward and its event only to a legacy store", async () => {
-      process.env.LOUEZ_MODE = "platform";
-      session.referralCode = REFERRAL_CODE;
-      const storeInfo = (slug: string) => ({ name: slug, slug, country: "FR", currency: "EUR" });
-      const resume = async (userId: string, slug: string) => {
-        session.userId = userId;
-        session.activeStoreId = null;
-        referralEvents.length = 0;
-        await louezDb.db
-          .insert(louezDb.users)
-          .values({ id: userId, email: `${userId}@louez.test` });
-        const [store] = await louezDb.db
-          .insert(louezDb.stores)
-          .values({ userId, name: "resume", slug })
-          .$returningId();
-        assert.ok(store);
-        await louezDb.db
-          .insert(louezDb.storeMembers)
-          .values({ storeId: store.id, userId, role: "owner" });
-        session.activeStoreId = store.id;
-        assert.deepEqual(await onboarding.saveStoreInfo(storeInfo(slug)), { success: true });
-        return store.id;
-      };
-      const REWARD_EVENT = "referral_referred_reward_granted";
+  test("onboarding gives the referred welcome reward and its event only to a legacy store", async () => {
+    process.env.LOUEZ_MODE = "platform";
+    session.referralCode = REFERRAL_CODE;
+    const storeInfo = (slug: string) => ({ name: slug, slug, country: "FR", currency: "EUR" });
+    const resume = async (userId: string, slug: string) => {
+      session.userId = userId;
+      session.activeStoreId = null;
+      referralEvents.length = 0;
+      await louezDb.db
+        .insert(louezDb.users)
+        .values({ id: userId, email: `${userId}@louez.test` });
+      const [store] = await louezDb.db
+        .insert(louezDb.stores)
+        .values({ userId, name: "resume", slug })
+        .$returningId();
+      assert.ok(store);
+      await louezDb.db
+        .insert(louezDb.storeMembers)
+        .values({ storeId: store.id, userId, role: "owner" });
+      session.activeStoreId = store.id;
+      assert.deepEqual(await onboarding.saveStoreInfo(storeInfo(slug)), { success: true });
+      return store.id;
+    };
+    const REWARD_EVENT = "referral_referred_reward_granted";
 
-      // An incomplete store finishing onboarding with a referral, the service billing it:
-      // no reward and no reward event.
-      const service = await resume("u_resume_service", "lg-resume-service");
-      assert.equal(await subscriptionRow(service), undefined);
-      assert.ok(referralEvents.length > 0 && !referralEvents.includes(REWARD_EVENT));
+    // An incomplete store finishing onboarding with a referral, the service billing it:
+    // no reward and no reward event.
+    const service = await resume("u_resume_service", "lg-resume-service");
+    assert.equal(await subscriptionRow(service), undefined);
+    assert.ok(referralEvents.length > 0 && !referralEvents.includes(REWARD_EVENT));
 
-      // Without BILLING_SERVICE_URL every store is legacy: the reward and its event.
-      delete process.env.BILLING_SERVICE_URL;
-      const legacy = await resume("u_resume_legacy", "lg-resume-legacy");
-      assert.equal(
-        (
-          await louezDb.db.query.stores.findFirst({
-            where: eq(louezDb.stores.id, legacy),
-            columns: { referredByStoreId: true },
-          })
-        )?.referredByStoreId,
-        "lg_referrer",
-      );
-      assert.ok(referralEvents.includes(REWARD_EVENT));
+    // Without BILLING_SERVICE_URL every store is legacy: the reward and its event.
+    delete process.env.BILLING_SERVICE_URL;
+    const legacy = await resume("u_resume_legacy", "lg-resume-legacy");
+    assert.equal(
+      (
+        await louezDb.db.query.stores.findFirst({
+          where: eq(louezDb.stores.id, legacy),
+          columns: { referredByStoreId: true },
+        })
+      )?.referredByStoreId,
+      "lg_referrer",
+    );
+    assert.ok(referralEvents.includes(REWARD_EVENT));
 
-      session.referralCode = "";
-    });
+    session.referralCode = "";
+  });
 
-    test("a referrer the service bills gets no legacy reward", async () => {
+  test("a referrer the service bills gets no legacy reward", async () => {
     assert.deepEqual(
       await rewards.maybeGrantReferrerReward({
         referredStore: {

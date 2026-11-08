@@ -23,9 +23,15 @@ import { getNewStorePricing } from "./defaults";
  */
 export async function insertNewStoreSubscription(
   tx: PolicyExecutor,
-  input: { readonly storeId: string; readonly currency: string; readonly referred: boolean },
+  input: {
+    readonly storeId: string;
+    readonly currency: string;
+    readonly referred: boolean;
+    /** When the decision is taken; now by default. */
+    readonly at?: Date;
+  },
 ): Promise<boolean> {
-  if (!(await legacyBillingAppliesAt(tx, input.storeId, new Date()))) return false;
+  if (!(await legacyBillingAppliesAt(tx, input.storeId, input.at ?? new Date()))) return false;
   const pricing = getNewStorePricing(input.currency);
   await tx.insert(subscriptions).values({
     storeId: input.storeId,

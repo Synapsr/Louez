@@ -42,23 +42,29 @@ export interface ApiPorts {
 /**
  * What creating a store takes from the app (services/store-creation.ts): the
  * billing of a new store, owned by the billing service and Louez's legacy
- * pricing; the instance's mode; the sign-up attribution a dashboard request
- * carries in its cookies.
+ * pricing; the welcome AI credits; the instance's mode; the sign-up
+ * attribution a dashboard request carries in its cookies.
  */
 export interface NewStorePort {
   /** A standalone instance hosts one store: a second one is refused. */
   singleStore: () => boolean;
-  /** What a store created now in `currency` pays Louez: what the preview shows. */
-  terms: (input: { currency: string; referred: boolean }) => Promise<NewStoreTerms>;
   /**
-   * Writes the new store's subscription row in the transaction that creates
-   * it (pay-as-you-go with the offer for new stores). True when Louez's own
-   * billing bills the store, false when it writes nothing.
+   * What a store created now in `currency` would pay Louez: what the preview
+   * shows before the store exists. The creation checks it again (`subscribe`).
    */
-  insertSubscription: (
+  previewTerms: (input: { currency: string; referred: boolean }) => Promise<NewStoreTerms>;
+  /**
+   * In the transaction that just inserted the store: decides once, through
+   * `tx`, whether Louez's own billing bills it, writes its subscription row
+   * when it does (pay-as-you-go with the offer for new stores), and returns
+   * the terms of that same decision.
+   */
+  subscribe: (
     tx: Transaction,
     input: { storeId: string; currency: string; referred: boolean },
-  ) => Promise<boolean>;
+  ) => Promise<NewStoreTerms>;
+  /** The AI credits a new store gets now; 0 while the credit layer is off. */
+  welcomeCredits: () => number;
   /**
    * The referral code and the sign-up origin a dashboard request carries
    * (cookies set when the user arrived), each null when absent or unknown.

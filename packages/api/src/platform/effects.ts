@@ -168,10 +168,14 @@ export interface ApiEffectPayloads {
     hasNotes: boolean;
     transport: "openapi" | "mcp";
   };
-  /** A new store's welcome credits for the AI advisor; none while the credit layer is off. */
-  "store.welcomeCredits": { storeId: string };
+  /**
+   * A new store's welcome credits for the AI advisor, as many as the store
+   * got when it was created: a later change of the setting changes no grant
+   * already queued. No row while the credit layer is off.
+   */
+  "store.welcomeCredits": { storeId: string; credits: number };
   /** One analytics event of a store's creation: the onboarding's, or the referral program's. */
-  "store.creationAnalytics": {
+  "store.creationAnalytics": AnalyticsEventIdentity & {
     event: "store_info_saved" | "referral_attribution_resolved" | "referred_reward_granted";
     ownerUserId: string;
     transport: "rpc" | "openapi" | "mcp";

@@ -20,9 +20,10 @@ import {
   type NewStoreTermsView,
 } from "../contracts/stores";
 import type { AccountActor } from "../platform/actor";
-import { enqueueEffects, type ApiEffect } from "../platform/effects";
+import { analyticsEventIdentity, enqueueEffects, type ApiEffect } from "../platform/effects";
 import { platformErrors } from "../platform/errors";
-import type { NewStoreTerms } from "../platform/ports";
+import { stableStringify } from "../platform/hash";
+import type { NewStorePort, NewStoreTerms } from "../platform/ports";
 import { resolveReferralAttribution, type ReferralAttribution } from "./referral-attribution";
 
 /**
@@ -287,6 +288,8 @@ export interface CreatedStore {
   country: string;
   currency: string;
   timezone: string;
+  /** What the store pays, from the decision its subscription row was written from. */
+  pricing: NewStoreTermsView;
   /** The analytics and credit rows to send once committed (`ports.dispatchEffects`). */
   effectIds: string[];
 }
@@ -299,24 +302,28 @@ export interface CreatedStore {
  *   user's sign-up origin (the cookie's, recorded on the user when unset);
  * - the owner's membership;
  * - the billing marks of the store and its legacy snapshot, and the
- *   subscription row the billing code writes (`insertSubscription`);
- * - in the outbox: the welcome AI credits and the analytics events
- *   (referral attribution, referred reward when the store got one, store
- *   info saved).
+ *   subscription row the billing code writes (`subscribe`), with the terms
+ *   of that same decision;
+ * - in the outbox: the welcome AI credits, as many as `welcomeCredits` says
+ *   now, and the analytics events (referral attribution, referred reward
+ *   when the store got one, store info saved), each with its own id and the
+ *   creation's time.
  *
  * The user row is locked first: two creations of one account run one after
  * the other, so the daily cap counts both. A web address taken meanwhile
- * fails on the unique key, as STORE_SLUG_TAKEN.
+ * fails on the unique key, as STORE_SLUG_TAKEN. `confirmedPricing` is what
+ * the caller confirmed in the preview: terms that changed since (the store
+ * created after a billing cutoff the preview came before) roll everything
+ * back with STORE_TERMS_CHANGED.
  */
 export async function createStore(input: {
   actor: AccountActor;
   store: CreateStoreInput;
   referral: PendingReferral;
   signupOrigin: string | null;
-  insertSubscription: (
-    tx: Transaction,
-    input: { storeId: string; currency: string; referred: boolean },
-  ) => Promise<boolean>;
+  subscribe: NewStorePort["subscribe"];
+  welcomeCredits: number;
+  confirmedPricing: NewStoreTermsView | null;
 }): Promise<CreatedStore> {
   const { actor, store, referral } = input;
   const userId = actor.credential.userId;
@@ -333,6 +340,8 @@ export async function createStore(input: {
         .for("update");
       if (!user) throw platformErrors.unauthenticated("This account no longer exists.");
       await assertUnderCreationLimit(actor, tx);
+      // When the creation runs, once it holds the account: its events' time.
+      const createdAt = new Date();
 
       const signupOrigin = user.signupOrigin ?? input.signupOrigin;
       if (user.signupOrigin === null && input.signupOrigin !== null) {
@@ -367,21 +376,43 @@ export async function createStore(input: {
       // legacy one of a new store (billing contract README §8.3).
       await markStore(tx, storeId);
       await markLegacyStore(tx, storeId);
-      const legacyBilled = await input.insertSubscription(tx, {
-        storeId,
-        currency: store.currency,
-        referred: Boolean(referredByStoreId),
-      });
+      const pricing = describeNewStoreTerms(
+        await input.subscribe(tx, {
+          storeId,
+          currency: store.currency,
+          referred: Boolean(referredByStoreId),
+        }),
+      );
+      if (
+        input.confirmedPricing &&
+        stableStringify(pricing) !== stableStringify(input.confirmedPricing)
+      ) {
+        throw storeErrors.termsChanged();
+      }
+      const legacyBilled = pricing.billing === "pay_as_you_go";
+      const identity = () => analyticsEventIdentity(createdAt);
 
       const analytics = (
         event: "store_info_saved" | "referral_attribution_resolved" | "referred_reward_granted",
         properties: Record<string, string | number | boolean | null>,
       ): ApiEffect => ({
         type: "store.creationAnalytics",
-        payload: { event, ownerUserId: userId, transport: actor.transport, properties },
+        payload: {
+          ...identity(),
+          event,
+          ownerUserId: userId,
+          transport: actor.transport,
+          properties,
+        },
       });
-      const effects: ApiEffect[] = [
-        { type: "store.welcomeCredits", payload: { storeId } },
+      const effects: ApiEffect[] = [];
+      if (input.welcomeCredits > 0) {
+        effects.push({
+          type: "store.welcomeCredits",
+          payload: { storeId, credits: input.welcomeCredits },
+        });
+      }
+      effects.push(
         analytics("referral_attribution_resolved", {
           placement: "onboarding_store_create",
           referral_attribution_outcome: referral.outcome,
@@ -392,7 +423,7 @@ export async function createStore(input: {
           currency: store.currency,
           country: store.country,
         }),
-      ];
+      );
       // The welcome reward is the subscription row's: none without one.
       if (referredByStoreId && legacyBilled) {
         effects.push(
@@ -428,6 +459,7 @@ export async function createStore(input: {
         country: store.country,
         currency: store.currency,
         timezone: settings.timezone,
+        pricing,
         effectIds,
       };
     });

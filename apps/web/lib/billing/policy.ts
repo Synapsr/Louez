@@ -4,6 +4,7 @@ import {
   type CachedPolicy,
   type PolicyInvoicing,
   type PolicyReservations,
+  type PolicyExecutor,
   type PolicySource,
   type StorePolicy,
   db,
@@ -117,6 +118,23 @@ export async function getEffectivePolicy(storeId: string, at: Date): Promise<Eff
   if (!isBillingEnabled()) return BILLING_OFF;
   if (!isBillingSyncEnabled()) return LEGACY_ONLY;
   return toEffectivePolicy(effectiveStorePolicy(await loadStorePolicyRecords(storeId), at));
+}
+
+/**
+ * The policy at `at` of a store read through `executor`, without the request's cache:
+ * a transaction that has just created the store sees it, as what it writes for the store
+ * is decided there (the new store's subscription row and the terms its creation shows).
+ */
+export async function getStorePolicyThrough(
+  executor: PolicyExecutor,
+  storeId: string,
+  at: Date,
+): Promise<EffectivePolicy> {
+  if (!isBillingEnabled()) return BILLING_OFF;
+  if (!isBillingSyncEnabled()) return LEGACY_ONLY;
+  return toEffectivePolicy(
+    effectiveStorePolicy(await readStorePolicyRecords(executor, storeId), at),
+  );
 }
 
 /**

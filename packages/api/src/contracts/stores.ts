@@ -160,6 +160,11 @@ export const storeErrors = {
       retryable: true,
       details: { limit, windowHours: 24 },
     }),
+  termsChanged: () =>
+    apiError("PRECONDITION_FAILED", "STORE_TERMS_CHANGED", {
+      message:
+        "What a new store pays Louez changed since the preview, so no store was created. Call again without confirmationToken to see the new terms, and confirm them with the user.",
+    }),
   singleStoreInstance: () =>
     apiError("FORBIDDEN", "SINGLE_STORE_INSTANCE", {
       message: "This Louez instance hosts a single store, and it already has one.",

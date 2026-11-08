@@ -151,8 +151,9 @@ const create = accountProcedure
     await assertUnderCreationLimit(actor);
     await assertSlugFree(input.slug);
 
+    // The preview's terms: the creation reads them again under its lock.
     const pricing = describeNewStoreTerms(
-      await ports.newStores.terms({
+      await ports.newStores.previewTerms({
         currency: input.currency,
         referred: referral.attribution !== null,
       }),
@@ -183,7 +184,11 @@ const create = accountProcedure
       store: input,
       referral,
       signupOrigin: attribution.signupOrigin,
-      insertSubscription: ports.newStores.insertSubscription,
+      subscribe: ports.newStores.subscribe,
+      welcomeCredits: ports.newStores.welcomeCredits(),
+      // A caller that saw a preview confirmed its terms; one that runs
+      // directly (a session, confirmation off) gets the terms in force.
+      confirmedPricing: credential.confirmSensitive ? pricing : null,
     });
     ports.dispatchEffects(created.effectIds);
 
@@ -197,7 +202,7 @@ const create = accountProcedure
       online: false,
       links: storeLinks(ports.urls, { ...created, onboardingCompleted: false }),
       futureStorefrontUrl,
-      pricing,
+      pricing: created.pricing,
       nextSteps: NEXT_STEPS,
     };
   });

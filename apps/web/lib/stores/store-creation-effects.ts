@@ -7,9 +7,8 @@ import type {
 } from "@louez/api/platform/effects";
 import { aiCreditTransactions, db } from "@louez/db";
 
-import { creditAiCredits, getDefaultAiCredits } from "@/lib/ai/advisor/credits";
+import { creditAiCredits } from "@/lib/ai/advisor/credits";
 import { withEffectSignal } from "@/lib/api/effect-signal";
-import { areAiCreditsEnabled } from "@/lib/plans";
 import {
   captureProductServerEventOrThrow,
   captureServerEventOrThrow,
@@ -30,17 +29,26 @@ type Payload<K extends keyof ApiEffectPayloads> = ApiEffectPayloads[K];
 type Outcome = Promise<void | { skipped: string }>;
 type StoreCreationEffectType = "store.welcomeCredits" | "store.creationAnalytics";
 
+/** Whether the credit grant of this key was written. */
+async function hasCreditGrant(dedupKey: string): Promise<boolean> {
+  const row = await db.query.aiCreditTransactions.findFirst({
+    where: eq(aiCreditTransactions.dedupKey, dedupKey),
+    columns: { id: true },
+  });
+  return Boolean(row);
+}
+
 /** What the senders call. A test replaces them, so nothing leaves the machine. */
 export interface StoreCreationEffectDeps {
-  areAiCreditsEnabled: typeof areAiCreditsEnabled;
   creditAiCredits: typeof creditAiCredits;
+  hasCreditGrant: typeof hasCreditGrant;
   captureProductServerEventOrThrow: typeof captureProductServerEventOrThrow;
   captureServerEventOrThrow: typeof captureServerEventOrThrow;
 }
 
 const defaultDeps: StoreCreationEffectDeps = {
-  areAiCreditsEnabled,
   creditAiCredits,
+  hasCreditGrant,
   captureProductServerEventOrThrow,
   captureServerEventOrThrow,
 };
@@ -48,14 +56,6 @@ const defaultDeps: StoreCreationEffectDeps = {
 /** The dashboard's events keep their properties; the API and agents set their own surface. */
 const actorProperties = (transport: "rpc" | "openapi" | "mcp") =>
   transport === "rpc" ? {} : { actor: transport, surface: transport };
-
-async function credited(dedupKey: string): Promise<boolean> {
-  const row = await db.query.aiCreditTransactions.findFirst({
-    where: eq(aiCreditTransactions.dedupKey, dedupKey),
-    columns: { id: true },
-  });
-  return Boolean(row);
-}
 
 export function createStoreCreationEffectSenders(
   overrides: Partial<StoreCreationEffectDeps> = {},
@@ -69,20 +69,18 @@ export function createStoreCreationEffectSenders(
   return {
     "store.welcomeCredits": guarded(
       async (payload: Payload<"store.welcomeCredits">, context: EffectSendContext): Outcome => {
-        if (!deps.areAiCreditsEnabled()) return { skipped: "AI credits are off here" };
-        const credits = getDefaultAiCredits();
-        if (credits <= 0) return { skipped: "no welcome credits are set" };
-        // Once per store: the key makes a retry a no-op.
+        // As many as the store got when it was created, whatever the setting says now.
         const dedupKey = `grant:${payload.storeId}`;
         await context.assertClaim();
         await deps.creditAiCredits({
           storeId: payload.storeId,
-          credits,
+          credits: payload.credits,
           type: "grant",
           dedupKey,
         });
         // creditAiCredits swallows its failures: the row it writes says whether it went through.
-        if (!(await credited(dedupKey))) throw new Error("The welcome credits were not granted.");
+        if (!(await deps.hasCreditGrant(dedupKey)))
+          throw new Error("The welcome credits were not granted.");
       },
     ),
     "store.creationAnalytics": guarded(
@@ -90,11 +88,14 @@ export function createStoreCreationEffectSenders(
         const program = getReferralProgramConfig();
         const actor = actorProperties(payload.transport);
         await context.assertClaim();
+        // The same event id and time on every try: PostHog keeps one event.
+        const identity = { eventUuid: payload.eventUuid, occurredAt: payload.occurredAt };
         if (payload.event === "store_info_saved") {
           return deps.captureProductServerEventOrThrow({
             distinctId: payload.ownerUserId,
             event: productAnalyticsEvents.onboardingStoreInfoSaved,
             properties: { ...payload.properties, ...actor },
+            identity,
           });
         }
         const referral =
@@ -124,6 +125,7 @@ export function createStoreCreationEffectSenders(
             ...referral.program,
             ...actor,
           },
+          identity,
         });
       },
     ),
