@@ -1,23 +1,10 @@
 import { z } from "zod";
 
-import { brandingSchema, stripeSetupSchema } from "@louez/validations";
+import { stripeSetupSchema } from "@louez/validations";
 
 import { dashboardProcedure } from "../../procedures";
-import { completeOnboarding, getOnboardingDraft, updateOnboardingBranding } from "../../services";
+import { completeOnboarding, getOnboardingDraft } from "../../services";
 import { toORPCError } from "../../utils/orpc-error";
-
-const updateBranding = dashboardProcedure
-  .input(brandingSchema)
-  .handler(async ({ context, input }) => {
-    try {
-      return await updateOnboardingBranding({
-        storeId: context.store.id,
-        input,
-      });
-    } catch (error) {
-      throw toORPCError(error);
-    }
-  });
 
 const complete = dashboardProcedure.input(stripeSetupSchema).handler(async ({ context, input }) => {
   try {
@@ -43,6 +30,5 @@ const getDraft = dashboardProcedure.input(z.object({})).handler(async ({ context
 
 export const dashboardOnboardingRouter = {
   getDraft,
-  updateBranding,
   complete,
 };

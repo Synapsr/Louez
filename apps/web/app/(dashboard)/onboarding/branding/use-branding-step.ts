@@ -48,8 +48,9 @@ export const useBrandingStep = () => {
 
   const { uploadImage, deleteImage, isUploading } = useImageUpload("logo");
   const draftQuery = useOnboardingDraft();
+  // The same write as the online store editor's look.
   const updateBrandingMutation = useMutation(
-    orpc.dashboard.onboarding.updateBranding.mutationOptions(),
+    orpc.dashboard.onlineStore.updateAppearance.mutationOptions(),
   );
 
   const selectedLogoFile = useRef<File | null>(null);
@@ -82,8 +83,9 @@ export const useBrandingStep = () => {
         }
 
         await updateBrandingMutation.mutateAsync({
-          ...value,
-          logoUrl,
+          mode: value.theme,
+          primaryColor: value.primaryColor,
+          logoUrl: logoUrl || null,
         });
 
         posthog.capture(productAnalyticsEvents.onboardingBrandingSaved, {

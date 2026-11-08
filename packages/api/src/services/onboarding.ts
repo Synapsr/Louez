@@ -1,14 +1,9 @@
 import { eq } from "drizzle-orm";
 
 import { db, markStore, mergeStoreRow, stores } from "@louez/db";
-import { type BrandingInput, type StripeSetupInput, isOwnedImageUrl } from "@louez/validations";
+import type { StripeSetupInput } from "@louez/validations";
 
 import { ApiServiceError } from "./errors";
-
-interface UpdateOnboardingBrandingParams {
-  storeId: string;
-  input: BrandingInput;
-}
 
 interface CompleteOnboardingParams {
   storeId: string;
@@ -24,25 +19,6 @@ interface CompleteOnboardingParams {
 
 interface GetOnboardingDraftParams {
   storeId: string;
-}
-
-export async function updateOnboardingBranding(params: UpdateOnboardingBrandingParams) {
-  const { storeId, input } = params;
-
-  if (input.logoUrl && !isOwnedImageUrl(input.logoUrl, `${storeId}/logo`)) {
-    throw new ApiServiceError("BAD_REQUEST", "errors.invalidData");
-  }
-
-  // The rest of the theme (banner photos, layout) is kept as stored.
-  const saved = await mergeStoreRow(db, storeId, ({ theme }) => ({
-    set: {
-      logoUrl: input.logoUrl || null,
-      theme: { ...theme, mode: input.theme, primaryColor: input.primaryColor },
-    },
-  }));
-  if (!saved) throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
-
-  return { success: true as const };
 }
 
 export async function completeOnboarding(params: CompleteOnboardingParams) {

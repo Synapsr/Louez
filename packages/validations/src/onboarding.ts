@@ -230,7 +230,7 @@ export const createBrandingSchema = (
   t: (key: string, params?: Record<string, string | number | Date>) => string,
 ) =>
   z.object({
-    // Client-safe validation: strict S3 check happens server-side in the action
+    // Client-safe validation: the server checks the store owns the image
     logoUrl: z
       .string()
       .refine((val) => !val || val === "" || isValidImageUrlClient(val), {
@@ -295,19 +295,6 @@ export const storeInfoSchema = z.object({
     }),
 });
 
-export const brandingSchema = z.object({
-  // SECURITY: Validate image URL to prevent malicious uploads
-  logoUrl: z
-    .string()
-    .refine((val) => !val || val === "" || isValidImageUrl(val), {
-      message: "validation.invalidImageUrl",
-    })
-    .optional()
-    .or(z.literal("")),
-  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "validation.color"),
-  theme: z.enum(["light", "dark"]),
-});
-
 export const firstProductSchema = z.object({
   name: z.string().min(2, "validation.minLength").max(255, "validation.maxLength"),
   description: z.string().optional(),
@@ -334,6 +321,6 @@ export const stripeSetupSchema = z.object({
 });
 
 export type StoreInfoInput = z.infer<typeof storeInfoSchema>;
-export type BrandingInput = z.infer<typeof brandingSchema>;
+export type BrandingInput = z.infer<ReturnType<typeof createBrandingSchema>>;
 export type FirstProductInput = z.infer<typeof firstProductSchema>;
 export type StripeSetupInput = z.infer<typeof stripeSetupSchema>;

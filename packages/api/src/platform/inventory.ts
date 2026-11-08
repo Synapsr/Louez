@@ -1413,6 +1413,7 @@ export const capabilities = [
     migrated: true,
   },
   {
+    // The onboarding's branding step saves through it too.
     id: "online_store.updateAppearance",
     sources: [procedure("onlineStore", "updateAppearance")],
     kind: "write",
@@ -2041,12 +2042,6 @@ export const capabilities = [
     id: "stores.getOnboardingDraft",
     sources: [procedure("onboarding", "getDraft")],
     kind: "read",
-    plan: { lot: "8" },
-  },
-  {
-    id: "stores.updateOnboardingBranding",
-    sources: [procedure("onboarding", "updateBranding")],
-    kind: "write",
     plan: { lot: "8" },
   },
   {
