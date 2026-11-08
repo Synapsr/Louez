@@ -12,7 +12,7 @@ import {
   type Transaction,
 } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
-import { hasRichTextContent } from "@louez/utils";
+import { getDeliveryAvailability, hasRichTextContent } from "@louez/utils";
 import { and, eq, gt } from "drizzle-orm";
 
 import {
@@ -70,6 +70,9 @@ type LaunchStoreRow = {
 /** What the checklist is computed from: the store row and a few facts of its other tables. */
 export interface LaunchState {
   store: LaunchStoreRow;
+  /** The catalog lists an active product. */
+  hasActiveProduct: boolean;
+  /** An active product is priced above zero. */
   hasPricedProduct: boolean;
   hasCategory: boolean;
   hasActiveLocation: boolean;
@@ -93,58 +96,73 @@ export async function readLaunchState(
   const [store] = await executor.select(storeColumns).from(stores).where(eq(stores.id, storeId));
   if (!store) throw platformErrors.noStore();
 
-  const [hasPricedProduct, hasCategory, hasActiveLocation, gate, firstReservation, firstCompleted] =
-    await Promise.all([
-      exists(
-        executor
-          .select({ id: products.id })
-          .from(products)
-          .where(
-            and(
-              eq(products.storeId, storeId),
-              eq(products.status, "active"),
-              gt(products.price, "0"),
-            ),
-          )
-          .limit(1),
-      ),
-      exists(
-        executor
-          .select({ id: categories.id })
-          .from(categories)
-          .where(eq(categories.storeId, storeId))
-          .limit(1),
-      ),
-      exists(
-        executor
-          .select({ id: storeLocations.id })
-          .from(storeLocations)
-          .where(and(eq(storeLocations.storeId, storeId), eq(storeLocations.isActive, true)))
-          .limit(1),
-      ),
-      readReservationGate(executor, storeId),
-      options.withMilestones
-        ? exists(
-            executor
-              .select({ id: reservations.id })
-              .from(reservations)
-              .where(eq(reservations.storeId, storeId))
-              .limit(1),
-          )
-        : Promise.resolve(false),
-      options.withMilestones
-        ? exists(
-            executor
-              .select({ id: reservations.id })
-              .from(reservations)
-              .where(and(eq(reservations.storeId, storeId), eq(reservations.status, "completed")))
-              .limit(1),
-          )
-        : Promise.resolve(false),
-    ]);
+  const [
+    hasActiveProduct,
+    hasPricedProduct,
+    hasCategory,
+    hasActiveLocation,
+    gate,
+    firstReservation,
+    firstCompleted,
+  ] = await Promise.all([
+    exists(
+      executor
+        .select({ id: products.id })
+        .from(products)
+        .where(and(eq(products.storeId, storeId), eq(products.status, "active")))
+        .limit(1),
+    ),
+    exists(
+      executor
+        .select({ id: products.id })
+        .from(products)
+        .where(
+          and(
+            eq(products.storeId, storeId),
+            eq(products.status, "active"),
+            gt(products.price, "0"),
+          ),
+        )
+        .limit(1),
+    ),
+    exists(
+      executor
+        .select({ id: categories.id })
+        .from(categories)
+        .where(eq(categories.storeId, storeId))
+        .limit(1),
+    ),
+    exists(
+      executor
+        .select({ id: storeLocations.id })
+        .from(storeLocations)
+        .where(and(eq(storeLocations.storeId, storeId), eq(storeLocations.isActive, true)))
+        .limit(1),
+    ),
+    readReservationGate(executor, storeId),
+    options.withMilestones
+      ? exists(
+          executor
+            .select({ id: reservations.id })
+            .from(reservations)
+            .where(eq(reservations.storeId, storeId))
+            .limit(1),
+        )
+      : Promise.resolve(false),
+    options.withMilestones
+      ? exists(
+          executor
+            .select({ id: reservations.id })
+            .from(reservations)
+            .where(and(eq(reservations.storeId, storeId), eq(reservations.status, "completed")))
+            .limit(1),
+        )
+      : Promise.resolve(false),
+  ]);
 
   return {
     store,
+    hasActiveProduct,
     hasPricedProduct,
     hasCategory,
     hasActiveLocation,
@@ -215,10 +233,17 @@ export function buildLaunchChecklist(
     (gap): gap is string => typeof gap === "string",
   );
   const hasContact = Boolean(store.email?.trim() || store.phone?.trim());
-  const deliveryOn = settings?.delivery?.enabled === true;
-  const hasPickup =
-    Boolean(store.address?.trim()) ||
-    (settings?.delivery?.multiLocationEnabled === true && state.hasActiveLocation);
+  // Read as checkout and the booking check read it: address delivery needs the
+  // store's coordinates, and a delivery-only store refuses a pickup.
+  const delivery = getDeliveryAvailability(settings?.delivery, store);
+  const hasPickupPlace =
+    Boolean(store.address?.trim()) || (delivery.multiLocation && state.hasActiveLocation);
+  const collectable = !delivery.deliveryOnly && hasPickupPlace;
+  const deliveryWithoutCoordinates =
+    settings?.delivery?.enabled === true && !delivery.addressDelivery;
+  const pickupGap = delivery.deliveryOnly
+    ? "Delivery is the only way to get a rental, but the store has no usable coordinates: checkout cannot deliver, and a pickup is refused. Set the store's coordinates (settings_update_store_info), or let customers collect (settings_update_delivery)."
+    : `The store has no address and no active pickup point${deliveryWithoutCoordinates ? ", and its delivery needs the store's coordinates, which it lacks" : " and no delivery"}: customers do not know where to collect their rental.`;
 
   const facts: Record<LaunchItemKey, ItemFacts> = {
     storeInfo: item(
@@ -260,7 +285,9 @@ export function buildLaunchChecklist(
       },
       {
         status: "missing",
-        why: "No active product with a price above zero: customers find nothing to book.",
+        why: state.hasActiveProduct
+          ? "Every active product is priced at zero: customers book them free of charge. Set a price on the ones rented for money."
+          : "No active product: customers find nothing to book.",
       },
     ),
     categories: item(
@@ -275,7 +302,7 @@ export function buildLaunchChecklist(
       { status: "optional", why: "No category yet: the catalog shows one list." },
     ),
     pickup: item(
-      hasPickup || deliveryOn,
+      collectable || delivery.addressDelivery,
       {
         status: "done",
         required: false,
@@ -287,10 +314,7 @@ export function buildLaunchChecklist(
           "settings_update_delivery",
         ],
       },
-      {
-        status: "missing",
-        why: "The store has no address, no active pickup point and no delivery: customers do not know where to collect their rental.",
-      },
+      { status: "missing", why: pickupGap },
     ),
     businessHours: item(
       hasBookableHours(settings),
@@ -403,6 +427,7 @@ export function buildLaunchChecklist(
     canGoLive: blocking.length === 0,
     blocking: blocking.map((entry) => entry.key),
     bookingMode: mode,
+    catalog: { hasActiveProduct: state.hasActiveProduct, hasPricedProduct: state.hasPricedProduct },
     items,
     milestones: state.milestones,
     links: storeLinks(urls, linkStore),
@@ -446,12 +471,12 @@ const LAUNCH_SETTINGS_DEFAULTS = {
   turnoverBufferMinutes: 0,
 } satisfies Partial<StoreSettings>;
 
+/** The preview of a launch, from the checklist as it will be once written (its booking mode included). */
 function describeLaunch(
   checklist: ReturnType<typeof buildLaunchChecklist>,
-  intended: "payment" | "request",
-  store: LaunchStoreRow,
+  store: Pick<LaunchStoreRow, "name">,
 ): GoLivePreview {
-  const bookingMode = bookingModeOf(store, intended);
+  const { bookingMode } = checklist;
   const open = checklist.items.filter((entry) => entry.status !== "done");
   const stillMissing = open
     .filter((entry) => entry.status === "missing" || entry.status === "blocked")
@@ -467,9 +492,11 @@ function describeLaunch(
       : bookingMode.intended === "payment"
         ? "Customers send booking requests the store accepts or refuses: Stripe is not connected yet, so online payment starts once it is."
         : "Customers send booking requests the store accepts or refuses.",
-    byKey.get("products")?.status === "done"
+    checklist.catalog.hasPricedProduct
       ? "The active products are listed with their prices."
-      : "The catalog is empty: no product can be booked yet.",
+      : checklist.catalog.hasActiveProduct
+        ? "The active products are listed, every one of them free of charge."
+        : "The catalog is empty: no product can be booked yet.",
     ...(byKey.get("billing")?.status === "blocked"
       ? ["The storefront says the store is not taking bookings, until Louez billing is fixed."]
       : []),
@@ -535,6 +562,18 @@ export async function goLive(
     const checklist = buildLaunchChecklist(state, options.urls);
     const current = bookingModeOf(store);
     const intended = input.reservationMode ?? current.intended;
+    // What the write stores; the preview, its binding and the answer show the
+    // store as it will be with it.
+    const settings: StoreSettings = {
+      ...LAUNCH_SETTINGS_DEFAULTS,
+      ...store.settings,
+      reservationMode: intended,
+    };
+    const written = (onboardingCompleted: boolean) =>
+      buildLaunchChecklist(
+        { ...state, store: { ...store, settings, onboardingCompleted } },
+        options.urls,
+      );
 
     if (checklist.online) {
       if (intended === current.intended) {
@@ -548,22 +587,17 @@ export async function goLive(
         };
       }
       // Online already: only the booking mode changes.
+      const next = written(true);
       if (options.confirm) {
-        const next = bookingModeOf(store, intended);
         refusal = await options.confirm(
           {
-            ...describeLaunch(checklist, intended, store),
-            summary: `The store is online already. Change how customers book from ${current.intended} to ${intended}${next.effective !== intended ? ` (customers send requests until Stripe is connected)` : ""}.`,
+            ...describeLaunch(next, store),
+            summary: `The store is online already. Change how customers book from ${current.intended} to ${intended}${next.bookingMode.effective !== intended ? ` (customers send requests until Stripe is connected)` : ""}.`,
           },
           tx,
         );
         if (refusal) return null;
       }
-      const settings: StoreSettings = {
-        ...LAUNCH_SETTINGS_DEFAULTS,
-        ...store.settings,
-        reservationMode: intended,
-      };
       await tx
         .update(stores)
         .set({ settings, updatedAt: new Date() })
@@ -571,8 +605,8 @@ export async function goLive(
       await markStore(tx, storeId);
       return {
         launched: false,
-        checklist: buildLaunchChecklist({ ...state, store: { ...store, settings } }, options.urls),
-        bookingMode: bookingModeOf(store, intended),
+        checklist: next,
+        bookingMode: next.bookingMode,
         effectIds: [],
         slug: store.slug,
         modeChanged: true,
@@ -582,16 +616,13 @@ export async function goLive(
     const blocking = checklist.items.filter((entry) => entry.required && entry.status !== "done");
     if (blocking.length > 0) throw launchErrors.notReady(blocking);
 
+    // Previewed offline, as customers will find it the moment it opens.
+    const preview = written(false);
     if (options.confirm) {
-      refusal = await options.confirm(describeLaunch(checklist, intended, store), tx);
+      refusal = await options.confirm(describeLaunch(preview, store), tx);
       if (refusal) return null;
     }
 
-    const settings: StoreSettings = {
-      ...LAUNCH_SETTINGS_DEFAULTS,
-      ...store.settings,
-      reservationMode: intended,
-    };
     await tx
       .update(stores)
       .set({ settings, onboardingCompleted: true, updatedAt: new Date() })
@@ -615,13 +646,11 @@ export async function goLive(
       },
     ]);
 
+    const launched = written(true);
     return {
       launched: true,
-      checklist: buildLaunchChecklist(
-        { ...state, store: { ...store, settings, onboardingCompleted: true } },
-        options.urls,
-      ),
-      bookingMode: bookingModeOf(store, intended),
+      checklist: launched,
+      bookingMode: launched.bookingMode,
       effectIds,
       slug: store.slug,
       modeChanged: false,

@@ -74,6 +74,11 @@ export const launchChecklistOutput = z.object({
   /** The keys of the required items still missing. */
   blocking: z.array(z.enum(LAUNCH_ITEM_KEYS)),
   bookingMode: bookingModeSchema,
+  /**
+   * What the catalog holds: an active product (the dashboard's "first
+   * product"), and one priced above zero (the products item).
+   */
+  catalog: z.object({ hasActiveProduct: z.boolean(), hasPricedProduct: z.boolean() }),
   items: z.array(launchItemSchema),
   /**
    * The first bookings, as the dashboard's home follows them; null when the

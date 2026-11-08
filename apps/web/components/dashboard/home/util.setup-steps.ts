@@ -65,7 +65,8 @@ export function homeSetupSteps(
     ...(isReeent ? onlinePayments : []),
     {
       key: "addFirstProduct",
-      completed: isDone(checklist, "products"),
+      // Any active product, free ones included; the launch item asks a price.
+      completed: checklist.catalog.hasActiveProduct,
       href: "/dashboard/products/new",
       action: "setup.addFirstProduct",
       description: "addFirstProduct",

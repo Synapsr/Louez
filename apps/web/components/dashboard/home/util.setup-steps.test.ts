@@ -15,6 +15,9 @@ import {
 // computed them from the home's metrics and the store row.
 
 interface Facts {
+  /** An active product, free ones included: the home's former activeProductCount > 0. */
+  activeProduct: boolean;
+  /** An active product priced above zero. */
   pricedProduct: boolean;
   intended: "payment" | "request";
   stripeChargeable: boolean;
@@ -47,7 +50,7 @@ function formerSteps(facts: Facts, context: OnlinePaymentsContext) {
       ...(isReeent ? payments : []),
       {
         key: "addFirstProduct",
-        completed: facts.pricedProduct,
+        completed: facts.activeProduct,
         href: "/dashboard/products/new",
         action: "setup.addFirstProduct",
         description: "addFirstProduct",
@@ -85,6 +88,7 @@ function checklistOf(facts: Facts): LaunchChecklistView {
     storefrontUrl: "https://brest-surf.louez.test",
     canGoLive: true,
     blocking: [],
+    catalog: { hasActiveProduct: facts.activeProduct, hasPricedProduct: facts.pricedProduct },
     bookingMode: {
       intended: facts.intended,
       effective: facts.intended === "payment" && facts.stripeChargeable ? "payment" : "request",
@@ -106,15 +110,21 @@ function checklistOf(facts: Facts): LaunchChecklistView {
 describe("home setup steps", () => {
   test("the same steps as before, for every combination of facts and both contexts", () => {
     const flags = [false, true];
+    // No product, only free ones, a priced one.
+    const catalogs = [
+      { activeProduct: false, pricedProduct: false },
+      { activeProduct: true, pricedProduct: false },
+      { activeProduct: true, pricedProduct: true },
+    ];
     let cases = 0;
-    for (const pricedProduct of flags)
+    for (const catalog of catalogs)
       for (const intended of ["payment", "request"] as const)
         for (const stripeChargeable of flags)
           for (const firstReservation of flags)
             for (const firstCompleted of flags)
               for (const context of ["default", "reeent"] as const) {
                 const facts = {
-                  pricedProduct,
+                  ...catalog,
                   intended,
                   stripeChargeable,
                   firstReservation,
@@ -126,12 +136,27 @@ describe("home setup steps", () => {
                 assert.equal(onlinePaymentsStepOf(checklist), former.onlinePaymentsStep);
                 cases += 1;
               }
-    assert.equal(cases, 64);
+    assert.equal(cases, 96);
+  });
+
+  test("a catalog of free products completes the first-product step; the launch still asks a price", () => {
+    const checklist = checklistOf({
+      activeProduct: true,
+      pricedProduct: false,
+      intended: "request",
+      stripeChargeable: false,
+      firstReservation: false,
+      firstCompleted: false,
+    });
+    const steps = homeSetupSteps(checklist, "default");
+    assert.equal(steps.find((step) => step.key === "addFirstProduct")?.completed, true);
+    assert.equal(checklist.items.find((item) => item.key === "products")?.status, "missing");
   });
 
   test("without the first bookings (a connection that may not read reservations), they stay open", () => {
     const checklist = {
       ...checklistOf({
+        activeProduct: true,
         pricedProduct: true,
         intended: "request",
         stripeChargeable: false,

@@ -381,15 +381,136 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     checklist = await run("getLaunchChecklist", {}, session());
     assert.equal(statuses(checklist).pickup, "done");
 
-    // Without an address or a point, delivery is enough.
+    // Without an address or a point, delivery is enough only once checkout
+    // can deliver: it measures from the store's coordinates.
     await louezDb.db.delete(louezDb.storeLocations);
     const settings = (await storeRow())?.settings;
-    assert.ok(settings?.delivery);
-    await setStore({
-      settings: { ...settings, delivery: { ...settings.delivery, enabled: true } },
+    const delivery = settings?.delivery;
+    assert.ok(settings && delivery);
+    const withDelivery = (mode: "optional" | "required" | "included") => ({
+      ...settings,
+      delivery: { ...delivery, enabled: true, multiLocationEnabled: false, mode },
     });
-    checklist = await run("getLaunchChecklist", {}, session());
-    assert.equal(statuses(checklist).pickup, "done");
+    const pickupOf = async () =>
+      (await run("getLaunchChecklist", {}, session())).items.find(
+        (entry) => entry.key === "pickup",
+      );
+    await setStore({ settings: withDelivery("optional") });
+    let pickup = await pickupOf();
+    assert.equal(pickup?.status, "missing");
+    assert.match(pickup?.why ?? "", /delivery needs the store's coordinates/);
+    await setStore({ latitude: "48.3904000", longitude: "-4.4861000" });
+    assert.equal((await pickupOf())?.status, "done");
+
+    // Delivery only, without coordinates: checkout cannot deliver and the
+    // booking check refuses a pickup, address or not.
+    await setStore({
+      settings: withDelivery("required"),
+      latitude: null,
+      longitude: null,
+      address: "Plage du Moulin Blanc, Brest",
+    });
+    pickup = await pickupOf();
+    assert.equal(pickup?.status, "missing");
+    assert.match(pickup?.why ?? "", /only way to get a rental.*no usable coordinates/);
+    await setStore({ settings: withDelivery("included") });
+    assert.equal((await pickupOf())?.status, "missing");
+    // Coordinates off the map are no better than none.
+    await setStore({ latitude: "123.0000000", longitude: "-4.4861000" });
+    assert.equal((await pickupOf())?.status, "missing");
+    await setStore({ latitude: "48.3904000", longitude: "-4.4861000" });
+    assert.equal((await pickupOf())?.status, "done");
+  });
+
+  test("a free consumable is a product for the home, not a priced one for the launch", async () => {
+    // A fixed-price consumable at zero: a valid product (a free map, wax).
+    await louezDb.db.insert(louezDb.products).values({
+      id: "ln_prod_wax",
+      storeId: STORE,
+      name: "Wax",
+      price: "0.00",
+      pricingMode: "day",
+      pricingKind: "fixed",
+      stockKind: "consumable",
+      quantity: 50,
+      status: "active",
+    });
+    const checklist = await run("getLaunchChecklist", {}, session());
+    assert.deepEqual(checklist.catalog, { hasActiveProduct: true, hasPricedProduct: false });
+    const products = checklist.items.find((entry) => entry.key === "products");
+    assert.equal(products?.status, "missing");
+    assert.match(products?.why ?? "", /priced at zero/);
+
+    // The preview lists them as free, not as an empty catalog.
+    const key = await apiKey();
+    const refusal = await rejects(run("completeOnboarding", {}, key()), "CONFIRMATION_REQUIRED");
+    const seen = (refusal.data.details as { preview: { details: { customersWillSee: string[] } } })
+      .preview.details.customersWillSee;
+    assert.ok(
+      seen.some((line) => /free of charge/.test(line)),
+      seen.join(" | "),
+    );
+    assert.ok(!seen.some((line) => /catalog is empty/.test(line)), seen.join(" | "));
+
+    // With a priced product too, both hold.
+    await product("ln_prod_board");
+    assert.deepEqual((await run("getLaunchChecklist", {}, session())).catalog, {
+      hasActiveProduct: true,
+      hasPricedProduct: true,
+    });
+  });
+
+  test("the preview shows the store with the booking mode it goes live with", async () => {
+    const key = await apiKey();
+    type Preview = {
+      summary: string;
+      details: {
+        bookingMode: { intended: string; effective: string };
+        stillMissing: Array<{ key: string }>;
+        optional: Array<{ key: string }>;
+      };
+    };
+    const previewOf = async (input: { reservationMode?: "payment" | "request" }) => {
+      const refusal = await rejects(
+        run("completeOnboarding", input, key()),
+        "CONFIRMATION_REQUIRED",
+      );
+      return {
+        token: tokenOf(refusal),
+        preview: (refusal.data.details as { preview: Preview }).preview,
+      };
+    };
+
+    // A payment-mode store without Stripe that goes live taking requests:
+    // online payments are optional then, not missing.
+    const toRequest = await previewOf({ reservationMode: "request" });
+    assert.equal(toRequest.preview.details.bookingMode.intended, "request");
+    assert.ok(
+      !toRequest.preview.details.stillMissing.some((entry) => entry.key === "onlinePayments"),
+    );
+    assert.ok(toRequest.preview.details.optional.some((entry) => entry.key === "onlinePayments"));
+    // Left out, the mode is the store's: payment without Stripe, so missing.
+    const kept = await previewOf({});
+    assert.ok(kept.preview.details.stillMissing.some((entry) => entry.key === "onlinePayments"));
+
+    // A request-mode store going live in payment mode: missing, not optional.
+    await setStore({ settings: { ...SETTINGS, reservationMode: "request" } });
+    const toPayment = await previewOf({ reservationMode: "payment" });
+    assert.equal(toPayment.preview.details.bookingMode.intended, "payment");
+    assert.ok(
+      toPayment.preview.details.stillMissing.some((entry) => entry.key === "onlinePayments"),
+    );
+    assert.ok(!toPayment.preview.details.optional.some((entry) => entry.key === "onlinePayments"));
+
+    // The token is bound to that view: confirmed as it is, the store goes live in that mode.
+    const done = await run(
+      "completeOnboarding",
+      { reservationMode: "payment" },
+      key({ "louez-confirmation": toPayment.token }),
+    );
+    assert.equal(done.launched, true);
+    assert.equal(done.bookingMode.intended, "payment");
+    assert.equal((await storeRow())?.settings?.reservationMode, "payment");
   });
 
   test("a store without its country or currency cannot go live", async () => {
