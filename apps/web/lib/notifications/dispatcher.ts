@@ -46,6 +46,7 @@ import {
   reservationCurrencyOf,
 } from "@/lib/notifications/util.notification-currency";
 import { isPushConfigured, sendPush } from "@/lib/push/client";
+import { log } from "@/lib/evlog";
 import { buildAdminPushPayload } from "@/lib/push/notifications";
 import type { NotificationEventType, NotificationSettings } from "@louez/types";
 
@@ -814,13 +815,21 @@ export async function dispatchNotification(
   // Determine locale from store country
   const locale = getLocaleFromCountry(ctx.store.settings?.country);
 
-  // Each channel answers for itself: one that throws never hides another's outcome.
+  // Each channel answers for itself: one that throws never hides another's
+  // outcome. Callers often drop the result, so a channel that threw is logged here.
+  const failed = (channel: string, error: unknown) => {
+    log.error(
+      "notifications",
+      `${eventType} ${channel} to the owner of store ${ctx.store.id} failed: ${describeChannelError(error)}`,
+    );
+  };
 
   // Email to the store owner. Events without an owner template answer "not sent".
   if (prefs.email) {
     try {
       result.email = await deps.sendAdminEventEmail(eventType, ctx);
     } catch (error) {
+      failed("email", error);
       result.email = { sent: false, error: describeChannelError(error) };
     }
   }
@@ -842,6 +851,7 @@ export async function dispatchNotification(
         limitReached: smsResult.limitReached,
       };
     } catch (error) {
+      failed("sms", error);
       result.sms = { sent: false, error: describeChannelError(error) };
     }
   }
@@ -879,6 +889,7 @@ export async function dispatchNotification(
         }
       }
     } catch (error) {
+      failed("push", error);
       result.push.error = error instanceof Error ? error.message : "Unknown error";
     }
   }
@@ -910,6 +921,7 @@ export async function dispatchNotification(
       const discordResult = await getDiscordSender(eventType)(discordCtx);
       result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error };
     } catch (error) {
+      failed("discord", error);
       result.discord = {
         sent: false,
         error: error instanceof Error ? error.message : "Unknown error",
