@@ -55,6 +55,12 @@ export interface ProcedureScope {
    * `manage_settings`, the team `manage_members`.
    */
   role?: Permission;
+  /**
+   * Other domains that also open the procedure, at the same level: the
+   * handler then checks each record against its own domain, showing or
+   * changing only what the caller may (the inbox).
+   */
+  anyOf?: readonly ApiDomain[];
 }
 
 /**
@@ -69,7 +75,8 @@ export function allows(
   const permission = required.role ?? (required.level === "read" ? "read" : "write");
   if (!hasPermission(role, permission)) return false;
   if (!scopes) return true;
-  return LEVEL_RANK[scopes[required.domain]] >= LEVEL_RANK[required.level];
+  const domains = [required.domain, ...(required.anyOf ?? [])];
+  return domains.some((domain) => LEVEL_RANK[scopes[domain]] >= LEVEL_RANK[required.level]);
 }
 
 /**

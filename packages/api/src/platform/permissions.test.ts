@@ -82,4 +82,11 @@ describe("allows: the member's role cut down to the connection", () => {
     assert.equal(allows("owner", readOnly, { domain: "categories", level: "write" }), false);
     assert.equal(allows("owner", readOnly, { domain: "products", level: "read" }), false);
   });
+
+  test("a read with anyOf opens to a connection that may read one of its domains", () => {
+    const inbox = { domain: "reservations", level: "read", anyOf: ["settings"] } as const;
+    assert.equal(allows("owner", readOnly, inbox), true);
+    assert.equal(allows("owner", normalizeScopes({ products: "read" }), inbox), false);
+    assert.equal(allows("owner", normalizeScopes({ reservations: "read" }), inbox), true);
+  });
 });
