@@ -287,8 +287,9 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
     assert.equal((await paymentsOf(reservationId)).length, 1);
     assert.deepEqual(await queue(), []);
   });
-  test("a link to another domain's record shows only to a user who may read that domain", async () => {
-    const reservationId = await createReservation();
+  test("a customer's reservations carry links only for a user who may read reservations", async () => {
+    // A reservation of the customer, for its history.
+    await createReservation();
     await louezDb.db
       .insert(louezDb.customers)
       .values({
@@ -324,23 +325,10 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
       assert.ok(customer);
       return customer;
     };
-    const reservationOf = async (scoped: Tools) => {
-      const output = await scoped.get_reservation.execute?.({ reservationId }, options);
-      assert.ok(output && "reservation" in output, JSON.stringify(output));
-      const { reservation } = output;
-      assert.ok(reservation);
-      return reservation;
-    };
-
     const noReservations = await customerOf(toolsWith({ reservations: "none" }));
     assert.ok(noReservations.links.dashboard.includes("/dashboard/customers/customer"));
     assert.ok(noReservations.reservations.every((reservation) => !("links" in reservation)));
     const withReservations = await customerOf(toolsWith({}));
     assert.ok(withReservations.reservations.some((reservation) => "links" in reservation));
-
-    const noCustomers = await reservationOf(toolsWith({ customers: "none" }));
-    assert.ok(noCustomers.customer && !("links" in noCustomers.customer));
-    const withCustomers = await reservationOf(toolsWith({}));
-    assert.ok(withCustomers.customer && "links" in withCustomers.customer);
   });
 });

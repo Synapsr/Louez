@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { env } from '@/env';
+import { providerSignal } from '@/lib/api/effect-signal';
 import { getPostHogServer, shutdownPostHogServer } from '@/lib/posthog';
 import {
   type ProductAnalyticsEvent,
@@ -8,15 +10,54 @@ import {
   type ReservationAnalyticsAction,
 } from '@/lib/product-analytics/analytics-events';
 
+type ProductServerEvent = {
+  distinctId: string | null | undefined;
+  event: ProductAnalyticsEvent;
+  properties?: Record<string, unknown>;
+};
+
+/**
+ * Sends one event to PostHog's capture API and checks the answer, for an
+ * outbox row: throws when PostHog did not take it (the SDK's flush swallows
+ * HTTP failures), answers `skipped` when analytics is not set up here. It
+ * honours an outbox sender's abort (lib/api/effect-signal.ts).
+ */
+export async function captureProductServerEventOrThrow({
+  distinctId,
+  event,
+  properties,
+}: ProductServerEvent): Promise<{ skipped: string } | undefined> {
+  if (!distinctId) return { skipped: 'no one to count the event on' };
+  if (!env.NEXT_PUBLIC_POSTHOG_KEY) return { skipped: 'analytics is not set up' };
+  const host = (env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com').replace(/\/$/, '');
+  const response = await fetch(`${host}/i/v0/e/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_key: env.NEXT_PUBLIC_POSTHOG_KEY,
+      event,
+      distinct_id: distinctId,
+      // What posthog-node adds to a server event: no GeoIP from the server's
+      // address, and the library that sent it.
+      properties: {
+        ...productAnalyticsBaseProperties,
+        ...properties,
+        $lib: 'posthog-node',
+        $geoip_disable: true,
+      },
+      timestamp: new Date().toISOString(),
+    }),
+    signal: providerSignal(),
+  });
+  if (!response.ok) throw new Error(`PostHog answered ${response.status}.`);
+  return undefined;
+}
+
 export async function captureProductServerEvent({
   distinctId,
   event,
   properties,
-}: {
-  distinctId: string | null | undefined;
-  event: ProductAnalyticsEvent;
-  properties?: Record<string, unknown>;
-}) {
+}: ProductServerEvent) {
   if (!distinctId) return;
 
   try {
@@ -35,32 +76,41 @@ export async function captureProductServerEvent({
   }
 }
 
-export async function captureReservationActionSucceeded({
-  distinctId,
-  storeId,
-  reservationId,
-  action,
-  properties,
-}: {
+type ReservationActionSucceeded = {
   distinctId: string | null | undefined;
   storeId: string;
   reservationId: string;
   action: ReservationAnalyticsAction;
   properties?: Record<string, unknown>;
-}) {
-  await captureProductServerEvent({
-    distinctId,
-    event: productAnalyticsEvents.reservationActionSucceeded,
-    properties: {
-      feature: 'reservation_management',
-      surface: 'dashboard',
-      source: 'server_mutation',
-      store_id: storeId,
-      reservation_id: reservationId,
-      action,
-      ...properties,
-    },
-  });
+};
+
+const reservationActionEvent = ({
+  distinctId,
+  storeId,
+  reservationId,
+  action,
+  properties,
+}: ReservationActionSucceeded): ProductServerEvent => ({
+  distinctId,
+  event: productAnalyticsEvents.reservationActionSucceeded,
+  properties: {
+    feature: 'reservation_management',
+    surface: 'dashboard',
+    source: 'server_mutation',
+    store_id: storeId,
+    reservation_id: reservationId,
+    action,
+    ...properties,
+  },
+});
+
+export async function captureReservationActionSucceeded(event: ReservationActionSucceeded) {
+  await captureProductServerEvent(reservationActionEvent(event));
+}
+
+/** For an outbox row: throws when PostHog did not take the event, so it is retried. */
+export function captureReservationActionSucceededOrThrow(event: ReservationActionSucceeded) {
+  return captureProductServerEventOrThrow(reservationActionEvent(event));
 }
 
 export function toAnalyticsAmountCents(

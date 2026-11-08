@@ -21,10 +21,7 @@ import {
   getRequiredAccessoryUnitQuantity,
   selectRequiredAccessories,
 } from "@/lib/utils/cart-required-accessories";
-import {
-  formatDurationFromMinutes,
-  validateMinRentalDurationMinutes,
-} from "@/lib/utils/rental-duration";
+import { formatDurationFromMinutes, validateMinRentalDurationMinutes } from "@louez/utils";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 import { deriveAttributeValues } from "@/lib/utils/util.variant-combinations";
 

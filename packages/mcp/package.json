@@ -11,7 +11,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./http": "./src/transports/http.ts",
-    "./testing": "./src/testing/reservation-tools-client.ts",
+    "./testing": "./src/testing/request-context.ts",
     "./testing/cjs-named-exports": "./src/testing/cjs-named-exports.ts"
   },
   "scripts": {

@@ -67,6 +67,9 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
   const events: ApiEvent[] = [];
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
+    dispatchEffects: () => {},
     storage: createMemoryStorage(),
     urls: createTestUrls(),
     afterCommit: (event: ApiEvent) => {

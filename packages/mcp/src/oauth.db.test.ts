@@ -46,6 +46,9 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
+    dispatchEffects: () => {},
     storage: createMemoryStorage(),
     urls: createTestUrls(),
     afterCommit: () => {},
@@ -65,7 +68,6 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       procedures: createExposure(appRouter).procedures,
       resourceMetadataUrl: RESOURCE_METADATA,
       deps: {
-        changeReservationStatus: async () => ({ ok: false, error: "not_found" }),
         insertRecordedPayment: async () => undefined,
       },
     };
@@ -173,7 +175,7 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       (await client.listTools()).tools.map((tool) => tool.name),
     );
     assert.ok(daily.includes("stores_list"));
-    assert.ok(daily.includes("list_reservations"), "a daily hand-written tool");
+    assert.ok(daily.includes("get_dashboard_stats"), "a daily hand-written tool");
     assert.ok(!daily.includes("categories_list"), "the catalog bundle is not listed");
     assert.ok(!daily.includes("products_list"));
 
@@ -209,7 +211,7 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     const all = await withClient({ authorization: `Bearer ${key.key}` }, async (client) =>
       (await client.listTools()).tools.map((tool) => tool.name),
     );
-    assert.ok(all.includes("categories_list") && all.includes("list_reservations"));
+    assert.ok(all.includes("categories_list") && all.includes("reservations_list"));
   });
 
   test("a grant over several stores names the store in each call", async () => {

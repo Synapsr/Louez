@@ -24,7 +24,7 @@ export {
 } from "./procedures";
 
 // The agent-ready API's platform: what the app's transports need to serve it
-export type { ApiEvent, ApiPorts, StoragePort, UrlsPort } from "./platform/ports";
+export type { ApiEvent, ApiPorts, InsurancePort, StoragePort, UrlsPort } from "./platform/ports";
 export type { Transport } from "./platform/actor";
 
 // Re-export ORPCError for custom error handling

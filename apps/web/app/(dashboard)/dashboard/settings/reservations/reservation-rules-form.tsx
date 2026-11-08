@@ -14,7 +14,7 @@ import { toastManager } from "@louez/ui";
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 import { RootError } from "@/components/form/root-error";
 import { useAppForm } from "@/hooks/form/form";
-import { getMaxRentalMinutes, getMinRentalMinutes } from "@/lib/utils/rental-duration";
+import { getMaxRentalMinutes, getMinRentalMinutes } from "@louez/utils";
 
 import { updateReservationRules } from "../actions";
 import { StoreSettingsRentalRulesSection } from "../components/store-settings-rental-rules-section";

@@ -3,7 +3,7 @@ import { formatInTimeZone } from "date-fns-tz";
 
 import type { BusinessHours, TimeRange } from "@louez/types";
 
-import { getDaySchedule, isInClosurePeriod } from "@/lib/utils/business-hours";
+import { getDaySchedule, isInClosurePeriod } from "@louez/utils";
 
 export type StoreClosedReason = "closed_today" | "closure_period" | "outside_hours" | "break";
 

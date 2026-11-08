@@ -47,7 +47,7 @@ import {
 import { useIsMobile } from "@louez/ui/hooks/use-mobile";
 import { cn } from "@louez/utils";
 
-import { buildStoreDate } from "@/lib/utils/business-hours";
+import { buildStoreDate } from "@louez/utils";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { getFieldError, useFieldContext } from "@/hooks/form/form-context";
 

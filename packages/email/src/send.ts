@@ -74,6 +74,11 @@ function getTransporter(): Transporter {
       user: readSmtpSetting(env.SMTP_USER),
       pass: readSmtpSetting(env.SMTP_PASSWORD),
     },
+    // nodemailer takes no abort signal. These bound one email well below an
+    // outbox sender's timeout (nodemailer's defaults: 2 and 10 minutes).
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 45_000,
   });
   return transporter;
 }

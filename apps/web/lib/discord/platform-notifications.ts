@@ -18,6 +18,7 @@ import { eq } from 'drizzle-orm'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 import type { SignInMethod } from '@/lib/utils/util.sign-in-method'
 import { env } from '@/env'
+import { providerSignal } from '@/lib/api/effect-signal'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,20 +46,26 @@ function isEnabled(): boolean {
  * Send a plain-text message to the platform admin Discord webhook.
  * Returns immediately if DISCORD_ADMIN_WEBHOOK_URL is not set.
  */
-async function send(message: string): Promise<void> {
+/** Posts to the platform's webhook; throws when Discord did not take it. */
+async function sendOrThrow(message: string): Promise<void> {
   if (!env.DISCORD_ADMIN_WEBHOOK_URL) return
+  const res = await fetch(env.DISCORD_ADMIN_WEBHOOK_URL, {
+    method: 'POST',
+    // An outbox sender's abort and timeout (lib/api/effect-signal.ts).
+    signal: providerSignal(),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: message, username: 'Louez', flags: 4 }),
+  })
+  if (!res.ok) {
+    throw new Error(`[Discord] Webhook returned ${res.status}: ${await res.text().catch(() => '')}`)
+  }
+}
 
+async function send(message: string): Promise<void> {
   try {
-    const res = await fetch(env.DISCORD_ADMIN_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: message, username: 'Louez', flags: 4 }),
-    })
-    if (!res.ok) {
-      console.error(`[Discord] Webhook returned ${res.status}: ${await res.text().catch(() => '')}`)
-    }
+    await sendOrThrow(message)
   } catch (error) {
-    console.error('[Discord] Webhook fetch failed:', error)
+    console.error('[Discord] Webhook failed:', error)
   }
 }
 
@@ -81,35 +88,44 @@ async function resolveStoreOwner(storeId: string): Promise<string | undefined> {
   }
 }
 
-async function trackFromHello(
+/** Sends an event to fromHello; throws when it did not take it. */
+async function trackFromHelloOrThrow(
   eventName: string,
   properties: Record<string, unknown> = {},
   options?: { externalId?: string; storeId?: string }
 ): Promise<void> {
   if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return
+  // Resolve externalId: use explicit value, or look up store owner.
+  // The store owner's userId (Better Auth) is sent as fromHello's
+  // externalId — fromHello find-or-creates a profile keyed on it.
+  let externalId = options?.externalId
+  if (!externalId && options?.storeId) {
+    externalId = await resolveStoreOwner(options.storeId)
+  }
+  const res = await fetch(`${env.FROMHELLO_API_URL}/api/events`, {
+    method: 'POST',
+    signal: providerSignal(),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.FROMHELLO_API_KEY,
+    },
+    body: JSON.stringify({
+      name: eventName,
+      source: 'api',
+      properties,
+      ...(externalId && { externalId }),
+    }),
+  })
+  if (!res.ok) throw new Error(`fromHello returned ${res.status}`)
+}
 
+async function trackFromHello(
+  eventName: string,
+  properties: Record<string, unknown> = {},
+  options?: { externalId?: string; storeId?: string }
+): Promise<void> {
   try {
-    // Resolve externalId: use explicit value, or look up store owner.
-    // The store owner's userId (Better Auth) is sent as fromHello's
-    // externalId — fromHello find-or-creates a profile keyed on it.
-    let externalId = options?.externalId
-    if (!externalId && options?.storeId) {
-      externalId = await resolveStoreOwner(options.storeId)
-    }
-
-    await fetch(`${env.FROMHELLO_API_URL}/api/events`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': env.FROMHELLO_API_KEY,
-      },
-      body: JSON.stringify({
-        name: eventName,
-        source: 'api',
-        properties,
-        ...(externalId && { externalId }),
-      }),
-    })
+    await trackFromHelloOrThrow(eventName, properties, options)
   } catch {
     // Fire-and-forget: never block the caller
   }
@@ -306,44 +322,116 @@ export async function notifyNewReservation(
   )
 }
 
+type ReservationStatusKind = 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'completed'
+
+/** A reservation's status change, as the platform hears of it: the fromHello event and the Discord line. */
+const reservationStatusEvents: Record<
+  ReservationStatusKind,
+  {
+    event: string
+    properties: (input: ReservationStatusEvent) => Record<string, unknown>
+    line: (prefix: string, input: ReservationStatusEvent) => string
+  }
+> = {
+  confirmed: {
+    event: 'reservation_confirmed',
+    properties: ({ store, number }) => ({ storeName: store.name, reservationNumber: number }),
+    line: (prefix, { number }) => `✅ ${prefix} reservation #${number} confirmed`,
+  },
+  rejected: {
+    event: 'reservation_rejected',
+    properties: ({ store, number }) => ({ storeName: store.name, reservationNumber: number }),
+    line: (prefix, { number }) => `🚫 ${prefix} reservation #${number} rejected`,
+  },
+  cancelled: {
+    event: 'reservation_cancelled',
+    properties: ({ store, number }) => ({ storeName: store.name, reservationNumber: number }),
+    line: (prefix, { number }) => `❌ ${prefix} reservation #${number} cancelled`,
+  },
+  picked_up: {
+    event: 'equipment_picked_up',
+    properties: ({ store, number }) => ({ storeName: store.name, reservationNumber: number }),
+    line: (prefix, { number }) => `📤 ${prefix} equipment picked up for #${number}`,
+  },
+  completed: {
+    event: 'reservation_completed',
+    properties: ({ store, number, totalAmount, currency }) => ({
+      storeName: store.name,
+      reservationNumber: number,
+      totalAmount,
+      currency: (currency || 'EUR').toUpperCase(),
+    }),
+    line: (prefix, { number, totalAmount, currency }) =>
+      `🏁 ${prefix} reservation #${number} completed — ${(totalAmount ?? 0).toFixed(2)} ${(currency || 'EUR').toUpperCase()}`,
+  },
+}
+
+interface ReservationStatusEvent {
+  store: StoreInfo
+  number: string
+  totalAmount?: number
+  currency?: string
+}
+
+function notifyReservationStatus(kind: ReservationStatusKind, input: ReservationStatusEvent) {
+  const event = reservationStatusEvents[kind]
+  trackFromHello(event.event, event.properties(input), { storeId: input.store.id }).catch(() => {})
+  if (!isEnabled()) return Promise.resolve()
+  return storePrefix(input.store).then((prefix) => send(event.line(prefix, input)))
+}
+
+/**
+ * One platform channel of a reservation's status change, for an outbox row
+ * (packages/api platform/effects.ts): throws when it did not go out, and
+ * answers `skipped` when the channel is not set up here. `beforeSend` runs
+ * right before the call.
+ */
+export async function sendPlatformReservationStatus(
+  channel: 'discord' | 'fromhello',
+  kind: ReservationStatusKind,
+  input: ReservationStatusEvent,
+  beforeSend: () => Promise<void>,
+): Promise<{ skipped: string } | undefined> {
+  const event = reservationStatusEvents[kind]
+  if (channel === 'fromhello') {
+    if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return { skipped: 'fromHello is not set up' }
+    await beforeSend()
+    await trackFromHelloOrThrow(event.event, event.properties(input), { storeId: input.store.id })
+    return undefined
+  }
+  if (!isEnabled()) return { skipped: 'the platform webhook is not set up' }
+  const prefix = await storePrefix(input.store)
+  await beforeSend()
+  await sendOrThrow(event.line(prefix, input))
+  return undefined
+}
+
 export async function notifyReservationConfirmed(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
-  trackFromHello('reservation_confirmed', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
-  if (!isEnabled()) return
-  const prefix = await storePrefix(store)
-  await send(`✅ ${prefix} reservation #${reservationNumber} confirmed`)
+  await notifyReservationStatus('confirmed', { store, number: reservationNumber })
 }
 
 export async function notifyReservationRejected(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
-  trackFromHello('reservation_rejected', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
-  if (!isEnabled()) return
-  const prefix = await storePrefix(store)
-  await send(`🚫 ${prefix} reservation #${reservationNumber} rejected`)
+  await notifyReservationStatus('rejected', { store, number: reservationNumber })
 }
 
 export async function notifyReservationCancelled(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
-  trackFromHello('reservation_cancelled', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
-  if (!isEnabled()) return
-  const prefix = await storePrefix(store)
-  await send(`❌ ${prefix} reservation #${reservationNumber} cancelled`)
+  await notifyReservationStatus('cancelled', { store, number: reservationNumber })
 }
 
 export async function notifyEquipmentPickedUp(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
-  trackFromHello('equipment_picked_up', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
-  if (!isEnabled()) return
-  const prefix = await storePrefix(store)
-  await send(`📤 ${prefix} equipment picked up for #${reservationNumber}`)
+  await notifyReservationStatus('picked_up', { store, number: reservationNumber })
 }
 
 export async function notifyReservationCompleted(
@@ -352,17 +440,7 @@ export async function notifyReservationCompleted(
   totalAmount: number,
   currency?: string
 ): Promise<void> {
-  trackFromHello('reservation_completed', {
-    storeName: store.name,
-    reservationNumber,
-    totalAmount,
-    currency: (currency || 'EUR').toUpperCase(),
-  }, { storeId: store.id }).catch(() => {})
-  if (!isEnabled()) return
-  const prefix = await storePrefix(store)
-  const amount = totalAmount.toFixed(2)
-  const cur = (currency || 'EUR').toUpperCase()
-  await send(`🏁 ${prefix} reservation #${reservationNumber} completed — ${amount} ${cur}`)
+  await notifyReservationStatus('completed', { store, number: reservationNumber, totalAmount, currency })
 }
 
 // ---------------------------------------------------------------------------

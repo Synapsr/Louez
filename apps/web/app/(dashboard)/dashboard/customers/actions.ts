@@ -9,6 +9,7 @@ import {
   customerCommunicationPreferences,
   customerFieldValues,
   customerSessions,
+  apiEffects,
   customers,
   db,
   reservations,
@@ -399,6 +400,10 @@ export async function deleteCustomer(customerId: string) {
           ),
         )
       await tx.delete(customerSessions).where(eq(customerSessions.customerId, customerId))
+      // Messages still queued for this customer name and reach them.
+      await tx
+        .delete(apiEffects)
+        .where(and(eq(apiEffects.storeId, storeId), eq(apiEffects.customerId, customerId)))
       await tx
         .delete(customerCommunicationPreferences)
         .where(

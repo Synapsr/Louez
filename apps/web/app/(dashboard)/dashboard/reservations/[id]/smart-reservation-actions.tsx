@@ -58,6 +58,7 @@ import {
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
+import type { StoreTargetStatus } from "@louez/api/contracts/reservations";
 
 import { MobileReservationQuickActions } from "./mobile-reservation-quick-actions";
 
@@ -222,21 +223,15 @@ export function SmartReservationActions({
     orpc.dashboard.reservations.updateStatus.mutationOptions({
       onMutate: async (input) => {
         await queryClient.cancelQueries({
-          queryKey: orpc.dashboard.reservations.getById.key({
-            input: { reservationId: input.reservationId },
-          }),
+          queryKey: orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
         });
 
         const previous = queryClient.getQueryData(
-          orpc.dashboard.reservations.getById.key({
-            input: { reservationId: input.reservationId },
-          }),
+          orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
         );
 
         queryClient.setQueryData(
-          orpc.dashboard.reservations.getById.key({
-            input: { reservationId: input.reservationId },
-          }),
+          orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
           (current: any) => (current ? { ...current, status: input.status } : current),
         );
 
@@ -245,9 +240,7 @@ export function SmartReservationActions({
       onError: (_error, input, ctx) => {
         if (ctx?.previous) {
           queryClient.setQueryData(
-            orpc.dashboard.reservations.getById.key({
-              input: { reservationId: input.reservationId },
-            }),
+            orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
             ctx.previous,
           );
         }
@@ -259,21 +252,15 @@ export function SmartReservationActions({
     orpc.dashboard.reservations.cancel.mutationOptions({
       onMutate: async (input) => {
         await queryClient.cancelQueries({
-          queryKey: orpc.dashboard.reservations.getById.key({
-            input: { reservationId: input.reservationId },
-          }),
+          queryKey: orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
         });
 
         const previous = queryClient.getQueryData(
-          orpc.dashboard.reservations.getById.key({
-            input: { reservationId: input.reservationId },
-          }),
+          orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
         );
 
         queryClient.setQueryData(
-          orpc.dashboard.reservations.getById.key({
-            input: { reservationId: input.reservationId },
-          }),
+          orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
           (current: any) => (current ? { ...current, status: "cancelled" } : current),
         );
 
@@ -282,9 +269,7 @@ export function SmartReservationActions({
       onError: (_error, input, ctx) => {
         if (ctx?.previous) {
           queryClient.setQueryData(
-            orpc.dashboard.reservations.getById.key({
-              input: { reservationId: input.reservationId },
-            }),
+            orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
             ctx.previous,
           );
         }
@@ -292,7 +277,7 @@ export function SmartReservationActions({
     }),
   );
 
-  const handleStatusChange = async (newStatus: ReservationStatus, reason?: string) => {
+  const handleStatusChange = async (newStatus: StoreTargetStatus, reason?: string) => {
     const analyticsAction = getReservationStatusAnalyticsAction(newStatus);
     if (analyticsAction) {
       captureReservationActionStarted({
@@ -306,7 +291,7 @@ export function SmartReservationActions({
     setIsLoading(true);
     try {
       const result = await updateStatusMutation.mutateAsync({
-        reservationId,
+        id: reservationId,
         status: newStatus,
         rejectionReason: reason,
       });
@@ -350,7 +335,7 @@ export function SmartReservationActions({
     });
     setIsLoading(true);
     try {
-      await cancelMutation.mutateAsync({ reservationId });
+      await cancelMutation.mutateAsync({ id: reservationId });
       toastManager.add({ title: t("reservationCancelled"), type: "success" });
       await invalidateReservationAll(queryClient, reservationId);
     } catch {

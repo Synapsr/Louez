@@ -5,7 +5,7 @@
  * including the timeline (Gantt-like) view optimized for rental businesses.
  */
 
-import type { ReservationCalendarPeriodEntry } from "@louez/validations";
+import type { CalendarEntry } from "@louez/api/contracts/reservations";
 import type { StockKind } from "@louez/types";
 
 import type { TimelineReservation } from "@/components/dashboard/reservations-timeline/timeline-utils";
@@ -20,7 +20,7 @@ export type TimelineZoom = "day" | "week" | "month";
 // Data Types
 // =============================================================================
 
-export type Reservation = ReservationCalendarPeriodEntry;
+export type Reservation = CalendarEntry;
 
 /**
  * A planning-timeline entry: one bar for a single (reservation, product) pair,

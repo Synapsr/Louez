@@ -6,7 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Button } from "@louez/ui";
 import { rejectReturnDateChange } from "@/app/(dashboard)/dashboard/reservations/date-change-actions";
-import type { DateChangeRequest } from "@/lib/reservations/util.date-change-request";
+import type { DateChangeRequest } from "@louez/validations";
 
 interface DateChangeReviewProps {
   reservationId: string;

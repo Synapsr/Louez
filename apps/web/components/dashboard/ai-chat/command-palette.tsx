@@ -305,7 +305,9 @@ export const DashboardCommandPalette = ({
         items: entityResults.reservations.map(
           (reservation): CommandAction => ({
             value: `reservation-${reservation.id}`,
-            label: `#${reservation.number} · ${reservation.customerName}`,
+            label: reservation.customerName
+              ? `#${reservation.number} · ${reservation.customerName}`
+              : `#${reservation.number}`,
             description: formatter.dateTimeRange(
               new Date(reservation.startDate),
               new Date(reservation.endDate),

@@ -19,3 +19,41 @@ export const isStripeRefundRow = (payment: StripeRefundIds): boolean =>
   Boolean(payment.stripeRefundId) &&
   payment.stripePaymentIntentId === null &&
   payment.stripeCheckoutSessionId === null;
+
+/** A payment row as `getSettledPaymentAmount` reads it. */
+export interface SettledPaymentRow extends StripeRefundIds {
+  id?: string;
+  type: string;
+  status: string;
+  amount: string | number;
+  /** Set on the row that gives money back for another row. */
+  refundOfPaymentId?: string | null;
+}
+
+const toAmount = (value: string | number): number => {
+  const amount = typeof value === "number" ? value : Number.parseFloat(value);
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+/**
+ * Completed money of one type, refunds of that type subtracted. A refund is
+ * a row pointing at the row it gives back (`refundOfPaymentId`), so its own
+ * `type` is not what it refunds. A Stripe refund row counts for nothing: the
+ * webhook already brought the charge it refunds down to its net amount.
+ */
+export const getSettledPaymentAmount = (
+  payments: readonly SettledPaymentRow[],
+  type: string,
+): number => {
+  const byId = new Map(payments.flatMap((payment) => (payment.id ? [[payment.id, payment]] : [])));
+  return payments.reduce((sum, payment) => {
+    if (payment.status !== "completed") return sum;
+    if (isStripeRefundRow(payment)) return sum;
+    const amount = toAmount(payment.amount);
+    if (payment.refundOfPaymentId) {
+      const original = byId.get(payment.refundOfPaymentId);
+      return original?.type === type ? sum - amount : sum;
+    }
+    return payment.type === type ? sum + amount : sum;
+  }, 0);
+};

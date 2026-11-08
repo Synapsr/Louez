@@ -3,6 +3,7 @@ import { after } from "next/server";
 
 import type { ApiEvent } from "@louez/api";
 
+import { logReservationGateRefusal } from "@/lib/billing/reservation-gate";
 import { notifyProductCreated, notifyProductUpdated } from "@/lib/discord/platform-notifications";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
@@ -48,6 +49,12 @@ function pathsToRevalidate(event: ApiEvent): string[] {
         `/dashboard/products/${event.productId}`,
         `/dashboard/products/${event.productId}/edit`,
       ];
+    case "reservation.statusChanged":
+      return ["/dashboard/reservations", `/dashboard/reservations/${event.reservationId}`];
+    case "reservation.notesUpdated":
+      return [`/dashboard/reservations/${event.reservationId}`];
+    case "reservation.gateRefused":
+      return [];
   }
 }
 
@@ -78,6 +85,12 @@ function backgroundEffect(event: ApiEvent): (() => Promise<void>) | null {
       };
     case "product.updated":
       return () => notifyProductUpdated(storeInfo, event.productName);
+    case "reservation.gateRefused":
+      return async () =>
+        logReservationGateRefusal(
+          { storeId: store.id, reason: event.reason },
+          event.transport === "rpc" ? "dashboard" : event.transport === "mcp" ? "mcp" : "api",
+        );
     default:
       return null;
   }

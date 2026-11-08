@@ -31,8 +31,11 @@ export * from "./stock-capacity";
 // Permissions
 export { hasPermission, type Permission, type MemberRole } from "./permissions";
 
-// Business hours
-export { normalizeDaySchedule } from "./business-hours";
+// Business hours, rental windows and the reservation rules a booking is checked against
+export * from "./business-hours";
+export * from "./rental-duration";
+export * from "./advance-notice";
+export * from "./reservation-rules";
 export { toAbsoluteUrl } from "./url";
 export * from "./customer-social-links";
 

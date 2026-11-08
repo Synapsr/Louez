@@ -179,8 +179,8 @@ export function ReservationsCalendarView({
   // ---------------------------------------------------------------------------
 
   const chunkQueries = useMemo(
-    () => reservationCalendarQueries.forWindow(storeId, windowStart, daysCount),
-    [storeId, windowStart, daysCount],
+    () => reservationCalendarQueries.forWindow(windowStart, daysCount),
+    [windowStart, daysCount],
   );
 
   const {

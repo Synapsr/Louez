@@ -39,7 +39,6 @@ import {
   deleteRecordedPayment,
   insertRecordedPayment,
 } from "@/lib/reservations/dashboard-payment-writes";
-import { changeReservationStatusAsAgent } from "@/lib/reservations/status-change";
 
 // ---------------------------------------------------------------------------
 // Context & permissions
@@ -68,6 +67,7 @@ export type AIChatContext = {
 export type AssistantApi = {
   categories: RouterClient<AppRouter["dashboard"]["categories"]>;
   products: RouterClient<AppRouter["dashboard"]["products"]>;
+  reservations: RouterClient<AppRouter["dashboard"]["reservations"]>;
 };
 
 function assistantApi(ctx: AIChatContext): AssistantApi {
@@ -93,15 +93,6 @@ function requirePermission(
 const mayRead = (ctx: AIChatContext, domain: keyof ApiKeyPermissions) =>
   ctx.permissions[domain] !== "none";
 
-/** What the tools call into. Tests pass one with fake senders. */
-export interface AIToolServices {
-  /** A status change with everything the dashboard does around it. */
-  changeReservationStatus: typeof changeReservationStatusAsAgent;
-}
-
-const defaultServices: AIToolServices = {
-  changeReservationStatus: changeReservationStatusAsAgent,
-};
 // A list of pairs rather than a free-form object: some providers refuse a tool
 // parameter that declares no property.
 const customFieldEntriesSchema = z
@@ -126,7 +117,7 @@ const customFieldEntriesSchema = z
 // Tool factory
 // ---------------------------------------------------------------------------
 
-export function createAITools(ctx: AIChatContext, services: AIToolServices = defaultServices) {
+export function createAITools(ctx: AIChatContext) {
   /** The chat's store, named by every dashboard link the tools return. */
   const linkStore = { id: ctx.storeId };
   /** The settings a recorded payment's currency and insurance share are read with. */
@@ -278,7 +269,8 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
     // ── Reservations ─────────────────────────────────────────────────────
 
     list_reservations: tool({
-      description: "List reservations with optional filters (status, period, search)",
+      description:
+        "List reservations as the dashboard's list does: by status, by period (today, this week, this month, on the start date) or by number or customer name",
       inputSchema: z.object({
         status: z
           .enum(["pending", "confirmed", "ongoing", "completed", "cancelled", "rejected"])
@@ -287,59 +279,25 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         search: z.string().optional().describe("Search by reservation number or customer name"),
       }),
       execute: async ({ status, period, search }) => {
-        requirePermission(ctx, "reservations", "read");
-
-        const conditions = [eq(reservations.storeId, ctx.storeId)];
-
-        if (status) conditions.push(eq(reservations.status, status));
-
-        if (period) {
-          const start = new Date();
-          start.setHours(0, 0, 0, 0);
-          if (period === "week") start.setDate(start.getDate() - 7);
-          if (period === "month") start.setMonth(start.getMonth() - 1);
-          conditions.push(gte(reservations.createdAt, start));
-        }
-
-        if (search) {
-          conditions.push(
-            sql`(${reservations.number} LIKE ${"%" + search + "%"} OR EXISTS (
-              SELECT 1 FROM customers c
-              WHERE c.id = ${reservations.customerId}
-              AND (LOWER(c.first_name) LIKE ${`%${search.toLowerCase()}%`}
-                   OR LOWER(c.last_name) LIKE ${`%${search.toLowerCase()}%`})
-            ))`,
-          );
-        }
-
-        const rows = await db
-          .select({
-            id: reservations.id,
-            number: reservations.number,
-            status: reservations.status,
-            startDate: reservations.startDate,
-            endDate: reservations.endDate,
-            totalAmount: reservations.totalAmount,
-            customerFirstName: customers.firstName,
-            customerLastName: customers.lastName,
-          })
-          .from(reservations)
-          .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(and(...conditions))
-          .orderBy(desc(reservations.createdAt))
-          .limit(50);
-
-        const [countResult] = await db
-          .select({ total: sql<number>`COUNT(*)` })
-          .from(reservations)
-          .where(and(...conditions));
-
+        const page = await assistantApi(ctx).reservations.list({
+          status,
+          period,
+          search,
+          limit: 50,
+        });
         return {
-          reservations: rows.map((row) => ({
-            ...row,
-            links: reservationLinks(ctx.urls, linkStore, row),
+          reservations: page.items.map((reservation) => ({
+            id: reservation.id,
+            number: reservation.number,
+            status: reservation.status,
+            startDate: reservation.startDate,
+            endDate: reservation.endDate,
+            totalAmount: reservation.totalAmount,
+            customerFirstName: reservation.customer?.firstName ?? null,
+            customerLastName: reservation.customer?.lastName ?? null,
           })),
-          total: countResult?.total ?? 0,
+          total: page.totalCount,
+          currency: page.currency,
         };
       },
     }),
@@ -349,32 +307,9 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
       inputSchema: z.object({
         reservationId: z.string().describe("The reservation ID"),
       }),
-      execute: async ({ reservationId }) => {
-        requirePermission(ctx, "reservations", "read");
-
-        const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-          with: {
-            customer: true,
-            items: { with: { product: { columns: { id: true, name: true } } } },
-            payments: true,
-          },
-        });
-
-        if (!reservation) return { error: "Reservation not found" };
-        return {
-          reservation: {
-            ...reservation,
-            links: reservationLinks(ctx.urls, linkStore, reservation),
-            customer: reservation.customer && {
-              ...reservation.customer,
-              ...(mayRead(ctx, "customers")
-                ? { links: customerLinks(ctx.urls, linkStore, reservation.customer) }
-                : {}),
-            },
-          },
-        };
-      },
+      execute: async ({ reservationId }) => ({
+        reservation: await assistantApi(ctx).reservations.get({ id: reservationId }),
+      }),
     }),
 
     update_reservation_status: tool({
@@ -386,37 +321,20 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .enum(["confirmed", "ongoing", "completed", "cancelled", "rejected"])
           .describe("New status"),
       }),
-      execute: async ({ reservationId, status: newStatus }) => {
-        requirePermission(ctx, "reservations", "write");
-
-        // As on the dashboard: the stock check, the fees, the insurance contract,
-        // the emails and the notifications.
-        const result = await services.changeReservationStatus({
-          storeId: ctx.storeId,
-          reservationId,
-          to: newStatus,
-          actor: "ai_chat",
-          actorUserId: ctx.userId,
+      // As on the dashboard: the stock check, the fees, the insurance contract,
+      // the emails and the notifications.
+      execute: async ({ reservationId, status }) => {
+        const change = await assistantApi(ctx).reservations.updateStatus({
+          id: reservationId,
+          status,
         });
-        if (!result.ok) {
-          if (result.error === "busy") {
-            return {
-              error:
-                "Not changed: the reservation was being changed at the same time. Nothing was done; try again in a moment.",
-              retryable: true,
-            };
-          }
-          return { error: result.error === "not_found" ? "Reservation not found" : result.message };
-        }
-
         return {
           success: true,
-          number: result.number,
-          from: result.from,
-          to: result.to,
-          links: reservationLinks(ctx.urls, linkStore, { id: reservationId }),
+          number: change.number,
+          from: change.from,
+          to: change.to,
           // What the dashboard shows after the change: rule warnings, a failed contract.
-          ...(result.warnings.length > 0 && { warnings: result.warnings }),
+          ...(change.warnings.length > 0 && { warnings: change.warnings }),
         };
       },
     }),
@@ -428,23 +346,11 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         notes: z.string().describe("The new internal notes content"),
       }),
       execute: async ({ reservationId, notes }) => {
-        requirePermission(ctx, "reservations", "write");
-
-        const existing = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-          columns: { id: true, number: true },
+        const updated = await assistantApi(ctx).reservations.updateNotes({
+          id: reservationId,
+          notes,
         });
-        if (!existing) return { error: "Reservation not found" };
-
-        await db
-          .update(reservations)
-          .set({ internalNotes: notes })
-          .where(eq(reservations.id, reservationId));
-        return {
-          success: true,
-          number: existing.number,
-          links: reservationLinks(ctx.urls, linkStore, existing),
-        };
+        return { success: true, number: updated.number };
       },
     }),
 
@@ -452,21 +358,8 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
       description: "Get quick reservation counters by status (pending, ongoing, etc.)",
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, "reservations", "read");
-
-        const rows = await db
-          .select({ status: reservations.status, count: sql<number>`COUNT(*)` })
-          .from(reservations)
-          .where(eq(reservations.storeId, ctx.storeId))
-          .groupBy(reservations.status);
-
-        const counts: Record<string, number> = {};
-        for (const row of rows) counts[row.status] = row.count;
-
-        return {
-          counts,
-          total: Object.values(counts).reduce((a, b) => a + b, 0),
-        };
+        const poll = await assistantApi(ctx).reservations.poll({});
+        return { counts: poll.counts, pending: poll.pendingCount, total: poll.totalCount };
       },
     }),
 
@@ -1096,69 +989,19 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .describe("Number of days to cover, counted from today (default 7). 1 = today only."),
       }),
       execute: async ({ days }) => {
-        requirePermission(ctx, "reservations", "read");
-
-        const lookAhead = Math.min(days ?? 7, 90);
-        // Anchored at midnight, not at the current time: a pickup booked for
-        // 9am is still today's business at 2pm, and dropping it made this tool
-        // disagree with the dashboard's "today" widgets, which count from
-        // midnight too.
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        const future = new Date(now);
-        future.setDate(future.getDate() + lookAhead);
-
-        const pickups = await db
-          .select({
-            id: reservations.id,
-            number: reservations.number,
-            startDate: reservations.startDate,
-            customerFirstName: customers.firstName,
-            customerLastName: customers.lastName,
-            totalAmount: reservations.totalAmount,
-          })
-          .from(reservations)
-          .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(
-            and(
-              eq(reservations.storeId, ctx.storeId),
-              eq(reservations.status, "confirmed"),
-              gte(reservations.startDate, now),
-              lte(reservations.startDate, future),
-            ),
-          )
-          .orderBy(reservations.startDate)
-          .limit(50);
-
-        const returns = await db
-          .select({
-            id: reservations.id,
-            number: reservations.number,
-            endDate: reservations.endDate,
-            customerFirstName: customers.firstName,
-            customerLastName: customers.lastName,
-            totalAmount: reservations.totalAmount,
-          })
-          .from(reservations)
-          .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(
-            and(
-              eq(reservations.storeId, ctx.storeId),
-              eq(reservations.status, "ongoing"),
-              gte(reservations.endDate, now),
-              lte(reservations.endDate, future),
-            ),
-          )
-          .orderBy(reservations.endDate)
-          .limit(50);
-
-        const withLinks = <T extends { id: string }>(row: T) => ({
-          ...row,
-          links: reservationLinks(ctx.urls, linkStore, row),
+        const lookAhead = Math.min(Math.max(Math.round(days ?? 7), 1), 90);
+        const agenda = await assistantApi(ctx).reservations.listUpcoming({ days: lookAhead });
+        const row = (entry: (typeof agenda.pickups)[number], date: Date) => ({
+          id: entry.id,
+          number: entry.number,
+          date,
+          customerFirstName: entry.customer?.firstName ?? null,
+          customerLastName: entry.customer?.lastName ?? null,
+          totalAmount: entry.totalAmount,
         });
         return {
-          pickups: pickups.map(withLinks),
-          returns: returns.map(withLinks),
+          pickups: agenda.pickups.map((entry) => row(entry, entry.startDate)),
+          returns: agenda.returns.map((entry) => row(entry, entry.endDate)),
           days: lookAhead,
         };
       },
@@ -1168,34 +1011,16 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
       description: "Get overdue returns (ongoing reservations past their end date)",
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, "reservations", "read");
-
-        const now = new Date();
-        const overdue = await db
-          .select({
-            id: reservations.id,
-            number: reservations.number,
-            endDate: reservations.endDate,
-            customerFirstName: customers.firstName,
-            customerLastName: customers.lastName,
-            totalAmount: reservations.totalAmount,
-          })
-          .from(reservations)
-          .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(
-            and(
-              eq(reservations.storeId, ctx.storeId),
-              eq(reservations.status, "ongoing"),
-              lte(reservations.endDate, now),
-            ),
-          )
-          .orderBy(reservations.endDate)
-          .limit(50);
-
+        const { items } = await assistantApi(ctx).reservations.listOverdue({});
         return {
-          overdue: overdue.map((row) => ({
-            ...row,
-            links: reservationLinks(ctx.urls, linkStore, row),
+          overdue: items.map((entry) => ({
+            id: entry.id,
+            number: entry.number,
+            endDate: entry.endDate,
+            daysLate: entry.daysLate,
+            customerFirstName: entry.customer?.firstName ?? null,
+            customerLastName: entry.customer?.lastName ?? null,
+            totalAmount: entry.totalAmount,
           })),
         };
       },

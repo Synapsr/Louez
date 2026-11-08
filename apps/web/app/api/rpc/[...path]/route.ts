@@ -16,7 +16,6 @@ import { invalidateStoreViewport } from "@/lib/storefront/get-store-viewport";
 
 import {
   assignUnitsToReservationItem,
-  cancelReservation,
   captureDepositHold,
   createDepositHold,
   createManualReservation,
@@ -37,7 +36,6 @@ import {
   sendReservationEmail,
   sendReservationModificationEmail,
   updateReservation,
-  updateReservationStatus,
 } from "@/app/(dashboard)/dashboard/reservations/actions";
 import { getReferralRewardSummary } from "@/app/(dashboard)/dashboard/referrals/actions";
 import {
@@ -99,8 +97,6 @@ async function handleRequest(request: Request) {
       getCustomerSession,
       getConnectedAccountPayoutPage,
       dashboardReservationActions: {
-        cancelReservation,
-        updateReservationStatus,
         updateReservation,
         previewReservationTulipQuote,
         previewManualTulipQuote: previewManualReservationTulipQuote,

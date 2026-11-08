@@ -27,14 +27,16 @@ import {
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
-import type { Reservation, ReservationStatus } from "./reservations-types";
+import type { StoreTargetStatus } from "@louez/api/contracts/reservations";
+
+import type { Reservation, ReservationStatus, ReservationsPage } from "./reservations-types";
 
 interface UseReservationActionsReturn {
   loadingAction: string | null;
   handleStatusChange: (
     e: React.MouseEvent,
     reservation: Reservation,
-    newStatus: ReservationStatus,
+    newStatus: StoreTargetStatus,
   ) => Promise<void>;
   openRejectDialog: (e: React.MouseEvent, reservation: Reservation) => void;
   openCancelDialog: (e: React.MouseEvent, reservation: Reservation) => void;
@@ -138,17 +140,15 @@ export function useReservationActions(): UseReservationActionsReturn {
           queryKey: orpc.dashboard.reservations.list.key(),
         });
 
-        queryClient.setQueriesData(
+        queryClient.setQueriesData<ReservationsPage>(
           { queryKey: orpc.dashboard.reservations.list.key() },
-          (current: any) => {
-            if (!current?.reservations) return current;
-            return {
+          (current) =>
+            current && {
               ...current,
-              reservations: current.reservations.map((r: Reservation) =>
-                r.id === input.reservationId ? { ...r, status: input.status } : r,
+              items: current.items.map((r) =>
+                r.id === input.id ? { ...r, status: input.status } : r,
               ),
-            };
-          },
+            },
         );
 
         return { previous };
@@ -174,17 +174,15 @@ export function useReservationActions(): UseReservationActionsReturn {
           queryKey: orpc.dashboard.reservations.list.key(),
         });
 
-        queryClient.setQueriesData(
+        queryClient.setQueriesData<ReservationsPage>(
           { queryKey: orpc.dashboard.reservations.list.key() },
-          (current: any) => {
-            if (!current?.reservations) return current;
-            return {
+          (current) =>
+            current && {
               ...current,
-              reservations: current.reservations.map((r: Reservation) =>
-                r.id === input.reservationId ? { ...r, status: "cancelled" } : r,
+              items: current.items.map((r) =>
+                r.id === input.id ? { ...r, status: "cancelled" as const } : r,
               ),
-            };
-          },
+            },
         );
 
         return { previous };
@@ -202,7 +200,7 @@ export function useReservationActions(): UseReservationActionsReturn {
   const handleStatusChange = async (
     e: React.MouseEvent,
     reservation: Reservation,
-    newStatus: ReservationStatus,
+    newStatus: StoreTargetStatus,
   ) => {
     e.preventDefault();
     e.stopPropagation();
@@ -221,7 +219,7 @@ export function useReservationActions(): UseReservationActionsReturn {
     setLoadingAction(`${reservation.id}-${newStatus}`);
     try {
       const result = await updateStatusMutation.mutateAsync({
-        reservationId: reservation.id,
+        id: reservation.id,
         status: newStatus,
       });
 
@@ -264,7 +262,7 @@ export function useReservationActions(): UseReservationActionsReturn {
     setLoadingAction(`${selectedReservation.id}-reject`);
     try {
       const result = await updateStatusMutation.mutateAsync({
-        reservationId: selectedReservation.id,
+        id: selectedReservation.id,
         status: "rejected",
       });
 
@@ -304,7 +302,7 @@ export function useReservationActions(): UseReservationActionsReturn {
 
     setLoadingAction(`${selectedReservation.id}-cancel`);
     try {
-      await cancelMutation.mutateAsync({ reservationId: selectedReservation.id });
+      await cancelMutation.mutateAsync({ id: selectedReservation.id });
       toastManager.add({ title: t("reservationCancelled"), type: "success" });
       await invalidateReservationAll(queryClient, selectedReservation.id);
     } catch {

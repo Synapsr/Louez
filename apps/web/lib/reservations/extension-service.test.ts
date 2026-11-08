@@ -223,7 +223,7 @@ const intercepted = new Set([
   "@/lib/email/send",
   "@/lib/email/i18n",
   "@/lib/evlog",
-  "./date-change-request.server",
+  "@louez/api/services/date-change-requests",
   "./extension-quote",
 ]);
 Reflect.get(

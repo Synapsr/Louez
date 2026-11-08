@@ -81,6 +81,9 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
+    dispatchEffects: () => {},
     storage: createMemoryStorage(),
     urls: createTestUrls(),
     afterCommit: () => {},

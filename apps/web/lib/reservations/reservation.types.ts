@@ -1,28 +1,7 @@
-import type { MissingRequiredAccessory } from "@louez/api/services";
-import type { CheckoutFieldIssue, CreateReservationInput } from "@louez/validations";
+import type { ReservationFailure } from "@louez/api/services/reservation-failure";
+import type { CreateReservationInput } from "@louez/validations";
 
 export type ReservationSource = "online" | "phone" | "marketplace";
-
-export type ReservationErrorParams = Record<string, string | number>;
-
-export type ReservationFailureDetails =
-  | {
-      code: "required_accessories_missing";
-      missingAccessories: MissingRequiredAccessory[];
-    }
-  | {
-      /** Custom fields the checkout asked: every issue, the error names the first. */
-      code: "checkout_fields_invalid";
-      issues: CheckoutFieldIssue[];
-    };
-
-/** Every non-success outcome of the reservation pipeline (translation key + params). */
-export type ReservationFailure = {
-  ok: false;
-  error: string;
-  params?: ReservationErrorParams;
-  details?: ReservationFailureDetails;
-};
 
 export type CreateReservationSuccess = {
   ok: true;
@@ -93,14 +72,3 @@ export type QuoteReservationRequest = Omit<
 > & {
   customer?: CreateReservationInput["customer"];
 };
-
-export const failReservation = (
-  error: string,
-  params?: ReservationErrorParams,
-  details?: ReservationFailureDetails,
-): ReservationFailure => ({
-  ok: false,
-  error,
-  ...(params ? { params } : {}),
-  ...(details ? { details } : {}),
-});

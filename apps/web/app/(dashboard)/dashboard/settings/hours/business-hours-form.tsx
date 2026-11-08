@@ -44,7 +44,7 @@ import { ReservationDatePickerControl } from "@/components/form/form-reservation
 import { RootError } from "@/components/form/root-error";
 import { EmptyState } from "@/components/ui/empty-state";
 
-import { DAY_KEYS, buildStoreDate, generateTimeSlots } from "@/lib/utils/business-hours";
+import { DAY_KEYS, buildStoreDate, generateTimeSlots } from "@louez/utils";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { useAppForm } from "@/hooks/form/form";

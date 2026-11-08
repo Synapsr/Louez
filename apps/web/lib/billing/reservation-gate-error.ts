@@ -1,11 +1,18 @@
 import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR } from "@louez/types";
 
 /**
- * Whether a failed mutation was refused by the card gate (README §8.4): its message is
- * the shared error key. No server import, so client components can call it.
+ * Whether a failed mutation was refused by the card gate (README §8.4): an agent-ready
+ * procedure says so in its translation key (`data.i18nKey`), an older one in its message.
+ * No server import, so client components can call it.
  */
 export function isReservationGateRefusal(error: unknown): boolean {
-  return error instanceof Error && error.message === STORE_NOT_ACCEPTING_RESERVATIONS_ERROR;
+  if (!(error instanceof Error)) return false;
+  const data: unknown = "data" in error ? error.data : undefined;
+  const i18nKey = data && typeof data === "object" && "i18nKey" in data ? data.i18nKey : undefined;
+  return (
+    error.message === STORE_NOT_ACCEPTING_RESERVATIONS_ERROR ||
+    i18nKey === STORE_NOT_ACCEPTING_RESERVATIONS_ERROR
+  );
 }
 
 /**

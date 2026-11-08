@@ -1,6 +1,6 @@
 import type { StoreSettings } from "@louez/types";
 
-import { getMinRentalMinutes } from "@/lib/utils/rental-duration";
+import { getMinRentalMinutes } from "@louez/utils";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 
 /**

@@ -2,7 +2,6 @@ import { productPromotionSchema } from "./product-promotion";
 import { z } from "zod";
 
 import { isValidImageUrl } from "./image";
-import { reservationStatusSchema } from "./reservation";
 
 const dateTimeOrDateSchema = z
   .string()
@@ -218,121 +217,8 @@ export const reservationSignOutputSchema = z.object({
   signedAt: z.string(),
 });
 
-export const dashboardReservationPollInputSchema = z.object({});
-
-export const dashboardReservationTimelinePeriodInputSchema = z
-  .object({
-    storeId: z.string().min(1).max(128),
-    startDate: dateTimeOrDateSchema,
-    endDate: dateTimeOrDateSchema,
-  })
-  .refine((period) => new Date(period.startDate) <= new Date(period.endDate), {
-    message: "startDate must not be after endDate",
-  });
-
-const reservationTimelineDeliverySchema = z.object({
-  address: z.string().nullable(),
-  city: z.string().nullable(),
-  postalCode: z.string().nullable(),
-  country: z.string().nullable(),
-});
-
-export const dashboardReservationCalendarPeriodEntrySchema = z.object({
-  id: z.string(),
-  number: z.string(),
-  status: reservationStatusSchema.nullable(),
-  startDate: z.date(),
-  endDate: z.date(),
-  subtotalAmount: z.string(),
-  depositAmount: z.string(),
-  totalAmount: z.string(),
-  outboundMethod: z.string(),
-  returnMethod: z.string(),
-  deliveryAddress: z.string().nullable(),
-  deliveryCity: z.string().nullable(),
-  deliveryPostalCode: z.string().nullable(),
-  deliveryCountry: z.string().nullable(),
-  returnAddress: z.string().nullable(),
-  returnCity: z.string().nullable(),
-  returnPostalCode: z.string().nullable(),
-  returnCountry: z.string().nullable(),
-  customer: z
-    .object({
-      id: z.string(),
-      firstName: z.string(),
-      lastName: z.string(),
-    })
-    .nullable(),
-  items: z.array(
-    z.object({
-      id: z.string(),
-      quantity: z.number(),
-      productSnapshot: z
-        .object({
-          name: z.string(),
-          images: z.array(z.string()).nullish(),
-        })
-        .nullable(),
-      product: z
-        .object({
-          id: z.string(),
-          name: z.string(),
-          images: z.array(z.string()).nullable(),
-          displayOrder: z.number().nullable(),
-        })
-        .nullable(),
-    }),
-  ),
-});
-
-export const dashboardReservationPlanningTimelineEntrySchema = z.object({
-  id: z.string(),
-  productId: z.string(),
-  number: z.string(),
-  status: reservationStatusSchema.nullable(),
-  startDate: z.date(),
-  endDate: z.date(),
-  customerId: z.string().nullable(),
-  customerName: z.string(),
-  subtotalAmount: z.string(),
-  depositAmount: z.string(),
-  totalAmount: z.string(),
-  quantity: z.number(),
-  assignedUnitIds: z.array(z.string()),
-  items: z.array(
-    z.object({
-      productId: z.string(),
-      name: z.string(),
-      quantity: z.number(),
-      imageUrl: z.string().nullable(),
-    }),
-  ),
-  outboundDelivery: reservationTimelineDeliverySchema.nullable(),
-  returnDelivery: reservationTimelineDeliverySchema.nullable(),
-});
-
-export const dashboardReservationsListInputSchema = z.object({
-  status: z
-    .enum(["all", "pending", "confirmed", "ongoing", "completed", "cancelled", "rejected", "quote"])
-    .optional(),
-  period: z.enum(["today", "week", "month"]).optional(),
-  operation: z.enum(["departure", "return"]).optional(),
-  paymentMethod: z.enum(["stripe", "cash", "card", "transfer", "check", "other"]).optional(),
-  limit: z.number().int().min(1).max(500).optional(),
-  search: z.string().max(100).optional(),
-  sort: z.enum(["startDate", "amount", "status", "number"]).optional(),
-  sortDirection: z.enum(["asc", "desc"]).optional(),
-  page: z.number().int().min(1).optional(),
-  pageSize: z.number().int().min(1).max(100).optional(),
-});
-
 export const dashboardReservationGetByIdInputSchema = z.object({
   reservationId: z.string().length(21),
-});
-
-export const dashboardReservationUpdateNotesInputSchema = z.object({
-  reservationId: z.string().length(21),
-  notes: z.string().max(100000).default(""),
 });
 
 /** Billing identity a reservation is invoiced under; identifiers are checked against the buyer country server-side. */
@@ -342,16 +228,6 @@ export const dashboardReservationUpdateBillingInputSchema = z.object({
   companyName: z.string().trim().max(255).default(""),
   companyNumber: z.string().trim().max(64).default(""),
   vatNumber: z.string().trim().max(64).default(""),
-});
-
-export const dashboardReservationUpdateStatusInputSchema = z.object({
-  reservationId: z.string().length(21),
-  status: reservationStatusSchema,
-  rejectionReason: z.string().max(2000).optional(),
-});
-
-export const dashboardReservationCancelInputSchema = z.object({
-  reservationId: z.string().length(21),
 });
 
 export const dashboardReservationGetAvailableUnitsInputSchema = z.object({
@@ -963,30 +839,12 @@ export type StorefrontResolveCombinationOutput = z.infer<
 export type StorefrontCartLineResolution = z.infer<typeof storefrontCartLineResolutionSchema>;
 export type StorefrontCartResolveOutput = z.infer<typeof storefrontCartResolveOutputSchema>;
 export type ReservationSignOutput = z.infer<typeof reservationSignOutputSchema>;
-export type DashboardReservationPollInput = z.infer<typeof dashboardReservationPollInputSchema>;
-export type DashboardReservationTimelinePeriodInput = z.infer<
-  typeof dashboardReservationTimelinePeriodInputSchema
->;
-export type ReservationCalendarPeriodEntry = z.infer<
-  typeof dashboardReservationCalendarPeriodEntrySchema
->;
-export type ReservationPlanningTimelineEntry = z.infer<
-  typeof dashboardReservationPlanningTimelineEntrySchema
->;
-export type DashboardReservationsListInput = z.infer<typeof dashboardReservationsListInputSchema>;
 export type DashboardReservationGetByIdInput = z.infer<
   typeof dashboardReservationGetByIdInputSchema
->;
-export type DashboardReservationUpdateNotesInput = z.infer<
-  typeof dashboardReservationUpdateNotesInputSchema
 >;
 export type DashboardReservationUpdateBillingInput = z.infer<
   typeof dashboardReservationUpdateBillingInputSchema
 >;
-export type DashboardReservationUpdateStatusInput = z.infer<
-  typeof dashboardReservationUpdateStatusInputSchema
->;
-export type DashboardReservationCancelInput = z.infer<typeof dashboardReservationCancelInputSchema>;
 export type DashboardReservationGetAvailableUnitsInput = z.infer<
   typeof dashboardReservationGetAvailableUnitsInputSchema
 >;

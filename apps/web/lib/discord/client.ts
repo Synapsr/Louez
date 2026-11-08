@@ -1,3 +1,5 @@
+import { providerSignal } from '@/lib/api/effect-signal'
+
 export interface DiscordEmbedField {
   name: string
   value: string
@@ -37,6 +39,8 @@ export async function sendDiscordNotification(
   try {
     const response = await fetch(webhookUrl, {
       method: 'POST',
+      // An outbox sender's abort and timeout (lib/api/effect-signal.ts).
+      signal: providerSignal(),
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
       },

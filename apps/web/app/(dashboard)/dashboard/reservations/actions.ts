@@ -1,10 +1,13 @@
 "use server";
 
-import { lockReservationProducts, reserveInventory } from "@/lib/reservations/reserve-inventory";
+import {
+  lockReservationProducts,
+  reserveInventory,
+} from "@louez/api/services/reservation-inventory";
 
 import { validateReservationContract } from "@louez/api/services";
 
-import { resolveDateChangeRequests } from "@/lib/reservations/date-change-request.server";
+import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
 
 import { and, eq, gte, inArray, not, sql } from "drizzle-orm";
@@ -85,7 +88,6 @@ import {
   calculateSeasonalAwarePrice,
 } from "@louez/utils";
 import {
-  type ReservationStatus,
   type StorefrontAvailabilityInput,
   dashboardReservationAssignUnitsInputSchema,
   storefrontAvailabilityInputSchema,
@@ -141,10 +143,6 @@ import {
 } from "@/lib/reservations/dashboard-payment-writes";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
 import { reservationCurrency } from "@/lib/reservations/payment-billing-facts";
-import {
-  cancelStoreReservation,
-  updateStoreReservationStatus,
-} from "@/lib/reservations/status-change";
 import { getRentalPaid } from "@/lib/reservations/util.payment-status";
 import {
   isSmsConfigured,
@@ -174,7 +172,7 @@ import {
   toStripeCents,
 } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
-import { evaluateReservationRules } from "@/lib/utils/reservation-rules";
+import { evaluateReservationRules } from "@louez/utils";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
   resolveUnitAssignmentScope,
@@ -431,103 +429,6 @@ function refuseClosedGate(error: unknown) {
   if (!isStoreNotAcceptingReservationsError(error)) throw error;
   logReservationGateRefusal(error, "dashboard");
   return { ok: false as const, error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, shortfalls: [] };
-}
-
-export async function updateReservationStatus(
-  reservationId: string,
-  status: ReservationStatus,
-  rejectionReason?: string,
-) {
-  const store = await getStoreForUser();
-  if (!store) {
-    return { error: "errors.unauthorized" };
-  }
-
-  const outcome = await updateStoreReservationStatus({
-    store,
-    reservationId,
-    status,
-    rejectionReason,
-    actor: "store_user",
-    actorUserId: await getActorUserId(),
-  });
-  if (!outcome.ok) {
-    if (outcome.error === "unavailable") return { error: outcome.message };
-    if (outcome.error === "store_not_accepting_reservations") {
-      return { error: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR };
-    }
-    if (outcome.error === "busy") return { error: "errors.reservationStatusChanged" };
-    // A stale read, a retry of the same change and a refused change get one answer.
-    return {
-      error:
-        outcome.error === "not_found" || outcome.refusal.reason === "not_found"
-          ? "errors.reservationNotFound"
-          : "errors.reservationStatusChanged",
-    };
-  }
-
-  return {
-    success: true,
-    ...(outcome.warnings.length > 0 && { warnings: outcome.warnings }),
-  };
-}
-
-export async function cancelReservation(reservationId: string) {
-  const store = await getStoreForUser();
-  if (!store) {
-    return { error: "errors.unauthorized" };
-  }
-
-  const outcome = await cancelStoreReservation({
-    store,
-    reservationId,
-    actor: "store_user",
-    actorUserId: await getActorUserId(),
-  });
-  if (!outcome.ok) {
-    if (outcome.error === "not_found") return { error: "errors.reservationNotFound" };
-    if (outcome.error === "unavailable") return { error: outcome.message };
-    if (outcome.error === "busy") return { error: "errors.reservationStatusChanged" };
-    // Gone, or already cancelled, completed, rejected or declined.
-    return { error: "errors.cannotCancelReservation" };
-  }
-
-  return { success: true };
-}
-
-export async function updateReservationNotes(reservationId: string, internalNotes: string) {
-  const store = await getStoreForUser();
-  if (!store) {
-    return { error: "errors.unauthorized" };
-  }
-
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-  });
-
-  if (!reservation) {
-    return { error: "errors.reservationNotFound" };
-  }
-
-  await db
-    .update(reservations)
-    .set({
-      internalNotes,
-      updatedAt: new Date(),
-    })
-    .where(eq(reservations.id, reservationId));
-
-  revalidatePath(`/dashboard/reservations/${reservationId}`);
-  await captureReservationActionSucceeded({
-    distinctId: store.userId,
-    storeId: store.id,
-    reservationId,
-    action: reservationAnalyticsActions.updateNotes,
-    properties: {
-      has_notes: internalNotes.trim().length > 0,
-    },
-  });
-  return { success: true };
 }
 
 interface CreateReservationData {
@@ -1601,29 +1502,6 @@ export async function createManualReservation(data: CreateReservationData) {
   revalidatePath("/dashboard/reservations");
   revalidatePath("/dashboard");
   return { success: true, reservationId };
-}
-
-export async function getReservation(reservationId: string) {
-  const store = await getStoreForUser();
-  if (!store) {
-    return null;
-  }
-
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
-    with: {
-      customer: true,
-      items: {
-        with: {
-          product: true,
-        },
-      },
-      payments: true,
-      documents: true,
-    },
-  });
-
-  return reservation;
 }
 
 export async function getStoreCustomers() {

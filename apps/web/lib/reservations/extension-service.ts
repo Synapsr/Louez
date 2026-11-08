@@ -27,7 +27,7 @@ import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync
 import { sendReservationModifiedEmail } from "@/lib/email/send";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { log } from "@/lib/evlog";
-import { resolveDateChangeRequests } from "./date-change-request.server";
+import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { getExtensionAttempt, type ExtensionAttempt } from "./extension.types";
 import {
   cents,

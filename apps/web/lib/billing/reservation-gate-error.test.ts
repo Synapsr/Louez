@@ -8,7 +8,9 @@ import { STORE_NOT_ACCEPTING_RESERVATIONS_ERROR } from "@louez/types";
 
 import { locales } from "@/i18n/config";
 
-import { renterGateRefusalParams } from "./reservation-gate-error";
+import { ORPCError } from "@orpc/client";
+
+import { isReservationGateRefusal, renterGateRefusalParams } from "./reservation-gate-error";
 
 // What a renter reads when the card gate refuses a booking (design §4.7): the store
 // isn't taking reservations online, and how to reach it. Never a billing reason.
@@ -97,4 +99,30 @@ describe("the renter's message", () => {
       }
     }
   });
+});
+
+test("a refusal is told by its message or, from a procedure, by its translation key", () => {
+  assert.equal(isReservationGateRefusal(new Error(STORE_NOT_ACCEPTING_RESERVATIONS_ERROR)), true);
+  assert.equal(
+    isReservationGateRefusal(
+      new ORPCError("CONFLICT", {
+        message: "Not changed: this store is not taking new reservations right now.",
+        data: {
+          code: "STORE_NOT_ACCEPTING_RESERVATIONS",
+          i18nKey: STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
+        },
+      }),
+    ),
+    true,
+  );
+  assert.equal(
+    isReservationGateRefusal(
+      new ORPCError("CONFLICT", {
+        message: "Busy",
+        data: { i18nKey: "errors.reservationStatusChanged" },
+      }),
+    ),
+    false,
+  );
+  assert.equal(isReservationGateRefusal("errors.storeNotAcceptingReservations"), false);
 });

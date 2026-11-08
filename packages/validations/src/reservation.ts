@@ -75,10 +75,6 @@ export const manualReservationSchema = z.object({
   internalNotes: z.string().optional(),
 });
 
-export const updateReservationNotesSchema = z.object({
-  internalNotes: z.string().optional(),
-});
-
 export type ReservationStatus = z.infer<typeof reservationStatusSchema>;
 export type ReservationItem = z.infer<typeof reservationItemSchema>;
 export type ManualReservationInput = z.infer<typeof manualReservationSchema>;

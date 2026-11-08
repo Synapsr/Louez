@@ -129,6 +129,22 @@ describe("account deletion billing marks (database)", { skip: skipWithoutTestDat
         stripeCheckoutSessionId: `cs_purge_many_${index}`,
       })),
     );
+    // A queued customer message names the customer: it goes with the store.
+    await louezDb.db.insert(louezDb.apiEffects).values([
+      {
+        id: "fx_purge_deleted_0001",
+        storeId: DELETED,
+        reservationId: "res_purge_too_many",
+        type: "reservation.customerMessage",
+        payload: { customer: { email: "renter@example.test" } },
+      },
+      {
+        id: "fx_purge_kept_0000001",
+        storeId: CO_OWNED,
+        type: "reservation.statusAnalytics",
+        payload: {},
+      },
+    ]);
   });
 
   after(async () => {
@@ -175,6 +191,12 @@ describe("account deletion billing marks (database)", { skip: skipWithoutTestDat
       .from(louezDb.stores)
       .where(eq(louezDb.stores.id, DELETED));
     assert.deepEqual(stores, [], "the store itself is gone");
+    const effects = await louezDb.db.select({ id: louezDb.apiEffects.id }).from(louezDb.apiEffects);
+    assert.deepEqual(
+      effects.map((row) => row.id),
+      ["fx_purge_kept_0000001"],
+      "the deleted store's outbox rows went with it, another store's stayed",
+    );
 
     // The reservation went without a final snapshot: the committed purge alerted.
     const [state] = await louezDb.db

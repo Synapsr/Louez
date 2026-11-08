@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dashboardReservationCalendarPeriodEntrySchema } from "@louez/validations";
+import { calendarEntrySchema } from "@louez/api/contracts/reservations";
 import { getDemoCart } from "./cart";
 import { createDemoPlanningEntries, createDemoReservationPages } from "./reservations";
 
@@ -11,9 +11,7 @@ test("catalogue bookings retain their products, totals and dates in list, calend
   const data = createDemoReservationPages(period, cart.booking);
   assert.equal(data.rows.length, 24);
   for (const [index, row] of data.rows.entries()) {
-    assert.ok(
-      dashboardReservationCalendarPeriodEntrySchema.safeParse(data.calendar[index]).success,
-    );
+    assert.ok(calendarEntrySchema.safeParse(data.calendar[index]).success);
     assert.equal(row.id, data.calendar[index].id);
     assert.equal(row.subtotalAmount, data.calendar[index].subtotalAmount);
     assert.ok(row.endDate > row.startDate);

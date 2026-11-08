@@ -163,7 +163,6 @@ const ROUTE = {
   contract: `${API}/reservations/[id]/contract/route.ts`,
   invoice: `${API}/reservations/[id]/invoices/[invoiceId]/route.ts`,
   sign: `${API}/reservations/[id]/sign/route.ts`,
-  poll: `${API}/reservations/poll/route.ts`,
   appearance: `${API}/stores/appearance/route.ts`,
   legal: `${API}/stores/legal/route.ts`,
   voicePreview: `${API}/voice/preview/route.ts`,
@@ -196,7 +195,6 @@ const MCP = {
   calendar: `${TOOLS}/calendar.ts`,
   customers: `${TOOLS}/customers.ts`,
   payments: `${TOOLS}/payments.ts`,
-  reservations: `${TOOLS}/reservations.ts`,
   settings: `${TOOLS}/settings.ts`,
 } as const;
 
@@ -223,88 +221,84 @@ const PASSWORD = "Password and passkeys stay with Better Auth, in the browser";
 export const capabilities = [
   // --- Reservations: follow-up (2a) --------------------------------------
   {
+    // The list also gives the counts per dashboard tab.
     id: "reservations.list",
-    sources: [procedure("reservations", "list"), tool(MCP.reservations, "list_reservations")],
+    sources: [procedure("reservations", "list")],
     kind: "read",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "reservations.get",
-    sources: [
-      action(SA.reservations, "getReservation"),
-      procedure("reservations", "getById"),
-      tool(MCP.reservations, "get_reservation"),
-    ],
+    sources: [procedure("reservations", "get")],
     kind: "read",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "reservations.poll",
-    sources: [
-      procedure("reservations", "poll"),
-      route(ROUTE.poll, "GET"),
-      tool(MCP.reservations, "get_reservation_poll"),
-    ],
+    sources: [procedure("reservations", "poll")],
     kind: "read",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "reservations.listCalendarPeriod",
-    sources: [procedure("reservations", "calendarPeriod")],
+    sources: [procedure("reservations", "listCalendarPeriod")],
     kind: "read",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "reservations.getPlanningTimeline",
-    sources: [procedure("reservations", "planningTimeline")],
+    sources: [procedure("reservations", "getPlanningTimeline")],
     kind: "read",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "reservations.listUpcoming",
-    sources: [tool(MCP.calendar, "calendar_upcoming")],
+    sources: [procedure("reservations", "listUpcoming")],
     kind: "read",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "reservations.listOverdue",
-    sources: [tool(MCP.calendar, "calendar_overdue")],
+    sources: [procedure("reservations", "listOverdue")],
     kind: "read",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "reservations.updateStatus",
-    sources: [
-      action(SA.reservations, "updateReservationStatus"),
-      procedure("reservations", "updateStatus"),
-      tool(MCP.reservations, "update_reservation_status"),
-    ],
+    sources: [procedure("reservations", "updateStatus")],
     kind: "write",
     sensitive: "send",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "reservations.cancel",
-    sources: [action(SA.reservations, "cancelReservation"), procedure("reservations", "cancel")],
+    sources: [procedure("reservations", "cancel")],
     kind: "write",
     sensitive: "destructive",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "reservations.updateNotes",
-    sources: [
-      action(SA.reservations, "updateReservationNotes"),
-      procedure("reservations", "updateNotes"),
-      tool(MCP.reservations, "update_reservation_notes"),
-    ],
+    sources: [procedure("reservations", "updateNotes")],
     kind: "write",
     plan: { lot: "2a" },
+    migrated: true,
   },
   {
     id: "ui.globalSearch",
     sources: [procedure("search", "global")],
     kind: "read",
     plan: { lot: "2a" },
+    migrated: true,
   },
 
   // --- Reservations: creation and changes (2b) ---------------------------

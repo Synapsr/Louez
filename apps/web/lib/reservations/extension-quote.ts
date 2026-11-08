@@ -13,9 +13,12 @@ import {
   type Transaction,
 } from "@louez/db";
 import { loadPricingCatalog } from "@louez/api/services/pricing-catalog";
-import { isWithinBusinessHours } from "@/lib/utils/business-hours";
+import { isWithinBusinessHours } from "@louez/utils";
 import { validateRentalDuration } from "./validate-rental-window";
-import { lockReservationProducts, reserveInventory } from "./reserve-inventory";
+import {
+  lockReservationProducts,
+  reserveInventory,
+} from "@louez/api/services/reservation-inventory";
 import { computeReservationTotals, getReservationItemTaxFields, priceCart } from "./price-cart";
 import {
   getExtensionAttempt,

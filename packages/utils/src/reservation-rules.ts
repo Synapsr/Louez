@@ -1,13 +1,13 @@
 import type { StoreSettings } from "@louez/types";
-import { validateRentalPeriod } from "@/lib/utils/business-hours";
-import { validateAdvanceNotice } from "@/lib/utils/duration";
+import { validateAdvanceNotice } from "./advance-notice";
+import { validateRentalPeriod } from "./business-hours";
 import {
   formatDurationFromMinutes,
   getMaxRentalMinutes,
   getMinRentalMinutes,
   validateMaxRentalDurationMinutes,
   validateMinRentalDurationMinutes,
-} from "@/lib/utils/rental-duration";
+} from "./rental-duration";
 
 export type ReservationValidationWarningCode =
   | "business_hours"

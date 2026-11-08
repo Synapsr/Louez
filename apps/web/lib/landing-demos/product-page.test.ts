@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { addDays } from "date-fns";
-import { buildStoreDate } from "@/lib/utils/business-hours";
+import { buildStoreDate } from "@louez/utils";
 import { getStorefrontProductPrice } from "@/lib/utils/util.storefront-product-pricing";
 import { getStorefrontRateRows } from "@/lib/utils/util.storefront-pricing";
 import { locales } from "@/i18n/config";

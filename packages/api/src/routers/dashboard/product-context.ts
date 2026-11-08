@@ -1,6 +1,6 @@
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
 import { platformErrors } from "../../platform/errors";
-import { allows } from "../../platform/permissions";
+import { allows, type ApiDomain } from "../../platform/permissions";
 import type { StoreActor } from "../../platform/actor";
 import type { ActorStore } from "../../platform/procedures";
 import type { ApiPorts } from "../../platform/ports";
@@ -35,7 +35,7 @@ export function productActor(context: ProductContext): ProductActor {
 }
 
 /** Whether the caller may read a domain: the member's role, cut down to the connection's scopes. */
-export function mayRead(context: ProductContext, domain: "reservations" | "customers") {
+export function mayRead(context: ProductContext, domain: ApiDomain) {
   return allows(context.actor.role, context.actor.credential.scopes, { domain, level: "read" });
 }
 

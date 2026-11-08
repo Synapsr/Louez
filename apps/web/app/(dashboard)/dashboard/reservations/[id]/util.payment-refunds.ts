@@ -1,7 +1,4 @@
-import {
-  getSettledPaymentAmount,
-  isStripeRefundRow,
-} from "@/lib/reservations/util.payment-status";
+import { getSettledPaymentAmount, isStripeRefundRow } from "@louez/utils";
 
 export type ManualPaymentMethod = "cash" | "card" | "transfer" | "check" | "other";
 
