@@ -6,8 +6,8 @@ import { getCurrentStore } from "@/lib/store-context";
 import { reservations } from "@louez/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { getStoreMetrics, determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
-import { getIntendedReservationMode, isStripeChargeable } from "@/lib/reservation-mode";
-import type { OnlinePaymentsStep } from "@/components/dashboard/home";
+import type { LaunchChecklistView } from "@louez/api/contracts/launch";
+import { serverApi } from "@/lib/api/server-api";
 import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
 import { parseDismissedNotices, type DismissibleNoticeId } from "@/lib/dashboard/dismissed-notices";
 import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
@@ -15,6 +15,7 @@ import {
   DashboardAlert,
   ReeentStripeSetupCard,
   SetupChecklist,
+  onlinePaymentsStepOf,
   AdaptiveHeader,
   AdaptiveStats,
   TodayActivity,
@@ -115,7 +116,8 @@ interface DashboardContentProps {
   storeId: string;
   storeSlug: string;
   firstName: string;
-  onlinePaymentsStep: OnlinePaymentsStep;
+  /** What the store still lacks, as agents read it (stores.getLaunchChecklist). */
+  launchChecklist: LaunchChecklistView;
   /** The store signed up from the reeent consumer marketplace (ADR 010). */
   isFromReeent: boolean;
   hasStripeAccount: boolean;
@@ -126,11 +128,14 @@ async function DashboardContent({
   storeId,
   storeSlug,
   firstName,
-  onlinePaymentsStep,
+  launchChecklist,
   isFromReeent,
   hasStripeAccount,
   dismissedNoticeIds,
 }: DashboardContentProps) {
+  // Stores that want online payments track the Stripe KYC left pending during
+  // onboarding (payment mode degrades to request mode until Stripe can charge).
+  const onlinePaymentsStep = onlinePaymentsStepOf(launchChecklist);
   // Fetch all data in parallel
   const [metrics, departures, returns, pending, channelState, cohort] = await Promise.all([
     getStoreMetrics(storeId),
@@ -181,9 +186,8 @@ async function DashboardContent({
       {/* Setup Checklist for new stores (floating widget) */}
       {(storeState === "virgin" || storeState === "building") && (
         <SetupChecklist
-          metrics={metrics}
+          initialChecklist={launchChecklist}
           storeSlug={storeSlug}
-          onlinePaymentsStep={onlinePaymentsStep}
           onlinePaymentsContext={isFromReeent ? "reeent" : "default"}
         />
       )}
@@ -225,22 +229,14 @@ export default async function DashboardHomePage() {
       })
     : undefined;
 
-  // Stores that want online payments get a checklist step tracking the
-  // Stripe KYC left pending during onboarding (payment mode silently degrades
-  // to request mode until Stripe is chargeable — see lib/reservation-mode.ts).
-  const onlinePaymentsStep: OnlinePaymentsStep =
-    getIntendedReservationMode(store) === "payment"
-      ? isStripeChargeable(store)
-        ? "done"
-        : "todo"
-      : "hidden";
+  const launchChecklist = await (await serverApi()).stores.getLaunchChecklist({});
 
   return (
     <DashboardContent
       storeId={store.id}
       storeSlug={store.slug}
       firstName={firstName}
-      onlinePaymentsStep={onlinePaymentsStep}
+      launchChecklist={launchChecklist}
       isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
       hasStripeAccount={store.stripeAccountId !== null}
       dismissedNoticeIds={parseDismissedNotices(userRow?.dismissedNotices)}
