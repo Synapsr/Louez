@@ -8478,9 +8478,7 @@
         "confirm": "Cancelar pedido",
         "cancelled": "Pedido cancelado",
         "done": "Cancelou este pedido.",
-        "paymentDescription": "A loja será informada. Se já pagou ou entregou uma caução, contacte a loja para obter o reembolso ou a libertação. Esta ação não inicia um reembolso automático.",
-        "adminSubject": "Pedido #{number} cancelado pelo cliente",
-        "adminBody": "{name} cancelou o pedido de reserva #{number} antes da sua confirmação. Pode consultar o histórico no seu painel."
+        "paymentDescription": "A loja será informada. Se já pagou ou entregou uma caução, contacte a loja para obter o reembolso ou a libertação. Esta ação não inicia um reembolso automático."
       },
       "customerFields": {
         "title": "Informações adicionais",

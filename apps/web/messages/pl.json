@@ -8478,9 +8478,7 @@
         "confirm": "Anuluj prośbę",
         "cancelled": "Prośba anulowana",
         "done": "Ta prośba została przez Ciebie anulowana.",
-        "paymentDescription": "Sklep zostanie powiadomiony. Jeśli dokonano płatności lub wpłacono kaucję, skontaktuj się ze sklepem w sprawie zwrotu lub zwolnienia środków. Ta czynność nie powoduje automatycznego zwrotu.",
-        "adminSubject": "Prośba #{number} anulowana przez klienta",
-        "adminBody": "{name} anulował(a) prośbę o rezerwację #{number} przed Twoim potwierdzeniem. Historię możesz sprawdzić w panelu."
+        "paymentDescription": "Sklep zostanie powiadomiony. Jeśli dokonano płatności lub wpłacono kaucję, skontaktuj się ze sklepem w sprawie zwrotu lub zwolnienia środków. Ta czynność nie powoduje automatycznego zwrotu."
       },
       "customerFields": {
         "title": "Informacje dodatkowe",

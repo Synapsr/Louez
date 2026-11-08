@@ -8478,9 +8478,7 @@
         "confirm": "Cancel request",
         "cancelled": "Request cancelled",
         "done": "You cancelled this request.",
-        "paymentDescription": "The store will be notified. If you have already paid or provided a deposit, contact the store for a refund or release. This action does not issue an automatic refund.",
-        "adminSubject": "Request #{number} cancelled by the customer",
-        "adminBody": "{name} cancelled booking request #{number} before your confirmation. You can view its history in your dashboard."
+        "paymentDescription": "The store will be notified. If you have already paid or provided a deposit, contact the store for a refund or release. This action does not issue an automatic refund."
       },
       "customerFields": {
         "title": "Additional information",

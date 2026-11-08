@@ -51,7 +51,6 @@ import {
 } from "@/lib/reservations/util.customer-deposit";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { log } from "@/lib/evlog";
-import { sendRequestCancelledEmail } from "@/lib/email/send-request-cancelled-email";
 import { cancelTulipContractForReservation } from "@/lib/integrations/tulip/contracts";
 import { generateContract } from "@/lib/pdf/generate";
 import { canSignContract } from "@/lib/reservations/util.reservation-actions";
@@ -291,6 +290,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       totalAmount: parseFloat(reservation.totalAmount),
+      currency: reservation.currency,
     },
     customer: {
       firstName: reservation.customer.firstName,
@@ -453,6 +453,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       totalAmount: parseFloat(reservation.totalAmount),
+      currency: reservation.currency,
     },
     customer: {
       firstName: reservation.customer.firstName,
@@ -494,6 +495,7 @@ export async function cancelReservationRequest(
       startDate: true,
       endDate: true,
       totalAmount: true,
+      currency: true,
       tulipContractId: true,
     },
     with: { customer: { columns: { firstName: true, lastName: true, email: true, phone: true } } },
@@ -566,26 +568,12 @@ export async function cancelReservationRequest(
           startDate: reservation.startDate,
           endDate: reservation.endDate,
           totalAmount: Number(reservation.totalAmount),
+          currency: reservation.currency,
         },
         customer: reservation.customer,
       });
     } catch (error) {
       log.error("reservation", `request cancellation notification failed: ${describeError(error)}`);
-    }
-  }
-  if (
-    result.changed &&
-    store.email &&
-    (store.notificationSettings?.reservation_cancelled?.email ?? true)
-  ) {
-    try {
-      await sendRequestCancelledEmail({
-        store: { ...store, email: store.email },
-        reservation,
-        customer: reservation.customer,
-      });
-    } catch (error) {
-      log.error("reservation", `request cancellation email failed: ${describeError(error)}`);
     }
   }
   revalidatePath(`/${store.slug}/account`);

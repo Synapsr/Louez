@@ -8478,9 +8478,7 @@
         "confirm": "Annuler la demande",
         "cancelled": "Demande annulée",
         "done": "Vous avez annulé cette demande.",
-        "paymentDescription": "Le magasin sera informé. Si vous avez déjà payé ou déposé une caution, contactez le magasin pour son remboursement ou sa libération. Cette action ne déclenche aucun remboursement automatique.",
-        "adminSubject": "Demande #{number} annulée par le client",
-        "adminBody": "{name} a annulé sa demande de réservation #{number} avant votre confirmation. Vous pouvez consulter son historique dans votre tableau de bord."
+        "paymentDescription": "Le magasin sera informé. Si vous avez déjà payé ou déposé une caution, contactez le magasin pour son remboursement ou sa libération. Cette action ne déclenche aucun remboursement automatique."
       },
       "customerFields": {
         "title": "Informations complémentaires",

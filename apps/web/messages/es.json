@@ -8478,9 +8478,7 @@
         "confirm": "Cancelar solicitud",
         "cancelled": "Solicitud cancelada",
         "done": "Has cancelado esta solicitud.",
-        "paymentDescription": "Se avisará a la tienda. Si ya has pagado o dejado una fianza, contacta con la tienda para solicitar su reembolso o liberación. Esta acción no genera un reembolso automático.",
-        "adminSubject": "Solicitud #{number} cancelada por el cliente",
-        "adminBody": "{name} ha cancelado la solicitud de reserva #{number} antes de tu confirmación. Puedes consultar su historial en tu panel."
+        "paymentDescription": "Se avisará a la tienda. Si ya has pagado o dejado una fianza, contacta con la tienda para solicitar su reembolso o liberación. Esta acción no genera un reembolso automático."
       },
       "customerFields": {
         "title": "Información adicional",

@@ -33,6 +33,8 @@ class StoreNotAcceptingReservationsError extends Error {
 const setup = ({ refuse = false, sessionThrows = false, gateClosed = false } = {}) => {
   const calls = [];
   const changes = [];
+  /** Every owner notification, as [event, context]. */
+  const notifications = [];
   const effectRuns = [];
   const effects = [{ type: "legacy_fee.record", storeId: "store", reservationId }];
   const customer = {
@@ -59,6 +61,8 @@ const setup = ({ refuse = false, sessionThrows = false, gateClosed = false } = {
     startDate: new Date(0),
     endDate: new Date(0),
     totalAmount: "10.00",
+    // A quote priced in pounds before the store moved to euros.
+    currency: "GBP",
     subtotalAmount: "10.00",
     depositAmount: "0.00",
     tulipContractId: "tulip-contract",
@@ -128,9 +132,11 @@ const setup = ({ refuse = false, sessionThrows = false, gateClosed = false } = {
       toAnalyticsAmountCents: () => 0,
       productAnalyticsEvents: { quoteAccepted: "accepted", quoteDeclined: "declined" },
       cancelTulipContractForReservation: step("tulip"),
-      dispatchNotification: step("notify"),
+      dispatchNotification: async (event, ctx) => {
+        calls.push("notify");
+        notifications.push([event, ctx]);
+      },
       dispatchCustomerNotification: step("customer email"),
-      sendRequestCancelledEmail: step("store email"),
       createReservationInstantAccessUrl: async () => "https://shop.example.test/contract",
       getStorefrontUrl: (slug, path) => `https://${slug}.example.test${path}`,
       revalidatePath: () => {},
@@ -138,7 +144,7 @@ const setup = ({ refuse = false, sessionThrows = false, gateClosed = false } = {
     },
   );
   const order = (...names) => calls.filter((call) => names.includes(call));
-  return { actions, calls, changes, effectRuns, effects, order };
+  return { actions, calls, changes, effectRuns, effects, notifications, order };
 };
 
 test("acceptQuote opens the payment session before it records the fee", async () => {
@@ -159,6 +165,18 @@ test("acceptQuote opens the payment session before it records the fee", async ()
   ]);
   assert.equal(effectRuns.length, 1);
   assert.equal(effectRuns[0], effects);
+});
+
+test("acceptQuote tells the owner the customer confirmed, in the quote's currency", async () => {
+  const { actions, notifications } = setup();
+  await actions.acceptQuote("shop", reservationId);
+
+  assert.equal(notifications.length, 1);
+  const [[event, ctx]] = notifications;
+  assert.equal(event, "reservation_confirmed");
+  assert.equal(ctx.actor, "customer");
+  assert.equal(ctx.reservation.currency, "GBP");
+  assert.equal(ctx.quoteDeclined, undefined);
 });
 
 test("acceptQuote still records the fee when the payment session throws", async () => {
@@ -210,19 +228,42 @@ test("declineQuote voids the fee before it tells the store", async () => {
   assert.equal(effectRuns[0], effects);
 });
 
-test("cancelReservationRequest voids the fee before the insurance and the emails", async () => {
+test("declineQuote tells the owner the customer cancelled, in the quote's currency", async () => {
+  const { actions, notifications } = setup();
+  await actions.declineQuote("shop", reservationId);
+
+  assert.equal(notifications.length, 1);
+  const [[event, ctx]] = notifications;
+  assert.equal(event, "reservation_cancelled");
+  assert.equal(ctx.actor, "customer");
+  assert.equal(ctx.reservation.currency, "GBP");
+});
+
+test("cancelReservationRequest voids the fee before the insurance and the owner's notification", async () => {
   const { actions, changes, effectRuns, effects, order } = setup();
   const result = await actions.cancelReservationRequest("shop", reservationId);
 
   assert.equal(result.success, true);
   assert.equal(changes[0].to, "cancelled");
   assert.equal(changes[0].expectedFrom, "pending");
-  assert.deepEqual(order("change", "effects", "tulip", "notify", "store email"), [
+  assert.deepEqual(order("change", "effects", "tulip", "notify"), [
     "change",
     "effects",
     "tulip",
     "notify",
-    "store email",
   ]);
   assert.equal(effectRuns[0], effects);
+});
+
+test("cancelReservationRequest tells the owner once, in the reservation's currency", async () => {
+  const { actions, notifications } = setup();
+  await actions.cancelReservationRequest("shop", reservationId);
+
+  // One dispatch, whose email channel is the owner's only email for it.
+  assert.equal(notifications.length, 1);
+  const [[event, ctx]] = notifications;
+  assert.equal(event, "reservation_cancelled");
+  assert.equal(ctx.actor, "customer");
+  assert.equal(ctx.quoteDeclined, undefined);
+  assert.equal(ctx.reservation.currency, "GBP");
 });
