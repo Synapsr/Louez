@@ -1,14 +1,76 @@
-import { db } from '@louez/db'
+import { db, isPaymentReceiptSql } from '@louez/db'
 import {
   pageViews,
   storefrontEvents,
   dailyStats,
+  payments,
   productStats,
+  products,
+  reservationItems,
   stores,
   reservations,
 } from '@louez/db'
 import { eq, and, gte, lt, sql, count } from 'drizzle-orm'
 import { startOfDay, subDays, format } from 'date-fns'
+
+/**
+ * Rental receipts cashed in over [start, end), per product: a reservation's
+ * receipts are split across its items by price, refunds excluded, as the
+ * product page and the sales ranking count them.
+ */
+export async function getProductReceipts(
+  storeId: string,
+  start: Date,
+  end: Date
+): Promise<Map<string, number>> {
+  const receiptDate = sql`COALESCE(${payments.paidAt}, ${payments.createdAt})`
+  const paymentTotals = db
+    .select({
+      reservationId: payments.reservationId,
+      paidAmount: sql<string>`COALESCE(SUM(${payments.amount}), 0)`.as('paid_amount'),
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(payments.reservationId, reservations.id))
+    .where(
+      and(
+        eq(reservations.storeId, storeId),
+        eq(payments.status, 'completed'),
+        eq(payments.type, 'rental'),
+        isPaymentReceiptSql(),
+        sql`${receiptDate} >= ${start}`,
+        sql`${receiptDate} < ${end}`
+      )
+    )
+    .groupBy(payments.reservationId)
+    .as('payment_totals')
+
+  const itemTotals = db
+    .select({
+      reservationId: reservationItems.reservationId,
+      itemTotal: sql<string>`COALESCE(SUM(${reservationItems.totalPrice}), 0)`.as('item_total'),
+    })
+    .from(reservationItems)
+    .groupBy(reservationItems.reservationId)
+    .as('item_totals')
+
+  const allocatedRevenue = sql`CASE WHEN ${itemTotals.itemTotal} > 0 THEN (${paymentTotals.paidAmount} * ${reservationItems.totalPrice}) / ${itemTotals.itemTotal} ELSE 0 END`
+
+  const rows = await db
+    .select({
+      productId: products.id,
+      revenue: sql<string>`COALESCE(SUM(${allocatedRevenue}), 0)`,
+    })
+    .from(reservationItems)
+    .innerJoin(paymentTotals, eq(reservationItems.reservationId, paymentTotals.reservationId))
+    .innerJoin(itemTotals, eq(reservationItems.reservationId, itemTotals.reservationId))
+    .innerJoin(
+      products,
+      and(eq(reservationItems.productId, products.id), eq(products.storeId, storeId))
+    )
+    .groupBy(products.id)
+
+  return new Map(rows.map((row) => [row.productId, Number(row.revenue)]))
+}
 
 /**
  * Aggregate yesterday's analytics data into dailyStats and productStats tables.
@@ -152,8 +214,17 @@ export async function aggregateDailyAnalytics() {
         )
         .groupBy(pageViews.productId)
 
+      const productReceipts = await getProductReceipts(store.id, yesterday, today)
+      const viewsByProduct = new Map<string, number>()
       for (const product of productViewStats) {
-        if (!product.productId) continue
+        if (product.productId) viewsByProduct.set(product.productId, product.views)
+      }
+      // A product sold without being viewed that day still gets its row.
+      const productIds = new Set([...viewsByProduct.keys(), ...productReceipts.keys()])
+
+      for (const productId of productIds) {
+        const views = viewsByProduct.get(productId) ?? 0
+        const revenue = (productReceipts.get(productId) ?? 0).toFixed(2)
 
         // Get cart additions for this product
         const productCartStats = await db
@@ -167,7 +238,7 @@ export async function aggregateDailyAnalytics() {
               eq(storefrontEvents.eventType, 'add_to_cart'),
               gte(storefrontEvents.createdAt, yesterday),
               lt(storefrontEvents.createdAt, today),
-              sql`JSON_EXTRACT(${storefrontEvents.metadata}, '$.productId') = ${product.productId}`
+              sql`JSON_EXTRACT(${storefrontEvents.metadata}, '$.productId') = ${productId}`
             )
           )
 
@@ -176,17 +247,18 @@ export async function aggregateDailyAnalytics() {
           .insert(productStats)
           .values({
             storeId: store.id,
-            productId: product.productId,
+            productId,
             date: yesterday,
-            views: product.views,
+            views,
             cartAdditions: productCartStats[0]?.cartAdditions || 0,
             reservations: 0, // This would require joining with reservation_items
-            revenue: '0',
+            revenue,
           })
           .onDuplicateKeyUpdate({
             set: {
-              views: product.views,
+              views,
               cartAdditions: productCartStats[0]?.cartAdditions || 0,
+              revenue,
               updatedAt: new Date(),
             },
           })
