@@ -89,6 +89,10 @@ function requirePermission(
   }
 }
 
+/** Whether the chat's user may read a domain: a link names a record of it. */
+const mayRead = (ctx: AIChatContext, domain: keyof ApiKeyPermissions) =>
+  ctx.permissions[domain] !== "none";
+
 /** What the tools call into. Tests pass one with fake senders. */
 export interface AIToolServices {
   /** A status change with everything the dashboard does around it. */
@@ -364,7 +368,9 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
             links: reservationLinks(ctx.urls, linkStore, reservation),
             customer: reservation.customer && {
               ...reservation.customer,
-              links: customerLinks(ctx.urls, linkStore, reservation.customer),
+              ...(mayRead(ctx, "customers")
+                ? { links: customerLinks(ctx.urls, linkStore, reservation.customer) }
+                : {}),
             },
           },
         };
@@ -577,7 +583,9 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
             links: customerLinks(ctx.urls, linkStore, customer),
             reservations: customer.reservations.map((reservation) => ({
               ...reservation,
-              links: reservationLinks(ctx.urls, linkStore, reservation),
+              ...(mayRead(ctx, "reservations")
+                ? { links: reservationLinks(ctx.urls, linkStore, reservation) }
+                : {}),
             })),
           },
           customFields: fields,

@@ -287,4 +287,60 @@ describe("assistant payment tools (database)", { skip: skipWithoutTestDatabase()
     assert.equal((await paymentsOf(reservationId)).length, 1);
     assert.deepEqual(await queue(), []);
   });
+  test("a link to another domain's record shows only to a user who may read that domain", async () => {
+    const reservationId = await createReservation();
+    await louezDb.db
+      .insert(louezDb.customers)
+      .values({
+        id: "customer",
+        storeId: STORE,
+        email: "linked@ai.test",
+        firstName: "Lea",
+        lastName: "Link",
+      })
+      .onDuplicateKeyUpdate({ set: { firstName: "Lea" } });
+    const aiTools = await import("./tools");
+    const toolsWith = (permissions: Partial<Record<string, "none" | "read" | "write">>) =>
+      aiTools.createAITools({
+        storeId: STORE,
+        userId: USER,
+        storeName: "AI payments",
+        urls: createTestUrls(),
+        permissions: {
+          reservations: "read",
+          products: "read",
+          customers: "read",
+          categories: "read",
+          payments: "read",
+          analytics: "read",
+          settings: "read",
+          ...permissions,
+        },
+      });
+    const customerOf = async (scoped: Tools) => {
+      const output = await scoped.get_customer.execute?.({ customerId: "customer" }, options);
+      assert.ok(output && "customer" in output, JSON.stringify(output));
+      const { customer } = output;
+      assert.ok(customer);
+      return customer;
+    };
+    const reservationOf = async (scoped: Tools) => {
+      const output = await scoped.get_reservation.execute?.({ reservationId }, options);
+      assert.ok(output && "reservation" in output, JSON.stringify(output));
+      const { reservation } = output;
+      assert.ok(reservation);
+      return reservation;
+    };
+
+    const noReservations = await customerOf(toolsWith({ reservations: "none" }));
+    assert.ok(noReservations.links.dashboard.includes("/dashboard/customers/customer"));
+    assert.ok(noReservations.reservations.every((reservation) => !("links" in reservation)));
+    const withReservations = await customerOf(toolsWith({}));
+    assert.ok(withReservations.reservations.some((reservation) => "links" in reservation));
+
+    const noCustomers = await reservationOf(toolsWith({ customers: "none" }));
+    assert.ok(noCustomers.customer && !("links" in noCustomers.customer));
+    const withCustomers = await reservationOf(toolsWith({}));
+    assert.ok(withCustomers.customer && "links" in withCustomers.customer);
+  });
 });

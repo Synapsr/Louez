@@ -507,4 +507,44 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
         .where(orm.eq(louezDb.stores.id, STORE));
     }
   });
+  test("a reservation's link shows only to a connection that may read reservations", async () => {
+    const [customer] = await louezDb.db
+      .insert(louezDb.customers)
+      .values({ storeId: STORE, email: "scoped@pt.test", firstName: "Sam", lastName: "Scope" })
+      .$returningId();
+    const reservationId = "pt_scoped_reservation";
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: reservationId,
+      storeId: STORE,
+      customerId: customer.id,
+      number: "PT-SCOPED-1",
+      status: "confirmed",
+      startDate: new Date("2027-03-01T09:00:00Z"),
+      endDate: new Date("2027-03-03T09:00:00Z"),
+      subtotalAmount: "100.00",
+      depositAmount: "0.00",
+      totalAmount: "100.00",
+    });
+    const reservationLink = `${TEST_APP_URL}/dashboard/reservations/${reservationId}?store=${STORE}`;
+    const customerLink = `${TEST_APP_URL}/dashboard/customers/${customer.id}?store=${STORE}`;
+    const textOf = async (authorization: string, name: string, args: object) => {
+      const result = await mcpCall(authorization, name, args);
+      assert.notEqual(result.isError, true, JSON.stringify(result.content));
+      return (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+    };
+
+    const blind = await key({ ...readOnly, reservations: "none" });
+    const customerText = await textOf(blind, "get_customer", { customerId: customer.id });
+    assert.ok(customerText.includes(customerLink), customerText);
+    assert.ok(customerText.includes("#PT-SCOPED-1"), "the history itself stays");
+    assert.ok(!customerText.includes(reservationId), customerText);
+    const paymentsText = await textOf(blind, "list_payments", { reservationId });
+    assert.ok(!paymentsText.includes(reservationLink), paymentsText);
+
+    const seeing = await key({ ...readOnly, reservations: "read" });
+    assert.ok(
+      (await textOf(seeing, "get_customer", { customerId: customer.id })).includes(reservationLink),
+    );
+    assert.ok((await textOf(seeing, "list_payments", { reservationId })).includes(reservationLink));
+  });
 });

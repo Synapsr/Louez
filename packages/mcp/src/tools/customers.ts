@@ -16,7 +16,7 @@ import {
 import { customerLinks, reservationLinks } from '@louez/api/platform/links';
 import { customers, db, reservations, stores } from '@louez/db';
 
-import type { McpRequestContext } from '../auth/context';
+import { hasPermission, type McpRequestContext } from '../auth/context';
 import { toolError, toolResult } from '../utils/errors';
 import { legacyTool } from '../utils/legacy-tool';
 import { linksLine } from '../utils/links';
@@ -126,7 +126,7 @@ export function registerCustomerTools(
     ctx,
     { domain: 'customers', level: 'read' },
     'get_customer',
-    "Get detailed customer profile with reservation history and the store's custom fields, with the links to the customer's and each reservation's dashboard page: give the user those URLs to open them. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
+    "Get detailed customer profile with reservation history and the store's custom fields, with the link to the customer's dashboard page and, when the connection may read reservations, each reservation's: give the user those URLs to open them. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
     {
       customerId: z.string().describe('The customer ID'),
     },
@@ -183,8 +183,13 @@ export function registerCustomerTools(
 
       if (customer.reservations.length > 0) {
         text += `\n### Recent reservations (${customer.reservations.length})\n`;
+        // A reservation's link names its id: only for a connection that may read reservations.
+        const linkReservations = hasPermission(ctx, 'reservations', 'read');
         for (const r of customer.reservations) {
-          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)} — ${reservationLinks(ctx.ports.urls, { id: ctx.storeId }, r).dashboard}\n`;
+          const link = linkReservations
+            ? ` — ${reservationLinks(ctx.ports.urls, { id: ctx.storeId }, r).dashboard}`
+            : '';
+          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)}${link}\n`;
         }
       }
 
