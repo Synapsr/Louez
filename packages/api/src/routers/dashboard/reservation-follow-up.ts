@@ -1,4 +1,6 @@
 import {
+  RESERVATION_AGENT_OFFSET_MAX,
+  RESERVATION_PAGE_DEFAULT,
   cancelReservationInput,
   getPlanningTimelineOutput,
   getReservationInput,
@@ -13,6 +15,7 @@ import {
   listUpcomingOutput,
   pollReservationsInput,
   pollReservationsOutput,
+  reservationErrors,
   reservationSchema,
   reservationWindowInput,
   statusChangeOutput,
@@ -98,7 +101,7 @@ const list = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_list",
-      description: `List the store's reservations as the dashboard does: by status (default: every open one), by period (today, this week, this month, on the start or the end date), by payment method, or by part of the number or the customer's name. Sorted by start date (newest first) unless sort says otherwise. Returns up to \`limit\` reservations (default 25, at most 100), the counts per status, the total that match and a nextCursor; nextCursor is null on the last page. Use reservations_get for one reservation's lines, payments and history. ${CUSTOMER_NOTE}`,
+      description: `List the store's reservations as the dashboard does: by status (default: every open one), by period (today, this week, this month, on the start or the end date), by payment method (needs read access to payments), or by part of the number or the customer's name. Sorted by start date (newest first) unless sort says otherwise. Returns up to \`limit\` reservations (default 25, at most 100), the counts per status, the total that match and a nextCursor: to read further, call again with cursor set to it, same filters and sort; it is null on the last page. Page numbers stop at the first 10,000 reservations. Use reservations_get for one reservation's lines, payments and history. ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "list_reservations", renamedArgs: { pageSize: "limit" } }],
       annotations: { readOnlyHint: true },
@@ -107,7 +110,18 @@ const list = storeProcedure
   .route({ method: "GET", path: "/reservations" })
   .input(listReservationsInput)
   .output(listReservationsOutput)
-  .handler(({ context, input }) => listReservations(reader(context), input));
+  .handler(({ context, input }) => {
+    // The dashboard's numbered pages go as deep as the list; an agent follows the cursor.
+    const offset = (input.page ?? 1) * (input.limit ?? RESERVATION_PAGE_DEFAULT);
+    if (
+      context.actor.credential.kind !== "session" &&
+      !input.cursor &&
+      offset > RESERVATION_AGENT_OFFSET_MAX
+    ) {
+      throw reservationErrors.pageTooDeep();
+    }
+    return listReservations(reader(context), input);
+  });
 
 const get = storeProcedure
   .meta({

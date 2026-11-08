@@ -24,6 +24,8 @@ export const RESERVATION_PAGE_DEFAULT = 25;
  * has that many pages. The dashboard's pagination offers every page there is.
  */
 export const RESERVATION_PAGE_NUMBER_MAX = 1_000_000;
+/** Deepest row an API or agent caller reaches with page numbers; past it, the cursor. */
+export const RESERVATION_AGENT_OFFSET_MAX = 10_000;
 /** Widest window the calendar and the planning read at once, in days. */
 export const RESERVATION_WINDOW_MAX_DAYS = 400;
 /** Most rows `reservations.listUpcoming` and `reservations.listOverdue` return per list. */
@@ -142,7 +144,7 @@ export const listReservationsInput = z.object({
     .max(RESERVATION_PAGE_NUMBER_MAX)
     .optional()
     .describe(
-      "A page number, for numbered pages (1 is the first). Prefer cursor; page is ignored when cursor is set.",
+      `A page number, for numbered pages (1 is the first); ignored when cursor is set. Use cursor to read further: through the API, page × limit stops at ${RESERVATION_AGENT_OFFSET_MAX}.`,
     ),
   limit: z.coerce
     .number()
@@ -765,6 +767,12 @@ export const reservationErrors = {
       i18nKey: "errors.reservationStatusChanged",
       retryable: true,
       details: { id },
+    }),
+  pageTooDeep: () =>
+    apiError("BAD_REQUEST", "PAGE_TOO_DEEP", {
+      message: `Page numbers reach the first ${RESERVATION_AGENT_OFFSET_MAX} reservations. Follow nextCursor to read further.`,
+      i18nKey: "errors.invalidData",
+      details: { maxOffset: RESERVATION_AGENT_OFFSET_MAX },
     }),
   invalidCursor: () =>
     apiError("BAD_REQUEST", "INVALID_CURSOR", {
