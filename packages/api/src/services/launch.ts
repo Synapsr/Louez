@@ -387,7 +387,8 @@ export function buildLaunchChecklist(
       },
     ),
     legalNotice: item(
-      legalNoticeWritten && (legal === null || legal.missing.length === 0),
+      legalNoticeWritten &&
+        (legal === null || (legal.missing.length === 0 && legal.unverified.length === 0)),
       {
         status: "done",
         required: false,
@@ -398,13 +399,15 @@ export function buildLaunchChecklist(
         tools: ["settings_update_legal"],
       },
       {
-        status: "missing",
+        // A text of its own with nothing Louez lacks: written, but Louez cannot read it.
+        status:
+          legal && legalNoticeWritten && legal.missing.length === 0 ? "unverified" : "missing",
         why: legal ? frenchLegalNoticeWhy(legal) : "No legal notice on the storefront.",
         tools: legal
           ? [
               ...new Set([
                 ...legal.fields
-                  .filter((field) => field.status === "missing")
+                  .filter((field) => field.status === "missing" || field.status === "unverified")
                   .flatMap((field) => field.tools),
                 "settings_update_legal",
               ]),
@@ -490,7 +493,9 @@ export function buildLaunchChecklist(
     catalog: { hasActiveProduct: state.hasActiveProduct, hasPricedProduct: state.hasPricedProduct },
     items,
     legalRequirements: legal,
-    warnings: legal?.warning ? [legal.warning] : [],
+    warnings: [legal?.warning, legal?.advisory].filter(
+      (warning): warning is string => typeof warning === "string",
+    ),
     milestones: state.milestones,
     links: storeLinks(urls, linkStore),
   };
@@ -519,8 +524,10 @@ export interface GoLivePreview {
   statuses: Partial<Record<LaunchItemKey, LaunchItemStatus>>;
   /** Shown first: what the law asks that the store still lacks. Never a block. */
   warnings: string[];
-  /** The legal fields still missing: a change since the preview voids its token. */
-  legalMissing: string[];
+  /** Each legal field's status: a change since the preview voids its token. */
+  legalStatuses: Partial<Record<string, string>>;
+  /** Items in place that Louez cannot read to confirm: to check before or after launch. */
+  toCheck: Array<Pick<LaunchItem, "key" | "title" | "why">>;
   /** What customers will see, in a few sentences. */
   customersWillSee: string[];
   stillMissing: Array<Pick<LaunchItem, "key" | "title" | "why">>;
@@ -549,6 +556,9 @@ function describeLaunch(
   const open = checklist.items.filter((entry) => entry.status !== "done");
   const stillMissing = open
     .filter((entry) => entry.status === "missing" || entry.status === "blocked")
+    .map(({ key, title, why }) => ({ key, title, why }));
+  const toCheck = open
+    .filter((entry) => entry.status === "unverified")
     .map(({ key, title, why }) => ({ key, title, why }));
   const optional = open
     .filter((entry) => entry.status === "optional")
@@ -583,7 +593,10 @@ function describeLaunch(
     bookingMode,
     statuses,
     warnings: checklist.warnings,
-    legalMissing: checklist.legalRequirements?.missing ?? [],
+    legalStatuses: Object.fromEntries(
+      (checklist.legalRequirements?.fields ?? []).map((field) => [field.key, field.status]),
+    ),
+    toCheck,
     customersWillSee,
     stillMissing,
     optional,

@@ -29,8 +29,15 @@ export type LaunchItemKey = (typeof LAUNCH_ITEM_KEYS)[number];
  * - `missing`: not in place, and customers will miss it (a `required` one stops the launch).
  * - `optional`: not in place, and the store works well without it.
  * - `blocked`: something outside the store's settings stops bookings (billing); the user fixes it in Louez.
+ * - `unverified`: in place, but Louez cannot read it to confirm it says what it must (a legal notice's own text).
  */
-export const LAUNCH_ITEM_STATUSES = ["done", "missing", "optional", "blocked"] as const;
+export const LAUNCH_ITEM_STATUSES = [
+  "done",
+  "missing",
+  "optional",
+  "blocked",
+  "unverified",
+] as const;
 export type LaunchItemStatus = (typeof LAUNCH_ITEM_STATUSES)[number];
 
 export const launchItemSchema = z.object({
@@ -76,9 +83,10 @@ export type LegalFieldKey = (typeof LEGAL_FIELD_KEYS)[number];
 
 /**
  * What French law asks of a store selling to consumers: a warning, never a
- * block. Field statuses: `known` (Louez holds it), `missing`, `automatic`
- * (the storefront shows it itself), `inLegalNotice` (Louez does not store it
- * and cannot check the legal notice's text for it).
+ * block. Field statuses: `known` (Louez holds it, and the storefront's own
+ * legal notice shows it or the text is still to write), `missing`,
+ * `automatic` (the storefront shows it itself), `unverified` (the store has a
+ * legal notice of its own, which Louez cannot read: check it states it).
  */
 export const legalRequirementsSchema = z.object({
   country: z.literal("FR"),
@@ -90,15 +98,19 @@ export const legalRequirementsSchema = z.object({
     z.object({
       key: z.enum(LEGAL_FIELD_KEYS),
       label: z.string(),
-      status: z.enum(["known", "missing", "automatic", "inLegalNotice"]),
+      status: z.enum(["known", "missing", "automatic", "unverified"]),
       /** What to do about it. */
       how: z.string(),
       tools: z.array(z.string()),
     }),
   ),
   missing: z.array(z.enum(LEGAL_FIELD_KEYS)),
+  /** The fields to check in the legal notice's own text. */
+  unverified: z.array(z.enum(LEGAL_FIELD_KEYS)),
   /** The warning to show the user, or null when nothing is missing. */
   warning: z.string().nullable(),
+  /** What to check in the legal notice's text, or null when there is nothing to check. */
+  advisory: z.string().nullable(),
 });
 export type LegalRequirementsView = z.infer<typeof legalRequirementsSchema>;
 

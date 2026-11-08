@@ -340,9 +340,13 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     });
     await legalProfile();
     const checklist = await run("getLaunchChecklist", {}, session());
-    for (const item of checklist.items) assert.equal(item.status, "done", item.key);
-    assert.deepEqual(checklist.warnings, []);
+    for (const item of checklist.items) {
+      // Louez cannot read a legal notice of the store's own: it stays to check.
+      assert.equal(item.status, item.key === "legalNotice" ? "unverified" : "done", item.key);
+    }
     assert.equal(checklist.legalRequirements?.warning, null);
+    assert.equal(checklist.warnings.length, 1);
+    assert.match(checklist.warnings[0] ?? "", /^To check:/);
     assert.deepEqual(checklist.bookingMode, {
       intended: "payment",
       effective: "payment",
@@ -587,19 +591,20 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
         (checklist.legalRequirements?.fields ?? []).map((field) => [field.key, field.status]),
       ),
       {
-        legalName: "known",
-        legalForm: "known",
-        companyNumber: "known",
-        registeredAddress: "known",
-        contactEmail: "known",
-        contactPhone: "known",
-        publicationDirector: "inLegalNotice",
+        legalName: "unverified",
+        legalForm: "unverified",
+        companyNumber: "unverified",
+        registeredAddress: "unverified",
+        contactEmail: "unverified",
+        contactPhone: "unverified",
+        publicationDirector: "unverified",
         host: "automatic",
       },
     );
     assert.deepEqual(checklist.legalRequirements?.missing, []);
-    assert.deepEqual(checklist.warnings, []);
-    assert.equal(statuses(checklist).legalNotice, "done");
+    assert.equal(checklist.legalRequirements?.warning, null);
+    assert.equal(checklist.warnings.length, 1);
+    assert.equal(statuses(checklist).legalNotice, "unverified");
     assert.equal(statuses(checklist).terms, "done");
 
     // A text without the identity Louez holds still says what it lacks.
@@ -612,6 +617,80 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       "companyNumber",
       "registeredAddress",
     ]);
+  });
+
+  test("a complete profile and a legal notice reading only Hello: nothing missing, everything to check", async () => {
+    await legalProfile();
+    await setStore({
+      email: "hello@ln.test",
+      phone: "+33 2 98 00 00 00",
+      cgv: "<p>Terms</p>",
+      legalNotice: "<p>Hello</p>",
+    });
+    const checklist = await run("getLaunchChecklist", {}, session());
+    const legal = checklist.legalRequirements;
+    assert.ok(legal);
+    assert.deepEqual(legal.missing, []);
+    assert.equal(legal.warning, null);
+    // The storefront shows "Hello" alone: Louez cannot tell it names the company.
+    for (const key of ["legalName", "legalForm", "companyNumber", "registeredAddress"] as const) {
+      assert.ok(legal.unverified.includes(key), key);
+      const field = legal.fields.find((entry) => entry.key === key);
+      assert.match(
+        field?.how ?? "",
+        /Present in the legal profile: check that the legal notice's text states it/,
+      );
+    }
+    assert.deepEqual(legal.unverified, [
+      "legalName",
+      "legalForm",
+      "companyNumber",
+      "registeredAddress",
+      "contactEmail",
+      "contactPhone",
+      "publicationDirector",
+      "host",
+    ]);
+    const notice = checklist.items.find((entry) => entry.key === "legalNotice");
+    assert.equal(notice?.status, "unverified");
+    assert.match(
+      notice?.why ?? "",
+      /check it states: company name, legal form, siren or siret, registered office/,
+    );
+    assert.match(
+      legal.advisory ?? "",
+      /^To check: .*legal form, siren or siret, registered office/,
+    );
+    assert.deepEqual(checklist.warnings, [legal.advisory]);
+    assert.equal(checklist.canGoLive, true);
+
+    // The preview keeps the advisory and the item to check; the launch goes through.
+    const key = await apiKey();
+    const refusal = await rejects(run("completeOnboarding", {}, key()), "CONFIRMATION_REQUIRED");
+    const preview = (
+      refusal.data.details as {
+        preview: {
+          summary: string;
+          details: { warnings: string[]; toCheck: Array<{ key: string }> };
+        };
+      }
+    ).preview;
+    assert.match(preview.summary, /^To check: /);
+    assert.deepEqual(preview.details.warnings, [legal.advisory]);
+    assert.deepEqual(
+      preview.details.toCheck.map((entry) => entry.key),
+      ["legalNotice"],
+    );
+    const done = await run(
+      "completeOnboarding",
+      {},
+      key({ "louez-confirmation": tokenOf(refusal) }),
+    );
+    assert.equal(done.launched, true);
+    assert.deepEqual(done.warnings, [legal.advisory]);
+    assert.ok(
+      done.remaining.some((entry) => entry.key === "legalNotice" && entry.status === "unverified"),
+    );
   });
 
   test("outside France no legal rule is claimed", async () => {

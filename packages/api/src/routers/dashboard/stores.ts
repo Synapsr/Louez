@@ -234,7 +234,7 @@ const getLaunchChecklistProcedure = storeProcedure
     mcp: {
       name: "stores_get_launch_checklist",
       description:
-        "What the store still lacks before customers can book, and whether it is online. Each item has a status: done; missing (customers will miss it; a `required` one stops stores_go_live); optional; blocked (Louez billing stops new bookings: only the user fixes it in Louez). Each item says why it matters and lists the tools that fix it; when it lists none, give the user its dashboard link. Also says how customers book (payment or request; without Stripe a store takes requests) and the storefront's address. Call it after stores_create and the settings, before stores_go_live.",
+        "What the store still lacks before customers can book, and whether it is online. Each item has a status: done; missing (customers will miss it; a `required` one stops stores_go_live); optional; blocked (Louez billing stops new bookings: only the user fixes it in Louez); unverified (in place, but Louez cannot read it: ask the user to check it, such as a legal notice's own text). Show `warnings` to the user: what the law asks that is missing, and what to check. Each item says why it matters and lists the tools that fix it; when it lists none, give the user its dashboard link. Also says how customers book (payment or request; without Stripe a store takes requests) and the storefront's address. Call it after stores_create and the settings, before stores_go_live.",
       bundle: "daily",
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
@@ -288,7 +288,7 @@ const completeOnboarding = storeProcedure
         confirm: confirmUnderLock<GoLivePreview>(context, path, input, (preview) => ({
           state: {
             statuses: preview.statuses,
-            legalMissing: preview.legalMissing,
+            legalStatuses: preview.legalStatuses,
             bookingMode: preview.bookingMode,
             storefrontUrl: preview.storefrontUrl,
           },
@@ -299,6 +299,7 @@ const completeOnboarding = storeProcedure
             bookingMode: preview.bookingMode,
             customersWillSee: preview.customersWillSee,
             stillMissing: preview.stillMissing,
+            toCheck: preview.toCheck,
             optional: preview.optional,
           },
         })),
