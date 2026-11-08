@@ -825,19 +825,26 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
   });
 
   test("a writer outside these procedures keeps a section saved while it waited", async () => {
-    // Taxes take the lock first, then the onboarding's completion queues behind
-    // them: it reads the settings once it holds the lock, so it keeps the taxes.
-    const { completeOnboarding } = await import("../../services/onboarding");
+    // Taxes take the lock first, then the store's launch queues behind them:
+    // it reads the settings once it holds the lock, so it keeps the taxes.
+    const { goLive } = await import("../../services/launch");
     const holder = await database.connect();
     try {
       await holder.beginTransaction();
       await holder.query("SELECT id FROM `stores` WHERE id = ? FOR UPDATE", [STORE]);
       const taxes = run("updateTaxes", { enabled: true }, session());
       await waitForLockWaits(holder, database.name, 1);
-      const onboarding = completeOnboarding({
-        storeId: STORE,
-        input: { reservationMode: "payment" },
-      });
+      const onboarding = goLive(
+        {
+          storeId: STORE,
+          store: { id: STORE, name: "Brest Surf", slug: "st-brest-surf", ownerUserId: OWNER },
+          afterCommit: ports.afterCommit,
+          userId: OWNER,
+          transport: "rpc",
+        },
+        { reservationMode: "payment" },
+        { urls: ports.urls },
+      );
       await waitForLockWaits(holder, database.name, 2);
       await holder.commit();
       await Promise.all([taxes, onboarding]);

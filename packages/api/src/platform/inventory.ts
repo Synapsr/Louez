@@ -2045,10 +2045,22 @@ export const capabilities = [
     plan: { lot: "8" },
   },
   {
-    id: "stores.completeOnboarding",
-    sources: [procedure("onboarding", "complete")],
-    kind: "write",
+    // What a store still lacks before it goes live; the dashboard's home
+    // checklist reads it too.
+    id: "stores.getLaunchChecklist",
+    sources: [procedure("stores", "getLaunchChecklist")],
+    kind: "read",
     plan: { lot: "8" },
+    migrated: true,
+  },
+  {
+    // The onboarding's last step and an agent's go-live (stores_go_live).
+    id: "stores.completeOnboarding",
+    sources: [procedure("stores", "completeOnboarding")],
+    kind: "write",
+    sensitive: "money",
+    plan: { lot: "8" },
+    migrated: true,
   },
   {
     id: "account.updateInfo",

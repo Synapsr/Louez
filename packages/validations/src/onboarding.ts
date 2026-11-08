@@ -323,4 +323,3 @@ export const stripeSetupSchema = z.object({
 export type StoreInfoInput = z.infer<typeof storeInfoSchema>;
 export type BrandingInput = z.infer<ReturnType<typeof createBrandingSchema>>;
 export type FirstProductInput = z.infer<typeof firstProductSchema>;
-export type StripeSetupInput = z.infer<typeof stripeSetupSchema>;

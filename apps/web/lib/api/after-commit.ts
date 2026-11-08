@@ -47,6 +47,8 @@ function staleViewports(event: ApiEvent): string[] {
   if (event.type === "store.storefrontUpdated" && event.themeChanged) return [event.store.slug];
   // A page visited at the new address before the move cached the default theme.
   if (event.type === "store.slugChanged") return [event.previousSlug, event.store.slug];
+  // A visit before the launch cached the default theme of a store it could not find.
+  if (event.type === "store.launched") return [event.store.slug];
   return [];
 }
 
@@ -105,6 +107,12 @@ function pathsToRevalidate(event: ApiEvent): Array<string | { path: string; type
       return settingsPaths(event.section, event.store.slug);
     case "store.storefrontUpdated":
       return [];
+    case "store.launched":
+      // The dashboard's layout sent the store to the onboarding until now.
+      return [
+        { path: "/dashboard", type: "layout" },
+        { path: `/${event.store.slug}`, type: "layout" },
+      ];
     case "store.slugChanged":
       return [
         "/dashboard",

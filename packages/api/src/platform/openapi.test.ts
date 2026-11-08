@@ -202,6 +202,8 @@ describe("OpenAPI document", () => {
         "GET /stores": "stores_list",
         "GET /stores/slug-availability": "stores_check_slug_availability",
         "POST /stores": "stores_create",
+        "GET /stores/launch-checklist": "stores_get_launch_checklist",
+        "POST /stores/go-live": "stores_go_live",
       },
     );
 
@@ -215,6 +217,10 @@ describe("OpenAPI document", () => {
     ]);
     assert.deepEqual(refs("POST /categories"), ["#/components/parameters/IdempotencyKey"]);
     assert.deepEqual(refs("POST /stores"), [
+      "#/components/parameters/IdempotencyKey",
+      "#/components/parameters/LouezConfirmation",
+    ]);
+    assert.deepEqual(refs("POST /stores/go-live"), [
       "#/components/parameters/IdempotencyKey",
       "#/components/parameters/LouezConfirmation",
     ]);

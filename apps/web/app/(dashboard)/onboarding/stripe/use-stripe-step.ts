@@ -29,7 +29,7 @@ export const useStripeStep = () => {
   const { goToNextStep, isNavigating } = useStepNavigation(nextPath);
 
   const completeOnboardingMutation = useMutation(
-    orpc.dashboard.onboarding.complete.mutationOptions(),
+    orpc.dashboard.stores.completeOnboarding.mutationOptions(),
   );
 
   useDraftPreview();

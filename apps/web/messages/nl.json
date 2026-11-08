@@ -9150,6 +9150,7 @@
     "unauthenticated": "Niet geauthenticeerd",
     "invalidData": "Ongeldige gegevens",
     "slugTaken": "Dit adres is al in gebruik",
+    "storeNotReady": "Je winkel mist het land of de valuta: vul de gegevens aan voordat je hem online zet.",
     "storeNotFound": "Winkel niet gevonden",
     "productNotFound": "Product niet gevonden",
     "categoryNotFound": "Categorie niet gevonden",

@@ -9150,6 +9150,7 @@
     "unauthenticated": "Tidak diautentikasi",
     "invalidData": "Data tidak valid",
     "slugTaken": "Alamat ini sudah digunakan",
+    "storeNotReady": "Toko Anda belum memiliki negara atau mata uang: lengkapi data toko sebelum menayangkannya.",
     "storeNotFound": "Toko tidak ditemukan",
     "productNotFound": "Produk tidak ditemukan",
     "categoryNotFound": "Kategori tidak ditemukan",

@@ -5,11 +5,8 @@ import { appRouter } from "@louez/api/router";
 
 import { apiPorts } from "@/lib/api/ports";
 import { rpcCsrfHandlerPlugin } from "@/lib/orpc/csrf";
-import { notifyStoreCreated as sendStoreCreatedNotification } from "@/lib/discord/platform-notifications";
 import { log, useLogger, withEvlog } from "@/lib/evlog";
 import { generateContract } from "@/lib/pdf/generate";
-import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
-import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { getConnectedAccountPayoutPage } from "@/lib/stripe/connected-account-finances";
 import { getCurrentStore } from "@/lib/store-context";
 
@@ -143,27 +140,6 @@ async function handleRequest(request: Request) {
       },
       regenerateContract: async (reservationId: string) => {
         await generateContract({ reservationId, regenerate: true });
-      },
-      notifyStoreCreated: async (store: {
-        id: string;
-        name: string;
-        slug: string;
-        userId?: string;
-        reservationMode?: "payment" | "request";
-      }) => {
-        await Promise.allSettled([
-          sendStoreCreatedNotification(store),
-          captureProductServerEvent({
-            distinctId: store.userId,
-            event: productAnalyticsEvents.onboardingCompleted,
-            properties: {
-              feature: "onboarding",
-              surface: "dashboard",
-              store_id: store.id,
-              reservation_mode: store.reservationMode ?? null,
-            },
-          }),
-        ]);
       },
     },
   });

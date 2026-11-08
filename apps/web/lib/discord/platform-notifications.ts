@@ -204,11 +204,27 @@ export async function notifyVerificationEmailSent(email: string): Promise<void> 
   await send(`📧 Verification email sent to ${email}`)
 }
 
-export async function notifyStoreCreated(store: StoreInfo): Promise<void> {
-  trackFromHello('store_created', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
-  if (!isEnabled()) return
+/**
+ * The platform's notice that a store went live, on one channel: an outbox
+ * sender (packages/api services/launch.ts). Throws when it did not go out;
+ * `beforeSend` checks the sender still holds its row.
+ */
+export async function sendPlatformStoreLaunched(
+  channel: 'discord' | 'fromhello',
+  store: StoreInfo,
+  beforeSend: () => Promise<void>,
+): Promise<{ skipped: string } | undefined> {
+  if (channel === 'fromhello') {
+    if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return { skipped: 'fromHello is not set up' }
+    await beforeSend()
+    await trackFromHelloOrThrow('store_created', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id })
+    return undefined
+  }
+  if (!isEnabled()) return { skipped: 'the platform webhook is not set up' }
   const prefix = await storePrefix(store)
-  await send(`🏪 ${prefix} completed onboarding`)
+  await beforeSend()
+  await sendOrThrow(`🏪 ${prefix} completed onboarding`)
+  return undefined
 }
 
 export async function notifyUserSignedIn(

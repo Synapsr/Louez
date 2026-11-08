@@ -608,13 +608,6 @@ export interface BaseContext {
       rewardKind: "free_reservations" | "invoice_credit";
     } | null>;
   };
-  notifyStoreCreated?: (store: {
-    id: string;
-    name: string;
-    slug: string;
-    userId?: string;
-    reservationMode?: "payment" | "request";
-  }) => Promise<void>;
 }
 
 /**

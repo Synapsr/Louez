@@ -38,7 +38,7 @@ export const useStripeConnectStart = ({ fromReeent }: { fromReeent: boolean }) =
   const hasPendingAccount = draftQuery.data?.stripe?.hasPendingAccount ?? false;
 
   const completeOnboardingMutation = useMutation(
-    orpc.dashboard.onboarding.complete.mutationOptions(),
+    orpc.dashboard.stores.completeOnboarding.mutationOptions(),
   );
 
   // When the source step is still due, the Stripe KYC detour

@@ -9150,6 +9150,7 @@
     "unauthenticated": "未经过验证",
     "invalidData": "无效数据",
     "slugTaken": "该地址已被使用",
+    "storeNotReady": "您的店铺缺少国家或货币：请在上线前填写店铺信息。",
     "storeNotFound": "未找到商店",
     "productNotFound": "未找到产品",
     "categoryNotFound": "未找到类别",

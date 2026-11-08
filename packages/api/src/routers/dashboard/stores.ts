@@ -1,4 +1,10 @@
 import {
+  getLaunchChecklistInput,
+  goLiveInput,
+  goLiveOutput,
+  launchChecklistOutput,
+} from "../../contracts/launch";
+import {
   checkSlugAvailabilityInput,
   checkSlugAvailabilityOutput,
   createStoreInput,
@@ -12,8 +18,9 @@ import {
 import { ACCOUNT_SCOPE, connectionStores } from "../../platform/actor";
 import { requireConfirmation } from "../../platform/confirmation";
 import { storeLinks } from "../../platform/links";
-import { accountRefusal } from "../../platform/permissions";
-import { accountProcedure, missingTransport } from "../../platform/procedures";
+import { accountRefusal, type ProcedureScope } from "../../platform/permissions";
+import { accountProcedure, missingTransport, storeProcedure } from "../../platform/procedures";
+import { getLaunchChecklist, goLive, type GoLivePreview } from "../../services/launch";
 import {
   assertInstanceTakesAStore,
   assertSlugFree,
@@ -23,6 +30,8 @@ import {
   describeNewStoreTerms,
   resolvePendingReferral,
 } from "../../services/store-creation";
+import { confirmUnderLock, mayRead } from "./product-context";
+import { settingsActor } from "./settings-context";
 
 /** May this connection add a store (`stores` write over all the user's stores)? */
 const CREATE_SCOPE = { domain: "stores", level: "write" } as const;
@@ -107,7 +116,7 @@ const NEXT_STEPS = [
   "Pass the store's id as storeId to the other tools.",
   "Fill the catalog: categories_create, then products_create (prices, deposit, stock). Their tools are in the catalog bundle.",
   "Set the store up before launch, with the tools of the settings bundle: settings_get shows every setting; settings_update_store_info (description, contact, coordinates), settings_update_legal (terms and legal notice), settings_update_reservation_rules, settings_update_business_hours, settings_update_delivery and settings_create_location (pickup points), settings_update_taxes; for the storefront, online_store_update_appearance with the logo and banner from online_store_create_image_upload, and online_store_update_slug to change its address.",
-  "The store stays offline until the user launches it: they finish in the Louez dashboard (the dashboard link), where their store is waiting with what you filled in.",
+  "The store stays offline until it goes live. stores_get_launch_checklist says what is still missing, with the tool that fixes each item; once the user is happy, stores_go_live puts the store online (it shows a preview first). The user can also finish in the Louez dashboard (the dashboard link), where their store is waiting with what you filled in.",
 ];
 
 /**
@@ -207,4 +216,106 @@ const create = accountProcedure
     };
   });
 
-export const dashboardStoresRouter = { list, checkSlugAvailability, create };
+// --- Launch -------------------------------------------------------------------
+
+const LAUNCH_READ: ProcedureScope = { domain: "settings", level: "read" };
+/** Going live is the onboarding's last step, which only members who manage settings reach. */
+const LAUNCH_WRITE: ProcedureScope = {
+  domain: "settings",
+  level: "write",
+  role: "manage_settings",
+};
+
+/** What a store still lacks before customers can book, item by item. */
+const getLaunchChecklistProcedure = storeProcedure
+  .meta({
+    capability: "stores.getLaunchChecklist",
+    scope: LAUNCH_READ,
+    mcp: {
+      name: "stores_get_launch_checklist",
+      description:
+        "What the store still lacks before customers can book, and whether it is online. Each item has a status: done; missing (customers will miss it; a `required` one stops stores_go_live); optional; blocked (Louez billing stops new bookings: only the user fixes it in Louez). Each item says why it matters and lists the tools that fix it; when it lists none, give the user its dashboard link. Also says how customers book (payment or request; without Stripe a store takes requests) and the storefront's address. Call it after stores_create and the settings, before stores_go_live.",
+      bundle: "daily",
+      annotations: { readOnlyHint: true, idempotentHint: true },
+    },
+  })
+  .route({ method: "GET", path: "/stores/launch-checklist" })
+  .input(getLaunchChecklistInput)
+  .output(launchChecklistOutput)
+  .handler(({ context }) =>
+    getLaunchChecklist(context.actor.storeId, {
+      urls: context.ports.urls,
+      // The first bookings show only to a caller who may read reservations.
+      withMilestones: mayRead(context, "reservations"),
+    }),
+  );
+
+/**
+ * Puts the store online: the onboarding's last step, and an agent's "launch
+ * my store". Refused while a required item is missing; a store already
+ * online answers as it is.
+ */
+const completeOnboarding = storeProcedure
+  .meta({
+    capability: "stores.completeOnboarding",
+    scope: LAUNCH_WRITE,
+    sensitive: "money",
+    mcp: {
+      name: "stores_go_live",
+      description:
+        "Put the store online: its storefront opens to the public and customers can book. Read stores_get_launch_checklist first and fix what is missing, or tell the user what is. Refused with STORE_NOT_READY while a required item is missing. The first call answers CONFIRMATION_REQUIRED with a preview (the public URL, how customers book, what they will see, what is still missing or optional): show it to the user, and once they agree, call again with the same arguments and the confirmationToken. reservationMode sets how customers book; without Stripe connected, payment mode takes requests until it is. A store already online is not launched again: the answer gives its URL. Returns the storefront's URL and the store's `links`: give the user these URLs.",
+      bundle: "daily",
+      annotations: { idempotentHint: true, openWorldHint: false },
+    },
+  })
+  .route({ method: "POST", path: "/stores/go-live" })
+  .input(goLiveInput)
+  .output(goLiveOutput)
+  .handler(async ({ context, input, path }) => {
+    const { ports, actor } = context;
+    const result = await goLive(
+      {
+        ...settingsActor(context),
+        userId: actor.credential.userId,
+        transport: actor.transport,
+      },
+      input,
+      {
+        urls: ports.urls,
+        // The preview and its binding read the checklist under the store's lock.
+        confirm: confirmUnderLock<GoLivePreview>(context, path, input, (preview) => ({
+          state: {
+            statuses: preview.statuses,
+            bookingMode: preview.bookingMode,
+            storefrontUrl: preview.storefrontUrl,
+          },
+          details: {
+            storefrontUrl: preview.storefrontUrl,
+            bookingMode: preview.bookingMode,
+            customersWillSee: preview.customersWillSee,
+            stillMissing: preview.stillMissing,
+            optional: preview.optional,
+          },
+        })),
+      },
+    );
+    ports.dispatchEffects(result.effectIds);
+    const { checklist } = result;
+    return {
+      storeId: actor.storeId,
+      online: true as const,
+      launched: result.launched,
+      storefrontUrl: checklist.storefrontUrl,
+      bookingMode: result.bookingMode,
+      remaining: checklist.items.filter((entry) => entry.status !== "done"),
+      links: checklist.links,
+    };
+  });
+
+export const dashboardStoresRouter = {
+  list,
+  checkSlugAvailability,
+  create,
+  getLaunchChecklist: getLaunchChecklistProcedure,
+  completeOnboarding,
+};

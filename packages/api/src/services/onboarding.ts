@@ -1,68 +1,11 @@
 import { eq } from "drizzle-orm";
 
-import { db, markStore, mergeStoreRow, stores } from "@louez/db";
-import type { StripeSetupInput } from "@louez/validations";
+import { db, stores } from "@louez/db";
 
 import { ApiServiceError } from "./errors";
 
-interface CompleteOnboardingParams {
-  storeId: string;
-  input: StripeSetupInput;
-  notifyStoreCreated?: (store: {
-    id: string;
-    name: string;
-    slug: string;
-    userId: string;
-    reservationMode: StripeSetupInput["reservationMode"];
-  }) => Promise<void>;
-}
-
 interface GetOnboardingDraftParams {
   storeId: string;
-}
-
-export async function completeOnboarding(params: CompleteOnboardingParams) {
-  const { storeId, input, notifyStoreCreated } = params;
-
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.id, storeId),
-  });
-
-  if (!store) {
-    throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
-  }
-
-  // The settings are read under the store's lock: another section saved
-  // meanwhile (taxes, hours) is kept.
-  await mergeStoreRow(db, storeId, async ({ settings }, tx) => {
-    // onboardingCompleted is in the store's billing snapshot.
-    await markStore(tx, storeId);
-    return {
-      set: {
-        settings: {
-          minRentalMinutes: 60,
-          maxRentalMinutes: null,
-          advanceNoticeMinutes: 1440,
-          turnoverBufferMinutes: 0,
-          ...settings,
-          reservationMode: input.reservationMode,
-        },
-        onboardingCompleted: true,
-      },
-    };
-  });
-
-  if (notifyStoreCreated) {
-    notifyStoreCreated({
-      id: storeId,
-      name: store.name,
-      slug: store.slug,
-      userId: store.userId,
-      reservationMode: input.reservationMode,
-    }).catch(() => {});
-  }
-
-  return { success: true as const };
 }
 
 export async function getOnboardingDraft(params: GetOnboardingDraftParams) {

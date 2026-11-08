@@ -58,6 +58,8 @@ describe("api effects outbox (database)", { skip: skipWithoutTestDatabase() }, (
     "reservation.notesAnalytics": async () => {},
     "store.welcomeCredits": async () => {},
     "store.creationAnalytics": async () => {},
+    "store.launchNotification": async () => {},
+    "store.launchAnalytics": async () => {},
   };
 
   before(async () => {

@@ -182,6 +182,18 @@ export interface ApiEffectPayloads {
     /** The event's own facts; the sender adds the referral program's settings. */
     properties: Record<string, string | number | boolean | null>;
   };
+  /** The platform's notice that a store went live, on one channel. */
+  "store.launchNotification": {
+    channel: "discord" | "fromhello";
+    store: { id: string; name: string; slug: string };
+  };
+  /** The analytics event of a store going live: the onboarding's completion. */
+  "store.launchAnalytics": AnalyticsEventIdentity & {
+    ownerUserId: string;
+    storeId: string;
+    reservationMode: "payment" | "request";
+    transport: "rpc" | "openapi" | "mcp";
+  };
 }
 
 export type ApiEffectType = keyof ApiEffectPayloads;

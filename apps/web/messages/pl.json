@@ -9150,6 +9150,7 @@
     "unauthenticated": "Nieuwierzytelniony",
     "invalidData": "Nieprawidłowe dane",
     "slugTaken": "Ten adres jest już używany",
+    "storeNotReady": "W Twoim sklepie brakuje kraju lub waluty: uzupełnij jego dane przed opublikowaniem.",
     "storeNotFound": "Nie znaleziono sklepu",
     "productNotFound": "Nie znaleziono produktu",
     "categoryNotFound": "Nie znaleziono kategorii",

@@ -162,6 +162,8 @@ export type ApiEvent =
   | { type: "store.settingsUpdated"; store: ApiEventStore; section: SettingsSection }
   /** The online store's sections or look changed; `themeChanged`: its cached theme colour is stale. */
   | { type: "store.storefrontUpdated"; store: ApiEventStore; themeChanged: boolean }
+  /** The store went live: its storefront is public now. */
+  | { type: "store.launched"; store: ApiEventStore }
   /** The store moved to a new web address (`store.slug`). */
   | { type: "store.slugChanged"; store: ApiEventStore; previousSlug: string }
   /** Not a write: the store's card gate refused a status change; the app logs it. */

@@ -9150,6 +9150,7 @@
     "unauthenticated": "인증되지 않음",
     "invalidData": "잘못된 데이터",
     "slugTaken": "이 주소는 이미 사용 중입니다.",
+    "storeNotReady": "스토어의 국가 또는 통화가 없습니다. 공개하기 전에 스토어 정보를 입력하세요.",
     "storeNotFound": "매장을 찾을 수 없습니다",
     "productNotFound": "제품을 찾을 수 없습니다",
     "categoryNotFound": "카테고리를 찾을 수 없습니다",

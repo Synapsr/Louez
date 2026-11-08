@@ -9150,6 +9150,7 @@
     "unauthenticated": "Not authenticated",
     "invalidData": "Invalid data",
     "slugTaken": "This address is already in use",
+    "storeNotReady": "Your store is missing its country or currency: fill in your store's details before going live.",
     "storeNotFound": "Store not found",
     "productNotFound": "Product not found",
     "categoryNotFound": "Category not found",
