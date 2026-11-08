@@ -9551,5 +9551,12 @@
     },
     "declaredBy": "{origin}에서 선언한 이름",
     "declaredByItself": "앱이 직접 선언한 이름(동적 등록)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "매장 전환",
+    "title": "매장을 전환할까요?",
+    "description": "이 링크는 매장 “{target}”을(를) 엽니다. 현재 “{current}”에 있습니다.",
+    "open": "{target}에서 열기",
+    "stay": "{current}에 머무르기"
   }
 }

@@ -231,6 +231,45 @@ export async function switchActiveStore(
   return { success: true }
 }
 
+/** What a dashboard link naming a store leads to (see app/api/active-store). */
+export type StoreSwitchState =
+  | { kind: 'signed-out' }
+  /** The same store, one the user may not open, or an unknown id: nothing to ask. */
+  | { kind: 'stay' }
+  /** Another store of the user: they confirm before the dashboard changes store. */
+  | {
+      kind: 'confirm'
+      target: { id: string; name: string }
+      current: { id: string; name: string }
+    }
+
+/**
+ * Reads only: what a link naming `storeId` should do for the signed-in user.
+ * The stores are the ones the store switcher offers (a member's, or every
+ * store for platform staff), so `confirm` and `switchActiveStore` agree, and
+ * a store the user may not open looks the same as one that does not exist.
+ */
+export async function getStoreSwitchState(storeId: string): Promise<StoreSwitchState> {
+  const session = await auth()
+  if (!session?.user?.id) return { kind: 'signed-out' }
+  if (!storeId || isStandaloneMode()) return { kind: 'stay' }
+
+  const userStores = await getUserStores()
+  const target = userStores.find((store) => store.id === storeId)
+  if (!target) return { kind: 'stay' }
+
+  // The store the dashboard shows now, as getCurrentStore picks it.
+  const activeStoreId = await getActiveStoreId()
+  const current = userStores.find((store) => store.id === activeStoreId) ?? userStores[0]
+  if (!current || current.id === target.id) return { kind: 'stay' }
+
+  return {
+    kind: 'confirm',
+    target: { id: target.id, name: target.name },
+    current: { id: current.id, name: current.name },
+  }
+}
+
 /**
  * Clear the active store cookie
  */

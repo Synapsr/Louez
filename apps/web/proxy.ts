@@ -90,6 +90,7 @@ const DASHBOARD_ROUTES = [
   "/login",
   "/register",
   "/oauth", // the OAuth consent page of agent connections
+  "/active-store", // the confirmation of a dashboard link naming another store
   "/dashboard",
   "/onboarding",
   "/online-store",

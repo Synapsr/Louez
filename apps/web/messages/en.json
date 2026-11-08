@@ -9551,5 +9551,12 @@
     },
     "declaredBy": "Name declared by {origin}",
     "declaredByItself": "Name declared by the app (registered dynamically)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Switch store",
+    "title": "Switch store?",
+    "description": "This link opens the store “{target}”. You are on “{current}”.",
+    "open": "Open in {target}",
+    "stay": "Stay on {current}"
   }
 }

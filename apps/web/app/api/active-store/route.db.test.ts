@@ -13,7 +13,8 @@ import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "
 import { activeStoreSwitchPath } from "@/lib/util.active-store-link";
 
 // A dashboard link that names its store, on a migrated database: the real
-// store switcher's check, with the session and the cookie jar stubbed.
+// store switcher's check, with the session and the cookie jar stubbed. A GET
+// never switches; only the confirmation's same-origin POST does.
 
 const MEMBER = "user_active_store_mbr";
 const OUTSIDER = "user_active_store_out";
@@ -65,8 +66,11 @@ Reflect.get(
   },
 });
 
+const APP = "https://app.louez.test";
+const SAME_ORIGIN = { origin: APP, "sec-fetch-site": "same-origin" };
+
 process.env.LOUEZ_MODE = "platform";
-process.env.NEXT_PUBLIC_APP_URL = "https://app.louez.test";
+process.env.NEXT_PUBLIC_APP_URL = APP;
 
 describe(
   "dashboard links that name their store (database)",
@@ -107,18 +111,43 @@ describe(
 
     /** The browser follows a dashboard link: the proxy hands it to the route. */
     async function follow(link: string) {
-      const target = activeStoreSwitchPath(new URL(link, "https://app.louez.test"));
+      const target = activeStoreSwitchPath(new URL(link, APP));
       assert.ok(target, `${link} names a store`);
-      const response = await route.GET(new NextRequest(new URL(target, "https://app.louez.test")));
+      const response = await route.GET(new NextRequest(new URL(target, APP)));
       assert.equal(response.status, 307);
       return response.headers.get("location") ?? "";
     }
 
-    test("a member gets the named store, then the same URL without the parameter", async () => {
+    /** The confirmation page's form, posted with these headers. */
+    async function post(
+      store: string,
+      next: string,
+      headers: Record<string, string> = SAME_ORIGIN,
+    ) {
+      return route.POST(
+        new NextRequest(new URL("/api/active-store", APP), {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
+          body: new URLSearchParams({ store, next }),
+        }),
+      );
+    }
+
+    test("a GET never switches: another store of the member goes to the confirmation page", async () => {
       currentUserId = MEMBER;
       jar.set(COOKIE, STORE_A);
       const location = await follow(`/dashboard/products/p1?tab=units&store=${STORE_B}`);
-      assert.equal(location, "/dashboard/products/p1?tab=units");
+      const confirm = new URL(location, APP);
+      assert.equal(confirm.pathname, "/active-store");
+      assert.equal(confirm.searchParams.get("store"), STORE_B);
+      assert.equal(confirm.searchParams.get("next"), "/dashboard/products/p1?tab=units");
+      assert.equal(jar.get(COOKIE), STORE_A);
+    });
+
+    test("the active store itself goes straight to the URL without the parameter", async () => {
+      currentUserId = MEMBER;
+      jar.set(COOKIE, STORE_B);
+      assert.equal(await follow(`/dashboard/categories?store=${STORE_B}`), "/dashboard/categories");
       assert.equal(jar.get(COOKIE), STORE_B);
     });
 
@@ -132,8 +161,64 @@ describe(
       assert.equal(jar.get(COOKIE), STORE_A);
     });
 
-    test("the way back stays on the dashboard and never keeps the store", async () => {
+    test("only a member's other store asks for a confirmation", async () => {
+      const { getStoreSwitchState } = await import("@/lib/store-context");
       currentUserId = MEMBER;
+      jar.set(COOKIE, STORE_A);
+      assert.deepEqual(await getStoreSwitchState(STORE_B), {
+        kind: "confirm",
+        target: { id: STORE_B, name: "Store B" },
+        current: { id: STORE_A, name: "Store A" },
+      });
+      assert.deepEqual(await getStoreSwitchState(STORE_A), { kind: "stay" });
+      assert.deepEqual(await getStoreSwitchState(UNKNOWN), { kind: "stay" });
+      currentUserId = OUTSIDER;
+      assert.deepEqual(await getStoreSwitchState(STORE_B), { kind: "stay" });
+      currentUserId = null;
+      assert.deepEqual(await getStoreSwitchState(STORE_B), { kind: "signed-out" });
+    });
+
+    test("a confirmed POST from the app switches a member, then drops the parameter", async () => {
+      currentUserId = MEMBER;
+      jar.set(COOKIE, STORE_A);
+      const response = await post(STORE_B, `/dashboard/products/p1?store=${STORE_B}`);
+      assert.equal(response.status, 303);
+      assert.equal(response.headers.get("location"), "/dashboard/products/p1");
+      assert.equal(jar.get(COOKIE), STORE_B);
+    });
+
+    test("a POST from another site, or without an Origin, is refused", async () => {
+      currentUserId = MEMBER;
+      jar.set(COOKIE, STORE_A);
+      const refused: Array<Record<string, string>> = [
+        { origin: "https://evil.test" },
+        { origin: "https://evil.test", "sec-fetch-site": "cross-site" },
+        { origin: APP, "sec-fetch-site": "cross-site" },
+        { origin: APP, "sec-fetch-site": "same-site" },
+        { origin: "null" },
+        {},
+      ];
+      for (const headers of refused) {
+        const response = await post(STORE_B, "/dashboard", headers);
+        assert.equal(response.status, 403, JSON.stringify(headers));
+      }
+      assert.equal(jar.get(COOKIE), STORE_A);
+    });
+
+    test("a POST for a store the user may not open, or an unknown one, changes nothing and answers the same", async () => {
+      currentUserId = OUTSIDER;
+      jar.set(COOKIE, STORE_A);
+      const notMember = await post(STORE_B, "/dashboard/customers/c1");
+      const unknown = await post(UNKNOWN, "/dashboard/customers/c1");
+      assert.equal(notMember.status, 303);
+      assert.equal(unknown.status, 303);
+      assert.equal(notMember.headers.get("location"), "/dashboard/customers/c1");
+      assert.equal(unknown.headers.get("location"), notMember.headers.get("location"));
+      assert.equal(jar.get(COOKIE), STORE_A);
+    });
+
+    test("the way back stays on the dashboard and never keeps the store", async () => {
+      currentUserId = OUTSIDER;
       for (const [next, expected] of [
         ["https://evil.test/dashboard", "/dashboard"],
         ["//evil.test/dashboard", "/dashboard"],
@@ -142,23 +227,31 @@ describe(
       ]) {
         const query = new URLSearchParams({ store: STORE_B, next });
         const response = await route.GET(
-          new NextRequest(new URL(`/api/active-store?${query}`, "https://app.louez.test")),
+          new NextRequest(new URL(`/api/active-store?${query}`, APP)),
         );
         assert.equal(response.headers.get("location"), expected, next);
+        assert.equal((await post(STORE_B, next)).headers.get("location"), expected, next);
       }
     });
 
-    test("signed out, the user signs in first and the store applies on the way back", async () => {
+    test("signed out, the user signs in first, then confirms on the way back", async () => {
+      jar.set(COOKIE, STORE_A);
       const link = `/dashboard/products/p1?store=${STORE_B}`;
-      const toLogin = new URL(await follow(link), "https://app.louez.test");
+      const toLogin = new URL(await follow(link), APP);
       assert.equal(toLogin.pathname, "/login");
       const callback = toLogin.searchParams.get("callbackUrl") ?? "";
       assert.equal(callback, link);
-      assert.equal(jar.has(COOKIE), false);
 
       // Signed in, the login page sends the browser to the callback.
       currentUserId = MEMBER;
-      assert.equal(await follow(callback), "/dashboard/products/p1");
+      const confirm = new URL(await follow(callback), APP);
+      assert.equal(confirm.pathname, "/active-store");
+      assert.equal(jar.get(COOKIE), STORE_A);
+      const confirmed = await post(
+        confirm.searchParams.get("store") ?? "",
+        confirm.searchParams.get("next") ?? "",
+      );
+      assert.equal(confirmed.headers.get("location"), "/dashboard/products/p1");
       assert.equal(jar.get(COOKIE), STORE_B);
     });
   },

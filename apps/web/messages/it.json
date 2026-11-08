@@ -9551,5 +9551,12 @@
     },
     "declaredBy": "Nome dichiarato da {origin}",
     "declaredByItself": "Nome dichiarato dall’app (registrata dinamicamente)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Cambia negozio",
+    "title": "Cambiare negozio?",
+    "description": "Questo link apre il negozio «{target}». Sei su «{current}».",
+    "open": "Apri in {target}",
+    "stay": "Resta su {current}"
   }
 }

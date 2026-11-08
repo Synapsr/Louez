@@ -9551,5 +9551,12 @@
     },
     "declaredBy": "Naam opgegeven door {origin}",
     "declaredByItself": "Naam opgegeven door de app (dynamisch geregistreerd)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Van winkel wisselen",
+    "title": "Van winkel wisselen?",
+    "description": "Deze link opent de winkel “{target}”. U bent nu in “{current}”.",
+    "open": "Openen in {target}",
+    "stay": "Blijven in {current}"
   }
 }

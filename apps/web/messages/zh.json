@@ -9551,5 +9551,12 @@
     },
     "declaredBy": "名称由 {origin} 声明",
     "declaredByItself": "名称由应用自行声明（动态注册）"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "切换商店",
+    "title": "切换商店？",
+    "description": "此链接将打开商店“{target}”。您当前在“{current}”。",
+    "open": "在 {target} 中打开",
+    "stay": "留在 {current}"
   }
 }

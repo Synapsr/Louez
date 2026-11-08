@@ -9551,5 +9551,12 @@
     },
     "declaredBy": "Nome declarado por {origin}",
     "declaredByItself": "Nome declarado pelo aplicativo (registrado dinamicamente)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Mudar de loja",
+    "title": "Mudar de loja?",
+    "description": "Esta ligação abre a loja «{target}». Está na loja «{current}».",
+    "open": "Abrir em {target}",
+    "stay": "Ficar em {current}"
   }
 }

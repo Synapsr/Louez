@@ -9551,5 +9551,12 @@
     },
     "declaredBy": "名前の申告元：{origin}",
     "declaredByItself": "名前はアプリ自身による申告です（動的登録）"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "店舗を切り替える",
+    "title": "店舗を切り替えますか？",
+    "description": "このリンクは店舗「{target}」を開きます。現在は「{current}」を表示しています。",
+    "open": "{target}で開く",
+    "stay": "{current}のままにする"
   }
 }

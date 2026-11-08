@@ -9551,5 +9551,12 @@
     },
     "declaredBy": "Nama dinyatakan oleh {origin}",
     "declaredByItself": "Nama dinyatakan oleh aplikasi itu sendiri (pendaftaran dinamis)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Ganti toko",
+    "title": "Ganti toko?",
+    "description": "Tautan ini membuka toko “{target}”. Anda sedang di “{current}”.",
+    "open": "Buka di {target}",
+    "stay": "Tetap di {current}"
   }
 }
