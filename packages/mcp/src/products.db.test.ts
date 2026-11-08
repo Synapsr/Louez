@@ -483,7 +483,10 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       const line = `Links to give the user: dashboard ${dashboard}, storefront ${storefront}.`;
       assert.ok(text.text.includes(line), text.text);
 
-      const listed = output(await mcpCall(authorization, "products_list", {})) as {
+      // Searched by its name: other tests leave products in the store.
+      const listed = output(
+        await mcpCall(authorization, "products_list", { search: "Linked kayak" }),
+      ) as {
         items: Array<{ id: string; links: Json }>;
       };
       assert.deepEqual(listed.items.find((item) => item.id === product.id)?.links, {
