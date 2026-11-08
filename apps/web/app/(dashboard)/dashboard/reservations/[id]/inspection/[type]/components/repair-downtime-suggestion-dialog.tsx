@@ -41,7 +41,8 @@ interface RepairDowntimeSuggestionDialogProps {
   open: boolean;
   units: RepairDowntimeSuggestionUnit[];
   reservationNumber: string;
-  reservationItemIds: string[];
+  /** The lines each unit came back on: its downtime leaves only those out of its conflicts. */
+  reservationLinesOfUnit: ReadonlyMap<string, string[]>;
   onDone: () => void;
 }
 
@@ -49,7 +50,7 @@ export const RepairDowntimeSuggestionDialog = ({
   open,
   units,
   reservationNumber,
-  reservationItemIds,
+  reservationLinesOfUnit,
   onDone,
 }: RepairDowntimeSuggestionDialogProps) => {
   const t = useTranslations(
@@ -120,7 +121,7 @@ export const RepairDowntimeSuggestionDialog = ({
             startsAt,
             endsAt: null,
             note,
-            excludeReservationItemIds: reservationItemIds,
+            excludeReservationItemIds: reservationLinesOfUnit.get(unit.id) ?? [],
           });
         } catch (error) {
           toastManager.add({

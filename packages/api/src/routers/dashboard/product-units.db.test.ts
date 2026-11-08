@@ -787,6 +787,40 @@ describe("product units procedures (database)", { skip: skipWithoutTestDatabase(
     await run("retireUnit", input, context({ "louez-confirmation": tokenOf(fresh) }));
   });
 
+  test("a returned reservation with two lines on two units: each repair excludes its own line", async () => {
+    const { product, first, second } = await trackedProduct();
+    const rows = bookingRows(product.id, first);
+    const secondItemId = `${rows.itemId.slice(0, -1)}b`;
+    await louezDb.db.insert(louezDb.reservations).values(rows.reservation);
+    await louezDb.db
+      .insert(louezDb.reservationItems)
+      .values([rows.item, { ...rows.item, id: secondItemId }]);
+    await louezDb.db
+      .insert(louezDb.reservationItemUnits)
+      .values([
+        rows.assignment,
+        { reservationItemId: secondItemId, productUnitId: second, identifierSnapshot: "K-2" },
+      ]);
+    await completeReturnInspection(rows.reservationId);
+
+    const repair = (unitId: string, lines: string[]) =>
+      run(
+        "declareDowntime",
+        {
+          unitId,
+          reason: "repair",
+          startsAt: JUNE_1,
+          endsAt: null,
+          excludeReservationItemIds: lines,
+        },
+        session(),
+      );
+    assert.deepEqual((await repair(first, [rows.itemId])).conflicts, []);
+    assert.deepEqual((await repair(second, [secondItemId])).conflicts, []);
+    // A line that holds another unit is still refused.
+    await rejects(repair(first, [secondItemId]), "DOWNTIME_EXCLUSION_INVALID");
+  });
+
   // --- Races ----------------------------------------------------------------
 
   /** What checkout does while the call waits: the product's row first, then the booking. */
