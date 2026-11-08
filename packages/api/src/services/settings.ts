@@ -594,6 +594,17 @@ export async function updateReservationRules(
         },
         write: async () => {
           await updateSettingsColumn(tx, actor.storeId, { ...settings, ...next });
+          // What a unit holds changes with these: the inbox dates the unit
+          // conflicts they make from now.
+          if (
+            next.turnoverBufferMinutes !== current.turnoverBufferMinutes ||
+            next.pendingBlocksAvailability !== current.pendingBlocksAvailability
+          ) {
+            await tx
+              .update(stores)
+              .set({ availabilityRulesChangedAt: new Date() })
+              .where(eq(stores.id, actor.storeId));
+          }
           return next;
         },
       };

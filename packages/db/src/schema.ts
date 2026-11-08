@@ -878,6 +878,11 @@ export const stores = mysqlTable(
     discountDurationMonths: int("discount_duration_months").default(0).notNull(),
     stripeCouponId: varchar("stripe_coupon_id", { length: 255 }),
 
+    // When the rules that decide what a unit holds last changed (the turnover
+    // buffer, whether pending bookings block): a unit conflict they make
+    // counts from then in the inbox. Null until the first change.
+    availabilityRulesChangedAt: timestamp("availability_rules_changed_at", { mode: "date" }),
+
     // Metadata
     onboardingCompleted: boolean("onboarding_completed").default(false),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -1771,6 +1776,10 @@ export const reservations = mysqlTable(
     billableAt: timestamp("billable_at", { mode: "date" }),
     // When a billable reservation was cancelled. Null while it stays billable.
     withdrawnAt: timestamp("withdrawn_at", { mode: "date" }),
+    // The last write of its dates or its status (null before 0093: read the
+    // creation). The inbox dates a late pickup or return with it, so a note
+    // or a payment does not bring an acknowledged one back.
+    scheduleChangedAt: timestamp("schedule_changed_at", { mode: "date" }),
     // The reservation's currency, frozen at creation (billing contract Q4). Null for
     // rows created before it existed; readers fall back to the store's currency.
     currency: varchar("currency", { length: 3 }),

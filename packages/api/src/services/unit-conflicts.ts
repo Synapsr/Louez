@@ -225,10 +225,15 @@ export type ConflictingAssignment = {
   productUnitId: string;
   reservationId: string;
   assignedAt: Date;
-  /** When the reservation was last written: an edit of its dates may make the conflict. */
-  reservationUpdatedAt: Date;
+  /** When the reservation's dates or status last changed: either may make the conflict. */
+  scheduleChangedAt: Date;
   /** The windows it falls in. */
   causes: UnitConflictCause[];
+  /**
+   * The store's availability rules make it: it falls in a window only with
+   * the turnover buffer, or holds the unit only because pending bookings block.
+   */
+  madeByRules: boolean;
 };
 
 /**
@@ -279,7 +284,11 @@ export async function findConflictingAssignments(
       productUnitId: reservationItemUnits.productUnitId,
       assignedAt: reservationItemUnits.assignedAt,
       reservationId: reservations.id,
-      reservationUpdatedAt: reservations.updatedAt,
+      status: reservations.status,
+      scheduleChangedAt:
+        sql<Date>`COALESCE(${reservations.scheduleChangedAt}, ${reservations.createdAt})`.mapWith(
+          reservations.createdAt,
+        ),
       startDate: reservations.startDate,
       endDate: reservationAvailabilityEndSql(),
     })
@@ -291,25 +300,22 @@ export async function findConflictingAssignments(
   return assignments.flatMap((assignment): ConflictingAssignment[] => {
     const { productUnitId } = assignment;
     if (!productUnitId) return [];
-    const causes = (windowsByUnitId.get(productUnitId) ?? [])
-      .filter(({ window }) => {
-        const bufferedStart = new Date(window.start.getTime() - bufferMs);
-        const bufferedEnd = window.end ? new Date(window.end.getTime() + bufferMs) : null;
-        return (
-          assignment.endDate > bufferedStart &&
-          (bufferedEnd === null || assignment.startDate < bufferedEnd)
-        );
-      })
-      .map((item) => item.cause);
-    if (causes.length === 0) return [];
+    const overlaps = (window: UnitConflictWindow, margin: number) =>
+      assignment.endDate.getTime() > window.start.getTime() - margin &&
+      (window.end === null || assignment.startDate.getTime() < window.end.getTime() + margin);
+    const unitWindows = windowsByUnitId.get(productUnitId) ?? [];
+    const matched = unitWindows.filter(({ window }) => overlaps(window, bufferMs));
+    if (matched.length === 0) return [];
+    const withoutBuffer = matched.filter(({ window }) => overlaps(window, 0));
     return [
       {
         assignmentId: assignment.assignmentId,
         productUnitId,
         reservationId: assignment.reservationId,
         assignedAt: assignment.assignedAt,
-        reservationUpdatedAt: assignment.reservationUpdatedAt,
-        causes,
+        scheduleChangedAt: assignment.scheduleChangedAt,
+        causes: matched.map((item) => item.cause),
+        madeByRules: withoutBuffer.length === 0 || assignment.status === "pending",
       },
     ];
   });
@@ -333,7 +339,14 @@ export async function getUnitConflictFlags(
  * product: its retired units that still hold a booking to end, and the open
  * downtimes of its active units.
  */
-export async function loadStoreUnitWindows(storeId: string, now: Date): Promise<UnitWindow[]> {
+export async function loadStoreUnitWindows(
+  storeId: string,
+  now: Date,
+  options: { turnoverBufferMinutes?: number } = {},
+): Promise<UnitWindow[]> {
+  // A retired unit's window opens now: a booking that ended within the buffer
+  // still conflicts, as findConflictingAssignments reads it.
+  const bufferMs = Math.max(0, options.turnoverBufferMinutes ?? 0) * 60_000;
   const [retired, downtimes] = await Promise.all([
     db
       .selectDistinct({
@@ -351,7 +364,7 @@ export async function loadStoreUnitWindows(storeId: string, now: Date): Promise<
           eq(products.storeId, storeId),
           eq(productUnits.lifecycleStatus, "retired"),
           eq(reservations.storeId, storeId),
-          gt(reservations.endDate, now),
+          gt(reservations.endDate, new Date(now.getTime() - bufferMs)),
         ),
       ),
     db

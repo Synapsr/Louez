@@ -298,6 +298,8 @@ export async function changeReservationStatus(
     .set({
       status: plan.update.status,
       updatedAt: plan.update.updatedAt,
+      // The last change of its schedule: the inbox dates late pickups and returns with it.
+      scheduleChangedAt: plan.update.updatedAt,
       billableAt: plan.update.billableAt,
       withdrawnAt: plan.update.withdrawnAt,
       pickedUpAt: plan.update.pickedUpAt,

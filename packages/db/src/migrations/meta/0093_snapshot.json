@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "a4b88647-f7ab-4558-8f06-b0bb8124bc98",
+  "id": "f440265a-1e40-4c42-997c-2547088830b8",
   "prevId": "218024dc-7eed-4800-a0fd-4eec629971ec",
   "tables": {
     "account_departure_reason_counters": {
@@ -10568,6 +10568,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "schedule_changed_at": {
+          "name": "schedule_changed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "currency": {
           "name": "currency",
           "type": "varchar(3)",
@@ -13119,6 +13126,13 @@
         "stripe_coupon_id": {
           "name": "stripe_coupon_id",
           "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "availability_rules_changed_at": {
+          "name": "availability_rules_changed_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

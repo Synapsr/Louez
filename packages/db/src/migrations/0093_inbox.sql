@@ -12,6 +12,8 @@ CREATE TABLE `inbox_acknowledgements` (
 	CONSTRAINT `inbox_acknowledgements_occurrence_unique` UNIQUE(`store_id`,`item_type`,`record_id`,`occurred_at`)
 );
 --> statement-breakpoint
+ALTER TABLE `reservations` ADD `schedule_changed_at` timestamp;--> statement-breakpoint
+ALTER TABLE `stores` ADD `availability_rules_changed_at` timestamp;--> statement-breakpoint
 CREATE INDEX `inbox_acknowledgements_store_created_idx` ON `inbox_acknowledgements` (`store_id`,`created_at`);--> statement-breakpoint
 CREATE INDEX `inbox_acknowledgements_created_idx` ON `inbox_acknowledgements` (`created_at`);--> statement-breakpoint
 CREATE INDEX `reservations_store_status_end_idx` ON `reservations` (`store_id`,`reservation_status`,`end_date`);

@@ -3095,6 +3095,8 @@ export async function updateReservation(
                 : null,
             ...deliveryUpdateFields,
             updatedAt: new Date(),
+            // The inbox dates a late pickup or return from its last schedule change.
+            scheduleChangedAt: dateChanged ? new Date() : undefined,
           })
           .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
         // Dates, totals, items, insurance and delivery are in the billing snapshot.

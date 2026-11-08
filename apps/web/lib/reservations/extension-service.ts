@@ -76,7 +76,7 @@ const applyExtension = async (
   const endDate = new Date(attempt.requestedEndMs);
   await tx
     .update(reservations)
-    .set({ ...totals, endDate, updatedAt: new Date() })
+    .set({ ...totals, endDate, updatedAt: new Date(), scheduleChangedAt: new Date() })
     .where(and(eq(reservations.id, reservation.id), eq(reservations.storeId, reservation.storeId)));
   await resolveDateChangeRequests(
     tx,

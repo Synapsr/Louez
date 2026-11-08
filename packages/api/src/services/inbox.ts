@@ -114,6 +114,8 @@ export interface InboxReader {
   store: LinkStore & {
     createdAt: Date;
     settings: {
+    /** When the turnover buffer or the pending rule last changed (null: never). */
+    availabilityRulesChangedAt: Date | null;
       currency?: string;
       timezone?: string;
       pendingBlocksAvailability?: boolean;
@@ -458,10 +460,11 @@ const dateChangeRequests: Source = async (window, shaper) => {
 /** A confirmed reservation past its start, not marked picked up. */
 const latePickups: Source = async (window, shaper) => {
   // Late from its start, or from when it became confirmed or went back to it.
-  // Late from its start, or from the write that made it late: confirmed late,
-  // sent back to confirmed, or its start moved into the past.
+  // Late from its start, or from the change that made it late: confirmed
+  // late, sent back to confirmed, or its start moved into the past. A note
+  // or a payment changes neither.
   const occurred =
-    sql<Date>`GREATEST(${reservations.startDate}, ${reservations.updatedAt}, COALESCE(${reservations.billableAt}, ${reservations.createdAt}), COALESCE(${reservations.pickedUpAt}, ${reservations.createdAt}))`.mapWith(
+    sql<Date>`GREATEST(${reservations.startDate}, COALESCE(${reservations.scheduleChangedAt}, ${reservations.createdAt}), COALESCE(${reservations.billableAt}, ${reservations.createdAt}), COALESCE(${reservations.pickedUpAt}, ${reservations.createdAt}))`.mapWith(
       reservations.startDate,
     );
   const rows = await db
@@ -504,10 +507,10 @@ const latePickups: Source = async (window, shaper) => {
 
 /** An ongoing reservation past its end, not marked returned. */
 const lateReturns: Source = async (window, shaper) => {
-  // Late from its end, or from the write that made it late: picked up late,
+  // Late from its end, or from the change that made it late: picked up late,
   // sent back to ongoing, or its end moved into the past.
   const occurred =
-    sql<Date>`GREATEST(${reservations.endDate}, ${reservations.updatedAt}, COALESCE(${reservations.pickedUpAt}, ${reservations.createdAt}), COALESCE(${reservations.returnedAt}, ${reservations.createdAt}))`.mapWith(
+    sql<Date>`GREATEST(${reservations.endDate}, COALESCE(${reservations.scheduleChangedAt}, ${reservations.createdAt}), COALESCE(${reservations.pickedUpAt}, ${reservations.createdAt}), COALESCE(${reservations.returnedAt}, ${reservations.createdAt}))`.mapWith(
       reservations.endDate,
     );
   const rows = await db
@@ -787,9 +790,11 @@ const openDisputes: Source = async (window, shaper) => {
  * the store, then put in the inbox's order here.
  */
 const unitConflicts: Source = async (window, shaper) => {
-  const settings = shaper.reader.store.settings;
+  const { settings, availabilityRulesChangedAt } = shaper.reader.store;
   const conflicts = await findConflictingAssignments(
-    await loadStoreUnitWindows(window.storeId, window.now),
+    await loadStoreUnitWindows(window.storeId, window.now, {
+      turnoverBufferMinutes: settings?.turnoverBufferMinutes,
+    }),
     {
       storeId: window.storeId,
       pendingBlocksAvailability: settings?.pendingBlocksAvailability,
@@ -801,10 +806,20 @@ const unitConflicts: Source = async (window, shaper) => {
     .filter((conflict) => !records || records.has(conflict.assignmentId))
     .map((conflict) => {
       // From the first cause still there: a conflict is in the inbox once the
-      // booking, its dates as they are and that cause were all written.
+      // assignment, the booking's dates and status, that cause and, when they
+      // make it, the store's availability rules were all as they are.
       const causeAt = Math.min(...conflict.causes.map((cause) => cause.changedAt.getTime()));
       const occurredAt = new Date(
-        Math.max(conflict.assignedAt.getTime(), conflict.reservationUpdatedAt.getTime(), causeAt),
+      const rulesAt =
+        conflict.madeByRules && availabilityRulesChangedAt
+          ? availabilityRulesChangedAt.getTime()
+          : 0;
+        Math.max(
+          conflict.assignedAt.getTime(),
+          conflict.scheduleChangedAt.getTime(),
+          causeAt,
+          rulesAt,
+        ),
       );
       return {
         conflict,
