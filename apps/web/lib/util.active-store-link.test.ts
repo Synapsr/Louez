@@ -15,12 +15,17 @@ test("a dashboard URL naming its store becomes the active-store route, with the 
     at(activeStoreSwitchPath(at("/dashboard?store=s1")) ?? "").searchParams.get("next"),
     "/dashboard",
   );
+  assert.equal(
+    at(activeStoreSwitchPath(at("/online-store/legal?store=s1")) ?? "").searchParams.get("next"),
+    "/online-store/legal",
+  );
 });
 
 test("other URLs are left alone", () => {
   for (const path of [
     "/dashboard/products/p1",
     "/dashboards?store=s1",
+    "/online-stores?store=s1",
     "/login?store=s1",
     "/?store=s1",
   ]) {
@@ -37,6 +42,7 @@ test("the way back is a dashboard path without the store, or the dashboard home"
     dashboardReturnPath("/dashboard/customers/c1?store=s1&tab=a"),
     "/dashboard/customers/c1?tab=a",
   );
+  assert.equal(dashboardReturnPath("/online-store/legal?store=s1"), "/online-store/legal");
   for (const next of [
     null,
     "",

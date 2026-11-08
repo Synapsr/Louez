@@ -1,7 +1,8 @@
 import { DASHBOARD_STORE_PARAM } from "@louez/api/platform/links";
 
 /**
- * Dashboard links that name their store (`/dashboard/…?store=<id>`, built by
+ * Dashboard links that name their store (`/dashboard/…?store=<id>`, or the
+ * online store editor's `/online-store/…?store=<id>`, built by
  * the API's link helpers for agents and the in-app assistant). The proxy
  * hands such a request to the active-store route. A GET never changes the
  * store: it sends the browser to the same URL without the parameter, or, for
@@ -21,8 +22,11 @@ const FLIGHT_PARAM = "_rsc";
 
 const DEFAULT_PATH = "/dashboard";
 
+/** The store's own pages: the dashboard and the online store editor. */
+const STORE_PAGE_ROOTS = [DEFAULT_PATH, "/online-store"];
+
 const isDashboardPathname = (pathname: string) =>
-  pathname === DEFAULT_PATH || pathname.startsWith(`${DEFAULT_PATH}/`);
+  STORE_PAGE_ROOTS.some((root) => pathname === root || pathname.startsWith(`${root}/`));
 
 /**
  * The internal URL (path and query) of the active-store route for a
@@ -45,8 +49,8 @@ export const activeStoreSwitchPath = (url: URL): string | null => {
 };
 
 /**
- * The dashboard path to go back to: a relative path under `/dashboard` with
- * no `store` parameter, or `/dashboard`. Anything else (another origin,
+ * The dashboard path to go back to: a relative path under `/dashboard` or
+ * `/online-store` with no `store` parameter, or `/dashboard`. Anything else (another origin,
  * `//host`, another page of the app) is refused, so the route never
  * redirects elsewhere.
  */
