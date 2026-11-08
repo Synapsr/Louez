@@ -112,7 +112,9 @@ export const listReservationsInput = z.object({
     .describe("Which date `period` reads: departure (the start, default) or return (the end)."),
   paymentMethod: paymentMethodSchema
     .optional()
-    .describe("Only reservations with a completed payment by this method."),
+    .describe(
+      "Only reservations with a completed payment by this method. Needs read access to payments.",
+    ),
   search: z
     .string()
     .trim()
@@ -408,7 +410,9 @@ export const reservationSchema = z.object({
   ),
   /**
    * Newest first. Without customers read, `description` and `metadata` are
-   * null; without payments read, so are those of payment and deposit entries.
+   * null. Without payments read, payment and deposit entries have no
+   * description, and `metadata` keeps only the keys each type lists as free
+   * of payment data.
    */
   activity: z.array(
     z.object({

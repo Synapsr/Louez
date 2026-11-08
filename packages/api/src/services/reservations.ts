@@ -51,6 +51,7 @@ import {
 } from "../contracts/reservations";
 import type { Transport } from "../platform/actor";
 import { enqueueEffects } from "../platform/effects";
+import { platformErrors } from "../platform/errors";
 import type { ApiEventStore, ApiPorts } from "../platform/ports";
 import { customerFieldSearchCondition } from "./customer-fields";
 
@@ -76,9 +77,60 @@ export interface ReservationReader {
 const rentalPaidOf = (rows: Parameters<typeof getSettledPaymentAmount>[0]) =>
   getSettledPaymentAmount(rows, "rental").toFixed(2);
 
-/** Activity entries about payments and deposits: their details need payments read. */
+/** Activity entries about payments and deposits: their text needs payments read. */
 const isPaymentActivity = (activityType: string) =>
   activityType.startsWith("payment_") || activityType.startsWith("deposit_");
+
+const STATUS_CHANGE_KEYS = [
+  "previousStatus",
+  "newStatus",
+  "actor",
+  "source",
+  "rejectionReason",
+  "validationWarnings",
+  "validationWarningsCount",
+] as const;
+
+/**
+ * The activity details a caller who may read reservations but not payments
+ * sees, by activity type. Any other key may name a payment (a Stripe
+ * session, an amount, a payment's state, as a rental extension writes on a
+ * `modified` entry) and is left out; a type not listed shows none.
+ */
+const PAYMENT_FREE_ACTIVITY_KEYS: Readonly<Record<string, readonly string[]>> = {
+  created: ["source", "status"],
+  confirmed: STATUS_CHANGE_KEYS,
+  rejected: STATUS_CHANGE_KEYS,
+  cancelled: STATUS_CHANGE_KEYS,
+  picked_up: STATUS_CHANGE_KEYS,
+  returned: STATUS_CHANGE_KEYS,
+  quote_accepted: STATUS_CHANGE_KEYS,
+  quote_declined: STATUS_CHANGE_KEYS,
+  modified: ["kind", "source", "validatedAt"],
+  note_updated: [
+    "kind",
+    "status",
+    "originalStartDate",
+    "originalEndDate",
+    "requestedEndDate",
+    "reason",
+    "reviewedAt",
+  ],
+  inspection_departure_started: ["inspectionId"],
+  inspection_departure_completed: ["inspectionId"],
+  inspection_return_started: ["inspectionId"],
+  inspection_return_completed: ["inspectionId"],
+  inspection_damage_detected: ["inspectionId"],
+  inspection_signed: ["inspectionId"],
+};
+
+/** An activity entry's details, cut down to the keys its type shows without payments read. */
+function paymentFreeMetadata(activityType: string, metadata: Record<string, unknown> | null) {
+  if (!metadata) return null;
+  const keys = PAYMENT_FREE_ACTIVITY_KEYS[activityType] ?? [];
+  const kept = Object.fromEntries(Object.entries(metadata).filter(([key]) => keys.includes(key)));
+  return Object.keys(kept).length > 0 ? kept : null;
+}
 
 const CLOSED_STATUSES = ["cancelled", "rejected", "declined"] as const;
 
@@ -244,6 +296,10 @@ export async function listReservations(reader: ReservationReader, input: ListRes
   const direction = input.sortDirection ?? "desc";
   const search = input.search?.trim();
 
+  // The filter would tell how a reservation was paid.
+  if (input.paymentMethod && !reader.payments) {
+    throw platformErrors.permissionDenied("payments:read");
+  }
   const conditions: SQL[] = [eq(reservations.storeId, storeId)];
   if (input.paymentMethod) {
     conditions.push(
@@ -545,17 +601,17 @@ export async function getReservation(reader: ReservationReader, id: string): Pro
   return reader.customers ? visible : withoutCustomer(visible);
 }
 
-/** The reservation without its payment rows, Stripe ids and payment history details. */
+/** The reservation without its payment rows, Stripe ids and the payment details of its history. */
 function withoutPayments(reservation: Reservation): Reservation {
   return {
     ...reservation,
     payments: [],
     stripePaymentMethodId: null,
-    activity: reservation.activity.map((entry) =>
-      isPaymentActivity(entry.activityType)
-        ? { ...entry, description: null, metadata: null }
-        : entry,
-    ),
+    activity: reservation.activity.map((entry) => ({
+      ...entry,
+      description: isPaymentActivity(entry.activityType) ? null : entry.description,
+      metadata: paymentFreeMetadata(entry.activityType, entry.metadata),
+    })),
   };
 }
 
