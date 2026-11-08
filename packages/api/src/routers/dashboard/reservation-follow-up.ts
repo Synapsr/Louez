@@ -70,8 +70,6 @@ const statusCaller = (context: ProductContext): StatusChangeCaller => ({
     name: context.store.name,
     slug: context.store.slug,
     ownerUserId: context.store.userId,
-    settings: context.store.settings ?? null,
-    customerNotificationSettings: context.store.customerNotificationSettings ?? null,
   },
   ports: context.ports,
 });

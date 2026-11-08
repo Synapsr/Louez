@@ -2,6 +2,7 @@ import { after } from "next/server";
 
 import {
   dispatchEffects,
+  pruneEffects,
   retryDueEffects,
   type ApiEffectSenders,
 } from "@louez/api/platform/effects";
@@ -36,7 +37,13 @@ export function dispatchApiEffects(ids: readonly string[]): void {
   }
 }
 
-/** The cron's pass over the outbox: due retries, rows never taken, expired claims. */
-export function retryDueApiEffects(now: Date) {
-  return retryDueEffects(apiEffectSenders, { now });
+/**
+ * The cron's pass over the outbox: due retries, rows never taken, expired
+ * claims, each claimed at the time it is taken; then the done rows past
+ * their 30 days, which hold personal data.
+ */
+export async function runApiEffectsCron() {
+  const retried = await retryDueEffects(apiEffectSenders);
+  const pruned = await pruneEffects();
+  return { ...retried, pruned };
 }

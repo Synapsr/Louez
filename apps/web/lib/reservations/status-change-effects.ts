@@ -1,29 +1,30 @@
 import { eq } from "drizzle-orm";
 
-import type { ApiEffectPayloads, ApiEffectSenders } from "@louez/api/platform/effects";
+import type {
+  ApiEffectPayloads,
+  ApiEffectSenders,
+  EffectSendContext,
+} from "@louez/api/platform/effects";
 import { db, stores } from "@louez/db";
 
-import {
-  notifyEquipmentPickedUp,
-  notifyReservationCancelled,
-  notifyReservationCompleted,
-  notifyReservationConfirmed,
-  notifyReservationRejected,
-} from "@/lib/discord/platform-notifications";
-import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
-import { dispatchNotification } from "@/lib/notifications/dispatcher";
-import { captureReservationActionSucceeded } from "@/lib/product-analytics/analytics";
+import { sendPlatformReservationStatus } from "@/lib/discord/platform-notifications";
+import { sendCustomerNotificationChannel } from "@/lib/notifications/customer-dispatcher";
+import { sendStoreNotificationChannel } from "@/lib/notifications/dispatcher";
+import { captureReservationActionSucceededOrThrow } from "@/lib/product-analytics/analytics";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 
 // The senders of a reservation's outbox rows (packages/api platform/effects.ts):
-// the customer's message, the store's and the platform's notifications and
-// the analytics events. Each sends the payload frozen in the write's
-// transaction, and throws when nothing went out, so the row is retried.
+// one channel of the customer's message, of the store's notification or of
+// the platform's, or an analytics event. Each sends the payload frozen in the
+// write's transaction, checks its claim right before it calls the provider,
+// throws when nothing went out (the row is retried) and answers `skipped`
+// when there is nothing to send.
 
 type Payload<K extends keyof ApiEffectPayloads> = ApiEffectPayloads[K];
+type Outcome = Promise<void | { skipped: string }>;
 
 type ReservationEffectType =
   | "reservation.customerMessage"
@@ -36,19 +37,16 @@ type ReservationEffectType =
 export interface ReservationEffectDeps {
   loadStoreRouting: typeof loadStoreRouting;
   createReservationInstantAccessUrl: typeof createReservationInstantAccessUrl;
-  dispatchCustomerNotification: typeof dispatchCustomerNotification;
-  dispatchNotification: typeof dispatchNotification;
-  notifyReservationConfirmed: typeof notifyReservationConfirmed;
-  notifyReservationRejected: typeof notifyReservationRejected;
-  notifyEquipmentPickedUp: typeof notifyEquipmentPickedUp;
-  notifyReservationCompleted: typeof notifyReservationCompleted;
-  notifyReservationCancelled: typeof notifyReservationCancelled;
-  captureReservationActionSucceeded: typeof captureReservationActionSucceeded;
+  sendCustomerNotificationChannel: typeof sendCustomerNotificationChannel;
+  sendStoreNotificationChannel: typeof sendStoreNotificationChannel;
+  sendPlatformReservationStatus: typeof sendPlatformReservationStatus;
+  captureReservationActionSucceededOrThrow: typeof captureReservationActionSucceededOrThrow;
 }
 
 /**
  * Where the store wants its own notifications, read when they go out: a
- * webhook or a phone number changed since is the one that counts.
+ * webhook, a phone number or a preference changed since is the one that
+ * counts.
  */
 async function loadStoreRouting(storeId: string) {
   return db.query.stores.findFirst({
@@ -68,22 +66,11 @@ async function loadStoreRouting(storeId: string) {
 const defaultDeps: ReservationEffectDeps = {
   loadStoreRouting,
   createReservationInstantAccessUrl,
-  dispatchCustomerNotification,
-  dispatchNotification,
-  notifyReservationConfirmed,
-  notifyReservationRejected,
-  notifyEquipmentPickedUp,
-  notifyReservationCompleted,
-  notifyReservationCancelled,
-  captureReservationActionSucceeded,
+  sendCustomerNotificationChannel,
+  sendStoreNotificationChannel,
+  sendPlatformReservationStatus,
+  captureReservationActionSucceededOrThrow,
 };
-
-/** Fails the row when every channel that was tried failed; a partial success is sent. */
-function requireDelivery(channels: ReadonlyArray<{ sent: boolean; error?: string }>) {
-  if (channels.some((channel) => channel.sent)) return;
-  const errors = channels.flatMap((channel) => (channel.error ? [channel.error] : []));
-  if (errors.length > 0) throw new Error(errors.join("; "));
-}
 
 /**
  * The dashboard's events keep their properties. The API and agents set their
@@ -98,12 +85,11 @@ export function createReservationEffectSenders(
   const deps: ReservationEffectDeps = { ...defaultDeps, ...overrides };
 
   return {
-    "reservation.customerMessage": async (payload: Payload<"reservation.customerMessage">) => {
+    "reservation.customerMessage": async (
+      payload: Payload<"reservation.customerMessage">,
+      context: EffectSendContext,
+    ): Outcome => {
       const { store, customer, reservation } = payload;
-      const reservationUrl = getStorefrontUrl(
-        store.slug,
-        `/account/reservations/${reservation.id}`,
-      );
       const ctx = {
         store: {
           id: store.id,
@@ -135,86 +121,99 @@ export function createReservationEffectSenders(
           taxAmount: reservation.taxAmount ? parseFloat(reservation.taxAmount) : null,
           locale: reservation.locale,
         },
-        reservationUrl,
+        reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservation.id}`),
       };
+      const beforeSend = () => context.assertClaim();
 
       if (payload.notification === "customer_request_rejected") {
-        const result = await deps.dispatchCustomerNotification("customer_request_rejected", {
-          ...ctx,
-          reason: payload.rejectionReason ?? undefined,
-        });
-        requireDelivery([result.email, result.sms]);
-        return;
+        return deps.sendCustomerNotificationChannel(
+          "customer_request_rejected",
+          { ...ctx, reason: payload.rejectionReason ?? undefined },
+          payload.channel,
+          beforeSend,
+        );
       }
-      const contractUrl = await deps.createReservationInstantAccessUrl({
-        storeId: store.id,
-        storeSlug: store.slug,
-        customerEmail: customer.email,
-        reservationId: reservation.id,
-        redirectPath: `/account/reservations/${reservation.id}/contract`,
-      });
-      const result = await deps.dispatchCustomerNotification("customer_request_accepted", {
-        ...ctx,
-        items: payload.items.map((item) => ({
-          name: item.name,
-          quantity: item.quantity,
-          unitPrice: parseFloat(item.unitPrice),
-          totalPrice: parseFloat(item.totalPrice),
-        })),
-        contractUrl,
-        termsUrl: store.hasTerms ? getStorefrontUrl(store.slug, "/terms") : null,
-        paymentUrl: null,
-      });
-      requireDelivery([result.email, result.sms]);
+      // The email links to the contract; an SMS sends the account link only.
+      const contractUrl =
+        payload.channel === "email"
+          ? await deps.createReservationInstantAccessUrl({
+              storeId: store.id,
+              storeSlug: store.slug,
+              customerEmail: customer.email,
+              reservationId: reservation.id,
+              redirectPath: `/account/reservations/${reservation.id}/contract`,
+            })
+          : undefined;
+      return deps.sendCustomerNotificationChannel(
+        "customer_request_accepted",
+        {
+          ...ctx,
+          items: payload.items.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            unitPrice: parseFloat(item.unitPrice),
+            totalPrice: parseFloat(item.totalPrice),
+          })),
+          contractUrl,
+          termsUrl: store.hasTerms ? getStorefrontUrl(store.slug, "/terms") : null,
+          paymentUrl: null,
+        },
+        payload.channel,
+        beforeSend,
+      );
     },
 
-    "reservation.storeNotification": async (payload: Payload<"reservation.storeNotification">) => {
+    "reservation.storeNotification": async (
+      payload: Payload<"reservation.storeNotification">,
+      context: EffectSendContext,
+    ): Outcome => {
       const store = await deps.loadStoreRouting(payload.storeId);
-      if (!store) return;
-      const result = await deps.dispatchNotification(payload.event, {
-        store,
-        reservation: {
-          id: payload.reservation.id,
-          number: payload.reservation.number,
-          startDate: new Date(payload.reservation.startDate),
-          endDate: new Date(payload.reservation.endDate),
-          totalAmount: parseFloat(payload.reservation.totalAmount),
+      if (!store) return { skipped: "the store is gone" };
+      return deps.sendStoreNotificationChannel(
+        payload.event,
+        {
+          store,
+          reservation: {
+            id: payload.reservation.id,
+            number: payload.reservation.number,
+            startDate: new Date(payload.reservation.startDate),
+            endDate: new Date(payload.reservation.endDate),
+            totalAmount: parseFloat(payload.reservation.totalAmount),
+          },
+          customer: payload.customer,
         },
-        customer: payload.customer,
-      });
-      requireDelivery([result.email, result.sms, result.discord, result.push]);
+        payload.channel,
+        () => context.assertClaim(),
+      );
     },
 
     "reservation.platformNotification": async (
       payload: Payload<"reservation.platformNotification">,
-    ) => {
-      const { store, number } = payload;
-      switch (payload.kind) {
-        case "confirmed":
-          return deps.notifyReservationConfirmed(store, number);
-        case "rejected":
-          return deps.notifyReservationRejected(store, number);
-        case "picked_up":
-          return deps.notifyEquipmentPickedUp(store, number);
-        case "completed":
-          return deps.notifyReservationCompleted(
-            store,
-            number,
-            parseFloat(payload.totalAmount),
-            payload.currency ?? undefined,
-          );
-        case "cancelled":
-          return deps.notifyReservationCancelled(store, number);
-      }
-    },
+      context: EffectSendContext,
+    ): Outcome =>
+      deps.sendPlatformReservationStatus(
+        payload.channel,
+        payload.kind,
+        {
+          store: payload.store,
+          number: payload.number,
+          totalAmount: parseFloat(payload.totalAmount),
+          currency: payload.currency ?? undefined,
+        },
+        () => context.assertClaim(),
+      ),
 
-    "reservation.statusAnalytics": async (payload: Payload<"reservation.statusAnalytics">) => {
+    "reservation.statusAnalytics": async (
+      payload: Payload<"reservation.statusAnalytics">,
+      context: EffectSendContext,
+    ): Outcome => {
       const cancelled = payload.to === "cancelled";
       const action = cancelled
         ? reservationAnalyticsActions.cancelReservation
         : getReservationStatusAnalyticsAction(payload.to);
-      if (!action) return;
-      await deps.captureReservationActionSucceeded({
+      if (!action) return { skipped: "no analytics event for this status" };
+      await context.assertClaim();
+      await deps.captureReservationActionSucceededOrThrow({
         distinctId: payload.ownerUserId,
         storeId: payload.storeId,
         reservationId: payload.reservationId,
@@ -228,8 +227,12 @@ export function createReservationEffectSenders(
       });
     },
 
-    "reservation.notesAnalytics": async (payload: Payload<"reservation.notesAnalytics">) => {
-      await deps.captureReservationActionSucceeded({
+    "reservation.notesAnalytics": async (
+      payload: Payload<"reservation.notesAnalytics">,
+      context: EffectSendContext,
+    ): Outcome => {
+      await context.assertClaim();
+      await deps.captureReservationActionSucceededOrThrow({
         distinctId: payload.ownerUserId,
         storeId: payload.storeId,
         reservationId: payload.reservationId,

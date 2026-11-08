@@ -713,6 +713,114 @@ function getDiscordSender(eventType: NotificationEventType) {
 // Main Dispatch Function
 // ============================================================================
 
+/** Pushes the event to every device of the store's members; prunes the dead ones. */
+async function pushToStoreMembers(
+  eventType: NotificationEventType,
+  ctx: NotificationContext,
+  locale: ReturnType<typeof getLocaleFromCountry>,
+): Promise<{ sent: boolean; error?: string; devices: number }> {
+  const payload = buildAdminPushPayload(eventType, ctx, locale);
+  if (!payload) return { sent: false, devices: 0 };
+  const subs = await db
+    .select({
+      id: pushSubscriptions.id,
+      endpoint: pushSubscriptions.endpoint,
+      p256dh: pushSubscriptions.p256dh,
+      auth: pushSubscriptions.auth,
+    })
+    .from(pushSubscriptions)
+    .innerJoin(storeMembers, eq(storeMembers.userId, pushSubscriptions.userId))
+    .where(eq(storeMembers.storeId, ctx.store.id));
+
+  let sent = false;
+  let error: string | undefined;
+  for (const sub of subs) {
+    const sendResult = await sendPush(
+      {
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.p256dh, auth: sub.auth },
+      },
+      payload,
+    );
+    if (sendResult.success) {
+      sent = true;
+    } else if (sendResult.statusCode === 404 || sendResult.statusCode === 410) {
+      // Endpoint is gone — prune the dead subscription.
+      await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
+    } else {
+      error = `Push failed${sendResult.statusCode ? ` (${sendResult.statusCode})` : ""}`;
+    }
+  }
+  return { sent, error, devices: subs.length };
+}
+
+/** The store's own Discord webhook. */
+function sendStoreDiscord(
+  eventType: NotificationEventType,
+  ctx: NotificationContext,
+  discordWebhookUrl: string,
+) {
+  return getDiscordSender(eventType)({
+    store: { id: ctx.store.id, name: ctx.store.name, discordWebhookUrl },
+    reservation: ctx.reservation
+      ? { ...ctx.reservation, currency: ctx.store.settings?.currency }
+      : undefined,
+    customer: ctx.customer,
+    payment: ctx.payment ? { ...ctx.payment, currency: ctx.store.settings?.currency } : undefined,
+  });
+}
+
+/**
+ * One channel of a store notification, for an outbox row (packages/api
+ * platform/effects.ts). The store's preferences and its routing (the owner's
+ * phone, the webhook, the members' devices) are read when it goes out.
+ * Unlike `dispatchNotification`, it throws when the notification did not go
+ * out, so the row is retried, and answers `skipped` when it has nothing to
+ * send (the channel turned off, no address, no device, the SMS limit).
+ * `beforeSend` runs right before the provider is called.
+ */
+export async function sendStoreNotificationChannel(
+  eventType: NotificationEventType,
+  ctx: NotificationContext,
+  channel: "sms" | "push" | "discord",
+  beforeSend: () => Promise<void>,
+): Promise<{ skipped: string } | undefined> {
+  const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
+  const prefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
+  if (!prefs[channel]) return { skipped: `the store turned ${channel} off` };
+  const locale = getLocaleFromCountry(ctx.store.settings?.country);
+
+  if (channel === "sms") {
+    if (!ctx.store.ownerPhone) return { skipped: "the store has no owner phone" };
+    await beforeSend();
+    const smsResult = await sendAdminSms(
+      ctx.store.id,
+      ctx.store.ownerPhone,
+      eventType,
+      buildAdminSmsMessage(eventType, ctx, locale),
+      ctx.reservation?.id,
+    );
+    if (smsResult.limitReached) return { skipped: "the store's SMS limit is reached" };
+    if (!smsResult.success) throw new Error(smsResult.error || "The SMS was not sent.");
+    return undefined;
+  }
+
+  if (channel === "push") {
+    if (!isPushConfigured()) return { skipped: "push is not set up" };
+    await beforeSend();
+    const pushed = await pushToStoreMembers(eventType, ctx, locale);
+    if (pushed.devices === 0) return { skipped: "no device is registered" };
+    if (!pushed.sent) throw new Error(pushed.error || "No device got the push.");
+    return undefined;
+  }
+
+  if (!ctx.store.discordWebhookUrl) return { skipped: "the store has no Discord webhook" };
+  await beforeSend();
+  const discordResult = await sendStoreDiscord(eventType, ctx, ctx.store.discordWebhookUrl);
+  if (!discordResult?.success) throw new Error(discordResult?.error || "Discord refused it.");
+  return undefined;
+}
+
 /**
  * Dispatch notification to all enabled channels
  *
@@ -767,35 +875,7 @@ export async function dispatchNotification(
   // Web push to every store member's registered devices
   if (prefs.push && isPushConfigured()) {
     try {
-      const payload = buildAdminPushPayload(eventType, ctx, locale);
-      if (payload) {
-        const subs = await db
-          .select({
-            id: pushSubscriptions.id,
-            endpoint: pushSubscriptions.endpoint,
-            p256dh: pushSubscriptions.p256dh,
-            auth: pushSubscriptions.auth,
-          })
-          .from(pushSubscriptions)
-          .innerJoin(storeMembers, eq(storeMembers.userId, pushSubscriptions.userId))
-          .where(eq(storeMembers.storeId, ctx.store.id));
-
-        for (const sub of subs) {
-          const sendResult = await sendPush(
-            {
-              endpoint: sub.endpoint,
-              keys: { p256dh: sub.p256dh, auth: sub.auth },
-            },
-            payload,
-          );
-          if (sendResult.success) {
-            result.push.sent = true;
-          } else if (sendResult.statusCode === 404 || sendResult.statusCode === 410) {
-            // Endpoint is gone — prune the dead subscription.
-            await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
-          }
-        }
-      }
+      result.push = await pushToStoreMembers(eventType, ctx, locale);
     } catch (error) {
       result.push.error = error instanceof Error ? error.message : "Unknown error";
     }
@@ -803,29 +883,8 @@ export async function dispatchNotification(
 
   // Discord notification
   if (prefs.discord && ctx.store.discordWebhookUrl) {
-    const discordCtx = {
-      store: {
-        id: ctx.store.id,
-        name: ctx.store.name,
-        discordWebhookUrl: ctx.store.discordWebhookUrl,
-      },
-      reservation: ctx.reservation
-        ? {
-            ...ctx.reservation,
-            currency: ctx.store.settings?.currency,
-          }
-        : undefined,
-      customer: ctx.customer,
-      payment: ctx.payment
-        ? {
-            ...ctx.payment,
-            currency: ctx.store.settings?.currency,
-          }
-        : undefined,
-    };
-
     try {
-      const discordResult = await getDiscordSender(eventType)(discordCtx);
+      const discordResult = await sendStoreDiscord(eventType, ctx, ctx.store.discordWebhookUrl);
       result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error };
     } catch (error) {
       result.discord = {

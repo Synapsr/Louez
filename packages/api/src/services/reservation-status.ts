@@ -14,6 +14,7 @@ import {
   reservations,
   retryTransactionOnDeadlock,
   customers,
+  stores,
   type ReservationActor,
   type ReservationBillingEffect,
   type ReservationStatus,
@@ -23,7 +24,6 @@ import {
   DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
   STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
   type CustomerNotificationSettings,
-  type StoreSettings,
 } from "@louez/types";
 import { evaluateReservationRules, getSettledPaymentAmount } from "@louez/utils";
 import { and, asc, eq, inArray } from "drizzle-orm";
@@ -31,10 +31,14 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { reservationErrors, type StatusChangeOutput } from "../contracts/reservations";
 import type { Transport } from "../platform/actor";
 import { sha256, stableStringify } from "../platform/hash";
-import { amendEffectPayload, enqueueEffects } from "../platform/effects";
+import { amendEffectPayload, enqueueEffects, supersedeEffects } from "../platform/effects";
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import { resolveDateChangeRequests } from "./date-change-requests";
-import { buildStatusChangeEffects } from "./reservation-effects";
+import {
+  buildStatusChangeEffects,
+  customerMessageKeyPrefix,
+  type StatusChangeSnapshot,
+} from "./reservation-effects";
 import { validateReservationContract } from "./reservation-contract-validation";
 import {
   ReservationInventoryError,
@@ -62,10 +66,7 @@ export interface StatusChangeCaller {
   transport: Transport;
   /** May read customers: the preview then names the customer. */
   customers: boolean;
-  store: ApiEventStore & {
-    settings: StoreSettings | null;
-    customerNotificationSettings: CustomerNotificationSettings | null;
-  };
+  store: ApiEventStore;
   ports: Pick<ApiPorts, "afterCommit" | "runReservationEffects" | "insurance" | "dispatchEffects">;
 }
 
@@ -99,9 +100,10 @@ export interface StatusChangePreview {
   /** The insurance contract the change creates or cancels. */
   insuranceContract: "created" | "cancelled" | null;
   /**
-   * A hash of where the messages go (each channel and its address), never
-   * shown: the confirmation binds it, so a changed email or phone voids the
-   * token even when the preview could not show them.
+   * A hash of where the messages go (each channel and its address) and of
+   * their language, never shown: the confirmation binds it, so a changed
+   * email, phone or language voids the token even when the preview could not
+   * show them.
    */
   recipientsHash: string;
 }
@@ -191,6 +193,12 @@ async function lockReservation(tx: Transaction, reservationId: string, storeId: 
       tulipInsuranceOptIn: reservations.tulipInsuranceOptIn,
       tulipContractId: reservations.tulipContractId,
       customerId: reservations.customerId,
+      subtotalAmount: reservations.subtotalAmount,
+      depositAmount: reservations.depositAmount,
+      taxRate: reservations.taxRate,
+      subtotalExclTax: reservations.subtotalExclTax,
+      taxAmount: reservations.taxAmount,
+      locale: reservations.locale,
     })
     .from(reservations)
     .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)))
@@ -202,18 +210,79 @@ async function lockReservation(tx: Transaction, reservationId: string, storeId: 
     throw new ReservationProductsChangedError(reservationId);
   }
 
-  // A plain read, not locked: customers are outside the reservation writers' lock order.
-  const [customer] = await tx
-    .select({
-      firstName: customers.firstName,
-      lastName: customers.lastName,
-      email: customers.email,
-      phone: customers.phone,
-    })
-    .from(customers)
-    .where(and(eq(customers.id, row.customerId), eq(customers.storeId, storeId)))
-    .limit(1);
-  return { ...row, customer: customer ?? null };
+  // What the preview, its confirmation and the messages all show: read once
+  // here, under the locks, and reused, so they cannot disagree. The customer
+  // and the store are plain reads (outside the reservation writers' lock
+  // order): a change to them after this read shows in the confirmation's
+  // binding, never in a message that differs from the preview.
+  const [[customer], [store], items] = await Promise.all([
+    tx
+      .select({
+        id: customers.id,
+        firstName: customers.firstName,
+        lastName: customers.lastName,
+        email: customers.email,
+        phone: customers.phone,
+      })
+      .from(customers)
+      .where(and(eq(customers.id, row.customerId), eq(customers.storeId, storeId)))
+      .limit(1),
+    tx
+      .select({
+        id: stores.id,
+        userId: stores.userId,
+        name: stores.name,
+        slug: stores.slug,
+        email: stores.email,
+        phone: stores.phone,
+        address: stores.address,
+        logoUrl: stores.logoUrl,
+        darkLogoUrl: stores.darkLogoUrl,
+        theme: stores.theme,
+        settings: stores.settings,
+        emailSettings: stores.emailSettings,
+        customerNotificationSettings: stores.customerNotificationSettings,
+        cgv: stores.cgv,
+      })
+      .from(stores)
+      .where(eq(stores.id, storeId)),
+    tx
+      .select({
+        quantity: reservationItems.quantity,
+        unitPrice: reservationItems.unitPrice,
+        totalPrice: reservationItems.totalPrice,
+        productSnapshot: reservationItems.productSnapshot,
+      })
+      .from(reservationItems)
+      .where(eq(reservationItems.reservationId, reservationId))
+      .orderBy(asc(reservationItems.createdAt), asc(reservationItems.id)),
+  ]);
+  if (!store) return null;
+  const { cgv, ...storeFields } = store;
+  const snapshot: StatusChangeSnapshot = {
+    reservation: {
+      id: row.id,
+      number: row.number,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      totalAmount: row.totalAmount,
+      subtotalAmount: row.subtotalAmount,
+      depositAmount: row.depositAmount,
+      taxRate: row.taxRate,
+      subtotalExclTax: row.subtotalExclTax,
+      taxAmount: row.taxAmount,
+      locale: row.locale,
+    },
+    customer: customer ?? null,
+    store: { ...storeFields, hasTerms: Boolean(cgv?.trim()) },
+    items: items.map((item) => ({
+      name: item.productSnapshot?.name || "Product",
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+    })),
+  };
+  return { ...row, customer: customer ?? null, snapshot };
 }
 
 type LockedReservation = NonNullable<Awaited<ReturnType<typeof lockReservation>>>;
@@ -244,7 +313,8 @@ async function buildPreview(
   locked: LockedReservation,
   to: ReservationStatus,
 ): Promise<StatusChangePreview> {
-  const currency = locked.currency ?? caller.store.settings?.currency ?? "EUR";
+  const { store } = locked.snapshot;
+  const currency = locked.currency ?? store.settings?.currency ?? "EUR";
   const name = [locked.customer?.firstName, locked.customer?.lastName]
     .filter(Boolean)
     .join(" ")
@@ -261,7 +331,7 @@ async function buildPreview(
       : null;
   const messages =
     message && locked.customer
-      ? customerMessages(caller.store.customerNotificationSettings, message, locked.customer)
+      ? customerMessages(store.customerNotificationSettings, message, locked.customer)
       : [];
   const sends =
     message && messages.length > 0
@@ -336,13 +406,15 @@ async function buildPreview(
     reducesAvailability: takesStock(locked.status, to),
     money: moneyFacts,
     insuranceContract,
+    // Where the messages go, and in which language.
     recipientsHash: sha256(
-      stableStringify(
-        messages.map((entry) => ({
+      stableStringify({
+        locale: locked.locale,
+        recipients: messages.map((entry) => ({
           channel: entry.channel,
           to: entry.channel === "email" ? locked.customer?.email : locked.customer?.phone,
         })),
-      ),
+      }),
     ),
   };
 }
@@ -409,8 +481,10 @@ export async function changeStoreReservationStatus(
               await checkExistingReservationInventory(tx, id, storeId);
             }
 
+            // The preview, its confirmation and the queued messages share one snapshot.
+            const preview = await buildPreview(tx, caller, locked, to);
             if (options.confirm && statusChangeIsSensitive(from, to)) {
-              const refusal = await options.confirm(await buildPreview(tx, caller, locked, to), tx);
+              const refusal = await options.confirm(preview, tx);
               // Committed: the new preview stays recorded for its token.
               if (refusal) return { kind: "confirm", error: refusal };
             }
@@ -420,7 +494,7 @@ export async function changeStoreReservationStatus(
                 ? evaluateReservationRules({
                     startDate: locked.startDate,
                     endDate: locked.endDate,
-                    storeSettings: caller.store.settings,
+                    storeSettings: locked.snapshot.store.settings,
                   })
                 : [];
             const change = await changeReservationStatus(tx, {
@@ -447,18 +521,18 @@ export async function changeStoreReservationStatus(
             // It does nothing unless the reservation is now billable and not yet signed.
             await validateReservationContract(tx, id, storeId, "confirmation");
             await resolveDateChangeRequests(tx, id, locked.startDate, locked.endDate, change.to);
-            // The messages and notifications, as they are now, under the locks.
+            // An earlier change's unsent customer messages are stale news now.
+            await supersedeEffects(tx, storeId, customerMessageKeyPrefix(id));
             const effectIds = await enqueueEffects(
               tx,
               storeId,
-              await buildStatusChangeEffects(tx, {
-                storeId,
-                reservationId: id,
+              buildStatusChangeEffects(locked.snapshot, {
                 from: change.from,
                 to: change.to,
                 transport: caller.transport,
                 rejectionReason: request.rejectionReason ?? null,
                 warningCount: warnings.length,
+                messages: preview.messages,
               }),
             );
             return {
