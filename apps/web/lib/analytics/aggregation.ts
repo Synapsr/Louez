@@ -12,7 +12,7 @@ import { startOfDay, subDays, format } from 'date-fns'
 
 import { log } from '@/lib/evlog'
 
-import { PRODUCT_REVENUE_WINDOW_DAYS, getProductRevenueByDay } from './product-revenue'
+import { PRODUCT_REVENUE_WINDOW_DAYS, getProductSalesByDay } from './product-revenue'
 import { toCents } from './util.receipt-allocation'
 
 const centsToDecimal = (cents: number) => (cents / 100).toFixed(2)
@@ -158,11 +158,12 @@ export async function aggregateDailyAnalytics(now = new Date()) {
         )
         .groupBy(pageViews.productId)
 
-      // Revenue is recomputed over the whole window: a refund or a deleted payment
-      // changes the day the receipt was cashed in, as on the product page.
+      // Revenue and reservations are recomputed over the whole window: a refund or
+      // a deleted payment changes the day the receipt was cashed in, as on the
+      // product page.
       const revenueStart = startOfDay(subDays(now, PRODUCT_REVENUE_WINDOW_DAYS))
       const currency = (store.settings?.currency || 'EUR').toUpperCase()
-      const receipts = await getProductRevenueByDay({
+      const receipts = await getProductSalesByDay({
         storeId: store.id,
         currency,
         start: revenueStart,
@@ -178,8 +179,8 @@ export async function aggregateDailyAnalytics(now = new Date()) {
           },
         })
       }
-      const revenueOf = (day: number, productId: string) =>
-        receipts.byDay.get(day)?.get(productId) ?? 0
+      const salesOf = (day: number, productId: string) =>
+        receipts.byDay.get(day)?.get(productId) ?? { revenueCents: 0, reservations: 0 }
 
       const viewsByProduct = new Map<string, number>()
       for (const product of productViewStats) {
@@ -188,7 +189,8 @@ export async function aggregateDailyAnalytics(now = new Date()) {
 
       for (const productId of viewsByProduct.keys()) {
         const views = viewsByProduct.get(productId) ?? 0
-        const productRevenue = centsToDecimal(revenueOf(yesterday.getTime(), productId))
+        const sales = salesOf(yesterday.getTime(), productId)
+        const productRevenue = centsToDecimal(sales.revenueCents)
 
         // Get cart additions for this product
         const productCartStats = await db
@@ -215,13 +217,14 @@ export async function aggregateDailyAnalytics(now = new Date()) {
             date: yesterday,
             views,
             cartAdditions: productCartStats[0]?.cartAdditions || 0,
-            reservations: 0, // This would require joining with reservation_items
+            reservations: sales.reservations,
             revenue: productRevenue,
           })
           .onDuplicateKeyUpdate({
             set: {
               views,
               cartAdditions: productCartStats[0]?.cartAdditions || 0,
+              reservations: sales.reservations,
               revenue: productRevenue,
               updatedAt: new Date(),
             },
@@ -230,13 +233,14 @@ export async function aggregateDailyAnalytics(now = new Date()) {
         results.productStatsCreated++
       }
 
-      // Every other product and day of the window whose stored revenue differs from
-      // the receipts: a product sold without being viewed gets its row, and a
-      // revenue whose receipts were refunded or deleted goes back to zero.
-      const storedRevenue = await db
+      // Every other product and day of the window whose stored figures differ from
+      // the receipts: a product sold without being viewed gets its row, and the
+      // revenue and reservations of receipts refunded or deleted go back to zero.
+      const storedSales = await db
         .select({
           productId: productStats.productId,
           date: productStats.date,
+          reservations: productStats.reservations,
           revenue: productStats.revenue,
         })
         .from(productStats)
@@ -248,9 +252,9 @@ export async function aggregateDailyAnalytics(now = new Date()) {
           )
         )
       const stored = new Map(
-        storedRevenue.map((row) => [
+        storedSales.map((row) => [
           `${row.date.getTime()}|${row.productId}`,
-          toCents(row.revenue),
+          { revenueCents: toCents(row.revenue), reservations: row.reservations },
         ])
       )
       const keys = new Set(stored.keys())
@@ -261,8 +265,14 @@ export async function aggregateDailyAnalytics(now = new Date()) {
         const [dayText, productId] = key.split('|')
         const day = Number(dayText)
         if (!productId || (day === yesterday.getTime() && viewsByProduct.has(productId))) continue
-        const cents = revenueOf(day, productId)
-        if (stored.get(key) === cents) continue
+        const sales = salesOf(day, productId)
+        const before = stored.get(key)
+        if (
+          before?.revenueCents === sales.revenueCents &&
+          before.reservations === sales.reservations
+        ) {
+          continue
+        }
         await db
           .insert(productStats)
           .values({
@@ -271,11 +281,15 @@ export async function aggregateDailyAnalytics(now = new Date()) {
             date: new Date(day),
             views: 0,
             cartAdditions: 0,
-            reservations: 0,
-            revenue: centsToDecimal(cents),
+            reservations: sales.reservations,
+            revenue: centsToDecimal(sales.revenueCents),
           })
           .onDuplicateKeyUpdate({
-            set: { revenue: centsToDecimal(cents), updatedAt: new Date() },
+            set: {
+              reservations: sales.reservations,
+              revenue: centsToDecimal(sales.revenueCents),
+              updatedAt: new Date(),
+            },
           })
         results.productStatsCreated++
       }

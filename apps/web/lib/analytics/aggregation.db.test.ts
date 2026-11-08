@@ -89,6 +89,7 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
         productId: louezDb.productStats.productId,
         date: louezDb.productStats.date,
         views: louezDb.productStats.views,
+        reservations: louezDb.productStats.reservations,
         revenue: louezDb.productStats.revenue,
       })
       .from(louezDb.productStats)
@@ -96,7 +97,7 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
     return Object.fromEntries(
       rows.map((row) => [
         `${row.date.getTime() === yesterday.getTime() ? "yesterday" : row.date.getTime() === tenDaysAgo.getTime() ? "tenDaysAgo" : row.date.toISOString()}:${row.productId}`,
-        { views: row.views, revenue: row.revenue },
+        { views: row.views, reservations: row.reservations, revenue: row.revenue },
       ]),
     );
   };
@@ -146,6 +147,8 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
         reservation("res_usd"),
         reservation("res_gbp", STORE, "GBP"),
         reservation("res_old"),
+        reservation("res_twice"),
+        reservation("res_second"),
         reservation("res_other", OTHER_STORE),
       ]);
     await db.insert(louezDb.reservationItems).values([
@@ -161,6 +164,8 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
       item("res_usd", "prod_bike", "100.00"),
       item("res_gbp", "prod_bike", "100.00"),
       item("res_old", "prod_helmet", "100.00"),
+      item("res_twice", "prod_a", "20.00"),
+      item("res_second", "prod_b", "10.00"),
       item("res_other", "prod_other", "100.00"),
     ]);
 
@@ -184,6 +189,13 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
       payment("pay_gbp", "res_gbp", "100.00", yesterdayNoon, { currency: null }),
       // Cashed in ten days ago: that day's revenue.
       payment("pay_old", "res_old", "100.00", tenDaysAgoNoon),
+      // First paid before the window: yesterday's balance is revenue, not a new
+      // reservation.
+      payment("pay_twice_first", "res_twice", "1.00", subDays(NOW, 400)),
+      payment("pay_twice", "res_twice", "20.00", yesterdayNoon),
+      // Paid in two parts: the reservation counts on the first one's day.
+      payment("pay_second_first", "res_second", "5.00", tenDaysAgoNoon),
+      payment("pay_second", "res_second", "5.00", yesterdayNoon),
       // Another store's sale.
       payment("pay_other", "res_other", "100.00", yesterdayNoon),
     ]);
@@ -202,25 +214,31 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
     await database?.drop();
   });
 
+  const figures = (revenueCents: number, reservations: number) => ({
+    revenueCents,
+    reservations,
+  });
+
   test("receipts are split per day and product in whole cents, in the store's currency", async () => {
-    const revenue = await productRevenue.getProductRevenueByDay({
+    const sales = await productRevenue.getProductSalesByDay({
       storeId: STORE,
       currency: "EUR",
       start: tenDaysAgo,
       end: today,
     });
-    assert.deepEqual(Object.fromEntries(revenue.byDay.get(yesterday.getTime()) ?? []), {
-      prod_bike: 6500,
-      prod_helmet: 4000,
-      prod_a: 33,
-      prod_b: 33,
-      prod_c: 34,
+    assert.deepEqual(Object.fromEntries(sales.byDay.get(yesterday.getTime()) ?? []), {
+      prod_bike: figures(6500, 2),
+      prod_helmet: figures(4000, 1),
+      prod_a: figures(2033, 1),
+      prod_b: figures(533, 1),
+      prod_c: figures(34, 1),
     });
-    assert.deepEqual(Object.fromEntries(revenue.byDay.get(tenDaysAgo.getTime()) ?? []), {
-      prod_helmet: 10_000,
+    assert.deepEqual(Object.fromEntries(sales.byDay.get(tenDaysAgo.getTime()) ?? []), {
+      prod_helmet: figures(10_000, 1),
+      prod_b: figures(500, 1),
     });
     assert.deepEqual(
-      [...revenue.skipped].sort((a, b) => a.currency.localeCompare(b.currency)),
+      [...sales.skipped].sort((a, b) => a.currency.localeCompare(b.currency)),
       [
         { currency: "GBP", count: 1 },
         { currency: "USD", count: 1 },
@@ -228,34 +246,52 @@ describe("product stats revenue (database)", { skip: skipWithoutTestDatabase() }
     );
   });
 
-  test("the daily aggregation records each product's revenue on its receipt day", async () => {
+  test("the daily aggregation records each product's figures on their receipt day", async () => {
     await aggregation.aggregateDailyAnalytics(NOW);
     // A second run writes the same figures.
     await aggregation.aggregateDailyAnalytics(NOW);
 
     assert.deepEqual(await readStats(), {
-      "yesterday:prod_bike": { views: 0, revenue: "65.00" },
-      "yesterday:prod_helmet": { views: 0, revenue: "40.00" },
-      "yesterday:prod_a": { views: 0, revenue: "0.33" },
-      "yesterday:prod_b": { views: 0, revenue: "0.33" },
-      "yesterday:prod_c": { views: 0, revenue: "0.34" },
-      "yesterday:prod_viewed": { views: 1, revenue: "0.00" },
-      "tenDaysAgo:prod_helmet": { views: 0, revenue: "100.00" },
+      "yesterday:prod_bike": { views: 0, reservations: 2, revenue: "65.00" },
+      "yesterday:prod_helmet": { views: 0, reservations: 1, revenue: "40.00" },
+      "yesterday:prod_a": { views: 0, reservations: 1, revenue: "20.33" },
+      "yesterday:prod_b": { views: 0, reservations: 1, revenue: "5.33" },
+      "yesterday:prod_c": { views: 0, reservations: 1, revenue: "0.34" },
+      "yesterday:prod_viewed": { views: 1, reservations: 0, revenue: "0.00" },
+      "tenDaysAgo:prod_helmet": { views: 0, reservations: 1, revenue: "100.00" },
+      "tenDaysAgo:prod_b": { views: 0, reservations: 1, revenue: "5.00" },
     });
   });
 
-  test("a later full refund or a deleted payment brings its day back to zero", async () => {
+  test("a later refund or a deleted payment brings its day's figures back down", async () => {
     const { db, payments } = louezDb;
-    // A full Stripe refund brings the charge row down to what the store keeps.
+    // A full Stripe refund brings the charge row down to what the store keeps: the
+    // receipt still counts its reservation, as on the product page.
     await db.update(payments).set({ amount: "0.00" }).where(eq(payments.id, "pay_rental"));
     await db.delete(payments).where(eq(payments.id, "pay_old"));
+    // Without its first part, the reservation's first receipt is yesterday's.
+    await db.delete(payments).where(eq(payments.id, "pay_second_first"));
 
     await aggregation.aggregateDailyAnalytics(NOW);
 
     const stats = await readStats();
-    assert.deepEqual(stats["yesterday:prod_bike"], { views: 0, revenue: "5.00" });
-    assert.deepEqual(stats["yesterday:prod_helmet"], { views: 0, revenue: "0.00" });
-    assert.deepEqual(stats["tenDaysAgo:prod_helmet"], { views: 0, revenue: "0.00" });
-    assert.deepEqual(stats["yesterday:prod_viewed"], { views: 1, revenue: "0.00" });
+    assert.deepEqual(stats["yesterday:prod_bike"], { views: 0, reservations: 2, revenue: "5.00" });
+    assert.deepEqual(stats["yesterday:prod_helmet"], {
+      views: 0,
+      reservations: 1,
+      revenue: "0.00",
+    });
+    assert.deepEqual(stats["yesterday:prod_b"], { views: 0, reservations: 2, revenue: "5.33" });
+    assert.deepEqual(stats["tenDaysAgo:prod_helmet"], {
+      views: 0,
+      reservations: 0,
+      revenue: "0.00",
+    });
+    assert.deepEqual(stats["tenDaysAgo:prod_b"], { views: 0, reservations: 0, revenue: "0.00" });
+    assert.deepEqual(stats["yesterday:prod_viewed"], {
+      views: 1,
+      reservations: 0,
+      revenue: "0.00",
+    });
   });
 });
