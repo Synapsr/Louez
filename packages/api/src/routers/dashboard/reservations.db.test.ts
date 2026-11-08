@@ -564,6 +564,55 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     }
   });
 
+  test("without payments read, the payment filter is refused and history keeps only listed details", async () => {
+    const id = await reservation("confirmed", { number: "2030-0400" });
+    // A rental extension writes its Stripe session on a `modified` entry.
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: nextId("rs_act"),
+      reservationId: id,
+      activityType: "modified",
+      metadata: {
+        kind: "rental_extension",
+        sessionId: "cs_secret",
+        paymentId: "pay_secret",
+        status: "paid",
+      },
+    });
+    await louezDb.db.insert(louezDb.reservationActivity).values({
+      id: nextId("rs_act"),
+      reservationId: id,
+      activityType: "confirmed",
+      metadata: { previousStatus: "pending", newStatus: "confirmed", paymentIntentId: "pi_secret" },
+    });
+    const key = await apiKey({ ...everything, payments: "none" });
+
+    const refusal = await rejects(
+      run("list", { paymentMethod: "cash" }, key()),
+      "PERMISSION_DENIED",
+    );
+    assert.deepEqual(refusal.data.details, { required: "payments:read" });
+
+    const detail = await run("get", { id }, key());
+    const byType = Object.fromEntries(
+      detail.activity.map((entry) => [entry.activityType, entry.metadata]),
+    );
+    assert.deepEqual(byType.modified, { kind: "rental_extension" });
+    assert.deepEqual(byType.confirmed, { previousStatus: "pending", newStatus: "confirmed" });
+    assert.ok(!JSON.stringify(detail).includes("_secret"));
+
+    const full = await run("get", { id }, (await apiKey())());
+    assert.ok(JSON.stringify(full).includes("cs_secret"), "with payments read, all of it");
+    assert.equal((await run("list", { paymentMethod: "cash" }, session())).totalCount, 0);
+  });
+
+  test("an agent's numbered pages stop at 10,000 rows; the dashboard's do not", async () => {
+    const key = await apiKey();
+    const refusal = await rejects(run("list", { page: 401, limit: 25 }, key()), "PAGE_TOO_DEEP");
+    assert.equal(refusal.data.details?.maxOffset, 10_000);
+    await run("list", { page: 400, limit: 25 }, key());
+    await run("list", { page: 401, limit: 25 }, session());
+  });
+
   test("numbered pages go as deep as the list", async () => {
     await louezDb.db.insert(louezDb.reservations).values(
       Array.from({ length: 402 }, (_, index) => ({
@@ -667,11 +716,15 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     assert.deepEqual(contracts, [`create:${id}`]);
     // The messages and notifications are in the outbox, handed to the app once committed.
     const rows = await outbox();
-    assert.deepEqual(rows.map((row) => row.type).sort(), [
-      "reservation.customerMessage",
-      "reservation.platformNotification",
-      "reservation.statusAnalytics",
-      "reservation.storeNotification",
+    // One row per channel: a failed SMS is retried without sending the email again.
+    assert.deepEqual(rows.map((row) => `${row.type}:${String(row.payload.channel ?? "")}`).sort(), [
+      "reservation.customerMessage:email",
+      "reservation.platformNotification:discord",
+      "reservation.platformNotification:fromhello",
+      "reservation.statusAnalytics:",
+      "reservation.storeNotification:discord",
+      "reservation.storeNotification:push",
+      "reservation.storeNotification:sms",
     ]);
     assert.deepEqual([...dispatched].sort(), rows.map((row) => row.id).sort());
     const message = rows.find((row) => row.type === "reservation.customerMessage")?.payload as {
@@ -879,6 +932,89 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
         .set({ phone: null, email: "ada@rs.test" })
         .where(orm.eq(louezDb.customers.id, CUSTOMER));
     }
+  });
+
+  test("the preview, its token and the queued messages come from one snapshot", async () => {
+    const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({
+        customerNotificationSettings: {
+          ...DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
+          customer_request_accepted: { enabled: true, email: true, sms: true },
+        },
+      })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    await louezDb.db
+      .update(louezDb.customers)
+      .set({ phone: "+33600000003" })
+      .where(orm.eq(louezDb.customers.id, CUSTOMER));
+    try {
+      const id = await reservation("pending", { productId: await product() });
+      const key = await apiKey();
+      const refusal = await rejects(
+        run("updateStatus", { id, status: "confirmed" }, key()),
+        "CONFIRMATION_REQUIRED",
+      );
+      const announced = previewOf(refusal).details.messages.map((message) => message.channel);
+      assert.deepEqual(announced, ["email", "sms"]);
+
+      // The reservation's language changes: the token, bound to it, no longer works.
+      await louezDb.db
+        .update(louezDb.reservations)
+        .set({ locale: "de" })
+        .where(orm.eq(louezDb.reservations.id, id));
+      await rejects(
+        run(
+          "updateStatus",
+          { id, status: "confirmed" },
+          key({ "louez-confirmation": tokenOf(refusal) }),
+        ),
+        "CONFIRMATION_INVALID",
+      );
+
+      const token = tokenOf(
+        await rejects(
+          run("updateStatus", { id, status: "confirmed" }, key()),
+          "CONFIRMATION_REQUIRED",
+        ),
+      );
+      await run("updateStatus", { id, status: "confirmed" }, key({ "louez-confirmation": token }));
+      const queued = (await outbox()).filter((row) => row.type === "reservation.customerMessage");
+      assert.deepEqual(
+        queued.map((row) => row.payload.channel),
+        announced,
+        "exactly the channels the preview announced",
+      );
+      const sms = queued.find((row) => row.payload.channel === "sms")?.payload as {
+        customer: { phone: string };
+        reservation: { locale: string };
+      };
+      assert.equal(sms.customer.phone, "+33600000003");
+      assert.equal(sms.reservation.locale, "de");
+    } finally {
+      await louezDb.db
+        .update(louezDb.customers)
+        .set({ phone: null })
+        .where(orm.eq(louezDb.customers.id, CUSTOMER));
+    }
+  });
+
+  test("a later status change supersedes the earlier customer message still unsent", async () => {
+    const id = await reservation("pending", { productId: await product() });
+    await run("updateStatus", { id, status: "confirmed" }, session());
+    await run("cancel", { id }, session());
+    const messages = (await outbox()).filter((row) => row.type === "reservation.customerMessage");
+    assert.deepEqual(
+      messages.map((row) => row.status),
+      ["superseded"],
+      "the acceptance email speaks of a status no longer true",
+    );
+    const storeRows = (await outbox()).filter(
+      (row) => row.type === "reservation.storeNotification",
+    );
+    assert.equal(storeRows.length, 6, "the store hears of both changes, in order");
+    assert.ok(storeRows.every((row) => row.status === "pending"));
   });
 
   test("a pick-up needs no confirmation, and its replay with the same key runs once", async () => {
