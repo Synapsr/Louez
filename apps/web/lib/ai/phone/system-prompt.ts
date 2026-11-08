@@ -1,7 +1,7 @@
 import type { AiPhoneAnswerMode, BusinessHours } from "@louez/types";
 import { normalizeDaySchedule } from "@louez/utils";
 
-import { getUpcomingClosures } from "@/lib/utils/business-hours";
+import { getUpcomingClosures } from "@louez/utils";
 import { localeNames, type Locale } from "@/i18n/config";
 
 export type PhonePromptParams = {

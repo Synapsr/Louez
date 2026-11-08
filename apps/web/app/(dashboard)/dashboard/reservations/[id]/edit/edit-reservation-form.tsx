@@ -35,10 +35,7 @@ import { cn, formatCurrency, getCurrencySymbol, minutesToPriceDuration } from "@
 import { useFormatLocale } from "@/hooks/use-format-locale";
 import { calculateDuration } from "@/lib/utils/duration";
 import { useStoreTimezone } from "@/contexts/store-context";
-import {
-  evaluateReservationRules,
-  type ReservationValidationWarning,
-} from "@/lib/utils/reservation-rules";
+import { evaluateReservationRules, type ReservationValidationWarning } from "@louez/utils";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { isLegacyTulipInsuranceItem } from "@/lib/integrations/tulip/contracts-insurance";
 import { orpc } from "@/lib/orpc/react";

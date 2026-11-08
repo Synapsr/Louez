@@ -1,5 +1,5 @@
 import { DateChangeReview } from "@/components/reservations/date-change-review";
-import { getDateChangeRequests } from "@/lib/reservations/util.date-change-request";
+import { getDateChangeRequests } from "@louez/validations";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { hasPermission } from "@/lib/store-context";

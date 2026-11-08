@@ -39,14 +39,14 @@ import { captureReservationActionSucceeded } from "@/lib/product-analytics/analy
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import { getReservationStatusAnalyticsAction } from "@/lib/product-analytics/reservation-analytics";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
-import { ReservationInventoryError } from "@/lib/reservations/reserve-inventory";
+import { ReservationInventoryError } from "@louez/api/services/reservation-inventory";
 import {
   changeStoreReservationStatus,
   isStoreStatusChangeConflict,
   retryStoreStatusChange,
 } from "@/lib/reservations/store-status-change";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { evaluateReservationRules } from "@/lib/utils/reservation-rules";
+import { evaluateReservationRules } from "@louez/utils";
 
 // A status change the store asks for, and everything around it: the dashboard's
 // status menu and cancel button, the assistant and MCP all go through here. The

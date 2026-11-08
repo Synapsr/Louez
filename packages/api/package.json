@@ -18,9 +18,12 @@
     "./services/customer-fields-online": "./src/services/customer-fields-online.ts",
     "./services/customer-profile-fields": "./src/services/customer-profile-fields.ts",
     "./services/customer-tools": "./src/services/customer-tools.ts",
+    "./services/date-change-requests": "./src/services/date-change-requests.ts",
     "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts",
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
     "./services/promo": "./src/services/promo.ts",
+    "./services/reservation-failure": "./src/services/reservation-failure.ts",
+    "./services/reservation-inventory": "./src/services/reservation-inventory.ts",
     "./services/unit-availability": "./src/services/unit-availability.ts",
     "./services/unit-conflicts": "./src/services/unit-conflicts.ts",
     "./services/unit-mutations": "./src/services/unit-mutations.ts"

@@ -12,9 +12,9 @@ import {
   formatDaySchedule,
   getDaySchedule,
   isWithinBusinessHours,
-} from '@/lib/utils/business-hours';
-import { getMinStartDateTime } from '@/lib/utils/duration';
-import { formatDurationFromMinutes } from '@/lib/utils/rental-duration';
+} from '@louez/utils';
+import { getMinStartDateTime } from '@louez/utils';
+import { formatDurationFromMinutes } from '@louez/utils';
 
 import type {
   AvailabilityWarning,

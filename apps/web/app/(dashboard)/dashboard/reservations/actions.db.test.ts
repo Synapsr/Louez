@@ -29,7 +29,8 @@ const STUBS: Record<string, string> = {
   "@/lib/auth": "export async function auth() { return null; }\n",
   "@/lib/store-context": `export async function getCurrentStore() { return globalThis[${JSON.stringify(STORE_KEY)}] ?? null; }\n`,
   // A quote's email is sent without being awaited, and would outlive the database.
-  "@/lib/notifications/customer-dispatcher": "export async function dispatchCustomerNotification() {}\n",
+  "@/lib/notifications/customer-dispatcher":
+    "export async function dispatchCustomerNotification() {}\n",
 };
 const ACTIONS_FILE = "/dashboard/reservations/actions.ts";
 const FILES_SDK = new URL("../../../../node_modules/files-sdk/dist/", import.meta.url);
@@ -40,7 +41,7 @@ if (typeof registerHooks !== "function") {
 }
 registerHooks({
   resolve(specifier: string, context: ResolveContext, nextResolve: NextResolve) {
-    // date-change-request.server.ts imports "server-only", which throws outside Next.
+    // A module that imports "server-only" throws outside Next.
     if (specifier === "server-only") return { shortCircuit: true, url: "node:module" };
     // files-sdk exports ESM only, through an "import" condition the test's require misses.
     if (specifier === "files-sdk" || specifier.startsWith("files-sdk/")) {

@@ -24,7 +24,7 @@ import {
   getCanonicalUrl,
 } from "@/lib/seo";
 import { getStorefrontUrl } from "@/lib/storefront-url";
-import { getMaxRentalMinutes, getMinRentalMinutes } from "@/lib/utils/rental-duration";
+import { getMaxRentalMinutes, getMinRentalMinutes } from "@louez/utils";
 import {
   buildCategoryBrowseHref,
   getCategoryToken,

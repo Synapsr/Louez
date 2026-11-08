@@ -6,10 +6,7 @@ import { getExtensionAttempt } from "@/lib/reservations/extension.types";
 
 import { buildCalendarLinks } from "@/lib/reservations/util.calendar-links";
 
-import {
-  canRequestDateChange,
-  getDateChangeRequests,
-} from "@/lib/reservations/util.date-change-request";
+import { canRequestDateChange, getDateChangeRequests } from "@louez/validations";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 

@@ -1,10 +1,5 @@
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 
-import {
-  computeReservedNetOfExcludedUnits,
-  loadExcludedUnitInfo,
-  validateRequiredAccessoryLines,
-} from "@louez/api/services";
 import { loadConsumableReservedQuantities } from "@louez/db";
 import type { BlockingReservationStatus, Database, Transaction } from "@louez/db";
 import {
@@ -17,7 +12,6 @@ import {
   products,
   reservations,
 } from "@louez/db";
-import type { PricingCatalog } from "@louez/api/services/pricing-catalog";
 import type { UnitAttributes } from "@louez/types";
 import {
   DEFAULT_COMBINATION_KEY,
@@ -28,9 +22,11 @@ import {
   matchesSelectedAttributes,
 } from "@louez/utils";
 
-import { failReservation, type ReservationFailure } from "./reservation.types";
-import { allocateAcrossCombinations } from "./util.pooled-allocation";
-import type { RentalWindow } from "./validate-rental-window";
+import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "./availability";
+import { allocateAcrossCombinations } from "./pooled-allocation";
+import type { PricingCatalog } from "./pricing-catalog";
+import { validateRequiredAccessoryLines } from "./required-accessories";
+import { failReservation, type ReservationFailure } from "./reservation-failure";
 
 export interface ReserveInventoryLine {
   lineId?: string;
@@ -141,7 +137,7 @@ export const reserveInventory = async ({
   storeId: string;
   lockedProductsById: Map<string, LockedProduct>;
   lines: ReserveInventoryLine[];
-  window: RentalWindow;
+  window: { start: Date; end: Date };
   turnoverBufferMinutes: number;
   blockingStatuses: BlockingReservationStatus[];
 }): Promise<{ ok: true; inventory: ReservedInventory } | ReservationFailure> => {

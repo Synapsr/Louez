@@ -3,7 +3,7 @@
 import {
   checkExistingReservationInventory,
   ReservationInventoryError,
-} from "@/lib/reservations/reserve-inventory";
+} from "@louez/api/services/reservation-inventory";
 
 import { validateReservationContract } from "@louez/api/services";
 

@@ -23,3 +23,4 @@ export * from "./reservation";
 export * from "./review-booster";
 
 export * from "./product-promotion";
+export * from "./date-change-request";

@@ -13,7 +13,7 @@ import {
   failReservation,
   type ReservationErrorParams,
   type ReservationFailure,
-} from "./reservation.types";
+} from "@louez/api/services/reservation-failure";
 
 type LocationSnapshot = Awaited<ReturnType<typeof resolveReservationLocationSnapshot>>;
 

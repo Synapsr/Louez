@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { allocateAcrossCombinations } from "./util.pooled-allocation";
+import { allocateAcrossCombinations } from "./pooled-allocation";
 
 const combinations = [
   { combinationKey: "taille:XS", totalQuantity: 1, selectedAttributes: { taille: "XS" } },

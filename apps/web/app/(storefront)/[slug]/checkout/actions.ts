@@ -19,7 +19,7 @@ import { createReservation as createReservationInternal } from "@/lib/reservatio
 import type {
   ReservationErrorParams,
   ReservationFailureDetails,
-} from "@/lib/reservations/reservation.types";
+} from "@louez/api/services/reservation-failure";
 import {
   getRequestedTulipOptIn,
   getTulipCheckoutMode,

@@ -28,7 +28,7 @@ import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state"
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug, type StorefrontStore } from "@/lib/storefront/get-store-by-slug";
-import { getMinRentalMinutes } from "@/lib/utils/rental-duration";
+import { getMinRentalMinutes } from "@louez/utils";
 
 import { getCustomerSession } from "../account/actions";
 import { CheckoutForm } from "./checkout-form";

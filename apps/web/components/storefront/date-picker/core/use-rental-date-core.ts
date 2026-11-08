@@ -12,8 +12,10 @@ import {
   getAvailableTimeSlots,
   getNextAvailableDate,
   isDateAvailable,
-} from "@/lib/utils/business-hours";
-import { getMinStartDate, getMinStartDateTime } from "@/lib/utils/duration";
+} from "@louez/utils";
+import { getMinStartDateTime } from "@louez/utils";
+
+import { getMinStartDate } from "@/lib/utils/duration";
 import {
   allowsSameDayRental,
   validateRentalPeriodSelection,

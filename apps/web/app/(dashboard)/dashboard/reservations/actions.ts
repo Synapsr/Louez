@@ -1,10 +1,13 @@
 "use server";
 
-import { lockReservationProducts, reserveInventory } from "@/lib/reservations/reserve-inventory";
+import {
+  lockReservationProducts,
+  reserveInventory,
+} from "@louez/api/services/reservation-inventory";
 
 import { validateReservationContract } from "@louez/api/services";
 
-import { resolveDateChangeRequests } from "@/lib/reservations/date-change-request.server";
+import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { revalidatePath } from "next/cache";
 
 import { and, eq, gte, inArray, not, sql } from "drizzle-orm";
@@ -174,7 +177,7 @@ import {
   toStripeCents,
 } from "@/lib/stripe";
 import { calculateTotalDeliveryFee, validateDelivery } from "@/lib/utils/geo";
-import { evaluateReservationRules } from "@/lib/utils/reservation-rules";
+import { evaluateReservationRules } from "@louez/utils";
 import { buildUnitEvent } from "@louez/api/services/unit-mutations";
 import {
   resolveUnitAssignmentScope,

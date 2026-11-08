@@ -15,7 +15,7 @@ import {
 } from "@/lib/ai/phone/webhook";
 import { getStorePlan } from "@/lib/plan-limits";
 import { areAiCreditsEnabled } from "@/lib/plans";
-import { isWithinBusinessHours } from "@/lib/utils/business-hours";
+import { isWithinBusinessHours } from "@louez/utils";
 import { getVoiceProvider } from "@/lib/voice/client";
 import {
   getLiveModel,

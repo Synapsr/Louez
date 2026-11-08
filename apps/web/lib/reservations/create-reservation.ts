@@ -63,14 +63,14 @@ import {
   type ReservationTotals,
 } from "./price-cart";
 import { generateUniqueReservationNumber } from "./reservation-number";
-import {
-  failReservation,
-  type CreateReservationRequest,
-  type CreateReservationResult,
-  type QuoteReservationRequest,
-  type QuoteReservationResult,
-  type ReservationFailure,
-  type ReservationSource,
+import { failReservation, type ReservationFailure } from "@louez/api/services/reservation-failure";
+
+import type {
+  CreateReservationRequest,
+  CreateReservationResult,
+  QuoteReservationRequest,
+  QuoteReservationResult,
+  ReservationSource,
 } from "./reservation.types";
 import {
   getReservationLineKey,
@@ -78,7 +78,7 @@ import {
   preflightStock,
   reserveInventory,
   type ResolvedLineCombination,
-} from "./reserve-inventory";
+} from "@louez/api/services/reservation-inventory";
 import {
   resolveDelivery,
   validateDeliveryMinimumOrder,
@@ -1160,7 +1160,10 @@ export const createReservation = async (
     // confirmation after payment is never refused, so the start of the booking is.
     // The renter gets the store's contact, never the reason (design §4.7).
     if (!(await checkReservationGate(store.id, request.source)).accepts) {
-      return failReservation(STORE_NOT_ACCEPTING_RESERVATIONS_ERROR, renterGateRefusalParams(store));
+      return failReservation(
+        STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
+        renterGateRefusalParams(store),
+      );
     }
 
     const effectiveReservationMode =

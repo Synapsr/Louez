@@ -7,7 +7,7 @@ import type { StoreSettings } from "@louez/types";
 import { EmbedPeriodWidget } from "@/components/storefront/embed/embed-period-widget";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
-import { getMinRentalMinutes } from "@/lib/utils/rental-duration";
+import { getMinRentalMinutes } from "@louez/utils";
 import { getStoreReassurance } from "@/lib/utils/util.store-reassurance";
 
 // Reuse the embed settings during a short browsing session.

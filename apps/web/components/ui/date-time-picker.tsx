@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@louez/ui'
 import { Label } from '@louez/ui'
-import { buildStoreDate } from '@/lib/utils/business-hours'
+import { buildStoreDate } from '@louez/utils'
 import { formatStoreDate } from '@/lib/utils/store-date'
 
 interface DateTimePickerProps {

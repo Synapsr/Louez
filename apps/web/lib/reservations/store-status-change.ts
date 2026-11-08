@@ -15,8 +15,8 @@ import type {
   Transaction,
 } from "@louez/db";
 
-import { resolveDateChangeRequests } from "@/lib/reservations/date-change-request.server";
-import { checkExistingReservationInventory } from "@/lib/reservations/reserve-inventory";
+import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
+import { checkExistingReservationInventory } from "@louez/api/services/reservation-inventory";
 
 export type StoreStatusChangeInput = Omit<ChangeReservationStatusInput, "beforeWrite"> & {
   /** The rental dates, to settle the pending return-date requests. */

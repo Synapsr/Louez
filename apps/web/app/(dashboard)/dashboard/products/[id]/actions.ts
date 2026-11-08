@@ -31,7 +31,7 @@ import { buildUnitEvent } from '@louez/api/services/unit-mutations';
 import {
   lockReservationProducts,
   reserveInventory,
-} from '@/lib/reservations/reserve-inventory';
+} from '@louez/api/services/reservation-inventory';
 import {
   resolveUnitAssignmentScope,
   unitMatchesAssignmentScope,

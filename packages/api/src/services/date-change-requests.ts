@@ -1,13 +1,15 @@
-import "server-only";
-
 import { and, desc, eq } from "drizzle-orm";
 import { reservationActivity, type Transaction } from "@louez/db";
 import {
   canRequestDateChange,
   getDateChangeRequests,
   getDateChangeResolution,
-} from "@/lib/reservations/util.date-change-request";
+} from "@louez/validations";
 
+/**
+ * Settles the reservation's pending return-date requests after a change of
+ * its dates or status, in the caller's transaction.
+ */
 export const resolveDateChangeRequests = async (
   tx: Transaction,
   reservationId: string,

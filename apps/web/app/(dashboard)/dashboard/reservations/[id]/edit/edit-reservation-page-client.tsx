@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { DashboardReservationEditContext } from "@louez/api/services";
 import type { StoreSettings, TulipPublicMode } from "@louez/types";
 
-import { getDateChangeRequests } from "@/lib/reservations/util.date-change-request";
+import { getDateChangeRequests } from "@louez/validations";
 import { orpc } from "@/lib/orpc/react";
 
 import { EditReservationForm } from "./edit-reservation-form";

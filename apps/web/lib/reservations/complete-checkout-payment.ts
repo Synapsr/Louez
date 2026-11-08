@@ -1,4 +1,7 @@
-import { checkExistingReservationInventory, ReservationInventoryError } from "./reserve-inventory";
+import {
+  checkExistingReservationInventory,
+  ReservationInventoryError,
+} from "@louez/api/services/reservation-inventory";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -39,7 +42,7 @@ import {
   claimCompletedCheckoutPayment,
   paymentInsuranceShareMinor,
 } from "@/lib/stripe/payment-completion";
-import { evaluateReservationRules } from "@/lib/utils/reservation-rules";
+import { evaluateReservationRules } from "@louez/utils";
 
 export type CheckoutPaymentCompletionSource = "webhook" | "return";
 

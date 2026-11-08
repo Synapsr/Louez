@@ -5,7 +5,7 @@ import {
   canRequestDateChange,
   getDateChangeRequests,
   isValidRequestedEndDate,
-} from "./util.date-change-request";
+} from "./date-change-request";
 
 const start = new Date("2026-09-10T09:00:00Z");
 const end = new Date("2026-09-14T09:00:00Z");

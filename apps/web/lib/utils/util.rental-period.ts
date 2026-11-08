@@ -5,10 +5,10 @@ import type { BusinessHours, PricingMode } from "@louez/types";
 
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 
-import { getNextAvailableDate } from "@/lib/utils/business-hours";
+import { getNextAvailableDate } from "@louez/utils";
 import { getMinStartDate } from "@/lib/utils/duration";
-import { getMinRentalMinutes } from "@/lib/utils/rental-duration";
-import { evaluateReservationRules } from "@/lib/utils/reservation-rules";
+import { getMinRentalMinutes } from "@louez/utils";
+import { evaluateReservationRules } from "@louez/utils";
 
 const DAY_MINUTES = 24 * 60;
 
