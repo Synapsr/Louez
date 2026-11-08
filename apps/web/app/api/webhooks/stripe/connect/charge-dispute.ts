@@ -1,3 +1,5 @@
+import { after } from "next/server";
+
 import { log } from "@/lib/evlog";
 import { clawbackReferrerRewardForQualifyingPayment } from "@/lib/referral/rewards";
 import { fromStripeCents } from "@/lib/stripe";
@@ -9,6 +11,22 @@ import { type FeeReversalStripe, reverseFeeAtSource, stripeFeeReversal } from ".
 
 // `charge.dispute.*` on a connected account (louez-billing docs/api, fees.md §9 and
 // README Q15): the fee refund at source, then the dispute's billing facts.
+
+/** How the owner's alert is sent and when. A test replaces both. */
+export interface DisputeAlertOptions {
+  readonly notify?: (input: DisputeNotificationInput) => Promise<unknown>;
+  /** Runs the alert once the response is sent: `after` from next/server. */
+  readonly schedule?: (task: () => Promise<unknown>) => void;
+}
+
+/** `after`, or right away without waiting when there is no request scope. */
+const scheduleAfterResponse = (task: () => Promise<unknown>): void => {
+  try {
+    after(task);
+  } catch {
+    void task();
+  }
+};
 
 /** The dispute events that change the money the store keeps (fees.md §9). */
 const FEE_REVERSAL_DISPUTE_EVENTS: ReadonlySet<DisputeEventType> = new Set([
@@ -26,8 +44,9 @@ const stripeId = (value: string | { readonly id: string } | null): string | null
  * source runs first, reading the charge's disputes from Stripe; a reinstatement
  * restores no fee. The referral clawback runs on creation. The owner is told once,
  * by the first event Louez records of an open dispute, whatever its type: Stripe
- * does not order events. Throws when the fee refund fails, so the webhook answers
- * 500 and Stripe retries.
+ * does not order events. The alert and its retries run after the webhook answered,
+ * so Stripe hears back as soon as the dispute is recorded. Throws when the fee
+ * refund fails, so the webhook answers 500 and Stripe retries.
  */
 export async function handleChargeDispute(
   input: {
@@ -37,8 +56,10 @@ export async function handleChargeDispute(
     readonly connectedAccountId: string | undefined;
   },
   feeReversal: FeeReversalStripe = stripeFeeReversal,
-  notifyDisputed: (input: DisputeNotificationInput) => Promise<unknown> = notifyPaymentDisputed,
+  alert: DisputeAlertOptions = {},
 ): Promise<void> {
+  const notifyDisputed = alert.notify ?? notifyPaymentDisputed;
+  const schedule = alert.schedule ?? scheduleAfterResponse;
   const { eventType, dispute, connectedAccountId } = input;
   const chargeId = stripeId(dispute.charge);
   const paymentIntentId = stripeId(dispute.payment_intent);
@@ -80,10 +101,11 @@ export async function handleChargeDispute(
   });
 
   if (result.recorded && result.opened && mapDisputeStatus(dispute.status).status === "open") {
-    await notifyDisputed({
+    const alertInput: DisputeNotificationInput = {
       reservationId: result.reservationId,
       amount: fromStripeCents(dispute.amount, dispute.currency.toUpperCase()),
       currency: dispute.currency.toUpperCase(),
-    });
+    };
+    schedule(() => notifyDisputed(alertInput));
   }
 }

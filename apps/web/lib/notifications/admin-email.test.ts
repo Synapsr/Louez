@@ -234,6 +234,7 @@ describe("dispatchNotification email channel", () => {
           sent.push(event);
           return { sent: true };
         },
+        sendAdminSms: async () => ({ success: false, error: "not used" }),
       },
     );
 
@@ -258,6 +259,7 @@ describe("dispatchNotification email channel", () => {
           sent.push(event);
           return { sent: true };
         },
+        sendAdminSms: async () => ({ success: false, error: "not used" }),
       },
     );
 

@@ -18,6 +18,11 @@ import {
  * over.
  */
 const RETRY_DELAYS_MS: readonly number[] = [1_000, 3_000];
+/**
+ * The time the attempts may take in all, after the webhook answered: an attempt
+ * that would start later is not made.
+ */
+const BUDGET_MS = 20_000;
 
 export interface DisputeNotificationInput {
   readonly reservationId: string;
@@ -31,7 +36,9 @@ export interface DisputeNotificationDeps {
   loadContext: (input: DisputeNotificationInput) => Promise<NotificationContext | null>;
   dispatch: (ctx: NotificationContext) => Promise<NotificationResult>;
   sleep: (ms: number) => Promise<void>;
+  now: () => number;
   retryDelaysMs: readonly number[];
+  budgetMs: number;
 }
 
 const loadContext = async (input: DisputeNotificationInput) => {
@@ -82,7 +89,9 @@ const defaultDeps: DisputeNotificationDeps = {
   loadContext,
   dispatch: (ctx) => dispatchNotification("payment_disputed", ctx),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  now: () => Date.now(),
   retryDelaysMs: RETRY_DELAYS_MS,
+  budgetMs: BUDGET_MS,
 };
 
 const channelErrors = (result: NotificationResult): Record<string, string> =>
@@ -94,10 +103,11 @@ const channelErrors = (result: NotificationResult): Record<string, string> =>
 
 /**
  * Tells the store owner a customer disputed a payment, on the channels the store
- * keeps on for `payment_disputed`. When no channel reached the owner although one
- * tried, it tries again, at most twice. A partial failure is logged and not
- * retried, so a channel that worked is not sent twice. Never throws: the dispute
- * is already recorded.
+ * keeps on for `payment_disputed`. The dispatcher answers for each channel, so a
+ * channel that worked is never sent again: a partial failure is logged, and only
+ * an attempt where no channel reached the owner, although one tried, is retried,
+ * at most twice and within the budget. Never throws: the dispute is already
+ * recorded. The webhook runs it after its answer.
  */
 export async function notifyPaymentDisputed(
   input: DisputeNotificationInput,
@@ -105,9 +115,11 @@ export async function notifyPaymentDisputed(
 ): Promise<{ notified: boolean; attempts: number }> {
   const event = { event: "payment_disputed", reservationId: input.reservationId };
   let lastErrors: Record<string, string> = {};
-  const attempts = deps.retryDelaysMs.length + 1;
+  const startedAt = deps.now();
+  let attempts = 0;
 
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+  for (let attempt = 1; attempt <= deps.retryDelaysMs.length + 1; attempt += 1) {
+    attempts = attempt;
     try {
       const ctx = await deps.loadContext(input);
       if (!ctx) return { notified: false, attempts: attempt };
@@ -125,7 +137,8 @@ export async function notifyPaymentDisputed(
       lastErrors = { dispatch: error instanceof Error ? error.message : String(error) };
     }
     const delay = deps.retryDelaysMs[attempt - 1];
-    if (delay !== undefined) await deps.sleep(delay);
+    if (delay === undefined || deps.now() - startedAt + delay > deps.budgetMs) break;
+    await deps.sleep(delay);
   }
 
   log.error({

@@ -90,12 +90,16 @@ export interface NotificationContext {
   };
 }
 
-/** What dispatchNotification sends the owner's email with. A test replaces it. */
+/** What dispatchNotification sends the owner's email and SMS with. A test replaces it. */
 export interface DispatchNotificationDeps {
   sendAdminEventEmail: typeof sendAdminEventEmail;
+  sendAdminSms: typeof sendAdminSms;
 }
 
-const defaultDispatchDeps: DispatchNotificationDeps = { sendAdminEventEmail };
+const defaultDispatchDeps: DispatchNotificationDeps = { sendAdminEventEmail, sendAdminSms };
+
+const describeChannelError = (error: unknown): string =>
+  error instanceof Error ? error.message : "Unknown error";
 
 export interface NotificationResult {
   email: { sent: boolean; error?: string };
@@ -810,26 +814,36 @@ export async function dispatchNotification(
   // Determine locale from store country
   const locale = getLocaleFromCountry(ctx.store.settings?.country);
 
+  // Each channel answers for itself: one that throws never hides another's outcome.
+
   // Email to the store owner. Events without an owner template answer "not sent".
   if (prefs.email) {
-    result.email = await deps.sendAdminEventEmail(eventType, ctx);
+    try {
+      result.email = await deps.sendAdminEventEmail(eventType, ctx);
+    } catch (error) {
+      result.email = { sent: false, error: describeChannelError(error) };
+    }
   }
 
   // SMS notification to store owner
   if (prefs.sms && ctx.store.ownerPhone) {
-    const message = buildAdminSmsMessage(eventType, ctx, locale);
-    const smsResult = await sendAdminSms(
-      ctx.store.id,
-      ctx.store.ownerPhone,
-      eventType,
-      message,
-      ctx.reservation?.id,
-    );
-    result.sms = {
-      sent: smsResult.success,
-      error: smsResult.error,
-      limitReached: smsResult.limitReached,
-    };
+    try {
+      const message = buildAdminSmsMessage(eventType, ctx, locale);
+      const smsResult = await deps.sendAdminSms(
+        ctx.store.id,
+        ctx.store.ownerPhone,
+        eventType,
+        message,
+        ctx.reservation?.id,
+      );
+      result.sms = {
+        sent: smsResult.success,
+        error: smsResult.error,
+        limitReached: smsResult.limitReached,
+      };
+    } catch (error) {
+      result.sms = { sent: false, error: describeChannelError(error) };
+    }
   }
 
   // Web push to every store member's registered devices
