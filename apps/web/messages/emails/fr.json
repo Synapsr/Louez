@@ -152,6 +152,55 @@
     "viewRequest": "Voir la demande",
     "connectToManage": "Connectez-vous à votre tableau de bord pour accepter ou refuser cette demande."
   },
+  "paymentAdmin": {
+    "customer": "Client",
+    "email": "E-mail",
+    "period": "Période",
+    "total": "Total de la réservation",
+    "viewReservation": "Voir la réservation",
+    "connectToManage": "Connectez-vous à votre tableau de bord pour gérer cette réservation.",
+    "received": {
+      "subject": "Paiement reçu pour la réservation #{number}",
+      "title": "Paiement reçu",
+      "body": "Un client a payé la réservation #{number} sur {storeName}.",
+      "amount": "Montant payé"
+    },
+    "failed": {
+      "subject": "Échec du paiement pour la réservation #{number}",
+      "title": "Échec du paiement",
+      "body": "Un paiement pour la réservation #{number} sur {storeName} n'a pas abouti.",
+      "amount": "Montant"
+    },
+    "disputed": {
+      "subject": "Paiement contesté pour la réservation #{number}",
+      "title": "Paiement contesté",
+      "body": "Le client a contesté auprès de sa banque un paiement de la réservation #{number} sur {storeName}. Répondez à la contestation depuis votre tableau de bord Stripe avant la date limite qu'il indique.",
+      "amount": "Montant contesté"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "Client",
+    "email": "E-mail",
+    "period": "Période",
+    "total": "Total de la réservation",
+    "viewReservation": "Voir la réservation",
+    "connectToManage": "Connectez-vous à votre tableau de bord pour gérer cette réservation.",
+    "confirmed": {
+      "subject": "Réservation #{number} confirmée par le client",
+      "title": "Confirmée par le client",
+      "body": "Le client a confirmé la réservation #{number} sur {storeName}."
+    },
+    "cancelled": {
+      "subject": "Demande #{number} annulée par le client",
+      "title": "Annulée par le client",
+      "body": "Le client a annulé la réservation #{number} sur {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Devis #{number} refusé par le client",
+      "title": "Devis refusé par le client",
+      "body": "Le client a refusé le devis #{number} sur {storeName}."
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "Nouvelle facture fournisseur",
     "title": "Nouvelle facture fournisseur",

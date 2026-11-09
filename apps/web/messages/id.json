@@ -4586,6 +4586,10 @@
             "payment_failed": {
               "label": "Pembayaran gagal",
               "description": "Ketika pembayaran gagal"
+            },
+            "payment_disputed": {
+              "label": "Pembayaran disengketakan",
+              "description": "Ketika pelanggan menyengketakan pembayaran ke banknya"
             }
           },
           "reminder": {
@@ -8480,9 +8484,7 @@
         "confirm": "Batalkan permintaan",
         "cancelled": "Permintaan dibatalkan",
         "done": "Anda membatalkan permintaan ini.",
-        "paymentDescription": "Toko akan diberitahu. Jika Anda telah membayar atau memberikan deposit, hubungi toko untuk pengembalian dana atau pelepasan. Tindakan ini tidak menghasilkan pengembalian dana otomatis.",
-        "adminSubject": "Permintaan #{number} dibatalkan oleh pelanggan",
-        "adminBody": "{name} membatalkan permintaan pemesanan #{number} sebelum konfirmasi Anda. Anda dapat melihat riwayatnya di dasbor Anda."
+        "paymentDescription": "Toko akan diberitahu. Jika Anda telah membayar atau memberikan deposit, hubungi toko untuk pengembalian dana atau pelepasan. Tindakan ini tidak menghasilkan pengembalian dana otomatis."
       },
       "customerFields": {
         "title": "Informasi tambahan",

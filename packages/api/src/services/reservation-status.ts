@@ -274,6 +274,7 @@ async function lockReservation(tx: Transaction, reservationId: string, storeId: 
       subtotalExclTax: row.subtotalExclTax,
       taxAmount: row.taxAmount,
       locale: row.locale,
+      currency: row.currency,
     },
     customer: customer ?? null,
     store: { ...storeFields, hasTerms: Boolean(cgv?.trim()) },

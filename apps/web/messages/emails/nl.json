@@ -152,6 +152,55 @@
     "viewRequest": "Aanvraag bekijken",
     "connectToManage": "Log in op uw dashboard om deze aanvraag te accepteren of af te wijzen."
   },
+  "paymentAdmin": {
+    "customer": "Klant",
+    "email": "E-mail",
+    "period": "Periode",
+    "total": "Totaal van de reservering",
+    "viewReservation": "Reservering bekijken",
+    "connectToManage": "Log in op uw dashboard om deze reservering te beheren.",
+    "received": {
+      "subject": "Betaling ontvangen voor reservering #{number}",
+      "title": "Betaling ontvangen",
+      "body": "Een klant heeft reservering #{number} bij {storeName} betaald.",
+      "amount": "Betaald bedrag"
+    },
+    "failed": {
+      "subject": "Betaling mislukt voor reservering #{number}",
+      "title": "Betaling mislukt",
+      "body": "Een betaling voor reservering #{number} bij {storeName} is niet gelukt.",
+      "amount": "Bedrag"
+    },
+    "disputed": {
+      "subject": "Betaling betwist voor reservering #{number}",
+      "title": "Betaling betwist",
+      "body": "De klant heeft bij zijn bank een betaling voor reservering #{number} bij {storeName} betwist. Reageer op het geschil via uw Stripe-dashboard vóór de daar vermelde deadline.",
+      "amount": "Betwist bedrag"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "Klant",
+    "email": "E-mail",
+    "period": "Periode",
+    "total": "Totaal van de reservering",
+    "viewReservation": "Reservering bekijken",
+    "connectToManage": "Log in op uw dashboard om deze reservering te beheren.",
+    "confirmed": {
+      "subject": "Reservering #{number} bevestigd door de klant",
+      "title": "Bevestigd door de klant",
+      "body": "De klant heeft reservering #{number} bij {storeName} bevestigd."
+    },
+    "cancelled": {
+      "subject": "Aanvraag #{number} geannuleerd door de klant",
+      "title": "Geannuleerd door de klant",
+      "body": "De klant heeft reservering #{number} bij {storeName} geannuleerd."
+    },
+    "quote_declined": {
+      "subject": "Offerte #{number} geweigerd door de klant",
+      "title": "Offerte geweigerd door de klant",
+      "body": "De klant heeft offerte #{number} bij {storeName} geweigerd."
+    }
+  },
   "contactMessage": {
     "subject": "Nieuw bericht van {name} — {store}",
     "title": "Nieuw bericht via uw winkel",

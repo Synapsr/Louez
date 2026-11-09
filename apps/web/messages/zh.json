@@ -4586,6 +4586,10 @@
             "payment_failed": {
               "label": "付款失败",
               "description": "当付款失败时"
+            },
+            "payment_disputed": {
+              "label": "付款争议",
+              "description": "当客户向其银行就付款提出争议时"
             }
           },
           "reminder": {
@@ -8480,9 +8484,7 @@
         "confirm": "取消请求",
         "cancelled": "请求已取消",
         "done": "您取消了此请求。",
-        "paymentDescription": "商店将收到通知。如果您已经支付或提供了押金，请联系商店要求退款或免责。此操作不会自动退款。",
-        "adminSubject": "请求 #{number} 已被客户取消",
-        "adminBody": "{name} 在您确认之前取消了预订请求#{number}。您可以在仪表板中查看其历史记录。"
+        "paymentDescription": "商店将收到通知。如果您已经支付或提供了押金，请联系商店要求退款或免责。此操作不会自动退款。"
       },
       "customerFields": {
         "title": "附加信息",

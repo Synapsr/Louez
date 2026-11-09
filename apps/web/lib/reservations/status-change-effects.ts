@@ -181,6 +181,7 @@ export function createReservationEffectSenders(
         return deps.sendStoreNotificationChannel(
           payload.event,
           {
+            actor: payload.actor,
             store,
             reservation: {
               id: payload.reservation.id,
@@ -188,6 +189,7 @@ export function createReservationEffectSenders(
               startDate: new Date(payload.reservation.startDate),
               endDate: new Date(payload.reservation.endDate),
               totalAmount: parseFloat(payload.reservation.totalAmount),
+              currency: payload.reservation.currency,
             },
             customer: payload.customer,
           },

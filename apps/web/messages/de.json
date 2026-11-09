@@ -4284,6 +4284,10 @@
             "payment_failed": {
               "label": "Zahlung fehlgeschlagen",
               "description": "Wenn eine Zahlung fehlschlägt"
+            },
+            "payment_disputed": {
+              "label": "Zahlung angefochten",
+              "description": "Wenn ein Kunde eine Zahlung bei seiner Bank anficht"
             }
           },
           "reminder": {
@@ -8480,9 +8484,7 @@
         "confirm": "Anfrage stornieren",
         "cancelled": "Anfrage storniert",
         "done": "Sie haben diese Anfrage storniert.",
-        "paymentDescription": "Das Geschäft wird benachrichtigt. Wenn Sie bereits bezahlt oder eine Kaution hinterlegt haben, wenden Sie sich wegen einer Erstattung oder Freigabe an das Geschäft. Es erfolgt keine automatische Erstattung.",
-        "adminSubject": "Anfrage #{number} vom Kunden storniert",
-        "adminBody": "{name} hat die Buchungsanfrage #{number} vor Ihrer Bestätigung storniert. Den Verlauf finden Sie in Ihrem Dashboard."
+        "paymentDescription": "Das Geschäft wird benachrichtigt. Wenn Sie bereits bezahlt oder eine Kaution hinterlegt haben, wenden Sie sich wegen einer Erstattung oder Freigabe an das Geschäft. Es erfolgt keine automatische Erstattung."
       },
       "customerFields": {
         "title": "Weitere Angaben",

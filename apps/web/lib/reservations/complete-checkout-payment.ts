@@ -390,10 +390,11 @@ const runCheckoutPaymentCompletion = async ({
     });
 
     dispatchNotification("payment_received", {
+      actor: "system",
       store: toAdminNotificationStore(store),
-      reservation: toNotificationReservation(reservation),
+      reservation: { ...toNotificationReservation(reservation), currency: reservation.currency },
       customer: toNotificationCustomer(reservation.customer),
-      payment: { amount: totalAmount },
+      payment: { amount: totalAmount, currency },
     }).catch((error: unknown) => {
       log.error("checkout", `payment received notification failed: ${describeError(error)}`);
     });
@@ -477,6 +478,7 @@ const runCheckoutPaymentCompletion = async ({
     }
 
     dispatchNotification("reservation_confirmed", {
+      actor: "system",
       store: toAdminNotificationStore(store),
       reservation: toNotificationReservation(reservation),
       customer: toNotificationCustomer(reservation.customer),

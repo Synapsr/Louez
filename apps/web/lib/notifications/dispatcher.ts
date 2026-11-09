@@ -3,7 +3,7 @@ import { formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
  * Admin Notification Dispatcher
  *
  * Handles sending notifications to store owners (admins) via multiple channels:
- * - Email (handled separately via existing email functions)
+ * - Email (to the store's address, see admin-email.ts)
  * - SMS (to owner phone with full i18n support - 13 languages)
  * - Discord (via webhooks)
  *
@@ -31,6 +31,7 @@ import {
   sendReminderDigestAdminDiscord,
   sendPaymentReceivedDiscord,
   sendPaymentFailedDiscord,
+  sendPaymentDisputedDiscord,
 } from "@/lib/discord/notifications";
 import {
   sendReminderPickupAdminEmail,
@@ -39,7 +40,13 @@ import {
   sendSupplierInvoiceReceivedEmail,
 } from "@/lib/email/send";
 import type { DigestEntry } from "@/lib/email/templates";
+import { sendAdminEventEmail } from "@/lib/notifications/admin-email";
+import {
+  paymentCurrencyOf,
+  reservationCurrencyOf,
+} from "@/lib/notifications/util.notification-currency";
 import { isPushConfigured, sendPush } from "@/lib/push/client";
+import { log } from "@/lib/evlog";
 import { buildAdminPushPayload } from "@/lib/push/notifications";
 import type { NotificationEventType, NotificationSettings } from "@louez/types";
 
@@ -47,7 +54,18 @@ import type { NotificationEventType, NotificationSettings } from "@louez/types";
 // Types
 // ============================================================================
 
+/**
+ * Who made the change an event reports: the customer (storefront, marketplace,
+ * phone agent), the store (its dashboard, assistant or MCP), or the system
+ * (Stripe's webhooks).
+ */
+export type NotificationActor = "customer" | "store" | "system";
+
 export interface NotificationContext {
+  /** Decides, for a confirmation or a cancellation, whether the owner gets an email. */
+  actor: NotificationActor;
+  /** For a cancellation the customer made: they declined a quote, not a request. */
+  quoteDeclined?: boolean;
   store: {
     id: string;
     name: string;
@@ -66,6 +84,10 @@ export interface NotificationContext {
     startDate: Date;
     endDate: Date;
     totalAmount: number;
+    /** The customer's message, shown in the new reservation email. */
+    customerNotes?: string | null;
+    /** The reservation's own currency; the store's when null. */
+    currency?: string | null;
   };
   customer?: {
     firstName: string;
@@ -75,8 +97,21 @@ export interface NotificationContext {
   };
   payment?: {
     amount: number;
+    /** The payment's own currency (upper case); the reservation's when absent. */
+    currency?: string;
   };
 }
+
+/** What dispatchNotification sends the owner's email and SMS with. A test replaces it. */
+export interface DispatchNotificationDeps {
+  sendAdminEventEmail: typeof sendAdminEventEmail;
+  sendAdminSms: typeof sendAdminSms;
+}
+
+const defaultDispatchDeps: DispatchNotificationDeps = { sendAdminEventEmail, sendAdminSms };
+
+const describeChannelError = (error: unknown): string =>
+  error instanceof Error ? error.message : "Unknown error";
 
 export interface NotificationResult {
   email: { sent: boolean; error?: string };
@@ -100,6 +135,7 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   reservation_reminder_return: { email: false, sms: false, discord: false, push: false },
   payment_received: { email: true, sms: false, discord: false, push: false },
   payment_failed: { email: true, sms: false, discord: false, push: false },
+  payment_disputed: { email: true, sms: false, discord: false, push: false },
 };
 
 // ============================================================================
@@ -124,6 +160,7 @@ type AdminSmsTemplates = {
   reservation_reminder_return: (vars: AdminSmsTemplateVars) => string;
   payment_received: (vars: AdminSmsTemplateVars) => string;
   payment_failed: (vars: AdminSmsTemplateVars) => string;
+  payment_disputed: (vars: AdminSmsTemplateVars) => string;
 };
 
 const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
@@ -147,6 +184,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Paiement reçu #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Échec paiement #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Paiement contesté #${number} : ${amount}`,
   },
   en: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -168,6 +207,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Payment received #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Payment failed #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Payment disputed #${number}: ${amount}`,
   },
   de: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -189,6 +230,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Zahlung erhalten #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Zahlung fehlgeschlagen #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Zahlung angefochten #${number}: ${amount}`,
   },
   es: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -208,6 +251,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pago recibido #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Pago fallido #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Pago impugnado #${number}: ${amount}`,
   },
   it: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -229,6 +274,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pagamento ricevuto #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Pagamento fallito #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Pagamento contestato #${number}: ${amount}`,
   },
   nl: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -250,6 +297,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Betaling ontvangen #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Betaling mislukt #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Betaling betwist #${number}: ${amount}`,
   },
   pl: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -271,6 +320,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Platnosc otrzymana #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Platnosc nieudana #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Platnosc zakwestionowana #${number}: ${amount}`,
   },
   pt: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -290,6 +341,8 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pagamento recebido #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) => `[${storeName}] Pagamento falhou #${number}`,
+    payment_disputed: ({ storeName, number, amount }) =>
+      `[${storeName}] Pagamento contestado #${number}: ${amount}`,
   },
 
   zh: {
@@ -350,6 +403,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
         value0: String(storeName),
         value1: String(number),
       }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("zh", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
   },
   ja: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -408,6 +467,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_payment_failed", {
         value0: String(storeName),
         value1: String(number),
+      }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ja", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
       }),
   },
   ru: {
@@ -468,6 +533,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
         value0: String(storeName),
         value1: String(number),
       }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ru", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
   },
   id: {
     reservation_new: ({ storeName, number, customerName, amount }) =>
@@ -526,6 +597,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_payment_failed", {
         value0: String(storeName),
         value1: String(number),
+      }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("id", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
       }),
   },
   ko: {
@@ -586,6 +663,12 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
         value0: String(storeName),
         value1: String(number),
       }),
+    payment_disputed: ({ storeName, number, amount }) =>
+      formatSupplementalMessage("ko", "dispatcher_ADMIN_SMS_TEMPLATES_payment_disputed", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(amount),
+      }),
   },
 };
 
@@ -609,9 +692,9 @@ function buildAdminSmsMessage(
     number: ctx.reservation?.number || "",
     customerName: ctx.customer ? `${ctx.customer.firstName} ${ctx.customer.lastName}` : "",
     amount: ctx.payment
-      ? formatCurrencyForSms(ctx.payment.amount, ctx.store.settings?.currency)
+      ? formatCurrencyForSms(ctx.payment.amount, paymentCurrencyOf(ctx))
       : ctx.reservation
-        ? formatCurrencyForSms(ctx.reservation.totalAmount, ctx.store.settings?.currency)
+        ? formatCurrencyForSms(ctx.reservation.totalAmount, reservationCurrencyOf(ctx))
         : "",
   };
 
@@ -704,6 +787,8 @@ function getDiscordSender(eventType: NotificationEventType) {
       return sendPaymentReceivedDiscord;
     case "payment_failed":
       return sendPaymentFailedDiscord;
+    case "payment_disputed":
+      return sendPaymentDisputedDiscord;
     default:
       return async () => ({ success: false, error: "Unknown event type" });
   }
@@ -766,10 +851,10 @@ function sendStoreDiscord(
   return getDiscordSender(eventType)({
     store: { id: ctx.store.id, name: ctx.store.name, discordWebhookUrl },
     reservation: ctx.reservation
-      ? { ...ctx.reservation, currency: ctx.store.settings?.currency }
+      ? { ...ctx.reservation, currency: reservationCurrencyOf(ctx) }
       : undefined,
     customer: ctx.customer,
-    payment: ctx.payment ? { ...ctx.payment, currency: ctx.store.settings?.currency } : undefined,
+    payment: ctx.payment ? { ...ctx.payment, currency: paymentCurrencyOf(ctx) } : undefined,
   });
 }
 
@@ -828,11 +913,12 @@ export async function sendStoreNotificationChannel(
  *
  * @param eventType - The type of event that triggered the notification
  * @param ctx - Context containing store, reservation, customer, and payment info
- * @returns Results for each channel (email, sms, discord)
+ * @returns Results for each channel (email, sms, discord, push)
  */
 export async function dispatchNotification(
   eventType: NotificationEventType,
   ctx: NotificationContext,
+  deps: DispatchNotificationDeps = defaultDispatchDeps,
 ): Promise<NotificationResult> {
   const result: NotificationResult = {
     email: { sent: false },
@@ -850,28 +936,45 @@ export async function dispatchNotification(
   // Determine locale from store country
   const locale = getLocaleFromCountry(ctx.store.settings?.country);
 
-  // Email notification (for admin, this means sending to store email)
-  // Note: Admin emails are handled by existing functions like sendNewRequestLandlordEmail
-  // which are called separately from the action handlers
-  if (prefs.email && ctx.store.email) {
-    result.email.sent = true; // Handled by existing email functions
+  // Each channel answers for itself: one that throws never hides another's
+  // outcome. Callers often drop the result, so a channel that threw is logged here.
+  const failed = (channel: string, error: unknown) => {
+    log.error(
+      "notifications",
+      `${eventType} ${channel} to the owner of store ${ctx.store.id} failed: ${describeChannelError(error)}`,
+    );
+  };
+
+  // Email to the store owner. Events without an owner template answer "not sent".
+  if (prefs.email) {
+    try {
+      result.email = await deps.sendAdminEventEmail(eventType, ctx);
+    } catch (error) {
+      failed("email", error);
+      result.email = { sent: false, error: describeChannelError(error) };
+    }
   }
 
   // SMS notification to store owner
   if (prefs.sms && ctx.store.ownerPhone) {
-    const message = buildAdminSmsMessage(eventType, ctx, locale);
-    const smsResult = await sendAdminSms(
-      ctx.store.id,
-      ctx.store.ownerPhone,
-      eventType,
-      message,
-      ctx.reservation?.id,
-    );
-    result.sms = {
-      sent: smsResult.success,
-      error: smsResult.error,
-      limitReached: smsResult.limitReached,
-    };
+    try {
+      const message = buildAdminSmsMessage(eventType, ctx, locale);
+      const smsResult = await deps.sendAdminSms(
+        ctx.store.id,
+        ctx.store.ownerPhone,
+        eventType,
+        message,
+        ctx.reservation?.id,
+      );
+      result.sms = {
+        sent: smsResult.success,
+        error: smsResult.error,
+        limitReached: smsResult.limitReached,
+      };
+    } catch (error) {
+      failed("sms", error);
+      result.sms = { sent: false, error: describeChannelError(error) };
+    }
   }
 
   // Web push to every store member's registered devices
@@ -879,6 +982,7 @@ export async function dispatchNotification(
     try {
       result.push = await pushToStoreMembers(eventType, ctx, locale);
     } catch (error) {
+      failed("push", error);
       result.push.error = error instanceof Error ? error.message : "Unknown error";
     }
   }
@@ -889,6 +993,7 @@ export async function dispatchNotification(
       const discordResult = await sendStoreDiscord(eventType, ctx, ctx.store.discordWebhookUrl);
       result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error };
     } catch (error) {
+      failed("discord", error);
       result.discord = {
         sent: false,
         error: error instanceof Error ? error.message : "Unknown error",
@@ -987,9 +1092,8 @@ export interface AdminReminderContext {
  * Dispatch an automatic admin reminder (upcoming pickup / return) to the store
  * owner across all enabled channels.
  *
- * Unlike dispatchNotification (event-driven, where admin emails are sent by
- * inline callers), reminders are cron-driven with no inline trigger, so this
- * owns the email send too. SMS and Discord reuse the same infrastructure.
+ * Reminders are cron-driven and have their own email templates, so this sends
+ * the email itself. SMS and Discord reuse the same infrastructure.
  */
 export async function dispatchAdminReminder(
   eventType: AdminReminderEventType,
@@ -1049,6 +1153,7 @@ export async function dispatchAdminReminder(
     const message = buildAdminSmsMessage(
       eventType,
       {
+        actor: "system",
         store: ctx.store,
         reservation: ctx.reservation,
         customer: ctx.customer,

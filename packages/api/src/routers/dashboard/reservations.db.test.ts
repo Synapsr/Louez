@@ -1119,6 +1119,39 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
     );
   });
 
+  test("the store hears of a change by its dashboard or an agent as the store's, in the reservation's currency", async () => {
+    const id = await reservation("pending", { productId: await product() });
+    await louezDb.db
+      .update(louezDb.reservations)
+      .set({ currency: "GBP" })
+      .where(orm.eq(louezDb.reservations.id, id));
+    await run("updateStatus", { id, status: "confirmed" }, session());
+    // An agent's change, through an API key: still the store's own.
+    const key = await apiKey();
+    await run("updateStatus", { id, status: "ongoing" }, key());
+
+    const rows = await outbox();
+    const storeRows = rows.filter((row) => row.type === "reservation.storeNotification");
+    assert.deepEqual(
+      storeRows.map((row) => [row.payload.event, row.payload.actor]),
+      [
+        ["reservation_confirmed", "store"],
+        ["reservation_confirmed", "store"],
+        ["reservation_confirmed", "store"],
+        ["reservation_picked_up", "store"],
+        ["reservation_picked_up", "store"],
+        ["reservation_picked_up", "store"],
+      ],
+    );
+    assert.ok(
+      storeRows.every(
+        (row) => (row.payload.reservation as { currency?: string }).currency === "GBP",
+      ),
+    );
+    const platform = rows.filter((row) => row.type === "reservation.platformNotification");
+    assert.ok(platform.length > 0 && platform.every((row) => row.payload.currency === "GBP"));
+  });
+
   test("a later status change supersedes the earlier customer message still unsent", async () => {
     const id = await reservation("pending", { productId: await product() });
     await run("updateStatus", { id, status: "confirmed" }, session());

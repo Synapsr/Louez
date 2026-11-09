@@ -119,4 +119,110 @@ describe("charge.dispute.* (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(stripe.calls.retrieveCharge, 0);
     assert.equal(stripe.feeRefunded(), 0);
   });
+
+  describe("the owner's notification", () => {
+    const STORE = "store_dispute_notify";
+    const RESERVATION = "res_dispute_notify";
+    const CHARGE = `ch_${RUN}_notify`;
+    const calls: Array<{ reservationId: string; amount: number; currency: string }> = [];
+    const scheduled: Array<() => Promise<unknown>> = [];
+    const notify = async (input: { reservationId: string; amount: number; currency: string }) => {
+      calls.push(input);
+    };
+
+    before(async () => {
+      const { db } = louezDb;
+      await db.insert(louezDb.stores).values({
+        id: STORE,
+        userId: "owner",
+        name: "Dispute notify",
+        slug: "dispute-notify",
+        stripeAccountId: ACCOUNT,
+      });
+      await db.insert(louezDb.reservations).values({
+        id: RESERVATION,
+        storeId: STORE,
+        customerId: "customer",
+        number: "R-DISPUTE",
+        status: "confirmed",
+        startDate: new Date("2026-10-01T09:00:00Z"),
+        endDate: new Date("2026-10-03T09:00:00Z"),
+        subtotalAmount: "100.00",
+        depositAmount: "0.00",
+        totalAmount: "100.00",
+      });
+      await db.insert(louezDb.payments).values({
+        id: "pay_dispute_notify",
+        reservationId: RESERVATION,
+        amount: "100.00",
+        type: "rental",
+        method: "stripe",
+        status: "completed",
+        stripeChargeId: CHARGE,
+        grossMinor: 10_000,
+        currency: "EUR",
+        paidAt: new Date("2026-10-01T09:30:00Z"),
+      });
+    });
+
+    const handleWithNotify = (eventType: DisputeEventType, input: Partial<DisputeInput> = {}) =>
+      disputes.handleChargeDispute(
+        {
+          eventType,
+          dispute: { ...dispute(CHARGE), ...input },
+          eventCreatedAt: new Date(1_790_000_000_000),
+          connectedAccountId: ACCOUNT,
+        },
+        fakeStripe().port,
+        { notify, schedule: (task) => void scheduled.push(task) },
+      );
+
+    test("is sent once, by the first event of the dispute, with the disputed amount", async () => {
+      // Stripe does not order events: an update can arrive before the creation.
+      await handleWithNotify("charge.dispute.updated");
+      await handleWithNotify("charge.dispute.created");
+      await handleWithNotify("charge.dispute.funds_withdrawn");
+
+      // Scheduled for after the answer, not sent while the webhook runs.
+      assert.equal(scheduled.length, 1);
+      assert.deepEqual(calls, []);
+      await Promise.all(scheduled.splice(0).map((task) => task()));
+      assert.deepEqual(calls, [{ reservationId: RESERVATION, amount: 100, currency: "EUR" }]);
+    });
+
+    test("the webhook answers without waiting for the alert and its retries", async () => {
+      let started = false;
+      const answered = await disputes
+        .handleChargeDispute(
+          {
+            eventType: "charge.dispute.created",
+            dispute: { ...dispute(CHARGE), id: `dp_${RUN}_slow` },
+            eventCreatedAt: new Date(1_790_000_000_000),
+            connectedAccountId: ACCOUNT,
+          },
+          fakeStripe().port,
+          {
+            // An alert whose attempts never end.
+            notify: () => {
+              started = true;
+              return new Promise(() => {});
+            },
+            // As `after` would at the end of the response, without being awaited.
+            schedule: (task) => void task(),
+          },
+        )
+        .then(() => "answered");
+      assert.equal(answered, "answered");
+      assert.equal(started, true);
+    });
+
+    test("is not sent for a dispute first seen closed, nor for an unknown payment", async () => {
+      calls.length = 0;
+      await handleWithNotify("charge.dispute.closed", { id: `dp_${RUN}_closed`, status: "won" });
+      await handle("charge.dispute.created", `ch_${RUN}_unknown`, fakeStripe().port);
+
+      assert.deepEqual(scheduled, []);
+      assert.deepEqual(calls, []);
+    });
+  });
 });

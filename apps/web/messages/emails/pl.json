@@ -143,6 +143,55 @@
     "viewRequest": "Zobacz żądanie",
     "connectToManage": "Zaloguj się do panelu, aby zaakceptować lub odrzucić to żądanie."
   },
+  "paymentAdmin": {
+    "customer": "Klient",
+    "email": "E-mail",
+    "period": "Okres",
+    "total": "Łączna kwota rezerwacji",
+    "viewReservation": "Zobacz rezerwację",
+    "connectToManage": "Zaloguj się do panelu, aby zarządzać tą rezerwacją.",
+    "received": {
+      "subject": "Otrzymano płatność za rezerwację #{number}",
+      "title": "Płatność otrzymana",
+      "body": "Klient opłacił rezerwację #{number} w {storeName}.",
+      "amount": "Zapłacona kwota"
+    },
+    "failed": {
+      "subject": "Płatność za rezerwację #{number} nie powiodła się",
+      "title": "Płatność nieudana",
+      "body": "Płatność za rezerwację #{number} w {storeName} nie została zrealizowana.",
+      "amount": "Kwota"
+    },
+    "disputed": {
+      "subject": "Płatność za rezerwację #{number} została zakwestionowana",
+      "title": "Płatność zakwestionowana",
+      "body": "Klient zakwestionował w swoim banku płatność za rezerwację #{number} w {storeName}. Odpowiedz na spór w panelu Stripe przed wskazanym tam terminem.",
+      "amount": "Kwota sporna"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "Klient",
+    "email": "E-mail",
+    "period": "Okres",
+    "total": "Łączna kwota rezerwacji",
+    "viewReservation": "Zobacz rezerwację",
+    "connectToManage": "Zaloguj się do panelu, aby zarządzać tą rezerwacją.",
+    "confirmed": {
+      "subject": "Rezerwacja #{number} potwierdzona przez klienta",
+      "title": "Potwierdzona przez klienta",
+      "body": "Klient potwierdził rezerwację #{number} w {storeName}."
+    },
+    "cancelled": {
+      "subject": "Prośba #{number} anulowana przez klienta",
+      "title": "Anulowana przez klienta",
+      "body": "Klient anulował rezerwację #{number} w {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Wycena #{number} odrzucona przez klienta",
+      "title": "Wycena odrzucona przez klienta",
+      "body": "Klient odrzucił wycenę #{number} w {storeName}."
+    }
+  },
   "contactMessage": {
     "subject": "Nowa wiadomość od {name} — {store}",
     "title": "Nowa wiadomość z Twojego sklepu",

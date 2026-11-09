@@ -444,3 +444,32 @@ export async function sendPaymentFailedDiscord(ctx: DiscordNotificationContext) 
 
   return sendAndLog(ctx, 'payment_failed', embed)
 }
+
+export async function sendPaymentDisputedDiscord(ctx: DiscordNotificationContext) {
+  if (!ctx.reservation) return
+
+  const embed: DiscordEmbed = {
+    title: `Paiement contesté #${ctx.reservation.number}`,
+    color: COLORS.error,
+    fields: [
+      {
+        name: 'Montant contesté',
+        value: ctx.payment
+          ? formatCurrency(ctx.payment.amount, ctx.payment.currency)
+          : formatCurrency(ctx.reservation.totalAmount, ctx.reservation.currency),
+        inline: true,
+      },
+      {
+        name: 'Client',
+        value: ctx.customer
+          ? `${ctx.customer.firstName} ${ctx.customer.lastName}`
+          : 'N/A',
+        inline: true,
+      },
+    ],
+    timestamp: new Date().toISOString(),
+    footer: { text: ctx.store.name },
+  }
+
+  return sendAndLog(ctx, 'payment_disputed', embed)
+}

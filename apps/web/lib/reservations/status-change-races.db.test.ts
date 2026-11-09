@@ -36,7 +36,6 @@ const STUBBED = new Set([
   "@/lib/notifications/dispatcher",
   "@/lib/product-analytics/analytics",
   "@/lib/reservations/payment-session",
-  "@/lib/email/send-request-cancelled-email",
   "@/lib/integrations/tulip/contracts",
 ]);
 const quoteMessages: string[] = [];
@@ -52,7 +51,6 @@ Reflect.set(globalThis, "__louezRaceStubs", {
   captureProductServerEvent: async () => {},
   toAnalyticsAmountCents: () => 0,
   createReservationPaymentSessionForCustomer: async () => ({ success: false, error: "none" }),
-  sendRequestCancelledEmail: async () => {},
   cancelTulipContractForReservation: async () => {},
 });
 

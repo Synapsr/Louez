@@ -152,6 +152,55 @@
     "viewRequest": "查看请求",
     "connectToManage": "登录到您的仪表板以接受或拒绝此请求。"
   },
+  "paymentAdmin": {
+    "customer": "客户",
+    "email": "电子邮件",
+    "period": "期间",
+    "total": "预订总额",
+    "viewReservation": "查看预订",
+    "connectToManage": "登录您的仪表板来管理此预订。",
+    "received": {
+      "subject": "已收到预订 #{number} 的付款",
+      "title": "已收到付款",
+      "body": "一位客户已在 {storeName} 支付预订 #{number}。",
+      "amount": "已付金额"
+    },
+    "failed": {
+      "subject": "预订 #{number} 付款失败",
+      "title": "付款失败",
+      "body": "{storeName} 上预订 #{number} 的一笔付款未能完成。",
+      "amount": "金额"
+    },
+    "disputed": {
+      "subject": "预订 #{number} 的付款被提出争议",
+      "title": "付款争议",
+      "body": "客户已就 {storeName} 上预订 #{number} 的一笔付款向其银行提出争议。请在 Stripe 控制台显示的截止日期前回应该争议。",
+      "amount": "争议金额"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "客户",
+    "email": "电子邮件",
+    "period": "期间",
+    "total": "预订总额",
+    "viewReservation": "查看预订",
+    "connectToManage": "登录您的仪表板来管理此预订。",
+    "confirmed": {
+      "subject": "客户已确认预订 #{number}",
+      "title": "客户已确认",
+      "body": "客户已确认 {storeName} 上的预订 #{number}。"
+    },
+    "cancelled": {
+      "subject": "请求 #{number} 已被客户取消",
+      "title": "客户已取消",
+      "body": "客户已取消 {storeName} 上的预订 #{number}。"
+    },
+    "quote_declined": {
+      "subject": "客户已拒绝报价 #{number}",
+      "title": "客户已拒绝报价",
+      "body": "客户已拒绝 {storeName} 上的报价 #{number}。"
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "新供应商发票",
     "title": "新供应商发票",

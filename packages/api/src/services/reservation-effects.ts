@@ -39,6 +39,8 @@ export interface StatusChangeSnapshot {
     subtotalExclTax: string | null;
     taxAmount: string | null;
     locale: string | null;
+    /** Null for a reservation made before it had its own currency. */
+    currency: string | null;
   };
   customer: {
     id: string;
@@ -94,7 +96,11 @@ const PLATFORM_KIND: Partial<
   cancelled: "cancelled",
 };
 
-/** The store's channels of its own notifications; the email one is sent by other code. */
+/**
+ * The store's channels of its own notifications. No email: the owner gets one
+ * only for a confirmation or cancellation the customer made (admin-email.ts),
+ * and a status change through the API is the store's own.
+ */
 const STORE_CHANNELS = ["sms", "push", "discord"] as const;
 const PLATFORM_CHANNELS = ["discord", "fromhello"] as const;
 
@@ -181,12 +187,14 @@ export function buildStatusChangeEffects(
         payload: {
           channel,
           event,
+          actor: "store",
           storeId: store.id,
           reservation: {
             id: reservationId,
             number: reservation.number,
             ...dates,
             totalAmount: reservation.totalAmount,
+            currency: reservation.currency,
           },
           customer: {
             firstName: customer.firstName,
@@ -212,7 +220,7 @@ export function buildStatusChangeEffects(
           store: { id: store.id, name: store.name, slug: store.slug },
           number: reservation.number,
           totalAmount: reservation.totalAmount,
-          currency: store.settings?.currency ?? null,
+          currency: reservation.currency ?? store.settings?.currency ?? null,
         },
       });
     }

@@ -4284,6 +4284,10 @@
             "payment_failed": {
               "label": "Betaling mislukt",
               "description": "Wanneer een betaling mislukt"
+            },
+            "payment_disputed": {
+              "label": "Betaling betwist",
+              "description": "Wanneer een klant een betaling bij zijn bank betwist"
             }
           },
           "reminder": {
@@ -8480,9 +8484,7 @@
         "confirm": "Aanvraag annuleren",
         "cancelled": "Aanvraag geannuleerd",
         "done": "Je hebt deze aanvraag geannuleerd.",
-        "paymentDescription": "De winkel wordt op de hoogte gebracht. Heb je al betaald of een borg verstrekt, neem dan contact op met de winkel voor terugbetaling of vrijgave. Deze actie leidt niet tot een automatische terugbetaling.",
-        "adminSubject": "Aanvraag #{number} geannuleerd door de klant",
-        "adminBody": "{name} heeft reserveringsaanvraag #{number} geannuleerd voordat je deze bevestigde. Je kunt de geschiedenis in je dashboard bekijken."
+        "paymentDescription": "De winkel wordt op de hoogte gebracht. Heb je al betaald of een borg verstrekt, neem dan contact op met de winkel voor terugbetaling of vrijgave. Deze actie leidt niet tot een automatische terugbetaling."
       },
       "customerFields": {
         "title": "Aanvullende gegevens",

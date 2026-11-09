@@ -126,6 +126,12 @@ export interface ApiEffectPayloads {
    */
   "reservation.storeNotification": {
     channel: "sms" | "push" | "discord";
+    /**
+     * Who made the change: a status change through the API is always the
+     * store's (its dashboard, assistant, API key or agent), which the owner is
+     * not emailed about (apps/web lib/notifications/admin-email.ts).
+     */
+    actor: "customer" | "store" | "system";
     event:
       | "reservation_confirmed"
       | "reservation_rejected"
@@ -139,6 +145,8 @@ export interface ApiEffectPayloads {
       startDate: string;
       endDate: string;
       totalAmount: string;
+      /** The reservation's own currency; null for one made before it had one. */
+      currency?: string | null;
     };
     customer: { firstName: string; lastName: string; email: string; phone: string | null };
   };

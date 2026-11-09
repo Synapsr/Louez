@@ -27,6 +27,7 @@ export const notificationSettingsSchema = z.object({
   reservation_reminder_return: notificationChannelConfigSchema,
   payment_received: notificationChannelConfigSchema,
   payment_failed: notificationChannelConfigSchema,
+  payment_disputed: notificationChannelConfigSchema,
   reminderSettings: z
     .object({
       pickupReminderHours: z.number().int().min(1).max(168),

@@ -152,6 +152,55 @@
     "viewRequest": "View request",
     "connectToManage": "Log in to your dashboard to accept or reject this request."
   },
+  "paymentAdmin": {
+    "customer": "Customer",
+    "email": "Email",
+    "period": "Period",
+    "total": "Reservation total",
+    "viewReservation": "View reservation",
+    "connectToManage": "Log in to your dashboard to manage this reservation.",
+    "received": {
+      "subject": "Payment received for reservation #{number}",
+      "title": "Payment received",
+      "body": "A customer paid for reservation #{number} on {storeName}.",
+      "amount": "Amount paid"
+    },
+    "failed": {
+      "subject": "Payment failed for reservation #{number}",
+      "title": "Payment failed",
+      "body": "A payment for reservation #{number} on {storeName} did not go through.",
+      "amount": "Amount"
+    },
+    "disputed": {
+      "subject": "Payment disputed for reservation #{number}",
+      "title": "Payment disputed",
+      "body": "The customer disputed a payment for reservation #{number} on {storeName} with their bank. Respond to the dispute from your Stripe dashboard before the deadline it shows.",
+      "amount": "Disputed amount"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "Customer",
+    "email": "Email",
+    "period": "Period",
+    "total": "Reservation total",
+    "viewReservation": "View reservation",
+    "connectToManage": "Log in to your dashboard to manage this reservation.",
+    "confirmed": {
+      "subject": "Reservation #{number} confirmed by the customer",
+      "title": "Confirmed by the customer",
+      "body": "The customer confirmed reservation #{number} on {storeName}."
+    },
+    "cancelled": {
+      "subject": "Request #{number} cancelled by the customer",
+      "title": "Cancelled by the customer",
+      "body": "The customer cancelled reservation #{number} on {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Quote #{number} declined by the customer",
+      "title": "Quote declined by the customer",
+      "body": "The customer declined quote #{number} on {storeName}."
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "New supplier invoice",
     "title": "New supplier invoice",

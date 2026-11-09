@@ -4284,6 +4284,10 @@
             "payment_failed": {
               "label": "Pagamento fallito",
               "description": "Quando un pagamento fallisce"
+            },
+            "payment_disputed": {
+              "label": "Pagamento contestato",
+              "description": "Quando un cliente contesta un pagamento presso la sua banca"
             }
           },
           "reminder": {
@@ -8480,9 +8484,7 @@
         "confirm": "Annulla richiesta",
         "cancelled": "Richiesta annullata",
         "done": "Hai annullato questa richiesta.",
-        "paymentDescription": "Il negozio verrà informato. Se hai già pagato o versato una cauzione, contatta il negozio per il rimborso o lo svincolo. Questa azione non avvia un rimborso automatico.",
-        "adminSubject": "Richiesta #{number} annullata dal cliente",
-        "adminBody": "{name} ha annullato la richiesta di prenotazione #{number} prima della tua conferma. Puoi consultarne la cronologia nella dashboard."
+        "paymentDescription": "Il negozio verrà informato. Se hai già pagato o versato una cauzione, contatta il negozio per il rimborso o lo svincolo. Questa azione non avvia un rimborso automatico."
       },
       "customerFields": {
         "title": "Informazioni aggiuntive",

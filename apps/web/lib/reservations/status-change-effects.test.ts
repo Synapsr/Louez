@@ -187,6 +187,7 @@ describe("reservation effect senders", () => {
       {
         channel: "discord",
         event: "reservation_cancelled",
+        actor: "store",
         storeId: "store",
         reservation: {
           id: "res",
@@ -194,6 +195,7 @@ describe("reservation effect senders", () => {
           startDate: "2030-06-01T09:00:00.000Z",
           endDate: "2030-06-03T09:00:00.000Z",
           totalAmount: "70.00",
+          currency: "GBP",
         },
         customer: {
           firstName: "Ada",
@@ -207,6 +209,15 @@ describe("reservation effect senders", () => {
     assert.deepEqual(argsOf("loadStoreRouting"), ["store"]);
     assert.deepEqual(argsOf("sendStoreNotificationChannel").slice(0, 1), ["reservation_cancelled"]);
     assert.equal(argsOf("sendStoreNotificationChannel")[2], "discord");
+    // The store's own change, in the reservation's currency: the dispatcher emails no one
+    // for it, and prices it as the customer paid.
+    const ctx = argsOf("sendStoreNotificationChannel")[1] as {
+      actor: string;
+      reservation: { currency?: string | null; totalAmount: number };
+    };
+    assert.equal(ctx.actor, "store");
+    assert.equal(ctx.reservation.currency, "GBP");
+    assert.equal(ctx.reservation.totalAmount, 70);
     assert.deepEqual(outcome, { skipped: "the store turned it off" });
   });
 
