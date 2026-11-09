@@ -1,8 +1,9 @@
 import type { SVGProps } from "react";
 
 /**
- * xAI's Grok mark (Lobe Icons, MIT). One color: `currentColor`. Source, license
- * and trademark note: THIRD_PARTY_LICENSES.md.
+ * xAI's Grok mark (Lobe Icons, MIT). xAI shows it in black or white:
+ * `currentColor`, the text color of either theme. Source, license and
+ * trademark note: THIRD_PARTY_LICENSES.md.
  */
 const Grok = (props: SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="currentColor" fillRule="evenodd" {...props}>

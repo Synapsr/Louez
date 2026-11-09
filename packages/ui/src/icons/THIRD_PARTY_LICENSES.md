@@ -13,14 +13,16 @@ imply any endorsement by, partnership with, or sponsorship from their owners.
 
 ## Simple Icons (CC0 1.0)
 
-`icon.claude.tsx`, `icon.chatgpt.tsx` and `icon.le-chat.tsx` use the SVG paths
-of Simple Icons (https://simpleicons.org, https://github.com/simple-icons/simple-icons),
+`icon.claude.tsx` and `icon.chatgpt.tsx` use the SVG paths of Simple Icons
+(https://simpleicons.org, https://github.com/simple-icons/simple-icons),
 dedicated to the public domain under CC0 1.0 Universal
-(https://creativecommons.org/publicdomain/zero/1.0/).
+(https://creativecommons.org/publicdomain/zero/1.0/). The Claude mark is
+drawn in Claude's orange (#D97757).
 
 ## Lobe Icons (MIT)
 
-`icon.grok.tsx` uses the SVG path of Lobe Icons
+`icon.grok.tsx` and `icon.le-chat.tsx` (Mistral AI's mark in its colors) use
+the SVG paths of Lobe Icons
 (https://github.com/lobehub/lobe-icons), under the MIT License:
 
 ```text
