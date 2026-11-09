@@ -1020,14 +1020,54 @@ function canonicalPatch(patch: Patch): Patch {
   return canonical;
 }
 
+type SentUnit = NonNullable<UpdateProductInput["units"]>[number];
+
+/**
+ * The active units an update leaves the product with. The dashboard's form
+ * (`wholeList`) sends them all: its list is the result. Any other caller may
+ * hold only a page of them (an agent reads the first units of a product), so
+ * its units update and add over the stored ones, a unit left out stays, and
+ * only `removeUnitIds` deletes. Both refuse an id to remove that is not an
+ * active unit of the product, or that the call also sends.
+ */
+function unitsAfterUpdate(
+  stored: SentUnit[],
+  sent: SentUnit[] | undefined,
+  removeUnitIds: string[],
+  wholeList: boolean,
+): SentUnit[] {
+  const storedIds = new Set(stored.map((unit) => unit.id));
+  const unknown = removeUnitIds.filter((id) => !storedIds.has(id));
+  if (unknown.length > 0) throw productErrors.unitsToRemoveUnknown(unknown);
+  const removed = new Set(removeUnitIds);
+  const sentAndRemoved = (sent ?? []).flatMap((unit) =>
+    unit.id && removed.has(unit.id) ? [unit.id] : [],
+  );
+  if (sentAndRemoved.length > 0) throw productErrors.unitsSentAndRemoved(sentAndRemoved);
+
+  let units: SentUnit[];
+  if (wholeList && sent) {
+    units = sent;
+  } else {
+    const sentById = new Map(
+      (sent ?? []).flatMap((unit) => (unit.id ? [[unit.id, unit] as const] : [])),
+    );
+    const sentOther = (sent ?? []).filter((unit) => !unit.id || !storedIds.has(unit.id));
+    units = [...stored.map((unit) => sentById.get(unit.id as string) ?? unit), ...sentOther];
+  }
+  return units.filter((unit) => !(unit.id && removed.has(unit.id)));
+}
+
 /**
  * The update as a whole form: the stored product with the sent fields over
  * it. `price` alone on a duration product changes the base rate's price.
- * `syncUnits` is false when the call sends none of units, trackUnits and
- * bookingAttributeAxes: the units are then left as they are.
+ * `syncUnits` is false when the call sends none of units, removeUnitIds,
+ * trackUnits and bookingAttributeAxes: the units are then left as they are.
+ * `wholeUnitList`: the call's units are every active unit (the dashboard's
+ * form), see `unitsAfterUpdate`.
  */
-function mergeUpdate(product: LoadedProduct, patch: UpdateProductInput) {
-  const { id: _id, ...sent } = patch;
+function mergeUpdate(product: LoadedProduct, patch: UpdateProductInput, wholeUnitList: boolean) {
+  const { id: _id, removeUnitIds, ...sent } = patch;
   const defined = canonicalPatch(
     Object.fromEntries(Object.entries(sent).filter(([, value]) => value !== undefined)) as Patch,
   );
@@ -1040,6 +1080,14 @@ function mergeUpdate(product: LoadedProduct, patch: UpdateProductInput) {
       product.units.filter((unit) => unit.lifecycleStatus !== "active").map((unit) => unit.id),
     );
     defined.units = defined.units.filter((unit) => !(unit.id && retired.has(unit.id)));
+  }
+  if (defined.units || removeUnitIds) {
+    defined.units = unitsAfterUpdate(
+      stored.units as SentUnit[],
+      defined.units,
+      removeUnitIds ?? [],
+      wholeUnitList,
+    );
   }
   assertListLimits(listLengths(defined), listLengths(stored as Parameters<typeof listLengths>[0]));
   const merged: Record<string, unknown> = { ...stored, ...defined };
@@ -1116,7 +1164,9 @@ export async function updateProduct(
       await lockProductUnits(tx, input.id);
 
       const product = await loadProduct(tx, storeId, input.id);
-      const { merged, syncUnits } = mergeUpdate(product, input);
+      // A dashboard session saves the whole form; any other caller may hold
+      // only a page of the units.
+      const { merged, syncUnits } = mergeUpdate(product, input, actor.transport === "rpc");
       const data = validateProduct(merged);
       savedName = data.name;
 

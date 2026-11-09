@@ -52,9 +52,9 @@ export const PRODUCT_WRITE_LIMITS = {
  * Largest request body of a product write (`meta.maxBodyBytes`), read only
  * once the caller is known. It holds a large product (1,000 units with their
  * notes and photos), not every input the schema could take: a larger write
- * must be split. Create the product, then add units in further updates (the
- * saved units go back as their id and identifier only) or fill each unit's
- * details with products_update_unit_details.
+ * must be split. Create the product, then add units in further updates
+ * (the units left out stay) or fill each unit's details with
+ * products_update_unit_details.
  */
 export const PRODUCT_WRITE_MAX_BODY_BYTES = 32 * 1024 * 1024;
 
@@ -86,8 +86,6 @@ const TIERS_DESCRIPTION = [
 
 const UNITS_DESCRIPTION = [
   "Individual units (serial numbers, asset tags) when trackUnits is true: the stock is then the number of active units.",
-  "A unit with an `id` is an existing one, kept and updated; one without is created.",
-  "Sending the list replaces the product's active units: an active unit left out is deleted (refused while a reservation holds it).",
   "Each unit needs an identifier, and a value in `attributes` for every key of bookingAttributeAxes.",
 ].join(" ");
 
@@ -222,14 +220,36 @@ export const createProductInput = withFixedPricingIgnored(z.object(productWriteS
 export type CreateProductInput = z.infer<typeof createProductInput>;
 
 /**
+ * What an update does with `units`. An agent's answer holds only the first
+ * units of a product (`answerPage`), so a list sent back can miss some: for
+ * any caller but the dashboard, units are updated and added, never deleted
+ * for being left out; `removeUnitIds` names the ones to delete. The
+ * dashboard's form sends the whole list, which replaces the active units.
+ */
+const UPDATE_UNITS_DESCRIPTION = [
+  "Units to update (with their `id`) or add (without), when trackUnits is true.",
+  "Units left out stay as they are: removeUnitIds deletes units.",
+  "Each unit needs an identifier, and a value in `attributes` for every key of bookingAttributeAxes.",
+].join(" ");
+
+/**
  * Partial: a field left out is unchanged, `null` clears the description, the
  * AI context, the video, the tax settings or the promotion. A list sent
- * (rateTiers, accessories, units, categoryIds, images) replaces the stored one.
+ * (rateTiers, accessories, categoryIds, images) replaces the stored one;
+ * `units` and `removeUnitIds`: see `UPDATE_UNITS_DESCRIPTION`.
  */
 export const updateProductInput = withFixedPricingIgnored(
   z.object({
     id: idSchema,
     ...z.object(productWriteShape).partial().shape,
+    units: productWriteShape.units.describe(UPDATE_UNITS_DESCRIPTION),
+    removeUnitIds: z
+      .array(idSchema)
+      .max(PRODUCT_WRITE_LIMITS.units)
+      .optional()
+      .describe(
+        "Ids of active units to delete (refused while a reservation holds one). The first call answers CONFIRMATION_REQUIRED with the units it deletes.",
+      ),
     description: z.string().nullable().optional().describe("New description; null clears it."),
     aiContext: fields.aiContext.unwrap().nullable().optional().describe("Null clears it."),
     videoUrl: fields.videoUrl.nullable().describe("A YouTube URL; null or empty removes it."),
@@ -783,6 +803,20 @@ export const productErrors = {
         unitIds: units.map((unit) => unit.id),
         identifiers: units.map((unit) => unit.identifier),
       },
+    }),
+  /** `removeUnitIds` names a unit that is not an active unit of the product. */
+  unitsToRemoveUnknown: (unitIds: string[]) =>
+    apiError("BAD_REQUEST", "PRODUCT_UNITS_TO_REMOVE_UNKNOWN", {
+      message: `removeUnitIds names units that are not active units of this product: ${unitIds.join(", ")}. A retired unit is already out of the stock.`,
+      i18nKey: "errors.invalidData",
+      details: { unitIds },
+    }),
+  /** A unit both sent in `units` and named in `removeUnitIds`. */
+  unitsSentAndRemoved: (unitIds: string[]) =>
+    apiError("BAD_REQUEST", "PRODUCT_UNITS_SENT_AND_REMOVED", {
+      message: `These units are both in units and in removeUnitIds: ${unitIds.join(", ")}. Keep each in one list.`,
+      i18nKey: "errors.invalidData",
+      details: { unitIds },
     }),
   unitCapacityConflict: () =>
     apiError("CONFLICT", "PRODUCT_UNIT_CAPACITY_CONFLICT", {

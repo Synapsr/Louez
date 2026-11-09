@@ -484,6 +484,84 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(((await units.json()) as { items: Json[] }).items.length, 150);
   });
 
+  test("an agent sends back a page of units: the units it left out stay", async () => {
+    const authorization = await key();
+    const created = output(
+      await mcpCall(authorization, "products_create", { name: "Kayak fleet", price: "30" }),
+    );
+    const id = String(created.id);
+    await louezDb.db
+      .update(louezDb.products)
+      .set({ trackUnits: true })
+      .where(orm.eq(louezDb.products.id, id));
+    await louezDb.db.insert(louezDb.productUnits).values(
+      Array.from({ length: 150 }, (_, index) => ({
+        productId: id,
+        identifier: `KAY-${String(index).padStart(3, "0")}`,
+      })),
+    );
+    const activeIdentifiers = async () =>
+      (
+        await louezDb.db
+          .select({ identifier: louezDb.productUnits.identifier })
+          .from(louezDb.productUnits)
+          .where(
+            orm.and(
+              orm.eq(louezDb.productUnits.productId, id),
+              orm.eq(louezDb.productUnits.lifecycleStatus, "active"),
+            ),
+          )
+      )
+        .map((unit) => unit.identifier)
+        .sort();
+
+    // products_get's first 100 units, sent back with one renamed.
+    const got = output(await mcpCall(authorization, "products_get", { id }));
+    const page = (got.units as Json[]).map(({ id: unitId, identifier, attributes }) => ({
+      id: unitId,
+      identifier: identifier === "KAY-007" ? "KAY-007-NEW" : identifier,
+      attributes,
+    }));
+    assert.equal(page.length, 100);
+    const updated = output(await mcpCall(authorization, "products_update", { id, units: page }));
+    assert.equal(updated.unitsTotal, 150, "no confirmation: nothing is deleted");
+    const after = await activeIdentifiers();
+    assert.equal(after.length, 150);
+    assert.ok(after.includes("KAY-007-NEW") && !after.includes("KAY-007"));
+    assert.ok(after.includes("KAY-149"), "a unit past the page stays");
+
+    // A new unit without an id is added; the others stay.
+    output(
+      await mcpCall(authorization, "products_update", {
+        id,
+        units: [{ identifier: "KAY-NEW", attributes: {} }],
+      }),
+    );
+    assert.equal((await activeIdentifiers()).length, 151);
+
+    // Only removeUnitIds deletes, after its confirmation.
+    const last = (got.units as Json[])[99].id;
+    const removal = { id, removeUnitIds: [last] };
+    const token = tokenOf(await mcpCall(authorization, "products_update", removal));
+    assert.equal((await activeIdentifiers()).length, 151);
+    output(
+      await mcpCall(authorization, "products_update", { ...removal, confirmationToken: token }),
+    );
+    assert.equal((await activeIdentifiers()).length, 150);
+
+    const unknown = await mcpCall(authorization, "products_update", {
+      id,
+      removeUnitIds: ["not_a_unit_of_it"],
+    });
+    assert.equal(toolError(unknown)?.code, "PRODUCT_UNITS_TO_REMOVE_UNKNOWN");
+    const both = await mcpCall(authorization, "products_update", {
+      id,
+      units: [page[0]],
+      removeUnitIds: [String(page[0].id)],
+    });
+    assert.equal(toolError(both)?.code, "PRODUCT_UNITS_SENT_AND_REMOVED");
+  });
+
   test("a tool's answer carries the record's links, built from the deployment's urls", async () => {
     const authorization = await key({ ...readOnly, products: "write" });
     await louezDb.db

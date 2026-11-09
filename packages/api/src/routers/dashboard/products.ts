@@ -152,7 +152,7 @@ const withItemLinks = async (
   return { ...result, items: result.items.map((item) => withLinks(context, item)) };
 };
 
-const UNITS_PAGE_HELP = `On MCP, \`units\` holds the first ${ANSWER_PAGE_MCP_DEFAULT} units by identifier (the API, every unit); \`unitsTotal\` counts them all and, when \`unitsNextCursor\` is not null, products_list_units gives the others from that cursor. A \`units\` list sent to products_update replaces every active unit, so it holds them all.`;
+const UNITS_PAGE_HELP = `On MCP, \`units\` holds the first ${ANSWER_PAGE_MCP_DEFAULT} units by identifier (the API, every unit); \`unitsTotal\` counts them all and, when \`unitsNextCursor\` is not null, products_list_units gives the others from that cursor. products_update keeps the units its \`units\` list leaves out, and deletes only those in removeUnitIds.`;
 
 const TIERS_HELP =
   'Pricing: a duration product has a base rate (basePriceDuration, e.g. { "price": "30", "duration": 1, "unit": "day" }) and optional rateTiers (prix dégressifs): each tier is the TOTAL price of a rental of exactly that duration, e.g. { "duration": 7, "unit": "day", "price": "150" } for a week. A fixed product has one price per item (pricingKind "fixed"). Seasons are set with products_create_seasonal_pricing.';
@@ -251,7 +251,7 @@ const update = storeProcedure
     mcp: {
       name: "products_update",
       title: "Update Product",
-      description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, units, categoryIds, images) replaces the stored one. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview. Returns the product. ${LINKS_HELP}`,
+      description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, categoryIds, images) replaces the stored one; \`units\` updates the units it holds and adds new ones, the others stay, and \`removeUnitIds\` deletes units. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview. Returns the product. ${LINKS_HELP}`,
       bundle: "catalog",
       effect: "overwrite",
       reach: "public",
