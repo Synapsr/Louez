@@ -1371,7 +1371,10 @@ const waitingHandoffs: Source = async (window, shaper) => {
         expiresAt: row.expiresAt.toISOString(),
         failureCode: view.failure?.code ?? null,
       },
-      tools: ["handoffs_get", HANDOFF_START_TOOLS[row.kind]],
+      // A card Stripe had not confirmed on the return: asking it again may finish it.
+      tools: view.confirming
+        ? ["handoffs_refresh", "handoffs_get", HANDOFF_START_TOOLS[row.kind]]
+        : ["handoffs_get", HANDOFF_START_TOOLS[row.kind]],
       links: view.links,
     });
   });

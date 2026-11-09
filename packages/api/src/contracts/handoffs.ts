@@ -40,6 +40,12 @@ export const handoffSchema = z.object({
   openedAt: z.date().nullable(),
   completedAt: z.date().nullable(),
   failure: z.object({ code: z.string(), message: z.string() }).nullable(),
+  /**
+   * The user came back from the provider, which had not confirmed the step
+   * yet (a card Stripe still checks): asking the provider again, with
+   * handoffs_refresh, may complete it.
+   */
+  confirming: z.boolean(),
   /** One sentence for the user, about where the step stands. */
   summary: z.string(),
   links: resourceLinksSchema,
@@ -59,6 +65,8 @@ export type HandoffLink = z.infer<typeof handoffLinkSchema>;
 
 export const getHandoffInput = z.object({ id: z.string().min(1).max(21) });
 export const getHandoffOutput = handoffSchema;
+export const refreshHandoffInput = getHandoffInput;
+export const refreshHandoffOutput = handoffSchema;
 
 const FAILURE_MESSAGES: Record<string, string> = {
   provider_failed: "The provider's page could not be opened. Ask for a new link and try again.",

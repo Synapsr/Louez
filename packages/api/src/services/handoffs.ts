@@ -110,6 +110,16 @@ const SUMMARIES: Record<HandoffKind, Record<HandoffStatus, string>> = {
   },
 };
 
+const CONFIRMING_SUMMARY = "The user is back from Stripe, which has not confirmed the card yet.";
+
+/**
+ * The user came back from the provider, which had not confirmed the step:
+ * a billing card's Checkout is on the row, and the step is still open.
+ */
+export function isConfirming(row: Pick<HandoffRow, "kind" | "providerRef">, status: HandoffStatus) {
+  return row.kind === "billing_card_setup" && row.providerRef !== null && status === "opened";
+}
+
 export function handoffView(
   row: HandoffRow,
   context: { now: Date; urls: UrlsPort; store: DashboardLinkStore },
@@ -127,10 +137,13 @@ export function handoffView(
       status === "failed" && row.failureCode
         ? { code: row.failureCode, message: handoffFailureMessage(row.failureCode) }
         : null,
+    confirming: isConfirming(row, status),
     summary:
       status === "failed" && row.failureCode
         ? `${SUMMARIES[row.kind].failed} ${handoffFailureMessage(row.failureCode)}`
-        : SUMMARIES[row.kind][status],
+        : isConfirming(row, status)
+          ? CONFIRMING_SUMMARY
+          : SUMMARIES[row.kind][status],
     links: dashboardPageLinks(context.urls, context.store, PAGES[row.kind]),
   };
 }
@@ -755,7 +768,7 @@ export async function refreshHandoffOnboarding(input: {
 /**
  * A billing card handoff the user came back from while Stripe had not
  * confirmed the card: asks the billing service again (it saves the card at
- * most once), so `handoffs.get` sees it complete without another visit. At
+ * most once), so it completes without another visit (`handoffs.refresh`). At
  * most one check per lease, taken in one statement on the database's clock:
  * concurrent polls, and polls within the lease, read the stored status. None
  * once the link expired, and only for the current attempt's own Checkout.

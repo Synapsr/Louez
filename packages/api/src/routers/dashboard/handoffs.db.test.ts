@@ -921,7 +921,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       { done: false },
     );
 
-    // Back with a card Stripe has not confirmed yet: handoffs_get asks again once the lease ends.
+    // Back with a card Stripe has not confirmed yet: handoffs_refresh asks again once the lease ends.
     billing.state.outcome = "pending";
     assert.deepEqual(
       await handoffs.finishHandoffReturn({
@@ -933,12 +933,28 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       { done: false },
     );
     billing.state.outcome = "refreshed";
-    assert.equal((await client(agent()).handoffs.get({ id: started.handoff.id })).status, "opened");
+    assert.equal(
+      (await client(agent()).handoffs.refresh({ id: started.handoff.id })).status,
+      "opened",
+    );
     assert.deepEqual(billing.state.finished, ["cs_test_1"], "the return's lease holds the polls");
     await endLease(started.handoff.id);
-    const done = await client(agent()).handoffs.get({ id: started.handoff.id });
+    // Reading never asks the provider: it says the card is being confirmed.
+    const read = await client(agent()).handoffs.get({ id: started.handoff.id });
+    assert.equal(read.status, "opened");
+    assert.equal(read.confirming, true);
+    assert.deepEqual(billing.state.finished, ["cs_test_1"], "handoffs_get only reads");
+    const done = await client(agent()).handoffs.refresh({ id: started.handoff.id });
     assert.equal(done.status, "completed");
+    assert.equal(done.confirming, false);
     assert.deepEqual(billing.state.finished, ["cs_test_1", "cs_test_1"]);
+
+    // Settling saves the card: a connection that only reads billing may not.
+    const billingReader = await apiKey({ ...agentRights, billing: "read" });
+    await rejects(
+      client(billingReader()).handoffs.refresh({ id: started.handoff.id }),
+      "PERMISSION_DENIED",
+    );
   });
 
   test("only the owner of a store the billing service bills may start the card setup", async () => {
@@ -1097,7 +1113,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // Checkout A is confirmed now; polls do not ask about it.
     billing.state.outcome = "refreshed";
     billing.state.finished.length = 0;
-    assert.equal((await client(agent()).handoffs.get({ id: a.id })).status, "opened");
+    assert.equal((await client(agent()).handoffs.refresh({ id: a.id })).status, "opened");
     assert.deepEqual(billing.state.finished, []);
     // A's late return changes nothing either.
     assert.deepEqual(
@@ -1118,7 +1134,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     )();
     billing.state.outcome = "refreshed";
     await endLease(a.id);
-    assert.equal((await client(agent()).handoffs.get({ id: a.id })).status, "completed");
+    assert.equal((await client(agent()).handoffs.refresh({ id: a.id })).status, "completed");
     assert.deepEqual(billing.state.finished, ["cs_attempt_b", "cs_attempt_b"]);
 
     // Another user taking the step over drops the attempt too.
@@ -1228,7 +1244,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.deepEqual(billing.state.finished, ["cs_late"], "one claim among concurrent returns");
     // Within the lease, a reload asks nothing; polls never after expiry.
     assert.deepEqual(await finishers[0]!(), { done: false });
-    assert.equal((await client(agent()).handoffs.get({ id: a.id })).status, "expired");
+    assert.equal((await client(agent()).handoffs.refresh({ id: a.id })).status, "expired");
     assert.equal(billing.state.finished.length, 1);
     // Once the lease ended, the user's return completes it.
     billing.state.outcome = "refreshed";
@@ -1250,7 +1266,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // Twenty polls at once, the provider held at a barrier: one call.
     const gate = barrier();
     billing.state.gate = gate.wait;
-    const polls = Array.from({ length: 20 }, () => client(agent()).handoffs.get({ id: a.id }));
+    const polls = Array.from({ length: 20 }, () => client(agent()).handoffs.refresh({ id: a.id }));
     while (billing.state.finished.length === 0)
       await new Promise((resolve) => setImmediate(resolve));
     gate.open();
@@ -1260,7 +1276,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.deepEqual(billing.state.finished, ["cs_poll"]);
 
     // Within the lease: the stored status, no call.
-    await client(agent()).handoffs.get({ id: a.id });
+    await client(agent()).handoffs.refresh({ id: a.id });
     assert.equal(billing.state.finished.length, 1);
 
     // The lease grows with each check: 30 s after the return, then 60 s, 120 s…
@@ -1281,7 +1297,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       String(second?.seconds),
     );
     await endLease(a.id);
-    await client(agent()).handoffs.get({ id: a.id });
+    await client(agent()).handoffs.refresh({ id: a.id });
     const third = await lease();
     assert.equal(third?.checks, 3);
     assert.ok(
@@ -1296,7 +1312,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       .set({ expiresAt: new Date(Date.now() - 1000) })
       .where(orm.eq(louezDb.apiHandoffs.id, a.id));
     billing.state.outcome = "refreshed";
-    assert.equal((await client(agent()).handoffs.get({ id: a.id })).status, "expired");
+    assert.equal((await client(agent()).handoffs.refresh({ id: a.id })).status, "expired");
     assert.equal(billing.state.finished.length, 2);
   });
 

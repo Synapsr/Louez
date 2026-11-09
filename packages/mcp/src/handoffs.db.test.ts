@@ -188,7 +188,10 @@ describe("handoff tools (database)", { skip: skipWithoutTestDatabase() }, () => 
       ["billing_get_status", "billing"],
       ["billing_start_card_setup", "billing"],
     ]);
-    assert.deepEqual(names("dashboard.handoffs."), [["handoffs_get", "daily"]]);
+    assert.deepEqual(names("dashboard.handoffs."), [
+      ["handoffs_get", "daily"],
+      ["handoffs_refresh", "daily"],
+    ]);
 
     const { tools, instructions } = await withClient(
       await key(rights("write", "write")),
@@ -205,6 +208,7 @@ describe("handoff tools (database)", { skip: skipWithoutTestDatabase() }, () => 
       "billing_get_status",
       "billing_start_card_setup",
       "handoffs_get",
+      "handoffs_refresh",
     ]) {
       assert.ok(listed.includes(name), name);
     }
@@ -218,12 +222,14 @@ describe("handoff tools (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.match(instructions, /poll handoffs_get/);
     assert.match(instructions, /never open it yourself/);
     assert.match(instructions, /rather than asking them to tell you/);
+    assert.match(instructions, /`confirming: true`[^\n]*poll handoffs_refresh/);
 
     // A read-only key reads where a step stands, and starts none.
     const reader = await withClient(await key(rights("read", "read")), async (mcp) =>
       (await mcp.listTools()).tools.map((tool) => tool.name),
     );
     assert.ok(reader.includes("handoffs_get"));
+    assert.ok(!reader.includes("handoffs_refresh"), "settling a step is a write");
     assert.ok(reader.includes("billing_get_status"));
     assert.ok(!reader.includes("payments_start_stripe_onboarding"));
     assert.ok(!reader.includes("billing_start_card_setup"));

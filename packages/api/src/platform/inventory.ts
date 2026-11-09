@@ -330,6 +330,14 @@ export const capabilities = [
     plan: { lot: "6" },
     migrated: true,
   },
+  {
+    // Asks the provider again for a step the user came back from (the billing card).
+    id: "handoffs.refresh",
+    sources: [procedure("handoffs", "refresh")],
+    kind: "write",
+    plan: { lot: "6" },
+    migrated: true,
+  },
 
   // --- Reservations: creation and changes (2b) ---------------------------
   {

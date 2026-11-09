@@ -188,6 +188,7 @@ describe("MCP directory conformance", () => {
       categories_reorder: "overwrite/public",
       categories_update: "overwrite/public",
       handoffs_get: "read",
+      handoffs_refresh: "overwrite/provider",
       inbox_acknowledge: "overwrite",
       inbox_list: "read",
       online_store_check_slug_availability: "read",

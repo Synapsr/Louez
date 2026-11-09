@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { handoffDonePath, readHandoffForUser, statusOf } from "@louez/api/services/handoffs";
+import {
+  handoffDonePath,
+  isConfirming,
+  readHandoffForUser,
+  statusOf,
+} from "@louez/api/services/handoffs";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
 import { auth } from "@/lib/auth";
@@ -51,7 +56,7 @@ export default async function HandoffDonePage({ params }: { params: Promise<{ id
         : status === "expired"
           ? "expired"
           : // Back from Checkout with a card Stripe has not confirmed yet.
-            row.kind === "billing_card_setup" && row.providerRef
+            isConfirming(row, status)
             ? "confirming"
             : "opened";
   return (

@@ -101,6 +101,7 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.billing.getStatus",
   "dashboard.billing.startCardSetup",
   "dashboard.handoffs.get",
+  "dashboard.handoffs.refresh",
 ];
 
 /** Arguments the MCP bridge adds to a tool and maps onto headers. */

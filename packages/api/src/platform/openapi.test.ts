@@ -216,6 +216,7 @@ describe("OpenAPI document", () => {
         "GET /billing": "billing_get_status",
         "POST /billing/card-setup": "billing_start_card_setup",
         "GET /handoffs/{id}": "handoffs_get",
+        "POST /handoffs/{id}/refresh": "handoffs_refresh",
       },
     );
 
