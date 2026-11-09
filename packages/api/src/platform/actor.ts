@@ -5,7 +5,11 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { loadActiveGrant } from "../services/agent-grants";
 import { validateApiKey } from "../services/api-keys";
-import { clientWithholding, type ClientWithholding } from "./agent-clients";
+import {
+  clientWithholding,
+  modelReadsStructuredContent,
+  type ClientWithholding,
+} from "./agent-clients";
 import { platformErrors } from "./errors";
 import type { McpBundle } from "./meta";
 import { normalizeScopes, presetScopes, type ConnectionScopes } from "./permissions";
@@ -57,6 +61,12 @@ export interface Credential {
    * `scopes` and its bundles left out of `bundles`. Absent: nothing.
    */
   withheld?: ClientWithholding;
+  /**
+   * The OAuth client gives its model a tool result's structured content
+   * (`modelReadsStructuredContent`): MCP answers leave its JSON out of the
+   * text block. Absent: the text repeats it.
+   */
+  structuredContentOnly?: boolean;
 }
 
 /** Someone authenticated, before any store is chosen. */
@@ -203,7 +213,8 @@ async function resolveOAuthActor(transport: Transport, token: string): Promise<A
     );
   }
   // What the client's directory forbids is out of reach, whatever the grant.
-  const withheld = clientWithholding({ clientId: grant.clientId, name: grant.clientName });
+  const client = { clientId: grant.clientId, name: grant.clientName };
+  const withheld = clientWithholding(client);
   const scopes = presetScopes(grant.preset);
   for (const domain of withheld.domains) scopes[domain] = "none";
   return {
@@ -222,6 +233,7 @@ async function resolveOAuthActor(transport: Transport, token: string): Promise<A
       confirmSensitive: grant.confirmSensitive,
       bundles: grant.bundles.filter((bundle) => !withheld.bundles.includes(bundle)),
       withheld,
+      structuredContentOnly: modelReadsStructuredContent(client),
     },
   };
 }

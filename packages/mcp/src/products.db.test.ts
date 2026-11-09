@@ -165,7 +165,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const products = exposure.procedures.filter((entry) =>
       entry.path.startsWith("dashboard.products."),
     );
-    assert.equal(products.length, 39);
+    assert.equal(products.length, 40);
     for (const name of [
       "products_upload_image",
       "products_enhance_image",
@@ -428,6 +428,60 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     );
     const usage = await openApi("GET", "/variants/usage", null, { authorization });
     assert.equal(usage.status, 200, await usage.clone().text());
+  });
+
+  test("an agent reads a product's units a page at a time; the API gets them all", async () => {
+    const authorization = await key();
+    const created = output(
+      await mcpCall(authorization, "products_create", { name: "Paddle fleet", price: "20" }),
+    );
+    const id = String(created.id);
+    await louezDb.db
+      .update(louezDb.products)
+      .set({ trackUnits: true })
+      .where(orm.eq(louezDb.products.id, id));
+    // 150 units: identifiers sort as their numbers.
+    await louezDb.db.insert(louezDb.productUnits).values(
+      Array.from({ length: 150 }, (_, index) => ({
+        productId: id,
+        identifier: `SUP-${String(index).padStart(3, "0")}`,
+      })),
+    );
+    const identifiers = (units: unknown) => (units as Json[]).map((unit) => unit.identifier);
+
+    // MCP: the first 100, the total, and a cursor products_list_units takes.
+    const got = output(await mcpCall(authorization, "products_get", { id }));
+    assert.equal((got.units as Json[]).length, 100);
+    assert.equal(got.unitsTotal, 150);
+    assert.equal(identifiers(got.units)[99], "SUP-099");
+    assert.ok(got.unitsNextCursor);
+    const rest = output(
+      await mcpCall(authorization, "products_list_units", { id, cursor: got.unitsNextCursor }),
+    );
+    assert.deepEqual(
+      identifiers(rest.items),
+      Array.from({ length: 50 }, (_, index) => `SUP-${String(index + 100).padStart(3, "0")}`),
+    );
+    assert.equal(rest.nextCursor, null);
+    assert.equal(rest.total, 150);
+    // A smaller page reads on from its own cursor.
+    const small = output(await mcpCall(authorization, "products_list_units", { id, limit: 2 }));
+    assert.deepEqual(identifiers(small.items), ["SUP-000", "SUP-001"]);
+    const next = output(
+      await mcpCall(authorization, "products_list_units", { id, limit: 2, cursor: small.nextCursor }),
+    );
+    assert.deepEqual(identifiers(next.items), ["SUP-002", "SUP-003"]);
+    const unknown = await mcpCall(authorization, "products_list_units", { id, cursor: "gone" });
+    assert.equal(toolError(unknown)?.code, "INVALID_CURSOR");
+
+    // The API (and the dashboard, on RPC) gets every unit, as before.
+    const viaOpenApi = await openApi("GET", `/products/${id}`, null, { authorization });
+    const product = (await viaOpenApi.json()) as Json;
+    assert.equal((product.units as Json[]).length, 150);
+    assert.equal(product.unitsTotal, 150);
+    assert.equal(product.unitsNextCursor, null);
+    const units = await openApi("GET", `/products/${id}/units`, null, { authorization });
+    assert.equal(((await units.json()) as { items: Json[] }).items.length, 150);
   });
 
   test("a tool's answer carries the record's links, built from the deployment's urls", async () => {

@@ -23,6 +23,7 @@ import {
   updateReservationNotesOutput,
   updateReservationStatusInput,
 } from "../../contracts/reservations";
+import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import { customerLinks, productLinks, reservationLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
 import {
@@ -197,6 +198,9 @@ const poll = storeProcedure
     };
   });
 
+/** The windows' lists come a page at a time to an agent (`answerPage`). */
+const WINDOW_PAGE_NOTE = `An agent gets ${ANSWER_PAGE_MCP_DEFAULT} entries a page without a limit (the API, every entry); nextCursor, when not null, reads on.`;
+
 const listCalendarPeriodProcedure = storeProcedure
   .meta({
     capability: "reservations.listCalendarPeriod",
@@ -204,7 +208,7 @@ const listCalendarPeriodProcedure = storeProcedure
     mcp: {
       name: "reservations_list_calendar_period",
       title: "List Calendar Period",
-      description: `The reservations that overlap a window (from, to: ISO 8601, at most 400 days apart), by start date, as the calendar shows them: status, dates, amounts, customer, lines and delivery legs. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
+      description: `The reservations that overlap a window (from, to: ISO 8601, at most 400 days apart), by start date, as the calendar shows them: status, dates, amounts, customer, lines and delivery legs. ${WINDOW_PAGE_NOTE} ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
     },
   })
@@ -213,8 +217,16 @@ const listCalendarPeriodProcedure = storeProcedure
   .output(listCalendarPeriodOutput)
   .handler(async ({ context, input }) => {
     const link = linker(context);
-    const period = await listCalendarPeriod(reader(context), input);
-    return { ...period, items: period.items.map((item) => withLinks(link, item)) };
+    const period = await listCalendarPeriod(reader(context), { from: input.from, to: input.to });
+    const page = answerPage(period.items, (item) => item.id, input, {
+      transport: context.actor.transport,
+      tool: "reservations_list_calendar_period",
+    });
+    return {
+      ...period,
+      items: page.items.map((item) => withLinks(link, item)),
+      nextCursor: page.nextCursor,
+    };
   });
 
 const getPlanningTimelineProcedure = storeProcedure
@@ -224,7 +236,7 @@ const getPlanningTimelineProcedure = storeProcedure
     mcp: {
       name: "reservations_get_planning_timeline",
       title: "Get Planning Timeline",
-      description: `The planning of a window (from, to: ISO 8601, at most 400 days apart): one entry per reservation and product, with the quantity, the assigned units and the delivery legs. Each entry has \`links\`, its reservation's dashboard page, to give the user. ${CUSTOMER_NOTE}`,
+      description: `The planning of a window (from, to: ISO 8601, at most 400 days apart): one entry per reservation and product, with the quantity, the assigned units and the delivery legs. ${WINDOW_PAGE_NOTE} Each entry has \`links\`, its reservation's dashboard page, to give the user. ${CUSTOMER_NOTE}`,
       bundle: "daily",
     },
   })
@@ -233,8 +245,12 @@ const getPlanningTimelineProcedure = storeProcedure
   .output(getPlanningTimelineOutput)
   .handler(async ({ context, input }) => {
     const link = linker(context);
-    const planning = await getPlanningTimeline(reader(context), input);
-    return { ...planning, items: planning.items.map(link.reservation) };
+    const planning = await getPlanningTimeline(reader(context), { from: input.from, to: input.to });
+    const page = answerPage(planning.items, (item) => `${item.id}:${item.productId}`, input, {
+      transport: context.actor.transport,
+      tool: "reservations_get_planning_timeline",
+    });
+    return { ...planning, items: page.items.map(link.reservation), nextCursor: page.nextCursor };
   });
 
 const listUpcomingProcedure = storeProcedure

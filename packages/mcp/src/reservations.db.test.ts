@@ -279,6 +279,54 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(await statusOf(pending), "rejected");
   });
 
+  test("a calendar window comes a page at a time with a cursor; the API gets it whole", async () => {
+    const authorization = await key();
+    const window = { from: "2030-06-01T00:00:00Z", to: "2030-06-30T00:00:00Z" };
+    for (let index = 0; index < 3; index++) await reservation("confirmed");
+    const all = output(
+      await mcpCall(authorization, "reservations_list_calendar_period", window),
+    ).items as Json[];
+    assert.ok(all.length >= 3);
+
+    // Pages of two, read on with each nextCursor, give every entry once, in order.
+    const read: string[] = [];
+    let cursor: unknown;
+    do {
+      const page = output(
+        await mcpCall(authorization, "reservations_list_calendar_period", {
+          ...window,
+          limit: 2,
+          ...(cursor ? { cursor } : {}),
+        }),
+      );
+      assert.ok((page.items as Json[]).length <= 2);
+      read.push(...(page.items as Json[]).map((item) => String(item.id)));
+      cursor = page.nextCursor;
+    } while (cursor);
+    assert.deepEqual(
+      read,
+      all.map((item) => String(item.id)),
+    );
+
+    const planning = output(
+      await mcpCall(authorization, "reservations_get_planning_timeline", { ...window, limit: 1 }),
+    );
+    // These fixtures have no lines to draw: one empty page, no cursor.
+    assert.deepEqual(planning.items, []);
+    assert.equal(planning.nextCursor, null);
+
+    const whole = (await (
+      await openApi(
+        "GET",
+        `/reservations/calendar?from=${window.from}&to=${window.to}`,
+        null,
+        { authorization },
+      )
+    ).json()) as Json;
+    assert.equal((whole.items as Json[]).length, all.length);
+    assert.equal(whole.nextCursor, null);
+  });
+
   test("the follow-up is served at its REST paths", async () => {
     const authorization = await key();
     const id = await reservation("confirmed");

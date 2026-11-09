@@ -259,6 +259,7 @@ describe("MCP directory conformance", () => {
       products_get_variant_usage: "read",
       products_list: "read",
       products_list_seasonal_pricings: "read",
+      products_list_units: "read",
       products_list_variants: "read",
       products_reinstate_unit: "overwrite/public",
       products_remove_image_background: "overwrite/public",

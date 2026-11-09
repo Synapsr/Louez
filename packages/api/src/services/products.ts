@@ -531,6 +531,16 @@ function categoryIdsOf(product: LoadedProduct) {
   return linked.length > 0 ? linked : product.categoryId ? [product.categoryId] : [];
 }
 
+/** A unit as products_get and products_list_units show it. */
+function toUnit(unit: LoadedProduct["units"][number]): Product["units"][number] {
+  return {
+    id: unit.id,
+    identifier: unit.identifier,
+    attributes: (unit.attributes as Record<string, string> | null) ?? {},
+    lifecycleStatus: unit.lifecycleStatus,
+  };
+}
+
 async function toProduct(product: LoadedProduct, currency: string): Promise<Product> {
   const quantity = product.trackUnits
     ? ((await getEffectiveProductQuantities(db, [product.id])).get(product.id) ?? 0)
@@ -557,12 +567,7 @@ async function toProduct(product: LoadedProduct, currency: string): Promise<Prod
     quantity,
     trackUnits: product.trackUnits,
     bookingAttributeAxes: getSortedAxes(product.bookingAttributeAxes),
-    units: product.units.map((unit) => ({
-      id: unit.id,
-      identifier: unit.identifier,
-      attributes: (unit.attributes as Record<string, string> | null) ?? {},
-      lifecycleStatus: unit.lifecycleStatus,
-    })),
+    units: product.units.map(toUnit),
     accessories: product.accessories.map((link) => ({
       accessoryId: link.accessoryId,
       name: link.accessory?.name ?? "",
@@ -625,6 +630,20 @@ export async function assertOwnedProduct(storeId: string, id: string) {
 
 export async function getProduct(actor: Pick<ProductActor, "storeId" | "store">, id: string) {
   return toProduct(await loadProduct(db, actor.storeId, id), currencyOf(actor));
+}
+
+/**
+ * Every unit of one of the store's products, retired ones included, in
+ * products_get's order (by identifier, unique within a product).
+ */
+export async function listProductUnits(storeId: string, id: string) {
+  await assertOwnedProduct(storeId, id);
+  const rows = await db
+    .select()
+    .from(productUnits)
+    .where(eq(productUnits.productId, id))
+    .orderBy(asc(productUnits.identifier));
+  return rows.map(toUnit);
 }
 
 const listPosition = sql<number>`COALESCE(${products.displayOrder}, 0)`.mapWith(Number);

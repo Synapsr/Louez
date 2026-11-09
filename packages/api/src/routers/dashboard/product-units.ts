@@ -17,6 +17,7 @@ import {
   updateUnitDetailsOutput,
   type UnitConflictOutput,
 } from "../../contracts/product-units";
+import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import { storeProcedure } from "../../platform/procedures";
 import * as units from "../../services/product-units";
 import type { UnitAvailabilityPreview } from "../../services/product-units";
@@ -132,16 +133,21 @@ export const getUnitHistory = storeProcedure
     mcp: {
       name: "products_get_unit_history",
       title: "Get Unit History",
-      description: `The history of one unit: its events (created, changed, retired, reinstated, downtimes, assignments), newest first, with who did them, and its downtimes (current, upcoming, past). ${UNIT_HELP} It shows the reservations and customers the unit served: it needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
+      description: `The history of one unit: its events (created, changed, retired, reinstated, downtimes, assignments), newest first, with who did them, and its downtimes (current, upcoming, past). An agent gets ${ANSWER_PAGE_MCP_DEFAULT} events a page without a limit (the API, every one); nextCursor, when not null, reads on, and every page holds the downtimes. ${UNIT_HELP} It shows the reservations and customers the unit served: it needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
       bundle: "catalog",
     },
   })
   .route({ method: "GET", path: "/products/units/{unitId}/history" })
   .input(unitHistoryInput)
   .output(unitHistoryOutput)
-  .handler(({ context, input }) => {
+  .handler(async ({ context, input }) => {
     requireReservationsAndCustomers(context);
-    return units.getUnitHistory(context.actor.storeId, input.unitId);
+    const history = await units.getUnitHistory(context.actor.storeId, input.unitId);
+    const page = answerPage(history.timeline, (entry) => `${entry.kind}:${entry.id}`, input, {
+      transport: context.actor.transport,
+      tool: "products_get_unit_history",
+    });
+    return { ...history, timeline: page.items, nextCursor: page.nextCursor };
   });
 
 export const declareDowntime = storeProcedure

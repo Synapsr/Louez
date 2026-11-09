@@ -39,6 +39,22 @@ const OPENAI_WITHHOLDING: ClientWithholding = { domains: ["billing"], bundles: [
 
 const NOTHING_WITHHELD: ClientWithholding = { domains: [], bundles: [] };
 
+/**
+ * Whether the client gives its model a tool result's `structuredContent`, so
+ * the text block need not repeat it. OpenAI documents it for ChatGPT and
+ * Codex ("`structuredContent`: concise data the model can inspect and use in
+ * later calls", https://developers.openai.com/plugins/build/mcp-server), and
+ * the MCP specification only asks for the copy in a text block for
+ * compatibility (SHOULD). Claude's clients document nothing of the kind, so
+ * their text keeps the JSON.
+ */
+export function modelReadsStructuredContent(client: {
+  clientId: string;
+  name: string | null;
+}): boolean {
+  return isOpenAiClient(client);
+}
+
 /** What `client` never reaches, whatever its grant. */
 export function clientWithholding(client: {
   clientId: string;

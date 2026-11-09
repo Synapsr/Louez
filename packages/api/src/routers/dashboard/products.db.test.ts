@@ -896,7 +896,7 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       },
       session(),
     );
-    assert.deepEqual(empty, { reservations: [], downtimes: [] });
+    assert.deepEqual(empty, { reservations: [], nextCursor: null, downtimes: [] });
     await rejects(
       run(
         "getReservationTimeline",
@@ -1022,10 +1022,12 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
     const allowed = await apiKey();
     assert.deepEqual(await run("getReservationTimeline", window, allowed()), {
       reservations: [],
+      nextCursor: null,
       downtimes: [],
     });
     assert.deepEqual(await run("getReservationTimeline", window, session(MEMBER)), {
       reservations: [],
+      nextCursor: null,
       downtimes: [],
     });
   });

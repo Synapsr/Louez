@@ -1,6 +1,7 @@
 import { CONTRACT_SIGNATURE_METHODS } from "@louez/db/schema";
 import { z } from "zod";
 
+import { answerPageInput } from "../platform/answer-pages";
 import { apiError } from "../platform/errors";
 import { resourceLinksSchema } from "./links";
 
@@ -527,6 +528,7 @@ export const reservationWindowInput = z.object({
     .describe(
       `End of the window, ISO 8601, at most ${RESERVATION_WINDOW_MAX_DAYS} days after from. Reservations that start on or before it.`,
     ),
+  ...answerPageInput,
 });
 
 const deliveryLegSchema = z.object({
@@ -585,6 +587,8 @@ export const listCalendarPeriodOutput = z.object({
     }),
   ),
   currency: z.string(),
+  /** Null on the last page (`answerPage`). */
+  nextCursor: z.string().nullable(),
 });
 
 /** One reservation's lines of one product, as the planning draws them. */
@@ -620,6 +624,8 @@ export type PlanningEntry = z.infer<typeof planningEntrySchema>;
 export const getPlanningTimelineOutput = z.object({
   items: z.array(planningEntrySchema.extend(linksShape)),
   currency: z.string(),
+  /** Null on the last page (`answerPage`). */
+  nextCursor: z.string().nullable(),
 });
 
 // --- Agenda ------------------------------------------------------------------

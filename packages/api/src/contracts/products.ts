@@ -10,6 +10,7 @@ import {
 } from "@louez/validations";
 import { z } from "zod";
 
+import { answerPageInput } from "../platform/answer-pages";
 import { apiError } from "../platform/errors";
 import { resourceLinksSchema } from "./links";
 
@@ -344,6 +345,27 @@ export type Product = z.infer<typeof productSchema>;
 export const productOutput = productSchema.extend({
   /** Its dashboard page, and its storefront page while it is active and the store online. */
   links: resourceLinksSchema,
+  /** Every unit of the product, retired ones included; `units` may hold fewer (an agent's answer). */
+  unitsTotal: z.number().int(),
+  /**
+   * Null when `units` holds them all. Otherwise (an agent's answer holds the
+   * first `ANSWER_PAGE_MCP_DEFAULT`), the cursor products_list_units takes for
+   * the next ones.
+   */
+  unitsNextCursor: z.string().nullable(),
+});
+
+/** A product's units, by identifier, a page at a time. */
+export const listProductUnitsInput = z.object({
+  id: idSchema.describe("The product's id."),
+  ...answerPageInput,
+});
+export const listProductUnitsOutput = z.object({
+  items: productSchema.shape.units,
+  /** Null on the last page. */
+  nextCursor: z.string().nullable(),
+  /** Every unit of the product, retired ones included. */
+  total: z.number().int(),
 });
 
 export const productListItemSchema = z.object({
@@ -502,6 +524,8 @@ export const productTimelineInput = z.object({
   to: z.coerce
     .date()
     .describe(`End of the window, ISO 8601, at most ${PRODUCT_TIMELINE_MAX_DAYS} days after from.`),
+  /** Pages `reservations`; the downtimes come whole with every page. */
+  ...answerPageInput,
 });
 export const productTimelineOutput = z.object({
   /** Reservations holding the product that overlap the window, one per reservation. */
@@ -532,6 +556,8 @@ export const productTimelineOutput = z.object({
       ),
     }),
   ),
+  /** Null on the last page of `reservations` (`answerPage`). */
+  nextCursor: z.string().nullable(),
   /** Unit downtimes (maintenance, repair) that overlap the window. */
   downtimes: z.array(
     z.object({

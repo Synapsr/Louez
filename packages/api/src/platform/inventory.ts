@@ -753,6 +753,13 @@ export const capabilities = [
     migrated: true,
   },
   {
+    id: "products.listUnits",
+    sources: [procedure("products", "listUnits")],
+    kind: "read",
+    plan: { lot: "3" },
+    migrated: true,
+  },
+  {
     id: "products.create",
     sources: [procedure("products", "create")],
     kind: "write",

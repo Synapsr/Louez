@@ -8,6 +8,8 @@ import {
   deleteSeasonalPricingOutput,
   duplicateProductInput,
   getProductInput,
+  listProductUnitsInput,
+  listProductUnitsOutput,
   listProductsInput,
   listProductsOutput,
   listSeasonalPricingsInput,
@@ -28,6 +30,7 @@ import {
   updateProductStatusOutput,
   updateSeasonalPricingInput,
   useImageVersionInput,
+  type Product,
 } from "../../contracts/products";
 import { jobSchema, JOB_WAIT_SECONDS_MAX } from "../../contracts/jobs";
 import {
@@ -38,6 +41,7 @@ import {
   UPLOAD_IMAGE_MAX_BODY_BYTES,
   uploadImageInput,
 } from "../../contracts/uploads";
+import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import { productLinks } from "../../platform/links";
 import type { ProductImageOperation } from "../../platform/ports";
 import { storeProcedure } from "../../platform/procedures";
@@ -59,6 +63,7 @@ import {
   deleteProduct,
   duplicateProduct,
   getProduct,
+  listProductUnits,
   listProducts,
   reorderProducts,
   updateProduct,
@@ -117,6 +122,27 @@ const withLinks = <T extends { id: string; slug: string | null; status: string |
   product: T,
 ) => ({ ...product, links: productLinks(context.ports.urls, context.store, product) });
 
+/**
+ * A product as an answer gives it: with its links, and its units a page at a
+ * time for an agent (`answerPage`: the first `ANSWER_PAGE_MCP_DEFAULT` on
+ * MCP, products_list_units for the rest), every unit for the dashboard and
+ * the API.
+ */
+const productAnswer = (context: ProductContext, product: Product) => {
+  const units = answerPage(
+    product.units,
+    (unit) => unit.id,
+    {},
+    { transport: context.actor.transport, tool: "products_get" },
+  );
+  return withLinks(context, {
+    ...product,
+    units: units.items,
+    unitsTotal: product.units.length,
+    unitsNextCursor: units.nextCursor,
+  });
+};
+
 /** A page of products, each with its links. */
 const withItemLinks = async (
   context: ProductContext,
@@ -125,6 +151,8 @@ const withItemLinks = async (
   const result = await page;
   return { ...result, items: result.items.map((item) => withLinks(context, item)) };
 };
+
+const UNITS_PAGE_HELP = `On MCP, \`units\` holds the first ${ANSWER_PAGE_MCP_DEFAULT} units by identifier (the API, every unit); \`unitsTotal\` counts them all and, when \`unitsNextCursor\` is not null, products_list_units gives the others from that cursor. A \`units\` list sent to products_update replaces every active unit, so it holds them all.`;
 
 const TIERS_HELP =
   'Pricing: a duration product has a base rate (basePriceDuration, e.g. { "price": "30", "duration": 1, "unit": "day" }) and optional rateTiers (prix dégressifs): each tier is the TOTAL price of a rental of exactly that duration, e.g. { "duration": 7, "unit": "day", "price": "150" } for a week. A fixed product has one price per item (pricingKind "fixed"). Seasons are set with products_create_seasonal_pricing.';
@@ -157,7 +185,7 @@ const get = storeProcedure
     mcp: {
       name: "products_get",
       title: "Get Product",
-      description: `Get one product of the store with everything its form holds: pricing (base rate, tiers), deposit, taxes, promotion, stock and units, variants, accessories, categories, images. The answer can be edited and sent back to products_update. ${LINKS_HELP}`,
+      description: `Get one product of the store with everything its form holds: pricing (base rate, tiers), deposit, taxes, promotion, stock and units, variants, accessories, categories, images. The answer can be edited and sent back to products_update. ${UNITS_PAGE_HELP} ${LINKS_HELP}`,
       bundle: "catalog",
     },
   })
@@ -165,8 +193,31 @@ const get = storeProcedure
   .input(getProductInput)
   .output(productOutput)
   .handler(async ({ context, input }) =>
-    withLinks(context, await getProduct(productActor(context), input.id)),
+    productAnswer(context, await getProduct(productActor(context), input.id)),
   );
+
+const listUnits = storeProcedure
+  .meta({
+    capability: "products.listUnits",
+    scope: { domain: "products", level: "read" },
+    mcp: {
+      name: "products_list_units",
+      title: "List Product Units",
+      description: `List a product's units (serial numbers, asset tags), retired ones included, in products_get's order (by identifier): id, identifier, variant attributes and whether it is active or retired. Takes the product's id, and a cursor (products_get's unitsNextCursor, or this tool's nextCursor) to read on; nextCursor is null on the last page. Without a limit, an agent gets ${ANSWER_PAGE_MCP_DEFAULT} units a page.`,
+      bundle: "catalog",
+    },
+  })
+  .route({ method: "GET", path: "/products/{id}/units" })
+  .input(listProductUnitsInput)
+  .output(listProductUnitsOutput)
+  .handler(async ({ context, input }) => {
+    const units = await listProductUnits(context.actor.storeId, input.id);
+    const page = answerPage(units, (unit) => unit.id, input, {
+      transport: context.actor.transport,
+      tool: "products_list_units",
+    });
+    return { ...page, total: units.length };
+  });
 
 // --- Writes ------------------------------------------------------------------
 
@@ -189,7 +240,7 @@ const create = storeProcedure
   .input(createProductInput)
   .output(productOutput)
   .handler(async ({ context, input }) =>
-    withLinks(context, await createProduct(productActor(context), input)),
+    productAnswer(context, await createProduct(productActor(context), input)),
   );
 
 const update = storeProcedure
@@ -212,7 +263,7 @@ const update = storeProcedure
   .input(updateProductInput)
   .output(productOutput)
   .handler(async ({ context, input, path }) =>
-    withLinks(
+    productAnswer(
       context,
       await updateProduct(productActor(context), input, {
         // Under the update's lock: what the preview shows is what happens. A
@@ -344,7 +395,7 @@ const duplicate = storeProcedure
   .input(duplicateProductInput)
   .output(productOutput)
   .handler(async ({ context, input }) =>
-    withLinks(context, await duplicateProduct(productActor(context), input.id)),
+    productAnswer(context, await duplicateProduct(productActor(context), input.id)),
   );
 
 const reorder = storeProcedure
@@ -537,7 +588,7 @@ const useImageVersionProcedure = storeProcedure
         productName: name,
       });
     }
-    return withLinks(context, await getProduct(actor, input.id));
+    return productAnswer(context, await getProduct(actor, input.id));
   });
 
 // --- Activity and timeline ---------------------------------------------------
@@ -577,18 +628,24 @@ const getReservationTimeline = storeProcedure
       name: "products_get_reservation_timeline",
       title: "Get Product Reservation Timeline",
       description:
-        "When a product is out: the reservations that hold it between `from` and `to` (ISO 8601, at most 400 days apart), with their dates, customer, amounts, quantity and assigned units, and the downtimes of its units in that window. Needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.",
+        `When a product is out: the reservations that hold it between \`from\` and \`to\` (ISO 8601, at most 400 days apart), with their dates, customer, amounts, quantity and assigned units, and the downtimes of its units in that window. An agent gets ${ANSWER_PAGE_MCP_DEFAULT} reservations a page without a limit (the API, every one); nextCursor, when not null, reads on, and every page holds the downtimes. Needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
       bundle: "catalog",
     },
   })
   .route({ method: "GET", path: "/products/{id}/reservation-timeline" })
   .input(productTimelineInput)
   .output(productTimelineOutput)
-  .handler(({ context, input }) => {
+  .handler(async ({ context, input }) => {
     // It shows reservations (numbers, dates, amounts) and their customers:
     // the connection must read those too, not only products.
     requireReservationsAndCustomers(context);
-    return getProductReservationTimeline(context.actor.storeId, input);
+    const { id, from, to } = input;
+    const timeline = await getProductReservationTimeline(context.actor.storeId, { id, from, to });
+    const page = answerPage(timeline.reservations, (reservation) => reservation.id, input, {
+      transport: context.actor.transport,
+      tool: "products_get_reservation_timeline",
+    });
+    return { ...timeline, reservations: page.items, nextCursor: page.nextCursor };
   });
 
 // --- Seasonal pricing --------------------------------------------------------
@@ -730,6 +787,7 @@ export const dashboardProductsRouter = {
   updateSeasonalPricing: updateSeasonalPricingProcedure,
   duplicateSeasonalPricing: duplicateSeasonalPricingProcedure,
   deleteSeasonalPricing: deleteSeasonalPricingProcedure,
+  listUnits,
   // Units and downtimes (product-units.ts)
   getUnitHistory,
   declareDowntime,

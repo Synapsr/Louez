@@ -23,6 +23,7 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.categories.uploadImage",
   "dashboard.products.list",
   "dashboard.products.get",
+  "dashboard.products.listUnits",
   "dashboard.products.create",
   "dashboard.products.update",
   "dashboard.products.updateStatus",

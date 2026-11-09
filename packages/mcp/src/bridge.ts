@@ -115,13 +115,13 @@ async function callProcedure(
     const links = outputLinks(structuredContent);
     const handoff = handoffLine(structuredContent);
     const linkLine = `${handoff ? `\n${handoff}` : ""}${links ? `\n${linksLine(links)}` : ""}`;
+    // The JSON goes once to a client whose model reads the structured content
+    // (ChatGPT); the others get it in the text too, which every client reads.
+    const json = ctx.actor.credential.structuredContentOnly
+      ? ""
+      : `\n${JSON.stringify(structuredContent)}`;
     return {
-      content: [
-        {
-          type: "text",
-          text: `${status}${operation}${linkLine}\n${JSON.stringify(structuredContent)}`,
-        },
-      ],
+      content: [{ type: "text", text: `${status}${operation}${linkLine}${json}` }],
       structuredContent,
       ...(receipt.operationId
         ? {

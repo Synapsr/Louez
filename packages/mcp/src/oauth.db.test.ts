@@ -282,8 +282,19 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
           const refused = await client.callTool({ name, arguments: {} });
           assert.equal(errorCode(refused), "NOT_AVAILABLE_TO_THIS_AGENT", `${clientId} ${name}`);
         }
+        // ChatGPT's model reads the structured content: the text does not repeat it.
+        const stores = await client.callTool({ name: "stores_list", arguments: {} });
+        const text = (stores.content as Array<{ text: string }>)[0].text;
+        assert.ok(stores.structuredContent, clientId);
+        assert.doesNotMatch(text, /"items":/, clientId);
       });
     }
+
+    // Claude's text keeps the JSON.
+    await withClient(await bearer(), async (client) => {
+      const stores = await client.callTool({ name: "stores_list", arguments: {} });
+      assert.match((stores.content as Array<{ text: string }>)[0].text, /"items":/);
+    });
 
     // The consent page and the editor never offer it to ChatGPT.
     const offered = await grants.offeredBundles({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" });

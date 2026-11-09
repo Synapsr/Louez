@@ -81,7 +81,7 @@ export const createDemoProductDetail = (
     hasConflicts: false,
   }));
   const maintenanceUnit = units.at(-1);
-  const timeline: ProductTimelineData = { reservations: [], downtimes: [] };
+  const timeline: ProductTimelineData = { reservations: [], downtimes: [], nextCursor: null };
   if (maintenanceUnit) {
     const downtime = {
       id: `${product.id}-maintenance`,
