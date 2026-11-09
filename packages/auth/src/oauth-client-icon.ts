@@ -107,6 +107,7 @@ async function getLimited(
   url: string,
   accept: string,
   maxBytes: number,
+  track?: (work: Promise<unknown>) => void,
 ): Promise<{ url: string; body: Uint8Array } | null> {
   const result = await guardedGet(url, {
     accept,
@@ -114,6 +115,7 @@ async function getLimited(
     timeoutMs: REQUEST_TIMEOUT_MS,
     maxRedirects: MAX_REDIRECTS,
     fetchResource,
+    track,
   });
   return result.ok ? { url: result.url, body: result.body } : null;
 }
@@ -160,22 +162,30 @@ export function iconLinks(html: string, pageUrl: string): string[] {
 /**
  * The icon of the site at `origin`: `/favicon.ico` first (one request, and
  * where most sites keep it), then the icon links of the home page. Null when
- * none is a raster image within the size cap.
+ * none is a raster image within the size cap. `track` gets each request it
+ * starts that may outlive its deadline (see `GuardedGetOptions.track`).
  */
 export async function fetchSiteIcon(
   origin: string,
   fetchResource: IconFetch = guardedTransport,
+  track?: (work: Promise<unknown>) => void,
 ): Promise<SiteIcon | null> {
   const accept = "image/png,image/x-icon,image/*;q=0.8";
-  const favicon = await getLimited(fetchResource, `${origin}/favicon.ico`, accept, MAX_ICON_BYTES);
+  const favicon = await getLimited(
+    fetchResource,
+    `${origin}/favicon.ico`,
+    accept,
+    MAX_ICON_BYTES,
+    track,
+  );
   const icon = favicon ? toSiteIcon(favicon.body) : null;
   if (icon) return icon;
 
-  const page = await getLimited(fetchResource, `${origin}/`, "text/html", MAX_HTML_BYTES);
+  const page = await getLimited(fetchResource, `${origin}/`, "text/html", MAX_HTML_BYTES, track);
   if (!page) return null;
   const html = new TextDecoder().decode(page.body);
   for (const link of iconLinks(html, page.url).slice(0, MAX_LINK_CANDIDATES)) {
-    const found = await getLimited(fetchResource, link, accept, MAX_ICON_BYTES);
+    const found = await getLimited(fetchResource, link, accept, MAX_ICON_BYTES, track);
     const linked = found ? toSiteIcon(found.body) : null;
     if (linked) return linked;
   }
@@ -192,9 +202,10 @@ const MAX_ENTRIES = 500;
  * a while, the oldest entry goes first past 500, and concurrent asks for one
  * origin share one fetch.
  *
- * At most 8 lookups run at once, and a lookup that is still running (a slow
- * DNS answer, say) keeps its place until it ends, even after its asker got
- * no icon at the 10-second budget. A lookup refused because 8 run gets no
+ * At most 8 lookups run at once, and a lookup keeps its place until every
+ * request it started has ended (a slow DNS answer, say), even after its
+ * asker got no icon at the 10-second budget and after the request's own
+ * 4-second deadline. A lookup refused because 8 run gets no
  * icon and leaves nothing in the cache, so a later ask tries again.
  */
 export function createSiteIconCache(options?: {
@@ -219,9 +230,16 @@ export function createSiteIconCache(options?: {
     if (running >= MAX_IN_FLIGHT) return null;
 
     running++;
-    const lookup = fetchSiteIcon(origin, fetchResource)
-      .catch(() => null)
-      .finally(() => {
+    // The place is freed once the lookup and every request it started have
+    // settled: a request past its own deadline (a DNS lookup no signal
+    // cancels) still runs.
+    const started: Promise<unknown>[] = [];
+    const lookup = fetchSiteIcon(origin, fetchResource, (work) => started.push(work)).catch(
+      () => null,
+    );
+    void lookup
+      .then(() => Promise.allSettled(started))
+      .then(() => {
         running--;
       });
     const request = withDeadline(lookup, resolveBudgetMs)
