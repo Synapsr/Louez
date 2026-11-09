@@ -33,6 +33,7 @@ import {
   normalizeAxisKey,
   priceDurationToMinutes,
   pricingModeToMinutes,
+  productImageVersions,
   tierDisplayMaxUnit,
   validatePricingTiers,
 } from "@louez/utils";
@@ -569,6 +570,7 @@ async function toProduct(product: LoadedProduct, currency: string): Promise<Prod
       quantity: link.quantity,
     })),
     images: product.images ?? [],
+    imageVersions: productImageVersions(product.images ?? [], product.imageHistory ?? []),
     videoUrl: product.videoUrl,
     taxSettings: product.taxSettings ?? null,
     promotion: product.promotion ?? null,

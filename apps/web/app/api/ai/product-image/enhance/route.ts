@@ -1,61 +1,31 @@
 import { NextResponse } from "next/server";
 
 import { randomUUID } from "node:crypto";
+import { ProductImageFailure } from "@louez/api/platform/ports";
+import { db, products } from "@louez/db";
+import { canApplyProductImageOperation } from "@louez/utils";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { db, products } from "@louez/db";
-import { MAX_IMAGE_SIZE, isOwnedImageUrl } from "@louez/validations";
-
-import { maybeTriggerAutoTopup } from "@/lib/ai/advisor/auto-topup";
 import { microToCredits } from "@/lib/ai/advisor/credits";
 import {
-  BackgroundRemovalError,
-  isImageBackgroundRemovalEnabled,
-} from "@/lib/ai/image/background-removal";
-import {
-  checkImageCredits,
-  checkImageEnhanceCredits,
-  isAiImageEnhanceEnabled,
-  recordImageEnhanceDebit,
-} from "@/lib/ai/image/credits";
-import {
-  isImageProcessingDebugEnabled,
-  persistImageProcessingDebugRun,
-} from "@/lib/ai/image/debug-artifacts";
-import {
-  type ProductImageMimeType,
-  processProductImage,
-} from "@/lib/ai/image/process-product-image";
-import { ImageProviderError } from "@/lib/ai/image/provider";
-import {
-  getImageBgRemovalCredits,
-  imageBgRemovalBillMicro,
-  imageEnhanceCost,
-} from "@/lib/ai/pricing";
+  afterProductImageRun,
+  debitProductImage,
+  discardProductImage,
+  providerCostOf,
+  quoteProductImage,
+  readProductImageSource,
+  resolveProductImageSource,
+  runProductImagePipeline,
+  storeProductImage,
+  type ProductImageRunReport,
+} from "@/lib/ai/image/product-image-run";
 import { auth } from "@/lib/auth";
-import { log, useLogger, withEvlog } from "@/lib/evlog";
-import { getStorePlan } from "@/lib/plan-limits";
-import { areAiCreditsEnabled } from "@/lib/plans";
-import { getImageFiles } from "@/lib/storage/files";
+import { useLogger, withEvlog } from "@/lib/evlog";
 import { getCurrentStore, hasPermission } from "@/lib/store-context";
-import { canApplyProductImageOperation } from "@/lib/uploads/image-upload";
-
-import { parseTrustedDemoProductImageUrl } from "./util.product-image-source";
 
 // GPT Image (up to 210s), rembg (up to 120s), storage and post-processing.
 export const maxDuration = 360;
-
-// Same shape the upload pipeline enforces on keys (lib/storage/files.ts),
-// minus GIF: an animated source has no meaningful "product on transparency".
-const KEY_PATTERN = /^[a-zA-Z0-9/_-]+\.(?:jpe?g|png|webp)$/;
-
-const MIME_BY_EXTENSION: Record<string, ProductImageMimeType> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-};
 
 const requestSchema = z.object({
   imageKey: z.string().min(1).max(300),
@@ -73,14 +43,29 @@ const requestSchema = z.object({
  */
 const cancelled = () => NextResponse.json({ code: "cancelled" }, { status: 499 });
 
-type ProductImageSource =
-  | { kind: "stored"; key: string }
-  | { kind: "trusted-demo"; key: string; url: URL };
+/** The answer the dashboard reads for each failure of a run. */
+const FAILURE_RESPONSES: Record<ProductImageFailure["code"], { code: string; status: number }> = {
+  IMAGE_SOURCE_UNREADABLE: { code: "invalid_image", status: 400 },
+  IMAGE_EMPTY: { code: "empty_image", status: 422 },
+  PROVIDER_ERROR: { code: "provider_error", status: 502 },
+  BACKGROUND_REMOVAL_ERROR: { code: "background_removal_error", status: 502 },
+  STORAGE_ERROR: { code: "server_error", status: 500 },
+  PROCESSING_ERROR: { code: "server_error", status: 500 },
+};
 
-function isSupportedImageMimeType(value: string): value is ProductImageMimeType {
-  return Object.values(MIME_BY_EXTENSION).some((mimeType) => mimeType === value);
-}
+const failed = (error: unknown) => {
+  const response =
+    error instanceof ProductImageFailure
+      ? FAILURE_RESPONSES[error.code]
+      : { code: "server_error", status: 500 };
+  return NextResponse.json({ code: response.code }, { status: response.status });
+};
 
+/**
+ * The dashboard's AI photo run: synchronous, the form keeps the result (an
+ * agent starts a job instead, packages/api services/product-images.ts). The
+ * steps are lib/ai/image/product-image-run.ts, the same as the job's.
+ */
 const handlePost = async (request: Request) => {
   const logger = useLogger();
 
@@ -102,28 +87,26 @@ const handlePost = async (request: Request) => {
   }
 
   const { operation } = parsed.data;
-  if (operation === "enhance" && !isAiImageEnhanceEnabled()) {
-    return NextResponse.json({ code: "ai_image_disabled" }, { status: 503 });
-  }
-  if (operation === "remove-background" && !isImageBackgroundRemovalEnabled()) {
-    return NextResponse.json({ code: "background_removal_disabled" }, { status: 503 });
+  const quote = await quoteProductImage(store.id, operation);
+  if (!quote.available) {
+    return NextResponse.json(
+      { code: operation === "enhance" ? "ai_image_disabled" : "background_removal_disabled" },
+      { status: 503 },
+    );
   }
 
   // Uploaded images must belong to THIS store. Seeded demo products are the
   // sole exception: their catalog can reuse a public image from another Louez
   // bucket, so require both exact product membership and a trusted S3 host.
-  const prefix = `${store.id}/products/`;
-  const imageKey = parsed.data.imageKey.includes("/")
-    ? parsed.data.imageKey
-    : `${prefix}${parsed.data.imageKey}`;
-  let imageSource: ProductImageSource;
-
-  if (parsed.data.imageUrl && !isOwnedImageUrl(parsed.data.imageUrl, `${store.id}/products`)) {
-    const trustedUrl = parseTrustedDemoProductImageUrl(parsed.data.imageUrl);
-    if (!trustedUrl || !parsed.data.productId) {
+  const source = resolveProductImageSource(store.id, {
+    key: parsed.data.imageKey,
+    url: parsed.data.imageUrl,
+  });
+  if (!source) return NextResponse.json({ code: "invalid_image" }, { status: 400 });
+  if (source.kind === "trusted-demo") {
+    if (!parsed.data.productId || !parsed.data.imageUrl) {
       return NextResponse.json({ code: "invalid_image" }, { status: 400 });
     }
-
     const product = await db.query.products.findFirst({
       where: and(eq(products.id, parsed.data.productId), eq(products.storeId, store.id)),
       columns: { images: true },
@@ -131,129 +114,42 @@ const handlePost = async (request: Request) => {
     if (!product?.images?.includes(parsed.data.imageUrl)) {
       return NextResponse.json({ code: "invalid_image" }, { status: 400 });
     }
-
-    imageSource = {
-      kind: "trusted-demo",
-      key: trustedUrl.pathname.replace(/^\/+/, ""),
-      url: trustedUrl,
-    };
-  } else {
-    if (!imageKey.startsWith(prefix) || !KEY_PATTERN.test(imageKey)) {
-      return NextResponse.json({ code: "invalid_image" }, { status: 400 });
-    }
-    imageSource = { kind: "stored", key: imageKey };
   }
 
-  if (!canApplyProductImageOperation(`/${imageSource.key}`, operation)) {
+  if (!canApplyProductImageOperation(`/${source.key}`, operation)) {
     return NextResponse.json({ code: "already_processed" }, { status: 409 });
   }
 
   // AI credit gate (cloud commercial layer). Inert unless enabled; fail-closed.
-  // Standalone background removal is only metered when its own flat tariff is
-  // configured — free by default.
-  const bgBillMicro = imageBgRemovalBillMicro();
-  const operationBilled = operation === "enhance" || bgBillMicro > 0;
-  const plan = operationBilled && areAiCreditsEnabled() ? await getStorePlan(store.id) : null;
-  if (plan) {
-    const creditCheck =
-      operation === "enhance"
-        ? await checkImageEnhanceCredits(store.id, plan)
-        : await checkImageCredits(store.id, plan, getImageBgRemovalCredits());
-    if (!creditCheck.allowed) {
-      return NextResponse.json({ code: "credits_exhausted" }, { status: 402 });
-    }
+  if (quote.credits && !quote.credits.allowed) {
+    return NextResponse.json({ code: "credits_exhausted" }, { status: 402 });
   }
 
-  const files = getImageFiles();
-
-  // Read regular uploads through the storage adapter. Demo catalog images can
-  // live in another Louez bucket, so their already-authorized URL is fetched.
-  let source: Buffer;
-  let sourceMimeType: ProductImageMimeType;
+  let report: ProductImageRunReport;
   try {
-    if (imageSource.kind === "stored") {
-      const stored = await files.download(imageSource.key);
-      source = Buffer.from(await stored.arrayBuffer());
-      const extension = imageSource.key.split(".").pop()?.toLowerCase() ?? "";
-      sourceMimeType = MIME_BY_EXTENSION[extension] ?? "image/png";
-    } else {
-      const response = await fetch(imageSource.url, {
-        headers: { Accept: Object.values(MIME_BY_EXTENSION).join(",") },
-        cache: "no-store",
-        redirect: "error",
-        signal: request.signal,
-      });
-      if (!response.ok) throw new Error("Demo product image fetch failed");
-
-      const contentLength = Number(response.headers.get("content-length") ?? 0);
-      if (contentLength > MAX_IMAGE_SIZE) {
-        return NextResponse.json({ code: "invalid_image" }, { status: 400 });
-      }
-
-      const mimeType = response.headers.get("content-type")?.split(";")[0] ?? "";
-      if (!isSupportedImageMimeType(mimeType)) {
-        return NextResponse.json({ code: "invalid_image" }, { status: 400 });
-      }
-
-      source = Buffer.from(await response.arrayBuffer());
-      sourceMimeType = mimeType;
-    }
-  } catch (error) {
+    const bytes = await readProductImageSource(source, request.signal);
+    // Cheapest possible exit: the client may already be gone before we spend
+    // a single provider second.
     if (request.signal.aborted) return cancelled();
-    logger.error(error instanceof Error ? error : new Error("Product image read failed"));
-    return NextResponse.json({ code: "invalid_image" }, { status: 400 });
-  }
-
-  if (source.byteLength === 0 || source.byteLength > MAX_IMAGE_SIZE) {
-    return NextResponse.json({ code: "invalid_image" }, { status: 400 });
-  }
-
-  const runId = randomUUID();
-  const processingStartedAt = Date.now();
-  // Cheapest possible exit: the client may already be gone before we spend a
-  // single provider second.
-  if (request.signal.aborted) return cancelled();
-
-  let processed: Awaited<ReturnType<typeof processProductImage>>;
-  try {
-    processed = await processProductImage({
-      source,
-      sourceMimeType,
+    report = await runProductImagePipeline({
+      source: bytes,
       operation,
       productName: parsed.data.productName,
       signal: request.signal,
     });
-    if (processed.chromaFallbackReason) {
-      logger.set({ imageChromaFallback: processed.chromaFallbackReason });
-    }
   } catch (error) {
-    // Checked before any classification: a cancelled run surfaces as an aborted
-    // fetch inside the provider wrappers, and must not be logged or reported as
-    // a provider outage. Nothing was uploaded yet, so there is nothing to undo.
+    // Nothing was uploaded yet, so there is nothing to undo.
     if (request.signal.aborted) return cancelled();
-
-    // Provider messages can carry request details — logged, never returned.
-    logger.error(error instanceof Error ? error : new Error("Product image processing failed"));
-    if (error instanceof Error && error.message === "empty_image") {
-      return NextResponse.json({ code: "empty_image" }, { status: 422 });
-    }
-    if (error instanceof ImageProviderError) {
-      return NextResponse.json({ code: "provider_error" }, { status: 502 });
-    }
-    if (error instanceof BackgroundRemovalError) {
-      return NextResponse.json({ code: "background_removal_error" }, { status: 502 });
-    }
-    // Anything else (e.g. an unreadable source the decoder chokes on) is ours.
-    return NextResponse.json({ code: "server_error" }, { status: 500 });
+    return failed(error);
   }
-  const processingDurationMs = Date.now() - processingStartedAt;
-  const enhanceCost = operation === "enhance" ? imageEnhanceCost(processed.imageUsage) : null;
+  if (report.processed.chromaFallbackReason) {
+    logger.set({ imageChromaFallback: report.processed.chromaFallbackReason });
+  }
 
-  // Always a NEW object (same id shape the upload router mints) — the original
-  // stays untouched so the merchant can always fall back to it.
-  const objectId = runId;
-  const suffix = operation === "enhance" ? "ai" : "bg";
-  const key = `${prefix}${objectId}-${suffix}.webp`;
+  // Always a NEW object: the original stays untouched so the merchant can
+  // always fall back to it.
+  const runId = randomUUID();
+  const key = `${store.id}/products/${runId}-${operation === "enhance" ? "ai" : "bg"}.webp`;
 
   // Cancelled while the providers were working: skip the upload entirely so no
   // orphan object is minted for a result nobody will ever see.
@@ -261,129 +157,52 @@ const handlePost = async (request: Request) => {
 
   let url: string;
   try {
-    await files.upload(key, processed.standardized.buffer, {
-      contentType: processed.standardized.contentType,
-    });
-    url = await files.url(key);
+    url = await storeProductImage(key, report);
   } catch (error) {
     logger.error(error instanceof Error ? error : new Error("Processed image upload failed"));
-    return NextResponse.json({ code: "server_error" }, { status: 500 });
+    return failed(error);
   }
 
   // Last and most important checkpoint. The result exists but the client is
   // gone, so it will never be delivered: drop the object and charge nothing.
-  // Deliberately NOT the ledger-failure path below — that one is a 500 because
-  // something went wrong; this one is the merchant's own decision.
   if (request.signal.aborted) {
-    await files.delete(key).catch(() => undefined);
+    await discardProductImage(key).catch(() => undefined);
     return cancelled();
   }
 
   // Billed only once the result is stored, and keyed on the new object so a
-  // retried request can never charge twice. If the ledger write fails for any
-  // reason other than a dedup replay, withhold the result (delete the object)
-  // instead of delivering unaccounted work.
-  let creditsCharged = 0;
-  if (plan) {
-    try {
-      const debitedMicro = await recordImageEnhanceDebit(store.id, {
-        dedupKey: `${operation === "enhance" ? "imgenh" : "imgbg"}:${objectId}`,
-        imageKey: key,
-        plan,
-        costMicroUsd: enhanceCost?.microUsd ?? 0,
-        billMicro: operation === "enhance" ? undefined : bgBillMicro,
-      });
-      creditsCharged = microToCredits(debitedMicro);
-    } catch {
-      await files.delete(key).catch(() => undefined);
-      return NextResponse.json({ code: "server_error" }, { status: 500 });
-    }
-
-    // Off the critical path (result already stored): recharge the merchant's
-    // balance off-session if it dropped below their threshold.
-    await maybeTriggerAutoTopup(store.id);
-  }
-
-  const imageDebugEnabled = isImageProcessingDebugEnabled();
+  // retried request can never charge twice. If the ledger write fails,
+  // withhold the result (delete the object) instead of delivering
+  // unaccounted work.
+  let debitedMicro: number;
   try {
-    const imageDebugCaptured = await persistImageProcessingDebugRun({
-      runId,
+    debitedMicro = await debitProductImage({
       storeId: store.id,
       operation,
-      framingMode: operation === "enhance" ? processed.standardized.resolvedFramingMode : null,
-      backgroundRemovalMethod: processed.backgroundRemovalMethod,
-      aiModel: processed.imageModel,
-      createdAt: new Date(processingStartedAt),
-      sourceKey: imageSource.key,
-      outputKey: key,
-      totalDurationMs: processingDurationMs,
-      stages: processed.stages,
-      economics: enhanceCost
-        ? {
-            chargedCredits: creditsCharged,
-            providerCostMicroUsd: enhanceCost.microUsd,
-            providerCostSource: enhanceCost.source,
-            usage: processed.imageUsage,
-          }
-        : undefined,
+      dedupKey: `${operation === "enhance" ? "imgenh" : "imgbg"}:${runId}`,
+      imageKey: key,
+      providerCostMicroUsd: providerCostOf(report),
     });
-    logger.set({
-      imageDebug: {
-        captured: imageDebugCaptured,
-        enabled: imageDebugEnabled,
-        runId,
-      },
-      imageProviderCost: {
-        microUsd: enhanceCost?.microUsd ?? null,
-        source: enhanceCost?.source ?? null,
-        usageCaptured: processed.imageUsage !== null,
-      },
-    });
-    // The standalone Next.js runtime currently does not execute evlog's
-    // deferred filesystem drain. Emit this critical diagnostic immediately so
-    // container stdout still proves whether the private artifacts were saved.
-    log.info({
-      imageDebug: {
-        captured: imageDebugCaptured,
-        enabled: imageDebugEnabled,
-        runId,
-      },
-      imageProviderCost: {
-        microUsd: enhanceCost?.microUsd ?? null,
-        source: enhanceCost?.source ?? null,
-        usageCaptured: processed.imageUsage !== null,
-      },
-    });
-  } catch (error) {
-    // Diagnostics must never withhold a valid customer-facing result.
-    logger.error(
-      error instanceof Error ? error : new Error("Image processing debug persistence failed"),
-      {
-        imageDebug: {
-          captured: false,
-          enabled: imageDebugEnabled,
-          runId,
-        },
-      },
-    );
-    log.error({
-      imageDebug: {
-        captured: false,
-        enabled: imageDebugEnabled,
-        runId,
-      },
-      error: {
-        message: error instanceof Error ? error.message : String(error),
-        name: error instanceof Error ? error.name : "UnknownError",
-      },
-    });
+  } catch {
+    await discardProductImage(key).catch(() => undefined);
+    return NextResponse.json({ code: "server_error" }, { status: 500 });
   }
+
+  await afterProductImageRun({
+    storeId: store.id,
+    runId,
+    operation,
+    sourceKey: source.key,
+    key,
+    debitedMicro,
+    report,
+  });
 
   return NextResponse.json({
     key,
     url,
-    creditsCharged,
-    framingMode: processed.standardized.resolvedFramingMode,
+    creditsCharged: microToCredits(debitedMicro),
+    framingMode: report.processed.standardized.resolvedFramingMode,
   });
 };
 

@@ -43,6 +43,8 @@ export const INBOX_ITEM_TYPES = [
   "operation_unknown",
   /** A step handed to the user (Stripe, the billing card) waiting for an hour, expired or failed. */
   "handoff_waiting",
+  /** An AI photo enhancement or background removal that failed (nothing was charged). */
+  "image_job_failed",
 ] as const;
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number];
 

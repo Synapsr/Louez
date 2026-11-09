@@ -22,6 +22,7 @@
     "./services/date-change-requests": "./src/services/date-change-requests.ts",
     "./services/handoffs": "./src/services/handoffs.ts",
     "./services/inbox": "./src/services/inbox.ts",
+    "./services/jobs": "./src/services/jobs.ts",
     "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts",
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
     "./services/promo": "./src/services/promo.ts",

@@ -12,6 +12,7 @@ import { dashboardCustomersRouter } from "./customers";
 import { dashboardHandoffsRouter } from "./handoffs";
 import { dashboardInboxRouter } from "./inbox";
 import { dashboardIntegrationsRouter } from "./integrations";
+import { dashboardJobsRouter } from "./jobs";
 import { dashboardNotificationsRouter } from "./notifications";
 import { dashboardOnboardingRouter } from "./onboarding";
 import { dashboardOnlineStoreRouter } from "./online-store";
@@ -57,6 +58,7 @@ export const dashboardRouter = {
   handoffs: dashboardHandoffsRouter,
   inbox: dashboardInboxRouter,
   integrations: dashboardIntegrationsRouter,
+  jobs: dashboardJobsRouter,
   reservations: dashboardReservationsRouter,
   reservationDetails: dashboardReservationDetailsRouter,
   search: dashboardSearchRouter,

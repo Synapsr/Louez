@@ -126,7 +126,11 @@ export function isValidImageUrl(url: string): boolean {
   return false;
 }
 
-function getStorageRelativePath(url: string): string | null {
+/**
+ * The storage key of an image URL served from this instance's bucket (or its
+ * `/files` path), such as `<storeId>/products/<id>.webp`; null for any other URL.
+ */
+export function getStorageRelativePath(url: string): string | null {
   const publicBase = env.S3_PUBLIC_URL ?? "";
 
   // Path-based public base ("/files"): stored URLs are same-origin paths.

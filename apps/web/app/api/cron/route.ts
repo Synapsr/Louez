@@ -7,6 +7,7 @@ import { purgeHandoffs } from "@louez/api/services/handoffs";
 
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from "@/lib/analytics/aggregation";
 import { runApiEffectsCron } from "@/lib/api/effects";
+import { runApiJobsCron } from "@/lib/api/jobs";
 import { purgeExpiredLegalRetentionRecords } from "@/lib/account-deletion/retention-cleanup";
 import { createError, log, useLogger, withEvlog } from "@/lib/evlog";
 import { cleanExpiredCache, refreshAllStoresCache } from "@/lib/google-places/cache";
@@ -39,6 +40,9 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - API effects: every minute, alongside the other tasks so none of them holds it back
  *   (retries the outbox rows of committed writes: customer messages, notifications,
  *   analytics events; deletes done rows after 30 days; packages/api platform/effects.ts)
+ * - API jobs: every minute, with the API effects (runs the background jobs the first
+ *   dispatch left, such as AI photos, in the background; deletes jobs ended 90 days
+ *   ago; packages/api platform/jobs.ts)
  * - Marketplace default publication: daily at 1:00 AM UTC when explicitly enabled
  * - Invoice transmission: every minute (converts, validates, and sends due invoices)
  * - Super PDP lifecycle polling: every minute (outgoing statuses and received invoices)
@@ -115,8 +119,9 @@ async function handleCron(request: Request) {
   // The agent-ready API's outbox: started with the billing tasks and awaited
   // last, so a task that keeps failing before it never holds back the
   // customer messages, notifications and analytics events it retries. The
-  // inbox's acknowledgements and the handoffs past their retention go with it,
-  // each on its own.
+  // inbox's acknowledgements, the handoffs past their retention and the
+  // background jobs go with it, each on its own. The jobs it takes run in the
+  // background, never in this request.
   const apiEffects = runIsolatedTasks(
     [
       { task: "api-effects", key: "apiEffects", run: () => runApiEffectsCron() },
@@ -126,6 +131,7 @@ async function handleCron(request: Request) {
         run: () => pruneInboxAcknowledgements(),
       },
       { task: "api-handoffs", key: "apiHandoffs", run: () => purgeHandoffs() },
+      { task: "api-jobs", key: "apiJobs", run: () => runApiJobsCron() },
     ],
     { request: logger, event: log },
   );

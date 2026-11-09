@@ -4,14 +4,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 import { toastManager } from "@louez/ui";
-
-import { useImageUpload } from "@/hooks/use-image-upload";
-import type { ProductImageFramingMode } from "@/lib/ai/image/framing";
 import {
   canApplyProductImageOperation,
   getImageKeyFromUrl,
   getProductImageProcessingKind,
-} from "@/lib/uploads/image-upload";
+} from "@louez/utils";
+
+import { useImageUpload } from "@/hooks/use-image-upload";
+import type { ProductImageFramingMode } from "@/lib/ai/image/framing";
 import { aiCreditsQueries } from "@/lib/queries/ai-credits.queries";
 
 const ENHANCE_ENDPOINT = "/api/ai/product-image/enhance";

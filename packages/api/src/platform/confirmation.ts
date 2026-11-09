@@ -31,7 +31,8 @@ export interface ConfirmationPreview {
  * the checks and before the first write.
  *
  * - No confirmation wanted (dashboard session, connection set to run
- *   directly): returns at once.
+ *   directly): returns at once. `always` asks a connection set to run
+ *   directly too (spending AI credits); a dashboard session never.
  * - No token, or a token that does not match: throws CONFIRMATION_REQUIRED
  *   with the preview and a new token.
  * - A matching token: consumes it (once) and returns.
@@ -57,6 +58,13 @@ export interface ConfirmationCheck {
   state: unknown;
   preview: ConfirmationPreview;
   /**
+   * Ask every key and token, even a connection whose confirmations are
+   * turned off (`confirmSensitive: false`): what it guards spends the
+   * store's money on the agent's say alone (AI credits). A dashboard
+   * session is never asked: the user clicked the button.
+   */
+  always?: boolean;
+  /**
    * The transaction the operation runs in, when it asks under a lock: the
    * token is consumed, or the new preview recorded, on its connection, so a
    * lock holder never waits for another connection of the pool.
@@ -72,7 +80,9 @@ export interface ConfirmationCheck {
  * error once the transaction is over.
  */
 export async function checkConfirmation(input: ConfirmationCheck) {
-  if (!input.actor.credential.confirmSensitive) return null;
+  const { credential } = input.actor;
+  const asks = credential.confirmSensitive || (input.always === true && credential.kind !== "session");
+  if (!asks) return null;
 
   const executor = input.executor ?? db;
   const now = input.now ?? new Date();

@@ -4,10 +4,11 @@ import { useCallback } from "react";
 
 import { useFiles } from "files-sdk/react";
 
+import { getImageKeyFromUrl } from "@louez/utils";
+
 import {
   type ImageUploadIssue,
   type ImageUploadKind,
-  getImageKeyFromUrl,
   getImageUploadIssue,
 } from "@/lib/uploads/image-upload";
 

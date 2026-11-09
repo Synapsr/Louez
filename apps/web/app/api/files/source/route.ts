@@ -7,7 +7,7 @@ import { db, products } from "@louez/db";
 import { toAbsoluteUrl } from "@louez/utils";
 import { MAX_IMAGE_SIZE, isOwnedImageUrl } from "@louez/validations";
 
-import { parseTrustedDemoProductImageUrl } from "@/app/api/ai/product-image/enhance/util.product-image-source";
+import { parseTrustedDemoProductImageUrl } from "@/lib/ai/image/product-image-source";
 import { env } from "@/env";
 import { useLogger, withEvlog } from "@/lib/evlog";
 import { getCurrentStore } from "@/lib/store-context";

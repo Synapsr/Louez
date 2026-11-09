@@ -33,6 +33,9 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.products.createImageUpload",
   "dashboard.products.completeImageUpload",
   "dashboard.products.uploadImage",
+  "dashboard.products.enhanceImage",
+  "dashboard.products.removeImageBackground",
+  "dashboard.products.useImageVersion",
   "dashboard.products.getActivity",
   "dashboard.products.getReservationTimeline",
   "dashboard.products.listSeasonalPricings",
@@ -105,6 +108,7 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.billing.startCardSetup",
   "dashboard.handoffs.get",
   "dashboard.handoffs.refresh",
+  "dashboard.jobs.get",
 ];
 
 /** Arguments the MCP bridge adds to a tool and maps onto headers. */

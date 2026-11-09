@@ -20,6 +20,7 @@ import {
   toastManager,
 } from "@louez/ui";
 import {
+  createInitialProductImageHistory,
   getCurrencySymbol,
   minutesToPriceDuration,
   priceDurationToMinutes,
@@ -60,7 +61,6 @@ import type {
   ProductFormValues,
   SeasonalPricingData,
 } from "./types";
-import { createInitialProductImageHistory } from "./utils/util.product-image-history";
 
 type ProductFormSubmitIntent = "save" | "save-and-duplicate";
 const PRODUCT_COPY_DRAFT_STORAGE_KEY = "louez:product-copy-draft";

@@ -2,6 +2,8 @@ import type { ApiPorts } from "@louez/api";
 
 import { runAfterCommit } from "@/lib/api/after-commit";
 import { dispatchApiEffects } from "@/lib/api/effects";
+import { dispatchApiJobs } from "@/lib/api/jobs";
+import { productImagesPort } from "@/lib/api/product-images";
 import { apiUrls } from "@/lib/api/urls";
 import { billingPort } from "@/lib/billing/billing-port";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
@@ -27,6 +29,8 @@ export const apiPorts: ApiPorts = {
   runReservationEffects,
   insurance: tulipInsurancePort,
   dispatchEffects: dispatchApiEffects,
+  dispatchJobs: dispatchApiJobs,
+  productImages: productImagesPort,
   newStores: newStorePort,
   hostedBy: getHostedBy,
   stripeConnect: () => (isConnectConfigured() ? getStripe() : null),

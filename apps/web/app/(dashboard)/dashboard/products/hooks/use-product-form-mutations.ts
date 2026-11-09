@@ -5,13 +5,13 @@ import { useTranslations } from "next-intl";
 
 import type { ProductInput } from "@louez/validations";
 import type { ProductImageHistory } from "@louez/types";
+import { collectProductImageUrls } from "@louez/utils";
 
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { apiErrorKey } from "@/lib/orpc/errors";
 import { orpcClient } from "@/lib/orpc/client";
 import { productsQueries } from "@/lib/queries/products.queries";
 
-import { collectProductImageUrls } from "../utils/util.product-image-history";
 
 interface UseProductFormMutationsParams {
   productId?: string;

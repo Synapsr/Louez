@@ -29,6 +29,7 @@ export type {
   ApiPorts,
   BillingPort,
   InsurancePort,
+  ProductImagesPort,
   StoragePort,
   UrlsPort,
 } from "./platform/ports";

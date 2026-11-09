@@ -1,6 +1,7 @@
 import {
   apiEffects,
   apiHandoffs,
+  apiJobs,
   apiOperations,
   customers,
   db,
@@ -60,6 +61,7 @@ import {
 } from "../platform/links";
 import type { UrlsPort } from "../platform/ports";
 import { HANDOFF_WAIT_MS, handoffView } from "./handoffs";
+import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
 import { getLaunchChecklist } from "./launch";
 import { findConflictingAssignments, loadStoreUnitWindows } from "./unit-conflicts";
 
@@ -92,6 +94,8 @@ const EINVOICE_DAYS = 90;
 const OPERATION_DAYS = 7;
 /** Failed handoffs older than this are left out. */
 const HANDOFF_FAILURE_DAYS = 7;
+/** Failed image jobs older than this are left out. */
+const IMAGE_JOB_FAILURE_DAYS = 7;
 
 /** The domains a caller must read to see an item of each type; the first one to acknowledge it. */
 export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
@@ -111,6 +115,7 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   message_not_sent: ["reservations"],
   operation_unknown: [],
   handoff_waiting: ["settings"],
+  image_job_failed: ["products"],
 };
 
 export type InboxRights = Partial<Record<ApiDomain, boolean>>;
@@ -1380,6 +1385,87 @@ const waitingHandoffs: Source = async (window, shaper) => {
   });
 };
 
+/** The tool that starts each kind of image job again. */
+const IMAGE_JOB_START_TOOLS = {
+  enhance: "products_enhance_image",
+  "remove-background": "products_remove_image_background",
+} as const;
+
+/**
+ * An AI photo job that failed for good in the last days, and that no later
+ * job on the same photo replaced. Nothing was charged for it.
+ */
+const failedImageJobs: Source = async (window, shaper) => {
+  const later = alias(apiJobs, "later_job");
+  const rows = await db
+    .select({
+      id: apiJobs.id,
+      kind: apiJobs.kind,
+      targetId: apiJobs.targetId,
+      error: apiJobs.error,
+      occurredAt: apiJobs.finishedAt,
+      productName: products.name,
+      productSlug: products.slug,
+      productStatus: products.status,
+    })
+    .from(apiJobs)
+    .leftJoin(
+      products,
+      and(eq(products.id, apiJobs.targetId), eq(products.storeId, apiJobs.storeId)),
+    )
+    .where(
+      and(
+        eq(apiJobs.storeId, window.storeId),
+        eq(apiJobs.status, "failed"),
+        inArray(apiJobs.kind, Object.values(IMAGE_JOB_KINDS)),
+        gt(apiJobs.finishedAt, new Date(window.now.getTime() - IMAGE_JOB_FAILURE_DAYS * DAY_MS)),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(later)
+            .where(
+              and(
+                eq(later.storeId, apiJobs.storeId),
+                eq(later.slotKey, apiJobs.slotKey),
+                gt(later.createdAt, apiJobs.createdAt),
+              ),
+            ),
+        ),
+        inWindow(window, "image_job_failed", apiJobs.finishedAt, apiJobs.id),
+      ),
+    )
+    .orderBy(...inOrder(apiJobs.finishedAt, apiJobs.id))
+    .limit(window.take);
+
+  const { urls, store } = shaper.reader;
+  return rows.flatMap((row) => {
+    const operation = imageOperationOf(row.kind);
+    if (!operation || !row.occurredAt) return [];
+    const what = operation === "enhance" ? "The AI enhancement" : "The background removal";
+    const product = row.productName ? ` of "${row.productName}"` : "";
+    return [
+      candidate("image_job_failed", row.id, {
+        severity: "info",
+        occurredAt: row.occurredAt,
+        summary: `${what} of a photo${product} failed${row.error ? `: ${row.error.message}` : "."} Nothing was charged.`,
+        reservation: null,
+        details: {
+          jobId: row.id,
+          productId: row.targetId,
+          kind: row.kind,
+          errorCode: row.error?.code ?? null,
+        },
+        tools: ["jobs_get", IMAGE_JOB_START_TOOLS[operation]],
+        links: productLinks(urls, store, {
+          id: row.targetId,
+          slug: row.productSlug,
+          status: row.productStatus,
+        }),
+      }),
+    ];
+  });
+};
+
 const SOURCES: Record<InboxItemType, Source> = {
   booking_request: bookingRequests,
   date_change_request: dateChangeRequests,
@@ -1397,6 +1483,7 @@ const SOURCES: Record<InboxItemType, Source> = {
   message_not_sent: unsentMessages,
   operation_unknown: unknownOperations,
   handoff_waiting: waitingHandoffs,
+  image_job_failed: failedImageJobs,
 };
 
 /** Sources computed in code, filtered on the window here rather than in SQL. */

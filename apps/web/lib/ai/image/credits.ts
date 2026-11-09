@@ -84,11 +84,15 @@ async function sumMonthlyUsedMicro(tx: Tx, storeId: string): Promise<number> {
  * the result is stored, so a store is never charged for an image it did not
  * get. There is no per-conversation cap here: the tariff is already a fixed
  * amount per image, and the debit is idempotent through the UNIQUE dedup key
- * (`imgenh:<objectId>` / `imgbg:<objectId>`), so a retried request can never
+ * (`imgenh:<runId>` / `imgbg:<runId>`), so a retried request can never
  * double-charge. `billMicro` defaults to the enhancement tariff; the
  * standalone background-removal path passes its own.
  *
- * Returns the micro-credits actually debited (0 when billing is inert).
+ * `executor`: the caller's transaction (an image job writes its result in the
+ * same one), where the debit runs as a savepoint; its own otherwise.
+ *
+ * Returns the micro-credits actually debited (0 when billing is inert, or
+ * when the dedup key was already debited).
  */
 export async function recordImageEnhanceDebit(
   storeId: string,
@@ -99,6 +103,7 @@ export async function recordImageEnhanceDebit(
     costMicroUsd: number;
     billMicro?: number;
   },
+  executor?: Tx,
 ): Promise<number> {
   const { costMicroUsd, dedupKey, imageKey, plan } = params;
 
@@ -108,7 +113,7 @@ export async function recordImageEnhanceDebit(
   if (billMicro <= 0 && costMicroUsd <= 0) return 0;
 
   try {
-    return await db.transaction(async (tx) => {
+    return await (executor ?? db).transaction(async (tx) => {
       // Cost-only row (tariff unset but the real cost is known): freeze the cost
       // for reporting without touching any balance. Still exactly-once.
       if (billMicro <= 0) {
@@ -148,7 +153,8 @@ export async function recordImageEnhanceDebit(
       const fromPrepaid = billMicro - fromMonthly;
 
       // Insert the debit first — the UNIQUE dedup key makes it exactly-once (a
-      // retry throws and rolls back the whole tx, so nothing is double-debited).
+      // retry throws and rolls back this transaction, a savepoint in the caller's,
+      // so nothing is double-debited).
       await tx.insert(aiCreditDebits).values({
         storeId,
         kind: "image_enhancement",

@@ -165,8 +165,15 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const products = exposure.procedures.filter((entry) =>
       entry.path.startsWith("dashboard.products."),
     );
-    assert.equal(products.length, 37);
-    assert.ok(products.some((entry) => entry.meta.mcp.name === "products_upload_image"));
+    assert.equal(products.length, 40);
+    for (const name of [
+      "products_upload_image",
+      "products_enhance_image",
+      "products_remove_image_background",
+      "products_use_image_version",
+    ]) {
+      assert.ok(products.some((entry) => entry.meta.mcp.name === name), name);
+    }
     assert.deepEqual([...new Set(products.map((entry) => entry.meta.mcp.bundle))], ["catalog"]);
     // Former names: aliases, and list_products as its own unlisted procedure.
     const aliases = [

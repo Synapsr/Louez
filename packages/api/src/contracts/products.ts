@@ -175,7 +175,7 @@ const productWriteShape = {
       "Image URLs, first one main. Upload each with products_upload_image, or with products_create_image_upload and products_complete_image_upload, then use the url it returns.",
     ),
   imageHistory: fields.imageHistory.describe(
-    "Editing history of each image (crops, AI enhancements), as the dashboard keeps it. Agents leave it out.",
+    "The dashboard's record of each photo's versions; sending it replaces every version. Read the versions in imageVersions of products_get, and switch with products_use_image_version.",
   ),
   videoUrl: fields.videoUrl.describe("A YouTube URL, or empty for none."),
   taxSettings: fields.taxSettings.describe(
@@ -301,6 +301,27 @@ export const productSchema = z.object({
     }),
   ),
   images: z.array(z.string()),
+  /**
+   * Each photo of `images`, in order, with its versions: the original, then
+   * each crop, AI enhancement or background removal. Read-only.
+   */
+  imageVersions: z.array(
+    z.object({
+      /** The version in use, as `images` holds it. */
+      imageUrl: z.string(),
+      versions: z.array(
+        z.object({
+          /** What products_use_image_version takes. */
+          id: z.string(),
+          url: z.string(),
+          kind: z.enum(["original", "cropped", "ai-enhanced", "background-removed"]),
+          createdAt: z.string().nullable(),
+          /** The version in use. */
+          current: z.boolean(),
+        }),
+      ),
+    }),
+  ),
   videoUrl: z.string().nullable(),
   taxSettings: z
     .object({ inheritFromStore: z.boolean(), customRate: z.number().optional() })
@@ -403,6 +424,27 @@ export const legacyListProductsInput = z.object({
 });
 
 export const getProductInput = z.object({ id: idSchema });
+
+/** An AI photo operation on one photo of a product: products_enhance_image, products_remove_image_background. */
+export const productImageJobInput = z.object({
+  id: idSchema,
+  imageUrl: z
+    .string()
+    .min(1)
+    .max(2_048)
+    .describe("The photo to process: one of the product's `images`, as products_get returns it."),
+});
+export type ProductImageJobInput = z.infer<typeof productImageJobInput>;
+
+export const useImageVersionInput = z.object({
+  id: idSchema,
+  versionId: z
+    .string()
+    .min(1)
+    .max(128)
+    .describe("A version's id, from imageVersions of products_get or the source of a job."),
+});
+export type UseImageVersionInput = z.infer<typeof useImageVersionInput>;
 
 export const updateProductStatusInput = z.object({
   id: idSchema,
@@ -613,6 +655,74 @@ export const deleteSeasonalPricingOutput = z.object({
 });
 
 // --- Errors ------------------------------------------------------------------
+
+/** The AI photo operations' refusals (products_enhance_image, products_remove_image_background). */
+export const productImageErrors = {
+  unavailable: (operation: "enhance" | "remove-background") =>
+    apiError("PRECONDITION_FAILED", "AI_IMAGE_UNAVAILABLE", {
+      message:
+        operation === "enhance"
+          ? "AI photo enhancement is not available on this Louez instance."
+          : "Background removal is not available on this Louez instance.",
+      details: { operation },
+    }),
+  notOnProduct: (imageUrl: string) =>
+    apiError("BAD_REQUEST", "IMAGE_NOT_ON_PRODUCT", {
+      message:
+        "This image is not one of the product's photos. Pass one of the `images` products_get returns.",
+      details: { imageUrl },
+    }),
+  notProcessable: () =>
+    apiError("BAD_REQUEST", "IMAGE_NOT_PROCESSABLE", {
+      message:
+        "This photo is not stored by Louez for this store (or is not a JPEG, PNG or WebP image), so it cannot be processed. Upload it with products_upload_image, set it on the product, then process that one.",
+    }),
+  alreadyProcessed: (kind: "ai-enhanced" | "background-removed") =>
+    apiError("CONFLICT", "IMAGE_ALREADY_PROCESSED", {
+      message:
+        kind === "ai-enhanced"
+          ? "This photo is already an AI enhancement. Process its original instead (imageVersions of products_get)."
+          : "This photo already has its background removed. It can still be enhanced.",
+      details: { kind },
+    }),
+  historyFull: (reason: "versions" | "photos", max: number) =>
+    apiError("CONFLICT", "IMAGE_HISTORY_FULL", {
+      message:
+        reason === "versions"
+          ? `This photo already has ${max} versions, the most it keeps. The user can delete some in the product's photo history, in the dashboard.`
+          : `This product already keeps the versions of ${max} photos, the most it keeps. The user can delete a photo's history in the dashboard.`,
+      details: { reason, max },
+    }),
+  creditsExhausted: (details: { priceCredits: number; balanceCredits: number | null; rechargeUrl: string }) =>
+    apiError("PRECONDITION_FAILED", "AI_CREDITS_EXHAUSTED", {
+      message: `The store has no AI credits left (this costs ${details.priceCredits}). The user can buy more in Louez: ${details.rechargeUrl}`,
+      details,
+    }),
+  busy: (max: number) =>
+    apiError("CONFLICT", "IMAGE_JOBS_BUSY", {
+      message: `The store already has ${max} photos being processed. Retry once one of them is done.`,
+      retryable: true,
+      details: { max },
+    }),
+  otherJobRunning: (jobId: string) =>
+    apiError("CONFLICT", "IMAGE_JOB_RUNNING", {
+      message:
+        "Another AI operation is running on this photo. Retry once it is done (its job is in details.jobId).",
+      retryable: true,
+      details: { jobId },
+    }),
+  versionNotFound: (versionId: string) =>
+    apiError("NOT_FOUND", "IMAGE_VERSION_NOT_FOUND", {
+      message: `This product has no photo version ${versionId}. Read imageVersions of products_get.`,
+      details: { versionId },
+    }),
+  versionPhotoRemoved: (versionId: string) =>
+    apiError("CONFLICT", "IMAGE_VERSION_PHOTO_REMOVED", {
+      message:
+        "The photo this version belongs to is no longer on the product. Add the version's url to `images` with products_update instead.",
+      details: { versionId },
+    }),
+} as const;
 
 export const productErrors = {
   notFound: (id: string) =>

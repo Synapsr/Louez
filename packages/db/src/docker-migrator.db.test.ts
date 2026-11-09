@@ -34,6 +34,7 @@ const RELEASE = [
   "0095_inbox",
   "0096_api_handoffs",
   "0097_api_operation_setup_store",
+  "0098_api_jobs",
 ];
 
 interface Journal {
@@ -120,6 +121,7 @@ describe("Docker migrator after the app's runner (database)", { skip: skipWithou
       ["inbox_acknowledgements", "occurred_at"],
       ["reservations", "schedule_changed_at"],
       ["api_handoffs", "provider_checks"],
+      ["api_jobs", "slot_key"],
     ] as const) {
       assert.ok(await columnExists(table, column), `${table}.${column} exists`);
     }

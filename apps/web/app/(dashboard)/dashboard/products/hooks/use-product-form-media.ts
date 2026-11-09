@@ -5,6 +5,14 @@ import { useTranslations } from "next-intl";
 
 import type { ProductImageHistory, ProductImageVersionKind } from "@louez/types";
 import { toastManager } from "@louez/ui";
+import {
+  addProductImageHistory,
+  appendProductImageVersion,
+  collectProductImageUrls,
+  findProductImageHistory,
+  removeProductImageHistory,
+  removeProductImageVersion,
+} from "@louez/utils";
 
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { getImageUploadIssue } from "@/lib/uploads/image-upload";
@@ -22,14 +30,6 @@ import {
   type ProductImageSize,
   readFileAsDataUrl,
 } from "../utils/product-image-crop";
-import {
-  addProductImageHistory,
-  appendProductImageVersion,
-  collectProductImageUrls,
-  findProductImageHistory,
-  removeProductImageHistory,
-  removeProductImageVersion,
-} from "../utils/util.product-image-history";
 import {
   useProductImageEnhance,
   type ProductImageOperation,
