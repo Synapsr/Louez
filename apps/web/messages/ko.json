@@ -9568,5 +9568,70 @@
     "description": "이 링크는 매장 “{target}”을(를) 엽니다. 현재 “{current}”에 있습니다.",
     "open": "{target}에서 열기",
     "stay": "{current}에 머무르기"
+  },
+  "handoff": {
+    "metaTitle": "Louez에서 계속하기",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Stripe 연결",
+        "description": "AI 에이전트가 온라인 결제를 받을 수 있도록 “{store}”을(를) Stripe에 연결해 달라고 요청했습니다. Stripe에서 신원 정보와 은행 정보를 요청합니다.",
+        "continue": "Stripe로 계속"
+      },
+      "stripe_dashboard": {
+        "title": "Stripe 대시보드 열기",
+        "description": "AI 에이전트가 “{store}”의 Stripe 대시보드를 열어 달라고 요청했습니다.",
+        "continue": "Stripe 열기"
+      },
+      "billing_card_setup": {
+        "title": "청구 카드 추가",
+        "description": "AI 에이전트가 Louez가 “{store}”의 수수료를 청구할 카드를 추가해 달라고 요청했습니다. 카드는 Stripe의 보안 페이지에서 입력합니다.",
+        "continue": "Stripe로 계속"
+      }
+    },
+    "retry": "Stripe가 응답하지 않았습니다. 잠시 후 다시 시도하세요.",
+    "refused": {
+      "invalid": {
+        "title": "이 링크는 더 이상 작동하지 않습니다",
+        "description": "링크가 불완전하거나 더 최근 링크로 대체되었습니다. AI 에이전트에게 새 링크를 요청하세요."
+      },
+      "expired": {
+        "title": "이 링크는 만료되었습니다",
+        "description": "AI 에이전트에게 새 링크를 요청하세요."
+      },
+      "finished": {
+        "title": "이 단계는 이미 끝났습니다",
+        "description": "여기서 더 할 일이 없습니다. AI 에이전트로 돌아가셔도 됩니다."
+      },
+      "other_user": {
+        "title": "이 링크는 다른 계정용입니다",
+        "description": "AI 에이전트가 작업하는 계정이 아닌 다른 계정으로 로그인되어 있습니다. 해당 계정으로 로그인한 뒤 링크를 다시 여세요."
+      },
+      "not_allowed": {
+        "title": "이 매장에서는 이 작업을 할 수 없습니다",
+        "description": "이 매장에서의 역할로는 이 단계를 진행할 수 없습니다. 매장 소유자에게 요청하세요."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "완료되었습니다",
+        "description": "이 페이지를 닫고 AI 에이전트로 돌아가세요. 에이전트가 이 단계가 완료된 것을 확인합니다."
+      },
+      "opened": {
+        "title": "아직 끝나지 않았습니다",
+        "description": "Stripe에서 단계가 완료되지 않았습니다. 링크를 다시 열어 마치거나 AI 에이전트로 돌아가세요."
+      },
+      "confirming": {
+        "title": "거의 끝났습니다",
+        "description": "Stripe가 아직 카드를 확인하지 않았습니다. AI 에이전트로 돌아가셔도 됩니다. Stripe가 확인하면 에이전트가 카드를 확인합니다."
+      },
+      "expired": {
+        "title": "이 링크는 만료되었습니다",
+        "description": "AI 에이전트로 돌아가세요. 새 링크를 받을 수 있습니다."
+      },
+      "failed": {
+        "title": "이 단계가 실패했습니다",
+        "description": "AI 에이전트로 돌아가세요. 새 링크를 받을 수 있습니다."
+      }
+    }
   }
 }

@@ -9568,5 +9568,70 @@
     "description": "Ce lien ouvre la boutique « {target} ». Vous êtes sur « {current} ».",
     "open": "Ouvrir dans {target}",
     "stay": "Rester sur {current}"
+  },
+  "handoff": {
+    "metaTitle": "Continuer dans Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Connecter Stripe",
+        "description": "Votre agent IA vous demande de connecter « {store} » à Stripe pour accepter les paiements en ligne. Stripe vous demandera votre identité et vos coordonnées bancaires.",
+        "continue": "Continuer vers Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Ouvrir votre tableau de bord Stripe",
+        "description": "Votre agent IA vous demande d’ouvrir le tableau de bord Stripe de « {store} ».",
+        "continue": "Ouvrir Stripe"
+      },
+      "billing_card_setup": {
+        "title": "Ajouter votre carte de facturation",
+        "description": "Votre agent IA vous demande d’ajouter la carte sur laquelle Louez prélève ses frais pour « {store} ». Vous la saisirez sur la page sécurisée de Stripe.",
+        "continue": "Continuer vers Stripe"
+      }
+    },
+    "retry": "Stripe n’a pas répondu. Réessayez dans un instant.",
+    "refused": {
+      "invalid": {
+        "title": "Ce lien ne fonctionne plus",
+        "description": "Il est incomplet, ou un lien plus récent l’a remplacé. Demandez-en un nouveau à votre agent IA."
+      },
+      "expired": {
+        "title": "Ce lien a expiré",
+        "description": "Demandez un nouveau lien à votre agent IA."
+      },
+      "finished": {
+        "title": "Cette étape est déjà terminée",
+        "description": "Il n’y a plus rien à faire ici. Vous pouvez retourner à votre agent IA."
+      },
+      "other_user": {
+        "title": "Ce lien est destiné à un autre compte",
+        "description": "Vous êtes connecté avec un autre compte que celui pour lequel travaille votre agent IA. Connectez-vous avec ce compte, puis rouvrez le lien."
+      },
+      "not_allowed": {
+        "title": "Vous ne pouvez pas faire cela pour cette boutique",
+        "description": "Votre rôle dans cette boutique ne permet pas cette étape. Demandez au propriétaire de la boutique."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "C’est fait",
+        "description": "Vous pouvez fermer cette page et retourner à votre agent IA : il verra que cette étape est terminée."
+      },
+      "opened": {
+        "title": "Pas encore terminé",
+        "description": "L’étape n’a pas été terminée sur Stripe. Rouvrez le lien pour la terminer, ou retournez à votre agent IA."
+      },
+      "confirming": {
+        "title": "Presque fini",
+        "description": "Stripe n’a pas encore confirmé la carte. Vous pouvez retourner à votre agent IA : il verra la carte dès que Stripe l’aura confirmée."
+      },
+      "expired": {
+        "title": "Ce lien a expiré",
+        "description": "Retournez à votre agent IA : il peut vous donner un nouveau lien."
+      },
+      "failed": {
+        "title": "Cette étape a échoué",
+        "description": "Retournez à votre agent IA : il peut vous donner un nouveau lien."
+      }
+    }
   }
 }

@@ -9568,5 +9568,70 @@
     "description": "Este enlace abre la tienda «{target}». Estás en «{current}».",
     "open": "Abrir en {target}",
     "stay": "Quedarse en {current}"
+  },
+  "handoff": {
+    "metaTitle": "Continuar en Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Conectar Stripe",
+        "description": "Tu agente de IA te pide que conectes «{store}» a Stripe para aceptar pagos en línea. Stripe te pedirá tu identidad y tus datos bancarios.",
+        "continue": "Continuar a Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Abrir tu panel de Stripe",
+        "description": "Tu agente de IA te pide que abras el panel de Stripe de «{store}».",
+        "continue": "Abrir Stripe"
+      },
+      "billing_card_setup": {
+        "title": "Añadir tu tarjeta de facturación",
+        "description": "Tu agente de IA te pide que añadas la tarjeta en la que Louez cobra sus comisiones de «{store}». La introducirás en la página segura de Stripe.",
+        "continue": "Continuar a Stripe"
+      }
+    },
+    "retry": "Stripe no ha respondido. Inténtalo de nuevo en un momento.",
+    "refused": {
+      "invalid": {
+        "title": "Este enlace ya no funciona",
+        "description": "Está incompleto o un enlace más reciente lo ha sustituido. Pide uno nuevo a tu agente de IA."
+      },
+      "expired": {
+        "title": "Este enlace ha caducado",
+        "description": "Pide un enlace nuevo a tu agente de IA."
+      },
+      "finished": {
+        "title": "Este paso ya ha terminado",
+        "description": "Aquí no queda nada por hacer. Puedes volver con tu agente de IA."
+      },
+      "other_user": {
+        "title": "Este enlace es para otra cuenta",
+        "description": "Has iniciado sesión con una cuenta distinta de aquella para la que trabaja tu agente de IA. Inicia sesión con esa cuenta y vuelve a abrir el enlace."
+      },
+      "not_allowed": {
+        "title": "No puedes hacer esto en esta tienda",
+        "description": "Tu rol en esta tienda no permite este paso. Pregunta al propietario de la tienda."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Listo",
+        "description": "Puedes cerrar esta página y volver con tu agente de IA: verá que este paso está hecho."
+      },
+      "opened": {
+        "title": "Aún no ha terminado",
+        "description": "El paso no se terminó en Stripe. Vuelve a abrir el enlace para terminarlo, o vuelve con tu agente de IA."
+      },
+      "confirming": {
+        "title": "Casi listo",
+        "description": "Stripe aún no ha confirmado la tarjeta. Puedes volver con tu agente de IA: verá la tarjeta en cuanto Stripe la confirme."
+      },
+      "expired": {
+        "title": "Este enlace ha caducado",
+        "description": "Vuelve con tu agente de IA: puede darte un enlace nuevo."
+      },
+      "failed": {
+        "title": "Este paso ha fallado",
+        "description": "Vuelve con tu agente de IA: puede darte un enlace nuevo."
+      }
+    }
   }
 }

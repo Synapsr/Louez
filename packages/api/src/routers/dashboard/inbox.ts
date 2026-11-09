@@ -40,6 +40,7 @@ const READ_DOMAINS = [
   "products",
   "settings",
   "integrations",
+  "billing",
 ] as const satisfies readonly ApiDomain[];
 
 const reads = (context: ProductContext): InboxRights =>
@@ -75,7 +76,7 @@ const list = storeProcedure
     scope: { domain: "reservations", level: "read", anyOf: OPENED_BY },
     mcp: {
       name: "inbox_list",
-      description: `What needs the store's attention now: booking requests to answer, return-date requests, late pickups and returns, deposit holds about to expire, failed payments, open disputes, bookings on a retired or out-of-service unit, overbookings, supplier invoices and rejected e-invoices, Louez billing stopping new bookings, a store not online yet, messages that never went out, and API calls whose outcome is unknown. Each item has a type, a severity (critical, warning, info), occurredAt, one sentence to tell the user, the reservation it is about, the facts behind it, the tools that act on it (none when only the user can, in Louez) and \`links\` to give the user.
+      description: `What needs the store's attention now: booking requests to answer, return-date requests, late pickups and returns, deposit holds about to expire, failed payments, open disputes, bookings on a retired or out-of-service unit, overbookings, supplier invoices and rejected e-invoices, Louez billing stopping new bookings, a store not online yet, messages that never went out, API calls whose outcome is unknown, and steps handed to the user (Stripe, the billing card) still waiting an hour after their link, expired or failed. Each item has a type, a severity (critical, warning, info), occurredAt, one sentence to tell the user, the reservation it is about, the facts behind it, the tools that act on it (none when only the user can, in Louez) and \`links\` to give the user.
 
 Polling: call it every ${INBOX_POLL_MINUTES.min} to ${INBOX_POLL_MINUTES.max} minutes. The first call, without cursor, returns the whole inbox, oldest first. Keep the nextCursor of each answer and pass it as cursor on the next call: you get only the items that entered the inbox since, in the order they did. When hasMore is true, call again at once with nextCursor. Calls are read-only: repeating one with the same cursor returns the same items, minus those handled since. An item shows ${INBOX_HOLD_BACK_MS / 1000} seconds after it happens. An item leaves the inbox once what it is about is handled (the request answered, the reservation returned); the same id with a later occurredAt means it came back. inbox_acknowledge hides an item for the whole store. Up to ${INBOX_PAGE_MAX} items a call (default ${INBOX_PAGE_DEFAULT}). A connection over several stores calls it once per store, with storeId. Items need read access to what they show: payments for payment items, customers for names.`,
       bundle: "daily",

@@ -9568,5 +9568,70 @@
     "description": "Dieser Link öffnet den Shop „{target}“. Sie sind gerade in „{current}“.",
     "open": "In {target} öffnen",
     "stay": "In {current} bleiben"
+  },
+  "handoff": {
+    "metaTitle": "In Louez fortfahren",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Stripe verbinden",
+        "description": "Ihr KI-Agent bittet Sie, „{store}“ mit Stripe zu verbinden, damit der Shop Online-Zahlungen annehmen kann. Stripe fragt nach Ihrer Identität und Ihrer Bankverbindung.",
+        "continue": "Weiter zu Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Ihr Stripe-Dashboard öffnen",
+        "description": "Ihr KI-Agent bittet Sie, das Stripe-Dashboard von „{store}“ zu öffnen.",
+        "continue": "Stripe öffnen"
+      },
+      "billing_card_setup": {
+        "title": "Ihre Abrechnungskarte hinzufügen",
+        "description": "Ihr KI-Agent bittet Sie, die Karte hinzuzufügen, über die Louez seine Gebühren für „{store}“ abbucht. Sie geben sie auf der sicheren Seite von Stripe ein.",
+        "continue": "Weiter zu Stripe"
+      }
+    },
+    "retry": "Stripe hat nicht geantwortet. Versuchen Sie es gleich noch einmal.",
+    "refused": {
+      "invalid": {
+        "title": "Dieser Link funktioniert nicht mehr",
+        "description": "Er ist unvollständig oder wurde durch einen neueren Link ersetzt. Bitten Sie Ihren KI-Agenten um einen neuen."
+      },
+      "expired": {
+        "title": "Dieser Link ist abgelaufen",
+        "description": "Bitten Sie Ihren KI-Agenten um einen neuen Link."
+      },
+      "finished": {
+        "title": "Dieser Schritt ist bereits abgeschlossen",
+        "description": "Hier ist nichts mehr zu tun. Sie können zu Ihrem KI-Agenten zurückkehren."
+      },
+      "other_user": {
+        "title": "Dieser Link ist für ein anderes Konto",
+        "description": "Sie sind mit einem anderen Konto angemeldet als dem, für das Ihr KI-Agent arbeitet. Melden Sie sich mit diesem Konto an und öffnen Sie den Link erneut."
+      },
+      "not_allowed": {
+        "title": "Das können Sie für diesen Shop nicht tun",
+        "description": "Ihre Rolle in diesem Shop erlaubt diesen Schritt nicht. Fragen Sie den Inhaber des Shops."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Erledigt",
+        "description": "Sie können diese Seite schließen und zu Ihrem KI-Agenten zurückkehren: Er sieht, dass dieser Schritt erledigt ist."
+      },
+      "opened": {
+        "title": "Noch nicht abgeschlossen",
+        "description": "Der Schritt wurde bei Stripe nicht abgeschlossen. Öffnen Sie den Link erneut, um ihn abzuschließen, oder kehren Sie zu Ihrem KI-Agenten zurück."
+      },
+      "confirming": {
+        "title": "Fast fertig",
+        "description": "Stripe hat die Karte noch nicht bestätigt. Sie können zu Ihrem KI-Agenten zurückkehren: Er sieht die Karte, sobald Stripe sie bestätigt hat."
+      },
+      "expired": {
+        "title": "Dieser Link ist abgelaufen",
+        "description": "Kehren Sie zu Ihrem KI-Agenten zurück: Er kann Ihnen einen neuen Link geben."
+      },
+      "failed": {
+        "title": "Dieser Schritt ist fehlgeschlagen",
+        "description": "Kehren Sie zu Ihrem KI-Agenten zurück: Er kann Ihnen einen neuen Link geben."
+      }
+    }
   }
 }

@@ -14,7 +14,7 @@ import {
 import type { UpdateOnlineStoreClientInput } from "@louez/validations";
 
 import { resolveStoreContactSettings } from "@/lib/storefront/util.store-contact";
-import { stripHtml } from "@/lib/util.seo-text";
+import { stripHtml } from "@louez/utils";
 
 import type { OnlineStoreSection } from "./online-store.constants";
 

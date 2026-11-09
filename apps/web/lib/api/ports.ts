@@ -3,11 +3,13 @@ import type { ApiPorts } from "@louez/api";
 import { runAfterCommit } from "@/lib/api/after-commit";
 import { dispatchApiEffects } from "@/lib/api/effects";
 import { apiUrls } from "@/lib/api/urls";
+import { billingPort } from "@/lib/billing/billing-port";
 import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { getHostedBy } from "@/lib/hosting";
 import { tulipInsurancePort } from "@/lib/integrations/tulip/insurance-port";
 import { getStorePlan } from "@/lib/plan-limits";
 import { apiStorage } from "@/lib/storage/api-storage";
+import { getStripe, isConnectConfigured } from "@/lib/stripe/client";
 import { newStorePort } from "@/lib/stores/new-store-port";
 
 /**
@@ -27,4 +29,6 @@ export const apiPorts: ApiPorts = {
   dispatchEffects: dispatchApiEffects,
   newStores: newStorePort,
   hostedBy: getHostedBy,
+  stripeConnect: () => (isConnectConfigured() ? getStripe() : null),
+  billing: billingPort,
 };

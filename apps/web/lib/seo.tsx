@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import type { PricingKind, StoreSettings, StoreTheme } from "@louez/types";
 import type { ReactElement } from "react";
-import { isFixedPriceProduct, minutesToPriceDuration, toAbsoluteUrl } from "@louez/utils";
+import {
+  isFixedPriceProduct,
+  minutesToPriceDuration,
+  stripHtml,
+  toAbsoluteUrl,
+} from "@louez/utils";
 import { type Locale, defaultLocale, locales } from "@/i18n/config";
 import { isStandaloneMode } from "@/lib/deployment";
 import { env } from "@/env";
 import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
-import { stripHtml, truncateText } from "@/lib/util.seo-text";
+import { truncateText } from "@/lib/util.seo-text";
 import { buildStorefrontUrl } from "@/lib/util.storefront-url";
 import { resolveStoreSocialLinks } from "@/lib/utils/util.store-social-links";
 

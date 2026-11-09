@@ -141,4 +141,28 @@ describe("proxy billing gate", () => {
       process.env.LOUEZ_MODE = "platform";
     }
   });
+
+  test("a handoff page loads no analytics and sends no Referer, on any host", async () => {
+    const token = `${"a".repeat(21)}${"s".repeat(43)}`;
+    for (const [path, host] of [
+      [`/handoffs/${token}`, "localhost:3000"],
+      [`/handoffs/return/${"a".repeat(21)}/${"t".repeat(43)}`, "localhost:3000"],
+      [`/handoffs/${token}`, "shop.localhost:3000"],
+    ] as const) {
+      const response = await visit(path, host);
+      assert.equal(response.headers.get("x-middleware-request-x-louez-handoff"), "1", path);
+      assert.equal(response.headers.get("referrer-policy"), "no-referrer", path);
+      assert.equal(response.headers.get("cache-control"), "no-store", path);
+      assert.equal(response.headers.get("x-middleware-rewrite"), null, "never a storefront");
+    }
+    const dashboard = await visit("/dashboard");
+    assert.equal(dashboard.headers.get("x-middleware-request-x-louez-handoff"), null);
+    // The marker comes from the proxy only.
+    const forged = await proxy(
+      new NextRequest(new URL("/dashboard", "http://localhost:3000"), {
+        headers: { host: "localhost:3000", "x-louez-handoff": "1" },
+      }),
+    );
+    assert.equal(forged.status, 400);
+  });
 });

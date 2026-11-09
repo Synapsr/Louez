@@ -1016,6 +1016,9 @@ const purgeOwnedData = async (
         .delete(schema.inboxAcknowledgements)
         .where(inArray(schema.inboxAcknowledgements.storeId, storeIds));
       await transaction
+        .delete(schema.apiHandoffs)
+        .where(inArray(schema.apiHandoffs.storeId, storeIds));
+      await transaction
         .delete(schema.pushSubscriptions)
         .where(inArray(schema.pushSubscriptions.storeId, storeIds));
       await transaction

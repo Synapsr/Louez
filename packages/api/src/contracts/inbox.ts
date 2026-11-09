@@ -41,6 +41,8 @@ export const INBOX_ITEM_TYPES = [
   "message_not_sent",
   /** A write through the API whose outcome is unknown: check before retrying. */
   "operation_unknown",
+  /** A step handed to the user (Stripe, the billing card) waiting for an hour, expired or failed. */
+  "handoff_waiting",
 ] as const;
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number];
 

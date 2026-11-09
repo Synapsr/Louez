@@ -9568,5 +9568,70 @@
     "description": "Esta ligação abre a loja «{target}». Está na loja «{current}».",
     "open": "Abrir em {target}",
     "stay": "Ficar em {current}"
+  },
+  "handoff": {
+    "metaTitle": "Continuar no Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Ligar o Stripe",
+        "description": "O seu agente de IA pede-lhe que ligue «{store}» ao Stripe para aceitar pagamentos online. O Stripe vai pedir a sua identidade e os seus dados bancários.",
+        "continue": "Continuar para o Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Abrir o seu painel do Stripe",
+        "description": "O seu agente de IA pede-lhe que abra o painel do Stripe de «{store}».",
+        "continue": "Abrir o Stripe"
+      },
+      "billing_card_setup": {
+        "title": "Adicionar o seu cartão de faturação",
+        "description": "O seu agente de IA pede-lhe que adicione o cartão em que o Louez cobra as suas taxas de «{store}». Vai introduzi-lo na página segura do Stripe.",
+        "continue": "Continuar para o Stripe"
+      }
+    },
+    "retry": "O Stripe não respondeu. Tente novamente daqui a pouco.",
+    "refused": {
+      "invalid": {
+        "title": "Esta ligação já não funciona",
+        "description": "Está incompleta, ou uma ligação mais recente substituiu-a. Peça uma nova ao seu agente de IA."
+      },
+      "expired": {
+        "title": "Esta ligação expirou",
+        "description": "Peça uma nova ligação ao seu agente de IA."
+      },
+      "finished": {
+        "title": "Este passo já terminou",
+        "description": "Já não há nada a fazer aqui. Pode voltar ao seu agente de IA."
+      },
+      "other_user": {
+        "title": "Esta ligação é para outra conta",
+        "description": "Tem sessão iniciada com uma conta diferente daquela para a qual o seu agente de IA trabalha. Inicie sessão com essa conta e volte a abrir a ligação."
+      },
+      "not_allowed": {
+        "title": "Não pode fazer isto nesta loja",
+        "description": "A sua função nesta loja não permite este passo. Peça ao proprietário da loja."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Concluído",
+        "description": "Pode fechar esta página e voltar ao seu agente de IA: ele verá que este passo está concluído."
+      },
+      "opened": {
+        "title": "Ainda não terminou",
+        "description": "O passo não foi concluído no Stripe. Volte a abrir a ligação para o concluir, ou volte ao seu agente de IA."
+      },
+      "confirming": {
+        "title": "Quase concluído",
+        "description": "O Stripe ainda não confirmou o cartão. Pode voltar ao seu agente de IA: ele verá o cartão assim que o Stripe o confirmar."
+      },
+      "expired": {
+        "title": "Esta ligação expirou",
+        "description": "Volte ao seu agente de IA: ele pode dar-lhe uma nova ligação."
+      },
+      "failed": {
+        "title": "Este passo falhou",
+        "description": "Volte ao seu agente de IA: ele pode dar-lhe uma nova ligação."
+      }
+    }
   }
 }

@@ -1,5 +1,6 @@
 import {
   apiEffects,
+  apiHandoffs,
   apiOperations,
   customers,
   db,
@@ -58,6 +59,7 @@ import {
   type LinkStore,
 } from "../platform/links";
 import type { UrlsPort } from "../platform/ports";
+import { HANDOFF_WAIT_MS, handoffView } from "./handoffs";
 import { getLaunchChecklist } from "./launch";
 import { findConflictingAssignments, loadStoreUnitWindows } from "./unit-conflicts";
 
@@ -88,6 +90,8 @@ const DEPOSIT_NOTICE_HOURS = 48;
 const EINVOICE_DAYS = 90;
 /** Operations older than this are left out. */
 const OPERATION_DAYS = 7;
+/** Failed handoffs older than this are left out. */
+const HANDOFF_FAILURE_DAYS = 7;
 
 /** The domains a caller must read to see an item of each type; the first one to acknowledge it. */
 export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
@@ -106,6 +110,7 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   store_not_live: ["settings"],
   message_not_sent: ["reservations"],
   operation_unknown: [],
+  handoff_waiting: ["settings"],
 };
 
 export type InboxRights = Partial<Record<ApiDomain, boolean>>;
@@ -1252,7 +1257,11 @@ const closedGate = async (window: Window, shaper: Shaper): Promise<Candidate[]> 
       summary: GATE_SUMMARIES[gate.reason],
       reservation: null,
       details: { reason: gate.reason, effectiveFrom: gate.effectiveFrom?.toISOString() ?? null },
-      tools: [],
+      // Only the owner adds the card, on Stripe's page: the agent hands them the link.
+      tools:
+        gate.reason === "suspended"
+          ? ["billing_get_status"]
+          : ["billing_get_status", "billing_start_card_setup"],
       links: dashboardPageLinks(urls, store, "/dashboard/settings/billing"),
     }),
   ];
@@ -1288,6 +1297,86 @@ const offlineStore = async (window: Window, shaper: Shaper): Promise<Candidate[]
   ];
 };
 
+/** The tool that gives each kind of handoff a new link. */
+const HANDOFF_START_TOOLS = {
+  stripe_connect_onboarding: "payments_start_stripe_onboarding",
+  stripe_dashboard: "payments_open_stripe_dashboard",
+  billing_card_setup: "billing_start_card_setup",
+} as const;
+
+/**
+ * A step handed to the user that waits: active for an hour since its link
+ * (pending or opened), expired, or failed in the last days and not started
+ * again since. The billing card shows only to who may read billing.
+ */
+const waitingHandoffs: Source = async (window, shaper) => {
+  const hold = sql.raw(String(HANDOFF_WAIT_MS / 1000));
+  const occurred = sql<Date>`CASE
+      WHEN ${apiHandoffs.status} = 'failed' THEN ${apiHandoffs.failedAt}
+      WHEN ${apiHandoffs.expiresAt} <= ${at(window.now)} THEN ${apiHandoffs.expiresAt}
+      ELSE ${apiHandoffs.linkIssuedAt} + INTERVAL ${hold} SECOND END`.mapWith(
+    apiHandoffs.linkIssuedAt,
+  );
+  const later = alias(apiHandoffs, "later_handoff");
+  const rows = await db
+    .select({ row: apiHandoffs, occurredAt: occurred })
+    .from(apiHandoffs)
+    .where(
+      and(
+        eq(apiHandoffs.storeId, window.storeId),
+        shaper.reader.reads.billing ? undefined : sql`${apiHandoffs.kind} <> 'billing_card_setup'`,
+        or(
+          eq(apiHandoffs.activeSlot, 1),
+          and(
+            eq(apiHandoffs.status, "failed"),
+            gt(
+              apiHandoffs.failedAt,
+              new Date(window.now.getTime() - HANDOFF_FAILURE_DAYS * DAY_MS),
+            ),
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(later)
+                .where(
+                  and(
+                    eq(later.storeId, apiHandoffs.storeId),
+                    eq(later.kind, apiHandoffs.kind),
+                    gt(later.createdAt, apiHandoffs.createdAt),
+                  ),
+                ),
+            ),
+          ),
+        ),
+        inWindow(window, "handoff_waiting", occurred, apiHandoffs.id),
+      ),
+    )
+    .orderBy(...inOrder(occurred, apiHandoffs.id))
+    .limit(window.take);
+
+  const { urls, store } = shaper.reader;
+  return rows.map(({ row, occurredAt }) => {
+    const view = handoffView(row, { now: window.now, urls, store });
+    const waiting = view.status === "pending" || view.status === "opened";
+    return candidate("handoff_waiting", row.id, {
+      severity: row.kind === "billing_card_setup" || !waiting ? "warning" : "info",
+      occurredAt,
+      summary: waiting
+        ? `${view.summary} The link went out more than an hour ago: remind the user, or check handoffs_get.`
+        : view.summary,
+      reservation: null,
+      details: {
+        handoffId: row.id,
+        kind: row.kind,
+        status: view.status,
+        expiresAt: row.expiresAt.toISOString(),
+        failureCode: view.failure?.code ?? null,
+      },
+      tools: ["handoffs_get", HANDOFF_START_TOOLS[row.kind]],
+      links: view.links,
+    });
+  });
+};
+
 const SOURCES: Record<InboxItemType, Source> = {
   booking_request: bookingRequests,
   date_change_request: dateChangeRequests,
@@ -1304,6 +1393,7 @@ const SOURCES: Record<InboxItemType, Source> = {
   store_not_live: offlineStore,
   message_not_sent: unsentMessages,
   operation_unknown: unknownOperations,
+  handoff_waiting: waitingHandoffs,
 };
 
 /** Sources computed in code, filtered on the window here rather than in SQL. */
