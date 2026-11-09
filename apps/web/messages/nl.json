@@ -9554,9 +9554,10 @@
       "oauthUnavailable": "Inloggen met uw account vereist een HTTPS-adres. Gebruik op deze instantie een API-sleutel."
     },
     "assistantCard": {
-      "title": "Heb je een AI-assistent? Laat die je winkel inrichten.",
-      "description": "Die voegt je producten toe en richt je winkel in; jij kiest de rechten en wat die eerst door jou moet laten bevestigen.",
-      "action": "Mijn assistent koppelen",
+      "title": "Laat je AI-assistent je winkel inrichten.",
+      "info": "Claude, ChatGPT, Grok of Le Chat kan je producten toevoegen, je prijzen instellen en je winkel voor je inrichten. Jij kiest de rechten en wat die eerst door jou moet laten bevestigen.",
+      "infoLabel": "Meer informatie",
+      "action": "Koppelen",
       "dismiss": "Verbergen"
     },
     "declaredBy": "Naam opgegeven door {origin}",

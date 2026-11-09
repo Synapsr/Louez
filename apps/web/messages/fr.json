@@ -9554,9 +9554,10 @@
       "oauthUnavailable": "La connexion par compte demande une adresse HTTPS. Sur cette instance, utilisez une clé API."
     },
     "assistantCard": {
-      "title": "Vous avez un assistant IA ? Laissez-le configurer votre boutique.",
-      "description": "Il ajoute vos produits et règle votre boutique ; vous choisissez ses droits et ce qu’il doit vous faire confirmer.",
-      "action": "Connecter mon assistant",
+      "title": "Laissez votre assistant IA configurer votre boutique.",
+      "info": "Claude, ChatGPT, Grok ou Le Chat peut ajouter vos produits, régler vos tarifs et configurer votre boutique pour vous. Vous choisissez ses droits et ce qu’il doit vous faire confirmer.",
+      "infoLabel": "En savoir plus",
+      "action": "Connecter",
       "dismiss": "Masquer"
     },
     "declaredBy": "Nom déclaré par {origin}",

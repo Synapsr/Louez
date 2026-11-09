@@ -9554,9 +9554,10 @@
       "oauthUnavailable": "계정 로그인에는 HTTPS 주소가 필요합니다. 이 인스턴스에서는 API 키를 사용하세요."
     },
     "assistantCard": {
-      "title": "AI 어시스턴트가 있으신가요? 스토어 설정을 맡겨 보세요.",
-      "description": "상품을 추가하고 스토어를 설정해 드립니다. 권한과 확인받아야 할 작업은 직접 정합니다.",
-      "action": "내 어시스턴트 연결",
+      "title": "AI 어시스턴트에게 스토어 설정을 맡겨 보세요.",
+      "info": "Claude, ChatGPT, Grok, Le Chat이 상품 추가, 가격 설정, 스토어 설정을 대신해 드립니다. 권한과 확인받아야 할 작업은 직접 정합니다.",
+      "infoLabel": "자세히 보기",
+      "action": "연결",
       "dismiss": "숨기기"
     },
     "declaredBy": "{origin}에서 선언한 이름",

@@ -9554,9 +9554,10 @@
       "oauthUnavailable": "使用账户登录需要 HTTPS 地址。在此实例上，请使用 API 密钥。"
     },
     "assistantCard": {
-      "title": "有 AI 助手吗？让它帮你设置店铺。",
-      "description": "它会添加商品并设置店铺；它的权限以及哪些操作需要你确认，都由你决定。",
-      "action": "连接我的助手",
+      "title": "让你的 AI 助手帮你设置店铺。",
+      "info": "Claude、ChatGPT、Grok 或 Le Chat 可以替你添加商品、设置价格并设置店铺。它的权限以及哪些操作需要你确认，都由你决定。",
+      "infoLabel": "了解更多",
+      "action": "连接",
       "dismiss": "隐藏"
     },
     "declaredBy": "名称由 {origin} 声明",

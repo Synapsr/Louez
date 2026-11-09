@@ -9,15 +9,19 @@ const AGENTS = [
   { name: "Le Chat", Icon: LeChatIcon },
 ] as const;
 
-/** The assistants that can connect to Louez, as a small stack of their marks. */
+/**
+ * The assistants that can connect to Louez, as a small stack of their marks:
+ * Claude and Le Chat in their colors, ChatGPT and Grok in the text color, as
+ * their brands ask.
+ */
 export const AgentLogos = ({ className }: { className?: string }) => (
-  <ul className={cn("flex shrink-0 -space-x-1.5", className)}>
+  <ul className={cn("flex shrink-0 -space-x-1", className)}>
     {AGENTS.map(({ name, Icon }) => (
       <li
         key={name}
-        className="bg-background text-foreground ring-border flex size-8 items-center justify-center rounded-full ring-1"
+        className="bg-background text-foreground ring-border flex size-6 items-center justify-center rounded-full ring-1"
       >
-        <Icon role="img" aria-label={name} className="size-4" />
+        <Icon role="img" aria-label={name} className="size-3.5" />
       </li>
     ))}
   </ul>

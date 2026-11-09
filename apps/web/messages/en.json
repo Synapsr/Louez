@@ -9554,9 +9554,10 @@
       "oauthUnavailable": "Signing in with your account needs an HTTPS address. On this instance, use an API key."
     },
     "assistantCard": {
-      "title": "Have an AI assistant? Let it set up your store.",
-      "description": "It adds your products and sets up your store; you choose its rights and what it must check with you first.",
-      "action": "Connect my assistant",
+      "title": "Let your AI assistant set up your store.",
+      "info": "Claude, ChatGPT, Grok or Le Chat can add your products, set your prices and set up your store for you. You choose its rights and what it must check with you first.",
+      "infoLabel": "Learn more",
+      "action": "Connect",
       "dismiss": "Hide"
     },
     "declaredBy": "Name declared by {origin}",

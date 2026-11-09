@@ -9554,9 +9554,10 @@
       "oauthUnavailable": "Iniciar sesión con su cuenta requiere una dirección HTTPS. En esta instancia, use una clave API."
     },
     "assistantCard": {
-      "title": "¿Tienes un asistente de IA? Deja que configure tu tienda.",
-      "description": "Añade tus productos y configura tu tienda; tú eliges sus permisos y lo que debe confirmar contigo.",
-      "action": "Conectar mi asistente",
+      "title": "Deja que tu asistente de IA configure tu tienda.",
+      "info": "Claude, ChatGPT, Grok o Le Chat puede añadir tus productos, fijar tus precios y configurar tu tienda por ti. Tú eliges sus permisos y lo que debe confirmar contigo.",
+      "infoLabel": "Más información",
+      "action": "Conectar",
       "dismiss": "Ocultar"
     },
     "declaredBy": "Nombre declarado por {origin}",

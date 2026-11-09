@@ -9554,9 +9554,10 @@
       "oauthUnavailable": "Die Anmeldung mit Ihrem Konto erfordert eine HTTPS-Adresse. Verwenden Sie auf dieser Instanz einen API-Schlüssel."
     },
     "assistantCard": {
-      "title": "Sie haben einen KI-Assistenten? Lassen Sie ihn Ihren Shop einrichten.",
-      "description": "Er legt Ihre Produkte an und richtet Ihren Shop ein; Sie legen seine Rechte fest und was er Sie bestätigen lassen muss.",
-      "action": "Meinen Assistenten verbinden",
+      "title": "Lassen Sie Ihren KI-Assistenten Ihren Shop einrichten.",
+      "info": "Claude, ChatGPT, Grok oder Le Chat kann Ihre Produkte anlegen, Ihre Preise festlegen und Ihren Shop für Sie einrichten. Sie legen seine Rechte fest und was er Sie bestätigen lassen muss.",
+      "infoLabel": "Mehr erfahren",
+      "action": "Verbinden",
       "dismiss": "Ausblenden"
     },
     "declaredBy": "Name angegeben von {origin}",

@@ -9554,9 +9554,10 @@
       "oauthUnavailable": "Logowanie kontem wymaga adresu HTTPS. Na tej instancji użyj klucza API."
     },
     "assistantCard": {
-      "title": "Masz asystenta AI? Pozwól mu skonfigurować Twój sklep.",
-      "description": "Dodaje Twoje produkty i konfiguruje sklep; Ty decydujesz o jego uprawnieniach i o tym, co musi z Tobą potwierdzić.",
-      "action": "Połącz mojego asystenta",
+      "title": "Pozwól asystentowi AI skonfigurować Twój sklep.",
+      "info": "Claude, ChatGPT, Grok lub Le Chat może dodać Twoje produkty, ustawić ceny i skonfigurować sklep za Ciebie. Ty decydujesz o jego uprawnieniach i o tym, co musi z Tobą potwierdzić.",
+      "infoLabel": "Dowiedz się więcej",
+      "action": "Połącz",
       "dismiss": "Ukryj"
     },
     "declaredBy": "Nazwa podana przez {origin}",

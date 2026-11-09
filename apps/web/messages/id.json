@@ -9554,9 +9554,10 @@
       "oauthUnavailable": "Masuk dengan akun Anda memerlukan alamat HTTPS. Pada instans ini, gunakan kunci API."
     },
     "assistantCard": {
-      "title": "Punya asisten AI? Biarkan ia menyiapkan toko Anda.",
-      "description": "Ia menambahkan produk dan mengatur toko Anda; Anda memilih haknya dan apa saja yang harus ia konfirmasi kepada Anda.",
-      "action": "Hubungkan asisten saya",
+      "title": "Biarkan asisten AI Anda menyiapkan toko.",
+      "info": "Claude, ChatGPT, Grok, atau Le Chat dapat menambahkan produk, mengatur harga, dan menyiapkan toko untuk Anda. Anda memilih haknya dan apa saja yang harus ia konfirmasi kepada Anda.",
+      "infoLabel": "Pelajari lebih lanjut",
+      "action": "Hubungkan",
       "dismiss": "Sembunyikan"
     },
     "declaredBy": "Nama dinyatakan oleh {origin}",
