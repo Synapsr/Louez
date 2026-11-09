@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { getTableName, isTable, type Table } from "drizzle-orm";
 
-import { isBillingServiceTable } from "./billing-service-tables";
+import { isBillingServiceTable } from "./billing-service-tables.mjs";
 import * as schema from "./schema";
 
 test("only the billing service's prefix and migrations table are the service's", () => {

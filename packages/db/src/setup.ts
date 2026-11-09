@@ -1,7 +1,7 @@
 import mysql from 'mysql2/promise'
 import fs from 'fs'
 import path from 'path'
-import { isBillingServiceTable } from './billing-service-tables'
+import { isBillingServiceTable } from './billing-service-tables.mjs'
 import { runMigrations } from './migrate'
 
 // ANSI color codes for console output
@@ -72,7 +72,7 @@ async function connectWithRetry(databaseUrl: string): Promise<mysql.Connection> 
   throw lastError
 }
 
-/** The database's tables, without the billing service's (see billing-service-tables.ts). */
+/** The database's tables, without the billing service's (see billing-service-tables.mjs). */
 async function listTables(connection: mysql.Connection): Promise<string[]> {
   const [rows] = await connection.query('SHOW TABLES')
   return (rows as Array<Record<string, string>>)
@@ -83,9 +83,10 @@ async function listTables(connection: mysql.Connection): Promise<string[]> {
 /**
  * Ensures the database schema is up to date at application startup.
  *
- * Runs the committed SQL migrations programmatically (drizzle-orm migrator) —
- * it deliberately does NOT shell out to drizzle-kit, which is a dev-only tool
- * that is not present in the production Docker image (see issue #28).
+ * Runs the committed SQL migrations programmatically (migration-runner.mjs, the
+ * runner the Docker migrator shares) — it deliberately does NOT shell out to
+ * drizzle-kit, which is a dev-only tool that is not present in the production
+ * Docker image (see issue #28).
  *
  * Fails fast: if the schema cannot be set up, the process exits non-zero so
  * orchestrators surface a crash loop instead of a silently broken app.

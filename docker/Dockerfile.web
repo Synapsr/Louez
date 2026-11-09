@@ -138,12 +138,14 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy node_modules needed by migrate.mjs (drizzle-orm, mysql2, and their deps)
+# Copy node_modules needed by the migration runner (drizzle-orm, mysql2, and their deps)
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 
-# Copy migration script and migration files
+# Copy the migration script, the runner it shares with the app, and the migration files
 COPY --from=builder /app/docker/migrate.mjs ./docker/migrate.mjs
+COPY --from=builder /app/packages/db/src/migration-runner.mjs ./packages/db/src/migration-runner.mjs
+COPY --from=builder /app/packages/db/src/billing-service-tables.mjs ./packages/db/src/billing-service-tables.mjs
 COPY --from=builder /app/packages/db/src/migrations ./migrations
 
 CMD ["node", "docker/migrate.mjs"]
