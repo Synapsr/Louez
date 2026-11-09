@@ -27,6 +27,22 @@ export const OAUTH_LOGIN_PAGE = "/login";
 /** Where it sends a signed-in user to accept or refuse a client. */
 export const OAUTH_CONSENT_PAGE = "/oauth/consent";
 
+/**
+ * Better Auth endpoints the app turns off (`disabledPaths`). The JWT plugin's
+ * session token endpoint: a session JWT would be signed with the access
+ * tokens' key. The OAuth provider's consent endpoints: Louez keeps what a user
+ * granted an agent in its own grants (`api_agent_grants`), changed and revoked
+ * from the dashboard only; deleting or rewriting a consent behind them would
+ * leave the grant, its rights and its handoff links standing.
+ */
+export const AUTH_DISABLED_PATHS = [
+  "/token",
+  "/oauth2/get-consent",
+  "/oauth2/get-consents",
+  "/oauth2/update-consent",
+  "/oauth2/delete-consent",
+];
+
 const AUTH_BASE_PATH = "/api/auth";
 const MCP_PATH = "/api/mcp";
 

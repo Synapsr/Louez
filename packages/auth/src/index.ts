@@ -37,6 +37,7 @@ import { getLocaleFromHeaders } from "./request-locale";
 import { currentGrantId, isGrantActive } from "./grant-lineage";
 import { authTables } from "./tables";
 import {
+  AUTH_DISABLED_PATHS,
   answerOAuthConsent,
   createAccessTokenVerifier,
   mcpOAuthEndpoints,
@@ -189,9 +190,8 @@ export const authInstance = betterAuth({
     schema: authTables,
   }),
 
-  // The JWT plugin's session token endpoint: a session JWT is signed with the
-  // access tokens' key, so it is never handed out.
-  disabledPaths: ["/token"],
+  // The session JWT and the OAuth consent endpoints (oauth.ts).
+  disabledPaths: AUTH_DISABLED_PATHS,
 
   advanced: {
     cookiePrefix: AUTH_COOKIE_PREFIX,

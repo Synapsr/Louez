@@ -10,6 +10,7 @@ import { getTableColumns } from "drizzle-orm";
 import { SignJWT, exportJWK, generateKeyPair } from "jose";
 
 import {
+  AUTH_DISABLED_PATHS,
   GRANT_CLAIM,
   OAUTH_CONSENT_PAGE,
   answerOAuthConsent,
@@ -46,7 +47,7 @@ const fixture = async (options: { grantId?: string | null } = {}) => {
     emailAndPassword: { enabled: true },
     rateLimit: { enabled: false },
     logger: { disabled: true },
-    disabledPaths: ["/token"],
+    disabledPaths: AUTH_DISABLED_PATHS,
     plugins: mcpOAuthPlugins(endpoints, {
       // The grant Louez saved before the consent: the lineage's reference.
       currentGrantId: async () => grantId,

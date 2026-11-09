@@ -4,7 +4,12 @@ import { after, before, describe, test } from "node:test";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
-import { answerOAuthConsent, mcpOAuthEndpoints, type createAccessTokenVerifier } from "./oauth";
+import {
+  AUTH_DISABLED_PATHS,
+  answerOAuthConsent,
+  mcpOAuthEndpoints,
+  type createAccessTokenVerifier,
+} from "./oauth";
 
 // A token lineage stays bound to the grant it started under, on MySQL with
 // Better Auth's drizzle adapter and the app's tables: revoke, reconnect the
@@ -35,7 +40,7 @@ async function buildAuth(db: typeof import("@louez/db").db) {
     emailAndPassword: { enabled: true },
     rateLimit: { enabled: false },
     logger: { disabled: true },
-    disabledPaths: ["/token"],
+    disabledPaths: AUTH_DISABLED_PATHS,
     plugins: mcpOAuthPlugins(endpoints, { currentGrantId, isGrantActive }),
   });
 }
@@ -300,6 +305,55 @@ describe(
       assert.equal((await lineageRows(second)).length, before, "the new grant's tokens are intact");
       const refreshedB = await ok(await refresh(tokensB.refresh_token));
       assert.equal((await verify(refreshedB.access_token))?.grantId, second);
+    });
+
+    test("a session cannot delete or rewrite a consent, nor delete a client, behind Louez's grant", async () => {
+      // One grant per user and client: start from none.
+      await louezDb.db
+        .delete(louezDb.apiAgentGrants)
+        .where(orm.eq(louezDb.apiAgentGrants.userId, userId));
+      const grantId = await connect();
+      try {
+        await code();
+        const [consent] = await louezDb.db
+          .select({ id: louezDb.oauthConsents.id })
+          .from(louezDb.oauthConsents)
+          .where(orm.eq(louezDb.oauthConsents.referenceId, grantId));
+        assert.ok(consent, "the consent exists");
+
+        for (const [path, body] of [
+          ["/api/auth/oauth2/delete-consent", { id: consent.id }],
+          ["/api/auth/oauth2/update-consent", { id: consent.id, update: { scopes: ["openid"] } }],
+        ] as const) {
+          const response = await request(path, { method: "POST", body: JSON.stringify(body) });
+          assert.equal(response.status, 404, path);
+        }
+        for (const path of [
+          "/api/auth/oauth2/get-consents",
+          `/api/auth/oauth2/get-consent?id=${consent.id}`,
+        ]) {
+          assert.equal((await request(path)).status, 404, path);
+        }
+        const deleteClient = await request("/api/auth/oauth2/delete-client", {
+          method: "POST",
+          body: JSON.stringify({ client_id: clientId }),
+        });
+        assert.ok([401, 403].includes(deleteClient.status), String(deleteClient.status));
+
+        // The grant, its consent and its client are all still there.
+        const grants = await louezDb.db
+          .select({ id: louezDb.apiAgentGrants.id })
+          .from(louezDb.apiAgentGrants)
+          .where(orm.eq(louezDb.apiAgentGrants.id, grantId));
+        assert.equal(grants.length, 1);
+        const consents = await louezDb.db
+          .select({ id: louezDb.oauthConsents.id })
+          .from(louezDb.oauthConsents)
+          .where(orm.eq(louezDb.oauthConsents.id, consent.id));
+        assert.equal(consents.length, 1);
+      } finally {
+        await revoke(grantId);
+      }
     });
   },
 );
