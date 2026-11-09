@@ -137,6 +137,8 @@ function fakeBilling() {
     started: [] as Array<{ storeId: string; userId: string; locale: string; returnUrl: string }>,
     finished: [] as string[],
     outcome: "refreshed" as "refreshed" | "pending",
+    /** When set, each check waits for it: a barrier for races. */
+    gate: null as Promise<void> | null,
   };
   const port: BillingPort = {
     status: async () => state.status,
@@ -147,6 +149,7 @@ function fakeBilling() {
     },
     finishCardSetup: async ({ checkoutSessionId }) => {
       state.finished.push(checkoutSessionId);
+      if (state.gate) await state.gate;
       return state.outcome;
     },
   };
@@ -339,6 +342,38 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
 
   const handoffRows = () => louezDb.db.select().from(louezDb.apiHandoffs);
 
+  /** The provider-check lease runs out, as if its time had passed (it is on the database's clock). */
+  const endLease = (id: string) =>
+    louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ providerCheckAt: new Date(Date.now() - 60_000) })
+      .where(orm.eq(louezDb.apiHandoffs.id, id));
+
+  /** A barrier: `wait` resolves once `open` is called. */
+  function barrier() {
+    let open: () => void = () => {};
+    const wait = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    return { wait, open };
+  }
+
+  /** A billing card handoff the owner continued: its row and the click's state. */
+  async function cardAttempt(agent: () => BaseContext) {
+    const started = await client(agent()).billing.startCardSetup({});
+    const continued = await handoffs.continueHandoff(tokenOf(started.url), OWNER);
+    assert.ok(continued.ok && continued.state);
+    return { id: started.handoff.id, token: tokenOf(started.url), state: continued.state };
+  }
+
+  /** The return of an attempt, checked as the return route does. */
+  async function returning(id: string, state: string, checkoutSessionId: string | null) {
+    const checked = await handoffs.checkHandoffReturn(id, state, OWNER);
+    assert.ok(checked.ok, "the return is valid when checked");
+    return () =>
+      handoffs.finishHandoffReturn({ row: checked.row, state, ports, checkoutSessionId });
+  }
+
   /** A billing policy version in force for the store since an hour ago. */
   async function policy(
     reservations: { allowed: true } | { allowed: false; reason: "payment_method_required" },
@@ -468,7 +503,12 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const checked = await handoffs.checkHandoffReturn(started.handoff.id, state, OWNER);
     assert.ok(checked.ok);
     assert.deepEqual(
-      await handoffs.finishHandoffReturn({ row: checked.row, ports, checkoutSessionId: null }),
+      await handoffs.finishHandoffReturn({
+        row: checked.row,
+        state,
+        ports,
+        checkoutSessionId: null,
+      }),
       { done: false },
     );
     assert.equal((await client(agent()).handoffs.get({ id: started.handoff.id })).status, "opened");
@@ -478,7 +518,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const again = await handoffs.checkHandoffReturn(started.handoff.id, state, OWNER);
     assert.ok(again.ok);
     assert.deepEqual(
-      await handoffs.finishHandoffReturn({ row: again.row, ports, checkoutSessionId: null }),
+      await handoffs.finishHandoffReturn({ row: again.row, state, ports, checkoutSessionId: null }),
       { done: true },
     );
     const store = await storeRow();
@@ -855,26 +895,35 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     // Cancelled on Checkout: no session, still opened.
     const checked = await handoffs.checkHandoffReturn(started.handoff.id, continued.state, OWNER);
     assert.ok(checked.ok);
+    const state = continued.state;
     assert.deepEqual(
-      await handoffs.finishHandoffReturn({ row: checked.row, ports, checkoutSessionId: null }),
+      await handoffs.finishHandoffReturn({
+        row: checked.row,
+        state,
+        ports,
+        checkoutSessionId: null,
+      }),
       { done: false },
     );
 
-    // Back with a card Stripe has not confirmed yet: handoffs_get asks again later.
+    // Back with a card Stripe has not confirmed yet: handoffs_get asks again once the lease ends.
     billing.state.outcome = "pending";
     assert.deepEqual(
       await handoffs.finishHandoffReturn({
         row: checked.row,
+        state,
         ports,
         checkoutSessionId: "cs_test_1",
       }),
       { done: false },
     );
-    assert.equal((await client(agent()).handoffs.get({ id: started.handoff.id })).status, "opened");
     billing.state.outcome = "refreshed";
+    assert.equal((await client(agent()).handoffs.get({ id: started.handoff.id })).status, "opened");
+    assert.deepEqual(billing.state.finished, ["cs_test_1"], "the return's lease holds the polls");
+    await endLease(started.handoff.id);
     const done = await client(agent()).handoffs.get({ id: started.handoff.id });
     assert.equal(done.status, "completed");
-    assert.deepEqual(billing.state.finished, ["cs_test_1", "cs_test_1", "cs_test_1"]);
+    assert.deepEqual(billing.state.finished, ["cs_test_1", "cs_test_1"]);
   });
 
   test("only the owner of a store the billing service bills may start the card setup", async () => {
@@ -983,12 +1032,240 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.deepEqual(gate?.tools, ["billing_get_status", "billing_start_card_setup"]);
   });
 
-  test("an old finished handoff is purged after its retention", async () => {
+  test("old handoffs are purged after their retention, oldest first, in batches", async () => {
     const started = await client((await apiKey())()).payments.startStripeOnboarding({});
     await handoffs.completeHandoff(started.handoff.id);
     assert.equal(await handoffs.purgeHandoffs(), 0);
-    assert.equal(await handoffs.purgeHandoffs(new Date(Date.now() + 91 * 24 * HOUR)), 1);
-    assert.deepEqual(await handoffRows(), []);
+    const old = new Date(Date.now() - 100 * 24 * HOUR);
+    await louezDb.db.insert(louezDb.apiHandoffs).values(
+      [1, 2, 3, 4, 5].map((index) => ({
+        storeId: STORE,
+        kind: "stripe_dashboard" as const,
+        status: "completed" as const,
+        userId: OWNER,
+        credentialKind: "session",
+        tokenHash: `old_${index}`,
+        linkIssuedAt: old,
+        expiresAt: old,
+        createdAt: old,
+        updatedAt: new Date(old.getTime() + index * 1000),
+      })),
+    );
+    // Batches of two, with no time left after the first: the next run goes on.
+    assert.equal(await handoffs.purgeHandoffs(new Date(), { batch: 2, budgetMs: 0 }), 2);
+    const left = (await handoffRows()).map((row) => row.tokenHash).sort();
+    assert.deepEqual(
+      left.filter((hash) => hash.startsWith("old_")),
+      ["old_3", "old_4", "old_5"],
+    );
+    assert.equal(await handoffs.purgeHandoffs(new Date(), { batch: 2 }), 3);
+    assert.equal((await handoffRows()).length, 1, "the recent one stays");
+  });
+
+  // --- Attempts: a new click, a stale return, concurrent polls -------------------
+
+  test("a new click drops the earlier attempt's Checkout: polling never finishes it", async () => {
+    const agent = await apiKey();
+    const a = await cardAttempt(agent);
+    billing.state.outcome = "pending";
+    assert.deepEqual(await (await returning(a.id, a.state, "cs_attempt_a"))(), { done: false });
+    assert.equal((await handoffs.getHandoffRow(STORE, a.id)).providerRef, "cs_attempt_a");
+
+    // Continue again: attempt B, with no Checkout yet.
+    const b = await handoffs.continueHandoff(a.token, OWNER);
+    assert.ok(b.ok && b.state);
+    const row = await handoffs.getHandoffRow(STORE, a.id);
+    assert.equal(row.providerRef, null);
+    assert.equal(row.providerCheckAt, null);
+    assert.equal(row.providerChecks, 0);
+
+    // Checkout A is confirmed now; polls do not ask about it.
+    billing.state.outcome = "refreshed";
+    billing.state.finished.length = 0;
+    assert.equal((await client(agent()).handoffs.get({ id: a.id })).status, "opened");
+    assert.deepEqual(billing.state.finished, []);
+    // A's late return changes nothing either.
+    assert.deepEqual(
+      await handoffs.finishHandoffReturn({
+        row,
+        state: a.state,
+        ports,
+        checkoutSessionId: "cs_attempt_a",
+      }),
+      { done: false },
+    );
+    assert.deepEqual(billing.state.finished, [], "a stale return never reaches the provider");
+
+    // B's own Checkout completes it.
+    billing.state.outcome = "pending";
+    await (
+      await returning(a.id, b.state, "cs_attempt_b")
+    )();
+    billing.state.outcome = "refreshed";
+    await endLease(a.id);
+    assert.equal((await client(agent()).handoffs.get({ id: a.id })).status, "completed");
+    assert.deepEqual(billing.state.finished, ["cs_attempt_b", "cs_attempt_b"]);
+
+    // Another user taking the step over drops the attempt too.
+    billing.state.outcome = "pending";
+    const other = await cardAttempt(agent);
+    await (
+      await returning(other.id, other.state, "cs_other")
+    )();
+    await louezDb.db
+      .insert(louezDb.storeMembers)
+      .values({ storeId: STORE, userId: STRANGER, role: "owner" });
+    await client(session(STRANGER)).billing.startCardSetup({});
+    const reassigned = await handoffs.getHandoffRow(STORE, other.id);
+    assert.equal(reassigned.userId, STRANGER);
+    assert.equal(reassigned.providerRef, null);
+    assert.equal(reassigned.returnStateHash, null);
+  });
+
+  test("a return checked before a new click never completes the new attempt", async () => {
+    const agent = await apiKey();
+    const a = await cardAttempt(agent);
+    const finishA = await returning(a.id, a.state, "cs_attempt_a");
+    // Click B lands between A's check and A's claim.
+    const b = await handoffs.continueHandoff(a.token, OWNER);
+    assert.ok(b.ok);
+    assert.deepEqual(await finishA(), { done: false });
+    assert.deepEqual(billing.state.finished, [], "no provider call for a replaced attempt");
+    assert.equal((await handoffs.getHandoffRow(STORE, a.id)).status, "opened");
+
+    // Click C lands while A's provider call is in flight (claimed, not finished).
+    const c = await cardAttempt(agent);
+    const gate = barrier();
+    billing.state.gate = gate.wait;
+    const finishC = await returning(c.id, c.state, "cs_attempt_c");
+    const inFlight = finishC();
+    while (billing.state.finished.length === 0)
+      await new Promise((resolve) => setImmediate(resolve));
+    const d = await handoffs.continueHandoff(c.token, OWNER);
+    assert.ok(d.ok);
+    gate.open();
+    billing.state.gate = null;
+    assert.deepEqual(await inFlight, { done: false });
+    const row = await handoffs.getHandoffRow(STORE, c.id);
+    assert.equal(row.status, "opened", "the card of C does not complete D");
+    assert.equal(row.providerRef, null);
+  });
+
+  test("concurrent polls ask the provider once per lease, with backoff, and never after expiry", async () => {
+    const agent = await apiKey();
+    const a = await cardAttempt(agent);
+    billing.state.outcome = "pending";
+    await (
+      await returning(a.id, a.state, "cs_poll")
+    )();
+    billing.state.finished.length = 0;
+    await endLease(a.id);
+
+    // Twenty polls at once, the provider held at a barrier: one call.
+    const gate = barrier();
+    billing.state.gate = gate.wait;
+    const polls = Array.from({ length: 20 }, () => client(agent()).handoffs.get({ id: a.id }));
+    while (billing.state.finished.length === 0)
+      await new Promise((resolve) => setImmediate(resolve));
+    gate.open();
+    billing.state.gate = null;
+    const answers = await Promise.all(polls);
+    assert.ok(answers.every((answer) => answer.status === "opened"));
+    assert.deepEqual(billing.state.finished, ["cs_poll"]);
+
+    // Within the lease: the stored status, no call.
+    await client(agent()).handoffs.get({ id: a.id });
+    assert.equal(billing.state.finished.length, 1);
+
+    // The lease grows with each check: 30 s after the return, then 60 s, 120 s…
+    const lease = async () => {
+      const [row] = await louezDb.db
+        .select({
+          checks: louezDb.apiHandoffs.providerChecks,
+          seconds: orm.sql<number>`TIMESTAMPDIFF(SECOND, NOW(3), ${louezDb.apiHandoffs.providerCheckAt})`,
+        })
+        .from(louezDb.apiHandoffs)
+        .where(orm.eq(louezDb.apiHandoffs.id, a.id));
+      return row;
+    };
+    const second = await lease();
+    assert.equal(second?.checks, 2);
+    assert.ok(
+      Number(second?.seconds) >= 58 && Number(second?.seconds) <= 60,
+      String(second?.seconds),
+    );
+    await endLease(a.id);
+    await client(agent()).handoffs.get({ id: a.id });
+    const third = await lease();
+    assert.equal(third?.checks, 3);
+    assert.ok(
+      Number(third?.seconds) >= 118 && Number(third?.seconds) <= 120,
+      String(third?.seconds),
+    );
+
+    // Once the link expired, no call at all.
+    await endLease(a.id);
+    await louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(orm.eq(louezDb.apiHandoffs.id, a.id));
+    billing.state.outcome = "refreshed";
+    assert.equal((await client(agent()).handoffs.get({ id: a.id })).status, "expired");
+    assert.equal(billing.state.finished.length, 2);
+  });
+
+  // --- A revoked connection ------------------------------------------------------
+
+  test("revoking the agent's key ends its handoffs, and its links stop working", async () => {
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Revoked agent",
+      permissions: agentRights,
+    });
+    const agent = (): BaseContext => ({
+      headers: new Headers({ authorization: `Bearer ${created.key}` }),
+      transport: "mcp",
+      ports,
+      receipt: {},
+    });
+    const started = await client(agent()).payments.startStripeOnboarding({});
+    const token = tokenOf(started.url);
+    assert.equal((await handoffs.readHandoffLink(token, OWNER)).ok, true);
+
+    // Revoked another way than the procedure (the link check reads the key itself).
+    await louezDb.db
+      .update(louezDb.apiKeys)
+      .set({ revokedAt: new Date() })
+      .where(orm.eq(louezDb.apiKeys.id, created.id));
+    const refused = await handoffs.readHandoffLink(token, OWNER);
+    assert.equal(!refused.ok && refused.reason, "invalid");
+
+    // Through the procedure: the handoff ends, so the step may be asked for again.
+    await louezDb.db
+      .update(louezDb.apiKeys)
+      .set({ revokedAt: null })
+      .where(orm.eq(louezDb.apiKeys.id, created.id));
+    const keys = (await import("./api-keys")).dashboardApiKeysRouter;
+    await orpc
+      .createRouterClient(keys, { context: session(), path: ["dashboard", "apiKeys"] })
+      .revoke({ keyId: created.id });
+    const row = await handoffs.getHandoffRow(STORE, started.handoff.id);
+    assert.equal(row.status, "failed");
+    assert.equal(row.failureCode, "connection_revoked");
+    assert.equal(row.activeSlot, null);
+    const owner = await client(session()).handoffs.get({ id: started.handoff.id });
+    assert.match(owner.summary, /revoked/);
+
+    // An OAuth grant that no longer exists opens nothing either.
+    const fromGrant = await client(session()).payments.startStripeOnboarding({});
+    await louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ credentialKind: "oauth", credentialId: "grant_gone_000000001" })
+      .where(orm.eq(louezDb.apiHandoffs.id, fromGrant.handoff.id));
+    const gone = await handoffs.readHandoffLink(tokenOf(fromGrant.url), OWNER);
+    assert.equal(!gone.ok && gone.reason, "invalid");
   });
 
   test("the answers that hold a link are never stored for a replay", async () => {

@@ -1,8 +1,16 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 
-import { apiHandoffs, db, lockStoreRow, storeMembers, stores } from "@louez/db";
+import {
+  apiAgentGrants,
+  apiHandoffs,
+  apiKeys,
+  db,
+  lockStoreRow,
+  storeMembers,
+  stores,
+} from "@louez/db";
 import { hasPermission, type MemberRole } from "@louez/utils";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 
 import { createDashboardUrl } from "../adapters/stripe-connect";
 import {
@@ -143,6 +151,37 @@ const newSecret = () => randomBytes(32).toString("base64url");
 
 const ACTIVE = ["pending", "opened"] as const;
 
+/** No attempt in flight: what a new click, or another user, starts from. */
+const NO_ATTEMPT = {
+  returnStateHash: null,
+  providerRef: null,
+  providerCheckAt: null,
+  providerChecks: 0,
+} as const;
+
+/**
+ * The rows a write of one attempt may change: the handoff still active, and
+ * that attempt still the current one. A new click replaces the attempt in one
+ * statement too, so InnoDB orders the two: once replaced, the old attempt's
+ * writes change nothing.
+ */
+const ofAttempt = (id: string, attempt: string) =>
+  and(
+    eq(apiHandoffs.id, id),
+    eq(apiHandoffs.returnStateHash, attempt),
+    inArray(apiHandoffs.status, [...ACTIVE]),
+  );
+
+/** The provider-check lease: 30 seconds, doubling with each check, 5 minutes at most. */
+export const HANDOFF_CHECK_LEASE_SECONDS = { min: 30, max: 300 } as const;
+
+/**
+ * The lease's end on the database's clock, from the checks made so far. Set
+ * before `provider_checks` in the same statement, so it reads the old count.
+ */
+const leaseEnd = () =>
+  sql`NOW(3) + INTERVAL LEAST(${HANDOFF_CHECK_LEASE_SECONDS.min} * POW(2, LEAST(${apiHandoffs.providerChecks}, 4)), ${HANDOFF_CHECK_LEASE_SECONDS.max}) SECOND`;
+
 /**
  * Gives the store an active handoff of `kind` with a new link: the one it
  * has (its old link stops working, and an expired one runs again), or a new
@@ -188,7 +227,7 @@ export async function issueHandoff(
           linkIssuedAt: now,
           expiresAt,
           // Another user starts over: the click in flight was not theirs.
-          ...(sameUser ? {} : { status: "pending", openedAt: null, returnStateHash: null }),
+          ...(sameUser ? {} : { status: "pending", openedAt: null, ...NO_ATTEMPT }),
           updatedAt: now,
         })
         .where(eq(apiHandoffs.id, active.id));
@@ -231,17 +270,38 @@ export async function getHandoffRow(storeId: string, id: string): Promise<Handof
   return row;
 }
 
-/** Ends an active handoff as completed. False when it was not active. */
-export async function completeHandoff(id: string, now = new Date()): Promise<boolean> {
+/** Which rows an ending may change: the active handoff, or only its attempt and provider flow. */
+const toEnd = (id: string, attempt?: { state: string; providerRef?: string }) =>
+  attempt
+    ? and(
+        ofAttempt(id, attempt.state),
+        attempt.providerRef ? eq(apiHandoffs.providerRef, attempt.providerRef) : undefined,
+      )
+    : and(eq(apiHandoffs.id, id), inArray(apiHandoffs.status, [...ACTIVE]));
+
+/**
+ * Ends an active handoff as completed; with `attempt`, only while that
+ * attempt (and its provider flow) is the current one. False when it changed nothing.
+ */
+export async function completeHandoff(
+  id: string,
+  now = new Date(),
+  attempt?: { state: string; providerRef?: string },
+): Promise<boolean> {
   const [result] = await db
     .update(apiHandoffs)
     .set({ status: "completed", completedAt: now, activeSlot: null, updatedAt: now })
-    .where(and(eq(apiHandoffs.id, id), inArray(apiHandoffs.status, [...ACTIVE])));
+    .where(toEnd(id, attempt));
   return result.affectedRows > 0;
 }
 
-/** Ends an active handoff as failed, with a code from `handoffFailureMessage`. */
-export async function failHandoff(id: string, code: string, now = new Date()): Promise<void> {
+/** Ends an active handoff as failed, with a code from `handoffFailureMessage`; `attempt` as above. */
+export async function failHandoff(
+  id: string,
+  code: string,
+  now = new Date(),
+  attempt?: { state: string },
+): Promise<void> {
   await db
     .update(apiHandoffs)
     .set({
@@ -251,7 +311,33 @@ export async function failHandoff(id: string, code: string, now = new Date()): P
       activeSlot: null,
       updatedAt: now,
     })
-    .where(and(eq(apiHandoffs.id, id), inArray(apiHandoffs.status, [...ACTIVE])));
+    .where(toEnd(id, attempt));
+}
+
+/**
+ * Ends the active handoffs a revoked connection asked for: its links stop
+ * working at once, and the step may be asked for again.
+ */
+export async function failCredentialHandoffs(
+  credential: { kind: "api_key" | "oauth"; id: string },
+  now = new Date(),
+): Promise<void> {
+  await db
+    .update(apiHandoffs)
+    .set({
+      status: "failed",
+      failedAt: now,
+      failureCode: "connection_revoked",
+      activeSlot: null,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(apiHandoffs.credentialKind, credential.kind),
+        eq(apiHandoffs.credentialId, credential.id),
+        inArray(apiHandoffs.status, [...ACTIVE]),
+      ),
+    );
 }
 
 /**
@@ -314,9 +400,33 @@ async function rowOfToken(token: string) {
   return row ?? null;
 }
 
-/** Whether `userId` may take the step of `row` now: the link's user, still allowed in the store. */
+/** Whether the connection that asked for the step still exists: a revoked agent's link stops. */
+async function connectionAlive(row: HandoffRow): Promise<boolean> {
+  if (!row.credentialId) return row.credentialKind === "session";
+  if (row.credentialKind === "api_key") {
+    const [key] = await db
+      .select({ id: apiKeys.id })
+      .from(apiKeys)
+      .where(and(eq(apiKeys.id, row.credentialId), isNull(apiKeys.revokedAt)));
+    return key !== undefined;
+  }
+  if (row.credentialKind === "oauth") {
+    const [grant] = await db
+      .select({ id: apiAgentGrants.id })
+      .from(apiAgentGrants)
+      .where(eq(apiAgentGrants.id, row.credentialId));
+    return grant !== undefined;
+  }
+  return false;
+}
+
+/**
+ * Whether `userId` may take the step of `row` now: the link's user, still
+ * allowed in the store, for a connection that still exists.
+ */
 async function checkUser(row: HandoffRow, userId: string): Promise<HandoffCheck> {
   if (row.userId !== userId) return { ok: false, reason: "other_user", row };
+  if (!(await connectionAlive(row))) return { ok: false, reason: "invalid", row };
   const [member] = await db
     .select({ role: storeMembers.role, storeName: stores.name })
     .from(storeMembers)
@@ -343,9 +453,10 @@ export async function readHandoffLink(
 }
 
 /**
- * The user continues to the provider: the handoff is opened, with a fresh
- * state the provider's return must carry. A link continued twice gives a new
- * state each time; only the latest return counts.
+ * The user continues to the provider: the handoff is opened with a new
+ * attempt, a fresh state the provider's return must carry. A link continued
+ * twice gives a new attempt each time: the earlier one's provider flow and
+ * lease are dropped, and only the latest attempt's return counts.
  */
 export async function continueHandoff(
   token: string,
@@ -360,6 +471,7 @@ export async function continueHandoff(
     .set({
       status: "opened",
       openedAt: checked.row.openedAt ?? now,
+      ...NO_ATTEMPT,
       returnStateHash: sha256(state),
       updatedAt: now,
     })
@@ -450,8 +562,9 @@ export async function launchHandoff(input: {
   const { row, state, ports } = input;
   const now = input.now ?? new Date();
   const returnUrl = ports.urls.dashboard(handoffReturnPath(row.id, state));
+  const attempt = { state: sha256(state) };
   const fail = async (code: string): Promise<HandoffLaunch> => {
-    await failHandoff(row.id, code, now);
+    await failHandoff(row.id, code, now, attempt);
     return { ok: false, failure: code, retryable: false };
   };
 
@@ -476,7 +589,7 @@ export async function launchHandoff(input: {
     if (!store.stripeAccountId) return fail("not_available");
     try {
       const url = await createDashboardUrl(client, store.stripeAccountId);
-      await completeHandoff(row.id, now);
+      await completeHandoff(row.id, now, attempt);
       return { ok: true, redirect: url };
     } catch (error) {
       console.error("Stripe dashboard link failed:", error);
@@ -485,7 +598,7 @@ export async function launchHandoff(input: {
   }
 
   if (store.stripeAccountId && store.stripeChargesEnabled) {
-    await completeHandoff(row.id, now);
+    await completeHandoff(row.id, now, attempt);
     return { ok: true, redirect: returnUrl };
   }
   try {
@@ -510,49 +623,90 @@ export async function launchHandoff(input: {
 export type HandoffReturn = { done: boolean };
 
 /**
- * The provider sent the user back. Stripe's onboarding: the account is read
- * again and the store's columns written (the dashboard's callback does the
- * same); the step is done once the details are submitted, even while Stripe
- * still reviews them. The billing card: `checkoutSessionId` is Stripe
- * Checkout's session, saved now; without it the user cancelled.
+ * Claims the attempt for a provider call, in one statement: it must still be
+ * the current attempt of an active handoff. It takes the provider-check lease
+ * (polls back off) and records the provider's flow of this attempt.
+ */
+async function claimAttempt(
+  id: string,
+  attempt: string,
+  providerRef?: string,
+  now = new Date(),
+): Promise<boolean> {
+  const [result] = await db
+    .update(apiHandoffs)
+    .set({
+      ...(providerRef ? { providerRef } : {}),
+      providerCheckAt: leaseEnd(),
+      providerChecks: sql`${apiHandoffs.providerChecks} + 1`,
+      updatedAt: now,
+    })
+    .where(ofAttempt(id, attempt));
+  return result.affectedRows > 0;
+}
+
+/** Whether the handoff is completed now, whoever completed it. */
+async function isCompleted(id: string): Promise<boolean> {
+  const [row] = await db
+    .select({ status: apiHandoffs.status })
+    .from(apiHandoffs)
+    .where(eq(apiHandoffs.id, id));
+  return row?.status === "completed";
+}
+
+/**
+ * The provider sent the user back from the attempt `state` names. The
+ * attempt is claimed before any provider call, and every write after is
+ * conditioned on it: a newer click in between makes them change nothing.
+ * Stripe's onboarding: the account is read again and the store's columns
+ * written (the dashboard's callback does the same); the step is done once
+ * the details are submitted, even while Stripe still reviews them. The
+ * billing card: `checkoutSessionId` is Stripe Checkout's session, saved now;
+ * without it the user cancelled.
  */
 export async function finishHandoffReturn(input: {
   row: HandoffRow;
+  state: string;
   ports: HandoffPorts;
   checkoutSessionId: string | null;
   now?: Date;
 }): Promise<HandoffReturn> {
   const { row, ports } = input;
   const now = input.now ?? new Date();
+  const attempt = sha256(input.state);
   if (row.status === "completed") return { done: true };
   if (row.status === "failed") return { done: false };
 
   if (row.kind === "billing_card_setup") {
-    if (!input.checkoutSessionId || !ports.billing) return { done: false };
-    await db
-      .update(apiHandoffs)
-      .set({ providerRef: input.checkoutSessionId, updatedAt: now })
-      .where(eq(apiHandoffs.id, row.id));
+    const checkoutSessionId = input.checkoutSessionId;
+    if (!checkoutSessionId || !ports.billing) return { done: false };
+    if (!(await claimAttempt(row.id, attempt, checkoutSessionId, now))) {
+      return { done: await isCompleted(row.id) };
+    }
     const outcome = await ports.billing.finishCardSetup({
       storeId: row.storeId,
-      checkoutSessionId: input.checkoutSessionId,
+      checkoutSessionId,
     });
-    if (outcome === "refreshed") await completeHandoff(row.id, now);
-    return { done: outcome === "refreshed" };
+    if (outcome !== "refreshed") return { done: false };
+    await completeHandoff(row.id, now, { state: attempt, providerRef: checkoutSessionId });
+    return { done: await isCompleted(row.id) };
   }
 
   if (row.kind === "stripe_connect_onboarding") {
     const client = ports.stripeConnect?.() ?? null;
     const store = await connectStore(row.storeId);
     if (!client || !store?.stripeAccountId) return { done: false };
+    if (!(await claimAttempt(row.id, attempt, undefined, now))) {
+      return { done: await isCompleted(row.id) };
+    }
     try {
       const status = await syncConnectStatus({
         client,
         storeId: store.id,
         accountId: store.stripeAccountId,
       });
-      if (status.detailsSubmitted) await completeHandoff(row.id, now);
-      return { done: status.detailsSubmitted };
+      if (status.detailsSubmitted) await completeHandoff(row.id, now, { state: attempt });
+      return { done: await isCompleted(row.id) };
     } catch {
       return { done: false };
     }
@@ -593,42 +747,81 @@ export async function refreshHandoffOnboarding(input: {
 /**
  * A billing card handoff the user came back from while Stripe had not
  * confirmed the card: asks the billing service again (it saves the card at
- * most once), so `handoffs.get` sees it complete without another visit.
+ * most once), so `handoffs.get` sees it complete without another visit. At
+ * most one check per lease, taken in one statement on the database's clock:
+ * concurrent polls, and polls within the lease, read the stored status. None
+ * once the link expired, and only for the current attempt's own Checkout.
  */
 export async function settlePendingCardSetup(
   row: HandoffRow,
   ports: HandoffPorts,
   now = new Date(),
 ): Promise<HandoffRow> {
+  const { returnStateHash: attempt, providerRef } = row;
   if (
     row.kind !== "billing_card_setup" ||
     row.status !== "opened" ||
-    !row.providerRef ||
+    !attempt ||
+    !providerRef ||
     !ports.billing
   ) {
     return row;
   }
+  const [lease] = await db
+    .update(apiHandoffs)
+    .set({
+      providerCheckAt: leaseEnd(),
+      providerChecks: sql`${apiHandoffs.providerChecks} + 1`,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        ofAttempt(row.id, attempt),
+        eq(apiHandoffs.providerRef, providerRef),
+        gt(apiHandoffs.expiresAt, sql`NOW(3)`),
+        or(isNull(apiHandoffs.providerCheckAt), lte(apiHandoffs.providerCheckAt, sql`NOW(3)`)),
+      ),
+    );
+  if (lease.affectedRows === 0) return getHandoffRow(row.storeId, row.id);
   try {
     const outcome = await ports.billing.finishCardSetup({
       storeId: row.storeId,
-      checkoutSessionId: row.providerRef,
+      checkoutSessionId: providerRef,
     });
-    if (outcome !== "refreshed" || !(await completeHandoff(row.id, now))) return row;
-  } catch {
-    return row;
+    if (outcome === "refreshed") {
+      await completeHandoff(row.id, now, { state: attempt, providerRef });
+    }
+  } catch (error) {
+    console.error("Billing card check failed:", error);
   }
   return getHandoffRow(row.storeId, row.id);
 }
 
-/** Handoffs older than this, and no longer active, are deleted by the cron. */
+/** Handoffs untouched this long are deleted by the cron. */
 export const HANDOFF_RETENTION_DAYS = 90;
+const PURGE_BATCH = 500;
+const PURGE_BUDGET_MS = 5_000;
 
-/** Deletes finished handoffs past the retention, and expired ones as old. */
-export async function purgeHandoffs(now = new Date()): Promise<number> {
-  const [result] = await db
-    .delete(apiHandoffs)
-    .where(
-      sql`${apiHandoffs.updatedAt} < ${new Date(now.getTime() - HANDOFF_RETENTION_DAYS * 24 * HOUR_MS)}`,
-    );
-  return result.affectedRows;
+/**
+ * Deletes the handoffs untouched past the retention, oldest first, in
+ * batches on `api_handoffs_updated_idx`, until none is left or the time
+ * budget is spent; the next cron run goes on.
+ */
+export async function purgeHandoffs(
+  now = new Date(),
+  options: { batch?: number; budgetMs?: number } = {},
+): Promise<number> {
+  const batch = options.batch ?? PURGE_BATCH;
+  const deadline = Date.now() + (options.budgetMs ?? PURGE_BUDGET_MS);
+  const before = new Date(now.getTime() - HANDOFF_RETENTION_DAYS * 24 * HOUR_MS);
+  let deleted = 0;
+  for (;;) {
+    const [result] = await db
+      .delete(apiHandoffs)
+      .where(lte(apiHandoffs.updatedAt, before))
+      .orderBy(asc(apiHandoffs.updatedAt))
+      .limit(batch);
+    deleted += result.affectedRows;
+    if (result.affectedRows < batch || Date.now() >= deadline) return deleted;
+  }
 }

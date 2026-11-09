@@ -63,6 +63,8 @@ export const getHandoffOutput = handoffSchema;
 const FAILURE_MESSAGES: Record<string, string> = {
   provider_failed: "The provider's page could not be opened. Ask for a new link and try again.",
   not_available: "This step is not available for the store anymore.",
+  connection_revoked:
+    "The agent connection that asked for this step was revoked: its link no longer works.",
   store_email_required:
     "Stripe needs an email for the account: set the store's contact email (settings_update_store_info), then ask for a new link.",
 };

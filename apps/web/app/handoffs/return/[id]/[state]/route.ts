@@ -30,6 +30,7 @@ export async function GET(
   if (checked.ok) {
     await finishHandoffReturn({
       row: checked.row,
+      state,
       ports: handoffPorts,
       checkoutSessionId: readCheckoutSessionId(request.nextUrl.searchParams.get("checkout")),
     });

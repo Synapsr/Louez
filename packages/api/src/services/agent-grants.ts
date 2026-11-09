@@ -18,6 +18,7 @@ import {
   type AgentConnection,
 } from "../contracts/agent-connections";
 import { MCP_BUNDLES, type McpBundle } from "../platform/meta";
+import { failCredentialHandoffs } from "./handoffs";
 import type { AgentPreset } from "../platform/permissions";
 
 /**
@@ -325,6 +326,8 @@ export async function revokeGrant(input: { userId: string; id: string }): Promis
     const grant = await ownGrant(tx, input.userId, input.id);
     await tx.delete(apiAgentGrants).where(eq(apiAgentGrants.id, grant.id));
   });
+  // The links it handed to the user stop working.
+  await failCredentialHandoffs({ kind: "oauth", id: input.id });
 }
 
 /** The user's grants, newest first, with their stores and their last action. */

@@ -14,6 +14,8 @@ CREATE TABLE `api_handoffs` (
 	`opened_at` timestamp(3),
 	`return_state_hash` varchar(64),
 	`provider_ref` varchar(255),
+	`provider_check_at` timestamp(3),
+	`provider_checks` int unsigned NOT NULL DEFAULT 0,
 	`completed_at` timestamp(3),
 	`failed_at` timestamp(3),
 	`failure_code` varchar(60),
@@ -24,4 +26,5 @@ CREATE TABLE `api_handoffs` (
 	CONSTRAINT `api_handoffs_token_unique` UNIQUE(`token_hash`)
 );
 --> statement-breakpoint
-CREATE INDEX `api_handoffs_store_idx` ON `api_handoffs` (`store_id`,`created_at`);
+CREATE INDEX `api_handoffs_store_idx` ON `api_handoffs` (`store_id`,`created_at`);--> statement-breakpoint
+CREATE INDEX `api_handoffs_updated_idx` ON `api_handoffs` (`updated_at`);

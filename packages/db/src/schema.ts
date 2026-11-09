@@ -4462,7 +4462,9 @@ export type ApiHandoffKind =
  * A step only the human can take (Stripe identity checks, a billing card),
  * handed over by an agent: a short-lived link to a Louez page that checks who
  * opens it, then sends them to the provider and back. The link's secret is
- * stored hashed; a new link for the same handoff replaces it. One active
+ * stored hashed; a new link for the same handoff replaces it. Each click on
+ * the page starts an attempt, named by `return_state_hash`; the provider's
+ * answers only ever change the attempt they belong to. One active
  * handoff (pending or opened) per store and kind: `active_slot` is 1 while
  * it is, null after, so the unique key holds only the active one.
  */
@@ -4490,8 +4492,15 @@ export const apiHandoffs = mysqlTable(
     openedAt: timestamp("opened_at", { mode: "date", fsp: 3 }),
     /** SHA-256 of the state the provider's return must carry, hex; set when the user continues. */
     returnStateHash: varchar("return_state_hash", { length: 64 }),
-    /** The provider's id of the flow, such as a Checkout Session. */
+    /** The provider's id of the current attempt's flow, such as a Checkout Session. */
     providerRef: varchar("provider_ref", { length: 255 }),
+    /**
+     * The provider-check lease: until then nobody asks the provider about the
+     * current attempt again. Dated with the database's clock.
+     */
+    providerCheckAt: timestamp("provider_check_at", { mode: "date", fsp: 3 }),
+    /** Provider checks of the current attempt, for the lease's backoff. */
+    providerChecks: int("provider_checks", { unsigned: true }).default(0).notNull(),
     completedAt: timestamp("completed_at", { mode: "date", fsp: 3 }),
     failedAt: timestamp("failed_at", { mode: "date", fsp: 3 }),
     failureCode: varchar("failure_code", { length: 60 }),
@@ -4506,6 +4515,8 @@ export const apiHandoffs = mysqlTable(
     ),
     tokenUnique: unique("api_handoffs_token_unique").on(table.tokenHash),
     storeIdx: index("api_handoffs_store_idx").on(table.storeId, table.createdAt),
+    // The retention deletes the oldest first.
+    updatedIdx: index("api_handoffs_updated_idx").on(table.updatedAt),
   }),
 );
 

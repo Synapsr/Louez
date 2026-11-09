@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "e7b4ab4f-220c-4be6-b004-ddb53ad96dee",
+  "id": "03e597c8-3344-46ad-bfd1-d10dd9048cdd",
   "prevId": "f440265a-1e40-4c42-997c-2547088830b8",
   "tables": {
     "account_departure_reason_counters": {
@@ -1602,6 +1602,21 @@
           "notNull": false,
           "autoincrement": false
         },
+        "provider_check_at": {
+          "name": "provider_check_at",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "provider_checks": {
+          "name": "provider_checks",
+          "type": "int unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
         "completed_at": {
           "name": "completed_at",
           "type": "timestamp(3)",
@@ -1646,6 +1661,13 @@
           "columns": [
             "store_id",
             "created_at"
+          ],
+          "isUnique": false
+        },
+        "api_handoffs_updated_idx": {
+          "name": "api_handoffs_updated_idx",
+          "columns": [
+            "updated_at"
           ],
           "isUnique": false
         }
