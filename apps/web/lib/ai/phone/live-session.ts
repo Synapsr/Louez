@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { aiAdvisorMessages, aiCreditDebits, db, voiceSessionsTable } from "@louez/db";
 import type { CallBinding, LiveRequest } from "@louez/voice/protocol";
 import { getMaxCallSeconds } from "@/lib/voice/config";
-import { getAiCreditsInfo } from "@/lib/ai/advisor/credits";
+import { CREDIT_DEBIT_TRANSACTION, getAiCreditsInfo } from "@/lib/ai/advisor/credits";
 import { CREDIT_MICRO, getPhoneCreditsPerMinute } from "@/lib/ai/pricing";
 import {
   checkPhoneCredits,
@@ -64,6 +64,8 @@ export async function syncLiveSession(
   storeId: string,
 ) {
   const plan = await getStorePlan(storeId);
+  // READ COMMITTED: the call's debits sum the month's credits once they hold the
+  // store's credits lock, after this transaction already read other rows.
   await db.transaction(async (tx) => {
     const [session] = await tx
       .select()
@@ -122,7 +124,7 @@ export async function syncLiveSession(
         updatedAt: new Date(),
       })
       .where(eq(voiceSessionsTable.conversationId, request.conversationId));
-  });
+  }, CREDIT_DEBIT_TRANSACTION);
   const credit = !areAiCreditsEnabled() || (await checkPhoneCredits(storeId, plan)).allowed;
   const remaining = await callDurationBudget(storeId, plan);
   return { allowed: credit && request.seconds < remaining };
@@ -137,6 +139,8 @@ export async function finishLiveSession(params: {
   outcome: "end" | "transfer" | "failed";
 }) {
   const plan = await getStorePlan(params.storeId);
+  // READ COMMITTED: the call's debits sum the month's credits once they hold the
+  // store's credits lock, after this transaction already read other rows.
   await db.transaction(async (tx) => {
     const [session] = await tx
       .select()
@@ -172,5 +176,5 @@ export async function finishLiveSession(params: {
         updatedAt: new Date(),
       })
       .where(eq(voiceSessionsTable.conversationId, params.conversationId));
-  });
+  }, CREDIT_DEBIT_TRANSACTION);
 }
