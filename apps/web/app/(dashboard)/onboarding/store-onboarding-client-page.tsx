@@ -6,10 +6,12 @@ import { useTranslations } from "next-intl";
 
 import { Button, Label } from "@louez/ui";
 
+import { AgentAssistantCard } from "@/components/agent-connections/agent-assistant-card";
 import { StoreSwitcher } from "@/components/dashboard/store-switcher";
 import { FormStoreNameSlug } from "@/components/form/form-store-name-slug";
 import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { AddressInput } from "@/components/ui/address-input";
+import type { McpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 
 import { getFieldError } from "@/hooks/form/form-context";
 
@@ -32,6 +34,8 @@ interface StoreOnboardingClientPageProps {
   editingStoreId: string | null;
   initialCountry: string;
   shouldDetectBrowserCountry: boolean;
+  /** Where an assistant connects, for the offer below the form. */
+  mcpEndpoint: McpEndpoint;
 }
 
 export function StoreOnboardingClientPage({
@@ -40,6 +44,7 @@ export function StoreOnboardingClientPage({
   editingStoreId,
   initialCountry,
   shouldDetectBrowserCountry,
+  mcpEndpoint,
 }: StoreOnboardingClientPageProps) {
   const router = useRouter();
   const t = useTranslations("onboarding.store");
@@ -190,6 +195,8 @@ export function StoreOnboardingClientPage({
           </div>
         </form.Form>
       </form.AppForm>
+      {/* Never in the way: the form above works without it. */}
+      <AgentAssistantCard {...mcpEndpoint} className="mt-8" />
     </>
   );
 }
