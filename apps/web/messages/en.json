@@ -9550,7 +9550,14 @@
       "chatgptSteps": "ChatGPT: add an app (connector) with this address and OAuth authentication.",
       "keyTitle": "Scripts, n8n and clients without OAuth",
       "keyDescription": "Create an API key below and send it in the Authorization: Bearer header.",
+      "keyDescriptionSettings": "Create an API key in Settings, Integrations, MCP, then send it in the Authorization: Bearer header.",
       "oauthUnavailable": "Signing in with your account needs an HTTPS address. On this instance, use an API key."
+    },
+    "assistantCard": {
+      "title": "Have an AI assistant? Let it set up your store.",
+      "description": "It adds your products and sets up your store; you approve every important action.",
+      "action": "Connect my assistant",
+      "dismiss": "Hide"
     },
     "declaredBy": "Name declared by {origin}",
     "declaredByItself": "Name declared by the app (registered dynamically)"

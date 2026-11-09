@@ -9550,7 +9550,14 @@
       "chatgptSteps": "ChatGPT: voeg een app (connector) toe met dit adres en OAuth-authenticatie.",
       "keyTitle": "Scripts, n8n en clients zonder OAuth",
       "keyDescription": "Maak hieronder een API-sleutel aan en stuur die in de header Authorization: Bearer.",
+      "keyDescriptionSettings": "Maak een API-sleutel aan in Instellingen, Integraties, MCP en stuur die mee in de header Authorization: Bearer.",
       "oauthUnavailable": "Inloggen met uw account vereist een HTTPS-adres. Gebruik op deze instantie een API-sleutel."
+    },
+    "assistantCard": {
+      "title": "Heb je een AI-assistent? Laat die je winkel inrichten.",
+      "description": "Die voegt je producten toe en richt je winkel in; elke belangrijke actie keur jij goed.",
+      "action": "Mijn assistent koppelen",
+      "dismiss": "Verbergen"
     },
     "declaredBy": "Naam opgegeven door {origin}",
     "declaredByItself": "Naam opgegeven door de app (dynamisch geregistreerd)"

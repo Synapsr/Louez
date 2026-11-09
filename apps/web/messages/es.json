@@ -9550,7 +9550,14 @@
       "chatgptSteps": "ChatGPT: añada una aplicación (conector) con esta dirección y autenticación OAuth.",
       "keyTitle": "Scripts, n8n y clientes sin OAuth",
       "keyDescription": "Cree una clave API abajo y envíela en el encabezado Authorization: Bearer.",
+      "keyDescriptionSettings": "Crea una clave API en Configuración, Integraciones, MCP y envíala en el encabezado Authorization: Bearer.",
       "oauthUnavailable": "Iniciar sesión con su cuenta requiere una dirección HTTPS. En esta instancia, use una clave API."
+    },
+    "assistantCard": {
+      "title": "¿Tienes un asistente de IA? Deja que configure tu tienda.",
+      "description": "Añade tus productos y configura tu tienda; tú apruebas cada acción importante.",
+      "action": "Conectar mi asistente",
+      "dismiss": "Ocultar"
     },
     "declaredBy": "Nombre declarado por {origin}",
     "declaredByItself": "Nombre declarado por la aplicación (registrada dinámicamente)"

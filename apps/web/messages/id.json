@@ -9550,7 +9550,14 @@
       "chatgptSteps": "ChatGPT: tambahkan aplikasi (konektor) dengan alamat ini dan autentikasi OAuth.",
       "keyTitle": "Skrip, n8n, dan klien tanpa OAuth",
       "keyDescription": "Buat kunci API di bawah dan kirimkan di header Authorization: Bearer.",
+      "keyDescriptionSettings": "Buat kunci API di Pengaturan, Integrasi, MCP, lalu kirim di header Authorization: Bearer.",
       "oauthUnavailable": "Masuk dengan akun Anda memerlukan alamat HTTPS. Pada instans ini, gunakan kunci API."
+    },
+    "assistantCard": {
+      "title": "Punya asisten AI? Biarkan ia menyiapkan toko Anda.",
+      "description": "Ia menambahkan produk dan mengatur toko Anda; setiap tindakan penting tetap Anda setujui.",
+      "action": "Hubungkan asisten saya",
+      "dismiss": "Sembunyikan"
     },
     "declaredBy": "Nama dinyatakan oleh {origin}",
     "declaredByItself": "Nama dinyatakan oleh aplikasi itu sendiri (pendaftaran dinamis)"

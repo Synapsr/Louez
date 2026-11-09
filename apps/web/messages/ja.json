@@ -9550,7 +9550,14 @@
       "chatgptSteps": "ChatGPT：このアドレスと OAuth 認証でアプリ（コネクタ）を追加します。",
       "keyTitle": "スクリプト、n8n、OAuth 非対応のクライアント",
       "keyDescription": "下で API キーを作成し、Authorization: Bearer ヘッダーで送信します。",
+      "keyDescriptionSettings": "設定 > 統合 > MCP で API キーを作成し、Authorization: Bearer ヘッダーで送信します。",
       "oauthUnavailable": "アカウントでのサインインには HTTPS のアドレスが必要です。このインスタンスでは API キーを使用してください。"
+    },
+    "assistantCard": {
+      "title": "AIアシスタントをお使いですか？ストアの設定を任せましょう。",
+      "description": "商品の追加やストアの設定を代わりに行います。重要な操作はあなたが承認します。",
+      "action": "アシスタントを接続",
+      "dismiss": "非表示"
     },
     "declaredBy": "名前の申告元：{origin}",
     "declaredByItself": "名前はアプリ自身による申告です（動的登録）"

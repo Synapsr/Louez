@@ -9550,7 +9550,14 @@
       "chatgptSteps": "ChatGPT：使用此地址和 OAuth 认证添加一个应用（连接器）。",
       "keyTitle": "脚本、n8n 和不支持 OAuth 的客户端",
       "keyDescription": "在下方创建 API 密钥，并在 Authorization: Bearer 请求头中发送。",
+      "keyDescriptionSettings": "在 设置 > 集成 > MCP 中创建 API 密钥，并通过 Authorization: Bearer 请求头发送。",
       "oauthUnavailable": "使用账户登录需要 HTTPS 地址。在此实例上，请使用 API 密钥。"
+    },
+    "assistantCard": {
+      "title": "有 AI 助手吗？让它帮你设置店铺。",
+      "description": "它会添加商品并设置店铺，每项重要操作都由你确认。",
+      "action": "连接我的助手",
+      "dismiss": "隐藏"
     },
     "declaredBy": "名称由 {origin} 声明",
     "declaredByItself": "名称由应用自行声明（动态注册）"

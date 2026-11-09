@@ -9550,7 +9550,14 @@
       "chatgptSteps": "ChatGPT: 이 주소와 OAuth 인증으로 앱(커넥터)을 추가하세요.",
       "keyTitle": "스크립트, n8n 및 OAuth 미지원 클라이언트",
       "keyDescription": "아래에서 API 키를 만들고 Authorization: Bearer 헤더로 보내세요.",
+      "keyDescriptionSettings": "설정 > 통합 > MCP에서 API 키를 만든 뒤 Authorization: Bearer 헤더로 보내세요.",
       "oauthUnavailable": "계정 로그인에는 HTTPS 주소가 필요합니다. 이 인스턴스에서는 API 키를 사용하세요."
+    },
+    "assistantCard": {
+      "title": "AI 어시스턴트가 있으신가요? 스토어 설정을 맡겨 보세요.",
+      "description": "상품을 추가하고 스토어를 설정해 드립니다. 중요한 작업은 직접 승인합니다.",
+      "action": "내 어시스턴트 연결",
+      "dismiss": "숨기기"
     },
     "declaredBy": "{origin}에서 선언한 이름",
     "declaredByItself": "앱이 직접 선언한 이름(동적 등록)"
