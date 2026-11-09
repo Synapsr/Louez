@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { eq } from "drizzle-orm";
 
 import { createTestAccessTokens } from "@louez/auth/testing";
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
@@ -266,6 +267,24 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
       client.callTool({ name: "list_reservations", arguments: {} }),
     );
     assert.equal(byHeader.isError, undefined, JSON.stringify(byHeader.content));
+  });
+
+  test("the profile tool names the account, with no store to choose", async () => {
+    await grant({ stores: { all: false, ids: [STORE_A, STORE_B] }, bundles: ["daily"] });
+    const headers = await bearer();
+    const call = () =>
+      withClient(headers, (client) =>
+        client.callTool({ name: "account_get_profile", arguments: {} }),
+      );
+
+    assert.deepEqual((await call()).structuredContent, { id: OWNER, name: null });
+    await louezDb.db
+      .update(louezDb.users)
+      .set({ name: " Morgane Owner " })
+      .where(eq(louezDb.users.id, OWNER));
+    const named = await call();
+    assert.deepEqual(named.structuredContent, { id: OWNER, name: "Morgane Owner" });
+    assert.doesNotMatch(JSON.stringify(named), /owner@mo\.test/, "never the e-mail");
   });
 
   test("a grant over all stores of an account with none creates its first store", async () => {
