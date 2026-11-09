@@ -9555,7 +9555,7 @@
     },
     "assistantCard": {
       "title": "Masz asystenta AI? Pozwól mu skonfigurować Twój sklep.",
-      "description": "Dodaje Twoje produkty i konfiguruje sklep; każdą ważną akcję zatwierdzasz Ty.",
+      "description": "Dodaje Twoje produkty i konfiguruje sklep; Ty decydujesz o jego uprawnieniach i o tym, co musi z Tobą potwierdzić.",
       "action": "Połącz mojego asystenta",
       "dismiss": "Ukryj"
     },

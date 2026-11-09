@@ -9555,7 +9555,7 @@
     },
     "assistantCard": {
       "title": "Sie haben einen KI-Assistenten? Lassen Sie ihn Ihren Shop einrichten.",
-      "description": "Er legt Ihre Produkte an und richtet Ihren Shop ein; wichtige Aktionen bestätigen Sie selbst.",
+      "description": "Er legt Ihre Produkte an und richtet Ihren Shop ein; Sie legen seine Rechte fest und was er Sie bestätigen lassen muss.",
       "action": "Meinen Assistenten verbinden",
       "dismiss": "Ausblenden"
     },

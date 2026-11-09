@@ -9555,7 +9555,7 @@
     },
     "assistantCard": {
       "title": "Hai un assistente IA? Lascia che configuri il tuo negozio.",
-      "description": "Aggiunge i tuoi prodotti e configura il negozio; ogni azione importante la approvi tu.",
+      "description": "Aggiunge i tuoi prodotti e configura il negozio; sei tu a scegliere i suoi permessi e cosa deve farti confermare.",
       "action": "Collega il mio assistente",
       "dismiss": "Nascondi"
     },

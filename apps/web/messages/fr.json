@@ -9555,7 +9555,7 @@
     },
     "assistantCard": {
       "title": "Vous avez un assistant IA ? Laissez-le configurer votre boutique.",
-      "description": "Il ajoute vos produits et règle votre boutique ; vous validez chaque action importante.",
+      "description": "Il ajoute vos produits et règle votre boutique ; vous choisissez ses droits et ce qu’il doit vous faire confirmer.",
       "action": "Connecter mon assistant",
       "dismiss": "Masquer"
     },

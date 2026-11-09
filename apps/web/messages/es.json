@@ -9555,7 +9555,7 @@
     },
     "assistantCard": {
       "title": "¿Tienes un asistente de IA? Deja que configure tu tienda.",
-      "description": "Añade tus productos y configura tu tienda; tú apruebas cada acción importante.",
+      "description": "Añade tus productos y configura tu tienda; tú eliges sus permisos y lo que debe confirmar contigo.",
       "action": "Conectar mi asistente",
       "dismiss": "Ocultar"
     },

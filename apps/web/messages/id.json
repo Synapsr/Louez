@@ -9555,7 +9555,7 @@
     },
     "assistantCard": {
       "title": "Punya asisten AI? Biarkan ia menyiapkan toko Anda.",
-      "description": "Ia menambahkan produk dan mengatur toko Anda; setiap tindakan penting tetap Anda setujui.",
+      "description": "Ia menambahkan produk dan mengatur toko Anda; Anda memilih haknya dan apa saja yang harus ia konfirmasi kepada Anda.",
       "action": "Hubungkan asisten saya",
       "dismiss": "Sembunyikan"
     },
