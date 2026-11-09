@@ -49,3 +49,29 @@ test("a close button only when the caller can close it", () => {
     /aria-label="Masquer"/,
   );
 });
+
+/** The whole `<svg>` of one assistant's mark, as the strip renders it. */
+const markOf = (html: string, name: string) => {
+  const mark = new RegExp(`<svg[^>]*aria-label="${name}"[^>]*>.*?</svg>`).exec(html)?.[0];
+  assert.ok(mark, `no mark for ${name}`);
+  return mark;
+};
+
+test("Claude and Le Chat keep their brand colors in the strip, on their paths", () => {
+  const html = render(() => {});
+  const claude = markOf(html, "Claude");
+  assert.match(claude, /<path [^>]*fill="#D97757"/);
+  assert.doesNotMatch(claude, /currentColor/i);
+
+  const leChat = markOf(html, "Le Chat");
+  const fills = [...leChat.matchAll(/<path [^>]*fill="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(fills, ["#FFD700", "#FFAF00", "#FF8205", "#FA500F", "#E10500"]);
+  assert.doesNotMatch(leChat, /currentColor/i);
+});
+
+test("ChatGPT and Grok follow the text color, as their brands ask", () => {
+  const html = render();
+  for (const name of ["ChatGPT", "Grok"]) {
+    assert.match(markOf(html, name), /<svg [^>]*fill="currentColor"/);
+  }
+});
