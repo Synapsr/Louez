@@ -28,7 +28,7 @@ const render = (onDismiss?: () => void) =>
 
 test("the strip names each assistant by its mark", () => {
   const html = render();
-  for (const name of ["Claude", "ChatGPT", "Grok", "Le Chat"]) {
+  for (const name of ["Claude", "ChatGPT", "Grok", "Mistral Vibe"]) {
     assert.match(html, new RegExp(`role="img" aria-label="${name}"`));
   }
 });
@@ -57,16 +57,16 @@ const markOf = (html: string, name: string) => {
   return mark;
 };
 
-test("Claude and Le Chat keep their brand colors in the strip, on their paths", () => {
+test("Claude and Mistral Vibe keep their brand colors in the strip, on their paths", () => {
   const html = render(() => {});
   const claude = markOf(html, "Claude");
   assert.match(claude, /<path [^>]*fill="#D97757"/);
   assert.doesNotMatch(claude, /currentColor/i);
 
-  const leChat = markOf(html, "Le Chat");
-  const fills = [...leChat.matchAll(/<path [^>]*fill="([^"]+)"/g)].map((match) => match[1]);
+  const mistral = markOf(html, "Mistral Vibe");
+  const fills = [...mistral.matchAll(/<path [^>]*fill="([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual(fills, ["#FFD700", "#FFAF00", "#FF8205", "#FA500F", "#E10500"]);
-  assert.doesNotMatch(leChat, /currentColor/i);
+  assert.doesNotMatch(mistral, /currentColor/i);
 });
 
 test("ChatGPT and Grok follow the text color, as their brands ask", () => {

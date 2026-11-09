@@ -9636,7 +9636,7 @@
     },
     "assistantCard": {
       "title": "Laat je AI-assistent je winkel inrichten.",
-      "info": "Claude, ChatGPT, Grok of Le Chat kan je producten toevoegen, je prijzen instellen en je winkel voor je inrichten. Jij kiest de rechten en wat die eerst door jou moet laten bevestigen.",
+      "info": "Claude, ChatGPT, Grok of Mistral Vibe kan je producten toevoegen, je prijzen instellen en je winkel voor je inrichten. Jij kiest de rechten en wat die eerst door jou moet laten bevestigen.",
       "infoLabel": "Meer informatie",
       "action": "Koppelen",
       "dismiss": "Verbergen"

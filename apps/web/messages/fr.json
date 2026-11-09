@@ -9636,7 +9636,7 @@
     },
     "assistantCard": {
       "title": "Laissez votre assistant IA configurer votre boutique.",
-      "info": "Claude, ChatGPT, Grok ou Le Chat peut ajouter vos produits, régler vos tarifs et configurer votre boutique pour vous. Vous choisissez ses droits et ce qu’il doit vous faire confirmer.",
+      "info": "Claude, ChatGPT, Grok ou Mistral Vibe peut ajouter vos produits, régler vos tarifs et configurer votre boutique pour vous. Vous choisissez ses droits et ce qu’il doit vous faire confirmer.",
       "infoLabel": "En savoir plus",
       "action": "Connecter",
       "dismiss": "Masquer"

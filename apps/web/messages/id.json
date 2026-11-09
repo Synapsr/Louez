@@ -9636,7 +9636,7 @@
     },
     "assistantCard": {
       "title": "Biarkan asisten AI Anda menyiapkan toko.",
-      "info": "Claude, ChatGPT, Grok, atau Le Chat dapat menambahkan produk, mengatur harga, dan menyiapkan toko untuk Anda. Anda memilih haknya dan apa saja yang harus ia konfirmasi kepada Anda.",
+      "info": "Claude, ChatGPT, Grok, atau Mistral Vibe dapat menambahkan produk, mengatur harga, dan menyiapkan toko untuk Anda. Anda memilih haknya dan apa saja yang harus ia konfirmasi kepada Anda.",
       "infoLabel": "Pelajari lebih lanjut",
       "action": "Hubungkan",
       "dismiss": "Sembunyikan"

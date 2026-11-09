@@ -9636,7 +9636,7 @@
     },
     "assistantCard": {
       "title": "Lassen Sie Ihren KI-Assistenten Ihren Shop einrichten.",
-      "info": "Claude, ChatGPT, Grok oder Le Chat kann Ihre Produkte anlegen, Ihre Preise festlegen und Ihren Shop für Sie einrichten. Sie legen seine Rechte fest und was er Sie bestätigen lassen muss.",
+      "info": "Claude, ChatGPT, Grok oder Mistral Vibe kann Ihre Produkte anlegen, Ihre Preise festlegen und Ihren Shop für Sie einrichten. Sie legen seine Rechte fest und was er Sie bestätigen lassen muss.",
       "infoLabel": "Mehr erfahren",
       "action": "Verbinden",
       "dismiss": "Ausblenden"

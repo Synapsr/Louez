@@ -9636,7 +9636,7 @@
     },
     "assistantCard": {
       "title": "让你的 AI 助手帮你设置店铺。",
-      "info": "Claude、ChatGPT、Grok 或 Le Chat 可以替你添加商品、设置价格并设置店铺。它的权限以及哪些操作需要你确认，都由你决定。",
+      "info": "Claude、ChatGPT、Grok 或 Mistral Vibe 可以替你添加商品、设置价格并设置店铺。它的权限以及哪些操作需要你确认，都由你决定。",
       "infoLabel": "了解更多",
       "action": "连接",
       "dismiss": "隐藏"

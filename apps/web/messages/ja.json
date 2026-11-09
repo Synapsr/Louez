@@ -9636,7 +9636,7 @@
     },
     "assistantCard": {
       "title": "AIアシスタントにストアの設定を任せましょう。",
-      "info": "Claude、ChatGPT、Grok、Le Chat が商品の追加、料金の設定、ストアの設定を代わりに行います。権限と、あなたの確認が必要な操作はあなたが決めます。",
+      "info": "Claude、ChatGPT、Grok、Mistral Vibe が商品の追加、料金の設定、ストアの設定を代わりに行います。権限と、あなたの確認が必要な操作はあなたが決めます。",
       "infoLabel": "詳しく見る",
       "action": "接続",
       "dismiss": "非表示"

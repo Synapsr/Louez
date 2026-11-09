@@ -9636,7 +9636,7 @@
     },
     "assistantCard": {
       "title": "AI 어시스턴트에게 스토어 설정을 맡겨 보세요.",
-      "info": "Claude, ChatGPT, Grok, Le Chat이 상품 추가, 가격 설정, 스토어 설정을 대신해 드립니다. 권한과 확인받아야 할 작업은 직접 정합니다.",
+      "info": "Claude, ChatGPT, Grok, Mistral Vibe이 상품 추가, 가격 설정, 스토어 설정을 대신해 드립니다. 권한과 확인받아야 할 작업은 직접 정합니다.",
       "infoLabel": "자세히 보기",
       "action": "연결",
       "dismiss": "숨기기"

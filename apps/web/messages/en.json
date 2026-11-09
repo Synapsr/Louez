@@ -9636,7 +9636,7 @@
     },
     "assistantCard": {
       "title": "Let your AI assistant set up your store.",
-      "info": "Claude, ChatGPT, Grok or Le Chat can add your products, set your prices and set up your store for you. You choose its rights and what it must check with you first.",
+      "info": "Claude, ChatGPT, Grok or Mistral Vibe can add your products, set your prices and set up your store for you. You choose its rights and what it must check with you first.",
       "infoLabel": "Learn more",
       "action": "Connect",
       "dismiss": "Hide"
