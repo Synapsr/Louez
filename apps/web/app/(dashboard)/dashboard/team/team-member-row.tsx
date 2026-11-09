@@ -1,10 +1,11 @@
 "use client";
 
-import { useTransition } from "react";
-
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import { MoreHorizontal } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 
+import type { TeamMember } from "@louez/api/contracts/team";
 import {
   Badge,
   Button,
@@ -17,9 +18,9 @@ import {
 import { StarSolidIcon, UserSolidIcon } from "@louez/ui/icons";
 
 import { UserAvatar } from "@/components/dashboard/shared/user-avatar";
+import { orpc } from "@/lib/orpc/react";
 
-import { removeMember } from "./actions";
-import type { TeamMember } from "./team-types";
+import { teamErrorKey } from "./util.team-errors";
 
 interface TeamMemberRowProps {
   member: TeamMember;
@@ -31,46 +32,48 @@ export const TeamMemberRow = ({ member, canManageMembers, readOnly = false }: Te
   const t = useTranslations("dashboard.team");
   const tErrors = useTranslations("errors");
   const format = useFormatter();
-  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const isOwner = member.role === "owner";
 
-  const handleRemove = () => {
-    if (readOnly) return;
-    startTransition(async () => {
-      const result = await removeMember(member.id);
-
-      if (result.error) {
-        const key = result.error.replace("dashboard.team.", "");
+  const removeMutation = useMutation(
+    orpc.dashboard.team.removeMember.mutationOptions({
+      onSuccess: () => {
+        toastManager.add({ title: t("memberRemoved"), type: "success" });
+        router.refresh();
+      },
+      onError: (error) => {
+        const { scope, key } = teamErrorKey(error);
         toastManager.add({
-          title: t.has(key) ? t(key) : tErrors("generic"),
+          title: scope === "team" && t.has(key) ? t(key) : tErrors("generic"),
           type: "error",
         });
-        return;
-      }
+      },
+    }),
+  );
+  const isPending = removeMutation.isPending;
 
-      toastManager.add({ title: t("memberRemoved"), type: "success" });
-    });
+  const handleRemove = () => {
+    if (readOnly) return;
+    removeMutation.mutate({ id: member.id });
   };
 
   return (
     <div className="hover:bg-muted/60 flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors sm:px-3">
-      <UserAvatar src={member.user.image} seed={member.user.id} size={40} />
+      <UserAvatar src={member.imageUrl} seed={member.userId} size={40} />
 
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="truncate font-medium">{member.user.name || member.user.email}</span>
+          <span className="truncate font-medium">{member.name || member.email}</span>
           <Badge variant={isOwner ? "progress" : "expired"} className="gap-1">
             {isOwner ? <StarSolidIcon /> : <UserSolidIcon />}
             {t(isOwner ? "ownerBadge" : "memberBadge")}
           </Badge>
         </div>
-        {member.user.name && (
-          <p className="text-muted-foreground truncate text-sm">{member.user.email}</p>
-        )}
+        {member.name && <p className="text-muted-foreground truncate text-sm">{member.email}</p>}
         <p className="text-muted-foreground text-xs">
           {t("addedOn", {
-            date: format.dateTime(new Date(member.createdAt), {
+            date: format.dateTime(new Date(member.joinedAt), {
               day: "2-digit",
               month: "short",
               year: "numeric",

@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import type { TeamMember } from "@louez/api/contracts/team";
 import { Badge } from "@louez/ui";
 import { TeamIcon } from "@louez/ui/icons";
 
@@ -9,7 +10,6 @@ import { DashboardEmptyState } from "@/components/dashboard/shared/dashboard-emp
 import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
 
 import { TeamMemberRow } from "./team-member-row";
-import type { TeamMember } from "./team-types";
 
 interface TeamMembersCardProps {
   members: TeamMember[];

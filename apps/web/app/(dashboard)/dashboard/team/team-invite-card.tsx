@@ -1,22 +1,25 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { revalidateLogic } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 
+import type { MemberLimit } from "@louez/api/contracts/team";
 import { Badge, toastManager } from "@louez/ui";
 import { MailIcon, ShieldSolidIcon, TeamIcon, UserPlusSolidIcon } from "@louez/ui/icons";
 
 import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
 import { useAppForm } from "@/hooks/form/form";
+import { orpcClient } from "@/lib/orpc/client";
+import { orpc } from "@/lib/orpc/react";
 
-import { addTeamMember } from "./actions";
 import { TeamLimitNotice } from "./team-limit-notice";
-import type { TeamLimits } from "./team-types";
+import { teamErrorKey } from "./util.team-errors";
 
 interface TeamInviteCardProps {
-  limits: TeamLimits | null;
+  limits: MemberLimit;
   readOnly?: boolean;
   onInvite?: (email: string) => void | Promise<void>;
 }
@@ -25,42 +28,38 @@ export const TeamInviteCard = ({ limits, readOnly = false, onInvite }: TeamInvit
   const t = useTranslations("dashboard.team");
   const tErrors = useTranslations("errors");
   const tValidation = useTranslations("validation");
+  const router = useRouter();
 
-  const hasNoCollaboratorAccess = limits?.limit === 0;
-  const isAtLimit = Boolean(limits && !limits.allowed && limits.limit !== null && limits.limit > 0);
-  const showUsageBadge = Boolean(limits && limits.limit !== null && limits.limit > 0);
+  const hasNoCollaboratorAccess = limits.limit === 0;
+  const isAtLimit = !limits.canAddMember && limits.limit !== null && limits.limit > 0;
+  const showUsageBadge = limits.limit !== null && limits.limit > 0;
 
-  /** Server actions answer with a translation key, in either namespace. */
+  /** The team page's own keys first, then the shared error keys. */
   const resolveErrorMessage = (error: unknown) => {
-    const code = error instanceof Error ? error.message : "";
-    const teamKey = code.replace("dashboard.team.", "");
-    if (t.has(teamKey)) return t(teamKey);
-
-    const errorKey = code.replace("errors.", "");
-    if (tErrors.has(errorKey)) return tErrors(errorKey);
-
+    const { scope, key } = teamErrorKey(error);
+    if (scope === "team" && t.has(key)) return t(key);
+    if (scope === "errors" && tErrors.has(key)) return tErrors(key);
     return tErrors("generic");
   };
 
-  const inviteMutation = useMutation({
-    mutationFn: async (email: string) => {
-      if (onInvite) {
-        await onInvite(email.toLowerCase().trim());
-        return null;
-      }
-      if (readOnly) return null;
+  const inviteMutation = useMutation(orpc.dashboard.team.invite.mutationOptions());
 
-      const formData = new FormData();
-      formData.append("email", email.toLowerCase().trim());
+  /** Invites, then reads the link to copy when this instance sends no e-mail. */
+  const invite = async (email: string) => {
+    if (onInvite) {
+      await onInvite(email.toLowerCase().trim());
+      return null;
+    }
+    if (readOnly) return null;
 
-      const result = await addTeamMember(formData);
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      return result;
-    },
-  });
+    const result = await inviteMutation.mutateAsync({ email: email.toLowerCase().trim() });
+    router.refresh();
+    const invitationUrl =
+      result.invitation && result.invitationEmail === "not_configured"
+        ? (await orpcClient.dashboard.team.invitationLink({ id: result.invitation.id })).url
+        : null;
+    return { outcome: result.outcome, invitationUrl };
+  };
 
   const form = useAppForm({
     defaultValues: { email: "" },
@@ -68,7 +67,7 @@ export const TeamInviteCard = ({ limits, readOnly = false, onInvite }: TeamInvit
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
     onSubmit: async ({ value }) => {
       try {
-        const result = await inviteMutation.mutateAsync(value.email);
+        const result = await invite(value.email);
 
         if (!result) {
           form.reset();
@@ -89,7 +88,7 @@ export const TeamInviteCard = ({ limits, readOnly = false, onInvite }: TeamInvit
         }
 
         toastManager.add({
-          title: result.type === "invited" ? t("invitationSent") : t("memberAdded"),
+          title: result.outcome === "invited" ? t("invitationSent") : t("memberAdded"),
           type: "success",
         });
         form.reset();
@@ -108,8 +107,8 @@ export const TeamInviteCard = ({ limits, readOnly = false, onInvite }: TeamInvit
       accent="primary"
       action={
         showUsageBadge && (
-          <Badge variant={limits?.allowed ? "progress" : "review"} className="tabular-nums">
-            {t("limitBadge", { current: limits?.current ?? 0, limit: limits?.limit ?? 0 })}
+          <Badge variant={limits.canAddMember ? "progress" : "review"} className="tabular-nums">
+            {t("limitBadge", { current: limits.current, limit: limits.limit ?? 0 })}
           </Badge>
         )
       }
@@ -129,8 +128,8 @@ export const TeamInviteCard = ({ limits, readOnly = false, onInvite }: TeamInvit
           accent="pending"
           title={t("limitReachedTitle")}
           description={t("limitReachedDescription", {
-            current: limits?.current ?? 0,
-            limit: limits?.limit ?? 0,
+            current: limits.current,
+            limit: limits.limit ?? 0,
           })}
           actionLabel={t("upgradeForMore")}
           className="bg-badge-pending-background/60 ring-badge-pending-foreground/15 ring-1 ring-inset"

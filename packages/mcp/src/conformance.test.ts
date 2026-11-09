@@ -277,6 +277,12 @@ describe("MCP directory conformance", () => {
       stores_get_launch_checklist: "read",
       stores_go_live: "overwrite/public",
       stores_list: "read",
+      team_cancel_invitation: "overwrite",
+      // The invitation e-mail goes to a person outside the account.
+      team_invite_member: "additive/customer",
+      team_list_invitations: "read",
+      team_list_members: "read",
+      team_remove_member: "delete",
       // The hand-written tools.
       check_availability: "read",
       create_customer: "additive",

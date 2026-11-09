@@ -142,7 +142,6 @@ const SA = {
   taxes: `${DASH}/settings/taxes/actions.ts`,
   sms: `${DASH}/sms/actions.ts`,
   subscription: `${DASH}/subscription/actions.ts`,
-  team: `${DASH}/team/actions.ts`,
   whatsNew: `${DASH}/whats-new/actions.ts`,
   onboardingProfile: `${ONBOARDING}/profile-actions.ts`,
   reeent: `${ONBOARDING}/reeent/actions.ts`,
@@ -194,6 +193,7 @@ const ORPC = {
   search: `${ROUTERS}/search.ts`,
   settings: `${ROUTERS}/settings.ts`,
   stores: `${ROUTERS}/stores.ts`,
+  team: `${ROUTERS}/team.ts`,
 } as const;
 
 const MCP = {
@@ -1976,39 +1976,62 @@ export const capabilities = [
 
   // --- Team, subscription, store creation (8) -----------------------------
   {
-    id: "team.get",
-    sources: [action(SA.team, "getTeamData")],
+    // The team page's two lists; an agent reads them too.
+    id: "team.listMembers",
+    sources: [procedure("team", "listMembers")],
     kind: "read",
     plan: { lot: "8" },
+    migrated: true,
   },
   {
+    id: "team.listInvitations",
+    sources: [procedure("team", "listInvitations")],
+    kind: "read",
+    plan: { lot: "8" },
+    migrated: true,
+  },
+  {
+    // Always as a member, never an owner, and always confirmed by an agent
+    // (Téo's decision, 2026-11-09). Changing a role stays in the dashboard.
     id: "team.inviteMember",
-    sources: [action(SA.team, "addTeamMember")],
+    sources: [procedure("team", "invite")],
+    kind: "write",
+    sensitive: "send",
+    plan: { lot: "8" },
+    migrated: true,
+  },
+  {
+    // The new link is the invitation's credential: the dashboard only.
+    id: "team.resendInvitation",
+    sources: [procedure("team", "resendInvitation")],
     kind: "write",
     sensitive: "send",
     plan: { lot: "8" },
     actors: ["session"],
   },
   {
-    id: "team.resendInvitation",
-    sources: [action(SA.team, "resendInvitation")],
-    kind: "write",
-    sensitive: "send",
+    // The link the dashboard copies on an instance that sends no e-mail.
+    id: "team.getInvitationLink",
+    sources: [procedure("team", "invitationLink")],
+    kind: "read",
     plan: { lot: "8" },
     actors: ["session"],
   },
   {
     id: "team.cancelInvitation",
-    sources: [action(SA.team, "cancelInvitation")],
-    kind: "write",
-    plan: { lot: "8" },
-  },
-  {
-    id: "team.removeMember",
-    sources: [action(SA.team, "removeMember")],
+    sources: [procedure("team", "cancelInvitation")],
     kind: "write",
     sensitive: "destructive",
     plan: { lot: "8" },
+    migrated: true,
+  },
+  {
+    id: "team.removeMember",
+    sources: [procedure("team", "removeMember")],
+    kind: "write",
+    sensitive: "destructive",
+    plan: { lot: "8" },
+    migrated: true,
   },
   {
     // Joining a store grants the caller a role: never done by an agent.

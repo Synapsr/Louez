@@ -224,6 +224,11 @@ describe("OpenAPI document", () => {
         "GET /handoffs/{id}": "handoffs_get",
         "GET /jobs/{id}": "jobs_get",
         "POST /handoffs/{id}/refresh": "handoffs_refresh",
+        "GET /team/members": "team_list_members",
+        "GET /team/invitations": "team_list_invitations",
+        "POST /team/invitations": "team_invite_member",
+        "POST /team/invitations/{id}/cancel": "team_cancel_invitation",
+        "DELETE /team/members/{id}": "team_remove_member",
       },
     );
 

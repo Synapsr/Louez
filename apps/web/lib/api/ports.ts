@@ -1,4 +1,5 @@
 import type { ApiPorts } from "@louez/api";
+import { isEmailConfigured } from "@louez/email";
 
 import { runAfterCommit } from "@/lib/api/after-commit";
 import { dispatchApiEffects } from "@/lib/api/effects";
@@ -35,4 +36,8 @@ export const apiPorts: ApiPorts = {
   hostedBy: getHostedBy,
   stripeConnect: () => (isConnectConfigured() ? getStripe() : null),
   billing: billingPort,
+  team: {
+    collaboratorLimit: async (storeId) => (await getStorePlan(storeId)).features.maxCollaborators,
+    emailConfigured: isEmailConfigured,
+  },
 };

@@ -109,6 +109,11 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.handoffs.get",
   "dashboard.handoffs.refresh",
   "dashboard.jobs.get",
+  "dashboard.team.listMembers",
+  "dashboard.team.listInvitations",
+  "dashboard.team.invite",
+  "dashboard.team.cancelInvitation",
+  "dashboard.team.removeMember",
 ];
 
 /** Arguments the MCP bridge adds to a tool and maps onto headers. */

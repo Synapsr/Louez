@@ -67,6 +67,19 @@ export interface ApiPorts {
   stripeConnect?: () => StripeConnectClient | null;
   /** Louez's billing of the store, owned by the app and the billing service. */
   billing?: BillingPort;
+  /**
+   * What the team procedures read from the app (services/team.ts). Absent
+   * where no procedure needs it: no seat limit, and e-mail counted as sent.
+   */
+  team?: TeamPort;
+}
+
+/** The plan's team seats (billing owns plans) and whether this instance sends e-mail. */
+export interface TeamPort {
+  /** Most members with the `member` role the store's plan allows; null for unlimited. */
+  collaboratorLimit: (storeId: string) => Promise<number | null>;
+  /** Whether this instance can send e-mail: without it, the user shares the invitation link. */
+  emailConfigured: () => boolean;
 }
 
 /** An AI photo operation: GPT Image with a cut-out background, or the cut-out alone. */
@@ -364,6 +377,10 @@ export type ApiEvent =
   | { type: "store.legalProfileUpdated"; store: ApiEventStore }
   /** The store went live: its storefront is public now. */
   | { type: "store.launched"; store: ApiEventStore }
+  /** Someone was invited to the store, or added to it: the team page, and the platform's notice. */
+  | { type: "team.memberInvited"; store: ApiEventStore; email: string }
+  /** A member removed, an invitation cancelled or sent again: the team page. */
+  | { type: "team.changed"; store: ApiEventStore }
   /** The store moved to a new web address (`store.slug`). */
   | { type: "store.slugChanged"; store: ApiEventStore; previousSlug: string }
   /** Not a write: the store's card gate refused a status change; the app logs it. */

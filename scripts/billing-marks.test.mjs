@@ -128,7 +128,7 @@ const EXCLUDED_PREFIX = "packages/db/src/";
  */
 const ALLOWLIST = [
   {
-    file: "apps/web/app/(dashboard)/dashboard/team/actions.ts",
+    file: "packages/api/src/services/team.ts",
     writes: { storeMembers: 2 },
     reason: "adds members with role member and removes non-owners only; the snapshot lists owners",
   },
