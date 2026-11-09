@@ -61,6 +61,7 @@ export const ensureVariantDefinition = storeProcedure
       description: `Add a variant to the store's catalog, with values to start with. A variant with the same key (derived from the label when none is sent) is returned as is, with created false. ${VARIANT_HELP} Returns the variant.`,
       bundle: "catalog",
       effect: "additive",
+      reach: "public",
       annotations: { idempotentHint: true },
     },
   })
@@ -100,6 +101,7 @@ export const setVariantDefinitionActive = storeProcedure
         "Turn a variant on or off. Off only stops offering it when editing products: the products that carry it keep it. products_withdraw_variant takes it off them.",
       bundle: "catalog",
       effect: "overwrite",
+      reach: "public",
       annotations: { idempotentHint: true },
     },
   })
@@ -210,7 +212,8 @@ export const createVariantValue = storeProcedure
       description:
         "Add a value to a variant, e.g. XL to Size; a color variant takes its swatch in colorHex. A value with the same label (case-insensitive) is returned with created false, its color updated when one is sent. Returns the value.",
       bundle: "catalog",
-      effect: "additive",
+      effect: "overwrite",
+      reach: "public",
       annotations: { idempotentHint: true },
     },
   })
@@ -250,6 +253,7 @@ export const deleteVariantValue = storeProcedure
       description: `Delete a value from a variant's catalog: it is no longer offered to products. Units that carry it keep it; the preview names their products. ${CONFIRM_HELP}`,
       bundle: "catalog",
       effect: "delete",
+      reach: "public",
     },
   })
   .route({ method: "DELETE", path: "/variants/values/{id}" })

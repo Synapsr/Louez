@@ -29,6 +29,7 @@ const getStatus = storeProcedure
       description:
         "What Louez bills the store, as its billing pages show it: who bills it (none, legacy, service), the plan in force or pay-as-you-go, the offer and the billing service's notice in its own words, Louez's pay-as-you-go fees and this month's figures, the card on file, the month-end invoices, the unpaid balance, whether Louez billing lets the store take new bookings (gate) and why not, and whether billing_start_card_setup can run now (cardSetup). Amounts are decimal strings with their currency. Read-only: changing or cancelling a plan is done by the user in Louez, at the page in `links`, the URL to give the user.",
       bundle: "billing",
+      reach: "provider",
       annotations: { idempotentHint: true },
     },
   })
