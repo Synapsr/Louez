@@ -7,7 +7,7 @@ import {
   type ApiOperationScope,
   type Transaction,
 } from "@louez/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, lt, min, sql } from "drizzle-orm";
 
 import type { ScopedActor } from "./actor";
 import { enqueueEffects, type ApiEffect } from "./effects";
@@ -23,6 +23,15 @@ const MAX_IDEMPOTENCY_KEY_LENGTH = 100;
  * the call is taken as lost, its outcome unknown, and it is never run again.
  */
 export const OPERATION_LEASE_SECONDS = 300;
+
+/**
+ * How long a write's record is kept, from its last change: the log of what an
+ * agent did that the privacy policy promises. Its result may hold personal
+ * data.
+ */
+export const OPERATION_RETENTION_MONTHS = 12;
+const PURGE_BATCH = 500;
+const PURGE_BUDGET_MS = 5_000;
 
 /** Filled by the operations middleware; a transport reads it after the call to hand out a receipt. */
 export interface OperationReceipt {
@@ -307,4 +316,47 @@ function targetIdOf(result: unknown): string | null {
     if (typeof id === "string" && id.length <= 64) return id;
   }
   return null;
+}
+
+/**
+ * Deletes the records added and last changed more than
+ * `OPERATION_RETENTION_MONTHS` ago, on the database's clock, for the cron.
+ * It finds the scopes (stores, and the account scope) holding one with a
+ * single probe each on `api_operations_store_created_idx`, then deletes
+ * oldest first, in batches, until none is left or the time budget is spent;
+ * the next run goes on. A key whose record is gone runs again; what the
+ * other readers lose is in docs/architecture/api-and-agents.md, "Retention".
+ */
+export async function purgeOperations(
+  options: { batch?: number; budgetMs?: number } = {},
+): Promise<number> {
+  const batch = options.batch ?? PURGE_BATCH;
+  const deadline = Date.now() + (options.budgetMs ?? PURGE_BUDGET_MS);
+  const cutoff = sql`NOW() - INTERVAL ${sql.raw(String(OPERATION_RETENTION_MONTHS))} MONTH`;
+  const scopes = await db
+    .select({ storeId: apiOperations.storeId })
+    .from(apiOperations)
+    .groupBy(apiOperations.storeId)
+    .having(lt(min(apiOperations.createdAt), cutoff));
+  let deleted = 0;
+  for (const { storeId } of scopes) {
+    for (;;) {
+      // A record changed since (a failed key run again) stays: its call may still run.
+      const [result] = await db
+        .delete(apiOperations)
+        .where(
+          and(
+            eq(apiOperations.storeId, storeId),
+            lt(apiOperations.createdAt, cutoff),
+            lt(apiOperations.updatedAt, cutoff),
+          ),
+        )
+        .orderBy(asc(apiOperations.createdAt))
+        .limit(batch);
+      deleted += result.affectedRows;
+      if (Date.now() >= deadline) return deleted;
+      if (result.affectedRows < batch) break;
+    }
+  }
+  return deleted;
 }

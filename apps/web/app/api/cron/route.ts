@@ -2,11 +2,8 @@ import { reconcileRentalExtensions } from "@/lib/reservations/extension-service"
 import { NextResponse } from "next/server";
 
 import { runMarketplaceDefaultPublication } from "@louez/api/services";
-import { pruneInboxAcknowledgements } from "@louez/api/services/inbox";
-import { purgeHandoffs } from "@louez/api/services/handoffs";
 
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from "@/lib/analytics/aggregation";
-import { runApiEffectsCron } from "@/lib/api/effects";
 import { purgeExpiredLegalRetentionRecords } from "@/lib/account-deletion/retention-cleanup";
 import { createError, log, useLogger, withEvlog } from "@/lib/evlog";
 import { cleanExpiredCache, refreshAllStoresCache } from "@/lib/google-places/cache";
@@ -26,6 +23,7 @@ import { processReviewRequests } from "@/lib/review-booster/automation";
 
 import { env } from "@/env";
 
+import { apiTasks } from "./api-tasks";
 import { billingSyncTasks } from "./billing-sync-tasks";
 import { runIsolatedTasks } from "./isolated-tasks";
 
@@ -39,6 +37,9 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - API effects: every minute, alongside the other tasks so none of them holds it back
  *   (retries the outbox rows of committed writes: customer messages, notifications,
  *   analytics events; deletes done rows after 30 days; packages/api platform/effects.ts)
+ * - Agent-ready API retention: every minute, with the API effects, each bounded per run
+ *   (inbox acknowledgements, handoffs after 90 days, write records after 12 months,
+ *   OAuth tokens 7 days after they expire or are revoked; api-tasks.ts)
  * - Marketplace default publication: daily at 1:00 AM UTC when explicitly enabled
  * - Invoice transmission: every minute (converts, validates, and sends due invoices)
  * - Super PDP lifecycle polling: every minute (outgoing statuses and received invoices)
@@ -114,21 +115,9 @@ async function handleCron(request: Request) {
     : null;
   // The agent-ready API's outbox: started with the billing tasks and awaited
   // last, so a task that keeps failing before it never holds back the
-  // customer messages, notifications and analytics events it retries. The
-  // inbox's acknowledgements and the handoffs past their retention go with it,
-  // each on its own.
-  const apiEffects = runIsolatedTasks(
-    [
-      { task: "api-effects", key: "apiEffects", run: () => runApiEffectsCron() },
-      {
-        task: "inbox-acknowledgements",
-        key: "inboxAcknowledgements",
-        run: () => pruneInboxAcknowledgements(),
-      },
-      { task: "api-handoffs", key: "apiHandoffs", run: () => purgeHandoffs() },
-    ],
-    { request: logger, event: log },
-  );
+  // customer messages, notifications and analytics events it retries. Its
+  // purges past their retention go with it, each on its own (api-tasks.ts).
+  const apiEffects = runIsolatedTasks(apiTasks(), { request: logger, event: log });
 
   try {
     // Legacy fee report and billable_at check: daily at 4:45 AM UTC, only on an

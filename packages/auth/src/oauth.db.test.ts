@@ -307,6 +307,45 @@ describe(
       assert.equal((await verify(refreshedB.access_token))?.grantId, second);
     });
 
+    test("the purge keeps a rotated refresh token 7 days: a replay still revokes its family", async () => {
+      const { purgeOAuthTokens } = await import("./oauth-retention");
+      const spentRows = () =>
+        louezDb.db
+          .select({ id: louezDb.oauthRefreshTokens.id })
+          .from(louezDb.oauthRefreshTokens)
+          .where(orm.isNotNull(louezDb.oauthRefreshTokens.rotatedAt));
+      const pastReuseWindow = () =>
+        louezDb.db
+          .update(louezDb.oauthRefreshTokens)
+          .set({ rotationReplayExpiresAt: orm.sql`NOW() - INTERVAL 1 MINUTE` })
+          .where(orm.isNotNull(louezDb.oauthRefreshTokens.rotatedAt));
+
+      // Within 7 days: the spent token stays, the live one still refreshes, and
+      // a replay past the provider's reuse window revokes the family.
+      const { tokens } = await fresh();
+      const rotated = await ok(await refresh(tokens.refresh_token));
+      await pastReuseWindow();
+      assert.equal((await purgeOAuthTokens()).refreshTokens, 0);
+      assert.equal((await spentRows()).length, 1, "the spent token stays");
+      const live = await ok(await refresh(rotated.refresh_token));
+      await pastReuseWindow();
+      await refused(await refresh(tokens.refresh_token));
+      await refused(await refresh(live.refresh_token));
+
+      // Revoked more than 7 days ago, the spent row goes; a replay is then an
+      // unknown token, refused, and the live one keeps working.
+      const second = await fresh();
+      const rotatedB = await ok(await refresh(second.tokens.refresh_token));
+      await louezDb.db
+        .update(louezDb.oauthRefreshTokens)
+        .set({ revoked: orm.sql`NOW() - INTERVAL 8 DAY` })
+        .where(orm.isNotNull(louezDb.oauthRefreshTokens.rotatedAt));
+      assert.equal((await purgeOAuthTokens()).refreshTokens, 1);
+      assert.deepEqual(await spentRows(), []);
+      await refused(await refresh(second.tokens.refresh_token));
+      await ok(await refresh(rotatedB.refresh_token));
+    });
+
     test("a session cannot delete or rewrite a consent, nor delete a client, behind Louez's grant", async () => {
       // One grant per user and client: start from none.
       await louezDb.db
