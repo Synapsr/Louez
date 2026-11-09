@@ -9561,5 +9561,70 @@
     "description": "このリンクは店舗「{target}」を開きます。現在は「{current}」を表示しています。",
     "open": "{target}で開く",
     "stay": "{current}のままにする"
+  },
+  "handoff": {
+    "metaTitle": "Louez で続行",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Stripe を接続",
+        "description": "AI エージェントが、オンライン決済を受け付けるために「{store}」を Stripe に接続するよう求めています。Stripe から本人確認情報と銀行口座情報の入力を求められます。",
+        "continue": "Stripe へ進む"
+      },
+      "stripe_dashboard": {
+        "title": "Stripe ダッシュボードを開く",
+        "description": "AI エージェントが、「{store}」の Stripe ダッシュボードを開くよう求めています。",
+        "continue": "Stripe を開く"
+      },
+      "billing_card_setup": {
+        "title": "請求用カードを追加",
+        "description": "AI エージェントが、Louez が「{store}」の手数料を請求するカードを追加するよう求めています。カード情報は Stripe の安全なページで入力します。",
+        "continue": "Stripe へ進む"
+      }
+    },
+    "retry": "Stripe から応答がありませんでした。しばらくしてからもう一度お試しください。",
+    "refused": {
+      "invalid": {
+        "title": "このリンクは使用できません",
+        "description": "リンクが不完全か、新しいリンクに置き換えられています。AI エージェントに新しいリンクを依頼してください。"
+      },
+      "expired": {
+        "title": "このリンクの有効期限が切れています",
+        "description": "AI エージェントに新しいリンクを依頼してください。"
+      },
+      "finished": {
+        "title": "この手順はすでに終了しています",
+        "description": "ここで行うことはありません。AI エージェントに戻ってください。"
+      },
+      "other_user": {
+        "title": "このリンクは別のアカウント用です",
+        "description": "AI エージェントが作業しているアカウントとは別のアカウントでログインしています。そのアカウントでログインしてから、もう一度リンクを開いてください。"
+      },
+      "not_allowed": {
+        "title": "このストアではこの操作を行えません",
+        "description": "このストアでのあなたの役割では、この手順を行えません。ストアのオーナーに依頼してください。"
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "完了しました",
+        "description": "このページを閉じて AI エージェントに戻ってください。この手順が完了したことはエージェントに伝わります。"
+      },
+      "opened": {
+        "title": "まだ完了していません",
+        "description": "Stripe での手順が完了していません。リンクをもう一度開いて完了するか、AI エージェントに戻ってください。"
+      },
+      "confirming": {
+        "title": "もう少しで完了です",
+        "description": "Stripe はまだカードを確認していません。AI エージェントに戻ってかまいません。Stripe が確認すると、エージェントにカードが表示されます。"
+      },
+      "expired": {
+        "title": "このリンクの有効期限が切れています",
+        "description": "AI エージェントに戻ってください。新しいリンクを受け取れます。"
+      },
+      "failed": {
+        "title": "この手順は失敗しました",
+        "description": "AI エージェントに戻ってください。新しいリンクを受け取れます。"
+      }
+    }
   }
 }

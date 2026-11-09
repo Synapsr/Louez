@@ -9561,5 +9561,70 @@
     "description": "Deze link opent de winkel “{target}”. U bent nu in “{current}”.",
     "open": "Openen in {target}",
     "stay": "Blijven in {current}"
+  },
+  "handoff": {
+    "metaTitle": "Doorgaan in Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Stripe koppelen",
+        "description": "Uw AI-agent vraagt u “{store}” aan Stripe te koppelen, zodat de winkel online betalingen kan ontvangen. Stripe vraagt naar uw identiteit en uw bankgegevens.",
+        "continue": "Verder naar Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Uw Stripe-dashboard openen",
+        "description": "Uw AI-agent vraagt u het Stripe-dashboard van “{store}” te openen.",
+        "continue": "Stripe openen"
+      },
+      "billing_card_setup": {
+        "title": "Uw factuurkaart toevoegen",
+        "description": "Uw AI-agent vraagt u de kaart toe te voegen waarop Louez zijn kosten voor “{store}” afschrijft. U voert die in op de beveiligde pagina van Stripe.",
+        "continue": "Verder naar Stripe"
+      }
+    },
+    "retry": "Stripe heeft niet geantwoord. Probeer het zo meteen opnieuw.",
+    "refused": {
+      "invalid": {
+        "title": "Deze link werkt niet meer",
+        "description": "Hij is onvolledig, of een nieuwere link heeft hem vervangen. Vraag uw AI-agent om een nieuwe."
+      },
+      "expired": {
+        "title": "Deze link is verlopen",
+        "description": "Vraag uw AI-agent om een nieuwe link."
+      },
+      "finished": {
+        "title": "Deze stap is al afgerond",
+        "description": "Hier valt niets meer te doen. U kunt teruggaan naar uw AI-agent."
+      },
+      "other_user": {
+        "title": "Deze link is voor een ander account",
+        "description": "U bent ingelogd met een ander account dan het account waarvoor uw AI-agent werkt. Log in met dat account en open de link opnieuw."
+      },
+      "not_allowed": {
+        "title": "Dit kunt u niet doen voor deze winkel",
+        "description": "Uw rol in deze winkel staat deze stap niet toe. Vraag het aan de eigenaar van de winkel."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Klaar",
+        "description": "U kunt deze pagina sluiten en teruggaan naar uw AI-agent: die ziet dat deze stap klaar is."
+      },
+      "opened": {
+        "title": "Nog niet afgerond",
+        "description": "De stap is niet afgerond bij Stripe. Open de link opnieuw om hem af te ronden, of ga terug naar uw AI-agent."
+      },
+      "confirming": {
+        "title": "Bijna klaar",
+        "description": "Stripe heeft de kaart nog niet bevestigd. U kunt teruggaan naar uw AI-agent: die ziet de kaart zodra Stripe hem bevestigt."
+      },
+      "expired": {
+        "title": "Deze link is verlopen",
+        "description": "Ga terug naar uw AI-agent: die kan u een nieuwe link geven."
+      },
+      "failed": {
+        "title": "Deze stap is mislukt",
+        "description": "Ga terug naar uw AI-agent: die kan u een nieuwe link geven."
+      }
+    }
   }
 }

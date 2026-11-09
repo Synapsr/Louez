@@ -94,6 +94,12 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.stores.completeOnboarding",
   "dashboard.inbox.list",
   "dashboard.inbox.acknowledge",
+  "dashboard.payments.startStripeOnboarding",
+  "dashboard.payments.openStripeDashboard",
+  "dashboard.payments.syncStripeStatus",
+  "dashboard.billing.getStatus",
+  "dashboard.billing.startCardSetup",
+  "dashboard.handoffs.get",
 ];
 
 /** Arguments the MCP bridge adds to a tool and maps onto headers. */

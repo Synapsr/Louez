@@ -9561,5 +9561,70 @@
     "description": "Tautan ini membuka toko “{target}”. Anda sedang di “{current}”.",
     "open": "Buka di {target}",
     "stay": "Tetap di {current}"
+  },
+  "handoff": {
+    "metaTitle": "Lanjutkan di Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Hubungkan Stripe",
+        "description": "Agen AI Anda meminta Anda menghubungkan “{store}” ke Stripe agar dapat menerima pembayaran online. Stripe akan meminta identitas dan data bank Anda.",
+        "continue": "Lanjut ke Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Buka dasbor Stripe Anda",
+        "description": "Agen AI Anda meminta Anda membuka dasbor Stripe milik “{store}”.",
+        "continue": "Buka Stripe"
+      },
+      "billing_card_setup": {
+        "title": "Tambahkan kartu penagihan Anda",
+        "description": "Agen AI Anda meminta Anda menambahkan kartu yang digunakan Louez untuk menagih biayanya untuk “{store}”. Anda akan memasukkannya di halaman aman Stripe.",
+        "continue": "Lanjut ke Stripe"
+      }
+    },
+    "retry": "Stripe tidak merespons. Coba lagi sebentar lagi.",
+    "refused": {
+      "invalid": {
+        "title": "Tautan ini tidak berfungsi lagi",
+        "description": "Tautan tidak lengkap, atau sudah diganti dengan tautan yang lebih baru. Minta tautan baru kepada agen AI Anda."
+      },
+      "expired": {
+        "title": "Tautan ini sudah kedaluwarsa",
+        "description": "Minta tautan baru kepada agen AI Anda."
+      },
+      "finished": {
+        "title": "Langkah ini sudah selesai",
+        "description": "Tidak ada lagi yang perlu dilakukan di sini. Anda dapat kembali ke agen AI Anda."
+      },
+      "other_user": {
+        "title": "Tautan ini untuk akun lain",
+        "description": "Anda masuk dengan akun yang berbeda dari akun tempat agen AI Anda bekerja. Masuk dengan akun tersebut, lalu buka tautan lagi."
+      },
+      "not_allowed": {
+        "title": "Anda tidak dapat melakukan ini untuk toko ini",
+        "description": "Peran Anda di toko ini tidak mengizinkan langkah ini. Mintalah kepada pemilik toko."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Selesai",
+        "description": "Anda dapat menutup halaman ini dan kembali ke agen AI Anda: agen akan melihat bahwa langkah ini sudah selesai."
+      },
+      "opened": {
+        "title": "Belum selesai",
+        "description": "Langkah ini belum diselesaikan di Stripe. Buka tautan lagi untuk menyelesaikannya, atau kembali ke agen AI Anda."
+      },
+      "confirming": {
+        "title": "Hampir selesai",
+        "description": "Stripe belum mengonfirmasi kartu. Anda dapat kembali ke agen AI Anda: agen akan melihat kartu begitu Stripe mengonfirmasinya."
+      },
+      "expired": {
+        "title": "Tautan ini sudah kedaluwarsa",
+        "description": "Kembali ke agen AI Anda: agen dapat memberi Anda tautan baru."
+      },
+      "failed": {
+        "title": "Langkah ini gagal",
+        "description": "Kembali ke agen AI Anda: agen dapat memberi Anda tautan baru."
+      }
+    }
   }
 }

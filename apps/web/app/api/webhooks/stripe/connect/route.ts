@@ -7,7 +7,9 @@ import { nanoid } from "nanoid";
 import type Stripe from "stripe";
 
 import { failMarketplaceBookingAttempt } from "@louez/api/services";
-import { type Transaction, db, markReservationIds, markStore, toWholeSeconds } from "@louez/db";
+import { completeActiveHandoff } from "@louez/api/services/handoffs";
+import { writeConnectColumns } from "@louez/api/services/stripe-connect";
+import { type Transaction, db, markReservationIds, toWholeSeconds } from "@louez/db";
 import { payments, reservationActivity, reservations, stores } from "@louez/db";
 import type { NotificationSettings, StoreSettings } from "@louez/types";
 
@@ -1190,17 +1192,12 @@ async function handleAccountUpdated(account: Stripe.Account) {
   const chargesEnabled = account.charges_enabled ?? false;
   const detailsSubmitted = account.details_submitted ?? false;
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(stores)
-      .set({
-        stripeChargesEnabled: chargesEnabled,
-        stripeOnboardingComplete: chargesEnabled && detailsSubmitted,
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, store.id));
-    await markStore(tx, store.id);
+  await writeConnectColumns(store.id, {
+    stripeChargesEnabled: chargesEnabled,
+    stripeOnboardingComplete: chargesEnabled && detailsSubmitted,
   });
+  // The user finished Stripe's form: a handoff an agent gave them for it is done.
+  if (detailsSubmitted) await completeActiveHandoff(store.id, "stripe_connect_onboarding");
 
   // Platform admin notification (only on first successful onboarding)
   if (chargesEnabled && detailsSubmitted && !store.stripeOnboardingComplete) {
@@ -1246,16 +1243,9 @@ async function handleAccountDeauthorized(connectedAccountId?: string) {
     });
     return;
   }
-  await db.transaction(async (tx) => {
-    await tx
-      .update(stores)
-      .set({
-        stripeChargesEnabled: false,
-        stripeOnboardingComplete: false,
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, store.id));
-    await markStore(tx, store.id);
+  await writeConnectColumns(store.id, {
+    stripeChargesEnabled: false,
+    stripeOnboardingComplete: false,
   });
   log.warn({
     stripeWebhook: {

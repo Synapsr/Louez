@@ -91,6 +91,7 @@ const DASHBOARD_ROUTES = [
   "/register",
   "/oauth", // the OAuth consent page of agent connections
   "/active-store", // the confirmation of a dashboard link naming another store
+  "/handoffs", // a step an agent handed to the user (Stripe, the billing card)
   "/dashboard",
   "/onboarding",
   "/online-store",

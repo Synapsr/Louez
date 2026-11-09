@@ -2,10 +2,9 @@ import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
 import { getCurrentStore, hasPermission } from '@/lib/store-context'
-import { getAccountStatus } from '@/lib/stripe'
-import { db, markStore } from '@louez/db'
-import { stores } from '@louez/db'
-import { eq } from 'drizzle-orm'
+import { apiPorts } from '@/lib/api/ports'
+import { completeActiveHandoff } from '@louez/api/services/handoffs'
+import { requireConnectClient, syncConnectStatus } from '@louez/api/services/stripe-connect'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { CheckCircleIcon, WarningIcon } from '@louez/ui/icons'
@@ -45,27 +44,22 @@ export default async function StripeCallbackPage({
     redirect(next ? '/onboarding/stripe' : '/dashboard/settings/payments')
   }
 
-  // Get latest status from Stripe
+  // Get the latest status from Stripe and save it on the store
   let status
   try {
-    status = await getAccountStatus(store.stripeAccountId)
+    status = await syncConnectStatus({
+      client: requireConnectClient(apiPorts),
+      storeId: store.id,
+      accountId: store.stripeAccountId,
+    })
   } catch {
     // Status unknown: don't move the onboarding flow forward blindly
     redirect(next ? '/onboarding/stripe' : '/dashboard/settings/payments')
   }
-
-  // Update store with latest status; the Connect columns are in its billing snapshot.
-  const connect = {
-    stripeChargesEnabled: status.chargesEnabled,
-    stripeOnboardingComplete: status.chargesEnabled && status.detailsSubmitted,
+  // An agent may have handed the same step to the user: it is done too.
+  if (status.detailsSubmitted) {
+    await completeActiveHandoff(store.id, 'stripe_connect_onboarding')
   }
-  await db.transaction(async (tx) => {
-    await tx
-      .update(stores)
-      .set({ ...connect, updatedAt: new Date() })
-      .where(eq(stores.id, store.id))
-    await markStore(tx, store.id)
-  })
 
   // Status synced — resume the interrupted flow without the settings screen.
   // Stripe also sends users here when they bail out of the KYC ("Return to

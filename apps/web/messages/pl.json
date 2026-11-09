@@ -9561,5 +9561,70 @@
     "description": "Ten link otwiera sklep „{target}”. Jesteś w sklepie „{current}”.",
     "open": "Otwórz w {target}",
     "stay": "Zostań w {current}"
+  },
+  "handoff": {
+    "metaTitle": "Kontynuuj w Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Połącz Stripe",
+        "description": "Twój agent AI prosi o połączenie sklepu „{store}” ze Stripe, aby mógł przyjmować płatności online. Stripe poprosi o Twoje dane osobowe i dane bankowe.",
+        "continue": "Przejdź do Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Otwórz panel Stripe",
+        "description": "Twój agent AI prosi o otwarcie panelu Stripe sklepu „{store}”.",
+        "continue": "Otwórz Stripe"
+      },
+      "billing_card_setup": {
+        "title": "Dodaj kartę rozliczeniową",
+        "description": "Twój agent AI prosi o dodanie karty, z której Louez pobiera opłaty za sklep „{store}”. Wpiszesz ją na bezpiecznej stronie Stripe.",
+        "continue": "Przejdź do Stripe"
+      }
+    },
+    "retry": "Stripe nie odpowiedział. Spróbuj ponownie za chwilę.",
+    "refused": {
+      "invalid": {
+        "title": "Ten link już nie działa",
+        "description": "Jest niepełny albo zastąpił go nowszy link. Poproś agenta AI o nowy."
+      },
+      "expired": {
+        "title": "Ten link wygasł",
+        "description": "Poproś agenta AI o nowy link."
+      },
+      "finished": {
+        "title": "Ten krok jest już zakończony",
+        "description": "Nie ma tu już nic do zrobienia. Możesz wrócić do swojego agenta AI."
+      },
+      "other_user": {
+        "title": "Ten link jest dla innego konta",
+        "description": "Jesteś zalogowany na inne konto niż to, dla którego pracuje Twój agent AI. Zaloguj się na to konto i otwórz link ponownie."
+      },
+      "not_allowed": {
+        "title": "Nie możesz tego zrobić w tym sklepie",
+        "description": "Twoja rola w tym sklepie nie pozwala na ten krok. Poproś właściciela sklepu."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Gotowe",
+        "description": "Możesz zamknąć tę stronę i wrócić do agenta AI: zobaczy, że ten krok jest zakończony."
+      },
+      "opened": {
+        "title": "Jeszcze nie zakończono",
+        "description": "Krok nie został zakończony w Stripe. Otwórz link ponownie, aby go dokończyć, albo wróć do agenta AI."
+      },
+      "confirming": {
+        "title": "Prawie gotowe",
+        "description": "Stripe nie potwierdził jeszcze karty. Możesz wrócić do agenta AI: zobaczy kartę, gdy tylko Stripe ją potwierdzi."
+      },
+      "expired": {
+        "title": "Ten link wygasł",
+        "description": "Wróć do agenta AI: może dać Ci nowy link."
+      },
+      "failed": {
+        "title": "Ten krok się nie powiódł",
+        "description": "Wróć do agenta AI: może dać Ci nowy link."
+      }
+    }
   }
 }
