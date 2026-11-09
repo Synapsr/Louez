@@ -30,7 +30,7 @@ const imageUrlSchema = z
   .max(2048)
   .nullable()
   .describe(
-    "Public URL of an image stored for this store, as categories_complete_image_upload returns it.",
+    "Public URL of an image stored for this store, as categories_upload_image or categories_complete_image_upload returns it.",
   );
 
 export const categorySchema = z.object({
@@ -144,7 +144,7 @@ export const categoryErrors = {
   imageNotOwned: () =>
     apiError("BAD_REQUEST", "CATEGORY_IMAGE_INVALID", {
       message:
-        "The image URL is not a category image stored for this store. Upload it with categories_create_image_upload, then use the url categories_complete_image_upload returns.",
+        "The image URL is not a category image stored for this store. Upload it with categories_upload_image, or with categories_create_image_upload and categories_complete_image_upload, then use the url it returns.",
       i18nKey: "errors.invalidData",
     }),
   orderMismatch: (details: { missing: string[]; unknown: string[]; duplicates: string[] }) =>

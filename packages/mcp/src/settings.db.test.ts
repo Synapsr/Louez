@@ -203,6 +203,7 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       "online_store_update",
       "online_store_update_appearance",
       "online_store_update_slug",
+      "online_store_upload_image",
     ]);
     assert.deepEqual([...new Set(onlineStore.map((entry) => entry.meta.mcp.bundle))], ["settings"]);
     const aliases = settings.flatMap((entry) =>

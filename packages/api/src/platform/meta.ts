@@ -88,6 +88,14 @@ export interface ApiMeta {
    * idempotency key is ignored and the call is only recorded.
    */
   secretOutput?: boolean;
+  /**
+   * Largest request body this procedure legitimately takes, when it is more
+   * than the transports take by default (2 MiB on `/api/v1`, 4 MiB on
+   * `/api/mcp`): an image's bytes, a product with a thousand units. Both
+   * transports read up to it for this procedure only (`routeBodyLimits` in
+   * platform/openapi.ts, the MCP door in packages/mcp transports/http.ts).
+   */
+  maxBodyBytes?: number;
   /** Exposed as an MCP tool, or excluded with the reason. Never left out silently. */
   mcp?: McpExposure | { exclude: string };
 }

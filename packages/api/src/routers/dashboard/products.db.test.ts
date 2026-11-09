@@ -15,6 +15,7 @@ import type { BaseContext } from "../../context";
 import type { ApiEvent } from "../../platform/ports";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { createTestImageFetch } from "../../platform/test-image-fetch";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
@@ -34,6 +35,10 @@ for (const name of [
   const namedExports: Record<string, unknown> = require(name);
   mock.module(name, { namedExports });
 }
+
+// Image imports by URL go through a fake transport: nothing leaves the process.
+const imageFetch = createTestImageFetch();
+mock.module("@louez/auth/guarded-fetch", { namedExports: imageFetch.namedExports });
 
 // A dashboard session, read from a test header: Better Auth stays out.
 const SESSION_HEADER = "x-test-session-user";
@@ -1432,5 +1437,88 @@ describe("products procedures (database)", { skip: skipWithoutTestDatabase() }, 
       session(),
     );
     assert.equal(saved.rateTiers.length, 1);
+  });
+
+  // --- Images in the call or by URL -------------------------------------------
+
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 1]);
+  const WEBP = new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 ");
+  const base64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
+
+  test("an agent sends a product image in the call or by URL, then adds it to a product", async () => {
+    const context = await apiKey();
+    const sent = await run("uploadImage", { contentBase64: base64(PNG) }, context());
+    assert.match(sent.key, new RegExp(`^${STORE}/products/[\\w-]{21}\\.png$`));
+    assert.equal(ports.storage.objects.get(sent.key)?.public, true);
+
+    imageFetch.serve({ "https://cdn.example.org/kayak.webp": () => new Response(WEBP) });
+    const imported = await run(
+      "uploadImage",
+      { imageUrl: "https://cdn.example.org/kayak.webp" },
+      context(),
+    );
+    assert.equal(imported.contentType, "image/webp");
+    assert.match(imported.key, /\.webp$/);
+
+    const created = await run(
+      "create",
+      { name: "Pictured kayak", price: "40", images: [sent.url, imported.url] },
+      context(),
+    );
+    assert.deepEqual(created.images, [sent.url, imported.url]);
+  });
+
+  test("a product image is refused past its limit, as another type, or from another place", async () => {
+    const context = await apiKey();
+    const before = ports.storage.objects.size;
+
+    // In the call: 5 MB at most, under the product's 15 MB.
+    const inline = await rejects(
+      run("uploadImage", { contentBase64: "A".repeat(((5 * 1024 * 1024) / 3) * 4 + 4) }, context()),
+      "UPLOAD_TOO_LARGE",
+    );
+    assert.equal(inline.data.details?.maxSize, 5 * 1024 * 1024);
+    await rejects(
+      run("uploadImage", { contentBase64: base64(WEBP), contentType: "image/png" }, context()),
+      "UPLOAD_CONTENT_INVALID",
+    );
+
+    imageFetch.serve({
+      "https://cdn.example.org/huge.png": () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            pull: (controller) => controller.enqueue(new Uint8Array(1024 * 1024)),
+          }),
+        ),
+      "https://cdn.example.org/to-private.png": () =>
+        new Response(null, { status: 307, headers: { location: "https://10.0.0.5/a.png" } }),
+    });
+    const huge = await rejects(
+      run("uploadImage", { imageUrl: "https://cdn.example.org/huge.png" }, context()),
+      "UPLOAD_TOO_LARGE",
+    );
+    assert.equal(huge.data.details?.maxSize, 15 * 1024 * 1024);
+    for (const imageUrl of [
+      "https://169.254.169.254/latest/meta-data",
+      "https://cdn.example.org/to-private.png",
+    ]) {
+      await rejects(run("uploadImage", { imageUrl }, context()), "UPLOAD_URL_UNREACHABLE");
+    }
+    assert.equal(ports.storage.objects.size, before, "nothing stored");
+
+    // Another store's upload is not this store's image.
+    const other = await apiKey({ storeId: OTHER_STORE });
+    const theirs = await run("uploadImage", { contentBase64: base64(PNG) }, other());
+    assert.ok(theirs.key.startsWith(`${OTHER_STORE}/products/`));
+    await rejects(
+      run("create", { name: "Borrowed", price: "1", images: [theirs.url] }, context()),
+      "PRODUCT_IMAGE_INVALID",
+    );
+
+    const readOnly = await apiKey({ permissions: { ...readWrite, products: "read" } });
+    await rejects(
+      run("uploadImage", { contentBase64: base64(PNG) }, readOnly()),
+      "PERMISSION_DENIED",
+    );
   });
 });

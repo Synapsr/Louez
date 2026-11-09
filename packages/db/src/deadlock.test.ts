@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { deadlockRetryDelayMs, retryTransactionOnDeadlock } from "./deadlock";
+import {
+  deadlockRetryDelayMs,
+  isTransactionInterrupted,
+  retryTransactionOnDeadlock,
+} from "./deadlock";
 
 const deadlock = () => Object.assign(new Error("Deadlock found"), { errno: 1213 });
 
@@ -69,4 +73,22 @@ test("past the last run, or for another error, it gives up without waiting", asy
     /not a deadlock/,
   );
   assert.equal(waits.length, 2, "no wait for an error it does not retry");
+});
+
+test("a deadlock, a lock wait timeout and a lost savepoint interrupt a transaction; other errors do not", () => {
+  const wrapped = (cause: unknown) => Object.assign(new Error("Failed query"), { cause });
+  assert.ok(isTransactionInterrupted(deadlock()));
+  assert.ok(isTransactionInterrupted(wrapped({ code: "ER_LOCK_WAIT_TIMEOUT", errno: 1205 })));
+  assert.ok(
+    isTransactionInterrupted(
+      wrapped({
+        code: "ER_SP_DOES_NOT_EXIST",
+        errno: 1305,
+        message: "SAVEPOINT sp1 does not exist",
+      }),
+    ),
+  );
+  assert.ok(!isTransactionInterrupted(wrapped({ code: "ER_DATA_TOO_LONG", errno: 1406 })));
+  assert.ok(!isTransactionInterrupted(new Error("plain")));
+  assert.ok(!isTransactionInterrupted(null));
 });

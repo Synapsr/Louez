@@ -214,6 +214,11 @@ async function resolveOAuthActor(transport: Transport, token: string): Promise<A
   };
 }
 
+/** The dashboard's active store, from a session request's cookie. */
+export function activeStoreIdOf(headers: Headers): string | null {
+  return cookieValue(headers, ACTIVE_STORE_COOKIE);
+}
+
 function cookieValue(headers: Headers, name: string): string | null {
   const cookie = headers.get("cookie");
   if (!cookie) return null;

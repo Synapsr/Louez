@@ -906,7 +906,16 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       key({ "idempotency-key": "live-2", "louez-confirmation": tokenOf(confirmed) }),
     );
     assert.equal(first.launched, true);
-    assert.equal((await effects()).length, 3);
+    // The notice on two channels, the completion event, and the agent's setup action.
+    assert.deepEqual(
+      (await effects()).map((row) => row.type),
+      [
+        "store.launchNotification",
+        "store.launchNotification",
+        "store.launchAnalytics",
+        "store.agentSetupAction",
+      ],
+    );
 
     // The same key again: the stored answer, nothing run.
     const replay = key({ "idempotency-key": "live-2", "louez-confirmation": tokenOf(confirmed) });
@@ -921,7 +930,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     assert.equal(again.links.storefront, first.links.storefront);
     const fromSession = await run("completeOnboarding", { reservationMode: "payment" }, session());
     assert.equal(fromSession.launched, false);
-    assert.equal((await effects()).length, 3);
+    assert.equal((await effects()).length, 4, "nothing more once live");
     assert.deepEqual(
       events.map((event) => event.type),
       ["store.launched"],
@@ -1025,7 +1034,8 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
     const fresh = await rejects(run("completeOnboarding", {}, key()), "CONFIRMATION_REQUIRED");
     const done = await run("completeOnboarding", {}, key({ "louez-confirmation": tokenOf(fresh) }));
     assert.equal(done.launched, true);
-    const analytics = (await effects()).at(-1)?.payload as { transport?: string } | undefined;
+    const analytics = (await effects()).find((row) => row.type === "store.launchAnalytics")
+      ?.payload as { transport?: string } | undefined;
     assert.equal(analytics?.transport, "mcp");
     // Sent again, the spent token launches nothing: the store is live.
     const again = await run(
@@ -1034,7 +1044,7 @@ describe("launch procedures (database)", { skip: skipWithoutTestDatabase() }, ()
       key({ "louez-confirmation": tokenOf(fresh) }),
     );
     assert.equal(again.launched, false);
-    assert.equal((await effects()).length, 3);
+    assert.equal((await effects()).length, 4, "the launch's rows and its setup action, once");
   });
 
   test("a confirmed launch whose store lost its currency meanwhile is refused as not ready", async () => {

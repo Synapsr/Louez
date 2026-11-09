@@ -255,4 +255,41 @@ describe("createSiteIconCache", () => {
     assert.equal(await siteIcon("https://other.example.org"), null);
     assert.equal(calls, 8, "a ninth lookup does not start");
   });
+
+  test("a lookup keeps its place while a request it started runs past its deadline", async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const hung: Array<() => void> = [];
+    let calls = 0;
+    const fetchResource: IconFetch = (input) => {
+      calls++;
+      if (String(input).startsWith("https://later.example.org")) {
+        return Promise.resolve(new Response(ICO));
+      }
+      return new Promise<Response>((_, reject) => {
+        hung.push(() => reject(new TypeError("getaddrinfo ETIMEDOUT")));
+      });
+    };
+    const siteIcon = createSiteIconCache({ fetchResource });
+    const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
+
+    const asks = Array.from({ length: 8 }, (_, index) =>
+      siteIcon(`https://slow${index}.example.org`),
+    );
+    // Each request's 4-second deadline, then the 10-second budget: every
+    // asker gets no icon while the lookups' DNS answers never come.
+    for (let second = 0; second < 12; second++) {
+      t.mock.timers.tick(1000);
+      await nextTurn();
+    }
+    assert.deepEqual(await Promise.all(asks), Array(8).fill(null));
+    const started = calls;
+
+    assert.equal(await siteIcon("https://later.example.org"), null);
+    assert.equal(calls, started, "a ninth lookup does not start");
+
+    for (const settle of hung) settle();
+    await nextTurn();
+    await nextTurn();
+    assert.equal((await siteIcon("https://later.example.org"))?.contentType, "image/x-icon");
+  });
 });

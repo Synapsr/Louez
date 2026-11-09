@@ -14,8 +14,11 @@ import {
   storeErrors,
   STORE_CREATION_DAILY_LIMIT,
   STORE_PAGE_MAX,
+  updateOnboardingInfoInput,
+  updateOnboardingInfoOutput,
 } from "../../contracts/stores";
-import { ACCOUNT_SCOPE, connectionStores } from "../../platform/actor";
+import type { BaseContext } from "../../context";
+import { ACCOUNT_SCOPE, activeStoreIdOf, connectionStores } from "../../platform/actor";
 import { requireConfirmation } from "../../platform/confirmation";
 import { storeLinks } from "../../platform/links";
 import { accountRefusal, type ProcedureScope } from "../../platform/permissions";
@@ -29,6 +32,7 @@ import {
   createStore,
   describeNewStoreTerms,
   resolvePendingReferral,
+  saveOnboardingStoreInfo,
 } from "../../services/store-creation";
 import { confirmUnderLock, mayRead } from "./product-context";
 import { settingsActor } from "./settings-context";
@@ -115,7 +119,7 @@ const checkSlugAvailability = accountProcedure
 const NEXT_STEPS = [
   "Pass the store's id as storeId to the other tools.",
   "Fill the catalog: categories_create, then products_create (prices, deposit, stock). Their tools are in the catalog bundle.",
-  "Set the store up before launch, with the tools of the settings bundle: settings_get shows every setting; settings_update_store_info (description, contact, coordinates), settings_update_legal (terms and legal notice), settings_update_reservation_rules, settings_update_business_hours, settings_update_delivery and settings_create_location (pickup points), settings_update_taxes; for the storefront, online_store_update_appearance with the logo and banner from online_store_create_image_upload, and online_store_update_slug to change its address.",
+  "Set the store up before launch, with the tools of the settings bundle: settings_get shows every setting; settings_update_store_info (description, contact, coordinates), settings_update_legal (terms and legal notice), settings_update_reservation_rules, settings_update_business_hours, settings_update_delivery and settings_create_location (pickup points), settings_update_taxes; for the storefront, online_store_update_appearance with the logo and banner from online_store_upload_image (or online_store_create_image_upload), and online_store_update_slug to change its address.",
   "The store stays offline until it goes live. stores_get_launch_checklist says what is still missing, with the tool that fixes each item; once the user is happy, stores_go_live puts the store online (it shows a preview first). The user can also finish in the Louez dashboard (the dashboard link), where their store is waiting with what you filled in.",
 ];
 
@@ -200,6 +204,16 @@ const create = accountProcedure
       confirmedPricing: credential.confirmSensitive ? pricing : null,
     });
     ports.dispatchEffects(created.effectIds);
+    // The dashboard's onboarding goes on with the new store.
+    if (credential.kind === "session") {
+      setCookies(
+        context,
+        ports.newStores.onboardingCookies({
+          activeStoreId: created.id,
+          spendReferral: attribution.referralCode !== null,
+        }),
+      );
+    }
 
     return {
       id: created.id,
@@ -214,6 +228,55 @@ const create = accountProcedure
       pricing: created.pricing,
       nextSteps: NEXT_STEPS,
     };
+  });
+
+/** Cookies of a dashboard answer: set on the RPC endpoint only, which has the answer's headers. */
+function setCookies(context: Pick<BaseContext, "resHeaders">, values: readonly string[]) {
+  for (const value of values) context.resHeaders?.append("set-cookie", value);
+}
+
+/**
+ * The onboarding's store step on a store the user already has (an
+ * incomplete one, one an agent created included, or the one being edited).
+ * Answers `id: null` when there is none, and the step creates the store
+ * with stores.create. Sets the saved store as the active one.
+ */
+const updateOnboardingInfo = accountProcedure
+  .meta({
+    capability: "stores.updateOnboardingInfo",
+    account: true,
+    scope: CREATE_SCOPE,
+    actors: ["session"],
+    mcp: {
+      exclude:
+        "the onboarding wizard's own step; agents set the same fields with settings_update_store_info, settings_update_company and online_store_update_slug",
+    },
+  })
+  .input(updateOnboardingInfoInput)
+  .output(updateOnboardingInfoOutput)
+  .handler(async ({ context, input }) => {
+    const { ports } = context;
+    if (!ports) throw missingTransport();
+    const { storeId, ...store } = input;
+    const saved = await saveOnboardingStoreInfo({
+      actor: context.actor,
+      store,
+      editingStoreId: storeId ?? null,
+      activeStoreId: activeStoreIdOf(context.headers),
+      referralCode: ports.newStores.signupAttribution(context.headers).referralCode,
+      rewardReferredStore: ports.newStores.rewardReferredStore,
+    });
+    ports.dispatchEffects(saved.effectIds);
+    if (saved.id) {
+      setCookies(
+        context,
+        ports.newStores.onboardingCookies({
+          activeStoreId: saved.id,
+          spendReferral: saved.spendReferral,
+        }),
+      );
+    }
+    return { id: saved.id, online: saved.online };
   });
 
 // --- Launch -------------------------------------------------------------------
@@ -279,6 +342,7 @@ const completeOnboarding = storeProcedure
         ...settingsActor(context),
         userId: actor.credential.userId,
         transport: actor.transport,
+        credential: actor.credential,
       },
       input,
       {
@@ -323,6 +387,7 @@ export const dashboardStoresRouter = {
   list,
   checkSlugAvailability,
   create,
+  updateOnboardingInfo,
   getLaunchChecklist: getLaunchChecklistProcedure,
   completeOnboarding,
 };

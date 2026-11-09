@@ -1,7 +1,16 @@
-import { apiOperations, db } from "@louez/db";
+import {
+  apiOperations,
+  db,
+  isTransactionInterrupted,
+  retryTransactionOnDeadlock,
+  runInApiOperation,
+  type ApiOperationScope,
+  type Transaction,
+} from "@louez/db";
 import { and, eq, sql } from "drizzle-orm";
 
 import type { ScopedActor } from "./actor";
+import { enqueueEffects, type ApiEffect } from "./effects";
 import { isApiError, platformErrors } from "./errors";
 import { sha256, stableStringify } from "./hash";
 
@@ -67,6 +76,21 @@ export async function runOperation<T>(
      * output schema dropped what the contract does not show.
      */
     toStored?: (result: T) => Promise<unknown>;
+    /**
+     * The write sets a store up (platform/setup-analytics.ts): its handler
+     * runs with a scope that marks the offline store whose row it locks.
+     */
+    marksSetup?: boolean;
+    /**
+     * Outbox rows that belong to the write's record rather than to its
+     * business (the setup analytics), from the result as stored and what the
+     * handler's scope saw. They are added with the record, inside a
+     * savepoint: a failure of their own loses them, never the write. Not
+     * added on a replay.
+     */
+    recordedEffects?: RecordedEffects;
+    /** Hands the rows' ids to the app once committed (`ApiPorts.dispatchEffects`). */
+    dispatchEffects?: (ids: readonly string[]) => void;
   },
   execute: () => Promise<T>,
 ): Promise<T> {
@@ -109,33 +133,57 @@ export async function runOperation<T>(
   }
   if (params.receipt) params.receipt.operationId = operationId;
 
+  // What the handler's own transactions record about the write (setup marks,
+  // a spent confirmation), through @louez/db.
+  const scope: ApiOperationScope = {
+    operationId,
+    marksSetup: params.marksSetup ?? false,
+    confirmed: false,
+    active: true,
+  };
   let result: T;
   try {
-    result = await execute();
+    result = await runInApiOperation(scope, execute);
   } catch (error) {
     await db
       .update(apiOperations)
       .set({
         status: "failed",
+        // A refused preview commits its own transaction, the setup mark of
+        // the store it locked with it: the write set nothing up.
+        setupStoreId: null,
         error: isApiError(error)
           ? { code: error.data.code, message: error.message }
           : { code: "INTERNAL", message: error instanceof Error ? error.name : "Error" },
       })
       .where(eq(apiOperations.id, operationId));
     throw error;
+  } finally {
+    // A task the handler left running (an `after()` effect) marks nothing.
+    scope.active = false;
   }
 
+  let effectIds: string[] = [];
   try {
     const stored = params.toStored ? await params.toStored(result) : result;
-    await db
-      .update(apiOperations)
-      .set({
-        status: "succeeded",
-        // Results are kept only to replay them; without a key nothing will.
-        result: idempotencyKey === null ? null : encodeResult(stored),
-        targetId: targetIdOf(stored),
-      })
-      .where(eq(apiOperations.id, operationId));
+    // Only the record runs again, never the handler: a deadlock or a lock
+    // wait rolls the whole transaction back, the mark of success included.
+    effectIds = await retryTransactionOnDeadlock(
+      () =>
+        db.transaction(async (tx) => {
+          await tx
+            .update(apiOperations)
+            .set({
+              status: "succeeded",
+              // Results are kept only to replay them; without a key nothing will.
+              result: idempotencyKey === null ? null : encodeResult(stored),
+              targetId: targetIdOf(stored),
+            })
+            .where(eq(apiOperations.id, operationId));
+          return enqueueRecordedEffects(tx, params.recordedEffects, stored, scope);
+        }),
+      { retryOn: isTransactionInterrupted },
+    );
   } catch {
     // The handler went through, but the record did not. Marking it failed
     // would let a retry run it a second time: mark it unknown instead, which
@@ -147,7 +195,48 @@ export async function runOperation<T>(
       .catch(() => undefined);
     throw platformErrors.operationOutcomeUnknown(operationId);
   }
+  if (effectIds.length > 0) {
+    try {
+      params.dispatchEffects?.(effectIds);
+    } catch (error) {
+      // The cron sends them.
+      console.error("Dispatching a write's recorded effects failed:", error);
+    }
+  }
   return result;
+}
+
+/** Builds a write's recorded effects, in the record's transaction. */
+export type RecordedEffects = (
+  tx: Transaction,
+  stored: unknown,
+  scope: ApiOperationScope,
+) => Promise<{ storeId: string; effects: ApiEffect[] } | null>;
+
+/**
+ * `recordedEffects`, in a savepoint of the record's transaction. A failure of
+ * their own (a row that cannot be written) is logged and loses them; one that
+ * ended the transaction (a deadlock, a lock wait, the savepoint gone with it)
+ * is thrown, so the whole record runs again.
+ */
+async function enqueueRecordedEffects(
+  tx: Transaction,
+  build: RecordedEffects | undefined,
+  stored: unknown,
+  scope: ApiOperationScope,
+): Promise<string[]> {
+  if (!build) return [];
+  try {
+    return await tx.transaction(async (savepoint) => {
+      const built = await build(savepoint, stored, scope);
+      if (!built || built.effects.length === 0) return [];
+      return enqueueEffects(savepoint, built.storeId, built.effects);
+    });
+  } catch (error) {
+    if (isTransactionInterrupted(error)) throw error;
+    console.error("A write's recorded effects could not be added:", error);
+    return [];
+  }
 }
 
 type ClaimResult = { kind: "run"; id: string } | { kind: "replay"; id: string; result: unknown };

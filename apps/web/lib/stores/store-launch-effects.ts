@@ -8,6 +8,10 @@ import { withEffectSignal } from "@/lib/api/effect-signal";
 import { sendPlatformStoreLaunched } from "@/lib/discord/platform-notifications";
 import { captureProductServerEventOrThrow } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import {
+  setupActorProperties,
+  setupSummaryProperties,
+} from "@/lib/product-analytics/setup-analytics";
 
 // The senders of a store's launch rows (packages/api services/launch.ts): the
 // platform's notice on each channel, and the onboarding's completion event.
@@ -56,6 +60,9 @@ export function createStoreLaunchEffectSenders(
             ...(payload.transport === "rpc" ? {} : { actor: payload.transport }),
             store_id: payload.storeId,
             reservation_mode: payload.reservationMode,
+            // Who put it online and who set it up; rows queued before carry neither.
+            ...(payload.actor ? setupActorProperties(payload.actor) : {}),
+            ...(payload.setup ? setupSummaryProperties(payload.setup) : {}),
           },
           // The same event id and time on every try: PostHog keeps one event.
           identity: { eventUuid: payload.eventUuid, occurredAt: payload.occurredAt },

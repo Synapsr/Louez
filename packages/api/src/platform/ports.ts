@@ -127,6 +127,20 @@ export interface NewStorePort {
     referralCode: string | null;
     signupOrigin: string | null;
   };
+  /**
+   * In the transaction that saves the onboarding's store step on a store
+   * that already existed and was just attributed to a referrer: its
+   * referred reward (more free reservations, at the pricing it already pays)
+   * when Louez's own billing bills it. Whether it got it.
+   */
+  rewardReferredStore: (tx: Transaction, storeId: string) => Promise<boolean>;
+  /**
+   * The `Set-Cookie` values of a dashboard answer once the onboarding's store
+   * step saved or created a store: it becomes the active store, and the
+   * referral cookie it was attributed from is spent, so it attributes no
+   * later store.
+   */
+  onboardingCookies: (input: { activeStoreId: string; spendReferral: boolean }) => string[];
 }
 
 /** What a new store pays Louez, as the billing code says it (see `NewStorePort.terms`). */

@@ -4304,6 +4304,13 @@ export const apiOperations = mysqlTable(
     status: mysqlEnum("status", ["running", "succeeded", "failed", "unknown"]).notNull(),
     /** Main record the operation touched, when it has one. */
     targetId: varchar("target_id", { length: 64 }),
+    /**
+     * The offline store this write set up: set in the write's own
+     * transaction, under the store row's lock, when it was a setup write
+     * (packages/api platform/setup-analytics.ts). It commits or rolls back
+     * with the write, whatever the record's status says.
+     */
+    setupStoreId: varchar("setup_store_id", { length: 21 }),
     result: json("result"),
     error: json("error").$type<{ code: string; message: string }>(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -4316,6 +4323,7 @@ export const apiOperations = mysqlTable(
       table.idempotencyKey,
     ),
     storeCreatedIdx: index("api_operations_store_created_idx").on(table.storeId, table.createdAt),
+    setupStoreIdx: index("api_operations_setup_store_idx").on(table.setupStoreId),
   }),
 );
 

@@ -136,6 +136,7 @@ describe("OpenAPI document", () => {
         "POST /categories/reorder": "categories_reorder",
         "POST /categories/image-uploads": "categories_create_image_upload",
         "POST /categories/image-uploads/complete": "categories_complete_image_upload",
+        "POST /categories/images": "categories_upload_image",
         "GET /products": "products_list",
         "POST /products": "products_create",
         "GET /products/{id}": "products_get",
@@ -146,6 +147,7 @@ describe("OpenAPI document", () => {
         "POST /products/reorder": "products_reorder",
         "POST /products/image-uploads": "products_create_image_upload",
         "POST /products/image-uploads/complete": "products_complete_image_upload",
+        "POST /products/images": "products_upload_image",
         "GET /products/{id}/activity": "products_get_activity",
         "GET /products/{id}/reservation-timeline": "products_get_reservation_timeline",
         "GET /products/{productId}/seasonal-pricings": "products_list_seasonal_pricings",
@@ -187,6 +189,7 @@ describe("OpenAPI document", () => {
         "PATCH /online-store/appearance": "online_store_update_appearance",
         "POST /online-store/image-uploads": "online_store_create_image_upload",
         "POST /online-store/image-uploads/complete": "online_store_complete_image_upload",
+        "POST /online-store/images": "online_store_upload_image",
         "GET /search": "search_global",
         "GET /settings": "settings_get",
         "PATCH /settings/store-info": "settings_update_store_info",
@@ -259,5 +262,248 @@ describe("OpenAPI document", () => {
         .map((p) => p.name),
       ["id"],
     );
+  });
+});
+
+describe("the /api/v1 body cap", () => {
+  let serve: (request: Request) => Promise<Response | undefined>;
+  let limits: Array<{ method: string; pattern: RegExp; maxBytes: number }>;
+  let products: typeof import("../contracts/products");
+  let listLimits: typeof import("@louez/validations").PRODUCT_LIST_LIMITS;
+  let maxLargeReads: number;
+
+  /** The caller check the door makes past 2 MiB: here, a test header. */
+  const KNOWN = { "x-test-caller": "known" };
+
+  before(async () => {
+    const { createExposure } = await import("./exposure");
+    const openapi = await import("./openapi");
+    const { platformErrors } = await import("./errors");
+    products = await import("../contracts/products");
+    ({ PRODUCT_LIST_LIMITS: listLimits } = await import("@louez/validations"));
+    const { appRouter } = await import("../router");
+    const exposure = createExposure(appRouter);
+    const handler = openapi.createOpenApiHandler(exposure.router, { docs: false });
+    limits = openapi.routeBodyLimits(exposure.procedures);
+    ({ MAX_LARGE_BODY_READS: maxLargeReads } = await import("./large-bodies"));
+    serve = (request) =>
+      openapi.handleOpenApiRequest(handler, request, {
+        ports: {} as import("./ports").ApiPorts,
+        bodyLimits: limits,
+        authenticate: async (headers) => {
+          if (headers.get("x-test-caller") !== "known") throw platformErrors.unauthenticated();
+        },
+      });
+  });
+
+  const MiB = 1024 * 1024;
+
+  /**
+   * `bytes` sent in 1 MiB chunks, with no Content-Length; counts what was
+   * pulled. With `hangAfter`, it stops sending past that many bytes until
+   * `fail` is called.
+   */
+  const streamed = (bytes: Uint8Array | number, hangAfter?: number) => {
+    const data = typeof bytes === "number" ? new Uint8Array(bytes) : bytes;
+    const sent = { bytes: 0 };
+    let fail: (reason: Error) => void = () => {};
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          if (hangAfter !== undefined && sent.bytes >= hangAfter) {
+            fail = (reason) => controller.error(reason);
+            return new Promise<void>(() => {});
+          }
+          if (sent.bytes >= data.byteLength) return controller.close();
+          const chunk = data.subarray(sent.bytes, Math.min(sent.bytes + MiB, data.byteLength));
+          sent.bytes += chunk.byteLength;
+          controller.enqueue(chunk);
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    return { sent, body, fail: (reason: Error) => fail(reason) };
+  };
+
+  const send = (
+    method: string,
+    path: string,
+    body: BodyInit,
+    headers: Record<string, string> = {},
+  ) =>
+    new Request(`https://app.louez.test/api/v1${path}`, {
+      method,
+      headers: { "content-type": "application/json", ...headers },
+      body,
+      duplex: "half",
+    } as RequestInit);
+  const post = (path: string, body: BodyInit, headers: Record<string, string> = {}) =>
+    send("POST", path, body, headers);
+
+  const codeOf = async (response: Response | undefined) => {
+    assert.ok(response, "a procedure matched");
+    return ((await response.json()) as { data: { code: string } }).data.code;
+  };
+
+  test("lists the routes that take more: an image's bytes, a product write", () => {
+    assert.deepEqual(
+      limits
+        .map((limit) => `${limit.method} ${limit.pattern.source} ${limit.maxBytes / MiB}`)
+        .sort(),
+      [
+        "PATCH ^\\/products\\/[^/]+\\/?$ 32",
+        "POST ^\\/categories\\/images\\/?$ 8",
+        "POST ^\\/online-store\\/images\\/?$ 8",
+        "POST ^\\/products\\/?$ 32",
+        "POST ^\\/products\\/images\\/?$ 8",
+      ],
+    );
+  });
+
+  test("an unknown caller is refused after 2 MiB at most, or before any read", async () => {
+    const anonymous = streamed(16 * MiB);
+    const refused = await serve(post("/products", anonymous.body));
+    assert.equal(refused?.status, 401);
+    assert.equal(await codeOf(refused), "UNAUTHENTICATED");
+    assert.ok(anonymous.sent.bytes <= 2 * MiB + MiB, `stopped after ${anonymous.sent.bytes} bytes`);
+
+    const declared = streamed(16 * MiB);
+    const early = await serve(
+      post("/products", declared.body, { "content-length": String(16 * MiB) }),
+    );
+    assert.equal(early?.status, 401);
+    assert.equal(declared.sent.bytes, 0, "nothing read");
+
+    // Within 2 MiB, the body is read and the procedure checks the caller.
+    const small = await serve(post("/categories", JSON.stringify({ name: "Bikes" })));
+    assert.equal(small?.status, 401);
+  });
+
+  test("a known caller's body is read up to the route's limit, never past it", async () => {
+    const image = new TextEncoder().encode(JSON.stringify({ contentBase64: "A".repeat(6 * MiB) }));
+    const read = streamed(image);
+    const accepted = await serve(post("/categories/images", read.body, KNOWN));
+    assert.equal(read.sent.bytes, image.byteLength, "read whole");
+    assert.equal(accepted?.status, 401, "then refused by the procedure: no API key");
+
+    const tooLarge = streamed(9 * MiB);
+    const refused = await serve(post("/categories/images", tooLarge.body, KNOWN));
+    assert.equal(refused?.status, 413);
+    assert.equal(await codeOf(refused), "REQUEST_TOO_LARGE");
+    assert.ok(tooLarge.sent.bytes <= 9 * MiB);
+
+    const declared = await serve(
+      post("/products/images", "{}", { ...KNOWN, "content-length": String(9 * MiB) }),
+    );
+    assert.equal(declared?.status, 413);
+
+    // Other routes keep 2 MiB, whoever calls.
+    const other = streamed(3 * MiB);
+    assert.equal((await serve(post("/categories", other.body, KNOWN)))?.status, 413);
+  });
+
+  /**
+   * A large product: every list at its limit (PRODUCT_LIST_LIMITS) and its
+   * bounded fields full, free text in three-byte characters, and a
+   * 100,000-character description. Not every input the schema takes.
+   */
+  const largeProduct = () => {
+    const text = (length: number) => "€".repeat(length);
+    const url = (index: number) =>
+      `https://files.louez.test/${String(index).padStart(8, "0")}/`.padEnd(2048, "a");
+    const axes = ["size", "colour", "material"];
+    return {
+      name: text(255),
+      description: text(100_000),
+      aiContext: text(2000),
+      price: "99999999.99",
+      deposit: "99999999.99",
+      trackUnits: true,
+      bookingAttributeAxes: axes.map((key, position) => ({ key, label: text(50), position })),
+      images: Array.from({ length: listLimits.images }, (_, index) => url(index)),
+      categoryIds: Array.from({ length: listLimits.categoryIds }, (_, index) =>
+        `category_${index}`.padEnd(64, "x"),
+      ),
+      accessories: Array.from({ length: listLimits.accessories }, (_, index) => ({
+        accessoryId: `accessory_${index}`.padEnd(64, "x"),
+        required: true,
+        quantity: 999_999,
+      })),
+      rateTiers: Array.from({ length: listLimits.rateTiers }, (_, index) => ({
+        price: "99999999.99",
+        duration: index + 2,
+        unit: "week",
+      })),
+      units: Array.from({ length: listLimits.units }, (_, index) => ({
+        identifier: `${index}-${text(250)}`.slice(0, 255),
+        notes: text(1000),
+        purchasePrice: "99999999.99",
+        purchasedAt: "2026-11-09",
+        images: [0, 1, 2, 3].map((image) => url(index * 4 + image)),
+        attributes: Object.fromEntries(axes.map((key) => [key, `${index}-${text(100)}`])),
+      })),
+    };
+  };
+
+  test("a large product write is read on create and update, as UTF-8 or escaped JSON", async () => {
+    const product = largeProduct();
+    assert.ok(products.createProductInput.safeParse(product).success, "the contract takes it");
+    const json = JSON.stringify(product);
+    // The same JSON with every non-ASCII character escaped (\u20ac), as some clients send it.
+    const escaped = json.replace(
+      /[\u0080-\uffff]/g,
+      (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+    );
+    assert.deepEqual(JSON.parse(escaped), product);
+
+    for (const [body, method, path] of [
+      [json, "POST", "/products"],
+      [escaped, "PATCH", "/products/pr_1"],
+    ] as const) {
+      const bytes = new TextEncoder().encode(body);
+      assert.ok(
+        bytes.byteLength > 2 * MiB && bytes.byteLength <= products.PRODUCT_WRITE_MAX_BODY_BYTES,
+      );
+      const read = streamed(bytes);
+      const response = await serve(send(method, path, read.body, KNOWN));
+      assert.equal(
+        read.sent.bytes,
+        bytes.byteLength,
+        `${method} ${path}: ${bytes.byteLength} bytes read`,
+      );
+      assert.equal(response?.status, 401, "then refused by the procedure: no API key");
+    }
+
+    const tooLarge = streamed(33 * MiB);
+    assert.equal((await serve(post("/products", tooLarge.body, KNOWN)))?.status, 413);
+    // Another product route keeps 2 MiB.
+    assert.equal((await serve(post("/products/reorder", json, KNOWN)))?.status, 413);
+  });
+
+  test("at most four large bodies are read at once; the next caller retries", async () => {
+    const reading = Array.from({ length: maxLargeReads }, () => streamed(4 * MiB, 3 * MiB));
+    const pending = reading.map(({ body }) => serve(post("/products", body, KNOWN)));
+    while (reading.some(({ sent }) => sent.bytes < 3 * MiB)) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+
+    const busy = await serve(post("/products", streamed(3 * MiB).body, KNOWN));
+    assert.equal(busy?.status, 503);
+    assert.equal(busy?.headers.get("retry-after"), "1");
+    const error = (await busy?.json()) as { data: { code: string; retryable: boolean } };
+    assert.deepEqual([error.data.code, error.data.retryable], ["LARGE_BODY_BUSY", true]);
+    // A small body is not held back.
+    assert.equal(
+      (await serve(post("/categories", JSON.stringify({ name: "Bikes" }), KNOWN)))?.status,
+      401,
+    );
+
+    // The clients go away: their places are freed.
+    for (const { fail } of reading) fail(new Error("client gone"));
+    for (const request of pending) await assert.rejects(request);
+    const next = streamed(3 * MiB);
+    const after = await serve(post("/products", next.body, KNOWN));
+    assert.equal(next.sent.bytes, 3 * MiB, "read");
+    assert.notEqual(after?.status, 503);
   });
 });

@@ -1,5 +1,5 @@
 import { apiRateLimits, db } from "@louez/db";
-import { sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 
 import type { Credential } from "./actor";
 
@@ -12,7 +12,9 @@ export function rateLimitKey(credential: Credential): string {
 }
 
 /**
- * Counts one call for `key` and says whether it fits in the current window.
+ * Counts `weight` calls for `key` (one by default) and says whether they fit
+ * in the current window. A costlier request weighs more: the MCP transport
+ * counts a body past its usual size as several calls.
  * The counter lives in the database, so every app instance shares it.
  *
  * One statement counts and answers: `LAST_INSERT_ID(expr)` hands back the
@@ -24,6 +26,7 @@ export async function consumeRateLimit(
   key: string,
   limit: { windowMs: number; max: number } = API_RATE_LIMIT,
   now = Date.now(),
+  weight = 1,
 ): Promise<{ allowed: true } | { allowed: false; retryAfterSeconds: number }> {
   const windowStart = now - (now % limit.windowMs);
 
@@ -31,17 +34,38 @@ export async function consumeRateLimit(
   // right, and `count` must read the old `window_start` before it moves.
   const [header] = await db.execute(sql`
     INSERT INTO ${apiRateLimits} (${sql.identifier("key")}, window_start, count)
-    VALUES (${key}, ${windowStart}, 1)
+    VALUES (${key}, ${windowStart}, ${weight})
     ON DUPLICATE KEY UPDATE
-      count = LAST_INSERT_ID(IF(window_start >= ${windowStart}, count + 1, 1)),
+      count = LAST_INSERT_ID(IF(window_start >= ${windowStart}, count + ${weight}, ${weight})),
       window_start = GREATEST(window_start, ${windowStart})
   `);
 
-  // A first insert reports no id (the table has no auto-increment): count 1.
-  const count = Number((header as unknown as { insertId?: number }).insertId) || 1;
+  // A first insert reports no id (the table has no auto-increment): the weight.
+  const count = Number((header as unknown as { insertId?: number }).insertId) || weight;
   if (count <= limit.max) return { allowed: true };
   return {
     allowed: false,
     retryAfterSeconds: Math.max(1, Math.ceil((windowStart + limit.windowMs - now) / 1000)),
   };
+}
+
+/**
+ * Whether `key` has used up the current window, without counting a call: a
+ * transport checks it before it reads a request's body, which is counted
+ * once it is known what the request is.
+ */
+export async function rateLimitReached(
+  key: string,
+  limit: { windowMs: number; max: number } = API_RATE_LIMIT,
+  now = Date.now(),
+): Promise<{ retryAfterSeconds: number } | null> {
+  const windowStart = now - (now % limit.windowMs);
+  const [row] = await db
+    .select({ count: apiRateLimits.count, windowStart: apiRateLimits.windowStart })
+    .from(apiRateLimits)
+    .where(and(eq(apiRateLimits.key, key), gte(apiRateLimits.windowStart, windowStart)))
+    .limit(1);
+  if (!row || row.count < limit.max) return null;
+  const end = row.windowStart + limit.windowMs;
+  return { retryAfterSeconds: Math.max(1, Math.ceil((end - now) / 1000)) };
 }

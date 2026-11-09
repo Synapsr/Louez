@@ -19,6 +19,33 @@ export function isDatabaseDeadlock(error: unknown): boolean {
   );
 }
 
+/**
+ * An error that ended the whole transaction it ran in, or left it unable to
+ * go on, so the transaction must run again from its start rather than carry
+ * on past the failed statement: a deadlock (MySQL rolled the transaction
+ * back), a lock wait that timed out, or a savepoint that no longer exists (a
+ * rollback inside a savepoint whose transaction MySQL already rolled back,
+ * as after a deadlock).
+ */
+export function isTransactionInterrupted(error: unknown): boolean {
+  if (isDatabaseDeadlock(error)) return true;
+  for (let current = error, depth = 0; current && depth < 8; depth += 1) {
+    if (typeof current !== "object") return false;
+    const databaseError = current as { code?: unknown; errno?: unknown; cause?: unknown };
+    if (
+      databaseError.code === "ER_LOCK_WAIT_TIMEOUT" ||
+      databaseError.errno === 1205 ||
+      databaseError.code === "ER_SP_DOES_NOT_EXIST" ||
+      databaseError.errno === 1305
+    ) {
+      return true;
+    }
+    if (databaseError.cause === current) return false;
+    current = databaseError.cause;
+  }
+  return false;
+}
+
 export async function retryOnceOnDeadlock<T>(operation: () => Promise<T>): Promise<T> {
   return retryTransactionOnDeadlock(operation, { attempts: 2 });
 }

@@ -1,5 +1,10 @@
-import { fetchClientMetadataResource } from "@better-auth/cimd/node";
-import type { ClientMetadataResourceFetch } from "@better-auth/oauth-provider";
+import {
+  guardedGet,
+  guardedTransport,
+  isTimedOut,
+  withDeadline,
+  type GuardedFetch,
+} from "./guarded-fetch";
 
 /**
  * The website icon of an OAuth client whose domain is proven: a client that
@@ -8,12 +13,11 @@ import type { ClientMetadataResourceFetch } from "@better-auth/oauth-provider";
  * serves it from its own origin: the browser never loads an image from the
  * client's site, and the app's CSP stays closed.
  *
- * Every request goes through the CIMD transport: HTTPS only, every DNS
- * answer must be public, the connection is pinned to the checked address,
- * and redirects are never followed by it. This module adds what the CIMD
- * plugin adds around it: a timeout, a size cap, and redirects followed by
- * hand, each hop checked again. Only raster images are kept, recognized by
- * their bytes, never SVG.
+ * Every request is a guarded GET (guarded-fetch.ts): the CIMD transport
+ * (HTTPS only, every DNS answer public, the connection pinned to the checked
+ * address), with a timeout, a size cap, and redirects followed by hand, each
+ * hop checked again. Only raster images are kept, recognized by their bytes,
+ * never SVG.
  */
 
 /** Largest icon kept, in bytes. */
@@ -45,7 +49,7 @@ export interface SiteIcon {
 }
 
 /** A guarded GET, the CIMD transport's signature. Injected in tests. */
-export type IconFetch = ClientMetadataResourceFetch;
+export type IconFetch = GuardedFetch;
 
 /**
  * The origin whose icon stands for a CIMD client: the origin of its
@@ -93,103 +97,27 @@ export function toSiteIcon(bytes: Uint8Array): SiteIcon | null {
   return type ? { contentType: ICON_CONTENT_TYPES[type], body: bytes } : null;
 }
 
-/** The body, or null as soon as it passes `maxBytes`. */
-async function readLimited(response: Response, maxBytes: number): Promise<Uint8Array | null> {
-  const declared = Number.parseInt(response.headers.get("content-length") ?? "", 10);
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    await response.body?.cancel().catch(() => {});
-    return null;
-  }
-  const reader = response.body?.getReader();
-  if (!reader) return new Uint8Array(0);
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      length += value.byteLength;
-      if (length > maxBytes) {
-        await reader.cancel().catch(() => {});
-        return null;
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  const body = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return body;
-}
-
 /**
- * `promise`, or null once `ms` have passed. The transport's abort signal
- * does not cover its DNS lookup, so a deadline must not wait for it.
- */
-function withDeadline<T>(promise: T | Promise<T>, ms: number): Promise<T | null> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const expired = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), ms);
-    // A hung lookup must not keep the process alive.
-    timer.unref?.();
-  });
-  return Promise.race([promise, expired]).finally(() => clearTimeout(timer));
-}
-
-const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-
-/**
- * GET `url` and read at most `maxBytes` of a 200 answer, following up to
- * three redirects to HTTPS URLs only. Null on any failure.
+ * GET `url` and read at most `maxBytes` of a 200 answer, through the guarded
+ * fetch, following up to three redirects to HTTPS URLs only. Null on any
+ * failure.
  */
 async function getLimited(
   fetchResource: IconFetch,
   url: string,
   accept: string,
   maxBytes: number,
+  track?: (work: Promise<unknown>) => void,
 ): Promise<{ url: string; body: Uint8Array } | null> {
-  let current = url;
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    if (new URL(current).protocol !== "https:") return null;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    timeout.unref?.();
-    try {
-      const response = await withDeadline(
-        fetchResource(current, {
-          headers: { Accept: accept },
-          redirect: "manual",
-          signal: controller.signal,
-        }),
-        REQUEST_TIMEOUT_MS,
-      );
-      if (!response) return null;
-      if (REDIRECT_STATUSES.has(response.status)) {
-        await response.body?.cancel().catch(() => {});
-        const location = response.headers.get("location");
-        if (!location) return null;
-        current = new URL(location, current).href;
-        continue;
-      }
-      if (response.status !== 200) {
-        await response.body?.cancel().catch(() => {});
-        return null;
-      }
-      const body = await withDeadline(readLimited(response, maxBytes), REQUEST_TIMEOUT_MS);
-      if (!body) controller.abort();
-      return body ? { url: current, body } : null;
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-  return null;
+  const result = await guardedGet(url, {
+    accept,
+    maxBytes,
+    timeoutMs: REQUEST_TIMEOUT_MS,
+    maxRedirects: MAX_REDIRECTS,
+    fetchResource,
+    track,
+  });
+  return result.ok ? { url: result.url, body: result.body } : null;
 }
 
 const attribute = (tag: string, name: string): string | null => {
@@ -234,22 +162,30 @@ export function iconLinks(html: string, pageUrl: string): string[] {
 /**
  * The icon of the site at `origin`: `/favicon.ico` first (one request, and
  * where most sites keep it), then the icon links of the home page. Null when
- * none is a raster image within the size cap.
+ * none is a raster image within the size cap. `track` gets each request it
+ * starts that may outlive its deadline (see `GuardedGetOptions.track`).
  */
 export async function fetchSiteIcon(
   origin: string,
-  fetchResource: IconFetch = fetchClientMetadataResource,
+  fetchResource: IconFetch = guardedTransport,
+  track?: (work: Promise<unknown>) => void,
 ): Promise<SiteIcon | null> {
   const accept = "image/png,image/x-icon,image/*;q=0.8";
-  const favicon = await getLimited(fetchResource, `${origin}/favicon.ico`, accept, MAX_ICON_BYTES);
+  const favicon = await getLimited(
+    fetchResource,
+    `${origin}/favicon.ico`,
+    accept,
+    MAX_ICON_BYTES,
+    track,
+  );
   const icon = favicon ? toSiteIcon(favicon.body) : null;
   if (icon) return icon;
 
-  const page = await getLimited(fetchResource, `${origin}/`, "text/html", MAX_HTML_BYTES);
+  const page = await getLimited(fetchResource, `${origin}/`, "text/html", MAX_HTML_BYTES, track);
   if (!page) return null;
   const html = new TextDecoder().decode(page.body);
   for (const link of iconLinks(html, page.url).slice(0, MAX_LINK_CANDIDATES)) {
-    const found = await getLimited(fetchResource, link, accept, MAX_ICON_BYTES);
+    const found = await getLimited(fetchResource, link, accept, MAX_ICON_BYTES, track);
     const linked = found ? toSiteIcon(found.body) : null;
     if (linked) return linked;
   }
@@ -266,9 +202,10 @@ const MAX_ENTRIES = 500;
  * a while, the oldest entry goes first past 500, and concurrent asks for one
  * origin share one fetch.
  *
- * At most 8 lookups run at once, and a lookup that is still running (a slow
- * DNS answer, say) keeps its place until it ends, even after its asker got
- * no icon at the 10-second budget. A lookup refused because 8 run gets no
+ * At most 8 lookups run at once, and a lookup keeps its place until every
+ * request it started has ended (a slow DNS answer, say), even after its
+ * asker got no icon at the 10-second budget and after the request's own
+ * 4-second deadline. A lookup refused because 8 run gets no
  * icon and leaves nothing in the cache, so a later ask tries again.
  */
 export function createSiteIconCache(options?: {
@@ -277,7 +214,7 @@ export function createSiteIconCache(options?: {
   /** Tests shorten the budget. */
   resolveBudgetMs?: number;
 }) {
-  const fetchResource = options?.fetchResource ?? fetchClientMetadataResource;
+  const fetchResource = options?.fetchResource ?? guardedTransport;
   const now = options?.now ?? Date.now;
   const resolveBudgetMs = options?.resolveBudgetMs ?? RESOLVE_BUDGET_MS;
   const entries = new Map<string, { icon: SiteIcon | null; expiresAt: number }>();
@@ -293,13 +230,21 @@ export function createSiteIconCache(options?: {
     if (running >= MAX_IN_FLIGHT) return null;
 
     running++;
-    const lookup = fetchSiteIcon(origin, fetchResource)
-      .catch(() => null)
-      .finally(() => {
+    // The place is freed once the lookup and every request it started have
+    // settled: a request past its own deadline (a DNS lookup no signal
+    // cancels) still runs.
+    const started: Promise<unknown>[] = [];
+    const lookup = fetchSiteIcon(origin, fetchResource, (work) => started.push(work)).catch(
+      () => null,
+    );
+    void lookup
+      .then(() => Promise.allSettled(started))
+      .then(() => {
         running--;
       });
     const request = withDeadline(lookup, resolveBudgetMs)
-      .then((icon) => {
+      .then((answer) => {
+        const icon = isTimedOut(answer) ? null : answer;
         entries.delete(origin);
         entries.set(origin, { icon, expiresAt: now() + (icon ? FOUND_TTL_MS : MISSING_TTL_MS) });
         while (entries.size > MAX_ENTRIES) {

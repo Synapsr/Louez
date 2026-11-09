@@ -47,6 +47,16 @@ export const PRODUCT_WRITE_LIMITS = {
   images: PRODUCT_LIST_LIMITS.images * 10,
 } as const;
 
+/**
+ * Largest request body of a product write (`meta.maxBodyBytes`), read only
+ * once the caller is known. It holds a large product (1,000 units with their
+ * notes and photos), not every input the schema could take: a larger write
+ * must be split. Create the product, then add units in further updates (the
+ * saved units go back as their id and identifier only) or fill each unit's
+ * details with products_update_unit_details.
+ */
+export const PRODUCT_WRITE_MAX_BODY_BYTES = 32 * 1024 * 1024;
+
 const idSchema = z.string().min(1).max(64);
 const cursorSchema = z
   .string()
@@ -162,7 +172,7 @@ const productWriteShape = {
     .max(PRODUCT_WRITE_LIMITS.images)
     .optional()
     .describe(
-      "Image URLs, first one main. Upload each with products_create_image_upload, then use the url products_complete_image_upload returns.",
+      "Image URLs, first one main. Upload each with products_upload_image, or with products_create_image_upload and products_complete_image_upload, then use the url it returns.",
     ),
   imageHistory: fields.imageHistory.describe(
     "Editing history of each image (crops, AI enhancements), as the dashboard keeps it. Agents leave it out.",
@@ -636,7 +646,7 @@ export const productErrors = {
   imageNotOwned: () =>
     apiError("BAD_REQUEST", "PRODUCT_IMAGE_INVALID", {
       message:
-        "An image URL is not a product image stored for this store. Upload it with products_create_image_upload, then use the url products_complete_image_upload returns.",
+        "An image URL is not a product image stored for this store. Upload it with products_upload_image, or with products_create_image_upload and products_complete_image_upload, then use the url it returns.",
       i18nKey: "errors.invalidData",
     }),
   unitTrackingInUse: () =>

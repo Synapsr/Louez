@@ -57,7 +57,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     orm = await import("drizzle-orm");
     const { appRouter } = await import("@louez/api/router");
     const { createExposure } = await import("@louez/api/platform/exposure");
-    const { createOpenApiHandler, handleOpenApiRequest } =
+    const { createOpenApiHandler, handleOpenApiRequest, routeBodyLimits } =
       await import("@louez/api/platform/openapi");
     const { handleMcpRequest } = await import("./transports/http");
     exposure = createExposure(appRouter);
@@ -76,7 +76,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
               }
             : { method, headers },
         ),
-        { ports },
+        { ports, bodyLimits: routeBodyLimits(exposure.procedures) },
       )) ?? new Response(null, { status: 404 });
 
     const httpOptions = {
@@ -165,7 +165,8 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const products = exposure.procedures.filter((entry) =>
       entry.path.startsWith("dashboard.products."),
     );
-    assert.equal(products.length, 36);
+    assert.equal(products.length, 37);
+    assert.ok(products.some((entry) => entry.meta.mcp.name === "products_upload_image"));
     assert.deepEqual([...new Set(products.map((entry) => entry.meta.mcp.bundle))], ["catalog"]);
     // Former names: aliases, and list_products as its own unlisted procedure.
     const aliases = [
@@ -242,6 +243,47 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       price: "1",
     });
     assert.equal(toolError(denied)?.code, "PERMISSION_DENIED");
+  });
+
+  test("a product write past 4 MiB passes the door, under its new and former names", async () => {
+    const authorization = await key();
+    // 4.5 MB of description: more than any other call may send.
+    const description = "€".repeat(1_500_000);
+
+    // /api/v1 reads it past 2 MiB once the API key is known; without one it
+    // stops at 2 MiB and answers 401.
+    const viaOpenApi = await openApi(
+      "PATCH",
+      "/products/pt_missing_product_01",
+      { description },
+      { authorization },
+    );
+    assert.equal(viaOpenApi.status, 404);
+    assert.equal(
+      ((await viaOpenApi.json()) as { data: { code: string } }).data.code,
+      "PRODUCT_NOT_FOUND",
+    );
+    const anonymous: Array<Record<string, string>> = [
+      {},
+      { authorization: "Bearer lz_not_a_real_key_000000000000" },
+    ];
+    for (const headers of anonymous) {
+      const refused = await openApi(
+        "PATCH",
+        "/products/pt_missing_product_01",
+        { description },
+        headers,
+      );
+      assert.equal(refused.status, 401);
+    }
+
+    for (const [name, args] of [
+      ["products_update", { id: "pt_missing_product_01", description }],
+      ["update_product", { productId: "pt_missing_product_01", description }],
+    ] as const) {
+      const result = await mcpCall(authorization, name, args);
+      assert.equal(toolError(result)?.code, "PRODUCT_NOT_FOUND", `${name} reached the procedure`);
+    }
   });
 
   test("the former tool names still work with their former arguments", async () => {

@@ -101,6 +101,29 @@ export const createStoreInput = z.object({
 });
 export type CreateStoreInput = z.infer<typeof createStoreInput>;
 
+/**
+ * The onboarding's store step, on a store the user already has: the one it
+ * edits (`storeId`), else the active store if it is an incomplete store of
+ * theirs, else their incomplete store (the one with this web address first).
+ * The same fields as a new store's.
+ */
+export const updateOnboardingInfoInput = createStoreInput.extend({
+  storeId: z
+    .string()
+    .length(21)
+    .nullable()
+    .optional()
+    .describe("The store the step edits; null or left out for the one being onboarded."),
+});
+export type UpdateOnboardingInfoInput = z.infer<typeof updateOnboardingInfoInput>;
+
+export const updateOnboardingInfoOutput = z.object({
+  /** The store saved; null when the user has none to finish (the step creates one with stores.create). */
+  id: z.string().nullable(),
+  /** The store was online already: the owner came back to the step. */
+  online: z.boolean(),
+});
+
 const feeTierSchema = z.object({
   /** The band ends at this many reservations in the month; null: no end. */
   upToReservationsPerMonth: z.number().int().nullable(),

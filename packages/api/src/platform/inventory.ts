@@ -143,7 +143,6 @@ const SA = {
   subscription: `${DASH}/subscription/actions.ts`,
   team: `${DASH}/team/actions.ts`,
   whatsNew: `${DASH}/whats-new/actions.ts`,
-  onboarding: `${ONBOARDING}/actions.ts`,
   onboardingProfile: `${ONBOARDING}/profile-actions.ts`,
   reeent: `${ONBOARDING}/reeent/actions.ts`,
   invitation: "apps/web/app/invitation/[token]/actions.ts",
@@ -786,12 +785,14 @@ export const capabilities = [
   },
   {
     // The dashboard still sends the bytes through its file route (progress,
-    // same-origin); agents use the two procedures.
+    // same-origin); agents use the two procedures, or send the bytes or a
+    // public URL in one call (uploadImage).
     id: "products.uploadImage",
     sources: [
       route(ROUTE.files, "POST (kind=product)"),
       procedure("products", "createImageUpload"),
       procedure("products", "completeImageUpload"),
+      procedure("products", "uploadImage"),
     ],
     kind: "write",
     plan: { lot: "3" },
@@ -1025,12 +1026,14 @@ export const capabilities = [
   },
   {
     // The dashboard still sends the bytes through its file route (progress,
-    // same-origin); agents use the two procedures.
+    // same-origin); agents use the two procedures, or send the bytes or a
+    // public URL in one call (uploadImage).
     id: "categories.uploadImage",
     sources: [
       route(ROUTE.files, "POST (kind=category)"),
       procedure("categories", "createImageUpload"),
       procedure("categories", "completeImageUpload"),
+      procedure("categories", "uploadImage"),
     ],
     kind: "write",
     plan: { lot: "0c" },
@@ -1461,12 +1464,14 @@ export const capabilities = [
   },
   {
     // The dashboard keeps its upload route, which streams with progress.
+    // Agents also send the bytes or a public URL in one call (uploadImage).
     id: "online_store.uploadImage",
     sources: [
       route(ROUTE.files, "POST (kind=logo)"),
       route(ROUTE.files, "POST (kind=hero)"),
       procedure("onlineStore", "createImageUpload"),
       procedure("onlineStore", "completeImageUpload"),
+      procedure("onlineStore", "uploadImage"),
     ],
     kind: "write",
     plan: { lot: "6" },
@@ -2092,11 +2097,14 @@ export const capabilities = [
   },
   {
     // The onboarding's store step on a store that exists already: an
-    // incomplete store of the user, or the one being edited.
+    // incomplete store of the user (an agent's included), or the one being
+    // edited. The wizard's own step: a session only, agents set the same
+    // fields through the settings procedures.
     id: "stores.updateOnboardingInfo",
-    sources: [action(SA.onboarding, "saveStoreInfo")],
+    sources: [procedure("stores", "updateOnboardingInfo")],
     kind: "write",
     plan: { lot: "8" },
+    actors: ["session"],
   },
   {
     id: "stores.getOnboardingDraft",

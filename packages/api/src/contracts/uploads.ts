@@ -44,6 +44,49 @@ export const completeImageUploadInput = z.object({
   key: z.string().min(1).max(256).describe("The key the create-upload call returned."),
 });
 
+/**
+ * Largest image sent in the call, base64: the request must carry it (a third
+ * more as base64), so it stays under the bodies the transports take. A larger
+ * image goes up by URL, or through the upload URL.
+ */
+export const INLINE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Largest request of a call that carries an image's bytes
+ * (`meta.maxBodyBytes`): 5 MB is 6.7 MB of base64, with the call around it.
+ */
+export const UPLOAD_IMAGE_MAX_BODY_BYTES = 8 * 1024 * 1024;
+
+/** Base64 characters of the largest inline image, with a data URL's prefix. */
+export const INLINE_UPLOAD_MAX_CHARS = Math.ceil(INLINE_UPLOAD_MAX_BYTES / 3) * 4 + 64;
+
+/**
+ * An image in the call: its bytes as base64, or a public URL Louez downloads.
+ * Exactly one of `contentBase64` and `imageUrl`.
+ */
+export const uploadImageInput = z.object({
+  contentBase64: z
+    .string()
+    .min(1)
+    .max(INLINE_UPLOAD_MAX_CHARS)
+    .optional()
+    .describe(
+      "The file's bytes, base64 (or a data:image/…;base64, URL), 5 MB at most once decoded. Use it when you cannot reach an upload URL, e.g. for an image you made in your own workspace.",
+    ),
+  contentType: z
+    .enum(IMAGE_UPLOAD_MIME_TYPES)
+    .optional()
+    .describe("The type of the bytes in contentBase64, when you know it; the bytes must match it."),
+  imageUrl: z
+    .string()
+    .url()
+    .max(2048)
+    .optional()
+    .describe(
+      "A public HTTPS URL of the image instead of its bytes. Louez downloads it; private or local addresses are refused.",
+    ),
+});
+
 export const completeImageUploadOutput = z.object({
   key: z.string(),
   /** Public URL of the image, to set as an image URL. */
@@ -51,6 +94,13 @@ export const completeImageUploadOutput = z.object({
   contentType: z.string(),
   size: z.number().int(),
 });
+
+/**
+ * Whether an image host's answer may succeed on a later try: a timeout, too
+ * many requests, or any server error (522 and 524 from a CDN included).
+ */
+const isTransientStatus = (status: number) =>
+  status === 408 || status === 425 || status === 429 || (status >= 500 && status <= 599);
 
 export const uploadErrors = {
   kindNotAllowed: (kind: string) =>
@@ -88,6 +138,40 @@ export const uploadErrors = {
       message: `The uploaded bytes are not a ${declared} image. Nothing was kept; upload the file again.`,
       i18nKey: "errors.invalidData",
       details: { declared, found },
+    }),
+  inlineTooLarge: (size: number, maxSize: number) =>
+    apiError("BAD_REQUEST", "UPLOAD_TOO_LARGE", {
+      message: `The image is ${size} bytes; at most ${maxSize} bytes can be sent in the call. Send a public imageUrl instead, or use the create-upload tool.`,
+      i18nKey: "errors.invalidData",
+      details: { size, maxSize },
+    }),
+  base64Invalid: () =>
+    apiError("BAD_REQUEST", "UPLOAD_BASE64_INVALID", {
+      message: "contentBase64 is not base64. Send the file's bytes base64-encoded, nothing else.",
+      i18nKey: "errors.invalidData",
+    }),
+  sourceInvalid: () =>
+    apiError("BAD_REQUEST", "UPLOAD_SOURCE_INVALID", {
+      message: "Send exactly one of contentBase64 (the file's bytes) and imageUrl.",
+      i18nKey: "errors.invalidData",
+    }),
+  urlUnreachable: (reason: string, status: number | null) =>
+    apiError("BAD_REQUEST", "UPLOAD_URL_UNREACHABLE", {
+      message:
+        "Louez could not download an image at this URL. It must be a public HTTPS address that answers 200 with the image within 10 seconds; private and local addresses, plain HTTP and more than 3 redirects are refused. If the image is only in your workspace, send its bytes as contentBase64.",
+      i18nKey: "errors.invalidData",
+      // A slow or overloaded host may answer later; a refused address, a
+      // URL that is not HTTPS or a missing image will not.
+      retryable:
+        reason === "timeout" ||
+        (reason === "status" && status !== null && isTransientStatus(status)),
+      details: { reason, status },
+    }),
+  importBusy: () =>
+    apiError("TOO_MANY_REQUESTS", "UPLOAD_IMPORT_BUSY", {
+      message: "Too many images are being downloaded right now. Try again in a few seconds.",
+      i18nKey: "errors.invalidData",
+      retryable: true,
     }),
   tokenInvalid: () =>
     apiError("UNAUTHORIZED", "UPLOAD_TOKEN_INVALID", {

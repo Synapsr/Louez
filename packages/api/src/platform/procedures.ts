@@ -16,6 +16,7 @@ import type { ApiMeta } from "./meta";
 import { IDEMPOTENCY_HEADER, runOperation } from "./operations";
 import { accountRefusal, allows } from "./permissions";
 import { consumeRateLimit, rateLimitKey } from "./rate-limit";
+import { recordedSetupAction, setupProcedureName } from "./setup-analytics";
 
 /** Store row handed to agent-ready procedures. */
 export type ActorStore = typeof stores.$inferSelect;
@@ -95,18 +96,30 @@ async function recordWrite<T extends { output: unknown }>(input: {
   headers: Headers;
   receipt: BaseContext["receipt"];
   rawInput: unknown;
+  dispatchEffects?: (ids: readonly string[]) => void;
   run: () => T | PromiseLike<T>;
   replay: (output: unknown) => T;
 }): Promise<T> {
   let ran: T | undefined;
+  const { actor } = input;
   const result = await runOperation(
     {
-      actor: input.actor,
+      actor,
       procedure: input.path.join("."),
       input: input.rawInput,
       idempotencyKey: input.meta.secretOutput ? null : input.headers.get(IDEMPOTENCY_HEADER),
       receipt: input.receipt,
       toStored: (raw) => validateOutput(input.outputSchema, raw),
+      // A setup write marks the offline store it locks; an agent's then sends
+      // its setup action (platform/setup-analytics.ts).
+      marksSetup: setupProcedureName(input.path) !== null,
+      recordedEffects: recordedSetupAction({
+        credential: actor.credential,
+        transport: actor.transport,
+        path: input.path,
+        input: input.rawInput,
+      }),
+      dispatchEffects: input.dispatchEffects,
     },
     async () => {
       ran = await input.run();
@@ -159,6 +172,7 @@ export const accountProcedure = authenticated.use(
       headers: context.headers,
       receipt: context.receipt,
       rawInput: input,
+      dispatchEffects: context.ports?.dispatchEffects,
       run: () => next(),
       // The cast only drops the context a replay does not add.
       replay: (result) => output(result) as Awaited<ReturnType<typeof next>>,
@@ -224,6 +238,7 @@ export const storeProcedure = authenticated.use(
       headers: context.headers,
       receipt: context.receipt,
       rawInput: input,
+      dispatchEffects: ports.dispatchEffects,
       run: () => next({ context: nextContext }),
       // The cast only drops the context a replay does not add.
       replay: (result) => output(result) as Awaited<ReturnType<typeof next<typeof nextContext>>>,
