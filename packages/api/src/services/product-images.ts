@@ -31,8 +31,8 @@ import {
   JOB_MAX_ATTEMPTS,
   lockActiveJob,
   lockClaimedJob,
+  lockJob,
   queueJob,
-  readJob,
   recordJobFailure,
   type ClaimedJob,
   type JobRow,
@@ -460,11 +460,15 @@ export async function runImageJob(
 
   const claimed: ClaimedJob = outcome;
   const { storeId } = claimed.job;
-  // This run's own key: no other run writes it, so this run may always delete it.
+  // This run's own key: no other run writes it. This run deletes it only once
+  // it knows no committed result points at it: a failure it wrote itself, or a
+  // claim it saw lost (or a job gone) under the job's lock.
   const key = imageJobKey(storeId, claimed.job.id, input.operation, claimed.job.attempts);
   const fail = async (error: ReturnType<typeof jobError>) => {
-    await recordJobFailure(claimed, error).catch(() => {});
-    await discard([key]);
+    const recorded = await recordJobFailure(claimed, error).catch(() => false);
+    // Not written (the claim was taken over, or the database did not answer):
+    // keep the file, an orphan rather than a result pointing at nothing.
+    if (recorded) await discard([key]);
   };
   if (!port) {
     await fail(
@@ -634,19 +638,20 @@ export async function runImageJob(
     }, IMAGE_RESULT_TRANSACTION);
   } catch (error) {
     logProviderError("image_job.record_failed", error);
-    // The transaction may have committed and only its answer been lost: what
-    // the database holds decides, before any file is deleted.
-    const outcome = await persistedOutcome(claimed, key);
-    if (outcome === "unknown") return; // An orphan file beats a paid result pointing at nothing.
-    if (outcome === "rolled_back") {
-      // Nothing committed: the retry stores its own result.
-      await fail(jobError("DEBIT_FAILED", "The result could not be recorded.", true));
-      return;
-    }
-    if (outcome === "not_ours") {
+    // The transaction may still commit, or have committed with its answer
+    // lost: settle it under the job's lock before any file is deleted.
+    const outcome = await settleUncertainResult(
+      claimed,
+      key,
+      jobError("DEBIT_FAILED", "The result could not be recorded.", true),
+    );
+    if (outcome === "failed") {
+      // This run wrote its failure, so nothing points at its file.
       await discard([key]);
       return;
     }
+    // Anything else it cannot be sure of: the file stays.
+    if (outcome === "kept") return;
     finished = {
       kind: "succeeded",
       debitedMicro: outcome.debitedMicro,
@@ -689,30 +694,39 @@ export async function runImageJob(
 }
 
 /**
- * Where a run stands once its result transaction failed without a clear
- * answer (the commit may have gone through, its acknowledgement lost): what
- * it debited when the job succeeded with this run's file, `rolled_back` when
- * this run still holds it, `not_ours` when another run or the store's
- * deletion ended it, `unknown` when the database cannot be read.
+ * Settles a run whose result transaction failed without a clear answer: it
+ * may have committed with its answer lost, or still be running on a broken
+ * connection. In a transaction of its own, it locks the job's row, which
+ * waits for that transaction to end, then reads what it left:
+ *
+ * - the job succeeded with this run's file: what it debited;
+ * - this run still holds it: records the failure under that lock (`failed`),
+ *   so the late transaction, if any, can no longer succeed;
+ * - anything else, or no answer from the database: `kept`, and the file
+ *   stays, as nothing proves no result points at it.
  */
-async function persistedOutcome(
+async function settleUncertainResult(
   claimed: ClaimedJob,
   key: string,
-): Promise<{ debitedMicro: number } | "rolled_back" | "not_ours" | "unknown"> {
-  let job: JobRow | null;
+  error: ReturnType<typeof jobError>,
+): Promise<{ debitedMicro: number } | "failed" | "kept"> {
   try {
-    job = await readJob(claimed.job.storeId, claimed.job.id);
+    return await db.transaction(async (tx) => {
+      const job = await lockJob(tx, claimed.job.id);
+      if (job?.status === "succeeded") {
+        const result = jobResultSchema.safeParse(job.result);
+        if (result.success && result.data.key === key) {
+          return { debitedMicro: result.data.debitedMicro };
+        }
+      }
+      if (job?.status === "running" && job.claimToken === claimed.token) {
+        return (await recordJobFailure(claimed, error, tx)) ? "failed" : "kept";
+      }
+      return "kept";
+    });
   } catch {
-    return "unknown";
+    return "kept";
   }
-  if (job?.status === "succeeded") {
-    const result = jobResultSchema.safeParse(job.result);
-    if (result.success && result.data.key === key) {
-      return { debitedMicro: result.data.debitedMicro };
-    }
-  }
-  if (job?.status === "running" && job.claimToken === claimed.token) return "rolled_back";
-  return "not_ours";
 }
 
 /** The store as a product event names it; blank when it cannot be read. */

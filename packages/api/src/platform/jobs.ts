@@ -278,11 +278,17 @@ export async function failJobInTransaction(
 /**
  * A run that failed: queued again after `JOB_RETRY_DELAY_MS` when the
  * failure may pass and the job has attempts left, failed for good otherwise.
- * Changes nothing when this runner no longer holds the job.
+ * Fenced by the claim: whether it wrote the failure (one row), which only
+ * a runner that still held the job does. `executor`: a transaction that
+ * locked the row first (`lockJob`).
  */
-export async function recordJobFailure(claimed: ClaimedJob, error: ApiJobError): Promise<void> {
+export async function recordJobFailure(
+  claimed: ClaimedJob,
+  error: ApiJobError,
+  executor: Transaction | typeof db = db,
+): Promise<boolean> {
   const retry = error.retryable && claimed.job.attempts < JOB_MAX_ATTEMPTS;
-  await db
+  const [result] = await executor
     .update(apiJobs)
     .set(
       retry
@@ -305,6 +311,17 @@ export async function recordJobFailure(claimed: ClaimedJob, error: ApiJobError):
           },
     )
     .where(fenced(claimed.job.id, claimed.token));
+  return result.affectedRows === 1;
+}
+
+/**
+ * A job's row, locked: the read waits for any transaction that holds it, so
+ * what it returns is committed and stays so until `tx` ends. Null when the
+ * job is gone.
+ */
+export async function lockJob(tx: Transaction, id: string): Promise<JobRow | null> {
+  const [row] = await tx.select().from(apiJobs).where(eq(apiJobs.id, id)).for("update");
+  return row ?? null;
 }
 
 /**

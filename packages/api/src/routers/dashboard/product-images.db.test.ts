@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  skipWithoutTestDatabase,
+  waitForLockWaits,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import type { RouterClient } from "@orpc/server";
 
@@ -766,25 +771,23 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal((await debits()).length, 1);
   });
 
+  /** The transaction that records a job's result: the one that runs READ COMMITTED. */
+  const isResultTransaction = (args: Parameters<typeof louezDb.db.transaction>) =>
+    args[1]?.isolationLevel === "read committed";
+
   /**
    * Makes the next result transaction commit, then fail as if its answer were
-   * lost; `thenReadFails`: the read that follows fails too.
+   * lost; `thenDatabaseFails`: the transaction that follows fails too.
    */
-  function loseNextCommitAnswer(options: { thenReadFails?: boolean } = {}) {
+  function loseNextCommitAnswer(options: { thenDatabaseFails?: boolean } = {}) {
     const { db } = louezDb;
     const transaction = db.transaction.bind(db);
-    const select = db.select.bind(db);
-    const restore = () => {
-      Reflect.set(db, "transaction", transaction);
-      Reflect.set(db, "select", select);
-    };
+    const restore = () => Reflect.set(db, "transaction", transaction);
     Reflect.set(db, "transaction", async (...args: Parameters<typeof db.transaction>) => {
-      const result: unknown = await transaction(...args);
-      const committedResult =
-        typeof result === "object" && result !== null && "kind" in result && result.kind === "succeeded";
-      if (!committedResult) return result;
-      if (options.thenReadFails) {
-        Reflect.set(db, "select", () => {
+      if (!isResultTransaction(args)) return transaction(...args);
+      await transaction(...args);
+      if (options.thenDatabaseFails) {
+        Reflect.set(db, "transaction", () => {
           restore();
           throw new Error("The database went away.");
         });
@@ -826,7 +829,7 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     const id = await product([source]);
     const started = await products("enhanceImage", { id, imageUrl: source }, session());
 
-    const restore = loseNextCommitAnswer({ thenReadFails: true });
+    const restore = loseNextCommitAnswer({ thenDatabaseFails: true });
     try {
       await images.runImageJob(started.id, ports);
     } finally {
@@ -837,6 +840,92 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.deepEqual((await productRow(id))?.images, [`${FILES}/${key}`]);
     assert.ok(fake.state.stored.has(key));
     assert.deepEqual(fake.state.discarded, []);
+  });
+
+  test("a result transaction still running when the runner settles it: the commit wins, the file stays", async () => {
+    const source = photo("late-commit");
+    const id = await product([source]);
+    const started = await products("enhanceImage", { id, imageUrl: source }, session());
+
+    // The result transaction writes everything, then its connection breaks
+    // before COMMIT: the runner hears of a failure while the transaction,
+    // still holding its locks, has yet to commit.
+    const { db } = louezDb;
+    const transaction = db.transaction.bind(db);
+    let commit = () => {};
+    const commitGate = new Promise<void>((resolve) => {
+      commit = resolve;
+    });
+    let original: Promise<unknown> = Promise.resolve();
+    Reflect.set(db, "transaction", (...args: Parameters<typeof db.transaction>) => {
+      if (!isResultTransaction(args)) return transaction(...args);
+      Reflect.set(db, "transaction", transaction);
+      const [work, config] = args;
+      let written = () => {};
+      const wrote = new Promise<void>((resolve) => {
+        written = resolve;
+      });
+      original = transaction(async (tx) => {
+        const result = await work(tx);
+        written();
+        await commitGate;
+        return result;
+      }, config);
+      return wrote.then(() => {
+        throw new Error("Connection lost before COMMIT's answer.");
+      });
+    });
+    try {
+      const run = images.runImageJob(started.id, ports);
+      // The runner settles the outcome under the job's lock: it waits there.
+      const watcher = await database.connect();
+      try {
+        await waitForLockWaits(watcher, database.name, 1);
+      } finally {
+        await watcher.end();
+      }
+      commit();
+      await original;
+      await run;
+    } finally {
+      Reflect.set(db, "transaction", transaction);
+    }
+
+    const key = runKey(started.id, "enhance");
+    assert.equal((await jobRow(started.id))?.status, "succeeded");
+    assert.deepEqual((await productRow(id))?.images, [`${FILES}/${key}`]);
+    assert.deepEqual(await debits(), [{ dedupKey: `imgenh:${started.id}`, debitedMicro: 2_000_000 }]);
+    assert.ok(fake.state.stored.has(key), "the committed result keeps its file");
+    assert.equal(fake.state.discarded.includes(key), false);
+    assert.deepEqual(fake.state.afterSuccess, [{ runId: started.id, debitedMicro: 2_000_000 }]);
+  });
+
+  test("a failure that no longer matches the job's claim deletes nothing", async () => {
+    const { ProductImageFailure } = await import("../../platform/ports");
+    const source = photo("late-failure");
+    const id = await product([source]);
+    const started = await products("enhanceImage", { id, imageUrl: source }, session());
+
+    // Run 1 stalls; its lease runs out and run 2 succeeds.
+    let release = () => {};
+    fake.state.gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const first = images.runImageJob(started.id, ports);
+    await until(() => fake.state.processed.length === 1);
+    fake.state.gate = null;
+    await expireLease(started.id);
+    await images.runImageJob(started.id, ports);
+    const winner = runKey(started.id, "enhance", 2);
+
+    // Run 1 then fails: its failure update matches no row, so it deletes nothing.
+    fake.state.failNext = new ProductImageFailure("PROVIDER_ERROR", "down", true);
+    const discardedBefore = [...fake.state.discarded];
+    release();
+    await first;
+    assert.deepEqual(fake.state.discarded, discardedBefore);
+    assert.equal((await jobRow(started.id))?.status, "succeeded");
+    assert.deepEqual((await productRow(id))?.images, [`${FILES}/${winner}`]);
   });
 
   test("a result made after its store or its product was deleted is deleted too", async () => {
