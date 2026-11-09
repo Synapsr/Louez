@@ -5,13 +5,22 @@ a été montée par un agent (Claude, ChatGPT…), ce qu'il a renseigné, jusqu'
 la boutique a été mise en ligne. Le code est dans `packages/api/src/platform/setup-analytics.ts`
 (ce qui part) et `apps/web/lib/product-analytics/setup-analytics.ts` (les propriétés PostHog).
 
-Tous les événements de ce document sont serveur, envoyés par l'outbox (`api_effects`) avec
-l'écriture qui les cause : un UUID et une date
-fixés à l'écriture, donc un seul événement PostHog même après un nouvel essai. Ils portent les
-propriétés de base `analytics_area: core_product` et `analytics_version: 1`, et le distinct_id
-du propriétaire de la boutique (`stores.user_id`), comme les autres événements d'onboarding.
-Sans PostHog configuré (`NEXT_PUBLIC_POSTHOG_KEY` absent), la ligne est marquée `skipped` et
-rien ne part.
+Tous les événements de ce document sont serveur, envoyés par l'outbox (`api_effects`) : un UUID
+et une date fixés à l'écriture, donc un seul événement PostHog même après un nouvel essai. Ils
+n'ont pas tous la même garantie :
+
+- `onboarding_store_info_saved` et `onboarding_completed` sont ajoutés dans la transaction de
+  l'écriture qui les cause (la création, l'étape « boutique », la mise en ligne) : ils partent
+  si et seulement si elle est validée ;
+- `agent_store_setup_action` est ajouté avec l'enregistrement de l'opération
+  (`api_operations`), juste après la validation de l'écriture, au mieux : si l'insertion de sa
+  propre ligne échoue, l'événement est perdu (et journalisé), jamais l'écriture. Un blocage qui
+  interrompt cet enregistrement (deadlock, attente de verrou) le fait rejouer, pas l'écriture.
+
+Ils portent les propriétés de base `analytics_area: core_product` et `analytics_version: 1`, et
+le distinct_id du propriétaire de la boutique (`stores.user_id`), comme les autres événements
+d'onboarding. Sans PostHog configuré (`NEXT_PUBLIC_POSTHOG_KEY` absent), la ligne est marquée
+`skipped` et rien ne part.
 
 ## Qui a agi
 
