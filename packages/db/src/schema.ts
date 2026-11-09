@@ -18,6 +18,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  tinyint,
   unique,
   varchar,
 } from "drizzle-orm/mysql-core";
@@ -4448,6 +4449,63 @@ export const inboxAcknowledgements = mysqlTable(
       table.createdAt,
     ),
     createdIdx: index("inbox_acknowledgements_created_idx").on(table.createdAt),
+  }),
+);
+
+/** What a handoff hands the user over to (packages/api contracts/handoffs.ts). */
+export type ApiHandoffKind =
+  | "stripe_connect_onboarding"
+  | "stripe_dashboard"
+  | "billing_card_setup";
+
+/**
+ * A step only the human can take (Stripe identity checks, a billing card),
+ * handed over by an agent: a short-lived link to a Louez page that checks who
+ * opens it, then sends them to the provider and back. The link's secret is
+ * stored hashed; a new link for the same handoff replaces it. One active
+ * handoff (pending or opened) per store and kind: `active_slot` is 1 while
+ * it is, null after, so the unique key holds only the active one.
+ */
+export const apiHandoffs = mysqlTable(
+  "api_handoffs",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    kind: varchar("kind", { length: 40 }).$type<ApiHandoffKind>().notNull(),
+    /** `expired` is not stored: an active handoff past `expires_at` reads as expired. */
+    status: mysqlEnum("status", ["pending", "opened", "completed", "failed"])
+      .default("pending")
+      .notNull(),
+    activeSlot: tinyint("active_slot"),
+    /** The user the link is for: only they may open it. */
+    userId: varchar("user_id", { length: 21 }).notNull(),
+    /** Who asked for it: a session, an API key or an OAuth grant. */
+    credentialKind: varchar("credential_kind", { length: 16 }).notNull(),
+    credentialId: varchar("credential_id", { length: 64 }),
+    clientName: varchar("client_name", { length: 100 }),
+    /** SHA-256 of the link's secret, hex. */
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    linkIssuedAt: timestamp("link_issued_at", { mode: "date", fsp: 3 }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", fsp: 3 }).notNull(),
+    openedAt: timestamp("opened_at", { mode: "date", fsp: 3 }),
+    /** SHA-256 of the state the provider's return must carry, hex; set when the user continues. */
+    returnStateHash: varchar("return_state_hash", { length: 64 }),
+    /** The provider's id of the flow, such as a Checkout Session. */
+    providerRef: varchar("provider_ref", { length: 255 }),
+    completedAt: timestamp("completed_at", { mode: "date", fsp: 3 }),
+    failedAt: timestamp("failed_at", { mode: "date", fsp: 3 }),
+    failureCode: varchar("failure_code", { length: 60 }),
+    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+  },
+  (table) => ({
+    activeUnique: unique("api_handoffs_active_unique").on(
+      table.storeId,
+      table.kind,
+      table.activeSlot,
+    ),
+    tokenUnique: unique("api_handoffs_token_unique").on(table.tokenHash),
+    storeIdx: index("api_handoffs_store_idx").on(table.storeId, table.createdAt),
   }),
 );
 
