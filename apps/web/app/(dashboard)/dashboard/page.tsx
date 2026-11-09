@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { env } from "@/env";
 import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
+import { storeHasAgentConnection } from "@louez/api/services/agent-grants";
 import { db, users } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
 import { reservations } from "@louez/db";
@@ -8,10 +9,12 @@ import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { getStoreMetrics, determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
 import type { LaunchChecklistView } from "@louez/api/contracts/launch";
 import { serverApi } from "@/lib/api/server-api";
+import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
 import { parseDismissedNotices, type DismissibleNoticeId } from "@/lib/dashboard/dismissed-notices";
 import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
 import {
+  AgentAssistantNotice,
   DashboardAlert,
   ReeentStripeSetupCard,
   SetupChecklist,
@@ -23,6 +26,7 @@ import {
   QuickActions,
   ReservationsCalendarPrefetch,
   StorefrontWidget,
+  shouldOfferAgentAssistant,
 } from "@/components/dashboard/home";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -137,14 +141,16 @@ async function DashboardContent({
   // onboarding (payment mode degrades to request mode until Stripe can charge).
   const onlinePaymentsStep = onlinePaymentsStepOf(launchChecklist);
   // Fetch all data in parallel
-  const [metrics, departures, returns, pending, channelState, cohort] = await Promise.all([
-    getStoreMetrics(storeId),
-    getTodaysDeparturesList(storeId),
-    getTodaysReturnsList(storeId),
-    getPendingReservationsList(storeId),
-    getMarketplaceChannelState({ storeId }),
-    getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
-  ]);
+  const [metrics, departures, returns, pending, channelState, cohort, hasAgentConnection] =
+    await Promise.all([
+      getStoreMetrics(storeId),
+      getTodaysDeparturesList(storeId),
+      getTodaysReturnsList(storeId),
+      getPendingReservationsList(storeId),
+      getMarketplaceChannelState({ storeId }),
+      getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
+      storeHasAgentConnection(storeId),
+    ]);
 
   const storeState = determineStoreState(metrics);
   const timeOfDay = getTimeOfDay();
@@ -190,6 +196,11 @@ async function DashboardContent({
           storeSlug={storeSlug}
           onlinePaymentsContext={isFromReeent ? "reeent" : "default"}
         />
+      )}
+
+      {/* The offer to let an AI assistant set up and run the store. */}
+      {shouldOfferAgentAssistant({ dismissedNoticeIds, hasAgentConnection }) && (
+        <AgentAssistantNotice {...getMcpEndpoint()} />
       )}
 
       {/* Adaptive Stats */}

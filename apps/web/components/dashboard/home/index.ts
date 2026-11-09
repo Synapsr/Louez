@@ -1,5 +1,6 @@
 export { AdaptiveHeader } from "./adaptive-header";
 export { AdaptiveStats } from "./adaptive-stats";
+export { AgentAssistantNotice } from "./agent-assistant-notice";
 export { DashboardAlert } from "./dashboard-alert";
 export { PendingRequests } from "./pending-requests";
 export { QuickActions } from "./quick-actions";
@@ -7,6 +8,7 @@ export { ReeentStripeSetupCard } from "./reeent-stripe-setup-card";
 export { ReservationsCalendarPrefetch } from "./reservations-calendar-prefetch";
 export { SetupChecklist } from "./setup-checklist";
 export { onlinePaymentsStepOf, type OnlinePaymentsStep } from "./util.setup-steps";
+export { shouldOfferAgentAssistant } from "./util.agent-assistant";
 export { ShareModal } from "./share-modal";
 export { StorefrontWidget } from "./storefront-widget";
 export { TodayActivity } from "./today-activity";
