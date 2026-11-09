@@ -51,6 +51,12 @@ export const completeImageUploadInput = z.object({
  */
 export const INLINE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
+/**
+ * Largest request of a call that carries an image's bytes
+ * (`meta.maxBodyBytes`): 5 MB is 6.7 MB of base64, with the call around it.
+ */
+export const UPLOAD_IMAGE_MAX_BODY_BYTES = 8 * 1024 * 1024;
+
 /** Base64 characters of the largest inline image, with a data URL's prefix. */
 export const INLINE_UPLOAD_MAX_CHARS = Math.ceil(INLINE_UPLOAD_MAX_BYTES / 3) * 4 + 64;
 

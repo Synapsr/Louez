@@ -16,6 +16,7 @@ import {
   completeImageUploadOutput,
   createImageUploadInput,
   createImageUploadOutput,
+  UPLOAD_IMAGE_MAX_BODY_BYTES,
   uploadImageInput,
 } from "../../contracts/uploads";
 import { checkConfirmation } from "../../platform/confirmation";
@@ -250,8 +251,8 @@ const uploadImageProcedure = storeProcedure
         "Upload a category image in one call (JPEG, PNG, GIF or WebP). Send the file's bytes base64 as `contentBase64` (5 MB at most) when you cannot reach the upload URL of categories_create_image_upload, such as an image you made in your own workspace; or a public HTTPS `imageUrl` for Louez to download (5 MB at most). The type is read from the bytes. Returns the image's public `url`: set it as `imageUrl` with categories_create or categories_update.",
       bundle: "catalog",
       annotations: { openWorldHint: true },
-      inlineFile: true,
     },
+    maxBodyBytes: UPLOAD_IMAGE_MAX_BODY_BYTES,
   })
   .route({ method: "POST", path: "/categories/images" })
   .input(uploadImageInput)

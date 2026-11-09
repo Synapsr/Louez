@@ -245,6 +245,19 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(toolError(denied)?.code, "PERMISSION_DENIED");
   });
 
+  test("a product write past 4 MiB passes the door, under its new and former names", async () => {
+    const authorization = await key();
+    // 4.5 MB of description: more than any other call may send.
+    const description = "€".repeat(1_500_000);
+    for (const [name, args] of [
+      ["products_update", { id: "pt_missing_product_01", description }],
+      ["update_product", { productId: "pt_missing_product_01", description }],
+    ] as const) {
+      const result = await mcpCall(authorization, name, args);
+      assert.equal(toolError(result)?.code, "PRODUCT_NOT_FOUND", `${name} reached the procedure`);
+    }
+  });
+
   test("the former tool names still work with their former arguments", async () => {
     const authorization = await key();
     const [category] = await louezDb.db

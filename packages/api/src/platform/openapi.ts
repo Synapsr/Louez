@@ -19,35 +19,49 @@ export const REPLAYED_HEADER = "Louez-Replayed";
 export const OPENAPI_PREFIX = "/api/v1";
 
 /**
- * Largest body `/api/v1` reads. The longest inputs are legal texts of
+ * Largest body `/api/v1` reads, unless the procedure takes more
+ * (`meta.maxBodyBytes`). The longest inputs of the others are legal texts of
  * 100,000 characters, two in one call, which JSON may escape to six bytes a
  * character.
  */
 export const OPENAPI_MAX_BODY_BYTES = 2 * 1024 * 1024;
 
-/**
- * Largest body of a procedure that takes a file's bytes
- * (`meta.mcp.inlineFile`): a 5 MB image is 6.7 MB of base64.
- */
-export const OPENAPI_INLINE_FILE_MAX_BODY_BYTES = 8 * 1024 * 1024;
+/** A route whose procedure takes a larger body (`meta.maxBodyBytes`). */
+export interface RouteBodyLimit {
+  method: string;
+  /** The route's path, its `{params}` matching one segment. */
+  pattern: RegExp;
+  maxBytes: number;
+}
 
 /**
- * The routes (`POST /categories/images`) of the procedures that take a
- * file's bytes, which may send a body up to
- * `OPENAPI_INLINE_FILE_MAX_BODY_BYTES`.
+ * The routes of the procedures that take a body larger than
+ * `OPENAPI_MAX_BODY_BYTES`, with their limit: `POST /categories/images`,
+ * `PATCH /products/{id}`… A procedure without a route is
+ * `POST /<path with slashes>`.
  */
-export function inlineFileRoutes(procedures: readonly ExposedProcedure[]): ReadonlySet<string> {
-  const routes = new Set<string>();
-  for (const { procedure, meta } of procedures) {
-    const { method, path } = procedure["~orpc"].route;
-    if (meta.mcp.inlineFile && method && path) routes.add(`${method} ${path}`);
+export function routeBodyLimits(procedures: readonly ExposedProcedure[]): RouteBodyLimit[] {
+  const limits: RouteBodyLimit[] = [];
+  for (const { path, procedure, meta } of procedures) {
+    if (!meta.maxBodyBytes) continue;
+    const route = procedure["~orpc"].route;
+    const template = route.path ?? `/${path.split(".").join("/")}`;
+    const pattern = new RegExp(
+      `^${template
+        .split(/(\{[^}]+\})/)
+        .map((part) =>
+          /^\{[^}]+\}$/.test(part) ? "[^/]+" : part.replace(/[.*+?^$()|[\]\\]/g, "\\$&"),
+        )
+        .join("")}/?$`,
+    );
+    limits.push({ method: route.method ?? "POST", pattern, maxBytes: meta.maxBodyBytes });
   }
-  return routes;
+  return limits;
 }
 
 function tooLarge(maxBytes: number): Response {
   const error = new ORPCError<"PAYLOAD_TOO_LARGE", ApiErrorData>("PAYLOAD_TOO_LARGE", {
-    message: `The request body is larger than ${maxBytes} bytes. Send a larger image as a public imageUrl.`,
+    message: `The request body is larger than ${maxBytes} bytes, the most this route takes. Send an image as a public imageUrl rather than its bytes.`,
     data: { code: "REQUEST_TOO_LARGE", retryable: false, details: { maxBytes } },
   });
   return Response.json(error.toJSON(), { status: 413 });
@@ -219,19 +233,17 @@ export async function handleOpenApiRequest(
   options: {
     ports: ApiPorts;
     prefix?: `/${string}`;
-    /** Routes that take a file's bytes (`inlineFileRoutes`); every other body stops at 2 MiB. */
-    inlineFileRoutes?: ReadonlySet<string>;
+    /** Routes that take a larger body (`routeBodyLimits`); every other body stops at 2 MiB. */
+    bodyLimits?: readonly RouteBodyLimit[];
   },
 ): Promise<Response | undefined> {
   const prefix = options.prefix ?? OPENAPI_PREFIX;
   const { pathname } = new URL(incoming.url);
-  const route = `${incoming.method} ${pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname}`;
-  const bounded = await withBoundedBody(
-    incoming,
-    options.inlineFileRoutes?.has(route)
-      ? OPENAPI_INLINE_FILE_MAX_BODY_BYTES
-      : OPENAPI_MAX_BODY_BYTES,
+  const path = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname;
+  const larger = options.bodyLimits?.find(
+    (limit) => limit.method === incoming.method && limit.pattern.test(path),
   );
+  const bounded = await withBoundedBody(incoming, larger?.maxBytes ?? OPENAPI_MAX_BODY_BYTES);
   if (bounded instanceof Response) return bounded;
   const request = bounded;
   const receipt: OperationReceipt = {};

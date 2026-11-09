@@ -12,7 +12,11 @@ import {
   updateSlugInput,
   updateSlugOutput,
 } from "../../contracts/online-store";
-import { completeImageUploadOutput, createImageUploadOutput } from "../../contracts/uploads";
+import {
+  completeImageUploadOutput,
+  createImageUploadOutput,
+  UPLOAD_IMAGE_MAX_BODY_BYTES,
+} from "../../contracts/uploads";
 import { onlineStoreLinks } from "../../platform/links";
 import type { ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
@@ -171,8 +175,8 @@ const uploadImageProcedure = storeProcedure
         "Upload a logo, a favicon (kind logo, 2 MB at most) or a banner photo (kind hero, 5 MB at most) in one call: JPEG, PNG, GIF or WebP. Send the file's bytes base64 as `contentBase64` when you cannot reach the upload URL of online_store_create_image_upload, such as an image you made in your own workspace; or a public HTTPS `imageUrl` for Louez to download. The type is read from the bytes. Returns the image's public `url`: set it with online_store_update_appearance (logoUrl, darkLogoUrl, faviconUrl or heroImages).",
       bundle: "settings",
       annotations: { openWorldHint: true },
-      inlineFile: true,
     },
+    maxBodyBytes: UPLOAD_IMAGE_MAX_BODY_BYTES,
   })
   .route({ method: "POST", path: "/online-store/images" })
   .input(uploadStorefrontImageInput)

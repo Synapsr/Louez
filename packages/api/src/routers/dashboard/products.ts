@@ -16,6 +16,7 @@ import {
   productActivityOutput,
   productErrors,
   productOutput,
+  PRODUCT_WRITE_MAX_BODY_BYTES,
   productTimelineInput,
   productTimelineOutput,
   reorderProductsInput,
@@ -32,6 +33,7 @@ import {
   completeImageUploadOutput,
   createImageUploadInput,
   createImageUploadOutput,
+  UPLOAD_IMAGE_MAX_BODY_BYTES,
   uploadImageInput,
 } from "../../contracts/uploads";
 import { productLinks } from "../../platform/links";
@@ -199,6 +201,8 @@ const create = storeProcedure
       bundle: "catalog",
       aliases: [{ name: "create_product" }],
     },
+    // A thousand units with their notes and photos is more than 2 MiB.
+    maxBodyBytes: PRODUCT_WRITE_MAX_BODY_BYTES,
   })
   .route({ method: "POST", path: "/products" })
   .input(createProductInput)
@@ -219,6 +223,7 @@ const update = storeProcedure
       aliases: [{ name: "update_product", renamedArgs: { productId: "id" } }],
       annotations: { destructiveHint: true, idempotentHint: true },
     },
+    maxBodyBytes: PRODUCT_WRITE_MAX_BODY_BYTES,
   })
   .route({ method: "PATCH", path: "/products/{id}" })
   .input(updateProductInput)
@@ -433,8 +438,8 @@ const uploadImageProcedure = storeProcedure
         "Upload a product image in one call (JPEG, PNG, GIF or WebP). Send the file's bytes base64 as `contentBase64` (5 MB at most) when you cannot reach the upload URL of products_create_image_upload, such as an image you made in your own workspace; or a public HTTPS `imageUrl` for Louez to download (15 MB at most). The type is read from the bytes. Returns the image's public `url`: add it to the product's `images` with products_create or products_update.",
       bundle: "catalog",
       annotations: { openWorldHint: true },
-      inlineFile: true,
     },
+    maxBodyBytes: UPLOAD_IMAGE_MAX_BODY_BYTES,
   })
   .route({ method: "POST", path: "/products/images" })
   .input(uploadImageInput)

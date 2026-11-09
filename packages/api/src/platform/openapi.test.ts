@@ -261,20 +261,24 @@ describe("OpenAPI document", () => {
 
 describe("the /api/v1 body cap", () => {
   let serve: (request: Request) => Promise<Response | undefined>;
-  let routes: ReadonlySet<string>;
+  let limits: Array<{ method: string; pattern: RegExp; maxBytes: number }>;
+  let products: typeof import("../contracts/products");
+  let listLimits: typeof import("@louez/validations").PRODUCT_LIST_LIMITS;
 
   before(async () => {
     const { createExposure } = await import("./exposure");
-    const { createOpenApiHandler, handleOpenApiRequest, inlineFileRoutes } =
+    const { createOpenApiHandler, handleOpenApiRequest, routeBodyLimits } =
       await import("./openapi");
+    products = await import("../contracts/products");
+    ({ PRODUCT_LIST_LIMITS: listLimits } = await import("@louez/validations"));
     const { appRouter } = await import("../router");
     const exposure = createExposure(appRouter);
     const handler = createOpenApiHandler(exposure.router, { docs: false });
-    routes = inlineFileRoutes(exposure.procedures);
+    limits = routeBodyLimits(exposure.procedures);
     serve = (request) =>
       handleOpenApiRequest(handler, request, {
         ports: {} as import("./ports").ApiPorts,
-        inlineFileRoutes: routes,
+        bodyLimits: limits,
       });
   });
 
@@ -297,20 +301,96 @@ describe("the /api/v1 body cap", () => {
     return { sent, body };
   };
 
-  const post = (path: string, body: BodyInit, headers: Record<string, string> = {}) =>
+  const send = (
+    method: string,
+    path: string,
+    body: BodyInit,
+    headers: Record<string, string> = {},
+  ) =>
     new Request(`https://app.louez.test/api/v1${path}`, {
-      method: "POST",
+      method,
       headers: { "content-type": "application/json", ...headers },
       body,
       duplex: "half",
     } as RequestInit);
+  const post = (path: string, body: BodyInit, headers: Record<string, string> = {}) =>
+    send("POST", path, body, headers);
 
-  test("lists the three routes that take an image's bytes", () => {
-    assert.deepEqual([...routes].sort(), [
-      "POST /categories/images",
-      "POST /online-store/images",
-      "POST /products/images",
-    ]);
+  test("lists the routes that take more: an image's bytes, a product write", () => {
+    assert.deepEqual(
+      limits
+        .map((limit) => `${limit.method} ${limit.pattern.source} ${limit.maxBytes / MiB}`)
+        .sort(),
+      [
+        "PATCH ^\\/products\\/[^/]+\\/?$ 16",
+        "POST ^\\/categories\\/images\\/?$ 8",
+        "POST ^\\/online-store\\/images\\/?$ 8",
+        "POST ^\\/products\\/?$ 16",
+        "POST ^\\/products\\/images\\/?$ 8",
+      ],
+    );
+  });
+
+  /**
+   * The largest product write the contract takes within the product limits:
+   * every list at its limit, every bounded field full, free text in
+   * three-byte characters, and a 100,000-character description.
+   */
+  const worstCaseProduct = () => {
+    const text = (length: number) => "€".repeat(length);
+    const url = (index: number) =>
+      `https://files.louez.test/${String(index).padStart(8, "0")}/`.padEnd(2048, "a");
+    const axes = ["size", "colour", "material"];
+    return {
+      name: text(255),
+      description: text(100_000),
+      aiContext: text(2000),
+      price: "99999999.99",
+      deposit: "99999999.99",
+      trackUnits: true,
+      bookingAttributeAxes: axes.map((key, position) => ({ key, label: text(50), position })),
+      images: Array.from({ length: listLimits.images }, (_, index) => url(index)),
+      categoryIds: Array.from({ length: listLimits.categoryIds }, (_, index) =>
+        `category_${index}`.padEnd(64, "x"),
+      ),
+      accessories: Array.from({ length: listLimits.accessories }, (_, index) => ({
+        accessoryId: `accessory_${index}`.padEnd(64, "x"),
+        required: true,
+        quantity: 999_999,
+      })),
+      rateTiers: Array.from({ length: listLimits.rateTiers }, (_, index) => ({
+        price: "99999999.99",
+        duration: index + 2,
+        unit: "week",
+      })),
+      units: Array.from({ length: listLimits.units }, (_, index) => ({
+        identifier: `${index}-${text(250)}`.slice(0, 255),
+        notes: text(1000),
+        purchasePrice: "99999999.99",
+        purchasedAt: "2026-11-09",
+        images: [0, 1, 2, 3].map((image) => url(index * 4 + image)),
+        attributes: Object.fromEntries(axes.map((key) => [key, `${index}-${text(100)}`])),
+      })),
+    };
+  };
+
+  test("a product write as large as the contract allows goes through, on create and update", async () => {
+    const product = worstCaseProduct();
+    assert.ok(products.createProductInput.safeParse(product).success, "the contract takes it");
+    const body = JSON.stringify(product);
+    const size = Buffer.byteLength(body);
+    assert.ok(size > 2 * MiB, `${size} bytes: past the default`);
+    assert.ok(size <= products.PRODUCT_WRITE_MAX_BODY_BYTES, `${size} bytes fit the limit`);
+
+    const created = await serve(post("/products", body));
+    assert.equal(created?.status, 401, "read whole, then refused for its missing key");
+    const updated = await serve(send("PATCH", "/products/pr_1", body));
+    assert.equal(updated?.status, 401);
+
+    const { body: tooLarge } = streamed(17 * MiB);
+    assert.equal((await serve(post("/products", tooLarge)))?.status, 413);
+    // Only the product writes: another product route keeps the default.
+    assert.equal((await serve(post("/products/reorder", body)))?.status, 413);
   });
 
   test("refuses a body past 8 MiB unread, before anyone checks who sent it", async () => {

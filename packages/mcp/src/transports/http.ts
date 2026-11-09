@@ -52,21 +52,15 @@ function errorResponse(error: ORPCError<string, unknown>, challenge: string): Re
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
 /**
- * The limit of a request that calls one tool taking a file's bytes
- * (`meta.mcp.inlineFile`, such as categories_upload_image): a 5 MB image is
- * 6.7 MB of base64, with the call around it.
- */
-export const INLINE_FILE_REQUEST_MAX_BYTES = 8 * 1024 * 1024;
-
-/**
- * Calls a body past `MAX_BODY_BYTES` counts on the connection's rate limit,
- * before more of it is read: whether it is a call that may be that large is
- * known only once it is parsed, so each such read costs as much as four
- * calls, whatever it turns out to be.
+ * Calls a read past `MAX_BODY_BYTES` counts on the connection's rate limit,
+ * for each 4 MiB read, before more of it is read: whether the request is a
+ * call that may be that large (a tool whose procedure sets
+ * `meta.maxBodyBytes`) is known only once it is parsed, so the read costs
+ * what it costs whatever it turns out to be.
  */
 export const OVERSIZED_BODY_WEIGHT = 4;
 
-const TOO_LARGE_MESSAGE = `Request body too large: at most ${MAX_BODY_BYTES} bytes, or ${INLINE_FILE_REQUEST_MAX_BYTES} for one call to a tool that takes a file's bytes (an image of 5 MB at most). Send a larger image as a public imageUrl.`;
+const TOO_LARGE_MESSAGE = `Request body too large: at most ${MAX_BODY_BYTES} bytes, more only for one call to a tool that takes more (an image's bytes up to 5 MB, a product with its units). Send an image as a public imageUrl rather than its bytes.`;
 
 const jsonResponse = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -79,10 +73,10 @@ type ReadBody =
 
 /**
  * Reads a POST body as JSON, streaming, at most `MAX_BODY_BYTES`. Past it,
- * and only when `oversized` is given, it first has the oversized read
- * counted (which throws when the rate limit refuses it), then reads on up to
- * `oversized.maxBytes`. The body is consumed here and handed to the SDK
- * parsed.
+ * and only when `oversized` is given, each further 4 MiB is counted first
+ * (`oversized.count`, which throws when the rate limit refuses it), up to
+ * `oversized.maxBytes`. A declared length is counted before anything is
+ * read. The body is consumed here and handed to the SDK parsed.
  */
 async function readJson(
   request: Request,
@@ -95,24 +89,24 @@ async function readJson(
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
-  let counted = false;
+  let counted = 0;
+  /** Counts each 4 MiB step past the first that `bytes` reach, once. */
+  const countUpTo = async (bytes: number) => {
+    if (!oversized) return;
+    const steps = Math.ceil(bytes / MAX_BODY_BYTES) - 1;
+    for (; counted < steps; counted++) await oversized.count();
+  };
   try {
-    if (oversized && declared > MAX_BODY_BYTES) {
-      await oversized.count();
-      counted = true;
-    }
+    if (Number.isFinite(declared)) await countUpTo(declared);
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
       if (size > limit) {
         void reader.cancel();
-        return { kind: "too-large", counted };
+        return { kind: "too-large", counted: counted > 0 };
       }
-      if (oversized && !counted && size > MAX_BODY_BYTES) {
-        await oversized.count();
-        counted = true;
-      }
+      await countUpTo(size);
       chunks.push(value);
     }
   } catch (error) {
@@ -121,18 +115,34 @@ async function readJson(
   }
   try {
     const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    return { kind: "json", value, size, counted };
+    return { kind: "json", value, size, counted: counted > 0 };
   } catch {
     return { kind: "invalid" };
   }
 }
 
-/** Whether the body is one call to one of `tools`: alone, it may pass `MAX_BODY_BYTES`. */
-function isSingleCallTo(body: unknown, tools: ReadonlySet<string>): boolean {
-  if (typeof body !== "object" || body === null || Array.isArray(body)) return false;
+/**
+ * The largest body each tool takes past `MAX_BODY_BYTES`, by tool name and
+ * former name (`meta.maxBodyBytes`).
+ */
+function toolBodyLimits(procedures: readonly ExposedProcedure[]): ReadonlyMap<string, number> {
+  const limits = new Map<string, number>();
+  for (const { meta } of procedures) {
+    if (!meta.maxBodyBytes || meta.maxBodyBytes <= MAX_BODY_BYTES) continue;
+    for (const name of [meta.mcp.name, ...(meta.mcp.aliases ?? []).map((alias) => alias.name)]) {
+      limits.set(name, meta.maxBodyBytes);
+    }
+  }
+  return limits;
+}
+
+/** The body a request may send: more than `MAX_BODY_BYTES` only as one call to a tool that takes more. */
+function allowedBodyBytes(body: unknown, limits: ReadonlyMap<string, number>): number {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return MAX_BODY_BYTES;
   const { method, params } = body as { method?: unknown; params?: unknown };
   const name = (params as { name?: unknown } | undefined)?.name;
-  return method === "tools/call" && typeof name === "string" && tools.has(name);
+  if (method !== "tools/call" || typeof name !== "string") return MAX_BODY_BYTES;
+  return limits.get(name) ?? MAX_BODY_BYTES;
 }
 
 /**
@@ -198,7 +208,7 @@ export async function handleMcpRequest(
 
   // The connection's rate limit applies before the body is read: one that
   // used up its window gets no read at all. A body refused here, too large
-  // or not JSON, counts as a call; a body past 4 MiB counts as
+  // or not JSON, counts as a call; each 4 MiB read past the first counts as
   // OVERSIZED_BODY_WEIGHT calls before the rest of it is read.
   const limitKey = rateLimitKey(account.credential);
   const count = async (weight = 1) => {
@@ -210,24 +220,18 @@ export async function handleMcpRequest(
     const reached = await rateLimitReached(limitKey);
     if (reached) throw platformErrors.rateLimited(reached.retryAfterSeconds);
 
-    // A call to a tool that takes a file's bytes may be larger; nothing else.
-    const inlineFileTools = new Set(
-      options.procedures.filter(({ meta }) => meta.mcp.inlineFile).map(({ meta }) => meta.mcp.name),
-    );
+    // One call to a tool that takes more may be larger; nothing else.
+    const toolLimits = toolBodyLimits(options.procedures);
+    const largest = Math.max(MAX_BODY_BYTES, ...toolLimits.values());
     body = await readJson(
       request,
-      inlineFileTools.size > 0
-        ? {
-            maxBytes: INLINE_FILE_REQUEST_MAX_BYTES,
-            count: () => count(OVERSIZED_BODY_WEIGHT),
-          }
+      largest > MAX_BODY_BYTES
+        ? { maxBytes: largest, count: () => count(OVERSIZED_BODY_WEIGHT) }
         : undefined,
     );
     if (
       body.kind === "too-large" ||
-      (body.kind === "json" &&
-        body.size > MAX_BODY_BYTES &&
-        !isSingleCallTo(body.value, inlineFileTools))
+      (body.kind === "json" && body.size > allowedBodyBytes(body.value, toolLimits))
     ) {
       if (!body.counted) await count();
       return jsonResponse({ error: TOO_LARGE_MESSAGE }, 413);

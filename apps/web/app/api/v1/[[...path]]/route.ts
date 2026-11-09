@@ -2,7 +2,7 @@ import { createExposure } from "@louez/api/platform/exposure";
 import {
   createOpenApiHandler,
   handleOpenApiRequest,
-  inlineFileRoutes,
+  routeBodyLimits,
 } from "@louez/api/platform/openapi";
 import { appRouter } from "@louez/api/router";
 
@@ -10,8 +10,9 @@ import { env } from "@/env";
 import { apiPorts } from "@/lib/api/ports";
 import { log, useLogger, withEvlog } from "@/lib/evlog";
 
-// Only the procedures of the exposure registry. A body stops at 2 MiB, 8 MiB
-// for the procedures that take an image's bytes (inlineFileRoutes). The spec
+// Only the procedures of the exposure registry. A body stops at 2 MiB, more
+// for the procedures that take more (routeBodyLimits: an image's bytes, a
+// product with its units). The spec
 // (/api/v1/openapi.json) and its reference (/api/v1/docs) are served in
 // development only: in production they answer 404.
 const exposure = createExposure(appRouter);
@@ -27,7 +28,7 @@ const handler = createOpenApiHandler(exposure.router, {
   },
 });
 
-const largeBodyRoutes = inlineFileRoutes(exposure.procedures);
+const bodyLimits = routeBodyLimits(exposure.procedures);
 
 async function handleRequest(request: Request) {
   const url = new URL(request.url);
@@ -35,7 +36,7 @@ async function handleRequest(request: Request) {
 
   const response = await handleOpenApiRequest(handler, request, {
     ports: apiPorts,
-    inlineFileRoutes: largeBodyRoutes,
+    bodyLimits,
   });
   return response ?? Response.json({ message: "Not found" }, { status: 404 });
 }

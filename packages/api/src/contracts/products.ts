@@ -47,6 +47,18 @@ export const PRODUCT_WRITE_LIMITS = {
   images: PRODUCT_LIST_LIMITS.images * 10,
 } as const;
 
+/**
+ * Largest request body of a product write (`meta.maxBodyBytes`). Its lists at
+ * their limits (`PRODUCT_LIST_LIMITS`) with every bounded field full come to
+ * 13.4 MB: 1,000 units, each with an identifier of 255 characters, notes of
+ * 1,000, four image URLs of 2,048 and three variant values, a price and a
+ * date; 20 image URLs, the AI context, 50 tiers, 100 accessories and
+ * categories, and a description of 100,000 characters (it has no limit of
+ * its own), free text in three-byte characters. The rest is room.
+ * `platform/openapi.test.ts` builds that worst case and sends it.
+ */
+export const PRODUCT_WRITE_MAX_BODY_BYTES = 16 * 1024 * 1024;
+
 const idSchema = z.string().min(1).max(64);
 const cursorSchema = z
   .string()
