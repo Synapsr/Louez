@@ -49,6 +49,7 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
   ) => Promise<Response>;
   let mcpCall: (authorization: string, name: string, args: object) => Promise<ToolResult>;
   let mcpTools: (authorization: string) => Promise<string[]>;
+  let mcpHttp: (authorization: string, body: string) => Promise<Response>;
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
@@ -138,6 +139,19 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
         await mcp.close();
       }
     };
+    mcpHttp = (authorization, body) =>
+      handleMcpRequest(
+        new Request("http://louez.test/api/mcp", {
+          method: "POST",
+          headers: {
+            authorization,
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+          },
+          body,
+        }),
+        httpOptions,
+      );
     mcpTools = async (authorization) => {
       const mcp = await connect(authorization);
       try {
@@ -319,6 +333,7 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
       "categories_reorder",
       "categories_create_image_upload",
       "categories_complete_image_upload",
+      "categories_upload_image",
     ]) {
       assert.ok(writer.includes(name), `${name} is listed`);
     }
@@ -361,5 +376,68 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
       (removed.structuredContent as { error?: { code?: string } }).error?.code,
       "CONFIRMATION_REQUIRED",
     );
+  });
+
+  test("an image sent in the call goes up on RPC, OpenAPI and MCP, and MCP takes its larger body", async () => {
+    const authorization = await key();
+    const png = Buffer.alloc(9);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(png);
+    const small = { contentBase64: png.toString("base64") };
+
+    const viaRpc = (await rpc("uploadImage", small)) as Json;
+    const viaOpenApi = await openApi("POST", "/categories/images", small, { authorization });
+    assert.equal(viaOpenApi.status, 200);
+    const viaMcp = await mcpCall(authorization, "categories_upload_image", small);
+    assert.notEqual(viaMcp.isError, true, text(viaMcp));
+    for (const result of [
+      viaRpc,
+      (await viaOpenApi.json()) as Json,
+      json(viaMcp.structuredContent),
+    ]) {
+      assert.equal(result.contentType, "image/png");
+      assert.match(
+        String(result.url),
+        new RegExp(`^https://files\\.louez\\.test/${STORE}/categories/`),
+      );
+    }
+
+    // 4.5 MB of PNG is 6 MB of base64: past the 4 MiB of any other request.
+    const large = Buffer.alloc(4.5 * 1024 * 1024);
+    png.copy(large);
+    const bigCall = await mcpCall(authorization, "categories_upload_image", {
+      contentBase64: large.toString("base64"),
+    });
+    assert.notEqual(bigCall.isError, true, text(bigCall));
+    assert.equal((bigCall.structuredContent as Json).size, large.byteLength);
+
+    const message = (method: string, params: object) =>
+      JSON.stringify({ jsonrpc: "2.0", id: 1, method, params });
+    const pad = "x".repeat(5 * 1024 * 1024);
+    for (const body of [
+      message("ping", { pad }),
+      message("tools/call", { name: "categories_create", arguments: { name: pad } }),
+      JSON.stringify([
+        JSON.parse(
+          message("tools/call", {
+            name: "categories_upload_image",
+            arguments: { contentBase64: pad },
+          }),
+        ),
+        JSON.parse(message("ping", {})),
+      ]),
+      message("tools/call", {
+        name: "categories_upload_image",
+        arguments: { contentBase64: "x".repeat(8 * 1024 * 1024) },
+      }),
+    ]) {
+      const refused = await mcpHttp(authorization, body);
+      assert.equal(refused.status, 413);
+      assert.match(((await refused.json()) as { error: string }).error, /imageUrl/);
+    }
+
+    const tooLarge = await mcpCall(authorization, "categories_upload_image", {
+      contentBase64: Buffer.alloc(5 * 1024 * 1024 + 3).toString("base64"),
+    });
+    assert.equal(toolError(tooLarge), "UPLOAD_TOO_LARGE");
   });
 });

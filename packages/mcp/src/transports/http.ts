@@ -49,22 +49,31 @@ function errorResponse(error: ORPCError<string, unknown>, challenge: string): Re
 /** The SDK's own limit on a request body; this handler parses before it does. */
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
+/**
+ * The limit of a request that calls one tool taking a file's bytes
+ * (`meta.mcp.inlineFile`, such as categories_upload_image): a 5 MB image is
+ * 6.7 MB of base64, with the call around it.
+ */
+export const INLINE_FILE_REQUEST_MAX_BYTES = 8 * 1024 * 1024;
+
+const TOO_LARGE_MESSAGE = `Request body too large: at most ${MAX_BODY_BYTES} bytes, or ${INLINE_FILE_REQUEST_MAX_BYTES} for one call to a tool that takes a file's bytes (an image of 5 MB at most). Send a larger image as a public imageUrl.`;
+
 const jsonResponse = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 type ReadBody =
   | { kind: "none" }
-  | { kind: "json"; value: unknown }
+  | { kind: "json"; value: unknown; size: number }
   | { kind: "too-large" }
   | { kind: "invalid" };
 
 /**
- * Reads a POST body as JSON, at most `MAX_BODY_BYTES`, stopping as soon as it
- * goes past. The body is consumed here and handed to the SDK parsed.
+ * Reads a POST body as JSON, at most `maxBytes`, stopping as soon as it goes
+ * past. The body is consumed here and handed to the SDK parsed.
  */
-async function readJson(request: Request): Promise<ReadBody> {
+async function readJson(request: Request, maxBytes: number): Promise<ReadBody> {
   if (request.method !== "POST" || !request.body) return { kind: "none" };
-  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return { kind: "too-large" };
+  if (Number(request.headers.get("content-length")) > maxBytes) return { kind: "too-large" };
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -72,17 +81,25 @@ async function readJson(request: Request): Promise<ReadBody> {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > MAX_BODY_BYTES) {
+    if (size > maxBytes) {
       void reader.cancel();
       return { kind: "too-large" };
     }
     chunks.push(value);
   }
   try {
-    return { kind: "json", value: JSON.parse(Buffer.concat(chunks).toString("utf8")) };
+    return { kind: "json", value: JSON.parse(Buffer.concat(chunks).toString("utf8")), size };
   } catch {
     return { kind: "invalid" };
   }
+}
+
+/** Whether the body is one call to one of `tools`: alone, it may pass `MAX_BODY_BYTES`. */
+function isSingleCallTo(body: unknown, tools: ReadonlySet<string>): boolean {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return false;
+  const { method, params } = body as { method?: unknown; params?: unknown };
+  const name = (params as { name?: unknown } | undefined)?.name;
+  return method === "tools/call" && typeof name === "string" && tools.has(name);
 }
 
 /**
@@ -146,8 +163,22 @@ export async function handleMcpRequest(
     throw error;
   }
 
-  const body = await readJson(request);
-  if (body.kind === "too-large") return jsonResponse({ error: "Request body too large." }, 413);
+  // A call to a tool that takes a file's bytes may be larger; nothing else.
+  const inlineFileTools = new Set(
+    options.procedures.filter(({ meta }) => meta.mcp.inlineFile).map(({ meta }) => meta.mcp.name),
+  );
+  const body = await readJson(
+    request,
+    inlineFileTools.size > 0 ? INLINE_FILE_REQUEST_MAX_BYTES : MAX_BODY_BYTES,
+  );
+  if (
+    body.kind === "too-large" ||
+    (body.kind === "json" &&
+      body.size > MAX_BODY_BYTES &&
+      !isSingleCallTo(body.value, inlineFileTools))
+  ) {
+    return jsonResponse({ error: TOO_LARGE_MESSAGE }, 413);
+  }
   if (body.kind === "invalid") {
     return jsonResponse(
       { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
