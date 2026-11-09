@@ -3,6 +3,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { aiCreditDebits, aiCredits, db, isDuplicateKeyError } from "@louez/db";
 
 import {
+  CREDIT_DEBIT_TRANSACTION,
   checkAdvisorCredits,
   getAiCreditsInfo,
   type AdvisorCreditCheck,
@@ -64,15 +65,9 @@ function startOfCalendarMonth(): Date {
 }
 
 /**
- * Sum of the monthly-pocket consumption for a store this calendar month, read
- * with a locking read: it sees every debit committed so far, whatever the
- * transaction read before. A plain read would see the transaction's snapshot,
- * fixed by its first read: an image job reads the store's plan before it takes
- * the credits' lock, so a debit committed while it waited would go unseen and
- * the month's included credits would be spent twice. The caller holds the
- * store's `ai_credits` lock, which every billed debit takes first; a cost-only
- * row inserted meanwhile waits for this transaction to end, and holds nothing
- * this one needs.
+ * Sum of the monthly-pocket consumption for a store this calendar month. Read
+ * under the store's `ai_credits` lock, in a READ COMMITTED transaction
+ * (`CREDIT_DEBIT_TRANSACTION`): it sees every debit committed so far.
  */
 async function sumMonthlyUsedMicro(tx: Tx, storeId: string): Promise<number> {
   const [row] = await tx
@@ -85,8 +80,7 @@ async function sumMonthlyUsedMicro(tx: Tx, storeId: string): Promise<number> {
         eq(aiCreditDebits.storeId, storeId),
         gte(aiCreditDebits.createdAt, startOfCalendarMonth()),
       ),
-    )
-    .for("share");
+    );
   return row?.used ?? 0;
 }
 
@@ -101,7 +95,8 @@ async function sumMonthlyUsedMicro(tx: Tx, storeId: string): Promise<number> {
  * charges nothing more.
  *
  * `executor`: the caller's transaction (an image job writes its result in the
- * same one), where the debit runs as a savepoint; its own otherwise.
+ * same one), where the debit runs as a savepoint, and which must run READ
+ * COMMITTED (`CREDIT_DEBIT_TRANSACTION`); its own otherwise, which does.
  *
  * Returns the micro-credits actually debited (0 when billing is inert, or
  * when the dedup key was already debited).
@@ -124,7 +119,7 @@ export async function recordImageEnhanceDebit(
   if (billMicro <= 0 && costMicroUsd <= 0) return 0;
 
   try {
-    return await (executor ?? db).transaction(async (tx) => {
+    const debit = async (tx: Tx) => {
       // Cost-only row (tariff unset but the real cost is known): freeze the cost
       // for reporting without touching any balance. Still exactly-once.
       if (billMicro <= 0) {
@@ -193,7 +188,10 @@ export async function recordImageEnhanceDebit(
       }
 
       return billMicro;
-    });
+    };
+    return await (executor
+      ? executor.transaction(debit)
+      : db.transaction(debit, CREDIT_DEBIT_TRANSACTION));
   } catch (error) {
     // A retry of an already-billed enhancement hits the UNIQUE dedup key and
     // rolls back — expected and harmless, the image was already paid for.

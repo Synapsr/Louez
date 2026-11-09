@@ -155,7 +155,9 @@ export interface ProductImagesPort {
    * Debits one run in the caller's transaction, once per `dedupKey`, exactly
    * `priceMicro`: the price frozen when the run was started (and confirmed),
    * never the tariff in force now. Never called with a price of 0, which
-   * writes no debit. The micro-credits debited (0 when the key was already
+   * writes no debit. `tx` runs READ COMMITTED, so the debit's sum of the
+   * month's credits, read under the store's credits lock, sees every debit
+   * committed meanwhile. The micro-credits debited (0 when the key was already
    * debited). Throws when the debit could not be written.
    */
   debit: (

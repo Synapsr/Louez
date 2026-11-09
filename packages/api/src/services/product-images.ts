@@ -32,6 +32,7 @@ import {
   lockActiveJob,
   lockClaimedJob,
   queueJob,
+  readJob,
   recordJobFailure,
   type ClaimedJob,
   type JobRow,
@@ -402,6 +403,9 @@ export async function startImageJob(
 
 // --- Running a job -----------------------------------------------------------
 
+/** How the transaction that records a job's result runs (see `runImageJob`). */
+const IMAGE_RESULT_TRANSACTION = { isolationLevel: "read committed" } as const;
+
 export interface RunJobOptions {
   /** How long a claim holds the job. Tests shorten it. */
   leaseMs?: number;
@@ -526,6 +530,10 @@ export async function runImageJob(
     /** The store or the job is gone (the account was deleted): nothing will ever use the result. */
     | { kind: "gone" };
   try {
+    // READ COMMITTED, as the debit needs (`ProductImagesPort.debit`): its sum of
+    // the month's credits sees what committed while it waited for the credits'
+    // lock. Every row this transaction relies on is read with a lock (the
+    // store, the product, the job's claim), so nothing else changes.
     finished = await db.transaction(async (tx) => {
       if (!(await lockStoreRow(tx, storeId))) return { kind: "gone" } as const;
       const [product] = await tx
@@ -623,12 +631,28 @@ export async function runImageJob(
         store: store ?? { name: "", slug: "", userId: "" },
         productName: product.name,
       } as const;
-    });
+    }, IMAGE_RESULT_TRANSACTION);
   } catch (error) {
-    // The debit or the write failed: nothing committed. The retry stores its own result.
     logProviderError("image_job.record_failed", error);
-    await fail(jobError("DEBIT_FAILED", "The result could not be recorded.", true));
-    return;
+    // The transaction may have committed and only its answer been lost: what
+    // the database holds decides, before any file is deleted.
+    const outcome = await persistedOutcome(claimed, key);
+    if (outcome === "unknown") return; // An orphan file beats a paid result pointing at nothing.
+    if (outcome === "rolled_back") {
+      // Nothing committed: the retry stores its own result.
+      await fail(jobError("DEBIT_FAILED", "The result could not be recorded.", true));
+      return;
+    }
+    if (outcome === "not_ours") {
+      await discard([key]);
+      return;
+    }
+    finished = {
+      kind: "succeeded",
+      debitedMicro: outcome.debitedMicro,
+      store: await eventStoreOf(storeId),
+      productName: productRow?.name ?? "",
+    };
   }
 
   if (finished.kind !== "succeeded") {
@@ -662,6 +686,47 @@ export async function runImageJob(
     debitedMicro: finished.debitedMicro,
     report: processed.report,
   });
+}
+
+/**
+ * Where a run stands once its result transaction failed without a clear
+ * answer (the commit may have gone through, its acknowledgement lost): what
+ * it debited when the job succeeded with this run's file, `rolled_back` when
+ * this run still holds it, `not_ours` when another run or the store's
+ * deletion ended it, `unknown` when the database cannot be read.
+ */
+async function persistedOutcome(
+  claimed: ClaimedJob,
+  key: string,
+): Promise<{ debitedMicro: number } | "rolled_back" | "not_ours" | "unknown"> {
+  let job: JobRow | null;
+  try {
+    job = await readJob(claimed.job.storeId, claimed.job.id);
+  } catch {
+    return "unknown";
+  }
+  if (job?.status === "succeeded") {
+    const result = jobResultSchema.safeParse(job.result);
+    if (result.success && result.data.key === key) {
+      return { debitedMicro: result.data.debitedMicro };
+    }
+  }
+  if (job?.status === "running" && job.claimToken === claimed.token) return "rolled_back";
+  return "not_ours";
+}
+
+/** The store as a product event names it; blank when it cannot be read. */
+async function eventStoreOf(storeId: string) {
+  try {
+    const [store] = await db
+      .select({ name: stores.name, slug: stores.slug, userId: stores.userId })
+      .from(stores)
+      .where(eq(stores.id, storeId));
+    if (store) return store;
+  } catch {
+    // The event is best effort; the result is already the store's.
+  }
+  return { name: "", slug: "", userId: "" };
 }
 
 /** The operation a job kind runs; null for a kind that is not an image job. */

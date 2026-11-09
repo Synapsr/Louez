@@ -21,6 +21,18 @@ import type { Plan } from '@/lib/plans'
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
+/**
+ * How a transaction that debits credits runs. A debit locks the store's
+ * `ai_credits` row, then sums what the month's included credits already paid.
+ * Under REPEATABLE READ that sum reads the snapshot of the transaction's first
+ * read, which may predate the lock: a debit committed while this one waited
+ * for the lock would go unseen, and the included credits be spent twice.
+ * READ COMMITTED reads what is committed at each statement, whatever came
+ * before, and takes no gap locks for those reads (a locking read of the
+ * ledger deadlocks against concurrent inserts). Locking reads stay locking.
+ */
+export const CREDIT_DEBIT_TRANSACTION = { isolationLevel: 'read committed' } as const
+
 /** Micro-credits ⇄ whole credits (for display and env-configured amounts). */
 export const microToCredits = (micro: number): number => micro / CREDIT_MICRO
 export const creditsToMicro = (credits: number): number =>

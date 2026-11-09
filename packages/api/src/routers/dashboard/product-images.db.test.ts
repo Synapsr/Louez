@@ -766,6 +766,79 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal((await debits()).length, 1);
   });
 
+  /**
+   * Makes the next result transaction commit, then fail as if its answer were
+   * lost; `thenReadFails`: the read that follows fails too.
+   */
+  function loseNextCommitAnswer(options: { thenReadFails?: boolean } = {}) {
+    const { db } = louezDb;
+    const transaction = db.transaction.bind(db);
+    const select = db.select.bind(db);
+    const restore = () => {
+      Reflect.set(db, "transaction", transaction);
+      Reflect.set(db, "select", select);
+    };
+    Reflect.set(db, "transaction", async (...args: Parameters<typeof db.transaction>) => {
+      const result: unknown = await transaction(...args);
+      const committedResult =
+        typeof result === "object" && result !== null && "kind" in result && result.kind === "succeeded";
+      if (!committedResult) return result;
+      if (options.thenReadFails) {
+        Reflect.set(db, "select", () => {
+          restore();
+          throw new Error("The database went away.");
+        });
+      } else {
+        restore();
+      }
+      throw new Error("Connection lost after COMMIT.");
+    });
+    return restore;
+  }
+
+  test("a result committed whose answer was lost is kept, paid once, and announced", async () => {
+    const source = photo("lost-ack");
+    const id = await product([source]);
+    const started = await products("enhanceImage", { id, imageUrl: source }, session());
+    events.length = 0;
+
+    const restore = loseNextCommitAnswer();
+    try {
+      await images.runImageJob(started.id, ports);
+    } finally {
+      restore();
+    }
+    const key = runKey(started.id, "enhance");
+    assert.equal((await jobRow(started.id))?.status, "succeeded");
+    assert.deepEqual((await productRow(id))?.images, [`${FILES}/${key}`]);
+    assert.deepEqual(await debits(), [{ dedupKey: `imgenh:${started.id}`, debitedMicro: 2_000_000 }]);
+    assert.ok(fake.state.stored.has(key), "the paid result's file is kept");
+    assert.equal(fake.state.discarded.includes(key), false);
+    assert.deepEqual(fake.state.afterSuccess, [{ runId: started.id, debitedMicro: 2_000_000 }]);
+    assert.deepEqual(
+      events.map((event) => event.type),
+      ["product.updated"],
+    );
+  });
+
+  test("when the database cannot say how the result transaction ended, the file is kept", async () => {
+    const source = photo("lost-ack-unread");
+    const id = await product([source]);
+    const started = await products("enhanceImage", { id, imageUrl: source }, session());
+
+    const restore = loseNextCommitAnswer({ thenReadFails: true });
+    try {
+      await images.runImageJob(started.id, ports);
+    } finally {
+      restore();
+    }
+    const key = runKey(started.id, "enhance");
+    assert.equal((await jobRow(started.id))?.status, "succeeded");
+    assert.deepEqual((await productRow(id))?.images, [`${FILES}/${key}`]);
+    assert.ok(fake.state.stored.has(key));
+    assert.deepEqual(fake.state.discarded, []);
+  });
+
   test("a result made after its store or its product was deleted is deleted too", async () => {
     // A store whose account is deleted while its photo is processed.
     const goneStore = "pi_store_gone_000001";
