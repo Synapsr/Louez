@@ -330,6 +330,14 @@ export const capabilities = [
     migrated: true,
   },
   {
+    // The dashboard's store creation completes the step an agent handed to the user.
+    id: "handoffs.completeStoreCreation",
+    sources: [procedure("handoffs", "completeStoreCreation")],
+    kind: "write",
+    plan: { lot: "6" },
+    actors: ["session"],
+  },
+  {
     // Asks the provider again for a step the user came back from (the billing card).
     id: "handoffs.refresh",
     sources: [procedure("handoffs", "refresh")],
@@ -2168,6 +2176,14 @@ export const capabilities = [
     sources: [procedure("stores", "create")],
     kind: "write",
     sensitive: "money",
+    plan: { lot: "8" },
+    migrated: true,
+  },
+  {
+    // stores_create for ChatGPT: a link where the user creates the store in Louez.
+    id: "stores.createByLink",
+    sources: [procedure("stores", "createByLink")],
+    kind: "write",
     plan: { lot: "8" },
     migrated: true,
   },

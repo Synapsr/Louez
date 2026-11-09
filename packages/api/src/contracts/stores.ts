@@ -3,6 +3,7 @@ import { SUPPORTED_COUNTRIES, SUPPORTED_CURRENCY_CODES } from "@louez/utils";
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
+import { handoffLinkSchema } from "./handoffs";
 import { resourceLinksSchema } from "./links";
 
 /**
@@ -174,7 +175,23 @@ export const createStoreOutput = z.object({
   nextSteps: z.array(z.string()),
 });
 
+/**
+ * stores_create for an agent that hands the store's creation to the user
+ * (ChatGPT): the link where the user creates it in Louez, and what comes next.
+ * No store yet, and nothing about what Louez charges.
+ */
+export const createStoreByLinkOutput = handoffLinkSchema.extend({
+  nextSteps: z.array(z.string()),
+});
+
 export const storeErrors = {
+  /** An agent whose directory has the user create stores (ChatGPT) reached stores.create itself. */
+  createdByLink: () =>
+    apiError("FORBIDDEN", "STORE_CREATED_BY_USER", {
+      message:
+        "This agent does not create stores itself: stores_create gives a link where the user creates the store in Louez.",
+      i18nKey: "errors.permissionDenied",
+    }),
   slugTaken: (slug: string, suggestions: string[]) =>
     apiError("CONFLICT", "STORE_SLUG_TAKEN", {
       message: `The web address "${slug}" is taken. Pick another one${suggestions.length > 0 ? `, such as ${suggestions.join(", ")}` : ""}.`,

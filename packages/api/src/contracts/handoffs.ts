@@ -5,8 +5,9 @@ import { resourceLinksSchema } from "./links";
 
 /**
  * Handoffs: a step only the human can take (Stripe's identity checks, a
- * billing card, approving a team invitation), started by an agent. The agent gets a short-lived link to a
- * Louez page, gives it to the user, then reads the handoff until it is done.
+ * billing card, approving a team invitation, creating a store an agent may
+ * not create itself), started by an agent. The agent gets a short-lived link
+ * to a Louez page, gives it to the user, then reads the handoff until it is done.
  */
 
 export const HANDOFF_KINDS = [
@@ -14,6 +15,7 @@ export const HANDOFF_KINDS = [
   "stripe_dashboard",
   "billing_card_setup",
   "team_invitation",
+  "store_creation",
 ] as const;
 export type HandoffKind = (typeof HANDOFF_KINDS)[number];
 
@@ -56,6 +58,11 @@ export const handoffSchema = z.object({
       joinsAtOnce: z.boolean(),
     })
     .nullable(),
+  /**
+   * The store the step created (`store_creation`, once completed): pass it
+   * as `storeId` to the other tools. Null otherwise.
+   */
+  storeId: z.string().nullable(),
   links: resourceLinksSchema,
 });
 export type HandoffView = z.infer<typeof handoffSchema>;
@@ -72,6 +79,16 @@ export const handoffLinkSchema = z.object({
 export type HandoffLink = z.infer<typeof handoffLinkSchema>;
 
 export const getHandoffInput = z.object({ id: z.string().min(1).max(21) });
+
+/** The dashboard completes a store creation it was handed, with the store it created. */
+export const completeStoreCreationInput = z.object({
+  id: z.string().min(1).max(21),
+  storeId: z.string().length(21),
+});
+export const completeStoreCreationOutput = z.object({
+  /** False when it changed nothing: another user's step, finished or replaced, or not their store. */
+  completed: z.boolean(),
+});
 export const getHandoffOutput = handoffSchema;
 export const refreshHandoffInput = getHandoffInput;
 export const refreshHandoffOutput = handoffSchema;

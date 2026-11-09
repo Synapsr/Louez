@@ -1047,6 +1047,15 @@ const purgeOwnedData = async (
     }
 
     await transaction.delete(schema.apiKeys).where(eq(schema.apiKeys.userId, context.user.id));
+    // The account's own steps (a store an agent proposed): its proposal is the user's data.
+    await transaction
+      .delete(schema.apiHandoffs)
+      .where(
+        and(
+          eq(schema.apiHandoffs.storeId, ""),
+          eq(schema.apiHandoffs.subject, context.user.id),
+        ),
+      );
     await transaction
       .delete(schema.pushSubscriptions)
       .where(eq(schema.pushSubscriptions.userId, context.user.id));

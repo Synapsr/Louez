@@ -9,7 +9,11 @@ import {
   storeMembers,
   stores,
   type ApiHandoffPayload,
+  type ApiStoreCreationPayload,
   type Transaction,
+  users,
+  isStoreCreationPayload,
+  isTeamInvitationPayload,
 } from "@louez/db";
 import { hasPermission, type MemberRole } from "@louez/utils";
 import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
@@ -27,7 +31,8 @@ import {
 import { isApiError, platformErrors } from "../platform/errors";
 import { sha256 } from "../platform/hash";
 import { logProviderError } from "../platform/redact";
-import { dashboardPageLinks, type DashboardLinkStore } from "../platform/links";
+import { ACCOUNT_SCOPE } from "../platform/actor";
+import { accountPageLinks, dashboardPageLinks, type DashboardLinkStore } from "../platform/links";
 import type { ApiPorts, UrlsPort } from "../platform/ports";
 import type { ApiDomain } from "../platform/permissions";
 import { startConnectOnboarding, syncConnectStatus, type ConnectStore } from "./stripe-connect";
@@ -47,6 +52,14 @@ import { startConnectOnboarding, syncConnectStatus, type ConnectStore } from "./
  * store-wide step has an empty subject; a team invitation's is its address's
  * hash, so each address has its own approval. A team invitation has no
  * provider: its page asks an owner to approve or decline (services/team.ts).
+ *
+ * A step of the account comes before any store: creating the store an agent
+ * may not create itself (`store_creation`, `issueAccountHandoff`). Its row
+ * has no store (`ACCOUNT_SCOPE`) and its user as its subject, so the unique
+ * key holds one active per user; its page sends the user to the dashboard's
+ * own store creation, prefilled with what the agent proposed (`payload`),
+ * and the store created there completes it (`completeStoreCreation`), which
+ * keeps the store's id in the payload (`createdStoreId`).
  */
 
 const HOUR_MS = 3_600_000;
@@ -60,6 +73,7 @@ export const HANDOFF_KIND_DOMAINS: Record<HandoffKind, ApiDomain> = {
   stripe_dashboard: "settings",
   billing_card_setup: "billing",
   team_invitation: "team",
+  store_creation: "stores",
 };
 
 /** Who may take the step in the store: the dashboard's own rule for each flow. */
@@ -69,12 +83,20 @@ export function mayTakeStep(kind: HandoffKind, role: MemberRole): boolean {
   return hasPermission(role, "manage_settings");
 }
 
+/** A step of the account, before any store: the user creates a store. */
+const isAccountStep = (row: Pick<HandoffRow, "storeId">) => row.storeId === ACCOUNT_SCOPE;
+
 const PAGES: Record<HandoffKind, `/dashboard${string}`> = {
   stripe_connect_onboarding: "/dashboard/settings/payments",
   stripe_dashboard: "/dashboard/settings/payments",
   billing_card_setup: "/dashboard/settings/billing",
   team_invitation: "/dashboard/team",
+  store_creation: "/dashboard",
 };
+
+/** Where the store creation's page sends the user: the dashboard's own, for this step. */
+export const storeCreationPath = (id: string) =>
+  `/onboarding?new=true&handoff=${encodeURIComponent(id)}`;
 
 type HandoffRow = typeof apiHandoffs.$inferSelect;
 
@@ -123,6 +145,14 @@ const SUMMARIES: Record<HandoffKind, Record<HandoffStatus, string>> = {
     expired: "The link to approve the invitation expired before the user answered: ask again.",
     failed: "The invitation was not approved.",
   },
+  store_creation: {
+    pending: "The link to create the store is waiting for the user to open it.",
+    opened: "The user is creating the store in Louez and has not finished yet.",
+    completed: "The user created the store: storeId names it.",
+    expired:
+      "The link to create the store expired before the user created one: ask for a new one if they still want it.",
+    failed: "Creating the store failed.",
+  },
 };
 
 const CONFIRMING_SUMMARY = "The user is back from Stripe, which has not confirmed the card yet.";
@@ -135,11 +165,19 @@ export function isConfirming(row: Pick<HandoffRow, "kind" | "providerRef">, stat
   return row.kind === "billing_card_setup" && row.providerRef !== null && status === "opened";
 }
 
+/**
+ * The handoff as an agent reads it. `store` is the handoff's store; an
+ * account step has none, and links to the store it created once completed.
+ */
 export function handoffView(
   row: HandoffRow,
-  context: { now: Date; urls: UrlsPort; store: DashboardLinkStore },
+  context: { now: Date; urls: UrlsPort; store: DashboardLinkStore | null },
 ): HandoffView {
   const status = statusOf(row, context.now);
+  const createdStore =
+    status === "completed" && isStoreCreationPayload(row.payload)
+      ? (row.payload.createdStoreId ?? null)
+      : null;
   return {
     id: row.id,
     kind: row.kind,
@@ -153,14 +191,19 @@ export function handoffView(
         ? { code: row.failureCode, message: handoffFailureMessage(row.failureCode) }
         : null,
     confirming: isConfirming(row, status),
-    invitation: row.kind === "team_invitation" && row.payload ? row.payload : null,
+    invitation: row.kind === "team_invitation" && isTeamInvitationPayload(row.payload) ? row.payload : null,
     summary:
       status === "failed" && row.failureCode
         ? `${SUMMARIES[row.kind].failed} ${handoffFailureMessage(row.failureCode)}`
         : isConfirming(row, status)
           ? CONFIRMING_SUMMARY
           : SUMMARIES[row.kind][status],
-    links: dashboardPageLinks(context.urls, context.store, PAGES[row.kind]),
+    storeId: createdStore,
+    links: createdStore
+      ? dashboardPageLinks(context.urls, { id: createdStore }, "/dashboard")
+      : context.store
+        ? dashboardPageLinks(context.urls, context.store, PAGES[row.kind])
+        : accountPageLinks(context.urls, "/dashboard"),
   };
 }
 
@@ -314,6 +357,154 @@ export async function issueHandoff(
   };
 }
 
+/** Who asks for a step of the account: the user the link is for, and their connection. */
+export type AccountHandoffRequester = Omit<HandoffRequester, "storeId">;
+
+/**
+ * Gives the user an active step of the account of `kind` with a new link,
+ * as `issueHandoff` does for a store: the one they have (its old link stops
+ * working, and the proposal is the new one), or a new one. Serialized per
+ * user by the user row's lock, as a store's creation is.
+ */
+export async function issueAccountHandoff(
+  requester: AccountHandoffRequester,
+  kind: "store_creation",
+  payload: ApiHandoffPayload,
+  context: { urls: UrlsPort; now?: Date },
+): Promise<HandoffLink> {
+  const now = context.now ?? new Date();
+  const secret = newSecret();
+  const fields = {
+    userId: requester.userId,
+    credentialKind: requester.credentialKind,
+    credentialId: requester.credentialId,
+    clientName: requester.clientName,
+    tokenHash: sha256(secret),
+    linkIssuedAt: now,
+    expiresAt: new Date(now.getTime() + TTL_MS),
+    payload,
+    updatedAt: now,
+  };
+
+  const row = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, requester.userId))
+      .for("update");
+    if (!user) throw platformErrors.unauthenticated("This account no longer exists.");
+    const [active] = await tx
+      .select()
+      .from(apiHandoffs)
+      .where(
+        and(
+          eq(apiHandoffs.storeId, ACCOUNT_SCOPE),
+          eq(apiHandoffs.subject, requester.userId),
+          eq(apiHandoffs.kind, kind),
+          eq(apiHandoffs.activeSlot, 1),
+        ),
+      )
+      .for("update");
+    if (active) {
+      await tx.update(apiHandoffs).set(fields).where(eq(apiHandoffs.id, active.id));
+      const [updated] = await tx.select().from(apiHandoffs).where(eq(apiHandoffs.id, active.id));
+      return updated;
+    }
+    const [created] = await tx
+      .insert(apiHandoffs)
+      .values({
+        ...fields,
+        storeId: ACCOUNT_SCOPE,
+        subject: requester.userId,
+        kind,
+        status: "pending",
+        activeSlot: 1,
+        createdAt: now,
+      })
+      .$returningId();
+    const [inserted] = await tx.select().from(apiHandoffs).where(eq(apiHandoffs.id, created.id));
+    return inserted;
+  });
+  if (!row) throw platformErrors.unauthenticated("This account no longer exists.");
+
+  return {
+    handoff: handoffView(row, { now, urls: context.urls, store: null }),
+    url: context.urls.dashboard(handoffPath(`${row.id}${secret}`)),
+  };
+}
+
+/** Any handoff by its id, or HANDOFF_NOT_FOUND: the caller checks who may read it. */
+export async function findHandoffRow(id: string): Promise<HandoffRow> {
+  const [row] = await db.select().from(apiHandoffs).where(eq(apiHandoffs.id, id));
+  if (!row) throw handoffErrors.notFound(id);
+  return row;
+}
+
+/**
+ * The store creation the user continued, as the dashboard's store step
+ * starts from: theirs, opened from its link and not finished, with what the
+ * agent proposed. Null otherwise (another user's, never continued, done).
+ * An expired link the user already continued still counts, as a provider's
+ * late return does.
+ */
+export async function readStoreCreationHandoff(
+  id: string,
+  userId: string,
+): Promise<{ id: string; payload: ApiStoreCreationPayload } | null> {
+  const [row] = await db
+    .select()
+    .from(apiHandoffs)
+    .where(
+      and(
+        eq(apiHandoffs.id, id),
+        eq(apiHandoffs.storeId, ACCOUNT_SCOPE),
+        eq(apiHandoffs.subject, userId),
+        eq(apiHandoffs.kind, "store_creation"),
+        eq(apiHandoffs.status, "opened"),
+      ),
+    );
+  if (!row || !isStoreCreationPayload(row.payload) || !(await connectionAlive(row))) return null;
+  return { id: row.id, payload: row.payload };
+}
+
+/**
+ * Completes the user's store creation with the store they created: theirs,
+ * opened and not finished. The store must be one they own. False when it
+ * changed nothing (another user's, finished, replaced).
+ */
+export async function completeStoreCreation(
+  id: string,
+  userId: string,
+  storeId: string,
+  now = new Date(),
+): Promise<boolean> {
+  const [owned] = await db
+    .select({ id: stores.id })
+    .from(stores)
+    .where(and(eq(stores.id, storeId), eq(stores.userId, userId)));
+  if (!owned) return false;
+  const [result] = await db
+    .update(apiHandoffs)
+    .set({
+      status: "completed",
+      completedAt: now,
+      activeSlot: null,
+      // The proposal stays; the store it led to is added beside it.
+      payload: sql`JSON_SET(COALESCE(${apiHandoffs.payload}, JSON_OBJECT()), '$.createdStoreId', ${storeId})`,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(apiHandoffs.id, id),
+        eq(apiHandoffs.storeId, ACCOUNT_SCOPE),
+        eq(apiHandoffs.subject, userId),
+        eq(apiHandoffs.kind, "store_creation"),
+        eq(apiHandoffs.status, "opened"),
+      ),
+    );
+  return result.affectedRows > 0;
+}
+
 /** A handoff of the store, or HANDOFF_NOT_FOUND (another store's id included). */
 export async function getHandoffRow(storeId: string, id: string): Promise<HandoffRow> {
   const [row] = await db
@@ -430,7 +621,8 @@ export type HandoffRefusal =
   | "not_allowed";
 
 export type HandoffCheck =
-  | { ok: true; row: HandoffRow; store: { id: string; name: string } }
+  /** `store`: the step's store; null for a step of the account (no store yet). */
+  | { ok: true; row: HandoffRow; store: { id: string; name: string } | null }
   | { ok: false; reason: HandoffRefusal; row: HandoffRow | null };
 
 const TOKEN_PATTERN = /^([A-Za-z0-9_-]{21})([A-Za-z0-9_-]{43})$/;
@@ -481,6 +673,8 @@ async function connectionAlive(row: HandoffRow): Promise<boolean> {
 async function checkUser(row: HandoffRow, userId: string): Promise<HandoffCheck> {
   if (row.userId !== userId) return { ok: false, reason: "other_user", row };
   if (!(await connectionAlive(row))) return { ok: false, reason: "invalid", row };
+  // A step of the account: the link's user alone, with no store to belong to.
+  if (isAccountStep(row)) return { ok: true, row, store: null };
   const [member] = await db
     .select({ role: storeMembers.role, storeName: stores.name })
     .from(storeMembers)
@@ -617,6 +811,10 @@ export async function launchHandoff(input: {
 }): Promise<HandoffLaunch> {
   const { row, state, ports } = input;
   const now = input.now ?? new Date();
+  // No provider: the dashboard's own store creation, which completes it.
+  if (row.kind === "store_creation") {
+    return { ok: true, redirect: ports.urls.dashboard(storeCreationPath(row.id)) };
+  }
   const returnUrl = ports.urls.dashboard(handoffReturnPath(row.id, state));
   const attempt = { state: sha256(state) };
   const fail = async (code: string): Promise<HandoffLaunch> => {

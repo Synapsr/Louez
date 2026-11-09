@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 
 import { db, users } from "@louez/db";
+import { readStoreCreationHandoff } from "@louez/api/services/handoffs";
 
 import { auth } from "@/lib/auth";
 import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
@@ -22,15 +23,19 @@ export const instant = false;
 export default async function OnboardingStorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ new?: string }>;
+  searchParams: Promise<{ new?: string; handoff?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/login");
   }
 
-  const { new: newStore } = await searchParams;
-  const isCreatingNewStore = newStore === "true";
+  const { new: newStore, handoff } = await searchParams;
+  // A store an agent proposed (ChatGPT's stores_create), the user continued
+  // from its link: the step starts from it and completes that handoff.
+  const handed = handoff ? await readStoreCreationHandoff(handoff, session.user.id) : null;
+  const handedOver = handed?.payload.store ? { id: handed.id, store: handed.payload.store } : null;
+  const isCreatingNewStore = newStore === "true" || handedOver !== null;
 
   const [user, currentStore, isPlatformAdmin, requestHeaders] = await Promise.all([
     db.query.users.findFirst({
@@ -49,7 +54,9 @@ export default async function OnboardingStorePage({
 
   // Platform admins act on behalf of stores: their own user profile must never
   // become a prerequisite for inspecting or completing somebody else's draft.
-  if (!user?.profileCompletedAt && !isPlatformAdmin) {
+  // A store handed over by an agent needs no profile either: the step would
+  // lose the handoff, and the profile never gates the dashboard.
+  if (!user?.profileCompletedAt && !isPlatformAdmin && !handedOver) {
     redirect("/onboarding/profile");
   }
 
@@ -59,7 +66,8 @@ export default async function OnboardingStorePage({
     ? null
     : (getCountryByCode(currentStore?.settings?.country ?? "")?.code ?? null);
   const requestCountry = detectCountryFromRequestHeaders(requestHeaders)?.country ?? null;
-  const initialCountry = savedCountry ?? requestCountry ?? ONBOARDING_FALLBACK_COUNTRY;
+  const initialCountry =
+    handedOver?.store.country ?? savedCountry ?? requestCountry ?? ONBOARDING_FALLBACK_COUNTRY;
 
   return (
     <StoreOnboardingClientPage
@@ -67,7 +75,8 @@ export default async function OnboardingStorePage({
       currentStoreId={isPlatformAdmin ? currentStoreId : null}
       editingStoreId={isCreatingNewStore ? null : (currentStore?.id ?? null)}
       initialCountry={initialCountry}
-      shouldDetectBrowserCountry={!savedCountry && !requestCountry}
+      shouldDetectBrowserCountry={!handedOver && !savedCountry && !requestCountry}
+      handedOver={handedOver}
       accountEmail={session.user.email}
       mcpEndpoint={getMcpEndpoint()}
     />

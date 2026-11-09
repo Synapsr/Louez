@@ -2,6 +2,7 @@ import {
   apiEffects,
   apiHandoffs,
   db,
+  isTeamInvitationPayload,
   lockStoreRow,
   markStore,
   storeInvitations,
@@ -519,7 +520,9 @@ export async function decideInvitation(
   const checked = await readHandoffLink(input.token, input.userId, now);
   if (!checked.ok) throw teamErrors.approvalInvalid(checked.reason);
   const { row } = checked;
-  if (row.kind !== "team_invitation" || !row.payload) throw teamErrors.approvalInvalid("invalid");
+  if (row.kind !== "team_invitation" || !isTeamInvitationPayload(row.payload)) {
+    throw teamErrors.approvalInvalid("invalid");
+  }
 
   if (input.decision === "decline") {
     await endApproval(row.id, row.tokenHash, "declined", now);

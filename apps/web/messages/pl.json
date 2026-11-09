@@ -9669,6 +9669,11 @@
         "title": "Dodaj kartę rozliczeniową",
         "description": "Twój agent AI prosi o dodanie karty, z której Louez pobiera opłaty za sklep „{store}”. Wpiszesz ją na bezpiecznej stronie Stripe.",
         "continue": "Przejdź do Stripe"
+      },
+      "store_creation": {
+        "title": "Utwórz swój sklep",
+        "description": "Twój agent AI zaproponował nowy sklep „{store}”. Sprawdzisz jego dane w Louez i tam go utworzysz; nic nie powstanie wcześniej.",
+        "continue": "Przejdź do Louez"
       }
     },
     "retry": "Stripe nie odpowiedział. Spróbuj ponownie za chwilę.",

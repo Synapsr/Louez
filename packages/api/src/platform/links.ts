@@ -131,6 +131,11 @@ export function dashboardPageLinks(
   return { dashboard: dashboardUrl(urls, store, path) };
 }
 
+/** A page of the account, before any store: no store to name. */
+export function accountPageLinks(urls: UrlsPort, path: `/${string}`): ResourceLinks {
+  return { dashboard: urls.dashboard(path) };
+}
+
 /** Settings > Integrations > MCP, where the user manages connected agents and their bundles. */
 export function agentConnectionsLinks(urls: UrlsPort, store: DashboardLinkStore): ResourceLinks {
   return { dashboard: dashboardUrl(urls, store, "/dashboard/settings/integrations/mcp") };

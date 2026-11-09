@@ -151,7 +151,16 @@ export function registerExposedTools(
   ctx: McpRequestContext,
   procedures: readonly ExposedProcedure[],
 ): void {
+  // A directory's variant of a tool replaces it for that directory's clients only.
+  const directory = ctx.actor.credential.agentDirectory;
+  const replaced = new Set(
+    procedures.flatMap((entry) =>
+      directory && entry.meta.mcp.directory === directory ? [entry.meta.mcp.name] : [],
+    ),
+  );
   for (const entry of procedures) {
+    const variant = entry.meta.mcp.directory;
+    if (variant ? variant !== directory : replaced.has(entry.meta.mcp.name)) continue;
     const { name, title, description, bundle } = entry.meta.mcp;
     const annotations = mcpToolAnnotations({
       level: entry.meta.scope?.level,

@@ -79,11 +79,15 @@ export function serverInstructions(
 ): string {
   const mayCreateStores =
     accountRefusal(ctx.actor.credential, { domain: "stores", level: "write" }) === null;
+  // ChatGPT's stores_create hands the store's creation to the user (a link).
+  const byLink = ctx.actor.credential.agentDirectory === "openai";
 
   let stores: string;
   if (ctx.noStore) {
     stores = mayCreateStores
-      ? "This account has no store yet: stores_create makes one."
+      ? byLink
+        ? "This account has no store yet: stores_create gives a link where the user creates one in Louez."
+        : "This account has no store yet: stores_create makes one."
       : "This connection reaches no store yet: the user creates one in Louez.";
   } else if (ctx.multiStore) {
     stores =
@@ -101,7 +105,9 @@ export function serverInstructions(
   if (ctx.noStore) {
     lines.push(
       mayCreateStores
-        ? `To start one: stores_check_slug_availability for its web address, then stores_create. Pass the new store's id as storeId to the other tools. ${LAUNCH_HELP}`
+        ? byLink
+          ? `To start one: stores_create with what the user wants (name, web address, country, currency) gives a link to give them; they create the store in Louez from it. handoffs_get with its id says when it is done, and its storeId names the new store, to pass as storeId to the other tools. ${LAUNCH_HELP}`
+          : `To start one: stores_check_slug_availability for its web address, then stores_create. Pass the new store's id as storeId to the other tools. ${LAUNCH_HELP}`
         : "The user creates a store in Louez, or connects this agent again with “Read and edit” rights on all their stores, so that it can create one with stores_create.",
     );
   } else if (ctx.multiStore && ctx.storeChosen) {
@@ -115,7 +121,9 @@ export function serverInstructions(
   if (offline) lines.push(`This store is not online yet. ${LAUNCH_HELP}`);
   if (!ctx.noStore && mayCreateStores) {
     lines.push(
-      `To start another store for the user: stores_create.${offline ? "" : ` ${LAUNCH_HELP}`}`,
+      byLink
+        ? "To start another store: stores_create gives the user a link to create it in Louez, and handoffs_get names it once created."
+        : `To start another store for the user: stores_create.${offline ? "" : ` ${LAUNCH_HELP}`}`,
     );
   }
 

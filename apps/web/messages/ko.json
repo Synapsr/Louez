@@ -9669,6 +9669,11 @@
         "title": "청구 카드 추가",
         "description": "AI 에이전트가 Louez가 “{store}”의 수수료를 청구할 카드를 추가해 달라고 요청했습니다. 카드는 Stripe의 보안 페이지에서 입력합니다.",
         "continue": "Stripe로 계속"
+      },
+      "store_creation": {
+        "title": "스토어 만들기",
+        "description": "AI 에이전트가 새 스토어 “{store}”를 제안했습니다. Louez에서 정보를 확인하고 직접 만듭니다. 그 전에는 아무것도 만들어지지 않습니다.",
+        "continue": "Louez로 계속"
       }
     },
     "retry": "Stripe가 응답하지 않았습니다. 잠시 후 다시 시도하세요.",

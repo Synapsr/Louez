@@ -17,7 +17,7 @@ import { getFieldError } from "@/hooks/form/form-context";
 
 import { OnboardingStepHeader } from "./_components/step-header";
 import { useOnboardingSteps } from "./_lib/steps-context";
-import { useStoreStep } from "./use-store-step";
+import { useStoreStep, type HandedOverStore } from "./use-store-step";
 
 interface StoreWithRole {
   id: string;
@@ -38,6 +38,8 @@ interface StoreOnboardingClientPageProps {
   accountEmail: string;
   /** Where an assistant connects, for the offer above the form. */
   mcpEndpoint: McpEndpoint;
+  /** A store an agent proposed and handed to the user to create. */
+  handedOver: HandedOverStore | null;
 }
 
 export function StoreOnboardingClientPage({
@@ -48,6 +50,7 @@ export function StoreOnboardingClientPage({
   shouldDetectBrowserCountry,
   accountEmail,
   mcpEndpoint,
+  handedOver,
 }: StoreOnboardingClientPageProps) {
   const router = useRouter();
   const t = useTranslations("onboarding.store");
@@ -65,6 +68,7 @@ export function StoreOnboardingClientPage({
     accountEmail,
     initialCountry,
     shouldDetectBrowserCountry,
+    handedOver,
   });
 
   const { NEXT_PUBLIC_APP_DOMAIN: domain } = usePublicEnv();

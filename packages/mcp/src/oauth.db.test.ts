@@ -343,6 +343,186 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     });
   });
 
+  test("ChatGPT hands the store's creation to the user through a link", async () => {
+    const { CHATGPT_CLIENT_ID } = await import("@louez/api/platform/agent-clients");
+    const handoffs = await import("@louez/api/services/handoffs");
+    await louezDb.db
+      .insert(louezDb.oauthClients)
+      .values({
+        clientId: CHATGPT_CLIENT_ID,
+        name: "ChatGPT",
+        clientDiscoveryId: "cimd",
+        redirectUris: JSON.stringify(["https://chatgpt.com/connector_platform_oauth_redirect"]),
+      })
+      .onDuplicateKeyUpdate({ set: { name: "ChatGPT" } });
+    const { id: grantId } = await grants.saveGrant({
+      userId: OWNER,
+      clientId: CHATGPT_CLIENT_ID,
+      terms: {
+        stores: { all: true },
+        preset: "write",
+        confirmSensitive: true,
+        bundles: ["daily", "settings", "catalog"],
+      },
+    });
+    const chatgpt = {
+      authorization: `Bearer ${await tokens.sign({ userId: OWNER, clientId: CHATGPT_CLIENT_ID, grantId })}`,
+    };
+    // What OpenAI forbids a plugin to show: Louez's plans, fees and subscription.
+    const LOUEZ_PRICING =
+      /pay-as-you-go|subscription|\bplans?\b|billing relationship|fee per reservation|feePerReservation|freeReservations|welcome gift|\boffer\b/i;
+    const ownStores = async () =>
+      (
+        await louezDb.db
+          .select({ id: louezDb.stores.id })
+          .from(louezDb.stores)
+          .where(eq(louezDb.stores.userId, OWNER))
+      ).map((store) => store.id);
+    const before = await ownStores();
+    const proposal = { name: "Brest Paddle", slug: "mo-brest-paddle", country: "FR", currency: "EUR" };
+
+    const first = await withClient(chatgpt, async (client) => {
+      const tools = (await client.listTools()).tools;
+      const create = tools.find((tool) => tool.name === "stores_create");
+      assert.ok(create, "listed under its usual name");
+      assert.equal(create.inputSchema.properties?.confirmationToken, undefined, "no preview to confirm");
+      // Nothing a ChatGPT connection reads names Louez's pricing.
+      for (const tool of tools) assert.doesNotMatch(tool.description ?? "", LOUEZ_PRICING, tool.name);
+      assert.doesNotMatch(client.getInstructions() ?? "", LOUEZ_PRICING);
+      assert.match(client.getInstructions() ?? "", /stores_create gives the user a link/);
+
+      const result = await client.callTool({ name: "stores_create", arguments: proposal });
+      assert.notEqual(result.isError, true, JSON.stringify(result.content));
+      assert.doesNotMatch(JSON.stringify(result), LOUEZ_PRICING);
+      return result.structuredContent as {
+        url: string;
+        handoff: { id: string; kind: string; status: string; storeId: string | null };
+      };
+    });
+    assert.equal(first.handoff.kind, "store_creation");
+    assert.equal(first.handoff.status, "pending");
+    assert.equal(first.handoff.storeId, null);
+    assert.deepEqual(await ownStores(), before, "nothing is created until the user does");
+
+    // Asking again while it is open replaces the link of the same step.
+    const again = await withClient(chatgpt, async (client) =>
+      client.callTool({ name: "stores_create", arguments: { ...proposal, name: "Brest Paddle Co" } }),
+    );
+    const second = again.structuredContent as typeof first;
+    assert.equal(second.handoff.id, first.handoff.id);
+    assert.notEqual(second.url, first.url);
+    const token = second.url.split("/handoffs/")[1] ?? "";
+    assert.equal((await handoffs.readHandoffLink(first.url.split("/handoffs/")[1] ?? "", OWNER)).ok, false);
+
+    // The user opens the link: only them, and the dashboard's store step starts from the proposal.
+    assert.equal((await handoffs.readHandoffLink(token, "someone_else")).ok, false);
+    const continued = await handoffs.continueHandoff(token, OWNER);
+    assert.ok(continued.ok && continued.state);
+    const launch = await handoffs.launchHandoff({
+      row: continued.row,
+      state: continued.state,
+      userId: OWNER,
+      locale: "en",
+      ports,
+    });
+    assert.ok(launch.ok && launch.redirect.includes(`/onboarding?new=true&handoff=${first.handoff.id}`));
+    const handed = await handoffs.readStoreCreationHandoff(first.handoff.id, OWNER);
+    assert.equal(handed?.payload.store?.name, "Brest Paddle Co");
+    assert.equal(await handoffs.readStoreCreationHandoff(first.handoff.id, "someone_else"), null);
+
+    const read = (id: string) =>
+      withClient(chatgpt, async (client) => {
+        const result = await client.callTool({ name: "handoffs_get", arguments: { id } });
+        assert.notEqual(result.isError, true, JSON.stringify(result.content));
+        return result.structuredContent as { status: string; storeId: string | null };
+      });
+    assert.equal((await read(first.handoff.id)).status, "opened");
+
+    // The user creates the store in the dashboard; it completes the handoff.
+    const NEW_STORE = "mo_store_paddle_0001";
+    await louezDb.db
+      .insert(louezDb.stores)
+      .values({ id: NEW_STORE, userId: OWNER, name: "Brest Paddle Co", slug: "mo-brest-paddle" });
+    await louezDb.db
+      .insert(louezDb.storeMembers)
+      .values({ storeId: NEW_STORE, userId: OWNER, role: "owner" });
+    assert.equal(
+      await handoffs.completeStoreCreation(first.handoff.id, "someone_else", NEW_STORE),
+      false,
+      "another user's step",
+    );
+    assert.equal(
+      await handoffs.completeStoreCreation(first.handoff.id, OWNER, STORE_ELSEWHERE.replace("x", "z")),
+      false,
+      "a store they do not own",
+    );
+    assert.equal(await handoffs.completeStoreCreation(first.handoff.id, OWNER, NEW_STORE), true);
+    const done = await read(first.handoff.id);
+    assert.equal(done.status, "completed");
+    assert.equal(done.storeId, NEW_STORE);
+
+    // The connection reaches the new store at once, and its setup answers
+    // name no plan or fee either.
+    await withClient(chatgpt, async (client) => {
+      const listed = await client.callTool({ name: "stores_list", arguments: {} });
+      const ids = (listed.structuredContent as { items: Array<{ id: string }> }).items.map(
+        (store) => store.id,
+      );
+      assert.ok(ids.includes(NEW_STORE));
+      const checklist = await client.callTool({
+        name: "stores_get_launch_checklist",
+        arguments: { storeId: NEW_STORE },
+      });
+      assert.notEqual(checklist.isError, true, JSON.stringify(checklist.content));
+      assert.doesNotMatch(JSON.stringify(checklist), LOUEZ_PRICING);
+      const goLive = await client.callTool({ name: "stores_go_live", arguments: { storeId: NEW_STORE } });
+      assert.doesNotMatch(JSON.stringify(goLive), LOUEZ_PRICING);
+    });
+
+    // A link the user never used expires; asking again gives a new one.
+    const expiring = await withClient(chatgpt, async (client) =>
+      client.callTool({ name: "stores_create", arguments: { ...proposal, slug: "mo-brest-sup" } }),
+    );
+    const open = (expiring.structuredContent as typeof first).handoff.id;
+    assert.notEqual(open, first.handoff.id, "a completed step is not reused");
+    await louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(louezDb.apiHandoffs.id, open));
+    assert.equal((await read(open)).status, "expired");
+    const renewed = await withClient(chatgpt, async (client) =>
+      client.callTool({ name: "stores_create", arguments: proposal }),
+    );
+    const renewedView = (renewed.structuredContent as typeof first).handoff;
+    assert.equal(renewedView.id, open);
+    assert.equal(renewedView.status, "pending");
+
+    // Claude keeps creating the store itself, after its preview with the pricing.
+    const CLAUDE_USER = "mo_claude_user_00001";
+    await louezDb.db.insert(louezDb.users).values({ id: CLAUDE_USER, email: "claude@mo.test" });
+    const claudeGrant = await grants.saveGrant({
+      userId: CLAUDE_USER,
+      clientId: CLIENT,
+      terms: { stores: { all: true }, preset: "write", confirmSensitive: true, bundles: ["daily"] },
+    });
+    const claude = {
+      authorization: `Bearer ${await tokens.sign({ userId: CLAUDE_USER, clientId: CLIENT, grantId: claudeGrant.id })}`,
+    };
+    await withClient(claude, async (client) => {
+      const create = (await client.listTools()).tools.find((tool) => tool.name === "stores_create");
+      assert.match(create?.description ?? "", /billing relationship/);
+      const preview = await client.callTool({
+        name: "stores_create",
+        arguments: { ...proposal, slug: "mo-claude-store" },
+      });
+      assert.equal(errorCode(preview), "CONFIRMATION_REQUIRED");
+      // And it reads nothing of another user's step.
+      const foreign = await client.callTool({ name: "handoffs_get", arguments: { id: open } });
+      assert.equal(errorCode(foreign), "HANDOFF_NOT_FOUND");
+    });
+    assert.deepEqual((await ownStores()).sort(), [...before, NEW_STORE].sort());
+  });
+
   test("a grant over several stores names the store in each call", async () => {
     await grant({ stores: { all: false, ids: [STORE_A, STORE_B] }, bundles: ["daily", "catalog"] });
     const headers = await bearer();

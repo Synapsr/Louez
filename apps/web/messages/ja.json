@@ -9669,6 +9669,11 @@
         "title": "請求用カードを追加",
         "description": "AI エージェントが、Louez が「{store}」の手数料を請求するカードを追加するよう求めています。カード情報は Stripe の安全なページで入力します。",
         "continue": "Stripe へ進む"
+      },
+      "store_creation": {
+        "title": "ストアを作成",
+        "description": "AI エージェントが新しいストア「{store}」を提案しました。Louez で内容を確認し、そこで作成します。それまで何も作成されません。",
+        "continue": "Louez へ進む"
       }
     },
     "retry": "Stripe から応答がありませんでした。しばらくしてからもう一度お試しください。",

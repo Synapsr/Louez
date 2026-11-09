@@ -1,4 +1,5 @@
 import type { CredentialKind } from "./actor";
+import type { AgentDirectory } from "./agent-clients";
 import type { ProcedureScope } from "./permissions";
 
 /**
@@ -121,6 +122,13 @@ export interface McpExposure {
    * key stores, the whole output, which every other transport gets.
    */
   answer?: (output: Record<string, unknown>) => Record<string, unknown>;
+  /**
+   * A variant for one directory's clients (`credential.agentDirectory`):
+   * served to them under `name`, in place of the procedure of the same name,
+   * and to no one else; not on OpenAPI. stores_create for ChatGPT, which
+   * hands the store's creation to the user.
+   */
+  directory?: AgentDirectory;
 }
 
 /**

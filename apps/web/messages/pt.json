@@ -9669,6 +9669,11 @@
         "title": "Adicionar o seu cartão de faturação",
         "description": "O seu agente de IA pede-lhe que adicione o cartão em que o Louez cobra as suas taxas de «{store}». Vai introduzi-lo na página segura do Stripe.",
         "continue": "Continuar para o Stripe"
+      },
+      "store_creation": {
+        "title": "Criar sua loja",
+        "description": "Seu agente de IA propôs uma nova loja, “{store}”. Você vai conferir os dados no Louez e criá-la lá; nada é criado antes disso.",
+        "continue": "Continuar para o Louez"
       }
     },
     "retry": "O Stripe não respondeu. Tente novamente daqui a pouco.",

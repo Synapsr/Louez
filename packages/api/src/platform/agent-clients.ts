@@ -21,6 +21,21 @@ export function isOpenAiClient(client: { clientId: string; name: string | null }
   );
 }
 
+/**
+ * The directory whose rules a client follows, beyond what it is withheld:
+ * `openai` for ChatGPT and Codex. A tool may have a variant for a directory
+ * (`meta.mcp.directory`), served to its clients under the same name, such as
+ * stores_create handing the store's creation to the user.
+ */
+export type AgentDirectory = "openai";
+
+export function agentDirectoryOf(client: {
+  clientId: string;
+  name: string | null;
+}): AgentDirectory | null {
+  return isOpenAiClient(client) ? "openai" : null;
+}
+
 /** What a client never reaches, nor sees offered: its domains and its bundles. */
 export interface ClientWithholding {
   domains: readonly ApiDomain[];

@@ -9669,6 +9669,11 @@
         "title": "添加您的账单卡",
         "description": "您的 AI 代理请您添加 Louez 用于收取“{store}”费用的银行卡。您将在 Stripe 的安全页面上输入卡信息。",
         "continue": "继续前往 Stripe"
+      },
+      "store_creation": {
+        "title": "创建您的店铺",
+        "description": "您的 AI 智能体提议了一个新店铺“{store}”。您将在 Louez 中核对信息并在那里创建；在此之前不会创建任何内容。",
+        "continue": "继续前往 Louez"
       }
     },
     "retry": "Stripe 没有响应。请稍后再试。",

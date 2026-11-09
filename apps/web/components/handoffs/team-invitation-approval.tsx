@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 
-import type { ApiHandoffPayload } from "@louez/db";
+import type { ApiTeamInvitationPayload } from "@louez/db";
 import { Button } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
@@ -9,7 +9,7 @@ interface TeamInvitationApprovalProps {
   /** Where the form posts the owner's answer. */
   action: string;
   store: string;
-  invitation: ApiHandoffPayload;
+  invitation: ApiTeamInvitationPayload;
   /** The last answer could not be applied. */
   failed: boolean;
 }

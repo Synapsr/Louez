@@ -6,8 +6,10 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { loadActiveGrant } from "../services/agent-grants";
 import { validateApiKey } from "../services/api-keys";
 import {
+  agentDirectoryOf,
   clientWithholding,
   modelReadsStructuredContent,
+  type AgentDirectory,
   type ClientWithholding,
 } from "./agent-clients";
 import { platformErrors } from "./errors";
@@ -67,6 +69,11 @@ export interface Credential {
    * text block. Absent: the text repeats it.
    */
   structuredContentOnly?: boolean;
+  /**
+   * The directory whose rules the OAuth client follows (`agentDirectoryOf`):
+   * its variant of a tool is served in place of the tool. Absent: none.
+   */
+  agentDirectory?: AgentDirectory;
 }
 
 /** Someone authenticated, before any store is chosen. */
@@ -217,6 +224,7 @@ async function resolveOAuthActor(transport: Transport, token: string): Promise<A
   // name cut for the audit trail.
   const client = { clientId: grant.clientId, name: grant.registeredName };
   const withheld = clientWithholding(client);
+  const agentDirectory = agentDirectoryOf(client);
   const scopes = presetScopes(grant.preset);
   for (const domain of withheld.domains) scopes[domain] = "none";
   return {
@@ -236,6 +244,7 @@ async function resolveOAuthActor(transport: Transport, token: string): Promise<A
       bundles: grant.bundles.filter((bundle) => !withheld.bundles.includes(bundle)),
       withheld,
       structuredContentOnly: modelReadsStructuredContent(client),
+      ...(agentDirectory ? { agentDirectory } : {}),
     },
   };
 }
