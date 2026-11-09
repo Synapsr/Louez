@@ -5,6 +5,7 @@ import { onError, ORPCError, type AnyRouter } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
 import type { BaseContext } from "../context";
+import { resolveAccountActor } from "./actor";
 import type { ApiErrorData } from "./errors";
 import type { ExposedProcedure } from "./exposure";
 import type { OperationReceipt } from "./operations";
@@ -59,24 +60,59 @@ export function routeBodyLimits(procedures: readonly ExposedProcedure[]): RouteB
   return limits;
 }
 
+/**
+ * Requests reading a body past `OPENAPI_MAX_BODY_BYTES` at once in this
+ * process, each until it is answered; past it, 503 and a retry.
+ */
+export const MAX_LARGE_BODY_READS = 4;
+let largeBodyReads = 0;
+
+const errorResponse = (error: ORPCError<string, unknown>, headers?: HeadersInit) =>
+  Response.json(error.toJSON(), { status: error.status, headers });
+
 function tooLarge(maxBytes: number): Response {
-  const error = new ORPCError<"PAYLOAD_TOO_LARGE", ApiErrorData>("PAYLOAD_TOO_LARGE", {
-    message: `The request body is larger than ${maxBytes} bytes, the most this route takes. Send an image as a public imageUrl rather than its bytes.`,
-    data: { code: "REQUEST_TOO_LARGE", retryable: false, details: { maxBytes } },
-  });
-  return Response.json(error.toJSON(), { status: 413 });
+  return errorResponse(
+    new ORPCError<"PAYLOAD_TOO_LARGE", ApiErrorData>("PAYLOAD_TOO_LARGE", {
+      message: `The request body is larger than ${maxBytes} bytes, the most this route takes. Send an image as a public imageUrl rather than its bytes. Split a very large product: create it, then add units in further updates, or fill each unit's details with products_update_unit_details.`,
+      data: { code: "REQUEST_TOO_LARGE", retryable: false, details: { maxBytes } },
+    }),
+  );
 }
 
+const largeBodyBusy = () =>
+  errorResponse(
+    new ORPCError<"SERVICE_UNAVAILABLE", ApiErrorData>("SERVICE_UNAVAILABLE", {
+      message: "Too many large requests are being read right now. Try again in a few seconds.",
+      data: { code: "LARGE_BODY_BUSY", retryable: true },
+    }),
+    { "Retry-After": "1" },
+  );
+
 /**
- * The request with its body read, at most `maxBytes`, streaming: a body past
- * it, declared or sent, gets 413 before anything parses it or checks who
- * sent it.
+ * The request with its body read, streaming, at most `maxBytes`: a body past
+ * it, declared or sent, gets 413 before anything parses it. Past
+ * `OPENAPI_MAX_BODY_BYTES` (declared, or once that much was read), the
+ * request must first pass `enterLarge`, which answers a refusal or null.
  */
-async function withBoundedBody(request: Request, maxBytes: number): Promise<Request | Response> {
+async function withBoundedBody(
+  request: Request,
+  maxBytes: number,
+  enterLarge: () => Promise<Response | null>,
+): Promise<Request | Response> {
   if (!request.body) return request;
-  if (Number(request.headers.get("content-length")) > maxBytes) {
+  const declared = Number(request.headers.get("content-length"));
+  if (declared > maxBytes) {
     await request.body.cancel().catch(() => {});
     return tooLarge(maxBytes);
+  }
+  let entered = false;
+  if (declared > OPENAPI_MAX_BODY_BYTES) {
+    const refusal = await enterLarge();
+    if (refusal) {
+      await request.body.cancel().catch(() => {});
+      return refusal;
+    }
+    entered = true;
   }
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -88,6 +124,14 @@ async function withBoundedBody(request: Request, maxBytes: number): Promise<Requ
     if (size > maxBytes) {
       await reader.cancel().catch(() => {});
       return tooLarge(maxBytes);
+    }
+    if (!entered && size > OPENAPI_MAX_BODY_BYTES) {
+      const refusal = await enterLarge();
+      if (refusal) {
+        await reader.cancel().catch(() => {});
+        return refusal;
+      }
+      entered = true;
     }
     chunks.push(value);
   }
@@ -235,6 +279,12 @@ export async function handleOpenApiRequest(
     prefix?: `/${string}`;
     /** Routes that take a larger body (`routeBodyLimits`); every other body stops at 2 MiB. */
     bodyLimits?: readonly RouteBodyLimit[];
+    /**
+     * Who calls, checked from the headers before more than 2 MiB is read;
+     * it throws the platform's error. The procedure checks again. Default:
+     * the API key or access token, as the procedures resolve it.
+     */
+    authenticate?: (headers: Headers) => Promise<unknown>;
   },
 ): Promise<Response | undefined> {
   const prefix = options.prefix ?? OPENAPI_PREFIX;
@@ -243,18 +293,46 @@ export async function handleOpenApiRequest(
   const larger = options.bodyLimits?.find(
     (limit) => limit.method === incoming.method && limit.pattern.test(path),
   );
-  const bounded = await withBoundedBody(incoming, larger?.maxBytes ?? OPENAPI_MAX_BODY_BYTES);
-  if (bounded instanceof Response) return bounded;
-  const request = bounded;
-  const receipt: OperationReceipt = {};
-  const { response } = await handler.handle(request, {
-    prefix,
-    context: { headers: request.headers, transport: "openapi", ports: options.ports, receipt },
-  });
-  if (!response) return undefined;
-  if (receipt.operationId) {
-    response.headers.set(OPERATION_ID_HEADER, receipt.operationId);
-    if (receipt.replayed) response.headers.set(REPLAYED_HEADER, "true");
+  const authenticate =
+    options.authenticate ??
+    ((headers: Headers) => resolveAccountActor({ transport: "openapi", headers }));
+
+  // Past 2 MiB, only a known caller is read, and only a few at once: an
+  // anonymous or refused request is answered after 2 MiB at most.
+  let holdsPlace = false;
+  const enterLarge = async (): Promise<Response | null> => {
+    try {
+      await authenticate(incoming.headers);
+    } catch (error) {
+      if (error instanceof ORPCError) return errorResponse(error);
+      throw error;
+    }
+    if (largeBodyReads >= MAX_LARGE_BODY_READS) return largeBodyBusy();
+    largeBodyReads++;
+    holdsPlace = true;
+    return null;
+  };
+
+  try {
+    const bounded = await withBoundedBody(
+      incoming,
+      larger?.maxBytes ?? OPENAPI_MAX_BODY_BYTES,
+      enterLarge,
+    );
+    if (bounded instanceof Response) return bounded;
+    const request = bounded;
+    const receipt: OperationReceipt = {};
+    const { response } = await handler.handle(request, {
+      prefix,
+      context: { headers: request.headers, transport: "openapi", ports: options.ports, receipt },
+    });
+    if (!response) return undefined;
+    if (receipt.operationId) {
+      response.headers.set(OPERATION_ID_HEADER, receipt.operationId);
+      if (receipt.replayed) response.headers.set(REPLAYED_HEADER, "true");
+    }
+    return response;
+  } finally {
+    if (holdsPlace) largeBodyReads--;
   }
-  return response;
 }

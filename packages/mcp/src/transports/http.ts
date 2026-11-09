@@ -60,7 +60,7 @@ const MAX_BODY_BYTES = 4 * 1024 * 1024;
  */
 export const OVERSIZED_BODY_WEIGHT = 4;
 
-const TOO_LARGE_MESSAGE = `Request body too large: at most ${MAX_BODY_BYTES} bytes, more only for one call to a tool that takes more (an image's bytes up to 5 MB, a product with its units). Send an image as a public imageUrl rather than its bytes.`;
+const TOO_LARGE_MESSAGE = `Request body too large: at most ${MAX_BODY_BYTES} bytes, more only for one call to a tool that takes more (an image's bytes up to 5 MB, a product with its units). Send an image as a public imageUrl rather than its bytes. Split a very large product: create it, then add units in further products_update calls, or fill each unit's details with products_update_unit_details.`;
 
 const jsonResponse = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
