@@ -5,7 +5,8 @@ a été montée par un agent (Claude, ChatGPT…), ce qu'il a renseigné, jusqu'
 la boutique a été mise en ligne. Le code est dans `packages/api/src/platform/setup-analytics.ts`
 (ce qui part) et `apps/web/lib/product-analytics/setup-analytics.ts` (les propriétés PostHog).
 
-Tous les événements sont serveur, envoyés par l'outbox (`api_effects`) : un UUID et une date
+Tous les événements de ce document sont serveur, envoyés par l'outbox (`api_effects`) avec
+l'écriture qui les cause : un UUID et une date
 fixés à l'écriture, donc un seul événement PostHog même après un nouvel essai. Ils portent les
 propriétés de base `analytics_area: core_product` et `analytics_version: 1`, et le distinct_id
 du propriétaire de la boutique (`stores.user_id`), comme les autres événements d'onboarding.
@@ -23,14 +24,15 @@ Chaque événement nomme qui a fait l'écriture :
 
 ## Événements
 
-| Événement                     | Quand                                                                                                                                                                                                                                                              | Propriétés                                                                                                                                                                                                                                                                                                                                                   |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `agent_store_setup_action`    | Chaque écriture réussie d'un agent (clé API ou OAuth) sur une boutique encore hors ligne, dans les domaines boutique, réglages, boutique en ligne, produits, catégories, champs client ; et sa mise en ligne. Pas sur un rejeu idempotent, ni sur un aperçu refusé | `feature: store_setup`, `surface` et `transport` (`mcp`, `openapi`), `actor: agent`, `store_id`, `procedure` (`stores.create`, `settings.updateStoreInfo`, `onlineStore.updateAppearance`, `products.create`, `stores.completeOnboarding`…), qui a agi, `confirmation_accepted`, `fields_set`, `fields_set_count`, `fields_cleared`, et les faits ci-dessous |
-| `onboarding_store_info_saved` | Préexistant. Création de la boutique (`stores.create`), ou étape « boutique » du wizard sur une boutique incomplète                                                                                                                                                | En plus des propriétés existantes : `store_created_by` (`human`, `agent`), `credential_kind`, et pour un agent `agent_client`                                                                                                                                                                                                                                |
-| `onboarding_completed`        | Préexistant. Mise en ligne (`stores.completeOnboarding`), par le wizard ou un agent                                                                                                                                                                                | En plus de `store_id`, `reservation_mode` : qui l'a mise en ligne, et `setup_by`, `store_created_by`, `agent_action_count`, `human_action_count`, `agent_clients`, `seconds_to_launch` (ci-dessous)                                                                                                                                                          |
+| Événement                     | Quand                                                                                                                                                                                                                                                                                                                                          | Propriétés                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `agent_store_setup_action`    | Chaque écriture réussie d'un agent (clé API ou OAuth) qui a trouvé la boutique hors ligne en prenant son verrou, dans les domaines boutique, réglages, boutique en ligne, produits, catégories, champs client ; et sa mise en ligne. Pas sur un rejeu idempotent, ni sur un aperçu refusé, ni sur une écriture qui a attendu une mise en ligne | `feature: store_setup`, `surface` et `transport` (`mcp`, `openapi`), `actor: agent`, `store_id`, `procedure` (`stores.create`, `settings.updateStoreInfo`, `onlineStore.updateAppearance`, `products.create`, `stores.completeOnboarding`…), qui a agi, `confirmation_accepted`, `fields_set`, `fields_set_count`, `fields_cleared`, et les faits ci-dessous |
+| `onboarding_store_info_saved` | Préexistant. Création de la boutique (`stores.create`), ou étape « boutique » du wizard sur une boutique existante (`stores.updateOnboardingInfo`)                                                                                                                                                                                             | En plus des propriétés existantes : `store_created_by` (`human`, `agent`, `unknown`), `credential_kind`, et pour un agent `agent_client`                                                                                                                                                                                                                     |
+| `onboarding_completed`        | Préexistant. Mise en ligne (`stores.completeOnboarding`), par le wizard ou un agent                                                                                                                                                                                                                                                            | En plus de `store_id`, `reservation_mode` : qui l'a mise en ligne, et `setup_by`, `store_created_by`, `agent_action_count`, `human_action_count`, `agent_clients`, `seconds_to_launch` (ci-dessous)                                                                                                                                                          |
 
-`confirmation_accepted` vaut `true` quand l'appel a renvoyé le jeton d'une confirmation : l'agent
-a reçu l'aperçu (`CONFIRMATION_REQUIRED`) et l'a accepté. `fields_set` liste les noms des champs
+`confirmation_accepted` vaut `true` quand l'écriture a dépensé le jeton d'une confirmation : l'agent
+a reçu l'aperçu (`CONFIRMATION_REQUIRED`) et l'a accepté. Un jeton envoyé sans qu'une
+confirmation soit demandée (connexion sans confirmation, jeton jamais émis) ne compte pas. `fields_set` liste les noms des champs
 envoyés avec une valeur, `fields_cleared` ceux envoyés à `null` : des noms (`email`, `phone`),
 jamais les valeurs.
 
@@ -57,22 +59,25 @@ Un fait n'apparaît que si l'appel touche son champ.
 
 ### Le résumé à la mise en ligne
 
-Calculé dans la transaction de la mise en ligne, depuis le journal des écritures
-(`api_operations`) : la création de la boutique et chaque écriture de mise en place réussie
-avant la mise en ligne, celle-ci comprise.
+Calculé dans la transaction de la mise en ligne, sous le verrou de la boutique, depuis les
+marques du journal des écritures (`api_operations.setup_store_id`). Une écriture de mise en
+place marque la boutique dans sa propre transaction, en prenant son verrou, quand la boutique
+est hors ligne : la création, la mise en ligne elle-même, et chaque écriture validée avant,
+même si son enregistrement n'est pas encore final. Une écriture qui attend le verrou trouvera
+la boutique en ligne et ne compte pas ; un aperçu refusé non plus.
 
-| Propriété            | Sens                                                                       |
-| -------------------- | -------------------------------------------------------------------------- |
-| `setup_by`           | `human` (aucune action d'agent), `agent` (aucune action humaine), `mixed`  |
-| `store_created_by`   | `agent` si `stores.create` est venu d'une clé ou d'un jeton, sinon `human` |
-| `agent_action_count` | Écritures d'agents                                                         |
-| `human_action_count` | Écritures d'une session du dashboard                                       |
-| `agent_clients`      | Les `agent_client` des agents qui ont agi, triés                           |
-| `seconds_to_launch`  | De la création de la boutique à la mise en ligne, sur l'horloge de la base |
+| Propriété            | Sens                                                                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setup_by`           | `human` (aucune action d'agent), `agent` (aucune action humaine), `mixed`, `unknown` (création sans marque)                                                 |
+| `store_created_by`   | `agent` si `stores.create` est venu d'une clé ou d'un jeton, `human` d'une session, `unknown` si la création n'a pas laissé de marque (boutique antérieure) |
+| `agent_action_count` | Écritures d'agents                                                                                                                                          |
+| `human_action_count` | Écritures d'une session du dashboard                                                                                                                        |
+| `agent_clients`      | Les `agent_client` des agents qui ont agi, triés                                                                                                            |
+| `seconds_to_launch`  | De la création de la boutique à la mise en ligne, sur l'horloge de la base                                                                                  |
 
-Les étapes du wizard qui n'appellent pas encore une procédure (l'étape « boutique » sur une
-boutique existante) ne laissent pas de trace dans `api_operations` et ne comptent pour
-personne ; la mise en ligne par le wizard, elle, compte comme action humaine.
+Toutes les étapes du wizard qui écrivent la boutique passent par des procédures et comptent
+comme actions humaines. Les réglages que le dashboard écrit encore hors de l'API (intégrations,
+inspections, Review Booster) ne laissent pas de marque et ne comptent pour personne.
 
 ## Données personnelles
 
