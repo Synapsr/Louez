@@ -176,6 +176,10 @@ const ofAttempt = (id: string, attempt: string) =>
 /** The provider-check lease: 30 seconds, doubling with each check, 5 minutes at most. */
 export const HANDOFF_CHECK_LEASE_SECONDS = { min: 30, max: 300 } as const;
 
+/** The provider-check lease is free: never taken, or ended on the database's clock. */
+const leaseFree = () =>
+  or(isNull(apiHandoffs.providerCheckAt), lte(apiHandoffs.providerCheckAt, sql`NOW(3)`));
+
 /**
  * The lease's end on the database's clock, from the checks made so far. Set
  * before `provider_checks` in the same statement, so it reads the old count.
@@ -625,8 +629,11 @@ export type HandoffReturn = { done: boolean };
 
 /**
  * Claims the attempt for a provider call, in one statement: it must still be
- * the current attempt of an active handoff. It takes the provider-check lease
- * (polls back off) and records the provider's flow of this attempt.
+ * the current attempt of an active handoff, and its provider-check lease
+ * free. It takes the lease, so concurrent returns and polls read the stored
+ * status, and records the provider's flow of this attempt. A return after
+ * the link expired may still claim it (the user finished on the provider's
+ * page), once per lease like any other check.
  */
 async function claimAttempt(
   id: string,
@@ -642,7 +649,7 @@ async function claimAttempt(
       providerChecks: sql`${apiHandoffs.providerChecks} + 1`,
       updatedAt: now,
     })
-    .where(ofAttempt(id, attempt));
+    .where(and(ofAttempt(id, attempt), leaseFree()));
   return result.affectedRows > 0;
 }
 
@@ -780,7 +787,7 @@ export async function settlePendingCardSetup(
         ofAttempt(row.id, attempt),
         eq(apiHandoffs.providerRef, providerRef),
         gt(apiHandoffs.expiresAt, sql`NOW(3)`),
-        or(isNull(apiHandoffs.providerCheckAt), lte(apiHandoffs.providerCheckAt, sql`NOW(3)`)),
+        leaseFree(),
       ),
     );
   if (lease.affectedRows === 0) return getHandoffRow(row.storeId, row.id);

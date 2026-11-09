@@ -513,8 +513,23 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     );
     assert.equal((await client(agent()).handoffs.get({ id: started.handoff.id })).status, "opened");
 
-    // Submitted: the store's columns follow Stripe, the handoff is completed.
+    // A reload within the first return's lease reads the stored status only.
+    const reload = await handoffs.checkHandoffReturn(started.handoff.id, state, OWNER);
+    assert.ok(reload.ok);
     stripe.set({ details_submitted: true, charges_enabled: true, requirements: null });
+    assert.deepEqual(
+      await handoffs.finishHandoffReturn({
+        row: reload.row,
+        state,
+        ports,
+        checkoutSessionId: null,
+      }),
+      { done: false },
+    );
+    assert.equal((await storeRow())?.stripeChargesEnabled, false, "Stripe was not asked again");
+
+    // Submitted, once the lease ended: the store's columns follow Stripe, the handoff is completed.
+    await endLease(started.handoff.id);
     const again = await handoffs.checkHandoffReturn(started.handoff.id, state, OWNER);
     assert.ok(again.ok);
     assert.deepEqual(
@@ -1149,6 +1164,58 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const row = await handoffs.getHandoffRow(STORE, c.id);
     assert.equal(row.status, "opened", "the card of C does not complete D");
     assert.equal(row.providerRef, null);
+  });
+
+  test("concurrent returns of one attempt make one provider call; the others read the stored status", async () => {
+    const agent = await apiKey();
+    const a = await cardAttempt(agent);
+    const finishers = await Promise.all(
+      Array.from({ length: 20 }, () => returning(a.id, a.state, "cs_concurrent")),
+    );
+    const gate = barrier();
+    billing.state.gate = gate.wait;
+    const returns = finishers.map((finish) => finish());
+    while (billing.state.finished.length === 0)
+      await new Promise((resolve) => setImmediate(resolve));
+    // Every other return has answered from the stored status by now.
+    gate.open();
+    billing.state.gate = null;
+    const answers = await Promise.all(returns);
+    assert.deepEqual(billing.state.finished, ["cs_concurrent"]);
+    assert.equal(
+      answers.filter((answer) => answer.done).length,
+      1,
+      "the claiming return completed it",
+    );
+    assert.equal((await handoffs.getHandoffRow(STORE, a.id)).status, "completed");
+    // A reload of a completed return calls nothing.
+    assert.deepEqual(await finishers[0]!(), { done: true });
+    assert.equal(billing.state.finished.length, 1);
+  });
+
+  test("a valid return after the link expired completes it, once per lease", async () => {
+    const agent = await apiKey();
+    const a = await cardAttempt(agent);
+    await louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(orm.eq(louezDb.apiHandoffs.id, a.id));
+    billing.state.outcome = "pending";
+    const finishers = await Promise.all(
+      Array.from({ length: 5 }, () => returning(a.id, a.state, "cs_late")),
+    );
+    const answers = await Promise.all(finishers.map((finish) => finish()));
+    assert.ok(answers.every((answer) => !answer.done));
+    assert.deepEqual(billing.state.finished, ["cs_late"], "one claim among concurrent returns");
+    // Within the lease, a reload asks nothing; polls never after expiry.
+    assert.deepEqual(await finishers[0]!(), { done: false });
+    assert.equal((await client(agent()).handoffs.get({ id: a.id })).status, "expired");
+    assert.equal(billing.state.finished.length, 1);
+    // Once the lease ended, the user's return completes it.
+    billing.state.outcome = "refreshed";
+    await endLease(a.id);
+    assert.deepEqual(await finishers[0]!(), { done: true });
+    assert.deepEqual(billing.state.finished, ["cs_late", "cs_late"]);
   });
 
   test("concurrent polls ask the provider once per lease, with backoff, and never after expiry", async () => {
