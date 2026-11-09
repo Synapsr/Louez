@@ -115,7 +115,7 @@ const startStripeOnboarding = storeProcedure
     mcp: {
       name: "payments_start_stripe_onboarding",
       title: "Connect Stripe",
-      description: `Connect the store to Stripe so it takes online payments, or finish a connection left midway. Stripe asks the user for their identity and bank details on its own pages, which only they can fill in. ${HANDOFF_HELP} Once completed, call payments_sync_stripe_status: Stripe may still review the details before charges are enabled, and the storefront takes requests rather than payments until then. Refused when the store already takes payments (STRIPE_ALREADY_CONNECTED) or when this Louez has no Stripe (STRIPE_NOT_CONFIGURED).`,
+      description: `Connect the store to Stripe so it takes online payments, or finish a connection left midway. Stripe asks the user for their identity and bank details on its own pages, which only they can fill in. ${HANDOFF_HELP} Once it is completed, payments_sync_stripe_status reads where Stripe stands: it may still review the details before charges are enabled, and the storefront takes requests rather than payments until then. Refused when the store already takes payments (STRIPE_ALREADY_CONNECTED) or when this Louez has no Stripe (STRIPE_NOT_CONFIGURED).`,
       bundle: "settings",
       annotations: { openWorldHint: true },
     },

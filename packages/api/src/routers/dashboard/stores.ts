@@ -50,7 +50,7 @@ const list = accountProcedure
       name: "stores_list",
       title: "List Stores",
       description:
-        "List the stores this connection may act on, with your role in each and its `links`: the store's dashboard and, once it is online, its storefront. Give the user those URLs when they ask where to see their store. When the connection covers several stores, pass the store's id as storeId to the other tools. With no store yet, the answer is empty and its `hint` says how to create one.",
+        "List the stores this connection may act on, with your role in each and its `links`: the store's dashboard and, once it is online, its storefront. When the connection covers several stores, a store's id is the storeId the other tools take. With no store yet, the answer is empty and its `hint` says how to create one.",
       bundle: "daily",
       annotations: { idempotentHint: true },
     },
@@ -134,7 +134,7 @@ const create = accountProcedure
     mcp: {
       name: "stores_create",
       title: "Create Store",
-      description: `Create a new rental store owned by the user, offline until they launch it. Check the web address first with stores_check_slug_availability. The store starts a billing relationship with Louez, so the first call answers CONFIRMATION_REQUIRED with a preview (name, address, the future public URL, country, currency and the pricing that applies): show it to the user, and once they agree, call again with the same arguments and the confirmationToken. Pass an idempotencyKey: a retry with it never creates a second store. Needs a connection with "Read and edit" rights on all the user's stores; ${STORE_CREATION_DAILY_LIMIT} stores per account a day at most. Returns the store's id (storeId for the other tools), its dashboard link and the next steps.`,
+      description: `Create a new rental store owned by the user, offline until they launch it. The store starts a billing relationship with Louez, so the first call answers CONFIRMATION_REQUIRED with a preview (name, address, the future public URL, country, currency and the pricing that applies). With an idempotencyKey, a retry never creates a second store. Needs a connection with "Read and edit" rights on all the user's stores; ${STORE_CREATION_DAILY_LIMIT} stores per account a day at most. Returns the store's id (storeId for the other tools), its dashboard link and the next steps.`,
       bundle: "daily",
       annotations: { idempotentHint: true },
     },
@@ -238,7 +238,7 @@ const getLaunchChecklistProcedure = storeProcedure
       name: "stores_get_launch_checklist",
       title: "Get Launch Checklist",
       description:
-        "What the store still lacks before customers can book, and whether it is online. Each item has a status: done; missing (customers will miss it; a `required` one stops stores_go_live); optional; blocked (Louez billing stops new bookings: only the user fixes it in Louez); unverified (in place, but Louez cannot read it: ask the user to check it, such as a legal notice's own text). Show `warnings` to the user: what the law asks that is missing, and what to check. Each item says why it matters and lists the tools that fix it; when it lists none, give the user its dashboard link. Also says how customers book (payment or request; without Stripe a store takes requests) and the storefront's address. Call it after stores_create and the settings, before stores_go_live.",
+        "What the store still lacks before customers can book, and whether it is online. Each item has a status: done; missing (customers will miss it; a `required` one stops stores_go_live); optional; blocked (Louez billing stops new bookings: only the user fixes it in Louez); unverified (in place, but Louez cannot read it: ask the user to check it, such as a legal notice's own text). `warnings` are for the user: what the law asks that is missing, and what to check. Each item says why it matters and lists the tools that fix it, or none when only the user can, from its dashboard link. Also says how customers book (payment or request; without Stripe a store takes requests) and the storefront's address.",
       bundle: "daily",
       annotations: { idempotentHint: true },
     },
@@ -269,7 +269,7 @@ const completeOnboarding = storeProcedure
       name: "stores_go_live",
       title: "Put Store Online",
       description:
-        "Put the store online: its storefront opens to the public and customers can book. Read stores_get_launch_checklist first and fix what is missing, or tell the user what is. Refused with STORE_NOT_READY while a required item is missing. The first call answers CONFIRMATION_REQUIRED with a preview (the public URL, how customers book, what they will see, what is still missing or optional): show it to the user, and once they agree, call again with the same arguments and the confirmationToken. reservationMode sets how customers book; without Stripe connected, payment mode takes requests until it is. A store already online is not launched again: the answer gives its URL. Returns the storefront's URL and the store's `links`: give the user these URLs.",
+        "Put the store online: its storefront opens to the public and customers can book. Refused with STORE_NOT_READY while a required item is missing. The first call answers CONFIRMATION_REQUIRED with a preview (the public URL, how customers book, what they will see, what is still missing or optional). reservationMode sets how customers book; without Stripe connected, payment mode takes requests until it is. A store already online is not launched again: the answer gives its URL. Returns the storefront's URL and the store's `links`: give the user these URLs.",
       bundle: "daily",
       annotations: { idempotentHint: true },
     },

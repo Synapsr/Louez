@@ -1,3 +1,4 @@
+import { HANDOFF_POLL_SECONDS } from "@louez/api/contracts/handoffs";
 import { INBOX_POLL_MINUTES } from "@louez/api/contracts/inbox";
 import { agentConnectionsLinks } from "@louez/api/platform/links";
 import { MCP_BUNDLES, type McpBundle } from "@louez/api/platform/meta";
@@ -16,41 +17,83 @@ const BUNDLE_SUMMARY: Record<McpBundle, string> = {
 };
 
 /** Where an agent learns what needs the user, and how to poll it. */
-const INBOX_HELP = `What needs the user's attention (requests to answer, late returns, failed payments, messages that never went out…): inbox_list. To keep an eye on the store, call it every ${INBOX_POLL_MINUTES.min} to ${INBOX_POLL_MINUTES.max} minutes with the nextCursor of your last call: you get only what is new.`;
+const INBOX_HELP = `What needs the user's attention (requests to answer, late returns, failed payments, messages that never went out…): inbox_list. To keep an eye on the store, call it every ${INBOX_POLL_MINUTES.min} to ${INBOX_POLL_MINUTES.max} minutes with the nextCursor of your last call: you get only what is new. When hasMore is true, call it again at once with nextCursor.`;
 
 /** Steps only the user can take, handed over with a link (services/handoffs.ts). */
-const HANDOFF_HELP =
-  "Some steps only the user can take (Stripe's identity checks, a billing card): their tool returns a link. Give the user that link, then poll handoffs_get with its id until it is completed, rather than asking them to tell you; an expired link is replaced by calling the same tool again.";
+const HANDOFF_HELP = `Some steps only the user can take (Stripe's identity checks, a billing card): their tool returns a link. Give the user that link as it is and never open it yourself, then poll handoffs_get with its id every ${HANDOFF_POLL_SECONDS.min} seconds to ${HANDOFF_POLL_SECONDS.max / 60} minutes (or watch inbox_list) until it is completed, rather than asking them to tell you; an expired or failed link is replaced by calling the same tool again. Once Stripe's onboarding completes, payments_sync_stripe_status says whether charges are enabled; once a card is added, billing_get_status shows it.`;
+
+/**
+ * How the tools chain. Tool descriptions say what each tool does and never
+ * tell the agent to call another one (the Claude directory's rule): the order
+ * of calls is said here.
+ */
+const CHAINING_HELP = [
+  "To change a product, read it with products_get and send the fields to change to products_update; a product's units, with their ids, are in products_get.",
+  "To give a category, a product or the storefront an image: the domain's *_create_image_upload, then the file sent as its upload says, then *_complete_image_upload with the key; set the url it returns on the record.",
+  "Check a web address before you use it: stores_check_slug_availability before stores_create, online_store_check_slug_availability before online_store_update_slug.",
+  "A variant still used by products: products_get_variant_usage, then products_withdraw_variant, before products_delete_variant.",
+  "The store's legal identity: settings_search_company_registry, show the matches to the user, then settings_update_legal_profile with the one they pick (ask them for it when the registry does not answer).",
+  "The legal texts: you may draft the terms and the legal notice from the store's data (settings_get, settings_get_legal_profile, the products) and the user's answers to what it lacks (such as the publication director); show the draft to the user and save it with settings_update_legal once they agree. stores_get_launch_checklist says what the law asks of the store's country.",
+  "Before stores_go_live, read stores_get_launch_checklist and fix what is missing, or tell the user what is.",
+  "After inbox_acknowledge rejects items, call inbox_list without a cursor to start again from what the inbox holds.",
+].join(" ");
 
 /** How a new store goes live, for a model that just created one. */
 const LAUNCH_HELP =
   "A new store starts offline: stores_get_launch_checklist says what it still lacks and which tool fixes each item; stores_go_live puts it online once the user agrees with its preview.";
 
+/** Clients may read only this much of the instructions (ChatGPT): the essentials come first. */
+export const INSTRUCTIONS_ESSENTIALS_MAX = 512;
+
+/** Records come with links; the agent never makes one up. */
+const LINKS_ESSENTIAL =
+  "Give the user the `links` records come with, as they are; never build or guess a Louez URL.";
+
+/** Sensitive actions confirm with the user first. */
+const CONFIRMATION_ESSENTIAL =
+  "A sensitive action (money, deletion, a message to a customer) may answer CONFIRMATION_REQUIRED with a preview: show it to the user, and call again with its confirmationToken only once they agree.";
+
 /**
- * The server's instructions: which store it acts on, and which tool bundles
- * the connection lists. A bundle that is not listed is enabled by the user in
- * Louez, never by the agent.
+ * The server's instructions. The essentials first, within
+ * `INSTRUCTIONS_ESSENTIALS_MAX` characters: what Louez is, which store the
+ * connection acts on (stores_list first when it covers several), the links,
+ * the confirmations. Then the details: the store, how it goes live, the
+ * inbox, the handoffs and the tool bundles. A bundle that is not listed is
+ * enabled by the user in Louez, never by the agent.
  */
 export function serverInstructions(ctx: McpRequestContext): string {
-  const lines = ["Louez runs a rental store: reservations, products, customers and payments."];
   const mayCreateStores =
     accountRefusal(ctx.actor.credential, { domain: "stores", level: "write" }) === null;
+
+  let stores: string;
+  if (ctx.noStore) {
+    stores = mayCreateStores
+      ? "This account has no store yet: stores_create makes one."
+      : "This connection reaches no store yet: the user creates one in Louez.";
+  } else if (ctx.multiStore) {
+    stores =
+      "This connection covers several stores: call stores_list first, then pass the store's id as storeId to every other tool.";
+  } else {
+    stores = "This connection acts on one store.";
+  }
+  const lines = [
+    "Louez runs rental stores: reservations, products, customers and payments.",
+    stores,
+    LINKS_ESSENTIAL,
+    CONFIRMATION_ESSENTIAL,
+  ];
 
   if (ctx.noStore) {
     lines.push(
       mayCreateStores
-        ? `This account has no store yet. To start one: stores_check_slug_availability for its web address, then stores_create. Pass the new store's id as storeId to the other tools. ${LAUNCH_HELP}`
-        : "This connection reaches no store yet. The user creates a store in Louez, or connects this agent again with “Read and edit” rights on all their stores, so that it can create one with stores_create.",
+        ? `To start one: stores_check_slug_availability for its web address, then stores_create. Pass the new store's id as storeId to the other tools. ${LAUNCH_HELP}`
+        : "The user creates a store in Louez, or connects this agent again with “Read and edit” rights on all their stores, so that it can create one with stores_create.",
     );
-  } else if (ctx.multiStore && !ctx.storeChosen) {
-    lines.push(
-      "This connection covers several stores. Call stores_list, then pass the store's id as storeId to every other tool.",
-    );
-  } else if (ctx.multiStore) {
+  } else if (ctx.multiStore && ctx.storeChosen) {
     lines.push(
       `This request acts on the store "${ctx.storeName}" (${ctx.storeId}). Other stores of this connection: stores_list, then storeId.`,
     );
-  } else {
+  } else if (!ctx.multiStore) {
     lines.push(`Store: "${ctx.storeName}".`);
   }
   const offline = !ctx.noStore && ctx.storeChosen && !ctx.storeOnline;
@@ -78,10 +121,8 @@ export function serverInstructions(ctx: McpRequestContext): string {
   }
 
   lines.push(
-    "Records come with `links`: absolute URLs to their page in the Louez dashboard and, when the public can see it, on the store's online store. When the user wants to see or open something, give them these URLs as they are. Never build, guess or shorten a Louez URL; without a link, name the record instead.",
-  );
-  lines.push(
-    "Sensitive actions (money, deletion, messages to customers) may answer CONFIRMATION_REQUIRED with a preview: show it to the user and call again with the token only after they agree.",
+    "Records come with `links`: absolute URLs to their page in the Louez dashboard and, when the public can see it, on the store's online store. When the user wants to see or open something, give them these URLs as they are. Without a link, name the record instead.",
+    CHAINING_HELP,
   );
   return lines.join("\n");
 }

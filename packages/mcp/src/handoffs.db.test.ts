@@ -208,14 +208,16 @@ describe("handoff tools (database)", { skip: skipWithoutTestDatabase() }, () => 
     ]) {
       assert.ok(listed.includes(name), name);
     }
-    // Each start tool tells the agent to send the link and poll, not to ask the user.
+    // Each start tool says it returns a link for the user, followed with
+    // handoffs_get; the instructions tell the agent to poll, not to ask the user.
     for (const name of ["payments_start_stripe_onboarding", "billing_start_card_setup"]) {
       const description = tools.find((tool) => tool.name === name)?.description ?? "";
-      assert.match(description, /give the user as is/);
-      assert.match(description, /Do not ask the user to tell you when they are done/);
+      assert.match(description, /a link \(url\) for the user/);
       assert.match(description, /handoffs_get/);
     }
     assert.match(instructions, /poll handoffs_get/);
+    assert.match(instructions, /never open it yourself/);
+    assert.match(instructions, /rather than asking them to tell you/);
 
     // A read-only key reads where a step stands, and starts none.
     const reader = await withClient(await key(rights("read", "read")), async (mcp) =>

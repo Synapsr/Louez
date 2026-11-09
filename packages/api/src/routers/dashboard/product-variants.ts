@@ -32,9 +32,8 @@ import { confirmUnderLock, productActor } from "./product-context";
  */
 
 const VARIANT_HELP =
-  "A variant (size, color…) is shared by the store's products: a product books by it when it is one of the product's bookingAttributeAxes (by its key), and each unit carries one of its values in its attributes. Set those with products_update.";
-const CONFIRM_HELP =
-  "The first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.";
+  "A variant (size, color…) is shared by the store's products: a product books by it when it is one of the product's bookingAttributeAxes (by its key), and each unit carries one of its values in its attributes. products_update sets those.";
+const CONFIRM_HELP = "The first call answers CONFIRMATION_REQUIRED with a preview.";
 
 export const listVariants = storeProcedure
   .meta({
@@ -95,7 +94,7 @@ export const setVariantDefinitionActive = storeProcedure
       name: "products_set_variant_active",
       title: "Turn Variant On or Off",
       description:
-        "Turn a variant on or off. Off only stops offering it when editing products: the products that carry it keep it. To take it off them, use products_withdraw_variant.",
+        "Turn a variant on or off. Off only stops offering it when editing products: the products that carry it keep it. products_withdraw_variant takes it off them.",
       bundle: "catalog",
       annotations: { idempotentHint: true },
     },
@@ -115,7 +114,7 @@ export const deleteVariantDefinition = storeProcedure
     mcp: {
       name: "products_delete_variant",
       title: "Delete Variant",
-      description: `Delete a variant and its values from the catalog. Refused with VARIANT_IN_USE, naming the products, while products use it: withdraw it from them first with products_withdraw_variant. ${CONFIRM_HELP}`,
+      description: `Delete a variant and its values from the catalog. Refused with VARIANT_IN_USE, naming the products, while products use it (products_withdraw_variant takes it off them). ${CONFIRM_HELP}`,
       bundle: "catalog",
     },
   })

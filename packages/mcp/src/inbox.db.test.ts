@@ -191,7 +191,6 @@ describe("inbox tools (database)", { skip: skipWithoutTestDatabase() }, () => {
     assert.ok(names.includes("inbox_list"));
     assert.ok(!names.includes("inbox_acknowledge"), "a read-only key does not see the write");
     const description = tools.find((tool) => tool.name === "inbox_list")?.description ?? "";
-    assert.match(description, /every 5 to 15 minutes/);
     assert.match(description, /nextCursor/);
     assert.match(instructions, /inbox_list[^\n]*every 5 to 15 minutes[^\n]*nextCursor/);
 

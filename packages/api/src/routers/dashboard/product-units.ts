@@ -38,7 +38,7 @@ import {
 const UNIT_HELP =
   "A unit is one tracked item of a product (products_get lists them in units[], with their id).";
 const CONFIRM_HELP =
-  "the first call answers CONFIRMATION_REQUIRED with a preview of those reservations: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.";
+  "the first call answers CONFIRMATION_REQUIRED with a preview of those reservations.";
 const BOOKING_ACCESS_HELP =
   "A booking's number and id are null without read access to reservations, and its customer's name without read access to customers; its dates are always given.";
 
@@ -227,7 +227,7 @@ export const deleteDowntime = storeProcedure
       name: "products_delete_downtime",
       title: "Delete Unit Downtime",
       description:
-        "Delete a downtime entered by mistake, as if it never was: the unit is available on its days again (the unit's history keeps a record). To end one that is over, use products_close_downtime instead. The first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
+        "Delete a downtime entered by mistake, as if it never was: the unit is available on its days again (the unit's history keeps a record). Ending one that is over is products_close_downtime. The first call answers CONFIRMATION_REQUIRED with a preview.",
       bundle: "catalog",
     },
   })
@@ -265,7 +265,7 @@ export const retireUnit = storeProcedure
     mcp: {
       name: "products_retire_unit",
       title: "Retire Unit",
-      description: `Retire a unit for good (sold, lost, broken or other): it leaves the stock from now on and can no longer be booked; products_reinstate_unit undoes it. ${UNIT_HELP} Current and future reservations that hold it keep it and are returned in conflicts, with the units that could serve them instead. The first call answers CONFIRMATION_REQUIRED with a preview of those reservations: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. ${BOOKING_ACCESS_HELP}`,
+      description: `Retire a unit for good (sold, lost, broken or other): it leaves the stock from now on and can no longer be booked; products_reinstate_unit undoes it. ${UNIT_HELP} Current and future reservations that hold it keep it and are returned in conflicts, with the units that could serve them instead. The first call answers CONFIRMATION_REQUIRED with a preview of those reservations. ${BOOKING_ACCESS_HELP}`,
       bundle: "catalog",
     },
   })
@@ -308,7 +308,7 @@ export const updateUnitDetails = storeProcedure
     mcp: {
       name: "products_update_unit_details",
       title: "Update Unit Details",
-      description: `Change a unit's notes, purchase price or purchase date. Send only the fields to change; null clears one. To rename a unit or change its variant values, use products_update. ${UNIT_HELP} Returns the unit's details.`,
+      description: `Change a unit's notes, purchase price or purchase date. Send only the fields to change; null clears one. A unit's name and variant values change through products_update. ${UNIT_HELP} Returns the unit's details.`,
       bundle: "catalog",
       annotations: { idempotentHint: true },
     },

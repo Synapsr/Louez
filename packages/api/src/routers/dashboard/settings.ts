@@ -71,7 +71,7 @@ const LINKS_HELP =
   "Its `links` hold the dashboard page of these settings and, once the store is online, its storefront: give the user these URLs, never build one.";
 
 const CONFIRM_HELP =
-  "Customers see this change at checkout, so when it changes something the first call answers CONFIRMATION_REQUIRED with a preview of each value before and after: show it to the user, and once they agree, call again with the same arguments and the confirmationToken.";
+  "Customers see this change at checkout, so when it changes something the first call answers CONFIRMATION_REQUIRED with a preview of each value before and after.";
 
 const links = (context: ProductContext, page: SettingsPage) =>
   settingsLinks(context.ports.urls, context.store, page);
@@ -154,7 +154,7 @@ const updateCompanyProcedure = storeProcedure
     mcp: {
       name: "settings_update_company",
       title: "Update Company Details",
-      description: `Change the company's country (it sets the time zone), the currency of every price, and the billing address printed on contracts and invoices. Send only the fields to change. A new country or currency changes what customers see and pay: the first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they agree, call again with the same arguments and the confirmationToken. Returns the company settings. ${LINKS_HELP}`,
+      description: `Change the company's country (it sets the time zone), the currency of every price, and the billing address printed on contracts and invoices. Send only the fields to change. A new country or currency changes what customers see and pay: the first call answers CONFIRMATION_REQUIRED with a preview. Returns the company settings. ${LINKS_HELP}`,
       bundle: "settings",
       annotations: { idempotentHint: true },
     },
@@ -176,7 +176,7 @@ const updateLegalProcedure = storeProcedure
     mcp: {
       name: "settings_update_legal",
       title: "Update Legal Texts",
-      description: `Change the store's legal texts: terms and conditions (cgv), legal notice, whether the full terms are printed in rental contracts, and the storefront's footer note. Send only the fields to change; null clears a text. Texts take plain text (blank lines make paragraphs) or simple HTML, ${SETTINGS_LIMITS.richText} characters at most. ${PLAIN_TEXT_HELP} You may draft the terms and the legal notice yourself, from the store's data (settings_get for the rules, contact and company; settings_get_legal_profile for the legal identity; the products) and the user's answers to what the data lacks (such as the publication director): show the draft to the user, and save it once they agree. stores_get_launch_checklist says what the law asks of the store's country, and which legal information is still missing. Returns the legal texts, with the online store editor's legal page in \`links\`: give the user that URL.`,
+      description: `Change the store's legal texts: terms and conditions (cgv), legal notice, whether the full terms are printed in rental contracts, and the storefront's footer note. Send only the fields to change; null clears a text. Texts take plain text (blank lines make paragraphs) or simple HTML, ${SETTINGS_LIMITS.richText} characters at most. ${PLAIN_TEXT_HELP} Returns the legal texts, with the online store editor's legal page in \`links\`: give the user that URL.`,
       bundle: "settings",
       aliases: [{ name: "update_store_legal" }],
       annotations: { idempotentHint: true },
@@ -200,7 +200,7 @@ const updateReservationRulesProcedure = storeProcedure
     mcp: {
       name: "settings_update_reservation_rules",
       title: "Update Reservation Rules",
-      description: `Change how customers book: the booking mode (payment online, or request the store accepts), the share paid online, the shortest and longest rental, the notice before a rental starts, the buffer after each return, whether checkout asks for an address, and extensions. Durations are in minutes. Send only the fields to change. Payment mode needs Stripe connected (STRIPE_REQUIRED otherwise). A change of the booking mode or of the share paid online is seen at checkout: the first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they agree, call again with the same arguments and the confirmationToken. Returns the rules. ${LINKS_HELP}`,
+      description: `Change how customers book: the booking mode (payment online, or request the store accepts), the share paid online, the shortest and longest rental, the notice before a rental starts, the buffer after each return, whether checkout asks for an address, and extensions. Durations are in minutes. Send only the fields to change. Payment mode needs Stripe connected (STRIPE_REQUIRED otherwise). A change of the booking mode or of the share paid online is seen at checkout: the first call answers CONFIRMATION_REQUIRED with a preview. Returns the rules. ${LINKS_HELP}`,
       bundle: "settings",
       annotations: { idempotentHint: true },
     },
@@ -222,7 +222,7 @@ const updateBusinessHoursProcedure = storeProcedure
     mcp: {
       name: "settings_update_business_hours",
       title: "Update Business Hours",
-      description: `Change the store's opening hours and closures: pickups and returns are only offered within them. Days are named (monday…sunday), each open or closed with up to 4 ranges (HH:mm, in the store's time zone); days left out stay as they are. closurePeriods replaces every closure: send the current ones (settings_get) with your change. Returns the hours. ${LINKS_HELP}`,
+      description: `Change the store's opening hours and closures: pickups and returns are only offered within them. Days are named (monday…sunday), each open or closed with up to 4 ranges (HH:mm, in the store's time zone); days left out stay as they are. closurePeriods replaces every closure, the current ones included (settings_get lists them). Returns the hours. ${LINKS_HELP}`,
       bundle: "settings",
       annotations: { idempotentHint: true },
     },
@@ -267,7 +267,7 @@ const createLocationProcedure = storeProcedure
     mcp: {
       name: "settings_create_location",
       title: "Add Pickup Point",
-      description: `Add a pickup and return point customers can choose at checkout (once the delivery settings allow pickup points): a name, an address, and its coordinates when you have them. A store has 50 at most. Returns the point, with its id for settings_update_location. ${LINKS_HELP} Pass an idempotencyKey to retry safely.`,
+      description: `Add a pickup and return point customers can choose at checkout (once the delivery settings allow pickup points): a name, an address, and its coordinates when you have them. A store has 50 at most. Returns the point, with its id for settings_update_location. ${LINKS_HELP} An idempotencyKey makes a retry safe.`,
       bundle: "settings",
     },
   })
@@ -353,7 +353,7 @@ const getLegalProfileProcedure = storeProcedure
     mcp: {
       name: "settings_get_legal_profile",
       title: "Get Legal Profile",
-      description: `The store's legal identity, as invoices, contracts and the legal notice name it: legal name, legal form, company number (SIREN in France), SIRET, VAT number, trade register city, share capital, registered office, and the electronic invoicing switches. Null until the store saved one: fill it with settings_search_company_registry, then settings_update_legal_profile. ${LINKS_HELP}`,
+      description: `The store's legal identity, as invoices, contracts and the legal notice name it: legal name, legal form, company number (SIREN in France), SIRET, VAT number, trade register city, share capital, registered office, and the electronic invoicing switches. Null until the store saved one (settings_update_legal_profile). ${LINKS_HELP}`,
       bundle: "settings",
       annotations: { idempotentHint: true },
     },
@@ -374,7 +374,7 @@ const searchCompanyRegistryProcedure = storeProcedure
       name: "settings_search_company_registry",
       title: "Search Company Registry",
       description:
-        "Look a French company up in the public registry (recherche-entreprises.api.gouv.fr) by its name, SIREN or SIRET, to fill the store's legal identity without typing it. Returns up to 8 matches with their SIREN, SIRET, legal name, legal form, VAT number, registered office and whether the company is still active. Show the matches to the user, and once they pick theirs, save it with settings_update_legal_profile (siren as companyNumber, address as registeredAddress, postalCode as registeredPostalCode, city as registeredCity). `available: false`: the registry did not answer; ask the user for the identity instead.",
+        "Look a French company up in the public registry (recherche-entreprises.api.gouv.fr) by its name, SIREN or SIRET, to fill the store's legal identity without typing it. Returns up to 8 matches with their SIREN, SIRET, legal name, legal form, VAT number, registered office and whether the company is still active. A match maps onto settings_update_legal_profile: siren as companyNumber, address as registeredAddress, postalCode as registeredPostalCode, city as registeredCity. `available: false`: the registry did not answer.",
       bundle: "settings",
       annotations: { idempotentHint: true, openWorldHint: true },
     },
@@ -392,7 +392,7 @@ const upsertLegalProfileProcedure = storeProcedure
     mcp: {
       name: "settings_update_legal_profile",
       title: "Update Legal Profile",
-      description: `Save the store's legal identity: legal name, legal form, company number (the SIREN in France, 9 digits), SIRET, VAT number, trade register city, share capital and registered office. Look the company up first with settings_search_company_registry. A first save needs legalName, legalForm, companyNumber, registeredAddress, registeredPostalCode and registeredCity (country defaults to the store's); later, send only the fields to change, and null clears an optional one. Turning electronic invoicing on or off, or changing the VAT regime, changes how the store's invoices reach the tax network: that call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they agree, call again with the same arguments and the confirmationToken. The identity alone saves directly. Returns the profile. ${LINKS_HELP}`,
+      description: `Save the store's legal identity: legal name, legal form, company number (the SIREN in France, 9 digits), SIRET, VAT number, trade register city, share capital and registered office. A first save needs legalName, legalForm, companyNumber, registeredAddress, registeredPostalCode and registeredCity (country defaults to the store's); later, send only the fields to change, and null clears an optional one. Turning electronic invoicing on or off, or changing the VAT regime, changes how the store's invoices reach the tax network: that call answers CONFIRMATION_REQUIRED with a preview. The identity alone saves directly. Returns the profile. ${LINKS_HELP}`,
       bundle: "settings",
       annotations: { idempotentHint: true },
     },

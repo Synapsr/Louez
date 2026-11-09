@@ -38,6 +38,7 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
   ) => Promise<Response>;
   let mcpCall: (authorization: string, name: string, args: object) => Promise<ToolResult>;
   let mcpTools: (authorization: string) => Promise<string[]>;
+  let mcpInstructions: (authorization: string) => Promise<string>;
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
@@ -107,6 +108,14 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       const mcp = await connect(authorization);
       try {
         return (await mcp.listTools()).tools.map((tool) => tool.name);
+      } finally {
+        await mcp.close();
+      }
+    };
+    mcpInstructions = async (authorization) => {
+      const mcp = await connect(authorization);
+      try {
+        return mcp.getInstructions() ?? "";
       } finally {
         await mcp.close();
       }
@@ -214,16 +223,11 @@ describe("settings tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       "update_store_legal",
     ]);
 
-    // The legal texts' tool lets the agent draft them, with the user's agreement.
-    const legal = settings.find((entry) => entry.meta.mcp.name === "settings_update_legal");
-    assert.match(
-      legal?.meta.mcp.description ?? "",
-      /draft the terms and the legal notice yourself/,
-    );
-    assert.match(
-      legal?.meta.mcp.description ?? "",
-      /show the draft to the user, and save it once they agree/,
-    );
+    // The instructions let the agent draft the legal texts, with the user's
+    // agreement; the tool's description only says what it saves.
+    const instructions = await mcpInstructions(await key());
+    assert.match(instructions, /you may draft the terms and the legal notice/);
+    assert.match(instructions, /show the draft to the user and save it with settings_update_legal/);
 
     const writer = await mcpTools(await key());
     for (const entry of [...settings, ...onlineStore]) {

@@ -54,7 +54,7 @@ const startCardSetup = storeProcedure
     mcp: {
       name: "billing_start_card_setup",
       title: "Add Billing Card",
-      description: `Have the store's owner add or replace the card Louez charges its fees on, on Stripe's page: only they can type it. Use it when billing_get_status or inbox_list says Louez billing stops new bookings until a card is added, or the card expired. ${HANDOFF_HELP} Once completed, billing_get_status shows the card and whether new bookings are accepted again. Only for the owner of a store Louez's billing service bills (billing_get_status: cardSetup.available); otherwise CARD_SETUP_UNAVAILABLE says why.`,
+      description: `Have the store's owner add or replace the card Louez charges its fees on, on Stripe's page: only they can type it. For when Louez billing stops new bookings until a card is added, or the card expired (billing_get_status, inbox_list say so). ${HANDOFF_HELP} Once completed, billing_get_status shows the card and whether new bookings are accepted again. Only for the owner of a store Louez's billing service bills (billing_get_status: cardSetup.available); otherwise CARD_SETUP_UNAVAILABLE says why.`,
       bundle: "billing",
       annotations: { openWorldHint: true },
     },

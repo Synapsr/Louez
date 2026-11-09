@@ -132,7 +132,7 @@ const list = storeProcedure
     mcp: {
       name: "reservations_list",
       title: "List Reservations",
-      description: `List the store's reservations as the dashboard does: by status (default: every open one), by period (today, this week, this month, on the start or the end date), by payment method (needs read access to payments), or by part of the number or the customer's name. Sorted by start date (newest first) unless sort says otherwise. Returns up to \`limit\` reservations (default 25, at most 100), the counts per status, the total that match and a nextCursor: to read further, call again with cursor set to it, same filters and sort; it is null on the last page. Page numbers stop at the first 10,000 reservations. Use reservations_get for one reservation's lines, payments and history. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
+      description: `List the store's reservations as the dashboard does: by status (default: every open one), by period (today, this week, this month, on the start or the end date), by payment method (needs read access to payments), or by part of the number or the customer's name. Sorted by start date (newest first) unless sort says otherwise. Returns up to \`limit\` reservations (default 25, at most 100), the counts per status, the total that match and a nextCursor: passed back as cursor, with the same filters and sort, it gives the next page; it is null on the last page. Page numbers stop at the first 10,000 reservations. One reservation's lines, payments and history are in reservations_get. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "list_reservations", renamedArgs: { pageSize: "limit" } }],
     },
@@ -297,7 +297,7 @@ const updateStatus = storeProcedure
       name: "reservations_update_status",
       title: "Change Reservation Status",
       description:
-        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing) or returned (completed), or cancel it (as reservations_cancel). The store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
+        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing) or returned (completed), or cancel it (as reservations_cancel). The store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       aliases: [{ name: "update_reservation_status", renamedArgs: { reservationId: "id" } }],
     },
@@ -324,7 +324,7 @@ const cancel = storeProcedure
       name: "reservations_cancel",
       title: "Cancel Reservation",
       description:
-        "Cancel a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract is cancelled and the store's notifications follow. Nothing is refunded or released by itself, and the customer gets no message. The first call answers CONFIRMATION_REQUIRED with a preview (the customer, the dates, what was paid): show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the change and the reservation's `links`, its dashboard page to give the user.",
+        "Cancel a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract is cancelled and the store's notifications follow. Nothing is refunded or released by itself, and the customer gets no message. The first call answers CONFIRMATION_REQUIRED with a preview (the customer, the dates, what was paid). Returns the change and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       annotations: { openWorldHint: true },
     },

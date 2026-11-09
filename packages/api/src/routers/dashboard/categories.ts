@@ -93,7 +93,7 @@ const create = storeProcedure
     mcp: {
       name: "categories_create",
       title: "Create Category",
-      description: `Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with \`created: false\`. To give it an image, upload one with categories_create_image_upload first and pass the \`url\` that categories_complete_image_upload returns as \`imageUrl\`. ${LINKS_HELP}`,
+      description: `Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with \`created: false\`. \`imageUrl\` takes the \`url\` a finished image upload returns (categories_complete_image_upload). ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "create_category" }],
       annotations: { idempotentHint: true },
@@ -135,7 +135,7 @@ const remove = storeProcedure
       name: "categories_delete",
       title: "Delete Category",
       description:
-        "Delete a product category. Its products keep their other categories, or move to `replacementCategoryId` when given. The first call answers CONFIRMATION_REQUIRED with a preview of how many products lose the category: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
+        "Delete a product category. Its products keep their other categories, or move to `replacementCategoryId` when given. The first call answers CONFIRMATION_REQUIRED with a preview of how many products lose the category.",
       bundle: "catalog",
       aliases: [{ name: "delete_category", renamedArgs: { categoryId: "id" } }],
     },
@@ -205,7 +205,7 @@ const createImageUploadProcedure = storeProcedure
       name: "categories_create_image_upload",
       title: "Start Category Image Upload",
       description:
-        "Start uploading a category image (JPEG, PNG, GIF or WebP, 5 MB at most). Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. Then call categories_complete_image_upload with the key.",
+        "Start uploading a category image (JPEG, PNG, GIF or WebP, 5 MB at most). Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. categories_complete_image_upload finishes it, with the key.",
       bundle: "catalog",
     },
   })
@@ -228,7 +228,7 @@ const completeImageUploadProcedure = storeProcedure
       name: "categories_complete_image_upload",
       title: "Complete Category Image Upload",
       description:
-        "Finish a category image upload: checks the file that arrived at the key and returns its public `url`. Set that url as `imageUrl` with categories_create or categories_update. A file that is not a valid image of the declared type is deleted and refused.",
+        "Finish a category image upload: checks the file that arrived at the key and returns its public `url`. That url is what `imageUrl` takes in categories_create and categories_update. A file that is not a valid image of the declared type is deleted and refused.",
       bundle: "catalog",
       annotations: { idempotentHint: true },
     },

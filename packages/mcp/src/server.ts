@@ -24,8 +24,19 @@ export function createMcpServer(
   deps: McpServerDeps,
   procedures: readonly ExposedProcedure[],
 ): McpServer {
+  const { urls } = ctx.ports;
   const server = new McpServer(
-    { name: "louez", version: "0.3.0" },
+    {
+      name: "louez",
+      title: "Louez",
+      version: "0.4.0",
+      description: "Run a rental store on Louez: reservations, products, customers and payments.",
+      websiteUrl: urls.dashboard("/"),
+      icons: [
+        { src: urls.dashboard("/favicon.svg"), mimeType: "image/svg+xml", sizes: ["any"] },
+        { src: urls.dashboard("/apple-touch-icon.png"), mimeType: "image/png", sizes: ["180x180"] },
+      ],
+    },
     { instructions: serverInstructions(ctx) },
   );
 

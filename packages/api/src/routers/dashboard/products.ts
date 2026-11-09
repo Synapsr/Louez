@@ -124,7 +124,7 @@ const list = storeProcedure
       name: "products_list",
       title: "List Products",
       description:
-        "List the store's products in the catalog's order, with their price, stock and main category, and the count per status. Filter by status, categoryIds or part of the name. Returns up to `limit` products (default 100, at most 200) and a nextCursor for the next page; nextCursor is null on the last page. Each product has `links`: its dashboard page and, while it is active, its storefront page, the URLs to give the user. Use products_get for a product's tiers, units and accessories.",
+        "List the store's products in the catalog's order, with their price, stock and main category, and the count per status. Filter by status, categoryIds or part of the name. Returns up to `limit` products (default 100, at most 200) and a nextCursor for the next page; nextCursor is null on the last page. Each product has `links`: its dashboard page and, while it is active, its storefront page, the URLs to give the user. A product's tiers, units and accessories are in products_get.",
       bundle: "catalog",
     },
   })
@@ -144,7 +144,7 @@ const listLegacyPage = storeProcedure
     mcp: {
       name: "list_products",
       title: "List Products by Page (Former Tool)",
-      description: `Former tool, kept for agents set up before: use products_list. Lists the store's products by page (page, pageSize up to 100) within the first ${LEGACY_PAGE_MAX_OFFSET} products.`,
+      description: `Former tool, kept for agents set up before; products_list replaces it. Lists the store's products by page (page, pageSize up to 100) within the first ${LEGACY_PAGE_MAX_OFFSET} products.`,
       bundle: "catalog",
       listed: false,
     },
@@ -195,7 +195,7 @@ const create = storeProcedure
     mcp: {
       name: "products_create",
       title: "Create Product",
-      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} Images: upload each with products_create_image_upload and products_complete_image_upload first. Returns the product as products_get does, with its \`links\`: give the user these URLs to see it. Pass an idempotencyKey to retry safely.`,
+      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} \`images\` takes the urls finished image uploads return (products_complete_image_upload). Returns the product as products_get does, with its \`links\`: give the user these URLs to see it. An idempotencyKey makes a retry safe.`,
       bundle: "catalog",
       aliases: [{ name: "create_product" }],
     },
@@ -215,7 +215,7 @@ const update = storeProcedure
     mcp: {
       name: "products_update",
       title: "Update Product",
-      description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, units, categoryIds, images) replaces the stored one. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the product. ${LINKS_HELP}`,
+      description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, units, categoryIds, images) replaces the stored one. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview. Returns the product. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "update_product", renamedArgs: { productId: "id" } }],
       annotations: { idempotentHint: true },
@@ -272,7 +272,7 @@ const updateStatus = storeProcedure
       name: "products_update_status",
       title: "Change Product Status",
       description:
-        "Publish (active), unpublish (draft) or archive a product. Archiving takes it off the storefront and the catalog; its reservations are kept. Archiving first answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the product's `links`: its dashboard page and, once active, its storefront page, the URLs to give the user.",
+        "Publish (active), unpublish (draft) or archive a product. Archiving takes it off the storefront and the catalog; its reservations are kept. Archiving first answers CONFIRMATION_REQUIRED with a preview. Returns the product's `links`: its dashboard page and, once active, its storefront page, the URLs to give the user.",
       bundle: "catalog",
       aliases: [
         {
@@ -318,7 +318,7 @@ const remove = storeProcedure
       name: "products_delete",
       title: "Delete Product",
       description:
-        "Delete a product for good, with its units, category and accessory links. Refused while a current or future reservation holds one of its units. To only take it off the storefront, archive it with products_update_status instead. The first call answers CONFIRMATION_REQUIRED with a preview of what is deleted: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
+        "Delete a product for good, with its units, category and accessory links. Refused while a current or future reservation holds one of its units. Archiving it (products_update_status) only takes it off the storefront. The first call answers CONFIRMATION_REQUIRED with a preview of what is deleted.",
       bundle: "catalog",
     },
   })
@@ -390,7 +390,7 @@ const createImageUploadProcedure = storeProcedure
       name: "products_create_image_upload",
       title: "Start Product Image Upload",
       description:
-        "Start uploading a product image (JPEG, PNG, GIF or WebP, 15 MB at most). Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. Then call products_complete_image_upload with the key.",
+        "Start uploading a product image (JPEG, PNG, GIF or WebP, 15 MB at most). Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. products_complete_image_upload finishes it, with the key.",
       bundle: "catalog",
     },
   })
@@ -413,7 +413,7 @@ const completeImageUploadProcedure = storeProcedure
       name: "products_complete_image_upload",
       title: "Complete Product Image Upload",
       description:
-        "Finish a product image upload: checks the file that arrived at the key and returns its public `url`. Add that url to the product's `images` with products_create or products_update. A file that is not a valid image of the declared type is deleted and refused.",
+        "Finish a product image upload: checks the file that arrived at the key and returns its public `url`. That url is what a product's `images` take in products_create and products_update. A file that is not a valid image of the declared type is deleted and refused.",
       bundle: "catalog",
       annotations: { idempotentHint: true },
     },
@@ -560,7 +560,7 @@ const deleteSeasonalPricingProcedure = storeProcedure
       name: "products_delete_seasonal_pricing",
       title: "Delete Seasonal Price",
       description:
-        "Delete a seasonal price and its tiers: the product's own rates apply on its days again. The first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
+        "Delete a seasonal price and its tiers: the product's own rates apply on its days again. The first call answers CONFIRMATION_REQUIRED with a preview.",
       bundle: "catalog",
     },
   })
