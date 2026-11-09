@@ -9518,7 +9518,7 @@
     },
     "confirm": {
       "label": "Pedir confirmação antes de ações sensíveis",
-      "description": "Antes de um pagamento, reembolso, exclusão ou mensagem a um cliente, o agente recebe primeiro uma pré-visualização e precisa confirmar. Ele é instruído a mostrá-la a você e perguntar antes."
+      "description": "Antes de uma exclusão ou de uma mensagem a um cliente, o agente recebe primeiro uma pré-visualização e precisa confirmar; ele é instruído a mostrá-la a você antes. Registrar, devolver ou excluir um pagamento, gastar créditos de IA, remover um membro e cancelar um convite sempre pedem confirmação, mesmo desativado."
     },
     "bundlesTitle": "Ferramentas exibidas",
     "bundlesHint": "O agente vê estes conjuntos de ferramentas. Você poderá adicionar outros depois.",

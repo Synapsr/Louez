@@ -9518,7 +9518,7 @@
     },
     "confirm": {
       "label": "Demander une confirmation avant les actions sensibles",
-      "description": "Avant un paiement, un remboursement, une suppression ou un message à un client, l’agent reçoit d’abord un aperçu et doit confirmer. Il a pour consigne de vous le montrer et de vous demander avant."
+      "description": "Avant une suppression ou un message à un client, l’agent reçoit d’abord un aperçu et doit confirmer ; il a pour consigne de vous le montrer d’abord. Enregistrer, rendre ou supprimer un paiement, dépenser des crédits IA, retirer un membre et annuler une invitation demandent toujours une confirmation, même désactivé."
     },
     "bundlesTitle": "Outils affichés",
     "bundlesHint": "L’agent voit ces ensembles d’outils. Vous pourrez en ajouter plus tard.",
