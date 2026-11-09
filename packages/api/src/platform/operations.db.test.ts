@@ -133,6 +133,17 @@ describe(
       assert.deepEqual(await remaining(), [kept]);
     });
 
+    test("the scope with the oldest record goes first", async () => {
+      const newerA = (await write(STORE_A)).id;
+      const olderB = (await write(STORE_B)).id;
+      await age(newerA, 13);
+      await age(olderB, 30);
+
+      // No time left after the first batch: it is the oldest backlog's.
+      assert.equal(await operations.purgeOperations({ budgetMs: 0 }), 1);
+      assert.deepEqual(await remaining(), [newerA]);
+    });
+
     test("a key whose record is gone runs again", async () => {
       const first = await write(STORE_A, "op-key-1");
       assert.equal(first.ran, 1);

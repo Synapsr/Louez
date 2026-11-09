@@ -30,6 +30,11 @@ export const OPERATION_LEASE_SECONDS = 300;
  * data.
  */
 export const OPERATION_RETENTION_MONTHS = 12;
+/**
+ * The purge deletes this many days before the promised retention runs out,
+ * so a backlog or a cron outage of up to a week still keeps the promise.
+ */
+const OPERATION_PURGE_MARGIN_DAYS = 7;
 const PURGE_BATCH = 500;
 const PURGE_BUDGET_MS = 5_000;
 
@@ -320,7 +325,8 @@ function targetIdOf(result: unknown): string | null {
 
 /**
  * Deletes the records added and last changed more than
- * `OPERATION_RETENTION_MONTHS` ago, on the database's clock, for the cron.
+ * `OPERATION_RETENTION_MONTHS` ago, less `OPERATION_PURGE_MARGIN_DAYS`, on the
+ * database's clock, for the cron.
  * It finds the scopes (stores, and the account scope) holding one with a
  * single probe each on `api_operations_store_created_idx`, then deletes
  * oldest first, in batches, until none is left or the time budget is spent;
@@ -332,12 +338,14 @@ export async function purgeOperations(
 ): Promise<number> {
   const batch = options.batch ?? PURGE_BATCH;
   const deadline = Date.now() + (options.budgetMs ?? PURGE_BUDGET_MS);
-  const cutoff = sql`NOW() - INTERVAL ${sql.raw(String(OPERATION_RETENTION_MONTHS))} MONTH`;
+  const cutoff = sql`NOW() - INTERVAL ${sql.raw(String(OPERATION_RETENTION_MONTHS))} MONTH + INTERVAL ${sql.raw(String(OPERATION_PURGE_MARGIN_DAYS))} DAY`;
+  // The scope with the oldest record first, so the oldest backlog goes first.
   const scopes = await db
     .select({ storeId: apiOperations.storeId })
     .from(apiOperations)
     .groupBy(apiOperations.storeId)
-    .having(lt(min(apiOperations.createdAt), cutoff));
+    .having(lt(min(apiOperations.createdAt), cutoff))
+    .orderBy(asc(min(apiOperations.createdAt)));
   let deleted = 0;
   for (const { storeId } of scopes) {
     for (;;) {

@@ -320,7 +320,7 @@ describe(
           .set({ rotationReplayExpiresAt: orm.sql`NOW() - INTERVAL 1 MINUTE` })
           .where(orm.isNotNull(louezDb.oauthRefreshTokens.rotatedAt));
 
-      // Within 7 days: the spent token stays, the live one still refreshes, and
+      // Within the grace days: the spent token stays, the live one still refreshes, and
       // a replay past the provider's reuse window revokes the family.
       const { tokens } = await fresh();
       const rotated = await ok(await refresh(tokens.refresh_token));
@@ -332,7 +332,7 @@ describe(
       await refused(await refresh(tokens.refresh_token));
       await refused(await refresh(live.refresh_token));
 
-      // Revoked more than 7 days ago, the spent row goes; a replay is then an
+      // Revoked more than the grace days ago, the spent row goes; a replay is then an
       // unknown token, refused, and the live one keeps working.
       const second = await fresh();
       const rotatedB = await ok(await refresh(second.tokens.refresh_token));

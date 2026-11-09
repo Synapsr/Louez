@@ -4,9 +4,10 @@ import { after, before, beforeEach, describe, test } from "node:test";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 // OAuth tokens past their retention, on the database: a refresh or access
-// token goes 7 days after it expired or was revoked, never sooner, and a
-// valid one stays; a used client assertion goes once expired; the grant they
-// reference stays; a run deletes a batch at a time within its time budget.
+// token goes 6 days after it expired or was revoked (a day inside the 7 the
+// privacy policy promises), and a valid one stays; a used client assertion
+// goes once expired; the grant they reference stays; each table deletes a
+// batch at a time within its own share of a run.
 // Dates are set on the database's clock, which the purge reads.
 
 const CLIENT = "https://client.retention.test/oauth/client.json";
@@ -120,18 +121,18 @@ describe(
         .map((row) => row.id)
         .sort();
 
-    test("tokens go 7 days after they expired or were revoked; valid and recent ones stay", async () => {
+    test("tokens go 6 days after they expired or were revoked; valid and recent ones stay", async () => {
       await refreshToken("r_valid", { expiresIn: 20 * DAY });
-      await refreshToken("r_revoked_6d", { expiresIn: 20 * DAY, revokedAgo: 6 * DAY });
+      await refreshToken("r_revoked_5d", { expiresIn: 20 * DAY, revokedAgo: 5 * DAY });
       const rotatedOld = await refreshToken("r_revoked_8d", {
         expiresIn: 20 * DAY,
         revokedAgo: 8 * DAY,
       });
-      await refreshToken("r_expired_6d", { expiresIn: -6 * DAY });
+      await refreshToken("r_expired_5d", { expiresIn: -5 * DAY });
       await refreshToken("r_expired_8d", { expiresIn: -8 * DAY });
 
       await accessToken("a_valid", { expiresIn: 1 });
-      await accessToken("a_expired_6d", { expiresIn: -6 * DAY });
+      await accessToken("a_expired_5d", { expiresIn: -5 * DAY });
       await accessToken("a_expired_8d", { expiresIn: -8 * DAY });
       await accessToken("a_revoked_8d", { expiresIn: 1, revokedAgo: 8 * DAY });
       // Issued with the refresh token revoked 8 days ago, expired since.
@@ -143,8 +144,8 @@ describe(
         accessTokens: 2,
         clientAssertions: 0,
       });
-      assert.deepEqual(await refreshTokens(), ["r_expired_6d", "r_revoked_6d", "r_valid"]);
-      assert.deepEqual(await accessTokens(), ["a_expired_6d", "a_valid"]);
+      assert.deepEqual(await refreshTokens(), ["r_expired_5d", "r_revoked_5d", "r_valid"]);
+      assert.deepEqual(await accessTokens(), ["a_expired_5d", "a_valid"]);
 
       const [grant] = await louezDb.db
         .select({ id: louezDb.apiAgentGrants.id })
@@ -164,29 +165,33 @@ describe(
       assert.deepEqual(await assertions(), ["jti_expired_30m", "jti_live"]);
     });
 
-    test("a batch at a time within the time budget; the next run goes on", async () => {
+    test("each table a batch at a time within its own share; the next run goes on", async () => {
       for (let index = 0; index < 5; index += 1) {
         await refreshToken(`r_old_${index}`, { expiresIn: -10 * DAY });
       }
       await accessToken("a_old", { expiresIn: -10 * DAY });
       await refreshToken("r_valid", { expiresIn: 20 * DAY });
+      await louezDb.db
+        .insert(louezDb.oauthClientAssertions)
+        .values({ id: "jti_old", expiresAt: at(-2) });
 
-      // Batches of two, with no time left after the first.
-      assert.deepEqual(await retention.purgeOAuthTokens({ batch: 2, budgetMs: 0 }), {
+      // Batches of two, with no time left after each table's first: the
+      // refresh tokens' backlog does not keep the other tables waiting.
+      assert.deepEqual(await retention.purgeOAuthTokens({ batch: 2, budgetMsPerTable: 0 }), {
         refreshTokens: 2,
-        accessTokens: 0,
-        clientAssertions: 0,
+        accessTokens: 1,
+        clientAssertions: 1,
       });
       assert.equal((await refreshTokens()).length, 4);
-      assert.deepEqual(await accessTokens(), ["a_old"]);
+      assert.deepEqual(await accessTokens(), []);
+      assert.deepEqual(await assertions(), []);
 
       assert.deepEqual(await retention.purgeOAuthTokens({ batch: 2 }), {
         refreshTokens: 3,
-        accessTokens: 1,
+        accessTokens: 0,
         clientAssertions: 0,
       });
       assert.deepEqual(await refreshTokens(), ["r_valid"]);
-      assert.deepEqual(await accessTokens(), []);
     });
   },
 );
