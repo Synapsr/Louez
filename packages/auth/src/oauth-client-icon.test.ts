@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "node:test";
+import { after, describe, test } from "node:test";
 
 import {
   MAX_ICON_BYTES,
@@ -11,6 +11,12 @@ import {
   toSiteIcon,
   type IconFetch,
 } from "./oauth-client-icon";
+
+// The deadlines unref their timers, so a hung lookup never keeps a server
+// alive. A test that waits on one needs something else to hold the event loop
+// open: Node 22's runner otherwise cancels it.
+const keepAlive = setInterval(() => {}, 1_000);
+after(() => clearInterval(keepAlive));
 
 // The icon of a CIMD client, with a fake transport: nothing leaves the process.
 

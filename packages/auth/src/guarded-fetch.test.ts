@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
-import { describe, test } from "node:test";
+import { after, describe, test } from "node:test";
 
 import { guardedGet, type GuardedFetch, type GuardedGetOptions } from "./guarded-fetch";
+
+// The deadlines unref their timers, so a hung lookup never keeps a server
+// alive. A test that waits on one needs something else to hold the event loop
+// open: Node 22's runner otherwise cancels it.
+const keepAlive = setInterval(() => {}, 1_000);
+after(() => clearInterval(keepAlive));
 
 // The guarded GET with a fake transport: nothing leaves the process. The real
 // transport (CIMD) refuses private addresses by throwing; the fakes do too.
