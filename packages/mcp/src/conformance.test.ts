@@ -48,26 +48,39 @@ describe("MCP directory conformance", () => {
     const { errorResult } = await import("./utils/errors");
     const { platformErrors } = await import("@louez/api/platform/errors");
 
-    // An owner's key over every domain lists every tool.
+    // An owner's OAuth grant with write rights on all their stores, every
+    // bundle shown, lists every tool, stores_create included.
     const write = "write" as const;
+    const key = testRequestContext({
+      storeId: "store_conformance",
+      userId: "user_conformance",
+      permissions: {
+        reservations: write,
+        products: write,
+        customers: write,
+        categories: write,
+        payments: write,
+        analytics: "read",
+        settings: write,
+        online_store: write,
+        integrations: write,
+        team: write,
+        billing: write,
+      },
+    });
     const ctx = {
-      ...testRequestContext({
-        storeId: "store_conformance",
-        userId: "user_conformance",
-        permissions: {
-          reservations: write,
-          products: write,
-          customers: write,
-          categories: write,
-          payments: write,
-          analytics: "read",
-          settings: write,
-          online_store: write,
-          integrations: write,
-          team: write,
-          billing: write,
+      ...key,
+      actor: {
+        ...key.actor,
+        credential: {
+          ...key.actor.credential,
+          kind: "oauth" as const,
+          storeId: null,
+          stores: null,
+          scopes: { ...key.actor.credential.scopes!, stores: write },
         },
-      }),
+      },
+      storeArgument: true,
       resourceMetadataUrl: RESOURCE_METADATA,
     };
     const server = createMcpServer(
@@ -122,19 +135,25 @@ describe("MCP directory conformance", () => {
     assert.deepEqual(problems, []);
   });
 
-  test("no description tells the model to call another tool", () => {
-    const names = tools.map((tool) => tool.name);
-    const pointing = tools.flatMap((tool) =>
-      names
-        .filter((other) => other !== tool.name)
-        .filter((other) =>
-          new RegExp(`\\b(?:call|use|then|first with|upload one with)\\s+${other}\\b`, "i").test(
-            tool.description ?? "",
-          ),
-        )
-        .map((other) => `${tool.name} → ${other}`),
+  test("no description tells the model what to call or do", () => {
+    // Imperatives the Claude directory refuses in a description: an order of
+    // calls ("list them first", "then call"), a call to another tool or to
+    // itself again, or a rule for the model. What a tool takes, returns and
+    // refuses, and the first call's CONFIRMATION_REQUIRED, are facts.
+    const IMPERATIVES = [
+      /\b(?:call|use|run|invoke|check|list|read|fetch|look|upload|ask)\b[^.;:()]*\bfirst\b(?! call)/i,
+      /\bthen\s+(?:call|use|send|pass|set|list|check|read|ask|show|tell|upload|poll|save)\b/i,
+      /\b(?:call|use|invoke|try|poll)\s+(?:this tool|it again|again|[a-z]+_[a-z_]+)\b/i,
+      /\b(?:do not|don't|you must|you should|make sure|never (?:open|ask|build|guess|call|use))\b/i,
+      /\b(?:show|give|tell) (?:it|this|them) to the user\b/i,
+    ];
+    const hits = tools.flatMap((tool) =>
+      IMPERATIVES.flatMap((pattern) => {
+        const match = pattern.exec(tool.description ?? "");
+        return match ? [`${tool.name}: "${match[0]}"`] : [];
+      }),
     );
-    assert.deepEqual(pointing, []);
+    assert.deepEqual(hits, []);
   });
 
   test("every listed tool declares OAuth, and the procedures their output", () => {
@@ -151,46 +170,130 @@ describe("MCP directory conformance", () => {
     assert.deepEqual(withoutOutput, []);
   });
 
-  test("the hints follow what each tool does", () => {
-    const hints = (name: string) => {
-      const { readOnlyHint, destructiveHint, openWorldHint } =
-        tools.find((tool) => tool.name === name)?.annotations ?? {};
-      return { readOnlyHint, destructiveHint, openWorldHint };
+  test("every tool's hints follow what it does, tool by tool", () => {
+    // What each listed tool does: read, or what its write does to the data
+    // already there (additive, overwrite, delete), then why it reaches outside
+    // the user's Louez account: a customer message, a provider (Stripe, the
+    // insurer, a registry), or what the public storefront shows.
+    const EXPECTED: Record<string, string> = {
+      account_get_profile: "read",
+      billing_get_status: "read",
+      billing_start_card_setup: "overwrite/provider",
+      categories_complete_image_upload: "additive",
+      categories_create: "additive/public",
+      categories_create_image_upload: "additive",
+      categories_delete: "delete/public",
+      categories_get: "read",
+      categories_list: "read",
+      categories_reorder: "overwrite/public",
+      categories_update: "overwrite/public",
+      handoffs_get: "read",
+      inbox_acknowledge: "overwrite",
+      inbox_list: "read",
+      online_store_check_slug_availability: "read",
+      online_store_complete_image_upload: "additive",
+      online_store_create_image_upload: "additive",
+      online_store_update: "overwrite/public",
+      online_store_update_appearance: "overwrite/public",
+      online_store_update_slug: "overwrite/public",
+      payments_open_stripe_dashboard: "overwrite/provider",
+      payments_start_stripe_onboarding: "overwrite/provider",
+      payments_sync_stripe_status: "overwrite/provider",
+      products_close_downtime: "overwrite/public",
+      products_complete_image_upload: "additive",
+      products_create: "additive/public",
+      products_create_image_upload: "additive",
+      products_create_seasonal_pricing: "additive/public",
+      products_create_variant: "additive",
+      products_create_variant_value: "additive",
+      products_declare_downtime: "additive/public",
+      products_delete: "delete/public",
+      products_delete_downtime: "delete/public",
+      products_delete_seasonal_pricing: "delete/public",
+      products_delete_variant: "delete",
+      products_delete_variant_value: "delete",
+      products_duplicate: "additive",
+      products_duplicate_seasonal_pricing: "additive/public",
+      products_get: "read",
+      products_get_activity: "read",
+      products_get_reservation_timeline: "read",
+      products_get_unit_history: "read",
+      products_get_variant_usage: "read",
+      products_list: "read",
+      products_list_seasonal_pricings: "read",
+      products_list_variants: "read",
+      products_reinstate_unit: "overwrite/public",
+      products_reorder: "overwrite/public",
+      products_retire_unit: "overwrite/public",
+      products_set_variant_active: "overwrite",
+      products_update: "overwrite/public",
+      products_update_downtime: "overwrite/public",
+      products_update_seasonal_pricing: "overwrite/public",
+      products_update_status: "overwrite/public",
+      products_update_unit_details: "overwrite",
+      products_update_variant: "overwrite/public",
+      products_update_variant_value: "overwrite/public",
+      products_withdraw_variant: "delete/public",
+      reservations_cancel: "overwrite/provider",
+      reservations_get: "read",
+      reservations_get_planning_timeline: "read",
+      reservations_list: "read",
+      reservations_list_calendar_period: "read",
+      reservations_list_overdue: "read",
+      reservations_list_upcoming: "read",
+      reservations_poll: "read",
+      reservations_update_notes: "overwrite",
+      reservations_update_status: "overwrite/customer",
+      search_global: "read",
+      settings_create_location: "additive/public",
+      settings_get: "read",
+      settings_get_legal_profile: "read",
+      settings_search_company_registry: "read/provider",
+      settings_set_location_active: "overwrite/public",
+      settings_update_business_hours: "overwrite/public",
+      settings_update_company: "overwrite/public",
+      settings_update_delivery: "overwrite/public",
+      settings_update_legal: "overwrite/public",
+      settings_update_legal_profile: "overwrite/public",
+      settings_update_location: "overwrite/public",
+      settings_update_reservation_rules: "overwrite/public",
+      settings_update_store_info: "overwrite/public",
+      settings_update_taxes: "overwrite/public",
+      stores_check_slug_availability: "read",
+      stores_create: "additive",
+      stores_get_launch_checklist: "read",
+      stores_go_live: "overwrite/public",
+      stores_list: "read",
+      // The hand-written tools.
+      check_availability: "read",
+      create_customer: "additive",
+      delete_payment: "delete",
+      get_customer: "read",
+      get_dashboard_stats: "read",
+      get_product_performance: "read",
+      get_revenue_report: "read",
+      list_customers: "read",
+      list_payments: "read",
+      // A payment row added; nothing recorded before changes.
+      record_payment: "additive",
+      return_deposit: "additive",
+      update_customer: "overwrite",
     };
-    const read = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
-    assert.deepEqual(hints("reservations_list"), read);
-    assert.deepEqual(hints("list_customers"), read);
-    assert.deepEqual(hints("settings_search_company_registry"), { ...read, openWorldHint: true });
-    assert.deepEqual(hints("categories_create"), { ...read, readOnlyHint: false });
-    assert.deepEqual(hints("categories_delete"), {
-      readOnlyHint: false,
-      destructiveHint: true,
-      openWorldHint: false,
+    assert.deepEqual(tools.map((tool) => tool.name).sort(), Object.keys(EXPECTED).sort());
+    const wrong = tools.flatMap((tool) => {
+      const [effect, reach] = EXPECTED[tool.name].split("/");
+      const expected = {
+        readOnlyHint: effect === "read",
+        destructiveHint: effect === "overwrite" || effect === "delete",
+        openWorldHint: reach !== undefined,
+      };
+      const { readOnlyHint, destructiveHint, openWorldHint } = tool.annotations ?? {};
+      const actual = { readOnlyHint, destructiveHint, openWorldHint };
+      return JSON.stringify(actual) === JSON.stringify(expected)
+        ? []
+        : [`${tool.name}: ${JSON.stringify(actual)}`];
     });
-    // Sends the customer the acceptance or the rejection.
-    assert.deepEqual(hints("reservations_update_status"), {
-      readOnlyHint: false,
-      destructiveHint: true,
-      openWorldHint: true,
-    });
-    // Cancels the insurer's contract.
-    assert.deepEqual(hints("reservations_cancel"), {
-      readOnlyHint: false,
-      destructiveHint: true,
-      openWorldHint: true,
-    });
-    assert.deepEqual(hints("payments_start_stripe_onboarding"), {
-      readOnlyHint: false,
-      destructiveHint: false,
-      openWorldHint: true,
-    });
-    for (const name of ["record_payment", "delete_payment", "return_deposit"]) {
-      assert.deepEqual(hints(name), {
-        readOnlyHint: false,
-        destructiveHint: true,
-        openWorldHint: false,
-      });
-    }
+    assert.deepEqual(wrong, []);
   });
 
   test("the profile tool reads the account, with no argument", () => {

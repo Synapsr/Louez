@@ -105,7 +105,7 @@ export function registerPaymentTools(
     server,
     ctx,
     { domain: 'payments', level: 'write' },
-    { name: 'record_payment', title: 'Record Payment' },
+    { name: 'record_payment', title: 'Record Payment', effect: 'additive' },
     "Record a manual payment for a reservation. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       reservationId: z.string().describe('The reservation ID'),
@@ -188,7 +188,7 @@ export function registerPaymentTools(
     server,
     ctx,
     { domain: 'payments', level: 'write' },
-    { name: 'delete_payment', title: 'Delete Payment' },
+    { name: 'delete_payment', title: 'Delete Payment', effect: 'delete' },
     "Delete a payment record. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       paymentId: z.string().describe('The payment ID to delete'),
@@ -253,7 +253,7 @@ export function registerPaymentTools(
     server,
     ctx,
     { domain: 'payments', level: 'write' },
-    { name: 'return_deposit', title: 'Return Deposit' },
+    { name: 'return_deposit', title: 'Return Deposit', effect: 'additive' },
     "Record a deposit return for a reservation. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       reservationId: z.string().describe('The reservation ID'),

@@ -97,6 +97,7 @@ const acknowledge = storeProcedure
       title: "Mark Inbox Items Handled",
       description: `Mark inbox items as handled, for the whole store: they leave inbox_list for every member and agent. Takes each item's id and occurredAt as inbox_list returned them, up to ${INBOX_ACKNOWLEDGE_MAX} at once. An item that comes back later (the same id, a later occurredAt) shows again. Items not in the inbox now with that occurredAt are left unmarked and come back in rejected: with currentOccurredAt when the inbox holds the item with another occurrence (send that one if the user means it), null when it left the inbox (handled: drop it). After a rejection, inbox_list without a cursor gives what the inbox holds now. Marking an item twice changes nothing. A mark is kept ${INBOX_ACKNOWLEDGEMENT_RETENTION_DAYS} days: an item still open after that shows again. It is for what the user dealt with: an item whose record is handled leaves the inbox by itself. Needs write access to the item's first domain.`,
       bundle: "daily",
+      effect: "overwrite",
       annotations: { idempotentHint: true },
     },
   })

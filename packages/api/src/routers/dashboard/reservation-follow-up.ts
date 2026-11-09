@@ -118,7 +118,7 @@ const withLinks = <T extends { id: string; customer: { id: string } | null }>(
 ) => ({ ...link.reservation(record), customer: link.customer(record.customer) });
 
 const LINKS_NOTE =
-  "Each reservation has `links` (its dashboard page) and each customer shown its own: give the user these URLs, never build one.";
+  "Each reservation has `links` (its dashboard page) and each customer shown its own, the URLs to give the user.";
 
 const CUSTOMER_NOTE =
   "Without read access to customers, the customer's name, email, addresses and notes are left out; without read access to payments, so are payment rows and Stripe ids (rentalPaid stays).";
@@ -299,6 +299,8 @@ const updateStatus = storeProcedure
       description:
         "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing) or returned (completed), or cancel it (as reservations_cancel). The store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
+      effect: "overwrite",
+      reach: "customer",
       aliases: [{ name: "update_reservation_status", renamedArgs: { reservationId: "id" } }],
     },
   })
@@ -326,7 +328,8 @@ const cancel = storeProcedure
       description:
         "Cancel a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract is cancelled and the store's notifications follow. Nothing is refunded or released by itself, and the customer gets no message. The first call answers CONFIRMATION_REQUIRED with a preview (the customer, the dates, what was paid). Returns the change and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
-      annotations: { openWorldHint: true },
+      effect: "overwrite",
+      reach: "provider",
     },
   })
   .route({ method: "POST", path: "/reservations/{id}/cancel" })
@@ -352,6 +355,7 @@ const updateNotes = storeProcedure
       description:
         "Replace a reservation's internal notes, which only the store's team sees. An empty string clears them. Returns the notes and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
+      effect: "overwrite",
       aliases: [{ name: "update_reservation_notes", renamedArgs: { reservationId: "id" } }],
       annotations: { idempotentHint: true },
     },

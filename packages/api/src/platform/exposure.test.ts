@@ -206,19 +206,29 @@ describe("exposure registry", () => {
     );
   });
 
-  test("takes hint overrides that correct the derivation, never ones that repeat it", () => {
-    const withHints = (annotations: Record<string, boolean>) =>
-      valid().meta({ mcp: { ...mcp("test_valid"), annotations } });
-    rejects({ a: withHints({ readOnlyHint: true }) }, ["a"], /readOnlyHint repeats/);
-    rejects({ a: withHints({ openWorldHint: false }) }, ["a"], /openWorldHint repeats/);
+  test("a write says what it does to existing data, a read does not, a send reaches the customer", () => {
+    const write = (mcpFields: Record<string, unknown>, sensitive?: "send") =>
+      valid().meta({
+        scope: { domain: "categories", level: "write" },
+        ...(sensitive ? { sensitive } : {}),
+        mcp: { ...mcp("test_valid"), ...mcpFields } as never,
+      });
+    rejects({ a: write({}) }, ["a"], /a: a write declares meta\.mcp\.effect/);
+    rejects(
+      { a: valid().meta({ mcp: { ...mcp("test_valid"), effect: "additive" } }) },
+      ["a"],
+      /a: a read has no meta\.mcp\.effect/,
+    );
+    rejects(
+      { a: write({ effect: "overwrite", reach: "public" }, "send") },
+      ["a"],
+      /reach "customer"/,
+    );
     const served = exposure.createExposure(
-      { a: withHints({ openWorldHint: true, idempotentHint: true }) } as never,
+      { a: write({ effect: "overwrite", reach: "customer" }, "send") } as never,
       ["a"],
     );
-    assert.deepEqual(served.procedures[0].meta.mcp.annotations, {
-      openWorldHint: true,
-      idempotentHint: true,
-    });
+    assert.equal(served.procedures[0].meta.mcp.effect, "overwrite");
   });
 
   test("serves each procedure's output as JSON Schema, an object", () => {
@@ -240,44 +250,37 @@ describe("MCP tool hints", () => {
     meta = await import("./meta");
   });
 
-  test("derive from the scope's level and the sensitive kind, explicit booleans", () => {
-    const hints = (level: "read" | "write" | undefined, sensitive?: "money" | "send") =>
-      meta.mcpToolAnnotations({ level, sensitive });
-    assert.deepEqual(hints("read"), {
-      readOnlyHint: true,
-      destructiveHint: false,
-      openWorldHint: false,
-    });
-    assert.deepEqual(hints(undefined), {
-      readOnlyHint: true,
-      destructiveHint: false,
-      openWorldHint: false,
-    });
-    assert.deepEqual(hints("write"), {
-      readOnlyHint: false,
-      destructiveHint: false,
-      openWorldHint: false,
-    });
-    assert.deepEqual(hints("write", "money"), {
-      readOnlyHint: false,
-      destructiveHint: true,
-      openWorldHint: false,
-    });
-    assert.deepEqual(hints("write", "send"), {
+  test("come from the level, the effect and the reach, explicit booleans", () => {
+    const hints = (
+      level: "read" | "write" | undefined,
+      effect?: "additive" | "overwrite" | "delete",
+      reach?: "customer" | "provider" | "public",
+    ) => meta.mcpToolAnnotations({ level, effect, reach });
+    const read = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
+    assert.deepEqual(hints("read"), read);
+    assert.deepEqual(hints(undefined), read);
+    assert.deepEqual(hints("read", undefined, "provider"), { ...read, openWorldHint: true });
+    assert.deepEqual(hints("write", "additive"), { ...read, readOnlyHint: false });
+    for (const effect of ["overwrite", "delete"] as const) {
+      assert.deepEqual(hints("write", effect), {
+        readOnlyHint: false,
+        destructiveHint: true,
+        openWorldHint: false,
+      });
+    }
+    assert.deepEqual(hints("write", "overwrite", "public"), {
       readOnlyHint: false,
       destructiveHint: true,
       openWorldHint: true,
     });
-  });
-
-  test("take the overrides on top", () => {
     assert.deepEqual(
       meta.mcpToolAnnotations({
         level: "write",
-        sensitive: undefined,
-        overrides: { openWorldHint: true, idempotentHint: true },
+        effect: "additive",
+        reach: undefined,
+        idempotentHint: true,
       }),
-      { readOnlyHint: false, destructiveHint: false, openWorldHint: true, idempotentHint: true },
+      { readOnlyHint: false, destructiveHint: false, openWorldHint: false, idempotentHint: true },
     );
   });
 });

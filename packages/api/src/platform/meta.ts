@@ -37,37 +37,55 @@ export const MCP_TOOL_NAME_MAX = 64;
 export interface McpToolAnnotations {
   /** Only reads: changes nothing in Louez or elsewhere. */
   readOnlyHint: boolean;
-  /** A write that deletes, overwrites what cannot be put back, moves money or reaches a customer. */
+  /** A write that may overwrite or delete data already there, whether or not it can be undone. */
   destructiveHint: boolean;
-  /** Reaches outside Louez: a customer (e-mail, SMS), Stripe, the insurer, a public registry. */
+  /** Reaches outside the user's Louez account: a customer, a provider, or the public storefront. */
   openWorldHint: boolean;
   /** Calling again with the same arguments changes nothing more. */
   idempotentHint?: boolean;
 }
 
 /**
- * The hints of a tool, derived from what the platform already knows of it:
+ * What a write does to the data already there, which sets `destructiveHint`:
  *
- * - `readOnlyHint`: it does not write (`scope.level` is not `write`);
- * - `destructiveHint`: a write that needs a confirmation (`sensitive`: it
- *   deletes, moves money, sends to a customer or spends);
- * - `openWorldHint`: it sends to a customer (`sensitive: "send"`).
+ * - `additive`: it only adds (a new record, a new upload), and never replaces
+ *   or clears anything; returning an existing record unchanged is additive;
+ * - `overwrite`: it may replace or clear values already there (an update, a
+ *   reorder, a status change, a link that replaces the previous one);
+ * - `delete`: it removes records.
+ */
+export const MCP_EFFECTS = ["additive", "overwrite", "delete"] as const;
+export type McpEffect = (typeof MCP_EFFECTS)[number];
+
+/**
+ * Why a tool reaches outside the user's Louez account, which sets
+ * `openWorldHint`:
  *
- * `overrides` corrects the derivation where it is wrong for one tool, such as
- * a call that reaches Stripe or the insurer: `meta.mcp.annotations`. An
- * override that repeats the derivation is refused by the exposure registry.
+ * - `customer`: it sends a customer a message (e-mail, SMS);
+ * - `provider`: it calls a third party (Stripe, the insurer, a public registry);
+ * - `public`: it changes what visitors of the store's online store see once
+ *   it is online (the catalog, prices, availability, texts, its address).
+ */
+export const MCP_REACHES = ["customer", "provider", "public"] as const;
+export type McpReach = (typeof MCP_REACHES)[number];
+
+/**
+ * The hints of a tool, from what its metadata says it does: read-only when it
+ * does not write (`scope.level`), destructive when its write is not
+ * `additive` (`effect`), open-world when it has a `reach`.
  */
 export function mcpToolAnnotations(input: {
   level: "read" | "write" | undefined;
-  sensitive: SensitiveKind | undefined;
-  overrides?: McpExposure["annotations"];
+  effect: McpEffect | undefined;
+  reach: McpReach | undefined;
+  idempotentHint?: boolean;
 }): McpToolAnnotations {
   const readOnlyHint = input.level !== "write";
   return {
     readOnlyHint,
-    destructiveHint: !readOnlyHint && input.sensitive !== undefined,
-    openWorldHint: input.sensitive === "send",
-    ...input.overrides,
+    destructiveHint: !readOnlyHint && input.effect !== "additive",
+    openWorldHint: input.reach !== undefined,
+    ...(input.idempotentHint === undefined ? {} : { idempotentHint: input.idempotentHint }),
   };
 }
 
@@ -85,11 +103,12 @@ export interface McpExposure {
   description: string;
   /** Tool bundle the tool is listed in; the connection picks its bundles. */
   bundle: McpBundle;
-  /**
-   * Corrections of the derived hints (`mcpToolAnnotations`), and
-   * `idempotentHint`, which nothing derives.
-   */
-  annotations?: Partial<McpToolAnnotations>;
+  /** What a write does to the data already there; required on a write, refused on a read. */
+  effect?: McpEffect;
+  /** Why it reaches outside the user's Louez account; required with `sensitive: "send"`. */
+  reach?: McpReach;
+  /** The hint nothing else gives: calling again changes nothing more. */
+  annotations?: { idempotentHint?: boolean };
   /**
    * The account's profile tool, which ChatGPT reads to tell accounts apart
    * (`_meta["openai/profile"]`): read-only, no argument, a stable `id`.

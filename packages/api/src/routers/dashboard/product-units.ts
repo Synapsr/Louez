@@ -154,6 +154,8 @@ export const declareDowntime = storeProcedure
       title: "Declare Unit Downtime",
       description: `Take a unit out of service for maintenance, a repair or another reason, from startsAt until endsAt (or until closed with products_close_downtime). It cannot be booked then. ${UNIT_HELP} Reservations that already hold the unit then keep it and are returned in conflicts, with the units that could serve them instead; when there are any, ${CONFIRM_HELP} ${BOOKING_ACCESS_HELP} Returns the downtime's id.`,
       bundle: "catalog",
+      effect: "additive",
+      reach: "public",
     },
   })
   .route({ method: "POST", path: "/products/units/{unitId}/downtimes" })
@@ -182,6 +184,8 @@ export const updateDowntime = storeProcedure
       title: "Update Unit Downtime",
       description: `Change a downtime's reason, dates or note. Send only the fields to change; endsAt null makes it last until closed. Reservations that hold the unit over the new dates are returned in conflicts; when there are any, ${CONFIRM_HELP} ${BOOKING_ACCESS_HELP}`,
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
       annotations: { idempotentHint: true },
     },
   })
@@ -211,6 +215,8 @@ export const closeDowntime = storeProcedure
       description:
         "End a downtime: the unit is back in service from endsAt, now by default. Returns when it ends.",
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
     },
   })
   .route({ method: "POST", path: "/products/downtimes/{downtimeId}/close" })
@@ -229,6 +235,8 @@ export const deleteDowntime = storeProcedure
       description:
         "Delete a downtime entered by mistake, as if it never was: the unit is available on its days again (the unit's history keeps a record). Ending one that is over is products_close_downtime. The first call answers CONFIRMATION_REQUIRED with a preview.",
       bundle: "catalog",
+      effect: "delete",
+      reach: "public",
     },
   })
   .route({ method: "DELETE", path: "/products/downtimes/{downtimeId}" })
@@ -267,6 +275,8 @@ export const retireUnit = storeProcedure
       title: "Retire Unit",
       description: `Retire a unit for good (sold, lost, broken or other): it leaves the stock from now on and can no longer be booked; products_reinstate_unit undoes it. ${UNIT_HELP} Current and future reservations that hold it keep it and are returned in conflicts, with the units that could serve them instead. The first call answers CONFIRMATION_REQUIRED with a preview of those reservations. ${BOOKING_ACCESS_HELP}`,
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
     },
   })
   .route({ method: "POST", path: "/products/units/{unitId}/retire" })
@@ -294,6 +304,8 @@ export const reinstateUnit = storeProcedure
       title: "Reinstate Unit",
       description: "Put a retired unit back in service: it can be booked again.",
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
     },
   })
   .route({ method: "POST", path: "/products/units/{unitId}/reinstate" })
@@ -310,6 +322,7 @@ export const updateUnitDetails = storeProcedure
       title: "Update Unit Details",
       description: `Change a unit's notes, purchase price or purchase date. Send only the fields to change; null clears one. A unit's name and variant values change through products_update. ${UNIT_HELP} Returns the unit's details.`,
       bundle: "catalog",
+      effect: "overwrite",
       annotations: { idempotentHint: true },
     },
   })

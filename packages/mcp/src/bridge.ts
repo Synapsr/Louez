@@ -153,8 +153,9 @@ export function registerExposedTools(
     const { name, title, description, bundle } = entry.meta.mcp;
     const annotations = mcpToolAnnotations({
       level: entry.meta.scope?.level,
-      sensitive: entry.meta.sensitive,
-      overrides: entry.meta.mcp.annotations,
+      effect: entry.meta.mcp.effect,
+      reach: entry.meta.mcp.reach,
+      idempotentHint: entry.meta.mcp.annotations?.idempotentHint,
     });
     const outputSchema = entry.outputJsonSchema as Tool["outputSchema"];
     addTool(server, ctx, {

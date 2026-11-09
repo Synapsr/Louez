@@ -27,7 +27,7 @@ const getStatus = storeProcedure
       name: "billing_get_status",
       title: "Get Louez Billing Status",
       description:
-        "What Louez bills the store, as its billing pages show it: who bills it (none, legacy, service), the plan in force or pay-as-you-go, the offer and the billing service's notice in its own words, Louez's pay-as-you-go fees and this month's figures, the card on file, the month-end invoices, the unpaid balance, whether Louez billing lets the store take new bookings (gate) and why not, and whether billing_start_card_setup can run now (cardSetup). Amounts are decimal strings with their currency. Read-only: changing or cancelling a plan is done by the user in Louez, at the page in `links`: give the user that URL.",
+        "What Louez bills the store, as its billing pages show it: who bills it (none, legacy, service), the plan in force or pay-as-you-go, the offer and the billing service's notice in its own words, Louez's pay-as-you-go fees and this month's figures, the card on file, the month-end invoices, the unpaid balance, whether Louez billing lets the store take new bookings (gate) and why not, and whether billing_start_card_setup can run now (cardSetup). Amounts are decimal strings with their currency. Read-only: changing or cancelling a plan is done by the user in Louez, at the page in `links`, the URL to give the user.",
       bundle: "billing",
       annotations: { idempotentHint: true },
     },
@@ -56,7 +56,8 @@ const startCardSetup = storeProcedure
       title: "Add Billing Card",
       description: `Have the store's owner add or replace the card Louez charges its fees on, on Stripe's page: only they can type it. For when Louez billing stops new bookings until a card is added, or the card expired (billing_get_status, inbox_list say so). ${HANDOFF_HELP} Once completed, billing_get_status shows the card and whether new bookings are accepted again. Only for the owner of a store Louez's billing service bills (billing_get_status: cardSetup.available); otherwise CARD_SETUP_UNAVAILABLE says why.`,
       bundle: "billing",
-      annotations: { openWorldHint: true },
+      effect: "overwrite",
+      reach: "provider",
     },
   })
   .route({ method: "POST", path: "/billing/card-setup" })

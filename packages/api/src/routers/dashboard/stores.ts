@@ -136,6 +136,7 @@ const create = accountProcedure
       title: "Create Store",
       description: `Create a new rental store owned by the user, offline until they launch it. The store starts a billing relationship with Louez, so the first call answers CONFIRMATION_REQUIRED with a preview (name, address, the future public URL, country, currency and the pricing that applies). With an idempotencyKey, a retry never creates a second store. Needs a connection with "Read and edit" rights on all the user's stores; ${STORE_CREATION_DAILY_LIMIT} stores per account a day at most. Returns the store's id (storeId for the other tools), its dashboard link and the next steps.`,
       bundle: "daily",
+      effect: "additive",
       annotations: { idempotentHint: true },
     },
   })
@@ -269,8 +270,10 @@ const completeOnboarding = storeProcedure
       name: "stores_go_live",
       title: "Put Store Online",
       description:
-        "Put the store online: its storefront opens to the public and customers can book. Refused with STORE_NOT_READY while a required item is missing. The first call answers CONFIRMATION_REQUIRED with a preview (the public URL, how customers book, what they will see, what is still missing or optional). reservationMode sets how customers book; without Stripe connected, payment mode takes requests until it is. A store already online is not launched again: the answer gives its URL. Returns the storefront's URL and the store's `links`: give the user these URLs.",
+        "Put the store online: its storefront opens to the public and customers can book. Refused with STORE_NOT_READY while a required item is missing. The first call answers CONFIRMATION_REQUIRED with a preview (the public URL, how customers book, what they will see, what is still missing or optional). reservationMode sets how customers book; without Stripe connected, payment mode takes requests until it is. A store already online is not launched again: the answer gives its URL. Returns the storefront's URL and the store's `links`, the URLs to give the user.",
       bundle: "daily",
+      effect: "overwrite",
+      reach: "public",
       annotations: { idempotentHint: true },
     },
   })

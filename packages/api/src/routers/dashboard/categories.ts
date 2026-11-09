@@ -39,7 +39,7 @@ import { completeImageUpload, createImageUpload } from "../../services/uploads";
  */
 
 const LINKS_HELP =
-  "Its `links` hold the dashboard's categories page and, once the store is online, the storefront catalog filtered on the category: give the user these URLs, never build one.";
+  "Its `links` hold the dashboard's categories page and, once the store is online, the storefront catalog filtered on the category, the URLs to give the user.";
 
 /** A category with its links. */
 const withLinks = <T extends { id: string; slug: string | null }>(
@@ -95,6 +95,8 @@ const create = storeProcedure
       title: "Create Category",
       description: `Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with \`created: false\`. \`imageUrl\` takes the \`url\` a finished image upload returns (categories_complete_image_upload). ${LINKS_HELP}`,
       bundle: "catalog",
+      effect: "additive",
+      reach: "public",
       aliases: [{ name: "create_category" }],
       annotations: { idempotentHint: true },
     },
@@ -115,6 +117,8 @@ const update = storeProcedure
       title: "Update Category",
       description: `Change a product category. Send only the fields to change: a field left out stays as it is, and null clears the description or the image. A name another category of the store already has is refused. ${LINKS_HELP}`,
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
       aliases: [{ name: "update_category", renamedArgs: { categoryId: "id" } }],
       annotations: { idempotentHint: true },
     },
@@ -137,6 +141,8 @@ const remove = storeProcedure
       description:
         "Delete a product category. Its products keep their other categories, or move to `replacementCategoryId` when given. The first call answers CONFIRMATION_REQUIRED with a preview of how many products lose the category.",
       bundle: "catalog",
+      effect: "delete",
+      reach: "public",
       aliases: [{ name: "delete_category", renamedArgs: { categoryId: "id" } }],
     },
   })
@@ -185,8 +191,10 @@ const reorder = storeProcedure
       name: "categories_reorder",
       title: "Reorder Categories",
       description:
-        "Set the order of the store's categories, as the storefront shows them. Send the ids of every category of the store, each once, in the new order (list them first).",
+        "Set the order of the store's categories, as the storefront shows them. Takes the ids of every category of the store, each once, in the new order (categories_list gives them).",
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
       annotations: { idempotentHint: true },
     },
   })
@@ -207,6 +215,7 @@ const createImageUploadProcedure = storeProcedure
       description:
         "Start uploading a category image (JPEG, PNG, GIF or WebP, 5 MB at most). Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. categories_complete_image_upload finishes it, with the key.",
       bundle: "catalog",
+      effect: "additive",
     },
   })
   .route({ method: "POST", path: "/categories/image-uploads" })
@@ -230,6 +239,7 @@ const completeImageUploadProcedure = storeProcedure
       description:
         "Finish a category image upload: checks the file that arrived at the key and returns its public `url`. That url is what `imageUrl` takes in categories_create and categories_update. A file that is not a valid image of the declared type is deleted and refused.",
       bundle: "catalog",
+      effect: "additive",
       annotations: { idempotentHint: true },
     },
   })

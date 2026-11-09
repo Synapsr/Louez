@@ -9,7 +9,8 @@ import { apiError, platformErrors } from "@louez/api/platform/errors";
 import {
   mcpToolAnnotations,
   type McpBundle,
-  type McpToolAnnotations,
+  type McpEffect,
+  type McpReach,
   type SensitiveKind,
 } from "@louez/api/platform/meta";
 import type { ApiDomain, ProcedureScope } from "@louez/api/platform/permissions";
@@ -66,14 +67,14 @@ export interface LegacySensitive<Args> {
  * format. On a connection over several stores it takes `storeId`, read when
  * the request came in. A `sensitive` tool takes `confirmationToken` and runs
  * through `requireConfirmation` before its handler. Its hints are derived as
- * a procedure's are (`mcpToolAnnotations`), from `scope` and `sensitive`;
- * `tool.annotations` corrects them.
+ * a procedure's are (`mcpToolAnnotations`): from `scope`, and for a write
+ * from `tool.effect`; `tool.reach` when it reaches outside Louez.
  */
 export function legacyTool<Shape extends z.ZodRawShape>(
   server: McpServer,
   ctx: McpRequestContext,
   scope: ProcedureScope,
-  tool: { name: string; title: string; annotations?: Partial<McpToolAnnotations> },
+  tool: { name: string; title: string; effect?: McpEffect; reach?: McpReach },
   description: string,
   shape: Shape,
   handler: (args: z.infer<z.ZodObject<Shape>>) => CallToolResult | Promise<CallToolResult>,
@@ -86,6 +87,9 @@ export function legacyTool<Shape extends z.ZodRawShape>(
   }
   const { sensitive } = options;
   const { name, title } = tool;
+  if ((scope.level === "write") !== (tool.effect !== undefined)) {
+    throw new Error(`MCP tool ${name}: a write declares its effect, a read none.`);
+  }
   if (sensitive) {
     inputSchema.properties = {
       ...inputSchema.properties,
@@ -97,11 +101,7 @@ export function legacyTool<Shape extends z.ZodRawShape>(
     title,
     description,
     inputSchema: inputSchema as Tool["inputSchema"],
-    annotations: mcpToolAnnotations({
-      level: scope.level,
-      sensitive: sensitive?.kind,
-      overrides: tool.annotations,
-    }),
+    annotations: mcpToolAnnotations({ level: scope.level, effect: tool.effect, reach: tool.reach }),
     listed: isListed(ctx, scope, BUNDLE_OF_DOMAIN[scope.domain]),
     call: async ({ storeId: _store, confirmationToken, ...args }) => {
       if (ctx.storeError) return errorResult(name, ctx.storeError);

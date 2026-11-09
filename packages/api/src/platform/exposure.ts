@@ -2,7 +2,7 @@ import type { OpenAPI } from "@orpc/contract";
 import { isProcedure, Procedure, type AnyProcedure, type AnyRouter } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
-import { MCP_TOOL_NAME_MAX, mcpToolAnnotations, type ApiMeta, type McpExposure } from "./meta";
+import { MCP_TOOL_NAME_MAX, type ApiMeta, type McpExposure } from "./meta";
 import type { ProcedureScope } from "./permissions";
 
 /**
@@ -164,12 +164,12 @@ function toolProblems(path: string, meta: ApiMeta, mcp: McpExposure): string[] {
   }
   if (!mcp.title?.trim()) problems.push(`${path}: no meta.mcp.title`);
   if (!mcp.description?.trim()) problems.push(`${path}: no meta.mcp.description`);
-  // An override corrects the derivation; one that repeats it is noise.
-  const derived = mcpToolAnnotations({ level: meta.scope?.level, sensitive: meta.sensitive });
-  for (const hint of ["readOnlyHint", "destructiveHint", "openWorldHint"] as const) {
-    if (mcp.annotations?.[hint] !== undefined && mcp.annotations[hint] === derived[hint]) {
-      problems.push(`${path}: meta.mcp.annotations.${hint} repeats what scope and sensitive give`);
-    }
+  // The hints come from what the tool says it does (mcpToolAnnotations).
+  const writes = meta.scope?.level === "write";
+  if (writes && !mcp.effect) problems.push(`${path}: a write declares meta.mcp.effect`);
+  if (!writes && mcp.effect) problems.push(`${path}: a read has no meta.mcp.effect`);
+  if (meta.sensitive === "send" && mcp.reach !== "customer") {
+    problems.push(`${path}: a write that sends to a customer has meta.mcp.reach "customer"`);
   }
   if (mcp.profile && meta.scope?.level === "write") {
     problems.push(`${path}: a profile tool only reads`);

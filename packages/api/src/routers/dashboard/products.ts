@@ -94,7 +94,7 @@ import {
  */
 
 const LINKS_HELP =
-  "Its `links` hold the product's dashboard page and, while it is active, its storefront page: give the user these URLs, never build one.";
+  "Its `links` hold the product's dashboard page and, while it is active, its storefront page, the URLs to give the user.";
 
 /** A product, or a list item, with its links. */
 const withLinks = <T extends { id: string; slug: string | null; status: string | null }>(
@@ -195,8 +195,10 @@ const create = storeProcedure
     mcp: {
       name: "products_create",
       title: "Create Product",
-      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} \`images\` takes the urls finished image uploads return (products_complete_image_upload). Returns the product as products_get does, with its \`links\`: give the user these URLs to see it. An idempotencyKey makes a retry safe.`,
+      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} \`images\` takes the urls finished image uploads return (products_complete_image_upload). Returns the product as products_get does, with its \`links\`, the URLs to give the user to see it. An idempotencyKey makes a retry safe.`,
       bundle: "catalog",
+      effect: "additive",
+      reach: "public",
       aliases: [{ name: "create_product" }],
     },
   })
@@ -217,6 +219,8 @@ const update = storeProcedure
       title: "Update Product",
       description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, units, categoryIds, images) replaces the stored one. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview. Returns the product. ${LINKS_HELP}`,
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
       aliases: [{ name: "update_product", renamedArgs: { productId: "id" } }],
       annotations: { idempotentHint: true },
     },
@@ -274,6 +278,8 @@ const updateStatus = storeProcedure
       description:
         "Publish (active), unpublish (draft) or archive a product. Archiving takes it off the storefront and the catalog; its reservations are kept. Archiving first answers CONFIRMATION_REQUIRED with a preview. Returns the product's `links`: its dashboard page and, once active, its storefront page, the URLs to give the user.",
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
       aliases: [
         {
           name: "archive_product",
@@ -320,6 +326,8 @@ const remove = storeProcedure
       description:
         "Delete a product for good, with its units, category and accessory links. Refused while a current or future reservation holds one of its units. Archiving it (products_update_status) only takes it off the storefront. The first call answers CONFIRMATION_REQUIRED with a preview of what is deleted.",
       bundle: "catalog",
+      effect: "delete",
+      reach: "public",
     },
   })
   .route({ method: "DELETE", path: "/products/{id}" })
@@ -353,6 +361,7 @@ const duplicate = storeProcedure
       description:
         'Copy a product as a draft named "<name> (copy)", with its pricing, tiers, deposit, taxes, images and categories. Units are not copied: the copy counts the same stock without tracking units. Returns the new product, with its `links` (a draft has its dashboard page only).',
       bundle: "catalog",
+      effect: "additive",
     },
   })
   .route({ method: "POST", path: "/products/{id}/duplicate" })
@@ -372,6 +381,8 @@ const reorder = storeProcedure
       description:
         "Set the order of products, as the storefront and the dashboard show them. Send product ids in their new order: they swap among the places they already hold, and products left out keep theirs. Returns each sent product's new position.",
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
       annotations: { idempotentHint: true },
     },
   })
@@ -392,6 +403,7 @@ const createImageUploadProcedure = storeProcedure
       description:
         "Start uploading a product image (JPEG, PNG, GIF or WebP, 15 MB at most). Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. products_complete_image_upload finishes it, with the key.",
       bundle: "catalog",
+      effect: "additive",
     },
   })
   .route({ method: "POST", path: "/products/image-uploads" })
@@ -415,6 +427,7 @@ const completeImageUploadProcedure = storeProcedure
       description:
         "Finish a product image upload: checks the file that arrived at the key and returns its public `url`. That url is what a product's `images` take in products_create and products_update. A file that is not a valid image of the declared type is deleted and refused.",
       bundle: "catalog",
+      effect: "additive",
       annotations: { idempotentHint: true },
     },
   })
@@ -510,6 +523,8 @@ const createSeasonalPricingProcedure = storeProcedure
       title: "Create Seasonal Price",
       description: `Add a seasonal price to a duration product: a name, its days, its base price (for the product's base duration) and optional tiers. ${SEASON_HELP} Days that overlap another season are refused. Returns the season.`,
       bundle: "catalog",
+      effect: "additive",
+      reach: "public",
     },
   })
   .route({ method: "POST", path: "/products/{productId}/seasonal-pricings" })
@@ -526,6 +541,8 @@ const updateSeasonalPricingProcedure = storeProcedure
       title: "Update Seasonal Price",
       description: `Change a seasonal price. Send only the fields to change; rateTiers sent replaces the season's tiers. ${SEASON_HELP}`,
       bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
       annotations: { idempotentHint: true },
     },
   })
@@ -544,6 +561,8 @@ const duplicateSeasonalPricingProcedure = storeProcedure
       description:
         'Copy a seasonal price one year later, named "<name> (copie)", with its tiers. Refused when the new days overlap another season. Returns the new season.',
       bundle: "catalog",
+      effect: "additive",
+      reach: "public",
     },
   })
   .route({ method: "POST", path: "/products/seasonal-pricings/{id}/duplicate" })
@@ -562,6 +581,8 @@ const deleteSeasonalPricingProcedure = storeProcedure
       description:
         "Delete a seasonal price and its tiers: the product's own rates apply on its days again. The first call answers CONFIRMATION_REQUIRED with a preview.",
       bundle: "catalog",
+      effect: "delete",
+      reach: "public",
     },
   })
   .route({ method: "DELETE", path: "/products/seasonal-pricings/{id}" })

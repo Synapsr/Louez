@@ -54,6 +54,7 @@ export function createFixtureRouter() {
         title: "Remove Note",
         description: "Remove a note. A fixture for tests.",
         bundle: "catalog",
+        effect: "delete",
       },
     })
     .input(z.object({ id: z.string().min(1) }))
