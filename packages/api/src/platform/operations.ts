@@ -7,7 +7,7 @@ import {
   type ApiOperationScope,
   type Transaction,
 } from "@louez/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, lt, min, sql } from "drizzle-orm";
 
 import type { ScopedActor } from "./actor";
 import { enqueueEffects, type ApiEffect } from "./effects";
@@ -23,6 +23,20 @@ const MAX_IDEMPOTENCY_KEY_LENGTH = 100;
  * the call is taken as lost, its outcome unknown, and it is never run again.
  */
 export const OPERATION_LEASE_SECONDS = 300;
+
+/**
+ * How long a write's record is kept, from its last change: the log of what an
+ * agent did that the privacy policy promises. Its result may hold personal
+ * data.
+ */
+export const OPERATION_RETENTION_MONTHS = 12;
+/**
+ * The purge deletes this many days before the promised retention runs out,
+ * so a backlog or a cron outage of up to a week still keeps the promise.
+ */
+const OPERATION_PURGE_MARGIN_DAYS = 7;
+const PURGE_BATCH = 500;
+const PURGE_BUDGET_MS = 5_000;
 
 /** Filled by the operations middleware; a transport reads it after the call to hand out a receipt. */
 export interface OperationReceipt {
@@ -307,4 +321,53 @@ function targetIdOf(result: unknown): string | null {
     if (typeof id === "string" && id.length <= 64) return id;
   }
   return null;
+}
+
+/**
+ * Deletes the records added and last changed more than
+ * `OPERATION_RETENTION_MONTHS` ago, less `OPERATION_PURGE_MARGIN_DAYS`, on the
+ * database's clock, for the cron.
+ * It finds the scopes (stores, and the account scope) holding one, reading
+ * only the records old enough on `api_operations_store_created_idx`, the
+ * scope with the oldest first, then deletes oldest first, in batches, until
+ * none is left or the time budget is spent;
+ * the next run goes on. A key whose record is gone runs again; what the
+ * other readers lose is in docs/architecture/api-and-agents.md, "Retention".
+ */
+export async function purgeOperations(
+  options: { batch?: number; budgetMs?: number } = {},
+): Promise<number> {
+  const batch = options.batch ?? PURGE_BATCH;
+  const deadline = Date.now() + (options.budgetMs ?? PURGE_BUDGET_MS);
+  const cutoff = sql`NOW() - INTERVAL ${sql.raw(String(OPERATION_RETENTION_MONTHS))} MONTH + INTERVAL ${sql.raw(String(OPERATION_PURGE_MARGIN_DAYS))} DAY`;
+  // The scopes holding a record due on both dates, the one with the oldest
+  // due record first: a scope whose old records all changed since holds no
+  // turn, and the oldest backlog goes first.
+  const scopes = await db
+    .select({ storeId: apiOperations.storeId })
+    .from(apiOperations)
+    .where(and(lt(apiOperations.createdAt, cutoff), lt(apiOperations.updatedAt, cutoff)))
+    .groupBy(apiOperations.storeId)
+    .orderBy(asc(min(apiOperations.createdAt)));
+  let deleted = 0;
+  for (const { storeId } of scopes) {
+    for (;;) {
+      // A record changed since (a failed key run again) stays: its call may still run.
+      const [result] = await db
+        .delete(apiOperations)
+        .where(
+          and(
+            eq(apiOperations.storeId, storeId),
+            lt(apiOperations.createdAt, cutoff),
+            lt(apiOperations.updatedAt, cutoff),
+          ),
+        )
+        .orderBy(asc(apiOperations.createdAt))
+        .limit(batch);
+      deleted += result.affectedRows;
+      if (Date.now() >= deadline) return deleted;
+      if (result.affectedRows < batch) break;
+    }
+  }
+  return deleted;
 }

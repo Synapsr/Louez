@@ -73,7 +73,9 @@ marques du journal des écritures (`api_operations.setup_store_id`). Une écritu
 place marque la boutique dans sa propre transaction, en prenant son verrou, quand la boutique
 est hors ligne : la création, la mise en ligne elle-même, et chaque écriture validée avant,
 même si son enregistrement n'est pas encore final. Une écriture qui attend le verrou trouvera
-la boutique en ligne et ne compte pas ; un aperçu refusé non plus.
+la boutique en ligne et ne compte pas ; un aperçu refusé non plus. Le journal garde une écriture
+12 mois : une boutique mise en ligne plus de 12 mois après sa création compte les marques de ses
+12 derniers mois, et sa création peut y valoir `unknown`.
 
 | Propriété            | Sens                                                                                                                                                        |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |

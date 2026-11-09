@@ -13,6 +13,7 @@
     "./guarded-fetch": "./src/guarded-fetch.ts",
     "./oauth": "./src/oauth.ts",
     "./oauth-client-icon": "./src/oauth-client-icon.ts",
+    "./oauth-retention": "./src/oauth-retention.ts",
     "./platform-admin": "./src/platform-admin.ts",
     "./password": "./src/password.ts",
     "./password-policy": "./src/password-policy.ts",
