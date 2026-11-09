@@ -5,6 +5,7 @@ import { ORPCError } from "@orpc/server";
 
 import type { AccountActor } from "@louez/api/platform/actor";
 import { platformErrors } from "@louez/api/platform/errors";
+import { largeBodyBusy, takeLargeBodyPlace } from "@louez/api/platform/large-bodies";
 import { STORE_HEADER } from "@louez/api/platform/procedures";
 import { consumeRateLimit, rateLimitKey, rateLimitReached } from "@louez/api/platform/rate-limit";
 
@@ -75,12 +76,13 @@ type ReadBody =
  * Reads a POST body as JSON, streaming, at most `MAX_BODY_BYTES`. Past it,
  * and only when `oversized` is given, each further 4 MiB is counted first
  * (`oversized.count`, which throws when the rate limit refuses it), up to
- * `oversized.maxBytes`. A declared length is counted before anything is
- * read. The body is consumed here and handed to the SDK parsed.
+ * `oversized.maxBytes`, and the read takes a place among the large reads of
+ * the process (`oversized.enter`, which throws when none is free). A
+ * declared length is counted before anything is read. The body is consumed here and handed to the SDK parsed.
  */
 async function readJson(
   request: Request,
-  oversized?: { maxBytes: number; count: () => Promise<void> },
+  oversized?: { maxBytes: number; count: () => Promise<void>; enter: () => void },
 ): Promise<ReadBody> {
   if (request.method !== "POST" || !request.body) return { kind: "none" };
   const limit = oversized?.maxBytes ?? MAX_BODY_BYTES;
@@ -90,11 +92,16 @@ async function readJson(
   const chunks: Uint8Array[] = [];
   let size = 0;
   let counted = 0;
+  let entered = false;
   /** Counts each 4 MiB step past the first that `bytes` reach, once. */
   const countUpTo = async (bytes: number) => {
     if (!oversized) return;
     const steps = Math.ceil(bytes / MAX_BODY_BYTES) - 1;
     for (; counted < steps; counted++) await oversized.count();
+    if (steps > 0 && !entered) {
+      oversized.enter();
+      entered = true;
+    }
   };
   try {
     if (Number.isFinite(declared)) await countUpTo(declared);
@@ -195,6 +202,21 @@ export async function handleMcpRequest(
   request: Request,
   options: McpHttpOptions,
 ): Promise<Response> {
+  // A large body holds its place among the process's large reads until the
+  // request is answered (platform/large-bodies.ts, shared with /api/v1).
+  const place: { release?: () => void } = {};
+  try {
+    return await serveMcpRequest(request, options, place);
+  } finally {
+    place.release?.();
+  }
+}
+
+async function serveMcpRequest(
+  request: Request,
+  options: McpHttpOptions,
+  place: { release?: () => void },
+): Promise<Response> {
   // Who calls comes first: an anonymous request is refused before its body
   // is read.
   const challenge = bearerChallenge(request, options.resourceMetadataUrl);
@@ -226,7 +248,15 @@ export async function handleMcpRequest(
     body = await readJson(
       request,
       largest > MAX_BODY_BYTES
-        ? { maxBytes: largest, count: () => count(OVERSIZED_BODY_WEIGHT) }
+        ? {
+            maxBytes: largest,
+            count: () => count(OVERSIZED_BODY_WEIGHT),
+            enter: () => {
+              const release = takeLargeBodyPlace();
+              if (!release) throw largeBodyBusy();
+              place.release = release;
+            },
+          }
         : undefined,
     );
     if (
@@ -288,5 +318,8 @@ export async function handleMcpRequest(
   const handler = createMcpHandler(() => createMcpServer(ctx, options.deps, options.procedures), {
     legacy: "stateless",
   });
-  return handler.fetch(request, body.kind === "json" ? { parsedBody: body.value } : undefined);
+  return await handler.fetch(
+    request,
+    body.kind === "json" ? { parsedBody: body.value } : undefined,
+  );
 }

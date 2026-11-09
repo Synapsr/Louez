@@ -6,6 +6,7 @@ import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
 import type { BaseContext } from "../context";
 import { resolveAccountActor } from "./actor";
+import { largeBodyBusy, takeLargeBodyPlace } from "./large-bodies";
 import type { ApiErrorData } from "./errors";
 import type { ExposedProcedure } from "./exposure";
 import type { OperationReceipt } from "./operations";
@@ -60,13 +61,6 @@ export function routeBodyLimits(procedures: readonly ExposedProcedure[]): RouteB
   return limits;
 }
 
-/**
- * Requests reading a body past `OPENAPI_MAX_BODY_BYTES` at once in this
- * process, each until it is answered; past it, 503 and a retry.
- */
-export const MAX_LARGE_BODY_READS = 4;
-let largeBodyReads = 0;
-
 const errorResponse = (error: ORPCError<string, unknown>, headers?: HeadersInit) =>
   Response.json(error.toJSON(), { status: error.status, headers });
 
@@ -78,15 +72,6 @@ function tooLarge(maxBytes: number): Response {
     }),
   );
 }
-
-const largeBodyBusy = () =>
-  errorResponse(
-    new ORPCError<"SERVICE_UNAVAILABLE", ApiErrorData>("SERVICE_UNAVAILABLE", {
-      message: "Too many large requests are being read right now. Try again in a few seconds.",
-      data: { code: "LARGE_BODY_BUSY", retryable: true },
-    }),
-    { "Retry-After": "1" },
-  );
 
 /**
  * The request with its body read, streaming, at most `maxBytes`: a body past
@@ -297,9 +282,10 @@ export async function handleOpenApiRequest(
     options.authenticate ??
     ((headers: Headers) => resolveAccountActor({ transport: "openapi", headers }));
 
-  // Past 2 MiB, only a known caller is read, and only a few at once: an
-  // anonymous or refused request is answered after 2 MiB at most.
-  let holdsPlace = false;
+  // Past 2 MiB, only a known caller is read, and only a few at once, with
+  // /api/mcp (platform/large-bodies.ts): an anonymous or refused request is
+  // answered after 2 MiB at most.
+  const place: { release?: () => void } = {};
   const enterLarge = async (): Promise<Response | null> => {
     try {
       await authenticate(incoming.headers);
@@ -307,9 +293,9 @@ export async function handleOpenApiRequest(
       if (error instanceof ORPCError) return errorResponse(error);
       throw error;
     }
-    if (largeBodyReads >= MAX_LARGE_BODY_READS) return largeBodyBusy();
-    largeBodyReads++;
-    holdsPlace = true;
+    const release = takeLargeBodyPlace();
+    if (!release) return errorResponse(largeBodyBusy(), { "Retry-After": "1" });
+    place.release = release;
     return null;
   };
 
@@ -333,6 +319,6 @@ export async function handleOpenApiRequest(
     }
     return response;
   } finally {
-    if (holdsPlace) largeBodyReads--;
+    place.release?.();
   }
 }

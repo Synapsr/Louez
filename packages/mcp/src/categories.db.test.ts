@@ -517,4 +517,46 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
     );
     assert.equal(upload.status, 429);
   });
+
+  test("over HTTP, large reads share four places with /api/v1; small requests never wait", async () => {
+    const { MAX_LARGE_BODY_READS, takeLargeBodyPlace } =
+      await import("@louez/api/platform/large-bodies");
+    const authorization = await key();
+    const upload = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "categories_upload_image",
+        arguments: { contentBase64: Buffer.alloc(4.5 * 1024 * 1024).toString("base64") },
+      },
+    });
+
+    // Every place taken, as four large /api/v1 reads would hold them.
+    const held = Array.from({ length: MAX_LARGE_BODY_READS }, () => takeLargeBodyPlace());
+    assert.ok(held.every(Boolean));
+    assert.equal(takeLargeBodyPlace(), null);
+    try {
+      const busy = await mcpHttp(authorization, upload);
+      assert.equal(busy.status, 503);
+      assert.equal(busy.headers.get("retry-after"), "1");
+      const error = (await busy.json()) as { data: { code: string; retryable: boolean } };
+      assert.deepEqual([error.data.code, error.data.retryable], ["LARGE_BODY_BUSY", true]);
+
+      const ping = await mcpHttp(
+        authorization,
+        JSON.stringify({ jsonrpc: "2.0", id: 2, method: "ping" }),
+      );
+      assert.equal(ping.status, 200, "a small request does not wait for a place");
+    } finally {
+      for (const release of held) release?.();
+    }
+
+    // Free again: the large call goes through, and gives its place back once answered.
+    const done = await mcpHttp(authorization, upload);
+    assert.equal(done.status, 200);
+    const after = Array.from({ length: MAX_LARGE_BODY_READS }, () => takeLargeBodyPlace());
+    assert.ok(after.every(Boolean), "every place is free again");
+    for (const release of after) release?.();
+  });
 });

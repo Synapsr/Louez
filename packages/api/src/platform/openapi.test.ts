@@ -279,7 +279,7 @@ describe("the /api/v1 body cap", () => {
     const exposure = createExposure(appRouter);
     const handler = openapi.createOpenApiHandler(exposure.router, { docs: false });
     limits = openapi.routeBodyLimits(exposure.procedures);
-    maxLargeReads = openapi.MAX_LARGE_BODY_READS;
+    ({ MAX_LARGE_BODY_READS: maxLargeReads } = await import("./large-bodies"));
     serve = (request) =>
       openapi.handleOpenApiRequest(handler, request, {
         ports: {} as import("./ports").ApiPorts,
