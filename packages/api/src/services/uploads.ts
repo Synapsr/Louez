@@ -209,8 +209,12 @@ export async function completeImageUpload(
 /** Time given to each request of an import and to reading its body. */
 const IMPORT_TIMEOUT_MS = 10_000;
 const IMPORT_MAX_REDIRECTS = 3;
-/** Imports downloading at once in this process; each holds up to the kind's limit. */
-const MAX_IMPORTS_IN_FLIGHT = 4;
+/**
+ * Imports downloading at once in this process; each holds up to the kind's
+ * limit. An import keeps its place until its transport calls have settled,
+ * past its own deadline: a DNS lookup that hangs is still running.
+ */
+export const MAX_IMPORTS_IN_FLIGHT = 4;
 let importsInFlight = 0;
 
 /**
@@ -240,13 +244,23 @@ function decodeInline(
     declared ??= baseContentType(dataUrl[1]) || null;
   }
   text = text.replace(/\s+/g, "");
-  if (!/^[A-Za-z0-9+/_-]*={0,2}$/.test(text) || text.length % 4 === 1) {
+  const match = /^([A-Za-z0-9+/_-]*)(={0,2})$/.exec(text);
+  const data = match?.[1] ?? "";
+  const padding = match?.[2].length ?? 0;
+  // Padding only completes the last group of four: `==` after a full group,
+  // or a group of one character, is no base64.
+  if (
+    !match ||
+    data.length % 4 === 1 ||
+    (padding > 0 && (text.length % 4 !== 0 || (4 - (data.length % 4)) % 4 !== padding))
+  ) {
     throw uploadErrors.base64Invalid();
   }
-  const padding = text.endsWith("==") ? 2 : text.endsWith("=") ? 1 : 0;
-  const size = Math.floor((text.length * 3) / 4) - padding;
+  const size = Math.floor((data.length * 3) / 4);
   if (size > maxBytes) throw uploadErrors.inlineTooLarge(size, maxBytes);
-  const decoded = Buffer.from(text, "base64");
+  const decoded = Buffer.from(data, "base64");
+  if (decoded.byteLength > maxBytes)
+    throw uploadErrors.inlineTooLarge(decoded.byteLength, maxBytes);
   // A view of the decoded bytes, not a copy.
   return {
     bytes: new Uint8Array(decoded.buffer, decoded.byteOffset, decoded.byteLength),
@@ -258,18 +272,24 @@ function decodeInline(
 async function download(imageUrl: string, maxBytes: number): Promise<Uint8Array> {
   if (importsInFlight >= MAX_IMPORTS_IN_FLIGHT) throw uploadErrors.importBusy();
   importsInFlight++;
+  const running: Promise<unknown>[] = [];
   try {
     const result = await guardedGet(imageUrl, {
       accept: IMAGE_UPLOAD_MIME_TYPES.join(","),
       maxBytes,
       timeoutMs: IMPORT_TIMEOUT_MS,
       maxRedirects: IMPORT_MAX_REDIRECTS,
+      track: (work) => running.push(work),
     });
     if (result.ok) return result.body;
     if (result.reason === "too_large") throw uploadErrors.tooLarge(null, maxBytes);
     throw uploadErrors.urlUnreachable(result.reason, result.status ?? null);
   } finally {
-    importsInFlight--;
+    // The answer may come at the deadline while a lookup still runs: the
+    // place is freed once every call this import started has settled.
+    void Promise.allSettled(running).then(() => {
+      importsInFlight--;
+    });
   }
 }
 
@@ -311,6 +331,19 @@ export async function uploadImage(
   }
 
   const key = `${folderOf(input.storeId, input.kind)}${nanoid()}.${EXTENSIONS[found]}`;
-  await storage.put(key, bytes, found);
-  return completeImageUpload(storage, { storeId: input.storeId, kind: input.kind, key });
+  try {
+    await storage.put(key, bytes, found);
+    return await completeImageUpload(storage, {
+      storeId: input.storeId,
+      kind: input.kind,
+      key,
+    });
+  } catch (error) {
+    // Nobody else knows this key: a failed upload leaves nothing behind, so
+    // a retry does not add a second object.
+    await storage.delete(key).catch((cleanup: unknown) => {
+      console.error("An image upload could not delete its object after failing:", key, cleanup);
+    });
+    throw error;
+  }
 }

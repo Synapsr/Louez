@@ -126,4 +126,28 @@ describe("guardedGet", () => {
       reason: "timeout",
     });
   });
+
+  test("hands its caller the transport call it leaves running at the deadline", async () => {
+    let settle: (response: Response) => void = () => {};
+    const hung: GuardedFetch = () =>
+      new Promise<Response>((resolve) => {
+        settle = resolve;
+      });
+    const tracked: Promise<unknown>[] = [];
+    const result = await guardedGet("https://slow.example.org/a.png", {
+      ...options(hung),
+      track: (work) => tracked.push(work),
+    });
+    assert.deepEqual(result, { ok: false, reason: "timeout" });
+    assert.equal(tracked.length, 1);
+    let settled = false;
+    void Promise.allSettled(tracked).then(() => {
+      settled = true;
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(settled, false, "the lookup still runs after the answer");
+    settle(new Response(null, { status: 404 }));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(settled, true);
+  });
 });

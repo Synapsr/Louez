@@ -11,11 +11,11 @@ import * as guardedFetch from "@louez/auth/guarded-fetch";
  */
 export function createTestImageFetch(): {
   asked: string[];
-  serve: (next: Record<string, () => Response>) => void;
+  serve: (next: Record<string, () => Response | Promise<Response>>) => void;
   /** The module's exports, its guarded GET bound to this transport. */
   namedExports: Record<string, unknown>;
 } {
-  let routes: Record<string, () => Response> = {};
+  let routes: Record<string, () => Response | Promise<Response>> = {};
   const asked: string[] = [];
 
   const transport: GuardedFetch = async (input) => {
@@ -31,7 +31,7 @@ export function createTestImageFetch(): {
   return {
     asked,
     /** What each URL answers; any other URL answers 404. */
-    serve(next: Record<string, () => Response>) {
+    serve(next: Record<string, () => Response | Promise<Response>>) {
       routes = next;
       asked.length = 0;
     },

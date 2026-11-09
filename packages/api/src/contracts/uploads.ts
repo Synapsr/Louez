@@ -89,6 +89,9 @@ export const completeImageUploadOutput = z.object({
   size: z.number().int(),
 });
 
+/** Answers of an image host that may succeed on a later try. */
+const TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
 export const uploadErrors = {
   kindNotAllowed: (kind: string) =>
     apiError("BAD_REQUEST", "UPLOAD_KIND_NOT_ALLOWED", {
@@ -147,7 +150,11 @@ export const uploadErrors = {
       message:
         "Louez could not download an image at this URL. It must be a public HTTPS address that answers 200 with the image within 10 seconds; private and local addresses, plain HTTP and more than 3 redirects are refused. If the image is only in your workspace, send its bytes as contentBase64.",
       i18nKey: "errors.invalidData",
-      retryable: reason === "timeout",
+      // A slow or overloaded host may answer later; a refused address, a
+      // URL that is not HTTPS or a missing image will not.
+      retryable:
+        reason === "timeout" ||
+        (reason === "status" && status !== null && TRANSIENT_STATUSES.has(status)),
       details: { reason, status },
     }),
   importBusy: () =>

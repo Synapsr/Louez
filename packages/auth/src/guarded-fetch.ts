@@ -31,6 +31,13 @@ export interface GuardedGetOptions {
   /** Redirects followed at most. */
   maxRedirects: number;
   fetchResource?: GuardedFetch;
+  /**
+   * Called with each piece of work the GET starts that may outlive its
+   * deadline: a transport call, whose DNS lookup no signal cancels, and a
+   * body read. A caller that bounds how many GETs run at once holds its
+   * place until all of them have settled, not only until the answer.
+   */
+  track?: (work: Promise<unknown>) => void;
 }
 
 /** Why a guarded GET got no body. */
@@ -133,14 +140,15 @@ export async function guardedGet(
     const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
     timeout.unref?.();
     try {
-      const response = await withDeadline(
-        fetchResource(current, {
+      const target = current;
+      const request = (async () =>
+        fetchResource(target, {
           headers: { Accept: options.accept },
           redirect: "manual",
           signal: controller.signal,
-        }),
-        options.timeoutMs,
-      );
+        }))();
+      options.track?.(request);
+      const response = await withDeadline(request, options.timeoutMs);
       if (isTimedOut(response)) return { ok: false, reason: "timeout" };
       if (REDIRECT_STATUSES.has(response.status)) {
         await response.body?.cancel().catch(() => {});
@@ -153,7 +161,9 @@ export async function guardedGet(
         await response.body?.cancel().catch(() => {});
         return { ok: false, reason: "status", status: response.status };
       }
-      const body = await withDeadline(readLimited(response, options.maxBytes), options.timeoutMs);
+      const read = readLimited(response, options.maxBytes);
+      options.track?.(read);
+      const body = await withDeadline(read, options.timeoutMs);
       if (isTimedOut(body) || body === TOO_LARGE) {
         controller.abort();
         return { ok: false, reason: isTimedOut(body) ? "timeout" : "too_large" };
