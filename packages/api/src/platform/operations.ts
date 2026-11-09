@@ -327,9 +327,10 @@ function targetIdOf(result: unknown): string | null {
  * Deletes the records added and last changed more than
  * `OPERATION_RETENTION_MONTHS` ago, less `OPERATION_PURGE_MARGIN_DAYS`, on the
  * database's clock, for the cron.
- * It finds the scopes (stores, and the account scope) holding one with a
- * single probe each on `api_operations_store_created_idx`, then deletes
- * oldest first, in batches, until none is left or the time budget is spent;
+ * It finds the scopes (stores, and the account scope) holding one, reading
+ * only the records old enough on `api_operations_store_created_idx`, the
+ * scope with the oldest first, then deletes oldest first, in batches, until
+ * none is left or the time budget is spent;
  * the next run goes on. A key whose record is gone runs again; what the
  * other readers lose is in docs/architecture/api-and-agents.md, "Retention".
  */
@@ -339,12 +340,14 @@ export async function purgeOperations(
   const batch = options.batch ?? PURGE_BATCH;
   const deadline = Date.now() + (options.budgetMs ?? PURGE_BUDGET_MS);
   const cutoff = sql`NOW() - INTERVAL ${sql.raw(String(OPERATION_RETENTION_MONTHS))} MONTH + INTERVAL ${sql.raw(String(OPERATION_PURGE_MARGIN_DAYS))} DAY`;
-  // The scope with the oldest record first, so the oldest backlog goes first.
+  // The scopes holding a record due on both dates, the one with the oldest
+  // due record first: a scope whose old records all changed since holds no
+  // turn, and the oldest backlog goes first.
   const scopes = await db
     .select({ storeId: apiOperations.storeId })
     .from(apiOperations)
+    .where(and(lt(apiOperations.createdAt, cutoff), lt(apiOperations.updatedAt, cutoff)))
     .groupBy(apiOperations.storeId)
-    .having(lt(min(apiOperations.createdAt), cutoff))
     .orderBy(asc(min(apiOperations.createdAt)));
   let deleted = 0;
   for (const { storeId } of scopes) {

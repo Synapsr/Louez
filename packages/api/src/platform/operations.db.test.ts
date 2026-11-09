@@ -144,6 +144,17 @@ describe(
       assert.deepEqual(await remaining(), [newerA]);
     });
 
+    test("a scope whose old records all changed since takes no turn", async () => {
+      const changedA = (await write(STORE_A)).id;
+      const dueB = (await write(STORE_B)).id;
+      await age(changedA, 40, 1);
+      await age(dueB, 13);
+
+      // No time left after the first batch: it is the due record's scope.
+      assert.equal(await operations.purgeOperations({ budgetMs: 0 }), 1);
+      assert.deepEqual(await remaining(), [changedA]);
+    });
+
     test("a key whose record is gone runs again", async () => {
       const first = await write(STORE_A, "op-key-1");
       assert.equal(first.ran, 1);
