@@ -53,11 +53,12 @@ export function startHandoff(context: ProductContext, kind: HandoffKind): Promis
 const get = storeProcedure
   .meta({
     capability: "handoffs.get",
-    scope: { domain: "settings", level: "read", anyOf: ["billing"] },
+    // Opened by any domain a kind belongs to; the handler checks the step's own.
+    scope: { domain: "settings", level: "read", anyOf: ["billing", "team"] },
     mcp: {
       name: "handoffs_get",
       title: "Get Handoff Status",
-      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; the tool that started it makes a new one) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status). Never returns the link again. Needs read access to the step's domain: settings for Stripe, billing for the billing card.`,
+      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; the tool that started it makes a new one) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status). Never returns the link again. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval.`,
       bundle: "daily",
       annotations: { idempotentHint: true },
     },

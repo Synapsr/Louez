@@ -9726,7 +9726,6 @@
       "approve": "Setujui undangan",
       "decline": "Tolak",
       "error": {
-        "changed": "Ada yang berubah sejak agen Anda meminta: alamat ini kini punya akun Louez, undangan, atau tempat di tim. Minta agen Anda untuk mengajukannya lagi.",
         "failed": "Undangan tidak dapat dikirim. Muat ulang halaman ini untuk melihat statusnya."
       },
       "done": {
@@ -9749,6 +9748,10 @@
         "pending": {
           "title": "Belum dijawab",
           "description": "Buka tautan lagi untuk menyetujui atau menolak undangan."
+        },
+        "changed": {
+          "title": "Ada yang berubah sejak agen Anda meminta",
+          "description": "Alamat ini kini punya akun Louez, undangan, atau tempat di tim. Minta agen Anda untuk mengajukannya lagi."
         }
       }
     }

@@ -9726,7 +9726,6 @@
       "approve": "Uitnodiging goedkeuren",
       "decline": "Weigeren",
       "error": {
-        "changed": "Er is iets veranderd sinds je agent het vroeg: het adres heeft nu een Louez-account, een uitnodiging of een plek in het team. Vraag je agent het opnieuw aan te vragen.",
         "failed": "De uitnodiging kon niet worden verstuurd. Laad de pagina opnieuw om te zien hoe het ervoor staat."
       },
       "done": {
@@ -9749,6 +9748,10 @@
         "pending": {
           "title": "Nog niet beantwoord",
           "description": "Open de link opnieuw om de uitnodiging goed te keuren of te weigeren."
+        },
+        "changed": {
+          "title": "Er is iets veranderd sinds je agent het vroeg",
+          "description": "Het adres heeft nu een Louez-account, een uitnodiging of een plek in het team. Vraag je agent het opnieuw aan te vragen."
         }
       }
     }

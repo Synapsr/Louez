@@ -9726,7 +9726,6 @@
       "approve": "Approve the invitation",
       "decline": "Decline",
       "error": {
-        "changed": "Things changed since your agent asked: the address now has a Louez account, an invitation or a place in the team. Ask your agent to request it again.",
         "failed": "The invitation could not go out. Reload this page to see where it stands."
       },
       "done": {
@@ -9749,6 +9748,10 @@
         "pending": {
           "title": "Not answered yet",
           "description": "Open the link again to approve or decline the invitation."
+        },
+        "changed": {
+          "title": "Things changed since your agent asked",
+          "description": "The address now has a Louez account, an invitation or a place in the team. Ask your agent to request it again."
         }
       }
     }

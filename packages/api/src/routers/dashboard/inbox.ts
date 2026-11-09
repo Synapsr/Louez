@@ -1,3 +1,4 @@
+import type { HandoffKind } from "../../contracts/handoffs";
 import {
   INBOX_ACKNOWLEDGE_MAX,
   INBOX_PAGE_DEFAULT,
@@ -10,6 +11,7 @@ import {
 } from "../../contracts/inbox";
 import { allows, type ApiDomain } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
+import { HANDOFF_KIND_DOMAINS } from "../../services/handoffs";
 import {
   INBOX_ACKNOWLEDGEMENT_RETENTION_DAYS,
   INBOX_HOLD_BACK_MS,
@@ -47,7 +49,12 @@ const reads = (context: ProductContext): InboxRights =>
   Object.fromEntries(READ_DOMAINS.map((domain) => [domain, mayRead(context, domain)]));
 
 /** Beside reservations, the domains whose read shows an item on their own. */
-const OPENED_BY = ["settings", "integrations", "team"] as const satisfies readonly ApiDomain[];
+const OPENED_BY = [
+  "settings",
+  "integrations",
+  "billing",
+  "team",
+] as const satisfies readonly ApiDomain[];
 /**
  * Beside reservations, every domain an item type is acknowledged under (its
  * first, INBOX_ITEM_DOMAINS): a key that may change payments acknowledges a
@@ -57,6 +64,7 @@ const ACKNOWLEDGED_UNDER = [
   "payments",
   "settings",
   "integrations",
+  "billing",
   "team",
 ] as const satisfies readonly ApiDomain[];
 
@@ -126,6 +134,13 @@ const acknowledge = storeProcedure
               ? mayWrite(first)
               : mayWrite("reservations") || ACKNOWLEDGED_UNDER.some(mayWrite))
           );
+        },
+        // A handoff is acknowledged under its kind's domain.
+        refusedFor: (item) => {
+          if (item.type !== "handoff_waiting") return null;
+          const kind = item.details.kind as HandoffKind;
+          const domain = HANDOFF_KIND_DOMAINS[kind];
+          return domain && !mayWrite(domain) ? domain : null;
         },
       },
       input,

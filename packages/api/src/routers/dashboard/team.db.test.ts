@@ -79,6 +79,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
   let grants: typeof import("../../services/agent-grants");
   let router: typeof import("./team").dashboardTeamRouter;
   let handoffsRouter: typeof import("./handoffs").dashboardHandoffsRouter;
+  let issueHandoff: typeof import("../../services/handoffs").issueHandoff;
   let inboxRouter: typeof import("./inbox").dashboardInboxRouter;
 
   let dispatched: string[] = [];
@@ -114,6 +115,7 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
     grants = await import("../../services/agent-grants");
     ({ dashboardTeamRouter: router } = await import("./team"));
     ({ dashboardHandoffsRouter: handoffsRouter } = await import("./handoffs"));
+    ({ issueHandoff } = await import("../../services/handoffs"));
     ({ dashboardInboxRouter: inboxRouter } = await import("./inbox"));
 
     await louezDb.db.insert(louezDb.users).values([
@@ -684,6 +686,97 @@ describe("team procedures (database)", { skip: skipWithoutTestDatabase() }, () =
       .set({ createdAt: new Date(Date.now() - 25 * 3_600_000) })
       .where(orm.eq(louezDb.apiEffects.type, "team.invitationEmail"));
     assert.equal((await run("invite", { email: "new@tm.test" }, session())).outcome, "invited");
+  });
+
+  test("Codex's scenario: an expired approval asked again counts toward the cap", async () => {
+    const context = await apiKey();
+    const first = await run("invite", { email: "crew-a@tm.test" }, context());
+    await louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(orm.eq(louezDb.apiHandoffs.id, first.approval?.handoff.id ?? ""));
+    for (let index = 0; index < MAX_OPEN_INVITATION_APPROVALS; index += 1) {
+      await run("invite", { email: `crew-b${index}@tm.test` }, context());
+    }
+    // Ten are open: bringing the expired one back would make eleven.
+    await rejects(run("invite", { email: "crew-a@tm.test" }, context()), "TEAM_APPROVALS_FULL");
+    const open = (await handoffs()).filter((row) => row.expiresAt.getTime() > Date.now());
+    assert.equal(open.length, MAX_OPEN_INVITATION_APPROVALS);
+  });
+
+  test("a key with team write alone follows its approval: handoffs_get, the inbox and its acknowledgement", async () => {
+    const none = {
+      reservations: "none",
+      products: "none",
+      customers: "none",
+      categories: "none",
+      payments: "none",
+      analytics: "none",
+      settings: "none",
+    } as const;
+    const teamOnly = await apiKey({ permissions: { ...none, team: "write" } });
+    const asked = await run("invite", { email: "new@tm.test" }, teamOnly());
+    const id = asked.approval?.handoff.id ?? "";
+    assert.equal((await readHandoff(id, teamOnly())).status, "pending");
+
+    // A Stripe step of the same store stays settings' business.
+    const stripe = await issueHandoff(
+      {
+        storeId: STORE,
+        userId: OWNER,
+        credentialKind: "session",
+        credentialId: null,
+        clientName: null,
+      },
+      "stripe_connect_onboarding",
+      { urls: ports.urls },
+    );
+    await rejects(readHandoff(stripe.handoff.id, teamOnly()), "PERMISSION_DENIED");
+
+    // Both have waited more than an hour.
+    await louezDb.db
+      .update(louezDb.apiHandoffs)
+      .set({ linkIssuedAt: new Date(Date.now() - 2 * 3_600_000) });
+    type Item = { id: string; type: string; occurredAt: Date; details: { kind?: string } };
+    const waiting = async (context: BaseContext) =>
+      (
+        (await orpc.call(inboxRouter.list, {}, {
+          context,
+          path: ["dashboard", "inbox", "list"],
+        })) as { items: Item[] }
+      ).items.filter((item) => item.type === "handoff_waiting");
+
+    const items = await waiting(teamOnly());
+    assert.deepEqual(
+      items.map((item) => item.details.kind),
+      ["team_invitation"],
+      "the approval, not the Stripe step",
+    );
+    const settingsOnly = await apiKey({ permissions: { ...none, settings: "read" } });
+    assert.deepEqual(
+      (await waiting(settingsOnly())).map((item) => item.details.kind),
+      ["stripe_connect_onboarding"],
+    );
+
+    const acknowledged = (await orpc.call(
+      inboxRouter.acknowledge,
+      { items: [{ id: items[0]?.id ?? "", occurredAt: items[0]?.occurredAt ?? new Date() }] },
+      { context: teamOnly(), path: ["dashboard", "inbox", "acknowledge"] },
+    )) as { acknowledged: number };
+    assert.equal(acknowledged.acknowledged, 1);
+
+    // Reading the team is not changing it: a team read key acknowledges nothing.
+    const teamRead = await apiKey({ permissions: { ...none, team: "read" } });
+    const [stripeItem] = await waiting((await apiKey({ permissions: { ...none, settings: "read", team: "read" } }))());
+    assert.equal(stripeItem?.details.kind, "stripe_connect_onboarding");
+    await rejects(
+      orpc.call(
+        inboxRouter.acknowledge,
+        { items: [{ id: stripeItem?.id ?? "", occurredAt: stripeItem?.occurredAt ?? new Date() }] },
+        { context: teamRead(), path: ["dashboard", "inbox", "acknowledge"] },
+      ),
+      "PERMISSION_DENIED",
+    );
   });
 
   test("an approval whose address got an account since ends as changed, and creates nothing", async () => {

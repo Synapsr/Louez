@@ -9726,7 +9726,6 @@
       "approve": "Einladung genehmigen",
       "decline": "Ablehnen",
       "error": {
-        "changed": "Seit der Anfrage Ihres Agenten hat sich etwas geändert: Die Adresse hat jetzt ein Louez-Konto, eine Einladung oder einen Platz im Team. Bitten Sie Ihren Agenten, die Anfrage zu wiederholen.",
         "failed": "Die Einladung konnte nicht verschickt werden. Laden Sie die Seite neu, um den Stand zu sehen."
       },
       "done": {
@@ -9749,6 +9748,10 @@
         "pending": {
           "title": "Noch nicht beantwortet",
           "description": "Öffnen Sie den Link erneut, um die Einladung zu genehmigen oder abzulehnen."
+        },
+        "changed": {
+          "title": "Seit der Anfrage Ihres Agenten hat sich etwas geändert",
+          "description": "Die Adresse hat jetzt ein Louez-Konto, eine Einladung oder einen Platz im Team. Bitten Sie Ihren Agenten, die Anfrage zu wiederholen."
         }
       }
     }

@@ -54,7 +54,9 @@ export default async function HandoffDonePage({ params }: { params: Promise<{ id
       status === "failed"
         ? row.failureCode === "declined"
           ? "declined"
-          : "failed"
+          : row.failureCode === "request_changed"
+            ? "changed"
+            : "failed"
         : status === "opened"
           ? "pending"
           : status;

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { handoffPath, readHandoffLink } from "@louez/api/services/handoffs";
+import { handoffDonePath, handoffPath, readHandoffLink } from "@louez/api/services/handoffs";
 import { Button } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
@@ -41,6 +41,10 @@ export default async function HandoffPage({
 
   const t = await getTranslations("handoff");
   const checked = await readHandoffLink(token, userId);
+  // An invitation's approval that ended: its result says how, and why.
+  if (!checked.ok && checked.reason === "finished" && checked.row?.kind === "team_invitation") {
+    redirect(handoffDonePath(checked.row.id));
+  }
   if (!checked.ok) {
     return (
       <HandoffCard
@@ -66,7 +70,7 @@ export default async function HandoffPage({
         action={`${path}/decide`}
         store={checked.store.name}
         invitation={payload}
-        error={query.error === "changed" ? "changed" : query.error ? "failed" : null}
+        failed={query.error !== undefined}
       />
     );
   }

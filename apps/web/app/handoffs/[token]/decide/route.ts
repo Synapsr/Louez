@@ -43,7 +43,9 @@ export async function POST(
   } catch (error) {
     const code = (error as { data?: { code?: unknown } }).data?.code;
     if (code === "UNAUTHENTICATED") return toLogin(page, 303);
-    // The page says where the link stands now: answered, expired, or changed.
-    return redirectTo(`${page}?error=${code === "TEAM_APPROVAL_CHANGED" ? "changed" : "failed"}`, 303);
+    // An approval the answer ended (changed since, no seat, the day's
+    // e-mails spent) sends the page on to its result, which says why; any
+    // other refusal is shown by the page itself.
+    return redirectTo(`${page}?error=failed`, 303);
   }
 }

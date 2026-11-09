@@ -9726,7 +9726,6 @@
       "approve": "Zatwierdź zaproszenie",
       "decline": "Odrzuć",
       "error": {
-        "changed": "Coś się zmieniło od prośby agenta: adres ma teraz konto Louez, zaproszenie lub miejsce w zespole. Poproś agenta, aby ponowił prośbę.",
         "failed": "Nie udało się wysłać zaproszenia. Odśwież stronę, aby zobaczyć jego stan."
       },
       "done": {
@@ -9749,6 +9748,10 @@
         "pending": {
           "title": "Jeszcze bez odpowiedzi",
           "description": "Otwórz link ponownie, aby zatwierdzić lub odrzucić zaproszenie."
+        },
+        "changed": {
+          "title": "Coś się zmieniło od prośby agenta",
+          "description": "Adres ma teraz konto Louez, zaproszenie lub miejsce w zespole. Poproś agenta, aby ponowił prośbę."
         }
       }
     }

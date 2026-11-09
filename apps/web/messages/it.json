@@ -9726,7 +9726,6 @@
       "approve": "Approva l’invito",
       "decline": "Rifiuta",
       "error": {
-        "changed": "Qualcosa è cambiato dalla richiesta del tuo agente: l’indirizzo ora ha un account Louez, un invito o un posto nel team. Chiedi al tuo agente di ripetere la richiesta.",
         "failed": "Non è stato possibile inviare l’invito. Ricarica la pagina per vedere a che punto è."
       },
       "done": {
@@ -9749,6 +9748,10 @@
         "pending": {
           "title": "Nessuna risposta per ora",
           "description": "Riapri il link per approvare o rifiutare l’invito."
+        },
+        "changed": {
+          "title": "Qualcosa è cambiato dalla richiesta del tuo agente",
+          "description": "L’indirizzo ora ha un account Louez, un invito o un posto nel team. Chiedi al tuo agente di ripetere la richiesta."
         }
       }
     }

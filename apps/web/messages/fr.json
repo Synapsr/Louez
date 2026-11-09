@@ -9726,7 +9726,6 @@
       "approve": "Approuver l’invitation",
       "decline": "Refuser",
       "error": {
-        "changed": "La situation a changé depuis la demande de votre agent : l’adresse a maintenant un compte Louez, une invitation ou une place dans l’équipe. Demandez à votre agent de refaire la demande.",
         "failed": "L’invitation n’a pas pu partir. Rechargez la page pour voir où elle en est."
       },
       "done": {
@@ -9749,6 +9748,10 @@
         "pending": {
           "title": "Pas encore de réponse",
           "description": "Rouvrez le lien pour approuver ou refuser l’invitation."
+        },
+        "changed": {
+          "title": "La situation a changé depuis la demande de votre agent",
+          "description": "L’adresse a maintenant un compte Louez, une invitation ou une place dans l’équipe. Demandez à votre agent de refaire la demande."
         }
       }
     }

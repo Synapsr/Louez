@@ -10,8 +10,8 @@ interface TeamInvitationApprovalProps {
   action: string;
   store: string;
   invitation: ApiHandoffPayload;
-  /** The last answer could not be applied: things changed, or it failed. */
-  error: "changed" | "failed" | null;
+  /** The last answer could not be applied. */
+  failed: boolean;
 }
 
 /**
@@ -22,7 +22,7 @@ export const TeamInvitationApproval = ({
   action,
   store,
   invitation,
-  error,
+  failed,
 }: TeamInvitationApprovalProps) => {
   const t = useTranslations("handoff.team_invitation");
   const { email } = invitation;
@@ -31,7 +31,7 @@ export const TeamInvitationApproval = ({
     <HandoffCard
       title={t("title")}
       description={t("description", { email, store })}
-      note={error ? t(`error.${error}`) : null}
+      note={failed ? t("error.failed") : null}
     >
       <div className="w-full space-y-4">
         <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">

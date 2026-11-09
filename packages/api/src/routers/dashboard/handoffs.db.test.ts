@@ -1004,7 +1004,7 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
   const waiting = (items: Awaited<ReturnType<typeof inboxItems>>) =>
     items.filter((item) => item.type === "handoff_waiting");
 
-  test("a handoff waiting an hour, expired or failed shows in the inbox, the billing card only to who reads billing", async () => {
+  test("a handoff waiting an hour, expired or failed shows in the inbox, each step to who reads its domain", async () => {
     const agent = await apiKey();
     const stripeStep = await client(agent()).payments.startStripeOnboarding({});
     const cardStep = await client(agent()).billing.startCardSetup({});
@@ -1034,7 +1034,11 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
       waiting(await inboxItems({ billing: false })).map((item) => item.details.kind),
       ["stripe_connect_onboarding"],
     );
-    assert.deepEqual(waiting(await inboxItems({ settings: false })), []);
+    // Each step by its own domain: billing alone shows the card, not Stripe.
+    assert.deepEqual(
+      waiting(await inboxItems({ settings: false })).map((item) => item.details.kind),
+      ["billing_card_setup"],
+    );
 
     // A new link for the expired step: it leaves the inbox until it waits again.
     await client(agent()).billing.startCardSetup({});

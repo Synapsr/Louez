@@ -95,7 +95,7 @@ const pageInput = (listTool: string) =>
   });
 
 const teamPageLinks = resourceLinksSchema.describe(
-  "The dashboard's team page, where the user invites, resends invitations and manages roles.",
+  "The dashboard's team page, where the user invites and sends invitations again.",
 );
 
 export const listMembersInput = pageInput("team_list_members");
@@ -269,7 +269,7 @@ export const teamErrors = {
     apiError("CONFLICT", "TEAM_APPROVAL_CHANGED", {
       message:
         "The address got a Louez account since the agent asked, so approving would add them at once: the agent asks again.",
-      i18nKey: "handoff.team_invitation.error.changed",
+      i18nKey: "handoff.team_invitation.done.changed.description",
     }),
   acceptInvalid: () =>
     apiError("NOT_FOUND", "TEAM_INVITATION_INVALID", {

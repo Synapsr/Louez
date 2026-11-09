@@ -61,7 +61,8 @@ import {
   type LinkStore,
 } from "../platform/links";
 import type { UrlsPort } from "../platform/ports";
-import { HANDOFF_WAIT_MS, handoffView } from "./handoffs";
+import { HANDOFF_KINDS } from "../contracts/handoffs";
+import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffView } from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
 import { getLaunchChecklist } from "./launch";
 import { findConflictingAssignments, loadStoreUnitWindows } from "./unit-conflicts";
@@ -115,7 +116,8 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   store_not_live: ["settings"],
   message_not_sent: ["reservations"],
   operation_unknown: [],
-  handoff_waiting: ["settings"],
+  // Each handoff by its kind's domain (HANDOFF_KIND_DOMAINS), in its source and acknowledgement.
+  handoff_waiting: [],
   invitation_not_sent: ["team"],
   image_job_failed: ["products"],
 };
@@ -1315,11 +1317,13 @@ const HANDOFF_START_TOOLS = {
 /**
  * A step handed to the user that waits: active for an hour since its link
  * (pending or opened), expired, or failed in the last days and not started
- * again since. The billing card shows only to who may read billing, a team
- * invitation's approval only to who may read the team; an approval is
- * started again by a later one for the same address.
+ * again since. Each shows to who may read its kind's domain: settings for
+ * Stripe, billing for the billing card, the team for an invitation's
+ * approval; an approval is started again by a later one for the same address.
  */
 const waitingHandoffs: Source = async (window, shaper) => {
+  const kinds = HANDOFF_KINDS.filter((kind) => shaper.reader.reads[HANDOFF_KIND_DOMAINS[kind]]);
+  if (kinds.length === 0) return [];
   const hold = sql.raw(String(HANDOFF_WAIT_MS / 1000));
   const occurred = sql<Date>`CASE
       WHEN ${apiHandoffs.status} = 'failed' THEN ${apiHandoffs.failedAt}
@@ -1334,8 +1338,7 @@ const waitingHandoffs: Source = async (window, shaper) => {
     .where(
       and(
         eq(apiHandoffs.storeId, window.storeId),
-        shaper.reader.reads.billing ? undefined : sql`${apiHandoffs.kind} <> 'billing_card_setup'`,
-        shaper.reader.reads.team ? undefined : sql`${apiHandoffs.kind} <> 'team_invitation'`,
+        inArray(apiHandoffs.kind, kinds),
         or(
           eq(apiHandoffs.activeSlot, 1),
           and(
@@ -1706,6 +1709,12 @@ export interface InboxAcknowledger {
   clientName: string | null;
   /** May the caller see this type, and change its first domain? */
   may: (type: InboxItemType) => boolean;
+  /**
+   * May the caller change this item's own domain, for a type whose items
+   * belong to different domains (a handoff, by its kind)? The domain to name
+   * when it may not; null when it may.
+   */
+  refusedFor?: (item: InboxItem) => ApiDomain | null;
 }
 
 const isItemType = (value: string): value is InboxItemType =>
@@ -1769,6 +1778,10 @@ export async function acknowledgeInbox(
     current.map((entry) => [`${entry.item.type}:${entry.recordId}`, entry.item.occurredAt]),
   );
   const accepted = rows.filter((row) => currentKeys.has(occurrenceKey(row)));
+  for (const entry of current) {
+    const refused = actor.refusedFor?.(entry.item);
+    if (refused) throw platformErrors.permissionDenied(`${refused}:write`);
+  }
   const rejected = rows
     .filter((row) => !currentKeys.has(occurrenceKey(row)))
     .map((row) => ({

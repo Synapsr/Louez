@@ -443,13 +443,17 @@ export async function requestInvitationApproval(
   urls: UrlsPort,
 ): Promise<HandoffLink> {
   const email = normalizeEmail(input.email);
+  const now = new Date();
   return issueHandoff(requester, "team_invitation", {
     urls,
+    now,
     subject: sha256(email),
     prepare: async (tx, active) => {
       const { existingUserId } = await checkInvitable(tx, caller, email);
       if (!existingUserId && sendsEmail(caller)) await assertEmailQuota(tx, caller.storeId);
-      if (!active) {
+      // A new approval, or an expired one coming back to life, opens one
+      // more: the cap holds for both. Only one still open is asked again freely.
+      if (!active || active.expiresAt.getTime() <= now.getTime()) {
         const [open] = await tx
           .select({ count: count() })
           .from(apiHandoffs)
@@ -458,7 +462,7 @@ export async function requestInvitationApproval(
               eq(apiHandoffs.storeId, caller.storeId),
               eq(apiHandoffs.kind, "team_invitation"),
               eq(apiHandoffs.activeSlot, 1),
-              gt(apiHandoffs.expiresAt, sql`NOW(3)`),
+              gt(apiHandoffs.expiresAt, now),
             ),
           );
         if ((open?.count ?? 0) >= MAX_OPEN_INVITATION_APPROVALS) throw teamErrors.approvalsFull();

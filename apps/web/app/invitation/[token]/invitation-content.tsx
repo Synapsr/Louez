@@ -59,11 +59,18 @@ export function InvitationContent({
         router.push('/dashboard')
       },
       onError: (error) => {
-        // The procedure names the page's own message (`invitation.errors.*`).
-        const i18nKey =
+        const data =
           error instanceof ORPCError
-            ? (error.data as { i18nKey?: unknown } | undefined)?.i18nKey
-            : null
+            ? (error.data as { code?: unknown; i18nKey?: unknown } | undefined)
+            : undefined
+        // Signed out since the page opened: sign in again, as the page asks.
+        if (data?.code === 'UNAUTHENTICATED') {
+          toastManager.add({ title: t('loginRequired'), type: 'error' })
+          router.refresh()
+          return
+        }
+        // The procedure names the page's own message (`invitation.errors.*`).
+        const i18nKey = data?.i18nKey
         const key =
           typeof i18nKey === 'string' && i18nKey.startsWith('invitation.')
             ? i18nKey.slice('invitation.'.length)

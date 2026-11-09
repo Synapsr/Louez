@@ -9726,7 +9726,6 @@
       "approve": "Aprovar o convite",
       "decline": "Recusar",
       "error": {
-        "changed": "Algo mudou desde o pedido do seu agente: o endereço tem agora uma conta Louez, um convite ou um lugar na equipa. Peça ao seu agente para fazer o pedido de novo.",
         "failed": "Não foi possível enviar o convite. Recarregue a página para ver como está."
       },
       "done": {
@@ -9749,6 +9748,10 @@
         "pending": {
           "title": "Ainda sem resposta",
           "description": "Abra o link de novo para aprovar ou recusar o convite."
+        },
+        "changed": {
+          "title": "Algo mudou desde o pedido do seu agente",
+          "description": "O endereço tem agora uma conta Louez, um convite ou um lugar na equipa. Peça ao seu agente para fazer o pedido de novo."
         }
       }
     }
