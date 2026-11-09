@@ -9588,16 +9588,51 @@
       "revokeConfirm": "Desconectar"
     },
     "guide": {
-      "title": "Conectar un agente",
-      "description": "La dirección del servidor MCP de Louez, para Claude, ChatGPT y otros asistentes.",
-      "oauthTitle": "Claude.ai, ChatGPT y otros clientes MCP",
-      "oauthDescription": "Añada un conector personalizado con esta dirección. El asistente le envía a Louez para iniciar sesión y elegir lo que puede hacer, sin copiar ninguna clave.",
-      "claudeSteps": "Claude: Ajustes, Conectores, Añadir conector personalizado y pegue la dirección.",
-      "chatgptSteps": "ChatGPT: añada una aplicación (conector) con esta dirección y autenticación OAuth.",
-      "keyTitle": "Scripts, n8n y clientes sin OAuth",
-      "keyDescription": "Cree una clave API abajo y envíela en el encabezado Authorization: Bearer.",
-      "keyDescriptionSettings": "Crea una clave API en Configuración, Integraciones, MCP y envíala en el encabezado Authorization: Bearer.",
-      "oauthUnavailable": "Iniciar sesión con su cuenta requiere una dirección HTTPS. En esta instancia, use una clave API."
+      "title": "Conecta tu asistente de IA",
+      "description": "Tu asistente podrá gestionar tu tienda: productos, reservas, ajustes. Tú eliges lo que tiene permitido hacer.",
+      "addTo": "Añadir a {name}",
+      "copyAddress": "Copiar la dirección",
+      "addressCopied": "Dirección copiada",
+      "addressLabel": "Dirección de conexión",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "whatHappens": "Después, Louez te pedirá que inicies sesión y que elijas lo que el asistente puede hacer.",
+      "oauthUnavailable": "Los asistentes necesitan una dirección segura (HTTPS) para conectarse, y este Louez no la tiene. Un desarrollador puede conectarlo con una clave API.",
+      "assistants": {
+        "claude": {
+          "step1": "Haz clic en «Añadir a Claude»: Louez ya está rellenado.",
+          "step2": "Revísalo y haz clic en Añadir.",
+          "step3": "Inicia sesión en Louez cuando Claude te lo pida.",
+          "note": "En una cuenta de equipo de Claude, solo un propietario puede añadirlo."
+        },
+        "chatgpt": {
+          "step1": "Abre los <link>plugins de ChatGPT</link> y luego + → Añadir servidor personalizado.",
+          "step2": "Llámalo Louez y pega la dirección.",
+          "step3": "Haz clic en Crear e inicia sesión en Louez.",
+          "note": "Solo ChatGPT Business y Enterprise, en la web. Con ChatGPT Pro, el asistente solo puede consultar."
+        },
+        "grok": {
+          "step1": "Abre los <link>conectores de Grok</link> y luego Nuevo conector → Personalizado.",
+          "step2": "Pega la dirección.",
+          "step3": "Inicia sesión en Louez y confirma.",
+          "note": "Para todas las cuentas de Grok. En una empresa, primero lo añade un administrador."
+        },
+        "mistral": {
+          "step1": "En <link>Vibe</link>, abre Conectores y luego Añadir conector → Personalizado.",
+          "step2": "Llámalo Louez y pega la dirección.",
+          "step3": "Haz clic en Conectar e inicia sesión en Louez.",
+          "note": "Antes Le Chat. En una cuenta de equipo, lo añade un administrador."
+        }
+      },
+      "developers": {
+        "toggle": "Para desarrolladores",
+        "server": "Esta es la dirección del servidor MCP de Louez (HTTP streamable). Los asistentes se conectan por OAuth: cada persona inicia sesión en Louez, sin clave que copiar.",
+        "serverWithoutOAuth": "Esta es la dirección del servidor MCP de Louez (HTTP streamable). Sin HTTPS, esta instancia no ofrece OAuth: usa una clave API.",
+        "apiKeyTitle": "Scripts, n8n y clientes sin OAuth",
+        "apiKeyDescription": "Crea una clave API y envíala en la cabecera Authorization: Bearer.",
+        "apiKeyLink": "Gestionar las claves API",
+        "editorsTitle": "Editores de código"
+      }
     },
     "assistantCard": {
       "title": "Deja que tu asistente de IA configure tu tienda.",

@@ -2,25 +2,28 @@
 
 import { useTranslations } from "next-intl";
 
-import { Alert, AlertDescription, Card, CardContent } from "@louez/ui";
-import { KeyIcon, LinkIcon, WarningIcon } from "@louez/ui/icons";
+import { Alert, AlertDescription } from "@louez/ui";
+import { ChatGptIcon, ClaudeIcon, GrokIcon, LeChatIcon, WarningIcon } from "@louez/ui/icons";
 
 import { CopyButton } from "@/components/ui/copy-button";
+
+import { ConnectAgentAssistant } from "./connect-agent-assistant";
+import { ConnectAgentDevelopers } from "./connect-agent-developers";
+import { claudeConnectorLink } from "./util.assistant-links";
 
 interface ConnectAgentGuideProps {
   /** `<app>/api/mcp`. */
   mcpUrl: string;
   /** False on an instance without HTTPS: no OAuth, API keys only. */
   oauthAvailable: boolean;
-  /**
-   * `page`: the MCP settings page, with its own heading and the API keys
-   * below. `dialog`: inside a dialog that carries the heading, away from the
-   * API keys.
-   */
+  /** `page`: the MCP settings page, with its own heading. `dialog`: the dialog carries it. */
   variant?: "page" | "dialog";
 }
 
-/** How to connect an assistant: sign in through OAuth (Claude.ai, ChatGPT), or an API key. */
+/**
+ * How to connect an AI assistant, for anyone: one action per assistant, the
+ * address once, and the technical details folded away for developers.
+ */
 export const ConnectAgentGuide = ({
   mcpUrl,
   oauthAvailable,
@@ -36,46 +39,68 @@ export const ConnectAgentGuide = ({
         </div>
       )}
 
-      <div className="flex items-center gap-2 rounded-lg border p-2 ps-3">
-        <code className="min-w-0 flex-1 truncate text-sm">{mcpUrl}</code>
-        <CopyButton value={mcpUrl} variant="ghost" size="icon-sm" className="shrink-0" />
+      {oauthAvailable ? (
+        <>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            <ConnectAgentAssistant
+              assistant="claude"
+              name="Claude"
+              Icon={ClaudeIcon}
+              mcpUrl={mcpUrl}
+              addLink={claudeConnectorLink(mcpUrl)}
+            />
+            <ConnectAgentAssistant
+              assistant="chatgpt"
+              name="ChatGPT"
+              Icon={ChatGptIcon}
+              mcpUrl={mcpUrl}
+              startUrl="https://chatgpt.com/plugins"
+            />
+            <ConnectAgentAssistant
+              assistant="grok"
+              name="Grok"
+              Icon={GrokIcon}
+              mcpUrl={mcpUrl}
+              startUrl="https://grok.com/connectors"
+            />
+            {/* Le Chat is called Vibe since August 2026. */}
+            <ConnectAgentAssistant
+              assistant="mistral"
+              name="Mistral Vibe"
+              Icon={LeChatIcon}
+              mcpUrl={mcpUrl}
+              startUrl="https://chat.mistral.ai"
+            />
+          </ul>
+          <p className="text-muted-foreground text-sm">{t("whatHappens")}</p>
+        </>
+      ) : (
+        <Alert variant="warning">
+          <WarningIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <AlertDescription>{t("oauthUnavailable")}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium">{t("addressLabel")}</p>
+        <div className="flex items-center gap-2 rounded-lg border p-1 ps-3">
+          <code className="min-w-0 flex-1 truncate text-sm">{mcpUrl}</code>
+          <CopyButton
+            value={mcpUrl}
+            label={t("copy")}
+            copiedLabel={t("copied")}
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
+          />
+        </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Card>
-          <CardContent className="space-y-2 py-4">
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <LinkIcon className="size-4 shrink-0" aria-hidden="true" />
-              {t("oauthTitle")}
-            </p>
-            {oauthAvailable ? (
-              <>
-                <p className="text-muted-foreground text-sm">{t("oauthDescription")}</p>
-                <ul className="text-muted-foreground list-disc space-y-1 ps-5 text-sm">
-                  <li>{t("claudeSteps")}</li>
-                  <li>{t("chatgptSteps")}</li>
-                </ul>
-              </>
-            ) : (
-              <Alert variant="warning">
-                <WarningIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                <AlertDescription>{t("oauthUnavailable")}</AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="space-y-2 py-4">
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <KeyIcon className="size-4 shrink-0" aria-hidden="true" />
-              {t("keyTitle")}
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {t(variant === "page" ? "keyDescription" : "keyDescriptionSettings")}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <ConnectAgentDevelopers
+        mcpUrl={mcpUrl}
+        oauthAvailable={oauthAvailable}
+        defaultOpen={!oauthAvailable}
+      />
     </section>
   );
 };

@@ -9588,16 +9588,51 @@
       "revokeConfirm": "Trennen"
     },
     "guide": {
-      "title": "Agent verbinden",
-      "description": "Die Adresse des Louez-MCP-Servers, für Claude, ChatGPT und andere Assistenten.",
-      "oauthTitle": "Claude.ai, ChatGPT und andere MCP-Clients",
-      "oauthDescription": "Fügen Sie einen benutzerdefinierten Connector mit dieser Adresse hinzu. Der Assistent leitet Sie zu Louez weiter, um sich anzumelden und festzulegen, was er darf, ohne Schlüssel zu kopieren.",
-      "claudeSteps": "Claude: Einstellungen, Connectors, Benutzerdefinierten Connector hinzufügen, dann die Adresse einfügen.",
-      "chatgptSteps": "ChatGPT: Fügen Sie eine App (Connector) mit dieser Adresse und OAuth-Authentifizierung hinzu.",
-      "keyTitle": "Skripte, n8n und Clients ohne OAuth",
-      "keyDescription": "Erstellen Sie unten einen API-Schlüssel und senden Sie ihn im Header Authorization: Bearer.",
-      "keyDescriptionSettings": "Erstellen Sie unter Einstellungen, Integrationen, MCP einen API-Schlüssel und senden Sie ihn im Header Authorization: Bearer.",
-      "oauthUnavailable": "Die Anmeldung mit Ihrem Konto erfordert eine HTTPS-Adresse. Verwenden Sie auf dieser Instanz einen API-Schlüssel."
+      "title": "Ihren KI-Assistenten verbinden",
+      "description": "Ihr Assistent kann Ihren Shop verwalten: Produkte, Reservierungen, Einstellungen. Sie entscheiden, was er tun darf.",
+      "addTo": "Zu {name} hinzufügen",
+      "copyAddress": "Adresse kopieren",
+      "addressCopied": "Adresse kopiert",
+      "addressLabel": "Verbindungsadresse",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "whatHappens": "Danach bittet Louez Sie, sich anzumelden und festzulegen, was der Assistent tun darf.",
+      "oauthUnavailable": "Assistenten brauchen eine sichere Adresse (HTTPS), und dieses Louez hat keine. Ein Entwickler kann es trotzdem mit einem API-Schlüssel verbinden.",
+      "assistants": {
+        "claude": {
+          "step1": "Klicken Sie auf „Zu Claude hinzufügen“: Louez ist schon eingetragen.",
+          "step2": "Prüfen Sie die Angaben und klicken Sie auf Hinzufügen.",
+          "step3": "Melden Sie sich bei Louez an, wenn Claude Sie dazu auffordert.",
+          "note": "Bei einem Claude-Teamkonto kann nur ein Inhaber es hinzufügen."
+        },
+        "chatgpt": {
+          "step1": "Öffnen Sie die <link>Plugins von ChatGPT</link>, dann + → Eigenen Server hinzufügen.",
+          "step2": "Nennen Sie ihn Louez und fügen Sie die Adresse ein.",
+          "step3": "Klicken Sie auf Erstellen und melden Sie sich bei Louez an.",
+          "note": "Nur mit ChatGPT Business und Enterprise, auf der Website. Mit ChatGPT Pro kann der Assistent nur nachsehen."
+        },
+        "grok": {
+          "step1": "Öffnen Sie die <link>Konnektoren von Grok</link>, dann Neuer Konnektor → Benutzerdefiniert.",
+          "step2": "Fügen Sie die Adresse ein.",
+          "step3": "Melden Sie sich bei Louez an und bestätigen Sie.",
+          "note": "Für alle Grok-Konten. In Unternehmen fügt ihn zuerst ein Administrator hinzu."
+        },
+        "mistral": {
+          "step1": "Öffnen Sie in <link>Vibe</link> Konnektoren, dann Konnektor hinzufügen → Benutzerdefiniert.",
+          "step2": "Nennen Sie ihn Louez und fügen Sie die Adresse ein.",
+          "step3": "Klicken Sie auf Verbinden und melden Sie sich bei Louez an.",
+          "note": "Früher Le Chat. Bei einem Teamkonto fügt ihn ein Administrator hinzu."
+        }
+      },
+      "developers": {
+        "toggle": "Für Entwickler",
+        "server": "Dies ist die Adresse des MCP-Servers von Louez (Streamable HTTP). Assistenten verbinden sich per OAuth: Jeder meldet sich bei Louez an, ohne Schlüssel zu kopieren.",
+        "serverWithoutOAuth": "Dies ist die Adresse des MCP-Servers von Louez (Streamable HTTP). Ohne HTTPS bietet diese Instanz kein OAuth: Verwenden Sie einen API-Schlüssel.",
+        "apiKeyTitle": "Skripte, n8n und Clients ohne OAuth",
+        "apiKeyDescription": "Erstellen Sie einen API-Schlüssel und senden Sie ihn im Header Authorization: Bearer.",
+        "apiKeyLink": "API-Schlüssel verwalten",
+        "editorsTitle": "Code-Editoren"
+      }
     },
     "assistantCard": {
       "title": "Lassen Sie Ihren KI-Assistenten Ihren Shop einrichten.",

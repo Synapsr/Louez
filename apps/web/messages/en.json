@@ -9588,16 +9588,51 @@
       "revokeConfirm": "Disconnect"
     },
     "guide": {
-      "title": "Connect an agent",
-      "description": "The address of the Louez MCP server, for Claude, ChatGPT and other assistants.",
-      "oauthTitle": "Claude.ai, ChatGPT and other MCP clients",
-      "oauthDescription": "Add a custom connector with this address. The assistant sends you to Louez to sign in and choose what it may do, with no key to copy.",
-      "claudeSteps": "Claude: Settings, Connectors, Add custom connector, then paste the address.",
-      "chatgptSteps": "ChatGPT: add an app (connector) with this address and OAuth authentication.",
-      "keyTitle": "Scripts, n8n and clients without OAuth",
-      "keyDescription": "Create an API key below and send it in the Authorization: Bearer header.",
-      "keyDescriptionSettings": "Create an API key in Settings, Integrations, MCP, then send it in the Authorization: Bearer header.",
-      "oauthUnavailable": "Signing in with your account needs an HTTPS address. On this instance, use an API key."
+      "title": "Connect your AI assistant",
+      "description": "Your assistant can run your store: products, bookings, settings. You choose what it is allowed to do.",
+      "addTo": "Add to {name}",
+      "copyAddress": "Copy the address",
+      "addressCopied": "Address copied",
+      "addressLabel": "Connection address",
+      "copy": "Copy",
+      "copied": "Copied",
+      "whatHappens": "Next, Louez will ask you to sign in, then to choose what the assistant can do.",
+      "oauthUnavailable": "Assistants need a secure (HTTPS) address to connect, and this Louez doesn't have one. A developer can still link it with an API key.",
+      "assistants": {
+        "claude": {
+          "step1": "Click “Add to Claude”: Louez is already filled in.",
+          "step2": "Check it, then click Add.",
+          "step3": "Sign in to Louez when Claude asks you to.",
+          "note": "On a Claude team account, only an owner can add it."
+        },
+        "chatgpt": {
+          "step1": "Open <link>ChatGPT's plugins</link>, then + → Add custom server.",
+          "step2": "Name it Louez and paste the address.",
+          "step3": "Click Create, then sign in to Louez.",
+          "note": "ChatGPT Business and Enterprise only, on the website. With ChatGPT Pro, the assistant can only look things up."
+        },
+        "grok": {
+          "step1": "Open <link>Grok's connectors</link>, then New Connector → Custom.",
+          "step2": "Paste the address.",
+          "step3": "Sign in to Louez and confirm.",
+          "note": "For every Grok account. In a company, an admin adds it first."
+        },
+        "mistral": {
+          "step1": "In <link>Vibe</link>, open Connectors, then Add Connector → Custom.",
+          "step2": "Name it Louez and paste the address.",
+          "step3": "Click Connect, then sign in to Louez.",
+          "note": "Formerly Le Chat. On a team account, an admin adds it."
+        }
+      },
+      "developers": {
+        "toggle": "For developers",
+        "server": "This is the address of Louez's MCP server (streamable HTTP). Assistants connect to it with OAuth: each person signs in to Louez, with no key to copy.",
+        "serverWithoutOAuth": "This is the address of Louez's MCP server (streamable HTTP). Without HTTPS, this instance has no OAuth: use an API key.",
+        "apiKeyTitle": "Scripts, n8n and clients without OAuth",
+        "apiKeyDescription": "Create an API key and send it in the Authorization: Bearer header.",
+        "apiKeyLink": "Manage API keys",
+        "editorsTitle": "Code editors"
+      }
     },
     "assistantCard": {
       "title": "Let your AI assistant set up your store.",

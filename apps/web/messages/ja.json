@@ -9588,16 +9588,51 @@
       "revokeConfirm": "接続を解除"
     },
     "guide": {
-      "title": "エージェントを接続",
-      "description": "Claude、ChatGPT などのアシスタント向けの Louez MCP サーバーのアドレスです。",
-      "oauthTitle": "Claude.ai、ChatGPT などの MCP クライアント",
-      "oauthDescription": "このアドレスでカスタムコネクタを追加します。アシスタントが Louez に案内し、サインインして許可する内容を選べます。キーのコピーは不要です。",
-      "claudeSteps": "Claude：設定、コネクタ、カスタムコネクタを追加 の順に進み、アドレスを貼り付けます。",
-      "chatgptSteps": "ChatGPT：このアドレスと OAuth 認証でアプリ（コネクタ）を追加します。",
-      "keyTitle": "スクリプト、n8n、OAuth 非対応のクライアント",
-      "keyDescription": "下で API キーを作成し、Authorization: Bearer ヘッダーで送信します。",
-      "keyDescriptionSettings": "設定 > 統合 > MCP で API キーを作成し、Authorization: Bearer ヘッダーで送信します。",
-      "oauthUnavailable": "アカウントでのサインインには HTTPS のアドレスが必要です。このインスタンスでは API キーを使用してください。"
+      "title": "AI アシスタントを接続",
+      "description": "アシスタントが商品、予約、設定などストアの管理を行えるようになります。何を許可するかはあなたが決めます。",
+      "addTo": "{name} に追加",
+      "copyAddress": "アドレスをコピー",
+      "addressCopied": "アドレスをコピーしました",
+      "addressLabel": "接続アドレス",
+      "copy": "コピー",
+      "copied": "コピーしました",
+      "whatHappens": "このあと Louez へのログインを求められ、アシスタントに許可する操作を選びます。",
+      "oauthUnavailable": "アシスタントの接続には安全なアドレス（HTTPS）が必要ですが、この Louez にはありません。開発者なら API キーで接続できます。",
+      "assistants": {
+        "claude": {
+          "step1": "「Claude に追加」をクリックします。Louez はすでに入力されています。",
+          "step2": "内容を確認して「追加」をクリックします。",
+          "step3": "Claude に求められたら Louez にログインします。",
+          "note": "Claude のチームアカウントでは、追加できるのはオーナーだけです。"
+        },
+        "chatgpt": {
+          "step1": "<link>ChatGPT のプラグイン</link>を開き、＋ →「カスタムサーバーを追加」を選びます。",
+          "step2": "名前を Louez にして、アドレスを貼り付けます。",
+          "step3": "「作成」をクリックし、Louez にログインします。",
+          "note": "ChatGPT Business と Enterprise のみ、ウェブサイトで利用できます。ChatGPT Pro では閲覧のみです。"
+        },
+        "grok": {
+          "step1": "<link>Grok のコネクタ</link>を開き、「新しいコネクタ」→「カスタム」を選びます。",
+          "step2": "アドレスを貼り付けます。",
+          "step3": "Louez にログインして承認します。",
+          "note": "すべての Grok アカウントで利用できます。企業ではまず管理者が追加します。"
+        },
+        "mistral": {
+          "step1": "<link>Vibe</link> で「コネクタ」を開き、「コネクタを追加」→「カスタム」を選びます。",
+          "step2": "名前を Louez にして、アドレスを貼り付けます。",
+          "step3": "「接続」をクリックし、Louez にログインします。",
+          "note": "旧 Le Chat です。チームアカウントでは管理者が追加します。"
+        }
+      },
+      "developers": {
+        "toggle": "開発者向け",
+        "server": "このアドレスは Louez の MCP サーバー（Streamable HTTP）です。アシスタントは OAuth で接続し、各自が Louez にログインするため、キーをコピーする必要はありません。",
+        "serverWithoutOAuth": "このアドレスは Louez の MCP サーバー（Streamable HTTP）です。HTTPS がないため、このインスタンスでは OAuth を使えません。API キーを使ってください。",
+        "apiKeyTitle": "スクリプト、n8n、OAuth 非対応のクライアント",
+        "apiKeyDescription": "API キーを作成し、Authorization: Bearer ヘッダーで送信します。",
+        "apiKeyLink": "API キーを管理",
+        "editorsTitle": "コードエディタ"
+      }
     },
     "assistantCard": {
       "title": "AIアシスタントにストアの設定を任せましょう。",

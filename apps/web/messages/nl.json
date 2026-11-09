@@ -9588,16 +9588,51 @@
       "revokeConfirm": "Ontkoppelen"
     },
     "guide": {
-      "title": "Een agent koppelen",
-      "description": "Het adres van de Louez MCP-server, voor Claude, ChatGPT en andere assistenten.",
-      "oauthTitle": "Claude.ai, ChatGPT en andere MCP-clients",
-      "oauthDescription": "Voeg een aangepaste connector toe met dit adres. De assistent stuurt u naar Louez om in te loggen en te kiezen wat hij mag doen, zonder sleutel te kopiëren.",
-      "claudeSteps": "Claude: Instellingen, Connectors, Aangepaste connector toevoegen, plak dan het adres.",
-      "chatgptSteps": "ChatGPT: voeg een app (connector) toe met dit adres en OAuth-authenticatie.",
-      "keyTitle": "Scripts, n8n en clients zonder OAuth",
-      "keyDescription": "Maak hieronder een API-sleutel aan en stuur die in de header Authorization: Bearer.",
-      "keyDescriptionSettings": "Maak een API-sleutel aan in Instellingen, Integraties, MCP en stuur die mee in de header Authorization: Bearer.",
-      "oauthUnavailable": "Inloggen met uw account vereist een HTTPS-adres. Gebruik op deze instantie een API-sleutel."
+      "title": "Verbind je AI-assistent",
+      "description": "Je assistent kan je winkel beheren: producten, reserveringen, instellingen. Jij kiest wat hij mag doen.",
+      "addTo": "Toevoegen aan {name}",
+      "copyAddress": "Adres kopiëren",
+      "addressCopied": "Adres gekopieerd",
+      "addressLabel": "Verbindingsadres",
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd",
+      "whatHappens": "Daarna vraagt Louez je om in te loggen en te kiezen wat de assistent mag doen.",
+      "oauthUnavailable": "Assistenten hebben een beveiligd adres (HTTPS) nodig om te verbinden, en deze Louez heeft er geen. Een ontwikkelaar kan hem wel koppelen met een API-sleutel.",
+      "assistants": {
+        "claude": {
+          "step1": "Klik op ‘Toevoegen aan Claude’: Louez is al ingevuld.",
+          "step2": "Controleer het en klik op Toevoegen.",
+          "step3": "Log in bij Louez als Claude daarom vraagt.",
+          "note": "Bij een Claude-teamaccount kan alleen een eigenaar hem toevoegen."
+        },
+        "chatgpt": {
+          "step1": "Open de <link>plug-ins van ChatGPT</link>, dan + → Aangepaste server toevoegen.",
+          "step2": "Noem hem Louez en plak het adres.",
+          "step3": "Klik op Maken en log in bij Louez.",
+          "note": "Alleen ChatGPT Business en Enterprise, op de website. Met ChatGPT Pro kan de assistent alleen meekijken."
+        },
+        "grok": {
+          "step1": "Open de <link>connectors van Grok</link>, dan Nieuwe connector → Aangepast.",
+          "step2": "Plak het adres.",
+          "step3": "Log in bij Louez en bevestig.",
+          "note": "Voor alle Grok-accounts. In een bedrijf voegt een beheerder hem eerst toe."
+        },
+        "mistral": {
+          "step1": "Open in <link>Vibe</link> Connectors, dan Connector toevoegen → Aangepast.",
+          "step2": "Noem hem Louez en plak het adres.",
+          "step3": "Klik op Verbinden en log in bij Louez.",
+          "note": "Vroeger Le Chat. Bij een teamaccount voegt een beheerder hem toe."
+        }
+      },
+      "developers": {
+        "toggle": "Voor ontwikkelaars",
+        "server": "Dit is het adres van de MCP-server van Louez (streamable HTTP). Assistenten verbinden via OAuth: iedereen logt in bij Louez, zonder sleutel om te kopiëren.",
+        "serverWithoutOAuth": "Dit is het adres van de MCP-server van Louez (streamable HTTP). Zonder HTTPS biedt deze instantie geen OAuth: gebruik een API-sleutel.",
+        "apiKeyTitle": "Scripts, n8n en clients zonder OAuth",
+        "apiKeyDescription": "Maak een API-sleutel en stuur hem mee in de header Authorization: Bearer.",
+        "apiKeyLink": "API-sleutels beheren",
+        "editorsTitle": "Code-editors"
+      }
     },
     "assistantCard": {
       "title": "Laat je AI-assistent je winkel inrichten.",

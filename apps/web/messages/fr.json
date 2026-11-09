@@ -9588,16 +9588,51 @@
       "revokeConfirm": "Déconnecter"
     },
     "guide": {
-      "title": "Connecter un agent",
-      "description": "L’adresse du serveur MCP de Louez, pour Claude, ChatGPT et les autres assistants.",
-      "oauthTitle": "Claude.ai, ChatGPT et autres clients MCP",
-      "oauthDescription": "Ajoutez un connecteur personnalisé avec cette adresse. L’assistant vous envoie sur Louez pour vous connecter et choisir ce qu’il peut faire, sans clé à copier.",
-      "claudeSteps": "Claude : Paramètres, Connecteurs, Ajouter un connecteur personnalisé, puis collez l’adresse.",
-      "chatgptSteps": "ChatGPT : ajoutez une application (connecteur) avec cette adresse et l’authentification OAuth.",
-      "keyTitle": "Scripts, n8n et clients sans OAuth",
-      "keyDescription": "Créez une clé API ci-dessous et envoyez-la dans l’en-tête Authorization: Bearer.",
-      "keyDescriptionSettings": "Créez une clé API dans Paramètres, Intégrations, MCP, puis envoyez-la dans l’en-tête Authorization: Bearer.",
-      "oauthUnavailable": "La connexion par compte demande une adresse HTTPS. Sur cette instance, utilisez une clé API."
+      "title": "Connecter votre assistant IA",
+      "description": "Votre assistant pourra gérer votre boutique : produits, réservations, réglages. Vous choisissez ce qu’il a le droit de faire.",
+      "addTo": "Ajouter à {name}",
+      "copyAddress": "Copier l’adresse",
+      "addressCopied": "Adresse copiée",
+      "addressLabel": "Adresse de connexion",
+      "copy": "Copier",
+      "copied": "Copié",
+      "whatHappens": "Ensuite, Louez vous demandera de vous connecter, puis de choisir ce que l’assistant peut faire.",
+      "oauthUnavailable": "Les assistants ont besoin d’une adresse sécurisée (HTTPS) pour se connecter, et ce Louez n’en a pas. Un développeur peut le relier avec une clé API.",
+      "assistants": {
+        "claude": {
+          "step1": "Cliquez sur « Ajouter à Claude » : Louez est déjà rempli.",
+          "step2": "Vérifiez, puis cliquez sur Ajouter.",
+          "step3": "Connectez-vous à Louez quand Claude vous le propose.",
+          "note": "Sur un compte Claude d’équipe, seul un propriétaire peut l’ajouter."
+        },
+        "chatgpt": {
+          "step1": "Ouvrez les <link>plugins de ChatGPT</link>, puis + → Ajouter un serveur personnalisé.",
+          "step2": "Nommez-le Louez et collez l’adresse.",
+          "step3": "Cliquez sur Créer, puis connectez-vous à Louez.",
+          "note": "Réservé à ChatGPT Business et Enterprise, sur le site web. Avec ChatGPT Pro, l’assistant peut seulement consulter."
+        },
+        "grok": {
+          "step1": "Ouvrez les <link>connecteurs de Grok</link>, puis Nouveau connecteur → Personnalisé.",
+          "step2": "Collez l’adresse.",
+          "step3": "Connectez-vous à Louez et validez.",
+          "note": "Pour tous les comptes Grok. En entreprise, un administrateur l’ajoute d’abord."
+        },
+        "mistral": {
+          "step1": "Dans <link>Vibe</link>, ouvrez Connecteurs, puis Ajouter un connecteur → Personnalisé.",
+          "step2": "Nommez-le Louez et collez l’adresse.",
+          "step3": "Cliquez sur Connecter, puis connectez-vous à Louez.",
+          "note": "Anciennement Le Chat. Sur un compte d’équipe, un administrateur l’ajoute."
+        }
+      },
+      "developers": {
+        "toggle": "Pour les développeurs",
+        "server": "Cette adresse est celle du serveur MCP de Louez (HTTP streamable). Les assistants s’y connectent par OAuth : chacun se connecte à Louez, sans clé à copier.",
+        "serverWithoutOAuth": "Cette adresse est celle du serveur MCP de Louez (HTTP streamable). Sans HTTPS, cette instance n’offre pas OAuth : utilisez une clé API.",
+        "apiKeyTitle": "Scripts, n8n et clients sans OAuth",
+        "apiKeyDescription": "Créez une clé API et envoyez-la dans l’en-tête Authorization: Bearer.",
+        "apiKeyLink": "Gérer les clés API",
+        "editorsTitle": "Éditeurs de code"
+      }
     },
     "assistantCard": {
       "title": "Laissez votre assistant IA configurer votre boutique.",

@@ -9588,16 +9588,51 @@
       "revokeConfirm": "断开连接"
     },
     "guide": {
-      "title": "连接智能体",
-      "description": "Louez MCP 服务器的地址，适用于 Claude、ChatGPT 和其他助手。",
-      "oauthTitle": "Claude.ai、ChatGPT 和其他 MCP 客户端",
-      "oauthDescription": "使用此地址添加自定义连接器。助手会将您带到 Louez 登录并选择它可以做什么，无需复制密钥。",
-      "claudeSteps": "Claude：设置、连接器、添加自定义连接器，然后粘贴地址。",
-      "chatgptSteps": "ChatGPT：使用此地址和 OAuth 认证添加一个应用（连接器）。",
-      "keyTitle": "脚本、n8n 和不支持 OAuth 的客户端",
-      "keyDescription": "在下方创建 API 密钥，并在 Authorization: Bearer 请求头中发送。",
-      "keyDescriptionSettings": "在 设置 > 集成 > MCP 中创建 API 密钥，并通过 Authorization: Bearer 请求头发送。",
-      "oauthUnavailable": "使用账户登录需要 HTTPS 地址。在此实例上，请使用 API 密钥。"
+      "title": "连接你的 AI 助手",
+      "description": "你的助手可以管理店铺：商品、预订、设置。它能做什么，由你决定。",
+      "addTo": "添加到 {name}",
+      "copyAddress": "复制地址",
+      "addressCopied": "地址已复制",
+      "addressLabel": "连接地址",
+      "copy": "复制",
+      "copied": "已复制",
+      "whatHappens": "接下来，Louez 会请你登录，然后选择助手可以做什么。",
+      "oauthUnavailable": "助手需要安全地址（HTTPS）才能连接，而这个 Louez 没有。开发者仍可用 API 密钥连接。",
+      "assistants": {
+        "claude": {
+          "step1": "点击“添加到 Claude”：Louez 已经填好。",
+          "step2": "检查无误后点击“添加”。",
+          "step3": "Claude 提示时登录 Louez。",
+          "note": "在 Claude 团队账号中，只有所有者可以添加。"
+        },
+        "chatgpt": {
+          "step1": "打开 <link>ChatGPT 插件</link>，然后点 + →“添加自定义服务器”。",
+          "step2": "命名为 Louez 并粘贴地址。",
+          "step3": "点击“创建”，然后登录 Louez。",
+          "note": "仅限 ChatGPT Business 和 Enterprise，在网页版使用。ChatGPT Pro 中助手只能查看。"
+        },
+        "grok": {
+          "step1": "打开 <link>Grok 连接器</link>，然后点“新建连接器”→“自定义”。",
+          "step2": "粘贴地址。",
+          "step3": "登录 Louez 并确认。",
+          "note": "所有 Grok 账号都可使用。在企业中，需先由管理员添加。"
+        },
+        "mistral": {
+          "step1": "在 <link>Vibe</link> 中打开“连接器”，然后点“添加连接器”→“自定义”。",
+          "step2": "命名为 Louez 并粘贴地址。",
+          "step3": "点击“连接”，然后登录 Louez。",
+          "note": "原名 Le Chat。在团队账号中，由管理员添加。"
+        }
+      },
+      "developers": {
+        "toggle": "开发者选项",
+        "server": "这是 Louez 的 MCP 服务器地址（Streamable HTTP）。助手通过 OAuth 连接：每个人登录 Louez 即可，无需复制密钥。",
+        "serverWithoutOAuth": "这是 Louez 的 MCP 服务器地址（Streamable HTTP）。没有 HTTPS，此实例不提供 OAuth：请使用 API 密钥。",
+        "apiKeyTitle": "脚本、n8n 和不支持 OAuth 的客户端",
+        "apiKeyDescription": "创建 API 密钥，并在 Authorization: Bearer 请求头中发送。",
+        "apiKeyLink": "管理 API 密钥",
+        "editorsTitle": "代码编辑器"
+      }
     },
     "assistantCard": {
       "title": "让你的 AI 助手帮你设置店铺。",

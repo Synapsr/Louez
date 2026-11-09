@@ -228,7 +228,8 @@ export function ApiKeysPageContent({
   return (
     <div className="space-y-8">
       {/* ── API Keys ──────────────────────────────────────────────────── */}
-      <div className="space-y-4">
+      {/* The connect guide's developer section links here. */}
+      <div id="api-keys" className="scroll-mt-8 space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">{t("keysTitle")}</h3>

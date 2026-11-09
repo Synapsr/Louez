@@ -9588,16 +9588,51 @@
       "revokeConfirm": "연결 해제"
     },
     "guide": {
-      "title": "에이전트 연결",
-      "description": "Claude, ChatGPT 및 기타 어시스턴트를 위한 Louez MCP 서버 주소입니다.",
-      "oauthTitle": "Claude.ai, ChatGPT 및 기타 MCP 클라이언트",
-      "oauthDescription": "이 주소로 사용자 지정 커넥터를 추가하세요. 어시스턴트가 Louez로 안내하여 로그인하고 허용할 작업을 선택하게 하며, 키를 복사할 필요가 없습니다.",
-      "claudeSteps": "Claude: 설정, 커넥터, 사용자 지정 커넥터 추가 후 주소를 붙여넣으세요.",
-      "chatgptSteps": "ChatGPT: 이 주소와 OAuth 인증으로 앱(커넥터)을 추가하세요.",
-      "keyTitle": "스크립트, n8n 및 OAuth 미지원 클라이언트",
-      "keyDescription": "아래에서 API 키를 만들고 Authorization: Bearer 헤더로 보내세요.",
-      "keyDescriptionSettings": "설정 > 통합 > MCP에서 API 키를 만든 뒤 Authorization: Bearer 헤더로 보내세요.",
-      "oauthUnavailable": "계정 로그인에는 HTTPS 주소가 필요합니다. 이 인스턴스에서는 API 키를 사용하세요."
+      "title": "AI 어시스턴트 연결하기",
+      "description": "어시스턴트가 상품, 예약, 설정 등 매장을 관리할 수 있습니다. 무엇을 허용할지는 직접 정합니다.",
+      "addTo": "{name}에 추가",
+      "copyAddress": "주소 복사",
+      "addressCopied": "주소를 복사했습니다",
+      "addressLabel": "연결 주소",
+      "copy": "복사",
+      "copied": "복사됨",
+      "whatHappens": "그다음 Louez가 로그인을 요청하고, 어시스턴트가 할 수 있는 일을 고르게 합니다.",
+      "oauthUnavailable": "어시스턴트를 연결하려면 보안 주소(HTTPS)가 필요하지만 이 Louez에는 없습니다. 개발자는 API 키로 연결할 수 있습니다.",
+      "assistants": {
+        "claude": {
+          "step1": "‘Claude에 추가’를 클릭하세요. Louez가 이미 입력되어 있습니다.",
+          "step2": "확인한 뒤 ‘추가’를 클릭하세요.",
+          "step3": "Claude가 요청하면 Louez에 로그인하세요.",
+          "note": "Claude 팀 계정에서는 소유자만 추가할 수 있습니다."
+        },
+        "chatgpt": {
+          "step1": "<link>ChatGPT 플러그인</link>을 열고 + → ‘사용자 지정 서버 추가’를 선택하세요.",
+          "step2": "이름을 Louez로 하고 주소를 붙여 넣으세요.",
+          "step3": "‘만들기’를 클릭한 뒤 Louez에 로그인하세요.",
+          "note": "ChatGPT Business와 Enterprise에서만, 웹사이트에서 가능합니다. ChatGPT Pro에서는 조회만 할 수 있습니다."
+        },
+        "grok": {
+          "step1": "<link>Grok 커넥터</link>를 열고 ‘새 커넥터’ → ‘사용자 지정’을 선택하세요.",
+          "step2": "주소를 붙여 넣으세요.",
+          "step3": "Louez에 로그인하고 승인하세요.",
+          "note": "모든 Grok 계정에서 사용할 수 있습니다. 회사에서는 관리자가 먼저 추가합니다."
+        },
+        "mistral": {
+          "step1": "<link>Vibe</link>에서 ‘커넥터’를 열고 ‘커넥터 추가’ → ‘사용자 지정’을 선택하세요.",
+          "step2": "이름을 Louez로 하고 주소를 붙여 넣으세요.",
+          "step3": "‘연결’을 클릭한 뒤 Louez에 로그인하세요.",
+          "note": "예전 이름은 Le Chat입니다. 팀 계정에서는 관리자가 추가합니다."
+        }
+      },
+      "developers": {
+        "toggle": "개발자용",
+        "server": "이 주소는 Louez의 MCP 서버(Streamable HTTP)입니다. 어시스턴트는 OAuth로 연결하며, 각자 Louez에 로그인하므로 키를 복사할 필요가 없습니다.",
+        "serverWithoutOAuth": "이 주소는 Louez의 MCP 서버(Streamable HTTP)입니다. HTTPS가 없어 이 인스턴스에서는 OAuth를 쓸 수 없으니 API 키를 사용하세요.",
+        "apiKeyTitle": "스크립트, n8n, OAuth 미지원 클라이언트",
+        "apiKeyDescription": "API 키를 만들어 Authorization: Bearer 헤더로 보내세요.",
+        "apiKeyLink": "API 키 관리",
+        "editorsTitle": "코드 에디터"
+      }
     },
     "assistantCard": {
       "title": "AI 어시스턴트에게 스토어 설정을 맡겨 보세요.",
