@@ -799,6 +799,64 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     for (const bundle of empty) assert.ok(saved?.bundles.includes(bundle), bundle);
   });
 
+  test("saving or reconsenting keeps the granted bundles the page could not offer", async () => {
+    const { appRouter } = await import("../router");
+    const { bundlesWithTools, createExposure } = await import("./exposure");
+    const { MCP_BUNDLES } = await import("./meta");
+    const withTools = bundlesWithTools(createExposure(appRouter).procedures);
+    const hidden = MCP_BUNDLES.filter((bundle) => !withTools.includes(bundle));
+    // Read from the app's exposure: while a bundle holds no tool, it is hidden.
+    if (hidden.length === 0) return;
+    const stored = async () =>
+      (await grants.loadActiveGrant({ userId: OWNER, clientId: CLIENT }))?.bundles ?? [];
+
+    const { id } = await grant({ bundles: ["daily", "catalog", ...hidden] });
+    const listed = await call<{ items: Array<{ bundles: string[] }> }>(
+      connections.list,
+      {},
+      session(),
+      ["dashboard", "agentConnections", "list"],
+    );
+    // The editor sends back what it shows: the hidden bundles are not in it.
+    const shown = listed.items[0].bundles;
+    assert.deepEqual(shown, ["daily", "catalog"]);
+    await call(connections.update, { id, bundles: shown }, session(), [
+      "dashboard",
+      "agentConnections",
+      "update",
+    ]);
+    assert.deepEqual(await stored(), ["daily", "catalog", ...hidden]);
+
+    // An offered bundle the user unticks goes.
+    await call(connections.update, { id, bundles: ["daily"] }, session(), [
+      "dashboard",
+      "agentConnections",
+      "update",
+    ]);
+    assert.deepEqual(await stored(), ["daily", ...hidden]);
+
+    // A new consent keeps them too.
+    const oauthQuery = new URLSearchParams({
+      client_id: CLIENT,
+      redirect_uri: "https://client.oa.test/callback",
+      sig: "ok",
+    }).toString();
+    await call(
+      connections.authorize,
+      {
+        oauthQuery,
+        accept: true,
+        stores: { all: false, ids: [STORE_A] },
+        preset: "write",
+        confirmSensitive: true,
+        bundles: ["daily", "catalog"],
+      },
+      session(),
+      ["dashboard", "agentConnections", "authorize"],
+    );
+    assert.deepEqual(await stored(), ["daily", "catalog", ...hidden]);
+  });
+
   // --- Client icons -----------------------------------------------------------
 
   test("only a client from a metadata document has an icon, from its client id's origin", async () => {

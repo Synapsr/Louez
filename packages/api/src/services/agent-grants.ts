@@ -81,6 +81,21 @@ export async function offeredBundles(client: {
   return (await appToolBundles).filter((bundle) => !withheld.includes(bundle));
 }
 
+/**
+ * The bundles a save leaves the grant: the ones the user submitted, plus the
+ * ones it held that the page did not offer (a bundle with no tool yet, one
+ * the client's directory forbids), which the user could neither see nor
+ * deselect. An offered bundle left out is deselected.
+ */
+function savedBundles(
+  stored: readonly McpBundle[],
+  submitted: readonly McpBundle[],
+  offered: readonly McpBundle[],
+): McpBundle[] {
+  const kept = stored.filter((bundle) => !offered.includes(bundle));
+  return MCP_BUNDLES.filter((bundle) => submitted.includes(bundle) || kept.includes(bundle));
+}
+
 /** A grant's bundles, without those offered nowhere: they come back once they hold a tool. */
 const shownBundles = (bundles: readonly McpBundle[], offered: readonly McpBundle[]) =>
   bundles.filter((bundle) => offered.includes(bundle));
@@ -310,9 +325,22 @@ export async function saveGrant(input: {
 }): Promise<{ id: string }> {
   const { terms } = input;
   if (!terms.stores.all) await assertMemberOf(input.userId, terms.stores.ids);
-  await describeClient(input.clientId, null);
+  const client = await describeClient(input.clientId, null);
+  const offered = await offeredBundles(client);
 
   return db.transaction(async (tx) => {
+    // A new consent keeps the bundles the page could not offer.
+    const [existing] = await tx
+      .select({ bundles: apiAgentGrants.bundles })
+      .from(apiAgentGrants)
+      .where(
+        and(eq(apiAgentGrants.userId, input.userId), eq(apiAgentGrants.clientId, input.clientId)),
+      )
+      .for("update")
+      .limit(1);
+    const bundles = existing
+      ? savedBundles(knownBundles(existing.bundles), terms.bundles, offered)
+      : terms.bundles;
     await tx
       .insert(apiAgentGrants)
       .values({
@@ -321,14 +349,14 @@ export async function saveGrant(input: {
         allStores: terms.stores.all,
         preset: terms.preset,
         confirmSensitive: terms.confirmSensitive,
-        bundles: terms.bundles,
+        bundles,
       })
       .onDuplicateKeyUpdate({
         set: {
           allStores: terms.stores.all,
           preset: terms.preset,
           confirmSensitive: terms.confirmSensitive,
-          bundles: terms.bundles,
+          bundles,
         },
       });
     const [grant] = await tx
@@ -347,8 +375,14 @@ export async function saveGrant(input: {
 
 async function ownGrant(tx: Transaction, userId: string, id: string) {
   const [grant] = await tx
-    .select({ id: apiAgentGrants.id, clientId: apiAgentGrants.clientId })
+    .select({
+      id: apiAgentGrants.id,
+      clientId: apiAgentGrants.clientId,
+      bundles: apiAgentGrants.bundles,
+      clientName: oauthClients.name,
+    })
     .from(apiAgentGrants)
+    .innerJoin(oauthClients, eq(oauthClients.clientId, apiAgentGrants.clientId))
     .where(and(eq(apiAgentGrants.id, id), eq(apiAgentGrants.userId, userId)))
     .for("update")
     .limit(1);
@@ -366,12 +400,20 @@ export async function updateGrant(input: {
   if (patch.stores && !patch.stores.all) await assertMemberOf(input.userId, patch.stores.ids);
 
   await db.transaction(async (tx) => {
-    await ownGrant(tx, input.userId, input.id);
+    const grant = await ownGrant(tx, input.userId, input.id);
+    // The editor shows only the offered bundles: the others it held stay.
+    const bundles = patch.bundles
+      ? savedBundles(
+          knownBundles(grant.bundles),
+          patch.bundles,
+          await offeredBundles({ clientId: grant.clientId, name: grant.clientName }),
+        )
+      : undefined;
     const set = {
       ...(patch.stores ? { allStores: patch.stores.all } : {}),
       ...(patch.preset ? { preset: patch.preset } : {}),
       ...(patch.confirmSensitive !== undefined ? { confirmSensitive: patch.confirmSensitive } : {}),
-      ...(patch.bundles ? { bundles: patch.bundles } : {}),
+      ...(bundles ? { bundles } : {}),
     };
     if (Object.keys(set).length > 0) {
       await tx.update(apiAgentGrants).set(set).where(eq(apiAgentGrants.id, input.id));
