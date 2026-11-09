@@ -9609,7 +9609,7 @@
           "step1": "Open <link>ChatGPT's plugins</link>, then + → Add custom server.",
           "step2": "Name it Louez and paste the address.",
           "step3": "Click Create, then sign in to Louez.",
-          "note": "ChatGPT Business and Enterprise only, on the website. With ChatGPT Pro, the assistant can only look things up."
+          "note": "With ChatGPT Business, Enterprise or Edu, on the website. In a team workspace, ask an admin to add it. With ChatGPT Pro, the assistant can only look things up."
         },
         "grok": {
           "step1": "Open <link>Grok's connectors</link>, then New Connector → Custom.",

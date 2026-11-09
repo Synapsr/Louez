@@ -9609,7 +9609,7 @@
           "step1": "Open de <link>plug-ins van ChatGPT</link>, dan + → Aangepaste server toevoegen.",
           "step2": "Noem hem Louez en plak het adres.",
           "step3": "Klik op Maken en log in bij Louez.",
-          "note": "Alleen ChatGPT Business en Enterprise, op de website. Met ChatGPT Pro kan de assistent alleen meekijken."
+          "note": "Met ChatGPT Business, Enterprise of Edu, op de website. In een teamwerkruimte vraagt u een beheerder om hem toe te voegen. Met ChatGPT Pro kan de assistent alleen meekijken."
         },
         "grok": {
           "step1": "Open de <link>connectors van Grok</link>, dan Nieuwe connector → Aangepast.",

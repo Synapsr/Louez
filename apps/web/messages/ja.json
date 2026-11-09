@@ -9609,7 +9609,7 @@
           "step1": "<link>ChatGPT のプラグイン</link>を開き、＋ →「カスタムサーバーを追加」を選びます。",
           "step2": "名前を Louez にして、アドレスを貼り付けます。",
           "step3": "「作成」をクリックし、Louez にログインします。",
-          "note": "ChatGPT Business と Enterprise のみ、ウェブサイトで利用できます。ChatGPT Pro では閲覧のみです。"
+          "note": "ChatGPT Business、Enterprise、Edu のウェブサイトで利用できます。チームのワークスペースでは、管理者に追加を依頼してください。ChatGPT Pro では閲覧のみです。"
         },
         "grok": {
           "step1": "<link>Grok のコネクタ</link>を開き、「新しいコネクタ」→「カスタム」を選びます。",

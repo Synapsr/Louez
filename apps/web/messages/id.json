@@ -9609,7 +9609,7 @@
           "step1": "Buka <link>plugin ChatGPT</link>, lalu + → Tambahkan server kustom.",
           "step2": "Beri nama Louez dan tempel alamatnya.",
           "step3": "Klik Buat, lalu masuk ke Louez.",
-          "note": "Hanya ChatGPT Business dan Enterprise, di situs web. Dengan ChatGPT Pro, asisten hanya bisa melihat."
+          "note": "Dengan ChatGPT Business, Enterprise, atau Edu, di situs web. Di ruang kerja tim, minta admin untuk menambahkannya. Dengan ChatGPT Pro, asisten hanya bisa melihat."
         },
         "grok": {
           "step1": "Buka <link>konektor Grok</link>, lalu Konektor Baru → Kustom.",

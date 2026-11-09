@@ -9609,7 +9609,7 @@
           "step1": "Öffnen Sie die <link>Plugins von ChatGPT</link>, dann + → Eigenen Server hinzufügen.",
           "step2": "Nennen Sie ihn Louez und fügen Sie die Adresse ein.",
           "step3": "Klicken Sie auf Erstellen und melden Sie sich bei Louez an.",
-          "note": "Nur mit ChatGPT Business und Enterprise, auf der Website. Mit ChatGPT Pro kann der Assistent nur nachsehen."
+          "note": "Mit ChatGPT Business, Enterprise oder Edu, auf der Website. In einem Team-Arbeitsbereich bitten Sie einen Administrator, ihn hinzuzufügen. Mit ChatGPT Pro kann der Assistent nur nachsehen."
         },
         "grok": {
           "step1": "Öffnen Sie die <link>Konnektoren von Grok</link>, dann Neuer Konnektor → Benutzerdefiniert.",

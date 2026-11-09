@@ -9609,7 +9609,7 @@
           "step1": "打开 <link>ChatGPT 插件</link>，然后点 + →“添加自定义服务器”。",
           "step2": "命名为 Louez 并粘贴地址。",
           "step3": "点击“创建”，然后登录 Louez。",
-          "note": "仅限 ChatGPT Business 和 Enterprise，在网页版使用。ChatGPT Pro 中助手只能查看。"
+          "note": "适用于 ChatGPT Business、Enterprise 或 Edu 的网页版。在团队工作区中，请让管理员添加。ChatGPT Pro 中助手只能查看。"
         },
         "grok": {
           "step1": "打开 <link>Grok 连接器</link>，然后点“新建连接器”→“自定义”。",

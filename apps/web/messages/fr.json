@@ -9609,7 +9609,7 @@
           "step1": "Ouvrez les <link>plugins de ChatGPT</link>, puis + → Ajouter un serveur personnalisé.",
           "step2": "Nommez-le Louez et collez l’adresse.",
           "step3": "Cliquez sur Créer, puis connectez-vous à Louez.",
-          "note": "Réservé à ChatGPT Business et Enterprise, sur le site web. Avec ChatGPT Pro, l’assistant peut seulement consulter."
+          "note": "Avec ChatGPT Business, Enterprise ou Edu, sur le site web. Dans un espace d’équipe, demandez à un administrateur de l’ajouter. Avec ChatGPT Pro, l’assistant peut seulement consulter."
         },
         "grok": {
           "step1": "Ouvrez les <link>connecteurs de Grok</link>, puis Nouveau connecteur → Personnalisé.",

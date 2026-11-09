@@ -58,7 +58,14 @@ export const ConnectAgentDevelopers = ({
                 <p className="text-foreground font-medium">Claude Code</p>
                 <div className="bg-muted/50 flex items-center gap-2 rounded-lg border p-1 ps-3">
                   <code className="min-w-0 flex-1 truncate font-mono text-xs">{command}</code>
-                  <CopyButton value={command} variant="ghost" size="icon-sm" className="shrink-0" />
+                  <CopyButton
+                    value={command}
+                    label={t("copy")}
+                    copiedLabel={t("copied")}
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                  />
                 </div>
               </div>
               <div className="space-y-2">

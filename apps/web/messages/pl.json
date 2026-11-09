@@ -9609,7 +9609,7 @@
           "step1": "Otwórz <link>wtyczki ChatGPT</link>, a potem + → Dodaj własny serwer.",
           "step2": "Nazwij go Louez i wklej adres.",
           "step3": "Kliknij Utwórz, a potem zaloguj się do Louez.",
-          "note": "Tylko ChatGPT Business i Enterprise, na stronie internetowej. Z ChatGPT Pro asystent może tylko przeglądać."
+          "note": "Z ChatGPT Business, Enterprise lub Edu, na stronie internetowej. W przestrzeni zespołu poproś administratora o dodanie. Z ChatGPT Pro asystent może tylko przeglądać."
         },
         "grok": {
           "step1": "Otwórz <link>konektory Groka</link>, a potem Nowy konektor → Własny.",
