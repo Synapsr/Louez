@@ -9,7 +9,7 @@ import {
   users,
 } from "@louez/db";
 import { clientIconOrigin } from "@louez/auth/oauth-client-icon";
-import { and, asc, desc, eq, inArray, max } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, max, or } from "drizzle-orm";
 
 import {
   agentClientIconUrl,
@@ -102,6 +102,37 @@ export async function loadActiveGrant(input: {
     bundles: knownBundles(row.bundles),
     stores: storeIds,
   };
+}
+
+/**
+ * Whether an agent can act on the store now: a grant of one of its members,
+ * through a client still allowed, that covers it (all of the member's stores,
+ * or this one by name). The dashboard home stops offering to connect one then.
+ */
+export async function storeHasAgentConnection(storeId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: apiAgentGrants.id })
+    .from(apiAgentGrants)
+    .innerJoin(oauthClients, eq(oauthClients.clientId, apiAgentGrants.clientId))
+    .innerJoin(
+      storeMembers,
+      and(eq(storeMembers.userId, apiAgentGrants.userId), eq(storeMembers.storeId, storeId)),
+    )
+    .leftJoin(
+      apiAgentGrantStores,
+      and(
+        eq(apiAgentGrantStores.grantId, apiAgentGrants.id),
+        eq(apiAgentGrantStores.storeId, storeId),
+      ),
+    )
+    .where(
+      and(
+        or(isNull(oauthClients.disabled), eq(oauthClients.disabled, false)),
+        or(eq(apiAgentGrants.allStores, true), isNotNull(apiAgentGrantStores.storeId)),
+      ),
+    )
+    .limit(1);
+  return row !== undefined;
 }
 
 /**
