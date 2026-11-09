@@ -12,7 +12,7 @@ import { ProductGlassIcon, ReservationsGlassIcon, WhatsNewGlassIcon } from "@lou
 import { GlassIllustration } from "@/components/dashboard/shared/glass-illustration";
 
 import type { StoreMetrics, StoreState } from "./home-types";
-import { OPEN_SETUP_CHECKLIST_EVENT } from "./setup-checklist";
+import { OPEN_SETUP_CHECKLIST_EVENT } from "@/components/dashboard/setup/sidebar-setup-checklist";
 
 interface AdaptiveHeaderProps {
   firstName: string;

@@ -1,12 +1,9 @@
-export { AdaptiveHeader } from "./adaptive-header";
-export { AdaptiveStats } from "./adaptive-stats";
-export { DashboardAlert } from "./dashboard-alert";
-export { PendingRequests } from "./pending-requests";
-export { QuickActions } from "./quick-actions";
+export { HomeHeader } from "./home-header";
+export { MonthSummary } from "./month-summary";
+export { PendingRequestsCard } from "./pending-requests-card";
 export { ReeentStripeSetupCard } from "./reeent-stripe-setup-card";
 export { ReservationsCalendarPrefetch } from "./reservations-calendar-prefetch";
-export { SetupChecklist, type OnlinePaymentsStep } from "./setup-checklist";
 export { ShareModal } from "./share-modal";
-export { StorefrontWidget } from "./storefront-widget";
-export { TodayActivity } from "./today-activity";
+export { TodayCard } from "./today-card";
+export type { UpcomingDay } from "./upcoming-days";
 export type { HomeReservation, StoreMetrics, StoreState } from "./home-types";

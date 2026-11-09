@@ -1,56 +1,44 @@
 "use client";
 
+import { useId } from "react";
+
 import { Check, Minus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@louez/ui";
-
 import { useOnboardingPreview } from "../_lib/preview-context";
-import { PAYMENT_BENEFITS, PAYMENT_KYC_STEPS } from "../_lib/stripe-panel-content";
-import { useStripeConnectStart } from "../_lib/use-stripe-connect-start";
+import { PAYMENT_BENEFIT_CARDS, PAYMENT_KYC_STEPS } from "../_lib/stripe-panel-content";
 import { PanelSectionTitle } from "./panel-section-title";
+import { PanelSteps } from "./panel-steps";
 import { ReeentPaymentPanel } from "./reeent-payment-panel";
 
 function PaymentPanel() {
   const t = useTranslations("onboarding.stripe.panel.payment");
-  const { startStripeConnect, isConnecting, hasPendingAccount } = useStripeConnectStart({
-    fromReeent: false,
-  });
+  const iconId = useId();
 
   return (
-    <div key="payment" className="animate-in fade-in slide-in-from-bottom-2 space-y-8 duration-500">
-      <section className="space-y-4">
+    <div key="payment" className="animate-in fade-in slide-in-from-bottom-2 space-y-7 duration-500">
+      <h2 className="text-xl font-extrabold tracking-tight text-balance">{t("headline")}</h2>
+
+      <section className="space-y-3">
         <PanelSectionTitle>{t("benefitsTitle")}</PanelSectionTitle>
-        <ul className="space-y-3">
-          {PAYMENT_BENEFITS.map(({ key, icon: Icon }) => (
-            <li key={key} className="flex items-center gap-3">
-              <Icon className="text-muted-foreground size-4 shrink-0" />
-              <p className="text-sm">{t(key)}</p>
-            </li>
+        <div className="grid grid-cols-2 gap-2.5">
+          {PAYMENT_BENEFIT_CARDS.map(({ key, icon: Icon }) => (
+            <div key={key} className="bg-card shadow-card flex flex-col gap-2.5 rounded-xl p-3.5">
+              <Icon uniqueId={`${iconId}-${key}`} size={32} />
+              <p className="text-sm leading-snug">{t(key)}</p>
+            </div>
           ))}
-        </ul>
+        </div>
       </section>
 
-      <section className="space-y-4">
+      <section className="space-y-3">
         <PanelSectionTitle>{t("kycTitle")}</PanelSectionTitle>
-        <ol className="space-y-3">
-          {PAYMENT_KYC_STEPS.map((key, index) => (
-            <li key={key} className="flex gap-3">
-              <span className="text-muted-foreground w-4 shrink-0 text-sm tabular-nums">
-                {index + 1}.
-              </span>
-              <p className="text-sm">{t(key)}</p>
-            </li>
-          ))}
-        </ol>
+        <PanelSteps steps={PAYMENT_KYC_STEPS.map((key) => ({ key, title: t(key) }))} />
       </section>
 
-      <div className="space-y-3">
-        <Button onClick={startStripeConnect} isPending={isConnecting}>
-          {t(hasPendingAccount ? "resumeNow" : "configureNow")}
-        </Button>
-        <p className="text-muted-foreground text-sm">{t("configureLater")}</p>
-      </div>
+      <p className="text-muted-foreground text-sm">
+        <span className="text-foreground font-semibold">{t("laterTitle")}</span> {t("laterBody")}
+      </p>
     </div>
   );
 }
@@ -58,41 +46,36 @@ function PaymentPanel() {
 function RequestPanel() {
   const t = useTranslations("onboarding.stripe.panel.request");
 
+  // Five events folded into three steps: each one pairs what happens with
+  // what follows from it.
+  const steps = [
+    { key: "send", title: t("step1"), detail: t("step2") },
+    { key: "decide", title: t("step3"), detail: t("step4") },
+    { key: "collect", title: t("step5"), detail: t("pros3") },
+  ];
+
   return (
-    <div key="request" className="animate-in fade-in slide-in-from-bottom-2 space-y-8 duration-500">
-      <section className="space-y-4">
+    <div key="request" className="animate-in fade-in slide-in-from-bottom-2 space-y-7 duration-500">
+      <h2 className="text-xl font-extrabold tracking-tight text-balance">{t("headline")}</h2>
+
+      <section className="space-y-3">
         <PanelSectionTitle>{t("howTitle")}</PanelSectionTitle>
-        <ol className="space-y-3">
-          {(["step1", "step2", "step3", "step4", "step5"] as const).map((key, index) => (
-            <li key={key} className="flex gap-3">
-              <span className="text-muted-foreground w-4 shrink-0 text-sm tabular-nums">
-                {index + 1}.
-              </span>
-              <p className="text-sm">{t(key)}</p>
-            </li>
-          ))}
-        </ol>
+        <PanelSteps steps={steps} />
       </section>
 
-      <section className="space-y-4">
-        <PanelSectionTitle>{t("prosTitle")}</PanelSectionTitle>
-        <ul className="space-y-3">
-          {(["pros1", "pros2", "pros3"] as const).map((key) => (
-            <li key={key} className="flex items-center gap-3">
+      <section className="space-y-3">
+        <PanelSectionTitle>{t("goodToKnow")}</PanelSectionTitle>
+        <ul className="space-y-2 text-sm">
+          {(["pros1", "pros2"] as const).map((key) => (
+            <li key={key} className="flex items-center gap-2.5">
               <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-500" />
-              <p className="text-sm">{t(key)}</p>
+              {t(key)}
             </li>
           ))}
-        </ul>
-      </section>
-
-      <section className="space-y-4">
-        <PanelSectionTitle>{t("consTitle")}</PanelSectionTitle>
-        <ul className="space-y-3">
           {(["cons1", "cons2", "cons3"] as const).map((key) => (
-            <li key={key} className="flex items-center gap-3">
+            <li key={key} className="text-muted-foreground flex items-center gap-2.5">
               <Minus className="size-4 shrink-0 text-amber-600 dark:text-amber-500" />
-              <p className="text-sm">{t(key)}</p>
+              {t(key)}
             </li>
           ))}
         </ul>
@@ -107,7 +90,7 @@ function RequestPanel() {
  * Right-column companion of the reservation-mode step: instead of the
  * storefront preview, it explains the selected mode (Stripe benefits + KYC
  * steps vs. how manual mode works and its trade-offs) and follows the radio
- * selection live.
+ * selection live. It holds no action: the step's buttons sit under the choice.
  *
  * Loueurs coming from reeent have no mode to choose — reeent only publishes
  * stores that can charge online — so they get the explanation-only variant.

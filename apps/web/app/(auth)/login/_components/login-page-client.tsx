@@ -67,7 +67,14 @@ export const LoginPageClient = ({
         <LoginLegalNotice />
       </div>
 
-      <div className="bg-primary text-primary-foreground relative hidden flex-col items-center justify-center overflow-hidden rounded-2xl p-12 lg:flex lg:w-1/2">
+      <div className="from-lagon-600 to-lagon-800 text-primary-foreground relative hidden flex-col items-center justify-center overflow-hidden rounded-2xl bg-linear-160 p-12 lg:flex lg:w-1/2">
+        {/* Lagon scene: an Écume glow from the top right, a deeper pool at the
+            bottom left, and a dot grid that fades out before the text. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="from-ecume/55 absolute -top-1/3 -right-1/4 size-[120%] rounded-full bg-radial to-transparent to-55%" />
+          <div className="from-lagon-700 absolute -bottom-1/3 -left-1/3 size-[110%] rounded-full bg-radial to-transparent to-70%" />
+          <div className="absolute inset-0 bg-[radial-gradient(rgb(255_255_255/0.1)_1px,transparent_1px)] [mask-image:linear-gradient(180deg,#000,transparent_70%)] bg-size-[22px_22px]" />
+        </div>
         <div className="relative z-10">
           <LoginSocialProof />
         </div>

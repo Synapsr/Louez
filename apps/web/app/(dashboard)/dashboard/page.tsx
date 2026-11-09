@@ -1,43 +1,48 @@
 import { auth } from "@/lib/auth";
-import { env } from "@/env";
-import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
-import { db, users } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
-import { reservations } from "@louez/db";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { db, reservations } from "@louez/db";
+import { and, count, desc, eq, gte, inArray, lt, lte } from "drizzle-orm";
 import { getStoreMetrics, determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
 import { getIntendedReservationMode, isStripeChargeable } from "@/lib/reservation-mode";
-import type { OnlinePaymentsStep } from "@/components/dashboard/home";
-import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
-import { parseDismissedNotices, type DismissibleNoticeId } from "@/lib/dashboard/dismissed-notices";
 import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
 import {
-  DashboardAlert,
+  HomeHeader,
+  MonthSummary,
+  PendingRequestsCard,
   ReeentStripeSetupCard,
-  SetupChecklist,
-  AdaptiveHeader,
-  AdaptiveStats,
-  TodayActivity,
-  PendingRequests,
-  QuickActions,
   ReservationsCalendarPrefetch,
-  StorefrontWidget,
+  TodayCard,
+  type UpcomingDay,
 } from "@/components/dashboard/home";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
 
+/** Enough for a busy day on the timeline; the full list is one click away. */
+const TODAY_LIST_LIMIT = 8;
+const UPCOMING_DAY_COUNT = 3;
+
 // =============================================================================
 // Data Fetching Functions
 // =============================================================================
 
+const startOfToday = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
 async function getTodaysDeparturesList(storeId: string) {
   const now = new Date();
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const today = startOfToday();
+  const tomorrow = addDays(today, 1);
 
   const rows = await db.query.reservations.findMany({
     where: and(
@@ -55,7 +60,7 @@ async function getTodaysDeparturesList(storeId: string) {
       },
     },
     orderBy: [reservations.startDate],
-    limit: 5,
+    limit: TODAY_LIST_LIMIT,
   });
 
   // Still `confirmed` past its pickup time means nobody came for it — or nobody
@@ -66,10 +71,8 @@ async function getTodaysDeparturesList(storeId: string) {
 
 async function getTodaysReturnsList(storeId: string) {
   const now = new Date();
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const today = startOfToday();
+  const tomorrow = addDays(today, 1);
 
   const rows = await db.query.reservations.findMany({
     where: and(
@@ -87,7 +90,7 @@ async function getTodaysReturnsList(storeId: string) {
       },
     },
     orderBy: [reservations.endDate],
-    limit: 5,
+    limit: TODAY_LIST_LIMIT,
   });
 
   // Same reading on the way back: still `ongoing` past its return time means
@@ -111,98 +114,114 @@ async function getPendingReservationsList(storeId: string) {
   });
 }
 
+/** Hand-overs and returns planned on each of the next days, as counts only. */
+async function getUpcomingDays(storeId: string): Promise<UpcomingDay[]> {
+  const today = startOfToday();
+  const days = Array.from({ length: UPCOMING_DAY_COUNT }, (_, index) => addDays(today, index + 1));
+
+  return Promise.all(
+    days.map(async (day) => {
+      const nextDay = addDays(day, 1);
+      const [departureRows, returnRows] = await Promise.all([
+        db
+          .select({ value: count() })
+          .from(reservations)
+          .where(
+            and(
+              eq(reservations.storeId, storeId),
+              eq(reservations.status, "confirmed"),
+              gte(reservations.startDate, day),
+              lt(reservations.startDate, nextDay),
+            ),
+          ),
+        db
+          .select({ value: count() })
+          .from(reservations)
+          .where(
+            and(
+              eq(reservations.storeId, storeId),
+              inArray(reservations.status, ["confirmed", "ongoing"]),
+              gte(reservations.endDate, day),
+              lt(reservations.endDate, nextDay),
+            ),
+          ),
+      ]);
+      return {
+        date: day,
+        departures: departureRows[0]?.value ?? 0,
+        returns: returnRows[0]?.value ?? 0,
+      };
+    }),
+  );
+}
+
 interface DashboardContentProps {
   storeId: string;
   storeSlug: string;
+  storeName: string;
   firstName: string;
-  onlinePaymentsStep: OnlinePaymentsStep;
-  /** The store signed up from the reeent consumer marketplace (ADR 010). */
-  isFromReeent: boolean;
+  /** A reeent store stays unpublished there until Stripe can charge. */
+  showReeentBanner: boolean;
   hasStripeAccount: boolean;
-  dismissedNoticeIds: DismissibleNoticeId[];
 }
 
 async function DashboardContent({
   storeId,
   storeSlug,
+  storeName,
   firstName,
-  onlinePaymentsStep,
-  isFromReeent,
+  showReeentBanner,
   hasStripeAccount,
-  dismissedNoticeIds,
 }: DashboardContentProps) {
-  // Fetch all data in parallel
-  const [metrics, departures, returns, pending, channelState, cohort] = await Promise.all([
+  const [metrics, departures, returns, pending] = await Promise.all([
     getStoreMetrics(storeId),
     getTodaysDeparturesList(storeId),
     getTodaysReturnsList(storeId),
     getPendingReservationsList(storeId),
-    getMarketplaceChannelState({ storeId }),
-    getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
   ]);
 
   const storeState = determineStoreState(metrics);
-  const timeOfDay = getTimeOfDay();
-  const lifetimeFeeWaiverAt = channelState.channel?.lifetimeFeeWaiverAt ?? null;
+  const isNew = storeState === "virgin" || storeState === "building";
+  // A quiet day still tells what comes next.
+  const upcoming =
+    !isNew && departures.length === 0 && returns.length === 0 ? await getUpcomingDays(storeId) : null;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {storeState !== "virgin" && storeState !== "building" && <ReservationsCalendarPrefetch />}
+    // Fills the content frame's height (viewport minus its header and paddings)
+    // so the two cards below can stretch to the bottom.
+    <div className="flex flex-col gap-5 sm:gap-6 lg:min-h-[calc(100svh-8.5rem)]">
+      {!isNew && <ReservationsCalendarPrefetch />}
 
-      {/* Adaptive Header */}
-      <AdaptiveHeader
-        firstName={firstName}
-        timeOfDay={timeOfDay}
-        storeState={storeState}
-        metrics={metrics}
-      />
-
-      {/* Priority Alert for pending requests */}
-      <DashboardAlert pendingCount={metrics.pendingReservations} />
-
-      {/* Stores from reeent are not published there until Stripe can charge. */}
-      {isFromReeent && onlinePaymentsStep === "todo" && (
-        <ReeentStripeSetupCard hasStripeAccount={hasStripeAccount} />
-      )}
-
-      {/* Launch-cohort status: the earned waiver, or the seats still open. The
-          seats pitch is dropped for a reeent store that has not earned the
-          waiver yet — it already signed up, and the card above carries the
-          offer. The earned badge still shows everywhere. */}
-      {(lifetimeFeeWaiverAt !== null || !isFromReeent) && (
-        <MarketplaceCohortNotice
-          lifetimeFeeWaiverAt={lifetimeFeeWaiverAt}
-          cohortRank={channelState.channel?.cohortRank ?? null}
-          remaining={cohort.remaining}
-          dismissedNoticeIds={dismissedNoticeIds}
-        />
-      )}
-
-      {/* Setup Checklist for new stores (floating widget) */}
-      {(storeState === "virgin" || storeState === "building") && (
-        <SetupChecklist
+      <div className="space-y-4">
+        <HomeHeader
+          firstName={firstName}
+          timeOfDay={getTimeOfDay()}
+          storeState={storeState}
           metrics={metrics}
-          storeSlug={storeSlug}
-          onlinePaymentsStep={onlinePaymentsStep}
-          onlinePaymentsContext={isFromReeent ? "reeent" : "default"}
         />
-      )}
+        {!isNew && <MonthSummary metrics={metrics} />}
+      </div>
 
-      {/* Adaptive Stats */}
-      <AdaptiveStats metrics={metrics} storeState={storeState} />
+      {showReeentBanner && <ReeentStripeSetupCard hasStripeAccount={hasStripeAccount} />}
 
-      {/* Today's Activity - Only show for active stores */}
-      {storeState !== "virgin" && storeState !== "building" && (
-        <TodayActivity departures={departures} returns={returns} />
-      )}
-
-      {/* Pending Requests Table - Only if there are pending requests */}
-      {pending.length > 0 && <PendingRequests pending={pending} />}
-
-      {/* Bottom Section: Quick Actions + Storefront */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <QuickActions storeState={storeState} />
-        <StorefrontWidget storeSlug={storeSlug} />
+      {/* The two things a renter checks every day, side by side and full height. */}
+      <div className="grid flex-1 items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] lg:gap-5">
+        <PendingRequestsCard
+          storeState={storeState}
+          pending={pending}
+          pendingCount={metrics.pendingReservations}
+          storeSlug={storeSlug}
+          storeName={storeName}
+          hasPriorityAction={showReeentBanner}
+        />
+        <TodayCard
+          storeState={storeState}
+          metrics={metrics}
+          departures={departures}
+          returns={returns}
+          upcoming={upcoming}
+          today={startOfToday()}
+        />
       </div>
     </div>
   );
@@ -218,32 +237,18 @@ export default async function DashboardHomePage() {
 
   const session = await auth();
   const firstName = session?.user?.name?.split(" ")[0] || "";
-  const userRow = session?.user?.id
-    ? await db.query.users.findFirst({
-        columns: { dismissedNotices: true },
-        where: eq(users.id, session.user.id),
-      })
-    : undefined;
 
-  // Stores that want online payments get a checklist step tracking the
-  // Stripe KYC left pending during onboarding (payment mode silently degrades
-  // to request mode until Stripe is chargeable — see lib/reservation-mode.ts).
-  const onlinePaymentsStep: OnlinePaymentsStep =
-    getIntendedReservationMode(store) === "payment"
-      ? isStripeChargeable(store)
-        ? "done"
-        : "todo"
-      : "hidden";
+  const onlinePaymentsTodo =
+    getIntendedReservationMode(store) === "payment" && !isStripeChargeable(store);
 
   return (
     <DashboardContent
       storeId={store.id}
       storeSlug={store.slug}
+      storeName={store.name}
       firstName={firstName}
-      onlinePaymentsStep={onlinePaymentsStep}
-      isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
+      showReeentBanner={store.signupOrigin === REEENT_SIGNUP_ORIGIN && onlinePaymentsTodo}
       hasStripeAccount={store.stripeAccountId !== null}
-      dismissedNoticeIds={parseDismissedNotices(userRow?.dismissedNotices)}
     />
   );
 }

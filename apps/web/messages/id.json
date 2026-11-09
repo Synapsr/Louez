@@ -555,7 +555,8 @@
         "owner": "Pemilik",
         "member": "Anggota tim",
         "platform_admin": "Admin"
-      }
+      },
+      "online": "Online"
     },
     "team": {
       "title": "Tim",
@@ -1007,18 +1008,13 @@
           "openSetup": "Lihat langkah awal"
         }
       },
-      "alert": {
-        "singlePending": "1 permintaan tertunda",
-        "multiplePending": "{count} permintaan tertunda",
-        "description": "Pelanggan Anda sedang menunggu tanggapan Anda",
-        "action": "Tangani"
-      },
       "reeentStripe": {
         "title": "Toko Anda belum terlihat di <reeent>reeent</reeent>",
         "description": "Sampai pembayaran online aktif, reeent tidak mempublikasikan toko Anda. Penawaran peluncuran (komisi 0 € seumur hidup) berlaku sejak publikasi, selama masih ada tempat.",
         "continueSetup": "Lanjutkan pengaturan Stripe",
         "activate": "Aktifkan pembayaran online",
-        "paymentSettings": "Pengaturan pembayaran"
+        "paymentSettings": "Pengaturan pembayaran",
+        "status": "Belum dipublikasikan"
       },
       "setup": {
         "title": "Memulai",
@@ -1078,18 +1074,6 @@
         "description": "Reservasi memerlukan persetujuan Anda",
         "empty": "Tidak ada permintaan yang tertunda"
       },
-      "quickActions": {
-        "title": "Tindakan cepat",
-        "description": "Kelola toko Anda secara efisien",
-        "addProduct": {
-          "title": "Tambahkan produk",
-          "description": "Buat produk baru untuk disewa"
-        },
-        "addReservation": {
-          "title": "Buat reservasi",
-          "description": "Tambahkan reservasi secara manual"
-        }
-      },
       "storefront": {
         "title": "Toko Anda",
         "description": "Bagikan tautan Anda dengan pelanggan Anda",
@@ -1119,6 +1103,34 @@
         "hideQR": "Sembunyikan kode QR",
         "qrDescription": "Pindai kode ini untuk mengakses toko",
         "downloadQR": "Unduh"
+      },
+      "month": {
+        "title": "Bulan ini",
+        "revenue": "<strong>{amount}</strong> diterima",
+        "reservations": "{count, plural, other {<strong>#</strong> pemesanan secara total}}",
+        "customers": "{count, plural, other {<strong>#</strong> pelanggan}}",
+        "seeAnalytics": "Lihat analitik"
+      },
+      "requestsEmpty": {
+        "virginTitle": "Permintaan pelanggan Anda akan muncul di sini",
+        "virginText": "Untuk menerimanya, tambahkan produk terlebih dahulu: itulah yang akan dipesan pelanggan.",
+        "buildingTitle": "Produk Anda sudah online",
+        "buildingText": "Bagikan toko Anda untuk mendapatkan permintaan pertama.",
+        "upToDateTitle": "Semua sudah beres"
+      },
+      "today": {
+        "title": "Hari ini",
+        "departures": "{count, plural, other {# penyerahan}}",
+        "returns": "{count, plural, other {# pengembalian}}",
+        "emptyTitle": "Penyerahan dan pengembalian akan muncul di sini",
+        "emptyText": "Sejak pemesanan pertama, hari Anda terbaca jam demi jam: apa yang diserahkan dan apa yang diterima kembali."
+      },
+      "upcoming": {
+        "title": "Beberapa hari ke depan",
+        "tomorrow": "Besok",
+        "departures": "{count, plural, other {# penyerahan}}",
+        "returns": "{count, plural, other {# pengembalian}}",
+        "nothing": "Tidak ada rencana"
       }
     },
     "products": {
@@ -8146,7 +8158,10 @@
       "primaryColor": "Warna primer",
       "theme": "Tema",
       "themeLight": "Ringan",
-      "themeDark": "Gelap"
+      "themeDark": "Gelap",
+      "logoDropTitle": "Seret logo Anda ke sini, atau <browse>telusuri</browse>",
+      "customColor": "Kustom",
+      "hexLabel": "Kode heksadesimal"
     },
     "product": {
       "title": "Produk pertama",
@@ -8202,7 +8217,10 @@
           "kycStep3": "Pembayaran online aktif secara otomatis",
           "configureNow": "Siapkan Stripe sekarang",
           "resumeNow": "Lanjutkan pengaturan Stripe",
-          "configureLater": "Atau nanti dari dasbor Anda — hingga saat itu, reservasi kembali ke persetujuan manual."
+          "configureLater": "Atau nanti dari dasbor Anda — hingga saat itu, reservasi kembali ke persetujuan manual.",
+          "headline": "Pelanggan memesan dan membayar sekaligus",
+          "laterTitle": "Bagaimana jika saya lakukan nanti?",
+          "laterBody": "Toko Anda sudah berjalan: sampai Stripe diatur, pemesanan masuk sebagai permintaan dan Anda menyetujuinya sendiri."
         },
         "request": {
           "howTitle": "Bagaimana cara kerjanya?",
@@ -8219,7 +8237,9 @@
           "cons1": "Pengingat dan pemesanan yang belum dibayar untuk ditangani",
           "cons2": "Lebih banyak ketidakhadiran tanpa pembayaran di muka",
           "cons3": "Tidak ada setoran otomatis",
-          "switchNote": "Beralih ke pembayaran online kapan saja dari pengaturan."
+          "switchNote": "Beralih ke pembayaran online kapan saja dari pengaturan.",
+          "headline": "Anda tetap memegang kendali setiap pemesanan",
+          "goodToKnow": "Perlu diketahui"
         }
       }
     },
@@ -8246,7 +8266,7 @@
       "other": "Lainnya",
       "otherPlaceholder": "Beritahu kami lebih lanjut…",
       "skip": "Lewati",
-      "finish": "Selesai",
+      "finish": "Buka ruang saya",
       "panel": {
         "title": "Catatan dari tim",
         "p1": "Selamat datang di Louez, dan terima kasih atas kepercayaan Anda. Toko Anda sudah siap, kami tidak sabar untuk melihat pemesanan pertama Anda.",
@@ -8727,9 +8747,12 @@
     "checkoutPaymentFailed": "Pembayaran tidak dapat dimulai. Reservasi belum dikonfirmasi. Coba lagi atau hubungi toko."
   },
   "welcome": {
-    "greeting": "Selamat datang di Louez.io",
-    "tagline": "Toko Anda sudah siap",
-    "skip": "Tekan untuk melanjutkan"
+    "hello": "Selamat datang di Louez, {name}",
+    "helloAnonymous": "Selamat datang di Louez",
+    "isOnline": "sudah online.",
+    "online": "Online",
+    "nextStep": "Tinggal menambahkan produk pertamanya.",
+    "opening": "Membuka ruang Anda…"
   },
   "legalPages": {
     "back": "Kembali",

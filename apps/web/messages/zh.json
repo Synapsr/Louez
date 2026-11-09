@@ -555,7 +555,8 @@
         "owner": "业主",
         "member": "团队成员",
         "platform_admin": "管理员"
-      }
+      },
+      "online": "已上线"
     },
     "team": {
       "title": "团队",
@@ -1007,18 +1008,13 @@
           "openSetup": "查看入门步骤"
         }
       },
-      "alert": {
-        "singlePending": "1 个待处理请求",
-        "multiplePending": "{count} 待处理请求",
-        "description": "您的客户正在等待您的回复",
-        "action": "手柄"
-      },
       "reeentStripe": {
         "title": "您的商店在 <reeent>reeen</reeent> 上尚不可见",
         "description": "在在线支付激活之前，reeen 不会发布您的商店。只要还有名额，启动优惠（终身 0 欧元佣金）自发布之日起适用。",
         "continueSetup": "继续 Stripe 设置",
         "activate": "激活在线支付",
-        "paymentSettings": "付款设置"
+        "paymentSettings": "付款设置",
+        "status": "尚未发布"
       },
       "setup": {
         "title": "开始使用",
@@ -1078,18 +1074,6 @@
         "description": "需要您批准的预订",
         "empty": "没有待处理的请求"
       },
-      "quickActions": {
-        "title": "快速行动",
-        "description": "高效管理您的商店",
-        "addProduct": {
-          "title": "添加产品",
-          "description": "创建新的出租产品"
-        },
-        "addReservation": {
-          "title": "创建预订",
-          "description": "手动添加预订"
-        }
-      },
       "storefront": {
         "title": "你的商店",
         "description": "与您的客户分享您的链接",
@@ -1119,6 +1103,34 @@
         "hideQR": "隐藏二维码",
         "qrDescription": "扫描此码即可进入店铺",
         "downloadQR": "下载"
+      },
+      "month": {
+        "title": "本月",
+        "revenue": "已收款 <strong>{amount}</strong>",
+        "reservations": "{count, plural, other {共 <strong>#</strong> 笔预订}}",
+        "customers": "{count, plural, other {<strong>#</strong> 位客户}}",
+        "seeAnalytics": "查看分析"
+      },
+      "requestsEmpty": {
+        "virginTitle": "客户的预订请求会显示在这里",
+        "virginText": "要收到请求，请先添加一件商品：这就是客户将预订的东西。",
+        "buildingTitle": "您的商品已上线",
+        "buildingText": "分享您的店铺，获得第一批请求。",
+        "upToDateTitle": "都处理完了"
+      },
+      "today": {
+        "title": "今天",
+        "departures": "{count, plural, other {# 次交付}}",
+        "returns": "{count, plural, other {# 次归还}}",
+        "emptyTitle": "您的交付和归还会显示在这里",
+        "emptyText": "从第一笔预订起，您可以按小时查看当天需要交付和收回的物品。"
+      },
+      "upcoming": {
+        "title": "接下来几天",
+        "tomorrow": "明天",
+        "departures": "{count, plural, other {# 次交付}}",
+        "returns": "{count, plural, other {# 次归还}}",
+        "nothing": "暂无安排"
       }
     },
     "products": {
@@ -8146,7 +8158,10 @@
       "primaryColor": "原色",
       "theme": "主题",
       "themeLight": "光",
-      "themeDark": "黑暗"
+      "themeDark": "黑暗",
+      "logoDropTitle": "将徽标拖到此处，或<browse>浏览文件</browse>",
+      "customColor": "自定义",
+      "hexLabel": "十六进制代码"
     },
     "product": {
       "title": "第一个产品",
@@ -8202,7 +8217,10 @@
           "kycStep3": "网上支付自动激活",
           "configureNow": "立即设置 Stripe",
           "resumeNow": "恢复 Stripe 设置",
-          "configureLater": "或者稍后通过您的仪表板 - 在此之前，预订将退回到手动批准。"
+          "configureLater": "或者稍后通过您的仪表板 - 在此之前，预订将退回到手动批准。",
+          "headline": "客户一次完成预订和付款",
+          "laterTitle": "如果我稍后再做呢？",
+          "laterBody": "您的店铺已经可以使用：在设置 Stripe 之前，预订会以请求的形式到达，由您亲自确认。"
         },
         "request": {
           "howTitle": "它是如何运作的？",
@@ -8219,7 +8237,9 @@
           "cons1": "提醒及未付款预订处理",
           "cons2": "更多没有预付款的缺席情况",
           "cons3": "没有自动存款",
-          "switchNote": "随时从设置切换到在线支付。"
+          "switchNote": "随时从设置切换到在线支付。",
+          "headline": "每笔预订都由您掌控",
+          "goodToKnow": "须知"
         }
       }
     },
@@ -8246,7 +8266,7 @@
       "other": "其他",
       "otherPlaceholder": "告诉我们更多……",
       "skip": "跳过",
-      "finish": "完成",
+      "finish": "进入我的空间",
       "panel": {
         "title": "团队的注释",
         "p1": "欢迎来到Louez，感谢您的信任。您的商店已准备就绪，我们迫不及待地想看到您的第一笔预订。",
@@ -8727,9 +8747,12 @@
     "checkoutPaymentFailed": "无法开始付款。您的预订尚未确认。请重试或联系店铺。"
   },
   "welcome": {
-    "greeting": "欢迎来到Louez.io",
-    "tagline": "您的商店已准备就绪",
-    "skip": "按继续"
+    "hello": "欢迎来到 Louez，{name}",
+    "helloAnonymous": "欢迎来到 Louez",
+    "isOnline": "已上线。",
+    "online": "已上线",
+    "nextStep": "只需添加第一批商品。",
+    "opening": "正在打开您的空间…"
   },
   "legalPages": {
     "back": "返回",

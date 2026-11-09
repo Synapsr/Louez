@@ -555,7 +555,8 @@
         "owner": "소유자",
         "member": "팀원",
         "platform_admin": "관리자"
-      }
+      },
+      "online": "온라인"
     },
     "team": {
       "title": "팀",
@@ -1007,18 +1008,13 @@
           "openSetup": "시작 단계 보기"
         }
       },
-      "alert": {
-        "singlePending": "대기 중인 요청 1개",
-        "multiplePending": "{count} 대기 중인 요청",
-        "description": "고객이 귀하의 응답을 기다리고 있습니다",
-        "action": "손잡이"
-      },
       "reeentStripe": {
         "title": "귀하의 매장은 아직 <reeent>reeent</reeent>에 표시되지 않습니다",
         "description": "온라인 결제가 활성화될 때까지 reeeent는 귀하의 매장을 게시하지 않습니다. 출시 제안(평생 재회 수수료 0€)은 자리가 남아 있는 한 출판 시점부터 적용됩니다.",
         "continueSetup": "Stripe 설정 계속",
         "activate": "온라인 결제 활성화",
-        "paymentSettings": "결제 설정"
+        "paymentSettings": "결제 설정",
+        "status": "아직 게시되지 않음"
       },
       "setup": {
         "title": "시작하기",
@@ -1078,18 +1074,6 @@
         "description": "귀하의 승인이 필요한 예약",
         "empty": "대기 중인 요청 없음"
       },
-      "quickActions": {
-        "title": "빠른 작업",
-        "description": "효율적인 매장 관리",
-        "addProduct": {
-          "title": "제품 추가",
-          "description": "임대용 새 제품 만들기"
-        },
-        "addReservation": {
-          "title": "예약 만들기",
-          "description": "수동으로 예약 추가"
-        }
-      },
       "storefront": {
         "title": "귀하의 매장",
         "description": "고객과 링크를 공유하세요",
@@ -1119,6 +1103,34 @@
         "hideQR": "QR 코드 숨기기",
         "qrDescription": "매장에 액세스하려면 이 코드를 스캔하세요.",
         "downloadQR": "다운로드"
+      },
+      "month": {
+        "title": "이번 달",
+        "revenue": "<strong>{amount}</strong> 수금",
+        "reservations": "{count, plural, other {총 <strong>#</strong>건의 예약}}",
+        "customers": "{count, plural, other {고객 <strong>#</strong>명}}",
+        "seeAnalytics": "분석 보기"
+      },
+      "requestsEmpty": {
+        "virginTitle": "고객의 예약 요청이 여기에 표시됩니다",
+        "virginText": "요청을 받으려면 먼저 상품을 추가하세요. 고객은 상품을 예약합니다.",
+        "buildingTitle": "상품이 공개되었습니다",
+        "buildingText": "매장을 공유해 첫 요청을 받아 보세요.",
+        "upToDateTitle": "모두 처리했습니다"
+      },
+      "today": {
+        "title": "오늘",
+        "departures": "{count, plural, other {인도 #건}}",
+        "returns": "{count, plural, other {반납 #건}}",
+        "emptyTitle": "인도와 반납이 여기에 표시됩니다",
+        "emptyText": "첫 예약부터 인도하고 회수할 항목을 시간대별로 볼 수 있습니다."
+      },
+      "upcoming": {
+        "title": "앞으로 며칠",
+        "tomorrow": "내일",
+        "departures": "{count, plural, other {인도 #건}}",
+        "returns": "{count, plural, other {반납 #건}}",
+        "nothing": "예정 없음"
       }
     },
     "products": {
@@ -8146,7 +8158,10 @@
       "primaryColor": "기본 색상",
       "theme": "테마",
       "themeLight": "빛",
-      "themeDark": "어둠"
+      "themeDark": "어둠",
+      "logoDropTitle": "로고를 여기로 끌어 놓거나 <browse>파일을 선택하세요</browse>",
+      "customColor": "직접 선택",
+      "hexLabel": "16진수 코드"
     },
     "product": {
       "title": "첫 번째 제품",
@@ -8202,7 +8217,10 @@
           "kycStep3": "온라인 결제가 자동으로 활성화됩니다.",
           "configureNow": "지금 Stripe 설정하기",
           "resumeNow": "Stripe 설정 재개",
-          "configureLater": "또는 나중에 대시보드에서 — 그때까지 예약은 수동 승인으로 돌아갑니다."
+          "configureLater": "또는 나중에 대시보드에서 — 그때까지 예약은 수동 승인으로 돌아갑니다.",
+          "headline": "고객이 한 번에 예약하고 결제합니다",
+          "laterTitle": "나중에 해도 될까요?",
+          "laterBody": "매장은 이미 운영 중입니다. Stripe를 설정하기 전까지는 예약이 요청으로 들어오고 직접 승인합니다."
         },
         "request": {
           "howTitle": "어떻게 작동하나요?",
@@ -8219,7 +8237,9 @@
           "cons1": "처리해야 할 알림 및 미결제 예약",
           "cons2": "선불 없이 노쇼(No-Show) 발생 증가",
           "cons3": "자동입금 없음",
-          "switchNote": "언제든지 설정에서 온라인 결제로 전환하세요."
+          "switchNote": "언제든지 설정에서 온라인 결제로 전환하세요.",
+          "headline": "모든 예약을 직접 관리합니다",
+          "goodToKnow": "알아 두세요"
         }
       }
     },
@@ -8246,7 +8266,7 @@
       "other": "기타",
       "otherPlaceholder": "더 많은 정보를 알려주세요…",
       "skip": "건너뛰기",
-      "finish": "마침",
+      "finish": "내 공간으로 이동",
       "panel": {
         "title": "팀의 메모",
         "p1": "Louez에 오신 것을 환영하며, 귀하의 신뢰에 감사드립니다. 귀하의 매장이 준비되었습니다. 귀하의 첫 번째 예약을 빨리 보고 싶습니다.",
@@ -8727,9 +8747,12 @@
     "checkoutPaymentFailed": "결제를 시작할 수 없습니다. 예약이 확정되지 않았습니다. 다시 시도하거나 매장에 문의하세요."
   },
   "welcome": {
-    "greeting": "Louez.io에 오신 것을 환영합니다",
-    "tagline": "매장이 준비되었습니다",
-    "skip": "계속하려면 누르세요."
+    "hello": "Louez에 오신 것을 환영합니다, {name}님",
+    "helloAnonymous": "Louez에 오신 것을 환영합니다",
+    "isOnline": "오픈했습니다.",
+    "online": "온라인",
+    "nextStep": "이제 첫 상품만 추가하면 됩니다.",
+    "opening": "공간을 여는 중…"
   },
   "legalPages": {
     "back": "뒤로",

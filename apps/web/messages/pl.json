@@ -555,7 +555,8 @@
         "owner": "Właściciel",
         "member": "Członek zespołu",
         "platform_admin": "Administrator"
-      }
+      },
+      "online": "Online"
     },
     "team": {
       "title": "Zespół",
@@ -968,18 +969,13 @@
           "openSetup": "Zobacz pierwsze kroki"
         }
       },
-      "alert": {
-        "singlePending": "1 oczekujące żądanie",
-        "multiplePending": "{count} oczekujących żądań",
-        "description": "Twoi klienci czekają na odpowiedź",
-        "action": "Obsłuż"
-      },
       "reeentStripe": {
         "title": "Twój sklep nie jest jeszcze widoczny na <reeent>reeent</reeent>",
         "description": "Dopóki płatności online nie są aktywne, reeent nie publikuje Twojego sklepu. Oferta startowa (0 € prowizji reeent na zawsze) obowiązuje od publikacji, dopóki są wolne miejsca.",
         "continueSetup": "Kontynuuj konfigurację Stripe",
         "activate": "Aktywuj płatności online",
-        "paymentSettings": "Ustawienia płatności"
+        "paymentSettings": "Ustawienia płatności",
+        "status": "Jeszcze nieopublikowany"
       },
       "setup": {
         "title": "Pierwsze kroki",
@@ -1039,18 +1035,6 @@
         "description": "Rezerwacje wymagające Twojej akceptacji",
         "empty": "Brak oczekujących żądań"
       },
-      "quickActions": {
-        "title": "Szybkie akcje",
-        "description": "Zarządzaj swoim sklepem efektywnie",
-        "addProduct": {
-          "title": "Dodaj produkt",
-          "description": "Utwórz nowy produkt do wynajmu"
-        },
-        "addReservation": {
-          "title": "Utwórz rezerwację",
-          "description": "Dodaj rezerwację ręcznie"
-        }
-      },
       "storefront": {
         "title": "Twój sklep",
         "description": "Udostępnij link swoim klientom",
@@ -1080,6 +1064,34 @@
         "hideQR": "Ukryj kod QR",
         "qrDescription": "Zeskanuj ten kod, aby uzyskać dostęp do sklepu",
         "downloadQR": "Pobierz"
+      },
+      "month": {
+        "title": "W tym miesiącu",
+        "revenue": "<strong>{amount}</strong> wpływów",
+        "reservations": "{count, plural, one {<strong>#</strong> rezerwacja łącznie} few {<strong>#</strong> rezerwacje łącznie} many {<strong>#</strong> rezerwacji łącznie} other {<strong>#</strong> rezerwacji łącznie}}",
+        "customers": "{count, plural, one {<strong>#</strong> klient} few {<strong>#</strong> klientów} many {<strong>#</strong> klientów} other {<strong>#</strong> klientów}}",
+        "seeAnalytics": "Zobacz analizy"
+      },
+      "requestsEmpty": {
+        "virginTitle": "Tu pojawią się prośby Twoich klientów",
+        "virginText": "Aby je otrzymywać, najpierw dodaj produkt: to on będzie rezerwowany.",
+        "buildingTitle": "Twoje produkty są online",
+        "buildingText": "Udostępnij sklep, aby otrzymać pierwsze prośby.",
+        "upToDateTitle": "Wszystko załatwione"
+      },
+      "today": {
+        "title": "Dzisiaj",
+        "departures": "{count, plural, one {# wydanie} few {# wydania} many {# wydań} other {# wydań}}",
+        "returns": "{count, plural, one {# zwrot} few {# zwroty} many {# zwrotów} other {# zwrotów}}",
+        "emptyTitle": "Tu pojawią się Twoje wydania i zwroty",
+        "emptyText": "Od pierwszej rezerwacji dzień będzie widoczny godzina po godzinie: co wydać, a co odebrać."
+      },
+      "upcoming": {
+        "title": "Najbliższe dni",
+        "tomorrow": "Jutro",
+        "departures": "{count, plural, one {# wydanie} few {# wydania} many {# wydań} other {# wydań}}",
+        "returns": "{count, plural, one {# zwrot} few {# zwroty} many {# zwrotów} other {# zwrotów}}",
+        "nothing": "Nic nie zaplanowano"
       }
     },
     "products": {
@@ -8146,7 +8158,10 @@
       "primaryColor": "Kolor główny",
       "theme": "Motyw",
       "themeLight": "Jasny",
-      "themeDark": "Ciemny"
+      "themeDark": "Ciemny",
+      "logoDropTitle": "Przeciągnij tu logo lub <browse>przeglądaj</browse>",
+      "customColor": "Własny",
+      "hexLabel": "Kod szesnastkowy"
     },
     "product": {
       "title": "Pierwszy produkt",
@@ -8202,7 +8217,10 @@
           "kycStep3": "Płatność online aktywuje się automatycznie",
           "configureNow": "Skonfiguruj Stripe teraz",
           "resumeNow": "Wznów konfigurację Stripe",
-          "configureLater": "Lub później z panelu — do tego czasu rezerwacje przechodzą na ręczne zatwierdzanie."
+          "configureLater": "Lub później z panelu — do tego czasu rezerwacje przechodzą na ręczne zatwierdzanie.",
+          "headline": "Klienci rezerwują i płacą za jednym razem",
+          "laterTitle": "A jeśli zrobię to później?",
+          "laterBody": "Twój sklep już działa: dopóki Stripe nie jest skonfigurowany, rezerwacje przychodzą jako prośby, które zatwierdzasz sam."
         },
         "request": {
           "howTitle": "Jak to działa?",
@@ -8219,7 +8237,9 @@
           "cons1": "Przypomnienia i zaległości po Twojej stronie",
           "cons2": "Więcej nieobecności bez przedpłaty",
           "cons3": "Brak automatycznej kaucji",
-          "switchNote": "W każdej chwili przejdź na płatności online w ustawieniach."
+          "switchNote": "W każdej chwili przejdź na płatności online w ustawieniach.",
+          "headline": "Masz kontrolę nad każdą rezerwacją",
+          "goodToKnow": "Warto wiedzieć"
         }
       }
     },
@@ -8246,7 +8266,7 @@
       "other": "Inne",
       "otherPlaceholder": "Doprecyzuj…",
       "skip": "Pomiń",
-      "finish": "Zakończ",
+      "finish": "Przejdź do mojego panelu",
       "panel": {
         "title": "Słowo od zespołu",
         "p1": "Witamy w Louez i dziękujemy za zaufanie. Twój sklep jest gotowy, nie możemy się doczekać Twoich pierwszych rezerwacji.",
@@ -8727,9 +8747,12 @@
     "checkoutPaymentFailed": "Nie udało się rozpocząć płatności. Rezerwacja nie została potwierdzona. Spróbuj ponownie lub skontaktuj się ze sklepem."
   },
   "welcome": {
-    "greeting": "Witamy w Louez.io",
-    "tagline": "Twój sklep jest gotowy",
-    "skip": "Naciśnij, aby kontynuować"
+    "hello": "Witaj w Louez, {name}",
+    "helloAnonymous": "Witaj w Louez",
+    "isOnline": "jest online.",
+    "online": "Online",
+    "nextStep": "Pozostało tylko dodać pierwsze produkty.",
+    "opening": "Otwieranie Twojego panelu…"
   },
   "legalPages": {
     "back": "Powrót",

@@ -257,8 +257,15 @@ export function StoreSwitcher({
             <span className="w-full truncate text-sm font-semibold">
               {currentStore?.name || t("selectStore")}
             </span>
-            {/* Embedded in the compact store card, the row is the name alone:
-                the role and the setup state are in the menu's store list. */}
+            {/* Embedded in the compact store card, the row is the name and,
+                once the store has a public page, a live dot: the role and the
+                setup state are in the menu's store list. */}
+            {currentStore && appearance === "embedded" && storefront && (
+              <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                <span aria-hidden className="bg-success ring-success/20 size-1.5 rounded-full ring-3" />
+                {t("online")}
+              </span>
+            )}
             {currentStore && appearance === "card" && (
               <div className="flex items-center gap-1.5">
                 <RoleBadge role={currentStore.role} t={t} />

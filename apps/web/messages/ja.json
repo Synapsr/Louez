@@ -555,7 +555,8 @@
         "owner": "オーナー",
         "member": "チームメンバー",
         "platform_admin": "管理者"
-      }
+      },
+      "online": "公開中"
     },
     "team": {
       "title": "チーム",
@@ -1007,18 +1008,13 @@
           "openSetup": "セットアップを見る"
         }
       },
-      "alert": {
-        "singlePending": "保留中のリクエストが 1 件あります",
-        "multiplePending": "{count} 保留中のリクエスト",
-        "description": "顧客はあなたの返答を待っています",
-        "action": "ハンドル"
-      },
       "reeentStripe": {
         "title": "あなたのストアはまだ <reeent>reeent</reeent> に表示されていません",
         "description": "オンライン支払いが有効になるまで、reeent はストアを公開しません。ローンチ オファー (永久手数料 0 ユーロ) は、スポットが残っている限り、出版時から適用されます。",
         "continueSetup": "Stripe セットアップを続行します",
         "activate": "オンライン支払いを有効にする",
-        "paymentSettings": "支払い設定"
+        "paymentSettings": "支払い設定",
+        "status": "未公開"
       },
       "setup": {
         "title": "はじめに",
@@ -1078,18 +1074,6 @@
         "description": "あなたの承認が必要な予約",
         "empty": "保留中のリクエストはありません"
       },
-      "quickActions": {
-        "title": "クイックアクション",
-        "description": "店舗を効率的に管理する",
-        "addProduct": {
-          "title": "製品を追加する",
-          "description": "新しいレンタル商品を作成する"
-        },
-        "addReservation": {
-          "title": "予約を作成する",
-          "description": "予約を手動で追加する"
-        }
-      },
       "storefront": {
         "title": "あなたのお店",
         "description": "リンクを顧客と共有する",
@@ -1119,6 +1103,34 @@
         "hideQR": "QRコードを隠す",
         "qrDescription": "このコードをスキャンしてストアにアクセスします",
         "downloadQR": "ダウンロード"
+      },
+      "month": {
+        "title": "今月",
+        "revenue": "<strong>{amount}</strong> 入金済み",
+        "reservations": "{count, plural, other {累計 <strong>#</strong> 件の予約}}",
+        "customers": "{count, plural, other {<strong>#</strong> 人の顧客}}",
+        "seeAnalytics": "分析を見る"
+      },
+      "requestsEmpty": {
+        "virginTitle": "お客様からのリクエストはここに届きます",
+        "virginText": "受け取るには、まず商品を追加しましょう。お客様が予約するのは商品です。",
+        "buildingTitle": "商品が公開されました",
+        "buildingText": "ショップを共有して、最初のリクエストを受け取りましょう。",
+        "upToDateTitle": "すべて対応済みです"
+      },
+      "today": {
+        "title": "今日",
+        "departures": "{count, plural, other {引き渡し # 件}}",
+        "returns": "{count, plural, other {返却 # 件}}",
+        "emptyTitle": "引き渡しと返却はここに表示されます",
+        "emptyText": "最初の予約から、引き渡すものと回収するものを時間ごとに確認できます。"
+      },
+      "upcoming": {
+        "title": "今後数日",
+        "tomorrow": "明日",
+        "departures": "{count, plural, other {引き渡し # 件}}",
+        "returns": "{count, plural, other {返却 # 件}}",
+        "nothing": "予定なし"
       }
     },
     "products": {
@@ -8146,7 +8158,10 @@
       "primaryColor": "原色",
       "theme": "テーマ",
       "themeLight": "ライト",
-      "themeDark": "暗い"
+      "themeDark": "暗い",
+      "logoDropTitle": "ロゴをここにドロップ、または<browse>ファイルを選択</browse>",
+      "customColor": "カスタム",
+      "hexLabel": "16進コード"
     },
     "product": {
       "title": "最初の製品",
@@ -8202,7 +8217,10 @@
           "kycStep3": "オンライン支払いは自動的に有効になります",
           "configureNow": "今すぐ Stripe をセットアップしてください",
           "resumeNow": "Stripe セットアップを再開します",
-          "configureLater": "または後でダッシュボードから — それまでは、予約は手動承認に戻ります。"
+          "configureLater": "または後でダッシュボードから — それまでは、予約は手動承認に戻ります。",
+          "headline": "お客様は予約と支払いを一度に済ませられます",
+          "laterTitle": "後で設定してもいいですか？",
+          "laterBody": "ショップはすでに使えます。Stripe を設定するまでは、予約はリクエストとして届き、ご自身で承認します。"
         },
         "request": {
           "howTitle": "どのように機能するのでしょうか?",
@@ -8219,7 +8237,9 @@
           "cons1": "対処すべきリマインダーと未払いの予約",
           "cons2": "前払いなしのノーショーの増加",
           "cons3": "自動入金なし",
-          "switchNote": "設定からいつでもオンライン支払いに切り替えることができます。"
+          "switchNote": "設定からいつでもオンライン支払いに切り替えることができます。",
+          "headline": "すべての予約をご自身で判断できます",
+          "goodToKnow": "知っておきたいこと"
         }
       }
     },
@@ -8246,7 +8266,7 @@
       "other": "その他",
       "otherPlaceholder": "もっと詳しく教えてください…",
       "skip": "スキップ",
-      "finish": "終了",
+      "finish": "マイスペースへ",
       "panel": {
         "title": "チームからのメモ",
         "p1": "Louez へようこそ。信頼していただきありがとうございます。ストアの準備は完了しました。最初の予約をお待ちしています。",
@@ -8727,9 +8747,12 @@
     "checkoutPaymentFailed": "支払いを開始できませんでした。予約は確定していません。再試行するか、店舗にお問い合わせください。"
   },
   "welcome": {
-    "greeting": "Louez.ioへようこそ",
-    "tagline": "あなたのストアの準備が整いました",
-    "skip": "続行するには押してください"
+    "hello": "Louez へようこそ、{name}さん",
+    "helloAnonymous": "Louez へようこそ",
+    "isOnline": "が公開されました。",
+    "online": "公開中",
+    "nextStep": "あとは最初の商品を追加するだけです。",
+    "opening": "スペースを開いています…"
   },
   "legalPages": {
     "back": "戻る",

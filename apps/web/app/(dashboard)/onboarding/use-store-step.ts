@@ -120,8 +120,12 @@ export const useStoreStep = ({
   const { updatePreview } = useOnboardingPreview();
 
   useEffect(() => {
-    updatePreview({ storeName: formValues.name, slug: formValues.slug });
-  }, [formValues.name, formValues.slug, updatePreview]);
+    updatePreview({
+      storeName: formValues.name,
+      slug: formValues.slug,
+      currency: formValues.currency,
+    });
+  }, [formValues.name, formValues.slug, formValues.currency, updatePreview]);
 
   const hasSeededBrandingPreview = useRef(false);
 

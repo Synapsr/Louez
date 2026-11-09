@@ -23,8 +23,8 @@ import { OnboardingPreviewProvider, type OnboardingPreviewState } from "../_lib/
 import { ReeentIntroProvider, type ReeentIntroSeed } from "../_lib/reeent-intro-context";
 import { type OnboardingStep, getOnboardingStepIndex } from "../_lib/steps";
 import { OnboardingStepsProvider } from "../_lib/steps-context";
-import { DashboardPreview } from "./dashboard-preview";
 import { FounderNotePanel } from "./founder-note-panel";
+import { OnboardingSceneBackdrop } from "./onboarding-scene-backdrop";
 import { PaymentModePanel } from "./payment-mode-panel";
 import { ReeentIntroPanel } from "./reeent-intro-panel";
 import { StepTransition } from "./step-transition";
@@ -93,8 +93,11 @@ export function OnboardingShell({
       : isReeentStep
         ? "reeent"
         : isProfileStep
-          ? "dashboard-preview"
+          ? "none"
           : "storefront-preview";
+  // The profile step has nothing to show yet: the form stands alone, and the
+  // right column opens on the store step, when the storefront starts to exist.
+  const hasSideColumn = !isProfileStep;
 
   const shell = (
     <OnboardingStepsProvider steps={steps}>
@@ -122,14 +125,17 @@ export function OnboardingShell({
                   aria-label={t("welcome.description")}
                   className="mb-10 flex gap-1.5"
                 >
+                  {/* Each segment fills from the left as its step is reached,
+                      and empties back towards the left when the flow goes back. */}
                   {steps.map((step, index) => (
-                    <div
-                      key={step.path}
-                      className={cn(
-                        "h-[4px] flex-1 rounded-full transition-colors duration-500",
-                        index <= currentStepIndex ? "bg-foreground" : "bg-border",
-                      )}
-                    />
+                    <div key={step.path} className="bg-border h-[4px] flex-1 overflow-hidden rounded-full">
+                      <div
+                        className={cn(
+                          "bg-foreground ease-lagon h-full origin-left transition-transform duration-500 motion-reduce:transition-none",
+                          index <= currentStepIndex ? "scale-x-100" : "scale-x-0",
+                        )}
+                      />
+                    </div>
                   ))}
                 </div>
 
@@ -146,7 +152,14 @@ export function OnboardingShell({
 
           {/* Right: live preview, bleeds off the right edge like the moodboard.
             Steps that need words swap it for a readable panel instead. */}
-          <aside className="bg-background relative hidden flex-1 items-center overflow-hidden border-l lg:flex lg:flex-1">
+          <aside
+            aria-hidden={!hasSideColumn}
+            className={cn(
+              "bg-background ease-lagon relative hidden min-w-0 grow basis-0 items-center overflow-hidden border-l transition-[flex-grow,border-color] duration-700 motion-reduce:transition-none lg:flex",
+              !hasSideColumn && "grow-0 border-l-transparent",
+            )}
+          >
+            <OnboardingSceneBackdrop />
             {/* Fades only when the panel itself changes: the storefront preview
                 stays put from the store step to the branding step. */}
             <StepTransition
@@ -155,13 +168,11 @@ export function OnboardingShell({
               slide={false}
               className={
                 sidePanel
-                  ? "mx-auto max-h-full w-full max-w-md overflow-y-auto px-10 py-10"
-                  : "w-216 shrink-0 pl-10 xl:pl-16"
+                  ? "relative mx-auto max-h-full w-full max-w-md overflow-y-auto px-10 py-10"
+                  : "relative w-216 shrink-0 pl-10 xl:pl-16"
               }
             >
-              {/* The profile step is the "Louez is your tool" pitch, so it gets
-                  the dashboard preview rather than an empty storefront. */}
-              {sidePanel ?? (isProfileStep ? <DashboardPreview /> : <StorefrontPreview />)}
+              {sidePanel ?? (hasSideColumn ? <StorefrontPreview /> : null)}
             </StepTransition>
           </aside>
         </div>

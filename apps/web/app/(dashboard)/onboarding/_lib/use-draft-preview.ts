@@ -24,6 +24,7 @@ export const useDraftPreview = () => {
     updatePreview({
       storeName: data.store.name || "",
       slug: data.store.slug || "",
+      ...(data.store.currency ? { currency: data.store.currency } : {}),
       ...(branding
         ? {
             logoUrl:

@@ -555,7 +555,8 @@
         "owner": "Eigenaar",
         "member": "Teamlid",
         "platform_admin": "Beheerder"
-      }
+      },
+      "online": "Online"
     },
     "team": {
       "title": "Team",
@@ -968,18 +969,13 @@
           "openSetup": "Opstartstappen bekijken"
         }
       },
-      "alert": {
-        "singlePending": "1 openstaande aanvraag",
-        "multiplePending": "{count} openstaande aanvragen",
-        "description": "Uw klanten wachten op uw reactie",
-        "action": "Afhandelen"
-      },
       "reeentStripe": {
         "title": "Je winkel is nog niet zichtbaar op <reeent>reeent</reeent>",
         "description": "Zolang online betalingen niet actief zijn, publiceert reeent je winkel niet. De lanceeraanbieding (0 € reeent-commissie voor het leven) geldt vanaf de publicatie, zolang er plaatsen zijn.",
         "continueSetup": "Stripe-configuratie voortzetten",
         "activate": "Online betalingen activeren",
-        "paymentSettings": "Betalingsinstellingen"
+        "paymentSettings": "Betalingsinstellingen",
+        "status": "Nog niet gepubliceerd"
       },
       "setup": {
         "title": "Aan de slag",
@@ -1039,18 +1035,6 @@
         "description": "Reserveringen die uw goedkeuring nodig hebben",
         "empty": "Geen openstaande aanvragen"
       },
-      "quickActions": {
-        "title": "Snelle acties",
-        "description": "Beheer uw winkel efficiënt",
-        "addProduct": {
-          "title": "Product toevoegen",
-          "description": "Nieuw product voor verhuur aanmaken"
-        },
-        "addReservation": {
-          "title": "Reservering aanmaken",
-          "description": "Handmatig een reservering toevoegen"
-        }
-      },
       "storefront": {
         "title": "Uw winkel",
         "description": "Deel uw link met uw klanten",
@@ -1080,6 +1064,34 @@
         "hideQR": "QR-code verbergen",
         "qrDescription": "Scan deze code om de winkel te bezoeken",
         "downloadQR": "Downloaden"
+      },
+      "month": {
+        "title": "Deze maand",
+        "revenue": "<strong>{amount}</strong> ontvangen",
+        "reservations": "{count, plural, one {<strong>#</strong> reservering in totaal} other {<strong>#</strong> reserveringen in totaal}}",
+        "customers": "{count, plural, one {<strong>#</strong> klant} other {<strong>#</strong> klanten}}",
+        "seeAnalytics": "Bekijk de analyses"
+      },
+      "requestsEmpty": {
+        "virginTitle": "Hier komen de aanvragen van je klanten",
+        "virginText": "Voeg daarvoor eerst een product toe: dat is wat je klanten reserveren.",
+        "buildingTitle": "Je producten staan online",
+        "buildingText": "Deel je winkel om je eerste aanvragen te ontvangen.",
+        "upToDateTitle": "Je bent bij"
+      },
+      "today": {
+        "title": "Vandaag",
+        "departures": "{count, plural, one {# uitgifte} other {# uitgiftes}}",
+        "returns": "{count, plural, one {# retour} other {# retouren}}",
+        "emptyTitle": "Hier verschijnen je uitgiftes en retouren",
+        "emptyText": "Vanaf de eerste reservering lees je de dag uur per uur: wat er mee moet en wat terugkomt."
+      },
+      "upcoming": {
+        "title": "De komende dagen",
+        "tomorrow": "Morgen",
+        "departures": "{count, plural, one {# uitgifte} other {# uitgiftes}}",
+        "returns": "{count, plural, one {# retour} other {# retouren}}",
+        "nothing": "Niets gepland"
       }
     },
     "products": {
@@ -8146,7 +8158,10 @@
       "primaryColor": "Primaire kleur",
       "theme": "Thema",
       "themeLight": "Licht",
-      "themeDark": "Donker"
+      "themeDark": "Donker",
+      "logoDropTitle": "Sleep je logo hierheen of <browse>blader</browse>",
+      "customColor": "Aangepast",
+      "hexLabel": "Hexcode"
     },
     "product": {
       "title": "Eerste product",
@@ -8202,7 +8217,10 @@
           "kycStep3": "Online betaling wordt automatisch geactiveerd",
           "configureNow": "Stripe nu instellen",
           "resumeNow": "Stripe-configuratie hervatten",
-          "configureLater": "Of later via je dashboard — tot die tijd vallen reserveringen terug op handmatige goedkeuring."
+          "configureLater": "Of later via je dashboard — tot die tijd vallen reserveringen terug op handmatige goedkeuring.",
+          "headline": "Je klanten reserveren en betalen in één keer",
+          "laterTitle": "En als ik het later doe?",
+          "laterBody": "Je winkel werkt al: zolang Stripe niet is ingesteld, komen reserveringen binnen als aanvragen en keur je ze zelf goed."
         },
         "request": {
           "howTitle": "Hoe werkt het?",
@@ -8219,7 +8237,9 @@
           "cons1": "Herinneringen en openstaande betalingen zelf beheren",
           "cons2": "Meer no-shows zonder vooruitbetaling",
           "cons3": "Geen automatische borg",
-          "switchNote": "Stap via de instellingen altijd over op online betaling."
+          "switchNote": "Stap via de instellingen altijd over op online betaling.",
+          "headline": "Jij houdt de regie over elke reservering",
+          "goodToKnow": "Goed om te weten"
         }
       }
     },
@@ -8246,7 +8266,7 @@
       "other": "Anders",
       "otherPlaceholder": "Vertel meer…",
       "skip": "Overslaan",
-      "finish": "Afronden",
+      "finish": "Naar mijn omgeving",
       "panel": {
         "title": "Een woordje van het team",
         "p1": "Welkom bij Louez, en bedankt voor je vertrouwen. Je winkel is klaar, we kijken uit naar je eerste reserveringen.",
@@ -8727,9 +8747,12 @@
     "checkoutPaymentFailed": "De betaling kon niet worden gestart. Uw reservering is niet bevestigd. Probeer het opnieuw of neem contact op met de winkel."
   },
   "welcome": {
-    "greeting": "Welkom bij Louez.io",
-    "tagline": "Uw winkel is klaar",
-    "skip": "Druk om door te gaan"
+    "hello": "Welkom bij Louez, {name}",
+    "helloAnonymous": "Welkom bij Louez",
+    "isOnline": "is online.",
+    "online": "Online",
+    "nextStep": "Je hoeft alleen nog de eerste producten toe te voegen.",
+    "opening": "Je omgeving wordt geopend…"
   },
   "legalPages": {
     "back": "Terug",

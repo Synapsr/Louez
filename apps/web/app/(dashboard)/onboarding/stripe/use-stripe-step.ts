@@ -4,9 +4,7 @@ import { useEffect } from "react";
 
 import { useStore } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
 
-import { toastManager } from "@louez/ui";
 import { stripeSetupSchema } from "@louez/validations";
 
 import { orpc } from "@/lib/orpc/react";
@@ -21,7 +19,6 @@ import { useDraftPreview } from "../_lib/use-draft-preview";
 import { useStepNavigation } from "../_lib/use-step-navigation";
 
 export const useStripeStep = () => {
-  const t = useTranslations("onboarding.stripe");
   const showError = useOnboardingErrorToast();
   const { updatePreview } = useOnboardingPreview();
   // The source step when this flow has it.
@@ -44,7 +41,7 @@ export const useStripeStep = () => {
     onSubmit: async ({ value }) => {
       try {
         await completeOnboardingMutation.mutateAsync(value);
-        toastManager.add({ title: t("configComplete"), type: "success" });
+        // No toast here: the flow is not over yet, the welcome moment closes it.
         // Signal the welcome animation via sessionStorage (more reliable than URL params)
         sessionStorage.setItem("louez-show-welcome", "1");
         goToNextStep();

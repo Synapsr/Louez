@@ -2,30 +2,18 @@
 
 import { useRouter } from "next/navigation";
 
+import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@louez/ui";
-import { Input } from "@louez/ui";
-import { Label } from "@louez/ui";
-import { Radio, RadioGroup } from "@louez/ui";
+import { Button, Label, Radio, RadioGroup } from "@louez/ui";
+import { cn } from "@louez/utils";
 
 import { getFieldError } from "@/hooks/form/form-context";
 
 import { OnboardingStepHeader } from "../_components/step-header";
-import { ThemeDashboardPreview } from "./theme-dashboard-preview";
+import { BrandColorField } from "./brand-color-field";
+import { ThemeStorefrontPreview } from "./theme-storefront-preview";
 import { useBrandingStep } from "./use-branding-step";
-import { cn } from "@louez/utils";
-
-const PRESET_COLORS = [
-  "#0066FF",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#8B5CF6",
-  "#EC4899",
-  "#06B6D4",
-  "#84CC16",
-];
 
 const THEME_OPTIONS = [
   { value: "light", label: "themeLight" },
@@ -48,13 +36,20 @@ export function BrandingClientPage() {
 
   return (
     <>
-      <OnboardingStepHeader title={t("title")} description={t("description")} />
+      {/* The sentence that used to describe the step is its clearest title. */}
+      <OnboardingStepHeader title={t("description")} />
       <form.AppForm>
         <form.Form className="space-y-6">
           <form.AppField name="logoUrl">
             {(field) => (
               <field.ImageUpload
+                variant="dropzone"
                 label={t("logo")}
+                dropzoneTitle={t.rich("logoDropTitle", {
+                  browse: (chunks) => (
+                    <span className="text-primary underline underline-offset-3">{chunks}</span>
+                  ),
+                })}
                 description={t("logoHelp")}
                 uploadLabel={tCommon("upload")}
                 removeLabel={tCommon("remove")}
@@ -76,37 +71,11 @@ export function BrandingClientPage() {
             {(field) => (
               <div className="space-y-2">
                 <Label>{t("primaryColor")}</Label>
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {PRESET_COLORS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        aria-label={color}
-                        className={`size-7 rounded-full transition-all ${
-                          field.state.value === color
-                            ? "ring-foreground ring-offset-background ring-2 ring-offset-2"
-                            : "hover:scale-110"
-                        }`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => form.setFieldValue("primaryColor", color)}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="size-9 shrink-0 rounded-md border"
-                      style={{ backgroundColor: field.state.value }}
-                    />
-                    <Input
-                      value={field.state.value}
-                      onChange={(event) => field.handleChange(event.target.value)}
-                      onBlur={field.handleBlur}
-                      placeholder="#0066FF"
-                      className="font-mono"
-                    />
-                  </div>
-                </div>
+                <BrandColorField
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  onBlur={field.handleBlur}
+                />
                 {field.state.meta.errors.length > 0 && (
                   <p className="text-destructive text-sm font-medium">
                     {getFieldError(field.state.meta.errors[0])}
@@ -116,37 +85,46 @@ export function BrandingClientPage() {
             )}
           </form.Field>
 
-          <form.Field name="theme">
-            {(field) => (
-              <div className="space-y-2">
-                <Label>{t("theme")}</Label>
-                <RadioGroup
-                  value={field.state.value}
-                  onValueChange={(value) => field.handleChange(value as "light" | "dark")}
-                  className="grid grid-cols-2 gap-3"
-                >
-                  {THEME_OPTIONS.map((option) => (
-                    <Label
-                      key={option.value}
-                      className={cn(
-                        "bg-muted/50 hover:bg-accent/30 has-data-checked:border-border has-data-checked:bg-muted flex cursor-pointer flex-col gap-0 rounded-xl border border-muted p-1 transition-colors",
-                        "has-data-checked:outline-primary has-data-checked:outline-2 ",
-                      )}
+          <form.Subscribe selector={(state) => state.values.primaryColor}>
+            {(primaryColor) => (
+              <form.Field name="theme">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label>{t("theme")}</Label>
+                    <RadioGroup
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value as "light" | "dark")}
+                      className="grid grid-cols-2 gap-3"
                     >
-                      <Radio value={option.value} className="hidden" />
-                      <ThemeDashboardPreview theme={option.value} />
-                      <span className="text-sm font-medium p-1.5">{t(option.label)}</span>
-                    </Label>
-                  ))}
-                </RadioGroup>
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-destructive text-sm font-medium">
-                    {getFieldError(field.state.meta.errors[0])}
-                  </p>
+                      {THEME_OPTIONS.map((option) => (
+                        <Label
+                          key={option.value}
+                          className={cn(
+                            "bg-card hover:bg-muted/60 flex cursor-pointer flex-col gap-2 rounded-2xl p-1.5 shadow-[inset_0_0_0_1px_var(--color-border)] transition-[background-color,box-shadow] duration-200",
+                            "group/theme has-data-checked:shadow-[inset_0_0_0_1.5px_var(--color-primary),var(--shadow-raised)]",
+                          )}
+                        >
+                          <Radio value={option.value} className="hidden" />
+                          <ThemeStorefrontPreview theme={option.value} primaryColor={primaryColor} />
+                          <span className="flex items-center justify-between px-1 pb-0.5 text-sm font-medium">
+                            {t(option.label)}
+                            <span className="bg-primary text-primary-foreground ease-lagon flex size-4.5 scale-0 items-center justify-center rounded-full transition-transform duration-200 group-has-data-checked/theme:scale-100">
+                              <Check className="size-3" strokeWidth={3} />
+                            </span>
+                          </span>
+                        </Label>
+                      ))}
+                    </RadioGroup>
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-destructive text-sm font-medium">
+                        {getFieldError(field.state.meta.errors[0])}
+                      </p>
+                    )}
+                  </div>
                 )}
-              </div>
+              </form.Field>
             )}
-          </form.Field>
+          </form.Subscribe>
 
           <div className="flex items-center gap-3 pt-2">
             <Button

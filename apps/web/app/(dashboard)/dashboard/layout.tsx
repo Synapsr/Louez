@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
-import { getMarketplaceChannelState } from "@louez/api/services";
+import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
 import { db, users } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
 import { SidebarProvider } from "@louez/ui";
@@ -23,6 +23,9 @@ import { SettingsSearchFocus } from "@/components/dashboard/settings-search-focu
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { StarPrompt } from "@/components/dashboard/star-prompt";
 import { WelcomeOverlay } from "@/components/dashboard/welcome-overlay";
+import { parseDismissedNotices } from "@/lib/dashboard/dismissed-notices";
+import { type OnlinePaymentsStep, getSetupProgressCounts } from "@/lib/dashboard/setup-progress";
+import { getIntendedReservationMode, isStripeChargeable } from "@/lib/reservation-mode";
 import { DashboardSaveShortcut } from "@/components/shared/dashboard-save-shortcut";
 import { KeyboardShortcutsProvider } from "@/components/shared/keyboard-shortcuts-provider";
 import { WhatsNewProvider } from "@/components/shared/whats-new-provider";
@@ -130,6 +133,9 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     marketplaceListingUrl,
     electronicInvoicingEnabled,
     legacyBillingEnabled,
+    setupCounts,
+    channelState,
+    cohort,
   ] = await Promise.all([
     getCurrentPlanSlug(store.id),
     getStoreLimits(store.id),
@@ -138,6 +144,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
       columns: {
         keyboardShortcuts: true,
         whatsNewProgress: true,
+        dismissedNotices: true,
       },
       where: eq(users.id, session.user.id),
     }),
@@ -145,7 +152,21 @@ export default async function DashboardMainLayout({ children }: { children: Reac
     getMarketplaceListingUrl(store.id),
     isElectronicInvoicingEnabled(store.id),
     legacyBillingApplies(store.id, new Date()),
+    getSetupProgressCounts(store.id),
+    getMarketplaceChannelState({ storeId: store.id }),
+    getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
   ]);
+
+  // Stores that want online payments get a setup step tracking the Stripe KYC
+  // left pending during onboarding (see lib/reservation-mode.ts).
+  const onlinePaymentsStep: OnlinePaymentsStep =
+    getIntendedReservationMode(store) === "payment"
+      ? isStripeChargeable(store)
+        ? "done"
+        : "todo"
+      : "hidden";
+  const isFromReeent = store.signupOrigin === REEENT_SIGNUP_ORIGIN;
+  const lifetimeFeeWaiverAt = channelState.channel?.lifetimeFeeWaiverAt ?? null;
   const billingAccess = await getBillingAccess(store, isPlatformAdmin);
 
   return (
@@ -178,7 +199,26 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                     isPlatformAdmin={isPlatformAdmin}
                     aiCredits={aiCredits}
                     marketplaceListingUrl={marketplaceListingUrl}
-                    isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
+                    isFromReeent={isFromReeent}
+                    setup={{
+                      counts: setupCounts,
+                      onlinePaymentsStep,
+                      onlinePaymentsContext: isFromReeent ? "reeent" : "default",
+                      // The launch offer rides with the setup list. A reeent
+                      // store that has not earned the waiver yet does not get
+                      // the seats pitch: the reeent banner carries the offer.
+                      cohort:
+                        lifetimeFeeWaiverAt !== null || !isFromReeent
+                          ? {
+                              lifetimeFeeWaiverAt,
+                              cohortRank: channelState.channel?.cohortRank ?? null,
+                              remaining: cohort.remaining,
+                              dismissedNoticeIds: parseDismissedNotices(
+                                userPreferences?.dismissedNotices,
+                              ),
+                            }
+                          : null,
+                    }}
                     reservationsPaused={
                       billingAccess !== null && !billingAccess.policy.acceptsReservations
                     }
@@ -207,7 +247,10 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                 </DashboardBreadcrumbsProvider>
               </SidebarProvider>
               <Suspense fallback={null}>
-                <WelcomeOverlay />
+                <WelcomeOverlay
+                  storeName={store.name}
+                  firstName={session.user.name?.split(" ")[0] ?? ""}
+                />
                 <PasskeyEnrollment />
                 <SettingsSearchFocus />
                 {/* Self-hosted instances only: the cloud never asks. */}

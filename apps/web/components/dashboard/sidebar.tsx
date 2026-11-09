@@ -41,6 +41,13 @@ import { HelpGlassIcon } from "@louez/ui/icons/glass";
 import { UserAvatar } from "@/components/dashboard/shared/user-avatar";
 import { useInstanceConfig } from "@/components/instance-provider";
 import { InstallPrompt } from "@/components/dashboard/install-prompt";
+import {
+  MarketplaceCohortNotice,
+  type MarketplaceCohortNoticeProps,
+} from "@/components/dashboard/marketplace-cohort-notice";
+import { SidebarSetupChecklist } from "@/components/dashboard/setup/sidebar-setup-checklist";
+import type { OnlinePaymentsContext } from "@/components/dashboard/setup/use-setup-checklist-items";
+import type { OnlinePaymentsStep, SetupProgressCounts } from "@/lib/dashboard/setup-progress";
 import { PushPrimer } from "@/components/dashboard/push-primer";
 import { ReservationsPausedSidebarItem } from "@/components/dashboard/reservations-paused-sidebar-item";
 import { SidebarLink } from "@/components/dashboard/sidebar-link";
@@ -84,6 +91,13 @@ interface DashboardSidebarProps {
   isFromReeent: boolean;
   /** The card gate pauses new reservations and the viewer can open the billing page. */
   reservationsPaused: boolean;
+  /** The setup list, shown in compact form until every step is done. */
+  setup: {
+    counts: SetupProgressCounts;
+    onlinePaymentsStep: OnlinePaymentsStep;
+    onlinePaymentsContext: OnlinePaymentsContext;
+    cohort: Omit<MarketplaceCohortNoticeProps, "className"> | null;
+  };
 }
 
 /** "https://maison-pointure.louez.io/" → "maison-pointure.louez.io". */
@@ -301,6 +315,7 @@ export const DashboardSidebar = ({
   marketplaceListingUrl,
   isFromReeent,
   reservationsPaused,
+  setup,
 }: DashboardSidebarProps) => {
   const pathname = usePathname();
   const balanceQuery = useQuery({
@@ -337,6 +352,13 @@ export const DashboardSidebar = ({
             <InstallPrompt />
             <PushPrimer />
             {reservationsPaused && <ReservationsPausedSidebarItem />}
+            <SidebarSetupChecklist
+              counts={setup.counts}
+              storeSlug={storeSlug ?? ""}
+              onlinePaymentsStep={setup.onlinePaymentsStep}
+              onlinePaymentsContext={setup.onlinePaymentsContext}
+              footer={setup.cohort ? <MarketplaceCohortNotice {...setup.cohort} /> : null}
+            />
             <WhatsNewSidebarItem />
             <HelpButton />
           </SidebarMenu>

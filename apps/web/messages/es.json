@@ -555,7 +555,8 @@
         "owner": "Propietario",
         "member": "Miembro del equipo",
         "platform_admin": "Admin"
-      }
+      },
+      "online": "En línea"
     },
     "team": {
       "title": "Equipo",
@@ -1007,18 +1008,13 @@
           "openSetup": "Ver la puesta en marcha"
         }
       },
-      "alert": {
-        "singlePending": "1 solicitud pendiente",
-        "multiplePending": "{count} solicitudes pendientes",
-        "description": "Sus clientes esperan su respuesta",
-        "action": "Gestionar"
-      },
       "reeentStripe": {
         "title": "Su tienda todavía no es visible en <reeent>reeent</reeent>",
         "description": "Mientras los pagos online no estén activos, reeent no publica su tienda. La oferta de lanzamiento (0 € de comisión reeent de por vida) se aplica desde la publicación, mientras queden plazas.",
         "continueSetup": "Continuar la configuración de Stripe",
         "activate": "Activar los pagos online",
-        "paymentSettings": "Configuración de pagos"
+        "paymentSettings": "Configuración de pagos",
+        "status": "Aún no publicada"
       },
       "setup": {
         "title": "Primeros pasos",
@@ -1078,18 +1074,6 @@
         "description": "Reservas que requieren su aprobacion",
         "empty": "No hay solicitudes pendientes"
       },
-      "quickActions": {
-        "title": "Acciones rapidas",
-        "description": "Gestione su tienda eficientemente",
-        "addProduct": {
-          "title": "Agregar un producto",
-          "description": "Crear un nuevo producto para alquilar"
-        },
-        "addReservation": {
-          "title": "Crear una reserva",
-          "description": "Agregar manualmente una reserva"
-        }
-      },
       "storefront": {
         "title": "Su tienda",
         "description": "Comparta su enlace con sus clientes",
@@ -1119,6 +1103,34 @@
         "hideQR": "Ocultar código QR",
         "qrDescription": "Escanea este código para acceder a la tienda",
         "downloadQR": "Descargar"
+      },
+      "month": {
+        "title": "Este mes",
+        "revenue": "<strong>{amount}</strong> cobrados",
+        "reservations": "{count, plural, one {<strong>#</strong> reserva en total} other {<strong>#</strong> reservas en total}}",
+        "customers": "{count, plural, one {<strong>#</strong> cliente} other {<strong>#</strong> clientes}}",
+        "seeAnalytics": "Ver los análisis"
+      },
+      "requestsEmpty": {
+        "virginTitle": "Aquí llegarán las solicitudes de tus clientes",
+        "virginText": "Para recibirlas, añade primero un producto: es lo que reservarán tus clientes.",
+        "buildingTitle": "Tus productos están en línea",
+        "buildingText": "Comparte tu tienda para recibir tus primeras solicitudes.",
+        "upToDateTitle": "Estás al día"
+      },
+      "today": {
+        "title": "Hoy",
+        "departures": "{count, plural, one {# entrega} other {# entregas}}",
+        "returns": "{count, plural, one {# devolución} other {# devoluciones}}",
+        "emptyTitle": "Aquí aparecerán tus entregas y devoluciones",
+        "emptyText": "Desde la primera reserva, el día se leerá hora a hora, con lo que hay que entregar y recoger."
+      },
+      "upcoming": {
+        "title": "Los próximos días",
+        "tomorrow": "Mañana",
+        "departures": "{count, plural, one {# entrega} other {# entregas}}",
+        "returns": "{count, plural, one {# devolución} other {# devoluciones}}",
+        "nothing": "Nada previsto"
       }
     },
     "products": {
@@ -8146,7 +8158,10 @@
       "primaryColor": "Color principal",
       "theme": "Tema",
       "themeLight": "Claro",
-      "themeDark": "Oscuro"
+      "themeDark": "Oscuro",
+      "logoDropTitle": "Arrastra tu logo aquí o <browse>explora</browse>",
+      "customColor": "Personalizado",
+      "hexLabel": "Código hexadecimal"
     },
     "product": {
       "title": "Primer producto",
@@ -8202,7 +8217,10 @@
           "kycStep3": "El pago online se activa automáticamente",
           "configureNow": "Configurar Stripe ahora",
           "resumeNow": "Reanudar la configuración de Stripe",
-          "configureLater": "O más tarde desde tu panel — mientras tanto, las reservas pasan a validación manual."
+          "configureLater": "O más tarde desde tu panel — mientras tanto, las reservas pasan a validación manual.",
+          "headline": "Tus clientes reservan y pagan de una vez",
+          "laterTitle": "¿Y si lo hago más tarde?",
+          "laterBody": "Tu tienda ya funciona: mientras configuras Stripe, las reservas llegan como solicitudes y tú las validas."
         },
         "request": {
           "howTitle": "¿Cómo funciona?",
@@ -8219,7 +8237,9 @@
           "cons1": "Recordatorios e impagos a tu cargo",
           "cons2": "Más ausencias sin prepago",
           "cons3": "Sin fianza automática",
-          "switchNote": "Pasa al pago online en cualquier momento desde los ajustes."
+          "switchNote": "Pasa al pago online en cualquier momento desde los ajustes.",
+          "headline": "Tú decides cada reserva",
+          "goodToKnow": "Conviene saber"
         }
       }
     },
@@ -8246,7 +8266,7 @@
       "other": "Otro",
       "otherPlaceholder": "Cuéntanos…",
       "skip": "Omitir",
-      "finish": "Finalizar",
+      "finish": "Ir a mi espacio",
       "panel": {
         "title": "Unas palabras del equipo",
         "p1": "Bienvenido a Louez, y gracias por tu confianza. Tu tienda está lista: estamos deseando ver tus primeras reservas.",
@@ -8727,9 +8747,12 @@
     "checkoutPaymentFailed": "No se pudo iniciar el pago. Tu reserva no se ha confirmado. Inténtalo de nuevo o contacta con la tienda."
   },
   "welcome": {
-    "greeting": "Bienvenido a Louez.io",
-    "tagline": "Tu tienda está lista",
-    "skip": "Presione para continuar"
+    "hello": "Bienvenido a Louez, {name}",
+    "helloAnonymous": "Bienvenido a Louez",
+    "isOnline": "ya está en línea.",
+    "online": "En línea",
+    "nextStep": "Solo falta añadir sus primeros productos.",
+    "opening": "Abriendo tu espacio…"
   },
   "legalPages": {
     "back": "Volver",

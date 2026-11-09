@@ -19,6 +19,8 @@ export interface OnboardingPreviewState {
   primaryColor: string;
   theme: "light" | "dark";
   reservationMode: "request" | "payment";
+  /** ISO 4217 code of the store's prices, shown on the preview's products. */
+  currency: string;
   userName: string;
   userImage: string | null;
   userSeed: string;
@@ -31,6 +33,7 @@ const DEFAULT_PREVIEW: OnboardingPreviewState = {
   primaryColor: "#0066FF",
   theme: "light",
   reservationMode: "payment",
+  currency: "EUR",
   userName: "",
   userImage: null,
   userSeed: "louez",

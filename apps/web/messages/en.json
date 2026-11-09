@@ -555,7 +555,8 @@
         "owner": "Owner",
         "member": "Team member",
         "platform_admin": "Admin"
-      }
+      },
+      "online": "Live"
     },
     "team": {
       "title": "Team",
@@ -1007,18 +1008,13 @@
           "openSetup": "See setup steps"
         }
       },
-      "alert": {
-        "singlePending": "1 pending request",
-        "multiplePending": "{count} pending requests",
-        "description": "Your customers are waiting for your response",
-        "action": "Handle"
-      },
       "reeentStripe": {
         "title": "Your store isn't visible on <reeent>reeent</reeent> yet",
         "description": "Until online payments are active, reeent does not publish your store. The launch offer (0 € reeent commission for life) applies from publication, as long as spots remain.",
         "continueSetup": "Continue Stripe setup",
         "activate": "Activate online payments",
-        "paymentSettings": "Payment settings"
+        "paymentSettings": "Payment settings",
+        "status": "Not published yet"
       },
       "setup": {
         "title": "Getting started",
@@ -1078,18 +1074,6 @@
         "description": "Reservations requiring your approval",
         "empty": "No pending requests"
       },
-      "quickActions": {
-        "title": "Quick actions",
-        "description": "Manage your store efficiently",
-        "addProduct": {
-          "title": "Add a product",
-          "description": "Create a new product for rent"
-        },
-        "addReservation": {
-          "title": "Create a reservation",
-          "description": "Manually add a reservation"
-        }
-      },
       "storefront": {
         "title": "Your store",
         "description": "Share your link with your customers",
@@ -1119,6 +1103,34 @@
         "hideQR": "Hide QR code",
         "qrDescription": "Scan this code to access the store",
         "downloadQR": "Download"
+      },
+      "month": {
+        "title": "This month",
+        "revenue": "<strong>{amount}</strong> collected",
+        "reservations": "{count, plural, one {<strong>#</strong> booking in total} other {<strong>#</strong> bookings in total}}",
+        "customers": "{count, plural, one {<strong>#</strong> customer} other {<strong>#</strong> customers}}",
+        "seeAnalytics": "See analytics"
+      },
+      "requestsEmpty": {
+        "virginTitle": "Your customers' requests will show up here",
+        "virginText": "To get some, add a product first: it's what your customers will book.",
+        "buildingTitle": "Your products are live",
+        "buildingText": "Share your store to get your first requests.",
+        "upToDateTitle": "You're all caught up"
+      },
+      "today": {
+        "title": "Today",
+        "departures": "{count, plural, one {# pickup} other {# pickups}}",
+        "returns": "{count, plural, one {# return} other {# returns}}",
+        "emptyTitle": "Your pickups and returns will show up here",
+        "emptyText": "From the first booking, the day will read hour by hour, with what to hand over and what to get back."
+      },
+      "upcoming": {
+        "title": "Coming days",
+        "tomorrow": "Tomorrow",
+        "departures": "{count, plural, one {# pickup} other {# pickups}}",
+        "returns": "{count, plural, one {# return} other {# returns}}",
+        "nothing": "Nothing planned"
       }
     },
     "products": {
@@ -8146,7 +8158,10 @@
       "primaryColor": "Primary color",
       "theme": "Theme",
       "themeLight": "Light",
-      "themeDark": "Dark"
+      "themeDark": "Dark",
+      "logoDropTitle": "Drop your logo here, or <browse>browse</browse>",
+      "customColor": "Custom",
+      "hexLabel": "Hex code"
     },
     "product": {
       "title": "First product",
@@ -8202,7 +8217,10 @@
           "kycStep3": "Online payment activates automatically",
           "configureNow": "Set up Stripe now",
           "resumeNow": "Resume Stripe setup",
-          "configureLater": "Or later from your dashboard — until then, reservations fall back to manual approval."
+          "configureLater": "Or later from your dashboard — until then, reservations fall back to manual approval.",
+          "headline": "Your customers book and pay in one go",
+          "laterTitle": "What if I do it later?",
+          "laterBody": "Your store already works: until Stripe is set up, bookings arrive as requests and you approve them yourself."
         },
         "request": {
           "howTitle": "How does it work?",
@@ -8219,7 +8237,9 @@
           "cons1": "Reminders and unpaid bookings to handle",
           "cons2": "More no-shows without prepayment",
           "cons3": "No automatic deposits",
-          "switchNote": "Switch to online payment anytime from settings."
+          "switchNote": "Switch to online payment anytime from settings.",
+          "headline": "You stay in control of every booking",
+          "goodToKnow": "Good to know"
         }
       }
     },
@@ -8246,7 +8266,7 @@
       "other": "Other",
       "otherPlaceholder": "Tell us more…",
       "skip": "Skip",
-      "finish": "Finish",
+      "finish": "Go to my space",
       "panel": {
         "title": "A note from the team",
         "p1": "Welcome to Louez, and thank you for your trust. Your store is ready, we can't wait to see your first bookings.",
@@ -8727,9 +8747,12 @@
     "checkoutPaymentFailed": "Payment could not start. Your reservation was not confirmed. Try again or contact the store."
   },
   "welcome": {
-    "greeting": "Welcome to Louez.io",
-    "tagline": "Your store is ready",
-    "skip": "Press to continue"
+    "hello": "Welcome to Louez, {name}",
+    "helloAnonymous": "Welcome to Louez",
+    "isOnline": "is live.",
+    "online": "Live",
+    "nextStep": "All that's left is to add its first products.",
+    "opening": "Opening your space…"
   },
   "legalPages": {
     "back": "Back",

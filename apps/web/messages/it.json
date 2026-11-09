@@ -555,7 +555,8 @@
         "owner": "Proprietario",
         "member": "Membro del team",
         "platform_admin": "Admin"
-      }
+      },
+      "online": "Online"
     },
     "team": {
       "title": "Team",
@@ -968,18 +969,13 @@
           "openSetup": "Vedi l'avvio"
         }
       },
-      "alert": {
-        "singlePending": "1 richiesta in attesa",
-        "multiplePending": "{count} richieste in attesa",
-        "description": "I tuoi clienti attendono una risposta",
-        "action": "Gestisci"
-      },
       "reeentStripe": {
         "title": "Il tuo negozio non è ancora visibile su <reeent>reeent</reeent>",
         "description": "Finché i pagamenti online non sono attivi, reeent non pubblica il tuo negozio. L'offerta di lancio (0 € di commissione reeent a vita) vale dalla pubblicazione, finché restano posti.",
         "continueSetup": "Continua la configurazione di Stripe",
         "activate": "Attiva i pagamenti online",
-        "paymentSettings": "Impostazioni di pagamento"
+        "paymentSettings": "Impostazioni di pagamento",
+        "status": "Non ancora pubblicato"
       },
       "setup": {
         "title": "Primi passi",
@@ -1039,18 +1035,6 @@
         "description": "Prenotazioni che richiedono la tua approvazione",
         "empty": "Nessuna richiesta in attesa"
       },
-      "quickActions": {
-        "title": "Azioni rapide",
-        "description": "Gestisci il tuo negozio in modo efficiente",
-        "addProduct": {
-          "title": "Aggiungi un prodotto",
-          "description": "Crea un nuovo prodotto a noleggio"
-        },
-        "addReservation": {
-          "title": "Crea una prenotazione",
-          "description": "Aggiungi manualmente una prenotazione"
-        }
-      },
       "storefront": {
         "title": "Il tuo negozio",
         "description": "Condividi il tuo link con i tuoi clienti",
@@ -1080,6 +1064,34 @@
         "hideQR": "Nascondi codice QR",
         "qrDescription": "Scansiona questo codice per accedere al negozio",
         "downloadQR": "Scarica"
+      },
+      "month": {
+        "title": "Questo mese",
+        "revenue": "<strong>{amount}</strong> incassati",
+        "reservations": "{count, plural, one {<strong>#</strong> prenotazione in totale} other {<strong>#</strong> prenotazioni in totale}}",
+        "customers": "{count, plural, one {<strong>#</strong> cliente} other {<strong>#</strong> clienti}}",
+        "seeAnalytics": "Vedi le analisi"
+      },
+      "requestsEmpty": {
+        "virginTitle": "Qui arriveranno le richieste dei tuoi clienti",
+        "virginText": "Per riceverle, aggiungi prima un prodotto: è ciò che i tuoi clienti prenoteranno.",
+        "buildingTitle": "I tuoi prodotti sono online",
+        "buildingText": "Condividi il tuo negozio per ricevere le prime richieste.",
+        "upToDateTitle": "Sei in pari"
+      },
+      "today": {
+        "title": "Oggi",
+        "departures": "{count, plural, one {# consegna} other {# consegne}}",
+        "returns": "{count, plural, one {# reso} other {# resi}}",
+        "emptyTitle": "Qui appariranno consegne e resi",
+        "emptyText": "Dalla prima prenotazione, la giornata si leggerà ora per ora, con cosa consegnare e cosa ritirare."
+      },
+      "upcoming": {
+        "title": "I prossimi giorni",
+        "tomorrow": "Domani",
+        "departures": "{count, plural, one {# consegna} other {# consegne}}",
+        "returns": "{count, plural, one {# reso} other {# resi}}",
+        "nothing": "Niente in programma"
       }
     },
     "products": {
@@ -8146,7 +8158,10 @@
       "primaryColor": "Colore primario",
       "theme": "Tema",
       "themeLight": "Chiaro",
-      "themeDark": "Scuro"
+      "themeDark": "Scuro",
+      "logoDropTitle": "Trascina qui il tuo logo o <browse>sfoglia</browse>",
+      "customColor": "Personalizzato",
+      "hexLabel": "Codice esadecimale"
     },
     "product": {
       "title": "Primo prodotto",
@@ -8202,7 +8217,10 @@
           "kycStep3": "Il pagamento online si attiva automaticamente",
           "configureNow": "Configura Stripe ora",
           "resumeNow": "Riprendi la configurazione di Stripe",
-          "configureLater": "Oppure più tardi dalla dashboard — nel frattempo le prenotazioni passano alla conferma manuale."
+          "configureLater": "Oppure più tardi dalla dashboard — nel frattempo le prenotazioni passano alla conferma manuale.",
+          "headline": "I tuoi clienti prenotano e pagano in un solo passaggio",
+          "laterTitle": "E se lo faccio più tardi?",
+          "laterBody": "Il tuo negozio funziona già: finché Stripe non è attivo, le prenotazioni arrivano come richieste e le convalidi tu."
         },
         "request": {
           "howTitle": "Come funziona?",
@@ -8219,7 +8237,9 @@
           "cons1": "Solleciti e insoluti da gestire",
           "cons2": "Più no-show senza pagamento anticipato",
           "cons3": "Nessuna cauzione automatica",
-          "switchNote": "Passa al pagamento online in qualsiasi momento dalle impostazioni."
+          "switchNote": "Passa al pagamento online in qualsiasi momento dalle impostazioni.",
+          "headline": "Decidi tu su ogni prenotazione",
+          "goodToKnow": "Da sapere"
         }
       }
     },
@@ -8246,7 +8266,7 @@
       "other": "Altro",
       "otherPlaceholder": "Specifica…",
       "skip": "Salta",
-      "finish": "Termina",
+      "finish": "Vai al mio spazio",
       "panel": {
         "title": "Due parole dal team",
         "p1": "Benvenuto su Louez, e grazie per la fiducia. Il tuo negozio è pronto: non vediamo l'ora delle tue prime prenotazioni.",
@@ -8727,9 +8747,12 @@
     "checkoutPaymentFailed": "Impossibile avviare il pagamento. La prenotazione non è stata confermata. Riprova o contatta il negozio."
   },
   "welcome": {
-    "greeting": "Benvenuto su Louez.io",
-    "tagline": "Il tuo negozio è pronto",
-    "skip": "Premi per continuare"
+    "hello": "Benvenuto su Louez, {name}",
+    "helloAnonymous": "Benvenuto su Louez",
+    "isOnline": "è online.",
+    "online": "Online",
+    "nextStep": "Non resta che aggiungere i primi prodotti.",
+    "opening": "Apertura del tuo spazio…"
   },
   "legalPages": {
     "back": "Indietro",

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { isBillingEnabled } from "@/lib/billing/mode";
 import { selectAuthMessages } from "@/lib/i18n/auth-messages";
+import { LagonThemeRoot } from "@/components/dashboard/lagon-theme-root";
 import { PostHogProvider } from "@/components/posthog-provider";
 
 export const AuthLayoutContent = async ({ children }: { children: React.ReactNode }) => {
@@ -19,7 +20,9 @@ export const AuthLayoutContent = async ({ children }: { children: React.ReactNod
   return (
     <PostHogProvider>
       <NextIntlClientProvider messages={messages}>
-        <div className="dashboard min-h-screen bg-background">{children}</div>
+        {/* Signing in is the door of the back office: it already wears Lagon. */}
+        <LagonThemeRoot />
+        <div className="dashboard theme-lagon min-h-screen bg-background">{children}</div>
       </NextIntlClientProvider>
     </PostHogProvider>
   );
