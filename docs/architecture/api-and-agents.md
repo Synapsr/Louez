@@ -398,6 +398,7 @@ What Anthropic's connector directory and OpenAI's plugins ask of the authorizati
 - [ ] The metadata says `code_challenge_methods_supported: ["S256"]` (PKCE is required, `plain` refused), `client_id_metadata_document_supported: true`, `none` and `private_key_jwt` (with the client secrets) in `token_endpoint_auth_methods_supported`, `offline_access` in `scopes_supported`, and `authorization_response_iss_parameter_supported: true`. No document offers DPoP: Better Auth always lists `dpop_signing_alg_values_supported`, and `withoutDpopMetadata` (`oauth.ts`) takes it out, as `/api/mcp` takes bearer tokens only.
 - [ ] Every redirect back to the client carries `iss=https://app.louez.io/api/auth` (RFC 9207): the code, `access_denied`, and the errors after the redirect URI is checked (`invalid_request`, `invalid_scope`, `invalid_target`, `login_required`). A request whose client or redirect URI is not known never goes back to it: its error stays on Louez.
 - [ ] The token endpoint takes `application/x-www-form-urlencoded`. The access token's `aud` holds the `resource` the client sent; another resource is `invalid_target`, and `/api/mcp` refuses a token for another audience or issuer.
+- [ ] Requests from the ranges Anthropic and OpenAI publish (`packages/auth/src/provider-egress.ts`, with its sources: Anthropic's `160.79.104.0/21` and `153.61.208.0/20`, OpenAI's `chatgpt-connectors.json`) get higher ceilings per address: 600 a minute for the token endpoint and each discovery document, 300 for UserInfo, 60 for registration. Every other address keeps the usual ones: 20 token requests, 5 registrations, 60 UserInfo calls and 100 discovery fetches a minute. The authorization endpoint keeps its 30 for everyone, as the user's browser opens it. The address is the one Better Auth counts (`authIpAddressOptions`: `cf-connecting-ip`, then `true-client-ip`, `x-real-ip`, and a single-address `x-forwarded-for`); in production Cloudflare sets `cf-connecting-ip` itself, so the ceiling holds only while the origin takes traffic from Cloudflare alone.
 - [ ] A refresh rotates the refresh token. A retry within 30 seconds gets the same answer; after that, the spent token is `invalid_grant` and revokes its family. An unknown, altered or other client's token is `invalid_grant` too.
 
 **Claude (claude.ai on the web, Desktop, mobile, Cowork)**
@@ -420,7 +421,8 @@ What Anthropic's connector directory and OpenAI's plugins ask of the authorizati
 
 **Known limits**
 
-- Better Auth's per-IP limits on the OAuth endpoints apply: 20 token requests, 30 authorizations and 5 registrations a minute. Every Claude user's token requests come from Anthropic's range, and ChatGPT's from OpenAI's, so many connections share these buckets.
+- Better Auth counts per address and has no option for another key, so the platform ceiling applies to each address of a range, not to the range as a whole, and a connection cannot be counted on its own `client_id`. A counter per range or per client needs a limiter of Louez's own in front of these routes.
+- The ranges are copied, not fetched: refresh `provider-egress.ts` from its two sources when they change. An address a platform stops using keeps the higher ceiling until then; a new one gets the usual limits.
 - A client that sends a DPoP proof to the token endpoint anyway gets a DPoP-bound token, which `/api/mcp` refuses. Neither Claude nor ChatGPT does.
 
 ---
