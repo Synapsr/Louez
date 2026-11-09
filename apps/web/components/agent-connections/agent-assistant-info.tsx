@@ -22,7 +22,8 @@ export const AgentAssistantInfo = () => {
       >
         <HelpCircleIcon aria-hidden="true" />
       </PopoverTrigger>
-      <PopoverPopup side="bottom" align="start" className="max-w-72">
+      {/* The popup is a dialog: it takes the trigger's name. */}
+      <PopoverPopup side="bottom" align="start" className="max-w-72" aria-label={t("infoLabel")}>
         <PopoverDescription className="p-1">{t("info")}</PopoverDescription>
       </PopoverPopup>
     </Popover>
