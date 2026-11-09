@@ -17,6 +17,7 @@ import {
   type AgentClient,
   type AgentConnection,
 } from "../contracts/agent-connections";
+import { bundlesWithTools, createExposure } from "../platform/exposure";
 import { MCP_BUNDLES, type McpBundle } from "../platform/meta";
 import { failCredentialHandoffs } from "./handoffs";
 import type { AgentPreset } from "../platform/permissions";
@@ -54,6 +55,24 @@ export interface ActiveGrant {
 
 const knownBundles = (raw: unknown): McpBundle[] =>
   Array.isArray(raw) ? MCP_BUNDLES.filter((bundle) => raw.includes(bundle)) : [];
+
+let appToolBundles: Promise<readonly McpBundle[]> | undefined;
+
+/**
+ * The bundles the consent page and the connection editor offer: those that
+ * hold a tool today (`bundlesWithTools`), read once from the app's exposure.
+ * The router is loaded on first use, as it imports this module.
+ */
+export function offeredBundles(): Promise<readonly McpBundle[]> {
+  appToolBundles ??= import("../router").then(({ appRouter }) =>
+    bundlesWithTools(createExposure(appRouter).procedures),
+  );
+  return appToolBundles;
+}
+
+/** A grant's bundles, without those offered nowhere: they come back once they hold a tool. */
+const shownBundles = (bundles: readonly McpBundle[], offered: readonly McpBundle[]) =>
+  bundles.filter((bundle) => offered.includes(bundle));
 
 /** The grant of `userId` for `clientId`, when it exists and the client is still allowed. */
 export async function loadActiveGrant(input: {
@@ -234,13 +253,13 @@ export async function currentTerms(input: {
   userId: string;
   clientId: string;
 }): Promise<GrantTerms | null> {
-  const grant = await loadActiveGrant(input);
+  const [grant, offered] = await Promise.all([loadActiveGrant(input), offeredBundles()]);
   if (!grant) return null;
   return {
     stores: grant.stores ? { all: false, ids: grant.stores } : { all: true },
     preset: grant.preset,
     confirmSensitive: grant.confirmSensitive,
-    bundles: grant.bundles,
+    bundles: shownBundles(grant.bundles, offered),
   };
 }
 
@@ -394,7 +413,7 @@ export async function listGrants(userId: string, onlyId?: string): Promise<Agent
   if (rows.length === 0) return [];
 
   const ids = rows.map((row) => row.id);
-  const [storeRows, lastActions] = await Promise.all([
+  const [storeRows, lastActions, offered] = await Promise.all([
     db
       .select({
         grantId: apiAgentGrantStores.grantId,
@@ -412,6 +431,7 @@ export async function listGrants(userId: string, onlyId?: string): Promise<Agent
         and(eq(apiOperations.credentialKind, "oauth"), inArray(apiOperations.credentialId, ids)),
       )
       .groupBy(apiOperations.credentialId),
+    offeredBundles(),
   ]);
   const lastAction = new Map(lastActions.map((row) => [row.grantId, row.at]));
 
@@ -428,7 +448,8 @@ export async function listGrants(userId: string, onlyId?: string): Promise<Agent
         },
     preset: row.preset,
     confirmSensitive: row.confirmSensitive,
-    bundles: knownBundles(row.bundles),
+    bundles: shownBundles(knownBundles(row.bundles), offered),
+    offeredBundles: [...offered],
     lastActionAt: lastAction.get(row.id) ?? null,
     createdAt: row.createdAt,
   }));

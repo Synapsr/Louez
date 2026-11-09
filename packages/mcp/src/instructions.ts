@@ -2,7 +2,7 @@ import { HANDOFF_POLL_SECONDS } from "@louez/api/contracts/handoffs";
 import { INBOX_POLL_MINUTES } from "@louez/api/contracts/inbox";
 import { JOB_WAIT_SECONDS_MAX } from "@louez/api/contracts/jobs";
 import { agentConnectionsLinks } from "@louez/api/platform/links";
-import { MCP_BUNDLES, type McpBundle } from "@louez/api/platform/meta";
+import type { McpBundle } from "@louez/api/platform/meta";
 import { accountRefusal } from "@louez/api/platform/permissions";
 
 import type { McpRequestContext } from "./auth/context";
@@ -62,9 +62,14 @@ const CONFIRMATION_ESSENTIAL =
  * connection acts on (stores_list first when it covers several), the links,
  * the confirmations. Then the details: the store, how it goes live, the
  * inbox, the handoffs and the tool bundles. A bundle that is not listed is
- * enabled by the user in Louez, never by the agent.
+ * enabled by the user in Louez, never by the agent. `toolBundles` are the
+ * bundles that hold a tool (`bundlesWithTools`): a bundle without one is
+ * neither listed nor offered.
  */
-export function serverInstructions(ctx: McpRequestContext): string {
+export function serverInstructions(
+  ctx: McpRequestContext,
+  toolBundles: readonly McpBundle[],
+): string {
   const mayCreateStores =
     accountRefusal(ctx.actor.credential, { domain: "stores", level: "write" }) === null;
 
@@ -111,11 +116,13 @@ export function serverInstructions(ctx: McpRequestContext): string {
 
   const { bundles } = ctx.actor.credential;
   if (bundles) {
-    const listed = MCP_BUNDLES.filter((bundle) => bundles.includes(bundle));
-    const others = MCP_BUNDLES.filter((bundle) => !bundles.includes(bundle));
-    lines.push(
-      `Tool bundles listed: ${listed.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}.`,
-    );
+    const listed = toolBundles.filter((bundle) => bundles.includes(bundle));
+    const others = toolBundles.filter((bundle) => !bundles.includes(bundle));
+    if (listed.length > 0) {
+      lines.push(
+        `Tool bundles listed: ${listed.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}.`,
+      );
+    }
     if (others.length > 0) {
       lines.push(
         `Not listed: ${others.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}. When the user asks for one of these, tell them to enable the bundle in Louez: Settings > Integrations > MCP > Connected agents${ctx.noStore ? "" : ` (${agentConnectionsLinks(ctx.ports.urls, { id: ctx.storeId }).dashboard})`}. You cannot enable it yourself.`,

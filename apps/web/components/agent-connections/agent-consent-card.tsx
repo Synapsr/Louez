@@ -62,7 +62,7 @@ export const AgentConsentCard = ({ oauthQuery }: AgentConsentCardProps) => {
     );
   }
 
-  const { client, stores } = authorization.data;
+  const { client, stores, offeredBundles } = authorization.data;
   const clientName = client.name ?? t("unknownClient");
   const answerError = answer.error ? apiErrorKey(answer.error) : null;
 
@@ -87,6 +87,7 @@ export const AgentConsentCard = ({ oauthQuery }: AgentConsentCardProps) => {
         )}
         <AgentTermsFields
           stores={stores}
+          offeredBundles={offeredBundles}
           value={terms}
           onChange={setTerms}
           disabled={answer.isPending}

@@ -396,7 +396,7 @@ describe("MCP directory conformance", () => {
       noStore: { ...oauth, noStore: true, storeChosen: false, storeOnline: false },
     };
     for (const [name, ctx] of Object.entries(variants)) {
-      const essentials = serverInstructions(ctx).slice(0, INSTRUCTIONS_ESSENTIALS_MAX);
+      const essentials = serverInstructions(ctx, ["daily"]).slice(0, INSTRUCTIONS_ESSENTIALS_MAX);
       assert.match(essentials, /^Louez runs rental stores/, name);
       assert.match(essentials, /never build or guess a Louez URL/, name);
       assert.match(essentials, /confirmationToken only once they agree\./, name);
@@ -404,5 +404,37 @@ describe("MCP directory conformance", () => {
         assert.match(essentials, /call stores_list first/, name);
       }
     }
+  });
+
+  test("the instructions name only the bundles that hold a tool", async () => {
+    const { serverInstructions } = await import("./instructions");
+    const { testRequestContext } = await import("./testing/request-context");
+    const { appRouter } = await import("@louez/api/router");
+    const { bundlesWithTools, createExposure } = await import("@louez/api/platform/exposure");
+    const { MCP_BUNDLES } = await import("@louez/api/platform/meta");
+    const base = testRequestContext({
+      storeId: "store_bundles",
+      userId: "user_bundles",
+      permissions: { reservations: "write" },
+    });
+    const ctx = {
+      ...base,
+      actor: {
+        ...base.actor,
+        credential: { ...base.actor.credential, kind: "oauth" as const, bundles: ["daily" as const] },
+      },
+    };
+    const named = (text: string) =>
+      MCP_BUNDLES.filter((bundle) => new RegExp(`\\b${bundle} \\(`).test(text));
+
+    // The app's: a bundle without a tool is neither listed nor offered.
+    const withTools = bundlesWithTools(createExposure(appRouter).procedures);
+    assert.deepEqual(named(serverInstructions(ctx, withTools)), withTools);
+
+    // Once a bundle holds a tool, it is offered with the others.
+    const text = serverInstructions(ctx, ["daily", "integrations"]);
+    assert.match(text, /Tool bundles listed: daily \(/);
+    assert.match(text, /Not listed: integrations \(connected services\)\./);
+    assert.deepEqual(named(text), ["daily", "integrations"]);
   });
 });

@@ -761,6 +761,44 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     assert.equal(recorded[0]?.credentialKind, "session");
   });
 
+  test("the consent page and the list offer only the bundles that hold a tool", async () => {
+    // Read from the app's exposure, never written here: a bundle that gets
+    // its first tool is offered again by itself.
+    const { appRouter } = await import("../router");
+    const { bundlesWithTools, createExposure } = await import("./exposure");
+    const { MCP_BUNDLES } = await import("./meta");
+    const withTools = bundlesWithTools(createExposure(appRouter).procedures);
+    const empty = MCP_BUNDLES.filter((bundle) => !withTools.includes(bundle));
+
+    // A grant saved with every bundle, empty ones included.
+    await grant({ bundles: [...MCP_BUNDLES] });
+    const oauthQuery = new URLSearchParams({
+      client_id: CLIENT,
+      redirect_uri: "https://client.oa.test/callback",
+      sig: "ok",
+    }).toString();
+    const asked = await call<{ offeredBundles: string[]; current: { bundles: string[] } }>(
+      connections.getAuthorization,
+      { oauthQuery },
+      session(),
+      ["dashboard", "agentConnections", "getAuthorization"],
+    );
+    assert.deepEqual(asked.offeredBundles, withTools);
+    assert.deepEqual(asked.current.bundles, withTools, "an empty bundle granted before is hidden");
+
+    const listed = await call<{ items: Array<{ bundles: string[]; offeredBundles: string[] }> }>(
+      connections.list,
+      {},
+      session(),
+      ["dashboard", "agentConnections", "list"],
+    );
+    assert.deepEqual(listed.items[0].offeredBundles, withTools);
+    assert.deepEqual(listed.items[0].bundles, withTools);
+    // Still stored: it shows again once it holds a tool.
+    const saved = await grants.loadActiveGrant({ userId: OWNER, clientId: CLIENT });
+    for (const bundle of empty) assert.ok(saved?.bundles.includes(bundle), bundle);
+  });
+
   // --- Client icons -----------------------------------------------------------
 
   test("only a client from a metadata document has an icon, from its client id's origin", async () => {

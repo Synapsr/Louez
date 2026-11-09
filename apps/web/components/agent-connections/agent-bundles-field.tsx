@@ -7,12 +7,19 @@ import { Badge, Checkbox, Label } from "@louez/ui";
 import { AGENT_BUNDLES, withBundle, type AgentBundle } from "./util.agent-terms";
 
 interface AgentBundlesFieldProps {
+  /** The bundles to offer: those that hold a tool for this agent (from the API). */
+  offered: readonly AgentBundle[];
   value: readonly AgentBundle[];
   onChange: (bundles: AgentBundle[]) => void;
   disabled?: boolean;
 }
 
-export const AgentBundlesField = ({ value, onChange, disabled }: AgentBundlesFieldProps) => {
+export const AgentBundlesField = ({
+  offered,
+  value,
+  onChange,
+  disabled,
+}: AgentBundlesFieldProps) => {
   const t = useTranslations("agentConnections");
   return (
     <fieldset className="space-y-3">
@@ -21,7 +28,7 @@ export const AgentBundlesField = ({ value, onChange, disabled }: AgentBundlesFie
         <p className="text-muted-foreground text-sm">{t("bundlesHint")}</p>
       </div>
       <div className="divide-y rounded-lg border">
-        {AGENT_BUNDLES.map((bundle) => (
+        {AGENT_BUNDLES.filter((bundle) => offered.includes(bundle)).map((bundle) => (
           <Label
             key={bundle}
             className="flex cursor-pointer items-start gap-3 px-3 py-2.5 font-normal"

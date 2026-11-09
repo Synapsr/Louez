@@ -78,7 +78,10 @@ export const agentConnectionSchema = z.object({
   ]),
   preset: agentPresetSchema,
   confirmSensitive: z.boolean(),
+  /** The bundles granted, among those offered. */
   bundles: z.array(agentBundleSchema),
+  /** The bundles the editor offers: those that hold a tool today. */
+  offeredBundles: z.array(agentBundleSchema),
   /** The last write the connection made, from the operations journal. */
   lastActionAt: z.date().nullable(),
   createdAt: z.date(),
@@ -102,6 +105,8 @@ export const getAuthorizationInput = z.object({ oauthQuery: z.string().min(1).ma
 export const getAuthorizationOutput = z.object({
   client: agentClientSchema,
   stores: z.array(memberStoreSchema),
+  /** The tool bundles the page offers: those that hold a tool today. */
+  offeredBundles: z.array(agentBundleSchema),
   /** The connection already granted to this client, to start from its terms. */
   current: z
     .object({

@@ -2,7 +2,7 @@ import type { OpenAPI } from "@orpc/contract";
 import { isProcedure, Procedure, type AnyProcedure, type AnyRouter } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
-import { MCP_TOOL_NAME_MAX, type ApiMeta, type McpExposure } from "./meta";
+import { MCP_BUNDLES, MCP_TOOL_NAME_MAX, type ApiMeta, type McpBundle, type McpExposure } from "./meta";
 import type { ProcedureScope } from "./permissions";
 
 /**
@@ -352,4 +352,20 @@ export function createExposure(
     node[segments[segments.length - 1]] = procedure;
   }
   return { procedures, router: served as AnyRouter };
+}
+
+/**
+ * The bundles that hold a tool `tools/list` can show: a store procedure
+ * listed on MCP. An account tool is listed whatever the bundles, and a former
+ * tool never, so neither makes a bundle worth offering. A bundle without one
+ * is offered nowhere (the consent page, the connection editor, the server's
+ * instructions) and comes back once a procedure of it is exposed.
+ */
+export function bundlesWithTools(procedures: readonly ExposedProcedure[]): McpBundle[] {
+  const held = new Set(
+    procedures
+      .filter(({ meta }) => !meta.account && meta.mcp.listed !== false)
+      .map(({ meta }) => meta.mcp.bundle),
+  );
+  return MCP_BUNDLES.filter((bundle) => held.has(bundle));
 }
