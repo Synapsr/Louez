@@ -479,8 +479,28 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     );
   });
 
-  test("a product keeps the versions of five photos at most", async () => {
-    const urls = ["a", "b", "c", "d", "e", "f"].map((name) => photo(`full-${name}`));
+  test("a product keeps the versions of 20 photos at most, those of removed photos included", async () => {
+    const shown = photo("full-shown");
+    const id = await product([shown]);
+    // Lineages of 20 photos the product no longer shows: their URLs are gone from `images`.
+    await louezDb.db
+      .update(louezDb.products)
+      .set({
+        imageHistory: Array.from({ length: 20 }, (_, index) => ({
+          id: `h${index}`,
+          versions: [{ id: `v${index}`, url: photo(`gone-${index}`), kind: "original" as const }],
+        })),
+      })
+      .where(orm.eq(louezDb.products.id, id));
+    const refusal = await rejects(
+      products("enhanceImage", { id, imageUrl: shown }, session()),
+      "IMAGE_HISTORY_FULL",
+    );
+    assert.equal(refusal.data.details?.max, 20);
+  });
+
+  test("six photos without a history start, one more than the former cap of five", async () => {
+    const urls = ["a", "b", "c", "d", "e", "f"].map((name) => photo(`six-${name}`));
     const id = await product(urls);
     await louezDb.db
       .update(louezDb.products)
@@ -491,13 +511,11 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
         })),
       })
       .where(orm.eq(louezDb.products.id, id));
-    await rejects(
-      products("enhanceImage", { id, imageUrl: urls[5] }, session()),
-      "IMAGE_HISTORY_FULL",
-    );
-    // A photo that has its versions already may add one.
-    const started = await products("enhanceImage", { id, imageUrl: urls[0] }, session());
-    assert.equal(started.source.versionId, "v0");
+    const started = await products("enhanceImage", { id, imageUrl: urls[5] ?? "" }, session());
+    await images.runImageJob(started.id, ports);
+    assert.equal((await productRow(id))?.imageHistory?.length, 6);
+    // The dashboard's update, which runs the form's rules, still saves it.
+    await products("update", { id, name: "Tente 6 photos" }, session());
   });
 
   // --- Failures and recovery --------------------------------------------------

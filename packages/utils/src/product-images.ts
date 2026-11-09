@@ -16,8 +16,6 @@ import type {
  * used again.
  */
 
-/** Most lineages a product keeps (`productImageHistorySchema`). */
-export const PRODUCT_IMAGE_HISTORY_MAX = 5;
 /** Most versions one lineage keeps. */
 export const PRODUCT_IMAGE_VERSIONS_MAX = 50;
 

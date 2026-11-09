@@ -1,7 +1,6 @@
 import { apiJobs, db, lockStoreRow, products, stores, type ApiJobKind } from "@louez/db";
 import type { ProductImageHistory } from "@louez/types";
 import {
-  PRODUCT_IMAGE_HISTORY_MAX,
   PRODUCT_IMAGE_VERSIONS_MAX,
   appendProductImageVersion,
   canApplyProductImageOperation,
@@ -11,6 +10,7 @@ import {
   productImageVersionKindOf,
   selectProductImageVersion,
 } from "@louez/utils";
+import { PRODUCT_LIST_LIMITS } from "@louez/validations";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -292,8 +292,8 @@ export async function startImageJob(
     if (lineage && lineage.versions.length >= PRODUCT_IMAGE_VERSIONS_MAX) {
       throw productImageErrors.historyFull("versions", PRODUCT_IMAGE_VERSIONS_MAX);
     }
-    if (!lineage && histories.length >= PRODUCT_IMAGE_HISTORY_MAX) {
-      throw productImageErrors.historyFull("photos", PRODUCT_IMAGE_HISTORY_MAX);
+    if (!lineage && histories.length >= PRODUCT_LIST_LIMITS.images) {
+      throw productImageErrors.historyFull("photos", PRODUCT_LIST_LIMITS.images);
     }
     const imageKinds = Object.values(IMAGE_JOB_KINDS);
     if ((await countActiveJobs(tx, actor.storeId, imageKinds)) >= ACTIVE_IMAGE_JOBS_MAX) {
@@ -529,7 +529,7 @@ export async function runImageJob(
           ),
         );
       }
-      if (lineage ? lineage.versions.length >= PRODUCT_IMAGE_VERSIONS_MAX : histories.length >= PRODUCT_IMAGE_HISTORY_MAX) {
+      if (lineage ? lineage.versions.length >= PRODUCT_IMAGE_VERSIONS_MAX : histories.length >= PRODUCT_LIST_LIMITS.images) {
         return failWith(
           jobError("IMAGE_HISTORY_FULL", "The photo's versions are full: the result was not kept."),
         );

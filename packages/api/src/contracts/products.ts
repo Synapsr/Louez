@@ -690,7 +690,7 @@ export const productImageErrors = {
       message:
         reason === "versions"
           ? `This photo already has ${max} versions, the most it keeps. The user can delete some in the product's photo history, in the dashboard.`
-          : `This product already keeps the versions of ${max} photos, the most it keeps. The user can delete a photo's history in the dashboard.`,
+          : `This product already keeps the versions of ${max} photos, as many as it may hold, some of them for photos it no longer shows. The user can delete those photos' history in the dashboard.`,
       details: { reason, max },
     }),
   creditsExhausted: (details: { priceCredits: number; balanceCredits: number | null; rechargeUrl: string }) =>
