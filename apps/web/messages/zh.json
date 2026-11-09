@@ -324,7 +324,8 @@
       "invalid": "此邀请不再有效。",
       "expired": "此邀请已过期。",
       "emailMismatch": "此邀请适用于不同的电子邮件地址。",
-      "alreadyMember": "您已经是这家商店的会员了。"
+      "alreadyMember": "您已经是这家商店的会员了。",
+      "limitReached": "此店铺已没有新成员的名额。请联系店主。"
     }
   },
   "dashboard": {
@@ -9713,6 +9714,42 @@
       "failed": {
         "title": "此步骤失败",
         "description": "请返回您的 AI 代理：它可以给您一个新链接。"
+      }
+    },
+    "team_invitation": {
+      "title": "批准此邀请",
+      "description": "您的 AI 代理请求将 {email} 加入“{store}”的团队。",
+      "role": "对方将以成员身份加入，绝不会成为所有者。",
+      "joinsAtOnce": "{email} 已有 Louez 账户：您批准后对方会立即加入店铺。",
+      "byEmail": "{email} 将收到加入店铺的邮件，有效期 7 天。",
+      "access": "成员可以查看店铺的客户、预订和付款，并可以修改商品和预订。",
+      "approve": "批准邀请",
+      "decline": "拒绝",
+      "error": {
+        "changed": "自您的代理提出请求以来情况已变化：该地址现在已有 Louez 账户、邀请或团队席位。请让您的代理重新提出请求。",
+        "failed": "邀请未能发出。请重新加载页面查看状态。"
+      },
+      "done": {
+        "completed": {
+          "title": "邀请已批准",
+          "description": "您可以返回 AI 代理：它会看到邀请已发出。"
+        },
+        "declined": {
+          "title": "邀请已拒绝",
+          "description": "未发送任何内容。您可以返回 AI 代理。"
+        },
+        "failed": {
+          "title": "邀请未能发出",
+          "description": "自您的代理提出请求以来情况有变（团队席位、地址或今日邮件上限）。请返回 AI 代理。"
+        },
+        "expired": {
+          "title": "此链接已过期",
+          "description": "返回 AI 代理：它可以重新请求。"
+        },
+        "pending": {
+          "title": "尚未回复",
+          "description": "请再次打开链接以批准或拒绝邀请。"
+        }
       }
     }
   }

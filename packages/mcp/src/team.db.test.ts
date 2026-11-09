@@ -45,6 +45,8 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
   let apiKeys: typeof import("@louez/api/services");
   let exposure: import("@louez/api/platform/exposure").Exposure;
   let rpc: (name: string, input: object) => Promise<unknown>;
+  /** The RPC endpoint called with other headers than the owner's session (an API key). */
+  let rpcWith: (headers: Record<string, string>, name: string, input: object) => Promise<unknown>;
   let openApi: (
     method: string,
     path: string,
@@ -82,22 +84,25 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
 
     // RPC: the whole router, as /api/rpc serves it to the dashboard.
     const rpcHandler = new RPCHandler(appRouter);
-    const client = createORPCClient<{
-      dashboard: { team: Record<string, (input: object) => Promise<unknown>> };
-    }>(
-      new RPCLink({
-        url: "http://louez.test/api/rpc",
-        headers: { [SESSION_HEADER]: OWNER },
-        fetch: async (request) => {
-          const { response } = await rpcHandler.handle(request, {
-            prefix: "/api/rpc",
-            context: { headers: request.headers, transport: "rpc", ports, receipt: {} },
-          });
-          return response ?? new Response(null, { status: 404 });
-        },
-      }),
-    );
+    const clientWith = (headers: Record<string, string>) =>
+      createORPCClient<{
+        dashboard: { team: Record<string, (input: object) => Promise<unknown>> };
+      }>(
+        new RPCLink({
+          url: "http://louez.test/api/rpc",
+          headers,
+          fetch: async (request) => {
+            const { response } = await rpcHandler.handle(request, {
+              prefix: "/api/rpc",
+              context: { headers: request.headers, transport: "rpc", ports, receipt: {} },
+            });
+            return response ?? new Response(null, { status: 404 });
+          },
+        }),
+      );
+    const client = clientWith({ [SESSION_HEADER]: OWNER });
     rpc = (name, input) => client.dashboard.team[name](input);
+    rpcWith = (headers, name, input) => clientWith(headers).dashboard.team[name](input);
 
     // OpenAPI: the exposed procedures at their REST paths, as /api/v1 serves them.
     const openApiHandler = createOpenApiHandler(exposure.router, { docs: false });
@@ -281,48 +286,65 @@ describe("team on RPC, OpenAPI and MCP (database)", { skip: skipWithoutTestDatab
     );
   });
 
-  test("an invitation runs at once from the dashboard; an agent confirms first, even with confirmations off", async () => {
+  /** The approval link's token, the last segment of its URL. */
+  const tokenOf = (url: string) => url.slice(url.lastIndexOf("/") + 1);
+
+  test("an invitation runs at once from the dashboard; an agent's only asks for approval, on MCP and OpenAPI", async () => {
     const viaRpc = json(await rpc("invite", { email: "a@tt.test" }));
     assert.equal(viaRpc.outcome, "invited");
 
+    // Confirmations off change nothing: the tool takes no confirmation token at all.
     const authorization = await key({ ...readOnly, team: "write" }, false);
-    const first = await mcpCall(authorization, "team_invite_member", { email: "b@tt.test" });
-    assert.equal(first.isError, true);
-    assert.equal(toolError(first)?.code, "CONFIRMATION_REQUIRED");
-    assert.match(text(first), /b@tt\.test/);
-    assert.match(text(first), /as a member/);
+    const asked = output(await mcpCall(authorization, "team_invite_member", { email: "b@tt.test" }));
+    assert.equal(asked.outcome, "approval_requested");
+    const approval = asked.approval as { url: string; handoff: { id: string } };
+    assert.match(approval.url, /\/handoffs\/[A-Za-z0-9_-]{64}$/);
+    const viaOpenApi = await openApi("POST", "/team/invitations", { email: "c@tt.test" }, { authorization });
+    assert.equal(viaOpenApi.status, 200);
+    assert.equal(((await viaOpenApi.json()) as Json).outcome, "approval_requested");
+    const created = (await louezDb.db.select().from(louezDb.storeInvitations)).map((row) => row.email);
+    assert.deepEqual(created, ["a@tt.test"], "nothing created for the agent's requests");
 
-    const done = output(
-      await mcpCall(authorization, "team_invite_member", {
-        email: "b@tt.test",
-        confirmationToken: toolError(first)?.details?.confirmationToken,
-      }),
+    // The owner approves from the link's page, signed in.
+    assert.equal(
+      json(await rpc("decideInvitation", { token: tokenOf(approval.url), decision: "approve" })).decision,
+      "approved",
     );
-    assert.equal(done.outcome, "invited");
+    const handoff = output(await mcpCall(authorization, "handoffs_get", { id: approval.handoff.id }));
+    assert.equal(handoff.status, "completed");
     const row = (await louezDb.db.select().from(louezDb.storeInvitations)).find(
       (invitation) => invitation.email === "b@tt.test",
     );
-    assert.doesNotMatch(JSON.stringify(done), new RegExp(row?.token ?? "-"));
+    assert.ok(row, "the invitation exists once approved");
+    assert.doesNotMatch(JSON.stringify(handoff), new RegExp(row?.token ?? "-"));
+  });
 
-    // OpenAPI: the same refusal, then the header.
-    const refused = await openApi(
-      "POST",
-      "/team/invitations",
-      { email: "c@tt.test" },
-      { authorization },
+  test("no transport lets an agent approve an invitation", async () => {
+    const authorization = await key({ ...readOnly, team: "write" }, false);
+    const asked = output(await mcpCall(authorization, "team_invite_member", { email: "d@tt.test" }));
+    const token = tokenOf((asked.approval as { url: string }).url);
+
+    // MCP and OpenAPI do not serve it; the RPC endpoint refuses a key.
+    assert.ok(!(await mcpTools(authorization)).some((name) => name.includes("decide")));
+    await assert.rejects(
+      mcpCall(authorization, "team_decide_invitation", { token, decision: "approve" }),
+      /not found/,
     );
-    assert.equal(refused.status, 412);
-    const body = (await refused.json()) as {
-      data: { code: string; details: { confirmationToken: string } };
-    };
-    assert.equal(body.data.code, "CONFIRMATION_REQUIRED");
-    const confirmed = await openApi(
-      "POST",
-      "/team/invitations",
-      { email: "c@tt.test" },
-      { authorization, "louez-confirmation": body.data.details.confirmationToken },
+    for (const path of ["/team/decide", "/dashboard/team/decideInvitation"]) {
+      const viaOpenApi = await openApi("POST", path, { token, decision: "approve" }, { authorization });
+      assert.equal(viaOpenApi.status, 404);
+    }
+    let refused: unknown = null;
+    await rpcWith({ authorization }, "decideInvitation", { token, decision: "approve" }).catch(
+      (error: unknown) => {
+        refused = error;
+      },
     );
-    assert.equal(confirmed.status, 200);
+    assert.ok(refused, "the RPC endpoint refused the key");
+    assert.equal(
+      (await louezDb.db.select().from(louezDb.storeInvitations)).filter((row) => row.email === "d@tt.test").length,
+      0,
+    );
   });
 
   test("another role is refused on every transport", async () => {

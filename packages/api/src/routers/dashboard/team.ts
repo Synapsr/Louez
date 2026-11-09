@@ -1,6 +1,12 @@
 import {
+  INVITATION_EMAILS_PER_DAY,
+  MAX_OPEN_INVITATION_APPROVALS,
+  acceptInvitationInput,
+  acceptInvitationOutput,
   cancelInvitationInput,
   cancelInvitationOutput,
+  decideInvitationInput,
+  decideInvitationOutput,
   invitationLinkInput,
   invitationLinkOutput,
   inviteMemberInput,
@@ -17,15 +23,23 @@ import {
 import { checkConfirmation, type ConfirmationPreview } from "../../platform/confirmation";
 import { dashboardPageLinks } from "../../platform/links";
 import type { UrlsPort } from "../../platform/ports";
-import { storeProcedure, type ActorStore } from "../../platform/procedures";
+import {
+  accountProcedure,
+  missingTransport,
+  storeProcedure,
+  type ActorStore,
+} from "../../platform/procedures";
 import type { StoreActor } from "../../platform/actor";
 import {
+  acceptInvitation,
   cancelInvitation,
+  decideInvitation,
   invitationToken,
   inviteMember,
   listInvitations,
   listMembers,
   removeMember,
+  requestInvitationApproval,
   resendInvitation,
   type TeamCaller,
 } from "../../services/team";
@@ -36,19 +50,20 @@ import {
  * services/team.ts; this file holds the contract, the rights and the
  * confirmations.
  *
- * No escalation (plan, section 2): an agent may invite someone as a member
- * only, never as an owner, and changing a role stays in the dashboard.
- * Inviting, removing a member and cancelling an invitation always ask an
- * agent to confirm, even a connection whose confirmations are off: each one
- * gives or takes a person's access to the store's data, and an agent cannot
- * undo a removal or a cancellation on its own say.
+ * No escalation (plan, section 2): an invitation is for a member only,
+ * never an owner, and no procedure changes a role. An agent's invitation
+ * creates nothing: an owner approves it from a link (a `team_invitation`
+ * handoff), as a confirmation token the agent holds would prove nothing.
+ * Removing a member and cancelling an invitation always ask an agent to
+ * confirm, even a connection whose confirmations are off: each one takes a
+ * person's access away, and an agent cannot undo it on its own say.
  */
 
 const MANAGE = { domain: "team", level: "write", role: "manage_members" } as const;
 const READ = { domain: "team", level: "read" } as const;
 
 const TEAM_PAGE_HELP =
-  "Its `links` hold the dashboard's team page, the URL to give the user: there they change a member's role, send an invitation again or share its link.";
+  "Its `links` hold the dashboard's team page, the URL to give the user: there they send an invitation again or share its link.";
 
 interface TeamContext {
   actor: StoreActor;
@@ -134,40 +149,51 @@ const invite = storeProcedure
   .meta({
     capability: "team.inviteMember",
     scope: MANAGE,
-    sensitive: "send",
+    // An agent's answer holds the approval link, which an owner opens: never stored.
+    secretOutput: true,
     mcp: {
       name: "team_invite_member",
       title: "Invite Team Member",
-      description: `Invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. Owners only. Someone who already has a Louez account joins at once (\`outcome: "added"\`); anyone else gets an e-mail with a link valid 7 days (\`outcome: "invited"\`). Refused when they are already a member, when their invitation is pending, or when the plan's seats are full. It always asks for a confirmation, whatever the connection's confirmation setting: the first call answers CONFIRMATION_REQUIRED with a preview naming the address and the role. The answer never holds the invitation's link. ${TEAM_PAGE_HELP}`,
+      description: `Ask to invite someone to the store as a member, the only role an invitation gives: a member sees the store's customers, reservations and payments and can change products and reservations. Owners only. Nothing is created yet: the answer (\`outcome: "approval_requested"\`) holds \`approval.url\`, a link to give the user as is, and the user approves the invitation from the link, signed in as an owner of the store, within 24 hours. handoffs_get with \`approval.handoff.id\` says when it is approved (completed: the invitation e-mail went out, or someone with a Louez account joined at once) or declined (failed). The same address asked again gets the same approval with a new link. Refused when the person is already a member, when an invitation of theirs is pending, when the plan's seats are full, when ${MAX_OPEN_INVITATION_APPROVALS} approvals are already open, or past the store's ${INVITATION_EMAILS_PER_DAY} invitation e-mails a day. ${TEAM_PAGE_HELP}`,
       bundle: "team",
       effect: "additive",
-      // The invitation e-mail goes to a person outside the store's account.
-      reach: "customer",
     },
   })
   .route({ method: "POST", path: "/team/invitations" })
   .input(inviteMemberInput)
   .output(inviteMemberOutput)
-  .handler(async ({ context, input, path }) => {
-    const result = await inviteMember(caller(context), input, {
-      confirm: confirmAlways(context, path, input, (preview) => ({
-        // The address and the role, and whether they join at once.
-        state: { email: preview.email, role: preview.role, joinsAtOnce: preview.joinsAtOnce },
-        details: {
-          email: preview.email,
-          role: preview.role,
-          joinsAtOnce: preview.joinsAtOnce,
-          willSee: ["customers", "reservations", "payments"],
-          memberLimit: preview.memberLimit,
+  .handler(async ({ context, input }) => {
+    const { credential } = context.actor;
+    if (credential.kind !== "session") {
+      const approval = await requestInvitationApproval(
+        caller(context),
+        {
+          storeId: context.actor.storeId,
+          userId: credential.userId,
+          credentialKind: credential.kind,
+          credentialId: credential.id,
+          clientName: credential.clientName,
         },
-      })),
-    });
+        input,
+        context.ports.urls,
+      );
+      return {
+        outcome: "approval_requested" as const,
+        invitation: null,
+        member: null,
+        invitationEmail: null,
+        approval,
+        links: teamLinks(context),
+      };
+    }
+    const result = await inviteMember(caller(context), input);
     context.ports.dispatchEffects(result.effectIds);
     return {
       outcome: result.outcome,
       invitation: result.invitation,
       member: result.member,
       invitationEmail: result.invitationEmail,
+      approval: null,
       links: teamLinks(context),
     };
   });
@@ -265,6 +291,63 @@ const invitationLink = dashboardOnly
     ),
   }));
 
+/**
+ * An owner approves or declines an agent's invitation, on its link's page
+ * (`/handoffs/<token>`): a session only, the link's user, still allowed to
+ * manage the team. Approving runs the invitation as the dashboard does.
+ */
+const decideInvitationProcedure = accountProcedure
+  .meta({
+    capability: "team.approveInvitation",
+    scope: { domain: "team", level: "write" },
+    actors: ["session"],
+    // The token is the approval link's secret.
+    secretOutput: true,
+    mcp: { exclude: "an owner approves an agent's invitation, signed in to Louez" },
+  })
+  .input(decideInvitationInput)
+  .output(decideInvitationOutput)
+  .handler(async ({ context, input }) => {
+    const { ports } = context;
+    if (!ports) throw missingTransport();
+    const { effectIds, ...result } = await decideInvitation(
+      { ...input, userId: context.actor.credential.userId },
+      ports,
+    );
+    ports.dispatchEffects(effectIds);
+    return result;
+  });
+
+/**
+ * The invited person accepts, from the invitation's page: a session only,
+ * before they belong to the store. The store becomes their active one.
+ */
+const acceptInvitationProcedure = accountProcedure
+  .meta({
+    capability: "team.acceptInvitation",
+    scope: { domain: "team", level: "write" },
+    actors: ["session"],
+    secretOutput: true,
+    mcp: { exclude: "joining a store gives the caller a role: the invited person only" },
+  })
+  .input(acceptInvitationInput)
+  .output(acceptInvitationOutput)
+  .handler(async ({ context, input }) => {
+    const { ports } = context;
+    if (!ports) throw missingTransport();
+    const accepted = await acceptInvitation(
+      { ...input, userId: context.actor.credential.userId },
+      ports,
+    );
+    for (const cookie of ports.newStores.onboardingCookies({
+      activeStoreId: accepted.storeId,
+      spendReferral: false,
+    })) {
+      context.resHeaders?.append("set-cookie", cookie);
+    }
+    return accepted;
+  });
+
 export const dashboardTeamRouter = {
   listMembers: listMembersProcedure,
   listInvitations: listInvitationsProcedure,
@@ -273,4 +356,6 @@ export const dashboardTeamRouter = {
   removeMember: remove,
   resendInvitation: resend,
   invitationLink,
+  decideInvitation: decideInvitationProcedure,
+  acceptInvitation: acceptInvitationProcedure,
 };

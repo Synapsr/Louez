@@ -324,7 +324,8 @@
       "invalid": "Diese Einladung ist nicht mehr gültig.",
       "expired": "Diese Einladung ist abgelaufen.",
       "emailMismatch": "Diese Einladung ist für eine andere E-Mail-Adresse bestimmt.",
-      "alreadyMember": "Sie sind bereits Mitglied dieses Shops."
+      "alreadyMember": "Sie sind bereits Mitglied dieses Shops.",
+      "limitReached": "Dieser Shop hat keinen Platz mehr für ein neues Mitglied. Wenden Sie sich an den Inhaber."
     }
   },
   "dashboard": {
@@ -9713,6 +9714,42 @@
       "failed": {
         "title": "Dieser Schritt ist fehlgeschlagen",
         "description": "Kehren Sie zu Ihrem KI-Agenten zurück: Er kann Ihnen einen neuen Link geben."
+      }
+    },
+    "team_invitation": {
+      "title": "Diese Einladung genehmigen",
+      "description": "Ihr KI-Agent möchte {email} zum Team von „{store}“ hinzufügen.",
+      "role": "Die Person kommt als Mitglied hinzu, nie als Inhaber.",
+      "joinsAtOnce": "{email} hat bereits ein Louez-Konto: Die Person tritt dem Shop bei, sobald Sie zustimmen.",
+      "byEmail": "{email} erhält eine E-Mail zum Beitreten, 7 Tage gültig.",
+      "access": "Ein Mitglied sieht die Kunden, Reservierungen und Zahlungen des Shops und kann Produkte und Reservierungen ändern.",
+      "approve": "Einladung genehmigen",
+      "decline": "Ablehnen",
+      "error": {
+        "changed": "Seit der Anfrage Ihres Agenten hat sich etwas geändert: Die Adresse hat jetzt ein Louez-Konto, eine Einladung oder einen Platz im Team. Bitten Sie Ihren Agenten, die Anfrage zu wiederholen.",
+        "failed": "Die Einladung konnte nicht verschickt werden. Laden Sie die Seite neu, um den Stand zu sehen."
+      },
+      "done": {
+        "completed": {
+          "title": "Einladung genehmigt",
+          "description": "Sie können zu Ihrem KI-Agenten zurückkehren: Er sieht, dass die Einladung verschickt wurde."
+        },
+        "declined": {
+          "title": "Einladung abgelehnt",
+          "description": "Es wurde nichts verschickt. Sie können zu Ihrem KI-Agenten zurückkehren."
+        },
+        "failed": {
+          "title": "Die Einladung konnte nicht verschickt werden",
+          "description": "Seit der Anfrage Ihres Agenten hat sich etwas geändert (die Plätze im Team, die Adresse oder das heutige E-Mail-Limit). Kehren Sie zu Ihrem KI-Agenten zurück."
+        },
+        "expired": {
+          "title": "Dieser Link ist abgelaufen",
+          "description": "Kehren Sie zu Ihrem KI-Agenten zurück: Er kann erneut anfragen."
+        },
+        "pending": {
+          "title": "Noch nicht beantwortet",
+          "description": "Öffnen Sie den Link erneut, um die Einladung zu genehmigen oder abzulehnen."
+        }
       }
     }
   }

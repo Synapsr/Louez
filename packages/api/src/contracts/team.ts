@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
+import { handoffLinkSchema } from "./handoffs";
 import { resourceLinksSchema } from "./links";
 
 /**
@@ -8,8 +9,10 @@ import { resourceLinksSchema } from "./links";
  * and the writes on them. No database here.
  *
  * Roles are `owner` and `member`. An invitation, from the dashboard or an
- * agent, is always for `member`: nothing here makes an owner, and changing a
- * role is done by the user in the dashboard (plan, section 2).
+ * agent, is always for `member`: nothing here makes an owner, and there is no
+ * way to change a role (plan, section 2). An agent's invitation is approved
+ * by an owner from a link (a `team_invitation` handoff) before anything is
+ * created.
  */
 
 /** Largest page the team lists return, and their default. */
@@ -17,6 +20,22 @@ export const TEAM_PAGE_MAX = 100;
 
 /** How long an invitation stays valid, as the dashboard always gave it. */
 export const INVITATION_VALIDITY_DAYS = 7;
+
+/**
+ * Most invitation approvals an agent may leave open in a store at once.
+ * Each one waits for an owner's click: a store hiring a seasonal crew asks
+ * for a handful, and ten keeps a runaway agent from burying the owner in
+ * links it would then have to sort.
+ */
+export const MAX_OPEN_INVITATION_APPROVALS = 10;
+
+/**
+ * Most invitation e-mails a store sends in 24 hours, from the dashboard and
+ * agents together, sends again included. Plans allow a few members, so a
+ * real store sends far fewer; twenty bounds what one store can make Louez's
+ * sender mail to strangers, whose complaints would hurt every store's mail.
+ */
+export const INVITATION_EMAILS_PER_DAY = 20;
 
 const idSchema = z.string().min(1).max(64);
 
@@ -105,25 +124,52 @@ export const inviteMemberInput = z.object({
     .literal("member")
     .optional()
     .describe(
-      'Always "member", the only role an invitation gives. Owners are never invited; the user changes roles in the dashboard.',
+      'Always "member", the only role an invitation gives. Owners are never invited.',
     ),
 });
 export const inviteMemberOutput = z.object({
   /**
    * `invited`: an invitation went out, valid 7 days. `added`: the person
    * already had a Louez account and joined the store at once.
+   * `approval_requested` (an agent): nothing was created yet; an owner
+   * approves or declines from `approval.url`.
    */
-  outcome: z.enum(["invited", "added"]),
+  outcome: z.enum(["invited", "added", "approval_requested"]),
   invitation: teamInvitationSchema.nullable(),
   member: teamMemberSchema.nullable(),
   /**
    * The invitation e-mail: `queued` to be sent, `not_configured` when this
    * instance sends no e-mail (the user shares the link from the dashboard).
-   * Null when the person was added.
+   * Null when the person was added, or for an approval request.
    */
   invitationEmail: z.enum(["queued", "not_configured"]).nullable(),
+  /**
+   * An agent's request: the link to give the user, and the handoff to read
+   * with handoffs_get (completed once approved, failed once declined).
+   */
+  approval: handoffLinkSchema.nullable(),
   links: teamPageLinks,
 });
+
+/** An owner's answer to an agent's invitation, from its link's page. */
+export const decideInvitationInput = z.object({
+  token: z.string().min(1).max(128),
+  decision: z.enum(["approve", "decline"]),
+});
+export const decideInvitationOutput = z.object({
+  /** The handoff the agent reads. */
+  handoffId: z.string(),
+  decision: z.enum(["approved", "declined"]),
+  outcome: z.enum(["invited", "added"]).nullable(),
+});
+
+/** The invited person accepts, signed in with the invited address. */
+export const acceptInvitationInput = z.object({
+  token: z.string().min(1).max(64),
+  /** Their name, kept when their account has none yet. */
+  name: z.string().trim().max(255).optional(),
+});
+export const acceptInvitationOutput = z.object({ storeId: z.string() });
 
 export const resendInvitationInput = z.object({ id: idSchema });
 export const resendInvitationOutput = z.object({
@@ -200,6 +246,56 @@ export const teamErrors = {
       message: "This membership is the caller's own: nobody removes themselves from the store.",
       i18nKey: "dashboard.team.cannotRemoveSelf",
       details: { id },
+    }),
+  approvalsFull: () =>
+    apiError("CONFLICT", "TEAM_APPROVALS_FULL", {
+      message: `This store already has ${MAX_OPEN_INVITATION_APPROVALS} invitations waiting for an owner's approval. The user approves or declines them from their links, or they expire after a day.`,
+      details: { max: MAX_OPEN_INVITATION_APPROVALS },
+    }),
+  emailLimit: () =>
+    apiError("TOO_MANY_REQUESTS", "TEAM_INVITATION_EMAIL_LIMIT", {
+      message: `This store sent ${INVITATION_EMAILS_PER_DAY} invitation e-mails in the last 24 hours, the most it may. Try again later.`,
+      i18nKey: "errors.tooManyRequests",
+      retryable: true,
+      details: { max: INVITATION_EMAILS_PER_DAY },
+    }),
+  approvalInvalid: (reason: string) =>
+    apiError("BAD_REQUEST", "TEAM_APPROVAL_INVALID", {
+      message: "This approval link no longer works, or is not for this account.",
+      i18nKey: `handoff.refused.${reason}.title`,
+      details: { reason },
+    }),
+  approvalChanged: () =>
+    apiError("CONFLICT", "TEAM_APPROVAL_CHANGED", {
+      message:
+        "The address got a Louez account since the agent asked, so approving would add them at once: the agent asks again.",
+      i18nKey: "handoff.team_invitation.error.changed",
+    }),
+  acceptInvalid: () =>
+    apiError("NOT_FOUND", "TEAM_INVITATION_INVALID", {
+      message: "This invitation is no longer valid.",
+      i18nKey: "invitation.errors.invalid",
+    }),
+  acceptExpired: () =>
+    apiError("CONFLICT", "TEAM_INVITATION_EXPIRED", {
+      message: "This invitation has expired.",
+      i18nKey: "invitation.errors.expired",
+    }),
+  acceptEmailMismatch: () =>
+    apiError("FORBIDDEN", "TEAM_INVITATION_EMAIL_MISMATCH", {
+      message: "This invitation is for another e-mail address.",
+      i18nKey: "invitation.errors.emailMismatch",
+    }),
+  acceptAlreadyMember: () =>
+    apiError("CONFLICT", "TEAM_ALREADY_MEMBER", {
+      message: "You are already a member of this store.",
+      i18nKey: "invitation.errors.alreadyMember",
+    }),
+  acceptLimitReached: (limit: MemberLimit) =>
+    apiError("CONFLICT", "TEAM_LIMIT_REACHED", {
+      message: "The store's plan has no seat left for a member.",
+      i18nKey: "invitation.errors.limitReached",
+      details: { current: limit.current, limit: limit.limit },
     }),
   invalidCursor: () =>
     apiError("BAD_REQUEST", "INVALID_CURSOR", {

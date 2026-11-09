@@ -128,11 +128,6 @@ const EXCLUDED_PREFIX = "packages/db/src/";
  */
 const ALLOWLIST = [
   {
-    file: "packages/api/src/services/team.ts",
-    writes: { storeMembers: 2 },
-    reason: "adds members with role member and removes non-owners only; the snapshot lists owners",
-  },
-  {
     file: "apps/web/lib/reservations/create-reservation.ts",
     writes: { payments: 1, reservationItems: 1 },
     reason:

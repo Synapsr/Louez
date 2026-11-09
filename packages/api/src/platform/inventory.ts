@@ -145,7 +145,6 @@ const SA = {
   whatsNew: `${DASH}/whats-new/actions.ts`,
   onboardingProfile: `${ONBOARDING}/profile-actions.ts`,
   reeent: `${ONBOARDING}/reeent/actions.ts`,
-  invitation: "apps/web/app/invitation/[token]/actions.ts",
   multiStore: "apps/web/app/multi-store/actions.ts",
   invoices: "apps/web/lib/invoicing/actions.ts",
 } as const;
@@ -1991,8 +1990,9 @@ export const capabilities = [
     migrated: true,
   },
   {
-    // Always as a member, never an owner, and always confirmed by an agent
-    // (Téo's decision, 2026-11-09). Changing a role stays in the dashboard.
+    // Always as a member, never an owner (Téo's decision, 2026-11-09). An
+    // agent's invitation creates nothing until an owner approves it from a
+    // link (team.approveInvitation). No procedure changes a role.
     id: "team.inviteMember",
     sources: [procedure("team", "invite")],
     kind: "write",
@@ -2018,6 +2018,16 @@ export const capabilities = [
     actors: ["session"],
   },
   {
+    // An owner approves or declines an agent's invitation from its link's
+    // page: a session only, so no agent grants itself access.
+    id: "team.approveInvitation",
+    sources: [procedure("team", "decideInvitation")],
+    kind: "write",
+    sensitive: "send",
+    plan: { lot: "8" },
+    actors: ["session"],
+  },
+  {
     id: "team.cancelInvitation",
     sources: [procedure("team", "cancelInvitation")],
     kind: "write",
@@ -2036,7 +2046,7 @@ export const capabilities = [
   {
     // Joining a store grants the caller a role: never done by an agent.
     id: "team.acceptInvitation",
-    sources: [action(SA.invitation, "acceptInvitation")],
+    sources: [procedure("team", "acceptInvitation")],
     kind: "write",
     plan: { lot: "8" },
     actors: ["session"],

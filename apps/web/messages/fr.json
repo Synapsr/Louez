@@ -324,7 +324,8 @@
       "invalid": "Cette invitation n'est plus valide.",
       "expired": "Cette invitation a expiré.",
       "emailMismatch": "Cette invitation est destinée à une autre adresse email.",
-      "alreadyMember": "Vous êtes déjà membre de cette boutique."
+      "alreadyMember": "Vous êtes déjà membre de cette boutique.",
+      "limitReached": "Cette boutique n’a plus de place pour un nouveau membre. Contactez son propriétaire."
     }
   },
   "dashboard": {
@@ -9713,6 +9714,42 @@
       "failed": {
         "title": "Cette étape a échoué",
         "description": "Retournez à votre agent IA : il peut vous donner un nouveau lien."
+      }
+    },
+    "team_invitation": {
+      "title": "Approuver cette invitation",
+      "description": "Votre agent IA demande d’ajouter {email} à l’équipe de « {store} ».",
+      "role": "Cette personne rejoint l’équipe en tant que membre, jamais en tant que propriétaire.",
+      "joinsAtOnce": "{email} a déjà un compte Louez : la personne rejoint la boutique dès votre accord.",
+      "byEmail": "{email} recevra un e-mail pour rejoindre la boutique, valable 7 jours.",
+      "access": "Un membre voit les clients, les réservations et les paiements de la boutique, et peut modifier les produits et les réservations.",
+      "approve": "Approuver l’invitation",
+      "decline": "Refuser",
+      "error": {
+        "changed": "La situation a changé depuis la demande de votre agent : l’adresse a maintenant un compte Louez, une invitation ou une place dans l’équipe. Demandez à votre agent de refaire la demande.",
+        "failed": "L’invitation n’a pas pu partir. Rechargez la page pour voir où elle en est."
+      },
+      "done": {
+        "completed": {
+          "title": "Invitation approuvée",
+          "description": "Vous pouvez retourner à votre agent IA : il verra que l’invitation est partie."
+        },
+        "declined": {
+          "title": "Invitation refusée",
+          "description": "Rien n’a été envoyé. Vous pouvez retourner à votre agent IA."
+        },
+        "failed": {
+          "title": "L’invitation n’a pas pu partir",
+          "description": "Quelque chose a changé depuis la demande de votre agent (les places de l’équipe, l’adresse ou la limite d’e-mails du jour). Retournez à votre agent IA."
+        },
+        "expired": {
+          "title": "Ce lien a expiré",
+          "description": "Retournez à votre agent IA : il peut refaire la demande."
+        },
+        "pending": {
+          "title": "Pas encore de réponse",
+          "description": "Rouvrez le lien pour approuver ou refuser l’invitation."
+        }
       }
     }
   }

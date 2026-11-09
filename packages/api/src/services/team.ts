@@ -1,16 +1,23 @@
 import {
+  apiEffects,
+  apiHandoffs,
   db,
   lockStoreRow,
+  markStore,
   storeInvitations,
   storeMembers,
+  stores,
   users,
   type Transaction,
 } from "@louez/db";
-import { and, count, desc, eq, lt, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gt, lt, or, sql, type SQL } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
+import type { HandoffLink } from "../contracts/handoffs";
 import {
+  INVITATION_EMAILS_PER_DAY,
   INVITATION_VALIDITY_DAYS,
+  MAX_OPEN_INVITATION_APPROVALS,
   TEAM_PAGE_MAX,
   teamErrors,
   type MemberLimit,
@@ -19,8 +26,10 @@ import {
 } from "../contracts/team";
 import type { ActorStore } from "../platform/procedures";
 import { enqueueEffects } from "../platform/effects";
-import { platformErrors } from "../platform/errors";
-import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
+import { isApiError, platformErrors } from "../platform/errors";
+import { sha256 } from "../platform/hash";
+import type { ApiEvent, ApiEventStore, ApiPorts, UrlsPort } from "../platform/ports";
+import { issueHandoff, readHandoffLink, type HandoffRequester } from "./handoffs";
 
 /**
  * The store's team: its members and pending invitations, and the writes the
@@ -196,15 +205,37 @@ async function inviterName(tx: Transaction, userId: string) {
   return inviter?.name || inviter?.email || "Un membre";
 }
 
+const sendsEmail = (caller: Pick<TeamCaller, "ports">) =>
+  !caller.ports.team || caller.ports.team.emailConfigured();
+
+/**
+ * Refuses an invitation e-mail past the store's daily cap
+ * (`INVITATION_EMAILS_PER_DAY`): the e-mails queued in the last 24 hours,
+ * on the database's clock. Read under the store's lock, as every invitation
+ * write of the store takes it.
+ */
+async function assertEmailQuota(tx: Transaction, storeId: string) {
+  const [row] = await tx
+    .select({ count: count() })
+    .from(apiEffects)
+    .where(
+      and(
+        eq(apiEffects.storeId, storeId),
+        eq(apiEffects.type, "team.invitationEmail"),
+        gt(apiEffects.createdAt, sql`NOW(3) - INTERVAL 1 DAY`),
+      ),
+    );
+  if ((row?.count ?? 0) >= INVITATION_EMAILS_PER_DAY) throw teamErrors.emailLimit();
+}
+
 /** The invitation e-mail, queued in the write's transaction when this instance sends e-mail. */
 async function queueInvitationEmail(
   tx: Transaction,
   caller: TeamCaller,
   invitationId: string,
 ): Promise<{ invitationEmail: "queued" | "not_configured"; effectIds: string[] }> {
-  if (caller.ports.team && !caller.ports.team.emailConfigured()) {
-    return { invitationEmail: "not_configured", effectIds: [] };
-  }
+  if (!sendsEmail(caller)) return { invitationEmail: "not_configured", effectIds: [] };
+  await assertEmailQuota(tx, caller.storeId);
   const effectIds = await enqueueEffects(tx, caller.storeId, [
     {
       type: "team.invitationEmail",
@@ -225,142 +256,309 @@ async function queueInvitationEmail(
 
 const invitationExpiry = (now: Date) => new Date(now.getTime() + INVITATION_VALIDITY_DAYS * DAY_MS);
 
-const seeTheStore =
-  "they will see the store's data (customers, reservations, payments) and can change products and reservations";
+/** An address as it is stored and compared: trimmed, lowercase. */
+export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-/** What an invitation will do, shown before it runs. */
-export interface InvitePreview {
-  summary: string;
-  email: string;
-  role: "member";
-  /** The person already has a Louez account: they join at once, with no e-mail. */
+/** Pending invitations of an address in a store, expired ones included. */
+const pendingOf = (storeId: string, email: string) =>
+  and(
+    eq(storeInvitations.storeId, storeId),
+    eq(storeInvitations.email, email),
+    eq(storeInvitations.status, "pending"),
+  );
+
+/**
+ * Whether the address may be invited to the store now, under its lock: a
+ * seat left in the plan, not a member already, and no pending invitation,
+ * whether or not the address has an account. The user id of its account,
+ * when it has one: approving or inviting then adds them at once.
+ */
+async function checkInvitable(tx: Transaction, caller: TeamCaller, email: string) {
+  const memberLimit = await readMemberLimit(tx, caller.storeId, caller.ports);
+  if (!memberLimit.canAddMember) throw teamErrors.limitReached(memberLimit);
+
+  const [pending] = await tx
+    .select({ id: storeInvitations.id })
+    .from(storeInvitations)
+    .where(pendingOf(caller.storeId, email))
+    .limit(1);
+  if (pending) throw teamErrors.invitationAlreadySent(email, pending.id);
+
+  const [existingUser] = await tx
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  if (existingUser) {
+    const [membership] = await tx
+      .select({ id: storeMembers.id })
+      .from(storeMembers)
+      .where(
+        and(eq(storeMembers.storeId, caller.storeId), eq(storeMembers.userId, existingUser.id)),
+      )
+      .limit(1);
+    if (membership) throw teamErrors.alreadyMember(email);
+  }
+  return { existingUserId: existingUser?.id ?? null, memberLimit };
+}
+
+/** The handoff an owner approves an agent's invitation through, as the invitation locks it. */
+interface Approval {
+  handoffId: string;
+  tokenHash: string;
+  /** What the owner was shown: the address joins at once. */
   joinsAtOnce: boolean;
-  memberLimit: MemberLimit;
 }
 
 /**
  * Invites someone as a member, as the dashboard always did: someone with a
  * Louez account joins at once; anyone else gets an invitation, valid 7 days,
- * by e-mail. Refused when they are already a member, when their invitation
- * is pending, and when the plan's seats are full.
+ * by e-mail. Refused when they are already a member, when an invitation of
+ * theirs is pending, when the plan's seats are full, and past the daily cap
+ * of invitation e-mails. A dashboard session calls it directly; an agent's
+ * invitation runs it once an owner approves it (`approval`), which completes
+ * the approval's handoff in the same transaction.
  */
 export async function inviteMember(
   caller: TeamCaller,
   input: { email: string },
-  options: { confirm?: Confirm<InvitePreview>; now?: Date } = {},
+  options: { approval?: Approval; now?: Date } = {},
 ) {
-  const email = input.email.trim().toLowerCase();
+  const email = normalizeEmail(input.email);
   const now = options.now ?? new Date();
-  let refusal: Error | null = null;
+  const { approval } = options;
 
   const result = await db.transaction(async (tx) => {
     await lockStore(tx, caller.storeId);
-
-    const memberLimit = await readMemberLimit(tx, caller.storeId, caller.ports);
-    if (!memberLimit.canAddMember) throw teamErrors.limitReached(memberLimit);
-
-    const [existingUser] = await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-    if (existingUser) {
-      const [membership] = await tx
-        .select({ id: storeMembers.id })
-        .from(storeMembers)
-        .where(
-          and(eq(storeMembers.storeId, caller.storeId), eq(storeMembers.userId, existingUser.id)),
-        )
-        .limit(1);
-      if (membership) throw teamErrors.alreadyMember(email);
-    } else {
-      const [pending] = await tx
-        .select({ id: storeInvitations.id })
-        .from(storeInvitations)
+    if (approval) {
+      // Still the link the owner opened, active and in time.
+      const [handoff] = await tx
+        .select({ id: apiHandoffs.id })
+        .from(apiHandoffs)
         .where(
           and(
-            eq(storeInvitations.storeId, caller.storeId),
-            eq(storeInvitations.email, email),
-            eq(storeInvitations.status, "pending"),
+            eq(apiHandoffs.id, approval.handoffId),
+            eq(apiHandoffs.storeId, caller.storeId),
+            eq(apiHandoffs.tokenHash, approval.tokenHash),
+            eq(apiHandoffs.activeSlot, 1),
+            gt(apiHandoffs.expiresAt, now),
           ),
         )
-        .limit(1);
-      if (pending) throw teamErrors.invitationAlreadySent(email, pending.id);
+        .for("update");
+      if (!handoff) throw teamErrors.approvalInvalid("invalid");
     }
 
-    const store = caller.store.name;
-    const preview: InvitePreview = {
-      summary: existingUser
-        ? `${email} already has a Louez account: they join "${store}" at once as a member, and ${seeTheStore}.`
-        : `Invite ${email} to "${store}" as a member. They get an e-mail with a link valid ${INVITATION_VALIDITY_DAYS} days; once they accept, ${seeTheStore}.`,
-      email,
-      role: "member",
-      joinsAtOnce: Boolean(existingUser),
-      memberLimit,
-    };
-    refusal = (await options.confirm?.(preview, tx)) ?? null;
-    if (refusal) return null;
+    const { existingUserId } = await checkInvitable(tx, caller, email);
+    if (approval && approval.joinsAtOnce !== (existingUserId !== null)) {
+      throw teamErrors.approvalChanged();
+    }
 
-    if (existingUser) {
+    let outcome;
+    if (existingUserId) {
       // Only owners are in the store's billing snapshot: no billing mark.
       const id = nanoid();
       await tx.insert(storeMembers).values({
         id,
         storeId: caller.storeId,
-        userId: existingUser.id,
+        userId: existingUserId,
         role: "member",
         addedBy: caller.userId,
         createdAt: now,
         updatedAt: now,
       });
+      // No invitation of theirs may add them again later.
+      await tx
+        .update(storeInvitations)
+        .set({ status: "cancelled" })
+        .where(pendingOf(caller.storeId, email));
       const [member] = await tx
         .select(memberColumns)
         .from(storeMembers)
         .innerJoin(users, eq(users.id, storeMembers.userId))
         .where(eq(storeMembers.id, id));
-      return {
+      outcome = {
         outcome: "added" as const,
         member: member ?? null,
         invitation: null,
         invitationEmail: null,
         effectIds: [] as string[],
       };
+    } else {
+      const id = nanoid();
+      const invitation = {
+        id,
+        storeId: caller.storeId,
+        email,
+        role: "member" as const,
+        token: nanoid(32),
+        invitedBy: caller.userId,
+        expiresAt: invitationExpiry(now),
+        createdAt: now,
+      };
+      await tx.insert(storeInvitations).values(invitation);
+      const queued = await queueInvitationEmail(tx, caller, id);
+      outcome = {
+        outcome: "invited" as const,
+        member: null,
+        invitation: toInvitation(
+          {
+            id,
+            email,
+            role: "member",
+            invitedAt: invitation.createdAt,
+            expiresAt: invitation.expiresAt,
+          },
+          now,
+        ),
+        ...queued,
+      };
     }
 
-    const id = nanoid();
-    const invitation = {
-      id,
-      storeId: caller.storeId,
-      email,
-      role: "member" as const,
-      token: nanoid(32),
-      invitedBy: caller.userId,
-      expiresAt: invitationExpiry(now),
-      createdAt: now,
-    };
-    await tx.insert(storeInvitations).values(invitation);
-    const queued = await queueInvitationEmail(tx, caller, id);
-    return {
-      outcome: "invited" as const,
-      member: null,
-      invitation: toInvitation(
-        {
-          id,
-          email,
-          role: "member",
-          invitedAt: invitation.createdAt,
-          expiresAt: invitation.expiresAt,
-        },
-        now,
-      ),
-      ...queued,
-    };
+    if (approval) {
+      await tx
+        .update(apiHandoffs)
+        .set({ status: "completed", completedAt: now, activeSlot: null, updatedAt: now })
+        .where(eq(apiHandoffs.id, approval.handoffId));
+    }
+    return outcome;
   });
 
-  if (refusal) throw refusal;
-  if (!result) throw platformErrors.noStore();
   emit(caller, { type: "team.memberInvited", store: eventStore(caller), email });
   return result;
+}
+
+/**
+ * An agent's invitation: nothing is created yet. It records an approval for
+ * the address (a `team_invitation` handoff: the store, the address, the
+ * role and whether the address joins at once) and returns the link an owner
+ * approves it from. The same address asked again gets the same approval with
+ * a new link. The checks of an invitation run first, so a request that could
+ * never be approved is refused at once; a store holds at most
+ * `MAX_OPEN_INVITATION_APPROVALS` open approvals.
+ */
+export async function requestInvitationApproval(
+  caller: TeamCaller,
+  requester: HandoffRequester,
+  input: { email: string },
+  urls: UrlsPort,
+): Promise<HandoffLink> {
+  const email = normalizeEmail(input.email);
+  return issueHandoff(requester, "team_invitation", {
+    urls,
+    subject: sha256(email),
+    prepare: async (tx, active) => {
+      const { existingUserId } = await checkInvitable(tx, caller, email);
+      if (!existingUserId && sendsEmail(caller)) await assertEmailQuota(tx, caller.storeId);
+      if (!active) {
+        const [open] = await tx
+          .select({ count: count() })
+          .from(apiHandoffs)
+          .where(
+            and(
+              eq(apiHandoffs.storeId, caller.storeId),
+              eq(apiHandoffs.kind, "team_invitation"),
+              eq(apiHandoffs.activeSlot, 1),
+              gt(apiHandoffs.expiresAt, sql`NOW(3)`),
+            ),
+          );
+        if ((open?.count ?? 0) >= MAX_OPEN_INVITATION_APPROVALS) throw teamErrors.approvalsFull();
+      }
+      return { email, role: "member", joinsAtOnce: existingUserId !== null };
+    },
+  });
+}
+
+/** The handoff failure an invitation's refusal ends an approval with. */
+function approvalFailure(error: unknown): string | null {
+  if (!isApiError(error)) return null;
+  switch (error.data.code) {
+    case "TEAM_ALREADY_MEMBER":
+    case "TEAM_INVITATION_ALREADY_SENT":
+    case "TEAM_APPROVAL_CHANGED":
+      return "request_changed";
+    case "TEAM_LIMIT_REACHED":
+      return "limit_reached";
+    case "TEAM_INVITATION_EMAIL_LIMIT":
+      return "email_limit";
+    default:
+      return null;
+  }
+}
+
+/** Ends an approval, while its link is still the current one. */
+async function endApproval(handoffId: string, tokenHash: string, code: string, now: Date) {
+  await db
+    .update(apiHandoffs)
+    .set({ status: "failed", failedAt: now, failureCode: code, activeSlot: null, updatedAt: now })
+    .where(
+      and(
+        eq(apiHandoffs.id, handoffId),
+        eq(apiHandoffs.tokenHash, tokenHash),
+        eq(apiHandoffs.activeSlot, 1),
+      ),
+    );
+}
+
+/**
+ * An owner's answer to an agent's invitation, signed in on its link's page:
+ * the link's user, still allowed to manage the team (`manage_members`). To
+ * approve runs the invitation as the dashboard does and completes the
+ * approval; to decline ends it as failed (`declined`). An invitation that
+ * can no longer go out as shown (the address joined, got an account or an
+ * invitation since, the seats are full) ends the approval too, with why.
+ */
+export async function decideInvitation(
+  input: { token: string; decision: "approve" | "decline"; userId: string },
+  ports: Pick<ApiPorts, "team" | "afterCommit">,
+  now = new Date(),
+) {
+  const checked = await readHandoffLink(input.token, input.userId, now);
+  if (!checked.ok) throw teamErrors.approvalInvalid(checked.reason);
+  const { row } = checked;
+  if (row.kind !== "team_invitation" || !row.payload) throw teamErrors.approvalInvalid("invalid");
+
+  if (input.decision === "decline") {
+    await endApproval(row.id, row.tokenHash, "declined", now);
+    return { handoffId: row.id, decision: "declined" as const, outcome: null, effectIds: [] };
+  }
+
+  const [store] = await db
+    .select({
+      id: stores.id,
+      name: stores.name,
+      slug: stores.slug,
+      userId: stores.userId,
+      logoUrl: stores.logoUrl,
+      settings: stores.settings,
+    })
+    .from(stores)
+    .where(eq(stores.id, row.storeId));
+  if (!store) throw platformErrors.noStore();
+  const caller: TeamCaller = { storeId: store.id, userId: input.userId, store, ports };
+  try {
+    const result = await inviteMember(
+      caller,
+      { email: row.payload.email },
+      {
+        approval: {
+          handoffId: row.id,
+          tokenHash: row.tokenHash,
+          joinsAtOnce: row.payload.joinsAtOnce,
+        },
+        now,
+      },
+    );
+    return {
+      handoffId: row.id,
+      decision: "approved" as const,
+      outcome: result.outcome,
+      effectIds: result.effectIds,
+    };
+  } catch (error) {
+    const failure = approvalFailure(error);
+    if (failure) await endApproval(row.id, row.tokenHash, failure, now);
+    throw error;
+  }
 }
 
 async function lockPendingInvitation(tx: Transaction, storeId: string, id: string) {
@@ -475,9 +673,10 @@ export interface RemoveMemberPreview {
 }
 
 /**
- * A member removed from the store: they lose access on their next call. An
- * owner is never removed, so the store always keeps its owner, and nobody
- * removes themselves.
+ * A member removed from the store: they lose access on their next call, and
+ * their pending invitations to the store are cancelled. An owner is never
+ * removed, so the store always keeps its owner, and nobody removes
+ * themselves.
  */
 export async function removeMember(
   caller: TeamCaller,
@@ -512,6 +711,11 @@ export async function removeMember(
 
     // Never an owner, so the store's billing snapshot does not change.
     await tx.delete(storeMembers).where(eq(storeMembers.id, id));
+    // An earlier invitation of theirs must not let them back in.
+    await tx
+      .update(storeInvitations)
+      .set({ status: "cancelled" })
+      .where(pendingOf(caller.storeId, normalizeEmail(member.email)));
     return { id, userId: member.userId, email: member.email };
   });
 
@@ -519,4 +723,92 @@ export async function removeMember(
   if (!result) throw platformErrors.noStore();
   emit(caller, { type: "team.changed", store: eventStore(caller) });
   return result;
+}
+
+/**
+ * The invited person accepts, signed in with the invited address. Under the
+ * store's lock, as every team write: the invitation is read again and locked,
+ * still pending with this token and in time, the seats checked again for a
+ * member, and it is consumed by a statement that changes it only while it
+ * is still so, so a cancellation or a removal committed meanwhile wins.
+ */
+export async function acceptInvitation(
+  input: { token: string; name?: string; userId: string },
+  ports: Pick<ApiPorts, "team">,
+  now = new Date(),
+): Promise<{ storeId: string }> {
+  // Only to find the store to lock: everything is read again under it.
+  const [found] = await db
+    .select({ storeId: storeInvitations.storeId })
+    .from(storeInvitations)
+    .where(eq(storeInvitations.token, input.token))
+    .limit(1);
+  if (!found) throw teamErrors.acceptInvalid();
+
+  await db.transaction(async (tx) => {
+    await lockStore(tx, found.storeId);
+    const [invitation] = await tx
+      .select()
+      .from(storeInvitations)
+      .where(
+        and(
+          eq(storeInvitations.token, input.token),
+          eq(storeInvitations.storeId, found.storeId),
+          eq(storeInvitations.status, "pending"),
+        ),
+      )
+      .for("update");
+    if (!invitation) throw teamErrors.acceptInvalid();
+    if (invitation.expiresAt.getTime() <= now.getTime()) throw teamErrors.acceptExpired();
+
+    const [user] = await tx.select().from(users).where(eq(users.id, input.userId)).limit(1);
+    if (!user) throw platformErrors.unauthenticated();
+    if (normalizeEmail(user.email) !== normalizeEmail(invitation.email)) {
+      throw teamErrors.acceptEmailMismatch();
+    }
+    const [membership] = await tx
+      .select({ id: storeMembers.id })
+      .from(storeMembers)
+      .where(and(eq(storeMembers.storeId, invitation.storeId), eq(storeMembers.userId, user.id)))
+      .limit(1);
+    if (membership) throw teamErrors.acceptAlreadyMember();
+    if (invitation.role === "member") {
+      const memberLimit = await readMemberLimit(tx, invitation.storeId, ports);
+      if (!memberLimit.canAddMember) throw teamErrors.acceptLimitReached(memberLimit);
+    }
+
+    const [consumed] = await tx
+      .update(storeInvitations)
+      .set({ status: "accepted", acceptedAt: now })
+      .where(
+        and(
+          eq(storeInvitations.id, invitation.id),
+          eq(storeInvitations.token, input.token),
+          eq(storeInvitations.status, "pending"),
+          gt(storeInvitations.expiresAt, now),
+        ),
+      );
+    if (consumed.affectedRows !== 1) throw teamErrors.acceptInvalid();
+
+    // Their name when the account has none, and that they reached Louez
+    // through an invitation, unless a channel is known already.
+    const name = input.name?.trim();
+    const userUpdates = {
+      ...(name && !user.name ? { name } : {}),
+      ...(user.acquisitionChannel ? {} : { acquisitionChannel: "invitation" }),
+    };
+    if (Object.keys(userUpdates).length > 0) {
+      await tx.update(users).set(userUpdates).where(eq(users.id, user.id));
+    }
+    await tx.insert(storeMembers).values({
+      storeId: invitation.storeId,
+      userId: user.id,
+      role: invitation.role,
+      addedBy: invitation.invitedBy,
+    });
+    // The store's billing snapshot lists its owners.
+    if (invitation.role === "owner") await markStore(tx, invitation.storeId);
+  });
+
+  return { storeId: found.storeId };
 }

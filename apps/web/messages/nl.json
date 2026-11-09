@@ -324,7 +324,8 @@
       "invalid": "Deze uitnodiging is niet meer geldig.",
       "expired": "Deze uitnodiging is verlopen.",
       "emailMismatch": "Deze uitnodiging is voor een ander e-mailadres.",
-      "alreadyMember": "U bent al lid van deze winkel."
+      "alreadyMember": "U bent al lid van deze winkel.",
+      "limitReached": "Deze winkel heeft geen plek meer voor een nieuw lid. Vraag het de eigenaar."
     }
   },
   "dashboard": {
@@ -9713,6 +9714,42 @@
       "failed": {
         "title": "Deze stap is mislukt",
         "description": "Ga terug naar uw AI-agent: die kan u een nieuwe link geven."
+      }
+    },
+    "team_invitation": {
+      "title": "Deze uitnodiging goedkeuren",
+      "description": "Je AI-agent vraagt om {email} toe te voegen aan het team van ‘{store}’.",
+      "role": "Diegene komt erbij als lid, nooit als eigenaar.",
+      "joinsAtOnce": "{email} heeft al een Louez-account: diegene komt bij de winkel zodra je goedkeurt.",
+      "byEmail": "{email} krijgt een e-mail om bij de winkel te komen, 7 dagen geldig.",
+      "access": "Een lid ziet de klanten, reserveringen en betalingen van de winkel en kan producten en reserveringen wijzigen.",
+      "approve": "Uitnodiging goedkeuren",
+      "decline": "Weigeren",
+      "error": {
+        "changed": "Er is iets veranderd sinds je agent het vroeg: het adres heeft nu een Louez-account, een uitnodiging of een plek in het team. Vraag je agent het opnieuw aan te vragen.",
+        "failed": "De uitnodiging kon niet worden verstuurd. Laad de pagina opnieuw om te zien hoe het ervoor staat."
+      },
+      "done": {
+        "completed": {
+          "title": "Uitnodiging goedgekeurd",
+          "description": "Je kunt teruggaan naar je AI-agent: die ziet dat de uitnodiging is verstuurd."
+        },
+        "declined": {
+          "title": "Uitnodiging geweigerd",
+          "description": "Er is niets verstuurd. Je kunt teruggaan naar je AI-agent."
+        },
+        "failed": {
+          "title": "De uitnodiging kon niet worden verstuurd",
+          "description": "Er is iets veranderd sinds je agent het vroeg (de plekken in het team, het adres of de e-maillimiet van vandaag). Ga terug naar je AI-agent."
+        },
+        "expired": {
+          "title": "Deze link is verlopen",
+          "description": "Ga terug naar je AI-agent: die kan het opnieuw vragen."
+        },
+        "pending": {
+          "title": "Nog niet beantwoord",
+          "description": "Open de link opnieuw om de uitnodiging goed te keuren of te weigeren."
+        }
       }
     }
   }

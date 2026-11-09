@@ -6,6 +6,7 @@ import { handoffPath, readHandoffLink } from "@louez/api/services/handoffs";
 import { Button } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
+import { TeamInvitationApproval } from "@/components/handoffs/team-invitation-approval";
 import { auth } from "@/lib/auth";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -21,14 +22,15 @@ export async function generateMetadata(): Promise<Metadata> {
  * The link an agent gave the user for a step only they can take. Signed out,
  * they sign in first. The page itself changes nothing: a link preview that
  * loads it starts no step. The user continues with a form that posts to
- * `continue`, which sends them to the provider.
+ * `continue`, which sends them to the provider; a team invitation is
+ * approved or declined with a form that posts to `decide`.
  */
 export default async function HandoffPage({
   params,
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ retry?: string }>;
+  searchParams: Promise<{ retry?: string; error?: string }>;
 }) {
   const { token } = await params;
   const path = handoffPath(token);
@@ -48,12 +50,32 @@ export default async function HandoffPage({
     );
   }
 
-  const { kind } = checked.row;
+  const { kind, payload } = checked.row;
+  const query = await searchParams;
+  if (kind === "team_invitation") {
+    if (!payload) {
+      return (
+        <HandoffCard
+          title={t("refused.invalid.title")}
+          description={t("refused.invalid.description")}
+        />
+      );
+    }
+    return (
+      <TeamInvitationApproval
+        action={`${path}/decide`}
+        store={checked.store.name}
+        invitation={payload}
+        error={query.error === "changed" ? "changed" : query.error ? "failed" : null}
+      />
+    );
+  }
+
   return (
     <HandoffCard
       title={t(`kinds.${kind}.title`)}
       description={t(`kinds.${kind}.description`, { store: checked.store.name })}
-      note={(await searchParams).retry ? t("retry") : null}
+      note={query.retry ? t("retry") : null}
     >
       <form method="post" action={`${path}/continue`}>
         <Button type="submit" className="w-full sm:w-auto">

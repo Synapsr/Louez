@@ -5,7 +5,7 @@ import { resourceLinksSchema } from "./links";
 
 /**
  * Handoffs: a step only the human can take (Stripe's identity checks, a
- * billing card), started by an agent. The agent gets a short-lived link to a
+ * billing card, approving a team invitation), started by an agent. The agent gets a short-lived link to a
  * Louez page, gives it to the user, then reads the handoff until it is done.
  */
 
@@ -13,6 +13,7 @@ export const HANDOFF_KINDS = [
   "stripe_connect_onboarding",
   "stripe_dashboard",
   "billing_card_setup",
+  "team_invitation",
 ] as const;
 export type HandoffKind = (typeof HANDOFF_KINDS)[number];
 
@@ -48,6 +49,15 @@ export const handoffSchema = z.object({
   confirming: z.boolean(),
   /** One sentence for the user, about where the step stands. */
   summary: z.string(),
+  /** The invitation an owner approves or declines (`team_invitation`); null for the other kinds. */
+  invitation: z
+    .object({
+      email: z.string(),
+      role: z.literal("member"),
+      /** The address had a Louez account when asked: approving adds them at once. */
+      joinsAtOnce: z.boolean(),
+    })
+    .nullable(),
   links: resourceLinksSchema,
 });
 export type HandoffView = z.infer<typeof handoffSchema>;
@@ -73,6 +83,11 @@ const FAILURE_MESSAGES: Record<string, string> = {
   not_available: "This step is not available for the store anymore.",
   connection_revoked:
     "The agent connection that asked for this step was revoked: its link no longer works.",
+  declined: "The user declined this invitation.",
+  request_changed:
+    "The address got a Louez account, a membership or an invitation since the request: ask again for an up-to-date approval.",
+  limit_reached: "The store's plan has no seat left for a member.",
+  email_limit: "The store sent too many invitation e-mails today. Try again tomorrow.",
   store_email_required:
     "Stripe needs an email for the account: set the store's contact email (settings_update_store_info), then ask for a new link.",
 };

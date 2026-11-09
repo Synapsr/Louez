@@ -48,6 +48,23 @@ export default async function HandoffDonePage({ params }: { params: Promise<{ id
 
   const { row } = checked;
   const status = statusOf(row, new Date());
+  if (row.kind === "team_invitation") {
+    // An owner's answer to an agent's invitation: there is no provider.
+    const answer =
+      status === "failed"
+        ? row.failureCode === "declined"
+          ? "declined"
+          : "failed"
+        : status === "opened"
+          ? "pending"
+          : status;
+    return (
+      <HandoffCard
+        title={t(`team_invitation.done.${answer}.title`)}
+        description={t(`team_invitation.done.${answer}.description`)}
+      />
+    );
+  }
   const state =
     status === "completed"
       ? "completed"

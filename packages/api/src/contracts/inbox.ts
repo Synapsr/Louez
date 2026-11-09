@@ -41,8 +41,10 @@ export const INBOX_ITEM_TYPES = [
   "message_not_sent",
   /** A write through the API whose outcome is unknown: check before retrying. */
   "operation_unknown",
-  /** A step handed to the user (Stripe, the billing card) waiting for an hour, expired or failed. */
+  /** A step handed to the user (Stripe, the billing card, a team invitation's approval) waiting for an hour, expired or failed. */
   "handoff_waiting",
+  /** A team invitation's e-mail that never went out, for an invitation still pending. */
+  "invitation_not_sent",
   /** An AI photo enhancement or background removal that failed (nothing was charged). */
   "image_job_failed",
 ] as const;

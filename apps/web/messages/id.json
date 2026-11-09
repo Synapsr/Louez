@@ -324,7 +324,8 @@
       "invalid": "Undangan ini tidak berlaku lagi.",
       "expired": "Undangan ini telah kedaluwarsa.",
       "emailMismatch": "Undangan ini ditujukan untuk alamat email yang berbeda.",
-      "alreadyMember": "Anda sudah menjadi anggota toko ini."
+      "alreadyMember": "Anda sudah menjadi anggota toko ini.",
+      "limitReached": "Toko ini tidak punya tempat lagi untuk anggota baru. Tanyakan kepada pemiliknya."
     }
   },
   "dashboard": {
@@ -9713,6 +9714,42 @@
       "failed": {
         "title": "Langkah ini gagal",
         "description": "Kembali ke agen AI Anda: agen dapat memberi Anda tautan baru."
+      }
+    },
+    "team_invitation": {
+      "title": "Setujui undangan ini",
+      "description": "Agen AI Anda meminta untuk menambahkan {email} ke tim “{store}”.",
+      "role": "Mereka bergabung sebagai anggota, tidak pernah sebagai pemilik.",
+      "joinsAtOnce": "{email} sudah punya akun Louez: mereka bergabung ke toko begitu Anda menyetujui.",
+      "byEmail": "{email} akan menerima e-mail untuk bergabung ke toko, berlaku 7 hari.",
+      "access": "Anggota dapat melihat pelanggan, reservasi, dan pembayaran toko, serta dapat mengubah produk dan reservasi.",
+      "approve": "Setujui undangan",
+      "decline": "Tolak",
+      "error": {
+        "changed": "Ada yang berubah sejak agen Anda meminta: alamat ini kini punya akun Louez, undangan, atau tempat di tim. Minta agen Anda untuk mengajukannya lagi.",
+        "failed": "Undangan tidak dapat dikirim. Muat ulang halaman ini untuk melihat statusnya."
+      },
+      "done": {
+        "completed": {
+          "title": "Undangan disetujui",
+          "description": "Anda bisa kembali ke agen AI Anda: agen akan melihat bahwa undangan sudah dikirim."
+        },
+        "declined": {
+          "title": "Undangan ditolak",
+          "description": "Tidak ada yang dikirim. Anda bisa kembali ke agen AI Anda."
+        },
+        "failed": {
+          "title": "Undangan tidak dapat dikirim",
+          "description": "Ada yang berubah sejak agen Anda meminta (kursi tim, alamat, atau batas e-mail hari ini). Kembali ke agen AI Anda."
+        },
+        "expired": {
+          "title": "Tautan ini sudah kedaluwarsa",
+          "description": "Kembali ke agen AI Anda: agen dapat memintanya lagi."
+        },
+        "pending": {
+          "title": "Belum dijawab",
+          "description": "Buka tautan lagi untuk menyetujui atau menolak undangan."
+        }
       }
     }
   }

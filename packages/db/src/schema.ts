@@ -4488,7 +4488,17 @@ export const inboxAcknowledgements = mysqlTable(
 export type ApiHandoffKind =
   | "stripe_connect_onboarding"
   | "stripe_dashboard"
-  | "billing_card_setup";
+  | "billing_card_setup"
+  | "team_invitation";
+
+/** What a handoff carries for its page, by kind: the invitation an owner approves. */
+export interface ApiHandoffPayload {
+  /** The address to invite, normalized (trimmed, lowercase). */
+  email: string;
+  role: "member";
+  /** The address had a Louez account when the agent asked: approving adds them at once. */
+  joinsAtOnce: boolean;
+}
 
 /**
  * A step only the human can take (Stripe identity checks, a billing card),
@@ -4497,8 +4507,10 @@ export type ApiHandoffKind =
  * stored hashed; a new link for the same handoff replaces it. Each click on
  * the page starts an attempt, named by `return_state_hash`; the provider's
  * answers only ever change the attempt they belong to. One active
- * handoff (pending or opened) per store and kind: `active_slot` is 1 while
- * it is, null after, so the unique key holds only the active one.
+ * handoff (pending or opened) per store, kind and subject: `active_slot` is 1
+ * while it is, null after, so the unique key holds only the active one. The
+ * subject is empty for a store-wide step (Stripe, the billing card) and names
+ * what the step is about otherwise (a team invitation: its address's hash).
  */
 export const apiHandoffs = mysqlTable(
   "api_handoffs",
@@ -4506,6 +4518,10 @@ export const apiHandoffs = mysqlTable(
     id: id(),
     storeId: varchar("store_id", { length: 21 }).notNull(),
     kind: varchar("kind", { length: 40 }).$type<ApiHandoffKind>().notNull(),
+    /** What the step is about within its kind: empty, or a team invitation's address hash. */
+    subject: varchar("subject", { length: 64 }).default("").notNull(),
+    /** What the page shows and the step acts on, for the kinds that need it. */
+    payload: json("payload").$type<ApiHandoffPayload>(),
     /** `expired` is not stored: an active handoff past `expires_at` reads as expired. */
     status: mysqlEnum("status", ["pending", "opened", "completed", "failed"])
       .default("pending")
@@ -4543,6 +4559,7 @@ export const apiHandoffs = mysqlTable(
     activeUnique: unique("api_handoffs_active_unique").on(
       table.storeId,
       table.kind,
+      table.subject,
       table.activeSlot,
     ),
     tokenUnique: unique("api_handoffs_token_unique").on(table.tokenHash),

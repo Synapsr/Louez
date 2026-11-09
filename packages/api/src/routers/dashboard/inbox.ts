@@ -40,13 +40,14 @@ const READ_DOMAINS = [
   "settings",
   "integrations",
   "billing",
+  "team",
 ] as const satisfies readonly ApiDomain[];
 
 const reads = (context: ProductContext): InboxRights =>
   Object.fromEntries(READ_DOMAINS.map((domain) => [domain, mayRead(context, domain)]));
 
 /** Beside reservations, the domains whose read shows an item on their own. */
-const OPENED_BY = ["settings", "integrations"] as const satisfies readonly ApiDomain[];
+const OPENED_BY = ["settings", "integrations", "team"] as const satisfies readonly ApiDomain[];
 /**
  * Beside reservations, every domain an item type is acknowledged under (its
  * first, INBOX_ITEM_DOMAINS): a key that may change payments acknowledges a
@@ -56,6 +57,7 @@ const ACKNOWLEDGED_UNDER = [
   "payments",
   "settings",
   "integrations",
+  "team",
 ] as const satisfies readonly ApiDomain[];
 
 const readerOf = (context: ProductContext): InboxReader => {
