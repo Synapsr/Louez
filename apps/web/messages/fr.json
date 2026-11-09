@@ -525,7 +525,10 @@
       "reservationLimitReached": "Limite atteinte",
       "help": "Aide",
       "feedback": "Aide et feedback",
-      "aiCreditsLow": "Solde de crédits bas"
+      "aiCreditsLow": "Solde de crédits bas",
+      "sectionPages": "Pages de la section {section}",
+      "copyStoreLink": "Copier le lien de la boutique",
+      "storeLinkCopied": "Lien copié"
     },
     "shortcuts": {
       "actions": {
@@ -1000,7 +1003,8 @@
         "cta": {
           "addFirstProduct": "Ajouter mon premier produit",
           "handleRequests": "Traiter les demandes ({count})",
-          "addReservation": "Nouvelle réservation"
+          "addReservation": "Nouvelle réservation",
+          "openSetup": "Voir la mise en route"
         }
       },
       "alert": {
@@ -1983,6 +1987,10 @@
             "updated": "Unité modifiée"
           }
         }
+      },
+      "emptyState": {
+        "title": "Votre parc commence ici",
+        "description": "Décrivez un produit une seule fois : tarifs, caution et stock. Il sera proposé sur votre boutique et à chaque réservation."
       }
     },
     "inventory": {
@@ -3085,7 +3093,14 @@
         "planning": "Planning"
       },
       "displayCards": "Vue cartes",
-      "displayTable": "Vue tableau"
+      "displayTable": "Vue tableau",
+      "emptyState": {
+        "title": "Votre première réservation arrive bientôt",
+        "description": "En ligne ou au comptoir, chaque location se retrouvera ici avec son paiement et sa caution.",
+        "tip": "Ajoutez vos produits au catalogue une seule fois : ils vous seront proposés à chaque réservation.",
+        "tipLink": "Ajouter un produit",
+        "viewStore": "Voir ma boutique"
+      }
     },
     "customers": {
       "title": "Clients",
@@ -3205,6 +3220,10 @@
       "quickCreate": {
         "title": "Nouveau client",
         "description": "Le client sera créé et sélectionné automatiquement."
+      },
+      "emptyState": {
+        "title": "Vos futurs habitués s'installeront ici",
+        "description": "Chaque personne qui réserve chez vous a sa fiche : coordonnées, historique de locations et cautions. Elle se crée toute seule à la première réservation."
       }
     },
     "calendar": {

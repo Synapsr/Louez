@@ -18,12 +18,19 @@ import {
   CommandPanel,
   CommandSeparator,
 } from "@louez/ui";
+import {
+  HelpGlassIcon,
+  HomeGlassIcon,
+  ReservationsGlassIcon,
+  TeamGlassIcon,
+} from "@louez/ui/icons/glass";
 import { cn } from "@louez/utils";
 
 import { useInstanceConfig } from "@/components/instance-provider";
 
 import {
   SETTINGS_NAVIGATION_GROUPS,
+  type SettingsNavigationGroupId,
   type SettingsNavigationItem,
   filterSettingsNavigationItems,
 } from "./settings-navigation.constants";
@@ -33,6 +40,18 @@ import {
   getSearchableMessageText,
   getSettingsSearchScore,
 } from "./util.settings-search";
+
+/**
+ * One glass icon per category, not per entry: with some twenty settings pages,
+ * an icon on every row made the list as loud as the content next to it. The
+ * category icon is the landmark; the rows stay plain text.
+ */
+const GROUP_ICONS: Record<SettingsNavigationGroupId, typeof HomeGlassIcon> = {
+  store: HomeGlassIcon,
+  rental: ReservationsGlassIcon,
+  communication: HelpGlassIcon,
+  accountData: TeamGlassIcon,
+};
 
 type SettingsSearchDocument = SettingsNavigationItem & {
   content: string;
@@ -160,7 +179,7 @@ export const SettingsNav = ({
 
   return (
     <aside className="min-w-0">
-      <div className="xl:sticky xl:top-6">
+      <div className="lg:sticky lg:top-6">
         <Command
           open
           filter={null}
@@ -182,7 +201,7 @@ export const SettingsNav = ({
         >
           <CommandInput
             className={cn(
-              "border shadow-[0_0_1px_0.5px_var(--color-border)] has-focus-visible:shadow-[0_0_1px_0.5px_var(--color-border)]!  has-focus-visible:ring-1",
+              "bg-muted border-transparent shadow-none has-focus-visible:border-ring has-focus-visible:shadow-[0_0_0_4px_var(--color-accent)]! has-focus-visible:ring-0",
             )}
             aria-label={t("search.label")}
             autoFocus={false}
@@ -228,7 +247,7 @@ export const SettingsNav = ({
 
         {!hasSearch && (
           <>
-            <div className="mt-3 xl:hidden">
+            <div className="mt-3 lg:hidden">
               <select
                 aria-label={t("mobileLabel")}
                 className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -247,51 +266,63 @@ export const SettingsNav = ({
               </select>
             </div>
 
-            <nav className="mt-5 hidden xl:block" aria-label={t("label")}>
+            <nav className="mt-5 hidden lg:block" aria-label={t("label")}>
               <div className="space-y-5">
-                {navigationGroups.map(({ group, items }) => (
-                  <section key={group} aria-labelledby={`settings-group-${group}`}>
-                    <h2
-                      id={`settings-group-${group}`}
-                      className="text-muted-foreground mb-1.5 px-3 text-[11px] font-semibold tracking-wider uppercase"
-                    >
-                      {t(`groups.${group}`)}
-                    </h2>
-                    <div className="space-y-0.5">
-                      {items.map((item) => {
-                        const active = isActive(item.href);
+                {navigationGroups.map(({ group, items }) => {
+                  const GroupIcon = GROUP_ICONS[group];
+                  const groupActive = items.some((item) => isActive(item.href));
 
-                        return (
-                          <Link
-                            key={item.id}
-                            href={item.href}
-                            prefetch={onNavigate ? false : undefined}
-                            onClick={
-                              onNavigate
-                                ? (event) => {
-                                    event.preventDefault();
-                                    onNavigate(item.href);
-                                  }
-                                : undefined
-                            }
-                            aria-current={active ? "page" : undefined}
-                            className={cn(
-                              "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                              active
-                                ? "bg-primary text-primary-foreground shadow-sm"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                            )}
-                          >
-                            <item.icon className="size-4 shrink-0" />
-                            <span className="truncate">
-                              {getMessageText(messages, item.labelPath)}
-                            </span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
+                  return (
+                    <section key={group} aria-labelledby={`settings-group-${group}`}>
+                      <h2
+                        id={`settings-group-${group}`}
+                        /* The category holding the current page lights its
+                           icon, like the main nav does for its rows. */
+                        className={cn(
+                          "text-foreground mb-1 flex items-center gap-2 px-2 text-[13px] font-bold",
+                          groupActive
+                            ? "[--nc-gradient-1-color-1:var(--nav-icon-lit-1)] [--nc-gradient-1-color-2:var(--nav-icon-lit-2)]"
+                            : "[--nc-gradient-1-color-1:var(--nav-icon-rest-1)] [--nc-gradient-1-color-2:var(--nav-icon-rest-2)]",
+                        )}
+                      >
+                        <GroupIcon size={22} uniqueId={`settings-group-icon-${group}`} />
+                        {t(`groups.${group}`)}
+                      </h2>
+                      <div className="space-y-0.5">
+                        {items.map((item) => {
+                          const active = isActive(item.href);
+
+                          return (
+                            <Link
+                              key={item.id}
+                              href={item.href}
+                              prefetch={onNavigate ? false : undefined}
+                              onClick={
+                                onNavigate
+                                  ? (event) => {
+                                      event.preventDefault();
+                                      onNavigate(item.href);
+                                    }
+                                  : undefined
+                              }
+                              aria-current={active ? "page" : undefined}
+                              className={cn(
+                                "ease-lagon flex items-center rounded-[10px] py-2 pr-3 pl-10 text-sm transition-colors duration-150",
+                                active
+                                  ? "bg-accent text-primary font-bold"
+                                  : "text-muted-foreground hover:bg-muted hover:text-foreground font-medium",
+                              )}
+                            >
+                              <span className="truncate">
+                                {getMessageText(messages, item.labelPath)}
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             </nav>
           </>

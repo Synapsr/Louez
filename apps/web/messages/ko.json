@@ -525,7 +525,10 @@
       "reservationLimitReached": "한도 도달",
       "help": "도움말",
       "feedback": "도움말 및 피드백",
-      "aiCreditsLow": "크레딧 잔액이 부족함"
+      "aiCreditsLow": "크레딧 잔액이 부족함",
+      "sectionPages": "{section} 페이지",
+      "copyStoreLink": "스토어 링크 복사",
+      "storeLinkCopied": "링크가 복사되었습니다"
     },
     "shortcuts": {
       "actions": {
@@ -1000,7 +1003,8 @@
         "cta": {
           "addFirstProduct": "내 첫 번째 제품 추가",
           "handleRequests": "요청 처리({count})",
-          "addReservation": "신규 예약"
+          "addReservation": "신규 예약",
+          "openSetup": "시작 단계 보기"
         }
       },
       "alert": {
@@ -1983,6 +1987,10 @@
             "updated": "단위가 업데이트되었습니다."
           }
         }
+      },
+      "emptyState": {
+        "title": "대여 상품은 여기서 시작됩니다",
+        "description": "상품을 한 번만 설명하세요: 요금, 보증금, 재고. 스토어와 모든 예약에서 제안됩니다."
       }
     },
     "inventory": {
@@ -3085,7 +3093,14 @@
         "planning": "기획"
       },
       "displayCards": "카드 보기",
-      "displayTable": "테이블 보기"
+      "displayTable": "테이블 보기",
+      "emptyState": {
+        "title": "첫 예약이 곧 도착합니다",
+        "description": "온라인이든 매장이든, 모든 대여가 결제와 보증금과 함께 여기에 표시됩니다.",
+        "tip": "상품을 카탈로그에 한 번만 등록하세요. 예약할 때마다 제안됩니다.",
+        "tipLink": "상품 추가",
+        "viewStore": "내 스토어 보기"
+      }
     },
     "customers": {
       "title": "고객",
@@ -3205,6 +3220,10 @@
       "quickCreate": {
         "title": "신규 고객",
         "description": "고객이 자동으로 생성되고 선택됩니다."
+      },
+      "emptyState": {
+        "title": "미래의 단골 고객이 여기에 모입니다",
+        "description": "예약한 모든 분에게 프로필이 생깁니다: 연락처, 대여 기록, 보증금. 첫 예약 시 자동으로 생성됩니다."
       }
     },
     "calendar": {

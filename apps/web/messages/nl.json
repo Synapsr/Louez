@@ -525,7 +525,10 @@
       "reservationLimitReached": "Limiet bereikt",
       "help": "Hulp",
       "feedback": "Hulp en feedback",
-      "aiCreditsLow": "Tegoed raakt op"
+      "aiCreditsLow": "Tegoed raakt op",
+      "sectionPages": "Pagina's van {section}",
+      "copyStoreLink": "Winkellink kopiëren",
+      "storeLinkCopied": "Link gekopieerd"
     },
     "shortcuts": {
       "actions": {
@@ -961,7 +964,8 @@
         "cta": {
           "addFirstProduct": "Mijn eerste product toevoegen",
           "handleRequests": "Aanvragen afhandelen ({count})",
-          "addReservation": "Nieuwe reservering"
+          "addReservation": "Nieuwe reservering",
+          "openSetup": "Opstartstappen bekijken"
         }
       },
       "alert": {
@@ -1944,6 +1948,10 @@
             "updated": "Eenheid bijgewerkt"
           }
         }
+      },
+      "emptyState": {
+        "title": "Je verhuurpark begint hier",
+        "description": "Beschrijf een product één keer: tarieven, borg en voorraad. Het wordt aangeboden in je winkel en bij elke reservering."
       }
     },
     "inventory": {
@@ -3046,7 +3054,14 @@
         "planning": "Planning"
       },
       "displayCards": "Kaartweergave",
-      "displayTable": "Tabelweergave"
+      "displayTable": "Tabelweergave",
+      "emptyState": {
+        "title": "Je eerste reservering komt eraan",
+        "description": "Online of aan de balie: elke verhuur komt hier terecht, met betaling en borg.",
+        "tip": "Voeg je producten één keer toe aan de catalogus: ze worden bij elke reservering voorgesteld.",
+        "tipLink": "Product toevoegen",
+        "viewStore": "Mijn winkel bekijken"
+      }
     },
     "customers": {
       "title": "Klanten",
@@ -3166,6 +3181,10 @@
       "quickCreate": {
         "title": "Nieuwe klant",
         "description": "De klant wordt aangemaakt en automatisch geselecteerd."
+      },
+      "emptyState": {
+        "title": "Hier komen je toekomstige vaste klanten",
+        "description": "Iedereen die bij je reserveert krijgt een profiel: contactgegevens, verhuurgeschiedenis en borg. Het wordt automatisch aangemaakt bij de eerste reservering."
       }
     },
     "calendar": {

@@ -24,7 +24,7 @@ const buttonVariants = cva(
     "text-xs font-medium whitespace-nowrap",
     // transitions — no padding: the only place a button's padding changes is
     // the sidebar collapsing to icon mode, which is meant to be instant.
-    "transition-[color,background-color,border-color,box-shadow,opacity]",
+    "transition-[color,background-color,border-color,box-shadow,opacity,scale] duration-150 ease-lagon",
     // outline / ring (focus)
     "focus-visible:border-ring focus-visible:ring-ring/50 outline-none focus-visible:ring-1",
     // state: disabled
@@ -34,32 +34,61 @@ const buttonVariants = cva(
     "dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
     // nested icon svg
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-    // active state (for unpopuped button)
-    "active:not-aria-[haspopup]:translate-y-px",
+    // active state (for unpopuped button): a short press, the click answered
+    // where it happened. `scale` rather than a 1px drop, which read as a glitch.
+    "motion-safe:active:not-aria-[haspopup]:scale-[0.98]",
+    // Lagon (back-office) — the buttons validated on the moodboard: 14px bold
+    // labels, 10px corners, a 3px focus halo. Scoped with `in-[.theme-lagon]`
+    // so storefront buttons keep the tenant's own look.
+    "in-[.theme-lagon]:rounded-[10px] in-[.theme-lagon]:font-bold in-[.theme-lagon]:focus-visible:ring-[3px] in-[.theme-lagon]:focus-visible:ring-ring/30",
+    // No border box: with `bg-clip-padding`, a 1px transparent border left a
+    // pale frame between a filled button's gradient and its shadow, and on
+    // outlined buttons it doubled the ring. The ring is the only stroke.
+    "in-[.theme-lagon]:border-0 in-[.theme-lagon]:bg-clip-border",
   ],
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground [a]:hover:bg-primary/80",
-        outline:
+        default: [
+          "border-transparent bg-primary text-primary-foreground shadow-[inset_0_1px_0_--theme(--color-white/22%)] hover:bg-primary/90 [a]:hover:bg-primary/90",
+          // Lagon principal: a light top-to-bottom gradient and an inner
+          // highlight; hover deepens it and lifts a coloured shadow; the press
+          // goes to Lagon 800.
+          "in-[.theme-lagon]:bg-linear-to-b in-[.theme-lagon]:from-[color-mix(in_oklch,var(--primary)_88%,white)] in-[.theme-lagon]:to-primary in-[.theme-lagon]:shadow-[0_1px_2px_--theme(--color-black/12%),inset_0_1px_0_--theme(--color-white/28%)]",
+          "in-[.theme-lagon]:hover:from-primary in-[.theme-lagon]:hover:to-lagon-700 in-[.theme-lagon]:hover:shadow-[0_6px_16px_-6px_color-mix(in_oklch,var(--primary)_60%,transparent),inset_0_1px_0_--theme(--color-white/28%)]",
+          "in-[.theme-lagon]:active:from-lagon-800 in-[.theme-lagon]:active:to-lagon-800 in-[.theme-lagon]:active:shadow-[inset_0_1px_2px_--theme(--color-black/25%)]",
+        ],
+        outline: [
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          // Lagon secondaire: a ring instead of a border, darker on hover, the
+          // press sinks to the nav ground.
+          "in-[.theme-lagon]:shadow-[0_0_0_1px_var(--color-input)] in-[.theme-lagon]:hover:shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-input),var(--color-foreground)_10%)] in-[.theme-lagon]:aria-expanded:shadow-[0_0_0_1px_color-mix(in_oklch,var(--color-input),var(--color-foreground)_10%)] in-[.theme-lagon]:active:bg-sidebar",
+        ],
         secondary:
           "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         tertiary:
           "group border-transparent bg-muted text-muted-foreground aria-expanded:bg-muted aria-expanded:text-muted-foreground hover:bg-accent hover:text-foreground",
-        ghost:
+        ghost: [
           "border-transparent hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
-        destructive:
+          // Lagon discret: the Lagon-50 wash, deeper on press. The ink stays
+          // neutral — ghost also dresses icon buttons, which must not turn blue.
+          "in-[.theme-lagon]:hover:bg-accent in-[.theme-lagon]:aria-expanded:bg-accent in-[.theme-lagon]:active:bg-lagon-100",
+        ],
+        destructive: [
           "border-transparent bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          // Lagon danger: red ink on nothing at rest, the red wash on hover.
+          "in-[.theme-lagon]:bg-transparent in-[.theme-lagon]:hover:bg-destructive/10 in-[.theme-lagon]:dark:bg-transparent in-[.theme-lagon]:dark:hover:bg-destructive/20",
+        ],
         link: "border-transparent text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 gap-1.5 px-2.5 data-[icon-end=true]:pe-2 data-[icon-start=true]:ps-2",
+        default:
+          "h-9 gap-1.5 px-2.5 data-[icon-end=true]:pe-2 data-[icon-start=true]:ps-2 in-[.theme-lagon]:h-10 in-[.theme-lagon]:gap-2 in-[.theme-lagon]:px-4 in-[.theme-lagon]:text-sm in-[.theme-lagon]:data-[icon-end=true]:pe-3.5 in-[.theme-lagon]:data-[icon-start=true]:ps-3.5",
         xs: "h-7 gap-1 px-2 text-xs data-[icon-end=true]:pe-1.5 data-[icon-start=true]:ps-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1 px-2.5 data-[icon-end=true]:pe-1.5 data-[icon-start=true]:ps-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-10 gap-1.5 px-2.5 data-[icon-end=true]:pe-3 data-[icon-start=true]:ps-3",
+        sm: "h-8 gap-1 px-2.5 data-[icon-end=true]:pe-1.5 data-[icon-start=true]:ps-1.5 [&_svg:not([class*='size-'])]:size-3.5 in-[.theme-lagon]:gap-1.5 in-[.theme-lagon]:px-3 in-[.theme-lagon]:text-[13px]",
+        lg: "h-10 gap-1.5 px-2.5 data-[icon-end=true]:pe-3 data-[icon-start=true]:ps-3 in-[.theme-lagon]:h-11 in-[.theme-lagon]:gap-2 in-[.theme-lagon]:px-5 in-[.theme-lagon]:text-sm",
         xl: "h-12 gap-2 px-3.5 text-sm font-semibold data-[icon-end=true]:pe-4 data-[icon-start=true]:ps-4 [&_svg:not([class*='size-'])]:size-5",
-        icon: "size-9 rounded-lg",
+        icon: "size-9 rounded-lg in-[.theme-lagon]:size-10",
         "icon-xs": "size-7 rounded-lg [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-8 rounded-lg",
         "icon-lg": "size-11 rounded-lg",

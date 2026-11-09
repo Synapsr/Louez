@@ -44,7 +44,7 @@ import { InstallPrompt } from "@/components/dashboard/install-prompt";
 import { PushPrimer } from "@/components/dashboard/push-primer";
 import { ReservationsPausedSidebarItem } from "@/components/dashboard/reservations-paused-sidebar-item";
 import { SidebarLink } from "@/components/dashboard/sidebar-link";
-import { StoreSwitcher } from "@/components/dashboard/store-switcher";
+import { StoreSwitcher, type StoreSwitcherStorefront } from "@/components/dashboard/store-switcher";
 import { ThemeMenuSub } from "@/components/dashboard/theme-toggle";
 import { WhatsNewSidebarItem } from "@/components/dashboard/whats-new-sidebar-item";
 import { LanguageMenuSub } from "@/components/ui/language-switcher";
@@ -86,13 +86,69 @@ interface DashboardSidebarProps {
   reservationsPaused: boolean;
 }
 
-/**
- * Shared by the plain storefront link and the menu trigger so the header keeps
- * the exact same shape whichever public page a store gets.
- */
-const HEADER_ACTION_CLASS_NAME =
-  "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-8 shrink-0 items-center justify-center rounded-md transition-colors group-data-[collapsible=icon]:hidden";
+/** "https://maison-pointure.louez.io/" → "maison-pointure.louez.io". */
+const toDisplayHost = (url: string) => {
+  try {
+    const { host, pathname } = new URL(url);
+    return `${host}${pathname === "/" ? "" : pathname}`;
+  } catch {
+    return url;
+  }
+};
 
+/**
+ * The store's public page(s), as the switcher menu lists them and as the
+ * row's "open" icon targets them. A store that came from reeent has no Louez
+ * storefront to promote: its marketplace listing is its public page, and
+ * there is nothing to open until that listing goes live.
+ */
+const useStorefrontEntry = ({
+  storeSlug,
+  marketplaceListingUrl,
+  isFromReeent,
+}: {
+  storeSlug?: string;
+  marketplaceListingUrl: string | null;
+  isFromReeent: boolean;
+}): (StoreSwitcherStorefront & { primaryHref: string; primaryLabel: string }) | null => {
+  const t = useTranslations("dashboard.sidebar");
+  const { getAbsoluteUrl } = useStorefrontUrl(storeSlug ?? "");
+
+  if (isFromReeent) {
+    if (!marketplaceListingUrl) return null;
+    return {
+      host: null,
+      links: [{ label: t("openReeentListing"), href: marketplaceListingUrl }],
+      copyUrl: marketplaceListingUrl,
+      primaryHref: marketplaceListingUrl,
+      primaryLabel: t("viewOnReeent"),
+    };
+  }
+
+  if (!storeSlug) return null;
+  const storefrontUrl = getAbsoluteUrl();
+
+  return {
+    host: toDisplayHost(storefrontUrl),
+    links: [
+      { label: t("openStorefront"), href: storefrontUrl },
+      ...(marketplaceListingUrl
+        ? [{ label: t("openReeentListing"), href: marketplaceListingUrl }]
+        : []),
+    ],
+    copyUrl: storefrontUrl,
+    primaryHref: storefrontUrl,
+    primaryLabel: t("viewStore"),
+  };
+};
+
+/**
+ * The store card: one compact row — the store you work in, an icon that opens
+ * its public page in one click, and the switcher chevron. The page's address,
+ * its other links and "copy the link" live in the switcher menu, so the row
+ * stays a name and two quiet icons. Collapsed to the rail, the card dissolves
+ * into the store logo.
+ */
 const StoreHeader = ({
   stores,
   currentStoreId,
@@ -108,85 +164,44 @@ const StoreHeader = ({
   marketplaceListingUrl: string | null;
   isFromReeent: boolean;
 }) => {
-  const t = useTranslations("dashboard.sidebar");
-  const { getAbsoluteUrl } = useStorefrontUrl(storeSlug ?? "");
+  const storefront = useStorefrontEntry({ storeSlug, marketplaceListingUrl, isFromReeent });
 
   return (
-    <SidebarHeader className="border-sidebar-border gap-3 border-b px-0 max-md:px-2">
-      <div className="flex min-w-0 items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col group-data-[state=expanded]:pl-4 max-md:pl-2">
-        <div className="flex items-center gap-2">
-          <SidebarLink href="/dashboard" className="flex min-w-0 items-center gap-2">
-            <Logo className="h-5 w-auto shrink-0 group-data-[collapsible=icon]:hidden" />
-            <LogoIcon className="hidden size-8 shrink-0 group-data-[collapsible=icon]:block" />
-          </SidebarLink>
-          <PlanBadge planSlug={planSlug} />
-        </div>
-
-        {/* A store that came from reeent has no Louez storefront to promote:
-            the marketplace listing is its public page, and there is nothing to
-            link to until that listing goes live. */}
-        {isFromReeent ? (
-          marketplaceListingUrl && (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <SidebarLink
-                    href={marketplaceListingUrl}
-                    target="_blank"
-                    className={HEADER_ACTION_CLASS_NAME}
-                  />
-                }
-              >
-                <OpenInNewIcon className="h-4 w-4" />
-                <span className="sr-only">{t("viewOnReeent")}</span>
-              </TooltipTrigger>
-              <TooltipContent side="right">{t("viewOnReeent")}</TooltipContent>
-            </Tooltip>
-          )
-        ) : storeSlug ? (
-          marketplaceListingUrl ? (
-            <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger
-                  render={<DropdownMenuTrigger className={HEADER_ACTION_CLASS_NAME} />}
-                >
-                  <OpenInNewIcon className="h-4 w-4" />
-                  <span className="sr-only">{t("viewStore")}</span>
-                </TooltipTrigger>
-                <TooltipContent side="right">{t("viewStore")}</TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem render={<SidebarLink href={getAbsoluteUrl()} target="_blank" />}>
-                  {t("openStorefront")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  render={<SidebarLink href={marketplaceListingUrl} target="_blank" />}
-                >
-                  {t("openReeentListing")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <SidebarLink
-                    href={getAbsoluteUrl()}
-                    target="_blank"
-                    className={HEADER_ACTION_CLASS_NAME}
-                  />
-                }
-              >
-                <OpenInNewIcon className="h-4 w-4" />
-                <span className="sr-only">{t("viewStore")}</span>
-              </TooltipTrigger>
-              <TooltipContent side="right">{t("viewStore")}</TooltipContent>
-            </Tooltip>
-          )
-        ) : null}
+    <SidebarHeader className="gap-3 px-0 max-md:px-2">
+      <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:flex-col group-data-[state=expanded]:pl-3 max-md:pl-2">
+        <SidebarLink href="/dashboard" className="flex min-w-0 items-center gap-2">
+          <Logo className="h-5 w-auto shrink-0 group-data-[collapsible=icon]:hidden" />
+          <LogoIcon className="hidden size-8 shrink-0 group-data-[collapsible=icon]:block" />
+        </SidebarLink>
+        <PlanBadge planSlug={planSlug} />
       </div>
-      <div className="mx-auto w-fit group-data-[state=expanded]:w-full max-md:w-full">
-        <StoreSwitcher stores={stores} currentStoreId={currentStoreId} />
+      <div className="bg-background shadow-raised relative mx-auto w-fit rounded-[14px] p-1 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:shadow-none group-data-[state=expanded]:w-full max-md:w-full">
+        <StoreSwitcher
+          stores={stores}
+          currentStoreId={currentStoreId}
+          appearance="embedded"
+          storefront={storefront ?? undefined}
+          /* Room for the "open" icon between the name and the chevron: it is
+             a sibling laid over the row, not nested in the switcher button. */
+          className={cn(storefront && "[&>svg:last-child]:ml-10")}
+        />
+        {storefront && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <SidebarLink
+                  href={storefront.primaryHref}
+                  target="_blank"
+                  className="text-muted-foreground hover:text-primary hover:bg-accent focus-visible:ring-ring ease-lagon absolute top-1/2 right-8 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg transition-colors duration-150 outline-hidden group-data-[collapsible=icon]:hidden focus-visible:ring-2"
+                />
+              }
+            >
+              <OpenInNewIcon className="size-4" aria-hidden />
+              <span className="sr-only">{storefront.primaryLabel}</span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{storefront.primaryLabel}</TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </SidebarHeader>
   );
@@ -315,7 +330,7 @@ export const DashboardSidebar = ({
         />
 
         <DashboardNavigation pathname={pathname} aiCredits={liveAiCredits} />
-        <SidebarFooter className="border-sidebar-border border-t">
+        <SidebarFooter>
           <SidebarMenu>
             {/* Nudges sit in the same menu as the utilities they resemble —
                 they only differ by the attention dot they carry. */}

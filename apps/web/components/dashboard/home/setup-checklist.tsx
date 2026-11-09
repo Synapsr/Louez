@@ -54,9 +54,17 @@ interface ChecklistItem {
   showStoreLink?: boolean;
 }
 
+/**
+ * Opens the floating checklist from elsewhere on the page — the home welcome
+ * panel points at it, so a new store finds its next step without hunting for
+ * the widget in the corner.
+ */
+export const OPEN_SETUP_CHECKLIST_EVENT = "louez:open-setup-checklist";
+
 const EASE_OUT_CUBIC = [0.215, 0.61, 0.355, 1] as const;
 
-const MORPH_RING = "0 0 0 1px var(--border)";
+// The widget floats over the page: it takes the raised elevation, not a ring.
+const MORPH_RING = "var(--shadow-raised)";
 const SHELL_TRANSITION = {
   duration: 0.58,
   ease: EASE_OUT_CUBIC,
@@ -259,8 +267,10 @@ export function SetupChecklist({
 
   useEffect(() => {
     window.addEventListener(WELCOME_OVERLAY_COMPLETED_EVENT, openChecklist);
+    window.addEventListener(OPEN_SETUP_CHECKLIST_EVENT, openChecklist);
     return () => {
       window.removeEventListener(WELCOME_OVERLAY_COMPLETED_EVENT, openChecklist);
+      window.removeEventListener(OPEN_SETUP_CHECKLIST_EVENT, openChecklist);
     };
   }, [openChecklist]);
 

@@ -525,7 +525,10 @@
       "reservationLimitReached": "达到限制",
       "help": "帮助",
       "feedback": "帮助和反馈",
-      "aiCreditsLow": "信贷余额所剩无几"
+      "aiCreditsLow": "信贷余额所剩无几",
+      "sectionPages": "{section}的页面",
+      "copyStoreLink": "复制店铺链接",
+      "storeLinkCopied": "链接已复制"
     },
     "shortcuts": {
       "actions": {
@@ -1000,7 +1003,8 @@
         "cta": {
           "addFirstProduct": "添加我的第一个产品",
           "handleRequests": "处理请求 ({count})",
-          "addReservation": "新预订"
+          "addReservation": "新预订",
+          "openSetup": "查看入门步骤"
         }
       },
       "alert": {
@@ -1983,6 +1987,10 @@
             "updated": "单位已更新"
           }
         }
+      },
+      "emptyState": {
+        "title": "您的租赁库存从这里开始",
+        "description": "只需描述一次商品：价格、押金和库存。它将出现在您的店铺和每一笔预订中。"
       }
     },
     "inventory": {
@@ -3085,7 +3093,14 @@
         "planning": "规划"
       },
       "displayCards": "卡片视图",
-      "displayTable": "表格视图"
+      "displayTable": "表格视图",
+      "emptyState": {
+        "title": "您的第一笔预订即将到来",
+        "description": "无论是线上还是柜台，每一笔租赁都会连同付款和押金显示在这里。",
+        "tip": "只需将商品添加到目录一次：每次预订时都会为您推荐。",
+        "tipLink": "添加商品",
+        "viewStore": "查看我的店铺"
+      }
     },
     "customers": {
       "title": "客户",
@@ -3205,6 +3220,10 @@
       "quickCreate": {
         "title": "新客户",
         "description": "将自动创建并选择客户。"
+      },
+      "emptyState": {
+        "title": "您未来的常客将在这里落脚",
+        "description": "每位在您这里预订的人都有一份档案：联系方式、租赁记录和押金。首次预订时自动创建。"
       }
     },
     "calendar": {

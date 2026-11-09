@@ -525,7 +525,10 @@
       "reservationLimitReached": "限界に達しました",
       "help": "ヘルプ",
       "feedback": "ヘルプとフィードバック",
-      "aiCreditsLow": "クレジット残高が少なくなっています"
+      "aiCreditsLow": "クレジット残高が少なくなっています",
+      "sectionPages": "{section}のページ",
+      "copyStoreLink": "ストアのリンクをコピー",
+      "storeLinkCopied": "リンクをコピーしました"
     },
     "shortcuts": {
       "actions": {
@@ -1000,7 +1003,8 @@
         "cta": {
           "addFirstProduct": "最初の製品を追加する",
           "handleRequests": "リクエストの処理 ({count})",
-          "addReservation": "新規予約"
+          "addReservation": "新規予約",
+          "openSetup": "セットアップを見る"
         }
       },
       "alert": {
@@ -1983,6 +1987,10 @@
             "updated": "ユニットが更新されました"
           }
         }
+      },
+      "emptyState": {
+        "title": "レンタル在庫はここから始まります",
+        "description": "商品は一度登録するだけ：料金、保証金、在庫。ストアとすべての予約で提案されます。"
       }
     },
     "inventory": {
@@ -3085,7 +3093,14 @@
         "planning": "企画"
       },
       "displayCards": "カードビュー",
-      "displayTable": "テーブルビュー"
+      "displayTable": "テーブルビュー",
+      "emptyState": {
+        "title": "最初の予約はもうすぐです",
+        "description": "オンラインでも店頭でも、すべてのレンタルが支払いと保証金とともにここに表示されます。",
+        "tip": "商品をカタログに一度登録すれば、予約のたびに候補として表示されます。",
+        "tipLink": "商品を追加",
+        "viewStore": "ストアを見る"
+      }
     },
     "customers": {
       "title": "お客様",
@@ -3205,6 +3220,10 @@
       "quickCreate": {
         "title": "新規のお客様",
         "description": "顧客は自動的に作成され、選択されます。"
+      },
+      "emptyState": {
+        "title": "未来の常連客がここに集まります",
+        "description": "予約したすべての方にプロフィールが作られます：連絡先、レンタル履歴、保証金。最初の予約で自動的に作成されます。"
       }
     },
     "calendar": {

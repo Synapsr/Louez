@@ -8,6 +8,7 @@ import { BillingReturnToastSlot } from "@/components/dashboard/billing-return-to
 import { SwRegister } from "@/components/dashboard/sw-register";
 import { FromHelloProvider } from "@/components/fromhello-provider";
 import { GleapProvider } from "@/components/dashboard/gleap-provider";
+import { LagonThemeRoot } from "@/components/dashboard/lagon-theme-root";
 import { OpenReplayProvider } from "@/components/openreplay-provider";
 import { PostHogProvider } from "@/components/posthog-provider";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -111,7 +112,12 @@ export const DashboardLayoutContent = async ({ children }: { children: React.Rea
                   : undefined
               }
             >
-              <div className="bg-background min-h-screen">{children}</div>
+              {/* Lagon, the back-office theme: palette, Plus Jakarta Sans and
+                  glass icon tones (packages/ui/src/styles/globals.css). */}
+              <LagonThemeRoot />
+              <div className="theme-lagon bg-background text-foreground min-h-screen">
+                {children}
+              </div>
               <SwRegister />
               {/* The return from Stripe Checkout lands in the billing settings. */}
               <BillingReturnToastSlot />

@@ -525,7 +525,10 @@
       "reservationLimitReached": "Limite raggiunto",
       "help": "Aiuto",
       "feedback": "Aiuto e feedback",
-      "aiCreditsLow": "Saldo crediti basso"
+      "aiCreditsLow": "Saldo crediti basso",
+      "sectionPages": "Pagine di {section}",
+      "copyStoreLink": "Copia il link del negozio",
+      "storeLinkCopied": "Link copiato"
     },
     "shortcuts": {
       "actions": {
@@ -961,7 +964,8 @@
         "cta": {
           "addFirstProduct": "Aggiungi il mio primo prodotto",
           "handleRequests": "Gestisci richieste ({count})",
-          "addReservation": "Nuova prenotazione"
+          "addReservation": "Nuova prenotazione",
+          "openSetup": "Vedi l'avvio"
         }
       },
       "alert": {
@@ -1944,6 +1948,10 @@
             "updated": "Unità aggiornata"
           }
         }
+      },
+      "emptyState": {
+        "title": "Il tuo parco inizia qui",
+        "description": "Descrivi un prodotto una sola volta: tariffe, cauzione e disponibilità. Sarà proposto nel tuo negozio e a ogni prenotazione."
       }
     },
     "inventory": {
@@ -3046,7 +3054,14 @@
         "planning": "Planning"
       },
       "displayCards": "Vista schede",
-      "displayTable": "Vista tabella"
+      "displayTable": "Vista tabella",
+      "emptyState": {
+        "title": "La tua prima prenotazione sta arrivando",
+        "description": "Online o al banco, ogni noleggio comparirà qui con il suo pagamento e la sua cauzione.",
+        "tip": "Aggiungi i tuoi prodotti al catalogo una sola volta: ti verranno proposti a ogni prenotazione.",
+        "tipLink": "Aggiungi un prodotto",
+        "viewStore": "Vedi il mio negozio"
+      }
     },
     "customers": {
       "title": "Clienti",
@@ -3166,6 +3181,10 @@
       "quickCreate": {
         "title": "Nuovo cliente",
         "description": "Il cliente verrà creato e selezionato automaticamente."
+      },
+      "emptyState": {
+        "title": "Qui si sistemeranno i tuoi futuri clienti abituali",
+        "description": "Ogni persona che prenota da te ha la sua scheda: contatti, storico dei noleggi e cauzioni. Si crea da sola alla prima prenotazione."
       }
     },
     "calendar": {

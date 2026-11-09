@@ -525,7 +525,10 @@
       "reservationLimitReached": "Limite alcanzado",
       "help": "Ayuda",
       "feedback": "Ayuda y feedback",
-      "aiCreditsLow": "Saldo de créditos bajo"
+      "aiCreditsLow": "Saldo de créditos bajo",
+      "sectionPages": "Páginas de {section}",
+      "copyStoreLink": "Copiar el enlace de la tienda",
+      "storeLinkCopied": "Enlace copiado"
     },
     "shortcuts": {
       "actions": {
@@ -1000,7 +1003,8 @@
         "cta": {
           "addFirstProduct": "Agregar mi primer producto",
           "handleRequests": "Gestionar solicitudes ({count})",
-          "addReservation": "Nueva reserva"
+          "addReservation": "Nueva reserva",
+          "openSetup": "Ver la puesta en marcha"
         }
       },
       "alert": {
@@ -1983,6 +1987,10 @@
             "updated": "Unidad modificada"
           }
         }
+      },
+      "emptyState": {
+        "title": "Tu inventario empieza aquí",
+        "description": "Describe un producto una sola vez: tarifas, fianza y stock. Se ofrecerá en tu tienda y en cada reserva."
       }
     },
     "inventory": {
@@ -3085,7 +3093,14 @@
         "planning": "Planning"
       },
       "displayCards": "Vista de tarjetas",
-      "displayTable": "Vista de tabla"
+      "displayTable": "Vista de tabla",
+      "emptyState": {
+        "title": "Tu primera reserva está en camino",
+        "description": "En línea o en el mostrador, cada alquiler aparecerá aquí con su pago y su fianza.",
+        "tip": "Añade tus productos al catálogo una sola vez: se te propondrán en cada reserva.",
+        "tipLink": "Añadir un producto",
+        "viewStore": "Ver mi tienda"
+      }
     },
     "customers": {
       "title": "Clientes",
@@ -3205,6 +3220,10 @@
       "quickCreate": {
         "title": "Nuevo cliente",
         "description": "El cliente se creará y se seleccionará automáticamente."
+      },
+      "emptyState": {
+        "title": "Aquí se instalarán tus futuros clientes habituales",
+        "description": "Cada persona que reserva contigo tiene su ficha: datos de contacto, historial de alquileres y fianzas. Se crea sola con su primera reserva."
       }
     },
     "calendar": {

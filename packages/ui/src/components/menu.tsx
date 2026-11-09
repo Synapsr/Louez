@@ -3,6 +3,14 @@
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
+import {
+  POPUP_GROUP_LABEL,
+  POPUP_INDICATOR,
+  POPUP_ITEM,
+  POPUP_MOTION,
+  POPUP_SEPARATOR,
+  POPUP_SURFACE,
+} from "@louez/ui/lib/popup-styles";
 import { cn } from "@louez/utils";
 
 const MenuCreateHandle = MenuPrimitive.createHandle;
@@ -41,23 +49,9 @@ function MenuPopup({
       >
         <MenuPrimitive.Popup
           className={cn(
-            // -------- Theme: Layout & Structure --------
-            "relative flex not-[class*='w-']:min-w-32 origin-(--transform-origin) rounded-lg border outline-none",
-
-            // -------- Theme: Backgrounds --------
-            "bg-popover not-dark:bg-clip-padding",
-
-            // -------- Theme: Shadows --------
-            "shadow-lg/5",
-
-            // -------- Theme: Pseudo-element (before) --------
-            "before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)]",
-            "before:shadow-[0_1px_--theme(--color-black/4%)]",
-            "dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
-
-            // -------- Theme: Focus --------
-            "focus:outline-none",
-
+            "relative flex not-[class*='w-']:min-w-40 focus:outline-none",
+            POPUP_SURFACE,
+            POPUP_MOTION,
             className,
           )}
           data-slot="menu-popup"
@@ -86,8 +80,10 @@ function MenuItem({
   return (
     <MenuPrimitive.Item
       className={cn(
-        "flex min-h-8 cursor-default select-none items-center text-foreground outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-inset:ps-8 data-[variant=destructive]:text-destructive-foreground data-highlighted:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&>svg:not([class*='opacity-'])]:opacity-80 [&>svg:not([class*='size-'])]:size-4.5 sm:[&>svg:not([class*='size-'])]:size-4 [&>svg]:pointer-events-none [&>svg]:-mx-0.5 [&>svg]:shrink-0",
-        "group/row w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none",
+        POPUP_ITEM,
+        "group/row w-full data-inset:ps-9",
+        // Destructive rows keep their red through the highlight, on a red wash.
+        "data-[variant=destructive]:text-destructive data-[variant=destructive]:data-highlighted:bg-destructive/10 data-[variant=destructive]:data-highlighted:text-destructive data-[variant=destructive]:[&_svg:not([class*='text-'])]:text-destructive",
         className,
       )}
       data-inset={inset}
@@ -111,8 +107,9 @@ function MenuCheckboxItem({
     <MenuPrimitive.CheckboxItem
       checked={checked}
       className={cn(
-        "grid min-h-8 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default items-center gap-2 rounded-sm py-1 ps-2 text-base text-foreground outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
-        variant === "switch" ? "grid-cols-[1fr_auto] gap-4 pe-1.5" : "grid-cols-[.75rem_1fr] pe-4",
+        POPUP_ITEM,
+        "grid in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] data-checked:text-foreground",
+        variant === "switch" ? "grid-cols-[1fr_auto] gap-4 pe-1.5" : "grid-cols-[1rem_1fr] pe-4",
         className,
       )}
       data-slot="menu-checkbox-item"
@@ -130,7 +127,7 @@ function MenuCheckboxItem({
         </>
       ) : (
         <>
-          <MenuPrimitive.CheckboxItemIndicator className="col-start-1 -ms-0.5">
+          <MenuPrimitive.CheckboxItemIndicator className={cn("col-start-1", POPUP_INDICATOR)}>
             <svg
               aria-hidden="true"
               fill="none"
@@ -161,15 +158,15 @@ function MenuRadioItem({ className, children, ...props }: MenuPrimitive.RadioIte
   return (
     <MenuPrimitive.RadioItem
       className={cn(
-        "grid min-h-8 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default grid-cols-[.75rem_1fr] items-center gap-2 rounded-sm py-1 ps-2 text-base text-foreground outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
-        "group/row flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground data-checked:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none",
+        POPUP_ITEM,
+        "group/row w-full in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] data-checked:text-primary data-checked:font-semibold",
         className,
       )}
       data-slot="menu-radio-item"
       {...props}
     >
       <span className="col-start-1 w-full">{children}</span>
-      <MenuPrimitive.RadioItemIndicator className="col-start-2">
+      <MenuPrimitive.RadioItemIndicator className={cn("ms-auto", POPUP_INDICATOR)}>
         <svg
           aria-hidden="true"
           fill="none"
@@ -198,10 +195,7 @@ function MenuGroupLabel({
 }) {
   return (
     <MenuPrimitive.GroupLabel
-      className={cn(
-        "px-2 py-1.5 font-medium text-muted-foreground text-xs data-inset:ps-9 sm:data-inset:ps-8",
-        className,
-      )}
+      className={cn(POPUP_GROUP_LABEL, "data-inset:ps-9", className)}
       data-inset={inset}
       data-slot="menu-label"
       {...props}
@@ -212,7 +206,7 @@ function MenuGroupLabel({
 function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
   return (
     <MenuPrimitive.Separator
-      className={cn("mx-2 my-1 h-px bg-border", className)}
+      className={cn(POPUP_SEPARATOR, className)}
       data-slot="menu-separator"
       {...props}
     />
@@ -247,7 +241,8 @@ function MenuSubTrigger({
   return (
     <MenuPrimitive.SubmenuTrigger
       className={cn(
-        "flex min-h-8 items-center gap-2 rounded-sm px-2 py-1 text-base text-foreground outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-popup-open:bg-accent data-inset:ps-8 data-highlighted:text-accent-foreground data-popup-open:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&>svg:not(:last-child)]:-mx-0.5 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none",
+        POPUP_ITEM,
+        "data-popup-open:bg-accent data-popup-open:text-foreground data-inset:ps-9",
         className,
       )}
       data-inset={inset}

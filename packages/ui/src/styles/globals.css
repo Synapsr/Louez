@@ -35,6 +35,32 @@
     U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* Plus Jakarta Sans 2.7, the Lagon brand face (SIL OFL 1.1, licence next to
+   the files). Self-hosted like Inter, latin + latin-ext subsets. Only the
+   `.theme-lagon` surfaces use it: storefronts keep the tenant's typography. */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/PlusJakartaSans-2.7/web/PlusJakartaSans-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/PlusJakartaSans-2.7/web/PlusJakartaSans-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
 @font-face {
   font-family: "Inter Variable Fallback";
   font-style: normal;
@@ -62,6 +88,24 @@
   --color-foreground: var(--foreground);
   --font-sans: "Inter Variable", "Inter Variable Fallback", sans-serif;
   --font-reeent: "Bricolage Grotesque", var(--font-sans);
+  --font-brand: "Plus Jakarta Sans", var(--font-sans);
+  --color-ecume: var(--ecume);
+  --color-ecume-soft: var(--ecume-soft);
+  /* Lagon ramp, defined under `.theme-lagon` only: use these utilities behind
+     the `in-[.theme-lagon]:` variant (see Button). */
+  --color-lagon-50: var(--lagon-50);
+  --color-lagon-100: var(--lagon-100);
+  --color-lagon-300: var(--lagon-300);
+  --color-lagon-500: var(--lagon-500);
+  --color-lagon-600: var(--lagon-600);
+  --color-lagon-700: var(--lagon-700);
+  --color-lagon-800: var(--lagon-800);
+  /* Lagon motion: `ease-lagon` for almost everything (arrivals, hovers,
+     validations), `ease-lagon-glide` for panels that travel. */
+  --ease-lagon: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-lagon-glide: cubic-bezier(0.65, 0, 0.35, 1);
+  --animate-enter: lagon-enter 0.32s var(--ease-lagon) both;
+  --animate-draw: lagon-draw 0.32s var(--ease-lagon) both;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -208,6 +252,28 @@
       background-position: -200% 0;
     }
   }
+
+  /* Content settling in once, on arrival: 8px of rise and a fade. */
+  @keyframes lagon-enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* A stroke drawing itself (validation ticks). Needs a 24-unit dash array. */
+  @keyframes lagon-draw {
+    from {
+      stroke-dashoffset: 24;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
 }
 
 /* Type scale — four heading steps, one body, one caption. There is no
@@ -271,6 +337,14 @@
   /* reeent brand orange, copied verbatim from the marketplace's --primary so
      the two products cannot drift apart; lifted in dark like reeent does. */
   --reeent: #ff5533;
+  --ecume: oklch(0.839 0.115 198.7);
+  --ecume-soft: oklch(0.964 0.022 196.8);
+  /* Nav row icons at rest and lit (hover, active). Unthemed: the Nucleo
+     defaults, so nothing changes outside `.theme-lagon`. */
+  --nav-icon-rest-1: #575757;
+  --nav-icon-rest-2: #151515;
+  --nav-icon-lit-1: #575757;
+  --nav-icon-lit-2: #151515;
   --reservation-pending: var(--louez-yellow);
   --reservation-pending-hover: oklch(0.776 0.164 85.568);
   --reservation-pending-foreground: oklch(0.145 0 0);
@@ -501,9 +575,154 @@
      defaults. */
   --nc-gradient-1-color-1: #fafafa;
   --nc-gradient-1-color-2: #a1a1aa;
+  --nav-icon-rest-1: #fafafa;
+  --nav-icon-rest-2: #a1a1aa;
+  --nav-icon-lit-1: #fafafa;
+  --nav-icon-lit-2: #a1a1aa;
+}
+
+/* Nucleo Glass origin layer, registered as colours so a nav icon can fade
+   from its resting tone to its lit one instead of snapping. The initial
+   values are the package defaults, so unthemed icons render unchanged. */
+@property --nc-gradient-1-color-1 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #575757;
+}
+
+@property --nc-gradient-1-color-2 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #151515;
+}
+
+/* ---------------------------------------------------------------------------
+   Lagon — the Louez back-office theme (dashboard, onboarding).
+   Scoped to `.theme-lagon` so storefronts keep their tenant palette. The
+   class sits on the dashboard shell and, while the dashboard is mounted, on
+   <html> too, so portalled menus, dialogs and tooltips inherit it.
+
+   Principles: a misty blue ground with one floating white surface per screen;
+   glass lives in the Nucleo icons and illustrations only; Lagon blue carries
+   actions, Écume (#5CE1E6) only ever carries light (icons, halos, success),
+   never text. Motion answers the user: arrival, hover, press, state change.
+   --------------------------------------------------------------------------- */
+.theme-lagon {
+  font-family: var(--font-brand);
+
+  --lagon-50: oklch(0.962 0.018 272.3);
+  --lagon-100: oklch(0.924 0.036 272.1);
+  --lagon-200: oklch(0.878 0.06 272.6);
+  --lagon-300: oklch(0.787 0.108 273.2);
+  --lagon-400: oklch(0.682 0.159 271.3);
+  --lagon-500: oklch(0.609 0.197 269.6);
+  --lagon-600: oklch(0.522 0.224 267.5);
+  --lagon-700: oklch(0.452 0.213 267.2);
+  --lagon-800: oklch(0.334 0.134 268.5);
+  --lagon-900: oklch(0.254 0.094 269.9);
+  --ecume: oklch(0.839 0.115 198.7);
+  --ecume-soft: oklch(0.964 0.022 196.8);
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.223 0.051 264.7);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.223 0.051 264.7);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.223 0.051 264.7);
+  --primary: var(--lagon-600);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.976 0.006 264.5);
+  --secondary-foreground: oklch(0.223 0.051 264.7);
+  --muted: oklch(0.976 0.006 264.5);
+  --muted-foreground: oklch(0.445 0.035 264.1);
+  --accent: var(--lagon-50);
+  --accent-foreground: oklch(0.223 0.051 264.7);
+  --info: var(--lagon-600);
+  --border: oklch(0.93 0.013 262.4);
+  --input: oklch(0.889 0.02 260.2);
+  --ring: var(--lagon-500);
+
+  /* The ground the content floats on: the nav shares it. */
+  --sidebar: oklch(0.948 0.013 262.4);
+  --sidebar-foreground: oklch(0.223 0.051 264.7);
+  --sidebar-primary: oklch(0.372 0.04 264.7);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(1 0 0 / 60%);
+  --sidebar-accent-foreground: oklch(0.223 0.051 264.7);
+  --sidebar-border: oklch(0.889 0.02 260.2);
+  --sidebar-ring: var(--lagon-500);
+
+  /* Three elevations, blue-tinted: posé (card), soulevé (raised), flottant. */
+  --shadow-card: 0 1px 2px oklch(0.334 0.134 268.5 / 5%), 0 0 0 1px oklch(0.93 0.013 262.4);
+  --shadow-raised:
+    0 1px 2px oklch(0.334 0.134 268.5 / 6%), 0 8px 20px -12px oklch(0.452 0.213 267.2 / 32%);
+  --shadow-overlay:
+    0 1px 2px oklch(0.334 0.134 268.5 / 5%), 0 24px 60px -30px oklch(0.452 0.213 267.2 / 40%),
+    0 0 0 1px oklch(0.93 0.013 262.4 / 60%);
+
+  /* Nucleo Glass: Lagon everywhere, Ardoise for nav rows at rest. */
+  --nc-gradient-1-color-1: #5ce1e6;
+  --nc-gradient-1-color-2: #3355e8;
+  /* The frosted pane fades from white to a cool blue-grey: a white-only pane
+     vanished into the misty nav ground (and into white cards). */
+  --nc-gradient-2-color-1: #ffffffeb;
+  --nc-gradient-2-color-2: #aebcdbb8;
+  --nc-light: #ffffff;
+  /* Ardoise, deep enough for the origin layer to read at 20px on the ground. */
+  --nav-icon-rest-1: #8e9bb4;
+  --nav-icon-rest-2: #46526d;
+  --nav-icon-lit-1: #5ce1e6;
+  --nav-icon-lit-2: #3355e8;
+}
+
+.dark.theme-lagon,
+.dark .theme-lagon {
+  --background: oklch(0.22 0.042 264.8);
+  --foreground: oklch(0.97 0.008 264);
+  --card: oklch(0.255 0.048 265);
+  --card-foreground: oklch(0.97 0.008 264);
+  --popover: oklch(0.255 0.048 265);
+  --popover-foreground: oklch(0.97 0.008 264);
+  --primary: var(--lagon-600);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.269 0.053 266.2);
+  --secondary-foreground: oklch(0.97 0.008 264);
+  --muted: oklch(0.269 0.053 266.2);
+  --muted-foreground: oklch(0.76 0.03 264);
+  --accent: oklch(0.3 0.07 267);
+  --accent-foreground: oklch(0.97 0.008 264);
+  --border: oklch(0.85 0.05 265 / 12%);
+  --input: oklch(0.85 0.05 265 / 18%);
+  --ring: var(--lagon-400);
+  --sidebar: oklch(0.183 0.031 263.4);
+  --sidebar-foreground: oklch(0.97 0.008 264);
+  --sidebar-primary: oklch(0.82 0.025 264);
+  --sidebar-accent: oklch(1 0 0 / 7%);
+  --sidebar-accent-foreground: oklch(0.97 0.008 264);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 30%), 0 0 0 1px oklch(1 0 0 / 7%);
+  --shadow-raised: 0 8px 20px -12px oklch(0 0 0 / 60%), 0 0 0 1px oklch(1 0 0 / 9%);
+  --shadow-overlay: 0 24px 60px -30px oklch(0 0 0 / 70%), 0 0 0 1px oklch(1 0 0 / 8%);
+  --nc-gradient-2-color-1: #ffffff40;
+  --nc-gradient-2-color-2: #c9d5ff26;
+  --nav-icon-rest-1: #8f9bb3;
+  --nav-icon-rest-2: #4d5872;
 }
 
 @layer base {
+  @media (prefers-reduced-motion: reduce) {
+    /* Arrivals keep their fade and lose their travel. */
+    .animate-enter {
+      animation-name: lagon-fade;
+    }
+  }
+
+  @keyframes lagon-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
   * {
     @apply border-border outline-ring/50;
   }

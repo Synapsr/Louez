@@ -7,8 +7,12 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@louez/ui";
 import { ProductSolidIcon } from "@louez/ui/icons";
+import { ProductGlassIcon, ReservationsGlassIcon, WhatsNewGlassIcon } from "@louez/ui/icons/glass";
+
+import { GlassIllustration } from "@/components/dashboard/shared/glass-illustration";
 
 import type { StoreMetrics, StoreState } from "./home-types";
+import { OPEN_SETUP_CHECKLIST_EVENT } from "./setup-checklist";
 
 interface AdaptiveHeaderProps {
   firstName: string;
@@ -107,6 +111,37 @@ export const AdaptiveHeader = ({
   };
 
   const primaryCTA = getPrimaryCTA();
+
+  // A store that is still being set up gets a welcome panel instead of a plain
+  // title: the first screen after onboarding must say "you are home, here is
+  // what comes next", not show a row of zeros.
+  if (storeState === "virgin" || storeState === "building") {
+    return (
+      <section className="animate-enter relative flex flex-col gap-6 overflow-hidden rounded-[20px] from-accent via-background to-ecume-soft bg-linear-to-br p-6 shadow-[inset_0_0_0_1px_var(--color-border)] sm:flex-row sm:items-center sm:p-8">
+        <div className="relative flex min-w-0 flex-1 flex-col gap-3">
+          <h1 className="text-2xl font-extrabold tracking-tight text-balance sm:text-3xl">
+            {greeting}
+          </h1>
+          <p className="text-muted-foreground max-w-xl text-sm sm:text-base">{getSubtitle()}</p>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+            {primaryCTA}
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => window.dispatchEvent(new Event(OPEN_SETUP_CHECKLIST_EVENT))}
+            >
+              {t("header.cta.openSetup")}
+            </Button>
+          </div>
+        </div>
+        <GlassIllustration
+          main={ReservationsGlassIcon}
+          companions={[ProductGlassIcon, WhatsNewGlassIcon]}
+          className="mx-auto max-sm:hidden sm:mx-0"
+        />
+      </section>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">

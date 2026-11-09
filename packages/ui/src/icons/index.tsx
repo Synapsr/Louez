@@ -25,6 +25,7 @@ export {
   CheckCircle as CheckCircleIcon,
   CheckCircleSolid as SuccessSolidIcon,
   CheckSolid as CheckSolidIcon,
+  ChevronDown as ChevronDownIcon,
   ChevronsUpDown as ChevronsUpDownIcon,
   Circle as CircleIcon,
   CircleDashedSolid as ProgressSolidIcon,

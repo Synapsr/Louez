@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { MoreHorizontal, Pencil, Copy, Archive, Trash2, Eye, EyeOff, Package } from 'lucide-react'
+import { MoreHorizontal, Pencil, Copy, Archive, Trash2, Eye, EyeOff } from 'lucide-react'
+import { ProductGlassIcon, ReservationsGlassIcon, WhatsNewGlassIcon } from '@louez/ui/icons/glass'
 
 import { Button } from '@louez/ui'
 import type { StockKind } from '@louez/types'
@@ -28,6 +29,7 @@ import {
 
 import { cn, getCurrencySymbol } from '@louez/utils'
 
+import { DashboardPageEmptyState } from '@/components/dashboard/shared/dashboard-page-empty-state'
 import { ProductImage } from '@/components/product/product-image'
 
 import { useProductActions } from './[id]/hooks/use-product-actions'
@@ -116,14 +118,20 @@ export const ProductsTable = ({ products, currency = 'EUR', readOnly = false, on
 
   if (products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-        <Package className="h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-semibold">{t('noProducts')}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">{t('noProductsDescription')}</p>
-        <Button disabled={readOnly} render={readOnly ? undefined : <Link href="/dashboard/products/new" />} className="mt-4">
-          {t('addProduct')}
-        </Button>
-      </div>
+      <DashboardPageEmptyState
+        illustration={{ main: ProductGlassIcon, companions: [ReservationsGlassIcon, WhatsNewGlassIcon] }}
+        title={t('emptyState.title')}
+        description={t('emptyState.description')}
+        actions={
+          <Button
+            size="lg"
+            disabled={readOnly}
+            render={readOnly ? undefined : <Link href="/dashboard/products/new" />}
+          >
+            {t('addProduct')}
+          </Button>
+        }
+      />
     )
   }
 

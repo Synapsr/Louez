@@ -23,10 +23,10 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t("title")}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-[26px]">{t("title")}</h1>
       </div>
 
-      <div className="flex flex-col gap-4 sm:gap-6 xl:grid xl:grid-cols-[260px_1fr] xl:gap-10">
+      <div className="flex flex-col gap-4 sm:gap-6 lg:grid lg:grid-cols-[240px_1fr] lg:gap-8 xl:grid-cols-[260px_1fr] xl:gap-10">
         <SettingsNav
           isPlatformAdmin={isPlatformAdmin}
           legacyBillingEnabled={legacyBillingEnabled}

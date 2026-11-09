@@ -5,6 +5,15 @@ import { useControlsDisabled } from "./disabled-controls-provider";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon } from "lucide-react";
 
+import {
+  POPUP_GROUP_LABEL,
+  POPUP_INDICATOR,
+  POPUP_ITEM,
+  POPUP_ITEM_SELECTED,
+  POPUP_MOTION,
+  POPUP_SEPARATOR,
+  POPUP_SURFACE,
+} from "@louez/ui/lib/popup-styles";
 import { cn } from "@louez/utils";
 
 const Select = SelectPrimitive.Root;
@@ -79,7 +88,7 @@ function SelectPopup({
         sideOffset={sideOffset}
       >
         <SelectPrimitive.Popup
-          className="text-foreground origin-(--transform-origin)"
+          className={cn("text-foreground", POPUP_MOTION)}
           data-slot="select-popup"
           {...props}
         >
@@ -89,7 +98,7 @@ function SelectPopup({
           >
             <ChevronUpIcon className="relative size-4.5 sm:size-4" />
           </SelectPrimitive.ScrollUpArrow>
-          <div className="bg-popover relative h-full min-w-(--anchor-width) rounded-lg border shadow-lg/5 not-dark:bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]">
+          <div className={cn("relative h-full min-w-(--anchor-width)", POPUP_SURFACE)}>
             <SelectPrimitive.List
               className={cn("max-h-(--available-height) overflow-y-auto p-1", className)}
               data-slot="select-list"
@@ -113,22 +122,10 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
   return (
     <SelectPrimitive.Item
       className={cn(
-        // Layout
-        "grid grid-cols-[1fr_1rem] items-center gap-2 min-h-8 rounded-sm py-1 ps-2 pe-4 text-base sm:min-h-7 sm:text-sm",
-
-        // Interactivity/State
-        "cursor-default outline-none text-muted-foreground",
-        "data-selected:text-accent-foreground",
-        "data-highlighted:bg-accent data-highlighted:text-accent-foreground",
-        "data-disabled:pointer-events-none data-disabled:opacity-64",
-
-        // Sizing
+        POPUP_ITEM,
+        POPUP_ITEM_SELECTED,
+        "grid grid-cols-[1fr_1rem] gap-2 pe-2",
         "in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)]",
-
-        // Icon/Child SVG Handling
-        "[&_svg]:pointer-events-none [&_svg]:shrink-0",
-        "[&_svg:not([class*='size-'])]:size-4.5",
-        "sm:[&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       data-slot="select-item"
@@ -137,7 +134,7 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
       <SelectPrimitive.ItemText className="col-start-1 min-w-0 flex items-center">
         {children}
       </SelectPrimitive.ItemText>
-      <SelectPrimitive.ItemIndicator className="col-start-2">
+      <SelectPrimitive.ItemIndicator className={cn("col-start-2", POPUP_INDICATOR)}>
         <svg
           fill="none"
           height="24"
@@ -159,7 +156,7 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
 function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Props) {
   return (
     <SelectPrimitive.Separator
-      className={cn("bg-border mx-2 my-1 h-px", className)}
+      className={cn(POPUP_SEPARATOR, className)}
       data-slot="select-separator"
       {...props}
     />
@@ -173,7 +170,7 @@ function SelectGroup(props: SelectPrimitive.Group.Props) {
 function SelectGroupLabel(props: SelectPrimitive.GroupLabel.Props) {
   return (
     <SelectPrimitive.GroupLabel
-      className="text-muted-foreground px-2 py-1.5 text-xs font-medium"
+      className={POPUP_GROUP_LABEL}
       data-slot="select-group-label"
       {...props}
     />

@@ -6,12 +6,27 @@ import { cn } from "@louez/utils";
 
 const TooltipCreateHandle = TooltipPrimitive.createHandle;
 
-const TooltipProvider = TooltipPrimitive.Provider;
+/**
+ * Base UI waits 600ms before opening a tooltip, long enough for the pointer to
+ * leave before the hint shows. An interface hint has to feel immediate: 80ms
+ * still filters a pointer passing through, without the wait being felt.
+ */
+const TOOLTIP_OPEN_DELAY_MS = 80;
+
+function TooltipProvider({
+  delay = TOOLTIP_OPEN_DELAY_MS,
+  ...props
+}: TooltipPrimitive.Provider.Props) {
+  return <TooltipPrimitive.Provider delay={delay} {...props} />;
+}
 
 const Tooltip = TooltipPrimitive.Root;
 
-function TooltipTrigger(props: TooltipPrimitive.Trigger.Props) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
+function TooltipTrigger({
+  delay = TOOLTIP_OPEN_DELAY_MS,
+  ...props
+}: TooltipPrimitive.Trigger.Props) {
+  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" delay={delay} {...props} />;
 }
 
 function TooltipPopup({

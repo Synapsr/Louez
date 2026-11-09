@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -25,6 +25,8 @@ import {
   BuildingIcon,
   CheckIcon,
   ChevronsUpDownIcon,
+  CopyIcon,
+  OpenInNewIcon,
   PlusIcon,
 } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
@@ -85,7 +87,29 @@ interface StoreWithRole {
 interface StoreSwitcherProps {
   stores: StoreWithRole[];
   currentStoreId: string;
+  /**
+   * `card` (default): a raised white card of its own. `embedded`: flat, for a
+   * container that already is the card (the sidebar's store card).
+   */
+  appearance?: "card" | "embedded";
+  /** Extra classes for the trigger, e.g. room kept for an action beside it. */
+  className?: string;
+  /**
+   * The store's public page, listed at the top of the menu: its address, the
+   * links that open it and the copy action. The sidebar keeps a one-click
+   * "open" icon on the row; everything else about the page lives here.
+   */
+  storefront?: StoreSwitcherStorefront;
 }
+
+export interface StoreSwitcherStorefront {
+  /** Shown as plain text, e.g. "maison-pointure.louez.io". */
+  host: string | null;
+  links: { label: string; href: string }[];
+  copyUrl: string;
+}
+
+const STORE_LINK_COPIED_MS = 1600;
 
 function getStoreSwitchDestination(pathname: string, onboardingCompleted: boolean): string {
   if (!onboardingCompleted) {
@@ -125,8 +149,22 @@ function RoleBadge({
   return <span className="text-muted-foreground text-xs capitalize">{t(`roles.${role}`)}</span>;
 }
 
-export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
+export function StoreSwitcher({
+  stores,
+  currentStoreId,
+  appearance = "card",
+  className,
+  storefront,
+}: StoreSwitcherProps) {
   const t = useTranslations("dashboard.storeSwitcher");
+  const tSidebar = useTranslations("dashboard.sidebar");
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  useEffect(() => {
+    if (!linkCopied) return;
+    const timeout = window.setTimeout(() => setLinkCopied(false), STORE_LINK_COPIED_MS);
+    return () => window.clearTimeout(timeout);
+  }, [linkCopied]);
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -195,9 +233,15 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
             aria-expanded={open}
             aria-label={t("selectStore")}
             className={cn(
-              "h-auto w-full [&>span]:w-full justify-between px-3 py-2",
-              "group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0",
-              "hover:bg-background aria-expanded:shadow-[0_0_1px_0px_var(--color-border)] aria-expanded:bg-background",
+              "h-auto w-full [&>span]:w-full justify-between px-2.5 py-2",
+              "group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:shadow-none group-data-[collapsible=icon]:bg-transparent",
+              appearance === "card"
+                ? // A raised white card on the nav ground: the store you work
+                  // in is the first thing the sidebar states, it must not
+                  // blend into it.
+                  "bg-background shadow-raised hover:bg-background hover:shadow-overlay aria-expanded:bg-background aria-expanded:shadow-overlay rounded-[14px]"
+                : "hover:bg-muted aria-expanded:bg-muted rounded-[12px] py-1.5",
+              className,
             )}
             disabled={isPending}
           />
@@ -210,10 +254,12 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
             size="md"
           />
           <div className="flex min-w-0 flex-col items-start group-data-[collapsible=icon]:hidden">
-            <span className="w-full truncate text-sm font-medium">
+            <span className="w-full truncate text-sm font-semibold">
               {currentStore?.name || t("selectStore")}
             </span>
-            {currentStore && (
+            {/* Embedded in the compact store card, the row is the name alone:
+                the role and the setup state are in the menu's store list. */}
+            {currentStore && appearance === "card" && (
               <div className="flex items-center gap-1.5">
                 <RoleBadge role={currentStore.role} t={t} />
                 {!currentStore.onboardingCompleted && (
@@ -228,6 +274,54 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
         <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
       </PopoverTrigger>
       <PopoverPopup className="w-[260px] *:pt-0" align="start" sideOffset={8}>
+        {storefront && (
+          /* The public page in one line: its address opens it, the icon
+             copies it. Extra pages (a reeent listing) follow as plain rows. */
+          <div className="border-border/70 flex flex-col gap-0.5 border-b p-1">
+            {storefront.links.map((link, index) => (
+              <div key={link.href} className="flex items-center gap-0.5">
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
+                  title={link.label}
+                  className="text-foreground/85 hover:bg-accent hover:text-foreground focus-visible:ring-ring ease-lagon flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-medium transition-colors duration-100 outline-hidden focus-visible:ring-2"
+                >
+                  <OpenInNewIcon className="text-primary size-4 shrink-0" aria-hidden />
+                  <span className="truncate">
+                    {index === 0 && storefront.host ? storefront.host : link.label}
+                  </span>
+                  <span className="sr-only">{link.label}</span>
+                </a>
+                {index === 0 && (
+                  <button
+                    type="button"
+                    aria-label={tSidebar("copyStoreLink")}
+                    title={tSidebar("copyStoreLink")}
+                    onClick={() => {
+                      void navigator.clipboard
+                        .writeText(storefront.copyUrl)
+                        .then(() => setLinkCopied(true));
+                    }}
+                    className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring ease-lagon flex size-8 shrink-0 items-center justify-center rounded-[10px] transition-colors duration-100 outline-hidden focus-visible:ring-2 motion-safe:active:scale-95"
+                  >
+                    {/* The tick replaces the icon in place: the menu stays
+                        open, so the confirmation shows where you clicked. */}
+                    {linkCopied ? (
+                      <CheckIcon className="text-success animate-enter size-4" aria-hidden />
+                    ) : (
+                      <CopyIcon className="size-4" aria-hidden />
+                    )}
+                    <span aria-live="polite" className="sr-only">
+                      {linkCopied ? tSidebar("storeLinkCopied") : ""}
+                    </span>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         <Command open filter={null} autoHighlight={false} keepHighlight={false}>
           {stores.length > 5 && (
             <div className="border-b py-1.5">

@@ -67,7 +67,6 @@ export const DashboardHeaderActions = ({
       aria-label={t("sidebar.newReservation")}
       size={isMobile ? "icon" : "default"}
       render={<Link href="/dashboard/reservations/new?source=dashboard_header" />}
-      variant="outline"
     >
       <Plus className="h-4 w-4" />
       <span className="max-md:hidden">{t("sidebar.newReservation")}</span>

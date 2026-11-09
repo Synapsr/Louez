@@ -9,6 +9,15 @@ import { ChevronsUpDownIcon, XIcon } from "lucide-react";
 
 import { Input } from "@louez/ui/components/input";
 import { ScrollArea } from "@louez/ui/components/scroll-area";
+import {
+  POPUP_GROUP_LABEL,
+  POPUP_INDICATOR,
+  POPUP_ITEM,
+  POPUP_ITEM_SELECTED,
+  POPUP_SEPARATOR,
+  POPUP_SURFACE,
+  POPUP_WRAPPER_MOTION,
+} from "@louez/ui/lib/popup-styles";
 import { cn } from "@louez/utils";
 
 const ComboboxContext = React.createContext<{
@@ -162,7 +171,9 @@ function ComboboxPopup({
       >
         <span
           className={cn(
-            "bg-popover relative flex max-h-full max-w-(--available-width) min-w-(--anchor-width) origin-(--transform-origin) rounded-lg border transition-[scale,opacity] not-dark:bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+            "relative flex max-h-full max-w-(--available-width) min-w-(--anchor-width)",
+            POPUP_SURFACE,
+            POPUP_WRAPPER_MOTION,
             className,
           )}
         >
@@ -183,22 +194,10 @@ function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.
   return (
     <ComboboxPrimitive.Item
       className={cn(
-        // Layout & structure
-        "grid grid-cols-[1fr_1rem] items-center gap-2 min-h-8 sm:min-h-7 py-1 ps-2 pe-4 rounded-sm text-base sm:text-sm outline-none",
-
-        // Highlighted state
-        "text-muted-foreground hover:text-foreground",
-        "data-selected:text-foreground",
-        "data-highlighted:bg-accent data-highlighted:text-accent-foreground",
-
-        // Disabled state
-        "data-disabled:pointer-events-none data-disabled:opacity-64",
-
-        // Responsive size
+        POPUP_ITEM,
+        POPUP_ITEM_SELECTED,
+        "grid grid-cols-[1fr_1rem] gap-2 pe-2",
         "in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)]",
-
-        // SVG styling
-        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4",
 
         className,
       )}
@@ -206,7 +205,7 @@ function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.
       {...props}
     >
       <div className="col-start-1">{children}</div>
-      <ComboboxPrimitive.ItemIndicator className="col-start-2">
+      <ComboboxPrimitive.ItemIndicator className={cn("col-start-2", POPUP_INDICATOR)}>
         <svg
           fill="none"
           height="24"
@@ -228,7 +227,7 @@ function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.
 function ComboboxSeparator({ className, ...props }: ComboboxPrimitive.Separator.Props) {
   return (
     <ComboboxPrimitive.Separator
-      className={cn("bg-border mx-2 my-1 h-px last:hidden", className)}
+      className={cn(POPUP_SEPARATOR, "last:hidden", className)}
       data-slot="combobox-separator"
       {...props}
     />
@@ -248,7 +247,7 @@ function ComboboxGroup({ className, ...props }: ComboboxPrimitive.Group.Props) {
 function ComboboxGroupLabel({ className, ...props }: ComboboxPrimitive.GroupLabel.Props) {
   return (
     <ComboboxPrimitive.GroupLabel
-      className={cn("text-muted-foreground px-2 py-1.5 text-xs font-medium", className)}
+      className={cn(POPUP_GROUP_LABEL, className)}
       data-slot="combobox-group-label"
       {...props}
     />

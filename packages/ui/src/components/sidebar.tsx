@@ -341,7 +341,9 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "bg-background md:peer-data-[variant=inset]:overflow-clip relative flex w-full flex-1 flex-col md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:rounded-lg md:peer-data-[variant=inset]:border peer-data-[variant=inset]:border-border/50 md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+        // Inset: the one floating surface of the screen, lifted off the ground
+        // the nav sits on by a long shadow rather than a border.
+        "bg-background md:peer-data-[variant=inset]:overflow-clip relative flex w-full flex-1 flex-col md:peer-data-[variant=inset]:m-2.5 md:peer-data-[variant=inset]:rounded-[20px] md:peer-data-[variant=inset]:shadow-overlay md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2.5",
         className,
       )}
       {...props}
@@ -428,7 +430,7 @@ function SidebarGroupLabel({
     props: mergeProps<"div">(
       {
         className: cn(
-          "text-sidebar-foreground/70 ring-sidebar-ring flex h-8 shrink-0 items-center rounded-lg px-2 text-xs font-medium outline-hidden group-data-[collapsible=icon]:hidden focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+          "text-sidebar-primary/85 ring-sidebar-ring flex h-7 shrink-0 items-center rounded-lg px-2 text-[11px] font-bold tracking-[0.06em] uppercase outline-hidden group-data-[collapsible=icon]:hidden focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
           className,
         ),
       },
@@ -508,32 +510,23 @@ const sidebarMenuButtonVariants = cva(
     "peer/menu-button group/menu-button text-sidebar-primary font-medium ring-sidebar-ring",
 
     // --- Background and text colors for hover, active, and open states
-    "hover:text-sidebar-accent-foreground active:bg-background active:text-sidebar-accent-foreground data-open:hover:bg-background data-open:hover:text-sidebar-accent-foreground data-active:bg-background data-active:shadow-[0_0_0_1px_var(--color-border)] data-active:text-sidebar-accent-foreground",
+    // Hover: a light veil on the ground. Active: the row becomes a raised
+    // white card, the one place in the nav that answers "where am I".
+    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-background active:text-sidebar-accent-foreground data-open:hover:bg-background data-open:hover:text-sidebar-accent-foreground data-active:bg-background data-active:shadow-raised data-active:text-sidebar-accent-foreground data-active:font-semibold",
+    "transition-[background-color,color,box-shadow,--nc-gradient-1-color-1,--nc-gradient-1-color-2] duration-200 ease-lagon",
 
-    // --- Hover light
-    // The nav icons are glass (multi-layer SVGs that ignore `currentColor`), so
-    // the hover recolour above is a no-op on them and the row would answer the
-    // pointer with nothing. The feedback is a light instead: a soft glow
-    // anchored on the icon and a hairline ring, i.e. the row lighting up like
-    // the card an active row already is. `isolate` + `-z-10` keep the layer
-    // behind the label but inside the button, so an active row's opaque
-    // background hides it on its own — no extra state to unwind.
-    "relative isolate",
-    // 200ms, the pace of a hover: long enough to read as a fade, short enough
-    // to stay under the pointer. The quint-out only shapes the tail.
-    "before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:opacity-0 before:transition-opacity before:duration-200 before:ease-[cubic-bezier(0.22,1,0.36,1)] before:content-['']",
-    "before:bg-[radial-gradient(60%_150%_at_1.15rem_50%,var(--sidebar-hover-light),transparent_72%)] before:shadow-[inset_0_0_0_1px_var(--sidebar-hover-ring)]",
-    "hover:before:opacity-100 focus-visible:before:opacity-100",
-    // The light sidebar has no room above white, so there the row reads as lit
-    // by lifting instead: a shadow the flat sidebar doesn't have. Kept off the
-    // active row, whose own `box-shadow` border would lose to it.
-    "transition-shadow duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] not-data-active:hover:shadow-[0_2px_6px_-2px_var(--sidebar-hover-shadow)]",
-    // `scale-*` sets the `scale` property, not `transform` — leaving it out of
-    // the transition list is what made the icon jump to full size instantly
-    // while its glow faded. It also gets a gentler curve than the light: a
-    // quint-out front-loads the travel, which a fading glow absorbs but a
-    // moving object cannot.
-    "[&_svg]:transition-[scale,filter] [&_svg]:duration-200 [&_svg]:ease-[cubic-bezier(0.33,1,0.68,1)] hover:[&_svg]:drop-shadow-[0_2px_5px_var(--sidebar-hover-glow)] motion-safe:hover:[&_svg]:scale-106",
+    // --- Glass icon tone
+    // The nav icons are Nucleo Glass (multi-layer SVGs that ignore
+    // `currentColor`); their colour is the origin-layer gradient. At rest the
+    // row wears the muted tone, hovered or active it lights up — the colour
+    // itself says where you are. The registered `@property` colours are what
+    // let the gradient fade rather than snap.
+    "[--nc-gradient-1-color-1:var(--nav-icon-rest-1)] [--nc-gradient-1-color-2:var(--nav-icon-rest-2)]",
+    "hover:[--nc-gradient-1-color-1:var(--nav-icon-lit-1)] hover:[--nc-gradient-1-color-2:var(--nav-icon-lit-2)] focus-visible:[--nc-gradient-1-color-1:var(--nav-icon-lit-1)] focus-visible:[--nc-gradient-1-color-2:var(--nav-icon-lit-2)]",
+    "data-active:[--nc-gradient-1-color-1:var(--nav-icon-lit-1)] data-active:[--nc-gradient-1-color-2:var(--nav-icon-lit-2)]",
+    // A short contact shadow seats the glass on the ground it shares a tone
+    // with; the icon lifts by a pixel on hover, the glass catching the pointer.
+    "[&_svg]:drop-shadow-[0_1px_1.5px_rgb(27_44_122/0.18)] [&_svg]:transition-transform [&_svg]:duration-200 [&_svg]:ease-lagon motion-safe:hover:[&_svg]:-translate-y-px",
 
     // --- Layout and spacing
     "flex w-full items-center gap-1.5 overflow-hidden rounded-lg p-2 text-left text-sm",
@@ -562,7 +555,9 @@ const sidebarMenuButtonVariants = cva(
           "bg-background hover:bg-sidebar-accent hover:text-sidebar-accent-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-10 text-base",
+        // 36px rows for 14px labels: the 40px row was sized for the former
+        // 16px text and left the list looking loose once the type came down.
+        default: "h-9 text-sm",
         sm: "h-7 text-xs",
         lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
       },

@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 
 import { useTranslations } from 'next-intl'
-import { MoreHorizontal, Mail, Phone, MapPin, Eye, Pencil, Trash2, Users, Building2 } from 'lucide-react'
+import { MoreHorizontal, Mail, Phone, MapPin, Eye, Pencil, Trash2, Building2 } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@louez/ui'
+import { CustomersGlassIcon, ReservationsGlassIcon, TeamGlassIcon } from '@louez/ui/icons/glass'
 import {
   Table,
   TableBody,
@@ -35,6 +36,7 @@ import {
 } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
+import { DashboardPageEmptyState } from '@/components/dashboard/shared/dashboard-page-empty-state'
 import { orpc } from '@/lib/orpc/react'
 import { EmailContactPopover } from '@/components/dashboard/email-contact-popover'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
@@ -89,20 +91,21 @@ export const CustomersTable = ({ customers, readOnly = false, onOpenCustomer, ge
 
   if (customers.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-        <Users className="h-12 w-12 text-muted-foreground/50" />
-        <h3 className="mt-4 text-lg font-semibold">{t('noCustomers')}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t('noCustomersDescription')}
-        </p>
-        <Button
-          disabled={readOnly}
-          render={readOnly ? undefined : <Link href="/dashboard/customers/new?source=customers_page" />}
-          className="mt-4"
-        >
-          {t('addCustomer')}
-        </Button>
-      </div>
+      <DashboardPageEmptyState
+        illustration={{ main: CustomersGlassIcon, companions: [ReservationsGlassIcon, TeamGlassIcon] }}
+        title={t('emptyState.title')}
+        description={t('emptyState.description')}
+        actions={
+          <Button
+            size="lg"
+            variant="outline"
+            disabled={readOnly}
+            render={readOnly ? undefined : <Link href="/dashboard/customers/new?source=customers_page" />}
+          >
+            {t('addCustomer')}
+          </Button>
+        }
+      />
     )
   }
 

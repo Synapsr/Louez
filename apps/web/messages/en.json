@@ -525,7 +525,10 @@
       "reservationLimitReached": "Limit reached",
       "help": "Help",
       "feedback": "Help and feedback",
-      "aiCreditsLow": "Credit balance running low"
+      "aiCreditsLow": "Credit balance running low",
+      "sectionPages": "{section} pages",
+      "copyStoreLink": "Copy store link",
+      "storeLinkCopied": "Link copied"
     },
     "shortcuts": {
       "actions": {
@@ -1000,7 +1003,8 @@
         "cta": {
           "addFirstProduct": "Add my first product",
           "handleRequests": "Handle requests ({count})",
-          "addReservation": "New reservation"
+          "addReservation": "New reservation",
+          "openSetup": "See setup steps"
         }
       },
       "alert": {
@@ -1983,6 +1987,10 @@
             "updated": "Unit updated"
           }
         }
+      },
+      "emptyState": {
+        "title": "Your inventory starts here",
+        "description": "Describe a product once: rates, deposit and stock. It will be offered on your store and on every booking."
       }
     },
     "inventory": {
@@ -3085,7 +3093,14 @@
         "planning": "Planning"
       },
       "displayCards": "Card view",
-      "displayTable": "Table view"
+      "displayTable": "Table view",
+      "emptyState": {
+        "title": "Your first booking is on its way",
+        "description": "Online or at the counter, every rental will land here with its payment and deposit.",
+        "tip": "Add your products to the catalogue once: they will be offered on every booking.",
+        "tipLink": "Add a product",
+        "viewStore": "View my store"
+      }
     },
     "customers": {
       "title": "Customers",
@@ -3205,6 +3220,10 @@
       "quickCreate": {
         "title": "New customer",
         "description": "The customer will be created and selected automatically."
+      },
+      "emptyState": {
+        "title": "Your future regulars will settle in here",
+        "description": "Everyone who books with you gets a profile: contact details, rental history and deposits. It is created automatically with their first booking."
       }
     },
     "calendar": {

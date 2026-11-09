@@ -26,7 +26,12 @@ export const DashboardNotificationsButton = () => {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="outline" size="icon" className="relative" aria-label={t("title")} />
+          <Button
+            variant="outline"
+            size="icon"
+            className="in-[.theme-lagon]:bg-muted in-[.theme-lagon]:hover:bg-accent relative in-[.theme-lagon]:shadow-none in-[.theme-lagon]:hover:shadow-none"
+            aria-label={t("title")}
+          />
         }
       >
         <Bell className="h-4 w-4" />

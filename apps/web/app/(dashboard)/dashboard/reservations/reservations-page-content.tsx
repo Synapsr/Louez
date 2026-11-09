@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, LayoutGrid, List, Plus } from "lucide-react";
+import { LayoutGrid, List, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { parseAsInteger, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
 
@@ -20,8 +20,10 @@ import {
   TooltipTrigger,
 } from "@louez/ui";
 import { CalendarSyncIcon } from "@louez/ui/icons";
+import { CustomersGlassIcon, ProductGlassIcon, ReservationsGlassIcon } from "@louez/ui/icons/glass";
 import { cn } from "@louez/utils";
 
+import { DashboardPageEmptyState } from "@/components/dashboard/shared/dashboard-page-empty-state";
 import { BlurOverlay, LimitBanner, UpgradeModal } from "@/components/dashboard/upgrade-modal";
 import { createDashboardReturnTo } from "@/lib/dashboard/util.reservation-navigation";
 import { orpc } from "@/lib/orpc/react";
@@ -266,21 +268,34 @@ export function ReservationsPageContent({
   const isEmpty = reservations.length === 0 && !search;
 
   const renderEmptyState = () => (
-    <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-16">
-      <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-        <Calendar className="text-muted-foreground h-8 w-8" />
-      </div>
-      <h3 className="text-lg font-semibold">{t("noReservations")}</h3>
-      <p className="text-muted-foreground mt-2 max-w-sm text-center text-sm">
-        {t("noReservationsDescription")}
-      </p>
-      <Button
-        render={<Link href="/dashboard/reservations/new?source=reservations_page" />}
-        className="mt-6"
-      >
-        {t("createReservation")}
-      </Button>
-    </div>
+    <DashboardPageEmptyState
+      illustration={{
+        main: ReservationsGlassIcon,
+        companions: [ProductGlassIcon, CustomersGlassIcon],
+      }}
+      title={t("emptyState.title")}
+      description={t("emptyState.description")}
+      actions={
+        <Button
+          size="lg"
+          render={<Link href="/dashboard/reservations/new?source=reservations_page" />}
+        >
+          <Plus />
+          {t("createReservation")}
+        </Button>
+      }
+      tip={
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="flex-1">{t("emptyState.tip")}</span>
+          <Link
+            href="/dashboard/products/new"
+            className="text-primary font-semibold hover:underline"
+          >
+            {t("emptyState.tipLink")}
+          </Link>
+        </p>
+      }
+    />
   );
 
   // Mobile always gets cards; on desktop the toggle picks cards or table.

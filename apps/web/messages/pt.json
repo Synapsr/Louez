@@ -525,7 +525,10 @@
       "reservationLimitReached": "Limite atingido",
       "help": "Ajuda",
       "feedback": "Ajuda e feedback",
-      "aiCreditsLow": "Saldo de créditos baixo"
+      "aiCreditsLow": "Saldo de créditos baixo",
+      "sectionPages": "Páginas de {section}",
+      "copyStoreLink": "Copiar o link da loja",
+      "storeLinkCopied": "Link copiado"
     },
     "shortcuts": {
       "actions": {
@@ -961,7 +964,8 @@
         "cta": {
           "addFirstProduct": "Adicionar meu primeiro produto",
           "handleRequests": "Gerenciar solicitacoes ({count})",
-          "addReservation": "Nova reserva"
+          "addReservation": "Nova reserva",
+          "openSetup": "Ver os primeiros passos"
         }
       },
       "alert": {
@@ -1944,6 +1948,10 @@
             "updated": "Unidade atualizada"
           }
         }
+      },
+      "emptyState": {
+        "title": "O seu inventário começa aqui",
+        "description": "Descreva um produto uma só vez: tarifas, caução e stock. Será proposto na sua loja e em cada reserva."
       }
     },
     "inventory": {
@@ -3046,7 +3054,14 @@
         "planning": "Planning"
       },
       "displayCards": "Visualização em cartões",
-      "displayTable": "Visualização em tabela"
+      "displayTable": "Visualização em tabela",
+      "emptyState": {
+        "title": "A sua primeira reserva está a caminho",
+        "description": "Online ou no balcão, cada aluguer aparecerá aqui com o pagamento e a caução.",
+        "tip": "Adicione os seus produtos ao catálogo uma só vez: serão propostos em cada reserva.",
+        "tipLink": "Adicionar um produto",
+        "viewStore": "Ver a minha loja"
+      }
     },
     "customers": {
       "title": "Clientes",
@@ -3166,6 +3181,10 @@
       "quickCreate": {
         "title": "Novo cliente",
         "description": "O cliente será criado e selecionado automaticamente."
+      },
+      "emptyState": {
+        "title": "Aqui vão instalar-se os seus futuros clientes habituais",
+        "description": "Cada pessoa que reserva consigo tem a sua ficha: contactos, histórico de alugueres e cauções. É criada automaticamente na primeira reserva."
       }
     },
     "calendar": {

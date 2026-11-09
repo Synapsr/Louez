@@ -525,7 +525,10 @@
       "reservationLimitReached": "Limit osiagniety",
       "help": "Pomoc",
       "feedback": "Pomoc i opinie",
-      "aiCreditsLow": "Niskie saldo kredytów"
+      "aiCreditsLow": "Niskie saldo kredytów",
+      "sectionPages": "Strony sekcji {section}",
+      "copyStoreLink": "Kopiuj link do sklepu",
+      "storeLinkCopied": "Link skopiowany"
     },
     "shortcuts": {
       "actions": {
@@ -961,7 +964,8 @@
         "cta": {
           "addFirstProduct": "Dodaj mój pierwszy produkt",
           "handleRequests": "Obsłuż żądania ({count})",
-          "addReservation": "Nowa rezerwacja"
+          "addReservation": "Nowa rezerwacja",
+          "openSetup": "Zobacz pierwsze kroki"
         }
       },
       "alert": {
@@ -1944,6 +1948,10 @@
             "updated": "Jednostka zaktualizowana"
           }
         }
+      },
+      "emptyState": {
+        "title": "Twój park sprzętu zaczyna się tutaj",
+        "description": "Opisz produkt tylko raz: stawki, kaucję i stan. Będzie oferowany w Twoim sklepie i przy każdej rezerwacji."
       }
     },
     "inventory": {
@@ -3046,7 +3054,14 @@
         "planning": "Planning"
       },
       "displayCards": "Widok kart",
-      "displayTable": "Widok tabeli"
+      "displayTable": "Widok tabeli",
+      "emptyState": {
+        "title": "Twoja pierwsza rezerwacja już wkrótce",
+        "description": "Online lub przy ladzie: każdy wynajem trafi tutaj, razem z płatnością i kaucją.",
+        "tip": "Dodaj swoje produkty do katalogu tylko raz: będą proponowane przy każdej rezerwacji.",
+        "tipLink": "Dodaj produkt",
+        "viewStore": "Zobacz mój sklep"
+      }
     },
     "customers": {
       "title": "Klienci",
@@ -3166,6 +3181,10 @@
       "quickCreate": {
         "title": "Nowy klient",
         "description": "Klient zostanie utworzony i automatycznie wybrany."
+      },
+      "emptyState": {
+        "title": "Tu zamieszkają Twoi przyszli stali klienci",
+        "description": "Każda osoba, która u Ciebie rezerwuje, ma swoją kartę: dane kontaktowe, historię wynajmów i kaucje. Tworzy się sama przy pierwszej rezerwacji."
       }
     },
     "calendar": {

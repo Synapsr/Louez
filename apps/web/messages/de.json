@@ -525,7 +525,10 @@
       "reservationLimitReached": "Limit erreicht",
       "help": "Hilfe",
       "feedback": "Hilfe und Feedback",
-      "aiCreditsLow": "Guthaben wird knapp"
+      "aiCreditsLow": "Guthaben wird knapp",
+      "sectionPages": "Seiten von {section}",
+      "copyStoreLink": "Shop-Link kopieren",
+      "storeLinkCopied": "Link kopiert"
     },
     "shortcuts": {
       "actions": {
@@ -1000,7 +1003,8 @@
         "cta": {
           "addFirstProduct": "Mein erstes Produkt hinzufügen",
           "handleRequests": "Anfragen bearbeiten ({count})",
-          "addReservation": "Neue Reservierung"
+          "addReservation": "Neue Reservierung",
+          "openSetup": "Einrichtung ansehen"
         }
       },
       "alert": {
@@ -1983,6 +1987,10 @@
             "updated": "Einheit aktualisiert"
           }
         }
+      },
+      "emptyState": {
+        "title": "Ihr Bestand beginnt hier",
+        "description": "Beschreiben Sie ein Produkt einmal: Preise, Kaution und Bestand. Es wird in Ihrem Shop und bei jeder Buchung angeboten."
       }
     },
     "inventory": {
@@ -3085,7 +3093,14 @@
         "planning": "Planning"
       },
       "displayCards": "Kartenansicht",
-      "displayTable": "Tabellenansicht"
+      "displayTable": "Tabellenansicht",
+      "emptyState": {
+        "title": "Ihre erste Buchung ist unterwegs",
+        "description": "Online oder an der Theke: Jede Vermietung landet hier, mit Zahlung und Kaution.",
+        "tip": "Legen Sie Ihre Produkte einmal im Katalog an: Sie werden bei jeder Buchung vorgeschlagen.",
+        "tipLink": "Produkt hinzufügen",
+        "viewStore": "Meinen Shop ansehen"
+      }
     },
     "customers": {
       "title": "Kunden",
@@ -3205,6 +3220,10 @@
       "quickCreate": {
         "title": "Neuer Kunde",
         "description": "Der Kunde wird erstellt und automatisch ausgewählt."
+      },
+      "emptyState": {
+        "title": "Hier finden Ihre künftigen Stammkunden ihren Platz",
+        "description": "Jede Person, die bei Ihnen bucht, erhält ein Profil: Kontaktdaten, Mietverlauf und Kautionen. Es wird bei der ersten Buchung automatisch angelegt."
       }
     },
     "calendar": {

@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, type ComponentProps } from "react";
+import { createContext, useContext, useId, useState, type ComponentProps } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import {
   PreviewCard,
@@ -8,7 +8,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuBadge,
   SidebarMenuButton,
@@ -16,7 +15,6 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarSeparator,
   useSidebar,
 } from "@louez/ui";
 import {
@@ -29,7 +27,9 @@ import {
   SettingsGlassIcon,
   TeamGlassIcon,
 } from "@louez/ui/icons/glass";
+import { ChevronDownIcon } from "@louez/ui/icons";
 import { SidebarLink } from "@/components/dashboard/sidebar-link";
+import { useHoverIntent } from "@/hooks/use-hover-intent";
 import { cn } from "@/lib/utils";
 
 type LocalNavigation = {
@@ -123,11 +123,6 @@ interface NavigationItem {
   alert?: boolean;
 }
 
-interface NavigationSection {
-  labelKey?: string;
-  items: NavigationItem[];
-}
-
 /**
  * The AI wallet only exists when the operator sells credits, so the assistant
  * section is assembled per render rather than declared once: without credits it
@@ -163,19 +158,23 @@ const buildAiAssistantItem = (
   };
 };
 
-const buildNavigationSections = (
+/**
+ * The nav is one flat, evenly spaced list. It used to be split into titled
+ * sections ("Catalogue", "Gestion"), then into untitled runs with air between
+ * them — but every row already names its page, so the grouping only added
+ * height and an uneven rhythm. The order still follows the old sections.
+ */
+const buildNavigationItems = (
   aiCredits: { low: boolean; credits: number | null; hasUsedCredits: boolean } | null,
-): NavigationSection[] => [
-  { items: [...mainNavigation, buildAiAssistantItem(aiCredits)] },
-  { labelKey: "catalog", items: catalogNavigation },
-  // No label: the one row already names the section.
+): NavigationItem[] => [
+  ...mainNavigation,
+  buildAiAssistantItem(aiCredits),
+  ...catalogNavigation,
   // Purchase invoices (reception) are reachable from Settings → Facturation
-  // électronique while e-invoicing adoption is low; promote back to a sidebar
-  // group once merchants actually live in that inbox.
-  // No label: the group would only ever read "Analyses / Analyses", the entry
-  // repeating the heading above it. The separator already opens the section.
-  { items: analyticsNavigation },
-  { labelKey: "manage", items: managementNavigation },
+  // électronique while e-invoicing adoption is low; add them back to the nav
+  // once merchants actually live in that inbox.
+  ...analyticsNavigation,
+  ...managementNavigation,
 ];
 
 const isNavigationItemActive = (pathname: string, href: string) => {
@@ -239,6 +238,17 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
   const { state, isMobile } = useSidebar();
   // The mobile sheet is never "collapsed" — it just isn't a rail.
   const collapsedToRail = state === "collapsed" && !isMobile;
+  const hasSubItems = Boolean(item.items?.length);
+  // A section shows its pages while you are inside it. Outside, they unfold
+  // on a deliberate hover (see `useHoverIntent`) or with the chevron, which
+  // pins the choice — the row itself still opens the section's first page.
+  // A pinned choice is dropped when the section becomes (or stops being)
+  // yours, so the tree follows the page.
+  const [unfolded, setUnfolded] = useState<{ value: boolean; whenActive: boolean } | null>(null);
+  const pinned = unfolded !== null && unfolded.whenActive === active ? unfolded.value : null;
+  const hoverIntent = useHoverIntent(hasSubItems && !collapsedToRail && !active && pinned === null);
+  const expanded = pinned ?? (active || hoverIntent.hovered);
+  const subListId = useId();
 
   const button = (
     <SidebarMenuButton
@@ -255,7 +265,10 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
   );
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem
+      onPointerEnter={hoverIntent.onPointerEnter}
+      onPointerLeave={hoverIntent.onPointerLeave}
+    >
       {item.items?.length && collapsedToRail ? (
         /* The rail hides the sub-entries, which would leave every page but the
            first one of a section unreachable. The flyout is the rail's version
@@ -286,12 +299,42 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
       ) : (
         button
       )}
+      {hasSubItems && (
+        /* Says "this tab holds several pages" now that they no longer unfold
+           on hover, and unfolds them on a click. It sits over the row's right
+           edge like a menu action; the rail has the flyout instead. */
+        <button
+          type="button"
+          /* Marks the row as carrying an action, which reserves its right edge
+             so a long label truncates before the chevron. */
+          data-sidebar="menu-action"
+          aria-expanded={expanded}
+          aria-controls={subListId}
+          aria-label={tSidebar("sectionPages", { section: t(item.key) })}
+          onClick={() => setUnfolded({ value: !expanded, whenActive: active })}
+          className="text-sidebar-primary/70 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent focus-visible:ring-sidebar-ring ease-lagon absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-md transition-colors duration-150 outline-hidden group-data-[collapsible=icon]:hidden focus-visible:ring-2"
+        >
+          <ChevronDownIcon
+            aria-hidden
+            className={cn(
+              "ease-lagon size-4 transition-transform duration-200 motion-reduce:transition-none",
+              expanded && "rotate-180",
+            )}
+          />
+        </button>
+      )}
       {item.alert && (
         /* The vertical offset has to be restated under the same
            `peer-data-[size]` variant as the default it replaces, otherwise the
-           more specific default wins and the dot rides high on these `h-10`
-           buttons. */
-        <SidebarMenuBadge className="bg-badge-warning-foreground peer-data-[size=default]/menu-button:top-4 size-2 min-w-0 rounded-full p-0">
+           more specific default wins and the dot rides high on these `h-9`
+           buttons. A section also carries its chevron at the right edge, so
+           its dot steps left of it. */
+        <SidebarMenuBadge
+          className={cn(
+            "bg-badge-warning-foreground peer-data-[size=default]/menu-button:top-3.5 size-2 min-w-0 rounded-full p-0",
+            hasSubItems && "right-9",
+          )}
+        >
           <span className="sr-only">{tSidebar("aiCreditsLow")}</span>
         </SidebarMenuBadge>
       )}
@@ -305,24 +348,26 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
       )}
       {item.items && (
         /* Sub-entries are noise until the section is yours: they show once you
-           are inside it, and on hover before that, so the section still
-           advertises what it holds. `0fr`/`1fr` on a grid row is what makes an
-           auto height animatable — the inner wrapper clips the overflow while
-           the row closes. The hover group is the whole menu item, so moving the
-           pointer down onto the revealed entries keeps them open. */
+           are inside it, or once its chevron unfolds them. They no longer open
+           on hover: the reveal pushed the rows below down under the pointer,
+           which then had to chase the entry it was aiming at. `0fr`/`1fr` on a
+           grid row is what makes an auto height animatable — the inner wrapper
+           clips the overflow while it closes. */
         <div
+          id={subListId}
           className={cn(
-            "grid transition-[grid-template-rows] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[collapsible=icon]:hidden motion-reduce:transition-none",
-            active
+            "grid transition-[grid-template-rows] duration-200 ease-lagon group-data-[collapsible=icon]:hidden motion-reduce:transition-none",
+            expanded
               ? "grid-rows-[1fr]"
-              : /* Tailwind gates `hover:` behind `@media (hover: hover)`, so on
-                   touch the reveal never fires — the mobile drawer keeps the
-                   entries open. It is a transient sheet you open to see the
-                   whole map, and two extra rows cost nothing there. */
-                "grid-rows-[0fr] group-focus-within/menu-item:grid-rows-[1fr] group-hover/menu-item:grid-rows-[1fr] in-data-[mobile=true]:grid-rows-[1fr]",
+              : /* The mobile drawer keeps the entries open: it is a transient
+                   sheet you open to see the whole map, and two extra rows cost
+                   nothing there. */
+                "grid-rows-[0fr] in-data-[mobile=true]:grid-rows-[1fr]",
           )}
         >
-          <div className="overflow-hidden">
+          {/* Folded, the entries stay out of the tab order: `inert` keeps
+              keyboard focus from landing on links nobody can see. */}
+          <div className="overflow-hidden" inert={!expanded || undefined}>
             {/* The guide line is pulled under the centre of the parent icon (8px
                 of button padding + half a 20px icon) so the sub-entries hang off
                 it, and their labels land on the parent label's baseline column. */}
@@ -362,31 +407,6 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
   );
 };
 
-const DashboardNavSection = ({
-  items,
-  labelKey,
-  pathname,
-}: {
-  items: NavigationItem[];
-  labelKey?: string;
-  pathname: string;
-}) => {
-  const t = useTranslations("dashboard.sidebar");
-
-  return (
-    <SidebarGroup>
-      {labelKey && <SidebarGroupLabel>{t(labelKey)}</SidebarGroupLabel>}
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {items.map((item) => (
-            <DashboardNavItem key={item.href} item={item} pathname={pathname} />
-          ))}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-};
-
 export const DashboardNavigation = ({
   pathname,
   aiCredits = null,
@@ -399,16 +419,15 @@ export const DashboardNavigation = ({
   return (
     <NavigationContext value={localNavigation}>
       <SidebarContent className="max-md:px-2 ">
-        {buildNavigationSections(aiCredits).map((section, index) => (
-          <div key={section.labelKey ?? `section-${index}`} className="w-full">
-            {index > 0 && <SidebarSeparator />}
-            <DashboardNavSection
-              items={section.items}
-              labelKey={section.labelKey}
-              pathname={pathname}
-            />
-          </div>
-        ))}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {buildNavigationItems(aiCredits).map((item) => (
+                <DashboardNavItem key={item.href} item={item} pathname={pathname} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
     </NavigationContext>
   );

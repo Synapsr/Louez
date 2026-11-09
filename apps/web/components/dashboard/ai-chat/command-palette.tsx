@@ -537,7 +537,9 @@ export const DashboardCommandPalette = ({
             <Button
               type="button"
               variant="outline"
-              className="bg-background/70 text-muted-foreground hidden h-9 min-w-48 justify-start gap-2 hover:bg-background hover:text-foreground lg:flex"
+              /* Lagon: a soft filled field like the moodboard's search, not
+                 an outlined button — and regular weight, it is a placeholder. */
+              className="bg-background/70 text-muted-foreground hover:bg-background hover:text-foreground in-[.theme-lagon]:bg-muted in-[.theme-lagon]:hover:bg-accent hidden h-9 min-w-48 justify-start gap-2 in-[.theme-lagon]:h-10 in-[.theme-lagon]:min-w-64 in-[.theme-lagon]:font-medium in-[.theme-lagon]:shadow-none in-[.theme-lagon]:hover:shadow-none lg:flex"
             />
           }
         >

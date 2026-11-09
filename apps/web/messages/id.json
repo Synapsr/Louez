@@ -525,7 +525,10 @@
       "reservationLimitReached": "Batas tercapai",
       "help": "Bantuan",
       "feedback": "Bantuan dan umpan balik",
-      "aiCreditsLow": "Saldo kredit hampir habis"
+      "aiCreditsLow": "Saldo kredit hampir habis",
+      "sectionPages": "Halaman {section}",
+      "copyStoreLink": "Salin tautan toko",
+      "storeLinkCopied": "Tautan disalin"
     },
     "shortcuts": {
       "actions": {
@@ -1000,7 +1003,8 @@
         "cta": {
           "addFirstProduct": "Tambahkan produk pertama saya",
           "handleRequests": "Menangani permintaan ({count})",
-          "addReservation": "Reservasi baru"
+          "addReservation": "Reservasi baru",
+          "openSetup": "Lihat langkah awal"
         }
       },
       "alert": {
@@ -1983,6 +1987,10 @@
             "updated": "Unit diperbarui"
           }
         }
+      },
+      "emptyState": {
+        "title": "Inventaris Anda dimulai di sini",
+        "description": "Jelaskan produk sekali saja: tarif, deposit, dan stok. Produk akan ditawarkan di toko Anda dan di setiap pemesanan."
       }
     },
     "inventory": {
@@ -3085,7 +3093,14 @@
         "planning": "Perencanaan"
       },
       "displayCards": "Tampilan kartu",
-      "displayTable": "Tampilan tabel"
+      "displayTable": "Tampilan tabel",
+      "emptyState": {
+        "title": "Pemesanan pertama Anda segera tiba",
+        "description": "Online atau di konter, setiap penyewaan akan muncul di sini beserta pembayaran dan depositnya.",
+        "tip": "Tambahkan produk ke katalog sekali saja: produk akan ditawarkan di setiap pemesanan.",
+        "tipLink": "Tambah produk",
+        "viewStore": "Lihat toko saya"
+      }
     },
     "customers": {
       "title": "Pelanggan",
@@ -3205,6 +3220,10 @@
       "quickCreate": {
         "title": "Pelanggan baru",
         "description": "Pelanggan akan dibuat dan dipilih secara otomatis."
+      },
+      "emptyState": {
+        "title": "Pelanggan setia Anda nanti akan ada di sini",
+        "description": "Setiap orang yang memesan di tempat Anda memiliki profil: kontak, riwayat sewa, dan deposit. Profil dibuat otomatis pada pemesanan pertama."
       }
     },
     "calendar": {
