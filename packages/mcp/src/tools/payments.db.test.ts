@@ -57,6 +57,7 @@ describe("MCP payment tools (database)", { skip: skipWithoutTestDatabase() }, ()
       storeName: "MCP payments",
       permissions,
       // What the tools write; their confirmation is in confirmation.db.test.ts.
+      // Money always asks, even with confirmations off: `call` confirms.
       confirmSensitive: false,
     });
 
@@ -120,8 +121,19 @@ describe("MCP payment tools (database)", { skip: skipWithoutTestDatabase() }, ()
     return id;
   }
 
+  /** Calls a tool, then again with the confirmation token it answers with. */
   async function call(name: string, args: Record<string, unknown>) {
-    const result = await client.callTool({ name, arguments: args });
+    const preview = await client.callTool({ name, arguments: args });
+    const error = (
+      preview.structuredContent as
+        | { error?: { code?: string; details?: { confirmationToken?: string } } }
+        | undefined
+    )?.error;
+    assert.equal(error?.code, "CONFIRMATION_REQUIRED", JSON.stringify(preview.content));
+    const result = await client.callTool({
+      name,
+      arguments: { ...args, confirmationToken: error?.details?.confirmationToken },
+    });
     assert.notEqual(result.isError, true, JSON.stringify(result.content));
   }
 

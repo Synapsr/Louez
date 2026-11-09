@@ -48,6 +48,12 @@ const BUNDLE_OF_DOMAIN: Record<ApiDomain, McpBundle> = {
 export interface LegacySensitive<Args> {
   kind: SensitiveKind;
   /**
+   * Ask even a connection whose confirmations are turned off
+   * (`requireConfirmation`'s `always`): the tool records, gives back or
+   * erases money, which an agent never does on its own say.
+   */
+  always?: boolean;
+  /**
    * What the call will do, on which record, and the business state the
    * preview shows (status, amounts): a token stops working once that state
    * changes. Null when there is nothing to confirm: the record is not there
@@ -137,8 +143,9 @@ export function legacyTool<Shape extends z.ZodRawShape>(
         // handler writes in, so a change landing between this check and the
         // write is not caught. A procedure asks under its domain's lock
         // instead (docs/architecture/api-and-agents.md, Hand-written tools).
-        // A connection that runs directly needs no preview: skip its reads.
-        if (sensitive && ctx.actor.credential.confirmSensitive) {
+        // A connection that runs directly needs no preview, unless the tool
+        // always asks: skip its reads.
+        if (sensitive && (ctx.actor.credential.confirmSensitive || sensitive.always)) {
           const confirmation = await sensitive.confirm(parsed.data);
           if (confirmation) {
             const headers = new Headers();
@@ -147,6 +154,7 @@ export function legacyTool<Shape extends z.ZodRawShape>(
             }
             await requireConfirmation({
               actor: ctx.actor,
+              always: sensitive.always,
               headers,
               procedure: `mcp.${name}`,
               input: parsed.data,

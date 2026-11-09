@@ -166,6 +166,7 @@ export function registerPaymentTools(
     {
       sensitive: {
         kind: 'money',
+        always: true,
         confirm: async ({ reservationId, type, amount, method }) => {
           const reservation = await db.query.reservations.findFirst({
             where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
@@ -224,6 +225,7 @@ export function registerPaymentTools(
     {
       sensitive: {
         kind: 'destructive',
+        always: true,
         confirm: async ({ paymentId }) => {
           const payment = await db.query.payments.findFirst({
             where: eq(payments.id, paymentId),
@@ -319,6 +321,7 @@ export function registerPaymentTools(
     {
       sensitive: {
         kind: 'money',
+        always: true,
         confirm: async ({ reservationId, amount, method }) => {
           const reservation = await db.query.reservations.findFirst({
             where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
