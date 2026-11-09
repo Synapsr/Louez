@@ -128,24 +128,21 @@ const UNIT_ORDER = {
 };
 
 /**
- * A product as an answer gives it: with its links, and its units a page at a
- * time for an agent (`answerPage`: the first `ANSWER_PAGE_MCP_DEFAULT` on
- * MCP, products_list_units for the rest), every unit for the dashboard and
- * the API.
+ * A product as an agent's answer shows it (`meta.mcp.answer`): its first
+ * `ANSWER_PAGE_MCP_DEFAULT` units, `unitsTotal`, and `unitsNextCursor`, the
+ * cursor products_list_units reads on from. Applied by the MCP bridge after
+ * the call, a replay included: the procedure returns, and an idempotency key
+ * stores, the whole product, which the dashboard and the API get.
  */
-const productAnswer = (context: ProductContext, product: Product) => {
-  const units = answerPage(
-    product.units,
-    UNIT_ORDER,
-    {},
-    { transport: context.actor.transport, tool: "products_get" },
-  );
-  return withLinks(context, {
-    ...product,
+const pageProductUnits = (answer: Record<string, unknown>): Record<string, unknown> => {
+  const all = (answer.units ?? []) as Array<{ identifier: string; id: string }>;
+  const units = answerPage(all, UNIT_ORDER, {}, { transport: "mcp", tool: "products_get" });
+  return {
+    ...answer,
     units: units.items,
-    unitsTotal: product.units.length,
+    unitsTotal: all.length,
     unitsNextCursor: units.nextCursor,
-  });
+  };
 };
 
 /** A page of products, each with its links. */
@@ -192,13 +189,14 @@ const get = storeProcedure
       title: "Get Product",
       description: `Get one product of the store with everything its form holds: pricing (base rate, tiers), deposit, taxes, promotion, stock and units, variants, accessories, categories, images. The answer can be edited and sent back to products_update. ${UNITS_PAGE_HELP} ${LINKS_HELP}`,
       bundle: "catalog",
+      answer: pageProductUnits,
     },
   })
   .route({ method: "GET", path: "/products/{id}" })
   .input(getProductInput)
   .output(productOutput)
   .handler(async ({ context, input }) =>
-    productAnswer(context, await getProduct(productActor(context), input.id)),
+    withLinks(context, await getProduct(productActor(context), input.id)),
   );
 
 const listUnits = storeProcedure
@@ -235,6 +233,7 @@ const create = storeProcedure
       title: "Create Product",
       description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} \`images\` takes the urls finished image uploads return (products_upload_image, or products_complete_image_upload). Returns the product as products_get does, with its \`links\`, the URLs to give the user to see it. An idempotencyKey makes a retry safe.`,
       bundle: "catalog",
+      answer: pageProductUnits,
       effect: "additive",
       reach: "public",
     },
@@ -245,7 +244,7 @@ const create = storeProcedure
   .input(createProductInput)
   .output(productOutput)
   .handler(async ({ context, input }) =>
-    productAnswer(context, await createProduct(productActor(context), input)),
+    withLinks(context, await createProduct(productActor(context), input)),
   );
 
 const update = storeProcedure
@@ -258,6 +257,7 @@ const update = storeProcedure
       title: "Update Product",
       description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, categoryIds, images) replaces the stored one; \`units\` updates the units it holds and adds new ones, the others stay, and \`removeUnitIds\` deletes units. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview. Returns the product. ${LINKS_HELP}`,
       bundle: "catalog",
+      answer: pageProductUnits,
       effect: "overwrite",
       reach: "public",
       annotations: { idempotentHint: true },
@@ -268,7 +268,7 @@ const update = storeProcedure
   .input(updateProductInput)
   .output(productOutput)
   .handler(async ({ context, input, path }) =>
-    productAnswer(
+    withLinks(
       context,
       await updateProduct(productActor(context), input, {
         // Under the update's lock: what the preview shows is what happens. A
@@ -393,6 +393,7 @@ const duplicate = storeProcedure
       description:
         'Copy a product as a draft named "<name> (copy)", with its pricing, tiers, deposit, taxes, images and categories. Units are not copied: the copy counts the same stock without tracking units. Returns the new product, with its `links` (a draft has its dashboard page only).',
       bundle: "catalog",
+      answer: pageProductUnits,
       effect: "additive",
     },
   })
@@ -400,7 +401,7 @@ const duplicate = storeProcedure
   .input(duplicateProductInput)
   .output(productOutput)
   .handler(async ({ context, input }) =>
-    productAnswer(context, await duplicateProduct(productActor(context), input.id)),
+    withLinks(context, await duplicateProduct(productActor(context), input.id)),
   );
 
 const reorder = storeProcedure
@@ -574,6 +575,7 @@ const useImageVersionProcedure = storeProcedure
       title: "Use Product Photo Version",
       description: `Put one of a photo's versions in use on the product: its original, a crop, an AI enhancement or a background removal, as imageVersions of products_get lists them (or a job's source.versionId). It takes the photo's place in \`images\`, on the product and its online page. No version is deleted, so it also undoes an AI enhancement or a background removal, and can be reversed the same way. Takes the product's id and the version's id. Returns the product. ${LINKS_HELP}`,
       bundle: "catalog",
+      answer: pageProductUnits,
       effect: "overwrite",
       reach: "public",
       annotations: { idempotentHint: true },
@@ -593,7 +595,7 @@ const useImageVersionProcedure = storeProcedure
         productName: name,
       });
     }
-    return productAnswer(context, await getProduct(actor, input.id));
+    return withLinks(context, await getProduct(actor, input.id));
   });
 
 // --- Activity and timeline ---------------------------------------------------

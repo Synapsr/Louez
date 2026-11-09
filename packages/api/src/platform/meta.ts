@@ -114,6 +114,13 @@ export interface McpExposure {
    * (`_meta["openai/profile"]`): read-only, no argument, a stable `id`.
    */
   profile?: true;
+  /**
+   * How an agent's answer shows the output: a page of a long list, such as a
+   * product's units (`answerPage`). The MCP bridge applies it after the
+   * call, a replay included, so the procedure returns, and an idempotency
+   * key stores, the whole output, which every other transport gets.
+   */
+  answer?: (output: Record<string, unknown>) => Record<string, unknown>;
 }
 
 /**

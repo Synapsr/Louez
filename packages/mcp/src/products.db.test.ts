@@ -478,10 +478,43 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const viaOpenApi = await openApi("GET", `/products/${id}`, null, { authorization });
     const product = (await viaOpenApi.json()) as Json;
     assert.equal((product.units as Json[]).length, 150);
-    assert.equal(product.unitsTotal, 150);
-    assert.equal(product.unitsNextCursor, null);
+    assert.equal(product.unitsTotal, undefined, "the page fields are an agent's");
     const units = await openApi("GET", `/products/${id}/units`, null, { authorization });
     assert.equal(((await units.json()) as { items: Json[] }).items.length, 150);
+  });
+
+  test("a write stored over MCP replays whole over OpenAPI, and paged over MCP", async () => {
+    const authorization = await key();
+    const body = {
+      name: "Fleet of 101",
+      price: "15",
+      trackUnits: true,
+      units: Array.from({ length: 101 }, (_, index) => ({
+        identifier: `F-${String(index).padStart(3, "0")}`,
+      })),
+    };
+    const idempotencyKey = "pt-mcp-then-openapi";
+    const viaMcp = output(
+      await mcpCall(authorization, "products_create", { ...body, idempotencyKey }),
+    );
+    assert.equal((viaMcp.units as Json[]).length, 100);
+    assert.equal(viaMcp.unitsTotal, 101);
+
+    // The same key over OpenAPI, with no limit: the whole product, as stored.
+    const replayed = await openApi("POST", "/products", body, {
+      authorization,
+      "idempotency-key": idempotencyKey,
+    });
+    assert.equal(replayed.status, 200, await replayed.clone().text());
+    assert.equal(replayed.headers.get("louez-replayed"), "true");
+    const whole = (await replayed.json()) as Json;
+    assert.equal((whole.units as Json[]).length, 101);
+    assert.equal(whole.id, viaMcp.id);
+
+    // And over MCP again: paged after the replay.
+    const again = await mcpCall(authorization, "products_create", { ...body, idempotencyKey });
+    assert.equal(again._meta?.["io.louez/replayed"], true);
+    assert.equal(((again.structuredContent as Json).units as Json[]).length, 100);
   });
 
   test("a product write stored before the units' page fields replays", async () => {

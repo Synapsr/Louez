@@ -108,7 +108,9 @@ async function callProcedure(
       context: { headers, transport: "mcp", ports: ctx.ports, receipt },
       path: entry.path.split("."),
     });
-    const structuredContent = jsonSafe(output);
+    // How an agent sees it (a page of a long list), after a run or a replay alike.
+    const whole = jsonSafe(output);
+    const structuredContent = entry.meta.mcp.answer ? entry.meta.mcp.answer(whole) : whole;
     const status = receipt.replayed ? "Done earlier (replayed)." : "Done.";
     const operation = receipt.operationId ? ` Operation ${receipt.operationId}.` : "";
     // A record's links on their own line, so a model hands them on as they are.
