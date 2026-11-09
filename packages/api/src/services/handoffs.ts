@@ -24,6 +24,7 @@ import {
 } from "../contracts/handoffs";
 import { isApiError, platformErrors } from "../platform/errors";
 import { sha256 } from "../platform/hash";
+import { logProviderError } from "../platform/redact";
 import { dashboardPageLinks, type DashboardLinkStore } from "../platform/links";
 import type { ApiPorts, UrlsPort } from "../platform/ports";
 import type { ApiDomain } from "../platform/permissions";
@@ -592,7 +593,7 @@ export async function launchHandoff(input: {
       await completeHandoff(row.id, now, attempt);
       return { ok: true, redirect: url };
     } catch (error) {
-      console.error("Stripe dashboard link failed:", error);
+      logProviderError("Stripe dashboard link failed", error);
       return { ok: false, failure: "provider_failed", retryable: true };
     }
   }
@@ -792,7 +793,7 @@ export async function settlePendingCardSetup(
       await completeHandoff(row.id, now, { state: attempt, providerRef });
     }
   } catch (error) {
-    console.error("Billing card check failed:", error);
+    logProviderError("Billing card check failed", error);
   }
   return getHandoffRow(row.storeId, row.id);
 }

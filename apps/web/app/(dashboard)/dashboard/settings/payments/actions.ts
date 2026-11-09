@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { isApiError } from '@louez/api/platform/errors'
+import { logProviderError } from '@louez/api/platform/redact'
 import { createDashboardUrl } from '@louez/api/adapters/stripe-connect'
 import {
   requireConnectClient,
@@ -82,7 +83,7 @@ export async function getStripeDashboardUrl(): Promise<{
     const url = await createDashboardUrl(requireConnectClient(apiPorts), store.stripeAccountId)
     return { url }
   } catch (error) {
-    console.error('Stripe dashboard link error:', error)
+    logProviderError('Stripe dashboard link error', error)
     return { error: 'errors.stripe.dashboardLinkFailed' }
   }
 }

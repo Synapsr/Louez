@@ -1,18 +1,16 @@
+import { initLogger, type RedactConfig } from 'evlog';
 import { createFsDrain } from 'evlog/fs';
 import { createEvlog } from 'evlog/next';
 import { createInstrumentation } from 'evlog/next/instrumentation';
 
-import { redactLogValue } from '@/lib/handoffs/handoff-privacy';
+import { HANDOFF_SECRET_PATTERNS, REDACTED } from '@louez/api/platform/redact';
 
-const fsDrain = createFsDrain({
+const drain = createFsDrain({
   dir: '.evlog/logs',
   maxFiles: 14,
   maxSizePerFile: 10 * 1024 * 1024,
   pretty: false,
 });
-
-/** Every event is written without the secrets of a handoff's URL. */
-const drain: typeof fsDrain = (ctx) => fsDrain(redactLogValue(ctx));
 
 const evlogOptions = {
   service: 'louez-web',
@@ -22,21 +20,36 @@ const evlogOptions = {
   drain,
 };
 
+/**
+ * Applied to every event before it is printed or drained: a handoff's
+ * secrets (packages/api platform/redact.ts), and in production evlog's own
+ * personal-data maskers, as without this option.
+ */
+export const evlogRedact: RedactConfig = {
+  patterns: [...HANDOFF_SECRET_PATTERNS],
+  replacement: REDACTED,
+  ...(process.env.NODE_ENV === 'production' ? {} : { builtins: false }),
+};
+
 export const { withEvlog, useLogger, log, createError, createEvlogError } =
   createEvlog(evlogOptions);
 
 const instrumentation = createInstrumentation(evlogOptions);
 
-export const { register } = instrumentation;
+export const { onRequestError } = instrumentation;
 
 /**
- * Next.js's request errors, logged with the path and the error redacted: the
- * console line is printed before the drain sees it.
+ * Sets the logger up once per server. The instrumentation's own setup locks
+ * the logger, so request handlers never set it up again without the
+ * redaction, but it takes no `redact` option: the full configuration is
+ * applied right after it.
  */
-export const onRequestError: typeof instrumentation.onRequestError = (error, request, context) => {
-  const redacted = Object.assign(new Error(redactLogValue(error.message)), {
-    digest: error.digest,
-    stack: error.stack === undefined ? undefined : redactLogValue(error.stack),
+export function register() {
+  instrumentation.register();
+  initLogger({
+    env: { service: evlogOptions.service },
+    sampling: evlogOptions.sampling,
+    drain: evlogOptions.drain,
+    redact: evlogRedact,
   });
-  instrumentation.onRequestError(redacted, { ...request, path: redactLogValue(request.path) }, context);
-};
+}

@@ -9,6 +9,7 @@ import {
   type StripeConnectClient,
 } from "../adapters/stripe-connect";
 import { apiError, isApiError } from "../platform/errors";
+import { logProviderError } from "../platform/redact";
 import type { ApiPorts, UrlsPort } from "../platform/ports";
 
 /**
@@ -160,7 +161,7 @@ export async function startConnectOnboarding(input: {
     return { url, accountId };
   } catch (error) {
     if (isConnectError(error)) throw error;
-    console.error("Stripe onboarding failed:", error);
+    logProviderError("Stripe onboarding failed", error);
     throw stripeConnectErrors.unavailable("errors.stripe.onboardingFailed");
   }
 }
@@ -180,7 +181,7 @@ export async function syncConnectStatus(input: {
   try {
     status = await getAccountStatus(input.client, input.accountId);
   } catch (error) {
-    console.error("Stripe status sync failed:", error);
+    logProviderError("Stripe status sync failed", error);
     throw stripeConnectErrors.unavailable("errors.stripe.syncFailed");
   }
   await writeConnectColumns(input.storeId, columnsOf(status));
