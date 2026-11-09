@@ -461,6 +461,7 @@ export function buildLaunchChecklist(
         title: "Logo and brand colour",
         why: "The storefront shows the store's logo and colour.",
         tools: [
+          "online_store_upload_image",
           "online_store_create_image_upload",
           "online_store_complete_image_upload",
           "online_store_update_appearance",

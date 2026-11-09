@@ -162,7 +162,7 @@ const productWriteShape = {
     .max(PRODUCT_WRITE_LIMITS.images)
     .optional()
     .describe(
-      "Image URLs, first one main. Upload each with products_create_image_upload, then use the url products_complete_image_upload returns.",
+      "Image URLs, first one main. Upload each with products_upload_image, or with products_create_image_upload and products_complete_image_upload, then use the url it returns.",
     ),
   imageHistory: fields.imageHistory.describe(
     "Editing history of each image (crops, AI enhancements), as the dashboard keeps it. Agents leave it out.",
@@ -636,7 +636,7 @@ export const productErrors = {
   imageNotOwned: () =>
     apiError("BAD_REQUEST", "PRODUCT_IMAGE_INVALID", {
       message:
-        "An image URL is not a product image stored for this store. Upload it with products_create_image_upload, then use the url products_complete_image_upload returns.",
+        "An image URL is not a product image stored for this store. Upload it with products_upload_image, or with products_create_image_upload and products_complete_image_upload, then use the url it returns.",
       i18nKey: "errors.invalidData",
     }),
   unitTrackingInUse: () =>

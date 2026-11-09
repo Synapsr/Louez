@@ -54,6 +54,12 @@ export interface McpExposure {
     fixedArgs?: Readonly<Record<string, string | number | boolean>>;
   }>;
   /**
+   * The tool takes a file's bytes in its arguments (base64): its MCP request
+   * may be as large as `INLINE_FILE_REQUEST_MAX_BYTES` (packages/mcp
+   * transports/http.ts), where every other request stops at 4 MiB.
+   */
+  inlineFile?: true;
+  /**
    * false: a former tool that no alias can express (its offset paging), kept
    * as its own procedure for agents set up before. Callable on MCP, never
    * listed, not served on OpenAPI. Removed at the end of the migration (lot 9).

@@ -16,6 +16,7 @@ import {
   completeImageUploadOutput,
   createImageUploadInput,
   createImageUploadOutput,
+  uploadImageInput,
 } from "../../contracts/uploads";
 import { checkConfirmation } from "../../platform/confirmation";
 import { categoryLinks, type LinkStore } from "../../platform/links";
@@ -29,7 +30,7 @@ import {
   reorderCategories,
   updateCategory,
 } from "../../services/categories";
-import { completeImageUpload, createImageUpload } from "../../services/uploads";
+import { completeImageUpload, createImageUpload, uploadImage } from "../../services/uploads";
 
 /**
  * Categories, on every transport: the dashboard (RPC), `/api/v1/categories`
@@ -92,7 +93,7 @@ const create = storeProcedure
     scope: { domain: "categories", level: "write" },
     mcp: {
       name: "categories_create",
-      description: `Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with \`created: false\`. To give it an image, upload one with categories_create_image_upload first and pass the \`url\` that categories_complete_image_upload returns as \`imageUrl\`. ${LINKS_HELP}`,
+      description: `Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with \`created: false\`. To give it an image, upload one first with categories_upload_image (the bytes or a public URL in one call) or categories_create_image_upload and categories_complete_image_upload, and pass the \`url\` it returns as \`imageUrl\`. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "create_category" }],
       annotations: { idempotentHint: true },
@@ -239,6 +240,30 @@ const completeImageUploadProcedure = storeProcedure
     }),
   );
 
+const uploadImageProcedure = storeProcedure
+  .meta({
+    capability: "categories.uploadImage",
+    scope: { domain: "categories", level: "write" },
+    mcp: {
+      name: "categories_upload_image",
+      description:
+        "Upload a category image in one call (JPEG, PNG, GIF or WebP). Send the file's bytes base64 as `contentBase64` (5 MB at most) when you cannot reach the upload URL of categories_create_image_upload, such as an image you made in your own workspace; or a public HTTPS `imageUrl` for Louez to download (5 MB at most). The type is read from the bytes. Returns the image's public `url`: set it as `imageUrl` with categories_create or categories_update.",
+      bundle: "catalog",
+      annotations: { openWorldHint: true },
+      inlineFile: true,
+    },
+  })
+  .route({ method: "POST", path: "/categories/images" })
+  .input(uploadImageInput)
+  .output(completeImageUploadOutput)
+  .handler(({ context, input }) =>
+    uploadImage(context.ports.storage, {
+      storeId: context.actor.storeId,
+      kind: "category",
+      source: input,
+    }),
+  );
+
 export const dashboardCategoriesRouter = {
   list,
   get,
@@ -248,4 +273,5 @@ export const dashboardCategoriesRouter = {
   reorder,
   createImageUpload: createImageUploadProcedure,
   completeImageUpload: completeImageUploadProcedure,
+  uploadImage: uploadImageProcedure,
 };

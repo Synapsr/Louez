@@ -5,6 +5,7 @@ import {
   checkStoreSlugOutput,
   completeStorefrontImageUploadInput,
   createStorefrontImageUploadInput,
+  uploadStorefrontImageInput,
   updateAppearanceInput,
   updateAppearanceOutput,
   updateOnlineStoreOutput,
@@ -22,7 +23,7 @@ import {
   updateStoreSlug,
   type SlugChangePreview,
 } from "../../services/online-store";
-import { completeImageUpload, createImageUpload } from "../../services/uploads";
+import { completeImageUpload, createImageUpload, uploadImage } from "../../services/uploads";
 import { confirmUnderLock } from "./product-context";
 import { settingsActor } from "./settings-context";
 
@@ -108,7 +109,7 @@ const updateAppearanceProcedure = storeProcedure
     mcp: {
       name: "online_store_update_appearance",
       description:
-        "Change how the storefront looks: light or dark theme, brand colour, logos, favicon, the home page's banner photos and their layout. Send only the fields to change; null removes an image. Images must be the store's own uploads: upload each with online_store_create_image_upload and online_store_complete_image_upload, then send the url they return. Returns the look, with the online store editor in `links`: give the user that URL.",
+        "Change how the storefront looks: light or dark theme, brand colour, logos, favicon, the home page's banner photos and their layout. Send only the fields to change; null removes an image. Images must be the store's own uploads: upload each with online_store_upload_image (the bytes or a public URL in one call), or with online_store_create_image_upload and online_store_complete_image_upload, then send the url they return. Returns the look, with the online store editor in `links`: give the user that URL.",
       bundle: "settings",
       annotations: { idempotentHint: true },
     },
@@ -160,6 +161,26 @@ const completeImageUploadProcedure = storeProcedure
     completeImageUpload(context.ports.storage, { storeId: context.actor.storeId, ...input }),
   );
 
+const uploadImageProcedure = storeProcedure
+  .meta({
+    capability: "online_store.uploadImage",
+    scope: WRITE,
+    mcp: {
+      name: "online_store_upload_image",
+      description:
+        "Upload a logo, a favicon (kind logo, 2 MB at most) or a banner photo (kind hero, 5 MB at most) in one call: JPEG, PNG, GIF or WebP. Send the file's bytes base64 as `contentBase64` when you cannot reach the upload URL of online_store_create_image_upload, such as an image you made in your own workspace; or a public HTTPS `imageUrl` for Louez to download. The type is read from the bytes. Returns the image's public `url`: set it with online_store_update_appearance (logoUrl, darkLogoUrl, faviconUrl or heroImages).",
+      bundle: "settings",
+      annotations: { openWorldHint: true },
+      inlineFile: true,
+    },
+  })
+  .route({ method: "POST", path: "/online-store/images" })
+  .input(uploadStorefrontImageInput)
+  .output(completeImageUploadOutput)
+  .handler(({ context, input: { kind, ...source } }) =>
+    uploadImage(context.ports.storage, { storeId: context.actor.storeId, kind, source }),
+  );
+
 // --- The editor --------------------------------------------------------------
 
 /**
@@ -193,4 +214,5 @@ export const dashboardOnlineStoreRouter = {
   updateAppearance: updateAppearanceProcedure,
   createImageUpload: createImageUploadProcedure,
   completeImageUpload: completeImageUploadProcedure,
+  uploadImage: uploadImageProcedure,
 };

@@ -772,12 +772,14 @@ export const capabilities = [
   },
   {
     // The dashboard still sends the bytes through its file route (progress,
-    // same-origin); agents use the two procedures.
+    // same-origin); agents use the two procedures, or send the bytes or a
+    // public URL in one call (uploadImage).
     id: "products.uploadImage",
     sources: [
       route(ROUTE.files, "POST (kind=product)"),
       procedure("products", "createImageUpload"),
       procedure("products", "completeImageUpload"),
+      procedure("products", "uploadImage"),
     ],
     kind: "write",
     plan: { lot: "3" },
@@ -1011,12 +1013,14 @@ export const capabilities = [
   },
   {
     // The dashboard still sends the bytes through its file route (progress,
-    // same-origin); agents use the two procedures.
+    // same-origin); agents use the two procedures, or send the bytes or a
+    // public URL in one call (uploadImage).
     id: "categories.uploadImage",
     sources: [
       route(ROUTE.files, "POST (kind=category)"),
       procedure("categories", "createImageUpload"),
       procedure("categories", "completeImageUpload"),
+      procedure("categories", "uploadImage"),
     ],
     kind: "write",
     plan: { lot: "0c" },
@@ -1447,12 +1451,14 @@ export const capabilities = [
   },
   {
     // The dashboard keeps its upload route, which streams with progress.
+    // Agents also send the bytes or a public URL in one call (uploadImage).
     id: "online_store.uploadImage",
     sources: [
       route(ROUTE.files, "POST (kind=logo)"),
       route(ROUTE.files, "POST (kind=hero)"),
       procedure("onlineStore", "createImageUpload"),
       procedure("onlineStore", "completeImageUpload"),
+      procedure("onlineStore", "uploadImage"),
     ],
     kind: "write",
     plan: { lot: "6" },

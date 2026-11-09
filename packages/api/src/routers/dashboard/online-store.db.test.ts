@@ -15,6 +15,7 @@ import type { BaseContext } from "../../context";
 import type { ApiEvent } from "../../platform/ports";
 
 import { createMemoryStorage } from "../../platform/memory-storage";
+import { createTestImageFetch } from "../../platform/test-image-fetch";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls, TEST_APP_URL } from "../../platform/test-urls";
 
@@ -37,6 +38,10 @@ for (const name of [
   const namedExports: Record<string, unknown> = require(name);
   mock.module(name, { namedExports });
 }
+
+// Image imports by URL go through a fake transport: nothing leaves the process.
+const imageFetch = createTestImageFetch();
+mock.module("@louez/auth/guarded-fetch", { namedExports: imageFetch.namedExports });
 
 // A dashboard session, read from a test header: Better Auth stays out.
 const SESSION_HEADER = "x-test-session-user";
@@ -527,6 +532,96 @@ describe("online store procedures (database)", { skip: skipWithoutTestDatabase()
     await rejects(
       run("completeImageUpload", { kind: "logo", key: logo.key }, other()),
       "UPLOAD_NOT_OWNED",
+    );
+  });
+
+  const base64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
+
+  test("an agent sends a logo in the call and a banner by URL, then sets them with the look", async () => {
+    const key = await apiKey();
+    const logo = await run(
+      "uploadImage",
+      { kind: "logo", contentBase64: `data:image/png;base64,${base64(PNG)}` },
+      key(),
+    );
+    assert.match(logo.key, new RegExp(`^${STORE}/logo/[\\w-]{21}\\.png$`));
+
+    imageFetch.serve({ "https://cdn.example.org/banner.png": () => new Response(PNG) });
+    const hero = await run(
+      "uploadImage",
+      { kind: "hero", imageUrl: "https://cdn.example.org/banner.png" },
+      key(),
+    );
+    assert.match(hero.key, new RegExp(`^${STORE}/logo/`));
+
+    const look = await run(
+      "updateAppearance",
+      { logoUrl: logo.url, darkLogoUrl: logo.url, faviconUrl: logo.url, heroImages: [hero.url] },
+      key(),
+    );
+    assert.equal(look.appearance.logoUrl, logo.url);
+    assert.equal(look.appearance.faviconUrl, logo.url);
+    assert.deepEqual(look.appearance.heroImages, [hero.url]);
+  });
+
+  test("a storefront image is refused past its kind's limit, as another type, or from another place", async () => {
+    const key = await apiKey();
+    const before = storage.objects.size;
+
+    // A logo is 2 MB at most, in the call or by URL.
+    const inline = await rejects(
+      run(
+        "uploadImage",
+        { kind: "logo", contentBase64: "A".repeat(((2 * 1024 * 1024) / 3) * 4 + 4) },
+        key(),
+      ),
+      "UPLOAD_TOO_LARGE",
+    );
+    assert.equal(inline.data.details?.maxSize, 2 * 1024 * 1024);
+    imageFetch.serve({
+      "https://cdn.example.org/big-logo.png": () =>
+        new Response(new Uint8Array(2 * 1024 * 1024 + 1), {
+          headers: { "content-length": String(2 * 1024 * 1024 + 1) },
+        }),
+      "https://cdn.example.org/to-private.png": () =>
+        new Response(null, { status: 302, headers: { location: "https://router.internal/" } }),
+    });
+    await rejects(
+      run("uploadImage", { kind: "logo", imageUrl: "https://cdn.example.org/big-logo.png" }, key()),
+      "UPLOAD_TOO_LARGE",
+    );
+    for (const imageUrl of [
+      "https://192.168.1.1/logo.png",
+      "https://cdn.example.org/to-private.png",
+    ]) {
+      await rejects(
+        run("uploadImage", { kind: "hero", imageUrl }, key()),
+        "UPLOAD_URL_UNREACHABLE",
+      );
+    }
+    await rejects(
+      run(
+        "uploadImage",
+        {
+          kind: "logo",
+          contentBase64: base64(new TextEncoder().encode("GIF89a")),
+          contentType: "image/png",
+        },
+        key(),
+      ),
+      "UPLOAD_CONTENT_INVALID",
+    );
+    assert.equal(storage.objects.size, before, "nothing stored");
+
+    const other = await apiKey({ storeId: OTHER_STORE });
+    const theirs = await run("uploadImage", { kind: "logo", contentBase64: base64(PNG) }, other());
+    assert.ok(theirs.key.startsWith(`${OTHER_STORE}/logo/`));
+    await rejects(run("updateAppearance", { logoUrl: theirs.url }, key()), "IMAGE_NOT_OWNED");
+
+    const readOnly = await apiKey({ permissions: { ...onlineStoreWrite, online_store: "read" } });
+    await rejects(
+      run("uploadImage", { kind: "logo", contentBase64: base64(PNG) }, readOnly()),
+      "PERMISSION_DENIED",
     );
   });
 });

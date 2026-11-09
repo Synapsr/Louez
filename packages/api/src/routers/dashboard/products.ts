@@ -32,6 +32,7 @@ import {
   completeImageUploadOutput,
   createImageUploadInput,
   createImageUploadOutput,
+  uploadImageInput,
 } from "../../contracts/uploads";
 import { productLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
@@ -55,7 +56,7 @@ import {
   updateProduct,
   updateProductStatus,
 } from "../../services/products";
-import { completeImageUpload, createImageUpload } from "../../services/uploads";
+import { completeImageUpload, createImageUpload, uploadImage } from "../../services/uploads";
 import {
   confirmUnderLock,
   productActor,
@@ -194,7 +195,7 @@ const create = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_create",
-      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} Images: upload each with products_create_image_upload and products_complete_image_upload first. Returns the product as products_get does, with its \`links\`: give the user these URLs to see it. Pass an idempotencyKey to retry safely.`,
+      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} Images: upload each first with products_upload_image (the bytes or a public URL in one call), or with products_create_image_upload and products_complete_image_upload. Returns the product as products_get does, with its \`links\`: give the user these URLs to see it. Pass an idempotencyKey to retry safely.`,
       bundle: "catalog",
       aliases: [{ name: "create_product" }],
     },
@@ -422,6 +423,30 @@ const completeImageUploadProcedure = storeProcedure
     }),
   );
 
+const uploadImageProcedure = storeProcedure
+  .meta({
+    capability: "products.uploadImage",
+    scope: { domain: "products", level: "write" },
+    mcp: {
+      name: "products_upload_image",
+      description:
+        "Upload a product image in one call (JPEG, PNG, GIF or WebP). Send the file's bytes base64 as `contentBase64` (5 MB at most) when you cannot reach the upload URL of products_create_image_upload, such as an image you made in your own workspace; or a public HTTPS `imageUrl` for Louez to download (15 MB at most). The type is read from the bytes. Returns the image's public `url`: add it to the product's `images` with products_create or products_update.",
+      bundle: "catalog",
+      annotations: { openWorldHint: true },
+      inlineFile: true,
+    },
+  })
+  .route({ method: "POST", path: "/products/images" })
+  .input(uploadImageInput)
+  .output(completeImageUploadOutput)
+  .handler(({ context, input }) =>
+    uploadImage(context.ports.storage, {
+      storeId: context.actor.storeId,
+      kind: "product",
+      source: input,
+    }),
+  );
+
 // --- Activity and timeline ---------------------------------------------------
 
 const getActivity = storeProcedure
@@ -591,6 +616,7 @@ export const dashboardProductsRouter = {
   reorder,
   createImageUpload: createImageUploadProcedure,
   completeImageUpload: completeImageUploadProcedure,
+  uploadImage: uploadImageProcedure,
   getActivity,
   getReservationTimeline,
   listSeasonalPricings: listSeasonalPricingsProcedure,

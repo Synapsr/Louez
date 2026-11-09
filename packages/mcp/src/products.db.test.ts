@@ -165,7 +165,8 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     const products = exposure.procedures.filter((entry) =>
       entry.path.startsWith("dashboard.products."),
     );
-    assert.equal(products.length, 36);
+    assert.equal(products.length, 37);
+    assert.ok(products.some((entry) => entry.meta.mcp.name === "products_upload_image"));
     assert.deepEqual([...new Set(products.map((entry) => entry.meta.mcp.bundle))], ["catalog"]);
     // Former names: aliases, and list_products as its own unlisted procedure.
     const aliases = [
