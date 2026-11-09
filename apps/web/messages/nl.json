@@ -9601,14 +9601,14 @@
       "assistants": {
         "claude": {
           "step1": "Klik op ‘Toevoegen aan Claude’: Louez is al ingevuld.",
-          "step2": "Controleer het en klik op Toevoegen.",
+          "step2": "Klik op Doorgaan en daarna op Toevoegen.",
           "step3": "Log in bij Louez als Claude daarom vraagt.",
-          "note": "Bij een Claude-teamaccount kan alleen een eigenaar hem toevoegen."
+          "note": "Bij een Claude Team- of Enterprise-account kan alleen een eigenaar hem toevoegen."
         },
         "chatgpt": {
-          "step1": "Open de <link>plug-ins van ChatGPT</link>, dan + → Aangepaste server toevoegen.",
-          "step2": "Noem hem Louez en plak het adres.",
-          "step3": "Klik op Maken en log in bij Louez.",
+          "step1": "Open de <link>Plug-ins van ChatGPT</link>, dan + → Aangepaste MCP-server toevoegen.",
+          "step2": "Noem hem Louez en plak het adres bij Server-URL.",
+          "step3": "Accepteer de waarschuwing, klik op Maken als plug-in en log in bij Louez.",
           "note": "Met ChatGPT Business, Enterprise of Edu, op de website. In een teamwerkruimte vraagt u een beheerder om hem toe te voegen. Met ChatGPT Pro kan de assistent alleen meekijken."
         },
         "grok": {
@@ -9618,7 +9618,7 @@
           "note": "Voor alle Grok-accounts. In een bedrijf voegt een beheerder hem eerst toe."
         },
         "mistral": {
-          "step1": "Open in <link>Vibe</link> Connectors, dan Connector toevoegen → Aangepast.",
+          "step1": "Open in <link>Vibe</link>, in de Work-modus, Connectors, dan + Add Connector → Custom MCP Connector.",
           "step2": "Noem hem Louez en plak het adres.",
           "step3": "Klik op Verbinden en log in bij Louez.",
           "note": "Vroeger Le Chat. Bij een teamaccount voegt een beheerder hem toe."

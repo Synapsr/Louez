@@ -9601,14 +9601,14 @@
       "assistants": {
         "claude": {
           "step1": "‘Claude에 추가’를 클릭하세요. Louez가 이미 입력되어 있습니다.",
-          "step2": "확인한 뒤 ‘추가’를 클릭하세요.",
+          "step2": "‘계속’을 클릭한 뒤 ‘추가’를 클릭하세요.",
           "step3": "Claude가 요청하면 Louez에 로그인하세요.",
-          "note": "Claude 팀 계정에서는 소유자만 추가할 수 있습니다."
+          "note": "Claude Team 또는 Enterprise 계정에서는 소유자만 추가할 수 있습니다."
         },
         "chatgpt": {
-          "step1": "<link>ChatGPT 플러그인</link>을 열고 + → ‘사용자 지정 서버 추가’를 선택하세요.",
-          "step2": "이름을 Louez로 하고 주소를 붙여 넣으세요.",
-          "step3": "‘만들기’를 클릭한 뒤 Louez에 로그인하세요.",
+          "step1": "<link>ChatGPT 플러그인</link>을 열고 + → ‘사용자 지정 MCP 서버 추가’를 선택하세요.",
+          "step2": "이름을 Louez로 하고 ‘서버 URL’에 주소를 붙여 넣으세요.",
+          "step3": "경고를 수락하고 ‘플러그인으로 만들기’를 클릭한 뒤 Louez에 로그인하세요.",
           "note": "ChatGPT Business, Enterprise 또는 Edu의 웹사이트에서 가능합니다. 팀 워크스페이스에서는 관리자에게 추가를 요청하세요. ChatGPT Pro에서는 조회만 할 수 있습니다."
         },
         "grok": {
@@ -9618,7 +9618,7 @@
           "note": "모든 Grok 계정에서 사용할 수 있습니다. 회사에서는 관리자가 먼저 추가합니다."
         },
         "mistral": {
-          "step1": "<link>Vibe</link>에서 ‘커넥터’를 열고 ‘커넥터 추가’ → ‘사용자 지정’을 선택하세요.",
+          "step1": "<link>Vibe</link>의 Work 모드에서 ‘Connectors’를 열고 ‘+ Add Connector’ → ‘Custom MCP Connector’를 선택하세요.",
           "step2": "이름을 Louez로 하고 주소를 붙여 넣으세요.",
           "step3": "‘연결’을 클릭한 뒤 Louez에 로그인하세요.",
           "note": "예전 이름은 Le Chat입니다. 팀 계정에서는 관리자가 추가합니다."

@@ -9601,14 +9601,14 @@
       "assistants": {
         "claude": {
           "step1": "Click “Add to Claude”: Louez is already filled in.",
-          "step2": "Check it, then click Add.",
+          "step2": "Click Continue, then Add.",
           "step3": "Sign in to Louez when Claude asks you to.",
-          "note": "On a Claude team account, only an owner can add it."
+          "note": "On a Claude Team or Enterprise account, only an owner can add it."
         },
         "chatgpt": {
-          "step1": "Open <link>ChatGPT's plugins</link>, then + → Add custom server.",
-          "step2": "Name it Louez and paste the address.",
-          "step3": "Click Create, then sign in to Louez.",
+          "step1": "Open <link>ChatGPT's Plugins</link>, then + → Add custom MCP server.",
+          "step2": "Name it Louez and paste the address into Server URL.",
+          "step3": "Accept the warning, click Create as plugin, then sign in to Louez.",
           "note": "With ChatGPT Business, Enterprise or Edu, on the website. In a team workspace, ask an admin to add it. With ChatGPT Pro, the assistant can only look things up."
         },
         "grok": {
@@ -9618,7 +9618,7 @@
           "note": "For every Grok account. In a company, an admin adds it first."
         },
         "mistral": {
-          "step1": "In <link>Vibe</link>, open Connectors, then Add Connector → Custom.",
+          "step1": "In <link>Vibe</link>, in Work mode, open Connectors, then + Add Connector → Custom MCP Connector.",
           "step2": "Name it Louez and paste the address.",
           "step3": "Click Connect, then sign in to Louez.",
           "note": "Formerly Le Chat. On a team account, an admin adds it."

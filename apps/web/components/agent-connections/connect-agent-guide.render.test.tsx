@@ -83,7 +83,7 @@ test("choosing Claude shows the button that opens Claude with Louez filled in, i
   // Claude takes the address from the link: no field to copy it from.
   assert.doesNotMatch(html, new RegExp(`>${MCP_URL}</code>`));
   assert.equal(html.match(/<li>/g)?.length, 3);
-  assert.match(html, /Sur un compte Claude d’équipe/);
+  assert.match(html, /Sur un compte Claude Team ou Enterprise/);
   assert.match(html, /Ensuite, Louez vous demandera/);
 });
 

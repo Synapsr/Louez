@@ -9601,14 +9601,14 @@
       "assistants": {
         "claude": {
           "step1": "Klicken Sie auf „Zu Claude hinzufügen“: Louez ist schon eingetragen.",
-          "step2": "Prüfen Sie die Angaben und klicken Sie auf Hinzufügen.",
+          "step2": "Klicken Sie auf Weiter, dann auf Hinzufügen.",
           "step3": "Melden Sie sich bei Louez an, wenn Claude Sie dazu auffordert.",
-          "note": "Bei einem Claude-Teamkonto kann nur ein Inhaber es hinzufügen."
+          "note": "Bei einem Claude-Team- oder Enterprise-Konto kann nur ein Inhaber es hinzufügen."
         },
         "chatgpt": {
-          "step1": "Öffnen Sie die <link>Plugins von ChatGPT</link>, dann + → Eigenen Server hinzufügen.",
-          "step2": "Nennen Sie ihn Louez und fügen Sie die Adresse ein.",
-          "step3": "Klicken Sie auf Erstellen und melden Sie sich bei Louez an.",
+          "step1": "Öffnen Sie die <link>Plugins von ChatGPT</link>, dann + → Eigenen MCP-Server hinzufügen.",
+          "step2": "Nennen Sie ihn Louez und fügen Sie die Adresse unter Server-URL ein.",
+          "step3": "Akzeptieren Sie den Hinweis, klicken Sie auf Als Plugin erstellen und melden Sie sich bei Louez an.",
           "note": "Mit ChatGPT Business, Enterprise oder Edu, auf der Website. In einem Team-Arbeitsbereich bitten Sie einen Administrator, ihn hinzuzufügen. Mit ChatGPT Pro kann der Assistent nur nachsehen."
         },
         "grok": {
@@ -9618,7 +9618,7 @@
           "note": "Für alle Grok-Konten. In Unternehmen fügt ihn zuerst ein Administrator hinzu."
         },
         "mistral": {
-          "step1": "Öffnen Sie in <link>Vibe</link> Konnektoren, dann Konnektor hinzufügen → Benutzerdefiniert.",
+          "step1": "Öffnen Sie in <link>Vibe</link> im Work-Modus Connectors, dann + Add Connector → Custom MCP Connector.",
           "step2": "Nennen Sie ihn Louez und fügen Sie die Adresse ein.",
           "step3": "Klicken Sie auf Verbinden und melden Sie sich bei Louez an.",
           "note": "Früher Le Chat. Bei einem Teamkonto fügt ihn ein Administrator hinzu."

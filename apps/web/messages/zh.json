@@ -9601,14 +9601,14 @@
       "assistants": {
         "claude": {
           "step1": "点击“添加到 Claude”：Louez 已经填好。",
-          "step2": "检查无误后点击“添加”。",
+          "step2": "点击“继续”，然后点击“添加”。",
           "step3": "Claude 提示时登录 Louez。",
-          "note": "在 Claude 团队账号中，只有所有者可以添加。"
+          "note": "在 Claude Team 或 Enterprise 账号中，只有所有者可以添加。"
         },
         "chatgpt": {
-          "step1": "打开 <link>ChatGPT 插件</link>，然后点 + →“添加自定义服务器”。",
-          "step2": "命名为 Louez 并粘贴地址。",
-          "step3": "点击“创建”，然后登录 Louez。",
+          "step1": "打开 <link>ChatGPT 插件</link>，然后点 + →“添加自定义 MCP 服务器”。",
+          "step2": "命名为 Louez，并将地址粘贴到“服务器 URL”中。",
+          "step3": "接受警告，点击“作为插件创建”，然后登录 Louez。",
           "note": "适用于 ChatGPT Business、Enterprise 或 Edu 的网页版。在团队工作区中，请让管理员添加。ChatGPT Pro 中助手只能查看。"
         },
         "grok": {
@@ -9618,7 +9618,7 @@
           "note": "所有 Grok 账号都可使用。在企业中，需先由管理员添加。"
         },
         "mistral": {
-          "step1": "在 <link>Vibe</link> 中打开“连接器”，然后点“添加连接器”→“自定义”。",
+          "step1": "在 <link>Vibe</link> 的 Work 模式下打开“Connectors”，然后点“+ Add Connector”→“Custom MCP Connector”。",
           "step2": "命名为 Louez 并粘贴地址。",
           "step3": "点击“连接”，然后登录 Louez。",
           "note": "原名 Le Chat。在团队账号中，由管理员添加。"

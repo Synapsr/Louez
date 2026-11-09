@@ -9601,14 +9601,14 @@
       "assistants": {
         "claude": {
           "step1": "Haz clic en «Añadir a Claude»: Louez ya está rellenado.",
-          "step2": "Revísalo y haz clic en Añadir.",
+          "step2": "Haz clic en Continuar y luego en Añadir.",
           "step3": "Inicia sesión en Louez cuando Claude te lo pida.",
-          "note": "En una cuenta de equipo de Claude, solo un propietario puede añadirlo."
+          "note": "En una cuenta Claude Team o Enterprise, solo un propietario puede añadirlo."
         },
         "chatgpt": {
-          "step1": "Abre los <link>plugins de ChatGPT</link> y luego + → Añadir servidor personalizado.",
-          "step2": "Llámalo Louez y pega la dirección.",
-          "step3": "Haz clic en Crear e inicia sesión en Louez.",
+          "step1": "Abre los <link>Plugins de ChatGPT</link> y luego + → Añadir servidor MCP personalizado.",
+          "step2": "Llámalo Louez y pega la dirección en URL del servidor.",
+          "step3": "Acepta el aviso, haz clic en Crear como plugin e inicia sesión en Louez.",
           "note": "Con ChatGPT Business, Enterprise o Edu, en la web. En un espacio de equipo, pide a un administrador que lo añada. Con ChatGPT Pro, el asistente solo puede consultar."
         },
         "grok": {
@@ -9618,7 +9618,7 @@
           "note": "Para todas las cuentas de Grok. En una empresa, primero lo añade un administrador."
         },
         "mistral": {
-          "step1": "En <link>Vibe</link>, abre Conectores y luego Añadir conector → Personalizado.",
+          "step1": "En <link>Vibe</link>, en modo Work, abre Connectors y luego + Add Connector → Custom MCP Connector.",
           "step2": "Llámalo Louez y pega la dirección.",
           "step3": "Haz clic en Conectar e inicia sesión en Louez.",
           "note": "Antes Le Chat. En una cuenta de equipo, lo añade un administrador."

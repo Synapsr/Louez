@@ -9601,14 +9601,14 @@
       "assistants": {
         "claude": {
           "step1": "「Claude に追加」をクリックします。Louez はすでに入力されています。",
-          "step2": "内容を確認して「追加」をクリックします。",
+          "step2": "「続行」をクリックし、「追加」をクリックします。",
           "step3": "Claude に求められたら Louez にログインします。",
-          "note": "Claude のチームアカウントでは、追加できるのはオーナーだけです。"
+          "note": "Claude の Team または Enterprise アカウントでは、追加できるのはオーナーだけです。"
         },
         "chatgpt": {
-          "step1": "<link>ChatGPT のプラグイン</link>を開き、＋ →「カスタムサーバーを追加」を選びます。",
-          "step2": "名前を Louez にして、アドレスを貼り付けます。",
-          "step3": "「作成」をクリックし、Louez にログインします。",
+          "step1": "<link>ChatGPT のプラグイン</link>を開き、＋ →「カスタム MCP サーバーを追加」を選びます。",
+          "step2": "名前を Louez にして、「サーバー URL」にアドレスを貼り付けます。",
+          "step3": "警告を承認し、「プラグインとして作成」をクリックして、Louez にログインします。",
           "note": "ChatGPT Business、Enterprise、Edu のウェブサイトで利用できます。チームのワークスペースでは、管理者に追加を依頼してください。ChatGPT Pro では閲覧のみです。"
         },
         "grok": {
@@ -9618,7 +9618,7 @@
           "note": "すべての Grok アカウントで利用できます。企業ではまず管理者が追加します。"
         },
         "mistral": {
-          "step1": "<link>Vibe</link> で「コネクタ」を開き、「コネクタを追加」→「カスタム」を選びます。",
+          "step1": "<link>Vibe</link> の Work モードで「Connectors」を開き、「+ Add Connector」→「Custom MCP Connector」を選びます。",
           "step2": "名前を Louez にして、アドレスを貼り付けます。",
           "step3": "「接続」をクリックし、Louez にログインします。",
           "note": "旧 Le Chat です。チームアカウントでは管理者が追加します。"

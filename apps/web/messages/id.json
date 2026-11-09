@@ -9601,14 +9601,14 @@
       "assistants": {
         "claude": {
           "step1": "Klik “Tambahkan ke Claude”: Louez sudah terisi.",
-          "step2": "Periksa, lalu klik Tambahkan.",
+          "step2": "Klik Lanjutkan, lalu Tambahkan.",
           "step3": "Masuk ke Louez saat Claude memintanya.",
-          "note": "Di akun tim Claude, hanya pemilik yang bisa menambahkannya."
+          "note": "Di akun Claude Team atau Enterprise, hanya pemilik yang bisa menambahkannya."
         },
         "chatgpt": {
-          "step1": "Buka <link>plugin ChatGPT</link>, lalu + → Tambahkan server kustom.",
-          "step2": "Beri nama Louez dan tempel alamatnya.",
-          "step3": "Klik Buat, lalu masuk ke Louez.",
+          "step1": "Buka <link>Plugin ChatGPT</link>, lalu + → Tambahkan server MCP kustom.",
+          "step2": "Beri nama Louez dan tempel alamatnya di URL server.",
+          "step3": "Terima peringatannya, klik Buat sebagai plugin, lalu masuk ke Louez.",
           "note": "Dengan ChatGPT Business, Enterprise, atau Edu, di situs web. Di ruang kerja tim, minta admin untuk menambahkannya. Dengan ChatGPT Pro, asisten hanya bisa melihat."
         },
         "grok": {
@@ -9618,7 +9618,7 @@
           "note": "Untuk semua akun Grok. Di perusahaan, admin menambahkannya lebih dulu."
         },
         "mistral": {
-          "step1": "Di <link>Vibe</link>, buka Konektor, lalu Tambahkan Konektor → Kustom.",
+          "step1": "Di <link>Vibe</link>, dalam mode Work, buka Connectors, lalu + Add Connector → Custom MCP Connector.",
           "step2": "Beri nama Louez dan tempel alamatnya.",
           "step3": "Klik Hubungkan, lalu masuk ke Louez.",
           "note": "Dulu bernama Le Chat. Di akun tim, admin yang menambahkannya."
