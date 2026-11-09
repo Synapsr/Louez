@@ -11,11 +11,13 @@ import {
   type ScopedActor,
   type StoreActor,
 } from "./actor";
+import { CONFIRMATION_HEADER } from "./confirmation";
 import { apiError, platformErrors } from "./errors";
 import type { ApiMeta } from "./meta";
 import { IDEMPOTENCY_HEADER, runOperation } from "./operations";
 import { accountRefusal, allows } from "./permissions";
 import { consumeRateLimit, rateLimitKey } from "./rate-limit";
+import { agentSetupActionEffect } from "./setup-analytics";
 
 /** Store row handed to agent-ready procedures. */
 export type ActorStore = typeof stores.$inferSelect;
@@ -95,18 +97,41 @@ async function recordWrite<T extends { output: unknown }>(input: {
   headers: Headers;
   receipt: BaseContext["receipt"];
   rawInput: unknown;
+  /**
+   * The store the write sets up, for the setup analytics: from the result
+   * for a store the call creates. Null when none.
+   */
+  setupStore: (stored: unknown) => { id: string; ownerUserId: string; offline: boolean } | null;
+  dispatchEffects?: (ids: readonly string[]) => void;
   run: () => T | PromiseLike<T>;
   replay: (output: unknown) => T;
 }): Promise<T> {
   let ran: T | undefined;
+  const { actor } = input;
   const result = await runOperation(
     {
-      actor: input.actor,
+      actor,
       procedure: input.path.join("."),
       input: input.rawInput,
       idempotencyKey: input.meta.secretOutput ? null : input.headers.get(IDEMPOTENCY_HEADER),
       receipt: input.receipt,
       toStored: (raw) => validateOutput(input.outputSchema, raw),
+      // An agent's setup write on a store still offline (platform/setup-analytics.ts).
+      recordedEffects: (stored) => {
+        const store = input.setupStore(stored);
+        if (!store) return null;
+        const effect = agentSetupActionEffect({
+          credential: actor.credential,
+          transport: actor.transport,
+          path: input.path,
+          input: input.rawInput,
+          output: stored,
+          store,
+          confirmed: Boolean(input.meta.sensitive && input.headers.get(CONFIRMATION_HEADER)),
+        });
+        return effect ? { storeId: store.id, effects: [effect] } : null;
+      },
+      dispatchEffects: input.dispatchEffects,
     },
     async () => {
       ran = await input.run();
@@ -159,6 +184,14 @@ export const accountProcedure = authenticated.use(
       headers: context.headers,
       receipt: context.receipt,
       rawInput: input,
+      // The one account write that sets a store up: its creation, offline.
+      setupStore: (stored) => {
+        const id = (stored as { id?: unknown } | null)?.id;
+        return meta.capability === "stores.create" && typeof id === "string"
+          ? { id, ownerUserId: credential.userId, offline: true }
+          : null;
+      },
+      dispatchEffects: context.ports?.dispatchEffects,
       run: () => next(),
       // The cast only drops the context a replay does not add.
       replay: (result) => output(result) as Awaited<ReturnType<typeof next>>,
@@ -224,6 +257,13 @@ export const storeProcedure = authenticated.use(
       headers: context.headers,
       receipt: context.receipt,
       rawInput: input,
+      // The store as the call found it: a go-live counts, a write once online does not.
+      setupStore: () => ({
+        id: store.id,
+        ownerUserId: store.userId,
+        offline: store.onboardingCompleted !== true,
+      }),
+      dispatchEffects: ports.dispatchEffects,
       run: () => next({ context: nextContext }),
       // The cast only drops the context a replay does not add.
       replay: (result) => output(result) as Awaited<ReturnType<typeof next<typeof nextContext>>>,
