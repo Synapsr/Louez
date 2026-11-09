@@ -41,21 +41,21 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@louez/ui";
-import { cn } from "@louez/utils";
+import {
+  canApplyProductImageOperation,
+  cn,
+  findProductImageHistory,
+  getProductImageProcessingKind,
+} from "@louez/utils";
 
 import { NewFeatureBadge } from "@/components/dashboard/new-feature-badge";
 import { getFieldError } from "@/hooks/form/form-context";
-import {
-  IMAGE_UPLOAD_MIME_TYPES,
-  canApplyProductImageOperation,
-  getProductImageProcessingKind,
-} from "@/lib/uploads/image-upload";
+import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
 import { extractYouTubeVideoId, getYouTubeThumbnailUrl } from "@/lib/youtube";
 
 import type { ProductImageEnhanceControls } from "../hooks/use-product-image-enhance";
 import type { ProductFormComponentApi } from "../types";
 import { PRODUCT_IMAGE_ASPECT_RATIO } from "../utils/product-image-crop";
-import { findProductImageHistory } from "../utils/util.product-image-history";
 import { ProductImageAiLearnMoreDialog } from "./product-image-ai-learn-more";
 import {
   ProductImageAiInlineStatus,

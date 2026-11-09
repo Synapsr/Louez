@@ -37,9 +37,11 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - API effects: every minute, alongside the other tasks so none of them holds it back
  *   (retries the outbox rows of committed writes: customer messages, notifications,
  *   analytics events; deletes done rows after 30 days; packages/api platform/effects.ts)
- * - Agent-ready API retention: every minute, with the API effects, each bounded per run
- *   (inbox acknowledgements, handoffs after 90 days, write records after 12 months,
- *   OAuth tokens 7 days after they expire or are revoked; api-tasks.ts)
+ * - Agent-ready API: every minute, with the API effects (api-tasks.ts). The background
+ *   jobs the first dispatch left, such as AI photos, run in the background, never in
+ *   this request. Retention, each bounded per run: inbox acknowledgements, handoffs and
+ *   jobs after 90 days, write records after 12 months, OAuth tokens 7 days after they
+ *   expire or are revoked
  * - Marketplace default publication: daily at 1:00 AM UTC when explicitly enabled
  * - Invoice transmission: every minute (converts, validates, and sends due invoices)
  * - Super PDP lifecycle polling: every minute (outgoing statuses and received invoices)
@@ -115,8 +117,9 @@ async function handleCron(request: Request) {
     : null;
   // The agent-ready API's outbox: started with the billing tasks and awaited
   // last, so a task that keeps failing before it never holds back the
-  // customer messages, notifications and analytics events it retries. Its
-  // purges past their retention go with it, each on its own (api-tasks.ts).
+  // customer messages, notifications and analytics events it retries. The
+  // background jobs and the purges past their retention go with it, each on
+  // its own (api-tasks.ts).
   const apiEffects = runIsolatedTasks(apiTasks(), { request: logger, event: log });
 
   try {

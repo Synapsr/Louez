@@ -296,7 +296,8 @@ export const createProductSchema = (
       images: z.array(
         z.string().refine(isProductImageUrl, t('invalidImageUrl')),
       ),
-      imageHistory: z.array(productImageHistorySchema).max(5),
+      // One lineage per photo at most: as many as a product holds photos.
+      imageHistory: z.array(productImageHistorySchema).max(PRODUCT_LIST_LIMITS.images),
       // The dashboard form always carries a stock kind; only the server-side
       // schema below defaults it, for callers that omit it.
       stockKind: z.enum(['returnable', 'consumable', 'untracked']),
@@ -589,7 +590,10 @@ export const productFieldsSchema = z.object({
     quantity: z.string().regex(/^\d+$/, 'validation.integer'),
     status: z.enum(['draft', 'active', 'archived']),
     images: z.array(imageUrlSchema).optional(),
-    imageHistory: z.array(productImageHistorySchema).max(5).optional(),
+    imageHistory: z
+      .array(productImageHistorySchema)
+      .max(PRODUCT_LIST_LIMITS.images)
+      .optional(),
     stockKind: z
       .enum(['returnable', 'consumable', 'untracked'])
       .default('returnable'),

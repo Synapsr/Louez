@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { parseTrustedDemoProductImageUrl } from "./util.product-image-source";
+import { parseTrustedDemoProductImageUrl } from "./product-image-source";
 
 test("accepts Louez product images hosted in Scaleway Object Storage", () => {
   assert.equal(

@@ -16,6 +16,7 @@ import { log } from "@/lib/evlog";
 import type { Plan } from "@/lib/plans";
 
 import {
+  CREDIT_DEBIT_TRANSACTION,
   checkAdvisorCredits,
   getAiCreditsInfo,
   type AdvisorCreditCheck,
@@ -53,7 +54,12 @@ function startOfCalendarMonth(): Date {
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
-/** Sum of the monthly-pocket consumption for a store this calendar month. */
+/**
+ * Sum of the monthly-pocket consumption for a store this calendar month. A
+ * debit reads it under the store's `ai_credits` lock, in a READ COMMITTED
+ * transaction (`CREDIT_DEBIT_TRANSACTION`), so it sees every debit committed
+ * while it waited for that lock.
+ */
 async function sumMonthlyUsedMicro(runner: Tx | typeof db, storeId: string): Promise<number> {
   const [row] = await runner
     .select({
@@ -218,7 +224,8 @@ async function applyCallDebit(
 /**
  * Meter one model turn's tokens during a call. Runs inside the turn's
  * persistence transaction (alongside the assistant-message insert) so
- * accounting and transcript commit atomically. Keyed on the assistant message.
+ * accounting and transcript commit atomically, which must run READ COMMITTED
+ * (`CREDIT_DEBIT_TRANSACTION`). Keyed on the assistant message.
  */
 export async function recordCallTurnDebit(
   tx: Tx,
@@ -240,6 +247,7 @@ export async function recordCallTurnDebit(
   });
 }
 
+/** Settle the call's audio once, in the caller's transaction, which must run READ COMMITTED. */
 export async function settleCallAudioDebit(
   tx: Tx,
   params: {
@@ -281,15 +289,17 @@ export async function recordCallAudioDebit(params: {
 }): Promise<number> {
   if (params.audioSeconds <= 0) return 0;
   try {
-    return await db.transaction((tx) =>
-      applyCallDebit(tx, {
-        storeId: params.storeId,
-        conversationId: params.conversationId,
-        dedupKey: `call:audio:${params.callId}`,
-        usage: ZERO_USAGE,
-        audioSeconds: params.audioSeconds,
-        plan: params.plan,
-      }),
+    return await db.transaction(
+      (tx) =>
+        applyCallDebit(tx, {
+          storeId: params.storeId,
+          conversationId: params.conversationId,
+          dedupKey: `call:audio:${params.callId}`,
+          usage: ZERO_USAGE,
+          audioSeconds: params.audioSeconds,
+          plan: params.plan,
+        }),
+      CREDIT_DEBIT_TRANSACTION,
     );
   } catch (error) {
     // A duplicate status callback (same callId) hits the UNIQUE dedup key and

@@ -1,5 +1,6 @@
 import { HANDOFF_POLL_SECONDS } from "@louez/api/contracts/handoffs";
 import { INBOX_POLL_MINUTES } from "@louez/api/contracts/inbox";
+import { JOB_WAIT_SECONDS_MAX } from "@louez/api/contracts/jobs";
 import { agentConnectionsLinks } from "@louez/api/platform/links";
 import { MCP_BUNDLES, type McpBundle } from "@louez/api/platform/meta";
 import { accountRefusal } from "@louez/api/platform/permissions";
@@ -36,6 +37,7 @@ const CHAINING_HELP = [
   "The legal texts: you may draft the terms and the legal notice from the store's data (settings_get, settings_get_legal_profile, the products) and the user's answers to what it lacks (such as the publication director); show the draft to the user and save it with settings_update_legal once they agree. stores_get_launch_checklist says what the law asks of the store's country.",
   "Before stores_go_live, read stores_get_launch_checklist and fix what is missing, or tell the user what is.",
   "After inbox_acknowledge rejects items, call inbox_list without a cursor to start again from what the inbox holds.",
+  `To improve a product photo: products_enhance_image (AI) or products_remove_image_background, with one of the product's images. They spend AI credits, so a paid run always answers CONFIRMATION_REQUIRED first: show the user the price and ask. The photo is processed in the background: poll jobs_get with the job's id (waitSeconds up to ${JOB_WAIT_SECONDS_MAX}) until it is succeeded or failed, and never start the same photo again while its job runs. Once it succeeds, the result has replaced the photo on the product: show the user the before and after images (the job's source.url and result.url); to undo, products_use_image_version with the original's id (the job's source.versionId). A photo's versions are in imageVersions of products_get.`,
 ].join(" ");
 
 /** How a new store goes live, for a model that just created one. */

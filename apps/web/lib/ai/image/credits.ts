@@ -3,13 +3,14 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { aiCreditDebits, aiCredits, db, isDuplicateKeyError } from "@louez/db";
 
 import {
+  CREDIT_DEBIT_TRANSACTION,
   checkAdvisorCredits,
   getAiCreditsInfo,
   type AdvisorCreditCheck,
 } from "@/lib/ai/advisor/credits";
 import { isImageBackgroundRemovalEnabled } from "@/lib/ai/image/background-removal";
 import { resolveImageApiKey } from "@/lib/ai/image/provider";
-import { CREDIT_MICRO, getImageEnhanceCredits, imageEnhanceBillMicro } from "@/lib/ai/pricing";
+import { CREDIT_MICRO, getImageEnhanceCredits } from "@/lib/ai/pricing";
 import { log } from "@/lib/evlog";
 import type { Plan } from "@/lib/plans";
 
@@ -63,7 +64,11 @@ function startOfCalendarMonth(): Date {
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
-/** Sum of the monthly-pocket consumption for a store this calendar month. */
+/**
+ * Sum of the monthly-pocket consumption for a store this calendar month. Read
+ * under the store's `ai_credits` lock, in a READ COMMITTED transaction
+ * (`CREDIT_DEBIT_TRANSACTION`): it sees every debit committed so far.
+ */
 async function sumMonthlyUsedMicro(tx: Tx, storeId: string): Promise<number> {
   const [row] = await tx
     .select({
@@ -84,11 +89,17 @@ async function sumMonthlyUsedMicro(tx: Tx, storeId: string): Promise<number> {
  * the result is stored, so a store is never charged for an image it did not
  * get. There is no per-conversation cap here: the tariff is already a fixed
  * amount per image, and the debit is idempotent through the UNIQUE dedup key
- * (`imgenh:<objectId>` / `imgbg:<objectId>`), so a retried request can never
- * double-charge. `billMicro` defaults to the enhancement tariff; the
- * standalone background-removal path passes its own.
+ * (`imgenh:<runId>` / `imgbg:<runId>`), so a retried request can never
+ * double-charge. `billMicro` is the price the caller quoted, and confirmed
+ * when an agent asked: it is never recomputed here, so a tariff changed since
+ * charges nothing more.
  *
- * Returns the micro-credits actually debited (0 when billing is inert).
+ * `executor`: the caller's transaction (an image job writes its result in the
+ * same one), where the debit runs as a savepoint, and which must run READ
+ * COMMITTED (`CREDIT_DEBIT_TRANSACTION`); its own otherwise, which does.
+ *
+ * Returns the micro-credits actually debited (0 when billing is inert, or
+ * when the dedup key was already debited).
  */
 export async function recordImageEnhanceDebit(
   storeId: string,
@@ -97,18 +108,18 @@ export async function recordImageEnhanceDebit(
     imageKey: string;
     plan: Plan;
     costMicroUsd: number;
-    billMicro?: number;
+    billMicro: number;
   },
+  executor?: Tx,
 ): Promise<number> {
-  const { costMicroUsd, dedupKey, imageKey, plan } = params;
+  const { billMicro, costMicroUsd, dedupKey, imageKey, plan } = params;
 
   // The real provider cost is frozen on the row regardless of what is billed,
   // so cost-vs-billed stays comparable per revenue line.
-  const billMicro = params.billMicro ?? imageEnhanceBillMicro();
   if (billMicro <= 0 && costMicroUsd <= 0) return 0;
 
   try {
-    return await db.transaction(async (tx) => {
+    const debit = async (tx: Tx) => {
       // Cost-only row (tariff unset but the real cost is known): freeze the cost
       // for reporting without touching any balance. Still exactly-once.
       if (billMicro <= 0) {
@@ -148,7 +159,8 @@ export async function recordImageEnhanceDebit(
       const fromPrepaid = billMicro - fromMonthly;
 
       // Insert the debit first — the UNIQUE dedup key makes it exactly-once (a
-      // retry throws and rolls back the whole tx, so nothing is double-debited).
+      // retry throws and rolls back this transaction, a savepoint in the caller's,
+      // so nothing is double-debited).
       await tx.insert(aiCreditDebits).values({
         storeId,
         kind: "image_enhancement",
@@ -176,7 +188,10 @@ export async function recordImageEnhanceDebit(
       }
 
       return billMicro;
-    });
+    };
+    return await (executor
+      ? executor.transaction(debit)
+      : db.transaction(debit, CREDIT_DEBIT_TRANSACTION));
   } catch (error) {
     // A retry of an already-billed enhancement hits the UNIQUE dedup key and
     // rolls back — expected and harmless, the image was already paid for.

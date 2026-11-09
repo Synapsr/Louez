@@ -11,6 +11,9 @@ const fake = (name: string) => async () => {
 mock.module("@/lib/api/effects", {
   namedExports: { runApiEffectsCron: fake("runApiEffectsCron") },
 });
+mock.module("@/lib/api/jobs", {
+  namedExports: { runApiJobsCron: fake("runApiJobsCron") },
+});
 mock.module("@louez/api/services/inbox", {
   namedExports: { pruneInboxAcknowledgements: fake("pruneInboxAcknowledgements") },
 });
@@ -24,7 +27,7 @@ mock.module("@louez/auth/oauth-retention", {
   namedExports: { purgeOAuthTokens: fake("purgeOAuthTokens") },
 });
 
-test("every cron call runs the outbox, then each purge of the agent-ready API", async () => {
+test("every cron call runs the outbox, each purge of the agent-ready API, then its background jobs", async () => {
   const { apiTasks } = await import("./api-tasks");
   const tasks = apiTasks();
   const results = [];
@@ -39,6 +42,7 @@ test("every cron call runs the outbox, then each purge of the agent-ready API", 
     { task: "api-handoffs", key: "apiHandoffs", runs: "purgeHandoffs" },
     { task: "api-operations", key: "apiOperations", runs: "purgeOperations" },
     { task: "oauth-tokens", key: "oauthTokens", runs: "purgeOAuthTokens" },
+    { task: "api-jobs", key: "apiJobs", runs: "runApiJobsCron" },
   ]);
   assert.equal(called.length, tasks.length);
 });

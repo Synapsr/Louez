@@ -74,3 +74,6 @@ export { beforeTaxRateBps, normalizeCurrency } from "./billing-money";
 // Payment rows: a Stripe refund told apart from the charge it refunds
 export * from "./util.payment-movement";
 export * from "./util.stripe-payment-amount";
+
+// Product photos: their versions (lineage) and the AI photo operations' rules
+export * from "./product-images";

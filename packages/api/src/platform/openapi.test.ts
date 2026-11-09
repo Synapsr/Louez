@@ -107,7 +107,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories, the products, the reservations, the settings, the online store, the stores, the inbox, Stripe, billing and handoffs at short REST paths named after their tools", async () => {
+  test("serves the categories, the products, the reservations, the settings, the online store, the stores, the inbox, Stripe, billing, handoffs and jobs at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -148,6 +148,9 @@ describe("OpenAPI document", () => {
         "POST /products/image-uploads": "products_create_image_upload",
         "POST /products/image-uploads/complete": "products_complete_image_upload",
         "POST /products/images": "products_upload_image",
+        "POST /products/{id}/images/enhance": "products_enhance_image",
+        "POST /products/{id}/images/remove-background": "products_remove_image_background",
+        "POST /products/{id}/images/use-version": "products_use_image_version",
         "GET /products/{id}/activity": "products_get_activity",
         "GET /products/{id}/reservation-timeline": "products_get_reservation_timeline",
         "GET /products/{productId}/seasonal-pricings": "products_list_seasonal_pricings",
@@ -219,6 +222,7 @@ describe("OpenAPI document", () => {
         "GET /billing": "billing_get_status",
         "POST /billing/card-setup": "billing_start_card_setup",
         "GET /handoffs/{id}": "handoffs_get",
+        "GET /jobs/{id}": "jobs_get",
         "POST /handoffs/{id}/refresh": "handoffs_refresh",
       },
     );

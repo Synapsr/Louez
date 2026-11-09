@@ -127,12 +127,16 @@ export function storePlanOfRow(
 /**
  * Get the current plan for a store. Without platform billing (LOUEZ_BILLING off) a store
  * has no plan to buy, so every store gets the unlimited pay-as-you-go plan, whatever row
- * an earlier version left: no limit, no blur and no upgrade prompt.
+ * an earlier version left: no limit, no blur and no upgrade prompt. `executor`: the
+ * transaction to read it in, for a caller that holds locks.
  */
-export async function getStorePlan(storeId: string): Promise<Plan> {
+export async function getStorePlan(
+  storeId: string,
+  executor: Transaction | typeof db = db,
+): Promise<Plan> {
   if (!isBillingEnabled()) return getPayAsYouGoPlan()
 
-  const subscription = await db.query.subscriptions.findFirst({
+  const subscription = await executor.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
     columns: { planSlug: true, status: true, billingMode: true },
   })

@@ -287,3 +287,28 @@ test("rejects an accessory link with a quantity below one", () => {
   assert.equal(createProductSchema(translate).safeParse(product).success, false);
   assert.equal(productSchema.safeParse(product).success, false);
 });
+
+test("a product with more photos than the form adds saves, with one history per photo", () => {
+  // An agent or the API may give a product up to 20 photos; the dashboard form
+  // then holds a history for each one.
+  const images = Array.from({ length: 20 }, (_, index) => `/files/store-id/products/p${index}.webp`);
+  const product = {
+    ...validProduct,
+    images,
+    imageHistory: images.map((url, index) => ({
+      id: `product-image-history-initial-${index + 1}`,
+      versions: [{ id: `product-image-version-initial-${index + 1}`, url, kind: "original" as const }],
+    })),
+  };
+  for (const schema of [createProductSchema(translate), productSchema]) {
+    assert.equal(schema.safeParse(product).success, true);
+    const tooMany = {
+      ...product,
+      imageHistory: [
+        ...product.imageHistory,
+        { id: "extra", versions: [{ id: "extra-v", url: "/files/x.webp", kind: "original" as const }] },
+      ],
+    };
+    assert.equal(schema.safeParse(tooMany).success, false);
+  }
+});

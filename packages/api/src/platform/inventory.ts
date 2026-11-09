@@ -30,6 +30,7 @@ export type CapabilityDomain =
   | "inspections"
   | "inbox"
   | "handoffs"
+  | "jobs"
   | "ui";
 
 export type CapabilityLot =
@@ -181,6 +182,7 @@ const ORPC = {
   handoffs: `${ROUTERS}/handoffs.ts`,
   inbox: `${ROUTERS}/inbox.ts`,
   integrations: `${ROUTERS}/integrations.ts`,
+  jobs: `${ROUTERS}/jobs.ts`,
   notifications: `${ROUTERS}/notifications.ts`,
   onboarding: `${ROUTERS}/onboarding.ts`,
   onlineStore: `${ROUTERS}/online-store.ts`,
@@ -334,6 +336,15 @@ export const capabilities = [
     sources: [procedure("handoffs", "refresh")],
     kind: "write",
     plan: { lot: "6" },
+    migrated: true,
+  },
+
+  // --- Background jobs (7): work a call starts, such as an AI photo -------
+  {
+    id: "jobs.get",
+    sources: [procedure("jobs", "get")],
+    kind: "read",
+    plan: { lot: "7" },
     migrated: true,
   },
 
@@ -803,6 +814,38 @@ export const capabilities = [
     ],
     kind: "write",
     plan: { lot: "3" },
+    migrated: true,
+  },
+  {
+    // The dashboard keeps its route (operation=enhance) over the same core as
+    // the job (apps/web lib/ai/image/product-image-run.ts); agents start a job.
+    id: "products.enhanceImage",
+    sources: [
+      route(ROUTE.aiImageEnhance, "POST (operation=enhance)"),
+      procedure("products", "enhanceImage"),
+    ],
+    kind: "write",
+    sensitive: "spend",
+    plan: { lot: "7" },
+    migrated: true,
+  },
+  {
+    id: "products.removeImageBackground",
+    sources: [
+      route(ROUTE.aiImageEnhance, "POST (operation=remove-background)"),
+      procedure("products", "removeImageBackground"),
+    ],
+    kind: "write",
+    sensitive: "spend",
+    plan: { lot: "7" },
+    migrated: true,
+  },
+  {
+    // The dashboard's photo history drawer picks a version in the form, saved with products.update.
+    id: "products.useImageVersion",
+    sources: [procedure("products", "useImageVersion")],
+    kind: "write",
+    plan: { lot: "7" },
     migrated: true,
   },
   {
@@ -1882,13 +1925,6 @@ export const capabilities = [
   {
     id: "ai.chat",
     sources: [route(ROUTE.aiChat, "POST")],
-    kind: "write",
-    sensitive: "spend",
-    plan: { lot: "7" },
-  },
-  {
-    id: "ai.enhanceProductImage",
-    sources: [route(ROUTE.aiImageEnhance, "POST")],
     kind: "write",
     sensitive: "spend",
     plan: { lot: "7" },

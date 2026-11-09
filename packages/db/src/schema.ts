@@ -4552,6 +4552,77 @@ export const apiHandoffs = mysqlTable(
   }),
 );
 
+/** What a background job does (packages/api contracts/jobs.ts). */
+export type ApiJobKind = "product_image_enhance" | "product_image_remove_background";
+
+/** Why a job failed, as `jobs.get` shows it. */
+export interface ApiJobError {
+  code: string;
+  message: string;
+  retryable: boolean;
+}
+
+/**
+ * Work an API call started and that runs in the background, past the call:
+ * an AI photo enhancement or background removal (packages/api
+ * platform/jobs.ts). The caller reads it with `jobs.get` until it is done.
+ * A runner claims a row with a fresh token and a lease on the database's
+ * clock (`locked_until`), as the outbox does; only the token holder records
+ * the outcome. One active job per store and `slot_key` (the product and the
+ * photo it works on): `active_slot` is 1 while it is queued or running,
+ * null after, so the unique key holds the active one only. Deleted 90 days
+ * after it ended, and with its store.
+ */
+export const apiJobs = mysqlTable(
+  "api_jobs",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    kind: varchar("kind", { length: 64 }).$type<ApiJobKind>().notNull(),
+    /** The record it works on: a product. */
+    targetId: varchar("target_id", { length: 21 }).notNull(),
+    status: mysqlEnum("status", ["queued", "running", "succeeded", "failed"])
+      .default("queued")
+      .notNull(),
+    /** SHA-256 of what the job works on (the product and the photo), hex. */
+    slotKey: varchar("slot_key", { length: 64 }).notNull(),
+    activeSlot: tinyint("active_slot"),
+    /** What it was started with, frozen: the photo, the price. */
+    input: json("input").$type<Record<string, unknown>>().notNull(),
+    result: json("result").$type<Record<string, unknown>>(),
+    error: json("error").$type<ApiJobError>(),
+    attempts: int("attempts", { unsigned: true }).default(0).notNull(),
+    /** When a queued job may be taken: the first dispatch's grace, then a retry's wait. */
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    lockedUntil: timestamp("locked_until", { mode: "date", fsp: 3 }),
+    /** The current claim: only the runner holding it may record the outcome. */
+    claimToken: varchar("claim_token", { length: 32 }),
+    /** The API write that started it (`api_operations.id`). */
+    operationId: varchar("operation_id", { length: 21 }),
+    /** Who started it: a session, an API key or an OAuth grant. */
+    userId: varchar("user_id", { length: 21 }).notNull(),
+    credentialKind: varchar("credential_kind", { length: 16 }).notNull(),
+    credentialId: varchar("credential_id", { length: 64 }),
+    clientName: varchar("client_name", { length: 100 }),
+    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    startedAt: timestamp("started_at", { mode: "date", fsp: 3 }),
+    finishedAt: timestamp("finished_at", { mode: "date", fsp: 3 }),
+  },
+  (table) => ({
+    activeUnique: unique("api_jobs_active_unique").on(
+      table.storeId,
+      table.slotKey,
+      table.activeSlot,
+    ),
+    dueIdx: index("api_jobs_due_idx").on(table.status, table.nextAttemptAt),
+    leaseIdx: index("api_jobs_lease_idx").on(table.status, table.lockedUntil),
+    storeIdx: index("api_jobs_store_idx").on(table.storeId, table.status, table.finishedAt),
+    // The retention deletes the oldest first.
+    finishedIdx: index("api_jobs_finished_idx").on(table.finishedAt),
+  }),
+);
+
 /** Tool bundles an agent connection lists (packages/api platform/meta.ts). */
 export type AgentToolBundle =
   | "daily"

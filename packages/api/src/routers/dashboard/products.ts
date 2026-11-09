@@ -1,3 +1,5 @@
+import { currentApiOperation } from "@louez/db";
+
 import {
   LEGACY_PAGE_MAX_OFFSET,
   createProductInput,
@@ -15,6 +17,7 @@ import {
   productActivityInput,
   productActivityOutput,
   productErrors,
+  productImageJobInput,
   productOutput,
   PRODUCT_WRITE_MAX_BODY_BYTES,
   productTimelineInput,
@@ -27,7 +30,9 @@ import {
   updateProductStatusInput,
   updateProductStatusOutput,
   updateSeasonalPricingInput,
+  useImageVersionInput,
 } from "../../contracts/products";
+import { jobSchema, JOB_WAIT_SECONDS_MAX } from "../../contracts/jobs";
 import {
   completeImageUploadInput,
   completeImageUploadOutput,
@@ -37,6 +42,7 @@ import {
   uploadImageInput,
 } from "../../contracts/uploads";
 import { productLinks } from "../../platform/links";
+import type { ProductImageOperation } from "../../platform/ports";
 import { storeProcedure } from "../../platform/procedures";
 import { withSetupMark } from "../../platform/setup-analytics";
 import { getProductUnitActivityPage } from "../../services/product-activity";
@@ -51,6 +57,8 @@ import {
 import {
   assertOwnedProduct,
   createProduct,
+  emit,
+  eventStore,
   deleteProduct,
   duplicateProduct,
   getProduct,
@@ -59,6 +67,12 @@ import {
   updateProduct,
   updateProductStatus,
 } from "../../services/products";
+import {
+  ACTIVE_IMAGE_JOBS_MAX,
+  imageJobDuration,
+  startImageJob,
+  useImageVersion,
+} from "../../services/product-images";
 import { completeImageUpload, createImageUpload, uploadImage } from "../../services/uploads";
 import {
   confirmUnderLock,
@@ -481,6 +495,96 @@ const uploadImageProcedure = storeProcedure
     ),
   );
 
+// --- AI photos -----------------------------------------------------------------
+
+/** What both AI photo tools say of how they run, what they cost and how to undo them. */
+const imageJobHelp = (operation: ProductImageOperation) =>
+  `It runs in the background, usually ${imageJobDuration(operation)}: the answer is the job at once (status queued), and jobs_get with its id says how it goes (waitSeconds up to ${JOB_WAIT_SECONDS_MAX}). Once it succeeds, the result replaces the photo on the product (and on its online page), and the original stays among the photo's versions (imageVersions of products_get); products_use_image_version with the job's source.versionId puts it back. The job carries the photo before (source.url) and, once done, after (result.url). It costs AI credits (priceCredits; 0 when free or not billed on this instance), charged only once the result is on the product, never for a failed run. For a paid run, the first call always answers CONFIRMATION_REQUIRED with the price and the balance, whatever the connection's confirmation setting. Calling again for a photo whose job runs returns that job. At most ${ACTIVE_IMAGE_JOBS_MAX} photos of a store are processed at once.`;
+
+/** The procedure's API write, which the job names as the one that started it. */
+const startedBy = () => currentApiOperation()?.operationId ?? null;
+
+const enhanceImage = storeProcedure
+  .meta({
+    capability: "products.enhanceImage",
+    scope: { domain: "products", level: "write" },
+    sensitive: "spend",
+    mcp: {
+      name: "products_enhance_image",
+      title: "Enhance Product Photo with AI",
+      description: `Enhance one photo of a product with AI (GPT Image): a clean studio photo of the same product on a cut-out background, framed 4:3. Takes the product's id and one of its \`images\`, as products_get returns them. A photo already enhanced is refused (enhance its original instead); a photo whose background was removed can still be enhanced. ${imageJobHelp("enhance")}`,
+      bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
+    },
+  })
+  .route({ method: "POST", path: "/products/{id}/images/enhance" })
+  .input(productImageJobInput)
+  .output(jobSchema)
+  .handler(({ context, input, path }) =>
+    startImageJob(
+      { ...context, procedure: path.join("."), operationId: startedBy() },
+      input,
+      "enhance",
+    ),
+  );
+
+const removeImageBackground = storeProcedure
+  .meta({
+    capability: "products.removeImageBackground",
+    scope: { domain: "products", level: "write" },
+    sensitive: "spend",
+    mcp: {
+      name: "products_remove_image_background",
+      title: "Remove Product Photo Background",
+      description: `Remove the background of one photo of a product: the product alone on transparency, centred, without any AI redrawing. Takes the product's id and one of its \`images\`, as products_get returns them. A photo already processed (background removed or AI enhanced) is refused. ${imageJobHelp("remove-background")}`,
+      bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
+    },
+  })
+  .route({ method: "POST", path: "/products/{id}/images/remove-background" })
+  .input(productImageJobInput)
+  .output(jobSchema)
+  .handler(({ context, input, path }) =>
+    startImageJob(
+      { ...context, procedure: path.join("."), operationId: startedBy() },
+      input,
+      "remove-background",
+    ),
+  );
+
+const useImageVersionProcedure = storeProcedure
+  .meta({
+    capability: "products.useImageVersion",
+    scope: { domain: "products", level: "write" },
+    mcp: {
+      name: "products_use_image_version",
+      title: "Use Product Photo Version",
+      description: `Put one of a photo's versions in use on the product: its original, a crop, an AI enhancement or a background removal, as imageVersions of products_get lists them (or a job's source.versionId). It takes the photo's place in \`images\`, on the product and its online page. No version is deleted, so it also undoes an AI enhancement or a background removal, and can be reversed the same way. Takes the product's id and the version's id. Returns the product. ${LINKS_HELP}`,
+      bundle: "catalog",
+      effect: "overwrite",
+      reach: "public",
+      annotations: { idempotentHint: true },
+    },
+  })
+  .route({ method: "POST", path: "/products/{id}/images/use-version" })
+  .input(useImageVersionInput)
+  .output(productOutput)
+  .handler(async ({ context, input }) => {
+    const actor = productActor(context);
+    const { changed, name } = await useImageVersion(actor, input);
+    if (changed) {
+      emit(actor, {
+        type: "product.updated",
+        store: eventStore(actor),
+        productId: input.id,
+        productName: name,
+      });
+    }
+    return withLinks(context, await getProduct(actor, input.id));
+  });
+
 // --- Activity and timeline ---------------------------------------------------
 
 const getActivity = storeProcedure
@@ -662,6 +766,9 @@ export const dashboardProductsRouter = {
   createImageUpload: createImageUploadProcedure,
   completeImageUpload: completeImageUploadProcedure,
   uploadImage: uploadImageProcedure,
+  enhanceImage,
+  removeImageBackground,
+  useImageVersion: useImageVersionProcedure,
   getActivity,
   getReservationTimeline,
   listSeasonalPricings: listSeasonalPricingsProcedure,

@@ -7,8 +7,9 @@ import type { Transport } from "./actor";
 /**
  * What the agent-ready API takes from the app that serves it: only what is
  * bound to Next.js or to the billing service, and, for now, the image
- * storage (see `StoragePort`), the insurance contracts (`InsurancePort`) and
- * the app's effects of a write (`afterCommit`). Business code (Stripe,
+ * storage (see `StoragePort`), the insurance contracts (`InsurancePort`), the
+ * AI photo pipeline and credits (`ProductImagesPort`) and the app's effects
+ * of a write (`afterCommit`). Business code (Stripe,
  * e-mail…) lives in the package as services and adapters, never here.
  *
  * Every handler of the app (RPC, OpenAPI, MCP, uploads) builds the same object
@@ -38,6 +39,19 @@ export interface ApiPorts {
    * cron retries the failed ones. Never throws.
    */
   dispatchEffects: (ids: readonly string[]) => void;
+  /**
+   * Runs background jobs (`platform/jobs.ts`) a write queued, once its
+   * transaction has committed. The app runs them after the answer, a few at
+   * a time per process; its cron takes the ones left. Never throws. Absent
+   * where no procedure queues one.
+   */
+  dispatchJobs?: (ids: readonly string[]) => void;
+  /**
+   * The AI photo pipeline and the AI credits, for the image jobs
+   * (services/product-images.ts), until the AI layer moves into the package
+   * (lot 7). Absent where no procedure needs it.
+   */
+  productImages?: ProductImagesPort;
   newStores: NewStorePort;
   /**
    * Who hosts this instance (`LOUEZ_HOSTED_BY`): on Louez Cloud the
@@ -53,6 +67,120 @@ export interface ApiPorts {
   stripeConnect?: () => StripeConnectClient | null;
   /** Louez's billing of the store, owned by the app and the billing service. */
   billing?: BillingPort;
+}
+
+/** An AI photo operation: GPT Image with a cut-out background, or the cut-out alone. */
+export type ProductImageOperation = "enhance" | "remove-background";
+
+/** What an operation costs the store now, and whether this instance can run it. */
+export interface ProductImageQuote {
+  /** The instance has the providers it needs (GPT Image and rembg, or rembg alone). */
+  available: boolean;
+  /** What one run costs, in micro-credits; 0 when it is free or the credit layer is off. */
+  priceMicro: number;
+  /** The store's credits, when the run is billed; null otherwise. */
+  credits: {
+    /** The gate the dashboard applies: some credit left in either pocket. */
+    allowed: boolean;
+    /** What is left of this month's included credits; null for unlimited. */
+    monthlyRemainingMicro: number | null;
+    prepaidMicro: number;
+  } | null;
+}
+
+/** Where an image to process is read from: the store's own product folder, or a demo catalog's trusted bucket. */
+export type ProductImageSource =
+  | { kind: "stored"; key: string }
+  | { kind: "trusted-demo"; key: string; url: string };
+
+/** A processed image, stored under the key the caller gave. */
+export interface ProcessedProductImage {
+  url: string;
+  /** How the result was framed (`auto`, `contain`…); null when unknown. */
+  framingMode: string | null;
+  /** What the providers cost Louez, for the debit row. */
+  providerCostMicroUsd: number;
+  /** What the app keeps of the run for its diagnostics; opaque to the API. */
+  report: unknown;
+}
+
+/**
+ * Why processing an image failed. `retryable`: the same run may succeed later
+ * (a provider outage, a timeout); otherwise it never will (an empty result,
+ * an unreadable source).
+ */
+export class ProductImageFailure extends Error {
+  constructor(
+    readonly code:
+      | "IMAGE_SOURCE_UNREADABLE"
+      | "IMAGE_EMPTY"
+      | "PROVIDER_ERROR"
+      | "BACKGROUND_REMOVAL_ERROR"
+      | "STORAGE_ERROR"
+      | "PROCESSING_ERROR",
+    message: string,
+    readonly retryable: boolean,
+  ) {
+    super(message);
+    this.name = "ProductImageFailure";
+  }
+}
+
+/**
+ * The app's AI photo pipeline (apps/web lib/ai/image): the same code the
+ * dashboard's enhance route runs, so a result, its price and its debit are
+ * the same whoever asked.
+ */
+export interface ProductImagesPort {
+  quote: (storeId: string, operation: ProductImageOperation) => Promise<ProductImageQuote>;
+  /** Where the image at `url` is read from, when the store may process it; null otherwise. */
+  resolveSource: (storeId: string, url: string) => ProductImageSource | null;
+  /**
+   * Reads the source, runs the pipeline and stores the result under `key`,
+   * replacing what is there. Throws a `ProductImageFailure`; stops when
+   * `signal` aborts.
+   */
+  process: (input: {
+    storeId: string;
+    source: ProductImageSource;
+    operation: ProductImageOperation;
+    /** Tells GPT Image which object to keep. */
+    productName: string;
+    key: string;
+    signal: AbortSignal;
+  }) => Promise<ProcessedProductImage>;
+  /** Deletes a stored result nobody will use. */
+  discard: (key: string) => Promise<void>;
+  /**
+   * Debits one run in the caller's transaction, once per `dedupKey`, exactly
+   * `priceMicro`: the price frozen when the run was started (and confirmed),
+   * never the tariff in force now. Never called with a price of 0, which
+   * writes no debit. `tx` runs READ COMMITTED: it read other rows before the
+   * debit takes the store's credits lock, and the debit's sum of the month's
+   * credits, taken under that lock, must see every debit committed meanwhile.
+   * The micro-credits debited (0 when the key was already debited). Throws
+   * when the debit could not be written.
+   */
+  debit: (
+    tx: Transaction,
+    input: {
+      storeId: string;
+      priceMicro: number;
+      dedupKey: string;
+      imageKey: string;
+      providerCostMicroUsd: number;
+    },
+  ) => Promise<number>;
+  /** Once the run's debit committed: the auto top-up, the diagnostics. Never throws. */
+  afterSuccess: (input: {
+    storeId: string;
+    runId: string;
+    operation: ProductImageOperation;
+    sourceKey: string;
+    key: string;
+    debitedMicro: number;
+    report: unknown;
+  }) => Promise<void>;
 }
 
 /**
