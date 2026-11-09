@@ -1,6 +1,31 @@
+import { getProfileInput, getProfileOutput } from "../../contracts/account";
 import { dismissNoticeInput, dismissNoticeOutput } from "../../contracts/dismissed-notices";
 import { accountProcedure } from "../../platform/procedures";
+import { getAccountProfile } from "../../services/account-profile";
 import { dismissNotice as closeNotice } from "../../services/dismissed-notices";
+
+/**
+ * Who the connection acts for. ChatGPT reads it as the account's profile to
+ * tell the user's accounts apart; every connection may call it.
+ */
+const getProfile = accountProcedure
+  .meta({
+    capability: "account.getProfile",
+    account: true,
+    mcp: {
+      name: "account_get_profile",
+      title: "Get Account Profile",
+      description:
+        "The Louez account this connection acts for: its stable id and the user's name. Takes no argument.",
+      bundle: "daily",
+      annotations: { idempotentHint: true },
+      profile: true,
+    },
+  })
+  .route({ method: "GET", path: "/account/profile" })
+  .input(getProfileInput)
+  .output(getProfileOutput)
+  .handler(({ context }) => getAccountProfile(context.actor.credential.userId));
 
 /**
  * The signed-in user's own interface preferences: they belong to the account,
@@ -25,5 +50,6 @@ const dismissNotice = preferences
   }));
 
 export const dashboardAccountRouter = {
+  getProfile,
   dismissNotice,
 };

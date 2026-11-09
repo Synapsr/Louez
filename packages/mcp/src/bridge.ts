@@ -17,6 +17,9 @@ import { handoffLine, linksLine, outputLinks } from "./utils/links";
 export const OPERATION_ID_META = "io.louez/operationId";
 export const REPLAYED_META = "io.louez/replayed";
 
+/** Tool `_meta` key marking the account's profile tool, for ChatGPT. */
+export const OPENAI_PROFILE_META = "openai/profile";
+
 /** The `storeId` argument every store tool takes when the connection covers several stores. */
 export const STORE_ARGUMENT = {
   type: "string",
@@ -161,6 +164,7 @@ export function registerExposedTools(
       inputSchema: toolInputSchema(entry, ctx),
       outputSchema,
       annotations,
+      ...(entry.meta.mcp.profile ? { meta: { [OPENAI_PROFILE_META]: true } } : {}),
       // A former tool served as it was is callable, never listed.
       listed:
         entry.meta.mcp.listed !== false &&

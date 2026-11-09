@@ -91,6 +91,11 @@ export interface McpExposure {
    */
   annotations?: Partial<McpToolAnnotations>;
   /**
+   * The account's profile tool, which ChatGPT reads to tell accounts apart
+   * (`_meta["openai/profile"]`): read-only, no argument, a stable `id`.
+   */
+  profile?: true;
+  /**
    * Names the tool had before it was served by this procedure. They stay
    * callable, never listed, so agents set up before the rename keep working;
    * `renamedArgs` maps an old argument name onto the new one, and

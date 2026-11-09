@@ -202,6 +202,7 @@ describe("OpenAPI document", () => {
         "GET /settings/legal-profile": "settings_get_legal_profile",
         "GET /settings/company-registry": "settings_search_company_registry",
         "PATCH /settings/legal-profile": "settings_update_legal_profile",
+        "GET /account/profile": "account_get_profile",
         "GET /stores": "stores_list",
         "GET /stores/slug-availability": "stores_check_slug_availability",
         "POST /stores": "stores_create",

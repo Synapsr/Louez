@@ -199,6 +199,11 @@ describe("exposure registry", () => {
     rejects({ a: withMcp({ name: "Test-Tool" }) }, ["a"], /is not snake_case/);
     rejects({ a: withMcp({ title: " " }) }, ["a"], /a: no meta\.mcp\.title/);
     rejects({ a: withMcp({ description: "" }) }, ["a"], /a: no meta\.mcp\.description/);
+    rejects(
+      { a: withMcp({ profile: true }).meta({ scope: { domain: "categories", level: "write" } }) },
+      ["a"],
+      /a: a profile tool only reads/,
+    );
   });
 
   test("takes hint overrides that correct the derivation, never ones that repeat it", () => {

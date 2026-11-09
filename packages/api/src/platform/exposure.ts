@@ -87,6 +87,7 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.settings.getLegalProfile",
   "dashboard.settings.searchCompanyRegistry",
   "dashboard.settings.upsertLegalProfile",
+  "dashboard.account.getProfile",
   "dashboard.stores.list",
   "dashboard.stores.checkSlugAvailability",
   "dashboard.stores.create",
@@ -169,6 +170,9 @@ function toolProblems(path: string, meta: ApiMeta, mcp: McpExposure): string[] {
     if (mcp.annotations?.[hint] !== undefined && mcp.annotations[hint] === derived[hint]) {
       problems.push(`${path}: meta.mcp.annotations.${hint} repeats what scope and sensitive give`);
     }
+  }
+  if (mcp.profile && meta.scope?.level === "write") {
+    problems.push(`${path}: a profile tool only reads`);
   }
   return problems;
 }

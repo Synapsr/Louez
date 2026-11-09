@@ -2123,6 +2123,14 @@ export const capabilities = [
     migrated: true,
   },
   {
+    // Who a connection acts for: ChatGPT's profile tool (account_get_profile).
+    id: "account.getProfile",
+    sources: [procedure("account", "getProfile")],
+    kind: "read",
+    plan: { lot: "1" },
+    migrated: true,
+  },
+  {
     id: "account.updateInfo",
     sources: [action(SA.account, "updateAccountInfo")],
     kind: "write",
