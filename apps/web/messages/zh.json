@@ -6316,7 +6316,6 @@
     },
     "notificationsCenter": {
       "title": "通知",
-      "description": "需要您注意的事项",
       "pendingReservations": "待处理的请求",
       "supplierInvoices": "供应商发票",
       "pendingSupplierInvoices": "{count,plural,one{# 待处理的供应商发票} other{# 要处理的供应商发票}}",

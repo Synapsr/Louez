@@ -6316,13 +6316,12 @@
     },
     "notificationsCenter": {
       "title": "Notifications",
-      "description": "Items that need your attention",
       "pendingReservations": "Pending requests",
       "supplierInvoices": "Supplier invoices",
       "pendingSupplierInvoices": "{count, plural, one {# supplier invoice to process} other {# supplier invoices to process}}",
-      "emptyTitle": "Nothing to review",
+      "emptyTitle": "You're all caught up",
       "emptyDescription": "New requests will appear here.",
-      "viewAllPending": "View all pending requests"
+      "viewAllPending": "View all requests"
     },
     "whatsNew": {
       "title": "What's new",

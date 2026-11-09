@@ -6316,7 +6316,6 @@
     },
     "notificationsCenter": {
       "title": "Pemberitahuan",
-      "description": "Item yang memerlukan perhatian Anda",
       "pendingReservations": "Permintaan yang tertunda",
       "supplierInvoices": "Faktur pemasok",
       "pendingSupplierInvoices": "{count,plural,one{# faktur pemasok untuk diproses} other{# faktur pemasok untuk diproses}}",

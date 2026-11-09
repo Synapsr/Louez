@@ -6316,7 +6316,6 @@
     },
     "notificationsCenter": {
       "title": "通知",
-      "description": "注意が必要な項目",
       "pendingReservations": "保留中のリクエスト",
       "supplierInvoices": "サプライヤーの請求書",
       "pendingSupplierInvoices": "{count,plural,one{# 処理するサプライヤー請求書} other{# 処理するサプライヤーの請求書}}",

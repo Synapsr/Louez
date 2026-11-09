@@ -6316,7 +6316,6 @@
     },
     "notificationsCenter": {
       "title": "Notificações",
-      "description": "O que precisa da sua atenção",
       "pendingReservations": "Pedidos pendentes",
       "supplierInvoices": "Faturas de fornecedores",
       "pendingSupplierInvoices": "{count, plural, one {# fatura de fornecedor por tratar} other {# faturas de fornecedores por tratar}}",

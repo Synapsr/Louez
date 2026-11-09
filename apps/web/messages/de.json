@@ -6316,7 +6316,6 @@
     },
     "notificationsCenter": {
       "title": "Benachrichtigungen",
-      "description": "Was Ihre Aufmerksamkeit braucht",
       "pendingReservations": "Offene Anfragen",
       "supplierInvoices": "Lieferantenrechnungen",
       "pendingSupplierInvoices": "{count, plural, one {# Lieferantenrechnung zu bearbeiten} other {# Lieferantenrechnungen zu bearbeiten}}",

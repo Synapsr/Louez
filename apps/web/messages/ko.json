@@ -6316,7 +6316,6 @@
     },
     "notificationsCenter": {
       "title": "알림",
-      "description": "주의가 필요한 항목",
       "pendingReservations": "대기 중인 요청",
       "supplierInvoices": "공급업체 송장",
       "pendingSupplierInvoices": "{count,plural,one{# 처리할 공급업체 송장} other{# 처리할 공급자 송장}}",

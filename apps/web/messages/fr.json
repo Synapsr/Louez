@@ -6316,13 +6316,12 @@
     },
     "notificationsCenter": {
       "title": "Notifications",
-      "description": "Ce qui demande votre attention",
       "pendingReservations": "Demandes en attente",
       "supplierInvoices": "Factures fournisseurs",
       "pendingSupplierInvoices": "{count, plural, one {# facture fournisseur à traiter} other {# factures fournisseurs à traiter}}",
-      "emptyTitle": "Rien à traiter",
+      "emptyTitle": "Vous êtes à jour",
       "emptyDescription": "Les nouvelles demandes apparaîtront ici.",
-      "viewAllPending": "Voir toutes les demandes en attente"
+      "viewAllPending": "Voir toutes les demandes"
     },
     "whatsNew": {
       "title": "Nouveautés",

@@ -6316,7 +6316,6 @@
     },
     "notificationsCenter": {
       "title": "Meldingen",
-      "description": "Wat je aandacht vraagt",
       "pendingReservations": "Openstaande aanvragen",
       "supplierInvoices": "Leveranciersfacturen",
       "pendingSupplierInvoices": "{count, plural, one {# leveranciersfactuur te verwerken} other {# leveranciersfacturen te verwerken}}",
