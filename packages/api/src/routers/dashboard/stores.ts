@@ -279,6 +279,7 @@ const completeOnboarding = storeProcedure
         ...settingsActor(context),
         userId: actor.credential.userId,
         transport: actor.transport,
+        credential: actor.credential,
       },
       input,
       {

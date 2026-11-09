@@ -28,12 +28,13 @@ import {
 import { analyticsEventIdentity, enqueueEffects } from "../platform/effects";
 import { dashboardPath, isStorefrontPublic, storeLinks } from "../platform/links";
 import { platformErrors } from "../platform/errors";
+import { readStoreSetupSummary, setupActorOf } from "../platform/setup-analytics";
 import {
   FRENCH_TERMS_WHY,
   frenchLegalNoticeWhy,
   frenchLegalRequirements,
 } from "./legal-requirements";
-import type { Transport } from "../platform/actor";
+import type { Credential, Transport } from "../platform/actor";
 import type { ApiEvent, UrlsPort } from "../platform/ports";
 import type { ConfirmStep } from "./products";
 import type { SettingsActor } from "./settings";
@@ -537,6 +538,8 @@ export interface GoLivePreview {
 export interface LaunchActor extends SettingsActor {
   userId: string;
   transport: Transport;
+  /** Who launches: the analytics say whether an agent or a human did. */
+  credential: Pick<Credential, "kind" | "clientName">;
 }
 
 /** The settings a store takes with it online, the onboarding's defaults first. */
@@ -723,6 +726,8 @@ export async function goLive(
     await markStore(tx, storeId);
 
     const launchedStore = { id: storeId, name: store.name, slug: store.slug };
+    // Who set the store up, this launch included (its record is still running).
+    const setup = await readStoreSetupSummary(tx, storeId, actor.credential);
     const effectIds = await enqueueEffects(tx, storeId, [
       { type: "store.launchNotification", payload: { channel: "discord", store: launchedStore } },
       { type: "store.launchNotification", payload: { channel: "fromhello", store: launchedStore } },
@@ -734,6 +739,8 @@ export async function goLive(
           storeId,
           reservationMode: intended,
           transport: actor.transport,
+          actor: setupActorOf(actor.credential),
+          setup,
         },
       },
     ]);

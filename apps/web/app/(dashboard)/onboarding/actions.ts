@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { storeCreatedBy } from "@louez/api/platform/setup-analytics";
 import {
   resolvePendingReferral,
   type PendingReferral,
@@ -336,7 +337,7 @@ export async function saveStoreInfo(data: StoreInfoInput, editingStoreId: string
     );
   }
 
-  sendAfterResponse(() =>
+  sendAfterResponse(async () =>
     captureProductServerEvent({
       distinctId: session.user.id,
       event: productAnalyticsEvents.onboardingStoreInfoSaved,
@@ -344,6 +345,9 @@ export async function saveStoreInfo(data: StoreInfoInput, editingStoreId: string
         feature: "onboarding",
         surface: "dashboard",
         store_id: storeId,
+        // A human finishing the store, which an agent may have created.
+        credential_kind: "session",
+        store_created_by: await storeCreatedBy(storeId).catch(() => null),
         is_existing_incomplete_store: isExistingIncompleteStore,
         referral_outcome: referralOutcome,
         country: validated.data.country,

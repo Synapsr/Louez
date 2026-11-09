@@ -24,6 +24,7 @@ import { analyticsEventIdentity, enqueueEffects, type ApiEffect } from "../platf
 import { platformErrors } from "../platform/errors";
 import { stableStringify } from "../platform/hash";
 import type { NewStorePort, NewStoreTerms } from "../platform/ports";
+import { setupActorOf } from "../platform/setup-analytics";
 import { resolveReferralAttribution, type ReferralAttribution } from "./referral-attribution";
 
 /**
@@ -326,7 +327,9 @@ export async function createStore(input: {
   confirmedPricing: NewStoreTermsView | null;
 }): Promise<CreatedStore> {
   const { actor, store, referral } = input;
-  const userId = actor.credential.userId;
+  const { credential } = actor;
+  const userId = credential.userId;
+  const setupActor = setupActorOf(credential);
   const referralCode = await freeReferralCode();
   const settings = defaultSettings(store);
   const referredByStoreId = referral.attribution?.referredByStoreId ?? null;
@@ -448,6 +451,11 @@ export async function createStore(input: {
           has_coordinates: store.latitude != null && store.longitude != null,
           has_email: Boolean(store.email),
           has_phone: Boolean(store.phone),
+          // Who created it: the setup analytics split stores on it.
+          store_created_by: credential.kind === "session" ? "human" : "agent",
+          credential_kind: setupActor.credentialKind,
+          agent_client: setupActor.agentClient,
+          client_name: setupActor.clientName,
         }),
       );
       const effectIds = await enqueueEffects(tx, storeId, effects);
