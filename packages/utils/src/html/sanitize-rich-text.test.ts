@@ -141,8 +141,9 @@ test("an editor left empty shows nothing", () => {
 /**
  * Inputs at the write limit (100,000 characters) built to make a naive
  * parser or pre-pass slow. A linear pass takes a few milliseconds each; the
- * bound is wide, so a machine busy with other tests does not fail it, and a
- * quadratic path (seconds at this size) still does.
+ * bound is wide, so a CI runner busy with every other package's tests does
+ * not fail it (one took 237 ms for the best of three), and a quadratic path
+ * (seconds at this size) still does. The ratio test below is the finer check.
  */
 const HOSTILE_INPUTS: ReadonlyArray<[string, string]> = [
   ['"<script " × 12,500', "<script ".repeat(12_500)],
@@ -166,7 +167,7 @@ test("hostile inputs at the write limit are sanitised in linear time", () => {
   sanitize("<p>warm up</p>");
   for (const [name, html] of HOSTILE_INPUTS) {
     const ms = timed(html);
-    assert.ok(ms < 200, `${name} took ${ms.toFixed(1)} ms`);
+    assert.ok(ms < 1_000, `${name} took ${ms.toFixed(1)} ms`);
   }
 });
 
