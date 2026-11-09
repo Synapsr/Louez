@@ -2,6 +2,8 @@ import { logProviderError } from "@louez/api/platform/redact";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { ORPCError } from "@orpc/server";
 
+import { TRANSLATION_KEY, TRANSLATION_KEY_MESSAGES, unknownKeyMessage } from "./error-messages";
+
 /**
  * A business error a hand-written tool answers with, in the bridge's format:
  * `isError: true`, the message and its code. `REQUEST_REFUSED` when the
@@ -33,9 +35,6 @@ const UNEXPECTED: ToolErrorFacts = {
   retryable: false,
 };
 
-/** A dashboard translation key that an older service throws as its message. */
-const TRANSLATION_KEY = /^errors\.[A-Za-z0-9_.]+$/;
-
 /**
  * The facts of an error thrown by a procedure or the platform. Our errors
  * carry `data.code`; oRPC's own (input validation) carry their code and
@@ -51,13 +50,21 @@ export function errorFacts(error: unknown): ToolErrorFacts {
     issues?: unknown;
   };
   const ours = typeof data.code === "string";
-  if (!ours && error.status >= 500) return UNEXPECTED;
   const details = data.details ?? (data.issues === undefined ? undefined : { issues: data.issues });
+  // An older service's translation key: its English, and how to recover.
+  const keyed = !ours && TRANSLATION_KEY.test(error.message);
+  const known = keyed ? TRANSLATION_KEY_MESSAGES[error.message] : undefined;
+  if (!ours && !known && error.status >= 500) return UNEXPECTED;
+  if (keyed) {
+    return {
+      message: known?.message ?? unknownKeyMessage(error.message),
+      code: error.code,
+      retryable: known?.retryable === true,
+      ...(details ? { details } : {}),
+    };
+  }
   return {
-    message:
-      !ours && TRANSLATION_KEY.test(error.message)
-        ? `Louez refused this call (${error.code}: ${error.message}).`
-        : error.message,
+    message: error.message,
     code: ours ? (data.code as string) : error.code,
     retryable: data.retryable === true,
     ...(details ? { details } : {}),
