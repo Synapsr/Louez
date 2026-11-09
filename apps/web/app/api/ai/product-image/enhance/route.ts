@@ -174,15 +174,18 @@ const handlePost = async (request: Request) => {
   // retried request can never charge twice. If the ledger write fails,
   // withhold the result (delete the object) instead of delivering
   // unaccounted work.
-  let debitedMicro: number;
+  let debitedMicro = 0;
   try {
-    debitedMicro = await debitProductImage({
-      storeId: store.id,
-      operation,
-      dedupKey: `${operation === "enhance" ? "imgenh" : "imgbg"}:${runId}`,
-      imageKey: key,
-      providerCostMicroUsd: providerCostOf(report),
-    });
+    // Billed at the price quoted above; nothing when the run is not billed.
+    if (quote.credits) {
+      debitedMicro = await debitProductImage({
+        storeId: store.id,
+        billMicro: quote.priceMicro,
+        dedupKey: `${operation === "enhance" ? "imgenh" : "imgbg"}:${runId}`,
+        imageKey: key,
+        providerCostMicroUsd: providerCostOf(report),
+      });
+    }
   } catch {
     await discardProductImage(key).catch(() => undefined);
     return NextResponse.json({ code: "server_error" }, { status: 500 });

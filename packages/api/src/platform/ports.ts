@@ -152,15 +152,17 @@ export interface ProductImagesPort {
   /** Deletes a stored result nobody will use. */
   discard: (key: string) => Promise<void>;
   /**
-   * Debits one run in the caller's transaction, once per `dedupKey`: the
-   * micro-credits debited (0 when the run is free, the credit layer off, or
-   * the key already debited). Throws when the debit could not be written.
+   * Debits one run in the caller's transaction, once per `dedupKey`, exactly
+   * `priceMicro`: the price frozen when the run was started (and confirmed),
+   * never the tariff in force now. Never called with a price of 0, which
+   * writes no debit. The micro-credits debited (0 when the key was already
+   * debited). Throws when the debit could not be written.
    */
   debit: (
     tx: Transaction,
     input: {
       storeId: string;
-      operation: ProductImageOperation;
+      priceMicro: number;
       dedupKey: string;
       imageKey: string;
       providerCostMicroUsd: number;

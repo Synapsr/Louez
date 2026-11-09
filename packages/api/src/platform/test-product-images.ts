@@ -25,7 +25,7 @@ export interface TestProductImagesState {
  * any URL under `publicBaseUrl/<storeId>/products/`; processing stores a
  * result named after the key; the debit writes a real `ai_credit_debits` row
  * in the caller's transaction (a savepoint), once per dedup key, for the
- * quote's price.
+ * price it is given.
  */
 export function createTestProductImages(publicBaseUrl = "https://files.louez.test"): {
   port: ProductImagesPort;
@@ -81,8 +81,7 @@ export function createTestProductImages(publicBaseUrl = "https://files.louez.tes
         state.debitFailsNext = false;
         throw new Error("The ledger is down.");
       }
-      const priceMicro = state.quote.priceMicro;
-      if (priceMicro <= 0) return 0;
+      const { priceMicro } = input;
       const { aiCreditDebits, isDuplicateKeyError } = await import("@louez/db");
       try {
         await tx.transaction((savepoint) =>

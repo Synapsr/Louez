@@ -256,22 +256,23 @@ export async function discardProductImage(key: string) {
 export const providerCostOf = (report: ProductImageRunReport) => report.enhanceCost?.microUsd ?? 0;
 
 /**
- * Debits one run, once per `dedupKey`: in `executor` when given (a job, in
- * the transaction that writes its result), else on its own. The micro-credits
- * debited; 0 when the operation is not billed. Throws when the debit could
- * not be written.
+ * Debits one run the price that was quoted for it (`billMicro`, never
+ * recomputed), once per `dedupKey`: in `executor` when given (a job, in the
+ * transaction that writes its result), else on its own. The micro-credits
+ * debited. A price of 0 with a known provider cost writes a cost-only row,
+ * as the dashboard always did; a job with a price of 0 never calls this.
+ * Throws when the debit could not be written.
  */
 export async function debitProductImage(
   input: {
     storeId: string;
-    operation: ProductImageOperation;
+    billMicro: number;
     dedupKey: string;
     imageKey: string;
     providerCostMicroUsd: number;
   },
   executor?: Transaction,
 ): Promise<number> {
-  if (!isBilled(input.operation)) return 0;
   const plan = await getStorePlan(input.storeId, executor);
   return recordImageEnhanceDebit(
     input.storeId,
@@ -280,7 +281,7 @@ export async function debitProductImage(
       imageKey: input.imageKey,
       plan,
       costMicroUsd: input.providerCostMicroUsd,
-      billMicro: input.operation === "enhance" ? undefined : imageBgRemovalBillMicro(),
+      billMicro: input.billMicro,
     },
     executor,
   );
@@ -300,7 +301,7 @@ export async function afterProductImageRun(input: {
   debitedMicro: number;
   report: ProductImageRunReport;
 }) {
-  if (isBilled(input.operation)) {
+  if (input.debitedMicro > 0) {
     await maybeTriggerAutoTopup(input.storeId).catch(() => {});
   }
 

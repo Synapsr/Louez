@@ -28,6 +28,7 @@ import {
   failJobInTransaction,
   JOB_LEASE_MARGIN_MS,
   JOB_LEASE_MS,
+  JOB_MAX_ATTEMPTS,
   lockActiveJob,
   lockClaimedJob,
   queueJob,
@@ -113,9 +114,28 @@ const VERB: Record<ProductImageOperation, { doing: string; done: string; noun: s
   },
 };
 
-/** Where a job's result is stored: one key per job, so a retry overwrites it. */
-export const imageJobKey = (storeId: string, jobId: string, operation: ProductImageOperation) =>
-  `${storeId}/products/${jobId}-${SUFFIX[operation]}.webp`;
+/**
+ * Where one run of a job stores its result: a key per job and attempt, never
+ * written by another run, so a runner that lost its claim can never overwrite
+ * the result that won. It ends in `-ai.webp` / `-bg.webp`, which tells a
+ * processed photo apart (`canApplyProductImageOperation`).
+ */
+export const imageJobKey = (
+  storeId: string,
+  jobId: string,
+  operation: ProductImageOperation,
+  attempt: number,
+) => `${storeId}/products/${jobId}-${attempt}-${SUFFIX[operation]}.webp`;
+
+/** The keys every run of a job may have written, but `except`. */
+const otherRunKeys = (
+  job: { storeId: string; id: string },
+  operation: ProductImageOperation,
+  except: number | null,
+) =>
+  Array.from({ length: JOB_MAX_ATTEMPTS }, (_, index) => index + 1)
+    .filter((attempt) => attempt !== except)
+    .map((attempt) => imageJobKey(job.storeId, job.id, operation, attempt));
 
 /** The ids a job gives the versions it adds, so the start can name the source's. */
 const jobVersionIds = (jobId: string) => ({
@@ -138,6 +158,8 @@ type ImageJobInput = z.infer<typeof jobInputSchema>;
 const jobResultSchema = z.object({
   url: z.string(),
   versionId: z.string(),
+  /** The source's version id as the photo's versions hold it once the result is in. */
+  sourceVersionId: z.string(),
   key: z.string(),
   debitedMicro: z.number(),
   framingMode: z.string().nullable(),
@@ -185,7 +207,8 @@ export function imageJobView(
     pollAfterSeconds: POLL_AFTER_SECONDS[input.operation],
     productId: job.targetId,
     priceCredits: credits(input.priceMicro),
-    source: { url: input.sourceUrl, versionId: input.sourceVersionId },
+    // Once done, the id the photo's versions hold: a dashboard save meanwhile may have named it.
+    source: { url: input.sourceUrl, versionId: result?.sourceVersionId ?? input.sourceVersionId },
     result: result
       ? {
           url: result.url,
@@ -421,18 +444,23 @@ export async function runImageJob(
   const outcome = await claimJob(id, leaseMs);
   if (!outcome) return;
   const input = jobInputSchema.parse(outcome.job.input);
-  const key = imageJobKey(outcome.job.storeId, outcome.job.id, input.operation);
   const port = ports.productImages;
+  const discard = async (keys: readonly string[]) => {
+    for (const key of keys) await port?.discard(key).catch(() => {});
+  };
   if (outcome.kind === "abandoned") {
-    // An earlier run may have stored the result: nobody will use it now.
-    await port?.discard(key).catch(() => {});
+    // Earlier runs may have stored a result: nobody will use any of them now.
+    await discard(otherRunKeys(outcome.job, input.operation, null));
     return;
   }
 
   const claimed: ClaimedJob = outcome;
+  const { storeId } = claimed.job;
+  // This run's own key: no other run writes it, so this run may always delete it.
+  const key = imageJobKey(storeId, claimed.job.id, input.operation, claimed.job.attempts);
   const fail = async (error: ReturnType<typeof jobError>) => {
-    const { ended } = await recordJobFailure(claimed, error).catch(() => ({ ended: false }));
-    if (ended) await port?.discard(key).catch(() => {});
+    await recordJobFailure(claimed, error).catch(() => {});
+    await discard([key]);
   };
   if (!port) {
     await fail(
@@ -440,7 +468,7 @@ export async function runImageJob(
     );
     return;
   }
-  const source = port.resolveSource(claimed.job.storeId, input.sourceUrl);
+  const source = port.resolveSource(storeId, input.sourceUrl);
   if (!source) {
     await fail(jobError("IMAGE_NOT_PROCESSABLE", "The original photo cannot be processed."));
     return;
@@ -449,7 +477,7 @@ export async function runImageJob(
   const [productRow] = await db
     .select({ name: products.name })
     .from(products)
-    .where(and(eq(products.id, claimed.job.targetId), eq(products.storeId, claimed.job.storeId)));
+    .where(and(eq(products.id, claimed.job.targetId), eq(products.storeId, storeId)));
 
   // Abort before the lease ends, counted from the claim, so a takeover never
   // overlaps a provider call that honours the signal.
@@ -462,7 +490,7 @@ export async function runImageJob(
   let processed: Awaited<ReturnType<ProductImagesPort["process"]>>;
   try {
     processed = await port.process({
-      storeId: claimed.job.storeId,
+      storeId,
       source,
       operation: input.operation,
       productName: productRow?.name ?? "",
@@ -485,13 +513,21 @@ export async function runImageJob(
 
   const versionKind = productImageVersionKindOf(input.operation);
   let finished:
-    | { kind: "succeeded"; debitedMicro: number; store: { name: string; slug: string; userId: string }; productName: string }
+    | {
+        kind: "succeeded";
+        debitedMicro: number;
+        store: { name: string; slug: string; userId: string };
+        productName: string;
+      }
+    /** Ended without a result: the product or the photo is gone, or the versions are full. */
     | { kind: "failed" }
-    | { kind: "lost" };
+    /** Another runner holds the job now: this run's result is not the one used. */
+    | { kind: "lost" }
+    /** The store or the job is gone (the account was deleted): nothing will ever use the result. */
+    | { kind: "gone" };
   try {
     finished = await db.transaction(async (tx) => {
-      const { storeId } = claimed.job;
-      if (!(await lockStoreRow(tx, storeId))) return { kind: "lost" } as const;
+      if (!(await lockStoreRow(tx, storeId))) return { kind: "gone" } as const;
       const [product] = await tx
         .select({
           id: products.id,
@@ -502,10 +538,8 @@ export async function runImageJob(
         .from(products)
         .where(and(eq(products.id, claimed.job.targetId), eq(products.storeId, storeId)))
         .for("update");
-      // A runner that lost its claim writes nothing, and leaves the file to the winner.
-      if (!(await lockClaimedJob(tx, claimed.job.id, claimed.token))) {
-        return { kind: "lost" } as const;
-      }
+      const claim = await lockClaimedJob(tx, claimed.job.id, claimed.token);
+      if (claim !== "held") return { kind: claim } as const;
       const failWith = async (error: ReturnType<typeof jobError>) => {
         await failJobInTransaction(tx, claimed.job.id, claimed.token, error);
         return { kind: "failed" } as const;
@@ -529,7 +563,10 @@ export async function runImageJob(
           ),
         );
       }
-      if (lineage ? lineage.versions.length >= PRODUCT_IMAGE_VERSIONS_MAX : histories.length >= PRODUCT_LIST_LIMITS.images) {
+      const full = lineage
+        ? lineage.versions.length >= PRODUCT_IMAGE_VERSIONS_MAX
+        : histories.length >= PRODUCT_LIST_LIMITS.images;
+      if (full) {
         return failWith(
           jobError("IMAGE_HISTORY_FULL", "The photo's versions are full: the result was not kept."),
         );
@@ -543,16 +580,26 @@ export async function runImageJob(
         versionKind,
         { ...ids, sourceVersionId: input.sourceVersionId, createdAt: new Date().toISOString() },
       );
+      // The source keeps the id its lineage gave it: the one announced at the
+      // start, or the one a dashboard save gave it meanwhile.
+      const sourceVersionId =
+        findProductImageHistory(nextHistories, input.sourceUrl)?.versions.find(
+          (version) => version.url === input.sourceUrl,
+        )?.id ?? input.sourceVersionId;
       const nextImages = [...images];
       nextImages[slot] = processed.url;
 
-      const debitedMicro = await port.debit(tx, {
-        storeId,
-        operation: input.operation,
-        dedupKey: `${DEDUP_PREFIX[input.operation]}:${claimed.job.id}`,
-        imageKey: key,
-        providerCostMicroUsd: processed.providerCostMicroUsd,
-      });
+      // The price frozen at the start, which the agent confirmed: never the tariff now.
+      const debitedMicro =
+        input.priceMicro > 0
+          ? await port.debit(tx, {
+              storeId,
+              priceMicro: input.priceMicro,
+              dedupKey: `${DEDUP_PREFIX[input.operation]}:${claimed.job.id}`,
+              imageKey: key,
+              providerCostMicroUsd: processed.providerCostMicroUsd,
+            })
+          : 0;
       await tx
         .update(products)
         .set({ images: nextImages, imageHistory: nextHistories, updatedAt: new Date() })
@@ -560,6 +607,7 @@ export async function runImageJob(
       await completeJob(tx, claimed.job.id, claimed.token, {
         url: processed.url,
         versionId: ids.versionId,
+        sourceVersionId,
         key,
         debitedMicro,
         framingMode: processed.framingMode,
@@ -577,23 +625,24 @@ export async function runImageJob(
       } as const;
     });
   } catch (error) {
-    // The debit or the write failed: nothing committed. The file stays for the retry.
+    // The debit or the write failed: nothing committed. The retry stores its own result.
     logProviderError("image_job.record_failed", error);
     await fail(jobError("DEBIT_FAILED", "The result could not be recorded.", true));
     return;
   }
 
-  if (finished.kind === "failed") {
-    await port.discard(key).catch(() => {});
+  if (finished.kind !== "succeeded") {
+    await discard([key]);
     return;
   }
-  if (finished.kind === "lost") return;
+  // Earlier runs that stored a result before they stopped: only this one is used.
+  await discard(otherRunKeys(claimed.job, input.operation, claimed.job.attempts));
 
   try {
     ports.afterCommit({
       type: "product.updated",
       store: {
-        id: claimed.job.storeId,
+        id: storeId,
         name: finished.store.name,
         slug: finished.store.slug,
         ownerUserId: finished.store.userId,
@@ -605,7 +654,7 @@ export async function runImageJob(
     // The effects of a committed write never fail it.
   }
   await port.afterSuccess({
-    storeId: claimed.job.storeId,
+    storeId,
     runId: claimed.job.id,
     operation: input.operation,
     sourceKey: source.key,

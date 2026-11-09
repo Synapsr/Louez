@@ -38,7 +38,8 @@ export const productImagesPort: ProductImagesPort = {
     };
   },
   discard: discardProductImage,
-  debit: (tx, input) => debitProductImage(input, tx),
+  debit: (tx, { priceMicro, ...input }) =>
+    debitProductImage({ ...input, billMicro: priceMicro }, tx),
   afterSuccess: async ({ report, ...input }) => {
     if (!isProductImageRunReport(report)) {
       log.warn({ productImage: { event: "report_missing", runId: input.runId } });

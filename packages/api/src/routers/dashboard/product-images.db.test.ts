@@ -250,6 +250,10 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
         debitedMicro: louezDb.aiCreditDebits.debitedMicro,
       })
       .from(louezDb.aiCreditDebits);
+  /** Where run `attempt` of a job stores its result. */
+  const runKey = (jobId: string, operation: "enhance" | "remove-background", attempt = 1) =>
+    images.imageJobKey(STORE, jobId, operation, attempt);
+
   /** Makes a queued job due now, as the cron would find it after its wait. */
   const makeDue = (id: string) =>
     louezDb.db
@@ -284,7 +288,7 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
 
     const done = await getJob({ id: started.id }, session());
     assert.equal(done.status, "succeeded");
-    const resultUrl = `${FILES}/${STORE}/products/${started.id}-ai.webp`;
+    const resultUrl = `${FILES}/${STORE}/products/${started.id}-1-ai.webp`;
     assert.deepEqual(done.result, {
       url: resultUrl,
       versionId: `product-image-version-${started.id}`,
@@ -547,7 +551,10 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal(row?.error?.code, "PROVIDER_ERROR");
     assert.equal(row?.activeSlot, null);
     assert.equal((await debits()).length, 0);
-    assert.deepEqual(fake.state.discarded, [images.imageJobKey(STORE, started.id, "enhance")]);
+    assert.deepEqual(fake.state.discarded, [
+      runKey(started.id, "enhance", 1),
+      runKey(started.id, "enhance", 2),
+    ]);
     assert.deepEqual((await productRow(id))?.images, [source]);
 
     // The inbox shows an item once it is 30 seconds old.
@@ -602,11 +609,14 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal((await jobRow(started.id))?.attempts, 2);
     assert.equal((await debits()).length, 1);
 
+    // The result is the second run's; the first run's file, if it stored one, goes.
+    assert.match((await productRow(id))?.images?.[0] ?? "", /-2-ai\.webp$/);
+    assert.ok(fake.state.discarded.includes(runKey(started.id, "enhance", 1)));
     // The first runner, back late, holds nothing.
     const stale = await louezDb.db.transaction((tx) =>
       jobs.lockClaimedJob(tx, started.id, first?.kind === "claimed" ? first.token : ""),
     );
-    assert.equal(stale, false);
+    assert.equal(stale, "lost");
   });
 
   test("a job past its last attempt is abandoned, its file dropped", async () => {
@@ -622,7 +632,10 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal(row?.status, "failed");
     assert.equal(row?.error?.code, "JOB_ABANDONED");
     assert.equal(row?.activeSlot, null);
-    assert.deepEqual(fake.state.discarded, [images.imageJobKey(STORE, started.id, "enhance")]);
+    assert.deepEqual(fake.state.discarded, [
+      runKey(started.id, "enhance", 1),
+      runKey(started.id, "enhance", 2),
+    ]);
     assert.equal((await debits()).length, 0);
   });
 
@@ -637,7 +650,7 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal(done.status, "failed");
     assert.equal(done.error?.code, "IMAGE_NO_LONGER_ON_PRODUCT");
     assert.equal((await debits()).length, 0);
-    assert.deepEqual(fake.state.discarded, [images.imageJobKey(STORE, started.id, "enhance")]);
+    assert.deepEqual(fake.state.discarded, [runKey(started.id, "enhance")]);
   });
 
   test("a debit that fails writes nothing; the retry puts the result on and charges once", async () => {
@@ -650,13 +663,20 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     assert.equal((await jobRow(started.id))?.status, "queued");
     assert.deepEqual((await productRow(id))?.images, [source]);
     assert.equal((await debits()).length, 0);
-    assert.deepEqual(fake.state.discarded, [], "the file stays for the retry");
+    assert.deepEqual(
+      fake.state.discarded,
+      [runKey(started.id, "enhance", 1)],
+      "the retry stores a file of its own",
+    );
 
     await makeDue(started.id);
     await images.runImageJob(started.id, ports);
     assert.equal((await jobRow(started.id))?.status, "succeeded");
     assert.equal((await debits()).length, 1);
-    assert.equal((await productRow(id))?.images?.[0], `${FILES}/${images.imageJobKey(STORE, started.id, "enhance")}`);
+    assert.equal(
+      (await productRow(id))?.images?.[0],
+      `${FILES}/${runKey(started.id, "enhance", 2)}`,
+    );
   });
 
   test("a version picked meanwhile is replaced in the same place", async () => {
@@ -664,7 +684,7 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
     const id = await product([source]);
     const first = await products("removeImageBackground", { id, imageUrl: source }, session());
     await images.runImageJob(first.id, ports);
-    const cutOut = `${FILES}/${images.imageJobKey(STORE, first.id, "remove-background")}`;
+    const cutOut = `${FILES}/${runKey(first.id, "remove-background")}`;
     // The background-free result may still be enhanced.
     const second = await products("enhanceImage", { id, imageUrl: cutOut }, session());
     // Meanwhile the user goes back to the original.
@@ -672,9 +692,142 @@ describe("AI photo jobs (database)", { skip: skipWithoutTestDatabase() }, () => 
 
     await images.runImageJob(second.id, ports);
     const row = await productRow(id);
-    assert.deepEqual(row?.images, [`${FILES}/${images.imageJobKey(STORE, second.id, "enhance")}`]);
+    assert.deepEqual(row?.images, [`${FILES}/${runKey(second.id, "enhance")}`]);
     assert.equal(row?.imageHistory?.length, 1);
     assert.equal(row?.imageHistory?.[0]?.versions.length, 3);
+  });
+
+  // --- What the store pays, and which file stays ---------------------------------
+
+  /** Resolves once `check` holds; fails after two seconds. */
+  async function until(check: () => boolean) {
+    const deadline = Date.now() + 2_000;
+    while (!check()) {
+      if (Date.now() > deadline) throw new Error("timed out waiting");
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+
+  test("a job is charged the price it started with, whatever the tariff becomes", async () => {
+    // Confirmed at 2 credits; the tariff goes up to 3 before it runs.
+    const paidSource = photo("price-paid");
+    const paidId = await product([paidSource]);
+    const paid = await products("enhanceImage", { id: paidId, imageUrl: paidSource }, session());
+    fake.state.quote = { ...fake.state.quote, priceMicro: 3_000_000 };
+    await images.runImageJob(paid.id, ports);
+    assert.deepEqual(await debits(), [{ dedupKey: `imgenh:${paid.id}`, debitedMicro: 2_000_000 }]);
+
+    // Free when it started; billed by the time the cron runs it: still free.
+    fake.state.quote = { available: true, priceMicro: 0, credits: null };
+    const freeSource = photo("price-free");
+    const freeId = await product([freeSource]);
+    const free = await products(
+      "removeImageBackground",
+      { id: freeId, imageUrl: freeSource },
+      session(),
+    );
+    fake.state.quote = {
+      available: true,
+      priceMicro: 1_000_000,
+      credits: { allowed: true, monthlyRemainingMicro: 0, prepaidMicro: 10_000_000 },
+    };
+    await images.runImageJob(free.id, ports);
+    const done = await getJob({ id: free.id }, session());
+    assert.equal(done.status, "succeeded");
+    assert.equal(done.result?.creditsCharged, 0);
+    assert.equal((await debits()).length, 1, "no debit row for the free job");
+  });
+
+  test("a runner that lost its claim while storing never replaces the result that won", async () => {
+    const source = photo("stale-runner");
+    const id = await product([source]);
+    const started = await products("enhanceImage", { id, imageUrl: source }, session());
+
+    // Run 1 stalls inside the pipeline.
+    let release = () => {};
+    fake.state.gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const first = images.runImageJob(started.id, ports);
+    await until(() => fake.state.processed.length === 1);
+    fake.state.gate = null;
+
+    // Its lease runs out; run 2 takes over and finishes.
+    await expireLease(started.id);
+    await images.runImageJob(started.id, ports);
+    const winner = runKey(started.id, "enhance", 2);
+    assert.deepEqual((await productRow(id))?.images, [`${FILES}/${winner}`]);
+
+    // Run 1 comes back, stores its own file, finds its claim gone, deletes it.
+    release();
+    await first;
+    assert.deepEqual((await productRow(id))?.images, [`${FILES}/${winner}`]);
+    assert.deepEqual([...fake.state.stored], [winner]);
+    assert.equal((await debits()).length, 1);
+  });
+
+  test("a result made after its store or its product was deleted is deleted too", async () => {
+    // A store whose account is deleted while its photo is processed.
+    const goneStore = "pi_store_gone_000001";
+    await louezDb.db
+      .insert(louezDb.stores)
+      .values({ id: goneStore, userId: OWNER, name: "Gone", slug: "pi-store-gone" });
+    await louezDb.db
+      .insert(louezDb.storeMembers)
+      .values({ storeId: goneStore, userId: OWNER, role: "owner" });
+    const source = photo("gone", goneStore);
+    const id = await product([source], goneStore);
+    const started = await products("enhanceImage", { id, imageUrl: source }, session(goneStore));
+
+    let release = () => {};
+    fake.state.gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const running = images.runImageJob(started.id, ports);
+    await until(() => fake.state.processed.length === 1);
+    fake.state.gate = null;
+    // The account's deletion removes the store, its products and its jobs.
+    await louezDb.db.delete(louezDb.apiJobs).where(orm.eq(louezDb.apiJobs.storeId, goneStore));
+    await louezDb.db.delete(louezDb.products).where(orm.eq(louezDb.products.storeId, goneStore));
+    await louezDb.db
+      .delete(louezDb.storeMembers)
+      .where(orm.eq(louezDb.storeMembers.storeId, goneStore));
+    await louezDb.db.delete(louezDb.stores).where(orm.eq(louezDb.stores.id, goneStore));
+    release();
+    await running;
+    const goneKey = images.imageJobKey(goneStore, started.id, "enhance", 1);
+    assert.ok(fake.state.discarded.includes(goneKey));
+    assert.equal(fake.state.stored.has(goneKey), false);
+
+    // A product deleted while its photo is processed: the job fails, its file goes.
+    const kept = photo("product-gone");
+    const keptId = await product([kept]);
+    const job = await products("enhanceImage", { id: keptId, imageUrl: kept }, session());
+    await louezDb.db.delete(louezDb.products).where(orm.eq(louezDb.products.id, keptId));
+    await images.runImageJob(job.id, ports);
+    assert.equal((await jobRow(job.id))?.error?.code, "PRODUCT_NOT_FOUND");
+    assert.equal(fake.state.stored.has(runKey(job.id, "enhance")), false);
+    assert.equal((await debits()).length, 0);
+  });
+
+  test("the original's id a dashboard save gave it meanwhile is the one the job answers", async () => {
+    const { createInitialProductImageHistory } = await import("@louez/utils");
+    const source = photo("lineage-drift");
+    const id = await product([source]);
+    const started = await products("enhanceImage", { id, imageUrl: source }, session());
+    assert.equal(started.source.versionId, `product-image-version-${started.id}-source`);
+
+    // The dashboard's form saves the product: it gives the photo its lineage.
+    const imageHistory = createInitialProductImageHistory([source], []);
+    await products("update", { id, imageHistory }, session());
+    const savedId = imageHistory[0]?.versions[0]?.id ?? "";
+    assert.equal(savedId, "product-image-version-initial-1");
+
+    await images.runImageJob(started.id, ports);
+    const done = await getJob({ id: started.id }, session());
+    assert.equal(done.source.versionId, savedId);
+    const undone = await products("useImageVersion", { id, versionId: savedId }, session());
+    assert.deepEqual(undone.images, [source]);
   });
 
   // --- Versions ---------------------------------------------------------------

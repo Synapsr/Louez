@@ -210,16 +210,23 @@ export async function claimJob(id: string, leaseMs: number = JOB_LEASE_MS): Prom
 
 /**
  * In the transaction that records a job's outcome: locks the row and says
- * whether this runner still holds it. Under that lock no other runner can
- * claim it, so a lease that ran out while no one took over still counts.
+ * whether this runner still holds it (`held`), another one took it over or
+ * ended it (`lost`), or the job is gone with its store (`gone`). Under that
+ * lock no other runner can claim it, so a lease that ran out while no one
+ * took over still counts.
  */
-export async function lockClaimedJob(tx: Transaction, id: string, token: string) {
+export async function lockClaimedJob(
+  tx: Transaction,
+  id: string,
+  token: string,
+): Promise<"held" | "lost" | "gone"> {
   const [row] = await tx
     .select({ status: apiJobs.status, claimToken: apiJobs.claimToken })
     .from(apiJobs)
     .where(eq(apiJobs.id, id))
     .for("update");
-  return row?.status === "running" && row.claimToken === token;
+  if (!row) return "gone";
+  return row.status === "running" && row.claimToken === token ? "held" : "lost";
 }
 
 const fenced = (id: string, token: string) =>
@@ -271,15 +278,11 @@ export async function failJobInTransaction(
 /**
  * A run that failed: queued again after `JOB_RETRY_DELAY_MS` when the
  * failure may pass and the job has attempts left, failed for good otherwise.
- * Whether it ended (`true`): the caller then cleans up after it. False too
- * when this runner no longer held the job, which changes nothing.
+ * Changes nothing when this runner no longer holds the job.
  */
-export async function recordJobFailure(
-  claimed: ClaimedJob,
-  error: ApiJobError,
-): Promise<{ recorded: boolean; ended: boolean }> {
+export async function recordJobFailure(claimed: ClaimedJob, error: ApiJobError): Promise<void> {
   const retry = error.retryable && claimed.job.attempts < JOB_MAX_ATTEMPTS;
-  const [result] = await db
+  await db
     .update(apiJobs)
     .set(
       retry
@@ -302,8 +305,6 @@ export async function recordJobFailure(
           },
     )
     .where(fenced(claimed.job.id, claimed.token));
-  const recorded = result.affectedRows === 1;
-  return { recorded, ended: recorded && !retry };
 }
 
 /**

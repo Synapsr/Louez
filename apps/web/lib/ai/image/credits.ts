@@ -9,7 +9,7 @@ import {
 } from "@/lib/ai/advisor/credits";
 import { isImageBackgroundRemovalEnabled } from "@/lib/ai/image/background-removal";
 import { resolveImageApiKey } from "@/lib/ai/image/provider";
-import { CREDIT_MICRO, getImageEnhanceCredits, imageEnhanceBillMicro } from "@/lib/ai/pricing";
+import { CREDIT_MICRO, getImageEnhanceCredits } from "@/lib/ai/pricing";
 import { log } from "@/lib/evlog";
 import type { Plan } from "@/lib/plans";
 
@@ -63,7 +63,17 @@ function startOfCalendarMonth(): Date {
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
-/** Sum of the monthly-pocket consumption for a store this calendar month. */
+/**
+ * Sum of the monthly-pocket consumption for a store this calendar month, read
+ * with a locking read: it sees every debit committed so far, whatever the
+ * transaction read before. A plain read would see the transaction's snapshot,
+ * fixed by its first read: an image job reads the store's plan before it takes
+ * the credits' lock, so a debit committed while it waited would go unseen and
+ * the month's included credits would be spent twice. The caller holds the
+ * store's `ai_credits` lock, which every billed debit takes first; a cost-only
+ * row inserted meanwhile waits for this transaction to end, and holds nothing
+ * this one needs.
+ */
 async function sumMonthlyUsedMicro(tx: Tx, storeId: string): Promise<number> {
   const [row] = await tx
     .select({
@@ -75,7 +85,8 @@ async function sumMonthlyUsedMicro(tx: Tx, storeId: string): Promise<number> {
         eq(aiCreditDebits.storeId, storeId),
         gte(aiCreditDebits.createdAt, startOfCalendarMonth()),
       ),
-    );
+    )
+    .for("share");
   return row?.used ?? 0;
 }
 
@@ -85,8 +96,9 @@ async function sumMonthlyUsedMicro(tx: Tx, storeId: string): Promise<number> {
  * get. There is no per-conversation cap here: the tariff is already a fixed
  * amount per image, and the debit is idempotent through the UNIQUE dedup key
  * (`imgenh:<runId>` / `imgbg:<runId>`), so a retried request can never
- * double-charge. `billMicro` defaults to the enhancement tariff; the
- * standalone background-removal path passes its own.
+ * double-charge. `billMicro` is the price the caller quoted, and confirmed
+ * when an agent asked: it is never recomputed here, so a tariff changed since
+ * charges nothing more.
  *
  * `executor`: the caller's transaction (an image job writes its result in the
  * same one), where the debit runs as a savepoint; its own otherwise.
@@ -101,15 +113,14 @@ export async function recordImageEnhanceDebit(
     imageKey: string;
     plan: Plan;
     costMicroUsd: number;
-    billMicro?: number;
+    billMicro: number;
   },
   executor?: Tx,
 ): Promise<number> {
-  const { costMicroUsd, dedupKey, imageKey, plan } = params;
+  const { billMicro, costMicroUsd, dedupKey, imageKey, plan } = params;
 
   // The real provider cost is frozen on the row regardless of what is billed,
   // so cost-vs-billed stays comparable per revenue line.
-  const billMicro = params.billMicro ?? imageEnhanceBillMicro();
   if (billMicro <= 0 && costMicroUsd <= 0) return 0;
 
   try {
