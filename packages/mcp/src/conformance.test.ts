@@ -217,7 +217,7 @@ describe("MCP directory conformance", () => {
       products_delete: "delete/public",
       products_delete_downtime: "delete/public",
       products_delete_seasonal_pricing: "delete/public",
-      products_delete_variant: "delete",
+      products_delete_variant: "delete/public",
       products_delete_variant_value: "delete/public",
       products_duplicate: "additive",
       products_duplicate_seasonal_pricing: "additive/public",

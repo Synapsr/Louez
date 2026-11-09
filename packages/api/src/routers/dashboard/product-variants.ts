@@ -123,6 +123,9 @@ export const deleteVariantDefinition = storeProcedure
       description: `Delete a variant and its values from the catalog. Refused with VARIANT_IN_USE, naming the products, while products use it (products_withdraw_variant takes it off them). ${CONFIRM_HELP}`,
       bundle: "catalog",
       effect: "delete",
+      // The marketplace export also matches a variant by its label, so a
+      // delete the in-use check allows can still change exported swatches.
+      reach: "public",
     },
   })
   .route({ method: "DELETE", path: "/variants/{id}" })
