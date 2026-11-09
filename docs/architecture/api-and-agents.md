@@ -386,6 +386,43 @@ Known limit, in Better Auth 1.7.18 itself: a refresh replay already in flight wh
 
 The credential is `kind: "oauth"`, its id the grant id, its client name the OAuth client's, its scopes the preset's, `confirmSensitive` the grant's. `storeId` is set when the grant covers one store; otherwise `stores` lists the granted ones (null for all) and the caller names one, as in [Stores, tool bundles and instructions](#stores-tool-bundles-and-instructions). The member's role in that store is read on every call, so a removed member is refused. A platform admin gets no staff powers through a token.
 
+### Connect from Claude, Claude Code and ChatGPT
+
+What Anthropic's connector directory and OpenAI's plugins ask of the authorization server (checked 2026-11-09), and the URLs each client uses. Better Auth 1.7.18 does all of it with the plugins above; `packages/auth/src/oauth.test.ts` runs the four published client documents through the flow and pins each point.
+
+**The server, for every client**
+
+- [ ] The URL the user enters is `https://app.louez.io/api/mcp`, exactly: it is the `resource` of the metadata, and Claude compares the two as strings.
+- [ ] Without a token, `/api/mcp` answers 401 with `WWW-Authenticate: Bearer resource_metadata="https://app.louez.io/.well-known/oauth-protected-resource/api/mcp"`; a bad token adds `error="invalid_token"`.
+- [ ] That document lists one authorization server, `https://app.louez.io/api/auth` (Claude uses the first only). Its metadata is at `https://app.louez.io/.well-known/oauth-authorization-server/api/auth` and `https://app.louez.io/api/auth/.well-known/openid-configuration`.
+- [ ] The metadata says `code_challenge_methods_supported: ["S256"]` (PKCE is required, `plain` refused), `client_id_metadata_document_supported: true`, `none` and `private_key_jwt` (with the client secrets) in `token_endpoint_auth_methods_supported`, `offline_access` in `scopes_supported`, and `authorization_response_iss_parameter_supported: true`.
+- [ ] Every redirect back to the client carries `iss=https://app.louez.io/api/auth` (RFC 9207): the code, `access_denied`, and the errors after the redirect URI is checked (`invalid_request`, `invalid_scope`, `invalid_target`, `login_required`). A request whose client or redirect URI is not known never goes back to it: its error stays on Louez.
+- [ ] The token endpoint takes `application/x-www-form-urlencoded`. The access token's `aud` holds the `resource` the client sent; another resource is `invalid_target`, and `/api/mcp` refuses a token for another audience or issuer.
+- [ ] A refresh rotates the refresh token. A retry within 30 seconds gets the same answer; after that, the spent token is `invalid_grant` and revokes its family. An unknown, altered or other client's token is `invalid_grant` too.
+
+**Claude (claude.ai on the web, Desktop, mobile, Cowork)**
+
+- [ ] Client id `https://claude.ai/oauth/mcp-oauth-client-metadata` (public, PKCE), or `https://claude.ai/oauth/mcp-oauth-client-metadata/confidential_client` (`private_key_jwt`, keys at `https://claude.ai/v1/mcp/jwks`). Nothing to register; the consent page shows "Vérifié".
+- [ ] Redirect `https://claude.ai/api/mcp/auth_callback`, matched exactly.
+- [ ] Requests come from `160.79.104.0/21`.
+
+**Claude Code**
+
+- [ ] `claude mcp add --transport http louez https://app.louez.io/api/mcp`, then `/mcp` to sign in.
+- [ ] Client id `https://claude.ai/oauth/claude-code-client-metadata` (public). Its redirects `http://localhost/callback` and `http://127.0.0.1/callback` match on any port (RFC 8252); the host, path and scheme must match. Any client with a registered loopback redirect gets the same rule, and only on loopback.
+- [ ] The consent page warns that the code goes to a local address and does not show "Vérifié".
+
+**ChatGPT (and Codex)**
+
+- [ ] Client id `https://chatgpt.com/oauth/client.json`, authenticating with `private_key_jwt` (keys at `https://chatgpt.com/oauth/jwks.json`, fetched through the CIMD transport). The consent page shows "Vérifié".
+- [ ] Redirect `https://chatgpt.com/connector_platform_oauth_redirect`: the stable one, as Louez returns `iss`. If the builder picks dynamic registration, ChatGPT registers its own client with `https://chatgpt.com/connector/oauth/{callback_id}`, accepted like any HTTPS redirect.
+- [ ] ChatGPT asks for the advertised scopes (`openid profile email offline_access`); the UserInfo endpoint gives the user's e-mail and `email_verified`, which an Enterprise workspace checks against its domains.
+
+**Known limits**
+
+- Better Auth's per-IP limits on the OAuth endpoints apply: 20 token requests, 30 authorizations and 5 registrations a minute. Every Claude user's token requests come from Anthropic's range, and ChatGPT's from OpenAI's, so many connections share these buckets.
+- Both metadata documents list `dpop_signing_alg_values_supported` (Better Auth's default), but `/api/mcp` takes bearer tokens only and refuses a DPoP-bound one. Neither Claude nor ChatGPT uses DPoP.
+
 ---
 
 ## Related
