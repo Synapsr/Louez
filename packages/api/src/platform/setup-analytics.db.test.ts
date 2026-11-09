@@ -683,4 +683,42 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     assert.equal(launch.setup.setupBy, "unknown");
     assert.equal(launch.setup.agentActionCount, 1, "the go-live itself");
   });
+
+  // --- The wizard -------------------------------------------------------------
+
+  const wizardStoreStep = (storeId: string) =>
+    call(
+      "stores",
+      "updateOnboardingInfo",
+      { ...STORE_INPUT, name: "Brest Surf", storeId },
+      session,
+    );
+
+  test("a store set up in the wizard alone is set up by a human", async () => {
+    const store = await createStore(session);
+    await wizardStoreStep(store.id);
+    await goLive(session, store.id);
+
+    assert.deepEqual(await rows("store.agentSetupAction"), []);
+    const [{ payload: launch }] = await rows("store.launchAnalytics");
+    assert.ok(launch.setup);
+    assert.equal(launch.setup.setupBy, "human");
+    assert.equal(launch.setup.createdBy, "human");
+    assert.equal(launch.setup.humanActionCount, 3, "the creation, the store step, the go-live");
+    assert.equal(launch.setup.agentActionCount, 0);
+  });
+
+  test("an agent's store a human finishes in the wizard is set up by both", async () => {
+    const store = await createStore(agent);
+    await wizardStoreStep(store.id);
+    await goLive(session, store.id);
+
+    const [{ payload: launch }] = await rows("store.launchAnalytics");
+    assert.ok(launch.setup);
+    assert.equal(launch.setup.setupBy, "mixed");
+    assert.equal(launch.setup.createdBy, "agent");
+    assert.equal(launch.setup.agentActionCount, 1);
+    assert.equal(launch.setup.humanActionCount, 2);
+    await assertNoPersonalData();
+  });
 });

@@ -12,6 +12,8 @@ import {
   isValidImageUrlClient,
 } from "@louez/validations";
 
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpc } from "@/lib/orpc/react";
 import { getDefaultCurrencyForCountry } from "@/lib/utils/currency";
 import { createLoginUrl } from "@/lib/utils/util.url";
 import { detectCountryFromBrowser } from "@/lib/utils/util.browser-country-detection";
@@ -22,7 +24,6 @@ import { useOnboardingErrorToast } from "./_lib/onboarding-error-toast";
 import { useOnboardingPreview } from "./_lib/preview-context";
 import { useOnboardingDraft } from "./_lib/use-onboarding-draft";
 import { useStepNavigation } from "./_lib/use-step-navigation";
-import { saveStoreInfo } from "./actions";
 
 interface UseStoreStepParams {
   editingStoreId: string | null;
@@ -42,15 +43,14 @@ export const useStoreStep = ({
 
   const storeInfoSchema = createStoreInfoSchema(tValidation);
 
-  const mutation = useMutation({
-    mutationFn: async (value: StoreInfoInput) => {
-      const result = await saveStoreInfo(value, editingStoreId);
-      if (result.error) {
-        throw new Error(result.error);
-      }
-      return result;
-    },
-  });
+  // The store being onboarded is saved; without one, the step creates it.
+  // Each answer makes its store the active one.
+  const saveInfo = useMutation(orpc.dashboard.stores.updateOnboardingInfo.mutationOptions());
+  const createStore = useMutation(orpc.dashboard.stores.create.mutationOptions());
+  const saveStore = async (value: StoreInfoInput) => {
+    const saved = await saveInfo.mutateAsync({ ...value, storeId: editingStoreId });
+    if (saved.id === null) await createStore.mutateAsync(value);
+  };
 
   const setSlugTakenError = () => {
     form.setFieldMeta("slug", (prev) => ({
@@ -95,16 +95,17 @@ export const useStoreStep = ({
     onSubmit: async ({ value }) => {
       try {
         // Validated on submit: the parse only narrows the currency to a supported code.
-        await mutation.mutateAsync(storeInfoSchema.parse(value));
+        await saveStore(storeInfoSchema.parse(value));
         goToNextStep();
       } catch (error) {
-        if (error instanceof Error && error.message === "errors.unauthenticated") {
+        const key = apiErrorKey(error);
+        if (key === "unauthenticated") {
           window.location.replace(createLoginUrl("/onboarding"));
           return;
         }
 
         // Map the slug conflict to a field-level error, everything else to a toast
-        if (error instanceof Error && error.message === "errors.slugTaken") {
+        if (key === "slugTaken") {
           setSlugTakenError();
           return;
         }

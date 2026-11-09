@@ -143,7 +143,6 @@ const SA = {
   subscription: `${DASH}/subscription/actions.ts`,
   team: `${DASH}/team/actions.ts`,
   whatsNew: `${DASH}/whats-new/actions.ts`,
-  onboarding: `${ONBOARDING}/actions.ts`,
   onboardingProfile: `${ONBOARDING}/profile-actions.ts`,
   reeent: `${ONBOARDING}/reeent/actions.ts`,
   invitation: "apps/web/app/invitation/[token]/actions.ts",
@@ -2092,11 +2091,14 @@ export const capabilities = [
   },
   {
     // The onboarding's store step on a store that exists already: an
-    // incomplete store of the user, or the one being edited.
+    // incomplete store of the user (an agent's included), or the one being
+    // edited. The wizard's own step: a session only, agents set the same
+    // fields through the settings procedures.
     id: "stores.updateOnboardingInfo",
-    sources: [action(SA.onboarding, "saveStoreInfo")],
+    sources: [procedure("stores", "updateOnboardingInfo")],
     kind: "write",
     plan: { lot: "8" },
+    actors: ["session"],
   },
   {
     id: "stores.getOnboardingDraft",

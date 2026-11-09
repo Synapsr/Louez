@@ -4,6 +4,7 @@ import {
   markLegacyStore,
   markSetupWrite,
   markStore,
+  mergeStoreRow,
   storeMembers,
   stores,
   users,
@@ -25,7 +26,7 @@ import { analyticsEventIdentity, enqueueEffects, type ApiEffect } from "../platf
 import { platformErrors } from "../platform/errors";
 import { stableStringify } from "../platform/hash";
 import type { NewStorePort, NewStoreTerms } from "../platform/ports";
-import { setupActorOf } from "../platform/setup-analytics";
+import { setupActorOf, storeCreatedBy } from "../platform/setup-analytics";
 import { resolveReferralAttribution, type ReferralAttribution } from "./referral-attribution";
 
 /**
@@ -480,4 +481,240 @@ export async function createStore(input: {
     }
     throw error;
   }
+}
+
+// --- The onboarding's store step on an existing store -------------------------
+
+const targetColumns = {
+  id: true,
+  userId: true,
+  onboardingCompleted: true,
+  referredByStoreId: true,
+  referredByUserId: true,
+} as const;
+
+/**
+ * The store the onboarding's store step saves, as the wizard always picked
+ * it: the one it edits (the user must own it, or be platform staff), else the
+ * active store when it is an incomplete store the user owns, else the user's
+ * incomplete store, the one with this web address first. A web address held
+ * by another store is refused, unless it is an incomplete store of the user
+ * the step then saves. Null: the user has no store to finish, and the step
+ * creates one (`stores.create`).
+ */
+async function onboardingStoreOf(input: {
+  actor: AccountActor;
+  editingStoreId: string | null;
+  activeStoreId: string | null;
+  slug: string;
+}) {
+  const userId = input.actor.credential.userId;
+  const ownerOf = async (storeId: string) =>
+    Boolean(
+      await db.query.storeMembers.findFirst({
+        where: and(
+          eq(storeMembers.storeId, storeId),
+          eq(storeMembers.userId, userId),
+          eq(storeMembers.role, "owner"),
+        ),
+        columns: { id: true },
+      }),
+    );
+  const storeById = (storeId: string) =>
+    db.query.stores.findFirst({ where: eq(stores.id, storeId), columns: targetColumns });
+
+  let target: Awaited<ReturnType<typeof storeById>> = undefined;
+  if (input.editingStoreId) {
+    target = await storeById(input.editingStoreId);
+    if (!target || !(input.actor.isPlatformAdmin || (await ownerOf(target.id)))) {
+      throw platformErrors.noStore();
+    }
+  } else if (input.activeStoreId && (await ownerOf(input.activeStoreId))) {
+    const active = await storeById(input.activeStoreId);
+    if (active && !active.onboardingCompleted) target = active;
+  }
+  if (!target) {
+    const incomplete = await db.query.stores.findMany({
+      where: and(eq(stores.userId, userId), eq(stores.onboardingCompleted, false)),
+      columns: { ...targetColumns, slug: true },
+      orderBy: (columns, { desc }) => [desc(columns.updatedAt)],
+    });
+    target = incomplete.find((store) => store.slug === input.slug) ?? incomplete[0];
+  }
+
+  const holder = await db.query.stores.findFirst({
+    where: eq(stores.slug, input.slug),
+    columns: targetColumns,
+  });
+  if (holder) {
+    const reusable = holder.userId === userId && holder.onboardingCompleted === false;
+    if (!target && reusable) target = holder;
+    if (!target || holder.id !== target.id) throw await slugTakenError(input.slug);
+  }
+  return target ?? null;
+}
+
+export interface SavedOnboardingStore {
+  /** Null: no store to finish; the step creates one. */
+  id: string | null;
+  online: boolean;
+  /** The request's referral cookie was read for this store: the answer spends it. */
+  spendReferral: boolean;
+  effectIds: string[];
+}
+
+/**
+ * The onboarding's store step on a store that exists already: an incomplete
+ * store of the user (one an agent created included), or the one being
+ * edited. Under the store row's lock, in one transaction: the name, the web
+ * address, the contact and the place, the country and the currency, the
+ * onboarding's default rules where the store has none (settings set since,
+ * by the user or an agent, are kept); for an incomplete store not referred
+ * yet, the referral attribution and, when Louez's own billing bills it, the
+ * referred reward (`rewardReferredStore`); in the outbox, the analytics
+ * events (referral attribution, referred reward, store info saved).
+ */
+export async function saveOnboardingStoreInfo(input: {
+  actor: AccountActor;
+  store: CreateStoreInput;
+  editingStoreId: string | null;
+  activeStoreId: string | null;
+  referralCode: string | null;
+  rewardReferredStore: NewStorePort["rewardReferredStore"];
+}): Promise<SavedOnboardingStore> {
+  const { actor, store } = input;
+  const userId = actor.credential.userId;
+  const target = await onboardingStoreOf({
+    actor,
+    editingStoreId: input.editingStoreId,
+    activeStoreId: input.activeStoreId,
+    slug: store.slug,
+  });
+  if (!target) return { id: null, online: false, spendReferral: false, effectIds: [] };
+
+  const storeId = target.id;
+  const incomplete = target.onboardingCompleted !== true;
+  const referral: PendingReferral =
+    !incomplete || target.referredByStoreId
+      ? { referralCode: null, attribution: null, outcome: "already_attributed" }
+      : await resolvePendingReferral({
+          userId,
+          referralCode: input.referralCode,
+          ignoredOwnedStoreId: storeId,
+        });
+  const setupActor = setupActorOf(actor.credential);
+
+  let saved: { result: string[] | undefined } | null;
+  try {
+    saved = await mergeStoreRow(db, storeId, async ({ settings: current }, tx) => {
+      // The slug, settings and referral columns are in the store's billing snapshot.
+      await markStore(tx, storeId);
+      const rewarded = referral.attribution ? await input.rewardReferredStore(tx, storeId) : false;
+      const identity = () => analyticsEventIdentity(new Date());
+      const analytics = (
+        event: "store_info_saved" | "referral_attribution_resolved" | "referred_reward_granted",
+        properties: Record<string, string | number | boolean | null>,
+      ): ApiEffect => ({
+        type: "store.creationAnalytics",
+        payload: {
+          ...identity(),
+          event,
+          ownerUserId: userId,
+          transport: actor.transport,
+          properties,
+        },
+      });
+      const referrerStoreId = referral.attribution?.referredByStoreId ?? null;
+      const effects: ApiEffect[] = [];
+      if (incomplete) {
+        effects.push(
+          analytics("referral_attribution_resolved", {
+            placement: "onboarding_store_create",
+            referral_attribution_outcome: referral.outcome,
+            has_referral_cookie: Boolean(referral.referralCode),
+            is_existing_incomplete_store: true,
+            referred_store_id: storeId,
+            referrer_store_id: referrerStoreId,
+            currency: store.currency,
+            country: store.country,
+          }),
+        );
+      }
+      if (rewarded && referrerStoreId) {
+        effects.push(
+          analytics("referred_reward_granted", {
+            placement: "onboarding_store_create",
+            referred_store_id: storeId,
+            referrer_store_id: referrerStoreId,
+            currency: store.currency,
+          }),
+        );
+      }
+      effects.push(
+        analytics("store_info_saved", {
+          feature: "onboarding",
+          surface: "dashboard",
+          store_id: storeId,
+          is_existing_incomplete_store: incomplete,
+          referral_outcome: incomplete ? referral.outcome : null,
+          country: store.country,
+          currency: store.currency,
+          has_address: Boolean(store.address),
+          has_coordinates: store.latitude != null && store.longitude != null,
+          has_email: Boolean(store.email),
+          has_phone: Boolean(store.phone),
+          // A human finishing a store an agent may have created.
+          store_created_by: await storeCreatedBy(tx, storeId),
+          credential_kind: setupActor.credentialKind,
+          agent_client: setupActor.agentClient,
+        }),
+      );
+      const effectIds = await enqueueEffects(tx, storeId, effects);
+
+      return {
+        set: {
+          name: store.name,
+          slug: store.slug,
+          address: optional(store.address),
+          latitude: store.latitude?.toString() || null,
+          longitude: store.longitude?.toString() || null,
+          email: optional(store.email),
+          phone: optional(store.phone),
+          referredByUserId: referral.attribution?.referredByUserId ?? target.referredByUserId,
+          referredByStoreId: referrerStoreId ?? target.referredByStoreId,
+          settings: {
+            ...current,
+            reservationMode: current?.reservationMode ?? "payment",
+            minRentalMinutes: current?.minRentalMinutes ?? 60,
+            maxRentalMinutes: current?.maxRentalMinutes ?? null,
+            advanceNoticeMinutes: current?.advanceNoticeMinutes ?? 1440,
+            turnoverBufferMinutes: current?.turnoverBufferMinutes ?? 0,
+            businessHours:
+              current?.businessHours?.enabled !== undefined
+                ? current.businessHours
+                : defaultBusinessHours,
+            country: store.country,
+            timezone: getTimezoneForCountry(store.country),
+            currency: store.currency,
+          },
+        },
+        result: effectIds,
+      };
+    });
+  } catch (error) {
+    // Another store took the address since the check.
+    if (isDuplicateKeyError(error) && (await takenSlugs([store.slug])).size > 0) {
+      throw await slugTakenError(store.slug);
+    }
+    throw error;
+  }
+  if (!saved) throw platformErrors.noStore();
+
+  return {
+    id: storeId,
+    online: !incomplete,
+    // Read for this store only when it could still be attributed, as the step always did.
+    spendReferral: Boolean(referral.referralCode),
+    effectIds: saved.result ?? [],
+  };
 }
