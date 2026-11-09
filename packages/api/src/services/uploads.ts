@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import { env as authEnv } from "@louez/auth/env";
 import { guardedGet } from "@louez/auth/guarded-fetch";
@@ -342,8 +342,38 @@ export async function uploadImage(
     // Nobody else knows this key: a failed upload leaves nothing behind, so
     // a retry does not add a second object.
     await storage.delete(key).catch((cleanup: unknown) => {
-      console.error("An image upload could not delete its object after failing:", key, cleanup);
+      console.error(cleanupFailure(key, input.kind, cleanup));
     });
     throw error;
   }
+}
+
+/**
+ * The log event of an object an upload could not delete: an opaque
+ * reference to it (the start of the key's SHA-256: an operator finds the
+ * object by hashing the keys of the store's folder), never the key itself,
+ * and the error's name, code and HTTP status, never the provider's message
+ * or the error object.
+ */
+export function cleanupFailure(key: string, kind: ApiUploadKind, error: unknown) {
+  const fields = typeof error === "object" && error !== null ? error : {};
+  const pick = (name: string): unknown => (fields as Record<string, unknown>)[name];
+  const metadata = pick("$metadata");
+  const status =
+    pick("status") ??
+    pick("statusCode") ??
+    (typeof metadata === "object" && metadata !== null
+      ? (metadata as { httpStatusCode?: unknown }).httpStatusCode
+      : undefined);
+  const code = pick("code") ?? pick("Code");
+  return {
+    event: "image_upload.cleanup_failed",
+    objectRef: createHash("sha256").update(key).digest("hex").slice(0, 16),
+    kind,
+    error: {
+      name: error instanceof Error ? error.name : typeof error,
+      code: typeof code === "string" || typeof code === "number" ? code : null,
+      status: typeof status === "number" ? status : null,
+    },
+  };
 }

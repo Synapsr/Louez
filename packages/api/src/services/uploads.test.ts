@@ -102,10 +102,16 @@ describe("uploadImage", () => {
   });
 
   test("a host's transient answers are retryable; a refused address is not", async () => {
+    const transient = [408, 425, 429, 500, 502, 503, 504, 522, 524, 599];
     imageFetch.serve({
-      "https://cdn.example.org/busy.png": () => new Response(null, { status: 503 }),
-      "https://cdn.example.org/limited.png": () => new Response(null, { status: 429 }),
+      ...Object.fromEntries(
+        transient.map((status) => [
+          `https://cdn.example.org/${status}.png`,
+          () => new Response(null, { status }),
+        ]),
+      ),
       "https://cdn.example.org/gone.png": () => new Response(null, { status: 404 }),
+      "https://cdn.example.org/forbidden.png": () => new Response(null, { status: 403 }),
     });
     const retryable = async (imageUrl: string) => {
       try {
@@ -115,9 +121,11 @@ describe("uploadImage", () => {
       }
       assert.fail("the import succeeded");
     };
-    assert.equal(await retryable("https://cdn.example.org/busy.png"), true);
-    assert.equal(await retryable("https://cdn.example.org/limited.png"), true);
+    for (const status of transient) {
+      assert.equal(await retryable(`https://cdn.example.org/${status}.png`), true, String(status));
+    }
     assert.equal(await retryable("https://cdn.example.org/gone.png"), false);
+    assert.equal(await retryable("https://cdn.example.org/forbidden.png"), false);
     assert.equal(await retryable("https://db.internal/a.png"), false);
     assert.equal(await retryable("http://cdn.example.org/a.png"), false);
   });
@@ -130,13 +138,35 @@ describe("uploadImage", () => {
     await assert.rejects(upload({ contentBase64: pngBase64(64) }), failure);
     assert.equal(storage.objects.size, 0, "nothing left behind");
 
-    // A cleanup that fails too is logged; the caller still gets the first error.
+    // A cleanup that fails too is logged as an event: an opaque reference to
+    // the object and the error's name, code and status, never the key or
+    // the provider's message. The caller still gets the first error.
     const logged = t.mock.method(console, "error", () => {});
-    storage.delete = async () => {
-      throw new Error("delete failed");
+    let deleted = "";
+    storage.delete = async (key) => {
+      deleted = key;
+      throw Object.assign(new Error(`AccessDenied on ${key} for arn:aws:iam::123:user/x`), {
+        name: "AccessDenied",
+        Code: "AccessDenied",
+        $metadata: { httpStatusCode: 403 },
+      });
     };
     await assert.rejects(upload({ contentBase64: pngBase64(64) }), failure);
     assert.equal(logged.mock.callCount(), 1);
+    const args = logged.mock.calls[0]?.arguments ?? [];
+    assert.equal(args.length, 1);
+    const event = args[0] as { objectRef: string };
+    assert.deepEqual(event, {
+      event: "image_upload.cleanup_failed",
+      objectRef: event.objectRef,
+      kind: "category",
+      error: { name: "AccessDenied", code: "AccessDenied", status: 403 },
+    });
+    assert.match(event.objectRef, /^[0-9a-f]{16}$/);
+    const written = JSON.stringify(args);
+    assert.ok(!written.includes(deleted), "no key");
+    assert.ok(!written.includes(STORE), "no store folder");
+    assert.ok(!written.includes("arn:aws"), "no provider message");
   });
 
   test("base64 is sized from its data, with padding only where it belongs", async () => {

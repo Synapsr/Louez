@@ -95,8 +95,12 @@ export const completeImageUploadOutput = z.object({
   size: z.number().int(),
 });
 
-/** Answers of an image host that may succeed on a later try. */
-const TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+/**
+ * Whether an image host's answer may succeed on a later try: a timeout, too
+ * many requests, or any server error (522 and 524 from a CDN included).
+ */
+const isTransientStatus = (status: number) =>
+  status === 408 || status === 425 || status === 429 || (status >= 500 && status <= 599);
 
 export const uploadErrors = {
   kindNotAllowed: (kind: string) =>
@@ -160,7 +164,7 @@ export const uploadErrors = {
       // URL that is not HTTPS or a missing image will not.
       retryable:
         reason === "timeout" ||
-        (reason === "status" && status !== null && TRANSIENT_STATUSES.has(status)),
+        (reason === "status" && status !== null && isTransientStatus(status)),
       details: { reason, status },
     }),
   importBusy: () =>
