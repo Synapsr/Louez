@@ -851,10 +851,11 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     const sent = (await rows("store.agentSetupAction")).length;
     await inline("onlineStore");
     assert.equal((await rows("store.agentSetupAction")).length, sent);
+    // Two marks of the same second: their order is not defined.
     const after = await marksOf("dashboard.onlineStore.uploadImage");
     assert.deepEqual(
-      after.map((row) => row.setupStoreId),
-      [store.id, null],
+      after.map((row) => row.setupStoreId ?? "unmarked").sort(),
+      [store.id, "unmarked"].sort(),
     );
     await assertNoPersonalData();
   });
