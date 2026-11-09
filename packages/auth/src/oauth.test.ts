@@ -605,6 +605,14 @@ test("discovery: the metadata Claude and ChatGPT read before they connect, at th
   assert.equal(resource.resource, "https://app.example.com/api/mcp");
   assert.deepEqual(resource.authorization_servers, [endpoints.issuer]);
   assert.deepEqual(resource.bearer_methods_supported, ["header"]);
+  // /api/mcp takes bearer tokens only: no document offers DPoP.
+  assert.equal("dpop_signing_alg_values_supported" in resource, false);
+  for (const method of ["GET", "HEAD"]) {
+    const answer = await fx.request("/.well-known/oauth-protected-resource/api/mcp", { method });
+    assert.equal(answer.status, 200, method);
+    assert.match(answer.headers.get("content-type") ?? "", /^application\/json/, method);
+    assert.ok(answer.headers.get("cache-control"), method);
+  }
 
   for (const path of [
     "/.well-known/oauth-authorization-server/api/auth",
@@ -612,6 +620,7 @@ test("discovery: the metadata Claude and ChatGPT read before they connect, at th
   ]) {
     const server = (await (await fx.request(path)).json()) as Record<string, unknown>;
     assert.equal(server.issuer, endpoints.issuer, path);
+    assert.equal("dpop_signing_alg_values_supported" in server, false, path);
     assert.deepEqual(server.code_challenge_methods_supported, ["S256"], path);
     assert.equal(server.authorization_response_iss_parameter_supported, true, path);
     assert.equal(server.client_id_metadata_document_supported, true, path);

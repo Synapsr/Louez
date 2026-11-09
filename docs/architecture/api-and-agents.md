@@ -395,7 +395,7 @@ What Anthropic's connector directory and OpenAI's plugins ask of the authorizati
 - [ ] The URL the user enters is `https://app.louez.io/api/mcp`, exactly: it is the `resource` of the metadata, and Claude compares the two as strings.
 - [ ] Without a token, `/api/mcp` answers 401 with `WWW-Authenticate: Bearer resource_metadata="https://app.louez.io/.well-known/oauth-protected-resource/api/mcp"`; a bad token adds `error="invalid_token"`.
 - [ ] That document lists one authorization server, `https://app.louez.io/api/auth` (Claude uses the first only). Its metadata is at `https://app.louez.io/.well-known/oauth-authorization-server/api/auth` and `https://app.louez.io/api/auth/.well-known/openid-configuration`.
-- [ ] The metadata says `code_challenge_methods_supported: ["S256"]` (PKCE is required, `plain` refused), `client_id_metadata_document_supported: true`, `none` and `private_key_jwt` (with the client secrets) in `token_endpoint_auth_methods_supported`, `offline_access` in `scopes_supported`, and `authorization_response_iss_parameter_supported: true`.
+- [ ] The metadata says `code_challenge_methods_supported: ["S256"]` (PKCE is required, `plain` refused), `client_id_metadata_document_supported: true`, `none` and `private_key_jwt` (with the client secrets) in `token_endpoint_auth_methods_supported`, `offline_access` in `scopes_supported`, and `authorization_response_iss_parameter_supported: true`. No document offers DPoP: Better Auth always lists `dpop_signing_alg_values_supported`, and `withoutDpopMetadata` (`oauth.ts`) takes it out, as `/api/mcp` takes bearer tokens only.
 - [ ] Every redirect back to the client carries `iss=https://app.louez.io/api/auth` (RFC 9207): the code, `access_denied`, and the errors after the redirect URI is checked (`invalid_request`, `invalid_scope`, `invalid_target`, `login_required`). A request whose client or redirect URI is not known never goes back to it: its error stays on Louez.
 - [ ] The token endpoint takes `application/x-www-form-urlencoded`. The access token's `aud` holds the `resource` the client sent; another resource is `invalid_target`, and `/api/mcp` refuses a token for another audience or issuer.
 - [ ] A refresh rotates the refresh token. A retry within 30 seconds gets the same answer; after that, the spent token is `invalid_grant` and revokes its family. An unknown, altered or other client's token is `invalid_grant` too.
@@ -421,7 +421,7 @@ What Anthropic's connector directory and OpenAI's plugins ask of the authorizati
 **Known limits**
 
 - Better Auth's per-IP limits on the OAuth endpoints apply: 20 token requests, 30 authorizations and 5 registrations a minute. Every Claude user's token requests come from Anthropic's range, and ChatGPT's from OpenAI's, so many connections share these buckets.
-- Both metadata documents list `dpop_signing_alg_values_supported` (Better Auth's default), but `/api/mcp` takes bearer tokens only and refuses a DPoP-bound one. Neither Claude nor ChatGPT uses DPoP.
+- A client that sends a DPoP proof to the token endpoint anyway gets a DPoP-bound token, which `/api/mcp` refuses. Neither Claude nor ChatGPT does.
 
 ---
 
