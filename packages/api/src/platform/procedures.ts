@@ -8,13 +8,14 @@ import {
   resolveAccountActor,
   resolveStoreActor,
   type AccountActor,
+  type Credential,
   type ScopedActor,
   type StoreActor,
 } from "./actor";
 import { apiError, platformErrors } from "./errors";
 import type { ApiMeta } from "./meta";
 import { IDEMPOTENCY_HEADER, runOperation } from "./operations";
-import { accountRefusal, allows } from "./permissions";
+import { accountRefusal, allows, type ProcedureScope } from "./permissions";
 import { consumeRateLimit, rateLimitKey } from "./rate-limit";
 import { recordedSetupAction, setupProcedureName } from "./setup-analytics";
 
@@ -145,6 +146,17 @@ async function recordWrite<T extends { output: unknown }>(input: {
  * account scope (`ACCOUNT_SCOPE`): recorded, and replayed for a repeated
  * idempotency key.
  */
+/**
+ * Why a scope is refused: the agent's directory forbids the domain (no grant
+ * changes it), else the connection or the role does not allow it.
+ */
+function scopeRefusal(credential: Credential, scope: ProcedureScope) {
+  if (credential.withheld?.domains.includes(scope.domain)) {
+    return platformErrors.withheldFromClient(scope.domain);
+  }
+  return platformErrors.permissionDenied(`${scope.domain}:${scope.level}`);
+}
+
 export const accountProcedure = authenticated.use(
   async ({ context, next, path, procedure }, input, output) => {
     const meta = procedure["~orpc"].meta;
@@ -155,8 +167,7 @@ export const accountProcedure = authenticated.use(
       if (refusal === "bound" && credential.kind !== "session") {
         throw platformErrors.connectionBoundToStores(credential.kind);
       }
-      if (refusal)
-        throw platformErrors.permissionDenied(`${meta.scope.domain}:${meta.scope.level}`);
+      if (refusal) throw scopeRefusal(credential, meta.scope);
     }
     if (credential.kind !== "session") {
       const limit = await consumeRateLimit(rateLimitKey(credential));
@@ -211,7 +222,7 @@ export const storeProcedure = authenticated.use(
     });
 
     if (!allows(storeActor.role, credential.scopes, meta.scope)) {
-      throw platformErrors.permissionDenied(`${meta.scope.domain}:${meta.scope.level}`);
+      throw scopeRefusal(credential, meta.scope);
     }
 
     const { ports } = context;

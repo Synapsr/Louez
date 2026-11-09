@@ -17,6 +17,7 @@ import {
   type AgentClient,
   type AgentConnection,
 } from "../contracts/agent-connections";
+import { CHATGPT_CLIENT_ID, clientWithholding } from "../platform/agent-clients";
 import { bundlesWithTools, createExposure } from "../platform/exposure";
 import { MCP_BUNDLES, type McpBundle } from "../platform/meta";
 import { failCredentialHandoffs } from "./handoffs";
@@ -59,15 +60,20 @@ const knownBundles = (raw: unknown): McpBundle[] =>
 let appToolBundles: Promise<readonly McpBundle[]> | undefined;
 
 /**
- * The bundles the consent page and the connection editor offer: those that
- * hold a tool today (`bundlesWithTools`), read once from the app's exposure.
- * The router is loaded on first use, as it imports this module.
+ * The bundles the consent page and the connection editor offer `client`:
+ * those that hold a tool today (`bundlesWithTools`, read once from the app's
+ * exposure; the router is loaded on first use, as it imports this module),
+ * without those its directory forbids it (`clientWithholding`).
  */
-export function offeredBundles(): Promise<readonly McpBundle[]> {
+export async function offeredBundles(client: {
+  clientId: string;
+  name: string | null;
+}): Promise<McpBundle[]> {
   appToolBundles ??= import("../router").then(({ appRouter }) =>
     bundlesWithTools(createExposure(appRouter).procedures),
   );
-  return appToolBundles;
+  const withheld = clientWithholding(client).bundles;
+  return (await appToolBundles).filter((bundle) => !withheld.includes(bundle));
 }
 
 /** A grant's bundles, without those offered nowhere: they come back once they hold a tool. */
@@ -174,7 +180,7 @@ export async function storeHasAgentConnection(storeId: string): Promise<boolean>
 const VERIFIED_CLIENT_IDS: ReadonlySet<string> = new Set([
   "https://claude.ai/oauth/mcp-oauth-client-metadata",
   "https://claude.ai/oauth/mcp-oauth-client-metadata/confidential_client",
-  "https://chatgpt.com/oauth/client.json",
+  CHATGPT_CLIENT_ID,
 ]);
 
 function hostOf(uri: string | null | undefined): string | null {
@@ -253,8 +259,9 @@ export async function currentTerms(input: {
   userId: string;
   clientId: string;
 }): Promise<GrantTerms | null> {
-  const [grant, offered] = await Promise.all([loadActiveGrant(input), offeredBundles()]);
+  const grant = await loadActiveGrant(input);
   if (!grant) return null;
+  const offered = await offeredBundles({ clientId: grant.clientId, name: grant.clientName });
   return {
     stores: grant.stores ? { all: false, ids: grant.stores } : { all: true },
     preset: grant.preset,
@@ -413,7 +420,7 @@ export async function listGrants(userId: string, onlyId?: string): Promise<Agent
   if (rows.length === 0) return [];
 
   const ids = rows.map((row) => row.id);
-  const [storeRows, lastActions, offered] = await Promise.all([
+  const [storeRows, lastActions] = await Promise.all([
     db
       .select({
         grantId: apiAgentGrantStores.grantId,
@@ -431,11 +438,14 @@ export async function listGrants(userId: string, onlyId?: string): Promise<Agent
         and(eq(apiOperations.credentialKind, "oauth"), inArray(apiOperations.credentialId, ids)),
       )
       .groupBy(apiOperations.credentialId),
-    offeredBundles(),
   ]);
   const lastAction = new Map(lastActions.map((row) => [row.grantId, row.at]));
 
-  return rows.map((row) => ({
+  const offered = await Promise.all(
+    rows.map((row) => offeredBundles({ clientId: row.clientId, name: row.name })),
+  );
+
+  return rows.map((row, index) => ({
     id: row.id,
     client: toAgentClient(row, null),
     stores: row.allStores
@@ -448,8 +458,8 @@ export async function listGrants(userId: string, onlyId?: string): Promise<Agent
         },
     preset: row.preset,
     confirmSensitive: row.confirmSensitive,
-    bundles: shownBundles(knownBundles(row.bundles), offered),
-    offeredBundles: [...offered],
+    bundles: shownBundles(knownBundles(row.bundles), offered[index]),
+    offeredBundles: offered[index],
     lastActionAt: lastAction.get(row.id) ?? null,
     createdAt: row.createdAt,
   }));

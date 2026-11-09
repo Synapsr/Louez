@@ -235,6 +235,65 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.ok(all.includes("categories_list") && all.includes("reservations_list"));
   });
 
+  test("ChatGPT neither sees nor calls the billing tools, whatever its grant", async () => {
+    const { CHATGPT_CLIENT_ID } = await import("@louez/api/platform/agent-clients");
+    const REGISTERED = "mo_dcr_chatgpt_client";
+    await louezDb.db.insert(louezDb.oauthClients).values([
+      {
+        clientId: CHATGPT_CLIENT_ID,
+        name: "ChatGPT",
+        clientDiscoveryId: "cimd",
+        redirectUris: JSON.stringify(["https://chatgpt.com/connector_platform_oauth_redirect"]),
+      },
+      // ChatGPT registering itself (dynamic registration) under its name.
+      {
+        clientId: REGISTERED,
+        name: "ChatGPT",
+        redirectUris: JSON.stringify(["https://chatgpt.com/connector/oauth/abc"]),
+      },
+    ]);
+    const terms = {
+      stores: { all: false as const, ids: [STORE_A] },
+      preset: "write" as const,
+      confirmSensitive: true,
+      bundles: ["daily" as const, "billing" as const],
+    };
+
+    // Claude, with the billing bundle, lists them.
+    await grant({ bundles: terms.bundles });
+    const claude = await withClient(await bearer(), async (client) =>
+      (await client.listTools()).tools.map((tool) => tool.name),
+    );
+    assert.ok(claude.includes("billing_get_status") && claude.includes("billing_start_card_setup"));
+
+    for (const clientId of [CHATGPT_CLIENT_ID, REGISTERED]) {
+      const { id: grantId } = await grants.saveGrant({ userId: OWNER, clientId, terms });
+      const token = await tokens.sign({ userId: OWNER, clientId, grantId });
+      await withClient({ authorization: `Bearer ${token}` }, async (client) => {
+        const names = (await client.listTools()).tools.map((tool) => tool.name);
+        assert.ok(names.includes("reservations_list"), clientId);
+        assert.deepEqual(
+          names.filter((name) => name.startsWith("billing_")),
+          [],
+          clientId,
+        );
+        const instructions = client.getInstructions() ?? "";
+        assert.doesNotMatch(instructions, /billing/i, clientId);
+        for (const name of ["billing_get_status", "billing_start_card_setup"]) {
+          const refused = await client.callTool({ name, arguments: {} });
+          assert.equal(errorCode(refused), "NOT_AVAILABLE_TO_THIS_AGENT", `${clientId} ${name}`);
+        }
+      });
+    }
+
+    // The consent page and the editor never offer it to ChatGPT.
+    const offered = await grants.offeredBundles({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" });
+    assert.ok(!offered.includes("billing"));
+    assert.ok(offered.includes("daily"));
+    const current = await grants.currentTerms({ userId: OWNER, clientId: CHATGPT_CLIENT_ID });
+    assert.deepEqual(current?.bundles, ["daily"]);
+  });
+
   test("a grant over several stores names the store in each call", async () => {
     await grant({ stores: { all: false, ids: [STORE_A, STORE_B] }, bundles: ["daily", "catalog"] });
     const headers = await bearer();

@@ -68,13 +68,12 @@ const getAuthorization = connections
   .handler(async ({ context, input }) => {
     const { clientId, redirectUri } = await pendingRequest(input.oauthQuery);
     const { userId } = context.actor.credential;
-    const [client, stores, current, offered] = await Promise.all([
+    const [client, stores, current] = await Promise.all([
       describeClient(clientId, redirectUri),
       memberStores(context.actor),
       currentTerms({ userId, clientId }),
-      offeredBundles(),
     ]);
-    return { client, stores, current, offeredBundles: [...offered] };
+    return { client, stores, current, offeredBundles: await offeredBundles(client) };
   });
 
 /**

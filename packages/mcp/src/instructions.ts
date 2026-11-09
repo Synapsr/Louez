@@ -20,8 +20,12 @@ const BUNDLE_SUMMARY: Record<McpBundle, string> = {
 /** Where an agent learns what needs the user, and how to poll it. */
 const INBOX_HELP = `What needs the user's attention (requests to answer, late returns, failed payments, messages that never went out…): inbox_list. To keep an eye on the store, call it every ${INBOX_POLL_MINUTES.min} to ${INBOX_POLL_MINUTES.max} minutes with the nextCursor of your last call: you get only what is new. When hasMore is true, call it again at once with nextCursor.`;
 
-/** Steps only the user can take, handed over with a link (services/handoffs.ts). */
-const HANDOFF_HELP = `Some steps only the user can take (Stripe's identity checks, a billing card): their tool returns a link. Give the user that link as it is and never open it yourself, then poll handoffs_get with its id every ${HANDOFF_POLL_SECONDS.min} seconds to ${HANDOFF_POLL_SECONDS.max / 60} minutes (or watch inbox_list) until it is completed, rather than asking them to tell you; while it answers \`confirming: true\` (the user is back, the provider has not confirmed yet), poll handoffs_refresh instead, which asks the provider again. An expired or failed link is replaced by calling the same tool again. Once Stripe's onboarding completes, or when the user says Stripe asked them for something, payments_sync_stripe_status says whether charges are enabled; once a card is added, billing_get_status shows it.`;
+/**
+ * Steps only the user can take, handed over with a link (services/handoffs.ts).
+ * The billing card is named only to a connection that may reach billing.
+ */
+const handoffHelp = (billing: boolean) =>
+  `Some steps only the user can take (Stripe's identity checks${billing ? ", a billing card" : ""}): their tool returns a link. Give the user that link as it is and never open it yourself, then poll handoffs_get with its id every ${HANDOFF_POLL_SECONDS.min} seconds to ${HANDOFF_POLL_SECONDS.max / 60} minutes (or watch inbox_list) until it is completed, rather than asking them to tell you; while it answers \`confirming: true\` (the user is back, the provider has not confirmed yet), poll handoffs_refresh instead, which asks the provider again. An expired or failed link is replaced by calling the same tool again. Once Stripe's onboarding completes, or when the user says Stripe asked them for something, payments_sync_stripe_status says whether charges are enabled${billing ? "; once a card is added, billing_get_status shows it" : ""}.`;
 
 /**
  * How the tools chain. Tool descriptions say what each tool does and never
@@ -112,12 +116,15 @@ export function serverInstructions(
     );
   }
 
-  if (!ctx.noStore) lines.push(INBOX_HELP, HANDOFF_HELP);
+  const { scopes, withheld } = ctx.actor.credential;
+  if (!ctx.noStore) lines.push(INBOX_HELP, handoffHelp(scopes === null || scopes.billing !== "none"));
 
   const { bundles } = ctx.actor.credential;
   if (bundles) {
-    const listed = toolBundles.filter((bundle) => bundles.includes(bundle));
-    const others = toolBundles.filter((bundle) => !bundles.includes(bundle));
+    // A bundle the client's directory forbids is neither listed nor offered.
+    const offered = toolBundles.filter((bundle) => !withheld?.bundles.includes(bundle));
+    const listed = offered.filter((bundle) => bundles.includes(bundle));
+    const others = offered.filter((bundle) => !bundles.includes(bundle));
     if (listed.length > 0) {
       lines.push(
         `Tool bundles listed: ${listed.map((bundle) => `${bundle} (${BUNDLE_SUMMARY[bundle]})`).join("; ")}.`,
