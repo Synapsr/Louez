@@ -304,6 +304,45 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.deepEqual(current?.bundles, ["daily"]);
   });
 
+  test("a long registered name is read whole: the billing exclusion holds at consent and at run time", async () => {
+    // A client registered itself with a name past the audit column's 100
+    // characters, OpenAI's after them. The name is the client's own choice:
+    // this is the directory's policy, not a security boundary.
+    const LONG_NAME_CLIENT = "mo_dcr_long_name_client";
+    const name = `${"x".repeat(100)} ChatGPT`;
+    await louezDb.db.insert(louezDb.oauthClients).values({
+      clientId: LONG_NAME_CLIENT,
+      name,
+      redirectUris: JSON.stringify(["https://long.mo.test/callback"]),
+    });
+    const terms = {
+      stores: { all: false as const, ids: [STORE_A] },
+      preset: "write" as const,
+      confirmSensitive: true,
+      bundles: ["daily" as const, "billing" as const],
+    };
+    const offered = await grants.offeredBundles({ clientId: LONG_NAME_CLIENT, name });
+    assert.ok(!offered.includes("billing"), "consent hides it");
+    const { id: grantId } = await grants.saveGrant({
+      userId: OWNER,
+      clientId: LONG_NAME_CLIENT,
+      terms,
+    });
+    const saved = await grants.loadActiveGrant({ userId: OWNER, clientId: LONG_NAME_CLIENT });
+    assert.equal(saved?.clientName.length, 100, "the audit keeps 100 characters");
+    assert.equal(saved?.registeredName, name);
+    const token = await tokens.sign({ userId: OWNER, clientId: LONG_NAME_CLIENT, grantId });
+    await withClient({ authorization: `Bearer ${token}` }, async (client) => {
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      assert.deepEqual(
+        names.filter((tool) => tool.startsWith("billing_")),
+        [],
+      );
+      const refused = await client.callTool({ name: "billing_get_status", arguments: {} });
+      assert.equal(errorCode(refused), "NOT_AVAILABLE_TO_THIS_AGENT");
+    });
+  });
+
   test("a grant over several stores names the store in each call", async () => {
     await grant({ stores: { all: false, ids: [STORE_A, STORE_B] }, bundles: ["daily", "catalog"] });
     const headers = await bearer();

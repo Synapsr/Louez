@@ -45,8 +45,13 @@ export interface ActiveGrant {
   userId: string;
   email: string | null;
   clientId: string;
-  /** The client's name, for the audit trail. */
+  /** The client's name, for the audit trail: cut to the audit column's 100 characters. */
   clientName: string;
+  /**
+   * The name the client registered, whole: what its directory's rules read
+   * (`clientWithholding`), as the consent page does, never the cut one.
+   */
+  registeredName: string | null;
   preset: AgentPreset;
   confirmSensitive: boolean;
   bundles: McpBundle[];
@@ -123,6 +128,7 @@ export async function loadActiveGrant(input: {
     clientId: row.clientId,
     // The audit column holds 100 characters.
     clientName: (row.clientName ?? row.clientId).slice(0, 100),
+    registeredName: row.clientName,
     preset: row.preset,
     confirmSensitive: row.confirmSensitive,
     bundles: knownBundles(row.bundles),
@@ -261,7 +267,7 @@ export async function currentTerms(input: {
 }): Promise<GrantTerms | null> {
   const grant = await loadActiveGrant(input);
   if (!grant) return null;
-  const offered = await offeredBundles({ clientId: grant.clientId, name: grant.clientName });
+  const offered = await offeredBundles({ clientId: grant.clientId, name: grant.registeredName });
   return {
     stores: grant.stores ? { all: false, ids: grant.stores } : { all: true },
     preset: grant.preset,
