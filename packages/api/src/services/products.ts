@@ -5,6 +5,7 @@ import {
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
   lockProductReservationsForStockKindChange,
+  lockStoreRow,
   marketplaceCatalogTombstones,
   nextProductSlug,
   productAccessories,
@@ -19,7 +20,6 @@ import {
   reservationStillHoldsUnitsSql,
   reservations,
   retryOnceOnDeadlock,
-  stores,
   type Transaction,
 } from "@louez/db";
 import type { BookingAttributeAxis, UnitAttributes } from "@louez/types";
@@ -118,7 +118,7 @@ const productImagePrefix = (storeId: string) => `${storeId}/products`;
  * product row.
  */
 export async function lockStoreProducts(tx: Transaction, storeId: string) {
-  await tx.select({ id: stores.id }).from(stores).where(eq(stores.id, storeId)).for("update");
+  await lockStoreRow(tx, storeId);
 }
 
 /** An effect must never fail a write that has committed. */

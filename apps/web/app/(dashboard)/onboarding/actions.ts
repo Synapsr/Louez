@@ -347,7 +347,7 @@ export async function saveStoreInfo(data: StoreInfoInput, editingStoreId: string
         store_id: storeId,
         // A human finishing the store, which an agent may have created.
         credential_kind: "session",
-        store_created_by: await storeCreatedBy(storeId).catch(() => null),
+        store_created_by: await storeCreatedBy(db, storeId).catch(() => null),
         is_existing_incomplete_store: isExistingIncompleteStore,
         referral_outcome: referralOutcome,
         country: validated.data.country,

@@ -3,7 +3,12 @@ import { createRequire } from "node:module";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
 import { createTestAccessTokens } from "@louez/auth/testing";
-import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+import {
+  createTestDatabase,
+  skipWithoutTestDatabase,
+  waitForLockWaits,
+  type TestDatabase,
+} from "@louez/db/testing";
 
 import type { ApiEffectPayloads } from "./effects";
 import { createMemoryStorage } from "./memory-storage";
@@ -203,21 +208,17 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     }
   }
 
+  const STORE_INPUT = {
+    name: PERSONAL.name,
+    slug: "sa-brest-surf",
+    country: "FR",
+    currency: "EUR",
+    address: PERSONAL.address,
+    email: PERSONAL.email,
+    phone: PERSONAL.phone,
+  };
   const createStore = (caller: Caller) =>
-    call<{ id: string }>(
-      "stores",
-      "create",
-      {
-        name: PERSONAL.name,
-        slug: "sa-brest-surf",
-        country: "FR",
-        currency: "EUR",
-        address: PERSONAL.address,
-        email: PERSONAL.email,
-        phone: PERSONAL.phone,
-      },
-      caller,
-    );
+    call<{ id: string }>("stores", "create", { ...STORE_INPUT }, caller);
   const updateInfo = (caller: Caller, storeId: string) =>
     call(
       "settings",
@@ -383,35 +384,45 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     );
   });
 
+  /** Who runs a write straight through `runOperation`, as the middleware would. */
+  const operationActor = (kind: "oauth" | "session", storeId = "") => ({
+    transport: kind === "session" ? ("rpc" as const) : ("mcp" as const),
+    isPlatformAdmin: false,
+    storeId,
+    credential: {
+      kind,
+      id: kind === "session" ? null : "sa_grant",
+      clientName: kind === "session" ? null : "Claude",
+      userId: USER,
+      email: null,
+      storeId: null,
+      stores: null,
+      scopes: null,
+      confirmSensitive: false,
+      bundles: null,
+    },
+  });
+
+  const operationStatus = async (id: string | undefined) => {
+    const [operation] = await louezDb.db
+      .select({ status: louezDb.apiOperations.status })
+      .from(louezDb.apiOperations)
+      .where(orm.eq(louezDb.apiOperations.id, String(id)));
+    return operation?.status;
+  };
+
   test("analytics that cannot be added never fail the write", async () => {
     const { runOperation } = await import("./operations");
-    const actor = {
-      transport: "mcp" as const,
-      isPlatformAdmin: false,
-      storeId: "",
-      credential: {
-        kind: "oauth" as const,
-        id: "sa_grant",
-        clientName: "Claude",
-        userId: USER,
-        email: null,
-        storeId: null,
-        stores: null,
-        scopes: null,
-        confirmSensitive: false,
-        bundles: null,
-      },
-    };
     const receipt: { operationId?: string } = {};
     const tooLong = "x".repeat(200); // longer than api_effects.store_id: the insert fails
     const result = await runOperation(
       {
-        actor,
+        actor: operationActor("oauth"),
         procedure: "dashboard.stores.create",
         input: {},
         idempotencyKey: null,
         receipt,
-        recordedEffects: () => ({
+        recordedEffects: async () => ({
           storeId: tooLong,
           effects: [{ type: "store.welcomeCredits", payload: { storeId: tooLong, credits: 1 } }],
         }),
@@ -420,13 +431,115 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
       async () => ({ id: "sa_written" }),
     );
     assert.deepEqual(result, { id: "sa_written" });
-    const [operation] = await louezDb.db
-      .select({ status: louezDb.apiOperations.status })
-      .from(louezDb.apiOperations)
-      .where(orm.eq(louezDb.apiOperations.id, String(receipt.operationId)));
-    assert.equal(operation?.status, "succeeded", "the write's record stands");
+    assert.equal(await operationStatus(receipt.operationId), "succeeded", "the record stands");
     assert.deepEqual(await louezDb.db.select().from(louezDb.apiEffects), []);
     assert.deepEqual(dispatched, []);
+  });
+
+  test("a deadlock while recording runs the record again, never the handler", async () => {
+    const { runOperation } = await import("./operations");
+    const store = "sa_deadlock_store_01";
+    const holder = await database.connect();
+    let handlerRuns = 0;
+    try {
+      // A heavier transaction than the record's, so MySQL picks the record as
+      // the deadlock's victim; it holds the gap the record's event goes into.
+      await holder.beginTransaction();
+      for (let index = 0; index < 30; index += 1) {
+        await holder.query(
+          "INSERT INTO `api_effects` (id, store_id, type, payload) VALUES (?, 'sa_heavy_store_0001', 'store.welcomeCredits', '{}')",
+          [`sa_heavy_${String(index).padStart(12, "0")}`],
+        );
+      }
+      await holder.query("SELECT id FROM `api_effects` WHERE store_id = ? FOR UPDATE", [store]);
+
+      const receipt: { operationId?: string } = {};
+      const recording = runOperation(
+        {
+          actor: operationActor("oauth"),
+          procedure: "dashboard.stores.create",
+          input: {},
+          idempotencyKey: null,
+          receipt,
+          recordedEffects: async () => ({
+            storeId: store,
+            effects: [{ type: "store.welcomeCredits", payload: { storeId: store, credits: 1 } }],
+          }),
+          dispatchEffects: (ids) => dispatched.push(...ids),
+        },
+        async () => {
+          handlerRuns += 1;
+          return { id: "sa_written" };
+        },
+      );
+      // The record marked the operation succeeded, then waits for the gap.
+      await waitForLockWaits(holder, database.name, 1);
+      // Now the holder wants the operation's row: a deadlock.
+      await holder.query("UPDATE `api_operations` SET updated_at = updated_at WHERE id = ?", [
+        receipt.operationId,
+      ]);
+      await holder.rollback();
+
+      assert.deepEqual(await recording, { id: "sa_written" });
+      assert.equal(handlerRuns, 1, "the handler ran once");
+      assert.equal(await operationStatus(receipt.operationId), "succeeded");
+      const rows = await louezDb.db
+        .select({ id: louezDb.apiEffects.id })
+        .from(louezDb.apiEffects)
+        .where(orm.eq(louezDb.apiEffects.storeId, store));
+      assert.equal(rows.length, 1, "the event was added once, by the record's second run");
+      assert.deepEqual(dispatched, [rows[0]?.id]);
+    } finally {
+      await holder.end();
+    }
+  });
+
+  test("a write that waited while the store went live sends no setup action", async () => {
+    const store = await createStore(agent);
+    const before = (await rows("store.agentSetupAction")).length;
+    const holder = await database.connect();
+    try {
+      // The write passes the middleware (which read the store offline), then
+      // waits for the store's lock while a launch commits.
+      await holder.beginTransaction();
+      await holder.query("SELECT id FROM `stores` WHERE id = ? FOR UPDATE", [store.id]);
+      const write = updateInfo(agent, store.id);
+      await waitForLockWaits(holder, database.name, 1);
+      await holder.query("UPDATE `stores` SET onboarding_completed = 1 WHERE id = ?", [store.id]);
+      await holder.commit();
+      await write;
+    } finally {
+      await holder.end();
+    }
+    assert.equal((await rows("store.agentSetupAction")).length, before);
+    const marked = await louezDb.db
+      .select({ procedure: louezDb.apiOperations.procedure })
+      .from(louezDb.apiOperations)
+      .where(orm.eq(louezDb.apiOperations.setupStoreId, store.id));
+    assert.deepEqual(
+      marked.map((row) => row.procedure),
+      ["dashboard.stores.create"],
+      "the write found the store online: it set nothing up",
+    );
+  });
+
+  test("a token never issued, with confirmation off, is no accepted confirmation", async () => {
+    await grants.saveGrant({
+      userId: USER,
+      clientId: CLIENT,
+      terms: {
+        stores: { all: true },
+        preset: "write",
+        confirmSensitive: false,
+        bundles: ["daily", "catalog", "settings"],
+      },
+    });
+    await call("stores", "create", { ...STORE_INPUT }, agent, {
+      "louez-confirmation": "never-issued",
+    });
+    const [created] = (await rows("store.agentSetupAction")).map((row) => row.payload);
+    assert.equal(created?.procedure, "stores.create");
+    assert.equal(created?.confirmed, false);
   });
 
   // --- A human ----------------------------------------------------------------
@@ -486,5 +599,88 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     assert.equal(infoSaved.properties.credential_kind, "oauth");
     assert.equal(infoSaved.properties.agent_client, "claude");
     await assertNoPersonalData();
+  });
+
+  test("a human write committed before the go-live counts, even before its record is final", async () => {
+    const { runOperation } = await import("./operations");
+    const { updateStoreInfo } = await import("../services/settings");
+    const store = await createStore(agent);
+    const [row] = await louezDb.db
+      .select({ name: louezDb.stores.name, slug: louezDb.stores.slug })
+      .from(louezDb.stores)
+      .where(orm.eq(louezDb.stores.id, store.id));
+    assert.ok(row);
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const receipt: { operationId?: string } = {};
+    // The human's write commits, then its handler waits: its record stays running.
+    const human = runOperation(
+      {
+        actor: operationActor("session", store.id),
+        procedure: "dashboard.settings.updateStoreInfo",
+        input: { latitude: 48.38, longitude: -4.49 },
+        idempotencyKey: null,
+        receipt,
+        marksSetup: true,
+      },
+      async () => {
+        await updateStoreInfo(
+          {
+            storeId: store.id,
+            store: { id: store.id, name: row.name, slug: row.slug, ownerUserId: USER },
+            afterCommit: () => {},
+          },
+          { latitude: 48.38, longitude: -4.49 },
+        );
+        await gate;
+        return {};
+      },
+    );
+    for (let tries = 0; ; tries += 1) {
+      const [marked] = await louezDb.db
+        .select({ setupStoreId: louezDb.apiOperations.setupStoreId })
+        .from(louezDb.apiOperations)
+        .where(orm.eq(louezDb.apiOperations.id, String(receipt.operationId)));
+      if (marked?.setupStoreId === store.id) break;
+      assert.ok(tries < 200, "the human's write committed");
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.equal(await operationStatus(receipt.operationId), "running");
+
+    await goLive(agent, store.id);
+    release();
+    await human;
+
+    const [{ payload: launch }] = await rows("store.launchAnalytics");
+    assert.ok(launch.setup);
+    assert.equal(launch.setup.setupBy, "mixed");
+    assert.equal(launch.setup.humanActionCount, 1);
+    assert.equal(launch.setup.agentActionCount, 2, "the creation and the go-live");
+  });
+
+  test("a store whose creation left no mark is set up by someone unknown", async () => {
+    const storeId = "sa_old_store_0000001";
+    await louezDb.db.insert(louezDb.stores).values({
+      id: storeId,
+      userId: USER,
+      name: "Old store",
+      slug: "sa-old-store",
+      settings: {
+        reservationMode: "payment" as const,
+        advanceNoticeMinutes: 60,
+        currency: "EUR",
+        country: "FR",
+        timezone: "Europe/Paris",
+      },
+    });
+    await louezDb.db.insert(louezDb.storeMembers).values({ storeId, userId: USER, role: "owner" });
+    await goLive(agent, storeId);
+    const [{ payload: launch }] = await rows("store.launchAnalytics");
+    assert.ok(launch.setup);
+    assert.equal(launch.setup.createdBy, "unknown");
+    assert.equal(launch.setup.setupBy, "unknown");
+    assert.equal(launch.setup.agentActionCount, 1, "the go-live itself");
   });
 });

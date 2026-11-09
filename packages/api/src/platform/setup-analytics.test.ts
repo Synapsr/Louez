@@ -40,7 +40,7 @@ describe("setup analytics facts", () => {
       path,
       input,
       output,
-      store: { id: "store_1", ownerUserId: "owner_1", offline: true },
+      store: { id: "store_1", ownerUserId: "owner_1" },
       confirmed: false,
       now: new Date("2026-11-09T10:00:00.000Z"),
     });
@@ -167,13 +167,13 @@ describe("setup analytics facts", () => {
     assert.deepEqual(facts(...PROCEDURES[11]), { variant_value_count: 2 });
   });
 
-  test("what sends nothing: a session, a store online, a go-live that launched nothing, a non-setup procedure", () => {
+  test("what sends nothing: a session, a go-live that launched nothing, a non-setup procedure", () => {
     const base = {
       transport: "rpc" as const,
       path: ["dashboard", "settings", "updateStoreInfo"],
       input: {},
       output: {},
-      store: { id: "store_1", ownerUserId: "owner_1", offline: true },
+      store: { id: "store_1", ownerUserId: "owner_1" },
       confirmed: false,
     };
     assert.equal(
@@ -184,14 +184,6 @@ describe("setup analytics facts", () => {
       null,
     );
     const agent = { kind: "api_key" as const, clientName: "Mon n8n" };
-    assert.equal(
-      analytics.agentSetupActionEffect({
-        ...base,
-        credential: agent,
-        store: { ...base.store, offline: false },
-      }),
-      null,
-    );
     assert.equal(
       analytics.agentSetupActionEffect({
         ...base,
@@ -239,7 +231,7 @@ describe("setup analytics facts", () => {
           path: ["dashboard", "settings", "updateStoreInfo"],
           input: { description: "x" },
           output: {},
-          store: { id: "store_1", ownerUserId: "owner_1", offline: true },
+          store: { id: "store_1", ownerUserId: "owner_1" },
           confirmed: false,
         });
         const json = JSON.stringify(effect);

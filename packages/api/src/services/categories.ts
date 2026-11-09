@@ -1,10 +1,10 @@
 import {
   categories,
   db,
+  lockStoreRow,
   nextCategorySlug,
   productCategories,
   products,
-  stores,
   type Transaction,
 } from "@louez/db";
 import { isOwnedImageUrl } from "@louez/validations";
@@ -69,7 +69,7 @@ function assertOwnedImage(storeId: string, imageUrl: string) {
  * interleave. Released when the transaction ends.
  */
 async function lockStoreCategories(tx: Transaction, storeId: string) {
-  await tx.select({ id: stores.id }).from(stores).where(eq(stores.id, storeId)).for("update");
+  await lockStoreRow(tx, storeId);
 }
 
 async function findByName(executor: Transaction, storeId: string, name: string) {

@@ -726,8 +726,8 @@ export async function goLive(
     await markStore(tx, storeId);
 
     const launchedStore = { id: storeId, name: store.name, slug: store.slug };
-    // Who set the store up, this launch included (its record is still running).
-    const setup = await readStoreSetupSummary(tx, storeId, actor.credential);
+    // Who set the store up, under the lock: this launch marked the store as it took it.
+    const setup = await readStoreSetupSummary(tx, storeId);
     const effectIds = await enqueueEffects(tx, storeId, [
       { type: "store.launchNotification", payload: { channel: "discord", store: launchedStore } },
       { type: "store.launchNotification", payload: { channel: "fromhello", store: launchedStore } },

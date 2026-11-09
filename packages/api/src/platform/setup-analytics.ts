@@ -1,17 +1,21 @@
 import { apiOperations, db, stores, type Transaction } from "@louez/db";
-import { and, count, eq, or, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 
-import { ACCOUNT_SCOPE, type CredentialKind, type Credential, type Transport } from "./actor";
+import type { CredentialKind, Credential, Transport } from "./actor";
 import { analyticsEventIdentity, type ApiEffect } from "./effects";
+import type { RecordedEffects } from "./operations";
 
 /**
  * Product analytics of a store's setup: which agent set it up, what it filled
  * and how far it got before the store went live
  * (docs/architecture/api-and-agents.md, "Setup analytics").
  *
- * An agent's write (an API key or an OAuth token) on a store still offline,
- * and its go-live, queue one `store.agentSetupAction` row in the outbox, added
- * with the write's audit record (`runOperation`). Its facts are non-sensitive
+ * A setup write marks the store it set up, in its own transaction, when it
+ * locks that store's row while the store is offline (`markSetupWrite` from
+ * @louez/db; `api_operations.setup_store_id`). An agent's (an API key or an
+ * OAuth token) then queues one `store.agentSetupAction` row in the outbox,
+ * added with the write's audit record (`runOperation`), and the launch counts
+ * every mark. Its facts are non-sensitive
  * by construction: the names of the fields the call set, and a fixed list of
  * enums, counts and yes/no (`SETUP_FACT_KEYS`). Never a value a person typed:
  * no name, e-mail, phone, address, legal identity or free text.
@@ -32,9 +36,6 @@ export function setupProcedureName(path: readonly string[]): string | null {
   if (path.length !== 3 || path[0] !== "dashboard") return null;
   return SETUP_DOMAINS.some((domain) => domain === path[1]) ? `${path[1]}.${path[2]}` : null;
 }
-
-/** The setup procedures as `api_operations.procedure` records them, for SQL. */
-const setupProcedurePatterns = SETUP_DOMAINS.map((domain) => `dashboard.${domain}.%`);
 
 // --- Who ----------------------------------------------------------------------
 
@@ -293,10 +294,11 @@ export function setupActionFacts(
 }
 
 /**
- * The outbox row of an agent's setup write, or null: a session's write, a
- * procedure that sets nothing up, a store already online (`offline` false),
- * or a go-live that launched nothing. Never throws on a strange input: the
- * write has happened, its analytics must not fail it.
+ * The outbox row of an agent's setup write on `store`, or null: a session's
+ * write, a procedure that sets nothing up, or a go-live that launched
+ * nothing. Whether the store was offline is the caller's (the write's mark).
+ * Never throws on a strange input: the write has happened, its analytics
+ * must not fail it.
  */
 export function agentSetupActionEffect(params: {
   credential: Pick<Credential, "kind" | "clientName">;
@@ -304,12 +306,12 @@ export function agentSetupActionEffect(params: {
   path: readonly string[];
   input: unknown;
   output: unknown;
-  store: { id: string; ownerUserId: string; offline: boolean };
-  /** The call carried a confirmation token: it was previewed, and accepted. */
+  store: { id: string; ownerUserId: string };
+  /** The write spent a confirmation token: it was previewed, and accepted. */
   confirmed: boolean;
   now?: Date;
 }): ApiEffect | null {
-  if (params.credential.kind === "session" || !params.store.offline) return null;
+  if (params.credential.kind === "session") return null;
   const procedure = setupProcedureName(params.path);
   if (!procedure) return null;
   const facts = setupActionFacts(procedure, params.input, params.output);
@@ -331,34 +333,68 @@ export function agentSetupActionEffect(params: {
   };
 }
 
+/**
+ * `runOperation`'s recorded effects of a setup write: an agent's action on
+ * the store its handler marked (`markSetupWrite` from @louez/db, under that
+ * store's lock, while it was offline), read in the record's transaction. A
+ * write that marked nothing (the store already online, or never locked)
+ * sends nothing.
+ */
+export function recordedSetupAction(call: {
+  credential: Pick<Credential, "kind" | "clientName">;
+  transport: Transport;
+  path: readonly string[];
+  input: unknown;
+}): RecordedEffects {
+  return async (tx, stored, scope) => {
+    if (call.credential.kind === "session") return null;
+    const [marked] = await tx
+      .select({ storeId: stores.id, ownerUserId: stores.userId })
+      .from(apiOperations)
+      .innerJoin(stores, eq(stores.id, apiOperations.setupStoreId))
+      .where(eq(apiOperations.id, scope.operationId))
+      .limit(1);
+    if (!marked) return null;
+    const effect = agentSetupActionEffect({
+      ...call,
+      output: stored,
+      store: { id: marked.storeId, ownerUserId: marked.ownerUserId },
+      confirmed: scope.confirmed,
+    });
+    return effect ? { storeId: marked.storeId, effects: [effect] } : null;
+  };
+}
+
 // --- The summary at go-live -----------------------------------------------------
 
-export type SetupBy = "human" | "agent" | "mixed";
+/** `unknown`: the store's creation left no mark (it predates the setup analytics). */
+export type SetupBy = "human" | "agent" | "mixed" | "unknown";
+export type CreatedBy = "human" | "agent" | "unknown";
 
-/** The record of a store's creation (`stores.create`, on the account scope). */
-const creationOf = (storeId: string) =>
-  and(
-    eq(apiOperations.storeId, ACCOUNT_SCOPE),
-    eq(apiOperations.procedure, "dashboard.stores.create"),
-    eq(apiOperations.targetId, storeId),
-  );
+const CREATION_PROCEDURE = "dashboard.stores.create";
 
 /**
- * Who created a store: an agent when its `stores.create` came from a key or
- * a token. A store with no such record was made by the dashboard.
+ * Who created a store: the credential of the `stores.create` that marked it.
+ * Every store is created through it; a store with no such mark predates the
+ * setup analytics, and its creator is unknown.
  */
-export async function storeCreatedBy(storeId: string): Promise<"human" | "agent"> {
-  const [row] = await db
+export async function storeCreatedBy(
+  executor: Transaction | typeof db,
+  storeId: string,
+): Promise<CreatedBy> {
+  const [row] = await executor
     .select({ kind: apiOperations.credentialKind })
     .from(apiOperations)
-    .where(and(eq(apiOperations.status, "succeeded"), creationOf(storeId)))
+    .where(
+      and(eq(apiOperations.setupStoreId, storeId), eq(apiOperations.procedure, CREATION_PROCEDURE)),
+    )
     .limit(1);
-  return row && row.kind !== "session" ? "agent" : "human";
+  if (!row) return "unknown";
+  return row.kind === "session" ? "human" : "agent";
 }
 
 export interface StoreSetupSummary {
-  /** Who created the store: an agent when its `stores.create` came from a key or a token. */
-  createdBy: "human" | "agent";
+  createdBy: CreatedBy;
   setupBy: SetupBy;
   agentActionCount: number;
   humanActionCount: number;
@@ -369,65 +405,44 @@ export interface StoreSetupSummary {
 }
 
 /**
- * Who set a store up, from its audit trail (`api_operations`): its creation
- * and each setup write that succeeded, by a session (human) or by a key or a
- * token (agent). `current` counts a write still running (the go-live itself).
- * A write the dashboard made outside the API (the onboarding's own steps) has
- * no record and counts for no one.
+ * Who set a store up, under the launch's lock on the store row: every write
+ * that marked the store while it was offline, its creation and this launch
+ * included. A mark is written in the write's own transaction, so it counts a
+ * write once committed, whether or not its record is final yet, and never a
+ * write still waiting for the lock (it will find the store online). A write
+ * outside the API (a dashboard action not migrated yet) leaves no mark and
+ * counts for no one; a store whose creation left no mark is `unknown`.
  */
 export async function readStoreSetupSummary(
   tx: Transaction,
   storeId: string,
-  current?: Pick<Credential, "kind" | "clientName">,
 ): Promise<StoreSetupSummary> {
+  const creation = sql<number>`${apiOperations.procedure} = ${CREATION_PROCEDURE}`;
   const rows = await tx
     .select({
       kind: apiOperations.credentialKind,
       clientName: apiOperations.clientName,
-      creation: sql<number>`${apiOperations.storeId} = ${ACCOUNT_SCOPE}`,
+      creation,
       total: count(),
     })
     .from(apiOperations)
-    .where(
-      and(
-        eq(apiOperations.status, "succeeded"),
-        or(
-          and(
-            eq(apiOperations.storeId, storeId),
-            or(
-              ...setupProcedurePatterns.map(
-                (pattern) => sql`${apiOperations.procedure} LIKE ${pattern}`,
-              ),
-            ),
-          ),
-          creationOf(storeId),
-        ),
-      ),
-    )
-    .groupBy(
-      apiOperations.credentialKind,
-      apiOperations.clientName,
-      sql`${apiOperations.storeId} = ${ACCOUNT_SCOPE}`,
-    );
+    .where(eq(apiOperations.setupStoreId, storeId))
+    .groupBy(apiOperations.credentialKind, apiOperations.clientName, creation);
 
   let agentActionCount = 0;
   let humanActionCount = 0;
-  let createdBy: "human" | "agent" = "human";
+  let createdBy: CreatedBy = "unknown";
   const clients = new Set<AgentClient>();
-  const tally = (kind: CredentialKind, clientName: string | null, total: number) => {
-    if (kind === "session") {
-      humanActionCount += total;
-      return;
-    }
-    agentActionCount += total;
-    clients.add(agentClientOf(clientName));
-  };
   for (const row of rows) {
     const total = Number(row.total);
-    tally(row.kind, row.clientName, total);
-    if (Number(row.creation) && row.kind !== "session") createdBy = "agent";
+    if (Number(row.creation)) createdBy = row.kind === "session" ? "human" : "agent";
+    if (row.kind === "session") {
+      humanActionCount += total;
+    } else {
+      agentActionCount += total;
+      clients.add(agentClientOf(row.clientName));
+    }
   }
-  if (current) tally(current.kind, current.clientName, 1);
 
   // On the database's clock, which wrote `created_at`.
   const [store] = await tx
@@ -439,7 +454,14 @@ export async function readStoreSetupSummary(
 
   return {
     createdBy,
-    setupBy: agentActionCount === 0 ? "human" : humanActionCount === 0 ? "agent" : "mixed",
+    setupBy:
+      createdBy === "unknown"
+        ? "unknown"
+        : agentActionCount === 0
+          ? "human"
+          : humanActionCount === 0
+            ? "agent"
+            : "mixed",
     agentActionCount,
     humanActionCount,
     agentClients: [...clients].sort(),

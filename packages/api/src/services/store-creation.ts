@@ -2,6 +2,7 @@ import {
   db,
   isDuplicateKeyError,
   markLegacyStore,
+  markSetupWrite,
   markStore,
   storeMembers,
   stores,
@@ -373,6 +374,8 @@ export async function createStore(input: {
         })
         .$returningId();
       const storeId = created.id;
+      // The creation is the store's first setup write; it starts offline.
+      await markSetupWrite(tx, storeId, false);
 
       await tx.insert(storeMembers).values({ storeId, userId, role: "owner" });
       // Both aggregates are marked for every store; the relay never sends the
