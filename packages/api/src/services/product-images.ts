@@ -61,9 +61,10 @@ import { logProviderError } from "../platform/redact";
  *   the transaction that puts the result on the product and marks the job
  *   succeeded, once per job (`imgenh:<jobId>`, `imgbg:<jobId>`). A failed,
  *   abandoned or discarded run is never charged.
- * - The result is stored under a key named after the job, so a retried run
- *   overwrites the same file, and the photo's new versions are named after
- *   the job, so the start can say the source's version id.
+ * - Each run stores its result under its own key (`<jobId>-<attempt>`), so
+ *   a stale run never overwrites the winner's file; only the winner's goes
+ *   on the product. The photo's new versions are named after the job, so the
+ *   start can say the source's version id.
  * - The pipeline and the credits are the app's (`ports.productImages`), the
  *   same code as the dashboard's enhance route.
  */
@@ -346,7 +347,12 @@ export async function startImageJob(
         procedure: starter.procedure,
         input,
         // Not the balance: another spend would void every preview.
-        state: { productId: product.id, imageUrl: input.imageUrl, operation, priceMicro: quote.priceMicro },
+        state: {
+          productId: product.id,
+          imageUrl: input.imageUrl,
+          operation,
+          priceMicro: quote.priceMicro,
+        },
         preview: {
           summary,
           details: {
