@@ -110,14 +110,14 @@ async function readJson(
       if (done) break;
       size += value.byteLength;
       if (size > limit) {
-        void reader.cancel();
+        void reader.cancel().catch(() => {});
         return { kind: "too-large", counted: counted > 0 };
       }
       await countUpTo(size);
       chunks.push(value);
     }
   } catch (error) {
-    void reader.cancel();
+    void reader.cancel().catch(() => {});
     throw error;
   }
   try {

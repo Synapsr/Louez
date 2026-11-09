@@ -284,7 +284,8 @@ export async function handleOpenApiRequest(
 
   // Past 2 MiB, only a known caller is read, and only a few at once, with
   // /api/mcp (platform/large-bodies.ts): an anonymous or refused request is
-  // answered after 2 MiB at most.
+  // answered once 2 MiB are read, plus the chunk that crossed that mark,
+  // which is never kept.
   const place: { release?: () => void } = {};
   const enterLarge = async (): Promise<Response | null> => {
     try {
