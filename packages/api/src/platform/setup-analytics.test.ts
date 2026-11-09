@@ -125,7 +125,6 @@ describe("setup analytics facts", () => {
         ...payload.fieldsCleared,
         payload.procedure,
         payload.agentClient,
-        payload.clientName,
       ];
       for (const value of values) {
         if (typeof value !== "string") continue;
@@ -212,29 +211,43 @@ describe("setup analytics facts", () => {
     );
   });
 
-  test("an agent is named by a fixed value; only an OAuth client's own name is kept", () => {
-    assert.equal(analytics.agentClientOf("Claude"), "claude");
-    assert.equal(analytics.agentClientOf("ChatGPT"), "chatgpt");
-    assert.equal(analytics.agentClientOf("Le Chat (Mistral)"), "le_chat");
-    assert.equal(analytics.agentClientOf("Clé n8n de Jeanne"), "n8n");
-    assert.equal(analytics.agentClientOf("jeanne@example.test"), "other");
-    assert.equal(analytics.agentClientOf(null), "other");
+  /** Names an OAuth client may declare, or a user type for a key: they may hold anything. */
+  const HOSTILE_NAMES: Array<[string, string]> = [
+    ["Jeanne Dupont", "other"],
+    ["Jeanne Dupont, 1 quai de la Douane, 29200 Brest", "other"],
+    ["agent of jeanne.dupont@example.test", "other"],
+    ["Rappelez Jeanne au 06 12 34 56 78", "other"],
+    ["Claude de Jeanne Dupont (jeanne.dupont@example.test)", "claude"],
+    ["ChatGPT — Jeanne Dupont, +33 6 12 34 56 78", "chatgpt"],
+    ["Clé n8n de Jeanne Dupont", "n8n"],
+    ["Le Chat (Mistral) de Jeanne", "le_chat"],
+  ];
 
-    assert.equal(analytics.safeClientName({ kind: "oauth", clientName: "Claude" }), "Claude");
-    assert.equal(
-      analytics.safeClientName({ kind: "oauth", clientName: "agent of jeanne@example.test" }),
-      null,
-    );
-    assert.equal(
-      analytics.safeClientName({ kind: "api_key", clientName: "Clé de Jeanne Dupont" }),
-      null,
-      "an API key's name is typed by the user",
-    );
-    assert.deepEqual(analytics.setupActorOf({ kind: "api_key", clientName: "Claude key" }), {
-      credentialKind: "api_key",
-      agentClient: "claude",
-      clientName: null,
-    });
+  test("an agent is only ever a fixed value: never the client's or the key's own name", () => {
+    assert.equal(analytics.agentClientOf("Claude"), "claude");
+    assert.equal(analytics.agentClientOf(null), "other");
+    for (const kind of ["oauth", "api_key"] as const) {
+      for (const [name, client] of HOSTILE_NAMES) {
+        assert.equal(analytics.agentClientOf(name), client, name);
+        assert.deepEqual(analytics.setupActorOf({ kind, clientName: name }), {
+          credentialKind: kind,
+          agentClient: client,
+        });
+        const effect = analytics.agentSetupActionEffect({
+          credential: { kind, clientName: name },
+          transport: "mcp",
+          path: ["dashboard", "settings", "updateStoreInfo"],
+          input: { description: "x" },
+          output: {},
+          store: { id: "store_1", ownerUserId: "owner_1", offline: true },
+          confirmed: false,
+        });
+        const json = JSON.stringify(effect);
+        for (const part of ["Jeanne", "Dupont", "Douane", "example.test", "06 12", "+33"]) {
+          assert.ok(!json.includes(part), `${name}: the event holds "${part}"`);
+        }
+      }
+    }
   });
 
   test("an e-mail or a phone number looks personal; codes and counts do not", () => {

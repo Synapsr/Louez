@@ -13,7 +13,6 @@ export function setupActorProperties(actor: SetupActor): Properties {
   return {
     credential_kind: actor.credentialKind,
     ...(actor.agentClient ? { agent_client: actor.agentClient } : {}),
-    ...(actor.clientName ? { client_name: actor.clientName } : {}),
   };
 }
 
@@ -43,7 +42,6 @@ export function agentSetupActionProperties(
     ...setupActorProperties({
       credentialKind: payload.credentialKind,
       agentClient: payload.agentClient,
-      clientName: payload.clientName,
     }),
     confirmation_accepted: payload.confirmed,
     fields_set: payload.fieldsSet,

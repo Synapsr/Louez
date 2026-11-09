@@ -455,7 +455,6 @@ export async function createStore(input: {
           store_created_by: credential.kind === "session" ? "human" : "agent",
           credential_kind: setupActor.credentialKind,
           agent_client: setupActor.agentClient,
-          client_name: setupActor.clientName,
         }),
       );
       const effectIds = await enqueueEffects(tx, storeId, effects);

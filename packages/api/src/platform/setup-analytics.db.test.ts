@@ -61,6 +61,8 @@ const PERSONAL = {
   address: "1 quai de la Douane, 29200 Brest",
   description: "Planches de surf louées par Jeanne Dupont",
   productName: "Planche Jeanne",
+  /** The name the OAuth client declared: it may hold anything. */
+  clientName: "Claude de Jeanne Dupont (jeanne.dupont@brest-surf.test)",
 } as const;
 
 /** Keys whose values are ids or the event's identity, not what a person typed. */
@@ -109,7 +111,7 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     };
     await louezDb.db.insert(louezDb.oauthClients).values({
       clientId: CLIENT,
-      name: "Claude",
+      name: PERSONAL.clientName,
       uri: "https://claude.sa.test",
       clientDiscoveryId: "cimd",
       redirectUris: JSON.stringify(["https://client.sa.test/callback"]),
@@ -297,7 +299,6 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
       assert.equal(action.ownerUserId, USER);
       assert.equal(action.credentialKind, "oauth");
       assert.equal(action.agentClient, "claude");
-      assert.equal(action.clientName, "Claude");
       assert.equal(action.transport, "mcp");
       assert.match(action.eventUuid, /^[0-9a-f-]{36}$/);
       assert.ok(!Number.isNaN(Date.parse(action.occurredAt)));
@@ -347,7 +348,6 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     assert.deepEqual(launch.actor, {
       credentialKind: "oauth",
       agentClient: "claude",
-      clientName: "Claude",
     });
     assert.ok(launch.setup);
     assert.equal(launch.setup.setupBy, "agent");
@@ -442,7 +442,6 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     assert.deepEqual(launch.actor, {
       credentialKind: "session",
       agentClient: null,
-      clientName: null,
     });
     assert.ok(launch.setup);
     assert.equal(launch.setup.setupBy, "human");

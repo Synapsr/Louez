@@ -28,7 +28,7 @@ registerHooks({
 
 /** What every event of these senders may carry, beyond its own. */
 const SHARED = ["feature", "surface", "actor", "store_id"];
-const ACTOR = ["credential_kind", "agent_client", "client_name"];
+const ACTOR = ["credential_kind", "agent_client"];
 
 const ALLOWED: Record<string, readonly string[]> = {
   agent_store_setup_action: [
@@ -92,7 +92,6 @@ const ALLOWED: Record<string, readonly string[]> = {
     "store_created_by",
     "credential_kind",
     "agent_client",
-    "client_name",
   ],
   onboarding_completed: [
     ...SHARED,
@@ -181,7 +180,6 @@ describe("store setup analytics senders", () => {
     procedure: "products.create",
     credentialKind: "oauth",
     agentClient: "claude",
-    clientName: "Claude",
     transport: "mcp",
     confirmed: true,
     fieldsSet: ["deposit", "name", "price", "rateTiers"],
@@ -247,16 +245,15 @@ describe("store setup analytics senders", () => {
     const [{ properties }] = captured;
     assert.equal(properties?.procedure, "products.create");
     assert.equal(properties?.agent_client, "claude");
-    assert.equal(properties?.client_name, "Claude");
     assert.equal(properties?.confirmation_accepted, true);
     assert.deepEqual(properties?.fields_set, ["deposit", "name", "price", "rateTiers"]);
     assert.equal(properties?.fields_set_count, 4);
     assert.equal(properties?.pricing_tier_count, 2);
   });
 
-  test("an API key's action carries no client name", async () => {
+  test("an action names the agent by its fixed value, never by a client name", async () => {
     await setup["store.agentSetupAction"](
-      { ...action, credentialKind: "api_key", agentClient: "n8n", clientName: null },
+      { ...action, credentialKind: "api_key", agentClient: "n8n" },
       context,
     );
     const [{ properties }] = captured;
@@ -277,7 +274,7 @@ describe("store setup analytics senders", () => {
       {
         ...base,
         transport: "mcp",
-        actor: { credentialKind: "oauth", agentClient: "chatgpt", clientName: "ChatGPT" },
+        actor: { credentialKind: "oauth", agentClient: "chatgpt" },
         setup: {
           createdBy: "agent",
           setupBy: "mixed",
@@ -303,7 +300,6 @@ describe("store setup analytics senders", () => {
       reservation_mode: "payment",
       credential_kind: "oauth",
       agent_client: "chatgpt",
-      client_name: "ChatGPT",
       setup_by: "mixed",
       store_created_by: "agent",
       agent_action_count: 6,
@@ -343,7 +339,6 @@ describe("store setup analytics senders", () => {
           store_created_by: "agent",
           credential_kind: "oauth",
           agent_client: "claude",
-          client_name: "Claude",
         },
       },
       context,
@@ -357,6 +352,7 @@ describe("store setup analytics senders", () => {
   test("the guard itself fails on an unexpected property or a personal value", () => {
     assert.throws(() => assertSafe("onboarding_completed", { owner_email: "x" }));
     assert.throws(() => assertSafe("agent_store_setup_action", { fields_set: ["a@b.co"] }));
-    assert.throws(() => assertSafe("agent_store_setup_action", { client_name: "06 12 34 56 78" }));
+    assert.throws(() => assertSafe("agent_store_setup_action", { client_name: "Claude" }));
+    assert.throws(() => assertSafe("agent_store_setup_action", { agent_client: "06 12 34 56 78" }));
   });
 });

@@ -85,31 +85,21 @@ export function looksPersonal(value: string): boolean {
   return EMAIL_LIKE.test(value) || PHONE_LIKE.test(value);
 }
 
-/**
- * The client's own name, for an OAuth client only: the software registered
- * it (Claude, ChatGPT). An API key's name is typed by the user, so it is
- * never sent; `agentClientOf` still reads it.
- */
-export function safeClientName(credential: Pick<Credential, "kind" | "clientName">) {
-  if (credential.kind !== "oauth" || !credential.clientName) return null;
-  const name = credential.clientName.trim().slice(0, 100);
-  return name && !looksPersonal(name) ? name : null;
-}
-
 /** Who made a setup write, as every setup event names it. */
 export interface SetupActor {
   credentialKind: CredentialKind;
-  /** `agentClientOf` the client or key name; null for a session. */
+  /**
+   * `agentClientOf` the client or key name; null for a session. The name
+   * itself is never sent: an OAuth client declares it and a user types a
+   * key's, so either may hold anything, a person's name included.
+   */
   agentClient: AgentClient | null;
-  /** `safeClientName`. */
-  clientName: string | null;
 }
 
 export function setupActorOf(credential: Pick<Credential, "kind" | "clientName">): SetupActor {
   return {
     credentialKind: credential.kind,
     agentClient: credential.kind === "session" ? null : agentClientOf(credential.clientName),
-    clientName: safeClientName(credential),
   };
 }
 
@@ -334,7 +324,6 @@ export function agentSetupActionEffect(params: {
       procedure,
       credentialKind: params.credential.kind,
       agentClient: actor.agentClient ?? "other",
-      clientName: actor.clientName,
       transport: params.transport,
       confirmed: params.confirmed,
       ...facts,

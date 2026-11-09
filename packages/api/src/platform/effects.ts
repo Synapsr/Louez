@@ -214,9 +214,8 @@ export interface ApiEffectPayloads {
     /** The procedure, as `settings.updateStoreInfo`. */
     procedure: string;
     credentialKind: "api_key" | "oauth";
+    /** The agent, as a fixed value; never the client's or the key's own name. */
     agentClient: AgentClient;
-    /** An OAuth client's own name; never an API key's. */
-    clientName: string | null;
     transport: "rpc" | "openapi" | "mcp";
     /** The call was previewed and its confirmation sent back. */
     confirmed: boolean;
