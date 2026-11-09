@@ -103,6 +103,15 @@ describe("setup analytics facts", () => {
     ],
     // A key a person typed, from a record input: left out of the field names.
     [["dashboard", "settings", "updateStoreInfo"], { [TYPED.email]: true, "Jeanne Dupont": 1 }],
+    // An image sent in one call: by URL or as bytes, neither ever sent.
+    [
+      ["dashboard", "onlineStore", "uploadImage"],
+      { kind: "logo", imageUrl: `https://cdn.test/${TYPED.slug}/${TYPED.phone}.png` },
+    ],
+    [
+      ["dashboard", "products", "uploadImage"],
+      { contentBase64: Buffer.from(TYPED.email).toString("base64"), contentType: "image/png" },
+    ],
   ];
 
   test("no fact holds a value a person typed, and every fact is a known one", () => {

@@ -805,4 +805,57 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     assert.equal(after.length, 2);
     assert.equal(after.filter((row) => row.setupStoreId === null).length, 1);
   });
+
+  test("an image sent in one call on an offline store is marked and sent; once online, it is not", async () => {
+    const store = await createStore(agent);
+    const header = { "louez-store": store.id };
+    const contentBase64 = Buffer.from(PNG).toString("base64");
+    const inline = (domain: "onlineStore" | "categories" | "products") =>
+      call(
+        domain,
+        "uploadImage",
+        { ...(domain === "onlineStore" ? { kind: "hero" } : {}), contentBase64 },
+        agent,
+        header,
+      );
+    for (const domain of ["onlineStore", "categories", "products"] as const) await inline(domain);
+
+    const actions = (await rows("store.agentSetupAction")).map((row) => row.payload);
+    assert.deepEqual(
+      actions.map((action) => action.procedure),
+      [
+        "stores.create",
+        "onlineStore.uploadImage",
+        "categories.uploadImage",
+        "products.uploadImage",
+      ],
+    );
+    assert.deepEqual(actions[1]?.facts, { image_kind: "hero" });
+    assert.deepEqual(actions[1]?.fieldsSet, ["contentBase64", "kind"], "the field names only");
+    assert.ok(!JSON.stringify(actions).includes(contentBase64), "never the bytes");
+    for (const domain of ["onlineStore", "categories", "products"]) {
+      assert.deepEqual(
+        await marksOf(`dashboard.${domain}.uploadImage`),
+        [{ setupStoreId: store.id }],
+        domain,
+      );
+    }
+
+    await goLive(agent, store.id);
+    const [{ payload: launch }] = await rows("store.launchAnalytics");
+    assert.ok(launch.setup);
+    assert.equal(launch.setup.agentActionCount, 5, "the creation, three uploads, the go-live");
+    assert.equal(launch.setup.setupBy, "agent");
+
+    // Online now: an image sent in one call sets nothing up.
+    const sent = (await rows("store.agentSetupAction")).length;
+    await inline("onlineStore");
+    assert.equal((await rows("store.agentSetupAction")).length, sent);
+    const after = await marksOf("dashboard.onlineStore.uploadImage");
+    assert.deepEqual(
+      after.map((row) => row.setupStoreId),
+      [store.id, null],
+    );
+    await assertNoPersonalData();
+  });
 });

@@ -272,6 +272,7 @@ const FACTS: Record<string, (input: Fields, output: Fields) => SetupFacts | null
     }),
   "onlineStore.createImageUpload": (input) => defined({ image_kind: enumOf(input.kind) }),
   "onlineStore.completeImageUpload": (input) => defined({ image_kind: enumOf(input.kind) }),
+  "onlineStore.uploadImage": (input) => defined({ image_kind: enumOf(input.kind) }),
   "products.create": productFacts,
   "products.update": productFacts,
   "products.ensureVariantDefinition": (input) =>

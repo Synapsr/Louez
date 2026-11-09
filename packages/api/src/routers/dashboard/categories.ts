@@ -263,11 +263,13 @@ const uploadImageProcedure = storeProcedure
   .input(uploadImageInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
-    uploadImage(context.ports.storage, {
-      storeId: context.actor.storeId,
-      kind: "category",
-      source: input,
-    }),
+    withSetupMark(context.actor.storeId, () =>
+      uploadImage(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "category",
+        source: input,
+      }),
+    ),
   );
 
 export const dashboardCategoriesRouter = {

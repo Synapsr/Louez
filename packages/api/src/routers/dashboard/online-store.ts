@@ -187,7 +187,9 @@ const uploadImageProcedure = storeProcedure
   .input(uploadStorefrontImageInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input: { kind, ...source } }) =>
-    uploadImage(context.ports.storage, { storeId: context.actor.storeId, kind, source }),
+    withSetupMark(context.actor.storeId, () =>
+      uploadImage(context.ports.storage, { storeId: context.actor.storeId, kind, source }),
+    ),
   );
 
 // --- The editor --------------------------------------------------------------
