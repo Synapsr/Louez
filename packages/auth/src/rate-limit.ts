@@ -1,6 +1,7 @@
 import type { BetterAuthOptions } from "better-auth";
 import { getIP } from "better-auth/api";
 
+import type { TrustedProxy } from "./env";
 import { egressProviderOf } from "./provider-egress";
 
 type RateLimitOptions = NonNullable<BetterAuthOptions["rateLimit"]>;
@@ -42,21 +43,32 @@ const PROVIDER_EGRESS_RULES: Record<string, RateLimitRule> = {
   "/oauth2/userinfo": { window: 60, max: 300 },
 };
 
+/** Better Auth's address reading, from Cloudflare's header alone. */
+const CLOUDFLARE_ADDRESS_ONLY = {
+  advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
+} satisfies BetterAuthOptions;
+
 /**
- * The platform a request comes from, read from the address Better Auth counts
- * it under (the same headers, in the same order), so the ceiling and the
- * bucket always agree.
+ * The platform a request comes from, or null. Only an ingress the instance
+ * declares (`TRUSTED_PROXY`) can say it: behind Cloudflare, `cf-connecting-ip`
+ * is the visitor's address, set by Cloudflare whatever the visitor sent. Every
+ * other header (`true-client-ip`, `x-real-ip`, `x-forwarded-for`) can come from
+ * the visitor, so it never raises a ceiling, and neither does a missing or
+ * malformed `cf-connecting-ip`. Better Auth reads that header first and
+ * checks it the same way (`authIpAddressOptions`), so an elevated request is
+ * counted under the address it was elevated for.
  */
-function requestEgressProvider(request: Request) {
-  return egressProviderOf(getIP(request, { advanced: { ipAddress: authIpAddressOptions } }));
+function requestEgressProvider(request: Request, trustedProxy: TrustedProxy | undefined) {
+  if (trustedProxy !== "cloudflare") return null;
+  return egressProviderOf(getIP(request, CLOUDFLARE_ADDRESS_ONLY));
 }
 
-function providerEgressRules() {
+function providerEgressRules(trustedProxy: TrustedProxy | undefined) {
   return Object.fromEntries(
     Object.entries(PROVIDER_EGRESS_RULES).map(([path, providerRule]) => [
       path,
       (request: Request, currentRule: RateLimitRule) =>
-        requestEgressProvider(request) ? providerRule : currentRule,
+        requestEgressProvider(request, trustedProxy) ? providerRule : currentRule,
     ]),
   );
 }
@@ -100,9 +112,20 @@ export const authRateLimitOptions = {
     "/email-otp/*": GUESS_RULE,
     "/reset-password": GUESS_RULE,
     "/reset-password/*": GUESS_RULE,
-    ...providerEgressRules(),
   },
 } satisfies RateLimitOptions;
+
+/**
+ * The rate limit of an instance behind `trustedProxy` (`TRUSTED_PROXY`): the
+ * rules above, and the AI platforms' ceilings, which only a declared ingress
+ * can grant (`requestEgressProvider`). Unset, every address has the usual limits.
+ */
+export function authRateLimitOptionsBehind(trustedProxy: TrustedProxy | undefined) {
+  return {
+    ...authRateLimitOptions,
+    customRules: { ...authRateLimitOptions.customRules, ...providerEgressRules(trustedProxy) },
+  } satisfies RateLimitOptions;
+}
 
 /**
  * Same precedence as `getClientIp` in the web app. better-auth only reads
