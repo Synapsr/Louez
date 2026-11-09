@@ -365,14 +365,18 @@ export type Product = z.infer<typeof productSchema>;
 export const productOutput = productSchema.extend({
   /** Its dashboard page, and its storefront page while it is active and the store online. */
   links: resourceLinksSchema,
-  /** Every unit of the product, retired ones included; `units` may hold fewer (an agent's answer). */
-  unitsTotal: z.number().int(),
+  /**
+   * Every unit of the product, retired ones included; `units` may hold fewer
+   * (an agent's answer). Optional: an answer stored before these fields, and
+   * replayed for its idempotency key, has neither.
+   */
+  unitsTotal: z.number().int().optional(),
   /**
    * Null when `units` holds them all. Otherwise (an agent's answer holds the
    * first `ANSWER_PAGE_MCP_DEFAULT`), the cursor products_list_units takes for
    * the next ones.
    */
-  unitsNextCursor: z.string().nullable(),
+  unitsNextCursor: z.string().nullable().optional(),
 });
 
 /** A product's units, by identifier, a page at a time. */

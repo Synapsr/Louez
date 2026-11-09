@@ -484,6 +484,32 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(((await units.json()) as { items: Json[] }).items.length, 150);
   });
 
+  test("a product write stored before the units' page fields replays", async () => {
+    const authorization = await key();
+    const headers = { authorization, "idempotency-key": "pt-replay-before-deploy" };
+    const body = { name: "Replayed kayak", price: "40" };
+    const created = await openApi("POST", "/products", body, headers);
+    assert.equal(created.status, 200, await created.clone().text());
+    // A result stored before the deploy has neither field.
+    const [operation] = await louezDb.db
+      .select()
+      .from(louezDb.apiOperations)
+      .where(orm.eq(louezDb.apiOperations.idempotencyKey, "pt-replay-before-deploy"));
+    assert.ok(operation?.result);
+    const stored = { ...(operation.result as Json) };
+    delete stored.unitsTotal;
+    delete stored.unitsNextCursor;
+    await louezDb.db
+      .update(louezDb.apiOperations)
+      .set({ result: stored })
+      .where(orm.eq(louezDb.apiOperations.id, operation.id));
+
+    const replayed = await openApi("POST", "/products", body, headers);
+    assert.equal(replayed.status, 200, await replayed.clone().text());
+    assert.equal(replayed.headers.get("louez-replayed"), "true");
+    assert.equal(((await replayed.json()) as Json).name, "Replayed kayak");
+  });
+
   test("an agent sends back a page of units: the units it left out stay", async () => {
     const authorization = await key();
     const created = output(
