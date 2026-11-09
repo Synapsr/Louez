@@ -26,3 +26,9 @@ Daniel Gatis, licensed under the MIT License.
 
 The default `isnet-general-use` model is from the DIS/IS-Net project
 (https://github.com/xuebinqin/DIS), licensed under the Apache License 2.0.
+
+The AI assistant marks in packages/ui/src/icons (Claude, ChatGPT, Grok,
+Le Chat) come from Simple Icons (CC0 1.0) and Lobe Icons (MIT License,
+Copyright (c) 2023 LobeHub). The full license text, and the note that each
+mark belongs to its owner and is used only to name compatible assistants,
+without endorsement, are in packages/ui/src/icons/THIRD_PARTY_LICENSES.md.
