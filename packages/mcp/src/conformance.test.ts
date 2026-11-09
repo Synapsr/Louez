@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
 
 import type { Client as McpClient } from "@modelcontextprotocol/client";
+import { AjvJsonSchemaValidator } from "@modelcontextprotocol/client/validators/ajv";
+
+import { openAiProfileProblem } from "./testing/openai-profile";
 
 // What the Claude connectors directory and ChatGPT's app review check on every
 // listed tool: a name of 64 characters at most, a title, a description, the
@@ -302,8 +305,19 @@ describe("MCP directory conformance", () => {
     assert.equal(profile?._meta?.["openai/profile"], true);
     assert.equal(profile?.annotations?.readOnlyHint, true);
     assert.deepEqual(Object.keys(profile?.inputSchema.properties ?? {}), []);
-    const output = profile?.outputSchema as { required?: string[] } | undefined;
-    assert.ok(output?.required?.includes("id"));
+    // Its output schema takes what ChatGPT's profile takes: an account without
+    // a name leaves it out, never null.
+    const output = profile?.outputSchema as Record<string, unknown> | undefined;
+    assert.deepEqual(output?.required, ["id"]);
+    const validate = new AjvJsonSchemaValidator().getValidator(output ?? {});
+    for (const sample of [{ id: "user_1" }, { id: "user_1", name: "Morgane" }]) {
+      assert.equal(validate(sample).valid, true, JSON.stringify(sample));
+      assert.equal(openAiProfileProblem(sample), null, JSON.stringify(sample));
+    }
+    for (const sample of [{ id: "user_1", name: null }, { id: "" }, { id: "user_1", email: 1 }]) {
+      assert.equal(validate(sample).valid, false, JSON.stringify(sample));
+      assert.notEqual(openAiProfileProblem(sample), null, JSON.stringify(sample));
+    }
     const flagged = tools.filter((tool) => tool._meta?.["openai/profile"] === true);
     assert.deepEqual(
       flagged.map((tool) => tool.name),

@@ -11,6 +11,7 @@ import { createTestUrls } from "@louez/api/platform/test-urls";
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
 import { apiDependencyUrl } from "./testing/cjs-named-exports";
+import { openAiProfileProblem } from "./testing/openai-profile";
 
 // An MCP client connected through OAuth, on /api/mcp's real handler and the
 // app's router: discovery on a 401, tool bundles, the store a request names
@@ -277,14 +278,22 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
         client.callTool({ name: "account_get_profile", arguments: {} }),
       );
 
-    assert.deepEqual((await call()).structuredContent, { id: OWNER, name: null });
-    await louezDb.db
-      .update(louezDb.users)
-      .set({ name: " Morgane Owner " })
-      .where(eq(louezDb.users.id, OWNER));
+    const setName = (name: string | null) =>
+      louezDb.db.update(louezDb.users).set({ name }).where(eq(louezDb.users.id, OWNER));
+
+    // No name, or a blank one: left out, never null, as ChatGPT's profile takes it.
+    for (const name of [null, "   "]) {
+      await setName(name);
+      const unnamed = (await call()).structuredContent;
+      assert.deepEqual(unnamed, { id: OWNER });
+      assert.equal(openAiProfileProblem(unnamed), null);
+    }
+    await setName(" Morgane Owner ");
     const named = await call();
     assert.deepEqual(named.structuredContent, { id: OWNER, name: "Morgane Owner" });
+    assert.equal(openAiProfileProblem(named.structuredContent), null);
     assert.doesNotMatch(JSON.stringify(named), /owner@mo\.test/, "never the e-mail");
+    await setName(null);
   });
 
   test("a grant over all stores of an account with none creates its first store", async () => {
