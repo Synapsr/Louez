@@ -212,7 +212,6 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     );
     assert.ok(both.includes("categories_list"));
     assert.ok(both.includes("products_list"));
-    assert.ok(!both.includes("list_products"), "a former name is callable, never listed");
 
     const key = await apiKeys.createApiKey({
       db: louezDb.db,
@@ -321,8 +320,9 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     );
     assert.equal(unnamed.isError, true);
     assert.equal(errorCode(unnamed), "STORE_REQUIRED");
+    // A hand-written tool too.
     const legacy = await withClient(headers, (client) =>
-      client.callTool({ name: "list_reservations", arguments: {} }),
+      client.callTool({ name: "list_customers", arguments: {} }),
     );
     assert.equal(legacy.isError, true);
     assert.match(JSON.stringify(legacy.content), /STORE_REQUIRED/);
@@ -341,7 +341,7 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
 
     // The header works too, and then names the store of every call.
     const byHeader = await withClient({ ...headers, "louez-store": STORE_B }, (client) =>
-      client.callTool({ name: "list_reservations", arguments: {} }),
+      client.callTool({ name: "list_customers", arguments: {} }),
     );
     assert.equal(byHeader.isError, undefined, JSON.stringify(byHeader.content));
   });
@@ -426,7 +426,7 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.deepEqual((empty.structuredContent as { items: unknown[] }).items, []);
     assert.match(String((empty.structuredContent as { hint?: string }).hint), /stores_create/);
 
-    for (const name of ["reservations_list", "list_reservations"]) {
+    for (const name of ["reservations_list", "list_customers"]) {
       const refused = await withClient(headers, (client) =>
         client.callTool({ name, arguments: {} }),
       );

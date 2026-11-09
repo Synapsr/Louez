@@ -16,7 +16,7 @@ mock.module(apiDependencyUrl("@louez/auth"), {
 
 // The reservation follow-up tools, through the app's real router and the
 // real MCP and OpenAPI handlers: what an agent sees in the daily bundle, the
-// former tool names kept as aliases, and the confirmation of a status change.
+// confirmation of a status change.
 
 const OWNER = "rt_owner_user_000001";
 const STORE = "rt_store_a_000000001";
@@ -196,7 +196,7 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       })
     )?.status;
 
-  test("every follow-up tool is in the daily bundle, and the former names are not listed", async () => {
+  test("every follow-up tool is in the daily bundle", async () => {
     const tools = exposure.procedures.filter(
       (entry) =>
         entry.path.startsWith("dashboard.reservations.") ||
@@ -216,24 +216,10 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
       "search_global",
     ]);
     assert.deepEqual([...new Set(tools.map((entry) => entry.meta.mcp.bundle))], ["daily"]);
-    const aliases = tools.flatMap((entry) =>
-      (entry.meta.mcp.aliases ?? []).map((alias) => alias.name),
-    );
-    assert.deepEqual(aliases.sort(), [
-      "calendar_overdue",
-      "calendar_upcoming",
-      "get_reservation",
-      "get_reservation_poll",
-      "list_reservations",
-      "update_reservation_notes",
-      "update_reservation_status",
-    ]);
-
     const writer = await mcpTools(await key());
     for (const tool of tools) {
       assert.ok(writer.includes(tool.meta.mcp.name), `${tool.meta.mcp.name} is listed`);
     }
-    for (const alias of aliases) assert.ok(!writer.includes(alias), `${alias} is not listed`);
     // check_availability stays a hand-written tool until lot 2b.
     assert.ok(writer.includes("check_availability"));
 
@@ -245,46 +231,46 @@ describe("reservation tools (database)", { skip: skipWithoutTestDatabase() }, ()
     );
   });
 
-  test("the former tool names still work with their former arguments", async () => {
+  test("an agent lists, reads, polls, follows and updates the reservations", async () => {
     const authorization = await key();
     const pending = await reservation("pending");
     const late = await reservation("ongoing", new Date(Date.now() - 2 * 86_400_000));
 
-    const listed = output(await mcpCall(authorization, "list_reservations", { pageSize: 10 }));
+    const listed = output(await mcpCall(authorization, "reservations_list", { limit: 10 }));
     assert.ok((listed.items as Json[]).some((item) => item.id === pending));
 
-    const got = output(await mcpCall(authorization, "get_reservation", { reservationId: pending }));
+    const got = output(await mcpCall(authorization, "reservations_get", { id: pending }));
     assert.equal(got.id, pending);
     assert.equal((got.customer as Json).firstName, "Ada");
 
-    const poll = output(await mcpCall(authorization, "get_reservation_poll", {}));
+    const poll = output(await mcpCall(authorization, "reservations_poll", {}));
     assert.equal(poll.pendingCount, 1);
 
-    const overdue = output(await mcpCall(authorization, "calendar_overdue", {}));
+    const overdue = output(await mcpCall(authorization, "reservations_list_overdue", {}));
     assert.deepEqual(
       (overdue.items as Json[]).map((item) => item.id),
       [late],
     );
-    output(await mcpCall(authorization, "calendar_upcoming", { days: 7 }));
+    output(await mcpCall(authorization, "reservations_list_upcoming", { days: 7 }));
 
     const notes = output(
-      await mcpCall(authorization, "update_reservation_notes", {
-        reservationId: pending,
+      await mcpCall(authorization, "reservations_update_notes", {
+        id: pending,
         notes: "Call before",
       }),
     );
     assert.equal(notes.internalNotes, "Call before");
 
-    // A rejection emails the customer: it waits for the confirmation, under the old name too.
-    const first = await mcpCall(authorization, "update_reservation_status", {
-      reservationId: pending,
+    // A rejection emails the customer: it waits for the confirmation.
+    const first = await mcpCall(authorization, "reservations_update_status", {
+      id: pending,
       status: "rejected",
     });
     const token = tokenOf(first);
     assert.equal(await statusOf(pending), "pending");
     const rejected = output(
-      await mcpCall(authorization, "update_reservation_status", {
-        reservationId: pending,
+      await mcpCall(authorization, "reservations_update_status", {
+        id: pending,
         status: "rejected",
         confirmationToken: token,
       }),

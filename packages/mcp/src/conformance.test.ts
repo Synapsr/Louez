@@ -118,6 +118,34 @@ describe("MCP directory conformance", () => {
     assert.ok(names.has("account_get_profile"));
   });
 
+  test("every callable tool is listed: no former name is served", async () => {
+    // The names tools had before the bridge, once served as hidden aliases:
+    // a directory may read an operation it cannot see as unreviewed.
+    for (const name of [
+      "archive_product",
+      "calendar_overdue",
+      "calendar_upcoming",
+      "create_category",
+      "create_product",
+      "delete_category",
+      "get_product",
+      "get_reservation",
+      "get_reservation_poll",
+      "get_store_settings",
+      "list_categories",
+      "list_products",
+      "list_reservations",
+      "update_category",
+      "update_product",
+      "update_reservation_notes",
+      "update_reservation_status",
+      "update_store_info",
+      "update_store_legal",
+    ]) {
+      await assert.rejects(client.callTool({ name, arguments: {} }), /not found/, name);
+    }
+  });
+
   test("every listed tool has a name, a title, a description and the three hints", () => {
     const problems: string[] = [];
     for (const tool of tools) {

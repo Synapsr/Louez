@@ -166,68 +166,10 @@ export function registerExposedTools(
       outputSchema,
       annotations,
       ...(entry.meta.mcp.profile ? { meta: { [OPENAI_PROFILE_META]: true } } : {}),
-      // A former tool served as it was is callable, never listed.
-      listed:
-        entry.meta.mcp.listed !== false &&
-        (entry.meta.account
-          ? isAccountToolListed(ctx, entry.meta.scope)
-          : entry.meta.scope !== undefined && isListed(ctx, entry.meta.scope, bundle)),
+      listed: entry.meta.account
+        ? isAccountToolListed(ctx, entry.meta.scope)
+        : entry.meta.scope !== undefined && isListed(ctx, entry.meta.scope, bundle),
       call: (args) => callProcedure(entry, ctx, args),
     });
-
-    // Former names: callable, never listed, the old argument names mapped on
-    // and the arguments the old tool implied set.
-    for (const alias of entry.meta.mcp.aliases ?? []) {
-      const renamed = Object.entries(alias.renamedArgs ?? {});
-      const fixed = alias.fixedArgs ?? {};
-      addTool(server, ctx, {
-        name: alias.name,
-        title,
-        description: `Former name of ${name}, kept for agents set up before. ${description}`,
-        inputSchema: aliasInputSchema(toolInputSchema(entry, ctx), renamed, Object.keys(fixed)),
-        outputSchema,
-        annotations,
-        listed: false,
-        call: (args) => {
-          const mapped = { ...args };
-          for (const [from, to] of renamed) {
-            if (from in mapped) {
-              mapped[to] = mapped[from];
-              delete mapped[from];
-            }
-          }
-          return callProcedure(entry, ctx, { ...mapped, ...fixed });
-        },
-      });
-    }
   }
-}
-
-/**
- * The tool's input schema with the new argument names put back to the old
- * ones, without the arguments the alias sets itself.
- */
-function aliasInputSchema(
-  schema: Tool["inputSchema"],
-  renamed: ReadonlyArray<[from: string, to: string]>,
-  fixed: readonly string[],
-): Tool["inputSchema"] {
-  const properties: Record<string, unknown> = { ...schema.properties };
-  let required = schema.required ? [...schema.required] : undefined;
-  for (const field of fixed) {
-    delete properties[field];
-    required = required?.filter((name) => name !== field);
-  }
-  for (const [from, to] of renamed) {
-    if (to in properties) {
-      properties[from] = properties[to];
-      delete properties[to];
-    }
-    required = required?.map((field) => (field === to ? from : field));
-  }
-  return {
-    ...schema,
-    properties: properties as NonNullable<Tool["inputSchema"]["properties"]>,
-    ...(required ? { required } : {}),
-  };
 }

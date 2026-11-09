@@ -114,25 +114,6 @@ export interface McpExposure {
    * (`_meta["openai/profile"]`): read-only, no argument, a stable `id`.
    */
   profile?: true;
-  /**
-   * Names the tool had before it was served by this procedure. They stay
-   * callable, never listed, so agents set up before the rename keep working;
-   * `renamedArgs` maps an old argument name onto the new one, and
-   * `fixedArgs` sets arguments the old tool implied (`archive_product` is
-   * `products_update_status` with `status: "archived"`). Removed at the end
-   * of the migration (lot 9).
-   */
-  aliases?: ReadonlyArray<{
-    name: string;
-    renamedArgs?: Readonly<Record<string, string>>;
-    fixedArgs?: Readonly<Record<string, string | number | boolean>>;
-  }>;
-  /**
-   * false: a former tool that no alias can express (its offset paging), kept
-   * as its own procedure for agents set up before. Callable on MCP, never
-   * listed, not served on OpenAPI. Removed at the end of the migration (lot 9).
-   */
-  listed?: false;
 }
 
 /**

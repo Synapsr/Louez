@@ -242,14 +242,14 @@ describe("exposure registry", () => {
     );
   });
 
-  test("a bundle is offered only while it holds a listed store tool", () => {
+  test("a bundle is offered only while it holds a store tool", () => {
     const { z } = zod;
-    const inBundle = (bundle: "team" | "integrations", extra: Record<string, unknown> = {}) =>
+    const inBundle = (bundle: "team" | "integrations") =>
       procedures.storeProcedure
         .meta({
           capability: "test.valid",
           scope: { domain: "categories", level: "read" },
-          mcp: { ...mcp(`test_${bundle}_${Object.keys(extra).join("_") || "tool"}`), bundle, ...extra },
+          mcp: { ...mcp(`test_${bundle}`), bundle },
         })
         .input(z.object({ id: z.string() }))
         .output(z.object({ id: z.string() }))
@@ -259,9 +259,8 @@ describe("exposure registry", () => {
         exposure.createExposure(router as never, Object.keys(router)).procedures,
       );
 
-    // No tool, or only a former one never listed: not offered.
+    // No tool: not offered.
     assert.deepEqual(offered({ a: valid() }), ["catalog"]);
-    assert.deepEqual(offered({ a: valid(), b: inBundle("team", { listed: false }) }), ["catalog"]);
     // A listed tool brings it back, in the bundles' order.
     assert.deepEqual(offered({ a: valid(), b: inBundle("team"), c: inBundle("integrations") }), [
       "catalog",
@@ -270,15 +269,13 @@ describe("exposure registry", () => {
     ]);
   });
 
-  test("the app offers exactly the bundles its listed tools are in", async () => {
+  test("the app offers exactly the bundles its store tools are in", async () => {
     const { appRouter } = await import("../router");
     const { MCP_BUNDLES } = await import("./meta");
     const served = exposure.createExposure(appRouter).procedures;
     const offered = exposure.bundlesWithTools(served);
     for (const bundle of MCP_BUNDLES) {
-      const holds = served.some(
-        ({ meta }) => meta.mcp.bundle === bundle && !meta.account && meta.mcp.listed !== false,
-      );
+      const holds = served.some(({ meta }) => meta.mcp.bundle === bundle && !meta.account);
       assert.equal(offered.includes(bundle), holds, bundle);
     }
     assert.ok(offered.includes("daily"));

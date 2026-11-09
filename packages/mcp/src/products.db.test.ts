@@ -15,8 +15,8 @@ mock.module(apiDependencyUrl("@louez/auth"), {
 });
 
 // The products tools, through the app's real router and the real MCP and
-// OpenAPI handlers: what an agent sees, the former tool names kept as
-// aliases, and the confirmations of the sensitive edits.
+// OpenAPI handlers: what an agent sees, and the confirmations of the
+// sensitive edits.
 
 const OWNER = "pt_owner_user_000001";
 const STORE = "pt_store_a_000000001";
@@ -161,11 +161,11 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     return error.details?.confirmationToken ?? "";
   };
 
-  test("every products tool is in the catalog bundle, and the former names are not listed", async () => {
+  test("every products tool is in the catalog bundle", async () => {
     const products = exposure.procedures.filter((entry) =>
       entry.path.startsWith("dashboard.products."),
     );
-    assert.equal(products.length, 40);
+    assert.equal(products.length, 39);
     for (const name of [
       "products_upload_image",
       "products_enhance_image",
@@ -175,21 +175,6 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.ok(products.some((entry) => entry.meta.mcp.name === name), name);
     }
     assert.deepEqual([...new Set(products.map((entry) => entry.meta.mcp.bundle))], ["catalog"]);
-    // Former names: aliases, and list_products as its own unlisted procedure.
-    const aliases = [
-      ...products.flatMap((entry) => (entry.meta.mcp.aliases ?? []).map((alias) => alias.name)),
-      ...products
-        .filter((entry) => entry.meta.mcp.listed === false)
-        .map((entry) => entry.meta.mcp.name),
-    ];
-    assert.deepEqual(aliases.sort(), [
-      "archive_product",
-      "create_product",
-      "get_product",
-      "list_products",
-      "update_product",
-    ]);
-
     const writer = await mcpTools(await key());
     assert.ok(writer.includes("products_create"));
     assert.ok(writer.includes("products_delete_seasonal_pricing"));
@@ -215,7 +200,6 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     ]) {
       assert.ok(writer.includes(name), `${name} is listed`);
     }
-    for (const alias of aliases) assert.ok(!writer.includes(alias), `${alias} is not listed`);
 
     const reader = await mcpTools(await key(readOnly));
     assert.ok(reader.includes("products_get"));
@@ -252,7 +236,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(toolError(denied)?.code, "PERMISSION_DENIED");
   });
 
-  test("a product write past 4 MiB passes the door, under its new and former names", async () => {
+  test("a product write past 4 MiB passes the door", async () => {
     const authorization = await key();
     // 4.5 MB of description: more than any other call may send.
     const description = "€".repeat(1_500_000);
@@ -284,16 +268,14 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.equal(refused.status, 401);
     }
 
-    for (const [name, args] of [
-      ["products_update", { id: "pt_missing_product_01", description }],
-      ["update_product", { productId: "pt_missing_product_01", description }],
-    ] as const) {
-      const result = await mcpCall(authorization, name, args);
-      assert.equal(toolError(result)?.code, "PRODUCT_NOT_FOUND", `${name} reached the procedure`);
-    }
+    const result = await mcpCall(authorization, "products_update", {
+      id: "pt_missing_product_01",
+      description,
+    });
+    assert.equal(toolError(result)?.code, "PRODUCT_NOT_FOUND", "it reached the procedure");
   });
 
-  test("the former tool names still work with their former arguments", async () => {
+  test("a product is created from the short form, read, listed, renamed and archived", async () => {
     const authorization = await key();
     const [category] = await louezDb.db
       .insert(louezDb.categories)
@@ -301,7 +283,7 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       .$returningId();
 
     const created = output(
-      await mcpCall(authorization, "create_product", {
+      await mcpCall(authorization, "products_create", {
         name: "Canoe",
         price: "60.00",
         pricingMode: "week",
@@ -313,11 +295,11 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(created.quantity, 3);
     assert.deepEqual(created.categoryIds, [category.id]);
 
-    const got = output(await mcpCall(authorization, "get_product", { productId: created.id }));
+    const got = output(await mcpCall(authorization, "products_get", { id: created.id }));
     assert.equal(got.name, "Canoe");
 
     const listed = output(
-      await mcpCall(authorization, "list_products", { categoryId: category.id }),
+      await mcpCall(authorization, "products_list", { categoryIds: [category.id] }),
     );
     assert.deepEqual(
       (listed.items as Json[]).map((item) => item.id),
@@ -325,17 +307,18 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     );
 
     const renamed = output(
-      await mcpCall(authorization, "update_product", { productId: created.id, name: "Canoe XL" }),
+      await mcpCall(authorization, "products_update", { id: created.id, name: "Canoe XL" }),
     );
     assert.equal(renamed.name, "Canoe XL");
 
-    // Archiving waits for the confirmation, under the old name too.
-    const first = await mcpCall(authorization, "archive_product", { productId: created.id });
+    // Archiving waits for the confirmation.
+    const archive = { id: created.id, status: "archived" };
+    const first = await mcpCall(authorization, "products_update_status", archive);
     const token = tokenOf(first);
     assert.equal((await louezDb.db.query.products.findFirst())?.status, "active");
     const archived = output(
-      await mcpCall(authorization, "archive_product", {
-        productId: created.id,
+      await mcpCall(authorization, "products_update_status", {
+        ...archive,
         confirmationToken: token,
       }),
     );
@@ -447,72 +430,6 @@ describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(usage.status, 200, await usage.clone().text());
   });
 
-  test("list_products still pages with page and pageSize", async () => {
-    const authorization = await key();
-    await louezDb.db.delete(louezDb.products);
-    for (const name of ["Page one", "Page two", "Page three"]) {
-      output(await mcpCall(authorization, "products_create", { name, price: "5" }));
-    }
-    const first = output(await mcpCall(authorization, "list_products", { page: 1, pageSize: 2 }));
-    const second = output(await mcpCall(authorization, "list_products", { page: 2, pageSize: 2 }));
-    const third = output(await mcpCall(authorization, "list_products", { page: 3, pageSize: 2 }));
-    const names = (page: Json) => (page.items as Json[]).map((item) => item.name);
-    assert.equal(names(first).length, 2);
-    assert.equal(names(second).length, 1);
-    assert.deepEqual(names(third), []);
-    assert.deepEqual([...names(first), ...names(second)].sort(), [
-      "Page one",
-      "Page three",
-      "Page two",
-    ]);
-    assert.equal(second.nextCursor, null);
-
-    const bad = await mcpCall(authorization, "list_products", { page: 0 });
-    assert.equal(toolError(bad)?.code, "BAD_REQUEST");
-  });
-
-  test("a deep list_products page is one read, counted once, and bounded", async () => {
-    const authorization = await key();
-    await louezDb.db.delete(louezDb.products);
-    await louezDb.db.insert(louezDb.products).values(
-      Array.from({ length: 250 }, (_, index) => ({
-        id: `pt_deep_${String(index).padStart(12, "0")}`,
-        storeId: STORE,
-        name: `Deep ${String(index).padStart(3, "0")}`,
-        price: "1.00",
-        pricingMode: "day" as const,
-      })),
-    );
-    const counted = async () => {
-      const [row] = await louezDb.db
-        .select({ total: orm.sql<number>`COALESCE(SUM(${louezDb.apiRateLimits.count}), 0)` })
-        .from(louezDb.apiRateLimits);
-      return Number(row?.total ?? 0);
-    };
-
-    // A connection's own requests count too: a first page is the yardstick.
-    const start = await counted();
-    output(await mcpCall(authorization, "list_products", { page: 1, pageSize: 100 }));
-    const firstPageCost = (await counted()) - start;
-    const before = await counted();
-    const third = output(await mcpCall(authorization, "list_products", { page: 3, pageSize: 100 }));
-    assert.equal((third.items as Json[]).length, 50);
-    assert.equal(
-      (await counted()) - before,
-      firstPageCost,
-      "a deep page costs what a first page costs",
-    );
-
-    const tooDeep = await mcpCall(authorization, "list_products", { page: 101, pageSize: 100 });
-    const error = toolError(tooDeep) as { code?: string; message?: string } | undefined;
-    assert.equal(error?.code, "LEGACY_PAGE_TOO_DEEP");
-    assert.match(JSON.stringify(tooDeep.content), /products_list/);
-    // The last page within the bound is still served.
-    const last = output(
-      await mcpCall(authorization, "list_products", { page: 100, pageSize: 100 }),
-    );
-    assert.deepEqual(last.items, []);
-  });
   test("a tool's answer carries the record's links, built from the deployment's urls", async () => {
     const authorization = await key({ ...readOnly, products: "write" });
     await louezDb.db

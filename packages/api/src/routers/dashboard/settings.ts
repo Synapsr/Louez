@@ -94,7 +94,6 @@ const get = storeProcedure
       title: "Get Store Settings",
       description: `Everything a store is set up with, in one call: its info and contact (store), company (country, time zone, currency, billing address), legal texts (whether the terms and the legal notice are set and their length; pass includeLegalTexts: true for the full texts, before editing them), the storefront (web address, URL, theme, logos, banner photos), reservation rules (booking mode, durations, notice, buffers, extensions), business hours and closures, delivery and pickup points (locations), taxes, and whether Stripe takes payments. Each section has its settings_update_* tool, which takes the field names shown here (the legal texts as cgv and legalNotice). ${LINKS_HELP}`,
       bundle: "settings",
-      aliases: [{ name: "get_store_settings" }],
       annotations: { idempotentHint: true },
     },
   })
@@ -133,7 +132,6 @@ const updateStoreInfoProcedure = storeProcedure
       bundle: "settings",
       effect: "overwrite",
       reach: "public",
-      aliases: [{ name: "update_store_info" }],
       annotations: { idempotentHint: true },
     },
   })
@@ -184,7 +182,6 @@ const updateLegalProcedure = storeProcedure
       bundle: "settings",
       effect: "overwrite",
       reach: "public",
-      aliases: [{ name: "update_store_legal" }],
       annotations: { idempotentHint: true },
     },
   })

@@ -134,7 +134,6 @@ const list = storeProcedure
       title: "List Reservations",
       description: `List the store's reservations as the dashboard does: by status (default: every open one), by period (today, this week, this month, on the start or the end date), by payment method (needs read access to payments), or by part of the number or the customer's name. Sorted by start date (newest first) unless sort says otherwise. Returns up to \`limit\` reservations (default 25, at most 100), the counts per status, the total that match and a nextCursor: passed back as cursor, with the same filters and sort, it gives the next page; it is null on the last page. Page numbers stop at the first 10,000 reservations. One reservation's lines, payments and history are in reservations_get. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
-      aliases: [{ name: "list_reservations", renamedArgs: { pageSize: "limit" } }],
     },
   })
   .route({ method: "GET", path: "/reservations" })
@@ -164,7 +163,6 @@ const get = storeProcedure
       title: "Get Reservation",
       description: `Get one reservation with everything its dashboard page shows: status and dates, customer, lines with their products and assigned units, amounts and taxes, payments, deposit, delivery or pickup, insurance, notes, documents and history (newest first). ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
-      aliases: [{ name: "get_reservation", renamedArgs: { reservationId: "id" } }],
     },
   })
   .route({ method: "GET", path: "/reservations/{id}" })
@@ -184,7 +182,6 @@ const poll = storeProcedure
       description:
         "Quick counters: requests waiting for an answer (with the five newest, each with `links`, its dashboard page to give the user), reservations per status, and supplier invoices to handle. Cheap to call often.",
       bundle: "daily",
-      aliases: [{ name: "get_reservation_poll" }],
     },
   })
   .route({ method: "GET", path: "/reservations/counters" })
@@ -249,7 +246,6 @@ const listUpcomingProcedure = storeProcedure
       title: "List Upcoming Pickups and Returns",
       description: `What comes from the start of today over the next days (7 by default, 1 for today only, at most 90): confirmed reservations to hand over (pickups) and ongoing ones due back (returns), soonest first. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
-      aliases: [{ name: "calendar_upcoming" }],
     },
   })
   .route({ method: "GET", path: "/reservations/upcoming" })
@@ -274,7 +270,6 @@ const listOverdueProcedure = storeProcedure
       title: "List Overdue Reservations",
       description: `Late returns: ongoing reservations past their end date, the longest overdue first, with the days late. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
-      aliases: [{ name: "calendar_overdue" }],
     },
   })
   .route({ method: "GET", path: "/reservations/overdue" })
@@ -301,7 +296,6 @@ const updateStatus = storeProcedure
       bundle: "daily",
       effect: "overwrite",
       reach: "customer",
-      aliases: [{ name: "update_reservation_status", renamedArgs: { reservationId: "id" } }],
     },
   })
   .route({ method: "POST", path: "/reservations/{id}/status" })
@@ -356,7 +350,6 @@ const updateNotes = storeProcedure
         "Replace a reservation's internal notes, which only the store's team sees. An empty string clears them. Returns the notes and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       effect: "overwrite",
-      aliases: [{ name: "update_reservation_notes", renamedArgs: { reservationId: "id" } }],
       annotations: { idempotentHint: true },
     },
   })

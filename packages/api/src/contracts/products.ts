@@ -405,24 +405,6 @@ export const listProductsOutput = z.object({
   }),
 });
 
-/** Deepest row the former `list_products` paging reaches; past it, the cursor list. */
-export const LEGACY_PAGE_MAX_OFFSET = 10_000;
-
-/** The former `list_products` tool's arguments: offset paging, one category. */
-export const legacyListProductsInput = z.object({
-  status: listProductsInput.shape.status,
-  categoryId: idSchema.optional().describe("Only products in this category."),
-  search: listProductsInput.shape.search,
-  page: z.number().int().min(1).optional().describe("Page number (default 1)."),
-  pageSize: z
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .optional()
-    .describe("Results per page (default 50, max 100)."),
-});
-
 export const getProductInput = z.object({ id: idSchema });
 
 /** An AI photo operation on one photo of a product: products_enhance_image, products_remove_image_background. */
@@ -793,12 +775,6 @@ export const productErrors = {
       message: `A product holds at most ${max} ${list}${stored > max ? `; this one already holds ${stored}, so it may keep them but not add more` : ""}.`,
       i18nKey: "errors.invalidData",
       details: { list, max, stored },
-    }),
-  legacyPageTooDeep: () =>
-    apiError("BAD_REQUEST", "LEGACY_PAGE_TOO_DEEP", {
-      message: `list_products pages through the first ${LEGACY_PAGE_MAX_OFFSET} products only. Use products_list and follow its nextCursor to read further.`,
-      i18nKey: "errors.invalidData",
-      details: { maxOffset: LEGACY_PAGE_MAX_OFFSET, tool: "products_list" },
     }),
   invalidCursor: (tool: string) =>
     apiError("BAD_REQUEST", "INVALID_CURSOR", {

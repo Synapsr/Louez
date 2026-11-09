@@ -638,10 +638,7 @@ const listPosition = sql<number>`COALESCE(${products.displayOrder}, 0)`.mapWith(
  */
 export async function listProducts(
   actor: Pick<ProductActor, "storeId" | "store">,
-  input: z.infer<typeof listProductsInput> & {
-    /** Rows to skip, for the former `list_products` paging only, in place of a cursor. */
-    offset?: number;
-  },
+  input: z.infer<typeof listProductsInput>,
 ) {
   const { storeId } = actor;
   const limit = input.limit ?? PRODUCT_PAGE_DEFAULT;
@@ -693,8 +690,7 @@ export async function listProducts(
       .from(products)
       .where(and(...conditions))
       .orderBy(asc(listPosition), desc(products.createdAt), asc(products.id))
-      .limit(limit + 1)
-      .offset(input.offset ?? 0),
+      .limit(limit + 1),
     db
       .select({ status: products.status, count: count() })
       .from(products)

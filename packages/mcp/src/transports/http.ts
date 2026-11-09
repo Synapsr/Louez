@@ -128,16 +128,12 @@ async function readJson(
   }
 }
 
-/**
- * The largest body each tool takes past `MAX_BODY_BYTES`, by tool name and
- * former name (`meta.maxBodyBytes`).
- */
+/** The largest body each tool takes past `MAX_BODY_BYTES`, by tool name (`meta.maxBodyBytes`). */
 function toolBodyLimits(procedures: readonly ExposedProcedure[]): ReadonlyMap<string, number> {
   const limits = new Map<string, number>();
   for (const { meta } of procedures) {
-    if (!meta.maxBodyBytes || meta.maxBodyBytes <= MAX_BODY_BYTES) continue;
-    for (const name of [meta.mcp.name, ...(meta.mcp.aliases ?? []).map((alias) => alias.name)]) {
-      limits.set(name, meta.maxBodyBytes);
+    if (meta.maxBodyBytes && meta.maxBodyBytes > MAX_BODY_BYTES) {
+      limits.set(meta.mcp.name, meta.maxBodyBytes);
     }
   }
   return limits;

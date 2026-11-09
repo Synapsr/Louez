@@ -60,7 +60,6 @@ const list = storeProcedure
       description:
         "List the store's product categories in the store's order, with how many products each holds. Returns up to `limit` categories (default and maximum 500) and a nextCursor to fetch the next page; nextCursor is null on the last page. Each category has `links`, the URLs to give the user.",
       bundle: "catalog",
-      aliases: [{ name: "list_categories" }],
     },
   })
   .route({ method: "GET", path: "/categories" })
@@ -100,7 +99,6 @@ const create = storeProcedure
       bundle: "catalog",
       effect: "additive",
       reach: "public",
-      aliases: [{ name: "create_category" }],
       annotations: { idempotentHint: true },
     },
   })
@@ -122,7 +120,6 @@ const update = storeProcedure
       bundle: "catalog",
       effect: "overwrite",
       reach: "public",
-      aliases: [{ name: "update_category", renamedArgs: { categoryId: "id" } }],
       annotations: { idempotentHint: true },
     },
   })
@@ -146,7 +143,6 @@ const remove = storeProcedure
       bundle: "catalog",
       effect: "delete",
       reach: "public",
-      aliases: [{ name: "delete_category", renamedArgs: { categoryId: "id" } }],
     },
   })
   .route({ method: "DELETE", path: "/categories/{id}" })

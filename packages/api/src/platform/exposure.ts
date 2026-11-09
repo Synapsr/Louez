@@ -22,7 +22,6 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.categories.completeImageUpload",
   "dashboard.categories.uploadImage",
   "dashboard.products.list",
-  "dashboard.products.listLegacyPage",
   "dashboard.products.get",
   "dashboard.products.create",
   "dashboard.products.update",
@@ -137,10 +136,7 @@ export interface ExposedProcedure {
 /** What the transports serve: the list, and the same procedures as a router. */
 export interface Exposure {
   procedures: readonly ExposedProcedure[];
-  /**
-   * Only the exposed procedures, at their paths, with their OpenAPI
-   * documentation; former MCP-only tools (`meta.mcp.listed: false`) left out.
-   */
+  /** Only the exposed procedures, at their paths, with their OpenAPI documentation. */
   router: AnyRouter;
 }
 
@@ -315,10 +311,8 @@ export function createExposure(
       continue;
     }
     const meta = node["~orpc"].meta as ExposedMeta;
-    for (const name of [meta.mcp.name, ...(meta.mcp.aliases ?? []).map((alias) => alias.name)]) {
-      if (names.has(name)) problems.push(`${path}: tool name ${name} is taken`);
-      names.add(name);
-    }
+    if (names.has(meta.mcp.name)) problems.push(`${path}: tool name ${meta.mcp.name} is taken`);
+    names.add(meta.mcp.name);
     const [, inputJsonSchema] = jsonSchemaConverter.convert(node["~orpc"].inputSchema, {
       strategy: "input",
     });
@@ -339,10 +333,8 @@ export function createExposure(
     );
   }
 
-  // A former tool kept for MCP agents (`meta.mcp.listed: false`) stays off OpenAPI.
   const served: Record<string, unknown> = {};
-  for (const { path, procedure, meta } of procedures) {
-    if (meta.mcp.listed === false) continue;
+  for (const { path, procedure } of procedures) {
     const segments = path.split(".");
     let node = served;
     for (const segment of segments.slice(0, -1)) {
@@ -355,17 +347,15 @@ export function createExposure(
 }
 
 /**
- * The bundles that hold a tool `tools/list` can show: a store procedure
- * listed on MCP. An account tool is listed whatever the bundles, and a former
- * tool never, so neither makes a bundle worth offering. A bundle without one
+ * The bundles that hold a tool `tools/list` can show: a store procedure. An
+ * account tool is listed whatever the bundles, so it makes no bundle worth
+ * offering. A bundle without one
  * is offered nowhere (the consent page, the connection editor, the server's
  * instructions) and comes back once a procedure of it is exposed.
  */
 export function bundlesWithTools(procedures: readonly ExposedProcedure[]): McpBundle[] {
   const held = new Set(
-    procedures
-      .filter(({ meta }) => !meta.account && meta.mcp.listed !== false)
-      .map(({ meta }) => meta.mcp.bundle),
+    procedures.filter(({ meta }) => !meta.account).map(({ meta }) => meta.mcp.bundle),
   );
   return MCP_BUNDLES.filter((bundle) => held.has(bundle));
 }
