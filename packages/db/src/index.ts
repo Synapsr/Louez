@@ -129,7 +129,19 @@ export type { ReservationInsertValues } from "./reservation-insert";
 export { countBillableReservationsWithoutBillableAt } from "./reservation-invariants";
 export { isDuplicateKeyError } from "./duplicate-key";
 export { lockStoreRow, mergeStoreRow, type StoreJson, type StoreRowUpdate } from "./store-row";
-export { isDatabaseDeadlock, retryOnceOnDeadlock, retryTransactionOnDeadlock } from "./deadlock";
+export {
+  currentApiOperation,
+  markSetupWrite,
+  runInApiOperation,
+  unmarkSetupWrite,
+  type ApiOperationScope,
+} from "./api-operation-scope";
+export {
+  isDatabaseDeadlock,
+  isTransactionInterrupted,
+  retryOnceOnDeadlock,
+  retryTransactionOnDeadlock,
+} from "./deadlock";
 
 export { SLUG_MAX_LENGTH, isSlug, pickUniqueSlug, slugify } from "./slug";
 export { nextCategorySlug, nextProductSlug } from "./slugs";

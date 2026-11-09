@@ -11,6 +11,7 @@ import { log } from "@/lib/evlog";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
 import { createStoreCreationEffectSenders } from "@/lib/stores/store-creation-effects";
 import { createStoreLaunchEffectSenders } from "@/lib/stores/store-launch-effects";
+import { createStoreSetupEffectSenders } from "@/lib/stores/store-setup-effects";
 
 /**
  * The app's senders of the outbox rows (packages/api platform/effects.ts), by
@@ -20,6 +21,7 @@ export const apiEffectSenders: ApiEffectSenders = {
   ...createReservationEffectSenders(),
   ...createStoreCreationEffectSenders(),
   ...createStoreLaunchEffectSenders(),
+  ...createStoreSetupEffectSenders(),
 };
 
 /**

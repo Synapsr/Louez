@@ -8,6 +8,7 @@ import {
   revokeApiKey,
   setApiKeyConfirmation,
 } from "../../services/api-keys";
+import { failCredentialHandoffs } from "../../services/handoffs";
 import { toORPCError } from "../../utils/orpc-error";
 
 const permissionLevel = z.enum(["none", "read", "write"]);
@@ -96,6 +97,8 @@ const revoke = credentials
   .handler(async ({ context, input }) => {
     try {
       await revokeApiKey({ db, storeId: context.actor.storeId, keyId: input.keyId });
+      // The links it handed to the user stop working.
+      await failCredentialHandoffs({ kind: "api_key", id: input.keyId });
       return { success: true as const };
     } catch (error) {
       throw toORPCError(error);

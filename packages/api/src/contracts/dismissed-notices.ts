@@ -7,9 +7,14 @@ import { z } from "zod";
  * listed here: it goes away when the action is done.
  *
  * The two cohort states have their own id: closing the seats pitch must not
- * hide the badge the store earns later.
+ * hide the badge the store earns later. `agent-assistant` is the offer to
+ * connect an AI assistant.
  */
-export const DISMISSIBLE_NOTICE_IDS = ["reeent-cohort-member", "reeent-cohort-seats"] as const;
+export const DISMISSIBLE_NOTICE_IDS = [
+  "reeent-cohort-member",
+  "reeent-cohort-seats",
+  "agent-assistant",
+] as const;
 
 export type DismissibleNoticeId = (typeof DISMISSIBLE_NOTICE_IDS)[number];
 
@@ -22,3 +27,10 @@ export const parseDismissedNotices = (value: unknown): DismissibleNoticeId[] => 
     (id): id is DismissibleNoticeId => dismissibleNoticeIdSchema.safeParse(id).success,
   );
 };
+
+export const dismissNoticeInput = z.object({ noticeId: dismissibleNoticeIdSchema });
+
+/** Every notice the user has closed, this one included. */
+export const dismissNoticeOutput = z.object({
+  dismissedNoticeIds: z.array(dismissibleNoticeIdSchema),
+});

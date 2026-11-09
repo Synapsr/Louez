@@ -3,8 +3,9 @@ import type { NewStorePort, NewStoreTerms } from "./ports";
 /**
  * The new-store port of a test deployment: a multi-store instance whose new
  * stores pay `terms` (pay-as-you-go by default), in the preview and once
- * created, with no subscription row written, no welcome credits, and requests
- * that carry no sign-up attribution unless the test says so.
+ * created, with no subscription row written, no welcome credits, no referred
+ * reward, requests that carry no sign-up attribution unless the test says so,
+ * and onboarding cookies named after what they would set.
  */
 export function createTestNewStores(
   overrides: Partial<NewStorePort> & { terms?: NewStoreTerms } = {},
@@ -25,6 +26,11 @@ export function createTestNewStores(
     subscribe: async () => paid,
     welcomeCredits: () => 0,
     signupAttribution: () => ({ referralCode: null, signupOrigin: null }),
+    rewardReferredStore: async () => false,
+    onboardingCookies: ({ activeStoreId, spendReferral }) => [
+      `louez_active_store=${activeStoreId}`,
+      ...(spendReferral ? ["louez_referral=; Max-Age=0"] : []),
+    ],
     ...rest,
   };
 }

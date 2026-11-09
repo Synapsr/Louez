@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { createRequire } from "node:module";
+import { describe, it, mock } from "node:test";
 
-import { toProductDescription } from "./util.stripe-prefill";
+// tsx loads @louez/utils as CommonJS, whose `export *` names ESM cannot see.
+const require = createRequire(import.meta.url);
+mock.module("@louez/utils", { namedExports: require("@louez/utils") });
+
+const { toProductDescription } = await import("./stripe-connect");
 
 describe("toProductDescription", () => {
   it("drops the editor tags Stripe rejects", () => {

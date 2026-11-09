@@ -124,6 +124,11 @@ export interface BaseContext {
   ports?: ApiPorts;
   /** Filled with the operation id of a write, for the transport to hand out. */
   receipt?: OperationReceipt;
+  /**
+   * The answer's headers, on the dashboard's RPC endpoint only (oRPC's
+   * response headers plugin): the onboarding's store step sets its cookies.
+   */
+  resHeaders?: Headers;
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
   getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;

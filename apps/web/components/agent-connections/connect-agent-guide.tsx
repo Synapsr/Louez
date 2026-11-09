@@ -12,17 +12,29 @@ interface ConnectAgentGuideProps {
   mcpUrl: string;
   /** False on an instance without HTTPS: no OAuth, API keys only. */
   oauthAvailable: boolean;
+  /**
+   * `page`: the MCP settings page, with its own heading and the API keys
+   * below. `dialog`: inside a dialog that carries the heading, away from the
+   * API keys.
+   */
+  variant?: "page" | "dialog";
 }
 
 /** How to connect an assistant: sign in through OAuth (Claude.ai, ChatGPT), or an API key. */
-export const ConnectAgentGuide = ({ mcpUrl, oauthAvailable }: ConnectAgentGuideProps) => {
+export const ConnectAgentGuide = ({
+  mcpUrl,
+  oauthAvailable,
+  variant = "page",
+}: ConnectAgentGuideProps) => {
   const t = useTranslations("agentConnections.guide");
   return (
     <section className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="text-sm font-medium">{t("title")}</h3>
-        <p className="text-muted-foreground text-sm">{t("description")}</p>
-      </div>
+      {variant === "page" && (
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium">{t("title")}</h3>
+          <p className="text-muted-foreground text-sm">{t("description")}</p>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 rounded-lg border p-2 ps-3">
         <code className="min-w-0 flex-1 truncate text-sm">{mcpUrl}</code>
@@ -58,7 +70,9 @@ export const ConnectAgentGuide = ({ mcpUrl, oauthAvailable }: ConnectAgentGuideP
               <KeyIcon className="size-4 shrink-0" aria-hidden="true" />
               {t("keyTitle")}
             </p>
-            <p className="text-muted-foreground text-sm">{t("keyDescription")}</p>
+            <p className="text-muted-foreground text-sm">
+              {t(variant === "page" ? "keyDescription" : "keyDescriptionSettings")}
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -20,6 +20,7 @@
     "./services/customer-profile-fields": "./src/services/customer-profile-fields.ts",
     "./services/customer-tools": "./src/services/customer-tools.ts",
     "./services/date-change-requests": "./src/services/date-change-requests.ts",
+    "./services/handoffs": "./src/services/handoffs.ts",
     "./services/inbox": "./src/services/inbox.ts",
     "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts",
     "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
@@ -28,6 +29,7 @@
     "./services/reservation-inventory": "./src/services/reservation-inventory.ts",
     "./services/reservation-status": "./src/services/reservation-status.ts",
     "./services/store-creation": "./src/services/store-creation.ts",
+    "./services/stripe-connect": "./src/services/stripe-connect.ts",
     "./services/unit-availability": "./src/services/unit-availability.ts",
     "./services/unit-conflicts": "./src/services/unit-conflicts.ts",
     "./services/unit-mutations": "./src/services/unit-mutations.ts"

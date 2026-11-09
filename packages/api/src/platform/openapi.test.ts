@@ -107,7 +107,7 @@ describe("OpenAPI document", () => {
     ]);
   });
 
-  test("serves the categories, the products, the reservations, the settings, the online store, the stores and the inbox at short REST paths named after their tools", async () => {
+  test("serves the categories, the products, the reservations, the settings, the online store, the stores, the inbox, Stripe, billing and handoffs at short REST paths named after their tools", async () => {
     const { createExposure } = await import("./exposure");
     const { generateOpenApiDocument } = await import("./openapi");
     const { appRouter } = await import("../router");
@@ -212,6 +212,12 @@ describe("OpenAPI document", () => {
         "POST /stores/go-live": "stores_go_live",
         "GET /inbox": "inbox_list",
         "POST /inbox/acknowledge": "inbox_acknowledge",
+        "POST /payments/stripe/onboarding": "payments_start_stripe_onboarding",
+        "POST /payments/stripe/dashboard": "payments_open_stripe_dashboard",
+        "POST /payments/stripe/sync": "payments_sync_stripe_status",
+        "GET /billing": "billing_get_status",
+        "POST /billing/card-setup": "billing_start_card_setup",
+        "GET /handoffs/{id}": "handoffs_get",
       },
     );
 

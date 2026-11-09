@@ -1,6 +1,12 @@
 import { randomBytes } from "node:crypto";
 
-import { apiConfirmations, db, type Transaction } from "@louez/db";
+import {
+  apiConfirmations,
+  currentApiOperation,
+  db,
+  unmarkSetupWrite,
+  type Transaction,
+} from "@louez/db";
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
 
 import type { ScopedActor } from "./actor";
@@ -96,7 +102,14 @@ export async function checkConfirmation(input: ConfirmationCheck) {
           gt(apiConfirmations.expiresAt, now),
         ),
       );
-    return result.affectedRows === 1 ? null : platformErrors.confirmationInvalid();
+    if (result.affectedRows !== 1) {
+      if (input.executor) await unmarkSetupWrite(input.executor);
+      return platformErrors.confirmationInvalid();
+    }
+    // The write ran on a preview the caller accepted (the setup analytics say so).
+    const operation = currentApiOperation();
+    if (operation) operation.confirmed = true;
+    return null;
   }
 
   // Expired previews are useless: drop the store's own as new ones come
@@ -107,6 +120,9 @@ export async function checkConfirmation(input: ConfirmationCheck) {
       and(eq(apiConfirmations.storeId, input.actor.storeId), lt(apiConfirmations.expiresAt, now)),
     );
 
+  // Refused for now: the write sets nothing up, though its transaction commits
+  // the preview. A mark is only ever in the caller's transaction.
+  if (input.executor) await unmarkSetupWrite(input.executor);
   const id = randomBytes(32).toString("base64url");
   const expiresAt = new Date(now.getTime() + CONFIRMATION_TTL_MS);
   await executor.insert(apiConfirmations).values({

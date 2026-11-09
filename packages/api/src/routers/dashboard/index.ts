@@ -1,12 +1,15 @@
 import { z } from "zod";
 
 import { dashboardProcedure } from "../../procedures";
+import { dashboardAccountRouter } from "./account";
 import { dashboardAgentConnectionsRouter } from "./agent-connections";
 import { dashboardAiAdvisorRouter } from "./ai-advisor";
 import { dashboardApiKeysRouter } from "./api-keys";
+import { dashboardBillingRouter } from "./billing";
 import { dashboardCategoriesRouter } from "./categories";
 import { dashboardCustomerFieldsRouter } from "./customer-fields";
 import { dashboardCustomersRouter } from "./customers";
+import { dashboardHandoffsRouter } from "./handoffs";
 import { dashboardInboxRouter } from "./inbox";
 import { dashboardIntegrationsRouter } from "./integrations";
 import { dashboardNotificationsRouter } from "./notifications";
@@ -43,12 +46,15 @@ const ping = dashboardProcedure
  */
 export const dashboardRouter = {
   ping,
+  account: dashboardAccountRouter,
   agentConnections: dashboardAgentConnectionsRouter,
   aiAdvisor: dashboardAiAdvisorRouter,
   apiKeys: dashboardApiKeysRouter,
+  billing: dashboardBillingRouter,
   categories: dashboardCategoriesRouter,
   customers: dashboardCustomersRouter,
   customerFields: dashboardCustomerFieldsRouter,
+  handoffs: dashboardHandoffsRouter,
   inbox: dashboardInboxRouter,
   integrations: dashboardIntegrationsRouter,
   reservations: dashboardReservationsRouter,

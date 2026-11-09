@@ -1,5 +1,7 @@
 import type { ReservationEffectRunner, ReservationGateReason, Transaction } from "@louez/db";
 
+import type { StripeConnectClient } from "../adapters/stripe-connect";
+import type { BillingStatus } from "../contracts/billing";
 import type { Transport } from "./actor";
 
 /**
@@ -43,6 +45,52 @@ export interface ApiPorts {
    * operator hosts it, and the store's legal notice must name them.
    */
   hostedBy?: () => "lumycloud" | null;
+  /**
+   * The app's configured Stripe client, for Stripe Connect
+   * (adapters/stripe-connect.ts), or null when this instance has no Stripe.
+   * Absent where no procedure needs it.
+   */
+  stripeConnect?: () => StripeConnectClient | null;
+  /** Louez's billing of the store, owned by the app and the billing service. */
+  billing?: BillingPort;
+}
+
+/**
+ * What the billing pages read and the billing card's checkout
+ * (apps/web lib/billing, lib/billing-sync/pages.ts), for billing.getStatus
+ * and the `billing_card_setup` handoff.
+ */
+export interface BillingPort {
+  /** What the billing pages show, without the gate and the links (the service adds them). */
+  status: (input: {
+    storeId: string;
+    locale: string;
+    now: Date;
+  }) => Promise<Omit<BillingStatus, "gate" | "cardSetup" | "links"> & BillingCardSetupState>;
+  /** Whether Louez's billing service bills the store now: only then has it a card to add. */
+  billedByService: (storeId: string, now: Date) => Promise<boolean>;
+  /** Stripe Checkout in setup mode for the store's card, back to `returnUrl`. */
+  startCardSetup: (input: {
+    storeId: string;
+    userId: string;
+    locale: string;
+    returnUrl: string;
+  }) => Promise<{ ok: true; url: string } | { ok: false; reason: "unavailable" | "failed" }>;
+  /**
+   * Saves the card of the Checkout the user came back from, then refreshes the
+   * store's policies: `refreshed` once both went through, `pending` while
+   * Stripe has not confirmed the card.
+   */
+  finishCardSetup: (input: {
+    storeId: string;
+    checkoutSessionId: string;
+  }) => Promise<"refreshed" | "pending">;
+}
+
+/** Whether the billing service would open a card setup for the store now. */
+export interface BillingCardSetupState {
+  cardSetupOpen: boolean;
+  cardSetupBlocked: "not_billed_by_service" | "off" | "in_louez" | null;
 }
 
 /**
@@ -79,6 +127,20 @@ export interface NewStorePort {
     referralCode: string | null;
     signupOrigin: string | null;
   };
+  /**
+   * In the transaction that saves the onboarding's store step on a store
+   * that already existed and was just attributed to a referrer: its
+   * referred reward (more free reservations, at the pricing it already pays)
+   * when Louez's own billing bills it. Whether it got it.
+   */
+  rewardReferredStore: (tx: Transaction, storeId: string) => Promise<boolean>;
+  /**
+   * The `Set-Cookie` values of a dashboard answer once the onboarding's store
+   * step saved or created a store: it becomes the active store, and the
+   * referral cookie it was attributed from is spent, so it attributes no
+   * later store.
+   */
+  onboardingCookies: (input: { activeStoreId: string; spendReferral: boolean }) => string[];
 }
 
 /** What a new store pays Louez, as the billing code says it (see `NewStorePort.terms`). */

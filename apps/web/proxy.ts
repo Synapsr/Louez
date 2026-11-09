@@ -1,4 +1,5 @@
 import { isLocale, defaultLocale } from "@/i18n/config";
+import { HANDOFF_ROUTE_HEADER, isHandoffPath } from "@/lib/handoffs/handoff-privacy";
 import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER, isDemoPath } from "@/lib/landing-demos/policy";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -391,8 +392,12 @@ function isAbsentLouezTerms(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
-  // This internal marker only comes from this proxy, never from a visitor.
-  if (request.headers.has(DEMO_ROUTE_HEADER) || request.headers.has(DEMO_LOCALE_HEADER))
+  // These internal markers only come from this proxy, never from a visitor.
+  if (
+    request.headers.has(DEMO_ROUTE_HEADER) ||
+    request.headers.has(DEMO_LOCALE_HEADER) ||
+    request.headers.has(HANDOFF_ROUTE_HEADER)
+  )
     return new NextResponse(null, { status: 400 });
   if (isDemoPath(pathname)) {
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -405,6 +410,22 @@ export async function proxy(request: NextRequest) {
     const response = NextResponse.next({ request: { headers: requestHeaders } });
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
     return withRuntimeSecurityHeaders(response, pathname, getRuntimePublicEnv());
+  }
+
+  // A handoff's URL holds a secret: the root layout loads no analytics for it, and
+  // no page or redirect of it tells another site where the user came from.
+  if (isHandoffPath(pathname)) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(HANDOFF_ROUTE_HEADER, "1");
+    const response = withRuntimeSecurityHeaders(
+      NextResponse.next({ request: { headers: requestHeaders } }),
+      pathname,
+      getRuntimePublicEnv(),
+    );
+    response.headers.set("Referrer-Policy", "no-referrer");
+    response.headers.set("Cache-Control", "no-store");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return response;
   }
 
   // -----------------------------------------------------------------------------

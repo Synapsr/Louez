@@ -9550,7 +9550,15 @@
       "chatgptSteps": "ChatGPT：使用此地址和 OAuth 认证添加一个应用（连接器）。",
       "keyTitle": "脚本、n8n 和不支持 OAuth 的客户端",
       "keyDescription": "在下方创建 API 密钥，并在 Authorization: Bearer 请求头中发送。",
+      "keyDescriptionSettings": "在 设置 > 集成 > MCP 中创建 API 密钥，并通过 Authorization: Bearer 请求头发送。",
       "oauthUnavailable": "使用账户登录需要 HTTPS 地址。在此实例上，请使用 API 密钥。"
+    },
+    "assistantCard": {
+      "title": "让你的 AI 助手帮你设置店铺。",
+      "info": "Claude、ChatGPT、Grok 或 Le Chat 可以替你添加商品、设置价格并设置店铺。它的权限以及哪些操作需要你确认，都由你决定。",
+      "infoLabel": "了解更多",
+      "action": "连接",
+      "dismiss": "隐藏"
     },
     "declaredBy": "名称由 {origin} 声明",
     "declaredByItself": "名称由应用自行声明（动态注册）"
@@ -9561,5 +9569,70 @@
     "description": "此链接将打开商店“{target}”。您当前在“{current}”。",
     "open": "在 {target} 中打开",
     "stay": "留在 {current}"
+  },
+  "handoff": {
+    "metaTitle": "在 Louez 中继续",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "连接 Stripe",
+        "description": "您的 AI 代理请您将“{store}”连接到 Stripe，以便接受在线付款。Stripe 会要求您提供身份信息和银行信息。",
+        "continue": "继续前往 Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "打开您的 Stripe 控制台",
+        "description": "您的 AI 代理请您打开“{store}”的 Stripe 控制台。",
+        "continue": "打开 Stripe"
+      },
+      "billing_card_setup": {
+        "title": "添加您的账单卡",
+        "description": "您的 AI 代理请您添加 Louez 用于收取“{store}”费用的银行卡。您将在 Stripe 的安全页面上输入卡信息。",
+        "continue": "继续前往 Stripe"
+      }
+    },
+    "retry": "Stripe 没有响应。请稍后再试。",
+    "refused": {
+      "invalid": {
+        "title": "此链接已失效",
+        "description": "链接不完整，或已被更新的链接取代。请向您的 AI 代理索取新链接。"
+      },
+      "expired": {
+        "title": "此链接已过期",
+        "description": "请向您的 AI 代理索取新链接。"
+      },
+      "finished": {
+        "title": "此步骤已经结束",
+        "description": "这里已无需任何操作。您可以返回您的 AI 代理。"
+      },
+      "other_user": {
+        "title": "此链接属于另一个账户",
+        "description": "您当前登录的账户不是您的 AI 代理所服务的账户。请使用该账户登录，然后重新打开链接。"
+      },
+      "not_allowed": {
+        "title": "您无法为此商店执行此操作",
+        "description": "您在此商店中的角色不允许执行此步骤。请联系商店所有者。"
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "已完成",
+        "description": "您可以关闭此页面并返回您的 AI 代理：它会看到此步骤已完成。"
+      },
+      "opened": {
+        "title": "尚未完成",
+        "description": "此步骤未在 Stripe 上完成。请重新打开链接完成它，或返回您的 AI 代理。"
+      },
+      "confirming": {
+        "title": "即将完成",
+        "description": "Stripe 尚未确认此卡。您可以返回您的 AI 代理：Stripe 确认后，它就会看到这张卡。"
+      },
+      "expired": {
+        "title": "此链接已过期",
+        "description": "请返回您的 AI 代理：它可以给您一个新链接。"
+      },
+      "failed": {
+        "title": "此步骤失败",
+        "description": "请返回您的 AI 代理：它可以给您一个新链接。"
+      }
+    }
   }
 }

@@ -9,14 +9,18 @@ import type { McpRequestContext } from "./auth/context";
 const BUNDLE_SUMMARY: Record<McpBundle, string> = {
   daily: "reservations, calendar, customers, payments and figures",
   catalog: "products, categories and stock",
-  settings: "store settings and the online store",
+  settings: "store settings, the online store and Stripe",
   integrations: "connected services",
   team: "team members",
-  billing: "subscription and invoices from Louez",
+  billing: "what Louez bills the store, and its billing card",
 };
 
 /** Where an agent learns what needs the user, and how to poll it. */
 const INBOX_HELP = `What needs the user's attention (requests to answer, late returns, failed payments, messages that never went out…): inbox_list. To keep an eye on the store, call it every ${INBOX_POLL_MINUTES.min} to ${INBOX_POLL_MINUTES.max} minutes with the nextCursor of your last call: you get only what is new.`;
+
+/** Steps only the user can take, handed over with a link (services/handoffs.ts). */
+const HANDOFF_HELP =
+  "Some steps only the user can take (Stripe's identity checks, a billing card): their tool returns a link. Give the user that link, then poll handoffs_get with its id until it is completed, rather than asking them to tell you; an expired link is replaced by calling the same tool again.";
 
 /** How a new store goes live, for a model that just created one. */
 const LAUNCH_HELP =
@@ -57,7 +61,7 @@ export function serverInstructions(ctx: McpRequestContext): string {
     );
   }
 
-  if (!ctx.noStore) lines.push(INBOX_HELP);
+  if (!ctx.noStore) lines.push(INBOX_HELP, HANDOFF_HELP);
 
   const { bundles } = ctx.actor.credential;
   if (bundles) {

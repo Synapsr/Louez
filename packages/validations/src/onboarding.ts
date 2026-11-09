@@ -43,6 +43,7 @@ export const RESERVED_SLUGS = [
   "dev",
   "embed",
   "favicon",
+  "handoffs",
   "ingest",
   "multi-store",
   "online-store",

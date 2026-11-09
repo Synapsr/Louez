@@ -9550,7 +9550,15 @@
       "chatgptSteps": "ChatGPT: aggiunga un’app (connettore) con questo indirizzo e l’autenticazione OAuth.",
       "keyTitle": "Script, n8n e client senza OAuth",
       "keyDescription": "Crei una chiave API qui sotto e la invii nell’intestazione Authorization: Bearer.",
+      "keyDescriptionSettings": "Crea una chiave API in Impostazioni, Integrazioni, MCP e inviala nell’intestazione Authorization: Bearer.",
       "oauthUnavailable": "L’accesso con il suo account richiede un indirizzo HTTPS. Su questa istanza usi una chiave API."
+    },
+    "assistantCard": {
+      "title": "Lascia che il tuo assistente IA configuri il negozio.",
+      "info": "Claude, ChatGPT, Grok o Le Chat può aggiungere i tuoi prodotti, impostare i prezzi e configurare il negozio per te. Sei tu a scegliere i suoi permessi e cosa deve farti confermare.",
+      "infoLabel": "Scopri di più",
+      "action": "Collega",
+      "dismiss": "Nascondi"
     },
     "declaredBy": "Nome dichiarato da {origin}",
     "declaredByItself": "Nome dichiarato dall’app (registrata dinamicamente)"
@@ -9561,5 +9569,70 @@
     "description": "Questo link apre il negozio «{target}». Sei su «{current}».",
     "open": "Apri in {target}",
     "stay": "Resta su {current}"
+  },
+  "handoff": {
+    "metaTitle": "Continua in Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Collega Stripe",
+        "description": "Il tuo agente IA ti chiede di collegare «{store}» a Stripe per accettare pagamenti online. Stripe ti chiederà la tua identità e le tue coordinate bancarie.",
+        "continue": "Continua su Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Apri la tua dashboard Stripe",
+        "description": "Il tuo agente IA ti chiede di aprire la dashboard Stripe di «{store}».",
+        "continue": "Apri Stripe"
+      },
+      "billing_card_setup": {
+        "title": "Aggiungi la tua carta di fatturazione",
+        "description": "Il tuo agente IA ti chiede di aggiungere la carta su cui Louez addebita le sue commissioni per «{store}». La inserirai sulla pagina sicura di Stripe.",
+        "continue": "Continua su Stripe"
+      }
+    },
+    "retry": "Stripe non ha risposto. Riprova tra un momento.",
+    "refused": {
+      "invalid": {
+        "title": "Questo link non funziona più",
+        "description": "È incompleto, oppure un link più recente l’ha sostituito. Chiedine uno nuovo al tuo agente IA."
+      },
+      "expired": {
+        "title": "Questo link è scaduto",
+        "description": "Chiedi un nuovo link al tuo agente IA."
+      },
+      "finished": {
+        "title": "Questo passaggio è già concluso",
+        "description": "Non c’è più niente da fare qui. Puoi tornare al tuo agente IA."
+      },
+      "other_user": {
+        "title": "Questo link è per un altro account",
+        "description": "Hai effettuato l’accesso con un account diverso da quello per cui lavora il tuo agente IA. Accedi con quell’account, poi riapri il link."
+      },
+      "not_allowed": {
+        "title": "Non puoi farlo per questo negozio",
+        "description": "Il tuo ruolo in questo negozio non consente questo passaggio. Chiedi al proprietario del negozio."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Fatto",
+        "description": "Puoi chiudere questa pagina e tornare al tuo agente IA: vedrà che questo passaggio è concluso."
+      },
+      "opened": {
+        "title": "Non ancora concluso",
+        "description": "Il passaggio non è stato concluso su Stripe. Riapri il link per concluderlo, oppure torna al tuo agente IA."
+      },
+      "confirming": {
+        "title": "Quasi fatto",
+        "description": "Stripe non ha ancora confermato la carta. Puoi tornare al tuo agente IA: vedrà la carta appena Stripe la confermerà."
+      },
+      "expired": {
+        "title": "Questo link è scaduto",
+        "description": "Torna al tuo agente IA: può darti un nuovo link."
+      },
+      "failed": {
+        "title": "Questo passaggio non è riuscito",
+        "description": "Torna al tuo agente IA: può darti un nuovo link."
+      }
+    }
   }
 }

@@ -29,6 +29,7 @@ export type CapabilityDomain =
   | "purchase_invoices"
   | "inspections"
   | "inbox"
+  | "handoffs"
   | "ui";
 
 export type CapabilityLot =
@@ -142,7 +143,6 @@ const SA = {
   subscription: `${DASH}/subscription/actions.ts`,
   team: `${DASH}/team/actions.ts`,
   whatsNew: `${DASH}/whats-new/actions.ts`,
-  onboarding: `${ONBOARDING}/actions.ts`,
   onboardingProfile: `${ONBOARDING}/profile-actions.ts`,
   reeent: `${ONBOARDING}/reeent/actions.ts`,
   invitation: "apps/web/app/invitation/[token]/actions.ts",
@@ -151,6 +151,7 @@ const SA = {
 } as const;
 
 const ROUTE = {
+  handoffReturn: "apps/web/app/handoffs/return/[id]/[state]/route.ts",
   aiImageEnhance: `${API}/ai/product-image/enhance/route.ts`,
   aiChat: `${API}/chat/route.ts`,
   aiCredits: `${API}/dashboard/ai-credits/route.ts`,
@@ -170,12 +171,15 @@ const ROUTE = {
 
 /** oRPC router file per key of `dashboardRouter`. */
 const ORPC = {
+  account: `${ROUTERS}/account.ts`,
   agentConnections: `${ROUTERS}/agent-connections.ts`,
   aiAdvisor: `${ROUTERS}/ai-advisor.ts`,
   apiKeys: `${ROUTERS}/api-keys.ts`,
+  billing: `${ROUTERS}/billing.ts`,
   categories: `${ROUTERS}/categories.ts`,
   customerFields: `${ROUTERS}/customer-fields.ts`,
   customers: `${ROUTERS}/customers.ts`,
+  handoffs: `${ROUTERS}/handoffs.ts`,
   inbox: `${ROUTERS}/inbox.ts`,
   integrations: `${ROUTERS}/integrations.ts`,
   notifications: `${ROUTERS}/notifications.ts`,
@@ -314,6 +318,15 @@ export const capabilities = [
     sources: [procedure("inbox", "acknowledge")],
     kind: "write",
     plan: { lot: "A1" },
+    migrated: true,
+  },
+
+  // --- Handoffs (6): a step only the user can take, started by an agent ---
+  {
+    id: "handoffs.get",
+    sources: [procedure("handoffs", "get")],
+    kind: "read",
+    plan: { lot: "6" },
     migrated: true,
   },
 
@@ -1511,27 +1524,38 @@ export const capabilities = [
     plan: { lot: "6" },
   },
   {
+    // The dashboard keeps its direct flow (the action redirects to Stripe);
+    // an agent gets a handoff link to the same service.
     id: "payments.startStripeOnboarding",
-    sources: [action(SA.payments, "startStripeOnboarding")],
+    sources: [
+      action(SA.payments, "startStripeOnboarding"),
+      procedure("payments", "startStripeOnboarding"),
+    ],
     kind: "write",
     plan: { handoff: "stripe", lot: "6" },
   },
   {
+    // Stripe's return: the dashboard's callback page and the handoff's return route.
     id: "payments.completeStripeOnboarding",
-    sources: [action(SA.payments, "completeStripeOnboarding")],
+    sources: [route(ROUTE.handoffReturn, "GET")],
     kind: "write",
     plan: { handoff: "stripe", lot: "6" },
   },
   {
     id: "payments.syncStripeStatus",
-    sources: [action(SA.payments, "syncStripeStatus")],
+    sources: [procedure("payments", "syncStripeStatus")],
     kind: "write",
     plan: { lot: "6" },
+    migrated: true,
   },
   {
+    // The dashboard opens Stripe in a new tab; an agent gets a handoff link.
     id: "payments.getStripeDashboardUrl",
-    sources: [action(SA.payments, "getStripeDashboardUrl")],
-    kind: "read",
+    sources: [
+      action(SA.payments, "getStripeDashboardUrl"),
+      procedure("payments", "openStripeDashboard"),
+    ],
+    kind: "write",
     plan: { handoff: "stripe", lot: "6" },
   },
   {
@@ -1958,10 +1982,20 @@ export const capabilities = [
     plan: { lot: "8" },
   },
   {
+    // What the billing pages show, read-only.
+    id: "billing.getStatus",
+    sources: [procedure("billing", "getStatus")],
+    kind: "read",
+    plan: { lot: "6" },
+    migrated: true,
+  },
+  {
+    // The dashboard keeps its direct flow (the action redirects to Checkout);
+    // an agent gets a handoff link to the same billing service call.
     id: "billing.startCardSetup",
-    sources: [action(SA.billing, "startBillingCardSetup")],
+    sources: [action(SA.billing, "startBillingCardSetup"), procedure("billing", "startCardSetup")],
     kind: "write",
-    plan: { handoff: "stripe", lot: "8" },
+    plan: { handoff: "stripe", lot: "6" },
   },
   {
     id: "billing.createCheckout",
@@ -2063,11 +2097,14 @@ export const capabilities = [
   },
   {
     // The onboarding's store step on a store that exists already: an
-    // incomplete store of the user, or the one being edited.
+    // incomplete store of the user (an agent's included), or the one being
+    // edited. The wizard's own step: a session only, agents set the same
+    // fields through the settings procedures.
     id: "stores.updateOnboardingInfo",
-    sources: [action(SA.onboarding, "saveStoreInfo")],
+    sources: [procedure("stores", "updateOnboardingInfo")],
     kind: "write",
     plan: { lot: "8" },
+    actors: ["session"],
   },
   {
     id: "stores.getOnboardingDraft",
@@ -2190,9 +2227,10 @@ export const capabilities = [
   },
   {
     id: "ui.dismissNotice",
-    sources: [action(SA.dashboard, "dismissNotice")],
+    sources: [procedure("account", "dismissNotice")],
     kind: "write",
     plan: { exclude: UI_ONLY },
+    actors: ["session"],
   },
   {
     id: "ui.acknowledgeReeentIntro",

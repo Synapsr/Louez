@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { db, users } from "@louez/db";
 
 import { auth } from "@/lib/auth";
+import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
 import { getCurrentStore, getUserStores } from "@/lib/store-context";
 import { getCountryByCode } from "@louez/utils/countries";
@@ -67,6 +68,7 @@ export default async function OnboardingStorePage({
       editingStoreId={isCreatingNewStore ? null : (currentStore?.id ?? null)}
       initialCountry={initialCountry}
       shouldDetectBrowserCountry={!savedCountry && !requestCountry}
+      mcpEndpoint={getMcpEndpoint()}
     />
   );
 }

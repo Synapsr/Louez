@@ -767,6 +767,129 @@ describe(
       assert.equal(saved?.stores, null);
     });
 
+    // --- The onboarding's store step on an existing store ---------------------------
+
+    const saveInfo = (context: object, input: Record<string, unknown> = {}) =>
+      call<{ id: string | null; online: boolean }>(
+        stores.updateOnboardingInfo,
+        { name: "Brest Surf Rental", slug: "brest-surf", country: "FR", currency: "EUR", ...input },
+        context,
+        "updateOnboardingInfo",
+      );
+
+    test("the onboarding's store step finishes the store an agent created: kept settings, referral, cookies, events", async () => {
+      await grant();
+      const created = await confirmed();
+      // Something the agent set meanwhile, which the step keeps.
+      const before = await louezDb.db.query.stores.findFirst({
+        where: orm.eq(louezDb.stores.id, created.id),
+        columns: { settings: true },
+      });
+      assert.ok(before?.settings);
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings: { ...before.settings, minRentalMinutes: 240 } })
+        .where(orm.eq(louezDb.stores.id, created.id));
+      const rewarded: string[] = [];
+      newStores = {
+        signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: null }),
+        // Louez's own billing bills it: the referred reward (the app's port decides).
+        rewardReferredStore: async (_tx, storeId) => {
+          rewarded.push(storeId);
+          return true;
+        },
+      };
+
+      const context = { ...session(), resHeaders: new Headers() };
+      const saved = await saveInfo(context, {
+        name: "Brest Surf",
+        address: "2 quai de la Douane, 29200 Brest",
+        email: "contact@brest-surf.test",
+      });
+      assert.deepEqual(saved, { id: created.id, online: false });
+      const row = await louezDb.db.query.stores.findFirst({
+        where: orm.eq(louezDb.stores.id, created.id),
+      });
+      assert.equal(row?.name, "Brest Surf");
+      assert.equal(row?.address, "2 quai de la Douane, 29200 Brest");
+      assert.equal(row?.settings?.minRentalMinutes, 240, "what the agent set stays");
+      assert.equal(row?.referredByStoreId, REFERRER_STORE, "a store not referred yet is now");
+      assert.deepEqual(context.resHeaders.getSetCookie(), [
+        `louez_active_store=${created.id}`,
+        "louez_referral=; Max-Age=0",
+      ]);
+
+      const queued = await louezDb.db
+        .select({ payload: louezDb.apiEffects.payload })
+        .from(louezDb.apiEffects)
+        .where(
+          orm.and(
+            orm.eq(louezDb.apiEffects.storeId, created.id),
+            orm.eq(louezDb.apiEffects.type, "store.creationAnalytics"),
+          ),
+        )
+        .orderBy(louezDb.apiEffects.seq);
+      const saveEvents = queued
+        .map(({ payload }) => payload as { event: string; properties: Record<string, unknown> })
+        // Leaves out the creation's own events, which say it is no existing store.
+        .filter((payload) => payload.properties.is_existing_incomplete_store !== false);
+      assert.deepEqual(rewarded, [created.id]);
+      assert.deepEqual(
+        saveEvents.map((payload) => payload.event),
+        ["referral_attribution_resolved", "referred_reward_granted", "store_info_saved"],
+        "in the outbox, with the write",
+      );
+      assert.equal(saveEvents[2]?.properties.store_created_by, "agent");
+      assert.equal(saveEvents[2]?.properties.credential_kind, "session");
+
+      // Recorded as the session's write that set the store up.
+      const [operation] = await louezDb.db
+        .select({
+          kind: louezDb.apiOperations.credentialKind,
+          setupStoreId: louezDb.apiOperations.setupStoreId,
+          status: louezDb.apiOperations.status,
+        })
+        .from(louezDb.apiOperations)
+        .where(orm.eq(louezDb.apiOperations.procedure, "dashboard.stores.updateOnboardingInfo"));
+      assert.deepEqual(operation, {
+        kind: "session",
+        setupStoreId: created.id,
+        status: "succeeded",
+      });
+    });
+
+    test("the store step: no store to finish, a taken address, a store not theirs, an agent", async () => {
+      assert.deepEqual(await saveInfo(session()), { id: null, online: false });
+      await rejects(saveInfo(session(), { slug: "sc-owner" }), "STORE_SLUG_TAKEN");
+      // Another user's store, with an id as the dashboard sends it.
+      const theirs = "sc_other_store_000001";
+      await louezDb.db
+        .insert(louezDb.stores)
+        .values({ id: theirs, userId: OWNER, name: "Theirs", slug: "sc-theirs" });
+      try {
+        await rejects(
+          saveInfo(session(), { storeId: theirs, slug: "brest-surf" }),
+          "NO_STORE_ACCESS",
+        );
+      } finally {
+        await louezDb.db.delete(louezDb.stores).where(orm.eq(louezDb.stores.id, theirs));
+      }
+      await grant();
+      await rejects(saveInfo(await agent()), "SESSION_ONLY");
+    });
+
+    test("a store the dashboard creates becomes the active one, and spends the referral cookie", async () => {
+      newStores = {
+        signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: null }),
+      };
+      const context = { ...session(), resHeaders: new Headers() };
+      const created = await create(context);
+      assert.deepEqual(context.resHeaders.getSetCookie(), [
+        `louez_active_store=${created.id}`,
+        "louez_referral=; Max-Age=0",
+      ]);
+    });
+
     // --- Web address --------------------------------------------------------------
 
     test("checks a web address before creating, with free ones close to it", async () => {

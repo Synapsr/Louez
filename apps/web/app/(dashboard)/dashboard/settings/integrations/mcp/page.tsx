@@ -2,13 +2,12 @@ import { redirect } from "next/navigation";
 
 import { getTranslations } from "next-intl/server";
 
-import { mcpOAuth } from "@louez/auth";
 import { Separator } from "@louez/ui";
 
 import { AgentConnectionsSection } from "@/components/agent-connections/agent-connections-section";
 import { ConnectAgentGuide } from "@/components/agent-connections/connect-agent-guide";
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
-import { env } from "@/env";
+import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { ApiKeysPageContent } from "./api-keys-page-content";
@@ -26,8 +25,6 @@ export default async function McpIntegrationPage() {
 
   const t = await getTranslations("dashboard.settings.api");
   const tHub = await getTranslations("dashboard.settings.integrationsHub");
-  // The OAuth resource when the instance serves OAuth: the URL tokens are bound to.
-  const mcpUrl = mcpOAuth?.resource ?? `${new URL(env.NEXT_PUBLIC_APP_URL).origin}/api/mcp`;
 
   return (
     <SettingsPageShell
@@ -36,7 +33,7 @@ export default async function McpIntegrationPage() {
       description={t("description")}
     >
       <div className="space-y-8">
-        <ConnectAgentGuide mcpUrl={mcpUrl} oauthAvailable={mcpOAuth !== null} />
+        <ConnectAgentGuide {...getMcpEndpoint()} />
         <Separator />
         <AgentConnectionsSection />
         <Separator />
