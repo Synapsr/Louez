@@ -131,9 +131,9 @@ export const getUnitHistory = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_get_unit_history",
+      title: "Get Unit History",
       description: `The history of one unit: its events (created, changed, retired, reinstated, downtimes, assignments), newest first, with who did them, and its downtimes (current, upcoming, past). ${UNIT_HELP} It shows the reservations and customers the unit served: it needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.`,
       bundle: "catalog",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/products/units/{unitId}/history" })
@@ -151,9 +151,9 @@ export const declareDowntime = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_declare_downtime",
+      title: "Declare Unit Downtime",
       description: `Take a unit out of service for maintenance, a repair or another reason, from startsAt until endsAt (or until closed with products_close_downtime). It cannot be booked then. ${UNIT_HELP} Reservations that already hold the unit then keep it and are returned in conflicts, with the units that could serve them instead; when there are any, ${CONFIRM_HELP} ${BOOKING_ACCESS_HELP} Returns the downtime's id.`,
       bundle: "catalog",
-      annotations: { destructiveHint: true },
     },
   })
   .route({ method: "POST", path: "/products/units/{unitId}/downtimes" })
@@ -179,9 +179,10 @@ export const updateDowntime = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_update_downtime",
+      title: "Update Unit Downtime",
       description: `Change a downtime's reason, dates or note. Send only the fields to change; endsAt null makes it last until closed. Reservations that hold the unit over the new dates are returned in conflicts; when there are any, ${CONFIRM_HELP} ${BOOKING_ACCESS_HELP}`,
       bundle: "catalog",
-      annotations: { destructiveHint: true, idempotentHint: true },
+      annotations: { idempotentHint: true },
     },
   })
   .route({ method: "PATCH", path: "/products/downtimes/{downtimeId}" })
@@ -206,6 +207,7 @@ export const closeDowntime = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_close_downtime",
+      title: "Close Unit Downtime",
       description:
         "End a downtime: the unit is back in service from endsAt, now by default. Returns when it ends.",
       bundle: "catalog",
@@ -223,10 +225,10 @@ export const deleteDowntime = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_delete_downtime",
+      title: "Delete Unit Downtime",
       description:
         "Delete a downtime entered by mistake, as if it never was: the unit is available on its days again (the unit's history keeps a record). To end one that is over, use products_close_downtime instead. The first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
       bundle: "catalog",
-      annotations: { destructiveHint: true },
     },
   })
   .route({ method: "DELETE", path: "/products/downtimes/{downtimeId}" })
@@ -262,9 +264,9 @@ export const retireUnit = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_retire_unit",
+      title: "Retire Unit",
       description: `Retire a unit for good (sold, lost, broken or other): it leaves the stock from now on and can no longer be booked; products_reinstate_unit undoes it. ${UNIT_HELP} Current and future reservations that hold it keep it and are returned in conflicts, with the units that could serve them instead. The first call answers CONFIRMATION_REQUIRED with a preview of those reservations: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. ${BOOKING_ACCESS_HELP}`,
       bundle: "catalog",
-      annotations: { destructiveHint: true },
     },
   })
   .route({ method: "POST", path: "/products/units/{unitId}/retire" })
@@ -289,6 +291,7 @@ export const reinstateUnit = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_reinstate_unit",
+      title: "Reinstate Unit",
       description: "Put a retired unit back in service: it can be booked again.",
       bundle: "catalog",
     },
@@ -304,6 +307,7 @@ export const updateUnitDetails = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_update_unit_details",
+      title: "Update Unit Details",
       description: `Change a unit's notes, purchase price or purchase date. Send only the fields to change; null clears one. To rename a unit or change its variant values, use products_update. ${UNIT_HELP} Returns the unit's details.`,
       bundle: "catalog",
       annotations: { idempotentHint: true },

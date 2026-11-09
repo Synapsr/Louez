@@ -35,6 +35,7 @@ describe("exposure registry", () => {
 
   const mcp = (name: string) => ({
     name,
+    title: "Test Tool",
     description: "A test tool.",
     bundle: "catalog" as const,
   });
@@ -189,5 +190,89 @@ describe("exposure registry", () => {
   test("refuses a path listed twice and a tool name used twice", () => {
     rejects({ a: valid() }, ["a", "a"], /a: listed twice/);
     rejects({ a: valid("same"), b: valid("same") }, ["a", "b"], /b: tool name same is taken/);
+  });
+
+  test("refuses a tool the Claude and ChatGPT directories would reject", () => {
+    const withMcp = (overrides: Record<string, unknown>) =>
+      valid().meta({ mcp: { ...mcp("test_valid"), ...overrides } as never });
+    rejects({ a: withMcp({ name: `t${"_x".repeat(32)}` }) }, ["a"], /64 characters at most/);
+    rejects({ a: withMcp({ name: "Test-Tool" }) }, ["a"], /is not snake_case/);
+    rejects({ a: withMcp({ title: " " }) }, ["a"], /a: no meta\.mcp\.title/);
+    rejects({ a: withMcp({ description: "" }) }, ["a"], /a: no meta\.mcp\.description/);
+  });
+
+  test("takes hint overrides that correct the derivation, never ones that repeat it", () => {
+    const withHints = (annotations: Record<string, boolean>) =>
+      valid().meta({ mcp: { ...mcp("test_valid"), annotations } });
+    rejects({ a: withHints({ readOnlyHint: true }) }, ["a"], /readOnlyHint repeats/);
+    rejects({ a: withHints({ openWorldHint: false }) }, ["a"], /openWorldHint repeats/);
+    const served = exposure.createExposure(
+      { a: withHints({ openWorldHint: true, idempotentHint: true }) } as never,
+      ["a"],
+    );
+    assert.deepEqual(served.procedures[0].meta.mcp.annotations, {
+      openWorldHint: true,
+      idempotentHint: true,
+    });
+  });
+
+  test("serves each procedure's output as JSON Schema, an object", () => {
+    const router = testing.createFixtureRouter();
+    const [list] = exposure.createExposure(router, ["fixture.notes.list"]).procedures;
+    assert.equal(list.outputJsonSchema.type, "object");
+    const items = (list.outputJsonSchema.properties as Record<string, { items?: unknown }>).items;
+    assert.deepEqual(
+      (items.items as { properties: Record<string, unknown> }).properties.createdAt,
+      { type: "string", format: "date-time", "x-native-type": "date" },
+    );
+  });
+});
+
+describe("MCP tool hints", () => {
+  let meta: typeof import("./meta");
+
+  before(async () => {
+    meta = await import("./meta");
+  });
+
+  test("derive from the scope's level and the sensitive kind, explicit booleans", () => {
+    const hints = (level: "read" | "write" | undefined, sensitive?: "money" | "send") =>
+      meta.mcpToolAnnotations({ level, sensitive });
+    assert.deepEqual(hints("read"), {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
+    assert.deepEqual(hints(undefined), {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
+    assert.deepEqual(hints("write"), {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    });
+    assert.deepEqual(hints("write", "money"), {
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: false,
+    });
+    assert.deepEqual(hints("write", "send"), {
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: true,
+    });
+  });
+
+  test("take the overrides on top", () => {
+    assert.deepEqual(
+      meta.mcpToolAnnotations({
+        level: "write",
+        sensitive: undefined,
+        overrides: { openWorldHint: true, idempotentHint: true },
+      }),
+      { readOnlyHint: false, destructiveHint: false, openWorldHint: true, idempotentHint: true },
+    );
   });
 });

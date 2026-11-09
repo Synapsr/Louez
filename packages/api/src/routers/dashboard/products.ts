@@ -122,10 +122,10 @@ const list = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_list",
+      title: "List Products",
       description:
         "List the store's products in the catalog's order, with their price, stock and main category, and the count per status. Filter by status, categoryIds or part of the name. Returns up to `limit` products (default 100, at most 200) and a nextCursor for the next page; nextCursor is null on the last page. Each product has `links`: its dashboard page and, while it is active, its storefront page, the URLs to give the user. Use products_get for a product's tiers, units and accessories.",
       bundle: "catalog",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/products" })
@@ -143,10 +143,10 @@ const listLegacyPage = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "list_products",
+      title: "List Products by Page (Former Tool)",
       description: `Former tool, kept for agents set up before: use products_list. Lists the store's products by page (page, pageSize up to 100) within the first ${LEGACY_PAGE_MAX_OFFSET} products.`,
       bundle: "catalog",
       listed: false,
-      annotations: { readOnlyHint: true },
     },
   })
   .input(legacyListProductsInput)
@@ -173,10 +173,10 @@ const get = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_get",
+      title: "Get Product",
       description: `Get one product of the store with everything its form holds: pricing (base rate, tiers), deposit, taxes, promotion, stock and units, variants, accessories, categories, images. The answer can be edited and sent back to products_update. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "get_product", renamedArgs: { productId: "id" } }],
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/products/{id}" })
@@ -194,6 +194,7 @@ const create = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_create",
+      title: "Create Product",
       description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} Images: upload each with products_create_image_upload and products_complete_image_upload first. Returns the product as products_get does, with its \`links\`: give the user these URLs to see it. Pass an idempotencyKey to retry safely.`,
       bundle: "catalog",
       aliases: [{ name: "create_product" }],
@@ -213,10 +214,11 @@ const update = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_update",
+      title: "Update Product",
       description: `Change a product. Send only the fields to change: a field left out stays as it is; a list you send (rateTiers, accessories, units, categoryIds, images) replaces the stored one. \`price\` alone changes a duration product's base price. ${TIERS_HELP} When the change archives the product, deletes its tiers and seasons (switching to fixed pricing) or deletes units, the first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the product. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "update_product", renamedArgs: { productId: "id" } }],
-      annotations: { destructiveHint: true, idempotentHint: true },
+      annotations: { idempotentHint: true },
     },
   })
   .route({ method: "PATCH", path: "/products/{id}" })
@@ -268,6 +270,7 @@ const updateStatus = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_update_status",
+      title: "Change Product Status",
       description:
         "Publish (active), unpublish (draft) or archive a product. Archiving takes it off the storefront and the catalog; its reservations are kept. Archiving first answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the product's `links`: its dashboard page and, once active, its storefront page, the URLs to give the user.",
       bundle: "catalog",
@@ -278,7 +281,7 @@ const updateStatus = storeProcedure
           fixedArgs: { status: "archived" },
         },
       ],
-      annotations: { destructiveHint: true, idempotentHint: true },
+      annotations: { idempotentHint: true },
     },
   })
   .route({ method: "POST", path: "/products/{id}/status" })
@@ -313,10 +316,10 @@ const remove = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_delete",
+      title: "Delete Product",
       description:
         "Delete a product for good, with its units, category and accessory links. Refused while a current or future reservation holds one of its units. To only take it off the storefront, archive it with products_update_status instead. The first call answers CONFIRMATION_REQUIRED with a preview of what is deleted: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
       bundle: "catalog",
-      annotations: { destructiveHint: true },
     },
   })
   .route({ method: "DELETE", path: "/products/{id}" })
@@ -346,6 +349,7 @@ const duplicate = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_duplicate",
+      title: "Duplicate Product",
       description:
         'Copy a product as a draft named "<name> (copy)", with its pricing, tiers, deposit, taxes, images and categories. Units are not copied: the copy counts the same stock without tracking units. Returns the new product, with its `links` (a draft has its dashboard page only).',
       bundle: "catalog",
@@ -364,6 +368,7 @@ const reorder = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_reorder",
+      title: "Reorder Products",
       description:
         "Set the order of products, as the storefront and the dashboard show them. Send product ids in their new order: they swap among the places they already hold, and products left out keep theirs. Returns each sent product's new position.",
       bundle: "catalog",
@@ -383,6 +388,7 @@ const createImageUploadProcedure = storeProcedure
     secretOutput: true,
     mcp: {
       name: "products_create_image_upload",
+      title: "Start Product Image Upload",
       description:
         "Start uploading a product image (JPEG, PNG, GIF or WebP, 15 MB at most). Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. Then call products_complete_image_upload with the key.",
       bundle: "catalog",
@@ -405,6 +411,7 @@ const completeImageUploadProcedure = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_complete_image_upload",
+      title: "Complete Product Image Upload",
       description:
         "Finish a product image upload: checks the file that arrived at the key and returns its public `url`. Add that url to the product's `images` with products_create or products_update. A file that is not a valid image of the declared type is deleted and refused.",
       bundle: "catalog",
@@ -430,10 +437,10 @@ const getActivity = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_get_activity",
+      title: "Get Product Activity",
       description:
         "The history of a product's units, newest first: units created, changed, deleted, retired or reinstated, downtimes, assignments to reservations. Returns up to `limit` events (default 12, at most 50) and a nextCursor; nextCursor is null on the last page. Its events name reservations, so it needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.",
       bundle: "catalog",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/products/{id}/activity" })
@@ -457,10 +464,10 @@ const getReservationTimeline = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_get_reservation_timeline",
+      title: "Get Product Reservation Timeline",
       description:
         "When a product is out: the reservations that hold it between `from` and `to` (ISO 8601, at most 400 days apart), with their dates, customer, amounts, quantity and assigned units, and the downtimes of its units in that window. Needs read access to products, reservations and customers; without the last two it answers PERMISSION_DENIED.",
       bundle: "catalog",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/products/{id}/reservation-timeline" })
@@ -484,9 +491,9 @@ const listSeasonalPricingsProcedure = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_list_seasonal_pricings",
+      title: "List Seasonal Prices",
       description: `List a product's seasonal prices by start day, with their tiers. ${SEASON_HELP}`,
       bundle: "catalog",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/products/{productId}/seasonal-pricings" })
@@ -500,6 +507,7 @@ const createSeasonalPricingProcedure = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_create_seasonal_pricing",
+      title: "Create Seasonal Price",
       description: `Add a seasonal price to a duration product: a name, its days, its base price (for the product's base duration) and optional tiers. ${SEASON_HELP} Days that overlap another season are refused. Returns the season.`,
       bundle: "catalog",
     },
@@ -515,6 +523,7 @@ const updateSeasonalPricingProcedure = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_update_seasonal_pricing",
+      title: "Update Seasonal Price",
       description: `Change a seasonal price. Send only the fields to change; rateTiers sent replaces the season's tiers. ${SEASON_HELP}`,
       bundle: "catalog",
       annotations: { idempotentHint: true },
@@ -531,6 +540,7 @@ const duplicateSeasonalPricingProcedure = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_duplicate_seasonal_pricing",
+      title: "Duplicate Seasonal Price",
       description:
         'Copy a seasonal price one year later, named "<name> (copie)", with its tiers. Refused when the new days overlap another season. Returns the new season.',
       bundle: "catalog",
@@ -548,10 +558,10 @@ const deleteSeasonalPricingProcedure = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_delete_seasonal_pricing",
+      title: "Delete Seasonal Price",
       description:
         "Delete a seasonal price and its tiers: the product's own rates apply on its days again. The first call answers CONFIRMATION_REQUIRED with a preview: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
       bundle: "catalog",
-      annotations: { destructiveHint: true },
     },
   })
   .route({ method: "DELETE", path: "/products/seasonal-pricings/{id}" })

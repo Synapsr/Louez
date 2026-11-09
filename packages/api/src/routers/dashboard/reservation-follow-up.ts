@@ -131,10 +131,10 @@ const list = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_list",
+      title: "List Reservations",
       description: `List the store's reservations as the dashboard does: by status (default: every open one), by period (today, this week, this month, on the start or the end date), by payment method (needs read access to payments), or by part of the number or the customer's name. Sorted by start date (newest first) unless sort says otherwise. Returns up to \`limit\` reservations (default 25, at most 100), the counts per status, the total that match and a nextCursor: to read further, call again with cursor set to it, same filters and sort; it is null on the last page. Page numbers stop at the first 10,000 reservations. Use reservations_get for one reservation's lines, payments and history. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "list_reservations", renamedArgs: { pageSize: "limit" } }],
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/reservations" })
@@ -161,10 +161,10 @@ const get = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_get",
+      title: "Get Reservation",
       description: `Get one reservation with everything its dashboard page shows: status and dates, customer, lines with their products and assigned units, amounts and taxes, payments, deposit, delivery or pickup, insurance, notes, documents and history (newest first). ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "get_reservation", renamedArgs: { reservationId: "id" } }],
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/reservations/{id}" })
@@ -180,11 +180,11 @@ const poll = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_poll",
+      title: "Poll Reservation Changes",
       description:
         "Quick counters: requests waiting for an answer (with the five newest, each with `links`, its dashboard page to give the user), reservations per status, and supplier invoices to handle. Cheap to call often.",
       bundle: "daily",
       aliases: [{ name: "get_reservation_poll" }],
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/reservations/counters" })
@@ -206,9 +206,9 @@ const listCalendarPeriodProcedure = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_list_calendar_period",
+      title: "List Calendar Period",
       description: `The reservations that overlap a window (from, to: ISO 8601, at most 400 days apart), by start date, as the calendar shows them: status, dates, amounts, customer, lines and delivery legs. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/reservations/calendar" })
@@ -226,9 +226,9 @@ const getPlanningTimelineProcedure = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_get_planning_timeline",
+      title: "Get Planning Timeline",
       description: `The planning of a window (from, to: ISO 8601, at most 400 days apart): one entry per reservation and product, with the quantity, the assigned units and the delivery legs. Each entry has \`links\`, its reservation's dashboard page, to give the user. ${CUSTOMER_NOTE}`,
       bundle: "daily",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/reservations/planning" })
@@ -246,10 +246,10 @@ const listUpcomingProcedure = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_list_upcoming",
+      title: "List Upcoming Pickups and Returns",
       description: `What comes from the start of today over the next days (7 by default, 1 for today only, at most 90): confirmed reservations to hand over (pickups) and ongoing ones due back (returns), soonest first. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "calendar_upcoming" }],
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/reservations/upcoming" })
@@ -271,10 +271,10 @@ const listOverdueProcedure = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "reservations_list_overdue",
+      title: "List Overdue Reservations",
       description: `Late returns: ongoing reservations past their end date, the longest overdue first, with the days late. ${LINKS_NOTE} ${CUSTOMER_NOTE}`,
       bundle: "daily",
       aliases: [{ name: "calendar_overdue" }],
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/reservations/overdue" })
@@ -295,11 +295,11 @@ const updateStatus = storeProcedure
     sensitive: "send",
     mcp: {
       name: "reservations_update_status",
+      title: "Change Reservation Status",
       description:
         "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing) or returned (completed), or cancel it (as reservations_cancel). The store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       aliases: [{ name: "update_reservation_status", renamedArgs: { reservationId: "id" } }],
-      annotations: { destructiveHint: true },
     },
   })
   .route({ method: "POST", path: "/reservations/{id}/status" })
@@ -322,10 +322,11 @@ const cancel = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "reservations_cancel",
+      title: "Cancel Reservation",
       description:
         "Cancel a reservation that is not over (pending, quote, confirmed or ongoing): its items go back to the stock, its insurance contract is cancelled and the store's notifications follow. Nothing is refunded or released by itself, and the customer gets no message. The first call answers CONFIRMATION_REQUIRED with a preview (the customer, the dates, what was paid): show it to the user, and once they confirm, call again with the same arguments and the confirmationToken. Returns the change and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
-      annotations: { destructiveHint: true },
+      annotations: { openWorldHint: true },
     },
   })
   .route({ method: "POST", path: "/reservations/{id}/cancel" })
@@ -347,6 +348,7 @@ const updateNotes = storeProcedure
     scope: { domain: "reservations", level: "write" },
     mcp: {
       name: "reservations_update_notes",
+      title: "Update Reservation Notes",
       description:
         "Replace a reservation's internal notes, which only the store's team sees. An empty string clears them. Returns the notes and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
@@ -379,10 +381,10 @@ export const globalSearchProcedure = storeProcedure
     scope: { domain: "reservations", level: "read" },
     mcp: {
       name: "search_global",
+      title: "Search Store",
       description:
         "Search the store at once, as the dashboard's search bar does: up to 5 products by name, 5 reservations by number or customer name, and 5 customers by name, company, email, phone or a searchable custom field. Products need read access to products, customers to customers; a section the connection may not read comes back empty. Each hit has `links`, its dashboard page to give the user.",
       bundle: "daily",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/search" })

@@ -26,9 +26,9 @@ export function createFixtureRouter() {
       scope: { domain: "categories", level: "read" },
       mcp: {
         name: "fixture_notes_list",
+        title: "List Notes",
         description: "List the store's notes. A fixture for tests.",
         bundle: "catalog",
-        annotations: { readOnlyHint: true },
       },
     })
     .input(z.object({ prefix: z.string().max(20).optional() }))
@@ -51,9 +51,9 @@ export function createFixtureRouter() {
       sensitive: "destructive",
       mcp: {
         name: "fixture_notes_remove",
+        title: "Remove Note",
         description: "Remove a note. A fixture for tests.",
         bundle: "catalog",
-        annotations: { destructiveHint: true },
       },
     })
     .input(z.object({ id: z.string().min(1) }))

@@ -38,6 +38,8 @@ export async function resolveMcpContext(input: {
   requestedStoreId?: string;
   /** Answered by the tool call instead of running (see `McpRequestContext.storeError`). */
   storeError?: Error;
+  /** RFC 9728 metadata of the MCP resource (see `McpRequestContext.resourceMetadataUrl`). */
+  resourceMetadataUrl?: string;
 }): Promise<McpRequestContext> {
   const { account } = input;
   const { credential } = account;
@@ -69,6 +71,7 @@ export async function resolveMcpContext(input: {
       storeOnline: false,
       headers: input.headers,
       ports: input.ports,
+      resourceMetadataUrl: input.resourceMetadataUrl,
       countCall,
     };
   }
@@ -112,6 +115,7 @@ export async function resolveMcpContext(input: {
     storeOnline: store.onboardingCompleted === true,
     headers: input.headers,
     ports: input.ports,
+    resourceMetadataUrl: input.resourceMetadataUrl,
     countCall,
   };
 }

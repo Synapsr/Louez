@@ -53,11 +53,11 @@ const list = storeProcedure
     scope: { domain: "categories", level: "read" },
     mcp: {
       name: "categories_list",
+      title: "List Categories",
       description:
         "List the store's product categories in the store's order, with how many products each holds. Returns up to `limit` categories (default and maximum 500) and a nextCursor to fetch the next page; nextCursor is null on the last page. Each category has `links`, the URLs to give the user.",
       bundle: "catalog",
       aliases: [{ name: "list_categories" }],
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/categories" })
@@ -74,9 +74,9 @@ const get = storeProcedure
     scope: { domain: "categories", level: "read" },
     mcp: {
       name: "categories_get",
+      title: "Get Category",
       description: `Get one product category of the store by its id. ${LINKS_HELP}`,
       bundle: "catalog",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/categories/{id}" })
@@ -92,6 +92,7 @@ const create = storeProcedure
     scope: { domain: "categories", level: "write" },
     mcp: {
       name: "categories_create",
+      title: "Create Category",
       description: `Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with \`created: false\`. To give it an image, upload one with categories_create_image_upload first and pass the \`url\` that categories_complete_image_upload returns as \`imageUrl\`. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "create_category" }],
@@ -111,6 +112,7 @@ const update = storeProcedure
     scope: { domain: "categories", level: "write" },
     mcp: {
       name: "categories_update",
+      title: "Update Category",
       description: `Change a product category. Send only the fields to change: a field left out stays as it is, and null clears the description or the image. A name another category of the store already has is refused. ${LINKS_HELP}`,
       bundle: "catalog",
       aliases: [{ name: "update_category", renamedArgs: { categoryId: "id" } }],
@@ -131,11 +133,11 @@ const remove = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "categories_delete",
+      title: "Delete Category",
       description:
         "Delete a product category. Its products keep their other categories, or move to `replacementCategoryId` when given. The first call answers CONFIRMATION_REQUIRED with a preview of how many products lose the category: show it to the user, and once they confirm, call again with the same arguments and the confirmationToken.",
       bundle: "catalog",
       aliases: [{ name: "delete_category", renamedArgs: { categoryId: "id" } }],
-      annotations: { destructiveHint: true },
     },
   })
   .route({ method: "DELETE", path: "/categories/{id}" })
@@ -181,6 +183,7 @@ const reorder = storeProcedure
     scope: { domain: "categories", level: "write" },
     mcp: {
       name: "categories_reorder",
+      title: "Reorder Categories",
       description:
         "Set the order of the store's categories, as the storefront shows them. Send the ids of every category of the store, each once, in the new order (list them first).",
       bundle: "catalog",
@@ -200,6 +203,7 @@ const createImageUploadProcedure = storeProcedure
     secretOutput: true,
     mcp: {
       name: "categories_create_image_upload",
+      title: "Start Category Image Upload",
       description:
         "Start uploading a category image (JPEG, PNG, GIF or WebP, 5 MB at most). Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. Then call categories_complete_image_upload with the key.",
       bundle: "catalog",
@@ -222,6 +226,7 @@ const completeImageUploadProcedure = storeProcedure
     scope: { domain: "categories", level: "write" },
     mcp: {
       name: "categories_complete_image_upload",
+      title: "Complete Category Image Upload",
       description:
         "Finish a category image upload: checks the file that arrived at the key and returns its public `url`. Set that url as `imageUrl` with categories_create or categories_update. A file that is not a valid image of the declared type is deleted and refused.",
       bundle: "catalog",

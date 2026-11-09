@@ -62,7 +62,7 @@ export function registerPaymentTools(
     server,
     ctx,
     { domain: 'payments', level: 'read' },
-    'list_payments',
+    { name: 'list_payments', title: 'List Payments' },
     "List all payments for a specific reservation, with the link to the reservation's dashboard page to give the user when the connection may read reservations.",
     {
       reservationId: z.string().describe('The reservation ID'),
@@ -75,7 +75,7 @@ export function registerPaymentTools(
         ),
         columns: { id: true, number: true },
       })
-      if (!reservation) return toolError('Reservation not found.')
+      if (!reservation) return toolError('Reservation not found.', 'NOT_FOUND')
       const links = reservationLinkLine(ctx, reservation)
 
       const rows = await db.query.payments.findMany({
@@ -105,7 +105,7 @@ export function registerPaymentTools(
     server,
     ctx,
     { domain: 'payments', level: 'write' },
-    'record_payment',
+    { name: 'record_payment', title: 'Record Payment' },
     "Record a manual payment for a reservation. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       reservationId: z.string().describe('The reservation ID'),
@@ -134,7 +134,7 @@ export function registerPaymentTools(
         ),
         columns: { id: true, number: true, status: true },
       })
-      if (!reservation) return toolError('Reservation not found.')
+      if (!reservation) return toolError('Reservation not found.', 'NOT_FOUND')
 
       if (reservation.status === 'cancelled' || reservation.status === 'rejected') {
         return toolError(`Cannot record payment on a ${reservation.status} reservation.`)
@@ -188,7 +188,7 @@ export function registerPaymentTools(
     server,
     ctx,
     { domain: 'payments', level: 'write' },
-    'delete_payment',
+    { name: 'delete_payment', title: 'Delete Payment' },
     "Delete a payment record. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       paymentId: z.string().describe('The payment ID to delete'),
@@ -202,7 +202,7 @@ export function registerPaymentTools(
       })
 
       if (!payment || payment.reservation?.storeId !== ctx.storeId) {
-        return toolError('Payment not found.')
+        return toolError('Payment not found.', 'NOT_FOUND')
       }
 
       if (payment.method === 'stripe') {
@@ -253,7 +253,7 @@ export function registerPaymentTools(
     server,
     ctx,
     { domain: 'payments', level: 'write' },
-    'return_deposit',
+    { name: 'return_deposit', title: 'Return Deposit' },
     "Record a deposit return for a reservation. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       reservationId: z.string().describe('The reservation ID'),
@@ -275,7 +275,7 @@ export function registerPaymentTools(
         columns: { id: true, number: true },
         with: { payments: true },
       })
-      if (!reservation) return toolError('Reservation not found.')
+      if (!reservation) return toolError('Reservation not found.', 'NOT_FOUND')
 
       const depositCollected = reservation.payments
         .filter((p) => p.type === 'deposit' && p.status === 'completed')

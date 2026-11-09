@@ -422,7 +422,14 @@ describe("API transports (database)", { skip: skipWithoutTestDatabase() }, () =>
       "id",
       "idempotencyKey",
     ]);
-    assert.deepEqual(remove?.annotations, { destructiveHint: true });
+    // Every hint explicit, derived from the scope and the sensitive kind.
+    assert.equal(remove?.title, "Remove Note");
+    assert.deepEqual(remove?.annotations, {
+      title: "Remove Note",
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: false,
+    });
   });
 
   test("over HTTP, resources and prompts are still served, and GET has no session to open", async () => {

@@ -44,10 +44,11 @@ const checkSlugAvailability = storeProcedure
     scope: READ,
     mcp: {
       name: "online_store_check_slug_availability",
+      title: "Check Store Address Availability",
       description:
         "Check whether this store can move to another web address (its slug) before online_store_update_slug. Answers `available`, `current` when it is the store's address already, the `reason` when it cannot (taken, reserved, invalid), and up to three free `suggestions` close to it.",
       bundle: "settings",
-      annotations: { readOnlyHint: true, idempotentHint: true },
+      annotations: { idempotentHint: true },
     },
   })
   .route({ method: "GET", path: "/online-store/slug-availability" })
@@ -62,10 +63,11 @@ const updateSlug = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "online_store_update_slug",
+      title: "Change Store Address",
       description:
         "Move the store to a new web address (its slug): the storefront's public URL changes and Louez keeps no redirect, so links to the old address stop working once the store is online. Check the address first with online_store_check_slug_availability. The first call answers CONFIRMATION_REQUIRED with a preview of the old and the new URL: show it to the user, and once they agree, call again with the same arguments and the confirmationToken. Returns the new address and the store's links.",
       bundle: "settings",
-      annotations: { destructiveHint: true, idempotentHint: true },
+      annotations: { idempotentHint: true },
     },
   })
   .route({ method: "POST", path: "/online-store/slug" })
@@ -107,6 +109,7 @@ const updateAppearanceProcedure = storeProcedure
     scope: WRITE,
     mcp: {
       name: "online_store_update_appearance",
+      title: "Update Storefront Appearance",
       description:
         "Change how the storefront looks: light or dark theme, brand colour, logos, favicon, the home page's banner photos and their layout. Send only the fields to change; null removes an image. Images must be the store's own uploads: upload each with online_store_create_image_upload and online_store_complete_image_upload, then send the url they return. Returns the look, with the online store editor in `links`: give the user that URL.",
       bundle: "settings",
@@ -129,6 +132,7 @@ const createImageUploadProcedure = storeProcedure
     secretOutput: true,
     mcp: {
       name: "online_store_create_image_upload",
+      title: "Start Storefront Image Upload",
       description:
         "Start uploading a logo, a favicon (kind logo) or a banner photo (kind hero): JPEG, PNG, GIF or WebP. Returns a `key` and an `upload`: send the file's bytes in that one HTTP request, as given (a PUT with its headers, or a multipart POST with its fields then the file as `file`), without an Authorization header, before `expiresAt`. Then call online_store_complete_image_upload with the same kind and the key.",
       bundle: "settings",
@@ -147,6 +151,7 @@ const completeImageUploadProcedure = storeProcedure
     scope: WRITE,
     mcp: {
       name: "online_store_complete_image_upload",
+      title: "Complete Storefront Image Upload",
       description:
         "Finish a storefront image upload: checks the file that arrived at the key and returns its public `url`. Set it with online_store_update_appearance (logoUrl, darkLogoUrl, faviconUrl or heroImages). A file that is not a valid image of the declared type is deleted and refused.",
       bundle: "settings",
@@ -172,6 +177,7 @@ const update = storeProcedure
     scope: WRITE,
     mcp: {
       name: "online_store_update",
+      title: "Update Online Store",
       description:
         "Save sections of the online store editor, each sent whole: identity (name, tagline and description as HTML, storefront language, logos, theme), home (banner photos and layout, announcement bar, home sections), contact (email, phone, address and coordinates, the contact page's channels, social links), legal (terms, legal notice, footer note) and seo (Google site verification, share image). A section left out stays as it is. For a few fields, prefer settings_update_store_info, settings_update_legal or online_store_update_appearance, which take one field at a time. Returns the editor's links.",
       bundle: "settings",

@@ -1,5 +1,4 @@
 import type { CallToolResult, McpServer, Tool } from "@modelcontextprotocol/server";
-import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 import {
   CONFIRMATION_HEADER,
@@ -7,7 +6,12 @@ import {
   type ConfirmationPreview,
 } from "@louez/api/platform/confirmation";
 import { apiError, platformErrors } from "@louez/api/platform/errors";
-import type { McpBundle, SensitiveKind } from "@louez/api/platform/meta";
+import {
+  mcpToolAnnotations,
+  type McpBundle,
+  type McpToolAnnotations,
+  type SensitiveKind,
+} from "@louez/api/platform/meta";
 import type { ApiDomain, ProcedureScope } from "@louez/api/platform/permissions";
 
 import { isListed, requirePermission, type McpRequestContext } from "../auth/context";
@@ -61,13 +65,15 @@ export interface LegacySensitive<Args> {
  * (permission denied, rate limited, store required) answers in the bridge's
  * format. On a connection over several stores it takes `storeId`, read when
  * the request came in. A `sensitive` tool takes `confirmationToken` and runs
- * through `requireConfirmation` before its handler.
+ * through `requireConfirmation` before its handler. Its hints are derived as
+ * a procedure's are (`mcpToolAnnotations`), from `scope` and `sensitive`;
+ * `tool.annotations` corrects them.
  */
 export function legacyTool<Shape extends z.ZodRawShape>(
   server: McpServer,
   ctx: McpRequestContext,
   scope: ProcedureScope,
-  name: string,
+  tool: { name: string; title: string; annotations?: Partial<McpToolAnnotations> },
   description: string,
   shape: Shape,
   handler: (args: z.infer<z.ZodObject<Shape>>) => CallToolResult | Promise<CallToolResult>,
@@ -79,16 +85,23 @@ export function legacyTool<Shape extends z.ZodRawShape>(
     inputSchema.properties = { ...inputSchema.properties, storeId: STORE_ARGUMENT };
   }
   const { sensitive } = options;
+  const { name, title } = tool;
   if (sensitive) {
     inputSchema.properties = {
       ...inputSchema.properties,
       confirmationToken: CONFIRMATION_ARGUMENT,
     };
   }
-  addTool(server, {
+  addTool(server, ctx, {
     name,
+    title,
     description,
     inputSchema: inputSchema as Tool["inputSchema"],
+    annotations: mcpToolAnnotations({
+      level: scope.level,
+      sensitive: sensitive?.kind,
+      overrides: tool.annotations,
+    }),
     listed: isListed(ctx, scope, BUNDLE_OF_DOMAIN[scope.domain]),
     call: async ({ storeId: _store, confirmationToken, ...args }) => {
       if (ctx.storeError) return errorResult(name, ctx.storeError);
@@ -107,8 +120,12 @@ export function legacyTool<Shape extends z.ZodRawShape>(
       }
       const parsed = schema.safeParse(args);
       if (!parsed.success) {
-        throw new Error(
-          `Input validation error: Invalid arguments for tool ${name}: ${z.prettifyError(parsed.error)}`,
+        return errorResult(
+          name,
+          apiError("BAD_REQUEST", "INVALID_ARGUMENT", {
+            message: `Invalid arguments for ${name}: ${z.prettifyError(parsed.error)}`,
+            details: { issues: parsed.error.issues },
+          }),
         );
       }
       try {
@@ -143,8 +160,7 @@ export function legacyTool<Shape extends z.ZodRawShape>(
         }
         return await handler(parsed.data);
       } catch (error) {
-        if (error instanceof ORPCError) return errorResult(name, error);
-        throw error;
+        return errorResult(name, error);
       }
     },
   });

@@ -35,7 +35,7 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpRequestContext
     server,
     ctx,
     { domain: 'analytics', level: 'read' },
-    'get_dashboard_stats',
+    { name: 'get_dashboard_stats', title: 'Get Dashboard Stats' },
     'Get key dashboard metrics (revenue, reservations, visitors) for a given period',
     {
       period: z.enum(['7d', '30d', '90d', '12m']).optional().describe('Time period (default 30d)'),
@@ -92,7 +92,7 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpRequestContext
     server,
     ctx,
     { domain: 'analytics', level: 'read' },
-    'get_revenue_report',
+    { name: 'get_revenue_report', title: 'Get Revenue Report' },
     'Get a revenue breakdown over a date range',
     {
       startDate: z.string().describe('Start date (YYYY-MM-DD)'),
@@ -148,7 +148,7 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpRequestContext
     server,
     ctx,
     { domain: 'analytics', level: 'read' },
-    'get_product_performance',
+    { name: 'get_product_performance', title: 'Get Product Performance' },
     'Get top-performing products by views, reservations, and revenue',
     {
       period: z.enum(['7d', '30d', '90d', '12m']).optional().describe('Time period (default 30d)'),

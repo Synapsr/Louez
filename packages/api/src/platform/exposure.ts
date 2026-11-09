@@ -2,7 +2,7 @@ import type { OpenAPI } from "@orpc/contract";
 import { isProcedure, Procedure, type AnyProcedure, type AnyRouter } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
-import type { ApiMeta, McpExposure } from "./meta";
+import { MCP_TOOL_NAME_MAX, mcpToolAnnotations, type ApiMeta, type McpExposure } from "./meta";
 import type { ProcedureScope } from "./permissions";
 
 /**
@@ -116,6 +116,8 @@ export interface ExposedProcedure {
   meta: ExposedMeta;
   /** JSON Schema of the input, as a caller sends it. Always an object. */
   inputJsonSchema: Record<string, unknown>;
+  /** JSON Schema of the output, as the caller receives it. Always an object. */
+  outputJsonSchema: Record<string, unknown>;
 }
 
 /** What the transports serve: the list, and the same procedures as a router. */
@@ -130,6 +132,14 @@ export interface Exposure {
 
 const jsonSchemaConverter = new ZodToJsonSchemaConverter();
 
+/**
+ * A schema as JSON: the converter leaves keys it has no value for (`title`,
+ * `examples`) set to undefined, which a JSON value may not hold.
+ */
+function asJson(schema: unknown): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(schema)) as Record<string, unknown>;
+}
+
 function lookup(router: AnyRouter, path: string): unknown {
   let node: unknown = router;
   for (const segment of path.split(".")) {
@@ -141,6 +151,26 @@ function lookup(router: AnyRouter, path: string): unknown {
 
 function isExposure(mcp: ApiMeta["mcp"]): mcp is McpExposure {
   return Boolean(mcp && "name" in mcp);
+}
+
+/** What the Claude and ChatGPT directories check on every tool. */
+function toolProblems(path: string, meta: ApiMeta, mcp: McpExposure): string[] {
+  const problems: string[] = [];
+  if (!/^[a-z][a-z0-9_]*$/.test(mcp.name) || mcp.name.length > MCP_TOOL_NAME_MAX) {
+    problems.push(
+      `${path}: tool name ${mcp.name} is not snake_case of ${MCP_TOOL_NAME_MAX} characters at most`,
+    );
+  }
+  if (!mcp.title?.trim()) problems.push(`${path}: no meta.mcp.title`);
+  if (!mcp.description?.trim()) problems.push(`${path}: no meta.mcp.description`);
+  // An override corrects the derivation; one that repeats it is noise.
+  const derived = mcpToolAnnotations({ level: meta.scope?.level, sensitive: meta.sensitive });
+  for (const hint of ["readOnlyHint", "destructiveHint", "openWorldHint"] as const) {
+    if (mcp.annotations?.[hint] !== undefined && mcp.annotations[hint] === derived[hint]) {
+      problems.push(`${path}: meta.mcp.annotations.${hint} repeats what scope and sensitive give`);
+    }
+  }
+  return problems;
 }
 
 /**
@@ -160,6 +190,7 @@ function problemsOf(path: string, node: unknown): string[] {
   if (!meta.mcp) problems.push(`${path}: no meta.mcp`);
   else if (!isExposure(meta.mcp))
     problems.push(`${path}: meta.mcp excludes it (${meta.mcp.exclude})`);
+  else problems.push(...toolProblems(path, meta, meta.mcp));
   if (meta.actors && !meta.actors.includes("api_key") && !meta.actors.includes("oauth")) {
     problems.push(`${path}: only a session may call it`);
   }
@@ -274,11 +305,15 @@ export function createExposure(
     const [, inputJsonSchema] = jsonSchemaConverter.convert(node["~orpc"].inputSchema, {
       strategy: "input",
     });
+    const [, outputJsonSchema] = jsonSchemaConverter.convert(node["~orpc"].outputSchema, {
+      strategy: "output",
+    });
     procedures.push({
       path,
       procedure: withDocumentation(node, meta),
       meta,
-      inputJsonSchema: inputJsonSchema as Record<string, unknown>,
+      inputJsonSchema: asJson(inputJsonSchema),
+      outputJsonSchema: asJson(outputJsonSchema),
     });
   }
   if (problems.length > 0) {

@@ -171,7 +171,12 @@ export async function handleMcpRequest(
 
   let ctx: McpRequestContext;
   try {
-    const base = { account, headers: request.headers, ports: options.ports };
+    const base = {
+      account,
+      headers: request.headers,
+      ports: options.ports,
+      resourceMetadataUrl: options.resourceMetadataUrl,
+    };
     try {
       ctx = await resolveMcpContext({ ...base, requestedStoreId: header ?? named.storeId });
     } catch (error) {

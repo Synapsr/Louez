@@ -59,7 +59,7 @@ export function registerCustomerTools(
     server,
     ctx,
     { domain: 'customers', level: 'read' },
-    'list_customers',
+    { name: 'list_customers', title: 'List Customers' },
     "List customers with optional search and filters. Each customer comes with the link to its dashboard page: give the user that URL to open it.",
     {
       search: z
@@ -125,7 +125,7 @@ export function registerCustomerTools(
     server,
     ctx,
     { domain: 'customers', level: 'read' },
-    'get_customer',
+    { name: 'get_customer', title: 'Get Customer' },
     "Get detailed customer profile with the store's custom fields and, when the connection may read reservations, the reservation history, with the link to the customer's dashboard page and each reservation's: give the user those URLs to open them. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
     {
       customerId: z.string().describe('The customer ID'),
@@ -140,7 +140,7 @@ export function registerCustomerTools(
         ),
       });
 
-      if (!customer) return toolError('Customer not found.');
+      if (!customer) return toolError('Customer not found.', 'NOT_FOUND');
 
       let text =
         `## ${customer.firstName} ${customer.lastName}\n\n` +
@@ -203,7 +203,7 @@ export function registerCustomerTools(
     server,
     ctx,
     { domain: 'customers', level: 'write' },
-    'create_customer',
+    { name: 'create_customer', title: 'Create Customer' },
     'Create a new customer. Answers with the link to its dashboard page, to give the user.',
     {
       email: z.email().describe('Customer email'),
@@ -338,7 +338,7 @@ export function registerCustomerTools(
     server,
     ctx,
     { domain: 'customers', level: 'write' },
-    'update_customer',
+    { name: 'update_customer', title: 'Update Customer' },
     'Update an existing customer. Answers with the link to its dashboard page, to give the user.',
     {
       customerId: z.string().describe('The customer ID'),
@@ -389,7 +389,7 @@ export function registerCustomerTools(
           vatNumber: true,
         },
       });
-      if (!existing) return toolError('Customer not found.');
+      if (!existing) return toolError('Customer not found.', 'NOT_FOUND');
 
       const isBusiness = existing.customerType === 'business';
       if (!isBusiness && (companyNumber || vatNumber)) {

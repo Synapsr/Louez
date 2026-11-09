@@ -50,9 +50,10 @@ const get = storeProcedure
     scope: { domain: "settings", level: "read", anyOf: ["billing"] },
     mcp: {
       name: "handoffs_get",
+      title: "Get Handoff Status",
       description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out: ask the tool that started it for a new one) or failed (with why). Pass the handoff's id, as the tool that started it returned it. Poll it every ${HANDOFF_POLL_SECONDS.min} seconds to ${HANDOFF_POLL_SECONDS.max / 60} minutes while the user is on it, instead of asking them; once completed, read the result where it lands (payments_sync_stripe_status, billing_get_status). Never returns the link again. Needs read access to the step's domain: settings for Stripe, billing for the billing card.`,
       bundle: "daily",
-      annotations: { readOnlyHint: true, idempotentHint: true },
+      annotations: { idempotentHint: true },
     },
   })
   .route({ method: "GET", path: "/handoffs/{id}" })

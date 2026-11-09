@@ -2,6 +2,7 @@ import { CONFIRMATION_HEADER } from "@louez/api/platform/confirmation";
 import type { ExposedProcedure } from "@louez/api/platform/exposure";
 import { apiError } from "@louez/api/platform/errors";
 import { platformErrors } from "@louez/api/platform/errors";
+import { mcpToolAnnotations } from "@louez/api/platform/meta";
 import { IDEMPOTENCY_HEADER, type OperationReceipt } from "@louez/api/platform/operations";
 import { STORE_HEADER } from "@louez/api/platform/procedures";
 import type { CallToolResult, McpServer, Tool } from "@modelcontextprotocol/server";
@@ -146,11 +147,19 @@ export function registerExposedTools(
   procedures: readonly ExposedProcedure[],
 ): void {
   for (const entry of procedures) {
-    const { name, description, annotations, bundle } = entry.meta.mcp;
-    addTool(server, {
+    const { name, title, description, bundle } = entry.meta.mcp;
+    const annotations = mcpToolAnnotations({
+      level: entry.meta.scope?.level,
+      sensitive: entry.meta.sensitive,
+      overrides: entry.meta.mcp.annotations,
+    });
+    const outputSchema = entry.outputJsonSchema as Tool["outputSchema"];
+    addTool(server, ctx, {
       name,
+      title,
       description,
       inputSchema: toolInputSchema(entry, ctx),
+      outputSchema,
       annotations,
       // A former tool served as it was is callable, never listed.
       listed:
@@ -166,10 +175,12 @@ export function registerExposedTools(
     for (const alias of entry.meta.mcp.aliases ?? []) {
       const renamed = Object.entries(alias.renamedArgs ?? {});
       const fixed = alias.fixedArgs ?? {};
-      addTool(server, {
+      addTool(server, ctx, {
         name: alias.name,
+        title,
         description: `Former name of ${name}, kept for agents set up before. ${description}`,
         inputSchema: aliasInputSchema(toolInputSchema(entry, ctx), renamed, Object.keys(fixed)),
+        outputSchema,
         annotations,
         listed: false,
         call: (args) => {

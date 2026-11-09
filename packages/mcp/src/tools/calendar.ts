@@ -26,7 +26,7 @@ export function registerCalendarTools(server: McpServer, ctx: McpRequestContext)
     server,
     ctx,
     { domain: "products", level: "read" },
-    "check_availability",
+    { name: "check_availability", title: "Check Product Availability" },
     "Check product availability for a date range",
     {
       productId: z.string().describe("The product ID"),

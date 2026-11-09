@@ -114,8 +114,10 @@ const startStripeOnboarding = storeProcedure
     secretOutput: true,
     mcp: {
       name: "payments_start_stripe_onboarding",
+      title: "Connect Stripe",
       description: `Connect the store to Stripe so it takes online payments, or finish a connection left midway. Stripe asks the user for their identity and bank details on its own pages, which only they can fill in. ${HANDOFF_HELP} Once completed, call payments_sync_stripe_status: Stripe may still review the details before charges are enabled, and the storefront takes requests rather than payments until then. Refused when the store already takes payments (STRIPE_ALREADY_CONNECTED) or when this Louez has no Stripe (STRIPE_NOT_CONFIGURED).`,
       bundle: "settings",
+      annotations: { openWorldHint: true },
     },
   })
   .route({ method: "POST", path: "/payments/stripe/onboarding" })
@@ -136,8 +138,10 @@ const openStripeDashboard = storeProcedure
     secretOutput: true,
     mcp: {
       name: "payments_open_stripe_dashboard",
+      title: "Open Stripe Dashboard",
       description: `Send the user to the store's own Stripe dashboard (payouts, disputes, bank details), where they sign in to Stripe. ${HANDOFF_HELP} The handoff completes once the user is on their way to Stripe. Refused without a Stripe account (NO_STRIPE_ACCOUNT).`,
       bundle: "settings",
+      annotations: { openWorldHint: true },
     },
   })
   .route({ method: "POST", path: "/payments/stripe/dashboard" })
@@ -155,10 +159,11 @@ const syncStripeStatus = storeProcedure
     scope: STRIPE_WRITE,
     mcp: {
       name: "payments_sync_stripe_status",
+      title: "Refresh Stripe Status",
       description:
         "Read the store's Stripe account from Stripe now and save it in Louez: whether it takes charges and payouts, whether the user submitted their details, what Stripe still asks for, and the booking mode the storefront applies (payment mode takes requests until charges are enabled). Use it after a Stripe handoff completes, or when the user says Stripe sent them something. Its `links` hold the payment settings page: give the user that URL. Refused without a Stripe account (NO_STRIPE_ACCOUNT).",
       bundle: "settings",
-      annotations: { idempotentHint: true },
+      annotations: { idempotentHint: true, openWorldHint: true },
     },
   })
   .route({ method: "POST", path: "/payments/stripe/sync" })

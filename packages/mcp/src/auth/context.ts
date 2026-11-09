@@ -60,6 +60,12 @@ export interface McpRequestContext {
   /** The request's headers. The bridge forwards its credential to the procedures. */
   headers: Headers;
   ports: ApiPorts;
+  /**
+   * RFC 9728 metadata of the MCP resource, where a client signs in (OAuth).
+   * Tools declare OAuth and a call that needs a new sign-in names it; absent
+   * when the instance serves no OAuth (API keys only).
+   */
+  resourceMetadataUrl?: string;
   /** Counts one call on the connection's rate limit, shared with every transport. */
   countCall: () => Promise<void>;
 }

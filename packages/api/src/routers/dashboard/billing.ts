@@ -25,10 +25,11 @@ const getStatus = storeProcedure
     scope: READ,
     mcp: {
       name: "billing_get_status",
+      title: "Get Louez Billing Status",
       description:
         "What Louez bills the store, as its billing pages show it: who bills it (none, legacy, service), the plan in force or pay-as-you-go, the offer and the billing service's notice in its own words, Louez's pay-as-you-go fees and this month's figures, the card on file, the month-end invoices, the unpaid balance, whether Louez billing lets the store take new bookings (gate) and why not, and whether billing_start_card_setup can run now (cardSetup). Amounts are decimal strings with their currency. Read-only: changing or cancelling a plan is done by the user in Louez, at the page in `links`: give the user that URL.",
       bundle: "billing",
-      annotations: { readOnlyHint: true, idempotentHint: true },
+      annotations: { idempotentHint: true },
     },
   })
   .route({ method: "GET", path: "/billing" })
@@ -52,8 +53,10 @@ const startCardSetup = storeProcedure
     secretOutput: true,
     mcp: {
       name: "billing_start_card_setup",
+      title: "Add Billing Card",
       description: `Have the store's owner add or replace the card Louez charges its fees on, on Stripe's page: only they can type it. Use it when billing_get_status or inbox_list says Louez billing stops new bookings until a card is added, or the card expired. ${HANDOFF_HELP} Once completed, billing_get_status shows the card and whether new bookings are accepted again. Only for the owner of a store Louez's billing service bills (billing_get_status: cardSetup.available); otherwise CARD_SETUP_UNAVAILABLE says why.`,
       bundle: "billing",
+      annotations: { openWorldHint: true },
     },
   })
   .route({ method: "POST", path: "/billing/card-setup" })

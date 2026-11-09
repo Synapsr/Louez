@@ -42,9 +42,9 @@ export const listVariants = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_list_variants",
+      title: "List Variants",
       description: `List the store's variants with their values, in the catalog's order. ${VARIANT_HELP} Returns up to \`limit\` variants (${VARIANT_STORE_MAX} at most and by default) and a nextCursor; nextCursor is null on the last page.`,
       bundle: "catalog",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/variants" })
@@ -58,6 +58,7 @@ export const ensureVariantDefinition = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_create_variant",
+      title: "Create Variant",
       description: `Add a variant to the store's catalog, with values to start with. A variant with the same key (derived from the label when none is sent) is returned as is, with created false. ${VARIANT_HELP} Returns the variant.`,
       bundle: "catalog",
       annotations: { idempotentHint: true },
@@ -74,6 +75,7 @@ export const updateVariantDefinition = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_update_variant",
+      title: "Update Variant",
       description:
         "Rename a variant. Its key stays, so the products that book by it keep it. Returns the variant.",
       bundle: "catalog",
@@ -91,6 +93,7 @@ export const setVariantDefinitionActive = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_set_variant_active",
+      title: "Turn Variant On or Off",
       description:
         "Turn a variant on or off. Off only stops offering it when editing products: the products that carry it keep it. To take it off them, use products_withdraw_variant.",
       bundle: "catalog",
@@ -111,9 +114,9 @@ export const deleteVariantDefinition = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_delete_variant",
+      title: "Delete Variant",
       description: `Delete a variant and its values from the catalog. Refused with VARIANT_IN_USE, naming the products, while products use it: withdraw it from them first with products_withdraw_variant. ${CONFIRM_HELP}`,
       bundle: "catalog",
-      annotations: { destructiveHint: true },
     },
   })
   .route({ method: "DELETE", path: "/variants/{id}" })
@@ -137,10 +140,10 @@ export const getVariantUsage = storeProcedure
     scope: { domain: "products", level: "read" },
     mcp: {
       name: "products_get_variant_usage",
+      title: "Get Variant Usage",
       description:
         "Which products use each variant, as a booking axis or through their units' values: what products_withdraw_variant would change, and what keeps products_delete_variant from deleting it. Each product has `links` with its dashboard page, the URL to give the user. Pass definitionId for one variant.",
       bundle: "catalog",
-      annotations: { readOnlyHint: true },
     },
   })
   .route({ method: "GET", path: "/variants/usage" })
@@ -166,9 +169,10 @@ export const withdrawVariantFromProducts = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_withdraw_variant",
+      title: "Withdraw Variant from Products",
       description: `Withdraw a variant from every product of the store at once: it is no longer one of their booking axes, their units lose their value for it, and their stock and bookings stop being split by it. The variant stays in the catalog. ${CONFIRM_HELP} Returns how many products changed.`,
       bundle: "catalog",
-      annotations: { destructiveHint: true, idempotentHint: true },
+      annotations: { idempotentHint: true },
     },
   })
   .route({ method: "POST", path: "/variants/{id}/withdraw" })
@@ -196,6 +200,7 @@ export const createVariantValue = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_create_variant_value",
+      title: "Add Variant Value",
       description:
         "Add a value to a variant, e.g. XL to Size; a color variant takes its swatch in colorHex. A value with the same label (case-insensitive) is returned with created false, its color updated when one is sent. Returns the value.",
       bundle: "catalog",
@@ -213,6 +218,7 @@ export const updateVariantValue = storeProcedure
     scope: { domain: "products", level: "write" },
     mcp: {
       name: "products_update_variant_value",
+      title: "Update Variant Value",
       description:
         "Rename a variant's value or change its color. Send only the fields to change; colorHex null clears the color. Units that carry the former label keep it. Returns the value.",
       bundle: "catalog",
@@ -231,9 +237,9 @@ export const deleteVariantValue = storeProcedure
     sensitive: "destructive",
     mcp: {
       name: "products_delete_variant_value",
+      title: "Delete Variant Value",
       description: `Delete a value from a variant's catalog: it is no longer offered to products. Units that carry it keep it; the preview names their products. ${CONFIRM_HELP}`,
       bundle: "catalog",
-      annotations: { destructiveHint: true },
     },
   })
   .route({ method: "DELETE", path: "/variants/values/{id}" })

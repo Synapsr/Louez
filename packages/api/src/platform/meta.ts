@@ -26,20 +26,70 @@ export type McpBundle = (typeof MCP_BUNDLES)[number];
 /** The bundle a grant starts with. */
 export const DEFAULT_MCP_BUNDLES: readonly McpBundle[] = ["daily"];
 
+/** The longest tool name the Claude and ChatGPT directories accept. */
+export const MCP_TOOL_NAME_MAX = 64;
+
+/**
+ * The hints every MCP tool carries, as explicit booleans: the Claude and
+ * ChatGPT directories refuse a tool without them, and ChatGPT checks that they
+ * match what the tool does.
+ */
+export interface McpToolAnnotations {
+  /** Only reads: changes nothing in Louez or elsewhere. */
+  readOnlyHint: boolean;
+  /** A write that deletes, overwrites what cannot be put back, moves money or reaches a customer. */
+  destructiveHint: boolean;
+  /** Reaches outside Louez: a customer (e-mail, SMS), Stripe, the insurer, a public registry. */
+  openWorldHint: boolean;
+  /** Calling again with the same arguments changes nothing more. */
+  idempotentHint?: boolean;
+}
+
+/**
+ * The hints of a tool, derived from what the platform already knows of it:
+ *
+ * - `readOnlyHint`: it does not write (`scope.level` is not `write`);
+ * - `destructiveHint`: a write that needs a confirmation (`sensitive`: it
+ *   deletes, moves money, sends to a customer or spends);
+ * - `openWorldHint`: it sends to a customer (`sensitive: "send"`).
+ *
+ * `overrides` corrects the derivation where it is wrong for one tool, such as
+ * a call that reaches Stripe or the insurer: `meta.mcp.annotations`. An
+ * override that repeats the derivation is refused by the exposure registry.
+ */
+export function mcpToolAnnotations(input: {
+  level: "read" | "write" | undefined;
+  sensitive: SensitiveKind | undefined;
+  overrides?: McpExposure["annotations"];
+}): McpToolAnnotations {
+  const readOnlyHint = input.level !== "write";
+  return {
+    readOnlyHint,
+    destructiveHint: !readOnlyHint && input.sensitive !== undefined,
+    openWorldHint: input.sensitive === "send",
+    ...input.overrides,
+  };
+}
+
 /** How a procedure shows up as an MCP tool. */
 export interface McpExposure {
-  /** `domain_action`, stable. A breaking change takes a new name. */
+  /** `domain_action`, stable, 64 characters at most. A breaking change takes a new name. */
   name: string;
-  /** Written for a model: what it does, when to use it, what it returns. */
+  /** A short human title, in English Title Case, for clients to show: "List Reservations". */
+  title: string;
+  /**
+   * Written for a model: what it does, what it takes and what it returns. It
+   * describes the tool only: how an agent chains tools goes in the server's
+   * instructions (packages/mcp/src/instructions.ts), never "call X" here.
+   */
   description: string;
   /** Tool bundle the tool is listed in; the connection picks its bundles. */
   bundle: McpBundle;
-  annotations?: {
-    readOnlyHint?: boolean;
-    destructiveHint?: boolean;
-    idempotentHint?: boolean;
-    openWorldHint?: boolean;
-  };
+  /**
+   * Corrections of the derived hints (`mcpToolAnnotations`), and
+   * `idempotentHint`, which nothing derives.
+   */
+  annotations?: Partial<McpToolAnnotations>;
   /**
    * Names the tool had before it was served by this procedure. They stay
    * callable, never listed, so agents set up before the rename keep working;

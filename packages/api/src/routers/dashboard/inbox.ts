@@ -76,11 +76,12 @@ const list = storeProcedure
     scope: { domain: "reservations", level: "read", anyOf: OPENED_BY },
     mcp: {
       name: "inbox_list",
+      title: "List Inbox",
       description: `What needs the store's attention now: booking requests to answer, return-date requests, late pickups and returns, deposit holds about to expire, failed payments, open disputes, bookings on a retired or out-of-service unit, overbookings, supplier invoices and rejected e-invoices, Louez billing stopping new bookings, a store not online yet, messages that never went out, API calls whose outcome is unknown, and steps handed to the user (Stripe, the billing card) still waiting an hour after their link, expired or failed. Each item has a type, a severity (critical, warning, info), occurredAt, one sentence to tell the user, the reservation it is about, the facts behind it, the tools that act on it (none when only the user can, in Louez) and \`links\` to give the user.
 
 Polling: call it every ${INBOX_POLL_MINUTES.min} to ${INBOX_POLL_MINUTES.max} minutes. The first call, without cursor, returns the whole inbox, oldest first. Keep the nextCursor of each answer and pass it as cursor on the next call: you get only the items that entered the inbox since, in the order they did. When hasMore is true, call again at once with nextCursor. Calls are read-only: repeating one with the same cursor returns the same items, minus those handled since. An item shows ${INBOX_HOLD_BACK_MS / 1000} seconds after it happens. An item leaves the inbox once what it is about is handled (the request answered, the reservation returned); the same id with a later occurredAt means it came back. inbox_acknowledge hides an item for the whole store. Up to ${INBOX_PAGE_MAX} items a call (default ${INBOX_PAGE_DEFAULT}). A connection over several stores calls it once per store, with storeId. Items need read access to what they show: payments for payment items, customers for names.`,
       bundle: "daily",
-      annotations: { readOnlyHint: true, idempotentHint: true },
+      annotations: { idempotentHint: true },
     },
   })
   .route({ method: "GET", path: "/inbox" })
@@ -94,6 +95,7 @@ const acknowledge = storeProcedure
     scope: { domain: "reservations", level: "write", anyOf: ACKNOWLEDGED_UNDER },
     mcp: {
       name: "inbox_acknowledge",
+      title: "Mark Inbox Items Handled",
       description: `Mark inbox items as handled, for the whole store: they leave inbox_list for every member and agent. Pass each item's id and occurredAt as inbox_list returned them, up to ${INBOX_ACKNOWLEDGE_MAX} at once. An item that comes back later (the same id, a later occurredAt) shows again. Items not in the inbox now with that occurredAt are left unmarked and come back in rejected: with currentOccurredAt when the inbox holds the item with another occurrence (send that one if the user means it), null when it left the inbox (handled: drop it). After a rejection, call inbox_list without a cursor to start again from what the inbox holds. Marking an item twice changes nothing. A mark is kept ${INBOX_ACKNOWLEDGEMENT_RETENTION_DAYS} days: an item still open after that shows again. Use it when the user says they dealt with something, not instead of acting on it: an item whose record is handled leaves the inbox by itself. Needs write access to the item's first domain.`,
       bundle: "daily",
       annotations: { idempotentHint: true },
