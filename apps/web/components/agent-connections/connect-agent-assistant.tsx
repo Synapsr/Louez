@@ -1,71 +1,67 @@
 "use client";
 
-import type { ComponentType, SVGProps } from "react";
+import type { Ref } from "react";
 
 import { useTranslations } from "next-intl";
 
 import { Button } from "@louez/ui";
-import { OpenInNewIcon } from "@louez/ui/icons";
+import { ArrowLeftIcon, OpenInNewIcon } from "@louez/ui/icons";
 
-import { CopyButton } from "@/components/ui/copy-button";
-
-export type AssistantKey = "claude" | "chatgpt" | "grok" | "mistral";
+import { ConnectAgentAddress } from "./connect-agent-address";
+import type { Assistant } from "./util.assistants";
 
 interface ConnectAgentAssistantProps {
-  assistant: AssistantKey;
-  /** The brand name, the same in every language. */
-  name: string;
-  Icon: ComponentType<SVGProps<SVGSVGElement>>;
+  assistant: Assistant;
   mcpUrl: string;
-  /** Opens the assistant with Louez filled in; without it, the user copies the address. */
-  addLink?: string;
-  /** The assistant's page the first step opens, when it has one. */
-  startUrl?: string;
+  onBack: () => void;
+  /** The assistant's name takes the focus when this step opens. */
+  headingRef?: Ref<HTMLHeadingElement>;
+  /** `h4` under the page's own `h3`; `h3` in the dialog, under its title. */
+  headingAs?: "h3" | "h4";
 }
 
 // Every assistant's steps hold three lines.
 const STEPS = ["step1", "step2", "step3"] as const;
 
 /**
- * One assistant, one action: add Louez in a click where the assistant allows
- * it, copy the address otherwise, then the few steps that follow and who may
- * do them, in plain words.
+ * The second step, for the assistant the user chose: add Louez in a click
+ * where the assistant allows it, the address to paste otherwise, then the few
+ * steps that follow and who may do them, in plain words.
  */
 export const ConnectAgentAssistant = ({
-  assistant,
-  name,
-  Icon,
+  assistant: { key, name, Icon, addLink, startUrl },
   mcpUrl,
-  addLink,
-  startUrl,
+  onBack,
+  headingRef,
+  headingAs: Heading = "h3",
 }: ConnectAgentAssistantProps) => {
   const t = useTranslations("agentConnections.guide");
   return (
-    <li className="space-y-3 rounded-xl border p-3" data-assistant={assistant}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div className="space-y-4" data-assistant={key}>
+      <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground -ms-2.5">
+        <ArrowLeftIcon aria-hidden="true" />
+        {t("changeAssistant")}
+      </Button>
+      <div className="flex items-center gap-3">
         <span className="bg-background text-foreground flex size-8 shrink-0 items-center justify-center rounded-full border">
           <Icon aria-hidden="true" className="size-4" />
         </span>
-        <p className="min-w-0 flex-1 text-sm font-medium">{name}</p>
-        {addLink ? (
-          <Button size="sm" render={<a href={addLink} target="_blank" rel="noopener noreferrer" />}>
-            {t("addTo", { name })}
-            <OpenInNewIcon aria-hidden="true" />
-          </Button>
-        ) : (
-          <CopyButton
-            value={mcpUrl}
-            label={t("copyAddress")}
-            copiedLabel={t("addressCopied")}
-            variant="outline"
-            size="sm"
-          />
-        )}
+        <Heading ref={headingRef} tabIndex={-1} className="text-sm font-medium outline-none">
+          {name}
+        </Heading>
       </div>
+      {addLink ? (
+        <Button render={<a href={addLink(mcpUrl)} target="_blank" rel="noopener noreferrer" />}>
+          {t("addTo", { name })}
+          <OpenInNewIcon aria-hidden="true" />
+        </Button>
+      ) : (
+        <ConnectAgentAddress mcpUrl={mcpUrl} />
+      )}
       <ol className="text-muted-foreground list-decimal space-y-1 ps-5 text-sm marker:text-xs">
         {STEPS.map((step) => (
           <li key={step}>
-            {t.rich(`assistants.${assistant}.${step}`, {
+            {t.rich(`assistants.${key}.${step}`, {
               link: (chunks) => (
                 <a
                   href={startUrl}
@@ -80,7 +76,8 @@ export const ConnectAgentAssistant = ({
           </li>
         ))}
       </ol>
-      <p className="text-muted-foreground text-xs">{t(`assistants.${assistant}.note`)}</p>
-    </li>
+      <p className="text-muted-foreground text-xs">{t(`assistants.${key}.note`)}</p>
+      <p className="text-muted-foreground text-sm">{t("whatHappens")}</p>
+    </div>
   );
 };

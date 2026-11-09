@@ -1,15 +1,18 @@
 "use client";
 
+import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
+
 import { useTranslations } from "next-intl";
 
 import { Alert, AlertDescription } from "@louez/ui";
-import { ChatGptIcon, ClaudeIcon, GrokIcon, LeChatIcon, WarningIcon } from "@louez/ui/icons";
+import { WarningIcon } from "@louez/ui/icons";
 
-import { CopyButton } from "@/components/ui/copy-button";
-
+import { ConnectAgentAddress } from "./connect-agent-address";
 import { ConnectAgentAssistant } from "./connect-agent-assistant";
 import { ConnectAgentDevelopers } from "./connect-agent-developers";
-import { claudeConnectorLink } from "./util.assistant-links";
+import { ConnectAgentPicker } from "./connect-agent-picker";
+import type { Assistant } from "./util.assistants";
 
 interface ConnectAgentGuideProps {
   /** `<app>/api/mcp`. */
@@ -21,8 +24,9 @@ interface ConnectAgentGuideProps {
 }
 
 /**
- * How to connect an AI assistant, for anyone: one action per assistant, the
- * address once, and the technical details folded away for developers.
+ * How to connect an AI assistant, for anyone, in two steps: pick the assistant
+ * you use, then follow its steps alone. The technical details stay folded
+ * away for developers under the first step.
  */
 export const ConnectAgentGuide = ({
   mcpUrl,
@@ -30,8 +34,24 @@ export const ConnectAgentGuide = ({
   variant = "page",
 }: ConnectAgentGuideProps) => {
   const t = useTranslations("agentConnections.guide");
+  const [chosen, setChosen] = useState<Assistant | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // Each step change moves the focus with it, so keyboard and screen reader
+  // users land on the new step: its heading, or the tile they came from.
+  const choose = (assistant: Assistant) => {
+    flushSync(() => setChosen(assistant));
+    headingRef.current?.focus();
+  };
+  const back = () => {
+    const from = chosen?.key;
+    flushSync(() => setChosen(null));
+    sectionRef.current?.querySelector<HTMLElement>(`button[data-assistant="${from}"]`)?.focus();
+  };
+
   return (
-    <section className="space-y-4">
+    <section ref={sectionRef} className="space-y-4">
       {variant === "page" && (
         <div className="space-y-1">
           <h3 className="text-sm font-medium">{t("title")}</h3>
@@ -39,68 +59,29 @@ export const ConnectAgentGuide = ({
         </div>
       )}
 
-      {oauthAvailable ? (
+      {!oauthAvailable ? (
         <>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            <ConnectAgentAssistant
-              assistant="claude"
-              name="Claude"
-              Icon={ClaudeIcon}
-              mcpUrl={mcpUrl}
-              addLink={claudeConnectorLink(mcpUrl)}
-            />
-            <ConnectAgentAssistant
-              assistant="chatgpt"
-              name="ChatGPT"
-              Icon={ChatGptIcon}
-              mcpUrl={mcpUrl}
-              startUrl="https://chatgpt.com/plugins"
-            />
-            <ConnectAgentAssistant
-              assistant="grok"
-              name="Grok"
-              Icon={GrokIcon}
-              mcpUrl={mcpUrl}
-              startUrl="https://grok.com/connectors"
-            />
-            {/* Le Chat is called Vibe since August 2026. */}
-            <ConnectAgentAssistant
-              assistant="mistral"
-              name="Mistral Vibe"
-              Icon={LeChatIcon}
-              mcpUrl={mcpUrl}
-              startUrl="https://chat.mistral.ai"
-            />
-          </ul>
-          <p className="text-muted-foreground text-sm">{t("whatHappens")}</p>
+          <Alert variant="warning">
+            <WarningIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <AlertDescription>{t("oauthUnavailable")}</AlertDescription>
+          </Alert>
+          <ConnectAgentAddress mcpUrl={mcpUrl} />
+          <ConnectAgentDevelopers mcpUrl={mcpUrl} oauthAvailable={false} defaultOpen />
         </>
+      ) : chosen ? (
+        <ConnectAgentAssistant
+          assistant={chosen}
+          mcpUrl={mcpUrl}
+          onBack={back}
+          headingRef={headingRef}
+          headingAs={variant === "page" ? "h4" : "h3"}
+        />
       ) : (
-        <Alert variant="warning">
-          <WarningIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <AlertDescription>{t("oauthUnavailable")}</AlertDescription>
-        </Alert>
+        <>
+          <ConnectAgentPicker onChoose={choose} />
+          <ConnectAgentDevelopers mcpUrl={mcpUrl} oauthAvailable />
+        </>
       )}
-
-      <div className="space-y-1.5">
-        <p className="text-sm font-medium">{t("addressLabel")}</p>
-        <div className="flex items-center gap-2 rounded-lg border p-1 ps-3">
-          <code className="min-w-0 flex-1 truncate text-sm">{mcpUrl}</code>
-          <CopyButton
-            value={mcpUrl}
-            label={t("copy")}
-            copiedLabel={t("copied")}
-            variant="ghost"
-            size="sm"
-            className="shrink-0"
-          />
-        </div>
-      </div>
-
-      <ConnectAgentDevelopers
-        mcpUrl={mcpUrl}
-        oauthAvailable={oauthAvailable}
-        defaultOpen={!oauthAvailable}
-      />
     </section>
   );
 };
