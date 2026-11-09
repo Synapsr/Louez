@@ -2,13 +2,13 @@
 
 import { useTranslations } from "next-intl";
 
+import type { TeamInvitation } from "@louez/api/contracts/team";
 import { Badge } from "@louez/ui";
 import { ClockSolidIcon } from "@louez/ui/icons";
 
 import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
 
 import { TeamInvitationRow } from "./team-invitation-row";
-import type { TeamInvitation } from "./team-types";
 
 interface TeamInvitationsCardProps {
   invitations: TeamInvitation[];

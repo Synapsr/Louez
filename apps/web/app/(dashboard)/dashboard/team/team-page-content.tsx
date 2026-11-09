@@ -3,19 +3,16 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
+import type { MemberLimit, TeamInvitation, TeamMember } from "@louez/api/contracts/team";
+
 import { TeamInvitationsCard } from "@/app/(dashboard)/dashboard/team/team-invitations-card";
 import { TeamInviteCard } from "@/app/(dashboard)/dashboard/team/team-invite-card";
 import { TeamMembersCard } from "@/app/(dashboard)/dashboard/team/team-members-card";
-import type {
-  TeamInvitation,
-  TeamLimits,
-  TeamMember,
-} from "@/app/(dashboard)/dashboard/team/team-types";
 
 interface TeamPageContentProps {
   members: TeamMember[];
   invitations: TeamInvitation[];
-  limits: TeamLimits | null;
+  limits: MemberLimit;
   canManageMembers: boolean;
   readOnly?: boolean;
   onInvite?: (email: string) => void | Promise<void>;

@@ -8,6 +8,8 @@ import {
   lockStoreRow,
   storeMembers,
   stores,
+  type ApiHandoffPayload,
+  type Transaction,
 } from "@louez/db";
 import { hasPermission, type MemberRole } from "@louez/utils";
 import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
@@ -39,9 +41,12 @@ import { startConnectOnboarding, syncConnectStatus, type ConnectStore } from "./
  * where the state proves the return belongs to that click. The agent reads
  * the handoff (`handoffs.get`) until it is completed.
  *
- * The link's secret is stored hashed. Asking again for the same kind while
- * one is active gives the same handoff a new link, and the old link stops
- * working. One active handoff per store and kind.
+ * The link's secret is stored hashed. Asking again for the same kind (and
+ * subject) while one is active gives the same handoff a new link, and the old
+ * link stops working. One active handoff per store, kind and subject: a
+ * store-wide step has an empty subject; a team invitation's is its address's
+ * hash, so each address has its own approval. A team invitation has no
+ * provider: its page asks an owner to approve or decline (services/team.ts).
  */
 
 const HOUR_MS = 3_600_000;
@@ -54,11 +59,13 @@ export const HANDOFF_KIND_DOMAINS: Record<HandoffKind, ApiDomain> = {
   stripe_connect_onboarding: "settings",
   stripe_dashboard: "settings",
   billing_card_setup: "billing",
+  team_invitation: "team",
 };
 
 /** Who may take the step in the store: the dashboard's own rule for each flow. */
 export function mayTakeStep(kind: HandoffKind, role: MemberRole): boolean {
   if (kind === "billing_card_setup") return role === "owner";
+  if (kind === "team_invitation") return hasPermission(role, "manage_members");
   return hasPermission(role, "manage_settings");
 }
 
@@ -66,6 +73,7 @@ const PAGES: Record<HandoffKind, `/dashboard${string}`> = {
   stripe_connect_onboarding: "/dashboard/settings/payments",
   stripe_dashboard: "/dashboard/settings/payments",
   billing_card_setup: "/dashboard/settings/billing",
+  team_invitation: "/dashboard/team",
 };
 
 type HandoffRow = typeof apiHandoffs.$inferSelect;
@@ -108,6 +116,13 @@ const SUMMARIES: Record<HandoffKind, Record<HandoffStatus, string>> = {
     expired: "The link to add the billing card expired: ask for a new one.",
     failed: "Adding the billing card failed.",
   },
+  team_invitation: {
+    pending: "The invitation is waiting for the user to approve it from the link.",
+    opened: "The invitation is waiting for the user to approve it from the link.",
+    completed: "The user approved the invitation: it went out, or the person joined.",
+    expired: "The link to approve the invitation expired before the user answered: ask again.",
+    failed: "The invitation was not approved.",
+  },
 };
 
 const CONFIRMING_SUMMARY = "The user is back from Stripe, which has not confirmed the card yet.";
@@ -138,6 +153,7 @@ export function handoffView(
         ? { code: row.failureCode, message: handoffFailureMessage(row.failureCode) }
         : null,
     confirming: isConfirming(row, status),
+    invitation: row.kind === "team_invitation" && row.payload ? row.payload : null,
     summary:
       status === "failed" && row.failureCode
         ? `${SUMMARIES[row.kind].failed} ${handoffFailureMessage(row.failureCode)}`
@@ -209,8 +225,23 @@ const leaseEnd = () =>
 export async function issueHandoff(
   requester: HandoffRequester,
   kind: HandoffKind,
-  context: { urls: UrlsPort; now?: Date },
+  context: {
+    urls: UrlsPort;
+    now?: Date;
+    /** What the step is about within its kind: one active handoff per subject. */
+    subject?: string;
+    /**
+     * Runs under the store's lock before the link is issued, with the active
+     * handoff of the subject if any: it may refuse (throw), and returns what
+     * the handoff carries.
+     */
+    prepare?: (
+      tx: Transaction,
+      active: HandoffRow | undefined,
+    ) => Promise<ApiHandoffPayload | null>;
+  },
 ): Promise<HandoffLink> {
+  const subject = context.subject ?? "";
   const now = context.now ?? new Date();
   const secret = newSecret();
   const tokenHash = sha256(secret);
@@ -231,10 +262,12 @@ export async function issueHandoff(
         and(
           eq(apiHandoffs.storeId, requester.storeId),
           eq(apiHandoffs.kind, kind),
+          eq(apiHandoffs.subject, subject),
           eq(apiHandoffs.activeSlot, 1),
         ),
       )
       .for("update");
+    const payload = context.prepare ? await context.prepare(tx, active) : null;
     if (active) {
       const sameUser = active.userId === requester.userId;
       await tx
@@ -244,6 +277,7 @@ export async function issueHandoff(
           tokenHash,
           linkIssuedAt: now,
           expiresAt,
+          payload,
           // Another user starts over: the click in flight was not theirs.
           ...(sameUser ? {} : { status: "pending", openedAt: null, ...NO_ATTEMPT }),
           updatedAt: now,
@@ -257,6 +291,8 @@ export async function issueHandoff(
       .values({
         storeId: requester.storeId,
         kind,
+        subject,
+        payload,
         status: "pending",
         activeSlot: 1,
         ...credential,
@@ -483,6 +519,8 @@ export async function continueHandoff(
 ): Promise<HandoffCheck & { state?: string }> {
   const checked = await readHandoffLink(token, userId, now);
   if (!checked.ok) return checked;
+  // No provider: an invitation is approved or declined on its page (services/team.ts).
+  if (checked.row.kind === "team_invitation") return { ok: false, reason: "invalid", row: null };
   const state = newSecret();
   const updated = await db
     .update(apiHandoffs)

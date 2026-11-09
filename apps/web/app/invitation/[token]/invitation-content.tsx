@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useMutation } from '@tanstack/react-query'
+import { ORPCError } from '@orpc/client'
 import Link from 'next/link'
 import { CheckCircle, XCircle, Clock, Mail, AlertTriangle, LogIn, UserPlus } from 'lucide-react'
 import { toastManager } from '@louez/ui'
@@ -20,7 +22,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
 import { Input } from '@louez/ui'
 import { Label } from '@louez/ui'
 import { authClient } from '@louez/auth/client'
-import { acceptInvitation } from './actions'
+
+import { orpc } from '@/lib/orpc/react'
 
 type InvitationType = 'ready' | 'login_required' | 'email_mismatch' | 'expired' | 'used'
 
@@ -47,22 +50,40 @@ export function InvitationContent({
 }: InvitationContentProps) {
   const router = useRouter()
   const t = useTranslations('invitation')
-  const [isPending, startTransition] = useTransition()
   const [name, setName] = useState('')
+
+  const acceptMutation = useMutation(
+    orpc.dashboard.team.acceptInvitation.mutationOptions({
+      onSuccess: () => {
+        toastManager.add({ title: t('joinedTeam'), type: 'success' })
+        router.push('/dashboard')
+      },
+      onError: (error) => {
+        const data =
+          error instanceof ORPCError
+            ? (error.data as { code?: unknown; i18nKey?: unknown } | undefined)
+            : undefined
+        // Signed out since the page opened: sign in again, as the page asks.
+        if (data?.code === 'UNAUTHENTICATED') {
+          toastManager.add({ title: t('loginRequired'), type: 'error' })
+          router.refresh()
+          return
+        }
+        // The procedure names the page's own message (`invitation.errors.*`).
+        const i18nKey = data?.i18nKey
+        const key =
+          typeof i18nKey === 'string' && i18nKey.startsWith('invitation.')
+            ? i18nKey.slice('invitation.'.length)
+            : 'errors.invalid'
+        toastManager.add({ title: t.has(key) ? t(key) : t('errors.invalid'), type: 'error' })
+      },
+    }),
+  )
+  const isPending = acceptMutation.isPending
 
   const handleAccept = () => {
     if (!token) return
-
-    startTransition(async () => {
-      const result = await acceptInvitation(token, name || undefined)
-
-      if (result.error) {
-        toastManager.add({ title: t(result.error), type: 'error' })
-      } else {
-        toastManager.add({ title: t('joinedTeam'), type: 'success' })
-        router.push('/dashboard')
-      }
-    })
+    acceptMutation.mutate({ token, name: name || undefined })
   }
 
   const getInitial = (value: string) => value.charAt(0).toUpperCase()

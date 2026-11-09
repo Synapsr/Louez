@@ -1,34 +1,29 @@
 import { addDays, subDays } from "date-fns";
 
-import type {
-  TeamInvitation,
-  TeamLimits,
-  TeamMember,
-} from "@/app/(dashboard)/dashboard/team/team-types";
+import type { MemberLimit, TeamInvitation, TeamMember } from "@louez/api/contracts/team";
+
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import { getDemoCustomer, getDemoToday } from "@/lib/landing-demos/reservations";
 
 export const createDemoTeam = (
   period: RentalPeriodValue,
-): { members: TeamMember[]; invitations: TeamInvitation[]; limits: TeamLimits } => {
+): { members: TeamMember[]; invitations: TeamInvitation[]; limits: MemberLimit } => {
   const today = getDemoToday(period);
   return {
     members: [0, 1].map((index) => {
       const customer = getDemoCustomer(index);
       return {
         id: `demo-member-${index}`,
+        userId: `demo-team-user-${index}`,
+        name: `${customer.firstName} ${customer.lastName}`,
+        email: `${customer.firstName.toLowerCase()}@maisonduvelo.example`,
+        imageUrl: null,
         role: index === 0 ? "owner" : "member",
-        createdAt: subDays(today, index === 0 ? 90 : 30),
-        user: {
-          id: `demo-team-user-${index}`,
-          email: `${customer.firstName.toLowerCase()}@maisonduvelo.example`,
-          name: `${customer.firstName} ${customer.lastName}`,
-          image: null,
-        },
+        joinedAt: subDays(today, index === 0 ? 90 : 30),
       };
     }),
     invitations: [],
-    limits: { allowed: true, current: 1, limit: null },
+    limits: { canAddMember: true, current: 1, limit: null },
   };
 };
 
@@ -44,9 +39,10 @@ export const addDemoTeamInvitation = (
     {
       id: `demo-invitation-${normalizedEmail}`,
       email: normalizedEmail,
-      status: "pending",
-      createdAt: new Date(today),
+      role: "member",
+      invitedAt: new Date(today),
       expiresAt: addDays(today, 7),
+      expired: false,
     },
     ...invitations,
   ];

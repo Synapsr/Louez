@@ -212,6 +212,16 @@ export interface ApiEffectPayloads {
     setup?: StoreSetupSummary;
   };
   /**
+   * The e-mail of a team invitation. The token and the address are read
+   * from the invitation when it goes out, never kept here: a cancelled or
+   * accepted invitation sends nothing, and one sent again links its new token.
+   */
+  "team.invitationEmail": {
+    invitationId: string;
+    store: { name: string; logoUrl: string | null; country: string | null };
+    inviterName: string;
+  };
+  /**
    * The analytics event of one setup write an agent made on a store still
    * offline, or of its go-live (platform/setup-analytics.ts): field names and
    * the facts of `SETUP_FACT_KEYS`, never a value a person typed.

@@ -324,7 +324,8 @@
       "invalid": "Esta invitación ya no es válida.",
       "expired": "Esta invitación ha expirado.",
       "emailMismatch": "Esta invitación es para otra dirección de correo electrónico.",
-      "alreadyMember": "Ya eres miembro de esta tienda."
+      "alreadyMember": "Ya eres miembro de esta tienda.",
+      "limitReached": "Esta tienda no tiene plaza para un nuevo miembro. Pregunta a su propietario."
     }
   },
   "dashboard": {
@@ -9713,6 +9714,45 @@
       "failed": {
         "title": "Este paso ha fallado",
         "description": "Vuelve con tu agente de IA: puede darte un enlace nuevo."
+      }
+    },
+    "team_invitation": {
+      "title": "Aprobar esta invitación",
+      "description": "Tu agente de IA pide añadir a {email} al equipo de «{store}».",
+      "role": "Se une como miembro, nunca como propietario.",
+      "joinsAtOnce": "{email} ya tiene una cuenta de Louez: se une a la tienda en cuanto apruebes.",
+      "byEmail": "{email} recibirá un correo para unirse a la tienda, válido 7 días.",
+      "access": "Un miembro ve los clientes, las reservas y los pagos de la tienda, y puede modificar productos y reservas.",
+      "approve": "Aprobar la invitación",
+      "decline": "Rechazar",
+      "error": {
+        "failed": "No se pudo enviar la invitación. Recarga la página para ver cómo está."
+      },
+      "done": {
+        "completed": {
+          "title": "Invitación aprobada",
+          "description": "Puedes volver a tu agente de IA: verá que la invitación se envió."
+        },
+        "declined": {
+          "title": "Invitación rechazada",
+          "description": "No se envió nada. Puedes volver a tu agente de IA."
+        },
+        "failed": {
+          "title": "No se pudo enviar la invitación",
+          "description": "Algo cambió desde la solicitud de tu agente (las plazas del equipo, la dirección o el límite de correos de hoy). Vuelve a tu agente de IA."
+        },
+        "expired": {
+          "title": "Este enlace ha caducado",
+          "description": "Vuelve a tu agente de IA: puede volver a pedirlo."
+        },
+        "pending": {
+          "title": "Aún sin respuesta",
+          "description": "Abre el enlace de nuevo para aprobar o rechazar la invitación."
+        },
+        "changed": {
+          "title": "Algo cambió desde la solicitud de tu agente",
+          "description": "La dirección ya tiene una cuenta de Louez, una invitación o un lugar en el equipo. Pide a tu agente que vuelva a solicitarlo."
+        }
       }
     }
   }

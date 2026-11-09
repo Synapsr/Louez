@@ -10,6 +10,7 @@ import {
   notifyProductCreated,
   notifyProductUpdated,
   notifyStoreSettingsUpdated,
+  notifyTeamMemberInvited,
 } from "@/lib/discord/platform-notifications";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { invalidateStoreViewport } from "@/lib/storefront/get-store-viewport";
@@ -124,6 +125,9 @@ function pathsToRevalidate(event: ApiEvent): Array<string | { path: string; type
         `/${event.previousSlug}`,
         `/${event.store.slug}`,
       ];
+    case "team.memberInvited":
+    case "team.changed":
+      return ["/dashboard/team"];
     case "reservation.gateRefused":
       return [];
   }
@@ -156,6 +160,8 @@ function backgroundEffect(event: ApiEvent): (() => Promise<void>) | null {
       };
     case "product.updated":
       return () => notifyProductUpdated(storeInfo, event.productName);
+    case "team.memberInvited":
+      return () => notifyTeamMemberInvited(storeInfo, event.email);
     case "store.legalProfileUpdated":
       // The PDP's e-reporting calendar follows the VAT regime (best effort).
       return () => syncSuperPdpVatRegime(store.id);

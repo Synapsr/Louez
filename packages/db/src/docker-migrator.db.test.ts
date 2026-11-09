@@ -35,6 +35,7 @@ const RELEASE = [
   "0096_api_handoffs",
   "0097_api_operation_setup_store",
   "0098_api_jobs",
+  "0099_api_handoffs_subject",
 ];
 
 interface Journal {

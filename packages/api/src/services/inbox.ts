@@ -18,6 +18,7 @@ import {
   reservationActivity,
   reservations,
   storeIntegrations,
+  storeInvitations,
   type ReservationGateReason,
 } from "@louez/db";
 import {
@@ -60,7 +61,8 @@ import {
   type LinkStore,
 } from "../platform/links";
 import type { UrlsPort } from "../platform/ports";
-import { HANDOFF_WAIT_MS, handoffView } from "./handoffs";
+import { HANDOFF_KINDS } from "../contracts/handoffs";
+import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffView } from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
 import { getLaunchChecklist } from "./launch";
 import { findConflictingAssignments, loadStoreUnitWindows } from "./unit-conflicts";
@@ -114,7 +116,9 @@ export const INBOX_ITEM_DOMAINS: Record<InboxItemType, readonly ApiDomain[]> = {
   store_not_live: ["settings"],
   message_not_sent: ["reservations"],
   operation_unknown: [],
-  handoff_waiting: ["settings"],
+  // Each handoff by its kind's domain (HANDOFF_KIND_DOMAINS), in its source and acknowledgement.
+  handoff_waiting: [],
+  invitation_not_sent: ["team"],
   image_job_failed: ["products"],
 };
 
@@ -1307,14 +1311,19 @@ const HANDOFF_START_TOOLS = {
   stripe_connect_onboarding: "payments_start_stripe_onboarding",
   stripe_dashboard: "payments_open_stripe_dashboard",
   billing_card_setup: "billing_start_card_setup",
+  team_invitation: "team_invite_member",
 } as const;
 
 /**
  * A step handed to the user that waits: active for an hour since its link
  * (pending or opened), expired, or failed in the last days and not started
- * again since. The billing card shows only to who may read billing.
+ * again since. Each shows to who may read its kind's domain: settings for
+ * Stripe, billing for the billing card, the team for an invitation's
+ * approval; an approval is started again by a later one for the same address.
  */
 const waitingHandoffs: Source = async (window, shaper) => {
+  const kinds = HANDOFF_KINDS.filter((kind) => shaper.reader.reads[HANDOFF_KIND_DOMAINS[kind]]);
+  if (kinds.length === 0) return [];
   const hold = sql.raw(String(HANDOFF_WAIT_MS / 1000));
   const occurred = sql<Date>`CASE
       WHEN ${apiHandoffs.status} = 'failed' THEN ${apiHandoffs.failedAt}
@@ -1329,7 +1338,7 @@ const waitingHandoffs: Source = async (window, shaper) => {
     .where(
       and(
         eq(apiHandoffs.storeId, window.storeId),
-        shaper.reader.reads.billing ? undefined : sql`${apiHandoffs.kind} <> 'billing_card_setup'`,
+        inArray(apiHandoffs.kind, kinds),
         or(
           eq(apiHandoffs.activeSlot, 1),
           and(
@@ -1346,6 +1355,7 @@ const waitingHandoffs: Source = async (window, shaper) => {
                   and(
                     eq(later.storeId, apiHandoffs.storeId),
                     eq(later.kind, apiHandoffs.kind),
+                    eq(later.subject, apiHandoffs.subject),
                     gt(later.createdAt, apiHandoffs.createdAt),
                   ),
                 ),
@@ -1383,6 +1393,55 @@ const waitingHandoffs: Source = async (window, shaper) => {
       links: view.links,
     });
   });
+};
+
+/**
+ * A team invitation's e-mail the outbox gave up on, for an invitation still
+ * pending: the person never heard of it. Names the address, never the link.
+ */
+const unsentInvitations: Source = async (window, shaper) => {
+  const rows = await db
+    .select({
+      effectId: apiEffects.id,
+      occurredAt: apiEffects.nextAttemptAt,
+      invitationId: storeInvitations.id,
+      email: storeInvitations.email,
+    })
+    .from(apiEffects)
+    .innerJoin(
+      storeInvitations,
+      and(
+        eq(
+          storeInvitations.id,
+          sql`JSON_UNQUOTE(JSON_EXTRACT(${apiEffects.payload}, '$.invitationId'))`,
+        ),
+        eq(storeInvitations.storeId, window.storeId),
+        eq(storeInvitations.status, "pending"),
+      ),
+    )
+    .where(
+      and(
+        eq(apiEffects.storeId, window.storeId),
+        eq(apiEffects.status, "abandoned"),
+        eq(apiEffects.type, "team.invitationEmail"),
+        inWindow(window, "invitation_not_sent", apiEffects.nextAttemptAt, apiEffects.id),
+      ),
+    )
+    .orderBy(...inOrder(apiEffects.nextAttemptAt, apiEffects.id))
+    .limit(window.take);
+
+  const links = dashboardPageLinks(shaper.reader.urls, shaper.reader.store, "/dashboard/team");
+  return rows.map((row) =>
+    candidate("invitation_not_sent", row.effectId, {
+      severity: "warning",
+      occurredAt: row.occurredAt,
+      summary: `The invitation e-mail to ${row.email} never went out after every try: the user sends it again, or shares its link, from the team page.`,
+      reservation: null,
+      details: { effectId: row.effectId, invitationId: row.invitationId, email: row.email },
+      tools: ["team_list_invitations"],
+      links,
+    }),
+  );
 };
 
 /** The tool that starts each kind of image job again. */
@@ -1483,6 +1542,7 @@ const SOURCES: Record<InboxItemType, Source> = {
   message_not_sent: unsentMessages,
   operation_unknown: unknownOperations,
   handoff_waiting: waitingHandoffs,
+  invitation_not_sent: unsentInvitations,
   image_job_failed: failedImageJobs,
 };
 
@@ -1649,6 +1709,12 @@ export interface InboxAcknowledger {
   clientName: string | null;
   /** May the caller see this type, and change its first domain? */
   may: (type: InboxItemType) => boolean;
+  /**
+   * May the caller change this item's own domain, for a type whose items
+   * belong to different domains (a handoff, by its kind)? The domain to name
+   * when it may not; null when it may.
+   */
+  refusedFor?: (item: InboxItem) => ApiDomain | null;
 }
 
 const isItemType = (value: string): value is InboxItemType =>
@@ -1712,6 +1778,10 @@ export async function acknowledgeInbox(
     current.map((entry) => [`${entry.item.type}:${entry.recordId}`, entry.item.occurredAt]),
   );
   const accepted = rows.filter((row) => currentKeys.has(occurrenceKey(row)));
+  for (const entry of current) {
+    const refused = actor.refusedFor?.(entry.item);
+    if (refused) throw platformErrors.permissionDenied(`${refused}:write`);
+  }
   const rejected = rows
     .filter((row) => !currentKeys.has(occurrenceKey(row)))
     .map((row) => ({
