@@ -607,6 +607,21 @@
    actions, Écume (#5CE1E6) only ever carries light (icons, halos, success),
    never text. Motion answers the user: arrival, hover, press, state change.
    --------------------------------------------------------------------------- */
+/* Plus Jakarta Sans is the only back-office face. Inheritance alone is not
+   enough: <body> carries `font-sans` (Inter), so everything portalled under it
+   (menus, dialogs, sheets, tooltips, toasts) fell back to Inter, and so did any
+   `font-sans` / `font-mono` utility inside the shell. Mono text (reservation
+   numbers, codes, timers) keeps its alignment through tabular figures. */
+.theme-lagon .font-sans,
+.theme-lagon .font-mono,
+.theme-lagon.font-sans {
+  font-family: var(--font-brand);
+}
+
+.theme-lagon .font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
 .theme-lagon {
   font-family: var(--font-brand);
 
