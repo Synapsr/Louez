@@ -49,7 +49,10 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
   ) => Promise<Response>;
   let mcpCall: (authorization: string, name: string, args: object) => Promise<ToolResult>;
   let mcpTools: (authorization: string) => Promise<string[]>;
-  let mcpHttp: (authorization: string, body: string) => Promise<Response>;
+  let mcpHttp: (
+    authorization: string,
+    body: string | ReadableStream<Uint8Array>,
+  ) => Promise<Response>;
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
@@ -149,7 +152,8 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
             accept: "application/json, text/event-stream",
           },
           body,
-        }),
+          duplex: "half",
+        } as RequestInit),
         httpOptions,
       );
     mcpTools = async (authorization) => {
@@ -439,5 +443,78 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
       contentBase64: Buffer.alloc(5 * 1024 * 1024 + 3).toString("base64"),
     });
     assert.equal(toolError(tooLarge), "UPLOAD_TOO_LARGE");
+  });
+
+  test("over HTTP, the rate limit comes before the body, and a body past 4 MiB weighs four calls", async () => {
+    const { eq } = await import("drizzle-orm");
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Large bodies agent",
+      permissions: { ...readOnly, categories: "write" },
+    });
+    const authorization = `Bearer ${created.key}`;
+    const limitKey = `api_key:${created.id}`;
+    const rows = louezDb.apiRateLimits;
+    const used = async () =>
+      (await louezDb.db.select({ count: rows.count }).from(rows).where(eq(rows.key, limitKey)))[0]
+        ?.count ?? 0;
+    const setUsed = async (count: number) => {
+      const now = Date.now();
+      await louezDb.db
+        .update(rows)
+        .set({ count, windowStart: now - (now % 60_000) })
+        .where(eq(rows.key, limitKey));
+    };
+
+    const ping = await mcpHttp(
+      authorization,
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "ping",
+        params: { pad: "x".repeat(5 * 1024 * 1024) },
+      }),
+    );
+    assert.equal(ping.status, 413);
+    assert.equal(await used(), 4, "read past 4 MiB: four calls");
+    const garbage = await mcpHttp(authorization, "{ not json");
+    assert.equal(garbage.status, 400);
+    assert.equal(await used(), 5, "a body that is not JSON counts as a call");
+
+    // A connection that used up its window gets no read at all.
+    await setUsed(120);
+    let pulled = 0;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          pulled++;
+          controller.enqueue(new Uint8Array(1024 * 1024));
+        },
+      },
+      // Nothing is pulled until someone reads.
+      { highWaterMark: 0 },
+    );
+    const limited = await mcpHttp(authorization, stream);
+    assert.equal(limited.status, 429);
+    assert.ok(limited.headers.get("retry-after"));
+    assert.equal(pulled, 0, "the body was not read");
+
+    // Two calls left: an image call past 4 MiB is refused before the rest is read.
+    await setUsed(118);
+    const upload = await mcpHttp(
+      authorization,
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "categories_upload_image",
+          arguments: { contentBase64: Buffer.alloc(4.5 * 1024 * 1024).toString("base64") },
+        },
+      }),
+    );
+    assert.equal(upload.status, 429);
   });
 });

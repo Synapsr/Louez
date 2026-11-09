@@ -4,7 +4,9 @@ import { createMcpHandler } from "@modelcontextprotocol/server";
 import { ORPCError } from "@orpc/server";
 
 import type { AccountActor } from "@louez/api/platform/actor";
+import { platformErrors } from "@louez/api/platform/errors";
 import { STORE_HEADER } from "@louez/api/platform/procedures";
+import { consumeRateLimit, rateLimitKey, rateLimitReached } from "@louez/api/platform/rate-limit";
 
 import type { McpRequestContext } from "../auth/context";
 import { resolveMcpAccount, resolveMcpContext } from "../auth/resolve";
@@ -56,6 +58,14 @@ const MAX_BODY_BYTES = 4 * 1024 * 1024;
  */
 export const INLINE_FILE_REQUEST_MAX_BYTES = 8 * 1024 * 1024;
 
+/**
+ * Calls a body past `MAX_BODY_BYTES` counts on the connection's rate limit,
+ * before more of it is read: whether it is a call that may be that large is
+ * known only once it is parsed, so each such read costs as much as four
+ * calls, whatever it turns out to be.
+ */
+export const OVERSIZED_BODY_WEIGHT = 4;
+
 const TOO_LARGE_MESSAGE = `Request body too large: at most ${MAX_BODY_BYTES} bytes, or ${INLINE_FILE_REQUEST_MAX_BYTES} for one call to a tool that takes a file's bytes (an image of 5 MB at most). Send a larger image as a public imageUrl.`;
 
 const jsonResponse = (body: unknown, status: number) =>
@@ -63,32 +73,55 @@ const jsonResponse = (body: unknown, status: number) =>
 
 type ReadBody =
   | { kind: "none" }
-  | { kind: "json"; value: unknown; size: number }
-  | { kind: "too-large" }
+  | { kind: "json"; value: unknown; size: number; counted: boolean }
+  | { kind: "too-large"; counted: boolean }
   | { kind: "invalid" };
 
 /**
- * Reads a POST body as JSON, at most `maxBytes`, stopping as soon as it goes
- * past. The body is consumed here and handed to the SDK parsed.
+ * Reads a POST body as JSON, streaming, at most `MAX_BODY_BYTES`. Past it,
+ * and only when `oversized` is given, it first has the oversized read
+ * counted (which throws when the rate limit refuses it), then reads on up to
+ * `oversized.maxBytes`. The body is consumed here and handed to the SDK
+ * parsed.
  */
-async function readJson(request: Request, maxBytes: number): Promise<ReadBody> {
+async function readJson(
+  request: Request,
+  oversized?: { maxBytes: number; count: () => Promise<void> },
+): Promise<ReadBody> {
   if (request.method !== "POST" || !request.body) return { kind: "none" };
-  if (Number(request.headers.get("content-length")) > maxBytes) return { kind: "too-large" };
+  const limit = oversized?.maxBytes ?? MAX_BODY_BYTES;
+  const declared = Number(request.headers.get("content-length"));
+  if (declared > limit) return { kind: "too-large", counted: false };
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > maxBytes) {
-      void reader.cancel();
-      return { kind: "too-large" };
+  let counted = false;
+  try {
+    if (oversized && declared > MAX_BODY_BYTES) {
+      await oversized.count();
+      counted = true;
     }
-    chunks.push(value);
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        void reader.cancel();
+        return { kind: "too-large", counted };
+      }
+      if (oversized && !counted && size > MAX_BODY_BYTES) {
+        await oversized.count();
+        counted = true;
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    void reader.cancel();
+    throw error;
   }
   try {
-    return { kind: "json", value: JSON.parse(Buffer.concat(chunks).toString("utf8")), size };
+    const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    return { kind: "json", value, size, counted };
   } catch {
     return { kind: "invalid" };
   }
@@ -163,27 +196,52 @@ export async function handleMcpRequest(
     throw error;
   }
 
-  // A call to a tool that takes a file's bytes may be larger; nothing else.
-  const inlineFileTools = new Set(
-    options.procedures.filter(({ meta }) => meta.mcp.inlineFile).map(({ meta }) => meta.mcp.name),
-  );
-  const body = await readJson(
-    request,
-    inlineFileTools.size > 0 ? INLINE_FILE_REQUEST_MAX_BYTES : MAX_BODY_BYTES,
-  );
-  if (
-    body.kind === "too-large" ||
-    (body.kind === "json" &&
-      body.size > MAX_BODY_BYTES &&
-      !isSingleCallTo(body.value, inlineFileTools))
-  ) {
-    return jsonResponse({ error: TOO_LARGE_MESSAGE }, 413);
-  }
-  if (body.kind === "invalid") {
-    return jsonResponse(
-      { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
-      400,
+  // The connection's rate limit applies before the body is read: one that
+  // used up its window gets no read at all. A body refused here, too large
+  // or not JSON, counts as a call; a body past 4 MiB counts as
+  // OVERSIZED_BODY_WEIGHT calls before the rest of it is read.
+  const limitKey = rateLimitKey(account.credential);
+  const count = async (weight = 1) => {
+    const limit = await consumeRateLimit(limitKey, undefined, undefined, weight);
+    if (!limit.allowed) throw platformErrors.rateLimited(limit.retryAfterSeconds);
+  };
+  let body: ReadBody;
+  try {
+    const reached = await rateLimitReached(limitKey);
+    if (reached) throw platformErrors.rateLimited(reached.retryAfterSeconds);
+
+    // A call to a tool that takes a file's bytes may be larger; nothing else.
+    const inlineFileTools = new Set(
+      options.procedures.filter(({ meta }) => meta.mcp.inlineFile).map(({ meta }) => meta.mcp.name),
     );
+    body = await readJson(
+      request,
+      inlineFileTools.size > 0
+        ? {
+            maxBytes: INLINE_FILE_REQUEST_MAX_BYTES,
+            count: () => count(OVERSIZED_BODY_WEIGHT),
+          }
+        : undefined,
+    );
+    if (
+      body.kind === "too-large" ||
+      (body.kind === "json" &&
+        body.size > MAX_BODY_BYTES &&
+        !isSingleCallTo(body.value, inlineFileTools))
+    ) {
+      if (!body.counted) await count();
+      return jsonResponse({ error: TOO_LARGE_MESSAGE }, 413);
+    }
+    if (body.kind === "invalid") {
+      await count();
+      return jsonResponse(
+        { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
+        400,
+      );
+    }
+  } catch (error) {
+    if (error instanceof ORPCError) return errorResponse(error, challenge);
+    throw error;
   }
 
   // The store: the header, else the `storeId` argument of the tool call.

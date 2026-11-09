@@ -197,7 +197,7 @@ An agent often cannot send the bytes anywhere but Louez: its sandbox's network a
 
 The type is the one the first bytes show (JPEG, PNG, GIF or WebP; never SVG), never the declared one alone. The bytes go under a fresh key of the store's folder for the kind, then `completeImageUpload` checks and publishes them as for any other upload, and the answer is the same: the key and the public `url`. Tests mock `@louez/auth/guarded-fetch` with `createTestImageFetch` (`platform/test-image-fetch.ts`): nothing leaves the process.
 
-A request to `/api/mcp` is at most 4 MiB; one that calls a single tool whose `meta.mcp.inlineFile` is set may reach 8 MiB (`INLINE_FILE_REQUEST_MAX_BYTES`, `packages/mcp/src/transports/http.ts`), enough for 5 MB of base64. Past it, or past 4 MiB for anything else, the answer is 413 with a message that points to `imageUrl`. `/api/v1` sets no limit of its own.
+A request to `/api/mcp` is at most 4 MiB; one that calls a single tool whose `meta.mcp.inlineFile` is set may reach 8 MiB (`INLINE_FILE_REQUEST_MAX_BYTES`, `packages/mcp/src/transports/http.ts`), enough for 5 MB of base64. Whether a request is such a call is known only once it is parsed, so reading past 4 MiB first counts four calls on the connection's rate limit (see [MCP](#mcp)), and a connection without them left gets 429. Past 8 MiB, or past 4 MiB for anything else, the answer is 413 with a message that points to `imageUrl`. `/api/v1` sets no limit of its own.
 
 ## Migrating a domain
 
@@ -221,7 +221,7 @@ The steps a domain lot follows, as categories did (lot 0c):
 - Every request resolves its own context (`packages/mcp/src/auth/resolve.ts`): the key or the access token and its grant, the store and the role held there now, and the plan's API access. A revoked key or grant, a removed member or a lower role applies on the next request.
 - A request that fails there never reaches MCP. It gets the platform's error as JSON, with its HTTP status. A 401 carries `WWW-Authenticate: Bearer` with `resource_metadata`, where an MCP client starts OAuth, and `error="invalid_token"` when a token was sent.
 - Each request gets a server built for it. GET and DELETE answer 405: there is no session to stream on or to close.
-- Rate limiting is the shared limiter. A tool call counts once, where it runs. Every other request counts at the door.
+- Rate limiting is the shared limiter. A tool call counts once, where it runs. Every other request counts at the door. A connection that used up its window is refused (429) before its body is read; a body refused at the door (too large, not JSON) counts as a call, and a body past 4 MiB counts as four (`OVERSIZED_BODY_WEIGHT`) before the rest of it is read.
 
 ### The bridge
 
