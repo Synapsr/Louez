@@ -3,7 +3,7 @@
  * already knows. Kept free of the Stripe client so they can be unit-tested.
  */
 
-import { stripHtml } from "@/lib/util.seo-text";
+import { stripHtml } from "@louez/utils";
 
 // MCC 7394: "Equipment, Tool, Furniture, and Appliance Rental and Leasing" —
 // the closest generic industry code for a rental business. Prefilled on the
