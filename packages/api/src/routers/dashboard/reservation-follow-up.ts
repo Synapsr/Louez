@@ -22,6 +22,8 @@ import {
   updateReservationNotesInput,
   updateReservationNotesOutput,
   updateReservationStatusInput,
+  type CalendarEntry,
+  type PlanningEntry,
 } from "../../contracts/reservations";
 import { ANSWER_PAGE_MCP_DEFAULT, answerPage } from "../../platform/answer-pages";
 import { customerLinks, productLinks, reservationLinks } from "../../platform/links";
@@ -218,7 +220,9 @@ const listCalendarPeriodProcedure = storeProcedure
   .handler(async ({ context, input }) => {
     const link = linker(context);
     const period = await listCalendarPeriod(reader(context), { from: input.from, to: input.to });
-    const page = answerPage(period.items, (item) => item.id, input, {
+    // By start date, then id: the calendar's order, total.
+    const order = { key: (item: CalendarEntry) => `${item.startDate.toISOString()}\u0000${item.id}` };
+    const page = answerPage(period.items, order, input, {
       transport: context.actor.transport,
       tool: "reservations_list_calendar_period",
     });
@@ -246,7 +250,12 @@ const getPlanningTimelineProcedure = storeProcedure
   .handler(async ({ context, input }) => {
     const link = linker(context);
     const planning = await getPlanningTimeline(reader(context), { from: input.from, to: input.to });
-    const page = answerPage(planning.items, (item) => `${item.id}:${item.productId}`, input, {
+    // By start date, then the reservation and the product of the entry.
+    const order = {
+      key: (item: PlanningEntry) =>
+        `${item.startDate.toISOString()}\u0000${item.id}\u0000${item.productId}`,
+    };
+    const page = answerPage(planning.items, order, input, {
       transport: context.actor.transport,
       tool: "reservations_get_planning_timeline",
     });

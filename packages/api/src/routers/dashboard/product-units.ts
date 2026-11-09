@@ -143,7 +143,13 @@ export const getUnitHistory = storeProcedure
   .handler(async ({ context, input }) => {
     requireReservationsAndCustomers(context);
     const history = await units.getUnitHistory(context.actor.storeId, input.unitId);
-    const page = answerPage(history.timeline, (entry) => `${entry.kind}:${entry.id}`, input, {
+    // Newest first, as the history reads; its kind and id tell entries of one instant apart.
+    const order = {
+      key: (entry: (typeof history.timeline)[number]) =>
+        `${entry.createdAt}\u0000${entry.kind}\u0000${entry.id}`,
+      descending: true,
+    };
+    const page = answerPage(history.timeline, order, input, {
       transport: context.actor.transport,
       tool: "products_get_unit_history",
     });

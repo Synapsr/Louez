@@ -122,6 +122,11 @@ const withLinks = <T extends { id: string; slug: string | null; status: string |
   product: T,
 ) => ({ ...product, links: productLinks(context.ports.urls, context.store, product) });
 
+/** A product's units by identifier (unique within it), then id: products_get's and products_list_units'. */
+const UNIT_ORDER = {
+  key: (unit: { identifier: string; id: string }) => `${unit.identifier}\u0000${unit.id}`,
+};
+
 /**
  * A product as an answer gives it: with its links, and its units a page at a
  * time for an agent (`answerPage`: the first `ANSWER_PAGE_MCP_DEFAULT` on
@@ -131,7 +136,7 @@ const withLinks = <T extends { id: string; slug: string | null; status: string |
 const productAnswer = (context: ProductContext, product: Product) => {
   const units = answerPage(
     product.units,
-    (unit) => unit.id,
+    UNIT_ORDER,
     {},
     { transport: context.actor.transport, tool: "products_get" },
   );
@@ -212,7 +217,7 @@ const listUnits = storeProcedure
   .output(listProductUnitsOutput)
   .handler(async ({ context, input }) => {
     const units = await listProductUnits(context.actor.storeId, input.id);
-    const page = answerPage(units, (unit) => unit.id, input, {
+    const page = answerPage(units, UNIT_ORDER, input, {
       transport: context.actor.transport,
       tool: "products_list_units",
     });
@@ -641,7 +646,12 @@ const getReservationTimeline = storeProcedure
     requireReservationsAndCustomers(context);
     const { id, from, to } = input;
     const timeline = await getProductReservationTimeline(context.actor.storeId, { id, from, to });
-    const page = answerPage(timeline.reservations, (reservation) => reservation.id, input, {
+    // By start date, then id: a total order, whatever order the grouping left.
+    const order = {
+      key: (reservation: (typeof timeline.reservations)[number]) =>
+        `${reservation.startDate.toISOString()}\u0000${reservation.id}`,
+    };
+    const page = answerPage(timeline.reservations, order, input, {
       transport: context.actor.transport,
       tool: "products_get_reservation_timeline",
     });
