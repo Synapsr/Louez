@@ -121,7 +121,7 @@ An effect that must not be lost (a customer's email, a store notification, an an
 
 Where the store's own notifications go (the owner's phone, the webhook, the members' devices) and whether the store still wants each channel are read when they go out, not frozen: a webhook or a phone changed since is the one that counts, and the table holds no copy of them.
 
-An effect type is a type and its payload in `ApiEffectPayloads`, and a sender in the app. Reservation status changes, an agent's notes change, a store's creation and its launch use it; the products' notifications and analytics still go through `afterCommit` (lot 9 moves them).
+An effect type is a type and its payload in `ApiEffectPayloads`, and a sender in the app. Reservation status changes, an agent's notes change, a store's creation, its launch and an agent's setup actions ([Setup analytics](#setup-analytics)) use it; the products' notifications and analytics still go through `afterCommit` (lot 9 moves them).
 
 ## Sensitive operations
 
@@ -270,6 +270,15 @@ A store is online when `onboardingCompleted` is true: the storefront answers 404
 
 The wizard's branding step saves through `onlineStore.updateAppearance`, the same write as the online store editor's look.
 
+## Setup analytics
+
+PostHog says who set a store up, an agent or a human, what an agent filled and whether the store went live. The events, their properties and the analyses they serve are in [../analytics/store-setup.md](../analytics/store-setup.md); the code is `platform/setup-analytics.ts`.
+
+- **An agent's setup action.** Each write by a key or a token that succeeds on a store still offline, in the setup domains (stores, settings, online store, products, categories, customer fields), and its go-live, adds one `store.agentSetupAction` row (`agent_store_setup_action`). The store middleware decides from the store row it read before the handler, and from the result for `stores.create`; a go-live that launched nothing adds none. `runOperation` adds the row with the write's record (`recordedEffects`), in the transaction that marks the operation succeeded, inside a savepoint: a failure there is logged and loses the event, never the write. An idempotent replay adds nothing, as it never reaches that point; a call refused with `CONFIRMATION_REQUIRED` failed, so neither does it.
+- **What it says.** The procedure, who (credential kind; `agentClientOf` the client or key name, a fixed value; an OAuth client's own name, never an API key's, which the user typed), whether a confirmation was accepted, the names of the fields set and cleared, and the facts `SETUP_FACT_KEYS` lists: codes, enums, counts and yes/no, never a value a person typed.
+- **The summary.** The launch counts, in its transaction, the store's creation and its setup writes in `api_operations` by credential kind, the launch itself included, and adds `setup_by`, the agents and the time since the creation to `store.launchAnalytics` (`onboarding_completed`), with who launched. `store.creationAnalytics` (`onboarding_store_info_saved`) says who created the store.
+- **Privacy.** A test sends personal values through every setup procedure and checks no fact holds them (`setup-analytics.test.ts`); the senders' test holds each event's property allowlist and fails on any other property or a value that looks like an e-mail or a phone (`apps/web/lib/stores/store-setup-effects.test.ts`).
+
 ## Store settings
 
 `dashboard.settings.*` (`routers/dashboard/settings.ts`, `services/settings.ts`, the `settings_*` tools of the `settings` bundle, `/api/v1/settings`) holds what a store needs before it goes live: one read, `settings.get` (`settings_get`), and one write per section: store info (name, description, contact, coordinates), company (country and time zone, currency, billing address), legal texts (terms, legal notice, footer note), reservation rules, business hours and closures, delivery, pickup points (create, update, show or hide) and taxes. Reading needs `settings` read; writing needs `settings` write and the member permission `manage_settings`, as the dashboard's settings pages do. Each answer carries the links of its settings page; legal texts and store info link to the online store editor.
@@ -390,6 +399,7 @@ The credential is `kind: "oauth"`, its id the grant id, its client name the OAut
 
 ## Related
 
+- [../analytics/store-setup.md](../analytics/store-setup.md)
 - [module-ownership.md](module-ownership.md)
 - [../code-review/04-data-layer.md](../code-review/04-data-layer.md)
 - [../code-review/06-security.md](../code-review/06-security.md)
