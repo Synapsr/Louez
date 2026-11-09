@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
-
+import { useMutation } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 
-import { Badge, Button } from "@louez/ui";
+import type { DismissibleNoticeId } from "@louez/api/contracts/dismissed-notices";
+import { Badge, Button, toastManager } from "@louez/ui";
 import { RewardIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
 import { DashboardIconTile } from "@/components/dashboard/shared/dashboard-icon-tile";
 import { useInstanceConfig } from "@/components/instance-provider";
-import { dismissNotice } from "@/app/(dashboard)/dashboard/actions";
-import type { DismissibleNoticeId } from "@/lib/dashboard/dismissed-notices";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { accountMutations } from "@/lib/queries/account.queries";
 
 export interface MarketplaceCohortNoticeProps {
   /** ISO date once the store joined the launch cohort, null otherwise. */
@@ -47,31 +47,36 @@ export const MarketplaceCohortNotice = ({
   className,
 }: MarketplaceCohortNoticeProps) => {
   const t = useTranslations("dashboard.settings.salesChannels.cohort");
+  const tErrors = useTranslations("errors");
   const format = useFormatter();
   // The waiver is a billing promise: nothing to show when the instance does not bill.
   const { billingEnabled } = useInstanceConfig();
-  const [closedNow, setClosedNow] = useState(false);
-
   const noticeId: DismissibleNoticeId = lifetimeFeeWaiverAt
     ? "reeent-cohort-member"
     : "reeent-cohort-seats";
+  // The notice stays until the close is saved: a failed save keeps it and says so.
+  const dismissal = useMutation({
+    ...accountMutations.dismissNotice(),
+    onError: (error) => {
+      const key = apiErrorKey(error);
+      toastManager.add({
+        title: key && tErrors.has(key) ? tErrors(key) : tErrors("generic"),
+        type: "error",
+      });
+    },
+  });
   const dismissible = dismissedNoticeIds !== undefined;
 
-  if (!billingEnabled || closedNow || dismissedNoticeIds?.includes(noticeId)) {
+  if (!billingEnabled || dismissal.isSuccess || dismissedNoticeIds?.includes(noticeId)) {
     return null;
   }
-
-  const handleDismiss = () => {
-    // Hidden at once; a failed save only means it shows again on the next visit.
-    setClosedNow(true);
-    void dismissNotice(noticeId);
-  };
 
   const dismissButton = dismissible && (
     <Button
       variant="ghost"
       size="icon-sm"
-      onClick={handleDismiss}
+      onClick={() => dismissal.mutate({ noticeId })}
+      disabled={dismissal.isPending}
       aria-label={t("dismiss")}
       title={t("dismiss")}
       className="text-muted-foreground -my-1 ms-auto shrink-0"

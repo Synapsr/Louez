@@ -1,4 +1,4 @@
-import type { DismissibleNoticeId } from "@/lib/dashboard/dismissed-notices";
+import type { DismissibleNoticeId } from "@louez/api/contracts/dismissed-notices";
 
 export const AGENT_ASSISTANT_NOTICE_ID = "agent-assistant" satisfies DismissibleNoticeId;
 

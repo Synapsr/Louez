@@ -11,7 +11,10 @@ import type { LaunchChecklistView } from "@louez/api/contracts/launch";
 import { serverApi } from "@/lib/api/server-api";
 import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
-import { parseDismissedNotices, type DismissibleNoticeId } from "@/lib/dashboard/dismissed-notices";
+import {
+  parseDismissedNotices,
+  type DismissibleNoticeId,
+} from "@louez/api/contracts/dismissed-notices";
 import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
 import {
   AgentAssistantNotice,

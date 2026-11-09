@@ -27,3 +27,10 @@ export const parseDismissedNotices = (value: unknown): DismissibleNoticeId[] => 
     (id): id is DismissibleNoticeId => dismissibleNoticeIdSchema.safeParse(id).success,
   );
 };
+
+export const dismissNoticeInput = z.object({ noticeId: dismissibleNoticeIdSchema });
+
+/** Every notice the user has closed, this one included. */
+export const dismissNoticeOutput = z.object({
+  dismissedNoticeIds: z.array(dismissibleNoticeIdSchema),
+});

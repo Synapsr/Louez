@@ -96,7 +96,7 @@ export const users = mysqlTable("users", {
   // step. Google users get a prefilled name but still confirm it once.
   profileCompletedAt: timestamp("profile_completed_at", { mode: "date" }),
   // Informational dashboard notices the user closed for good (ids from
-  // apps/web/lib/dashboard/dismissed-notices.ts). `null` until the first one.
+  // packages/api/src/contracts/dismissed-notices.ts). `null` until the first one.
   dismissedNotices: json("dismissed_notices").$type<string[]>(),
   reeentIntroAcknowledgedAt: timestamp("reeent_intro_acknowledged_at", {
     mode: "date",

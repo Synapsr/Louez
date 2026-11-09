@@ -170,6 +170,7 @@ const ROUTE = {
 
 /** oRPC router file per key of `dashboardRouter`. */
 const ORPC = {
+  account: `${ROUTERS}/account.ts`,
   agentConnections: `${ROUTERS}/agent-connections.ts`,
   aiAdvisor: `${ROUTERS}/ai-advisor.ts`,
   apiKeys: `${ROUTERS}/api-keys.ts`,
@@ -2184,9 +2185,10 @@ export const capabilities = [
   },
   {
     id: "ui.dismissNotice",
-    sources: [action(SA.dashboard, "dismissNotice")],
+    sources: [procedure("account", "dismissNotice")],
     kind: "write",
     plan: { exclude: UI_ONLY },
+    actors: ["session"],
   },
   {
     id: "ui.acknowledgeReeentIntro",

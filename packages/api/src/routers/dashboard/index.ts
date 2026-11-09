@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { dashboardProcedure } from "../../procedures";
+import { dashboardAccountRouter } from "./account";
 import { dashboardAgentConnectionsRouter } from "./agent-connections";
 import { dashboardAiAdvisorRouter } from "./ai-advisor";
 import { dashboardApiKeysRouter } from "./api-keys";
@@ -43,6 +44,7 @@ const ping = dashboardProcedure
  */
 export const dashboardRouter = {
   ping,
+  account: dashboardAccountRouter,
   agentConnections: dashboardAgentConnectionsRouter,
   aiAdvisor: dashboardAiAdvisorRouter,
   apiKeys: dashboardApiKeysRouter,

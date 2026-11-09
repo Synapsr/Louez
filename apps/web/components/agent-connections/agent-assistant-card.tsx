@@ -16,6 +16,8 @@ interface AgentAssistantCardProps {
   oauthAvailable: boolean;
   /** Shows a close button; the caller decides what closing means. */
   onDismiss?: () => void;
+  /** The close is being saved: the button waits. */
+  dismissing?: boolean;
   className?: string;
 }
 
@@ -27,6 +29,7 @@ export const AgentAssistantCard = ({
   mcpUrl,
   oauthAvailable,
   onDismiss,
+  dismissing = false,
   className,
 }: AgentAssistantCardProps) => {
   const t = useTranslations("agentConnections.assistantCard");
@@ -52,6 +55,7 @@ export const AgentAssistantCard = ({
             variant="ghost"
             size="icon-sm"
             onClick={onDismiss}
+            disabled={dismissing}
             aria-label={t("dismiss")}
             title={t("dismiss")}
             className="text-muted-foreground"
