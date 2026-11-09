@@ -12,6 +12,7 @@ import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
 
 let imageFiles: ReturnType<typeof createImageFiles> | undefined;
 let rawClient: S3Client | undefined;
+let storageAdapter: ReturnType<typeof createS3Adapter> | undefined;
 
 /**
  * Whether stored assets are served same-origin through the app (S3_PUBLIC_URL
@@ -51,28 +52,31 @@ const createS3Adapter = () => {
   return adapter;
 };
 
+/**
+ * Makes a stored image publicly readable. Same-origin bundled storage needs
+ * nothing: the bucket stays private and /files streams assets with the
+ * server's credentials, so per-object ACLs are neither supported nor needed.
+ */
+export const setPublicReadAcl = async (key: string): Promise<void> => {
+  if (isProxiedStorage()) return;
+
+  await getStorageClient().send(
+    new PutObjectAclCommand({
+      ACL: "public-read",
+      Bucket: env.S3_BUCKET,
+      Key: key,
+    }),
+  );
+};
+
 const createImageFiles = () => {
   const adapter = createS3Adapter();
+  storageAdapter = adapter;
 
   return createFiles({
     adapter,
     plugins: [
-      publicImageAssets({
-        setPublicReadAcl: async (key) => {
-          // Same-origin bundled storage: the bucket stays private and /files
-          // streams assets with the server's credentials, so per-object ACLs
-          // are neither supported nor needed.
-          if (isProxiedStorage()) return;
-
-          await getStorageClient().send(
-            new PutObjectAclCommand({
-              ACL: "public-read",
-              Bucket: env.S3_BUCKET,
-              Key: key,
-            }),
-          );
-        },
-      }),
+      publicImageAssets({ setPublicReadAcl }),
       contentType({ onMismatch: "reject", onUnknown: "reject" }),
       validation({
         minSize: 1,
@@ -86,6 +90,17 @@ const createImageFiles = () => {
 export const getImageFiles = () => {
   imageFiles ??= createImageFiles();
   return imageFiles;
+};
+
+/**
+ * The bucket adapter without the instance's plugins, for presigned uploads:
+ * the content-type and validation plugins refuse to presign, as the bytes
+ * never pass through them. Whoever presigns checks the object afterwards
+ * (packages/api services/uploads.ts reads its first bytes).
+ */
+export const getImageStorageAdapter = () => {
+  getImageFiles();
+  return storageAdapter as ReturnType<typeof createS3Adapter>;
 };
 
 /** Raw S3 client shared with the /files streaming route. */

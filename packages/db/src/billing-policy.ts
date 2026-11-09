@@ -159,8 +159,14 @@ export function billingNewStoresFrom(): Date | null {
   return date;
 }
 
-/** One cached version: the fields read here, and the body as Louez stored it. */
-export type CachedPolicy = BillingPolicyCore & { readonly body: unknown };
+/**
+ * One cached version: the fields read here, the body as Louez stored it, and
+ * when this instance received it (unknown for a version built in memory).
+ */
+export type CachedPolicy = BillingPolicyCore & {
+  readonly body: unknown;
+  readonly receivedAt?: Date;
+};
 
 export type StorePolicyRecords = {
   readonly storeId: string;
@@ -187,15 +193,19 @@ export async function readStoresPolicyRecords(
     .where(inArray(stores.id, ids));
   if (found.length === 0) return [];
   const rows = await executor
-    .select({ storeId: billingPolicies.storeId, body: billingPolicies.body })
+    .select({
+      storeId: billingPolicies.storeId,
+      body: billingPolicies.body,
+      receivedAt: billingPolicies.receivedAt,
+    })
     .from(billingPolicies)
     .where(inArray(billingPolicies.storeId, [...found.map((store) => store.id), "*"]));
   const defaults: CachedPolicy[] = [];
   const own = new Map<string, CachedPolicy[]>();
-  for (const { storeId, body } of rows) {
+  for (const { storeId, body, receivedAt } of rows) {
     const parsed = billingPolicyCoreSchema.safeParse(body);
     if (!parsed.success) continue;
-    const version = { ...parsed.data, body };
+    const version = { ...parsed.data, body, receivedAt };
     const list = storeId === "*" ? defaults : own.get(storeId);
     if (list) list.push(version);
     else own.set(storeId, [version]);

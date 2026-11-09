@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { Button, Input, Popover, PopoverPopup, PopoverTrigger, Slider } from "@louez/ui";
 import { formatCurrency } from "@louez/utils";
+import { PRODUCT_LIST_LIMITS } from "@louez/validations";
 
 import { PriceDurationInput } from "@/components/ui/price-duration-input";
 
@@ -151,12 +152,17 @@ export function PricingLadder({
           data-demo-target="pricing-add-tier"
           type="button"
           onClick={() => draft.addTier()}
-          disabled={disabled || !draft.hasBaseRate}
+          disabled={disabled || !draft.hasBaseRate || !draft.canAddTier}
           className="text-muted-foreground hover:bg-accent/40 hover:text-foreground flex w-full items-center gap-2 px-3 py-2.5 text-sm transition-colors disabled:pointer-events-none disabled:opacity-40"
         >
           <Plus className="h-4 w-4" />
           {hasTiers ? t("addRate") : isSeason ? t("addSeasonRate") : t("pricingTiers.enableTiers")}
         </button>
+        {!draft.canAddTier && (
+          <p className="text-muted-foreground px-3 pb-2.5 text-xs">
+            {t("pricingTiers.limitReached", { max: PRODUCT_LIST_LIMITS.rateTiers })}
+          </p>
+        )}
       </div>
 
       <PricingModeControl

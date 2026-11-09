@@ -1,4 +1,5 @@
 import { supportedLocales } from "@louez/types";
+import { SUPPORTED_CURRENCY_CODES } from "@louez/utils/currencies";
 import { z } from "zod";
 
 import { isValidImageUrl, isValidImageUrlClient } from "./image";
@@ -34,6 +35,19 @@ export const RESERVED_SLUGS = [
   "invite",
   "webhook",
   "webhooks",
+  // The app's other first path segments and the proxy's own roots
+  // (apps/web/lib/reserved-slugs.test.ts keeps this list complete).
+  "account-deleted",
+  "active-store",
+  "demos",
+  "dev",
+  "embed",
+  "favicon",
+  "handoffs",
+  "ingest",
+  "multi-store",
+  "online-store",
+  "styles",
 
   // Brand protection
   "louez",
@@ -203,7 +217,7 @@ export const createStoreInfoSchema = (
       .regex(/^[a-z0-9-]+$/, t("slug"))
       .refine((val) => !isReservedSlug(val), t("slugReserved")),
     country: z.string().length(2),
-    currency: z.string().min(3).max(3),
+    currency: z.enum(SUPPORTED_CURRENCY_CODES),
     address: z.string().or(z.literal("")),
     latitude: z.number().nullable(),
     longitude: z.number().nullable(),
@@ -217,7 +231,7 @@ export const createBrandingSchema = (
   t: (key: string, params?: Record<string, string | number | Date>) => string,
 ) =>
   z.object({
-    // Client-safe validation: strict S3 check happens server-side in the action
+    // Client-safe validation: the server checks the store owns the image
     logoUrl: z
       .string()
       .refine((val) => !val || val === "" || isValidImageUrlClient(val), {
@@ -268,7 +282,7 @@ export const storeInfoSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "validation.slug")
     .refine((val) => !isReservedSlug(val), "validation.slugReserved"),
   country: z.string().length(2),
-  currency: z.string().min(3).max(3),
+  currency: z.enum(SUPPORTED_CURRENCY_CODES),
   address: z.string().optional().or(z.literal("")),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
@@ -280,19 +294,6 @@ export const storeInfoSchema = z.object({
     .refine((value) => !value || isPossiblePhoneNumberInput(value), {
       message: "validation.phone",
     }),
-});
-
-export const brandingSchema = z.object({
-  // SECURITY: Validate image URL to prevent malicious uploads
-  logoUrl: z
-    .string()
-    .refine((val) => !val || val === "" || isValidImageUrl(val), {
-      message: "validation.invalidImageUrl",
-    })
-    .optional()
-    .or(z.literal("")),
-  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "validation.color"),
-  theme: z.enum(["light", "dark"]),
 });
 
 export const firstProductSchema = z.object({
@@ -321,6 +322,5 @@ export const stripeSetupSchema = z.object({
 });
 
 export type StoreInfoInput = z.infer<typeof storeInfoSchema>;
-export type BrandingInput = z.infer<typeof brandingSchema>;
+export type BrandingInput = z.infer<ReturnType<typeof createBrandingSchema>>;
 export type FirstProductInput = z.infer<typeof firstProductSchema>;
-export type StripeSetupInput = z.infer<typeof stripeSetupSchema>;

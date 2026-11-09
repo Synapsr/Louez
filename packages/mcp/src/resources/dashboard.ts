@@ -1,13 +1,13 @@
 import { db, reservations, dailyStats } from '@louez/db'
 import { and, eq, gte, lte, sql, sum } from 'drizzle-orm'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 
-import type { McpSessionContext } from '../auth/context'
+import type { McpRequestContext } from '../auth/context'
 import { hasPermission } from '../auth/context'
 import { formatCurrency } from '../utils/formatting'
 
-export function registerDashboardResources(server: McpServer, ctx: McpSessionContext) {
-  server.resource(
+export function registerDashboardResources(server: McpServer, ctx: McpRequestContext) {
+  server.registerResource(
     'dashboard-summary',
     'louez://dashboard/summary',
     { description: 'Daily business summary (reservations, revenue, key metrics)', mimeType: 'text/plain' },
@@ -79,7 +79,7 @@ export function registerDashboardResources(server: McpServer, ctx: McpSessionCon
     }
   )
 
-  server.resource(
+  server.registerResource(
     'pending-reservations',
     'louez://dashboard/reservations/pending',
     { description: 'Reservations pending action (to confirm or reject)', mimeType: 'text/plain' },

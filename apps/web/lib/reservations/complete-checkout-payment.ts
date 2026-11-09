@@ -1,4 +1,7 @@
-import { checkExistingReservationInventory, ReservationInventoryError } from "./reserve-inventory";
+import {
+  checkExistingReservationInventory,
+  ReservationInventoryError,
+} from "@louez/api/services/reservation-inventory";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -8,6 +11,7 @@ import {
   changeReservationStatus,
   consumeReservationStock,
   db,
+  retryTransactionOnDeadlock,
   toWholeSeconds,
   type ReservationBillingEffect,
 } from "@louez/db";
@@ -38,7 +42,7 @@ import {
   claimCompletedCheckoutPayment,
   paymentInsuranceShareMinor,
 } from "@/lib/stripe/payment-completion";
-import { evaluateReservationRules } from "@/lib/utils/reservation-rules";
+import { evaluateReservationRules } from "@louez/utils";
 
 export type CheckoutPaymentCompletionSource = "webhook" | "return";
 
@@ -161,43 +165,51 @@ export const confirmPaidReservationOrThrow = async (params: {
       ),
     );
 
-  const result = await db.transaction(
-    async (tx): Promise<{ confirmed: boolean; effects: ReservationBillingEffect[] }> => {
-      const change = await changeReservationStatus(tx, {
-        reservationId: params.reservationId,
-        storeId: params.storeId,
-        to: "confirmed",
-        actor: "payment",
-        actorUserId: null,
-        expectedFrom: "pending",
-        beforeWrite: (lockedTx) =>
-          checkExistingReservationInventory(lockedTx, params.reservationId, params.storeId),
-        activity: { metadata: params.activityMetadata },
-      });
+  // The confirmation locks the reservation, then its products: a lost
+  // deadlock runs the whole transaction again (DL-12). It records no payment,
+  // so a new run cannot record one twice; the effects run once, after it.
+  const result = await retryTransactionOnDeadlock(() =>
+    db.transaction(
+      async (tx): Promise<{ confirmed: boolean; effects: ReservationBillingEffect[] }> => {
+        const change = await changeReservationStatus(tx, {
+          reservationId: params.reservationId,
+          storeId: params.storeId,
+          to: "confirmed",
+          actor: "payment",
+          actorUserId: null,
+          expectedFrom: "pending",
+          beforeWrite: (lockedTx) =>
+            checkExistingReservationInventory(lockedTx, params.reservationId, params.storeId),
+          activity: { metadata: params.activityMetadata },
+        });
 
-      if (!change.changed) {
-        // Already confirmed, by the other completion path or the merchant: make
-        // sure its consumables were taken. Consuming twice changes nothing.
-        if (change.from === "confirmed") {
-          await consumeReservationStock(tx, params.reservationId, params.storeId);
+        if (!change.changed) {
+          // Already confirmed, by the other completion path or the merchant: make
+          // sure its consumables were taken. Consuming twice changes nothing.
+          if (change.from === "confirmed") {
+            await consumeReservationStock(tx, params.reservationId, params.storeId);
+          }
+          return { confirmed: false, effects: [] };
         }
-        return { confirmed: false, effects: [] };
-      }
 
-      await tx
-        .update(reservations)
-        .set({
-          stripeCustomerId: params.stripeCustomerId,
-          stripePaymentMethodId: params.stripePaymentMethodId,
-          depositStatus: params.depositStatus,
-        })
-        .where(
-          and(eq(reservations.id, params.reservationId), eq(reservations.storeId, params.storeId)),
-        );
+        await tx
+          .update(reservations)
+          .set({
+            stripeCustomerId: params.stripeCustomerId,
+            stripePaymentMethodId: params.stripePaymentMethodId,
+            depositStatus: params.depositStatus,
+          })
+          .where(
+            and(
+              eq(reservations.id, params.reservationId),
+              eq(reservations.storeId, params.storeId),
+            ),
+          );
 
-      return { confirmed: true, effects: change.effects };
-    },
-    { isolationLevel: "read committed" },
+        return { confirmed: true, effects: change.effects };
+      },
+      { isolationLevel: "read committed" },
+    ),
   );
 
   // The webhook records a paid checkout's fee itself, so this is empty today.
@@ -378,10 +390,11 @@ const runCheckoutPaymentCompletion = async ({
     });
 
     dispatchNotification("payment_received", {
+      actor: "system",
       store: toAdminNotificationStore(store),
-      reservation: toNotificationReservation(reservation),
+      reservation: { ...toNotificationReservation(reservation), currency: reservation.currency },
       customer: toNotificationCustomer(reservation.customer),
-      payment: { amount: totalAmount },
+      payment: { amount: totalAmount, currency },
     }).catch((error: unknown) => {
       log.error("checkout", `payment received notification failed: ${describeError(error)}`);
     });
@@ -465,6 +478,7 @@ const runCheckoutPaymentCompletion = async ({
     }
 
     dispatchNotification("reservation_confirmed", {
+      actor: "system",
       store: toAdminNotificationStore(store),
       reservation: toNotificationReservation(reservation),
       customer: toNotificationCustomer(reservation.customer),

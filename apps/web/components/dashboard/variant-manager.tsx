@@ -44,7 +44,10 @@ import {
 import { cn, findMatchingVariant } from "@louez/utils";
 
 import { VariantColorPicker } from "@/components/dashboard/variant-color-picker";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { invalidateProductInventory, invalidateVariantCatalog } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
+import { productsQueries } from "@/lib/queries/products.queries";
 import { type ResolvedVariantPreset, resolveVariantPresets } from "@/lib/variant-presets";
 
 interface VariantManagerValue {
@@ -79,6 +82,38 @@ interface ManagedVariant {
   }>;
 }
 
+interface VariantCatalogPage {
+  items: VariantManagerDefinition[];
+  nextCursor: string | null;
+}
+
+/** The catalog page with one variant changed, for an optimistic update. */
+const updateDefinitionIn =
+  (
+    definitionId: string,
+    update: (definition: VariantManagerDefinition) => VariantManagerDefinition,
+  ) =>
+  (current: VariantCatalogPage | undefined) =>
+    current && {
+      ...current,
+      items: current.items.map((definition) =>
+        definition.id === definitionId ? update(definition) : definition,
+      ),
+    };
+
+/** The products the API names as still using a variant it refused to delete. */
+const productsInUse = (error: unknown): { products: { name: string }[]; count: number } | null => {
+  const data = (
+    error as {
+      data?: { code?: string; details?: { products?: unknown; productCount?: unknown } };
+    } | null
+  )?.data;
+  if (data?.code !== "VARIANT_IN_USE" || !Array.isArray(data.details?.products)) return null;
+  const products = data.details.products as { name: string }[];
+  const count = typeof data.details.productCount === "number" ? data.details.productCount : 0;
+  return { products, count: Math.max(count, products.length) };
+};
+
 const DEFAULT_NEW_COLOR = "#3B82F6";
 const OPTIMISTIC_VALUE_ID_PREFIX = "optimistic:";
 
@@ -92,10 +127,13 @@ export const VariantManagerDrawer = ({
   open,
   onOpenChange,
   onWithdrawn,
+  canDelete = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onWithdrawn?: (variant: WithdrawnVariant) => void;
+  /** Deleting a variant or a value needs the member's delete permission. */
+  canDelete?: boolean;
 }) => {
   const t = useTranslations("dashboard.products.form.unitTracking");
 
@@ -107,30 +145,42 @@ export const VariantManagerDrawer = ({
           <DrawerDescription>{t("managerDescription")}</DrawerDescription>
         </DrawerHeader>
         <DrawerPanel>
-          <VariantManager onWithdrawn={onWithdrawn} />
+          <VariantManager onWithdrawn={onWithdrawn} canDelete={canDelete} />
         </DrawerPanel>
       </DrawerPopup>
     </Drawer>
   );
 };
 
-const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVariant) => void }) => {
+const VariantManager = ({
+  onWithdrawn,
+  canDelete,
+}: {
+  onWithdrawn?: (variant: WithdrawnVariant) => void;
+  canDelete: boolean;
+}) => {
   const t = useTranslations("dashboard.products.form.unitTracking");
   // Called once the request is over: the host form may have re-rendered
   // since the click, and must be told through its latest callback.
   const onWithdrawnRef = useRef(onWithdrawn);
   onWithdrawnRef.current = onWithdrawn;
   const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
+  /** The API's reason when the dashboard has a message for it, else the generic error. */
+  const errorTitle = (error: unknown) => {
+    const key = apiErrorKey(error);
+    return key && tErrors.has(key) ? tErrors(key) : tCommon("error");
+  };
   const queryClient = useQueryClient();
 
-  const catalogQuery = useQuery(orpc.dashboard.variants.list.queryOptions());
-  const definitions: VariantManagerDefinition[] = catalogQuery.data ?? [];
-  const usageQuery = useQuery(orpc.dashboard.variants.usage.queryOptions());
+  const catalogQuery = useQuery(productsQueries.variants());
+  const definitions: VariantManagerDefinition[] = catalogQuery.data?.items ?? [];
+  const usageQuery = useQuery(productsQueries.variantUsage());
   const usageByDefinitionId = useMemo(
-    () => new Map((usageQuery.data ?? []).map((entry) => [entry.definitionId, entry.products])),
+    () => new Map((usageQuery.data?.items ?? []).map((entry) => [entry.definitionId, entry])),
     [usageQuery.data],
   );
-  const catalogQueryKey = orpc.dashboard.variants.list.key({ type: "query" });
+  const catalogQueryKey = productsQueries.variantsKey();
   const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
   const resolvedPresets = useMemo(() => resolveVariantPresets((key) => String(t.raw(key))), [t]);
   const managedVariants = useMemo<ManagedVariant[]>(() => {
@@ -183,23 +233,22 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
   }, [activeOverrides, definitions, resolvedPresets]);
   const activeCount = managedVariants.filter((variant) => variant.isActive).length;
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: orpc.dashboard.variants.key() });
+  const invalidate = () => invalidateVariantCatalog(queryClient);
 
   const ensureDefinitionMutation = useMutation(
-    orpc.dashboard.variants.ensureDefinition.mutationOptions(),
+    orpc.dashboard.products.ensureVariantDefinition.mutationOptions(),
   );
   const updateDefinitionMutation = useMutation(
-    orpc.dashboard.variants.updateDefinition.mutationOptions(),
+    orpc.dashboard.products.updateVariantDefinition.mutationOptions(),
   );
   const setDefinitionActiveMutation = useMutation(
-    orpc.dashboard.variants.setDefinitionActive.mutationOptions(),
+    orpc.dashboard.products.setVariantDefinitionActive.mutationOptions(),
   );
   const deleteDefinitionMutation = useMutation(
-    orpc.dashboard.variants.deleteDefinition.mutationOptions(),
+    orpc.dashboard.products.deleteVariantDefinition.mutationOptions(),
   );
   const withdrawMutation = useMutation(
-    orpc.dashboard.variants.withdrawFromProducts.mutationOptions(),
+    orpc.dashboard.products.withdrawVariantFromProducts.mutationOptions(),
   );
 
   const [newDialogOpen, setNewDialogOpen] = useState(false);
@@ -235,8 +284,8 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
       });
       await invalidate();
       return definition;
-    } catch {
-      toastManager.add({ title: tCommon("error"), type: "error" });
+    } catch (error) {
+      toastManager.add({ title: errorTitle(error), type: "error" });
       return null;
     }
   };
@@ -251,7 +300,7 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
   // now on. Products that carry it keep it; withdrawing is a separate action.
   const applyActiveChange = async (variant: ManagedVariant, isActive: boolean) => {
     const previousDefinitions = variant.definition
-      ? queryClient.getQueryData<VariantManagerDefinition[]>(catalogQueryKey)
+      ? queryClient.getQueryData<VariantCatalogPage>(catalogQueryKey)
       : undefined;
     setActiveOverrides((current) => ({ ...current, [variant.key]: isActive }));
 
@@ -261,20 +310,19 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
         return;
       }
 
-      queryClient.setQueryData(catalogQueryKey, (current: VariantManagerDefinition[] | undefined) =>
-        current?.map((definition) =>
-          definition.id === variant.definition?.id ? { ...definition, isActive } : definition,
-        ),
+      queryClient.setQueryData(
+        catalogQueryKey,
+        updateDefinitionIn(variant.definition.id, (definition) => ({ ...definition, isActive })),
       );
       await setDefinitionActiveMutation.mutateAsync({ id: variant.definition.id, isActive });
       await invalidate();
-    } catch {
+    } catch (error) {
       if (previousDefinitions) {
         queryClient.setQueryData(catalogQueryKey, previousDefinitions);
       } else {
         await invalidate();
       }
-      toastManager.add({ title: tCommon("error"), type: "error" });
+      toastManager.add({ title: errorTitle(error), type: "error" });
     } finally {
       setActiveOverrides((current) => {
         const next = { ...current };
@@ -285,27 +333,30 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
   };
 
   const productsUsing = (variant: ManagedVariant) =>
-    variant.definition ? (usageByDefinitionId.get(variant.definition.id) ?? []) : [];
+    variant.definition ? (usageByDefinitionId.get(variant.definition.id)?.products ?? []) : [];
+  const usageCountOf = (variant: ManagedVariant) =>
+    variant.definition ? (usageByDefinitionId.get(variant.definition.id)?.productCount ?? 0) : 0;
 
   const handleWithdraw = async () => {
     if (!toWithdraw?.definition) return;
     try {
       const { key, label } = toWithdraw.definition;
       const result = await withdrawMutation.mutateAsync({ id: toWithdraw.definition.id });
-      await invalidate();
+      // The products changed too: their axes, units and booked lines.
+      await invalidateProductInventory(queryClient);
       setToWithdraw(null);
       notifyWithdrawn(result.affectedProductCount);
       onWithdrawnRef.current?.({ key, label });
-    } catch {
-      toastManager.add({ title: tCommon("error"), type: "error" });
+    } catch (error) {
+      toastManager.add({ title: errorTitle(error), type: "error" });
     }
   };
 
-  const notifyInUse = (variant: ManagedVariant, products: { name: string }[]) =>
+  const notifyInUse = (variant: ManagedVariant, products: { name: string }[], count: number) =>
     toastManager.add({
       title: t("variantInUseCannotDelete", {
         name: variant.label,
-        count: products.length,
+        count,
         products: products.map((product) => product.name).join(", "),
       }),
       type: "error",
@@ -324,8 +375,8 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
       await invalidate();
       setNewLabel("");
       setNewDialogOpen(false);
-    } catch {
-      toastManager.add({ title: tCommon("error"), type: "error" });
+    } catch (error) {
+      toastManager.add({ title: errorTitle(error), type: "error" });
     }
   };
 
@@ -342,20 +393,26 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
       await updateDefinitionMutation.mutateAsync({ id: definition.id, label });
       await invalidate();
       setEditing(null);
-    } catch {
-      toastManager.add({ title: tCommon("error"), type: "error" });
+    } catch (error) {
+      toastManager.add({ title: errorTitle(error), type: "error" });
     }
   };
 
   const handleDelete = async () => {
     if (!toDelete) return;
     try {
-      const result = await deleteDefinitionMutation.mutateAsync({ id: toDelete.definition.id });
+      await deleteDefinitionMutation.mutateAsync({ id: toDelete.definition.id });
       await invalidate();
       setToDelete(null);
-      if (!result.deleted) notifyInUse(toDelete, result.usedBy);
-    } catch {
-      toastManager.add({ title: tCommon("error"), type: "error" });
+    } catch (error) {
+      const usedBy = productsInUse(error);
+      if (usedBy) {
+        await invalidate();
+        setToDelete(null);
+        notifyInUse(toDelete, usedBy.products, usedBy.count);
+        return;
+      }
+      toastManager.add({ title: errorTitle(error), type: "error" });
     }
   };
 
@@ -398,18 +455,22 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
                 setEditing(variant);
                 setEditLabel(variant.label);
               }}
-              usageCount={productsUsing(variant).length}
+              usageCount={usageCountOf(variant)}
               onWithdraw={() => setToWithdraw(variant)}
-              onDelete={() => {
-                const definition = variant.definition;
-                if (!definition) return;
-                const used = productsUsing(variant);
-                if (used.length > 0) {
-                  notifyInUse(variant, used);
-                  return;
-                }
-                setToDelete({ ...variant, definition });
-              }}
+              onDelete={
+                canDelete
+                  ? () => {
+                      const definition = variant.definition;
+                      if (!definition) return;
+                      const used = productsUsing(variant);
+                      if (used.length > 0) {
+                        notifyInUse(variant, used, usageCountOf(variant));
+                        return;
+                      }
+                      setToDelete({ ...variant, definition });
+                    }
+                  : undefined
+              }
               onInvalidate={invalidate}
             />
           ))}
@@ -506,7 +567,7 @@ const VariantManager = ({ onWithdrawn }: { onWithdrawn?: (variant: WithdrawnVari
             <AlertDialogTitle>
               {t("withdrawVariantTitle", {
                 name: toWithdraw?.label ?? "",
-                count: toWithdraw ? productsUsing(toWithdraw).length : 0,
+                count: toWithdraw ? usageCountOf(toWithdraw) : 0,
               })}
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -590,11 +651,18 @@ const VariantDefinitionRow = ({
   /** Products that still carry this variant as a booking axis. */
   usageCount: number;
   onWithdraw: () => void;
-  onDelete: () => void;
+  /** Left out when the member may not delete: the variant's and its values' delete actions are hidden. */
+  onDelete?: () => void;
   onInvalidate: () => Promise<unknown> | void;
 }) => {
   const t = useTranslations("dashboard.products.form.unitTracking");
   const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
+  /** The API's reason when the dashboard has a message for it, else the generic error. */
+  const errorTitle = (error: unknown) => {
+    const key = apiErrorKey(error);
+    return key && tErrors.has(key) ? tErrors(key) : tCommon("error");
+  };
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [newValue, setNewValue] = useState("");
@@ -607,87 +675,78 @@ const VariantDefinitionRow = ({
   const [editValueLabel, setEditValueLabel] = useState("");
   const [editValueColor, setEditValueColor] = useState(DEFAULT_NEW_COLOR);
 
-  const catalogQueryKey = orpc.dashboard.variants.list.key({ type: "query" });
+  const catalogQueryKey = productsQueries.variantsKey();
   const createValueMutation = useMutation(
-    orpc.dashboard.variants.createValue.mutationOptions({
+    orpc.dashboard.products.createVariantValue.mutationOptions({
       onMutate: async (input) => {
         const optimisticId = `${OPTIMISTIC_VALUE_ID_PREFIX}${crypto.randomUUID()}`;
         await queryClient.cancelQueries({ queryKey: catalogQueryKey });
         queryClient.setQueryData(
           catalogQueryKey,
-          (current: VariantManagerDefinition[] | undefined) =>
-            current?.map((definition) =>
-              definition.id === input.definitionId
-                ? {
-                    ...definition,
-                    values: [
-                      ...definition.values,
-                      {
-                        id: optimisticId,
-                        label: input.label,
-                        colorHex: input.colorHex ?? null,
-                        position: definition.values.length,
-                      },
-                    ],
-                  }
-                : definition,
-            ),
+          updateDefinitionIn(input.definitionId, (definition) => ({
+            ...definition,
+            values: [
+              ...definition.values,
+              {
+                id: optimisticId,
+                label: input.label,
+                colorHex: input.colorHex ?? null,
+                position: definition.values.length,
+              },
+            ],
+          })),
         );
         return { optimisticId };
       },
-      onError: (_error, input, context) => {
+      onError: (error, input, context) => {
         if (context?.optimisticId) {
           queryClient.setQueryData(
             catalogQueryKey,
-            (current: VariantManagerDefinition[] | undefined) =>
-              current?.map((definition) =>
-                definition.id === input.definitionId
-                  ? {
-                      ...definition,
-                      values: definition.values.filter(
-                        (value) => value.id !== context.optimisticId,
-                      ),
-                    }
-                  : definition,
-              ),
+            updateDefinitionIn(input.definitionId, (definition) => ({
+              ...definition,
+              values: definition.values.filter((value) => value.id !== context.optimisticId),
+            })),
           );
         }
-        toastManager.add({ title: tCommon("error"), type: "error" });
+        toastManager.add({ title: errorTitle(error), type: "error" });
       },
       onSuccess: (created, input, context) => {
+        const { created: _created, ...createdValue } = created;
         queryClient.setQueryData(
           catalogQueryKey,
-          (current: VariantManagerDefinition[] | undefined) =>
-            current?.map((definition) => {
-              if (definition.id !== input.definitionId) return definition;
-              let optimisticValueReplaced = false;
-              const values = definition.values.flatMap((value) => {
-                if (value.id === context.optimisticId) {
-                  optimisticValueReplaced = true;
-                  return [created];
-                }
+          updateDefinitionIn(input.definitionId, (definition) => {
+            let optimisticValueReplaced = false;
+            const values = definition.values.flatMap((value) => {
+              if (value.id === context.optimisticId) {
+                optimisticValueReplaced = true;
+                return [createdValue];
+              }
 
-                if (
-                  value.id === created.id ||
-                  value.label.toLocaleLowerCase() === created.label.toLocaleLowerCase()
-                ) {
-                  return [];
-                }
+              if (
+                value.id === createdValue.id ||
+                value.label.toLocaleLowerCase() === createdValue.label.toLocaleLowerCase()
+              ) {
+                return [];
+              }
 
-                return [value];
-              });
+              return [value];
+            });
 
-              return {
-                ...definition,
-                values: optimisticValueReplaced ? values : [...values, created],
-              };
-            }),
+            return {
+              ...definition,
+              values: optimisticValueReplaced ? values : [...values, createdValue],
+            };
+          }),
         );
       },
     }),
   );
-  const updateValueMutation = useMutation(orpc.dashboard.variants.updateValue.mutationOptions());
-  const deleteValueMutation = useMutation(orpc.dashboard.variants.deleteValue.mutationOptions());
+  const updateValueMutation = useMutation(
+    orpc.dashboard.products.updateVariantValue.mutationOptions(),
+  );
+  const deleteValueMutation = useMutation(
+    orpc.dashboard.products.deleteVariantValue.mutationOptions(),
+  );
 
   const handleAddValue = async () => {
     const label = newValue.trim();
@@ -743,8 +802,8 @@ const VariantDefinitionRow = ({
       });
       await onInvalidate();
       setEditingValue(null);
-    } catch {
-      toastManager.add({ title: tCommon("error"), type: "error" });
+    } catch (error) {
+      toastManager.add({ title: errorTitle(error), type: "error" });
     }
   };
 
@@ -755,8 +814,8 @@ const VariantDefinitionRow = ({
     try {
       await deleteValueMutation.mutateAsync({ id: persistedValue.id });
       await onInvalidate();
-    } catch {
-      toastManager.add({ title: tCommon("error"), type: "error" });
+    } catch (error) {
+      toastManager.add({ title: errorTitle(error), type: "error" });
     }
   };
 
@@ -838,7 +897,7 @@ const VariantDefinitionRow = ({
                   {t("withdrawVariantAction", { count: usageCount })}
                 </DropdownMenuItem>
               )}
-              {variant.isCustom && (
+              {variant.isCustom && onDelete && (
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onClick={onDelete}
@@ -884,15 +943,17 @@ const VariantDefinitionRow = ({
                         >
                           <PencilSolidIcon className="size-3" />
                         </button>
-                        <button
-                          type="button"
-                          className="rounded-sm p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
-                          onClick={() => void handleDeleteValue(value)}
-                          disabled={disabled || deleteValueMutation.isPending}
-                          aria-label={`${tCommon("delete")} ${value.label}`}
-                        >
-                          <TrashSolidIcon className="size-3" />
-                        </button>
+                        {onDelete && (
+                          <button
+                            type="button"
+                            className="rounded-sm p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+                            onClick={() => void handleDeleteValue(value)}
+                            disabled={disabled || deleteValueMutation.isPending}
+                            aria-label={`${tCommon("delete")} ${value.label}`}
+                          >
+                            <TrashSolidIcon className="size-3" />
+                          </button>
+                        )}
                       </>
                     )}
                   </Badge>

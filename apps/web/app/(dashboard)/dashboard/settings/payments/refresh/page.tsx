@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
 import { getCurrentStore, hasPermission } from '@/lib/store-context'
-import { createAccountLink } from '@/lib/stripe'
+import { apiPorts } from '@/lib/api/ports'
+import { createOnboardingLink } from '@louez/api/adapters/stripe-connect'
+import { requireConnectClient } from '@louez/api/services/stripe-connect'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { WarningIcon } from '@louez/ui/icons'
@@ -45,7 +47,10 @@ export default async function StripeRefreshPage({
   let newUrl: string | null = null
   try {
     const { returnUrl, refreshUrl } = stripeReturnUrls(next)
-    newUrl = await createAccountLink(store.stripeAccountId, returnUrl, refreshUrl)
+    newUrl = await createOnboardingLink(requireConnectClient(apiPorts), store.stripeAccountId, {
+      returnUrl,
+      refreshUrl,
+    })
   } catch {
     // Failed to create link, show manual option
   }

@@ -2,56 +2,28 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check, ChevronDown, ExternalLink } from "lucide-react";
 
 import { Button } from "@louez/ui";
+import type { LaunchChecklistView } from "@louez/api/contracts/launch";
 import { cn } from "@louez/utils";
 
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
+import { storesQueries } from "@/lib/queries/stores.queries";
 
 import { WELCOME_OVERLAY_COMPLETED_EVENT } from "../welcome-overlay";
 import { useMeasuredSize } from "./use-measured-size";
-
-// Types defined inline to avoid server-only module import
-interface StoreMetrics {
-  activeProductCount: number;
-  totalReservations: number;
-  completedReservations: number;
-}
-
-/**
- * Whether the checklist shows the "activate online payments" step: hidden for
- * stores that chose request mode, otherwise tracks Stripe chargeability (the
- * KYC can be left pending during onboarding — payment mode silently degrades
- * to request mode until it's done).
- */
-export type OnlinePaymentsStep = "hidden" | "todo" | "done";
-
-/**
- * Why the store needs online payments. A store that came from reeent is not
- * published there until Stripe is chargeable, which makes the step urgent
- * enough to outrank the catalogue and worth its own wording.
- */
-export type OnlinePaymentsContext = "default" | "reeent";
+import { homeSetupSteps, type OnlinePaymentsContext } from "./util.setup-steps";
 
 interface SetupChecklistProps {
-  metrics: StoreMetrics;
+  /** The store's launch checklist, read by the page on the server. */
+  initialChecklist: LaunchChecklistView;
   storeSlug: string;
-  onlinePaymentsStep?: OnlinePaymentsStep;
   onlinePaymentsContext?: OnlinePaymentsContext;
   className?: string;
-}
-
-interface ChecklistItem {
-  key: string;
-  completed: boolean;
-  href?: string;
-  action?: string;
-  /** Translation key under setup.descriptions — makes the step expandable */
-  description?: string;
-  showStoreLink?: boolean;
 }
 
 const EASE_OUT_CUBIC = [0.215, 0.61, 0.355, 1] as const;
@@ -134,15 +106,19 @@ function StepIndicator({
 }
 
 export function SetupChecklist({
-  metrics,
+  initialChecklist,
   storeSlug,
-  onlinePaymentsStep = "hidden",
   onlinePaymentsContext = "default",
 }: SetupChecklistProps) {
   const t = useTranslations("dashboard.home");
   const tCommon = useTranslations("common");
   const reducedMotion = useReducedMotion() ?? false;
   const { getAbsoluteUrl } = useStorefrontUrl(storeSlug);
+  // The same checklist agents read (stores.getLaunchChecklist).
+  const { data: checklist } = useQuery({
+    ...storesQueries.launchChecklist(),
+    initialData: initialChecklist,
+  });
 
   const [open, setOpen] = useState(false);
   const [expandedLayout, setExpandedLayout] = useState(false);
@@ -154,55 +130,7 @@ export function SetupChecklist({
     size: measuredSize,
   } = useMeasuredSize({ observeHeight: !itemHeightIsAnimating });
 
-  const isReeentContext = onlinePaymentsContext === "reeent";
-
-  const onlinePaymentsItems: ChecklistItem[] =
-    onlinePaymentsStep === "hidden"
-      ? []
-      : [
-          {
-            key: "connectStripe",
-            completed: onlinePaymentsStep === "done",
-            href: "/dashboard/settings/payments",
-            action: "setup.connectStripe",
-            description: isReeentContext ? "connectStripeReeent" : "connectStripe",
-          },
-        ];
-
-  const items: ChecklistItem[] = [
-    {
-      key: "createAccount",
-      completed: true,
-    },
-    {
-      key: "configureStore",
-      completed: true,
-    },
-    // A reeent store stays unlisted there until Stripe is chargeable, so the
-    // payment step comes before the catalogue and becomes the current step.
-    ...(isReeentContext ? onlinePaymentsItems : []),
-    {
-      key: "addFirstProduct",
-      completed: metrics.activeProductCount > 0,
-      href: "/dashboard/products/new",
-      action: "setup.addFirstProduct",
-      description: "addFirstProduct",
-    },
-    ...(isReeentContext ? [] : onlinePaymentsItems),
-    {
-      key: "firstReservation",
-      completed: metrics.totalReservations > 0,
-      href: "/dashboard/reservations/new?source=onboarding",
-      action: "setup.createReservation",
-      description: "firstReservation",
-      showStoreLink: true,
-    },
-    {
-      key: "firstCompleted",
-      completed: metrics.completedReservations > 0,
-      description: "firstCompleted",
-    },
-  ];
+  const items = homeSetupSteps(checklist, onlinePaymentsContext);
 
   const completedCount = items.filter((item) => item.completed).length;
   const progress = Math.round((completedCount / items.length) * 100);

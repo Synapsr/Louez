@@ -71,21 +71,15 @@ export function ReservationNotes({
     orpc.dashboard.reservations.updateNotes.mutationOptions({
       onMutate: async (input) => {
         await queryClient.cancelQueries({
-          queryKey: orpc.dashboard.reservations.getById.key({
-            input: { reservationId: input.reservationId },
-          }),
+          queryKey: orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
         });
 
         const previous = queryClient.getQueryData(
-          orpc.dashboard.reservations.getById.key({
-            input: { reservationId: input.reservationId },
-          }),
+          orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
         );
 
         queryClient.setQueryData(
-          orpc.dashboard.reservations.getById.key({
-            input: { reservationId: input.reservationId },
-          }),
+          orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
           (current: any) => (current ? { ...current, internalNotes: input.notes } : current),
         );
 
@@ -94,16 +88,14 @@ export function ReservationNotes({
       onError: (_error, input, ctx) => {
         if (ctx?.previous) {
           queryClient.setQueryData(
-            orpc.dashboard.reservations.getById.key({
-              input: { reservationId: input.reservationId },
-            }),
+            orpc.dashboard.reservations.get.key({ input: { id: input.id } }),
             ctx.previous,
           );
         }
       },
       onSuccess: async (_result, input) => {
         setHasChanges(false);
-        await invalidateReservationAll(queryClient, input.reservationId);
+        await invalidateReservationAll(queryClient, input.id);
       },
     }),
   );
@@ -121,7 +113,7 @@ export function ReservationNotes({
     });
     setIsLoading(true);
     try {
-      await updateNotesMutation.mutateAsync({ reservationId, notes });
+      await updateNotesMutation.mutateAsync({ id: reservationId, notes });
       captureReservationActionSucceeded({
         reservationId,
         action: reservationAnalyticsActions.updateNotes,

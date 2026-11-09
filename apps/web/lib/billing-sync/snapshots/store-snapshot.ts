@@ -8,7 +8,7 @@ import {
   subscriptions,
 } from "@louez/db";
 
-import { normalizeCurrency } from "@/lib/billing-sync/money";
+import { normalizeCurrency } from "@louez/utils";
 import { type PlanRow, planInForce } from "@/lib/plan-limits";
 
 import type { BuiltSnapshot, SnapshotKey, SnapshotReader } from "./build-snapshot";

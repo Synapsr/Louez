@@ -13,7 +13,7 @@ export const toStoreTimelineReservation = (
   startDate: new Date(row.startDate),
   endDate: new Date(row.endDate),
   customerId: row.customerId,
-  customerName: row.customerName,
+  customerName: row.customerName ?? "—",
   subtotalAmount: row.subtotalAmount,
   depositAmount: row.depositAmount,
   totalAmount: row.totalAmount,

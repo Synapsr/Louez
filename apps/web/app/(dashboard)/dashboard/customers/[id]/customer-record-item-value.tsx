@@ -10,7 +10,7 @@ import { CustomerSocialLinks } from "@/components/dashboard/customers/customer-s
 import { EmailContactPopover } from "@/components/dashboard/email-contact-popover";
 import { PhoneContactPopover } from "@/components/dashboard/phone-contact-popover";
 import { getAgeFromBirthDate } from "@/lib/customers/util.customer-age";
-import { getCountryName } from "@/lib/utils/countries";
+import { getCountryName } from "@louez/utils/countries";
 
 import type { CustomerRecord } from "./customer-record.types";
 

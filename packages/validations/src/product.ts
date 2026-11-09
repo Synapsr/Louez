@@ -218,7 +218,29 @@ function hasDuplicateRateTierPeriods(
   return false;
 }
 
-function ignoreDurationPricingForFixed(input: unknown): unknown {
+/**
+ * Most items each list of a product holds, shared by the form's editors and
+ * the API. The form generates 100 units at a time and shows 5 images; these
+ * leave room for large fleets while keeping a save short. A product stored
+ * with more before a limit existed still saves, as long as the list does not
+ * grow.
+ */
+export const PRODUCT_LIST_LIMITS = {
+  units: 1000,
+  rateTiers: 50,
+  accessories: 100,
+  categoryIds: 100,
+  images: 20,
+} as const;
+
+export type ProductListName = keyof typeof PRODUCT_LIST_LIMITS;
+
+/**
+ * A fixed price takes no duration pricing: the form keeps its base period and
+ * tiers around (they may be empty or half typed) and they are dropped, not
+ * checked. The API contract runs it before its own validation too.
+ */
+export function ignoreDurationPricingForFixed(input: unknown): unknown {
   const parsed = z.record(z.string(), z.unknown()).safeParse(input);
   if (!parsed.success || parsed.data.pricingKind !== 'fixed') {
     return input;
@@ -537,9 +559,12 @@ export const createCategorySchema = (
     imageUrl: storedImageUrlSchema.optional().nullable(),
   });
 
-// Default schemas for server-side validation
-export const productSchema = z
-  .preprocess(ignoreDurationPricingForFixed, z.object({
+/**
+ * The fields of a product as the server takes them, before the cross-field
+ * rules of `productSchema`. The API contract reuses them to describe its
+ * input; `productSchema` stays the one validation.
+ */
+export const productFieldsSchema = z.object({
     name: z
       .string()
       .min(2, 'validation.minLength')
@@ -589,7 +614,11 @@ export const productSchema = z
       .array(bookingAttributeAxisSchema)
       .max(3, 'validation.maxItems')
       .optional(),
-  }))
+  });
+
+// Default schemas for server-side validation
+export const productSchema = z
+  .preprocess(ignoreDurationPricingForFixed, productFieldsSchema)
   .superRefine((data, ctx) => {
     if (data.pricingKind === 'fixed') {
       if (
@@ -688,16 +717,6 @@ export const productSchema = z
     }
   });
 
-export const categorySchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, 'validation.minLength')
-    .max(255, 'validation.maxLength'),
-  description: z.string().optional().nullable(),
-  imageUrl: storedImageUrlSchema.optional().nullable(),
-});
-
 type ParsedProductInput = z.infer<typeof productSchema>;
 export type ProductInput = Omit<
   ParsedProductInput,
@@ -707,4 +726,3 @@ export type ProductInput = Omit<
   pricingKind?: 'duration' | 'fixed';
   stockKind?: 'returnable' | 'consumable' | 'untracked';
 };
-export type CategoryInput = z.infer<typeof categorySchema>;

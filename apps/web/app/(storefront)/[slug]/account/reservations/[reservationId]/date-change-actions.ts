@@ -11,7 +11,7 @@ import {
   canRequestDateChange,
   getDateChangeRequests,
   isValidRequestedEndDate,
-} from "@/lib/reservations/util.date-change-request";
+} from "@louez/validations";
 import { log } from "@/lib/evlog";
 
 const inputSchema = z.object({

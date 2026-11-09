@@ -9,7 +9,7 @@ import type {
   ProductReservationStatus,
   ProductRevenueStats,
 } from "@/app/(dashboard)/dashboard/products/[id]/queries";
-import type { ProductTimelineData } from "@/app/(dashboard)/dashboard/products/[id]/reservation-timeline-actions";
+import type { ProductTimelineData } from "@/app/(dashboard)/dashboard/products/[id]/components/reservations-timeline/types";
 import type { ProductInfoSectionProps } from "@/app/(dashboard)/dashboard/products/[id]/components/product-info-section-view";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import { addDays, startOfDay } from "@/components/dashboard/reservations-timeline/timeline-utils";
@@ -125,7 +125,9 @@ export const createDemoProductDetail = (
       ...entry,
       // Tooltip text remains real; demo customer/product links must not leave the scene.
       customerId: null,
-      items: entry.items?.map((item) => ({ ...item, productId: null })),
+      subtotalAmount: entry.subtotalAmount ?? null,
+      depositAmount: entry.depositAmount ?? null,
+      items: entry.items?.map((item) => ({ ...item, productId: null })) ?? [],
       assignedUnitIds: availableUnits.slice(0, entry.quantity).map((unit) => unit.id),
     });
   }
@@ -184,7 +186,9 @@ export const createDemoProductDetail = (
   const totalCapacityDays = product.quantity * 30;
   const inventoryDetail: ProductInventoryDetail = { mode: "tracked", units };
   const infoProduct: ProductInfoSectionProps["product"] = {
-    description: product.id === "demo-city-bike" ? getDemoProductsText(locale).description : null,
+    // The demo's own text, not user input: no sanitising needed.
+    descriptionHtml:
+      product.id === "demo-city-bike" ? getDemoProductsText(locale).description : null,
     price: product.price,
     pricingKind: "duration",
     pricingMode: "day",

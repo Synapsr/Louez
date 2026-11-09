@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, reservations, reservationActivity } from "@louez/db";
 import { getCurrentStore, hasPermission } from "@/lib/store-context";
-import { dateChangeRequestSchema } from "@/lib/reservations/util.date-change-request";
+import { dateChangeRequestSchema } from "@louez/validations";
 import { log } from "@/lib/evlog";
 
 export const rejectReturnDateChange = async (reservationId: string, requestId: string) => {

@@ -10,19 +10,28 @@
     "./account-deletion": "./src/account-deletion.ts",
     "./client": "./src/client.ts",
     "./env": "./src/env.ts",
+    "./guarded-fetch": "./src/guarded-fetch.ts",
+    "./oauth": "./src/oauth.ts",
+    "./oauth-client-icon": "./src/oauth-client-icon.ts",
+    "./platform-admin": "./src/platform-admin.ts",
     "./password": "./src/password.ts",
-    "./password-policy": "./src/password-policy.ts"
+    "./password-policy": "./src/password-policy.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "@better-auth/passkey": "1.6.25",
+    "@better-auth/cimd": "1.7.18",
+    "@better-auth/mcp": "1.7.18",
+    "@better-auth/oauth-provider": "1.7.18",
+    "@better-auth/passkey": "1.7.18",
     "@louez/db": "workspace:*",
     "@louez/email": "workspace:*",
     "@react-email/render": "^2.0.1",
     "@t3-oss/env-core": "^0.13.10",
-    "better-auth": "^1.6.22",
+    "better-auth": "1.7.18",
+    "jose": "^6.2.3",
     "nanoid": "^5.1.6",
     "zod": "^4.3.5"
   },

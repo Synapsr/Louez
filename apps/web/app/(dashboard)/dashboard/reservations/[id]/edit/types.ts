@@ -1,4 +1,4 @@
-import type { DateChangeRequest } from "@/lib/reservations/util.date-change-request";
+import type { DateChangeRequest } from "@louez/validations";
 import type {
   DeliverySettings,
   LegMethod,

@@ -6,7 +6,7 @@ import { db, products } from "@louez/db";
 
 import { getCanonicalUrl } from "@/lib/seo";
 import { loadCatalogCategories } from "@/lib/storefront/catalog.queries";
-import { hasRichTextContent } from "@/lib/util.rich-text";
+import { hasRichTextContent } from "@louez/utils";
 import { buildStoreSitemap } from "@/lib/util.sitemap";
 import { resolveStoreFromHost } from "@/lib/util.storefront-host";
 

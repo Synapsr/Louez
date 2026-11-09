@@ -20,12 +20,12 @@ The relying-party ID is the hostname of `AUTH_URL`, without a port. It deliberat
 
 ## Security boundaries
 
-The official Better Auth passkey plugin owns challenge generation, signed challenge cookies, single-use challenge consumption, signature verification, counters, and session creation. The plugin is pinned to `1.6.25` and uses the existing database-backed rate limiter.
+The official Better Auth passkey plugin owns challenge generation, signed challenge cookies, single-use challenge consumption, signature verification, counters, and session creation. The plugin is pinned to `1.7.18`, like Better Auth, and uses the existing database-backed rate limiter.
 
 `packages/auth/src/passkey.ts` additionally enforces:
 
 - Exact expected origin and relying-party hostname, never an origin taken from the caller.
-- Discoverable credentials and user verification. The plugin's internal verifier uses `requireUserVerification: false` in this version; both `afterVerification` callbacks therefore require the verified `userVerified` flag before persisting a key or creating a session. Authentication options request `required` as well.
+- Discoverable credentials and user verification. Since 1.7 the plugin requests and verifies user verification when it is `required`, at registration and at sign-in; both `afterVerification` callbacks still require the verified `userVerified` flag before persisting a key or creating a session.
 - An authoritative database session for key management and listing, bypassing the five-minute cookie cache. Registration, deletion, and rename require a session created within the last ten minutes. The UI offers sign-out and reauthentication when that window expires.
 - Bounded labels; credential ownership is checked by the plugin. Keys belong to users, not individual stores, just like other management sign-in methods.
 

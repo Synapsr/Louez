@@ -11,22 +11,27 @@
   "exports": {
     ".": "./src/index.ts",
     "./http": "./src/transports/http.ts",
-    "./testing": "./src/testing/reservation-tools-client.ts"
+    "./testing": "./src/testing/request-context.ts",
+    "./testing/cjs-named-exports": "./src/testing/cjs-named-exports.ts"
   },
   "scripts": {
-    "test": "SKIP_ENV_VALIDATION=true node --import tsx --test \"src/**/*.test.ts\""
+    "test": "SKIP_ENV_VALIDATION=true node --import tsx --experimental-test-module-mocks --import ./src/testing/cjs-named-exports.ts --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@louez/api": "workspace:*",
     "@louez/db": "workspace:*",
     "@louez/types": "workspace:*",
     "@louez/utils": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
+    "@orpc/server": "1.14.14",
     "drizzle-orm": "^0.45.2",
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@louez/auth": "workspace:*",
     "@louez/config": "workspace:*",
+    "@orpc/client": "1.14.14",
     "@types/node": "^25.3.5",
     "tsx": "^4.21.0",
     "typescript": "catalog:"

@@ -6,7 +6,7 @@ import { MapPinIcon } from "@louez/ui/icons";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
 
 import { InfoCallout } from "@/components/dashboard/info-callout";
-import { getCountryName } from "@/lib/utils/countries";
+import { getCountryName } from "@louez/utils/countries";
 
 interface StoreSettingsBillingSectionProps {
   form: any;

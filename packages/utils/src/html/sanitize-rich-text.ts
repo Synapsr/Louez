@@ -1,11 +1,23 @@
+import { Parser, Tokenizer, type ParserOptions, type TokenizerCallbacks } from "htmlparser2";
+import sanitizeHtml from "sanitize-html";
+
+import { RICH_TEXT_MAX_DEPTH } from "./rich-text-content";
+
 /**
  * Allow-list sanitiser for HTML written in the dashboard rich-text editor
  * (store description, product description, terms, legal notice). Runs on
- * write (API services) and on read (storefront), so a stored value is safe
- * whichever path produced it.
+ * write (API services) and on read (storefront, dashboard), always on the
+ * server: it is not exported from the package's root, so no client bundle
+ * carries the parser.
+ *
+ * It parses the HTML (htmlparser2, through sanitize-html), so its cost grows
+ * with the input's length, whatever the input, and it is idempotent:
+ * sanitising its own output changes nothing, so a value saved again and
+ * again, then rendered, keeps its text as it was (`&amp;` stays one `&`).
  */
 
-const ALLOWED_TAGS = new Set([
+/** The editor's tags; any other tag is dropped and its text kept. */
+const ALLOWED_TAGS = [
   "a",
   "blockquote",
   "br",
@@ -21,126 +33,205 @@ const ALLOWED_TAGS = new Set([
   "strong",
   "u",
   "ul",
-]);
+];
 
-const VOID_TAGS = new Set(["br", "hr"]);
-const HTML_TAG_PATTERN = /<[^>]*>/g;
-const HREF_PATTERN = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i;
+/** Elements whose content is code or not text: dropped with their content. */
+const DROPPED_WITH_CONTENT = [
+  "script",
+  "style",
+  "template",
+  "noscript",
+  "textarea",
+  "option",
+  "title",
+  "iframe",
+  "object",
+];
 
-const escapeHtml = (value: string): string =>
-  value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+export { RICH_TEXT_MAX_DEPTH };
 
-const escapeHtmlAttribute = (value: string): string =>
-  escapeHtml(value).replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+/**
+ * The parser's options, the same for the depth check and for sanitize-html:
+ * entities stay as written; only a bare `&`, `<` and `>` are escaped.
+ */
+const PARSER_OPTIONS: ParserOptions = { decodeEntities: false };
 
-const decodeCodePoint = (value: string, radix: 10 | 16): string => {
-  const codePoint = Number.parseInt(value, radix);
+const TOO_DEEP = Symbol("too deep");
 
-  if (!Number.isSafeInteger(codePoint) || codePoint > 0x10ffff) {
-    return "�";
+/**
+ * Whether the HTML nests deeper than `RICH_TEXT_MAX_DEPTH`, as htmlparser2
+ * itself reads it (the parser sanitize-html uses, with its options). The
+ * parse stops as soon as it gets there, so its stack never grows past the
+ * limit: a deep input is caught in well under a millisecond, and any other
+ * costs one linear parse.
+ */
+export function richTextTooDeep(html: string): boolean {
+  let depth = 0;
+  const parser = new Parser(
+    {
+      onopentag: () => {
+        depth += 1;
+        if (depth > RICH_TEXT_MAX_DEPTH) throw TOO_DEEP;
+      },
+      onclosetag: () => {
+        depth -= 1;
+      },
+    },
+    PARSER_OPTIONS,
+  );
+  try {
+    parser.write(html);
+    parser.end();
+    return false;
+  } catch (error) {
+    if (error === TOO_DEEP) return true;
+    throw error;
   }
-
-  return String.fromCodePoint(codePoint);
-};
+}
 
 const NAMED_ENTITIES: Record<string, string> = {
-  "&amp;": "&",
-  "&apos;": "'",
-  "&gt;": ">",
-  "&lt;": "<",
-  "&quot;": '"',
+  amp: "&",
+  apos: "'",
+  gt: ">",
+  lt: "<",
+  quot: '"',
+  colon: ":",
+  tab: "\t",
+  newline: "\n",
 };
 
-const decodeHtmlEntities = (value: string): string =>
-  value.replace(
-    /&(?:#(\d+)|#x([\da-f]+)|amp|apos|gt|lt|quot);/gi,
-    (entity, decimal: string | undefined, hexadecimal: string | undefined) => {
-      if (decimal) {
-        return decodeCodePoint(decimal, 10);
-      }
+/** The href as a browser reads it: character references decoded. */
+const decodeAttribute = (value: string): string =>
+  value.replace(/&(?:#(\d+)|#x([\da-f]+)|([a-z]+));?/gi, (entity, decimal, hexadecimal, name) => {
+    if (decimal || hexadecimal) {
+      const codePoint = Number.parseInt(decimal ?? hexadecimal, decimal ? 10 : 16);
+      return Number.isSafeInteger(codePoint) && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : "�";
+    }
+    return NAMED_ENTITIES[String(name).toLowerCase()] ?? entity;
+  });
 
-      if (hexadecimal) {
-        return decodeCodePoint(hexadecimal, 16);
-      }
+/**
+ * Only an absolute http(s) link, its scheme read on a decoded copy as the
+ * browser would; anything else is no link.
+ */
+const safeHref = (href: string | undefined): string | null => {
+  if (!href) return null;
+  // Control characters and blanks a browser ignores inside a scheme.
+  const decoded = [...decodeAttribute(href)]
+    .filter((char) => {
+      const code = char.codePointAt(0) ?? 0;
+      return code > 0x20 && (code < 0x7f || code > 0x9f);
+    })
+    .join("");
+  // The value stays as written: decoding it here would drop one layer of
+  // escaping on each pass (`&amp;amp;` → `&amp;`).
+  return /^https?:\/\//i.test(decoded) ? href.trim() : null;
+};
 
-      return NAMED_ENTITIES[entity.toLowerCase()] ?? entity;
+const OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: ALLOWED_TAGS,
+  allowedAttributes: { a: ["href", "rel"] },
+  allowedSchemes: ["http", "https"],
+  allowedSchemesAppliedToAttributes: ["href"],
+  allowProtocolRelative: false,
+  disallowedTagsMode: "discard",
+  nonTextTags: DROPPED_WITH_CONTENT,
+  parser: PARSER_OPTIONS,
+  transformTags: {
+    a: (_tagName, attribs) => {
+      const href = safeHref(attribs.href);
+      const safe: sanitizeHtml.Attributes = href ? { href, rel: "noopener noreferrer" } : {};
+      return { tagName: "a", attribs: safe };
     },
-  );
-
-const getSafeHref = (tag: string): string | null => {
-  const hrefMatch = tag.match(HREF_PATTERN);
-  const rawHref = hrefMatch?.[1] ?? hrefMatch?.[2] ?? hrefMatch?.[3];
-
-  if (!rawHref) {
-    return null;
-  }
-
-  const href = decodeHtmlEntities(rawHref).trim();
-
-  if (!/^https?:\/\//i.test(href)) {
-    return null;
-  }
-
-  return escapeHtmlAttribute(href);
+  },
+  // Plain-text line breaks become `<br />`; the blank between two tags does not.
+  textFilter: (text) => (text.trim() === "" ? text : text.replace(/\r?\n/g, "<br />")),
 };
 
-// A tag name follows `<` (or `</`) directly and starts with a letter, as in
-// the HTML parser; `a < b > c` in plain text stays text.
-const TAG_NAME_PATTERN = /^<(\/?)([a-z][a-z\d]*)(?:\s[^>]*)?\s*\/?\s*>$/i;
+/** The elements whose content the sanitiser drops, as a set. */
+const DROPPED = new Set(DROPPED_WITH_CONTENT);
 
-const sanitizeTag = (tag: string): string => {
-  const tagMatch = tag.match(TAG_NAME_PATTERN);
+const ignore = () => {};
 
-  if (!tagMatch) {
-    return escapeHtml(tag);
-  }
+/**
+ * The text a value shows, as htmlparser2's tokenizer reads it: its text
+ * events only, so no attribute value and no comment, and none of the content
+ * of the elements the sanitiser drops (scripts, styles…). The tokenizer
+ * keeps no stack of open tags: one pass, however deep the input.
+ */
+function visibleText(html: string): string {
+  const parts: string[] = [];
+  let dropped: string | null = null;
+  let droppedDepth = 0;
+  const nameAt = (start: number, end: number) => html.slice(start, end).toLowerCase();
+  const callbacks: TokenizerCallbacks = {
+    onattribdata: ignore,
+    onattribentity: ignore,
+    onattribend: ignore,
+    onattribname: ignore,
+    oncdata: ignore,
+    oncomment: ignore,
+    ondeclaration: ignore,
+    onend: ignore,
+    onopentagend: ignore,
+    onprocessinginstruction: ignore,
+    onselfclosingtag: ignore,
+    ontextentity: ignore,
+    onopentagname: (start, end) => {
+      const name = nameAt(start, end);
+      if (dropped === null && DROPPED.has(name)) {
+        dropped = name;
+        droppedDepth = 1;
+      } else if (dropped === name) {
+        droppedDepth += 1;
+      }
+    },
+    onclosetag: (start, end) => {
+      if (dropped !== null && nameAt(start, end) === dropped) {
+        droppedDepth -= 1;
+        if (droppedDepth === 0) dropped = null;
+      }
+    },
+    ontext: (start, end) => {
+      if (dropped === null) parts.push(html.slice(start, end));
+    },
+  };
+  const tokenizer = new Tokenizer(PARSER_OPTIONS, callbacks);
+  tokenizer.write(html);
+  tokenizer.end();
+  return parts.join("");
+}
 
-  const isClosingTag = tagMatch[1] === "/";
-  const tagName = tagMatch[2]?.toLowerCase();
+/**
+ * HTML no editor wrote, too deep to keep its markup: its visible text, with
+ * `<` and `>` as characters, through the sanitiser like any text (a bare `&`
+ * escaped, an entity kept, line breaks as `<br />`). Shallow by
+ * construction, so a second pass returns the same string.
+ */
+const textOnly = (html: string): string =>
+  sanitizeHtml(visibleText(html).replaceAll("<", "&lt;").replaceAll(">", "&gt;"), OPTIONS);
 
-  if (!tagName) {
-    return escapeHtml(tag);
-  }
-
-  if (!ALLOWED_TAGS.has(tagName)) {
-    return "";
-  }
-
-  if (VOID_TAGS.has(tagName)) {
-    return isClosingTag ? "" : `<${tagName}>`;
-  }
-
-  if (isClosingTag) {
-    return `</${tagName}>`;
-  }
-
-  if (tagName === "a") {
-    const href = getSafeHref(tag);
-    return href ? `<a href="${href}" rel="noopener noreferrer">` : "<a>";
-  }
-
-  return `<${tagName}>`;
-};
+/**
+ * Sanitised editor HTML, and whether the value nests deeper than
+ * `RICH_TEXT_MAX_DEPTH`: as sent, or once sanitised (a line break the
+ * sanitiser turns into `<br />` counts too). Too deep, the HTML is the
+ * value's text alone; a write refuses it instead.
+ */
+export function sanitizeRichText(html: string): { html: string; tooDeep: boolean } {
+  if (richTextTooDeep(html)) return { html: textOnly(html), tooDeep: true };
+  const sanitized = sanitizeHtml(html, OPTIONS);
+  if (richTextTooDeep(sanitized)) return { html: textOnly(html), tooDeep: true };
+  return { html: sanitized, tooDeep: false };
+}
 
 /**
  * Keeps the editor's markup (allow-list above, attributes stripped except a
  * safe `href`) and drops every other tag while keeping its text, so a pasted
- * `<span style>` or `<code>` never shows up as literal angle brackets. Text
- * that is not a tag is escaped; plain-text line breaks become `<br>`.
+ * `<span style>` or `<code>` never shows up as literal angle brackets.
+ * Script-like elements go with their content, comments go. Plain-text line
+ * breaks become `<br />`. HTML nested deeper than `RICH_TEXT_MAX_DEPTH`
+ * (never the editor's) comes out as its text alone: writes refuse it first.
  */
-export const sanitizeRichTextHtml = (html: string): string => {
-  let sanitizedHtml = "";
-  let lastIndex = 0;
-
-  for (const match of html.matchAll(HTML_TAG_PATTERN)) {
-    const matchIndex = match.index;
-
-    sanitizedHtml += escapeHtml(html.slice(lastIndex, matchIndex)).replaceAll(/\r?\n/g, "<br>");
-    sanitizedHtml += sanitizeTag(match[0]);
-    lastIndex = matchIndex + match[0].length;
-  }
-
-  sanitizedHtml += escapeHtml(html.slice(lastIndex)).replaceAll(/\r?\n/g, "<br>");
-
-  return sanitizedHtml;
-};
+export const sanitizeRichTextHtml = (html: string): string => sanitizeRichText(html).html;

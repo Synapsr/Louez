@@ -40,6 +40,7 @@ import {
 } from "@louez/ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez/ui";
 import { toastManager } from "@louez/ui";
+import { PRODUCT_LIST_LIMITS } from "@louez/validations";
 import {
   cn,
   canonicalizeAttributes,
@@ -55,13 +56,17 @@ import {
   type VariantCatalogDefinition,
   type VariantRegistryEntry,
 } from "@/components/dashboard/util.variant-registry";
+import { remainingListSlots } from "@/components/dashboard/util.product-list-limits";
 import {
   VariantManagerDrawer,
   type WithdrawnVariant,
 } from "@/components/dashboard/variant-manager";
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
 import { useImageUpload } from "@/hooks/use-image-upload";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { invalidateVariantCatalog } from "@/lib/orpc/invalidation";
 import { orpc } from "@/lib/orpc/react";
+import { productsQueries } from "@/lib/queries/products.queries";
 import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
 import { resolveVariantPresets } from "@/lib/variant-presets";
 
@@ -727,6 +732,8 @@ interface UnitTrackingEditorProps {
   disabled?: boolean;
   showValidationErrors?: boolean;
   productId?: string;
+  /** Deleting a catalog variant or value needs the member's delete permission. */
+  canDelete?: boolean;
 }
 
 const MAX_GENERATED_UNITS = 100;
@@ -757,9 +764,11 @@ export function UnitTrackingEditor({
   disabled = false,
   showValidationErrors = false,
   productId,
+  canDelete = false,
 }: UnitTrackingEditorProps) {
   const t = useTranslations("dashboard.products.form.unitTracking");
   const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
   // The editor mounts once the stock choice is made. Arriving on unit tracking
   // with a declared quantity seeds the generator with it, instead of creating
   // empty (and invalid) unit rows.
@@ -778,24 +787,17 @@ export function UnitTrackingEditor({
 
   // Store-level shared variant catalog
   const queryClient = useQueryClient();
-  const variantCatalogQuery = useQuery(orpc.dashboard.variants.list.queryOptions());
-  const variantCatalog: VariantCatalogDefinition[] = variantCatalogQuery.data ?? [];
+  const variantCatalogQuery = useQuery(productsQueries.variants());
+  const variantCatalog: VariantCatalogDefinition[] = variantCatalogQuery.data?.items ?? [];
+  const invalidateVariants = () => invalidateVariantCatalog(queryClient);
   const ensureDefinitionMutation = useMutation(
-    orpc.dashboard.variants.ensureDefinition.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: orpc.dashboard.variants.key(),
-        });
-      },
+    orpc.dashboard.products.ensureVariantDefinition.mutationOptions({
+      onSuccess: () => invalidateVariants(),
     }),
   );
   const createValueMutation = useMutation(
-    orpc.dashboard.variants.createValue.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: orpc.dashboard.variants.key(),
-        });
-      },
+    orpc.dashboard.products.createVariantValue.mutationOptions({
+      onSuccess: () => invalidateVariants(),
     }),
   );
 
@@ -818,8 +820,12 @@ export function UnitTrackingEditor({
   const ensureVariantDefinition = async (input: EnsureDefinitionInput) => {
     try {
       return await ensureDefinitionMutation.mutateAsync(input);
-    } catch {
-      toastManager.add({ title: tCommon("error"), type: "error" });
+    } catch (error) {
+      const key = apiErrorKey(error);
+      toastManager.add({
+        title: key && tErrors.has(key) ? tErrors(key) : tCommon("error"),
+        type: "error",
+      });
       return null;
     }
   };
@@ -897,8 +903,12 @@ export function UnitTrackingEditor({
     }).length;
   }, [bookingAttributeAxes, units]);
 
+  // The API holds a product to PRODUCT_LIST_LIMITS.units: past it, adding stops.
+  const remainingUnits = remainingListSlots("units", units.length);
+  const unitsFull = remainingUnits === 0;
+
   const generationPreview = useMemo(() => {
-    const count = Math.min(parseInt(genCount, 10) || 0, MAX_GENERATED_UNITS);
+    const count = Math.min(parseInt(genCount, 10) || 0, MAX_GENERATED_UNITS, remainingUnits);
     if (!effectivePrefix.trim() || count < 1) return null;
     const from = getNextSequenceNumber(units, effectivePrefix.trim());
     const to = from + count - 1;
@@ -907,11 +917,11 @@ export function UnitTrackingEditor({
     if (count === 1) return first;
     const last = `${effectivePrefix.trim()}${String(to).padStart(padLength, "0")}`;
     return `${first} … ${last}`;
-  }, [effectivePrefix, genCount, units]);
+  }, [effectivePrefix, genCount, units, remainingUnits]);
 
   const commitNewRef = () => {
     const identifier = newRef.trim();
-    if (disabled || !identifier) return;
+    if (disabled || !identifier || unitsFull) return;
     if (!newRefHasRequiredVariants) {
       newRefVariantsInputRef.current?.focus();
       return;
@@ -1044,7 +1054,7 @@ export function UnitTrackingEditor({
 
   const handleGenerate = () => {
     const prefix = effectivePrefix.trim();
-    const count = Math.min(parseInt(genCount, 10) || 0, MAX_GENERATED_UNITS);
+    const count = Math.min(parseInt(genCount, 10) || 0, MAX_GENERATED_UNITS, remainingUnits);
     if (!prefix || count < 1) return;
 
     const from = getNextSequenceNumber(units, prefix);
@@ -1229,7 +1239,7 @@ export function UnitTrackingEditor({
                   className={cn("shrink-0", !hasRequiredVariants && "rounded-l-none border-l-0")}
                   variant="outline"
                   onClick={commitNewRef}
-                  disabled={disabled || !newRef.trim() || !newRefHasRequiredVariants}
+                  disabled={disabled || unitsFull || !newRef.trim() || !newRefHasRequiredVariants}
                 >
                   <Plus data-slot="icon" className="size-4" />
                   {t("addUnit")}
@@ -1270,7 +1280,10 @@ export function UnitTrackingEditor({
                       ariaLabel={t("generatorCount")}
                     />
                   </div>
-                  <Button onClick={handleGenerate} disabled={disabled || !effectivePrefix.trim()}>
+                  <Button
+                    onClick={handleGenerate}
+                    disabled={disabled || unitsFull || !effectivePrefix.trim()}
+                  >
                     {t("bulkGenerate")}
                   </Button>
                 </div>
@@ -1284,6 +1297,12 @@ export function UnitTrackingEditor({
           </Collapsible>
 
           {/* Warnings */}
+          {unitsFull && (
+            <div className="bg-muted text-muted-foreground flex items-center gap-2 rounded-md p-3 text-sm">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{t("limitReached", { max: PRODUCT_LIST_LIMITS.units })}</span>
+            </div>
+          )}
           {duplicateIdentifiers.size > 0 && (
             <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-3 text-sm">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -1309,6 +1328,7 @@ export function UnitTrackingEditor({
         open={variantManagerOpen}
         onOpenChange={setVariantManagerOpen}
         onWithdrawn={withdrawVariantFromDraft}
+        canDelete={canDelete}
       />
     </div>
   );

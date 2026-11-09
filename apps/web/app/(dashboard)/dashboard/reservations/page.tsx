@@ -1,9 +1,13 @@
 import { PendingDateChangeRequests } from "@/components/reservations/pending-date-change-requests";
 import { Suspense } from "react";
 
-import { getDashboardReservationsList } from "@louez/api/services";
+import {
+  RESERVATION_PAGE_MAX,
+  RESERVATION_PAGE_NUMBER_MAX,
+} from "@louez/api/contracts/reservations";
 import { Skeleton } from "@louez/ui";
 
+import { serverApi } from "@/lib/api/server-api";
 import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
 import { getCurrentStore } from "@/lib/store-context";
 
@@ -105,6 +109,12 @@ function normalizeSort(value: string | undefined) {
   return undefined;
 }
 
+/** A page or page size from the URL, within what the list takes. */
+function positiveInteger(value: string | undefined, fallback: number, max: number) {
+  const parsed = value ? Number.parseInt(value, 10) : Number.NaN;
+  return Number.isInteger(parsed) && parsed >= 1 ? Math.min(parsed, max) : fallback;
+}
+
 function normalizeSortDirection(value: string | undefined) {
   if (value === "asc" || value === "desc") return value;
   return undefined;
@@ -149,24 +159,25 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
   const search = params.search?.trim() || undefined;
   const sort = normalizeSort(params.sort);
   const sortDirection = normalizeSortDirection(params.sortDirection);
-  const page = params.page ? parseInt(params.page, 10) : 1;
-  const pageSize = params.pageSize ? parseInt(params.pageSize, 10) : 25;
+  const page = positiveInteger(params.page, 1, RESERVATION_PAGE_NUMBER_MAX);
+  const pageSize = positiveInteger(params.pageSize, 25, RESERVATION_PAGE_MAX);
 
+  // The same call as the list's query, so the client takes it as its first page.
   const initialDataPromise =
     view === "list"
-      ? getDashboardReservationsList({
-          storeId: store.id,
-          status,
-          period,
-          operation,
-          paymentMethod,
-          limit: 100,
-          search,
-          sort,
-          sortDirection,
-          page,
-          pageSize,
-        })
+      ? serverApi().then((api) =>
+          api.reservations.list({
+            status,
+            period,
+            operation,
+            paymentMethod,
+            search,
+            sort,
+            sortDirection: sortDirection ?? "desc",
+            page,
+            limit: pageSize,
+          }),
+        )
       : Promise.resolve(undefined);
 
   // Fetch the shared catalog with the rest of the page data so switching to

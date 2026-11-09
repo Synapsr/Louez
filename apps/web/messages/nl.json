@@ -1511,7 +1511,8 @@
             "basePricing": "Basistarieven",
             "title": "Prijssimulatie",
             "subtitle": "Totale prijs per huurperiode"
-          }
+          },
+          "limitReached": "Een product heeft maximaal {max} tarieven."
         },
         "unitTracking": {
           "toggle": "Individuele eenheden volgen",
@@ -1652,7 +1653,8 @@
           "addValuePlaceholder": "Nieuwe waarde…",
           "noVariants": "Geen varianten",
           "variantsCount": "{count, plural, one {# variant} other {# varianten}}",
-          "unitImages": "Foto's van de eenheid"
+          "unitImages": "Foto's van de eenheid",
+          "limitReached": "Een product heeft maximaal {max} eenheden. Verwijder er een om een andere toe te voegen."
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",
@@ -3952,6 +3954,7 @@
         "countryTimezone": "Tijdzone",
         "currency": "Valuta",
         "currencyDescription": "De valuta die wordt gebruikt om prijzen weer te geven en uw klanten te factureren",
+        "currencyLegacy": "{code} (niet meer aangeboden)",
         "locale": "Terugvaltaal",
         "localeDescription": "Taal die wordt gebruikt als de browser van de bezoeker geen taal vraagt die de winkel aanbiedt, en waarin Google je winkel indexeert. Een bezoeker ziet altijd eerst zijn browsertaal.",
         "localeAuto": "Platformtaal (Frans)",
@@ -4281,6 +4284,10 @@
             "payment_failed": {
               "label": "Betaling mislukt",
               "description": "Wanneer een betaling mislukt"
+            },
+            "payment_disputed": {
+              "label": "Betaling betwist",
+              "description": "Wanneer een klant een betaling bij zijn bank betwist"
             }
           },
           "reminder": {
@@ -4705,6 +4712,8 @@
         "noKeys": "Nog geen API-sleutels. Maak er een aan om te beginnen.",
         "keyRevoked": "API-sleutel ingetrokken.",
         "lastUsed": "Laatst gebruikt",
+        "confirmSensitive": "Bevestigen vóór gevoelige acties",
+        "confirmSensitiveSaved": "Instelling opgeslagen",
         "endpointsTitle": "Eindpunten",
         "endpointsDescription": "Gebruik deze endpoints om toegang te krijgen tot uw winkelgegevens.",
         "mcpServerTitle": "MCP-server (HTTP)",
@@ -6822,6 +6831,7 @@
       "disclaimer": "De AI-assistent kan fouten maken. Controleer belangrijke informatie.",
       "newConversation": "Nieuw gesprek",
       "openFullPage": "Openen als volledige pagina",
+      "opensInNewTab": "opent in een nieuw tabblad",
       "history": {
         "title": "Geschiedenis",
         "empty": "Geen gesprekken",
@@ -8474,9 +8484,7 @@
         "confirm": "Aanvraag annuleren",
         "cancelled": "Aanvraag geannuleerd",
         "done": "Je hebt deze aanvraag geannuleerd.",
-        "paymentDescription": "De winkel wordt op de hoogte gebracht. Heb je al betaald of een borg verstrekt, neem dan contact op met de winkel voor terugbetaling of vrijgave. Deze actie leidt niet tot een automatische terugbetaling.",
-        "adminSubject": "Aanvraag #{number} geannuleerd door de klant",
-        "adminBody": "{name} heeft reserveringsaanvraag #{number} geannuleerd voordat je deze bevestigde. Je kunt de geschiedenis in je dashboard bekijken."
+        "paymentDescription": "De winkel wordt op de hoogte gebracht. Heb je al betaald of een borg verstrekt, neem dan contact op met de winkel voor terugbetaling of vrijgave. Deze actie leidt niet tot een automatische terugbetaling."
       },
       "customerFields": {
         "title": "Aanvullende gegevens",
@@ -9188,6 +9196,7 @@
     "unauthenticated": "Niet geauthenticeerd",
     "invalidData": "Ongeldige gegevens",
     "slugTaken": "Dit adres is al in gebruik",
+    "storeNotReady": "Je winkel mist het land of de valuta: vul de gegevens aan voordat je hem online zet.",
     "storeNotFound": "Winkel niet gevonden",
     "productNotFound": "Product niet gevonden",
     "categoryNotFound": "Categorie niet gevonden",
@@ -9234,7 +9243,6 @@
     "updateCustomerError": "Fout bij bijwerken klant",
     "deleteCustomerError": "Fout bij verwijderen klant",
     "updateNotesError": "Fout bij bijwerken notities",
-    "updateSettingsError": "Fout bij bijwerken instellingen",
     "createReservationError": "Fout bij aanmaken reservering",
     "businessHoursViolation": "Geselecteerde tijden vallen buiten de openingstijden van de winkel",
     "returnAddressInvalid": "Ongeldige coördinaten retouradres",
@@ -9346,6 +9354,9 @@
     "tulipProductTypeDisabled": "Deze Tulip productcategorie is niet ingeschakeld voor deze winkel.",
     "unitAlreadyRetired": "Deze eenheid is al uitgefaseerd",
     "unitNotRetired": "Deze eenheid is niet uitgefaseerd",
+    "variantLimitReached": "Deze winkel heeft al het maximale aantal varianten (100).",
+    "variantValueLimitReached": "Deze variant heeft al het maximale aantal waarden (200).",
+    "downtimeCloseExtends": "Deze onbeschikbaarheid eindigt al eerder. Wijzig de data om haar te verlengen.",
     "advisorValidationRequired": "Deze winkel vereist een korte verificatie met de adviseur voordat u kunt reserveren",
     "conversationNotFound": "Gesprek niet gevonden",
     "featureNotAvailable": "Deze functie is niet beschikbaar in uw plan",
@@ -9384,7 +9395,11 @@
     "reservationDetailsLocked": "Deze gegevens kunnen niet meer worden gewijzigd: de huur is begonnen of afgelopen.",
     "customerNotAuthenticated": "Log in op uw klantaccount om verder te gaan.",
     "profileFieldRequired": "Vul „{field}” in.",
-    "profileFieldInvalid": "„{field}” is ongeldig."
+    "profileFieldInvalid": "„{field}” is ongeldig.",
+    "agentConnectionNotFound": "Deze gekoppelde agent bestaat niet meer.",
+    "oauthRequestInvalid": "Dit koppelverzoek is niet meer geldig. Start het opnieuw vanuit uw agent.",
+    "stripeRequiredForPaymentMode": "Online betalen vereist een gekoppeld Stripe-account. Koppel Stripe via Instellingen > Betalingen.",
+    "locationLimitReached": "Een winkel kan maximaal 50 afhaalpunten hebben. Deactiveer er een of gebruik er een opnieuw."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",
@@ -9478,6 +9493,227 @@
     "backToDashboard": "Terug naar dashboard",
     "nav": {
       "finance": "Financiën"
+    }
+  },
+  "agentConnections": {
+    "presetsTitle": "Rechten",
+    "presets": {
+      "read": {
+        "label": "Alleen lezen",
+        "description": "De agent bekijkt uw reserveringen, producten, klanten en cijfers en wijzigt niets."
+      },
+      "write": {
+        "label": "Lezen en bewerken",
+        "description": "De agent kan ook aanmaken en wijzigen, binnen uw rol. Statistieken blijven alleen-lezen."
+      }
+    },
+    "storesTitle": "Winkels",
+    "storesAll": "Al mijn winkels, ook toekomstige",
+    "storesAllHint": "Een winkel die u later aanmaakt of waaraan u deelneemt, hoort er ook bij.",
+    "storesNone": "Kies minstens één winkel.",
+    "roles": {
+      "owner": "Eigenaar",
+      "member": "Lid"
+    },
+    "confirm": {
+      "label": "Om bevestiging vragen vóór gevoelige acties",
+      "description": "Vóór een betaling, terugbetaling, verwijdering of bericht aan een klant krijgt de agent eerst een voorbeeld en moet hij bevestigen. Hij is gevraagd u dat voorbeeld te tonen en het eerst aan u te vragen."
+    },
+    "bundlesTitle": "Getoonde tools",
+    "bundlesHint": "De agent ziet deze toolpakketten. U kunt er later meer toevoegen.",
+    "bundlesNone": "Kies minstens één toolpakket.",
+    "recommended": "Aanbevolen",
+    "bundles": {
+      "daily": {
+        "label": "Dagelijkse operaties",
+        "description": "Reserveringen, agenda, klanten, betalingen en cijfers."
+      },
+      "catalog": {
+        "label": "Catalogus",
+        "description": "Producten, categorieën en voorraad."
+      },
+      "settings": {
+        "label": "Instellingen",
+        "description": "Winkelinstellingen en webwinkel."
+      },
+      "integrations": {
+        "label": "Integraties",
+        "description": "Diensten gekoppeld aan Louez."
+      },
+      "team": {
+        "label": "Team",
+        "description": "Teamleden."
+      },
+      "billing": {
+        "label": "Abonnement",
+        "description": "Louez-abonnement en facturen."
+      }
+    },
+    "verified": "Geverifieerd",
+    "unverified": "Naam niet geverifieerd",
+    "unknownClient": "Een app",
+    "consent": {
+      "metaTitle": "Een agent koppelen",
+      "title": "{client} koppelen aan Louez",
+      "description": "{client} kan voor u handelen in de gekozen winkels, binnen de grenzen hieronder en die van uw rol.",
+      "accept": "Toestaan",
+      "refuse": "Weigeren",
+      "invalidTitle": "Verzoek verlopen",
+      "invalidDescription": "Dit koppelverzoek is niet meer geldig. Start de koppeling opnieuw vanuit uw agent.",
+      "noStoreTitle": "Nog geen winkel",
+      "noStoreDescription": "{client} kan uw winkel voor u aanmaken als u het de rechten ‘Lezen en bewerken’ geeft. De winkel blijft offline tot u hem lanceert. Deze toegang geldt ook voor winkels die u later aanmaakt.",
+      "redirectNotice": "Na uw toestemming wordt de toegang naar {host} gestuurd.",
+      "footer": "U kunt deze toegang altijd wijzigen of intrekken via Instellingen, Integraties, MCP.",
+      "loopbackWarning": "De toegang wordt naar een lokaal adres op deze computer gestuurd: elk programma dat erop draait kan zich voordoen als deze app. Sta het alleen toe als u de koppeling net zelf hebt gestart."
+    },
+    "list": {
+      "title": "Gekoppelde agents",
+      "description": "De assistenten die u toestemming gaf om in uw winkels te handelen.",
+      "empty": "Geen gekoppelde agent",
+      "emptyDescription": "Voeg Louez toe als connector in Claude of ChatGPT: hier kiest u wat hij mag doen.",
+      "allStores": "Al mijn winkels",
+      "connectedOn": "Gekoppeld op {date}",
+      "lastAction": "Laatste actie op {date}",
+      "noAction": "Nog geen actie",
+      "edit": "Bewerken",
+      "revoke": "Ontkoppelen",
+      "saved": "Instellingen opgeslagen",
+      "revoked": "Agent ontkoppeld",
+      "editTitle": "Toegang van {client}",
+      "editDescription": "Wijzigingen gelden vanaf zijn volgende actie.",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "revokeTitle": "{client} ontkoppelen?",
+      "revokeDescription": "De agent verliest meteen de toegang. Om hem opnieuw te koppelen, moet u hem opnieuw toestemming geven.",
+      "revokeConfirm": "Ontkoppelen"
+    },
+    "guide": {
+      "title": "Verbind je AI-assistent",
+      "description": "Je assistent kan je winkel beheren: producten, reserveringen, instellingen. Jij kiest wat hij mag doen.",
+      "addTo": "Toevoegen aan {name}",
+      "chooseAssistant": "Welke assistent gebruik je?",
+      "changeAssistant": "Andere assistent kiezen",
+      "addressLabel": "Verbindingsadres",
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd",
+      "whatHappens": "Daarna vraagt Louez je om in te loggen en te kiezen wat de assistent mag doen.",
+      "oauthUnavailable": "Assistenten hebben een beveiligd adres (HTTPS) nodig om te verbinden, en deze Louez heeft er geen. Een ontwikkelaar kan hem wel koppelen met een API-sleutel.",
+      "assistants": {
+        "claude": {
+          "step1": "Klik op ‘Toevoegen aan Claude’: Louez is al ingevuld.",
+          "step2": "Klik op Doorgaan en daarna op Toevoegen.",
+          "step3": "Log in bij Louez als Claude daarom vraagt.",
+          "note": "Bij een Claude Team- of Enterprise-account kan alleen een eigenaar hem toevoegen."
+        },
+        "chatgpt": {
+          "step1": "Open de <link>Plug-ins van ChatGPT</link>, dan + → Aangepaste MCP-server toevoegen.",
+          "step2": "Noem hem Louez en plak het adres bij Server-URL.",
+          "step3": "Accepteer de waarschuwing, klik op Maken als plug-in en log in bij Louez.",
+          "note": "Met ChatGPT Business, Enterprise of Edu, op de website. In een teamwerkruimte vraagt u een beheerder om hem toe te voegen. Met ChatGPT Pro kan de assistent alleen meekijken."
+        },
+        "grok": {
+          "step1": "Open de <link>connectors van Grok</link>, dan Nieuwe connector → Aangepast.",
+          "step2": "Plak het adres.",
+          "step3": "Log in bij Louez en bevestig.",
+          "note": "Voor alle Grok-accounts. In een bedrijf voegt een beheerder hem eerst toe."
+        },
+        "mistral": {
+          "step1": "Open in <link>Vibe</link>, in de Work-modus, Connectors, dan + Add Connector → Custom MCP Connector.",
+          "step2": "Noem hem Louez en plak het adres.",
+          "step3": "Klik op Verbinden en log in bij Louez.",
+          "note": "Vroeger Le Chat. Bij een teamaccount voegt een beheerder hem toe."
+        }
+      },
+      "developers": {
+        "toggle": "Voor ontwikkelaars",
+        "server": "Dit is het adres van de MCP-server van Louez (streamable HTTP). Assistenten verbinden via OAuth: iedereen logt in bij Louez, zonder sleutel om te kopiëren.",
+        "serverWithoutOAuth": "Dit is het adres van de MCP-server van Louez (streamable HTTP). Zonder HTTPS biedt deze instantie geen OAuth: gebruik een API-sleutel.",
+        "apiKeyTitle": "Scripts, n8n en clients zonder OAuth",
+        "apiKeyDescription": "Maak een API-sleutel en stuur hem mee in de header Authorization: Bearer.",
+        "apiKeyLink": "API-sleutels beheren",
+        "editorsTitle": "Code-editors"
+      }
+    },
+    "assistantCard": {
+      "title": "Laat je AI-assistent je winkel inrichten.",
+      "info": "Claude, ChatGPT, Grok of Mistral Vibe kan je producten toevoegen, je prijzen instellen en je winkel voor je inrichten. Jij kiest de rechten en wat die eerst door jou moet laten bevestigen.",
+      "infoLabel": "Meer informatie",
+      "action": "Koppelen",
+      "dismiss": "Verbergen"
+    },
+    "declaredBy": "Naam opgegeven door {origin}",
+    "declaredByItself": "Naam opgegeven door de app (dynamisch geregistreerd)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Van winkel wisselen",
+    "title": "Van winkel wisselen?",
+    "description": "Deze link opent de winkel “{target}”. U bent nu in “{current}”.",
+    "open": "Openen in {target}",
+    "stay": "Blijven in {current}"
+  },
+  "handoff": {
+    "metaTitle": "Doorgaan in Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Stripe koppelen",
+        "description": "Uw AI-agent vraagt u “{store}” aan Stripe te koppelen, zodat de winkel online betalingen kan ontvangen. Stripe vraagt naar uw identiteit en uw bankgegevens.",
+        "continue": "Verder naar Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Uw Stripe-dashboard openen",
+        "description": "Uw AI-agent vraagt u het Stripe-dashboard van “{store}” te openen.",
+        "continue": "Stripe openen"
+      },
+      "billing_card_setup": {
+        "title": "Uw factuurkaart toevoegen",
+        "description": "Uw AI-agent vraagt u de kaart toe te voegen waarop Louez zijn kosten voor “{store}” afschrijft. U voert die in op de beveiligde pagina van Stripe.",
+        "continue": "Verder naar Stripe"
+      }
+    },
+    "retry": "Stripe heeft niet geantwoord. Probeer het zo meteen opnieuw.",
+    "refused": {
+      "invalid": {
+        "title": "Deze link werkt niet meer",
+        "description": "Hij is onvolledig, of een nieuwere link heeft hem vervangen. Vraag uw AI-agent om een nieuwe."
+      },
+      "expired": {
+        "title": "Deze link is verlopen",
+        "description": "Vraag uw AI-agent om een nieuwe link."
+      },
+      "finished": {
+        "title": "Deze stap is al afgerond",
+        "description": "Hier valt niets meer te doen. U kunt teruggaan naar uw AI-agent."
+      },
+      "other_user": {
+        "title": "Deze link is voor een ander account",
+        "description": "U bent ingelogd met een ander account dan het account waarvoor uw AI-agent werkt. Log in met dat account en open de link opnieuw."
+      },
+      "not_allowed": {
+        "title": "Dit kunt u niet doen voor deze winkel",
+        "description": "Uw rol in deze winkel staat deze stap niet toe. Vraag het aan de eigenaar van de winkel."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Klaar",
+        "description": "U kunt deze pagina sluiten en teruggaan naar uw AI-agent: die ziet dat deze stap klaar is."
+      },
+      "opened": {
+        "title": "Nog niet afgerond",
+        "description": "De stap is niet afgerond bij Stripe. Open de link opnieuw om hem af te ronden, of ga terug naar uw AI-agent."
+      },
+      "confirming": {
+        "title": "Bijna klaar",
+        "description": "Stripe heeft de kaart nog niet bevestigd. U kunt teruggaan naar uw AI-agent: die ziet de kaart zodra Stripe hem bevestigt."
+      },
+      "expired": {
+        "title": "Deze link is verlopen",
+        "description": "Ga terug naar uw AI-agent: die kan u een nieuwe link geven."
+      },
+      "failed": {
+        "title": "Deze stap is mislukt",
+        "description": "Ga terug naar uw AI-agent: die kan u een nieuwe link geven."
+      }
     }
   }
 }

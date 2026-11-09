@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@louez/utils";
 
 import { HeroImageSlider } from "@/components/storefront/home/hero-image-slider";
-import { RichText } from "@/components/storefront/ui/rich-text";
+import { RichTextHtml } from "@/components/storefront/ui/rich-text-html";
 import type {
   StoreHeroAlign,
   StoreHeroShape,
@@ -12,9 +12,9 @@ import type {
 
 interface StoreHeroProps {
   name: string;
-  /** One-line pitch under the name; takes the place of the description when set. */
+  /** One-line pitch under the name, sanitised editor HTML; takes the place of the description when set. */
   tagline?: string | null;
-  /** The store description as written in the dashboard, editor HTML. */
+  /** The store description, sanitised editor HTML (the page sanitises it on the server). */
   description: string | null;
   /** Background or framed photos, depending on the shape. */
   backgroundImages?: string[];
@@ -114,8 +114,8 @@ export const StoreHero = ({
   // The tagline is editor HTML too (inline marks only) and reads like the
   // description's first paragraph: same measure, same tones.
   const lead = (
-    <RichText
-      html={tagline || description}
+    <RichTextHtml
+      safeHtml={tagline || description}
       size="lg"
       className={cn(DESCRIPTION_CLASS_NAME, cover && DESCRIPTION_ON_PHOTO_CLASS_NAME)}
     />

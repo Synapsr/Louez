@@ -128,31 +128,9 @@ const EXCLUDED_PREFIX = "packages/db/src/";
  */
 const ALLOWLIST = [
   {
-    file: "apps/web/app/(dashboard)/dashboard/settings/integrations/actions.ts",
-    writes: { stores: 1 },
-    reason: "the adapters return the stored settings with only integrationData changed",
-  },
-  {
     file: "apps/web/app/(dashboard)/dashboard/team/actions.ts",
     writes: { storeMembers: 2 },
     reason: "adds members with role member and removes non-owners only; the snapshot lists owners",
-  },
-  {
-    file: "apps/web/lib/ai/tools.ts",
-    writes: { stores: 1 },
-    reason: "update_store_info: name, email, phone, address and description (zod schema)",
-  },
-  {
-    file: "packages/mcp/src/tools/settings.ts",
-    writes: { stores: 2 },
-    reason: "update_store_info and update_store_legal: contact and legal text columns only",
-  },
-  {
-    file: "packages/api/src/services/store-settings.ts",
-    writes: { stores: 3 },
-    reason:
-      "legal texts, appearance and the online store editor: other columns, and settings " +
-      "re-read with country, timezone, currency and tax kept",
   },
   {
     file: "apps/web/lib/reservations/create-reservation.ts",

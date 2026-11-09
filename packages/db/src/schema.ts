@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  char,
   customType,
   date,
   decimal,
@@ -13,9 +14,11 @@ import {
   longtext,
   mysqlEnum,
   mysqlTable,
+  serial,
   primaryKey,
   text,
   timestamp,
+  tinyint,
   unique,
   varchar,
 } from "drizzle-orm/mysql-core";
@@ -94,7 +97,7 @@ export const users = mysqlTable("users", {
   // step. Google users get a prefilled name but still confirm it once.
   profileCompletedAt: timestamp("profile_completed_at", { mode: "date" }),
   // Informational dashboard notices the user closed for good (ids from
-  // apps/web/lib/dashboard/dismissed-notices.ts). `null` until the first one.
+  // packages/api/src/contracts/dismissed-notices.ts). `null` until the first one.
   dismissedNotices: json("dismissed_notices").$type<string[]>(),
   reeentIntroAcknowledgedAt: timestamp("reeent_intro_acknowledged_at", {
     mode: "date",
@@ -201,6 +204,258 @@ export const authRateLimits = mysqlTable(
     uniqueKey: unique("auth_rate_limits_key_unique").on(table.key),
   }),
 );
+
+// ============================================================================
+// OAuth for agents (Better Auth jwt, oauth-provider, mcp and cimd plugins)
+// ============================================================================
+//
+// Louez is the authorization server MCP clients (Claude, ChatGPT…) sign in
+// through. The column keys are Better Auth's field names. On MySQL the drizzle
+// adapter stores Better Auth's `string[]` and `json` fields as JSON text, so
+// they are `text` columns here. What a connection may do in Louez lives in
+// `api_agent_grants`, not in these tables.
+
+/** OAuth client ids are random strings, or the URL of a Client ID Metadata Document. */
+// 255 keeps the composite unique indexes under InnoDB's 3072-byte limit in utf8mb4.
+const oauthClientId = (name: string) => varchar(name, { length: 255 });
+
+/** Signing keys of the access tokens. Private keys are encrypted with AUTH_SECRET. */
+export const jwks = mysqlTable("jwks", {
+  id: id(),
+  publicKey: text("public_key").notNull(),
+  privateKey: text("private_key").notNull(),
+  alg: varchar("alg", { length: 32 }),
+  crv: varchar("crv", { length: 32 }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+  expiresAt: timestamp("expires_at", { mode: "date" }),
+});
+
+export const oauthClients = mysqlTable(
+  "oauth_clients",
+  {
+    id: id(),
+    clientId: oauthClientId("client_id").notNull(),
+    clientSecret: varchar("client_secret", { length: 255 }),
+    /** Set for a client created from a Client ID Metadata Document (CIMD). */
+    clientDiscoveryId: varchar("client_discovery_id", { length: 64 }),
+    disabled: boolean("disabled").default(false),
+    skipConsent: boolean("skip_consent"),
+    enableEndSession: boolean("enable_end_session"),
+    subjectType: varchar("subject_type", { length: 32 }),
+    scopes: text("scopes"),
+    clientCredentialsScopes: text("client_credentials_scopes"),
+    userId: varchar("user_id", { length: 21 }).references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date" }),
+    updatedAt: timestamp("updated_at", { mode: "date" }),
+    name: varchar("name", { length: 255 }),
+    uri: text("uri"),
+    icon: text("icon"),
+    contacts: text("contacts"),
+    tos: text("tos"),
+    policy: text("policy"),
+    softwareId: varchar("software_id", { length: 255 }),
+    softwareVersion: varchar("software_version", { length: 255 }),
+    softwareStatement: text("software_statement"),
+    redirectUris: text("redirect_uris").notNull(),
+    postLogoutRedirectUris: text("post_logout_redirect_uris"),
+    backchannelLogoutUri: text("backchannel_logout_uri"),
+    backchannelLogoutSessionRequired: boolean("backchannel_logout_session_required"),
+    tokenEndpointAuthMethod: varchar("token_endpoint_auth_method", { length: 64 }),
+    applicationType: varchar("application_type", { length: 32 }),
+    jwks: text("jwks"),
+    jwksUri: text("jwks_uri"),
+    grantTypes: text("grant_types"),
+    responseTypes: text("response_types"),
+    requirePKCE: boolean("require_pkce"),
+    dpopBoundAccessTokens: boolean("dpop_bound_access_tokens").default(false),
+    referenceId: varchar("reference_id", { length: 255 }),
+    metadata: text("metadata"),
+  },
+  (table) => [
+    unique("oauth_clients_client_id_unique").on(table.clientId),
+    index("oauth_clients_user_id_idx").on(table.userId),
+  ],
+);
+
+/** A protected resource tokens are issued for: the MCP endpoint, `<app>/api/mcp`. */
+export const oauthResources = mysqlTable(
+  "oauth_resources",
+  {
+    id: id(),
+    identifier: varchar("identifier", { length: 255 }).notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    accessTokenTtl: int("access_token_ttl"),
+    refreshTokenTtl: int("refresh_token_ttl"),
+    signingAlgorithm: varchar("signing_algorithm", { length: 32 }),
+    signingKeyId: varchar("signing_key_id", { length: 64 }),
+    allowedScopes: text("allowed_scopes"),
+    customClaims: text("custom_claims"),
+    dpopBoundAccessTokensRequired: boolean("dpop_bound_access_tokens_required").default(false),
+    disabled: boolean("disabled").default(false),
+    createdAt: timestamp("created_at", { mode: "date" }),
+    updatedAt: timestamp("updated_at", { mode: "date" }),
+    policyVersion: int("policy_version").default(1),
+    metadata: text("metadata"),
+  },
+  (table) => [unique("oauth_resources_identifier_unique").on(table.identifier)],
+);
+
+/** Which client may ask tokens for which resource. */
+export const oauthClientResources = mysqlTable(
+  "oauth_client_resources",
+  {
+    id: id(),
+    clientId: oauthClientId("client_id")
+      .notNull()
+      .references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    resourceId: varchar("resource_id", { length: 255 })
+      .notNull()
+      .references(() => oauthResources.identifier, { onDelete: "cascade" }),
+    metadata: text("metadata"),
+    createdAt: timestamp("created_at", { mode: "date" }),
+  },
+  (table) => [
+    unique("oauth_client_resources_client_resource_unique").on(table.clientId, table.resourceId),
+    index("oauth_client_resources_resource_id_idx").on(table.resourceId),
+  ],
+);
+
+/** Opaque refresh tokens, hashed. Revoking their grant deletes them (`reference_id`). */
+export const oauthRefreshTokens = mysqlTable(
+  "oauth_refresh_tokens",
+  {
+    id: id(),
+    token: varchar("token", { length: 255 }).notNull(),
+    clientId: oauthClientId("client_id")
+      .notNull()
+      .references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    sessionId: varchar("session_id", { length: 21 }).references(() => sessions.id, {
+      onDelete: "set null",
+    }),
+    userId: varchar("user_id", { length: 21 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /**
+     * The grant (`api_agent_grants.id`) the lineage started under. Deleting the
+     * grant deletes the row, and a row for a grant that is gone cannot be
+     * inserted: a token lineage never outlives its grant, nor joins another.
+     */
+    referenceId: varchar("reference_id", { length: 21 }).references(() => apiAgentGrants.id, {
+      onDelete: "cascade",
+    }),
+    authorizationCodeId: varchar("authorization_code_id", { length: 255 }),
+    resources: text("resources"),
+    requestedUserInfoClaims: text("requested_user_info_claims"),
+    expiresAt: timestamp("expires_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }),
+    revoked: timestamp("revoked", { mode: "date" }),
+    rotatedAt: timestamp("rotated_at", { mode: "date" }),
+    rotationReplayResponse: text("rotation_replay_response"),
+    rotationReplayExpiresAt: timestamp("rotation_replay_expires_at", { mode: "date" }),
+    authTime: timestamp("auth_time", { mode: "date" }),
+    confirmation: text("confirmation"),
+    scopes: text("scopes").notNull(),
+  },
+  (table) => [
+    unique("oauth_refresh_tokens_token_unique").on(table.token),
+    index("oauth_refresh_tokens_client_id_idx").on(table.clientId),
+    index("oauth_refresh_tokens_session_id_idx").on(table.sessionId),
+    index("oauth_refresh_tokens_user_id_idx").on(table.userId),
+    index("oauth_refresh_tokens_authorization_code_id_idx").on(table.authorizationCodeId),
+  ],
+);
+
+/**
+ * Opaque access tokens, for a request without a resource. Tokens for the MCP
+ * resource are signed JWTs and are not stored.
+ */
+export const oauthAccessTokens = mysqlTable(
+  "oauth_access_tokens",
+  {
+    id: id(),
+    token: varchar("token", { length: 255 }),
+    clientId: oauthClientId("client_id")
+      .notNull()
+      .references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    sessionId: varchar("session_id", { length: 21 }).references(() => sessions.id, {
+      onDelete: "set null",
+    }),
+    userId: varchar("user_id", { length: 21 }).references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    /**
+     * The grant (`api_agent_grants.id`) the lineage started under. Deleting the
+     * grant deletes the row, and a row for a grant that is gone cannot be
+     * inserted: a token lineage never outlives its grant, nor joins another.
+     */
+    referenceId: varchar("reference_id", { length: 21 }).references(() => apiAgentGrants.id, {
+      onDelete: "cascade",
+    }),
+    authorizationCodeId: varchar("authorization_code_id", { length: 255 }),
+    resources: text("resources"),
+    requestedUserInfoClaims: text("requested_user_info_claims"),
+    refreshId: varchar("refresh_id", { length: 21 }).references(() => oauthRefreshTokens.id, {
+      onDelete: "cascade",
+    }),
+    expiresAt: timestamp("expires_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }),
+    revoked: timestamp("revoked", { mode: "date" }),
+    confirmation: text("confirmation"),
+    scopes: text("scopes").notNull(),
+  },
+  (table) => [
+    unique("oauth_access_tokens_token_unique").on(table.token),
+    index("oauth_access_tokens_client_id_idx").on(table.clientId),
+    index("oauth_access_tokens_session_id_idx").on(table.sessionId),
+    index("oauth_access_tokens_user_id_idx").on(table.userId),
+    index("oauth_access_tokens_authorization_code_id_idx").on(table.authorizationCodeId),
+    index("oauth_access_tokens_refresh_id_idx").on(table.refreshId),
+  ],
+);
+
+/**
+ * What a user accepted for a client, as Better Auth sees it (OAuth scopes).
+ * Louez's own terms of the connection (stores, rights, confirmation, tool
+ * bundles) are in `api_agent_grants`; revoking the grant deletes this row
+ * (`reference_id`), so the next authorization asks again.
+ */
+export const oauthConsents = mysqlTable(
+  "oauth_consents",
+  {
+    id: id(),
+    clientId: oauthClientId("client_id")
+      .notNull()
+      .references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 21 }).references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    /**
+     * The grant (`api_agent_grants.id`) the lineage started under. Deleting the
+     * grant deletes the row, and a row for a grant that is gone cannot be
+     * inserted: a token lineage never outlives its grant, nor joins another.
+     */
+    referenceId: varchar("reference_id", { length: 21 }).references(() => apiAgentGrants.id, {
+      onDelete: "cascade",
+    }),
+    resources: text("resources"),
+    requestedUserInfoClaims: text("requested_user_info_claims"),
+    scopes: text("scopes").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }),
+    updatedAt: timestamp("updated_at", { mode: "date" }),
+  },
+  (table) => [
+    index("oauth_consents_client_id_idx").on(table.clientId),
+    index("oauth_consents_user_id_idx").on(table.userId),
+  ],
+);
+
+/** Used `jti` of `private_key_jwt` client assertions, so one cannot be replayed. */
+export const oauthClientAssertions = mysqlTable("oauth_client_assertions", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+});
 
 // ============================================================================
 // Subscriptions (simplified - plans defined in code)
@@ -623,6 +878,11 @@ export const stores = mysqlTable(
     discountPercent: int("discount_percent").default(0).notNull(),
     discountDurationMonths: int("discount_duration_months").default(0).notNull(),
     stripeCouponId: varchar("stripe_coupon_id", { length: 255 }),
+
+    // When the rules that decide what a unit holds last changed (the turnover
+    // buffer, whether pending bookings block): a unit conflict they make
+    // counts from then in the inbox. Null until the first change.
+    availabilityRulesChangedAt: timestamp("availability_rules_changed_at", { mode: "date" }),
 
     // Metadata
     onboardingCompleted: boolean("onboarding_completed").default(false),
@@ -1531,6 +1791,10 @@ export const reservations = mysqlTable(
     billableAt: timestamp("billable_at", { mode: "date" }),
     // When a billable reservation was cancelled. Null while it stays billable.
     withdrawnAt: timestamp("withdrawn_at", { mode: "date" }),
+    // The last write of its dates or its status (null before 0095: read the
+    // creation). The inbox dates a late pickup or return with it, so a note
+    // or a payment does not bring an acknowledged one back.
+    scheduleChangedAt: timestamp("schedule_changed_at", { mode: "date" }),
     // The reservation's currency, frozen at creation (billing contract Q4). Null for
     // rows created before it existed; readers fall back to the store's currency.
     currency: varchar("currency", { length: 3 }),
@@ -1604,6 +1868,13 @@ export const reservations = mysqlTable(
   },
   (table) => ({
     storeIdx: index("reservations_store_idx").on(table.storeId),
+    // The store's open reservations by status: the inbox's requests and late
+    // pickups and returns, read every few minutes by polling agents.
+    storeStatusEndIdx: index("reservations_store_status_end_idx").on(
+      table.storeId,
+      table.status,
+      table.endDate,
+    ),
     customerIdx: index("reservations_customer_idx").on(table.customerId),
     statusIdx: index("reservations_status_idx").on(table.status),
     dateIdx: index("reservations_date_idx").on(table.startDate, table.endDate),
@@ -3971,6 +4242,12 @@ export type ApiKeyPermissions = {
   payments: "none" | "read" | "write";
   analytics: "none" | "read";
   settings: "none" | "read" | "write";
+  // Domains added with the agent-ready API. Keys created before have none of
+  // them, and a missing domain reads as "none" (packages/api platform/permissions).
+  online_store?: "none" | "read" | "write";
+  integrations?: "none" | "read" | "write";
+  team?: "none" | "read" | "write";
+  billing?: "none" | "read" | "write";
 };
 
 export const apiKeys = mysqlTable(
@@ -3985,6 +4262,11 @@ export const apiKeys = mysqlTable(
     keyHash: varchar("key_hash", { length: 64 }).notNull(),
 
     permissions: json("permissions").$type<ApiKeyPermissions>().notNull(),
+    /**
+     * Sensitive operations (money, deletion, sends, spending) wait for a
+     * confirmation when true. Only a dashboard session may change it.
+     */
+    confirmSensitive: boolean("confirm_sensitive").default(true).notNull(),
 
     lastUsedAt: timestamp("last_used_at", { mode: "date" }),
     expiresAt: timestamp("expires_at", { mode: "date" }),
@@ -4007,6 +4289,340 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
     fields: [apiKeys.userId],
     references: [users.id],
   }),
+}));
+
+// ============================================================================
+// Agent-ready API: operations, confirmations, rate limits
+// ============================================================================
+
+/**
+ * One row per write made through the API, whatever the transport (dashboard
+ * RPC, OpenAPI, MCP). It is the audit trail ("done by Claude"), the
+ * idempotency record (same key + same input replays the stored result) and the
+ * receipt an agent reads to know whether an operation happened.
+ */
+export const apiOperations = mysqlTable(
+  "api_operations",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    userId: varchar("user_id", { length: 21 }).notNull(),
+    credentialKind: mysqlEnum("credential_kind", ["session", "api_key", "oauth"]).notNull(),
+    /** API key or OAuth grant id; null for a dashboard session. */
+    credentialId: varchar("credential_id", { length: 64 }),
+    /** Verified client name (an OAuth client, an API key's name). */
+    clientName: varchar("client_name", { length: 100 }),
+    transport: mysqlEnum("transport", ["rpc", "openapi", "mcp"]).notNull(),
+    /** Procedure path, e.g. `dashboard.categories.create`. */
+    procedure: varchar("procedure", { length: 120 }).notNull(),
+    /** Scope of idempotency keys: the credential id, or the user id for a session. */
+    actorKey: varchar("actor_key", { length: 64 }).notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 100 }),
+    /** SHA-256 of the normalized input. */
+    inputHash: char("input_hash", { length: 64 }).notNull(),
+    /**
+     * `unknown`: the handler returned but its outcome could not be recorded,
+     * so whether it committed is not known. Retries are refused until someone
+     * reconciles it, rather than risking a second run.
+     */
+    status: mysqlEnum("status", ["running", "succeeded", "failed", "unknown"]).notNull(),
+    /** Main record the operation touched, when it has one. */
+    targetId: varchar("target_id", { length: 64 }),
+    /**
+     * The offline store this write set up: set in the write's own
+     * transaction, under the store row's lock, when it was a setup write
+     * (packages/api platform/setup-analytics.ts). It commits or rolls back
+     * with the write, whatever the record's status says.
+     */
+    setupStoreId: varchar("setup_store_id", { length: 21 }),
+    result: json("result"),
+    error: json("error").$type<{ code: string; message: string }>(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    idempotencyUnique: unique("api_operations_idempotency_unique").on(
+      table.storeId,
+      table.actorKey,
+      table.idempotencyKey,
+    ),
+    storeCreatedIdx: index("api_operations_store_created_idx").on(table.storeId, table.createdAt),
+    setupStoreIdx: index("api_operations_setup_store_idx").on(table.setupStoreId),
+  }),
+);
+
+/**
+ * A preview handed to a caller before a sensitive operation. The caller sends
+ * the id back to execute; the row binds it to the actor, the store, the
+ * procedure, the exact input and the business state the preview showed, and
+ * can be consumed once.
+ */
+export const apiConfirmations = mysqlTable(
+  "api_confirmations",
+  {
+    /** The confirmation token itself: 32 random bytes, base64url. */
+    id: varchar("id", { length: 64 }).primaryKey(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    procedure: varchar("procedure", { length: 120 }).notNull(),
+    /** SHA-256 of actor, credential, store, procedure, input and state. */
+    bindingHash: char("binding_hash", { length: 64 }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    consumedAt: timestamp("consumed_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    expiresIdx: index("api_confirmations_expires_idx").on(table.expiresAt),
+  }),
+);
+
+/**
+ * The effects of a committed write that must not be lost: a customer's email,
+ * a store notification, an analytics event. The write's transaction adds one
+ * row per effect and channel with everything it needs (`payload`), so a
+ * rollback leaves none and a later edit changes none. The app sends each row
+ * once the transaction commits, claiming it first (`claim_token`) so a late
+ * sender's outcome never overwrites another's; the cron retries the failed
+ * ones with a backoff. Rows of one `ordering_key` run one at a time, in `seq`
+ * order. A terminal row is deleted after 30 days; a store's or a customer's
+ * rows go with them.
+ */
+export const apiEffects = mysqlTable(
+  "api_effects",
+  {
+    id: id(),
+    /** The order rows were added in. */
+    seq: serial("seq"),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    /** The reservation and the customer it is about, when it is one: for purges and checks. */
+    reservationId: varchar("reservation_id", { length: 21 }),
+    customerId: varchar("customer_id", { length: 21 }),
+    /** What to do, e.g. `reservation.customerMessage`; the app maps it to its sender. */
+    type: varchar("type", { length: 64 }).notNull(),
+    /** Rows of one key (one channel of one reservation's messages) run in `seq` order. */
+    orderingKey: varchar("ordering_key", { length: 120 }),
+    payload: json("payload").$type<Record<string, unknown>>().notNull(),
+    /**
+     * `running` while a sender holds it (until `locked_until`); `cancelled`
+     * when it had nothing left to do (its store gone, its channel off);
+     * `superseded` when newer news replaced it before it went out;
+     * `abandoned` past the last attempt, its `next_attempt_at` then the time
+     * it was abandoned.
+     */
+    status: mysqlEnum("status", [
+      "pending",
+      "running",
+      "sent",
+      "failed",
+      "abandoned",
+      "cancelled",
+      "superseded",
+    ])
+      .default("pending")
+      .notNull(),
+    attempts: int("attempts", { unsigned: true }).default(0).notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    lockedUntil: timestamp("locked_until", { mode: "date", fsp: 3 }),
+    /** The current claim: only the sender holding it may record the outcome. */
+    claimToken: varchar("claim_token", { length: 32 }),
+    lastError: varchar("last_error", { length: 1000 }),
+    sentAt: timestamp("sent_at", { mode: "date", fsp: 3 }),
+    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+  },
+  (table) => ({
+    dueIdx: index("api_effects_due_idx").on(table.status, table.nextAttemptAt),
+    ageIdx: index("api_effects_age_idx").on(table.status, table.createdAt),
+    leaseIdx: index("api_effects_lease_idx").on(table.status, table.lockedUntil),
+    orderingIdx: index("api_effects_ordering_idx").on(table.orderingKey, table.seq),
+    storeIdx: index("api_effects_store_idx").on(table.storeId, table.createdAt),
+    reservationIdx: index("api_effects_reservation_idx").on(table.reservationId),
+    customerIdx: index("api_effects_customer_idx").on(table.customerId),
+  }),
+);
+
+/** Fixed-window counters shared by every app instance, for agent and API calls. */
+export const apiRateLimits = mysqlTable("api_rate_limits", {
+  key: varchar("key", { length: 191 }).primaryKey(),
+  windowStart: bigint("window_start", { mode: "number" }).notNull(),
+  count: int("count").notNull(),
+});
+
+/**
+ * Inbox items a store marked as handled (packages/api services/inbox.ts). An
+ * item is one occurrence: its type, its record and when it happened. The row
+ * hides that occurrence from the store's inbox for every member and agent; the
+ * same record coming back later (a new `occurred_at`) shows again. Deleted with
+ * the store, past the retention, or past the store's cap (oldest first).
+ */
+export const inboxAcknowledgements = mysqlTable(
+  "inbox_acknowledgements",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    itemType: varchar("item_type", { length: 40 }).notNull(),
+    /** The record the item is about: a reservation, a dispute, an outbox row… */
+    recordId: varchar("record_id", { length: 64 }).notNull(),
+    occurredAt: timestamp("occurred_at", { mode: "date", fsp: 3 }).notNull(),
+    /** Who marked it, and through which connection (null: a dashboard session). */
+    userId: varchar("user_id", { length: 21 }).notNull(),
+    credentialId: varchar("credential_id", { length: 64 }),
+    clientName: varchar("client_name", { length: 100 }),
+    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+  },
+  (table) => ({
+    occurrenceUnique: unique("inbox_acknowledgements_occurrence_unique").on(
+      table.storeId,
+      table.itemType,
+      table.recordId,
+      table.occurredAt,
+    ),
+    // A store's oldest rows go past its cap; every store's past the retention.
+    storeCreatedIdx: index("inbox_acknowledgements_store_created_idx").on(
+      table.storeId,
+      table.createdAt,
+    ),
+    createdIdx: index("inbox_acknowledgements_created_idx").on(table.createdAt),
+  }),
+);
+
+/** What a handoff hands the user over to (packages/api contracts/handoffs.ts). */
+export type ApiHandoffKind =
+  | "stripe_connect_onboarding"
+  | "stripe_dashboard"
+  | "billing_card_setup";
+
+/**
+ * A step only the human can take (Stripe identity checks, a billing card),
+ * handed over by an agent: a short-lived link to a Louez page that checks who
+ * opens it, then sends them to the provider and back. The link's secret is
+ * stored hashed; a new link for the same handoff replaces it. Each click on
+ * the page starts an attempt, named by `return_state_hash`; the provider's
+ * answers only ever change the attempt they belong to. One active
+ * handoff (pending or opened) per store and kind: `active_slot` is 1 while
+ * it is, null after, so the unique key holds only the active one.
+ */
+export const apiHandoffs = mysqlTable(
+  "api_handoffs",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    kind: varchar("kind", { length: 40 }).$type<ApiHandoffKind>().notNull(),
+    /** `expired` is not stored: an active handoff past `expires_at` reads as expired. */
+    status: mysqlEnum("status", ["pending", "opened", "completed", "failed"])
+      .default("pending")
+      .notNull(),
+    activeSlot: tinyint("active_slot"),
+    /** The user the link is for: only they may open it. */
+    userId: varchar("user_id", { length: 21 }).notNull(),
+    /** Who asked for it: a session, an API key or an OAuth grant. */
+    credentialKind: varchar("credential_kind", { length: 16 }).notNull(),
+    credentialId: varchar("credential_id", { length: 64 }),
+    clientName: varchar("client_name", { length: 100 }),
+    /** SHA-256 of the link's secret, hex. */
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    linkIssuedAt: timestamp("link_issued_at", { mode: "date", fsp: 3 }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", fsp: 3 }).notNull(),
+    openedAt: timestamp("opened_at", { mode: "date", fsp: 3 }),
+    /** SHA-256 of the state the provider's return must carry, hex; set when the user continues. */
+    returnStateHash: varchar("return_state_hash", { length: 64 }),
+    /** The provider's id of the current attempt's flow, such as a Checkout Session. */
+    providerRef: varchar("provider_ref", { length: 255 }),
+    /**
+     * The provider-check lease: until then nobody asks the provider about the
+     * current attempt again. Dated with the database's clock.
+     */
+    providerCheckAt: timestamp("provider_check_at", { mode: "date", fsp: 3 }),
+    /** Provider checks of the current attempt, for the lease's backoff. */
+    providerChecks: int("provider_checks", { unsigned: true }).default(0).notNull(),
+    completedAt: timestamp("completed_at", { mode: "date", fsp: 3 }),
+    failedAt: timestamp("failed_at", { mode: "date", fsp: 3 }),
+    failureCode: varchar("failure_code", { length: 60 }),
+    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", fsp: 3 }).defaultNow().notNull(),
+  },
+  (table) => ({
+    activeUnique: unique("api_handoffs_active_unique").on(
+      table.storeId,
+      table.kind,
+      table.activeSlot,
+    ),
+    tokenUnique: unique("api_handoffs_token_unique").on(table.tokenHash),
+    storeIdx: index("api_handoffs_store_idx").on(table.storeId, table.createdAt),
+    // The retention deletes the oldest first.
+    updatedIdx: index("api_handoffs_updated_idx").on(table.updatedAt),
+  }),
+);
+
+/** Tool bundles an agent connection lists (packages/api platform/meta.ts). */
+export type AgentToolBundle =
+  | "daily"
+  | "catalog"
+  | "settings"
+  | "integrations"
+  | "team"
+  | "billing";
+
+/**
+ * What a user granted an OAuth client (Claude, ChatGPT…) on the consent
+ * screen: which stores, which rights, whether sensitive operations wait for a
+ * confirmation, which tool bundles are listed. One per user and client; every
+ * call re-reads it, so revoking (deleting) it refuses the next call. Only a
+ * dashboard session creates, changes or revokes it.
+ */
+export const apiAgentGrants = mysqlTable(
+  "api_agent_grants",
+  {
+    id: id(),
+    userId: varchar("user_id", { length: 21 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** The Better Auth client (`oauth_clients.client_id`); with the user, it names the consent. */
+    clientId: varchar("client_id", { length: 255 })
+      .notNull()
+      .references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    /** Every store the user is a member of, now and later. Otherwise `api_agent_grant_stores`. */
+    allStores: boolean("all_stores").default(false).notNull(),
+    /** `read`: read on every domain. `write`: write on every domain, analytics stays read. */
+    preset: mysqlEnum("preset", ["read", "write"]).notNull(),
+    confirmSensitive: boolean("confirm_sensitive").default(true).notNull(),
+    bundles: json("bundles").$type<AgentToolBundle[]>().notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [unique("api_agent_grants_user_client_unique").on(table.userId, table.clientId)],
+);
+
+/** The stores of a grant that does not cover all of the user's stores. */
+export const apiAgentGrantStores = mysqlTable(
+  "api_agent_grant_stores",
+  {
+    grantId: varchar("grant_id", { length: 21 })
+      .notNull()
+      .references(() => apiAgentGrants.id, { onDelete: "cascade" }),
+    storeId: varchar("store_id", { length: 21 })
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.grantId, table.storeId] }),
+    index("api_agent_grant_stores_store_idx").on(table.storeId),
+  ],
+);
+
+export const apiAgentGrantsRelations = relations(apiAgentGrants, ({ one, many }) => ({
+  user: one(users, { fields: [apiAgentGrants.userId], references: [users.id] }),
+  client: one(oauthClients, {
+    fields: [apiAgentGrants.clientId],
+    references: [oauthClients.clientId],
+  }),
+  stores: many(apiAgentGrantStores),
+}));
+
+export const apiAgentGrantStoresRelations = relations(apiAgentGrantStores, ({ one }) => ({
+  grant: one(apiAgentGrants, {
+    fields: [apiAgentGrantStores.grantId],
+    references: [apiAgentGrants.id],
+  }),
+  store: one(stores, { fields: [apiAgentGrantStores.storeId], references: [stores.id] }),
 }));
 
 // Web Push device subscriptions. One row per browser/device, owned by a user

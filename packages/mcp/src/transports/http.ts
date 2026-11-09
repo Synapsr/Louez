@@ -1,214 +1,330 @@
-import { randomUUID, timingSafeEqual } from "crypto";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import type { ExposedProcedure } from "@louez/api/platform/exposure";
+import type { ApiPorts } from "@louez/api/platform/ports";
+import { createMcpHandler } from "@modelcontextprotocol/server";
+import { ORPCError } from "@orpc/server";
 
-import { resolveApiKeyContext } from "../auth/api-keys";
-import type { McpSessionContext } from "../auth/context";
+import type { AccountActor } from "@louez/api/platform/actor";
+import { platformErrors } from "@louez/api/platform/errors";
+import { largeBodyBusy, takeLargeBodyPlace } from "@louez/api/platform/large-bodies";
+import { STORE_HEADER } from "@louez/api/platform/procedures";
+import { consumeRateLimit, rateLimitKey, rateLimitReached } from "@louez/api/platform/rate-limit";
+
+import type { McpRequestContext } from "../auth/context";
+import { resolveMcpAccount, resolveMcpContext } from "../auth/resolve";
 import type { McpServerDeps } from "../deps";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpServer } from "../server";
 
-// ── Session management ─────────────────────────────────────────────────
-// The MCP protocol requires a stateful session: the client sends `initialize`,
-// then `initialized`, then tool calls — each as separate HTTP requests.
-// We keep server+transport pairs alive in an in-memory Map keyed by session ID
-// and route subsequent requests to the correct instance.
-
-interface McpSession {
-  server: McpServer;
-  transport: WebStandardStreamableHTTPServerTransport;
-  ctx: McpSessionContext;
-  rawKey: string;
-  createdAt: number;
+export interface McpHttpOptions {
+  /** What the app lends the hand-written tools. */
+  deps: McpServerDeps;
+  /** What the app lends the procedures (`apiPorts`). */
+  ports: ApiPorts;
+  /** The procedures served as tools (`createExposure(appRouter).procedures`). */
+  procedures: readonly ExposedProcedure[];
+  /**
+   * RFC 9728 metadata of this resource, announced on a 401 so an MCP client
+   * finds where to sign in (OAuth). Absent when the instance serves no OAuth.
+   */
+  resourceMetadataUrl?: string;
 }
-
-const sessions = new Map<string, McpSession>();
-const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
-function removeSession(sessionId: string) {
-  const session = sessions.get(sessionId);
-  if (session) {
-    sessions.delete(sessionId);
-    void session.server.close();
-  }
-}
-
-function cleanExpiredSessions() {
-  const now = Date.now();
-  for (const [id, session] of sessions) {
-    if (now - session.createdAt > SESSION_TTL_MS) {
-      removeSession(id);
-    }
-  }
-}
-
-// ── Rate limiting ─────────────────────────────────────────────────────
-// Simple in-memory sliding window per API key.
-// High limits since MCP tool calls don't consume our tokens.
-
-interface RateLimitEntry {
-  count: number;
-  windowStart: number;
-}
-
-const rateLimits = new Map<string, RateLimitEntry>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 120; // 120 requests per minute
-
-function checkRateLimit(apiKeyId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimits.get(apiKeyId);
-
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimits.set(apiKeyId, { count: 1, windowStart: now });
-    return true;
-  }
-
-  entry.count++;
-  return entry.count <= RATE_LIMIT_MAX_REQUESTS;
-}
-
-// ── Auth helpers ───────────────────────────────────────────────────────
-
-function extractBearerToken(request: Request): string | null {
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return null;
-  return authorization.slice(7);
-}
-
-function keysMatch(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, "utf-8");
-  const bufB = Buffer.from(b, "utf-8");
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
-
-function jsonResponse(body: Record<string, unknown>, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-// ── Request handlers ───────────────────────────────────────────────────
 
 /**
- * Handle an incoming MCP HTTP request (POST or GET with session).
- *
- * - First request (no session ID): authenticates via API key, creates a
- *   server+transport pair, processes the `initialize` handshake, and stores
- *   the session.
- * - Subsequent requests (with Mcp-Session-Id header): verifies the API key
- *   matches the session, then routes to the existing transport.
- *
- * `deps` reach the server of a new session.
+ * The challenge of a 401: Bearer, with the resource metadata an MCP client
+ * starts OAuth from, and `invalid_token` when a token was sent but refused.
  */
-export async function handleMcpRequest(request: Request, deps: McpServerDeps): Promise<Response> {
-  cleanExpiredSessions();
+function bearerChallenge(request: Request, resourceMetadataUrl: string | undefined): string {
+  const parts = ['realm="louez"'];
+  if (resourceMetadataUrl) parts.push(`resource_metadata="${resourceMetadataUrl}"`);
+  if (request.headers.get("authorization")) parts.push('error="invalid_token"');
+  return `Bearer ${parts.join(", ")}`;
+}
 
-  const rawKey = extractBearerToken(request);
-  if (!rawKey) {
+/** A platform error as the HTTP answer of a request that never reached MCP. */
+function errorResponse(error: ORPCError<string, unknown>, challenge: string): Response {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (error.status === 401) headers.set("WWW-Authenticate", challenge);
+  const retryAfter = (error.data as { details?: { retryAfterSeconds?: number } } | undefined)
+    ?.details?.retryAfterSeconds;
+  if (retryAfter) headers.set("Retry-After", String(retryAfter));
+  return new Response(JSON.stringify(error.toJSON()), { status: error.status, headers });
+}
+
+/** The SDK's own limit on a request body; this handler parses before it does. */
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Calls a read past `MAX_BODY_BYTES` counts on the connection's rate limit,
+ * for each 4 MiB read, before more of it is read: whether the request is a
+ * call that may be that large (a tool whose procedure sets
+ * `meta.maxBodyBytes`) is known only once it is parsed, so the read costs
+ * what it costs whatever it turns out to be.
+ */
+export const OVERSIZED_BODY_WEIGHT = 4;
+
+const TOO_LARGE_MESSAGE = `Request body too large: at most ${MAX_BODY_BYTES} bytes, more only for one call to a tool that takes more (an image's bytes up to 5 MB, a product with its units). Send an image as a public imageUrl rather than its bytes. Split a very large product: create it, then add units in further products_update calls, or fill each unit's details with products_update_unit_details.`;
+
+const jsonResponse = (body: unknown, status: number) =>
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+type ReadBody =
+  | { kind: "none" }
+  | { kind: "json"; value: unknown; size: number; counted: boolean }
+  | { kind: "too-large"; counted: boolean }
+  | { kind: "invalid" };
+
+/**
+ * Reads a POST body as JSON, streaming, at most `MAX_BODY_BYTES`. Past it,
+ * and only when `oversized` is given, each further 4 MiB is counted first
+ * (`oversized.count`, which throws when the rate limit refuses it), up to
+ * `oversized.maxBytes`, and the read takes a place among the large reads of
+ * the process (`oversized.enter`, which throws when none is free). A
+ * declared length is counted before anything is read. The body is consumed here and handed to the SDK parsed.
+ */
+async function readJson(
+  request: Request,
+  oversized?: { maxBytes: number; count: () => Promise<void>; enter: () => void },
+): Promise<ReadBody> {
+  if (request.method !== "POST" || !request.body) return { kind: "none" };
+  const limit = oversized?.maxBytes ?? MAX_BODY_BYTES;
+  const declared = Number(request.headers.get("content-length"));
+  if (declared > limit) return { kind: "too-large", counted: false };
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  let counted = 0;
+  let entered = false;
+  /** Counts each 4 MiB step past the first that `bytes` reach, once. */
+  const countUpTo = async (bytes: number) => {
+    if (!oversized) return;
+    const steps = Math.ceil(bytes / MAX_BODY_BYTES) - 1;
+    for (; counted < steps; counted++) await oversized.count();
+    if (steps > 0 && !entered) {
+      oversized.enter();
+      entered = true;
+    }
+  };
+  try {
+    if (Number.isFinite(declared)) await countUpTo(declared);
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        void reader.cancel().catch(() => {});
+        return { kind: "too-large", counted: counted > 0 };
+      }
+      await countUpTo(size);
+      chunks.push(value);
+    }
+  } catch (error) {
+    void reader.cancel().catch(() => {});
+    throw error;
+  }
+  try {
+    const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    return { kind: "json", value, size, counted: counted > 0 };
+  } catch {
+    return { kind: "invalid" };
+  }
+}
+
+/**
+ * The largest body each tool takes past `MAX_BODY_BYTES`, by tool name and
+ * former name (`meta.maxBodyBytes`).
+ */
+function toolBodyLimits(procedures: readonly ExposedProcedure[]): ReadonlyMap<string, number> {
+  const limits = new Map<string, number>();
+  for (const { meta } of procedures) {
+    if (!meta.maxBodyBytes || meta.maxBodyBytes <= MAX_BODY_BYTES) continue;
+    for (const name of [meta.mcp.name, ...(meta.mcp.aliases ?? []).map((alias) => alias.name)]) {
+      limits.set(name, meta.maxBodyBytes);
+    }
+  }
+  return limits;
+}
+
+/** The body a request may send: more than `MAX_BODY_BYTES` only as one call to a tool that takes more. */
+function allowedBodyBytes(body: unknown, limits: ReadonlyMap<string, number>): number {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return MAX_BODY_BYTES;
+  const { method, params } = body as { method?: unknown; params?: unknown };
+  const name = (params as { name?: unknown } | undefined)?.name;
+  if (method !== "tools/call" || typeof name !== "string") return MAX_BODY_BYTES;
+  return limits.get(name) ?? MAX_BODY_BYTES;
+}
+
+/**
+ * How many messages of the request count on the rate limit here. A tool call
+ * counts when it runs (in the procedure, or in the hand-written tool); every
+ * other message, batched or not, counts here.
+ */
+function callsToCount(body: unknown): number {
+  const messages = Array.isArray(body) ? body : [body];
+  return messages.filter(
+    (message) =>
+      !(
+        typeof message === "object" &&
+        message !== null &&
+        (message as { method?: unknown }).method === "tools/call"
+      ),
+  ).length;
+}
+
+/**
+ * The store a request names in its body: the `storeId` argument of its tool
+ * calls. Every tool call of a batch must name the same one.
+ */
+function storeArgument(body: unknown): { storeId?: string } | { conflict: true } {
+  const messages = Array.isArray(body) ? body : [body];
+  const named = new Set<string>();
+  for (const message of messages) {
+    if (typeof message !== "object" || message === null) continue;
+    const { method, params } = message as { method?: unknown; params?: unknown };
+    if (method !== "tools/call") continue;
+    const storeId = (params as { arguments?: { storeId?: unknown } } | undefined)?.arguments
+      ?.storeId;
+    if (typeof storeId === "string" && storeId.length > 0) named.add(storeId);
+  }
+  if (named.size > 1) return { conflict: true };
+  return { storeId: [...named][0] };
+}
+
+/**
+ * Serves one MCP request over Streamable HTTP, statelessly: no session is
+ * kept between requests. Each request resolves its own context (the key or
+ * the access token is checked, the grant, the store and the role read again,
+ * the plan's API access checked) and gets a server built for it, so a revoked
+ * key or grant, or a lower role, applies on the next request.
+ *
+ * Requests that fail authentication never reach MCP: they get the platform's
+ * error as JSON, with its HTTP status.
+ */
+export async function handleMcpRequest(
+  request: Request,
+  options: McpHttpOptions,
+): Promise<Response> {
+  // A large body holds its place among the process's large reads until the
+  // request is answered (platform/large-bodies.ts, shared with /api/v1).
+  const place: { release?: () => void } = {};
+  try {
+    return await serveMcpRequest(request, options, place);
+  } finally {
+    place.release?.();
+  }
+}
+
+async function serveMcpRequest(
+  request: Request,
+  options: McpHttpOptions,
+  place: { release?: () => void },
+): Promise<Response> {
+  // Who calls comes first: an anonymous request is refused before its body
+  // is read.
+  const challenge = bearerChallenge(request, options.resourceMetadataUrl);
+  let account: AccountActor;
+  try {
+    account = await resolveMcpAccount(request.headers);
+  } catch (error) {
+    if (error instanceof ORPCError) return errorResponse(error, challenge);
+    throw error;
+  }
+
+  // The connection's rate limit applies before the body is read: one that
+  // used up its window gets no read at all. A body refused here, too large
+  // or not JSON, counts as a call; each 4 MiB read past the first counts as
+  // OVERSIZED_BODY_WEIGHT calls before the rest of it is read.
+  const limitKey = rateLimitKey(account.credential);
+  const count = async (weight = 1) => {
+    const limit = await consumeRateLimit(limitKey, undefined, undefined, weight);
+    if (!limit.allowed) throw platformErrors.rateLimited(limit.retryAfterSeconds);
+  };
+  let body: ReadBody;
+  try {
+    const reached = await rateLimitReached(limitKey);
+    if (reached) throw platformErrors.rateLimited(reached.retryAfterSeconds);
+
+    // One call to a tool that takes more may be larger; nothing else.
+    const toolLimits = toolBodyLimits(options.procedures);
+    const largest = Math.max(MAX_BODY_BYTES, ...toolLimits.values());
+    body = await readJson(
+      request,
+      largest > MAX_BODY_BYTES
+        ? {
+            maxBytes: largest,
+            count: () => count(OVERSIZED_BODY_WEIGHT),
+            enter: () => {
+              const release = takeLargeBodyPlace();
+              if (!release) throw largeBodyBusy();
+              place.release = release;
+            },
+          }
+        : undefined,
+    );
+    if (
+      body.kind === "too-large" ||
+      (body.kind === "json" && body.size > allowedBodyBytes(body.value, toolLimits))
+    ) {
+      if (!body.counted) await count();
+      return jsonResponse({ error: TOO_LARGE_MESSAGE }, 413);
+    }
+    if (body.kind === "invalid") {
+      await count();
+      return jsonResponse(
+        { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
+        400,
+      );
+    }
+  } catch (error) {
+    if (error instanceof ORPCError) return errorResponse(error, challenge);
+    throw error;
+  }
+
+  // The store: the header, else the `storeId` argument of the tool call.
+  const named = body.kind === "json" ? storeArgument(body.value) : {};
+  const header = request.headers.get(STORE_HEADER) ?? undefined;
+  if ("conflict" in named || (header && named.storeId && named.storeId !== header)) {
     return jsonResponse(
-      { error: "Missing or invalid Authorization header. Use: Bearer <api-key>" },
-      401,
+      {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32602, message: "The tool calls of one request must name one store." },
+      },
+      400,
     );
   }
 
-  // ── Existing session ──────────────────────────────────────────────
-  const sessionId = request.headers.get("mcp-session-id");
-  if (sessionId) {
-    const session = sessions.get(sessionId);
-    if (!session) {
-      return jsonResponse({ error: "Session not found or expired. Re-initialize." }, 404);
+  let ctx: McpRequestContext;
+  try {
+    const base = {
+      account,
+      headers: request.headers,
+      ports: options.ports,
+      resourceMetadataUrl: options.resourceMetadataUrl,
+    };
+    try {
+      ctx = await resolveMcpContext({ ...base, requestedStoreId: header ?? named.storeId });
+    } catch (error) {
+      // A store named by a tool argument that the connection does not reach:
+      // the tool call answers with the refusal, so the model can pick another.
+      if (header || !named.storeId || !(error instanceof ORPCError) || error.status !== 403) {
+        throw error;
+      }
+      ctx = await resolveMcpContext({ ...base, storeError: error });
     }
-
-    // Verify the API key matches the one used to create the session
-    if (!keysMatch(rawKey, session.rawKey)) {
-      return jsonResponse({ error: "API key does not match session." }, 401);
-    }
-
-    // Rate limit check
-    if (!checkRateLimit(session.ctx.apiKeyId)) {
-      return jsonResponse({ error: "Rate limit exceeded. Max 120 requests per minute." }, 429);
-    }
-
-    return session.transport.handleRequest(request);
+    const count = body.kind === "json" ? callsToCount(body.value) : 1;
+    for (let left = count; left > 0; left -= 1) await ctx.countCall();
+  } catch (error) {
+    if (error instanceof ORPCError) return errorResponse(error, challenge);
+    throw error;
   }
 
-  // ── New session ───────────────────────────────────────────────────
-  const ctx = await resolveApiKeyContext(rawKey);
-  if (!ctx) {
-    return jsonResponse({ error: "Invalid API key. It may be expired or revoked." }, 401);
-  }
-
-  // Rate limit check for new sessions too
-  if (!checkRateLimit(ctx.apiKeyId)) {
-    return jsonResponse({ error: "Rate limit exceeded. Max 120 requests per minute." }, 429);
-  }
-
-  const server = createMcpServer(ctx, deps);
-  const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-    onsessionclosed: (closedSessionId: string) => {
-      removeSession(closedSessionId);
-    },
+  // One handler per request, bound to this request's context. It keeps
+  // nothing once the answer is sent. GET and DELETE (2025 session operations)
+  // get 405 from the SDK: there is no session to stream on or to close.
+  const handler = createMcpHandler(() => createMcpServer(ctx, options.deps, options.procedures), {
+    legacy: "stateless",
   });
-
-  await server.connect(transport);
-
-  const response = await transport.handleRequest(request);
-
-  // The transport includes the session ID in the response header after initialize
-  const newSessionId = response.headers.get("mcp-session-id");
-  if (newSessionId) {
-    sessions.set(newSessionId, { server, transport, ctx, rawKey, createdAt: Date.now() });
-  }
-
-  return response;
-}
-
-/**
- * Handle MCP session termination (DELETE with Mcp-Session-Id header).
- */
-export async function handleMcpDelete(request: Request): Promise<Response> {
-  const rawKey = extractBearerToken(request);
-  if (!rawKey) {
-    return jsonResponse({ error: "Missing or invalid Authorization header." }, 401);
-  }
-
-  const sessionId = request.headers.get("mcp-session-id");
-  if (!sessionId) {
-    return jsonResponse({ error: "Missing Mcp-Session-Id header" }, 400);
-  }
-
-  const session = sessions.get(sessionId);
-  if (!session) {
-    // Already gone — idempotent success
-    return new Response(null, { status: 204 });
-  }
-
-  // Verify the API key matches
-  if (!keysMatch(rawKey, session.rawKey)) {
-    return jsonResponse({ error: "API key does not match session." }, 401);
-  }
-
-  const response = await session.transport.handleRequest(request);
-  removeSession(sessionId);
-  return response;
-}
-
-/**
- * Discovery endpoint — returns server metadata for MCP clients.
- * Called via GET when no Mcp-Session-Id header is present.
- */
-export function handleMcpDiscovery(): Response {
-  return new Response(
-    JSON.stringify({
-      name: "louez",
-      version: "0.1.0",
-      description: "Louez rental management MCP server",
-      transport: "streamable-http",
-      authentication: "bearer",
-    }),
-    { headers: { "Content-Type": "application/json" } },
+  return await handler.fetch(
+    request,
+    body.kind === "json" ? { parsedBody: body.value } : undefined,
   );
 }

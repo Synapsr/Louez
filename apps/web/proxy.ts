@@ -1,4 +1,5 @@
 import { isLocale, defaultLocale } from "@/i18n/config";
+import { HANDOFF_ROUTE_HEADER, isHandoffPath } from "@/lib/handoffs/handoff-privacy";
 import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER, isDemoPath } from "@/lib/landing-demos/policy";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -6,13 +7,14 @@ import type { NextRequest } from "next/server";
 import { LOUEZ_TERMS_PATH, isBillingOnlyPath } from "@/lib/billing/billing-routes";
 import { isBillingEnabled } from "@/lib/billing/mode";
 import { isStandaloneMode } from "@/lib/deployment";
+import { activeStoreSwitchPath } from "@/lib/util.active-store-link";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import {
   buildDemoSecurityHeaders,
   buildEmbedSecurityHeaders,
   buildSecurityHeaders,
 } from "@/lib/util.security-headers";
-import { isValidReferralCode } from "@/lib/utils/referral";
+import { isValidReferralCode } from "@louez/utils/referral-code";
 import {
   isKnownSignupOrigin,
   SIGNUP_ORIGIN_COOKIE,
@@ -90,6 +92,8 @@ const MARKETPLACE_CHANNEL = "marketplace";
 const DASHBOARD_ROUTES = [
   "/login",
   "/register",
+  "/oauth", // the OAuth consent page of agent connections
+  "/active-store", // the confirmation of a dashboard link naming another store
   "/dashboard",
   "/onboarding",
   "/online-store",
@@ -121,6 +125,23 @@ function createInternalRewriteUrl(request: NextRequest, pathname: string) {
   }
 
   return url;
+}
+
+/**
+ * A dashboard link that names its store (`?store=<id>`): handed to the
+ * active-store route, which switches the store when the user may open it and
+ * redirects to the same URL without the parameter. Null for any other request.
+ */
+function createActiveStoreSwitch(request: NextRequest): NextResponse | null {
+  // Page loads only: a Server Action posts to the page's URL and must reach it.
+  if (request.method !== "GET") return null;
+  const target = activeStoreSwitchPath(request.nextUrl);
+  if (!target) return null;
+  const url = createInternalRewriteUrl(request, "/");
+  const [pathname, search] = target.split("?");
+  url.pathname = pathname;
+  url.search = search ? `?${search}` : "";
+  return NextResponse.rewrite(url);
 }
 
 function createDashboardResponse(request: NextRequest) {
@@ -373,8 +394,12 @@ function isAbsentLouezTerms(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
-  // This internal marker only comes from this proxy, never from a visitor.
-  if (request.headers.has(DEMO_ROUTE_HEADER) || request.headers.has(DEMO_LOCALE_HEADER))
+  // These internal markers only come from this proxy, never from a visitor.
+  if (
+    request.headers.has(DEMO_ROUTE_HEADER) ||
+    request.headers.has(DEMO_LOCALE_HEADER) ||
+    request.headers.has(HANDOFF_ROUTE_HEADER)
+  )
     return new NextResponse(null, { status: 400 });
   if (isDemoPath(pathname)) {
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -387,6 +412,22 @@ export async function proxy(request: NextRequest) {
     const response = NextResponse.next({ request: { headers: requestHeaders } });
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
     return withRuntimeSecurityHeaders(response, pathname, getRuntimePublicEnv());
+  }
+
+  // A handoff's URL holds a secret: the root layout loads no analytics for it, and
+  // no page or redirect of it tells another site where the user came from.
+  if (isHandoffPath(pathname)) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(HANDOFF_ROUTE_HEADER, "1");
+    const response = withRuntimeSecurityHeaders(
+      NextResponse.next({ request: { headers: requestHeaders } }),
+      pathname,
+      getRuntimePublicEnv(),
+    );
+    response.headers.set("Referrer-Policy", "no-referrer");
+    response.headers.set("Cache-Control", "no-store");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return response;
   }
 
   // -----------------------------------------------------------------------------
@@ -420,7 +461,11 @@ export async function proxy(request: NextRequest) {
   // deliberately absent here — the referral program is platform machinery.
   if (isStandaloneMode()) {
     if (isDashboardRoute(pathname)) {
-      return withRuntimeSecurityHeaders(NextResponse.next(), pathname, publicEnv);
+      return withRuntimeSecurityHeaders(
+        createActiveStoreSwitch(request) ?? NextResponse.next(),
+        pathname,
+        publicEnv,
+      );
     }
 
     const slug = await getStandaloneStoreSlug();
@@ -462,6 +507,8 @@ export async function proxy(request: NextRequest) {
   //   - localhost (when PREVIEW_STORE_SLUG is not set)
   if (subdomain === dashboardSubdomain || (isLocalhost && !subdomain)) {
     if (isAbsentLouezTerms(pathname)) return notFoundResponse(pathname, publicEnv);
+    const storeSwitch = createActiveStoreSwitch(request);
+    if (storeSwitch) return withRuntimeSecurityHeaders(storeSwitch, pathname, publicEnv);
     return withRuntimeSecurityHeaders(
       captureAcquisition(request, createDashboardResponse(request), host, appDomain),
       pathname,

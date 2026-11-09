@@ -1,12 +1,12 @@
 import { db, stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 
-import type { McpSessionContext } from '../auth/context'
+import type { McpRequestContext } from '../auth/context'
 import { hasPermission } from '../auth/context'
 
-export function registerStoreResources(server: McpServer, ctx: McpSessionContext) {
-  server.resource(
+export function registerStoreResources(server: McpServer, ctx: McpRequestContext) {
+  server.registerResource(
     'store-info',
     'louez://store/info',
     { description: 'Current store information (name, contact, settings)', mimeType: 'text/plain' },
@@ -36,7 +36,7 @@ export function registerStoreResources(server: McpServer, ctx: McpSessionContext
     }
   )
 
-  server.resource(
+  server.registerResource(
     'store-settings',
     'louez://store/settings',
     { description: 'Complete store configuration', mimeType: 'application/json' },

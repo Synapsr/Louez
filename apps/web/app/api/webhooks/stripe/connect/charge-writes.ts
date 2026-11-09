@@ -145,7 +145,13 @@ export async function isKnownPaymentIntent(input: {
 }
 
 export type RecordDisputeResult =
-  | { readonly recorded: true; readonly paymentId: string; readonly reservationId: string }
+  | {
+      readonly recorded: true;
+      readonly paymentId: string;
+      readonly reservationId: string;
+      /** This event is the first Louez records of the dispute. */
+      readonly opened: boolean;
+    }
   | { readonly recorded: false; readonly reason: "missing_account" | "payment_not_found" };
 
 /** Upserts the `payment_disputes` row of a `charge.dispute.*` event (README Q15). */
@@ -171,11 +177,13 @@ export async function recordChargeDispute(input: {
   });
   if (!payment) return { recorded: false, reason: "payment_not_found" };
 
-  await db.transaction(async (tx) => {
+  const opened = await db.transaction(async (tx) => {
     const first = mergeDispute(null, facts);
     // Insert first, so two events of one dispute delivered together queue on the
-    // row lock instead of both inserting.
-    await tx
+    // row lock instead of both inserting. On a known dispute the insert moves
+    // updated_at, which the update below sets again: MySQL then counts 2 rows, and
+    // 1 for a new dispute (the driver's FOUND_ROWS would count an unchanged row 1).
+    const [inserted] = await tx
       .insert(paymentDisputes)
       .values({
         id: facts.disputeId,
@@ -183,7 +191,9 @@ export async function recordChargeDispute(input: {
         reservationId: payment.reservationId,
         ...first,
       })
-      .onDuplicateKeyUpdate({ set: { id: facts.disputeId } });
+      .onDuplicateKeyUpdate({
+        set: { updatedAt: sql`${paymentDisputes.updatedAt} - INTERVAL 1 SECOND` },
+      });
     const [stored] = await tx
       .select({
         status: paymentDisputes.status,
@@ -199,6 +209,12 @@ export async function recordChargeDispute(input: {
       .set({ ...mergeDispute(stored ?? null, facts), updatedAt: new Date() })
       .where(eq(paymentDisputes.id, facts.disputeId));
     await markReservation(tx, { id: payment.reservationId, storeId: payment.storeId });
+    return inserted.affectedRows === 1;
   });
-  return { recorded: true, paymentId: payment.paymentId, reservationId: payment.reservationId };
+  return {
+    recorded: true,
+    paymentId: payment.paymentId,
+    reservationId: payment.reservationId,
+    opened,
+  };
 }

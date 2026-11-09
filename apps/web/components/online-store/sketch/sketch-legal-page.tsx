@@ -1,8 +1,6 @@
 import { useTranslations } from "next-intl";
 
-import { cn } from "@louez/utils";
-
-import { stripHtml } from "@/lib/util.seo-text";
+import { cn, stripHtml } from "@louez/utils";
 
 import type { OnlineStoreDevice } from "../online-store.constants";
 import type { OnlineStoreLegalValues } from "../util.online-store-form";

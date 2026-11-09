@@ -29,7 +29,7 @@ import {
 
 import type { Reservation } from "@/app/(dashboard)/dashboard/reservations/reservations-types";
 import { getCurrentStore } from "@/lib/store-context";
-import { getUnitConflictFlags } from "@/lib/utils/unit-conflicts";
+import { getUnitConflictFlags, unitConflictWindows } from "@louez/api/services/unit-conflicts";
 
 /**
  * Read-only data-layer queries for the product dashboard (view) page.
@@ -415,34 +415,15 @@ export async function getProductInventoryDetail(params: {
   });
 
   const openDowntimeByUnit = new Map<string, (typeof openDowntimes)[number]>();
-  const openDowntimesByUnit = new Map<string, typeof openDowntimes>();
   for (const downtime of openDowntimes) {
-    if (!downtime.productUnitId) continue;
-    if (!openDowntimeByUnit.has(downtime.productUnitId)) {
+    if (downtime.productUnitId && !openDowntimeByUnit.has(downtime.productUnitId)) {
       openDowntimeByUnit.set(downtime.productUnitId, downtime);
     }
-
-    const list = openDowntimesByUnit.get(downtime.productUnitId) ?? [];
-    list.push(downtime);
-    openDowntimesByUnit.set(downtime.productUnitId, list);
   }
 
-  // Mirrors the old `dashboard/inventory` page's `getInventory` conflict-flag
-  // computation (deleted): retired units are treated as conflicting with any
-  // future assignment (open-ended window from now), while active units are
-  // checked against the windows of their current/upcoming (still-open)
-  // downtimes.
-  const conflictWindows = units.flatMap((unit) => {
-    if (unit.lifecycleStatus === "retired") {
-      return [{ unitId: unit.id, window: { start: now, end: null } }];
-    }
-
-    const unitOpenDowntimes = openDowntimesByUnit.get(unit.id) ?? [];
-    return unitOpenDowntimes.map((downtime) => ({
-      unitId: unit.id,
-      window: { start: downtime.startsAt, end: downtime.endsAt },
-    }));
-  });
+  // Retired units conflict with any booking still to end, active ones with
+  // their open downtimes: the inbox reads the same windows.
+  const conflictWindows = unitConflictWindows(units, openDowntimes, now);
 
   const conflictFlags = await getUnitConflictFlags(conflictWindows, {
     storeId,

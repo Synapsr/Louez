@@ -4,8 +4,8 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
-import { getMinStartDateTime, validateAdvanceNotice } from "@/lib/utils/duration";
-import { formatDurationFromMinutes } from "@/lib/utils/rental-duration";
+import { getMinStartDateTime, validateAdvanceNotice } from "@louez/utils";
+import { formatDurationFromMinutes } from "@louez/utils";
 
 interface UseCheckoutAdvanceNoticeParams {
   startDate: string | null;

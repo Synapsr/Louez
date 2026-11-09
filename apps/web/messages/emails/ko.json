@@ -152,6 +152,55 @@
     "viewRequest": "요청 보기",
     "connectToManage": "이 요청을 수락하거나 거부하려면 대시보드에 로그인하세요."
   },
+  "paymentAdmin": {
+    "customer": "고객",
+    "email": "이메일",
+    "period": "기간",
+    "total": "예약 총액",
+    "viewReservation": "예약 보기",
+    "connectToManage": "이 예약을 관리하려면 대시보드에 로그인하세요.",
+    "received": {
+      "subject": "예약 #{number} 결제 완료",
+      "title": "결제 완료",
+      "body": "고객이 {storeName}의 예약 #{number}을(를) 결제했습니다.",
+      "amount": "결제 금액"
+    },
+    "failed": {
+      "subject": "예약 #{number} 결제 실패",
+      "title": "결제 실패",
+      "body": "{storeName}의 예약 #{number} 결제가 완료되지 않았습니다.",
+      "amount": "금액"
+    },
+    "disputed": {
+      "subject": "예약 #{number} 결제에 이의가 제기되었습니다",
+      "title": "결제 이의 제기",
+      "body": "고객이 {storeName}의 예약 #{number} 결제에 대해 카드사에 이의를 제기했습니다. Stripe 대시보드에 표시된 기한 전에 대응하세요.",
+      "amount": "이의 제기 금액"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "고객",
+    "email": "이메일",
+    "period": "기간",
+    "total": "예약 총액",
+    "viewReservation": "예약 보기",
+    "connectToManage": "이 예약을 관리하려면 대시보드에 로그인하세요.",
+    "confirmed": {
+      "subject": "고객이 예약 #{number}을(를) 확정했습니다",
+      "title": "고객이 확정함",
+      "body": "고객이 {storeName}의 예약 #{number}을(를) 확정했습니다."
+    },
+    "cancelled": {
+      "subject": "고객이 요청 #{number}를 취소했습니다.",
+      "title": "고객이 취소함",
+      "body": "고객이 {storeName}의 예약 #{number}을(를) 취소했습니다."
+    },
+    "quote_declined": {
+      "subject": "고객이 견적 #{number}을(를) 거부했습니다",
+      "title": "고객이 견적을 거부함",
+      "body": "고객이 {storeName}의 견적 #{number}을(를) 거부했습니다."
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "새로운 공급업체 송장",
     "title": "새로운 공급업체 송장",

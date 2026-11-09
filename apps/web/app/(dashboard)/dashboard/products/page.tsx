@@ -1,8 +1,8 @@
-import { getDashboardProductsList } from '@louez/api/services'
-
+import { serverApi } from '@/lib/api/server-api'
 import { getCurrentStore } from '@/lib/store-context'
 import { getStoreLimits, getStorePlan } from '@/lib/plan-limits'
 import { ProductsPageContent } from './products-page-content'
+import { productPermissions } from './util.product-permissions'
 import { PRODUCT_STATUS_FILTERS, type ProductStatusFilter } from './types'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -34,8 +34,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const categoryIds = parseCategoryIds(params.category)
   const search = params.search?.trim() ?? ''
 
+  const api = await serverApi()
   const [initialData, limits, plan] = await Promise.all([
-    getDashboardProductsList({ storeId: store.id, status, categoryIds, search }),
+    api.products.list({ status, categoryIds, search }),
     getStoreLimits(store.id),
     getStorePlan(store.id),
   ])
@@ -47,6 +48,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       limits={limits.products}
       planSlug={plan.slug}
       currency={store.settings?.currency}
+      canDelete={productPermissions(store.role).canDelete}
     />
   )
 }

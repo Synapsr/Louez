@@ -9,6 +9,7 @@ import { usePostHog } from "posthog-js/react";
 
 import { toastManager } from "@louez/ui";
 
+import { apiErrorKey } from "@/lib/orpc/errors";
 import {
   onboardingAnalyticsBaseProperties,
   productAnalyticsEvents,
@@ -17,6 +18,9 @@ import {
 import { getOnboardingStepKey } from "./steps";
 
 function resolveErrorMessage(tErrors: (key: string) => string, error: unknown): string {
+  // An agent-ready procedure's message is English for agents; its key is the dashboard's.
+  const apiKey = apiErrorKey(error);
+  if (apiKey) return tErrors(apiKey);
   if (error instanceof Error) {
     if (error.message.startsWith("errors.")) {
       return tErrors(error.message.replace("errors.", ""));
@@ -32,6 +36,8 @@ function resolveErrorMessage(tErrors: (key: string) => string, error: unknown): 
 // Only well-known "errors.*" keys are sent to analytics: free-form messages
 // could carry user input, and the key is what matters to locate the friction.
 function resolveErrorKey(error: unknown): string {
+  const apiKey = apiErrorKey(error);
+  if (apiKey) return `errors.${apiKey}`;
   if (error instanceof Error && error.message.startsWith("errors.")) {
     return error.message;
   }

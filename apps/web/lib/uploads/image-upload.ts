@@ -1,36 +1,16 @@
-import { MAX_HERO_SIZE, MAX_IMAGE_SIZE, MAX_LOGO_SIZE } from "@louez/validations";
+import {
+  IMAGE_UPLOAD_CONFIG,
+  IMAGE_UPLOAD_KINDS,
+  IMAGE_UPLOAD_MIME_TYPES,
+  type ImageUploadKind,
+} from "@louez/validations";
 
-export const IMAGE_UPLOAD_KINDS = [
-  "avatar",
-  "logo",
-  "hero",
-  "product",
-  "category",
-  "inspection",
-] as const;
-
-export type ImageUploadKind = (typeof IMAGE_UPLOAD_KINDS)[number];
-
-export const IMAGE_UPLOAD_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-] as const;
+// Shared with the API's upload procedures (packages/api services/uploads.ts).
+export { IMAGE_UPLOAD_CONFIG, IMAGE_UPLOAD_KINDS, IMAGE_UPLOAD_MIME_TYPES, type ImageUploadKind };
 
 export type ImageUploadIssue = "invalidType" | "tooLarge";
 export type ProductImageProcessingKind = "ai-enhanced" | "background-removed";
 export type ProductImageProcessingOperation = "enhance" | "remove-background";
-
-export const IMAGE_UPLOAD_CONFIG = {
-  avatar: { folder: null, maxSize: MAX_LOGO_SIZE },
-  logo: { folder: "logo", maxSize: MAX_LOGO_SIZE },
-  // Keep hero images in the existing logo folder for backward compatibility.
-  hero: { folder: "logo", maxSize: MAX_HERO_SIZE },
-  product: { folder: "products", maxSize: MAX_IMAGE_SIZE },
-  category: { folder: "categories", maxSize: MAX_HERO_SIZE },
-  inspection: { folder: "inspections", maxSize: MAX_IMAGE_SIZE },
-} as const satisfies Record<ImageUploadKind, { folder: string | null; maxSize: number }>;
 
 interface ImageFileLike {
   size: number;

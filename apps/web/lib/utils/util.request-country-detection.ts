@@ -1,4 +1,4 @@
-import { getCountryByCode } from "@/lib/utils/countries";
+import { getCountryByCode } from "@louez/utils/countries";
 
 const REQUEST_COUNTRY_HEADERS = [
   "cf-ipcountry",

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
 import { revalidateLogic, useStore } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 
@@ -20,9 +21,9 @@ import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 import { FormRadioCardGroup } from "@/components/form/form-radio-card-group";
 import { RootError } from "@/components/form/root-error";
 import { useAppForm } from "@/hooks/form/form";
-import { getMaxRentalMinutes, getMinRentalMinutes } from "@/lib/utils/rental-duration";
-
-import { updateReservationRules } from "../actions";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpc } from "@/lib/orpc/react";
+import { getMaxRentalMinutes, getMinRentalMinutes } from "@louez/utils";
 import { StoreSettingsRentalRulesSection } from "../components/store-settings-rental-rules-section";
 import { StripeRequiredDialog } from "../components/stripe-required-dialog";
 import { useStoreSettingsUnits } from "../hooks/use-store-settings-units";
@@ -52,7 +53,8 @@ export const ReservationRulesForm = ({
 }: ReservationRulesFormProps) => {
   const router = useRouter();
   const t = useTranslations("dashboard.settings");
-  const [isPending, startTransition] = useTransition();
+  const tErrors = useTranslations("errors");
+  const updateRules = useMutation(orpc.dashboard.settings.updateReservationRules.mutationOptions());
   const [isStripeRequiredDialogOpen, setIsStripeRequiredDialogOpen] = useState(false);
   const [rootError, setRootError] = useState<string | null>(null);
 
@@ -79,16 +81,16 @@ export const ReservationRulesForm = ({
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
     onSubmit: async ({ value }) => {
       setRootError(null);
-      startTransition(async () => {
-        const result = await updateReservationRules(value);
-        if (result.error) {
-          setRootError(result.error);
-          return;
-        }
-        toastManager.add({ title: t("settingsSaved"), type: "success" });
-        form.reset();
-        router.refresh();
-      });
+      try {
+        await updateRules.mutateAsync(value);
+      } catch (error) {
+        const key = apiErrorKey(error);
+        setRootError(key && tErrors.has(key) ? tErrors(key) : tErrors("generic"));
+        return;
+      }
+      toastManager.add({ title: t("settingsSaved"), type: "success" });
+      form.reset();
+      router.refresh();
     },
   });
 
@@ -163,7 +165,11 @@ export const ReservationRulesForm = ({
             </CardContent>
           </Card>
 
-          <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={updateRules.isPending}
+            onReset={() => form.reset()}
+          />
         </form.Form>
       </form.AppForm>
 

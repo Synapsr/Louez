@@ -17,6 +17,16 @@ export { ReminderPickupAdminEmail } from "./reminder-pickup-admin";
 export { ReminderReturnAdminEmail } from "./reminder-return-admin";
 export { ReminderDigestAdminEmail, type DigestEntry } from "./reminder-digest-admin";
 export { NewRequestLandlordEmail } from "./new-request-landlord";
+export {
+  PaymentAdminEmail,
+  getPaymentAdminEmailSubject,
+  type PaymentAdminEmailKind,
+} from "./payment-admin";
+export {
+  StatusChangeAdminEmail,
+  getStatusChangeAdminEmailSubject,
+  type StatusChangeAdminEmailKind,
+} from "./status-change-admin";
 export { PhoneCallbackLandlordEmail } from "./phone-callback-landlord";
 export { ContactMessageEmail } from "./contact-message";
 export { VoiceNumberBillingEmail } from "./voice-number-billing";

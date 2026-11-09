@@ -33,6 +33,8 @@ import { ProductRentalInformation } from "@/components/storefront/product/produc
 import { BookingPanel } from "./booking-panel";
 
 import { ProductSummary } from "./product-summary";
+import { sanitizeRichTextHtml } from "@/lib/util.rich-text";
+
 import { ProductPageContent } from "./product-page-content";
 import { RelatedProducts } from "./related-products";
 
@@ -172,7 +174,8 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
       />
 
       <ProductPageContent
-        product={product}
+        // The description renders in a client component: sanitised here, on the server.
+        product={{ ...product, description: sanitizeRichTextHtml(product.description) || null }}
         bookingColumn={
           booking.isAvailable ? (
             <BookingPanel

@@ -14,7 +14,7 @@ import { StorefrontSection } from "@/components/storefront/ui/storefront-section
 import { generateLocalBusinessSchema, generateStoreMetadata, JsonLd, stripHtml } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { resolveStoreContactChannels } from "@/lib/storefront/util.store-contact";
-import { hasRichTextContent } from "@/lib/util.rich-text";
+import { hasRichTextContent } from "@louez/utils";
 import { buildOpeningHoursSpecification } from "@/lib/utils/util.opening-hours";
 
 interface AboutPageProps {

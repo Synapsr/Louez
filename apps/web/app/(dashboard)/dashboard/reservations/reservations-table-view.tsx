@@ -54,6 +54,7 @@ import type {
   SortField,
   SortDirection,
 } from "./reservations-types";
+import type { StoreTargetStatus } from "@louez/api/contracts/reservations";
 import { PAYMENT_STATUS_VARIANTS, STATUS_CONFIG, getPaymentStatus } from "./reservations-utils";
 import {
   getReservationDetailHref,
@@ -87,7 +88,7 @@ interface ReservationsTableViewProps {
   handleStatusChange: (
     e: React.MouseEvent,
     reservation: Reservation,
-    newStatus: ReservationStatus,
+    newStatus: StoreTargetStatus,
   ) => Promise<void>;
   openRejectDialog: (e: React.MouseEvent, reservation: Reservation) => void;
 }
@@ -247,7 +248,7 @@ export function ReservationsTableView({
 
                     {/* Customer */}
                     <TableCell>
-                      {reservation.customer.firstName} {reservation.customer.lastName}
+                      {reservation.customer?.firstName} {reservation.customer?.lastName}
                     </TableCell>
 
                     {/* Items (hidden on mobile) */}

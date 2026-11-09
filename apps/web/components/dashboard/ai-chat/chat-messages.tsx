@@ -3,16 +3,19 @@
 import type { ReactNode } from "react";
 
 import type { UIMessage } from "@ai-sdk/react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
+import { ExternalLinkIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
-/**
- * Only in-app dashboard paths become real links. The assistant writes these
- * itself, so anything else — an absolute URL, a protocol-relative `//host` — is
- * a model invention we render as plain text rather than as something clickable.
- */
-const isDashboardPath = (href: string) => /^\/dashboard\/[\w\-/]*$/.test(href);
+import { usePublicEnv } from "@/components/shared/public-env-provider";
+import { useStore } from "@/contexts/store-context";
+
+import { resolveChatLink } from "./util.chat-link";
+
+const LINK_CLASS =
+  "decoration-muted-foreground/40 hover:decoration-foreground font-medium underline underline-offset-2 transition-colors";
 
 interface ChatMessagesProps {
   messages: UIMessage[];
@@ -66,8 +69,16 @@ const MessageParts = ({ parts }: { parts: UIMessage["parts"] }) => (
   </>
 );
 
-/** Render inline formatting: [link](/dashboard/…), **bold**, `code`, *italic* */
+/**
+ * Render inline formatting: [link](url), **bold**, `code`, *italic*. A link
+ * to this app's dashboard navigates in the app (another store's page loads
+ * in full), a link to one of its storefronts opens a new tab, anything else
+ * stays plain text (`resolveChatLink`).
+ */
 const InlineFormat = ({ text }: { text: string }) => {
+  const t = useTranslations("dashboard.aiChat");
+  const { NEXT_PUBLIC_APP_URL: appUrl, NEXT_PUBLIC_APP_DOMAIN: appDomain } = usePublicEnv();
+  const { storeId: currentStoreId } = useStore();
   // Links first: their label may itself contain ** or `, and matching those
   // before the link would split it in half.
   const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*.*?\*\*|`[^`]+`|\*[^*]+\*)/);
@@ -77,15 +88,36 @@ const InlineFormat = ({ text }: { text: string }) => {
         const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(segment);
         if (link) {
           const [, label, href] = link;
-          if (!isDashboardPath(href)) return label;
+          const target = resolveChatLink(href, { appUrl, appDomain, currentStoreId });
+          if (!target) return label;
+          if (target.kind === "app") {
+            return (
+              <Link key={j} href={target.href} className={LINK_CLASS}>
+                {label}
+              </Link>
+            );
+          }
+          if (target.kind === "document") {
+            // Another store: a full page load, so the current store's client
+            // state never carries over.
+            return (
+              <a key={j} href={target.href} className={LINK_CLASS}>
+                {label}
+              </a>
+            );
+          }
           return (
-            <Link
+            <a
               key={j}
-              href={href}
-              className="decoration-muted-foreground/40 hover:decoration-foreground font-medium underline underline-offset-2 transition-colors"
+              href={target.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(LINK_CLASS, "inline-flex items-center gap-0.5")}
             >
               {label}
-            </Link>
+              <ExternalLinkIcon aria-hidden className="size-3 shrink-0" />
+              <span className="sr-only">({t("opensInNewTab")})</span>
+            </a>
           );
         }
         if (segment.startsWith("**") && segment.endsWith("**")) {

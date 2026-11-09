@@ -35,6 +35,7 @@ export const productAnalyticsEvents = {
   onboardingStripeConnectStarted: 'onboarding_stripe_connect_started',
   onboardingSourceSkipped: 'onboarding_source_skipped',
   onboardingErrorShown: 'onboarding_error_shown',
+  agentStoreSetupAction: 'agent_store_setup_action',
   acquisitionChannelReported: 'acquisition_channel_reported',
   whatsNewListViewed: 'whats_new_list_viewed',
   whatsNewAnnouncementViewed: 'whats_new_announcement_viewed',

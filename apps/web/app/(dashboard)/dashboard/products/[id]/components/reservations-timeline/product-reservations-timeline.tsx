@@ -5,6 +5,7 @@ import type { PointerEvent as ReactPointerEvent, UIEvent } from "react";
 
 import { useRouter } from "next/navigation";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarIcon,
   ChevronLeft,
@@ -47,12 +48,14 @@ import type { StockKind } from "@louez/types";
 
 import { EmptyState } from "@/components/ui/empty-state";
 
-import {
-  type ProductTimelineData,
-  type ProductTimelineDowntime,
-  type ProductTimelineReservation,
-  fetchProductReservationTimeline,
-} from "../../reservation-timeline-actions";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { productsQueries } from "@/lib/queries/products.queries";
+
+import type {
+  ProductTimelineData,
+  ProductTimelineDowntime,
+  ProductTimelineReservation,
+} from "./types";
 import { TimelineDateJumpDrawer } from "@/app/(dashboard)/dashboard/reservations/calendar/timeline-date-jump-drawer";
 import { TimelineFilterBadge } from "@/components/dashboard/reservations-timeline/timeline-filter-badge";
 import {
@@ -153,6 +156,20 @@ const EXTEND_CHUNK_DAYS = 28;
 const EXTEND_THRESHOLD_PX = 320;
 /** Hard cap on the loaded window to keep the DOM bounded */
 const MAX_DAYS_COUNT = 560;
+/** Widest window one timeline request reads (the API takes 400 days at most). */
+const FETCH_CHUNK_DAYS = 360;
+
+/** A date range cut into windows the API takes, a jump far away included. */
+function splitRange(start: Date, end: Date): Array<[Date, Date]> {
+  const chunks: Array<[Date, Date]> = [];
+  let from = start;
+  while (from < end) {
+    const to = new Date(Math.min(end.getTime(), addDays(from, FETCH_CHUNK_DAYS).getTime()));
+    chunks.push([from, to]);
+    from = to;
+  }
+  return chunks.length > 0 ? chunks : [[start, end]];
+}
 
 // =============================================================================
 // Filter controls — shared between the desktop toolbar row and the mobile
@@ -381,6 +398,7 @@ export function ProductReservationsTimeline({
   const tErrors = useTranslations("errors");
   const locale = useLocale();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // ---------------------------------------------------------------------------
   // URL-persisted view state (zoom + status filter) — shareable links
@@ -507,27 +525,17 @@ export function ProductReservationsTimeline({
     setError(null);
 
     void Promise.all(
-      gaps.map(([start, end]) =>
-        fetchProductReservationTimeline({
-          productId,
-          startDateISO: start.toISOString(),
-          endDateISO: end.toISOString(),
-        }),
+      gaps.flatMap(([start, end]) =>
+        splitRange(start, end).map(([from, to]) =>
+          queryClient.fetchQuery(productsQueries.reservationTimeline({ id: productId, from, to })),
+        ),
       ),
     )
       .then((results) => {
-        const failed = results.find((result) => "error" in result);
-        if (failed && "error" in failed) {
-          coverageRef.current = previousCoverage;
-          setError(failed.error);
-          return;
-        }
-
         setReservationsById((previous) => {
           const next = new Map(previous);
           for (const result of results) {
-            if (!("data" in result)) continue;
-            for (const reservation of result.data.reservations) {
+            for (const reservation of result.reservations) {
               next.set(reservation.id, reservation);
             }
           }
@@ -536,8 +544,7 @@ export function ProductReservationsTimeline({
         setDowntimesById((previous) => {
           const next = new Map(previous);
           for (const result of results) {
-            if (!("data" in result)) continue;
-            for (const downtime of result.data.downtimes) {
+            for (const downtime of result.downtimes) {
               next.set(downtime.id, downtime);
             }
           }
@@ -545,15 +552,16 @@ export function ProductReservationsTimeline({
         });
         setHasLoadedOnce(true);
       })
-      .catch(() => {
+      .catch((failure: unknown) => {
         coverageRef.current = previousCoverage;
-        setError("errors.generic");
+        const key = apiErrorKey(failure);
+        setError(key ? `errors.${key}` : "errors.generic");
       })
       .finally(() => {
         pendingFetchesRef.current -= 1;
         if (pendingFetchesRef.current === 0) setIsFetching(false);
       });
-  }, [data, productId, windowStart, daysCount, retryToken]);
+  }, [data, productId, windowStart, daysCount, retryToken, queryClient]);
 
   // ---------------------------------------------------------------------------
   // Derived layout data

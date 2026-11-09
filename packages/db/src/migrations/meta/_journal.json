@@ -680,6 +680,48 @@
       "when": 1794003416067,
       "tag": "0091_reservation_contract_signatures",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "5",
+      "when": 1794049786011,
+      "tag": "0092_agent_api_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "5",
+      "when": 1794061851684,
+      "tag": "0093_agent_oauth",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "5",
+      "when": 1794132644210,
+      "tag": "0094_api_effects",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "5",
+      "when": 1794177285323,
+      "tag": "0095_inbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "5",
+      "when": 1794213163843,
+      "tag": "0096_api_handoffs",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "5",
+      "when": 1794222011930,
+      "tag": "0097_api_operation_setup_store",
+      "breakpoints": true
     }
   ]
 }

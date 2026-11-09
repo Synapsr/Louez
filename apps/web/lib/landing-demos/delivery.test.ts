@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { dashboardReservationCalendarPeriodEntrySchema } from "@louez/validations";
+import { calendarEntrySchema } from "@louez/api/contracts/reservations";
 
 import { locales } from "@/i18n/config";
 import { getDemoCart } from "@/lib/landing-demos/cart";
@@ -22,7 +22,7 @@ test("delivery fixtures preserve rental bookings and valid logistics in every lo
     assert.deepEqual(data.bookings, source.bookings);
     assert.deepEqual(data.products, source.products);
     for (const [index, reservation] of data.calendar.entries()) {
-      assert.ok(dashboardReservationCalendarPeriodEntrySchema.safeParse(reservation).success);
+      assert.ok(calendarEntrySchema.safeParse(reservation).success);
       assert.equal(reservation.startDate.getTime(), source.calendar[index].startDate.getTime());
       assert.equal(reservation.endDate.getTime(), source.calendar[index].endDate.getTime());
       assert.equal(reservation.totalAmount, source.calendar[index].totalAmount);

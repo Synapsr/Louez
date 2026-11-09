@@ -7,7 +7,7 @@ import { useLocale } from "next-intl";
 import { Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@louez/ui";
 import { CountryFlag } from "@louez/ui/icons/flags";
 
-import { getCountriesSortedByName, getCountryName, type Country } from "@/lib/utils/countries";
+import { getCountriesSortedByName, getCountryName, type Country } from "@louez/utils/countries";
 
 import { getFieldError, useFieldContext } from "@/hooks/form/form-context";
 

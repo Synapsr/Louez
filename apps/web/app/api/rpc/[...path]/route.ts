@@ -1,20 +1,18 @@
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
+import { ResponseHeadersPlugin } from "@orpc/server/plugins";
 
 import { appRouter } from "@louez/api/router";
 
-import { notifyStoreCreated as sendStoreCreatedNotification } from "@/lib/discord/platform-notifications";
+import { apiPorts } from "@/lib/api/ports";
+import { rpcCsrfHandlerPlugin } from "@/lib/orpc/csrf";
 import { log, useLogger, withEvlog } from "@/lib/evlog";
 import { generateContract } from "@/lib/pdf/generate";
-import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
-import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { getConnectedAccountPayoutPage } from "@/lib/stripe/connected-account-finances";
 import { getCurrentStore } from "@/lib/store-context";
-import { invalidateStoreViewport } from "@/lib/storefront/get-store-viewport";
 
 import {
   assignUnitsToReservationItem,
-  cancelReservation,
   captureDepositHold,
   createDepositHold,
   createManualReservation,
@@ -35,7 +33,6 @@ import {
   sendReservationEmail,
   sendReservationModificationEmail,
   updateReservation,
-  updateReservationStatus,
 } from "@/app/(dashboard)/dashboard/reservations/actions";
 import { getReferralRewardSummary } from "@/app/(dashboard)/dashboard/referrals/actions";
 import {
@@ -59,6 +56,11 @@ import {
 import { getCustomerSession } from "@/app/(storefront)/[slug]/account/actions";
 
 const handler = new RPCHandler(appRouter, {
+  // A call without the app's custom header is refused: no cross-site request
+  // rides the session cookie (lib/orpc/csrf.ts). A procedure may set the
+  // answer's headers (`context.resHeaders`): the onboarding's store step sets
+  // its cookies.
+  plugins: [rpcCsrfHandlerPlugin(), new ResponseHeadersPlugin()],
   interceptors: [
     onError((error) => {
       const rpcError = error instanceof Error ? error : new Error("Unknown oRPC error");
@@ -87,13 +89,12 @@ async function handleRequest(request: Request) {
     prefix: "/api/rpc",
     context: {
       headers: request.headers,
+      transport: "rpc",
+      ports: apiPorts,
       getCurrentStore,
-      invalidateStoreViewport,
       getCustomerSession,
       getConnectedAccountPayoutPage,
       dashboardReservationActions: {
-        cancelReservation,
-        updateReservationStatus,
         updateReservation,
         previewReservationTulipQuote,
         previewManualTulipQuote: previewManualReservationTulipQuote,
@@ -142,27 +143,6 @@ async function handleRequest(request: Request) {
       },
       regenerateContract: async (reservationId: string) => {
         await generateContract({ reservationId, regenerate: true });
-      },
-      notifyStoreCreated: async (store: {
-        id: string;
-        name: string;
-        slug: string;
-        userId?: string;
-        reservationMode?: "payment" | "request";
-      }) => {
-        await Promise.allSettled([
-          sendStoreCreatedNotification(store),
-          captureProductServerEvent({
-            distinctId: store.userId,
-            event: productAnalyticsEvents.onboardingCompleted,
-            properties: {
-              feature: "onboarding",
-              surface: "dashboard",
-              store_id: store.id,
-              reservation_mode: store.reservationMode ?? null,
-            },
-          }),
-        ]);
       },
     },
   });

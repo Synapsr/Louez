@@ -1,11 +1,12 @@
 import { useTranslations } from "next-intl";
 
-import { RichText } from "@/components/storefront/ui/rich-text";
+import { RichTextHtml } from "@/components/storefront/ui/rich-text-html";
 import { SectionHeader } from "@/components/storefront/ui/section-header";
 
-import { hasRichTextContent } from "@/lib/util.rich-text";
+import { hasRichTextContent } from "@louez/utils";
 
 interface ProductDescriptionProps {
+  /** The description's editor HTML, sanitised on the server (the product page does it). */
   html: string | null;
   className?: string;
 }
@@ -26,8 +27,8 @@ export const ProductDescription = ({ html, className }: ProductDescriptionProps)
         title={t("description")}
         className="mb-3"
       />
-      <RichText
-        html={html}
+      <RichTextHtml
+        safeHtml={html}
         size="base"
         className="leading-relaxed sm:leading-relaxed prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-li:leading-relaxed [&_li>p]:my-0 [&>:first-child]:mt-0"
       />

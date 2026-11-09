@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
 import type { DeliverySettings, LegMethod } from "@louez/types";
+import { getDeliveryAvailability } from "@louez/utils";
 import {
   calculateTotalDeliveryFee,
   calculateHaversineDistance,
@@ -47,19 +48,16 @@ export const useCheckoutDelivery = ({
   const t = useTranslations("storefront.checkout");
   const queryClient = useQueryClient();
 
-  const hasStoreCoordinates =
-    storeLatitude !== null &&
-    storeLatitude !== undefined &&
-    storeLongitude !== null &&
-    storeLongitude !== undefined;
-
-  const isMultiLocationEnabled = Boolean(deliverySettings?.multiLocationEnabled);
-  const isAddressDeliveryEnabled = Boolean(deliverySettings?.enabled && hasStoreCoordinates);
+  // The same reading as the server's check and the store's launch checklist.
+  const availability = getDeliveryAvailability(deliverySettings, {
+    latitude: storeLatitude,
+    longitude: storeLongitude,
+  });
+  const isMultiLocationEnabled = availability.multiLocation;
+  const isAddressDeliveryEnabled = availability.addressDelivery;
   const isDeliveryEnabled = isAddressDeliveryEnabled || isMultiLocationEnabled;
-  const deliveryMode = deliverySettings?.mode ?? "optional";
-  const isDeliveryForced =
-    isAddressDeliveryEnabled && (deliveryMode === "required" || deliveryMode === "included");
-  const isDeliveryIncluded = deliveryMode === "included";
+  const isDeliveryForced = isAddressDeliveryEnabled && availability.deliveryOnly;
+  const isDeliveryIncluded = availability.deliveryIncluded;
   const isDeliveryAmountEligible = deliverySettings
     ? isDeliveryOrderAmountEligible(deliveryEligibilitySubtotal, deliverySettings)
     : true;

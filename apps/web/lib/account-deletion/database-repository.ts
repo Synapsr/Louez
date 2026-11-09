@@ -1001,6 +1001,23 @@ const purgeOwnedData = async (
         .where(inArray(schema.aiAdvisorConversations.storeId, storeIds));
       await transaction.delete(schema.aiChats).where(inArray(schema.aiChats.storeId, storeIds));
       await transaction.delete(schema.apiKeys).where(inArray(schema.apiKeys.storeId, storeIds));
+      // The outbox's unsent and done rows hold customers' names, emails and
+      // phones; the API's records hold what agents changed and read back.
+      await transaction
+        .delete(schema.apiEffects)
+        .where(inArray(schema.apiEffects.storeId, storeIds));
+      await transaction
+        .delete(schema.apiConfirmations)
+        .where(inArray(schema.apiConfirmations.storeId, storeIds));
+      await transaction
+        .delete(schema.apiOperations)
+        .where(inArray(schema.apiOperations.storeId, storeIds));
+      await transaction
+        .delete(schema.inboxAcknowledgements)
+        .where(inArray(schema.inboxAcknowledgements.storeId, storeIds));
+      await transaction
+        .delete(schema.apiHandoffs)
+        .where(inArray(schema.apiHandoffs.storeId, storeIds));
       await transaction
         .delete(schema.pushSubscriptions)
         .where(inArray(schema.pushSubscriptions.storeId, storeIds));

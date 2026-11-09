@@ -7,26 +7,6 @@ const productId = 'qdO2S5tJdj9ZbfSMcp61n';
 
 const apiSchemas = import('./api');
 
-test('accepts supported reservation payment method filters', async () => {
-  const { dashboardReservationsListInputSchema } = await apiSchemas;
-
-  for (const paymentMethod of [
-    'stripe',
-    'cash',
-    'card',
-    'transfer',
-    'check',
-    'other',
-  ]) {
-    const result = dashboardReservationsListInputSchema.parse({ paymentMethod });
-    assert.equal(result.paymentMethod, paymentMethod);
-  }
-
-  assert.throws(() =>
-    dashboardReservationsListInputSchema.parse({ paymentMethod: 'crypto' }),
-  );
-});
-
 test('normalizes manual reservation customer emails before validation', async () => {
   const { dashboardReservationCreateManualReservationInputSchema } =
     await apiSchemas;

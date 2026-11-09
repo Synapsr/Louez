@@ -1,16 +1,16 @@
 import type { StoreSettings } from "@louez/types";
 
-import { validateRentalPeriod } from "@/lib/utils/business-hours";
-import { validateAdvanceNotice } from "@/lib/utils/duration";
+import { validateRentalPeriod } from "@louez/utils";
+import { validateAdvanceNotice } from "@louez/utils";
 import {
   formatDurationFromMinutes,
   getMaxRentalMinutes,
   getMinRentalMinutes,
   validateMaxRentalDurationMinutes,
   validateMinRentalDurationMinutes,
-} from "@/lib/utils/rental-duration";
+} from "@louez/utils";
 
-import { failReservation, type ReservationFailure } from "./reservation.types";
+import { failReservation, type ReservationFailure } from "@louez/api/services/reservation-failure";
 
 export interface RentalWindow {
   start: Date;

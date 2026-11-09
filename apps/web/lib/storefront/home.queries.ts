@@ -30,7 +30,7 @@ import {
   type CategoryBrowseLabels,
 } from "@/lib/utils/util.category-browse-entries";
 import { resolveStoreHomeSections } from "@/lib/utils/util.store-home-sections";
-import { hasRichTextContent } from "@/lib/util.rich-text";
+import { hasRichTextContent } from "@louez/utils";
 import { getStoreReassurance, type StoreReassuranceKey } from "@/lib/utils/util.store-reassurance";
 import { getStoreStatus, type StoreStatus } from "@/lib/utils/util.store-status";
 

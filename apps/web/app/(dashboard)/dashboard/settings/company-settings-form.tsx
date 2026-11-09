@@ -1,34 +1,44 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
 import { revalidateLogic, useStore } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 
 import type { StoreSettings } from "@louez/types";
+import { isSupportedCurrency } from "@louez/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, toastManager } from "@louez/ui";
 import { BuildingIcon } from "@louez/ui/icons";
 
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 import { RootError } from "@/components/form/root-error";
 import { useAppForm } from "@/hooks/form/form";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpc } from "@/lib/orpc/react";
 import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry } from "@/lib/utils/currency";
-
-import { updateCompanySettings } from "./actions";
 import { StoreSettingsBillingSection } from "./components/store-settings-billing-section";
+import { buildCompanyUpdate } from "./util.company-settings";
 
-const companySettingsSchema = z.object({
-  country: z.string().length(2),
-  currency: z.string().length(3),
-  billingAddressSameAsStore: z.boolean(),
-  billingAddress: z.string(),
-  billingCity: z.string(),
-  billingPostalCode: z.string(),
-  billingCountry: z.string(),
-});
+/**
+ * A currency Louez supports, or the one the store already uses: a store set
+ * up in a currency Stripe no longer takes (HRK) keeps it until it changes.
+ */
+const createCompanySettingsSchema = (storedCurrency: string | null) =>
+  z.object({
+    country: z.string().length(2),
+    currency: z
+      .string()
+      .refine((code) => isSupportedCurrency(code) || code === storedCurrency, "errors.invalidData"),
+    billingAddressSameAsStore: z.boolean(),
+    billingAddress: z.string(),
+    billingCity: z.string(),
+    billingPostalCode: z.string(),
+    billingCountry: z.string(),
+  });
 
 interface CompanySettingsFormProps {
   settings: StoreSettings | null;
@@ -37,10 +47,17 @@ interface CompanySettingsFormProps {
 export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
   const router = useRouter();
   const t = useTranslations("dashboard.settings");
-  const [isPending, startTransition] = useTransition();
+  const tErrors = useTranslations("errors");
   const [rootError, setRootError] = useState<string | null>(null);
+  const updateCompany = useMutation(orpc.dashboard.settings.updateCompany.mutationOptions());
 
   const defaultCountry = settings?.country || "FR";
+  const storedCurrency = settings?.currency ?? null;
+  const legacyCurrency =
+    storedCurrency && !isSupportedCurrency(storedCurrency)
+      ? { code: storedCurrency, label: t("storeSettings.currencyLegacy", { code: storedCurrency }) }
+      : null;
+  const companySettingsSchema = createCompanySettingsSchema(storedCurrency);
   const billingAddress = settings?.billingAddress ?? { useSameAsStore: true };
 
   const form = useAppForm({
@@ -57,16 +74,16 @@ export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
     onSubmit: async ({ value }) => {
       setRootError(null);
-      startTransition(async () => {
-        const result = await updateCompanySettings(value);
-        if (result.error) {
-          setRootError(result.error);
-          return;
-        }
-        toastManager.add({ title: t("settingsSaved"), type: "success" });
-        form.reset();
-        router.refresh();
-      });
+      try {
+        await updateCompany.mutateAsync(buildCompanyUpdate(value, storedCurrency));
+      } catch (error) {
+        const key = apiErrorKey(error);
+        setRootError(key && tErrors.has(key) ? tErrors(key) : tErrors("generic"));
+        return;
+      }
+      toastManager.add({ title: t("settingsSaved"), type: "success" });
+      form.reset();
+      router.refresh();
     },
   });
 
@@ -112,6 +129,7 @@ export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
                   label={t("storeSettings.currency")}
                   description={t("storeSettings.currencyDescription")}
                   currencies={SUPPORTED_CURRENCIES}
+                  legacyCurrency={legacyCurrency}
                 />
               )}
             </form.AppField>
@@ -127,7 +145,11 @@ export const CompanySettingsForm = ({ settings }: CompanySettingsFormProps) => {
           billingCountry={billingCountry}
         />
 
-        <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
+        <FloatingSaveBar
+          isDirty={isDirty}
+          isLoading={updateCompany.isPending}
+          onReset={() => form.reset()}
+        />
       </form.Form>
     </form.AppForm>
   );

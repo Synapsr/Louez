@@ -1,5 +1,7 @@
 import type { ContractSignatureMethod } from '@louez/db'
 
+export type { ReservationsPage } from '@louez/api/contracts/reservations'
+
 export type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
 
 export interface ReservationItem {
@@ -38,12 +40,13 @@ export interface Reservation {
   subtotalAmount: string
   depositAmount: string
   totalAmount: string
+  /** Null when the caller may not read customers. */
   customer: {
     id: string
     firstName: string
     lastName: string
     email: string
-  }
+  } | null
   items: ReservationItem[]
   payments: Payment[]
   signedAt?: Date | string | null

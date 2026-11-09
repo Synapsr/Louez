@@ -16,7 +16,8 @@ export type ReservationGateSurface =
   | "dashboard"
   | "quote_acceptance"
   | "ai_chat"
-  | "mcp";
+  | "mcp"
+  | "api";
 
 export function logReservationGateRefusal(
   refusal: { readonly storeId: string; readonly reason: ReservationGateReason },

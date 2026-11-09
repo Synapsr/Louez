@@ -109,7 +109,7 @@ async function main(): Promise<number> {
       import("../lib/reservations/dashboard-payment-writes"),
       import("../lib/billing/reservation-effects"),
       import("@louez/validations"),
-      import("../lib/utils/countries"),
+      import("@louez/utils/countries"),
       import("drizzle-orm"),
     ]);
   const { db } = louez;

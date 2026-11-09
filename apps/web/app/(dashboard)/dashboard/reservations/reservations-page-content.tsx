@@ -24,7 +24,7 @@ import { cn } from "@louez/utils";
 
 import { BlurOverlay, LimitBanner, UpgradeModal } from "@/components/dashboard/upgrade-modal";
 import { createDashboardReturnTo } from "@/lib/dashboard/util.reservation-navigation";
-import { orpc } from "@/lib/orpc/react";
+import { reservationsQueries } from "@/lib/queries/reservations.queries";
 import type { LimitStatus } from "@/lib/plan-limits";
 
 import { RESERVATION_VIEWS, type ReservationView } from "./calendar/calendar-query";
@@ -42,6 +42,7 @@ import { ReservationsViewSwitcher } from "./reservations-view-switcher";
 import type {
   Reservation,
   ReservationCounts,
+  ReservationsPage,
   SortDirection,
   SortField,
 } from "./reservations-types";
@@ -52,11 +53,7 @@ interface ReservationsPageContentProps {
   currentStatus?: string;
   currentPeriod?: string;
   currentPaymentMethod?: string;
-  initialData?: {
-    reservations: Reservation[];
-    counts: ReservationCounts;
-    totalCount: number | null;
-  };
+  initialData?: ReservationsPage;
   calendarData: {
     products: CalendarProduct[];
   };
@@ -206,42 +203,40 @@ export function ReservationsPageContent({
   );
 
   const reservationsQuery = useQuery({
-    ...orpc.dashboard.reservations.list.queryOptions({
-      input: {
-        status:
-          status === "all" ||
-          status === "pending" ||
-          status === "confirmed" ||
-          status === "ongoing" ||
-          status === "completed" ||
-          status === "cancelled" ||
-          status === "rejected" ||
-          status === "quote"
-            ? status
-            : undefined,
-        period: period === "today" || period === "week" || period === "month" ? period : undefined,
-        operation: operation === "departure" || operation === "return" ? operation : undefined,
-        paymentMethod:
-          paymentMethod === "stripe" ||
-          paymentMethod === "cash" ||
-          paymentMethod === "card" ||
-          paymentMethod === "transfer" ||
-          paymentMethod === "check" ||
-          paymentMethod === "other"
-            ? paymentMethod
-            : undefined,
-        search: search || undefined,
-        sort: currentSort,
-        sortDirection: currentSortDirection as "asc" | "desc",
-        page: currentPage,
-        pageSize: currentPageSize,
-      },
+    ...reservationsQueries.list({
+      status:
+        status === "all" ||
+        status === "pending" ||
+        status === "confirmed" ||
+        status === "ongoing" ||
+        status === "completed" ||
+        status === "cancelled" ||
+        status === "rejected" ||
+        status === "quote"
+          ? status
+          : undefined,
+      period: period === "today" || period === "week" || period === "month" ? period : undefined,
+      operation: operation === "departure" || operation === "return" ? operation : undefined,
+      paymentMethod:
+        paymentMethod === "stripe" ||
+        paymentMethod === "cash" ||
+        paymentMethod === "card" ||
+        paymentMethod === "transfer" ||
+        paymentMethod === "check" ||
+        paymentMethod === "other"
+          ? paymentMethod
+          : undefined,
+      search: search || undefined,
+      sort: currentSort,
+      sortDirection: currentSortDirection as "asc" | "desc",
+      page: currentPage,
+      limit: currentPageSize,
     }),
     initialData,
     placeholderData: (previousData) => previousData,
   });
 
-  const reservations = reservationsQuery.data?.reservations ?? [];
+  const reservations = reservationsQuery.data?.items ?? [];
   const counts: ReservationCounts = reservationsQuery.data?.counts ?? {
     all: 0,
     pending: 0,

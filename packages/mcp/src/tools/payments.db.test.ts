@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import { McpServer } from "@modelcontextprotocol/server";
 import { eq } from "drizzle-orm";
 
 import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
 
-import type { McpSessionContext } from "../auth/context";
 import type { McpRecordedPayment } from "./payments";
 
 // The MCP payment tools on a migrated database. Recording goes through the app's
@@ -29,21 +27,16 @@ const SETTINGS = {
   currency: "CHF",
 } as const;
 
-const ctx: McpSessionContext = {
-  storeId: STORE,
-  userId: "user_mcp_payments",
-  storeName: "MCP payments",
-  apiKeyId: "key_mcp_payments",
-  permissions: {
-    reservations: "read",
-    products: "read",
-    customers: "read",
-    categories: "read",
-    payments: "write",
-    analytics: "read",
-    settings: "read",
-  },
-};
+const USER = "user_mcp_payments";
+const permissions = {
+  reservations: "read",
+  products: "read",
+  customers: "read",
+  categories: "read",
+  payments: "write",
+  analytics: "read",
+  settings: "read",
+} as const;
 
 describe("MCP payment tools (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
@@ -57,6 +50,15 @@ describe("MCP payment tools (database)", { skip: skipWithoutTestDatabase() }, ()
     // DATABASE_URL now points at the test database.
     louezDb = await import("@louez/db");
     const { registerPaymentTools } = await import("./payments");
+    const { testRequestContext } = await import("../testing/request-context");
+    const ctx = testRequestContext({
+      storeId: STORE,
+      userId: USER,
+      storeName: "MCP payments",
+      permissions,
+      // What the tools write; their confirmation is in confirmation.db.test.ts.
+      confirmSensitive: false,
+    });
 
     const server = new McpServer({ name: "louez", version: "0.0.0" });
     registerPaymentTools(server, ctx, {
@@ -82,7 +84,7 @@ describe("MCP payment tools (database)", { skip: skipWithoutTestDatabase() }, ()
 
     await louezDb.db.insert(louezDb.stores).values({
       id: STORE,
-      userId: ctx.userId,
+      userId: USER,
       name: "MCP payments",
       slug: "mcp-payments",
       settings: SETTINGS,

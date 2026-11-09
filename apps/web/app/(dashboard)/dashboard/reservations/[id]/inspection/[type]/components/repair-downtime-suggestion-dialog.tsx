@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Wrench } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -20,8 +21,9 @@ import {
   toastManager,
 } from '@louez/ui';
 
-import { declareDowntime } from '@/app/(dashboard)/dashboard/products/[id]/actions';
-import { getTranslatedActionError } from '@/app/(dashboard)/dashboard/products/[id]/components/inventory/util.inventory-format';
+import { getApiErrorMessage } from '@/app/(dashboard)/dashboard/products/[id]/components/inventory/util.inventory-format';
+import { invalidateProductInventory } from '@/lib/orpc/invalidation';
+import { orpc } from '@/lib/orpc/react';
 
 interface RepairDowntimeSuggestionUnit {
   id: string;
@@ -39,7 +41,8 @@ interface RepairDowntimeSuggestionDialogProps {
   open: boolean;
   units: RepairDowntimeSuggestionUnit[];
   reservationNumber: string;
-  reservationItemIds: string[];
+  /** The lines each unit came back on: its downtime leaves only those out of its conflicts. */
+  reservationLinesOfUnit: ReadonlyMap<string, string[]>;
   onDone: () => void;
 }
 
@@ -47,13 +50,17 @@ export const RepairDowntimeSuggestionDialog = ({
   open,
   units,
   reservationNumber,
-  reservationItemIds,
+  reservationLinesOfUnit,
   onDone,
 }: RepairDowntimeSuggestionDialogProps) => {
   const t = useTranslations(
     'dashboard.settings.inspection.wizard.repairDowntime',
   );
   const tErrors = useTranslations('errors');
+  const queryClient = useQueryClient();
+  const declareMutation = useMutation(
+    orpc.dashboard.products.declareDowntime.mutationOptions(),
+  );
   const [selectedUnitIds, setSelectedUnitIds] = useState<Set<string>>(
     () => new Set(units.map((unit) => unit.id)),
   );
@@ -106,23 +113,23 @@ export const RepairDowntimeSuggestionDialog = ({
 
     try {
       for (const unit of selectedUnits) {
-        const result = await declareDowntime({
-          unitId: unit.id,
-          reason: 'repair',
-          startsAt,
-          endsAt: null,
-          note,
-          excludeReservationItemIds: reservationItemIds,
-        });
-
-        if (!result.success) {
+        let result;
+        try {
+          result = await declareMutation.mutateAsync({
+            unitId: unit.id,
+            reason: 'repair',
+            startsAt,
+            endsAt: null,
+            note,
+            excludeReservationItemIds: reservationLinesOfUnit.get(unit.id) ?? [],
+          });
+        } catch (error) {
           toastManager.add({
-            title: result.error
-              ? getTranslatedActionError(result.error, tErrors)
-              : tErrors('generic'),
+            title: getApiErrorMessage(error, tErrors),
             type: 'error',
           });
           setSelectedUnitIds(remainingUnitIds);
+          await invalidateProductInventory(queryClient);
           return;
         }
 
@@ -136,6 +143,7 @@ export const RepairDowntimeSuggestionDialog = ({
         title: t('createdToast', { count: selectedUnits.length }),
         type: 'success',
       });
+      await invalidateProductInventory(queryClient);
 
       if (conflictedUnits.length > 0) {
         const distinctProducts = Array.from(

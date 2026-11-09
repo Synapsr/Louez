@@ -1,5 +1,8 @@
 import type { StoreSettings } from "@louez/types";
 
+import type { Transport } from "./platform/actor";
+import type { OperationReceipt } from "./platform/operations";
+import type { ApiPorts } from "./platform/ports";
 import type { AvailabilityMemo } from "./services/availability";
 
 /**
@@ -115,7 +118,17 @@ type CalendarIntegrationState = {
  */
 export interface BaseContext {
   headers: Headers;
-  invalidateStoreViewport?: (storeSlug: string) => void | Promise<void>;
+  /** Which way the call came in; the agent-ready procedures refuse a call without it. */
+  transport?: Transport;
+  /** What the app lends the agent-ready procedures (platform/ports.ts). */
+  ports?: ApiPorts;
+  /** Filled with the operation id of a write, for the transport to hand out. */
+  receipt?: OperationReceipt;
+  /**
+   * The answer's headers, on the dashboard's RPC endpoint only (oRPC's
+   * response headers plugin): the onboarding's store step sets its cookies.
+   */
+  resHeaders?: Headers;
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
   getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
@@ -132,33 +145,6 @@ export interface BaseContext {
     nextCursor: string | null;
   }>;
   dashboardReservationActions?: {
-    cancelReservation?: (reservationId: string) => Promise<{
-      success?: boolean;
-      error?: string;
-      errorDetails?: string | null;
-    }>;
-    updateReservationStatus?: (
-      reservationId: string,
-      status:
-        | "pending"
-        | "confirmed"
-        | "ongoing"
-        | "completed"
-        | "cancelled"
-        | "rejected"
-        | "quote"
-        | "declined",
-      rejectionReason?: string,
-    ) => Promise<
-      | { success?: boolean; error?: string }
-      | {
-          success?: boolean;
-          warnings?: Array<{
-            key: string;
-            params?: Record<string, string | number>;
-          }>;
-        }
-    >;
     updateReservation?: (
       reservationId: string,
       data: {
@@ -628,13 +614,6 @@ export interface BaseContext {
       rewardKind: "free_reservations" | "invoice_credit";
     } | null>;
   };
-  notifyStoreCreated?: (store: {
-    id: string;
-    name: string;
-    slug: string;
-    userId?: string;
-    reservationMode?: "payment" | "request";
-  }) => Promise<void>;
 }
 
 /**

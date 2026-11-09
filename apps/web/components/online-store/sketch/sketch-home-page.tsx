@@ -15,9 +15,8 @@ import {
   TruckIcon,
 } from "lucide-react";
 
-import { cn } from "@louez/utils";
+import { cn, stripHtml } from "@louez/utils";
 
-import { stripHtml } from "@/lib/util.seo-text";
 import { resolveStoreHeroPresentation } from "@/lib/utils/util.store-hero";
 
 import type { OnlineStoreDevice } from "../online-store.constants";

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { Reorder, useDragControls } from 'framer-motion'
 import { GripVertical } from 'lucide-react'
@@ -21,8 +21,8 @@ import {
 } from '@louez/ui'
 
 import { invalidateProductsList } from '@/lib/orpc/invalidation'
-
-import { updateProductsOrder } from './actions'
+import { apiErrorKey } from '@/lib/orpc/errors'
+import { orpc } from '@/lib/orpc/react'
 
 interface Product {
   id: string
@@ -82,6 +82,7 @@ export function ProductsOrderDialog({
 
   const [products, setProducts] = useState(initialProducts)
   const [isLoading, setIsLoading] = useState(false)
+  const reorderMutation = useMutation(orpc.dashboard.products.reorder.mutationOptions())
 
   // The dialog stays mounted and the parent opens it through `open`, so pick
   // up the current list each time it opens. Otherwise it keeps the list from
@@ -95,18 +96,16 @@ export function ProductsOrderDialog({
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      const productIds = products.map((p) => p.id)
-      const result = await updateProductsOrder(productIds)
-
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error.replace(/^errors\./, '')), type: 'error' })
-      } else {
-        toastManager.add({ title: t('orderUpdated'), type: 'success' })
-        await invalidateProductsList(queryClient)
-        onOpenChange(false)
-      }
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      await reorderMutation.mutateAsync({ ids: products.map((p) => p.id) })
+      toastManager.add({ title: t('orderUpdated'), type: 'success' })
+      await invalidateProductsList(queryClient)
+      onOpenChange(false)
+    } catch (error) {
+      const key = apiErrorKey(error)
+      toastManager.add({
+        title: key && tErrors.has(key) ? tErrors(key) : tErrors('generic'),
+        type: 'error',
+      })
     } finally {
       setIsLoading(false)
     }

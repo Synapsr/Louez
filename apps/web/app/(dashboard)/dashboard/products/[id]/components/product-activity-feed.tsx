@@ -9,7 +9,7 @@ import { formatDistance } from "date-fns";
 import { resolveFormatLocale } from "@/lib/i18n/format-locale";
 import { Activity } from "lucide-react";
 
-import type { ProductUnitActivityCursor, ProductUnitActivityPage } from "@louez/api/services";
+import type { ProductUnitActivityPage } from "@louez/api/services";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, ScrollArea } from "@louez/ui";
 import { RepeatSolidIcon, SpinnerSolidIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
@@ -42,11 +42,8 @@ export const ProductActivityFeed = ({
   const referenceNow = new Date(referenceDate);
 
   const query = useInfiniteQuery(
-    orpc.dashboard.products.activity.infiniteOptions({
-      input: (cursor: ProductUnitActivityCursor | undefined) => ({
-        productId,
-        cursor,
-      }),
+    orpc.dashboard.products.getActivity.infiniteOptions({
+      input: (cursor: string | undefined) => ({ id: productId, cursor }),
       initialData: {
         pages: [initialPage],
         pageParams: [undefined],

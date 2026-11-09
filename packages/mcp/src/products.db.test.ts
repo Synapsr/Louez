@@ -1,0 +1,602 @@
+import assert from "node:assert/strict";
+import { after, before, describe, mock, test } from "node:test";
+
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+
+import { createMemoryStorage } from "@louez/api/platform/memory-storage";
+import { createTestNewStores } from "@louez/api/platform/test-new-stores";
+import { createTestUrls, TEST_APP_URL } from "@louez/api/platform/test-urls";
+import { createTestDatabase, skipWithoutTestDatabase, type TestDatabase } from "@louez/db/testing";
+
+import { apiDependencyUrl } from "./testing/cjs-named-exports";
+
+mock.module(apiDependencyUrl("@louez/auth"), {
+  namedExports: { auth: {}, authInstance: { api: { getSession: async () => null } } },
+});
+
+// The products tools, through the app's real router and the real MCP and
+// OpenAPI handlers: what an agent sees, the former tool names kept as
+// aliases, and the confirmations of the sensitive edits.
+
+const OWNER = "pt_owner_user_000001";
+const STORE = "pt_store_a_000000001";
+
+type ToolResult = Awaited<ReturnType<Client["callTool"]>>;
+type Json = Record<string, unknown>;
+
+describe("products tools (database)", { skip: skipWithoutTestDatabase() }, () => {
+  let database: TestDatabase;
+  let louezDb: typeof import("@louez/db");
+  let apiKeys: typeof import("@louez/api/services");
+  let orm: typeof import("drizzle-orm");
+  let exposure: import("@louez/api/platform/exposure").Exposure;
+  let openApi: (
+    method: string,
+    path: string,
+    body: object | null,
+    headers: Record<string, string>,
+  ) => Promise<Response>;
+  let mcpCall: (authorization: string, name: string, args: object) => Promise<ToolResult>;
+  let mcpTools: (authorization: string) => Promise<string[]>;
+
+  const ports = {
+    planFeatures: async () => ({ apiAccess: true }),
+    runReservationEffects: async () => {},
+    insurance: { createContract: async () => null, cancelContract: async () => {} },
+    newStores: createTestNewStores(),
+    dispatchEffects: () => {},
+    storage: createMemoryStorage(),
+    urls: createTestUrls(),
+    afterCommit: () => {},
+  };
+
+  before(async () => {
+    database = await createTestDatabase("api_products_tools");
+    louezDb = await import("@louez/db");
+    apiKeys = await import("@louez/api/services");
+    orm = await import("drizzle-orm");
+    const { appRouter } = await import("@louez/api/router");
+    const { createExposure } = await import("@louez/api/platform/exposure");
+    const { createOpenApiHandler, handleOpenApiRequest, routeBodyLimits } =
+      await import("@louez/api/platform/openapi");
+    const { handleMcpRequest } = await import("./transports/http");
+    exposure = createExposure(appRouter);
+
+    const openApiHandler = createOpenApiHandler(exposure.router, { docs: false });
+    openApi = async (method, path, body, headers) =>
+      (await handleOpenApiRequest(
+        openApiHandler,
+        new Request(
+          `http://louez.test/api/v1${path}`,
+          body
+            ? {
+                method,
+                headers: { "content-type": "application/json", ...headers },
+                body: JSON.stringify(body),
+              }
+            : { method, headers },
+        ),
+        { ports, bodyLimits: routeBodyLimits(exposure.procedures) },
+      )) ?? new Response(null, { status: 404 });
+
+    const httpOptions = {
+      ports,
+      procedures: exposure.procedures,
+      deps: {
+        insertRecordedPayment: async () => undefined,
+      },
+    };
+    const connect = async (authorization: string) => {
+      const mcp = new Client({ name: "test", version: "0.0.0" });
+      await mcp.connect(
+        new StreamableHTTPClientTransport(new URL("http://louez.test/api/mcp"), {
+          requestInit: { headers: { authorization } },
+          fetch: (url, init) => handleMcpRequest(new Request(url, init), httpOptions),
+        }),
+      );
+      return mcp;
+    };
+    mcpCall = async (authorization, name, args) => {
+      const mcp = await connect(authorization);
+      try {
+        return await mcp.callTool({ name, arguments: args as Json });
+      } finally {
+        await mcp.close();
+      }
+    };
+    mcpTools = async (authorization) => {
+      const mcp = await connect(authorization);
+      try {
+        return (await mcp.listTools()).tools.map((tool) => tool.name);
+      } finally {
+        await mcp.close();
+      }
+    };
+
+    await louezDb.db.insert(louezDb.users).values({ id: OWNER, email: "owner@pt.test" });
+    await louezDb.db
+      .insert(louezDb.stores)
+      .values({ id: STORE, userId: OWNER, name: "Tools store", slug: "pt-store-a" });
+    await louezDb.db
+      .insert(louezDb.storeMembers)
+      .values({ storeId: STORE, userId: OWNER, role: "owner" });
+  });
+
+  after(async () => {
+    await louezDb?.db.$client.end();
+    await database?.drop();
+  });
+
+  type Permissions = Parameters<typeof apiKeys.createApiKey>[0]["permissions"];
+  const readOnly: Permissions = {
+    reservations: "read",
+    products: "read",
+    customers: "read",
+    categories: "read",
+    payments: "read",
+    analytics: "read",
+    settings: "read",
+  };
+
+  async function key(permissions: Permissions = { ...readOnly, products: "write" }) {
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Products agent",
+      permissions,
+    });
+    return `Bearer ${created.key}`;
+  }
+
+  const output = (result: ToolResult) => {
+    assert.notEqual(result.isError, true, JSON.stringify(result.content));
+    return result.structuredContent as Json;
+  };
+  const toolError = (result: ToolResult) =>
+    (result.structuredContent as { error?: { code?: string } } | undefined)?.error;
+  const tokenOf = (result: ToolResult) => {
+    const error = toolError(result) as { code?: string; details?: { confirmationToken?: string } };
+    assert.equal(error?.code, "CONFIRMATION_REQUIRED", JSON.stringify(result.content));
+    return error.details?.confirmationToken ?? "";
+  };
+
+  test("every products tool is in the catalog bundle, and the former names are not listed", async () => {
+    const products = exposure.procedures.filter((entry) =>
+      entry.path.startsWith("dashboard.products."),
+    );
+    assert.equal(products.length, 37);
+    assert.ok(products.some((entry) => entry.meta.mcp.name === "products_upload_image"));
+    assert.deepEqual([...new Set(products.map((entry) => entry.meta.mcp.bundle))], ["catalog"]);
+    // Former names: aliases, and list_products as its own unlisted procedure.
+    const aliases = [
+      ...products.flatMap((entry) => (entry.meta.mcp.aliases ?? []).map((alias) => alias.name)),
+      ...products
+        .filter((entry) => entry.meta.mcp.listed === false)
+        .map((entry) => entry.meta.mcp.name),
+    ];
+    assert.deepEqual(aliases.sort(), [
+      "archive_product",
+      "create_product",
+      "get_product",
+      "list_products",
+      "update_product",
+    ]);
+
+    const writer = await mcpTools(await key());
+    assert.ok(writer.includes("products_create"));
+    assert.ok(writer.includes("products_delete_seasonal_pricing"));
+    for (const name of [
+      "products_get_unit_history",
+      "products_declare_downtime",
+      "products_update_downtime",
+      "products_close_downtime",
+      "products_delete_downtime",
+      "products_retire_unit",
+      "products_reinstate_unit",
+      "products_update_unit_details",
+      "products_list_variants",
+      "products_create_variant",
+      "products_update_variant",
+      "products_set_variant_active",
+      "products_delete_variant",
+      "products_get_variant_usage",
+      "products_withdraw_variant",
+      "products_create_variant_value",
+      "products_update_variant_value",
+      "products_delete_variant_value",
+    ]) {
+      assert.ok(writer.includes(name), `${name} is listed`);
+    }
+    for (const alias of aliases) assert.ok(!writer.includes(alias), `${alias} is not listed`);
+
+    const reader = await mcpTools(await key(readOnly));
+    assert.ok(reader.includes("products_get"));
+    assert.ok(!reader.includes("products_create"), "a read-only key does not see writes");
+  });
+
+  test("products_create takes degressive tiers; a read-only key is refused", async () => {
+    const authorization = await key();
+    const created = output(
+      await mcpCall(authorization, "products_create", {
+        name: "Kayak",
+        basePriceDuration: { price: "40", duration: 1, unit: "day" },
+        rateTiers: [{ price: "100", duration: 3, unit: "day" }],
+        idempotencyKey: "kayak-1",
+      }),
+    );
+    assert.deepEqual(
+      (created.rateTiers as Json[]).map(({ duration, unit, price }) => ({ duration, unit, price })),
+      [{ duration: 3, unit: "day", price: "100.00" }],
+    );
+    const replayed = await mcpCall(authorization, "products_create", {
+      name: "Kayak",
+      basePriceDuration: { price: "40", duration: 1, unit: "day" },
+      rateTiers: [{ price: "100", duration: 3, unit: "day" }],
+      idempotencyKey: "kayak-1",
+    });
+    assert.equal(output(replayed).id, created.id);
+    assert.equal(replayed._meta?.["io.louez/replayed"], true);
+
+    const denied = await mcpCall(await key(readOnly), "products_create", {
+      name: "No",
+      price: "1",
+    });
+    assert.equal(toolError(denied)?.code, "PERMISSION_DENIED");
+  });
+
+  test("a product write past 4 MiB passes the door, under its new and former names", async () => {
+    const authorization = await key();
+    // 4.5 MB of description: more than any other call may send.
+    const description = "€".repeat(1_500_000);
+
+    // /api/v1 reads it past 2 MiB once the API key is known; without one it
+    // stops at 2 MiB and answers 401.
+    const viaOpenApi = await openApi(
+      "PATCH",
+      "/products/pt_missing_product_01",
+      { description },
+      { authorization },
+    );
+    assert.equal(viaOpenApi.status, 404);
+    assert.equal(
+      ((await viaOpenApi.json()) as { data: { code: string } }).data.code,
+      "PRODUCT_NOT_FOUND",
+    );
+    const anonymous: Array<Record<string, string>> = [
+      {},
+      { authorization: "Bearer lz_not_a_real_key_000000000000" },
+    ];
+    for (const headers of anonymous) {
+      const refused = await openApi(
+        "PATCH",
+        "/products/pt_missing_product_01",
+        { description },
+        headers,
+      );
+      assert.equal(refused.status, 401);
+    }
+
+    for (const [name, args] of [
+      ["products_update", { id: "pt_missing_product_01", description }],
+      ["update_product", { productId: "pt_missing_product_01", description }],
+    ] as const) {
+      const result = await mcpCall(authorization, name, args);
+      assert.equal(toolError(result)?.code, "PRODUCT_NOT_FOUND", `${name} reached the procedure`);
+    }
+  });
+
+  test("the former tool names still work with their former arguments", async () => {
+    const authorization = await key();
+    const [category] = await louezDb.db
+      .insert(louezDb.categories)
+      .values({ storeId: STORE, name: "Boats" })
+      .$returningId();
+
+    const created = output(
+      await mcpCall(authorization, "create_product", {
+        name: "Canoe",
+        price: "60.00",
+        pricingMode: "week",
+        quantity: 3,
+        categoryId: category.id,
+      }),
+    );
+    assert.deepEqual(created.basePriceDuration, { price: "60.00", duration: 1, unit: "week" });
+    assert.equal(created.quantity, 3);
+    assert.deepEqual(created.categoryIds, [category.id]);
+
+    const got = output(await mcpCall(authorization, "get_product", { productId: created.id }));
+    assert.equal(got.name, "Canoe");
+
+    const listed = output(
+      await mcpCall(authorization, "list_products", { categoryId: category.id }),
+    );
+    assert.deepEqual(
+      (listed.items as Json[]).map((item) => item.id),
+      [created.id],
+    );
+
+    const renamed = output(
+      await mcpCall(authorization, "update_product", { productId: created.id, name: "Canoe XL" }),
+    );
+    assert.equal(renamed.name, "Canoe XL");
+
+    // Archiving waits for the confirmation, under the old name too.
+    const first = await mcpCall(authorization, "archive_product", { productId: created.id });
+    const token = tokenOf(first);
+    assert.equal((await louezDb.db.query.products.findFirst())?.status, "active");
+    const archived = output(
+      await mcpCall(authorization, "archive_product", {
+        productId: created.id,
+        confirmationToken: token,
+      }),
+    );
+    assert.equal(archived.status, "archived");
+  });
+
+  test("seasons and the activity are served at their REST paths", async () => {
+    const authorization = await key();
+    const created = output(
+      await mcpCall(authorization, "products_create", { name: "Jet ski", price: "200" }),
+    );
+
+    const season = await openApi(
+      "POST",
+      `/products/${created.id}/seasonal-pricings`,
+      { name: "Summer", startDate: "2027-06-01", endDate: "2027-08-31", price: "250" },
+      { authorization },
+    );
+    assert.equal(season.status, 200, await season.clone().text());
+    const listed = await openApi("GET", `/products/${created.id}/seasonal-pricings`, null, {
+      authorization,
+    });
+    assert.equal(((await listed.json()) as { items: Json[] }).items.length, 1);
+
+    const activity = await openApi("GET", `/products/${created.id}/activity?limit=5`, null, {
+      authorization,
+    });
+    assert.equal(activity.status, 200);
+    assert.deepEqual(await activity.json(), { items: [], nextCursor: null });
+
+    const missing = await openApi("GET", "/products/missing", null, { authorization });
+    assert.equal(missing.status, 404);
+    assert.equal(
+      ((await missing.json()) as { data: { code: string } }).data.code,
+      "PRODUCT_NOT_FOUND",
+    );
+  });
+
+  test("units and variants: a downtime over a booking waits for the user, the catalog has REST paths", async () => {
+    const authorization = await key();
+    const created = output(
+      await mcpCall(authorization, "products_create", {
+        name: "Sea kayak",
+        price: "40",
+        trackUnits: true,
+        units: [{ identifier: "SK-1" }],
+      }),
+    );
+    const [unit] = created.units as Json[];
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: "pt_booking_000000001",
+      storeId: STORE,
+      customerId: "customer",
+      number: "PT-1",
+      status: "confirmed",
+      startDate: new Date("2030-06-01T09:00:00Z"),
+      endDate: new Date("2030-06-03T09:00:00Z"),
+      subtotalAmount: "80.00",
+      depositAmount: "0.00",
+      totalAmount: "80.00",
+    });
+    await louezDb.db.insert(louezDb.reservationItems).values({
+      id: "pt_booking_item_00001",
+      reservationId: "pt_booking_000000001",
+      productId: created.id as string,
+      quantity: 1,
+      unitPrice: "40.00",
+      depositPerUnit: "0.00",
+      totalPrice: "80.00",
+      combinationKey: "__default",
+      productSnapshot: { name: "Sea kayak", description: null, images: [] },
+    });
+    await louezDb.db.insert(louezDb.reservationItemUnits).values({
+      reservationItemId: "pt_booking_item_00001",
+      productUnitId: unit.id as string,
+      identifierSnapshot: "SK-1",
+    });
+
+    const args = { unitId: unit.id, reason: "repair", startsAt: "2030-06-02T00:00:00Z" };
+    const first = await mcpCall(authorization, "products_declare_downtime", args);
+    assert.match(JSON.stringify(first.content), /PT-1/);
+    const declared = output(
+      await mcpCall(authorization, "products_declare_downtime", {
+        ...args,
+        confirmationToken: tokenOf(first),
+      }),
+    );
+    assert.equal((declared.conflicts as Json[]).length, 1);
+
+    const history = await openApi("GET", `/products/units/${unit.id}/history`, null, {
+      authorization,
+    });
+    assert.equal(history.status, 200, await history.clone().text());
+    assert.equal(((await history.json()) as { downtimes: Json[] }).downtimes.length, 1);
+
+    const variant = await openApi(
+      "POST",
+      "/variants",
+      { label: "Couleur", kind: "color", values: [{ label: "Rouge", colorHex: "#FF0000" }] },
+      { authorization },
+    );
+    assert.equal(variant.status, 200, await variant.clone().text());
+    const listed = output(await mcpCall(authorization, "products_list_variants", {}));
+    assert.deepEqual(
+      (listed.items as Json[]).map((item) => item.label),
+      ["Couleur"],
+    );
+    const usage = await openApi("GET", "/variants/usage", null, { authorization });
+    assert.equal(usage.status, 200, await usage.clone().text());
+  });
+
+  test("list_products still pages with page and pageSize", async () => {
+    const authorization = await key();
+    await louezDb.db.delete(louezDb.products);
+    for (const name of ["Page one", "Page two", "Page three"]) {
+      output(await mcpCall(authorization, "products_create", { name, price: "5" }));
+    }
+    const first = output(await mcpCall(authorization, "list_products", { page: 1, pageSize: 2 }));
+    const second = output(await mcpCall(authorization, "list_products", { page: 2, pageSize: 2 }));
+    const third = output(await mcpCall(authorization, "list_products", { page: 3, pageSize: 2 }));
+    const names = (page: Json) => (page.items as Json[]).map((item) => item.name);
+    assert.equal(names(first).length, 2);
+    assert.equal(names(second).length, 1);
+    assert.deepEqual(names(third), []);
+    assert.deepEqual([...names(first), ...names(second)].sort(), [
+      "Page one",
+      "Page three",
+      "Page two",
+    ]);
+    assert.equal(second.nextCursor, null);
+
+    const bad = await mcpCall(authorization, "list_products", { page: 0 });
+    assert.equal(toolError(bad)?.code, "BAD_REQUEST");
+  });
+
+  test("a deep list_products page is one read, counted once, and bounded", async () => {
+    const authorization = await key();
+    await louezDb.db.delete(louezDb.products);
+    await louezDb.db.insert(louezDb.products).values(
+      Array.from({ length: 250 }, (_, index) => ({
+        id: `pt_deep_${String(index).padStart(12, "0")}`,
+        storeId: STORE,
+        name: `Deep ${String(index).padStart(3, "0")}`,
+        price: "1.00",
+        pricingMode: "day" as const,
+      })),
+    );
+    const counted = async () => {
+      const [row] = await louezDb.db
+        .select({ total: orm.sql<number>`COALESCE(SUM(${louezDb.apiRateLimits.count}), 0)` })
+        .from(louezDb.apiRateLimits);
+      return Number(row?.total ?? 0);
+    };
+
+    // A connection's own requests count too: a first page is the yardstick.
+    const start = await counted();
+    output(await mcpCall(authorization, "list_products", { page: 1, pageSize: 100 }));
+    const firstPageCost = (await counted()) - start;
+    const before = await counted();
+    const third = output(await mcpCall(authorization, "list_products", { page: 3, pageSize: 100 }));
+    assert.equal((third.items as Json[]).length, 50);
+    assert.equal(
+      (await counted()) - before,
+      firstPageCost,
+      "a deep page costs what a first page costs",
+    );
+
+    const tooDeep = await mcpCall(authorization, "list_products", { page: 101, pageSize: 100 });
+    const error = toolError(tooDeep) as { code?: string; message?: string } | undefined;
+    assert.equal(error?.code, "LEGACY_PAGE_TOO_DEEP");
+    assert.match(JSON.stringify(tooDeep.content), /products_list/);
+    // The last page within the bound is still served.
+    const last = output(
+      await mcpCall(authorization, "list_products", { page: 100, pageSize: 100 }),
+    );
+    assert.deepEqual(last.items, []);
+  });
+  test("a tool's answer carries the record's links, built from the deployment's urls", async () => {
+    const authorization = await key({ ...readOnly, products: "write" });
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ onboardingCompleted: true })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    try {
+      const created = await mcpCall(authorization, "products_create", {
+        name: "Linked kayak",
+        price: "30",
+      });
+      const product = output(created) as { id: string; slug: string; links: Json };
+      const dashboard = `${TEST_APP_URL}/dashboard/products/${product.id}?store=${STORE}`;
+      const storefront = `https://pt-store-a.louez.test/product/${product.slug}`;
+      assert.deepEqual(product.links, { dashboard, storefront });
+      const [text] = created.content as Array<{ type: string; text: string }>;
+      const line = `Links to give the user: dashboard ${dashboard}, storefront ${storefront}.`;
+      assert.ok(text.text.includes(line), text.text);
+
+      // Searched by its name: other tests leave products in the store.
+      const listed = output(
+        await mcpCall(authorization, "products_list", { search: "Linked kayak" }),
+      ) as {
+        items: Array<{ id: string; links: Json }>;
+      };
+      assert.deepEqual(listed.items.find((item) => item.id === product.id)?.links, {
+        dashboard,
+        storefront,
+      });
+
+      // A hand-written tool gives the customer's page in its text.
+      const [customer] = await louezDb.db
+        .insert(louezDb.customers)
+        .values({ storeId: STORE, email: "linked@pt.test", firstName: "Lina", lastName: "Link" })
+        .$returningId();
+      const found = await mcpCall(authorization, "get_customer", { customerId: customer.id });
+      const [customerText] = found.content as Array<{ type: string; text: string }>;
+      assert.ok(
+        customerText.text.includes(
+          `dashboard ${TEST_APP_URL}/dashboard/customers/${customer.id}?store=${STORE}`,
+        ),
+        customerText.text,
+      );
+    } finally {
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ onboardingCompleted: false })
+        .where(orm.eq(louezDb.stores.id, STORE));
+    }
+  });
+  test("a reservation's link shows only to a connection that may read reservations", async () => {
+    const [customer] = await louezDb.db
+      .insert(louezDb.customers)
+      .values({ storeId: STORE, email: "scoped@pt.test", firstName: "Sam", lastName: "Scope" })
+      .$returningId();
+    const reservationId = "pt_scoped_reservation";
+    await louezDb.db.insert(louezDb.reservations).values({
+      id: reservationId,
+      storeId: STORE,
+      customerId: customer.id,
+      number: "PT-SCOPED-1",
+      status: "confirmed",
+      startDate: new Date("2027-03-01T09:00:00Z"),
+      endDate: new Date("2027-03-03T09:00:00Z"),
+      subtotalAmount: "100.00",
+      depositAmount: "0.00",
+      totalAmount: "100.00",
+    });
+    const reservationLink = `${TEST_APP_URL}/dashboard/reservations/${reservationId}?store=${STORE}`;
+    const customerLink = `${TEST_APP_URL}/dashboard/customers/${customer.id}?store=${STORE}`;
+    const textOf = async (authorization: string, name: string, args: object) => {
+      const result = await mcpCall(authorization, name, args);
+      assert.notEqual(result.isError, true, JSON.stringify(result.content));
+      return (result.content as Array<{ type: string; text: string }>)[0]?.text ?? "";
+    };
+
+    const blind = await key({ ...readOnly, reservations: "none" });
+    const customerText = await textOf(blind, "get_customer", { customerId: customer.id });
+    assert.ok(customerText.includes(customerLink), customerText);
+    assert.ok(
+      !customerText.includes("#PT-SCOPED-1"),
+      "no reservation history without reservations read",
+    );
+    assert.ok(!customerText.includes(reservationId), customerText);
+    const paymentsText = await textOf(blind, "list_payments", { reservationId });
+    assert.ok(!paymentsText.includes(reservationLink), paymentsText);
+
+    const seeing = await key({ ...readOnly, reservations: "read" });
+    const seenText = await textOf(seeing, "get_customer", { customerId: customer.id });
+    assert.ok(seenText.includes("#PT-SCOPED-1"), seenText);
+    assert.ok(seenText.includes(reservationLink), seenText);
+    assert.ok((await textOf(seeing, "list_payments", { reservationId })).includes(reservationLink));
+  });
+});

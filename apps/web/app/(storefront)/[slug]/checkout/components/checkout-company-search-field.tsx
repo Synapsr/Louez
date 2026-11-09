@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { Badge, Input, Label, Spinner } from "@louez/ui";
 import { SearchIcon } from "@louez/ui/icons";
 
-import type { CompanySearchResult } from "@/lib/recherche-entreprises";
+import type { CompanySearchResult } from "@louez/api/adapters/company-registry";
 
 import { searchCheckoutCompanyRegistry } from "../actions";
 

@@ -1550,7 +1550,8 @@
             "basePricing": "Basistarife",
             "title": "Preissimulation",
             "subtitle": "Gesamtpreis nach Mietdauer"
-          }
+          },
+          "limitReached": "Ein Produkt hat höchstens {max} Tarife."
         },
         "unitTracking": {
           "toggle": "Einzelne Einheiten verfolgen",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "Neuer Wert…",
           "noVariants": "Keine Varianten",
           "variantsCount": "{count, plural, one {# Variante} other {# Varianten}}",
-          "unitImages": "Fotos der Einheit"
+          "unitImages": "Fotos der Einheit",
+          "limitReached": "Ein Produkt hat höchstens {max} Einheiten. Entfernen Sie eine, um eine weitere hinzuzufügen."
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",
@@ -3952,6 +3954,7 @@
         "countryTimezone": "Zeitzone",
         "currency": "Währung",
         "currencyDescription": "Die Währung für Preisanzeige und Kundenabrechnung",
+        "currencyLegacy": "{code} (nicht mehr angeboten)",
         "locale": "Ausweichsprache",
         "localeDescription": "Sprache, wenn der Browser des Besuchers keine vom Shop angebotene Sprache anfordert, und in der Google Ihren Shop indexiert. Besucher sehen immer zuerst ihre Browsersprache.",
         "localeAuto": "Plattformsprache (Französisch)",
@@ -4281,6 +4284,10 @@
             "payment_failed": {
               "label": "Zahlung fehlgeschlagen",
               "description": "Wenn eine Zahlung fehlschlägt"
+            },
+            "payment_disputed": {
+              "label": "Zahlung angefochten",
+              "description": "Wenn ein Kunde eine Zahlung bei seiner Bank anficht"
             }
           },
           "reminder": {
@@ -4705,6 +4712,8 @@
         "noKeys": "Noch keine API-Schlüssel. Erstellen Sie einen, um zu beginnen.",
         "keyRevoked": "API-Schlüssel widerrufen.",
         "lastUsed": "Zuletzt verwendet",
+        "confirmSensitive": "Vor sensiblen Aktionen bestätigen",
+        "confirmSensitiveSaved": "Einstellung gespeichert",
         "endpointsTitle": "Endpunkte",
         "endpointsDescription": "Verwenden Sie diese Endpunkte, um auf Ihre Shop-Daten zuzugreifen.",
         "mcpServerTitle": "MCP-Server (HTTP)",
@@ -6822,6 +6831,7 @@
       "disclaimer": "Der KI-Assistent kann Fehler machen. Überprüfen Sie wichtige Informationen.",
       "newConversation": "Neues Gespräch",
       "openFullPage": "Als ganze Seite öffnen",
+      "opensInNewTab": "öffnet sich in einem neuen Tab",
       "history": {
         "title": "Verlauf",
         "empty": "Keine Gespräche",
@@ -8474,9 +8484,7 @@
         "confirm": "Anfrage stornieren",
         "cancelled": "Anfrage storniert",
         "done": "Sie haben diese Anfrage storniert.",
-        "paymentDescription": "Das Geschäft wird benachrichtigt. Wenn Sie bereits bezahlt oder eine Kaution hinterlegt haben, wenden Sie sich wegen einer Erstattung oder Freigabe an das Geschäft. Es erfolgt keine automatische Erstattung.",
-        "adminSubject": "Anfrage #{number} vom Kunden storniert",
-        "adminBody": "{name} hat die Buchungsanfrage #{number} vor Ihrer Bestätigung storniert. Den Verlauf finden Sie in Ihrem Dashboard."
+        "paymentDescription": "Das Geschäft wird benachrichtigt. Wenn Sie bereits bezahlt oder eine Kaution hinterlegt haben, wenden Sie sich wegen einer Erstattung oder Freigabe an das Geschäft. Es erfolgt keine automatische Erstattung."
       },
       "customerFields": {
         "title": "Weitere Angaben",
@@ -9188,6 +9196,7 @@
     "unauthenticated": "Nicht authentifiziert",
     "invalidData": "Ungültige Daten",
     "slugTaken": "Diese Adresse ist bereits vergeben",
+    "storeNotReady": "Bei Ihrem Shop fehlen Land oder Währung: Vervollständigen Sie die Angaben, bevor Sie ihn online stellen.",
     "storeNotFound": "Shop nicht gefunden",
     "productNotFound": "Produkt nicht gefunden",
     "categoryNotFound": "Kategorie nicht gefunden",
@@ -9234,7 +9243,6 @@
     "updateCustomerError": "Fehler beim Aktualisieren des Kunden",
     "deleteCustomerError": "Fehler beim Löschen des Kunden",
     "updateNotesError": "Fehler beim Aktualisieren der Notizen",
-    "updateSettingsError": "Fehler beim Aktualisieren der Einstellungen",
     "createReservationError": "Fehler beim Erstellen der Reservierung",
     "businessHoursViolation": "Ausgewählte Zeiten liegen außerhalb der Öffnungszeiten des Shops",
     "returnAddressInvalid": "Ungültige Koordinaten der Rückgabeadresse",
@@ -9346,6 +9354,9 @@
     "tulipProductTypeDisabled": "Diese Tulip-Produktkategorie ist für diesen Shop nicht aktiviert.",
     "unitAlreadyRetired": "Diese Einheit ist bereits ausgemustert",
     "unitNotRetired": "Diese Einheit ist nicht ausgemustert",
+    "variantLimitReached": "Dieser Shop hat bereits die maximale Anzahl an Varianten (100).",
+    "variantValueLimitReached": "Diese Variante hat bereits die maximale Anzahl an Werten (200).",
+    "downtimeCloseExtends": "Diese Ausfallzeit endet bereits früher. Um sie zu verlängern, ändern Sie ihre Daten.",
     "advisorValidationRequired": "Dieser Shop erfordert vor der Reservierung eine kurze Überprüfung mit dem Berater",
     "conversationNotFound": "Gespräch nicht gefunden",
     "featureNotAvailable": "Diese Funktion ist in Ihrem Plan nicht verfügbar",
@@ -9384,7 +9395,11 @@
     "reservationDetailsLocked": "Diese Angaben können nicht mehr geändert werden: Die Miete hat begonnen oder ist beendet.",
     "customerNotAuthenticated": "Melden Sie sich in Ihrem Kundenkonto an, um fortzufahren.",
     "profileFieldRequired": "Bitte füllen Sie „{field}“ aus.",
-    "profileFieldInvalid": "„{field}“ ist ungültig."
+    "profileFieldInvalid": "„{field}“ ist ungültig.",
+    "agentConnectionNotFound": "Dieser verbundene Agent existiert nicht mehr.",
+    "oauthRequestInvalid": "Diese Verbindungsanfrage ist nicht mehr gültig. Starten Sie sie erneut in Ihrem Agenten.",
+    "stripeRequiredForPaymentMode": "Der Online-Zahlungsmodus erfordert ein verbundenes Stripe-Konto. Verbinden Sie Stripe unter Einstellungen > Zahlungen.",
+    "locationLimitReached": "Ein Shop kann höchstens 50 Abholorte haben. Deaktivieren Sie einen oder verwenden Sie ihn erneut."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",
@@ -9478,6 +9493,227 @@
     "backToDashboard": "Zurück zum Dashboard",
     "nav": {
       "finance": "Finanzen"
+    }
+  },
+  "agentConnections": {
+    "presetsTitle": "Rechte",
+    "presets": {
+      "read": {
+        "label": "Nur lesen",
+        "description": "Der Agent sieht Ihre Reservierungen, Produkte, Kunden und Zahlen und ändert nichts."
+      },
+      "write": {
+        "label": "Lesen und bearbeiten",
+        "description": "Der Agent kann auch erstellen und ändern, im Rahmen Ihrer Rolle. Statistiken bleiben schreibgeschützt."
+      }
+    },
+    "storesTitle": "Shops",
+    "storesAll": "Alle meine Shops, auch künftige",
+    "storesAllHint": "Ein Shop, den Sie später erstellen oder dem Sie beitreten, ist ebenfalls enthalten.",
+    "storesNone": "Wählen Sie mindestens einen Shop.",
+    "roles": {
+      "owner": "Inhaber",
+      "member": "Mitglied"
+    },
+    "confirm": {
+      "label": "Vor sensiblen Aktionen um Bestätigung bitten",
+      "description": "Vor Zahlungen, Erstattungen, Löschungen und Nachrichten an Kunden erhält der Agent zuerst eine Vorschau und muss bestätigen. Er ist angewiesen, Ihnen die Vorschau zu zeigen und Sie vorher zu fragen."
+    },
+    "bundlesTitle": "Angezeigte Tools",
+    "bundlesHint": "Der Agent sieht diese Tool-Pakete. Sie können später weitere hinzufügen.",
+    "bundlesNone": "Wählen Sie mindestens ein Tool-Paket.",
+    "recommended": "Empfohlen",
+    "bundles": {
+      "daily": {
+        "label": "Tagesgeschäft",
+        "description": "Reservierungen, Kalender, Kunden, Zahlungen und Zahlen."
+      },
+      "catalog": {
+        "label": "Katalog",
+        "description": "Produkte, Kategorien und Bestand."
+      },
+      "settings": {
+        "label": "Einstellungen",
+        "description": "Shop-Einstellungen und Online-Shop."
+      },
+      "integrations": {
+        "label": "Integrationen",
+        "description": "Mit Louez verbundene Dienste."
+      },
+      "team": {
+        "label": "Team",
+        "description": "Teammitglieder."
+      },
+      "billing": {
+        "label": "Abonnement",
+        "description": "Louez-Abonnement und Rechnungen."
+      }
+    },
+    "verified": "Verifiziert",
+    "unverified": "Name nicht verifiziert",
+    "unknownClient": "Eine App",
+    "consent": {
+      "metaTitle": "Agent verbinden",
+      "title": "{client} mit Louez verbinden",
+      "description": "{client} kann für Sie in den gewählten Shops handeln, innerhalb der folgenden Grenzen und der Ihrer Rolle.",
+      "accept": "Erlauben",
+      "refuse": "Ablehnen",
+      "invalidTitle": "Anfrage abgelaufen",
+      "invalidDescription": "Diese Verbindungsanfrage ist nicht mehr gültig. Starten Sie die Verbindung erneut in Ihrem Agenten.",
+      "noStoreTitle": "Noch kein Shop",
+      "noStoreDescription": "{client} kann Ihren Shop für Sie erstellen, wenn Sie die Rechte „Lesen und bearbeiten“ erteilen. Der Shop bleibt offline, bis Sie ihn starten. Dieser Zugriff gilt auch für Shops, die Sie später erstellen.",
+      "redirectNotice": "Nach Ihrer Zustimmung wird der Zugriff an {host} gesendet.",
+      "footer": "Sie können diesen Zugriff jederzeit unter Einstellungen, Integrationen, MCP ändern oder entfernen.",
+      "loopbackWarning": "Der Zugriff wird an eine lokale Adresse dieses Computers gesendet: Jedes dort laufende Programm kann sich als diese App ausgeben. Erlauben Sie ihn nur, wenn Sie die Verbindung gerade selbst gestartet haben."
+    },
+    "list": {
+      "title": "Verbundene Agenten",
+      "description": "Die Assistenten, die Sie für Ihre Shops zugelassen haben.",
+      "empty": "Kein verbundener Agent",
+      "emptyDescription": "Fügen Sie Louez als Connector in Claude oder ChatGPT hinzu: Hier legen Sie fest, was er darf.",
+      "allStores": "Alle meine Shops",
+      "connectedOn": "Verbunden am {date}",
+      "lastAction": "Letzte Aktion am {date}",
+      "noAction": "Noch keine Aktion",
+      "edit": "Bearbeiten",
+      "revoke": "Trennen",
+      "saved": "Einstellungen gespeichert",
+      "revoked": "Agent getrennt",
+      "editTitle": "Zugriff von {client}",
+      "editDescription": "Änderungen gelten ab seiner nächsten Aktion.",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "revokeTitle": "{client} trennen?",
+      "revokeDescription": "Der Agent verliert sofort den Zugriff. Um ihn wieder zu verbinden, müssen Sie ihn erneut zulassen.",
+      "revokeConfirm": "Trennen"
+    },
+    "guide": {
+      "title": "Ihren KI-Assistenten verbinden",
+      "description": "Ihr Assistent kann Ihren Shop verwalten: Produkte, Reservierungen, Einstellungen. Sie entscheiden, was er tun darf.",
+      "addTo": "Zu {name} hinzufügen",
+      "chooseAssistant": "Welchen Assistenten nutzen Sie?",
+      "changeAssistant": "Anderen Assistenten wählen",
+      "addressLabel": "Verbindungsadresse",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "whatHappens": "Danach bittet Louez Sie, sich anzumelden und festzulegen, was der Assistent tun darf.",
+      "oauthUnavailable": "Assistenten brauchen eine sichere Adresse (HTTPS), und dieses Louez hat keine. Ein Entwickler kann es trotzdem mit einem API-Schlüssel verbinden.",
+      "assistants": {
+        "claude": {
+          "step1": "Klicken Sie auf „Zu Claude hinzufügen“: Louez ist schon eingetragen.",
+          "step2": "Klicken Sie auf Weiter, dann auf Hinzufügen.",
+          "step3": "Melden Sie sich bei Louez an, wenn Claude Sie dazu auffordert.",
+          "note": "Bei einem Claude-Team- oder Enterprise-Konto kann nur ein Inhaber es hinzufügen."
+        },
+        "chatgpt": {
+          "step1": "Öffnen Sie die <link>Plugins von ChatGPT</link>, dann + → Eigenen MCP-Server hinzufügen.",
+          "step2": "Nennen Sie ihn Louez und fügen Sie die Adresse unter Server-URL ein.",
+          "step3": "Akzeptieren Sie den Hinweis, klicken Sie auf Als Plugin erstellen und melden Sie sich bei Louez an.",
+          "note": "Mit ChatGPT Business, Enterprise oder Edu, auf der Website. In einem Team-Arbeitsbereich bitten Sie einen Administrator, ihn hinzuzufügen. Mit ChatGPT Pro kann der Assistent nur nachsehen."
+        },
+        "grok": {
+          "step1": "Öffnen Sie die <link>Konnektoren von Grok</link>, dann Neuer Konnektor → Benutzerdefiniert.",
+          "step2": "Fügen Sie die Adresse ein.",
+          "step3": "Melden Sie sich bei Louez an und bestätigen Sie.",
+          "note": "Für alle Grok-Konten. In Unternehmen fügt ihn zuerst ein Administrator hinzu."
+        },
+        "mistral": {
+          "step1": "Öffnen Sie in <link>Vibe</link> im Work-Modus Connectors, dann + Add Connector → Custom MCP Connector.",
+          "step2": "Nennen Sie ihn Louez und fügen Sie die Adresse ein.",
+          "step3": "Klicken Sie auf Verbinden und melden Sie sich bei Louez an.",
+          "note": "Früher Le Chat. Bei einem Teamkonto fügt ihn ein Administrator hinzu."
+        }
+      },
+      "developers": {
+        "toggle": "Für Entwickler",
+        "server": "Dies ist die Adresse des MCP-Servers von Louez (Streamable HTTP). Assistenten verbinden sich per OAuth: Jeder meldet sich bei Louez an, ohne Schlüssel zu kopieren.",
+        "serverWithoutOAuth": "Dies ist die Adresse des MCP-Servers von Louez (Streamable HTTP). Ohne HTTPS bietet diese Instanz kein OAuth: Verwenden Sie einen API-Schlüssel.",
+        "apiKeyTitle": "Skripte, n8n und Clients ohne OAuth",
+        "apiKeyDescription": "Erstellen Sie einen API-Schlüssel und senden Sie ihn im Header Authorization: Bearer.",
+        "apiKeyLink": "API-Schlüssel verwalten",
+        "editorsTitle": "Code-Editoren"
+      }
+    },
+    "assistantCard": {
+      "title": "Lassen Sie Ihren KI-Assistenten Ihren Shop einrichten.",
+      "info": "Claude, ChatGPT, Grok oder Mistral Vibe kann Ihre Produkte anlegen, Ihre Preise festlegen und Ihren Shop für Sie einrichten. Sie legen seine Rechte fest und was er Sie bestätigen lassen muss.",
+      "infoLabel": "Mehr erfahren",
+      "action": "Verbinden",
+      "dismiss": "Ausblenden"
+    },
+    "declaredBy": "Name angegeben von {origin}",
+    "declaredByItself": "Name von der App angegeben (dynamisch registriert)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Shop wechseln",
+    "title": "Shop wechseln?",
+    "description": "Dieser Link öffnet den Shop „{target}“. Sie sind gerade in „{current}“.",
+    "open": "In {target} öffnen",
+    "stay": "In {current} bleiben"
+  },
+  "handoff": {
+    "metaTitle": "In Louez fortfahren",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Stripe verbinden",
+        "description": "Ihr KI-Agent bittet Sie, „{store}“ mit Stripe zu verbinden, damit der Shop Online-Zahlungen annehmen kann. Stripe fragt nach Ihrer Identität und Ihrer Bankverbindung.",
+        "continue": "Weiter zu Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Ihr Stripe-Dashboard öffnen",
+        "description": "Ihr KI-Agent bittet Sie, das Stripe-Dashboard von „{store}“ zu öffnen.",
+        "continue": "Stripe öffnen"
+      },
+      "billing_card_setup": {
+        "title": "Ihre Abrechnungskarte hinzufügen",
+        "description": "Ihr KI-Agent bittet Sie, die Karte hinzuzufügen, über die Louez seine Gebühren für „{store}“ abbucht. Sie geben sie auf der sicheren Seite von Stripe ein.",
+        "continue": "Weiter zu Stripe"
+      }
+    },
+    "retry": "Stripe hat nicht geantwortet. Versuchen Sie es gleich noch einmal.",
+    "refused": {
+      "invalid": {
+        "title": "Dieser Link funktioniert nicht mehr",
+        "description": "Er ist unvollständig oder wurde durch einen neueren Link ersetzt. Bitten Sie Ihren KI-Agenten um einen neuen."
+      },
+      "expired": {
+        "title": "Dieser Link ist abgelaufen",
+        "description": "Bitten Sie Ihren KI-Agenten um einen neuen Link."
+      },
+      "finished": {
+        "title": "Dieser Schritt ist bereits abgeschlossen",
+        "description": "Hier ist nichts mehr zu tun. Sie können zu Ihrem KI-Agenten zurückkehren."
+      },
+      "other_user": {
+        "title": "Dieser Link ist für ein anderes Konto",
+        "description": "Sie sind mit einem anderen Konto angemeldet als dem, für das Ihr KI-Agent arbeitet. Melden Sie sich mit diesem Konto an und öffnen Sie den Link erneut."
+      },
+      "not_allowed": {
+        "title": "Das können Sie für diesen Shop nicht tun",
+        "description": "Ihre Rolle in diesem Shop erlaubt diesen Schritt nicht. Fragen Sie den Inhaber des Shops."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Erledigt",
+        "description": "Sie können diese Seite schließen und zu Ihrem KI-Agenten zurückkehren: Er sieht, dass dieser Schritt erledigt ist."
+      },
+      "opened": {
+        "title": "Noch nicht abgeschlossen",
+        "description": "Der Schritt wurde bei Stripe nicht abgeschlossen. Öffnen Sie den Link erneut, um ihn abzuschließen, oder kehren Sie zu Ihrem KI-Agenten zurück."
+      },
+      "confirming": {
+        "title": "Fast fertig",
+        "description": "Stripe hat die Karte noch nicht bestätigt. Sie können zu Ihrem KI-Agenten zurückkehren: Er sieht die Karte, sobald Stripe sie bestätigt hat."
+      },
+      "expired": {
+        "title": "Dieser Link ist abgelaufen",
+        "description": "Kehren Sie zu Ihrem KI-Agenten zurück: Er kann Ihnen einen neuen Link geben."
+      },
+      "failed": {
+        "title": "Dieser Schritt ist fehlgeschlagen",
+        "description": "Kehren Sie zu Ihrem KI-Agenten zurück: Er kann Ihnen einen neuen Link geben."
+      }
     }
   }
 }

@@ -39,6 +39,8 @@ import {
   TooltipTrigger,
 } from "@louez/ui";
 
+import type { StoreTargetStatus } from "@louez/api/contracts/reservations";
+
 import type { Reservation, ReservationStatus } from "./reservations-types";
 import {
   ContractSignatureBadge,
@@ -71,7 +73,7 @@ interface ReservationsCardViewProps {
   handleStatusChange: (
     e: React.MouseEvent,
     reservation: Reservation,
-    newStatus: ReservationStatus,
+    newStatus: StoreTargetStatus,
   ) => Promise<void>;
   openRejectDialog: (e: React.MouseEvent, reservation: Reservation) => void;
 }
@@ -202,7 +204,7 @@ export function ReservationsCardView({
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm">
                         <span className="flex items-center gap-1.5 text-foreground">
                           <User className="h-3.5 w-3.5 text-muted-foreground" />
-                          {reservation.customer.firstName} {reservation.customer.lastName}
+                          {reservation.customer?.firstName} {reservation.customer?.lastName}
                         </span>
                         <span className="text-muted-foreground truncate">{itemsText}</span>
                       </div>

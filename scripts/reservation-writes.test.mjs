@@ -112,13 +112,6 @@ const ALLOWLIST = [
     count: 1,
     reason: "the totals of a zod-parsed extension plan, which has no status key",
   },
-  {
-    rule: "R5",
-    file: "apps/web/lib/reservations/store-status-change.ts",
-    expression: "changeReservationStatus",
-    count: 1,
-    reason: "returns the effects; its callers in status-change.ts run them",
-  },
 ];
 
 // `reservations`, `louez.reservations` or the same in backticks, as a whole name.

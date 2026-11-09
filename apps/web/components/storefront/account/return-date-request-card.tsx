@@ -16,7 +16,7 @@ import {
   confirmRentalExtension,
   cancelRentalExtension,
 } from "@/app/(storefront)/[slug]/account/reservations/[reservationId]/extension-actions";
-import type { DateChangeRequest } from "@/lib/reservations/util.date-change-request";
+import type { DateChangeRequest } from "@louez/validations";
 import type { ExtensionPreview, ExtensionAttempt } from "@/lib/reservations/extension.types";
 
 interface ReturnDateRequestCardProps {

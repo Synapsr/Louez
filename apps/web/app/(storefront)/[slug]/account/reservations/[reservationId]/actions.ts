@@ -3,7 +3,7 @@
 import {
   checkExistingReservationInventory,
   ReservationInventoryError,
-} from "@/lib/reservations/reserve-inventory";
+} from "@louez/api/services/reservation-inventory";
 
 import {
   ApiServiceError,
@@ -24,6 +24,7 @@ import {
   isStoreNotAcceptingReservationsError,
   payments,
   reservations,
+  retryTransactionOnDeadlock,
   stores,
   verificationCodes,
 } from "@louez/db";
@@ -51,7 +52,6 @@ import {
 } from "@/lib/reservations/util.customer-deposit";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { log } from "@/lib/evlog";
-import { sendRequestCancelledEmail } from "@/lib/email/send-request-cancelled-email";
 import { cancelTulipContractForReservation } from "@/lib/integrations/tulip/contracts";
 import { generateContract } from "@/lib/pdf/generate";
 import { canSignContract } from "@/lib/reservations/util.reservation-actions";
@@ -191,24 +191,28 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   // so the store scope of the lock is enough.
   let effects: ReservationBillingEffect[] | null = null;
   try {
-    effects = await db.transaction(
-      async (tx) => {
-        const change = await changeReservationStatus(tx, {
-          reservationId,
-          storeId: store.id,
-          to: "confirmed",
-          actor: "customer",
-          actorUserId: null,
-          expectedFrom: "quote",
-          beforeWrite: () => checkExistingReservationInventory(tx, reservationId, store.id),
-          activity: { type: "quote_accepted", metadata: { source: "quote_acceptance" } },
-        });
-        if (!change.changed) return null;
+    // Either side of the reservation-then-product lock pair may lose a
+    // deadlock: the whole transaction runs again (DL-12).
+    effects = await retryTransactionOnDeadlock(() =>
+      db.transaction(
+        async (tx) => {
+          const change = await changeReservationStatus(tx, {
+            reservationId,
+            storeId: store.id,
+            to: "confirmed",
+            actor: "customer",
+            actorUserId: null,
+            expectedFrom: "quote",
+            beforeWrite: () => checkExistingReservationInventory(tx, reservationId, store.id),
+            activity: { type: "quote_accepted", metadata: { source: "quote_acceptance" } },
+          });
+          if (!change.changed) return null;
 
-        await validateReservationContract(tx, reservationId, store.id, "quote_acceptance");
-        return change.effects;
-      },
-      { isolationLevel: "read committed" },
+          await validateReservationContract(tx, reservationId, store.id, "quote_acceptance");
+          return change.effects;
+        },
+        { isolationLevel: "read committed" },
+      ),
     );
   } catch (error) {
     if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
@@ -275,6 +279,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
 
   // Notify the store owner
   dispatchNotification("reservation_confirmed", {
+    actor: "customer",
     store: {
       id: store.id,
       name: store.name,
@@ -290,6 +295,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       totalAmount: parseFloat(reservation.totalAmount),
+      currency: reservation.currency,
     },
     customer: {
       firstName: reservation.customer.firstName,
@@ -399,20 +405,23 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   }
 
   // Under the lock, so a quote the store confirmed meanwhile is not declined.
-  const effects = await db.transaction(
-    async (tx) => {
-      const change = await changeReservationStatus(tx, {
-        reservationId,
-        storeId: store.id,
-        to: "declined",
-        actor: "customer",
-        actorUserId: null,
-        expectedFrom: "quote",
-        activity: { type: "quote_declined", metadata: { source: "quote_decline" } },
-      });
-      return change.changed ? change.effects : null;
-    },
-    { isolationLevel: "read committed" },
+  // A lost deadlock runs the whole transaction again (DL-12).
+  const effects = await retryTransactionOnDeadlock(() =>
+    db.transaction(
+      async (tx) => {
+        const change = await changeReservationStatus(tx, {
+          reservationId,
+          storeId: store.id,
+          to: "declined",
+          actor: "customer",
+          actorUserId: null,
+          expectedFrom: "quote",
+          activity: { type: "quote_declined", metadata: { source: "quote_decline" } },
+        });
+        return change.changed ? change.effects : null;
+      },
+      { isolationLevel: "read committed" },
+    ),
   );
   if (!effects) {
     return { error: "invalidStatus" };
@@ -436,6 +445,8 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
 
   // Notify the store owner
   dispatchNotification("reservation_cancelled", {
+    actor: "customer",
+    quoteDeclined: true,
     store: {
       id: store.id,
       name: store.name,
@@ -451,6 +462,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       totalAmount: parseFloat(reservation.totalAmount),
+      currency: reservation.currency,
     },
     customer: {
       firstName: reservation.customer.firstName,
@@ -492,54 +504,58 @@ export async function cancelReservationRequest(
       startDate: true,
       endDate: true,
       totalAmount: true,
+      currency: true,
       tulipContractId: true,
     },
     with: { customer: { columns: { firstName: true, lastName: true, email: true, phone: true } } },
   });
   if (!reservation) return { error: "reservationNotFound" };
 
-  const result = await db.transaction(
-    async (tx) => {
-      const [locked] = await tx
-        .select({ status: reservations.status })
-        .from(reservations)
-        .where(scope)
-        .for("update");
-      if (!locked) return { error: "reservationNotFound" };
-      if (locked.status === "cancelled") return { changed: false, effects: [] };
-      if (locked.status !== "pending") return { error: "requestCancellationStatusChanged" };
+  // A lost deadlock runs the whole transaction again (DL-12).
+  const result = await retryTransactionOnDeadlock(() =>
+    db.transaction(
+      async (tx) => {
+        const [locked] = await tx
+          .select({ status: reservations.status })
+          .from(reservations)
+          .where(scope)
+          .for("update");
+        if (!locked) return { error: "reservationNotFound" };
+        if (locked.status === "cancelled") return { changed: false, effects: [] };
+        if (locked.status !== "pending") return { error: "requestCancellationStatusChanged" };
 
-      const paymentRows = await tx
-        .select({ status: payments.status, method: payments.method })
-        .from(payments)
-        .where(eq(payments.reservationId, reservation.id))
-        .for("update");
-      // A checkout can still settle asynchronously. Leave its reservation intact.
-      if (
-        paymentRows.some((payment) => payment.method === "stripe" && payment.status === "pending")
-      ) {
-        return { error: "requestCancellationPaymentPending" };
-      }
-      if (
-        !parsed.data.acknowledgePayment &&
-        paymentRows.some((payment) => ["completed", "authorized"].includes(payment.status))
-      ) {
-        return { error: "requestCancellationPaymentChanged" };
-      }
-      const change = await changeReservationStatus(tx, {
-        reservationId: reservation.id,
-        storeId: store.id,
-        to: "cancelled",
-        actor: "customer",
-        actorUserId: null,
-        expectedFrom: "pending",
-        activity: { metadata: { source: "customer_request_cancellation" } },
-      });
-      // The row is locked above, so this cannot happen. It narrows the type.
-      if (!change.changed) return { error: "requestCancellationStatusChanged" };
-      return { changed: true, effects: change.effects };
-    },
-    { isolationLevel: "read committed" },
+        const paymentRows = await tx
+          .select({ status: payments.status, method: payments.method })
+          .from(payments)
+          .where(eq(payments.reservationId, reservation.id))
+          .for("update");
+        // A checkout can still settle asynchronously. Leave its reservation intact.
+        if (
+          paymentRows.some((payment) => payment.method === "stripe" && payment.status === "pending")
+        ) {
+          return { error: "requestCancellationPaymentPending" };
+        }
+        if (
+          !parsed.data.acknowledgePayment &&
+          paymentRows.some((payment) => ["completed", "authorized"].includes(payment.status))
+        ) {
+          return { error: "requestCancellationPaymentChanged" };
+        }
+        const change = await changeReservationStatus(tx, {
+          reservationId: reservation.id,
+          storeId: store.id,
+          to: "cancelled",
+          actor: "customer",
+          actorUserId: null,
+          expectedFrom: "pending",
+          activity: { metadata: { source: "customer_request_cancellation" } },
+        });
+        // The row is locked above, so this cannot happen. It narrows the type.
+        if (!change.changed) return { error: "requestCancellationStatusChanged" };
+        return { changed: true, effects: change.effects };
+      },
+      { isolationLevel: "read committed" },
+    ),
   );
   if ("error" in result) return { error: result.error };
   await runReservationEffects(result.effects);
@@ -556,6 +572,7 @@ export async function cancelReservationRequest(
     }
     try {
       await dispatchNotification("reservation_cancelled", {
+        actor: "customer",
         store,
         reservation: {
           id: reservation.id,
@@ -563,26 +580,12 @@ export async function cancelReservationRequest(
           startDate: reservation.startDate,
           endDate: reservation.endDate,
           totalAmount: Number(reservation.totalAmount),
+          currency: reservation.currency,
         },
         customer: reservation.customer,
       });
     } catch (error) {
       log.error("reservation", `request cancellation notification failed: ${describeError(error)}`);
-    }
-  }
-  if (
-    result.changed &&
-    store.email &&
-    (store.notificationSettings?.reservation_cancelled?.email ?? true)
-  ) {
-    try {
-      await sendRequestCancelledEmail({
-        store: { ...store, email: store.email },
-        reservation,
-        customer: reservation.customer,
-      });
-    } catch (error) {
-      log.error("reservation", `request cancellation email failed: ${describeError(error)}`);
     }
   }
   revalidatePath(`/${store.slug}/account`);

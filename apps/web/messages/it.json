@@ -1511,7 +1511,8 @@
             "basePricing": "Tariffe base",
             "title": "Simulazione del prezzo",
             "subtitle": "Prezzo totale in base alla durata del noleggio"
-          }
+          },
+          "limitReached": "Un prodotto ha al massimo {max} tariffe."
         },
         "unitTracking": {
           "toggle": "Traccia unità individuali",
@@ -1652,7 +1653,8 @@
           "addValuePlaceholder": "Nuovo valore…",
           "noVariants": "Nessuna variante",
           "variantsCount": "{count, plural, one {# variante} other {# varianti}}",
-          "unitImages": "Foto dell'unità"
+          "unitImages": "Foto dell'unità",
+          "limitReached": "Un prodotto ha al massimo {max} unità. Rimuovine una per aggiungerne un'altra."
         },
         "previewTitle": "Anteprima",
         "previewDescription": "Ecco come apparirà il tuo prodotto nel catalogo",
@@ -3952,6 +3954,7 @@
         "countryTimezone": "Fuso orario",
         "currency": "Valuta",
         "currencyDescription": "La valuta usata per mostrare i prezzi e fatturare i tuoi clienti",
+        "currencyLegacy": "{code} (non più disponibile)",
         "locale": "Lingua di riserva",
         "localeDescription": "Lingua usata quando il browser del visitatore non ne chiede nessuna tra quelle offerte dal negozio, e in cui Google indicizza il tuo negozio. Il visitatore vede sempre prima la lingua del suo browser.",
         "localeAuto": "Lingua della piattaforma (francese)",
@@ -4281,6 +4284,10 @@
             "payment_failed": {
               "label": "Pagamento fallito",
               "description": "Quando un pagamento fallisce"
+            },
+            "payment_disputed": {
+              "label": "Pagamento contestato",
+              "description": "Quando un cliente contesta un pagamento presso la sua banca"
             }
           },
           "reminder": {
@@ -4705,6 +4712,8 @@
         "noKeys": "Nessuna chiave API. Creane una per iniziare.",
         "keyRevoked": "Chiave API revocata.",
         "lastUsed": "Ultimo utilizzo",
+        "confirmSensitive": "Conferma prima delle azioni sensibili",
+        "confirmSensitiveSaved": "Impostazione salvata",
         "endpointsTitle": "Endpoint",
         "endpointsDescription": "Usa questi endpoint per accedere ai dati del tuo negozio.",
         "mcpServerTitle": "Server MCP (HTTP)",
@@ -6822,6 +6831,7 @@
       "disclaimer": "L'assistente IA può commettere errori. Verifica le informazioni importanti.",
       "newConversation": "Nuova conversazione",
       "openFullPage": "Apri a pagina intera",
+      "opensInNewTab": "si apre in una nuova scheda",
       "history": {
         "title": "Cronologia",
         "empty": "Nessuna conversazione",
@@ -8474,9 +8484,7 @@
         "confirm": "Annulla richiesta",
         "cancelled": "Richiesta annullata",
         "done": "Hai annullato questa richiesta.",
-        "paymentDescription": "Il negozio verrà informato. Se hai già pagato o versato una cauzione, contatta il negozio per il rimborso o lo svincolo. Questa azione non avvia un rimborso automatico.",
-        "adminSubject": "Richiesta #{number} annullata dal cliente",
-        "adminBody": "{name} ha annullato la richiesta di prenotazione #{number} prima della tua conferma. Puoi consultarne la cronologia nella dashboard."
+        "paymentDescription": "Il negozio verrà informato. Se hai già pagato o versato una cauzione, contatta il negozio per il rimborso o lo svincolo. Questa azione non avvia un rimborso automatico."
       },
       "customerFields": {
         "title": "Informazioni aggiuntive",
@@ -9188,6 +9196,7 @@
     "unauthenticated": "Non autenticato",
     "invalidData": "Dati non validi",
     "slugTaken": "Questo indirizzo è già in uso",
+    "storeNotReady": "Al tuo negozio mancano il paese o la valuta: completa i suoi dati prima di metterlo online.",
     "storeNotFound": "Negozio non trovato",
     "productNotFound": "Prodotto non trovato",
     "categoryNotFound": "Categoria non trovata",
@@ -9234,7 +9243,6 @@
     "updateCustomerError": "Errore nell'aggiornamento del cliente",
     "deleteCustomerError": "Errore nell'eliminazione del cliente",
     "updateNotesError": "Errore nell'aggiornamento delle note",
-    "updateSettingsError": "Errore nell'aggiornamento delle impostazioni",
     "createReservationError": "Errore nella creazione della prenotazione",
     "businessHoursViolation": "Gli orari selezionati sono al di fuori degli orari di apertura del negozio",
     "returnAddressInvalid": "Coordinate dell'indirizzo di reso non valide",
@@ -9346,6 +9354,9 @@
     "tulipProductTypeDisabled": "Questa categoria di prodotto Tulip non è attivata per questo negozio.",
     "unitAlreadyRetired": "Questa unità è già ritirata dal parco",
     "unitNotRetired": "Questa unità non è ritirata dal parco",
+    "variantLimitReached": "Questo negozio ha già il numero massimo di varianti (100).",
+    "variantValueLimitReached": "Questa variante ha già il numero massimo di valori (200).",
+    "downtimeCloseExtends": "Questa indisponibilità termina già prima. Per prolungarla, modificane le date.",
     "advisorValidationRequired": "Questo negozio richiede una breve verifica con il consulente prima di prenotare",
     "conversationNotFound": "Conversazione non trovata",
     "featureNotAvailable": "Questa funzione non è disponibile nel tuo piano",
@@ -9384,7 +9395,11 @@
     "reservationDetailsLocked": "Questi dati non sono più modificabili: il noleggio è iniziato o è terminato.",
     "customerNotAuthenticated": "Accedi al tuo spazio cliente per continuare.",
     "profileFieldRequired": "Compila «{field}».",
-    "profileFieldInvalid": "«{field}» non è valido."
+    "profileFieldInvalid": "«{field}» non è valido.",
+    "agentConnectionNotFound": "Questo agente collegato non esiste più.",
+    "oauthRequestInvalid": "Questa richiesta di connessione non è più valida. La riavvii dal suo agente.",
+    "stripeRequiredForPaymentMode": "La modalità di pagamento online richiede un account Stripe collegato. Collega Stripe in Impostazioni > Pagamenti.",
+    "locationLimitReached": "Un negozio può avere al massimo 50 punti di ritiro. Disattivane uno o riutilizzalo."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",
@@ -9478,6 +9493,227 @@
     "backToDashboard": "Torna alla dashboard",
     "nav": {
       "finance": "Finanze"
+    }
+  },
+  "agentConnections": {
+    "presetsTitle": "Permessi",
+    "presets": {
+      "read": {
+        "label": "Sola lettura",
+        "description": "L’agente consulta prenotazioni, prodotti, clienti e dati, senza modificare nulla."
+      },
+      "write": {
+        "label": "Lettura e modifica",
+        "description": "L’agente può anche creare e modificare, nei limiti del suo ruolo. Le statistiche restano in sola lettura."
+      }
+    },
+    "storesTitle": "Negozi",
+    "storesAll": "Tutti i miei negozi, anche quelli futuri",
+    "storesAllHint": "Anche un negozio che creerà o a cui si unirà in seguito sarà incluso.",
+    "storesNone": "Scelga almeno un negozio.",
+    "roles": {
+      "owner": "Proprietario",
+      "member": "Membro"
+    },
+    "confirm": {
+      "label": "Chiedi conferma prima delle azioni sensibili",
+      "description": "Prima di un pagamento, un rimborso, un’eliminazione o un messaggio a un cliente, l’agente riceve prima un’anteprima e deve confermare. Ha istruzione di mostrargliela e di chiederle prima."
+    },
+    "bundlesTitle": "Strumenti mostrati",
+    "bundlesHint": "L’agente vede questi gruppi di strumenti. Potrà aggiungerne altri in seguito.",
+    "bundlesNone": "Scelga almeno un gruppo di strumenti.",
+    "recommended": "Consigliato",
+    "bundles": {
+      "daily": {
+        "label": "Operazioni quotidiane",
+        "description": "Prenotazioni, calendario, clienti, pagamenti e dati."
+      },
+      "catalog": {
+        "label": "Catalogo",
+        "description": "Prodotti, categorie e magazzino."
+      },
+      "settings": {
+        "label": "Impostazioni",
+        "description": "Impostazioni del negozio e negozio online."
+      },
+      "integrations": {
+        "label": "Integrazioni",
+        "description": "Servizi collegati a Louez."
+      },
+      "team": {
+        "label": "Team",
+        "description": "Membri del team."
+      },
+      "billing": {
+        "label": "Abbonamento",
+        "description": "Abbonamento e fatture Louez."
+      }
+    },
+    "verified": "Verificato",
+    "unverified": "Nome non verificato",
+    "unknownClient": "Un’applicazione",
+    "consent": {
+      "metaTitle": "Collega un agente",
+      "title": "Collega {client} a Louez",
+      "description": "{client} potrà agire per lei sui negozi scelti, nei limiti qui sotto e in quelli del suo ruolo.",
+      "accept": "Consenti",
+      "refuse": "Rifiuta",
+      "invalidTitle": "Richiesta scaduta",
+      "invalidDescription": "Questa richiesta di connessione non è più valida. Riavvii la connessione dal suo agente.",
+      "noStoreTitle": "Ancora nessun negozio",
+      "noStoreDescription": "{client} potrà creare il negozio per lei se le concede i diritti «Lettura e modifica». Il negozio resterà offline finché non lo lancerà. Questo accesso coprirà anche i negozi che creerà in seguito.",
+      "redirectNotice": "Dopo il suo consenso, l’accesso sarà inviato a {host}.",
+      "footer": "Può modificare o revocare questo accesso in qualsiasi momento in Impostazioni, Integrazioni, MCP.",
+      "loopbackWarning": "L’accesso sarà inviato a un indirizzo locale di questo computer: qualsiasi programma in esecuzione può spacciarsi per questa app. Consenta solo se ha appena avviato lei la connessione."
+    },
+    "list": {
+      "title": "Agenti collegati",
+      "description": "Gli assistenti che ha autorizzato ad agire sui suoi negozi.",
+      "empty": "Nessun agente collegato",
+      "emptyDescription": "Aggiunga Louez come connettore in Claude o ChatGPT: qui sceglierà cosa può fare.",
+      "allStores": "Tutti i miei negozi",
+      "connectedOn": "Collegato il {date}",
+      "lastAction": "Ultima azione il {date}",
+      "noAction": "Nessuna azione per ora",
+      "edit": "Modifica",
+      "revoke": "Scollega",
+      "saved": "Impostazioni salvate",
+      "revoked": "Agente scollegato",
+      "editTitle": "Accesso di {client}",
+      "editDescription": "Le modifiche valgono dalla sua prossima azione.",
+      "save": "Salva",
+      "cancel": "Annulla",
+      "revokeTitle": "Scollegare {client}?",
+      "revokeDescription": "L’agente perde subito l’accesso. Per ricollegarlo dovrà autorizzarlo di nuovo.",
+      "revokeConfirm": "Scollega"
+    },
+    "guide": {
+      "title": "Collega il tuo assistente IA",
+      "description": "Il tuo assistente potrà gestire il tuo negozio: prodotti, prenotazioni, impostazioni. Scegli tu cosa può fare.",
+      "addTo": "Aggiungi a {name}",
+      "chooseAssistant": "Quale assistente usi?",
+      "changeAssistant": "Scegli un altro assistente",
+      "addressLabel": "Indirizzo di connessione",
+      "copy": "Copia",
+      "copied": "Copiato",
+      "whatHappens": "Poi Louez ti chiederà di accedere e di scegliere cosa può fare l'assistente.",
+      "oauthUnavailable": "Gli assistenti hanno bisogno di un indirizzo sicuro (HTTPS) per collegarsi, e questo Louez non ce l'ha. Uno sviluppatore può collegarlo con una chiave API.",
+      "assistants": {
+        "claude": {
+          "step1": "Clicca su «Aggiungi a Claude»: Louez è già compilato.",
+          "step2": "Clicca su Continua, poi su Aggiungi.",
+          "step3": "Accedi a Louez quando Claude te lo chiede.",
+          "note": "Su un account Claude Team o Enterprise, solo un proprietario può aggiungerlo."
+        },
+        "chatgpt": {
+          "step1": "Apri i <link>Plugin di ChatGPT</link>, poi + → Aggiungi server MCP personalizzato.",
+          "step2": "Chiamalo Louez e incolla l'indirizzo in URL del server.",
+          "step3": "Accetta l'avviso, clicca su Crea come plugin, poi accedi a Louez.",
+          "note": "Con ChatGPT Business, Enterprise o Edu, dal sito web. In uno spazio di lavoro di team, chiedi a un amministratore di aggiungerlo. Con ChatGPT Pro, l'assistente può solo consultare."
+        },
+        "grok": {
+          "step1": "Apri i <link>connettori di Grok</link>, poi Nuovo connettore → Personalizzato.",
+          "step2": "Incolla l'indirizzo.",
+          "step3": "Accedi a Louez e conferma.",
+          "note": "Per tutti gli account Grok. In azienda, lo aggiunge prima un amministratore."
+        },
+        "mistral": {
+          "step1": "In <link>Vibe</link>, in modalità Work, apri Connectors, poi + Add Connector → Custom MCP Connector.",
+          "step2": "Chiamalo Louez e incolla l'indirizzo.",
+          "step3": "Clicca su Connetti, poi accedi a Louez.",
+          "note": "Prima si chiamava Le Chat. Su un account di team, lo aggiunge un amministratore."
+        }
+      },
+      "developers": {
+        "toggle": "Per gli sviluppatori",
+        "server": "Questo è l'indirizzo del server MCP di Louez (HTTP streamable). Gli assistenti si collegano con OAuth: ognuno accede a Louez, senza chiavi da copiare.",
+        "serverWithoutOAuth": "Questo è l'indirizzo del server MCP di Louez (HTTP streamable). Senza HTTPS, questa istanza non offre OAuth: usa una chiave API.",
+        "apiKeyTitle": "Script, n8n e client senza OAuth",
+        "apiKeyDescription": "Crea una chiave API e inviala nell'intestazione Authorization: Bearer.",
+        "apiKeyLink": "Gestisci le chiavi API",
+        "editorsTitle": "Editor di codice"
+      }
+    },
+    "assistantCard": {
+      "title": "Lascia che il tuo assistente IA configuri il negozio.",
+      "info": "Claude, ChatGPT, Grok o Mistral Vibe può aggiungere i tuoi prodotti, impostare i prezzi e configurare il negozio per te. Sei tu a scegliere i suoi permessi e cosa deve farti confermare.",
+      "infoLabel": "Scopri di più",
+      "action": "Collega",
+      "dismiss": "Nascondi"
+    },
+    "declaredBy": "Nome dichiarato da {origin}",
+    "declaredByItself": "Nome dichiarato dall’app (registrata dinamicamente)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Cambia negozio",
+    "title": "Cambiare negozio?",
+    "description": "Questo link apre il negozio «{target}». Sei su «{current}».",
+    "open": "Apri in {target}",
+    "stay": "Resta su {current}"
+  },
+  "handoff": {
+    "metaTitle": "Continua in Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Collega Stripe",
+        "description": "Il tuo agente IA ti chiede di collegare «{store}» a Stripe per accettare pagamenti online. Stripe ti chiederà la tua identità e le tue coordinate bancarie.",
+        "continue": "Continua su Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Apri la tua dashboard Stripe",
+        "description": "Il tuo agente IA ti chiede di aprire la dashboard Stripe di «{store}».",
+        "continue": "Apri Stripe"
+      },
+      "billing_card_setup": {
+        "title": "Aggiungi la tua carta di fatturazione",
+        "description": "Il tuo agente IA ti chiede di aggiungere la carta su cui Louez addebita le sue commissioni per «{store}». La inserirai sulla pagina sicura di Stripe.",
+        "continue": "Continua su Stripe"
+      }
+    },
+    "retry": "Stripe non ha risposto. Riprova tra un momento.",
+    "refused": {
+      "invalid": {
+        "title": "Questo link non funziona più",
+        "description": "È incompleto, oppure un link più recente l’ha sostituito. Chiedine uno nuovo al tuo agente IA."
+      },
+      "expired": {
+        "title": "Questo link è scaduto",
+        "description": "Chiedi un nuovo link al tuo agente IA."
+      },
+      "finished": {
+        "title": "Questo passaggio è già concluso",
+        "description": "Non c’è più niente da fare qui. Puoi tornare al tuo agente IA."
+      },
+      "other_user": {
+        "title": "Questo link è per un altro account",
+        "description": "Hai effettuato l’accesso con un account diverso da quello per cui lavora il tuo agente IA. Accedi con quell’account, poi riapri il link."
+      },
+      "not_allowed": {
+        "title": "Non puoi farlo per questo negozio",
+        "description": "Il tuo ruolo in questo negozio non consente questo passaggio. Chiedi al proprietario del negozio."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Fatto",
+        "description": "Puoi chiudere questa pagina e tornare al tuo agente IA: vedrà che questo passaggio è concluso."
+      },
+      "opened": {
+        "title": "Non ancora concluso",
+        "description": "Il passaggio non è stato concluso su Stripe. Riapri il link per concluderlo, oppure torna al tuo agente IA."
+      },
+      "confirming": {
+        "title": "Quasi fatto",
+        "description": "Stripe non ha ancora confermato la carta. Puoi tornare al tuo agente IA: vedrà la carta appena Stripe la confermerà."
+      },
+      "expired": {
+        "title": "Questo link è scaduto",
+        "description": "Torna al tuo agente IA: può darti un nuovo link."
+      },
+      "failed": {
+        "title": "Questo passaggio non è riuscito",
+        "description": "Torna al tuo agente IA: può darti un nuovo link."
+      }
     }
   }
 }

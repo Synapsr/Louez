@@ -7,7 +7,6 @@ import type { ReservationBillingSnapshot } from "@louez/types";
 import { INDIVIDUAL_BILLING } from "@louez/utils";
 import {
   dashboardReservationAssignUnitsInputSchema,
-  dashboardReservationCancelInputSchema,
   dashboardReservationCaptureDepositHoldInputSchema,
   dashboardReservationCreateDepositHoldInputSchema,
   dashboardReservationCreateManualReservationInputSchema,
@@ -15,7 +14,6 @@ import {
   dashboardReservationGetAvailableUnitsInputSchema,
   dashboardReservationGetByIdInputSchema,
   dashboardReservationGetPaymentMethodInputSchema,
-  dashboardReservationPollInputSchema,
   dashboardReservationPreviewManualTulipQuoteInputSchema,
   dashboardReservationGetEmailRenderContextInputSchema,
   dashboardReservationPreviewTulipQuoteInputSchema,
@@ -29,14 +27,8 @@ import {
   dashboardReservationSendAccessLinkSmsInputSchema,
   dashboardReservationSendModificationEmailInputSchema,
   dashboardReservationSendReservationEmailInputSchema,
-  dashboardReservationCalendarPeriodEntrySchema,
-  dashboardReservationPlanningTimelineEntrySchema,
-  dashboardReservationTimelinePeriodInputSchema,
   dashboardReservationUpdateBillingInputSchema,
-  dashboardReservationUpdateNotesInputSchema,
   dashboardReservationUpdateReservationInputSchema,
-  dashboardReservationUpdateStatusInputSchema,
-  dashboardReservationsListInputSchema,
   dashboardReservationSignInStoreInputSchema,
   reservationSignOutputSchema,
   digitsOnly,
@@ -46,16 +38,20 @@ import {
 } from "@louez/validations";
 
 import { dashboardProcedure, requirePermission } from "../../procedures";
-import {
-  getDashboardReservationById,
-  getDashboardReservationEditContext,
-  getDashboardReservationsList,
-  getReservationsForCalendarPeriod,
-  getReservationPollData,
-  getStorePlanningTimeline,
-  signReservationInStore,
-} from "../../services";
+import { getDashboardReservationEditContext, signReservationInStore } from "../../services";
 import { toORPCError } from "../../utils/orpc-error";
+import {
+  cancel,
+  get,
+  getPlanningTimeline,
+  list,
+  listCalendarPeriod,
+  listOverdue,
+  listUpcoming,
+  poll,
+  updateNotes,
+  updateStatus,
+} from "./reservation-follow-up";
 
 function toDate(value: string | Date | undefined): Date | undefined {
   if (!value) return undefined;
@@ -71,91 +67,6 @@ function toOptionalPeriod(payload?: {
   if (!startDate || !endDate) return undefined;
   return { startDate, endDate };
 }
-
-const poll = dashboardProcedure
-  .input(dashboardReservationPollInputSchema)
-  .handler(async ({ context }) => {
-    try {
-      return await getReservationPollData({
-        storeId: context.store.id,
-      });
-    } catch (error) {
-      throw toORPCError(error);
-    }
-  });
-
-const list = dashboardProcedure
-  .input(dashboardReservationsListInputSchema)
-  .handler(async ({ context, input }) => {
-    try {
-      return await getDashboardReservationsList({
-        storeId: context.store.id,
-        status: input.status,
-        period: input.period,
-        operation: input.operation,
-        paymentMethod: input.paymentMethod,
-        limit: input.limit ?? 100,
-        search: input.search,
-        sort: input.sort,
-        sortDirection: input.sortDirection,
-        page: input.page,
-        pageSize: input.pageSize,
-      });
-    } catch (error) {
-      throw toORPCError(error);
-    }
-  });
-
-const calendarPeriod = dashboardProcedure
-  .input(dashboardReservationTimelinePeriodInputSchema)
-  .output(z.array(dashboardReservationCalendarPeriodEntrySchema))
-  .handler(async ({ context, input }) => {
-    if (input.storeId !== context.store.id) {
-      throw new ORPCError("FORBIDDEN", { message: "errors.unauthorized" });
-    }
-
-    try {
-      return await getReservationsForCalendarPeriod({
-        storeId: context.store.id,
-        startDate: new Date(input.startDate),
-        endDate: new Date(input.endDate),
-      });
-    } catch (error) {
-      throw toORPCError(error);
-    }
-  });
-
-const planningTimeline = dashboardProcedure
-  .input(dashboardReservationTimelinePeriodInputSchema)
-  .output(z.array(dashboardReservationPlanningTimelineEntrySchema))
-  .handler(async ({ context, input }) => {
-    if (input.storeId !== context.store.id) {
-      throw new ORPCError("FORBIDDEN", { message: "errors.unauthorized" });
-    }
-
-    try {
-      return await getStorePlanningTimeline({
-        storeId: context.store.id,
-        startDate: new Date(input.startDate),
-        endDate: new Date(input.endDate),
-      });
-    } catch (error) {
-      throw toORPCError(error);
-    }
-  });
-
-const getById = dashboardProcedure
-  .input(dashboardReservationGetByIdInputSchema)
-  .handler(async ({ context, input }) => {
-    try {
-      return await getDashboardReservationById({
-        reservationId: input.reservationId,
-        storeId: context.store.id,
-      });
-    } catch (error) {
-      throw toORPCError(error);
-    }
-  });
 
 const getEditContext = dashboardProcedure
   .input(dashboardReservationGetByIdInputSchema)
@@ -325,26 +236,6 @@ const previewManualTulipQuote = requirePermission("write")
     }
   });
 
-const updateNotes = requirePermission("write")
-  .input(dashboardReservationUpdateNotesInputSchema)
-  .handler(async ({ context, input }) => {
-    try {
-      const updatedAt = new Date();
-      const result = await db
-        .update(reservations)
-        .set({ internalNotes: input.notes, updatedAt })
-        .where(
-          and(eq(reservations.id, input.reservationId), eq(reservations.storeId, context.store.id)),
-        );
-
-      // Drizzle update() return type varies; existence is validated by follow-up read in UI invalidation.
-      void result;
-      return { success: true as const };
-    } catch (error) {
-      throw toORPCError(error);
-    }
-  });
-
 /**
  * Rewrites who a reservation is billed to. Only the billing identity moves;
  * the customer profile is untouched, as it is a default for the next
@@ -414,49 +305,6 @@ const updateBilling = requirePermission("write")
         );
 
       return { success: true as const, billingSnapshot };
-    } catch (error) {
-      throw toORPCError(error);
-    }
-  });
-
-const updateStatus = requirePermission("write")
-  .input(dashboardReservationUpdateStatusInputSchema)
-  .handler(async ({ context, input }) => {
-    try {
-      const fn = context.dashboardReservationActions?.updateReservationStatus;
-      if (!fn) {
-        throw new ORPCError("INTERNAL_SERVER_ERROR", {
-          message: "dashboardReservationActions.updateReservationStatus not provided",
-        });
-      }
-      const result = await fn(input.reservationId, input.status, input.rejectionReason);
-      if ("error" in result && result.error) {
-        throw new ORPCError("BAD_REQUEST", { message: result.error });
-      }
-      return result;
-    } catch (error) {
-      throw toORPCError(error);
-    }
-  });
-
-const cancel = requirePermission("write")
-  .input(dashboardReservationCancelInputSchema)
-  .handler(async ({ context, input }) => {
-    try {
-      const fn = context.dashboardReservationActions?.cancelReservation;
-      if (!fn) {
-        throw new ORPCError("INTERNAL_SERVER_ERROR", {
-          message: "dashboardReservationActions.cancelReservation not provided",
-        });
-      }
-      const result = await fn(input.reservationId);
-      if (result.error) {
-        throw new ORPCError("BAD_REQUEST", {
-          message: result.error,
-          data: result.errorDetails ? { details: result.errorDetails } : undefined,
-        });
-      }
-      return { success: true as const };
     } catch (error) {
       throw toORPCError(error);
     }
@@ -863,11 +711,17 @@ const signInStore = requirePermission("write")
   });
 
 export const dashboardReservationsRouter = {
-  poll,
+  // Follow-up (reservation-follow-up.ts): on every transport.
   list,
-  calendarPeriod,
-  planningTimeline,
-  getById,
+  get,
+  poll,
+  listCalendarPeriod,
+  getPlanningTimeline,
+  listUpcoming,
+  listOverdue,
+  updateStatus,
+  cancel,
+  updateNotes,
   getEditContext,
   getPaymentMethod,
   getAvailableUnitsForItem,
@@ -875,10 +729,7 @@ export const dashboardReservationsRouter = {
   updateReservation,
   previewTulipQuote,
   previewManualTulipQuote,
-  updateNotes,
   updateBilling,
-  updateStatus,
-  cancel,
   recordPayment,
   refundManualPayment,
   deletePayment,

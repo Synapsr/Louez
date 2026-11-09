@@ -1550,7 +1550,8 @@
             "basePricing": "Penetapan harga dasar",
             "title": "Simulasi harga",
             "subtitle": "Total harga yang dikenakan berdasarkan durasi sewa"
-          }
+          },
+          "limitReached": "Satu produk paling banyak memiliki {max} tarif."
         },
         "unitTracking": {
           "toggle": "Lacak unit individu",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "Nilai baru…",
           "noVariants": "Tidak ada varian",
           "variantsCount": "{count,plural,one{# varian} other{# varian}}",
-          "unitImages": "Foto satuan"
+          "unitImages": "Foto satuan",
+          "limitReached": "Satu produk paling banyak memiliki {max} satuan. Hapus satu untuk menambahkan yang lain."
         },
         "previewTitle": "Pratinjau",
         "previewDescription": "Berikut tampilan produk Anda di katalog",
@@ -4254,6 +4256,7 @@
         "countryTimezone": "Zona waktu",
         "currency": "Mata uang",
         "currencyDescription": "Mata uang yang digunakan untuk menampilkan harga dan menagih pelanggan Anda",
+        "currencyLegacy": "{code} (tidak lagi tersedia)",
         "locale": "Bahasa cadangan",
         "localeDescription": "Bahasa yang digunakan saat browser pengunjung tidak menanyakan apa pun yang ditawarkan toko, dan bahasa yang digunakan Google untuk mengindeks toko Anda. Pengunjung selalu melihat bahasa browsernya terlebih dahulu.",
         "localeAuto": "Bahasa platform (Prancis)",
@@ -4583,6 +4586,10 @@
             "payment_failed": {
               "label": "Pembayaran gagal",
               "description": "Ketika pembayaran gagal"
+            },
+            "payment_disputed": {
+              "label": "Pembayaran disengketakan",
+              "description": "Ketika pelanggan menyengketakan pembayaran ke banknya"
             }
           },
           "reminder": {
@@ -4841,6 +4848,8 @@
         "noKeys": "Belum ada kunci API. Buat satu untuk memulai.",
         "keyRevoked": "Kunci API dicabut.",
         "lastUsed": "Terakhir digunakan",
+        "confirmSensitive": "Konfirmasi sebelum tindakan sensitif",
+        "confirmSensitiveSaved": "Pengaturan disimpan",
         "endpointsTitle": "Titik akhir",
         "endpointsDescription": "Gunakan titik akhir ini untuk terhubung ke data penyimpanan Anda.",
         "mcpServerTitle": "Server MCP (HTTP)",
@@ -6822,6 +6831,7 @@
       "disclaimer": "Asisten AI bisa membuat kesalahan. Periksa informasi penting.",
       "newConversation": "Percakapan baru",
       "openFullPage": "Buka halaman penuh",
+      "opensInNewTab": "terbuka di tab baru",
       "history": {
         "title": "Sejarah",
         "empty": "Belum ada percakapan",
@@ -8474,9 +8484,7 @@
         "confirm": "Batalkan permintaan",
         "cancelled": "Permintaan dibatalkan",
         "done": "Anda membatalkan permintaan ini.",
-        "paymentDescription": "Toko akan diberitahu. Jika Anda telah membayar atau memberikan deposit, hubungi toko untuk pengembalian dana atau pelepasan. Tindakan ini tidak menghasilkan pengembalian dana otomatis.",
-        "adminSubject": "Permintaan #{number} dibatalkan oleh pelanggan",
-        "adminBody": "{name} membatalkan permintaan pemesanan #{number} sebelum konfirmasi Anda. Anda dapat melihat riwayatnya di dasbor Anda."
+        "paymentDescription": "Toko akan diberitahu. Jika Anda telah membayar atau memberikan deposit, hubungi toko untuk pengembalian dana atau pelepasan. Tindakan ini tidak menghasilkan pengembalian dana otomatis."
       },
       "customerFields": {
         "title": "Informasi tambahan",
@@ -9188,6 +9196,7 @@
     "unauthenticated": "Tidak diautentikasi",
     "invalidData": "Data tidak valid",
     "slugTaken": "Alamat ini sudah digunakan",
+    "storeNotReady": "Toko Anda belum memiliki negara atau mata uang: lengkapi data toko sebelum menayangkannya.",
     "storeNotFound": "Toko tidak ditemukan",
     "productNotFound": "Produk tidak ditemukan",
     "categoryNotFound": "Kategori tidak ditemukan",
@@ -9234,7 +9243,6 @@
     "updateCustomerError": "Terjadi kesalahan saat memperbarui pelanggan",
     "deleteCustomerError": "Terjadi kesalahan saat menghapus pelanggan",
     "updateNotesError": "Terjadi kesalahan saat memperbarui catatan",
-    "updateSettingsError": "Terjadi kesalahan saat memperbarui pengaturan",
     "createReservationError": "Terjadi kesalahan saat membuat reservasi",
     "businessHoursViolation": "Waktu yang dipilih berada di luar jam kerja toko",
     "returnAddressInvalid": "Koordinat alamat pengirim tidak valid",
@@ -9346,6 +9354,9 @@
     "tulipProductTypeDisabled": "Kategori produk Tulip ini tidak diaktifkan untuk toko ini.",
     "unitAlreadyRetired": "Unit ini sudah pensiun",
     "unitNotRetired": "Unit ini belum pensiun",
+    "variantLimitReached": "Toko ini sudah memiliki jumlah varian maksimum (100).",
+    "variantValueLimitReached": "Varian ini sudah memiliki jumlah nilai maksimum (200).",
+    "downtimeCloseExtends": "Masa tidak tersedia ini sudah berakhir lebih awal. Untuk memperpanjangnya, ubah tanggalnya.",
     "advisorValidationRequired": "Toko ini memerlukan pemeriksaan singkat dengan penasihat sebelum memesan",
     "conversationNotFound": "Percakapan tidak ditemukan",
     "featureNotAvailable": "Fitur ini tidak tersedia pada paket Anda",
@@ -9384,7 +9395,11 @@
     "reservationDetailsLocked": "Data ini tidak dapat diubah lagi: penyewaan sudah dimulai atau selesai.",
     "customerNotAuthenticated": "Masuk ke akun pelanggan Anda untuk melanjutkan.",
     "profileFieldRequired": "Harap isi “{field}”.",
-    "profileFieldInvalid": "“{field}” tidak valid."
+    "profileFieldInvalid": "“{field}” tidak valid.",
+    "agentConnectionNotFound": "Agen terhubung ini sudah tidak ada.",
+    "oauthRequestInvalid": "Permintaan koneksi ini sudah tidak berlaku. Mulai ulang dari agen Anda.",
+    "stripeRequiredForPaymentMode": "Mode pembayaran online memerlukan akun Stripe yang terhubung. Hubungkan Stripe di Pengaturan > Pembayaran.",
+    "locationLimitReached": "Satu toko dapat memiliki paling banyak 50 titik pengambilan. Nonaktifkan salah satu atau gunakan kembali."
   },
   "welcome": {
     "greeting": "Selamat datang di Louez.io",
@@ -9478,6 +9493,227 @@
     "backToDashboard": "Kembali ke dasbor",
     "nav": {
       "finance": "Keuangan"
+    }
+  },
+  "agentConnections": {
+    "presetsTitle": "Hak akses",
+    "presets": {
+      "read": {
+        "label": "Hanya baca",
+        "description": "Agen melihat reservasi, produk, pelanggan, dan angka Anda tanpa mengubah apa pun."
+      },
+      "write": {
+        "label": "Baca dan ubah",
+        "description": "Agen juga dapat membuat dan mengubah, dalam batas peran Anda. Statistik tetap hanya baca."
+      }
+    },
+    "storesTitle": "Toko",
+    "storesAll": "Semua toko saya, termasuk yang akan datang",
+    "storesAllHint": "Toko yang Anda buat atau ikuti nanti juga akan termasuk.",
+    "storesNone": "Pilih setidaknya satu toko.",
+    "roles": {
+      "owner": "Pemilik",
+      "member": "Anggota"
+    },
+    "confirm": {
+      "label": "Minta konfirmasi sebelum tindakan sensitif",
+      "description": "Sebelum pembayaran, pengembalian dana, penghapusan, atau pesan ke pelanggan, agen terlebih dahulu menerima pratinjau dan harus mengonfirmasi. Agen diminta menunjukkan pratinjau itu kepada Anda dan bertanya lebih dulu."
+    },
+    "bundlesTitle": "Alat yang ditampilkan",
+    "bundlesHint": "Agen melihat kumpulan alat ini. Anda dapat menambahkan lainnya nanti.",
+    "bundlesNone": "Pilih setidaknya satu kumpulan alat.",
+    "recommended": "Disarankan",
+    "bundles": {
+      "daily": {
+        "label": "Operasi harian",
+        "description": "Reservasi, kalender, pelanggan, pembayaran, dan angka."
+      },
+      "catalog": {
+        "label": "Katalog",
+        "description": "Produk, kategori, dan stok."
+      },
+      "settings": {
+        "label": "Pengaturan",
+        "description": "Pengaturan toko dan toko online."
+      },
+      "integrations": {
+        "label": "Integrasi",
+        "description": "Layanan yang terhubung ke Louez."
+      },
+      "team": {
+        "label": "Tim",
+        "description": "Anggota tim."
+      },
+      "billing": {
+        "label": "Langganan",
+        "description": "Langganan dan tagihan Louez."
+      }
+    },
+    "verified": "Terverifikasi",
+    "unverified": "Nama belum diverifikasi",
+    "unknownClient": "Sebuah aplikasi",
+    "consent": {
+      "metaTitle": "Hubungkan agen",
+      "title": "Hubungkan {client} ke Louez",
+      "description": "{client} dapat bertindak atas nama Anda di toko yang dipilih, dalam batas di bawah ini dan batas peran Anda.",
+      "accept": "Izinkan",
+      "refuse": "Tolak",
+      "invalidTitle": "Permintaan kedaluwarsa",
+      "invalidDescription": "Permintaan koneksi ini sudah tidak berlaku. Mulai ulang koneksi dari agen Anda.",
+      "noStoreTitle": "Belum ada toko",
+      "noStoreDescription": "{client} dapat membuat toko untuk Anda jika Anda memberinya hak “Baca dan ubah”. Toko tetap offline sampai Anda meluncurkannya. Akses ini juga mencakup toko yang Anda buat nanti.",
+      "redirectNotice": "Setelah Anda izinkan, akses akan dikirim ke {host}.",
+      "footer": "Anda dapat mengubah atau mencabut akses ini kapan saja di Pengaturan, Integrasi, MCP.",
+      "loopbackWarning": "Akses akan dikirim ke alamat lokal di komputer ini: program apa pun yang berjalan di sana bisa menyamar sebagai aplikasi ini. Izinkan hanya jika Anda baru saja memulai koneksi sendiri."
+    },
+    "list": {
+      "title": "Agen terhubung",
+      "description": "Asisten yang Anda izinkan bertindak di toko Anda.",
+      "empty": "Tidak ada agen terhubung",
+      "emptyDescription": "Tambahkan Louez sebagai konektor di Claude atau ChatGPT: di sini Anda memilih apa yang boleh dilakukannya.",
+      "allStores": "Semua toko saya",
+      "connectedOn": "Terhubung pada {date}",
+      "lastAction": "Tindakan terakhir pada {date}",
+      "noAction": "Belum ada tindakan",
+      "edit": "Ubah",
+      "revoke": "Putuskan",
+      "saved": "Pengaturan disimpan",
+      "revoked": "Agen diputuskan",
+      "editTitle": "Akses {client}",
+      "editDescription": "Perubahan berlaku sejak tindakan berikutnya.",
+      "save": "Simpan",
+      "cancel": "Batal",
+      "revokeTitle": "Putuskan {client}?",
+      "revokeDescription": "Agen langsung kehilangan akses. Untuk menghubungkannya lagi, Anda harus mengizinkannya kembali.",
+      "revokeConfirm": "Putuskan"
+    },
+    "guide": {
+      "title": "Hubungkan asisten AI Anda",
+      "description": "Asisten Anda bisa mengelola toko: produk, reservasi, pengaturan. Anda yang memilih apa yang boleh dilakukannya.",
+      "addTo": "Tambahkan ke {name}",
+      "chooseAssistant": "Asisten mana yang Anda gunakan?",
+      "changeAssistant": "Pilih asisten lain",
+      "addressLabel": "Alamat koneksi",
+      "copy": "Salin",
+      "copied": "Disalin",
+      "whatHappens": "Setelah itu, Louez akan meminta Anda masuk, lalu memilih apa yang boleh dilakukan asisten.",
+      "oauthUnavailable": "Asisten membutuhkan alamat aman (HTTPS) untuk terhubung, dan Louez ini tidak memilikinya. Developer tetap bisa menghubungkannya dengan kunci API.",
+      "assistants": {
+        "claude": {
+          "step1": "Klik “Tambahkan ke Claude”: Louez sudah terisi.",
+          "step2": "Klik Lanjutkan, lalu Tambahkan.",
+          "step3": "Masuk ke Louez saat Claude memintanya.",
+          "note": "Di akun Claude Team atau Enterprise, hanya pemilik yang bisa menambahkannya."
+        },
+        "chatgpt": {
+          "step1": "Buka <link>Plugin ChatGPT</link>, lalu + → Tambahkan server MCP kustom.",
+          "step2": "Beri nama Louez dan tempel alamatnya di URL server.",
+          "step3": "Terima peringatannya, klik Buat sebagai plugin, lalu masuk ke Louez.",
+          "note": "Dengan ChatGPT Business, Enterprise, atau Edu, di situs web. Di ruang kerja tim, minta admin untuk menambahkannya. Dengan ChatGPT Pro, asisten hanya bisa melihat."
+        },
+        "grok": {
+          "step1": "Buka <link>konektor Grok</link>, lalu Konektor Baru → Kustom.",
+          "step2": "Tempel alamatnya.",
+          "step3": "Masuk ke Louez dan konfirmasi.",
+          "note": "Untuk semua akun Grok. Di perusahaan, admin menambahkannya lebih dulu."
+        },
+        "mistral": {
+          "step1": "Di <link>Vibe</link>, dalam mode Work, buka Connectors, lalu + Add Connector → Custom MCP Connector.",
+          "step2": "Beri nama Louez dan tempel alamatnya.",
+          "step3": "Klik Hubungkan, lalu masuk ke Louez.",
+          "note": "Dulu bernama Le Chat. Di akun tim, admin yang menambahkannya."
+        }
+      },
+      "developers": {
+        "toggle": "Untuk developer",
+        "server": "Ini alamat server MCP Louez (streamable HTTP). Asisten terhubung lewat OAuth: setiap orang masuk ke Louez, tanpa kunci yang perlu disalin.",
+        "serverWithoutOAuth": "Ini alamat server MCP Louez (streamable HTTP). Tanpa HTTPS, instance ini tidak menyediakan OAuth: gunakan kunci API.",
+        "apiKeyTitle": "Skrip, n8n, dan klien tanpa OAuth",
+        "apiKeyDescription": "Buat kunci API dan kirim di header Authorization: Bearer.",
+        "apiKeyLink": "Kelola kunci API",
+        "editorsTitle": "Editor kode"
+      }
+    },
+    "assistantCard": {
+      "title": "Biarkan asisten AI Anda menyiapkan toko.",
+      "info": "Claude, ChatGPT, Grok, atau Mistral Vibe dapat menambahkan produk, mengatur harga, dan menyiapkan toko untuk Anda. Anda memilih haknya dan apa saja yang harus ia konfirmasi kepada Anda.",
+      "infoLabel": "Pelajari lebih lanjut",
+      "action": "Hubungkan",
+      "dismiss": "Sembunyikan"
+    },
+    "declaredBy": "Nama dinyatakan oleh {origin}",
+    "declaredByItself": "Nama dinyatakan oleh aplikasi itu sendiri (pendaftaran dinamis)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Ganti toko",
+    "title": "Ganti toko?",
+    "description": "Tautan ini membuka toko “{target}”. Anda sedang di “{current}”.",
+    "open": "Buka di {target}",
+    "stay": "Tetap di {current}"
+  },
+  "handoff": {
+    "metaTitle": "Lanjutkan di Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Hubungkan Stripe",
+        "description": "Agen AI Anda meminta Anda menghubungkan “{store}” ke Stripe agar dapat menerima pembayaran online. Stripe akan meminta identitas dan data bank Anda.",
+        "continue": "Lanjut ke Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Buka dasbor Stripe Anda",
+        "description": "Agen AI Anda meminta Anda membuka dasbor Stripe milik “{store}”.",
+        "continue": "Buka Stripe"
+      },
+      "billing_card_setup": {
+        "title": "Tambahkan kartu penagihan Anda",
+        "description": "Agen AI Anda meminta Anda menambahkan kartu yang digunakan Louez untuk menagih biayanya untuk “{store}”. Anda akan memasukkannya di halaman aman Stripe.",
+        "continue": "Lanjut ke Stripe"
+      }
+    },
+    "retry": "Stripe tidak merespons. Coba lagi sebentar lagi.",
+    "refused": {
+      "invalid": {
+        "title": "Tautan ini tidak berfungsi lagi",
+        "description": "Tautan tidak lengkap, atau sudah diganti dengan tautan yang lebih baru. Minta tautan baru kepada agen AI Anda."
+      },
+      "expired": {
+        "title": "Tautan ini sudah kedaluwarsa",
+        "description": "Minta tautan baru kepada agen AI Anda."
+      },
+      "finished": {
+        "title": "Langkah ini sudah selesai",
+        "description": "Tidak ada lagi yang perlu dilakukan di sini. Anda dapat kembali ke agen AI Anda."
+      },
+      "other_user": {
+        "title": "Tautan ini untuk akun lain",
+        "description": "Anda masuk dengan akun yang berbeda dari akun tempat agen AI Anda bekerja. Masuk dengan akun tersebut, lalu buka tautan lagi."
+      },
+      "not_allowed": {
+        "title": "Anda tidak dapat melakukan ini untuk toko ini",
+        "description": "Peran Anda di toko ini tidak mengizinkan langkah ini. Mintalah kepada pemilik toko."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Selesai",
+        "description": "Anda dapat menutup halaman ini dan kembali ke agen AI Anda: agen akan melihat bahwa langkah ini sudah selesai."
+      },
+      "opened": {
+        "title": "Belum selesai",
+        "description": "Langkah ini belum diselesaikan di Stripe. Buka tautan lagi untuk menyelesaikannya, atau kembali ke agen AI Anda."
+      },
+      "confirming": {
+        "title": "Hampir selesai",
+        "description": "Stripe belum mengonfirmasi kartu. Anda dapat kembali ke agen AI Anda: agen akan melihat kartu begitu Stripe mengonfirmasinya."
+      },
+      "expired": {
+        "title": "Tautan ini sudah kedaluwarsa",
+        "description": "Kembali ke agen AI Anda: agen dapat memberi Anda tautan baru."
+      },
+      "failed": {
+        "title": "Langkah ini gagal",
+        "description": "Kembali ke agen AI Anda: agen dapat memberi Anda tautan baru."
+      }
     }
   }
 }

@@ -1,6 +1,7 @@
 import type { UnitAttributes } from '@louez/types';
 import { formatCurrency } from '@louez/utils';
 
+import { apiErrorKey } from '@/lib/orpc/errors';
 import { formatDate } from '@/lib/utils';
 
 import type { ProductInventoryUnit } from '../../queries';
@@ -29,6 +30,21 @@ export const getTranslatedActionError = (
   }
 
   return translateError(error.slice('errors.'.length));
+};
+
+type TranslateError = ((key: string) => string) & {
+  has: (key: string) => boolean;
+};
+
+/** The translated message of a failed procedure call, or the generic one. */
+export const getApiErrorMessage = (
+  error: unknown,
+  translateError: TranslateError,
+) => {
+  const key = apiErrorKey(error);
+  return key && translateError.has(key)
+    ? translateError(key)
+    : translateError('generic');
 };
 
 export const formatPurchaseInfo = (

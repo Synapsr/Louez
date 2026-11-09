@@ -104,4 +104,65 @@ describe("proxy billing gate", () => {
     const on = await visit(`/login?ref=${REFERRAL_CODE}`);
     assert.equal(on.cookies.get("louez_referral")?.value, REFERRAL_CODE);
   });
+  test("a dashboard link naming its store goes to the active-store route, other requests do not", async () => {
+    const rewrite = async (path: string, host?: string) =>
+      (await visit(path, host)).headers.get("x-middleware-rewrite");
+    const target = new URL(
+      (await rewrite("/dashboard/products/p1?tab=units&store=s1&_rsc=x")) ?? "",
+    );
+    assert.equal(target.pathname, "/api/active-store");
+    assert.equal(target.searchParams.get("store"), "s1");
+    assert.equal(target.searchParams.get("next"), "/dashboard/products/p1?tab=units");
+
+    assert.equal(await rewrite("/dashboard/products/p1"), null);
+    const action = await proxy(
+      new NextRequest(new URL("/dashboard/products/p1?store=s1", "http://localhost:3000"), {
+        method: "POST",
+        headers: { host: "localhost:3000" },
+      }),
+    );
+    assert.equal(
+      action.headers.get("x-middleware-rewrite"),
+      null,
+      "a Server Action reaches its page",
+    );
+    assert.equal(await rewrite("/login?store=s1"), null);
+    // On a store's subdomain, /dashboard is a storefront path.
+    assert.match(
+      (await rewrite("/dashboard?store=s1", "shop.localhost:3000")) ?? "",
+      /\/shop\/dashboard/,
+    );
+
+    process.env.LOUEZ_MODE = "standalone";
+    try {
+      const standalone = new URL((await rewrite("/dashboard?store=s1")) ?? "");
+      assert.equal(standalone.pathname, "/api/active-store");
+    } finally {
+      process.env.LOUEZ_MODE = "platform";
+    }
+  });
+
+  test("a handoff page loads no analytics and sends no Referer, on any host", async () => {
+    const token = `${"a".repeat(21)}${"s".repeat(43)}`;
+    for (const [path, host] of [
+      [`/handoffs/${token}`, "localhost:3000"],
+      [`/handoffs/return/${"a".repeat(21)}/${"t".repeat(43)}`, "localhost:3000"],
+      [`/handoffs/${token}`, "shop.localhost:3000"],
+    ] as const) {
+      const response = await visit(path, host);
+      assert.equal(response.headers.get("x-middleware-request-x-louez-handoff"), "1", path);
+      assert.equal(response.headers.get("referrer-policy"), "no-referrer", path);
+      assert.equal(response.headers.get("cache-control"), "no-store", path);
+      assert.equal(response.headers.get("x-middleware-rewrite"), null, "never a storefront");
+    }
+    const dashboard = await visit("/dashboard");
+    assert.equal(dashboard.headers.get("x-middleware-request-x-louez-handoff"), null);
+    // The marker comes from the proxy only.
+    const forged = await proxy(
+      new NextRequest(new URL("/dashboard", "http://localhost:3000"), {
+        headers: { host: "localhost:3000", "x-louez-handoff": "1" },
+      }),
+    );
+    assert.equal(forged.status, 400);
+  });
 });

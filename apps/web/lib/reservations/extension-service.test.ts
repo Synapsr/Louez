@@ -169,6 +169,8 @@ const dependencies = {
   markReservation: async (_tx: unknown, row: { id: string }) => {
     marks.push(row.id);
   },
+  // From @louez/db too: no deadlock here, the operation runs once.
+  retryOnceOnDeadlock: <T>(operation: () => Promise<T>) => operation(),
   getStorefrontUrl: (_slug: string, path = "") => `https://example.invalid${path}`,
   generateContract: async () => {
     contractCalls++;
@@ -221,7 +223,7 @@ const intercepted = new Set([
   "@/lib/email/send",
   "@/lib/email/i18n",
   "@/lib/evlog",
-  "./date-change-request.server",
+  "@louez/api/services/date-change-requests",
   "./extension-quote",
 ]);
 Reflect.get(

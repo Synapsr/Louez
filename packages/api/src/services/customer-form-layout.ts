@@ -1,4 +1,4 @@
-import { customerFieldDefinitions, db, stores } from "@louez/db";
+import { customerFieldDefinitions, db, lockStoreRow, stores } from "@louez/db";
 import type { Transaction } from "@louez/db";
 import type { CustomerFieldScope, StoreSettings } from "@louez/types";
 import {
@@ -63,11 +63,11 @@ export async function updateCustomerFormLayout(
   input: CustomerFormLayoutUpdateInput,
 ): Promise<UpdateCustomerFormLayoutResult> {
   return db.transaction(async (tx): Promise<UpdateCustomerFormLayoutResult> => {
+    if (!(await lockStoreRow(tx, storeId))) return { ok: false, error: "storeNotFound" };
     const [store] = await tx
       .select({ settings: stores.settings })
       .from(stores)
-      .where(eq(stores.id, storeId))
-      .for("update");
+      .where(eq(stores.id, storeId));
     if (!store) return { ok: false, error: "storeNotFound" };
 
     const definitions = await listCustomerFieldDefinitions(storeId, { scope: input.scope }, tx);

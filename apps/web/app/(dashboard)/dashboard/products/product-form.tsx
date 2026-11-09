@@ -35,7 +35,10 @@ import {
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 
 import { useAppForm } from "@/hooks/form/form";
+import { apiErrorKey } from "@/lib/orpc/errors";
 import { orpc } from "@/lib/orpc/react";
+import { categoriesQueries } from "@/lib/queries/categories.queries";
+import { productsQueries } from "@/lib/queries/products.queries";
 
 import { ProductAssuranceSection } from "./components/product-assurance-section";
 import { ProductFormEditToc } from "./components/product-form-edit-toc";
@@ -49,7 +52,6 @@ import { ProductImageEnhanceDialog } from "./components/product-image-enhance-di
 import { ProductImageEnhancePromoDialog } from "./components/product-image-enhance-promo-dialog";
 import { useProductFormMedia } from "./hooks/use-product-form-media";
 import { useProductFormMutations } from "./hooks/use-product-form-mutations";
-import { getProductSeasonalPricings } from "./seasonal-actions";
 import type {
   BookingAttributeAxisData,
   Category,
@@ -144,11 +146,13 @@ export function ProductForm({
   showAiContext = false,
   imageEnhanceEnabled = false,
   imageBackgroundRemovalEnabled = false,
+  canDelete = false,
 }: ProductFormProps) {
   const router = useRouter();
   const t = useTranslations("dashboard.products.form");
   const tCommon = useTranslations("common");
   const tValidation = useTranslations("validation");
+  const tErrors = useTranslations("errors");
   const currencySymbol = getCurrencySymbol(currency);
 
   const isEditMode = !!product;
@@ -165,22 +169,20 @@ export function ProductForm({
     initialImageHistory: product?.imageHistory ?? [],
   });
 
-  // Categories live in the React Query cache, seeded with the server-rendered
-  // list; creations update the cache directly (no router.refresh needed).
-  const categoriesQuery = useQuery(
-    orpc.dashboard.categories.list.queryOptions({ initialData: categories }),
-  );
-  const allCategories: Category[] = categoriesQuery.data ?? categories;
+  // Categories live in the React Query cache, the server-rendered list shown
+  // until it loads; creations update the cache directly (no router.refresh needed).
+  const categoriesQuery = useQuery(categoriesQueries.list());
+  const allCategories: Category[] = categoriesQuery.data?.items ?? categories;
 
   const createCategoryMutation = useMutation(
     orpc.dashboard.categories.create.mutationOptions({
       onSuccess: (created) => {
         queryClient.setQueryData(
-          orpc.dashboard.categories.list.key({ type: "query" }),
-          (prev: Category[] | undefined) => {
-            if (!prev) return [created];
-            return prev.some((category) => category.id === created.id) ? prev : [...prev, created];
-          },
+          categoriesQueries.list().queryKey,
+          (prev: typeof categoriesQuery.data) =>
+            prev && !prev.items.some((category) => category.id === created.id)
+              ? { ...prev, items: [...prev.items, created] }
+              : prev,
         );
         void queryClient.invalidateQueries({
           queryKey: orpc.dashboard.categories.key(),
@@ -201,16 +203,24 @@ export function ProductForm({
   const [selectedSeasonalPeriodId, setSelectedSeasonalPeriodId] = useState<string | null>(null);
   const [isLoadingSeasonalPricings, setIsLoadingSeasonalPricings] = useState(false);
 
+  // Seasons save themselves (see use-seasonal-pricing-draft): the form keeps
+  // its own copy, read fresh from the API each time it loads them.
+  const loadSeasonalPricings = useCallback(
+    (productId: string) => {
+      setIsLoadingSeasonalPricings(true);
+      queryClient
+        .fetchQuery({ ...productsQueries.seasonalPricings(productId), staleTime: 0 })
+        .then((result) => setSeasonalPricings(result.items))
+        .catch(() => undefined)
+        .finally(() => setIsLoadingSeasonalPricings(false));
+    },
+    [queryClient],
+  );
+
   useEffect(() => {
     if (!product?.id) return;
-    setIsLoadingSeasonalPricings(true);
-    getProductSeasonalPricings(product.id).then((result) => {
-      if (result && "data" in result) {
-        setSeasonalPricings(result.data as SeasonalPricingData[]);
-      }
-      setIsLoadingSeasonalPricings(false);
-    });
-  }, [product?.id]);
+    loadSeasonalPricings(product.id);
+  }, [product?.id, loadSeasonalPricings]);
 
   // When seasonal pricings are emptied (signal to reload), refetch
   useEffect(() => {
@@ -218,14 +228,14 @@ export function ProductForm({
     if (isLoadingSeasonalPricings) return;
     // Only reload if we had a selected period (meaning a duplicate happened)
     if (!selectedSeasonalPeriodId) return;
-    setIsLoadingSeasonalPricings(true);
-    getProductSeasonalPricings(product.id).then((result) => {
-      if (result && "data" in result) {
-        setSeasonalPricings(result.data as SeasonalPricingData[]);
-      }
-      setIsLoadingSeasonalPricings(false);
-    });
-  }, [product?.id, seasonalPricings.length, isLoadingSeasonalPricings, selectedSeasonalPeriodId]);
+    loadSeasonalPricings(product.id);
+  }, [
+    product?.id,
+    seasonalPricings.length,
+    isLoadingSeasonalPricings,
+    selectedSeasonalPeriodId,
+    loadSeasonalPricings,
+  ]);
 
   // Convert product pricing tiers to input format
   const initialPricingTiers: LegacyPricingTierInput[] =
@@ -546,14 +556,15 @@ export function ProductForm({
         toastManager.add({ title: t("categoryCreated"), type: "success" });
         return created.id;
       } catch (error) {
+        const key = apiErrorKey(error);
         toastManager.add({
-          title: getActionErrorMessage(error),
+          title: key && tErrors.has(key) ? tErrors(key) : tErrors("generic"),
           type: "error",
         });
         return null;
       }
     },
-    [createCategoryMutation.mutateAsync, getActionErrorMessage, t],
+    [createCategoryMutation.mutateAsync, t, tErrors],
   );
 
   const clearSubmitError = useCallback(
@@ -739,12 +750,14 @@ export function ProductForm({
                     onSelectSeasonalPeriod={setSelectedSeasonalPeriodId}
                     onSeasonalPricingsChange={setSeasonalPricings}
                     isLoadingSeasonalPricings={isLoadingSeasonalPricings}
+                    canDeleteSeasons={canDelete}
                   />
                 </div>
 
                 <div id="section-stock" className="scroll-mt-8">
                   <ProductFormSectionStock
                     form={form as unknown as ProductFormComponentApi}
+                    canDelete={canDelete}
                     productId={product.id}
                     stockKindChangeBlockers={stockKindChangeBlockers}
                     watchedValues={watchedValues}

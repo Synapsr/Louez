@@ -6,7 +6,7 @@ import { db } from '@louez/db';
 import { stores } from '@louez/db';
 
 import { isBillingEnabled } from '@/lib/billing/mode';
-import { isValidReferralCode } from '@/lib/utils/referral';
+import { isValidReferralCode } from '@louez/utils/referral-code';
 
 import { getReferralProgramConfig } from './defaults';
 

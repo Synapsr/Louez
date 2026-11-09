@@ -1550,7 +1550,8 @@
             "basePricing": "기본 가격",
             "title": "가격 시뮬레이션",
             "subtitle": "대여 기간별로 청구되는 총 가격"
-          }
+          },
+          "limitReached": "상품 하나에 요금은 최대 {max}개까지입니다."
         },
         "unitTracking": {
           "toggle": "개별 단위 추적",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "새로운 가치…",
           "noVariants": "변형 없음",
           "variantsCount": "{count,plural,one{# 변형} other{# 변형}}",
-          "unitImages": "유닛 사진"
+          "unitImages": "유닛 사진",
+          "limitReached": "상품 하나에 유닛은 최대 {max}개까지입니다. 추가하려면 하나를 삭제하세요."
         },
         "previewTitle": "미리보기",
         "previewDescription": "귀하의 제품이 카탈로그에 표시되는 방식은 다음과 같습니다.",
@@ -4254,6 +4256,7 @@
         "countryTimezone": "시간대",
         "currency": "통화",
         "currencyDescription": "가격을 표시하고 고객에게 청구하는 데 사용되는 통화",
+        "currencyLegacy": "{code} (더 이상 제공되지 않음)",
         "locale": "대체 언어",
         "localeDescription": "방문자의 브라우저가 매장에서 제공하는 것을 요청할 때 사용되는 언어 및 Google에서 매장을 색인화하는 언어입니다. 방문자는 항상 자신의 브라우저 언어를 먼저 확인합니다.",
         "localeAuto": "플랫폼 언어(프랑스어)",
@@ -4583,6 +4586,10 @@
             "payment_failed": {
               "label": "결제 실패",
               "description": "결제 실패 시"
+            },
+            "payment_disputed": {
+              "label": "결제 이의 제기",
+              "description": "고객이 카드사에 결제 이의를 제기한 경우"
             }
           },
           "reminder": {
@@ -4841,6 +4848,8 @@
         "noKeys": "아직 API 키가 없습니다. 시작하려면 계정을 만드세요.",
         "keyRevoked": "API 키가 취소되었습니다.",
         "lastUsed": "마지막으로 사용됨",
+        "confirmSensitive": "민감한 작업 전에 확인",
+        "confirmSensitiveSaved": "설정이 저장되었습니다",
         "endpointsTitle": "엔드포인트",
         "endpointsDescription": "이러한 엔드포인트를 사용하여 매장 데이터에 연결하세요.",
         "mcpServerTitle": "MCP 서버(HTTP)",
@@ -6822,6 +6831,7 @@
       "disclaimer": "AI 비서는 실수를 할 수 있다. 중요한 정보를 확인하세요.",
       "newConversation": "새로운 대화",
       "openFullPage": "전체 페이지 열기",
+      "opensInNewTab": "새 탭에서 열림",
       "history": {
         "title": "역사",
         "empty": "아직 대화가 없습니다.",
@@ -8474,9 +8484,7 @@
         "confirm": "요청 취소",
         "cancelled": "요청이 취소되었습니다.",
         "done": "이 요청을 취소했습니다.",
-        "paymentDescription": "매장으로 알려드립니다. 이미 입금 또는 입금을 하신 경우, 환불 또는 출고를 위해 매장으로 연락주시기 바랍니다. 이 조치는 자동 환불을 발행하지 않습니다.",
-        "adminSubject": "고객이 요청 #{number}를 취소했습니다.",
-        "adminBody": "{name}는 귀하가 확인하기 전에 예약 요청 #{number}을 취소했습니다. 대시보드에서 해당 기록을 볼 수 있습니다."
+        "paymentDescription": "매장으로 알려드립니다. 이미 입금 또는 입금을 하신 경우, 환불 또는 출고를 위해 매장으로 연락주시기 바랍니다. 이 조치는 자동 환불을 발행하지 않습니다."
       },
       "customerFields": {
         "title": "추가 정보",
@@ -9188,6 +9196,7 @@
     "unauthenticated": "인증되지 않음",
     "invalidData": "잘못된 데이터",
     "slugTaken": "이 주소는 이미 사용 중입니다.",
+    "storeNotReady": "스토어의 국가 또는 통화가 없습니다. 공개하기 전에 스토어 정보를 입력하세요.",
     "storeNotFound": "매장을 찾을 수 없습니다",
     "productNotFound": "제품을 찾을 수 없습니다",
     "categoryNotFound": "카테고리를 찾을 수 없습니다",
@@ -9234,7 +9243,6 @@
     "updateCustomerError": "고객을 업데이트하는 중에 오류가 발생했습니다.",
     "deleteCustomerError": "고객을 삭제하는 중에 오류가 발생했습니다.",
     "updateNotesError": "메모를 업데이트하는 중에 오류가 발생했습니다.",
-    "updateSettingsError": "설정을 업데이트하는 중에 오류가 발생했습니다.",
     "createReservationError": "예약 생성 오류",
     "businessHoursViolation": "선택한 시간은 매장 영업시간 외입니다.",
     "returnAddressInvalid": "반송 주소 좌표가 잘못되었습니다.",
@@ -9346,6 +9354,9 @@
     "tulipProductTypeDisabled": "이 튤립 제품 카테고리는 이 매장에서 활성화되지 않습니다.",
     "unitAlreadyRetired": "이 장치는 이미 폐기되었습니다.",
     "unitNotRetired": "이 장치는 폐기되지 않았습니다.",
+    "variantLimitReached": "이 스토어의 옵션 수가 이미 최대치(100개)입니다.",
+    "variantValueLimitReached": "이 옵션의 값 수가 이미 최대치(200개)입니다.",
+    "downtimeCloseExtends": "이 사용 중지는 이미 더 일찍 끝납니다. 연장하려면 날짜를 변경하세요.",
     "advisorValidationRequired": "이 매장은 예약 전 상담사와 간단한 확인이 필요합니다.",
     "conversationNotFound": "대화를 찾을 수 없습니다.",
     "featureNotAvailable": "이 기능은 귀하의 요금제에서 사용할 수 없습니다",
@@ -9384,7 +9395,11 @@
     "reservationDetailsLocked": "대여가 시작되었거나 종료되어 이 정보는 더 이상 수정할 수 없습니다.",
     "customerNotAuthenticated": "계속하려면 고객 계정에 로그인해 주세요.",
     "profileFieldRequired": "‘{field}’ 항목을 입력해 주세요.",
-    "profileFieldInvalid": "‘{field}’ 항목이 올바르지 않습니다."
+    "profileFieldInvalid": "‘{field}’ 항목이 올바르지 않습니다.",
+    "agentConnectionNotFound": "이 연결된 에이전트는 더 이상 존재하지 않습니다.",
+    "oauthRequestInvalid": "이 연결 요청은 더 이상 유효하지 않습니다. 에이전트에서 다시 시작하세요.",
+    "stripeRequiredForPaymentMode": "온라인 결제 모드를 사용하려면 Stripe 계정을 연결해야 합니다. 설정 > 결제에서 Stripe를 연결하세요.",
+    "locationLimitReached": "매장 한 곳에는 픽업 장소를 최대 50개까지 둘 수 있습니다. 하나를 비활성화하거나 다시 사용하세요."
   },
   "welcome": {
     "greeting": "Louez.io에 오신 것을 환영합니다",
@@ -9478,6 +9493,227 @@
     "backToDashboard": "대시보드로 돌아가기",
     "nav": {
       "finance": "금융"
+    }
+  },
+  "agentConnections": {
+    "presetsTitle": "권한",
+    "presets": {
+      "read": {
+        "label": "읽기 전용",
+        "description": "에이전트가 예약, 상품, 고객, 수치를 조회만 하고 아무것도 변경하지 않습니다."
+      },
+      "write": {
+        "label": "읽기 및 수정",
+        "description": "에이전트가 역할 범위 안에서 생성과 수정도 할 수 있습니다. 통계는 읽기 전용으로 유지됩니다."
+      }
+    },
+    "storesTitle": "스토어",
+    "storesAll": "내 모든 스토어(향후 스토어 포함)",
+    "storesAllHint": "나중에 만들거나 참여하는 스토어도 포함됩니다.",
+    "storesNone": "스토어를 하나 이상 선택하세요.",
+    "roles": {
+      "owner": "소유자",
+      "member": "멤버"
+    },
+    "confirm": {
+      "label": "민감한 작업 전에 확인 요청",
+      "description": "결제, 환불, 삭제, 고객에게 보내는 메시지 전에 에이전트는 먼저 미리보기를 받고 확인해야 합니다. 에이전트는 이 미리보기를 보여 드리고 먼저 여쭤보도록 안내받습니다."
+    },
+    "bundlesTitle": "표시되는 도구",
+    "bundlesHint": "에이전트에게 이 도구 묶음이 표시됩니다. 나중에 더 추가할 수 있습니다.",
+    "bundlesNone": "도구 묶음을 하나 이상 선택하세요.",
+    "recommended": "추천",
+    "bundles": {
+      "daily": {
+        "label": "일일 운영",
+        "description": "예약, 캘린더, 고객, 결제 및 수치."
+      },
+      "catalog": {
+        "label": "카탈로그",
+        "description": "상품, 카테고리 및 재고."
+      },
+      "settings": {
+        "label": "설정",
+        "description": "스토어 설정 및 온라인 스토어."
+      },
+      "integrations": {
+        "label": "통합",
+        "description": "Louez에 연결된 서비스."
+      },
+      "team": {
+        "label": "팀",
+        "description": "팀 멤버."
+      },
+      "billing": {
+        "label": "구독",
+        "description": "Louez 구독 및 청구서."
+      }
+    },
+    "verified": "확인됨",
+    "unverified": "이름 확인되지 않음",
+    "unknownClient": "앱",
+    "consent": {
+      "metaTitle": "에이전트 연결",
+      "title": "{client}을(를) Louez에 연결",
+      "description": "{client}은(는) 선택한 스토어에서 아래 범위와 내 역할의 범위 안에서 나를 대신해 작업할 수 있습니다.",
+      "accept": "허용",
+      "refuse": "거부",
+      "invalidTitle": "요청 만료",
+      "invalidDescription": "이 연결 요청은 더 이상 유효하지 않습니다. 에이전트에서 연결을 다시 시작하세요.",
+      "noStoreTitle": "아직 스토어가 없습니다",
+      "noStoreDescription": "‘읽기 및 수정’ 권한을 주면 {client}이(가) 스토어를 대신 만들 수 있습니다. 스토어는 직접 공개하기 전까지 오프라인 상태로 유지됩니다. 이 접근 권한은 나중에 만드는 스토어에도 적용됩니다.",
+      "redirectNotice": "허용하면 접근 권한이 {host}(으)로 전송됩니다.",
+      "footer": "이 접근 권한은 설정, 통합, MCP에서 언제든지 변경하거나 해제할 수 있습니다.",
+      "loopbackWarning": "접근 권한이 이 컴퓨터의 로컬 주소로 전송됩니다. 이 컴퓨터에서 실행되는 어떤 프로그램이든 이 앱을 사칭할 수 있습니다. 방금 직접 연결을 시작한 경우에만 허용하세요."
+    },
+    "list": {
+      "title": "연결된 에이전트",
+      "description": "스토어에서 작업하도록 허용한 어시스턴트입니다.",
+      "empty": "연결된 에이전트 없음",
+      "emptyDescription": "Claude 또는 ChatGPT에서 Louez를 커넥터로 추가하면 여기에서 허용할 작업을 선택합니다.",
+      "allStores": "내 모든 스토어",
+      "connectedOn": "{date}에 연결됨",
+      "lastAction": "마지막 작업 {date}",
+      "noAction": "아직 작업 없음",
+      "edit": "수정",
+      "revoke": "연결 해제",
+      "saved": "설정이 저장되었습니다",
+      "revoked": "에이전트 연결이 해제되었습니다",
+      "editTitle": "{client}의 접근 권한",
+      "editDescription": "변경 사항은 다음 작업부터 적용됩니다.",
+      "save": "저장",
+      "cancel": "취소",
+      "revokeTitle": "{client} 연결을 해제할까요?",
+      "revokeDescription": "에이전트가 즉시 접근 권한을 잃습니다. 다시 연결하려면 다시 허용해야 합니다.",
+      "revokeConfirm": "연결 해제"
+    },
+    "guide": {
+      "title": "AI 어시스턴트 연결하기",
+      "description": "어시스턴트가 상품, 예약, 설정 등 매장을 관리할 수 있습니다. 무엇을 허용할지는 직접 정합니다.",
+      "addTo": "{name}에 추가",
+      "chooseAssistant": "어떤 어시스턴트를 사용하시나요?",
+      "changeAssistant": "다른 어시스턴트 선택",
+      "addressLabel": "연결 주소",
+      "copy": "복사",
+      "copied": "복사됨",
+      "whatHappens": "그다음 Louez가 로그인을 요청하고, 어시스턴트가 할 수 있는 일을 고르게 합니다.",
+      "oauthUnavailable": "어시스턴트를 연결하려면 보안 주소(HTTPS)가 필요하지만 이 Louez에는 없습니다. 개발자는 API 키로 연결할 수 있습니다.",
+      "assistants": {
+        "claude": {
+          "step1": "‘Claude에 추가’를 클릭하세요. Louez가 이미 입력되어 있습니다.",
+          "step2": "‘계속’을 클릭한 뒤 ‘추가’를 클릭하세요.",
+          "step3": "Claude가 요청하면 Louez에 로그인하세요.",
+          "note": "Claude Team 또는 Enterprise 계정에서는 소유자만 추가할 수 있습니다."
+        },
+        "chatgpt": {
+          "step1": "<link>ChatGPT 플러그인</link>을 열고 + → ‘사용자 지정 MCP 서버 추가’를 선택하세요.",
+          "step2": "이름을 Louez로 하고 ‘서버 URL’에 주소를 붙여 넣으세요.",
+          "step3": "경고를 수락하고 ‘플러그인으로 만들기’를 클릭한 뒤 Louez에 로그인하세요.",
+          "note": "ChatGPT Business, Enterprise 또는 Edu의 웹사이트에서 가능합니다. 팀 워크스페이스에서는 관리자에게 추가를 요청하세요. ChatGPT Pro에서는 조회만 할 수 있습니다."
+        },
+        "grok": {
+          "step1": "<link>Grok 커넥터</link>를 열고 ‘새 커넥터’ → ‘사용자 지정’을 선택하세요.",
+          "step2": "주소를 붙여 넣으세요.",
+          "step3": "Louez에 로그인하고 승인하세요.",
+          "note": "모든 Grok 계정에서 사용할 수 있습니다. 회사에서는 관리자가 먼저 추가합니다."
+        },
+        "mistral": {
+          "step1": "<link>Vibe</link>의 Work 모드에서 ‘Connectors’를 열고 ‘+ Add Connector’ → ‘Custom MCP Connector’를 선택하세요.",
+          "step2": "이름을 Louez로 하고 주소를 붙여 넣으세요.",
+          "step3": "‘연결’을 클릭한 뒤 Louez에 로그인하세요.",
+          "note": "예전 이름은 Le Chat입니다. 팀 계정에서는 관리자가 추가합니다."
+        }
+      },
+      "developers": {
+        "toggle": "개발자용",
+        "server": "이 주소는 Louez의 MCP 서버(Streamable HTTP)입니다. 어시스턴트는 OAuth로 연결하며, 각자 Louez에 로그인하므로 키를 복사할 필요가 없습니다.",
+        "serverWithoutOAuth": "이 주소는 Louez의 MCP 서버(Streamable HTTP)입니다. HTTPS가 없어 이 인스턴스에서는 OAuth를 쓸 수 없으니 API 키를 사용하세요.",
+        "apiKeyTitle": "스크립트, n8n, OAuth 미지원 클라이언트",
+        "apiKeyDescription": "API 키를 만들어 Authorization: Bearer 헤더로 보내세요.",
+        "apiKeyLink": "API 키 관리",
+        "editorsTitle": "코드 에디터"
+      }
+    },
+    "assistantCard": {
+      "title": "AI 어시스턴트에게 스토어 설정을 맡겨 보세요.",
+      "info": "Claude, ChatGPT, Grok, Mistral Vibe이 상품 추가, 가격 설정, 스토어 설정을 대신해 드립니다. 권한과 확인받아야 할 작업은 직접 정합니다.",
+      "infoLabel": "자세히 보기",
+      "action": "연결",
+      "dismiss": "숨기기"
+    },
+    "declaredBy": "{origin}에서 선언한 이름",
+    "declaredByItself": "앱이 직접 선언한 이름(동적 등록)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "매장 전환",
+    "title": "매장을 전환할까요?",
+    "description": "이 링크는 매장 “{target}”을(를) 엽니다. 현재 “{current}”에 있습니다.",
+    "open": "{target}에서 열기",
+    "stay": "{current}에 머무르기"
+  },
+  "handoff": {
+    "metaTitle": "Louez에서 계속하기",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Stripe 연결",
+        "description": "AI 에이전트가 온라인 결제를 받을 수 있도록 “{store}”을(를) Stripe에 연결해 달라고 요청했습니다. Stripe에서 신원 정보와 은행 정보를 요청합니다.",
+        "continue": "Stripe로 계속"
+      },
+      "stripe_dashboard": {
+        "title": "Stripe 대시보드 열기",
+        "description": "AI 에이전트가 “{store}”의 Stripe 대시보드를 열어 달라고 요청했습니다.",
+        "continue": "Stripe 열기"
+      },
+      "billing_card_setup": {
+        "title": "청구 카드 추가",
+        "description": "AI 에이전트가 Louez가 “{store}”의 수수료를 청구할 카드를 추가해 달라고 요청했습니다. 카드는 Stripe의 보안 페이지에서 입력합니다.",
+        "continue": "Stripe로 계속"
+      }
+    },
+    "retry": "Stripe가 응답하지 않았습니다. 잠시 후 다시 시도하세요.",
+    "refused": {
+      "invalid": {
+        "title": "이 링크는 더 이상 작동하지 않습니다",
+        "description": "링크가 불완전하거나 더 최근 링크로 대체되었습니다. AI 에이전트에게 새 링크를 요청하세요."
+      },
+      "expired": {
+        "title": "이 링크는 만료되었습니다",
+        "description": "AI 에이전트에게 새 링크를 요청하세요."
+      },
+      "finished": {
+        "title": "이 단계는 이미 끝났습니다",
+        "description": "여기서 더 할 일이 없습니다. AI 에이전트로 돌아가셔도 됩니다."
+      },
+      "other_user": {
+        "title": "이 링크는 다른 계정용입니다",
+        "description": "AI 에이전트가 작업하는 계정이 아닌 다른 계정으로 로그인되어 있습니다. 해당 계정으로 로그인한 뒤 링크를 다시 여세요."
+      },
+      "not_allowed": {
+        "title": "이 매장에서는 이 작업을 할 수 없습니다",
+        "description": "이 매장에서의 역할로는 이 단계를 진행할 수 없습니다. 매장 소유자에게 요청하세요."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "완료되었습니다",
+        "description": "이 페이지를 닫고 AI 에이전트로 돌아가세요. 에이전트가 이 단계가 완료된 것을 확인합니다."
+      },
+      "opened": {
+        "title": "아직 끝나지 않았습니다",
+        "description": "Stripe에서 단계가 완료되지 않았습니다. 링크를 다시 열어 마치거나 AI 에이전트로 돌아가세요."
+      },
+      "confirming": {
+        "title": "거의 끝났습니다",
+        "description": "Stripe가 아직 카드를 확인하지 않았습니다. AI 에이전트로 돌아가셔도 됩니다. Stripe가 확인하면 에이전트가 카드를 확인합니다."
+      },
+      "expired": {
+        "title": "이 링크는 만료되었습니다",
+        "description": "AI 에이전트로 돌아가세요. 새 링크를 받을 수 있습니다."
+      },
+      "failed": {
+        "title": "이 단계가 실패했습니다",
+        "description": "AI 에이전트로 돌아가세요. 새 링크를 받을 수 있습니다."
+      }
     }
   }
 }

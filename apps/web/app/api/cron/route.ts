@@ -2,8 +2,11 @@ import { reconcileRentalExtensions } from "@/lib/reservations/extension-service"
 import { NextResponse } from "next/server";
 
 import { runMarketplaceDefaultPublication } from "@louez/api/services";
+import { pruneInboxAcknowledgements } from "@louez/api/services/inbox";
+import { purgeHandoffs } from "@louez/api/services/handoffs";
 
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from "@/lib/analytics/aggregation";
+import { runApiEffectsCron } from "@/lib/api/effects";
 import { purgeExpiredLegalRetentionRecords } from "@/lib/account-deletion/retention-cleanup";
 import { createError, log, useLogger, withEvlog } from "@/lib/evlog";
 import { cleanExpiredCache, refreshAllStoresCache } from "@/lib/google-places/cache";
@@ -33,6 +36,9 @@ import { runIsolatedTasks } from "./isolated-tasks";
  * - Review requests: every minute (checks for eligible reservations)
  * - Automatic reminders: every minute (checks for upcoming pickups/returns)
  * - Calendar sync: every minute (pushes reservation updates to calendar providers)
+ * - API effects: every minute, alongside the other tasks so none of them holds it back
+ *   (retries the outbox rows of committed writes: customer messages, notifications,
+ *   analytics events; deletes done rows after 30 days; packages/api platform/effects.ts)
  * - Marketplace default publication: daily at 1:00 AM UTC when explicitly enabled
  * - Invoice transmission: every minute (converts, validates, and sends due invoices)
  * - Super PDP lifecycle polling: every minute (outgoing statuses and received invoices)
@@ -106,6 +112,23 @@ async function handleCron(request: Request) {
   const billingSync = isBillingSyncEnabled()
     ? runIsolatedTasks(billingSyncTasks(now), { request: logger, event: log })
     : null;
+  // The agent-ready API's outbox: started with the billing tasks and awaited
+  // last, so a task that keeps failing before it never holds back the
+  // customer messages, notifications and analytics events it retries. The
+  // inbox's acknowledgements and the handoffs past their retention go with it,
+  // each on its own.
+  const apiEffects = runIsolatedTasks(
+    [
+      { task: "api-effects", key: "apiEffects", run: () => runApiEffectsCron() },
+      {
+        task: "inbox-acknowledgements",
+        key: "inboxAcknowledgements",
+        run: () => pruneInboxAcknowledgements(),
+      },
+      { task: "api-handoffs", key: "apiHandoffs", run: () => purgeHandoffs() },
+    ],
+    { request: logger, event: log },
+  );
 
   try {
     // Legacy fee report and billable_at check: daily at 4:45 AM UTC, only on an
@@ -216,7 +239,7 @@ async function handleCron(request: Request) {
       results.voiceNumberRenewals = await processVoiceNumberRenewals(now);
     }
 
-    for (const background of [payAsYouGoBilling, billingSync]) {
+    for (const background of [payAsYouGoBilling, billingSync, apiEffects]) {
       if (!background) continue;
       const finished = await background;
       tasks.push(...finished.tasks);
@@ -236,9 +259,9 @@ async function handleCron(request: Request) {
       ...results,
     });
   } catch (error) {
-    // runIsolatedTasks never throws; let the billing and the sync finish before the
-    // response.
-    await Promise.all([payAsYouGoBilling, billingSync]);
+    // runIsolatedTasks never throws; let the billing, the sync and the outbox finish
+    // before the response.
+    await Promise.all([payAsYouGoBilling, billingSync, apiEffects]);
     const cronError = error instanceof Error ? error : new Error("Unknown cron error");
 
     logger.error(cronError, { tasks });

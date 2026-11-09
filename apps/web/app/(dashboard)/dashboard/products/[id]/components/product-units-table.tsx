@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Package } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -22,8 +23,9 @@ import type { UnitAttributes } from '@louez/types';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatDate } from '@/lib/utils';
 import { useFormatLocale } from '@/hooks/use-format-locale';
+import { invalidateProductInventory } from '@/lib/orpc/invalidation';
+import { orpc } from '@/lib/orpc/react';
 
-import { closeDowntime, reinstateUnit } from '../actions';
 import type { ProductInventoryUnit } from '../queries';
 import { DowntimeDialog } from './inventory/downtime-dialog';
 import { EditUnitDetailsDialog } from './inventory/edit-unit-details-dialog';
@@ -33,7 +35,7 @@ import { UnitHistorySheet } from './inventory/unit-history-sheet';
 import { UnitRowActions } from './inventory/unit-row-actions';
 import {
   formatUnitAttributes,
-  getTranslatedActionError,
+  getApiErrorMessage,
 } from './inventory/util.inventory-format';
 
 interface ProductUnitsTableProps {
@@ -51,6 +53,13 @@ export const ProductUnitsTable = ({ units, readOnly = false }: ProductUnitsTable
   const tInventory = useTranslations('dashboard.inventory');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const closeDowntimeMutation = useMutation(
+    orpc.dashboard.products.closeDowntime.mutationOptions(),
+  );
+  const reinstateMutation = useMutation(
+    orpc.dashboard.products.reinstateUnit.mutationOptions(),
+  );
 
   const [pendingUnitId, setPendingUnitId] = useState<string | null>(null);
   const [selectedDowntimeUnit, setSelectedDowntimeUnit] =
@@ -69,25 +78,21 @@ export const ProductUnitsTable = ({ units, readOnly = false }: ProductUnitsTable
 
     setPendingUnitId(unit.id);
     try {
-      const result = await closeDowntime({
+      await closeDowntimeMutation.mutateAsync({
         downtimeId: unit.currentDowntime.id,
       });
-
-      if ('error' in result && result.error) {
-        toastManager.add({
-          title: getTranslatedActionError(result.error, tErrors),
-          type: 'error',
-        });
-        return;
-      }
 
       toastManager.add({
         title: tInventory('toasts.downtimeClosed'),
         type: 'success',
       });
+      await invalidateProductInventory(queryClient);
       router.refresh();
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+    } catch (error) {
+      toastManager.add({
+        title: getApiErrorMessage(error, tErrors),
+        type: 'error',
+      });
     } finally {
       setPendingUnitId(null);
     }
@@ -97,20 +102,16 @@ export const ProductUnitsTable = ({ units, readOnly = false }: ProductUnitsTable
     if (readOnly) return;
     setPendingUnitId(unit.id);
     try {
-      const result = await reinstateUnit({ unitId: unit.id });
-
-      if ('error' in result && result.error) {
-        toastManager.add({
-          title: getTranslatedActionError(result.error, tErrors),
-          type: 'error',
-        });
-        return;
-      }
+      await reinstateMutation.mutateAsync({ unitId: unit.id });
 
       toastManager.add({ title: tInventory('toasts.reinstated'), type: 'success' });
+      await invalidateProductInventory(queryClient);
       router.refresh();
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+    } catch (error) {
+      toastManager.add({
+        title: getApiErrorMessage(error, tErrors),
+        type: 'error',
+      });
     } finally {
       setPendingUnitId(null);
     }

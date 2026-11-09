@@ -40,7 +40,7 @@ import {
   searchVoiceNumbers,
 } from "./voice-provisioning-actions";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { getCountryName } from "@/lib/utils/countries";
+import { getCountryName } from "@louez/utils/countries";
 import { supportsAreaCodeFilter } from "@/lib/voice/number-filter";
 import type { AvailableNumber } from "@/lib/voice/types";
 

@@ -31,7 +31,7 @@ import {
   PAYG_LADDER_V1,
   buildFrozenPayAsYouGoConfig,
 } from '../../lib/pay-as-you-go/pricing-lock-core';
-import { createUnits } from '../../lib/utils/unit-mutations';
+import { createUnits } from '@louez/api/services/unit-mutations';
 import {
   STORE_CONFIGS,
   type StoreConfig,
@@ -246,6 +246,7 @@ function generateNotificationSettings(): NotificationSettings {
     },
     payment_received: { email: true, sms: false, discord: false, push: false },
     payment_failed: { email: true, sms: false, discord: false, push: false },
+    payment_disputed: { email: true, sms: false, discord: false, push: false },
     reminderSettings: {
       pickupReminderHours: 24,
       returnReminderHours: 24,

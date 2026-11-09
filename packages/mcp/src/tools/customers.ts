@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -13,11 +13,13 @@ import {
   resolveCustomerCompanyFields,
   toReadableCustomerFields,
 } from '@louez/api/services/customer-tools';
+import { customerLinks, reservationLinks } from '@louez/api/platform/links';
 import { customers, db, reservations, stores } from '@louez/db';
 
-import type { McpSessionContext } from '../auth/context';
-import { requirePermission } from '../auth/context';
+import { hasPermission, type McpRequestContext } from '../auth/context';
 import { toolError, toolResult } from '../utils/errors';
+import { legacyTool } from '../utils/legacy-tool';
+import { linksLine } from '../utils/links';
 import { formatCurrency, formatDate, formatStatus } from '../utils/formatting';
 import { paginationParams } from '../utils/pagination';
 
@@ -51,11 +53,14 @@ const countryParam = z
 
 export function registerCustomerTools(
   server: McpServer,
-  ctx: McpSessionContext,
+  ctx: McpRequestContext,
 ) {
-  server.tool(
-    'list_customers',
-    'List customers with optional search and filters',
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'customers', level: 'read' },
+    { name: 'list_customers', title: 'List Customers' },
+    "List customers with optional search and filters. Each customer comes with the link to its dashboard page, the URL to give the user to open it.",
     {
       search: z
         .string()
@@ -71,7 +76,6 @@ export function registerCustomerTools(
       pageSize: z.number().optional(),
     },
     async ({ search, type, page, pageSize }) => {
-      requirePermission(ctx, 'customers', 'read');
       const { limit, offset } = paginationParams({ page, pageSize });
 
       const conditions = [eq(customers.storeId, ctx.storeId)];
@@ -107,7 +111,8 @@ export function registerCustomerTools(
         (c) =>
           `- **${c.firstName} ${c.lastName}** (${c.id})\n` +
           `  ${c.email}${c.phone ? ` | ${c.phone}` : ''} | ${c.customerType}\n` +
-          `  Registered: ${formatDate(c.createdAt)}`,
+          `  Registered: ${formatDate(c.createdAt)}\n` +
+          `  Dashboard: ${customerLinks(ctx.ports.urls, { id: ctx.storeId }, c).dashboard}`,
       );
 
       return toolResult(
@@ -116,29 +121,26 @@ export function registerCustomerTools(
     },
   );
 
-  server.tool(
-    'get_customer',
-    "Get detailed customer profile with reservation history and the store's custom fields. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'customers', level: 'read' },
+    { name: 'get_customer', title: 'Get Customer' },
+    "Get detailed customer profile with the store's custom fields and, when the connection may read reservations, the reservation history, with the link to the customer's dashboard page and each reservation's, the URLs to give the user to open them. Custom fields the store flagged as sensitive are never returned: they are listed as withheld, which means the value exists on the record and can be read in the dashboard, not that it is missing.",
     {
       customerId: z.string().describe('The customer ID'),
     },
     async ({ customerId }) => {
-      requirePermission(ctx, 'customers', 'read');
-
+      // The history is reservation data: only for a connection that may read reservations.
+      const readsReservations = hasPermission(ctx, 'reservations', 'read');
       const customer = await db.query.customers.findFirst({
         where: and(
           eq(customers.storeId, ctx.storeId),
           eq(customers.id, customerId),
         ),
-        with: {
-          reservations: {
-            orderBy: [desc(reservations.createdAt)],
-            limit: 10,
-          },
-        },
       });
 
-      if (!customer) return toolError('Customer not found.');
+      if (!customer) return toolError('Customer not found.', 'NOT_FOUND');
 
       let text =
         `## ${customer.firstName} ${customer.lastName}\n\n` +
@@ -152,7 +154,8 @@ export function registerCustomerTools(
         (customer.address
           ? `- **Address**: ${customer.address}, ${customer.city} ${customer.postalCode}\n`
           : '') +
-        `- **Registered**: ${formatDate(customer.createdAt)}\n`;
+        `- **Registered**: ${formatDate(customer.createdAt)}\n` +
+        `\n${linksLine(customerLinks(ctx.ports.urls, { id: ctx.storeId }, customer))}\n`;
 
       const [definitions, values] = await Promise.all([
         listCustomerFieldDefinitions(ctx.storeId, { activeOnly: true, scope: 'customer' }),
@@ -174,10 +177,21 @@ export function registerCustomerTools(
         text += `\n### Notes\n${customer.notes}\n`;
       }
 
-      if (customer.reservations.length > 0) {
-        text += `\n### Recent reservations (${customer.reservations.length})\n`;
-        for (const r of customer.reservations) {
-          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)}\n`;
+      const history = readsReservations
+        ? await db.query.reservations.findMany({
+            where: and(
+              eq(reservations.storeId, ctx.storeId),
+              eq(reservations.customerId, customer.id),
+            ),
+            orderBy: [desc(reservations.createdAt)],
+            limit: 10,
+          })
+        : [];
+      if (history.length > 0) {
+        text += `\n### Recent reservations (${history.length})\n`;
+        for (const r of history) {
+          const link = reservationLinks(ctx.ports.urls, { id: ctx.storeId }, r).dashboard;
+          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)} — ${link}\n`;
         }
       }
 
@@ -185,9 +199,12 @@ export function registerCustomerTools(
     },
   );
 
-  server.tool(
-    'create_customer',
-    'Create a new customer',
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'customers', level: 'write' },
+    { name: 'create_customer', title: 'Create Customer', effect: 'additive' },
+    'Create a new customer. Answers with the link to its dashboard page, to give the user.',
     {
       email: z.email().describe('Customer email'),
       firstName: z.string().min(1).describe('First name'),
@@ -234,8 +251,6 @@ export function registerCustomerTools(
       country,
       customFields,
     }) => {
-      requirePermission(ctx, 'customers', 'write');
-
       const type = customerType ?? 'individual';
       if (type !== 'business' && (companyNumber || vatNumber)) {
         return toolError(
@@ -313,14 +328,18 @@ export function registerCustomerTools(
         `Customer created successfully.\n\n` +
           `- **Name**: ${firstName} ${lastName}\n` +
           `- **ID**: ${createdId}\n` +
-          `- **Email**: ${email}`,
+          `- **Email**: ${email}\n\n` +
+          linksLine(customerLinks(ctx.ports.urls, { id: ctx.storeId }, { id: createdId })),
       );
     },
   );
 
-  server.tool(
-    'update_customer',
-    'Update an existing customer',
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'customers', level: 'write' },
+    { name: 'update_customer', title: 'Update Customer', effect: 'overwrite' },
+    'Update an existing customer. Answers with the link to its dashboard page, to give the user.',
     {
       customerId: z.string().describe('The customer ID'),
       firstName: z.string().optional(),
@@ -356,8 +375,6 @@ export function registerCustomerTools(
       country,
       ...updates
     }) => {
-      requirePermission(ctx, 'customers', 'write');
-
       const existing = await db.query.customers.findFirst({
         where: and(
           eq(customers.storeId, ctx.storeId),
@@ -372,7 +389,7 @@ export function registerCustomerTools(
           vatNumber: true,
         },
       });
-      if (!existing) return toolError('Customer not found.');
+      if (!existing) return toolError('Customer not found.', 'NOT_FOUND');
 
       const isBusiness = existing.customerType === 'business';
       if (!isBusiness && (companyNumber || vatNumber)) {
@@ -459,7 +476,10 @@ export function registerCustomerTools(
         });
       });
 
-      return toolResult(`Customer ${customerId} updated successfully.`);
+      return toolResult(
+        `Customer ${customerId} updated successfully.\n\n` +
+          linksLine(customerLinks(ctx.ports.urls, { id: ctx.storeId }, { id: customerId })),
+      );
     },
   );
 }

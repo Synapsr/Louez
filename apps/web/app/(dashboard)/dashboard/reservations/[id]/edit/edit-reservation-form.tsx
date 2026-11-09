@@ -35,10 +35,7 @@ import { cn, formatCurrency, getCurrencySymbol, minutesToPriceDuration } from "@
 import { useFormatLocale } from "@/hooks/use-format-locale";
 import { calculateDuration } from "@/lib/utils/duration";
 import { useStoreTimezone } from "@/contexts/store-context";
-import {
-  evaluateReservationRules,
-  type ReservationValidationWarning,
-} from "@/lib/utils/reservation-rules";
+import { evaluateReservationRules, type ReservationValidationWarning } from "@louez/utils";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { isLegacyTulipInsuranceItem } from "@/lib/integrations/tulip/contracts-insurance";
 import { orpc } from "@/lib/orpc/react";
@@ -274,9 +271,7 @@ export function EditReservationForm({
       onSuccess: async () => {
         await invalidateReservationAll(queryClient, reservation.id);
         await queryClient.fetchQuery(
-          orpc.dashboard.reservations.getById.queryOptions({
-            input: { reservationId: reservation.id },
-          }),
+          orpc.dashboard.reservations.get.queryOptions({ input: { id: reservation.id } }),
         );
       },
     }),

@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { hasRichTextContent, sanitizeRichTextHtml } from "./util.rich-text";
+import { hasRichTextContent } from "@louez/utils";
+
+import { sanitizeRichTextHtml } from "./util.rich-text";
 
 test("sanitizeRichTextHtml keeps editor markup and drops script tags", () => {
   assert.equal(
     sanitizeRichTextHtml("<h2>Titre</h2><p>Texte <em>libre</em></p><script>alert(1)</script>"),
-    "<h2>Titre</h2><p>Texte <em>libre</em></p>alert(1)",
+    // A script goes with its content.
+    "<h2>Titre</h2><p>Texte <em>libre</em></p>",
   );
 });
 

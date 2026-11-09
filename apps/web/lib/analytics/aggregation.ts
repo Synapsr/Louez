@@ -10,12 +10,18 @@ import {
 import { eq, and, gte, lt, sql, count } from 'drizzle-orm'
 import { startOfDay, subDays, format } from 'date-fns'
 
+import { log } from '@/lib/evlog'
+
+import { PRODUCT_REVENUE_WINDOW_DAYS, getProductSalesByDay } from './product-revenue'
+import { toCents } from './util.receipt-allocation'
+
+const centsToDecimal = (cents: number) => (cents / 100).toFixed(2)
+
 /**
  * Aggregate yesterday's analytics data into dailyStats and productStats tables.
  * This should run once daily (e.g., at 2:00 AM).
  */
-export async function aggregateDailyAnalytics() {
-  const now = new Date()
+export async function aggregateDailyAnalytics(now = new Date()) {
   const yesterday = startOfDay(subDays(now, 1))
   const today = startOfDay(now)
 
@@ -23,7 +29,7 @@ export async function aggregateDailyAnalytics() {
 
   // Get all stores
   const allStores = await db
-    .select({ id: stores.id })
+    .select({ id: stores.id, settings: stores.settings })
     .from(stores)
     .where(eq(stores.onboardingCompleted, true))
 
@@ -152,8 +158,39 @@ export async function aggregateDailyAnalytics() {
         )
         .groupBy(pageViews.productId)
 
+      // Revenue and reservations are recomputed over the whole window: a refund or
+      // a deleted payment changes the day the receipt was cashed in, as on the
+      // product page.
+      const revenueStart = startOfDay(subDays(now, PRODUCT_REVENUE_WINDOW_DAYS))
+      const currency = (store.settings?.currency || 'EUR').toUpperCase()
+      const receipts = await getProductSalesByDay({
+        storeId: store.id,
+        currency,
+        start: revenueStart,
+        end: today,
+      })
+      if (receipts.skipped.length > 0) {
+        log.warn({
+          analytics: {
+            event: 'product_revenue_other_currency_skipped',
+            storeId: store.id,
+            currency,
+            skipped: receipts.skipped,
+          },
+        })
+      }
+      const salesOf = (day: number, productId: string) =>
+        receipts.byDay.get(day)?.get(productId) ?? { revenueCents: 0, reservations: 0 }
+
+      const viewsByProduct = new Map<string, number>()
       for (const product of productViewStats) {
-        if (!product.productId) continue
+        if (product.productId) viewsByProduct.set(product.productId, product.views)
+      }
+
+      for (const productId of viewsByProduct.keys()) {
+        const views = viewsByProduct.get(productId) ?? 0
+        const sales = salesOf(yesterday.getTime(), productId)
+        const productRevenue = centsToDecimal(sales.revenueCents)
 
         // Get cart additions for this product
         const productCartStats = await db
@@ -167,7 +204,7 @@ export async function aggregateDailyAnalytics() {
               eq(storefrontEvents.eventType, 'add_to_cart'),
               gte(storefrontEvents.createdAt, yesterday),
               lt(storefrontEvents.createdAt, today),
-              sql`JSON_EXTRACT(${storefrontEvents.metadata}, '$.productId') = ${product.productId}`
+              sql`JSON_EXTRACT(${storefrontEvents.metadata}, '$.productId') = ${productId}`
             )
           )
 
@@ -176,21 +213,84 @@ export async function aggregateDailyAnalytics() {
           .insert(productStats)
           .values({
             storeId: store.id,
-            productId: product.productId,
+            productId,
             date: yesterday,
-            views: product.views,
+            views,
             cartAdditions: productCartStats[0]?.cartAdditions || 0,
-            reservations: 0, // This would require joining with reservation_items
-            revenue: '0',
+            reservations: sales.reservations,
+            revenue: productRevenue,
           })
           .onDuplicateKeyUpdate({
             set: {
-              views: product.views,
+              views,
               cartAdditions: productCartStats[0]?.cartAdditions || 0,
+              reservations: sales.reservations,
+              revenue: productRevenue,
               updatedAt: new Date(),
             },
           })
 
+        results.productStatsCreated++
+      }
+
+      // Every other product and day of the window whose stored figures differ from
+      // the receipts: a product sold without being viewed gets its row, and the
+      // revenue and reservations of receipts refunded or deleted go back to zero.
+      const storedSales = await db
+        .select({
+          productId: productStats.productId,
+          date: productStats.date,
+          reservations: productStats.reservations,
+          revenue: productStats.revenue,
+        })
+        .from(productStats)
+        .where(
+          and(
+            eq(productStats.storeId, store.id),
+            gte(productStats.date, revenueStart),
+            lt(productStats.date, today)
+          )
+        )
+      const stored = new Map(
+        storedSales.map((row) => [
+          `${row.date.getTime()}|${row.productId}`,
+          { revenueCents: toCents(row.revenue), reservations: row.reservations },
+        ])
+      )
+      const keys = new Set(stored.keys())
+      for (const [day, byProduct] of receipts.byDay) {
+        for (const productId of byProduct.keys()) keys.add(`${day}|${productId}`)
+      }
+      for (const key of keys) {
+        const [dayText, productId] = key.split('|')
+        const day = Number(dayText)
+        if (!productId || (day === yesterday.getTime() && viewsByProduct.has(productId))) continue
+        const sales = salesOf(day, productId)
+        const before = stored.get(key)
+        if (
+          before?.revenueCents === sales.revenueCents &&
+          before.reservations === sales.reservations
+        ) {
+          continue
+        }
+        await db
+          .insert(productStats)
+          .values({
+            storeId: store.id,
+            productId,
+            date: new Date(day),
+            views: 0,
+            cartAdditions: 0,
+            reservations: sales.reservations,
+            revenue: centsToDecimal(sales.revenueCents),
+          })
+          .onDuplicateKeyUpdate({
+            set: {
+              reservations: sales.reservations,
+              revenue: centsToDecimal(sales.revenueCents),
+              updatedAt: new Date(),
+            },
+          })
         results.productStatsCreated++
       }
 

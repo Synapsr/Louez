@@ -1,31 +1,28 @@
 import { tool } from "ai";
-import { and, desc, eq, exists, gte, inArray, like, lte, or, sql, sum } from "drizzle-orm";
+import { and, desc, eq, exists, gte, inArray, lte, or, sql, sum } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import {
-  categories,
   customers,
   dailyStats,
   db,
-  effectiveProductQuantitySql,
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
-  marketplaceCatalogTombstones,
   loadConsumableReservedQuantities,
   payments,
-  productCategories,
   productStats,
   productUnits,
   products,
   reservationItems,
   reservations,
   stores,
-  nextProductSlug,
-  nextCategorySlug,
 } from "@louez/db";
+import type { AppRouter, UrlsPort } from "@louez/api";
+import { customerLinks, reservationLinks } from "@louez/api/platform/links";
 import type { ApiKeyPermissions } from "@louez/db/schema";
+import type { RouterClient } from "@orpc/server";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
 import {
   customerFieldSearchCondition,
@@ -42,7 +39,6 @@ import {
   deleteRecordedPayment,
   insertRecordedPayment,
 } from "@/lib/reservations/dashboard-payment-writes";
-import { changeReservationStatusAsAgent } from "@/lib/reservations/status-change";
 
 // ---------------------------------------------------------------------------
 // Context & permissions
@@ -54,7 +50,31 @@ export type AIChatContext = {
   userId: string;
   storeName: string;
   permissions: ApiKeyPermissions;
+  /**
+   * The deployment's addresses, the API's `ports.urls`: the links the tools
+   * return are the ones agents get, and the chat opens them inside the app.
+   */
+  urls: UrlsPort;
+  /**
+   * The agent-ready procedures, called as the signed-in user (their session,
+   * their current role), like the dashboard calls them. Domains move here as
+   * they migrate (docs/architecture/api-and-agents.md).
+   */
+  api?: AssistantApi;
 };
+
+/** The procedures the assistant calls, through a server-side client bound to the user's session. */
+export type AssistantApi = {
+  categories: RouterClient<AppRouter["dashboard"]["categories"]>;
+  products: RouterClient<AppRouter["dashboard"]["products"]>;
+  reservations: RouterClient<AppRouter["dashboard"]["reservations"]>;
+  settings: RouterClient<AppRouter["dashboard"]["settings"]>;
+};
+
+function assistantApi(ctx: AIChatContext): AssistantApi {
+  if (!ctx.api) throw new Error("The assistant has no API client for this request.");
+  return ctx.api;
+}
 
 function requirePermission(
   ctx: AIChatContext,
@@ -70,15 +90,10 @@ function requirePermission(
   }
 }
 
-/** What the tools call into. Tests pass one with fake senders. */
-export interface AIToolServices {
-  /** A status change with everything the dashboard does around it. */
-  changeReservationStatus: typeof changeReservationStatusAsAgent;
-}
+/** Whether the chat's user may read a domain: a link names a record of it. */
+const mayRead = (ctx: AIChatContext, domain: keyof ApiKeyPermissions) =>
+  ctx.permissions[domain] !== "none";
 
-const defaultServices: AIToolServices = {
-  changeReservationStatus: changeReservationStatusAsAgent,
-};
 // A list of pairs rather than a free-form object: some providers refuse a tool
 // parameter that declares no property.
 const customFieldEntriesSchema = z
@@ -103,7 +118,9 @@ const customFieldEntriesSchema = z
 // Tool factory
 // ---------------------------------------------------------------------------
 
-export function createAITools(ctx: AIChatContext, services: AIToolServices = defaultServices) {
+export function createAITools(ctx: AIChatContext) {
+  /** The chat's store, named by every dashboard link the tools return. */
+  const linkStore = { id: ctx.storeId };
   /** The settings a recorded payment's currency and insurance share are read with. */
   const loadStoreSettings = async () => {
     const store = await db.query.stores.findFirst({
@@ -127,131 +144,95 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         search: z.string().optional().describe("Search by product name"),
       }),
       execute: async ({ status, categoryId, search }) => {
-        requirePermission(ctx, "products", "read");
-
-        const conditions = [eq(products.storeId, ctx.storeId)];
-        if (status && status !== "all") conditions.push(eq(products.status, status));
-        if (categoryId)
-          conditions.push(
-            inArray(
-              products.id,
-              db
-                .select({ id: productCategories.productId })
-                .from(productCategories)
-                .where(eq(productCategories.categoryId, categoryId)),
-            ),
-          );
-        if (search) conditions.push(like(products.name, `%${search}%`));
-
-        const rows = await db
-          .select({
-            id: products.id,
-            name: products.name,
-            price: products.price,
-            deposit: products.deposit,
-            pricingMode: products.pricingMode,
-            stockKind: products.stockKind,
-            quantity: effectiveProductQuantitySql(),
-            status: products.status,
-            categoryName: categories.name,
-          })
-          .from(products)
-          .leftJoin(categories, eq(products.categoryId, categories.id))
-          .where(and(...conditions))
-          .orderBy(products.displayOrder, products.name)
-          .limit(50);
-
-        const [countResult] = await db
-          .select({ total: sql<number>`COUNT(*)` })
-          .from(products)
-          .where(and(...conditions));
-
+        const page = await assistantApi(ctx).products.list({
+          status,
+          categoryIds: categoryId ? [categoryId] : undefined,
+          search,
+          limit: 50,
+        });
         return {
-          products: rows.map((product) => ({
-            ...product,
+          products: page.items.map((product) => ({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            deposit: product.deposit,
+            pricingKind: product.pricingKind,
+            pricingMode: product.pricingMode,
+            stockKind: product.stockKind,
             quantity: product.stockKind === "untracked" ? null : product.quantity,
+            status: product.status,
+            categoryName: product.category?.name ?? null,
+            links: product.links,
           })),
-          total: countResult?.total ?? 0,
+          total: status && status !== "all" ? page.counts[status] : page.counts.all,
+          currency: page.currency,
         };
       },
     }),
 
     get_product: tool({
-      description: "Get detailed information about a specific product",
+      description:
+        "Get detailed information about a specific product: pricing and tiers, stock and units, accessories",
       inputSchema: z.object({
         productId: z.string().describe("The product ID"),
       }),
       execute: async ({ productId }) => {
-        requirePermission(ctx, "products", "read");
-
-        const product = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
-          with: { category: true, pricingTiers: true, units: true },
-        });
-
-        if (!product) return { error: "Product not found" };
-
-        const effectiveQuantity =
-          product.stockKind === "untracked"
-            ? null
-            : product.trackUnits
-              ? product.units.filter((unit) => unit.lifecycleStatus === "active").length
-              : product.quantity;
-
-        return { product: { ...product, quantity: effectiveQuantity } };
+        const product = await assistantApi(ctx).products.get({ id: productId });
+        return {
+          product: {
+            ...product,
+            quantity: product.stockKind === "untracked" ? null : product.quantity,
+          },
+        };
       },
     }),
 
     create_product: tool({
-      description: "Create a new product in the catalog",
+      description:
+        "Create a new product in the catalog. A duration product is priced per base period; tiers are the total price for a longer duration.",
       inputSchema: z.object({
-        name: z.string().min(1).describe("Product name"),
+        name: z.string().min(2).describe("Product name"),
         description: z.string().optional().describe("Product description"),
-        price: z.string().describe('Price per period (e.g. "25.00")'),
+        price: z.string().describe('Price per period, or the fixed price (e.g. "25.00")'),
         deposit: z.string().optional().describe('Deposit amount (e.g. "100.00")'),
-        pricingMode: z.enum(["hour", "day", "week"]).describe("Pricing period"),
-        quantity: z.number().int().min(1).optional().describe("Stock quantity (default 1)"),
+        pricingKind: z
+          .enum(["duration", "fixed"])
+          .optional()
+          .describe("duration (default): priced per period; fixed: one price per item"),
+        pricingMode: z.enum(["hour", "day", "week"]).optional().describe("Pricing period"),
+        rateTiers: z
+          .array(
+            z.object({
+              duration: z.number().int().min(1),
+              unit: z.enum(["hour", "day", "week"]),
+              price: z.string().describe("Total price for exactly this duration"),
+            }),
+          )
+          .optional()
+          .describe("Degressive rates of a duration product"),
+        quantity: z.number().int().min(0).optional().describe("Stock quantity (default 1)"),
         categoryId: z.string().optional().describe("Category ID"),
       }),
-      execute: async ({ name, description, price, deposit, pricingMode, quantity, categoryId }) => {
-        requirePermission(ctx, "products", "write");
-
-        const [created] = await db
-          .insert(products)
-          .values({
-            storeId: ctx.storeId,
-            name,
-            slug: await nextProductSlug(db, ctx.storeId, name),
-            description: description ?? null,
-            price,
-            deposit: deposit ?? "0",
-            pricingMode,
-            quantity: quantity ?? 1,
-            categoryId: categoryId ?? null,
-            status: "active",
-          })
-          .$returningId();
-
-        if (categoryId) {
-          await db.insert(productCategories).values({
-            productId: created.id,
-            categoryId,
-            position: 0,
-          });
-        }
-
+      execute: async ({ categoryId, ...input }) => {
+        const product = await assistantApi(ctx).products.create({
+          ...input,
+          categoryIds: categoryId ? [categoryId] : undefined,
+        });
         return {
-          id: created.id,
-          name,
-          price,
-          pricingMode,
-          quantity: quantity ?? 1,
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          pricingKind: product.pricingKind,
+          pricingMode: product.pricingMode,
+          quantity: product.quantity,
+          links: product.links,
         };
       },
     }),
 
     update_product: tool({
-      description: "Update an existing product",
+      description:
+        "Update an existing product. Send only the fields to change; price alone changes a duration product's base price.",
       inputSchema: z.object({
         productId: z.string().describe("The product ID to update"),
         name: z.string().optional().describe("New product name"),
@@ -262,96 +243,35 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         status: z.enum(["active", "draft", "archived"]).optional().describe("New status"),
       }),
       execute: async ({ productId, ...updates }) => {
-        requirePermission(ctx, "products", "write");
-
-        const existing = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
-          columns: { id: true, status: true },
-        });
-        if (!existing) return { error: "Product not found" };
-
-        const updateData: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(updates)) {
-          if (value !== undefined) updateData[key] = value;
-        }
-
-        if (Object.keys(updateData).length === 0) {
+        if (Object.values(updates).every((value) => value === undefined)) {
           return { error: "No fields to update" };
         }
-        updateData.updatedAt = new Date();
-
-        await db.transaction(async (tx) => {
-          await tx.update(products).set(updateData).where(eq(products.id, productId));
-
-          if (
-            existing.status === "active" &&
-            updates.status !== undefined &&
-            updates.status !== "active"
-          ) {
-            await tx.insert(marketplaceCatalogTombstones).values({
-              entityType: "product",
-              entityId: productId,
-              deletedAt: new Date(),
-            });
-          }
-        });
-        return { success: true, productId };
+        const product = await assistantApi(ctx).products.update({ id: productId, ...updates });
+        return { success: true, productId, links: product.links };
       },
     }),
 
     archive_product: tool({
-      description: "Archive a product (soft delete)",
+      description:
+        "Archive a product (soft delete): it leaves the storefront and the catalog; its reservations are kept",
       inputSchema: z.object({
         productId: z.string().describe("The product ID to archive"),
       }),
       execute: async ({ productId }) => {
-        requirePermission(ctx, "products", "write");
-
-        const existing = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
-          columns: { id: true, name: true, status: true },
+        const product = await assistantApi(ctx).products.get({ id: productId });
+        const archived = await assistantApi(ctx).products.updateStatus({
+          id: productId,
+          status: "archived",
         });
-        if (!existing) return { error: "Product not found" };
-
-        const [activeCount] = await db
-          .select({ count: sql<number>`COUNT(*)` })
-          .from(reservationItems)
-          .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-          .where(
-            and(
-              eq(reservationItems.productId, productId),
-              inArray(reservations.status, ["pending", "confirmed", "ongoing"] as const),
-            ),
-          );
-
-        if (activeCount && activeCount.count > 0) {
-          return {
-            error: `Cannot archive: ${activeCount.count} active reservation(s) use this product`,
-          };
-        }
-
-        await db.transaction(async (tx) => {
-          await tx
-            .update(products)
-            .set({ status: "archived", updatedAt: new Date() })
-            .where(eq(products.id, productId));
-
-          if (existing.status === "active") {
-            await tx.insert(marketplaceCatalogTombstones).values({
-              entityType: "product",
-              entityId: productId,
-              deletedAt: new Date(),
-            });
-          }
-        });
-        return { success: true, name: existing.name };
+        return { success: true, name: product.name, links: archived.links };
       },
     }),
 
     // ── Reservations ─────────────────────────────────────────────────────
 
     list_reservations: tool({
-      description: "List reservations with optional filters (status, period, search)",
+      description:
+        "List reservations as the dashboard's list does: by status, by period (today, this week, this month, on the start date) or by number or customer name",
       inputSchema: z.object({
         status: z
           .enum(["pending", "confirmed", "ongoing", "completed", "cancelled", "rejected"])
@@ -360,54 +280,27 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         search: z.string().optional().describe("Search by reservation number or customer name"),
       }),
       execute: async ({ status, period, search }) => {
-        requirePermission(ctx, "reservations", "read");
-
-        const conditions = [eq(reservations.storeId, ctx.storeId)];
-
-        if (status) conditions.push(eq(reservations.status, status));
-
-        if (period) {
-          const start = new Date();
-          start.setHours(0, 0, 0, 0);
-          if (period === "week") start.setDate(start.getDate() - 7);
-          if (period === "month") start.setMonth(start.getMonth() - 1);
-          conditions.push(gte(reservations.createdAt, start));
-        }
-
-        if (search) {
-          conditions.push(
-            sql`(${reservations.number} LIKE ${"%" + search + "%"} OR EXISTS (
-              SELECT 1 FROM customers c
-              WHERE c.id = ${reservations.customerId}
-              AND (LOWER(c.first_name) LIKE ${`%${search.toLowerCase()}%`}
-                   OR LOWER(c.last_name) LIKE ${`%${search.toLowerCase()}%`})
-            ))`,
-          );
-        }
-
-        const rows = await db
-          .select({
-            id: reservations.id,
-            number: reservations.number,
-            status: reservations.status,
-            startDate: reservations.startDate,
-            endDate: reservations.endDate,
-            totalAmount: reservations.totalAmount,
-            customerFirstName: customers.firstName,
-            customerLastName: customers.lastName,
-          })
-          .from(reservations)
-          .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(and(...conditions))
-          .orderBy(desc(reservations.createdAt))
-          .limit(50);
-
-        const [countResult] = await db
-          .select({ total: sql<number>`COUNT(*)` })
-          .from(reservations)
-          .where(and(...conditions));
-
-        return { reservations: rows, total: countResult?.total ?? 0 };
+        const page = await assistantApi(ctx).reservations.list({
+          status,
+          period,
+          search,
+          limit: 50,
+        });
+        return {
+          reservations: page.items.map((reservation) => ({
+            id: reservation.id,
+            number: reservation.number,
+            status: reservation.status,
+            startDate: reservation.startDate,
+            endDate: reservation.endDate,
+            totalAmount: reservation.totalAmount,
+            customerFirstName: reservation.customer?.firstName ?? null,
+            customerLastName: reservation.customer?.lastName ?? null,
+            links: reservation.links,
+          })),
+          total: page.totalCount,
+          currency: page.currency,
+        };
       },
     }),
 
@@ -416,21 +309,11 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
       inputSchema: z.object({
         reservationId: z.string().describe("The reservation ID"),
       }),
-      execute: async ({ reservationId }) => {
-        requirePermission(ctx, "reservations", "read");
-
-        const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-          with: {
-            customer: true,
-            items: { with: { product: { columns: { id: true, name: true } } } },
-            payments: true,
-          },
-        });
-
-        if (!reservation) return { error: "Reservation not found" };
-        return { reservation };
-      },
+      // The procedure's answer as it is: its links, and the customer only for
+      // a user who may read customers.
+      execute: async ({ reservationId }) => ({
+        reservation: await assistantApi(ctx).reservations.get({ id: reservationId }),
+      }),
     }),
 
     update_reservation_status: tool({
@@ -442,29 +325,21 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .enum(["confirmed", "ongoing", "completed", "cancelled", "rejected"])
           .describe("New status"),
       }),
-      execute: async ({ reservationId, status: newStatus }) => {
-        requirePermission(ctx, "reservations", "write");
-
-        // As on the dashboard: the stock check, the fees, the insurance contract,
-        // the emails and the notifications.
-        const result = await services.changeReservationStatus({
-          storeId: ctx.storeId,
-          reservationId,
-          to: newStatus,
-          actor: "ai_chat",
-          actorUserId: ctx.userId,
+      // As on the dashboard: the stock check, the fees, the insurance contract,
+      // the emails and the notifications.
+      execute: async ({ reservationId, status }) => {
+        const change = await assistantApi(ctx).reservations.updateStatus({
+          id: reservationId,
+          status,
         });
-        if (!result.ok) {
-          return { error: result.error === "not_found" ? "Reservation not found" : result.message };
-        }
-
         return {
           success: true,
-          number: result.number,
-          from: result.from,
-          to: result.to,
+          number: change.number,
+          from: change.from,
+          to: change.to,
+          links: change.links,
           // What the dashboard shows after the change: rule warnings, a failed contract.
-          ...(result.warnings.length > 0 && { warnings: result.warnings }),
+          ...(change.warnings.length > 0 && { warnings: change.warnings }),
         };
       },
     }),
@@ -476,19 +351,11 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         notes: z.string().describe("The new internal notes content"),
       }),
       execute: async ({ reservationId, notes }) => {
-        requirePermission(ctx, "reservations", "write");
-
-        const existing = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
-          columns: { id: true, number: true },
+        const updated = await assistantApi(ctx).reservations.updateNotes({
+          id: reservationId,
+          notes,
         });
-        if (!existing) return { error: "Reservation not found" };
-
-        await db
-          .update(reservations)
-          .set({ internalNotes: notes })
-          .where(eq(reservations.id, reservationId));
-        return { success: true, number: existing.number };
+        return { success: true, number: updated.number, links: updated.links };
       },
     }),
 
@@ -496,21 +363,8 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
       description: "Get quick reservation counters by status (pending, ongoing, etc.)",
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, "reservations", "read");
-
-        const rows = await db
-          .select({ status: reservations.status, count: sql<number>`COUNT(*)` })
-          .from(reservations)
-          .where(eq(reservations.storeId, ctx.storeId))
-          .groupBy(reservations.status);
-
-        const counts: Record<string, number> = {};
-        for (const row of rows) counts[row.status] = row.count;
-
-        return {
-          counts,
-          total: Object.values(counts).reduce((a, b) => a + b, 0),
-        };
+        const poll = await assistantApi(ctx).reservations.poll({});
+        return { counts: poll.counts, pending: poll.pendingCount, total: poll.totalCount };
       },
     }),
 
@@ -584,13 +438,19 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .from(customers)
           .where(and(...conditions));
 
-        return { customers: rows, total: countResult?.total ?? 0 };
+        return {
+          customers: rows.map((row) => ({
+            ...row,
+            links: customerLinks(ctx.urls, linkStore, row),
+          })),
+          total: countResult?.total ?? 0,
+        };
       },
     }),
 
     get_customer: tool({
       description:
-        "Get detailed customer profile with reservation history and the store's custom fields. Custom fields the store flagged as sensitive are never returned: their labels come back in `withheldSensitiveFields`, which means the value exists on the record and can be read by the merchant in the dashboard, not that it is missing.",
+        "Get detailed customer profile with the store's custom fields, and the reservation history when the user may read reservations. Custom fields the store flagged as sensitive are never returned: their labels come back in `withheldSensitiveFields`, which means the value exists on the record and can be read by the merchant in the dashboard, not that it is missing.",
       inputSchema: z.object({
         customerId: z.string().describe("The customer ID"),
       }),
@@ -599,11 +459,22 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
 
         const customer = await db.query.customers.findFirst({
           where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
-          with: {
-            reservations: {
-              orderBy: [desc(reservations.createdAt)],
-              limit: 10,
-            },
+          columns: {
+            id: true,
+            customerType: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            companyName: true,
+            companyNumber: true,
+            vatNumber: true,
+            address: true,
+            city: true,
+            postalCode: true,
+            country: true,
+            notes: true,
+            createdAt: true,
           },
         });
 
@@ -615,7 +486,43 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
         ]);
         const { fields, withheld } = toReadableCustomerFields(definitions, values);
 
-        return { customer, customFields: fields, withheldSensitiveFields: withheld };
+        // The history is reservation data (ids, numbers, amounts): only for
+        // a user who may read reservations, each with its link.
+        const history = mayRead(ctx, "reservations")
+          ? (
+              await db
+                .select({
+                  id: reservations.id,
+                  number: reservations.number,
+                  status: reservations.status,
+                  startDate: reservations.startDate,
+                  endDate: reservations.endDate,
+                  totalAmount: reservations.totalAmount,
+                })
+                .from(reservations)
+                .where(
+                  and(
+                    eq(reservations.storeId, ctx.storeId),
+                    eq(reservations.customerId, customer.id),
+                  ),
+                )
+                .orderBy(desc(reservations.createdAt))
+                .limit(10)
+            ).map((reservation) => ({
+              ...reservation,
+              links: reservationLinks(ctx.urls, linkStore, reservation),
+            }))
+          : undefined;
+
+        return {
+          customer: {
+            ...customer,
+            links: customerLinks(ctx.urls, linkStore, customer),
+            ...(history ? { reservations: history } : {}),
+          },
+          customFields: fields,
+          withheldSensitiveFields: withheld,
+        };
       },
     }),
 
@@ -683,7 +590,13 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           return created.id;
         });
 
-        return { id: createdId, firstName, lastName, email };
+        return {
+          id: createdId,
+          firstName,
+          lastName,
+          email,
+          links: customerLinks(ctx.urls, linkStore, { id: createdId }),
+        };
       },
     }),
 
@@ -754,7 +667,11 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
             definitions,
           });
         });
-        return { success: true, customerId };
+        return {
+          success: true,
+          customerId,
+          links: customerLinks(ctx.urls, linkStore, { id: customerId }),
+        };
       },
     }),
 
@@ -1111,63 +1028,22 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
           .describe("Number of days to cover, counted from today (default 7). 1 = today only."),
       }),
       execute: async ({ days }) => {
-        requirePermission(ctx, "reservations", "read");
-
-        const lookAhead = Math.min(days ?? 7, 90);
-        // Anchored at midnight, not at the current time: a pickup booked for
-        // 9am is still today's business at 2pm, and dropping it made this tool
-        // disagree with the dashboard's "today" widgets, which count from
-        // midnight too.
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        const future = new Date(now);
-        future.setDate(future.getDate() + lookAhead);
-
-        const pickups = await db
-          .select({
-            id: reservations.id,
-            number: reservations.number,
-            startDate: reservations.startDate,
-            customerFirstName: customers.firstName,
-            customerLastName: customers.lastName,
-            totalAmount: reservations.totalAmount,
-          })
-          .from(reservations)
-          .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(
-            and(
-              eq(reservations.storeId, ctx.storeId),
-              eq(reservations.status, "confirmed"),
-              gte(reservations.startDate, now),
-              lte(reservations.startDate, future),
-            ),
-          )
-          .orderBy(reservations.startDate)
-          .limit(50);
-
-        const returns = await db
-          .select({
-            id: reservations.id,
-            number: reservations.number,
-            endDate: reservations.endDate,
-            customerFirstName: customers.firstName,
-            customerLastName: customers.lastName,
-            totalAmount: reservations.totalAmount,
-          })
-          .from(reservations)
-          .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(
-            and(
-              eq(reservations.storeId, ctx.storeId),
-              eq(reservations.status, "ongoing"),
-              gte(reservations.endDate, now),
-              lte(reservations.endDate, future),
-            ),
-          )
-          .orderBy(reservations.endDate)
-          .limit(50);
-
-        return { pickups, returns, days: lookAhead };
+        const lookAhead = Math.min(Math.max(Math.round(days ?? 7), 1), 90);
+        const agenda = await assistantApi(ctx).reservations.listUpcoming({ days: lookAhead });
+        const row = (entry: (typeof agenda.pickups)[number], date: Date) => ({
+          id: entry.id,
+          number: entry.number,
+          date,
+          customerFirstName: entry.customer?.firstName ?? null,
+          customerLastName: entry.customer?.lastName ?? null,
+          totalAmount: entry.totalAmount,
+          links: entry.links,
+        });
+        return {
+          pickups: agenda.pickups.map((entry) => row(entry, entry.startDate)),
+          returns: agenda.returns.map((entry) => row(entry, entry.endDate)),
+          days: lookAhead,
+        };
       },
     }),
 
@@ -1175,31 +1051,19 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
       description: "Get overdue returns (ongoing reservations past their end date)",
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, "reservations", "read");
-
-        const now = new Date();
-        const overdue = await db
-          .select({
-            id: reservations.id,
-            number: reservations.number,
-            endDate: reservations.endDate,
-            customerFirstName: customers.firstName,
-            customerLastName: customers.lastName,
-            totalAmount: reservations.totalAmount,
-          })
-          .from(reservations)
-          .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(
-            and(
-              eq(reservations.storeId, ctx.storeId),
-              eq(reservations.status, "ongoing"),
-              lte(reservations.endDate, now),
-            ),
-          )
-          .orderBy(reservations.endDate)
-          .limit(50);
-
-        return { overdue };
+        const { items } = await assistantApi(ctx).reservations.listOverdue({});
+        return {
+          overdue: items.map((entry) => ({
+            id: entry.id,
+            number: entry.number,
+            endDate: entry.endDate,
+            daysLate: entry.daysLate,
+            customerFirstName: entry.customer?.firstName ?? null,
+            customerLastName: entry.customer?.lastName ?? null,
+            totalAmount: entry.totalAmount,
+            links: entry.links,
+          })),
+        };
       },
     }),
 
@@ -1325,49 +1189,40 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
 
     // ── Categories ────────────────────────────────────────────────────────
 
+    // The categories procedures themselves, as the signed-in user: the same
+    // rights and rules as the dashboard, the API and MCP.
     list_categories: tool({
-      description: "List all product categories",
+      description: "List all product categories, with how many products each holds",
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, "categories", "read");
-
-        const rows = await db.query.categories.findMany({
-          where: eq(categories.storeId, ctx.storeId),
-          with: { products: { columns: { id: true } } },
-          orderBy: [categories.order, categories.name],
-        });
-
+        const items = [];
+        let cursor: string | undefined;
+        do {
+          const page = await assistantApi(ctx).categories.list({ cursor });
+          items.push(...page.items);
+          cursor = page.nextCursor ?? undefined;
+        } while (cursor);
         return {
-          categories: rows.map((c) => ({
-            id: c.id,
-            name: c.name,
-            description: c.description,
-            productCount: c.products.length,
+          categories: items.map((category) => ({
+            id: category.id,
+            name: category.name,
+            description: category.description,
+            productCount: category.productCount,
           })),
         };
       },
     }),
 
     create_category: tool({
-      description: "Create a new product category",
+      description:
+        "Create a new product category; an existing category with the same name is returned instead",
       inputSchema: z.object({
-        name: z.string().min(1),
+        name: z.string().min(2),
         description: z.string().optional(),
       }),
       execute: async ({ name, description }) => {
-        requirePermission(ctx, "categories", "write");
-
-        const [created] = await db
-          .insert(categories)
-          .values({
-            storeId: ctx.storeId,
-            name,
-            slug: await nextCategorySlug(db, ctx.storeId, name),
-            description: description ?? null,
-          })
-          .$returningId();
-
-        return { id: created.id, name };
+        const category = await assistantApi(ctx).categories.create({ name, description });
+        return { id: category.id, name: category.name, created: category.created };
       },
     }),
 
@@ -1375,102 +1230,50 @@ export function createAITools(ctx: AIChatContext, services: AIToolServices = def
       description: "Update an existing product category",
       inputSchema: z.object({
         categoryId: z.string().describe("The category ID"),
-        name: z.string().optional().describe("New name"),
+        name: z.string().min(2).optional().describe("New name"),
         description: z.string().optional().describe("New description"),
       }),
       execute: async ({ categoryId, name, description }) => {
-        requirePermission(ctx, "categories", "write");
-
-        const existing = await db.query.categories.findFirst({
-          where: and(eq(categories.storeId, ctx.storeId), eq(categories.id, categoryId)),
-          columns: { id: true },
-        });
-        if (!existing) return { error: "Category not found" };
-
-        const updateData: Record<string, unknown> = {};
-        if (name !== undefined) updateData.name = name;
-        if (description !== undefined) updateData.description = description;
-
-        if (Object.keys(updateData).length === 0) {
+        if (name === undefined && description === undefined) {
           return { error: "No fields to update" };
         }
-
-        await db.update(categories).set(updateData).where(eq(categories.id, categoryId));
+        await assistantApi(ctx).categories.update({ id: categoryId, name, description });
         return { success: true, categoryId };
       },
     }),
 
     delete_category: tool({
-      description: "Delete a product category (products will be unassigned)",
+      description:
+        "Delete a product category; its products keep their other categories, or have none left",
       inputSchema: z.object({
         categoryId: z.string().describe("The category ID to delete"),
       }),
       execute: async ({ categoryId }) => {
-        requirePermission(ctx, "categories", "write");
-
-        const existing = await db.query.categories.findFirst({
-          where: and(eq(categories.storeId, ctx.storeId), eq(categories.id, categoryId)),
-          columns: { id: true, name: true },
-        });
-        if (!existing) return { error: "Category not found" };
-
-        await db.delete(categories).where(eq(categories.id, categoryId));
-        return { success: true, name: existing.name };
+        const deleted = await assistantApi(ctx).categories.delete({ id: categoryId });
+        return { success: true, affectedProductCount: deleted.affectedProductCount };
       },
     }),
 
     // ── Settings ──────────────────────────────────────────────────────────
 
     get_store_settings: tool({
-      description: "Get complete store configuration (name, contact, settings)",
+      description:
+        "Get the store's whole configuration: info and contact, company, legal texts, reservation rules, business hours, delivery and pickup points, taxes, with the link to its settings",
       inputSchema: z.object({}),
-      execute: async () => {
-        requirePermission(ctx, "settings", "read");
-
-        const store = await db.query.stores.findFirst({
-          where: eq(stores.id, ctx.storeId),
-        });
-
-        if (!store) return { error: "Store not found" };
-        return {
-          name: store.name,
-          slug: store.slug,
-          email: store.email,
-          phone: store.phone,
-          address: store.address,
-          description: store.description,
-          settings: store.settings,
-          theme: store.theme,
-          emailSettings: store.emailSettings,
-          stripeConnected: !!store.stripeOnboardingComplete,
-        };
-      },
+      execute: async () => assistantApi(ctx).settings.get({}),
     }),
 
     update_store_info: tool({
-      description: "Update store contact information",
+      description:
+        "Update the store's name, description and contact details; send only the fields to change, null clears one",
       inputSchema: z.object({
         name: z.string().optional(),
-        email: z.email().optional(),
-        phone: z.string().optional(),
-        address: z.string().optional(),
-        description: z.string().optional(),
+        email: z.email().nullable().optional(),
+        phone: z.string().nullable().optional(),
+        address: z.string().nullable().optional(),
+        description: z.string().nullable().optional(),
       }),
-      execute: async (updates) => {
-        requirePermission(ctx, "settings", "write");
-
-        const updateData: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(updates)) {
-          if (value !== undefined) updateData[key] = value;
-        }
-
-        if (Object.keys(updateData).length === 0) {
-          return { error: "No fields to update" };
-        }
-
-        await db.update(stores).set(updateData).where(eq(stores.id, ctx.storeId));
-        return { success: true };
-      },
+      execute: async (updates) => assistantApi(ctx).settings.updateStoreInfo(updates),
     }),
   };
 }

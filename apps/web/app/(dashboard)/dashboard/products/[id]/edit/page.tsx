@@ -5,7 +5,6 @@ import { getTranslations } from "next-intl/server";
 
 import { getAccessoryCandidates } from "@louez/api/services";
 import {
-  categories,
   db,
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
@@ -23,10 +22,12 @@ import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-bread
 
 import { isImageBackgroundRemovalEnabled } from "@/lib/ai/image/background-removal";
 import { isAiImageEnhanceEnabled } from "@/lib/ai/image/credits";
+import { serverApi } from "@/lib/api/server-api";
 import { getCurrentStore } from "@/lib/store-context";
 import { inferAttributeAxesFromUnits } from "@/lib/utils/util.variant-combinations";
 
 import { ProductForm } from "../../product-form";
+import { productPermissions } from "../../util.product-permissions";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -80,12 +81,11 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     notFound();
   }
 
-  const [categoriesList, availableAccessories, stockKindChangeBlockers, storeVariants] =
+  const api = await serverApi();
+  // The form reads every category itself; the first page shows until then.
+  const [categoriesPage, availableAccessories, stockKindChangeBlockers, storeVariants] =
     await Promise.all([
-      db.query.categories.findMany({
-        where: eq(categories.storeId, store.id),
-        orderBy: [categories.order],
-      }),
+      api.categories.list({}),
       getAccessoryCandidates({ storeId: store.id, excludeProductId: id }),
       getProductStockKindChangeBlockers(db, { productId: id, storeId: store.id }),
       db
@@ -197,7 +197,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
             hasActiveAssignment: assignedUnitIds.has(unit.id),
           })),
         }}
-        categories={categoriesList}
+        categories={categoriesPage.items}
         storeTaxSettings={store.settings?.tax}
         currency={store.settings?.currency ?? "EUR"}
         storeTimezone={store.settings?.timezone}
@@ -205,6 +205,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
         showAiContext={showAiContext}
         imageEnhanceEnabled={isAiImageEnhanceEnabled()}
         imageBackgroundRemovalEnabled={isImageBackgroundRemovalEnabled()}
+        canDelete={productPermissions(store.role).canDelete}
       />
     </div>
   );

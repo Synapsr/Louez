@@ -49,7 +49,9 @@ import {
   ImageUploadValidationError,
   useImageUpload,
 } from '@/hooks/use-image-upload';
+import { apiErrorKey } from '@/lib/orpc/errors';
 import { orpc } from '@/lib/orpc/react';
+import { categoriesQueries } from '@/lib/queries/categories.queries';
 import { cn } from '@/lib/utils';
 
 import { CategoryImageControl } from './category-image-control';
@@ -65,25 +67,19 @@ export interface CategoryManagerItem {
 }
 
 interface CategoryManagerProps {
-  initialCategories?: CategoryManagerItem[];
   variant?: 'page' | 'drawer';
   onCategoryDeleted?: (categoryId: string) => void;
 }
 
 export const CategoryManager = ({
-  initialCategories,
   variant = 'page',
   onCategoryDeleted,
 }: CategoryManagerProps) => {
   const t = useTranslations();
   const queryClient = useQueryClient();
   const categoryFiles = useImageUpload('category');
-  const categoriesQuery = useQuery(
-    orpc.dashboard.categories.list.queryOptions({
-      initialData: initialCategories,
-    }),
-  );
-  const categories = categoriesQuery.data ?? initialCategories ?? [];
+  const categoriesQuery = useQuery(categoriesQueries.list());
+  const categories: CategoryManagerItem[] = categoriesQuery.data?.items ?? [];
 
   const [search, setSearch] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -109,6 +105,14 @@ export const CategoryManager = ({
     queryClient.invalidateQueries({
       queryKey: orpc.dashboard.categories.key(),
     });
+
+  // The API's translation key for the error, or the generic message.
+  const errorTitle = (error: unknown) => {
+    const key = apiErrorKey(error);
+    return key && t.has(`errors.${key}`)
+      ? t(`errors.${key}`)
+      : t('errors.generic');
+  };
 
   const createMutation = useMutation(
     orpc.dashboard.categories.create.mutationOptions(),
@@ -211,15 +215,6 @@ export const CategoryManager = ({
         imageUrl: newCategoryImageUrl,
       });
       await invalidateCategories();
-      queryClient.setQueryData(
-        orpc.dashboard.categories.list.key({ type: 'query' }),
-        (current: CategoryManagerItem[] | undefined) => {
-          const latest = current ?? [];
-          return latest.some((category) => category.id === created.id)
-            ? latest
-            : [...latest, created];
-        },
-      );
       if (newCategoryImageUrl && created.imageUrl !== newCategoryImageUrl) {
         deleteUploadedImage(newCategoryImageUrl);
       }
@@ -231,8 +226,8 @@ export const CategoryManager = ({
         title: t('categories.categoryCreated'),
         type: 'success',
       });
-    } catch {
-      toastManager.add({ title: t('errors.generic'), type: 'error' });
+    } catch (error) {
+      toastManager.add({ title: errorTitle(error), type: 'error' });
     }
   };
 
@@ -249,13 +244,6 @@ export const CategoryManager = ({
         imageUrl: editCategoryImageUrl,
       });
       await invalidateCategories();
-      queryClient.setQueryData(
-        orpc.dashboard.categories.list.key({ type: 'query' }),
-        (current: CategoryManagerItem[] | undefined) =>
-          current?.map((category) =>
-            category.id === updated.id ? { ...category, ...updated } : category,
-          ),
-      );
       if (
         editingCategory.imageUrl &&
         editingCategory.imageUrl !== updated.imageUrl
@@ -270,8 +258,8 @@ export const CategoryManager = ({
         title: t('categories.categoryUpdated'),
         type: 'success',
       });
-    } catch {
-      toastManager.add({ title: t('errors.generic'), type: 'error' });
+    } catch (error) {
+      toastManager.add({ title: errorTitle(error), type: 'error' });
     }
   };
 
@@ -287,11 +275,6 @@ export const CategoryManager = ({
             : replacementCategoryId,
       });
       await invalidateCategories();
-      queryClient.setQueryData(
-        orpc.dashboard.categories.list.key({ type: 'query' }),
-        (current: CategoryManagerItem[] | undefined) =>
-          current?.filter((category) => category.id !== deleted.id),
-      );
       if (categoryToDelete.imageUrl) {
         deleteUploadedImage(categoryToDelete.imageUrl);
       }
@@ -302,8 +285,8 @@ export const CategoryManager = ({
         title: t('categories.categoryDeleted'),
         type: 'success',
       });
-    } catch {
-      toastManager.add({ title: t('errors.generic'), type: 'error' });
+    } catch (error) {
+      toastManager.add({ title: errorTitle(error), type: 'error' });
     }
   };
 

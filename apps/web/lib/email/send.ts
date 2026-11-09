@@ -27,6 +27,12 @@ import {
   ReminderDigestAdminEmail,
   type DigestEntry,
   NewRequestLandlordEmail,
+  PaymentAdminEmail,
+  getPaymentAdminEmailSubject,
+  type PaymentAdminEmailKind,
+  StatusChangeAdminEmail,
+  getStatusChangeAdminEmailSubject,
+  type StatusChangeAdminEmailKind,
   PhoneCallbackLandlordEmail,
   ContactMessageEmail,
   VoiceNumberBillingEmail,
@@ -1054,6 +1060,160 @@ export async function sendNewRequestLandlordEmail({
   }
 }
 
+// A reservation's payment went through, failed or was disputed: to the store owner.
+export async function sendPaymentAdminEmail({
+  to,
+  kind,
+  store,
+  customer,
+  reservation,
+  amount,
+  amountCurrency,
+  reservationCurrency,
+  dashboardUrl,
+  locale = 'fr',
+}: {
+  to: string
+  kind: PaymentAdminEmailKind
+  store: StoreWithEmailDateSettings
+  customer?: Customer | null
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+    totalAmount: number
+  }
+  amount: number
+  /** The payment's own currency; the reservation's when absent. */
+  amountCurrency?: string
+  /** The reservation's currency; the store's when absent. */
+  reservationCurrency?: string
+  dashboardUrl: string
+  locale?: EmailLocale
+}) {
+  const subject = getPaymentAdminEmailSubject(kind, reservation.number, locale)
+  const currency = reservationCurrency || store.settings?.currency || 'EUR'
+  const html = await render(
+    PaymentAdminEmail({
+      kind,
+      storeName: store.name,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      customer,
+      reservationNumber: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      amount,
+      reservationTotal: reservation.totalAmount,
+      dashboardUrl,
+      locale,
+      currency,
+      amountCurrency: amountCurrency || currency,
+      storeTimezone: store.settings?.timezone,
+      storeCountryCode: store.settings?.country,
+    })
+  )
+  const templateType = `payment_${kind}_admin`
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: store.name })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType,
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType,
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// The customer confirmed or cancelled a reservation: to the store owner.
+export async function sendStatusChangeAdminEmail({
+  to,
+  kind,
+  store,
+  customer,
+  reservation,
+  reservationCurrency,
+  dashboardUrl,
+  locale = 'fr',
+}: {
+  to: string
+  kind: StatusChangeAdminEmailKind
+  store: StoreWithEmailDateSettings
+  customer?: Customer | null
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+    totalAmount: number
+  }
+  /** The reservation's currency; the store's when absent. */
+  reservationCurrency?: string
+  dashboardUrl: string
+  locale?: EmailLocale
+}) {
+  const subject = getStatusChangeAdminEmailSubject(kind, reservation.number, locale)
+  const html = await render(
+    StatusChangeAdminEmail({
+      kind,
+      storeName: store.name,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      customer,
+      reservationNumber: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      reservationTotal: reservation.totalAmount,
+      dashboardUrl,
+      locale,
+      currency: reservationCurrency || store.settings?.currency || 'EUR',
+      storeTimezone: store.settings?.timezone,
+      storeCountryCode: store.settings?.country,
+    })
+  )
+  const templateType = `reservation_${kind}_admin`
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: store.name })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType,
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType,
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
 // Phone callback request to the store owner (AI voice agent couldn't finish)
 export async function sendPhoneCallbackLandlordEmail({
   to,
@@ -1812,7 +1972,7 @@ export async function sendPaymentConfirmationEmail({
   }
 }
 
-// Payment Failed Email
+// Payment Failed Email, to the customer. Not sent today: kept for future off-session charges.
 export async function sendPaymentFailedEmail({
   to,
   store,

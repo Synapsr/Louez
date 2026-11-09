@@ -23,6 +23,7 @@ import {
   MagicLinkEmail,
   NewRequestLandlordEmail,
   OTPEmail,
+  PaymentAdminEmail,
   PaymentConfirmationEmail,
   PaymentFailedEmail,
   PaymentRequestEmail,
@@ -43,7 +44,12 @@ import {
   ThankYouReviewEmail,
   VerificationCodeEmail,
   VoiceNumberBillingEmail,
+  StatusChangeAdminEmail,
+  getPaymentAdminEmailSubject,
   getReservationModifiedEmailSubject,
+  getStatusChangeAdminEmailSubject,
+  type PaymentAdminEmailKind,
+  type StatusChangeAdminEmailKind,
 } from "@/lib/email/templates";
 import type { BalanceLimitVariant } from "@/lib/email/templates/balance-limit";
 import type { VoiceNumberBillingVariant } from "@/lib/email/templates/voice-number-billing";
@@ -174,6 +180,63 @@ const balanceLimit = (
         limit: "23,45 €",
         ctaUrl: url,
         locale,
+      }),
+    }),
+  });
+
+/** The store owner's email about a reservation's payment. */
+const paymentAdminPreview = (kind: PaymentAdminEmailKind, title: string, description: string) =>
+  storeEmail({
+    id: `payment-${kind}-admin`,
+    title,
+    description,
+    compose: ({ store, locale }) => ({
+      subject: getPaymentAdminEmailSubject(kind, number, locale),
+      element: PaymentAdminEmail({
+        kind,
+        storeName: store.name,
+        primaryColor: store.primaryColor,
+        customer: previewCustomer,
+        reservationNumber: number,
+        startDate,
+        endDate,
+        amount: total,
+        reservationTotal: total,
+        dashboardUrl: url,
+        locale,
+        currency: store.currency,
+        storeTimezone: store.timezone,
+        storeCountryCode: store.country,
+      }),
+    }),
+  });
+
+/** The store owner's email about a change the customer made. */
+const statusChangeAdminPreview = (
+  kind: StatusChangeAdminEmailKind,
+  title: string,
+  description: string,
+) =>
+  storeEmail({
+    id: `reservation-${kind}-admin`,
+    title,
+    description,
+    compose: ({ store, locale }) => ({
+      subject: getStatusChangeAdminEmailSubject(kind, number, locale),
+      element: StatusChangeAdminEmail({
+        kind,
+        storeName: store.name,
+        primaryColor: store.primaryColor,
+        customer: previewCustomer,
+        reservationNumber: number,
+        startDate,
+        endDate,
+        reservationTotal: total,
+        dashboardUrl: url,
+        locale,
+        currency: store.currency,
+        storeTimezone: store.timezone,
+        storeCountryCode: store.country,
       }),
     }),
   });
@@ -532,6 +595,36 @@ export const EMAIL_DOCUMENT_PREVIEWS: readonly EmailDocumentPreview[] = [
       }),
     }),
   }),
+  statusChangeAdminPreview(
+    "confirmed",
+    "Réservation confirmée par le client (loueur)",
+    "Le loueur est prévenu que le client a confirmé la réservation, en acceptant le devis.",
+  ),
+  statusChangeAdminPreview(
+    "cancelled",
+    "Demande annulée par le client (loueur)",
+    "Le loueur est prévenu que le client a annulé sa demande de réservation.",
+  ),
+  statusChangeAdminPreview(
+    "quote_declined",
+    "Devis refusé par le client (loueur)",
+    "Le loueur est prévenu que le client a refusé son devis.",
+  ),
+  paymentAdminPreview(
+    "received",
+    "Paiement reçu (loueur)",
+    "Le loueur est prévenu qu'un client a payé sa réservation.",
+  ),
+  paymentAdminPreview(
+    "failed",
+    "Échec de paiement (loueur)",
+    "Le loueur est prévenu qu'un paiement n'a pas abouti.",
+  ),
+  paymentAdminPreview(
+    "disputed",
+    "Paiement contesté (loueur)",
+    "Le loueur est prévenu qu'un client conteste un paiement auprès de sa banque.",
+  ),
   storeEmail({
     id: "reminder-pickup-admin",
     title: "Retrait à venir (loueur)",

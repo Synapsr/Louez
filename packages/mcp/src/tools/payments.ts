@@ -1,13 +1,15 @@
 import { z } from 'zod'
+import { reservationLinks } from '@louez/api/platform/links'
 import { db, markReservation, payments, reservations, stores, type Transaction } from '@louez/db'
 import type { StoreSettings } from '@louez/types'
 import { and, eq } from 'drizzle-orm'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 
-import type { McpSessionContext } from '../auth/context'
-import { requirePermission } from '../auth/context'
+import { hasPermission, type McpRequestContext } from '../auth/context'
 import { formatCurrency, formatDateTime } from '../utils/formatting'
 import { toolError, toolResult } from '../utils/errors'
+import { legacyTool } from '../utils/legacy-tool'
+import { linksLine } from '../utils/links'
 
 /** A payment the store records by hand, as the app's writer takes it. */
 export interface McpRecordedPayment {
@@ -34,6 +36,15 @@ export interface McpPaymentDeps {
   insertRecordedPayment: (tx: Transaction, payment: McpRecordedPayment) => Promise<void>
 }
 
+/**
+ * The line with a reservation's dashboard link, after a blank line; empty
+ * unless the connection may read reservations, as the link names its id.
+ */
+function reservationLinkLine(ctx: McpRequestContext, reservation: { id: string }): string {
+  if (!hasPermission(ctx, 'reservations', 'read')) return ''
+  return `\n\n${linksLine(reservationLinks(ctx.ports.urls, { id: ctx.storeId }, reservation))}`
+}
+
 async function loadStoreSettings(storeId: string) {
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, storeId),
@@ -44,18 +55,19 @@ async function loadStoreSettings(storeId: string) {
 
 export function registerPaymentTools(
   server: McpServer,
-  ctx: McpSessionContext,
+  ctx: McpRequestContext,
   deps: McpPaymentDeps
 ) {
-  server.tool(
-    'list_payments',
-    'List all payments for a specific reservation',
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'payments', level: 'read' },
+    { name: 'list_payments', title: 'List Payments' },
+    "List all payments for a specific reservation, with the link to the reservation's dashboard page to give the user when the connection may read reservations.",
     {
       reservationId: z.string().describe('The reservation ID'),
     },
     async ({ reservationId }) => {
-      requirePermission(ctx, 'payments', 'read')
-
       const reservation = await db.query.reservations.findFirst({
         where: and(
           eq(reservations.storeId, ctx.storeId),
@@ -63,7 +75,8 @@ export function registerPaymentTools(
         ),
         columns: { id: true, number: true },
       })
-      if (!reservation) return toolError('Reservation not found.')
+      if (!reservation) return toolError('Reservation not found.', 'NOT_FOUND')
+      const links = reservationLinkLine(ctx, reservation)
 
       const rows = await db.query.payments.findMany({
         where: eq(payments.reservationId, reservationId),
@@ -71,7 +84,7 @@ export function registerPaymentTools(
       })
 
       if (rows.length === 0) {
-        return toolResult(`No payments recorded for reservation #${reservation.number}.`)
+        return toolResult(`No payments recorded for reservation #${reservation.number}.${links}`)
       }
 
       const lines = rows.map(
@@ -83,14 +96,17 @@ export function registerPaymentTools(
       )
 
       return toolResult(
-        `## Payments — Reservation #${reservation.number} (${rows.length})\n\n${lines.join('\n\n')}`
+        `## Payments — Reservation #${reservation.number} (${rows.length})\n\n${lines.join('\n\n')}${links}`
       )
     }
   )
 
-  server.tool(
-    'record_payment',
-    'Record a manual payment for a reservation',
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'payments', level: 'write' },
+    { name: 'record_payment', title: 'Record Payment', effect: 'additive' },
+    "Record a manual payment for a reservation. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       reservationId: z.string().describe('The reservation ID'),
       type: z
@@ -103,8 +119,6 @@ export function registerPaymentTools(
       notes: z.string().optional().describe('Optional notes'),
     },
     async ({ reservationId, type, amount, method, notes }) => {
-      requirePermission(ctx, 'payments', 'write')
-
       const numAmount = parseFloat(amount)
       if (isNaN(numAmount) || numAmount === 0) {
         return toolError('Amount must be a non-zero number.')
@@ -120,7 +134,7 @@ export function registerPaymentTools(
         ),
         columns: { id: true, number: true, status: true },
       })
-      if (!reservation) return toolError('Reservation not found.')
+      if (!reservation) return toolError('Reservation not found.', 'NOT_FOUND')
 
       if (reservation.status === 'cancelled' || reservation.status === 'rejected') {
         return toolError(`Cannot record payment on a ${reservation.status} reservation.`)
@@ -145,20 +159,41 @@ export function registerPaymentTools(
         `Payment recorded for reservation #${reservation.number}.\n\n` +
           `- Type: ${type}\n` +
           `- Amount: ${formatCurrency(amount)}\n` +
-          `- Method: ${method}`
+          `- Method: ${method}` +
+          reservationLinkLine(ctx, reservation)
       )
+    },
+    {
+      sensitive: {
+        kind: 'money',
+        confirm: async ({ reservationId, type, amount, method }) => {
+          const reservation = await db.query.reservations.findFirst({
+            where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+            columns: { number: true, status: true },
+          })
+          if (!reservation) return null
+          return {
+            preview: {
+              summary: `Record a ${type} payment of ${formatCurrency(amount)} (${method}) on reservation #${reservation.number}.`,
+              details: { reservationId, number: reservation.number, type, amount, method },
+            },
+            state: { status: reservation.status },
+          }
+        },
+      },
     }
   )
 
-  server.tool(
-    'delete_payment',
-    'Delete a payment record',
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'payments', level: 'write' },
+    { name: 'delete_payment', title: 'Delete Payment', effect: 'delete' },
+    "Delete a payment record. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       paymentId: z.string().describe('The payment ID to delete'),
     },
     async ({ paymentId }) => {
-      requirePermission(ctx, 'payments', 'write')
-
       const payment = await db.query.payments.findFirst({
         where: eq(payments.id, paymentId),
         with: {
@@ -167,7 +202,7 @@ export function registerPaymentTools(
       })
 
       if (!payment || payment.reservation?.storeId !== ctx.storeId) {
-        return toolError('Payment not found.')
+        return toolError('Payment not found.', 'NOT_FOUND')
       }
 
       if (payment.method === 'stripe') {
@@ -181,13 +216,45 @@ export function registerPaymentTools(
         await markReservation(tx, { id: payment.reservationId, storeId: ctx.storeId })
       })
 
-      return toolResult(`Payment deleted (reservation #${payment.reservation?.number}).`)
+      return toolResult(
+        `Payment deleted (reservation #${payment.reservation?.number}).` +
+          reservationLinkLine(ctx, { id: payment.reservationId })
+      )
+    },
+    {
+      sensitive: {
+        kind: 'destructive',
+        confirm: async ({ paymentId }) => {
+          const payment = await db.query.payments.findFirst({
+            where: eq(payments.id, paymentId),
+            columns: { amount: true, type: true, method: true, status: true },
+            with: { reservation: { columns: { storeId: true, number: true } } },
+          })
+          if (!payment || payment.reservation?.storeId !== ctx.storeId) return null
+          return {
+            preview: {
+              summary: `Delete the ${payment.type} payment of ${formatCurrency(payment.amount)} (${payment.method}) on reservation #${payment.reservation.number}.`,
+              details: {
+                paymentId,
+                number: payment.reservation.number,
+                type: payment.type,
+                amount: payment.amount,
+                method: payment.method,
+              },
+            },
+            state: { amount: payment.amount, status: payment.status },
+          }
+        },
+      },
     }
   )
 
-  server.tool(
-    'return_deposit',
-    'Record a deposit return for a reservation',
+  legacyTool(
+    server,
+    ctx,
+    { domain: 'payments', level: 'write' },
+    { name: 'return_deposit', title: 'Return Deposit', effect: 'additive' },
+    "Record a deposit return for a reservation. Answers with the link to the reservation's dashboard page, to give the user, when the connection may read reservations.",
     {
       reservationId: z.string().describe('The reservation ID'),
       amount: z.string().describe('Amount to return'),
@@ -195,8 +262,6 @@ export function registerPaymentTools(
       notes: z.string().optional().describe('Optional notes'),
     },
     async ({ reservationId, amount, method, notes }) => {
-      requirePermission(ctx, 'payments', 'write')
-
       const numAmount = parseFloat(amount)
       if (isNaN(numAmount) || numAmount <= 0) {
         return toolError('Amount must be greater than zero.')
@@ -210,7 +275,7 @@ export function registerPaymentTools(
         columns: { id: true, number: true },
         with: { payments: true },
       })
-      if (!reservation) return toolError('Reservation not found.')
+      if (!reservation) return toolError('Reservation not found.', 'NOT_FOUND')
 
       const depositCollected = reservation.payments
         .filter((p) => p.type === 'deposit' && p.status === 'completed')
@@ -247,8 +312,40 @@ export function registerPaymentTools(
       return toolResult(
         `Deposit returned for reservation #${reservation.number}.\n` +
           `- Amount: ${formatCurrency(amount)}\n` +
-          `- Method: ${method}`
+          `- Method: ${method}` +
+          reservationLinkLine(ctx, reservation)
       )
+    },
+    {
+      sensitive: {
+        kind: 'money',
+        confirm: async ({ reservationId, amount, method }) => {
+          const reservation = await db.query.reservations.findFirst({
+            where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+            columns: { number: true },
+            with: { payments: { columns: { type: true, status: true, amount: true } } },
+          })
+          if (!reservation) return null
+          const completed = (kind: string) =>
+            reservation.payments
+              .filter((p) => p.type === kind && p.status === 'completed')
+              .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+          const returnable = completed('deposit') - completed('deposit_return')
+          return {
+            preview: {
+              summary: `Return ${formatCurrency(amount)} of deposit (${method}) on reservation #${reservation.number}.`,
+              details: {
+                reservationId,
+                number: reservation.number,
+                amount,
+                method,
+                returnable: returnable.toFixed(2),
+              },
+            },
+            state: { returnable: returnable.toFixed(2) },
+          }
+        },
+      },
     }
   )
 }

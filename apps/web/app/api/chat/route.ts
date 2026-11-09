@@ -1,18 +1,29 @@
 import { stepCountIs, streamText } from "ai";
+import { STORE_HEADER } from "@louez/api/platform/procedures";
+import { appRouter } from "@louez/api/router";
 import { db, aiChats, aiChatMessages } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
+import { createRouterClient } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 
+import { apiPorts } from "@/lib/api/ports";
 import { getAIModel, isAIChatConfigured } from "@/lib/ai/provider";
 import { checkRateLimit, validateMessageLength } from "@/lib/ai/rate-limit";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { createAITools } from "@/lib/ai/tools";
 import type { AIChatContext } from "@/lib/ai/tools";
 import { notifyAiChatStarted } from "@/lib/discord/platform-notifications";
+
+/** The request's headers (its session cookie) with the store pinned to `storeId`. */
+function storeHeaders(headers: Headers, storeId: string): Headers {
+  const pinned = new Headers(headers);
+  pinned.set(STORE_HEADER, storeId);
+  return pinned;
+}
 
 const chatRequestSchema = z.object({
   messages: z
@@ -163,6 +174,42 @@ export async function POST(req: Request) {
     userId: session.user.id,
     storeName: store.name,
     permissions: roleToPermissions(store.role),
+    urls: apiPorts.urls,
+    // The procedures, as this signed-in user, on this chat's store: the store
+    // header is set to it, whatever the request sent.
+    api: {
+      categories: createRouterClient(appRouter.dashboard.categories, {
+        context: {
+          headers: storeHeaders(req.headers, store.id),
+          transport: "rpc",
+          ports: apiPorts,
+        },
+      }),
+      products: createRouterClient(appRouter.dashboard.products, {
+        context: {
+          headers: storeHeaders(req.headers, store.id),
+          transport: "rpc",
+          ports: apiPorts,
+        },
+        path: ["dashboard", "products"],
+      }),
+      reservations: createRouterClient(appRouter.dashboard.reservations, {
+        context: {
+          headers: storeHeaders(req.headers, store.id),
+          transport: "rpc",
+          ports: apiPorts,
+        },
+        path: ["dashboard", "reservations"],
+      }),
+      settings: createRouterClient(appRouter.dashboard.settings, {
+        context: {
+          headers: storeHeaders(req.headers, store.id),
+          transport: "rpc",
+          ports: apiPorts,
+        },
+        path: ["dashboard", "settings"],
+      }),
+    },
   };
 
   const tools = createAITools(aiCtx);

@@ -4,7 +4,7 @@ import { defineConfig } from 'drizzle-kit'
 import {
   BILLING_SERVICE_MIGRATIONS_TABLE,
   BILLING_SERVICE_TABLE_PREFIX,
-} from './src/billing-service-tables'
+} from './src/billing-service-tables.mjs'
 
 export default defineConfig({
   schema: './src/schema.ts',

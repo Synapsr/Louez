@@ -7,26 +7,24 @@ import {
   TIMELINE_STALE_TIME,
 } from "./util.timeline-chunks";
 
-const chunk = (storeId: string, index: number) => {
+const chunk = (index: number) => {
   const { start, end } = chunkRange(index);
 
-  return orpc.dashboard.reservations.calendarPeriod.queryOptions({
-    input: {
-      storeId,
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-    },
+  // The session's current store; switching stores reloads the page and its cache.
+  return orpc.dashboard.reservations.listCalendarPeriod.queryOptions({
+    input: { from: start, to: end },
+    select: (page) => page.items,
     staleTime: TIMELINE_STALE_TIME,
   });
 };
 
 export const reservationCalendarQueries = {
   initialWindow: initialTimelineWindow,
-  forWindow: (storeId: string, windowStart: Date, daysCount: number) =>
-    getChunkIndices(windowStart, daysCount).map((index) => chunk(storeId, index)),
-  initial: (storeId: string, anchorDate = new Date()) => {
+  forWindow: (windowStart: Date, daysCount: number) =>
+    getChunkIndices(windowStart, daysCount).map((index) => chunk(index)),
+  initial: (anchorDate = new Date()) => {
     const window = initialTimelineWindow(anchorDate);
-    return reservationCalendarQueries.forWindow(storeId, window.start, window.daysCount);
+    return reservationCalendarQueries.forWindow(window.start, window.daysCount);
   },
-  key: () => orpc.dashboard.reservations.calendarPeriod.key(),
+  key: () => orpc.dashboard.reservations.listCalendarPeriod.key(),
 };

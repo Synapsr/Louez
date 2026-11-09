@@ -152,6 +152,55 @@
     "viewRequest": "リクエストの表示",
     "connectToManage": "このリクエストを承認または拒否するには、ダッシュボードにログインしてください。"
   },
+  "paymentAdmin": {
+    "customer": "顧客",
+    "email": "メール",
+    "period": "期間",
+    "total": "予約合計",
+    "viewReservation": "予約を見る",
+    "connectToManage": "この予約を管理するには、ダッシュボードにログインしてください。",
+    "received": {
+      "subject": "予約 #{number} の支払いを受け取りました",
+      "title": "支払いを受け取りました",
+      "body": "お客様が {storeName} の予約 #{number} を支払いました。",
+      "amount": "支払額"
+    },
+    "failed": {
+      "subject": "予約 #{number} の支払いに失敗しました",
+      "title": "支払いに失敗しました",
+      "body": "{storeName} の予約 #{number} の支払いが完了しませんでした。",
+      "amount": "金額"
+    },
+    "disputed": {
+      "subject": "予約 #{number} の支払いに異議申し立てがありました",
+      "title": "支払いの異議申し立て",
+      "body": "お客様が {storeName} の予約 #{number} の支払いについて、カード会社に異議を申し立てました。Stripe ダッシュボードに表示される期限までに対応してください。",
+      "amount": "異議の対象金額"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "顧客",
+    "email": "メール",
+    "period": "期間",
+    "total": "予約合計",
+    "viewReservation": "予約を見る",
+    "connectToManage": "この予約を管理するには、ダッシュボードにログインしてください。",
+    "confirmed": {
+      "subject": "お客様が予約 #{number} を確定しました",
+      "title": "お客様が確定しました",
+      "body": "お客様が {storeName} の予約 #{number} を確定しました。"
+    },
+    "cancelled": {
+      "subject": "リクエスト #{number} が顧客によってキャンセルされました",
+      "title": "お客様がキャンセルしました",
+      "body": "お客様が {storeName} の予約 #{number} をキャンセルしました。"
+    },
+    "quote_declined": {
+      "subject": "お客様が見積 #{number} を却下しました",
+      "title": "お客様が見積を却下しました",
+      "body": "お客様が {storeName} の見積 #{number} を却下しました。"
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "新しいサプライヤー請求書",
     "title": "新しいサプライヤー請求書",

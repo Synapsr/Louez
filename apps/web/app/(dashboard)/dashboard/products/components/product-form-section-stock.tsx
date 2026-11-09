@@ -39,6 +39,8 @@ interface ProductFormSectionStockProps {
   currency: string;
   disabled?: boolean;
   showValidationErrors?: boolean;
+  /** The member may delete catalog variants and their values. */
+  canDelete?: boolean;
 }
 
 export function ProductFormSectionStock({
@@ -49,6 +51,7 @@ export function ProductFormSectionStock({
   currency,
   disabled,
   showValidationErrors = false,
+  canDelete = false,
 }: ProductFormSectionStockProps) {
   const t = useTranslations("dashboard.products.form");
   const tInventory = useTranslations("dashboard.inventory.productScoped");
@@ -130,6 +133,7 @@ export function ProductFormSectionStock({
       ) : option === "untracked" ? null : (
         <CardContent className="space-y-6">
           <UnitTrackingEditor
+            canDelete={canDelete}
             currency={currency}
             trackUnits={option === "units"}
             bookingAttributeAxes={watchedValues.bookingAttributeAxes || []}

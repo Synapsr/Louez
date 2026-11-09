@@ -3,6 +3,7 @@
  * Louez MCP Server — stdio-to-HTTP proxy
  *
  * Bridges Claude Desktop (stdio) to a remote Louez server (Streamable HTTP).
+ * The remote server is stateless: each request is authorized on its own.
  * No direct database access — all requests go through the hosted API.
  *
  * Required env vars:
@@ -24,19 +25,9 @@
  * }
  */
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  ListResourceTemplatesRequestSchema,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js'
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
+import { Server } from '@modelcontextprotocol/server'
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio'
 
 // All logging goes to stderr — stdout is reserved for the MCP JSON-RPC protocol
 const log = (...args: unknown[]) => console.error('[louez-mcp]', ...args)
@@ -103,33 +94,21 @@ async function main() {
 
   // ── Proxy handlers ────────────────────────────────────────────────────
 
-  server.setRequestHandler(ListToolsRequestSchema, (req) =>
-    client.listTools(req.params)
-  )
+  server.setRequestHandler('tools/list', (req) => client.listTools(req.params))
 
-  server.setRequestHandler(CallToolRequestSchema, (req) =>
-    client.callTool(req.params)
-  )
+  server.setRequestHandler('tools/call', (req) => client.callTool(req.params))
 
-  server.setRequestHandler(ListResourcesRequestSchema, (req) =>
-    client.listResources(req.params)
-  )
+  server.setRequestHandler('resources/list', (req) => client.listResources(req.params))
 
-  server.setRequestHandler(ReadResourceRequestSchema, (req) =>
-    client.readResource(req.params)
-  )
+  server.setRequestHandler('resources/read', (req) => client.readResource(req.params))
 
-  server.setRequestHandler(ListResourceTemplatesRequestSchema, (req) =>
+  server.setRequestHandler('resources/templates/list', (req) =>
     client.listResourceTemplates(req.params)
   )
 
-  server.setRequestHandler(ListPromptsRequestSchema, (req) =>
-    client.listPrompts(req.params)
-  )
+  server.setRequestHandler('prompts/list', (req) => client.listPrompts(req.params))
 
-  server.setRequestHandler(GetPromptRequestSchema, (req) =>
-    client.getPrompt(req.params)
-  )
+  server.setRequestHandler('prompts/get', (req) => client.getPrompt(req.params))
 
   // ── Start ─────────────────────────────────────────────────────────────
   const stdioTransport = new StdioServerTransport()

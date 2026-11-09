@@ -37,6 +37,8 @@ interface ProductsPageContentProps {
   limits: LimitStatus
   planSlug: string
   currency?: string
+  /** The member may delete products. */
+  canDelete: boolean
 }
 
 export function ProductsPageContent({
@@ -45,6 +47,7 @@ export function ProductsPageContent({
   limits,
   planSlug,
   currency,
+  canDelete,
 }: ProductsPageContentProps) {
   const t = useTranslations('dashboard.products')
   const queryClient = useQueryClient()
@@ -72,7 +75,7 @@ export function ProductsPageContent({
   })
   const categoriesQuery = useQuery(categoriesQueries.list())
 
-  const products = productsQuery.data?.products ?? []
+  const products = productsQuery.data?.items ?? []
   const counts = productsQuery.data?.counts ?? EMPTY_COUNTS
 
   // Determine which products to show vs blur
@@ -137,7 +140,7 @@ export function ProductsPageContent({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <ProductsFilters
-            categories={categoriesQuery.data ?? []}
+            categories={categoriesQuery.data?.items ?? []}
             counts={counts}
             isLoadingCategories={categoriesQuery.isPending}
           />
@@ -185,7 +188,7 @@ export function ProductsPageContent({
             </Button>
           </div>
         ) : (
-          <ProductsTable products={visibleProducts} currency={currency} />
+          <ProductsTable products={visibleProducts} currency={currency} canDelete={canDelete} />
         )}
       </div>
 
@@ -194,7 +197,7 @@ export function ProductsPageContent({
         <div className="relative">
           {/* Blurred table */}
           <div className="blur-sm pointer-events-none select-none opacity-60">
-            <ProductsTable products={blurredProducts} currency={currency} />
+            <ProductsTable products={blurredProducts} currency={currency} canDelete={canDelete} />
           </div>
 
           {/* Overlay */}

@@ -5,7 +5,9 @@ import { LinkIcon, WarningIcon } from "@louez/ui/icons";
 import { Check, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+import { useMutation } from "@tanstack/react-query";
 
 import {
   Alert,
@@ -22,10 +24,9 @@ import {
   Label,
   Spinner,
 } from "@louez/ui";
-import {
-  checkSlugAvailability,
-  updateStoreSlug,
-} from "@/app/(dashboard)/dashboard/settings/actions";
+import { orpcClient } from "@/lib/orpc/client";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { orpc } from "@/lib/orpc/react";
 
 interface SlugChangeModalProps {
   open: boolean;
@@ -39,7 +40,8 @@ type AvailabilityStatus = "idle" | "checking" | "available" | "unavailable" | "i
 export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: SlugChangeModalProps) {
   const router = useRouter();
   const t = useTranslations();
-  const [isPending, startTransition] = useTransition();
+  const updateSlug = useMutation(orpc.dashboard.onlineStore.updateSlug.mutationOptions());
+  const isPending = updateSlug.isPending;
 
   const [slug, setSlug] = useState(currentSlug);
   const [status, setStatus] = useState<AvailabilityStatus>("idle");
@@ -80,12 +82,21 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
       }
 
       setStatus("checking");
-      const result = await checkSlugAvailability(slugToCheck);
-
-      if (result.error) {
+      try {
+        const result = await orpcClient.dashboard.onlineStore.checkSlugAvailability({
+          slug: slugToCheck,
+        });
+        setStatus(
+          result.available
+            ? "available"
+            : result.reason === "taken"
+              ? "unavailable"
+              : result.current
+                ? "same"
+                : "invalid",
+        );
+      } catch {
         setStatus("invalid");
-      } else {
-        setStatus(result.available ? "available" : "unavailable");
       }
     },
     [currentSlug],
@@ -119,21 +130,17 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
     setShowConfirmation(true);
   };
 
-  const handleConfirm = () => {
-    startTransition(async () => {
-      const result = await updateStoreSlug(slug);
-
-      if (result.error) {
-        setError(t.has(result.error) ? t(result.error) : t("errors.generic"));
-        setShowConfirmation(false);
-        return;
-      }
-
-      if (result.success) {
-        onOpenChange(false);
-        router.refresh();
-      }
-    });
+  const handleConfirm = async () => {
+    try {
+      await updateSlug.mutateAsync({ slug });
+    } catch (mutationError) {
+      const key = apiErrorKey(mutationError);
+      setError(key && t.has(`errors.${key}`) ? t(`errors.${key}`) : t("errors.generic"));
+      setShowConfirmation(false);
+      return;
+    }
+    onOpenChange(false);
+    router.refresh();
   };
 
   const getStatusIcon = () => {

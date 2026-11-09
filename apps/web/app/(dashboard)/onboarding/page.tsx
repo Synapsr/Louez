@@ -6,9 +6,10 @@ import { eq } from "drizzle-orm";
 import { db, users } from "@louez/db";
 
 import { auth } from "@/lib/auth";
+import { getMcpEndpoint } from "@/lib/agent-connections/mcp-endpoint";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
 import { getCurrentStore, getUserStores } from "@/lib/store-context";
-import { getCountryByCode } from "@/lib/utils/countries";
+import { getCountryByCode } from "@louez/utils/countries";
 import { ONBOARDING_FALLBACK_COUNTRY } from "@/lib/utils/util.browser-country-detection";
 import { detectCountryFromRequestHeaders } from "@/lib/utils/util.request-country-detection";
 
@@ -67,6 +68,8 @@ export default async function OnboardingStorePage({
       editingStoreId={isCreatingNewStore ? null : (currentStore?.id ?? null)}
       initialCountry={initialCountry}
       shouldDetectBrowserCountry={!savedCountry && !requestCountry}
+      accountEmail={session.user.email}
+      mcpEndpoint={getMcpEndpoint()}
     />
   );
 }

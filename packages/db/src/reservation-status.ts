@@ -4,7 +4,6 @@ import { nanoid } from "nanoid";
 import {
   canTransitionReservationStatus,
   consumeReservationStock,
-  getAllowedReservationStatusTransitions,
   restoreReservationStock,
 } from "./consumable-stock";
 import { markReservation } from "./billing-queue";
@@ -36,6 +35,8 @@ export const RESERVATION_ACTORS = [
   "system",
   "ai_chat",
   "mcp",
+  /** A script or an integration, through the OpenAPI endpoint. */
+  "api",
   "marketplace",
 ] as const;
 export type ReservationActor = (typeof RESERVATION_ACTORS)[number];
@@ -93,15 +94,6 @@ export type ChangeReservationStatusResult =
     }
   | { changed: false; from: null; reason: "not_found" }
   | { changed: false; from: ReservationStatus; reason: ReservationStatusRefusal };
-
-/** What the assistant and MCP tools answer when a change is refused. */
-export function invalidReservationTransitionMessage(
-  from: ReservationStatus,
-  to: ReservationStatus,
-): string {
-  const allowed = getAllowedReservationStatusTransitions(from);
-  return `Invalid transition: ${from} → ${to}. Allowed: ${allowed.length > 0 ? allowed.join(", ") : "none"}`;
-}
 
 /** The locked reservation, as the plan reads it. */
 export interface LockedReservation {
@@ -306,6 +298,8 @@ export async function changeReservationStatus(
     .set({
       status: plan.update.status,
       updatedAt: plan.update.updatedAt,
+      // The last change of its schedule: the inbox dates late pickups and returns with it.
+      scheduleChangedAt: plan.update.updatedAt,
       billableAt: plan.update.billableAt,
       withdrawnAt: plan.update.withdrawnAt,
       pickedUpAt: plan.update.pickedUpAt,

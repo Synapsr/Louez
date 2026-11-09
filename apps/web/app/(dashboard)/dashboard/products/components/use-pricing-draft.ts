@@ -17,6 +17,7 @@ import {
   buildChartTicks,
 } from "@/lib/utils/util.pricing-chart";
 import type { PriceDurationValue } from "@/components/ui/price-duration-input";
+import { remainingListSlots } from "@/components/dashboard/util.product-list-limits";
 
 import type { ProductFormComponentApi, ProductFormValues, RateTierInput } from "../types";
 
@@ -119,6 +120,8 @@ export function usePricingMath({
   const basePrice = toNumber(baseRate.price);
   const basePeriodMinutes = priceDurationToMinutes(baseRate.duration, baseRate.unit);
   const hasBaseRate = basePrice > 0 && basePeriodMinutes > 0;
+  // The API holds a product to PRODUCT_LIST_LIMITS.rateTiers: past it, adding stops.
+  const canAddTier = remainingListSlots("rateTiers", tiers.length) > 0;
 
   const setTiers = useCallback(
     (next: RateTierInput[]) => applyTiers(sortTiers(next)),
@@ -191,7 +194,7 @@ export function usePricingMath({
    */
   const addTier = useCallback(
     (atMinutes?: number) => {
-      if (!hasBaseRate) return;
+      if (!hasBaseRate || !canAddTier) return;
       const last = tiers.at(-1);
 
       let duration: number;
@@ -249,7 +252,17 @@ export function usePricingMath({
 
       setTiers([...tiers, { price, duration, unit, discountPercent }]);
     },
-    [baseRate, basePeriodMinutes, basePrice, hasBaseRate, isProrated, setTiers, tiers, validRates],
+    [
+      baseRate,
+      basePeriodMinutes,
+      basePrice,
+      canAddTier,
+      hasBaseRate,
+      isProrated,
+      setTiers,
+      tiers,
+      validRates,
+    ],
   );
 
   const removeTier = useCallback(
@@ -302,6 +315,7 @@ export function usePricingMath({
     hasBaseRate,
     tiers,
     setTiers,
+    canAddTier,
     addTier,
     removeTier,
     updateTier,

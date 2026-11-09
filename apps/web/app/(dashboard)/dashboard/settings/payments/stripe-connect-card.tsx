@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { RefreshCw } from "lucide-react";
 
@@ -35,12 +36,10 @@ import {
   WarningIcon,
 } from "@louez/ui/icons";
 
-import {
-  startStripeOnboarding,
-  syncStripeStatus,
-  getStripeDashboardUrl,
-  disconnectStripe,
-} from "./actions";
+import { apiErrorKey } from "@/lib/orpc/errors";
+import { stripeFinancesQueries } from "@/lib/queries/stripe-finances.queries";
+
+import { startStripeOnboarding, getStripeDashboardUrl, disconnectStripe } from "./actions";
 
 interface StripeConnectCardProps {
   stripeAccountId: string | null;
@@ -58,7 +57,16 @@ export function StripeConnectCard({
   const router = useRouter();
 
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const syncMutation = useMutation({
+    ...stripeFinancesQueries.syncStatus(),
+    onSuccess: () => {
+      toastManager.add({ title: t("synced"), type: "success" });
+      router.refresh();
+    },
+    onError: (error) => {
+      toastManager.add({ title: tErrors(apiErrorKey(error) ?? "generic"), type: "error" });
+    },
+  });
   const [isOpeningDashboard, setIsOpeningDashboard] = useState(false);
 
   const isConnected = !!stripeAccountId;
@@ -80,22 +88,7 @@ export function StripeConnectCard({
     }
   };
 
-  const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-      const result = await syncStripeStatus();
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error.replace("errors.", "")), type: "error" });
-      } else {
-        toastManager.add({ title: t("synced"), type: "success" });
-        router.refresh();
-      }
-    } catch {
-      toastManager.add({ title: tErrors("generic"), type: "error" });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+  const handleSync = () => syncMutation.mutate({});
 
   const handleOpenDashboard = async () => {
     setIsOpeningDashboard(true);
@@ -179,7 +172,7 @@ export function StripeConnectCard({
                 {t("openDashboard")}
               </Button>
 
-              <Button variant="outline" onClick={handleSync} isPending={isSyncing}>
+              <Button variant="outline" onClick={handleSync} isPending={syncMutation.isPending}>
                 <RefreshCw data-slot="icon" />
                 {t("sync")}
               </Button>
@@ -224,7 +217,7 @@ export function StripeConnectCard({
                 {t("completeSetup")}
               </Button>
 
-              <Button variant="outline" onClick={handleSync} isPending={isSyncing}>
+              <Button variant="outline" onClick={handleSync} isPending={syncMutation.isPending}>
                 <RefreshCw data-slot="icon" />
                 {t("sync")}
               </Button>

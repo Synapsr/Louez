@@ -41,7 +41,7 @@ import type {
 } from "@/lib/storefront/storefront.types";
 import { getStorefrontPathPrefix } from "@/lib/util.storefront-host";
 import { findBlockingRequiredAccessories } from "@/lib/utils/cart-required-accessories";
-import { getMaxRentalMinutes, getMinRentalMinutes } from "@/lib/utils/rental-duration";
+import { getMaxRentalMinutes, getMinRentalMinutes } from "@louez/utils";
 import { getCurrentDowntimeUnitIds } from "@/lib/utils/unit-current-downtime";
 import {
   deriveAttributeValues,

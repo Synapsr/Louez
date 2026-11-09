@@ -114,6 +114,11 @@ export interface CustomerNotificationReservation {
   taxRate?: number | null;
   subtotalExclTax?: number | null;
   taxAmount?: number | null;
+  /**
+   * The reservation's language, when the caller froze it with the message
+   * (an outbox row); otherwise it is read from the reservation.
+   */
+  locale?: string | null;
 }
 
 export interface CustomerNotificationContext {
@@ -209,11 +214,19 @@ export async function dispatchCustomerNotification(
     return result;
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(eq(reservations.id, ctx.reservation.id), eq(reservations.storeId, ctx.store.id)),
-    columns: { locale: true },
-  });
-  const locale = resolveReservationEmailLocale(reservation?.locale, ctx.store.settings?.country);
+  const reservationLocale =
+    ctx.reservation.locale !== undefined
+      ? ctx.reservation.locale
+      : (
+          await db.query.reservations.findFirst({
+            where: and(
+              eq(reservations.id, ctx.reservation.id),
+              eq(reservations.storeId, ctx.store.id),
+            ),
+            columns: { locale: true },
+          })
+        )?.locale;
+  const locale = resolveReservationEmailLocale(reservationLocale, ctx.store.settings?.country);
 
   const customerPreferences = isCustomerReminder(eventType)
     ? await getCustomerReminderPreferences(ctx.store.id, ctx.customer.id)
@@ -246,7 +259,12 @@ export async function dispatchCustomerNotification(
       result.sms.error = "SMS limit reached";
     } else {
       try {
-        await sendCustomerSms(eventType, ctx, locale, customTemplate);
+        const sent: unknown = await sendCustomerSms(eventType, ctx, locale, customTemplate);
+        // The SMS senders answer a failure instead of throwing it.
+        if (sent && typeof sent === "object" && "success" in sent && sent.success === false) {
+          const error = "error" in sent && typeof sent.error === "string" ? sent.error : "";
+          throw new Error(error || "The SMS was not sent.");
+        }
         result.sms.sent = true;
       } catch (error) {
         result.sms.error = error instanceof Error ? error.message : "Unknown error";
@@ -258,6 +276,52 @@ export async function dispatchCustomerNotification(
   }
 
   return result;
+}
+
+/**
+ * One channel of a customer notification, for an outbox row whose channel the
+ * write already chose (packages/api platform/effects.ts). Unlike
+ * `dispatchCustomerNotification`, it throws when the message did not go out,
+ * so the row is retried, and answers `skipped` when it cannot go out at all
+ * (no address, the store's SMS quota spent). `beforeSend` runs right before
+ * the provider is called.
+ */
+export async function sendCustomerNotificationChannel(
+  eventType: CustomerNotificationEventType,
+  ctx: CustomerNotificationContext,
+  channel: "email" | "sms",
+  beforeSend: () => Promise<void>,
+): Promise<{ skipped: string } | undefined> {
+  const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
+  const settings = ctx.store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+  const locale = resolveReservationEmailLocale(
+    ctx.reservation.locale ?? null,
+    ctx.store.settings?.country,
+  );
+  const customTemplate = settings.templates?.[eventType];
+
+  if (channel === "email") {
+    if (!ctx.customer.email) return { skipped: "the customer has no email" };
+    const mergedContent = mergeTemplateWithLegacy(
+      eventType,
+      customTemplate,
+      ctx.store.emailSettings,
+    );
+    await beforeSend();
+    await sendCustomerEmail(eventType, ctx, locale, mergedContent);
+    return undefined;
+  }
+
+  if (!ctx.customer.phone) return { skipped: "the customer has no phone" };
+  const quota = await getSmsQuotaStatus(ctx.store.id);
+  if (!quota.allowed) return { skipped: "the store's SMS limit is reached" };
+  await beforeSend();
+  const result: unknown = await sendCustomerSms(eventType, ctx, locale, customTemplate);
+  if (result && typeof result === "object" && "success" in result && result.success === false) {
+    const error = "error" in result && typeof result.error === "string" ? result.error : "";
+    throw new Error(error || "The SMS was not sent.");
+  }
+  return undefined;
 }
 
 /**

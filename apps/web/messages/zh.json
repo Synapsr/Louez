@@ -1550,7 +1550,8 @@
             "basePricing": "基本定价",
             "title": "价格模拟",
             "subtitle": "按租赁期限收取的总价"
-          }
+          },
+          "limitReached": "每个商品最多 {max} 个价格档。"
         },
         "unitTracking": {
           "toggle": "跟踪各个单位",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "新价值...",
           "noVariants": "无变体",
           "variantsCount": "{count,plural,one{# 变体} other{# 变体}}",
-          "unitImages": "单位照片"
+          "unitImages": "单位照片",
+          "limitReached": "每个商品最多 {max} 个单位。删除一个后才能再添加。"
         },
         "previewTitle": "预览",
         "previewDescription": "以下是您的产品在目录中的显示方式",
@@ -4254,6 +4256,7 @@
         "countryTimezone": "时区",
         "currency": "货币",
         "currencyDescription": "用于显示价格和向客户计费的货币",
+        "currencyLegacy": "{code}（已不再提供）",
         "locale": "后备语言",
         "localeDescription": "当访问者的浏览器要求商店不提供任何内容时使用的语言，以及 Google 为您的商店编制索引时使用的语言。访问者总是首先看到他们的浏览器语言。",
         "localeAuto": "平台语言（法语）",
@@ -4583,6 +4586,10 @@
             "payment_failed": {
               "label": "付款失败",
               "description": "当付款失败时"
+            },
+            "payment_disputed": {
+              "label": "付款争议",
+              "description": "当客户向其银行就付款提出争议时"
             }
           },
           "reminder": {
@@ -4841,6 +4848,8 @@
         "noKeys": "还没有 API 密钥。创建一个以开始使用。",
         "keyRevoked": "API 密钥已撤销。",
         "lastUsed": "上次使用",
+        "confirmSensitive": "敏感操作前需确认",
+        "confirmSensitiveSaved": "设置已保存",
         "endpointsTitle": "端点",
         "endpointsDescription": "使用这些端点连接到您的商店数据。",
         "mcpServerTitle": "MCP 服务器（HTTP）",
@@ -6822,6 +6831,7 @@
       "disclaimer": "人工智能助手可能会犯错误。检查重要信息。",
       "newConversation": "新对话",
       "openFullPage": "打开整页",
+      "opensInNewTab": "在新标签页中打开",
       "history": {
         "title": "历史",
         "empty": "还没有对话",
@@ -8474,9 +8484,7 @@
         "confirm": "取消请求",
         "cancelled": "请求已取消",
         "done": "您取消了此请求。",
-        "paymentDescription": "商店将收到通知。如果您已经支付或提供了押金，请联系商店要求退款或免责。此操作不会自动退款。",
-        "adminSubject": "请求 #{number} 已被客户取消",
-        "adminBody": "{name} 在您确认之前取消了预订请求#{number}。您可以在仪表板中查看其历史记录。"
+        "paymentDescription": "商店将收到通知。如果您已经支付或提供了押金，请联系商店要求退款或免责。此操作不会自动退款。"
       },
       "customerFields": {
         "title": "附加信息",
@@ -9188,6 +9196,7 @@
     "unauthenticated": "未经过验证",
     "invalidData": "无效数据",
     "slugTaken": "该地址已被使用",
+    "storeNotReady": "您的店铺缺少国家或货币：请在上线前填写店铺信息。",
     "storeNotFound": "未找到商店",
     "productNotFound": "未找到产品",
     "categoryNotFound": "未找到类别",
@@ -9234,7 +9243,6 @@
     "updateCustomerError": "更新客户时出错",
     "deleteCustomerError": "删除客户时出错",
     "updateNotesError": "更新笔记时出错",
-    "updateSettingsError": "更新设置时出错",
     "createReservationError": "创建预订时出错",
     "businessHoursViolation": "所选时间不在商店营业时间",
     "returnAddressInvalid": "返回地址坐标无效",
@@ -9346,6 +9354,9 @@
     "tulipProductTypeDisabled": "该商店未启用此郁金香产品类别。",
     "unitAlreadyRetired": "该单位已经退役",
     "unitNotRetired": "该单位尚未退役",
+    "variantLimitReached": "此店铺的规格数量已达上限（100 个）。",
+    "variantValueLimitReached": "此规格的选项值数量已达上限（200 个）。",
+    "downtimeCloseExtends": "此停用已在更早的时间结束。如需延长，请修改其日期。",
     "advisorValidationRequired": "这家商店需要在预订前与顾问进行简短的核实",
     "conversationNotFound": "找不到对话",
     "featureNotAvailable": "您的计划不提供此功能",
@@ -9384,7 +9395,11 @@
     "reservationDetailsLocked": "租赁已开始或已结束，这些信息无法再修改。",
     "customerNotAuthenticated": "请登录您的客户账户以继续。",
     "profileFieldRequired": "请填写“{field}”。",
-    "profileFieldInvalid": "“{field}”无效。"
+    "profileFieldInvalid": "“{field}”无效。",
+    "agentConnectionNotFound": "此已连接的智能体已不存在。",
+    "oauthRequestInvalid": "此连接请求已失效。请在您的智能体中重新发起。",
+    "stripeRequiredForPaymentMode": "在线支付模式需要已连接的 Stripe 账户。请在“设置 > 付款”中连接 Stripe。",
+    "locationLimitReached": "每家店铺最多可设置 50 个取货点。请停用一个或重新使用已有的取货点。"
   },
   "welcome": {
     "greeting": "欢迎来到Louez.io",
@@ -9478,6 +9493,227 @@
     "backToDashboard": "返回仪表板",
     "nav": {
       "finance": "金融"
+    }
+  },
+  "agentConnections": {
+    "presetsTitle": "权限",
+    "presets": {
+      "read": {
+        "label": "只读",
+        "description": "智能体可以查看您的预订、产品、客户和数据，但不做任何修改。"
+      },
+      "write": {
+        "label": "读取和修改",
+        "description": "智能体还可以在您的角色范围内创建和修改。统计数据仍为只读。"
+      }
+    },
+    "storesTitle": "店铺",
+    "storesAll": "我的所有店铺，包括以后的店铺",
+    "storesAllHint": "您以后创建或加入的店铺也会包含在内。",
+    "storesNone": "请至少选择一个店铺。",
+    "roles": {
+      "owner": "所有者",
+      "member": "成员"
+    },
+    "confirm": {
+      "label": "敏感操作前请求确认",
+      "description": "在付款、退款、删除或给客户发消息之前，智能体会先收到预览，并且必须确认。它会被要求先把预览给您看，并征求您的同意。"
+    },
+    "bundlesTitle": "显示的工具",
+    "bundlesHint": "智能体会看到这些工具组。您以后可以添加更多。",
+    "bundlesNone": "请至少选择一个工具组。",
+    "recommended": "推荐",
+    "bundles": {
+      "daily": {
+        "label": "日常运营",
+        "description": "预订、日历、客户、付款和数据。"
+      },
+      "catalog": {
+        "label": "目录",
+        "description": "产品、分类和库存。"
+      },
+      "settings": {
+        "label": "设置",
+        "description": "店铺设置和在线商店。"
+      },
+      "integrations": {
+        "label": "集成",
+        "description": "与 Louez 连接的服务。"
+      },
+      "team": {
+        "label": "团队",
+        "description": "团队成员。"
+      },
+      "billing": {
+        "label": "订阅",
+        "description": "Louez 订阅和发票。"
+      }
+    },
+    "verified": "已验证",
+    "unverified": "名称未验证",
+    "unknownClient": "一个应用",
+    "consent": {
+      "metaTitle": "连接智能体",
+      "title": "将 {client} 连接到 Louez",
+      "description": "{client} 将可以在您选择的店铺中代表您操作，受以下限制以及您角色的限制。",
+      "accept": "允许",
+      "refuse": "拒绝",
+      "invalidTitle": "请求已过期",
+      "invalidDescription": "此连接请求已失效。请在您的智能体中重新发起连接。",
+      "noStoreTitle": "还没有店铺",
+      "noStoreDescription": "如果您授予“读取和修改”权限，{client} 可以替您创建店铺。店铺在您上线之前保持离线。此访问权限也适用于您之后创建的店铺。",
+      "redirectNotice": "您同意后，访问权限将发送到 {host}。",
+      "footer": "您可以随时在 设置、集成、MCP 中修改或撤销此访问权限。",
+      "loopbackWarning": "访问权限将发送到这台电脑上的本地地址：其上运行的任何程序都可以冒充此应用。仅当您刚刚亲自发起连接时才允许。"
+    },
+    "list": {
+      "title": "已连接的智能体",
+      "description": "您授权在店铺中操作的助手。",
+      "empty": "没有已连接的智能体",
+      "emptyDescription": "在 Claude 或 ChatGPT 中将 Louez 添加为连接器：您将在这里选择它可以做什么。",
+      "allStores": "我的所有店铺",
+      "connectedOn": "连接于 {date}",
+      "lastAction": "最后操作于 {date}",
+      "noAction": "暂无操作",
+      "edit": "修改",
+      "revoke": "断开连接",
+      "saved": "设置已保存",
+      "revoked": "智能体已断开",
+      "editTitle": "{client} 的访问权限",
+      "editDescription": "更改将从它的下一次操作开始生效。",
+      "save": "保存",
+      "cancel": "取消",
+      "revokeTitle": "断开 {client}？",
+      "revokeDescription": "智能体会立即失去访问权限。若要重新连接，需要再次授权。",
+      "revokeConfirm": "断开连接"
+    },
+    "guide": {
+      "title": "连接你的 AI 助手",
+      "description": "你的助手可以管理店铺：商品、预订、设置。它能做什么，由你决定。",
+      "addTo": "添加到 {name}",
+      "chooseAssistant": "你使用哪个助手？",
+      "changeAssistant": "选择其他助手",
+      "addressLabel": "连接地址",
+      "copy": "复制",
+      "copied": "已复制",
+      "whatHappens": "接下来，Louez 会请你登录，然后选择助手可以做什么。",
+      "oauthUnavailable": "助手需要安全地址（HTTPS）才能连接，而这个 Louez 没有。开发者仍可用 API 密钥连接。",
+      "assistants": {
+        "claude": {
+          "step1": "点击“添加到 Claude”：Louez 已经填好。",
+          "step2": "点击“继续”，然后点击“添加”。",
+          "step3": "Claude 提示时登录 Louez。",
+          "note": "在 Claude Team 或 Enterprise 账号中，只有所有者可以添加。"
+        },
+        "chatgpt": {
+          "step1": "打开 <link>ChatGPT 插件</link>，然后点 + →“添加自定义 MCP 服务器”。",
+          "step2": "命名为 Louez，并将地址粘贴到“服务器 URL”中。",
+          "step3": "接受警告，点击“作为插件创建”，然后登录 Louez。",
+          "note": "适用于 ChatGPT Business、Enterprise 或 Edu 的网页版。在团队工作区中，请让管理员添加。ChatGPT Pro 中助手只能查看。"
+        },
+        "grok": {
+          "step1": "打开 <link>Grok 连接器</link>，然后点“新建连接器”→“自定义”。",
+          "step2": "粘贴地址。",
+          "step3": "登录 Louez 并确认。",
+          "note": "所有 Grok 账号都可使用。在企业中，需先由管理员添加。"
+        },
+        "mistral": {
+          "step1": "在 <link>Vibe</link> 的 Work 模式下打开“Connectors”，然后点“+ Add Connector”→“Custom MCP Connector”。",
+          "step2": "命名为 Louez 并粘贴地址。",
+          "step3": "点击“连接”，然后登录 Louez。",
+          "note": "原名 Le Chat。在团队账号中，由管理员添加。"
+        }
+      },
+      "developers": {
+        "toggle": "开发者选项",
+        "server": "这是 Louez 的 MCP 服务器地址（Streamable HTTP）。助手通过 OAuth 连接：每个人登录 Louez 即可，无需复制密钥。",
+        "serverWithoutOAuth": "这是 Louez 的 MCP 服务器地址（Streamable HTTP）。没有 HTTPS，此实例不提供 OAuth：请使用 API 密钥。",
+        "apiKeyTitle": "脚本、n8n 和不支持 OAuth 的客户端",
+        "apiKeyDescription": "创建 API 密钥，并在 Authorization: Bearer 请求头中发送。",
+        "apiKeyLink": "管理 API 密钥",
+        "editorsTitle": "代码编辑器"
+      }
+    },
+    "assistantCard": {
+      "title": "让你的 AI 助手帮你设置店铺。",
+      "info": "Claude、ChatGPT、Grok 或 Mistral Vibe 可以替你添加商品、设置价格并设置店铺。它的权限以及哪些操作需要你确认，都由你决定。",
+      "infoLabel": "了解更多",
+      "action": "连接",
+      "dismiss": "隐藏"
+    },
+    "declaredBy": "名称由 {origin} 声明",
+    "declaredByItself": "名称由应用自行声明（动态注册）"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "切换商店",
+    "title": "切换商店？",
+    "description": "此链接将打开商店“{target}”。您当前在“{current}”。",
+    "open": "在 {target} 中打开",
+    "stay": "留在 {current}"
+  },
+  "handoff": {
+    "metaTitle": "在 Louez 中继续",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "连接 Stripe",
+        "description": "您的 AI 代理请您将“{store}”连接到 Stripe，以便接受在线付款。Stripe 会要求您提供身份信息和银行信息。",
+        "continue": "继续前往 Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "打开您的 Stripe 控制台",
+        "description": "您的 AI 代理请您打开“{store}”的 Stripe 控制台。",
+        "continue": "打开 Stripe"
+      },
+      "billing_card_setup": {
+        "title": "添加您的账单卡",
+        "description": "您的 AI 代理请您添加 Louez 用于收取“{store}”费用的银行卡。您将在 Stripe 的安全页面上输入卡信息。",
+        "continue": "继续前往 Stripe"
+      }
+    },
+    "retry": "Stripe 没有响应。请稍后再试。",
+    "refused": {
+      "invalid": {
+        "title": "此链接已失效",
+        "description": "链接不完整，或已被更新的链接取代。请向您的 AI 代理索取新链接。"
+      },
+      "expired": {
+        "title": "此链接已过期",
+        "description": "请向您的 AI 代理索取新链接。"
+      },
+      "finished": {
+        "title": "此步骤已经结束",
+        "description": "这里已无需任何操作。您可以返回您的 AI 代理。"
+      },
+      "other_user": {
+        "title": "此链接属于另一个账户",
+        "description": "您当前登录的账户不是您的 AI 代理所服务的账户。请使用该账户登录，然后重新打开链接。"
+      },
+      "not_allowed": {
+        "title": "您无法为此商店执行此操作",
+        "description": "您在此商店中的角色不允许执行此步骤。请联系商店所有者。"
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "已完成",
+        "description": "您可以关闭此页面并返回您的 AI 代理：它会看到此步骤已完成。"
+      },
+      "opened": {
+        "title": "尚未完成",
+        "description": "此步骤未在 Stripe 上完成。请重新打开链接完成它，或返回您的 AI 代理。"
+      },
+      "confirming": {
+        "title": "即将完成",
+        "description": "Stripe 尚未确认此卡。您可以返回您的 AI 代理：Stripe 确认后，它就会看到这张卡。"
+      },
+      "expired": {
+        "title": "此链接已过期",
+        "description": "请返回您的 AI 代理：它可以给您一个新链接。"
+      },
+      "failed": {
+        "title": "此步骤失败",
+        "description": "请返回您的 AI 代理：它可以给您一个新链接。"
+      }
     }
   }
 }

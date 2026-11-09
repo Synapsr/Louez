@@ -21,6 +21,7 @@ import {
 } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { loadHomePage } from "@/lib/storefront/home.queries";
+import { sanitizeRichTextHtml } from "@/lib/util.rich-text";
 import { resolveStoreContactChannels } from "@/lib/storefront/util.store-contact";
 import { buildOpeningHoursSpecification } from "@/lib/utils/util.opening-hours";
 import { resolveStoreHeroPresentation } from "@/lib/utils/util.store-hero";
@@ -98,8 +99,8 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
 
       <StoreHero
         name={store.name}
-        tagline={tagline}
-        description={description}
+        tagline={tagline ? sanitizeRichTextHtml(tagline) : tagline}
+        description={sanitizeRichTextHtml(description) || null}
         backgroundImages={heroImages}
         shape={hero.shape}
         align={hero.align}

@@ -8,7 +8,7 @@ import { memoryAdapter } from "better-auth/adapters/memory";
 import { createAuthMiddleware } from "better-auth/api";
 import { z } from "zod";
 
-import { createPasskeyOptions, passkeyAfter, passkeyBefore } from "./passkey";
+import { createPasskeyOptions, passkeyBefore } from "./passkey";
 
 const ORIGIN = "https://app.example.com";
 
@@ -55,9 +55,6 @@ const fixture = async () => {
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         await passkeyBefore(ctx);
-      }),
-      after: createAuthMiddleware(async (ctx) => {
-        if (ctx.path.startsWith("/passkey/")) return passkeyAfter(ctx);
       }),
     },
   });

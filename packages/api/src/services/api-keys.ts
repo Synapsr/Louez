@@ -127,6 +127,7 @@ export async function listApiKeys(params: {
       name: apiKeys.name,
       keyPrefix: apiKeys.keyPrefix,
       permissions: apiKeys.permissions,
+      confirmSensitive: apiKeys.confirmSensitive,
       lastUsedAt: apiKeys.lastUsedAt,
       expiresAt: apiKeys.expiresAt,
       createdAt: apiKeys.createdAt,
@@ -160,6 +161,29 @@ export async function revokeApiKey(params: {
   }
 }
 
+/** Whether the key's sensitive operations wait for a confirmation. */
+export async function setApiKeyConfirmation(params: {
+  db: Database
+  storeId: string
+  keyId: string
+  confirmSensitive: boolean
+}) {
+  const result = await params.db
+    .update(apiKeys)
+    .set({ confirmSensitive: params.confirmSensitive })
+    .where(
+      and(
+        eq(apiKeys.id, params.keyId),
+        eq(apiKeys.storeId, params.storeId),
+        isNull(apiKeys.revokedAt)
+      )
+    )
+
+  if (result[0].affectedRows === 0) {
+    throw new ApiServiceError('NOT_FOUND', 'errors.apiKeyNotFound')
+  }
+}
+
 /**
  * Validate an API key and return the associated store context.
  * Updates lastUsedAt on successful validation (non-blocking).
@@ -172,6 +196,8 @@ export async function validateApiKey(params: {
   userId: string
   permissions: ApiKeyPermissions
   apiKeyId: string
+  name: string
+  confirmSensitive: boolean
 } | null> {
   const keyHash = await hashApiKey(params.rawKey)
 
@@ -181,6 +207,8 @@ export async function validateApiKey(params: {
       storeId: apiKeys.storeId,
       userId: apiKeys.userId,
       permissions: apiKeys.permissions,
+      name: apiKeys.name,
+      confirmSensitive: apiKeys.confirmSensitive,
       expiresAt: apiKeys.expiresAt,
       revokedAt: apiKeys.revokedAt,
     })
@@ -205,5 +233,7 @@ export async function validateApiKey(params: {
     userId: row.userId,
     permissions: row.permissions,
     apiKeyId: row.id,
+    name: row.name,
+    confirmSensitive: row.confirmSensitive,
   }
 }

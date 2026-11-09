@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { describe, test } from "node:test";
 
 import {
-  beforeTaxRateBps,
   insuranceShare,
   mulDivHalfUp,
   reservationTotalsMinor,
@@ -244,16 +243,5 @@ describe("reservationTotalsMinor", () => {
       },
     });
     assert.deepEqual(totals, { currency: "JPY", totalInclTaxMinor: 12000, insuranceMinor: 0 });
-  });
-});
-
-describe("beforeTaxRateBps", () => {
-  test("is the default rate of a store that prices excluding tax, and null otherwise", () => {
-    const tax = { enabled: true, defaultRate: 5.5, displayMode: "exclusive" as const };
-    assert.equal(beforeTaxRateBps(tax), 550);
-    assert.equal(beforeTaxRateBps({ ...tax, taxLabel: "VAT", taxNumber: "FR1" }), 550);
-    assert.equal(beforeTaxRateBps({ ...tax, displayMode: "inclusive" }), null);
-    assert.equal(beforeTaxRateBps({ ...tax, enabled: false }), null);
-    assert.equal(beforeTaxRateBps(undefined), null);
   });
 });

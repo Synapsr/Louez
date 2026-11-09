@@ -4,7 +4,7 @@
  * completed `rental` payment. Deposits, holds and refunds never count.
  */
 
-import { isStripeRefundRow } from "@louez/utils";
+import { getSettledPaymentAmount, isStripeRefundRow } from "@louez/utils";
 
 export interface PaymentLike {
   id?: string;
@@ -20,11 +20,6 @@ export interface PaymentLike {
 }
 
 export type ReservationPaymentStatus = "paid" | "processing" | "unpaid";
-
-const toAmount = (value: string | number): number => {
-  const amount = typeof value === "number" ? value : Number.parseFloat(value);
-  return Number.isFinite(amount) ? amount : 0;
-};
 
 // One in-memory definition of a Stripe refund row, shared with the cash ledger.
 export { isStripeRefundRow };
@@ -51,26 +46,6 @@ export const getReservationPaymentStatus = (
   if (isRentalPaid(payments)) return "paid";
   if (hasRentalPaymentInProgress(payments)) return "processing";
   return "unpaid";
-};
-
-/**
- * Completed money of one type, refunds of that type subtracted. A refund is
- * a row pointing at the row it gives back (`refundOfPaymentId`), so its own
- * `type` is not what it refunds. A Stripe refund row counts for nothing: the
- * webhook already brought the charge it refunds down to its net amount.
- */
-export const getSettledPaymentAmount = (payments: readonly PaymentLike[], type: string): number => {
-  const byId = new Map(payments.flatMap((payment) => (payment.id ? [[payment.id, payment]] : [])));
-  return payments.reduce((sum, payment) => {
-    if (payment.status !== "completed") return sum;
-    if (isStripeRefundRow(payment)) return sum;
-    const amount = toAmount(payment.amount);
-    if (payment.refundOfPaymentId) {
-      const original = byId.get(payment.refundOfPaymentId);
-      return original?.type === type ? sum - amount : sum;
-    }
-    return payment.type === type ? sum + amount : sum;
-  }, 0);
 };
 
 /** What the customer paid toward the rental itself: deposits never count. */

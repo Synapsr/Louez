@@ -12,6 +12,7 @@ import {
   reservations,
   stores,
   type Transaction,
+  retryOnceOnDeadlock,
 } from "@louez/db";
 import { readFeeMetadata } from "@/lib/billing-sync/fee-metadata";
 import { reservationTotalsMinor } from "@/lib/billing-sync/money";
@@ -25,9 +26,8 @@ import { tryGenerateInvoiceForPayment } from "@/lib/invoicing/service";
 import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
 import { sendReservationModifiedEmail } from "@/lib/email/send";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
-import { retryOnceOnDeadlock } from "@/lib/db/retry-once-on-deadlock";
 import { log } from "@/lib/evlog";
-import { resolveDateChangeRequests } from "./date-change-request.server";
+import { resolveDateChangeRequests } from "@louez/api/services/date-change-requests";
 import { getExtensionAttempt, type ExtensionAttempt } from "./extension.types";
 import {
   cents,
@@ -76,7 +76,7 @@ const applyExtension = async (
   const endDate = new Date(attempt.requestedEndMs);
   await tx
     .update(reservations)
-    .set({ ...totals, endDate, updatedAt: new Date() })
+    .set({ ...totals, endDate, updatedAt: new Date(), scheduleChangedAt: new Date() })
     .where(and(eq(reservations.id, reservation.id), eq(reservations.storeId, reservation.storeId)));
   await resolveDateChangeRequests(
     tx,

@@ -51,6 +51,8 @@ interface ProductsTableProps {
   products: Product[]
   currency?: string
   readOnly?: boolean
+  /** The member may delete products: otherwise the delete action is hidden. */
+  canDelete?: boolean
   onOpenProduct?: (id: string) => void
   getProductHref?: (id: string) => string
 }
@@ -61,7 +63,7 @@ const STATUS_VARIANTS = {
   archived: 'expired',
 } as const
 
-export const ProductsTable = ({ products, currency = 'EUR', readOnly = false, onOpenProduct, getProductHref }: ProductsTableProps) => {
+export const ProductsTable = ({ products, currency = 'EUR', readOnly = false, canDelete = true, onOpenProduct, getProductHref }: ProductsTableProps) => {
   const t = useTranslations('dashboard.products')
   const tForm = useTranslations('dashboard.products.form')
   const tCommon = useTranslations('common')
@@ -239,14 +241,18 @@ export const ProductsTable = ({ products, currency = 'EUR', readOnly = false, on
                             {t('archive')}
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => requestDelete(product)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {tCommon('delete')}
-                        </DropdownMenuItem>
+                        {canDelete && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => requestDelete(product)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              {tCommon('delete')}
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

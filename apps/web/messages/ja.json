@@ -1550,7 +1550,8 @@
             "basePricing": "基本料金",
             "title": "価格シミュレーション",
             "subtitle": "レンタル期間ごとに請求される合計料金"
-          }
+          },
+          "limitReached": "1つの商品に設定できる料金は最大{max}件です。"
         },
         "unitTracking": {
           "toggle": "個々のユニットを追跡する",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "新しい価値観…",
           "noVariants": "バリエーションなし",
           "variantsCount": "{count,plural,one{# 異形} other{# バリエーション}}",
-          "unitImages": "ユニット写真"
+          "unitImages": "ユニット写真",
+          "limitReached": "1つの商品に登録できるユニットは最大{max}件です。追加するには1件削除してください。"
         },
         "previewTitle": "プレビュー",
         "previewDescription": "あなたの商品がカタログにどのように表示されるか",
@@ -4254,6 +4256,7 @@
         "countryTimezone": "タイムゾーン",
         "currency": "通貨",
         "currencyDescription": "価格の表示と顧客への請求に使用される通貨",
+        "currencyLegacy": "{code}（現在は提供されていません）",
         "locale": "フォールバック言語",
         "localeDescription": "訪問者のブラウザがストアで提供されていないものを要求するときに使用される言語、および Google がストアのインデックスを作成する言語。訪問者は常にブラウザの言語を最初に目にします。",
         "localeAuto": "プラットフォーム言語 (フランス語)",
@@ -4583,6 +4586,10 @@
             "payment_failed": {
               "label": "支払いに失敗しました",
               "description": "支払いが失敗した場合"
+            },
+            "payment_disputed": {
+              "label": "支払いの異議申し立て",
+              "description": "お客様がカード会社に支払いの異議を申し立てた場合"
             }
           },
           "reminder": {
@@ -4841,6 +4848,8 @@
         "noKeys": "API キーはまだありません。まずは作成してください。",
         "keyRevoked": "API キーが取り消されました。",
         "lastUsed": "最後に使用した",
+        "confirmSensitive": "重要な操作の前に確認する",
+        "confirmSensitiveSaved": "設定を保存しました",
         "endpointsTitle": "エンドポイント",
         "endpointsDescription": "これらのエンドポイントを使用してストア データに接続します。",
         "mcpServerTitle": "MCP サーバー (HTTP)",
@@ -6822,6 +6831,7 @@
       "disclaimer": "AI アシスタントは間違いを犯す可能性があります。重要な情報を確認してください。",
       "newConversation": "新しい会話",
       "openFullPage": "全ページを開く",
+      "opensInNewTab": "新しいタブで開きます",
       "history": {
         "title": "歴史",
         "empty": "まだ会話はありません",
@@ -8474,9 +8484,7 @@
         "confirm": "リクエストのキャンセル",
         "cancelled": "リクエストがキャンセルされました",
         "done": "このリクエストをキャンセルしました。",
-        "paymentDescription": "店舗に通知されます。すでに支払いまたはデポジットを提供した場合は、返金またはリリースについてストアにお問い合わせください。このアクションでは、自動返金は行われません。",
-        "adminSubject": "リクエスト #{number} が顧客によってキャンセルされました",
-        "adminBody": "{name} は確認前に予約リクエスト #{number} をキャンセルしました。ダッシュボードでその履歴を確認できます。"
+        "paymentDescription": "店舗に通知されます。すでに支払いまたはデポジットを提供した場合は、返金またはリリースについてストアにお問い合わせください。このアクションでは、自動返金は行われません。"
       },
       "customerFields": {
         "title": "追加情報",
@@ -9188,6 +9196,7 @@
     "unauthenticated": "認証されていません",
     "invalidData": "無効なデータ",
     "slugTaken": "このアドレスはすでに使用されています",
+    "storeNotReady": "ストアの国または通貨が設定されていません。公開する前にストア情報を入力してください。",
     "storeNotFound": "ストアが見つかりません",
     "productNotFound": "製品が見つかりません",
     "categoryNotFound": "カテゴリが見つかりません",
@@ -9234,7 +9243,6 @@
     "updateCustomerError": "顧客の更新エラー",
     "deleteCustomerError": "顧客の削除エラー",
     "updateNotesError": "ノートの更新中にエラーが発生しました",
-    "updateSettingsError": "設定更新エラー",
     "createReservationError": "予約作成エラー",
     "businessHoursViolation": "選択された時間は店舗の営業時間外です",
     "returnAddressInvalid": "無効な戻り先アドレス座標",
@@ -9346,6 +9354,9 @@
     "tulipProductTypeDisabled": "このチューリップ製品カテゴリはこのストアでは有効になっていません。",
     "unitAlreadyRetired": "このユニットはすでに退役しています",
     "unitNotRetired": "このユニットは退役していません",
+    "variantLimitReached": "このストアのバリエーション数は上限（100）に達しています。",
+    "variantValueLimitReached": "このバリエーションの値の数は上限（200）に達しています。",
+    "downtimeCloseExtends": "この利用停止はすでにそれより早く終了します。延長するには日付を変更してください。",
     "advisorValidationRequired": "この店舗では、予約する前にアドバイザーに簡単な確認をする必要があります",
     "conversationNotFound": "会話が見つかりません",
     "featureNotAvailable": "この機能はご利用のプランでは利用できません",
@@ -9384,7 +9395,11 @@
     "reservationDetailsLocked": "レンタルが開始または終了したため、この情報は変更できません。",
     "customerNotAuthenticated": "続行するにはお客様アカウントにログインしてください。",
     "profileFieldRequired": "「{field}」を入力してください。",
-    "profileFieldInvalid": "「{field}」が正しくありません。"
+    "profileFieldInvalid": "「{field}」が正しくありません。",
+    "agentConnectionNotFound": "この接続済みのエージェントは存在しません。",
+    "oauthRequestInvalid": "この接続リクエストは無効になりました。エージェントからやり直してください。",
+    "stripeRequiredForPaymentMode": "オンライン決済モードには Stripe アカウントの接続が必要です。設定 > 支払いで Stripe を接続してください。",
+    "locationLimitReached": "1 つのストアに設定できる受け取り場所は最大 50 件です。いずれかを無効にするか、再利用してください。"
   },
   "welcome": {
     "greeting": "Louez.ioへようこそ",
@@ -9478,6 +9493,227 @@
     "backToDashboard": "ダッシュボードに戻る",
     "nav": {
       "finance": "金融"
+    }
+  },
+  "agentConnections": {
+    "presetsTitle": "権限",
+    "presets": {
+      "read": {
+        "label": "閲覧のみ",
+        "description": "エージェントは予約、商品、顧客、数値を閲覧するだけで、何も変更しません。"
+      },
+      "write": {
+        "label": "閲覧と編集",
+        "description": "エージェントはあなたの役割の範囲内で作成や変更もできます。統計は閲覧のみのままです。"
+      }
+    },
+    "storesTitle": "ストア",
+    "storesAll": "すべてのストア（今後のストアを含む）",
+    "storesAllHint": "今後作成または参加するストアも含まれます。",
+    "storesNone": "ストアを1つ以上選択してください。",
+    "roles": {
+      "owner": "オーナー",
+      "member": "メンバー"
+    },
+    "confirm": {
+      "label": "重要な操作の前に確認を求める",
+      "description": "支払い、返金、削除、顧客へのメッセージの前に、エージェントはまずプレビューを受け取り、確認する必要があります。エージェントには、そのプレビューをあなたに見せて事前に確認を取るよう指示しています。"
+    },
+    "bundlesTitle": "表示するツール",
+    "bundlesHint": "エージェントにはこれらのツールセットが表示されます。後から追加できます。",
+    "bundlesNone": "ツールセットを1つ以上選択してください。",
+    "recommended": "おすすめ",
+    "bundles": {
+      "daily": {
+        "label": "日々の業務",
+        "description": "予約、カレンダー、顧客、支払い、数値。"
+      },
+      "catalog": {
+        "label": "カタログ",
+        "description": "商品、カテゴリ、在庫。"
+      },
+      "settings": {
+        "label": "設定",
+        "description": "ストアの設定とオンラインストア。"
+      },
+      "integrations": {
+        "label": "連携",
+        "description": "Louez に接続されたサービス。"
+      },
+      "team": {
+        "label": "チーム",
+        "description": "チームメンバー。"
+      },
+      "billing": {
+        "label": "サブスクリプション",
+        "description": "Louez のサブスクリプションと請求書。"
+      }
+    },
+    "verified": "確認済み",
+    "unverified": "名前は未確認",
+    "unknownClient": "アプリ",
+    "consent": {
+      "metaTitle": "エージェントを接続",
+      "title": "{client} を Louez に接続",
+      "description": "{client} は、選択したストアで、以下の範囲とあなたの役割の範囲内であなたの代わりに操作できます。",
+      "accept": "許可",
+      "refuse": "拒否",
+      "invalidTitle": "リクエストの期限切れ",
+      "invalidDescription": "この接続リクエストは無効になりました。エージェントから接続をやり直してください。",
+      "noStoreTitle": "まだストアがありません",
+      "noStoreDescription": "「閲覧と編集」の権限を与えると、{client} があなたの代わりにストアを作成できます。ストアは公開するまでオフラインのままです。このアクセスは、今後作成するストアにも適用されます。",
+      "redirectNotice": "許可すると、アクセス権は {host} に送られます。",
+      "footer": "このアクセスは、設定、統合、MCP からいつでも変更または取り消せます。",
+      "loopbackWarning": "アクセス権はこのコンピューター上のローカルアドレスに送られます。そこで動作するどのプログラムもこのアプリになりすませます。ご自身で接続を開始した直後の場合のみ許可してください。"
+    },
+    "list": {
+      "title": "接続済みのエージェント",
+      "description": "ストアでの操作を許可したアシスタントです。",
+      "empty": "接続済みのエージェントはありません",
+      "emptyDescription": "Claude または ChatGPT で Louez をコネクタとして追加すると、ここで許可する内容を選べます。",
+      "allStores": "すべてのストア",
+      "connectedOn": "{date} に接続",
+      "lastAction": "最後の操作 {date}",
+      "noAction": "まだ操作はありません",
+      "edit": "編集",
+      "revoke": "接続を解除",
+      "saved": "設定を保存しました",
+      "revoked": "エージェントの接続を解除しました",
+      "editTitle": "{client} のアクセス",
+      "editDescription": "変更は次の操作から適用されます。",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "revokeTitle": "{client} の接続を解除しますか？",
+      "revokeDescription": "エージェントはすぐにアクセスを失います。再接続するには、もう一度許可が必要です。",
+      "revokeConfirm": "接続を解除"
+    },
+    "guide": {
+      "title": "AI アシスタントを接続",
+      "description": "アシスタントが商品、予約、設定などストアの管理を行えるようになります。何を許可するかはあなたが決めます。",
+      "addTo": "{name} に追加",
+      "chooseAssistant": "どのアシスタントを使っていますか？",
+      "changeAssistant": "別のアシスタントを選ぶ",
+      "addressLabel": "接続アドレス",
+      "copy": "コピー",
+      "copied": "コピーしました",
+      "whatHappens": "このあと Louez へのログインを求められ、アシスタントに許可する操作を選びます。",
+      "oauthUnavailable": "アシスタントの接続には安全なアドレス（HTTPS）が必要ですが、この Louez にはありません。開発者なら API キーで接続できます。",
+      "assistants": {
+        "claude": {
+          "step1": "「Claude に追加」をクリックします。Louez はすでに入力されています。",
+          "step2": "「続行」をクリックし、「追加」をクリックします。",
+          "step3": "Claude に求められたら Louez にログインします。",
+          "note": "Claude の Team または Enterprise アカウントでは、追加できるのはオーナーだけです。"
+        },
+        "chatgpt": {
+          "step1": "<link>ChatGPT のプラグイン</link>を開き、＋ →「カスタム MCP サーバーを追加」を選びます。",
+          "step2": "名前を Louez にして、「サーバー URL」にアドレスを貼り付けます。",
+          "step3": "警告を承認し、「プラグインとして作成」をクリックして、Louez にログインします。",
+          "note": "ChatGPT Business、Enterprise、Edu のウェブサイトで利用できます。チームのワークスペースでは、管理者に追加を依頼してください。ChatGPT Pro では閲覧のみです。"
+        },
+        "grok": {
+          "step1": "<link>Grok のコネクタ</link>を開き、「新しいコネクタ」→「カスタム」を選びます。",
+          "step2": "アドレスを貼り付けます。",
+          "step3": "Louez にログインして承認します。",
+          "note": "すべての Grok アカウントで利用できます。企業ではまず管理者が追加します。"
+        },
+        "mistral": {
+          "step1": "<link>Vibe</link> の Work モードで「Connectors」を開き、「+ Add Connector」→「Custom MCP Connector」を選びます。",
+          "step2": "名前を Louez にして、アドレスを貼り付けます。",
+          "step3": "「接続」をクリックし、Louez にログインします。",
+          "note": "旧 Le Chat です。チームアカウントでは管理者が追加します。"
+        }
+      },
+      "developers": {
+        "toggle": "開発者向け",
+        "server": "このアドレスは Louez の MCP サーバー（Streamable HTTP）です。アシスタントは OAuth で接続し、各自が Louez にログインするため、キーをコピーする必要はありません。",
+        "serverWithoutOAuth": "このアドレスは Louez の MCP サーバー（Streamable HTTP）です。HTTPS がないため、このインスタンスでは OAuth を使えません。API キーを使ってください。",
+        "apiKeyTitle": "スクリプト、n8n、OAuth 非対応のクライアント",
+        "apiKeyDescription": "API キーを作成し、Authorization: Bearer ヘッダーで送信します。",
+        "apiKeyLink": "API キーを管理",
+        "editorsTitle": "コードエディタ"
+      }
+    },
+    "assistantCard": {
+      "title": "AIアシスタントにストアの設定を任せましょう。",
+      "info": "Claude、ChatGPT、Grok、Mistral Vibe が商品の追加、料金の設定、ストアの設定を代わりに行います。権限と、あなたの確認が必要な操作はあなたが決めます。",
+      "infoLabel": "詳しく見る",
+      "action": "接続",
+      "dismiss": "非表示"
+    },
+    "declaredBy": "名前の申告元：{origin}",
+    "declaredByItself": "名前はアプリ自身による申告です（動的登録）"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "店舗を切り替える",
+    "title": "店舗を切り替えますか？",
+    "description": "このリンクは店舗「{target}」を開きます。現在は「{current}」を表示しています。",
+    "open": "{target}で開く",
+    "stay": "{current}のままにする"
+  },
+  "handoff": {
+    "metaTitle": "Louez で続行",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Stripe を接続",
+        "description": "AI エージェントが、オンライン決済を受け付けるために「{store}」を Stripe に接続するよう求めています。Stripe から本人確認情報と銀行口座情報の入力を求められます。",
+        "continue": "Stripe へ進む"
+      },
+      "stripe_dashboard": {
+        "title": "Stripe ダッシュボードを開く",
+        "description": "AI エージェントが、「{store}」の Stripe ダッシュボードを開くよう求めています。",
+        "continue": "Stripe を開く"
+      },
+      "billing_card_setup": {
+        "title": "請求用カードを追加",
+        "description": "AI エージェントが、Louez が「{store}」の手数料を請求するカードを追加するよう求めています。カード情報は Stripe の安全なページで入力します。",
+        "continue": "Stripe へ進む"
+      }
+    },
+    "retry": "Stripe から応答がありませんでした。しばらくしてからもう一度お試しください。",
+    "refused": {
+      "invalid": {
+        "title": "このリンクは使用できません",
+        "description": "リンクが不完全か、新しいリンクに置き換えられています。AI エージェントに新しいリンクを依頼してください。"
+      },
+      "expired": {
+        "title": "このリンクの有効期限が切れています",
+        "description": "AI エージェントに新しいリンクを依頼してください。"
+      },
+      "finished": {
+        "title": "この手順はすでに終了しています",
+        "description": "ここで行うことはありません。AI エージェントに戻ってください。"
+      },
+      "other_user": {
+        "title": "このリンクは別のアカウント用です",
+        "description": "AI エージェントが作業しているアカウントとは別のアカウントでログインしています。そのアカウントでログインしてから、もう一度リンクを開いてください。"
+      },
+      "not_allowed": {
+        "title": "このストアではこの操作を行えません",
+        "description": "このストアでのあなたの役割では、この手順を行えません。ストアのオーナーに依頼してください。"
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "完了しました",
+        "description": "このページを閉じて AI エージェントに戻ってください。この手順が完了したことはエージェントに伝わります。"
+      },
+      "opened": {
+        "title": "まだ完了していません",
+        "description": "Stripe での手順が完了していません。リンクをもう一度開いて完了するか、AI エージェントに戻ってください。"
+      },
+      "confirming": {
+        "title": "もう少しで完了です",
+        "description": "Stripe はまだカードを確認していません。AI エージェントに戻ってかまいません。Stripe が確認すると、エージェントにカードが表示されます。"
+      },
+      "expired": {
+        "title": "このリンクの有効期限が切れています",
+        "description": "AI エージェントに戻ってください。新しいリンクを受け取れます。"
+      },
+      "failed": {
+        "title": "この手順は失敗しました",
+        "description": "AI エージェントに戻ってください。新しいリンクを受け取れます。"
+      }
     }
   }
 }

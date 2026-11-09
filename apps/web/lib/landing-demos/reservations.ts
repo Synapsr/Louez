@@ -1,5 +1,8 @@
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
-import type { Reservation as ListReservation } from "@/app/(dashboard)/dashboard/reservations/reservations-types";
+import type {
+  Reservation as ListReservation,
+  ReservationStatus,
+} from "@/app/(dashboard)/dashboard/reservations/reservations-types";
 import type {
   Product,
   Reservation as CalendarReservation,
@@ -46,7 +49,13 @@ type DemoSlot = {
   quantity: number;
   start: Date;
   end: Date;
-  status: ListReservation["status"];
+  status: ReservationStatus;
+};
+
+/** A demo row: always a status and a customer, as the dashboard shows them to its team. */
+type DemoReservation = ListReservation & {
+  status: ReservationStatus;
+  customer: NonNullable<ListReservation["customer"]>;
 };
 
 // A working week on the first products: a few units each, rented back to back with a day to
@@ -119,7 +128,7 @@ export function createDemoReservationPages(
       ),
     );
   }
-  const rows: ListReservation[] = slots.map(
+  const rows: DemoReservation[] = slots.map(
     ({ productIndex, quantity, start, end, status }, index) => {
       const product = DEMO_PRODUCTS[productIndex];
       const selectedBooking =

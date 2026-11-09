@@ -1,14 +1,8 @@
 import { after } from "next/server";
 
-import { and, eq } from "drizzle-orm";
-
-import { db, storeMembers, users } from "@louez/db";
 import type { stores } from "@louez/db";
 
-import { env } from "@/env";
 import { notifyNewReservation } from "@/lib/discord/platform-notifications";
-import { getLocaleFromCountry } from "@/lib/email/i18n";
-import { sendNewRequestLandlordEmail } from "@/lib/email/send";
 import { log } from "@/lib/evlog";
 import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
@@ -67,16 +61,6 @@ export const runAfterResponse = (task: () => Promise<void>): void => {
   } catch {
     void guarded();
   }
-};
-
-const findOwnerEmail = async (storeId: string): Promise<string | null> => {
-  const [owner] = await db
-    .select({ email: users.email })
-    .from(storeMembers)
-    .innerJoin(users, eq(storeMembers.userId, users.id))
-    .where(and(eq(storeMembers.storeId, storeId), eq(storeMembers.role, "owner")))
-    .limit(1);
-  return owner?.email ?? null;
 };
 
 /**
@@ -152,9 +136,9 @@ export const runPostCreationEffects = async ({
 };
 
 /**
- * "Request received" notifications: customer (email/SMS), landlord email and
- * admin channels. Only meaningful when the reservation IS a request the owner
- * must review, that is in request mode. In payment mode the webhook notifies on
+ * "Request received" notifications: customer (email/SMS) and the owner's
+ * channels (email, SMS, push, Discord). Only meaningful when the reservation
+ * IS a request the owner must review, that is in request mode. In payment mode the webhook notifies on
  * payment instead, so an abandoned Stripe session no longer emails anyone.
  */
 export const notifyRequestReceived = async ({
@@ -210,39 +194,8 @@ export const notifyRequestReceived = async ({
     log.error("reservation", `customer request notification failed: ${describeError(error)}`);
   });
 
-  // Landlord "new request" email, always in the store's language.
-  const landlordEmail = store.email || (await findOwnerEmail(store.id));
-  if (landlordEmail) {
-    sendNewRequestLandlordEmail({
-      to: landlordEmail,
-      store: {
-        id: store.id,
-        name: store.name,
-        logoUrl: store.logoUrl,
-        darkLogoUrl: store.darkLogoUrl,
-        email: store.email,
-        phone: store.phone,
-        address: store.address,
-        theme: store.theme,
-        settings: store.settings,
-      },
-      customer: {
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        email: customer.email,
-      },
-      reservation: {
-        ...reservationSummary,
-        customerNotes: reservation.customerNotes,
-      },
-      dashboardUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/reservations/${reservation.id}`,
-      locale: getLocaleFromCountry(store.settings?.country),
-    }).catch((error: unknown) => {
-      log.error("reservation", `landlord request email failed: ${describeError(error)}`);
-    });
-  }
-
   dispatchNotification("reservation_new", {
+    actor: "customer",
     store: {
       id: store.id,
       name: store.name,
@@ -252,7 +205,7 @@ export const notifyRequestReceived = async ({
       notificationSettings: store.notificationSettings,
       settings: store.settings,
     },
-    reservation: reservationSummary,
+    reservation: { ...reservationSummary, customerNotes: reservation.customerNotes },
     customer: {
       firstName: customer.firstName,
       lastName: customer.lastName,

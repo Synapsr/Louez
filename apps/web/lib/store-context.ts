@@ -1,15 +1,15 @@
 import { cookies } from 'next/headers'
+import { ACTIVE_STORE_COOKIE, activeStoreCookieOptions } from '@/lib/active-store-cookie'
 import { auth } from '@/lib/auth'
 import { db } from '@louez/db'
 import { stores, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
+import { isStandaloneMode } from '@/lib/deployment'
 import { isPlatformAdmin } from '@/lib/platform-admin'
 import type { AiAdvisorSettings, AiPhoneSettings, StoreSettings, StoreTheme, EmailSettings, ReviewBoosterSettings, NotificationSettings, CustomerNotificationSettings } from '@louez/types'
 import { hasPermission, type MemberRole, type Permission } from '@louez/utils'
 
 export { hasPermission, type MemberRole, type Permission }
-
-const ACTIVE_STORE_COOKIE = 'louez_active_store'
 
 export type StoreWithRole = {
   id: string
@@ -187,15 +187,80 @@ export async function setActiveStoreId(storeId: string): Promise<{ success: bool
   }
 
   const cookieStore = await cookies()
-  cookieStore.set(ACTIVE_STORE_COOKIE, storeId, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Keep using NODE_ENV as specified
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 365, // 1 year
-    path: '/',
-  })
+  cookieStore.set(ACTIVE_STORE_COOKIE, storeId, activeStoreCookieOptions)
 
   return { success: true }
+}
+
+/**
+ * Make a store the active one, with the store switcher's check: a signed-in
+ * user who may open the store (a member, or platform staff). Standalone
+ * instances host a single store, so they never switch. In a Server Function
+ * or a Route Handler only, as it sets the cookie.
+ */
+export async function switchActiveStore(
+  storeId: string
+): Promise<{ success: true } | { success: false; error: string }> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: 'errors.unauthenticated' }
+  }
+
+  if (isStandaloneMode()) {
+    return { success: false, error: 'errors.unauthorized' }
+  }
+
+  // setActiveStoreId validates access too (defense in depth); this is the
+  // explicit role check.
+  const role = await verifyStoreAccess(storeId)
+  if (!role) {
+    return { success: false, error: 'errors.unauthorized' }
+  }
+
+  const result = await setActiveStoreId(storeId)
+  if (!result.success) {
+    return { success: false, error: result.error || 'errors.unauthorized' }
+  }
+  return { success: true }
+}
+
+/** What a dashboard link naming a store leads to (see app/api/active-store). */
+export type StoreSwitchState =
+  | { kind: 'signed-out' }
+  /** The same store, one the user may not open, or an unknown id: nothing to ask. */
+  | { kind: 'stay' }
+  /** Another store of the user: they confirm before the dashboard changes store. */
+  | {
+      kind: 'confirm'
+      target: { id: string; name: string }
+      current: { id: string; name: string }
+    }
+
+/**
+ * Reads only: what a link naming `storeId` should do for the signed-in user.
+ * The stores are the ones the store switcher offers (a member's, or every
+ * store for platform staff), so `confirm` and `switchActiveStore` agree, and
+ * a store the user may not open looks the same as one that does not exist.
+ */
+export async function getStoreSwitchState(storeId: string): Promise<StoreSwitchState> {
+  const session = await auth()
+  if (!session?.user?.id) return { kind: 'signed-out' }
+  if (!storeId || isStandaloneMode()) return { kind: 'stay' }
+
+  const userStores = await getUserStores()
+  const target = userStores.find((store) => store.id === storeId)
+  if (!target) return { kind: 'stay' }
+
+  // The store the dashboard shows now, as getCurrentStore picks it.
+  const activeStoreId = await getActiveStoreId()
+  const current = userStores.find((store) => store.id === activeStoreId) ?? userStores[0]
+  if (!current || current.id === target.id) return { kind: 'stay' }
+
+  return {
+    kind: 'confirm',
+    target: { id: target.id, name: target.name },
+    current: { id: current.id, name: current.name },
+  }
 }
 
 /**

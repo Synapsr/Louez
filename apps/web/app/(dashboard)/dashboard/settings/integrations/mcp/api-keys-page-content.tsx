@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  Switch,
   toastManager,
 } from "@louez/ui";
 import type { ApiKeyPermissions } from "@louez/db/schema";
@@ -38,6 +39,7 @@ import { EyeIcon, KeyIcon, TerminalIcon, WarningIcon } from "@louez/ui/icons";
 import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { apiErrorKey } from "@/lib/orpc/errors";
 import { orpc } from "@/lib/orpc/react";
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -47,6 +49,7 @@ export type ApiKeyItem = {
   name: string;
   keyPrefix: string;
   permissions: ApiKeyPermissions;
+  confirmSensitive: boolean;
   lastUsedAt: Date | null;
   expiresAt: Date | null;
   createdAt: Date;
@@ -139,6 +142,7 @@ export function ApiKeysPageContent({
   readOnly?: boolean;
 } = {}) {
   const t = useTranslations("dashboard.settings.api");
+  const tErrors = useTranslations("errors");
   const format = useFormatter();
   const { NEXT_PUBLIC_APP_URL: appUrl } = usePublicEnv();
   // From the configured app URL, identical on the server and in the browser, unlike window.location.
@@ -151,6 +155,11 @@ export function ApiKeysPageContent({
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [showMcpConfig, setShowMcpConfig] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
+
+  const errorTitle = (error: unknown) => {
+    const key = apiErrorKey(error);
+    return key && tErrors.has(key) ? tErrors(key) : tErrors("generic");
+  };
 
   const keysQuery = useQuery({
     ...orpc.dashboard.apiKeys.list.queryOptions({ input: {} }),
@@ -168,7 +177,7 @@ export function ApiKeysPageContent({
       });
     },
     onError: (error: Error) => {
-      toastManager.add({ title: error.message, type: "error" });
+      toastManager.add({ title: errorTitle(error), type: "error" });
     },
   });
 
@@ -182,7 +191,20 @@ export function ApiKeysPageContent({
       });
     },
     onError: (error: Error) => {
-      toastManager.add({ title: error.message, type: "error" });
+      toastManager.add({ title: errorTitle(error), type: "error" });
+    },
+  });
+
+  const confirmationMutation = useMutation({
+    ...orpc.dashboard.apiKeys.updateConfirmation.mutationOptions(),
+    onSuccess: () => {
+      toastManager.add({ title: t("confirmSensitiveSaved"), type: "success" });
+      queryClient.invalidateQueries({
+        queryKey: orpc.dashboard.apiKeys.list.queryOptions({ input: {} }).queryKey,
+      });
+    },
+    onError: (error: Error) => {
+      toastManager.add({ title: errorTitle(error), type: "error" });
     },
   });
 
@@ -206,7 +228,8 @@ export function ApiKeysPageContent({
   return (
     <div className="space-y-8">
       {/* ── API Keys ──────────────────────────────────────────────────── */}
-      <div className="space-y-4">
+      {/* The connect guide's developer section links here. */}
+      <div id="api-keys" className="scroll-mt-8 space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">{t("keysTitle")}</h3>
@@ -238,6 +261,19 @@ export function ApiKeysPageContent({
                       <p className="text-muted-foreground font-mono text-xs">
                         {apiKey.keyPrefix}...
                       </p>
+                      <Label className="text-muted-foreground mt-1.5 flex items-center gap-2 text-xs font-normal">
+                        <Switch
+                          checked={apiKey.confirmSensitive}
+                          disabled={readOnly || confirmationMutation.isPending}
+                          onCheckedChange={(checked) =>
+                            confirmationMutation.mutate({
+                              keyId: apiKey.id,
+                              confirmSensitive: checked,
+                            })
+                          }
+                        />
+                        {t("confirmSensitive")}
+                      </Label>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

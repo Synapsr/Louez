@@ -152,6 +152,55 @@
     "viewRequest": "Lihat permintaan",
     "connectToManage": "Masuk ke dasbor Anda untuk menerima atau menolak permintaan ini."
   },
+  "paymentAdmin": {
+    "customer": "Pelanggan",
+    "email": "Email",
+    "period": "Periode",
+    "total": "Total reservasi",
+    "viewReservation": "Lihat reservasi",
+    "connectToManage": "Masuk ke dasbor Anda untuk mengelola reservasi ini.",
+    "received": {
+      "subject": "Pembayaran diterima untuk reservasi #{number}",
+      "title": "Pembayaran diterima",
+      "body": "Seorang pelanggan telah membayar reservasi #{number} di {storeName}.",
+      "amount": "Jumlah dibayar"
+    },
+    "failed": {
+      "subject": "Pembayaran gagal untuk reservasi #{number}",
+      "title": "Pembayaran gagal",
+      "body": "Pembayaran untuk reservasi #{number} di {storeName} tidak berhasil.",
+      "amount": "Jumlah"
+    },
+    "disputed": {
+      "subject": "Pembayaran untuk reservasi #{number} disengketakan",
+      "title": "Pembayaran disengketakan",
+      "body": "Pelanggan telah menyengketakan pembayaran untuk reservasi #{number} di {storeName} ke banknya. Tanggapi sengketa dari dasbor Stripe Anda sebelum batas waktu yang tertera.",
+      "amount": "Jumlah yang disengketakan"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "Pelanggan",
+    "email": "Email",
+    "period": "Periode",
+    "total": "Total reservasi",
+    "viewReservation": "Lihat reservasi",
+    "connectToManage": "Masuk ke dasbor Anda untuk mengelola reservasi ini.",
+    "confirmed": {
+      "subject": "Reservasi #{number} dikonfirmasi oleh pelanggan",
+      "title": "Dikonfirmasi oleh pelanggan",
+      "body": "Pelanggan telah mengonfirmasi reservasi #{number} di {storeName}."
+    },
+    "cancelled": {
+      "subject": "Permintaan #{number} dibatalkan oleh pelanggan",
+      "title": "Dibatalkan oleh pelanggan",
+      "body": "Pelanggan telah membatalkan reservasi #{number} di {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Penawaran #{number} ditolak oleh pelanggan",
+      "title": "Penawaran ditolak oleh pelanggan",
+      "body": "Pelanggan telah menolak penawaran #{number} di {storeName}."
+    }
+  },
   "supplierInvoiceReceived": {
     "subject": "Faktur pemasok baru",
     "title": "Faktur pemasok baru",

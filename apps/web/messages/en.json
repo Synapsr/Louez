@@ -1550,7 +1550,8 @@
             "basePricing": "Base pricing",
             "title": "Price simulation",
             "subtitle": "Total price charged by rental duration"
-          }
+          },
+          "limitReached": "A product holds at most {max} rates."
         },
         "unitTracking": {
           "toggle": "Track individual units",
@@ -1691,7 +1692,8 @@
           "addValuePlaceholder": "New value…",
           "noVariants": "No variants",
           "variantsCount": "{count, plural, one {# variant} other {# variants}}",
-          "unitImages": "Unit photos"
+          "unitImages": "Unit photos",
+          "limitReached": "A product holds at most {max} units. Remove one to add another."
         },
         "previewTitle": "Preview",
         "previewDescription": "Here's how your product will appear in the catalog",
@@ -4255,6 +4257,7 @@
         "countryTimezone": "Timezone",
         "currency": "Currency",
         "currencyDescription": "The currency used to display prices and bill your customers",
+        "currencyLegacy": "{code} (no longer offered)",
         "locale": "Fallback language",
         "localeDescription": "Language used when the visitor's browser asks for none the store offers, and the language Google indexes your store in. A visitor always sees their browser language first.",
         "localeAuto": "Platform language (French)",
@@ -4584,6 +4587,10 @@
             "payment_failed": {
               "label": "Payment failed",
               "description": "When a payment fails"
+            },
+            "payment_disputed": {
+              "label": "Payment disputed",
+              "description": "When a customer disputes a payment with their bank"
             }
           },
           "reminder": {
@@ -4842,6 +4849,8 @@
         "noKeys": "No API keys yet. Create one to get started.",
         "keyRevoked": "API key revoked.",
         "lastUsed": "Last used",
+        "confirmSensitive": "Confirm before sensitive actions",
+        "confirmSensitiveSaved": "Setting saved",
         "endpointsTitle": "Endpoints",
         "endpointsDescription": "Use these endpoints to connect to your store data.",
         "mcpServerTitle": "MCP Server (HTTP)",
@@ -6822,6 +6831,7 @@
       "disclaimer": "The AI assistant can make mistakes. Check important information.",
       "newConversation": "New conversation",
       "openFullPage": "Open full page",
+      "opensInNewTab": "opens in a new tab",
       "history": {
         "title": "History",
         "empty": "No conversations yet",
@@ -8474,9 +8484,7 @@
         "confirm": "Cancel request",
         "cancelled": "Request cancelled",
         "done": "You cancelled this request.",
-        "paymentDescription": "The store will be notified. If you have already paid or provided a deposit, contact the store for a refund or release. This action does not issue an automatic refund.",
-        "adminSubject": "Request #{number} cancelled by the customer",
-        "adminBody": "{name} cancelled booking request #{number} before your confirmation. You can view its history in your dashboard."
+        "paymentDescription": "The store will be notified. If you have already paid or provided a deposit, contact the store for a refund or release. This action does not issue an automatic refund."
       },
       "customerFields": {
         "title": "Additional information",
@@ -9188,6 +9196,7 @@
     "unauthenticated": "Not authenticated",
     "invalidData": "Invalid data",
     "slugTaken": "This address is already in use",
+    "storeNotReady": "Your store is missing its country or currency: fill in your store's details before going live.",
     "storeNotFound": "Store not found",
     "productNotFound": "Product not found",
     "categoryNotFound": "Category not found",
@@ -9234,7 +9243,6 @@
     "updateCustomerError": "Error updating customer",
     "deleteCustomerError": "Error deleting customer",
     "updateNotesError": "Error updating notes",
-    "updateSettingsError": "Error updating settings",
     "createReservationError": "Error creating reservation",
     "businessHoursViolation": "Selected times are outside the store's business hours",
     "returnAddressInvalid": "Invalid return address coordinates",
@@ -9346,6 +9354,9 @@
     "tulipProductTypeDisabled": "This Tulip product category is not enabled for this store.",
     "unitAlreadyRetired": "This unit is already retired",
     "unitNotRetired": "This unit is not retired",
+    "variantLimitReached": "This store already has the most variants it may hold (100).",
+    "variantValueLimitReached": "This variant already has the most values it may hold (200).",
+    "downtimeCloseExtends": "This downtime already ends earlier. To end it later, change its dates.",
     "advisorValidationRequired": "This store requires a short check with the advisor before booking",
     "conversationNotFound": "Conversation not found",
     "featureNotAvailable": "This feature is not available on your plan",
@@ -9384,7 +9395,11 @@
     "reservationDetailsLocked": "These details can no longer be changed: the rental has started or ended.",
     "customerNotAuthenticated": "Sign in to your customer account to continue.",
     "profileFieldRequired": "Please fill in “{field}”.",
-    "profileFieldInvalid": "“{field}” is not valid."
+    "profileFieldInvalid": "“{field}” is not valid.",
+    "agentConnectionNotFound": "This connected agent no longer exists.",
+    "oauthRequestInvalid": "This connection request is no longer valid. Start it again from your agent.",
+    "stripeRequiredForPaymentMode": "Online payment mode needs a connected Stripe account. Connect Stripe in Settings > Payments.",
+    "locationLimitReached": "A store can have 50 pickup points at most. Deactivate or reuse one instead."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",
@@ -9478,6 +9493,227 @@
     "backToDashboard": "Back to dashboard",
     "nav": {
       "finance": "Finance"
+    }
+  },
+  "agentConnections": {
+    "presetsTitle": "Rights",
+    "presets": {
+      "read": {
+        "label": "Read only",
+        "description": "The agent sees your reservations, products, customers and figures, and changes nothing."
+      },
+      "write": {
+        "label": "Read and edit",
+        "description": "The agent can also create and change things, within your role. Statistics stay read-only."
+      }
+    },
+    "storesTitle": "Stores",
+    "storesAll": "All my stores, including future ones",
+    "storesAllHint": "A store you create or join later will be included too.",
+    "storesNone": "Choose at least one store.",
+    "roles": {
+      "owner": "Owner",
+      "member": "Member"
+    },
+    "confirm": {
+      "label": "Ask for confirmation before sensitive actions",
+      "description": "Before a payment, refund, deletion or message to a customer, the agent first gets a preview and has to confirm. It is told to show you the preview and ask you first."
+    },
+    "bundlesTitle": "Tools shown",
+    "bundlesHint": "The agent sees these tool sets. You can add more later.",
+    "bundlesNone": "Choose at least one tool set.",
+    "recommended": "Recommended",
+    "bundles": {
+      "daily": {
+        "label": "Daily operations",
+        "description": "Reservations, calendar, customers, payments and figures."
+      },
+      "catalog": {
+        "label": "Catalog",
+        "description": "Products, categories and stock."
+      },
+      "settings": {
+        "label": "Settings",
+        "description": "Store settings and online store."
+      },
+      "integrations": {
+        "label": "Integrations",
+        "description": "Services connected to Louez."
+      },
+      "team": {
+        "label": "Team",
+        "description": "Team members."
+      },
+      "billing": {
+        "label": "Subscription",
+        "description": "Louez subscription and invoices."
+      }
+    },
+    "verified": "Verified",
+    "unverified": "Name not verified",
+    "unknownClient": "An app",
+    "consent": {
+      "metaTitle": "Connect an agent",
+      "title": "Connect {client} to Louez",
+      "description": "{client} will be able to act for you on the stores you choose, within the limits below and those of your role.",
+      "accept": "Allow",
+      "refuse": "Deny",
+      "invalidTitle": "Request expired",
+      "invalidDescription": "This connection request is no longer valid. Start the connection again from your agent.",
+      "noStoreTitle": "No store yet",
+      "noStoreDescription": "{client} can create your store for you if you give it “Read and edit” rights. The store stays offline until you launch it. This access also covers the stores you create later.",
+      "redirectNotice": "Once you allow it, access will be sent to {host}.",
+      "footer": "You can change or remove this access at any time in Settings, Integrations, MCP.",
+      "loopbackWarning": "Access will be sent to a local address on this computer: any program running on it can pose as this app. Only allow it if you just started the connection yourself."
+    },
+    "list": {
+      "title": "Connected agents",
+      "description": "The assistants you allowed to act on your stores.",
+      "empty": "No connected agent",
+      "emptyDescription": "Add Louez as a connector in Claude or ChatGPT: you will choose here what it may do.",
+      "allStores": "All my stores",
+      "connectedOn": "Connected on {date}",
+      "lastAction": "Last action on {date}",
+      "noAction": "No action yet",
+      "edit": "Edit",
+      "revoke": "Disconnect",
+      "saved": "Settings saved",
+      "revoked": "Agent disconnected",
+      "editTitle": "Access of {client}",
+      "editDescription": "Changes apply from its next action.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "revokeTitle": "Disconnect {client}?",
+      "revokeDescription": "The agent loses access right away. To connect it again, you will have to allow it again.",
+      "revokeConfirm": "Disconnect"
+    },
+    "guide": {
+      "title": "Connect your AI assistant",
+      "description": "Your assistant can run your store: products, bookings, settings. You choose what it is allowed to do.",
+      "addTo": "Add to {name}",
+      "chooseAssistant": "Which assistant do you use?",
+      "changeAssistant": "Choose another assistant",
+      "addressLabel": "Connection address",
+      "copy": "Copy",
+      "copied": "Copied",
+      "whatHappens": "Next, Louez will ask you to sign in, then to choose what the assistant can do.",
+      "oauthUnavailable": "Assistants need a secure (HTTPS) address to connect, and this Louez doesn't have one. A developer can still link it with an API key.",
+      "assistants": {
+        "claude": {
+          "step1": "Click “Add to Claude”: Louez is already filled in.",
+          "step2": "Click Continue, then Add.",
+          "step3": "Sign in to Louez when Claude asks you to.",
+          "note": "On a Claude Team or Enterprise account, only an owner can add it."
+        },
+        "chatgpt": {
+          "step1": "Open <link>ChatGPT's Plugins</link>, then + → Add custom MCP server.",
+          "step2": "Name it Louez and paste the address into Server URL.",
+          "step3": "Accept the warning, click Create as plugin, then sign in to Louez.",
+          "note": "With ChatGPT Business, Enterprise or Edu, on the website. In a team workspace, ask an admin to add it. With ChatGPT Pro, the assistant can only look things up."
+        },
+        "grok": {
+          "step1": "Open <link>Grok's connectors</link>, then New Connector → Custom.",
+          "step2": "Paste the address.",
+          "step3": "Sign in to Louez and confirm.",
+          "note": "For every Grok account. In a company, an admin adds it first."
+        },
+        "mistral": {
+          "step1": "In <link>Vibe</link>, in Work mode, open Connectors, then + Add Connector → Custom MCP Connector.",
+          "step2": "Name it Louez and paste the address.",
+          "step3": "Click Connect, then sign in to Louez.",
+          "note": "Formerly Le Chat. On a team account, an admin adds it."
+        }
+      },
+      "developers": {
+        "toggle": "For developers",
+        "server": "This is the address of Louez's MCP server (streamable HTTP). Assistants connect to it with OAuth: each person signs in to Louez, with no key to copy.",
+        "serverWithoutOAuth": "This is the address of Louez's MCP server (streamable HTTP). Without HTTPS, this instance has no OAuth: use an API key.",
+        "apiKeyTitle": "Scripts, n8n and clients without OAuth",
+        "apiKeyDescription": "Create an API key and send it in the Authorization: Bearer header.",
+        "apiKeyLink": "Manage API keys",
+        "editorsTitle": "Code editors"
+      }
+    },
+    "assistantCard": {
+      "title": "Let your AI assistant set up your store.",
+      "info": "Claude, ChatGPT, Grok or Mistral Vibe can add your products, set your prices and set up your store for you. You choose its rights and what it must check with you first.",
+      "infoLabel": "Learn more",
+      "action": "Connect",
+      "dismiss": "Hide"
+    },
+    "declaredBy": "Name declared by {origin}",
+    "declaredByItself": "Name declared by the app (registered dynamically)"
+  },
+  "activeStoreSwitch": {
+    "metaTitle": "Switch store",
+    "title": "Switch store?",
+    "description": "This link opens the store “{target}”. You are on “{current}”.",
+    "open": "Open in {target}",
+    "stay": "Stay on {current}"
+  },
+  "handoff": {
+    "metaTitle": "Continue in Louez",
+    "kinds": {
+      "stripe_connect_onboarding": {
+        "title": "Connect Stripe",
+        "description": "Your AI agent asked you to connect “{store}” to Stripe, so it can take online payments. Stripe will ask for your identity and your bank details.",
+        "continue": "Continue to Stripe"
+      },
+      "stripe_dashboard": {
+        "title": "Open your Stripe dashboard",
+        "description": "Your AI agent asked you to open the Stripe dashboard of “{store}”.",
+        "continue": "Open Stripe"
+      },
+      "billing_card_setup": {
+        "title": "Add your billing card",
+        "description": "Your AI agent asked you to add the card Louez charges its fees on for “{store}”. You will type it on Stripe’s secure page.",
+        "continue": "Continue to Stripe"
+      }
+    },
+    "retry": "Stripe did not answer. Try again in a moment.",
+    "refused": {
+      "invalid": {
+        "title": "This link no longer works",
+        "description": "It is incomplete, or a newer link replaced it. Ask your AI agent for a new one."
+      },
+      "expired": {
+        "title": "This link has expired",
+        "description": "Ask your AI agent for a new link."
+      },
+      "finished": {
+        "title": "This step is already over",
+        "description": "There is nothing left to do here. You can go back to your AI agent."
+      },
+      "other_user": {
+        "title": "This link is for another account",
+        "description": "You are signed in with an account other than the one your AI agent works for. Sign in with that account, then open the link again."
+      },
+      "not_allowed": {
+        "title": "You cannot do this for this store",
+        "description": "Your role in this store does not allow this step. Ask the store’s owner."
+      }
+    },
+    "done": {
+      "completed": {
+        "title": "Done",
+        "description": "You can close this page and go back to your AI agent: it will see that this step is done."
+      },
+      "opened": {
+        "title": "Not finished yet",
+        "description": "The step was not finished on Stripe. Open the link again to finish it, or go back to your AI agent."
+      },
+      "confirming": {
+        "title": "Almost done",
+        "description": "Stripe has not confirmed the card yet. You can go back to your AI agent: it will see the card once Stripe confirms it."
+      },
+      "expired": {
+        "title": "This link has expired",
+        "description": "Go back to your AI agent: it can give you a new link."
+      },
+      "failed": {
+        "title": "This step failed",
+        "description": "Go back to your AI agent: it can give you a new link."
+      }
     }
   }
 }

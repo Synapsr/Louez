@@ -23,7 +23,7 @@ import {
   type CustomerProfileValuesPatch,
 } from "@louez/validations";
 
-import { failReservation, type ReservationFailure } from "./reservation.types";
+import { failReservation, type ReservationFailure } from "@louez/api/services/reservation-failure";
 
 /** What a checkout writes of the custom fields it asked, once validated. */
 export interface CheckoutCustomerFields {

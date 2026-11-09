@@ -7,6 +7,12 @@
 
 import { z } from "zod";
 
+/**
+ * The request header the dashboard's onboarding store step carries the affiliate code in
+ * (lib/orpc/client.ts), read by the new-store port's signup attribution.
+ */
+export const AFFILIATE_REFERRAL_HEADER = "x-klibon-referral";
+
 /** The shape Klibon gives its referral codes. */
 const affiliateReferralSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 

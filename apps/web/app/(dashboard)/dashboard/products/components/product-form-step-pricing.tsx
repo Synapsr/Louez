@@ -8,6 +8,7 @@
 
 import { useCallback, useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 
@@ -25,10 +26,10 @@ import {
 import type { TaxSettings } from "@louez/types";
 
 import { useFormatLocale } from "@/hooks/use-format-locale";
+import { orpc } from "@/lib/orpc/react";
 
 import { useChoiceStep } from "../hooks/use-choice-step";
 import { useProductKindLabels } from "../hooks/use-product-kind-labels";
-import { updateSeasonalPricing } from "../seasonal-actions";
 import type {
   AvailableAccessory,
   ProductFormComponentApi,
@@ -46,6 +47,7 @@ import { ProductFormSectionStock } from "./product-form-section-stock";
 import { SeasonalPeriodFormDialog } from "./seasonal-period-form-dialog";
 import { usePricingDraft } from "./use-pricing-draft";
 import { toStoredTiers, useSeasonalPricingDraft } from "./use-seasonal-pricing-draft";
+import { seasonalPricingErrorMessage } from "./util.seasonal-pricing-error";
 
 interface PricingStepProps {
   form: ProductFormComponentApi;
@@ -74,6 +76,8 @@ interface PricingStepProps {
   onSelectSeasonalPeriod?: (id: string | null) => void;
   onSeasonalPricingsChange?: (pricings: SeasonalPricingData[]) => void;
   isLoadingSeasonalPricings?: boolean;
+  /** The member may delete seasons. */
+  canDeleteSeasons?: boolean;
   /** Preview rates locally, without seasonal mutations or metadata dialogs. */
   readOnly?: boolean;
   autoFocus?: boolean;
@@ -137,6 +141,7 @@ function PricingCard(props: PricingStepProps) {
     onSelectSeasonalPeriod,
     onSeasonalPricingsChange,
     isLoadingSeasonalPricings = false,
+    canDeleteSeasons = true,
     showValidationErrors = false,
     duplicateRateTierIndexes,
     onRateTiersEdit,
@@ -146,6 +151,10 @@ function PricingCard(props: PricingStepProps) {
   } = props;
 
   const t = useTranslations("dashboard.products.form");
+  const tErrors = useTranslations("errors");
+  const { mutateAsync: updateSeasonalPricing } = useMutation(
+    orpc.dashboard.products.updateSeasonalPricing.mutationOptions(),
+  );
   const { dateFns: dateLocale } = useFormatLocale();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPeriod, setEditingPeriod] = useState<SeasonalPricingData | null>(null);
@@ -245,6 +254,7 @@ function PricingCard(props: PricingStepProps) {
                 <SeasonalActionsMenu
                   period={selectedPeriod}
                   disabled={isSaving}
+                  canDelete={canDeleteSeasons}
                   onBeforeDuplicate={seasonal.flush}
                   onEditMetadata={() => {
                     setEditingPeriod(selectedPeriod);
@@ -359,15 +369,13 @@ function PricingCard(props: PricingStepProps) {
               }),
             );
 
-            const result = await updateSeasonalPricing(id, {
-              name,
-              startDate,
-              endDate,
-              price,
-              rateTiers,
-            });
-            if (result && "error" in result) {
-              toastManager.add({ title: result.error, type: "error" });
+            try {
+              await updateSeasonalPricing({ id, name, startDate, endDate, price, rateTiers });
+            } catch (error) {
+              toastManager.add({
+                title: seasonalPricingErrorMessage(error, t, tErrors),
+                type: "error",
+              });
               return;
             }
 

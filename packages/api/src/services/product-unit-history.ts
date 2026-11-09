@@ -13,22 +13,7 @@ import {
   users,
 } from "@louez/db";
 
-export const PRODUCT_UNIT_EVENT_TYPES = [
-  "created",
-  "deleted",
-  "downtime_declared",
-  "downtime_updated",
-  "downtime_closed",
-  "downtime_deleted",
-  "retired",
-  "reinstated",
-  "assigned",
-  "unassigned",
-  "updated",
-] as const;
-
-export const PRODUCT_UNIT_DOWNTIME_REASONS = ["maintenance", "repair", "other"] as const;
-export const PRODUCT_UNIT_DOWNTIME_STATUSES = ["current", "upcoming", "past"] as const;
+import { PRODUCT_UNIT_DOWNTIME_STATUSES } from "../contracts/product-units";
 
 type ProductUnitDowntimeStatus = (typeof PRODUCT_UNIT_DOWNTIME_STATUSES)[number];
 

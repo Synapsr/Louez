@@ -143,6 +143,55 @@
     "viewRequest": "Vedi richiesta",
     "connectToManage": "Accedi alla tua dashboard per accettare o rifiutare questa richiesta."
   },
+  "paymentAdmin": {
+    "customer": "Cliente",
+    "email": "Email",
+    "period": "Periodo",
+    "total": "Totale della prenotazione",
+    "viewReservation": "Visualizza prenotazione",
+    "connectToManage": "Accedi alla tua dashboard per gestire questa prenotazione.",
+    "received": {
+      "subject": "Pagamento ricevuto per la prenotazione #{number}",
+      "title": "Pagamento ricevuto",
+      "body": "Un cliente ha pagato la prenotazione #{number} su {storeName}.",
+      "amount": "Importo pagato"
+    },
+    "failed": {
+      "subject": "Pagamento non riuscito per la prenotazione #{number}",
+      "title": "Pagamento non riuscito",
+      "body": "Un pagamento per la prenotazione #{number} su {storeName} non è andato a buon fine.",
+      "amount": "Importo"
+    },
+    "disputed": {
+      "subject": "Pagamento contestato per la prenotazione #{number}",
+      "title": "Pagamento contestato",
+      "body": "Il cliente ha contestato presso la sua banca un pagamento della prenotazione #{number} su {storeName}. Rispondi alla contestazione dalla dashboard di Stripe entro la scadenza indicata.",
+      "amount": "Importo contestato"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "Cliente",
+    "email": "Email",
+    "period": "Periodo",
+    "total": "Totale della prenotazione",
+    "viewReservation": "Visualizza prenotazione",
+    "connectToManage": "Accedi alla tua dashboard per gestire questa prenotazione.",
+    "confirmed": {
+      "subject": "Prenotazione #{number} confermata dal cliente",
+      "title": "Confermata dal cliente",
+      "body": "Il cliente ha confermato la prenotazione #{number} su {storeName}."
+    },
+    "cancelled": {
+      "subject": "Richiesta #{number} annullata dal cliente",
+      "title": "Annullata dal cliente",
+      "body": "Il cliente ha annullato la prenotazione #{number} su {storeName}."
+    },
+    "quote_declined": {
+      "subject": "Preventivo #{number} rifiutato dal cliente",
+      "title": "Preventivo rifiutato dal cliente",
+      "body": "Il cliente ha rifiutato il preventivo #{number} su {storeName}."
+    }
+  },
   "contactMessage": {
     "subject": "Nuovo messaggio da {name} — {store}",
     "title": "Nuovo messaggio dal tuo negozio",

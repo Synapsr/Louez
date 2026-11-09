@@ -1,5 +1,5 @@
 import { DateChangeReview } from "@/components/reservations/date-change-review";
-import { getDateChangeRequests } from "@/lib/reservations/util.date-change-request";
+import { getDateChangeRequests } from "@louez/validations";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { hasPermission } from "@/lib/store-context";
@@ -16,14 +16,16 @@ import {
   reservationActivity,
   storeLegalProfiles,
 } from "@louez/db";
+import { ORPCError } from "@orpc/server";
 import { and, desc, eq, gt, inArray, isNull, ne, notInArray } from "drizzle-orm";
 import { redirect, notFound } from "next/navigation";
 
-import { getDashboardReservationById } from "@louez/api/services";
 import { listReservationItemDetails } from "@louez/api/services/customer-fields-online";
 import { DEFAULT_INSPECTION_SETTINGS } from "@louez/types";
 
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
+
+import { serverApi } from "@/lib/api/server-api";
 
 import { isSmsConfigured } from "@/lib/sms";
 import { getCurrentStore } from "@/lib/store-context";
@@ -47,19 +49,14 @@ export default async function ReservationDetailPage({ params }: ReservationDetai
 
   const { id } = await params;
 
-  let reservation: any;
-  try {
-    reservation = await getDashboardReservationById({
-      reservationId: id,
-      storeId: store.id,
-    });
-  } catch {
-    notFound();
-  }
-
-  if (!reservation) {
-    notFound();
-  }
+  const reservation = await (await serverApi()).reservations.get({ id }).catch((error: unknown) => {
+    // Another store's id, or one that is not an id at all.
+    if (error instanceof ORPCError && (error.status === 404 || error.code === "BAD_REQUEST")) {
+      return null;
+    }
+    throw error;
+  });
+  if (!reservation) notFound();
 
   const currency = store.settings?.currency || "EUR";
   const storeTimezone = store.settings?.timezone;

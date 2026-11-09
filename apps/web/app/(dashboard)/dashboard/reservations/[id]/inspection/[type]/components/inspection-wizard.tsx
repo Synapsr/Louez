@@ -35,6 +35,7 @@ import { QuickConditionSelector, quickToFullCondition } from "./condition-select
 import { type CapturedPhoto, PhotoCapture } from "./photo-capture";
 import { RepairDowntimeSuggestionDialog } from "./repair-downtime-suggestion-dialog";
 import { SignaturePad } from "./signature-pad";
+import { reservationLinesByUnit } from "./util.repair-downtime";
 import { InspectionView } from "./inspection-view";
 
 // ============================================================================
@@ -743,10 +744,7 @@ export function InspectionWizard({
   const isLastStep = currentStepIndex === activeSteps.length - 1;
   const isOnItemsStep = currentStep === "items";
   const isLastItem = currentItemIndex === items.length - 1;
-  const reservationItemIds = useMemo(
-    () => [...new Set(items.map((item) => item.reservationItemId))],
-    [items],
-  );
+  const reservationLinesOfUnit = useMemo(() => reservationLinesByUnit(items), [items]);
 
   // Determine if back button should be disabled
   // Only disabled on overview step (first step, first item is N/A)
@@ -910,7 +908,7 @@ export function InspectionWizard({
           open={repairDowntimeSuggestion !== null}
           units={repairDowntimeSuggestion?.units ?? []}
           reservationNumber={reservationNumber}
-          reservationItemIds={reservationItemIds}
+          reservationLinesOfUnit={reservationLinesOfUnit}
           onDone={finishInspectionFlow}
         />
       )}

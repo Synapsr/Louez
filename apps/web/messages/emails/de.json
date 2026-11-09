@@ -143,6 +143,55 @@
     "viewRequest": "Anfrage ansehen",
     "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Anfrage anzunehmen oder abzulehnen."
   },
+  "paymentAdmin": {
+    "customer": "Kunde",
+    "email": "E-Mail",
+    "period": "Zeitraum",
+    "total": "Gesamtbetrag der Reservierung",
+    "viewReservation": "Reservierung ansehen",
+    "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Reservierung zu verwalten.",
+    "received": {
+      "subject": "Zahlung für Reservierung #{number} erhalten",
+      "title": "Zahlung erhalten",
+      "body": "Ein Kunde hat die Reservierung #{number} bei {storeName} bezahlt.",
+      "amount": "Bezahlter Betrag"
+    },
+    "failed": {
+      "subject": "Zahlung für Reservierung #{number} fehlgeschlagen",
+      "title": "Zahlung fehlgeschlagen",
+      "body": "Eine Zahlung für die Reservierung #{number} bei {storeName} ist nicht durchgegangen.",
+      "amount": "Betrag"
+    },
+    "disputed": {
+      "subject": "Zahlung für Reservierung #{number} angefochten",
+      "title": "Zahlung angefochten",
+      "body": "Der Kunde hat bei seiner Bank eine Zahlung für die Reservierung #{number} bei {storeName} angefochten. Antworten Sie in Ihrem Stripe-Dashboard vor der dort angegebenen Frist.",
+      "amount": "Angefochtener Betrag"
+    }
+  },
+  "statusChangeAdmin": {
+    "customer": "Kunde",
+    "email": "E-Mail",
+    "period": "Zeitraum",
+    "total": "Gesamtbetrag der Reservierung",
+    "viewReservation": "Reservierung ansehen",
+    "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Reservierung zu verwalten.",
+    "confirmed": {
+      "subject": "Reservierung #{number} vom Kunden bestätigt",
+      "title": "Vom Kunden bestätigt",
+      "body": "Der Kunde hat die Reservierung #{number} bei {storeName} bestätigt."
+    },
+    "cancelled": {
+      "subject": "Anfrage #{number} vom Kunden storniert",
+      "title": "Vom Kunden storniert",
+      "body": "Der Kunde hat die Reservierung #{number} bei {storeName} storniert."
+    },
+    "quote_declined": {
+      "subject": "Angebot #{number} vom Kunden abgelehnt",
+      "title": "Angebot vom Kunden abgelehnt",
+      "body": "Der Kunde hat das Angebot #{number} bei {storeName} abgelehnt."
+    }
+  },
   "contactMessage": {
     "subject": "Neue Nachricht von {name} — {store}",
     "title": "Neue Nachricht aus Ihrem Shop",

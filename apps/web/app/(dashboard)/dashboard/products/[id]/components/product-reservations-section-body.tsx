@@ -23,13 +23,11 @@ import {
   useReservationActions,
 } from '@/app/(dashboard)/dashboard/reservations/reservations-actions';
 import { ReservationsCardView } from '@/app/(dashboard)/dashboard/reservations/reservations-card-view';
-import type {
-  Reservation,
-  ReservationStatus,
-} from '@/app/(dashboard)/dashboard/reservations/reservations-types';
+import type { Reservation } from '@/app/(dashboard)/dashboard/reservations/reservations-types';
+import type { StoreTargetStatus } from '@louez/api/contracts/reservations';
 import { EmptyState } from '@/components/ui/empty-state';
 
-import type { ProductTimelineData } from '../reservation-timeline-actions';
+import type { ProductTimelineData } from './reservations-timeline/types';
 
 import { ProductReservationsTimeline } from './reservations-timeline/product-reservations-timeline';
 
@@ -96,7 +94,7 @@ export const ProductReservationsSectionBody = ({
   const handleStatusChangeAndRefresh = async (
     e: React.MouseEvent,
     reservation: Reservation,
-    newStatus: ReservationStatus,
+    newStatus: StoreTargetStatus,
   ) => {
     await handleStatusChange(e, reservation, newStatus);
     router.refresh();
