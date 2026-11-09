@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 
+import { parseAffiliateReferral } from '@/lib/acquisition/klibon'
 import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { BILLING_SETTINGS_PATH } from '@/lib/billing/billing-routes'
 import { log } from '@/lib/evlog'
@@ -43,10 +44,14 @@ const PLAN_PAYMENT_ERRORS: Partial<Record<SubscriptionPlanRefusal, string>> = {
   no_payment_method: 'errors.planNoPaymentMethod',
 }
 
-/** The plan's Stripe Checkout for the store, with its trial and coupon. */
+/**
+ * The plan's Stripe Checkout for the store, with its trial and coupon, and the Klibon
+ * affiliate code the browser read (readAffiliateReferral) when it has Klibon's shape.
+ */
 function openPlanCheckout(
   store: CurrentStore,
   { planSlug, interval, currency }: z.infer<typeof planChangeSchema>,
+  affiliateReferral: string | null,
 ) {
   return createSubscriptionCheckoutSession({
     storeId: store.id,
@@ -57,6 +62,7 @@ function openPlanCheckout(
     stripeCouponId: store.stripeCouponId ?? undefined,
     successUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?success=true`,
     cancelUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?canceled=true`,
+    affiliateReferral: parseAffiliateReferral(affiliateReferral),
   })
 }
 
@@ -64,10 +70,12 @@ export async function createCheckoutSession({
   planSlug,
   interval,
   currency,
+  affiliateReferral = null,
 }: {
   planSlug: string
   interval: 'monthly' | 'yearly'
   currency: Currency
+  affiliateReferral?: string | null
 }) {
   const store = await getCurrentStore()
   if (!store) {
@@ -79,7 +87,7 @@ export async function createCheckoutSession({
   }
 
   try {
-    return await openPlanCheckout(store, { planSlug, interval, currency })
+    return await openPlanCheckout(store, { planSlug, interval, currency }, affiliateReferral)
   } catch (error) {
     // A live subscription changes plan in place (changeSubscriptionPlan).
     if (error instanceof SubscriptionPlanError) {
@@ -144,6 +152,7 @@ export async function previewPlanChange(
  */
 export async function changeSubscriptionPlan(
   input: z.infer<typeof planChangeSchema>,
+  affiliateReferral: string | null = null,
 ): Promise<{ success: true } | { url: string | null } | { error: string }> {
   const store = await getCurrentStore()
   if (!store) {
@@ -164,7 +173,7 @@ export async function changeSubscriptionPlan(
     const outcome = await changePlanInPlace(store.id, planSlug, interval, currency)
     revalidatePath('/dashboard/settings/subscription')
     if (outcome.kind === 'subscription_ended') {
-      return { url: (await openPlanCheckout(store, parsed.data)).url }
+      return { url: (await openPlanCheckout(store, parsed.data, affiliateReferral)).url }
     }
     return { success: true }
   } catch (error) {

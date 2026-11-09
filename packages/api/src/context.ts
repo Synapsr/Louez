@@ -431,6 +431,7 @@ export interface BaseContext {
           reservationUrl: string;
           logoUrl: string | null;
           showPaymentCta: boolean;
+          contractSigned: boolean;
         }
       | { error: string }
     >;

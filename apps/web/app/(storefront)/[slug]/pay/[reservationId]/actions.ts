@@ -1,10 +1,12 @@
 "use server";
 
+import { headers } from "next/headers";
 import { getLocale } from "next-intl/server";
 
 import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 
+import { acceptReservationContract } from "@louez/api/services";
 import { db, paymentRequests, reservations } from "@louez/db";
 import { validateStripePaymentAmount } from "@louez/utils";
 
@@ -33,12 +35,14 @@ export type PaymentRequestData =
       reservation: { id: string; number: string };
       paymentRequest: { id: string; amount: number; currency: string; description: string };
       customer: { firstName: string };
+      /** The customer has not accepted the rental terms yet: they do it before paying. */
+      requiresContractAcceptance: boolean;
     }
   | { ok: false; error: PaymentRequestError };
 
 export type InitiatePaymentResult =
   | { ok: true; url: string }
-  | { ok: false; error: PaymentRequestError }
+  | { ok: false; error: PaymentRequestError | "contract_not_accepted" }
   | { ok: false; error: "amount_too_small"; minimumAmount: number; currency: string };
 
 // The Stripe session lives 30 minutes; the token that logs the customer in on
@@ -55,7 +59,14 @@ const accessInputSchema = z.object({
 const initiateInputSchema = accessInputSchema.extend({
   token: z.string().trim().min(1).max(128),
   paymentRequestId: z.string().trim().min(1).max(64),
+  acceptContract: z.boolean().default(false),
 });
+
+/** Paying for the rental is when a customer who has not signed yet accepts the rental terms. */
+const requiresContractAcceptance = (
+  reservation: { signedAt: Date | null },
+  paymentRequest: { type: "rental" | "custom" },
+): boolean => reservation.signedAt === null && paymentRequest.type === "rental";
 
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -143,6 +154,7 @@ export const getPaymentRequestData = async (
       description: paymentRequest.description,
     },
     customer: { firstName: reservation.customer.firstName },
+    requiresContractAcceptance: requiresContractAcceptance(reservation, paymentRequest),
   };
 };
 
@@ -163,6 +175,19 @@ export const initiatePayment = async (
   const { store, reservation, paymentRequest } = context;
   if (paymentRequest.id !== parsed.data.paymentRequestId || paymentRequest.status !== "pending") {
     return { ok: false, error: "invalid_token" };
+  }
+  // The customer signs by accepting the rental terms here, with the date and their IP
+  // address, before paying. The contract picks the signature up when it is next generated.
+  if (requiresContractAcceptance(reservation, paymentRequest)) {
+    if (!parsed.data.acceptContract) {
+      return { ok: false, error: "contract_not_accepted" };
+    }
+    await acceptReservationContract({
+      reservationId: reservation.id,
+      storeId: store.id,
+      headers: await headers(),
+      method: "payment_page",
+    });
   }
 
   const currency = paymentRequest.currency;

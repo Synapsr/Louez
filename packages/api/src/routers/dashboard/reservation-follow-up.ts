@@ -297,7 +297,7 @@ const updateStatus = storeProcedure
       name: "reservations_update_status",
       title: "Change Reservation Status",
       description:
-        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing) or returned (completed), or cancel it (as reservations_cancel). The store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
+        "Change a reservation's status as the dashboard does: confirm a request or a quote (its items leave the stock, the customer gets the acceptance message, the insurance contract is created), reject a request (the customer gets the rejection message, with rejectionReason), mark it picked up (ongoing; refused with CONTRACT_UNSIGNED when the store requires the signed contract and the customer has not signed) or returned (completed), or cancel it (as reservations_cancel). The store's notifications follow as set. Confirming, rejecting and cancelling first answer CONFIRMATION_REQUIRED with a preview of the messages and the stock. Returns the change, the warnings the dashboard shows (opening hours, notice, durations, insurance) and the reservation's `links`, its dashboard page to give the user.",
       bundle: "daily",
       effect: "overwrite",
       reach: "customer",

@@ -1,3 +1,4 @@
+import { CONTRACT_SIGNATURE_MODES } from "@louez/types";
 import {
   closurePeriodSchema,
   dayScheduleSchema,
@@ -133,6 +134,7 @@ export const reservationRulesView = z.object({
   requireCustomerAddress: z.boolean(),
   automaticExtensions: z.boolean(),
   maxExtensionDays: z.number().int().nullable(),
+  contractSignatureMode: z.enum(CONTRACT_SIGNATURE_MODES),
 });
 
 export const businessHoursView = z.object({
@@ -406,6 +408,12 @@ export const updateReservationRulesInput = z.object({
     .nullable()
     .optional()
     .describe("Longest extension a customer may ask, in days; null for no limit."),
+  contractSignatureMode: z
+    .enum(CONTRACT_SIGNATURE_MODES)
+    .optional()
+    .describe(
+      "Marking a rental picked up while the customer has not signed the contract. optional: allowed. recommended: allowed, after a warning. required: refused until they sign.",
+    ),
 });
 export type UpdateReservationRulesInput = z.infer<typeof updateReservationRulesInput>;
 

@@ -3,16 +3,13 @@ import { NextResponse } from "next/server";
 import {
   ApiServiceError,
   getReservationSigningContext,
-  signReservationAsAdmin,
   signReservationAsCustomer,
 } from "@louez/api/services";
 import { reservationSignInputSchema } from "@louez/validations";
 
-import { auth } from "@/lib/auth";
 import { getCustomerSession } from "@/lib/customer-auth/session";
 import { log } from "@/lib/evlog";
 import { generateContract } from "@/lib/pdf/generate";
-import { verifyStoreAccess } from "@/lib/store-context";
 
 const statusFromServiceCode = (code: ApiServiceError["code"]): number => {
   switch (code) {
@@ -45,35 +42,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { reservationId } = parsed.data;
     const reservation = await getReservationSigningContext(reservationId);
 
-    // Customer path: the shared session module scopes the cookie to the
-    // reservation's store, then the reservation must belong to that customer.
+    // Only the customer signs here. The store collects a signature in its dashboard, drawn
+    // on its device, through the in-store signing procedure.
     const customerSession = await getCustomerSession(reservation.storeId);
-    if (customerSession && customerSession.customerId === reservation.customerId) {
-      return NextResponse.json(
-        await signReservationAsCustomer({
-          reservationId,
-          storeId: reservation.storeId,
-          customerId: customerSession.customerId,
-          headers: request.headers,
-          regenerateContract,
-        }),
-      );
-    }
-
-    const dashboardSession = await auth();
-    if (!dashboardSession?.user?.id) {
-      return NextResponse.json({ error: "errors.unauthenticated" }, { status: 401 });
-    }
-
-    const hasAccess = await verifyStoreAccess(reservation.storeId);
-    if (!hasAccess) {
-      return NextResponse.json({ error: "errors.unauthorized" }, { status: 403 });
+    if (!customerSession || customerSession.customerId !== reservation.customerId) {
+      return NextResponse.json({ error: "errors.customerNotAuthenticated" }, { status: 401 });
     }
 
     return NextResponse.json(
-      await signReservationAsAdmin({
+      await signReservationAsCustomer({
         reservationId,
         storeId: reservation.storeId,
+        customerId: customerSession.customerId,
         headers: request.headers,
         regenerateContract,
       }),

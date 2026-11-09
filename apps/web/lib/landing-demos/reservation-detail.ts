@@ -84,6 +84,9 @@ export const createDemoReservationDetail = (
       startDate: period.start,
       endDate: period.end,
       createdAt: new Date(date.getTime() - 240_000),
+      // Booked on the storefront, so the customer accepted the contract at checkout.
+      signedAt: new Date(date.getTime() - 240_000),
+      signatureMethod: "checkout" as const,
       totalAmount: items.subtotalAmount,
       customer: { ...getDemoCustomer(index), phone: null },
       payments,

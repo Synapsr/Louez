@@ -570,6 +570,7 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
     );
     assert.equal(rules.reservationRules.minRentalMinutes, 120);
     assert.equal(rules.reservationRules.reservationMode, "request");
+    assert.equal(rules.reservationRules.contractSignatureMode, "recommended", "the default");
     assert.equal(
       rules.links.dashboard,
       `${TEST_APP_URL}/dashboard/settings/reservations?store=${STORE}`,
@@ -584,6 +585,16 @@ describe("settings procedures (database)", { skip: skipWithoutTestDatabase() }, 
       run("updateReservationRules", { minRentalMinutes: 600, maxRentalMinutes: 60 }, key()),
       "SETTINGS_INVALID",
     );
+
+    // Whether the contract must be signed before pickup: no confirmation, customers see nothing.
+    const signature = await run(
+      "updateReservationRules",
+      { contractSignatureMode: "required" },
+      key(),
+    );
+    assert.equal(signature.reservationRules.contractSignatureMode, "required");
+    assert.equal((await storedSettings())?.contractSignatureMode, "required");
+    assert.equal((await storedSettings())?.minRentalMinutes, 120);
   });
 
   test("rules: payment mode needs Stripe, and an agent confirms a mode change", async () => {

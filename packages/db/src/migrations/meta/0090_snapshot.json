@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "8933d18c-313d-4219-8da4-170c78908c7f",
+  "id": "c16643fb-545e-4628-82c4-f10a62148c66",
   "prevId": "cba0f502-1d9e-4334-ae76-91b2dec35494",
   "tables": {
     "account_departure_reason_counters": {
@@ -1043,81 +1043,6 @@
       },
       "checkConstraint": {}
     },
-    "api_confirmations": {
-      "name": "api_confirmations",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "procedure": {
-          "name": "procedure",
-          "type": "varchar(120)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "binding_hash": {
-          "name": "binding_hash",
-          "type": "char(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "consumed_at": {
-          "name": "consumed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "api_confirmations_expires_idx": {
-          "name": "api_confirmations_expires_idx",
-          "columns": [
-            "expires_at"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "api_confirmations_id": {
-          "name": "api_confirmations_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
     "api_keys": {
       "name": "api_keys",
       "columns": {
@@ -1169,14 +1094,6 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
-        },
-        "confirm_sensitive": {
-          "name": "confirm_sensitive",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": true
         },
         "last_used_at": {
           "name": "last_used_at",
@@ -1241,201 +1158,6 @@
           ]
         }
       },
-      "checkConstraint": {}
-    },
-    "api_operations": {
-      "name": "api_operations",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "credential_kind": {
-          "name": "credential_kind",
-          "type": "enum('session','api_key','oauth')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "credential_id": {
-          "name": "credential_id",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "client_name": {
-          "name": "client_name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "transport": {
-          "name": "transport",
-          "type": "enum('rpc','openapi','mcp')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "procedure": {
-          "name": "procedure",
-          "type": "varchar(120)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "actor_key": {
-          "name": "actor_key",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "input_hash": {
-          "name": "input_hash",
-          "type": "char(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "enum('running','succeeded','failed','unknown')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "target_id": {
-          "name": "target_id",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "result": {
-          "name": "result",
-          "type": "json",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "error": {
-          "name": "error",
-          "type": "json",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "onUpdate": true,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "api_operations_store_created_idx": {
-          "name": "api_operations_store_created_idx",
-          "columns": [
-            "store_id",
-            "created_at"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "api_operations_id": {
-          "name": "api_operations_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "api_operations_idempotency_unique": {
-          "name": "api_operations_idempotency_unique",
-          "columns": [
-            "store_id",
-            "actor_key",
-            "idempotency_key"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
-    "api_rate_limits": {
-      "name": "api_rate_limits",
-      "columns": {
-        "key": {
-          "name": "key",
-          "type": "varchar(191)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "window_start": {
-          "name": "window_start",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "count": {
-          "name": "count",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "api_rate_limits_key": {
-          "name": "api_rate_limits_key",
-          "columns": [
-            "key"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "auth_rate_limits": {
@@ -8796,6 +8518,13 @@
         "signature_ip": {
           "name": "signature_ip",
           "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contract_validated_at": {
+          "name": "contract_validated_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

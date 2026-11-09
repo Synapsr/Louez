@@ -34,6 +34,8 @@ interface StoreOnboardingClientPageProps {
   editingStoreId: string | null;
   initialCountry: string;
   shouldDetectBrowserCountry: boolean;
+  /** The signed-in user's email. */
+  accountEmail: string;
   /** Where an assistant connects, for the offer above the form. */
   mcpEndpoint: McpEndpoint;
 }
@@ -44,6 +46,7 @@ export function StoreOnboardingClientPage({
   editingStoreId,
   initialCountry,
   shouldDetectBrowserCountry,
+  accountEmail,
   mcpEndpoint,
 }: StoreOnboardingClientPageProps) {
   const router = useRouter();
@@ -57,7 +60,12 @@ export function StoreOnboardingClientPage({
     latitude,
     longitude,
     isNavigating,
-  } = useStoreStep({ editingStoreId, initialCountry, shouldDetectBrowserCountry });
+  } = useStoreStep({
+    editingStoreId,
+    accountEmail,
+    initialCountry,
+    shouldDetectBrowserCountry,
+  });
 
   const { NEXT_PUBLIC_APP_DOMAIN: domain } = usePublicEnv();
   const canSwitchAccount = Boolean(currentStoreId && stores.length > 0);

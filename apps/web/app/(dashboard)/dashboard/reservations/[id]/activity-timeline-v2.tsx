@@ -28,6 +28,7 @@ import {
   ClipboardCheck,
   ClipboardX,
   PenLine,
+  FileCheck2,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
@@ -70,6 +71,16 @@ type ActivityType =
   | 'inspection_signed'
   | 'quote_accepted'
   | 'quote_declined'
+  | 'contract_signed'
+
+// Done by the customer themselves when no staff member is attached to the activity.
+const CUSTOMER_ACTIVITY_TYPES = new Set<ActivityType>([
+  'payment_received',
+  'payment_initiated',
+  'payment_failed',
+  'payment_expired',
+  'contract_signed',
+])
 
 interface Activity {
   id: string
@@ -303,6 +314,11 @@ const ACTIVITY_CONFIG: Record<
     bgColor: 'bg-red-100 dark:bg-red-950/50',
     iconColor: 'text-red-600 dark:text-red-400',
   },
+  contract_signed: {
+    icon: FileCheck2,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
 }
 
 function getUserInitials(name: string | null, email: string): string {
@@ -449,6 +465,17 @@ export function ActivityTimelineV2({
       typeof activity.metadata?.currency === 'string' ? activity.metadata.currency : currency
     const isStripePayment = activity.metadata?.method === 'stripe'
     const isPaymentRequest = activity.metadata?.isPaymentRequest === true
+    const contractSignatureMethod =
+      activity.activityType === 'contract_signed' && typeof activity.metadata?.method === 'string'
+        ? activity.metadata.method
+        : null
+    const contractSignerName =
+      activity.activityType === 'contract_signed' &&
+      typeof activity.metadata?.signerName === 'string'
+        ? activity.metadata.signerName
+        : null
+    const isPickupWithoutSignature =
+      activity.activityType === 'picked_up' && activity.metadata?.contractUnsigned === true
     const activityTitle = isPaymentRequest
       ? t('requestPaymentModal.success')
       : t(`activity.${activity.activityType}`)
@@ -519,6 +546,16 @@ export function ActivityTimelineV2({
               {isOverbookedCreation && (
                 <Badge variant="failed" className="text-[10px] px-1.5 py-0 h-4 border-0">
                   {t('activity.overbooked')}
+                </Badge>
+              )}
+              {contractSignatureMethod && (
+                <Badge variant="tertiary" className="text-[10px] px-1.5 py-0 h-4 border-0">
+                  {t(`contract.methods.${contractSignatureMethod}`)}
+                </Badge>
+              )}
+              {isPickupWithoutSignature && (
+                <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4 border-0">
+                  {t('activity.contractUnsigned')}
                 </Badge>
               )}
               {/* Stripe badge for online payment activities */}
@@ -599,13 +636,16 @@ export function ActivityTimelineV2({
             </div>
           )}
 
+          {/* Signer of a contract signed in store, on the renter's device */}
+          {contractSignerName && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t('activity.signedBy', { name: contractSignerName })}
+            </p>
+          )}
+
           {/* Show "by customer" for online reservations/payments */}
           {!activity.user &&
-            (activitySource === 'online' ||
-              activity.activityType === 'payment_received' ||
-              activity.activityType === 'payment_initiated' ||
-              activity.activityType === 'payment_failed' ||
-              activity.activityType === 'payment_expired') && (
+            (activitySource === 'online' || CUSTOMER_ACTIVITY_TYPES.has(activity.activityType)) && (
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex h-4 w-4 items-center justify-center rounded-full bg-muted">
                   <User className="h-2.5 w-2.5 text-muted-foreground" />
@@ -618,12 +658,7 @@ export function ActivityTimelineV2({
           {!activity.user &&
             activitySource !== 'online' &&
             !activitySource &&
-            ![
-              'payment_received',
-              'payment_initiated',
-              'payment_failed',
-              'payment_expired',
-            ].includes(activity.activityType) && (
+            !CUSTOMER_ACTIVITY_TYPES.has(activity.activityType) && (
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex h-4 w-4 items-center justify-center rounded-full bg-muted">
                   <User className="h-2.5 w-2.5 text-muted-foreground" />

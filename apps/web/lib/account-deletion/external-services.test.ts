@@ -131,10 +131,51 @@ test("does not partially delete connected accounts when a later Standard live ac
   assert.deepEqual(deletedAccountIds, []);
 });
 
-test("blocks cleanup when a known Google calendar cannot be deleted", async () => {
+test("leaves a Google calendar Louez can no longer reach to its owner and goes on", async () => {
   const { cleanupGoogleConnections } = await import("./external-services");
   let calendarDeletionCalled = false;
+  const leftBehind: string[] = [];
   const revokedTokens: string[] = [];
+
+  await cleanupGoogleConnections(
+    {
+      googleAuthTokens: ["google-auth-token"],
+      googleCalendarConnections: [
+        {
+          calendarId: "calendar-1",
+          accessTokenEncrypted: "encrypted-expired-access",
+          refreshTokenEncrypted: "encrypted-revoked-refresh",
+          accessTokenExpiresAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      ],
+    },
+    {
+      decryptSecret: (value: string) => value.replace("encrypted-", ""),
+      deleteCalendar: async () => {
+        calendarDeletionCalled = true;
+      },
+      isCredentialUnavailableError: () => true,
+      now: () => new Date("2026-08-28T00:00:00.000Z").getTime(),
+      refreshAccessToken: async () => {
+        throw new Error("refresh token revoked");
+      },
+      reportCalendarLeftBehind: (calendarId: string) => {
+        leftBehind.push(calendarId);
+      },
+      revokeToken: async (token: string) => {
+        revokedTokens.push(token);
+      },
+    },
+  );
+
+  assert.equal(calendarDeletionCalled, false);
+  assert.deepEqual(leftBehind, ["calendar-1"]);
+  assert.deepEqual(revokedTokens, ["revoked-refresh", "expired-access", "google-auth-token"]);
+});
+
+test("still stops on a Google error that is not a lost credential", async () => {
+  const { cleanupGoogleConnections } = await import("./external-services");
+  const leftBehind: string[] = [];
 
   await assert.rejects(
     cleanupGoogleConnections(
@@ -144,31 +185,29 @@ test("blocks cleanup when a known Google calendar cannot be deleted", async () =
           {
             calendarId: "calendar-1",
             accessTokenEncrypted: "encrypted-expired-access",
-            refreshTokenEncrypted: "encrypted-revoked-refresh",
+            refreshTokenEncrypted: "encrypted-refresh",
             accessTokenExpiresAt: new Date("2026-01-01T00:00:00.000Z"),
           },
         ],
       },
       {
         decryptSecret: (value: string) => value.replace("encrypted-", ""),
-        deleteCalendar: async () => {
-          calendarDeletionCalled = true;
-        },
-        isCredentialUnavailableError: () => true,
+        deleteCalendar: async () => {},
+        isCredentialUnavailableError: () => false,
         now: () => new Date("2026-08-28T00:00:00.000Z").getTime(),
         refreshAccessToken: async () => {
-          throw new Error("refresh token revoked");
+          throw new Error("Google is unavailable");
         },
-        revokeToken: async (token: string) => {
-          revokedTokens.push(token);
+        reportCalendarLeftBehind: (calendarId: string) => {
+          leftBehind.push(calendarId);
         },
+        revokeToken: async () => {},
       },
     ),
-    /Known Google Calendar could not be deleted/,
+    /Google is unavailable/,
   );
 
-  assert.equal(calendarDeletionCalled, false);
-  assert.deepEqual(revokedTokens, []);
+  assert.deepEqual(leftBehind, []);
 });
 
 test("deletes a known Google calendar before revoking retry-safe tokens", async () => {
@@ -196,6 +235,9 @@ test("deletes a known Google calendar before revoking retry-safe tokens", async 
       now: () => new Date("2026-08-28T00:00:00.000Z").getTime(),
       refreshAccessToken: async () => {
         throw new Error("refresh should not be needed");
+      },
+      reportCalendarLeftBehind: () => {
+        throw new Error("the calendar is reachable");
       },
       // The real adapter treats Google's already-revoked response as success;
       // this seam verifies that retries still reach every revocation.

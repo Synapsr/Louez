@@ -2465,10 +2465,31 @@
       },
       "contract": {
         "title": "契約書",
-        "signed": "{date} で署名されました",
-        "notSigned": "署名されていません",
         "generate": "契約書の生成",
-        "download": "ダウンロード"
+        "download": "ダウンロード",
+        "signedBadge": "契約署名済み",
+        "unsignedBadge": "契約未署名",
+        "signedOn": "{date}",
+        "unsignedTooltip": "お客様はまだ契約に同意していません。メールのリンクから、または受け取り時に店頭で署名できます。",
+        "methods": {
+          "checkout": "オンライン予約時に同意",
+          "payment_page": "支払いページで署名",
+          "account": "顧客アカウントから署名",
+          "in_store": "店頭で署名"
+        },
+        "signInStore": "店頭で署名してもらう",
+        "sendSignatureLink": "署名用に送信",
+        "signatureLinkSent": "署名用リンクをお客様に送信しました",
+        "signDialog": {
+          "title": "店頭での契約署名",
+          "description": "お客様に契約書を確認してもらい、この端末で署名してもらいます。署名と氏名が契約書に記載されます。",
+          "viewContract": "契約書を開く",
+          "signerName": "署名者の氏名",
+          "acceptance": "お客様は契約書とレンタル規約を確認し、同意しました。",
+          "confirm": "署名を確定",
+          "success": "契約に署名しました",
+          "alreadySigned": "この契約はすでに署名済みです。"
+        }
       },
       "notes": {
         "title": "内部メモ",
@@ -2737,6 +2758,9 @@
         "quote_accepted": "見積もりが受け入れられました",
         "quote_declined": "見積は却下されました",
         "overbooked": "オーバーブッキング",
+        "contract_signed": "契約署名",
+        "contractUnsigned": "契約未署名",
+        "signedBy": "署名者：{name}",
         "showAll": "すべて表示 ({count} イベント)",
         "showLess": "表示を少なくする",
         "paymentFailure": {
@@ -2798,6 +2822,11 @@
         "warningDepositTitle": "保証金未受領",
         "warningDepositDescription": "{amount} デポジットはまだ回収されていません。機器を引き渡す前に必ず回収してください。",
         "acknowledgePickupWarnings": "これらの警告を理解した上で続行したいと考えています",
+        "contractUnsigned": "契約未署名",
+        "warningContractTitle": "契約未署名",
+        "warningContractDescription": "お客様はまだ契約に署名していません。店頭で署名してもらうか、署名なしで続行してください（履歴に記録されます）。",
+        "acknowledgePickupWithoutSignature": "理解した上で、契約が未署名でも続行します",
+        "warningContractRequiredDescription": "このストアでは受け取り前に契約の署名が必要です。続行するには、店頭でお客様に署名してもらってください。",
         "confirmPickup": "受け取りを確認",
         "returnConfirmTitle": "返却を確認",
         "returnConfirmDescription": "返却を確認する前に、機器の状態と財務概要を確認してください。",
@@ -5815,6 +5844,7 @@
           "membershipsLeft": "あなたも去るでしょう {count,plural,one{# 他の店} other{# 他の店舗}} あなたが会員になっているところ。",
           "businessDocumentsDeleted": "{count,plural,one{# ストアからのビジネス請求書は Louez から削除されます} other{# ストアからのビジネス請求書は Louez から削除されます}}。保持する必要がある場合は、続行する前にエクスポートしてください。",
           "legalRetention": "{count,plural,one{# Louez の請求記録は保持されます} other{# Louez の請求記録は保存されます}} 会計年度終了後 10 年間、アクセスが制限された別のアーカイブに保管されます。",
+          "googleCalendarNotice": "Louez が Google カレンダーに作成したカレンダーは削除されます。Google が Louez へのアクセスを許可していない場合、そのカレンダーは Google アカウントに残るため、Google カレンダーから削除してください。",
           "confirmationLabel": "確認のために「{email}」と入力してください",
           "passwordLabel": "現在のパスワード",
           "passwordRequired": "現在のパスワードを入力してください。",
@@ -6300,6 +6330,16 @@
         "title": "レンタル自動延長",
         "description": "お客様は機器が利用可能な場合に延長することができ、追加料金を計算できます。特別な場合にはあなたの承認が必要です。",
         "maxDays": "最大追加日数 (無制限の場合は空白のままにします)"
+      },
+      "contractSignature": {
+        "title": "契約の署名",
+        "description": "お客様が契約に署名していない状態で予約を受け取り済みにしたときの動作です。",
+        "optional": "任意",
+        "optionalDescription": "受け取り時に警告は表示されません。予約には「契約未署名」バッジが表示されたままになります。",
+        "recommended": "推奨",
+        "recommendedDescription": "店頭での署名を促す警告が表示されます。署名なしで引き渡すこともでき、その場合は履歴に記録されます。",
+        "required": "必須",
+        "requiredDescription": "契約が署名されるまで（お客様のオンライン署名または店頭署名）、受け取りはできません。"
       },
       "readOnlyNotice": "読み取り専用: 所有者と管理者のみがこのストアの設定を変更できます。",
       "customerFields": {
@@ -7941,6 +7981,8 @@
       "redirecting": "支払いにリダイレクトしています...",
       "securePayment": "Stripe による安全な支払い",
       "backToStore": "ストアに戻る",
+      "acceptContractRich": "<terms>レンタル利用規約</terms>を読み、同意します",
+      "acceptContractRequired": "続行するにはレンタル利用規約に同意してください。",
       "errors": {
         "expiredTitle": "リンクの有効期限が切れました",
         "expiredDescription": "この支払いリンクの有効期限が切れています。新規ご希望の場合は販売店までご連絡ください。",
@@ -8094,7 +8136,7 @@
       "signContract": "契約書に署名する",
       "contractSigned": "契約書に署名しました",
       "downloadContract": "ダウンロード契約書",
-      "signContractConfirmation": "続行すると、このレンタル契約を読んで同意したことになります。",
+      "signContractConfirmation": "<contract>レンタル契約</contract>とレンタル利用規約に同意します。日時とIPアドレスが記録されます。",
       "signContractError": "契約書に署名できませんでした。もう一度試してください。",
       "invoiceDocuments": {
         "title": "請求書とクレジットメモ",
@@ -9016,10 +9058,10 @@
       "customerText": "私は、一般的なレンタル利用規約を読み、無条件で同意したことを認めます。",
       "dateLabel": "日付:",
       "ipLabel": "IP:",
-      "automatic": "自動的に検証される",
-      "automaticText": "予約が確認または支払われると、契約は自動的に有効になります。",
       "atBooking": "予約時に署名済み",
       "atBookingText": "オンライン予約時にレンタル規約に同意することで、本契約への署名とみなされます。",
+      "inStore": "店頭で署名",
+      "signerLabel": "署名者：",
       "signedOnLabel": "署名日時：",
       "validatedOnLabel": "承認日時："
     },
@@ -9142,6 +9184,8 @@
   "errors": {
     "storeNotAcceptingReservations": "このストアは現在オンライン予約を受け付けていません。{hasContact, select, yes {ストアの連絡先：{contact}} other {ストアに直接お問い合わせください。}}",
     "generic": "エラーが発生しました",
+    "contractNotSignable": "この契約はもう署名できません。",
+    "contractSignatureRequired": "このストアでは、受け取り前にお客様が契約に署名する必要があります。",
     "pageLoadError": "このページを読み込めませんでした。もう一度試してください。",
     "notFound": "ページが見つかりません",
     "notFoundDescription": "お探しのページは存在しないか、移動されました。",

@@ -206,7 +206,7 @@ const updateReservationRulesProcedure = storeProcedure
     mcp: {
       name: "settings_update_reservation_rules",
       title: "Update Reservation Rules",
-      description: `Change how customers book: the booking mode (payment online, or request the store accepts), the share paid online, the shortest and longest rental, the notice before a rental starts, the buffer after each return, whether checkout asks for an address, and extensions. Durations are in minutes. Send only the fields to change. Payment mode needs Stripe connected (STRIPE_REQUIRED otherwise). A change of the booking mode or of the share paid online is seen at checkout: the first call answers CONFIRMATION_REQUIRED with a preview. Returns the rules. ${LINKS_HELP}`,
+      description: `Change how customers book: the booking mode (payment online, or request the store accepts), the share paid online, the shortest and longest rental, the notice before a rental starts, the buffer after each return, whether checkout asks for an address, extensions, and whether the contract must be signed before pickup. Durations are in minutes. Send only the fields to change. Payment mode needs Stripe connected (STRIPE_REQUIRED otherwise). A change of the booking mode or of the share paid online is seen at checkout: the first call answers CONFIRMATION_REQUIRED with a preview. Returns the rules. ${LINKS_HELP}`,
       bundle: "settings",
       effect: "overwrite",
       reach: "public",

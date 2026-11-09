@@ -122,6 +122,8 @@ export const updateOnboardingInfoOutput = z.object({
   id: z.string().nullable(),
   /** The store was online already: the owner came back to the step. */
   online: z.boolean(),
+  /** The user saved an incomplete store they own: the page reports the signup to Klibon. */
+  ownerSaved: z.boolean(),
 });
 
 const feeTierSchema = z.object({

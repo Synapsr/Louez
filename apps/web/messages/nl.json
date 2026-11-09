@@ -2426,10 +2426,31 @@
       },
       "contract": {
         "title": "Contract",
-        "signed": "Ondertekend op {date}",
-        "notSigned": "Niet ondertekend",
         "generate": "Contract genereren",
-        "download": "Downloaden"
+        "download": "Downloaden",
+        "signedBadge": "Contract ondertekend",
+        "unsignedBadge": "Contract niet ondertekend",
+        "signedOn": "Op {date}",
+        "unsignedTooltip": "De klant heeft het contract nog niet geaccepteerd. Hij kan het ondertekenen via de link in zijn e-mail of in de winkel bij het ophalen.",
+        "methods": {
+          "checkout": "Geaccepteerd bij de online boeking",
+          "payment_page": "Ondertekend op de betaalpagina",
+          "account": "Ondertekend via het klantaccount",
+          "in_store": "Ter plaatse ondertekend"
+        },
+        "signInStore": "Ter plaatse laten ondertekenen",
+        "sendSignatureLink": "Ter ondertekening sturen",
+        "signatureLinkSent": "Ondertekeningslink naar de klant gestuurd",
+        "signDialog": {
+          "title": "Contract ter plaatse ondertekenen",
+          "description": "Laat de klant het contract lezen en op dit apparaat ondertekenen. Zijn handtekening en naam komen op het contract.",
+          "viewContract": "Contract openen",
+          "signerName": "Naam van de ondertekenaar",
+          "acceptance": "De klant heeft het contract en de huurvoorwaarden gelezen en gaat ermee akkoord.",
+          "confirm": "Handtekening bevestigen",
+          "success": "Contract ondertekend",
+          "alreadySigned": "Dit contract is al ondertekend."
+        }
       },
       "notes": {
         "title": "Interne notities",
@@ -2698,6 +2719,9 @@
         "quote_accepted": "Offerte geaccepteerd",
         "quote_declined": "Offerte afgewezen",
         "overbooked": "Overboekt",
+        "contract_signed": "Contract ondertekend",
+        "contractUnsigned": "Zonder ondertekend contract",
+        "signedBy": "Ondertekend door {name}",
         "showAll": "Alles tonen ({count} gebeurtenissen)",
         "showLess": "Minder tonen",
         "paymentFailure": {
@@ -2759,6 +2783,11 @@
         "warningDepositTitle": "Borg niet geïnd",
         "warningDepositDescription": "De borg van {amount} is nog niet geïnd. Zorg ervoor dat u deze int voor overdracht.",
         "acknowledgePickupWarnings": "Ik begrijp het en wil ondanks deze waarschuwingen doorgaan",
+        "contractUnsigned": "Contract niet ondertekend",
+        "warningContractTitle": "Contract niet ondertekend",
+        "warningContractDescription": "De klant heeft zijn contract nog niet ondertekend. Laat het ter plaatse ondertekenen of ga verder zonder handtekening: dit wordt in de geschiedenis vermeld.",
+        "acknowledgePickupWithoutSignature": "Ik begrijp het en wil doorgaan, ook zonder ondertekend contract",
+        "warningContractRequiredDescription": "Uw winkel vereist dat het contract vóór het ophalen wordt ondertekend. Laat de klant ter plaatse ondertekenen om verder te gaan.",
         "confirmPickup": "Afhaling bevestigen",
         "returnConfirmTitle": "Retour bevestigen",
         "returnConfirmDescription": "Controleer de staat van het materiaal en het financieel overzicht voor bevestiging.",
@@ -5679,6 +5708,7 @@
           "membershipsLeft": "U verlaat ook {count, plural, one {# andere winkel} other {# andere winkels}} waarvan u lid bent.",
           "businessDocumentsDeleted": "{count, plural, one {# bedrijfsfactuur van uw winkel wordt uit Louez verwijderd} other {# bedrijfsfacturen van uw winkels worden uit Louez verwijderd}}. Exporteer ze eerst als u ze moet bewaren.",
           "legalRetention": "{count, plural, one {# Louez-facturatiebewijs wordt} other {# Louez-facturatiebewijzen worden}} 10 jaar na afsluiting van het boekjaar bewaard in een afzonderlijk archief met beperkte toegang.",
+          "googleCalendarNotice": "Louez verwijdert de agenda die het in uw Google Agenda heeft aangemaakt. Geeft Google Louez daar geen toegang meer toe, dan blijft die agenda in uw Google-account staan en kunt u hem zelf verwijderen in Google Agenda.",
           "confirmationLabel": "Voer {email} in om te bevestigen",
           "passwordLabel": "Huidig wachtwoord",
           "passwordRequired": "Voer uw huidige wachtwoord in.",
@@ -6301,6 +6331,16 @@
         "title": "Automatische huurverlengingen",
         "description": "Klanten kunnen verlengen bij beschikbaarheid en een berekenbare meerprijs. Bijzondere gevallen vereisen uw goedkeuring.",
         "maxDays": "Maximum extra dagen (leeg: geen limiet)"
+      },
+      "contractSignature": {
+        "title": "Ondertekening van het contract",
+        "description": "Wat er gebeurt als u een reservering als opgehaald markeert terwijl de klant zijn contract niet heeft ondertekend.",
+        "optional": "Optioneel",
+        "optionalDescription": "Geen waarschuwing bij het ophalen. Het label \"Contract niet ondertekend\" blijft zichtbaar op de reservering.",
+        "recommended": "Aanbevolen",
+        "recommendedDescription": "Een waarschuwing stelt voor om ter plaatse te laten ondertekenen. U kunt het materiaal zonder handtekening meegeven; dit wordt in de geschiedenis vermeld.",
+        "required": "Verplicht",
+        "requiredDescription": "Ophalen wordt geweigerd zolang het contract niet is ondertekend, online door de klant of ter plaatse."
       },
       "customerFields": {
         "title": "Klantgegevens",
@@ -7941,6 +7981,8 @@
       "redirecting": "Doorverwijzen naar betaling...",
       "securePayment": "Veilige betaling via Stripe",
       "backToStore": "Terug naar winkel",
+      "acceptContractRich": "Ik heb de <terms>algemene huurvoorwaarden</terms> gelezen en ga ermee akkoord",
+      "acceptContractRequired": "Ga akkoord met de algemene huurvoorwaarden om verder te gaan.",
       "errors": {
         "expiredTitle": "Link verlopen",
         "expiredDescription": "Deze betalingslink is verlopen. Neem contact op met de verhuurder voor een nieuwe link.",
@@ -8105,7 +8147,7 @@
       "signContract": "Contract ondertekenen",
       "contractSigned": "Contract ondertekend",
       "downloadContract": "Contract downloaden",
-      "signContractConfirmation": "Door verder te gaan bevestigt u dat u deze huurovereenkomst hebt gelezen en aanvaard.",
+      "signContractConfirmation": "U gaat akkoord met het <contract>huurcontract</contract> en de algemene huurvoorwaarden. De datum en uw IP-adres worden vastgelegd.",
       "signContractError": "Het contract kon niet worden ondertekend. Probeer het opnieuw.",
       "invoiceDocuments": {
         "title": "Facturen en creditnota’s",
@@ -9016,10 +9058,10 @@
       "customerText": "Ik erken dat ik de algemene huurvoorwaarden heb gelezen en ga zonder voorbehoud akkoord.",
       "dateLabel": "Datum:",
       "ipLabel": "IP:",
-      "automatic": "Automatisch bevestigd",
-      "automaticText": "Deze overeenkomst is automatisch bevestigd volgens de huurvoorwaarden.",
       "atBooking": "Ondertekend bij reservering",
       "atBookingText": "Algemene huurvoorwaarden geaccepteerd bij de online reservering, wat geldt als ondertekening van deze overeenkomst.",
+      "inStore": "Ter plaatse ondertekend",
+      "signerLabel": "Ondertekenaar:",
       "signedOnLabel": "Ondertekend op:",
       "validatedOnLabel": "Bevestigd op:"
     },
@@ -9142,6 +9184,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Deze winkel neemt op dit moment geen online reserveringen aan. {hasContact, select, yes {Neem contact op met de winkel: {contact}} other {Neem rechtstreeks contact op met de winkel.}}",
     "generic": "Er is een fout opgetreden",
+    "contractNotSignable": "Dit contract kan niet meer worden ondertekend.",
+    "contractSignatureRequired": "Deze winkel vereist dat de klant zijn contract ondertekent vóór het ophalen.",
     "pageLoadError": "We konden deze pagina niet laden. Probeer het opnieuw.",
     "notFound": "Pagina niet gevonden",
     "notFoundDescription": "De pagina die u zoekt bestaat niet of is verplaatst.",
@@ -9199,7 +9243,7 @@
     "updateNotesError": "Fout bij bijwerken notities",
     "createReservationError": "Fout bij aanmaken reservering",
     "businessHoursViolation": "Geselecteerde tijden vallen buiten de openingstijden van de winkel",
-    "returnAddressInvalid": "Ongeldige coordinaten retouradres",
+    "returnAddressInvalid": "Ongeldige coördinaten retouradres",
     "returnAddressRequired": "Voer een geldig retouradres in",
     "returnAddressTooFar": "Retouradres is te ver weg ({maxKm} km maximum)",
     "advanceNoticeViolation": "Reserveringen moeten minimaal {duration} van tevoren worden gemaakt",

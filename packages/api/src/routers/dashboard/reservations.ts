@@ -29,7 +29,8 @@ import {
   dashboardReservationSendReservationEmailInputSchema,
   dashboardReservationUpdateBillingInputSchema,
   dashboardReservationUpdateReservationInputSchema,
-  reservationSignInputSchema,
+  dashboardReservationSignInStoreInputSchema,
+  reservationSignOutputSchema,
   digitsOnly,
   isPlausibleVatNumber,
   isValidCompanyNumber,
@@ -37,7 +38,7 @@ import {
 } from "@louez/validations";
 
 import { dashboardProcedure, requirePermission } from "../../procedures";
-import { getDashboardReservationEditContext, signReservationAsAdmin } from "../../services";
+import { getDashboardReservationEditContext, signReservationInStore } from "../../services";
 import { toORPCError } from "../../utils/orpc-error";
 import {
   cancel,
@@ -583,6 +584,7 @@ const getEmailRenderContextOutputSchema = z.object({
   reservationUrl: z.string(),
   logoUrl: z.string().nullable(),
   showPaymentCta: z.boolean(),
+  contractSigned: z.boolean(),
 });
 
 const getEmailRenderContext = requirePermission("write")
@@ -688,13 +690,18 @@ const requestPayment = requirePermission("write")
     }
   });
 
-const sign = dashboardProcedure
-  .input(reservationSignInputSchema)
+// The customer signs on the renter's device, usually at pickup.
+const signInStore = requirePermission("write")
+  .input(dashboardReservationSignInStoreInputSchema)
+  .output(reservationSignOutputSchema)
   .handler(async ({ context, input }) => {
     try {
-      return await signReservationAsAdmin({
+      return await signReservationInStore({
         reservationId: input.reservationId,
         storeId: context.store.id,
+        userId: context.session.user.id,
+        signerName: input.signerName,
+        image: input.signature,
         headers: context.headers,
         regenerateContract: context.regenerateContract,
       });
@@ -738,5 +745,5 @@ export const dashboardReservationsRouter = {
   sendAccessLink,
   sendAccessLinkBySms,
   requestPayment,
-  sign,
+  signInStore,
 };

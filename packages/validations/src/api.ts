@@ -803,6 +803,49 @@ export const reservationSignInputSchema = z.object({
   reservationId: z.string().length(21),
 });
 
+// About 1 MB: a drawn PNG weighs a few dozen kilobytes.
+const MAX_SIGNATURE_DATA_URL_LENGTH = 1_000_000;
+const SIGNATURE_DATA_URL_PREFIX = "data:image/png;base64,";
+// A signature pad is a few hundred pixels wide, times the screen's pixel ratio.
+const MAX_SIGNATURE_SIDE = 4096;
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/**
+ * A real PNG, read from its header: the magic bytes, then the IHDR chunk with its width and
+ * height. Only the first 24 bytes are decoded.
+ */
+export const isSignaturePng = (dataUrl: string): boolean => {
+  if (!dataUrl.startsWith(SIGNATURE_DATA_URL_PREFIX)) return false;
+  const base64 = dataUrl.slice(SIGNATURE_DATA_URL_PREFIX.length);
+  if (base64.length < 100 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return false;
+
+  let header: string;
+  try {
+    header = atob(base64.slice(0, 32));
+  } catch {
+    return false;
+  }
+  const byte = (index: number) => header.charCodeAt(index);
+  if (!PNG_MAGIC.every((value, index) => byte(index) === value)) return false;
+  if (header.slice(12, 16) !== "IHDR") return false;
+
+  const readUint32 = (offset: number) =>
+    ((byte(offset) << 24) |
+      (byte(offset + 1) << 16) |
+      (byte(offset + 2) << 8) |
+      byte(offset + 3)) >>>
+    0;
+  const width = readUint32(16);
+  const height = readUint32(20);
+  return width > 0 && height > 0 && width <= MAX_SIGNATURE_SIDE && height <= MAX_SIGNATURE_SIDE;
+};
+
+export const dashboardReservationSignInStoreInputSchema = z.object({
+  reservationId: z.string().length(21),
+  signerName: z.string().trim().min(1).max(255),
+  signature: z.string().max(MAX_SIGNATURE_DATA_URL_LENGTH).refine(isSignaturePng),
+});
+
 export type StorefrontAvailabilityInput = z.infer<typeof storefrontAvailabilityInputSchema>;
 export type StorefrontResolveCombinationInput = z.infer<
   typeof storefrontResolveCombinationInputSchema
@@ -933,3 +976,6 @@ export type AddressDetailsInput = z.infer<typeof addressDetailsInputSchema>;
 export type AddressReverseGeocodeInput = z.infer<typeof addressReverseGeocodeInputSchema>;
 export type RouteDistanceInput = z.infer<typeof routeDistanceInputSchema>;
 export type ReservationSignInput = z.infer<typeof reservationSignInputSchema>;
+export type DashboardReservationSignInStoreInput = z.infer<
+  typeof dashboardReservationSignInStoreInputSchema
+>;

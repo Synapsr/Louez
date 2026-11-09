@@ -109,6 +109,7 @@ export type ReferralAttributionOutcome =
   | "existing_owner"
   | "unknown_referrer"
   | "self_referral"
+  | "affiliate_referral"
   | "already_attributed"
   | "attributed";
 
@@ -123,15 +124,22 @@ export interface PendingReferral {
  * store yet can be referred (`ignoredOwnedStoreId`: the incomplete store
  * being saved, which does not count); a code of an unknown store, or of one
  * of the user's own stores (self-referral, compared on the owner), refers
- * nobody.
+ * nobody, and so does any code when a Klibon affiliate sent the visitor.
  */
 export async function resolvePendingReferral(input: {
   userId: string;
   referralCode: string | null;
+  /** The Klibon affiliate code the visitor carries (SignupAttribution). */
+  affiliateReferral: string | null;
   ignoredOwnedStoreId?: string;
 }): Promise<PendingReferral> {
   const { referralCode } = input;
   if (!referralCode) return { referralCode, attribution: null, outcome: "no_cookie" };
+  // A store sent by a Klibon affiliate earns the affiliate's commission, not the store
+  // referral rewards as well: the affiliate's code wins, and the cookie is spent.
+  if (input.affiliateReferral) {
+    return { referralCode, attribution: null, outcome: "affiliate_referral" };
+  }
   if (!isValidReferralCode(referralCode)) {
     return { referralCode, attribution: null, outcome: "invalid_code" };
   }
@@ -560,6 +568,8 @@ export interface SavedOnboardingStore {
   online: boolean;
   /** The request's referral cookie was read for this store: the answer spends it. */
   spendReferral: boolean;
+  /** The user saved an incomplete store they own: the page reports the signup to Klibon. */
+  ownerSaved: boolean;
   effectIds: string[];
 }
 
@@ -580,6 +590,7 @@ export async function saveOnboardingStoreInfo(input: {
   editingStoreId: string | null;
   activeStoreId: string | null;
   referralCode: string | null;
+  affiliateReferral: string | null;
   rewardReferredStore: NewStorePort["rewardReferredStore"];
 }): Promise<SavedOnboardingStore> {
   const { actor, store } = input;
@@ -590,7 +601,9 @@ export async function saveOnboardingStoreInfo(input: {
     activeStoreId: input.activeStoreId,
     slug: store.slug,
   });
-  if (!target) return { id: null, online: false, spendReferral: false, effectIds: [] };
+  if (!target) {
+    return { id: null, online: false, spendReferral: false, ownerSaved: false, effectIds: [] };
+  }
 
   const storeId = target.id;
   const incomplete = target.onboardingCompleted !== true;
@@ -600,6 +613,7 @@ export async function saveOnboardingStoreInfo(input: {
       : await resolvePendingReferral({
           userId,
           referralCode: input.referralCode,
+          affiliateReferral: input.affiliateReferral,
           ignoredOwnedStoreId: storeId,
         });
   const setupActor = setupActorOf(actor.credential);
@@ -715,6 +729,7 @@ export async function saveOnboardingStoreInfo(input: {
     online: !incomplete,
     // Read for this store only when it could still be attributed, as the step always did.
     spendReferral: Boolean(referral.referralCode),
+    ownerSaved: incomplete && target.userId === userId,
     effectIds: saved.result ?? [],
   };
 }

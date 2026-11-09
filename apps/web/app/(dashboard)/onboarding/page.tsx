@@ -68,6 +68,7 @@ export default async function OnboardingStorePage({
       editingStoreId={isCreatingNewStore ? null : (currentStore?.id ?? null)}
       initialCountry={initialCountry}
       shouldDetectBrowserCountry={!savedCountry && !requestCountry}
+      accountEmail={session.user.email}
       mcpEndpoint={getMcpEndpoint()}
     />
   );

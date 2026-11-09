@@ -200,6 +200,7 @@ async function lockReservation(tx: Transaction, reservationId: string, storeId: 
       subtotalExclTax: reservations.subtotalExclTax,
       taxAmount: reservations.taxAmount,
       locale: reservations.locale,
+      signedAt: reservations.signedAt,
     })
     .from(reservations)
     .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)))
@@ -472,6 +473,13 @@ export async function changeStoreReservationStatus(
             if (from === to || !canTransitionReservationStatus(from, to)) {
               return { kind: "refused", error: refusalError(locked, to) };
             }
+            const pickedUpUnsigned = to === "ongoing" && !locked.signedAt;
+            if (
+              pickedUpUnsigned &&
+              locked.snapshot.store.settings?.contractSignatureMode === "required"
+            ) {
+              return { kind: "refused", error: reservationErrors.contractUnsigned(id) };
+            }
 
             // Checks before the confirmation, so a caller is never asked to
             // confirm what cannot happen: the card gate, then the stock.
@@ -510,6 +518,8 @@ export async function changeStoreReservationStatus(
                   ...(to === "rejected" && request.rejectionReason
                     ? { rejectionReason: request.rejectionReason }
                     : {}),
+                  // Handed over before the customer accepted the contract: kept in the history.
+                  ...(pickedUpUnsigned ? { contractUnsigned: true } : {}),
                   ...(warnings.length > 0
                     ? { validationWarnings: warnings, validationWarningsCount: warnings.length }
                     : {}),

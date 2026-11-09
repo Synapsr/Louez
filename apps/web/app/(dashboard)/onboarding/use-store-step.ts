@@ -12,6 +12,7 @@ import {
   isValidImageUrlClient,
 } from "@louez/validations";
 
+import { reportAffiliateSignup } from "@/lib/acquisition/klibon-browser";
 import { apiErrorKey } from "@/lib/orpc/errors";
 import { orpc } from "@/lib/orpc/react";
 import { getDefaultCurrencyForCountry } from "@/lib/utils/currency";
@@ -27,12 +28,15 @@ import { useStepNavigation } from "./_lib/use-step-navigation";
 
 interface UseStoreStepParams {
   editingStoreId: string | null;
+  /** The signed-in user's email, reported to Klibon (reportAffiliateSignup). */
+  accountEmail: string;
   initialCountry: string;
   shouldDetectBrowserCountry: boolean;
 }
 
 export const useStoreStep = ({
   editingStoreId,
+  accountEmail,
   initialCountry,
   shouldDetectBrowserCountry,
 }: UseStoreStepParams) => {
@@ -47,9 +51,12 @@ export const useStoreStep = ({
   // Each answer makes its store the active one.
   const saveInfo = useMutation(orpc.dashboard.stores.updateOnboardingInfo.mutationOptions());
   const createStore = useMutation(orpc.dashboard.stores.create.mutationOptions());
+  // The owner's save of their store tells Klibon an account signed up (a no-op for a
+  // visitor no affiliate sent).
   const saveStore = async (value: StoreInfoInput) => {
     const saved = await saveInfo.mutateAsync({ ...value, storeId: editingStoreId });
     if (saved.id === null) await createStore.mutateAsync(value);
+    if (saved.id === null || saved.ownerSaved) reportAffiliateSignup(accountEmail);
   };
 
   const setSlugTakenError = () => {

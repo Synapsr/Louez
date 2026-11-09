@@ -129,6 +129,8 @@ interface CreateCheckoutSessionOptions {
   stripeCouponId?: string
   successUrl: string
   cancelUrl: string
+  /** The Klibon affiliate code, checked by parseAffiliateReferral (lib/acquisition/klibon.ts). */
+  affiliateReferral?: string
 }
 
 /**
@@ -425,6 +427,7 @@ export async function createSubscriptionCheckoutSession({
   stripeCouponId,
   successUrl,
   cancelUrl,
+  affiliateReferral,
 }: CreateCheckoutSessionOptions) {
   // Louez bills plans to every store, new ones included (README §8.7), on cloud only.
   if (!isBillingEnabled()) {
@@ -474,6 +477,8 @@ export async function createSubscriptionCheckoutSession({
     ],
     success_url: successUrl,
     cancel_url: cancelUrl,
+    // Klibon reads the affiliate's code here, and credits the subscription's invoices.
+    ...(affiliateReferral ? { client_reference_id: affiliateReferral } : {}),
     subscription_data: {
       metadata: {
         storeId,

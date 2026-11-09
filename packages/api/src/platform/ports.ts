@@ -121,11 +121,13 @@ export interface NewStorePort {
   welcomeCredits: () => number;
   /**
    * The referral code and the sign-up origin a dashboard request carries
-   * (cookies set when the user arrived), each null when absent or unknown.
+   * (cookies set when the user arrived), and the Klibon affiliate code the
+   * page read from Klibon's tag; each null when absent or unknown.
    */
   signupAttribution: (headers: Headers) => {
     referralCode: string | null;
     signupOrigin: string | null;
+    affiliateReferral: string | null;
   };
   /**
    * In the transaction that saves the onboarding's store step on a store

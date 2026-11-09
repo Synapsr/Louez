@@ -240,9 +240,9 @@ export const PDF_DOCUMENT_PREVIEWS: readonly PdfDocumentPreview[] = [
         reservation: {
           ...contractReservation,
           customer: individualCustomer,
-          signedAtBooking: true,
-          automaticContractValidation: true,
-          signedAt: new Date("2026-07-29T09:13:00.000Z"),
+          signatureMethod: "checkout",
+          signedAt: new Date("2026-07-29T09:12:00.000Z"),
+          contractValidatedAt: new Date("2026-07-29T09:13:00.000Z"),
           payments: [
             {
               id: "pay-1",

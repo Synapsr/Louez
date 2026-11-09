@@ -1,26 +1,26 @@
 {
   "common": {
-    "greeting": "Ola {name},",
+    "greeting": "Olá {name},",
     "regards": "Atenciosamente,",
     "team": "A equipe {storeName}",
     "viewReservation": "Ver minha reserva",
     "contactUs": "Entre em contato",
     "reservationNumber": "Reserva #{number}",
-    "period": "Periodo",
+    "period": "Período",
     "periodFrom": "De {startDate}",
-    "periodTo": "Ate {endDate}",
-    "address": "Endereco",
-    "pickupAddress": "Endereco de retirada",
-    "returnAddress": "Endereco de devolucao",
+    "periodTo": "Até {endDate}",
+    "address": "Endereço",
+    "pickupAddress": "Endereço de retirada",
+    "returnAddress": "Endereço de devolução",
     "pickupAndReturnAddress": "Morada de levantamento e devolução",
     "subtotal": "Subtotal",
     "subtotalExclTax": "Subtotal sem IVA",
     "taxAmount": "IVA ({rate}%)",
     "subtotalInclTax": "Subtotal com IVA",
-    "deposit": "Caucao",
+    "deposit": "Caução",
     "total": "Total",
     "totalToPay": "Total a pagar",
-    "question": "Duvidas? Entre em contato:",
+    "question": "Dúvidas? Entre em contato:",
     "summary": "Resumo",
     "timezone": "Fuso horário: {timezone}",
     "seeYouSoon": "Até breve,\n{storeName}"
@@ -30,30 +30,32 @@
     "marketplaceLine": "Reservas reeent {billingMonth} — {count, plural, one {# reserva} other {# reservas}}"
   },
   "verificationCode": {
-    "subject": "Seu codigo de login: {code}",
-    "title": "Codigo de login",
-    "body": "Aqui esta seu codigo de login para acessar sua conta em {storeName}:",
-    "expiry": "Este codigo expira em 10 minutos. Se voce nao solicitou este codigo, pode ignorar este email com seguranca."
+    "subject": "Seu código de login: {code}",
+    "title": "Código de login",
+    "body": "Aqui está seu código de login para acessar sua conta em {storeName}:",
+    "expiry": "Este código expira em 10 minutos. Se você não solicitou este código, pode ignorar este email com segurança."
   },
   "confirmReservation": {
-    "subject": "Sua reserva #{number} esta confirmada",
+    "subject": "Sua reserva #{number} está confirmada",
     "title": "Reserva confirmada!",
-    "body": "Sua reserva #{number} esta confirmada. Aqui esta o resumo:",
-    "summary": "Resumo"
+    "body": "Sua reserva #{number} está confirmada. Aqui está o resumo:",
+    "summary": "Resumo",
+    "contractSignature": "O seu contrato de aluguer está pronto. Assine-o online antes de levantar o material.",
+    "signContract": "Assinar o contrato"
   },
   "requestReceived": {
-    "subject": "Solicitacao de reserva #{number} recebida",
-    "title": "Solicitacao recebida",
-    "body": "Recebemos sua solicitacao de reserva.",
-    "review": "Nossa equipe esta analisando sua solicitacao e entrara em contato em breve.",
-    "confirmation": "Voce recebera um email de confirmacao assim que sua reserva for validada.",
-    "seeYouSoon": "Ate logo,"
+    "subject": "Solicitação de reserva #{number} recebida",
+    "title": "Solicitação recebida",
+    "body": "Recebemos sua solicitação de reserva.",
+    "review": "Nossa equipe está analisando sua solicitação e entrará em contato em breve.",
+    "confirmation": "Você receberá um email de confirmação assim que sua reserva for validada.",
+    "seeYouSoon": "Até logo,"
   },
   "requestAccepted": {
-    "subject": "Sua solicitacao #{number} foi aceita!",
-    "title": "Solicitacao aceita!",
-    "body": "Boas noticias! Sua solicitacao de reserva #{number} foi aceita.",
-    "rentalPeriod": "Periodo de aluguel",
+    "subject": "Sua solicitação #{number} foi aceita!",
+    "title": "Solicitação aceita!",
+    "body": "Boas notícias! Sua solicitação de reserva #{number} foi aceita.",
+    "rentalPeriod": "Período de aluguel",
     "yourReservation": "Sua reserva",
     "proceedPayment": "Prosseguir para pagamento",
     "legalAcceptance": "A validação da sua reserva implica a aceitação do contrato de aluguer e dos termos e condições.",
@@ -62,33 +64,35 @@
     "viewTerms": "Consultar os termos e condições"
   },
   "requestRejected": {
-    "subject": "Solicitacao de reserva #{number}",
-    "title": "Solicitacao nao aceita",
-    "body": "Lamentamos, sua solicitacao de reserva #{number} nao pude ser aceita.",
-    "contactForAlternative": "Por favor, entre em contato para mais informacoes ou para encontrar uma alternativa que possa ser adequada."
+    "subject": "Solicitação de reserva #{number}",
+    "title": "Solicitação não aceita",
+    "body": "Lamentamos, sua solicitação de reserva #{number} não pôde ser aceita.",
+    "contactForAlternative": "Por favor, entre em contato para mais informações ou para encontrar uma alternativa que possa ser adequada."
   },
   "reminderPickup": {
-    "subject": "Lembrete: seu aluguel comeca amanha!",
-    "title": "Seu aluguel comeca amanha!",
-    "body": "Este e um lembrete para sua reserva #{number}.",
+    "subject": "Lembrete: seu aluguel começa amanhã!",
+    "title": "Seu aluguel começa amanhã!",
+    "body": "Este é um lembrete para sua reserva #{number}.",
     "scheduledPickup": "Retirada agendada",
-    "dontForget": "Nao esqueca:",
-    "bringId": "Um documento de identidade valido",
-    "bringConfirmation": "Sua confirmacao de reserva",
-    "seeTomorrow": "Ate amanha!"
+    "dontForget": "Não esqueça:",
+    "bringId": "Um documento de identidade válido",
+    "bringConfirmation": "Sua confirmação de reserva",
+    "seeTomorrow": "Até amanhã!",
+    "contractSignature": "Seu contrato de aluguel ainda não foi assinado. Assine-o online antes de retirar o equipamento.",
+    "signContract": "Assinar o contrato"
   },
   "reminderReturn": {
-    "subject": "Lembrete: devolucao do equipamento em {date}",
+    "subject": "Lembrete: devolução do equipamento em {date}",
     "title": "Lembre-se de devolver seu equipamento",
-    "body": "Este e um lembrete para sua reserva #{number}. A devolucao do equipamento esta agendada para {date}.",
-    "scheduledReturn": "Devolucao agendada",
-    "returnInfo": "Por favor, devolva o equipamento em boas condicoes. A caucao sera devolvida apos verificacao.",
-    "thanks": "Obrigado pela sua confianca!"
+    "body": "Este é um lembrete para sua reserva #{number}. A devolução do equipamento está agendada para {date}.",
+    "scheduledReturn": "Devolução agendada",
+    "returnInfo": "Por favor, devolva o equipamento em boas condições. A caução será devolvida após verificação.",
+    "thanks": "Obrigado pela sua confiança!"
   },
   "reminderPickupAdmin": {
-    "subject": "Retirada proxima: reserva #{number}",
-    "title": "Retirada de equipamento proxima",
-    "body": "Uma retirada esta proxima para a reserva #{number}. Aqui estao os detalhes para que voce possa preparar o equipamento.",
+    "subject": "Retirada próxima: reserva #{number}",
+    "title": "Retirada de equipamento próxima",
+    "body": "Uma retirada está próxima para a reserva #{number}. Aqui estão os detalhes para que você possa preparar o equipamento.",
     "scheduledPickup": "Retirada agendada",
     "customer": "Cliente:",
     "email": "Email:",
@@ -98,10 +102,10 @@
     "connectToManage": "Entre no seu painel para gerenciar esta reserva."
   },
   "reminderReturnAdmin": {
-    "subject": "Devolucao proxima: reserva #{number}",
-    "title": "Devolucao de equipamento proxima",
-    "body": "Uma devolucao esta proxima para a reserva #{number}. Aqui estao os detalhes para que voce possa se preparar para receber o equipamento.",
-    "scheduledReturn": "Devolucao agendada",
+    "subject": "Devolução próxima: reserva #{number}",
+    "title": "Devolução de equipamento próxima",
+    "body": "Uma devolução está próxima para a reserva #{number}. Aqui estão os detalhes para que você possa se preparar para receber o equipamento.",
+    "scheduledReturn": "Devolução agendada",
     "customer": "Cliente:",
     "email": "Email:",
     "phone": "Telefone:",
@@ -112,32 +116,32 @@
   "reminderDigestAdmin": {
     "subject": "Sua agenda de {date}",
     "title": "Agenda de hoje",
-    "body": "Veja o que esta acontecendo na {storeName} hoje.",
+    "body": "Veja o que está acontecendo na {storeName} hoje.",
     "pickupsTitle": "Retiradas ({count})",
-    "returnsTitle": "Devolucoes ({count})",
-    "viewCalendar": "Ver calendario",
+    "returnsTitle": "Devoluções ({count})",
+    "viewCalendar": "Ver calendário",
     "connectToManage": "Entre no seu painel para gerenciar o seu dia."
   },
   "thankYouReview": {
     "subject": "Obrigado pelo seu aluguel!",
-    "title": "Obrigado pela sua confianca!",
-    "body": "Esperamos que seu aluguel tenha corrido bem. Sua avaliacao nos ajuda a melhorar e ajuda outros clientes na escolha.",
-    "cta": "Deixar uma avaliacao",
+    "title": "Obrigado pela sua confiança!",
+    "body": "Esperamos que seu aluguel tenha corrido bem. Sua avaliação nos ajuda a melhorar e ajuda outros clientes na escolha.",
+    "cta": "Deixar uma avaliação",
     "disclaimer": "Leva apenas um minuto e seria de grande ajuda!",
     "smsThankYou": "Obrigado pelo aluguel!",
-    "smsReview": "Sua opiniao conta:"
+    "smsReview": "Sua opinião conta:"
   },
   "newRequestLandlord": {
-    "subject": "Nova solicitacao de reserva #{number}",
-    "title": "Nova solicitacao de reserva",
-    "body": "Voce recebeu uma nova solicitacao em {storeName}.",
+    "subject": "Nova solicitação de reserva #{number}",
+    "title": "Nova solicitação de reserva",
+    "body": "Você recebeu uma nova solicitação em {storeName}.",
     "customer": "Cliente:",
     "email": "Email:",
-    "period": "Periodo:",
+    "period": "Período:",
     "amount": "Valor:",
     "notes": "Mensagem do cliente",
-    "viewRequest": "Ver solicitacao",
-    "connectToManage": "Entre no seu painel para aceitar ou rejeitar esta solicitacao."
+    "viewRequest": "Ver solicitação",
+    "connectToManage": "Entre no seu painel para aceitar ou rejeitar esta solicitação."
   },
   "contactMessage": {
     "subject": "Nova mensagem de {name} — {store}",
@@ -200,26 +204,26 @@
     }
   },
   "teamInvitation": {
-    "subject": "{inviterName} convida voce para se juntar a {storeName}",
+    "subject": "{inviterName} convida você para se juntar à {storeName}",
     "title": "Convite para a equipe",
-    "greeting": "Ola,",
-    "body": "{inviterName} convida voce para se juntar a equipe de {storeName} no Louez.io.",
-    "accessDescription": "Ao aceitar este convite, voce tera acesso ao painel da loja para gerenciar reservas, produtos e clientes.",
+    "greeting": "Olá,",
+    "body": "{inviterName} convida você para se juntar à equipe de {storeName} no Louez.io.",
+    "accessDescription": "Ao aceitar este convite, você terá acesso ao painel da loja para gerenciar reservas, produtos e clientes.",
     "acceptButton": "Aceitar convite",
-    "expiry": "Este convite expira em 7 dias. Se voce nao solicitou se juntar a esta equipe, pode ignorar este email com seguranca."
+    "expiry": "Este convite expira em 7 dias. Se você não solicitou se juntar a esta equipe, pode ignorar este email com segurança."
   },
   "baseLayout": {
     "sentBy": "Este email foi enviado por {storeName}",
-    "ignoreIfNotYou": "Se voce nao iniciou esta acao, por favor ignore este email.",
+    "ignoreIfNotYou": "Se você não iniciou esta ação, por favor ignore este email.",
     "poweredBy": "Desenvolvido por"
   },
   "instantAccess": {
     "subject": "Acesse sua reserva #{number}",
     "title": "Acesse sua reserva",
     "body": "Clique para acessar sua reserva #{number}.",
-    "paymentPending": "O pagamento desta reserva esta pendente.",
+    "paymentPending": "O pagamento desta reserva está pendente.",
     "viewAndPay": "Ver e pagar",
-    "linkValid": "Este link e valido por 30 dias."
+    "linkValid": "Este link é válido por 30 dias."
   },
   "reservationCancelled": {
     "subject": "Reserva #{number} cancelada",
@@ -252,7 +256,9 @@
     "method": "Método",
     "reservation": "Reserva",
     "confirmation": "Seu pagamento foi processado com sucesso.",
-    "keepEmail": "Guarde este e-mail como comprovante de pagamento."
+    "keepEmail": "Guarde este e-mail como comprovante de pagamento.",
+    "contractSignature": "O seu contrato segue em anexo e está pronto para ser assinado online.",
+    "signContract": "Assinar o contrato"
   },
   "paymentFailed": {
     "subject": "Pagamento falhado - Reserva #{number}",
@@ -315,7 +321,9 @@
     "subject": "Seu contrato de locação #{number}",
     "title": "Seu contrato de locação",
     "body": "Segue o contrato de locação da sua reserva #{number}.",
-    "downloadContract": "Baixar o contrato"
+    "downloadContract": "Baixar o contrato",
+    "signBody": "Aqui está o contrato de aluguel da sua reserva #{number}. Leia e assine-o online antes de retirar o equipamento.",
+    "signContract": "Assinar o contrato"
   },
   "customMessage": {
     "subject": "Sobre a sua reserva #{number}"

@@ -670,6 +670,14 @@ const buildReservationValues = (
     taxRate: totals.taxRate?.toFixed(2) ?? null,
     customerNotes: request.customerNotes || null,
     source: request.source,
+    // The web checkout requires accepting the rental terms: the customer signs here.
+    ...(request.source === "online"
+      ? {
+          signedAt: new Date(),
+          signatureIp: request.termsAcceptedFromIp ?? null,
+          signatureMethod: "checkout" as const,
+        }
+      : {}),
     // Frozen at creation: the store can change its currency later (billing contract Q4).
     currency: normalizeCurrency(store.settings?.currency),
     billingSnapshot: buildReservationBillingSnapshot(request.customer, prepared.companyIdentity),

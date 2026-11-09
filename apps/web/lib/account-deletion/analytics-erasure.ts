@@ -14,13 +14,32 @@ const postHogPersonListSchema = z.object({
 
 const withoutTrailingSlash = (value: string): string => value.replace(/\/+$/, "");
 
-const assertSuccessfulDeletion = async (response: Response, provider: string): Promise<void> => {
-  if (response.ok || response.status === 404) return;
+const gleapNotFoundSchema = z.object({ code: z.literal("not_found") });
 
-  const body = (await response.text()).slice(0, 500);
+// A 404 counts as "already deleted" only when the provider says the user is
+// gone: a 404 from a wrong route or API base must fail loudly.
+const assertSuccessfulDeletion = async (
+  response: Response,
+  provider: string,
+  isAlreadyDeleted: (body: string) => boolean = () => false,
+): Promise<void> => {
+  if (response.ok) return;
+
+  const body = await response.text();
+  if (response.status === 404 && isAlreadyDeleted(body)) return;
+
+  const excerpt = body.slice(0, 500);
   throw new Error(
-    `${provider} user deletion failed (${response.status})${body ? `: ${body}` : ""}`,
+    `${provider} user deletion failed (${response.status})${excerpt ? `: ${excerpt}` : ""}`,
   );
+};
+
+const isGleapContactNotFound = (body: string): boolean => {
+  try {
+    return gleapNotFoundSchema.safeParse(JSON.parse(body)).success;
+  } catch {
+    return false;
+  }
 };
 
 export const deletePostHogPerson = async (input: {
@@ -57,7 +76,8 @@ export const deletePostHogPerson = async (input: {
       method: "DELETE",
       headers: { Authorization: `Bearer ${input.personalApiKey}` },
     });
-    await assertSuccessfulDeletion(response, "PostHog");
+    // The lookup above found this person, so a 404 here means it is already gone.
+    await assertSuccessfulDeletion(response, "PostHog", () => true);
   }
 };
 
@@ -69,13 +89,12 @@ export const deleteOpenReplayUser = async (input: {
   fetchImplementation?: FetchImplementation;
 }): Promise<void> => {
   const fetchImplementation = input.fetchImplementation ?? fetch;
-  const url = `${withoutTrailingSlash(input.apiUrl)}/api/v1/${encodeURIComponent(input.projectKey)}/users/${encodeURIComponent(input.userId)}`;
+  // apiUrl is the public API base: https://<instance>/v2/api when self-hosted,
+  // https://api.openreplay.com/v2 on OpenReplay Cloud.
+  const url = `${withoutTrailingSlash(input.apiUrl)}/public/${encodeURIComponent(input.projectKey)}/users/${encodeURIComponent(input.userId)}`;
   const response = await fetchImplementation(url, {
     method: "DELETE",
-    headers: {
-      Authorization: input.organizationApiKey,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${input.organizationApiKey}` },
   });
 
   await assertSuccessfulDeletion(response, "OpenReplay");
@@ -88,12 +107,12 @@ export const deleteGleapUser = async (input: {
 }): Promise<void> => {
   const fetchImplementation = input.fetchImplementation ?? fetch;
   const response = await fetchImplementation(
-    `https://api.gleap.io/v3/projects/users/${encodeURIComponent(input.userId)}`,
+    `https://api.gleap.io/v3/s2s/contacts/${encodeURIComponent(input.userId)}`,
     {
       method: "DELETE",
       headers: { Authorization: `Bearer ${input.apiToken}` },
     },
   );
 
-  await assertSuccessfulDeletion(response, "Gleap");
+  await assertSuccessfulDeletion(response, "Gleap", isGleapContactNotFound);
 };

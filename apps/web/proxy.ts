@@ -68,6 +68,8 @@ function withRuntimeSecurityHeaders(
     demoParentOrigins: publicEnv.NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS,
     fromHelloApiUrl: publicEnv.NEXT_PUBLIC_FROMHELLO_API_URL,
     isDevelopment: process.env.NODE_ENV === "development",
+    // The same condition that renders the tag (components/klibon-tag.tsx).
+    klibonEnabled: isBillingEnabled() && Boolean(readRuntimeEnv("KLIBON_PROGRAM_ID")),
     openReplayIngestPoint: publicEnv.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
   };
   const securityHeaders = isDemoPath(pathname)

@@ -850,6 +850,15 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       { type: "confirmed", userId: OWNER },
       { type: "modified", userId: null },
     ]);
+    const [contract] = await louezDb.db
+      .select({
+        validatedAt: louezDb.reservations.contractValidatedAt,
+        signedAt: louezDb.reservations.signedAt,
+      })
+      .from(louezDb.reservations)
+      .where(orm.eq(louezDb.reservations.id, id));
+    assert.ok(contract?.validatedAt, "the contract is validated");
+    assert.equal(contract?.signedAt, null, "validation is not the customer's signature");
 
     await rejects(
       run("updateStatus", { id, status: "confirmed" }, session()),
@@ -1155,6 +1164,59 @@ describe("reservation follow-up procedures (database)", { skip: skipWithoutTestD
       run("updateStatus", { id, status: "completed" }, key({ "idempotency-key": "pickup-1" })),
       "IDEMPOTENCY_KEY_REUSED",
     );
+  });
+
+  test("a store that requires the signed contract refuses an unsigned pick-up until it is signed", async () => {
+    const requiring = { ...settings, contractSignatureMode: "required" as const };
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ settings: requiring })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    try {
+      const id = await reservation("confirmed", { productId: await product() });
+      const key = await apiKey();
+      const before = (await analyticsOf()).length;
+      for (const context of [session(), key()]) {
+        await rejects(run("updateStatus", { id, status: "ongoing" }, context), "CONTRACT_UNSIGNED");
+      }
+      assert.equal(await statusOf(id), "confirmed");
+      assert.equal((await analyticsOf()).length, before, "nothing was queued");
+
+      await louezDb.db
+        .update(louezDb.reservations)
+        .set({ signedAt: new Date(), signatureMethod: "in_store" })
+        .where(orm.eq(louezDb.reservations.id, id));
+      assert.equal((await run("updateStatus", { id, status: "ongoing" }, session())).to, "ongoing");
+      const [pickup] = await louezDb.db
+        .select({ metadata: louezDb.reservationActivity.metadata })
+        .from(louezDb.reservationActivity)
+        .where(
+          orm.and(
+            orm.eq(louezDb.reservationActivity.reservationId, id),
+            orm.eq(louezDb.reservationActivity.activityType, "picked_up"),
+          ),
+        );
+      assert.equal(pickup?.metadata?.contractUnsigned, undefined, "signed: nothing to record");
+    } finally {
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings })
+        .where(orm.eq(louezDb.stores.id, STORE));
+    }
+
+    // Recommended (the default): handed over anyway, and the history says so.
+    const unsigned = await reservation("confirmed", { productId: await product() });
+    await run("updateStatus", { id: unsigned, status: "ongoing" }, session());
+    const [pickup] = await louezDb.db
+      .select({ metadata: louezDb.reservationActivity.metadata })
+      .from(louezDb.reservationActivity)
+      .where(
+        orm.and(
+          orm.eq(louezDb.reservationActivity.reservationId, unsigned),
+          orm.eq(louezDb.reservationActivity.activityType, "picked_up"),
+        ),
+      );
+    assert.equal(pickup?.metadata?.contractUnsigned, true);
   });
 
   test("a read-only connection cannot change a status, and another store's id is not found", async () => {

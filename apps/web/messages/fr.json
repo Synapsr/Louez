@@ -2474,10 +2474,31 @@
       },
       "contract": {
         "title": "Contrat",
-        "signed": "Signé le {date}",
-        "notSigned": "Non signé",
         "generate": "Générer le contrat",
-        "download": "Télécharger"
+        "download": "Télécharger",
+        "signedBadge": "Contrat signé",
+        "unsignedBadge": "Contrat non signé",
+        "signedOn": "Le {date}",
+        "unsignedTooltip": "Le client n'a pas encore accepté le contrat. Il peut le signer depuis le lien reçu par email, ou sur place au retrait.",
+        "methods": {
+          "checkout": "Accepté à la réservation en ligne",
+          "payment_page": "Signé sur la page de paiement",
+          "account": "Signé depuis l'espace client",
+          "in_store": "Signé sur place"
+        },
+        "signInStore": "Faire signer sur place",
+        "sendSignatureLink": "Envoyer pour signature",
+        "signatureLinkSent": "Lien de signature envoyé au client",
+        "signDialog": {
+          "title": "Signature du contrat sur place",
+          "description": "Laissez le client relire le contrat puis signer sur cet appareil. Sa signature et son nom figureront sur le contrat.",
+          "viewContract": "Ouvrir le contrat",
+          "signerName": "Nom du signataire",
+          "acceptance": "Le client a pris connaissance du contrat et des conditions générales de location et les accepte.",
+          "confirm": "Valider la signature",
+          "success": "Contrat signé",
+          "alreadySigned": "Ce contrat est déjà signé."
+        }
       },
       "notes": {
         "title": "Notes internes",
@@ -2746,6 +2767,9 @@
         "quote_accepted": "Devis accepté",
         "quote_declined": "Devis refusé",
         "overbooked": "Sur-réservée",
+        "contract_signed": "Contrat signé",
+        "contractUnsigned": "Sans contrat signé",
+        "signedBy": "Signé par {name}",
         "showAll": "Voir tout ({count} événements)",
         "showLess": "Voir moins",
         "paymentFailure": {
@@ -2807,6 +2831,11 @@
         "warningDepositTitle": "Caution non encaissée",
         "warningDepositDescription": "La caution de {amount} n'a pas encore été encaissée. Assurez-vous de l'encaisser avant la remise du matériel.",
         "acknowledgePickupWarnings": "Je comprends et souhaite continuer malgré ces avertissements",
+        "contractUnsigned": "Contrat non signé",
+        "warningContractTitle": "Contrat non signé",
+        "warningContractDescription": "Le client n'a pas encore signé son contrat. Faites-le signer sur place, ou continuez sans signature : ce sera noté dans l'historique.",
+        "acknowledgePickupWithoutSignature": "Je comprends et souhaite continuer, même sans contrat signé",
+        "warningContractRequiredDescription": "Votre boutique exige la signature du contrat avant le retrait. Faites signer le client sur place pour continuer.",
         "confirmPickup": "Confirmer le retrait",
         "returnConfirmTitle": "Confirmer le retour",
         "returnConfirmDescription": "Vérifiez l'état du matériel et le résumé financier avant de confirmer le retour.",
@@ -4404,14 +4433,14 @@
         "reminderReturnEnabledHint": "Envoyer un rappel la veille de la fin de location",
         "customization": "Personnalisation des emails",
         "customizationDescription": "Personnalisez le contenu de chaque type d'email. Laissez vide pour utiliser les valeurs par défaut.",
-        "customized": "Personnalise",
-        "customMessage": "Message personnalise (optionnel)",
-        "customMessagePlaceholder": "Ajoutez un message personnalise qui apparaitra dans l'email...",
-        "customMessageHint": "Ce message s'affichera dans le corps de l'email, apres le contenu par defaut.",
+        "customized": "Personnalisé",
+        "customMessage": "Message personnalisé (optionnel)",
+        "customMessagePlaceholder": "Ajoutez un message personnalisé qui apparaîtra dans l'email...",
+        "customMessageHint": "Ce message s'affichera dans le corps de l'email, après le contenu par défaut.",
         "preview": {
           "subject": "Objet",
           "yourStore": "Votre boutique",
-          "noCustomMessage": "Aucun message personnalise - le contenu par defaut sera utilise"
+          "noCustomMessage": "Aucun message personnalisé - le contenu par défaut sera utilisé"
         },
         "emailTypes": {
           "confirmationContent": "Confirmation",
@@ -5362,9 +5391,9 @@
         }
       },
       "inspection": {
-        "title": "Etat des lieux",
+        "title": "État des lieux",
         "description": "Documentez l'état du matériel au départ et au retour",
-        "nav": "Etat des lieux",
+        "nav": "État des lieux",
         "enableSection": "Fonctionnalité d'état des lieux",
         "enableSectionDescription": "Documentez l'état du matériel avec photos et signature",
         "enabled": "Activer les états des lieux",
@@ -5401,7 +5430,7 @@
           "damaged": "Endommagé"
         },
         "card": {
-          "title": "Etat des lieux",
+          "title": "État des lieux",
           "departure": "Départ",
           "return": "Retour",
           "notDone": "Non effectué",
@@ -5416,20 +5445,20 @@
           "downloadPdf": "Télécharger le PDF"
         },
         "wizard": {
-          "title": "Etat des lieux - {type}",
-          "titleDeparture": "Etat des lieux - Départ",
-          "titleReturn": "Etat des lieux - Retour",
-          "step": "Etape {current} sur {total}",
+          "title": "État des lieux - {type}",
+          "titleDeparture": "État des lieux - Départ",
+          "titleReturn": "État des lieux - Retour",
+          "step": "Étape {current} sur {total}",
           "step_overview": "Aperçu",
-          "step_items": "Equipements",
+          "step_items": "Équipements",
           "step_summary": "Résumé",
           "step_signature": "Signature",
           "overview": "Aperçu",
-          "items": "Equipements",
+          "items": "Équipements",
           "summary": "Résumé",
           "signature": "Signature",
-          "departureInspection": "Etat des lieux - Départ",
-          "returnInspection": "Etat des lieux - Retour",
+          "departureInspection": "État des lieux - Départ",
+          "returnInspection": "État des lieux - Retour",
           "reservation": "Réservation",
           "itemsToInspect": "{count, plural, one {équipement à inspecter} other {équipements à inspecter}}",
           "instructions": "Instructions",
@@ -5442,14 +5471,14 @@
           "allOkDescription": "Marquer tous les équipements en excellent état",
           "quantity": "Quantité",
           "unitReference": "Référence {identifier}",
-          "condition": "Etat général",
+          "condition": "État général",
           "photos": "Photos",
           "notes": "Remarques",
           "notesPlaceholder": "Ajoutez des remarques sur l'état de l'équipement...",
           "damageDetected": "Dommage détecté",
           "allGood": "Tout est en ordre",
           "summaryItems": "{count, plural, one {# équipement inspecté} other {# équipements inspectés}}",
-          "itemsWithIssues": "Equipements avec remarques",
+          "itemsWithIssues": "Équipements avec remarques",
           "globalNotes": "Notes générales",
           "globalNotesPlaceholder": "Ajoutez des notes générales sur l'inspection...",
           "signingAs": "Signature de {name}",
@@ -5466,8 +5495,8 @@
           "previous": "Précédent",
           "complete": "Terminer",
           "saving": "Enregistrement...",
-          "saved": "Etat des lieux enregistré",
-          "inspectionComplete": "Etat des lieux terminé avec succès",
+          "saved": "État des lieux enregistré",
+          "inspectionComplete": "État des lieux terminé avec succès",
           "inspectionError": "Erreur lors de l'enregistrement",
           "photoInvalidType": "Format d'image non supporté",
           "photoTooLarge": "Image trop volumineuse (max 20 Mo)",
@@ -5481,7 +5510,7 @@
             "description": "L'état des lieux retour a marqué des unités suivies comme endommagées. Sélectionnez les unités à placer en réparation sans date de fin.",
             "singleQuestion": "Créer une indisponibilité réparation pour {identifier} ?",
             "multipleQuestion": "Créer des indisponibilités réparation pour {count, plural, one {# unité endommagée} other {# unités endommagées}} ?",
-            "note": "Etat des lieux retour - réservation #{reservationNumber}",
+            "note": "État des lieux retour - réservation #{reservationNumber}",
             "noneSelected": "Sélectionnez au moins une unité",
             "createdToast": "{count, plural, one {Indisponibilité réparation créée} other {Indisponibilités réparation créées}}",
             "conflictsToast": "Conflits détectés - gérez-les depuis la fiche produit",
@@ -5562,12 +5591,12 @@
           "createPayment": "Créer un paiement"
         },
         "activity": {
-          "departureStarted": "Etat des lieux de départ commencé",
-          "departureCompleted": "Etat des lieux de départ terminé",
-          "returnStarted": "Etat des lieux de retour commencé",
-          "returnCompleted": "Etat des lieux de retour terminé",
+          "departureStarted": "État des lieux de départ commencé",
+          "departureCompleted": "État des lieux de départ terminé",
+          "returnStarted": "État des lieux de retour commencé",
+          "returnCompleted": "État des lieux de retour terminé",
           "damageDetected": "Dommage détecté : {description}",
-          "signed": "Etat des lieux signé par le client"
+          "signed": "État des lieux signé par le client"
         },
         "prompt": {
           "departureTitle": "Effectuer l'état des lieux ?",
@@ -5816,6 +5845,7 @@
           "membershipsLeft": "Vous quitterez aussi {count, plural, one {# autre boutique} other {# autres boutiques}} dont vous êtes membre.",
           "businessDocumentsDeleted": "{count, plural, one {# facture métier de votre boutique sera supprimée de Louez} other {# factures métier de vos boutiques seront supprimées de Louez}}. Exportez-les avant de continuer si vous devez les conserver.",
           "legalRetention": "{count, plural, one {# justificatif de facturation Louez sera conservé} other {# justificatifs de facturation Louez seront conservés}} pendant 10 ans à compter de la clôture de l’exercice, dans une archive séparée à accès limité.",
+          "googleCalendarNotice": "Louez supprimera l’agenda qu’il a créé dans votre Google Agenda. Si Google ne permet plus à Louez d’y accéder, cet agenda restera dans votre compte Google : vous pourrez le supprimer depuis Google Agenda.",
           "confirmationLabel": "Saisissez {email} pour confirmer",
           "passwordLabel": "Mot de passe actuel",
           "passwordRequired": "Saisissez votre mot de passe actuel.",
@@ -6301,6 +6331,16 @@
         "title": "Prolongations automatiques",
         "description": "Les clients peuvent prolonger si le matériel est disponible et le supplément calculable. Les cas particuliers nécessitent votre accord.",
         "maxDays": "Nombre de jours supplémentaires maximum (vide : sans limite)"
+      },
+      "contractSignature": {
+        "title": "Signature du contrat",
+        "description": "Ce qui se passe quand vous marquez une réservation récupérée alors que le client n'a pas signé son contrat.",
+        "optional": "Optionnelle",
+        "optionalDescription": "Pas d'alerte au retrait. Le badge « Contrat non signé » reste visible sur la réservation.",
+        "recommended": "Recommandée",
+        "recommendedDescription": "Une alerte propose de faire signer sur place. Vous pouvez remettre le matériel sans signature, c'est noté dans l'historique.",
+        "required": "Obligatoire",
+        "requiredDescription": "Le retrait est refusé tant que le contrat n'est pas signé, en ligne par le client ou sur place."
       },
       "customerFields": {
         "title": "Fiche client",
@@ -7941,6 +7981,8 @@
       "redirecting": "Redirection vers le paiement...",
       "securePayment": "Paiement sécurisé par Stripe",
       "backToStore": "Retour à la boutique",
+      "acceptContractRich": "J'ai lu et j'accepte les <terms>conditions générales de location</terms>",
+      "acceptContractRequired": "Acceptez les conditions générales de location pour continuer.",
       "errors": {
         "expiredTitle": "Lien expiré",
         "expiredDescription": "Ce lien de paiement a expiré. Veuillez contacter le loueur pour en obtenir un nouveau.",
@@ -8094,7 +8136,7 @@
       "signContract": "Signer le contrat",
       "contractSigned": "Contrat signé",
       "downloadContract": "Télécharger le contrat",
-      "signContractConfirmation": "En continuant, vous confirmez avoir lu et accepter ce contrat de location.",
+      "signContractConfirmation": "Vous acceptez le <contract>contrat de location</contract> et les conditions générales de location. La date et votre adresse IP sont enregistrées.",
       "signContractError": "Le contrat n’a pas pu être signé. Veuillez réessayer.",
       "invoiceDocuments": {
         "title": "Factures et avoirs",
@@ -9016,10 +9058,10 @@
       "customerText": "Je reconnais avoir pris connaissance des conditions générales de location et les accepte sans réserve.",
       "dateLabel": "Date :",
       "ipLabel": "IP :",
-      "automatic": "Validé automatiquement",
-      "automaticText": "Contrat validé automatiquement lors de la confirmation ou du paiement de la réservation.",
       "atBooking": "Signé à la réservation",
       "atBookingText": "Conditions générales de location acceptées lors de la réservation en ligne, ce qui vaut signature du présent contrat.",
+      "inStore": "Signé sur place",
+      "signerLabel": "Signataire :",
       "signedOnLabel": "Signé le :",
       "validatedOnLabel": "Validé le :"
     },
@@ -9142,6 +9184,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Cette boutique ne prend pas de réservations en ligne pour le moment. {hasContact, select, yes {Contactez-la : {contact}} other {Contactez-la directement.}}",
     "generic": "Une erreur est survenue",
+    "contractNotSignable": "Ce contrat ne peut plus être signé.",
+    "contractSignatureRequired": "Cette boutique exige que le client signe son contrat avant le retrait.",
     "pageLoadError": "Nous n'avons pas pu charger cette page. Veuillez réessayer.",
     "notFound": "Page introuvable",
     "notFoundDescription": "La page que vous recherchez n'existe pas ou a été déplacée.",

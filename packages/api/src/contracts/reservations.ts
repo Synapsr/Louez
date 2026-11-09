@@ -1,3 +1,4 @@
+import { CONTRACT_SIGNATURE_METHODS } from "@louez/db/schema";
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
@@ -171,6 +172,14 @@ export const listReservationsInput = z.object({
 });
 export type ListReservationsInput = z.infer<typeof listReservationsInput>;
 
+/** The customer's acceptance of the contract, apart from the store's validation of it. */
+const contractSignatureShape = {
+  /** When the customer accepted the contract; null while they have not. */
+  signedAt: z.date().nullable(),
+  /** Where they accepted it; null while they have not. */
+  signatureMethod: z.enum(CONTRACT_SIGNATURE_METHODS).nullable(),
+};
+
 const reservationListItemSchema = z.object({
   id: z.string(),
   number: z.string(),
@@ -182,6 +191,7 @@ const reservationListItemSchema = z.object({
   subtotalAmount: moneySchema,
   depositAmount: moneySchema,
   totalAmount: moneySchema,
+  ...contractSignatureShape,
   customer: customerSummarySchema.nullable(),
   /** What was paid toward the rental, refunds taken off. */
   rentalPaid: moneySchema,
@@ -285,7 +295,7 @@ export const reservationSchema = z.object({
   updatedAt: z.date(),
   pickedUpAt: z.date().nullable(),
   returnedAt: z.date().nullable(),
-  signedAt: z.date().nullable(),
+  ...contractSignatureShape,
   subtotalAmount: moneySchema,
   depositAmount: moneySchema,
   totalAmount: moneySchema,
@@ -818,6 +828,14 @@ export const reservationErrors = {
       message:
         "Not changed: this store is not taking new reservations right now. The dashboard shows the store owner why.",
       i18nKey,
+    }),
+  /** The store requires the signed contract before pickup (`contractSignatureMode`). */
+  contractUnsigned: (id: string) =>
+    apiError("CONFLICT", "CONTRACT_UNSIGNED", {
+      message:
+        "Not changed: this store requires the customer to sign the contract before pickup, and they have not signed it yet.",
+      i18nKey: "errors.contractSignatureRequired",
+      details: { id },
     }),
   /** Temporary contention past the retries: nothing was done, the same call may succeed. */
   busy: (id: string) =>

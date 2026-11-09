@@ -65,28 +65,87 @@ test("rejects a malformed PostHog person response", async () => {
   );
 });
 
-test("uses the OpenReplay organization key without a Bearer prefix", async () => {
-  let authorization: string | null = null;
+test("schedules the OpenReplay user deletion on the public API with a Bearer key", async () => {
+  const requests: Array<{ method: string; url: string; authorization: string | null }> = [];
   await deleteOpenReplayUser({
-    apiUrl: "https://openreplay.example.com/",
+    apiUrl: "https://openreplay.example.com/v2/api/",
     organizationApiKey: "organization-secret",
     projectKey: "project-key",
     userId: "owner@example.com",
-    fetchImplementation: async (_input, init) => {
-      authorization = new Headers(init?.headers).get("authorization");
+    fetchImplementation: async (input, init) => {
+      requests.push({
+        method: init?.method ?? "GET",
+        url: input.toString(),
+        authorization: new Headers(init?.headers).get("authorization"),
+      });
       return Response.json({ data: { status: "scheduled" } });
     },
   });
 
-  assert.equal(authorization, "organization-secret");
+  assert.deepEqual(requests, [
+    {
+      method: "DELETE",
+      url: "https://openreplay.example.com/v2/api/public/project-key/users/owner%40example.com",
+      authorization: "Bearer organization-secret",
+    },
+  ]);
 });
 
-test("accepts a missing Gleap user as an idempotent deletion", async () => {
+test("deletes the Gleap contact identified by the Louez user id", async () => {
+  const requests: Array<{ method: string; url: string; authorization: string | null }> = [];
+  await deleteGleapUser({
+    apiToken: "gleap-secret",
+    userId: "user-1",
+    fetchImplementation: async (input, init) => {
+      requests.push({
+        method: init?.method ?? "GET",
+        url: input.toString(),
+        authorization: new Headers(init?.headers).get("authorization"),
+      });
+      return new Response(null, { status: 204 });
+    },
+  });
+
+  assert.deepEqual(requests, [
+    {
+      method: "DELETE",
+      url: "https://api.gleap.io/v3/s2s/contacts/user-1",
+      authorization: "Bearer gleap-secret",
+    },
+  ]);
+});
+
+test("accepts Gleap's contact-not-found answer as an idempotent deletion", async () => {
   await assert.doesNotReject(
     deleteGleapUser({
       apiToken: "gleap-secret",
       userId: "user-1",
-      fetchImplementation: async () => new Response("not found", { status: 404 }),
+      fetchImplementation: async () =>
+        Response.json({ code: "not_found", detail: "Contact not found" }, { status: 404 }),
     }),
+  );
+});
+
+test("fails on a Gleap 404 that is not a missing contact", async () => {
+  await assert.rejects(
+    deleteGleapUser({
+      apiToken: "gleap-secret",
+      userId: "user-1",
+      fetchImplementation: async () => new Response("Cannot DELETE /v3/route", { status: 404 }),
+    }),
+    /Gleap user deletion failed \(404\)/,
+  );
+});
+
+test("fails on an OpenReplay 404, which only a wrong route or API base returns", async () => {
+  await assert.rejects(
+    deleteOpenReplayUser({
+      apiUrl: "https://openreplay.example.com",
+      organizationApiKey: "organization-secret",
+      projectKey: "project-key",
+      userId: "owner@example.com",
+      fetchImplementation: async () => Response.json({ detail: "Not Found" }, { status: 404 }),
+    }),
+    /OpenReplay user deletion failed \(404\)/,
   );
 });

@@ -3,6 +3,8 @@ import { RPCLink } from "@orpc/client/fetch";
 import type { AppRouter } from "@louez/api";
 import type { RouterClient } from "@orpc/server";
 import { getPublicEnvSnapshot } from "@/components/shared/public-env-provider";
+import { AFFILIATE_REFERRAL_HEADER } from "@/lib/acquisition/klibon";
+import { readAffiliateReferral } from "@/lib/acquisition/klibon-browser";
 import { getStorefrontSlugFromHost } from "@/lib/util.host";
 
 import { rpcCsrfLinkPlugin } from "./csrf";
@@ -32,6 +34,14 @@ const getStoreSlugFromHost = (): string | null => {
   });
 };
 
+const ONBOARDING_STORE_STEP = new Set(["create", "updateOnboardingInfo"]);
+
+const isOnboardingStoreStep = (path: readonly string[]) =>
+  path.length === 3 &&
+  path[0] === "dashboard" &&
+  path[1] === "stores" &&
+  ONBOARDING_STORE_STEP.has(path[2] ?? "");
+
 /**
  * RPC Link configuration for client-server communication
  */
@@ -49,11 +59,18 @@ const link = new RPCLink({
   // Resolve lazily: PublicEnvProvider installs the validated runtime config
   // before any child query can execute.
   url: getRpcUrl,
-  headers: () => {
+  headers: (_options, path) => {
+    const headers: Record<string, string> = {};
     // Store header for storefront procedures: the provider's slug first, the
     // host as a fallback for calls issued outside a StoreProvider.
     const storeSlug = storefrontSlug ?? getStoreSlugFromHost();
-    return storeSlug ? { "x-store-slug": storeSlug } : {};
+    if (storeSlug) headers["x-store-slug"] = storeSlug;
+    // The onboarding's store step: the Klibon affiliate who sent the visitor, if any.
+    if (typeof window !== "undefined" && isOnboardingStoreStep(path)) {
+      const affiliateReferral = readAffiliateReferral();
+      if (affiliateReferral) headers[AFFILIATE_REFERRAL_HEADER] = affiliateReferral;
+    }
+    return headers;
   },
   fetch: (input, init) => {
     // Use native fetch with credentials for cookie-based auth

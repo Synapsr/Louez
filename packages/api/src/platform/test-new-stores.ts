@@ -25,7 +25,7 @@ export function createTestNewStores(
     previewTerms: async () => paid,
     subscribe: async () => paid,
     welcomeCredits: () => 0,
-    signupAttribution: () => ({ referralCode: null, signupOrigin: null }),
+    signupAttribution: () => ({ referralCode: null, signupOrigin: null, affiliateReferral: null }),
     rewardReferredStore: async () => false,
     onboardingCookies: ({ activeStoreId, spendReferral }) => [
       `louez_active_store=${activeStoreId}`,

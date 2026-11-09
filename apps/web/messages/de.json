@@ -1791,7 +1791,7 @@
           "mappingSaving": "Wird gespeichert...",
           "dropdownValueExclTax": "{value} netto",
           "noResults": "Keine Tulip-Produkte gefunden",
-          "noRenterProducts": "Keine Tulip-Produkte fur diesen Vermieter gefunden",
+          "noRenterProducts": "Keine Tulip-Produkte für diesen Vermieter gefunden",
           "dialog": {
             "description": "Tulip-Produktdetails konfigurieren und Aktualisierungen übertragen.",
             "cancel": "Abbrechen",
@@ -2465,10 +2465,31 @@
       },
       "contract": {
         "title": "Vertrag",
-        "signed": "Unterschrieben am {date}",
-        "notSigned": "Nicht unterschrieben",
         "generate": "Vertrag erstellen",
-        "download": "Herunterladen"
+        "download": "Herunterladen",
+        "signedBadge": "Vertrag unterschrieben",
+        "unsignedBadge": "Vertrag nicht unterschrieben",
+        "signedOn": "Am {date}",
+        "unsignedTooltip": "Der Kunde hat den Vertrag noch nicht angenommen. Er kann ihn über den Link in seiner E-Mail oder bei der Abholung vor Ort unterschreiben.",
+        "methods": {
+          "checkout": "Bei der Online-Buchung akzeptiert",
+          "payment_page": "Auf der Zahlungsseite unterschrieben",
+          "account": "Im Kundenkonto unterschrieben",
+          "in_store": "Vor Ort unterschrieben"
+        },
+        "signInStore": "Vor Ort unterschreiben lassen",
+        "sendSignatureLink": "Zur Unterschrift senden",
+        "signatureLinkSent": "Unterschriftslink an den Kunden gesendet",
+        "signDialog": {
+          "title": "Vertrag vor Ort unterschreiben",
+          "description": "Lassen Sie den Kunden den Vertrag lesen und auf diesem Gerät unterschreiben. Unterschrift und Name erscheinen auf dem Vertrag.",
+          "viewContract": "Vertrag öffnen",
+          "signerName": "Name des Unterzeichners",
+          "acceptance": "Der Kunde hat den Vertrag und die Mietbedingungen gelesen und akzeptiert sie.",
+          "confirm": "Unterschrift bestätigen",
+          "success": "Vertrag unterschrieben",
+          "alreadySigned": "Dieser Vertrag ist bereits unterschrieben."
+        }
       },
       "notes": {
         "title": "Interne Notizen",
@@ -2737,6 +2758,9 @@
         "quote_accepted": "Angebot angenommen",
         "quote_declined": "Angebot abgelehnt",
         "overbooked": "Überbucht",
+        "contract_signed": "Vertrag unterschrieben",
+        "contractUnsigned": "Ohne unterschriebenen Vertrag",
+        "signedBy": "Unterschrieben von {name}",
         "showAll": "Alle anzeigen ({count} Ereignisse)",
         "showLess": "Weniger anzeigen",
         "paymentFailure": {
@@ -2798,6 +2822,11 @@
         "warningDepositTitle": "Kaution nicht eingezogen",
         "warningDepositDescription": "Die Kaution von {amount} wurde noch nicht eingezogen. Stellen Sie sicher, dass sie vor der Übergabe eingezogen wird.",
         "acknowledgePickupWarnings": "Ich verstehe und möchte trotz dieser Warnungen fortfahren",
+        "contractUnsigned": "Vertrag nicht unterschrieben",
+        "warningContractTitle": "Vertrag nicht unterschrieben",
+        "warningContractDescription": "Der Kunde hat seinen Vertrag noch nicht unterschrieben. Lassen Sie ihn vor Ort unterschreiben oder fahren Sie ohne Unterschrift fort: Das wird im Verlauf vermerkt.",
+        "acknowledgePickupWithoutSignature": "Ich verstehe und möchte auch ohne unterschriebenen Vertrag fortfahren",
+        "warningContractRequiredDescription": "Ihr Geschäft verlangt die Vertragsunterschrift vor der Abholung. Lassen Sie den Kunden vor Ort unterschreiben, um fortzufahren.",
         "confirmPickup": "Abholung bestätigen",
         "returnConfirmTitle": "Rückgabe bestätigen",
         "returnConfirmDescription": "Prüfen Sie den Zustand des Equipments und die Finanzübersicht vor der Bestätigung.",
@@ -3385,7 +3414,7 @@
         "unit": "Einheit",
         "available": "Verfügbar",
         "noProducts": "Keine Produkte anzuzeigen",
-        "resizeProductColumn": "Produktspalte vergrossern oder verkleinern",
+        "resizeProductColumn": "Produktspalte vergrößern oder verkleinern",
         "reservationsCount": "{count, plural, one {# Reservierung} other {# Reservierungen}}"
       },
       "timeline": {
@@ -4296,7 +4325,7 @@
           "reminderTitle": "Automatische Erinnerungen",
           "customer_request_received": {
             "label": "Anfrage erhalten",
-            "description": "Bestatigung der Anfrage"
+            "description": "Bestätigung der Anfrage"
           },
           "customer_request_accepted": {
             "label": "Anfrage akzeptiert",
@@ -4307,7 +4336,7 @@
             "description": "Wenn Sie eine Anfrage ablehnen"
           },
           "customer_reservation_confirmed": {
-            "label": "Reservierung bestatigt",
+            "label": "Reservierung bestätigt",
             "description": "Nach erfolgreicher Zahlung"
           },
           "customer_reminder_pickup": {
@@ -4315,21 +4344,21 @@
             "description": "Vor dem Abholdatum gesendet"
           },
           "customer_reminder_return": {
-            "label": "Ruckgabeerinnerung",
-            "description": "Vor dem Ruckgabedatum gesendet"
+            "label": "Rückgabeerinnerung",
+            "description": "Vor dem Rückgabedatum gesendet"
           },
           "reminderDescription": "Konfigurieren Sie wann und wie Ihre Kunden Erinnerungen erhalten"
         },
         "reminderTiming": {
           "pickupLabel": "Abholungserinnerung Vorlaufzeit",
-          "returnLabel": "Ruckgabeerinnerung Vorlaufzeit",
+          "returnLabel": "Rückgabeerinnerung Vorlaufzeit",
           "pickupDescription": "Zeit vor Mietbeginn",
           "returnDescription": "Zeit vor Mietende",
           "hours": "{count, plural, =1 {1 Stunde} other {# Stunden}}"
         },
         "adminReminderTiming": {
           "pickupLabel": "Abholungserinnerung Vorlaufzeit",
-          "returnLabel": "Ruckgabeerinnerung Vorlaufzeit",
+          "returnLabel": "Rückgabeerinnerung Vorlaufzeit",
           "pickupDescription": "Zeit vor einer Abholung, um Sie zu benachrichtigen",
           "returnDescription": "Zeit vor einer Rückgabe, um Sie zu benachrichtigen"
         },
@@ -4347,13 +4376,13 @@
           "emailSection": "E-Mail",
           "smsSection": "SMS",
           "subject": "E-Mail-Betreff",
-          "subjectHint": "Leer lassen fur Standardbetreff",
+          "subjectHint": "Leer lassen für Standardbetreff",
           "additionalMessage": "Benutzerdefinierte Nachricht",
-          "additionalMessagePlaceholder": "Fugen Sie eine Nachricht hinzu",
-          "additionalMessageHint": "Diese Nachricht wird zum Standardinhalt hinzugefugt",
+          "additionalMessagePlaceholder": "Fügen Sie eine Nachricht hinzu",
+          "additionalMessageHint": "Diese Nachricht wird zum Standardinhalt hinzugefügt",
           "smsMessage": "SMS-Nachricht",
           "smsVariables": "Variablen: {storeName}, {number}, {startDate}, {endDate}",
-          "reset": "Zurucksetzen",
+          "reset": "Zurücksetzen",
           "cancel": "Abbrechen",
           "save": "Speichern",
           "customized": "Angepasst",
@@ -5679,6 +5708,7 @@
           "membershipsLeft": "Sie verlassen außerdem {count, plural, one {# weiteren Shop} other {# weitere Shops}}, in denen Sie Mitglied sind.",
           "businessDocumentsDeleted": "{count, plural, one {# Geschäftsrechnung Ihres Shops wird aus Louez gelöscht} other {# Geschäftsrechnungen Ihrer Shops werden aus Louez gelöscht}}. Exportieren Sie sie vorab, wenn Sie sie aufbewahren müssen.",
           "legalRetention": "{count, plural, one {# Louez-Abrechnungsbeleg bleibt} other {# Louez-Abrechnungsbelege bleiben}} 10 Jahre nach Abschluss des Geschäftsjahres in einem getrennten Archiv mit eingeschränktem Zugriff.",
+          "googleCalendarNotice": "Louez löscht den Kalender, den es in Ihrem Google Kalender angelegt hat. Gewährt Google Louez keinen Zugriff mehr darauf, bleibt dieser Kalender in Ihrem Google-Konto, und Sie können ihn in Google Kalender löschen.",
           "confirmationLabel": "Geben Sie zur Bestätigung {email} ein",
           "passwordLabel": "Aktuelles Passwort",
           "passwordRequired": "Geben Sie Ihr aktuelles Passwort ein.",
@@ -6301,6 +6331,16 @@
         "title": "Automatische Mietverlängerungen",
         "description": "Kunden können bei Verfügbarkeit und berechenbarem Aufpreis verlängern. Sonderfälle erfordern Ihre Zustimmung.",
         "maxDays": "Maximale zusätzliche Tage (leer: unbegrenzt)"
+      },
+      "contractSignature": {
+        "title": "Vertragsunterschrift",
+        "description": "Was passiert, wenn Sie eine Reservierung als abgeholt markieren, obwohl der Kunde seinen Vertrag nicht unterschrieben hat.",
+        "optional": "Optional",
+        "optionalDescription": "Keine Warnung bei der Abholung. Das Badge „Vertrag nicht unterschrieben“ bleibt an der Reservierung sichtbar.",
+        "recommended": "Empfohlen",
+        "recommendedDescription": "Eine Warnung schlägt vor, vor Ort unterschreiben zu lassen. Sie können die Ausrüstung ohne Unterschrift übergeben; das wird im Verlauf vermerkt.",
+        "required": "Erforderlich",
+        "requiredDescription": "Die Abholung wird verweigert, bis der Vertrag unterschrieben ist, online durch den Kunden oder vor Ort."
       },
       "customerFields": {
         "title": "Kundendaten",
@@ -7930,7 +7970,7 @@
       "pickupLabel": "Abholung im Geschäft",
       "deliveryFeeLabel": "Liefergebühr",
       "free": "Kostenlos",
-      "returnAddressLabel": "Ruckgabeadresse",
+      "returnAddressLabel": "Rückgabeadresse",
       "discountLabel": "Aktionsrabatt"
     },
     "pay": {
@@ -7941,6 +7981,8 @@
       "redirecting": "Weiterleitung zur Zahlung...",
       "securePayment": "Sichere Zahlung über Stripe",
       "backToStore": "Zurück zum Shop",
+      "acceptContractRich": "Ich habe die <terms>Allgemeinen Mietbedingungen</terms> gelesen und akzeptiere sie",
+      "acceptContractRequired": "Akzeptieren Sie die Allgemeinen Mietbedingungen, um fortzufahren.",
       "errors": {
         "expiredTitle": "Link abgelaufen",
         "expiredDescription": "Dieser Zahlungslink ist abgelaufen. Bitte kontaktieren Sie den Vermieter für einen neuen Link.",
@@ -8094,7 +8136,7 @@
       "signContract": "Vertrag unterschreiben",
       "contractSigned": "Vertrag unterschrieben",
       "downloadContract": "Vertrag herunterladen",
-      "signContractConfirmation": "Mit dem Fortfahren bestätigen Sie, dass Sie diesen Mietvertrag gelesen haben und akzeptieren.",
+      "signContractConfirmation": "Sie akzeptieren den <contract>Mietvertrag</contract> und die Allgemeinen Mietbedingungen. Datum und Ihre IP-Adresse werden gespeichert.",
       "signContractError": "Der Vertrag konnte nicht unterzeichnet werden. Bitte versuchen Sie es erneut.",
       "invoiceDocuments": {
         "title": "Rechnungen und Gutschriften",
@@ -9016,10 +9058,10 @@
       "customerText": "Ich bestätige, dass ich die allgemeinen Mietbedingungen gelesen habe und ohne Vorbehalt akzeptiere.",
       "dateLabel": "Datum:",
       "ipLabel": "IP:",
-      "automatic": "Automatisch bestätigt",
-      "automaticText": "Dieser Vertrag wurde gemäß den Mietbedingungen automatisch bestätigt.",
       "atBooking": "Bei der Buchung unterschrieben",
       "atBookingText": "Allgemeine Mietbedingungen bei der Online-Buchung akzeptiert, was als Unterzeichnung dieses Vertrags gilt.",
+      "inStore": "Vor Ort unterschrieben",
+      "signerLabel": "Unterzeichner:",
       "signedOnLabel": "Unterschrieben:",
       "validatedOnLabel": "Bestätigt:"
     },
@@ -9142,6 +9184,8 @@
   "errors": {
     "storeNotAcceptingReservations": "Dieser Shop nimmt gerade keine Online-Reservierungen an. {hasContact, select, yes {Kontaktieren Sie den Shop: {contact}} other {Bitte kontaktieren Sie den Shop direkt.}}",
     "generic": "Ein Fehler ist aufgetreten",
+    "contractNotSignable": "Dieser Vertrag kann nicht mehr unterschrieben werden.",
+    "contractSignatureRequired": "Dieses Geschäft verlangt, dass der Kunde seinen Vertrag vor der Abholung unterschreibt.",
     "pageLoadError": "Wir konnten diese Seite nicht laden. Bitte versuchen Sie es erneut.",
     "notFound": "Seite nicht gefunden",
     "notFoundDescription": "Die gesuchte Seite existiert nicht oder wurde verschoben.",

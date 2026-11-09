@@ -151,6 +151,7 @@ import {
   sendPaymentRequestSms,
 } from "@/lib/sms";
 import { getCurrentStore } from "@/lib/store-context";
+import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import {
   tryEnsureRefundPaymentRecord,
@@ -1459,27 +1460,39 @@ export async function createManualReservation(data: CreateReservationData) {
         console.error("Failed to send quote email:", error);
       });
     } else {
-      // Send confirmation email
+      // Send confirmation email. A reservation made in the dashboard is never signed yet,
+      // so the email carries a link that signs the customer in to sign it.
       const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
-      sendReservationConfirmationEmail({
-        to: customer.email,
-        store: storeData,
-        customer: customerData,
-        reservation: {
-          id: reservationId,
-          number: reservationNumber,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          subtotalAmount,
-          depositAmount,
-          totalAmount,
-        },
-        items: emailItems,
-        reservationUrl,
-        locale: getLocaleFromCountry(store.settings?.country),
-      }).catch((error) => {
-        console.error("Failed to send reservation confirmation email:", error);
-      });
+      const customerEmail = customer.email;
+      createReservationInstantAccessUrl({
+        storeId: store.id,
+        storeSlug: store.slug,
+        customerEmail,
+        reservationId,
+      })
+        .then((contractSignatureUrl) =>
+          sendReservationConfirmationEmail({
+            to: customerEmail,
+            store: storeData,
+            customer: customerData,
+            reservation: {
+              id: reservationId,
+              number: reservationNumber,
+              startDate: data.startDate,
+              endDate: data.endDate,
+              subtotalAmount,
+              depositAmount,
+              totalAmount,
+            },
+            items: emailItems,
+            reservationUrl,
+            contractSignatureUrl,
+            locale: getLocaleFromCountry(store.settings?.country),
+          }),
+        )
+        .catch((error) => {
+          console.error("Failed to send reservation confirmation email:", error);
+        });
     }
   }
 

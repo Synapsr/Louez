@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "7a34cf9a-0925-475b-ad83-b2da33b8275d",
-  "prevId": "03e597c8-3344-46ad-bfd1-d10dd9048cdd",
+  "id": "f440265a-1e40-4c42-997c-2547088830b8",
+  "prevId": "218024dc-7eed-4800-a0fd-4eec629971ec",
   "tables": {
     "account_departure_reason_counters": {
       "name": "account_departure_reason_counters",
@@ -1493,212 +1493,6 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "api_handoffs": {
-      "name": "api_handoffs",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "varchar(40)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "enum('pending','opened','completed','failed')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
-        },
-        "active_slot": {
-          "name": "active_slot",
-          "type": "tinyint",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "credential_kind": {
-          "name": "credential_kind",
-          "type": "varchar(16)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "credential_id": {
-          "name": "credential_id",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "client_name": {
-          "name": "client_name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "token_hash": {
-          "name": "token_hash",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "link_issued_at": {
-          "name": "link_issued_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "opened_at": {
-          "name": "opened_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "return_state_hash": {
-          "name": "return_state_hash",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "provider_ref": {
-          "name": "provider_ref",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "provider_check_at": {
-          "name": "provider_check_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "provider_checks": {
-          "name": "provider_checks",
-          "type": "int unsigned",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "failed_at": {
-          "name": "failed_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "failure_code": {
-          "name": "failure_code",
-          "type": "varchar(60)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "api_handoffs_store_idx": {
-          "name": "api_handoffs_store_idx",
-          "columns": [
-            "store_id",
-            "created_at"
-          ],
-          "isUnique": false
-        },
-        "api_handoffs_updated_idx": {
-          "name": "api_handoffs_updated_idx",
-          "columns": [
-            "updated_at"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "api_handoffs_id": {
-          "name": "api_handoffs_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "api_handoffs_active_unique": {
-          "name": "api_handoffs_active_unique",
-          "columns": [
-            "store_id",
-            "kind",
-            "active_slot"
-          ]
-        },
-        "api_handoffs_token_unique": {
-          "name": "api_handoffs_token_unique",
-          "columns": [
-            "token_hash"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
     "api_keys": {
       "name": "api_keys",
       "columns": {
@@ -1918,13 +1712,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "setup_store_id": {
-          "name": "setup_store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "result": {
           "name": "result",
           "type": "json",
@@ -1963,13 +1750,6 @@
           "columns": [
             "store_id",
             "created_at"
-          ],
-          "isUnique": false
-        },
-        "api_operations_setup_store_idx": {
-          "name": "api_operations_setup_store_idx",
-          "columns": [
-            "setup_store_id"
           ],
           "isUnique": false
         }
@@ -10031,7 +9811,7 @@
         },
         "activity_type": {
           "name": "activity_type",
-          "type": "enum('created','confirmed','rejected','cancelled','picked_up','returned','note_updated','payment_added','payment_updated','payment_received','payment_initiated','payment_failed','payment_expired','deposit_authorized','deposit_captured','deposit_released','deposit_failed','access_link_sent','modified','inspection_departure_started','inspection_departure_completed','inspection_return_started','inspection_return_completed','inspection_damage_detected','inspection_signed','quote_accepted','quote_declined')",
+          "type": "enum('created','confirmed','rejected','cancelled','picked_up','returned','note_updated','payment_added','payment_updated','payment_received','payment_initiated','payment_failed','payment_expired','deposit_authorized','deposit_captured','deposit_released','deposit_failed','access_link_sent','modified','inspection_departure_started','inspection_departure_completed','inspection_return_started','inspection_return_completed','inspection_damage_detected','inspection_signed','quote_accepted','quote_declined','contract_signed')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -11054,6 +10834,20 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(now())"
+        },
+        "signature_method": {
+          "name": "signature_method",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contract_validated_at": {
+          "name": "contract_validated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -14337,6 +14131,66 @@
         }
       },
       "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "reservation_contract_signatures": {
+      "name": "reservation_contract_signatures",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reservation_id": {
+          "name": "reservation_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "signer_name": {
+          "name": "signer_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "image": {
+          "name": "image",
+          "type": "longtext",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "reservation_contract_signatures_id": {
+          "name": "reservation_contract_signatures_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "reservation_contract_signatures_reservation_id_unique": {
+          "name": "reservation_contract_signatures_reservation_id_unique",
+          "columns": [
+            "reservation_id"
+          ]
+        }
+      },
       "checkConstraint": {}
     }
   },

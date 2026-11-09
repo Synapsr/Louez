@@ -164,7 +164,6 @@ const ROUTE = {
   purchaseInvoice: `${API}/purchase-invoices/[receivedInvoiceId]/route.ts`,
   contract: `${API}/reservations/[id]/contract/route.ts`,
   invoice: `${API}/reservations/[id]/invoices/[invoiceId]/route.ts`,
-  sign: `${API}/reservations/[id]/sign/route.ts`,
   voicePreview: `${API}/voice/preview/route.ts`,
   voiceRecording: `${API}/voice/recording/[conversationId]/route.ts`,
 } as const;
@@ -654,8 +653,8 @@ export const capabilities = [
     plan: { lot: "2e" },
   },
   {
-    id: "reservations.signContractAsStore",
-    sources: [procedure("reservations", "sign"), route(ROUTE.sign, "POST (store signature)")],
+    id: "reservations.signContractInStore",
+    sources: [procedure("reservations", "signInStore")],
     kind: "write",
     plan: { lot: "2e" },
   },

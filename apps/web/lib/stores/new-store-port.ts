@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import type { NewStorePort, NewStoreTerms } from "@louez/api/platform/ports";
 import { subscriptions, type Transaction } from "@louez/db";
 
+import { AFFILIATE_REFERRAL_HEADER, parseAffiliateReferral } from "@/lib/acquisition/klibon";
 import { getDefaultAiCredits } from "@/lib/ai/advisor/credits";
 import { isBillingEnabled } from "@/lib/billing/mode";
 import {
@@ -185,6 +186,7 @@ export const newStorePort: NewStorePort = {
     return {
       referralCode: referralCode || null,
       signupOrigin: isKnownSignupOrigin(signupOrigin) ? signupOrigin : null,
+      affiliateReferral: parseAffiliateReferral(headers.get(AFFILIATE_REFERRAL_HEADER)) ?? null,
     };
   },
   rewardReferredStore,

@@ -40,7 +40,7 @@
     "title": "Reservasi dikonfirmasi!",
     "body": "Reservasi Anda #{number} telah dikonfirmasi. Berikut ringkasannya:",
     "summary": "Ringkasan",
-    "contractSignature": "Kontrak Anda terlampir dan siap ditandatangani secara online.",
+    "contractSignature": "Kontrak sewa Anda sudah siap. Tanda tangani secara online sebelum mengambil peralatan.",
     "signContract": "Tandatangani kontrak"
   },
   "requestReceived": {
@@ -86,7 +86,9 @@
     "dontForget": "Jangan lupa:",
     "bringId": "Identitas yang sah",
     "bringConfirmation": "Konfirmasi reservasi Anda",
-    "seeTomorrow": "Sampai jumpa besok!"
+    "seeTomorrow": "Sampai jumpa besok!",
+    "contractSignature": "Kontrak sewa Anda belum ditandatangani. Silakan tanda tangani secara online sebelum mengambil peralatan.",
+    "signContract": "Tanda tangani kontrak"
   },
   "reminderReturn": {
     "subject": "Pengingat: pengembalian peralatan pada {date}",
@@ -329,7 +331,9 @@
     "subject": "Kontrak sewa Anda #{number}",
     "title": "Kontrak sewa Anda",
     "body": "Berikut adalah kontrak sewa untuk reservasi Anda #{number}.",
-    "downloadContract": "Unduh kontraknya"
+    "downloadContract": "Unduh kontraknya",
+    "signBody": "Berikut kontrak sewa untuk reservasi Anda #{number}. Silakan baca dan tanda tangani secara online sebelum mengambil peralatan.",
+    "signContract": "Tanda tangani kontrak"
   },
   "customMessage": {
     "subject": "Tentang reservasi Anda #{number}"

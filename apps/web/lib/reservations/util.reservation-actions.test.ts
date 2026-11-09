@@ -30,11 +30,11 @@ describe("getReservationActions", () => {
     );
   });
 
-  test("confirmed: payment is the only required step; no signature even for existing unsigned bookings", () => {
+  test("confirmed: payment is the only required step; an unsigned contract can be signed", () => {
     const unpaid = getReservationActions({ ...base, status: "confirmed" });
     assert.equal(unpaid.required, "payment");
     assert.equal(unpaid.canPay, true);
-    assert.equal(unpaid.canSign, false);
+    assert.equal(unpaid.canSign, true);
     assert.equal(unpaid.canDownloadContract, true);
 
     const paid = getReservationActions({
@@ -52,7 +52,12 @@ describe("getReservationActions", () => {
       isSigned: true,
     });
     assert.equal(signed.required, null);
+    assert.equal(signed.canSign, false);
     assert.equal(signed.canDownloadContract, true);
+  });
+
+  test("a finished rental is no longer offered for signature", () => {
+    assert.equal(getReservationActions({ ...base, status: "completed" }).canSign, false);
   });
 
   test("no Stripe: no payment action", () => {

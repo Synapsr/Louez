@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "f440265a-1e40-4c42-997c-2547088830b8",
-  "prevId": "218024dc-7eed-4800-a0fd-4eec629971ec",
+  "id": "2bf23f18-c8f8-4d14-b5b9-f3f3d2d8b928",
+  "prevId": "8933d18c-313d-4219-8da4-170c78908c7f",
   "tables": {
     "account_departure_reason_counters": {
       "name": "account_departure_reason_counters",
@@ -1297,194 +1297,6 @@
       "compositePrimaryKeys": {
         "api_confirmations_id": {
           "name": "api_confirmations_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "api_effects": {
-      "name": "api_effects",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "seq": {
-          "name": "seq",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": true
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "reservation_id": {
-          "name": "reservation_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "customer_id": {
-          "name": "customer_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "type": {
-          "name": "type",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "ordering_key": {
-          "name": "ordering_key",
-          "type": "varchar(120)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "payload": {
-          "name": "payload",
-          "type": "json",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "enum('pending','running','sent','failed','abandoned','cancelled','superseded')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "int unsigned",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "next_attempt_at": {
-          "name": "next_attempt_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "claim_token": {
-          "name": "claim_token",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "last_error": {
-          "name": "last_error",
-          "type": "varchar(1000)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "sent_at": {
-          "name": "sent_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "api_effects_due_idx": {
-          "name": "api_effects_due_idx",
-          "columns": [
-            "status",
-            "next_attempt_at"
-          ],
-          "isUnique": false
-        },
-        "api_effects_age_idx": {
-          "name": "api_effects_age_idx",
-          "columns": [
-            "status",
-            "created_at"
-          ],
-          "isUnique": false
-        },
-        "api_effects_lease_idx": {
-          "name": "api_effects_lease_idx",
-          "columns": [
-            "status",
-            "locked_until"
-          ],
-          "isUnique": false
-        },
-        "api_effects_ordering_idx": {
-          "name": "api_effects_ordering_idx",
-          "columns": [
-            "ordering_key",
-            "seq"
-          ],
-          "isUnique": false
-        },
-        "api_effects_store_idx": {
-          "name": "api_effects_store_idx",
-          "columns": [
-            "store_id",
-            "created_at"
-          ],
-          "isUnique": false
-        },
-        "api_effects_reservation_idx": {
-          "name": "api_effects_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
-          "isUnique": false
-        },
-        "api_effects_customer_idx": {
-          "name": "api_effects_customer_idx",
-          "columns": [
-            "customer_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "api_effects_id": {
-          "name": "api_effects_id",
           "columns": [
             "id"
           ]
@@ -3695,113 +3507,6 @@
           "name": "google_places_cache_place_id_unique",
           "columns": [
             "place_id"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
-    "inbox_acknowledgements": {
-      "name": "inbox_acknowledgements",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "item_type": {
-          "name": "item_type",
-          "type": "varchar(40)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "record_id": {
-          "name": "record_id",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "occurred_at": {
-          "name": "occurred_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "credential_id": {
-          "name": "credential_id",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "client_name": {
-          "name": "client_name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "inbox_acknowledgements_store_created_idx": {
-          "name": "inbox_acknowledgements_store_created_idx",
-          "columns": [
-            "store_id",
-            "created_at"
-          ],
-          "isUnique": false
-        },
-        "inbox_acknowledgements_created_idx": {
-          "name": "inbox_acknowledgements_created_idx",
-          "columns": [
-            "created_at"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "inbox_acknowledgements_id": {
-          "name": "inbox_acknowledgements_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "inbox_acknowledgements_occurrence_unique": {
-          "name": "inbox_acknowledgements_occurrence_unique",
-          "columns": [
-            "store_id",
-            "item_type",
-            "record_id",
-            "occurred_at"
           ]
         }
       },
@@ -9811,7 +9516,7 @@
         },
         "activity_type": {
           "name": "activity_type",
-          "type": "enum('created','confirmed','rejected','cancelled','picked_up','returned','note_updated','payment_added','payment_updated','payment_received','payment_initiated','payment_failed','payment_expired','deposit_authorized','deposit_captured','deposit_released','deposit_failed','access_link_sent','modified','inspection_departure_started','inspection_departure_completed','inspection_return_started','inspection_return_completed','inspection_damage_detected','inspection_signed','quote_accepted','quote_declined')",
+          "type": "enum('created','confirmed','rejected','cancelled','picked_up','returned','note_updated','payment_added','payment_updated','payment_received','payment_initiated','payment_failed','payment_expired','deposit_authorized','deposit_captured','deposit_released','deposit_failed','access_link_sent','modified','inspection_departure_started','inspection_departure_completed','inspection_return_started','inspection_return_completed','inspection_damage_detected','inspection_signed','quote_accepted','quote_declined','contract_signed')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -10568,13 +10273,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "schedule_changed_at": {
-          "name": "schedule_changed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "currency": {
           "name": "currency",
           "type": "varchar(3)",
@@ -10834,6 +10532,20 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(now())"
+        },
+        "signature_method": {
+          "name": "signature_method",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contract_validated_at": {
+          "name": "contract_validated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -10841,15 +10553,6 @@
           "name": "reservations_store_idx",
           "columns": [
             "store_id"
-          ],
-          "isUnique": false
-        },
-        "reservations_store_status_end_idx": {
-          "name": "reservations_store_status_end_idx",
-          "columns": [
-            "store_id",
-            "reservation_status",
-            "end_date"
           ],
           "isUnique": false
         },
@@ -13130,13 +12833,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "availability_rules_changed_at": {
-          "name": "availability_rules_changed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "onboarding_completed": {
           "name": "onboarding_completed",
           "type": "boolean",
@@ -14117,6 +13813,66 @@
         }
       },
       "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "reservation_contract_signatures": {
+      "name": "reservation_contract_signatures",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reservation_id": {
+          "name": "reservation_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "signer_name": {
+          "name": "signer_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "image": {
+          "name": "image",
+          "type": "longtext",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "reservation_contract_signatures_id": {
+          "name": "reservation_contract_signatures_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "reservation_contract_signatures_reservation_id_unique": {
+          "name": "reservation_contract_signatures_reservation_id_unique",
+          "columns": [
+            "reservation_id"
+          ]
+        }
+      },
       "checkConstraint": {}
     }
   },

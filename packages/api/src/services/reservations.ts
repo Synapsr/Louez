@@ -403,6 +403,8 @@ export async function listReservations(reader: ReservationReader, input: ListRes
             subtotalAmount: true,
             depositAmount: true,
             totalAmount: true,
+            signedAt: true,
+            signatureMethod: true,
           },
           with: {
             customer: { columns: { id: true, firstName: true, lastName: true, email: true } },

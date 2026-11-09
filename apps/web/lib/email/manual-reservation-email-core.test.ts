@@ -35,6 +35,7 @@ const context: ManualEmailRenderContext = {
   reservationUrl: 'https://armor.example/account/reservations/res_1',
   logoUrl: null,
   showPaymentCta: true,
+  contractSigned: true,
 }
 
 const build = (
@@ -142,6 +143,29 @@ test('preview falls back to the reservation page where a send mints real links',
   assert.ok(!('error' in preview) && !('error' in send))
   assert.match(preview.html, /href="https:\/\/armor\.example\/account\/reservations\/res_1"/)
   assert.match(send.html, /href="https:\/\/armor\.example\/access\/token-123"/)
+})
+
+test('an unsigned contract turns the contract email and the pickup reminder into a request to sign', async () => {
+  const signUrl = 'https://armor.example/r/res_1?token=sign-123'
+  const unsigned = { ...context, contractSigned: false }
+
+  for (const templateId of ['contract', 'reminder_pickup']) {
+    const signed = await build({ templateId }, { contractSignatureUrl: signUrl })
+    const send = await buildManualReservationEmailFromContext(
+      unsigned,
+      { templateId },
+      { contractSignatureUrl: signUrl },
+    )
+
+    assert.ok(!('error' in signed) && !('error' in send))
+    assert.doesNotMatch(signed.html, /Signer le contrat/, templateId)
+    assert.match(send.html, /Signer le contrat/, templateId)
+    assert.match(send.html, /href="https:\/\/armor\.example\/r\/res_1\?token=sign-123"/, templateId)
+  }
+
+  const contract = await buildManualReservationEmailFromContext(unsigned, { templateId: 'contract' })
+  assert.ok(!('error' in contract))
+  assert.doesNotMatch(contract.html, /Télécharger le contrat/)
 })
 
 test('the shared shell keeps contact info but no postal address in the footer', async () => {

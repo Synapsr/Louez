@@ -2465,10 +2465,31 @@
       },
       "contract": {
         "title": "계약",
-        "signed": "{date}에 서명됨",
-        "notSigned": "서명되지 않음",
         "generate": "계약 생성",
-        "download": "다운로드"
+        "download": "다운로드",
+        "signedBadge": "계약 서명 완료",
+        "unsignedBadge": "계약 미서명",
+        "signedOn": "{date}",
+        "unsignedTooltip": "고객이 아직 계약에 동의하지 않았습니다. 이메일 링크로 또는 수령 시 매장에서 서명할 수 있습니다.",
+        "methods": {
+          "checkout": "온라인 예약 시 동의",
+          "payment_page": "결제 페이지에서 서명",
+          "account": "고객 계정에서 서명",
+          "in_store": "매장에서 서명"
+        },
+        "signInStore": "매장에서 서명 받기",
+        "sendSignatureLink": "서명 요청 보내기",
+        "signatureLinkSent": "서명 링크를 고객에게 보냈습니다",
+        "signDialog": {
+          "title": "매장에서 계약 서명",
+          "description": "고객이 계약서를 읽고 이 기기에서 서명하도록 하세요. 서명과 이름이 계약서에 표시됩니다.",
+          "viewContract": "계약서 열기",
+          "signerName": "서명자 이름",
+          "acceptance": "고객이 계약서와 대여 약관을 읽고 동의합니다.",
+          "confirm": "서명 확인",
+          "success": "계약이 서명되었습니다",
+          "alreadySigned": "이미 서명된 계약입니다."
+        }
       },
       "notes": {
         "title": "내부 메모",
@@ -2737,6 +2758,9 @@
         "quote_accepted": "견적이 승인되었습니다.",
         "quote_declined": "견적이 거부되었습니다.",
         "overbooked": "초과 예약됨",
+        "contract_signed": "계약 서명",
+        "contractUnsigned": "계약 미서명",
+        "signedBy": "서명자: {name}",
         "showAll": "모두 표시 ({count} 이벤트)",
         "showLess": "간략히 보기",
         "paymentFailure": {
@@ -2798,6 +2822,11 @@
         "warningDepositTitle": "보증금 미수령",
         "warningDepositDescription": "{amount} 보증금이 아직 징수되지 않았습니다. 장비를 양도하기 전에 반드시 수집하십시오.",
         "acknowledgePickupWarnings": "이러한 경고에도 불구하고 이해했으며 계속 진행하고 싶습니다.",
+        "contractUnsigned": "계약 미서명",
+        "warningContractTitle": "계약 미서명",
+        "warningContractDescription": "고객이 아직 계약서에 서명하지 않았습니다. 매장에서 서명을 받거나 서명 없이 계속하세요. 이력에 기록됩니다.",
+        "acknowledgePickupWithoutSignature": "이해했으며 계약이 서명되지 않았더라도 계속하겠습니다",
+        "warningContractRequiredDescription": "이 매장은 수령 전에 계약서 서명을 요구합니다. 계속하려면 매장에서 고객의 서명을 받으세요.",
         "confirmPickup": "수령 확인",
         "returnConfirmTitle": "반납 확인",
         "returnConfirmDescription": "반품을 확정하기 전에 장비 상태와 재무 요약을 확인하세요.",
@@ -5815,6 +5844,7 @@
           "membershipsLeft": "너도 떠날 거야 {count,plural,one{# 다른 매장} other{# 다른 매장}} 당신이 회원인 곳.",
           "businessDocumentsDeleted": "{count,plural,one{# 매장의 비즈니스 송장이 Louez에서 삭제됩니다.} other{# 매장의 비즈니스 송장은 Louez에서 삭제됩니다.}}. 보관해야 하는 경우 계속하기 전에 내보내기하세요.",
           "legalRetention": "{count,plural,one{# Louez 청구 기록이 보관됩니다.} other{# Louez 청구 기록이 보관됩니다.}} 회계연도 종료 후 10년 동안 별도의 접근이 제한된 아카이브에 보관됩니다.",
+          "googleCalendarNotice": "Louez가 Google 캘린더에 만든 캘린더는 삭제됩니다. Google이 더 이상 Louez의 접근을 허용하지 않으면 해당 캘린더는 Google 계정에 남으며, Google 캘린더에서 직접 삭제할 수 있습니다.",
           "confirmationLabel": "확인하려면 {email}를 입력하세요.",
           "passwordLabel": "현재 비밀번호",
           "passwordRequired": "현재 비밀번호를 입력하세요.",
@@ -6300,6 +6330,16 @@
         "title": "자동 임대 연장",
         "description": "고객은 장비를 사용할 수 있을 때 연장할 수 있으며 추가 비용을 계산할 수 있습니다. 특별한 경우에는 귀하의 승인이 필요합니다.",
         "maxDays": "최대 추가 일수(제한이 없으면 비워두세요)"
+      },
+      "contractSignature": {
+        "title": "계약 서명",
+        "description": "고객이 계약서에 서명하지 않은 상태에서 예약을 수령 완료로 표시할 때의 동작입니다.",
+        "optional": "선택",
+        "optionalDescription": "수령 시 경고가 없습니다. 예약에 '계약 미서명' 배지가 계속 표시됩니다.",
+        "recommended": "권장",
+        "recommendedDescription": "매장에서 서명을 받도록 안내하는 경고가 표시됩니다. 서명 없이 장비를 넘길 수 있으며 이력에 기록됩니다.",
+        "required": "필수",
+        "requiredDescription": "고객이 온라인 또는 매장에서 계약서에 서명할 때까지 수령이 거부됩니다."
       },
       "readOnlyNotice": "읽기 전용: 소유자와 관리자만 이 스토어의 설정을 변경할 수 있습니다.",
       "customerFields": {
@@ -7941,6 +7981,8 @@
       "redirecting": "결제로 리디렉션 중...",
       "securePayment": "Stripe를 통한 안전한 결제",
       "backToStore": "매장으로 돌아가기",
+      "acceptContractRich": "<terms>대여 이용약관</terms>을 읽었으며 이에 동의합니다",
+      "acceptContractRequired": "계속하려면 대여 이용약관에 동의해 주세요.",
       "errors": {
         "expiredTitle": "링크가 만료되었습니다",
         "expiredDescription": "이 결제 링크는 만료되었습니다. 새 제품을 요청하려면 매장에 문의하세요.",
@@ -8094,7 +8136,7 @@
       "signContract": "계약서 서명",
       "contractSigned": "계약 체결",
       "downloadContract": "계약서 다운로드",
-      "signContractConfirmation": "계속 진행하시면 본 임대 계약을 읽고 동의하신 것으로 간주됩니다.",
+      "signContractConfirmation": "<contract>대여 계약서</contract>와 대여 이용약관에 동의합니다. 날짜와 IP 주소가 기록됩니다.",
       "signContractError": "계약서에 서명할 수 없습니다. 다시 시도해 주세요.",
       "invoiceDocuments": {
         "title": "송장 및 신용 전표",
@@ -9016,10 +9058,10 @@
       "customerText": "나는 예약 없이 일반 임대 이용 약관을 읽고 동의했음을 인정합니다.",
       "dateLabel": "날짜:",
       "ipLabel": "IP:",
-      "automatic": "자동으로 검증됨",
-      "automaticText": "예약이 확정되거나 결제되면 계약이 자동으로 유효해집니다.",
       "atBooking": "예약 시 서명 완료",
       "atBookingText": "온라인 예약 시 대여 약관에 동의하면 이 계약에 서명한 것으로 간주됩니다.",
+      "inStore": "매장에서 서명",
+      "signerLabel": "서명자:",
       "signedOnLabel": "서명 일시:",
       "validatedOnLabel": "승인 일시:"
     },
@@ -9142,6 +9184,8 @@
   "errors": {
     "storeNotAcceptingReservations": "이 매장은 현재 온라인 예약을 받지 않습니다. {hasContact, select, yes {매장 연락처: {contact}} other {매장에 직접 문의해 주세요.}}",
     "generic": "오류가 발생했습니다",
+    "contractNotSignable": "이 계약서는 더 이상 서명할 수 없습니다.",
+    "contractSignatureRequired": "이 매장은 수령 전에 고객이 계약서에 서명해야 합니다.",
     "pageLoadError": "이 페이지를 로드할 수 없습니다. 다시 시도해 주세요.",
     "notFound": "페이지를 찾을 수 없습니다",
     "notFoundDescription": "찾으시는 페이지가 존재하지 않거나 이동되었습니다.",

@@ -538,6 +538,12 @@ export function createContractStyles(_primaryColor: string = "#0066FF", locale: 
       color: c.faint,
       marginTop: 4,
     },
+    signatureImage: {
+      height: 48,
+      objectFit: "contain",
+      objectPosition: "left",
+      marginTop: 6,
+    },
 
     // Legal mentions
     legalSection: {

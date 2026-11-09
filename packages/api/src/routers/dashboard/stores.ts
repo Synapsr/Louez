@@ -158,10 +158,11 @@ const create = accountProcedure
     const attribution =
       credential.kind === "session"
         ? ports.newStores.signupAttribution(context.headers)
-        : { referralCode: null, signupOrigin: null };
+        : { referralCode: null, signupOrigin: null, affiliateReferral: null };
     const referral = await resolvePendingReferral({
       userId: credential.userId,
       referralCode: attribution.referralCode,
+      affiliateReferral: attribution.affiliateReferral,
     });
 
     await assertInstanceTakesAStore(ports.newStores.singleStore());
@@ -262,12 +263,14 @@ const updateOnboardingInfo = accountProcedure
     const { ports } = context;
     if (!ports) throw missingTransport();
     const { storeId, ...store } = input;
+    const attribution = ports.newStores.signupAttribution(context.headers);
     const saved = await saveOnboardingStoreInfo({
       actor: context.actor,
       store,
       editingStoreId: storeId ?? null,
       activeStoreId: activeStoreIdOf(context.headers),
-      referralCode: ports.newStores.signupAttribution(context.headers).referralCode,
+      referralCode: attribution.referralCode,
+      affiliateReferral: attribution.affiliateReferral,
       rewardReferredStore: ports.newStores.rewardReferredStore,
     });
     ports.dispatchEffects(saved.effectIds);
@@ -280,7 +283,7 @@ const updateOnboardingInfo = accountProcedure
         }),
       );
     }
-    return { id: saved.id, online: saved.online };
+    return { id: saved.id, online: saved.online, ownerSaved: saved.ownerSaved };
   });
 
 // --- Launch -------------------------------------------------------------------

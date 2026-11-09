@@ -12,6 +12,8 @@ interface ContractEmailProps {
   customerFirstName: string;
   reservationNumber: string;
   contractUrl: string;
+  /** Set while the customer has not signed: the email asks them to sign instead of downloading. */
+  contractSignatureUrl?: string;
   /** Free text the store owner added when sending the contract by hand. */
   additionalMessage?: string | null;
   locale?: EmailLocale;
@@ -27,6 +29,7 @@ export function ContractEmail({
   customerFirstName,
   reservationNumber,
   contractUrl,
+  contractSignatureUrl,
   additionalMessage,
   locale = "fr",
 }: ContractEmailProps) {
@@ -49,11 +52,28 @@ export function ContractEmail({
 
       <EmailText>{tc.greeting.replace("{name}", customerFirstName)}</EmailText>
 
-      <EmailText>{messages.body.replace("{number}", reservationNumber)}</EmailText>
+      <EmailText>
+        {(contractSignatureUrl ? messages.signBody : messages.body).replace(
+          "{number}",
+          reservationNumber,
+        )}
+      </EmailText>
 
       <StoreNote message={additionalMessage} />
 
-      <CtaButton href={contractUrl} label={messages.downloadContract} primaryColor={primaryColor} />
+      {contractSignatureUrl ? (
+        <CtaButton
+          href={contractSignatureUrl}
+          label={messages.signContract}
+          primaryColor={primaryColor}
+        />
+      ) : (
+        <CtaButton
+          href={contractUrl}
+          label={messages.downloadContract}
+          primaryColor={primaryColor}
+        />
+      )}
 
       <Signature text={tc.seeYouSoon.replace("{storeName}", storeName)} />
     </BaseLayout>

@@ -1,5 +1,7 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -13,6 +15,7 @@ import {
 
 import { getCustomerSession } from "@/lib/customer-auth/session";
 import { log } from "@/lib/evlog";
+import { getClientIp } from "@/lib/request";
 import { getTulipCoverageSummary } from "@/lib/integrations/tulip/contracts";
 import {
   searchFrenchCompanies,
@@ -247,6 +250,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
     ...parsed.data,
     source: "online",
     customerSignedIn: await isSignedInAs(parsed.data.storeId, parsed.data.customer.email),
+    termsAcceptedFromIp: getClientIp(await headers()),
   });
 
   if (!result.ok) {

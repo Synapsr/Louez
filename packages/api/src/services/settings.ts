@@ -7,12 +7,13 @@ import {
   stores,
   type Transaction,
 } from "@louez/db";
-import type {
-  BusinessHours,
-  DaySchedule,
-  DeliverySettings,
-  StoreSettings,
-  TaxSettings,
+import {
+  DEFAULT_CONTRACT_SIGNATURE_MODE,
+  type BusinessHours,
+  type DaySchedule,
+  type DeliverySettings,
+  type StoreSettings,
+  type TaxSettings,
 } from "@louez/types";
 import {
   beforeTaxRateBps,
@@ -202,6 +203,7 @@ export const toReservationRulesView = (settings: StoreSettings) => ({
   requireCustomerAddress: settings.requireCustomerAddress ?? false,
   automaticExtensions: settings.automaticExtensions ?? true,
   maxExtensionDays: settings.maxExtensionDays ?? null,
+  contractSignatureMode: settings.contractSignatureMode ?? DEFAULT_CONTRACT_SIGNATURE_MODE,
 });
 type ReservationRules = ReturnType<typeof toReservationRulesView>;
 

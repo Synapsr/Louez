@@ -397,7 +397,11 @@ describe(
 
     test("a dashboard request's referral and sign-up origin are recorded; the reward event only for a billed store", async () => {
       newStores = {
-        signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: "reeent" }),
+        signupAttribution: () => ({
+          referralCode: REFERRAL_CODE,
+          signupOrigin: "reeent",
+          affiliateReferral: null,
+        }),
         // No welcome credits configured: no row for them.
         welcomeCredits: () => 0,
       };
@@ -427,7 +431,11 @@ describe(
       // A store the billing service bills gets no reward, and no reward event.
       await louezDb.db.update(louezDb.users).set({ signupOrigin: null });
       newStores = {
-        signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: null }),
+        signupAttribution: () => ({
+          referralCode: REFERRAL_CODE,
+          signupOrigin: null,
+          affiliateReferral: null,
+        }),
         subscribe: async () => ({ billing: "offer", offer: "4% per paid reservation" }),
       };
       await louezDb.db
@@ -444,7 +452,11 @@ describe(
       );
       assert.ok(!serviceEvents.some((event) => event.payload.event === "referred_reward_granted"));
       newStores = {
-        signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: "reeent" }),
+        signupAttribution: () => ({
+          referralCode: REFERRAL_CODE,
+          signupOrigin: "reeent",
+          affiliateReferral: null,
+        }),
       };
 
       // An agent's request carries no attribution, even if the port would read one.
@@ -770,7 +782,7 @@ describe(
     // --- The onboarding's store step on an existing store ---------------------------
 
     const saveInfo = (context: object, input: Record<string, unknown> = {}) =>
-      call<{ id: string | null; online: boolean }>(
+      call<{ id: string | null; online: boolean; ownerSaved: boolean }>(
         stores.updateOnboardingInfo,
         { name: "Brest Surf Rental", slug: "brest-surf", country: "FR", currency: "EUR", ...input },
         context,
@@ -792,7 +804,11 @@ describe(
         .where(orm.eq(louezDb.stores.id, created.id));
       const rewarded: string[] = [];
       newStores = {
-        signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: null }),
+        signupAttribution: () => ({
+          referralCode: REFERRAL_CODE,
+          signupOrigin: null,
+          affiliateReferral: null,
+        }),
         // Louez's own billing bills it: the referred reward (the app's port decides).
         rewardReferredStore: async (_tx, storeId) => {
           rewarded.push(storeId);
@@ -806,7 +822,7 @@ describe(
         address: "2 quai de la Douane, 29200 Brest",
         email: "contact@brest-surf.test",
       });
-      assert.deepEqual(saved, { id: created.id, online: false });
+      assert.deepEqual(saved, { id: created.id, online: false, ownerSaved: true });
       const row = await louezDb.db.query.stores.findFirst({
         where: orm.eq(louezDb.stores.id, created.id),
       });
@@ -859,7 +875,7 @@ describe(
     });
 
     test("the store step: no store to finish, a taken address, a store not theirs, an agent", async () => {
-      assert.deepEqual(await saveInfo(session()), { id: null, online: false });
+      assert.deepEqual(await saveInfo(session()), { id: null, online: false, ownerSaved: false });
       await rejects(saveInfo(session(), { slug: "sc-owner" }), "STORE_SLUG_TAKEN");
       // Another user's store, with an id as the dashboard sends it.
       const theirs = "sc_other_store_000001";
@@ -880,7 +896,11 @@ describe(
 
     test("a store the dashboard creates becomes the active one, and spends the referral cookie", async () => {
       newStores = {
-        signupAttribution: () => ({ referralCode: REFERRAL_CODE, signupOrigin: null }),
+        signupAttribution: () => ({
+          referralCode: REFERRAL_CODE,
+          signupOrigin: null,
+          affiliateReferral: null,
+        }),
       };
       const context = { ...session(), resHeaders: new Headers() };
       const created = await create(context);
@@ -888,6 +908,41 @@ describe(
         `louez_active_store=${created.id}`,
         "louez_referral=; Max-Age=0",
       ]);
+    });
+
+    test("a Klibon affiliate's code wins over the store referral: no referrer, no reward, the cookie spent", async () => {
+      newStores = {
+        signupAttribution: () => ({
+          referralCode: REFERRAL_CODE,
+          signupOrigin: null,
+          affiliateReferral: "aff_42",
+        }),
+      };
+      const context = { ...session(), resHeaders: new Headers() };
+      const created = await create(context);
+      const row = await louezDb.db.query.stores.findFirst({
+        where: orm.eq(louezDb.stores.id, created.id),
+        columns: { referredByStoreId: true, referredByUserId: true },
+      });
+      assert.deepEqual(row, { referredByStoreId: null, referredByUserId: null });
+      assert.equal(subscriptionCalls.at(-1)?.referred, false);
+      assert.deepEqual(context.resHeaders.getSetCookie(), [
+        `louez_active_store=${created.id}`,
+        "louez_referral=; Max-Age=0",
+      ]);
+      const events = await louezDb.db
+        .select({ payload: louezDb.apiEffects.payload })
+        .from(louezDb.apiEffects)
+        .where(orm.eq(louezDb.apiEffects.storeId, created.id));
+      const resolved = events.find(
+        (event) => event.payload.event === "referral_attribution_resolved",
+      );
+      assert.equal(
+        (resolved?.payload.properties as Record<string, unknown> | undefined)
+          ?.referral_attribution_outcome,
+        "affiliate_referral",
+      );
+      assert.ok(!events.some((event) => event.payload.event === "referred_reward_granted"));
     });
 
     // --- Web address --------------------------------------------------------------

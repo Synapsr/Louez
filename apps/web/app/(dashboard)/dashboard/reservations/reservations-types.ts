@@ -1,3 +1,5 @@
+import type { ContractSignatureMethod } from '@louez/db'
+
 export type { ReservationsPage } from '@louez/api/contracts/reservations'
 
 export type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
@@ -47,6 +49,8 @@ export interface Reservation {
   } | null
   items: ReservationItem[]
   payments: Payment[]
+  signedAt?: Date | string | null
+  signatureMethod?: ContractSignatureMethod | null
 }
 
 export interface ReservationCounts {

@@ -56,6 +56,8 @@ interface ComposeReminderPickupParams {
   customer: ComposeCustomer
   reservation: { number: string; startDate: Date }
   reservationUrl: string
+  /** Set while the customer has not signed the contract: the reminder asks them to. */
+  contractSignatureUrl?: string
   additionalMessage?: string | null
   locale?: EmailLocale
   logoUrl: string | null
@@ -66,6 +68,7 @@ export function composeReminderPickupEmail({
   customer,
   reservation,
   reservationUrl,
+  contractSignatureUrl,
   additionalMessage,
   locale = 'fr',
   logoUrl,
@@ -87,6 +90,7 @@ export function composeReminderPickupEmail({
     reservationNumber: reservation.number,
     startDate: reservation.startDate,
     reservationUrl,
+    contractSignatureUrl,
     customContent,
     additionalMessage,
     locale,
@@ -206,6 +210,8 @@ interface ComposeContractParams {
   customer: ComposeCustomer
   reservationNumber: string
   contractUrl: string
+  /** Set while the customer has not signed the contract: the email asks them to sign it. */
+  contractSignatureUrl?: string
   additionalMessage?: string | null
   customSubject?: string | null
   locale?: EmailLocale
@@ -217,6 +223,7 @@ export function composeContractEmail({
   customer,
   reservationNumber,
   contractUrl,
+  contractSignatureUrl,
   additionalMessage,
   customSubject,
   locale = 'fr',
@@ -236,6 +243,7 @@ export function composeContractEmail({
     customerFirstName: customer.firstName,
     reservationNumber,
     contractUrl,
+    contractSignatureUrl,
     additionalMessage,
     locale,
   })

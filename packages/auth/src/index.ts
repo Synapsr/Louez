@@ -29,6 +29,7 @@ import {
   getAccountDeletionReasonFromRequest,
   type AccountDeletionReason,
 } from "./account-deletion";
+import { accountDeletionRequestBefore } from "./account-deletion-request";
 import { env } from "./env";
 import { sendPasswordChangedNotice } from "./password-notice";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./password-policy";
@@ -251,26 +252,8 @@ export const authInstance = betterAuth({
               { user, token }: { user: { id: string; email: string }; token: string },
               request?: Request,
             ) => {
-              if (!_userDeleteRequestHook) {
-                throw new APIError("SERVICE_UNAVAILABLE", {
-                  message: "Account deletion is temporarily unavailable",
-                  code: "ACCOUNT_DELETION_UNAVAILABLE",
-                });
-              }
-              try {
-                await _userDeleteRequestHook({ userId: user.id });
-              } catch {
-                throw new APIError("SERVICE_UNAVAILABLE", {
-                  message: "Account deletion is temporarily unavailable",
-                  code: "ACCOUNT_DELETION_UNAVAILABLE",
-                });
-              }
-              if (!isEmailConfigured()) {
-                throw new APIError("SERVICE_UNAVAILABLE", {
-                  message: "Account deletion email is unavailable",
-                  code: "ACCOUNT_DELETION_EMAIL_UNAVAILABLE",
-                });
-              }
+              // The checks that can refuse this request run in hooks.before:
+              // an error thrown here never reaches the client.
               const locale = getLocaleFromHeaders(
                 request ? new Headers(request.headers) : new Headers(),
               );
@@ -325,6 +308,14 @@ export const authInstance = betterAuth({
     // caller sent: the flag is not left to the client's good will.
     before: createAuthMiddleware(async (ctx) => {
       await passkeyBefore(ctx);
+      // A deletion request is refused here, before the route answers: see
+      // account-deletion-request.ts for why the e-mail sender cannot do it.
+      if (!isStandaloneMode) {
+        await accountDeletionRequestBefore(ctx, {
+          requestHook: _userDeleteRequestHook,
+          emailConfigured: isEmailConfigured(),
+        });
+      }
       if (ctx.path !== "/change-password") return;
       return {
         context: {
