@@ -221,9 +221,9 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       assert.match(description, /before \(source\.url\)[^.]*after \(result\.url\)/);
       assert.match(description, /always answers CONFIRMATION_REQUIRED/);
     }
-    assert.match(instructions, /show the user the before and after images/);
-    assert.match(instructions, /to undo, products_use_image_version with the original's id/);
-    assert.match(instructions, /poll jobs_get/);
+    assert.match(instructions, /the before and after images to show the user/);
+    assert.match(instructions, /To undo, products_use_image_version takes the original's id/);
+    assert.match(instructions, /jobs_get with the job's id/);
   });
 
   test("an agent confirms the price, follows the job on both transports, and undoes it", async () => {

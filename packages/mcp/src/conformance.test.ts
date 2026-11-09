@@ -368,6 +368,20 @@ describe("MCP directory conformance", () => {
     assert.match(essentials, /CONFIRMATION_REQUIRED/);
   });
 
+  test("the instructions set no schedule and give the model no orders", () => {
+    // A reviewer reads a cadence or a "never" aimed at the model as prompt
+    // injection: the instructions say what tools do and what is enough.
+    for (const pattern of [
+      /\bevery \d+/i,
+      /\b\d+ (?:seconds|minutes) to \d+/i,
+      /\b(?:you must|you cannot|you should|make sure|always)\b/i,
+      /\bnever (?:open|start|call|ask)\b/i,
+    ]) {
+      assert.doesNotMatch(instructions, pattern);
+    }
+    assert.match(instructions, /If the user asks you to keep an eye on the store/);
+  });
+
   test("the essentials fit whatever the connection reaches", async () => {
     const { serverInstructions, INSTRUCTIONS_ESSENTIALS_MAX } = await import("./instructions");
     const { testRequestContext } = await import("./testing/request-context");
