@@ -1172,22 +1172,41 @@ describe("handoffs (database)", { skip: skipWithoutTestDatabase() }, () => {
     const finishers = await Promise.all(
       Array.from({ length: 20 }, () => returning(a.id, a.state, "cs_concurrent")),
     );
+    // The provider is held until every other return has answered: those can
+    // only read the stored status, which is not completed yet.
     const gate = barrier();
     billing.state.gate = gate.wait;
-    const returns = finishers.map((finish) => finish());
-    while (billing.state.finished.length === 0)
+    const settled: Array<{ index: number; done: boolean }> = [];
+    const returns = finishers.map((finish, index) =>
+      finish().then((answer) => {
+        settled.push({ index, done: answer.done });
+        return answer;
+      }),
+    );
+    for (let tick = 0; settled.length < 19 && tick < 50_000; tick += 1) {
       await new Promise((resolve) => setImmediate(resolve));
-    // Every other return has answered from the stored status by now.
+    }
+    assert.equal(settled.length, 19, "the 19 returns that lost the claim answered");
+    assert.ok(
+      settled.every((answer) => !answer.done),
+      "none of them completed it",
+    );
+    assert.deepEqual(billing.state.finished, ["cs_concurrent"], "one provider call");
+    const held = await handoffs.getHandoffRow(STORE, a.id);
+    assert.equal(held.status, "opened");
+    assert.equal(held.providerChecks, 1, "one claim took the lease");
+    const losers = new Set(settled.map((entry) => entry.index));
+
+    // The claiming return finishes, and it alone completes the handoff.
     gate.open();
     billing.state.gate = null;
     const answers = await Promise.all(returns);
+    const winner = answers.findIndex((_, index) => !losers.has(index));
+    assert.equal(answers[winner]?.done, true);
     assert.deepEqual(billing.state.finished, ["cs_concurrent"]);
-    assert.equal(
-      answers.filter((answer) => answer.done).length,
-      1,
-      "the claiming return completed it",
-    );
-    assert.equal((await handoffs.getHandoffRow(STORE, a.id)).status, "completed");
+    const completed = await handoffs.getHandoffRow(STORE, a.id);
+    assert.equal(completed.status, "completed");
+    assert.equal(completed.providerChecks, 1, "no claim after it");
     // A reload of a completed return calls nothing.
     assert.deepEqual(await finishers[0]!(), { done: true });
     assert.equal(billing.state.finished.length, 1);
