@@ -15,6 +15,7 @@ import { completeImageUploadOutput, createImageUploadOutput } from "../../contra
 import { onlineStoreLinks } from "../../platform/links";
 import type { ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
+import { withSetupMark } from "../../platform/setup-analytics";
 import {
   checkCurrentStoreSlug,
   updateAppearance,
@@ -138,7 +139,9 @@ const createImageUploadProcedure = storeProcedure
   .input(createStorefrontImageUploadInput)
   .output(createImageUploadOutput)
   .handler(({ context, input }) =>
-    createImageUpload(context.ports.storage, { storeId: context.actor.storeId, ...input }),
+    withSetupMark(context.actor.storeId, () =>
+      createImageUpload(context.ports.storage, { storeId: context.actor.storeId, ...input }),
+    ),
   );
 
 const completeImageUploadProcedure = storeProcedure
@@ -157,7 +160,9 @@ const completeImageUploadProcedure = storeProcedure
   .input(completeStorefrontImageUploadInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
-    completeImageUpload(context.ports.storage, { storeId: context.actor.storeId, ...input }),
+    withSetupMark(context.actor.storeId, () =>
+      completeImageUpload(context.ports.storage, { storeId: context.actor.storeId, ...input }),
+    ),
   );
 
 // --- The editor --------------------------------------------------------------

@@ -21,6 +21,7 @@ import { checkConfirmation } from "../../platform/confirmation";
 import { categoryLinks, type LinkStore } from "../../platform/links";
 import type { UrlsPort } from "../../platform/ports";
 import { storeProcedure } from "../../platform/procedures";
+import { withSetupMark } from "../../platform/setup-analytics";
 import {
   createCategory,
   deleteCategory,
@@ -209,11 +210,13 @@ const createImageUploadProcedure = storeProcedure
   .input(createImageUploadInput)
   .output(createImageUploadOutput)
   .handler(({ context, input }) =>
-    createImageUpload(context.ports.storage, {
-      storeId: context.actor.storeId,
-      kind: "category",
-      ...input,
-    }),
+    withSetupMark(context.actor.storeId, () =>
+      createImageUpload(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "category",
+        ...input,
+      }),
+    ),
   );
 
 const completeImageUploadProcedure = storeProcedure
@@ -232,11 +235,13 @@ const completeImageUploadProcedure = storeProcedure
   .input(completeImageUploadInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
-    completeImageUpload(context.ports.storage, {
-      storeId: context.actor.storeId,
-      kind: "category",
-      key: input.key,
-    }),
+    withSetupMark(context.actor.storeId, () =>
+      completeImageUpload(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "category",
+        key: input.key,
+      }),
+    ),
   );
 
 export const dashboardCategoriesRouter = {

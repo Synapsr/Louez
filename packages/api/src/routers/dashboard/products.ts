@@ -35,6 +35,7 @@ import {
 } from "../../contracts/uploads";
 import { productLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
+import { withSetupMark } from "../../platform/setup-analytics";
 import { getProductUnitActivityPage } from "../../services/product-activity";
 import { getProductReservationTimeline } from "../../services/product-reservation-timeline";
 import {
@@ -392,11 +393,13 @@ const createImageUploadProcedure = storeProcedure
   .input(createImageUploadInput)
   .output(createImageUploadOutput)
   .handler(({ context, input }) =>
-    createImageUpload(context.ports.storage, {
-      storeId: context.actor.storeId,
-      kind: "product",
-      ...input,
-    }),
+    withSetupMark(context.actor.storeId, () =>
+      createImageUpload(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "product",
+        ...input,
+      }),
+    ),
   );
 
 const completeImageUploadProcedure = storeProcedure
@@ -415,11 +418,13 @@ const completeImageUploadProcedure = storeProcedure
   .input(completeImageUploadInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
-    completeImageUpload(context.ports.storage, {
-      storeId: context.actor.storeId,
-      kind: "product",
-      key: input.key,
-    }),
+    withSetupMark(context.actor.storeId, () =>
+      completeImageUpload(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "product",
+        key: input.key,
+      }),
+    ),
   );
 
 // --- Activity and timeline ---------------------------------------------------

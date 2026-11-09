@@ -1,4 +1,11 @@
-import { apiOperations, db, stores, type Transaction } from "@louez/db";
+import {
+  apiOperations,
+  currentApiOperation,
+  db,
+  lockStoreRow,
+  stores,
+  type Transaction,
+} from "@louez/db";
 import { and, count, eq, sql } from "drizzle-orm";
 
 import type { CredentialKind, Credential, Transport } from "./actor";
@@ -363,6 +370,24 @@ export function recordedSetupAction(call: {
     });
     return effect ? { storeId: marked.storeId, effects: [effect] } : null;
   };
+}
+
+/**
+ * Runs a setup write that takes no store lock of its own, such as an image
+ * upload, whose storage requests must never run under the store's lock, and
+ * marks it once `work` succeeded: a short transaction of its own takes the
+ * store row's lock (`lockStoreRow`, which marks the running write while the
+ * store is offline) and releases it at once. Every upload procedure wraps its
+ * handler's work in it; a write outside a setup procedure takes no lock.
+ */
+export async function withSetupMark<T>(storeId: string, work: () => Promise<T>): Promise<T> {
+  const result = await work();
+  if (currentApiOperation()?.marksSetup) {
+    await db.transaction(async (tx) => {
+      await lockStoreRow(tx, storeId);
+    });
+  }
+  return result;
 }
 
 // --- The summary at go-live -----------------------------------------------------

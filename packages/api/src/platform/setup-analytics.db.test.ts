@@ -84,6 +84,8 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     stores: typeof import("../routers/dashboard/stores").dashboardStoresRouter;
     settings: typeof import("../routers/dashboard/settings").dashboardSettingsRouter;
     products: typeof import("../routers/dashboard/products").dashboardProductsRouter;
+    categories: typeof import("../routers/dashboard/categories").dashboardCategoriesRouter;
+    onlineStore: typeof import("../routers/dashboard/online-store").dashboardOnlineStoreRouter;
   };
 
   let dispatched: string[] = [];
@@ -113,6 +115,8 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
       stores: (await import("../routers/dashboard/stores")).dashboardStoresRouter,
       settings: (await import("../routers/dashboard/settings")).dashboardSettingsRouter,
       products: (await import("../routers/dashboard/products")).dashboardProductsRouter,
+      categories: (await import("../routers/dashboard/categories")).dashboardCategoriesRouter,
+      onlineStore: (await import("../routers/dashboard/online-store")).dashboardOnlineStoreRouter,
     };
     await louezDb.db.insert(louezDb.oauthClients).values({
       clientId: CLIENT,
@@ -720,5 +724,85 @@ describe("setup analytics of a store (database)", { skip: skipWithoutTestDatabas
     assert.equal(launch.setup.agentActionCount, 1);
     assert.equal(launch.setup.humanActionCount, 2);
     await assertNoPersonalData();
+  });
+
+  // --- Image uploads ----------------------------------------------------------
+
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+
+  /** One upload through a domain's two procedures: the upload's start, the file, its end. */
+  async function uploadImage(
+    domain: "onlineStore" | "categories" | "products",
+    caller: Caller,
+    storeId: string,
+  ) {
+    const header = { "louez-store": storeId };
+    const kind = domain === "onlineStore" ? { kind: "logo" } : {};
+    const started = await call<{ key: string }>(
+      domain,
+      "createImageUpload",
+      { ...kind, contentType: "image/png", size: PNG.byteLength },
+      caller,
+      header,
+    );
+    await ports.storage.put(started.key, PNG, "image/png");
+    await call(domain, "completeImageUpload", { ...kind, key: started.key }, caller, header);
+  }
+
+  const marksOf = async (procedure: string) =>
+    louezDb.db
+      .select({ setupStoreId: louezDb.apiOperations.setupStoreId })
+      .from(louezDb.apiOperations)
+      .where(orm.eq(louezDb.apiOperations.procedure, procedure));
+
+  test("an image upload on an offline store is marked and sent; once online, it is not", async () => {
+    const store = await createStore(agent);
+    for (const domain of ["onlineStore", "categories", "products"] as const) {
+      await uploadImage(domain, agent, store.id);
+    }
+    // A human's upload is marked too, and sends no agent action.
+    await uploadImage("categories", session, store.id);
+
+    const actions = (await rows("store.agentSetupAction")).map((row) => row.payload);
+    assert.deepEqual(
+      actions.map((action) => action.procedure),
+      [
+        "stores.create",
+        "onlineStore.createImageUpload",
+        "onlineStore.completeImageUpload",
+        "categories.createImageUpload",
+        "categories.completeImageUpload",
+        "products.createImageUpload",
+        "products.completeImageUpload",
+      ],
+    );
+    assert.deepEqual(actions[1]?.facts, { image_kind: "logo" });
+    for (const procedure of [
+      "dashboard.onlineStore.createImageUpload",
+      "dashboard.onlineStore.completeImageUpload",
+      "dashboard.products.completeImageUpload",
+    ]) {
+      assert.deepEqual(await marksOf(procedure), [{ setupStoreId: store.id }], procedure);
+    }
+    assert.deepEqual(
+      (await marksOf("dashboard.categories.completeImageUpload")).map((row) => row.setupStoreId),
+      [store.id, store.id],
+      "the agent's and the human's",
+    );
+
+    await goLive(agent, store.id);
+    const [{ payload: launch }] = await rows("store.launchAnalytics");
+    assert.ok(launch.setup);
+    assert.equal(launch.setup.agentActionCount, 8, "the creation, six upload calls, the go-live");
+    assert.equal(launch.setup.humanActionCount, 2);
+    assert.equal(launch.setup.setupBy, "mixed");
+
+    // Online now: an upload sets nothing up.
+    const sent = (await rows("store.agentSetupAction")).length;
+    await uploadImage("onlineStore", agent, store.id);
+    assert.equal((await rows("store.agentSetupAction")).length, sent);
+    const after = await marksOf("dashboard.onlineStore.completeImageUpload");
+    assert.equal(after.length, 2);
+    assert.equal(after.filter((row) => row.setupStoreId === null).length, 1);
   });
 });
