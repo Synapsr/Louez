@@ -7,9 +7,6 @@ import { Button } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
 import { auth } from "@/lib/auth";
-import { createLoginUrl } from "@/lib/utils/util.url";
-
-import { env } from "@/env";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -37,7 +34,8 @@ export default async function HandoffPage({
   const path = handoffPath(token);
   const session = await auth();
   const userId = session?.user?.id;
-  if (!userId) redirect(createLoginUrl(path, env.NEXT_PUBLIC_APP_URL));
+  // The login keeps the link in a cookie, never in its own URL.
+  if (!userId) redirect(`${path}/sign-in`);
 
   const t = await getTranslations("handoff");
   const checked = await readHandoffLink(token, userId);

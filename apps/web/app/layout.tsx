@@ -1,6 +1,7 @@
 import { isLocale, defaultLocale } from "@/i18n/config";
 import { headers } from "next/headers";
 import { DEMO_LOCALE_HEADER, DEMO_ROUTE_HEADER } from "@/lib/landing-demos/policy";
+import { loadsClientAnalytics } from "@/lib/handoffs/handoff-privacy";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import Script from "next/script";
@@ -58,6 +59,8 @@ export default async function RootLayout({
   await connection();
   const requestHeaders = await headers();
   const isPublicDemo = requestHeaders.get(DEMO_ROUTE_HEADER) === "1";
+  // A handoff page's URL holds a secret: no analytics, no client log may read it.
+  const withAnalytics = !isPublicDemo && loadsClientAnalytics(requestHeaders);
   const instanceConfig = getInstanceConfig();
   const publicEnv = getPublicEnv();
   // Drives the document language for screen readers and translation tools.
@@ -68,14 +71,22 @@ export default async function RootLayout({
       : defaultLocale
     : await getLocale();
 
+  const app = (
+    <ORPCProvider>
+      <ToastProvider position="top-center">
+        <AnchoredToastProvider>{children}</AnchoredToastProvider>
+      </ToastProvider>
+    </ORPCProvider>
+  );
+
   return (
     <>
       {/* {process.env.NODE_ENV === 'development' && <Agentation />} */}
 
       <html lang={locale} suppressHydrationWarning className="overscroll-none">
-        {!isPublicDemo && <UmamiAnalytics />}
+        {withAnalytics && <UmamiAnalytics />}
 
-        {!isPublicDemo && env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
+        {withAnalytics && env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
           <Script
             src={`${env.NEXT_PUBLIC_FROMHELLO_API_URL.replace(/\/$/, "")}/api/t.js`}
             data-key={env.NEXT_PUBLIC_FROMHELLO_KEY}
@@ -99,16 +110,10 @@ export default async function RootLayout({
               children
             ) : (
               <>
-                <PostHogBootstrap />
+                {withAnalytics && <PostHogBootstrap />}
                 <InstanceProvider config={instanceConfig}>
                   <NuqsAdapter>
-                    <EvlogProvider>
-                      <ORPCProvider>
-                        <ToastProvider position="top-center">
-                          <AnchoredToastProvider>{children}</AnchoredToastProvider>
-                        </ToastProvider>
-                      </ORPCProvider>
-                    </EvlogProvider>
+                    {withAnalytics ? <EvlogProvider>{app}</EvlogProvider> : app}
                   </NuqsAdapter>
                 </InstanceProvider>
               </>
