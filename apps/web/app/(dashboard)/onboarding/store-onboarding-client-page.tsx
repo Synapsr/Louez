@@ -34,7 +34,7 @@ interface StoreOnboardingClientPageProps {
   editingStoreId: string | null;
   initialCountry: string;
   shouldDetectBrowserCountry: boolean;
-  /** Where an assistant connects, for the offer below the form. */
+  /** Where an assistant connects, for the offer above the form. */
   mcpEndpoint: McpEndpoint;
 }
 
@@ -75,6 +75,8 @@ export function StoreOnboardingClientPage({
         </div>
       )}
       <OnboardingStepHeader title={t("title")} description={t("description")} />
+      {/* Never in the way: the form below works without it. */}
+      <AgentAssistantCard {...mcpEndpoint} className="mb-6" />
       <form.AppForm>
         <form.Form className="space-y-6">
           {/* Store Name + Slug Preview */}
@@ -195,8 +197,6 @@ export function StoreOnboardingClientPage({
           </div>
         </form.Form>
       </form.AppForm>
-      {/* Never in the way: the form above works without it. */}
-      <AgentAssistantCard {...mcpEndpoint} className="mt-8" />
     </>
   );
 }

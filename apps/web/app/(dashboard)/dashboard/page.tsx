@@ -174,6 +174,12 @@ async function DashboardContent({
       {/* Priority Alert for pending requests */}
       <DashboardAlert pendingCount={metrics.pendingReservations} />
 
+      {/* The offer to let an AI assistant set up and run the store: first of
+          the setup notices, under the alert that asks for an action. */}
+      {shouldOfferAgentAssistant({ dismissedNoticeIds, hasAgentConnection }) && (
+        <AgentAssistantNotice {...getMcpEndpoint()} />
+      )}
+
       {/* Stores from reeent are not published there until Stripe can charge. */}
       {isFromReeent && onlinePaymentsStep === "todo" && (
         <ReeentStripeSetupCard hasStripeAccount={hasStripeAccount} />
@@ -199,11 +205,6 @@ async function DashboardContent({
           storeSlug={storeSlug}
           onlinePaymentsContext={isFromReeent ? "reeent" : "default"}
         />
-      )}
-
-      {/* The offer to let an AI assistant set up and run the store. */}
-      {shouldOfferAgentAssistant({ dismissedNoticeIds, hasAgentConnection }) && (
-        <AgentAssistantNotice {...getMcpEndpoint()} />
       )}
 
       {/* Adaptive Stats */}
