@@ -5,16 +5,22 @@ import {
   checkStoreSlugOutput,
   completeStorefrontImageUploadInput,
   createStorefrontImageUploadInput,
+  uploadStorefrontImageInput,
   updateAppearanceInput,
   updateAppearanceOutput,
   updateOnlineStoreOutput,
   updateSlugInput,
   updateSlugOutput,
 } from "../../contracts/online-store";
-import { completeImageUploadOutput, createImageUploadOutput } from "../../contracts/uploads";
+import {
+  completeImageUploadOutput,
+  createImageUploadOutput,
+  UPLOAD_IMAGE_MAX_BODY_BYTES,
+} from "../../contracts/uploads";
 import { onlineStoreLinks } from "../../platform/links";
 import type { ProcedureScope } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
+import { withSetupMark } from "../../platform/setup-analytics";
 import {
   checkCurrentStoreSlug,
   updateAppearance,
@@ -22,7 +28,7 @@ import {
   updateStoreSlug,
   type SlugChangePreview,
 } from "../../services/online-store";
-import { completeImageUpload, createImageUpload } from "../../services/uploads";
+import { completeImageUpload, createImageUpload, uploadImage } from "../../services/uploads";
 import { confirmUnderLock } from "./product-context";
 import { settingsActor } from "./settings-context";
 
@@ -113,7 +119,7 @@ const updateAppearanceProcedure = storeProcedure
       name: "online_store_update_appearance",
       title: "Update Storefront Appearance",
       description:
-        "Change how the storefront looks: light or dark theme, brand colour, logos, favicon, the home page's banner photos and their layout. Send only the fields to change; null removes an image. Images must be the store's own uploads: the urls online_store_complete_image_upload returns. Returns the look, with the online store editor in `links`, the URL to give the user.",
+        "Change how the storefront looks: light or dark theme, brand colour, logos, favicon, the home page's banner photos and their layout. Send only the fields to change; null removes an image. Images must be the store's own uploads: the urls online_store_upload_image or online_store_complete_image_upload return. Returns the look, with the online store editor in `links`, the URL to give the user.",
       bundle: "settings",
       effect: "overwrite",
       reach: "public",
@@ -147,7 +153,9 @@ const createImageUploadProcedure = storeProcedure
   .input(createStorefrontImageUploadInput)
   .output(createImageUploadOutput)
   .handler(({ context, input }) =>
-    createImageUpload(context.ports.storage, { storeId: context.actor.storeId, ...input }),
+    withSetupMark(context.actor.storeId, () =>
+      createImageUpload(context.ports.storage, { storeId: context.actor.storeId, ...input }),
+    ),
   );
 
 const completeImageUploadProcedure = storeProcedure
@@ -168,7 +176,33 @@ const completeImageUploadProcedure = storeProcedure
   .input(completeStorefrontImageUploadInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
-    completeImageUpload(context.ports.storage, { storeId: context.actor.storeId, ...input }),
+    withSetupMark(context.actor.storeId, () =>
+      completeImageUpload(context.ports.storage, { storeId: context.actor.storeId, ...input }),
+    ),
+  );
+
+const uploadImageProcedure = storeProcedure
+  .meta({
+    capability: "online_store.uploadImage",
+    scope: WRITE,
+    mcp: {
+      name: "online_store_upload_image",
+      title: "Upload Storefront Image",
+      description:
+        "Upload a logo, a favicon (kind logo, 2 MB at most) or a banner photo (kind hero, 5 MB at most) in one call: JPEG, PNG, GIF or WebP. It takes the file's bytes base64 as `contentBase64`, for a file whose upload URL (online_store_create_image_upload) is out of reach, such as an image made in the agent's own workspace; or a public HTTPS `imageUrl`, which Louez downloads. The type is read from the bytes. Each upload is a new image; the storefront does not change. Returns the image's public `url`, which online_store_update_appearance takes (logoUrl, darkLogoUrl, faviconUrl or heroImages).",
+      bundle: "settings",
+      effect: "additive",
+      reach: "provider",
+    },
+    maxBodyBytes: UPLOAD_IMAGE_MAX_BODY_BYTES,
+  })
+  .route({ method: "POST", path: "/online-store/images" })
+  .input(uploadStorefrontImageInput)
+  .output(completeImageUploadOutput)
+  .handler(({ context, input: { kind, ...source } }) =>
+    withSetupMark(context.actor.storeId, () =>
+      uploadImage(context.ports.storage, { storeId: context.actor.storeId, kind, source }),
+    ),
   );
 
 // --- The editor --------------------------------------------------------------
@@ -207,4 +241,5 @@ export const dashboardOnlineStoreRouter = {
   updateAppearance: updateAppearanceProcedure,
   createImageUpload: createImageUploadProcedure,
   completeImageUpload: completeImageUploadProcedure,
+  uploadImage: uploadImageProcedure,
 };

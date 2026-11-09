@@ -6,6 +6,7 @@ import {
   verifyOAuthQueryParams,
   type ClientMetadataResourceFetch,
 } from "@better-auth/oauth-provider";
+import type { BetterAuthPlugin } from "better-auth";
 import { APIError } from "better-auth/api";
 import { jwt } from "better-auth/plugins";
 import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
@@ -105,6 +106,43 @@ const lineageRevoked = () =>
     error_description: "This connection was revoked. Connect again.",
   });
 
+/**
+ * The `mcp()` plugin with its discovery documents (the protected resource
+ * metadata, the authorization server metadata and the OpenID configuration,
+ * all answered by its `onRequest`) cleared of `dpop_signing_alg_values_supported`.
+ * Better Auth always lists it, but the MCP endpoint takes bearer tokens only
+ * and refuses a DPoP-bound one (`createAccessTokenVerifier`): a client that
+ * took the offer would get tokens `/api/mcp` cannot use. Every other answer
+ * passes through as it was.
+ */
+function withoutDpopMetadata<Plugin extends Pick<BetterAuthPlugin, "onRequest">>(
+  plugin: Plugin,
+): Plugin {
+  const serve = plugin.onRequest;
+  if (!serve) return plugin;
+  return {
+    ...plugin,
+    onRequest: async (request, ctx) => {
+      const handled = await serve(request, ctx);
+      if (!handled || !("response" in handled) || request.method !== "GET") return handled;
+      const { response } = handled;
+      const isJson = response.headers.get("content-type")?.startsWith("application/json");
+      if (response.status !== 200 || !isJson) return handled;
+      const metadata: unknown = await response.clone().json();
+      if (typeof metadata !== "object" || metadata === null) return handled;
+      const advertised = Object.fromEntries(
+        Object.entries(metadata).filter(([key]) => key !== "dpop_signing_alg_values_supported"),
+      );
+      return {
+        response: new Response(JSON.stringify(advertised), {
+          status: 200,
+          headers: response.headers,
+        }),
+      };
+    },
+  };
+}
+
 export function mcpOAuthPlugins(
   endpoints: McpOAuthEndpoints,
   options: {
@@ -123,7 +161,7 @@ export function mcpOAuthPlugins(
     fetchClientMetadata?: ClientMetadataResourceFetch;
   },
 ) {
-  return [
+  const [signing, provider, discovery] = [
     // Signs the access tokens and serves the keys at /api/auth/jwks. The
     // session JWT it can also issue is turned off (`disabledPaths` in the
     // auth config): it shares the signing key with the access tokens.
@@ -190,6 +228,7 @@ export function mcpOAuthPlugins(
       metadataProfile: "mcp-2026-07-28",
     }),
   ];
+  return [signing, withoutDpopMetadata(provider), discovery];
 }
 
 /** What a verified access token says. */

@@ -1,6 +1,7 @@
 import type { StoreSettings, StoreTheme } from "@louez/types";
 import { eq } from "drizzle-orm";
 
+import { markSetupWrite } from "./api-operation-scope";
 import type { Database, Transaction } from "./index";
 import { stores } from "./schema";
 
@@ -21,11 +22,14 @@ import { stores } from "./schema";
  */
 export async function lockStoreRow(tx: Transaction, storeId: string): Promise<boolean> {
   const [row] = await tx
-    .select({ id: stores.id })
+    .select({ id: stores.id, onboardingCompleted: stores.onboardingCompleted })
     .from(stores)
     .where(eq(stores.id, storeId))
     .for("update");
-  return row !== undefined;
+  if (!row) return false;
+  // An API write that sets the store up says so while it holds the lock.
+  await markSetupWrite(tx, storeId, row.onboardingCompleted === true);
+  return true;
 }
 
 type StoreSelect = typeof stores.$inferSelect;

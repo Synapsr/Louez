@@ -9,6 +9,7 @@ import type { RouterClient } from "@orpc/server";
 import type { BaseContext } from "../../context";
 
 import { createMemoryStorage, type MemoryStorage } from "../../platform/memory-storage";
+import { createTestImageFetch } from "../../platform/test-image-fetch";
 import { createTestNewStores } from "../../platform/test-new-stores";
 import { createTestUrls } from "../../platform/test-urls";
 
@@ -29,6 +30,10 @@ for (const name of [
   const namedExports: Record<string, unknown> = require(name);
   mock.module(name, { namedExports });
 }
+
+// Image imports by URL go through a fake transport: nothing leaves the process.
+const imageFetch = createTestImageFetch();
+mock.module("@louez/auth/guarded-fetch", { namedExports: imageFetch.namedExports });
 
 // A dashboard session, read from a test header: Better Auth stays out.
 const SESSION_HEADER = "x-test-session-user";
@@ -723,5 +728,183 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       await rejects(run("completeImageUpload", { key }, context()), "UPLOAD_NOT_OWNED");
     }
     assert.equal(storage.objects.get(theirs)?.public, false, "left alone");
+  });
+
+  // --- Images in the call ---------------------------------------------------
+
+  const base64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1]);
+
+  test("an agent sends an image's bytes in the call, then uses its url", async () => {
+    const context = await apiKey();
+    const sent = await run("uploadImage", { contentBase64: base64(PNG) }, context());
+    assert.match(sent.key, new RegExp(`^${STORE}/categories/[\\w-]{21}\\.png$`));
+    assert.deepEqual(sent, {
+      key: sent.key,
+      url: `https://files.louez.test/${sent.key}`,
+      contentType: "image/png",
+      size: PNG.byteLength,
+    });
+    assert.deepEqual(storage.objects.get(sent.key), {
+      bytes: PNG,
+      contentType: "image/png",
+      public: true,
+    });
+
+    // A data URL, with its type, also passes; the type is read from the bytes.
+    const dataUrl = await run(
+      "uploadImage",
+      { contentBase64: `data:image/jpeg;base64,${base64(JPEG)}` },
+      context(),
+    );
+    assert.equal(dataUrl.contentType, "image/jpeg");
+    assert.match(dataUrl.key, /\.jpg$/);
+
+    const category = await run("create", { name: "Drawn", imageUrl: sent.url }, context());
+    assert.equal(category.imageUrl, sent.url);
+  });
+
+  test("an image in the call is refused past 5 MB, as another type or as no image", async () => {
+    const context = await apiKey();
+    const tooLarge = await rejects(
+      run("uploadImage", { contentBase64: "A".repeat(((5 * 1024 * 1024) / 3) * 4 + 4) }, context()),
+      "UPLOAD_TOO_LARGE",
+    );
+    assert.equal(tooLarge.data.details?.maxSize, 5 * 1024 * 1024);
+    await rejects(
+      run("uploadImage", { contentBase64: base64(PNG), contentType: "image/jpeg" }, context()),
+      "UPLOAD_CONTENT_INVALID",
+    );
+    await rejects(
+      run(
+        "uploadImage",
+        {
+          contentBase64: `data:image/svg+xml;base64,${base64(new TextEncoder().encode("<svg/>"))}`,
+        },
+        context(),
+      ),
+      "UPLOAD_TYPE_NOT_ALLOWED",
+    );
+    await rejects(
+      run(
+        "uploadImage",
+        { contentBase64: base64(new TextEncoder().encode("<html><script></script></html>")) },
+        context(),
+      ),
+      "UPLOAD_CONTENT_INVALID",
+    );
+    await rejects(
+      run("uploadImage", { contentBase64: "not base64!" }, context()),
+      "UPLOAD_BASE64_INVALID",
+    );
+    await rejects(run("uploadImage", {}, context()), "UPLOAD_SOURCE_INVALID");
+    await rejects(
+      run(
+        "uploadImage",
+        { contentBase64: base64(PNG), imageUrl: "https://cdn.example.org/a.png" },
+        context(),
+      ),
+      "UPLOAD_SOURCE_INVALID",
+    );
+    assert.equal(storage.objects.size, 0, "nothing stored");
+  });
+
+  test("an image goes into the caller's store only, and needs the categories write right", async () => {
+    const other = await apiKey({ storeId: OTHER_STORE });
+    const theirs = await run("uploadImage", { contentBase64: base64(PNG) }, other());
+    assert.ok(theirs.key.startsWith(`${OTHER_STORE}/categories/`));
+    await rejects(
+      run("create", { name: "Borrowed", imageUrl: theirs.url }, await apiKey().then((c) => c())),
+      "CATEGORY_IMAGE_INVALID",
+    );
+
+    const readOnly = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Read-only agent",
+      permissions: { ...readWrite, categories: "read" },
+    });
+    await rejects(
+      run(
+        "uploadImage",
+        { contentBase64: base64(PNG) },
+        {
+          headers: new Headers({ authorization: `Bearer ${readOnly.key}` }),
+          transport: "openapi",
+          ports,
+          receipt: {},
+        },
+      ),
+      "PERMISSION_DENIED",
+    );
+    assert.equal(storage.objects.size, 1, "only the other store's image");
+  });
+
+  // --- Images by URL --------------------------------------------------------
+
+  test("an image imported by URL goes through the guarded fetch", async () => {
+    const context = await apiKey();
+    imageFetch.serve({
+      "https://cdn.example.org/logo.png": () =>
+        new Response(null, { status: 302, headers: { location: "/files/logo.png" } }),
+      "https://cdn.example.org/files/logo.png": () => new Response(PNG as BodyInit),
+    });
+    const imported = await run(
+      "uploadImage",
+      { imageUrl: "https://cdn.example.org/logo.png" },
+      context(),
+    );
+    assert.equal(imported.contentType, "image/png");
+    assert.equal(storage.objects.get(imported.key)?.public, true);
+    assert.deepEqual(imageFetch.asked, [
+      "https://cdn.example.org/logo.png",
+      "https://cdn.example.org/files/logo.png",
+    ]);
+  });
+
+  test("an import refuses private addresses, redirects to them, plain HTTP and oversize", async () => {
+    const context = await apiKey();
+    imageFetch.serve({
+      "https://cdn.example.org/to-private.png": () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://metadata.internal/latest/meta-data" },
+        }),
+      "https://cdn.example.org/to-plain.png": () =>
+        new Response(null, { status: 301, headers: { location: "http://cdn.example.org/a.png" } }),
+      "https://cdn.example.org/huge.png": () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            pull: (controller) => controller.enqueue(new Uint8Array(1024 * 1024)),
+          }),
+        ),
+      "https://cdn.example.org/page.html": () => new Response("<!doctype html><html></html>"),
+    });
+
+    for (const imageUrl of [
+      "https://127.0.0.1/a.png",
+      "https://db.internal/a.png",
+      "https://cdn.example.org/to-private.png",
+      "https://cdn.example.org/to-plain.png",
+      "http://cdn.example.org/a.png",
+      "https://cdn.example.org/missing.png",
+    ]) {
+      await rejects(run("uploadImage", { imageUrl }, context()), "UPLOAD_URL_UNREACHABLE");
+    }
+    assert.ok(
+      !imageFetch.asked.some((url) => url.startsWith("http:")),
+      "never asks for plain HTTP",
+    );
+    const huge = await rejects(
+      run("uploadImage", { imageUrl: "https://cdn.example.org/huge.png" }, context()),
+      "UPLOAD_TOO_LARGE",
+    );
+    assert.equal(huge.data.details?.maxSize, 5 * 1024 * 1024);
+    await rejects(
+      run("uploadImage", { imageUrl: "https://cdn.example.org/page.html" }, context()),
+      "UPLOAD_CONTENT_INVALID",
+    );
+    assert.equal(storage.objects.size, 0, "nothing stored");
   });
 });

@@ -32,7 +32,7 @@ import {
 import { env } from "./env";
 import { sendPasswordChangedNotice } from "./password-notice";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./password-policy";
-import { authIpAddressOptions, authRateLimitOptions } from "./rate-limit";
+import { authIpAddressOptions, authRateLimitOptionsBehind } from "./rate-limit";
 import { getLocaleFromHeaders } from "./request-locale";
 import { currentGrantId, isGrantActive } from "./grant-lineage";
 import { authTables } from "./tables";
@@ -205,7 +205,7 @@ export const authInstance = betterAuth({
     trustedProxyHeaders: isDevelopment,
   },
 
-  rateLimit: authRateLimitOptions,
+  rateLimit: authRateLimitOptionsBehind(env.TRUSTED_PROXY),
 
   session: {
     expiresIn: SESSION_DURATION_SECONDS,

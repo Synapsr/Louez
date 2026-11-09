@@ -4,6 +4,8 @@ import { apiEffects, db, reservations, stores, type Transaction } from "@louez/d
 import { and, asc, eq, inArray, like, lt, lte, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
+import type { AgentClient, SetupActor, SetupFacts, StoreSetupSummary } from "./setup-analytics";
+
 /**
  * The outbox of the agent-ready API: the effects of a committed write that
  * must not be lost (a customer's email, a store notification, an analytics
@@ -187,12 +189,39 @@ export interface ApiEffectPayloads {
     channel: "discord" | "fromhello";
     store: { id: string; name: string; slug: string };
   };
-  /** The analytics event of a store going live: the onboarding's completion. */
+  /**
+   * The analytics event of a store going live: the onboarding's completion,
+   * with who set the store up. Rows added before the setup analytics carry
+   * no `actor` nor `setup`.
+   */
   "store.launchAnalytics": AnalyticsEventIdentity & {
     ownerUserId: string;
     storeId: string;
     reservationMode: "payment" | "request";
     transport: "rpc" | "openapi" | "mcp";
+    /** Who put it online (platform/setup-analytics.ts). */
+    actor?: SetupActor;
+    setup?: StoreSetupSummary;
+  };
+  /**
+   * The analytics event of one setup write an agent made on a store still
+   * offline, or of its go-live (platform/setup-analytics.ts): field names and
+   * the facts of `SETUP_FACT_KEYS`, never a value a person typed.
+   */
+  "store.agentSetupAction": AnalyticsEventIdentity & {
+    ownerUserId: string;
+    storeId: string;
+    /** The procedure, as `settings.updateStoreInfo`. */
+    procedure: string;
+    credentialKind: "api_key" | "oauth";
+    /** The agent, as a fixed value; never the client's or the key's own name. */
+    agentClient: AgentClient;
+    transport: "rpc" | "openapi" | "mcp";
+    /** The call was previewed and its confirmation sent back. */
+    confirmed: boolean;
+    fieldsSet: string[];
+    fieldsCleared: string[];
+    facts: SetupFacts;
   };
 }
 

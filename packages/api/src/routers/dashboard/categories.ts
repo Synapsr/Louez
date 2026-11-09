@@ -16,11 +16,14 @@ import {
   completeImageUploadOutput,
   createImageUploadInput,
   createImageUploadOutput,
+  UPLOAD_IMAGE_MAX_BODY_BYTES,
+  uploadImageInput,
 } from "../../contracts/uploads";
 import { checkConfirmation } from "../../platform/confirmation";
 import { categoryLinks, type LinkStore } from "../../platform/links";
 import type { UrlsPort } from "../../platform/ports";
 import { storeProcedure } from "../../platform/procedures";
+import { withSetupMark } from "../../platform/setup-analytics";
 import {
   createCategory,
   deleteCategory,
@@ -29,7 +32,7 @@ import {
   reorderCategories,
   updateCategory,
 } from "../../services/categories";
-import { completeImageUpload, createImageUpload } from "../../services/uploads";
+import { completeImageUpload, createImageUpload, uploadImage } from "../../services/uploads";
 
 /**
  * Categories, on every transport: the dashboard (RPC), `/api/v1/categories`
@@ -93,7 +96,7 @@ const create = storeProcedure
     mcp: {
       name: "categories_create",
       title: "Create Category",
-      description: `Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with \`created: false\`. \`imageUrl\` takes the \`url\` a finished image upload returns (categories_complete_image_upload). ${LINKS_HELP}`,
+      description: `Create a product category, placed last in the store's order. If the store already has a category with the same name (case-insensitive), that one is returned unchanged with \`created: false\`. \`imageUrl\` takes the \`url\` a finished image upload returns (categories_upload_image, or categories_complete_image_upload). ${LINKS_HELP}`,
       bundle: "catalog",
       effect: "additive",
       reach: "public",
@@ -222,11 +225,13 @@ const createImageUploadProcedure = storeProcedure
   .input(createImageUploadInput)
   .output(createImageUploadOutput)
   .handler(({ context, input }) =>
-    createImageUpload(context.ports.storage, {
-      storeId: context.actor.storeId,
-      kind: "category",
-      ...input,
-    }),
+    withSetupMark(context.actor.storeId, () =>
+      createImageUpload(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "category",
+        ...input,
+      }),
+    ),
   );
 
 const completeImageUploadProcedure = storeProcedure
@@ -247,11 +252,41 @@ const completeImageUploadProcedure = storeProcedure
   .input(completeImageUploadInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
-    completeImageUpload(context.ports.storage, {
-      storeId: context.actor.storeId,
-      kind: "category",
-      key: input.key,
-    }),
+    withSetupMark(context.actor.storeId, () =>
+      completeImageUpload(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "category",
+        key: input.key,
+      }),
+    ),
+  );
+
+const uploadImageProcedure = storeProcedure
+  .meta({
+    capability: "categories.uploadImage",
+    scope: { domain: "categories", level: "write" },
+    mcp: {
+      name: "categories_upload_image",
+      title: "Upload Category Image",
+      description:
+        "Upload a category image in one call (JPEG, PNG, GIF or WebP). It takes the file's bytes base64 as `contentBase64` (5 MB at most), for a file whose upload URL (categories_create_image_upload) is out of reach, such as an image made in the agent's own workspace; or a public HTTPS `imageUrl`, which Louez downloads (5 MB at most). The type is read from the bytes. Each upload is a new image; no record changes. Returns the image's public `url`, which `imageUrl` takes in categories_create and categories_update.",
+      bundle: "catalog",
+      effect: "additive",
+      reach: "provider",
+    },
+    maxBodyBytes: UPLOAD_IMAGE_MAX_BODY_BYTES,
+  })
+  .route({ method: "POST", path: "/categories/images" })
+  .input(uploadImageInput)
+  .output(completeImageUploadOutput)
+  .handler(({ context, input }) =>
+    withSetupMark(context.actor.storeId, () =>
+      uploadImage(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "category",
+        source: input,
+      }),
+    ),
   );
 
 export const dashboardCategoriesRouter = {
@@ -263,4 +298,5 @@ export const dashboardCategoriesRouter = {
   reorder,
   createImageUpload: createImageUploadProcedure,
   completeImageUpload: completeImageUploadProcedure,
+  uploadImage: uploadImageProcedure,
 };

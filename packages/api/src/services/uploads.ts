@@ -1,6 +1,7 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import { env as authEnv } from "@louez/auth/env";
+import { guardedGet } from "@louez/auth/guarded-fetch";
 import {
   IMAGE_UPLOAD_CONFIG,
   IMAGE_UPLOAD_MIME_TYPES,
@@ -9,7 +10,7 @@ import {
 } from "@louez/validations";
 import { nanoid } from "nanoid";
 
-import { uploadErrors } from "../contracts/uploads";
+import { INLINE_UPLOAD_MAX_BYTES, uploadErrors } from "../contracts/uploads";
 import type { StoragePort, UploadTarget } from "../platform/ports";
 
 /**
@@ -23,6 +24,11 @@ import type { StoragePort, UploadTarget } from "../platform/ports";
  * 3. `completeImageUpload` checks what arrived (owner, size, type, the bytes
  *    themselves), deletes it when it is wrong, and returns the public URL to
  *    set on the record.
+ *
+ * A caller that cannot reach the upload URL (an agent in a sandbox whose
+ * network allows only Louez) sends the bytes in the call instead, or a public
+ * URL Louez downloads through the guarded fetch: `uploadImage` stores them
+ * under a fresh key and completes it as step 3 does.
  */
 
 /** Kinds the API takes. The avatar is the user's, not the store's: never here. */
@@ -196,4 +202,178 @@ export async function completeImageUpload(
 
   const url = await storage.publish(input.key);
   return { key: input.key, url, contentType, size: stored.size };
+}
+
+// --- Bytes in the call, or a public URL ----------------------------------------
+
+/** Time given to each request of an import and to reading its body. */
+const IMPORT_TIMEOUT_MS = 10_000;
+const IMPORT_MAX_REDIRECTS = 3;
+/**
+ * Imports downloading at once in this process; each holds up to the kind's
+ * limit. An import keeps its place until its transport calls have settled,
+ * past its own deadline: a DNS lookup that hangs is still running.
+ */
+export const MAX_IMPORTS_IN_FLIGHT = 4;
+let importsInFlight = 0;
+
+/**
+ * Where an uploaded image comes from: its bytes in the call (base64, or a
+ * `data:image/…;base64,` URL), or a public HTTPS URL. Exactly one.
+ */
+export interface ImageSource {
+  contentBase64?: string;
+  /** The type the caller declares for inline bytes; the bytes must show it. */
+  contentType?: string;
+  imageUrl?: string;
+}
+
+const DATA_URL = /^data:([^;,]*)(?:;[^,]*)?;base64,/i;
+
+/** The bytes of a base64 text, refused past `maxBytes` before decoding it. */
+function decodeInline(
+  contentBase64: string,
+  contentType: string | undefined,
+  maxBytes: number,
+): { bytes: Uint8Array; declared: string | null } {
+  let text = contentBase64;
+  let declared = contentType ? baseContentType(contentType) : null;
+  const dataUrl = DATA_URL.exec(text);
+  if (dataUrl) {
+    text = text.slice(dataUrl[0].length);
+    declared ??= baseContentType(dataUrl[1]) || null;
+  }
+  text = text.replace(/\s+/g, "");
+  const match = /^([A-Za-z0-9+/_-]*)(={0,2})$/.exec(text);
+  const data = match?.[1] ?? "";
+  const padding = match?.[2].length ?? 0;
+  // Padding only completes the last group of four: `==` after a full group,
+  // or a group of one character, is no base64.
+  if (
+    !match ||
+    data.length % 4 === 1 ||
+    (padding > 0 && (text.length % 4 !== 0 || (4 - (data.length % 4)) % 4 !== padding))
+  ) {
+    throw uploadErrors.base64Invalid();
+  }
+  const size = Math.floor((data.length * 3) / 4);
+  if (size > maxBytes) throw uploadErrors.inlineTooLarge(size, maxBytes);
+  const decoded = Buffer.from(data, "base64");
+  if (decoded.byteLength > maxBytes)
+    throw uploadErrors.inlineTooLarge(decoded.byteLength, maxBytes);
+  // A view of the decoded bytes, not a copy.
+  return {
+    bytes: new Uint8Array(decoded.buffer, decoded.byteOffset, decoded.byteLength),
+    declared,
+  };
+}
+
+/** The bytes at a public HTTPS URL, through the guarded fetch, at most `maxBytes`. */
+async function download(imageUrl: string, maxBytes: number): Promise<Uint8Array> {
+  if (importsInFlight >= MAX_IMPORTS_IN_FLIGHT) throw uploadErrors.importBusy();
+  importsInFlight++;
+  const running: Promise<unknown>[] = [];
+  try {
+    const result = await guardedGet(imageUrl, {
+      accept: IMAGE_UPLOAD_MIME_TYPES.join(","),
+      maxBytes,
+      timeoutMs: IMPORT_TIMEOUT_MS,
+      maxRedirects: IMPORT_MAX_REDIRECTS,
+      track: (work) => running.push(work),
+    });
+    if (result.ok) return result.body;
+    if (result.reason === "too_large") throw uploadErrors.tooLarge(null, maxBytes);
+    throw uploadErrors.urlUnreachable(result.reason, result.status ?? null);
+  } finally {
+    // The answer may come at the deadline while a lookup still runs: the
+    // place is freed once every call this import started has settled.
+    void Promise.allSettled(running).then(() => {
+      importsInFlight--;
+    });
+  }
+}
+
+/**
+ * Uploads an image sent in the call (base64) or found at a public URL. The
+ * type is the one its bytes show, never the declared one alone: a declared
+ * type that differs is refused. The bytes go under a fresh key of the store's
+ * folder for the kind, then `completeImageUpload` checks them and makes them
+ * public, as for an upload through the URL.
+ */
+export async function uploadImage(
+  storage: StoragePort,
+  input: {
+    storeId: string;
+    kind: ApiUploadKind;
+    source: ImageSource;
+  },
+): Promise<{ key: string; url: string; contentType: string; size: number }> {
+  assertKind(input.kind);
+  const { maxSize } = IMAGE_UPLOAD_CONFIG[input.kind];
+  const { contentBase64, contentType, imageUrl } = input.source;
+  if ((contentBase64 === undefined) === (imageUrl === undefined)) {
+    throw uploadErrors.sourceInvalid();
+  }
+
+  let bytes: Uint8Array;
+  let declared: string | null = null;
+  if (imageUrl !== undefined) {
+    bytes = await download(imageUrl, maxSize);
+  } else {
+    const maxBytes = Math.min(maxSize, INLINE_UPLOAD_MAX_BYTES);
+    ({ bytes, declared } = decodeInline(contentBase64 ?? "", contentType, maxBytes));
+  }
+
+  if (declared !== null && !isAllowedType(declared)) throw uploadErrors.typeNotAllowed(declared);
+  const found = detectImageType(bytes.subarray(0, SNIFF_LENGTH));
+  if (!found || (declared !== null && found !== declared)) {
+    throw uploadErrors.contentInvalid(declared ?? "JPEG, PNG, GIF or WebP", found);
+  }
+
+  const key = `${folderOf(input.storeId, input.kind)}${nanoid()}.${EXTENSIONS[found]}`;
+  try {
+    await storage.put(key, bytes, found);
+    return await completeImageUpload(storage, {
+      storeId: input.storeId,
+      kind: input.kind,
+      key,
+    });
+  } catch (error) {
+    // Nobody else knows this key: a failed upload leaves nothing behind, so
+    // a retry does not add a second object.
+    await storage.delete(key).catch((cleanup: unknown) => {
+      console.error(cleanupFailure(key, input.kind, cleanup));
+    });
+    throw error;
+  }
+}
+
+/**
+ * The log event of an object an upload could not delete: an opaque
+ * reference to it (the start of the key's SHA-256: an operator finds the
+ * object by hashing the keys of the store's folder), never the key itself,
+ * and the error's name, code and HTTP status, never the provider's message
+ * or the error object.
+ */
+export function cleanupFailure(key: string, kind: ApiUploadKind, error: unknown) {
+  const fields = typeof error === "object" && error !== null ? error : {};
+  const pick = (name: string): unknown => (fields as Record<string, unknown>)[name];
+  const metadata = pick("$metadata");
+  const status =
+    pick("status") ??
+    pick("statusCode") ??
+    (typeof metadata === "object" && metadata !== null
+      ? (metadata as { httpStatusCode?: unknown }).httpStatusCode
+      : undefined);
+  const code = pick("code") ?? pick("Code");
+  return {
+    event: "image_upload.cleanup_failed",
+    objectRef: createHash("sha256").update(key).digest("hex").slice(0, 16),
+    kind,
+    error: {
+      name: error instanceof Error ? error.name : typeof error,
+      code: typeof code === "string" || typeof code === "number" ? code : null,
+      status: typeof status === "number" ? status : null,
+    },
+  };
 }

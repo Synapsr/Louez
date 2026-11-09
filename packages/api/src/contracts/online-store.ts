@@ -4,6 +4,7 @@ import { z } from "zod";
 import { apiError } from "../platform/errors";
 import { resourceLinksSchema } from "./links";
 import { checkSlugAvailabilityOutput } from "./stores";
+import { uploadImageInput } from "./uploads";
 
 /**
  * The online store contract: its web address, its look, its logo and hero
@@ -46,7 +47,7 @@ const ownedImageUrl = z
   .string()
   .min(1)
   .max(2048)
-  .describe("The url online_store_complete_image_upload returned.");
+  .describe("The url online_store_upload_image or online_store_complete_image_upload returned.");
 
 export const appearanceView = z.object({
   mode: z.enum(["light", "dark"]),
@@ -119,6 +120,8 @@ export const createStorefrontImageUploadInput = z.object({
   size: z.number().int().min(1).describe("The file's size in bytes."),
 });
 
+export const uploadStorefrontImageInput = uploadImageInput.extend({ kind: imageKind });
+
 export const completeStorefrontImageUploadInput = z.object({
   kind: imageKind,
   key: z.string().min(1).max(256).describe("The key online_store_create_image_upload returned."),
@@ -142,7 +145,7 @@ export const onlineStoreErrors = {
   imageNotOwned: (url: string) =>
     apiError("BAD_REQUEST", "IMAGE_NOT_OWNED", {
       message:
-        "This image is not one of the store's uploads. Upload it with online_store_create_image_upload and online_store_complete_image_upload, then send the url that returns.",
+        "This image is not one of the store's uploads. Upload it with online_store_upload_image, or with online_store_create_image_upload and online_store_complete_image_upload, then send the url that returns.",
       i18nKey: "errors.invalidData",
       details: { url },
     }),

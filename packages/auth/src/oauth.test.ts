@@ -7,7 +7,7 @@ import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { getAuthTables } from "better-auth/db";
 import { getTableColumns } from "drizzle-orm";
-import { SignJWT, exportJWK, generateKeyPair } from "jose";
+import { SignJWT, decodeJwt, exportJWK, generateKeyPair } from "jose";
 
 import {
   AUTH_DISABLED_PATHS,
@@ -34,6 +34,84 @@ const REDIRECT_URI = "https://client.example.org/callback";
 const CIMD_CLIENT_ID = "https://agent.example.org/oauth/client.json";
 const SECRET = "oauth-test-secret-never-used-in-production-1234567890";
 
+// The metadata documents Claude, Claude Code and ChatGPT publish, as served
+// on 2026-11-09, with test keys behind their `jwks_uri`.
+const CLAUDE = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+const CLAUDE_CONFIDENTIAL = `${CLAUDE}/confidential_client`;
+const CLAUDE_CODE = "https://claude.ai/oauth/claude-code-client-metadata";
+const CHATGPT = "https://chatgpt.com/oauth/client.json";
+const CLAUDE_CALLBACK = "https://claude.ai/api/mcp/auth_callback";
+const CHATGPT_CALLBACK = "https://chatgpt.com/connector_platform_oauth_redirect";
+const claudeKeys = await generateKeyPair("ES256");
+const chatGptKeys = await generateKeyPair("RS256");
+const CLIENT_DOCUMENTS: Record<string, object> = {
+  [CIMD_CLIENT_ID]: {
+    client_id: CIMD_CLIENT_ID,
+    client_name: "Agent from a document",
+    client_uri: "https://agent.example.org",
+    redirect_uris: [REDIRECT_URI],
+    token_endpoint_auth_method: "none",
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+  },
+  [CLAUDE]: {
+    client_id: CLAUDE,
+    client_name: "Claude",
+    client_uri: "https://claude.ai",
+    redirect_uris: [CLAUDE_CALLBACK],
+    grant_types: [
+      "authorization_code",
+      "refresh_token",
+      "urn:ietf:params:oauth:grant-type:jwt-bearer",
+    ],
+    response_types: ["code"],
+    token_endpoint_auth_method: "none",
+  },
+  [CLAUDE_CONFIDENTIAL]: {
+    client_id: CLAUDE_CONFIDENTIAL,
+    client_name: "Claude",
+    client_uri: "https://claude.ai",
+    redirect_uris: [CLAUDE_CALLBACK],
+    grant_types: [
+      "authorization_code",
+      "refresh_token",
+      "urn:ietf:params:oauth:grant-type:jwt-bearer",
+    ],
+    response_types: ["code"],
+    token_endpoint_auth_method: "private_key_jwt",
+    token_endpoint_auth_signing_alg: "ES256",
+    jwks_uri: "https://claude.ai/v1/mcp/jwks",
+  },
+  [CLAUDE_CODE]: {
+    client_id: CLAUDE_CODE,
+    client_name: "Claude Code",
+    client_uri: "https://claude.ai",
+    redirect_uris: ["http://localhost/callback", "http://127.0.0.1/callback"],
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+    token_endpoint_auth_method: "none",
+  },
+  [CHATGPT]: {
+    client_id: CHATGPT,
+    client_uri: "https://chatgpt.com/",
+    redirect_uris: [CHATGPT_CALLBACK],
+    token_endpoint_auth_method: "private_key_jwt",
+    token_endpoint_auth_methods_supported: ["none", "private_key_jwt"],
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+    client_name: "ChatGPT",
+    logo_uri: "https://persistent.oaistatic.com/sonic/misc/openai-logo.png",
+    token_endpoint_auth_signing_alg: "RS256",
+    jwks_uri: "https://chatgpt.com/oauth/jwks.json",
+  },
+  "https://claude.ai/v1/mcp/jwks": {
+    keys: [{ ...(await exportJWK(claudeKeys.publicKey)), kid: "claude", alg: "ES256" }],
+  },
+  "https://chatgpt.com/oauth/jwks.json": {
+    keys: [{ ...(await exportJWK(chatGptKeys.publicKey)), kid: "chatgpt", alg: "RS256" }],
+  },
+};
+
 const fixture = async (options: { grantId?: string | null } = {}) => {
   const grantId = options.grantId === undefined ? "grant_test_0000000001" : options.grantId;
   const data: Record<string, Record<string, unknown>[]> = {};
@@ -52,22 +130,11 @@ const fixture = async (options: { grantId?: string | null } = {}) => {
       // The grant Louez saved before the consent: the lineage's reference.
       currentGrantId: async () => grantId,
       isGrantActive: async ({ grantId: id }) => id === grantId,
-      // A client metadata document, served without the network.
+      // Client metadata documents and their keys, served without the network.
       fetchClientMetadata: async (input) => {
-        const url = new Request(input).url;
-        if (url !== CIMD_CLIENT_ID) return new Response(null, { status: 404 });
-        return Response.json(
-          {
-            client_id: CIMD_CLIENT_ID,
-            client_name: "Agent from a document",
-            client_uri: "https://agent.example.org",
-            redirect_uris: [REDIRECT_URI],
-            token_endpoint_auth_method: "none",
-            grant_types: ["authorization_code", "refresh_token"],
-            response_types: ["code"],
-          },
-          { headers: { "cache-control": "max-age=60" } },
-        );
+        const document = CLIENT_DOCUMENTS[new Request(input).url];
+        if (!document) return new Response(null, { status: 404 });
+        return Response.json(document, { headers: { "cache-control": "max-age=60" } });
       },
     }),
   });
@@ -238,26 +305,6 @@ test("every column Better Auth writes exists, and no required column is left to 
       );
     }
   }
-});
-
-test("discovery: protected resource and authorization server metadata at the root", async () => {
-  const fx = await fixture();
-  const resource = await fx.request("/.well-known/oauth-protected-resource/api/mcp");
-  assert.equal(resource.status, 200);
-  const resourceMetadata = (await resource.json()) as Record<string, unknown>;
-  assert.equal(resourceMetadata.resource, endpoints.resource);
-  assert.deepEqual(resourceMetadata.authorization_servers, [endpoints.issuer]);
-
-  const server = await fx.request("/.well-known/oauth-authorization-server/api/auth");
-  assert.equal(server.status, 200);
-  const serverMetadata = (await server.json()) as Record<string, unknown>;
-  assert.equal(serverMetadata.issuer, endpoints.issuer);
-  assert.equal(serverMetadata.authorization_endpoint, `${endpoints.issuer}/oauth2/authorize`);
-  assert.equal(serverMetadata.registration_endpoint, `${endpoints.issuer}/oauth2/register`);
-  assert.equal(serverMetadata.client_id_metadata_document_supported, true);
-
-  const openId = await fx.request("/api/auth/.well-known/openid-configuration");
-  assert.equal(openId.status, 200);
 });
 
 test("a client registers, the user consents, and the token is bound to the MCP resource", async () => {
@@ -435,4 +482,405 @@ test("an authorization that started without a grant gets no token", async () => 
   });
   assert.equal(refused.status, 400);
   assert.equal(((await refused.json()) as { error?: string }).error, "invalid_grant");
+});
+
+// --- What Claude, Claude Code and ChatGPT need ----------------------------------
+
+/** Starts an authorization for any client and redirect; PKCE when a challenge is given. */
+const startAuthorization = (
+  fx: Fixture,
+  params: { clientId: string; redirectUri: string; challenge?: string } & Record<string, string>,
+) => {
+  const { clientId, redirectUri, challenge, ...extra } = params;
+  return fx.request(
+    `/api/auth/oauth2/authorize?${new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: "openid profile email offline_access",
+      state: "state-1",
+      ...(challenge === undefined
+        ? {}
+        : { code_challenge: challenge, code_challenge_method: "S256" }),
+      resource: endpoints.resource,
+      ...extra,
+    })}`,
+  );
+};
+
+/** Where the provider sent the browser, when it went back to the client. */
+const clientRedirect = (response: Response, redirectUri: string) => {
+  assert.equal(response.status, 302, `expected a redirect, got ${response.status}`);
+  const location = new URL(response.headers.get("location")!, ORIGIN);
+  assert.equal(`${location.origin}${location.pathname}`, redirectUri);
+  return location;
+};
+
+/** The consent accepted (or refused) as the app does, then the client's redirect. */
+const consent = async (fx: Fixture, authorization: Response, accept = true) => {
+  const location = new URL(authorization.headers.get("location")!, ORIGIN);
+  assert.equal(location.pathname, OAUTH_CONSENT_PAGE, "reaches the consent page");
+  return new URL(
+    await answerOAuthConsent(fx.auth, endpoints, {
+      oauthQuery: location.search.slice(1),
+      accept,
+      headers: new Headers({ cookie: fx.cookie() }),
+    }),
+  );
+};
+
+/** A `private_key_jwt` client assertion, as Claude's and ChatGPT's confidential clients sign it. */
+const clientAssertion = (clientId: string, key: CryptoKey, alg: string, kid: string) =>
+  new SignJWT({ jti: randomBytes(16).toString("hex") })
+    .setProtectedHeader({ alg, kid, typ: "JWT" })
+    .setIssuer(clientId)
+    .setSubject(clientId)
+    .setAudience(`${endpoints.issuer}/oauth2/token`)
+    .setIssuedAt()
+    .setExpirationTime("1m")
+    .sign(key);
+
+const CONFIDENTIAL_KEYS: Record<string, () => Promise<string>> = {
+  [CLAUDE_CONFIDENTIAL]: () =>
+    clientAssertion(CLAUDE_CONFIDENTIAL, claudeKeys.privateKey, "ES256", "claude"),
+  [CHATGPT]: () => clientAssertion(CHATGPT, chatGptKeys.privateKey, "RS256", "chatgpt"),
+};
+
+/** A form-encoded token request, authenticated as the client's document says. */
+const tokenRequest = async (fx: Fixture, clientId: string, form: Record<string, string>) => {
+  const sign = CONFIDENTIAL_KEYS[clientId];
+  return fx.request("/api/auth/oauth2/token", {
+    method: "POST",
+    anonymous: true,
+    form: {
+      client_id: clientId,
+      ...(sign
+        ? {
+            client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            client_assertion: await sign(),
+          }
+        : {}),
+      ...form,
+    },
+  });
+};
+
+type Tokens = { access_token: string; refresh_token?: string; token_type: string };
+
+/** The whole flow for a client from its published document: consent, code, token. */
+const connectClient = async (fx: Fixture, clientId: string, redirectUri: string) => {
+  const { verifier, challenge } = pkce();
+  const back = await consent(
+    fx,
+    await startAuthorization(fx, { clientId, redirectUri, challenge }),
+  );
+  assert.equal(`${back.origin}${back.pathname}`, redirectUri);
+  assert.equal(
+    back.searchParams.get("iss"),
+    endpoints.issuer,
+    "RFC 9207: the code names its issuer",
+  );
+  const response = await tokenRequest(fx, clientId, {
+    grant_type: "authorization_code",
+    code: back.searchParams.get("code")!,
+    redirect_uri: redirectUri,
+    code_verifier: verifier,
+    resource: endpoints.resource,
+  });
+  assert.equal(response.status, 200, await response.clone().text());
+  return (await response.json()) as Tokens;
+};
+
+const audienceOf = (token: string) => {
+  const aud = decodeJwt(token).aud;
+  return Array.isArray(aud) ? aud : [aud];
+};
+
+test("discovery: the metadata Claude and ChatGPT read before they connect, at the root", async () => {
+  const fx = await fixture();
+  const resource = (await (
+    await fx.request("/.well-known/oauth-protected-resource/api/mcp")
+  ).json()) as Record<string, unknown>;
+  // Claude: `resource` is the URL the user enters; only the first server counts.
+  assert.equal(resource.resource, "https://app.example.com/api/mcp");
+  assert.deepEqual(resource.authorization_servers, [endpoints.issuer]);
+  assert.deepEqual(resource.bearer_methods_supported, ["header"]);
+  // /api/mcp takes bearer tokens only: no document offers DPoP.
+  assert.equal("dpop_signing_alg_values_supported" in resource, false);
+  for (const method of ["GET", "HEAD"]) {
+    const answer = await fx.request("/.well-known/oauth-protected-resource/api/mcp", { method });
+    assert.equal(answer.status, 200, method);
+    assert.match(answer.headers.get("content-type") ?? "", /^application\/json/, method);
+    assert.ok(answer.headers.get("cache-control"), method);
+  }
+
+  for (const path of [
+    "/.well-known/oauth-authorization-server/api/auth",
+    "/api/auth/.well-known/openid-configuration",
+  ]) {
+    const server = (await (await fx.request(path)).json()) as Record<string, unknown>;
+    assert.equal(server.issuer, endpoints.issuer, path);
+    assert.equal("dpop_signing_alg_values_supported" in server, false, path);
+    assert.deepEqual(server.code_challenge_methods_supported, ["S256"], path);
+    assert.equal(server.authorization_response_iss_parameter_supported, true, path);
+    assert.equal(server.client_id_metadata_document_supported, true, path);
+    assert.deepEqual(server.response_types_supported, ["code"], path);
+    assert.deepEqual(server.response_modes_supported, ["query"], path);
+    assert.equal(server.authorization_endpoint, `${endpoints.issuer}/oauth2/authorize`, path);
+    assert.equal(server.token_endpoint, `${endpoints.issuer}/oauth2/token`, path);
+    assert.equal(server.registration_endpoint, `${endpoints.issuer}/oauth2/register`, path);
+    // Claude uses its metadata document only when public clients are taken;
+    // ChatGPT's and Claude's confidential documents sign a client assertion.
+    // Confidential clients keep their secrets.
+    const authMethods = server.token_endpoint_auth_methods_supported as string[];
+    for (const method of ["none", "private_key_jwt", "client_secret_basic", "client_secret_post"]) {
+      assert.ok(authMethods.includes(method), `${path}: ${method}`);
+    }
+    for (const grant of ["authorization_code", "refresh_token"]) {
+      assert.ok((server.grant_types_supported as string[]).includes(grant), `${path}: ${grant}`);
+    }
+    // Both add offline_access when it is advertised; ChatGPT asks for the OIDC scopes listed.
+    assert.deepEqual(server.scopes_supported, ["openid", "profile", "email", "offline_access"]);
+  }
+});
+
+test("every authorization response names the issuer (RFC 9207), errors included", async () => {
+  const fx = await fixture();
+  const clientId = await register(fx);
+  const assertIssuer = (location: URL, error: string | null) => {
+    assert.equal(location.searchParams.get("iss"), endpoints.issuer);
+    assert.equal(location.searchParams.get("error"), error);
+    assert.equal(location.searchParams.get("state"), "state-1");
+  };
+
+  // The user refuses (before any consent is on record).
+  const refused = await consent(
+    fx,
+    await startAuthorization(fx, {
+      clientId,
+      redirectUri: REDIRECT_URI,
+      challenge: pkce().challenge,
+    }),
+    false,
+  );
+  assertIssuer(refused, "access_denied");
+
+  // Success: the code.
+  const success = await consent(
+    fx,
+    await startAuthorization(fx, {
+      clientId,
+      redirectUri: REDIRECT_URI,
+      challenge: pkce().challenge,
+    }),
+  );
+  assertIssuer(success, null);
+  assert.ok(success.searchParams.get("code"));
+
+  // No PKCE: refused back to the client, which then knows who answered.
+  assertIssuer(
+    clientRedirect(
+      await startAuthorization(fx, { clientId, redirectUri: REDIRECT_URI }),
+      REDIRECT_URI,
+    ),
+    "invalid_request",
+  );
+  // A plain challenge: S256 only.
+  assertIssuer(
+    clientRedirect(
+      await startAuthorization(fx, {
+        clientId,
+        redirectUri: REDIRECT_URI,
+        code_challenge: "a".repeat(43),
+        code_challenge_method: "plain",
+      }),
+      REDIRECT_URI,
+    ),
+    "invalid_request",
+  );
+  // A scope the client may not ask for.
+  assertIssuer(
+    clientRedirect(
+      await startAuthorization(fx, {
+        clientId,
+        redirectUri: REDIRECT_URI,
+        challenge: pkce().challenge,
+        scope: "openid admin",
+      }),
+      REDIRECT_URI,
+    ),
+    "invalid_scope",
+  );
+  // Signed out with prompt=none.
+  const signedOut = await fx.request(
+    `/api/auth/oauth2/authorize?${new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: REDIRECT_URI,
+      scope: "openid",
+      state: "state-1",
+      code_challenge: pkce().challenge,
+      code_challenge_method: "S256",
+      prompt: "none",
+    })}`,
+    { anonymous: true },
+  );
+  assertIssuer(clientRedirect(signedOut, REDIRECT_URI), "login_required");
+
+  // An unknown redirect is never followed: the error stays on Louez.
+  const unknown = await startAuthorization(fx, {
+    clientId,
+    redirectUri: "https://evil.example.net/callback",
+    challenge: pkce().challenge,
+  });
+  assert.equal(new URL(unknown.headers.get("location")!, ORIGIN).origin, ORIGIN);
+});
+
+for (const [name, clientId, redirectUri] of [
+  ["Claude", CLAUDE, CLAUDE_CALLBACK],
+  ["Claude (confidential document)", CLAUDE_CONFIDENTIAL, CLAUDE_CALLBACK],
+  ["Claude Code", CLAUDE_CODE, "http://127.0.0.1:53682/callback"],
+  ["ChatGPT", CHATGPT, CHATGPT_CALLBACK],
+] as const) {
+  test(`${name} connects with its published metadata document`, async () => {
+    const fx = await fixture();
+    const tokens = await connectClient(fx, clientId, redirectUri);
+    assert.equal(tokens.token_type.toLowerCase(), "bearer");
+    assert.ok(audienceOf(tokens.access_token).includes(endpoints.resource), "aud is the resource");
+    const verified = await fx.verify(tokens.access_token);
+    assert.equal(verified?.clientId, clientId);
+    assert.ok(tokens.refresh_token, "offline_access gives a refresh token");
+
+    const client = fx.data.oauthClient.find((row) => row.clientId === clientId);
+    assert.ok(client?.clientDiscoveryId, "known from its document, not registered");
+    assert.equal(fx.data.oauthClient.length, 1, "no client registered per connection");
+  });
+}
+
+test("Claude Code's loopback redirect matches on any port, its hosts and path only", async () => {
+  const fx = await fixture();
+  const reaches = async (clientId: string, redirectUri: string) => {
+    const response = await startAuthorization(fx, {
+      clientId,
+      redirectUri,
+      challenge: pkce().challenge,
+    });
+    return new URL(response.headers.get("location")!, ORIGIN).pathname === OAUTH_CONSENT_PAGE;
+  };
+  for (const host of ["localhost", "127.0.0.1"]) {
+    for (const port of ["", ":1", ":8080", ":53682", ":65535"]) {
+      assert.ok(await reaches(CLAUDE_CODE, `http://${host}${port}/callback`), `${host}${port}`);
+    }
+  }
+  for (const refused of [
+    "http://localhost:53682/other",
+    "http://localhost:53682/callback/",
+    "https://localhost:53682/callback",
+    "http://[::1]:53682/callback",
+    "http://127.0.0.2:53682/callback",
+    "http://localhost.evil.example:53682/callback",
+    "http://user@localhost:53682/callback",
+    "http://localhost:53682/callback#fragment",
+  ]) {
+    assert.equal(await reaches(CLAUDE_CODE, refused), false, refused);
+  }
+  // Ports vary only on loopback: a web client's redirect is matched exactly.
+  assert.ok(await reaches(CLAUDE, CLAUDE_CALLBACK));
+  assert.equal(await reaches(CLAUDE, "https://claude.ai:8443/api/mcp/auth_callback"), false);
+  assert.equal(await reaches(CLAUDE, "http://localhost:53682/api/mcp/auth_callback"), false);
+  assert.equal(await reaches(CHATGPT, "https://chatgpt.com/connector/oauth/abc123"), false);
+});
+
+test("a registered client gets its own redirects, ChatGPT's per-connection one included", async () => {
+  const fx = await fixture();
+  const callback = "https://chatgpt.com/connector/oauth/cb_0123456789";
+  const response = await fx.request("/api/auth/oauth2/register", {
+    method: "POST",
+    anonymous: true,
+    body: JSON.stringify({
+      client_name: "ChatGPT",
+      redirect_uris: [callback],
+      token_endpoint_auth_method: "none",
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+    }),
+  });
+  assert.equal(response.status, 201, await response.clone().text());
+  const { client_id: clientId } = (await response.json()) as { client_id: string };
+  const tokens = await connectClient(fx, clientId, callback);
+  assert.ok(audienceOf(tokens.access_token).includes(endpoints.resource));
+  assert.equal((await fx.verify(tokens.access_token))?.clientId, clientId);
+});
+
+test("a token is only for the resource the client named: another one is refused", async () => {
+  const fx = await fixture();
+  const { verifier, challenge } = pkce();
+  const elsewhere = clientRedirect(
+    await startAuthorization(fx, {
+      clientId: CLAUDE,
+      redirectUri: CLAUDE_CALLBACK,
+      challenge,
+      resource: "https://evil.example.net/mcp",
+    }),
+    CLAUDE_CALLBACK,
+  );
+  assert.equal(elsewhere.searchParams.get("error"), "invalid_target");
+  assert.equal(elsewhere.searchParams.get("iss"), endpoints.issuer);
+
+  // A code for the MCP resource cannot be exchanged for another one.
+  const back = await consent(
+    fx,
+    await startAuthorization(fx, { clientId: CLAUDE, redirectUri: CLAUDE_CALLBACK, challenge }),
+  );
+  const swapped = await tokenRequest(fx, CLAUDE, {
+    grant_type: "authorization_code",
+    code: back.searchParams.get("code")!,
+    redirect_uri: CLAUDE_CALLBACK,
+    code_verifier: verifier,
+    resource: `${ORIGIN}/api/v1`,
+  });
+  assert.equal(swapped.status, 400);
+  assert.equal(((await swapped.json()) as { error?: string }).error, "invalid_target");
+});
+
+test("a refresh rotates the token; a spent, unknown or foreign one gets invalid_grant", async () => {
+  const fx = await fixture();
+  const first = await connectClient(fx, CLAUDE, CLAUDE_CALLBACK);
+  const refresh = (clientId: string, refreshToken: string) =>
+    tokenRequest(fx, clientId, {
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      resource: endpoints.resource,
+    });
+
+  const rotated = await refresh(CLAUDE, first.refresh_token!);
+  assert.equal(rotated.status, 200, await rotated.clone().text());
+  const second = (await rotated.json()) as Tokens;
+  assert.ok(second.refresh_token);
+  assert.notEqual(second.refresh_token, first.refresh_token, "a new refresh token every time");
+  assert.equal((await fx.verify(second.access_token))?.clientId, CLAUDE);
+  assert.ok(audienceOf(second.access_token).includes(endpoints.resource));
+
+  // A retry whose answer was lost (30 seconds) gets the same answer, nothing new.
+  const retried = await refresh(CLAUDE, first.refresh_token!);
+  assert.equal(retried.status, 200, await retried.clone().text());
+  assert.equal(((await retried.json()) as Tokens).refresh_token, second.refresh_token);
+
+  const invalidGrant = async (response: Response, why: string) => {
+    assert.equal(response.status, 400, why);
+    assert.equal(((await response.json()) as { error?: string }).error, "invalid_grant", why);
+  };
+  await invalidGrant(await refresh(CLAUDE, "not-a-refresh-token"), "unknown");
+  await invalidGrant(await refresh(CLAUDE, `${second.refresh_token}x`), "altered");
+  // Another client's refresh token is not this client's to use.
+  const other = await connectClient(fx, CLAUDE_CODE, "http://localhost:1455/callback");
+  await invalidGrant(await refresh(CLAUDE, other.refresh_token!), "another client's");
+
+  // The spent token, replayed after the provider's 30-second retry window.
+  const row = fx.data.oauthRefreshToken.find((token) => token.rotatedAt);
+  assert.ok(row, "the spent token is marked rotated");
+  row.rotationReplayExpiresAt = new Date(Date.now() - 1000);
+  await invalidGrant(await refresh(CLAUDE, first.refresh_token!), "spent");
+  // Reuse is taken as theft: the whole family is revoked, the newest token too.
+  await invalidGrant(await refresh(CLAUDE, second.refresh_token!), "revoked with its family");
 });

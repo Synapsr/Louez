@@ -49,6 +49,10 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
   ) => Promise<Response>;
   let mcpCall: (authorization: string, name: string, args: object) => Promise<ToolResult>;
   let mcpTools: (authorization: string) => Promise<string[]>;
+  let mcpHttp: (
+    authorization: string,
+    body: string | ReadableStream<Uint8Array>,
+  ) => Promise<Response>;
 
   const ports = {
     planFeatures: async () => ({ apiAccess: true }),
@@ -138,6 +142,20 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
         await mcp.close();
       }
     };
+    mcpHttp = (authorization, body) =>
+      handleMcpRequest(
+        new Request("http://louez.test/api/mcp", {
+          method: "POST",
+          headers: {
+            authorization,
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+          },
+          body,
+          duplex: "half",
+        } as RequestInit),
+        httpOptions,
+      );
     mcpTools = async (authorization) => {
       const mcp = await connect(authorization);
       try {
@@ -319,6 +337,7 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
       "categories_reorder",
       "categories_create_image_upload",
       "categories_complete_image_upload",
+      "categories_upload_image",
     ]) {
       assert.ok(writer.includes(name), `${name} is listed`);
     }
@@ -361,5 +380,183 @@ describe("categories on every transport (database)", { skip: skipWithoutTestData
       (removed.structuredContent as { error?: { code?: string } }).error?.code,
       "CONFIRMATION_REQUIRED",
     );
+  });
+
+  test("an image sent in the call goes up on RPC, OpenAPI and MCP, and MCP takes its larger body", async () => {
+    const authorization = await key();
+    const png = Buffer.alloc(9);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(png);
+    const small = { contentBase64: png.toString("base64") };
+
+    const viaRpc = (await rpc("uploadImage", small)) as Json;
+    const viaOpenApi = await openApi("POST", "/categories/images", small, { authorization });
+    assert.equal(viaOpenApi.status, 200);
+    const viaMcp = await mcpCall(authorization, "categories_upload_image", small);
+    assert.notEqual(viaMcp.isError, true, text(viaMcp));
+    for (const result of [
+      viaRpc,
+      (await viaOpenApi.json()) as Json,
+      json(viaMcp.structuredContent),
+    ]) {
+      assert.equal(result.contentType, "image/png");
+      assert.match(
+        String(result.url),
+        new RegExp(`^https://files\\.louez\\.test/${STORE}/categories/`),
+      );
+    }
+
+    // 4.5 MB of PNG is 6 MB of base64: past the 4 MiB of any other request.
+    const large = Buffer.alloc(4.5 * 1024 * 1024);
+    png.copy(large);
+    const bigCall = await mcpCall(authorization, "categories_upload_image", {
+      contentBase64: large.toString("base64"),
+    });
+    assert.notEqual(bigCall.isError, true, text(bigCall));
+    assert.equal((bigCall.structuredContent as Json).size, large.byteLength);
+
+    const message = (method: string, params: object) =>
+      JSON.stringify({ jsonrpc: "2.0", id: 1, method, params });
+    const pad = "x".repeat(5 * 1024 * 1024);
+    for (const body of [
+      message("ping", { pad }),
+      message("tools/call", { name: "categories_create", arguments: { name: pad } }),
+      JSON.stringify([
+        JSON.parse(
+          message("tools/call", {
+            name: "categories_upload_image",
+            arguments: { contentBase64: pad },
+          }),
+        ),
+        JSON.parse(message("ping", {})),
+      ]),
+      message("tools/call", {
+        name: "categories_upload_image",
+        arguments: { contentBase64: "x".repeat(8 * 1024 * 1024) },
+      }),
+    ]) {
+      const refused = await mcpHttp(authorization, body);
+      assert.equal(refused.status, 413);
+      assert.match(((await refused.json()) as { error: string }).error, /imageUrl/);
+    }
+
+    const tooLarge = await mcpCall(authorization, "categories_upload_image", {
+      contentBase64: Buffer.alloc(5 * 1024 * 1024 + 3).toString("base64"),
+    });
+    assert.equal(toolError(tooLarge), "UPLOAD_TOO_LARGE");
+  });
+
+  test("over HTTP, the rate limit comes before the body, and a body past 4 MiB weighs four calls", async () => {
+    const { eq } = await import("drizzle-orm");
+    const created = await apiKeys.createApiKey({
+      db: louezDb.db,
+      storeId: STORE,
+      userId: OWNER,
+      name: "Large bodies agent",
+      permissions: { ...readOnly, categories: "write" },
+    });
+    const authorization = `Bearer ${created.key}`;
+    const limitKey = `api_key:${created.id}`;
+    const rows = louezDb.apiRateLimits;
+    const used = async () =>
+      (await louezDb.db.select({ count: rows.count }).from(rows).where(eq(rows.key, limitKey)))[0]
+        ?.count ?? 0;
+    const setUsed = async (count: number) => {
+      const now = Date.now();
+      await louezDb.db
+        .update(rows)
+        .set({ count, windowStart: now - (now % 60_000) })
+        .where(eq(rows.key, limitKey));
+    };
+
+    const ping = await mcpHttp(
+      authorization,
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "ping",
+        params: { pad: "x".repeat(5 * 1024 * 1024) },
+      }),
+    );
+    assert.equal(ping.status, 413);
+    assert.equal(await used(), 4, "read past 4 MiB: four calls");
+    const garbage = await mcpHttp(authorization, "{ not json");
+    assert.equal(garbage.status, 400);
+    assert.equal(await used(), 5, "a body that is not JSON counts as a call");
+
+    // A connection that used up its window gets no read at all.
+    await setUsed(120);
+    let pulled = 0;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          pulled++;
+          controller.enqueue(new Uint8Array(1024 * 1024));
+        },
+      },
+      // Nothing is pulled until someone reads.
+      { highWaterMark: 0 },
+    );
+    const limited = await mcpHttp(authorization, stream);
+    assert.equal(limited.status, 429);
+    assert.ok(limited.headers.get("retry-after"));
+    assert.equal(pulled, 0, "the body was not read");
+
+    // Two calls left: an image call past 4 MiB is refused before the rest is read.
+    await setUsed(118);
+    const upload = await mcpHttp(
+      authorization,
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "categories_upload_image",
+          arguments: { contentBase64: Buffer.alloc(4.5 * 1024 * 1024).toString("base64") },
+        },
+      }),
+    );
+    assert.equal(upload.status, 429);
+  });
+
+  test("over HTTP, large reads share four places with /api/v1; small requests never wait", async () => {
+    const { MAX_LARGE_BODY_READS, takeLargeBodyPlace } =
+      await import("@louez/api/platform/large-bodies");
+    const authorization = await key();
+    const upload = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "categories_upload_image",
+        arguments: { contentBase64: Buffer.alloc(4.5 * 1024 * 1024).toString("base64") },
+      },
+    });
+
+    // Every place taken, as four large /api/v1 reads would hold them.
+    const held = Array.from({ length: MAX_LARGE_BODY_READS }, () => takeLargeBodyPlace());
+    assert.ok(held.every(Boolean));
+    assert.equal(takeLargeBodyPlace(), null);
+    try {
+      const busy = await mcpHttp(authorization, upload);
+      assert.equal(busy.status, 503);
+      assert.equal(busy.headers.get("retry-after"), "1");
+      const error = (await busy.json()) as { data: { code: string; retryable: boolean } };
+      assert.deepEqual([error.data.code, error.data.retryable], ["LARGE_BODY_BUSY", true]);
+
+      const ping = await mcpHttp(
+        authorization,
+        JSON.stringify({ jsonrpc: "2.0", id: 2, method: "ping" }),
+      );
+      assert.equal(ping.status, 200, "a small request does not wait for a place");
+    } finally {
+      for (const release of held) release?.();
+    }
+
+    // Free again: the large call goes through, and gives its place back once answered.
+    const done = await mcpHttp(authorization, upload);
+    assert.equal(done.status, 200);
+    const after = Array.from({ length: MAX_LARGE_BODY_READS }, () => takeLargeBodyPlace());
+    assert.ok(after.every(Boolean), "every place is free again");
+    for (const release of after) release?.();
   });
 });

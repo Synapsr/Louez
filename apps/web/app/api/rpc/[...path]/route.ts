@@ -1,5 +1,6 @@
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
+import { ResponseHeadersPlugin } from "@orpc/server/plugins";
 
 import { appRouter } from "@louez/api/router";
 
@@ -56,8 +57,10 @@ import { getCustomerSession } from "@/app/(storefront)/[slug]/account/actions";
 
 const handler = new RPCHandler(appRouter, {
   // A call without the app's custom header is refused: no cross-site request
-  // rides the session cookie (lib/orpc/csrf.ts).
-  plugins: [rpcCsrfHandlerPlugin()],
+  // rides the session cookie (lib/orpc/csrf.ts). A procedure may set the
+  // answer's headers (`context.resHeaders`): the onboarding's store step sets
+  // its cookies.
+  plugins: [rpcCsrfHandlerPlugin(), new ResponseHeadersPlugin()],
   interceptors: [
     onError((error) => {
       const rpcError = error instanceof Error ? error : new Error("Unknown oRPC error");

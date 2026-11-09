@@ -16,6 +16,7 @@ import {
   productActivityOutput,
   productErrors,
   productOutput,
+  PRODUCT_WRITE_MAX_BODY_BYTES,
   productTimelineInput,
   productTimelineOutput,
   reorderProductsInput,
@@ -32,9 +33,12 @@ import {
   completeImageUploadOutput,
   createImageUploadInput,
   createImageUploadOutput,
+  UPLOAD_IMAGE_MAX_BODY_BYTES,
+  uploadImageInput,
 } from "../../contracts/uploads";
 import { productLinks } from "../../platform/links";
 import { storeProcedure } from "../../platform/procedures";
+import { withSetupMark } from "../../platform/setup-analytics";
 import { getProductUnitActivityPage } from "../../services/product-activity";
 import { getProductReservationTimeline } from "../../services/product-reservation-timeline";
 import {
@@ -55,7 +59,7 @@ import {
   updateProduct,
   updateProductStatus,
 } from "../../services/products";
-import { completeImageUpload, createImageUpload } from "../../services/uploads";
+import { completeImageUpload, createImageUpload, uploadImage } from "../../services/uploads";
 import {
   confirmUnderLock,
   productActor,
@@ -195,12 +199,14 @@ const create = storeProcedure
     mcp: {
       name: "products_create",
       title: "Create Product",
-      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} \`images\` takes the urls finished image uploads return (products_complete_image_upload). Returns the product as products_get does, with its \`links\`, the URLs to give the user to see it. An idempotencyKey makes a retry safe.`,
+      description: `Create a product, with everything the dashboard's product form holds. Only name and a price are required: a product is active, priced by duration, returnable and stocked 1 by default. ${TIERS_HELP} \`images\` takes the urls finished image uploads return (products_upload_image, or products_complete_image_upload). Returns the product as products_get does, with its \`links\`, the URLs to give the user to see it. An idempotencyKey makes a retry safe.`,
       bundle: "catalog",
       effect: "additive",
       reach: "public",
       aliases: [{ name: "create_product" }],
     },
+    // A thousand units with their notes and photos is more than 2 MiB.
+    maxBodyBytes: PRODUCT_WRITE_MAX_BODY_BYTES,
   })
   .route({ method: "POST", path: "/products" })
   .input(createProductInput)
@@ -224,6 +230,7 @@ const update = storeProcedure
       aliases: [{ name: "update_product", renamedArgs: { productId: "id" } }],
       annotations: { idempotentHint: true },
     },
+    maxBodyBytes: PRODUCT_WRITE_MAX_BODY_BYTES,
   })
   .route({ method: "PATCH", path: "/products/{id}" })
   .input(updateProductInput)
@@ -410,11 +417,13 @@ const createImageUploadProcedure = storeProcedure
   .input(createImageUploadInput)
   .output(createImageUploadOutput)
   .handler(({ context, input }) =>
-    createImageUpload(context.ports.storage, {
-      storeId: context.actor.storeId,
-      kind: "product",
-      ...input,
-    }),
+    withSetupMark(context.actor.storeId, () =>
+      createImageUpload(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "product",
+        ...input,
+      }),
+    ),
   );
 
 const completeImageUploadProcedure = storeProcedure
@@ -435,11 +444,41 @@ const completeImageUploadProcedure = storeProcedure
   .input(completeImageUploadInput)
   .output(completeImageUploadOutput)
   .handler(({ context, input }) =>
-    completeImageUpload(context.ports.storage, {
-      storeId: context.actor.storeId,
-      kind: "product",
-      key: input.key,
-    }),
+    withSetupMark(context.actor.storeId, () =>
+      completeImageUpload(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "product",
+        key: input.key,
+      }),
+    ),
+  );
+
+const uploadImageProcedure = storeProcedure
+  .meta({
+    capability: "products.uploadImage",
+    scope: { domain: "products", level: "write" },
+    mcp: {
+      name: "products_upload_image",
+      title: "Upload Product Image",
+      description:
+        "Upload a product image in one call (JPEG, PNG, GIF or WebP). It takes the file's bytes base64 as `contentBase64` (5 MB at most), for a file whose upload URL (products_create_image_upload) is out of reach, such as an image made in the agent's own workspace; or a public HTTPS `imageUrl`, which Louez downloads (15 MB at most). The type is read from the bytes. Each upload is a new image; no product changes. Returns the image's public `url`, which a product's `images` take in products_create and products_update.",
+      bundle: "catalog",
+      effect: "additive",
+      reach: "provider",
+    },
+    maxBodyBytes: UPLOAD_IMAGE_MAX_BODY_BYTES,
+  })
+  .route({ method: "POST", path: "/products/images" })
+  .input(uploadImageInput)
+  .output(completeImageUploadOutput)
+  .handler(({ context, input }) =>
+    withSetupMark(context.actor.storeId, () =>
+      uploadImage(context.ports.storage, {
+        storeId: context.actor.storeId,
+        kind: "product",
+        source: input,
+      }),
+    ),
   );
 
 // --- Activity and timeline ---------------------------------------------------
@@ -622,6 +661,7 @@ export const dashboardProductsRouter = {
   reorder,
   createImageUpload: createImageUploadProcedure,
   completeImageUpload: completeImageUploadProcedure,
+  uploadImage: uploadImageProcedure,
   getActivity,
   getReservationTimeline,
   listSeasonalPricings: listSeasonalPricingsProcedure,

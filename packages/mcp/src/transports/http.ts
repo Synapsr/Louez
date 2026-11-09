@@ -4,7 +4,10 @@ import { createMcpHandler } from "@modelcontextprotocol/server";
 import { ORPCError } from "@orpc/server";
 
 import type { AccountActor } from "@louez/api/platform/actor";
+import { platformErrors } from "@louez/api/platform/errors";
+import { largeBodyBusy, takeLargeBodyPlace } from "@louez/api/platform/large-bodies";
 import { STORE_HEADER } from "@louez/api/platform/procedures";
+import { consumeRateLimit, rateLimitKey, rateLimitReached } from "@louez/api/platform/rate-limit";
 
 import type { McpRequestContext } from "../auth/context";
 import { resolveMcpAccount, resolveMcpContext } from "../auth/resolve";
@@ -49,40 +52,104 @@ function errorResponse(error: ORPCError<string, unknown>, challenge: string): Re
 /** The SDK's own limit on a request body; this handler parses before it does. */
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
+/**
+ * Calls a read past `MAX_BODY_BYTES` counts on the connection's rate limit,
+ * for each 4 MiB read, before more of it is read: whether the request is a
+ * call that may be that large (a tool whose procedure sets
+ * `meta.maxBodyBytes`) is known only once it is parsed, so the read costs
+ * what it costs whatever it turns out to be.
+ */
+export const OVERSIZED_BODY_WEIGHT = 4;
+
+const TOO_LARGE_MESSAGE = `Request body too large: at most ${MAX_BODY_BYTES} bytes, more only for one call to a tool that takes more (an image's bytes up to 5 MB, a product with its units). Send an image as a public imageUrl rather than its bytes. Split a very large product: create it, then add units in further products_update calls, or fill each unit's details with products_update_unit_details.`;
+
 const jsonResponse = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 type ReadBody =
   | { kind: "none" }
-  | { kind: "json"; value: unknown }
-  | { kind: "too-large" }
+  | { kind: "json"; value: unknown; size: number; counted: boolean }
+  | { kind: "too-large"; counted: boolean }
   | { kind: "invalid" };
 
 /**
- * Reads a POST body as JSON, at most `MAX_BODY_BYTES`, stopping as soon as it
- * goes past. The body is consumed here and handed to the SDK parsed.
+ * Reads a POST body as JSON, streaming, at most `MAX_BODY_BYTES`. Past it,
+ * and only when `oversized` is given, each further 4 MiB is counted first
+ * (`oversized.count`, which throws when the rate limit refuses it), up to
+ * `oversized.maxBytes`, and the read takes a place among the large reads of
+ * the process (`oversized.enter`, which throws when none is free). A
+ * declared length is counted before anything is read. The body is consumed here and handed to the SDK parsed.
  */
-async function readJson(request: Request): Promise<ReadBody> {
+async function readJson(
+  request: Request,
+  oversized?: { maxBytes: number; count: () => Promise<void>; enter: () => void },
+): Promise<ReadBody> {
   if (request.method !== "POST" || !request.body) return { kind: "none" };
-  if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) return { kind: "too-large" };
+  const limit = oversized?.maxBytes ?? MAX_BODY_BYTES;
+  const declared = Number(request.headers.get("content-length"));
+  if (declared > limit) return { kind: "too-large", counted: false };
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > MAX_BODY_BYTES) {
-      void reader.cancel();
-      return { kind: "too-large" };
+  let counted = 0;
+  let entered = false;
+  /** Counts each 4 MiB step past the first that `bytes` reach, once. */
+  const countUpTo = async (bytes: number) => {
+    if (!oversized) return;
+    const steps = Math.ceil(bytes / MAX_BODY_BYTES) - 1;
+    for (; counted < steps; counted++) await oversized.count();
+    if (steps > 0 && !entered) {
+      oversized.enter();
+      entered = true;
     }
-    chunks.push(value);
+  };
+  try {
+    if (Number.isFinite(declared)) await countUpTo(declared);
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        void reader.cancel().catch(() => {});
+        return { kind: "too-large", counted: counted > 0 };
+      }
+      await countUpTo(size);
+      chunks.push(value);
+    }
+  } catch (error) {
+    void reader.cancel().catch(() => {});
+    throw error;
   }
   try {
-    return { kind: "json", value: JSON.parse(Buffer.concat(chunks).toString("utf8")) };
+    const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    return { kind: "json", value, size, counted: counted > 0 };
   } catch {
     return { kind: "invalid" };
   }
+}
+
+/**
+ * The largest body each tool takes past `MAX_BODY_BYTES`, by tool name and
+ * former name (`meta.maxBodyBytes`).
+ */
+function toolBodyLimits(procedures: readonly ExposedProcedure[]): ReadonlyMap<string, number> {
+  const limits = new Map<string, number>();
+  for (const { meta } of procedures) {
+    if (!meta.maxBodyBytes || meta.maxBodyBytes <= MAX_BODY_BYTES) continue;
+    for (const name of [meta.mcp.name, ...(meta.mcp.aliases ?? []).map((alias) => alias.name)]) {
+      limits.set(name, meta.maxBodyBytes);
+    }
+  }
+  return limits;
+}
+
+/** The body a request may send: more than `MAX_BODY_BYTES` only as one call to a tool that takes more. */
+function allowedBodyBytes(body: unknown, limits: ReadonlyMap<string, number>): number {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return MAX_BODY_BYTES;
+  const { method, params } = body as { method?: unknown; params?: unknown };
+  const name = (params as { name?: unknown } | undefined)?.name;
+  if (method !== "tools/call" || typeof name !== "string") return MAX_BODY_BYTES;
+  return limits.get(name) ?? MAX_BODY_BYTES;
 }
 
 /**
@@ -135,6 +202,21 @@ export async function handleMcpRequest(
   request: Request,
   options: McpHttpOptions,
 ): Promise<Response> {
+  // A large body holds its place among the process's large reads until the
+  // request is answered (platform/large-bodies.ts, shared with /api/v1).
+  const place: { release?: () => void } = {};
+  try {
+    return await serveMcpRequest(request, options, place);
+  } finally {
+    place.release?.();
+  }
+}
+
+async function serveMcpRequest(
+  request: Request,
+  options: McpHttpOptions,
+  place: { release?: () => void },
+): Promise<Response> {
   // Who calls comes first: an anonymous request is refused before its body
   // is read.
   const challenge = bearerChallenge(request, options.resourceMetadataUrl);
@@ -146,13 +228,54 @@ export async function handleMcpRequest(
     throw error;
   }
 
-  const body = await readJson(request);
-  if (body.kind === "too-large") return jsonResponse({ error: "Request body too large." }, 413);
-  if (body.kind === "invalid") {
-    return jsonResponse(
-      { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
-      400,
+  // The connection's rate limit applies before the body is read: one that
+  // used up its window gets no read at all. A body refused here, too large
+  // or not JSON, counts as a call; each 4 MiB read past the first counts as
+  // OVERSIZED_BODY_WEIGHT calls before the rest of it is read.
+  const limitKey = rateLimitKey(account.credential);
+  const count = async (weight = 1) => {
+    const limit = await consumeRateLimit(limitKey, undefined, undefined, weight);
+    if (!limit.allowed) throw platformErrors.rateLimited(limit.retryAfterSeconds);
+  };
+  let body: ReadBody;
+  try {
+    const reached = await rateLimitReached(limitKey);
+    if (reached) throw platformErrors.rateLimited(reached.retryAfterSeconds);
+
+    // One call to a tool that takes more may be larger; nothing else.
+    const toolLimits = toolBodyLimits(options.procedures);
+    const largest = Math.max(MAX_BODY_BYTES, ...toolLimits.values());
+    body = await readJson(
+      request,
+      largest > MAX_BODY_BYTES
+        ? {
+            maxBytes: largest,
+            count: () => count(OVERSIZED_BODY_WEIGHT),
+            enter: () => {
+              const release = takeLargeBodyPlace();
+              if (!release) throw largeBodyBusy();
+              place.release = release;
+            },
+          }
+        : undefined,
     );
+    if (
+      body.kind === "too-large" ||
+      (body.kind === "json" && body.size > allowedBodyBytes(body.value, toolLimits))
+    ) {
+      if (!body.counted) await count();
+      return jsonResponse({ error: TOO_LARGE_MESSAGE }, 413);
+    }
+    if (body.kind === "invalid") {
+      await count();
+      return jsonResponse(
+        { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
+        400,
+      );
+    }
+  } catch (error) {
+    if (error instanceof ORPCError) return errorResponse(error, challenge);
+    throw error;
   }
 
   // The store: the header, else the `storeId` argument of the tool call.
@@ -200,5 +323,8 @@ export async function handleMcpRequest(
   const handler = createMcpHandler(() => createMcpServer(ctx, options.deps, options.procedures), {
     legacy: "stateless",
   });
-  return handler.fetch(request, body.kind === "json" ? { parsedBody: body.value } : undefined);
+  return await handler.fetch(
+    request,
+    body.kind === "json" ? { parsedBody: body.value } : undefined,
+  );
 }

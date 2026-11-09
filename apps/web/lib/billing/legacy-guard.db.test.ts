@@ -398,11 +398,9 @@ function createFakeStripe() {
 
 const fakeStripe = createFakeStripe();
 const productEvents: string[] = [];
-const referralEvents: string[] = [];
-const session: { userId: string; activeStoreId: string | null; referralCode: string } = {
+const session: { userId: string; activeStoreId: string | null } = {
   userId: "",
   activeStoreId: null,
-  referralCode: "",
 };
 const currentStore = { id: "" };
 const discord = {
@@ -445,18 +443,12 @@ const stubs: Record<string, Record<string, unknown>> = {
     auth: async () => ({ user: { id: session.userId, email: `${session.userId}@louez.test` } }),
   },
   "next/headers": {
-    cookies: async () => ({
-      get: (name: string) =>
-        name === "louez_referral" && session.referralCode
-          ? { value: session.referralCode }
-          : undefined,
-      set: () => undefined,
-    }),
+    cookies: async () => ({ get: () => undefined, set: () => undefined }),
   },
   "next/cache": { revalidatePath: () => undefined, revalidateTag: () => undefined },
   "@/lib/acquisition/signup-origin": { getSignupOrigin: async () => null },
-  // The onboarding creates a new store through stores.create, which this
-  // suite calls as a service; its action is driven here for a store that exists.
+  // The onboarding's store step goes through stores.create and
+  // stores.updateOnboardingInfo; this suite tests their billing port.
   "@/lib/api/server-api": {
     serverApi: async () => {
       throw new Error("stores.create is called as a service in this suite");
@@ -467,11 +459,7 @@ const stubs: Record<string, Record<string, unknown>> = {
       productEvents.push(event.event);
     },
   },
-  "@/lib/referral/analytics": {
-    captureReferralServerEvent: async (event: { event: string }) => {
-      referralEvents.push(event.event);
-    },
-  },
+  "@/lib/referral/analytics": { captureReferralServerEvent: async () => undefined },
   "@/lib/discord/platform-notifications": {
     notifyBillingAlert: (kind: string, message: string) =>
       discord.notifyBillingAlert(kind, message),
@@ -659,7 +647,6 @@ describe(
     let legacyRun: typeof import("@/lib/pay-as-you-go/legacy-run");
     let autoTopup: typeof import("@/lib/ai/advisor/auto-topup");
     let subscriptionActions: typeof import("@/app/(dashboard)/dashboard/subscription/actions");
-    let onboarding: typeof import("@/app/(dashboard)/onboarding/actions");
     let newStorePort: typeof import("@/lib/stores/new-store-port");
     let webhooks: typeof import("@/lib/stripe/subscription-webhooks");
     const names = [
@@ -688,7 +675,6 @@ describe(
       legacyRun = await import("@/lib/pay-as-you-go/legacy-run");
       autoTopup = await import("@/lib/ai/advisor/auto-topup");
       subscriptionActions = await import("@/app/(dashboard)/dashboard/subscription/actions");
-      onboarding = await import("@/app/(dashboard)/onboarding/actions");
       newStorePort = await import("@/lib/stores/new-store-port");
       webhooks = await import("@/lib/stripe/subscription-webhooks");
       planReader.read = async (storeId) => {
@@ -1579,19 +1565,11 @@ describe(
       );
     });
 
-    test("onboarding gives the referred welcome reward and its event only to a legacy store", async () => {
+    test("the onboarding's referred reward goes only to a store Louez's own billing bills", async () => {
       process.env.LOUEZ_MODE = "platform";
-      session.referralCode = REFERRAL_CODE;
-      const storeInfo = (slug: string) => ({
-        name: slug,
-        slug,
-        country: "FR",
-        currency: "EUR" as const,
-      });
-      const resume = async (userId: string, slug: string) => {
-        session.userId = userId;
-        session.activeStoreId = null;
-        referralEvents.length = 0;
+      // An incomplete store the onboarding's store step attributes to a referrer
+      // (stores.updateOnboardingInfo): the port decides its reward, in the step's transaction.
+      const existing = async (userId: string, slug: string) => {
         await louezDb.db
           .insert(louezDb.users)
           .values({ id: userId, email: `${userId}@louez.test` });
@@ -1603,33 +1581,21 @@ describe(
         await louezDb.db
           .insert(louezDb.storeMembers)
           .values({ storeId: store.id, userId, role: "owner" });
-        session.activeStoreId = store.id;
-        assert.deepEqual(await onboarding.saveStoreInfo(storeInfo(slug)), { success: true });
         return store.id;
       };
-      const REWARD_EVENT = "referral_referred_reward_granted";
+      const reward = (storeId: string) =>
+        louezDb.db.transaction((tx) => newStorePort.newStorePort.rewardReferredStore(tx, storeId));
 
-      // An incomplete store finishing onboarding with a referral, the service billing it:
-      // no reward and no reward event.
-      const service = await resume("u_resume_service", "lg-resume-service");
+      // The service bills it: no reward, no row.
+      const service = await existing("u_resume_service", "lg-resume-service");
+      assert.equal(await reward(service), false);
       assert.equal(await subscriptionRow(service), undefined);
-      assert.ok(referralEvents.length > 0 && !referralEvents.includes(REWARD_EVENT));
 
-      // Without BILLING_SERVICE_URL every store is legacy: the reward and its event.
+      // Without BILLING_SERVICE_URL every store is legacy: the reward, on its row.
       delete process.env.BILLING_SERVICE_URL;
-      const legacy = await resume("u_resume_legacy", "lg-resume-legacy");
-      assert.equal(
-        (
-          await louezDb.db.query.stores.findFirst({
-            where: eq(louezDb.stores.id, legacy),
-            columns: { referredByStoreId: true },
-          })
-        )?.referredByStoreId,
-        "lg_referrer",
-      );
-      assert.ok(referralEvents.includes(REWARD_EVENT));
-
-      session.referralCode = "";
+      const legacy = await existing("u_resume_legacy", "lg-resume-legacy");
+      assert.equal(await reward(legacy), true);
+      assert.ok((await subscriptionRow(legacy))?.freeReservationsGranted);
     });
 
     test("a referrer the service bills gets no legacy reward", async () => {

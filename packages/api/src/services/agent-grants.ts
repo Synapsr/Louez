@@ -138,15 +138,25 @@ export async function storeHasAgentConnection(storeId: string): Promise<boolean>
 
 /**
  * Client ids shown as "Vérifié": the exact metadata document URLs of clients
- * Louez knows. Empty on purpose. A metadata document proves only who serves
- * it, not that the name in it is true, so a CIMD client is not verified for
- * being one. The only id an official source documents is Claude Code's
- * (https://claude.ai/oauth/claude-code-client-metadata, linked from
- * https://claude.com/docs/connectors/building/authentication), and Claude Code
- * redirects to a loopback address, which any local program can claim; the
- * id of claude.ai's own document is not published by Anthropic.
+ * Louez knows, each documented by its publisher. A metadata document proves
+ * only who serves it, not that the name in it is true, so a CIMD client is
+ * not verified for being one; these are, because their host is the client's
+ * publisher and the code goes only to a redirect their document lists, on
+ * that host. Anthropic documents Claude's two (public, and `private_key_jwt`)
+ * at https://claude.com/docs/connectors/building/authentication; OpenAI
+ * documents ChatGPT's at https://developers.openai.com/plugins/build/auth (the
+ * stable id it uses with a server that returns `iss`, as Louez does).
+ *
+ * Claude Code's document (https://claude.ai/oauth/claude-code-client-metadata)
+ * is left out on purpose: it redirects to a loopback address, which any local
+ * program can claim, so its name is no more certain than the consent page's
+ * loopback warning says.
  */
-const VERIFIED_CLIENT_IDS: ReadonlySet<string> = new Set<string>();
+const VERIFIED_CLIENT_IDS: ReadonlySet<string> = new Set([
+  "https://claude.ai/oauth/mcp-oauth-client-metadata",
+  "https://claude.ai/oauth/mcp-oauth-client-metadata/confidential_client",
+  "https://chatgpt.com/oauth/client.json",
+]);
 
 function hostOf(uri: string | null | undefined): string | null {
   if (!uri) return null;

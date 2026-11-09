@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers'
+import { ACTIVE_STORE_COOKIE, activeStoreCookieOptions } from '@/lib/active-store-cookie'
 import { auth } from '@/lib/auth'
 import { db } from '@louez/db'
 import { stores, storeMembers } from '@louez/db'
@@ -9,8 +10,6 @@ import type { AiAdvisorSettings, AiPhoneSettings, StoreSettings, StoreTheme, Ema
 import { hasPermission, type MemberRole, type Permission } from '@louez/utils'
 
 export { hasPermission, type MemberRole, type Permission }
-
-const ACTIVE_STORE_COOKIE = 'louez_active_store'
 
 export type StoreWithRole = {
   id: string
@@ -188,13 +187,7 @@ export async function setActiveStoreId(storeId: string): Promise<{ success: bool
   }
 
   const cookieStore = await cookies()
-  cookieStore.set(ACTIVE_STORE_COOKIE, storeId, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Keep using NODE_ENV as specified
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 365, // 1 year
-    path: '/',
-  })
+  cookieStore.set(ACTIVE_STORE_COOKIE, storeId, activeStoreCookieOptions)
 
   return { success: true }
 }

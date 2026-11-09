@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import type { NewStorePort, NewStoreTerms } from "@louez/api/platform/ports";
-import { subscriptions } from "@louez/db";
+import { subscriptions, type Transaction } from "@louez/db";
 
 import { getDefaultAiCredits } from "@/lib/ai/advisor/credits";
 import { isBillingEnabled } from "@/lib/billing/mode";
@@ -9,13 +9,17 @@ import {
   type EffectivePolicy,
   getStorePolicyThrough,
   getUncreatedStorePolicy,
+  legacyBillingApplies,
 } from "@/lib/billing/policy";
 import { isStandaloneMode } from "@/lib/deployment";
 import { resolvePayAsYouGoConfig } from "@/lib/pay-as-you-go/config";
 import { getNewStorePricing } from "@/lib/pay-as-you-go/defaults";
 import { insertNewStoreSubscription } from "@/lib/pay-as-you-go/new-store-subscription";
+import { raiseFreeReservations } from "@/lib/pay-as-you-go/pricing-lock";
 import { areAiCreditsEnabled } from "@/lib/plans";
 import { getReferralProgramConfig } from "@/lib/referral/defaults";
+import { referralCookieDomain, referralCookieSecure } from "@/lib/referral/link";
+import { ACTIVE_STORE_COOKIE, activeStoreCookieOptions } from "@/lib/active-store-cookie";
 import { isKnownSignupOrigin, SIGNUP_ORIGIN_COOKIE } from "@/lib/utils/signup-origin";
 
 /** The referral code the proxy captured from `?ref=` (proxy.ts). */
@@ -107,6 +111,68 @@ const subscribe: NewStorePort["subscribe"] = async (tx, input) => {
   );
 };
 
+/**
+ * The referred reward of a store that existed before its onboarding's store
+ * step attributed it: more free reservations at the pricing it already pays,
+ * only while Louez's own billing bills it (none when the billing service
+ * does).
+ */
+async function rewardReferredStore(tx: Transaction, storeId: string): Promise<boolean> {
+  if (!(await legacyBillingApplies(storeId, new Date()))) return false;
+  await raiseFreeReservations(
+    tx,
+    storeId,
+    getReferralProgramConfig().referredRewardFreeReservations,
+  );
+  return true;
+}
+
+interface CookieOptions {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: "lax";
+  maxAge: number;
+  path: string;
+  domain?: string;
+}
+
+/** One `Set-Cookie` value. Names and values here are ids and fixed names: nothing to encode. */
+function setCookie(name: string, value: string, options: CookieOptions): string {
+  return [
+    `${name}=${encodeURIComponent(value)}`,
+    `Path=${options.path}`,
+    `Max-Age=${options.maxAge}`,
+    ...(options.domain ? [`Domain=${options.domain}`] : []),
+    "SameSite=Lax",
+    ...(options.httpOnly ? ["HttpOnly"] : []),
+    ...(options.secure ? ["Secure"] : []),
+  ].join("; ");
+}
+
+/**
+ * The onboarding's store step's cookies: the store it saved or created
+ * becomes the active one (as `setActiveStoreId` sets it), and the referral
+ * cookie is cleared, host-only and on the app's domain where the proxy set
+ * it, so it attributes no later store.
+ */
+function onboardingCookies(input: { activeStoreId: string; spendReferral: boolean }): string[] {
+  const cookies = [setCookie(ACTIVE_STORE_COOKIE, input.activeStoreId, activeStoreCookieOptions)];
+  if (!input.spendReferral) return cookies;
+  const cleared = {
+    httpOnly: true,
+    secure: referralCookieSecure(),
+    sameSite: "lax" as const,
+    maxAge: 0,
+    path: "/",
+  };
+  const domain = referralCookieDomain();
+  return [
+    ...cookies,
+    setCookie(REFERRAL_COOKIE, "", cleared),
+    ...(domain ? [setCookie(REFERRAL_COOKIE, "", { ...cleared, domain })] : []),
+  ];
+}
+
 /** `ApiPorts.newStores`: the app's side of creating a store (packages/api services/store-creation.ts). */
 export const newStorePort: NewStorePort = {
   singleStore: isStandaloneMode,
@@ -121,4 +187,6 @@ export const newStorePort: NewStorePort = {
       signupOrigin: isKnownSignupOrigin(signupOrigin) ? signupOrigin : null,
     };
   },
+  rewardReferredStore,
+  onboardingCookies,
 };

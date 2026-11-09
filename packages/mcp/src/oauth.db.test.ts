@@ -173,6 +173,23 @@ describe("MCP over OAuth (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.match(refused.headers.get("www-authenticate") ?? "", /error="invalid_token"/);
   });
 
+  test("a token issued for another resource or by another issuer is refused", async () => {
+    const { id: grantId } = await grant();
+    assert.equal((await post(await bearer())).status, 200, "the same token for this resource");
+    for (const claims of [
+      { audience: "https://app.louez.test/api/v1" },
+      { audience: "https://other.example/api/mcp" },
+      { issuer: "https://other.example/api/auth" },
+    ]) {
+      const token = await tokens.sign({ userId: OWNER, clientId: CLIENT, grantId, ...claims });
+      const refused = await post({ authorization: `Bearer ${token}` });
+      assert.equal(refused.status, 401, JSON.stringify(claims));
+      const challenge = refused.headers.get("www-authenticate") ?? "";
+      assert.match(challenge, /error="invalid_token"/);
+      assert.match(challenge, new RegExp(`resource_metadata="${RESOURCE_METADATA}"`));
+    }
+  });
+
   test("a grant lists the tools of its bundles; an API key lists every bundle", async () => {
     await grant({ bundles: ["daily"] });
     const daily = await withClient(await bearer(), async (client) =>

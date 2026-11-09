@@ -33,6 +33,8 @@ services:
       NEXT_PUBLIC_DASHBOARD_SUBDOMAIN: ${NEXT_PUBLIC_DASHBOARD_SUBDOMAIN:-app}
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
       AUTH_TRUST_HOST: "true"
+      # Unset: no ingress is trusted to name the visitor. See .env.example.
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
       # Leave empty to let the container generate and persist a secret in the
       # louez_data volume (sessions then survive container recreation).
       AUTH_SECRET: ${AUTH_SECRET:-}

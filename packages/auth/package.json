@@ -10,6 +10,7 @@
     "./account-deletion": "./src/account-deletion.ts",
     "./client": "./src/client.ts",
     "./env": "./src/env.ts",
+    "./guarded-fetch": "./src/guarded-fetch.ts",
     "./oauth": "./src/oauth.ts",
     "./oauth-client-icon": "./src/oauth-client-icon.ts",
     "./platform-admin": "./src/platform-admin.ts",

@@ -371,6 +371,49 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     assert.equal(registered.client.loopbackRedirect, true);
   });
 
+  test("Claude's and ChatGPT's own documents are verified; Claude Code's loopback is not", async () => {
+    const claude = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+    const claudeCode = "https://claude.ai/oauth/claude-code-client-metadata";
+    const chatGpt = "https://chatgpt.com/oauth/client.json";
+    const clients = [
+      [claude, "Claude", "https://claude.ai/api/mcp/auth_callback"],
+      [`${claude}/confidential_client`, "Claude", "https://claude.ai/api/mcp/auth_callback"],
+      [chatGpt, "ChatGPT", "https://chatgpt.com/connector_platform_oauth_redirect"],
+      [claudeCode, "Claude Code", "http://127.0.0.1/callback"],
+    ] as const;
+    await louezDb.db.insert(louezDb.oauthClients).values(
+      clients.map(([clientId, name, redirectUri]) => ({
+        clientId,
+        name,
+        clientDiscoveryId: "cimd",
+        redirectUris: JSON.stringify([redirectUri]),
+      })),
+    );
+    const ask = (clientId: string, redirectUri: string) =>
+      call<{ client: { verified: boolean; redirectHost: string; loopbackRedirect: boolean } }>(
+        connections.getAuthorization,
+        {
+          oauthQuery: new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: redirectUri,
+            sig: "ok",
+          }).toString(),
+        },
+        session(),
+        ["dashboard", "agentConnections", "getAuthorization"],
+      );
+
+    for (const [clientId, , redirectUri] of clients.slice(0, 3)) {
+      const { client } = await ask(clientId, redirectUri);
+      assert.equal(client.verified, true, clientId);
+      assert.equal(client.loopbackRedirect, false, clientId);
+    }
+    const local = await ask(claudeCode, "http://127.0.0.1:53682/callback");
+    assert.equal(local.client.verified, false, "any local program can take its code");
+    assert.equal(local.client.loopbackRedirect, true);
+    assert.equal(local.client.redirectHost, "127.0.0.1:53682");
+  });
+
   test("refusing grants nothing; a bad query, a foreign store or an unknown client is refused", async () => {
     const oauthQuery = `client_id=${encodeURIComponent(CLIENT)}&sig=ok`;
     const refused = await call<{ redirectUrl: string }>(
