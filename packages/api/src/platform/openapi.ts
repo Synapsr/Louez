@@ -1,10 +1,12 @@
 import { OpenAPIGenerator, type OpenAPIGeneratorGenerateOptions } from "@orpc/openapi";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
-import { onError, type AnyRouter } from "@orpc/server";
+import { onError, ORPCError, type AnyRouter } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 
 import type { BaseContext } from "../context";
+import type { ApiErrorData } from "./errors";
+import type { ExposedProcedure } from "./exposure";
 import type { OperationReceipt } from "./operations";
 import type { ApiPorts } from "./ports";
 
@@ -15,6 +17,73 @@ export const REPLAYED_HEADER = "Louez-Replayed";
 
 /** Where the app mounts the OpenAPI transport. */
 export const OPENAPI_PREFIX = "/api/v1";
+
+/**
+ * Largest body `/api/v1` reads. The longest inputs are legal texts of
+ * 100,000 characters, two in one call, which JSON may escape to six bytes a
+ * character.
+ */
+export const OPENAPI_MAX_BODY_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Largest body of a procedure that takes a file's bytes
+ * (`meta.mcp.inlineFile`): a 5 MB image is 6.7 MB of base64.
+ */
+export const OPENAPI_INLINE_FILE_MAX_BODY_BYTES = 8 * 1024 * 1024;
+
+/**
+ * The routes (`POST /categories/images`) of the procedures that take a
+ * file's bytes, which may send a body up to
+ * `OPENAPI_INLINE_FILE_MAX_BODY_BYTES`.
+ */
+export function inlineFileRoutes(procedures: readonly ExposedProcedure[]): ReadonlySet<string> {
+  const routes = new Set<string>();
+  for (const { procedure, meta } of procedures) {
+    const { method, path } = procedure["~orpc"].route;
+    if (meta.mcp.inlineFile && method && path) routes.add(`${method} ${path}`);
+  }
+  return routes;
+}
+
+function tooLarge(maxBytes: number): Response {
+  const error = new ORPCError<"PAYLOAD_TOO_LARGE", ApiErrorData>("PAYLOAD_TOO_LARGE", {
+    message: `The request body is larger than ${maxBytes} bytes. Send a larger image as a public imageUrl.`,
+    data: { code: "REQUEST_TOO_LARGE", retryable: false, details: { maxBytes } },
+  });
+  return Response.json(error.toJSON(), { status: 413 });
+}
+
+/**
+ * The request with its body read, at most `maxBytes`, streaming: a body past
+ * it, declared or sent, gets 413 before anything parses it or checks who
+ * sent it.
+ */
+async function withBoundedBody(request: Request, maxBytes: number): Promise<Request | Response> {
+  if (!request.body) return request;
+  if (Number(request.headers.get("content-length")) > maxBytes) {
+    await request.body.cancel().catch(() => {});
+    return tooLarge(maxBytes);
+  }
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBytes) {
+      await reader.cancel().catch(() => {});
+      return tooLarge(maxBytes);
+    }
+    chunks.push(value);
+  }
+  return new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: Buffer.concat(chunks),
+    signal: request.signal,
+  });
+}
 
 /** What the OpenAPI generator and the reference plugin need to read Zod 4 schemas. */
 const openApiGeneratorOptions = {
@@ -146,12 +215,28 @@ export function createOpenApiHandler(
  */
 export async function handleOpenApiRequest(
   handler: OpenAPIHandler<BaseContext>,
-  request: Request,
-  options: { ports: ApiPorts; prefix?: `/${string}` },
+  incoming: Request,
+  options: {
+    ports: ApiPorts;
+    prefix?: `/${string}`;
+    /** Routes that take a file's bytes (`inlineFileRoutes`); every other body stops at 2 MiB. */
+    inlineFileRoutes?: ReadonlySet<string>;
+  },
 ): Promise<Response | undefined> {
+  const prefix = options.prefix ?? OPENAPI_PREFIX;
+  const { pathname } = new URL(incoming.url);
+  const route = `${incoming.method} ${pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname}`;
+  const bounded = await withBoundedBody(
+    incoming,
+    options.inlineFileRoutes?.has(route)
+      ? OPENAPI_INLINE_FILE_MAX_BODY_BYTES
+      : OPENAPI_MAX_BODY_BYTES,
+  );
+  if (bounded instanceof Response) return bounded;
+  const request = bounded;
   const receipt: OperationReceipt = {};
   const { response } = await handler.handle(request, {
-    prefix: options.prefix ?? OPENAPI_PREFIX,
+    prefix,
     context: { headers: request.headers, transport: "openapi", ports: options.ports, receipt },
   });
   if (!response) return undefined;

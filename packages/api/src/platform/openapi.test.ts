@@ -258,3 +258,85 @@ describe("OpenAPI document", () => {
     );
   });
 });
+
+describe("the /api/v1 body cap", () => {
+  let serve: (request: Request) => Promise<Response | undefined>;
+  let routes: ReadonlySet<string>;
+
+  before(async () => {
+    const { createExposure } = await import("./exposure");
+    const { createOpenApiHandler, handleOpenApiRequest, inlineFileRoutes } =
+      await import("./openapi");
+    const { appRouter } = await import("../router");
+    const exposure = createExposure(appRouter);
+    const handler = createOpenApiHandler(exposure.router, { docs: false });
+    routes = inlineFileRoutes(exposure.procedures);
+    serve = (request) =>
+      handleOpenApiRequest(handler, request, {
+        ports: {} as import("./ports").ApiPorts,
+        inlineFileRoutes: routes,
+      });
+  });
+
+  const MiB = 1024 * 1024;
+
+  /** A body of `size` bytes sent in 1 MiB chunks, with no Content-Length; counts what was pulled. */
+  const streamed = (size: number) => {
+    const sent = { bytes: 0 };
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          if (sent.bytes >= size) return controller.close();
+          const chunk = new Uint8Array(Math.min(MiB, size - sent.bytes));
+          sent.bytes += chunk.byteLength;
+          controller.enqueue(chunk);
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    return { sent, body };
+  };
+
+  const post = (path: string, body: BodyInit, headers: Record<string, string> = {}) =>
+    new Request(`https://app.louez.test/api/v1${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body,
+      duplex: "half",
+    } as RequestInit);
+
+  test("lists the three routes that take an image's bytes", () => {
+    assert.deepEqual([...routes].sort(), [
+      "POST /categories/images",
+      "POST /online-store/images",
+      "POST /products/images",
+    ]);
+  });
+
+  test("refuses a body past 8 MiB unread, before anyone checks who sent it", async () => {
+    const { sent, body } = streamed(9 * MiB);
+    const response = await serve(post("/categories/images", body));
+    assert.equal(response?.status, 413);
+    const error = (await response?.json()) as { data: { code: string } };
+    assert.equal(error.data.code, "REQUEST_TOO_LARGE");
+    assert.ok(sent.bytes <= 8 * MiB + MiB, `stopped after ${sent.bytes} bytes`);
+
+    const declared = await serve(
+      post("/products/images", "{}", { "content-length": String(9 * MiB) }),
+    );
+    assert.equal(declared?.status, 413);
+  });
+
+  test("other routes stop at 2 MiB; an image route takes more, then asks who is calling", async () => {
+    const { sent, body } = streamed(3 * MiB);
+    const refused = await serve(post("/categories", body));
+    assert.equal(refused?.status, 413);
+    assert.ok(sent.bytes <= 3 * MiB);
+
+    const image = JSON.stringify({ contentBase64: "A".repeat(6 * MiB) });
+    const accepted = await serve(post("/categories/images", image));
+    assert.equal(accepted?.status, 401, "read whole, then refused for its missing key");
+    const small = await serve(post("/categories", JSON.stringify({ name: "Bikes" })));
+    assert.equal(small?.status, 401);
+  });
+});

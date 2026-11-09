@@ -170,6 +170,7 @@ A test checks the app's list against the app's router. Tests build their own exp
 - A procedure declares a short REST route with `.route()`: `GET /categories`, `GET /categories/{id}`, `POST /categories`, `PATCH /categories/{id}`, `DELETE /categories/{id}`, `POST /categories/reorder`. Path parameters fill the input fields of the same name. A GET takes the rest of its input from the query string, so a number in it is `z.coerce.number()`. Any other method takes it from the JSON body.
 - A procedure without a route is `POST /api/v1/<path with slashes>`, such as `POST /api/v1/dashboard/categories/create`. The body is the input.
 - The credential is an API key: `Authorization: Bearer lz_…`.
+- A body is at most 2 MiB, 8 MiB for the procedures that take an image's bytes, read streaming before anything parses it or checks the key (413 `REQUEST_TOO_LARGE`; see [Uploads](#uploads)).
 - A write answers with `Louez-Operation-Id`, its receipt. A replayed write also sends `Louez-Replayed: true`.
 - An error keeps oRPC's JSON shape (`defined`, `code`, `status`, `message`) with our `data`: `code`, `retryable`, `i18nKey`, `details`.
 
@@ -197,7 +198,7 @@ An agent often cannot send the bytes anywhere but Louez: its sandbox's network a
 
 The type is the one the first bytes show (JPEG, PNG, GIF or WebP; never SVG), never the declared one alone. The bytes go under a fresh key of the store's folder for the kind, then `completeImageUpload` checks and publishes them as for any other upload, and the answer is the same: the key and the public `url`. Tests mock `@louez/auth/guarded-fetch` with `createTestImageFetch` (`platform/test-image-fetch.ts`): nothing leaves the process.
 
-A request to `/api/mcp` is at most 4 MiB; one that calls a single tool whose `meta.mcp.inlineFile` is set may reach 8 MiB (`INLINE_FILE_REQUEST_MAX_BYTES`, `packages/mcp/src/transports/http.ts`), enough for 5 MB of base64. Whether a request is such a call is known only once it is parsed, so reading past 4 MiB first counts four calls on the connection's rate limit (see [MCP](#mcp)), and a connection without them left gets 429. Past 8 MiB, or past 4 MiB for anything else, the answer is 413 with a message that points to `imageUrl`. `/api/v1` sets no limit of its own.
+A request to `/api/mcp` is at most 4 MiB; one that calls a single tool whose `meta.mcp.inlineFile` is set may reach 8 MiB (`INLINE_FILE_REQUEST_MAX_BYTES`, `packages/mcp/src/transports/http.ts`), enough for 5 MB of base64. Whether a request is such a call is known only once it is parsed, so reading past 4 MiB first counts four calls on the connection's rate limit (see [MCP](#mcp)), and a connection without them left gets 429. Past 8 MiB, or past 4 MiB for anything else, the answer is 413 with a message that points to `imageUrl`. `/api/v1` reads a body streaming, before parsing it and before checking the key: at most 2 MiB (`OPENAPI_MAX_BODY_BYTES`), 8 MiB on the routes of the procedures that take a file's bytes (`inlineFileRoutes`); past it, declared or sent, the answer is 413 `REQUEST_TOO_LARGE`.
 
 ## Migrating a domain
 
