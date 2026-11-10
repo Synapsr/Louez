@@ -17,6 +17,7 @@ import { env } from "@/env";
 import { getSmsQuotaStatus, determineSmsSource } from "@/lib/plan-limits";
 import { isSmsConfigured } from "@/lib/sms/client";
 import { deliverSms } from "@/lib/sms/delivery";
+import { isSmsAccepted } from "@/lib/sms/delivery-record";
 import { validateAndNormalizePhone } from "@/lib/sms/phone";
 import { formatCurrencyForSms } from "@louez/utils";
 import { getLocaleFromCountry, getEmailTranslations, type EmailLocale } from "@/lib/email/i18n";
@@ -711,7 +712,12 @@ async function sendAdminSms(
   eventType: string,
   message: string,
   reservationId?: string,
+  /** The outbox row that sends it: an SMS it already sent is not sent again (lib/sms/delivery.ts). */
+  deliveryKey?: string,
 ): Promise<{ success: boolean; error?: string; limitReached?: boolean }> {
+  // Sent by an earlier run of this row, which timed out after the provider accepted it.
+  if (deliveryKey && (await isSmsAccepted(deliveryKey))) return { success: true };
+
   // Check if SMS is configured
   if (!isSmsConfigured()) {
     return { success: false, error: "SMS not configured" };
@@ -745,6 +751,7 @@ async function sendAdminSms(
     message,
     templateType: `admin_${eventType}`,
     creditSource,
+    deliveryKey,
   });
 }
 
@@ -858,6 +865,8 @@ export async function sendStoreNotificationChannel(
   ctx: NotificationContext,
   channel: "sms" | "push" | "discord",
   beforeSend: () => Promise<void>,
+  /** The outbox row's id, which keeps its SMS to one. */
+  deliveryKey?: string,
 ): Promise<{ skipped: string } | undefined> {
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS;
   const prefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] };
@@ -873,6 +882,7 @@ export async function sendStoreNotificationChannel(
       eventType,
       buildAdminSmsMessage(eventType, ctx, locale),
       ctx.reservation?.id,
+      deliveryKey,
     );
     if (smsResult.limitReached) return { skipped: "the store's SMS limit is reached" };
     if (!smsResult.success) throw new Error(smsResult.error || "The SMS was not sent.");

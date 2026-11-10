@@ -248,25 +248,15 @@ export interface ApiEffectPayloads {
     facts: SetupFacts;
   };
   /**
-   * An SMS the provider accepted whose record (its log row and, for a
-   * prepaid one, its credit) could not be written right after it went out:
-   * written here once, keyed by `id`, never sent again (apps/web
-   * lib/sms/delivery.ts).
+   * The prepaid credit an SMS used, taken once its provider accepted it
+   * (apps/web lib/sms/delivery.ts). Its log row, written at the acceptance,
+   * says the credit is owed until this takes it, so taking it again changes
+   * nothing. It sends nothing.
    */
-  "sms.deliveryRecord": {
-    /** The log row's id, chosen before the first try: the key that makes the record happen once. */
-    id: string;
+  "sms.prepaidDebit": {
+    /** The SMS's log row (`sms_logs.id`). */
+    recordId: string;
     storeId: string;
-    reservationId: string | null;
-    customerId: string | null;
-    to: string;
-    message: string;
-    templateType: string;
-    /** The provider's id of the message. */
-    messageId: string | null;
-    creditSource: "plan" | "topup";
-    /** ISO 8601: when the provider accepted it, the log row's time. */
-    sentAt: string;
   };
 }
 
@@ -286,6 +276,11 @@ export type ApiEffect = {
 
 /** What a sender gets besides the payload. */
 export interface EffectSendContext {
+  /**
+   * The row's id, the same on every run of it: what a sender keys the
+   * record of what it did on, so a run after a lost outcome sees it.
+   */
+  effectId: string;
   /** Aborted at the sender's timeout: pass it to every provider call, and send nothing after it. */
   signal: AbortSignal;
   /**
@@ -683,6 +678,7 @@ export async function dispatchEffects(
       controller.signal.throwIfAborted();
     };
     const context: EffectSendContext = {
+      effectId: id,
       signal: controller.signal,
       throwIfAborted,
       assertClaim: async () => {

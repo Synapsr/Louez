@@ -27,9 +27,15 @@ Reflect.get(
 });
 
 const submissions: Array<{ to: string; message: string }> = [];
-const records: Array<{ id: string; messageId: string | null; creditSource: string }> = [];
-const queued: Array<{ id: string }> = [];
-let recordFailures = 0;
+interface Accepted {
+  id: string;
+  message: string;
+  messageId: string | null;
+  creditSource: string;
+}
+const accepted: Accepted[] = [];
+const dispatched: string[][] = [];
+let acceptanceFailures = 0;
 
 mock.module("@/lib/sms/client", {
   namedExports: {
@@ -40,23 +46,27 @@ mock.module("@/lib/sms/client", {
     },
   },
 });
+// The records, kept here: an id is accepted once its acceptance was written.
 mock.module("@/lib/sms/delivery-record", {
   namedExports: {
-    recordSmsDelivery: async (record: {
-      id: string;
-      messageId: string | null;
-      creditSource: string;
-    }) => {
-      if (recordFailures > 0) {
-        recordFailures -= 1;
-        throw new Error("Lock wait timeout exceeded");
+    isSmsAccepted: async (id: string) => accepted.some((row) => row.id === id),
+    recordSmsAcceptance: async (row: Accepted) => {
+      if (acceptanceFailures > 0) {
+        acceptanceFailures -= 1;
+        throw new Error("Connection lost");
       }
-      records.push(record);
-    },
-    queueSmsDeliveryRecord: async (record: { id: string }) => {
-      queued.push(record);
+      accepted.push(row);
+      return row.creditSource === "topup" ? [`debit_${row.id}`] : [];
     },
     recordSmsFailure: async () => {},
+  },
+});
+// The credit's outbox row goes to the app's dispatch, apart from the sender.
+mock.module("@/lib/api/effects", {
+  namedExports: {
+    dispatchApiEffects: (ids: string[]) => {
+      dispatched.push(ids);
+    },
   },
 });
 mock.module("@/lib/plan-limits", {
@@ -158,13 +168,16 @@ describe("customer SMS", () => {
   beforeEach(async () => {
     dispatcher ??= await import("@/lib/notifications/customer-dispatcher");
     submissions.length = 0;
-    records.length = 0;
-    queued.length = 0;
-    recordFailures = 0;
+    accepted.length = 0;
+    dispatched.length = 0;
+    acceptanceFailures = 0;
   });
 
-  const send = (event: CustomerNotificationEventType, ctx: ReturnType<typeof context>) =>
-    dispatcher.sendCustomerNotificationChannel(event, ctx, "sms", async () => {});
+  const send = (
+    event: CustomerNotificationEventType,
+    ctx: ReturnType<typeof context>,
+    deliveryKey?: string,
+  ) => dispatcher.sendCustomerNotificationChannel(event, ctx, "sms", async () => {}, deliveryKey);
 
   test("every event sends the store's saved text, its variables filled in", async () => {
     const saved =
@@ -238,26 +251,60 @@ describe("customer SMS", () => {
     );
   });
 
-  test("a prepaid SMS the provider accepted is never sent again when its debit fails", async () => {
-    // The debit fails every time it is tried right after the send.
-    recordFailures = 99;
-    const outcome = await send("customer_request_accepted", context("customer_request_accepted"));
-    assert.equal(outcome, undefined, "the outbox row is sent: no retry");
-    assert.equal(submissions.length, 1, "one submission to the provider");
-    assert.equal(records.length, 0);
-    assert.equal(queued.length, 1, "the record goes to the outbox instead");
-    const record = queued[0] as { id: string; messageId: string; creditSource: string };
-    assert.equal(record.messageId, "provider_1", "the provider's id is kept");
-    assert.equal(record.creditSource, "topup");
+  test("a variable is a value of the message, never an inherited property", async () => {
+    const event = "customer_request_accepted";
+    await send(
+      event,
+      context(event, { smsMessage: "{constructor} {toString} {__proto__} #{number}" }),
+    );
+    assert.equal(submissions[0]?.message, "{constructor} {toString} {__proto__} #2030-0001");
   });
 
-  test("a debit that fails once is written on the next try, under the same id", async () => {
-    recordFailures = 1;
+  test("a saved text that fills in too long is cut to three segments", async () => {
+    const event = "customer_payment_requested";
+    // Close to the 480 characters the settings take, then the link filled in.
+    const saved = `${"Merci de régler votre location ".repeat(15).slice(0, 465)} {paymentUrl}`;
+    await send(event, context(event, { smsMessage: saved }));
+    const text = submissions[0]?.message ?? "";
+    const { smsSegments } = await import("./encoding");
+    assert.equal(smsSegments(text), 3);
+    assert.match(text, /\.\.\.$/);
+    assert.ok(text.length <= 459, "GSM 7-bit: 3 × 153");
+    assert.equal(accepted[0]?.message, text, "the log keeps what was sent");
+  });
+
+  test("an outbox row's SMS is accepted under the row's id, and a retry never sends it again", async () => {
+    const event = "customer_request_accepted";
+    const first = await send(event, context(event), "effect_row_000000001");
+    // The row's run timed out after the provider accepted it; the outbox runs it again.
+    const retry = await send(event, context(event), "effect_row_000000001");
+    assert.equal(first, undefined);
+    assert.equal(retry, undefined, "the retry answers that it went out");
+    assert.equal(submissions.length, 1, "one submission to the provider");
+    assert.deepEqual(
+      accepted.map((row) => [row.id, row.messageId, row.creditSource]),
+      [["effect_row_000000001", "provider_1", "topup"]],
+    );
+    assert.deepEqual(dispatched, [["debit_effect_row_000000001"]], "the credit is taken apart");
+  });
+
+  test("an acceptance that cannot be written still answers that the SMS went out", async () => {
+    acceptanceFailures = 99;
+    const outcome = await send(
+      "customer_request_rejected",
+      context("customer_request_rejected"),
+      "effect_row_000000002",
+    );
+    assert.equal(outcome, undefined, "the outbox row is sent: no retry, no second SMS");
+    assert.equal(submissions.length, 1);
+    assert.equal(accepted.length, 0);
+  });
+
+  test("an acceptance that fails once is written on the next try", async () => {
+    acceptanceFailures = 1;
     await send("customer_request_rejected", context("customer_request_rejected"));
     assert.equal(submissions.length, 1);
-    assert.equal(records.length, 1);
-    assert.equal(queued.length, 0);
-    assert.equal(records[0]?.messageId, "provider_1");
-    assert.equal(records[0]?.id.length, 21, "the record's own key");
+    assert.equal(accepted.length, 1);
+    assert.equal(accepted[0]?.id.length, 21, "a send no outbox retries gets its own id");
   });
 });

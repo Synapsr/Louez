@@ -145,6 +145,7 @@ export function createReservationEffectSenders(
             { ...ctx, items, storefrontUrl: getStorefrontUrl(store.slug) },
             payload.channel,
             beforeSend,
+            context.effectId,
           );
         }
         if (payload.notification === "customer_request_rejected") {
@@ -153,6 +154,7 @@ export function createReservationEffectSenders(
             { ...ctx, reason: payload.rejectionReason ?? undefined },
             payload.channel,
             beforeSend,
+            context.effectId,
           );
         }
         // The email links to the contract; an SMS sends the account link only.
@@ -177,6 +179,7 @@ export function createReservationEffectSenders(
           },
           payload.channel,
           beforeSend,
+          context.effectId,
         );
       },
     ),
@@ -204,6 +207,7 @@ export function createReservationEffectSenders(
           },
           payload.channel,
           () => context.assertClaim(),
+          context.effectId,
         );
       },
     ),

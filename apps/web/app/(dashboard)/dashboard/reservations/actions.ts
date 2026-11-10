@@ -98,7 +98,7 @@ import { runReservationEffects } from "@/lib/billing/reservation-effects";
 import { checkReservationGate, logReservationGateRefusal } from "@/lib/billing/reservation-gate";
 import { notifyNewReservation, notifyPaymentReceived } from "@/lib/discord/platform-notifications";
 import { sendEmail } from "@/lib/email/client";
-import { getLocaleFromCountry } from "@/lib/email/i18n";
+import { getLocaleFromCountry, resolveReservationEmailLocale } from "@/lib/email/i18n";
 import {
   buildManualReservationEmail,
   toManualEmailRenderContext,
@@ -4688,7 +4688,8 @@ export async function requestPayment(
     }
 
     const currency = store.settings?.currency || "EUR";
-    const locale = getLocaleFromCountry(store.settings?.country);
+    // The reservation's language, as the other messages about it.
+    const locale = resolveReservationEmailLocale(reservation.locale, store.settings?.country);
 
     // Calculate amount based on type
     let amount: number;
@@ -4860,6 +4861,7 @@ export async function requestPayment(
             depositAmount: amount,
             authorizationUrl: paymentUrl,
             currency,
+            locale,
             // The store's own text for this message, as its notification settings hold it.
             customMessage:
               store.customerNotificationSettings?.templates?.customer_deposit_authorization_requested
@@ -4887,6 +4889,7 @@ export async function requestPayment(
             amount,
             paymentUrl,
             currency,
+            locale,
             customMessage:
               store.customerNotificationSettings?.templates?.customer_payment_requested?.smsMessage,
           });

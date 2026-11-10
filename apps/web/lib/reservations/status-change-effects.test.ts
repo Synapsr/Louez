@@ -80,6 +80,7 @@ describe("reservation effect senders", () => {
   let failWith: Error | null = null;
 
   const context: EffectSendContext = {
+    effectId: "effect_test",
     signal: new AbortController().signal,
     throwIfAborted: () => {},
     assertClaim: async () => {
@@ -104,15 +105,15 @@ describe("reservation effect senders", () => {
       calls.push(["createReservationInstantAccessUrl", [params]]);
       return "https://kayaks.example.test/contract";
     },
-    sendCustomerNotificationChannel: async (event, ctx, channel, beforeSend) => {
+    sendCustomerNotificationChannel: async (event, ctx, channel, beforeSend, deliveryKey) => {
       await beforeSend();
-      calls.push(["sendCustomerNotificationChannel", [event, ctx, channel]]);
+      calls.push(["sendCustomerNotificationChannel", [event, ctx, channel, deliveryKey]]);
       if (failWith) throw failWith;
       return undefined;
     },
-    sendStoreNotificationChannel: async (event, ctx, channel, beforeSend) => {
+    sendStoreNotificationChannel: async (event, ctx, channel, beforeSend, deliveryKey) => {
       await beforeSend();
-      calls.push(["sendStoreNotificationChannel", [event, ctx, channel]]);
+      calls.push(["sendStoreNotificationChannel", [event, ctx, channel, deliveryKey]]);
       return { skipped: "the store turned it off" };
     },
     sendPlatformReservationStatus: async (channel, kind, input, beforeSend) => {
@@ -189,7 +190,7 @@ describe("reservation effect senders", () => {
         message({ notification: "customer_reservation_cancelled", channel }),
         context,
       );
-      const [event, ctx, sentOn] = argsOf("sendCustomerNotificationChannel") as [
+      const [event, ctx, sentOn, deliveryKey] = argsOf("sendCustomerNotificationChannel") as [
         string,
         {
           contractUrl?: string;
@@ -199,8 +200,10 @@ describe("reservation effect senders", () => {
           items: Array<{ name: string; quantity: number }>;
         },
         string,
+        string,
       ];
       assert.equal(event, "customer_reservation_cancelled");
+      assert.equal(deliveryKey, "effect_test", "keyed by its outbox row, across retries");
       assert.equal(sentOn, channel);
       assert.equal(ctx.reservation.number, "2030-0001");
       assert.equal(ctx.reservation.locale, "de");
@@ -242,6 +245,7 @@ describe("reservation effect senders", () => {
     assert.deepEqual(argsOf("loadStoreRouting"), ["store"]);
     assert.deepEqual(argsOf("sendStoreNotificationChannel").slice(0, 1), ["reservation_cancelled"]);
     assert.equal(argsOf("sendStoreNotificationChannel")[2], "discord");
+    assert.equal(argsOf("sendStoreNotificationChannel")[3], "effect_test", "keyed by its row");
     // The store's own change, in the reservation's currency: the dispatcher emails no one
     // for it, and prices it as the customer paid.
     const ctx = argsOf("sendStoreNotificationChannel")[1] as {

@@ -13,6 +13,8 @@ import { Input } from "@louez/ui";
 import { Textarea } from "@louez/ui";
 import { Label } from "@louez/ui";
 import { cn } from "@louez/utils";
+import { SMS_TEMPLATE_MAX_LENGTH } from "@louez/validations";
+
 import { replaceSmsVariables } from "./sms-preview";
 import type { CustomerNotificationEventType, CustomerNotificationTemplate } from "@louez/types";
 import type { EmailLocale } from "@/lib/email/i18n";
@@ -826,6 +828,7 @@ export function NotificationTemplateSheet({
                     id="smsMessage"
                     value={smsMessage}
                     onChange={(e) => setSmsMessage(e.target.value)}
+                    maxLength={SMS_TEMPLATE_MAX_LENGTH}
                     rows={6}
                     className="font-mono text-sm resize-none"
                   />

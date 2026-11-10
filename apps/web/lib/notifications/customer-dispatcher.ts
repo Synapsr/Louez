@@ -38,6 +38,7 @@ import {
   sendDepositAuthorizationRequestSms,
 } from "@/lib/sms/send";
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
+import { isSmsAccepted } from "@/lib/sms/delivery-record";
 import type { EmailAttachment } from "@/lib/email/client";
 import {
   withCustomerNotificationDefaults,
@@ -294,6 +295,8 @@ export async function sendCustomerNotificationChannel(
   ctx: CustomerNotificationContext,
   channel: "email" | "sms",
   beforeSend: () => Promise<void>,
+  /** The outbox row's id: an SMS it already sent is not sent again (lib/sms/delivery.ts). */
+  deliveryKey?: string,
 ): Promise<{ skipped: string } | undefined> {
   const settings = withCustomerNotificationDefaults(ctx.store.customerNotificationSettings);
   const locale = resolveReservationEmailLocale(
@@ -315,10 +318,18 @@ export async function sendCustomerNotificationChannel(
   }
 
   if (!ctx.customer.phone) return { skipped: "the customer has no phone" };
+  // Sent by an earlier run of this row, which timed out after the provider accepted it.
+  if (deliveryKey && (await isSmsAccepted(deliveryKey))) return undefined;
   const quota = await getSmsQuotaStatus(ctx.store.id);
   if (!quota.allowed) return { skipped: "the store's SMS limit is reached" };
   await beforeSend();
-  const result: unknown = await sendCustomerSms(eventType, ctx, locale, customTemplate);
+  const result: unknown = await sendCustomerSms(
+    eventType,
+    ctx,
+    locale,
+    customTemplate,
+    deliveryKey,
+  );
   if (result && typeof result === "object" && "success" in result && result.success === false) {
     const error = "error" in result && typeof result.error === "string" ? result.error : "";
     throw new Error(error || "The SMS was not sent.");
@@ -490,6 +501,7 @@ async function sendCustomerSms(
   ctx: CustomerNotificationContext,
   locale: EmailLocale,
   customTemplate?: CustomerNotificationTemplate,
+  deliveryKey?: string,
 ) {
   // Only certain event types have SMS implementations. In the reservation's
   // language, as the email; the store's own text when it saved one.
@@ -504,6 +516,7 @@ async function sendCustomerSms(
     reservation: ctx.reservation,
     locale,
     customMessage: customTemplate?.smsMessage,
+    deliveryKey,
   };
 
   switch (eventType) {

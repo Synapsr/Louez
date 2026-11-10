@@ -22,6 +22,15 @@ type NextResolve = (specifier: string, context: ResolveContext) => { url: string
 type NextLoad = (url: string, context: LoadContext) => { format?: string; source?: unknown };
 
 const STORE_KEY = "__louezActionsTestStore";
+const SENT_KEY = "__louezActionsTestSent";
+/** A module whose functions note their call (channel, name, params) and answer success. */
+const messageStub = (channel: string, names: string[]) =>
+  names
+    .map(
+      (name) =>
+        `export async function ${name}(params) { (globalThis[${JSON.stringify(SENT_KEY)}] ??= []).push({ channel: ${JSON.stringify(channel)}, name: ${JSON.stringify(name)}, params }); return { success: true }; }\n`,
+    )
+    .join("");
 const STUB_SCHEME = "louez-actions-test:";
 // The request context of a server action, which a test has no Next.js runtime for.
 const STUBS: Record<string, string> = {
@@ -31,6 +40,19 @@ const STUBS: Record<string, string> = {
   // A quote's email is sent without being awaited, and would outlive the database.
   "@/lib/notifications/customer-dispatcher":
     "export async function dispatchCustomerNotification() {}\n",
+  // The messages to the customer: what they were asked to send, never sent.
+  "@/lib/email/send": messageStub("email", [
+    "logEmail",
+    "sendDepositAuthorizationRequestEmail",
+    "sendPaymentRequestEmail",
+    "sendReservationConfirmationEmail",
+    "sendReservationModifiedEmail",
+  ]),
+  "@/lib/sms": `${messageStub("sms", [
+    "sendAccessLinkSms",
+    "sendDepositAuthorizationRequestSms",
+    "sendPaymentRequestSms",
+  ])}export function isSmsConfigured() { return true; }\n`,
 };
 const ACTIONS_FILE = "/dashboard/reservations/actions.ts";
 const FILES_SDK = new URL("../../../../node_modules/files-sdk/dist/", import.meta.url);
@@ -533,6 +555,63 @@ describe("dashboard reservation actions (database)", { skip: skipWithoutTestData
       const result = await actions.createManualReservation(booking(email, true));
       assert.equal(result.error, undefined);
       assert.deepEqual(await storeRows(email), { customers: 1, statuses: ["quote"] });
+    });
+  });
+
+  describe("requestPayment", () => {
+    test("the payment and deposit requests speak the reservation's language, email and SMS", async () => {
+      const store = Reflect.get(globalThis, STORE_KEY);
+      Reflect.set(globalThis, STORE_KEY, {
+        ...store,
+        settings: { currency: "eur", country: "FR" },
+        stripeAccountId: "acct_actions",
+        stripeChargesEnabled: true,
+        customerNotificationSettings: {
+          templates: { customer_payment_requested: { smsMessage: "Pay #{number}: {paymentUrl}" } },
+        },
+      });
+      await louezDb.db
+        .update(louezDb.customers)
+        .set({ phone: "+33612345678" })
+        .where(eq(louezDb.customers.id, "customer_actions"));
+      try {
+        const reservationId = await createReservation({ withItems: true });
+        await louezDb.db
+          .update(louezDb.reservations)
+          .set({ locale: "de" })
+          .where(eq(louezDb.reservations.id, reservationId));
+        Reflect.set(globalThis, SENT_KEY, []);
+
+        for (const type of ["rental", "deposit"] as const) {
+          const result = await actions.requestPayment(reservationId, {
+            type,
+            channels: { email: true, sms: true },
+          });
+          assert.equal(result.error, undefined, type);
+        }
+        const sent = Reflect.get(globalThis, SENT_KEY) as Array<{
+          channel: string;
+          name: string;
+          params: { locale?: string; customMessage?: string };
+        }>;
+        assert.deepEqual(
+          sent.map(({ channel, name, params }) => [channel, name, params.locale]),
+          [
+            ["email", "sendPaymentRequestEmail", "de"],
+            ["sms", "sendPaymentRequestSms", "de"],
+            ["email", "sendDepositAuthorizationRequestEmail", "de"],
+            ["sms", "sendDepositAuthorizationRequestSms", "de"],
+          ],
+        );
+        assert.equal(sent[1]?.params.customMessage, "Pay #{number}: {paymentUrl}");
+      } finally {
+        Reflect.set(globalThis, STORE_KEY, store);
+        Reflect.deleteProperty(globalThis, SENT_KEY);
+        await louezDb.db
+          .update(louezDb.customers)
+          .set({ phone: null })
+          .where(eq(louezDb.customers.id, "customer_actions"));
+      }
     });
   });
 });

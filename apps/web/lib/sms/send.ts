@@ -608,6 +608,8 @@ interface CustomerNotificationSmsParams {
   locale?: EmailLocale;
   /** The store's own text for this message (its customer notification settings). */
   customMessage?: string | null;
+  /** The outbox row that sends it: it keeps a retry from sending it twice (lib/sms/delivery.ts). */
+  deliveryKey?: string;
 }
 
 /**
@@ -643,7 +645,10 @@ export function renderStoreSmsText(
   const trimmed = text?.trim();
   if (!trimmed) return null;
   const known: Record<string, string | undefined> = values;
-  return trimmed.replace(/\{(\w+)\}/g, (placeholder, name: string) => known[name] ?? placeholder);
+  // Own values only: `{constructor}` or `{toString}` is text, not an object's property.
+  return trimmed.replace(/\{(\w+)\}/g, (placeholder, name: string) =>
+    Object.hasOwn(known, name) ? (known[name] ?? placeholder) : placeholder,
+  );
 }
 
 /** The language of a customer notification SMS: the reservation's, else the store's country's. */
@@ -713,12 +718,14 @@ async function sendToCustomer({
   reservationId,
   templateType,
   compose,
+  deliveryKey,
 }: {
   store: Store;
   customer: Customer & { id: string };
   reservationId?: string;
   templateType: string;
   compose: () => string;
+  deliveryKey?: string;
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
     return { success: false, error: "Customer has no phone number" };
@@ -747,6 +754,7 @@ async function sendToCustomer({
     templateType,
     creditSource: quotaCheck.creditSource,
     sender: "Louez",
+    deliveryKey,
   });
 }
 
@@ -765,6 +773,7 @@ function sendCustomerNotificationSms(
     customer: params.customer,
     reservationId: params.reservation.id,
     templateType,
+    deliveryKey: params.deliveryKey,
     compose: () => {
       const locale = smsLocale(params.store, params.locale);
       return (
