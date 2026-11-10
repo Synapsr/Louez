@@ -9563,6 +9563,7 @@
       "invalidDescription": "Cette demande de connexion n’est plus valide. Relancez la connexion depuis votre agent.",
       "noStoreTitle": "Pas encore de boutique",
       "noStoreDescription": "{client} pourra créer votre boutique pour vous si vous lui donnez les droits « Lecture et modification ». Elle restera hors ligne jusqu’à ce que vous la lanciez. Cet accès couvrira aussi les boutiques que vous créerez ensuite.",
+      "noStoreDescriptionNoCreate": "{client} ne peut pas créer de boutique. Créez d’abord votre boutique dans Louez ; {client} pourra ensuite faire le reste avec l’accès que vous lui donnez ici.",
       "redirectNotice": "Après votre accord, l’accès sera envoyé à {host}.",
       "footer": "Vous pourrez modifier ou retirer cet accès à tout moment dans Paramètres, Intégrations, MCP.",
       "loopbackWarning": "L’accès sera envoyé à une adresse locale de cet ordinateur : n’importe quel programme qui y tourne peut se faire passer pour cette application. N’autorisez que si vous venez de lancer la connexion vous-même."

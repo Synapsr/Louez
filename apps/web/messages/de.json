@@ -9563,6 +9563,7 @@
       "invalidDescription": "Diese Verbindungsanfrage ist nicht mehr gültig. Starten Sie die Verbindung erneut in Ihrem Agenten.",
       "noStoreTitle": "Noch kein Shop",
       "noStoreDescription": "{client} kann Ihren Shop für Sie erstellen, wenn Sie die Rechte „Lesen und bearbeiten“ erteilen. Der Shop bleibt offline, bis Sie ihn starten. Dieser Zugriff gilt auch für Shops, die Sie später erstellen.",
+      "noStoreDescriptionNoCreate": "{client} kann keinen Shop erstellen. Erstellen Sie Ihren Shop zuerst in Louez; {client} erledigt dann den Rest mit dem Zugriff, den Sie hier erteilen.",
       "redirectNotice": "Nach Ihrer Zustimmung wird der Zugriff an {host} gesendet.",
       "footer": "Sie können diesen Zugriff jederzeit unter Einstellungen, Integrationen, MCP ändern oder entfernen.",
       "loopbackWarning": "Der Zugriff wird an eine lokale Adresse dieses Computers gesendet: Jedes dort laufende Programm kann sich als diese App ausgeben. Erlauben Sie ihn nur, wenn Sie die Verbindung gerade selbst gestartet haben."

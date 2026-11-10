@@ -9563,6 +9563,7 @@
       "invalidDescription": "Questa richiesta di connessione non è più valida. Riavvii la connessione dal suo agente.",
       "noStoreTitle": "Ancora nessun negozio",
       "noStoreDescription": "{client} potrà creare il negozio per lei se le concede i diritti «Lettura e modifica». Il negozio resterà offline finché non lo lancerà. Questo accesso coprirà anche i negozi che creerà in seguito.",
+      "noStoreDescriptionNoCreate": "{client} non può creare un negozio. Crei prima il negozio su Louez; {client} potrà poi fare il resto con l’accesso che le concede qui.",
       "redirectNotice": "Dopo il suo consenso, l’accesso sarà inviato a {host}.",
       "footer": "Può modificare o revocare questo accesso in qualsiasi momento in Impostazioni, Integrazioni, MCP.",
       "loopbackWarning": "L’accesso sarà inviato a un indirizzo locale di questo computer: qualsiasi programma in esecuzione può spacciarsi per questa app. Consenta solo se ha appena avviato lei la connessione."

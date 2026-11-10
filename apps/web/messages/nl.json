@@ -9563,6 +9563,7 @@
       "invalidDescription": "Dit koppelverzoek is niet meer geldig. Start de koppeling opnieuw vanuit uw agent.",
       "noStoreTitle": "Nog geen winkel",
       "noStoreDescription": "{client} kan uw winkel voor u aanmaken als u het de rechten ‘Lezen en bewerken’ geeft. De winkel blijft offline tot u hem lanceert. Deze toegang geldt ook voor winkels die u later aanmaakt.",
+      "noStoreDescriptionNoCreate": "{client} kan geen winkel aanmaken. Maak eerst uw winkel aan in Louez; daarna kan {client} de rest doen met de toegang die u het hier geeft.",
       "redirectNotice": "Na uw toestemming wordt de toegang naar {host} gestuurd.",
       "footer": "U kunt deze toegang altijd wijzigen of intrekken via Instellingen, Integraties, MCP.",
       "loopbackWarning": "De toegang wordt naar een lokaal adres op deze computer gestuurd: elk programma dat erop draait kan zich voordoen als deze app. Sta het alleen toe als u de koppeling net zelf hebt gestart."
