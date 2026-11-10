@@ -8,7 +8,7 @@ import {
   isOpenAiClient,
 } from "./agent-clients";
 
-test("OpenAI's clients are told apart by their metadata document or their name", () => {
+test("OpenAI's clients are told apart by their metadata document or their name, and never reach the paid AI photo tools", () => {
   for (const client of [
     { clientId: CHATGPT_CLIENT_ID, name: null },
     { clientId: "dcr_1", name: "ChatGPT" },
@@ -18,7 +18,7 @@ test("OpenAI's clients are told apart by their metadata document or their name",
     assert.deepEqual(clientWithholding(client), {
       domains: ["billing", "stores"],
       bundles: ["billing"],
-      capabilities: [],
+      capabilities: ["products.enhanceImage", "products.removeImageBackground", "jobs.get"],
       purchases: true,
     });
   }
@@ -29,6 +29,10 @@ test("OpenAI's clients are told apart by their metadata document or their name",
     { clientId: "dcr_4", name: null },
   ]) {
     assert.equal(isOpenAiClient(client), false, JSON.stringify(client));
+    assert.ok(
+      !clientWithholding(client).capabilities.includes("products.removeImageBackground"),
+      JSON.stringify(client),
+    );
   }
 });
 
@@ -48,7 +52,6 @@ test("Anthropic's clients are told apart by their metadata document or their nam
     });
   }
   for (const client of [
-    { clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" },
     { clientId: "https://cursor.com/oauth/client.json", name: "Cursor" },
     { clientId: "https://claude.ai.evil.test/client.json", name: null },
     { clientId: "dcr_3", name: "Claudette" },
@@ -57,13 +60,14 @@ test("Anthropic's clients are told apart by their metadata document or their nam
     assert.equal(isAnthropicClient(client), false, JSON.stringify(client));
     assert.deepEqual(clientWithholding(client).capabilities, [], JSON.stringify(client));
   }
+  assert.equal(isAnthropicClient({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" }), false);
 });
 
-test("a name copying both directories gets both rules", () => {
+test("a name copying both directories gets both rules, each procedure once", () => {
   assert.deepEqual(clientWithholding({ clientId: "dcr_5", name: "ChatGPT for Claude" }), {
     domains: ["billing", "stores"],
     bundles: ["billing"],
-    capabilities: ["products.enhanceImage"],
+    capabilities: ["products.enhanceImage", "products.removeImageBackground", "jobs.get"],
     purchases: true,
   });
   assert.deepEqual(clientWithholding({ clientId: "dcr_6", name: "Cursor" }), {

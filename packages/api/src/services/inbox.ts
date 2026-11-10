@@ -33,6 +33,7 @@ import {
   isNull,
   lt,
   notExists,
+  notInArray,
   or,
   sql,
   type SQL,
@@ -61,7 +62,7 @@ import {
   storeLinks,
   type LinkStore,
 } from "../platform/links";
-import type { UrlsPort } from "../platform/ports";
+import type { ProductImageOperation, UrlsPort } from "../platform/ports";
 import { HANDOFF_KINDS } from "../contracts/handoffs";
 import { HANDOFF_KIND_DOMAINS, HANDOFF_WAIT_MS, handoffView } from "./handoffs";
 import { IMAGE_JOB_KINDS, imageOperationOf } from "./product-images";
@@ -149,9 +150,17 @@ export interface InboxReader {
   operationsOf: string | null;
   /**
    * Procedures the caller's agent never reaches, by capability id
-   * (`ClientWithholding.capabilities`): no item names their tool. Absent: none.
+   * (`ClientWithholding.capabilities`): no item names their tool, and a
+   * failed photo job the agent can neither follow nor start again is not
+   * shown. Absent: none.
    */
   withheld?: readonly string[];
+  /**
+   * The same agent's forbidden procedures, by router path
+   * (`withheldProcedurePaths`): no unknown operation of theirs shows, as the
+   * agent can neither check nor retry it. Absent: none.
+   */
+  withheldProcedures?: readonly string[];
 }
 
 export const mayShow = (reads: InboxRights, type: InboxItemType) =>
@@ -1179,6 +1188,9 @@ const unsentMessages: Source = async (window, shaper) => {
 /**
  * A write whose outcome is unknown: it went through but could not be
  * recorded, or it stayed running past its lease (platform/operations.ts).
+ * None of a procedure the caller's agent may no longer reach (a ChatGPT
+ * photo enhancement from before it was withheld): read in the query, so a
+ * hidden one takes no room in the page.
  */
 const unknownOperations: Source = async (window, shaper) => {
   const lease = sql.raw(String(OPERATION_LEASE_SECONDS));
@@ -1186,7 +1198,7 @@ const unknownOperations: Source = async (window, shaper) => {
     sql<Date>`CASE WHEN ${apiOperations.status} = 'unknown' THEN ${apiOperations.updatedAt} ELSE ${apiOperations.updatedAt} + INTERVAL ${lease} SECOND END`.mapWith(
       apiOperations.updatedAt,
     );
-  const { operationsOf } = shaper.reader;
+  const { operationsOf, withheldProcedures } = shaper.reader;
   const rows = await db
     .select({
       id: apiOperations.id,
@@ -1213,6 +1225,9 @@ const unknownOperations: Source = async (window, shaper) => {
           ),
         ),
         operationsOf === null ? undefined : eq(apiOperations.actorKey, operationsOf),
+        withheldProcedures?.length
+          ? notInArray(apiOperations.procedure, [...withheldProcedures])
+          : undefined,
         inWindow(window, "operation_unknown", occurred, apiOperations.id),
       ),
     )
@@ -1460,13 +1475,25 @@ const IMAGE_JOB_STARTS = {
     tool: "products_remove_image_background",
     capability: "products.removeImageBackground",
   },
-} as const;
+} as const satisfies Record<ProductImageOperation, { tool: string; capability: string }>;
 
 /**
  * An AI photo job that failed for good in the last days, and that no later
- * job on the same photo replaced. Nothing was charged for it.
+ * job on the same photo replaced. Nothing was charged for it. An agent whose
+ * directory forbids both following the job and starting it again (ChatGPT:
+ * `ClientWithholding.capabilities`) never sees it: it could only point at a
+ * paid tool it lacks, and the photo on the product did not change.
  */
 const failedImageJobs: Source = async (window, shaper) => {
+  const { urls, store, withheld } = shaper.reader;
+  const reaches = (capability: string) => !withheld?.includes(capability);
+  const followsJobs = reaches("jobs.get");
+  const kinds = Object.values(IMAGE_JOB_KINDS).filter((kind) => {
+    const operation = imageOperationOf(kind);
+    return operation !== null && (followsJobs || reaches(IMAGE_JOB_STARTS[operation].capability));
+  });
+  if (kinds.length === 0) return [];
+
   const later = alias(apiJobs, "later_job");
   const rows = await db
     .select({
@@ -1488,7 +1515,7 @@ const failedImageJobs: Source = async (window, shaper) => {
       and(
         eq(apiJobs.storeId, window.storeId),
         eq(apiJobs.status, "failed"),
-        inArray(apiJobs.kind, Object.values(IMAGE_JOB_KINDS)),
+        inArray(apiJobs.kind, kinds),
         gt(apiJobs.finishedAt, new Date(window.now.getTime() - IMAGE_JOB_FAILURE_DAYS * DAY_MS)),
         notExists(
           db
@@ -1508,13 +1535,15 @@ const failedImageJobs: Source = async (window, shaper) => {
     .orderBy(...inOrder(apiJobs.finishedAt, apiJobs.id))
     .limit(window.take);
 
-  const { urls, store, withheld } = shaper.reader;
   return rows.flatMap((row) => {
     const operation = imageOperationOf(row.kind);
     if (!operation || !row.occurredAt) return [];
-    // An agent whose directory forbids the tool (Claude: the AI enhancement) only follows the job.
+    // No item names a tool the agent's directory forbids (Claude: the AI enhancement).
     const start = IMAGE_JOB_STARTS[operation];
-    const startTools = withheld?.includes(start.capability) ? [] : [start.tool];
+    const tools = [
+      ...(followsJobs ? ["jobs_get"] : []),
+      ...(reaches(start.capability) ? [start.tool] : []),
+    ];
     const what = operation === "enhance" ? "The AI enhancement" : "The background removal";
     const product = row.productName ? ` of "${row.productName}"` : "";
     return [
@@ -1529,7 +1558,7 @@ const failedImageJobs: Source = async (window, shaper) => {
           kind: row.kind,
           errorCode: row.error?.code ?? null,
         },
-        tools: ["jobs_get", ...startTools],
+        tools,
         links: productLinks(urls, store, {
           id: row.targetId,
           slug: row.productSlug,

@@ -727,7 +727,7 @@ export const productImageErrors = {
     }),
   /**
    * `rechargeUrl` null: the client's directory forbids a purchase prompt
-   * (`ClientWithholding.purchases`, ChatGPT): the answer only says so.
+   * (`ClientWithholding.purchases`): the answer only says so.
    */
   creditsExhausted: (details: {
     priceCredits: number;
