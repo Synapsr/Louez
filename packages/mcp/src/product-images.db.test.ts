@@ -325,8 +325,9 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.equal(((await viaOpenApi.json()) as { data: Json }).data.code, "IMAGE_NOT_ON_PRODUCT");
   });
 
-  test("out of credits, ChatGPT is told so with no purchase prompt or recharge link", async () => {
+  test("ChatGPT neither sees nor calls the AI photo tools nor jobs_get, before any confirmation; the version switch stays", async () => {
     const grants = await import("@louez/api/services/agent-grants");
+    const { ProductImageFailure } = await import("@louez/api/platform/ports");
     const { CHATGPT_CLIENT_ID } = await import("@louez/api/platform/agent-clients");
     await louezDb.db
       .insert(louezDb.oauthClients)
@@ -348,26 +349,84 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       },
     });
     const chatgpt = `Bearer ${await tokens.sign({ userId: OWNER, clientId: CHATGPT_CLIENT_ID, grantId })}`;
+    const apiKey = await key();
     const id = await product();
+    const PURCHASE = /buy|recharge|top.?up|upgrade|plan|ai-credits|credit/i;
+    const WITHHELD = ["products_enhance_image", "products_remove_image_background", "jobs_get"];
+
+    // Its list and instructions name none of them, nor how a photo is improved.
+    const { names, instructions } = await withClient(chatgpt, async (mcp) => ({
+      names: (await mcp.listTools()).tools.map((tool) => tool.name),
+      instructions: mcp.getInstructions() ?? "",
+    }));
+    for (const name of WITHHELD) {
+      assert.ok(!names.includes(name), name);
+      assert.ok(!instructions.includes(name), name);
+    }
+    assert.ok(names.includes("products_use_image_version"));
+    assert.doesNotMatch(instructions, /improve a product photo|AI credits/);
+
+    // A call is refused before its preview, even out of credits, with nothing to buy.
     fake.state.quote = {
       ...fake.state.quote,
       credits: { allowed: false, monthlyRemainingMicro: 0, prepaidMicro: 0 },
     };
-    const PURCHASE = /buy|recharge|top.?up|upgrade|plan|ai-credits/i;
-
-    const refused = await withClient(chatgpt, (mcp) =>
-      mcp.callTool({ name: "products_enhance_image", arguments: { id, imageUrl: SOURCE } }),
+    for (const name of ["products_enhance_image", "products_remove_image_background"]) {
+      const refused = await withClient(chatgpt, (mcp) =>
+        mcp.callTool({ name, arguments: { id, imageUrl: SOURCE } }),
+      );
+      assert.equal(errorOf(refused).code, "NOT_AVAILABLE_TO_THIS_AGENT", name);
+      assert.doesNotMatch(JSON.stringify(refused), PURCHASE, name);
+    }
+    const job = await withClient(chatgpt, (mcp) =>
+      mcp.callTool({ name: "jobs_get", arguments: { id: "nope" } }),
     );
-    const error = (refused.structuredContent as { error?: Json }).error;
-    assert.equal(error?.code, "AI_CREDITS_EXHAUSTED");
-    assert.match(String(error?.message), /no AI credits left for this/);
-    assert.doesNotMatch(JSON.stringify(refused), PURCHASE);
+    assert.equal(errorOf(job).code, "NOT_AVAILABLE_TO_THIS_AGENT");
+    // The version switch is reached: it answers about the version, not the agent.
+    const version = await withClient(chatgpt, (mcp) =>
+      mcp.callTool({ name: "products_use_image_version", arguments: { id, versionId: "nope" } }),
+    );
+    assert.equal(errorOf(version).code, "IMAGE_VERSION_NOT_FOUND");
 
     // Another agent still gets the way to buy more.
-    const other = await withClient(await key(), (mcp) =>
+    const other = await withClient(apiKey, (mcp) =>
       mcp.callTool({ name: "products_enhance_image", arguments: { id, imageUrl: SOURCE } }),
     );
     assert.match(JSON.stringify(other), /ai-credits\?recharge=1/);
+
+    // A failed photo job, started by another agent, is not in ChatGPT's inbox: it can neither follow nor retry it.
+    fake = createTestProductImages(FILES);
+    const preview = await withClient(apiKey, (mcp) =>
+      mcp.callTool({ name: "products_enhance_image", arguments: { id, imageUrl: SOURCE } }),
+    );
+    const confirmationToken = errorOf(preview).details?.confirmationToken as string;
+    const started = output(
+      await withClient(apiKey, (mcp) =>
+        mcp.callTool({
+          name: "products_enhance_image",
+          arguments: { id, imageUrl: SOURCE, confirmationToken },
+        }),
+      ),
+    ) as Json & { id: string };
+    fake.state.failNext = new ProductImageFailure("IMAGE_EMPTY", "empty", false);
+    await runJob(started.id, ports);
+    await louezDb.db
+      .update(louezDb.apiJobs)
+      .set({ finishedAt: sql`NOW(3) - INTERVAL 1 MINUTE` })
+      .where(eq(louezDb.apiJobs.id, started.id));
+    const failedItems = async (authorization: string) => {
+      const listed = output(
+        await withClient(authorization, (mcp) =>
+          mcp.callTool({ name: "inbox_list", arguments: {} }),
+        ),
+      ) as { items: Array<{ type: string; tools: string[] }> };
+      return listed.items.filter((item) => item.type === "image_job_failed");
+    };
+    assert.deepEqual(await failedItems(chatgpt), []);
+    assert.deepEqual(
+      (await failedItems(apiKey)).map((item) => item.tools),
+      [["jobs_get", "products_enhance_image"]],
+    );
   });
 
   test("Claude neither sees nor calls products_enhance_image, a replay included; other agents keep it", async () => {

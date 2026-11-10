@@ -59,11 +59,19 @@ export interface ClientWithholding {
  * neither sees nor calls them. The user manages billing and creates stores
  * in Louez (product owner's decision, 2026-11-10: no store creation from
  * ChatGPT, not even through a link).
+ *
+ * The same rule covers the AI photo tools: products_enhance_image and
+ * products_remove_image_background spend AI credits the store buys from
+ * Louez, a digital service sold through the agent. An OpenAI client neither
+ * sees nor calls them, nor jobs_get, which only follows their jobs (product
+ * owner's decision, 2026-11-10). products_use_image_version stays: it is
+ * free, and puts back a version made in the dashboard. The user improves
+ * photos in Louez.
  */
 const OPENAI_WITHHOLDING: ClientWithholding = {
   domains: ["billing", "stores"],
   bundles: ["billing"],
-  capabilities: [],
+  capabilities: ["products.enhanceImage", "products.removeImageBackground", "jobs.get"],
   purchases: true,
 };
 
@@ -72,8 +80,8 @@ const OPENAI_WITHHOLDING: ClientWithholding = {
  * not use AI models to generate images, videos or audio".
  * products_enhance_image redraws a product photo with GPT Image: a Claude
  * client neither sees nor calls it (product owner's decision, 2026-11-10).
- * products_remove_image_background stays: it cuts the photo out without
- * redrawing it. The user enhances photos in Louez.
+ * products_remove_image_background stays for Claude: it cuts the photo out
+ * without redrawing it. The user enhances photos in Louez.
  */
 const ANTHROPIC_WITHHOLDING: ClientWithholding = {
   domains: [],
@@ -113,7 +121,7 @@ export function clientWithholding(client: {
   return {
     domains: rules.flatMap((rule) => rule.domains),
     bundles: rules.flatMap((rule) => rule.bundles),
-    capabilities: rules.flatMap((rule) => rule.capabilities),
+    capabilities: [...new Set(rules.flatMap((rule) => rule.capabilities))],
     purchases: rules.some((rule) => rule.purchases),
   };
 }

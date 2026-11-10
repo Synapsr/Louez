@@ -502,7 +502,7 @@ describe("MCP directory conformance", () => {
     assert.deepEqual(named(text), ["daily", "integrations"]);
   });
 
-  test("Claude's list and instructions leave out the AI enhancement only; other clients keep it", async () => {
+  test("each directory's list and instructions leave out its AI photo tools; other clients keep them", async () => {
     const { Client, InMemoryTransport } = await import("@modelcontextprotocol/client");
     const { appRouter } = await import("@louez/api/router");
     const { createExposure } = await import("@louez/api/platform/exposure");
@@ -552,24 +552,21 @@ describe("MCP directory conformance", () => {
       clientId: "https://claude.ai/oauth/mcp-oauth-client-metadata",
       name: "Claude",
     });
-    const others = [
-      await listing({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" }),
-      await listing({ clientId: "https://cursor.com/oauth/client.json", name: "Cursor" }),
-    ];
-    assert.ok(!claude.names.has("products_enhance_image"));
+    const chatgpt = await listing({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" });
+    const cursor = await listing({
+      clientId: "https://cursor.com/oauth/client.json",
+      name: "Cursor",
+    });
+    const missingFrom = (listed: { names: Set<string> }) =>
+      [...cursor.names].filter((name) => !listed.names.has(name)).sort();
+
+    // Claude: the AI enhancement only.
+    assert.deepEqual(missingFrom(claude), ["products_enhance_image"]);
     assert.doesNotMatch(claude.instructions, /products_enhance_image/);
-    for (const other of others) {
-      assert.ok(other.names.has("products_enhance_image"));
-      assert.match(
-        other.instructions,
-        /products_enhance_image \(AI\) or products_remove_image_background/,
-      );
-      // Nothing else differs from Claude's list.
-      assert.deepEqual(
-        [...other.names].filter((name) => !claude.names.has(name)),
-        ["products_enhance_image"],
-      );
-    }
+    assert.match(
+      claude.instructions,
+      /To improve a product photo: products_remove_image_background, with/,
+    );
     for (const name of [
       "products_remove_image_background",
       "products_use_image_version",
@@ -577,9 +574,26 @@ describe("MCP directory conformance", () => {
     ]) {
       assert.ok(claude.names.has(name), name);
     }
+
+    // ChatGPT: both paid photo tools and jobs_get, which only follows their jobs.
+    assert.deepEqual(missingFrom(chatgpt), [
+      "jobs_get",
+      "products_enhance_image",
+      "products_remove_image_background",
+    ]);
+    assert.ok(chatgpt.names.has("products_use_image_version"));
+    assert.doesNotMatch(
+      chatgpt.instructions,
+      /products_enhance_image|products_remove_image_background|jobs_get|improve a product photo|AI credits/,
+    );
+    // The rest of the chaining help stays.
+    assert.match(chatgpt.instructions, /returns\.$/);
+
+    // Every other client keeps both tools.
+    assert.ok(cursor.names.has("products_enhance_image"));
     assert.match(
-      claude.instructions,
-      /To improve a product photo: products_remove_image_background, with/,
+      cursor.instructions,
+      /To improve a product photo: products_enhance_image \(AI\) or products_remove_image_background, with/,
     );
   });
 });
