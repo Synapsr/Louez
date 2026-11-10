@@ -106,8 +106,14 @@ describe("the copy that is sent", () => {
     assert.equal(copy.message, "[message withheld]");
     assert.equal(copy.stack, `Error: [message withheld]\n    at ${IN_REPO(HERE)}:12:3`);
     assert.equal((copy.cause as Error).message, "[message withheld]");
-    assert.equal((copy.cause as Error).stack, `Error: [message withheld]\n    at ${IN_REPO(SERVICE)}:40:3`);
-    assert.doesNotMatch(JSON.stringify([copy.stack, (copy.cause as Error).stack]), /jane|node_modules/);
+    assert.equal(
+      (copy.cause as Error).stack,
+      `Error: [message withheld]\n    at ${IN_REPO(SERVICE)}:40:3`,
+    );
+    assert.doesNotMatch(
+      JSON.stringify([copy.stack, (copy.cause as Error).stack]),
+      /jane|node_modules/,
+    );
   });
 
   test("a frame whose file is not in the repository is left out", () => {
@@ -126,7 +132,10 @@ describe("the copy that is sent", () => {
     const middle = new Error("service failed", { cause: zod });
     const { error: copy } = prepareServerError(new Error("wrapper", { cause: middle }));
     const deepest = (copy.cause as Error).cause as Error;
-    assert.equal(deepest.message, "2 issue(s): invalid_type at customer.email; too_small at items.0.quantity");
+    assert.equal(
+      deepest.message,
+      "2 issue(s): invalid_type at customer.email; too_small at items.0.quantity",
+    );
     assert.doesNotMatch(JSON.stringify([copy.message, deepest.message]), /jane/);
   });
 
@@ -262,7 +271,6 @@ describe("the reporter", () => {
     source: "procedure",
     transport: "mcp",
     procedure: "inbox.list",
-    storeId: "store_1",
     client: "oauth",
     directory: "openai",
   };
@@ -281,7 +289,6 @@ describe("the reporter", () => {
       repeats_suppressed: 0,
       transport: "mcp",
       procedure: "inbox.list",
-      store_id: "store_1",
       client_kind: "oauth",
       client_directory: "openai",
     });
@@ -316,7 +323,6 @@ describe("the oRPC interceptor", () => {
   const known = base.use(({ context, next }) => {
     if (context.errorScope) {
       context.errorScope.client = "api_key";
-      context.errorScope.storeId = "store_1";
     }
     return next();
   });
@@ -350,7 +356,6 @@ describe("the oRPC interceptor", () => {
           transport: "openapi",
           procedure: "inbox.list",
           client: "api_key",
-          storeId: "store_1",
         },
       ],
     ]);

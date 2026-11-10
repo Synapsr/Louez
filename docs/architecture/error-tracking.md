@@ -38,14 +38,13 @@ The context is a fixed list of names and ids, nothing a caller sent:
 | `mcp_tool`                  | `record_payment`                                           |
 | `route`, `route_type`       | `/api/mcp`, `route` (Next's declared route, never the URL) |
 | `cron_task`                 | `api-effects`                                              |
-| `store_id`                  | the store, once the call resolved it                       |
 | `client_kind`               | `session`, `api_key`, `oauth`, `storefront`                |
 | `client_directory`          | `openai`, `anthropic`, `other` (OAuth clients)             |
 | `http_status`, `error_code` | `500`, `OUTPUT_INVALID`, a SQLSTATE                        |
 | `repeats_suppressed`        | hits of this fault not sent since the last one             |
 | `$app_version`              | `NEXT_PUBLIC_APP_VERSION`, the build                       |
 
-No body, no header, no token, no user or customer data, no person profile (the event is anonymous), no GeoIP.
+No body, no header, no token, no user or customer data, no store id (it would link an event to the store's owner; the local logs keep it), no person profile (the event is anonymous), no GeoIP.
 
 ### The sanitizer
 

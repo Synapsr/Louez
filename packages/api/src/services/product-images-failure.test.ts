@@ -56,7 +56,7 @@ describe("an image job whose failure is not recorded", () => {
       throw down;
     });
     await runImageJob("job_1", portsReporting(reported));
-    assert.deepEqual(reported, [[down, { source: "job", job: "enhance", storeId: "store_1" }]]);
+    assert.deepEqual(reported, [[down, { source: "job", job: "enhance" }]]);
   });
 
   test("a claim taken over is no fault: nothing is reported", async () => {

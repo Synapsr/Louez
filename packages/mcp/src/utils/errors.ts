@@ -133,6 +133,5 @@ export function reportToolError(ctx: McpRequestContext, tool: string, error: unk
     tool,
     client: credential.kind,
     ...(credential.directory ? { directory: credential.directory } : {}),
-    ...(ctx.storeChosen ? { storeId: ctx.actor.storeId } : {}),
   });
 }

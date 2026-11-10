@@ -233,7 +233,6 @@ export const storeProcedure = authenticated.use(
       headers: context.headers,
       requestedStoreId: context.headers.get(STORE_HEADER) ?? undefined,
     });
-    if (context.errorScope) context.errorScope.storeId = storeActor.storeId;
 
     if (!allows(storeActor.role, credential.scopes, meta.scope)) {
       throw scopeRefusal(credential, meta.scope);

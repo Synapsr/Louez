@@ -475,7 +475,7 @@ export async function runImageJob(
   const fail = async (error: ReturnType<typeof jobError>) => {
     const recorded = await recordJobFailure(claimed, error).catch((caught: unknown) => {
       // The database did not answer: unexpected, unlike a claim taken over.
-      ports.reportError?.(caught, { source: "job", job: input.operation, storeId });
+      ports.reportError?.(caught, { source: "job", job: input.operation });
       return false;
     });
     // Not written (the claim was taken over, or the database did not answer):
@@ -524,7 +524,7 @@ export async function runImageJob(
       await fail(jobError(error.code, FAILURE_MESSAGES[error.code], error.retryable));
     } else {
       logProviderError("image_job.process_failed", error);
-      ports.reportError?.(error, { source: "job", job: input.operation, storeId });
+      ports.reportError?.(error, { source: "job", job: input.operation });
       await fail(jobError("PROCESSING_ERROR", FAILURE_MESSAGES.PROCESSING_ERROR, true));
     }
     return;
@@ -651,7 +651,7 @@ export async function runImageJob(
     }, IMAGE_RESULT_TRANSACTION);
   } catch (error) {
     logProviderError("image_job.record_failed", error);
-    ports.reportError?.(error, { source: "job", job: input.operation, storeId });
+    ports.reportError?.(error, { source: "job", job: input.operation });
     // The transaction may still commit, or have committed with its answer
     // lost: settle it under the job's lock before any file is deleted.
     const outcome = await settleUncertainResult(

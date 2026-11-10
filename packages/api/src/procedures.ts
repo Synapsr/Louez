@@ -36,10 +36,7 @@ export const dashboardProcedure = publicProcedure.use(async ({ context, next }) 
       message: "errors.unauthorized",
     });
   }
-  if (context.errorScope) {
-    context.errorScope.client = "session";
-    context.errorScope.storeId = store.id;
-  }
+  if (context.errorScope) context.errorScope.client = "session";
 
   return next({
     context: {
@@ -98,10 +95,7 @@ export const storefrontProcedure = publicProcedure.use(async ({ context, next })
       message: "errors.storeNotFound",
     });
   }
-  if (context.errorScope) {
-    context.errorScope.client = "storefront";
-    context.errorScope.storeId = store.id;
-  }
+  if (context.errorScope) context.errorScope.client = "storefront";
 
   // Get customer session if exists (from cookie)
   let customer = null;

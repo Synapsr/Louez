@@ -135,6 +135,7 @@ describe("the event as sent", () => {
         error_code: "Bearer private-code-canary",
         procedure: "inbox.list for jane@example.invalid",
         route: "/api/v1/[[...path]]",
+        store_id: "store-canary-V1StGXR8",
         http_status: 500,
         $process_person_profile: false,
         nested: { email: "jane@example.invalid" },
@@ -249,7 +250,9 @@ describe("the reporter, with PostHog's network intercepted", () => {
     };
   }
 
-  test("a validation error under a wrapper loses its message; an unsafe code is dropped", async () => {
+  const STORE = "store-canary-V1StGXR8";
+
+  test("a validation error under a wrapper loses its message; an unsafe code and the store are dropped", async () => {
     const { report, body } = intercepted();
     const zod = Object.assign(new Error("custom message jane-canary"), {
       name: "ZodError",
@@ -258,12 +261,15 @@ describe("the reporter, with PostHog's network intercepted", () => {
     const error = Object.assign(new Error("wrapper", { cause: zod }), {
       code: "Bearer private-code-canary",
     });
-    report(error, { source: "procedure", procedure: "customers.create" });
+    // A store id would link the event to its owner: even handed one, nothing sends it.
+    const context = { source: "procedure", procedure: "customers.create", storeId: STORE };
+    report(error, context as Parameters<typeof report>[1]);
     const sent = await body;
     assert.doesNotMatch(sent, /jane-canary|private-code-canary/);
     assert.match(sent, /1 issue\(s\): custom at customer\.name/);
     assert.match(sent, /"procedure":"customers\.create"/);
     assert.doesNotMatch(sent, /"error_code"/);
+    assert.doesNotMatch(sent, /store_id|storeId|store-canary-V1StGXR8/);
   });
 
   test("nothing listens for the process to stop: events leave as they are captured", () => {

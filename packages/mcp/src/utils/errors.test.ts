@@ -80,7 +80,7 @@ describe("tool errors in error tracking", () => {
     },
   } as unknown as McpRequestContext;
 
-  test("a hand-written tool's error goes with the tool, the caller and the store", () => {
+  test("a hand-written tool's error goes with the tool and the caller, never the store", () => {
     const boom = new Error("boom");
     reportToolError(ctx, "record_payment", boom);
     assert.deepEqual(reported, [
@@ -92,7 +92,6 @@ describe("tool errors in error tracking", () => {
           tool: "record_payment",
           client: "oauth",
           directory: "anthropic",
-          storeId: "store_1",
         },
       ],
     ]);

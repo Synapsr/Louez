@@ -145,7 +145,6 @@ const PROPERTIES: Readonly<Record<string, (value: unknown) => unknown>> = {
       "cron_task",
       "job_operation",
       "effect_type",
-      "store_id",
       "client_kind",
       "client_directory",
       "service",

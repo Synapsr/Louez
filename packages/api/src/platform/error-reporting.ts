@@ -30,7 +30,6 @@ export type ServerErrorSource =
 
 /** Who called, as far as the call got before it failed. */
 export interface ErrorScope {
-  storeId?: string;
   /** The credential's kind, or a storefront visitor. */
   client?: CredentialKind | "storefront";
   /** The OAuth client's directory (ChatGPT/Codex, Claude). */
@@ -315,7 +314,6 @@ export function createServerErrorReporter(options: {
         "task",
         "job",
         "effect",
-        "storeId",
         "client",
         "directory",
       ] as const;
@@ -341,7 +339,6 @@ const SNAKE = {
   task: "cron_task",
   job: "job_operation",
   effect: "effect_type",
-  storeId: "store_id",
   client: "client_kind",
   directory: "client_directory",
 } as const;
