@@ -42,7 +42,7 @@ const customFieldEntriesParam = z
   )
   .optional()
   .describe(
-    'Custom fields defined by the store (ID numbers, licence, sizes…). An unknown field name returns the list of available fields.',
+    "The store's own custom fields, such as sizes or preferences. An unknown field name returns the list of available fields.",
   );
 
 const countryParam = z
@@ -66,7 +66,7 @@ export function registerCustomerTools(
         .string()
         .optional()
         .describe(
-          'Search by name, email, or the start of a searchable custom field (an ID or licence number)',
+          "Search by name, email, or the start of a value in one of the store's searchable custom fields",
         ),
       type: z
         .enum(['individual', 'business'])

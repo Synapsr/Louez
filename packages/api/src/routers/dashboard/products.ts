@@ -459,7 +459,7 @@ const completeImageUploadProcedure = storeProcedure
       name: "products_complete_image_upload",
       title: "Complete Product Image Upload",
       description:
-        "Finish a product image upload: checks the file that arrived at the key and returns its public `url`. That url is what a product's `images` take in products_create and products_update. A file that is not a valid image of the declared type is deleted and refused.",
+        "Finish a product image upload: checks the file just sent to the key and returns its public `url`, which a product's `images` take in products_create and products_update. It changes no record. A file that is not a valid image of the declared type is refused, and the upload starts over with a new key.",
       bundle: "catalog",
       effect: "additive",
       annotations: { idempotentHint: true },

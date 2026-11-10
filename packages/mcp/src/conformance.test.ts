@@ -28,8 +28,8 @@ const LEGACY_TOOLS = [
   "get_revenue_report",
   "list_customers",
   "list_payments",
+  "record_deposit_return",
   "record_payment",
-  "return_deposit",
   "update_customer",
 ];
 
@@ -119,8 +119,9 @@ describe("MCP directory conformance", () => {
   });
 
   test("every callable tool is listed: no former name is served", async () => {
-    // The names tools had before the bridge, once served as hidden aliases:
-    // a directory may read an operation it cannot see as unreviewed.
+    // The names tools had before the bridge, once served as hidden aliases,
+    // and return_deposit, now record_deposit_return: a directory may read an
+    // operation it cannot see as unreviewed.
     for (const name of [
       "archive_product",
       "calendar_overdue",
@@ -135,6 +136,7 @@ describe("MCP directory conformance", () => {
       "list_categories",
       "list_products",
       "list_reservations",
+      "return_deposit",
       "update_category",
       "update_product",
       "update_reservation_notes",
@@ -343,8 +345,8 @@ describe("MCP directory conformance", () => {
       list_customers: "read",
       list_payments: "read",
       // A payment row added; nothing recorded before changes.
+      record_deposit_return: "additive",
       record_payment: "additive",
-      return_deposit: "additive",
       update_customer: "overwrite",
     };
     assert.deepEqual(tools.map((tool) => tool.name).sort(), Object.keys(EXPECTED).sort());

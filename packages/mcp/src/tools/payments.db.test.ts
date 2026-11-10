@@ -179,7 +179,7 @@ describe("MCP payment tools (database)", { skip: skipWithoutTestDatabase() }, ()
     ]);
   });
 
-  test("return_deposit records a deposit-origin return", async () => {
+  test("record_deposit_return records a deposit-origin return", async () => {
     const reservationId = await createReservation();
     await call("record_payment", {
       reservationId,
@@ -188,7 +188,7 @@ describe("MCP payment tools (database)", { skip: skipWithoutTestDatabase() }, ()
       method: "cash",
     });
 
-    await call("return_deposit", { reservationId, amount: "50.00", method: "cash" });
+    await call("record_deposit_return", { reservationId, amount: "50.00", method: "cash" });
 
     assert.deepEqual(
       recorded.map(({ type, origin, amount }) => ({ type, origin, amount })),
