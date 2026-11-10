@@ -145,10 +145,35 @@ const jsonSchemaConverter = new ZodToJsonSchemaConverter();
 
 /**
  * A schema as JSON: the converter leaves keys it has no value for (`title`,
- * `examples`) set to undefined, which a JSON value may not hold.
+ * `examples`) set to undefined, which a JSON value may not hold. A `const` or
+ * an `enum` (from z.literal) gets the `type` its values have, which the
+ * converter leaves out and the Claude directory asks for on every parameter.
  */
 function asJson(schema: unknown): Record<string, unknown> {
-  return JSON.parse(JSON.stringify(schema)) as Record<string, unknown>;
+  return withValueTypes(JSON.parse(JSON.stringify(schema))) as Record<string, unknown>;
+}
+
+function jsonTypeOf(value: unknown): string | undefined {
+  if (value === null) return "null";
+  if (typeof value === "string" || typeof value === "boolean") return typeof value;
+  if (typeof value === "number") return Number.isInteger(value) ? "integer" : "number";
+  return undefined;
+}
+
+function withValueTypes(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(withValueTypes);
+  if (!node || typeof node !== "object") return node;
+  const schema = Object.fromEntries(
+    Object.entries(node).map(([key, value]) => [key, withValueTypes(value)]),
+  ) as Record<string, unknown>;
+  if (schema.type === undefined) {
+    const values =
+      "const" in schema ? [schema.const] : Array.isArray(schema.enum) ? schema.enum : [];
+    const types = new Set(values.map(jsonTypeOf));
+    const [type] = types;
+    if (types.size === 1 && type) schema.type = type;
+  }
+  return schema;
 }
 
 function lookup(router: AnyRouter, path: string): unknown {
