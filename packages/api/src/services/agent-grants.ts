@@ -18,6 +18,7 @@ import {
   type AgentConnection,
 } from "../contracts/agent-connections";
 import { CHATGPT_CLIENT_ID, clientWithholding } from "../platform/agent-clients";
+import { registeredRedirectUris, verifiedDestination } from "../platform/agent-destinations";
 import { bundlesWithTools, createExposure } from "../platform/exposure";
 import { MCP_BUNDLES, type McpBundle } from "../platform/meta";
 import { failCredentialHandoffs } from "./handoffs";
@@ -230,6 +231,7 @@ const clientColumns = {
   name: oauthClients.name,
   clientDiscoveryId: oauthClients.clientDiscoveryId,
   disabled: oauthClients.disabled,
+  redirectUris: oauthClients.redirectUris,
 };
 
 function toAgentClient(
@@ -238,6 +240,7 @@ function toAgentClient(
     name: string | null;
     clientDiscoveryId: string | null;
     disabled: boolean | null;
+    redirectUris: string;
   },
   redirectUri: string | null,
 ): AgentClient {
@@ -246,14 +249,23 @@ function toAgentClient(
   const fromDocument = row.clientDiscoveryId !== null;
   const declaredBy = fromDocument ? hostOf(row.clientId) : null;
   const hasIcon = fromDocument && !row.disabled && clientIconOrigin(row.clientId) !== null;
+  const verified = VERIFIED_CLIENT_IDS.has(row.clientId);
   return {
     clientId: row.clientId,
     name: row.name,
     declaredBy,
-    verified: VERIFIED_CLIENT_IDS.has(row.clientId),
+    verified,
     iconUrl: hasIcon ? agentClientIconUrl(row.clientId) : null,
     redirectHost: hostOf(redirectUri),
     loopbackRedirect: isLoopback(redirectUri),
+    // Whatever it calls itself, a client whose codes reach one vendor alone
+    // is shown as that vendor. A client on the list keeps its display.
+    destination: verified
+      ? null
+      : verifiedDestination({
+          registered: registeredRedirectUris(row.redirectUris),
+          requested: redirectUri,
+        }),
   };
 }
 

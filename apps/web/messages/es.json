@@ -9644,7 +9644,10 @@
       "dismiss": "Ocultar"
     },
     "declaredBy": "Nombre declarado por {origin}",
-    "declaredByItself": "Nombre declarado por la aplicación (registrada dinámicamente)"
+    "declaredByItself": "Nombre declarado por la aplicación (registrada dinámicamente)",
+    "verifiedDestination": "Verificado: redirige a {domain}",
+    "declaredNameBy": "Nombre declarado por {origin}: {name}",
+    "declaredNameByItself": "Nombre declarado por la aplicación: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Cambiar de tienda",

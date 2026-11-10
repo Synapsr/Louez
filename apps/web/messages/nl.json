@@ -9644,7 +9644,10 @@
       "dismiss": "Verbergen"
     },
     "declaredBy": "Naam opgegeven door {origin}",
-    "declaredByItself": "Naam opgegeven door de app (dynamisch geregistreerd)"
+    "declaredByItself": "Naam opgegeven door de app (dynamisch geregistreerd)",
+    "verifiedDestination": "Geverifieerd: stuurt terug naar {domain}",
+    "declaredNameBy": "Naam opgegeven door {origin}: {name}",
+    "declaredNameByItself": "Naam opgegeven door de app: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Van winkel wisselen",

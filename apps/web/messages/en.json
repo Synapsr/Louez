@@ -9644,7 +9644,10 @@
       "dismiss": "Hide"
     },
     "declaredBy": "Name declared by {origin}",
-    "declaredByItself": "Name declared by the app (registered dynamically)"
+    "declaredByItself": "Name declared by the app (registered dynamically)",
+    "verifiedDestination": "Verified: returns to {domain}",
+    "declaredNameBy": "Name declared by {origin}: {name}",
+    "declaredNameByItself": "Name declared by the app: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Switch store",

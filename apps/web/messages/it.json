@@ -9644,7 +9644,10 @@
       "dismiss": "Nascondi"
     },
     "declaredBy": "Nome dichiarato da {origin}",
-    "declaredByItself": "Nome dichiarato dall’app (registrata dinamicamente)"
+    "declaredByItself": "Nome dichiarato dall’app (registrata dinamicamente)",
+    "verifiedDestination": "Verificato: rimanda a {domain}",
+    "declaredNameBy": "Nome dichiarato da {origin}: {name}",
+    "declaredNameByItself": "Nome dichiarato dall’app: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Cambia negozio",

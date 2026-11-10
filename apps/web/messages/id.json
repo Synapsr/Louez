@@ -9644,7 +9644,10 @@
       "dismiss": "Sembunyikan"
     },
     "declaredBy": "Nama dinyatakan oleh {origin}",
-    "declaredByItself": "Nama dinyatakan oleh aplikasi itu sendiri (pendaftaran dinamis)"
+    "declaredByItself": "Nama dinyatakan oleh aplikasi itu sendiri (pendaftaran dinamis)",
+    "verifiedDestination": "Terverifikasi: kembali ke {domain}",
+    "declaredNameBy": "Nama yang dinyatakan oleh {origin}: {name}",
+    "declaredNameByItself": "Nama yang dinyatakan oleh aplikasi: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Ganti toko",

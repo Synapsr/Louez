@@ -23,6 +23,7 @@ import { apiErrorKey } from "@/lib/orpc/errors";
 import { AgentClientIdentity } from "./agent-client-identity";
 import { AgentTermsFields } from "./agent-terms-fields";
 import { useAgentConsent } from "./use-agent-consent";
+import { shownClientName } from "./util.agent-client";
 
 interface AgentConsentCardProps {
   /** The signed query the authorization server sent the page with. */
@@ -63,7 +64,7 @@ export const AgentConsentCard = ({ oauthQuery }: AgentConsentCardProps) => {
   }
 
   const { client, stores, offeredBundles, canCreateStores } = authorization.data;
-  const clientName = client.name ?? t("unknownClient");
+  const clientName = shownClientName(client) ?? t("unknownClient");
   const answerError = answer.error ? apiErrorKey(answer.error) : null;
   // A client that may not create a store sends the user to Louez to create it.
   const noStoreDescription = canCreateStores

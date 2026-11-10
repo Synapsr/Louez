@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AGENT_VENDORS } from "../platform/agent-destinations";
 import { apiError } from "../platform/errors";
 import { MCP_BUNDLES } from "../platform/meta";
 import { AGENT_PRESETS } from "../platform/permissions";
@@ -58,6 +59,22 @@ export const agentClientSchema = z.object({
   redirectHost: z.string().nullable(),
   /** The redirect is a loopback address: any program on that computer may receive the code. */
   loopbackRedirect: z.boolean(),
+  /**
+   * The vendor that alone receives the client's codes: every registered
+   * redirect URI, and this request's, is on its domains
+   * (`verifiedDestination`). The page shows the vendor, its logo and where
+   * the code goes instead of the declared name. Null for a client on Louez's
+   * list (`verified`), which keeps its own display, and for any other client.
+   */
+  destination: z
+    .object({
+      vendor: z.enum(AGENT_VENDORS),
+      /** The vendor's brand name, from Louez's table, never the client's. */
+      name: z.string(),
+      /** The vendor's domain the code goes to (`cursor.com`). */
+      domain: z.string(),
+    })
+    .nullable(),
 });
 export type AgentClient = z.infer<typeof agentClientSchema>;
 

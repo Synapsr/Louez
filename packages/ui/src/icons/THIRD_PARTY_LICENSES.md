@@ -6,18 +6,20 @@ covered by this repository's AGPLv3 license; their own terms below apply.
 ## Trademarks
 
 Claude is a trademark of Anthropic. ChatGPT and the OpenAI logo are trademarks
-of OpenAI. Grok and xAI are trademarks of xAI. Le Chat and the Mistral AI logo
-are trademarks of Mistral AI. Each mark belongs to its owner. Louez shows these
-marks only to name the assistants that can connect to it. Their use does not
-imply any endorsement by, partnership with, or sponsorship from their owners.
+of OpenAI. Grok and xAI are trademarks of xAI. Cursor is a trademark of
+Anysphere. Le Chat and the Mistral AI logo are trademarks of Mistral AI. Each
+mark belongs to its owner. Louez shows these marks only to name the assistants
+that can connect to it. Their use does not imply any endorsement by,
+partnership with, or sponsorship from their owners.
 
 ## Simple Icons (CC0 1.0)
 
-`icon.claude.tsx` and `icon.chatgpt.tsx` use the SVG paths of Simple Icons
-(https://simpleicons.org, https://github.com/simple-icons/simple-icons),
-dedicated to the public domain under CC0 1.0 Universal
-(https://creativecommons.org/publicdomain/zero/1.0/). The Claude mark is
-drawn in Claude's orange (#D97757).
+`icon.claude.tsx`, `icon.chatgpt.tsx` and `icon.cursor.tsx` use the SVG paths
+of Simple Icons (https://simpleicons.org,
+https://github.com/simple-icons/simple-icons), dedicated to the public domain
+under CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/).
+The Claude mark is drawn in Claude's orange (#D97757), and Cursor's, from
+https://cursor.com/brand, in the text color.
 
 ## Lobe Icons (MIT)
 
