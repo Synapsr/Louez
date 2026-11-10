@@ -254,6 +254,20 @@ test("upcoming balances do not count a Stripe refund row as money paid", async (
   }
 });
 
+test("upcoming balances subtract only payments in the reservation's currency", async () => {
+  const f = fixture();
+  try {
+    // 170 paid in the shop, then francs charged through Stripe: they pay no euro balance.
+    f.pay("charge", 170, new Date("2026-09-01"));
+    f.pay("francs", 40, new Date("2026-09-02"), { method: "stripe", currency: "CHF" });
+    const result = await f.queries.getUpcomingRevenue(STORE, now);
+    assert.equal(result.revenue, 121);
+    assert.equal(result.reservationCount, 1);
+  } finally {
+    f.sqlite.close();
+  }
+});
+
 test("occupancy uses only active returnable products and effective tracked stock", async () => {
   const f = fixture();
   try {

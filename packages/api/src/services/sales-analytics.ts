@@ -66,6 +66,10 @@ export function salesStore(store: {
 const receiptCurrency = (store: SalesStore) =>
   sql<string>`UPPER(COALESCE(CASE WHEN ${payments.method} = 'stripe' THEN NULLIF(${payments.currency}, '') END, NULLIF(${reservations.currency}, ''), ${store.currency}))`;
 
+/** A reservation's currency: the one frozen on it, else (older rows) the store's. */
+const reservationCurrency = (store: SalesStore) =>
+  sql<string>`UPPER(COALESCE(NULLIF(${reservations.currency}, ''), ${store.currency}))`;
+
 /** The store's rental receipts, all payment methods, in any currency. */
 const anyCurrencyReceiptConditions = (storeFilter: SQL) => [
   storeFilter,
@@ -526,6 +530,8 @@ export async function getUpcomingRevenue(
         eq(reservations.storeId, store.id),
         eq(payments.status, "completed"),
         sql`${receiptDate} < ${instantSql(now)}`,
+        // Only a payment in the balance's currency pays it off.
+        sql`${receiptCurrency(store)} = ${reservationCurrency(store)}`,
       ),
     )
     .groupBy(payments.reservationId)
@@ -549,7 +555,7 @@ export async function getUpcomingRevenue(
       and(
         eq(reservations.storeId, store.id),
         // A balance is in its reservation's currency: only the store's adds up.
-        sql`UPPER(COALESCE(NULLIF(${reservations.currency}, ''), ${store.currency})) = ${store.currency}`,
+        sql`${reservationCurrency(store)} = ${store.currency}`,
         eq(reservations.status, "confirmed"),
         gte(reservations.startDate, now),
         sql`${remaining} > 0`,
