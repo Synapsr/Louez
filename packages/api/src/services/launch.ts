@@ -37,7 +37,7 @@ import {
 import type { Credential, Transport } from "../platform/actor";
 import type { ApiEvent, UrlsPort } from "../platform/ports";
 import type { ConfirmStep } from "./products";
-import type { SettingsActor } from "./settings";
+import { storedBusinessHours, type SettingsActor } from "./settings";
 
 /**
  * A store's launch. The checklist says what the store still lacks before
@@ -218,11 +218,15 @@ export function bookingModeOf(
   };
 }
 
-/** Whether customers can book at some hour: hours off (any time), or one open day. */
+/**
+ * Whether customers can book at some hour: hours off (any time), or one open
+ * day. Read as the settings show them: hours saved before a day held several
+ * ranges have none.
+ */
 function hasBookableHours(settings: StoreSettings | null): boolean {
-  const hours = settings?.businessHours;
-  if (!hours?.enabled) return true;
-  return Object.values(hours.schedule).some((day) => day.isOpen && day.ranges.length > 0);
+  if (!settings?.businessHours?.enabled) return true;
+  const { schedule } = storedBusinessHours(settings);
+  return Object.values(schedule).some((day) => day.isOpen && day.ranges.length > 0);
 }
 
 /** The settings pages and editor sections the items link to. */

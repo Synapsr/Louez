@@ -4,6 +4,7 @@ import { isEmailConfigured } from "@louez/email";
 import { runAfterCommit } from "@/lib/api/after-commit";
 import { dispatchApiEffects } from "@/lib/api/effects";
 import { dispatchApiJobs } from "@/lib/api/jobs";
+import { log } from "@/lib/evlog";
 import { productImagesPort } from "@/lib/api/product-images";
 import { apiUrls } from "@/lib/api/urls";
 import { billingPort } from "@/lib/billing/billing-port";
@@ -40,4 +41,6 @@ export const apiPorts: ApiPorts = {
     collaboratorLimit: async (storeId) => (await getStorePlan(storeId)).features.maxCollaborators,
     emailConfigured: isEmailConfigured,
   },
+  // Through evlog, so its redaction and its drain apply too.
+  log: { error: (event) => log.error(event) },
 };

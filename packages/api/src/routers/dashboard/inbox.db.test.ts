@@ -95,7 +95,10 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     urls: createTestUrls(),
     afterCommit: (_event: ApiEvent) => {},
     hostedBy: (): "lumycloud" | null => null,
+    log: { error: (event: Record<string, unknown>) => void logged.push(event) },
   };
+  /** What the inbox logged through the app's logger (`ApiPorts.log`). */
+  const logged: Record<string, unknown>[] = [];
 
   let sequence = 0;
   const nextId = (prefix: string) => `${prefix}_${String(++sequence).padStart(12, "0")}`;
@@ -138,6 +141,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
   });
 
   beforeEach(async () => {
+    logged.length = 0;
     const { db } = louezDb;
     for (const table of [
       louezDb.inboxAcknowledgements,
@@ -1108,6 +1112,191 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.deepEqual(item?.tools, ["stores_get_launch_checklist", "stores_go_live"]);
     assert.equal(item?.details.canGoLive, true);
     assert.equal(ofType((await list(session(OTHER_STORE))).items, "store_not_live").length, 0);
+  });
+
+  test("a store not online yet, with hours saved before a day held several ranges, shows its launch", async () => {
+    // Hours saved before 2026-02-25: each day one openTime and closeTime, no `ranges`.
+    const legacyDay = (isOpen: boolean) => ({ isOpen, openTime: "09:00", closeTime: "18:00" });
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({
+        onboardingCompleted: false,
+        settings: {
+          ...SETTINGS,
+          businessHours: {
+            enabled: true,
+            schedule: {
+              0: legacyDay(false),
+              1: legacyDay(true),
+              2: legacyDay(true),
+              3: legacyDay(true),
+              4: legacyDay(true),
+              5: legacyDay(true),
+              6: legacyDay(true),
+            },
+            closurePeriods: [],
+          },
+        } as never,
+      })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    const answer = await list();
+    const [item] = ofType(answer.items, "store_not_live");
+    assert.equal(item?.id, `store_not_live:${STORE}`);
+    assert.equal(answer.unavailable, undefined);
+  });
+
+  /** A supplier invoice not handled yet, with Super PDP connected. */
+  async function supplierInvoice(createdAt: Date) {
+    const connected = await louezDb.db.query.storeIntegrations.findFirst({
+      where: orm.eq(louezDb.storeIntegrations.storeId, STORE),
+    });
+    if (!connected) {
+      await louezDb.db.insert(louezDb.storeIntegrations).values({
+        id: nextId("ib_int"),
+        storeId: STORE,
+        providerKey: "superpdp",
+        category: "invoicing",
+        enabled: true,
+        status: "active",
+      });
+    }
+    const id = nextId("ib_rin");
+    await louezDb.db.insert(louezDb.receivedInvoices).values({
+      id,
+      storeId: STORE,
+      superPdpInvoiceId: `spdp_${id}`,
+      sellerName: "Wetsuit Supply",
+      sellerIdentifier: "12345678900011",
+      number: `F-${id}`,
+      issueDate: "2026-11-01",
+      totalExclTax: "100.00",
+      totalTax: "20.00",
+      totalInclTax: "120.00",
+      currency: "EUR",
+      latestStatus: "fr:200",
+      createdAt,
+      updatedAt: createdAt,
+    });
+    return id;
+  }
+
+  /** The supplier invoices' table gone while `run` runs, as before its migration. */
+  async function withoutInvoicesTable<T>(run: () => Promise<T>): Promise<T> {
+    await louezDb.db.execute(orm.sql`RENAME TABLE received_invoices TO received_invoices_away`);
+    try {
+      return await run();
+    } finally {
+      await louezDb.db.execute(orm.sql`RENAME TABLE received_invoices_away TO received_invoices`);
+    }
+  }
+
+  test("a source that fails costs only its own items, named in unavailable and logged; acknowledging fails", async () => {
+    const reservationId = await reservation("pending");
+    await withoutInvoicesTable(async () => {
+      const answer = await list();
+      assert.deepEqual(
+        answer.items.map((item) => item.id),
+        [`booking_request:${reservationId}`],
+      );
+      assert.deepEqual(answer.unavailable, ["supplier_invoice"]);
+      assert.equal(answer.hasMore, false);
+
+      // One structured event: the store, the type, the error's sanitized facts.
+      assert.equal(logged.length, 1);
+      const [event] = logged as [
+        { event: string; storeId: string; itemType: string; error: Record<string, unknown> },
+      ];
+      assert.equal(event.event, "inbox.source_failed");
+      assert.equal(event.storeId, STORE);
+      assert.equal(event.itemType, "supplier_invoice");
+      assert.deepEqual(Object.keys(event).sort(), ["error", "event", "itemType", "storeId"]);
+      const text = JSON.stringify(event.error);
+      // No text: neither the query nor its parameters (the store id, the provider, the dates)…
+      assert.equal(event.error.message, "[message withheld]");
+      assert.ok(!text.includes("superpdp") && !text.includes(STORE.slice(3)), text);
+      assert.ok(!text.includes("select"), text);
+      // …and the driver's error as its code, its number and the table its message names.
+      const cause = event.error.cause as
+        | { code?: string; errno?: number; schemaObject?: { kind: string; name: string } }
+        | undefined;
+      assert.equal(cause?.code, "ER_NO_SUCH_TABLE");
+      assert.equal(cause?.errno, 1146);
+      assert.equal(cause?.schemaObject?.kind, "table");
+      assert.equal(cause?.schemaObject?.name, "received_invoices");
+      // Its frames are places in the repository.
+      assert.ok(
+        (event.error.frames as string[]).every((frame) =>
+          /^(?:apps|packages)\/[^:]+:\d+:\d+$/.test(frame),
+        ),
+      );
+      assert.ok(Array.isArray(event.error.frames) && event.error.frames.length > 0);
+
+      // The source's own error: the transport answers it as an internal error.
+      await assert.rejects(
+        run(
+          "acknowledge",
+          { items: [{ id: "supplier_invoice:ib_rin_x", occurredAt: ago(HOUR) }] },
+          session(),
+        ),
+        /received_invoices/,
+      );
+    });
+  });
+
+  test("items of a source that failed come once it works again, at the cursor, and the others only once", async () => {
+    const request = await reservation("pending", { createdAt: ago(3 * HOUR) });
+    const first = await supplierInvoice(ago(2 * HOUR));
+    const second = await supplierInvoice(ago(HOUR));
+    const ids = (items: InboxItem[]) => items.map((item) => item.id);
+
+    // The outage: the request comes, the invoices cannot be read.
+    const outage = await withoutInvoicesTable(() => list());
+    assert.deepEqual(ids(outage.items), [`booking_request:${request}`]);
+    assert.deepEqual(outage.unavailable, ["supplier_invoice"]);
+
+    // Still down: nothing new, the request is not given again, the place is kept.
+    const stillDown = await withoutInvoicesTable(() =>
+      list(session(), { cursor: outage.nextCursor }),
+    );
+    assert.deepEqual(ids(stillDown.items), []);
+    assert.deepEqual(stillDown.unavailable, ["supplier_invoice"]);
+
+    // Back: the invoices come with the cursor, a page at a time, earlier than it.
+    const back = await list(session(), { cursor: stillDown.nextCursor, limit: 1 });
+    assert.deepEqual(ids(back.items), [`supplier_invoice:${first}`]);
+    assert.equal(back.hasMore, true);
+    assert.equal(back.unavailable, undefined);
+    const rest = await list(session(), { cursor: back.nextCursor, limit: 1 });
+    assert.deepEqual(ids(rest.items), [`supplier_invoice:${second}`]);
+    assert.equal(rest.hasMore, false);
+
+    // Caught up: nothing more, and the cursor holds one position again.
+    const after = await list(session(), { cursor: rest.nextCursor });
+    assert.deepEqual(ids(after.items), []);
+    const decoded = JSON.parse(Buffer.from(after.nextCursor, "base64url").toString("utf8"));
+    assert.equal(decoded.b, undefined);
+  });
+
+  test("a cursor whose types standing behind are not the inbox's, not behind it, or twice, is refused", async () => {
+    const forged = (body: unknown) => Buffer.from(JSON.stringify(body)).toString("base64url");
+    const at = { t: Date.now(), k: "~", r: "" };
+    for (const b of [
+      [[0, "", "", ["no_such_type"]]],
+      [[0, "", "", []]],
+      [[-1, "", "", ["supplier_invoice"]]],
+      "supplier_invoice",
+      // At the cursor's position, or after it.
+      [[at.t, at.k, at.r, ["supplier_invoice"]]],
+      [[at.t + 1, "", "", ["supplier_invoice"]]],
+      // The same type twice, in one group or two.
+      [[0, "", "", ["supplier_invoice", "supplier_invoice"]]],
+      [
+        [0, "", "", ["supplier_invoice"]],
+        [1, "", "", ["supplier_invoice"]],
+      ],
+    ]) {
+      await rejects(list(session(), { cursor: forged({ ...at, b }) }), "INVALID_CURSOR");
+    }
   });
 
   test("a customer message the outbox gave up on shows, without the customer's name to who may not read customers", async () => {

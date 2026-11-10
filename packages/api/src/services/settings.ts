@@ -211,7 +211,7 @@ type ReservationRules = ReturnType<typeof toReservationRulesView>;
  * The stored hours with every day in the current format. A store that never
  * saved any takes bookings at any time: `enabled` false over the default week.
  */
-function storedBusinessHours(settings: StoreSettings): BusinessHours {
+export function storedBusinessHours(settings: StoreSettings): BusinessHours {
   const stored = settings.businessHours;
   if (!stored) return { ...defaultBusinessHours, enabled: false } as BusinessHours;
   const schedule = {} as BusinessHours["schedule"];

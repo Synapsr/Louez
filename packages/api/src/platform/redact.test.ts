@@ -9,7 +9,8 @@ import { createTestUrls } from "./test-urls";
 const require = createRequire(import.meta.url);
 mock.module("@louez/utils", { namedExports: require("@louez/utils") });
 
-const { describeProviderError, redactHandoffSecrets } = await import("./redact");
+const { redactHandoffSecrets } = await import("./redact");
+const { describeProviderError } = await import("./sanitize-error");
 const { startConnectOnboarding } = await import("../services/stripe-connect");
 
 // A handoff's secrets never reach a log: the shared redactor, and a provider
@@ -74,7 +75,8 @@ describe("handoff secrets in logs", () => {
     const line = describeProviderError(error);
     assert.ok(!line.includes(STATE), line);
     assert.match(line, /type=StripeInvalidRequestError, statusCode=400/);
-    assert.equal(describeProviderError(`/handoffs/${ID}${SECRET}`), `/handoffs/${ID}[redacted]`);
+    // A thrown text is never kept.
+    assert.equal(describeProviderError(`/handoffs/${ID}${SECRET}`), "NonError: a thrown string");
   });
 
   test("Stripe's onboarding error echoing the return URL prints no state on stdout or stderr", async () => {
