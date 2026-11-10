@@ -181,6 +181,12 @@ export const env = createEnv({
     // category mapping editor degrades to free slug input.
     MARKETPLACE_URL: z.url("MARKETPLACE_URL must be a valid URL").optional(),
 
+    // ===== OpenAI plugin directory (Optional) =====
+    // The domain-check token OpenAI's plugin portal shows, served as plain text
+    // at /.well-known/openai-apps-challenge. Public, not a secret; the route
+    // answers 404 while it is unset.
+    OPENAI_APPS_CHALLENGE: z.string().optional(),
+
     // ===== AI Chat Assistant (Optional) =====
     AI_PROVIDER: z.enum(["anthropic", "openai", "google"]).optional(),
     AI_MODEL: z.string().optional(),
@@ -450,6 +456,7 @@ export const env = createEnv({
     CRON_SECRET: process.env.CRON_SECRET,
     MARKETPLACE_CATALOG_SECRET: process.env.MARKETPLACE_CATALOG_SECRET,
     MARKETPLACE_URL: process.env.MARKETPLACE_URL,
+    OPENAI_APPS_CHALLENGE: process.env.OPENAI_APPS_CHALLENGE,
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,
     AI_API_KEY: process.env.AI_API_KEY,

@@ -165,4 +165,25 @@ describe("proxy billing gate", () => {
     );
     assert.equal(forged.status, 400);
   });
+
+  test("OpenAI's domain check reaches its route untouched, on every host and mode", async () => {
+    const path = "/.well-known/openai-apps-challenge";
+    const check = async (host: string) => {
+      const response = await visit(path, host);
+      assert.equal(response.status, 200, host);
+      assert.equal(response.headers.get("x-middleware-next"), "1", host);
+      assert.equal(response.headers.get("x-middleware-rewrite"), null, `${host}: no rewrite`);
+      assert.equal(response.headers.get("location"), null, `${host}: no redirect`);
+    };
+    // The dashboard host (app.louez.io serves the MCP server), the root host and a storefront.
+    for (const host of ["localhost:3000", "www.localhost:3000", "shop.localhost:3000"]) {
+      await check(host);
+    }
+    process.env.LOUEZ_MODE = "standalone";
+    try {
+      await check("localhost:3000");
+    } finally {
+      process.env.LOUEZ_MODE = "platform";
+    }
+  });
 });
