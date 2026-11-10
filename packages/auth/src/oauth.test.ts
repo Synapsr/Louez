@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
 import { test } from "node:test";
 
+import type { ClientMetadataResourceFetch } from "@better-auth/oauth-provider";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
@@ -20,8 +21,10 @@ import {
   mcpOAuthEndpoints,
   mcpOAuthPlugins,
 } from "./oauth";
+import { MAX_RESPONSE_HEADER_BYTES } from "./guarded-fetch";
 import { createPasskeyOptions } from "./passkey";
 import { authTables } from "./tables";
+import { createLocalHostTransport } from "./testing";
 
 // The OAuth flow an MCP client runs against Louez, on a real Better Auth
 // instance with the app's plugins and an in-memory database: registration,
@@ -132,7 +135,9 @@ const CLIENT_DOCUMENTS: Record<string, object> = {
   },
 };
 
-const fixture = async (options: { grantId?: string | null } = {}) => {
+const fixture = async (
+  options: { grantId?: string | null; fetchClientMetadata?: ClientMetadataResourceFetch } = {},
+) => {
   const grantId = options.grantId === undefined ? "grant_test_0000000001" : options.grantId;
   const data: Record<string, Record<string, unknown>[]> = {};
   for (const model of Object.keys(authTables)) data[model] = [];
@@ -151,11 +156,13 @@ const fixture = async (options: { grantId?: string | null } = {}) => {
       currentGrantId: async () => grantId,
       isGrantActive: async ({ grantId: id }) => id === grantId,
       // Client metadata documents and their keys, served without the network.
-      fetchClientMetadata: async (input) => {
-        const document = CLIENT_DOCUMENTS[new Request(input).url];
-        if (!document) return new Response(null, { status: 404 });
-        return Response.json(document, { headers: { "cache-control": "max-age=60" } });
-      },
+      fetchClientMetadata:
+        options.fetchClientMetadata ??
+        (async (input) => {
+          const document = CLIENT_DOCUMENTS[new Request(input).url];
+          if (!document) return new Response(null, { status: 404 });
+          return Response.json(document, { headers: { "cache-control": "max-age=60" } });
+        }),
     }),
   });
 
@@ -792,6 +799,49 @@ test("Cursor and Grok connect with Cursor's document, through every redirect it 
     assert.equal(others.length, 0, "known from its document, not registered");
     assert.equal(client.name, "Cursor");
     assert.ok(client.clientDiscoveryId);
+  }
+});
+
+test("Cursor's document is read with its long headers; past the transport's limit, refused", async () => {
+  // cursor.com resolves to a local server, through the app's own transport.
+  let headerBytes = 0;
+  const local = await createLocalHostTransport((_request, response) => {
+    response.writeHead(200, {
+      "content-type": "application/json",
+      "cache-control": "public, max-age=3600",
+      "content-security-policy": `default-src 'self'; ${"x".repeat(headerBytes)}`,
+    });
+    response.end(JSON.stringify(CLIENT_DOCUMENTS[CURSOR]));
+  });
+  try {
+    const authorize = async () => {
+      const fx = await fixture({ fetchClientMetadata: local.transport() });
+      const response = await startAuthorization(fx, {
+        clientId: CURSOR,
+        redirectUri: CURSOR_REDIRECTS[0],
+        challenge: pkce().challenge,
+      });
+      return { fx, response };
+    };
+
+    // Past Node's 16 KiB default, which Cursor's 13.6 KB is close to.
+    headerBytes = 20 * 1024;
+    const read = await authorize();
+    assert.equal(read.response.status, 302);
+    const location = new URL(read.response.headers.get("location")!, ORIGIN);
+    assert.equal(location.pathname, OAUTH_CONSENT_PAGE);
+    assert.equal(read.fx.data.oauthClient[0]?.name, "Cursor");
+
+    // Past the limit: an OAuth error on Louez, nothing sent to the client.
+    headerBytes = MAX_RESPONSE_HEADER_BYTES + 1024;
+    const refused = await authorize();
+    assert.equal(refused.response.status, 400);
+    assert.equal(refused.response.headers.get("location"), null);
+    const error = (await refused.response.json()) as { error?: string };
+    assert.equal(error.error, "invalid_client");
+    assert.equal(refused.fx.data.oauthClient.length, 0, "no client is recorded");
+  } finally {
+    await local.close();
   }
 });
 

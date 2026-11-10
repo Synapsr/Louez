@@ -1,23 +1,137 @@
-import { fetchClientMetadataResource } from "@better-auth/cimd/node";
+import { isPublicRoutableHost } from "@better-auth/core/utils/host";
 import type { ClientMetadataResourceFetch } from "@better-auth/oauth-provider";
+import type { LookupAddress } from "node:dns";
+import { lookup } from "node:dns/promises";
+import type { ClientRequest, IncomingMessage, RequestOptions } from "node:http";
+import { request as httpsRequest } from "node:https";
+import { isIP } from "node:net";
+import { Readable } from "node:stream";
 
 /**
  * A GET of a URL someone else chose, that cannot reach inside Louez's
- * network. Every request goes through the CIMD transport: HTTPS only, every
- * DNS answer must be public, the connection is pinned to the checked
- * address, and redirects are never followed by it. This module adds what the
- * CIMD plugin adds around it: a timeout, a size cap read while streaming, and
- * redirects followed by hand, each hop checked again by the transport.
+ * network. Every request goes through the CIMD transport (`guardedTransport`):
+ * HTTPS only, every DNS answer must be public, the connection is pinned to
+ * the checked address, and redirects are never followed by it. This module
+ * adds what the CIMD plugin adds around it: a timeout, a size cap read while
+ * streaming, and redirects followed by hand, each hop checked again by the
+ * transport.
  *
- * The site icons of OAuth clients (oauth-client-icon.ts) and the images an
- * agent imports by URL (packages/api services/uploads.ts) use it.
+ * The CIMD plugin's metadata documents (oauth.ts), the site icons of OAuth
+ * clients (oauth-client-icon.ts) and the images an agent imports by URL
+ * (packages/api services/uploads.ts) use it.
  */
 
 /** A guarded GET, the CIMD transport's signature. Injected in tests. */
 export type GuardedFetch = ClientMetadataResourceFetch;
 
+/**
+ * The largest response head the transport reads: Cursor's metadata document
+ * already comes with ~13.6 KB of headers, against Node's 16 KiB default.
+ */
+export const MAX_RESPONSE_HEADER_BYTES = 64 * 1024;
+
+const BODY_FORBIDDEN_STATUSES = new Set([204, 205, 304]);
+
+/** What the transport may be given in tests: a local server, on plain HTTP. */
+export interface PinnedTransportOptions {
+  maxHeaderSize?: number;
+  resolve?: (hostname: string) => Promise<LookupAddress[]>;
+  isAllowedAddress?: (address: string) => boolean;
+  send?: (
+    options: RequestOptions,
+    onResponse: (response: IncomingMessage) => void,
+  ) => ClientRequest;
+}
+
+function responseHeaders(headers: IncomingMessage["headers"]): Headers {
+  const result = new Headers();
+  for (const [name, value] of Object.entries(headers)) {
+    if (Array.isArray(value)) for (const item of value) result.append(name, item);
+    else if (value !== undefined) result.append(name, value);
+  }
+  return result;
+}
+
+/**
+ * The CIMD plugin's Node transport (`@better-auth/cimd/node`
+ * `fetchClientMetadataResource`, 1.7.18), with `maxHeaderSize` set per
+ * request: that one takes no such option, and raising Node's limit for the
+ * process would raise it for the requests the app serves too. Every DNS
+ * answer must be public; the first is pinned for the connection, while the
+ * hostname stays the Host, the TLS server name and the certificate's
+ * identity. A redirect is returned, never followed.
+ */
+export function createPinnedTransport(options: PinnedTransportOptions = {}): GuardedFetch {
+  const maxHeaderSize = options.maxHeaderSize ?? MAX_RESPONSE_HEADER_BYTES;
+  const resolve =
+    options.resolve ?? ((hostname: string) => lookup(hostname, { all: true, verbatim: true }));
+  const isAllowedAddress = options.isAllowedAddress ?? isPublicRoutableHost;
+  const send = options.send ?? httpsRequest;
+
+  return async (input, init) => {
+    const webRequest = new Request(input, init);
+    const url = new URL(webRequest.url);
+    if (url.protocol !== "https:") throw new TypeError("The transport requires an HTTPS URL");
+    if (webRequest.method !== "GET" && webRequest.method !== "HEAD") {
+      throw new TypeError("The transport supports only GET and HEAD");
+    }
+    const hostname = url.hostname.replace(/^\[|\]$/g, "");
+    const addresses = await resolve(hostname);
+    if (addresses.length === 0) throw new TypeError("The hostname returned no DNS addresses");
+    if (!addresses.every(({ address }) => isAllowedAddress(address))) {
+      throw new TypeError("The hostname must resolve only to public-routable addresses");
+    }
+    const [pinned] = addresses;
+    const headers = Object.fromEntries(webRequest.headers.entries());
+    headers.host = url.host;
+
+    return new Promise<Response>((resolveResponse, reject) => {
+      const request = send(
+        {
+          hostname,
+          port: url.port || undefined,
+          path: `${url.pathname}${url.search}`,
+          method: webRequest.method,
+          headers,
+          agent: false,
+          servername: isIP(hostname) === 0 ? hostname : undefined,
+          signal: init?.signal ?? webRequest.signal,
+          maxHeaderSize,
+          // Node may ask for every address (`all`) or one: either way, only
+          // the one checked above.
+          lookup: (_hostname, lookupOptions, callback) => {
+            if (lookupOptions.all) callback(null, [pinned]);
+            else callback(null, pinned.address, pinned.family);
+          },
+        },
+        (response) => {
+          const status = response.statusCode ?? 500;
+          const body =
+            webRequest.method === "HEAD" || BODY_FORBIDDEN_STATUSES.has(status)
+              ? null
+              : (Readable.toWeb(response) as ReadableStream<Uint8Array>);
+          try {
+            resolveResponse(
+              new Response(body, {
+                headers: responseHeaders(response.headers),
+                status,
+                statusText: response.statusMessage,
+              }),
+            );
+          } catch (error) {
+            response.destroy();
+            reject(error);
+          }
+        },
+      );
+      request.once("error", reject);
+      request.end();
+    });
+  };
+}
+
 /** The transport every guarded request goes through, outside tests. */
-export const guardedTransport: GuardedFetch = fetchClientMetadataResource;
+export const guardedTransport: GuardedFetch = createPinnedTransport();
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 

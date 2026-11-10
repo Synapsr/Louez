@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
-import { after, describe, test } from "node:test";
+import { after, before, describe, test } from "node:test";
 
-import { guardedGet, type GuardedFetch, type GuardedGetOptions } from "./guarded-fetch";
+import {
+  MAX_RESPONSE_HEADER_BYTES,
+  createPinnedTransport,
+  guardedGet,
+  type GuardedFetch,
+  type GuardedGetOptions,
+} from "./guarded-fetch";
+import { createLocalHostTransport } from "./testing";
 
 // The deadlines unref their timers, so a hung lookup never keeps a server
 // alive. A test that waits on one needs something else to hold the event loop
@@ -155,5 +162,89 @@ describe("guardedGet", () => {
     settle(new Response(null, { status: 404 }));
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(settled, true);
+  });
+});
+
+describe("the pinned transport", () => {
+  // Cursor's metadata document, served as cursor.com serves it: with a long
+  // content security policy (12.9 KB of its 13.6 KB of headers, 2026-11-10).
+  const DOCUMENT = {
+    client_id: "https://cursor.com/oauth/mcp-client.json",
+    client_name: "Cursor",
+    redirect_uris: ["https://www.cursor.com/agents/mcp/oauth/callback"],
+    token_endpoint_auth_method: "none",
+  };
+  const servedWithHeaders = (bytes: number) =>
+    `https://cursor.com/oauth/mcp-client.json?h=${bytes}`;
+  let local: Awaited<ReturnType<typeof createLocalHostTransport>>;
+
+  before(async () => {
+    local = await createLocalHostTransport((request, response) => {
+      const bytes = Number(new URL(request.url ?? "/", "http://local").searchParams.get("h"));
+      response.writeHead(200, {
+        "content-type": "application/json",
+        "content-security-policy": `default-src 'self'; ${"x".repeat(bytes)}`,
+      });
+      response.end(JSON.stringify(DOCUMENT));
+    });
+  });
+  after(() => local.close());
+
+  test("reads a document whose headers pass Node's 16 KiB default", async () => {
+    const url = servedWithHeaders(20 * 1024);
+    const response = await local.transport()(url, { headers: { accept: "application/json" } });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), DOCUMENT);
+
+    const read = await guardedGet(url, {
+      accept: "application/json",
+      maxBytes: 5120,
+      timeoutMs: 2_000,
+      maxRedirects: 0,
+      fetchResource: local.transport(),
+    });
+    assert.ok(read.ok);
+    assert.deepEqual(JSON.parse(new TextDecoder().decode(read.body)), DOCUMENT);
+
+    // Node's default limit refuses the same answer.
+    await assert.rejects(async () => local.transport({ maxHeaderSize: 16 * 1024 })(url), {
+      code: "HPE_HEADER_OVERFLOW",
+    });
+  });
+
+  test("refuses headers past its limit, and the guarded GET fails cleanly", async () => {
+    const url = servedWithHeaders(MAX_RESPONSE_HEADER_BYTES + 1024);
+    await assert.rejects(async () => local.transport()(url), { code: "HPE_HEADER_OVERFLOW" });
+    const read = await guardedGet(url, {
+      accept: "application/json",
+      maxBytes: 5120,
+      timeoutMs: 2_000,
+      maxRedirects: 0,
+      fetchResource: local.transport(),
+    });
+    assert.deepEqual(read, { ok: false, reason: "unreachable" });
+  });
+
+  test("keeps its own guards: HTTPS, GET or HEAD, public addresses only", async () => {
+    const privateHost = createPinnedTransport({
+      resolve: async () => [
+        { address: "93.184.215.14", family: 4 },
+        { address: "10.0.0.1", family: 4 },
+      ],
+    });
+    await assert.rejects(async () => privateHost("https://cursor.com/oauth/mcp-client.json"), {
+      message: /public-routable/,
+    });
+    const transport = createPinnedTransport({ resolve: async () => [] });
+    await assert.rejects(async () => transport("http://cursor.com/oauth/mcp-client.json"), {
+      message: /HTTPS/,
+    });
+    await assert.rejects(
+      async () => transport("https://cursor.com/oauth/mcp-client.json", { method: "POST" }),
+      { message: /GET and HEAD/ },
+    );
+    await assert.rejects(async () => transport("https://cursor.com/oauth/mcp-client.json"), {
+      message: /no DNS addresses/,
+    });
   });
 });

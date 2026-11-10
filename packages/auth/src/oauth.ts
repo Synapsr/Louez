@@ -1,5 +1,4 @@
 import { cimd } from "@better-auth/cimd";
-import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import {
   getOAuthProviderState,
@@ -10,6 +9,8 @@ import type { BetterAuthPlugin } from "better-auth";
 import { APIError } from "better-auth/api";
 import { jwt } from "better-auth/plugins";
 import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
+
+import { guardedTransport } from "./guarded-fetch";
 
 /**
  * OAuth for MCP clients (Claude.ai, ChatGPT, Claude Code…): Louez is the
@@ -224,7 +225,7 @@ export function mcpOAuthPlugins(
       ],
     }),
     cimd({
-      fetchClientMetadataResource: options.fetchClientMetadata ?? fetchClientMetadataResource,
+      fetchClientMetadataResource: options.fetchClientMetadata ?? guardedTransport,
       metadataProfile: "mcp-2026-07-28",
     }),
   ];

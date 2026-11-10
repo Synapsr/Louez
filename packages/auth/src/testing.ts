@@ -1,5 +1,8 @@
 import { SignJWT, exportJWK, generateKeyPair } from "jose";
+import { createServer, request, type RequestListener } from "node:http";
+import type { AddressInfo } from "node:net";
 
+import { createPinnedTransport, type PinnedTransportOptions } from "./guarded-fetch";
 import { GRANT_CLAIM, createAccessTokenVerifier } from "./oauth";
 
 /**
@@ -45,4 +48,28 @@ export async function createTestAccessTokens(options: { issuer: string; audience
   };
 
   return { sign, verify };
+}
+
+/**
+ * A local server standing in for every public host, and the guarded transport
+ * pointed at it: each hostname resolves to it, over plain HTTP. The rest of
+ * the transport is the real one, its header limit (`maxHeaderSize`) included.
+ */
+export async function createLocalHostTransport(handler: RequestListener) {
+  const server = createServer(handler);
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  const transport = (options: Pick<PinnedTransportOptions, "maxHeaderSize"> = {}) =>
+    createPinnedTransport({
+      ...options,
+      resolve: async () => [{ address: "127.0.0.1", family: 4 }],
+      isAllowedAddress: () => true,
+      send: (requestOptions, onResponse) => request({ ...requestOptions, port }, onResponse),
+    });
+  const close = () =>
+    new Promise<void>((resolve) => {
+      server.closeAllConnections();
+      server.close(() => resolve());
+    });
+  return { transport, close };
 }
