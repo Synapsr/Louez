@@ -117,10 +117,11 @@ const FRAME = /^\s+at /;
 
 /**
  * What a code may look like to be sent: `INTERNAL_SERVER_ERROR`,
- * `ER_DUP_ENTRY`, `ECONNREFUSED`, a SQLSTATE. Anything else (a code a
- * provider filled with text, a token) is dropped, never sanitized and sent.
+ * `ER_DUP_ENTRY`, Stripe's `card_declined`, a SQLSTATE. Anything else (a
+ * code a provider filled with text, a token after a space) is dropped,
+ * never sanitized and sent.
  */
-const SAFE_CODE = /^[A-Z0-9_.-]{1,64}$/;
+const SAFE_CODE = /^[A-Za-z0-9_.-]{1,64}$/;
 
 /** `value` when it is a code `SAFE_CODE` allows, else undefined. */
 export function safeErrorCode(value: unknown): string | undefined {

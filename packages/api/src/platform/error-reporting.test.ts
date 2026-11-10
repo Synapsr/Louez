@@ -195,7 +195,8 @@ describe("nested and coded errors", () => {
     assert.equal(safeErrorCode("ER_DUP_ENTRY"), "ER_DUP_ENTRY");
     assert.equal(safeErrorCode(1452), "1452");
     assert.equal(safeErrorCode("23505"), "23505");
-    for (const code of ["Bearer private-code-canary", "card_declined", "", "A".repeat(65), {}]) {
+    assert.equal(safeErrorCode("card_declined"), "card_declined");
+    for (const code of ["Bearer private-code-canary", "a b", "", "A".repeat(65), {}]) {
       assert.equal(safeErrorCode(code), undefined, String(code));
     }
     const coded = Object.assign(new Error("boom"), { code: "Bearer private-code-canary" });

@@ -26,7 +26,7 @@ A 5xx oRPC error that wraps another stands for its cause: `toORPCError` (`packag
 
 ### What goes with an error
 
-A **copy** of the error: its name, its message, its stack frames, and up to two levels of `cause`. Never the error object itself, whose properties may hold a request or a payload. The message and every frame go through the sanitizer; a validation error (Zod's `issues`), at any level of the cause chain, is sent as its issue codes and paths, never the values its message quotes. A code is sent only in its own format (`[A-Z0-9_.-]`, 64 characters at most: `ER_DUP_ENTRY`, `ECONNREFUSED`, a SQLSTATE); any other is dropped. Messages are cut at 1,000 characters, stacks at 30 frames.
+A **copy** of the error: its name, its message, its stack frames, and up to two levels of `cause`. Never the error object itself, whose properties may hold a request or a payload. The message and every frame go through the sanitizer; a validation error (Zod's `issues`), at any level of the cause chain, is sent as its issue codes and paths, never the values its message quotes. A code is sent only in its own format (`[A-Za-z0-9_.-]`, 64 characters at most: `ER_DUP_ENTRY`, Stripe's `card_declined`, a SQLSTATE; never a space); any other is dropped. Messages are cut at 1,000 characters, stacks at 30 frames.
 
 The context is a fixed list of names and ids, nothing a caller sent:
 
