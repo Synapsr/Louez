@@ -3,7 +3,6 @@ import { SUPPORTED_COUNTRIES, SUPPORTED_CURRENCY_CODES } from "@louez/utils";
 import { z } from "zod";
 
 import { apiError } from "../platform/errors";
-import { handoffLinkSchema } from "./handoffs";
 import { resourceLinksSchema } from "./links";
 
 /**
@@ -176,22 +175,13 @@ export const createStoreOutput = z.object({
 });
 
 /**
- * stores_create for an agent that hands the store's creation to the user
- * (ChatGPT): the link where the user creates it in Louez, and what comes next.
- * No store yet, and nothing about what Louez charges.
+ * What an agent that may not create stores (ChatGPT: `stores` withheld by
+ * its directory) tells a user with none: no link, no onboarding URL.
  */
-export const createStoreByLinkOutput = handoffLinkSchema.extend({
-  nextSteps: z.array(z.string()),
-});
+export const NO_STORE_ASK_USER =
+  "This user has no store yet. Ask them to create it in Louez, then continue here.";
 
 export const storeErrors = {
-  /** An agent whose directory has the user create stores (ChatGPT) reached stores.create itself. */
-  createdByLink: () =>
-    apiError("FORBIDDEN", "STORE_CREATED_BY_USER", {
-      message:
-        "This agent does not create stores itself: stores_create gives a link where the user creates the store in Louez.",
-      i18nKey: "errors.permissionDenied",
-    }),
   slugTaken: (slug: string, suggestions: string[]) =>
     apiError("CONFLICT", "STORE_SLUG_TAKEN", {
       message: `The web address "${slug}" is taken. Pick another one${suggestions.length > 0 ? `, such as ${suggestions.join(", ")}` : ""}.`,

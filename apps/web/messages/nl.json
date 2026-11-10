@@ -9669,11 +9669,6 @@
         "title": "Uw factuurkaart toevoegen",
         "description": "Uw AI-agent vraagt u de kaart toe te voegen waarop Louez zijn kosten voor “{store}” afschrijft. U voert die in op de beveiligde pagina van Stripe.",
         "continue": "Verder naar Stripe"
-      },
-      "store_creation": {
-        "title": "Uw winkel aanmaken",
-        "description": "Uw AI-agent stelde een nieuwe winkel voor, ‘{store}’. U controleert de gegevens in Louez en maakt hem daar aan; er wordt niets aangemaakt voordat u dat doet.",
-        "continue": "Verder naar Louez"
       }
     },
     "retry": "Stripe heeft niet geantwoord. Probeer het zo meteen opnieuw.",

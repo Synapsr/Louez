@@ -21,21 +21,6 @@ export function isOpenAiClient(client: { clientId: string; name: string | null }
   );
 }
 
-/**
- * The directory whose rules a client follows, beyond what it is withheld:
- * `openai` for ChatGPT and Codex. A tool may have a variant for a directory
- * (`meta.mcp.directory`), served to its clients under the same name, such as
- * stores_create handing the store's creation to the user.
- */
-export type AgentDirectory = "openai";
-
-export function agentDirectoryOf(client: {
-  clientId: string;
-  name: string | null;
-}): AgentDirectory | null {
-  return isOpenAiClient(client) ? "openai" : null;
-}
-
 /** What a client never reaches, nor sees offered: its domains and its bundles. */
 export interface ClientWithholding {
   domains: readonly ApiDomain[];
@@ -52,11 +37,15 @@ export interface ClientWithholding {
  * "Commerce and monetization") forbid selling digital services, displaying
  * subscription plans, initiating subscriptions and linking to a checkout or
  * transactional page. Louez's billing tools read the store's Louez plan and
- * fees and open the Checkout of the card Louez charges them on: an OpenAI
- * client neither sees nor calls them, and the user manages billing in Louez.
+ * fees and open the Checkout of the card Louez charges them on, and a new
+ * store starts a billing relationship with Louez (stores_create, the only
+ * procedure of the `stores` domain an agent reaches): an OpenAI client
+ * neither sees nor calls them. The user manages billing and creates stores
+ * in Louez (product owner's decision, 2026-11-10: no store creation from
+ * ChatGPT, not even through a link).
  */
 const OPENAI_WITHHOLDING: ClientWithholding = {
-  domains: ["billing"],
+  domains: ["billing", "stores"],
   bundles: ["billing"],
   purchases: true,
 };

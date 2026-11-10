@@ -1,4 +1,5 @@
 import { JOB_WAIT_SECONDS_MAX } from "@louez/api/contracts/jobs";
+import { NO_STORE_ASK_USER } from "@louez/api/contracts/stores";
 import { agentConnectionsLinks } from "@louez/api/platform/links";
 import type { McpBundle } from "@louez/api/platform/meta";
 import { accountRefusal } from "@louez/api/platform/permissions";
@@ -30,6 +31,9 @@ const INBOX_HELP =
 const handoffHelp = (billing: boolean) =>
   `Some steps only the user can take (Stripe's identity checks${billing ? ", a billing card" : ""}): their tool returns a link for the user to open, as it is, in their own browser. handoffs_get with its id then says where the step stands, so the user need not report back; while they are on it, a call every minute or so is enough, and inbox_list also shows a step still waiting. While it answers \`confirming: true\` (the user is back, the provider has not confirmed yet), handoffs_refresh asks the provider again. Calling the same tool again replaces an expired or failed link. Once Stripe's onboarding completes, or when the user says Stripe asked them for something, payments_sync_stripe_status says whether charges are enabled${billing ? "; once a card is added, billing_get_status shows it" : ""}.`;
 
+/** The new store's address check, for a client that creates stores. */
+const STORE_SLUG_HELP = "stores_check_slug_availability before stores_create, ";
+
 /**
  * How the tools chain. Tool descriptions say what each tool does and never
  * tell the agent to call another one (the Claude directory's rule): the order
@@ -38,7 +42,7 @@ const handoffHelp = (billing: boolean) =>
 const CHAINING_HELP = [
   "To change a product, read it with products_get and send the fields to change to products_update; a product's units, with their ids, are in products_get.",
   "To give a category, a product or the storefront an image: the domain's *_create_image_upload, then the file sent as its upload says, then *_complete_image_upload with the key; set the url it returns on the record.",
-  "Check a web address before you use it: stores_check_slug_availability before stores_create, online_store_check_slug_availability before online_store_update_slug.",
+  `Check a web address before you use it: ${STORE_SLUG_HELP}online_store_check_slug_availability before online_store_update_slug.`,
   "A variant still used by products: products_get_variant_usage, then products_withdraw_variant, before products_delete_variant.",
   "The store's legal identity: settings_search_company_registry, show the matches to the user, then settings_update_legal_profile with the one they pick (ask them for it when the registry does not answer).",
   "The legal texts: you may draft the terms and the legal notice from the store's data (settings_get, settings_get_legal_profile, the products) and the user's answers to what it lacks (such as the publication director); show the draft to the user and save it with settings_update_legal once they agree. stores_get_launch_checklist says what the law asks of the store's country.",
@@ -79,15 +83,16 @@ export function serverInstructions(
 ): string {
   const mayCreateStores =
     accountRefusal(ctx.actor.credential, { domain: "stores", level: "write" }) === null;
-  // ChatGPT's stores_create hands the store's creation to the user (a link).
-  const byLink = ctx.actor.credential.agentDirectory === "openai";
+
+  // ChatGPT creates no store (its directory withholds `stores`): the user does, in Louez.
+  const createdByUser = ctx.actor.credential.withheld?.domains.includes("stores") === true;
 
   let stores: string;
-  if (ctx.noStore) {
+  if (ctx.noStore && createdByUser) {
+    stores = NO_STORE_ASK_USER;
+  } else if (ctx.noStore) {
     stores = mayCreateStores
-      ? byLink
-        ? "This account has no store yet: stores_create gives a link where the user creates one in Louez."
-        : "This account has no store yet: stores_create makes one."
+      ? "This account has no store yet: stores_create makes one."
       : "This connection reaches no store yet: the user creates one in Louez.";
   } else if (ctx.multiStore) {
     stores =
@@ -102,12 +107,11 @@ export function serverInstructions(
     CONFIRMATION_ESSENTIAL,
   ];
 
-  if (ctx.noStore) {
+  // With no store and none to create, the essentials say it all: no URL to give.
+  if (ctx.noStore && !createdByUser) {
     lines.push(
       mayCreateStores
-        ? byLink
-          ? `To start one: stores_create with what the user wants (name, web address, country, currency) gives a link to give them; they create the store in Louez from it. handoffs_get with its id says when it is done, and its storeId names the new store, to pass as storeId to the other tools. ${LAUNCH_HELP}`
-          : `To start one: stores_check_slug_availability for its web address, then stores_create. Pass the new store's id as storeId to the other tools. ${LAUNCH_HELP}`
+        ? `To start one: stores_check_slug_availability for its web address, then stores_create. Pass the new store's id as storeId to the other tools. ${LAUNCH_HELP}`
         : "The user creates a store in Louez, or connects this agent again with “Read and edit” rights on all their stores, so that it can create one with stores_create.",
     );
   } else if (ctx.multiStore && ctx.storeChosen) {
@@ -121,9 +125,7 @@ export function serverInstructions(
   if (offline) lines.push(`This store is not online yet. ${LAUNCH_HELP}`);
   if (!ctx.noStore && mayCreateStores) {
     lines.push(
-      byLink
-        ? "To start another store: stores_create gives the user a link to create it in Louez, and handoffs_get names it once created."
-        : `To start another store for the user: stores_create.${offline ? "" : ` ${LAUNCH_HELP}`}`,
+      `To start another store for the user: stores_create.${offline ? "" : ` ${LAUNCH_HELP}`}`,
     );
   }
 
@@ -150,7 +152,7 @@ export function serverInstructions(
 
   lines.push(
     "Records come with `links`: absolute URLs to their page in the Louez dashboard and, when the public can see it, on the store's online store. When the user wants to see or open something, give them these URLs as they are. Without a link, name the record instead.",
-    CHAINING_HELP,
+    createdByUser ? CHAINING_HELP.replace(STORE_SLUG_HELP, "") : CHAINING_HELP,
   );
   return lines.join("\n");
 }

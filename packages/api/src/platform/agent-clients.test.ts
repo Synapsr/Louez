@@ -11,7 +11,7 @@ test("OpenAI's clients are told apart by their metadata document or their name",
   ]) {
     assert.equal(isOpenAiClient(client), true, JSON.stringify(client));
     assert.deepEqual(clientWithholding(client), {
-      domains: ["billing"],
+      domains: ["billing", "stores"],
       bundles: ["billing"],
       purchases: true,
     });

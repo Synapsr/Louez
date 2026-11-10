@@ -4489,47 +4489,16 @@ export type ApiHandoffKind =
   | "stripe_connect_onboarding"
   | "stripe_dashboard"
   | "billing_card_setup"
-  | "team_invitation"
-  | "store_creation";
+  | "team_invitation";
 
-/** The invitation an owner approves (`team_invitation`). */
-export interface ApiTeamInvitationPayload {
+/** What a handoff carries for its page, by kind: the invitation an owner approves. */
+export interface ApiHandoffPayload {
   /** The address to invite, normalized (trimmed, lowercase). */
   email: string;
   role: "member";
   /** The address had a Louez account when the agent asked: approving adds them at once. */
   joinsAtOnce: boolean;
 }
-
-/** The store an agent proposed, which the user creates in Louez (`store_creation`). */
-export interface ApiStoreCreationPayload {
-  store: {
-    name: string;
-    slug: string;
-    country: string;
-    currency: string;
-    address?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-    email?: string | null;
-    phone?: string | null;
-  };
-  /** The store the user created from it, once the step completed. */
-  createdStoreId?: string;
-}
-
-/** What a handoff carries for its page, by kind. */
-export type ApiHandoffPayload = ApiTeamInvitationPayload | ApiStoreCreationPayload;
-
-/** The invitation a `team_invitation` handoff carries. */
-export const isTeamInvitationPayload = (
-  payload: ApiHandoffPayload | null,
-): payload is ApiTeamInvitationPayload => payload !== null && "email" in payload;
-
-/** The proposal a `store_creation` handoff carries. */
-export const isStoreCreationPayload = (
-  payload: ApiHandoffPayload | null,
-): payload is ApiStoreCreationPayload => payload !== null && "store" in payload;
 
 /**
  * A step only the human can take (Stripe identity checks, a billing card),
@@ -4541,9 +4510,7 @@ export const isStoreCreationPayload = (
  * handoff (pending or opened) per store, kind and subject: `active_slot` is 1
  * while it is, null after, so the unique key holds only the active one. The
  * subject is empty for a store-wide step (Stripe, the billing card) and names
- * what the step is about otherwise (a team invitation: its address's hash). A
- * step of the account, before any store (`store_creation`), has an empty
- * `store_id` and its user as its subject: one active per user.
+ * what the step is about otherwise (a team invitation: its address's hash).
  */
 export const apiHandoffs = mysqlTable(
   "api_handoffs",

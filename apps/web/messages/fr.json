@@ -9669,11 +9669,6 @@
         "title": "Ajouter votre carte de facturation",
         "description": "Votre agent IA vous demande d’ajouter la carte sur laquelle Louez prélève ses frais pour « {store} ». Vous la saisirez sur la page sécurisée de Stripe.",
         "continue": "Continuer vers Stripe"
-      },
-      "store_creation": {
-        "title": "Créer votre boutique",
-        "description": "Votre agent IA a proposé une nouvelle boutique, « {store} ». Vous allez vérifier ses informations dans Louez et la créer vous-même ; rien n’est créé avant.",
-        "continue": "Continuer vers Louez"
       }
     },
     "retry": "Stripe n’a pas répondu. Réessayez dans un instant.",

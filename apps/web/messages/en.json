@@ -9669,11 +9669,6 @@
         "title": "Add your billing card",
         "description": "Your AI agent asked you to add the card Louez charges its fees on for “{store}”. You will type it on Stripe’s secure page.",
         "continue": "Continue to Stripe"
-      },
-      "store_creation": {
-        "title": "Create your store",
-        "description": "Your AI agent proposed a new store, “{store}”. You will check its details in Louez and create it there; nothing is created until you do.",
-        "continue": "Continue to Louez"
       }
     },
     "retry": "Stripe did not answer. Try again in a moment.",

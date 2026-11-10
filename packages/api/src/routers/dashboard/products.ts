@@ -30,7 +30,6 @@ import {
   updateProductStatusOutput,
   updateSeasonalPricingInput,
   useImageVersionInput,
-  type Product,
 } from "../../contracts/products";
 import { jobSchema, JOB_WAIT_SECONDS_MAX } from "../../contracts/jobs";
 import {

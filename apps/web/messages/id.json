@@ -9669,11 +9669,6 @@
         "title": "Tambahkan kartu penagihan Anda",
         "description": "Agen AI Anda meminta Anda menambahkan kartu yang digunakan Louez untuk menagih biayanya untuk “{store}”. Anda akan memasukkannya di halaman aman Stripe.",
         "continue": "Lanjut ke Stripe"
-      },
-      "store_creation": {
-        "title": "Buat toko Anda",
-        "description": "Agen AI Anda mengusulkan toko baru, “{store}”. Anda akan memeriksa detailnya di Louez dan membuatnya di sana; tidak ada yang dibuat sebelum itu.",
-        "continue": "Lanjut ke Louez"
       }
     },
     "retry": "Stripe tidak merespons. Coba lagi sebentar lagi.",

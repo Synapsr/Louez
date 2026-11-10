@@ -9669,11 +9669,6 @@
         "title": "Ihre Abrechnungskarte hinzufügen",
         "description": "Ihr KI-Agent bittet Sie, die Karte hinzuzufügen, über die Louez seine Gebühren für „{store}“ abbucht. Sie geben sie auf der sicheren Seite von Stripe ein.",
         "continue": "Weiter zu Stripe"
-      },
-      "store_creation": {
-        "title": "Ihren Shop erstellen",
-        "description": "Ihr KI-Agent hat einen neuen Shop vorgeschlagen, „{store}“. Sie prüfen seine Angaben in Louez und erstellen ihn dort; vorher wird nichts erstellt.",
-        "continue": "Weiter zu Louez"
       }
     },
     "retry": "Stripe hat nicht geantwortet. Versuchen Sie es gleich noch einmal.",

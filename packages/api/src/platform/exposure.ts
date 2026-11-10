@@ -97,7 +97,6 @@ export const EXPOSED_PROCEDURES: readonly string[] = [
   "dashboard.stores.list",
   "dashboard.stores.checkSlugAvailability",
   "dashboard.stores.create",
-  "dashboard.stores.createByLink",
   "dashboard.stores.getLaunchChecklist",
   "dashboard.stores.completeOnboarding",
   "dashboard.inbox.list",
@@ -138,10 +137,7 @@ export interface ExposedProcedure {
 /** What the transports serve: the list, and the same procedures as a router. */
 export interface Exposure {
   procedures: readonly ExposedProcedure[];
-  /**
-   * Only the exposed procedures, at their paths, with their OpenAPI
-   * documentation; a directory's variant of a tool (`meta.mcp.directory`) left out.
-   */
+  /** Only the exposed procedures, at their paths, with their OpenAPI documentation. */
   router: AnyRouter;
 }
 
@@ -316,10 +312,8 @@ export function createExposure(
       continue;
     }
     const meta = node["~orpc"].meta as ExposedMeta;
-    // A directory's variant shares its tool's name, once per directory.
-    const toolKey = `${meta.mcp.directory ?? ""}:${meta.mcp.name}`;
-    if (names.has(toolKey)) problems.push(`${path}: tool name ${meta.mcp.name} is taken`);
-    names.add(toolKey);
+    if (names.has(meta.mcp.name)) problems.push(`${path}: tool name ${meta.mcp.name} is taken`);
+    names.add(meta.mcp.name);
     const [, inputJsonSchema] = jsonSchemaConverter.convert(node["~orpc"].inputSchema, {
       strategy: "input",
     });
@@ -340,10 +334,8 @@ export function createExposure(
     );
   }
 
-  // A directory's variant is an MCP tool only (`meta.mcp.directory`).
   const served: Record<string, unknown> = {};
-  for (const { path, procedure, meta } of procedures) {
-    if (meta.mcp.directory) continue;
+  for (const { path, procedure } of procedures) {
     const segments = path.split(".");
     let node = served;
     for (const segment of segments.slice(0, -1)) {

@@ -1,31 +1,24 @@
 import {
   HANDOFF_TTL_HOURS,
-  completeStoreCreationInput,
-  completeStoreCreationOutput,
   getHandoffInput,
   getHandoffOutput,
   refreshHandoffInput,
   refreshHandoffOutput,
-  handoffErrors,
   type HandoffKind,
   type HandoffLink,
 } from "../../contracts/handoffs";
-import { ACCOUNT_SCOPE, resolveStoreActor, type AccountActor } from "../../platform/actor";
 import { platformErrors } from "../../platform/errors";
 import { allows } from "../../platform/permissions";
-import type { ApiPorts } from "../../platform/ports";
-import { accountProcedure, missingTransport, storeProcedure } from "../../platform/procedures";
+import { storeProcedure } from "../../platform/procedures";
 import {
   HANDOFF_CHECK_LEASE_SECONDS,
   HANDOFF_KIND_DOMAINS,
-  completeStoreCreation,
-  findHandoffRow,
   getHandoffRow,
   handoffView,
   issueHandoff,
   settlePendingCardSetup,
 } from "../../services/handoffs";
-import type { ProductContext } from "./product-context";
+import { mayRead, type ProductContext } from "./product-context";
 
 /**
  * Handoffs, on every transport: `handoffs_get` on MCP, `/api/v1/handoffs/{id}`
@@ -57,48 +50,15 @@ export function startHandoff(context: ProductContext, kind: HandoffKind): Promis
   );
 }
 
-/**
- * The store a handoff of a store belongs to, as the caller may read it: the
- * connection reaches it, the member's role cut down to the connection's
- * scopes reads the step's domain, and its plan has API access (a key or a
- * token), as a store procedure checks. A store it does not reach is
- * HANDOFF_NOT_FOUND, as for an id that does not exist.
- */
-async function readableStore(
-  context: { actor: AccountActor; headers: Headers; ports?: ApiPorts },
-  row: { id: string; storeId: string; kind: HandoffKind },
-) {
-  let actor;
-  try {
-    actor = await resolveStoreActor(context.actor, {
-      headers: context.headers,
-      requestedStoreId: row.storeId,
-    });
-  } catch {
-    throw handoffErrors.notFound(row.id);
-  }
-  const domain = HANDOFF_KIND_DOMAINS[row.kind];
-  if (!allows(actor.role, actor.credential.scopes, { domain, level: "read" })) {
-    throw platformErrors.permissionDenied(`${domain}:read`);
-  }
-  if (actor.credential.kind !== "session") {
-    const features = await context.ports?.planFeatures(row.storeId);
-    if (!features?.apiAccess) throw platformErrors.apiAccessNotInPlan();
-  }
-  return { id: row.storeId };
-}
-
-// An account procedure: a store's creation handed to the user belongs to no
-// store yet, and a connection with none reads it too. A store's step checks
-// the store as a store procedure does (`readableStore`).
-const get = accountProcedure
+const get = storeProcedure
   .meta({
-    account: true,
     capability: "handoffs.get",
+    // Opened by any domain a kind belongs to; the handler checks the step's own.
+    scope: { domain: "settings", level: "read", anyOf: ["billing", "team"] },
     mcp: {
       name: "handoffs_get",
       title: "Get Handoff Status",
-      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page, or creating the store), completed, expired (the link ran out; the tool that started it makes a new one) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status), and a store the user created is in \`storeId\`. Never returns the link again. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval; a store's creation is read by the connection's own user.`,
+      description: `Where a step handed to the user stands: pending (the link is waiting), opened (the user is on the provider's page), completed, expired (the link ran out; the tool that started it makes a new one) or failed (with why). Takes the handoff's id, as the tool that started it returned it. It only reads: \`confirming\` is true while the user is back and the provider has not confirmed the step yet, which handoffs_refresh asks again. Once completed, the result is where the step leads (payments_sync_stripe_status, billing_get_status). Never returns the link again. Needs read access to the step's domain: settings for Stripe, billing for the billing card, team for a team invitation's approval.`,
       bundle: "daily",
       annotations: { idempotentHint: true },
     },
@@ -107,41 +67,11 @@ const get = accountProcedure
   .input(getHandoffInput)
   .output(getHandoffOutput)
   .handler(async ({ context, input }) => {
-    const row = await findHandoffRow(input.id);
-    const { ports } = context;
-    if (!ports) throw missingTransport();
-    const { urls } = ports;
-    if (row.storeId === ACCOUNT_SCOPE) {
-      // The account's own step: only its user reads it.
-      if (row.subject !== context.actor.credential.userId) {
-        throw handoffErrors.notFound(input.id);
-      }
-      return handoffView(row, { now: new Date(), urls, store: null });
-    }
-    const store = await readableStore(context, row);
-    return handoffView(row, { now: new Date(), urls, store });
+    let row = await getHandoffRow(context.actor.storeId, input.id);
+    const domain = HANDOFF_KIND_DOMAINS[row.kind];
+    if (!mayRead(context, domain)) throw platformErrors.permissionDenied(`${domain}:read`);
+    return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
   });
-
-/**
- * The dashboard's store creation, opened from a store creation an agent
- * handed to the user (`/onboarding?handoff=`), completes that step with the
- * store it created: the agent reads its id with handoffs_get. A session of
- * the step's user only; a store they do not own, or a step finished or
- * replaced, changes nothing.
- */
-const completeStoreCreationProcedure = accountProcedure
-  .meta({
-    account: true,
-    actors: ["session"],
-    capability: "handoffs.completeStoreCreation",
-    scope: { domain: "stores", level: "write" },
-    mcp: { exclude: "the dashboard completes a store creation it was handed, once the store exists" },
-  })
-  .input(completeStoreCreationInput)
-  .output(completeStoreCreationOutput)
-  .handler(async ({ context, input }) => ({
-    completed: await completeStoreCreation(input.id, context.actor.credential.userId, input.storeId),
-  }));
 
 /** Settling a step saves what the user did there: the right to change its domain. */
 const REFRESH_SCOPE = {
@@ -178,8 +108,4 @@ const refresh = storeProcedure
     return handoffView(row, { now: new Date(), urls: context.ports.urls, store: context.store });
   });
 
-export const dashboardHandoffsRouter = {
-  get,
-  refresh,
-  completeStoreCreation: completeStoreCreationProcedure,
-};
+export const dashboardHandoffsRouter = { get, refresh };

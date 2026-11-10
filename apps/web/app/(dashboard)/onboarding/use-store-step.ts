@@ -26,34 +26,12 @@ import { useOnboardingPreview } from "./_lib/preview-context";
 import { useOnboardingDraft } from "./_lib/use-onboarding-draft";
 import { useStepNavigation } from "./_lib/use-step-navigation";
 
-/**
- * A store an agent proposed (ChatGPT's stores_create) and handed to the user:
- * the form starts from it, and the store created completes the handoff, so
- * the agent reads the new store's id.
- */
-export interface HandedOverStore {
-  /** The handoff's id. */
-  id: string;
-  store: {
-    name: string;
-    slug: string;
-    country: string;
-    currency: string;
-    address?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-    email?: string | null;
-    phone?: string | null;
-  };
-}
-
 interface UseStoreStepParams {
   editingStoreId: string | null;
   /** The signed-in user's email, reported to Klibon (reportAffiliateSignup). */
   accountEmail: string;
   initialCountry: string;
   shouldDetectBrowserCountry: boolean;
-  handedOver: HandedOverStore | null;
 }
 
 export const useStoreStep = ({
@@ -61,7 +39,6 @@ export const useStoreStep = ({
   accountEmail,
   initialCountry,
   shouldDetectBrowserCountry,
-  handedOver,
 }: UseStoreStepParams) => {
   const { goToNextStep, isNavigating } = useStepNavigation("/onboarding/branding");
   const tErrors = useTranslations("errors");
@@ -74,20 +51,9 @@ export const useStoreStep = ({
   // Each answer makes its store the active one.
   const saveInfo = useMutation(orpc.dashboard.stores.updateOnboardingInfo.mutationOptions());
   const createStore = useMutation(orpc.dashboard.stores.create.mutationOptions());
-  const completeHandoff = useMutation(
-    orpc.dashboard.handoffs.completeStoreCreation.mutationOptions(),
-  );
   // The owner's save of their store tells Klibon an account signed up (a no-op for a
   // visitor no affiliate sent).
   const saveStore = async (value: StoreInfoInput) => {
-    // A store handed over by an agent is a new one: created, then the agent's
-    // handoff completes with it.
-    if (handedOver) {
-      const created = await createStore.mutateAsync(value);
-      await completeHandoff.mutateAsync({ id: handedOver.id, storeId: created.id });
-      reportAffiliateSignup(accountEmail);
-      return;
-    }
     const saved = await saveInfo.mutateAsync({ ...value, storeId: editingStoreId });
     if (saved.id === null) await createStore.mutateAsync(value);
     if (saved.id === null || saved.ownerSaved) reportAffiliateSignup(accountEmail);
@@ -116,15 +82,15 @@ export const useStoreStep = ({
 
   const form = useAppForm({
     defaultValues: {
-      name: handedOver?.store.name ?? "",
-      slug: handedOver?.store.slug ?? "",
+      name: "",
+      slug: "",
       country: initialCountry,
-      currency: handedOver?.store.currency ?? String(getDefaultCurrencyForCountry(initialCountry)),
-      address: handedOver?.store.address ?? "",
-      latitude: (handedOver?.store.latitude ?? null) as number | null,
-      longitude: (handedOver?.store.longitude ?? null) as number | null,
-      email: handedOver?.store.email ?? "",
-      phone: handedOver?.store.phone ?? "",
+      currency: String(getDefaultCurrencyForCountry(initialCountry)),
+      address: "",
+      latitude: null as number | null,
+      longitude: null as number | null,
+      email: "",
+      phone: "",
     },
     validationLogic: revalidateLogic({
       mode: "submit",

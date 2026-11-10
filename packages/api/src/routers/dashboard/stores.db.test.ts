@@ -469,17 +469,6 @@ describe(
       assert.equal(agentRow?.referredByStoreId, null);
     });
 
-    test("the link to create a store is ChatGPT's only: a session or another agent creates it directly", async () => {
-      const proposal = { name: "Link only", slug: "link-only", country: "FR", currency: "EUR" };
-      await grant();
-      for (const context of [session(), await agent()]) {
-        await rejects(
-          call(stores.createByLink, proposal, context, "createByLink"),
-          "STORE_CREATED_BY_USER",
-        );
-      }
-    });
-
     test("an agent over all stores gets a preview with the terms, then creates the store and sees it", async () => {
       await grant();
       // No store yet: the list is empty, with a hint.

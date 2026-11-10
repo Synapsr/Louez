@@ -164,6 +164,10 @@ export const accountProcedure = authenticated.use(
     const { credential } = actor;
     if (meta.scope) {
       const refusal = accountRefusal(credential, meta.scope);
+      // Withheld by the client's directory first: widening the connection would not help.
+      if (refusal && credential.withheld?.domains.includes(meta.scope.domain)) {
+        throw scopeRefusal(credential, meta.scope);
+      }
       if (refusal === "bound" && credential.kind !== "session") {
         throw platformErrors.connectionBoundToStores(credential.kind);
       }

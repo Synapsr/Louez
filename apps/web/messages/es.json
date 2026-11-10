@@ -9669,11 +9669,6 @@
         "title": "Añadir tu tarjeta de facturación",
         "description": "Tu agente de IA te pide que añadas la tarjeta en la que Louez cobra sus comisiones de «{store}». La introducirás en la página segura de Stripe.",
         "continue": "Continuar a Stripe"
-      },
-      "store_creation": {
-        "title": "Crear su tienda",
-        "description": "Su agente de IA propuso una nueva tienda, «{store}». Revisará sus datos en Louez y la creará allí; no se crea nada hasta entonces.",
-        "continue": "Continuar a Louez"
       }
     },
     "retry": "Stripe no ha respondido. Inténtalo de nuevo en un momento.",

@@ -3,7 +3,6 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { handoffDonePath, handoffPath, readHandoffLink } from "@louez/api/services/handoffs";
-import { isStoreCreationPayload, isTeamInvitationPayload } from "@louez/db";
 import { Button } from "@louez/ui";
 
 import { HandoffCard } from "@/components/handoffs/handoff-card";
@@ -58,7 +57,7 @@ export default async function HandoffPage({
   const { kind, payload } = checked.row;
   const query = await searchParams;
   if (kind === "team_invitation") {
-    if (!isTeamInvitationPayload(payload) || !checked.store) {
+    if (!payload) {
       return (
         <HandoffCard
           title={t("refused.invalid.title")}
@@ -76,13 +75,10 @@ export default async function HandoffPage({
     );
   }
 
-  // A store to create has no store yet: the name the agent proposed.
-  const storeName =
-    checked.store?.name ?? (isStoreCreationPayload(payload) ? payload.store.name : "");
   return (
     <HandoffCard
       title={t(`kinds.${kind}.title`)}
-      description={t(`kinds.${kind}.description`, { store: storeName })}
+      description={t(`kinds.${kind}.description`, { store: checked.store.name })}
       note={query.retry ? t("retry") : null}
     >
       <form method="post" action={`${path}/continue`}>

@@ -1315,8 +1315,6 @@ const HANDOFF_START_TOOLS = {
   stripe_dashboard: "payments_open_stripe_dashboard",
   billing_card_setup: "billing_start_card_setup",
   team_invitation: "team_invite_member",
-  // A step of the account: it belongs to no store's inbox.
-  store_creation: "stores_create",
 } as const;
 
 /**

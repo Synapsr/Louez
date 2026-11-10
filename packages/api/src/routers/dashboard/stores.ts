@@ -7,11 +7,11 @@ import {
 import {
   checkSlugAvailabilityInput,
   checkSlugAvailabilityOutput,
-  createStoreByLinkOutput,
   createStoreInput,
   createStoreOutput,
   listStoresInput,
   listStoresOutput,
+  NO_STORE_ASK_USER,
   storeErrors,
   STORE_CREATION_DAILY_LIMIT,
   STORE_PAGE_MAX,
@@ -24,7 +24,6 @@ import { requireConfirmation } from "../../platform/confirmation";
 import { storeLinks } from "../../platform/links";
 import { accountRefusal, type ProcedureScope } from "../../platform/permissions";
 import { accountProcedure, missingTransport, storeProcedure } from "../../platform/procedures";
-import { issueAccountHandoff } from "../../services/handoffs";
 import { getLaunchChecklist, goLive, type GoLivePreview } from "../../services/launch";
 import {
   assertInstanceTakesAStore,
@@ -86,15 +85,20 @@ const list = accountProcedure
       links: storeLinks(ports.urls, store),
     }));
     const last = page[page.length - 1];
-    const mayCreate = accountRefusal(context.actor.credential, CREATE_SCOPE) === null;
+    const { credential } = context.actor;
+    const mayCreate = accountRefusal(credential, CREATE_SCOPE) === null;
+    // An agent whose directory forbids creating stores (ChatGPT) asks the user.
+    const createdByUser = credential.withheld?.domains.includes("stores") === true;
     return {
       items,
       nextCursor: start + limit < all.length && last ? last.id : null,
       ...(all.length === 0
         ? {
-            hint: mayCreate
-              ? "No store yet. Create one with stores_create, after checking its web address with stores_check_slug_availability."
-              : "This connection reaches no store. The user can create one in Louez.",
+            hint: createdByUser
+              ? NO_STORE_ASK_USER
+              : mayCreate
+                ? "No store yet. Create one with stores_create, after checking its web address with stores_check_slug_availability."
+                : "This connection reaches no store. The user can create one in Louez.",
           }
         : {}),
     };
@@ -154,8 +158,6 @@ const create = accountProcedure
     if (!ports) throw missingTransport();
     const { actor } = context;
     const { credential } = actor;
-    // Its directory has the user create stores: its own stores_create gives a link.
-    if (credential.agentDirectory === "openai") throw storeErrors.createdByLink();
 
     // A dashboard request carries how the user arrived (cookies); an agent's
     // carries nothing, so its store is attributed to no one.
@@ -237,61 +239,6 @@ const create = accountProcedure
       pricing: created.pricing,
       nextSteps: NEXT_STEPS,
     };
-  });
-
-/** What an agent does once it handed the store's creation to the user. */
-const BY_LINK_NEXT_STEPS = [
-  "Give the user the url as it is: signed in to Louez, they create the store there, starting from what you proposed, and may change any of it. Nothing is created until they do.",
-  "handoffs_get with handoff.id says where it stands; once completed, its storeId names the new store: pass it as storeId to the other tools to set the store up.",
-  "A link that expired, or another proposal, comes from calling stores_create again: it replaces the link.",
-];
-
-/**
- * stores_create for ChatGPT and Codex (`meta.mcp.directory`): OpenAI's plugin
- * guidelines forbid a plugin to start a subscription or show plans, and a
- * store starts one with Louez. Nothing is created: the user gets a link to
- * the dashboard's own store creation, prefilled with what the agent sent
- * (`store_creation` handoff), and accepts Louez's terms there. The store they
- * create completes the handoff; a connection over all the user's stores (the
- * scope requires one, as stores.create does) reaches it at once. The answer
- * holds the link's secret: never stored, never replayed.
- */
-const createByLink = accountProcedure
-  .meta({
-    capability: "stores.createByLink",
-    account: true,
-    scope: CREATE_SCOPE,
-    secretOutput: true,
-    mcp: {
-      name: "stores_create",
-      title: "Create Store",
-      description:
-        'Propose a new rental store to the user. Nothing is created here: the answer is a link (url) where the user, signed in to Louez, creates the store in the Louez dashboard, starting from what this call sends (name, web address, country, currency, address, contact), which they may change. Returns the url, to give the user as it is, and the handoff: handoffs_get takes its id, and once the user created the store its storeId names it. Calling it again replaces the link. Needs a connection with "Read and edit" rights on all the user\'s stores.',
-      bundle: "daily",
-      effect: "overwrite",
-      directory: "openai",
-    },
-  })
-  .input(createStoreInput)
-  .output(createStoreByLinkOutput)
-  .handler(async ({ context, input }) => {
-    const { ports } = context;
-    if (!ports) throw missingTransport();
-    const { credential } = context.actor;
-    if (credential.agentDirectory !== "openai") throw storeErrors.createdByLink();
-    await assertInstanceTakesAStore(ports.newStores.singleStore());
-    const link = await issueAccountHandoff(
-      {
-        userId: credential.userId,
-        credentialKind: credential.kind,
-        credentialId: credential.id,
-        clientName: credential.clientName,
-      },
-      "store_creation",
-      { store: input },
-      { urls: ports.urls },
-    );
-    return { ...link, nextSteps: BY_LINK_NEXT_STEPS };
   });
 
 /** Cookies of a dashboard answer: set on the RPC endpoint only, which has the answer's headers. */
@@ -457,7 +404,6 @@ export const dashboardStoresRouter = {
   list,
   checkSlugAvailability,
   create,
-  createByLink,
   updateOnboardingInfo,
   getLaunchChecklist: getLaunchChecklistProcedure,
   completeOnboarding,
