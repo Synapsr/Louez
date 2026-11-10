@@ -18,7 +18,7 @@ import type { ApiDomain, ProcedureScope } from "@louez/api/platform/permissions"
 import { isListed, requirePermission, type McpRequestContext } from "../auth/context";
 import { CONFIRMATION_ARGUMENT, STORE_ARGUMENT } from "../bridge";
 import { addTool } from "../tool-registry";
-import { errorResult } from "./errors";
+import { errorResult, reportToolError } from "./errors";
 
 /**
  * The bundle a hand-written tool is listed in, from its domain: the day's
@@ -168,6 +168,7 @@ export function legacyTool<Shape extends z.ZodRawShape>(
         }
         return await handler(parsed.data);
       } catch (error) {
+        reportToolError(ctx, name, error);
         return errorResult(name, error);
       }
     },

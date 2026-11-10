@@ -8,7 +8,7 @@ import {
 } from "@modelcontextprotocol/server";
 
 import type { McpRequestContext } from "./auth/context";
-import { errorResult } from "./utils/errors";
+import { errorResult, reportToolError } from "./utils/errors";
 
 /** A tool as this server serves it. */
 export interface ServedTool {
@@ -53,6 +53,8 @@ const SIGN_IN_AGAIN_CODES = new Set(["UNAUTHENTICATED", "CREDENTIAL_NOT_ACCEPTED
 
 interface Registry {
   tools: Map<string, ServedTool>;
+  /** The request's context, shared by every tool of this server. */
+  ctx: McpRequestContext;
   /** RFC 9728 metadata of this resource; absent when the instance serves no OAuth. */
   resourceMetadataUrl: string | undefined;
 }
@@ -69,6 +71,7 @@ export function addTool(server: McpServer, ctx: McpRequestContext, tool: ServedT
   if (!registry) {
     const created: Registry = {
       tools: new Map(),
+      ctx,
       resourceMetadataUrl: ctx.resourceMetadataUrl,
     };
     install(server, created);
@@ -136,6 +139,7 @@ function install(server: McpServer, registry: Registry): void {
       result = await tool.call(request.params.arguments ?? {});
     } catch (error) {
       // An error no tool expected: described without its internals.
+      reportToolError(registry.ctx, tool.name, error);
       result = errorResult(tool.name, error);
     }
     // Shapes the result for the protocol revision this request speaks.

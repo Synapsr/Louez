@@ -35,10 +35,13 @@ export function toORPCError(error: unknown) {
 
   console.error('[api][toORPCError] unexpected error', error);
 
+  // The original stays as `cause`, which no transport sends: error tracking
+  // reports the fault itself (platform/error-reporting.ts `rootFault`).
   return new ORPCError('INTERNAL_SERVER_ERROR', {
     message:
       process.env.NODE_ENV === 'production'
         ? 'errors.internalServerError'
         : toDebugErrorMessage(error),
+    cause: error,
   });
 }

@@ -7,6 +7,7 @@ import {
   type ApiEffectSenders,
 } from "@louez/api/platform/effects";
 
+import { reportServerError } from "@/lib/error-tracking";
 import { log } from "@/lib/evlog";
 import { createReservationEffectSenders } from "@/lib/reservations/status-change-effects";
 import { createSmsEffectSenders } from "@/lib/sms/sms-effects";
@@ -36,9 +37,10 @@ export const apiEffectSenders: ApiEffectSenders = {
 export function dispatchApiEffects(ids: readonly string[]): void {
   if (ids.length === 0) return;
   const run = () =>
-    dispatchEffects(ids, apiEffectSenders).catch((error: unknown) =>
-      log.error({ apiEffects: { event: "dispatch_failed", ids, error: String(error) } }),
-    );
+    dispatchEffects(ids, apiEffectSenders, { report: reportServerError }).catch((error: unknown) => {
+      log.error({ apiEffects: { event: "dispatch_failed", ids, error: String(error) } });
+      reportServerError(error, { source: "effects" });
+    });
   try {
     after(run);
   } catch {
@@ -53,7 +55,7 @@ export function dispatchApiEffects(ids: readonly string[]): void {
  * their 30 days, which hold personal data.
  */
 export async function runApiEffectsCron() {
-  const retried = await retryDueEffects(apiEffectSenders);
+  const retried = await retryDueEffects(apiEffectSenders, { report: reportServerError });
   const pruned = await pruneEffects();
   return { ...retried, pruned };
 }

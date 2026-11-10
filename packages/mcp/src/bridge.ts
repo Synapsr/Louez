@@ -1,5 +1,6 @@
 import { CONFIRMATION_HEADER } from "@louez/api/platform/confirmation";
 import type { ExposedProcedure } from "@louez/api/platform/exposure";
+import { reportUnexpectedErrors } from "@louez/api/platform/error-reporting";
 import { apiError } from "@louez/api/platform/errors";
 import { platformErrors } from "@louez/api/platform/errors";
 import { mcpToolAnnotations } from "@louez/api/platform/meta";
@@ -107,6 +108,7 @@ async function callProcedure(
     const output = await call(entry.procedure, input, {
       context: { headers, transport: "mcp", ports: ctx.ports, receipt },
       path: entry.path.split("."),
+      interceptors: [reportUnexpectedErrors],
     });
     // How an agent sees it (a page of a long list), after a run or a replay alike.
     const whole = jsonSafe(output);

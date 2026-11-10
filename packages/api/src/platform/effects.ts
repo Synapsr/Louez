@@ -4,6 +4,7 @@ import { apiEffects, db, reservations, stores, type Transaction } from "@louez/d
 import { and, asc, eq, inArray, like, lt, lte, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
+import type { ReportServerError } from "./error-reporting";
 import type { AgentClient, SetupActor, SetupFacts, StoreSetupSummary } from "./setup-analytics";
 
 /**
@@ -625,6 +626,12 @@ export interface DispatchOptions {
   sendTimeoutMs?: number;
   /** How long a claim holds its row. Tests shorten it. */
   leaseMs?: number;
+  /**
+   * Error tracking, for what fails unexpectedly: a claim or an outcome the
+   * database did not take, a sender that threw. A sender out of time is
+   * left out: its outcome is unknown, and the cron retries it.
+   */
+  report?: ReportServerError;
 }
 
 /**
@@ -645,7 +652,8 @@ export async function dispatchEffects(
     let claimed: Claimed | null;
     try {
       claimed = await claimEffect(id, leaseMs);
-    } catch {
+    } catch (error) {
+      options.report?.(error, { source: "effects" });
       outcome.skipped += 1;
       continue;
     }
@@ -709,11 +717,15 @@ export async function dispatchEffects(
     } catch (error) {
       // Out of time, it may have sent part of it, or all: the outcome is unknown.
       const outcomeUnknown = error instanceof EffectTimeout || controller.signal.aborted;
+      const effect = claimed.type;
+      if (!outcomeUnknown) options.report?.(error, { source: "effects", effect });
       await (
         outcomeUnknown
           ? recordUncertain(id, token, controller.signal.reason ?? error)
           : recordFailure(id, token, claimed.attempts, error)
-      ).catch(() => {});
+      ).catch((recordError: unknown) => {
+        options.report?.(recordError, { source: "effects", effect });
+      });
       outcome.failed += 1;
     } finally {
       clearTimeout(timer);
@@ -750,7 +762,7 @@ export async function retryDueEffects(
   return dispatchEffects(
     due.map((row) => row.id),
     senders,
-    { sendTimeoutMs: options.sendTimeoutMs, leaseMs: options.leaseMs },
+    { sendTimeoutMs: options.sendTimeoutMs, leaseMs: options.leaseMs, report: options.report },
   );
 }
 

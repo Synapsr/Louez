@@ -7,7 +7,8 @@ import { fileURLToPath } from "node:url";
 import { ORPCError } from "@orpc/server";
 
 import { TRANSLATION_KEY_MESSAGES } from "./error-messages";
-import { errorFacts } from "./errors";
+import type { McpRequestContext } from "../auth/context";
+import { errorFacts, reportToolError } from "./errors";
 
 // What a tool says when a procedure fails: never internals, always what to do.
 
@@ -65,5 +66,34 @@ describe("tool errors", () => {
     assert.ok(thrown.size > 20, `only ${thrown.size} keys found`);
     const missing = [...thrown].filter((key) => !(key in TRANSLATION_KEY_MESSAGES)).sort();
     assert.deepEqual(missing, []);
+  });
+});
+
+describe("tool errors in error tracking", () => {
+  const reported: Array<[unknown, Record<string, unknown>]> = [];
+  const ctx = {
+    actor: { storeId: "store_1", credential: { kind: "oauth", directory: "anthropic" } },
+    storeChosen: true,
+    ports: {
+      reportError: (error: unknown, context: Record<string, unknown>) =>
+        reported.push([error, context]),
+    },
+  } as unknown as McpRequestContext;
+
+  test("a hand-written tool's error goes with the tool and the caller, never the store", () => {
+    const boom = new Error("boom");
+    reportToolError(ctx, "record_payment", boom);
+    assert.deepEqual(reported, [
+      [
+        boom,
+        {
+          source: "mcp_tool",
+          transport: "mcp",
+          tool: "record_payment",
+          client: "oauth",
+          directory: "anthropic",
+        },
+      ],
+    ]);
   });
 });

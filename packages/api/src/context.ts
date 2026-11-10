@@ -1,6 +1,7 @@
 import type { StoreSettings } from "@louez/types";
 
 import type { Transport } from "./platform/actor";
+import type { ErrorScope } from "./platform/error-reporting";
 import type { OperationReceipt } from "./platform/operations";
 import type { ApiPorts } from "./platform/ports";
 import type { AvailabilityMemo } from "./services/availability";
@@ -124,6 +125,11 @@ export interface BaseContext {
   ports?: ApiPorts;
   /** Filled with the operation id of a write, for the transport to hand out. */
   receipt?: OperationReceipt;
+  /**
+   * Filled with who calls as the procedure learns it, for error tracking
+   * (`reportUnexpectedErrors` in platform/error-reporting.ts sets it).
+   */
+  errorScope?: ErrorScope;
   /**
    * The answer's headers, on the dashboard's RPC endpoint only (oRPC's
    * response headers plugin): the onboarding's store step sets its cookies.

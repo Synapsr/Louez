@@ -1,4 +1,5 @@
 import { logProviderError } from "@louez/api/platform/sanitize-error";
+import type { McpRequestContext } from "../auth/context";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { ORPCError } from "@orpc/server";
 
@@ -117,4 +118,20 @@ export function errorResult(tool: string, error: unknown): CallToolResult {
     structuredContent: { error: facts },
     isError: true,
   };
+}
+
+/**
+ * Sends a hand-written tool's error to error tracking (`ports.reportError`,
+ * which drops what is expected). A procedure's errors are reported by
+ * `reportUnexpectedErrors` in its `call()`, never here.
+ */
+export function reportToolError(ctx: McpRequestContext, tool: string, error: unknown): void {
+  const { credential } = ctx.actor;
+  ctx.ports.reportError?.(error, {
+    source: "mcp_tool",
+    transport: "mcp",
+    tool,
+    client: credential.kind,
+    ...(credential.directory ? { directory: credential.directory } : {}),
+  });
 }
