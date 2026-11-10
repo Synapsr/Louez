@@ -502,6 +502,27 @@ describe("MCP directory conformance", () => {
     assert.deepEqual(named(text), ["daily", "integrations"]);
   });
 
+  test("a directory's withheld procedures are named by their router path, as operations record them", async () => {
+    const { CHATGPT_CLIENT_ID, clientWithholding } =
+      await import("@louez/api/platform/agent-clients");
+    const { withheldProcedurePaths } = await import("@louez/api/platform/withheld-procedures");
+    const paths = async (client: { clientId: string; name: string | null }) =>
+      (await withheldProcedurePaths(clientWithholding(client))).sort();
+    // handoffs.refresh opens on billing or settings: it stays with settings.
+    assert.deepEqual(await paths({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" }), [
+      "dashboard.billing.getStatus",
+      "dashboard.billing.startCardSetup",
+      "dashboard.jobs.get",
+      "dashboard.products.enhanceImage",
+      "dashboard.products.removeImageBackground",
+      "dashboard.stores.create",
+    ]);
+    assert.deepEqual(await paths({ clientId: "dcr_claude", name: "Claude" }), [
+      "dashboard.products.enhanceImage",
+    ]);
+    assert.deepEqual(await paths({ clientId: "dcr_cursor", name: "Cursor" }), []);
+  });
+
   test("each directory's list and instructions leave out its AI photo tools; other clients keep them", async () => {
     const { Client, InMemoryTransport } = await import("@modelcontextprotocol/client");
     const { appRouter } = await import("@louez/api/router");

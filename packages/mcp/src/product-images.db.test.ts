@@ -366,22 +366,55 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
     assert.ok(names.includes("products_use_image_version"));
     assert.doesNotMatch(instructions, /improve a product photo|AI credits/);
 
-    // A call is refused before its preview, even out of credits, with nothing to buy.
+    // A call is refused before its preview, even out of credits, with nothing to buy;
+    // the same call again, under its idempotency key or with a token, replays nothing.
+    const written = async () => ({
+      confirmations: (
+        await louezDb.db
+          .select({ id: louezDb.apiConfirmations.id })
+          .from(louezDb.apiConfirmations)
+          .where(eq(louezDb.apiConfirmations.storeId, STORE))
+      ).length,
+      operations: (
+        await louezDb.db
+          .select({ id: louezDb.apiOperations.id })
+          .from(louezDb.apiOperations)
+          .where(eq(louezDb.apiOperations.credentialId, grantId))
+      ).length,
+      jobs: (await louezDb.db.select({ id: louezDb.apiJobs.id }).from(louezDb.apiJobs)).length,
+    });
+    const before = await written();
     fake.state.quote = {
       ...fake.state.quote,
       credits: { allowed: false, monthlyRemainingMicro: 0, prepaidMicro: 0 },
     };
     for (const name of ["products_enhance_image", "products_remove_image_background"]) {
-      const refused = await withClient(chatgpt, (mcp) =>
-        mcp.callTool({ name, arguments: { id, imageUrl: SOURCE } }),
-      );
-      assert.equal(errorOf(refused).code, "NOT_AVAILABLE_TO_THIS_AGENT", name);
-      assert.doesNotMatch(JSON.stringify(refused), PURCHASE, name);
+      const idempotencyKey = `pj-chatgpt-${name}`;
+      for (const args of [
+        { id, imageUrl: SOURCE, idempotencyKey },
+        { id, imageUrl: SOURCE, idempotencyKey },
+        { id, imageUrl: SOURCE, idempotencyKey, confirmationToken: "pj-not-a-token" },
+      ]) {
+        const refused = await withClient(chatgpt, (mcp) =>
+          mcp.callTool({ name, arguments: args }),
+        );
+        const error = errorOf(refused);
+        assert.equal(error.code, "NOT_AVAILABLE_TO_THIS_AGENT", name);
+        assert.equal(error.details?.confirmationToken, undefined, name);
+        assert.equal(refused._meta, undefined, `${name}: no operation was replayed`);
+        assert.doesNotMatch(JSON.stringify(refused), PURCHASE, name);
+      }
+      const keyed = await louezDb.db
+        .select({ id: louezDb.apiOperations.id })
+        .from(louezDb.apiOperations)
+        .where(eq(louezDb.apiOperations.idempotencyKey, idempotencyKey));
+      assert.deepEqual(keyed, [], `${name}: no idempotency key was claimed`);
     }
     const job = await withClient(chatgpt, (mcp) =>
       mcp.callTool({ name: "jobs_get", arguments: { id: "nope" } }),
     );
     assert.equal(errorOf(job).code, "NOT_AVAILABLE_TO_THIS_AGENT");
+    assert.deepEqual(await written(), before, "no confirmation, operation or job was written");
     // The version switch is reached: it answers about the version, not the agent.
     const version = await withClient(chatgpt, (mcp) =>
       mcp.callTool({ name: "products_use_image_version", arguments: { id, versionId: "nope" } }),
@@ -427,6 +460,40 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       (await failedItems(apiKey)).map((item) => item.tools),
       [["jobs_get", "products_enhance_image"]],
     );
+
+    // Nor an operation of its own, from before, whose outcome is unknown on a tool it lost.
+    const unknown = (procedure: string) => ({
+      storeId: STORE,
+      userId: OWNER,
+      credentialKind: "oauth" as const,
+      credentialId: grantId,
+      clientName: "ChatGPT",
+      transport: "mcp" as const,
+      procedure,
+      actorKey: grantId,
+      inputHash: "0".repeat(64),
+      status: "unknown" as const,
+      targetId: id,
+      createdAt: sql`NOW(3) - INTERVAL 1 HOUR`,
+      updatedAt: sql`NOW(3) - INTERVAL 2 MINUTE`,
+    });
+    await louezDb.db
+      .insert(louezDb.apiOperations)
+      .values([
+        unknown("dashboard.products.enhanceImage"),
+        unknown("dashboard.products.removeImageBackground"),
+        unknown("dashboard.products.update"),
+      ]);
+    const listed = output(
+      await withClient(chatgpt, (mcp) => mcp.callTool({ name: "inbox_list", arguments: {} })),
+    ) as { items: Array<{ type: string; details: Json }> };
+    assert.deepEqual(
+      listed.items
+        .filter((item) => item.type === "operation_unknown")
+        .map((item) => item.details.procedure),
+      ["dashboard.products.update"],
+    );
+    assert.doesNotMatch(JSON.stringify(listed), /enhanceImage|removeImageBackground|enhance_image/);
   });
 
   test("Claude neither sees nor calls products_enhance_image, a replay included; other agents keep it", async () => {

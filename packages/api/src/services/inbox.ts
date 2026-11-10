@@ -33,6 +33,7 @@ import {
   isNull,
   lt,
   notExists,
+  notInArray,
   or,
   sql,
   type SQL,
@@ -153,6 +154,12 @@ export interface InboxReader {
    * shown. Absent: none.
    */
   withheld?: readonly string[];
+  /**
+   * The same agent's forbidden procedures, by router path
+   * (`withheldProcedurePaths`): no unknown operation of theirs shows, as the
+   * agent can neither check nor retry it. Absent: none.
+   */
+  withheldProcedures?: readonly string[];
 }
 
 export const mayShow = (reads: InboxRights, type: InboxItemType) =>
@@ -1180,6 +1187,9 @@ const unsentMessages: Source = async (window, shaper) => {
 /**
  * A write whose outcome is unknown: it went through but could not be
  * recorded, or it stayed running past its lease (platform/operations.ts).
+ * None of a procedure the caller's agent may no longer reach (a ChatGPT
+ * photo enhancement from before it was withheld): read in the query, so a
+ * hidden one takes no room in the page.
  */
 const unknownOperations: Source = async (window, shaper) => {
   const lease = sql.raw(String(OPERATION_LEASE_SECONDS));
@@ -1187,7 +1197,7 @@ const unknownOperations: Source = async (window, shaper) => {
     sql<Date>`CASE WHEN ${apiOperations.status} = 'unknown' THEN ${apiOperations.updatedAt} ELSE ${apiOperations.updatedAt} + INTERVAL ${lease} SECOND END`.mapWith(
       apiOperations.updatedAt,
     );
-  const { operationsOf } = shaper.reader;
+  const { operationsOf, withheldProcedures } = shaper.reader;
   const rows = await db
     .select({
       id: apiOperations.id,
@@ -1214,6 +1224,9 @@ const unknownOperations: Source = async (window, shaper) => {
           ),
         ),
         operationsOf === null ? undefined : eq(apiOperations.actorKey, operationsOf),
+        withheldProcedures?.length
+          ? notInArray(apiOperations.procedure, [...withheldProcedures])
+          : undefined,
         inWindow(window, "operation_unknown", occurred, apiOperations.id),
       ),
     )

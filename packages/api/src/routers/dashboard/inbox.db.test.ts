@@ -142,6 +142,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     for (const table of [
       louezDb.inboxAcknowledgements,
       louezDb.apiOperations,
+      louezDb.apiJobs,
       louezDb.apiEffects,
       louezDb.apiKeys,
       louezDb.billingPolicies,
@@ -1370,6 +1371,105 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.deepEqual(seen, ids);
     await rejects(list(session(), { limit: 101 }), "BAD_REQUEST");
     await rejects(list(session(), { cursor: "not-a-cursor" }), "INVALID_CURSOR");
+  });
+
+  test("what a client's directory forbids neither shows nor takes a page's room", async () => {
+    const { CHATGPT_CLIENT_ID, clientWithholding } = await import("../../platform/agent-clients");
+    const { withheldProcedurePaths } = await import("../../platform/withheld-procedures");
+    const GRANT = "ib_grant_chatgpt";
+    const withheld = clientWithholding({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" });
+    const withheldProcedures = await withheldProcedurePaths(withheld);
+    assert.ok(withheldProcedures.includes("dashboard.products.enhanceImage"));
+    assert.ok(withheldProcedures.includes("dashboard.products.removeImageBackground"));
+
+    // Oldest first: four items ChatGPT may act on, six it may not, two of them last.
+    const ids: string[] = [];
+    const visible: string[] = [];
+    const operation = async (procedure: string, minutesAgo: number) => {
+      const id = nextId("ib_op");
+      await louezDb.db.insert(louezDb.apiOperations).values({
+        id,
+        storeId: STORE,
+        userId: OWNER,
+        credentialKind: "oauth",
+        credentialId: GRANT,
+        clientName: "ChatGPT",
+        transport: "mcp",
+        procedure,
+        actorKey: GRANT,
+        inputHash: "0".repeat(64),
+        status: "unknown",
+        createdAt: ago(HOUR),
+        updatedAt: ago(minutesAgo * 60_000),
+      });
+      const item = `operation_unknown:${id}`;
+      ids.push(item);
+      if (!withheldProcedures.includes(procedure)) visible.push(item);
+    };
+    const failedJob = async (
+      kind: "product_image_enhance" | "product_image_remove_background",
+      minutesAgo: number,
+    ) => {
+      const id = nextId("ib_job");
+      await louezDb.db.insert(louezDb.apiJobs).values({
+        id,
+        storeId: STORE,
+        kind,
+        targetId: "ib_prd_photo",
+        status: "failed",
+        slotKey: id,
+        input: {},
+        error: { code: "IMAGE_EMPTY", message: "empty", retryable: false },
+        userId: OWNER,
+        credentialKind: "api_key",
+        createdAt: ago(HOUR),
+        finishedAt: ago(minutesAgo * 60_000),
+      });
+      ids.push(`image_job_failed:${id}`);
+    };
+    await operation("dashboard.reservations.updateStatus", 10);
+    await operation("dashboard.products.enhanceImage", 9);
+    await operation("dashboard.products.removeImageBackground", 8);
+    await operation("dashboard.reservations.updateStatus", 7);
+    await failedJob("product_image_enhance", 6);
+    await operation("dashboard.reservations.updateStatus", 5);
+    await failedJob("product_image_remove_background", 4);
+    await operation("dashboard.reservations.updateStatus", 3);
+    await operation("dashboard.products.enhanceImage", 2);
+    await failedJob("product_image_enhance", 1.5);
+
+    const pages = async (reader: Parameters<typeof inbox.listInbox>[0]) => {
+      const seen: string[][] = [];
+      const more: boolean[] = [];
+      let cursor: string | undefined;
+      for (let guard = 0; guard < 10; guard += 1) {
+        const page = await inbox.listInbox(reader, { limit: 2, ...(cursor ? { cursor } : {}) });
+        seen.push(page.items.map((item) => item.id));
+        more.push(page.hasMore);
+        cursor = page.nextCursor;
+        if (!page.hasMore) break;
+      }
+      const after = await inbox.listInbox(reader, { limit: 2, ...(cursor ? { cursor } : {}) });
+      return { seen, more, after: after.items.length };
+    };
+    const base = {
+      store: await storeRow(),
+      urls: ports.urls,
+      hostedBy: null,
+      reads: { products: true },
+      operationsOf: GRANT,
+    };
+
+    // ChatGPT: two full pages of what it may act on, the second the last.
+    assert.equal(visible.length, 4);
+    assert.deepEqual(
+      await pages({ ...base, withheld: withheld.capabilities, withheldProcedures }),
+      { seen: [visible.slice(0, 2), visible.slice(2)], more: [true, false], after: 0 },
+    );
+    // A caller with nothing withheld sees every item, in the same order.
+    const all = await pages(base);
+    assert.deepEqual(all.seen.flat(), ids);
+    assert.deepEqual(all.more, [true, true, true, true, false]);
   });
 
   // --- Acknowledging ----------------------------------------------------------

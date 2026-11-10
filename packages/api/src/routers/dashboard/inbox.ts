@@ -11,6 +11,7 @@ import {
 } from "../../contracts/inbox";
 import { allows, type ApiDomain } from "../../platform/permissions";
 import { storeProcedure } from "../../platform/procedures";
+import { withheldProcedurePaths } from "../../platform/withheld-procedures";
 import { HANDOFF_KIND_DOMAINS } from "../../services/handoffs";
 import {
   INBOX_ACKNOWLEDGEMENT_RETENTION_DAYS,
@@ -68,7 +69,7 @@ const ACKNOWLEDGED_UNDER = [
   "team",
 ] as const satisfies readonly ApiDomain[];
 
-const readerOf = (context: ProductContext): InboxReader => {
+const readerOf = async (context: ProductContext): Promise<InboxReader> => {
   const { credential } = context.actor;
   return {
     store: context.store,
@@ -77,6 +78,7 @@ const readerOf = (context: ProductContext): InboxReader => {
     reads: reads(context),
     operationsOf: credential.kind === "session" ? null : (credential.id ?? credential.userId),
     withheld: credential.withheld?.capabilities,
+    withheldProcedures: await withheldProcedurePaths(credential.withheld),
   };
 };
 
@@ -97,7 +99,7 @@ Without cursor, it returns the whole inbox, oldest first. With the nextCursor of
   .route({ method: "GET", path: "/inbox" })
   .input(listInboxInput)
   .output(listInboxOutput)
-  .handler(({ context, input }) => listInbox(readerOf(context), input));
+  .handler(async ({ context, input }) => listInbox(await readerOf(context), input));
 
 const acknowledge = storeProcedure
   .meta({
@@ -115,9 +117,9 @@ const acknowledge = storeProcedure
   .route({ method: "POST", path: "/inbox/acknowledge" })
   .input(acknowledgeInboxInput)
   .output(acknowledgeInboxOutput)
-  .handler(({ context, input }) => {
+  .handler(async ({ context, input }) => {
     const { actor } = context;
-    const reader = readerOf(context);
+    const reader = await readerOf(context);
     const mayWrite = (domain: ApiDomain) =>
       allows(actor.role, actor.credential.scopes, { domain, level: "write" });
     return acknowledgeInbox(
