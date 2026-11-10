@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { getCurrentStore } from '@/lib/store-context'
-import { getSmsQuotaStatus, getSmsCreditsInfo } from '@/lib/plan-limits'
+import { getSmsQuotaStatus } from '@/lib/plan-limits'
 import { SmsContent } from './sms-content'
 import { getSmsLogs, getSmsMonthStats, getAvailableMonths, getTopupHistory } from './actions'
 
@@ -34,10 +34,9 @@ export default async function SmsPage({
   const topupSuccess = params.topup === 'success'
   const topupCancelled = params.topup === 'cancelled'
 
-  const [quotaStatus, creditsInfo, smsLogs, monthStats, availableMonths, topupHistory] =
+  const [quotaStatus, smsLogs, monthStats, availableMonths, topupHistory] =
     await Promise.all([
       getSmsQuotaStatus(store.id),
-      getSmsCreditsInfo(store.id),
       getSmsLogs(store.id, selectedYear, selectedMonth),
       getSmsMonthStats(store.id, selectedYear, selectedMonth),
       getAvailableMonths(store.id),
@@ -48,7 +47,6 @@ export default async function SmsPage({
     <div className="space-y-6">
       <SmsContent
         quotaStatus={quotaStatus}
-        creditsInfo={creditsInfo}
         smsLogs={smsLogs}
         monthStats={monthStats}
         selectedYear={selectedYear}

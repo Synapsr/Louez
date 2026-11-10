@@ -371,24 +371,6 @@ export async function getSmsPrepaidBalance(storeId: string): Promise<number> {
 }
 
 /**
- * Get full SMS credits info for a store
- */
-export async function getSmsCreditsInfo(storeId: string): Promise<{
-  balance: number
-  totalPurchased: number
-  totalUsed: number
-}> {
-  const credits = await db.query.smsCredits.findFirst({
-    where: eq(smsCredits.storeId, storeId),
-  })
-  return {
-    balance: credits?.balance ?? 0,
-    totalPurchased: credits?.totalPurchased ?? 0,
-    totalUsed: credits?.totalUsed ?? 0,
-  }
-}
-
-/**
  * Extended SMS status including prepaid credits
  */
 export interface SmsQuotaStatus {

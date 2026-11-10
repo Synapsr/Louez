@@ -3,18 +3,11 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
 import { db } from '@louez/db'
-import {
-  aiCredits,
-  aiCreditTransactions,
-  smsCredits,
-  smsTopupTransactions,
-  stores,
-} from '@louez/db'
+import { aiCredits, aiCreditTransactions, stores } from '@louez/db'
 import { and, eq, sql } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
 import { notifySmsCreditsTopup } from '@/lib/discord/platform-notifications'
 import { reconcilePayAsYouGoInvoice } from '@/lib/pay-as-you-go'
-import { collectUnpaidSmsCredits } from '@/lib/sms/delivery-record'
+import { creditSmsTopup } from '@/lib/sms/topup-credits'
 import {
   handleSubscriptionCheckoutCompleted,
   handleSubscriptionDeleted,
@@ -133,85 +126,41 @@ async function handlePayAsYouGoInvoiceEvent(
 
 /**
  * Handle SMS top-up payment completion
- * Credits the store with purchased SMS credits
+ * Credits the store with purchased SMS credits, once per top-up however
+ * often Stripe delivers the event (lib/sms/topup-credits.ts).
  */
 async function handleSmsTopupCompleted(session: Stripe.Checkout.Session) {
-  const { storeId, transactionId, quantity } = session.metadata || {}
+  const { storeId, transactionId } = session.metadata || {}
 
-  if (!storeId || !transactionId || !quantity) {
+  if (!storeId || !transactionId) {
     console.error('Missing metadata in SMS top-up checkout session')
     return
   }
 
-  const qty = parseInt(quantity, 10)
-  if (isNaN(qty) || qty <= 0) {
-    console.error('Invalid quantity in SMS top-up checkout session')
-    return
-  }
-
-  // Check if transaction exists and is pending
-  const transaction = await db.query.smsTopupTransactions.findFirst({
-    where: eq(smsTopupTransactions.id, transactionId),
+  const paymentIntentId =
+    typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null)
+  const { credited } = await creditSmsTopup({
+    transactionId,
+    storeId,
+    checkoutSessionId: session.id,
+    paymentIntentId,
   })
-
-  if (!transaction) {
-    console.error(`SMS top-up transaction not found: ${transactionId}`)
+  if (credited === 0) {
+    console.log(`SMS top-up not credited (unknown, or already processed): ${transactionId}`)
     return
   }
-
-  if (transaction.status !== 'pending') {
-    console.log(`SMS top-up transaction already processed: ${transactionId}`)
-    return
-  }
-
-  // Use a transaction to ensure atomicity
-  await db.transaction(async (tx) => {
-    // Check if smsCredits record exists for this store
-    const existingCredits = await tx.query.smsCredits.findFirst({
-      where: eq(smsCredits.storeId, storeId),
-    })
-
-    if (existingCredits) {
-      // Update existing credits
-      await tx
-        .update(smsCredits)
-        .set({
-          balance: sql`${smsCredits.balance} + ${qty}`,
-          totalPurchased: sql`${smsCredits.totalPurchased} + ${qty}`,
-          updatedAt: new Date(),
-        })
-        .where(eq(smsCredits.storeId, storeId))
-    } else {
-      // Create new credits record
-      await tx.insert(smsCredits).values({
-        id: nanoid(),
-        storeId,
-        balance: qty,
-        totalPurchased: qty,
-        totalUsed: 0,
-      })
-    }
-    // SMS sent while the balance was empty take their credits first.
-    await collectUnpaidSmsCredits(tx, storeId)
-
-    // Update transaction status
-    await tx
-      .update(smsTopupTransactions)
-      .set({
-        status: 'completed',
-        stripePaymentIntentId: session.payment_intent as string,
-        completedAt: new Date(),
-      })
-      .where(eq(smsTopupTransactions.id, transactionId))
-  })
 
   // Platform admin notification
   const store = await db.query.stores.findFirst({ where: eq(stores.id, storeId) })
   if (store) {
-    notifySmsCreditsTopup({ id: store.id, name: store.name, slug: store.slug }, qty).catch(() => {})
+    notifySmsCreditsTopup({ id: store.id, name: store.name, slug: store.slug }, credited).catch(
+      () => {},
+    )
   }
 
-  console.log(`SMS top-up completed for store ${storeId}: ${qty} credits added`)
+  console.log(`SMS top-up completed for store ${storeId}: ${credited} credits added`)
 }
 
 /**

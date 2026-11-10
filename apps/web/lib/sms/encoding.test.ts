@@ -84,3 +84,17 @@ test("one word longer than the budget is cut where it must", () => {
   assert.equal(smsSegments(fitted), 3);
   assert.equal(fitted.length, 459);
 });
+
+test("a character bigger than a segment takes the segments it needs, and is left out when cut", () => {
+  // One letter under 300 combining acute accents: one character of 301 UCS-2 units.
+  const heavy = `a${"\u0301".repeat(300)}`;
+  // 301 × 16 = 4816 bits: 5 segments of 1072.
+  assert.equal(smsSegments(heavy), 5);
+  assert.equal(fitSmsSegments(heavy), "...");
+  assert.equal(smsSegments(`Kayaks ${heavy}`), 6, "after a word, it starts its own segment");
+
+  // Kept out, the text before it is kept.
+  const fitted = fitSmsSegments(`Kayaks: your reservation #2030-0001 ${heavy} is cancelled`);
+  assert.equal(fitted, "Kayaks: your reservation #2030-0001...");
+  assert.equal(smsSegments(fitted), 1);
+});

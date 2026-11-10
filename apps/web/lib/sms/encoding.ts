@@ -56,18 +56,29 @@ function graphemeBits(grapheme: string, unicode: boolean): number {
   return bits;
 }
 
-/** How many segments characters of these sizes take, none split between two. */
+/**
+ * How many segments characters of these sizes take, none split between two.
+ * A character bigger than a segment (a letter under hundreds of combining
+ * marks) cannot be kept whole: it starts a segment and takes as many as its
+ * size needs.
+ */
 function packedSegments(bits: readonly number[]): number {
   const total = bits.reduce((sum, size) => sum + size, 0);
   if (total <= SINGLE_SMS_BITS) return 1;
-  let segments = 1;
-  let used = 0;
+  let segments = 0;
+  // The space left in the current segment: none before the first.
+  let free = 0;
   for (const size of bits) {
-    if (used + size > SEGMENT_BITS) {
+    if (size > SEGMENT_BITS) {
+      const spans = Math.ceil(size / SEGMENT_BITS);
+      segments += spans;
+      free = spans * SEGMENT_BITS - size;
+    } else if (size > free) {
       segments += 1;
-      used = 0;
+      free = SEGMENT_BITS - size;
+    } else {
+      free -= size;
     }
-    used += size;
   }
   return segments;
 }
@@ -92,9 +103,11 @@ export function fitSmsSegments(text: string, maxSegments: number = SMS_MAX_SEGME
   const fits = (count: number) =>
     packedSegments([...bits.slice(0, count), ...ellipsisBits]) <= maxSegments;
 
-  // The longest start that fits with the ellipsis: fitting only shrinks as it grows.
+  // The longest start that fits with the ellipsis: fitting only shrinks as it
+  // grows. It stops before a character bigger than a segment, which is left out.
+  const oversized = bits.findIndex((size) => size > SEGMENT_BITS);
   let low = 0;
-  let high = characters.length;
+  let high = oversized === -1 ? characters.length : oversized;
   while (low < high) {
     const middle = Math.ceil((low + high) / 2);
     if (fits(middle)) low = middle;
