@@ -188,12 +188,17 @@ async function RevenueChartSection({
   const t = await getTranslations('dashboard.multiStore')
   const tEmpty = await getTranslations('dashboard.multiStore.empty')
   const { dateFns } = await getRequestFormatLocale()
-  const { data, storeNames } = await getMultiStoreRevenueTrend(storeIds, period, dateFns)
+  const { data, storeNames, storeCurrencies } = await getMultiStoreRevenueTrend(
+    storeIds,
+    period,
+    dateFns
+  )
 
   return (
     <StoresRevenueChart
       data={data}
       storeNames={storeNames}
+      storeCurrencies={storeCurrencies}
       translations={{
         title: t('chart.title'),
         description: t('chart.description'),

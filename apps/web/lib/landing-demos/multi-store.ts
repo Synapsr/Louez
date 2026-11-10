@@ -50,6 +50,7 @@ interface DemoMultiStoreData {
   performance: StorePerformance[];
   data: StoreRevenueTrend[];
   storeNames: string[];
+  storeCurrencies: Record<string, string>;
   limits: StorePlanLimit[];
 }
 
@@ -134,6 +135,7 @@ export const createDemoMultiStoreData = (
     performance,
     data,
     storeNames: DEMO_MULTI_STORES.map((store) => store.name),
+    storeCurrencies: Object.fromEntries(DEMO_MULTI_STORES.map((store) => [store.name, "EUR"])),
     // All three stores have unlimited Ultra capacity, so the real alert stays hidden.
     limits: [],
   };

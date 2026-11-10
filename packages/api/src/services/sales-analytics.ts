@@ -23,7 +23,8 @@ import {
  * The sales figures of a store, as the dashboard's sales pages, its home and
  * the statistics procedures show them, computed live from payments and
  * reservations. Revenue is the rental payments received: completed `rental`
- * payments, every method, counted on the day they were cashed in.
+ * payments, every method, counted on the day they were cashed in, in the
+ * store's current currency.
  */
 
 export type PaymentMethodKey = "stripe" | "cash" | "card" | "transfer" | "check" | "other";
@@ -41,15 +42,46 @@ export interface RevenueBucket {
   payments: number;
 }
 
-/** Rental receipts, all payment methods: what the sales section counts as revenue. */
-const receiptConditions = (storeFilter: SQL) => [
+/** The store the figures are counted for, and the one currency they add up. */
+export interface SalesStore {
+  id: string;
+  /** ISO 4217, upper case: the store's current currency. */
+  currency: string;
+}
+
+/** A store as its settings describe it, for its sales figures. */
+export function salesStore(store: {
+  id: string;
+  settings: { currency?: string | null } | null;
+}): SalesStore {
+  return { id: store.id, currency: (store.settings?.currency || "EUR").toUpperCase() };
+}
+
+/**
+ * A receipt's currency: the payment's own, else the one frozen on its
+ * reservation, else (rows from before either existed) the store's.
+ */
+const receiptCurrency = (store: SalesStore) =>
+  sql<string>`UPPER(COALESCE(NULLIF(${payments.currency}, ''), NULLIF(${reservations.currency}, ''), ${store.currency}))`;
+
+/** The store's rental receipts, all payment methods, in any currency. */
+const anyCurrencyReceiptConditions = (storeFilter: SQL) => [
   storeFilter,
   eq(payments.status, "completed"),
   eq(payments.type, "rental"),
   isPaymentReceiptSql(),
 ];
-const rentalReceiptConditions = (storeId: string) =>
-  receiptConditions(eq(reservations.storeId, storeId));
+
+/**
+ * What the sales figures count as revenue: those receipts in the store's
+ * current currency. A total has one currency, so a receipt in another one
+ * (taken before the store changed currency) is left out, and reported apart
+ * by getOtherCurrencyReceipts.
+ */
+const rentalReceiptConditions = (store: SalesStore) => [
+  ...anyCurrencyReceiptConditions(eq(reservations.storeId, store.id)),
+  sql`${receiptCurrency(store)} = ${store.currency}`,
+];
 
 /** A payment counts on the day it was cashed in, falling back to its creation. */
 const receiptDate = sql`COALESCE(${payments.paidAt}, ${payments.createdAt})`;
@@ -60,9 +92,14 @@ const receiptDate = sql`COALESCE(${payments.paidAt}, ${payments.createdAt})`;
  */
 export const instantSql = (date: Date) => sql.param(date, payments.createdAt);
 
+const receiptRange = (range: { start?: Date; end: Date }) => [
+  ...(range.start ? [sql`${receiptDate} >= ${instantSql(range.start)}`] : []),
+  sql`${receiptDate} < ${instantSql(range.end)}`,
+];
+
 /** Receipts from `start` (included; since the first one without it) to `end` (excluded). */
 export async function getReceiptTotals(
-  storeId: string,
+  store: SalesStore,
   range: { start?: Date; end: Date },
 ): Promise<{ revenue: number; paymentCount: number }> {
   const [row] = await db
@@ -72,18 +109,53 @@ export async function getReceiptTotals(
     })
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
-    .where(
-      and(
-        ...rentalReceiptConditions(storeId),
-        ...(range.start ? [sql`${receiptDate} >= ${instantSql(range.start)}`] : []),
-        sql`${receiptDate} < ${instantSql(range.end)}`,
-      ),
-    );
+    .where(and(...rentalReceiptConditions(store), ...receiptRange(range)));
   return { revenue: Number(row?.revenue ?? 0), paymentCount: Number(row?.paymentCount ?? 0) };
 }
 
+export interface OtherCurrencyReceipts {
+  /** ISO 4217, upper case. */
+  currency: string;
+  /** In that currency. */
+  amount: number;
+  paymentCount: number;
+}
+
+/**
+ * The receipts the sales figures leave out because they are in another
+ * currency than the store's current one, per currency, over the range.
+ */
+export async function getOtherCurrencyReceipts(
+  store: SalesStore,
+  range: { start?: Date; end: Date },
+): Promise<OtherCurrencyReceipts[]> {
+  const currency = receiptCurrency(store);
+  const rows = await db
+    .select({
+      currency,
+      amount: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
+      paymentCount: count(),
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(payments.reservationId, reservations.id))
+    .where(
+      and(
+        ...anyCurrencyReceiptConditions(eq(reservations.storeId, store.id)),
+        sql`${currency} <> ${store.currency}`,
+        ...receiptRange(range),
+      ),
+    )
+    .groupBy(currency)
+    .orderBy(currency);
+  return rows.map((row) => ({
+    currency: String(row.currency),
+    amount: Number(row.amount ?? 0),
+    paymentCount: Number(row.paymentCount ?? 0),
+  }));
+}
+
 export async function getSalesPaymentStats(
-  storeId: string,
+  store: SalesStore,
   window: SalesWindow,
 ): Promise<{
   periodRevenue: number;
@@ -93,9 +165,9 @@ export async function getSalesPaymentStats(
   totalRevenue: number;
 }> {
   const [current, previous, allTime] = await Promise.all([
-    getReceiptTotals(storeId, { start: window.start, end: window.end }),
-    getReceiptTotals(storeId, { start: window.previousStart, end: window.previousEnd }),
-    getReceiptTotals(storeId, { end: window.end }),
+    getReceiptTotals(store, { start: window.start, end: window.end }),
+    getReceiptTotals(store, { start: window.previousStart, end: window.previousEnd }),
+    getReceiptTotals(store, { end: window.end }),
   ]);
   return {
     periodRevenue: current.revenue,
@@ -107,23 +179,24 @@ export async function getSalesPaymentStats(
 }
 
 /**
- * Receipts of each store per bucket, buckets contiguous and in order. Bucket
+ * The window's receipts per bucket, as the revenue chart shows them. Bucket
  * boundaries are instants, so grouping does not depend on MySQL timezone
  * tables.
  */
-export async function getReceiptsByBucket(
-  storeIds: readonly string[],
-  buckets: readonly { start: Date; end: Date }[],
-): Promise<Map<string, RevenueBucket[]>> {
+export async function getRevenueTimeSeries(
+  store: SalesStore,
+  window: SalesWindow,
+): Promise<RevenueBucket[]> {
+  const { buckets } = window;
+  const series = buckets.map((bucket) => ({
+    start: bucket.start,
+    end: bucket.end,
+    revenue: 0,
+    payments: 0,
+  }));
   const first = buckets[0];
   const last = buckets[buckets.length - 1];
-  const byStore = new Map(
-    storeIds.map((storeId) => [
-      storeId,
-      buckets.map((bucket) => ({ start: bucket.start, end: bucket.end, revenue: 0, payments: 0 })),
-    ]),
-  );
-  if (!first || !last || storeIds.length === 0) return byStore;
+  if (!first || !last) return series;
   const bucketExpression = sql`CASE ${sql.join(
     buckets.map(
       (bucket, index) => sql`WHEN ${receiptDate} < ${instantSql(bucket.end)} THEN ${index}`,
@@ -132,7 +205,6 @@ export async function getReceiptsByBucket(
   )} END`;
   const rows = await db
     .select({
-      storeId: reservations.storeId,
       bucket: sql<number>`${bucketExpression}`,
       total: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
       count: count(),
@@ -141,33 +213,23 @@ export async function getReceiptsByBucket(
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
     .where(
       and(
-        ...receiptConditions(inArray(reservations.storeId, [...storeIds])),
-        sql`${receiptDate} >= ${instantSql(first.start)}`,
-        sql`${receiptDate} < ${instantSql(last.end)}`,
+        ...rentalReceiptConditions(store),
+        ...receiptRange({ start: first.start, end: last.end }),
       ),
     )
-    .groupBy(reservations.storeId, bucketExpression);
+    .groupBy(bucketExpression);
   for (const row of rows) {
-    const bucket = byStore.get(row.storeId)?.[Number(row.bucket)];
+    const bucket = series[Number(row.bucket)];
     if (!bucket) continue;
     bucket.revenue = Number(row.total ?? 0);
     bucket.payments = Number(row.count ?? 0);
   }
-  return byStore;
-}
-
-/** The window's receipts per bucket, as the revenue chart shows them. */
-export async function getRevenueTimeSeries(
-  storeId: string,
-  window: SalesWindow,
-): Promise<RevenueBucket[]> {
-  const byStore = await getReceiptsByBucket([storeId], window.buckets);
-  return byStore.get(storeId) ?? [];
+  return series;
 }
 
 /** Receipts split by payment method over the selected window. */
 export async function getRevenueByPaymentMethod(
-  storeId: string,
+  store: SalesStore,
   window: SalesWindow,
 ): Promise<PaymentMethodTotal[]> {
   const rows = await db
@@ -178,13 +240,7 @@ export async function getRevenueByPaymentMethod(
     })
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
-    .where(
-      and(
-        ...rentalReceiptConditions(storeId),
-        sql`${receiptDate} >= ${instantSql(window.start)}`,
-        sql`${receiptDate} < ${instantSql(window.end)}`,
-      ),
-    )
+    .where(and(...rentalReceiptConditions(store), ...receiptRange(window)))
     .groupBy(payments.method);
 
   return rows.map((row) => ({
@@ -223,7 +279,7 @@ export interface TopProductsByRevenue {
  * partial view.
  */
 export async function getTopProductsByRevenue(
-  storeId: string,
+  store: SalesStore,
   window: SalesWindow,
   limit = 10,
 ): Promise<TopProductsByRevenue> {
@@ -234,13 +290,7 @@ export async function getTopProductsByRevenue(
     })
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
-    .where(
-      and(
-        ...rentalReceiptConditions(storeId),
-        sql`${receiptDate} >= ${instantSql(window.start)}`,
-        sql`${receiptDate} < ${instantSql(window.end)}`,
-      ),
-    )
+    .where(and(...rentalReceiptConditions(store), ...receiptRange(window)))
     .groupBy(payments.reservationId)
     .as("payment_totals");
 
@@ -275,7 +325,7 @@ export async function getTopProductsByRevenue(
       )
       .innerJoin(
         products,
-        and(eq(reservationItems.productId, products.id), eq(products.storeId, storeId)),
+        and(eq(reservationItems.productId, products.id), eq(products.storeId, store.id)),
       )
       .groupBy(reservationItems.productId, products.name, products.slug, products.status)
       .orderBy(desc(sql`SUM(${allocatedRevenue})`), products.id),
@@ -293,7 +343,7 @@ export async function getTopProductsByRevenue(
       )
       .leftJoin(
         products,
-        and(eq(reservationItems.productId, products.id), eq(products.storeId, storeId)),
+        and(eq(reservationItems.productId, products.id), eq(products.storeId, store.id)),
       ),
     db
       .select({ total: sql<string>`COALESCE(SUM(${paymentTotals.paidAmount}), 0)` })
@@ -337,7 +387,7 @@ export interface TopCustomerRow {
 
 /** Best customers by receipts over the window — same filters as the receipts KPI. */
 export async function getTopCustomersByRevenue(
-  storeId: string,
+  store: SalesStore,
   window: SalesWindow,
 ): Promise<TopCustomerRow[]> {
   return db
@@ -354,13 +404,7 @@ export async function getTopCustomersByRevenue(
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
     .innerJoin(customers, eq(reservations.customerId, customers.id))
-    .where(
-      and(
-        ...rentalReceiptConditions(storeId),
-        sql`${receiptDate} >= ${instantSql(window.start)}`,
-        sql`${receiptDate} < ${instantSql(window.end)}`,
-      ),
-    )
+    .where(and(...rentalReceiptConditions(store), ...receiptRange(window)))
     .groupBy(
       customers.id,
       customers.firstName,
@@ -453,7 +497,7 @@ export interface UpcomingRevenueStats {
 
 /** Outstanding rental balances of confirmed future reservations, after rental refunds. */
 export async function getUpcomingRevenue(
-  storeId: string,
+  store: SalesStore,
   now: Date,
 ): Promise<UpcomingRevenueStats> {
   const original = alias(payments, "original_payment");
@@ -477,7 +521,7 @@ export async function getUpcomingRevenue(
     )
     .where(
       and(
-        eq(reservations.storeId, storeId),
+        eq(reservations.storeId, store.id),
         eq(payments.status, "completed"),
         sql`${receiptDate} < ${instantSql(now)}`,
       ),
@@ -501,7 +545,9 @@ export async function getUpcomingRevenue(
     .leftJoin(paid, eq(paid.reservationId, reservations.id))
     .where(
       and(
-        eq(reservations.storeId, storeId),
+        eq(reservations.storeId, store.id),
+        // A balance is in its reservation's currency: only the store's adds up.
+        sql`UPPER(COALESCE(NULLIF(${reservations.currency}, ''), ${store.currency})) = ${store.currency}`,
         eq(reservations.status, "confirmed"),
         gte(reservations.startDate, now),
         sql`${remaining} > 0`,

@@ -6,7 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/server'
 
 import type { McpRequestContext } from '../auth/context'
 import { requirePermission } from '../auth/context'
-import { analyticsStore } from '../resources/dashboard'
+import { analyticsStore, otherCurrenciesLine } from '../resources/dashboard'
 import { formatCurrency, formatDate, formatStatus } from '../utils/formatting'
 
 export function registerPromptTemplates(server: McpServer, ctx: McpRequestContext) {
@@ -82,7 +82,9 @@ export function registerPromptTemplates(server: McpServer, ctx: McpRequestContex
         `Store: ${ctx.storeName}\n\n` +
         `Today's metrics:\n` +
         `  Revenue (rental payments received so far): ${stats.today.revenue} ${stats.currency}\n` +
-        `  Revenue this month: ${stats.revenue.monthToDate} ${stats.currency}\n\n` +
+        `  Revenue this month: ${stats.revenue.monthToDate} ${stats.currency}\n` +
+        otherCurrenciesLine(stats.otherCurrencies, 'since the store opened') +
+        `\n` +
         `Pending actions: ${pendingCount?.count ?? 0} reservations to review\n` +
         `Overdue returns: ${overdueCount?.count ?? 0}\n\n` +
         `Today's pickups (${todaysPickups.length}):\n` +

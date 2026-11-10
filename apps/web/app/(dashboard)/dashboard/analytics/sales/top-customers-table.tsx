@@ -23,6 +23,8 @@ interface TopCustomer {
 
 interface TopCustomersTableProps {
   customers: TopCustomer[];
+  /** The store's current currency, the one these figures are counted in. */
+  currency: string;
   readOnly?: boolean;
 }
 
@@ -35,7 +37,11 @@ const getDisplayName = (customer: TopCustomer) =>
     ? customer.companyName
     : `${customer.firstName} ${customer.lastName}`;
 
-export const TopCustomersTable = ({ customers, readOnly = false }: TopCustomersTableProps) => {
+export const TopCustomersTable = ({
+  customers,
+  currency,
+  readOnly = false,
+}: TopCustomersTableProps) => {
   const t = useTranslations("dashboard.statistics");
 
   if (customers.length === 0) {
@@ -88,7 +94,7 @@ export const TopCustomersTable = ({ customers, readOnly = false }: TopCustomersT
                 {customer.paymentCount}
               </TableCell>
               <TableCell className="text-right font-medium tabular-nums whitespace-nowrap">
-                {formatCurrency(parseFloat(customer.totalRevenue))}
+                {formatCurrency(parseFloat(customer.totalRevenue), currency)}
               </TableCell>
             </TableRow>
           ))}

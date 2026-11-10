@@ -23,6 +23,8 @@ import { createDemoPeriod, getDemoProducts } from "@/lib/landing-demos/fixtures"
 import { getDemoCustomer, getDemoToday } from "@/lib/landing-demos/reservations";
 
 export interface DemoSalesAnalytics {
+  /** The demo store's currency, as a store's settings give it. */
+  currency: string;
   window: SalesWindow;
   stats: ComponentProps<typeof RevenueHero>["stats"];
   revenue: ComponentProps<typeof RevenueChart>["data"];
@@ -31,11 +33,12 @@ export interface DemoSalesAnalytics {
   duration: ComponentProps<typeof SalesStatStripContent>["duration"];
   occupancy: ComponentProps<typeof RentalActivitySection>["occupancy"];
   upcoming: ComponentProps<typeof RentalActivitySection>["upcoming"];
-  topProducts: Omit<ComponentProps<typeof TopProductsTable>, "readOnly">;
+  topProducts: Omit<ComponentProps<typeof TopProductsTable>, "readOnly" | "currency">;
   customers: ComponentProps<typeof TopCustomersTable>["customers"];
 }
 
 const TIMEZONE = "Europe/Paris";
+const CURRENCY = "EUR";
 const PAYMENT_METHODS: PaymentMethodKey[] = ["stripe", "card", "cash", "stripe", "transfer"];
 
 /**
@@ -110,6 +113,7 @@ export const createDemoAnalytics = (
     .sort((left, right) => Number(right.totalRevenue) - Number(left.totalRevenue));
 
   return {
+    currency: CURRENCY,
     window,
     stats: {
       periodRevenue,

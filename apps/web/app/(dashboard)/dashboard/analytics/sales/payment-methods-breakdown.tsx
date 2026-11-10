@@ -24,14 +24,15 @@ const METHOD_ACCENTS: Record<PaymentMethodKey, DashboardAccent> = {
 
 interface PaymentMethodsBreakdownProps {
   data: PaymentMethodTotal[];
-  currency?: string;
+  /** The store's current currency, the one these figures are counted in. */
+  currency: string;
   className?: string;
 }
 
 /** Share of the period's receipts per payment method, ordered by amount. */
 export const PaymentMethodsBreakdown = ({
   data,
-  currency = "EUR",
+  currency,
   className,
 }: PaymentMethodsBreakdownProps) => {
   const t = useTranslations("dashboard.statistics");

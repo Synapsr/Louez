@@ -6,8 +6,10 @@ import {
   subscriptions,
 } from '@louez/db'
 import { eq, and, gte, lte, sql, count, inArray } from 'drizzle-orm'
-import { addDays, subDays, startOfDay, format, eachDayOfInterval } from 'date-fns'
-import { getReceiptsByBucket } from '@louez/api/services/sales-analytics'
+import { subDays, startOfDay, format } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
+import { getRevenueTimeSeries, salesStore } from '@louez/api/services/sales-analytics'
+import { getSalesWindow } from '@louez/api/services/sales-window'
 import type { Locale as DateFnsLocale } from 'date-fns'
 
 import { isBillingEnabled } from '@/lib/billing/mode'
@@ -445,78 +447,86 @@ export async function getStoresApproachingLimits(
  * @param storeIds - IDs of stores accessible by the user
  * @param period - Time period for the trend
  * @param maxStores - Maximum number of stores to include (default 6)
- * @returns Array of data points with revenue per store
+ * @returns Array of data points with revenue per store, and each store's currency
  */
 export async function getMultiStoreRevenueTrend(
   storeIds: string[],
   period: Period,
   locale: DateFnsLocale,
-  maxStores: number = 6
-): Promise<{ data: StoreRevenueTrend[]; storeNames: string[] }> {
+  maxStores: number = 6,
+  now: Date = new Date()
+): Promise<{
+  data: StoreRevenueTrend[]
+  storeNames: string[]
+  /** Store name → the currency its revenue is counted in. */
+  storeCurrencies: Record<string, string>
+}> {
   if (storeIds.length === 0) {
-    return { data: [], storeNames: [] }
+    return { data: [], storeNames: [], storeCurrencies: {} }
   }
 
-  const { days } = getPeriodConfig(period)
-  const now = new Date()
-  const startDate = startOfDay(subDays(now, days - 1))
-  const allDays = eachDayOfInterval({ start: startDate, end: now })
-
   try {
-    // Get store names (limited to top performers)
     const storeInfo = await db
       .select({
         id: stores.id,
         name: stores.name,
+        settings: stores.settings,
       })
       .from(stores)
       .where(inArray(stores.id, storeIds))
 
-    const storeNameMap = new Map(storeInfo.map((s) => [s.id, s.name]))
-
-    // Rental payments received per store and day, as the sales page counts them
-    const buckets = allDays.map((day) => ({
-      start: day,
-      end: new Date(Math.min(addDays(day, 1).getTime(), now.getTime())),
-    }))
-    const receipts = await getReceiptsByBucket(storeIds, buckets)
-
-    // Calculate total revenue per store to determine top stores
-    const storeRevenueTotals = new Map<string, number>()
-    for (const [storeId, storeDays] of receipts) {
-      storeRevenueTotals.set(
-        storeId,
-        storeDays.reduce((total, day) => total + day.revenue, 0)
-      )
-    }
+    // Rental payments received per store, as its sales page counts them: the
+    // period cut at the store's own midnights (days, or calendar months for
+    // 6m and 12m), in its own currency.
+    const series = await Promise.all(
+      storeInfo.map(async (store) => {
+        const sales = salesStore(store)
+        const window = getSalesWindow(period, now, store.settings?.timezone || 'UTC')
+        const buckets = await getRevenueTimeSeries(sales, window)
+        const keyFormat = window.granularity === 'month' ? 'yyyy-MM' : 'yyyy-MM-dd'
+        return {
+          name: store.name,
+          currency: sales.currency,
+          granularity: window.granularity,
+          // The store's own calendar day or month each bucket covers.
+          revenueByKey: new Map(
+            buckets.map((bucket) => [
+              formatInTimeZone(bucket.start, window.timezone, keyFormat),
+              bucket.revenue,
+            ])
+          ),
+          total: buckets.reduce((total, bucket) => total + bucket.revenue, 0),
+        }
+      })
+    )
 
     // Sort stores by total revenue and take top N
-    const topStoreIds = Array.from(storeRevenueTotals.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, maxStores)
-      .map(([id]) => id)
+    const top = [...series].sort((a, b) => b.total - a.total).slice(0, maxStores)
+    const storeNames = top.map((store) => store.name)
+    const storeCurrencies = Object.fromEntries(top.map((store) => [store.name, store.currency]))
 
-    const storeNames = topStoreIds.map((id) => storeNameMap.get(id) || id)
+    // Stores in other time zones may not be on the same day yet: the axis
+    // runs over every day (or month) one of them covers.
+    const keys = [...new Set(top.flatMap((store) => [...store.revenueByKey.keys()]))].sort()
+    const monthly = top[0]?.granularity === 'month'
+    const labelFormat = monthly ? 'MMM yy' : period === '90d' ? 'dd/MM' : 'EEE dd'
 
-    // Build trend data
-    const data: StoreRevenueTrend[] = allDays.map((day, index) => {
-      const dateKey = format(day, 'yyyy-MM-dd')
+    const data: StoreRevenueTrend[] = keys.map((key) => {
       const point: StoreRevenueTrend = {
-        date: dateKey,
-        label: format(day, days > 30 ? 'dd/MM' : 'EEE dd', { locale }),
+        date: key,
+        label: format(new Date(`${monthly ? `${key}-01` : key}T00:00:00`), labelFormat, {
+          locale,
+        }),
       }
-
-      for (const storeId of topStoreIds) {
-        const storeName = storeNameMap.get(storeId) || storeId
-        point[storeName] = receipts.get(storeId)?.[index]?.revenue ?? 0
+      for (const store of top) {
+        point[store.name] = store.revenueByKey.get(key) ?? 0
       }
-
       return point
     })
 
-    return { data, storeNames }
+    return { data, storeNames, storeCurrencies }
   } catch (error) {
     console.error('[MultiStore] Error fetching revenue trend:', error)
-    return { data: [], storeNames: [] }
+    return { data: [], storeNames: [], storeCurrencies: {} }
   }
 }

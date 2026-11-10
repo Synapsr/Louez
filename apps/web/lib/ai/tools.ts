@@ -857,14 +857,14 @@ export function createAITools(ctx: AIChatContext) {
 
     get_dashboard_stats: tool({
       description:
-        "Get the figures of the dashboard home, live: today's revenue, departures and returns; the revenue this month, last month and since the store opened; the reservations by status; the products and customers. Revenue is the rental payments received (every method), on the day they were cashed in, in the store's time zone and currency.",
+        "Get the figures of the dashboard home, live: today's revenue, departures and returns; the revenue this month, last month and since the store opened; the reservations by status; the products and customers. Revenue is the rental payments received (every method), on the day they were cashed in, in the store's time zone and currency. Payments in another currency are left out of the amounts and listed in otherCurrencies.",
       inputSchema: z.object({}),
       execute: async () => assistantApi(ctx).analytics.getDashboardStats({}),
     }),
 
     get_product_performance: tool({
       description:
-        "Rank the products by their share of the rental payments received over a period, as the sales page's top products table does, with the units booked and the reservations behind it.",
+        "Rank the products by their share of the rental payments received over a period, as the sales page's top products table does, with the units booked and the reservations behind it. Payments in another currency than the store's are left out and listed in otherCurrencies.",
       inputSchema: z.object({
         period: z
           .enum(ANALYTICS_PERIODS)
@@ -881,7 +881,7 @@ export function createAITools(ctx: AIChatContext) {
 
     get_revenue_report: tool({
       description:
-        "Get the revenue over a custom date range, as the sales page counts it: rental payments received, every method, on the day they were cashed in, per day (per month past 92 days), by payment method, plus the reservations that start in the range.",
+        "Get the revenue over a custom date range, as the sales page counts it: rental payments received, every method, on the day they were cashed in, per day (per month past 92 days), by payment method, plus the reservations that start in the range. Payments in another currency than the store's are left out and listed in otherCurrencies.",
       inputSchema: z.object({
         startDate: z.string().describe("Start date (YYYY-MM-DD), in the store's time zone"),
         endDate: z.string().describe("End date (YYYY-MM-DD), included"),

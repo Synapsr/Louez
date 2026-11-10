@@ -16,6 +16,19 @@ export async function analyticsStore(storeId: string) {
   return store ?? { id: storeId, settings: null }
 }
 
+/**
+ * The payments a revenue figure left out because they are in another currency
+ * than the store's, as one line, or nothing when there are none.
+ */
+export function otherCurrenciesLine(
+  others: readonly { currency: string; amount: string; paymentCount: number }[],
+  over: string
+): string {
+  if (others.length === 0) return ''
+  const amounts = others.map((other) => `${other.amount} ${other.currency} (${other.paymentCount} payments)`)
+  return `  Left out of the revenue, received ${over} in other currencies: ${amounts.join(', ')}\n`
+}
+
 export function registerDashboardResources(server: McpServer, ctx: McpRequestContext) {
   server.registerResource(
     'dashboard-summary',
@@ -61,6 +74,7 @@ export function registerDashboardResources(server: McpServer, ctx: McpRequestCon
         `Business Summary — ${ctx.storeName}\n\n` +
         `Last 30 days (from ${report.window.start.toISOString()}, ${report.window.timezone}, up to now):\n` +
         `  Revenue (rental payments received): ${report.revenue} ${report.currency}\n` +
+        otherCurrenciesLine(report.otherCurrencies, 'over these 30 days') +
         `  Reservations starting: ${report.reservations}\n\n` +
         `Current reservations:\n` +
         `  Pending: ${counts.pending ?? 0}\n` +

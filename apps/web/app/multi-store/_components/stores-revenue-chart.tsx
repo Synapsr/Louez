@@ -54,6 +54,8 @@ function useThemeColors() {
 interface StoresRevenueChartProps {
   data: StoreRevenueTrend[]
   storeNames: string[]
+  /** Store name → the currency its revenue is in. */
+  storeCurrencies: Record<string, string>
   translations: {
     title: string
     description: string
@@ -78,6 +80,7 @@ interface StoreLegendItemProps {
   color: string
   isVisible: boolean
   totalRevenue: number
+  currency: string
   onToggle: () => void
 }
 
@@ -87,6 +90,7 @@ function StoreLegendItem({
   color,
   isVisible,
   totalRevenue,
+  currency,
   onToggle,
 }: StoreLegendItemProps) {
   return (
@@ -114,7 +118,7 @@ function StoreLegendItem({
           {name}
         </span>
         <span className="text-xs text-muted-foreground tabular-nums">
-          {formatCurrency(totalRevenue)}
+          {formatCurrency(totalRevenue, currency)}
         </span>
       </span>
       {isVisible ? (
@@ -129,6 +133,7 @@ function StoreLegendItem({
 export function StoresRevenueChart({
   data,
   storeNames,
+  storeCurrencies,
   translations,
   emptyMessage = 'No data available',
 }: StoresRevenueChartProps) {
@@ -149,8 +154,14 @@ export function StoresRevenueChart({
     setVisibleStores(new Set(storesWithRevenue))
   }, [storesWithRevenue])
 
-  const currencySymbol = getCurrencySymbol('EUR')
   const hasData = storesWithRevenue.length > 0
+  const currencyOf = (name: string) => storeCurrencies[name] ?? 'EUR'
+  // One axis unit and one total only when the stores shown share a currency.
+  const sharedCurrency = useMemo(() => {
+    const currencies = new Set(storesWithRevenue.map((name) => storeCurrencies[name] ?? 'EUR'))
+    return currencies.size === 1 ? [...currencies][0] : null
+  }, [storesWithRevenue, storeCurrencies])
+  const currencySymbol = sharedCurrency ? getCurrencySymbol(sharedCurrency) : ''
 
   const visibleStoreNames = useMemo(
     () => storesWithRevenue.filter((name) => visibleStores.has(name)),
@@ -220,6 +231,7 @@ export function StoresRevenueChart({
                 color={getColor(originalIndex).stroke}
                 isVisible={visibleStores.has(name)}
                 totalRevenue={storeTotals[name]}
+                currency={currencyOf(name)}
                 onToggle={() => toggleStore(name)}
               />
             )
@@ -305,17 +317,17 @@ export function StoresRevenueChart({
                                 </span>
                               </span>
                               <span className="font-medium tabular-nums">
-                                {formatCurrency(entry.value as number)}
+                                {formatCurrency(entry.value as number, currencyOf(String(entry.name)))}
                               </span>
                             </div>
                           ))}
-                          {payload.length > 1 && (
+                          {payload.length > 1 && sharedCurrency && (
                             <>
                               <div className="border-t my-1.5" />
                               <div className="flex items-center justify-between gap-4 text-sm font-medium">
                                 <span>Total</span>
                                 <span className="tabular-nums">
-                                  {formatCurrency(total)}
+                                  {formatCurrency(total, sharedCurrency)}
                                 </span>
                               </div>
                             </>

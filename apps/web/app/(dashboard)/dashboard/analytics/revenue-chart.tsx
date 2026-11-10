@@ -27,11 +27,12 @@ interface RevenueData {
 
 interface RevenueChartProps {
   data: RevenueData[];
-  currency?: string;
+  /** The store's current currency, the one these figures are counted in. */
+  currency: string;
   initialDimension?: { width: number; height: number };
 }
 
-export const RevenueChart = ({ data, currency = "EUR", initialDimension }: RevenueChartProps) => {
+export const RevenueChart = ({ data, currency, initialDimension }: RevenueChartProps) => {
   const t = useTranslations("dashboard.statistics");
   const locale = useLocale();
   const axisFormat = new Intl.NumberFormat(locale, {

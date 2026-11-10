@@ -77,8 +77,6 @@ export interface GeneratedDailyStats {
   checkoutCompleted: number;
   reservationsCreated: number;
   reservationsConfirmed: number;
-  revenue: string;
-  averageCartValue: string | null;
   mobileVisitors: number;
   tabletVisitors: number;
   desktopVisitors: number;
@@ -93,8 +91,6 @@ export interface GeneratedProductStats {
   date: Date;
   views: number;
   cartAdditions: number;
-  reservations: number;
-  revenue: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -349,10 +345,7 @@ export function generateAnalytics(
   const totalDays = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
   // Product stats aggregation
-  const productStatsMap = new Map<
-    string,
-    Map<string, { views: number; cartAdditions: number; reservations: number; revenue: number }>
-  >();
+  const productStatsMap = new Map<string, Map<string, { views: number; cartAdditions: number }>>();
 
   // Generate daily data
   for (let dayOffset = 0; dayOffset < totalDays; dayOffset++) {
@@ -424,7 +417,7 @@ export function generateAnalytics(
             }
             const productMap = productStatsMap.get(productId)!;
             if (!productMap.has(dateKey)) {
-              productMap.set(dateKey, { views: 0, cartAdditions: 0, reservations: 0, revenue: 0 });
+              productMap.set(dateKey, { views: 0, cartAdditions: 0 });
             }
             productMap.get(dateKey)!.views++;
           }
@@ -456,10 +449,6 @@ export function generateAnalytics(
       ["confirmed", "ongoing", "completed"].includes(r.status),
     );
 
-    // Calculate revenue
-    const dayRevenue = dayConfirmed.reduce((sum, r) => sum + parseFloat(r.subtotalAmount), 0);
-    const avgCartValue = dayCheckoutCompleted > 0 ? dayRevenue / dayCheckoutCompleted : 0;
-
     dailyStats.push({
       id: generateId(),
       storeId,
@@ -472,8 +461,6 @@ export function generateAnalytics(
       checkoutCompleted: dayCheckoutCompleted,
       reservationsCreated: dayReservations.length,
       reservationsConfirmed: dayConfirmed.length,
-      revenue: dayRevenue.toFixed(2),
-      averageCartValue: avgCartValue > 0 ? avgCartValue.toFixed(2) : null,
       mobileVisitors: dayMobile,
       tabletVisitors: dayTablet,
       desktopVisitors: dayDesktop,
@@ -494,8 +481,6 @@ export function generateAnalytics(
         date: new Date(dateKey),
         views: stats.views,
         cartAdditions: stats.cartAdditions,
-        reservations: stats.reservations,
-        revenue: stats.revenue.toFixed(2),
         createdAt: new Date(dateKey),
         updatedAt: now,
       });

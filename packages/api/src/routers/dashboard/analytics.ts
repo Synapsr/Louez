@@ -25,7 +25,8 @@ const REVENUE =
 const WINDOW =
   "Takes a rolling `period` of the dashboard's filter (7d, 30d, 90d, 6m or 12m; default 30d) or a custom range of whole days, startDate to endDate included, 731 days at most. Days start at midnight in the store's time zone, and a window ends at the time of the call at the latest, so today counts up to now.";
 
-const AMOUNTS = "Amounts are decimal strings in the store's `currency`.";
+const AMOUNTS =
+  "Amounts are decimal strings in the store's current `currency`. Payments in another currency (taken before the store changed currency) are left out of them and listed per currency in `otherCurrencies`.";
 
 const salesPage = (period: AnalyticsPeriod | null) =>
   period ? (`/dashboard/analytics/sales?period=${period}` as const) : "/dashboard/analytics/sales";
@@ -37,7 +38,7 @@ const getDashboardStats = storeProcedure
     mcp: {
       name: "get_dashboard_stats",
       title: "Get Dashboard Stats",
-      description: `Get the figures of the store's dashboard home, live: today's revenue, departures (confirmed reservations starting today) and returns (ongoing reservations due back today); the revenue since the first of the month, over the previous month and since the store opened; the reservations by status; the products and the customers. ${REVENUE} Today and the month follow the store's time zone, given as \`timezone\`. ${AMOUNTS} Storefront visitors are not included. Its \`links\` hold the dashboard home.`,
+      description: `Get the figures of the store's dashboard home, live: today's revenue, departures (confirmed reservations starting today) and returns (ongoing reservations due back today); the revenue since the first of the month, over the previous month and since the store opened; the reservations by status; the products and the customers. ${REVENUE} Today and the month follow the store's time zone, given as \`timezone\`. ${AMOUNTS} Takes no argument: the figures over a period are in get_revenue_report and get_product_performance. Storefront visitors are not included. Its \`links\` hold the dashboard home.`,
       bundle: "daily",
     },
   })

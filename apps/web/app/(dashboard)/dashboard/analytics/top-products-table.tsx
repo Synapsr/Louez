@@ -36,6 +36,8 @@ interface TopProductsTableProps {
   unallocatedRevenue: number;
   /** Distinct products that brought receipts over the period. */
   productCount: number;
+  /** The store's current currency, the one these figures are counted in. */
+  currency: string;
   readOnly?: boolean;
 }
 
@@ -49,6 +51,7 @@ export const TopProductsTable = ({
   nonCatalogRevenue,
   unallocatedRevenue,
   productCount,
+  currency,
   readOnly = false,
 }: TopProductsTableProps) => {
   const t = useTranslations("dashboard.statistics");
@@ -112,7 +115,7 @@ export const TopProductsTable = ({
                 {t("topProducts.units", { count: product.totalQuantity })}
               </TableCell>
               <TableCell className="text-right font-medium tabular-nums whitespace-nowrap">
-                {formatCurrency(parseFloat(product.totalRevenue))}
+                {formatCurrency(parseFloat(product.totalRevenue), currency)}
               </TableCell>
             </TableRow>
           ))}
@@ -125,7 +128,7 @@ export const TopProductsTable = ({
               </TableCell>
               <TableCell className="hidden md:table-cell" />
               <TableCell className="text-muted-foreground text-right font-normal tabular-nums whitespace-nowrap">
-                {formatCurrency(othersRevenue)}
+                {formatCurrency(othersRevenue, currency)}
               </TableCell>
             </TableRow>
           )}
@@ -134,7 +137,7 @@ export const TopProductsTable = ({
               <TableCell colSpan={3}>{t("topProducts.nonCatalog")}</TableCell>
               <TableCell className="hidden md:table-cell" />
               <TableCell className="text-right tabular-nums whitespace-nowrap">
-                {formatCurrency(nonCatalogRevenue)}
+                {formatCurrency(nonCatalogRevenue, currency)}
               </TableCell>
             </TableRow>
           )}
@@ -143,7 +146,7 @@ export const TopProductsTable = ({
               <TableCell colSpan={3}>{t("topProducts.unallocated")}</TableCell>
               <TableCell className="hidden md:table-cell" />
               <TableCell className="text-right tabular-nums whitespace-nowrap">
-                {formatCurrency(unallocatedRevenue)}
+                {formatCurrency(unallocatedRevenue, currency)}
               </TableCell>
             </TableRow>
           )}
@@ -151,7 +154,7 @@ export const TopProductsTable = ({
             <TableCell colSpan={3}>{t("topProducts.totalRow")}</TableCell>
             <TableCell className="hidden md:table-cell" />
             <TableCell className="text-right tabular-nums whitespace-nowrap">
-              {formatCurrency(totalRevenue)}
+              {formatCurrency(totalRevenue, currency)}
             </TableCell>
           </TableRow>
         </TableFooter>

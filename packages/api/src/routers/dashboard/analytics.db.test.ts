@@ -62,6 +62,9 @@ const SETTINGS = {
   timezone: TIMEZONE,
 } as const;
 
+/** The store as its sales figures count it. */
+const SALES = { id: STORE, currency: "EUR" };
+
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 const ago = (ms: number) => new Date(Date.now() - ms);
@@ -162,6 +165,7 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
       end?: Date;
       store?: string;
       items?: { productId: string | null; total: string }[];
+      currency?: string | null;
     },
   ) {
     const id = nextId("an_res");
@@ -180,7 +184,7 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
       subtotalAmount: total,
       depositAmount: "0.00",
       totalAmount: total,
-      currency: "EUR",
+      currency: options.currency === undefined ? "EUR" : options.currency,
       source: "manual",
     });
     for (const item of items) {
@@ -207,6 +211,7 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
       status?: "pending" | "completed";
       paidAt?: Date | null;
       createdAt?: Date;
+      currency?: string | null;
     } = {},
   ) {
     await louezDb.db.insert(louezDb.payments).values({
@@ -220,6 +225,7 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
       // past the call's time would fall after the window's end.
       paidAt: options.paidAt === undefined ? ago(5000) : options.paidAt,
       createdAt: options.createdAt ?? ago(5000),
+      ...(options.currency === undefined ? {} : { currency: options.currency }),
     });
   }
 
@@ -326,9 +332,9 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
     const report = await run("getRevenueReport", { period: "30d" }, session());
     const window = salesWindow.getSalesWindow("30d", new Date(), TIMEZONE);
     const [payments, bookings, methods] = await Promise.all([
-      sales.getSalesPaymentStats(STORE, window),
+      sales.getSalesPaymentStats(SALES, window),
       sales.getPeriodReservationStats(STORE, window),
-      sales.getRevenueByPaymentMethod(STORE, window),
+      sales.getRevenueByPaymentMethod(SALES, window),
     ]);
     assert.equal(report.revenue, "120.00");
     assert.equal(report.revenue, money(payments.periodRevenue));
@@ -337,6 +343,7 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
     assert.equal(report.reservations, 2);
     assert.equal(report.reservations, bookings.reservationCount);
     assert.equal(report.currency, "EUR");
+    assert.deepEqual(report.otherCurrencies, []);
     assert.equal(report.window.period, "30d");
     assert.equal(report.window.timezone, TIMEZONE);
     assert.equal(+report.window.start, +window.start);
@@ -361,7 +368,7 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
     );
 
     const stats = await run("getDashboardStats", {}, session());
-    const home = await storeMetrics.getStoreMetrics(STORE, { timezone: TIMEZONE });
+    const home = await storeMetrics.getStoreMetrics(SALES, { timezone: TIMEZONE });
     assert.equal(stats.today.revenue, "20.00");
     assert.equal(stats.today.revenue, money(home.todaysRevenue));
     assert.equal(stats.revenue.monthToDate, money(home.monthlyRevenue));
@@ -385,7 +392,7 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
     assert.equal(stats.links.dashboard, `${TEST_APP_URL}/dashboard?store=${STORE}`);
 
     const performance = await run("getProductPerformance", {}, session());
-    const table = await sales.getTopProductsByRevenue(STORE, window);
+    const table = await sales.getTopProductsByRevenue(SALES, window);
     assert.equal(performance.revenue, "120.00");
     assert.deepEqual(
       performance.products.map((row) => [row.name, row.revenue, row.reservations]),
@@ -468,9 +475,21 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
       { startDate: "2026-03-31", endDate: "2026-03-01" },
       { period: "30d" as const, startDate: "2026-03-01", endDate: "2026-03-31" },
       { startDate: "2024-01-01", endDate: "2026-03-31" },
+      // Days that do not exist are refused, never read as another day.
+      { startDate: "2026-02-31", endDate: "2026-03-31" },
+      { startDate: "2026-02-01", endDate: "2026-02-29" },
+      { startDate: "2026-04-31", endDate: "2026-05-02" },
     ]) {
       await rejects(run("getRevenueReport", input, session()), "BAD_REQUEST");
+      await rejects(run("getProductPerformance", input, session()), "BAD_REQUEST");
     }
+    // A leap day exists.
+    const leap = await run(
+      "getRevenueReport",
+      { startDate: "2028-02-29", endDate: "2028-02-29" },
+      session(),
+    );
+    assert.equal(leap.window.start.toISOString(), "2028-02-28T23:00:00.000Z");
   });
 
   // --- Product ranking --------------------------------------------------------
@@ -535,7 +554,7 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
 
     // The same rows as the dashboard's table, ranked the same way.
     const window = salesWindow.getSalesWindow("7d", new Date(), TIMEZONE);
-    const table = await sales.getTopProductsByRevenue(STORE, window, 2);
+    const table = await sales.getTopProductsByRevenue(SALES, window, 2);
     assert.deepEqual(
       ranking.products.map((row) => [row.id, row.revenue]),
       table.products.map((row) => [row.productId, row.totalRevenue]),
@@ -551,6 +570,107 @@ describe("analytics procedures (database)", { skip: skipWithoutTestDatabase() },
     const quarter = await run("getProductPerformance", { period: "90d" }, session());
     assert.equal(quarter.products[0]?.name, "Bike");
     assert.equal(quarter.products[0]?.revenue, "1099.00");
+  });
+
+  // --- Currency ---------------------------------------------------------------
+
+  test("totals count only the store's current currency; payments in another one are listed apart", async () => {
+    const bike = await product("Bike");
+    // Paid in pounds before the store moved to euros.
+    const before = await reservation("completed", {
+      start: ago(5 * DAY),
+      items: [{ productId: bike, total: "100.00" }],
+      currency: "GBP",
+    });
+    await payment(before, "100.00", { paidAt: ago(4 * DAY), currency: "GBP" });
+    // No currency on the payment: its reservation's, pounds.
+    await payment(before, "40.00", { paidAt: ago(4 * DAY), currency: null });
+    // A reservation from before currencies were frozen: the store's.
+    const legacy = await reservation("completed", {
+      start: ago(3 * DAY),
+      items: [{ productId: bike, total: "25.00" }],
+      currency: null,
+    });
+    await payment(legacy, "25.00", { paidAt: ago(2 * DAY), currency: null });
+    const swiss = await reservation("completed", { start: ago(DAY) });
+    await payment(swiss, "7.50", { currency: "CHF" });
+    const euros = await reservation("completed", {
+      start: ago(DAY),
+      items: [{ productId: bike, total: "60.00" }],
+    });
+    await payment(euros, "60.00", { currency: "eur" });
+
+    const pounds = [
+      { currency: "CHF", amount: "7.50", paymentCount: 1 },
+      { currency: "GBP", amount: "140.00", paymentCount: 2 },
+    ];
+    const report = await run("getRevenueReport", { period: "7d" }, session());
+    assert.equal(report.currency, "EUR");
+    assert.equal(report.revenue, "85.00");
+    assert.equal(report.paymentCount, 2);
+    assert.equal(sum(report.breakdown.map((day) => day.revenue)), 85);
+    assert.equal(sum(report.byPaymentMethod.map((row) => row.revenue)), 85);
+    assert.deepEqual(report.otherCurrencies, pounds);
+
+    const ranking = await run("getProductPerformance", { period: "7d" }, session());
+    assert.equal(ranking.revenue, "85.00");
+    assert.deepEqual(
+      ranking.products.map((row) => [row.name, row.revenue]),
+      [["Bike", "85.00"]],
+    );
+    assert.deepEqual(ranking.otherCurrencies, pounds);
+
+    const stats = await run("getDashboardStats", {}, session());
+    assert.equal(stats.revenue.allTime, "85.00");
+    assert.deepEqual(stats.otherCurrencies, pounds);
+
+    // The dashboard counts the same way.
+    const window = salesWindow.getSalesWindow("7d", new Date(), TIMEZONE);
+    const dashboard = await sales.getSalesPaymentStats(SALES, window);
+    assert.equal(money(dashboard.periodRevenue), report.revenue);
+
+    // A store that moved to pounds counts the pounds, and lists the rest. The
+    // receipt with no currency anywhere takes the store's, now pounds.
+    await louezDb.db
+      .update(louezDb.stores)
+      .set({ settings: { ...SETTINGS, currency: "GBP" } })
+      .where(orm.eq(louezDb.stores.id, STORE));
+    try {
+      const inPounds = await run("getRevenueReport", { period: "7d" }, session());
+      assert.equal(inPounds.currency, "GBP");
+      assert.equal(inPounds.revenue, "165.00");
+      assert.deepEqual(inPounds.otherCurrencies, [
+        { currency: "CHF", amount: "7.50", paymentCount: 1 },
+        { currency: "EUR", amount: "60.00", paymentCount: 1 },
+      ]);
+    } finally {
+      await louezDb.db
+        .update(louezDb.stores)
+        .set({ settings: SETTINGS })
+        .where(orm.eq(louezDb.stores.id, STORE));
+    }
+  });
+
+  // --- Deprecated input -------------------------------------------------------
+
+  test("get_dashboard_stats refuses the period it once took, rather than ignoring it", async () => {
+    let caught: unknown;
+    try {
+      await run("getDashboardStats", { period: "7d" }, session());
+    } catch (error) {
+      caught = error;
+    }
+    const { code, data } = (caught ?? {}) as {
+      code?: string;
+      data?: { issues?: { path?: unknown[]; message?: string }[] };
+    };
+    assert.equal(code, "BAD_REQUEST", String(caught));
+    const issue = data?.issues?.[0];
+    assert.deepEqual(issue?.path, ["period"]);
+    assert.match(issue?.message ?? "", /get_revenue_report or get_product_performance/);
+    // Any other unknown field is still dropped, as everywhere.
+    const stats = await run("getDashboardStats", { verbose: true }, session());
+    assert.equal(stats.currency, "EUR");
   });
 
   // --- Rights -----------------------------------------------------------------

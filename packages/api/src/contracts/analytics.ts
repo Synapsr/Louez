@@ -21,10 +21,16 @@ export const ANALYTICS_RANGE_MAX_DAYS = 731;
 export const PRODUCT_PERFORMANCE_MAX = 50;
 export const PRODUCT_PERFORMANCE_DEFAULT = 10;
 
+/** A day that exists: 2026-02-31 is refused, never read as 3 March. */
+const isCalendarDate = (value: string) => {
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
 const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "A date is YYYY-MM-DD.")
-  .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)), "Not a calendar date.");
+  .refine(isCalendarDate, "Not a calendar date.");
 
 const DAY_MS = 86_400_000;
 
@@ -89,6 +95,19 @@ const reportWindowSchema = z.object({
 });
 
 const money = z.string().describe('A decimal amount in `currency`, such as "120.50".');
+const otherCurrencies = (over: string) =>
+  z
+    .array(
+      z.object({
+        currency: z.string().describe("ISO 4217."),
+        amount: z.string().describe('A decimal amount in this currency, such as "120.50".'),
+        paymentCount: z.number().int(),
+      }),
+    )
+    .describe(
+      `Rental payments received ${over} in another currency than the store's current one (taken before it changed currency), per currency. Every amount above is in \`currency\` and leaves them out. Empty when there are none.`,
+    );
+
 const growth = z
   .number()
   .nullable()
@@ -98,7 +117,23 @@ const growth = z
 
 // --- analytics.getDashboardStats ------------------------------------------------
 
-export const getDashboardStatsInput = z.object({});
+/**
+ * No argument. `period` is refused rather than dropped: the tool took it
+ * once, and a caller still sending it must not read other figures than it
+ * asked for. Only that field: others are stripped, as everywhere.
+ */
+export const getDashboardStatsInput = z.preprocess((input, issues) => {
+  if (typeof input === "object" && input !== null && "period" in input) {
+    issues.addIssue({
+      code: "custom",
+      path: ["period"],
+      input,
+      message:
+        "get_dashboard_stats takes no period: it returns today, this month, last month and all time. For a period, use get_revenue_report or get_product_performance.",
+    });
+  }
+  return input;
+}, z.object({}));
 
 export const getDashboardStatsOutput = z.object({
   currency: z.string().describe("The store's currency, ISO 4217."),
@@ -116,6 +151,7 @@ export const getDashboardStatsOutput = z.object({
     lastMonth: money.describe("Rental payments received over the whole previous month."),
     allTime: money.describe("Rental payments received since the store opened."),
   }),
+  otherCurrencies: otherCurrencies("since the store opened"),
   reservations: z.object({
     total: z
       .number()
@@ -174,6 +210,7 @@ export const getRevenueReportOutput = z.object({
       }),
     )
     .describe("The revenue per day, or per month for a window longer than 92 days."),
+  otherCurrencies: otherCurrencies("over the window"),
   links: resourceLinksSchema,
 });
 export type RevenueReport = z.infer<typeof getRevenueReportOutput>;
@@ -232,6 +269,7 @@ export const getProductPerformanceOutput = z.object({
   unallocatedRevenue: money.describe(
     "The part paid on reservations whose items have no price to split it by.",
   ),
+  otherCurrencies: otherCurrencies("over the window"),
   links: resourceLinksSchema,
 });
 export type ProductPerformance = z.infer<typeof getProductPerformanceOutput>;

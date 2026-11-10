@@ -100,6 +100,7 @@ export const MultiStoreDemoPage = ({
             <StoresRevenueChart
               data={fixtures.data}
               storeNames={fixtures.storeNames}
+              storeCurrencies={fixtures.storeCurrencies}
               translations={{ title: t("chart.title"), description: t("chart.description") }}
               emptyMessage={t("empty.description")}
             />

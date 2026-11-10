@@ -2,14 +2,14 @@ import { and, count, eq, gte, lt, sql } from "drizzle-orm";
 
 import { customers, db, products, reservations } from "@louez/db";
 
-import { getReceiptTotals, instantSql } from "./sales-analytics";
+import { getReceiptTotals, instantSql, type SalesStore } from "./sales-analytics";
 import { getStoreCalendar, type StoreCalendar } from "./sales-window";
 
 /**
  * The figures of the dashboard's home, live from the store's records: the
  * catalog, the customers, the reservations, today's departures and returns,
- * and the rental payments received (as the sales pages count them). Today
- * and the month are the store's, in its time zone.
+ * and the rental payments received (as the sales pages count them, in the
+ * store's currency). Today and the month are the store's, in its time zone.
  */
 export interface StoreMetrics {
   // Catalog
@@ -43,9 +43,10 @@ export interface StoreMetrics {
 }
 
 export async function getStoreMetrics(
-  storeId: string,
+  store: SalesStore,
   options: { timezone: string | null | undefined; now?: Date },
 ): Promise<StoreMetrics> {
+  const storeId = store.id;
   const now = options.now ?? new Date();
   const calendar = getStoreCalendar(now, options.timezone);
   const { todayStart, tomorrowStart, monthStart, lastMonthStart } = calendar;
@@ -108,10 +109,10 @@ export async function getStoreMetrics(
           lt(reservations.endDate, tomorrowStart),
         ),
       ),
-    getReceiptTotals(storeId, { start: todayStart, end: now }),
-    getReceiptTotals(storeId, { start: monthStart, end: now }),
-    getReceiptTotals(storeId, { start: lastMonthStart, end: monthStart }),
-    getReceiptTotals(storeId, { end: now }),
+    getReceiptTotals(store, { start: todayStart, end: now }),
+    getReceiptTotals(store, { start: monthStart, end: now }),
+    getReceiptTotals(store, { start: lastMonthStart, end: monthStart }),
+    getReceiptTotals(store, { end: now }),
   ]);
 
   return {

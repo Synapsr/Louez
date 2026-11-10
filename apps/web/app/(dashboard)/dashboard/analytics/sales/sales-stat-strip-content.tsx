@@ -16,6 +16,8 @@ interface SalesStatStripContentProps {
   reservationStats: PeriodReservationStats;
   duration: AverageRentalDurationStats;
   totalRevenue: number;
+  /** The store's current currency, the one these figures are counted in. */
+  currency: string;
   formatLocale: string;
 }
 
@@ -23,6 +25,7 @@ export const SalesStatStripContent = ({
   reservationStats,
   duration,
   totalRevenue,
+  currency,
   formatLocale,
 }: SalesStatStripContentProps) => {
   const t = useTranslations("dashboard.statistics");
@@ -49,7 +52,7 @@ export const SalesStatStripContent = ({
       />
       <StatStripItem
         label={t("totalRevenue")}
-        value={formatCurrency(totalRevenue, "EUR", formatLocale)}
+        value={formatCurrency(totalRevenue, currency, formatLocale)}
         subtitle={t("sinceBeginning")}
       />
     </StatStrip>

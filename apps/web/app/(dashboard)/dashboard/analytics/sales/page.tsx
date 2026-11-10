@@ -23,6 +23,8 @@ import {
   getTopCustomersByRevenue,
   getTopProductsByRevenue,
   getUpcomingRevenue,
+  salesStore,
+  type SalesStore,
 } from "@louez/api/services/sales-analytics";
 import { getSalesWindow, type SalesWindow } from "@louez/api/services/sales-window";
 import { formatInTimeZone } from "date-fns-tz";
@@ -45,14 +47,14 @@ interface SalesAnalyticsPageProps {
  * The hero and the stat strip sit in two Suspense boundaries but read the same
  * receipts aggregate — `cache` keeps that a single round trip per request.
  */
-const getPeriodPaymentStats = cache((storeId: string, window: SalesWindow) =>
-  getSalesPaymentStats(storeId, window),
+const getPeriodPaymentStats = cache((store: SalesStore, window: SalesWindow) =>
+  getSalesPaymentStats(store, window),
 );
 
-async function RevenueHeroSection({ storeId, window }: { storeId: string; window: SalesWindow }) {
+async function RevenueHeroSection({ store, window }: { store: SalesStore; window: SalesWindow }) {
   const { intl: formatLocale } = await getRequestFormatLocale();
-  const stats = await getPeriodPaymentStats(storeId, window);
-  return <RevenueHero stats={stats} window={window} formatLocale={formatLocale} />;
+  const stats = await getPeriodPaymentStats(store, window);
+  return <RevenueHero stats={stats} window={window} currency={store.currency} formatLocale={formatLocale} />;
 }
 
 function RevenueHeroSkeleton() {
@@ -78,12 +80,12 @@ function StatStripSkeleton() {
   );
 }
 
-async function SalesStatStrip({ storeId, window }: { storeId: string; window: SalesWindow }) {
+async function SalesStatStrip({ store, window }: { store: SalesStore; window: SalesWindow }) {
   const { intl: formatLocale } = await getRequestFormatLocale();
   const [reservationStats, duration, payments] = await Promise.all([
-    getPeriodReservationStats(storeId, window),
-    getAverageRentalDuration(storeId, window),
-    getPeriodPaymentStats(storeId, window),
+    getPeriodReservationStats(store.id, window),
+    getAverageRentalDuration(store.id, window),
+    getPeriodPaymentStats(store, window),
   ]);
 
   return (
@@ -91,6 +93,7 @@ async function SalesStatStrip({ storeId, window }: { storeId: string; window: Sa
       reservationStats={reservationStats}
       duration={duration}
       totalRevenue={payments.totalRevenue}
+      currency={store.currency}
       formatLocale={formatLocale}
     />
   );
@@ -112,26 +115,31 @@ function RentalActivitySkeleton() {
 }
 
 async function RentalActivityData({
-  storeId,
+  store,
   window,
 }: {
-  storeId: string;
+  store: SalesStore;
   window: SalesWindow;
 }) {
   const { intl: formatLocale } = await getRequestFormatLocale();
   const [occupancy, upcoming] = await Promise.all([
-    getOccupancyStats(storeId, window),
-    getUpcomingRevenue(storeId, window.end),
+    getOccupancyStats(store.id, window),
+    getUpcomingRevenue(store, window.end),
   ]);
 
   return (
-    <RentalActivitySection occupancy={occupancy} upcoming={upcoming} formatLocale={formatLocale} />
+    <RentalActivitySection
+      occupancy={occupancy}
+      upcoming={upcoming}
+      currency={store.currency}
+      formatLocale={formatLocale}
+    />
   );
 }
 
-async function RevenueChartSection({ storeId, window }: { storeId: string; window: SalesWindow }) {
+async function RevenueChartSection({ store, window }: { store: SalesStore; window: SalesWindow }) {
   const { dateFns } = await getRequestFormatLocale();
-  const buckets = await getRevenueTimeSeries(storeId, window);
+  const buckets = await getRevenueTimeSeries(store, window);
   const data = buckets.map((bucket) => ({
     label: formatInTimeZone(
       bucket.start,
@@ -142,25 +150,25 @@ async function RevenueChartSection({ storeId, window }: { storeId: string; windo
     revenue: bucket.revenue,
     payments: bucket.payments,
   }));
-  return <RevenueChart data={data} />;
+  return <RevenueChart data={data} currency={store.currency} />;
 }
 
 async function PaymentMethodsSection({
-  storeId,
+  store,
   window,
 }: {
-  storeId: string;
+  store: SalesStore;
   window: SalesWindow;
 }) {
-  const data = await getRevenueByPaymentMethod(storeId, window);
-  return <PaymentMethodsBreakdown data={data} />;
+  const data = await getRevenueByPaymentMethod(store, window);
+  return <PaymentMethodsBreakdown data={data} currency={store.currency} />;
 }
 
 async function TopProductsByRevenueSection({
-  storeId,
+  store,
   window,
 }: {
-  storeId: string;
+  store: SalesStore;
   window: SalesWindow;
 }) {
   const {
@@ -170,7 +178,7 @@ async function TopProductsByRevenueSection({
     nonCatalogRevenue,
     unallocatedRevenue,
     productCount,
-  } = await getTopProductsByRevenue(storeId, window);
+  } = await getTopProductsByRevenue(store, window);
 
   return (
     <TopProductsTable
@@ -180,19 +188,20 @@ async function TopProductsByRevenueSection({
       nonCatalogRevenue={nonCatalogRevenue}
       unallocatedRevenue={unallocatedRevenue}
       productCount={productCount}
+      currency={store.currency}
     />
   );
 }
 
 async function TopCustomersByRevenueSection({
-  storeId,
+  store,
   window,
 }: {
-  storeId: string;
+  store: SalesStore;
   window: SalesWindow;
 }) {
-  const customers = await getTopCustomersByRevenue(storeId, window);
-  return <TopCustomersTable customers={customers} />;
+  const customers = await getTopCustomersByRevenue(store, window);
+  return <TopCustomersTable customers={customers} currency={store.currency} />;
 }
 
 export default async function SalesAnalyticsPage({ searchParams }: SalesAnalyticsPageProps) {
@@ -205,42 +214,43 @@ export default async function SalesAnalyticsPage({ searchParams }: SalesAnalytic
   }
 
   const window = getSalesWindow(period, new Date(), store.settings?.timezone || "UTC");
+  const sales = salesStore(store);
 
   return (
     <SalesAnalyticsContent
       revenueHero={
         <Suspense fallback={<RevenueHeroSkeleton />}>
-          <RevenueHeroSection storeId={store.id} window={window} />
+          <RevenueHeroSection store={sales} window={window} />
         </Suspense>
       }
       revenueChart={
         <Suspense fallback={<Skeleton className="h-64 w-full sm:h-72" />}>
-          <RevenueChartSection storeId={store.id} window={window} />
+          <RevenueChartSection store={sales} window={window} />
         </Suspense>
       }
       paymentMethods={
         <Suspense fallback={<Skeleton className="h-50 w-full" />}>
-          <PaymentMethodsSection storeId={store.id} window={window} />
+          <PaymentMethodsSection store={sales} window={window} />
         </Suspense>
       }
       stats={
         <Suspense fallback={<StatStripSkeleton />}>
-          <SalesStatStrip storeId={store.id} window={window} />
+          <SalesStatStrip store={sales} window={window} />
         </Suspense>
       }
       rentalActivity={
         <Suspense fallback={<RentalActivitySkeleton />}>
-          <RentalActivityData storeId={store.id} window={window} />
+          <RentalActivityData store={sales} window={window} />
         </Suspense>
       }
       topProducts={
         <Suspense fallback={<Skeleton className="h-75 w-full" />}>
-          <TopProductsByRevenueSection storeId={store.id} window={window} />
+          <TopProductsByRevenueSection store={sales} window={window} />
         </Suspense>
       }
       topCustomers={
         <Suspense fallback={<Skeleton className="h-75 w-full" />}>
-          <TopCustomersByRevenueSection storeId={store.id} window={window} />
+          <TopCustomersByRevenueSection store={sales} window={window} />
         </Suspense>
       }
     />

@@ -6,6 +6,7 @@ import { db, users } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
 import { reservations } from "@louez/db";
 import { eq, and, gte, lt, desc } from "drizzle-orm";
+import { salesStore } from "@louez/api/services/sales-analytics";
 import { getStoreMetrics } from "@louez/api/services/store-metrics";
 import { getStoreCalendar, type StoreCalendar } from "@louez/api/services/sales-window";
 import { determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
@@ -115,6 +116,8 @@ interface DashboardContentProps {
   storeSlug: string;
   /** The store's time zone, which sets today and the month. */
   timezone: string | null;
+  /** The store's current currency, the one its revenue is counted in. */
+  currency: string;
   firstName: string;
   /** What the store still lacks, as agents read it (stores.getLaunchChecklist). */
   launchChecklist: LaunchChecklistView;
@@ -128,6 +131,7 @@ async function DashboardContent({
   storeId,
   storeSlug,
   timezone,
+  currency,
   firstName,
   launchChecklist,
   isFromReeent,
@@ -142,7 +146,7 @@ async function DashboardContent({
   // Fetch all data in parallel
   const [metrics, departures, returns, pending, channelState, cohort, hasAgentConnection] =
     await Promise.all([
-      getStoreMetrics(storeId, { timezone, now }),
+      getStoreMetrics({ id: storeId, currency }, { timezone, now }),
       getTodaysDeparturesList(storeId, now, calendar),
       getTodaysReturnsList(storeId, now, calendar),
       getPendingReservationsList(storeId),
@@ -247,6 +251,7 @@ export default async function DashboardHomePage() {
       storeId={store.id}
       storeSlug={store.slug}
       timezone={store.settings?.timezone ?? null}
+      currency={salesStore(store).currency}
       firstName={firstName}
       launchChecklist={launchChecklist}
       isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}

@@ -7,11 +7,14 @@ import {
   type RevenueReport,
 } from "../contracts/analytics";
 import {
+  getOtherCurrencyReceipts,
   getPeriodReservationStats,
   getRevenueByPaymentMethod,
   getRevenueTimeSeries,
   getSalesPaymentStats,
   getTopProductsByRevenue,
+  salesStore,
+  type OtherCurrencyReceipts,
 } from "./sales-analytics";
 import { getSalesWindow, getSalesWindowForDates, type SalesWindow } from "./sales-window";
 import { getStoreMetrics } from "./store-metrics";
@@ -34,8 +37,15 @@ export interface AnalyticsWindowInput {
   endDate?: string;
 }
 
-const currencyOf = (store: AnalyticsStore) => store.settings?.currency || "EUR";
 const amount = (value: number) => value.toFixed(2);
+
+/** What the totals left out, in its own currency. */
+const otherCurrenciesOutput = (receipts: OtherCurrencyReceipts[]) =>
+  receipts.map((receipt) => ({
+    currency: receipt.currency,
+    amount: amount(receipt.amount),
+    paymentCount: receipt.paymentCount,
+  }));
 
 /** The window of a report: the custom range when given, else the rolling period. */
 export function analyticsWindow(
@@ -66,10 +76,14 @@ export async function dashboardStats(
   store: AnalyticsStore,
   now = new Date(),
 ): Promise<Omit<DashboardStats, "links">> {
-  const metrics = await getStoreMetrics(store.id, { timezone: store.settings?.timezone, now });
+  const sales = salesStore(store);
+  const [metrics, others] = await Promise.all([
+    getStoreMetrics(sales, { timezone: store.settings?.timezone, now }),
+    getOtherCurrencyReceipts(sales, { end: now }),
+  ]);
   const { calendar } = metrics;
   return {
-    currency: currencyOf(store),
+    currency: sales.currency,
     timezone: calendar.timezone,
     today: {
       start: calendar.todayStart,
@@ -84,6 +98,7 @@ export async function dashboardStats(
       lastMonth: amount(metrics.lastMonthRevenue),
       allTime: amount(metrics.allTimeRevenue),
     },
+    otherCurrencies: otherCurrenciesOutput(others),
     reservations: {
       total: metrics.totalReservations,
       pending: metrics.pendingReservations,
@@ -109,14 +124,16 @@ export async function revenueReport(
   now = new Date(),
 ): Promise<Omit<RevenueReport, "links">> {
   const { window, period } = analyticsWindow(store, input, now);
-  const [payments, reservations, methods, buckets] = await Promise.all([
-    getSalesPaymentStats(store.id, window),
+  const sales = salesStore(store);
+  const [payments, reservations, methods, buckets, others] = await Promise.all([
+    getSalesPaymentStats(sales, window),
     getPeriodReservationStats(store.id, window),
-    getRevenueByPaymentMethod(store.id, window),
-    getRevenueTimeSeries(store.id, window),
+    getRevenueByPaymentMethod(sales, window),
+    getRevenueTimeSeries(sales, window),
+    getOtherCurrencyReceipts(sales, window),
   ]);
   return {
-    currency: currencyOf(store),
+    currency: sales.currency,
     window: windowOutput(window, period),
     revenue: amount(payments.periodRevenue),
     revenueGrowth: payments.revenueGrowth,
@@ -137,6 +154,7 @@ export async function revenueReport(
       revenue: amount(bucket.revenue),
       paymentCount: bucket.payments,
     })),
+    otherCurrencies: otherCurrenciesOutput(others),
   };
 }
 
@@ -156,13 +174,13 @@ export async function productPerformance(
   now = new Date(),
 ): Promise<Omit<ProductPerformance, "links" | "products"> & { products: RankedProduct[] }> {
   const { window, period } = analyticsWindow(store, input, now);
-  const ranking = await getTopProductsByRevenue(
-    store.id,
-    window,
-    input.limit ?? PRODUCT_PERFORMANCE_DEFAULT,
-  );
+  const sales = salesStore(store);
+  const [ranking, others] = await Promise.all([
+    getTopProductsByRevenue(sales, window, input.limit ?? PRODUCT_PERFORMANCE_DEFAULT),
+    getOtherCurrencyReceipts(sales, window),
+  ]);
   return {
-    currency: currencyOf(store),
+    currency: sales.currency,
     window: windowOutput(window, period),
     products: ranking.products.flatMap((product) =>
       product.productId
@@ -184,5 +202,6 @@ export async function productPerformance(
     catalogRevenue: amount(ranking.catalogRevenue),
     nonCatalogRevenue: amount(ranking.nonCatalogRevenue),
     unallocatedRevenue: amount(ranking.unallocatedRevenue),
+    otherCurrencies: otherCurrenciesOutput(others),
   };
 }
