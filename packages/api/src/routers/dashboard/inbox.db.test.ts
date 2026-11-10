@@ -1211,10 +1211,17 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       assert.equal(event.itemType, "supplier_invoice");
       assert.deepEqual(Object.keys(event).sort(), ["error", "event", "itemType", "storeId"]);
       const text = JSON.stringify(event.error);
-      assert.match(text, /received_invoices/);
-      // The failed query's parameters (the store id, the dates) are not kept.
-      assert.match(text, /params: \[redacted\]/);
-      assert.ok(!text.includes("superpdp"), text);
+      // The failed query's SQL, not its parameters (the store id, the provider, the dates)…
+      assert.match(
+        String(event.error.message),
+        /^Failed query: select [\s\S]*received_invoices[\s\S]*\nparams: \[redacted\]$/,
+      );
+      assert.ok(!text.includes("superpdp") && !text.includes(OTHER_STORE), text);
+      // …and the driver's error as its code and the table it names.
+      assert.match(
+        String((event.error.cause as { message?: string } | undefined)?.message),
+        /^ER_NO_SUCH_TABLE \(1146\): table [\w$]+\.received_invoices$/,
+      );
       assert.ok(Array.isArray(event.error.frames) && event.error.frames.length > 0);
 
       // The source's own error: the transport answers it as an internal error.
@@ -1263,7 +1270,7 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     assert.equal(decoded.b, undefined);
   });
 
-  test("a cursor whose types standing behind are not the inbox's is refused", async () => {
+  test("a cursor whose types standing behind are not the inbox's, not behind it, or twice, is refused", async () => {
     const forged = (body: unknown) => Buffer.from(JSON.stringify(body)).toString("base64url");
     const at = { t: Date.now(), k: "~", r: "" };
     for (const b of [
@@ -1271,6 +1278,15 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
       [[0, "", "", []]],
       [[-1, "", "", ["supplier_invoice"]]],
       "supplier_invoice",
+      // At the cursor's position, or after it.
+      [[at.t, at.k, at.r, ["supplier_invoice"]]],
+      [[at.t + 1, "", "", ["supplier_invoice"]]],
+      // The same type twice, in one group or two.
+      [[0, "", "", ["supplier_invoice", "supplier_invoice"]]],
+      [
+        [0, "", "", ["supplier_invoice"]],
+        [1, "", "", ["supplier_invoice"]],
+      ],
     ]) {
       await rejects(list(session(), { cursor: forged({ ...at, b }) }), "INVALID_CURSOR");
     }

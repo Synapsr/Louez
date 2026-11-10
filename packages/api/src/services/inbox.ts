@@ -247,11 +247,19 @@ function decodeCursor(raw: string): Cursor {
     for (const group of b) {
       const [gt, gk, gr, types] = Array.isArray(group) ? group : [];
       const position = { t: gt, k: gk, r: gr };
-      if (!isPosition(position) || !Array.isArray(types) || types.length === 0) {
+      // A type stands behind the cursor's position, never at it or after, and once.
+      if (
+        !isPosition(position) ||
+        comparePositions(position, at) >= 0 ||
+        !Array.isArray(types) ||
+        types.length === 0
+      ) {
         throw inboxErrors.invalidCursor();
       }
       for (const type of types) {
-        if (typeof type !== "string" || !isItemType(type)) throw inboxErrors.invalidCursor();
+        if (typeof type !== "string" || !isItemType(type) || behind[type]) {
+          throw inboxErrors.invalidCursor();
+        }
         behind[type] = position;
       }
     }
