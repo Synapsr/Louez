@@ -13,21 +13,27 @@ import { collectUnpaidSmsCredits } from "./delivery-record";
  * the others change nothing. The payment intent is credited once across
  * top-ups too.
  *
- * Lock order of the SMS credits, everywhere: the top-up row, then the
- * store's credits row, then its SMS log rows (as `takePrepaidSmsCredit`
- * takes the credits, then the log row).
+ * It takes the SMS credit rows in their lock order (lib/sms/delivery-record.ts):
+ * the top-up row, then the store's credits row, then its SMS log rows.
  */
 export async function creditSmsTopup(paid: {
   transactionId: string;
   storeId: string;
   checkoutSessionId: string;
   paymentIntentId: string | null;
+  /** The checkout's `payment_status`: only a `paid` one is credited. */
+  paymentStatus: string;
+  /** The checkout's `amount_total`, in cents: the top-up's total, exactly (no tax, no discount). */
+  amountTotal: number | null;
+  currency: string | null;
 }): Promise<{ credited: number }> {
   return db.transaction(async (tx) => {
     const [topup] = await tx
       .select({
         storeId: smsTopupTransactions.storeId,
         quantity: smsTopupTransactions.quantity,
+        totalAmountCents: smsTopupTransactions.totalAmountCents,
+        currency: smsTopupTransactions.currency,
         status: smsTopupTransactions.status,
         stripeSessionId: smsTopupTransactions.stripeSessionId,
       })
@@ -35,11 +41,16 @@ export async function creditSmsTopup(paid: {
       .where(eq(smsTopupTransactions.id, paid.transactionId))
       .for("update");
     if (!topup || topup.status !== "pending") return { credited: 0 };
-    // The checkout's metadata names the top-up: it must be this store's, and this session's.
+    // The checkout's metadata names the top-up: it must be this store's, and this
+    // session's (one written at creation; set below when the creation could not).
     if (topup.storeId !== paid.storeId) return { credited: 0 };
     if (topup.stripeSessionId && topup.stripeSessionId !== paid.checkoutSessionId) {
       return { credited: 0 };
     }
+    // Paid, for what the top-up costs, in its currency.
+    if (paid.paymentStatus !== "paid") return { credited: 0 };
+    if (paid.amountTotal !== topup.totalAmountCents) return { credited: 0 };
+    if (paid.currency?.toLowerCase() !== topup.currency.toLowerCase()) return { credited: 0 };
     if (paid.paymentIntentId) {
       const [credited] = await tx
         .select({ id: smsTopupTransactions.id })

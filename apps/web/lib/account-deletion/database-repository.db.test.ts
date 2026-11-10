@@ -53,6 +53,9 @@ const RACE_SURVIVING = "store_race_referred";
 const RACE_PAYING_STORE = "store_race_paying";
 const RACE_RESERVATION = "res_race";
 const RACE_PAYMENT = "pay_race";
+const RACE_SMS_USER = "user_race_sms";
+const RACE_SMS_STORE = "store_race_sms";
+const RACE_SMS_TOPUP = "topup_race_sms_00001";
 
 describe("account deletion billing marks (database)", { skip: skipWithoutTestDatabase() }, () => {
   let database: TestDatabase;
@@ -368,5 +371,75 @@ describe("account deletion billing marks (database)", { skip: skipWithoutTestDat
       payload.data.payments.map((payment) => payment.grossMinor),
       [4000],
     );
+  });
+
+  test("a top-up being credited does not deadlock with the purge of its store's SMS", async () => {
+    await louezDb.db
+      .insert(louezDb.users)
+      .values([{ id: RACE_SMS_USER, email: "race-sms@example.test" }]);
+    await louezDb.db
+      .insert(louezDb.stores)
+      .values({ id: RACE_SMS_STORE, userId: RACE_SMS_USER, name: "SMS", slug: "race-sms" });
+    await louezDb.db
+      .insert(louezDb.storeMembers)
+      .values({ storeId: RACE_SMS_STORE, userId: RACE_SMS_USER, role: "owner" });
+    await louezDb.db.insert(louezDb.smsCredits).values({ storeId: RACE_SMS_STORE, balance: 5 });
+    await louezDb.db.insert(louezDb.smsTopupTransactions).values({
+      id: RACE_SMS_TOPUP,
+      storeId: RACE_SMS_STORE,
+      quantity: 5,
+      unitPriceCents: 10,
+      totalAmountCents: 50,
+      status: "pending",
+    });
+    // An SMS sent on an empty balance: the top-up pays its credit.
+    await louezDb.db.insert(louezDb.smsLogs).values({
+      storeId: RACE_SMS_STORE,
+      to: "+33612345678",
+      message: "SMS",
+      templateType: "reservation_cancelled",
+      status: "sent",
+      creditSource: "topup_unpaid",
+    });
+    const { collectUnpaidSmsCredits } = await import("@/lib/sms/delivery-record");
+    const context = await repository.accountDeletionRepository.getContext(RACE_SMS_USER);
+    assert.ok(context, "the user exists");
+    let topup: Promise<string> = Promise.resolve("not started");
+
+    const purge = settle(
+      repository.accountDeletionRepository.purgeOwnedData(context, {
+        beforePurge: async () => {
+          let holding: () => void = () => undefined;
+          const held = new Promise<void>((resolve) => {
+            holding = resolve;
+          });
+          // The top-up's credit, in the SMS lock order: the top-up row, then
+          // (once the purge waits) the credits and the logs.
+          topup = settle(
+            louezDb.db.transaction(async (tx) => {
+              await tx
+                .select({ id: louezDb.smsTopupTransactions.id })
+                .from(louezDb.smsTopupTransactions)
+                .where(eq(louezDb.smsTopupTransactions.id, RACE_SMS_TOPUP))
+                .for("update");
+              holding();
+              await lockWait();
+              await collectUnpaidSmsCredits(tx, RACE_SMS_STORE);
+            }),
+          );
+          await held;
+        },
+      }),
+    );
+
+    assert.deepEqual(
+      { purge: await purge, topup: await topup },
+      { purge: "committed", topup: "committed" },
+    );
+    const left = await louezDb.db
+      .select({ id: louezDb.smsLogs.id })
+      .from(louezDb.smsLogs)
+      .where(eq(louezDb.smsLogs.storeId, RACE_SMS_STORE));
+    assert.deepEqual(left, [], "the store's SMS went with it");
   });
 });

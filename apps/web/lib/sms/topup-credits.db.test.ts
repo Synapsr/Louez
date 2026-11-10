@@ -47,10 +47,14 @@ describe("SMS top-up credits (database)", { skip: skipWithoutTestDatabase() }, (
     await louezDb.db.insert(louezDb.smsCredits).values({ storeId: STORE, balance: 0 });
   });
 
+  /** The quantity of each top-up: its checkout's amount is 10 cents an SMS. */
+  const amounts = new Map<string, number>();
+
   /** A pending top-up, as the checkout's creation writes it. */
-  async function pendingTopup(quantity: number) {
+  async function pendingTopup(quantity: number, options: { sessionKnown?: boolean } = {}) {
     sequence += 1;
     const id = `topup_${String(sequence).padStart(15, "0")}`;
+    amounts.set(id, quantity);
     await louezDb.db.insert(louezDb.smsTopupTransactions).values({
       id,
       storeId: STORE,
@@ -58,7 +62,7 @@ describe("SMS top-up credits (database)", { skip: skipWithoutTestDatabase() }, (
       unitPriceCents: 10,
       totalAmountCents: quantity * 10,
       status: "pending",
-      stripeSessionId: `cs_${id}`,
+      stripeSessionId: options.sessionKnown === false ? null : `cs_${id}`,
     });
     return id;
   }
@@ -84,6 +88,9 @@ describe("SMS top-up credits (database)", { skip: skipWithoutTestDatabase() }, (
     storeId: STORE,
     checkoutSessionId: `cs_${transactionId}`,
     paymentIntentId: `pi_${transactionId}`,
+    paymentStatus: "paid",
+    amountTotal: (amounts.get(transactionId) ?? 0) * 10,
+    currency: "eur",
     ...overrides,
   });
   const credits = async () => {
@@ -160,6 +167,39 @@ describe("SMS top-up credits (database)", { skip: skipWithoutTestDatabase() }, (
     );
     assert.equal((await statusOf(id))?.status, "pending");
     assert.deepEqual(await credits(), { balance: 10, totalPurchased: 10, totalUsed: 0 });
+  });
+
+  test("a checkout not paid, or paid another amount or currency, credits nothing", async () => {
+    const id = await pendingTopup(10);
+    for (const mismatch of [
+      { paymentStatus: "unpaid" },
+      { paymentStatus: "no_payment_required" },
+      { amountTotal: 99 },
+      { amountTotal: null },
+      { currency: "usd" },
+      { currency: null },
+    ]) {
+      assert.deepEqual(
+        await topups.creditSmsTopup({ ...paidEvent(id), ...mismatch }),
+        { credited: 0 },
+        JSON.stringify(mismatch),
+      );
+    }
+    assert.equal((await statusOf(id))?.status, "pending");
+    // The currency as Stripe writes it, whatever its case.
+    assert.deepEqual(await topups.creditSmsTopup({ ...paidEvent(id), currency: "EUR" }), {
+      credited: 10,
+    });
+  });
+
+  test("a top-up whose session id was never written takes the event's", async () => {
+    const id = await pendingTopup(10, { sessionKnown: false });
+    assert.deepEqual(await topups.creditSmsTopup(paidEvent(id)), { credited: 10 });
+    const [row] = await louezDb.db
+      .select({ session: louezDb.smsTopupTransactions.stripeSessionId })
+      .from(louezDb.smsTopupTransactions)
+      .where(eq(louezDb.smsTopupTransactions.id, id));
+    assert.equal(row?.session, `cs_${id}`);
   });
 
   test("a first top-up creates the store's credits", async () => {

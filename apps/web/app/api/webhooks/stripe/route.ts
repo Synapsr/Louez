@@ -146,6 +146,9 @@ async function handleSmsTopupCompleted(session: Stripe.Checkout.Session) {
     storeId,
     checkoutSessionId: session.id,
     paymentIntentId,
+    paymentStatus: session.payment_status,
+    amountTotal: session.amount_total,
+    currency: session.currency,
   })
   if (credited === 0) {
     console.log(`SMS top-up not credited (unknown, or already processed): ${transactionId}`)

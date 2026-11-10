@@ -16,6 +16,12 @@ import { SMS_CREDIT_SOURCE } from "./credit-source";
  *    `topup_unpaid` when the balance was empty; the next top-up takes it
  *    (`collectUnpaidSmsCredits`). The quota check counts the owed ones as
  *    spent (lib/plan-limits.ts).
+ *
+ * Lock order of the SMS credit rows, for every write that takes more than
+ * one of them: a store's top-up rows, then its credits row, then its SMS log
+ * rows. A top-up being credited (lib/sms/topup-credits.ts), a credit taken
+ * (`takePrepaidSmsCredit`: credits, then the log row) and an account's
+ * deletion (lib/account-deletion/database-repository.ts) all follow it.
  */
 
 export interface SmsAcceptance {
