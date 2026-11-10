@@ -102,6 +102,18 @@ export function isListed(
 }
 
 /**
+ * Whether the client's directory forbids this procedure
+ * (`ClientWithholding.capabilities`): it is never listed, and a call is
+ * refused with NOT_AVAILABLE_TO_THIS_AGENT.
+ */
+export function isWithheld(ctx: McpRequestContext, capability: string | undefined): boolean {
+  return (
+    capability !== undefined &&
+    ctx.actor.credential.withheld?.capabilities.includes(capability) === true
+  );
+}
+
+/**
  * Whether `tools/list` shows an account tool (`stores_list`,
  * `stores_create`): whatever the bundles, when the connection may call it
  * (`accountRefusal`). A connection with no store yet sees how to create one.

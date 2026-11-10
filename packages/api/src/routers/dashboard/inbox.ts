@@ -76,6 +76,7 @@ const readerOf = (context: ProductContext): InboxReader => {
     hostedBy: context.ports.hostedBy?.() ?? null,
     reads: reads(context),
     operationsOf: credential.kind === "session" ? null : (credential.id ?? credential.userId),
+    withheld: credential.withheld?.capabilities,
   };
 };
 
