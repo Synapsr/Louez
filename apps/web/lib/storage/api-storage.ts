@@ -58,6 +58,19 @@ export const apiStorage: StoragePort = {
     await setPublicReadAcl(key);
     return getImageFiles().url(key);
   },
+  copy: async (from, to) => {
+    await getImageFiles().copy(from, to);
+  },
+  list: async (prefix, cursor) => {
+    const page = await getImageFiles().list({ prefix, cursor });
+    return {
+      items: page.items.map((file) => ({
+        key: file.key,
+        lastModified: file.lastModified === undefined ? null : new Date(file.lastModified),
+      })),
+      cursor: page.cursor ?? null,
+    };
+  },
   delete: async (key) => {
     await getImageFiles().delete(key);
   },

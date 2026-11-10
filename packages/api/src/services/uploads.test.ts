@@ -142,9 +142,9 @@ describe("uploadImage", () => {
     // the object and the error's name, code and status, never the key or
     // the provider's message. The caller still gets the first error.
     const logged = t.mock.method(console, "error", () => {});
-    let deleted = "";
+    const deleted: string[] = [];
     storage.delete = async (key) => {
-      deleted = key;
+      deleted.push(key);
       throw Object.assign(new Error(`AccessDenied on ${key} for arn:aws:iam::123:user/x`), {
         name: "AccessDenied",
         Code: "AccessDenied",
@@ -152,21 +152,25 @@ describe("uploadImage", () => {
       });
     };
     await assert.rejects(upload({ contentBase64: pngBase64(64) }), failure);
-    assert.equal(logged.mock.callCount(), 1);
-    const args = logged.mock.calls[0]?.arguments ?? [];
-    assert.equal(args.length, 1);
-    const event = args[0] as { objectRef: string };
-    assert.deepEqual(event, {
-      event: "image_upload.cleanup_failed",
-      objectRef: event.objectRef,
-      kind: "category",
-      error: { name: "AccessDenied", code: "AccessDenied", status: 403 },
-    });
-    assert.match(event.objectRef, /^[0-9a-f]{16}$/);
-    const written = JSON.stringify(args);
-    assert.ok(!written.includes(deleted), "no key");
-    assert.ok(!written.includes(STORE), "no store folder");
-    assert.ok(!written.includes("arn:aws"), "no provider message");
+    // The staging copy and the unpublished one: an event for each.
+    assert.equal(deleted.length, 2);
+    assert.equal(logged.mock.callCount(), 2);
+    for (const call of logged.mock.calls) {
+      const args = call.arguments;
+      assert.equal(args.length, 1);
+      const event = args[0] as { objectRef: string };
+      assert.deepEqual(event, {
+        event: "image_upload.cleanup_failed",
+        objectRef: event.objectRef,
+        kind: "category",
+        error: { name: "AccessDenied", code: "AccessDenied", status: 403 },
+      });
+      assert.match(event.objectRef, /^[0-9a-f]{16}$/);
+      const written = JSON.stringify(args);
+      for (const key of deleted) assert.ok(!written.includes(key), "no key");
+      assert.ok(!written.includes(STORE), "no store folder");
+      assert.ok(!written.includes("arn:aws"), "no provider message");
+    }
   });
 
   test("base64 is sized from its data, with padding only where it belongs", async () => {

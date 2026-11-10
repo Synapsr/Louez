@@ -26,6 +26,10 @@ mock.module("@louez/api/platform/operations", {
 mock.module("@louez/auth/oauth-retention", {
   namedExports: { purgeOAuthTokens: fake("purgeOAuthTokens") },
 });
+mock.module("@louez/api/services/uploads", {
+  namedExports: { purgeStagedUploads: fake("purgeStagedUploads") },
+});
+mock.module("@/lib/storage/api-storage", { namedExports: { apiStorage: {} } });
 
 test("every cron call runs the outbox, each purge of the agent-ready API, then its background jobs", async () => {
   const { apiTasks } = await import("./api-tasks");
@@ -42,6 +46,7 @@ test("every cron call runs the outbox, each purge of the agent-ready API, then i
     { task: "api-handoffs", key: "apiHandoffs", runs: "purgeHandoffs" },
     { task: "api-operations", key: "apiOperations", runs: "purgeOperations" },
     { task: "oauth-tokens", key: "oauthTokens", runs: "purgeOAuthTokens" },
+    { task: "upload-staging", key: "uploadStaging", runs: "purgeStagedUploads" },
     { task: "api-jobs", key: "apiJobs", runs: "runApiJobsCron" },
   ]);
   assert.equal(called.length, tasks.length);

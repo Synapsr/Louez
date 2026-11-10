@@ -607,7 +607,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       { contentType: "image/png", size: PNG.byteLength },
       context({ "idempotency-key": "ignored" }),
     );
-    assert.match(started.key, new RegExp(`^${STORE}/categories/[\\w-]{21}\\.png$`));
+    assert.match(started.key, new RegExp(`^uploads-staging/${STORE}/categories/[\\w-]{21}\\.png$`));
     assert.equal(started.upload.method, "PUT");
     const url = new URL(started.upload.url);
     const token = url.pathname.slice(uploadHandler.UPLOAD_PATH_PREFIX.length);
@@ -641,14 +641,22 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     const stored = await put(PNG, { "content-type": "image/png" });
     assert.equal(stored.status, 200);
 
+    // Checked in staging, then published under the store's folder.
+    const publicKey = started.key.slice("uploads-staging/".length);
     const completed = await run("completeImageUpload", { key: started.key }, context());
     assert.deepEqual(completed, {
-      key: started.key,
-      url: `https://files.louez.test/${started.key}`,
+      key: publicKey,
+      url: `https://files.louez.test/${publicKey}`,
       contentType: "image/png",
       size: PNG.byteLength,
     });
-    assert.equal(storage.objects.get(started.key)?.public, true);
+    assert.equal(storage.objects.get(publicKey)?.public, true);
+    assert.equal(storage.objects.has(started.key), false, "the staging copy went");
+    assert.deepEqual(
+      await run("completeImageUpload", { key: started.key }, context()),
+      completed,
+      "completing again answers the same",
+    );
 
     const category = await run("create", { name: "Pictured", imageUrl: completed.url }, context());
     assert.equal(category.imageUrl, completed.url);
@@ -661,7 +669,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     assert.equal(operation, undefined);
   });
 
-  test("a direct upload is checked on completion: bad bytes are refused and stay private", async () => {
+  test("a direct upload is checked on completion: bad bytes are refused and never published", async () => {
     storage = createMemoryStorage({ direct: true });
     const context = await apiKey();
     const started = await run(
@@ -672,7 +680,7 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     assert.equal(started.upload.method, "PUT");
     assert.match(started.upload.url, /^https:\/\/bucket\.louez\.test\//);
 
-    // The caller sent HTML to the bucket under the image's key.
+    // The caller sent HTML to the bucket under the upload's staging key.
     storage.objects.set(started.key, {
       bytes: new TextEncoder().encode("<script>alert(1)</script>"),
       contentType: "image/png",
@@ -682,12 +690,37 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       run("completeImageUpload", { key: started.key }, context()),
       "UPLOAD_CONTENT_INVALID",
     );
-    // Nothing is deleted: the refused object stays unpublished, so private.
-    assert.equal(storage.objects.get(started.key)?.public, false, "kept private");
+    // Refused: it stays in staging, for the cron, and nothing reaches the store's folder.
+    const publicKey = started.key.slice("uploads-staging/".length);
+    assert.equal(storage.objects.get(started.key)?.public, false, "left in staging");
+    assert.equal(storage.objects.has(publicKey), false, "never published");
 
     storage.objects.set(started.key, { bytes: PNG, contentType: "image/png", public: false });
     const completed = await run("completeImageUpload", { key: started.key }, context());
     assert.equal(completed.size, PNG.byteLength);
+    assert.equal(storage.objects.get(publicKey)?.public, true);
+  });
+
+  test("the cron deletes what waited in staging over a day, and nothing else", async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = new Date("2027-01-10T12:00:00Z");
+    const object = (age: number) => ({
+      bytes: PNG,
+      contentType: "image/png",
+      public: false,
+      lastModified: new Date(now.getTime() - age),
+    });
+    const old = `uploads-staging/${STORE}/categories/aaaaaaaaaaaaaaaaaaaaa.png`;
+    const fresh = `uploads-staging/${STORE}/categories/bbbbbbbbbbbbbbbbbbbbb.png`;
+    const published = `${STORE}/categories/aaaaaaaaaaaaaaaaaaaaa.png`;
+    storage.objects.set(old, object(day + 1000));
+    storage.objects.set(fresh, object(day - 1000));
+    storage.objects.set(published, { ...object(30 * day), public: true });
+
+    assert.deepEqual(await uploads.purgeStagedUploads(storage, { now }), { deleted: 1 });
+    assert.equal(storage.objects.has(old), false);
+    assert.equal(storage.objects.has(fresh), true, "a recent upload may still be completed");
+    assert.equal(storage.objects.has(published), true, "a published image is never touched");
   });
 
   test("an upload refuses another kind, type, size, or another store's key", async () => {
@@ -723,6 +756,10 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
     storage.objects.set(theirs, { bytes: PNG, contentType: "image/png", public: false });
     for (const key of [
       theirs,
+      `uploads-staging/${OTHER_STORE}/categories/ccccccccccccccccccccc.png`,
+      // A published image, not an upload: completion never takes it.
+      `${STORE}/categories/ccccccccccccccccccccc.png`,
+      `uploads-staging/${STORE}/products/ccccccccccccccccccccc.png`,
       `${STORE}/products/ccccccccccccccccccccc.png`,
       `${STORE}/categories/../${OTHER_STORE}/categories/ccccccccccccccccccccc.png`,
     ]) {
@@ -746,11 +783,16 @@ describe("categories procedures (database)", { skip: skipWithoutTestDatabase() }
       contentType: "image/png",
       size: PNG.byteLength,
     });
-    assert.deepEqual(storage.objects.get(sent.key), {
-      bytes: PNG,
-      contentType: "image/png",
-      public: true,
-    });
+    const stored = storage.objects.get(sent.key);
+    assert.deepEqual(
+      { bytes: stored?.bytes, contentType: stored?.contentType, public: stored?.public },
+      { bytes: PNG, contentType: "image/png", public: true },
+    );
+    assert.deepEqual(
+      [...storage.objects.keys()].filter((key) => key.startsWith("uploads-staging/")),
+      [],
+      "no staging copy left",
+    );
 
     // A data URL, with its type, also passes; the type is read from the bytes.
     const dataUrl = await run(

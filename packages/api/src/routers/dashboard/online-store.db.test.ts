@@ -493,7 +493,7 @@ describe("online store procedures (database)", { skip: skipWithoutTestDatabase()
       { kind: "logo", contentType: "image/png", size: PNG.byteLength },
       key(),
     );
-    assert.match(logo.key, new RegExp(`^${STORE}/logo/`));
+    assert.match(logo.key, new RegExp(`^uploads-staging/${STORE}/logo/`));
     await storage.put(logo.key, PNG, "image/png");
     const logoDone = await run("completeImageUpload", { kind: "logo", key: logo.key }, key());
 
