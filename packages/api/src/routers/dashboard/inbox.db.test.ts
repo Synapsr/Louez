@@ -1377,7 +1377,11 @@ describe("inbox procedures (database)", { skip: skipWithoutTestDatabase() }, () 
     const { CHATGPT_CLIENT_ID, clientWithholding } = await import("../../platform/agent-clients");
     const { withheldProcedurePaths } = await import("../../platform/withheld-procedures");
     const GRANT = "ib_grant_chatgpt";
-    const withheld = clientWithholding({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" });
+    const withheld = clientWithholding({
+      clientId: CHATGPT_CLIENT_ID,
+      name: "ChatGPT",
+      redirectUris: [],
+    });
     const withheldProcedures = await withheldProcedurePaths(withheld);
     assert.ok(withheldProcedures.includes("dashboard.products.enhanceImage"));
     assert.ok(withheldProcedures.includes("dashboard.products.removeImageBackground"));

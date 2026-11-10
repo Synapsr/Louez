@@ -485,7 +485,11 @@ describe("MCP directory conformance", () => {
       ...base,
       actor: {
         ...base.actor,
-        credential: { ...base.actor.credential, kind: "oauth" as const, bundles: ["daily" as const] },
+        credential: {
+          ...base.actor.credential,
+          kind: "oauth" as const,
+          bundles: ["daily" as const],
+        },
       },
     };
     const named = (text: string) =>
@@ -506,21 +510,30 @@ describe("MCP directory conformance", () => {
     const { CHATGPT_CLIENT_ID, clientWithholding } =
       await import("@louez/api/platform/agent-clients");
     const { withheldProcedurePaths } = await import("@louez/api/platform/withheld-procedures");
-    const paths = async (client: { clientId: string; name: string | null }) =>
-      (await withheldProcedurePaths(clientWithholding(client))).sort();
-    // handoffs.refresh opens on billing or settings: it stays with settings.
-    assert.deepEqual(await paths({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" }), [
+    const paths = async (
+      client: { clientId: string; name: string | null },
+      redirectUris: string[] = [],
+    ) => (await withheldProcedurePaths(clientWithholding({ ...client, redirectUris }))).sort();
+    const openAi = [
       "dashboard.billing.getStatus",
       "dashboard.billing.startCardSetup",
       "dashboard.jobs.get",
       "dashboard.products.enhanceImage",
       "dashboard.products.removeImageBackground",
       "dashboard.stores.create",
-    ]);
+    ];
+    // handoffs.refresh opens on billing or settings: it stays with settings.
+    assert.deepEqual(await paths({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" }), openAi);
     assert.deepEqual(await paths({ clientId: "dcr_claude", name: "Claude" }), [
       "dashboard.products.enhanceImage",
     ]);
     assert.deepEqual(await paths({ clientId: "dcr_cursor", name: "Cursor" }), []);
+    // Recognised by its redirect URIs alone, whatever its name.
+    const evil = { clientId: "dcr_evil", name: "Evil" };
+    assert.deepEqual(await paths(evil, ["https://chatgpt.com/connector/oauth/1"]), openAi);
+    assert.deepEqual(await paths(evil, ["https://claude.ai/api/mcp/auth_callback"]), [
+      "dashboard.products.enhanceImage",
+    ]);
   });
 
   test("each directory's list and instructions leave out its AI photo tools; other clients keep them", async () => {
@@ -538,6 +551,7 @@ describe("MCP directory conformance", () => {
       permissions: { reservations: "write", products: "write" },
     });
     const listing = async (client: { clientId: string; name: string | null }) => {
+      const directory = { ...client, redirectUris: [] };
       const ctx = {
         ...base,
         actor: {
@@ -546,7 +560,7 @@ describe("MCP directory conformance", () => {
             ...base.actor.credential,
             kind: "oauth" as const,
             bundles: ["daily" as const, "catalog" as const],
-            withheld: clientWithholding(client),
+            withheld: clientWithholding(directory),
           },
         },
       };

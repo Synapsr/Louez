@@ -9644,7 +9644,10 @@
       "dismiss": "Ukryj"
     },
     "declaredBy": "Nazwa podana przez {origin}",
-    "declaredByItself": "Nazwa podana przez aplikację (rejestracja dynamiczna)"
+    "declaredByItself": "Nazwa podana przez aplikację (rejestracja dynamiczna)",
+    "verifiedDestination": "Zweryfikowano: przekierowuje do {domain}",
+    "declaredNameBy": "Nazwa podana przez {origin}: {name}",
+    "declaredNameByItself": "Nazwa podana przez aplikację: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Zmień sklep",

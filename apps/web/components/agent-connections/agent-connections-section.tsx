@@ -11,6 +11,7 @@ import { AgentConnectionEditDialog } from "./agent-connection-edit-dialog";
 import { AgentConnectionRevokeDialog } from "./agent-connection-revoke-dialog";
 import { AgentConnectionRow } from "./agent-connection-row";
 import { useAgentConnections } from "./use-agent-connections";
+import { shownClientName } from "./util.agent-client";
 
 /**
  * "Agents connectés": the OAuth clients the user authorized, with their
@@ -77,7 +78,7 @@ export const AgentConnectionsSection = () => {
       )}
       {revoking && (
         <AgentConnectionRevokeDialog
-          clientName={revoking.client.name}
+          clientName={shownClientName(revoking.client)}
           pending={revoke.isPending}
           onConfirm={() => revoke.mutate({ id: revoking.id })}
           onClose={() => setRevokingId(null)}

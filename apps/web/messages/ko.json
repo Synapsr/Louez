@@ -9644,7 +9644,10 @@
       "dismiss": "숨기기"
     },
     "declaredBy": "{origin}에서 선언한 이름",
-    "declaredByItself": "앱이 직접 선언한 이름(동적 등록)"
+    "declaredByItself": "앱이 직접 선언한 이름(동적 등록)",
+    "verifiedDestination": "확인됨: {domain}(으)로 돌아갑니다",
+    "declaredNameBy": "{origin}에서 선언한 이름: {name}",
+    "declaredNameByItself": "앱이 직접 선언한 이름: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "매장 전환",

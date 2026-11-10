@@ -9644,7 +9644,10 @@
       "dismiss": "Скрыть"
     },
     "declaredBy": "Название указано {origin}",
-    "declaredByItself": "Название указано самим приложением (динамическая регистрация)"
+    "declaredByItself": "Название указано самим приложением (динамическая регистрация)",
+    "verifiedDestination": "Проверено: возвращает на {domain}",
+    "declaredNameBy": "Название указано {origin}: {name}",
+    "declaredNameByItself": "Название указано самим приложением: {name}"
   },
   "activeStoreSwitch": {
     "metaTitle": "Сменить магазин",

@@ -166,5 +166,6 @@ export {
 export { GoogleCalendar as GoogleCalendarIcon } from "./icon.google-calendar";
 export { ChatGpt as ChatGptIcon } from "./icon.chatgpt";
 export { Claude as ClaudeIcon } from "./icon.claude";
+export { Cursor as CursorIcon } from "./icon.cursor";
 export { Grok as GrokIcon } from "./icon.grok";
 export { LeChat as LeChatIcon } from "./icon.le-chat";
