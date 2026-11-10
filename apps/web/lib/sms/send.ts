@@ -32,6 +32,7 @@ const SMS_TEMPLATES: Record<
     request_received: (vars: { storeName: string; number: string }) => string;
     request_accepted: (vars: { storeName: string; number: string }) => string;
     request_rejected: (vars: { storeName: string; number: string }) => string;
+    reservation_cancelled: (vars: { storeName: string; number: string }) => string;
     instant_access: (vars: { storeName: string; number: string; url: string }) => string;
     payment_request: (vars: {
       storeName: string;
@@ -60,6 +61,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nDemande #${number} acceptée! Consultez vos emails.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nDemande #${number} non disponible. Contactez-nous.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nRéservation #${number} annulée. Contactez-nous pour toute question.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nVotre réservation #${number}\nAccès: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -80,6 +83,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nRequest #${number} accepted! Check your email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nRequest #${number} unavailable. Contact us.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReservation #${number} cancelled. Contact us with any questions.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nYour reservation #${number}\nAccess: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -100,6 +105,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nAnfrage #${number} akzeptiert! E-Mail pruefen.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nAnfrage #${number} nicht verfuegbar. Kontaktieren Sie uns.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReservierung #${number} storniert. Bei Fragen kontaktieren Sie uns.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nIhre Reservierung #${number}\nZugang: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -120,6 +127,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nSolicitud #${number} aceptada! Revisa tu email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nSolicitud #${number} no disponible. Contactenos.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReserva #${number} cancelada. Contactenos si tiene preguntas.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nTu reserva #${number}\nAcceso: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -140,6 +149,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nRichiesta #${number} accettata! Controlla email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nRichiesta #${number} non disponibile. Contattaci.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nPrenotazione #${number} annullata. Contattaci per qualsiasi domanda.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nLa tua prenotazione #${number}\nAccesso: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -160,6 +171,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nAanvraag #${number} geaccepteerd! Check je email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nAanvraag #${number} niet beschikbaar. Neem contact op.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReservering #${number} geannuleerd. Neem contact op bij vragen.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nUw reservering #${number}\nToegang: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -180,6 +193,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nZamowienie #${number} zaakceptowane! Sprawdz email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nZamowienie #${number} niedostepne. Skontaktuj sie.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nRezerwacja #${number} anulowana. Skontaktuj sie z nami w razie pytan.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nTwoja rezerwacja #${number}\nDostep: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -200,6 +215,8 @@ const SMS_TEMPLATES: Record<
       `${storeName}\nPedido #${number} aceito! Verifique seu email.`,
     request_rejected: ({ storeName, number }) =>
       `${storeName}\nPedido #${number} indisponivel. Entre em contato.`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `${storeName}\nReserva #${number} cancelada. Entre em contato se tiver duvidas.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nSua reserva #${number}\nAcesso: ${url}`,
     payment_request: ({ storeName, number, amount, url }) =>
@@ -240,6 +257,11 @@ const SMS_TEMPLATES: Record<
       }),
     request_rejected: ({ storeName, number }) =>
       formatSupplementalMessage("zh", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_reservation_cancelled", {
         value0: String(storeName),
         value1: String(number),
       }),
@@ -299,6 +321,11 @@ const SMS_TEMPLATES: Record<
         value0: String(storeName),
         value1: String(number),
       }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
     instant_access: ({ storeName, number, url }) =>
       formatSupplementalMessage("ja", "send_SMS_TEMPLATES_instant_access", {
         value0: String(storeName),
@@ -352,6 +379,11 @@ const SMS_TEMPLATES: Record<
       }),
     request_rejected: ({ storeName, number }) =>
       formatSupplementalMessage("ru", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_reservation_cancelled", {
         value0: String(storeName),
         value1: String(number),
       }),
@@ -411,6 +443,11 @@ const SMS_TEMPLATES: Record<
         value0: String(storeName),
         value1: String(number),
       }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_reservation_cancelled", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
     instant_access: ({ storeName, number, url }) =>
       formatSupplementalMessage("id", "send_SMS_TEMPLATES_instant_access", {
         value0: String(storeName),
@@ -464,6 +501,11 @@ const SMS_TEMPLATES: Record<
       }),
     request_rejected: ({ storeName, number }) =>
       formatSupplementalMessage("ko", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    reservation_cancelled: ({ storeName, number }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_reservation_cancelled", {
         value0: String(storeName),
         value1: String(number),
       }),
@@ -1296,6 +1338,96 @@ export async function sendRequestRejectedSms({
       to: normalizedPhone,
       message,
       templateType: "request_rejected",
+      status: "failed",
+      error: errorMessage,
+      creditSource,
+    });
+
+    return { success: false, error: errorMessage };
+  }
+}
+
+/** The store cancelled the reservation: the customer hears of it (never of a refund). */
+export async function sendReservationCancelledSms({
+  store,
+  customer,
+  reservation,
+}: {
+  store: Store;
+  customer: Customer & { id: string };
+  reservation: {
+    id: string;
+    number: string;
+  };
+}): Promise<SmsSendResult> {
+  if (!customer.phone) {
+    return { success: false, error: "Customer has no phone number" };
+  }
+
+  if (!isSmsConfigured()) {
+    return { success: false, error: "SMS not configured" };
+  }
+
+  // Check SMS quota
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
+  if (!quotaCheck.allowed) {
+    return quotaCheck.error!;
+  }
+  const { creditSource } = quotaCheck;
+
+  // Validate and normalize phone number
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
+  if (!phoneValidation.valid || !phoneValidation.normalized) {
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
+  }
+  const normalizedPhone = phoneValidation.normalized;
+
+  // Get locale from store country
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
+
+  const message = templates.reservation_cancelled({
+    storeName: store.name,
+    number: reservation.number,
+  });
+
+  try {
+    const result = await sendSms({
+      to: normalizedPhone,
+      message,
+      sender: "Louez",
+    });
+
+    await logSms({
+      storeId: store.id,
+      reservationId: reservation.id,
+      customerId: customer.id,
+      to: normalizedPhone,
+      message,
+      templateType: "reservation_cancelled",
+      status: result.success ? "sent" : "failed",
+      messageId: result.messageId,
+      error: result.error,
+      creditSource,
+    });
+
+    await handlePostSend(store.id, creditSource, result.success);
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+    await logSms({
+      storeId: store.id,
+      reservationId: reservation.id,
+      customerId: customer.id,
+      to: normalizedPhone,
+      message,
+      templateType: "reservation_cancelled",
       status: "failed",
       error: errorMessage,
       creditSource,

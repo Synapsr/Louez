@@ -4646,6 +4646,10 @@
             "label": "Reservasi dikonfirmasi",
             "description": "Setelah pembayaran berhasil"
           },
+          "customer_reservation_cancelled": {
+            "label": "Reservasi dibatalkan",
+            "description": "Saat Anda membatalkan reservasi"
+          },
           "customer_reminder_pickup": {
             "label": "Pengingat penjemputan",
             "description": "Dikirim sebelum tanggal pengambilan"

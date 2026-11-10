@@ -298,7 +298,7 @@
     "title": "预订已取消",
     "body": "您的预订#{number} 已被取消。",
     "cancelledPeriod": "取消期间",
-    "reasonLabel": "原因",
+    "itemsLabel": "物品",
     "contactForQuestions": "如果您有任何疑问，请随时与我们联系。",
     "browseEquipment": "浏览我们的目录",
     "thankYou": "感谢您的理解。"

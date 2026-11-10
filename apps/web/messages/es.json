@@ -4344,6 +4344,10 @@
             "label": "Reserva confirmada",
             "description": "Después del pago exitoso"
           },
+          "customer_reservation_cancelled": {
+            "label": "Reserva cancelada",
+            "description": "Cuando cancela una reserva"
+          },
           "customer_reminder_pickup": {
             "label": "Recordatorio de recogida",
             "description": "Enviado antes de la fecha de recogida"

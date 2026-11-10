@@ -132,7 +132,21 @@ export function createReservationEffectSenders(
           reservationUrl: getStorefrontUrl(store.slug, `/account/reservations/${reservation.id}`),
         };
         const beforeSend = () => context.assertClaim();
+        const items = payload.items.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unitPrice),
+          totalPrice: parseFloat(item.totalPrice),
+        }));
 
+        if (payload.notification === "customer_reservation_cancelled") {
+          return deps.sendCustomerNotificationChannel(
+            "customer_reservation_cancelled",
+            { ...ctx, items, storefrontUrl: getStorefrontUrl(store.slug) },
+            payload.channel,
+            beforeSend,
+          );
+        }
         if (payload.notification === "customer_request_rejected") {
           return deps.sendCustomerNotificationChannel(
             "customer_request_rejected",
@@ -156,12 +170,7 @@ export function createReservationEffectSenders(
           "customer_request_accepted",
           {
             ...ctx,
-            items: payload.items.map((item) => ({
-              name: item.name,
-              quantity: item.quantity,
-              unitPrice: parseFloat(item.unitPrice),
-              totalPrice: parseFloat(item.totalPrice),
-            })),
+            items,
             contractUrl,
             termsUrl: store.hasTerms ? getStorefrontUrl(store.slug, "/terms") : null,
             paymentUrl: null,

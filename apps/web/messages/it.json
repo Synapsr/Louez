@@ -4344,6 +4344,10 @@
             "label": "Prenotazione confermata",
             "description": "Dopo il pagamento riuscito"
           },
+          "customer_reservation_cancelled": {
+            "label": "Prenotazione annullata",
+            "description": "Quando annulli una prenotazione"
+          },
           "customer_reminder_pickup": {
             "label": "Promemoria ritiro",
             "description": "Inviato prima della data di ritiro"

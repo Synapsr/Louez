@@ -21,8 +21,8 @@ import {
   type Transaction,
 } from "@louez/db";
 import {
-  DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
   STORE_NOT_ACCEPTING_RESERVATIONS_ERROR,
+  withCustomerNotificationDefaults,
   type CustomerNotificationSettings,
 } from "@louez/types";
 import { evaluateReservationRules, getSettledPaymentAmount } from "@louez/utils";
@@ -35,9 +35,11 @@ import { amendEffectPayload, enqueueEffects, supersedeEffects } from "../platfor
 import type { ApiEvent, ApiEventStore, ApiPorts } from "../platform/ports";
 import { resolveDateChangeRequests } from "./date-change-requests";
 import {
+  CUSTOMER_STATUS_NOTIFICATION,
   SUPERSEDED_CUSTOMER_MESSAGES,
   buildStatusChangeEffects,
   customerMessageKeyPrefix,
+  type CustomerStatusMessage,
   type StatusChangeSnapshot,
 } from "./reservation-effects";
 import { validateReservationContract } from "./reservation-contract-validation";
@@ -49,7 +51,10 @@ import {
 /**
  * A reservation status change the store asks for, from the dashboard's
  * status menu and cancel button, the API and agents: the transaction, its
- * confirmation, and its effects.
+ * confirmation, and its effects. The customer is told of an acceptance, a
+ * rejection and a cancellation, on the channels the store's customer
+ * notification settings give each; a cancellation the customer makes from
+ * the online store never comes here.
  *
  * Lock order (docs/code-review/04-data-layer.md, DL-12): the reservation's
  * products by id, then the reservation, before any check. The transaction
@@ -87,7 +92,7 @@ export interface StatusChangePreview {
   /** Null when the caller may not read customers. */
   customer: { name: string; email: string } | null;
   /** The messages the customer gets: which, and on which channel. */
-  messages: Array<{ message: "request_accepted" | "request_rejected"; channel: "email" | "sms" }>;
+  messages: Array<{ message: CustomerStatusMessage; channel: "email" | "sms" }>;
   /** The items leave the stock for these dates (a request or a quote is confirmed). */
   reducesAvailability: boolean;
   /** For a cancellation: what was paid, and what happens to it. */
@@ -293,14 +298,10 @@ type LockedReservation = NonNullable<Awaited<ReturnType<typeof lockReservation>>
 /** The channels a customer message goes out on, as the store's notification settings say. */
 function customerMessages(
   settings: CustomerNotificationSettings | null,
-  message: "request_accepted" | "request_rejected",
+  message: CustomerStatusMessage,
   customer: { email: string; phone: string | null },
 ): StatusChangePreview["messages"] {
-  const event =
-    message === "request_accepted" ? "customer_request_accepted" : "customer_request_rejected";
-  const prefs =
-    (settings ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS)[event] ??
-    DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS[event];
+  const prefs = withCustomerNotificationDefaults(settings)[CUSTOMER_STATUS_NOTIFICATION[message]];
   if (!prefs.enabled) return [];
   return [
     ...(prefs.email && customer.email ? [{ message, channel: "email" as const }] : []),
@@ -309,6 +310,24 @@ function customerMessages(
 }
 
 const money = (amount: number) => (Math.round(amount * 100) / 100).toFixed(2);
+
+/** The message a change sends the customer, if any. */
+function customerMessageOf(
+  from: ReservationStatus,
+  to: ReservationStatus,
+): CustomerStatusMessage | null {
+  if (takesStock(from, to)) return "request_accepted";
+  if (to === "rejected") return "request_rejected";
+  if (to === "cancelled") return "reservation_cancelled";
+  return null;
+}
+
+/** Each message as the preview names it. */
+const MESSAGE_NAMES: Record<CustomerStatusMessage, string> = {
+  request_accepted: "request accepted",
+  request_rejected: "request rejected",
+  reservation_cancelled: "reservation cancelled",
+};
 
 async function buildPreview(
   tx: Transaction,
@@ -327,18 +346,14 @@ async function buildPreview(
   const who = customer ? `${customer.name} (${customer.email})` : "the customer";
   const period = `${locked.startDate.toISOString()} to ${locked.endDate.toISOString()}`;
 
-  const message = takesStock(locked.status, to)
-    ? ("request_accepted" as const)
-    : to === "rejected"
-      ? ("request_rejected" as const)
-      : null;
+  const message = customerMessageOf(locked.status, to);
   const messages =
     message && locked.customer
       ? customerMessages(store.customerNotificationSettings, message, locked.customer)
       : [];
   const sends =
     message && messages.length > 0
-      ? `${who} gets the "${message === "request_accepted" ? "request accepted" : "request rejected"}" message by ${messages.map((entry) => entry.channel).join(" and ")}.`
+      ? `${who} gets the "${MESSAGE_NAMES[message]}" message by ${messages.map((entry) => entry.channel).join(" and ")}.`
       : "No message goes to the customer.";
 
   let moneyFacts: StatusChangePreview["money"] = null;

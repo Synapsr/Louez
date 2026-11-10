@@ -298,7 +298,7 @@
     "title": "예약이 취소되었습니다",
     "body": "귀하의 예약 #{number}이 취소되었습니다.",
     "cancelledPeriod": "취소기간",
-    "reasonLabel": "이유",
+    "itemsLabel": "품목",
     "contactForQuestions": "궁금한 점이 있으시면 언제든지 문의해 주세요.",
     "browseEquipment": "카탈로그 찾아보기",
     "thankYou": "이해해 주셔서 감사합니다."

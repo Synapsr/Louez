@@ -90,10 +90,16 @@ export const analyticsEventIdentity = (occurredAt: Date): AnalyticsEventIdentity
 });
 
 export interface ApiEffectPayloads {
-  /** The customer hears of the answer to their request or quote, on one channel. */
+  /**
+   * The customer hears of a status change the store made, on one channel: the
+   * answer to their request or quote, or the store's cancellation.
+   */
   "reservation.customerMessage": {
     channel: "email" | "sms";
-    notification: "customer_request_accepted" | "customer_request_rejected";
+    notification:
+      | "customer_request_accepted"
+      | "customer_request_rejected"
+      | "customer_reservation_cancelled";
     store: EffectStore;
     customer: {
       id: string;

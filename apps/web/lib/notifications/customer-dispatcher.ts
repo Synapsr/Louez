@@ -19,6 +19,7 @@ import {
   sendRequestAcceptedEmail,
   sendRequestRejectedEmail,
   sendReservationConfirmationEmail,
+  sendReservationCancelledEmail,
   sendReminderPickupEmail,
   sendReminderReturnEmail,
   sendPaymentRequestEmail,
@@ -32,15 +33,17 @@ import {
   sendRequestReceivedSms,
   sendRequestAcceptedSms,
   sendRequestRejectedSms,
+  sendReservationCancelledSms,
   sendPaymentRequestSms,
   sendDepositAuthorizationRequestSms,
 } from "@/lib/sms/send";
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
 import type { EmailAttachment } from "@/lib/email/client";
-import type {
-  CustomerNotificationEventType,
-  CustomerNotificationSettings,
-  CustomerNotificationTemplate,
+import {
+  withCustomerNotificationDefaults,
+  type CustomerNotificationEventType,
+  type CustomerNotificationSettings,
+  type CustomerNotificationTemplate,
 } from "@louez/types";
 
 export interface CustomerNotificationStore {
@@ -127,6 +130,8 @@ export interface CustomerNotificationContext {
   reservation: CustomerNotificationReservation;
   items?: Array<{ name: string; quantity: number; unitPrice: number; totalPrice: number }>;
   reservationUrl?: string;
+  /** The online store's home page, linked from a cancellation. */
+  storefrontUrl?: string;
   contractUrl?: string;
   termsUrl?: string | null;
   paymentUrl?: string | null;
@@ -165,6 +170,7 @@ function mergeTemplateWithLegacy(
     customer_request_accepted: "requestAcceptedContent",
     customer_request_rejected: "rejectionContent",
     customer_reservation_confirmed: "confirmationContent",
+    customer_reservation_cancelled: null, // No legacy mapping
     customer_reminder_pickup: "pickupReminderContent",
     customer_reminder_return: "returnReminderContent",
     customer_payment_requested: null, // No legacy mapping
@@ -200,12 +206,9 @@ export async function dispatchCustomerNotification(
     sms: { sent: false },
   };
 
-  // Import defaults dynamically to avoid circular dependency
-  const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
-
-  // Get preferences (use defaults if not set, with per-key fallback for new event types)
-  const settings = ctx.store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
-  const prefs = settings[eventType] ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS[eventType];
+  // Preferences, with the default of an event the saved settings predate
+  const settings = withCustomerNotificationDefaults(ctx.store.customerNotificationSettings);
+  const prefs = settings[eventType];
 
   // Skip if notification type is disabled
   if (!prefs?.enabled) {
@@ -292,8 +295,7 @@ export async function sendCustomerNotificationChannel(
   channel: "email" | "sms",
   beforeSend: () => Promise<void>,
 ): Promise<{ skipped: string } | undefined> {
-  const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import("@louez/types");
-  const settings = ctx.store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS;
+  const settings = withCustomerNotificationDefaults(ctx.store.customerNotificationSettings);
   const locale = resolveReservationEmailLocale(
     ctx.reservation.locale ?? null,
     ctx.store.settings?.country,
@@ -392,6 +394,14 @@ async function sendCustomerEmail(
         reservationUrl: ctx.reservationUrl || "",
         documentAttachments: ctx.documentAttachments,
         contractSignatureUrl: ctx.contractSignatureUrl,
+      });
+
+    case "customer_reservation_cancelled":
+      return sendReservationCancelledEmail({
+        ...emailParams,
+        items: ctx.items || [],
+        storefrontUrl: ctx.storefrontUrl,
+        customContent,
       });
 
     case "customer_reminder_pickup":
@@ -506,6 +516,9 @@ async function sendCustomerSms(
     case "customer_reservation_confirmed":
       return sendReservationConfirmationSms(smsParams);
 
+    case "customer_reservation_cancelled":
+      return sendReservationCancelledSms(smsParams);
+
     case "customer_reminder_pickup":
       return sendReminderPickupSms(smsParams);
 
@@ -573,6 +586,7 @@ export function shouldSendCustomerNotification(
     customer_request_accepted: { enabled: true, email: true, sms: false },
     customer_request_rejected: { enabled: true, email: true, sms: false },
     customer_reservation_confirmed: { enabled: true, email: true, sms: false },
+    customer_reservation_cancelled: { enabled: true, email: true, sms: false },
     customer_reminder_pickup: { enabled: true, email: true, sms: false },
     customer_reminder_return: { enabled: true, email: true, sms: false },
     customer_payment_requested: { enabled: true, email: true, sms: false },

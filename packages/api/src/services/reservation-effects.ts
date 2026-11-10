@@ -55,6 +55,19 @@ export interface StatusChangeSnapshot {
 
 type CustomerNotification = ApiEffectPayloads["reservation.customerMessage"]["notification"];
 
+/** The message a status change sends the customer, as its preview names it. */
+export type CustomerStatusMessage =
+  | "request_accepted"
+  | "request_rejected"
+  | "reservation_cancelled";
+
+/** The customer notification event of each message, as the store's settings name it. */
+export const CUSTOMER_STATUS_NOTIFICATION: Record<CustomerStatusMessage, CustomerNotification> = {
+  request_accepted: "customer_request_accepted",
+  request_rejected: "customer_request_rejected",
+  reservation_cancelled: "customer_reservation_cancelled",
+};
+
 /**
  * The unsent customer messages of an earlier change that a new status makes
  * false, and so supersedes. Any other change supersedes nothing: a pick-up
@@ -113,10 +126,7 @@ export function buildStatusChangeEffects(
     rejectionReason: string | null;
     warningCount: number;
     /** The customer messages the preview announced, one per channel. */
-    messages: ReadonlyArray<{
-      message: "request_accepted" | "request_rejected";
-      channel: "email" | "sms";
-    }>;
+    messages: ReadonlyArray<{ message: CustomerStatusMessage; channel: "email" | "sms" }>;
   },
 ): ApiEffect[] {
   const { reservation, customer, store } = snapshot;
@@ -137,10 +147,7 @@ export function buildStatusChangeEffects(
         customerId: customer.id,
         payload: {
           channel,
-          notification:
-            message === "request_accepted"
-              ? "customer_request_accepted"
-              : "customer_request_rejected",
+          notification: CUSTOMER_STATUS_NOTIFICATION[message],
           store: {
             id: store.id,
             name: store.name,

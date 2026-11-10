@@ -298,7 +298,7 @@
     "title": "予約がキャンセルされました",
     "body": "ご予約 #{number} はキャンセルされました。",
     "cancelledPeriod": "中止期間",
-    "reasonLabel": "理由",
+    "itemsLabel": "アイテム",
     "contactForQuestions": "ご不明な点がございましたら、お気軽にお問い合わせください。",
     "browseEquipment": "カタログを閲覧する",
     "thankYou": "ご理解いただきありがとうございます。"

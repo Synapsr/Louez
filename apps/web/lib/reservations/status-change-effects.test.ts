@@ -182,6 +182,39 @@ describe("reservation effect senders", () => {
     await assert.rejects(senders["reservation.customerMessage"](message(), context), /smtp down/);
   });
 
+  test("a store's cancellation sends the cancellation message, with its items, never a contract", async () => {
+    for (const channel of ["email", "sms"] as const) {
+      calls = [];
+      await senders["reservation.customerMessage"](
+        message({ notification: "customer_reservation_cancelled", channel }),
+        context,
+      );
+      const [event, ctx, sentOn] = argsOf("sendCustomerNotificationChannel") as [
+        string,
+        {
+          contractUrl?: string;
+          storefrontUrl?: string;
+          reason?: string;
+          reservation: { number: string; locale?: string | null };
+          items: Array<{ name: string; quantity: number }>;
+        },
+        string,
+      ];
+      assert.equal(event, "customer_reservation_cancelled");
+      assert.equal(sentOn, channel);
+      assert.equal(ctx.reservation.number, "2030-0001");
+      assert.equal(ctx.reservation.locale, "de");
+      assert.deepEqual(
+        ctx.items.map((item) => [item.name, item.quantity]),
+        [["Kayak", 1]],
+      );
+      assert.ok(ctx.storefrontUrl, "the online store, to book again");
+      assert.equal(ctx.contractUrl, undefined);
+      assert.equal(ctx.reason, undefined);
+      assert.deepEqual(argsOf("createReservationInstantAccessUrl"), []);
+    }
+  });
+
   test("the store's notification reads its routing when it goes out, and passes a skip", async () => {
     const outcome = await senders["reservation.storeNotification"](
       {

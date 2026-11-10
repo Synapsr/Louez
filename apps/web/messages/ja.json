@@ -4646,6 +4646,10 @@
             "label": "予約確認済み",
             "description": "支払いが成功した後"
           },
+          "customer_reservation_cancelled": {
+            "label": "予約キャンセル",
+            "description": "予約をキャンセルしたとき"
+          },
           "customer_reminder_pickup": {
             "label": "ピックアップリマインダー",
             "description": "集荷日より前に送信"

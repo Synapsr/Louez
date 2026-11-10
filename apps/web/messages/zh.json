@@ -4646,6 +4646,10 @@
             "label": "预订已确认",
             "description": "付款成功后"
           },
+          "customer_reservation_cancelled": {
+            "label": "预订已取消",
+            "description": "当您取消预订时"
+          },
           "customer_reminder_pickup": {
             "label": "取件提醒",
             "description": "在取件日期之前发送"

@@ -4647,6 +4647,10 @@
             "label": "Réservation confirmée",
             "description": "Après paiement réussi"
           },
+          "customer_reservation_cancelled": {
+            "label": "Réservation annulée",
+            "description": "Quand vous annulez une réservation"
+          },
           "customer_reminder_pickup": {
             "label": "Rappel retrait",
             "description": "Envoyé avant la date de retrait"

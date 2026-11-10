@@ -9,6 +9,7 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_request_accepted: "Votre demande de réservation a été acceptée",
     customer_request_rejected: "Votre demande de réservation n'a pas pu être acceptée",
     customer_reservation_confirmed: "Confirmation de votre réservation #{number}",
+    customer_reservation_cancelled: "Réservation #{number} annulée",
     customer_reminder_pickup: "Rappel: retrait de votre réservation demain",
     customer_reminder_return: "Rappel: retour de votre réservation demain",
     customer_payment_requested: "Paiement demandé pour la réservation #{number}",
@@ -22,6 +23,7 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_request_accepted: "Your reservation request has been accepted",
     customer_request_rejected: "Your reservation request could not be accepted",
     customer_reservation_confirmed: "Confirmation of your reservation #{number}",
+    customer_reservation_cancelled: "Reservation #{number} cancelled",
     customer_reminder_pickup: "Reminder: pickup of your reservation tomorrow",
     customer_reminder_return: "Reminder: return of your reservation tomorrow",
     customer_payment_requested: "Payment requested for reservation #{number}",
@@ -34,6 +36,7 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_request_accepted: "Ihre Reservierungsanfrage wurde akzeptiert",
     customer_request_rejected: "Ihre Reservierungsanfrage konnte nicht akzeptiert werden",
     customer_reservation_confirmed: "Bestätigung Ihrer Reservierung #{number}",
+    customer_reservation_cancelled: "Reservierung #{number} storniert",
     customer_reminder_pickup: "Erinnerung: Abholung Ihrer Reservierung morgen",
     customer_reminder_return: "Erinnerung: Rückgabe Ihrer Reservierung morgen",
     customer_payment_requested: "Zahlung angefordert für Reservierung #{number}",
@@ -46,6 +49,7 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_request_accepted: "Su solicitud de reserva ha sido aceptada",
     customer_request_rejected: "Su solicitud de reserva no pudo ser aceptada",
     customer_reservation_confirmed: "Confirmación de su reserva #{number}",
+    customer_reservation_cancelled: "Reserva #{number} cancelada",
     customer_reminder_pickup: "Recordatorio: recogida de su reserva mañana",
     customer_reminder_return: "Recordatorio: devolución de su reserva mañana",
     customer_payment_requested: "Pago solicitado para la reserva #{number}",
@@ -58,6 +62,7 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_request_accepted: "La tua richiesta di prenotazione è stata accettata",
     customer_request_rejected: "La tua richiesta di prenotazione non è stata accettata",
     customer_reservation_confirmed: "Conferma della tua prenotazione #{number}",
+    customer_reservation_cancelled: "Prenotazione #{number} annullata",
     customer_reminder_pickup: "Promemoria: ritiro della tua prenotazione domani",
     customer_reminder_return: "Promemoria: restituzione della tua prenotazione domani",
     customer_payment_requested: "Pagamento richiesto per la prenotazione #{number}",
@@ -71,6 +76,7 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_request_accepted: "Uw reserveringsaanvraag is geaccepteerd",
     customer_request_rejected: "Uw reserveringsaanvraag kon niet worden geaccepteerd",
     customer_reservation_confirmed: "Bevestiging van uw reservering #{number}",
+    customer_reservation_cancelled: "Reservering #{number} geannuleerd",
     customer_reminder_pickup: "Herinnering: ophalen van uw reservering morgen",
     customer_reminder_return: "Herinnering: terugbrengen van uw reservering morgen",
     customer_payment_requested: "Betaling gevraagd voor reservering #{number}",
@@ -83,6 +89,7 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_request_accepted: "Twoja prośba o rezerwację została zaakceptowana",
     customer_request_rejected: "Twoja prośba o rezerwację nie mogła zostać zaakceptowana",
     customer_reservation_confirmed: "Potwierdzenie rezerwacji #{number}",
+    customer_reservation_cancelled: "Rezerwacja #{number} anulowana",
     customer_reminder_pickup: "Przypomnienie: odbiór rezerwacji jutro",
     customer_reminder_return: "Przypomnienie: zwrot rezerwacji jutro",
     customer_payment_requested: "Płatność wymagana dla rezerwacji #{number}",
@@ -95,6 +102,7 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_request_accepted: "Seu pedido de reserva foi aceito",
     customer_request_rejected: "Seu pedido de reserva não pode ser aceito",
     customer_reservation_confirmed: "Confirmação da sua reserva #{number}",
+    customer_reservation_cancelled: "Reserva #{number} cancelada",
     customer_reminder_pickup: "Lembrete: retirada da sua reserva amanhã",
     customer_reminder_return: "Lembrete: devolução da sua reserva amanhã",
     customer_payment_requested: "Pagamento solicitado para a reserva #{number}",
@@ -113,6 +121,9 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_reservation_confirmed:
       supplementalMessages.zh
         .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.zh.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
     customer_reminder_return:
@@ -137,6 +148,9 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_reservation_confirmed:
       supplementalMessages.ja
         .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.ja.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
     customer_reminder_return:
@@ -161,6 +175,9 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_reservation_confirmed:
       supplementalMessages.ru
         .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.ru.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
     customer_reminder_return:
@@ -185,6 +202,9 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_reservation_confirmed:
       supplementalMessages.id
         .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.id.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
     customer_reminder_return:
@@ -209,6 +229,9 @@ export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEv
     customer_reservation_confirmed:
       supplementalMessages.ko
         .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.ko.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
     customer_reminder_return:
@@ -235,6 +258,8 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
       "{storeName}\nDemande #{number} non disponible.\nContactez-nous pour plus d'infos.",
     customer_reservation_confirmed:
       "{storeName}\nRéservation #{number} confirmée\nDu {startDate} au {endDate}",
+    customer_reservation_cancelled:
+      "{storeName}\nRéservation #{number} annulée.\nContactez-nous pour toute question.",
     customer_reminder_pickup: "{storeName}\nRappel: retrait demain\nRéservation #{number}",
     customer_reminder_return: "{storeName}\nRappel: retour demain\nRéservation #{number}",
     customer_payment_requested:
@@ -253,6 +278,8 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
       "{storeName}\nRequest #{number} unavailable.\nContact us for more info.",
     customer_reservation_confirmed:
       "{storeName}\nReservation #{number} confirmed\nFrom {startDate} to {endDate}",
+    customer_reservation_cancelled:
+      "{storeName}\nReservation #{number} cancelled.\nContact us with any questions.",
     customer_reminder_pickup: "{storeName}\nReminder: pickup tomorrow\nReservation #{number}",
     customer_reminder_return: "{storeName}\nReminder: return tomorrow\nReservation #{number}",
     customer_payment_requested:
@@ -270,6 +297,8 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
       "{storeName}\nAnfrage #{number} nicht verfügbar.\nKontaktieren Sie uns.",
     customer_reservation_confirmed:
       "{storeName}\nReservierung #{number} bestätigt\nVom {startDate} bis {endDate}",
+    customer_reservation_cancelled:
+      "{storeName}\nReservierung #{number} storniert.\nBei Fragen kontaktieren Sie uns.",
     customer_reminder_pickup: "{storeName}\nErinnerung: Abholung morgen\nReservierung #{number}",
     customer_reminder_return: "{storeName}\nErinnerung: Rückgabe morgen\nReservierung #{number}",
     customer_payment_requested:
@@ -289,6 +318,8 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
       "{storeName}\nSolicitud #{number} no disponible.\nContáctenos para más info.",
     customer_reservation_confirmed:
       "{storeName}\nReserva #{number} confirmada\nDel {startDate} al {endDate}",
+    customer_reservation_cancelled:
+      "{storeName}\nReserva #{number} cancelada.\nContactenos si tiene preguntas.",
     customer_reminder_pickup: "{storeName}\nRecordatorio: recogida mañana\nReserva #{number}",
     customer_reminder_return: "{storeName}\nRecordatorio: devolución mañana\nReserva #{number}",
     customer_payment_requested:
@@ -306,6 +337,8 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
       "{storeName}\nRichiesta #{number} non disponibile.\nContattaci per info.",
     customer_reservation_confirmed:
       "{storeName}\nPrenotazione #{number} confermata\nDal {startDate} al {endDate}",
+    customer_reservation_cancelled:
+      "{storeName}\nPrenotazione #{number} annullata.\nContattaci per qualsiasi domanda.",
     customer_reminder_pickup: "{storeName}\nPromemoria: ritiro domani\nPrenotazione #{number}",
     customer_reminder_return:
       "{storeName}\nPromemoria: restituzione domani\nPrenotazione #{number}",
@@ -325,6 +358,8 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
       "{storeName}\nAanvraag #{number} niet beschikbaar.\nNeem contact op.",
     customer_reservation_confirmed:
       "{storeName}\nReservering #{number} bevestigd\nVan {startDate} tot {endDate}",
+    customer_reservation_cancelled:
+      "{storeName}\nReservering #{number} geannuleerd.\nNeem contact op bij vragen.",
     customer_reminder_pickup: "{storeName}\nHerinnering: ophalen morgen\nReservering #{number}",
     customer_reminder_return:
       "{storeName}\nHerinnering: terugbrengen morgen\nReservering #{number}",
@@ -341,6 +376,8 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
     customer_request_rejected: "{storeName}\nProśba #{number} niedostępna.\nSkontaktuj się z nami.",
     customer_reservation_confirmed:
       "{storeName}\nRezerwacja #{number} potwierdzona\nOd {startDate} do {endDate}",
+    customer_reservation_cancelled:
+      "{storeName}\nRezerwacja #{number} anulowana.\nSkontaktuj sie z nami w razie pytan.",
     customer_reminder_pickup: "{storeName}\nPrzypomnienie: odbiór jutro\nRezerwacja #{number}",
     customer_reminder_return: "{storeName}\nPrzypomnienie: zwrot jutro\nRezerwacja #{number}",
     customer_payment_requested:
@@ -357,6 +394,8 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
     customer_request_rejected: "{storeName}\nPedido #{number} indisponível.\nEntre em contato.",
     customer_reservation_confirmed:
       "{storeName}\nReserva #{number} confirmada\nDe {startDate} a {endDate}",
+    customer_reservation_cancelled:
+      "{storeName}\nReserva #{number} cancelada.\nEntre em contato se tiver duvidas.",
     customer_reminder_pickup: "{storeName}\nLembrete: retirada amanhã\nReserva #{number}",
     customer_reminder_return: "{storeName}\nLembrete: devolução amanhã\nReserva #{number}",
     customer_payment_requested:
@@ -380,6 +419,9 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
     customer_reservation_confirmed:
       supplementalMessages.zh
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.zh
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,
@@ -410,6 +452,9 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
     customer_reservation_confirmed:
       supplementalMessages.ja
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.ja
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,
@@ -440,6 +485,9 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
     customer_reservation_confirmed:
       supplementalMessages.ru
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.ru
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,
@@ -470,6 +518,9 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
     customer_reservation_confirmed:
       supplementalMessages.id
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.id
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,
@@ -500,6 +551,9 @@ export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificat
     customer_reservation_confirmed:
       supplementalMessages.ko
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reservation_cancelled:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_cancelled,
     customer_reminder_pickup:
       supplementalMessages.ko
         .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,

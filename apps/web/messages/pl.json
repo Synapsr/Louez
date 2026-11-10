@@ -4344,6 +4344,10 @@
             "label": "Rezerwacja potwierdzona",
             "description": "Po udanej płatności"
           },
+          "customer_reservation_cancelled": {
+            "label": "Rezerwacja anulowana",
+            "description": "Gdy anulujesz rezerwację"
+          },
           "customer_reminder_pickup": {
             "label": "Przypomnienie o odbiorze",
             "description": "Wysłane przed datą odbioru"
