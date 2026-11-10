@@ -4,8 +4,9 @@
  * any host can serve), but the code only ever reaches one of its registered
  * redirect URIs: when every one of them is on one vendor's domain, the code
  * can reach nobody but that vendor, whatever the client calls itself. The
- * consent page then shows the vendor rather than the declared name (product
- * owner's decision, 2026-11-10).
+ * consent page then shows the vendor rather than the declared name, and the
+ * client gets that vendor's directory rules (`platform/agent-clients.ts`)
+ * (product owner's decisions, 2026-11-10).
  */
 
 export const AGENT_VENDORS = ["cursor", "grok", "chatgpt", "claude"] as const;
@@ -102,6 +103,16 @@ export function verifiedDestination(input: {
   if (!first || matches.some((match) => match?.vendor !== first.vendor)) return null;
   const shown = (input.requested === null ? first : matches.at(-1)) ?? first;
   return { vendor: first.vendor, domain: shown.domain, name: VENDOR_DOMAINS[first.vendor].name };
+}
+
+/**
+ * The vendor that alone receives the codes of a client registered with
+ * these redirect URIs, or null: `verifiedDestination` without a request.
+ * The directory rules read it (`isOpenAiClient`, `isAnthropicClient`), as
+ * the consent page names the client by it.
+ */
+export function registeredVendor(registered: readonly string[]): AgentVendor | null {
+  return verifiedDestination({ registered, requested: null })?.vendor ?? null;
 }
 
 /**

@@ -214,8 +214,12 @@ async function resolveOAuthActor(transport: Transport, token: string): Promise<A
   }
   // What the client's directory forbids is out of reach, whatever the grant.
   // The client as it registered, as the consent page reads it: never the
-  // name cut for the audit trail.
-  const client = { clientId: grant.clientId, name: grant.registeredName };
+  // name cut for the audit trail, and its registered redirect URIs.
+  const client = {
+    clientId: grant.clientId,
+    name: grant.registeredName,
+    redirectUris: grant.redirectUris,
+  };
   const withheld = clientWithholding(client);
   const scopes = presetScopes(grant.preset);
   for (const domain of withheld.domains) scopes[domain] = "none";

@@ -72,7 +72,7 @@ const getAuthorization = connections
   .handler(async ({ context, input }) => {
     const { clientId, redirectUri } = await pendingRequest(input.oauthQuery);
     const { userId } = context.actor.credential;
-    const [client, stores, current] = await Promise.all([
+    const [{ client, directory }, stores, current] = await Promise.all([
       describeClient(clientId, redirectUri),
       memberStores(context.actor),
       currentTerms({ userId, clientId }),
@@ -81,8 +81,8 @@ const getAuthorization = connections
       client,
       stores,
       current,
-      offeredBundles: await offeredBundles(client),
-      canCreateStores: !clientWithholding(client).domains.includes("stores"),
+      offeredBundles: await offeredBundles(directory),
+      canCreateStores: !clientWithholding(directory).domains.includes("stores"),
     };
   });
 

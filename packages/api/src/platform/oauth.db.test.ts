@@ -496,6 +496,44 @@ describe("agent connections over OAuth (database)", { skip: skipWithoutTestDatab
     assert.equal(lookalike.client.destination, null);
   });
 
+  test("a client recognised by its redirect URIs gets its vendor's rules on the consent page", async () => {
+    const chatGptOnly = "https://chatgpt.com/connector/oauth/oa1";
+    await louezDb.db.insert(louezDb.oauthClients).values([
+      { clientId: "dcr-evil-openai", name: "Evil", redirectUris: JSON.stringify([chatGptOnly]) },
+      {
+        clientId: "dcr-evil-mixed",
+        name: "Evil",
+        redirectUris: JSON.stringify([chatGptOnly, "http://127.0.0.1:8787/callback"]),
+      },
+    ]);
+    const ask = (clientId: string) =>
+      call<{
+        client: { destination: { vendor: string } | null };
+        offeredBundles: string[];
+        canCreateStores: boolean;
+      }>(
+        connections.getAuthorization,
+        {
+          oauthQuery: new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: chatGptOnly,
+            sig: "ok",
+          }).toString(),
+        },
+        session(),
+        ["dashboard", "agentConnections", "getAuthorization"],
+      );
+
+    const openAi = await ask("dcr-evil-openai");
+    assert.equal(openAi.client.destination?.vendor, "chatgpt");
+    assert.equal(openAi.canCreateStores, false, "OpenAI's directory withholds stores_create");
+    assert.ok(!openAi.offeredBundles.includes("billing"));
+
+    const mixed = await ask("dcr-evil-mixed");
+    assert.equal(mixed.client.destination, null);
+    assert.equal(mixed.canCreateStores, true);
+  });
+
   test("refusing grants nothing; a bad query, a foreign store or an unknown client is refused", async () => {
     const oauthQuery = `client_id=${encodeURIComponent(CLIENT)}&sig=ok`;
     const refused = await call<{ redirectUrl: string }>(

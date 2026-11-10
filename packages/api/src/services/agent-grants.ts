@@ -17,7 +17,11 @@ import {
   type AgentClient,
   type AgentConnection,
 } from "../contracts/agent-connections";
-import { CHATGPT_CLIENT_ID, clientWithholding } from "../platform/agent-clients";
+import {
+  CHATGPT_CLIENT_ID,
+  clientWithholding,
+  type DirectoryClient,
+} from "../platform/agent-clients";
 import { registeredRedirectUris, verifiedDestination } from "../platform/agent-destinations";
 import { bundlesWithTools, createExposure } from "../platform/exposure";
 import { MCP_BUNDLES, type McpBundle } from "../platform/meta";
@@ -53,6 +57,8 @@ export interface ActiveGrant {
    * (`clientWithholding`), as the consent page does, never the cut one.
    */
   registeredName: string | null;
+  /** The client's registered redirect URIs, which its directory's rules read too. */
+  redirectUris: string[];
   preset: AgentPreset;
   confirmSensitive: boolean;
   bundles: McpBundle[];
@@ -71,10 +77,7 @@ let appToolBundles: Promise<readonly McpBundle[]> | undefined;
  * exposure; the router is loaded on first use, as it imports this module),
  * without those its directory forbids it (`clientWithholding`).
  */
-export async function offeredBundles(client: {
-  clientId: string;
-  name: string | null;
-}): Promise<McpBundle[]> {
+export async function offeredBundles(client: DirectoryClient): Promise<McpBundle[]> {
   appToolBundles ??= import("../router").then(({ appRouter }) =>
     bundlesWithTools(createExposure(appRouter).procedures),
   );
@@ -114,6 +117,7 @@ export async function loadActiveGrant(input: {
       clientId: apiAgentGrants.clientId,
       clientName: oauthClients.name,
       clientDisabled: oauthClients.disabled,
+      clientRedirectUris: oauthClients.redirectUris,
       allStores: apiAgentGrants.allStores,
       preset: apiAgentGrants.preset,
       confirmSensitive: apiAgentGrants.confirmSensitive,
@@ -145,6 +149,7 @@ export async function loadActiveGrant(input: {
     // The audit column holds 100 characters.
     clientName: (row.clientName ?? row.clientId).slice(0, 100),
     registeredName: row.clientName,
+    redirectUris: registeredRedirectUris(row.clientRedirectUris),
     preset: row.preset,
     confirmSensitive: row.confirmSensitive,
     bundles: knownBundles(row.bundles),
@@ -269,22 +274,34 @@ function toAgentClient(
   };
 }
 
+/** A client row as its directory's rules read it. */
+const directoryClientOf = (row: {
+  clientId: string;
+  name: string | null;
+  redirectUris: string;
+}): DirectoryClient => ({
+  clientId: row.clientId,
+  name: row.name,
+  redirectUris: registeredRedirectUris(row.redirectUris),
+});
+
 /**
  * The OAuth client of a pending authorization, as the consent page shows it,
  * with the redirect URI of that request (signed by the authorization server,
- * checked against the client's registered ones).
+ * checked against the client's registered ones), and as its directory's
+ * rules read it.
  */
 export async function describeClient(
   clientId: string,
   redirectUri: string | null,
-): Promise<AgentClient> {
+): Promise<{ client: AgentClient; directory: DirectoryClient }> {
   const [row] = await db
     .select(clientColumns)
     .from(oauthClients)
     .where(eq(oauthClients.clientId, clientId))
     .limit(1);
   if (!row || row.disabled) throw agentConnectionErrors.clientNotFound(clientId);
-  return toAgentClient(row, redirectUri);
+  return { client: toAgentClient(row, redirectUri), directory: directoryClientOf(row) };
 }
 
 /** The terms already granted to a client, for the consent page to start from. */
@@ -294,7 +311,11 @@ export async function currentTerms(input: {
 }): Promise<GrantTerms | null> {
   const grant = await loadActiveGrant(input);
   if (!grant) return null;
-  const offered = await offeredBundles({ clientId: grant.clientId, name: grant.registeredName });
+  const offered = await offeredBundles({
+    clientId: grant.clientId,
+    name: grant.registeredName,
+    redirectUris: grant.redirectUris,
+  });
   return {
     stores: grant.stores ? { all: false, ids: grant.stores } : { all: true },
     preset: grant.preset,
@@ -337,8 +358,8 @@ export async function saveGrant(input: {
 }): Promise<{ id: string }> {
   const { terms } = input;
   if (!terms.stores.all) await assertMemberOf(input.userId, terms.stores.ids);
-  const client = await describeClient(input.clientId, null);
-  const offered = await offeredBundles(client);
+  const { directory } = await describeClient(input.clientId, null);
+  const offered = await offeredBundles(directory);
 
   return db.transaction(async (tx) => {
     // A new consent keeps the bundles the page could not offer.
@@ -391,7 +412,8 @@ async function ownGrant(tx: Transaction, userId: string, id: string) {
       id: apiAgentGrants.id,
       clientId: apiAgentGrants.clientId,
       bundles: apiAgentGrants.bundles,
-      clientName: oauthClients.name,
+      name: oauthClients.name,
+      redirectUris: oauthClients.redirectUris,
     })
     .from(apiAgentGrants)
     .innerJoin(oauthClients, eq(oauthClients.clientId, apiAgentGrants.clientId))
@@ -418,7 +440,7 @@ export async function updateGrant(input: {
       ? savedBundles(
           knownBundles(grant.bundles),
           patch.bundles,
-          await offeredBundles({ clientId: grant.clientId, name: grant.clientName }),
+          await offeredBundles(directoryClientOf(grant)),
         )
       : undefined;
     const set = {
@@ -501,9 +523,7 @@ export async function listGrants(userId: string, onlyId?: string): Promise<Agent
   ]);
   const lastAction = new Map(lastActions.map((row) => [row.grantId, row.at]));
 
-  const offered = await Promise.all(
-    rows.map((row) => offeredBundles({ clientId: row.clientId, name: row.name })),
-  );
+  const offered = await Promise.all(rows.map((row) => offeredBundles(directoryClientOf(row))));
 
   return rows.map((row, index) => ({
     id: row.id,
