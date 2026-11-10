@@ -8,7 +8,7 @@ import { STORE_HEADER } from "@louez/api/platform/procedures";
 import type { CallToolResult, McpServer, Tool } from "@modelcontextprotocol/server";
 import { call } from "@orpc/server";
 
-import { isAccountToolListed, isListed, type McpRequestContext } from "./auth/context";
+import { isAccountToolListed, isListed, isWithheld, type McpRequestContext } from "./auth/context";
 import { addTool } from "./tool-registry";
 import { errorResult } from "./utils/errors";
 import { handoffLine, linksLine, outputLinks } from "./utils/links";
@@ -142,9 +142,10 @@ async function callProcedure(
 /**
  * Registers one tool per exposed procedure. `tools/list` shows only those of
  * the connection's bundles that the actor may call (the member's role cut
- * down to the connection's scopes); a call to any of them reaches the
- * procedure, which authorizes it, so a refusal says why (PERMISSION_DENIED)
- * instead of "not found".
+ * down to the connection's scopes), and none the client's directory forbids
+ * (`isWithheld`); a call to any of them reaches the procedure, which
+ * authorizes it, so a refusal says why (PERMISSION_DENIED,
+ * NOT_AVAILABLE_TO_THIS_AGENT) instead of "not found".
  */
 export function registerExposedTools(
   server: McpServer,
@@ -168,9 +169,11 @@ export function registerExposedTools(
       outputSchema,
       annotations,
       ...(entry.meta.mcp.profile ? { meta: { [OPENAI_PROFILE_META]: true } } : {}),
-      listed: entry.meta.account
-        ? isAccountToolListed(ctx, entry.meta.scope)
-        : entry.meta.scope !== undefined && isListed(ctx, entry.meta.scope, bundle),
+      listed:
+        !isWithheld(ctx, entry.meta.capability) &&
+        (entry.meta.account
+          ? isAccountToolListed(ctx, entry.meta.scope)
+          : entry.meta.scope !== undefined && isListed(ctx, entry.meta.scope, bundle)),
       call: (args) => callProcedure(entry, ctx, args),
     });
   }

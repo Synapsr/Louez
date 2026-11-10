@@ -21,10 +21,26 @@ export function isOpenAiClient(client: { clientId: string; name: string | null }
   );
 }
 
-/** What a client never reaches, nor sees offered: its domains and its bundles. */
+/**
+ * A client Anthropic publishes: Claude's metadata document (on claude.ai or
+ * claude.com), or a client that registered itself under Claude's name. As
+ * for OpenAI, a name only takes tools away from the client that declared it.
+ */
+export function isAnthropicClient(client: { clientId: string; name: string | null }): boolean {
+  return (
+    /^https:\/\/claude\.(?:ai|com)\//.test(client.clientId) || /\bclaude\b/i.test(client.name ?? "")
+  );
+}
+
+/**
+ * What a client never reaches, nor sees offered: its domains, its bundles and
+ * single procedures.
+ */
 export interface ClientWithholding {
   domains: readonly ApiDomain[];
   bundles: readonly McpBundle[];
+  /** Procedures, by capability id (`ApiMeta.capability`): never listed, a call refused. */
+  capabilities: readonly string[];
   /**
    * No prompt or link to buy anything from Louez (AI credits, a plan): an
    * answer says what is missing, never where to pay for it.
@@ -47,10 +63,24 @@ export interface ClientWithholding {
 const OPENAI_WITHHOLDING: ClientWithholding = {
   domains: ["billing", "stores"],
   bundles: ["billing"],
+  capabilities: [],
   purchases: true,
 };
 
-const NOTHING_WITHHELD: ClientWithholding = { domains: [], bundles: [], purchases: false };
+/**
+ * Anthropic's Software Directory Policy has a server attest that it "does
+ * not use AI models to generate images, videos or audio".
+ * products_enhance_image redraws a product photo with GPT Image: a Claude
+ * client neither sees nor calls it (product owner's decision, 2026-11-10).
+ * products_remove_image_background stays: it cuts the photo out without
+ * redrawing it. The user enhances photos in Louez.
+ */
+const ANTHROPIC_WITHHOLDING: ClientWithholding = {
+  domains: [],
+  bundles: [],
+  capabilities: ["products.enhanceImage"],
+  purchases: false,
+};
 
 /**
  * Whether the client gives its model a tool result's `structuredContent`, so
@@ -68,10 +98,22 @@ export function modelReadsStructuredContent(client: {
   return isOpenAiClient(client);
 }
 
-/** What `client` never reaches, whatever its grant. */
+/**
+ * What `client` never reaches, whatever its grant. A client that matches
+ * several directories (a name copying both) gets every rule.
+ */
 export function clientWithholding(client: {
   clientId: string;
   name: string | null;
 }): ClientWithholding {
-  return isOpenAiClient(client) ? OPENAI_WITHHOLDING : NOTHING_WITHHELD;
+  const rules = [
+    ...(isOpenAiClient(client) ? [OPENAI_WITHHOLDING] : []),
+    ...(isAnthropicClient(client) ? [ANTHROPIC_WITHHOLDING] : []),
+  ];
+  return {
+    domains: rules.flatMap((rule) => rule.domains),
+    bundles: rules.flatMap((rule) => rule.bundles),
+    capabilities: rules.flatMap((rule) => rule.capabilities),
+    purchases: rules.some((rule) => rule.purchases),
+  };
 }

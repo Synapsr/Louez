@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, mock, test } from "node:test";
 
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import type { ApiPorts } from "@louez/api";
 import { createMemoryStorage } from "@louez/api/platform/memory-storage";
@@ -368,5 +368,124 @@ describe("AI photo tools (database)", { skip: skipWithoutTestDatabase() }, () =>
       mcp.callTool({ name: "products_enhance_image", arguments: { id, imageUrl: SOURCE } }),
     );
     assert.match(JSON.stringify(other), /ai-credits\?recharge=1/);
+  });
+
+  test("Claude neither sees nor calls products_enhance_image, a replay included; other agents keep it", async () => {
+    const grants = await import("@louez/api/services/agent-grants");
+    const { ProductImageFailure } = await import("@louez/api/platform/ports");
+    const CLAUDE = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+    const AGENT = "pj_dcr_desktop_agent";
+    await louezDb.db.insert(louezDb.oauthClients).values([
+      {
+        clientId: CLAUDE,
+        name: "Claude",
+        clientDiscoveryId: "cimd",
+        redirectUris: JSON.stringify(["https://claude.ai/api/mcp/auth_callback"]),
+      },
+      {
+        clientId: AGENT,
+        name: "Desktop agent",
+        redirectUris: JSON.stringify(["https://agent.pj.test/callback"]),
+      },
+    ]);
+    const bearer = async (clientId: string) => {
+      const { id: grantId } = await grants.saveGrant({
+        userId: OWNER,
+        clientId,
+        terms: {
+          stores: { all: false, ids: [STORE] },
+          preset: "write",
+          confirmSensitive: false,
+          bundles: ["daily", "catalog"],
+        },
+      });
+      return `Bearer ${await tokens.sign({ userId: OWNER, clientId, grantId })}`;
+    };
+    const claude = await bearer(CLAUDE);
+    const agent = await bearer(AGENT);
+    const apiKey = await key();
+    const id = await product();
+
+    // Claude's list and instructions leave the AI enhancement out, and keep the rest.
+    for (const [who, authorization, enhances] of [
+      ["Claude", claude, false],
+      ["another agent", agent, true],
+      ["an API key", apiKey, true],
+    ] as const) {
+      const { names, instructions } = await withClient(authorization, async (mcp) => ({
+        names: (await mcp.listTools()).tools.map((tool) => tool.name),
+        instructions: mcp.getInstructions() ?? "",
+      }));
+      assert.equal(names.includes("products_enhance_image"), enhances, who);
+      for (const name of [
+        "products_remove_image_background",
+        "products_use_image_version",
+        "jobs_get",
+      ]) {
+        assert.ok(names.includes(name), `${who}: ${name}`);
+      }
+      assert.equal(instructions.includes("products_enhance_image"), enhances, who);
+      assert.match(
+        instructions,
+        /products_remove_image_background, with one of the product's images/,
+      );
+    }
+
+    // A direct call is refused before its preview; the background removal still previews.
+    const refused = await withClient(claude, (mcp) =>
+      mcp.callTool({ name: "products_enhance_image", arguments: { id, imageUrl: SOURCE } }),
+    );
+    assert.equal(errorOf(refused).code, "NOT_AVAILABLE_TO_THIS_AGENT");
+    const removal = await withClient(claude, (mcp) =>
+      mcp.callTool({
+        name: "products_remove_image_background",
+        arguments: { id, imageUrl: SOURCE },
+      }),
+    );
+    assert.equal(errorOf(removal).code, "CONFIRMATION_REQUIRED");
+
+    // Another agent enhances under an idempotency key...
+    const IDEMPOTENCY = "pj-enhance-1";
+    const preview = await withClient(agent, (mcp) =>
+      mcp.callTool({
+        name: "products_enhance_image",
+        arguments: { id, imageUrl: SOURCE, idempotencyKey: IDEMPOTENCY },
+      }),
+    );
+    const confirmationToken = errorOf(preview).details?.confirmationToken as string;
+    const args = { id, imageUrl: SOURCE, idempotencyKey: IDEMPOTENCY, confirmationToken };
+    const started = output(
+      await withClient(agent, (mcp) =>
+        mcp.callTool({ name: "products_enhance_image", arguments: args }),
+      ),
+    ) as Json & { id: string };
+    // ...then its client turns out to be Claude: the same call is refused, not replayed.
+    await louezDb.db
+      .update(louezDb.oauthClients)
+      .set({ name: "Claude Desktop" })
+      .where(eq(louezDb.oauthClients.clientId, AGENT));
+    const replay = await withClient(agent, (mcp) =>
+      mcp.callTool({ name: "products_enhance_image", arguments: args }),
+    );
+    assert.equal(errorOf(replay).code, "NOT_AVAILABLE_TO_THIS_AGENT");
+    assert.equal(replay._meta, undefined, "no operation was replayed");
+
+    // A failed enhancement in Claude's inbox names only the job.
+    fake.state.failNext = new ProductImageFailure("IMAGE_EMPTY", "empty", false);
+    await runJob(started.id, ports);
+    await louezDb.db
+      .update(louezDb.apiJobs)
+      .set({ finishedAt: sql`NOW(3) - INTERVAL 1 MINUTE` })
+      .where(eq(louezDb.apiJobs.id, started.id));
+    const failedItemTools = async (authorization: string) => {
+      const listed = output(
+        await withClient(authorization, (mcp) =>
+          mcp.callTool({ name: "inbox_list", arguments: {} }),
+        ),
+      ) as { items: Array<{ type: string; tools: string[] }> };
+      return listed.items.find((item) => item.type === "image_job_failed")?.tools;
+    };
+    assert.deepEqual(await failedItemTools(claude), ["jobs_get"]);
+    assert.deepEqual(await failedItemTools(apiKey), ["jobs_get", "products_enhance_image"]);
   });
 });

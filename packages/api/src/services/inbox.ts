@@ -146,6 +146,11 @@ export interface InboxReader {
    * session every operation of the store (null).
    */
   operationsOf: string | null;
+  /**
+   * Procedures the caller's agent never reaches, by capability id
+   * (`ClientWithholding.capabilities`): no item names their tool. Absent: none.
+   */
+  withheld?: readonly string[];
 }
 
 export const mayShow = (reads: InboxRights, type: InboxItemType) =>
@@ -1447,10 +1452,13 @@ const unsentInvitations: Source = async (window, shaper) => {
   );
 };
 
-/** The tool that starts each kind of image job again. */
-const IMAGE_JOB_START_TOOLS = {
-  enhance: "products_enhance_image",
-  "remove-background": "products_remove_image_background",
+/** The tool that starts each kind of image job again, and its capability. */
+const IMAGE_JOB_STARTS = {
+  enhance: { tool: "products_enhance_image", capability: "products.enhanceImage" },
+  "remove-background": {
+    tool: "products_remove_image_background",
+    capability: "products.removeImageBackground",
+  },
 } as const;
 
 /**
@@ -1499,10 +1507,13 @@ const failedImageJobs: Source = async (window, shaper) => {
     .orderBy(...inOrder(apiJobs.finishedAt, apiJobs.id))
     .limit(window.take);
 
-  const { urls, store } = shaper.reader;
+  const { urls, store, withheld } = shaper.reader;
   return rows.flatMap((row) => {
     const operation = imageOperationOf(row.kind);
     if (!operation || !row.occurredAt) return [];
+    // An agent whose directory forbids the tool (Claude: the AI enhancement) only follows the job.
+    const start = IMAGE_JOB_STARTS[operation];
+    const startTools = withheld?.includes(start.capability) ? [] : [start.tool];
     const what = operation === "enhance" ? "The AI enhancement" : "The background removal";
     const product = row.productName ? ` of "${row.productName}"` : "";
     return [
@@ -1517,7 +1528,7 @@ const failedImageJobs: Source = async (window, shaper) => {
           kind: row.kind,
           errorCode: row.error?.code ?? null,
         },
-        tools: ["jobs_get", IMAGE_JOB_START_TOOLS[operation]],
+        tools: ["jobs_get", ...startTools],
         links: productLinks(urls, store, {
           id: row.targetId,
           slug: row.productSlug,

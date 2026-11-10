@@ -501,4 +501,85 @@ describe("MCP directory conformance", () => {
     assert.match(text, /Not listed: integrations \(connected services\)\./);
     assert.deepEqual(named(text), ["daily", "integrations"]);
   });
+
+  test("Claude's list and instructions leave out the AI enhancement only; other clients keep it", async () => {
+    const { Client, InMemoryTransport } = await import("@modelcontextprotocol/client");
+    const { appRouter } = await import("@louez/api/router");
+    const { createExposure } = await import("@louez/api/platform/exposure");
+    const { CHATGPT_CLIENT_ID, clientWithholding } =
+      await import("@louez/api/platform/agent-clients");
+    const { createMcpServer } = await import("./server");
+    const { testRequestContext } = await import("./testing/request-context");
+    const procedures = createExposure(appRouter).procedures;
+    const base = testRequestContext({
+      storeId: "store_withheld",
+      userId: "user_withheld",
+      permissions: { reservations: "write", products: "write" },
+    });
+    const listing = async (client: { clientId: string; name: string | null }) => {
+      const ctx = {
+        ...base,
+        actor: {
+          ...base.actor,
+          credential: {
+            ...base.actor.credential,
+            kind: "oauth" as const,
+            bundles: ["daily" as const, "catalog" as const],
+            withheld: clientWithholding(client),
+          },
+        },
+      };
+      const server = createMcpServer(
+        ctx,
+        { insertRecordedPayment: async () => undefined },
+        procedures,
+      );
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      await server.connect(serverTransport);
+      const mcp = new Client({ name: "withheld", version: "0.0.0" });
+      await mcp.connect(clientTransport);
+      try {
+        return {
+          names: new Set((await mcp.listTools()).tools.map((tool) => tool.name)),
+          instructions: mcp.getInstructions() ?? "",
+        };
+      } finally {
+        await mcp.close();
+      }
+    };
+
+    const claude = await listing({
+      clientId: "https://claude.ai/oauth/mcp-oauth-client-metadata",
+      name: "Claude",
+    });
+    const others = [
+      await listing({ clientId: CHATGPT_CLIENT_ID, name: "ChatGPT" }),
+      await listing({ clientId: "https://cursor.com/oauth/client.json", name: "Cursor" }),
+    ];
+    assert.ok(!claude.names.has("products_enhance_image"));
+    assert.doesNotMatch(claude.instructions, /products_enhance_image/);
+    for (const other of others) {
+      assert.ok(other.names.has("products_enhance_image"));
+      assert.match(
+        other.instructions,
+        /products_enhance_image \(AI\) or products_remove_image_background/,
+      );
+      // Nothing else differs from Claude's list.
+      assert.deepEqual(
+        [...other.names].filter((name) => !claude.names.has(name)),
+        ["products_enhance_image"],
+      );
+    }
+    for (const name of [
+      "products_remove_image_background",
+      "products_use_image_version",
+      "jobs_get",
+    ]) {
+      assert.ok(claude.names.has(name), name);
+    }
+    assert.match(
+      claude.instructions,
+      /To improve a product photo: products_remove_image_background, with/,
+    );
+  });
 });

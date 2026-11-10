@@ -91,6 +91,17 @@ export const platformErrors = {
       i18nKey: "errors.permissionDenied",
       details: { domain },
     }),
+  /**
+   * A procedure the agent's own directory forbids it (`ClientWithholding.capabilities`):
+   * no grant changes it, so nothing to ask the user to enable.
+   */
+  capabilityWithheldFromClient: (capability: string) =>
+    apiError("FORBIDDEN", "NOT_AVAILABLE_TO_THIS_AGENT", {
+      message:
+        "This tool is not available to this agent. The user can do it in the Louez dashboard.",
+      i18nKey: "errors.permissionDenied",
+      details: { capability },
+    }),
   /** An account write that needs a connection over all the user's stores, present and future. */
   connectionBoundToStores: (kind: "api_key" | "oauth") =>
     apiError("FORBIDDEN", "CONNECTION_BOUND_TO_STORES", {

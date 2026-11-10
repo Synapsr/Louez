@@ -74,6 +74,11 @@ const authenticated = base.use(async ({ context, next, procedure }) => {
     transport: context.transport,
     headers: context.headers,
   });
+  // A procedure the client's directory forbids is refused first, before any
+  // confirmation or idempotency key: a replay never reaches it either.
+  if (meta.capability && actor.credential.withheld?.capabilities.includes(meta.capability)) {
+    throw platformErrors.capabilityWithheldFromClient(meta.capability);
+  }
   if (meta.actors && !meta.actors.includes(actor.credential.kind))
     throw platformErrors.sessionOnly();
   if (meta.platformAdmin && !(actor.isPlatformAdmin && actor.credential.kind === "session")) {
